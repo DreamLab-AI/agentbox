@@ -15,6 +15,17 @@
  * @see ADR-057 §D5 / verification step 5
  * @see ADR-058 §D3
  * @see ADR-059 §D5 / verification step 5
+ *
+ * ADR-2041 note: `buildExecutionCoverage(live)` stays a pure renderer over
+ * whatever `live` object its caller hands in — that contract is load-bearing
+ * (see the "declared by default" contract test) and is not changed here.
+ * `buildLiveExecutionCoverage()` below is the new, additive wiring: it pulls
+ * the REAL journal/pipeline singletons from `lib/action-plane.js` (built the
+ * first time `POST /v1/tasks` dispatches through them) and feeds them in, so
+ * `status` genuinely means "a live instance is being used", not "declared".
+ * `routes/system.js` does not call it yet — wiring that in is a one-line
+ * change to `server.js`'s route registration (`options.execution.snapshot`),
+ * which is out of this module's owner's file scope; see ADR-2041 §Consequences.
  */
 
 const { VOCABULARY, SCHEMA_ID } = require('./execution-journal');
@@ -62,4 +73,25 @@ function buildExecutionCoverage(live = {}) {
   };
 }
 
-module.exports = { buildExecutionCoverage };
+/**
+ * `buildExecutionCoverage()` wired to the real ADR-2041 action-plane
+ * singletons. Journal/pipeline report `live` once `POST /v1/tasks` has built
+ * them (lib/action-plane.js `getActionPlane()`); until then this is
+ * identical to `buildExecutionCoverage()` — never a fabricated "live".
+ * `capability` (ADR-058) has no live wiring yet, so it always stays
+ * `declared` here regardless of the action-plane's state.
+ * @returns {object} the /v1/system `execution` block
+ */
+function buildLiveExecutionCoverage() {
+  let live = {};
+  try {
+    live = require('./action-plane').getCoverageSnapshot();
+  } catch (_) {
+    // action-plane.js failing to load must never break /v1/system; fall back
+    // to the declared contract, same as no live instance being wired at all.
+    live = {};
+  }
+  return buildExecutionCoverage(live);
+}
+
+module.exports = { buildExecutionCoverage, buildLiveExecutionCoverage };

@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-05",
+  "adr": "ADR-2004",
+  "title": "Five adapter slots \u2014 connect lifecycle",
+  "scope": "Actual lifecycle module exercised with local fake adapters whose connect() resolves, rejects, or never settles. No real sidecar, adapter persistence or startup fault injection against a running server.",
+  "defects_closed": {
+    "L1_aggregate_timeout": "One deadline PER SLOT replaces the single 10 s race. Exceeding it is a connect FAILURE for that slot, identical in consequence to a rejection. The failed instance is QUARANTINED before any replacement is attempted, so a connect that settles late finds an object nobody can dispatch into. Late settles (resolved or rejected) are recorded on the readiness record and cannot re-arm the slot; the abandoned promise is handled at source so a late rejection is never an unhandled rejection.",
+    "L2_silent_replacement_failure": "If the off replacement cannot be constructed, the slot is left quarantined and marked unavailable, logged at error level. The degraded original is never left wired: dispatch throws AdapterQuarantined.",
+    "L3_no_per_slot_readiness": "Every slot ends in exactly one state (off | ready | disabled | unavailable) with the reason, failure mode (rejected | timeout | replacement-failed), the deadline applied, the duration and any late settle. Published on the app as adapterReadiness; toLegacyHealth() keeps the existing healthy/degraded/off /health vocabulary."
+  },
+  "policy": {
+    "connect_timeout": "[adapters] connect_timeout_ms (number) or a per-slot table with a `default` key; a non-positive or non-finite value falls back to 10000 rather than failing every slot.",
+    "fail_closed_slots": "orchestrator aborts startup on rejection AND on timeout \u2014 an orchestrator that never connects is operationally identical to one that refused \u2014 and is never silently replaced with off.",
+    "quarantine": "Own properties and the whole prototype chain are neutered; underscore-private helpers and disconnect() are exempt so shutdown can still release resources. The refusal is async, so it arrives as a rejected promise like every other adapter error."
+  },
+  "tests": [
+    {
+      "command": "node ../node_modules/.bin/jest --rootDir .. --testMatch '**/tests/contract/{adapter-lifecycle,privacy-coverage,privacy-filter}.contract.spec.js' --testEnvironment node --ci --forceExit",
+      "cwd": "management-api",
+      "exit_code": 0,
+      "stdout_tail": "",
+      "stderr_tail": "PASS ../tests/contract/adapter-lifecycle.contract.spec.js\n\nTest Suites: 3 passed, 3 total\nTests:       53 passed, 53 total\nSnapshots:   0 total\nTime:        1.49 s, estimated 2 s\nRan all test suites.\nForce exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?"
+    }
+  ],
+  "source_sha256": {
+    "management-api/adapters/lifecycle.js": "50b3eb1c04d4377e750adda70052bf6b49cc34333bc0b87fd462ba743a3d9577",
+    "management-api/adapters/index.js": "f299c334ebd7caea773cf3a0f1e783305d4ccdadf55ccdaee169a8df0840edd0",
+    "management-api/server.js": "feb6283f8f0d788f8896b21c3c13ec0654a7b62ebff6b9cd2f7e199dd815c779",
+    "tests/contract/adapter-lifecycle.contract.spec.js": "89dd70df63a34d7062ead73f5851a4096e0f0465bd06bd6072c99d035e92cdc6"
+  },
+  "limitations": "Fake adapters only. No real sidecar, no adapter persistence, no fault injection against a booted management-api, and no deployed readiness observation. Wall-clock assertions use real timers with short deadlines."
+}

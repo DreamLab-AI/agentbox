@@ -24,8 +24,26 @@
  *     (`fe70102<hex>`, ADR-033 D3′/I2) is offered alongside for a downstream
  *     that verifies against the DID-document verification method.
  *
- * Fail-open: any error returns null so the entrypoint falls back to the
- * historic `did:nostr:local` placeholder rather than aborting the bootstrap.
+ * `loadOrMint()` (the library function) still returns null on any error —
+ * that contract is unchanged and is relied on by other callers (e.g.
+ * routes/sessions-boundary.js, which itself already treats a null return as
+ * fatal for session creation, and tolerates `persisted:false` as a
+ * deliberately run-scoped session identity). ADR-2044 changes only the CLI
+ * entry point below (`node agent-identity.js mint`, the one boot uses):
+ * a failed mint, or a mint that could not persist its key, now exits
+ * non-zero with NO export lines — fail CLOSED, not open. No dev-profile
+ * flag gates this: grepping the tree for an existing dev/prod signal at this
+ * layer found none wired at boot (`AGENTBOX_SOVEREIGN_MESH_ENABLED` is read
+ * by middleware/auth.js but is never exported anywhere — dead config, not a
+ * live one), so there was nothing to gate a relaxation behind without
+ * inventing a new flag.
+ *
+ * This does NOT by itself stop `config/entrypoint-unified.sh` from still
+ * exporting the historic `did:nostr:local` placeholder on failure — its
+ * `${AGENTBOX_AGENT_DID:-did:nostr:local}` fallback runs unconditionally,
+ * ignoring this CLI's exit code (`|| true`). Closing that requires a change
+ * to entrypoint-unified.sh, which is out of scope for this module (owned
+ * elsewhere) — see ADR-2044 Consequences for the exact before/after needed.
  */
 
 const fs = require('fs');
@@ -171,8 +189,15 @@ module.exports = {
 //
 // `node agent-identity.js mint` prints shell `export` lines to stdout for the
 // entrypoint to eval, and a single status line to stderr. The private key is
-// never printed. Exit 0 on success; exit 1 (with no exports) on any failure so
-// the entrypoint keeps its `${VAR:-did:nostr:local}` fallback.
+// never printed. Exit 0 on success with all three export lines. ADR-2044:
+// exit non-zero with NO export lines on EITHER (a) a failed mint, or (b) a
+// mint that could not persist its key — both are treated as fatal here, not
+// fail-open, because a non-sovereign placeholder DID and a DID that silently
+// rotates on every restart are the same class of problem for every consumer
+// that pins trust to this container's identity (relay allowlist, INGRESS-
+// identity.md Invariant 5). See the module doc comment above for why no
+// dev-profile flag gates this, and for the entrypoint-side gap this alone
+// does not close.
 if (require.main === module) {
   const cmd = process.argv[2] || 'mint';
   if (cmd !== 'mint') {
@@ -181,7 +206,20 @@ if (require.main === module) {
   }
   const id = loadOrMint();
   if (!id) {
-    process.stderr.write('agent-identity: could not derive a did:nostr (fail-open; caller keeps did:nostr:local)\n');
+    process.stderr.write(
+      'agent-identity: FATAL — could not derive a did:nostr. Refusing to '
+      + 'proceed with a placeholder identity (docs/INGRESS-identity.md Invariant 5).\n'
+    );
+    process.exit(1);
+  }
+  if (!id.persisted) {
+    process.stderr.write(
+      `agent-identity: FATAL — minted ${id.did} but could NOT persist the key `
+      + `at ${id.keyPath} (0600 perms). An unpersisted key produces a DIFFERENT `
+      + 'did:nostr on every restart and must not be trusted as this container\'s '
+      + 'stable identity (docs/INGRESS-identity.md Invariant 5). Fix the key '
+      + 'directory\'s writability and retry.\n'
+    );
     process.exit(1);
   }
   process.stdout.write(
@@ -191,7 +229,7 @@ if (require.main === module) {
   );
   process.stderr.write(
     `agent-identity: ${id.minted ? 'minted' : 'loaded'} ${id.did} `
-    + `(persisted=${id.persisted}, keyfile=${id.keyPath})\n`
+    + `(persisted=true, keyfile=${id.keyPath})\n`
   );
   process.exit(0);
 }

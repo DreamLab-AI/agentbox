@@ -20,6 +20,16 @@
  * the same in-memory event store it always has.
  */
 
+// ADR-2026 closeout: the resolver now falls back to a DURABLE archive, so a
+// test must own its archive directory — otherwise records accumulate in the
+// real workspace archive and the counts below grow on every run. Set before the
+// publisher is required, because the archive resolves its path at construction.
+const fsq = require('fs');
+const osq = require('os');
+const pathq = require('path');
+const TEST_ARCHIVE_DIR = fsq.mkdtempSync(pathq.join(osq.tmpdir(), 'rec9-archive-'));
+process.env.AGENTBOX_EVENT_ARCHIVE_DIR = TEST_ARCHIVE_DIR;
+
 const Fastify = require('../../management-api/node_modules/fastify');
 const agentEventsRoutes = require('../../management-api/routes/agent-events');
 const { agentEventPublisher } = require('../../management-api/utils/agent-event-publisher');
@@ -39,7 +49,11 @@ const KNOWN_URN = `urn:agentbox:activity:${'a'.repeat(64)}:sha256-12-cafebabe001
 describe('REC-9 — GET /v1/agent-events resolves ?id=<urn> to its own record', () => {
   let app;
   beforeAll(async () => { app = await makeApp(); });
-  afterAll(async () => { await app.close(); });
+  afterAll(async () => {
+    await app.close();
+    fsq.rmSync(TEST_ARCHIVE_DIR, { recursive: true, force: true });
+    delete process.env.AGENTBOX_EVENT_ARCHIVE_DIR;
+  });
 
   test('FALSIFICATION 2: a stored event with a known urn is returned for ?id=<urn>, urn intact', async () => {
     const emitted = agentEventPublisher.emitAgentAction({
@@ -53,10 +67,13 @@ describe('REC-9 — GET /v1/agent-events resolves ?id=<urn> to its own record', 
 
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.count).toBe(1);
     expect(body.id).toBe(KNOWN_URN);
-    expect(body.events).toHaveLength(1);
-    expect(body.events[0].id).toBe(emitted.id);
+    // ADR-2026 closeout: the resolver returns the ORDERED HISTORY for a
+    // reference, not only the newest match — every turn of a session shares one
+    // activity urn, and silently returning one of several was the defect. So
+    // this asserts the emitted record is PRESENT, not that it is alone.
+    expect(body.count).toBeGreaterThanOrEqual(1);
+    expect(body.events.some((e) => e.id === emitted.id)).toBe(true);
     // The provenance field survives the response serializer — the reference
     // resolves to the very record that carries it, not a stripped stub.
     expect(body.events[0].source_urn).toBe(KNOWN_URN);

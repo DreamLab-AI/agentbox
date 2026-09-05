@@ -1,0 +1,33 @@
+{
+  "schema": "agentbox/closeout-receipt@1",
+  "adr": "ADR-2015",
+  "dated": "2026-09-05",
+  "claim": "The two redaction escapes the review reproduced are closed under a stated retention policy; a missing pg module no longer advances the watermark; the token total carries an identity a consumer can deduplicate on; and one canonical failure field replaces the two that disagreed.",
+  "implemented": {
+    "retention_policy": "config/hooks/lib/trajectory-util.cjs — two phases. Phase 1 redacts every enumerated secret-bearing FORM (URI credentials, env assignment, key=value, --flag value and --flag=value quoted or unquoted, concatenated -p, JSON/YAML key: value, Bearer/Authorization, long base64/hex). Phase 2 re-inspects the output for a secret keyword still in an ASSIGNMENT or FLAG position with a live value; if one survives the command is UNSUPPORTED and redact() returns null, so the recorder skips the step. Unsafe forms are rejected rather than retained.",
+    "quoted_password_suffix": "`mysql --password \"correct horse battery staple\" -h db` -> `mysql --password <redacted> -h db`. The review's finding was that only the first token was lost.",
+    "short_json_password": "`{\"password\":\"x\"}` -> `{\"password\":\"<redacted>\"}`. The pre-closeout patterns keyed on `=` and missed the JSON colon form entirely.",
+    "prose_preserved": "`git commit -m \"add password reset flow\"` is unchanged — the policy rejects unsafe VALUE positions, not the English word.",
+    "watermark": "config/hooks/trajectory-recorder.cjs — the watermark now advances in exactly two places: when there was nothing to persist, and after a successful persist. A missing pg module returns without writing it, so the lines are retried; re-scanning is safe because step ids are content-addressed and the inserts are ON CONFLICT DO NOTHING.",
+    "usage_identity": "usageIdentityOf() gives every step the identity of the assistant turn its token_count came from, plus token_count_scope='assistant-turn', turn_tool_uses and token_count_shared. Summing token_count over DISTINCT usage_ids gives the true turn cost; summing over steps does not, and can no longer be done by accident.",
+    "emit_cap": "The 200-per-invocation cap became a QUEUE: the overflow is carried in the session stash and drained FIFO on the next Stop, the rollup records ctc_emit_queued and ctc_emit_carried_in, and a queue overflow beyond CTC_QUEUE_MAX is logged as an explicit incompleteness rather than a silent drop.",
+    "canonical_failure_field": "The TOP-LEVEL `failure_mode` on the agent-events envelope is canonical. The route now accepts and forwards it (it was being dropped), the mapper sets it alongside the metadata mirror, and the publisher PROMOTES metadata.failure_mode when the top level carries none — so the reproduced 'FM-1.2 in metadata, unmapped at top level' disagreement cannot recur. The publisher also writes the resolved tag back into the mirror so both locations always agree."
+  },
+  "tests": {
+    "suite": "tests/sovereign/learning-evidence-closeout.test.js",
+    "passed": 33,
+    "failed": 0,
+    "covers": [
+      "privacy sentinels: quoted flag values, single-quoted values, short JSON values, JSON with siblings, Bearer behind Authorization, URI credentials, concatenated -p, prose retention, non-string fail-closed, the 4000-char cap",
+      "the phase-2 residual backstop accepts a redacted value and rejects a live one",
+      "watermark: pg module ABSENT (via a require interceptor, not a production backdoor) leaves it at 0; a CONNECTION failure likewise; a transcript with no gradeable steps DOES advance",
+      "usage identity: stable per record, content-addressed when no record id, shared across sibling steps of one turn, not shared for a single-tool turn",
+      "canonical failure field: mapper sets top level + mirror; publisher promotes a metadata-only mode instead of emitting unmapped; an explicit top-level tag wins and the mirror is made consistent; a success still carries no mode"
+    ]
+  },
+  "remaining": [
+    "No live recorder-to-dashboard workflow ran; the emit transport is still unchecked for HTTP status and the queue drains only on a subsequent Stop.",
+    "The CTC accounting unit is now DESCRIBED on the wire but no consumer has been shown to deduplicate on usage_id — the dashboard side is not in this repo.",
+    "Failure-source census remains open: skipped and ungradeable results, non-Bash work, crash-before-Stop and QE fleet producers are still outside the denominator."
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-05",
+  "adr": "ADR-2005",
+  "title": "Dispatch middleware order \u2014 privacy wrapper coverage",
+  "scope": "Actual middleware exercised against a stub /redact server on loopback. No OPF model, real adapter, persistence or network egress.",
+  "defects_closed": {
+    "P1_mutation_coverage": "isMutationMethod() replaces the six-name WRITE_OPS set: an exact-name set plus a camelCase <verb><Noun> prefix rule, with read verbs listed so they can never be captured. createEpic, storeSnapshot, publishDigest, updateBead and removeEpic are mutations; get/list/query/search/fetch/read/resolve/health are not, and `created`/`adder` are not (the boundary is required).",
+    "P2_field_coverage": "Every string leaf reachable in the arguments is assigned a role. content (value/text/title/metadata/labels/... and anything nested inside them) is REDACTED in place; identifier (key/id/uri/urn/namespace/...) is SCREENED and never rewritten, because rewriting a key would silently change what the record is addressed by; every other string is unclassified and screened the same way, so a new field cannot quietly become an exfiltration path. Personal data found in a screened field rejects the write under strict and is counted under soft (opf_identifier_pii_total).",
+    "P3_type_preservation": "A redacted leaf is written back through a copy-on-write setter that preserves array-ness and prototypes. An object value stays an object of the same shape, an array stays an array, a string stays a string, and the caller\u2019s own object is not mutated.",
+    "P4_policy_and_failure": "strict rejects and soft fails open with the ORIGINAL payload for: unreachable sidecar, HTTP 500, non-JSON body, a response with no text field, and a response whose field delimiter did not survive (typed RedactionShapeError, counted by opf_redaction_shape_errors_total). A cyclic or over-deep payload cannot be certified redacted and is rejected under strict. off and OPF_MODE=off make no call at all."
+  },
+  "one_round_trip": "All fields travel in a single /redact call joined by a per-call 16-byte random delimiter; the response must split back into exactly the same number of segments or nothing is applied. The existing contract test\u2019s \"exactly one OPF call\" assertion still holds.",
+  "traversal_vs_redaction": "A test asserts explicitly that the L08 traversal marker is present on an off-policy payload whose content was NOT redacted \u2014 the marker is a traversal fact, never evidence of verified redaction.",
+  "tests": [
+    {
+      "command": "node ../node_modules/.bin/jest --rootDir .. --testMatch '**/tests/contract/{adapter-lifecycle,privacy-coverage,privacy-filter}.contract.spec.js' --testEnvironment node --ci --forceExit",
+      "cwd": "management-api",
+      "exit_code": 0,
+      "stdout_tail": "",
+      "stderr_tail": "PASS ../tests/contract/adapter-lifecycle.contract.spec.js\n\nTest Suites: 3 passed, 3 total\nTests:       53 passed, 53 total\nSnapshots:   0 total\nTime:        1.49 s, estimated 2 s\nRan all test suites.\nForce exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?"
+    }
+  ],
+  "source_sha256": {
+    "management-api/middleware/privacy-filter.js": "2fe3ece4098ad26bca0e5bee09973e1c1a3facf481d82e9671236db2e028a8bd",
+    "tests/contract/privacy-coverage.contract.spec.js": "a5687bc1edad915d072bcd38771a9c7ae86a824b51d37f709e18ba9b1fef653a",
+    "tests/contract/privacy-filter.contract.spec.js": "d46da61abc82a24bb70a7c20784a14e652126d9c307da3038d9d8d7953138bb1",
+    "management-api/observability/metrics.js": "6c46c134bd45cdc8da540b9a46548c8a8825bbda72bd075d4b9ee84a88c3c307",
+    "management-api/middleware/linked-data/encoder.js": "90e0b06154d29af64c3437d5f1ae3276a31a49e1cc943f369f7f18bf9917bebd"
+  },
+  "limitations": "Stub redactor only; the real opf-router was not run, no adapter persisted anything, and JSON-LD encoding remains a separate caller action. Per-slot manifest policy tables in the live agentbox.toml were not re-verified."
+}

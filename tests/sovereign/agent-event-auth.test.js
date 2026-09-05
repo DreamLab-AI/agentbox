@@ -20,8 +20,9 @@ function req(headers = {}, url = '/v1/agent-events/emit') {
 }
 
 describe('resolvePolicy', () => {
-  it('defaults to off and lowercases', () => {
-    expect(resolvePolicy({})).toBe('off');
+  it('defaults to nip98 (ADR-2044 fail-closed), honours an explicit off, and lowercases', () => {
+    expect(resolvePolicy({})).toBe('nip98');
+    expect(resolvePolicy({ AGENTBOX_AGENT_EVENT_AUTH: 'off' })).toBe('off');
     expect(resolvePolicy({ AGENTBOX_AGENT_EVENT_AUTH: 'NIP98' })).toBe('nip98');
   });
 });

@@ -147,13 +147,37 @@ function emitCtcStep(body) {
     } catch (e) { log(`ctc emit failed (non-fatal): ${e && e.message}`); done(); }
   });
 }
+// ADR-2015 accounting closeout (2026-09-05) — THE CAP IS A QUEUE, NOT A CLIFF.
+//
+// The cap existed so one Stop firing could not flood the wire, but everything
+// beyond it was silently dropped: a long session's later steps simply never
+// reached the CTC consumer, and nothing recorded that they were missing. That
+// makes "complete delivery" unprovable, which is exactly what the accounting
+// review asked us to fix before presenting a per-DAG figure.
+//
+// Now the overflow is CARRIED FORWARD in the session stash and drained first on
+// the next invocation, and the rollup records the queue depth so an incomplete
+// delivery is visible rather than inferred. The queue itself is bounded
+// (CTC_QUEUE_MAX) — an unbounded backlog would be its own failure — and when it
+// overflows we say so explicitly instead of pretending the count is complete.
+const CTC_QUEUE_MAX = 2000;
+
+/**
+ * Emit up to the per-invocation cap, returning what could not be sent.
+ * @param {object[]} bodies
+ * @returns {Promise<{attempted:number, deferred:object[]}>}
+ */
 async function emitCtcStepsBestEffort(bodies) {
-  if (String(process.env.AGENTBOX_CTC_EMIT || '').trim() === '0') return; // explicit off switch
-  if (!Array.isArray(bodies) || bodies.length === 0) return;
+  if (String(process.env.AGENTBOX_CTC_EMIT || '').trim() === '0') {
+    return { attempted: 0, deferred: [] }; // explicit off switch — nothing queued either
+  }
+  if (!Array.isArray(bodies) || bodies.length === 0) return { attempted: 0, deferred: [] };
   const bounded = bodies.slice(0, CTC_EMIT_CAP);
+  const deferred = bodies.slice(CTC_EMIT_CAP);
   for (const b of bounded) {
     try { await emitCtcStep(b); } catch { /* fail-open */ }
   }
+  return { attempted: bounded.length, deferred };
 }
 
 // ── owner identity (public pubkey only — I09; the nsec never enters this hook) ──
@@ -270,7 +294,12 @@ async function hasDurationColumn(client) {
  * follows, so the tool_use map is built over the WHOLE transcript.
  */
 function scanTranscript(lines, fromLine) {
-  const uses = new Map(); // tool_use_id → { command, ts, tokenCount }
+  const uses = new Map(); // tool_use_id → { command, ts, tokenCount, usageId, turnToolUses }
+  // ADR-2015 accounting closeout: how many tracked Bash calls each assistant
+  // turn issued. The turn's token burden is attached to every one of them, so
+  // this count is what tells a consumer the number is SHARED rather than
+  // separately measured — the difference between 150 and a double-counted 300.
+  const turnToolUses = new Map(); // usageId → count
   // REC-3 (CTC): count subagent Task spawns across the WHOLE session — each Task
   // tool_use is a handoff to another agent, so the count IS the chain's handoff
   // burden the CTC dashboard reconstructs. Built over all lines (like `uses`).
@@ -282,10 +311,12 @@ function scanTranscript(lines, fromLine) {
     if (!Array.isArray(content)) continue;
     // REC-3: the token burden of the assistant turn that ISSUED the tool call.
     const tokenCount = util.tokenCountOf(rec.message && rec.message.usage);
+    const usageId = util.usageIdentityOf(rec);
     for (const b of content) {
       if (b && b.type === 'tool_use' && b.name === 'Bash' && b.id) {
         const cmd = b.input && b.input.command;
-        uses.set(String(b.id), { command: typeof cmd === 'string' ? cmd : '', ts: rec.timestamp, tokenCount });
+        uses.set(String(b.id), { command: typeof cmd === 'string' ? cmd : '', ts: rec.timestamp, tokenCount, usageId });
+        if (usageId) turnToolUses.set(usageId, (turnToolUses.get(usageId) || 0) + 1);
       }
       // A Task tool_use hands off to a subagent — count it as one handoff.
       if (b && b.type === 'tool_use' && b.name === 'Task') handoffCount++;
@@ -328,7 +359,12 @@ function scanTranscript(lines, fromLine) {
         if (red != null) failureHint = red.slice(0, 400);
       }
 
-      steps.push({ toolUseId: String(b.tool_use_id), action, outcome, redacted, durationMs, failureHint, tokenCount: use.tokenCount });
+      steps.push({
+        toolUseId: String(b.tool_use_id), action, outcome, redacted, durationMs, failureHint,
+        tokenCount: use.tokenCount,
+        usageId: use.usageId || null,
+        turnToolUses: use.usageId ? (turnToolUses.get(use.usageId) || 1) : null,
+      });
     }
   }
   return { steps, lineCount: lines.length, handoffCount };
@@ -354,12 +390,29 @@ async function handleClose(payload) {
   const from = Number(stash.processedLines || 0);
   const { steps, lineCount, handoffCount } = scanTranscript(lines, from);
 
-  // Advance the watermark regardless (idempotent inserts cover any race).
-  stash.processedLines = lineCount;
-  if (!steps.length) { writeStash(session, stash); return 0; }
+  // ADR-2015 closeout (2026-09-05) — THE WATERMARK FOLLOWS DURABILITY.
+  //
+  // The watermark used to be advanced before persistence, so a missing `pg`
+  // module wrote the advanced value and returned successfully: those transcript
+  // lines were skipped forever on the next invocation, silently losing the
+  // steps. A connection/query exception, by contrast, already left the stash
+  // alone and permitted a retry — the two failures behaved differently for no
+  // principled reason.
+  //
+  // Now the watermark advances in exactly two places: when there was nothing to
+  // persist (safe — no work was lost), and after a successful persist. Every
+  // other exit leaves it where it was, so the lines are re-scanned. Re-scanning
+  // is safe because step ids are content-addressed from the tool_use id and the
+  // inserts are ON CONFLICT DO NOTHING, and because the quality counters are
+  // only committed to the stash on the same successful path.
+  const pendingLineCount = lineCount;
+  if (!steps.length) { stash.processedLines = pendingLineCount; writeStash(session, stash); return 0; }
 
   const Pg = loadPg();
-  if (!Pg) { log('pg unavailable — skipping (fail-open)'); writeStash(session, stash); return 0; }
+  if (!Pg) {
+    log('pg module unavailable — NOT advancing the watermark, these lines are retried on the next Stop (ADR-2015)');
+    return 0;
+  }
 
   const ident = trajectoryIdentity(session);
   // REC-3 (CTC): the chain-correlation id every step and the rollup carry so a
@@ -368,7 +421,10 @@ async function handleClose(payload) {
   const taxonomy = loadTaxonomy();
   // REC-3 (CTC emitter WIRE): the emit bodies to forward onto the agent-events
   // envelope after DB persistence — one per step carrying a token_count / handoff_id.
-  const ctcEmits = [];
+  // Drain anything the previous invocation could not deliver BEFORE this run's
+  // own steps, so the queue stays FIFO and old cost is not starved by new.
+  const ctcEmits = Array.isArray(stash.ctcPending) ? stash.ctcPending.slice(0, CTC_QUEUE_MAX) : [];
+  const carriedIn = ctcEmits.length;
   const client = makeClient(Pg);
   try {
     await client.connect();
@@ -430,7 +486,9 @@ async function handleClose(payload) {
       // REC-3 (CTC emitter WIRE): build the emit body forwarding this step's
       // captured token_count + the chain handoff_id onto the agent-events envelope.
       const ctcBody = util.ctcEmitBodyFromStep(s, { handoffId: chainId, sessionId: session });
-      if (ctcBody && ctcEmits.length < CTC_EMIT_CAP) ctcEmits.push(ctcBody);
+      // Collect up to the QUEUE bound (not the per-invocation emit cap) — the
+      // surplus is deferred to the next Stop rather than discarded here.
+      if (ctcBody && ctcEmits.length < CTC_QUEUE_MAX) ctcEmits.push(ctcBody);
     }
     stash.stepOrder = order;
 
@@ -453,14 +511,18 @@ async function handleClose(payload) {
                               'mean_quality',  $4::double precision,
                               'outcome',       $5::text,
                               'handoff_id',    $6::text,
-                              'handoff_count', $7::int)
+                              'handoff_count', $7::int,
+                              'ctc_emit_queued',   $8::int,
+                              'ctc_emit_carried_in', $9::int)
         WHERE id = $1`,
       [ident.id, success, count, meanQuality, success ? 'success' : 'mixed',
-        chainId, Number(handoffCount || 0)]
+        chainId, Number(handoffCount || 0), ctcEmits.length, carriedIn]
     );
+    // Durable persistence succeeded — only NOW may the watermark advance.
+    stash.processedLines = pendingLineCount;
     writeStash(session, stash);
   } catch (e) {
-    log(`persist failed (non-fatal, fail-open): ${e && e.message}`);
+    log(`persist failed (non-fatal, fail-open) — watermark left at ${from} so these lines are retried: ${e && e.message}`);
   } finally {
     try { await client.end(); } catch { /* ignore */ }
   }
@@ -468,7 +530,24 @@ async function handleClose(payload) {
   // token_count + chain handoff_id into a REAL agent-events emit call so they
   // reach the agent-events envelope the publisher emits (CANARY-AB-CTC wire).
   // Best-effort, fail-open — the durable trajectory record is already written.
-  await emitCtcStepsBestEffort(ctcEmits);
+  const { attempted, deferred } = await emitCtcStepsBestEffort(ctcEmits);
+  // Persist the undelivered tail so the NEXT Stop drains it. This is the only
+  // stash write outside the persistence path, and it only ever touches the
+  // queue field — it never advances the watermark.
+  try {
+    const cur = readStash(session);
+    if (deferred.length > CTC_QUEUE_MAX) {
+      log(`ctc emit queue overflow: ${deferred.length} bodies exceed the ${CTC_QUEUE_MAX} bound — ` +
+          `${deferred.length - CTC_QUEUE_MAX} dropped, downstream CTC totals for this session are INCOMPLETE`);
+    }
+    cur.ctcPending = deferred.slice(0, CTC_QUEUE_MAX);
+    cur.ctcPendingOverflow = Math.max(0, deferred.length - CTC_QUEUE_MAX)
+      + Number(cur.ctcPendingOverflow || 0);
+    writeStash(session, cur);
+    if (deferred.length) {
+      log(`ctc emit: attempted ${attempted}, deferred ${cur.ctcPending.length} to the next Stop (cap ${CTC_EMIT_CAP}/invocation)`);
+    }
+  } catch (e) { log(`ctc queue persist failed (non-fatal): ${e && e.message}`); }
   return 0;
 }
 

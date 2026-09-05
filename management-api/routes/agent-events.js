@@ -10,6 +10,8 @@
  */
 
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
+// ADR-2026: the durable provenance record the resolver falls back to.
+const { agentEventArchive } = require('../utils/agent-event-archive');
 const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-event-auth');
 const taxonomy = require('../lib/failure-taxonomy');
 const { processHookEvent, getRegistryStats } = require('../hooks/agent-action-hooks');
@@ -166,6 +168,16 @@ async function agentEventsRoutes(fastify, options) {
             count: { type: 'integer' },
             // Echo of the resolved reference (null on a window query).
             id: { type: ['string', 'null'] },
+            // ADR-2026: provenance about the provenance. `source` says which
+            // store answered ('memory' | 'archive' | 'memory+archive') and
+            // `history_complete` whether this is the full ordered history for
+            // the reference or only what the ring buffer still held. Without
+            // these a caller cannot tell a complete answer from a partial one.
+            source: { type: 'string' },
+            // 'durable' for a canonical URN; 'process-local' for a bare numeric
+            // event id, whose meaning does not survive a publisher restart.
+            reference_scope: { type: 'string' },
+            history_complete: { type: 'boolean' },
             timestamp: { type: 'string' }
           }
         }
@@ -182,34 +194,89 @@ async function agentEventsRoutes(fastify, options) {
     // "does not resolve to a real execution/action receipt" falsification.
     if (id !== undefined && id !== null && String(id).length > 0) {
       const ref = String(id);
-      // Search the whole retained buffer, not just the default window — the
-      // referenced record can be older than `limit` events back.
+      // ── ADR-2026 provenance closeout (2026-09-05) ────────────────────────
+      // Two changes to what this branch returns:
+      //
+      //  1. DURABILITY. The in-memory ring buffer retains 1,000 events; a
+      //     reference on the operator's phone outlives that, and a new
+      //     publisher process starts empty. A buffer miss now falls back to the
+      //     durable archive, and the response says WHICH source answered.
+      //  2. FULL HISTORY. Every turn of a session shares one activity urn, so
+      //     returning only the newest match silently substituted one decision
+      //     for another. The ordered history is returned instead, newest last.
       const all = agentEventPublisher.getRecentEvents(agentEventPublisher.maxBufferSize || 1000);
-      // Most-recent match wins: every turn of a session shares one activity urn,
-      // so the latest record under that reference is the useful one to return.
-      const match = [...all].reverse().find(e => eventMatchesRef(e, ref));
+      const inMemory = all.filter(e => eventMatchesRef(e, ref));
 
-      if (!match) {
+      // A BARE NUMERIC reference is process-local: the publisher's event ids
+      // restart at 1 in a new process, so the same number names a different
+      // event in every incarnation. Resolving it against the durable archive
+      // would therefore return several unrelated records and call them a
+      // history. Numeric references stay in-memory-only and are labelled
+      // `process-local`; only a canonical URN is durable (ADR-2026).
+      const isNumericRef = /^\d+$/.test(ref);
+      const referenceScope = isNumericRef ? 'process-local' : 'durable';
+
+      let events = inMemory;
+      let source = 'memory';
+      let archiveSearched = false;
+      let historyComplete = false;
+
+      const archive = agentEventArchive;
+      if (!isNumericRef && archive && archive.enabled) {
+        const found = archive.find(e => eventMatchesRef(e, ref), Math.min(Number(limit) || 100, 1000));
+        archiveSearched = found.searched;
+        if (found.searched) {
+          historyComplete = true;
+          if (found.events.length) {
+            // The archive is the superset; de-duplicate on the envelope id so a
+            // record present in both is returned once.
+            const seen = new Set(found.events.map(e => String(e.id)));
+            const extra = inMemory.filter(e => !seen.has(String(e.id)));
+            events = [...found.events, ...extra];
+            source = inMemory.length ? 'memory+archive' : 'archive';
+          }
+        }
+      }
+
+      if (!events.length) {
+        // Distinguish the three "no answer" states rather than collapsing them
+        // into one 404: never existed, evicted-and-unarchived, or archive off.
+        const reason = isNumericRef
+          ? 'a bare numeric event id is process-local — it is resolved only against the current process buffer, never the durable archive, because ids restart at 1 in a new process'
+          : (archiveSearched
+            ? 'no record with this reference exists in the retained buffer or the durable archive'
+            : (archive && archive.enabled === false
+              ? 'the durable archive is disabled, so an evicted record cannot be distinguished from one that never existed'
+              : 'the durable archive could not be searched'));
         reply.code(404).send({
           error: 'not-found',
           message: `No agent-event resolves the reference: ${ref}`,
+          reason,
           id: ref,
-          count: 0
+          count: 0,
+          source: archiveSearched ? 'memory+archive' : 'memory',
+          reference_scope: referenceScope,
+          history_complete: historyComplete
         });
         return;
       }
 
-      const resolved = {
+      const resolved = events.map(match => ({
         ...match,
         action_type_name: Object.keys(AgentActionType).find(
           k => AgentActionType[k] === match.action_type
         )?.toLowerCase() || 'unknown'
-      };
+      }));
 
       reply.send({
-        events: [resolved],
-        count: 1,
+        events: resolved,
+        count: resolved.length,
         id: ref,
+        // Provenance about the provenance: where the answer came from, and
+        // whether it is the complete ordered history or only what memory held.
+        source,
+        reference_scope: referenceScope,
+        history_complete: historyComplete,
         timestamp: new Date().toISOString(),
         connected_clients: wsConnections.size
       });
@@ -272,7 +339,12 @@ async function agentEventsRoutes(fastify, options) {
           // its chain handoff id here so they reach the agent-events envelope.
           token_count: { type: 'integer', minimum: 0 },
           handoff_id: { type: 'string' },
-          verification: { type: 'string' }
+          verification: { type: 'string' },
+          // ADR-2015 closeout: the CANONICAL failure field on the wire. A
+          // producer that classified a failure sends it here; the publisher
+          // still promotes `metadata.failure_mode` when this is absent, so an
+          // older producer is not silently downgraded to `unmapped`.
+          failure_mode: { type: 'string' }
         }
       },
       response: {
@@ -341,6 +413,9 @@ async function agentEventsRoutes(fastify, options) {
     if (body.token_count !== undefined) emitPayload.token_count = body.token_count;
     if (body.handoff_id !== undefined)  emitPayload.handoff_id  = body.handoff_id;
     if (body.verification !== undefined) emitPayload.verification = body.verification;
+    // ADR-2015: forward the canonical failure tag. Without this the field was
+    // dropped by the route and the publisher re-derived `unmapped`.
+    if (body.failure_mode !== undefined) emitPayload.failure_mode = body.failure_mode;
 
     const event = agentEventPublisher.emitAgentAction(emitPayload);
 
@@ -618,8 +693,16 @@ async function agentEventsRoutes(fastify, options) {
 function eventMatchesRef(event, ref) {
   if (!event || ref == null) return false;
   if (String(event.id) === ref) return true;
-  const URN_FIELDS = ['source_urn', 'target_urn', 'activity_urn', 'event_urn', 'urn'];
-  return URN_FIELDS.some(k => typeof event[k] === 'string' && event[k] === ref);
+  const URN_FIELDS = ['source_urn', 'target_urn', 'activity_urn', 'event_urn', 'urn', 'handoff_id'];
+  if (URN_FIELDS.some(k => typeof event[k] === 'string' && event[k] === ref)) return true;
+  // ADR-2026: the CTC chain id and a producer's mirrored urn live in metadata.
+  // The review noted the lookup matched neither, so a chain reference carried to
+  // the phone resolved to nothing.
+  const md = event.metadata;
+  if (md && typeof md === 'object') {
+    return URN_FIELDS.some(k => typeof md[k] === 'string' && md[k] === ref);
+  }
+  return false;
 }
 
 /**

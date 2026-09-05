@@ -8,6 +8,10 @@
 const EventEmitter = require('events');
 const uris = require('../lib/uris');
 const taxonomy = require('../lib/failure-taxonomy');
+// ADR-2026 provenance closeout: the durable record behind the ring buffer. An
+// event evicted from memory must still resolve — a mirrored reference on the
+// operator's phone outlives 1,000 events.
+const { agentEventArchive } = require('./agent-event-archive');
 
 // Agent action types matching the Rust binary protocol
 const AgentActionType = {
@@ -91,34 +95,66 @@ class AgentEventPublisher extends EventEmitter {
     // `outcome:'failure'`, a `failure` context object, or a pre-resolved
     // `failure_mode`. A non-failure event carries no mode (byte-compatible for
     // existing success-only callers).
+    //
+    // ADR-2015 closeout (2026-09-05) — ONE CANONICAL FAILURE FIELD.
+    // The estate review reproduced the same event carrying two different tags:
+    // the trajectory mapper wrote its classified mode into
+    // `metadata.failure_mode`, while this classifier only looked at a top-level
+    // `failure_mode`/`failure` — so a perfectly good FM-1.2 arrived alongside a
+    // top-level `unmapped`, and two consumers reading different locations
+    // disagreed about the same failure.
+    //
+    // The canonical wire field is the TOP-LEVEL `failure_mode` on the envelope.
+    // `metadata.failure_mode` is a producer-side mirror, and it is PROMOTED
+    // here when the top level carries nothing — a producer's specific
+    // classification is never discarded in favour of `unmapped`.
+    const metaMode = (event.metadata && typeof event.metadata.failure_mode === 'string')
+      ? event.metadata.failure_mode
+      : null;
     const isFailure = event.outcome === 'failure'
       || (event.metadata && event.metadata.outcome === 'failure')
       || event.failure != null
-      || typeof event.failure_mode === 'string';
+      || typeof event.failure_mode === 'string'
+      || metaMode !== null;
     if (isFailure) {
       if (taxonomy.isTag(fullEvent.failure_mode)) {
-        // caller supplied a valid tag — keep it
+        // caller supplied a valid top-level tag — it wins
+      } else if (taxonomy.isTag(metaMode)) {
+        // promote the producer's mirror rather than classifying an empty context
+        fullEvent.failure_mode = metaMode;
       } else {
         const ctx = (event.failure && typeof event.failure === 'object')
           ? event.failure
-          : { mode: event.failure_mode };
+          : { mode: event.failure_mode || metaMode };
         fullEvent.failure_mode = taxonomy.classify(ctx);
+      }
+      // Keep the mirror consistent with the canonical field so a consumer that
+      // reads either location sees the SAME tag (the disagreement is the bug).
+      if (fullEvent.metadata && typeof fullEvent.metadata === 'object') {
+        fullEvent.metadata.failure_mode = fullEvent.failure_mode;
       }
     }
 
-    // Auto-populate identity fields from environment when not supplied
-    // by the caller, so every event carries attribution by default.
-    if (!fullEvent.source_urn) {
+    // Auto-populate identity fields from environment ONLY when the caller
+    // supplied NEITHER (ADR-2042). source_urn/pubkey are one identity pair:
+    // filling each independently could mix a caller-asserted identity (e.g.
+    // a verified per-request source_urn from agent-event-auth.js) with the
+    // container's own env fallback on the OTHER field — misattributing the
+    // event to neither the real actor nor the container consistently. The
+    // caller's identity wins whenever it supplied any part of it; the env
+    // value is the last resort, applied to both fields together.
+    if (fullEvent.source_urn == null && fullEvent.pubkey == null) {
       fullEvent.source_urn = process.env.AGENTBOX_URN
         || process.env.AGENTBOX_DID
         || null;
-    }
-    if (!fullEvent.pubkey) {
       fullEvent.pubkey = process.env.AGENTBOX_DID || null;
     }
 
     // Buffer the event
     this.eventBuffer.push(fullEvent);
+    // Durably archive BEFORE eviction can occur, so the retained record and the
+    // archived one never diverge. Fail-open: archiving never breaks an emit.
+    try { agentEventArchive.append(fullEvent); } catch { /* archive is best-effort */ }
     if (this.eventBuffer.length > this.maxBufferSize) {
       this.eventBuffer.shift();
     }

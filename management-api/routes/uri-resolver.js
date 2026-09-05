@@ -7,15 +7,22 @@
  * dereferenceable HTTPS IRI when the resolver knows how. Critical
  * design point: agentbox URIs are always **unique**, but they are not
  * always **resolvable** — a URN is a name, not an address. The
- * resolver advertises three states:
+ * resolver advertises two states:
  *
  *   200 + 307 Location  → resolvable; redirect to the canonical IRI.
  *   404                 → unknown URI (or unknown kind); the name is
  *                         valid in form but the resolver cannot point
- *                         at a current representation.
- *   410 Gone            → URI was once resolvable but the resource has
- *                         been retracted (rare; only used when the
- *                         resolver has positive knowledge of deletion).
+ *                         at a current representation. This also covers
+ *                         a retracted resource: with no tombstone store
+ *                         the resolver cannot distinguish "never existed"
+ *                         from "deleted", and says so rather than guessing.
+ *
+ * ADR-2049: a third state, 410 Gone, was documented here and advertised in
+ * the /.well-known payload but never emitted — there is no retraction store
+ * and no `reply.code(410)` anywhere in this handler. Advertising a state a
+ * consumer can never observe is worse than not offering it, so the claim is
+ * withdrawn. Reinstating it means adding a real tombstone lookup ahead of the
+ * 404 branch and re-advertising in the same change.
  *
  * Consumers can rely on:
  *   - URI uniqueness, always.
@@ -165,7 +172,7 @@ async function uriResolverRoutes(fastify, options) {
       },
       contract: {
         uniqueness: 'always — every emit produces a stable, deterministic URI',
-        resolvability: 'best-effort — resolver returns 307 when known, 404 when unknown, 410 when deliberately retracted',
+        resolvability: 'best-effort — resolver returns 307 when known, 404 when unknown or retracted',
       },
       docs: '/docs/reference/adr/ADR-013-canonical-uri-grammar.md',
     });

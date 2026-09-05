@@ -5,6 +5,7 @@
  */
 
 const { costGate } = require('../middleware/cost-gate');
+const { dispatchTaskSpawn } = require('../lib/action-plane');
 
 async function tasksRoutes(fastify, options) {
   const { processManager, logger } = options;
@@ -45,16 +46,18 @@ async function tasksRoutes(fastify, options) {
 
     logger.info({ agent, provider, claudeFlowAgentId: claude_flow_agent_id, task: task.substring(0, 100) }, 'Creating new task');
 
+    // ADR-2041: task creation is an agent-initiated side effect, so it goes
+    // through the ADR-059 monotonic action pipeline (classify → guard →
+    // protected-executor-seam → journal), not straight to processManager.
+    // The executor bound inside the pipeline performs the actual
+    // processManager.spawnTask(...) call — the spawn happens only once the
+    // action has cleared classify/guard and been minted a capability token.
+    let result;
     try {
-      const processInfo = processManager.spawnTask(agent, task, provider, claude_flow_agent_id);
-
-      reply.code(202).send({
-        taskId: processInfo.taskId,
-        status: 'accepted',
-        message: 'Task started successfully',
-        taskDir: processInfo.taskDir,
-        logFile: processInfo.logFile
-      });
+      result = await dispatchTaskSpawn(
+        { agent, task, provider, claude_flow_agent_id, request },
+        { processManager, logger },
+      );
     } catch (error) {
       logger.error({ error: error.message }, 'Failed to spawn task');
       reply.code(500).send({
@@ -62,7 +65,40 @@ async function tasksRoutes(fastify, options) {
         message: 'Failed to start task',
         details: error.message
       });
+      return;
     }
+
+    if (!result.ready) {
+      // Fail closed (PHASE2 remediation policy 1): no events adapter means no
+      // ADR-057 journal, and an agent-initiated side effect must never
+      // proceed unjournalled. No dev-profile flag exists in agentbox today to
+      // relax this (see lib/action-plane.js header) — refusal is unconditional.
+      logger.error({ reason: result.reason }, 'Action plane unavailable — refusing to spawn task unjournalled');
+      reply.code(503).send({
+        error: 'Service Unavailable',
+        message: 'Task execution is not available: the execution journal has no events adapter',
+        details: result.reason
+      });
+      return;
+    }
+
+    if (result.decision === 'denied') {
+      reply.code(403).send({
+        error: 'Forbidden',
+        message: 'Task creation was denied by the action pipeline',
+        reason: result.denyReason
+      });
+      return;
+    }
+
+    const processInfo = result.output;
+    reply.code(202).send({
+      taskId: processInfo.taskId,
+      status: 'accepted',
+      message: 'Task started successfully',
+      taskDir: processInfo.taskDir,
+      logFile: processInfo.logFile
+    });
   });
 
   /**

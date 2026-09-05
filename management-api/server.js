@@ -1231,50 +1231,30 @@ async function start() {
       }, 'Security profile resolved');
     }
 
-    // ── Connect adapters (10 s total timeout) ───────────────────────────
-    const connectOps = SLOTS.map(async (slot) => {
-      const adapter = resolvedAdapters[slot];
-      if (typeof adapter.connect !== 'function') {
-        adapterHealth[slot] = adapter.enabled === false ? 'off' : 'healthy';
-        return;
-      }
-      try {
-        await adapter.connect();
-        adapterHealth[slot] = 'healthy';
-        logger.info({ slot, impl: adapter._implName }, 'Adapter connected');
-      } catch (err) {
-        if (slot === 'orchestrator') {
-          logger.error({ slot, impl: adapter._implName, err: err.message }, 'Orchestrator adapter failed to connect — FATAL');
-          process.exit(1);
-        }
-        logger.warn({ slot, impl: adapter._implName, err: err.message }, 'Adapter connect failed — falling back to off');
-        adapterHealth[slot] = 'degraded';
-        // Replace with off impl so callers get AdapterDisabled rather than broken state
-        try {
+    // ── Connect adapters (per-slot deadline, ADR-2004) ──────────────────
+    // The policy — one deadline PER SLOT, a failed slot withdrawn from dispatch
+    // before any replacement is attempted, and a replacement failure that is
+    // loud and fail-closed rather than silently leaving the broken original
+    // wired — lives in adapters/lifecycle.js. See that file's header for the
+    // three lifecycle holes this replaced.
+    {
+      const { connectAdapters, toLegacyHealth } = require('./adapters/lifecycle');
+      const { readiness } = await connectAdapters({
+        slots: SLOTS,
+        adapters: resolvedAdapters,
+        manifest,
+        logger,
+        resolveOff: (slot) => {
           const { resolveAdapters: re } = require('./adapters/index');
-          const offManifest = { adapters: { [slot]: 'off' } };
-          const offSlot = re(offManifest)[slot];
-          offSlot._implName = 'off';
-          offSlot._slot = slot;
-          resolvedAdapters[slot] = offSlot;
-          app.adapters[slot] = offSlot;
-        } catch (_) {
-          // If even off fails, leave degraded adapter in place
-        }
-      }
-    });
-
-    try {
-      await Promise.race([
-        Promise.all(connectOps),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('connect timeout')), 10000))
-      ]);
-    } catch (err) {
-      if (err.message === 'connect timeout') {
-        logger.warn('Adapter connect phase exceeded 10 s — continuing with partially connected adapters');
-      } else {
-        throw err;
-      }
+          return re({ adapters: { [slot]: 'off' } })[slot];
+        },
+      });
+      // Keep the two views in step: app.adapters is what routes dispatch into,
+      // adapterHealth is what /health publishes, and adapterReadiness is the
+      // per-slot record (state, failure mode, deadline, late settle).
+      for (const slot of SLOTS) app.adapters[slot] = resolvedAdapters[slot];
+      Object.assign(adapterHealth, toLegacyHealth(readiness));
+      app.decorate('adapterReadiness', readiness);
     }
 
     // ── Nostr relay consumer (PRD-010 F16) ──────────────────────────────
