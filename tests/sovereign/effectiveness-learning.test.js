@@ -53,13 +53,19 @@ describe('REC-7 — Wilson score-interval lower bound', () => {
 
 // ── 2. computeRows: wilson keyed on recency-weighted succ/total, sorted ─────────
 describe('REC-7 — computeRows derives wilson from the weighted corpus', () => {
-  test('wilson = wilsonLower(w_succ, w_total); rows sorted by wilson desc', () => {
+  // ADR-2016 closeout (2026-09-05): `wilson` is now computed over the
+  // INDEPENDENCE-DEFLATED effective sample (n_trajectories / n), and the naive
+  // figure is retained as `wilson_uncorrected`. With fully independent evidence
+  // the two coincide, which is what this test now pins.
+  test('wilson = wilsonLower over the effective sample; rows sorted by wilson desc', () => {
     const rows = agg.computeRows([
-      { pattern: 'npm test',   n: '5',  w_total: '5',  w_succ: '5',  mean_quality: '1.0', last_seen: null },
-      { pattern: 'git commit', n: '30', w_total: '28', w_succ: '25', mean_quality: '0.9', last_seen: null },
+      { pattern: 'npm test',   n: '5',  n_trajectories: '5',  w_total: '5',  w_succ: '5',  mean_quality: '1.0', last_seen: null },
+      { pattern: 'git commit', n: '30', n_trajectories: '30', w_total: '28', w_succ: '25', mean_quality: '0.9', last_seen: null },
     ]);
     const gc = rows.find((r) => r.pattern === 'git commit');
+    expect(gc.independence).toBe(1);
     expect(gc.wilson).toBeCloseTo(agg.wilsonLower(25, 28), 6);
+    expect(gc.wilson_uncorrected).toBeCloseTo(agg.wilsonLower(25, 28), 6);
     // Sorted by wilson desc: the higher-wilson pattern is first.
     expect(rows[0].wilson).toBeGreaterThanOrEqual(rows[1].wilson);
   });
@@ -67,8 +73,17 @@ describe('REC-7 — computeRows derives wilson from the weighted corpus', () => 
 
 // ── 3. summariseGates: floor gating + gate-state inspectability ──────────────────
 describe('REC-7 — summariseGates (gate state inspectable; floor-bound)', () => {
-  const rowsBelow = [{ pattern: 'a', n: 5, wilson: 0.9 }, { pattern: 'b', n: 12, wilson: 0.8 }];
-  const rowsCleared = [{ pattern: 'a', n: 25, wilson: 0.7 }, { pattern: 'b', n: 12, wilson: 0.8 }];
+  // ADR-2016: eligibility now also requires an ATTRIBUTABLE action pattern and
+  // evidence from >= minTrajectories distinct trajectories, so these fixtures
+  // carry a real verb and an independence count.
+  const rowsBelow = [
+    { pattern: 'npm test [args:0 flags:0]', n: 5, n_trajectories: 5, wilson: 0.9 },
+    { pattern: 'git commit [args:1 flags:0]', n: 12, n_trajectories: 6, wilson: 0.8 },
+  ];
+  const rowsCleared = [
+    { pattern: 'npm test [args:0 flags:0]', n: 25, n_trajectories: 9, wilson: 0.7 },
+    { pattern: 'git commit [args:1 flags:0]', n: 12, n_trajectories: 6, wilson: 0.8 },
+  ];
 
   test('floor NOT cleared when no pattern reaches the 20-sample minimum', () => {
     const s = agg.summariseGates(rowsBelow, { minSamples: 20, feedRetrieval: false, feedRouting: false });
@@ -81,7 +96,7 @@ describe('REC-7 — summariseGates (gate state inspectable; floor-bound)', () =>
     const s = agg.summariseGates(rowsCleared, { minSamples: 20, feedRetrieval: false, feedRouting: false });
     expect(s.floor_cleared).toBe(true);
     expect(s.patterns_cleared_floor).toBe(1);
-    expect(s.eligible_patterns.map((p) => p.pattern)).toEqual(['a']);
+    expect(s.eligible_patterns.map((p) => p.pattern)).toEqual(['npm test [args:0 flags:0]']);
     expect(s.gates).toEqual({ feed_retrieval: false, feed_routing: false });
   });
 
@@ -157,8 +172,13 @@ describe('REC-7 — feed_retrieval re-rank is gated OFF by default', () => {
     expect(out.results.every((r) => !(r.components && r.components.effectiveness_bonus))).toBe(true);
   });
 
-  test('gate ON: aggregates read, matching row gets +0.1·wilson and re-sorts to top', async () => {
+  // ADR-2017 closeout: the consumer gate ALONE no longer admits the bonus — the
+  // master learning gate plus active capture (or an accepted, fresh retained
+  // corpus) is the admission condition. The bonus arithmetic is unchanged.
+  test('admitted: aggregates read, matching row gets +0.1·wilson and re-sorts to top', async () => {
     process.env.RUVECTOR_FEED_RETRIEVAL = '1';
+    process.env.RUVECTOR_MEMORY_LEARNING_ENABLED = '1';
+    process.env.RUVECTOR_RECORD_TRAJECTORIES = '1';
     const calls = [];
     const { memHybridSearch } = createHybridTools(makeDeps(calls));
     const out = await memHybridSearch('anything', 'ns', 10);
@@ -187,23 +207,26 @@ describe('REC-7 — feed_routing governs the orient aggregates bucket', () => {
   beforeEach(() => { prev = process.env.RUVECTOR_FEED_ROUTING; });
   afterEach(() => { if (prev === undefined) delete process.env.RUVECTOR_FEED_ROUTING; else process.env.RUVECTOR_FEED_ROUTING = prev; });
 
-  test('gate OFF: aggregates omitted with an explicit note; no aggregate CTE in the query', async () => {
+  test('not admitted: aggregates omitted with an explicit reason; no aggregate CTE in the query', async () => {
     delete process.env.RUVECTOR_FEED_ROUTING;
     const captured = [];
     const { memOrient } = createHybridTools(makeDeps(captured));
     const bundle = await memOrient('a task', 'sess');
     expect(bundle.aggregates).toEqual([]);
-    expect(bundle.aggregates_note).toMatch(/feed_routing off/);
+    expect(bundle.aggregates_note).toMatch(/ADR-2017 admission refused: consumer-gate-off/);
     // The aggregate CTE is a typed no-op (WHERE false), not a real namespace read.
     expect(captured[0].sql).toMatch(/agg AS \(SELECT NULL::text AS key, NULL::jsonb AS value WHERE false\)/);
   });
 
-  test('gate ON: the orient query reads the aggregates namespace; no off-note', async () => {
+  test('admitted: the orient query reads the aggregates namespace; no off-note', async () => {
     process.env.RUVECTOR_FEED_ROUTING = '1';
+    process.env.RUVECTOR_MEMORY_LEARNING_ENABLED = '1';
+    process.env.RUVECTOR_RECORD_TRAJECTORIES = '1';
     const captured = [];
     const { memOrient } = createHybridTools(makeDeps(captured));
     const bundle = await memOrient('a task', 'sess');
     expect(bundle.aggregates_note).toBeUndefined();
+    expect(bundle.aggregates_admission).toBe('active-capture');
     expect(captured[0].sql).toMatch(/memory-learning-aggregates/);
   });
 });

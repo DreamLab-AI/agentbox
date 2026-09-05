@@ -1,0 +1,40 @@
+{
+  "schema": "agentbox/closeout-receipt@1",
+  "adr": "ADR-2017",
+  "dated": "2026-09-05",
+  "claim": "The producer-before-consumer invariant is CHOSEN, stated, and enforced at both validation and runtime admission — including environment overrides on a running process.",
+  "invariant_chosen": {
+    "statement": "Producer-before-consumer means a QUALIFIED RETAINED CORPUS, not merely active capture.",
+    "reasoning": "Neither obvious reading survives alone. 'Active capture' is too strong: stopping the recorder does not erase the aggregates it already produced, and forbidding their reuse would discard a corpus that is still valid — which is exactly why the pre-closeout warning's claim that consumers 'have no corpus' was too broad. 'Any retained corpus' is too weak: that is the degenerate state the review found, where a consumer scores against whatever happens to be in the table with nobody having decided it is fit to use.",
+    "rule": "A consumer is admitted iff (1) the master learning gate is on, AND (2) its own gate is on, AND (3) EITHER the producer is currently capturing, OR an operator has named a retained-corpus acceptance receipt AND that corpus is non-empty, dateable and fresher than the configured bound.",
+    "single_decision": "mcp/servers/lib/ruvector-gates.js consumerAdmission() is the one decision. The validator enforces it statically; the runtime consumers call it before applying any effect, which is what catches an env override on an already-running process."
+  },
+  "implemented": {
+    "runtime": "memory-hybrid.js applyEffectivenessBonus no longer checks the bare gate. It pre-flights the admission, and — critically — RE-DECIDES with the corpus it just read, so freshness and emptiness are MEASURED rather than assumed. A withheld bonus records components.effectiveness_bonus_withheld with the reason; an applied one records effectiveness_admission and the corpus receipt.",
+    "orient": "memOrient's aggregates bucket obeys the same decision; the bundle records aggregates_admission or an explicit refusal reason.",
+    "validation": "scripts/agentbox-config-validate.js — E066 (BLOCKING) for a consumer ahead of the producer with no accepted corpus, replacing the advisory W066 that let three such manifests exit zero. W066 remains for the legitimate accepted-retained-corpus case, which must stay visible because nothing is replenishing that corpus. E067 (BLOCKING) for a consumer behind an OFF master gate.",
+    "manifest": "schema/agentbox.toml.schema.json gains retained_corpus_accepted and retained_corpus_max_age_days; config/entrypoint-unified.sh projects them into RUVECTOR_RETAINED_CORPUS_ACCEPTED / _MAX_AGE_DAYS in .mcp.json."
+  },
+  "tests": {
+    "suite": "tests/sovereign/learning-consumer-admission.test.js",
+    "passed": 22,
+    "failed": 0,
+    "matrix_covered": [
+      "master-off + consumer-on is refused (the reproduced defect)",
+      "consumer-gate-off admits nothing",
+      "active capture admits",
+      "stopped capture with NO acceptance is refused",
+      "stopped capture WITH an accepted, fresh, non-empty corpus is admitted and carries the receipt",
+      "accepted but STALE / EMPTY / UNDATEABLE corpora are each refused with a distinct reason",
+      "the max-age override tightens but cannot bypass; a whitespace receipt is not a receipt",
+      "each consumer is decided separately",
+      "the bonus arithmetic (0.5 -> 0.58) applies only when admitted, and is withheld with a stated reason otherwise",
+      "validator: E066 blocking, each consumer alone and both named together, W066 downgrade with a receipt, E067 behind an off master, and clean producer-on / all-off controls"
+    ]
+  },
+  "remaining": [
+    "Readiness is bound to provenance and freshness but NOT yet to a recall receipt: the acceptance receipt is an operator string, not a link to an ADR-2018 run.",
+    "Already-running processes are covered by the runtime check, but there is no mechanism to re-evaluate a long-lived process when the corpus goes stale mid-run — it is re-decided per call, which is adequate here only because the aggregate read is per call.",
+    "The corpus acceptance receipt is not verified against the corpus it names."
+  ]
+}

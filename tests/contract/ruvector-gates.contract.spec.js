@@ -194,7 +194,7 @@ describe('ruvector v2 gates :: wired Phase-0 gates parse (aggregate sweep)', () 
 describe('ruvector v2 gates :: aggregator write path refuses protected namespaces (I-GOV / R02)', () => {
   // A pg stub that records whether a write was ever attempted. A refusal must
   // short-circuit BEFORE any query — the row must never reach the DB.
-  function makeCountingBackend() {
+  function makeCountingBackend(overrides = {}) {
     let queries = 0;
     const deps = {
       pool: { query: async () => { queries += 1; return { rows: [], rowCount: 1 }; } },
@@ -208,6 +208,7 @@ describe('ruvector v2 gates :: aggregator write path refuses protected namespace
       notifyMemoryFlashBatch: () => {},
       log: () => {},
       writeSourceType: 'agent',
+      ...overrides,
     };
     return { backend: createExternalPgBackend(deps), queryCount: () => queries };
   }
@@ -227,8 +228,15 @@ describe('ruvector v2 gates :: aggregator write path refuses protected namespace
   });
 
   it('permits the aggregator target namespace (memory-learning-aggregates is un-protected)', async () => {
-    const { backend, queryCount } = makeCountingBackend();
+    // The embedding transport MUST be available for this case. Under ADR-2014 the store
+    // is fail-closed: an unavailable embedding rejects the write with
+    // reason 'embedding-unavailable' BEFORE the namespace verdict is observable. The
+    // shared harness stubs `xinfEnsure` false ("not under test here"), which was true
+    // when a missing embedding merely produced a NULL-embedding row — it no longer is.
+    // Overriding it here keeps this test about the NAMESPACE, which is what it asserts.
+    const { backend, queryCount } = makeCountingBackend({ xinfEnsure: async () => true });
     const res = await backend.memStore('effectiveness-abc', { wilson_lower: 0.5 }, 'memory-learning-aggregates');
+    expect(res.reason).not.toBe('embedding-unavailable'); // guards the ADR-2014 confound above
     expect(res.success).toBe(true);
     expect(res.action).toBe('store');
     expect(res.namespace).toBe('memory-learning-aggregates');

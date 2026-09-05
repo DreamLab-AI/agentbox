@@ -1,0 +1,16 @@
+{
+  "schema": "agentbox/embedding-identity@1",
+  "adr": "ADR-2019",
+  "pinned_at": "2026-09-05T00:00:00Z",
+  "model": "bge-small-en-v1.5",
+  "dim": 384,
+  "endpoint_at_pin": "http://192.168.2.132:9997",
+  "preprocessing": {
+    "embed_prefix_chars": 2000,
+    "normalisation": "none (transport returns L2-normalised bge vectors)",
+    "probe_version": 1,
+    "quant_decimals": 4
+  },
+  "fingerprint": "emb1-384-cd25d147dcb748fd",
+  "note": "Effective model identity: sha256-16 over the 4-decimal-quantised probe vector (mcp/servers/lib/embedding-identity.js PROBE_TEXT). Measured twice against the live Xinference on 2026-09-05, identical both times. A different 384-dim model moves this fingerprint and is rejected at MCP boot; re-pin only alongside a corpus re-embed and a passing recall receipt (ADR-2018)."
+}

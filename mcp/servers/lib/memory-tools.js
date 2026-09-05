@@ -28,8 +28,47 @@
  *                        URN annotation), so its observable output is unchanged.
  */
 
+const crypto = require('crypto');
 const { gates, boolGate } = require('./ruvector-gates');
-const { buildMetadata } = require('./memory-metadata');
+const { buildMetadata, VALID_TYPES, notExpiredPredicate, expiredPredicate } = require('./memory-metadata');
+
+// ── ADR-2014 searchable-write guarantee (closeout 2026-09-05) ───────────────
+// The store no longer degrades silently when the embedding transport fails.
+// Two behaviours, one of which is always in force:
+//
+//   FAIL-CLOSED (default)  embedding failure REJECTS the write. Nothing is
+//                          persisted, the caller sees `success:false` with
+//                          reason 'embedding-unavailable'. No unsearchable row
+//                          is ever created behind the caller's back.
+//
+//   DURABLE REPAIR         RUVECTOR_EMBED_REPAIR=1|true opts in to an EXPLICIT
+//                          pending state: the row is written with a NULL vector
+//                          AND a metadata marker (embedding_state:'pending',
+//                          embedding_pending_since/-_reason) so it is
+//                          enumerable and repairable, and the caller is told
+//                          (`repair_pending:true`, `searchable:false`).
+//                          memRepairEmbeddings() drives it back to searchable.
+//
+// In BOTH cases a replacement never inherits the previous value's vector: the
+// ON CONFLICT clause assigns EXCLUDED.embedding rather than
+// COALESCE(EXCLUDED.embedding, memory_entries.embedding), so the stored vector
+// is either this value's or explicitly NULL. Value and vector versions can
+// therefore never disagree — the failure the review reproduced.
+const EMBED_PREFIX_CHARS = 2000;   // the prefix actually handed to the embedder
+function embedRepairMode() { return boolGate('RUVECTOR_EMBED_REPAIR'); }
+function embedModelId() { return process.env.EMBEDDING_MODEL || 'bge-small-en-v1.5'; }
+function sha12(v) { return crypto.createHash('sha256').update(String(v), 'utf8').digest('hex').slice(0, 12); }
+
+// ── ADR-2014 TTL semantics (closeout 2026-09-05) ────────────────────────────
+// TTL is a VISIBILITY deadline for BOTH memory types. Every read path below
+// appends NOT_EXPIRED so an expired row stops being returned the moment
+// `expires_at` passes — retrieve, list, vector search, the ILIKE fallback and
+// (via memory-hybrid.js) hybrid search. Deletion is the separate, later act of
+// the sweep, which now covers semantic rows too. With no `expires_at` present
+// (the whole corpus when RUVECTOR_TYPED_METADATA is off) the predicate is a
+// constant TRUE, so the gate-off read plans are unchanged.
+const NOT_EXPIRED = notExpiredPredicate('metadata');
+const EXPIRED = expiredPredicate('metadata');
 
 // ── ADR-040 W-C (Phase-C) retrieval-consumer constants (BINDING map §1.2/§3) ──
 // One fixed global SONA scope (D4 / I22): never per-namespace, dimension-tagged
@@ -122,52 +161,203 @@ function createExternalPgBackend(deps) {
     let pgValue;
     try { JSON.parse(jsonValue); pgValue = jsonValue; } catch { pgValue = JSON.stringify(jsonValue); }
     const embedText = typeof value === 'string' ? value : JSON.stringify(value);
+    const embedInput = embedText.substring(0, EMBED_PREFIX_CHARS);
     let embeddingClause = 'NULL';
     let embedded = false;
+    let embedFailure = null;
     const params = [id, namespace, key, pgValue, writeSourceType];
     if (await xinfEnsure()) {
       try {
-        const emb = await getEmbedding(embedText.substring(0, 2000));
+        const emb = await getEmbedding(embedInput);
         params.push(vecToSql(emb));
         embeddingClause = `$6::ruvector(384)`;
         embedded = true;
-      } catch (e) { log('WARN', `embedding generation failed for store: ${e.message}`); }
+      } catch (e) {
+        embedFailure = (e && e.message) || String(e);
+        log('WARN', `embedding generation failed for store: ${embedFailure}`);
+      }
+    } else {
+      embedFailure = 'xinference unavailable';
     }
 
-    // PRD-018 D3 typed metadata (gate RUVECTOR_TYPED_METADATA). Gate OFF →
-    // exact current behaviour: metadata literal '{}', conflict clause untouched
+    // ADR-2014: no silent unsearchable write. Reject unless the operator has
+    // explicitly opted into the durable repair state.
+    const repairMode = embedRepairMode();
+    if (!embedded && !repairMode) {
+      log('WARN', `store REJECTED (ADR-2014 fail-closed) for ${namespace}/${key}: ${embedFailure}`);
+      return {
+        success: false,
+        action: 'store',
+        key,
+        namespace,
+        stored: false,
+        embedded: false,
+        error: `embedding unavailable — write rejected (ADR-2014 fail-closed): ${embedFailure}`,
+        reason: 'embedding-unavailable',
+        remedy: 'restore the embedding service, or set RUVECTOR_EMBED_REPAIR=true to accept an explicit, repairable pending write',
+        storage: 'none',
+      };
+    }
+
+    // PRD-018 D3 typed metadata (gate RUVECTOR_TYPED_METADATA). Gate OFF and a
+    // successful embedding → exact pre-2014 behaviour: metadata literal '{}'
     // (byte-identical to today). Gate ON → honour {importance,tags,memory_type,
     // ttl_seconds}, computing expires_at, and persist/refresh the metadata jsonb.
+    // A REPAIR-mode unembedded write always carries metadata regardless of the
+    // gate: the pending marker is what makes the row enumerable and repairable,
+    // so it is not optional.
     const typed = gates.typedMetadata();
+    const needsMetadata = typed || !embedded;
     let metadata = null;
-    if (typed) {
-      metadata = buildMetadata(options || {});
+    if (needsMetadata) {
+      metadata = typed ? buildMetadata(options || {}) : {};
+      // Bind the stored value to the stored vector: a reader can tell whether
+      // the vector was computed from THIS value (embed_digest over the exact
+      // embedded prefix) or whether the row is awaiting repair.
+      metadata.value_digest = sha12(embedText);
+      metadata.embed_prefix_chars = EMBED_PREFIX_CHARS;
+      if (embedded) {
+        metadata.embedding_state = 'embedded';
+        metadata.embed_digest = sha12(embedInput);
+        metadata.embed_model = embedModelId();
+      } else {
+        metadata.embedding_state = 'pending';
+        metadata.embedding_pending_since = new Date().toISOString();
+        metadata.embedding_pending_reason = embedFailure;
+      }
+    }
+
+    if (needsMetadata) {
       params.push(JSON.stringify(metadata));
       const metaClause = `$${params.length}::jsonb`;
       await pool.query(
         `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
          VALUES ($1, $2, $3, $4::jsonb, $5, ${metaClause}, ${embeddingClause})
-         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, metadata = EXCLUDED.metadata, embedding = COALESCE(EXCLUDED.embedding, memory_entries.embedding), updated_at = NOW()`,
+         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding, updated_at = NOW()`,
         params,
       );
     } else {
       await pool.query(
         `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
          VALUES ($1, $2, $3, $4::jsonb, $5, '{}', ${embeddingClause})
-         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = COALESCE(EXCLUDED.embedding, memory_entries.embedding), updated_at = NOW()`,
+         ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value, embedding = EXCLUDED.embedding, updated_at = NOW()`,
         params,
       );
     }
     notifyMemoryFlash({ key, namespace, action: 'store' });
     const out = { success: true, action: 'store', key, namespace, stored: true, embedded, storage: 'ruvector-postgres' };
     if (typed) out.metadata = metadata;
+    if (!embedded) {
+      // Explicit durable repair state — never presented as a normal success.
+      out.repair_pending = true;
+      out.searchable = false;
+      out.reason = 'embedding-unavailable';
+      out.warning = `stored WITHOUT an embedding (${embedFailure}) — the row is invisible to semantic search until memory_repair_embeddings repairs it (RUVECTOR_EMBED_REPAIR is on)`;
+    }
     return out;
+  }
+
+  // ── ADR-2014 durable repair (closeout 2026-09-05) ──────────────────────────
+  // Drive pending rows back to searchable. Finds rows with a NULL vector,
+  // re-embeds from the STORED value (so the repaired vector always matches the
+  // stored value, never a stale one) and clears the pending marker. Idempotent
+  // (`WHERE embedding IS NULL` guards the update) and bounded. `dry_run` reports
+  // the pending census without touching anything — the "expose pending/
+  // unsearchable rows" half of the acceptance condition.
+  async function memRepairEmbeddings(opts = {}) {
+    if (!getPgOk() || !pool) return { success: false, action: 'repair_embeddings', error: 'pg unavailable' };
+    const namespace = opts.namespace && opts.namespace !== '*' ? String(opts.namespace) : null;
+    const limit = Math.max(1, Math.min(1000, Number(opts.limit) || 100));
+    const dryRun = opts.dry_run === true || opts.dryRun === true;
+
+    const countParams = [];
+    let countNs = '';
+    if (namespace) { countParams.push(namespace); countNs = `AND namespace = $${countParams.length}`; }
+    const pendingOf = async () => {
+      const r = await pool.query(
+        `SELECT count(*)::int AS n FROM memory_entries WHERE embedding IS NULL ${countNs}`,
+        countParams,
+      );
+      return (r.rows[0] && Number(r.rows[0].n)) || 0;
+    };
+
+    const pendingBefore = await pendingOf();
+    if (dryRun) {
+      return {
+        success: true, action: 'repair_embeddings', dry_run: true,
+        namespace: namespace || '*', pending: pendingBefore, repaired: 0,
+        storage: 'ruvector-postgres',
+      };
+    }
+    if (!(await xinfEnsure())) {
+      return {
+        success: false, action: 'repair_embeddings', namespace: namespace || '*',
+        error: 'xinference unavailable — repair cannot run', repaired: 0,
+        pending: pendingBefore, storage: 'ruvector-postgres',
+      };
+    }
+
+    const selParams = [limit];
+    let selNs = '';
+    if (namespace) { selParams.push(namespace); selNs = `AND namespace = $${selParams.length}`; }
+    const res = await pool.query(
+      `SELECT id, namespace, key, value FROM memory_entries
+        WHERE embedding IS NULL ${selNs}
+        ORDER BY updated_at ASC
+        LIMIT $1`,
+      selParams,
+    );
+
+    let repaired = 0;
+    const failures = [];
+    for (const row of res.rows) {
+      const text = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
+      const input = text.substring(0, EMBED_PREFIX_CHARS);
+      try {
+        const emb = await getEmbedding(input);
+        const upd = await pool.query(
+          `UPDATE memory_entries
+              SET embedding = $2::ruvector(384),
+                  metadata = (COALESCE(metadata, '{}'::jsonb)
+                               - 'embedding_pending_since' - 'embedding_pending_reason')
+                             || jsonb_build_object(
+                                  'embedding_state', 'embedded',
+                                  'value_digest',    $3::text,
+                                  'embed_digest',    $4::text,
+                                  'embed_model',     $5::text,
+                                  'embed_prefix_chars', $6::int,
+                                  'embedding_repaired_at', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')),
+                  updated_at = NOW()
+            WHERE id = $1 AND embedding IS NULL`,
+          [row.id, vecToSql(emb), sha12(text), sha12(input), embedModelId(), EMBED_PREFIX_CHARS],
+        );
+        if (upd.rowCount > 0) repaired++;
+      } catch (e) {
+        failures.push({ id: row.id, namespace: row.namespace, key: row.key, error: (e && e.message) || String(e) });
+      }
+    }
+
+    const pendingAfter = await pendingOf();
+    return {
+      success: failures.length === 0,
+      action: 'repair_embeddings',
+      namespace: namespace || '*',
+      scanned: res.rows.length,
+      repaired,
+      failed: failures.length,
+      failures: failures.slice(0, 10),
+      pending_before: pendingBefore,
+      pending: pendingAfter,
+      storage: 'ruvector-postgres',
+    };
   }
 
   async function memRetrieve(key, namespace = 'default') {
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable' };
     const res = await pool.query(
-      `SELECT key, value, source_type FROM memory_entries WHERE namespace = $1 AND key = $2 ORDER BY updated_at DESC LIMIT 1`,
+      `SELECT key, value, source_type FROM memory_entries
+        WHERE namespace = $1 AND key = $2 AND ${NOT_EXPIRED}
+        ORDER BY updated_at DESC LIMIT 1`,
       [namespace, key],
     );
     if (!res.rows.length) return { success: true, action: 'retrieve', key, namespace, value: null, found: false };
@@ -178,7 +368,9 @@ function createExternalPgBackend(deps) {
   async function memList(namespace = 'default', limit = 100) {
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable' };
     const res = await pool.query(
-      `SELECT key, value, source_type FROM memory_entries WHERE namespace = $1 ORDER BY created_at DESC LIMIT $2`,
+      `SELECT key, value, source_type FROM memory_entries
+        WHERE namespace = $1 AND ${NOT_EXPIRED}
+        ORDER BY created_at DESC LIMIT $2`,
       [namespace, limit],
     );
     const entries = res.rows.map(r => ({ key: r.key, value: parseVal(r.value), source_type: r.source_type }));
@@ -232,7 +424,7 @@ function createExternalPgBackend(deps) {
           WITH ns AS MATERIALIZED (
             SELECT key, value, namespace, source_type, embedding
             FROM memory_entries
-            WHERE embedding IS NOT NULL ${nsFilter} ${stFilter}
+            WHERE embedding IS NOT NULL AND ${NOT_EXPIRED} ${nsFilter} ${stFilter}
           )
           SELECT key, value, namespace, source_type,
                  1.0 - (embedding <=> $1::ruvector(384)) AS score
@@ -242,7 +434,7 @@ function createExternalPgBackend(deps) {
           SELECT key, value, namespace, source_type,
                  1.0 - (embedding <=> $1::ruvector(384)) AS score
           FROM memory_entries
-          WHERE embedding IS NOT NULL
+          WHERE embedding IS NOT NULL AND ${NOT_EXPIRED}
           ORDER BY embedding <=> $1::ruvector(384)
           LIMIT $2`;
 
@@ -277,7 +469,7 @@ function createExternalPgBackend(deps) {
               WITH ns AS MATERIALIZED (
                 SELECT key, value, namespace, source_type, embedding
                 FROM memory_entries
-                WHERE embedding IS NOT NULL ${nsFilter} ${stFilter}
+                WHERE embedding IS NOT NULL AND ${NOT_EXPIRED} ${nsFilter} ${stFilter}
               ),
               cand AS (
                 SELECT key, value, namespace, source_type, embedding,
@@ -294,7 +486,7 @@ function createExternalPgBackend(deps) {
                 SELECT key, value, namespace, source_type, embedding,
                        1.0 - (embedding <=> $1::ruvector(384)) AS cos
                 FROM memory_entries
-                WHERE embedding IS NOT NULL
+                WHERE embedding IS NOT NULL AND ${NOT_EXPIRED}
                 ORDER BY embedding <=> $1::ruvector(384)
                 LIMIT $2 * ${ATT_OVERFETCH}
               ),
@@ -359,6 +551,7 @@ function createExternalPgBackend(deps) {
       `SELECT key, value, namespace, source_type, 0.5 AS score
        FROM memory_entries
        WHERE (namespace = $1 OR $1 = '*')
+         AND ${NOT_EXPIRED}
          AND ($3::text IS NULL OR source_type = $3)
          AND (key ILIKE $2 OR value::text ILIKE $2)
        ORDER BY created_at DESC LIMIT $4`,
@@ -387,13 +580,36 @@ function createExternalPgBackend(deps) {
     return { success: true, action: 'delete', key, namespace, deleted: res.rowCount, storage: 'ruvector-postgres' };
   }
 
-  async function memSweepEpisodic(namespace = null) {
+  // ADR-2014 closeout: the sweep is the DELETION half of TTL and now covers
+  // BOTH memory types (the review's finding was that a TTL-only write defaults
+  // to `semantic` and was therefore never deleted, leaving an expiry timestamp
+  // that nothing acted on). `types` narrows it back to one type deliberately;
+  // an unrecognised type list is rejected rather than silently widened.
+  // Visibility already ended at `expires_at` (see NOT_EXPIRED), so a missed
+  // sweep delays erasure — it never resurrects an expired row.
+  async function memSweepEpisodic(namespace = null, opts = {}) {
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable' };
     const admin = ADMIN_WRITE_ENABLED;
     if (namespace && !admin && PROTECTED_NAMESPACES.has(namespace)) {
       return { success: false, action: 'sweep', namespace, error: `namespace "${namespace}" is write-protected`, swept: 0 };
     }
+    let types = null;
+    if (opts && Array.isArray(opts.types) && opts.types.length) {
+      types = opts.types.filter((t) => VALID_TYPES.has(t));
+      if (types.length !== opts.types.length) {
+        return {
+          success: false, action: 'sweep', namespace: namespace || '*', swept: 0,
+          error: `unknown memory_type in types=[${opts.types.join(',')}] (valid: ${Array.from(VALID_TYPES).join(', ')})`,
+        };
+      }
+    }
     const params = [];
+    let typeClause = '';
+    if (types) {
+      params.push(types);
+      // An absent memory_type reads as the documented default 'semantic'.
+      typeClause = `AND COALESCE(metadata->>'memory_type', 'semantic') = ANY($${params.length})`;
+    }
     let nsClause = '';
     if (namespace) { params.push(namespace); nsClause = `AND namespace = $${params.length}`; }
     let protClause = '';
@@ -401,13 +617,15 @@ function createExternalPgBackend(deps) {
     if (!admin && protectedList.length) { params.push(protectedList); protClause = `AND NOT (namespace = ANY($${params.length}))`; }
     const res = await pool.query(
       `DELETE FROM memory_entries
-        WHERE (metadata->>'memory_type') = 'episodic'
-          AND (metadata->>'expires_at') IS NOT NULL
-          AND (metadata->>'expires_at')::timestamptz < now()
-          ${nsClause} ${protClause}`,
+        WHERE ${EXPIRED}
+          ${typeClause} ${nsClause} ${protClause}`,
       params,
     );
-    return { success: true, action: 'sweep', namespace: namespace || '*', swept: res.rowCount, storage: 'ruvector-postgres' };
+    return {
+      success: true, action: 'sweep', namespace: namespace || '*',
+      types: types || Array.from(VALID_TYPES),
+      swept: res.rowCount, storage: 'ruvector-postgres',
+    };
   }
 
   // ── ADR-040 D4 — SONA health (read-only diagnostics, §3.3) ──────────────────
@@ -468,7 +686,7 @@ function createExternalPgBackend(deps) {
     }
   }
 
-  return { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic, memSonaHealth };
+  return { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic, memRepairEmbeddings, memSonaHealth };
 }
 
 // ── delegating (in-memory / sqlite) backend ─────────────────────────────────

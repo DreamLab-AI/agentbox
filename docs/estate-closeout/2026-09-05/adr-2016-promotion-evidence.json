@@ -1,0 +1,37 @@
+{
+  "schema": "agentbox/closeout-receipt@1",
+  "adr": "ADR-2016",
+  "dated": "2026-09-05",
+  "claim": "The raw-count floor is retained, and promotion is additionally bound to attributable, independent, unambiguous evidence. Every change makes promotion harder; none weakens the floor.",
+  "implemented": {
+    "attributability": "mcp/servers/lib/aggregate-effectiveness.js NON_ATTRIBUTABLE_VERBS — echo, true, ls, cd, cat, pwd and similar cannot be promoted at all. Their zero exit says nothing about task achievement, and without this they accumulate a near-1.0 bound and outrank real work.",
+    "independence": "The Wilson interval is computed over an EFFECTIVE sample deflated by observed correlation (distinct trajectories / raw observations). The RAW count still gates the floor exactly as before. A second floor requires evidence from >= RUVECTOR_AGGREGATE_MIN_TRAJECTORIES (default 3) distinct trajectories.",
+    "ambiguity": "Only a CLEAN success counts toward the numerator (RUVECTOR_AGGREGATE_SUCCESS_QUALITY, default 0.9). A zero-exit command that wrote to stderr is graded 0.85 by the recorder — real but ambiguous evidence — so it stays in the denominator and leaves the numerator, and is counted separately as n_ambiguous.",
+    "staleness": "Evidence older than RUVECTOR_AGGREGATE_MAX_AGE_DAYS (default 90) is excluded outright, because recency decay never reaches zero and a pattern last seen a year ago would otherwise stay eligible on its raw count.",
+    "transparency": "Each aggregate carries n_trajectories, n_distinct_commands, n_ambiguous, independence and wilson_uncorrected alongside wilson, so the cost of the correction is visible rather than hidden inside one number. summariseGates reports patterns_withheld by reason, so 'nothing promoted' is a diagnosis."
+  },
+  "measured": {
+    "worked_example": "40 observations at a 100% success rate: from ONE trajectory the bound falls from 0.9124 (uncorrected) to 0.2065 and promotion is refused as insufficient-independent-trajectories; from 20 trajectories it is 0.8389 and promoted. An `echo` pattern with 99 observations across 30 trajectories is refused as non-attributable regardless of its numbers."
+  },
+  "tests": {
+    "suites": ["tests/sovereign/learning-evidence-closeout.test.js", "tests/sovereign/effectiveness-learning.test.js"],
+    "passed": 47,
+    "failed": 0,
+    "covers": [
+      "the RAW-count floor is retained unchanged (I06)",
+      "40 CORRELATED observations from one trajectory are refused",
+      "correlation WIDENS the interval instead of narrowing it, at an identical success proportion",
+      "a misleading zero-exit verb can never be promoted, however good its numbers",
+      "genuinely independent attributable evidence IS promoted",
+      "ambiguous stderr-noisy successes stay out of the numerator",
+      "stale evidence is excluded by an explicit window, not just decayed",
+      "replayed persistence is idempotent: identical input gives identical output",
+      "summariseGates reports WHY patterns were withheld"
+    ]
+  },
+  "remaining": [
+    "Independence is approximated by distinct trajectories. Two trajectories driven by the same agent on the same task are still counted as independent.",
+    "Attributability is a verb allowlist, not a measurement of task achievement. A `cargo build` that succeeds while producing the wrong artefact still counts as a clean success.",
+    "The corrected bounds have not been applied to the live aggregate corpus: doing so requires a sweep run, which writes."
+  ]
+}

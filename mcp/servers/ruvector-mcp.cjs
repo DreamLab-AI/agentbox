@@ -20,6 +20,10 @@
 
 const readline = require('readline');
 const { createMemoryTools } = require('./lib/memory-tools');
+const { verifyEmbeddingIdentity } = require('./lib/embedding-identity');
+// Last computed effective-embedding-model verdict (ADR-2019); surfaced by
+// memory_health so an operator can read the deployed identity without a probe.
+let EMBEDDING_IDENTITY = null;
 const { gates, boolGate, intGate } = require('./lib/ruvector-gates');
 const { createHybridTools } = require('./lib/memory-hybrid');
 const { createHealthTools } = require('./lib/memory-health');
@@ -158,7 +162,30 @@ async function xinfEnsure() {
     xinferenceOk = true;
     log('INFO', `xinference: connected (${XINFERENCE_URL}, model=${EMBEDDING_MODEL}, dim=${emb.length})`);
   } catch (err) {
-    log('WARN', `xinference unavailable (${XINFERENCE_URL}): ${err.message} — search will use ILIKE fallback, store will skip embeddings`);
+    log('WARN', `xinference unavailable (${XINFERENCE_URL}): ${err.message} — search will use ILIKE fallback; ADR-2014 fail-closed will REJECT stores until it returns (set RUVECTOR_EMBED_REPAIR=true to accept repairable pending writes instead)`);
+  }
+
+  // ── ADR-2019 (closeout 2026-09-05): effective model identity gate ──────────
+  // Dimension agreement is not compatibility. Probe the live transport, compute
+  // the effective identity fingerprint and compare it with the checked-in pin.
+  // An incompatible SAME-DIMENSION swap is fatal: continuing would write vectors
+  // into a corpus whose geometry they do not share, producing confidently wrong
+  // recall with no error anywhere. Unpinned or unprobeable is advisory, never
+  // fatal — we refuse a KNOWN-bad identity, we do not invent a pin.
+  if (xinferenceOk) {
+    try {
+      const verdict = await verifyEmbeddingIdentity(getEmbedding);
+      EMBEDDING_IDENTITY = verdict;
+      if (!verdict.ok) {
+        process.stderr.write(`[FATAL] [cf-mcp-ruvector] ${verdict.message}\n`);
+        process.exit(1);
+      }
+      if (verdict.state === 'unpinned') log('WARN', verdict.message);
+      else if (verdict.state === 'override') log('WARN', verdict.message);
+      else log('INFO', `embedding identity ${verdict.effective.fingerprint} matches the pin (${verdict.state})`);
+    } catch (e) {
+      log('WARN', `embedding identity check skipped: ${e.message}`);
+    }
   }
 })();
 
@@ -174,7 +201,7 @@ function parseVal(v) {
 // mandated external-pg path; it injects its pool, embedding transport, notifier
 // and helpers so the extracted logic behaves byte-for-byte as before.
 
-const { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic, memSonaHealth } = createMemoryTools({
+const { memStore, memRetrieve, memList, memSearch, memDelete, memSweepEpisodic, memRepairEmbeddings, memSonaHealth } = createMemoryTools({
   backend: 'external-pg',
   deps: {
     pool,
@@ -377,6 +404,23 @@ if (gates.typedMetadata()) {
   }
 }
 
+// ADR-2014 closeout: the durable-repair driver. Registered alongside the TTL
+// sweep gate because both are the maintenance half of the storage contract.
+if (gates.episodicTtlSweep()) {
+  TOOLS.push({
+    name: 'memory_repair_embeddings',
+    description: 'Repair rows stored without a vector (ADR-2014 durable-repair state): re-embed from the stored value and clear the pending marker. dry_run reports the pending census only. Idempotent and bounded.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        namespace: { type: 'string', description: 'Optional: scope the repair to one namespace. Omit or "*" for all.' },
+        limit:     { type: 'number', default: 100, description: 'Maximum rows to repair in this call (1..1000).' },
+        dry_run:   { type: 'boolean', description: 'Report how many rows are pending without repairing any.' },
+      },
+    },
+  });
+}
+
 if (gates.hybridSearch()) {
   TOOLS.push({
     name: 'memory_hybrid_search',
@@ -433,10 +477,13 @@ if (gates.healthTool()) {
 if (gates.episodicTtlSweep()) {
   TOOLS.push({
     name: 'memory_sweep_episodic',
-    description: 'Delete expired episodic entries (metadata.memory_type=episodic AND expires_at < now). Refuses PROTECTED_NAMESPACES without RUVECTOR_ADMIN_WRITE.',
+    description: 'Delete expired entries of BOTH memory types (metadata.expires_at <= now; ADR-2014 — expired rows are already invisible to every read path, this erases them). Optional `types` narrows to one type. Refuses PROTECTED_NAMESPACES without RUVECTOR_ADMIN_WRITE.',
     inputSchema: {
       type: 'object',
-      properties: { namespace: { type: 'string', description: 'Optional: scope the sweep to one namespace. Omit to sweep all (non-protected).' } },
+      properties: {
+        namespace: { type: 'string', description: 'Optional: scope the sweep to one namespace. Omit to sweep all (non-protected).' },
+        types: { type: 'array', items: { type: 'string', enum: ['episodic', 'semantic'] }, description: 'Optional: restrict the sweep to these memory types. Default: both (ADR-2014 — TTL is not episodic-only).' },
+      },
     },
   });
 }
@@ -514,7 +561,18 @@ async function executeTool(name, args = {}) {
 
       case 'memory_sweep_episodic':
         if (!gates.episodicTtlSweep()) return unknownTool(name);
-        return await memSweepEpisodic(args.namespace || null);
+        // ADR-2014: the sweep covers BOTH memory types by default; `types`
+        // narrows it back to one deliberately.
+        return await memSweepEpisodic(args.namespace || null,
+          Array.isArray(args.types) ? { types: args.types } : {});
+
+      case 'memory_repair_embeddings':
+        if (!gates.episodicTtlSweep()) return unknownTool(name);
+        return await memRepairEmbeddings({
+          namespace: args.namespace || null,
+          limit: args.limit,
+          dry_run: args.dry_run === true,
+        });
 
       case 'memory_retrieve':
         return await memRetrieve(args.key, args.namespace || 'default');

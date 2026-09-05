@@ -1,0 +1,179 @@
+{
+  "schema": "ruvector-recall-harness/receipt@1",
+  "adr": "ADR-2018",
+  "ran_at": "2026-09-05T19:26:21.441Z",
+  "verdict": "FAIL",
+  "reasons": [
+    "self-recall median 164 < 175/200",
+    "true-recall median 96 < 102/120"
+  ],
+  "medians": {
+    "self_recall": 164,
+    "true_recall": 96,
+    "exact_token_delta": 4.5
+  },
+  "band": {
+    "self_recall_min": 175,
+    "self_recall_of": 200,
+    "true_recall_min": 102,
+    "true_recall_of": 120,
+    "exact_token_hybrid_delta_min": 0,
+    "median_of": 3,
+    "k": 10
+  },
+  "runs": 3,
+  "k": 10,
+  "bound_to": {
+    "model": {
+      "name": "bge-small-en-v1.5",
+      "fingerprint": "emb1-384-cd25d147dcb748fd",
+      "pinned_fingerprint": "emb1-384-cd25d147dcb748fd",
+      "identity_state": "accepted"
+    },
+    "preprocessing": {
+      "embed_prefix_chars": 2000,
+      "normalisation": "none (transport returns L2-normalised bge vectors)",
+      "probe_version": 1,
+      "quant_decimals": 4
+    },
+    "corpus": {
+      "memory_entries": 196896,
+      "embedded": 196895,
+      "pending_embeddings": 1,
+      "namespaces": 462,
+      "newest_entry": "2026-09-05T18:26:04.052Z",
+      "hnsw_index": "idx_memory_embedding_hnsw",
+      "hnsw_indexdef": "CREATE INDEX idx_memory_embedding_hnsw ON public.memory_entries USING hnsw (embedding ruvector_cosine_ops) WITH (m='16', ef_construction='128')",
+      "revision": "corpus-cbc4e2289ec3"
+    },
+    "fixture": {
+      "hash": "sha256-6ace8c1d45e7b314ec82beab159f19dc5d8b29ffe487156b3d42c6e8ff96e442",
+      "hash_ok": true,
+      "built_at": "2026-08-21T19:53:12.220Z",
+      "sizes": {
+        "self_recall": 200,
+        "true_recall": 120,
+        "exact_token": 26
+      }
+    },
+    "filters": {
+      "self_recall": {
+        "namespaces": [
+          "agent-assignments",
+          "commands",
+          "coordination",
+          "file-history",
+          "hooks:notify",
+          "hooks:post-edit",
+          "hooks:post-task",
+          "hooks:pre-edit",
+          "hooks:pre-task",
+          "knowledge/fashion",
+          "knowledge/journals",
+          "knowledge/ontology",
+          "knowledge/pages",
+          "memory-learning-aggregates",
+          "ontology-corpus",
+          "patterns",
+          "projects/exchange",
+          "projects/fairfield-nostr-other",
+          "projects/funding_platform",
+          "projects/nostr-BBS",
+          "projects/OntologyDesign",
+          "projects/report-Pete",
+          "projects/ruvector",
+          "projects/RuView",
+          "project-state",
+          "projects/unreal2gaussian",
+          "projects/WasmVOWL",
+          "ruvnet-kb",
+          "session-metrics",
+          "sessions",
+          "session-states",
+          "swarms",
+          "task-index"
+        ],
+        "plan": "unfiltered kNN over the whole index (no namespace predicate)"
+      },
+      "true_recall": {
+        "namespaces": [
+          "agent-assignments",
+          "code-harness-survey",
+          "commands",
+          "coordination",
+          "default",
+          "docs-alignment",
+          "file-history",
+          "hooks:notify",
+          "hooks:post-edit",
+          "hooks:post-task",
+          "hooks:pre-edit",
+          "hooks:pre-task",
+          "knowledge/fashion",
+          "knowledge/journals",
+          "knowledge/ontology",
+          "knowledge/pages",
+          "memory-learning-aggregates",
+          "ontology-corpus",
+          "patterns",
+          "personal-context",
+          "projects/agentbox",
+          "projects/ai-3d-fusion",
+          "projects/bridges",
+          "projects/dreamlab-ai-website-locked",
+          "projects/exchange",
+          "projects/fairfield-nostr-other",
+          "projects/funding_platform",
+          "projects/gitnexus",
+          "projects/hackathon-tv5",
+          "projects/JavaScriptSolidServer",
+          "projects/nostr-BBS",
+          "projects/OntologyDesign",
+          "projects/PeteStrategyDoc",
+          "projects/report-Pete",
+          "projects/Research",
+          "projects/ruvector",
+          "projects/RuView",
+          "project-state",
+          "projects/unreal2gaussian",
+          "projects/WasmVOWL",
+          "projects/waterworks",
+          "projects/website-giw",
+          "ruvnet-kb",
+          "session-metrics",
+          "sessions",
+          "session-states",
+          "swarms",
+          "task-index"
+        ],
+        "plan": "unfiltered kNN vs a forced exact scan"
+      },
+      "exact_token": {
+        "namespaces": [
+          "projects/ruvector",
+          "patterns",
+          "project-state",
+          "memory-learning-aggregates",
+          "knowledge/journals",
+          "knowledge/ontology"
+        ],
+        "source_type": null,
+        "plan": "namespace-scoped memSearch / memHybridSearch (materialised subset, exact rank)"
+      }
+    },
+    "gates": {
+      "RUVECTOR_BACKEND": "ruvector-embedded",
+      "RUVECTOR_DATA_DIR": "/var/lib/ruvector",
+      "RUVECTOR_HYBRID_SEARCH": "1",
+      "RUVECTOR_PORT": "9700",
+      "RUVECTOR_TYPED_METADATA": "true",
+      "RUVECTOR_PROTECTED_NAMESPACES": "governance-precedents",
+      "RUVECTOR_USE_EXTERNAL": "true",
+      "RUVECTOR_ADMIN_WRITE": "false"
+    },
+    "xinference": "up"
+  },
+  "degraded": false,
+  "identity_ok": true,
+  "receipt_hash": "sha256-12-f08dec565c8d"
+}

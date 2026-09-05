@@ -1,0 +1,44 @@
+{
+  "schema": "agentbox/closeout-receipt@1",
+  "adr": "ADR-2014",
+  "dated": "2026-09-05",
+  "claim": "The store no longer degrades silently when embedding fails: it fails closed by default, or enters an explicit durable repair state, and a replacement never inherits the previous value's vector.",
+  "implemented": {
+    "fail_closed": "mcp/servers/lib/memory-tools.js memStore — an embedding failure returns {success:false, stored:false, reason:'embedding-unavailable'} and writes NOTHING. Verified by test assertion that m.queries.length === 0.",
+    "durable_repair": "RUVECTOR_EMBED_REPAIR=1 writes the row with a NULL vector plus metadata {embedding_state:'pending', embedding_pending_since, embedding_pending_reason} and returns repair_pending:true, searchable:false.",
+    "no_coalesce": "ON CONFLICT now assigns embedding = EXCLUDED.embedding. The COALESCE(EXCLUDED.embedding, memory_entries.embedding) the review reproduced is gone, so the stored vector is either this value's or explicitly NULL.",
+    "value_vector_binding": "Under typed metadata the row records value_digest, embed_digest, embed_model and embed_prefix_chars.",
+    "recovery": "memRepairEmbeddings() re-embeds pending rows FROM THE STORED VALUE (so the repaired vector always matches the stored value), guarded by WHERE embedding IS NULL for idempotency; dry_run reports the pending census. Registered as MCP tool memory_repair_embeddings.",
+    "ttl": "TTL is a VISIBILITY deadline for BOTH memory types: notExpiredPredicate() is applied to retrieve, list, vector search, the ILIKE fallback and every hybrid/orient read. Deletion is the sweep, which now covers semantic rows too (the review's TTL-only-write case) with an optional types filter."
+  },
+  "tests": {
+    "suite": "mcp/servers/lib/memory-tools.test.js (node, standalone)",
+    "assertions_passed": 23,
+    "assertions_failed": 0,
+    "new_cases": [
+      "FAILS CLOSED when xinference is unavailable (no row written)",
+      "FAILS CLOSED when the embedding transport throws",
+      "REPLACEMENT never retains the previous value vector (no COALESCE)",
+      "repair mode writes an EXPLICIT pending row, vector NULL",
+      "repair mode carries the pending marker even with typed metadata OFF",
+      "embedded write records the value/vector binding",
+      "memRepairEmbeddings dry_run reports the pending census without writing",
+      "memRepairEmbeddings repairs a pending row and reports recovery",
+      "memRepairEmbeddings surfaces a failed repair rather than claiming success",
+      "memRepairEmbeddings refuses to run when the embedder is unavailable",
+      "TTL — every read path denies expired rows",
+      "TTL — the ILIKE degraded fallback also denies expired rows",
+      "TTL — the sweep deletes expired SEMANTIC rows too",
+      "TTL — an explicit types filter narrows the sweep and rejects unknown types"
+    ]
+  },
+  "live_observation": {
+    "note": "The ADR-2018 recall run against the live corpus reported 1 row awaiting embedding repair out of 196,896 (196,895 embedded). The pending census is therefore exercised against production data, read-only.",
+    "source": "adr-2018-recall-receipt.json bound_to.corpus.pending_embeddings"
+  },
+  "remaining": [
+    "The pre-closeout corpus may already contain NULL-vector rows written under the old behaviour; memory_repair_embeddings exists but has not been run against production (it writes, and this pass was read-only).",
+    "The value/vector digest binding is recorded only when RUVECTOR_TYPED_METADATA is on; with the gate off the guarantee is structural (no COALESCE) rather than evidenced per row.",
+    "Backup participation in TTL is undefined: an expired row deleted by the sweep may still exist in a retained backup."
+  ]
+}

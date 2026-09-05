@@ -63,12 +63,198 @@ function mockPgDeps(overrides = {}) {
     assert.strictEqual(m.flashes[0].action, 'store');
   });
 
-  await test('external-pg memStore embedded=false when xinference unavailable', async () => {
+  // ── ADR-2014 closeout (2026-09-05): the searchable-write guarantee ────────
+  // The pre-closeout contract ASSERTED the degraded write (embedded:false,
+  // stored:true) that the estate review reproduced. The ADR forbids it: the
+  // store now either fails closed, or enters an explicit durable repair state.
+
+  await test('ADR-2014 memStore FAILS CLOSED when xinference is unavailable (no row written)', async () => {
     const m = mockPgDeps({ xinfEnsure: async () => false });
     const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
     const r = await t.memStore('k1', 'hi', 'ns1');
+    assert.strictEqual(r.success, false, 'a write that cannot be embedded is not a success');
+    assert.strictEqual(r.stored, false);
     assert.strictEqual(r.embedded, false);
-    assert.strictEqual(r.storage, 'ruvector-postgres');
+    assert.strictEqual(r.reason, 'embedding-unavailable');
+    assert.strictEqual(r.storage, 'none');
+    assert.match(r.error, /fail-closed/);
+    assert.strictEqual(m.queries.length, 0, 'NOTHING may be written when the embedding fails');
+    assert.strictEqual(m.flashes.length, 0);
+  });
+
+  await test('ADR-2014 memStore FAILS CLOSED when the embedding transport throws', async () => {
+    const m = mockPgDeps({ getEmbedding: async () => { throw new Error('xinference 503'); } });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memStore('k1', 'hi', 'ns1');
+    assert.strictEqual(r.success, false);
+    assert.match(r.error, /xinference 503/);
+    assert.strictEqual(m.queries.length, 0);
+  });
+
+  await test('ADR-2014 REPLACEMENT never retains the previous value vector (no COALESCE)', async () => {
+    const m = mockPgDeps();
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    await t.memStore('k1', 'v2', 'ns1');
+    const sql = m.queries[0].sql;
+    assert.ok(!/COALESCE\(EXCLUDED\.embedding/.test(sql),
+      'the conflict clause must not fall back to the stored vector');
+    assert.match(sql, /ON CONFLICT \(id\) DO UPDATE SET value = EXCLUDED\.value(?:, metadata = EXCLUDED\.metadata)?, embedding = EXCLUDED\.embedding/);
+  });
+
+  await test('ADR-2014 repair mode writes an EXPLICIT pending row (marker + warning), vector NULL', async () => {
+    process.env.RUVECTOR_EMBED_REPAIR = 'true';
+    process.env.RUVECTOR_TYPED_METADATA = '1';
+    try {
+      const m = mockPgDeps({ xinfEnsure: async () => false });
+      const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+      const r = await t.memStore('k1', 'hello', 'ns1');
+      assert.strictEqual(r.success, true);
+      assert.strictEqual(r.stored, true);
+      assert.strictEqual(r.embedded, false);
+      assert.strictEqual(r.repair_pending, true, 'the caller is told the row is not searchable');
+      assert.strictEqual(r.searchable, false);
+      assert.strictEqual(r.metadata.embedding_state, 'pending');
+      assert.ok(r.metadata.embedding_pending_since, 'pending rows are timestamped for repair');
+      assert.strictEqual(r.metadata.value_digest.length, 12, 'the value is bound to a digest');
+      // The vector column is written as a literal NULL, so a replacement drops
+      // any previously stored vector rather than keeping a stale one.
+      assert.match(m.queries[0].sql, /'\{\}'|\$6::jsonb|NULL\)/);
+      assert.ok(!/ruvector\(384\)/.test(m.queries[0].sql), 'no vector parameter is bound');
+    } finally {
+      delete process.env.RUVECTOR_EMBED_REPAIR;
+      delete process.env.RUVECTOR_TYPED_METADATA;
+    }
+  });
+
+  await test('ADR-2014 repair mode carries the pending marker even with typed metadata OFF', async () => {
+    process.env.RUVECTOR_EMBED_REPAIR = '1';
+    try {
+      const m = mockPgDeps({ xinfEnsure: async () => false });
+      const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+      const r = await t.memStore('k1', 'hello', 'ns1');
+      assert.strictEqual(r.stored, true);
+      assert.strictEqual(r.repair_pending, true);
+      // metadata is NOT echoed when the typed gate is off, but it IS persisted:
+      const meta = JSON.parse(m.queries[0].params[m.queries[0].params.length - 1]);
+      assert.strictEqual(meta.embedding_state, 'pending');
+    } finally { delete process.env.RUVECTOR_EMBED_REPAIR; }
+  });
+
+  await test('ADR-2014 embedded write records the value/vector binding under typed metadata', async () => {
+    process.env.RUVECTOR_TYPED_METADATA = '1';
+    try {
+      const m = mockPgDeps();
+      const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+      const r = await t.memStore('k1', 'a searchable value', 'ns1');
+      assert.strictEqual(r.embedded, true);
+      assert.strictEqual(r.metadata.embedding_state, 'embedded');
+      assert.strictEqual(r.metadata.embed_prefix_chars, 2000);
+      assert.strictEqual(r.metadata.embed_digest.length, 12);
+      assert.ok(r.metadata.embed_model, 'the model that produced the vector is recorded');
+    } finally { delete process.env.RUVECTOR_TYPED_METADATA; }
+  });
+
+  await test('ADR-2014 memRepairEmbeddings dry_run reports the pending census without writing', async () => {
+    const m = mockPgDeps({ queryResult: (sql) => (/count\(\*\)/.test(sql) ? { rows: [{ n: 7 }] } : { rows: [] }) });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memRepairEmbeddings({ dry_run: true });
+    assert.strictEqual(r.success, true);
+    assert.strictEqual(r.pending, 7);
+    assert.strictEqual(r.repaired, 0);
+    assert.ok(m.queries.every((q) => /count\(\*\)/.test(q.sql)), 'dry run only counts');
+  });
+
+  await test('ADR-2014 memRepairEmbeddings repairs a pending row and reports recovery', async () => {
+    let pending = 1;
+    const m = mockPgDeps({
+      queryResult: (sql) => {
+        if (/count\(\*\)/.test(sql)) return { rows: [{ n: pending }] };
+        if (/^\s*SELECT id, namespace, key, value/.test(sql)) {
+          return { rows: [{ id: 'agentbox:ns1:k1', namespace: 'ns1', key: 'k1', value: 'stored text' }] };
+        }
+        if (/^\s*UPDATE memory_entries/.test(sql)) { pending = 0; return { rowCount: 1, rows: [] }; }
+        return { rows: [] };
+      },
+    });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memRepairEmbeddings({ namespace: 'ns1', limit: 10 });
+    assert.strictEqual(r.success, true);
+    assert.strictEqual(r.repaired, 1);
+    assert.strictEqual(r.pending_before, 1);
+    assert.strictEqual(r.pending, 0, 'the row is searchable again');
+    const upd = m.queries.find((q) => /UPDATE memory_entries/.test(q.sql));
+    assert.match(upd.sql, /WHERE id = \$1 AND embedding IS NULL/, 'repair is idempotent');
+    assert.match(upd.sql, /'embedding_state', 'embedded'/);
+  });
+
+  await test('ADR-2014 memRepairEmbeddings surfaces a failed repair rather than claiming success', async () => {
+    const m = mockPgDeps({
+      getEmbedding: async () => { throw new Error('embed down'); },
+      queryResult: (sql) => {
+        if (/count\(\*\)/.test(sql)) return { rows: [{ n: 1 }] };
+        if (/^\s*SELECT id, namespace, key, value/.test(sql)) return { rows: [{ id: 'i', namespace: 'n', key: 'k', value: 'v' }] };
+        return { rows: [] };
+      },
+    });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memRepairEmbeddings({});
+    assert.strictEqual(r.success, false);
+    assert.strictEqual(r.repaired, 0);
+    assert.strictEqual(r.failed, 1);
+    assert.match(r.failures[0].error, /embed down/);
+  });
+
+  await test('ADR-2014 memRepairEmbeddings refuses to run when the embedder is unavailable', async () => {
+    const m = mockPgDeps({ xinfEnsure: async () => false, queryResult: () => ({ rows: [{ n: 3 }] }) });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memRepairEmbeddings({});
+    assert.strictEqual(r.success, false);
+    assert.match(r.error, /xinference unavailable/);
+    assert.strictEqual(r.pending, 3);
+  });
+
+  // ── ADR-2014 TTL: visibility for BOTH types, deletion by the sweep ─────────
+  await test('ADR-2014 TTL — every read path denies expired rows', async () => {
+    const m = mockPgDeps();
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    await t.memRetrieve('k', 'ns');
+    await t.memList('ns', 10);
+    await t.memSearch('q', 'ns', 5);
+    const seen = m.queries.map((q) => q.sql);
+    for (const sql of seen) {
+      assert.match(sql, /expires_at/, `read path must filter expired rows: ${sql.slice(0, 80)}`);
+    }
+  });
+
+  await test('ADR-2014 TTL — the ILIKE degraded fallback also denies expired rows', async () => {
+    const m = mockPgDeps({ xinfEnsure: async () => false });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memSearch('q', 'ns', 5);
+    assert.strictEqual(r.method, 'ilike-fallback');
+    assert.match(m.queries[0].sql, /expires_at/);
+  });
+
+  await test('ADR-2014 TTL — the sweep deletes expired SEMANTIC rows too, not only episodic', async () => {
+    const m = mockPgDeps({ queryResult: () => ({ rowCount: 4, rows: [] }) });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memSweepEpisodic(null);
+    assert.strictEqual(r.swept, 4);
+    assert.deepStrictEqual(r.types.sort(), ['episodic', 'semantic']);
+    const sql = m.queries[0].sql;
+    assert.ok(!/= 'episodic'/.test(sql), 'the sweep is no longer episodic-only');
+    assert.match(sql, /expires_at/);
+  });
+
+  await test('ADR-2014 TTL — an explicit types filter narrows the sweep and rejects unknown types', async () => {
+    const m = mockPgDeps({ queryResult: () => ({ rowCount: 2, rows: [] }) });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const ok = await t.memSweepEpisodic(null, { types: ['episodic'] });
+    assert.strictEqual(ok.success, true);
+    assert.deepStrictEqual(ok.types, ['episodic']);
+    assert.match(m.queries[0].sql, /memory_type/);
+    const bad = await t.memSweepEpisodic(null, { types: ['episodic', 'wat'] });
+    assert.strictEqual(bad.success, false);
+    assert.match(bad.error, /unknown memory_type/);
   });
 
   await test('external-pg memStore fails closed without pg', async () => {

@@ -1,0 +1,25 @@
+{
+  "schema": "agentbox/closeout-receipt@1",
+  "adr": "ADR-2019",
+  "dated": "2026-09-05",
+  "claim": "An incompatible SAME-DIMENSION embedding model change is rejected at MCP boot, because dimension agreement is not compatibility.",
+  "implemented": {
+    "module": "mcp/servers/lib/embedding-identity.js — probes a frozen text and fingerprints the 4-decimal-quantised vector (sha256-16). The fingerprint is a property of the deployed model and its preprocessing, not of the EMBEDDING_MODEL name.",
+    "pin": "config/embedding-identity.json",
+    "enforcement": "mcp/servers/ruvector-mcp.cjs boot: a fingerprint mismatch against the pin is FATAL (process.exit(1)). Unpinned or unprobeable is advisory — a known-bad identity is refused; a pin is never invented.",
+    "supervised_override": "RUVECTOR_EMBED_IDENTITY_OVERRIDE must name the exact divergent fingerprint. There is no boolean that means 'trust me'."
+  },
+  "measured": {
+    "endpoint": "http://192.168.2.132:9997",
+    "model": "bge-small-en-v1.5",
+    "observed_dim": 384,
+    "fingerprint": "emb1-384-cd25d147dcb748fd",
+    "stability": "Probed three times across two processes; identical every time, which is what makes it usable as a gate rather than a source of false alarms.",
+    "pin_match": "accepted"
+  },
+  "remaining": [
+    "The pin was frozen from the currently deployed model rather than from an independent statement of what SHOULD be deployed.",
+    "A model swap still needs a corpus re-embed and a passing recall receipt before the pin is moved; that sequence is documented, not automated.",
+    "Preprocessing beyond the 2,000-character embed prefix (tokeniser, pooling) is captured only indirectly, through its effect on the fingerprint."
+  ]
+}

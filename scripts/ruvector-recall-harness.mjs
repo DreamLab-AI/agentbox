@@ -321,6 +321,93 @@ async function exactTopK(pool, vecText, k) {
   }
 }
 
+// ── ADR-2018/2019 closeout (2026-09-05): bind the run to WHAT IT MEASURED ─────
+//
+// A verdict is only evidence if you can say what it was a verdict ABOUT. The
+// review's finding was that the run reported `hnsw-xinference` and a PASS
+// without recording the model identity, the preprocessing, the corpus/index
+// revision or the effective filters — so a later reader cannot tell whether the
+// receipt still applies. These helpers collect exactly those, and the receipt
+// they feed is what the release gate consumes.
+
+// Corpus + index revision. Row counts and the newest write date identify the
+// corpus; the index definition identifies the geometry it is searched with. A
+// rebuilt index with different parameters changes recall without changing a
+// single row, so both halves are needed.
+async function corpusRevision(pool) {
+  const totals = await pool.query(
+    `SELECT count(*)::bigint AS rows,
+            count(*) FILTER (WHERE embedding IS NOT NULL)::bigint AS embedded,
+            count(DISTINCT namespace)::bigint AS namespaces,
+            max(updated_at) AS newest
+       FROM memory_entries`);
+  const t = totals.rows[0] || {};
+  let indexDef = null;
+  try {
+    const idx = await pool.query(
+      `SELECT indexdef FROM pg_indexes WHERE indexname = $1`, [HNSW_INDEX]);
+    indexDef = (idx.rows[0] && idx.rows[0].indexdef) || null;
+  } catch { /* index metadata unavailable — recorded as null, never guessed */ }
+  const rev = {
+    memory_entries: Number(t.rows) || 0,
+    embedded: Number(t.embedded) || 0,
+    // ADR-2014: rows awaiting embedding repair are unsearchable, so they are
+    // part of the corpus revision a recall number must be read against.
+    pending_embeddings: (Number(t.rows) || 0) - (Number(t.embedded) || 0),
+    namespaces: Number(t.namespaces) || 0,
+    newest_entry: t.newest instanceof Date ? t.newest.toISOString() : (t.newest || null),
+    hnsw_index: HNSW_INDEX,
+    hnsw_indexdef: indexDef,
+  };
+  rev.revision = 'corpus-' + sha12(JSON.stringify([rev.memory_entries, rev.embedded, rev.namespaces, rev.newest_entry, indexDef]));
+  return rev;
+}
+
+// Effective model identity — the ADR-2019 fingerprint, not just the configured
+// name. Two different 384-dim models share a dimension and share nothing else.
+async function embeddingIdentity() {
+  try {
+    const ident = require(join(REPO_DIR, 'mcp', 'servers', 'lib', 'embedding-identity.js'));
+    const verdict = await ident.verifyEmbeddingIdentity(getEmbedding);
+    return {
+      state: verdict.state,
+      ok: verdict.ok,
+      model: verdict.effective.model,
+      fingerprint: verdict.effective.fingerprint,
+      preprocessing: verdict.effective.preprocessing,
+      pinned_fingerprint: verdict.pin ? verdict.pin.fingerprint : null,
+      message: verdict.message || null,
+    };
+  } catch (e) {
+    return { state: 'unavailable', ok: null, model: EMBEDDING_MODEL, fingerprint: null, error: e.message };
+  }
+}
+
+// The effective filters the run actually exercised — the namespaces the fixture
+// touches and the scoped/unfiltered split. The review noted scoped searches
+// report the same `hnsw-xinference` method as unfiltered ones, so the receipt
+// records which plan each class used rather than trusting the label.
+function effectiveFilters(fixture) {
+  const selfNs = fixture.self_recall.allocation ? Object.keys(fixture.self_recall.allocation) : [];
+  const trueNs = fixture.true_recall.allocation ? Object.keys(fixture.true_recall.allocation) : [];
+  const tokenNs = [...new Set(fixture.exact_token.map((q) => q.namespace))];
+  return {
+    self_recall: { namespaces: selfNs, plan: 'unfiltered kNN over the whole index (no namespace predicate)' },
+    true_recall: { namespaces: trueNs, plan: 'unfiltered kNN vs a forced exact scan' },
+    exact_token: { namespaces: tokenNs, source_type: null, plan: 'namespace-scoped memSearch / memHybridSearch (materialised subset, exact rank)' },
+  };
+}
+
+// Every RUVECTOR_* gate observed at run time — a recall number measured with a
+// consumer on is not evidence for the same corpus with it off.
+function observedGates() {
+  const out = {};
+  for (const k of Object.keys(process.env)) {
+    if (k.startsWith('RUVECTOR_') && !/CONNINFO|PASSWORD/.test(k)) out[k] = process.env[k];
+  }
+  return out;
+}
+
 // ── fixture builder (--build-fixture, one-shot, read-only) ─────────────────────
 async function sampleIds(pool, namespace, n) {
   if (n <= 0) return [];
@@ -583,6 +670,15 @@ async function runHarness(pool, fixture, { runs, k }) {
   };
   const verdict = verdictFromMedians(medians, fixture.band);
 
+  // ADR-2018/2019: the run binding. Collected AFTER the runs so it describes the
+  // state the measurement actually saw.
+  const binding = {
+    embedding: await embeddingIdentity(),
+    corpus: await corpusRevision(pool),
+    filters: effectiveFilters(fixture),
+    gates: observedGates(),
+  };
+
   // Per-namespace breakdown from the run whose self count equals the median
   // (surfaced, not gated).
   const medSelfIdx = selfCounts.indexOf(medians.self_recall) >= 0
@@ -612,6 +708,8 @@ async function runHarness(pool, fixture, { runs, k }) {
         RUVECTOR_HYBRID_SEARCH: process.env.RUVECTOR_HYBRID_SEARCH || 'unset',
       },
     },
+    // ADR-2018 closeout: what this verdict is a verdict ABOUT.
+    binding,
     baseline: fixture.baseline,
     band: fixture.band,
     medians,
@@ -663,6 +761,61 @@ function writeRunArtifact(report) {
   const path = join(RUN_ARTIFACT_DIR, `${ts}.json`);
   writeFileSync(path, JSON.stringify(report, null, 2) + '\n', 'utf8');
   return path;
+}
+
+// ── ADR-2018 closeout: the RECEIPT the release gate consumes ─────────────────
+//
+// The full run artifact is a diagnostic record; the receipt is the compact,
+// checkable claim. It is written to a STABLE path so the gate has something to
+// read without knowing the run timestamp, and it is self-describing: every
+// identity the verdict depends on travels with the verdict. `receipt_hash`
+// covers the whole claim so a hand-edited receipt is detectable.
+const RECEIPT_PATH = join(RUN_ARTIFACT_DIR, 'latest-receipt.json');
+
+function buildReceipt(report) {
+  const claim = {
+    schema: 'ruvector-recall-harness/receipt@1',
+    adr: 'ADR-2018',
+    ran_at: report.ran_at,
+    verdict: report.verdict.pass ? 'PASS' : 'FAIL',
+    reasons: report.verdict.reasons || [],
+    medians: report.medians,
+    band: report.band,
+    runs: report.config.runs,
+    k: report.config.k,
+    bound_to: {
+      // The four identities the acceptance condition names, plus the gates.
+      model: {
+        name: report.binding.embedding.model,
+        fingerprint: report.binding.embedding.fingerprint,
+        pinned_fingerprint: report.binding.embedding.pinned_fingerprint || null,
+        identity_state: report.binding.embedding.state,
+      },
+      preprocessing: report.binding.embedding.preprocessing || null,
+      corpus: report.binding.corpus,
+      fixture: {
+        hash: report.fixture.fixture_hash,
+        hash_ok: report.fixture.hash_ok,
+        built_at: report.fixture.built_at,
+        sizes: report.fixture.sizes,
+      },
+      filters: report.binding.filters,
+      gates: report.binding.gates,
+      xinference: report.config.xinference,
+    },
+    // Honesty flags a gate must refuse on, stated rather than implied.
+    degraded: report.config.xinference !== 'up',
+    identity_ok: report.binding.embedding.ok !== false,
+  };
+  claim.receipt_hash = 'sha256-12-' + sha12(JSON.stringify(claim));
+  return claim;
+}
+
+function writeReceipt(report) {
+  mkdirSync(RUN_ARTIFACT_DIR, { recursive: true });
+  const receipt = buildReceipt(report);
+  writeFileSync(RECEIPT_PATH, JSON.stringify(receipt, null, 2) + '\n', 'utf8');
+  return { path: RECEIPT_PATH, receipt };
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────────
@@ -726,12 +879,22 @@ async function main() {
     const report = await runHarness(pool, fixture, { runs: opts.runs, k: opts.k });
     const artifactPath = writeRunArtifact(report);
     report.artifact = artifactPath;
+    // ADR-2018: emit the receipt the release gate reads (scripts/recall-gate.mjs).
+    const { path: receiptPath, receipt } = writeReceipt(report);
+    report.receipt = receiptPath;
 
     if (opts.json) {
       process.stdout.write(JSON.stringify(report, null, 2) + '\n');
     } else {
       printReport(report);
-      process.stdout.write(`  run artifact: ${artifactPath}\n\n`);
+      const b = receipt.bound_to;
+      process.stdout.write(
+        `  bound to: model ${b.model.name} ${b.model.fingerprint || '(unprobed)'} [${b.model.identity_state}], ` +
+        `corpus ${b.corpus.revision} (${b.corpus.embedded}/${b.corpus.memory_entries} embedded` +
+        `${b.corpus.pending_embeddings ? `, ${b.corpus.pending_embeddings} PENDING repair` : ''}), ` +
+        `fixture ${b.fixture.hash}\n`);
+      process.stdout.write(`  run artifact: ${artifactPath}\n`);
+      process.stdout.write(`  receipt:      ${receiptPath}  (${receipt.receipt_hash})\n\n`);
     }
     process.exit(report.verdict.pass ? 0 : 2);
   } finally {

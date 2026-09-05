@@ -138,21 +138,120 @@ function vecToSql(arr) { return '[' + arr.join(',') + ']'; }
 function entryId(namespace, key) { return `${WRITE_SOURCE_TYPE}:${namespace}:${key}`; }
 function parseVal(v) { if (typeof v === 'string') { try { return JSON.parse(v); } catch { return v; } } return v; }
 
+// ── ADR-2016 closeout (2026-09-05): attributable, independent evidence ───────
+//
+// The Wilson lower bound and the raw-count floor are sound statistics over a
+// sample. The review's finding was about the SAMPLE, not the statistics: the
+// input is command execution status, forty repetitions of one command inside a
+// single session count as forty independent observations, and a command that
+// exits zero without achieving anything counts as a success. Three corrections,
+// all of which make promotion HARDER and none of which weakens the floor:
+//
+//  1. ATTRIBUTABILITY. Some verbs' zero exit carries no information about task
+//     achievement — `echo`, `ls`, `cd`, `true` succeed almost unconditionally.
+//     Their patterns are excluded from promotion outright rather than being
+//     allowed to accumulate a near-1.0 Wilson bound and outrank real work.
+//
+//  2. INDEPENDENCE. `n` (raw) still gates the floor, exactly as before. But the
+//     Wilson interval is now computed over an EFFECTIVE sample size deflated by
+//     the observed correlation — the ratio of distinct trajectories to raw
+//     observations. Forty runs across one session no longer buy the confidence
+//     of forty runs across forty sessions. A second floor requires evidence
+//     from at least MIN_TRAJECTORIES distinct sessions.
+//
+//  3. AMBIGUITY. A zero-exit command that wrote to stderr is graded 0.85 by the
+//     recorder — a real but AMBIGUOUS signal. It stays in the denominator and
+//     leaves the numerator: it is evidence that the pattern ran, not evidence
+//     that it worked. Only a clean success (>= SUCCESS_QUALITY_MIN) counts.
+//
+// Plus a staleness bound: evidence older than MAX_AGE_DAYS is excluded, because
+// recency DECAY alone never reaches zero and a pattern last seen a year ago
+// would otherwise remain eligible forever on the strength of its raw count.
+
+// Verbs whose successful exit is not attributable to task achievement. These
+// are observational or near-unconditional; promoting them would rank "the
+// command ran" above "the work succeeded".
+const NON_ATTRIBUTABLE_VERBS = new Set([
+  'echo', 'printf', 'true', ':', 'cat', 'ls', 'll', 'pwd', 'cd', 'date',
+  'sleep', 'which', 'whoami', 'head', 'tail', 'wc', 'basename', 'dirname',
+  'export', 'source', 'env', 'clear', 'history', 'type', 'hostname', 'id',
+]);
+
+/**
+ * Is this action pattern's outcome attributable to task achievement?
+ * The pattern's shape is `<verb>[ <sub>] [args:… flags:…]`, so the verb is the
+ * leading token.
+ * @param {string} pattern
+ * @returns {boolean}
+ */
+function isAttributableAction(pattern) {
+  if (typeof pattern !== 'string' || !pattern.trim()) return false;
+  const verb = pattern.trim().split(/\s+/)[0];
+  return !NON_ATTRIBUTABLE_VERBS.has(verb);
+}
+
+// Only a CLEAN success counts toward the numerator (0.85 = success-with-stderr
+// is ambiguous). Overridable, but the default is the conservative reading.
+function successQualityMin() {
+  const v = parseFloat(process.env.RUVECTOR_AGGREGATE_SUCCESS_QUALITY);
+  return Number.isFinite(v) && v > 0 && v <= 1 ? v : 0.9;
+}
+// Distinct trajectories required before a pattern may be promoted.
+function minTrajectories() {
+  const v = parseInt(process.env.RUVECTOR_AGGREGATE_MIN_TRAJECTORIES, 10);
+  return Number.isFinite(v) && v >= 1 ? v : 3;
+}
+// Evidence older than this is not counted at all.
+function maxEvidenceAgeDays() {
+  const v = parseInt(process.env.RUVECTOR_AGGREGATE_MAX_AGE_DAYS, 10);
+  return Number.isFinite(v) && v >= 1 ? v : 90;
+}
+
 // ── aggregation query ─────────────────────────────────────────────────────────
 // Read-only over trajectory_steps (never memory_entries — I03). One pass:
-// per action pattern, raw count + recency-weighted total/success + mean quality.
+// per action pattern, raw count + independence counts + recency-weighted
+// total/clean-success + mean quality.
+//   $1 = recency half-life (days)   $2 = clean-success quality threshold
+//   $3 = maximum evidence age (days)
 const AGG_SQL = `
   SELECT action AS pattern,
          count(*)::bigint AS n,
+         count(DISTINCT trajectory_id)::bigint AS n_trajectories,
+         count(DISTINCT (result->>'command'))::bigint AS n_distinct_commands,
          sum( power(0.5, GREATEST(EXTRACT(EPOCH FROM (now() - created_at)), 0)/86400.0/$1) ) AS w_total,
-         sum( CASE WHEN quality >= 0.5
+         sum( CASE WHEN quality >= $2
                    THEN power(0.5, GREATEST(EXTRACT(EPOCH FROM (now() - created_at)), 0)/86400.0/$1)
                    ELSE 0 END ) AS w_succ,
+         count(*) FILTER (WHERE quality >= 0.5 AND quality < $2)::bigint AS n_ambiguous,
          avg(quality)::float AS mean_quality,
          max(created_at) AS last_seen
     FROM trajectory_steps
    WHERE action IS NOT NULL AND action <> ''
+     AND created_at >= now() - ($3 || ' days')::interval
    GROUP BY action`;
+
+/**
+ * Decide whether a computed row may be promoted, and say why not when it may
+ * not. Pure — the caller supplies the thresholds, so it is testable without a
+ * database or environment.
+ *
+ * @param {object} row  a computeRows() output row
+ * @param {object} opts { minSamples, minTrajectories }
+ * @returns {{eligible:boolean, reason:string}}
+ */
+function promotionVerdict(row, opts = {}) {
+  const minSamples = Number.isFinite(opts.minSamples) ? opts.minSamples : gateParams.aggregateMinSamples();
+  const minTraj = Number.isFinite(opts.minTrajectories) ? opts.minTrajectories : minTrajectories();
+  if (!isAttributableAction(row.pattern)) {
+    return { eligible: false, reason: 'non-attributable-action' };
+  }
+  // The RAW-count floor is retained exactly as before (I06).
+  if ((Number(row.n) || 0) < minSamples) return { eligible: false, reason: 'below-raw-sample-floor' };
+  if ((Number(row.n_trajectories) || 0) < minTraj) {
+    return { eligible: false, reason: 'insufficient-independent-trajectories' };
+  }
+  return { eligible: true, reason: 'attributable-and-independent' };
+}
 
 // ── gate-state inspection (REC-7: "gates that stay OFF until the floor clears,
 // with the gate state inspectable") ──────────────────────────────────────────
@@ -165,18 +264,35 @@ const AGG_SQL = `
 function summariseGates(rows, opts = {}) {
   const minSamples = Number.isFinite(opts.minSamples) ? opts.minSamples : gateParams.aggregateMinSamples();
   const list = Array.isArray(rows) ? rows : [];
-  const eligible = list.filter((r) => (Number(r.n) || 0) >= minSamples);
+  const minTraj = Number.isFinite(opts.minTrajectories) ? opts.minTrajectories : minTrajectories();
+  const verdicts = list.map((r) => ({ row: r, v: promotionVerdict(r, { minSamples, minTrajectories: minTraj }) }));
+  const eligible = verdicts.filter((x) => x.v.eligible).map((x) => x.row);
   const floorCleared = eligible.length > 0;
+  // ADR-2016: report WHY patterns were withheld, so "nothing promoted" is a
+  // diagnosis rather than a silence.
+  const withheld = {};
+  for (const x of verdicts) if (!x.v.eligible) withheld[x.v.reason] = (withheld[x.v.reason] || 0) + 1;
   const feedRetrieval = opts.feedRetrieval === undefined ? gates.feedRetrieval() : !!opts.feedRetrieval;
   const feedRouting = opts.feedRouting === undefined ? gates.feedRouting() : !!opts.feedRouting;
   return {
     aggregate_min_samples: minSamples,
+    aggregate_min_trajectories: minTraj,
+    success_quality_min: successQualityMin(),
+    max_evidence_age_days: maxEvidenceAgeDays(),
     patterns_total: list.length,
     patterns_cleared_floor: eligible.length,
+    patterns_withheld: withheld,
     floor_cleared: floorCleared,
     gates: { feed_retrieval: feedRetrieval, feed_routing: feedRouting },
     premature_consumer_enabled: (feedRetrieval || feedRouting) && !floorCleared,
-    eligible_patterns: eligible.map((r) => ({ pattern: r.pattern, n: Number(r.n) || 0, wilson: round(r.wilson, 4) })),
+    eligible_patterns: eligible.map((r) => ({
+      pattern: r.pattern,
+      n: Number(r.n) || 0,
+      n_trajectories: Number(r.n_trajectories) || 0,
+      independence: r.independence,
+      wilson: round(r.wilson, 4),
+      wilson_uncorrected: round(r.wilson_uncorrected, 4),
+    })),
   };
 }
 
@@ -184,16 +300,39 @@ function computeRows(pgRows) {
   const rows = [];
   for (const r of pgRows) {
     const n = parseInt(r.n, 10) || 0;
+    const nTraj = parseInt(r.n_trajectories, 10) || 0;
+    const nCmds = parseInt(r.n_distinct_commands, 10) || 0;
+    const nAmbiguous = parseInt(r.n_ambiguous, 10) || 0;
     const wTotal = parseFloat(r.w_total) || 0;
     const wSucc = parseFloat(r.w_succ) || 0;
+
+    // ADR-2016 independence deflation. `independence` is the fraction of
+    // observations that are actually distinct evidence: forty runs of the same
+    // command inside one session give 1/40. The Wilson interval is computed
+    // over the DEFLATED effective sample, so correlated repeats widen the
+    // interval instead of narrowing it. The success PROPORTION is untouched —
+    // only the confidence in it changes, which is the honest correction.
+    const independence = n > 0 ? Math.min(1, Math.max(nTraj, 1) / n) : 0;
+    const effTotal = wTotal * independence;
+    const effSucc = wSucc * independence;
+
     rows.push({
       pattern: r.pattern,
       n,
+      n_trajectories: nTraj,
+      n_distinct_commands: nCmds,
+      n_ambiguous: nAmbiguous,
+      independence: round(independence, 4),
       wTotal,
       wSucc,
-      wilson: wilsonLower(wSucc, wTotal, Z),
+      w_total_effective: round(effTotal, 4),
+      // The naive bound is retained alongside so the cost of the correction is
+      // visible rather than hidden inside one number.
+      wilson_uncorrected: wilsonLower(wSucc, wTotal, Z),
+      wilson: wilsonLower(effSucc, effTotal, Z),
       mean_quality: parseFloat(r.mean_quality) || 0,
       last_seen: r.last_seen instanceof Date ? r.last_seen.toISOString() : (r.last_seen || null),
+      attributable: isAttributableAction(r.pattern),
     });
   }
   rows.sort((a, b) => b.wilson - a.wilson || b.n - a.n);
@@ -202,15 +341,16 @@ function computeRows(pgRows) {
 
 function printTable(rows, minSamples, halfLife) {
   const w = process.stdout;
-  w.write(`\nEffectiveness aggregation — Wilson z=${Z}, recency half-life ${halfLife}d, sample floor ${minSamples}\n`);
+  w.write(`\nEffectiveness aggregation — Wilson z=${Z}, recency half-life ${halfLife}d, raw sample floor ${minSamples}, independent-trajectory floor ${minTrajectories()}, clean-success threshold ${successQualityMin()}, evidence window ${maxEvidenceAgeDays()}d\n`);
   w.write(`${rows.length} distinct action pattern(s) in trajectory_steps\n\n`);
   if (!rows.length) { w.write('  (no trajectory_steps — nothing to aggregate)\n'); return; }
   const P = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s.padEnd(n); };
-  w.write(`  ${P('pattern', 46)} ${P('n', 6)} ${P('mean_q', 8)} ${P('wilson', 8)} ${'eligible'}\n`);
-  w.write(`  ${'-'.repeat(46)} ${'-'.repeat(6)} ${'-'.repeat(8)} ${'-'.repeat(8)} --------\n`);
+  w.write(`  ${P('pattern', 42)} ${P('n', 6)} ${P('traj', 5)} ${P('indep', 6)} ${P('mean_q', 7)} ${P('wilson', 7)} ${'verdict'}\n`);
+  w.write(`  ${'-'.repeat(42)} ${'-'.repeat(6)} ${'-'.repeat(5)} ${'-'.repeat(6)} ${'-'.repeat(7)} ${'-'.repeat(7)} ----------------------------------\n`);
+  const minTraj = minTrajectories();
   for (const r of rows) {
-    const eligible = r.n >= minSamples ? 'yes' : 'skip';
-    w.write(`  ${P(r.pattern, 46)} ${P(r.n, 6)} ${P(round(r.mean_quality, 3), 8)} ${P(round(r.wilson, 4), 8)} ${eligible}\n`);
+    const v = promotionVerdict(r, { minSamples, minTrajectories: minTraj });
+    w.write(`  ${P(r.pattern, 42)} ${P(r.n, 6)} ${P(r.n_trajectories, 5)} ${P(r.independence, 6)} ${P(round(r.mean_quality, 3), 7)} ${P(round(r.wilson, 4), 7)} ${v.eligible ? 'promote' : v.reason}\n`);
   }
   w.write('\n');
 }
@@ -247,7 +387,7 @@ async function status() {
   const pool = makePool();
   let rows;
   try {
-    const res = await pool.query(AGG_SQL, [halfLife]);
+    const res = await pool.query(AGG_SQL, [halfLife, successQualityMin(), String(maxEvidenceAgeDays())]);
     rows = computeRows(res.rows);
   } finally {
     await pool.end().catch(() => {});
@@ -273,7 +413,7 @@ async function run({ apply = false } = {}) {
 
   let rows;
   try {
-    const res = await pool.query(AGG_SQL, [halfLife]);
+    const res = await pool.query(AGG_SQL, [halfLife, successQualityMin(), String(maxEvidenceAgeDays())]);
     rows = computeRows(res.rows);
   } catch (err) {
     await pool.end().catch(() => {});
@@ -282,7 +422,8 @@ async function run({ apply = false } = {}) {
 
   printTable(rows, minSamples, halfLife);
 
-  const eligible = rows.filter((r) => r.n >= minSamples);
+  const minTraj = minTrajectories();
+  const eligible = rows.filter((r) => promotionVerdict(r, { minSamples, minTrajectories: minTraj }).eligible);
   const skipped = rows.length - eligible.length;
   let stored = 0;
   let embedFailed = 0;
@@ -314,10 +455,18 @@ async function run({ apply = false } = {}) {
       const value = {
         pattern: r.pattern,
         wilson: round(r.wilson, 4),
+        // ADR-2016: the evidence quality behind the number travels WITH it, so a
+        // consumer can see that a 0.9 from one session is not a 0.9 from thirty.
+        wilson_uncorrected: round(r.wilson_uncorrected, 4),
         n: r.n,
+        n_trajectories: r.n_trajectories,
+        n_distinct_commands: r.n_distinct_commands,
+        n_ambiguous: r.n_ambiguous,
+        independence: r.independence,
+        evidence_basis: 'clean-exit outcomes only; ambiguous (stderr-noisy) successes counted in the denominator',
         mean_quality: round(r.mean_quality, 4),
         last_seen: r.last_seen,
-        summary: `Action pattern "${r.pattern}": Wilson lower-bound success ${round(r.wilson, 4)} over ${r.n} samples (mean quality ${round(r.mean_quality, 3)}), recency half-life ${halfLife}d.`,
+        summary: `Action pattern "${r.pattern}": Wilson lower-bound success ${round(r.wilson, 4)} over ${r.n} observations from ${r.n_trajectories} distinct trajectories (independence ${r.independence}, uncorrected bound ${round(r.wilson_uncorrected, 4)}, mean quality ${round(r.mean_quality, 3)}), recency half-life ${halfLife}d.`,
       };
       if (urn) value.urn = urn;
       try {
@@ -365,4 +514,9 @@ if (require.main === module) {
   }
 }
 
-module.exports = { run, status, summariseGates, wilsonLower, aggregateKey, computeRows, AGG_NAMESPACE, AGG_SQL };
+module.exports = {
+  run, status, summariseGates, wilsonLower, aggregateKey, computeRows,
+  promotionVerdict, isAttributableAction, NON_ATTRIBUTABLE_VERBS,
+  successQualityMin, minTrajectories, maxEvidenceAgeDays,
+  AGG_NAMESPACE, AGG_SQL,
+};

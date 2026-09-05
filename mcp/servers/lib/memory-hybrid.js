@@ -47,7 +47,12 @@
  * owns no connection or transport — same discipline as memory-tools.js.
  */
 
-const { params: gateParams, gates } = require('./ruvector-gates');
+const { params: gateParams, gates, consumerAdmission } = require('./ruvector-gates');
+const { notExpiredPredicate } = require('./memory-metadata');
+
+// ADR-2014 closeout: TTL is a visibility deadline on every read path, hybrid
+// included — otherwise an expired row denied by memSearch reappears here.
+const NOT_EXPIRED = notExpiredPredicate('metadata');
 
 const AGG_NAMESPACE = 'memory-learning-aggregates';
 
@@ -59,17 +64,52 @@ function createHybridTools(deps) {
   // whose metadata tags intersect a high-effectiveness aggregate's action tag.
   // Fail-open: any error leaves the base ranking untouched.
   async function applyEffectivenessBonus(results) {
-    if (!gates.feedRetrieval() || !results || !results.length) return results;
+    // ADR-2017 (closeout 2026-09-05): the consumer gate ALONE no longer admits
+    // the bonus. The review reproduced this helper raising a score from a
+    // retained aggregate with recording off and the master gate off — because
+    // the only check was `gates.feedRetrieval()`. Admission is now the shared
+    // decision in ruvector-gates.consumerAdmission, which requires the master
+    // gate plus either active capture or an explicitly accepted, fresh,
+    // non-empty retained corpus. The corpus observation feeding that decision
+    // comes from the SAME query that reads the aggregates, so freshness is
+    // measured, not assumed.
+    if (!results || !results.length) return results;
+    const preflight = consumerAdmission('feed_retrieval');
+    if (!preflight.admitted && preflight.reason !== 'retained-corpus-freshness-unknown') {
+      // Every refusal except "I have not measured the corpus yet" is final
+      // without touching the database.
+      return results;
+    }
     try {
       const aggRes = await pool.query(
         `SELECT metadata->'tags' AS tags,
-                COALESCE((metadata->>'importance')::float, 0) AS wilson
+                COALESCE((metadata->>'importance')::float, 0) AS wilson,
+                updated_at
            FROM memory_entries
-          WHERE namespace = $1 AND metadata ? 'tags'
+          WHERE namespace = $1 AND metadata ? 'tags' AND ${NOT_EXPIRED}
           ORDER BY (metadata->>'importance')::float DESC NULLS LAST
           LIMIT 500`,
         [AGG_NAMESPACE],
       );
+      // Re-decide with the observed corpus: this is where a stale or empty
+      // retained corpus is actually rejected.
+      let newest = null;
+      for (const row of aggRes.rows) {
+        const t = row.updated_at instanceof Date ? row.updated_at.getTime() : Date.parse(String(row.updated_at || ''));
+        if (Number.isFinite(t) && (newest === null || t > newest)) newest = t;
+      }
+      const admission = consumerAdmission('feed_retrieval', {
+        corpusLastUpdated: newest === null ? null : new Date(newest),
+        corpusSize: aggRes.rows.length,
+      });
+      if (!admission.admitted) {
+        log('WARN', `feed_retrieval bonus NOT applied — ADR-2017 admission refused: ${admission.reason}`);
+        for (const r of results) {
+          r.components = r.components || {};
+          r.components.effectiveness_bonus_withheld = admission.reason;
+        }
+        return results;
+      }
       // tag → max wilson across aggregates carrying that action tag.
       const tagWilson = new Map();
       for (const row of aggRes.rows) {
@@ -92,6 +132,9 @@ function createHybridTools(deps) {
           r.score = (Number(r.score) || 0) + bonus;
           r.components = r.components || {};
           r.components.effectiveness_bonus = bonus;
+          // Provenance: WHY this consumer was allowed to move the score.
+          r.components.effectiveness_admission = admission.reason;
+          if (admission.receipt) r.components.effectiveness_corpus_receipt = admission.receipt;
         }
       }
     } catch (err) {
@@ -132,7 +175,7 @@ function createHybridTools(deps) {
             WITH scoped AS MATERIALIZED (
               SELECT key, value, namespace, source_type, metadata, embedding, updated_at
               FROM memory_entries
-              WHERE embedding IS NOT NULL AND namespace = $2 ${stClause} ${tagClause}
+              WHERE embedding IS NOT NULL AND ${NOT_EXPIRED} AND namespace = $2 ${stClause} ${tagClause}
             ),
             scored AS (
               SELECT key, value, namespace, source_type, metadata,
@@ -172,7 +215,7 @@ function createHybridTools(deps) {
                 COALESCE((metadata->>'importance')::float, 0.5) AS importance,
                 power(0.5, GREATEST(EXTRACT(EPOCH FROM (now() - updated_at)), 0)/86400.0/$${hlIdx})::float AS recency
               FROM memory_entries
-              WHERE embedding IS NOT NULL ${stClause} ${tagClause}
+              WHERE embedding IS NOT NULL AND ${NOT_EXPIRED} ${stClause} ${tagClause}
               ORDER BY embedding <=> $1::ruvector(384)
               LIMIT $${ofIdx}
             )
@@ -226,7 +269,14 @@ function createHybridTools(deps) {
     const aggLimit = Number.isFinite(opts.aggregateLimit) ? opts.aggregateLimit : 10;
     const epiLimit = Number.isFinite(opts.episodicLimit) ? opts.episodicLimit : 10;
     // Aggregates bucket only surfaces when routing feed is on (ADR-036 D1 §feed).
-    const routing = gates.feedRouting();
+    // ADR-2017: the aggregates bucket obeys the same admission decision as the
+    // retrieval bonus. `feed_routing` alone is not sufficient. Freshness cannot
+    // be pre-measured here (the bucket IS the read), so an accepted retained
+    // corpus is admitted on the receipt and the bundle records which branch let
+    // it through — the operator can always see why aggregates were surfaced.
+    const routingAdmission = consumerAdmission('feed_routing', { corpusLastUpdated: null });
+    const routing = routingAdmission.admitted ||
+      (routingAdmission.reason === 'retained-corpus-freshness-unknown');
     const empty = {
       success: true, action: 'orient', task, namespace,
       semantic: [], aggregates: [], episodic: [], storage: 'ruvector-postgres',
@@ -246,7 +296,7 @@ function createHybridTools(deps) {
              SELECT key, value, namespace, source_type,
                     (1.0 - (embedding <=> $1::ruvector(384)))::float AS score
              FROM memory_entries
-             WHERE embedding IS NOT NULL
+             WHERE embedding IS NOT NULL AND ${NOT_EXPIRED}
                AND (metadata->>'memory_type') IS DISTINCT FROM 'episodic'
              ORDER BY embedding <=> $1::ruvector(384)
              LIMIT $2
@@ -263,7 +313,7 @@ function createHybridTools(deps) {
         p.push(aggLimit); const aggL = `$${p.length}`;
         aggCte = `agg AS (
           SELECT key, value FROM memory_entries
-          WHERE namespace = '${AGG_NAMESPACE}'
+          WHERE namespace = '${AGG_NAMESPACE}' AND ${NOT_EXPIRED}
           ORDER BY updated_at DESC LIMIT ${aggL}
         )`;
       } else {
@@ -278,7 +328,7 @@ function createHybridTools(deps) {
         ${aggCte},
         epi AS (
           SELECT key, value FROM memory_entries
-          WHERE namespace = ${nsP} AND (metadata->>'memory_type') = 'episodic'
+          WHERE namespace = ${nsP} AND ${NOT_EXPIRED} AND (metadata->>'memory_type') = 'episodic'
           ORDER BY updated_at DESC LIMIT ${epiL}
         )
         SELECT 'semantic' AS bucket, key, value, score::float AS score FROM sem
@@ -294,7 +344,14 @@ function createHybridTools(deps) {
         else if (r.bucket === 'aggregate') bundle.aggregates.push(item);
         else bundle.episodic.push(item);
       }
-      if (!routing) bundle.aggregates_note = 'feed_routing off — effectiveness aggregates omitted from orient bundle';
+      if (!routing) {
+        bundle.aggregates_note =
+          `effectiveness aggregates omitted from orient bundle — ADR-2017 admission refused: ${routingAdmission.reason}`;
+      } else {
+        bundle.aggregates_admission = routingAdmission.reason === 'retained-corpus-freshness-unknown'
+          ? 'retained-corpus-accepted' : routingAdmission.reason;
+        if (routingAdmission.receipt) bundle.aggregates_corpus_receipt = routingAdmission.receipt;
+      }
       return bundle;
     } catch (err) {
       log('WARN', `orient failed, returning empty bundle: ${err.message}`);
@@ -302,7 +359,7 @@ function createHybridTools(deps) {
     }
   }
 
-  return { memHybridSearch, memOrient };
+  return { memHybridSearch, memOrient, applyEffectivenessBonus };
 }
 
 module.exports = { createHybridTools, AGG_NAMESPACE };
