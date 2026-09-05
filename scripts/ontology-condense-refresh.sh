@@ -17,6 +17,14 @@
 # Corpus path (ADR-2028): VAULT_PAGES — the [vault] path authority the entrypoint
 # resolves from agentbox.toml. ONTOLOGY_PAGES_DIR remains the explicit override
 # for one release. Outputs: ONTOLOGY_ALIASES / ONTOLOGY_CONDENSED_OUT.
+#
+# Precedence guard (ADR-2028 closeout 2026-09-05), mirroring _ab_vault_resolve():
+# ONTOLOGY_PAGES_DIR is honoured ONLY while the vault is ENABLED, or under the
+# explicit AGENTBOX_VAULT_LEGACY_PATHS=1 opt-in. With AGENTBOX_VAULT_ENABLED=0 and
+# no opt-in this script REFUSES the legacy path and exits 2 — a disabled vault
+# must not keep an LLM condensation pass running against a pre-vault tree. "No
+# path at all" stays a benign exit 0 (nothing to do); a REFUSED path is a
+# configuration error and says so.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -40,12 +48,20 @@ fi
 # SKIP (not fail) if another refresh already holds it — idempotent + fail-open.
 # flock's fd-based lock auto-releases on process exit; the mkdir fallback traps.
 LOCK="${ONTOLOGY_CONDENSE_LOCK:-$(dirname "$ALIASES")/.ontology-condense.lock}"
+# NB (fixed 2026-09-05): the `2>/dev/null` below silences a redirection error
+# from `exec`, but on `exec` a redirection is PERMANENT — it re-pointed the whole
+# script's stderr at /dev/null, swallowing every subsequent diagnostic (including
+# the ADR-2028 refusal above being invisible to callers). Save the real stderr on
+# fd 8 and restore it the moment the lock attempt is over.
+exec 8>&2
 if command -v flock >/dev/null 2>&1 && exec 9>"$LOCK" 2>/dev/null; then
+  exec 2>&8
   if ! flock -n 9; then
     echo "[condense-refresh] another refresh holds the lock ($LOCK) — skipping." >&2
     exit 0
   fi
 else
+  exec 2>&8
   LOCKDIR="$LOCK.d"
   if ! mkdir "$LOCKDIR" 2>/dev/null; then
     echo "[condense-refresh] a refresh is already running ($LOCKDIR) — skipping." >&2
@@ -53,10 +69,29 @@ else
   fi
   trap 'rmdir "$LOCKDIR" 2>/dev/null || true' EXIT
 fi
+exec 8>&-
 
 # ADR-2028 D3: fail loud, not quiet. With no vault there is nothing to condense,
 # and running the pass anyway would burn a long LLM run on an empty directory.
-PAGES="${ONTOLOGY_PAGES_DIR:-${VAULT_PAGES:-}}"
+EXIT_LEGACY_PATH_REFUSED=2
+# NB: an `[ … ] && x=1` one-liner would trip `set -e` when the test is false
+# (the AND-list's exit status becomes 1), so this stays an explicit if.
+_VAULT_DISABLED=0
+if [ "${AGENTBOX_VAULT_ENABLED:-1}" = "0" ]; then _VAULT_DISABLED=1; fi
+_LEGACY_OPT_IN=0
+case "${AGENTBOX_VAULT_LEGACY_PATHS:-}" in 1|true|TRUE|True|yes|on) _LEGACY_OPT_IN=1 ;; esac
+
+if [ "$_VAULT_DISABLED" = "1" ] && [ "$_LEGACY_OPT_IN" = "0" ] && [ -n "${ONTOLOGY_PAGES_DIR:-}" ]; then
+  echo "[condense-refresh] REFUSING legacy corpus path ONTOLOGY_PAGES_DIR=${ONTOLOGY_PAGES_DIR} — AGENTBOX_VAULT_ENABLED=0 (the manifest declares no [vault]), so no consumer may fall back to a pre-vault tree." >&2
+  echo "[condense-refresh]   fix: set [vault].root in agentbox.toml, or export AGENTBOX_VAULT_LEGACY_PATHS=1 to opt in deliberately. Nothing run." >&2
+  exit "$EXIT_LEGACY_PATH_REFUSED"
+fi
+
+if [ "$_VAULT_DISABLED" = "1" ] && [ "$_LEGACY_OPT_IN" = "0" ]; then
+  PAGES="${VAULT_PAGES:-}"
+else
+  PAGES="${ONTOLOGY_PAGES_DIR:-${VAULT_PAGES:-}}"
+fi
 if [ -z "$PAGES" ]; then
   echo "[condense-refresh] [vault] disabled — no corpus path (set [vault].root in agentbox.toml, or ONTOLOGY_PAGES_DIR). Nothing to do." >&2
   exit 0

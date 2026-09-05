@@ -26,15 +26,156 @@ const MATURITY_RANK = Object.freeze({
   draft: 0, developing: 1, emerging: 2, growing: 3, established: 4, mature: 5,
 });
 
-/** Stable, allocation-light cache key (FNV-1a over the request shape). */
+// ── Cache key: the complete effective-constraint enumeration (ADR-2023) ───────
+/**
+ * EVERY effective constraint of a request — anything that can change which bytes
+ * are legitimately returned — MUST be named here.
+ *
+ * An omitted field is a CORRECTNESS BUG, not a perf tweak. The key is the only
+ * thing standing between a cached answer and a request that asked for something
+ * else. The 2026-09-04 estate review reproduced exactly that failure: `domain`
+ * and `max_tokens` were absent from the key, so an AI-domain seed serialised to
+ * 830 tokens was returned, `cache_hit: true`, to a subsequent robotics request
+ * capped at 50 tokens. Both constraints were silently discarded.
+ *
+ * Adding a new knob to `ask()` without adding it to this list re-opens that
+ * hole. The list is enumerated explicitly (rather than hashing whatever object
+ * happens to be passed) so that the omission is visible in review instead of
+ * being implied by a spread.
+ */
+const CACHE_KEY_FIELDS = Object.freeze([
+  'query',         // the question itself
+  'model_tier',    // tier ceiling + default mode/depth
+  'mode',          // menu | expand
+  'depth',         // k-hop depth actually used
+  'provenance',    // asserted | inferred — the REQUESTED scope
+  'full',          // page-body drill-down
+  'domain',        // sourceDomain filter (absent pre-2026-09-05 → the defect)
+  'max_tokens',    // per-request budget override (absent pre-2026-09-05 → the defect)
+  'budget',        // the RESOLVED ceiling (tier ∧ override) — the constraint that binds
+  'min_maturity',  // maturity threshold the seed gate applied
+  'backend',       // loom | visionclaw | injected — different stores, different answers
+  'generation',    // served bundle/generation identity behind that backend
+]);
+
+/** Null/undefined/'' collapse to one sentinel so absence never aliases a value. */
+function cacheKeyFieldValue(v) {
+  if (v === undefined || v === null || v === '') return '∅';
+  if (typeof v === 'boolean') return v ? 'T' : 'F';
+  return String(v);
+}
+
+/**
+ * Stable, allocation-light cache key: FNV-1a over `field=value` pairs for every
+ * entry of CACHE_KEY_FIELDS, in declaration order. Field names are part of the
+ * hashed string so a value cannot migrate between fields undetected.
+ * @param {object} req the RESOLVED request (post tier/budget/backend resolution)
+ */
 function cacheKey(req) {
-  const s = [req.query, req.model_tier, req.depth, req.mode, req.provenance, req.full].join('|');
+  const s = CACHE_KEY_FIELDS
+    .map((f) => f + '=' + cacheKeyFieldValue(req[f]))
+    .join('|');
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return 'ont:' + h.toString(16);
+}
+
+// ── Degradation vocabulary (ADR-2023) ────────────────────────────────────────
+/**
+ * Which STAGE of the pipeline failed. A caller must be able to tell a complete
+ * result from a partial one, and which part is missing — `degraded: false` on a
+ * failed expansion (the pre-2026-09-05 behaviour) made a menu-only answer
+ * indistinguishable from a fully expanded one.
+ */
+const DEGRADED_STAGES = Object.freeze({
+  SEED: 'seed',
+  EXPANSION: 'expansion',
+  SPARQL: 'sparql',
+  BACKEND_UNAVAILABLE: 'backend-unavailable',
+});
+
+/**
+ * Named degraded outcomes. `BACKEND_CONFIGURED_UNAVAILABLE` is deliberately
+ * distinct from `BACKEND_NOT_CONFIGURED`: a Loom that is configured and
+ * unreachable is an operational fault to page on, whereas an unset
+ * LOOM_FACADE_URL is the ordinary VisionClaw selection path and not a fault at
+ * all. Collapsing the two hides a dead façade behind a normal fallback.
+ */
+const DEGRADED_OUTCOMES = Object.freeze({
+  BACKEND_CONFIGURED_UNAVAILABLE: 'backend_configured_but_unavailable',
+  BACKEND_NOT_CONFIGURED: 'backend_not_configured',
+  SEED_REJECTED: 'seed_rejected',
+  EXPANSION_UNAVAILABLE: 'expansion_unavailable',
+});
+
+/** Backend identities that can sit behind the one-brain retrieval contract. */
+const BACKENDS = Object.freeze({
+  LOOM: 'loom',
+  VISIONCLAW: 'visionclaw',
+  INJECTED: 'injected',
+  NONE: 'none',
+});
+
+/** Why a backend was selected — surfaced so a fallback is never silent. */
+const BACKEND_REASONS = Object.freeze({
+  LOOM_URL_SET: 'loom_facade_url_set',
+  LOOM_URL_UNSET: 'loom_facade_url_unset_visionclaw_selected',
+  VC_FETCH_INJECTED: 'vc_fetch_injected_overrides_loom',
+  INJECTED_TRANSPORT: 'injected_transport',
+  NOT_CONFIGURED: 'no_backend_configured',
+});
+
+/** Normalise a backend descriptor; an injected transport counts as configured. */
+function normaliseBackend(b) {
+  if (!b) {
+    return {
+      name: BACKENDS.INJECTED, url: null, configured: true,
+      generation: null, reason: BACKEND_REASONS.INJECTED_TRANSPORT,
+    };
+  }
+  return {
+    name: b.name || BACKENDS.INJECTED,
+    url: b.url || null,
+    configured: b.configured !== false,
+    generation: b.generation == null ? null : String(b.generation),
+    reason: b.reason || BACKEND_REASONS.INJECTED_TRANSPORT,
+  };
+}
+
+/**
+ * Does a cached entry still satisfy the CURRENT request's constraints?
+ *
+ * Documented policy: on any violation we MISS the cache and re-retrieve. We do
+ * NOT truncate a stored body down to the smaller budget, because the stored
+ * Turtle has already been clamped once; a second deterministic cut would slice
+ * a seed mid-triple and silently change what the grounding asserts. A miss
+ * costs one retrieval; a bad truncation costs correctness.
+ */
+function cacheEntrySatisfies(entry, cur) {
+  const violations = [];
+  if (!entry || !entry.result) return { ok: false, violations: ['no_entry'] };
+  const st = entry.constraints || {};
+  const res = entry.result;
+  for (const f of ['domain', 'provenance', 'backend', 'generation', 'min_maturity', 'model_tier', 'mode', 'depth', 'full']) {
+    if (Object.prototype.hasOwnProperty.call(st, f)
+      && cacheKeyFieldValue(st[f]) !== cacheKeyFieldValue(cur[f])) {
+      violations.push(f);
+    }
+  }
+  if (typeof cur.budget === 'number' && typeof res.tokens_used === 'number'
+    && res.tokens_used > cur.budget) {
+    violations.push('budget');
+  }
+  return { ok: violations.length === 0, violations };
+}
+
+/** Accept both the current {result,constraints} entry and any legacy bare result. */
+function normaliseCacheEntry(cached) {
+  if (cached && typeof cached === 'object' && cached.result) return cached;
+  return { result: cached, constraints: null };
 }
 
 /** Minimal in-process TTL LRU. Used by default; injectable for tests. */
@@ -127,19 +268,31 @@ function createOntologyRetrieval(deps = {}) {
   const expandFn = deps.expandFn || (async () => []);
   const cache = deps.cache || createTtlCache({ clock: deps.clock });
   const clock = deps.clock || (() => Date.now());
-  const minRank = MATURITY_RANK[deps.minMaturity || 'established'] ?? 4;
+  const minMaturity = deps.minMaturity || 'established';
+  const minRank = MATURITY_RANK[minMaturity] ?? 4;
   const telemetry = deps.telemetry || createTelemetrySink({ clock });
+  // Which store is actually answering, and whether it is configured. Carried on
+  // every result so a caller can never mistake one backend's answer for
+  // another's, and so a configured-but-unreachable façade is a NAMED outcome.
+  const backend = normaliseBackend(deps.backend);
 
   async function ask(rawReq = {}) {
     const t0 = clock();
     const req = {
       query: String(rawReq.query || ''),
       model_tier: rawReq.model_tier || budget.DEFAULT_TIER,
-      max_tokens: rawReq.max_tokens,
+      max_tokens: typeof rawReq.max_tokens === 'number' ? rawReq.max_tokens : null,
       mode: rawReq.mode,
       provenance: rawReq.provenance || 'asserted',
       full: rawReq.full === true,
       depth: rawReq.depth,
+      domain: rawReq.domain || null,
+      min_maturity: minMaturity,
+      backend: backend.name,
+      // A request may pin a generation/bundle explicitly; otherwise the one the
+      // backend descriptor declares. Two generations of the same graph are two
+      // different answers to the same question — never one cache entry.
+      generation: rawReq.generation != null ? String(rawReq.generation) : backend.generation,
     };
     const cfg = budget.tierConfig(req.model_tier);
     if (req.mode == null) req.mode = cfg.mode;
@@ -151,29 +304,72 @@ function createOntologyRetrieval(deps = {}) {
       req.full = false; fullDenied = true;
     }
 
+    // The RESOLVED ceiling — tier max ∧ per-request override. This, not the raw
+    // override, is the constraint a cached body has to satisfy.
+    req.budget = budget.resolveBudget(req.model_tier, req.max_tokens);
+
     const empty = (extra) => ({
       turtle: '', breadcrumb: null, seed_iris: [], tokens_used: 0,
       truncated: false, provenance: req.provenance, cache_hit: false,
-      degraded: false, full_denied: fullDenied, latency_ms: clock() - t0,
+      degraded: false, degraded_stages: [], full_denied: fullDenied,
+      domain: req.domain, budget: req.budget, backend: backend.name,
+      backend_configured: backend.configured, generation: req.generation,
+      latency_ms: clock() - t0,
       ...extra,
     });
 
     if (!req.query.trim()) return empty();
 
+    // Constraints the answer must satisfy, in the same vocabulary the key uses.
+    const constraints = {};
+    for (const f of CACHE_KEY_FIELDS) constraints[f] = req[f];
+
     const key = cacheKey(req);
     const cached = cache.get(key);
     if (cached) {
-      telemetry.record({ event: 'cache_hit', key });
-      return { ...cached, cache_hit: true, latency_ms: clock() - t0 };
+      const entry = normaliseCacheEntry(cached);
+      // Defence in depth: the key already covers every constraint, so a
+      // violation here means a hash collision or a legacy entry. Either way a
+      // stale-constraint body must never be served — MISS and re-retrieve
+      // (see cacheEntrySatisfies for why we do not truncate instead).
+      const check = cacheEntrySatisfies(entry, constraints);
+      if (check.ok) {
+        telemetry.record({ event: 'cache_hit', key });
+        return {
+          // A cache hit preserves the degradation state it was STORED with: a
+          // partial answer stays partial no matter how many times it is served.
+          ...entry.result,
+          degraded: entry.result.degraded === true,
+          degraded_stages: Array.isArray(entry.result.degraded_stages) ? entry.result.degraded_stages.slice() : [],
+          cache_hit: true,
+          latency_ms: clock() - t0,
+        };
+      }
+      telemetry.record({ event: 'cache_constraint_miss', key, violations: check.violations.join(',') });
     }
+
+    // Stages that failed on THIS call. Empty ⇒ the result is complete.
+    const degradedStages = [];
+    let degradedError = null;
 
     // ---- seed (fail-open) ----
     let seeds = [];
     try {
-      seeds = (await seedFn({ query: req.query, limit: 8, domain: rawReq.domain })) || [];
+      seeds = (await seedFn({ query: req.query, limit: 8, domain: req.domain })) || [];
     } catch (err) {
-      telemetry.record({ event: 'fail_open', stage: 'seed', cause: classifyCause(err) });
-      return empty({ degraded: true, error: 'seed_unavailable' });
+      const cause = classifyCause(err);
+      const stages = [DEGRADED_STAGES.SEED];
+      let outcome = DEGRADED_OUTCOMES.SEED_REJECTED;
+      if (cause === 'availability' || cause === 'timeout') {
+        stages.push(DEGRADED_STAGES.BACKEND_UNAVAILABLE);
+        // CONFIGURED-but-unreachable is not the same thing as not configured.
+        outcome = backend.configured
+          ? DEGRADED_OUTCOMES.BACKEND_CONFIGURED_UNAVAILABLE
+          : DEGRADED_OUTCOMES.BACKEND_NOT_CONFIGURED;
+      }
+      telemetry.record({ event: 'fail_open', stage: 'seed', cause });
+      // Not cached: a transport fault must not pin an empty answer for the TTL.
+      return empty({ degraded: true, degraded_stages: stages, error: outcome, error_cause: cause });
     }
 
     // ---- maturity + domain gate ----
@@ -182,17 +378,17 @@ function createOntologyRetrieval(deps = {}) {
       // Unknown maturity (e.g. knowledge pages / stubs) is NOT gated out — only
       // explicitly-low-maturity classes are dropped.
       const matureEnough = r === undefined ? true : r >= minRank;
-      const domainOk = !rawReq.domain || c.domain === rawReq.domain;
+      const domainOk = !req.domain || c.domain === req.domain;
       return matureEnough && domainOk;
     });
 
     if (!seeds.length) {
       const out = empty();
-      cache.set(key, out);
+      cache.set(key, { result: out, constraints });
       return out;
     }
 
-    // ---- expand (fail-open) ----
+    // ---- expand (fail-open, but NEVER silently) ----
     let expandTriples = [];
     if (req.mode === 'expand' && req.depth > 0) {
       try {
@@ -202,8 +398,16 @@ function createOntologyRetrieval(deps = {}) {
           provenance: req.provenance,
         })) || [];
       } catch (err) {
-        telemetry.record({ event: 'fail_open', stage: 'expand', cause: classifyCause(err) });
-        // Degrade to menu rather than failing the whole call.
+        const cause = classifyCause(err);
+        telemetry.record({ event: 'fail_open', stage: 'expand', cause });
+        // Degrade to menu rather than failing the whole call — but SAY SO, and
+        // say which stage. `degraded: false` here was the reproduced defect.
+        degradedStages.push(DEGRADED_STAGES.EXPANSION);
+        if (err && err.stage === 'sparql') degradedStages.push(DEGRADED_STAGES.SPARQL);
+        if (cause === 'availability' || cause === 'timeout') {
+          degradedStages.push(DEGRADED_STAGES.BACKEND_UNAVAILABLE);
+        }
+        degradedError = DEGRADED_OUTCOMES.EXPANSION_UNAVAILABLE;
         expandTriples = [];
       }
     }
@@ -219,11 +423,18 @@ function createOntologyRetrieval(deps = {}) {
       truncated: clamped.truncated,
       provenance: req.provenance,
       cache_hit: false,
-      degraded: false,
+      degraded: degradedStages.length > 0,
+      degraded_stages: degradedStages,
       full_denied: fullDenied,
+      domain: req.domain,
+      budget: req.budget,
+      backend: backend.name,
+      backend_configured: backend.configured,
+      generation: req.generation,
       latency_ms: clock() - t0,
     };
-    cache.set(key, out);
+    if (degradedError) out.error = degradedError;
+    cache.set(key, { result: out, constraints });
     telemetry.record({
       event: 'ask', tier: req.model_tier, mode: req.mode,
       seeds: seeds.length, tokens: clamped.tokens, truncated: clamped.truncated,
@@ -236,11 +447,50 @@ function createOntologyRetrieval(deps = {}) {
     return typeof telemetry.snapshot === 'function' ? telemetry.snapshot() : null;
   }
 
-  return { ask, _cache: cache, getTelemetrySnapshot };
+  /** The backend descriptor this brain resolves through (name/url/configured). */
+  function getBackend() { return { ...backend }; }
+
+  return { ask, _cache: cache, getTelemetrySnapshot, getBackend };
 }
 
 // ── Default transport + wiring (so any process gets one identical brain) ─────
 const DEFAULT_API = 'http://visionclaw-server:4000';
+
+/**
+ * Resolve WHICH backend answers, and why. Three distinct situations that the
+ * pre-2026-09-05 code collapsed into one boolean:
+ *
+ *  1. LOOM_FACADE_URL set, no injected vcFetch → the Loom answers. If it is
+ *     then unreachable that is `backend_configured_but_unavailable` — an
+ *     operational fault, NOT a fallback.
+ *  2. LOOM_FACADE_URL unset → VisionClaw is selected by design. Ordinary path.
+ *  3. An explicitly injected vcFetch overrides a set Loom URL (tests, pinning).
+ *
+ * @returns {{name:string,url:string|null,configured:boolean,generation:string|null,reason:string}}
+ */
+function selectBackend(opts = {}, env = process.env) {
+  const loomUrl = String(opts.loomUrl || env.LOOM_FACADE_URL || '').trim();
+  const vcUrl = String(opts.apiUrl || env.VISIONCLAW_API_URL || DEFAULT_API).trim();
+  const generation = opts.generation != null
+    ? String(opts.generation)
+    : (env.LOOM_GENERATION || env.ONTOLOGY_GENERATION || null);
+  if (loomUrl && !opts.vcFetch) {
+    return {
+      name: BACKENDS.LOOM, url: loomUrl, configured: true,
+      generation, reason: BACKEND_REASONS.LOOM_URL_SET,
+    };
+  }
+  if (!vcUrl) {
+    return {
+      name: BACKENDS.NONE, url: null, configured: false,
+      generation, reason: BACKEND_REASONS.NOT_CONFIGURED,
+    };
+  }
+  return {
+    name: BACKENDS.VISIONCLAW, url: vcUrl, configured: true, generation,
+    reason: loomUrl ? BACKEND_REASONS.VC_FETCH_INJECTED : BACKEND_REASONS.LOOM_URL_UNSET,
+  };
+}
 
 /** Build a vcFetch bound to env/config. `authed:true` attaches power_user headers. */
 function makeVcFetch(opts = {}) {
@@ -319,7 +569,9 @@ function defaultExpandFn(vcFetch) {
     const childSparql = `SELECT ?s ?o WHERE { GRAPH <${graph}> { VALUES ?o { ${childValues} } ?s <${SUBCLASS}> ?o . } } LIMIT 60`;
     const run = async (q) => {
       const res = await vcFetch('/api/ontology/sparql', { method: 'POST', authed: true, body: JSON.stringify({ query: q }) });
-      if (res && res.error) throw res;
+      // Tag the sub-stage so the caller's degraded_stages can name `sparql`
+      // specifically, not just "expansion failed somewhere".
+      if (res && res.error) throw Object.assign(new Error(res.message || res.error), { error: res.error, stage: 'sparql' });
       const body = (res && res.data !== undefined) ? res.data : res;
       return (body && body.results && body.results.bindings) || [];
     };
@@ -391,7 +643,8 @@ function loomExpandFn(loomFetch) {
     const childSparql = `SELECT ?s ?o WHERE { VALUES ?o { ${childValues} } ?s <${_SUBCLASS}> ?o . } LIMIT 60`;
     const run = async (q) => {
       const res = await loomFetch('/loom/sparql', { body: JSON.stringify({ query: q }) });
-      if (res && res.error) throw res;
+      // Sub-stage tag — see defaultExpandFn.
+      if (res && res.error) throw Object.assign(new Error(res.message || res.error), { error: res.error, stage: 'sparql' });
       return (res && res.rows) || [];
     };
     // Children first so the downstream budget clamp never trims them (ADR-112).
@@ -412,15 +665,15 @@ function loomExpandFn(loomFetch) {
  * read-truth graph; otherwise it resolves through VisionClaw (unchanged).
  */
 function createDefaultRetrieval(opts = {}) {
-  const loomUrl = opts.loomUrl || process.env.LOOM_FACADE_URL || '';
-  if (loomUrl && !opts.vcFetch) {
+  const backend = selectBackend(opts, opts.env || process.env);
+  if (backend.name === BACKENDS.LOOM) {
     const loomFetch = opts.loomFetch || makeLoomFetch(opts);
     const telemetry = opts.telemetry || createTelemetrySink({ clock: opts.clock, filePath: opts.telemetryPath });
     if (typeof telemetry.canary === 'function') telemetry.canary();
     return createOntologyRetrieval({
       seedFn: loomSeedFn(loomFetch),
       expandFn: loomExpandFn(loomFetch),
-      cache: opts.cache, clock: opts.clock, minMaturity: opts.minMaturity, telemetry,
+      cache: opts.cache, clock: opts.clock, minMaturity: opts.minMaturity, telemetry, backend,
     });
   }
   const vcFetch = opts.vcFetch || makeVcFetch(opts);
@@ -439,6 +692,7 @@ function createDefaultRetrieval(opts = {}) {
     clock: opts.clock,
     minMaturity: opts.minMaturity,
     telemetry,
+    backend,
   });
 }
 
@@ -464,7 +718,16 @@ module.exports = {
   serialiseTurtle,
   breadcrumb,
   cacheKey,
+  cacheEntrySatisfies,
+  normaliseCacheEntry,
   classifyCause,
+  selectBackend,
+  normaliseBackend,
+  CACHE_KEY_FIELDS,
+  DEGRADED_STAGES,
+  DEGRADED_OUTCOMES,
+  BACKENDS,
+  BACKEND_REASONS,
   VC_PREFIXES,
   MATURITY_RANK,
 };

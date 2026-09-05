@@ -19,16 +19,32 @@ const require = createRequire(import.meta.url);
 const propose = require('./ontology-propose.js');
 const { createDefaultRetrieval } = require('./lib/ontology-retrieval.js');
 const { createLocalOntology } = require('./lib/ontology-local.js');
+const authority = require('./lib/ontology-authoring-authority.js');
 
 // Local corpus fallback route (internal dev path). When VisionClaw is
-// unreachable the bridge serves reads/writes from the raw markdown corpus on
-// disk; set AGENTBOX_ONTOLOGY_LOCAL=1 to force it unconditionally.
+// unreachable the bridge serves READS from the raw markdown corpus on disk;
+// set AGENTBOX_ONTOLOGY_LOCAL=1 to force that unconditionally.
+//
+// ADR-2022: local WRITES are a different matter. FORCE_LOCAL selects a backend;
+// it is not an authority to author. Every write dispatched here goes through
+// `assertAuthoringAuthority` first (via the authored-corpus writer below), so
+// the pre-2026-09-05 hole — forced-local dispatch reaching the Markdown-writing
+// helper ahead of the remote guard, with no Whelk check and no human gate — is
+// closed by construction rather than by policy table.
 const FORCE_LOCAL = /^(1|true|yes)$/i.test(process.env.AGENTBOX_ONTOLOGY_LOCAL || '');
 let _local = null;
 function local() {
   if (!_local) _local = createLocalOntology();
   return _local;
 }
+let _writer = null;
+/** The ONLY route from this bridge to the local Markdown-writing helper. */
+function localWriter() {
+  if (!_writer) _writer = authority.createAuthoredCorpusWriter({ backend: local() });
+  return _writer;
+}
+/** Tools that mutate the authored corpus — they never bypass the gate. */
+const LOCAL_WRITE_TOOLS = new Set(['ontology_axiom_add', 'ontology_propose']);
 // A VisionClaw result counts as a network failure (→ fall back to local) when it
 // carries one of these fail-open error codes. Substantive HTTP errors (400/403)
 // are real answers and are NOT masked by the local route.
@@ -38,8 +54,13 @@ function isNetErr(r) {
 }
 // Map each bridge tool to the local backend. Tools absent here have no local
 // equivalent and surface the remote error unchanged.
-function handleLocal(name, args) {
+//
+// `mode` names WHY the local backend is being used ('forced-local' vs
+// 'remote-disabled'); it is passed to the authority gate for the two write
+// tools and ignored by every read.
+function handleLocal(name, args, mode) {
   const L = local();
+  if (LOCAL_WRITE_TOOLS.has(name)) return handleLocalWrite(name, args, mode);
   switch (name) {
     case 'ontology_health': return { ...L.health(), _route: 'local-fallback' };
     case 'ontology_search': return L.search(args);
@@ -51,9 +72,27 @@ function handleLocal(name, args) {
     case 'kg_neighbors': return L.neighbors(args);
     case 'kg_pathfind': return L.pathfind(args);
     case 'ontology_ask': return L.ask(args);
-    case 'ontology_axiom_add': return L.axiomAdd(args);
-    case 'ontology_propose': return L.propose(args);
+    // ontology_axiom_add / ontology_propose are handled above by
+    // handleLocalWrite — never by a direct L.axiomAdd / L.propose call.
     default: return null;
+  }
+}
+
+/**
+ * The gated local-authoring dispatch (ADR-2022). Deny-by-default: an
+ * unauthorised write returns an explicit typed denial naming the missing
+ * authority, and nothing is written. An authorised write returns the
+ * correlation id that links validation → proposal → approval → merge → served
+ * corpus, and that id is also stamped into the artefact's frontmatter.
+ */
+function handleLocalWrite(name, args, mode) {
+  const W = localWriter();
+  const ctx = { mode: mode || authority.AUTHORING_MODES.FORCED_LOCAL };
+  try {
+    return name === 'ontology_axiom_add' ? W.axiomAdd(args, ctx) : W.propose(args, ctx);
+  } catch (err) {
+    if (err instanceof authority.OntologyAuthorityError) return err.toResult();
+    throw err;
   }
 }
 
@@ -274,12 +313,19 @@ try {
 // "no local equivalent" — surface the remote result unchanged.
 async function handleTool(name, args) {
   if (FORCE_LOCAL) {
-    const l = handleLocal(name, args);
+    // ADR-2022: this dispatch still happens BEFORE the remote descriptor — that
+    // is what FORCE_LOCAL means — but the two write tools now pass through the
+    // authority gate on the way, so the ordering no longer confers authority.
+    const mode = authority.resolveAuthoringMode({ forceLocal: true, env: process.env });
+    const l = handleLocal(name, args, mode);
     if (l !== null) return l;
   }
   const remote = await handleRemote(name, args);
   if (isNetErr(remote)) {
-    const l = handleLocal(name, args);
+    // The shared store is unreachable. That withdraws the governed write path;
+    // it does not grant a local one — mode 'remote-disabled' is gated too.
+    const mode = authority.resolveAuthoringMode({ remoteFailed: true, env: process.env });
+    const l = handleLocal(name, args, mode);
     if (l !== null) return l;
   }
   return remote;

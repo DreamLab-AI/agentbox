@@ -86,7 +86,13 @@ test('retrieval: expand fail-open degrades to menu (still returns seeds)', async
   });
   const r = await ret.ask({ query: 'x', model_tier: 'sonnet', mode: 'expand' });
   assert.ok(r.seed_iris.length > 0, 'menu survives expand failure');
-  assert.strictEqual(r.degraded, false, 'expand failure is not a hard degrade');
+  // ADR-2023: degradation is STAGE-SPECIFIC. The call still returns a menu, but
+  // it is a PARTIAL result and must say so — `degraded: false` here was the
+  // reproduced defect (a caller could not tell menu-only from fully expanded).
+  assert.strictEqual(r.degraded, true, 'expand failure is a stage-specific degrade');
+  // The injected failure is a timeout, so the transport sub-stage is named too.
+  assert.deepStrictEqual(r.degraded_stages, ['expansion', 'backend-unavailable'], 'names the failed stages');
+  assert.strictEqual(r.error, 'expansion_unavailable');
 });
 
 test('retrieval: cache hit on identical request', async () => {

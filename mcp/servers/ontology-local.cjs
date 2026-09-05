@@ -37,6 +37,23 @@ if (!createLocalOntology) {
   process.exit(2);
 }
 
+// ADR-2054: `add` is an authored-corpus WRITE and must cross the same authority
+// gate as the bridge's ontology_axiom_add — being a CLI is not an authority.
+// Resolved the same way as the ontology lib above (repo first, then /opt).
+const AUTHORITY_CANDIDATES = [
+  path.resolve(__dirname, 'lib/ontology-authoring-authority.js'),
+  '/home/devuser/workspace/project/agentbox/mcp/servers/lib/ontology-authoring-authority.js',
+  '/opt/agentbox/mcp/servers/lib/ontology-authoring-authority.js',
+];
+let authority;
+for (const p of AUTHORITY_CANDIDATES) {
+  try { if (fs.existsSync(p)) { authority = require(p); break; } } catch { /* next */ }
+}
+if (!authority) {
+  console.error('ERROR: ontology-authoring-authority.js not found in:\n  ' + AUTHORITY_CANDIDATES.join('\n  '));
+  process.exit(2);
+}
+
 const argv = process.argv.slice(2);
 function opt(name, def) {
   const i = argv.indexOf('--' + name);
@@ -66,7 +83,22 @@ function main() {
     case 'add': {
       const [, subject, relation, object] = positional;
       const axiom_type = RELATION_TO_AXIOM[relation] || relation;
-      out = onto.axiomAdd({ axiom_type, subject, object });
+      // ADR-2054: never call onto.axiomAdd directly. The gated writer is the ONLY
+      // sanctioned route to the Markdown-writing helper; a denial is a typed
+      // result, never a silent write and never a silent no-op.
+      const writer = authority.createAuthoredCorpusWriter({ backend: onto });
+      try {
+        out = writer.axiomAdd(
+          { axiom_type, subject, object },
+          { mode: authority.AUTHORING_MODES.FORCED_LOCAL },
+        );
+      } catch (err) {
+        if (err instanceof authority.OntologyAuthorityError) {
+          console.log(JSON.stringify(err.toResult(), null, 2));
+          process.exit(1);
+        }
+        throw err;
+      }
       break;
     }
     default:

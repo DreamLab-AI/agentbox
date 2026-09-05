@@ -3,12 +3,12 @@ id: ADR-2022
 title: Governed ontology writes only — the ungoverned axiom-load backdoor stays disabled outside bootstrap
 date: 2026-08-31
 decision_status: accepted
-implementation_status: complete
+implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d3920a4eecc87268e87ce35a0e69f21bf6327b1e
-verified_paths: [agentbox.toml]
+verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_paths: [agentbox.toml, mcp/servers/ontology-bridge.js, mcp/servers/ontology-propose.js, mcp/servers/lib/ontology-local.js]
 owner: jjohare
 review_trigger: any change to direct_axiom_load default, or the authority-class of ontology_axiom_load
 repo: agentbox
@@ -21,7 +21,7 @@ lineage: legacy ADR-023 (ontology bridge), ADR-054 (ontology-bridge write-path f
 ## Context
 
 The shared ontology has two write paths. The governed one (PRD-014 Seam D/D2):
-`ontology_propose` → Whelk consistency check → human approval → PR. The legacy
+`ontology_propose` → Whelk consistency check → staged result or PR → human review/merge. The legacy
 ungoverned one: a raw `POST /api/ontology/load` reachable through
 `ontology_axiom_add`, which writes axioms with no consistency gate and no human
 in the loop. The ontology-bridge write-path review (ADR-054) flagged this as an
@@ -31,7 +31,7 @@ unguarded backdoor into a shared, consistency-critical resource.
 
 `direct_axiom_load` defaults **false**, so `ontology_axiom_add` refuses and
 redirects the caller to the governed path. Personal-KG concepts reach the shared
-ontology only through `ontology_propose → Whelk → human approval → PR`. The raw
+ontology only through `ontology_propose → Whelk → PR → human review/merge`. The raw
 `POST /api/ontology/load` backdoor is classified **zero-tolerance** in the
 authority table — set the flag true only for admin/bootstrap, where a signed
 authorisation is required. The named invariant lives in
@@ -39,8 +39,10 @@ authorisation is required. The named invariant lives in
 
 ## Consequences
 
-- No agent can mutate the shared ontology without passing Whelk consistency and
-  a human merge, so an inconsistent or hallucinated axiom cannot land silently.
+- The remote direct-load default prevents that descriptor from issuing an
+  ungoverned load. It does not enforce all local authoring paths: forced-local
+  dispatch precedes the remote guard and can edit the authored corpus directly.
+  Implementation is therefore partial for the broad governed-writes invariant.
 - Bootstrap/admin bulk-load still exists but is an explicit, signed,
   zero-tolerance action — deliberately slow and auditable.
 - Cost: routine enrichment is gated behind a PR round-trip; there is no fast
@@ -52,3 +54,99 @@ At `cbe7335b9`, `agentbox.toml`: `direct_axiom_load = false` (:638) with rationa
 at :634-637 ("Default off = ontology_axiom_add refuses + redirects");
 `ontology_axiom_load = "zero-tolerance"` in `[skills.authority.classes]` (:724),
 commented "ungoverned KG write backdoor".
+
+## Closeout extension — 2026-09-04
+
+**Work package:** CP-02 / CP-04 / CP-05. **Owner:** existing owner above, with
+VisionClaw and authored-corpus maintainers at the promotion boundary.
+
+**Status correction:** prior `implementation_status: complete` was supported
+only by manifest defaults. Current source at `89301ec7c911eab270c00a0cf81596d0d4f15535` retains
+`direct_axiom_load = false`, but `FORCE_LOCAL` dispatch occurs before the remote
+axiom descriptor and calls a Markdown-writing helper. The [actual helper probe](../../../../VisionFlow/docs/estate-review/evidence/agent-snapshot.json)
+edited a temporary corpus without a Whelk or human gate. This establishes local
+authoring, not a demonstrated remote shared-store bypass on default network
+failure. The broad invariant now has partial implementation; activation of the
+existing paths is not newly verified by this review.
+
+**Acceptance:** name and enforce the authority for local authoring separately
+from shared-ontology promotion. Test forced-local, remote-disabled, bootstrap
+and governed-proposal modes; require correlation from validation through PR,
+approval, merge and served corpus generation. A policy-table classification
+alone does not prove that every caller invokes the authority gate. Close this
+record only when those routes satisfy the declared policy or an explicit
+revision bounds the decision.
+
+## Acceptance progress — 2026-09-05
+
+- **Implemented**
+  - New `mcp/servers/lib/ontology-authoring-authority.js`: a single named gate,
+    `assertAuthoringAuthority({mode, manifest, env, target, operation})`, plus
+    `createAuthoredCorpusWriter()` — the ONLY sanctioned route from any caller to the
+    Markdown-writing helper (`ontology-local.js` `axiomAdd`/`propose`). Both writer entry
+    points call the gate before touching the backend.
+  - Four enforced modes. `forced-local` requires `AGENTBOX_ONTOLOGY_LOCAL` **and** an
+    explicit opt-in `ONTOLOGY_LOCAL_AUTHORING=1` **and** manifest
+    `skills.ontology.local_authoring = true`, and is confined to the local authored corpus.
+    `remote-disabled` requires the same opt-in minus the selector — an outage withdraws the
+    governed write path, it does not grant a local one. `bootstrap` is zero-tolerance:
+    `AGENTBOX_ONTOLOGY_BOOTSTRAP=1`, a recorded authorisation reference, and
+    `direct_axiom_load = true`. `governed-proposal` is the only mode that may target the
+    shared ontology, and only via the proposal/PR route (it writes no local file).
+  - Deny by default. An unknown or absent mode is denied; an absent manifest key is `false`.
+    Every denial is a typed `OntologyAuthorityError` carrying `missing_authority[]` naming the
+    exact authorities that were absent — never a silent no-op and never a silent write.
+  - `direct_axiom_load = false` now actually blocks a direct axiom load in `forced-local`,
+    `remote-disabled` and `bootstrap`; in `governed-proposal` the request is **converted** into
+    a proposal rather than executed. The local-authoring opt-in does not unlock the backdoor.
+  - Correlation: every authorised write carries an id (`ont-auth-<ts>-<12 hex>`, `node:crypto`)
+    returned to the caller with the chain `validation → proposal → approval → merge →
+    served-corpus`, and stamped into the artefact's V2 frontmatter
+    (`ontology-authoring-correlation` / `-mode` / `-stage`) via `lib/vault-frontmatter`.
+  - `mcp/servers/ontology-bridge.js`: `ontology_axiom_add` and `ontology_propose` dispatch
+    through `handleLocalWrite` → the gated writer, in both the FORCE_LOCAL branch and the
+    network-failure fallback branch (each passing its own named mode). No direct
+    `L.axiomAdd` / `L.propose` call remains in the bridge.
+
+- **Tests and results**
+  - `node --test tests/integration/ontology-authoring-authority.test.mjs` — **24 tests, 24
+    pass, 0 fail** (hermetic: temp corpus, injected env + manifest, no network). Covers
+    forced-local without opt-in (typed denial, corpus byte-identical), forced-local with
+    opt-in (write allowed, correlation id in the return value *and* the artefact),
+    remote-disabled both ways, bootstrap denied/authorised, governed-proposal targeting the
+    shared store, direct axiom load blocked in every non-governed mode under
+    `direct_axiom_load = false`, deny-by-default on an unknown mode, a gate spy proving both
+    writer entry points invoke the gate exactly once and that a denying gate never reaches the
+    Markdown helper, and a static guard pinning the complete set of direct callers of the
+    writing helper across `mcp/servers/**`.
+  - Regression: `node --test mcp/servers/lib/__tests__/*.test.js` — 20/20 pass (vault
+    frontmatter, unchanged); `node --test mcp/servers/lib/ontology-push.test.js` — 5/5 pass.
+
+- **Receipts**
+  - `docs/estate-closeout/2026-09-05/adr-2022-authoring-authority.json` (source hashes, mode
+    table, enforcement rules, fixture list, limitations).
+
+- **Remaining**
+  - `mcp/servers/ontology-local.cjs:69` still calls `onto.axiomAdd(...)` directly — a
+    standalone CLI front-end outside this change's edit scope. The static-guard test pins the
+    complete caller set so it cannot grow and the bridge cannot regress into it; routing the
+    CLI through the gate is the next step.
+  - `skills.ontology.local_authoring` does not exist in `agentbox.toml`, so local authoring is
+    denied in every mode as shipped. Enabling it is a deliberate, reviewable manifest edit.
+  - The remote `ontology_axiom_add` path keeps its existing `ontology-propose.js` guard and was
+    not re-routed through this gate, to avoid changing the admin/bootstrap remote-load contract
+    in the same change.
+  - The bootstrap authorisation reference is recorded, not verified, here; signature
+    verification remains the management-api authority consumer's job. Carrying one correlation
+    id through a real Whelk validation → PR → approval → merge → served corpus still requires
+    the VisionClaw-side stages to accept and echo it.
+  - `implementation_status` stays `partial`: the local-authoring authority is now named and
+    enforced for the bridge, but the end-to-end correlated promotion chain is not demonstrated.
+
+- **Governed paths changed**
+  - `ontology_axiom_add` and `ontology_propose` on the local route are now authority-gated at
+    the bridge; both return an explicit authorisation verdict (`authorised`, `mode`,
+    `governed`, `route`, `correlation_id`) or a typed denial. Callers can recognise the
+    authority change before acting on the result — local authoring reports `governed: false`.
+  - No change to the remote governed path (`/api/ontology-agent/propose`), to
+    `direct_axiom_load`'s default, or to the `ontology_axiom_load` authority class.

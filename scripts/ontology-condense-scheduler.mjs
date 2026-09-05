@@ -38,7 +38,9 @@
  *   ONTOLOGY_CONDENSE_SCHEDULE              bool  scheduler gate (default off)
  *   ONTOLOGY_CONDENSE_SCHEDULE_INTERVAL_MINS int  loop cadence (default 60)
  *   ONTOLOGY_CONDENSE_SCHEDULE_MAX_AGE_HOURS int  rebuild-anyway floor (default 24)
- *   ONTOLOGY_PAGES_DIR      corpus dir (default logseq mainKnowledgeGraph/pages)
+ *   ONTOLOGY_PAGES_DIR      deprecated corpus-dir override; honoured only while the
+ *                           vault is enabled, or with AGENTBOX_VAULT_LEGACY_PATHS=1
+ *   VAULT_PAGES             the [vault] path authority (ADR-2028)
  *   ONTOLOGY_CONDENSED_OUT  condense output = the "index built at" marker
  *
  * Modes:
@@ -100,7 +102,24 @@ function intGate(name, def) {
 // resolved (VAULT_PAGES); ONTOLOGY_PAGES_DIR remains the explicit override for
 // one release. No hard-coded fallback — an unconfigured vault returns '' and
 // the tick below disables itself loudly rather than watching a stale tree.
+//
+// Precedence guard (ADR-2028 closeout 2026-09-05), mirroring _ab_vault_resolve():
+// ONTOLOGY_PAGES_DIR is honoured ONLY while the vault is ENABLED, or under the
+// explicit AGENTBOX_VAULT_LEGACY_PATHS=1 opt-in. With AGENTBOX_VAULT_ENABLED=0
+// and no opt-in the tick REFUSES the legacy path and reports an error status
+// (exit 2 for --once/--dry-run, and the loop stops): a refused path is an
+// operator configuration error that no amount of retrying will fix, so the
+// house fail-open rule — which exists for transient faults — does not apply.
+const EXIT_LEGACY_PATH_REFUSED = 2;
+const VAULT_DISABLED = process.env.AGENTBOX_VAULT_ENABLED === '0';
+const LEGACY_PATHS_OPT_IN = /^(1|true|yes|on)$/i.test(process.env.AGENTBOX_VAULT_LEGACY_PATHS || '');
+
+function legacyPathRefused() {
+  return VAULT_DISABLED && !LEGACY_PATHS_OPT_IN && !!process.env.ONTOLOGY_PAGES_DIR;
+}
 function pagesDir() {
+  if (legacyPathRefused()) return '';
+  if (VAULT_DISABLED && !LEGACY_PATHS_OPT_IN) return process.env.VAULT_PAGES || '';
   return process.env.ONTOLOGY_PAGES_DIR || process.env.VAULT_PAGES || '';
 }
 function condensedOut() {
@@ -187,6 +206,11 @@ async function tick({ dryRun = false } = {}) {
     // ADR-2028 D3: with no [vault] there is no corpus to watch. Disable loudly
     // rather than firing a long LLM condensation pass over an empty directory
     // and overwriting good outputs with nothing.
+    if (legacyPathRefused()) {
+      log('ERROR', `REFUSING legacy corpus path ONTOLOGY_PAGES_DIR='${process.env.ONTOLOGY_PAGES_DIR}' — AGENTBOX_VAULT_ENABLED=0 (the manifest declares no [vault]), so the scheduler must not watch or condense a pre-vault tree. `
+        + 'Set [vault].root in agentbox.toml, or export AGENTBOX_VAULT_LEGACY_PATHS=1 to opt in deliberately. Nothing run.');
+      return { status: 'error', reason: 'legacy-path-vault-disabled' };
+    }
     if (!pagesDir()) {
       log('INFO', '[vault] disabled — no corpus path (set [vault].root in agentbox.toml, or ONTOLOGY_PAGES_DIR); scheduler is a no-op.');
       return { status: 'skipped', reason: 'vault-disabled' };
@@ -225,14 +249,14 @@ async function mainOnce() {
   }
   const r = await tick({ dryRun: false });
   process.stdout.write(`scheduler --once: ${r.status}${r.reason ? ` (${r.reason})` : ''}.\n`);
-  return 0;
+  return r.reason === 'legacy-path-vault-disabled' ? EXIT_LEGACY_PATH_REFUSED : 0;
 }
 
 async function mainDryRun() {
   // Ungated read-only inspection of the staleness decision.
   const r = await tick({ dryRun: true });
   process.stdout.write(`scheduler --dry-run: ${r.status}${r.reason ? ` (${r.reason})` : ''}.\n`);
-  return 0;
+  return r.reason === 'legacy-path-vault-disabled' ? EXIT_LEGACY_PATH_REFUSED : 0;
 }
 
 async function mainLoop() {
@@ -249,6 +273,10 @@ async function mainLoop() {
     }
     const r = await tick({ dryRun: false });
     log('INFO', `tick: ${r.status}${r.reason ? ` (${r.reason})` : ''}.`);
+    if (r.reason === 'legacy-path-vault-disabled') {
+      log('ERROR', 'corpus path refused — exiting the loop (a configuration error, not a transient fault).');
+      return EXIT_LEGACY_PATH_REFUSED;
+    }
     if (!running) break;
     const mins = Math.max(1, intGate('ONTOLOGY_CONDENSE_SCHEDULE_INTERVAL_MINS', 60));
     // Jitter ±20% to avoid synchronised rebuilds across a fleet.
