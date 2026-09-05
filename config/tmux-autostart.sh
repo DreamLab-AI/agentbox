@@ -24,6 +24,184 @@ WORKSPACE_DIR="${WORKSPACE}"
 VAULT_ROOT="${VAULT_ROOT:-${WORKSPACE}/vault}"
 FISH="$(which fish 2>/dev/null || echo fish)"
 
+# ============================================================================
+# Window 9: Notes — Rune, the vault's markdown TUI (ADR-2029)
+# ----------------------------------------------------------------------------
+# Opens at the Obsidian vault root so [[wikilinks]], frontmatter, tables and
+# embeds resolve. Rune also climbs to the nearest .obsidian/.git marker on its
+# own, but -w is passed explicitly so the window does not depend on that.
+#
+# Presence-detect mirrors the Sessions window (ADR-042): run the binary when it
+# exists, otherwise print the rebuild notice. Two sources satisfy the check —
+# the baked Nix package (gated on [vault].tui = "rune") and, until the image is
+# rebuilt, the interim source build in ~/workspace/.cargo/bin (ADR-2029 D4).
+# The entrypoint adds that directory to PATH globally; the window re-adds it via
+# `new-window -e` so this script also works when launched standalone.
+#
+# GATES (ADR-2029 closeout, 2026-09-05). Binary discovery is NOT the decision.
+# Three checks run before anything is launched, and each refusal leaves the
+# window in place on a normal shell with a message naming the cause:
+#
+#   1. AGENTBOX_VAULT_ENABLED=0 — the VAULT gate (ADR-2028). No [vault] in the
+#      manifest means there is no authored corpus to open at all. Unset is
+#      treated as enabled, so a standalone launch with a real vault behaves as
+#      before.
+#
+#   2. VAULT_TUI (manifest key [vault].tui) — an EXECUTION off-switch.
+#      `tui = "none"`, and equally an empty or unset value, means this window
+#      does NOT run the TUI even when a rune binary is present — including the
+#      interim ~/workspace/.cargo/bin fallback, which is precisely the case
+#      where "the binary exists" and "the operator asked for it" diverge.
+#
+#      This is deliberately distinct from PACKAGE SELECTION. The Nix package set
+#      bakes rune into the image only when [vault].tui = "rune" at BUILD time
+#      (ADR-2029 D1), and that gate is evaluated in flake.nix, not here. The two
+#      answer different questions — "is the binary in the image?" (build-time,
+#      rebuild-class) and "may this window run it?" (runtime, restart-class) —
+#      and they can legitimately disagree, so the pane message says which gate
+#      refused and names the manifest key. The operator distinction the ADR
+#      closeout asked for is therefore explicit at the point of refusal.
+#
+#   3. Recovery home — Rune keeps its crash journal, persistent undo and 3-way
+#      merge bookkeeping in ONE global SQLite database at
+#      "$HOME/Library/Application Support/rune/rune-v2.db" (macOS-shaped on
+#      every OS, not XDG, not per-vault). /home/devuser is a read-only layer
+#      here, so the process HOME is redirected to $WORKSPACE/.rune-home on the
+#      bind mount; the pane shell keeps the real HOME. If that directory cannot
+#      be created, is not a directory, or is not writable, the window does NOT
+#      launch degraded: a degraded Rune ("history disabled — storage
+#      unavailable") silently loses exactly the external-change bookkeeping that
+#      makes concurrent agent/operator edits to the same page safe. The pane gets
+#      the path, the reason and the fix instead.
+# ============================================================================
+_notes_say() { tmux send-keys -t "${SESSION}:9" "echo '$1'" C-m; }
+
+_notes_window() {
+  local cargo_bin="${WORKSPACE}/.cargo/bin"
+  local tui="${VAULT_TUI:-none}"
+  tui="${tui,,}"
+  local vault_enabled="${AGENTBOX_VAULT_ENABLED:-1}"
+
+  # tmux refuses -c on a missing directory. The vault may not be materialised
+  # yet on a fresh checkout, so fall back to the workspace root instead of
+  # losing the window entirely, and say so.
+  local cwd="$VAULT_ROOT" vault_missing=""
+  if [ ! -d "$cwd" ]; then
+    cwd="$WORKSPACE_DIR"
+    vault_missing="1"
+  fi
+
+  local args=()
+  if [ -d "$cargo_bin" ]; then
+    args+=( -e "PATH=${cargo_bin}:${PATH}" )
+  fi
+  tmux new-window -t "${SESSION}:9" -n "Notes" -c "$cwd" "${args[@]}"
+
+  # --- gate 1: the vault itself (ADR-2028) --------------------------------
+  if [ "$vault_enabled" = "0" ]; then
+    _notes_say "  Notes — Rune markdown TUI (not started)"
+    _notes_say ""
+    _notes_say "  Refused by the VAULT gate: AGENTBOX_VAULT_ENABLED=0."
+    _notes_say "  agentbox.toml declares no [vault] section, so there is no authored"
+    _notes_say "  corpus for the TUI to open. This is not a Rune problem."
+    _notes_say "  Fix: set [vault].root (and [vault].tui = \"rune\") in agentbox.toml,"
+    _notes_say "       then restart the container so the entrypoint re-resolves it."
+    return 0
+  fi
+
+  # --- gate 2: [vault].tui — the EXECUTION off-switch ----------------------
+  if [ "$tui" != "rune" ]; then
+    _notes_say "  Notes — Rune markdown TUI (not started)"
+    _notes_say ""
+    _notes_say "  Refused by the manifest key [vault].tui = \"${tui}\" (VAULT_TUI)."
+    _notes_say "  That key is an EXECUTION off-switch: this window will not run the TUI"
+    _notes_say "  even when a rune binary is present, including the interim source build"
+    _notes_say "  in ${cargo_bin}."
+    _notes_say ""
+    _notes_say "  It is a SEPARATE gate from package selection: the image bakes rune only"
+    _notes_say "  when [vault].tui = \"rune\" at build time (flake.nix, rebuild-class), so"
+    _notes_say "  a binary can exist while execution is switched off, and vice versa."
+    _notes_say "  Fix: set [vault].tui = \"rune\" in agentbox.toml and restart the"
+    _notes_say "       container (no rebuild needed if the binary is already present)."
+    return 0
+  fi
+
+  if [ -n "$vault_missing" ]; then
+    _notes_say "  Vault ${VAULT_ROOT} does not exist yet — opening ${cwd} instead."
+  fi
+
+  # --- binary discovery ----------------------------------------------------
+  # Resolved in this (bash) script rather than the pane's shell: panes run fish,
+  # whose PATH syntax differs, and send-keys would race the shell startup.
+  local rune_bin
+  rune_bin="$(command -v rune 2>/dev/null || true)"
+  if [ -z "$rune_bin" ] && [ -x "${cargo_bin}/rune" ]; then
+    rune_bin="${cargo_bin}/rune"
+  fi
+
+  if [ -z "$rune_bin" ]; then
+    _notes_say "  Notes — Rune markdown TUI over the vault"
+    _notes_say ""
+    _notes_say "  The rune binary is not present in this image."
+    _notes_say "  The Notes editor needs the rebuilt image:"
+    _notes_say "    [vault].tui = \"rune\" is already set in agentbox.toml,"
+    _notes_say "    so rebuild on the host (./agentbox.sh rebuild) to bake rune."
+    _notes_say ""
+    _notes_say "  Until then, a source build satisfies this window:"
+    _notes_say "    cargo install --git https://github.com/aka-rider/rune --tag v1.4.0 rune-cli"
+    _notes_say "  It installs to ${cargo_bin}; reopen this window afterwards to pick it up."
+    return 0
+  fi
+
+  # --- gate 3: a writable recovery home, or no launch ----------------------
+  local rune_home="${WORKSPACE}/.rune-home" reason=""
+  if ! mkdir -p "$rune_home" 2>/dev/null; then
+    reason="mkdir -p failed (permission denied, a read-only mount, or a non-directory in the path)"
+  elif [ ! -d "$rune_home" ]; then
+    reason="the path exists but is not a directory"
+  elif ! { : >"${rune_home}/.rune-write-probe"; } 2>/dev/null; then
+    reason="the directory is not writable by $(id -un 2>/dev/null || echo "$USER")"
+  else
+    rm -f "${rune_home}/.rune-write-probe" 2>/dev/null || true
+  fi
+
+  if [ -n "$reason" ]; then
+    _notes_say "  Notes — Rune markdown TUI (not started)"
+    _notes_say ""
+    _notes_say "  Rune needs a WRITABLE recovery home for its crash journal, persistent"
+    _notes_say "  undo and 3-way-merge bookkeeping (SQLite at"
+    _notes_say "  <home>/Library/Application Support/rune/rune-v2.db)."
+    _notes_say "    path:   ${rune_home}"
+    _notes_say "    reason: ${reason}"
+    _notes_say "    fix:    mkdir -p ${rune_home} && chmod u+rwx ${rune_home}"
+    _notes_say "            (the ${WORKSPACE} bind mount must be writable by this user),"
+    _notes_say "            then reopen this window."
+    _notes_say ""
+    _notes_say "  Not launching degraded on purpose: without that store Rune runs with"
+    _notes_say "  history disabled and loses the external-change bookkeeping that makes"
+    _notes_say "  concurrent agent and operator edits to the same page safe (ADR-2029)."
+    return 0
+  fi
+
+  _notes_say "  Notes — Rune markdown TUI over ${cwd} (ADR-2029; ^C quits, F1 help)"
+  tmux send-keys -t "${SESSION}:9" "env HOME='${rune_home}' ${rune_bin} -w '${cwd}'" C-m
+  return 0
+}
+
+# ----------------------------------------------------------------------------
+# Dry-run test hook (ADR-2029 closeout). With AGENTBOX_TMUX_AUTOSTART_DRY_RUN=notes
+# this script evaluates ONLY the Notes-window decision above — against whatever
+# `tmux` is on PATH, which tests/tui/notes-launcher.test.sh replaces with a
+# recording stub — and exits. No session is created and no other window is
+# touched. It is inert unless that exact value is set, and is never set in
+# production (nothing in flake.nix, supervisord or the compose env sets it).
+# ----------------------------------------------------------------------------
+if [ "${AGENTBOX_TMUX_AUTOSTART_DRY_RUN:-}" = "notes" ]; then
+  _notes_window
+  exit 0
+fi
+
+
 # Agentbox install root (dir containing config/ + scripts/). Resolved relative to
 # this script so it works whether launched from the baked image (/opt/agentbox)
 # or the repo bind mount. Used to locate the AoE seed reconciler and wrappers.
@@ -176,81 +354,12 @@ else
 fi
 
 # ============================================================================
-# Window 9: Notes — Rune, the vault's markdown TUI (ADR-2029)
-# ----------------------------------------------------------------------------
-# Opens at the Obsidian vault root so [[wikilinks]], frontmatter, tables and
-# embeds resolve. Rune also climbs to the nearest .obsidian/.git marker on its
-# own, but -w is passed explicitly so the window does not depend on that.
-#
-# Presence-detect mirrors the Sessions window (ADR-042): run the binary when it
-# exists, otherwise print the rebuild notice. Two sources satisfy the check —
-# the baked Nix package (gated on [vault].tui = "rune") and, until the image is
-# rebuilt, the interim source build in ~/workspace/.cargo/bin (ADR-2029 D4).
-# The entrypoint adds that directory to PATH globally; the window re-adds it via
-# `new-window -e` so this script also works when launched standalone.
+# Window 9: Notes — Rune, the vault's markdown TUI (ADR-2029).
+# The whole decision (gates, binary discovery, recovery home, launch) lives in
+# _notes_window(), defined near the top of this script so the dry-run test hook
+# can exercise it without creating a session.
 # ============================================================================
-NOTES_CARGO_BIN="${WORKSPACE}/.cargo/bin"
-# Resolve the binary in this (bash) script rather than relying on the pane's
-# shell: panes run fish, whose PATH syntax differs, and send-keys would race the
-# shell's own startup.
-RUNE_BIN="$(command -v rune 2>/dev/null || true)"
-if [ -z "$RUNE_BIN" ] && [ -x "${NOTES_CARGO_BIN}/rune" ]; then
-  RUNE_BIN="${NOTES_CARGO_BIN}/rune"
-fi
-
-# tmux refuses -c on a missing directory. The vault may not be materialised yet
-# on a fresh checkout, so fall back to the workspace root instead of losing the
-# window entirely, and say so.
-NOTES_CWD="$VAULT_ROOT"
-NOTES_VAULT_MISSING=""
-if [ ! -d "$NOTES_CWD" ]; then
-  NOTES_CWD="$WORKSPACE_DIR"
-  NOTES_VAULT_MISSING="1"
-fi
-
-NOTES_ARGS=()
-if [ -d "$NOTES_CARGO_BIN" ]; then
-  NOTES_ARGS+=( -e "PATH=${NOTES_CARGO_BIN}:${PATH}" )
-fi
-
-tmux new-window -t "${SESSION}:9" -n "Notes" -c "$NOTES_CWD" "${NOTES_ARGS[@]}"
-
-if [ -n "$NOTES_VAULT_MISSING" ]; then
-  tmux send-keys -t "${SESSION}:9" "echo '  Vault ${VAULT_ROOT} does not exist yet — opening ${NOTES_CWD} instead.'" C-m
-fi
-
-if [ -n "$RUNE_BIN" ]; then
-  # Rune keeps its crash journal, persistent undo and 3-way-merge bookkeeping in
-  # ONE global SQLite database at "$HOME/Library/Application Support/rune/
-  # rune-v2.db" — macOS-shaped on every OS, not XDG, not per-vault. Here
-  # /home/devuser is a read-only layer, so under the real HOME that database
-  # cannot be created and Rune starts degraded, banner "history disabled —
-  # storage unavailable": no undo across restarts and no external-change merge
-  # bookkeeping, which is exactly what makes it safe for an agent and the
-  # operator to edit the same page. Point HOME at a writable directory for the
-  # rune process only — the pane's shell keeps the real HOME. The workspace bind
-  # mount is the durable choice; ~/.local is a tmpfs and would not survive a
-  # container restart. Fail-open: if the directory cannot be made, launch
-  # unmodified and let Rune degrade as before.
-  NOTES_RUNE_HOME="${WORKSPACE}/.rune-home"
-  NOTES_LAUNCH="${RUNE_BIN}"
-  if mkdir -p "$NOTES_RUNE_HOME" 2>/dev/null; then
-    NOTES_LAUNCH="env HOME='${NOTES_RUNE_HOME}' ${RUNE_BIN}"
-  fi
-  tmux send-keys -t "${SESSION}:9" "echo '  Notes — Rune markdown TUI over ${NOTES_CWD} (ADR-2029; ^C quits, F1 help)'" C-m
-  tmux send-keys -t "${SESSION}:9" "${NOTES_LAUNCH} -w '${NOTES_CWD}'" C-m
-else
-  tmux send-keys -t "${SESSION}:9" "echo '  Notes — Rune markdown TUI over the vault'" C-m
-  tmux send-keys -t "${SESSION}:9" "echo ''" C-m
-  tmux send-keys -t "${SESSION}:9" "echo '  The rune binary is not present in this image.'" C-m
-  tmux send-keys -t "${SESSION}:9" "echo '  The Notes editor needs the rebuilt image:'" C-m
-  tmux send-keys -t "${SESSION}:9" "echo '    set [vault].tui = \"rune\" in agentbox.toml,'" C-m
-  tmux send-keys -t "${SESSION}:9" "echo '    then rebuild on the host (./agentbox.sh rebuild) to bake rune.'" C-m
-  tmux send-keys -t "${SESSION}:9" "echo ''" C-m
-  tmux send-keys -t "${SESSION}:9" "echo '  Until then, a source build satisfies this window:'" C-m
-  tmux send-keys -t "${SESSION}:9" "echo '    cargo install --git https://github.com/aka-rider/rune --tag v1.4.0 rune-cli'" C-m
-  tmux send-keys -t "${SESSION}:9" "echo '  It installs to ${NOTES_CARGO_BIN}; reopen this window afterwards to pick it up.'" C-m
-fi
+_notes_window
 
 # ============================================================================
 # Harness-merge helper — reworked for the AoE per-session worktree model.

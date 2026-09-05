@@ -27,7 +27,7 @@
  *   E050-E052, W050-W052    ACI MCP + tree-search (ADR-020 / PRD-008)
  *   E-PAY1, E-PAY2, E-PAY3, W-PAY1
  *                           payments.consumer spend-policy coherence
- *   W066                    memory-learning consumer-ahead-of-producer
+ *   E066/W066/E067          memory-learning consumer-ahead-of-producer (ADR-2017)
  *                           coherence (PRD-018 / ADR-036 D6)
  *
  * Reserved / retired codes (do not reuse):
@@ -584,14 +584,26 @@ if (observability.metrics_port !== undefined) {
       });
     }
 
-    // W039: allowlist with empty allowed_pubkeys means the relay only accepts
-    // its own npub — operators rarely want this. Often a copy-paste error
-    // where they switched to allowlist but forgot to populate the list.
+    // W039: allowlist with an empty allowed_pubkeys is the ADR-2012 DENY-ALL
+    // policy, not a soft default. There is NO local-npub fallback in either
+    // backend — the earlier wording described behaviour no code implements:
+    //   * embedded pod_bridge — publisher admission runs at the relay boundary,
+    //     so every remote author is refused with a NIP-20 `blocked:` OK before
+    //     the event is stored, broadcast or acknowledged, and nothing reaches
+    //     the pod inbox. The agent's own locally-signed egress (session
+    //     summaries, project digests) is unaffected: it is not a remote
+    //     publisher and is persisted to the pod directly.
+    //   * standalone nostr-rs-relay — the generated config emits an explicit
+    //     empty `pubkey_whitelist`, which rejects EVERY author including the
+    //     local key.
+    // Still a warning, not an error: deny-all is a legitimate posture for a
+    // relay with no peers yet. It is flagged because it is far more often a
+    // half-finished switch to allowlist than a deliberate lockdown.
     if (relay.ingress_policy === 'allowlist'
         && (!Array.isArray(relay.allowed_pubkeys) || relay.allowed_pubkeys.length === 0)) {
       warnings.push({
         code: 'W039',
-        message: 'W039: sovereign_mesh.relay.ingress_policy="allowlist" but allowed_pubkeys is empty — only the local npub will be accepted; populate allowed_pubkeys or switch to ingress_policy="signed-only"'
+        message: 'W039: sovereign_mesh.relay.ingress_policy="allowlist" with an empty allowed_pubkeys is DENY-ALL (ADR-2012) — every remote publisher is rejected at the relay boundary and nothing reaches the pod inbox; there is no local-npub fallback (the standalone nostr-rs-relay backend rejects the local key too, while the embedded bridge still publishes its own egress). Populate allowed_pubkeys, or set ingress_policy="signed-only" to accept any validly signed author'
       });
     }
 
@@ -1210,6 +1222,64 @@ if (ldEnabled) {
   }
 }
 
+// ─── E070-E072 / W070: deepsec Security gate (ADR-2033) ──────────────────────
+//
+// E070 — [security.deepsec].enabled=true requires [toolchains].deepsec=true
+//         (the gate script needs the baked `deepsec` CLI on PATH).
+// E071 — model route pairing: model_auth=local + agent=claude requires
+//         toolchains.claude_code; local + codex requires toolchains.codex;
+//         local + pi is invalid; direct requires ai_provider anthropic|openai
+//         and a non-empty ai_api_key_env; custom requires agent=pi,
+//         ai_api_key_env and ai_base_url.
+// E072 — ai_api_key_env must be an env-var NAME (schema pattern) and must not
+//         look like a credential value.
+// W070 — [toolchains].deepsec=true while [security.deepsec].enabled=false:
+//         the binary is baked but the gate reports SKIPPED (78) on every run.
+{
+  const tc = manifest.toolchains || {};
+  const ds = (manifest.security || {}).deepsec || {};
+  const baked = tc.deepsec === true;
+  if (ds.enabled === true) {
+    if (!baked) {
+      errors.push({
+        code: 'E070',
+        message: 'E070: [security.deepsec].enabled=true requires [toolchains].deepsec=true (the gate script executes the baked `deepsec` CLI — ADR-2033)',
+      });
+    }
+    const agent = ds.agent || 'claude';
+    const auth = ds.model_auth || 'local';
+    const keyEnv = ds.ai_api_key_env || '';
+    if (auth === 'local') {
+      if (agent === 'claude' && tc.claude_code !== true) {
+        errors.push({ code: 'E071', message: 'E071: [security.deepsec] model_auth="local" with agent="claude" requires [toolchains].claude_code=true (the logged-in `claude` CLI is the credential — ADR-2033)' });
+      } else if (agent === 'codex' && tc.codex !== true) {
+        errors.push({ code: 'E071', message: 'E071: [security.deepsec] model_auth="local" with agent="codex" requires [toolchains].codex=true (ADR-2033)' });
+      } else if (agent === 'pi') {
+        errors.push({ code: 'E071', message: 'E071: [security.deepsec] model_auth="local" supports agent="claude"|"codex" only; use model_auth="custom" for pi (ADR-2033)' });
+      }
+    } else if (auth === 'direct') {
+      if (!['anthropic', 'openai'].includes(ds.ai_provider || '')) {
+        errors.push({ code: 'E071', message: 'E071: [security.deepsec] model_auth="direct" requires ai_provider="anthropic"|"openai" (ADR-2033)' });
+      }
+      if (!keyEnv) {
+        errors.push({ code: 'E071', message: 'E071: [security.deepsec] model_auth="direct" requires ai_api_key_env (the NAME of the env var holding the key — ADR-2033)' });
+      }
+    } else if (auth === 'custom') {
+      if (agent !== 'pi' || !keyEnv || !ds.ai_base_url) {
+        errors.push({ code: 'E071', message: 'E071: [security.deepsec] model_auth="custom" requires agent="pi", ai_api_key_env and ai_base_url (OpenAI-compatible endpoint such as the Loom façade — ADR-2033)' });
+      }
+    }
+    if (keyEnv && /^(sk-|vck_|key-|[A-Za-z0-9+/=_-]{40,})$/.test(keyEnv)) {
+      errors.push({ code: 'E072', message: 'E072: [security.deepsec].ai_api_key_env looks like a credential VALUE; it must be the NAME of an environment variable (ADR-2033 — never store secrets in the manifest)' });
+    }
+  } else if (baked) {
+    warnings.push({
+      code: 'W070',
+      message: 'W070: [toolchains].deepsec=true bakes the deepsec CLI but [security.deepsec].enabled is not true — the build-with-quality Security gate will exit 78 (SKIPPED) on every run (ADR-2033)',
+    });
+  }
+}
+
 // ─── E050-E052 / W050-W052: ACI MCP + tree-search (ADR-020 / PRD-008) ───────
 //
 // E050 — aci_shell.enabled=true requires code_interpreter.enabled=true
@@ -1349,15 +1419,46 @@ if (ldEnabled) {
 {
   const ml = manifest.memory_learning || {};
   const consumersOn = ml.feed_retrieval === true || ml.feed_routing === true;
-  if (consumersOn && ml.record_trajectories !== true) {
-    const which = [
-      ml.feed_retrieval === true ? 'feed_retrieval' : null,
-      ml.feed_routing === true ? 'feed_routing' : null,
-    ].filter(Boolean).join(' and ');
-    warnings.push({
-      code: 'W066',
-      message: `W066: [memory_learning].${which} = true while record_trajectories = false — a consumer is enabled ahead of its producer; the effectiveness aggregates these consumers read are produced by the trajectory-recording hook, so with record_trajectories off they have no corpus and stay inert (ADR-036 D6)`,
+  const which = [
+    ml.feed_retrieval === true ? 'feed_retrieval' : null,
+    ml.feed_routing === true ? 'feed_routing' : null,
+  ].filter(Boolean).join(' and ');
+
+  // ADR-2017 closeout (2026-09-05): the chosen invariant is a QUALIFIED
+  // RETAINED CORPUS — a consumer may run behind a stopped producer only when an
+  // operator has explicitly accepted the corpus it will read. So the diagnostic
+  // splits in two:
+  //
+  //   E066 (blocking)  consumer on, producer off, corpus NOT accepted. This is
+  //                    the state the estate review reproduced: nobody has
+  //                    decided the aggregates are fit to use, yet they move
+  //                    scores. Previously this passed as an advisory warning.
+  //   W066 (advisory)  consumer on, producer off, corpus explicitly accepted.
+  //                    Legitimate reuse, but it must stay visible: the corpus
+  //                    ages and nothing is replenishing it.
+  //
+  // A consumer behind an OFF master gate is E067 — the master is the outer
+  // boundary, and an accepted corpus does not reopen it.
+  if (consumersOn && ml.enabled !== true) {
+    errors.push({
+      code: 'E067',
+      message: `E067: [memory_learning].${which} = true while enabled = false — a learning consumer is enabled behind an off master gate. The master gate is the outer boundary: set enabled = true, or turn the consumer off (ADR-2017)`,
     });
+  }
+
+  if (consumersOn && ml.record_trajectories !== true) {
+    const accepted = typeof ml.retained_corpus_accepted === 'string' && ml.retained_corpus_accepted.trim() !== '';
+    if (!accepted) {
+      errors.push({
+        code: 'E066',
+        message: `E066: [memory_learning].${which} = true while record_trajectories = false and no retained_corpus_accepted receipt is declared — a consumer would score against a corpus nobody has accepted (ADR-2017 producer-before-consumer). Either enable record_trajectories, turn the consumer off, or declare retained_corpus_accepted = "<receipt id>" to reuse the retained corpus deliberately (the runtime additionally rejects a corpus older than [memory_learning].retained_corpus_max_age_days)`,
+      });
+    } else {
+      warnings.push({
+        code: 'W066',
+        message: `W066: [memory_learning].${which} = true while record_trajectories = false — running a consumer off the RETAINED corpus accepted as "${ml.retained_corpus_accepted}". This is permitted (ADR-2017), but nothing is replenishing that corpus: it ages out at [memory_learning].retained_corpus_max_age_days (default 30) and the runtime will then withhold the effect`,
+      });
+    }
   }
 }
 

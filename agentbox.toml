@@ -636,6 +636,13 @@ visionclaw_api_url = "http://visionclaw-server:4000"
 # admin/bootstrap. Default off = ontology_axiom_add refuses + redirects.
 direct_axiom_load = false
 
+# ADR-2054: local authoring of ontology classes into the agentbox-side store.
+# This has always been the effective default by ABSENCE — no consumer reads a
+# missing key as permissive — but a deny that exists only as an omission is not
+# reviewable. Declared explicitly so the refusal is visible in the manifest and
+# a future change to it shows up in a diff.
+local_authoring = false
+
 # Offline ontology condensation (PRD-020 WS-2 / ADR-113). A cheap LOCAL LLM
 # summarises every KG class into one retrieval sentence + a synonym list, which
 # enriches the PUSH Class-Summary cache (search optimisation) and RuVector
@@ -841,6 +848,58 @@ sidecar = false
 
 [gpu]
 backend = "local-cuda"
+
+# ── Resource topology (ADR-2034) ──────────────────────────────────────────────
+# The container envelope and the resident overhead paths. Measured 2026-09-05
+# (docs/reference/resource-topology-2026-09.md): the 30-CPU cap sat in the
+# hand-edited compose override against a 72-thread host, and ≈7 of the 9.7
+# cores in use were per-tool-call ruflo CLI hook boots plus 25 GB of
+# per-session MCP server copies. This table is projected by flake.nix into the
+# generated docker-compose.yml (deploy limits, cpuset, cpu_shares, pids_limit,
+# shm, tmpfs sizes — apply class BOOT: compose re-up) and into the supervisor
+# (hub, hook drain, teammate reaper — apply class REBUILD).
+[resources]
+envelope        = true                          # emit deploy/cpuset/pids/shm into the generated compose
+cpus            = 56                            # of 72 host threads; 16 left for host + sidecars (browser 4, gui-tools 8)
+cpus_reserve    = 16
+cpuset          = "0-13,36-49,18-31,54-67"      # 14 cores + HT siblings per NUMA node (2× Xeon 6154)
+cpu_shares      = 1024
+memory          = "256G"
+memory_reserve  = "96G"
+pids_limit      = 32768                         # 7,305 live at measurement; guard against fork storms
+shm             = "32G"
+gpu_reservation = true                          # nvidia device reservation rides in the generated compose
+
+[resources.tmpfs]
+run   = "256M"                                  # hook spools + hub config + reaper state live here
+tmp   = "2G"
+npm   = "1G"                                    # was 256M and 100 % full → npx ENOSPC
+cache = "4G"                                    # was 1G at 85 %
+
+[resources.mcp_hub]                             # ADR-2034 §2 — one process per stateless MCP server
+enabled = true
+bind    = "127.0.0.1:9720"                      # loopback only; the binary refuses anything else
+url     = "http://127.0.0.1:9720"
+servers = [
+  "consultant-codex", "consultant-perplexity", "consultant-deepseek", "consultant-antigravity",
+  "web-researcher", "ontology-bridge", "ruvnet-brain", "precedent-bridge", "harness-bridge", "perplexity",
+]
+# Stays per-session (stateful): claude-flow (memory mandate), code-interpreter
+# (kernel per session), aci-shell (per-agent DID), codebase-memory (already a
+# daemon client), agentic-qe (in-memory backend).
+
+[resources.hooks]                               # ADR-2034 §1 — resident hook shim
+shim                = true                      # boot rewrites project settings to `agentbox-hook event`
+drain_interval_secs = 30
+
+[resources.session_hygiene]                     # ADR-2034 — idle teammate reaper
+enabled       = true
+reap          = true                            # false = report only
+idle_secs     = 1800
+interval_secs = 60
+
+[resources.services]
+nice = 10                                       # CFS weight for background supervised programs (0 = off)
 
 # ── Consultant tier (PRD-005 / ADR-011) ────────────────────────────────────────
 # Five MCP servers that expose external LLM providers as named consultants
@@ -1300,6 +1359,7 @@ claude_flow = true  # legacy alias gate: claude-flow IS ruflo (upstream rename, 
 agentic_qe = true
 metaharness = true  # ADR-064: bakes metaharness@0.3.2 + @metaharness/darwin@0.8.3 CLIs (the versions the ruflo-metaharness plugin pins); pin discipline per ADR-067
 nagual_qe = false  # disabled: upstream sqlx 0.9 SqlSafeStr compilation error
+deepsec = true  # ADR-2033: vercel-labs/deepsec@2.3.9 CLI (npm, Apache-2.0) — the build-with-quality Security gate; policy in [security.deepsec]. First rebuild after enabling resolves nodeModulesHash (see flake.nix deepsecPkg)
 codebase_memory = true  # MCP-2 (2026-07-22): binary IS baked (codebase-memory-mcp on PATH); the boot MCP-registry projector now registers it, so the CLAUDE.md "USE FIRST" mandate is truthful next rebuild — gate kept ON (not flipped)
 rust = true
 antigravity_cli = true
@@ -1551,6 +1611,24 @@ audit_acknowledged = true
 # Reference table of all known exceptions is in docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md.
 #
 # Currently enabled feature exceptions (mirrors active feature gates above):
+
+# ADR-2033 — deepsec (vercel-labs) AI vulnerability review as the
+# build-with-quality Security gate (skills/build-with-quality/scripts/deepsec-gate.sh).
+# Binary is baked by [toolchains].deepsec; this block is the runtime policy the
+# gate script reads. Credentials are NEVER stored here — only env-var NAMES.
+[security.deepsec]
+enabled = true
+agent = "claude"              # claude | codex | pi (pi only with model_auth = "custom")
+model_auth = "local"          # local: the logged-in claude/codex CLI, no key | direct | custom
+model = ""                    # empty = deepsec's default for the agent (claude-opus-4-8 / gpt-5.5)
+thinking_level = "high"       # minimal | low | medium | high | xhigh (deepsec default xhigh; high bounds spend)
+fail_on = "HIGH"              # CRITICAL | HIGH | MEDIUM | HIGH_BUG | BUG | LOW — findings at/above block the gate
+max_duration = "45m"          # GNU timeout syntax; deepsec checkpoints and resumes on re-run
+batch_size = 5                # files per AI batch
+concurrency = 2               # parallel batches
+ai_provider = ""              # direct: anthropic | openai; custom: free label (e.g. "loom")
+ai_api_key_env = ""           # direct/custom: NAME of the env var holding the key
+ai_base_url = ""              # custom: OpenAI-compatible base URL, e.g. http://loom:8080/v1 (LAN-only via the Loom)
 
 # Required because adapters.pods = "local-solid-rs" is the only supported
 # implementation (ADR-010; the legacy local-jss Python stub was removed

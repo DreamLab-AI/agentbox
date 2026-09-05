@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-05",
+  "adr": "ADR-2006",
+  "title": "nixGL GPU wrap \u2014 backend test repair",
+  "scope": "Static repair plus a nix-free self-check. NIX WAS NOT AVAILABLE IN THIS CONTAINER, so the nix assertions themselves were NOT executed; no image build, driver probe, render or CUDA workload ran.",
+  "implemented": {
+    "two_argument_dispatcher": "The test called dispatchGpuBackend with one argument where lib/gpu-backend.nix requires two (backend, toolchainsCudaEnabled). Every call site is now two-argument and the self-check asserts both the declared arity in lib/gpu-backend.nix and the rendered call shape.",
+    "repository_lock": "nixpkgs is resolved from this repository flake.lock revision instead of the runner flake registry; the self-check asserts the reference is a locked github revision and that the rendered program pins it and imports this repository lib.",
+    "skip_semantics": "Exit 77 is retained only when nix is genuinely absent, and the skip message now states precisely which assertions were NOT executed and why. With nix present, a failed assertion FAILS rather than skips.",
+    "self_check_fix": "The registry-reference guard grepped its own source for the literal it was searching for and so failed on itself. The needle is now assembled from fragments; the guard reports the real state."
+  },
+  "tests": [
+    {
+      "command": "bash tests/flake/gpu-backend.test.sh --self-check",
+      "cwd": ".",
+      "exit_code": 0,
+      "stdout_tail": "--- rendered nix program (not executed) ---\n    let\n      # Pinned to this repository's flake.lock, never the flake registry.\n      nixpkgsFlake = builtins.getFlake \"github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3\";\n      pkgs   = import nixpkgsFlake { system = \"x86_64-linux\"; config.allowUnfree = true; };\n      lib    = pkgs.lib;\n      gpuLib = import /home/devuser/workspace/project/agentbox/lib/gpu-backend.nix { inherit lib pkgs; };\n    in (gpuLib.dispatchGpuBackend \"none\" false).ollamaEnabled\n-------------------------------------------\n\nnote: nix is NOT available here; the nix assertions were not executed by this self-check.\nself-check: PASS",
+      "stderr_tail": ""
+    }
+  ],
+  "source_sha256": {
+    "tests/flake/gpu-backend.test.sh": "f7d6ec9d63fbc3c8f4397f900924e1d430839361eef8f51ee2725339650c65d7",
+    "lib/gpu-backend.nix": "f06658ee811a76cdfcca6d2b1e2427bd7c047a2dd1ad39b700a0f0575c02fa94"
+  },
+  "limitations": "The nix evaluation path is UNVERIFIED here. The graphics-configuration scope question (GLX/EGL/Vulkan defaults now set by the wrapper, beyond this record CUDA-only scope) is not resolved, and no sidecar or headset inherits acceptance from a main-image result."
+}

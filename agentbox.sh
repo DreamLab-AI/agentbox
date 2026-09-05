@@ -45,7 +45,7 @@ Local lifecycle commands:
   ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
   ${GREEN}rebuild${NC}          Full dev-loop cycle: down + build + up --build
   ${GREEN}update${NC}           Update flake inputs + CLI versions + resolve hashes [--check|--cli-only|--flake-only]
-  ${GREEN}ruvector${NC}         Manage the ruvector-postgres memory sidecar [status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin]
+  ${GREEN}ruvector${NC}         Manage the ruvector-postgres memory sidecar [status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin|recall]
   ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
@@ -91,6 +91,7 @@ Examples:
   $0 ruvector archive-legacy             # dry-run archive+delete of ~1.84M frozen legacy rows (--yes + flag)
   $0 ruvector aggregate-effectiveness    # dry-run Wilson+recency effectiveness aggregates (--yes + [memory_learning] enabled)
   $0 ruvector build-metadata-gin         # dry-run GIN on metadata jsonb_path_ops for tag @> (--yes + metadata_gin flag)
+  $0 ruvector recall                     # recall-regression harness (ADR-040 D2/W-B, read-only; self-recall@10 / true-recall@10)
   $0 ruvnet-brain ingest    # reconcile RuvNet KB corpus in the sidecar against latest release (--force to re-embed all)
   $0 ruvnet-brain status    # corpus chunk count + ingest manifest (namespace ruvnet-kb)
   $0 ruvnet-brain logs      # follow the boot-time ingest log
@@ -1100,7 +1101,7 @@ cmd_shell() {
     fi
 
     # Fall back to fish in the profile directory as devuser
-    docker exec -it --user 1000 agentbox bash -c "cd /workspace/profiles/${profile} && exec fish"
+    docker exec -it --user 1000 agentbox bash -c "cd /home/devuser/workspace/profiles/${profile} && exec fish"
 }
 
 cmd_health() {
@@ -1127,12 +1128,16 @@ cmd_health() {
 
     # Pretty-print; fall back gracefully if jq is absent
     if command -v jq >/dev/null 2>&1; then
-        local degraded
+        # /health (server.js) emits adapters + degraded_count, not a services
+        # key. A slot is failed when its value is neither "healthy" nor "off".
+        local degraded degraded_count
         degraded=$(printf '%s' "$response" | jq -r '
-            .services // {} | to_entries[] |
-            select(.value.status == "degraded" or .value.status == "failed") |
+            .adapters // {} | to_entries[] |
+            select(.value != "healthy" and .value != "off") |
             .key
         ' 2>/dev/null || true)
+        degraded_count=$(printf '%s' "$response" | jq -r '.degraded_count // 0' 2>/dev/null || echo 0)
+        [[ "$degraded_count" =~ ^[0-9]+$ ]] || degraded_count=0
 
         echo -e "${CYAN}Agentbox service health${NC}"
         printf '%s' "$response" | jq -r '
@@ -1171,7 +1176,7 @@ cmd_health() {
             fi
         fi
 
-        if [[ -n "$degraded" ]]; then
+        if [[ -n "$degraded" || "$degraded_count" -gt 0 ]]; then
             exit 1
         fi
     else

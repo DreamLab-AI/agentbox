@@ -4,6 +4,58 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-09-05 resource topology — ADR-2034)
+
+- Measured with 40 Claude Code sessions live: ≈7 of the container's 9.7 cores in
+  use were per-tool-call `ruflo hooks pre-command`/`post-command` CLI boots
+  (2.6-3.6 CPU-s each, ≈144/min, ≈7.6 s of wall per Bash call) installed by ten
+  per-project settings files, and 386 per-session MCP server copies held 25 GB.
+  Scoping and evidence: `docs/reference/resource-topology-2026-09.md`.
+- `agentbox-hook` (agentbox-ops): `event <kind>` spools a hook event in <10 ms
+  with a narrow catastrophic-command guard on `pre-command`; `reconcile` rewrites
+  project `.claude/settings.json` CLI hooks (`ruflo`, `npx @claude-flow/cli`,
+  `aqe`, `agentic-qe`) to the shim and drops `hooks route`; `drain --loop` is
+  supervised as `[program:agentbox-hook-drain]` and folds spools into
+  `/var/lib/agentbox/events/hooks`. The entrypoint runs the reconcile at boot.
+- `agentbox-mcp hub` (agentbox-mcp, axum streamable HTTP, loopback `:9720`,
+  `[program:agentbox-mcp-hub]`): one process per stateless MCP server shared by
+  every session; lazy spawn, cached `initialize`, id-multiplexed requests,
+  respawn on child exit. `agentbox-manifest mcp-hub-project` runs last in the
+  boot `.mcp.json` sequence and rewrites `[resources.mcp_hub].servers` (default:
+  four consultants, web-researcher, ontology-bridge, ruvnet-brain,
+  precedent-bridge, harness-bridge, perplexity) to `type: http`, keeping the
+  stdio definitions in `$WORKSPACE/.mcp-hub-servers.json`; `--disable` restores.
+- `teammate-gc` (agentbox-ops, `[program:teammate-gc]`): reaps agent-team
+  teammates whose CPU counter has not advanced for `idle_secs` (default 1800),
+  argv-element identity and `(pid, starttime)` re-verification per ADR-2032.
+- `agentbox.toml [resources]` (schema + catalogue entries `resources-envelope`,
+  `mcp-hub`, `hook-shim`, `teammate-gc`): `flake.nix` projects cpus 56 (of 72
+  host threads; was 30), NUMA-symmetric cpuset, cpu_shares, pids_limit 32768,
+  memory, shm and the nvidia reservation into the generated compose, and sizes
+  the `/run`, `/tmp`, `~/.npm` (256M→1G; it was 100 % full) and `~/.cache`
+  (1G→4G) tmpfs. Twelve background supervised programs run under `nice -n 10`.
+
+### Changed (2026-09-05 resource topology — ADR-2034)
+
+- `docker-compose.override.yml` no longer carries `deploy` limits, reservations
+  or `shm_size`; the generated base compose owns the envelope.
+- Live, before the rebuild: project settings reconciled (10 files, 60 hooks
+  rewritten, 8 route hooks dropped), background programs reniced, `~/.npm`
+  tmpfs emptied.
+
+### Added (2026-09-05 deepsec security gate — ADR-2033)
+
+- Bake [vercel-labs/deepsec](https://github.com/vercel-labs/deepsec) 2.3.9 as a
+  manifest-gated CLI (`[toolchains].deepsec`, `flake.nix` `deepsecPkg`) and make it
+  the executed Security gate of the `build-with-quality` skill:
+  `skills/build-with-quality/scripts/deepsec-gate.sh` runs PR-mode review under the
+  new `[security.deepsec]` policy (agent, model route, `fail_on`, `max_duration`),
+  writes a per-run `receipt.json`, and maps deepsec exits to pass/block/skipped.
+  Validator rules E070–E072/W070 enforce route/toolchain pairings and a names-only
+  credential posture; catalogue entry `deepsec`; `.github/workflows/deepsec.yml`
+  gates labelled same-repo PRs with the two-job no-write/comment split.
+  The first host rebuild resolves the placeholder `nodeModulesHash`.
+
 ### Changed (2026-09-04 upstream upgrade assessment)
 
 - Default general-purpose Gemini paths to `gemini-3.8-flash`; project consultant model selection from the manifest at boot and preserve operator choices through TUI saves. Align API-equivalent tariff estimates with the published introductory period.

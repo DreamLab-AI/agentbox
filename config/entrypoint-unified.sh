@@ -49,16 +49,63 @@ _ab_toml_int() { # _ab_toml_int <section> <key> <default>
 # VAULT_TUI once, for every supervised program (they inherit PID 1's env) and,
 # via the Phase-8 runtime-env file, every tmux window and interactive shell.
 # No consumer hard-codes a corpus path any more (ADR-2028 D3, VAULT-corpus-format
-# Invariant 3). Fail-loud: a manifest with no [vault].root leaves VAULT_ROOT
-# empty, prints one line, and every vault consumer disables itself rather than
-# indexing a stale or empty tree.
+# Invariant 3).
+#
+# PATH PRECEDENCE (ADR-2028 closeout 2026-09-05) — exactly three tiers, highest
+# first. This ordering is the contract; the consumers mirror it.
+#
+#   1. MANIFEST VAULT — `[vault]` in agentbox.toml, projected here as
+#      VAULT_ROOT / VAULT_PAGES / VAULT_WORKING_* / VAULT_TRANSCRIPTS /
+#      VAULT_FORMAT / VAULT_TUI. Highest authority: when the manifest declares a
+#      vault, VAULT_PAGES IS the corpus, whatever the inherited environment said.
+#
+#   2. EXPLICIT ENVIRONMENT OVERRIDE — ONTOLOGY_PAGES_DIR (and the per-consumer
+#      equivalents such as AGENTBOX_ONTOLOGY_LOCAL_PATH). Honoured ONLY when the
+#      vault is ENABLED (tier 1 succeeded), or when the operator sets the
+#      explicit opt-in AGENTBOX_VAULT_LEGACY_PATHS=1. It redirects a consumer to
+#      a scratch corpus; it never resurrects a disabled vault.
+#
+#   3. LEGACY ONTOLOGY_PAGES_DIR — DEPRECATED (the pre-vault variable, kept for
+#      one release). When AGENTBOX_VAULT_ENABLED=0 and there is no legacy opt-in,
+#      the resolver CLEARS it (exports it empty) and warns once, so no consumer
+#      can silently fall back to a stale Logseq-era tree while the system reports
+#      the vault as disabled. That contradiction — "disabled" but still indexing
+#      — is the exact silent-degradation failure ADR-2028 exists to stop.
+#
+# Escape hatch: AGENTBOX_VAULT_LEGACY_PATHS=1 retains tier 3 verbatim and says so
+# on stdout. It is an explicit, logged operator decision, not a default.
+#
+# Fail-loud: a manifest with no [vault].root leaves VAULT_ROOT empty, prints one
+# line, and every vault consumer disables itself rather than indexing a stale or
+# empty tree.
 _ab_vault_resolve() {
+  # Tier-2/3 opt-in switch, read once (see the precedence block above).
+  local _ab_legacy_optin=0
+  case "${AGENTBOX_VAULT_LEGACY_PATHS:-}" in 1|true|TRUE|True|yes|on) _ab_legacy_optin=1 ;; esac
+
   VAULT_ROOT="$(_ab_toml_val vault root)"
   if [ -z "$VAULT_ROOT" ]; then
     unset VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS
     AGENTBOX_VAULT_ENABLED=0
     export AGENTBOX_VAULT_ENABLED
     echo "[vault] disabled — no [vault] in agentbox.toml"
+    # Tier 3: the deprecated pre-vault override must NOT survive a disabled
+    # vault. Leaving it set is what let consumers keep indexing a stale corpus
+    # while the manifest, the doctor and system-manifest all said "disabled".
+    if [ "$_ab_legacy_optin" = "1" ]; then
+      if [ -n "${ONTOLOGY_PAGES_DIR:-}" ]; then
+        export ONTOLOGY_PAGES_DIR
+        echo "[vault] legacy opt-in AGENTBOX_VAULT_LEGACY_PATHS=1 — RETAINING deprecated ONTOLOGY_PAGES_DIR=${ONTOLOGY_PAGES_DIR} with the vault disabled"
+      else
+        echo "[vault] legacy opt-in AGENTBOX_VAULT_LEGACY_PATHS=1 set, but ONTOLOGY_PAGES_DIR is empty — nothing to retain"
+      fi
+    else
+      if [ -n "${ONTOLOGY_PAGES_DIR:-}" ]; then
+        echo "[vault] WARNING: clearing deprecated ONTOLOGY_PAGES_DIR=${ONTOLOGY_PAGES_DIR} — the manifest declares no [vault], so no consumer may silently fall back to a legacy corpus path. Set [vault].root in agentbox.toml, or export AGENTBOX_VAULT_LEGACY_PATHS=1 to retain the override deliberately."
+      fi
+      ONTOLOGY_PAGES_DIR=""
+      export ONTOLOGY_PAGES_DIR
+    fi
     return 0
   fi
   VAULT_PAGES="$VAULT_ROOT/$(_ab_toml_val vault pages)"
@@ -75,7 +122,14 @@ _ab_vault_resolve() {
   if [ -n "$VAULT_WORKING_ROOT" ]; then VAULT_WORKING_PAGES="${VAULT_WORKING_ROOT%/}/pages"; else VAULT_WORKING_PAGES=""; fi
   AGENTBOX_VAULT_ENABLED=1
   export VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS AGENTBOX_VAULT_ENABLED
-  # ADR-2028 D2: the pre-vault variable survives one release as an override.
+  # Tier 1 has won: VAULT_PAGES is the manifest's, never the environment's — an
+  # inherited ONTOLOGY_PAGES_DIR cannot move the vault. Tier 2 then applies:
+  # with the vault ENABLED, an explicit ONTOLOGY_PAGES_DIR stays honoured (the
+  # pre-vault variable survives one release as a scratch-corpus override,
+  # ADR-2028 D2); absent it, it is derived from VAULT_PAGES.
+  if [ -n "${ONTOLOGY_PAGES_DIR:-}" ] && [ "${ONTOLOGY_PAGES_DIR}" != "$VAULT_PAGES" ]; then
+    echo "[vault] note: explicit ONTOLOGY_PAGES_DIR=${ONTOLOGY_PAGES_DIR} overrides the manifest pages dir ${VAULT_PAGES} for legacy consumers (deprecated; VAULT_PAGES remains the path authority)"
+  fi
   export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-$VAULT_PAGES}"
   echo "[vault] root=$VAULT_ROOT pages=$VAULT_PAGES format=$VAULT_FORMAT tui=$VAULT_TUI working=${VAULT_WORKING_ROOT:-—} transcripts=${VAULT_TRANSCRIPTS:-—}"
 }
@@ -499,8 +553,10 @@ fi
 # The sentinel itself is written by [program:bootstrap-seal] after supervisord
 # has confirmed required programs are RUNNING (Option A from PRD-002 §9).
 # ---------------------------------------------------------------------------
-mkdir -p /run/agentbox
-chown 1000:1000 /run/agentbox 2>/dev/null || true
+mkdir -p /run/agentbox /run/agentbox/hooks
+chown 1000:1000 /run/agentbox /run/agentbox/hooks 2>/dev/null || true
+chmod 700 /run/agentbox/hooks 2>/dev/null || true
+mkdir -p /var/lib/agentbox/events/hooks 2>/dev/null && chown 1000:1000 /var/lib/agentbox/events/hooks 2>/dev/null || true
 
 # N-05 boundary hardening: the aoe serve daemon runs `--auth token` and writes its
 # shared-secret token into ~/.config/agent-of-empires/serve.url at launch. That
@@ -534,6 +590,95 @@ if [ -d "$_AOE_CFG_DIR" ]; then
       echo "[N-05-VIOLATION] AoE token file $_AOE_URL_FILE has mode=$_URL_MODE owner=$_URL_OWN (expected uid 1000, no group/world read) — shared-secret token may be exposed" >&2
     fi
   fi
+fi
+
+# ADR-2040: code-server (--bind-addr 0.0.0.0:8080, flake.nix [program:code-server])
+# is reachable by every peer container on visionclaw_network, not just the
+# operator's loopback SSH tunnel — the docker-compose 127.0.0.1:8080 publish
+# only constrains host->container, not bridge->container. `--auth none`
+# therefore handed an unauthenticated terminal to the whole network. Mint (or
+# accept an operator-supplied) password into the config.yaml already named on
+# the code-server command line via `--config`, so `--auth password` (flake.nix)
+# has a credential to read. Mirrors the AoE 0700-dir pattern above. Gated on
+# [toolchains].code_server; idempotent — never overwrites an existing
+# config.yaml, so the credential (and any operator edits to it) survives
+# restarts. The credential itself never enters the generated supervisor text:
+# it lives only in this runtime-written, 0600, devuser-owned file.
+_CODE_SERVER_ON=0
+if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _CODE_SERVER_ON="$(agentbox-manifest toml-bool \
+    --manifest "$AGENTBOX_CONFIG" --path toolchains.code_server 2>/dev/null || echo 0)"
+fi
+if [ "$_CODE_SERVER_ON" = "1" ] || [ "$_CODE_SERVER_ON" = "true" ]; then
+  _CS_DATA_DIR=/home/devuser/.local/share/code-server
+  _CS_XDG_CFG_DIR="$_CS_DATA_DIR/config"
+  _CS_AUTH_FILE="$_CS_DATA_DIR/config.yaml"
+  mkdir -p "$_CS_XDG_CFG_DIR" 2>/dev/null || true
+  chown -R 1000:1000 "$_CS_DATA_DIR" 2>/dev/null || true
+  chmod 0700 "$_CS_DATA_DIR" "$_CS_XDG_CFG_DIR" 2>/dev/null || true
+  if [ ! -f "$_CS_AUTH_FILE" ]; then
+    if [ -n "${CODE_SERVER_PASSWORD:-}" ]; then
+      _CS_PASSWORD="$CODE_SERVER_PASSWORD"
+    elif command -v openssl >/dev/null 2>&1; then
+      _CS_PASSWORD="$(openssl rand -hex 24)"
+    else
+      _CS_PASSWORD="$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)"
+    fi
+    (
+      umask 077
+      cat > "$_CS_AUTH_FILE" <<EOF
+bind-addr: 0.0.0.0:8080
+auth: password
+password: $_CS_PASSWORD
+cert: false
+EOF
+    )
+    chmod 0600 "$_CS_AUTH_FILE"
+    chown 1000:1000 "$_CS_AUTH_FILE" 2>/dev/null || true
+    unset _CS_PASSWORD
+    echo "[5b/8] code-server auth: password minted -> $_CS_AUTH_FILE (0600 devuser)"
+  else
+    echo "[5b/8] code-server auth: using existing credential at $_CS_AUTH_FILE"
+  fi
+fi
+unset _CODE_SERVER_ON
+
+# ADR-2040: jupyter-lab (--ip=0.0.0.0 --port=8888, flake.nix [program:jupyter-lab])
+# shipped an EMPTY --IdentityProvider.token=, which explicitly disables token
+# auth (not merely "unset") — the same visionclaw_network exposure as
+# code-server above. jupyter_server reads the JUPYTER_TOKEN environment
+# variable natively as the IdentityProvider/ServerApp token default, so mint
+# (or accept an operator-supplied) token into a 0600 file and export it for
+# supervisord (PID 1) to inherit — the --IdentityProvider.token= CLI flag is
+# removed in flake.nix so the token is never interpolated into the
+# world-readable generated supervisor text. Gated on [skills.data_science].jupyter
+# (ENABLE_JUPYTER, baked into the image env from that manifest key); idempotent
+# — never overwrites an existing token file, so it survives restarts.
+if [ "${ENABLE_JUPYTER:-false}" = "true" ]; then
+  _JUPYTER_DATA_DIR=/home/devuser/.local/share/jupyter
+  _JUPYTER_TOKEN_FILE="$_JUPYTER_DATA_DIR/token"
+  mkdir -p "$_JUPYTER_DATA_DIR" 2>/dev/null || true
+  chown 1000:1000 "$_JUPYTER_DATA_DIR" 2>/dev/null || true
+  chmod 0700 "$_JUPYTER_DATA_DIR" 2>/dev/null || true
+  if [ -n "${JUPYTER_TOKEN:-}" ]; then
+    : # operator already supplied a token via the environment — nothing to mint
+  elif [ -f "$_JUPYTER_TOKEN_FILE" ]; then
+    JUPYTER_TOKEN="$(cat "$_JUPYTER_TOKEN_FILE")"
+  else
+    if command -v openssl >/dev/null 2>&1; then
+      JUPYTER_TOKEN="$(openssl rand -hex 24)"
+    else
+      JUPYTER_TOKEN="$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)"
+    fi
+    (
+      umask 077
+      printf '%s' "$JUPYTER_TOKEN" > "$_JUPYTER_TOKEN_FILE"
+    )
+    chmod 0600 "$_JUPYTER_TOKEN_FILE"
+    chown 1000:1000 "$_JUPYTER_TOKEN_FILE" 2>/dev/null || true
+  fi
+  export JUPYTER_TOKEN
+  echo "[5b/8] jupyter-lab auth: token available (persisted at $_JUPYTER_TOKEN_FILE, 0600 devuser)"
 fi
 
 # Phase 5c — Inherit the sovereign agent identity into PID 1.
@@ -831,6 +976,14 @@ _ML_SONA_LEARN=$(_ab_toml_bool memory_learning sona_learn_enabled)
 _ML_SONA_APPLY=$(_ab_toml_bool memory_learning sona_apply_enabled)
 _ML_PARAM_TUNING=$(_ab_toml_bool memory_learning param_tuning_enabled)
 _ML_PATTERN_DISTILL=$(_ab_toml_bool memory_learning pattern_distillation)
+# ADR-2017 (closeout 2026-09-05): the retained-corpus acceptance receipt and its
+# freshness bound. A consumer running behind a stopped producer is admitted only
+# when this receipt is present AND the corpus is fresher than the bound; the
+# validator refuses the manifest (E066) without it, and the runtime withholds the
+# effect if the corpus turns out to be stale or empty. An empty receipt is the
+# default and injects an empty string, i.e. no acceptance.
+_ML_RETAINED_CORPUS=$(_ab_toml_val memory_learning retained_corpus_accepted)
+_ML_RETAINED_MAX_AGE=$(_ab_toml_int memory_learning retained_corpus_max_age_days 30)
 
 # ── Interaction plane (PRD-021 / ADR-042/043/044) — Agent of Empires gates ──
 # enabled ⇒ the supervised aoe-serve daemon + nip98-proxy are present (flake.nix);
@@ -925,6 +1078,7 @@ if [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
   ML_ATTENTION_RERANK="$_ML_ATTENTION_RERANK" ML_SONA_LEARN="$_ML_SONA_LEARN" \
   ML_SONA_APPLY="$_ML_SONA_APPLY" ML_PARAM_TUNING="$_ML_PARAM_TUNING" \
   ML_PATTERN_DISTILL="$_ML_PATTERN_DISTILL" \
+  ML_RETAINED_CORPUS="$_ML_RETAINED_CORPUS" ML_RETAINED_MAX_AGE="$_ML_RETAINED_MAX_AGE" \
   RV_CONN="host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}" \
   RV_NODE_PATH="$_PG_NODE_PATH" RV_XINF="$XINFERENCE_ENDPOINT" RV_EMB="$EMBEDDING_MODEL" \
   node <<'MCPGATEJS' || true
@@ -954,6 +1108,9 @@ const gates = {
   RUVECTOR_SONA_APPLY_ENABLED:          process.env.ML_SONA_APPLY,
   RUVECTOR_PARAM_TUNING_ENABLED:        process.env.ML_PARAM_TUNING,
   RUVECTOR_PATTERN_DISTILLATION:        process.env.ML_PATTERN_DISTILL,
+  // ADR-2017 producer-before-consumer admission inputs.
+  RUVECTOR_RETAINED_CORPUS_ACCEPTED:      process.env.ML_RETAINED_CORPUS,
+  RUVECTOR_RETAINED_CORPUS_MAX_AGE_DAYS:  process.env.ML_RETAINED_MAX_AGE,
 };
 let changed = false;
 for (const [k, v] of Object.entries(gates)) {
@@ -1065,6 +1222,20 @@ const has = s.hooks.SessionStart.some((g) => (g.hooks || []).some((h) => String(
 if (!has) { s.hooks.SessionStart.push({ hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 8000, continueOnError: true }] }); fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [trust] registered trust-seed SessionStart hook in settings.json'); }
 else { console.log('  [trust] trust-seed hook already registered'); }
 TRUSTJS
+fi
+
+# ── Hook shim reconcile (ADR-2034 §1) ──
+# The ruflo plugin template installs `ruflo hooks pre-command|post-command` on
+# every Bash call and `ruflo hooks route` on every prompt in each project's
+# .claude/settings.json. Each is a full CLI boot (2.6–3.6 CPU-s, ≈7.6 s of wall
+# per tool call across the fleet — measured 2026-09-05 at ≈7 cores continuous).
+# `agentbox-hook reconcile` rewrites those commands to the resident shim
+# (`agentbox-hook event <kind>`, <10 ms, spooled to /run/agentbox/hooks and
+# drained by [program:agentbox-hook-drain]) and drops the per-prompt route
+# hook. Idempotent; covers every checkout two levels under the workspace so a
+# freshly cloned project cannot reintroduce the CLI hooks. Off: AGENTBOX_HOOK_SHIM=false.
+if [ "${AGENTBOX_HOOK_SHIM:-true}" != "false" ] && command -v agentbox-hook >/dev/null 2>&1; then
+  agentbox-hook reconcile --root "$WORKSPACE" --depth 2 2>&1 | sed 's/^/  /' || true
 fi
 
 # ── Permission mode: auto by default, opt-in dialog pre-accepted ──
@@ -1602,6 +1773,32 @@ if [ -f "$_MCP_PROJECTOR" ] && [ -f "$_MCP_REGISTRY" ] && [ -f "$_MCP_JSON" ] &&
   chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
 fi
 
+# ── Shared MCP hub projection (ADR-2034 §2) ──
+# Runs LAST in the .mcp.json sequence, after every bespoke block and the
+# registry projector, so it sees the final stdio definitions. For each name in
+# AGENTBOX_MCP_HUB_SERVERS (manifest [resources.mcp_hub].servers) it lifts the
+# stdio definition into $WORKSPACE/.mcp-hub-servers.json (0600, durable across
+# boots on which a grep-guarded block above does not rewrite the entry),
+# replaces the .mcp.json entry with {type: http, url: <hub>/<name>/mcp} and
+# writes /run/agentbox/mcp-hub.json for [program:agentbox-mcp-hub]. With the
+# gate off the same command restores the stdio entries. Fail-open.
+_MCP_HUB_STATE="${WORKSPACE}/.mcp-hub-servers.json"
+_MCP_HUB_CONFIG="/run/agentbox/mcp-hub.json"
+if [ -f "$_MCP_JSON" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  if [ "${AGENTBOX_MCP_HUB:-true}" != "false" ]; then
+    agentbox-manifest mcp-hub-project --file "$_MCP_JSON" --state "$_MCP_HUB_STATE" \
+      --out "$_MCP_HUB_CONFIG" --hub-url "${AGENTBOX_MCP_HUB_URL:-http://127.0.0.1:9720}" \
+      --bind "${AGENTBOX_MCP_HUB_BIND:-127.0.0.1:9720}" \
+      --servers "${AGENTBOX_MCP_HUB_SERVERS:-}" 2>&1 | sed 's/^/  /' || true
+  else
+    agentbox-manifest mcp-hub-project --file "$_MCP_JSON" --state "$_MCP_HUB_STATE" \
+      --out "$_MCP_HUB_CONFIG" --hub-url "${AGENTBOX_MCP_HUB_URL:-http://127.0.0.1:9720}" \
+      --disable 2>&1 | sed 's/^/  /' || true
+  fi
+  chown 1000:1000 "$_MCP_JSON" "$_MCP_HUB_STATE" "$_MCP_HUB_CONFIG" 2>/dev/null || true
+  chmod 600 "$_MCP_JSON" "$_MCP_HUB_STATE" "$_MCP_HUB_CONFIG" 2>/dev/null || true
+fi
+
 # ── Xinference embedding sidecar: wait for readiness + ensure model loaded ──
 # xinference does NOT persist launched models across its own restarts, so this
 # boot-time launch is the only thing that loads ${EMBEDDING_MODEL}. The
@@ -1944,6 +2141,7 @@ export CLAUDE_FLOW_PLUGIN_DIR="${CLAUDE_FLOW_PLUGIN_DIR:-/home/devuser/.claude-f
 export CARGO_HOME="${CARGO_HOME:-/home/devuser/workspace/.cargo}"
 export RUSTUP_HOME="${RUSTUP_HOME:-/home/devuser/workspace/.rustup}"
 export TMPDIR="${TMPDIR:-/home/devuser/workspace/.tmp}"
+export PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-/home/devuser/workspace/.cache/pnpm-store}"
 export OPENSSL_DIR="${OPENSSL_DIR:-}"
 export OPENSSL_LIB_DIR="${OPENSSL_LIB_DIR:-}"
 export OPENSSL_INCLUDE_DIR="${OPENSSL_INCLUDE_DIR:-}"

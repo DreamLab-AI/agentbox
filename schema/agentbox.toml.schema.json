@@ -250,12 +250,16 @@
         "working": {
           "type": "string",
           "description": "ADR-2028 (amended 2026-09-02): absolute path of the second vault root (the working graph); pages live at <working>/pages. Exported as VAULT_WORKING_ROOT and VAULT_WORKING_PAGES. Needed because a corpus with sibling vault roots (jjohare/visionGraph: knowledge/ + working/) cannot be expressed by `root` alone.",
-          "examples": ["/home/devuser/workspace/visionGraph/working"]
+          "examples": [
+            "/home/devuser/workspace/visionGraph/working"
+          ]
         },
         "transcripts": {
           "type": "string",
           "description": "ADR-2028 (amended 2026-09-02): absolute path of the podcast transcript store (<slug>.md + .enrichment/<slug>.json) that podcast-knowledge-ingest reads and extends. Sits OUTSIDE both vaults so Obsidian does not index it. Exported as VAULT_TRANSCRIPTS.",
-          "examples": ["/home/devuser/workspace/visionGraph/transcripts"]
+          "examples": [
+            "/home/devuser/workspace/visionGraph/transcripts"
+          ]
         },
         "tui": {
           "type": "string",
@@ -377,6 +381,11 @@
               "description": "DANGER: enable the ungoverned ontology_axiom_add backdoor (POST /api/ontology/load), bypassing Whelk consistency + human approval. Off by default; set true only for admin/bootstrap.",
               "default": false
             },
+            "local_authoring": {
+              "type": "boolean",
+              "description": "ADR-2054: allow local authoring of ontology classes into the agentbox-side store. Always the effective default by absence; declared explicitly so the deny is a reviewable declaration rather than an omission.",
+              "default": false
+            },
             "condense": {
               "type": "object",
               "additionalProperties": false,
@@ -389,7 +398,7 @@
                 },
                 "endpoint": {
                   "type": "string",
-                  "description": "Base URL of your OpenAI-compatible or ollama LLM endpoint, e.g. http://192.168.2.132:8084/v1 (Ontology Loom façade) or http://ollama:11434. Leave blank when disabled.",
+                  "description": "Base URL of your OpenAI-compatible or ollama LLM endpoint, e.g. http://192.168.2.132:8084/v1 (Ontology Loom fa\u00e7ade) or http://ollama:11434. Leave blank when disabled.",
                   "default": ""
                 },
                 "model": {
@@ -647,6 +656,10 @@
         },
         "nagual_qe": {
           "type": "boolean"
+        },
+        "deepsec": {
+          "type": "boolean",
+          "description": "ADR-2033: bake the vercel-labs/deepsec CLI (npm, Apache-2.0) as the build-with-quality Security gate. Runtime policy lives in [security.deepsec]."
         },
         "codebase_memory": {
           "type": "boolean"
@@ -1710,6 +1723,86 @@
           "type": "boolean",
           "description": "Operator acknowledgement of residual risk from security exceptions."
         },
+        "deepsec": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2033: runtime policy for the deepsec AI vulnerability-review gate (skills/build-with-quality/scripts/deepsec-gate.sh). The binary is baked by [toolchains].deepsec. Credentials are NEVER stored here \u2014 only env-var NAMES.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "agent": {
+              "type": "string",
+              "enum": [
+                "claude",
+                "codex",
+                "pi"
+              ],
+              "description": "pi is only valid with model_auth = \"custom\"."
+            },
+            "model_auth": {
+              "type": "string",
+              "enum": [
+                "local",
+                "direct",
+                "custom"
+              ],
+              "description": "local: the logged-in claude/codex CLI, no key."
+            },
+            "model": {
+              "type": "string",
+              "description": "Empty selects deepsec's default for the chosen agent."
+            },
+            "thinking_level": {
+              "type": "string",
+              "enum": [
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh"
+              ]
+            },
+            "fail_on": {
+              "type": "string",
+              "enum": [
+                "CRITICAL",
+                "HIGH",
+                "MEDIUM",
+                "HIGH_BUG",
+                "BUG",
+                "LOW"
+              ],
+              "description": "Findings at or above this severity block the gate."
+            },
+            "max_duration": {
+              "type": "string",
+              "description": "GNU timeout syntax; deepsec checkpoints and resumes on re-run."
+            },
+            "batch_size": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Files per AI batch."
+            },
+            "concurrency": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Parallel batches."
+            },
+            "ai_provider": {
+              "type": "string",
+              "description": "direct: anthropic | openai. custom: a free label, e.g. \"loom\"."
+            },
+            "ai_api_key_env": {
+              "type": "string",
+              "description": "NAME of the env var holding the key \u2014 never the key itself."
+            },
+            "ai_base_url": {
+              "type": "string",
+              "description": "custom: OpenAI-compatible base URL, e.g. http://loom:8080/v1."
+            }
+          }
+        },
         "exceptions": {
           "type": "object",
           "additionalProperties": false,
@@ -2260,24 +2353,76 @@
       "additionalProperties": false,
       "description": "Nightly evidence-gated dream-engine runtime configuration (ADR-052/053/061).",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "hp_host": { "type": "string" },
-        "hp_annexe_dir": { "type": "string" },
-        "loom_url": { "type": "string", "pattern": "^https?://" },
-        "loom_model": { "type": "string" },
-        "loom_max_tokens": { "type": "integer", "minimum": 1 },
-        "llm_provider": { "type": "string", "enum": ["zai", "loom"] },
-        "zai_url": { "type": "string", "pattern": "^https?://" },
-        "zai_model": { "type": "string" },
-        "zai_max_tokens": { "type": "integer", "minimum": 1 },
-        "window_start": { "type": "integer", "minimum": 0, "maximum": 23 },
-        "window_end": { "type": "integer", "minimum": 0, "maximum": 23 },
-        "memory_namespace": { "type": "string" },
-        "recall_band_self_min": { "type": "integer", "minimum": 0 },
-        "recall_band_true_min": { "type": "integer", "minimum": 0 },
-        "max_repos_per_night": { "type": "integer", "minimum": 1 },
-        "prune_dry_streak": { "type": "integer", "minimum": 1 },
-        "persist_accepts": { "type": "boolean" }
+        "enabled": {
+          "type": "boolean"
+        },
+        "hp_host": {
+          "type": "string"
+        },
+        "hp_annexe_dir": {
+          "type": "string"
+        },
+        "loom_url": {
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "loom_model": {
+          "type": "string"
+        },
+        "loom_max_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "llm_provider": {
+          "type": "string",
+          "enum": [
+            "zai",
+            "loom"
+          ]
+        },
+        "zai_url": {
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "zai_model": {
+          "type": "string"
+        },
+        "zai_max_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "window_start": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "window_end": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "memory_namespace": {
+          "type": "string"
+        },
+        "recall_band_self_min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recall_band_true_min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_repos_per_night": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "prune_dry_streak": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "persist_accepts": {
+          "type": "boolean"
+        }
       }
     },
     "interaction_plane": {
@@ -3023,6 +3168,140 @@
           ],
           "default": "dryrun",
           "description": "dryrun = stage proposals locally; publish = emit kind-31402 to the forum broker gate."
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ADR-2034 resource topology: the container envelope projected into the generated docker-compose.yml (apply class boot) and the resident overhead paths \u2014 shared MCP hub, hook shim, teammate reaper, background nice (apply class rebuild).",
+      "properties": {
+        "envelope": {
+          "type": "boolean",
+          "description": "Emit deploy limits/reservations, cpuset, cpu_shares, pids_limit and shm_size into the generated compose."
+        },
+        "cpus": {
+          "type": "number",
+          "minimum": 1
+        },
+        "cpus_reserve": {
+          "type": "number",
+          "minimum": 0
+        },
+        "cpuset": {
+          "type": "string",
+          "pattern": "^[0-9,-]*$",
+          "description": "Docker cpuset string; empty = no pinning."
+        },
+        "cpu_shares": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 262144
+        },
+        "memory": {
+          "type": "string",
+          "pattern": "^[0-9]+[KMGTkmgt]?[Bb]?$"
+        },
+        "memory_reserve": {
+          "type": "string",
+          "pattern": "^[0-9]+[KMGTkmgt]?[Bb]?$"
+        },
+        "pids_limit": {
+          "type": "integer",
+          "minimum": 64
+        },
+        "shm": {
+          "type": "string",
+          "pattern": "^[0-9]+[KMGTkmgt]?[Bb]?$"
+        },
+        "gpu_reservation": {
+          "type": "boolean"
+        },
+        "tmpfs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "run": {
+              "type": "string"
+            },
+            "tmp": {
+              "type": "string"
+            },
+            "npm": {
+              "type": "string"
+            },
+            "cache": {
+              "type": "string"
+            }
+          }
+        },
+        "mcp_hub": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "bind": {
+              "type": "string",
+              "description": "Loopback host:port; the hub refuses any non-loopback bind."
+            },
+            "url": {
+              "type": "string"
+            },
+            "servers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9._-]+$"
+              },
+              "description": "MCP server names to run once behind the hub. Stateful servers must not be listed."
+            }
+          }
+        },
+        "hooks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "shim": {
+              "type": "boolean"
+            },
+            "drain_interval_secs": {
+              "type": "integer",
+              "minimum": 5
+            }
+          }
+        },
+        "session_hygiene": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "reap": {
+              "type": "boolean"
+            },
+            "idle_secs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "interval_secs": {
+              "type": "integer",
+              "minimum": 10
+            }
+          }
+        },
+        "services": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "nice": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 19
+            }
+          }
         }
       }
     }

@@ -109,6 +109,49 @@
         webgpuEnabled  = desktopCfg.webgpu or false;
         skillsCfg = agentboxConfig.skills or {};
         toolchainCfg = agentboxConfig.toolchains or {};
+        # [resources] — the container envelope and the resident overhead paths
+        # (ADR-2034). Every value has a default so an older manifest without the
+        # table composes byte-identically to the pre-2034 image, except that the
+        # compose envelope is now emitted here instead of the hand-edited override.
+        resourcesCfg      = agentboxConfig.resources or {};
+        resTmpfsCfg       = resourcesCfg.tmpfs or {};
+        resHubCfg         = resourcesCfg.mcp_hub or {};
+        resHooksCfg       = resourcesCfg.hooks or {};
+        resHygieneCfg     = resourcesCfg.session_hygiene or {};
+        resServicesCfg    = resourcesCfg.services or {};
+        resEnvelopeOn     = resourcesCfg.envelope or true;
+        resCpus           = toString (resourcesCfg.cpus or 56);
+        resCpuset         = resourcesCfg.cpuset or "";
+        resCpuShares      = toString (resourcesCfg.cpu_shares or 1024);
+        resMemory         = resourcesCfg.memory or "256G";
+        resMemoryReserve  = resourcesCfg.memory_reserve or "96G";
+        resCpusReserve    = toString (resourcesCfg.cpus_reserve or 16);
+        resPidsLimit      = toString (resourcesCfg.pids_limit or 32768);
+        resShm            = resourcesCfg.shm or "32G";
+        resGpuReservation = resourcesCfg.gpu_reservation or true;
+        resTmpfsRun       = resTmpfsCfg.run or "256M";
+        resTmpfsTmp       = resTmpfsCfg.tmp or "2G";
+        resTmpfsNpm       = resTmpfsCfg.npm or "1G";
+        resTmpfsCache     = resTmpfsCfg.cache or "4G";
+        mcpHubEnabled     = resHubCfg.enabled or true;
+        mcpHubBind        = resHubCfg.bind or "127.0.0.1:9720";
+        mcpHubUrl         = resHubCfg.url or "http://127.0.0.1:9720";
+        mcpHubServers     = resHubCfg.servers or [
+          "consultant-codex" "consultant-perplexity" "consultant-deepseek" "consultant-antigravity"
+          "web-researcher" "ontology-bridge" "ruvnet-brain" "precedent-bridge" "harness-bridge" "perplexity"
+        ];
+        hookShimEnabled   = resHooksCfg.shim or true;
+        hookDrainInterval = toString (resHooksCfg.drain_interval_secs or 30);
+        teammateGcEnabled = resHygieneCfg.enabled or true;
+        teammateGcReap    = resHygieneCfg.reap or true;
+        teammateIdleSecs  = toString (resHygieneCfg.idle_secs or 1800);
+        teammateGcInterval= toString (resHygieneCfg.interval_secs or 60);
+        bgNiceLevel       = resServicesCfg.nice or 10;
+        # Background supervised programs run at lower CFS weight. The cgroup
+        # filesystem is read-only inside the container (nsdelegate, empty
+        # subtree_control), so nice(1) is the weighting lever available without
+        # a sibling container.
+        bgNice = if bgNiceLevel > 0 then "${pkgs.coreutils}/bin/nice -n ${toString bgNiceLevel} " else "";
         browserCfg = skillsCfg.browser or {};
         mediaCfg = skillsCfg.media or {};
         spatialCfg = skillsCfg.spatial_and_3d or {};
@@ -384,6 +427,29 @@
           stripDevDeps    = true;
         };
 
+        # 7. deepsec — gated by toolchains.deepsec (ADR-2033). vercel-labs
+        #    agent-powered vulnerability reviewer; the build-with-quality
+        #    Security gate drives it through
+        #    skills/build-with-quality/scripts/deepsec-gate.sh in PR mode.
+        #    Apache-2.0. `deepsec init` is never used in-container (it would
+        #    write a .deepsec/ workspace + node_modules and link a Vercel
+        #    project); the gate generates a minimal deepsec.config.mjs instead.
+        #    nix-prefetch-url https://registry.npmjs.org/deepsec/-/deepsec-2.3.9.tgz
+        #    sha256 computed 2026-09-05 from the registry tarball. nodeModulesHash
+        #    is the placeholder: the first `nix build .#runtime` after enabling
+        #    prints the real hash (see lib/npm-cli.nix "fakeHash sentinel") —
+        #    paste it here in the same change that lands the rebuild receipt.
+        #    CLAUDE_CODE_EXECUTABLE=claude makes the bundled Claude Agent SDK
+        #    drive the baked `claude` binary instead of resolving its own copy.
+        deepsecPkg = mkNpmCli {
+          pkgName         = "deepsec";
+          version         = "2.3.9";
+          sha256          = "sha256-5DHqDxepgjVhBmbjU5/b8U3VX+K9rsxSENt2o/BumHs=";
+          nodeModulesHash = lib.fakeHash;
+          bin             = "deepsec";
+          extraEnv        = { CLAUDE_CODE_EXECUTABLE = "claude"; };
+        };
+
         # ruvector is always included; rest are feature-gated. nagual-qe is
         # NOT in this list — it is a Rust source build wired via nagualQePkg
         # alongside solid-pod-rs (see further down) and added to the package
@@ -396,6 +462,7 @@
           ++ lib.optionals (toolchainCfg.metaharness or false)     [ metaharnessPkg metaharnessDarwinPkg ]
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
+          ++ lib.optionals (toolchainCfg.deepsec or false)          [ deepsecPkg ]
           ++ lib.optionals (docsCfg.mermaid or false)              [ mermaidCliPkg ];
 
         # 3DGS stack — gated by gaussian_splatting + local-cuda (E006).
@@ -1306,7 +1373,8 @@
         # agentbox-ops — operational CLI suite (Rust port of the Python scripts
         # retired by the 2026-09-02 legacy audit). Ungated: it replaces baseline
         # tooling that was always present. See lib/agentbox-ops.nix.
-        agentboxOpsPackages = [ (import ./lib/agentbox-ops.nix { inherit lib; pkgs = rustPkgs; }) ];
+        agentboxOpsPkg = import ./lib/agentbox-ops.nix { inherit lib; pkgs = rustPkgs; };
+        agentboxOpsPackages = [ agentboxOpsPkg ];
         # ---------------------------------------------------------------------------
         # Knowledge-tool binaries — the Rust replacements for the skill Python
         # retired by the 2026-09-02 Python-legacy audit (sections 2b/2c).
@@ -1356,10 +1424,25 @@
         relayAllowedPubkeys = relayCfg.allowed_pubkeys or [];
         # Comma-separated hex for the bridge's AGENTBOX_ALLOWED_PUBKEYS env var.
         relayAllowedPubkeysCsv = lib.concatStringsSep "," relayAllowedPubkeys;
+        # ADR-2012 (allowlist-only ingress, no fallback, no auto-add): an EMPTY
+        # allowlist is the declared DENY-ALL policy, so it must emit an explicit
+        # empty whitelist rather than omitting the key. nostr-rs-relay reads
+        # `pubkey_whitelist` as an Option<Vec<String>>: omitting it yields None
+        # and the author check is skipped entirely (the relay accepts EVERY
+        # author — the opposite of the decision), while `[ ]` yields Some([]),
+        # whose membership test is false for every author. Omission was the
+        # defect; the empty array is the closed policy.
         relayAllowedPubkeysToml =
           if relayAllowedPubkeys == []
-          then ""
+          then "pubkey_whitelist = [ ]  # ADR-2012 deny-all: empty allowlist rejects every author\n"
           else "pubkey_whitelist = [ " + lib.concatStringsSep ", " (map (k: "\"${k}\"") relayAllowedPubkeys) + " ]\n";
+        # NIP-42 stays on for every non-open policy, including deny-all. The two
+        # settings answer different questions and do not contradict each other:
+        # nip42_auth decides whether a client must PROVE which key it holds,
+        # pubkey_whitelist decides whether that key may WRITE. Under deny-all the
+        # write check refuses everyone regardless, so NIP-42 is redundant but
+        # harmless — and it keeps the posture unchanged the moment the allowlist
+        # is populated. Only ingress_policy = "open" turns it off.
         relayNip42Auth =
           if (relayCfg.ingress_policy or "allowlist") == "open" then "false" else "true";
         relayConfigText = ''
@@ -1715,7 +1798,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
         # set GUI_CONTAINER_HOST in the container env to retarget. See docs/user/blender.md.
         qgisServiceBlock = ''
 [program:qgis-mcp]
-command=${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py
+command=${bgNice}${pkgs.python312}/bin/python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py
 directory=/opt/agentbox/scripts
 user=devuser
 environment=HOME="/home/devuser"
@@ -1740,7 +1823,7 @@ stderr_logfile=/var/log/qgis-mcp.error.log
         # See docs/user/blender.md and skills/blender/SKILL.md.
         blenderServiceBlock = ''
 [program:blender-mcp]
-command=${pkgs.nodejs_22}/bin/node /opt/agentbox/skills/blender/tools/blender-mcp-proxy.js
+command=${bgNice}${pkgs.nodejs_22}/bin/node /opt/agentbox/skills/blender/tools/blender-mcp-proxy.js
 directory=/opt/agentbox/skills/blender/tools
 user=devuser
 environment=HOME="/home/devuser"
@@ -1751,7 +1834,7 @@ stdout_logfile=/var/log/blender-mcp.log
 stderr_logfile=/var/log/blender-mcp.error.log
 
 [program:ruvector-aggregate-sweep]
-command=${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ruvector-aggregate-sweep.mjs --loop
+command=${bgNice}${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ruvector-aggregate-sweep.mjs --loop
 user=devuser
 environment=HOME="/home/devuser"
 autostart=true
@@ -1780,7 +1863,7 @@ stdout_logfile=/var/log/nostr-gateway.log
 stderr_logfile=/var/log/nostr-gateway.error.log
 
 [program:ruvector-pattern-distill]
-command=${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ruvector-pattern-distill.mjs --loop
+command=${bgNice}${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ruvector-pattern-distill.mjs --loop
 user=devuser
 environment=HOME="/home/devuser"
 autostart=true
@@ -1798,7 +1881,7 @@ stderr_logfile=/var/log/ruvector-pattern-distill.error.log
 # (both baked into imageEnv, inherited from PID 1), exits fast when off, is
 # flock-serialised against concurrent refreshes, and is fail-open per tick.
 [program:ontology-condense-scheduler]
-command=${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ontology-condense-scheduler.mjs --loop
+command=${bgNice}${pkgs.nodejs_22}/bin/node /opt/agentbox/scripts/ontology-condense-scheduler.mjs --loop
 user=devuser
 environment=HOME="/home/devuser"
 autostart=true
@@ -1811,7 +1894,19 @@ stderr_logfile=/var/log/ontology-condense-scheduler.error.log
 
         jupyterServiceBlock = ''
 [program:jupyter-lab]
-command=${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --IdentityProvider.token= --LabApp.app_dir=${pkgs.python312Packages.jupyterlab}/share/jupyter/lab
+; ADR-2040: an EMPTY --IdentityProvider.token= explicitly sets the token trait
+; (even to ""), which short-circuits jupyter_server's own env-var default and
+; disables auth altogether — reachable by every peer on visionclaw_network,
+; not just the operator's loopback tunnel. Dropping the flag lets
+; IdentityProvider._token_default (jupyter_server/auth/identity.py) fall
+; through to `os.environ["JUPYTER_TOKEN"]` (checked before JUPYTER_TOKEN_FILE
+; and before generating a random token) — confirmed against the pinned
+; jupyter-server 2.17.0 in this image. config/entrypoint-unified.sh mints (or
+; accepts an operator-supplied JUPYTER_TOKEN) into a 0600 devuser file and
+; exports it into PID 1's environment before supervisord starts, so it is
+; inherited here without ever being interpolated into this generated,
+; world-readable supervisor text.
+command=${bgNice}${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --LabApp.app_dir=${pkgs.python312Packages.jupyterlab}/share/jupyter/lab
 directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser"
@@ -2054,7 +2149,7 @@ stderr_logfile=/var/log/https-bridge.error.log
 ${lib.optionalString (mediaCfg.imagemagick or false) ''
 
 [program:imagemagick-mcp]
-command=${agentboxMcpPkg}/bin/agentbox-mcp imagemagick
+command=${bgNice}${agentboxMcpPkg}/bin/agentbox-mcp imagemagick
 directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser"
@@ -2102,7 +2197,7 @@ stderr_logfile=/var/log/nostr-relay.error.log
 ${lib.optionalString privacyFilterEnabled ''
 
 [program:opf-router]
-command=${privacyFilterPythonEnv}/bin/python3 -u /opt/agentbox/scripts/opf-router.py
+command=${bgNice}${privacyFilterPythonEnv}/bin/python3 -u /opt/agentbox/scripts/opf-router.py
 directory=/opt/agentbox/scripts
 user=devuser
 environment=HOME="/home/devuser",HF_HOME="/home/devuser/.cache/huggingface",TRANSFORMERS_CACHE="/home/devuser/.cache/huggingface",HF_HUB_DISABLE_XET="1",OPF_PORT="${toString (privacyFilterCfg.port or 9092)}",OPF_MODE="${privacyFilterCfg.mode or "off"}",OPF_DTYPE="${privacyFilterCfg.dtype or "bf16"}",OPF_MODEL="${privacyFilterCfg.model or "openai/privacy-filter"}",OPF_TRUST_REMOTE_CODE="${boolEnv (privacyFilterCfg.trust_remote_code or true)}"
@@ -2138,7 +2233,14 @@ stderr_logfile=/var/log/tailscale-up.error.log
 ${lib.optionalString (toolchainCfg.code_server or false) ''
 
 [program:code-server]
-command=${pkgs.code-server}/bin/code-server --bind-addr 0.0.0.0:8080 --auth none --user-data-dir /home/devuser/.local/share/code-server --extensions-dir /home/devuser/.local/share/code-server/extensions --config /home/devuser/.local/share/code-server/config.yaml /home/devuser/workspace
+; ADR-2040: --auth none handed an unauthenticated terminal to every peer on
+; visionclaw_network (the docker-compose 127.0.0.1:8080 publish only
+; constrains host->container, not bridge->container). auth: password is
+; sourced from the --config file below, which config/entrypoint-unified.sh
+; mints (or accepts an operator-supplied CODE_SERVER_PASSWORD into) at boot,
+; 0600 devuser-owned, idempotent across restarts, never baked into this
+; generated supervisor text.
+command=${bgNice}${pkgs.code-server}/bin/code-server --bind-addr 0.0.0.0:8080 --auth password --user-data-dir /home/devuser/.local/share/code-server --extensions-dir /home/devuser/.local/share/code-server/extensions --config /home/devuser/.local/share/code-server/config.yaml /home/devuser/workspace
 directory=/home/devuser/workspace
 user=devuser
 ; XDG_CONFIG_HOME redirected into the writable codeserver-config volume
@@ -2155,7 +2257,7 @@ stderr_logfile=/var/log/code-server.error.log
 ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
 
 [program:comfyui-builtin]
-command=${comfyuiPythonEnv}/bin/python3 ${comfyuiSrc}/main.py --listen 127.0.0.1 --port 8188
+command=${bgNice}${comfyuiPythonEnv}/bin/python3 ${comfyuiSrc}/main.py --listen 127.0.0.1 --port 8188
 directory=${comfyuiSrc}
 user=devuser
 environment=HOME="/home/devuser",COMFYUI_OUTPUT_DIR="/home/devuser/comfyui-outputs"
@@ -2177,7 +2279,7 @@ ${lib.optionalString dreamEngineEnabled ''
 # (memory DB) are exported into the process environment by the entrypoint
 # launcher and inherited — same discipline as the nostr-relay agent secret.
 [program:dream-engine]
-command=${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
+command=${bgNice}${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
 directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}",LOOM_URL="${dreamMachineCfg.loom_url or "http://192.168.2.132:8084/v1"}",LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
@@ -2281,7 +2383,7 @@ stdout_logfile=/var/log/tmux-autostart.log
 stderr_logfile=/var/log/tmux-autostart.error.log
 
 [program:podcast-cron]
-command=${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/crontab
+command=${bgNice}${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/crontab
 user=devuser
 environment=HOME="/home/devuser",PATH="${podcastIngestPkg}/bin:${pythonRuntimeEnv}/bin:${pkgs.coreutils}/bin:${pkgs.nodejs_22}/bin:/usr/local/bin:/bin:/usr/bin"
 autostart=true
@@ -2300,7 +2402,7 @@ stderr_logfile_maxbytes=5MB
 ; the agentbox .env. Pin every utility used by the script into PATH: the Nix
 ; image has no conventional mutable /usr tool tree to fall back to.
 [program:forum-backup-cron]
-command=${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/dreamlab-ai-website/scripts/backup/crontab
+command=${bgNice}${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/dreamlab-ai-website/scripts/backup/crontab
 user=devuser
 environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.gnugrep pkgs.findutils pkgs.curl pkgs.jq pkgs.gzip ]}:/usr/local/bin:/bin:/usr/bin"
 autostart=true
@@ -2311,6 +2413,65 @@ stdout_logfile=/var/log/forum-backup-cron.log
 stderr_logfile=/var/log/forum-backup-cron.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
+${lib.optionalString mcpHubEnabled ''
+
+; ADR-2034 §2: shared loopback MCP hub. One process per stateless MCP server
+; (consultants, bridges, perplexity, web-researcher) instead of one per Claude
+; Code session. Reads /run/agentbox/mcp-hub.json, written by the entrypoint's
+; `agentbox-manifest mcp-hub-project` after every bespoke/projected .mcp.json
+; write. Loopback only — the binary refuses any other bind. Never published.
+[program:agentbox-mcp-hub]
+command=${agentboxMcpPkg}/bin/agentbox-mcp hub --config /run/agentbox/mcp-hub.json --bind ${mcpHubBind}
+directory=/home/devuser/workspace
+user=devuser
+environment=HOME="/home/devuser",RUST_LOG="info"
+autostart=true
+autorestart=true
+startsecs=2
+priority=205
+stdout_logfile=/var/log/agentbox-mcp-hub.log
+stderr_logfile=/var/log/agentbox-mcp-hub.error.log
+stdout_logfile_maxbytes=10MB
+stderr_logfile_maxbytes=10MB
+''}
+${lib.optionalString hookShimEnabled ''
+
+; ADR-2034 §1: folds the per-workspace hook spools (/run/agentbox/hooks, written
+; by `agentbox-hook event` on every tool call in <10 ms) into the events volume:
+; hook-metrics.json + dated hook-events-*.jsonl. This is the learning signal the
+; ruflo CLI hooks used to record at 3 CPU-seconds per tool call.
+[program:agentbox-hook-drain]
+command=${bgNice}${agentboxOpsPkg}/bin/agentbox-hook drain --loop --interval ${hookDrainInterval} --spool /run/agentbox/hooks --out /var/lib/agentbox/events/hooks
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=0
+priority=240
+stdout_logfile=/var/log/agentbox-hook-drain.log
+stderr_logfile=/var/log/agentbox-hook-drain.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+${lib.optionalString teammateGcEnabled ''
+
+; ADR-2034 session hygiene: reaps agent-team teammates whose CPU counter has not
+; advanced for [resources.session_hygiene].idle_secs (default 30 min). Identity
+; by argv boundaries + (pid, starttime) re-verified before SIGTERM (ADR-2032).
+; reap=false turns it into a reporter.
+[program:teammate-gc]
+command=${bgNice}${agentboxOpsPkg}/bin/teammate-gc --loop --interval ${teammateGcInterval} --idle-secs ${teammateIdleSecs} --state /run/agentbox/teammate-gc.json${lib.optionalString teammateGcReap " --kill"}
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=0
+priority=245
+stdout_logfile=/var/log/teammate-gc.log
+stderr_logfile=/var/log/teammate-gc.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
         '';
 
         # ---------------------------------------------------------------------------
@@ -2521,6 +2682,31 @@ stderr_logfile_maxbytes=5MB
       - default
       - visionclaw'';
 
+        # [resources] → compose envelope (ADR-2034 §3). Emitted here so the
+        # limits are versioned with the manifest; docker-compose.override.yml
+        # no longer carries deploy limits. The nvidia device reservation rides
+        # along when the GPU backend is CUDA so the override need not repeat it.
+        agentboxResources = lib.optionalString resEnvelopeOn (
+          "    deploy:\n"
+          + "      resources:\n"
+          + "        limits:\n"
+          + "          cpus: '${resCpus}'\n"
+          + "          memory: ${resMemory}\n"
+          + "        reservations:\n"
+          + "          cpus: '${resCpusReserve}'\n"
+          + "          memory: ${resMemoryReserve}\n"
+          + lib.optionalString (resGpuReservation && gpuBackendKey == "local-cuda") (
+              "          devices:\n"
+              + "            - driver: nvidia\n"
+              + "              count: all\n"
+              + "              capabilities: [gpu, compute, utility, graphics]\n"
+            )
+          + lib.optionalString (resCpuset != "") "    cpuset: \"${resCpuset}\"\n"
+          + "    cpu_shares: ${resCpuShares}\n"
+          + "    pids_limit: ${resPidsLimit}\n"
+          + "    shm_size: '${resShm}'\n"
+        );
+
         # Extra hosts. The host-gateway alias is gated by
         # [networking].host_gateway = true (Q17): air-gapped and hardened
         # deployments must opt in. When disabled, OPENAI_BASE_URL must
@@ -2627,13 +2813,13 @@ stderr_logfile_maxbytes=5MB
         # owned by root so supervisord can write its own state; bootstrap
         # creates uid-1000-owned subdirs under them as needed.
         baselineTmpfsMounts = [
-          "/tmp:mode=1777,size=1G"
+          "/tmp:mode=1777,size=${resTmpfsTmp}"
           # /run, /var/log, /var/log/supervisor are uid-1000-owned so
           # devuser-running services (per `user=devuser` directives) can
           # write logs and runtime state without bootstrap chown
           # acrobatics. Bootstrap-as-root still has CAP_CHOWN baseline
           # cap if it needs to fix anything.
-          "/run:mode=755,size=64M,uid=1000,gid=1000"
+          "/run:mode=755,size=${resTmpfsRun},uid=1000,gid=1000"
           "/var/run:mode=755,size=16M,uid=1000,gid=1000"
           "/var/log:mode=755,size=128M,uid=1000,gid=1000"
           "/var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000"
@@ -2647,10 +2833,10 @@ stderr_logfile_maxbytes=5MB
           # interactive shell prints "Os { code: 30, kind: ReadOnlyFilesystem }"
           # at the starship init line. Keep this aligned with docker-compose;
           # persistent large caches still go to named volumes per-tool.
-          "/home/devuser/.cache:mode=755,size=1G,uid=1000,gid=1000"
+          "/home/devuser/.cache:mode=755,size=${resTmpfsCache},uid=1000,gid=1000"
           # Some native npm installers (notably sharp) hard-code ~/.npm even
           # when NPM_CONFIG_CACHE is redirected into the writable workspace.
-          "/home/devuser/.npm:mode=755,size=256M,uid=1000,gid=1000"
+          "/home/devuser/.npm:mode=755,size=${resTmpfsNpm},uid=1000,gid=1000"
           # devuser's XDG_DATA_HOME. zoxide, fzf, atuin, npm globals,
           # pip --user, pipx, and a long tail of other XDG-aware CLIs
           # write here. Same Read-only-fs symptom as .cache without it.
@@ -2892,7 +3078,7 @@ ${agentboxTmpfs}    security_opt:
     volumes:
 ${agentboxVolumes}
 ${agentboxNetworks}
-
+${agentboxResources}
 volumes:
 ${topLevelVolumes}
 networks:
@@ -3309,10 +3495,24 @@ ${ragflowNetworkDecl}
           "ENABLE_AGENTIC_QE=${boolEnv (toolchainCfg.agentic_qe or false)}"
           "ENABLE_NAGUAL_QE=${boolEnv (toolchainCfg.nagual_qe or false)}"
           "ENABLE_CODEBASE_MEMORY=${boolEnv (toolchainCfg.codebase_memory or false)}"
+          # ── [resources] resident paths (ADR-2034) ─────────────────────────
+          "AGENTBOX_MCP_HUB=${boolEnv mcpHubEnabled}"
+          "AGENTBOX_MCP_HUB_URL=${mcpHubUrl}"
+          "AGENTBOX_MCP_HUB_BIND=${mcpHubBind}"
+          "AGENTBOX_MCP_HUB_SERVERS=${lib.concatStringsSep "," mcpHubServers}"
+          "AGENTBOX_HOOK_SHIM=${boolEnv hookShimEnabled}"
+          "AGENTBOX_HOOK_SPOOL=/run/agentbox/hooks"
+          "AGENTBOX_HOOK_EVENTS_DIR=/var/lib/agentbox/events/hooks"
+          "AGENTBOX_TEAMMATE_GC=${boolEnv teammateGcEnabled}"
+          "ENABLE_DEEPSEC=${boolEnv (toolchainCfg.deepsec or false)}"
           "ENABLE_RUST_TOOLCHAIN=${boolEnv (toolchainCfg.rust or false)}"
           "CARGO_HOME=/home/devuser/workspace/.cargo"
           "RUSTUP_HOME=/home/devuser/workspace/.rustup"
           "TMPDIR=/home/devuser/workspace/.tmp"
+          # pnpm 11 defaults its content-addressable store to ~/.local/share/pnpm, a
+          # 128M tmpfs; one install fills it and every XDG tool there (zoxide, atuin)
+          # gets ENOSPC. pnpm ignores npm_config_*; this is the var it does honour.
+          "PNPM_CONFIG_STORE_DIR=/home/devuser/workspace/.cache/pnpm-store"
           "OPENSSL_DIR=${pkgs.openssl}"
           "OPENSSL_LIB_DIR=${pkgs.openssl.out}/lib"
           "OPENSSL_INCLUDE_DIR=${pkgs.openssl.dev}/include"

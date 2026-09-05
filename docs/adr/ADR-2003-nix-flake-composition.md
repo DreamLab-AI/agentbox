@@ -30,12 +30,12 @@ One `flake.nix` composes the entire image, reading `agentbox.toml` at build time
 `builtins.fromTOML (builtins.readFile ./agentbox.toml)`. Adding a feature gate means gating the Nix
 package set AND the supervisor block AND adding a `system-manifest.js` catalogue entry whose
 apply-class is exactly one of `live` / `boot` / `rebuild` and is honest about when the change lands.
-The catalogue may drift (a new gate needs a new entry); the *state* cannot — it is introspected from
-the parsed toml at request time, never hand-maintained. This forecloses Dockerfile layering, runtime
+The catalogue may drift (a new gate needs a new entry); the displayed desired state is read from
+the parsed TOML rather than hand-maintained. Actual built and running state require separate receipts. This forecloses Dockerfile layering, runtime
 installs, and any "enabled" flag whose truth is asserted rather than read from the toml.
 
 ## Consequences
-- The image is reproducible from the toml alone; a byte-identical build is possible when a gate is off.
+- Reproducing an image requires the manifest plus pinned source, dependency locks, feature selections and build inputs; TOML alone is not a complete build identity.
 - Every feature carries a truthful "how do I make this take effect" contract for operators.
 - Cost: adding a gate is a three-touch change (packages, supervisor, manifest) — no shortcut path,
   and a missing catalogue entry is a documentation defect the state introspection cannot mask.
@@ -46,3 +46,9 @@ literal `builtins.fromTOML (builtins.readFile ./agentbox.toml)` build-time read.
 `management-api/lib/system-manifest.js:27-31` defines `APPLY_CLASSES = { live, boot, rebuild }`, and
 its header (lines 9-13) documents that the enabled state is introspected from the parsed
 `agentbox.toml` at request time, not stored — the catalogue can drift, the state cannot.
+
+## Closeout extension — 2026-09-04
+
+CP-01/08. Owner remains jjohare with image/runtime maintainers. Manifest, build, projection and running process are distinct state boundaries. The configuration view reads desired settings; it does not certify that a boot/rebuild change has been applied.
+
+**Acceptance condition:** bind manifest, source/lock/features, image, projected outputs and loaded processes to a dated receipt. Test each apply class before/after restart or rebuild and expose drift. Reopen on gates, catalogue entries, build inputs or projection changes. See the [configuration review](../../../../VisionFlow/docs/estate-review/configuration-projection.md). No Nix build or deployed-state certification ran in this pass.
