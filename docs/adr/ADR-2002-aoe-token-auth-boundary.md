@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
+verified_commit: 796d85fcffb2153c7507d5bb2934f569b3994582
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -112,3 +112,7 @@ residual stands until process isolation is implemented or explicitly bounded.
 ## Landing re-verification — 2026-09-05 (ddd1f1ec8)
 
 Governed paths changed in the landing commit: flake.nix: the aoe-profiles volume entry and baseline volume name (ADR-2063) and the `lib.optionalString podcastIngestEnabled` wrapper around [program:podcast-cron] (ADR-2057); the aoe-serve, nip98-proxy, relay and proxy blocks are byte-identical. Decision unaffected; `verified_commit` moved to the landing commit.
+
+## Landing re-verification — 2026-09-06 (796d85fcf)
+
+Governed paths changed in the Wave 3 landing commit: flake.nix. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.

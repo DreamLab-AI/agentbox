@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
+verified_commit: 796d85fcffb2153c7507d5bb2934f569b3994582
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -109,3 +109,7 @@ everyone. Verified on the uncommitted working tree above agentbox SHA
 ## Landing re-verification — 2026-09-05 (ddd1f1ec8)
 
 Governed paths changed in the landing commit: agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, flake.nix: the ADR-2057 podcast_ingest gate and catalogue entries; skills/build-with-quality/scripts/deepsec-gate.sh: dropped `--no-tui`, which the baked deepsec 2.3.9 rejects, so the gate now executes for real (SCANNED, 1153 candidates, exit 0) where before it exited 70 on every run; deepsec-gate.test.mjs: the fake CLI rejects unknown options and the missing-binary case no longer leaks the ambient PATH (10/10). The decision holds and is strengthened; status stays partial/staged pending a host image receipt. Decision unaffected; `verified_commit` moved to the landing commit.
+
+## Landing re-verification — 2026-09-06 (796d85fcf)
+
+Governed paths changed in the Wave 3 landing commit: agentbox.toml, flake.nix. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.

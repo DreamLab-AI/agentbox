@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
+verified_commit: 796d85fcffb2153c7507d5bb2934f569b3994582
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -69,3 +69,7 @@ CP-01/08. Owner remains jjohare with consultant/runtime maintainers. Source rein
 ## Landing re-verification — 2026-09-05 (ddd1f1ec8)
 
 Governed paths changed in the landing commit: config/entrypoint-unified.sh: the ADR-2063 hub start/restart nudge and `.git/worktrees` chown, and the ADR-2057 harness/precedent gate reads and HARNESS_TEMPLATE_DIR export; the consultant model projection block is unchanged and `cargo test --test consultant_model` (agentbox-manifest) passes 3/3 against it. Range ec257a256..08e817f39 was re-read as well: 204 lines landed by the ADR-2034 hub projection and sprint blocks, none touching the projection. Decision unaffected; `verified_commit` moved to the landing commit.
+
+## Landing re-verification — 2026-09-06 (796d85fcf)
+
+Governed paths changed in the Wave 3 landing commit: config/entrypoint-unified.sh. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.

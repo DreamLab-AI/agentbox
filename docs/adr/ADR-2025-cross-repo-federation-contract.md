@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 796d85fcffb2153c7507d5bb2934f569b3994582
 verified_paths: [management-api/lib/bc20-provenance-bridge.js, management-api/lib/uris.js]
 owner: jjohare
 review_trigger: any change to the sha12 truncation, the urn:agentbox mint/parse grammar, or the closed inbound kind-map on either repo
@@ -107,3 +107,7 @@ outside this repository; the check says so in its own output rather than
 implying two-sided coverage. Durable mapping persistence, replay and recovery
 remain untested — these are pure helper calls. `decision_status` stays
 `proposed`.
+
+## Landing re-verification — 2026-09-06 (796d85fcf)
+
+Governed paths changed in the Wave 3 landing commit: management-api/lib/bc20-provenance-bridge.js. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.

@@ -32,7 +32,7 @@ fail the build).
 
 The [historical closeout routing note](../adr-history-closeout.md) points the 72 archived decision candidates at the estate historical map and section-level review; the archive remains historical and lineage mentions are not whole-document supersession.
 
-_57 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_71 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -90,6 +90,20 @@ _57 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2058](ADR-2058-clear-verification-anchors-stale-in-the-uncommitted-tree.md) | Re-verify rather than re-point ADRs made stale by the uncommitted remediation tree | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2059](ADR-2059-reasoner-preflight-on-the-email-gateway.md) | Fail fast on a reasoner URL that resolves but black-holes | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2060](ADR-2060-cross-store-erasure-needs-a-reverse-tombstone.md) | Give cross-store erasure a reverse tombstone into RuVector and a restorable memory backup | LEARNING-memory | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
-| [ADR-2061](ADR-2061-federation-kind-map-parity.md) | Make the cross-repo URN kind map symmetric and fixture-gated in both languages | PROTOCOL-registry | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2061](ADR-2061-federation-kind-map-parity.md) | Make the cross-repo URN kind map symmetric and fixture-gated in both languages | PROTOCOL-registry | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2062](ADR-2062-container-internal-bind-surface.md) | Extend the exposure gate from published ports to container-internal listeners | INGRESS-identity | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2063](ADR-2063-interaction-plane-post-rebuild-fixes.md) | The MCP hub waits for its config, AoE session records persist on a volume, and the seeder reaps only its own clean orphans | BASELINE-container | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2064](ADR-2064-pod-request-signing-fails-closed.md) | Pod request signing fails closed when a NIP-98 header cannot be originated | INGRESS-identity | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2065](ADR-2065-one-writer-for-the-pod-inbox.md) | One writer for the pod inbox — the Rust pod bridge, not the JS relay consumer | INGRESS-identity | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2066](ADR-2066-pod-signing-key-path-is-reachable.md) | The pod signing key path must be reachable — retire /workspace/profiles in loadSigner | INGRESS-identity | 2026-09-05 | accepted | partial | inactive | — | — | jjohare | agentbox |
+| [ADR-2068](ADR-2068-root-session-runs-its-gated-session-hooks.md) | A session-boundary gate binds every session class, root included, and retracts itself when off | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2069](ADR-2069-uncatalogued-gate-key-fails-the-build.md) | An uncatalogued manifest gate key fails the build, against a baseline that may only shrink | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2070](ADR-2070-one-front-door-is-ingress-the-loom-raw-port-is-a-named-egress-door.md) | ADR-045's one front door governs ingress; the Loom's raw model port is a named egress door | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2071](ADR-2071-journal-the-nightly-dream-cycle.md) | Journal the nightly dream cycle before policing it, and fix the deny-path typo first | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2072](ADR-2072-briefing-workflow-route-surface.md) | Serve the briefing workflow (brief, execute, debrief) from management-api | BASELINE-container | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2073](ADR-2073-loom-asserted-inferred-graph-isolation.md) | Isolate asserted from inferred in the Loom backend so provenance scope is backend-enforced, not requested | LEARNING-memory | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2074](ADR-2074-deferred-distillation-mcp-server.md) | Build the ADR-051 deferred-distillation tools as a discrete, separately gated MCP server | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2075](ADR-2075-loom-attested-generation-identity.md) | Attest the Loom's loaded generation at the server, instead of asserting it from configuration | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2076](ADR-2076-benchmark-the-agent-retrieval-path.md) | Benchmark the agent retrieval path (/loom/search + /loom/sparql) on its own terms, with a frozen recall band | LEARNING-memory | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2077](ADR-2077-byte-identical-when-off-rebuild-proof.md) | Prove byte-identical-when-off with an actual image rebuild — the procedure, the commands and the receipts | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2078](ADR-2078-provision-pods-signer-from-sovereign-identity.md) | Provision the pods signer from the sovereign identity the boot already mints | INGRESS-identity | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
