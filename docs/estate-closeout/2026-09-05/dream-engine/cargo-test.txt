@@ -1,0 +1,179 @@
+warning: failed to auto-clean cache data
+
+failed to clean entries from the global cache
+
+Caused by:
+  failed to remove file `/home/devuser/workspace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/protobuf-2.28.0/regenerate.sh`
+
+Caused by:
+  Permission denied (os error 13)
+   Compiling dream-engine v0.1.0 (/home/devuser/workspace/project/agentbox/services/dream-engine)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.79s
+     Running unittests src/lib.rs (target/debug/deps/dream_engine-cdaa46b6c59d3605)
+
+running 150 tests
+test compile::tests::prompt_contains_evaluator ... ok
+test compile::tests::human_review_policy_when_no_auto_merge ... ok
+test compile::tests::prompt_asks_for_a_dream_patch_block ... ok
+test compile::tests::prompt_forbids_opaque_findings ... ok
+test compile::tests::prompt_contains_repo_and_deep ... ok
+test compile::tests::prompt_contains_verdict_instructions ... ok
+test compile::tests::prompt_is_deterministic ... ok
+test config::tests::accepts_darwin_evaluator_with_mock_or_agent_sandbox ... ok
+test compile::tests::prompt_specifies_fate_token_format ... ok
+test config::tests::bonus_moduli ... ok
+test config::tests::annexe_include_parses_and_defaults ... ok
+test config::tests::rejects_darwin_evaluator_without_sandbox_flag ... ok
+test config::tests::non_darwin_evaluators_unaffected ... ok
+test config::tests::rejects_empty_slots ... ok
+test config::tests::slot_rotation ... ok
+test context::tests::clip_middle_marks_elision_and_respects_boundaries ... ok
+test context::tests::materialise_folds_carry_recovery_pointer ... ok
+test context::tests::parse_plan_drops_unknown_actions ... ok
+test context::tests::parse_plan_tolerates_fences_and_prose ... ok
+test context::tests::validate_defaults_cover_unmentioned_objects ... ok
+test context::tests::validate_drops_unknown_targets ... ok
+test context::tests::materialise_budget_degrades_prior_to_fold_but_not_tonight ... ok
+test context::tests::validate_protects_tonight_receipts ... ok
+test dispatch::tests::shell_quote_handles_spaces_and_single_quotes ... ok
+test engine::tests::conninfo_conversion ... ok
+test engine::tests::conninfo_defaults ... ok
+test engine::tests::dry_streak_counts_trailing_inconclusive ... ok
+test engine::tests::dry_streak_empty_and_header_only ... ok
+test context::tests::persist_and_reload_round_trip ... ok
+test engine::tests::dry_streak_reset_by_decisive_verdict ... ok
+test engine::tests::env_u32_falls_back_on_absence_and_garbage ... ok
+test engine::tests::tail_respects_char_boundaries ... ok
+test gate::tests::a_blocked_required_evaluator_vetoes ... ok
+test gate::tests::a_broken_candidate_cannot_receive_accept ... ok
+test gate::tests::a_reject_verdict_passes_through_untouched ... ok
+test gate::tests::a_patch_that_will_not_apply_is_a_harness_fault ... ok
+test gate::tests::a_missing_required_evaluator_vetoes_as_a_harness_fault ... ok
+test gate::tests::a_silent_required_evaluator_vetoes ... ok
+test gate::tests::a_timed_out_required_evaluator_vetoes ... ok
+test gate::tests::accept_without_a_candidate_patch_is_unproven ... ok
+test gate::tests::an_advisory_evaluator_never_vetoes ... ok
+test gate::tests::an_unreadable_verdict_never_reaches_accept ... ok
+test gate::tests::clean_accept_survives_the_gate ... ok
+test gate::tests::environment_vetoes_ignore_a_legitimately_failing_baseline ... ok
+test inbox::tests::extracts_bullet_list_form ... ok
+test gate::tests::evaluators_scoped_to_another_deep_are_not_required_tonight ... ok
+test gate::tests::failure_text_with_a_zero_exit_still_vetoes ... ok
+test inbox::tests::extracts_numbered_recommendations ... ok
+test inbox::tests::no_marker_no_questions ... ok
+test inbox::tests::short_hash_is_stable ... ok
+test ledger::tests::escape_cell_neutralises_pipes_and_newlines ... ok
+test manifest::tests::evaluator_identity_digests_the_command ... ok
+test ledger::tests::escaping_keeps_row_parseable ... ok
+test ledger::tests::bootstraps_missing_file ... ok
+test ledger::tests::handles_file_without_trailing_newline ... ok
+test ledger::tests::append_adds_exactly_one_line ... ok
+test manifest::tests::required_filters_by_deep_and_requirement ... ok
+test persist::tests::branch_name_slugifies_and_dates ... ok
+test manifest::tests::run_id_is_deterministic_and_input_sensitive ... ok
+test ledger::tests::round_trip_parses_into_ten_cells ... ok
+test persist::tests::extract_patch_none_when_absent_or_empty ... ok
+test manifest::tests::evaluator_order_is_stable_regardless_of_map_order ... ok
+test persist::tests::extract_patch_pulls_the_fenced_diff ... ok
+test manifest::tests::write_atomic_replaces_content_wholesale ... ok
+test readiness::tests::cat_of_a_file_is_surface_dependent_but_a_bare_cat_is_not ... ok
+test readiness::tests::a_real_command_is_admitted_and_reports_its_roster ... ok
+test readiness::tests::a_wrong_deep_evaluator_leaves_the_night_with_nothing_to_run ... ok
+test readiness::tests::an_all_advisory_roster_cannot_veto_and_is_refused ... ok
+test receipts::tests::green_cargo_output_is_not_an_explicit_fail ... ok
+test receipts::tests::explicit_fail_text_beats_a_zero_exit ... ok
+test receipts::tests::nonzero_exit_fails_with_the_code ... ok
+test receipts::tests::only_passed_counts_as_a_pass ... ok
+test readiness::tests::an_empty_evaluator_map_is_refused ... ok
+test readiness::tests::a_nonexistent_script_command_is_refused ... ok
+test receipts::tests::timeout_is_typed_from_flag_or_exit_code ... ok
+test receipts::tests::transport_error_is_blocked_not_failed ... ok
+test receipts::tests::zero_exit_with_no_output_is_silent ... ok
+test readiness::tests::a_script_behind_a_cd_resolves_relative_to_that_directory ... ok
+test receipts::tests::zero_exit_with_output_passes ... ok
+test manifest::tests::freeze_writes_once_and_resumes_identically ... ok
+test roster::tests::a_broken_harness_still_costs_a_turn ... ok
+test readiness::tests::an_inline_echo_command_is_refused_as_non_probative ... ok
+test roster::tests::an_empty_roster_is_alphabetical_and_capped ... ok
+test roster::tests::every_repo_gets_a_turn_before_any_repeats ... ok
+test readiness::tests::darwin_without_a_sandbox_flag_is_refused_at_admission_too ... ok
+test roster::tests::pruning_forgets_retired_repos ... ok
+test manifest::tests::freeze_archives_a_diverged_manifest_instead_of_overwriting ... ok
+test roster::tests::selection_is_deterministic_for_identical_state ... ok
+test roster::tests::the_least_recently_run_repo_leads ... ok
+test runner::tests::scripted_runner_blocks_on_unscripted_commands ... ok
+test runner::tests::timeout_wrapper_quotes_the_command_and_the_directory ... ok
+test roster::tests::state_survives_a_round_trip_and_a_missing_file ... ok
+test ruvector::tests::embedding_length_validation ... ok
+test manifest::tests::the_digest_ignores_the_timestamp_but_not_the_content ... ok
+test verdict::tests::embedded_keyword_is_not_a_match ... ok
+test ruvector::tests::vector_formatting ... ok
+test ruvector::tests::vector_formatting_shape ... ok
+test runstate::tests::a_first_attempt_is_fresh_and_durable ... ok
+test ruvector::tests::importance_tiers ... ok
+test verdict::tests::last_verdict_line_wins ... ok
+test verdict::tests::falls_back_to_last_standalone_keyword ... ok
+test verdict::tests::mid_document_keyword_does_not_override_trailing_verdict_line ... ok
+test receipts::tests::receipts_round_trip_through_disk_with_raw_streams ... ok
+test runstate::tests::a_corrupt_journal_does_not_wedge_the_night ... ok
+test verdict::tests::defaults_to_inconclusive ... ok
+test runstate::tests::a_completed_run_is_never_silently_repeated ... ok
+test verdict::tests::from_label_round_trips_every_verdict ... ok
+test verdict::tests::handoff_is_a_non_significant_operational_verdict ... ok
+test verdict::tests::parses_verdict_field ... ok
+test verdict::tests::parses_verdict_section ... ok
+test verdict::tests::sanitise_first_non_heading_line ... ok
+test runstate::tests::a_different_run_id_starts_a_fresh_journal ... ok
+test runstate::tests::advance_never_moves_backwards ... ok
+test verdict::tests::parses_trailing_verdict_line ... ok
+test verdict::tests::sanitise_matches_bold_hypothesis ... ok
+test verdict::tests::sanitise_is_table_safe_and_truncated ... ok
+test verdict::tests::sanitise_inconclusive_fallback ... ok
+test verdict::tests::sanitise_strips_blockquote_from_given ... ok
+test verdict::tests::sanitise_prefers_given_hypothesis ... ok
+test runstate::tests::an_interrupted_run_resumes_from_its_last_phase ... ok
+test verdict::tests::sanitise_uses_finding_line ... ok
+test runstate::tests::attempts_are_bounded_and_exhaustion_is_terminal ... ok
+test verdict::tests::sanitise_uses_main_lesson ... ok
+test verdict::tests::strict_accepts_a_single_clean_declaration ... ok
+test verdict::tests::strict_accepts_repeated_agreeing_declarations ... ok
+test verdict::tests::strict_refuses_a_report_with_no_declaration ... ok
+test verdict::tests::strict_refuses_conflicting_declarations ... ok
+test verdict::tests::strict_refuses_trailing_prose_on_the_verdict_line ... ok
+test verdict::tests::strict_refuses_unknown_and_lowercase_tokens ... ok
+test verdict::tests::verdict_line_tolerates_punctuation_and_indent ... ok
+test verdict::tests::verdict_str_and_significance ... ok
+test witness::tests::accepts_boundary_lengths ... ok
+test witness::tests::commit_is_trimmed_and_lowercased ... ok
+test witness::tests::is_deterministic ... ok
+test witness::tests::matches_reference_vector ... ok
+test witness::tests::rejects_bad_commits ... ok
+test witness::tests::report_hash_is_64_char_lowercase_hex ... ok
+test witness::tests::different_commit_changes_witness ... ok
+test witness::tests::short_handles_undersized_input ... ok
+test witness::tests::single_byte_report_change_changes_witness ... ok
+test verdict::tests::sanitise_full_keeps_whole_hypothesis_past_80_chars ... ok
+test runner::tests::local_runner_runs_in_the_given_directory ... ok
+test runner::tests::local_runner_captures_streams_and_exit_code ... ok
+test candidate::tests::the_baseline_is_evaluated_green_so_the_veto_is_the_patch_not_the_repo ... ok
+test candidate::tests::a_patch_that_does_not_apply_is_reported_not_swallowed ... ok
+test persist::tests::build_branch_worktree_applies_patch_in_isolation ... ok
+test candidate::tests::preparing_the_candidate_never_touches_the_operator_working_tree ... ok
+test candidate::tests::a_good_candidate_is_applied_isolated_and_passes_the_rerun ... ok
+test candidate::tests::a_deliberately_broken_candidate_cannot_receive_accept ... ok
+test runner::tests::local_runner_enforces_the_timeout ... ok
+
+test result: ok. 150 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.01s
+
+     Running unittests src/main.rs (target/debug/deps/dream_engine-0d06a84bfabf4a4b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests dream_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

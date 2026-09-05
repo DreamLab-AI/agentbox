@@ -77,14 +77,21 @@ One cycle (`run_cycle`) is a fixed sequence:
 
 ## Verdict semantics + significance bar
 
-The verdict is parsed deterministically from the LLM's free-form markdown. A strict priority order ensures a stray keyword in the body can never override an explicit trailing `VERDICT:` line (a false positive that bit us in production — it has a regression test). Three outcomes:
+Two parses run over the LLM's free-form markdown, and they answer different questions.
+
+The **lenient** parse (`verdict::parse_verdict`) supplies the ledger's finding text. A strict priority order ensures a stray keyword in the body can never override an explicit trailing `VERDICT:` line (a false positive that bit us in production — it has a regression test).
+
+The **strict** parse (`verdict::parse_verdict_strict`) is the only reading *acceptance* consults (ADR-2024). It requires a bare, unambiguous `VERDICT: <TOKEN>` line: trailing prose, conflicting declarations, unknown tokens and a missing line are all typed errors, and an error can never reach ACCEPT. Prose archaeology is fine for a table cell; it is not fine for promoting code.
+
+Five outcomes:
 
 | Verdict | Meaning | Persistence | Dry streak |
 |---|---|---|---|
 | `ACCEPT` | The experiment is justified by the evidence. | Ledger row **and** RuVector (importance 0.9). | resets |
 | `REJECT` | The experiment is refuted by the evidence. | Ledger row **and** RuVector (0.7) — a refutation is as valuable as an acceptance. | resets |
 | `INCONCLUSIVE` | Hypothesis tested, evidence insufficient (or a degraded LLM night). | Ledger row **and** RuVector (0.4) — the operational lessons (evaluator traps, false positives) are worth recalling. | counts |
-| `BLOCKED-ENV` | Hypothesis **untested** — the engine's pre-flight probe found the annexe checkout missing/empty twice. No evaluators run, no LLM called. | Ledger row + operator inbox alert only — a broken harness is state, not knowledge. | neither counts nor resets |
+| `BLOCKED-ENV` | Hypothesis **untested** — the pre-flight probe found the annexe checkout missing/empty twice, a required evaluator could not run, or a candidate patch would not apply. No LLM call in the pre-flight case. | Ledger row + operator inbox alert only — a broken harness is state, not knowledge. | neither counts nor resets |
+| `HANDOFF` | Nomination **refused before scheduling** — tonight's deep has no usable evaluator (empty map, no evaluator covering the deep, an all-advisory roster, a non-probative or empty command, a script absent from the tree, a darwin entrypoint without `--sandbox mock\|agent`). No clone, no build, no evaluator, no LLM call. | Ledger row + an operator *question* in the dream inbox: which evaluator should decide this deep? | neither counts nor resets |
 
 Splitting "untestable (environment)" out of INCONCLUSIVE is load-bearing: environment faults no longer park healthy repos via the dry streak, and they surface to the operator (dream inbox) instead of masquerading as evidence. The 2026-08-21 `PIN-DRIFT-KITREF` false positive — empty greps in a vanished cwd graded as drift — is the canonical failure this prevents.
 
@@ -92,11 +99,48 @@ Splitting "untestable (environment)" out of INCONCLUSIVE is load-bearing: enviro
 
 - **Singleton lock** — the engine binds `127.0.0.1:49172`; a second instance exits instead of racing the shared HP annexe (the 2026-08-20/21 double-loop corruption class). One-shots require stopping the loop first.
 - **Pre-flight probe** — after `clone_to_hp`, the checkout must exist and be non-empty; one re-provision retry, then `BLOCKED-ENV`.
-- **Unique annexe dirs** — remote night dirs carry a `-p<pid>` suffix.
+- **Unique annexe dirs** — remote night dirs carry a `-r<run_id>` suffix. The run id is deterministic, so two attempts at the same experiment share one workspace while two different experiments never collide — and the name survives a restart, which a pid could not.
 - **Carry-over** — the previous night's `Next steps` / `Biggest uncertainty` / `Main lesson` lines and any answered operator questions are appended to the next compiled prompt, so nights compound.
 - **Dream inbox** — `workspace/.agentbox/dream-inbox.json`: report "Human action recommended" items and night-health anomalies queue here; the `dream-inbox-surface.cjs` UserPromptSubmit hook surfaces open items into any Claude session; `scripts/dream-inbox.mjs answer` records decisions that feed carry-over.
 - **Night health** — `workspace/.agentbox/dream-last-night.json` records one verdict per eligible repo; zero-eligible nights and FAILED/BLOCKED-ENV outcomes raise inbox alerts.
 - **Harvest** — `scripts/dream-harvest.mjs` (weekly): verdict counts, streaks, pending-ACCEPT review list, env-fault rate.
+
+## The acceptance path (ADR-2024, 2026-09-05)
+
+Evaluation used to run entirely *before* the model wrote its patch, so the diff it emitted was never itself tested, and a report could carry evaluator failure text and an `ACCEPT` label at once. The acceptance path now composes six pieces, each a small pure module with its own tests:
+
+1. **Evaluator-readiness admission** (`readiness.rs`) — before anything is scheduled, the config and the checked-out tree are inspected: does an evaluator cover tonight's deep, is any of them required, is the command probative, does its script exist? An unusable nomination is refused with `HANDOFF`. Static only: nothing is executed.
+2. **Frozen experiment manifest** (`manifest.rs`) — written atomically to `<night>/manifest.json` **before any model call**: baseline revision *and* tree hash, evaluator identities with `sha256(command)`, the `dream.config.json` digest, the intended model identity, and the `run_id`. The run id is a pure function of those inputs, so a restart recomputes it; a moved baseline archives the superseded manifest rather than overwriting it.
+3. **Durable run journal** (`runstate.rs`) — `<night>/run-state.json` records the phase after every transition. A completed night is skipped rather than repeated, an interrupted one resumes from its recorded phase with the attempt counted, and an exhausted one is abandoned with an operator alert instead of looping.
+4. **Typed receipts** (`runner.rs`, `receipts.rs`) — every evaluator run yields exit code, both streams verbatim, duration and a classified outcome (`Passed`, `Failed`, `ExplicitFail`, `Blocked`, `TimedOut`, `Silent`, `Missing`), persisted raw under `<night>/receipts/{baseline,candidate}/`. Execution goes through an `EvaluatorRunner` seam, so the whole path is exercisable offline.
+5. **Candidate rerun** (`candidate.rs`) — on a strict `ACCEPT`, the emitted `dream-patch` is applied on an isolated git worktree at HEAD, its tree hash recorded in `<night>/candidate.json`, and the required evaluators re-run **against that tree**. The operator's working tree is never touched.
+6. **The deterministic gate** (`gate.rs`) — a pure function of manifest, strict verdict, candidate state and candidate receipts, recorded in `<night>/gate.json`. A required evaluator that is missing, silent, blocked, timed out, non-zero or explicitly failing vetoes `ACCEPT` regardless of report text.
+
+| Veto class | Cause | Verdict |
+|---|---|---|
+| harness | required evaluator missing / silent / blocked / timed out; patch would not apply | `BLOCKED-ENV` |
+| evidence | required evaluator exited non-zero, or declared `FAIL` | `REJECT` |
+| unproven | `ACCEPT` with no candidate patch; unreadable verdict line | `INCONCLUSIVE` |
+
+A draft PR is opened **only** when the gate upholds the ACCEPT; a vetoed candidate's branch is deleted, so no unverified diff is left looking promotable. The human merge is unchanged — the gate can only refuse an acceptance, never grant a merge.
+
+### Declaring evaluators
+
+`evaluatorEntrypoints` values accept the historical bare string or an object:
+
+```json
+"evaluatorEntrypoints": {
+  "tests": "cd services/dream-engine && cargo test 2>&1 | tail -15",
+  "lint":  { "cmd": "npx eslint .", "required": false },
+  "hooks": { "cmd": "bash scripts/hooks.sh", "deeps": ["hooks-pipeline"], "timeoutSecs": 600 }
+}
+```
+
+A bare string reads **fail-closed**: `required: true`, every deep, a 1800 s budget. That is deliberate — an evaluator a repo bothered to declare is one the night is expected to honour — but it does mean every declared evaluator can veto. Mark genuinely advisory ones (`required: false`) explicitly. Load-time validation rejects an empty command, a zero timeout, and a `deeps` entry naming no declared slot.
+
+### Fair roster scheduling
+
+Discovery is alphabetical and the night is capped at `max_repos_per_night`, which used to mean the tail of the roster never dreamed. Selection now orders eligible repos least-recently-dreamed first (then fewest runs, then name) using `workspace/.agentbox/dream-roster.json`, so the cap rotates through the whole roster. A turn is a turn: a `BLOCKED-ENV`, `HANDOFF` or failed night still registers, or a repo with a broken harness would monopolise the schedule. The state is on disk, so a restart does not reset the rotation.
 
 ## Witness recipe
 

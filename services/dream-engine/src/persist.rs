@@ -114,6 +114,13 @@ pub fn build_branch_worktree(
     Ok(wt)
 }
 
+/// Delete a local branch. Used when the required-check gate vetoes a candidate:
+/// a diff that failed its rerun must not be left behind as a promotable
+/// artefact for a human to find and mistake for a validated win.
+pub fn delete_branch(repo: &Path, branch: &str) {
+    let _ = git(repo, &["branch", "-D", branch]);
+}
+
 /// Remove the worktree created by `build_branch_worktree` (keeps the branch).
 pub fn remove_worktree(repo: &Path, wt: &Path) {
     let _ = git(repo, &["worktree", "remove", "--force", &wt.display().to_string()]);
@@ -133,7 +140,29 @@ pub fn persist_accept(
     body: &str,
 ) -> Result<PrOutcome, PersistError> {
     let wt = build_branch_worktree(repo, branch, patch, title)?;
-    let push_ok = git(&wt, &["push", "-u", "origin", branch]).is_ok();
+    remove_worktree(repo, &wt);
+    Ok(push_and_open_pr(repo, repo_slug, branch, title, body))
+}
+
+/// Push an existing local branch and open a DRAFT PR for it.
+///
+/// Split out of [`persist_accept`] because the ADR-2024 acceptance path builds
+/// the branch *earlier* — it is the candidate tree the required evaluators were
+/// re-run against — and only publishes it once the gate has upheld the ACCEPT.
+/// Rebuilding the worktree here would either collide with that branch or, worse,
+/// publish a tree nothing verified.
+///
+/// Fail-open: a push or `gh` failure returns `pushed: false` / `pr_url: None`
+/// so the night still records its verdict, with the branch kept locally for a
+/// manual push.
+pub fn push_and_open_pr(
+    repo: &Path,
+    repo_slug: &str,
+    branch: &str,
+    title: &str,
+    body: &str,
+) -> PrOutcome {
+    let push_ok = git(repo, &["push", "-u", "origin", branch]).is_ok();
     let mut pr_url = None;
     if push_ok {
         let out = Command::new("gh")
@@ -145,8 +174,7 @@ pub fn persist_accept(
             }
         }
     }
-    remove_worktree(repo, &wt);
-    Ok(PrOutcome { branch: branch.to_string(), pr_url, pushed: push_ok })
+    PrOutcome { branch: branch.to_string(), pr_url, pushed: push_ok }
 }
 
 #[cfg(test)]

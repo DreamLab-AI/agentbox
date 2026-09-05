@@ -1,19 +1,33 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 use thiserror::Error;
 use tracing::{info, warn};
 
+use crate::candidate;
 use crate::compile;
 use crate::config::{self, DreamConfig, RuntimeConfig};
 use crate::context;
 use crate::dispatch;
+use crate::gate;
 use crate::inbox;
 use crate::ledger::{self, LedgerRow};
 use crate::llm::{self, LlmConfig, Provider};
+use crate::manifest;
 use crate::persist;
+use crate::readiness;
+use crate::receipts;
+use crate::roster;
+use crate::runner::EvaluatorRunner;
+use crate::runstate;
 use crate::ruvector::{self, DreamFinding, RuVectorConfig};
 use crate::verdict::{self, Verdict};
 use crate::witness;
+
+/// Wall-clock budget for a repo's build step. Generous: a cold release build of
+/// a Rust workspace on the annexe is minutes, not seconds, and a build that
+/// overruns this is itself a finding.
+pub const DEFAULT_BUILD_TIMEOUT_SECS: u64 = 3600;
 
 #[derive(Debug, Error)]
 pub enum EngineError {
@@ -51,6 +65,12 @@ pub struct Engine {
     /// (e.g. Z.AI gateway 524s → the self-hosted Loom). None disables.
     pub llm_fallback: Option<LlmConfig>,
     pub ruvector: RuVectorConfig,
+    /// How evaluator commands are executed. Production wires
+    /// [`crate::runner::SshRunner`] at the HP annexe; tests substitute a local
+    /// or scripted runner so the acceptance path is exercisable offline.
+    pub runner: Arc<dyn EvaluatorRunner>,
+    /// Durable fair-scheduling state (least-recently-dreamed first).
+    pub roster_path: PathBuf,
 }
 
 impl Engine {
@@ -123,28 +143,53 @@ impl Engine {
             }
         }
 
-        if eligible.len() > self.runtime.max_repos_per_night {
-            for (name, _) in &eligible[self.runtime.max_repos_per_night..] {
-                warn!(repo = %name, cap = self.runtime.max_repos_per_night, "over roster cap — skipped tonight");
+        // Fair, durable roster selection. Alphabetical order plus a hard cap
+        // starves the tail of the roster forever (estate review, 2026-09-04);
+        // ordering by least-recently-dreamed rotates the cap through every
+        // nominated repo, and the ordering key lives on disk so a restart does
+        // not reset the rotation.
+        let mut roster = roster::load(&self.roster_path);
+        roster.prune(&repos.iter().map(|(n, _)| n.clone()).collect::<Vec<_>>());
+        let eligible_names: Vec<String> = eligible.iter().map(|(n, _)| n.clone()).collect();
+        let selected = roster.select(&eligible_names, self.runtime.max_repos_per_night);
+        for name in &eligible_names {
+            if !selected.contains(name) {
+                info!(
+                    repo = %name,
+                    cap = self.runtime.max_repos_per_night,
+                    last_run = %roster.repos.get(name).map(|e| e.last_run_date.clone()).unwrap_or_default(),
+                    "over tonight's cap — deferred, and it leads the next roster"
+                );
             }
-            eligible.truncate(self.runtime.max_repos_per_night);
         }
+        let eligible: Vec<(String, PathBuf)> = selected
+            .iter()
+            .filter_map(|n| eligible.iter().find(|(name, _)| name == n).cloned())
+            .collect();
 
         info!(
             eligible = eligible.len(),
             nominated = repos.len(),
-            "night start — dreaming each eligible repo serially"
+            order = %eligible.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>().join(", "),
+            "night start — dreaming each eligible repo serially, fairest first"
         );
 
         let mut outcomes = Vec::new();
         for (name, path) in eligible {
-            match self.cycle_repo(&name, &path, day_int, date, false).await {
-                Ok(res) => outcomes.push((name, res.verdict.as_str().to_string())),
+            let verdict_label = match self.cycle_repo(&name, &path, day_int, date, false).await {
+                Ok(res) => res.verdict.as_str().to_string(),
                 Err(e) => {
                     warn!(repo = %name, error = %e, "cycle failed — continuing with next repo");
-                    outcomes.push((name, format!("FAILED: {}", e)));
+                    format!("FAILED: {}", e)
                 }
+            };
+            // A turn is a turn: a blocked or failed night still counts, or a
+            // repo with a broken harness would monopolise the roster forever.
+            roster.record(&name, date, &verdict_label);
+            if let Err(e) = roster::save(&self.roster_path, &roster) {
+                warn!(error = %e, "roster persist failed (fail-open — fairness degrades, the night does not)");
             }
+            outcomes.push((name, verdict_label));
         }
         info!(
             summary = %outcomes.iter().map(|(n, v)| format!("{}={}", n, v)).collect::<Vec<_>>().join(", "),
@@ -266,9 +311,49 @@ impl Engine {
         let repo_path = repo_path.to_path_buf();
 
         // Load config, pick slot, compile the prompt.
-        let cfg = DreamConfig::load(&repo_path.join("dream.config.json"))?;
+        let config_path = repo_path.join("dream.config.json");
+        let config_bytes = std::fs::read(&config_path).unwrap_or_default();
+        let cfg = DreamConfig::load(&config_path)?;
         let slot = config::tonight_slot(&cfg, day_int).clone();
         let bonuses = config::bonus_dives(&cfg, day_int);
+
+        let night_id = format!("{}-{}", date, repo_name);
+        let night_dir = self.artefact_dir.join(&night_id);
+
+        // 0. Evaluator-readiness admission (ADR-2024 closeout; ADR-072).
+        //    A nomination whose evaluators cannot decide anything is refused
+        //    HERE — before an annexe clone, a build or a single model token.
+        let admission = readiness::assess(&cfg, &repo_name, &slot.deep, &repo_path);
+        if !admission.admitted() {
+            warn!(
+                repo = %repo_name,
+                deep = %slot.deep,
+                refusal = %admission.refusal(),
+                "nomination refused at admission — HANDOFF (nothing scheduled)"
+            );
+            if dry_run {
+                return Ok(CycleResult {
+                    repo: repo_name,
+                    verdict: Verdict::Handoff,
+                    finding: admission.refusal(),
+                    witness_short: String::new(),
+                    report_path: PathBuf::new(),
+                    ledger_path: PathBuf::new(),
+                    stored_to_ruvector: false,
+                });
+            }
+            return self
+                .persist_handoff(&cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, &admission)
+                .await;
+        }
+        info!(
+            repo = %repo_name,
+            deep = %slot.deep,
+            required = %admission.required.join(", "),
+            advisory = %admission.advisory.join(", "),
+            "admission passed — evaluators are usable for tonight's deep"
+        );
+
         let mut prompt = compile::compile(&cfg, &slot, day_int, &bonuses);
         info!(chars = prompt.len(), deep = %slot.deep, "prompt compiled");
 
@@ -296,20 +381,151 @@ impl Engine {
             });
         }
 
-        // 4. Dispatch to the HP annexe: clone, build, run evaluators.
+        // 1. Freeze the experiment manifest BEFORE anything else can move.
+        //    Baseline revision + tree hash, evaluator identities and command
+        //    digests, the model we intend to call, and the restart-safe run id.
+        let (baseline_rev, baseline_tree) = match manifest::baseline_of(&repo_path) {
+            Ok(b) => b,
+            Err(e) => {
+                warn!(repo = %repo_name, error = %e, "cannot resolve baseline revision — BLOCKED-ENV");
+                return self
+                    .persist_blocked_env(
+                        &cfg,
+                        &repo_name,
+                        &repo_path,
+                        &slot.deep,
+                        &night_id,
+                        date,
+                        "",
+                        &format!("baseline revision unresolvable: {e}"),
+                    )
+                    .await;
+            }
+        };
+        let frozen = manifest::build(
+            &cfg,
+            &config_bytes,
+            &repo_name,
+            &night_id,
+            date,
+            day_int,
+            &slot.deep,
+            &slot.scan,
+            &baseline_rev,
+            &baseline_tree,
+            manifest::ModelIdentity {
+                provider: format!("{:?}", self.llm.provider).to_lowercase(),
+                model: self.llm.model.clone(),
+                max_tokens: self.llm.max_tokens,
+                fallback: self
+                    .llm_fallback
+                    .as_ref()
+                    .map(|f| format!("{:?}:{}", f.provider, f.model).to_lowercase()),
+            },
+        );
+        std::fs::create_dir_all(&night_dir)?;
+        match manifest::freeze(&night_dir, &frozen) {
+            Ok(manifest::Freeze::Written) => {
+                info!(run_id = %frozen.run_id, tree = %baseline_tree, "experiment manifest frozen")
+            }
+            Ok(manifest::Freeze::Resumed) => {
+                info!(run_id = %frozen.run_id, "manifest already frozen — restart of the same experiment")
+            }
+            Ok(manifest::Freeze::Diverged { previous }) => warn!(
+                run_id = %frozen.run_id,
+                previous = %previous,
+                "baseline moved under an interrupted night — prior manifest archived"
+            ),
+            Err(e) => {
+                warn!(error = %e, "manifest freeze failed — refusing to run unwitnessed");
+                return self
+                    .persist_blocked_env(
+                        &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
+                        &format!("experiment manifest could not be frozen: {e}"),
+                    )
+                    .await;
+            }
+        }
+
+        // 2. Open the durable run journal. A finished night is never repeated;
+        //    an interrupted one resumes with its attempt counted.
+        let mut run = match runstate::begin(
+            &night_dir,
+            &frozen.run_id,
+            &night_id,
+            &repo_name,
+            date,
+            runstate::DEFAULT_MAX_ATTEMPTS,
+        ) {
+            Ok(runstate::Resume::AlreadyComplete(prior)) => {
+                info!(
+                    run_id = %prior.run_id,
+                    verdict = ?prior.verdict,
+                    "run already complete — skipping rather than repeating it"
+                );
+                return Ok(CycleResult {
+                    repo: repo_name,
+                    verdict: prior
+                        .verdict
+                        .as_deref()
+                        .map(verdict::from_label)
+                        .unwrap_or(Verdict::Inconclusive),
+                    finding: "(already complete — restart-safe skip)".into(),
+                    witness_short: String::new(),
+                    report_path: night_dir.join("report.md"),
+                    ledger_path: repo_path.join(&cfg.ledger_path),
+                    stored_to_ruvector: false,
+                });
+            }
+            Ok(runstate::Resume::Abandoned(prior)) => {
+                warn!(run_id = %prior.run_id, attempts = prior.attempts, "run out of attempts — abandoning");
+                let _ = inbox::add(
+                    "alert",
+                    &repo_name,
+                    &night_id,
+                    date,
+                    &format!(
+                        "Dream run {} for {} was abandoned after {} attempts (phase {}). \
+                         Investigate before the next window; it will not retry itself.",
+                        prior.run_id, repo_name, prior.attempts, prior.phase.as_str()
+                    ),
+                );
+                return self
+                    .persist_blocked_env(
+                        &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
+                        &format!("run abandoned after {} attempts", prior.attempts),
+                    )
+                    .await;
+            }
+            Ok(runstate::Resume::Fresh(s)) => s,
+            Ok(runstate::Resume::Resumed(s)) => {
+                info!(
+                    run_id = %s.run_id,
+                    attempt = s.attempts,
+                    from = ?s.resumed_from,
+                    "resuming an interrupted run"
+                );
+                s
+            }
+            Err(e) => {
+                warn!(error = %e, "run journal unusable — refusing to run unrecoverably");
+                return self
+                    .persist_blocked_env(
+                        &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
+                        &format!("run journal unwritable: {e}"),
+                    )
+                    .await;
+            }
+        };
+        let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::ManifestFrozen);
+
+        // 3. Dispatch to the HP annexe: clone, build, run evaluators.
         //    Hygiene first: sweep night dirs older than 3 days so the annexe
         //    never accumulates stale clones/build trees (fail-open).
-        let night_id = format!("{}-{}", date, repo_name);
-        // Per-run unique remote dir (pid suffix): two engine processes can
-        // never share a workspace, so a duplicate loop degrades to wasted
-        // compute instead of racing rm -rf against a live evaluation
-        // (observed 2026-08-20/21).
-        let remote_dir = format!(
-            "{}/{}-p{}",
-            self.runtime.hp_annexe_dir,
-            night_id,
-            std::process::id()
-        );
+        //    The remote dir carries the RUN ID, not the pid: two attempts at the
+        //    same experiment reuse one workspace, two different experiments
+        //    never collide, and the name survives a restart.
+        let remote_dir = format!("{}/{}-r{}", self.runtime.hp_annexe_dir, night_id, frozen.run_id);
         if let Err(e) = dispatch::ssh(
             &self.runtime.hp_host,
             &format!(
@@ -320,7 +536,14 @@ impl Engine {
             warn!(error = %e, "annexe retention sweep failed (fail-open)");
         }
         info!(remote = %remote_dir, "dispatching to HP");
-        clone_repo_and_siblings(&self.runtime.hp_host, &repo_path, &remote_dir, &repo_name, &cfg.annexe_include)?;
+        clone_repo_and_siblings(
+            &self.runtime.hp_host,
+            &repo_path,
+            &remote_dir,
+            &repo_name,
+            &cfg.annexe_include,
+            repo_path.parent(),
+        )?;
 
         // Pre-flight probe: the checkout must exist and be non-empty on HP
         // before any evaluator runs. A broken environment (vanished cwd,
@@ -345,12 +568,20 @@ impl Engine {
                     &self.runtime.hp_host,
                     &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
                 );
-                clone_repo_and_siblings(&self.runtime.hp_host, &repo_path, &remote_dir, &repo_name, &cfg.annexe_include)?;
+                clone_repo_and_siblings(
+                    &self.runtime.hp_host,
+                    &repo_path,
+                    &remote_dir,
+                    &repo_name,
+                    &cfg.annexe_include,
+                    repo_path.parent(),
+                )?;
                 matches!(probe(&work_dir), Ok(out) if out.contains("PREFLIGHT-OK"))
             }
         };
         if !preflight_ok {
             warn!(repo = %repo_name, "pre-flight failed twice — recording BLOCKED-ENV night (no LLM call)");
+            let _ = runstate::fail(&night_dir, &mut run, "pre-flight failed twice");
             return self
                 .persist_blocked_env(
                     &cfg,
@@ -360,38 +591,80 @@ impl Engine {
                     &night_id,
                     date,
                     &remote_dir,
+                    &format!(
+                        "annexe checkout {}/{} missing or empty after two provisioning attempts",
+                        remote_dir, repo_name
+                    ),
                 )
                 .await;
         }
 
-        let evaluators: Vec<(&str, &str)> = cfg
-            .evaluator_entrypoints
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect();
-        let (build_out, eval_outs) = dispatch::run_on_hp(
-            &self.runtime.hp_host,
-            &remote_dir,
-            &repo_name,
-            cfg.build_step.as_ref().map(|b| b.cmd.as_str()),
-            &evaluators,
-        )?;
-        info!("build + evaluators complete");
+        // 4. Build step, then the BASELINE evaluator pass — each run producing a
+        //    typed receipt (exit code, both streams, duration, outcome) rather
+        //    than an untyped blob of stdout.
+        let build_out = match cfg.build_step.as_ref() {
+            Some(bs) => {
+                let exec = self.runner.run(&work_dir, &bs.cmd, DEFAULT_BUILD_TIMEOUT_SECS);
+                match exec.exit_code {
+                    Some(0) => exec.stdout,
+                    other => {
+                        warn!(exit = ?other, "build step did not succeed — evaluators decide the night");
+                        format!("BUILD FAILED (exit {:?})\n{}\n{}", other, exec.stdout, exec.stderr)
+                    }
+                }
+            }
+            None => "(no build step)".into(),
+        };
+        let applicable = frozen.applicable();
+        let baseline_receipts = self.run_evaluators(&work_dir, &applicable, receipts::Phase::Baseline);
+        for r in &baseline_receipts {
+            info!(receipt = %r.summary(), "baseline evaluator");
+        }
+        if let Err(e) = receipts::persist(&night_dir, receipts::Phase::Baseline, &baseline_receipts) {
+            warn!(error = %e, "baseline receipt persist failed (fail-open)");
+        }
+        let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::BaselineEvaluated);
+
+        // 4b. Environment gate. A baseline evaluator is allowed to FAIL — that
+        //     is often the finding. It is not allowed to be missing, silent,
+        //     blocked or timed out: with no evidence there is nothing to reason
+        //     over, and the model must not be asked.
+        let env_vetoes = gate::environment_vetoes(&frozen, &baseline_receipts);
+        if !env_vetoes.is_empty() {
+            let detail = env_vetoes
+                .iter()
+                .map(|v| format!("{}: {}", v.subject, v.reason))
+                .collect::<Vec<_>>()
+                .join("; ");
+            warn!(detail = %detail, "required evaluators unusable at baseline — BLOCKED-ENV, no LLM call");
+            let _ = runstate::fail(&night_dir, &mut run, &detail);
+            let res = self
+                .persist_blocked_env(
+                    &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, &remote_dir, &detail,
+                )
+                .await?;
+            let _ = runstate::complete(&night_dir, &mut run, res.verdict.as_str());
+            return Ok(res);
+        }
 
         // 5. Append evidence receipts to the prompt so the LLM reasons over
         //    real evaluator output, not imagination. The LLM has no shell:
         //    everything it may cite — receipts, prior ledger rows, the session
         //    commit — must be in this pack. HP paths are redacted before they
         //    reach an external provider.
-        let commit = git_head(&repo_path).unwrap_or_default();
+        let commit = baseline_rev.clone();
         prompt.push_str("\n\n---\n\n# TONIGHT'S EVIDENCE (receipts from the HP annexe)\n\n");
         prompt.push_str(&format!(
-            "## Session commit\n`{}`\n\n",
-            if commit.is_empty() {
-                "unavailable"
-            } else {
-                &commit
-            }
+            "## Session commit\n`{}` (tree `{}`, run `{}`)\n\n",
+            commit, baseline_tree, frozen.run_id
+        ));
+        prompt.push_str(&format!(
+            "## Required-check gate\nThese evaluators are REQUIRED for deep `{}` and will be RE-RUN \
+             against your candidate patch after you emit it: {}.\nIf any of them fails, is silent, \
+             is blocked or times out on that candidate, ACCEPT is vetoed deterministically \
+             whatever this report says. Emit a candidate only if you believe it passes them.\n\n",
+            slot.deep,
+            if admission.required.is_empty() { "(none)".to_string() } else { admission.required.join(", ") }
         ));
         let ledger_file = repo_path.join(&cfg.ledger_path);
         if let Ok(ledger_text) = std::fs::read_to_string(&ledger_file) {
@@ -402,6 +675,13 @@ impl Engine {
                 recent.join("\n")
             ));
         }
+        // The governed-context planner and the legacy tail path both consume
+        // (name, text) pairs; render each typed receipt into one, keeping the
+        // outcome and exit code visible rather than only the stdout blob.
+        let eval_outs: Vec<(String, String)> = baseline_receipts
+            .iter()
+            .map(|r| (r.name.clone(), render_receipt(r)))
+            .collect();
         // 5b. Self-GC context governance (ADR-070): persist tonight's receipts
         //     untruncated as sidecars, then let a side-channel planner call
         //     assign fold/mask/prune/restore over tonight's and prior nights'
@@ -409,7 +689,6 @@ impl Engine {
         //     truncation below. Fail-open at every stage: any error lands on
         //     the legacy path, and the sidecars are still written (recoverable
         //     evidence is worth keeping even when governance is off).
-        let night_dir = self.artefact_dir.join(&night_id);
         let mut governed_pack: Option<String> = None;
         match std::fs::create_dir_all(&night_dir).and_then(|_| {
             context::persist_receipts(&night_dir, &night_id, &build_out, &eval_outs)
@@ -488,14 +767,138 @@ impl Engine {
                 }
             },
         };
+        let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::ModelCalled);
 
-        // 7. Verdict + finding.
-        let v = verdict::parse_verdict(&report);
-        let finding = verdict::sanitise_finding(&report, v);
-        let finding_full = verdict::sanitise_finding_full(&report, v);
-        info!(verdict = v.as_str(), finding = %finding, "verdict parsed");
+        // 7. Verdict. The STRICT parse is the only reading acceptance consults;
+        //    the lenient one still supplies the finding text for the ledger.
+        let strict = verdict::parse_verdict_strict(&report);
+        let lenient = verdict::parse_verdict(&report);
+        info!(strict = ?strict, lenient = lenient.as_str(), "verdict parsed");
 
-        // 8. Witness: bind report to the repo's current commit.
+        // 8. Candidate: apply the emitted patch in isolation, then RE-RUN the
+        //    required evaluators against that tree. Nothing here trusts the
+        //    report's own claim about its patch.
+        let required = frozen.required();
+        let branch = persist::branch_name(&slot.deep, date);
+        let mut candidate_state = gate::CandidateState::NotAttempted;
+        let mut candidate_receipts: Vec<receipts::EvaluatorReceipt> = Vec::new();
+        let mut prepared: Option<candidate::PreparedCandidate> = None;
+
+        if matches!(strict, Ok(Verdict::Accept)) {
+            match persist::extract_patch(&report) {
+                None => {
+                    info!("report claims ACCEPT but carries no candidate patch — nothing to verify");
+                    candidate_state = gate::CandidateState::NoPatch;
+                }
+                Some(patch) => {
+                    // A stale branch from an interrupted attempt would block the
+                    // worktree; drop it first — the run id, not the branch,
+                    // is the identity.
+                    persist::delete_branch(&repo_path, &branch);
+                    match candidate::prepare(
+                        &repo_path,
+                        &branch,
+                        &patch,
+                        &format!("dream({}): candidate for {}", slot.deep, night_id),
+                    ) {
+                        Err(e) => {
+                            warn!(error = %e, "candidate patch did not apply — acceptance cannot be verified");
+                            candidate_state = gate::CandidateState::DidNotApply { detail: e.to_string() };
+                        }
+                        Ok(c) => {
+                            info!(tree = %c.tree_hash, branch = %c.branch, "candidate tree built in isolation");
+                            let cand_remote = format!("{}/candidate", remote_dir);
+                            let cand_work = format!("{}/{}", cand_remote, repo_name);
+                            match clone_repo_and_siblings(
+                                &self.runtime.hp_host,
+                                &c.worktree,
+                                &cand_remote,
+                                &repo_name,
+                                &cfg.annexe_include,
+                                repo_path.parent(),
+                            ) {
+                                Ok(()) => {
+                                    if let Some(bs) = cfg.build_step.as_ref() {
+                                        let b = self.runner.run(&cand_work, &bs.cmd, DEFAULT_BUILD_TIMEOUT_SECS);
+                                        info!(exit = ?b.exit_code, "candidate build");
+                                    }
+                                    candidate_receipts =
+                                        candidate::evaluate(self.runner.as_ref(), &cand_work, &required);
+                                    for r in &candidate_receipts {
+                                        info!(receipt = %r.summary(), "candidate evaluator");
+                                    }
+                                    candidate_state = gate::CandidateState::Applied {
+                                        tree_hash: c.tree_hash.clone(),
+                                    };
+                                }
+                                Err(e) => {
+                                    warn!(error = %e, "candidate could not be shipped to the annexe");
+                                    candidate_state = gate::CandidateState::DidNotApply {
+                                        detail: format!("annexe provisioning failed: {e}"),
+                                    };
+                                }
+                            }
+                            let _ = manifest::write_candidate(
+                                &night_dir,
+                                &manifest::CandidateRecord {
+                                    schema: manifest::MANIFEST_SCHEMA,
+                                    run_id: frozen.run_id.clone(),
+                                    patch_digest: c.patch_digest.clone(),
+                                    patch_bytes: c.patch_bytes,
+                                    candidate_tree_hash: c.tree_hash.clone(),
+                                    branch: c.branch.clone(),
+                                    applied: matches!(candidate_state, gate::CandidateState::Applied { .. }),
+                                    apply_error: match &candidate_state {
+                                        gate::CandidateState::DidNotApply { detail } => Some(detail.clone()),
+                                        _ => None,
+                                    },
+                                    created_at: chrono::Utc::now().to_rfc3339(),
+                                },
+                            );
+                            prepared = Some(c);
+                        }
+                    }
+                }
+            }
+        }
+        if !candidate_receipts.is_empty() {
+            if let Err(e) =
+                receipts::persist(&night_dir, receipts::Phase::Candidate, &candidate_receipts)
+            {
+                warn!(error = %e, "candidate receipt persist failed (fail-open)");
+            }
+        }
+        let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::CandidateEvaluated);
+
+        // 9. The deterministic gate. From here the verdict is a function of the
+        //    receipts, not of the report's prose.
+        let decision = gate::decide(&frozen, &strict, &candidate_state, &candidate_receipts);
+        let v = decision.verdict_enum();
+        if !decision.vetoes.is_empty() {
+            warn!(summary = %decision.summary, "required-check gate vetoed the model verdict");
+        }
+        info!(model_verdict = %decision.model_verdict, verdict = v.as_str(), "gate decided");
+        let _ = manifest::write_atomic(
+            &night_dir.join("gate.json"),
+            &serde_json::to_vec_pretty(&decision).unwrap_or_default(),
+        );
+        let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::Gated);
+
+        // The finding shown in the ledger must not read as a win when the gate
+        // refused one.
+        let finding = if decision.accepted || decision.vetoes.is_empty() {
+            verdict::sanitise_finding(&report, lenient)
+        } else {
+            let base = verdict::sanitise_finding(&report, lenient);
+            format!("VETOED: {}", base).chars().take(80).collect()
+        };
+        let finding_full = format!(
+            "{}\n\nGate: {}",
+            verdict::sanitise_finding_full(&report, lenient),
+            decision.summary
+        );
+
+        // 10. Witness: bind report to the repo's current commit.
         let (wit_full, wit_short) = match witness::witness(&report, &commit) {
             Ok(w) => {
                 let s = witness::short(&w).to_string();
@@ -507,52 +910,77 @@ impl Engine {
             }
         };
 
-        // 9. Persist the report locally.
-        let night_dir = self.artefact_dir.join(&night_id);
-        std::fs::create_dir_all(&night_dir)?;
+        // 11. Persist the report locally.
         let report_path = night_dir.join("report.md");
         std::fs::write(&report_path, &report)?;
 
-        // 9b. Queue any "Human action recommended" items for the operator —
-        //     the inbox hook surfaces them in the next Claude session,
-        //     whatever its context. Fail-open.
+        // 11b. Queue any "Human action recommended" items for the operator —
+        //      the inbox hook surfaces them in the next Claude session,
+        //      whatever its context. Fail-open.
         for q in inbox::extract_questions(&report) {
             match inbox::add("question", &repo_name, &night_id, date, &q) {
                 Ok(id) => info!(id = %id, "operator question queued to dream inbox"),
                 Err(e) => warn!(error = %e, "dream inbox write failed (fail-open)"),
             }
         }
-
-        // 9c. Persist the candidate as a DRAFT PR (ADR-061) — only on ACCEPT,
-        //     only when enabled, only if the report carries a candidate patch.
-        //     Fail-open: a push/PR failure never fails the night; the win still
-        //     lands in the report/ledger/memory. The merge stays human.
-        let mut pr_ref = "NONE".to_string();
-        if matches!(v, Verdict::Accept) && self.runtime.persist_accepts {
-            match persist::extract_patch(&report) {
-                Some(patch) => {
-                    let branch = persist::branch_name(&slot.deep, date);
-                    let title = format!("dream({}): {}", slot.deep, tail(&finding, 60));
-                    let body = format!(
-                        "Draft PR opened by the dream engine on an ACCEPT night ({night_id}). \
-                         Witness `{wit_short}`. A human decides the merge — evaluation is not \
-                         promotion.\n\n**Finding:** {finding_full}"
-                    );
-                    match persist::persist_accept(&repo_path, &cfg.repo, &branch, &patch, &title, &body) {
-                        Ok(out) => {
-                            info!(branch = %out.branch, pushed = out.pushed, pr = ?out.pr_url, "candidate persisted as draft PR");
-                            pr_ref = out.pr_url.clone().unwrap_or_else(|| {
-                                if out.pushed { format!("branch:{}", out.branch) } else { "PERSIST-LOCAL".into() }
-                            });
-                        }
-                        Err(e) => warn!(error = %e, "persist failed (fail-open) — win in report/ledger only"),
-                    }
-                }
-                None => info!("ACCEPT night carries no candidate patch — nothing to persist"),
-            }
+        // A vetoed ACCEPT is exactly the kind of thing a human should see.
+        if !decision.vetoes.is_empty() {
+            let _ = inbox::add(
+                "alert",
+                &repo_name,
+                &night_id,
+                date,
+                &format!(
+                    "Dream night {} claimed {} but the required-check gate vetoed it → {}. {}",
+                    night_id, decision.model_verdict, decision.verdict, decision.summary
+                ),
+            );
         }
 
-        // 10. Ledger row.
+        // 11c. Persist the candidate as a DRAFT PR (ADR-061) — only when the
+        //      GATE accepted, never on the model's say-so. The branch already
+        //      exists: it is the verified candidate tree. A vetoed candidate is
+        //      discarded so no unverified diff is left looking promotable.
+        //      The merge stays human — evaluation is not promotion.
+        let mut pr_ref = "NONE".to_string();
+        match (&prepared, decision.accepted) {
+            (Some(c), true) if self.runtime.persist_accepts => {
+                candidate::cleanup(&repo_path, c);
+                let title = format!("dream({}): {}", slot.deep, tail(&finding, 60));
+                let body = format!(
+                    "Draft PR opened by the dream engine on a GATED ACCEPT night ({night_id}, \
+                     run `{run_id}`).\n\nCandidate tree `{tree}` was applied in isolation and the \
+                     required evaluators re-run against it: {outcomes}. Witness `{wit_short}`.\n\n\
+                     A human decides the merge — evaluation is not promotion.\n\n**Finding:** {finding_full}",
+                    run_id = frozen.run_id,
+                    tree = c.tree_hash,
+                    outcomes = decision
+                        .required_outcomes
+                        .iter()
+                        .map(|(n, o)| format!("{n}={o}"))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                );
+                let out = persist::push_and_open_pr(&repo_path, &cfg.repo, &c.branch, &title, &body);
+                info!(branch = %out.branch, pushed = out.pushed, pr = ?out.pr_url, "verified candidate persisted as draft PR");
+                pr_ref = out.pr_url.clone().unwrap_or_else(|| {
+                    if out.pushed { format!("branch:{}", out.branch) } else { "PERSIST-LOCAL".into() }
+                });
+            }
+            (Some(c), true) => {
+                candidate::cleanup(&repo_path, c);
+                info!("persist_accepts disabled — verified candidate left on local branch only");
+                pr_ref = format!("branch:{}", c.branch);
+            }
+            (Some(c), false) => {
+                warn!(branch = %c.branch, "candidate vetoed — discarding branch and worktree");
+                candidate::discard(&repo_path, c);
+                pr_ref = "VETOED".into();
+            }
+            (None, _) => {}
+        }
+
+        // 12. Ledger row.
         let ledger_path = repo_path.join(&cfg.ledger_path);
         let row = LedgerRow {
             date: date.into(),
@@ -568,8 +996,9 @@ impl Engine {
         };
         ledger::append_row(&ledger_path, &row)?;
         info!(path = %ledger_path.display(), "ledger row appended");
+        let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::Persisted);
 
-        // 11. RuVector store — fail-open: a memory failure never fails the night.
+        // 13. RuVector store — fail-open: a memory failure never fails the night.
         let df = DreamFinding {
             night_id: night_id.clone(),
             repo: repo_name.clone(),
@@ -592,9 +1021,9 @@ impl Engine {
             }
         };
 
-        // 12. Clean this night's remote dir — everything worth keeping (report,
-        //     verdict, ledger row, witness, memory) is already control-plane
-        //     side. Kept on failure paths for debugging; removed on success.
+        // 14. Clean this night's remote dir — everything worth keeping (report,
+        //     verdict, receipts, ledger row, witness, memory) is already
+        //     control-plane side. Kept on failure paths for debugging.
         match dispatch::ssh(
             &self.runtime.hp_host,
             &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
@@ -603,10 +1032,12 @@ impl Engine {
             Err(e) => warn!(error = %e, "HP annexe cleanup failed (fail-open)"),
         }
 
+        let _ = runstate::complete(&night_dir, &mut run, v.as_str());
         info!(
             repo = %repo_name,
             verdict = v.as_str(),
             witness = %wit_short,
+            run_id = %frozen.run_id,
             stored,
             "cycle complete"
         );
@@ -620,6 +1051,30 @@ impl Engine {
             ledger_path,
             stored_to_ruvector: stored,
         })
+    }
+
+    /// Run a set of evaluators in `work_dir` through the configured runner,
+    /// producing one typed receipt each.
+    fn run_evaluators(
+        &self,
+        work_dir: &str,
+        evaluators: &[&manifest::EvaluatorIdentity],
+        phase: receipts::Phase,
+    ) -> Vec<receipts::EvaluatorReceipt> {
+        let mut out = Vec::new();
+        for id in evaluators {
+            let exec = self.runner.run(work_dir, &id.command, id.timeout_secs);
+            out.push(receipts::EvaluatorReceipt::from_exec(
+                &id.name,
+                &id.command,
+                phase,
+                id.required,
+                id.timeout_secs,
+                exec,
+            ));
+        }
+        out.sort_by(|a, b| a.name.cmp(&b.name));
+        out
     }
 
     /// Previous night's carry-over for a repo: the "Next steps" and "Biggest
@@ -686,17 +1141,16 @@ impl Engine {
         night_id: &str,
         date: &str,
         remote_dir: &str,
+        detail: &str,
     ) -> Result<CycleResult, EngineError> {
-        let finding = format!(
-            "Pre-flight failed twice: annexe checkout {}/{} missing or empty — environment fault, hypothesis untested",
-            remote_dir, repo_name
-        );
+        let finding: String = format!("Environment fault, hypothesis untested: {}", detail)
+            .chars()
+            .take(160)
+            .collect();
         let report = format!(
-            "# BLOCKED-ENV night — {}\n\nThe HP annexe checkout failed pre-flight twice (missing/empty \
-             working directory). No evaluators were run and no LLM was called; \
-             tonight is an environment fault, not evidence about the repo.\n\n\
-             VERDICT: BLOCKED-ENV\n",
-            night_id
+            "# BLOCKED-ENV night — {night_id}\n\nThe night could not produce evidence: {detail}.\n\n\
+             No verdict was sought from the model; tonight is an environment fault, not evidence \
+             about the repo.\n\nVERDICT: BLOCKED-ENV\n"
         );
         let night_dir = self.artefact_dir.join(night_id);
         std::fs::create_dir_all(&night_dir)?;
@@ -709,10 +1163,10 @@ impl Engine {
             &LedgerRow {
                 date: date.into(),
                 deep: deep.into(),
-                finding: finding.clone(),
+                finding: finding.chars().take(80).collect(),
                 issue: "NONE".into(),
                 pr: "NONE".into(),
-                evaluated: "no".into(),
+                evaluated: "blocked".into(),
                 verdict: Verdict::BlockedEnv.as_str().into(),
                 effect: String::new(),
                 witness: "BLOCKED".into(),
@@ -726,24 +1180,113 @@ impl Engine {
             night_id,
             date,
             &format!(
-                "Dream night for {} was BLOCKED-ENV: the HP annexe checkout could not be provisioned \
-                 (probe failed twice). Check the HP mount / dispatch path before the next window.",
-                repo_name
+                "Dream night for {} was BLOCKED-ENV: {}. Check the harness before the next window.",
+                repo_name, detail
             ),
         ) {
             warn!(error = %e, "dream inbox write failed (fail-open)");
         }
 
-        let _ = dispatch::ssh(
-            &self.runtime.hp_host,
-            &format!("rm -rf {}", dispatch::shell_quote(remote_dir)),
-        );
+        if !remote_dir.is_empty() {
+            let _ = dispatch::ssh(
+                &self.runtime.hp_host,
+                &format!("rm -rf {}", dispatch::shell_quote(remote_dir)),
+            );
+        }
 
         Ok(CycleResult {
             repo: repo_name.into(),
             verdict: Verdict::BlockedEnv,
             finding,
             witness_short: "BLOCKED".into(),
+            report_path,
+            ledger_path,
+            stored_to_ruvector: false,
+        })
+    }
+
+    /// Persist a HANDOFF night: the nomination was refused at admission because
+    /// no usable evaluator covers tonight's deep.
+    ///
+    /// Nothing was scheduled — no annexe clone, no build, no model call — so
+    /// this is a request for human attention, not a claim about the repository.
+    /// It never counts toward the dry streak (the ledger's streak counter
+    /// ignores any verdict that is not ACCEPT/REJECT/INCONCLUSIVE), because a
+    /// misconfigured evaluator must not park a healthy repo.
+    #[allow(clippy::too_many_arguments)]
+    async fn persist_handoff(
+        &self,
+        cfg: &DreamConfig,
+        repo_name: &str,
+        repo_path: &Path,
+        deep: &str,
+        night_id: &str,
+        date: &str,
+        admission: &readiness::ReadinessReport,
+    ) -> Result<CycleResult, EngineError> {
+        let refusal = admission.refusal();
+        let finding: String = format!("HANDOFF — evaluator not ready: {}", refusal)
+            .chars()
+            .take(160)
+            .collect();
+        let report = format!(
+            "# HANDOFF night — {night_id}\n\nThe nomination was refused before scheduling: tonight's \
+             deep `{deep}` has no usable evaluator.\n\n## Problems\n{problems}\n\nNo annexe clone, \
+             build, evaluator or model call ran. Fix the `evaluatorEntrypoints` entry (or scope it \
+             to a deep it can actually decide) and the next window will schedule normally.\n\n\
+             VERDICT: HANDOFF\n",
+            problems = admission
+                .problems
+                .iter()
+                .map(|p| format!("- {}", p.describe()))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
+        let night_dir = self.artefact_dir.join(night_id);
+        std::fs::create_dir_all(&night_dir)?;
+        let report_path = night_dir.join("report.md");
+        std::fs::write(&report_path, &report)?;
+        let _ = manifest::write_atomic(
+            &night_dir.join("admission.json"),
+            &serde_json::to_vec_pretty(admission).unwrap_or_default(),
+        );
+
+        let ledger_path = repo_path.join(&cfg.ledger_path);
+        ledger::append_row(
+            &ledger_path,
+            &LedgerRow {
+                date: date.into(),
+                deep: deep.into(),
+                finding: finding.chars().take(80).collect(),
+                issue: "NONE".into(),
+                pr: "NONE".into(),
+                evaluated: "no".into(),
+                verdict: Verdict::Handoff.as_str().into(),
+                effect: String::new(),
+                witness: "NONE".into(),
+                prior_fates: String::new(),
+            },
+        )?;
+
+        if let Err(e) = inbox::add(
+            "question",
+            repo_name,
+            night_id,
+            date,
+            &format!(
+                "Dream nomination for {} (deep `{}`) was refused at admission: {}. \
+                 Which evaluator should decide this deep?",
+                repo_name, deep, refusal
+            ),
+        ) {
+            warn!(error = %e, "dream inbox write failed (fail-open)");
+        }
+
+        Ok(CycleResult {
+            repo: repo_name.into(),
+            verdict: Verdict::Handoff,
+            finding,
+            witness_short: String::new(),
             report_path,
             ledger_path,
             stored_to_ruvector: false,
@@ -866,9 +1409,13 @@ fn clone_repo_and_siblings(
     remote_dir: &str,
     repo_name: &str,
     annexe_include: &[String],
+    sibling_root: Option<&Path>,
 ) -> Result<(), dispatch::DispatchError> {
     dispatch::clone_to_hp(repo_path, hp_host, remote_dir, repo_name)?;
-    let workspace_root = repo_path.parent();
+    // Siblings resolve against the *workspace*, not against `repo_path`: when
+    // the candidate rerun ships a git worktree from a temp directory, its
+    // path-deps still come from the real workspace.
+    let workspace_root = sibling_root.or_else(|| repo_path.parent());
     for inc in annexe_include {
         // The annexe layout name = the final path component (matches `../<name>`).
         let name = Path::new(inc).file_name().and_then(|s| s.to_str()).unwrap_or(inc);
@@ -886,15 +1433,34 @@ fn clone_repo_and_siblings(
     Ok(())
 }
 
-fn git_head(repo: &Path) -> Option<String> {
-    let out = Command::new("git")
-        .args(["-C", repo.to_str()?, "rev-parse", "HEAD"])
-        .output()
-        .ok()?;
-    if !out.status.success() {
-        return None;
+/// Render a typed receipt as the prompt-facing text block: the verdict-relevant
+/// facts first (outcome, exit code, duration), then the raw streams.
+///
+/// The model used to see stdout alone, which is precisely how a non-zero exit
+/// became invisible to it.
+fn render_receipt(r: &receipts::EvaluatorReceipt) -> String {
+    let mut out = format!(
+        "outcome={} exit={} duration={}ms required={}\n",
+        r.outcome.label(),
+        r.exit_code.map(|c| c.to_string()).unwrap_or_else(|| "-".into()),
+        r.duration_ms,
+        r.required
+    );
+    if !r.stdout.trim().is_empty() {
+        out.push_str("--- stdout ---\n");
+        out.push_str(&r.stdout);
+        if !r.stdout.ends_with('\n') {
+            out.push('\n');
+        }
     }
-    Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    if !r.stderr.trim().is_empty() {
+        out.push_str("--- stderr ---\n");
+        out.push_str(&r.stderr);
+        if !r.stderr.ends_with('\n') {
+            out.push('\n');
+        }
+    }
+    out
 }
 
 /// Count the trailing run of INCONCLUSIVE verdicts in a ledger. Any decisive

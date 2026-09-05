@@ -27,6 +27,89 @@ pub struct BuildStep {
     pub degrade_on_wasm_failure: bool,
 }
 
+/// Default wall-clock budget for a single evaluator run, in seconds.
+///
+/// Thirty minutes is comfortably above a cold `cargo test` on the annexe and
+/// well below the nightly window, so a hung evaluator is caught as a
+/// [`crate::receipts::EvaluatorOutcome::TimedOut`] veto rather than eating the night.
+pub const DEFAULT_EVALUATOR_TIMEOUT_SECS: u64 = 1800;
+
+/// One evaluator entrypoint: the command, whether it can veto acceptance, which
+/// deep slots it covers, and its wall-clock budget.
+///
+/// Deserialises from either the historical bare string
+/// (`"tests": "cargo test"`) or the explicit object form. The bare string is
+/// read fail-closed — `required: true`, all deeps — because an evaluator a repo
+/// bothered to declare is evidence the night is expected to honour.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvaluatorSpec {
+    pub cmd: String,
+    pub required: bool,
+    pub deeps: Vec<String>,
+    pub timeout_secs: u64,
+}
+
+impl EvaluatorSpec {
+    /// The bare-string reading: required, every deep, default timeout.
+    pub fn command(cmd: &str) -> Self {
+        Self {
+            cmd: cmd.to_string(),
+            required: true,
+            deeps: Vec::new(),
+            timeout_secs: DEFAULT_EVALUATOR_TIMEOUT_SECS,
+        }
+    }
+
+    /// An advisory evaluator: it runs and is recorded, but cannot veto.
+    pub fn advisory(cmd: &str) -> Self {
+        Self {
+            required: false,
+            ..Self::command(cmd)
+        }
+    }
+
+    /// True when this evaluator applies to `deep` (empty `deeps` ⇒ all deeps).
+    pub fn covers(&self, deep: &str) -> bool {
+        self.deeps.is_empty() || self.deeps.iter().any(|d| d == deep)
+    }
+}
+
+impl<'de> Deserialize<'de> for EvaluatorSpec {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Detailed {
+            cmd: String,
+            #[serde(default = "default_true")]
+            required: bool,
+            #[serde(default)]
+            deeps: Vec<String>,
+            #[serde(default = "default_evaluator_timeout")]
+            timeout_secs: u64,
+        }
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Raw {
+            Command(String),
+            Detailed(Detailed),
+        }
+        Ok(match Raw::deserialize(d)? {
+            Raw::Command(cmd) => EvaluatorSpec::command(&cmd),
+            Raw::Detailed(x) => EvaluatorSpec {
+                cmd: x.cmd,
+                required: x.required,
+                deeps: x.deeps,
+                timeout_secs: x.timeout_secs,
+            },
+        })
+    }
+}
+
+fn default_evaluator_timeout() -> u64 {
+    DEFAULT_EVALUATOR_TIMEOUT_SECS
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DreamConfig {
@@ -48,8 +131,23 @@ pub struct DreamConfig {
     /// (ADR-060). Empty ⇒ current behaviour, byte-for-byte.
     #[serde(default)]
     pub annexe_include: Vec<String>,
+    /// Evaluator entrypoints, keyed by evaluator name.
+    ///
+    /// Two value forms are accepted, and the plain string is still the
+    /// canonical short form:
+    ///
+    /// ```json
+    /// "evaluatorEntrypoints": {
+    ///   "tests":  "cargo test 2>&1 | tail -15",
+    ///   "hooks":  { "cmd": "bash scripts/hooks.sh", "required": false,
+    ///               "deeps": ["hooks-pipeline"], "timeoutSecs": 600 }
+    /// }
+    /// ```
+    ///
+    /// A bare string means `required: true`, every deep, default timeout —
+    /// the fail-closed reading demanded by ADR-2024's deterministic gate.
     #[serde(default)]
-    pub evaluator_entrypoints: HashMap<String, String>,
+    pub evaluator_entrypoints: HashMap<String, EvaluatorSpec>,
     #[serde(default)]
     pub competitors: Vec<String>,
     #[serde(default = "default_adr_convention")]
@@ -106,7 +204,15 @@ impl DreamConfig {
         // (nicheEntropy 0) — the night runs green while learning nothing.
         // Reject rather than silently no-op; only mock|agent exercise the
         // evolved surfaces.
-        for (name, cmd) in &self.evaluator_entrypoints {
+        let known_deeps: Vec<&str> = self.slots.iter().map(|s| s.deep.as_str()).collect();
+        for (name, spec) in &self.evaluator_entrypoints {
+            let cmd = &spec.cmd;
+            if cmd.trim().is_empty() {
+                return Err(ConfigError::Validation(format!(
+                    "evaluatorEntrypoints[{}]: command must not be empty",
+                    name
+                )));
+            }
             let is_darwin =
                 cmd.contains("@metaharness/darwin") || cmd.contains("metaharness-darwin");
             if is_darwin && !cmd.contains("--sandbox mock") && !cmd.contains("--sandbox agent") {
@@ -114,6 +220,26 @@ impl DreamConfig {
                     "evaluatorEntrypoints[{}]: @metaharness/darwin entrypoints must pass \
                      --sandbox mock or --sandbox agent (ADR-065; the default 'real' sandbox \
                      is surface-independent and silently no-ops the night)",
+                    name
+                )));
+            }
+            // A `deeps` entry that names no declared slot silently disables the
+            // evaluator for every night — exactly the "declared but never runs"
+            // failure ADR-2024 is closing. Reject at load.
+            for d in &spec.deeps {
+                if !known_deeps.contains(&d.as_str()) {
+                    return Err(ConfigError::Validation(format!(
+                        "evaluatorEntrypoints[{}].deeps: {:?} is not a declared slot deep \
+                         (known: {})",
+                        name,
+                        d,
+                        known_deeps.join(", ")
+                    )));
+                }
+            }
+            if spec.timeout_secs == 0 {
+                return Err(ConfigError::Validation(format!(
+                    "evaluatorEntrypoints[{}].timeoutSecs must be greater than zero",
                     name
                 )));
             }
@@ -355,7 +481,7 @@ mod tests {
 
     fn cfg_with_evaluator(cmd: &str) -> DreamConfig {
         let mut evals = HashMap::new();
-        evals.insert("fitness".into(), cmd.to_string());
+        evals.insert("fitness".into(), EvaluatorSpec::command(cmd));
         DreamConfig {
             repo: "test/repo".into(),
             cron: default_cron(),

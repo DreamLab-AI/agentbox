@@ -38,10 +38,19 @@ pub fn compile(cfg: &DreamConfig, slot: &Slot, day_int: u32, bonus_dives: &[Stri
         entries.sort_by_key(|(k, _)| (*k).clone());
         let lines: Vec<String> = entries
             .iter()
-            .map(|(name, cmd)| format!("- **{}**: `{}`", name, cmd))
+            .map(|(name, spec)| {
+                format!(
+                    "- **{}** ({}): `{}`",
+                    name,
+                    if spec.required { "REQUIRED — a bad result vetoes acceptance" } else { "advisory" },
+                    spec.cmd
+                )
+            })
             .collect();
         format!(
-            "\n## Evaluator entrypoints (run these — do not invent others)\n{}\n",
+            "\n## Evaluator entrypoints (run these — do not invent others)\n{}\n\
+             A REQUIRED evaluator that is missing, silent, blocked, timed out or failing \
+             vetoes ACCEPT deterministically, whatever this report says (ADR-2024).\n",
             lines.join("\n")
         )
     };
@@ -227,7 +236,7 @@ mod tests {
             annexe_include: vec![],
             evaluator_entrypoints: {
                 let mut m = HashMap::new();
-                m.insert("bench".into(), "cargo test".into());
+                m.insert("bench".into(), crate::config::EvaluatorSpec::command("cargo test"));
                 m
             },
             competitors: vec!["Sakana AI Scientist".into()],

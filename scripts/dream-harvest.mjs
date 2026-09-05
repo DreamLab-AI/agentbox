@@ -7,6 +7,7 @@
 //   - ACCEPT nights whose branches/findings await a human merge decision
 //   - open + answered dream-inbox items
 //   - environment-fault rate (BLOCKED-ENV / FAILED) — harness health
+//   - HANDOFF count — nominations refused at evaluator-readiness admission (ADR-2024)
 //
 // Output: markdown to stdout AND
 // workspace/.tmp/dream-annexe-artefacts/harvest-<date>.md. Anomalies queue an
@@ -46,7 +47,7 @@ function trailingStreak(rows) {
     const v = rows[i].verdict;
     if (v === 'INCONCLUSIVE') n++;
     else if (v === 'ACCEPT' || v === 'REJECT') break;
-    // BLOCKED-ENV and anything else: neither counts nor resets.
+    // BLOCKED-ENV, HANDOFF and anything else: neither counts nor resets.
   }
   return n;
 }
@@ -57,11 +58,11 @@ const repos = fs.readdirSync(WORKSPACE, { withFileTypes: true })
   .filter((d) => fs.existsSync(path.join(d, 'dream.config.json')));
 
 const lines = [`# Dream harvest — ${today} (last ${days} days)`, ''];
-lines.push('| Repo | State | ACCEPT | REJECT | INCONCL | BLOCKED-ENV | Dry streak | Last night |');
-lines.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
+lines.push('| Repo | State | ACCEPT | REJECT | INCONCL | BLOCKED-ENV | HANDOFF | Dry streak | Last night |');
+lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
 
 const pendingAccepts = [];
-let envFaults = 0, totalNights = 0;
+let envFaults = 0, handoffs = 0, totalNights = 0;
 
 for (const dir of repos) {
   const name = path.basename(dir);
@@ -72,11 +73,12 @@ for (const dir of repos) {
   const streak = trailingStreak(rows);
   const last = rows[rows.length - 1];
   envFaults += count('BLOCKED-ENV');
+  handoffs += count('HANDOFF');
   totalNights += recent.length;
   for (const r of recent.filter((r) => r.verdict === 'ACCEPT')) {
     pendingAccepts.push({ repo: name, ...r });
   }
-  lines.push(`| ${name} | ${standby} | ${count('ACCEPT')} | ${count('REJECT')} | ${count('INCONCLUSIVE')} | ${count('BLOCKED-ENV')} | ${streak} | ${last ? `${last.date} ${last.verdict}` : '—'} |`);
+  lines.push(`| ${name} | ${standby} | ${count('ACCEPT')} | ${count('REJECT')} | ${count('INCONCLUSIVE')} | ${count('BLOCKED-ENV')} | ${count('HANDOFF')} | ${streak} | ${last ? `${last.date} ${last.verdict}` : '—'} |`);
 }
 
 lines.push('');
@@ -99,7 +101,11 @@ lines.push(`## Operator inbox: ${open.length} open, ${answered.length} answered`
 lines.push('');
 for (const i of open) lines.push(`- [${i.id}] (${i.repo}, ${i.date}) ${i.text.slice(0, 160)}`);
 lines.push('');
-lines.push(`## Harness health: ${envFaults} environment fault(s) across ${totalNights} night(s)`);
+lines.push(`## Harness health: ${envFaults} environment fault(s), ${handoffs} admission refusal(s) across ${totalNights} night(s)`);
+if (handoffs) {
+  lines.push('');
+  lines.push(`${handoffs} night(s) were refused at evaluator-readiness admission (HANDOFF): the deep had no usable evaluator, so nothing was scheduled. Fix the repo's \`evaluatorEntrypoints\` entry — see the dream inbox for the specific refusal.`);
+}
 lines.push('');
 
 const md = lines.join('\n');

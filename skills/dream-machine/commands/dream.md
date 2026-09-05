@@ -8,10 +8,11 @@ Parse the argument and act:
 
 Report, concisely:
 1. **Loop state**: `supervisorctl status dream-engine` is the canonical owner; a tmux `dream-engine` session is a fallback that must NOT coexist with it (the engine's singleton lock on 127.0.0.1:49172 makes a duplicate exit, but report it as drift). Also whether `/home/devuser/workspace/.agentbox/dream-paused` exists (paused).
-2. **Roster**: list dirs under `/home/devuser/workspace/` containing `dream.config.json`. For each: manual standby (`.dream-standby` marker present?), dry streak (count trailing INCONCLUSIVE rows in its `docs/dream-cycle/LEDGER.md` — ACCEPT/REJECT reset the count; BLOCKED-ENV rows are environment faults and neither count nor reset), and the last ledger row (date, deep, verdict, witness).
-3. **Tonight**: window is 01:00–05:00 UTC; eligible repos (not paused, not standby, streak < 5, cap 5) all dream serially.
-4. **Last night's health**: `/home/devuser/workspace/.agentbox/dream-last-night.json` (one honest verdict per eligible repo; FAILED/BLOCKED-ENV entries mean the harness, not the repos, needs fixing).
-5. **Inbox**: `node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs list` — open items are questions the loop is waiting on.
+2. **Roster**: list dirs under `/home/devuser/workspace/` containing `dream.config.json`. For each: manual standby (`.dream-standby` marker present?), dry streak (count trailing INCONCLUSIVE rows in its `docs/dream-cycle/LEDGER.md` — ACCEPT/REJECT reset the count; BLOCKED-ENV and HANDOFF rows neither count nor reset — the first is a broken harness, the second a nomination refused at evaluator-readiness admission), and the last ledger row (date, deep, verdict, witness). Fair-scheduling state lives in `/home/devuser/workspace/.agentbox/dream-roster.json` — least-recently-dreamed repos lead tonight's selection, so a repo over the cap is deferred, never starved.
+3. **Tonight**: window is 01:00–05:00 UTC; eligible repos (not paused, not standby, streak < 5) dream serially, capped at 5 and ordered least-recently-dreamed first.
+4. **Last night's health**: `/home/devuser/workspace/.agentbox/dream-last-night.json` (one honest verdict per eligible repo; FAILED/BLOCKED-ENV entries mean the harness, not the repos, needs fixing; HANDOFF means a repo's `evaluatorEntrypoints` cannot decide that deep).
+5. **Gate**: for any night of interest, `<artefact_dir>/<date>-<repo>/` holds `manifest.json` (what was frozen before the model call), `run-state.json` (restart-safe phase journal), `receipts/{baseline,candidate}/` (raw stdout/stderr, exit codes, durations), `candidate.json` and `gate.json`. A `gate.json` with a non-empty `vetoes` array is the interesting case: the model claimed something the required evaluators refused (ADR-2024).
+6. **Inbox**: `node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs list` — open items are questions the loop is waiting on.
 
 ## `/dream questions` · `/dream answer <id> <text>` · `/dream dismiss <id>`
 

@@ -1,0 +1,11 @@
+warning: failed to auto-clean cache data
+
+failed to clean entries from the global cache
+
+Caused by:
+  failed to remove file `/home/devuser/workspace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/protobuf-2.28.0/regenerate.sh`
+
+Caused by:
+  Permission denied (os error 13)
+    Checking dream-engine v0.1.0 (/home/devuser/workspace/project/agentbox/services/dream-engine)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.18s

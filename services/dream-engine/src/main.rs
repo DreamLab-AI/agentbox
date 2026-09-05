@@ -1,10 +1,13 @@
 use clap::Parser;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use dream_engine::config::RuntimeConfig;
 use dream_engine::engine::{fallback_llm_config, llm_config, ruvector_config, Engine};
+use dream_engine::roster;
+use dream_engine::runner::{EvaluatorRunner, SshRunner};
 
 /// Dream Engine — nightly evidence-gated repository evolution (HP annexe).
 ///
@@ -46,6 +49,11 @@ struct Cli {
     /// Optional agentbox.toml to read the [dream_machine] table from.
     #[arg(long)]
     agentbox_toml: Option<PathBuf>,
+
+    /// Durable fair-scheduling state: which repo dreamed when, so the nightly
+    /// cap rotates through the whole roster instead of pinning its head.
+    #[arg(long, default_value_os_t = roster::default_path())]
+    roster_path: PathBuf,
 }
 
 fn load_runtime(cli: &Cli) -> RuntimeConfig {
@@ -108,10 +116,15 @@ async fn main() {
     };
 
     let llm = llm_config(&runtime);
+    let runner: Arc<dyn EvaluatorRunner> = Arc::new(SshRunner {
+        host: runtime.hp_host.clone(),
+    });
     let engine = Engine {
         llm_fallback: fallback_llm_config(&runtime, &llm),
         llm,
         ruvector: ruvector_config(&runtime),
+        runner,
+        roster_path: cli.roster_path.clone(),
         runtime,
         workspace: cli.workspace.clone(),
         artefact_dir: cli.artefact_dir.clone(),

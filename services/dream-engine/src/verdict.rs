@@ -23,6 +23,11 @@ pub enum Verdict {
     /// healthy repo — and it is raised by the engine's pre-flight probe, not
     /// parsed from an LLM report.
     BlockedEnv,
+    /// The nomination was refused before scheduling because no usable
+    /// evaluator covers tonight's deep (ADR-2024 closeout, evaluator-readiness
+    /// admission). Like [`Verdict::BlockedEnv`] this is operational state, not
+    /// a claim about the repository: no evaluator ran and no model was called.
+    Handoff,
 }
 
 impl Verdict {
@@ -33,12 +38,28 @@ impl Verdict {
             Verdict::Reject => "REJECT",
             Verdict::Inconclusive => "INCONCLUSIVE",
             Verdict::BlockedEnv => "BLOCKED-ENV",
+            Verdict::Handoff => "HANDOFF",
         }
     }
 
     /// True for a decisive verdict (Accept or Reject), false for Inconclusive.
     pub fn is_significant(&self) -> bool {
         matches!(self, Verdict::Accept | Verdict::Reject)
+    }
+}
+
+/// Parse a canonical ledger label back into a [`Verdict`].
+///
+/// The inverse of [`Verdict::as_str`], used when a restart reads a completed
+/// run's recorded verdict out of the journal. Anything unrecognised reads as
+/// `Inconclusive` — never as an acceptance.
+pub fn from_label(label: &str) -> Verdict {
+    match label.trim().to_ascii_uppercase().as_str() {
+        "ACCEPT" => Verdict::Accept,
+        "REJECT" => Verdict::Reject,
+        "BLOCKED-ENV" => Verdict::BlockedEnv,
+        "HANDOFF" => Verdict::Handoff,
+        _ => Verdict::Inconclusive,
     }
 }
 
@@ -172,6 +193,108 @@ fn verdict_field(report: &str) -> Option<Verdict> {
     let after = &report[idx + "verdict=".len()..];
     let value: String = after.chars().take_while(|c| is_word_char(*c)).collect();
     keyword_exact(&value)
+}
+
+/// Why a strict parse refused to name a verdict.
+///
+/// Every variant is a *refusal*, never a silent default: [`parse_verdict_strict`]
+/// is the only parse the acceptance gate consults, so anything it cannot read
+/// unambiguously must fail closed.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum VerdictParseError {
+    #[error("no `VERDICT:` declaration line in the report")]
+    Missing,
+    #[error("conflicting VERDICT declarations: {0:?}")]
+    Ambiguous(Vec<String>),
+    #[error("unrecognised verdict token {0:?}")]
+    Unknown(String),
+    #[error("VERDICT line is not a bare token: {0:?}")]
+    Noisy(String),
+}
+
+/// Every token a `VERDICT:` line may legally carry.
+const STRICT_TOKENS: [(&str, Verdict); 5] = [
+    ("ACCEPT", Verdict::Accept),
+    ("REJECT", Verdict::Reject),
+    ("INCONCLUSIVE", Verdict::Inconclusive),
+    ("BLOCKED-ENV", Verdict::BlockedEnv),
+    ("HANDOFF", Verdict::Handoff),
+];
+
+/// Strict, typed verdict parse — the only reading the acceptance gate trusts.
+///
+/// [`parse_verdict`] is deliberately forgiving: it will hunt through prose for
+/// the last standalone keyword so that a rambling report still yields a ledger
+/// row. That forgiveness is exactly what let a report carrying failure text
+/// arrive at ACCEPT (ADR-2024 closeout), so acceptance uses this parse instead.
+///
+/// The contract is narrow and mechanical:
+///
+/// * the report must contain at least one line whose trimmed text begins
+///   `VERDICT:` (case-sensitive);
+/// * what follows the colon must be exactly one token — an uppercase keyword,
+///   optionally wrapped in markdown emphasis or backticks and optionally
+///   followed by a single sentence-ending `.`, `!` or `,`. Trailing prose is a
+///   refusal, not a hint;
+/// * every such line must name the same verdict.
+///
+/// Anything else returns a [`VerdictParseError`]. Callers must map an error to
+/// a non-accepting verdict; there is no default.
+pub fn parse_verdict_strict(report: &str) -> Result<Verdict, VerdictParseError> {
+    let mut seen: Vec<(String, Verdict)> = Vec::new();
+    for line in report.lines() {
+        let trimmed = line.trim();
+        // Tolerate the markdown decoration real reports use around the line
+        // itself ("> **VERDICT:** ACCEPT") without loosening the token rule.
+        let bare = trimmed
+            .trim_start_matches(['>', '*', '-', '#', ' ', '`'])
+            .trim_start();
+        let bare = bare.strip_prefix("**").unwrap_or(bare);
+        if !bare.starts_with("VERDICT:") {
+            continue;
+        }
+        let after = bare["VERDICT:".len()..].trim();
+        let after = after.trim_start_matches("**").trim();
+        let token = normalise_token(after).ok_or_else(|| VerdictParseError::Noisy(after.into()))?;
+        let verdict = STRICT_TOKENS
+            .iter()
+            .find(|(t, _)| *t == token)
+            .map(|(_, v)| *v)
+            .ok_or_else(|| VerdictParseError::Unknown(token.clone()))?;
+        seen.push((token, verdict));
+    }
+    match seen.split_first() {
+        None => Err(VerdictParseError::Missing),
+        Some((first, rest)) => {
+            if rest.iter().any(|(_, v)| *v != first.1) {
+                let mut names: Vec<String> = seen.iter().map(|(t, _)| t.clone()).collect();
+                names.dedup();
+                return Err(VerdictParseError::Ambiguous(names));
+            }
+            Ok(first.1)
+        }
+    }
+}
+
+/// Reduce the text after `VERDICT:` to a bare uppercase token, or `None` if it
+/// carries anything else.
+fn normalise_token(after: &str) -> Option<String> {
+    let cleaned = after
+        .trim()
+        .trim_start_matches(['`', '*'])
+        .trim_end_matches(['.', '!', ',', ' ', '`', '*'])
+        .trim();
+    if cleaned.is_empty() {
+        return None;
+    }
+    let ok = cleaned
+        .chars()
+        .all(|c| c.is_ascii_uppercase() || c == '-');
+    if ok {
+        Some(cleaned.to_string())
+    } else {
+        None
+    }
 }
 
 /// Strip leading blockquote/list/backtick markers and trailing decoration from a
@@ -462,4 +585,89 @@ More prose here.
         let finding = sanitise_finding(report, Verdict::Inconclusive);
         assert!(finding.starts_with("Given the"), "got: {finding}");
     }
+    #[test]
+    fn strict_accepts_a_single_clean_declaration() {
+        assert_eq!(parse_verdict_strict("blah\nVERDICT: ACCEPT\n").unwrap(), Verdict::Accept);
+        assert_eq!(parse_verdict_strict("VERDICT: REJECT.").unwrap(), Verdict::Reject);
+        assert_eq!(
+            parse_verdict_strict("> **VERDICT:** BLOCKED-ENV").unwrap(),
+            Verdict::BlockedEnv
+        );
+        assert_eq!(parse_verdict_strict("VERDICT: `HANDOFF`").unwrap(), Verdict::Handoff);
+    }
+
+    #[test]
+    fn strict_refuses_a_report_with_no_declaration() {
+        // The lenient parser happily mines this for a keyword; the strict one
+        // must refuse, because acceptance may not rest on prose archaeology.
+        let report = "We think this should ACCEPT given the numbers.";
+        assert_eq!(parse_verdict(report), Verdict::Accept);
+        assert_eq!(parse_verdict_strict(report), Err(VerdictParseError::Missing));
+    }
+
+    #[test]
+    fn strict_refuses_trailing_prose_on_the_verdict_line() {
+        let e = parse_verdict_strict("VERDICT: ACCEPT because the benchmark improved");
+        assert!(matches!(e, Err(VerdictParseError::Noisy(_))), "got {e:?}");
+    }
+
+    #[test]
+    fn strict_refuses_conflicting_declarations() {
+        let report = "VERDICT: ACCEPT\n...\nVERDICT: REJECT\n";
+        // The lenient parser resolves this by "last one wins".
+        assert_eq!(parse_verdict(report), Verdict::Reject);
+        match parse_verdict_strict(report) {
+            Err(VerdictParseError::Ambiguous(names)) => {
+                assert_eq!(names, vec!["ACCEPT".to_string(), "REJECT".to_string()])
+            }
+            other => panic!("expected ambiguity, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_accepts_repeated_agreeing_declarations() {
+        assert_eq!(
+            parse_verdict_strict("VERDICT: REJECT\nsummary\nVERDICT: REJECT\n").unwrap(),
+            Verdict::Reject
+        );
+    }
+
+    #[test]
+    fn strict_refuses_unknown_and_lowercase_tokens() {
+        assert_eq!(
+            parse_verdict_strict("VERDICT: MAYBE"),
+            Err(VerdictParseError::Unknown("MAYBE".into()))
+        );
+        assert!(matches!(
+            parse_verdict_strict("VERDICT: accept"),
+            Err(VerdictParseError::Noisy(_))
+        ));
+        assert!(matches!(
+            parse_verdict_strict("VERDICT:"),
+            Err(VerdictParseError::Noisy(_))
+        ));
+    }
+
+    #[test]
+    fn handoff_is_a_non_significant_operational_verdict() {
+        assert_eq!(Verdict::Handoff.as_str(), "HANDOFF");
+        assert!(!Verdict::Handoff.is_significant());
+        assert!(!Verdict::BlockedEnv.is_significant());
+    }
+
+    #[test]
+    fn from_label_round_trips_every_verdict() {
+        for v in [
+            Verdict::Accept,
+            Verdict::Reject,
+            Verdict::Inconclusive,
+            Verdict::BlockedEnv,
+            Verdict::Handoff,
+        ] {
+            assert_eq!(from_label(v.as_str()), v);
+        }
+        assert_eq!(from_label("nonsense"), Verdict::Inconclusive);
+        assert_eq!(from_label(" accept "), Verdict::Accept);
+    }
+
 }

@@ -1,0 +1,34 @@
+# Evaluator-readiness admission over every nominated dream.config.json
+# Produced 2026-09-05 by a temporary probe (dream_engine::readiness::assess), since removed.
+# Static only: no evaluator, SSH, model call or schedule ran.
+
+LOAD-OK /home/devuser/workspace/project/agentbox (3 evaluators)
+  deep=dream-engine             admitted=true required=[dream-engine-tests,hooks-syntax,sovereign-mesh-bridge] advisory=[] 
+  deep=hooks-pipeline           admitted=true required=[dream-engine-tests,hooks-syntax,sovereign-mesh-bridge] advisory=[] 
+  deep=sovereign-mesh           admitted=true required=[dream-engine-tests,hooks-syntax,sovereign-mesh-bridge] advisory=[] 
+  deep=ontology-monitor         admitted=true required=[dream-engine-tests,hooks-syntax,sovereign-mesh-bridge] advisory=[] 
+LOAD-OK /home/devuser/workspace/loom (5 evaluators)
+  deep=scaffold-retrieval       admitted=true required=[confidence,contract,generation,graph,mirror] advisory=[] 
+  deep=model-facade             admitted=true required=[confidence,contract,generation,graph,mirror] advisory=[] 
+  deep=confidence-injection     admitted=true required=[confidence,contract,generation,graph,mirror] advisory=[] 
+  deep=graph-engine             admitted=true required=[confidence,contract,generation,graph,mirror] advisory=[] 
+LOAD-OK /home/devuser/workspace/VisionFlow (4 evaluators)
+  deep=content-integrity        admitted=true required=[build-check,links,meta-tags,structured-data] advisory=[] 
+  deep=build-pipeline           admitted=true required=[build-check,links,meta-tags,structured-data] advisory=[] 
+  deep=webgl-mesh               admitted=true required=[build-check,links,meta-tags,structured-data] advisory=[] 
+  deep=seo-and-meta             admitted=true required=[build-check,links,meta-tags,structured-data] advisory=[] 
+LOAD-OK /home/devuser/workspace/nostr-rust-forum (2 evaluators)
+  deep=nip-compliance           admitted=true required=[bench,perf] advisory=[] 
+  deep=forum-thread-model       admitted=true required=[bench,perf] advisory=[] 
+  deep=auth-and-identity        admitted=true required=[bench,perf] advisory=[] 
+  deep=performance-scaling      admitted=true required=[bench,perf] advisory=[] 
+LOAD-OK /home/devuser/workspace/dreamlab-ai-website (3 evaluators)
+  deep=kit-pin-integrity        admitted=true required=[bench,lint,pin-parity] advisory=[] 
+  deep=site-build-content       admitted=true required=[bench,lint,pin-parity] advisory=[] 
+  deep=operator-overlay         admitted=true required=[bench,lint,pin-parity] advisory=[] 
+  deep=ci-workflows             admitted=true required=[bench,lint,pin-parity] advisory=[] 
+LOAD-OK /home/devuser/workspace/project (3 evaluators)
+  deep=xr-client-godot          admitted=true required=[action-map,cargo-manifest,scene-integrity] advisory=[] 
+  deep=xr-presence-wire         admitted=true required=[action-map,cargo-manifest,scene-integrity] advisory=[] 
+  deep=gpu-physics-actors       admitted=true required=[action-map,cargo-manifest,scene-integrity] advisory=[] 
+  deep=socket-flow-handlers     admitted=true required=[action-map,cargo-manifest,scene-integrity] advisory=[] 

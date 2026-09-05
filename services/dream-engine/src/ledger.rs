@@ -41,7 +41,9 @@ pub struct LedgerRow {
     pub pr: String,
     /// `"yes"`, `"no"`, or `"blocked"`.
     pub evaluated: String,
-    /// `"ACCEPT"`, `"REJECT"`, `"INCONCLUSIVE"`, or `"BLOCKED-ENV"`.
+    /// `"ACCEPT"`, `"REJECT"`, `"INCONCLUSIVE"`, `"BLOCKED-ENV"` or `"HANDOFF"`.
+    /// Only the first three affect the dry streak; the last two are operational
+    /// state (a broken harness, an unusable evaluator) rather than evidence.
     pub verdict: String,
     pub effect: String,
     /// The short (12-char) witness.

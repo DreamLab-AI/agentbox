@@ -45,6 +45,54 @@ pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+/// Run a command on HP and capture the full result, *without* treating a
+/// non-zero exit as an error.
+///
+/// [`ssh`] collapses "the evaluator disagreed" and "the transport broke" into
+/// one `Err`, which is exactly the ambiguity ADR-2024's gate has to resolve.
+/// This variant keeps the exit code, both streams and the elapsed time, and
+/// reserves `transport_error` for the case where ssh itself could not run the
+/// command. Classification into a typed outcome happens in
+/// [`crate::receipts::classify`].
+pub fn ssh_capture(hp_host: &str, cmd: &str) -> crate::runner::ExecOutcome {
+    use crate::runner::ExecOutcome;
+    let started_at = chrono::Utc::now().to_rfc3339();
+    let t0 = std::time::Instant::now();
+    let wrapped = format!("bash -lc {}", shell_quote(cmd));
+    let output = Command::new("ssh")
+        .args([
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
+            hp_host,
+            &wrapped,
+        ])
+        .output();
+    match output {
+        Ok(o) => {
+            let stderr = String::from_utf8_lossy(&o.stderr).into_owned();
+            // ssh's own 255 means the connection failed, not the command — the
+            // remote command never ran, so this is a transport fault.
+            let transport_error = if o.status.code() == Some(255) {
+                Some(format!("ssh transport failed: {}", stderr.trim()))
+            } else {
+                None
+            };
+            ExecOutcome {
+                exit_code: o.status.code(),
+                stdout: String::from_utf8_lossy(&o.stdout).into_owned(),
+                stderr,
+                duration_ms: t0.elapsed().as_millis(),
+                transport_error,
+                timed_out: false,
+                started_at,
+            }
+        }
+        Err(e) => ExecOutcome::blocked(format!("spawning ssh to {hp_host}: {e}")),
+    }
+}
+
 /// SCP a local file to HP.
 pub fn scp_to(local: &Path, hp_host: &str, remote: &str) -> Result<(), DispatchError> {
     let output = Command::new("scp")
