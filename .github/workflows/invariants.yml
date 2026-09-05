@@ -67,6 +67,9 @@ jobs:
       - name: lint-skills (skill estate structure gate — required before rebuild)
         run: bash skills/lint-skills.sh
 
+      - name: deepsec-gate unit tests (ADR-2033 — Security gate exit-code/threshold/receipt contract)
+        run: node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs
+
       - name: check-manifest-catalogue (ADR-039 gate-path parity)
         run: node scripts/ci/check-manifest-catalogue.js
 
@@ -78,3 +81,14 @@ jobs:
 
       - name: validate-adr-ledger (frontmatter, supersession reciprocity, verified_commit staleness)
         run: node scripts/adr-index-gen.js docs/adr --check
+
+      # ADR-2001: --check validates RECORDS and never looks at README.md, so the
+      # ledger's own navigation surface could drift from the records it indexes
+      # with no gate noticing. This step regenerates the table in memory and
+      # compares it with the file: adding or editing a record without running
+      # `node scripts/adr-index-gen.js docs/adr` now fails here.
+      - name: check-adr-index (ADR-2001 — docs/adr/README.md matches the records on disk)
+        run: node scripts/adr-index-gen.js docs/adr --check-index
+
+      - name: check-crate-licensing (ADR-2030 — services/ crates carry the texts they declare)
+        run: sh scripts/ci/check-crate-licensing.sh
