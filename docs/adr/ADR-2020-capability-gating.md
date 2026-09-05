@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -121,3 +121,7 @@ staleness was `agentbox.toml` drift, so the manifest half is what was re-checked
 byte-identical-when-off half still needs an image rebuild to establish package and
 supervised-process absence for a disabled gate. Diagram AB-15.1 carries that as a
 `DIVERGENCE:` note rather than asserting the property holds.
+
+## Landing re-verification — 2026-09-05 (ddd1f1ec8)
+
+Governed paths changed in the landing commit: agentbox.toml: a new `[skills.podcast_ingest]` section (ADR-2057) only; every section this record governs is untouched, which is this decision applied (a formerly ungated program now has a manifest gate and a catalogue entry, 60 gate paths resolve). Decision unaffected; `verified_commit` moved to the landing commit.

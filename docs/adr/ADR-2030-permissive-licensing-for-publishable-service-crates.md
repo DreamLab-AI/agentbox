@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/agentbox-manifest/Cargo.toml, services/agentbox-mcp/Cargo.toml, services/agentbox-ops/Cargo.toml, services/dream-engine/Cargo.toml, services/nostr-pod-bridge/Cargo.toml, services/ontology-tools/Cargo.toml, services/podcast-ingest/Cargo.toml, services/secret-backup/Cargo.toml, services/skill-tools/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -201,3 +201,7 @@ plus the licence files actually present):
   `LICENSING-NOTICE.md`, neither among them). This record's scope is therefore the eight
   crates above. If either returns, it must carry the dual-licence pair before publication.
 - No permissively-licensed crate was found missing a licence field or a licence file.
+
+## Landing re-verification — 2026-09-05 (ddd1f1ec8)
+
+Governed paths changed in the landing commit: services/LICENSING-NOTICE.md: the correction this record's own 2026-09-05 re-verification made (secret-backup is AGPL by choice with publish = false; nine manifests, two AGPL); `scripts/ci/check-crate-licensing.sh` OK, 9 package directories. Decision unaffected; `verified_commit` moved to the landing commit.

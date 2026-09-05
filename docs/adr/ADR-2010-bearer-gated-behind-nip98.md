@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
@@ -101,3 +101,7 @@ contracts remain unproven against real services.
 
 **Governed paths changed.** `config/nip98-proxy/proxy.mjs`,
 `config/nip98-proxy/selftest.mjs`.
+
+## Landing re-verification — 2026-09-05 (ddd1f1ec8)
+
+Governed paths changed in the landing commit: docs/INGRESS-identity.md: one line in `## Remediation — 2026-09-05` recording the ADR-2062 listener gate. Decision unaffected; `verified_commit` moved to the landing commit.

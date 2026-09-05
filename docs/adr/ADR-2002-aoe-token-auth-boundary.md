@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -108,3 +108,7 @@ residual stands until process isolation is implemented or explicitly bounded.
 
 **Governed paths changed.** `config/nip98-proxy/selftest.mjs`,
 `config/nip98-proxy/proxy.mjs`, `config/nip98-proxy/README.md`.
+
+## Landing re-verification — 2026-09-05 (ddd1f1ec8)
+
+Governed paths changed in the landing commit: flake.nix: the aoe-profiles volume entry and baseline volume name (ADR-2063) and the `lib.optionalString podcastIngestEnabled` wrapper around [program:podcast-cron] (ADR-2057); the aoe-serve, nip98-proxy, relay and proxy blocks are byte-identical. Decision unaffected; `verified_commit` moved to the landing commit.

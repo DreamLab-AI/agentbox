@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -153,3 +153,7 @@ consumers therefore subscribe to the same embedded relay and write the same
 weakens the single-admission-point property this ADR asserts. Remediation is
 ADR-2043; the `server.js` edit is routed to the ab-runtime lead because that file
 is theirs.
+
+## Landing re-verification — 2026-09-05 (ddd1f1ec8)
+
+Governed paths changed in the landing commit: agentbox.toml: a new `[skills.podcast_ingest]` section (ADR-2057) only; every section this record governs is untouched; flake.nix: the aoe-profiles volume entry and baseline volume name (ADR-2063) and the `lib.optionalString podcastIngestEnabled` wrapper around [program:podcast-cron] (ADR-2057); the aoe-serve, nip98-proxy, relay and proxy blocks are byte-identical. Decision unaffected; `verified_commit` moved to the landing commit.

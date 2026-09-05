@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -130,3 +130,7 @@ requires a corpus re-embed plus a passing recall receipt before the pin moves â€
 that sequence is documented and gate-checked, not automated. Preprocessing beyond
 the 2,000-character embed prefix is captured only through its effect on the
 fingerprint.
+
+## Landing re-verification â€” 2026-09-05 (ddd1f1ec8)
+
+Governed paths changed in the landing commit: agentbox.toml: a new `[skills.podcast_ingest]` section (ADR-2057) only; every section this record governs is untouched. Decision unaffected; `verified_commit` moved to the landing commit.

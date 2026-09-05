@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
 verified_paths: [agentbox.toml, mcp/servers/ontology-bridge.js, mcp/servers/ontology-propose.js, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-authoring-authority.js]
 owner: jjohare
 review_trigger: any change to direct_axiom_load default, or the authority-class of ontology_axiom_load
@@ -155,3 +155,7 @@ revision bounds the decision.
     authority change before acting on the result — local authoring reports `governed: false`.
   - No change to the remote governed path (`/api/ontology-agent/propose`), to
     `direct_axiom_load`'s default, or to the `ontology_axiom_load` authority class.
+
+## Landing re-verification — 2026-09-05 (ddd1f1ec8)
+
+Governed paths changed in the landing commit: agentbox.toml: a new `[skills.podcast_ingest]` section (ADR-2057) only; every section this record governs is untouched. Decision unaffected; `verified_commit` moved to the landing commit.

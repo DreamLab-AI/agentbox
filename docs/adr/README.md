@@ -32,7 +32,7 @@ fail the build).
 
 The [historical closeout routing note](../adr-history-closeout.md) points the 72 archived decision candidates at the estate historical map and section-level review; the archive remains historical and lineage mentions are not whole-document supersession.
 
-_56 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_57 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -86,9 +86,10 @@ _56 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2054](ADR-2054-every-ontology-authoring-caller-crosses-the-gate.md) | Route every ontology authoring caller through the authority gate | GOVERNANCE-capabilities | 2026-09-05 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2055](ADR-2055-baseline-must-not-conflate-privacy-filter-with-loom.md) | Describe opf-router as the privacy-filter sidecar on its own port, never as a facade on the Loom's | GOVERNANCE-capabilities | 2026-09-05 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2056](ADR-2056-skill-directory-facts-and-router-fixture.md) | Make the skills directory facts checkable and give the router fixture a consumer | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
-| [ADR-2057](ADR-2057-close-the-capability-gate-gaps.md) | Close the capability-gate gaps for podcast-cron, harness and precedent | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2057](ADR-2057-close-the-capability-gate-gaps.md) | Close the capability-gate gaps for podcast-cron, harness and precedent | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2058](ADR-2058-clear-verification-anchors-stale-in-the-uncommitted-tree.md) | Re-verify rather than re-point ADRs made stale by the uncommitted remediation tree | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2059](ADR-2059-reasoner-preflight-on-the-email-gateway.md) | Fail fast on a reasoner URL that resolves but black-holes | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2060](ADR-2060-cross-store-erasure-needs-a-reverse-tombstone.md) | Give cross-store erasure a reverse tombstone into RuVector and a restorable memory backup | LEARNING-memory | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2061](ADR-2061-federation-kind-map-parity.md) | Make the cross-repo URN kind map symmetric and fixture-gated in both languages | PROTOCOL-registry | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
-| [ADR-2062](ADR-2062-container-internal-bind-surface.md) | Extend the exposure gate from published ports to container-internal listeners | INGRESS-identity | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2062](ADR-2062-container-internal-bind-surface.md) | Extend the exposure gate from published ports to container-internal listeners | INGRESS-identity | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2063](ADR-2063-interaction-plane-post-rebuild-fixes.md) | The MCP hub waits for its config, AoE session records persist on a volume, and the seeder reaps only its own clean orphans | BASELINE-container | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |

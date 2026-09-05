@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -172,3 +172,7 @@ audience and active-listener evidence. No compose deployment or port binding ran
 exposure qualification — 2026-09-04" still describes the line-oriented walker as
 the current gate; that text is stale and is corrected under ADR-2047. Diagram
 AB-10.1 carries the same correction.
+
+## Landing re-verification — 2026-09-05 (ddd1f1ec8)
+
+Governed paths changed in the landing commit: .github/workflows/invariants.yml: the check-listeners unit-test step added beside the check-ports-loopback step; docker-compose.yml: tmpfs sizes synced to [resources.tmpfs] and the aoe-profiles volume, no `ports:` change; scripts/ci/check-ports-loopback.{mjs,sh}: the ADR-2062 listener rule, publish output byte-identical; flake.nix: the aoe-profiles volume entry and baseline volume name (ADR-2063) and the `lib.optionalString podcastIngestEnabled` wrapper around [program:podcast-cron] (ADR-2057); the aoe-serve, nip98-proxy, relay and proxy blocks are byte-identical. `bash scripts/ci/check-ports-loopback.sh` exits 0 at this commit (10 compose files, 7 ports blocks, three sanctioned VNC binds). Decision unaffected; `verified_commit` moved to the landing commit.

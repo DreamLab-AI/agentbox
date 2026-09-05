@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -195,3 +195,7 @@ Each claim re-checked, with **two corrections**:
   work is present: `CACHE_KEY_FIELDS` (`:46`) and `DEGRADED_STAGES` (`:93`).
 - `implementation_status` stays **partial** on its own terms: the ADR-051
   deferred-distillation MCP surface is still not a discrete server.
+
+## Landing re-verification — 2026-09-05 (ddd1f1ec8)
+
+Governed paths changed in the landing commit: agentbox.toml: a new `[skills.podcast_ingest]` section (ADR-2057) only; every section this record governs is untouched. Decision unaffected; `verified_commit` moved to the landing commit.
