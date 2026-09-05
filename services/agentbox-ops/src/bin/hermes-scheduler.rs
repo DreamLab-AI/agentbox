@@ -96,7 +96,14 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        Cmd::Stop => hermes::daemon_stop(&store),
+        Cmd::Stop => {
+            // A refusal or a rejected signal is a failure the caller must see:
+            // signal delivery, confirmed shutdown and refusal are distinct
+            // outcomes (ADR-2032), and only the first two exit zero.
+            if !hermes::daemon_stop(&store).is_success() {
+                std::process::exit(1);
+            }
+        }
         Cmd::Status => hermes::daemon_status(&store),
         Cmd::Tick => println!(
             "Tick complete: {} job(s) executed",

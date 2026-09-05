@@ -6,7 +6,9 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
-description = "Operational CLI tools for agentbox: scheduler daemon, daemon reaper, token audit, ExpeL lesson distillation, Voyager verification gate, and assorted skill helpers. Replaces the Python originals retired by the 2026-09-02 legacy audit."
+description = "Operational CLI tools for agentbox: scheduler daemon, daemon reaper, teammate reaper, resident hook shim, token audit, ExpeL lesson distillation, Voyager verification gate, and assorted skill helpers. Replaces the Python originals retired by the 2026-09-02 legacy audit."
+repository = "https://github.com/DreamLab-AI/agentbox"
+readme = "README.md"
 
 [lib]
 name = "agentbox_ops"
@@ -56,10 +58,23 @@ path = "src/bin/report-preflight.rs"
 name = "mcp-call"
 path = "src/bin/mcp-call.rs"
 
+[[bin]]
+name = "tree-search-cap"
+path = "src/bin/tree-search-cap.rs"
+
+[[bin]]
+name = "agentbox-hook"
+path = "src/bin/agentbox-hook.rs"
+
+[[bin]]
+name = "teammate-gc"
+path = "src/bin/teammate-gc.rs"
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
+toml = "0.8"
 reqwest = { version = "0.12", features = ["json", "blocking", "rustls-tls"], default-features = false }
 chrono = { version = "0.4", features = ["serde", "clock"] }
 croner = "2"

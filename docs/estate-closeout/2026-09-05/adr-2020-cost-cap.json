@@ -1,0 +1,89 @@
+{
+  "adr": "ADR-2020",
+  "date": "2026-09-05",
+  "title": "Tree-search cost cap \u2014 declared manifest fields wired to an enforced limiter",
+  "acceptance_condition": "Exercise the real executor with concurrent and in-flight cost reservations, candidate/time limits and explicit invocation checks.",
+  "finding_addressed": "the named cap fields were not found consumed by a limiter in the inspected runtime paths",
+  "implementation": {
+    "language": "Rust",
+    "rationale": "no JS dispatcher routes tree-search: management-api/ and mcp/servers/ contain no tree-search invocation path (only scripts/agentbox-config-validate.js W051/W052 validation and management-api/lib/system-manifest.js gate catalogue). The skill is orchestration-only, driven as a sequence of short-lived tool calls, so the enforcement boundary is a callable limiter with durable, lock-guarded state \u2014 which belongs in services/agentbox-ops beside the existing token_audit cost accounting.",
+    "module": "services/agentbox-ops/src/cost_cap/ (mod.rs config+limiter+typed errors, ledger.rs flock-guarded durable state)",
+    "binary": "tree-search-cap (reserve | settle | status | reset | config)",
+    "manifest_fields_consumed": [
+      "skills.tree_search_coder.enabled",
+      "skills.tree_search_coder.spend_cap_usd",
+      "skills.tree_search_coder.max_candidates",
+      "skills.tree_search_coder.per_branch_timeout_s"
+    ],
+    "documented_defaults": {
+      "spend_cap_usd": 0.5,
+      "max_candidates": 5,
+      "per_branch_timeout_s": 60,
+      "note": "an absent field falls back to the documented default and is named in CapConfig.defaulted; there is no unlimited mode"
+    },
+    "concurrency_safety": "every check-and-admit is a read-modify-write of the JSON ledger performed while holding an exclusive rustix flock on it \u2014 atomic across threads AND processes, never a read-then-write",
+    "reservation_model": "cost is reserved BEFORE dispatch and held for the branch's lifetime; settle() releases it on both the success and failure paths; an unsettled hold expires at per_branch_timeout_s and is charged its FULL estimate so a crashed branch cannot hand back budget it may have spent",
+    "typed_errors": [
+      "capability_disabled",
+      "spend_cap_exceeded",
+      "candidate_limit_exceeded",
+      "branch_timeout",
+      "unknown_reservation",
+      "invalid_amount",
+      "ledger"
+    ],
+    "exit_codes": {
+      "0": "granted/settled",
+      "2": "argument or ledger error",
+      "3": "REFUSED by the cap"
+    },
+    "skill_wiring": "skills/tree-search-coder/SKILL.md and references/algorithm.md \u00a7Enforced cost cap make reserve-before-dispatch and settle-after-completion mandatory steps; references/exemplars.md exemplar 3 now shows the limiter's refusal rather than an agent-side cost check"
+  },
+  "tests": [
+    {
+      "command": "cargo test -p agentbox-ops --offline",
+      "result": "157 passed, 0 failed (lib) + 1 doc-test passed",
+      "cost_cap_cases": [
+        "manifest_block_is_parsed_verbatim",
+        "absent_cap_falls_back_to_the_documented_default_not_infinity",
+        "under_cap_invocation_succeeds_and_settles",
+        "a_single_over_cap_invocation_is_refused",
+        "spend_exactly_at_the_cap_is_admitted_and_the_next_dollar_is_not",
+        "in_flight_reservations_are_held_against_the_cap",
+        "double_settle_is_refused_so_a_hold_cannot_be_released_twice",
+        "concurrent_reservations_admit_exactly_the_ones_that_fit",
+        "concurrent_reservations_never_overshoot_a_ragged_cap",
+        "candidate_limit_is_enforced_independently_of_spend",
+        "per_branch_wall_clock_is_enforced",
+        "an_abandoned_reservation_expires_and_is_charged_at_estimate",
+        "an_overrun_actual_cost_tightens_the_remaining_budget",
+        "a_disabled_capability_refuses_every_reservation",
+        "negative_and_non_finite_amounts_are_refused",
+        "runs_are_accounted_independently_and_reset_clears_one",
+        "the_real_manifest_declares_an_enforceable_cap"
+      ]
+    },
+    {
+      "command": "bash tests/capability/tree-search-cap.test.sh",
+      "result": "13 passed, 0 failed",
+      "note": "cross-PROCESS: 10 concurrent `tree-search-cap reserve --estimate 0.20` processes against a 0.50 cap admit exactly 2 and refuse 8; outstanding holds measured at 0.40 <= cap"
+    }
+  ],
+  "not_covered": [
+    "byte-identical-when-off build evidence for the disabled package/supervisor footprint (ADR-2020's other half; no image rebuild ran)",
+    "no provider, model orchestration or image rebuild was executed"
+  ],
+  "source_sha256": {
+    "services/agentbox-ops/src/cost_cap/mod.rs": "5196fe19eab7788d7a78846a838da9a8972951aced14f892b579a1730a6829c2",
+    "services/agentbox-ops/src/cost_cap/ledger.rs": "346b276f9a07ee2df0f8837f760c8fb4c2a41153d8dd9cfc94051a06e62ce0f0",
+    "services/agentbox-ops/src/cost_cap/mod_tests.rs": "daab478de71a9d91f73889fb5e0cc33e6cdbc312ab0dc83fdbc848857bedbe51",
+    "services/agentbox-ops/src/bin/tree-search-cap.rs": "2ca56e37b7f02f7a482f0a377e4ee02d39fe86b4a008347ee2b449d38d38705a",
+    "services/agentbox-ops/src/lib.rs": "c0d2618165eef748a896ef4b1bc5d7b11dfb7e5fd4477dff0035a4cbe4974b76",
+    "services/agentbox-ops/Cargo.toml": "f07ccd7a03c67037a93ba8024e0c2ef68df066b356e881714636a3250924e378",
+    "tests/capability/tree-search-cap.test.sh": "aae2c352a4d16e6c75eb8d30d4eaa57a642631c27c31e1c6ff726293dd28cef9",
+    "skills/tree-search-coder/SKILL.md": "8208f055c3efb430efc5cc1ce4470761cf0619e96d2e0f1a6fea03da63378b05",
+    "skills/tree-search-coder/references/algorithm.md": "fb56390eb6f5b5dcce16c55b819e092be0c26d2fd6b20dc20dc6967088342e7b",
+    "skills/tree-search-coder/references/exemplars.md": "40a29fb81d7e92b498d7557bf8a7e2d741b664ea3fbad9ef1472802cb8b6fb4f",
+    "agentbox.toml": "008da44421abc52481ea11c77bf0800cc6c1b8b051b0759766d7a4f160e86bc9"
+  }
+}

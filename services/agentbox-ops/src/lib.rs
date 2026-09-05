@@ -4,10 +4,14 @@
 //! 2026-09-02 estate legacy audit. The modules here hold the behaviour that
 //! is worth unit-testing independently of the CLI shell around it.
 
+pub mod cost_cap;
 pub mod distil;
 pub mod hermes;
+pub mod hookspool;
+pub mod process_identity;
 pub mod procs;
 pub mod pyjson;
 pub mod solar;
+pub mod teammates;
 pub mod token_audit;
 pub mod voyager;

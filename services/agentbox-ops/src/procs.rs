@@ -4,7 +4,13 @@
 //! originals shelled out to `ps axww`; `sysinfo` gives the same fields
 //! (pid, argv, run time) without a subprocess, and without the parsing
 //! ambiguity of a space-separated `ps` line.
+//!
+//! The launcher allowlist that decides whether an argv *is* a daemon lives in
+//! [`crate::process_identity::is_ruflo_daemon_argv`], shared with the Hermes
+//! stop path so one rule governs every tool that signals a process (ADR-2032).
+//! Discovery here stays read-only: nothing in this module signals anything.
 
+use crate::process_identity::is_ruflo_daemon_argv as is_daemon_argv;
 use sysinfo::{Pid, ProcessRefreshKind, RefreshKind, System};
 
 /// One discovered daemon-shaped process.
@@ -16,43 +22,6 @@ pub struct DaemonProc {
     pub run_time_secs: u64,
     /// Value of `--workspace <path>`, or `?` when absent.
     pub workspace: String,
-}
-
-/// Match a daemon invocation using argv boundaries, never text embedded in a
-/// shell command, search query or prompt. Unknown launchers fail closed.
-fn is_daemon_argv(args: &[&str]) -> bool {
-    let Some(program) = args.first() else {
-        return false;
-    };
-    let basename = |path: &str| {
-        std::path::Path::new(path)
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("")
-            .to_string()
-    };
-    let daemon_args = match basename(program).as_str() {
-        "ruflo" | "claude-flow" => &args[1..],
-        "node" | "nodejs" => {
-            let Some(script) = args.get(1) else {
-                return false;
-            };
-            let named_launcher = matches!(basename(script).as_str(), "ruflo" | "claude-flow");
-            let package_script = basename(script) == "cli.js"
-                && std::path::Path::new(script).components().any(|part| {
-                    matches!(
-                        part.as_os_str().to_str(),
-                        Some("ruflo" | "claude-flow" | "@claude-flow")
-                    )
-                });
-            if !named_launcher && !package_script {
-                return false;
-            }
-            &args[2..]
-        }
-        _ => return false,
-    };
-    daemon_args.starts_with(&["daemon", "start"])
 }
 
 /// Read the workspace as one argument, preserving spaces and flag-like text

@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-05",
+  "adr": "ADR-2032",
+  "title": "Daemon identification \u2014 argv/start-time identity on the Hermes Stop path",
+  "scope": "Rust unit and integration tests with isolated, owned subprocesses. No daemon signal or runtime PID-state mutation outside those owned children.",
+  "implemented": {
+    "shared_module": "services/agentbox-ops/src/process_identity.rs (new) factors the reaper argv-allowlist and start-time logic into one documented module, now used by the Hermes Stop path.",
+    "identity_before_signal": "Before signalling, the target PID must match BOTH the recorded argv (/proc/<pid>/cmdline) and the recorded start time (/proc/<pid>/stat field 22). Both are captured at launch into the job record (hermes/jobs.rs); a record lacking them is UNVERIFIABLE and refuses to signal rather than guessing.",
+    "staleness_recheck": "Identity is re-checked immediately before the signal, not at plan time.",
+    "delivery_vs_shutdown": "SIGTERM delivery and confirmed shutdown are reported separately: after the signal a bounded grace period re-checks identity, yielding distinct outcomes for confirmed-exited, signalled-but-still-running, identity-mismatch-refused and no-such-process. Missing /proc access is an explicit refusal, never an assumed match. Recoverable state is preserved on failure.",
+    "reaper_default": "The reaper stays read-only by default, asserted by tests/reaper_default_is_read_only.rs."
+  },
+  "tests": [
+    {
+      "command": "cargo test --offline",
+      "cwd": "services/agentbox-ops",
+      "exit_code": 0,
+      "stdout_tail": "\n\nrunning 1 test\ntest the_reaper_signals_nothing_without_an_explicit_kill_flag ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.08s\n\n\nrunning 1 test\ntest src/cost_cap/mod.rs - cost_cap (line 14) - compile ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s",
+      "stderr_tail": "     Running unittests src/bin/token-audit.rs (target/debug/deps/token_audit-e7471a5711fdc9f1)\n     Running unittests src/bin/tree-search-cap.rs (target/debug/deps/tree_search_cap-e54d0ada71259f79)\n     Running unittests src/bin/voyager-gate.rs (target/debug/deps/voyager_gate-9ead15e0d167674a)\n     Running unittests src/bin/yt-transcript-archive.rs (target/debug/deps/yt_transcript_archive-e1be035c8a18c950)\n     Running tests/reaper_default_is_read_only.rs (target/debug/deps/reaper_default_is_read_only-699ca66c0bf2d1e0)\n   Doc-tests agentbox_ops"
+    }
+  ],
+  "source_sha256": {
+    "services/agentbox-ops/src/process_identity.rs": "8dc1ce617b5f73f2658978d65c2092baedd53dac23111c5e29c4bc787fcefdb3",
+    "services/agentbox-ops/src/process_identity_tests.rs": "357c92daa8314bdee05d7a4fb2d6f830ae2f262f1ddf3f277e40a866a2f2a613",
+    "services/agentbox-ops/src/hermes/mod.rs": "8dd9b700d05d5732e515fbf89a5fb476868a0390e901e036270575ba11cd60df",
+    "services/agentbox-ops/src/hermes/jobs.rs": "624fa43c091b8b752cd132f0b797d5d160a4d8584675fb3030485d458e7ebcae",
+    "services/agentbox-ops/src/hermes/stop_tests.rs": "23946d229860b3d3460099aafe6daa5ba433a67a75ffbb83a3459cea5f086979",
+    "services/agentbox-ops/src/procs.rs": "3aff4a8af8f37cd3d452b861682f9e165d1761fc801af04d2ef8cda6940c3bc6",
+    "services/agentbox-ops/src/bin/hermes-scheduler.rs": "b19c9cf467679555f4f76a3e469c34e1d2923c93d3f7d715df08ff847d5081ce"
+  },
+  "limitations": "A full inventory of every signalling caller across the estate is not complete; registry-versus-live-workspace disagreement is unchanged; no deployed daemon was signalled."
+}

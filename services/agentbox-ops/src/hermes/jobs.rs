@@ -7,6 +7,7 @@
 //! written by the Python daemon loads here without migration.
 
 use super::schedule::{compute_next_run, grace_seconds, iso, parse_iso, Schedule};
+use crate::process_identity::ProcessIdentity;
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -89,6 +90,61 @@ impl Store {
     }
     pub fn log_file(&self) -> PathBuf {
         self.root.join("scheduler.log")
+    }
+    /// Where the running daemon's `(pid, argv, starttime)` identity is recorded.
+    ///
+    /// The PID file alone cannot authorise a signal: a stale PID file naming a
+    /// recycled PID passes an existence check while pointing at an unrelated
+    /// process. The identity recorded here is what [`crate::hermes::daemon_stop`]
+    /// re-verifies immediately before signalling (ADR-2032).
+    pub fn identity_file(&self) -> PathBuf {
+        self.root.join("scheduler.identity.json")
+    }
+
+    /// Records the daemon's identity, captured at launch by the daemon itself.
+    ///
+    /// Written atomically (temp file, fsync, rename) for the same reason the job
+    /// list is: a half-written identity would be read as unverifiable and would
+    /// strand the daemon, unstoppable, until an operator intervened.
+    pub fn save_identity(&self, identity: &ProcessIdentity) -> std::io::Result<()> {
+        self.ensure_dirs()?;
+        let text = serde_json::to_string_pretty(identity)?;
+        let tmp = self
+            .root
+            .join(format!(".identity.{}.tmp", std::process::id()));
+        {
+            let mut f = fs::File::create(&tmp)?;
+            f.write_all(text.as_bytes())?;
+            f.flush()?;
+            f.sync_all()?;
+        }
+        match fs::rename(&tmp, self.identity_file()) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                let _ = fs::remove_file(&tmp);
+                Err(e)
+            }
+        }
+    }
+
+    /// Reads the recorded daemon identity.
+    ///
+    /// `None` covers every reason the record is unusable — absent (a daemon from
+    /// before identities were recorded), unreadable, or corrupt. Callers must
+    /// treat `None` as UNVERIFIABLE and refuse to signal, never as permission.
+    pub fn load_identity(&self) -> Option<ProcessIdentity> {
+        let text = fs::read_to_string(self.identity_file()).ok()?;
+        serde_json::from_str::<ProcessIdentity>(&text).ok()
+    }
+
+    /// Removes the PID and identity records together.
+    ///
+    /// Only call this once the daemon is known to be gone: while a signalled
+    /// daemon is still shutting down, these files are the only recoverable state
+    /// that lets a later attempt identify it.
+    pub fn clear_daemon_record(&self) {
+        let _ = fs::remove_file(self.pid_file());
+        let _ = fs::remove_file(self.identity_file());
     }
 
     /// Creates the state directories, tightening the root to 0700 as the
