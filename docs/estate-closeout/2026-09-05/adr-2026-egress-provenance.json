@@ -1,0 +1,33 @@
+{
+  "schema": "agentbox/closeout-receipt@1",
+  "adr": "ADR-2026",
+  "dated": "2026-09-05",
+  "claim": "One shared content-egress policy governs both the live-mirror hook and the Rust digest path; redaction happens before egress on both; the three outcome states are distinguishable under network denial; and a mirrored provenance reference survives buffer eviction and restart.",
+  "implemented": {
+    "policy_document": "config/egress-policy.json — enumerates content, recipients, providers, encryption, transport and log retention PER PATH, plus the switch table, the four invariants and the outcome vocabulary.",
+    "shared_off_switch": "AGENTBOX_EGRESS=0 disables EVERY path. The review's finding was that AGENTBOX_LIVE_MIRROR=0 said nothing about the separately configured Rust digest path; both now obey one global switch as well as their own.",
+    "redaction_before_egress": "config/hooks/lib/egress-policy.cjs (JS) and services/nostr-pod-bridge/src/egress_policy.rs (Rust) implement the same rules. The live hook redacts BEFORE composition and before the NIP-59 wrap; the digest path redacts BEFORE the provider request is built, because curating the provider's output does not undo its receipt of the input.",
+    "cross_language_parity": "tests/fixtures/egress-redaction.v1.json is a PAIRED fixture both implementations must satisfy exactly. The Rust test reads the same file, so a divergence fails cargo test rather than being noticed later.",
+    "fail_closed": "A redaction failure is a SKIP. AGENTBOX_EGRESS_REDACTION=0 disables the PATH rather than sending unredacted content — there is no configuration that sends raw text.",
+    "recipients": "Grammar (64 lowercase hex) plus an optional enumerated allowlist (AGENTBOX_MIRROR_RECIPIENTS). The review noted syntax was checked but no allowlist existed.",
+    "outcomes": "skipped / attempted / accepted / failed are emitted by both paths. publishWrap() previously resolved with nothing on relay-OK, rejection, socket error, close and timeout alike — the mechanical reason exit zero could not prove delivery. It now returns which outcome occurred.",
+    "log_retention": "The mirror dry run prints the REDACTED body, so diagnostics can never retain more than the wire.",
+    "provenance_durability": "management-api/utils/agent-event-archive.js — a bounded, rotating, fail-open JSONL archive the publisher appends to before eviction can occur. The resolver falls back to it and returns the FULL ORDERED HISTORY for a reference rather than the newest match, reporting `source` and `history_complete`. A bare numeric event id is labelled process-local and deliberately NOT resolved against the archive, because ids restart at 1 in a new process."
+  },
+  "tests": {
+    "suites": {
+      "tests/sovereign/egress-boundary.test.js": { "passed": 20, "failed": 0 },
+      "tests/sovereign/provenance-durability.test.js": { "passed": 9, "failed": 0 },
+      "services/nostr-pod-bridge egress_policy (cargo)": { "passed": 9, "failed": 0 }
+    },
+    "network_denial": "The mirror is pointed at ws://127.0.0.1:1 (the discard port), so nothing can leave the machine. Asserted: a denied relay yields ATTEMPTED then FAILED and never ACCEPTED; a disabled path never reaches ATTEMPTED; exit zero holds in all three cases and proves nothing.",
+    "redaction_evidence": "An invented `password=hunter2 token=abc123` prompt produces a composed body containing neither value, on both the child-key and explicit-recipient configurations; an invented 64-hex nsec becomes <redacted-hex>.",
+    "provenance_evidence": "After the ring buffer genuinely evicts a reference (asserted as a precondition, 1,005 unrelated events), the reference still resolves from the archive. Three decisions under one session reference return in order. An empty in-memory buffer with the archive intact — the restart case — still resolves."
+  },
+  "remaining": [
+    "No real transcript, provider call or relay send was exercised; the digest path's provider hop is source-verified and unit-tested, not run.",
+    "The resolver has no caller or resource authorisation of its own, so an authorised mobile journey from decryption through lookup to the original evidence is still not demonstrated.",
+    "The archive is a provenance record, not a database: retention is bounded by rotation, and an expired record is reported as absent-with-a-reason rather than recoverable.",
+    "Relay/read policy for the signed kind-30840 digest remains a separate boundary."
+  ]
+}

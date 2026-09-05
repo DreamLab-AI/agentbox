@@ -1,0 +1,122 @@
+# deepsec Security gate (ADR-2033) — PR mode on same-repo pull requests.
+#
+# Two-job split from vercel-labs/deepsec docs/reviewing-changes.md: `analyze`
+# runs PR-controlled code with the model secret in scope and NO write
+# permission; `comment` has pull-requests:write but only consumes the
+# sanitised comment artifact. Actions are pinned to full commit SHAs
+# (invariant: no tag-pinned actions in secret-bearing jobs).
+#
+# Cost control: the AI stage runs only when the PR carries the `deepsec`
+# label (or on manual dispatch) AND the ANTHROPIC_API_KEY secret exists.
+# Without the secret the job records SKIPPED via the gate's exit 78.
+name: deepsec security gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Base ref to diff against"
+        default: "origin/main"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       contains(github.event.pull_request.labels.*.name, 'deepsec'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HAS_MODEL_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+    steps:
+      - name: Checkout (full history — PR mode diffs against the merge base)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: Install pinned deepsec + Claude Code (same versions the image bakes)
+        run: |
+          set -euo pipefail
+          npm install -g deepsec@2.3.9 @anthropic-ai/claude-code@2.1.257
+          deepsec --version
+
+      - name: Run the gate (direct Anthropic route; key NAME only reaches disk)
+        id: gate
+        if: env.HAS_MODEL_KEY == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_EXECUTABLE: claude
+          DEEPSEC_GATE_ENABLED: 'true'
+          DEEPSEC_GATE_MODEL_AUTH: direct
+          DEEPSEC_GATE_AI_PROVIDER: anthropic
+          DEEPSEC_GATE_AI_API_KEY_ENV: ANTHROPIC_API_KEY
+          DEEPSEC_GATE_THINKING_LEVEL: high
+          DEEPSEC_GATE_MAX_DURATION: 40m
+        run: |
+          set -uo pipefail
+          BASE="${{ github.event_name == 'workflow_dispatch' && inputs.base || format('origin/{0}', github.event.pull_request.base.ref) }}"
+          bash skills/build-with-quality/scripts/deepsec-gate.sh --diff "$BASE" --report-dir "$RUNNER_TEMP/deepsec-report"
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          case "$rc" in
+            0) echo "deepsec gate: PASS" ;;
+            1) echo "::error::deepsec gate: blocking findings — see the receipt artifact"; exit 1 ;;
+            78) echo "::warning::deepsec gate: SKIPPED/UNAVAILABLE (exit 78)" ;;
+            124) echo "::warning::deepsec gate: max_duration reached (resumable); not treated as a pass"; exit 124 ;;
+            *) echo "::error::deepsec gate: runtime error (exit $rc)"; exit "$rc" ;;
+          esac
+
+      - name: Record SKIPPED when no model credential is configured
+        if: env.HAS_MODEL_KEY != 'true'
+        run: echo "::warning::deepsec gate SKIPPED — ANTHROPIC_API_KEY secret is not configured for this repository"
+
+      - name: Upload receipt (always) and PR comment body (only when findings exist)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: deepsec-report
+          path: |
+            ${{ runner.temp }}/deepsec-report/receipt.json
+            ${{ runner.temp }}/deepsec-report/plan.json
+            ${{ runner.temp }}/deepsec-report/comment.md
+          if-no-files-found: ignore
+          retention-days: 14
+
+  comment:
+    needs: analyze
+    if: always() && needs.analyze.result == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - id: dl
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: deepsec-report
+
+      - if: steps.dl.outcome == 'success' && hashFiles('comment.md') != '' && github.event_name == 'pull_request'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = '### deepsec security gate — blocking findings (ADR-2033)\n\n' + fs.readFileSync('comment.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

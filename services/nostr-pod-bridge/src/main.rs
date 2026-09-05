@@ -120,10 +120,15 @@ async fn run_daemon(cfg: BridgeConfig) -> anyhow::Result<()> {
     // NIP-01 REQ replay for the lifetime of the process.
     let relay = Arc::new(Relay::in_memory());
 
-    let consumer = spawn_consumer(relay.clone(), cfg);
+    // ADR-2012: one policy object, two boundaries. The relay gate refuses
+    // unlisted publishers before store/broadcast/ack; the consumer re-authorises
+    // independently and records any divergence in the shared audit trail.
+    let admission = Arc::new(nostr_pod_bridge::admission::RelayAdmission::from_config(&cfg));
+
+    let consumer = spawn_consumer(relay.clone(), cfg, admission.clone());
 
     tokio::select! {
-        r = serve(relay, &bind_addr) => r?,
+        r = serve(relay, &bind_addr, admission) => r?,
         _ = tokio::signal::ctrl_c() => info!("SIGINT received; shutting down"),
     }
 

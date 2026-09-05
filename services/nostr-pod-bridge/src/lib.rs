@@ -22,9 +22,14 @@
 //! ```text
 //!   phone (Amethyst/Amber)            this bridge                     pod
 //!        │  ws kind-1059 DM                │                           │
-//!        ├────────────────────────────────▶ Relay::ingest             │
+//!        ├────────────────────────────────▶ RelayAdmission::gate       │
+//!        │                                 │   └─ publisher allowlist  │
+//!        │◀──── ["OK",id,false,"blocked:…"]┤      (unlisted → refused   │
+//!        │                                 │       BEFORE store /       │
+//!        │                                 │       broadcast / OK)      │
+//!        │                                 ├─▶ Relay::ingest            │
 //!        │                                 │   └─ Event::verify (sig)  │
-//!        │                                 │   └─ broadcast            │
+//!        │                                 │   └─ store + broadcast    │
 //!        │                          consumer task (relay.subscribe)    │
 //!        │                                 │   1. allowlist authz      │
 //!        │                                 │   2. unwrap_gift (sk)     │
@@ -32,34 +37,53 @@
 //!        │                                 ├──────────── inbox/<id>.json
 //! ```
 //!
+//! ## Two boundaries, one policy (ADR-2012)
+//!
+//! Publisher admission happens at the **relay boundary** ([`admission`]): an
+//! unlisted author is refused with an explicit NIP-20 negative `OK` and the
+//! event is never verified-and-stored, never broadcast to subscribers and never
+//! positively acknowledged. Only admitted events reach [`Relay::ingest`].
+//!
+//! The pod-inbox consumer is a **separate** boundary and re-authorises
+//! independently: a relay `OK` means "accepted for broadcast", never
+//! "authorised and committed to the pod". Every disagreement between the two is
+//! written to a durable audit trail
+//! (`pods/<recipient>/events/audit/relay-admission.jsonl`). An empty allowlist
+//! is deny-all at both boundaries, with its own counter and reject message.
+//!
 //! Signature verification (authn) always precedes authorization (authz):
 //! the relay verifies the signature in `ingest` *before* the event reaches the
 //! consumer, and the consumer performs the allowlist check before any unwrap
 //! or pod write.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+pub mod admission;
 pub mod bootstrap;
 pub mod contract;
+pub mod egress_policy;
 pub mod envmap;
 pub mod identity;
 pub mod pyjson;
 pub mod session_summary;
 
+use crate::admission::RelayAdmission;
 use crate::envmap::EnvMap;
 
 use anyhow::Context;
 use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::Message;
 use tracing::{debug, error, info, warn};
 
 use nostr_bbs_core::keys::signing_key_from_bytes;
 use nostr_bbs_core::{sign_event, unwrap_gift, NostrEvent, UnsignedEvent};
-use solid_pod_rs_nostr::{serve_relay_ws, Event, Relay};
+use solid_pod_rs_nostr::{dispatch_message_with_limits, Event, Filter, Relay, RelayLimits};
 
 /// NIP-59 gift-wrap (outer envelope for NIP-17 DMs).
 pub const KIND_GIFT_WRAP: u64 = 1059;
@@ -670,7 +694,11 @@ async fn publish_to_relay(bind_addr: &str, signed: &NostrEvent) -> anyhow::Resul
 
 /// Spawn the consumer task: subscribe to the relay broadcast and process every
 /// verified event. Returns the join handle.
-pub fn spawn_consumer(relay: Arc<Relay>, cfg: BridgeConfig) -> tokio::task::JoinHandle<()> {
+pub fn spawn_consumer(
+    relay: Arc<Relay>,
+    cfg: BridgeConfig,
+    admission: Arc<RelayAdmission>,
+) -> tokio::task::JoinHandle<()> {
     let mut rx = relay.subscribe();
     tokio::spawn(async move {
         info!(recipient = %cfg.recipient_pubkey, "pod-ingress consumer started");
@@ -689,7 +717,16 @@ pub fn spawn_consumer(relay: Arc<Relay>, cfg: BridgeConfig) -> tokio::task::Join
                     match process_event(&ev, &cfg).await {
                         Ok(()) => {}
                         Err(IngressError::Unauthorized(r)) => {
-                            warn!(event_id = %ev.id, pubkey = %ev.pubkey, reason = %r, "rejected")
+                            // ADR-2012 contract evidence: the relay admitted this
+                            // event (it was stored, broadcast and OK-ed) and the
+                            // INBOX boundary then refused to commit it. Relay OK
+                            // is not an authorised commit — record the divergence
+                            // durably rather than only logging it.
+                            warn!(
+                                event_id = %ev.id, pubkey = %ev.pubkey, reason = %r,
+                                "relay-admitted event REJECTED at the inbox boundary"
+                            );
+                            admission.note_inbox_rejection(&ev.id, &ev.pubkey, &r).await;
                         }
                         Err(IngressError::NotAddressed) => {
                             debug!(event_id = %ev.id, "not addressed to this agent; skipped")
@@ -709,20 +746,111 @@ pub fn spawn_consumer(relay: Arc<Relay>, cfg: BridgeConfig) -> tokio::task::Join
     })
 }
 
-/// Bind the embedded relay and serve WebSocket connections forever. Each
-/// connection is handed to [`solid_pod_rs_nostr::serve_relay_ws`], which
-/// performs the WS upgrade and runs the NIP-01 protocol against `relay`.
-pub async fn serve(relay: Arc<Relay>, bind_addr: &str) -> anyhow::Result<()> {
+/// Bind the embedded relay and serve WebSocket connections forever, with
+/// publisher admission at the relay boundary (ADR-2012).
+///
+/// This deliberately does NOT use [`solid_pod_rs_nostr::serve_relay_ws`]: that
+/// handler hands every `EVENT` frame straight to the relay, which verifies,
+/// stores, broadcasts and positively acknowledges it — so an unlisted publisher
+/// would be admitted to the relay and only stopped later, at the pod inbox.
+/// [`serve_admitting_ws`] inserts the publisher gate in front of all three
+/// effects; everything else (`REQ`, `CLOSE`, history replay, live fan-out) is
+/// delegated to the upstream dispatcher unchanged.
+pub async fn serve(
+    relay: Arc<Relay>,
+    bind_addr: &str,
+    admission: Arc<RelayAdmission>,
+) -> anyhow::Result<()> {
     let listener = TcpListener::bind(bind_addr).await?;
-    info!(addr = %bind_addr, "embedded nostr relay listening");
+    info!(
+        addr = %bind_addr,
+        allowlist = admission.policy.allowed_count(),
+        deny_all = admission.policy.is_deny_all(),
+        audit = %admission.audit.path().display(),
+        "embedded nostr relay listening (publisher admission at the relay boundary)"
+    );
     loop {
         let (stream, peer) = listener.accept().await?;
         let relay = relay.clone();
+        let admission = admission.clone();
         tokio::spawn(async move {
             debug!(%peer, "ws connection accepted");
-            serve_relay_ws(relay, stream).await;
+            serve_admitting_ws(relay, admission, stream).await;
             debug!(%peer, "ws connection closed");
         });
+    }
+}
+
+/// NIP-01 WebSocket loop with the ADR-2012 publisher gate in front of `EVENT`.
+///
+/// Ordering is the whole point: [`RelayAdmission::gate`] runs *before*
+/// [`dispatch_message_with_limits`], so a refused publish is answered with
+/// `["OK", <id>, false, "blocked: …"]` and the relay never sees the event —
+/// nothing is stored, nothing is broadcast, and no positive acknowledgement is
+/// ever emitted for it.
+async fn serve_admitting_ws(
+    relay: Arc<Relay>,
+    admission: Arc<RelayAdmission>,
+    stream: TcpStream,
+) {
+    let limits = RelayLimits::default();
+    let config = WebSocketConfig {
+        max_message_size: Some(limits.max_text_frame_bytes),
+        max_frame_size: Some(limits.max_text_frame_bytes),
+        ..WebSocketConfig::default()
+    };
+    let mut ws = match tokio_tungstenite::accept_async_with_config(stream, Some(config)).await {
+        Ok(ws) => ws,
+        Err(e) => {
+            debug!(error = %e, "ws handshake failed");
+            return;
+        }
+    };
+
+    let mut subscriptions: HashMap<String, Vec<Filter>> = HashMap::new();
+    let mut live = relay.subscribe();
+
+    loop {
+        tokio::select! {
+            msg = ws.next() => {
+                match msg {
+                    Some(Ok(Message::Text(text))) => {
+                        // ── the ADR-2012 boundary ─────────────────────────────
+                        let responses = match admission.gate(&text).await {
+                            Some(refusal) => refusal,
+                            None => dispatch_message_with_limits(
+                                &relay, &mut subscriptions, &text, &limits,
+                            ),
+                        };
+                        for out in responses {
+                            if ws.send(Message::Text(out)).await.is_err() { return; }
+                        }
+                    }
+                    Some(Ok(Message::Binary(_))) => {
+                        let frame = json!(["NOTICE", "binary frames not accepted"]).to_string();
+                        if ws.send(Message::Text(frame)).await.is_err() { return; }
+                    }
+                    Some(Ok(Message::Ping(p))) => {
+                        if ws.send(Message::Pong(p)).await.is_err() { return; }
+                    }
+                    Some(Ok(Message::Close(_))) | None => return,
+                    Some(Err(_)) => return,
+                    _ => {}
+                }
+            }
+            Ok(event) = live.recv() => {
+                for (sub_id, filters) in &subscriptions {
+                    if filters.iter().any(|f| f.matches(&event)) {
+                        let frame = json!([
+                            "EVENT",
+                            sub_id,
+                            serde_json::to_value(&event).unwrap_or(Value::Null),
+                        ]).to_string();
+                        if ws.send(Message::Text(frame)).await.is_err() { return; }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -809,6 +937,279 @@ mod tests {
         let e = ev(&"f".repeat(64), 1, vec![tag]);
         assert!(matches!(
             authorize(&e, &c),
+            Err(IngressError::Unauthorized(_))
+        ));
+    }
+
+    // ── ADR-2012: publisher admission AT THE RELAY BOUNDARY ─────────────────
+    //
+    // The three tests above (`direct_allowlist_authorizes`,
+    // `unknown_pubkey_rejected`, `delegation_tag_no_longer_grants_access`) cover
+    // the INBOX boundary. These cover the RELAY boundary and, crucially, the
+    // ordering: an unlisted author must be refused before the event is stored,
+    // broadcast or positively acknowledged.
+
+    use crate::admission::{AdmitReason, RejectReason, RelayAdmission};
+    use tokio::sync::broadcast::error::TryRecvError;
+
+    fn admission_for(allowed: &[String], self_pk: &str, dir: &Path) -> RelayAdmission {
+        RelayAdmission::from_config(&BridgeConfig {
+            bind_addr: "127.0.0.1:0".into(),
+            pod_root: dir.to_path_buf(),
+            recipient_pubkey: self_pk.to_string(),
+            recipient_sk: [7u8; 32],
+            allowed_pubkeys: allowed.to_vec(),
+        })
+    }
+
+    /// A REAL signed event (BIP-340 via nostr-bbs-core) so the relay's own
+    /// `Event::verify` would accept it — the only way to prove admission is what
+    /// stopped it, rather than an invalid signature.
+    fn signed_event_frame(sk_byte: u8, kind: u64, tags: Vec<Vec<String>>) -> (String, String, String) {
+        let signing_key = signing_key_from_bytes(&[sk_byte; 32]).unwrap();
+        let pubkey = hex::encode(signing_key.verifying_key().to_bytes());
+        let unsigned = UnsignedEvent {
+            pubkey: pubkey.clone(),
+            created_at: 1_700_000_000,
+            kind,
+            tags,
+            content: "hello".into(),
+        };
+        let signed = sign_event(unsigned, &signing_key).unwrap();
+        let relay_event: Event =
+            serde_json::from_value(serde_json::to_value(&signed).unwrap()).unwrap();
+        assert!(relay_event.verify().is_ok(), "fixture must be a valid event");
+        let id = relay_event.id.clone();
+        let frame = json!(["EVENT", relay_event]).to_string();
+        (frame, pubkey, id)
+    }
+
+    /// The exact two-step the WS loop runs: gate first, dispatch only if the
+    /// gate let it through.
+    async fn gate_then_dispatch(
+        relay: &Relay,
+        admission: &RelayAdmission,
+        subs: &mut HashMap<String, Vec<Filter>>,
+        text: &str,
+    ) -> Vec<String> {
+        match admission.gate(text).await {
+            Some(refusal) => refusal,
+            None => dispatch_message_with_limits(relay, subs, text, &RelayLimits::default()),
+        }
+    }
+
+    #[tokio::test]
+    async fn listed_author_is_admitted_stored_broadcast_and_acked() {
+        let dir = tempfile::tempdir().unwrap();
+        let (frame, pubkey, id) = signed_event_frame(0x31, 1, vec![]);
+        let admission = admission_for(&[pubkey.clone()], &"a".repeat(64), dir.path());
+        let relay = Relay::in_memory();
+        let mut rx = relay.subscribe();
+        let mut subs = HashMap::new();
+
+        let out = gate_then_dispatch(&relay, &admission, &mut subs, &frame).await;
+
+        let ok: Value = serde_json::from_str(&out[0]).unwrap();
+        assert_eq!(ok[0], "OK");
+        assert_eq!(ok[1], id);
+        assert_eq!(ok[2], true, "listed author must get a positive OK");
+        assert_eq!(relay.snapshot().len(), 1, "listed author's event is stored");
+        assert_eq!(rx.try_recv().map(|e| e.id), Ok(id), "and broadcast");
+        assert_eq!(
+            admission.policy.admit(&pubkey),
+            crate::admission::AdmissionDecision::Admit(AdmitReason::AllowListed)
+        );
+    }
+
+    #[tokio::test]
+    async fn unlisted_author_is_refused_before_store_broadcast_or_ack() {
+        let dir = tempfile::tempdir().unwrap();
+        let (frame, pubkey, id) = signed_event_frame(0x32, 1, vec![]);
+        // Allowlist holds someone else entirely.
+        let admission = admission_for(&["c".repeat(64)], &"a".repeat(64), dir.path());
+        let relay = Relay::in_memory();
+        let mut rx = relay.subscribe();
+        let mut subs = HashMap::new();
+
+        let out = gate_then_dispatch(&relay, &admission, &mut subs, &frame).await;
+
+        let ok: Value = serde_json::from_str(&out[0]).unwrap();
+        assert_eq!(ok[0], "OK");
+        assert_eq!(ok[1], id);
+        assert_eq!(ok[2], false, "unlisted author must get a NEGATIVE ok");
+        assert!(
+            ok[3].as_str().unwrap().starts_with("blocked:"),
+            "NIP-20 machine-readable prefix, got {:?}",
+            ok[3]
+        );
+        assert!(
+            relay.snapshot().is_empty(),
+            "refused event must never be stored"
+        );
+        assert_eq!(
+            rx.try_recv().map(|e| e.id),
+            Err(TryRecvError::Empty),
+            "refused event must never be broadcast to subscribers"
+        );
+        assert_eq!(
+            admission
+                .counters
+                .rejected_not_listed
+                .load(std::sync::atomic::Ordering::Relaxed),
+            1
+        );
+        assert!(!pubkey.is_empty());
+    }
+
+    #[tokio::test]
+    async fn empty_allowlist_denies_all_at_the_relay_boundary() {
+        let dir = tempfile::tempdir().unwrap();
+        let (frame, _pubkey, id) = signed_event_frame(0x33, 1, vec![]);
+        let admission = admission_for(&[], &"a".repeat(64), dir.path());
+        assert!(admission.policy.is_deny_all());
+        let relay = Relay::in_memory();
+        let mut subs = HashMap::new();
+
+        let out = gate_then_dispatch(&relay, &admission, &mut subs, &frame).await;
+        let ok: Value = serde_json::from_str(&out[0]).unwrap();
+        assert_eq!(ok[1], id);
+        assert_eq!(ok[2], false);
+        assert!(
+            ok[3].as_str().unwrap().contains("deny-all"),
+            "deny-all must be a DISTINCT reject message, got {:?}",
+            ok[3]
+        );
+        assert!(relay.snapshot().is_empty());
+        assert_eq!(
+            admission
+                .counters
+                .rejected_deny_all
+                .load(std::sync::atomic::Ordering::Relaxed),
+            1,
+            "deny-all gets its own counter, distinct from an ordinary miss"
+        );
+    }
+
+    #[tokio::test]
+    async fn self_authored_event_is_admitted_even_under_deny_all() {
+        // The egress path (session summaries, project digests) publishes the
+        // agent's OWN events to its own relay for the live phone mirror. Those
+        // are not remote publishers, so deny-all must not break them — and the
+        // inbox consumer skips them because they are already persisted.
+        let dir = tempfile::tempdir().unwrap();
+        let (frame, pubkey, id) = signed_event_frame(0x34, KIND_SESSION_SUMMARY, vec![]);
+        let admission = admission_for(&[], &pubkey, dir.path());
+        let relay = Relay::in_memory();
+        let mut subs = HashMap::new();
+
+        let out = gate_then_dispatch(&relay, &admission, &mut subs, &frame).await;
+        let ok: Value = serde_json::from_str(&out[0]).unwrap();
+        assert_eq!(ok[1], id);
+        assert_eq!(ok[2], true, "self-authored egress must still be admitted");
+        assert_eq!(relay.snapshot().len(), 1);
+        assert_eq!(
+            admission.policy.admit(&pubkey),
+            crate::admission::AdmissionDecision::Admit(AdmitReason::SelfAuthored)
+        );
+    }
+
+    #[tokio::test]
+    async fn delegation_tag_author_is_refused_at_the_relay_boundary() {
+        // Companion to `delegation_tag_no_longer_grants_access` (inbox boundary):
+        // a NIP-26 delegation tag must not buy relay admission either.
+        let dir = tempfile::tempdir().unwrap();
+        let tag = vec![
+            "delegation".to_string(),
+            "d".repeat(64),
+            "kind=1".to_string(),
+            "00".repeat(64),
+        ];
+        let (frame, _pubkey, id) = signed_event_frame(0x35, 1, vec![tag]);
+        let admission = admission_for(&["c".repeat(64)], &"a".repeat(64), dir.path());
+        let relay = Relay::in_memory();
+        let mut subs = HashMap::new();
+
+        let out = gate_then_dispatch(&relay, &admission, &mut subs, &frame).await;
+        let ok: Value = serde_json::from_str(&out[0]).unwrap();
+        assert_eq!(ok[1], id);
+        assert_eq!(ok[2], false);
+        assert!(relay.snapshot().is_empty());
+    }
+
+    #[tokio::test]
+    async fn non_publish_frames_bypass_the_gate_untouched() {
+        // REQ/CLOSE are not publishes: the gate must not swallow them, or
+        // subscribers would silently stop working.
+        let dir = tempfile::tempdir().unwrap();
+        let admission = admission_for(&[], &"a".repeat(64), dir.path());
+        let relay = Relay::in_memory();
+        let mut subs = HashMap::new();
+
+        let out = gate_then_dispatch(&relay, &admission, &mut subs, r#"["REQ","s1",{"kinds":[1]}]"#).await;
+        assert!(
+            out.iter().any(|f| f.contains("EOSE")),
+            "REQ must reach the relay dispatcher, got {out:?}"
+        );
+        assert!(subs.contains_key("s1"));
+    }
+
+    #[tokio::test]
+    async fn refused_publishes_and_inbox_rejections_are_audited_durably() {
+        // The relay/inbox contract is only auditable if BOTH boundaries write to
+        // the same durable trail with the boundary named.
+        let dir = tempfile::tempdir().unwrap();
+        let self_pk = "a".repeat(64);
+        let (frame, unlisted, refused_id) = signed_event_frame(0x36, 1, vec![]);
+        let admission = admission_for(&["c".repeat(64)], &self_pk, dir.path());
+        let relay = Relay::in_memory();
+        let mut subs = HashMap::new();
+
+        gate_then_dispatch(&relay, &admission, &mut subs, &frame).await;
+        admission
+            .note_inbox_rejection("relayed-but-refused", &"c".repeat(64), "not addressed here")
+            .await;
+
+        let audit = tokio::fs::read_to_string(admission.audit.path()).await.unwrap();
+        let lines: Vec<Value> = audit
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect();
+        assert_eq!(lines.len(), 2, "one record per boundary, got {lines:?}");
+        assert_eq!(lines[0]["boundary"], "relay-admission");
+        assert_eq!(lines[0]["event_id"], refused_id);
+        assert_eq!(lines[0]["author"], unlisted);
+        assert_eq!(lines[0]["reason"], RejectReason::NotAllowListed.as_str());
+        assert_eq!(lines[1]["boundary"], "inbox-authorisation");
+        assert_eq!(lines[1]["event_id"], "relayed-but-refused");
+        assert_eq!(
+            admission
+                .counters
+                .inbox_rejected_after_relay_ok
+                .load(std::sync::atomic::Ordering::Relaxed),
+            1
+        );
+    }
+
+    #[test]
+    fn relay_admission_and_inbox_authorisation_are_independent_boundaries() {
+        // The named contract: a relay OK is NOT an authorised commit. Here the
+        // relay policy admits an author (they are on the relay allowlist) while
+        // the inbox config does not — the inbox must still refuse.
+        let dir = tempfile::tempdir().unwrap();
+        let author = "c".repeat(64);
+        let relay_policy = admission_for(&[author.clone()], &"a".repeat(64), dir.path());
+        assert!(relay_policy.policy.admit(&author).is_admitted());
+
+        let inbox_cfg = BridgeConfig {
+            bind_addr: "127.0.0.1:0".into(),
+            pod_root: dir.path().to_path_buf(),
+            recipient_pubkey: "a".repeat(64),
+            recipient_sk: [7u8; 32],
+            allowed_pubkeys: vec![], // inbox policy narrower than the relay's
+        };
+        assert!(matches!(
+            authorize(&ev(&author, 1, vec![]), &inbox_cfg),
             Err(IngressError::Unauthorized(_))
         ));
     }

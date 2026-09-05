@@ -1,0 +1,45 @@
+{
+  "date": "2026-09-05",
+  "adr": "ADR-2013",
+  "title": "Loopback publish except 9096",
+  "scope": "Synthetic compose fixtures written into temporary roots and audited by the actual gate. No Docker Compose evaluation, service launch or port binding; no fixture asserts anything about a deployed service.",
+  "implemented": {
+    "parser": "scripts/ci/check-ports-loopback.mjs carries a strict YAML reader for the compose subset: block mappings and sequences, flow mappings and sequences (so JSON parses for free, including a multi-line whole-document JSON file), single/double-quoted scalars, block scalars, multiple documents, anchors, aliases and merge keys. Anything outside that subset (tags, tabs in indentation, unterminated flow collections, undefined aliases) is REJECTED with a file and line, never skipped.",
+    "normalisation": "Every ports entry \u2014 short syntax, long syntax block or inline flow \u2014 is normalised to {host_ip, published, target, protocol}. Long syntax is judged on the same tuple rather than banned by spelling.",
+    "sanctioned_list": "Restructured from raw strings to explicit tuples matched semantically, so a sanction cannot be smuggled by re-spelling, does not transfer between compose files, and a different target port is a different door.",
+    "still_rejected": [
+      "environment interpolation",
+      "port ranges",
+      "bare container-only ports",
+      "IPv6 binds including [::] and [::1]",
+      "a ports value that is not a sequence",
+      "unknown long-syntax keys"
+    ],
+    "entry_point": "scripts/ci/check-ports-loopback.sh remains the CI entry point and execs the .mjs; a copy of the wrapper without its gate exits 3 with an explicit message rather than looking like a pass (asserted)."
+  },
+  "reproduced_bypass_now_closed": "A public port written as a nested service-flow mapping or as JSON-flow passed the previous awk line-walker because it only armed on a line whose first token was `ports:`. All six spellings of the same door are now rejected.",
+  "tests": [
+    {
+      "command": "node tests/security/ports-gate.test.mjs",
+      "cwd": ".",
+      "exit_code": 0,
+      "stdout_tail": "  PASS public port in a .yaml-suffixed compose file -> exit 1\n  PASS public port in a second YAML document of the same file -> exit 1\n  PASS public port under a top-level x- extension -> exit 1\n  PASS loopback block mapping -> exit 0\n  PASS loopback unquoted -> exit 0\n  PASS loopback single-quoted with a udp protocol suffix -> exit 0\n  PASS loopback long syntax -> exit 0\n  PASS loopback JSON flow -> exit 0\n  PASS a sanctioned mapping in its governing file -> exit 0\n  PASS comments and block scalars do not confuse the parser -> exit 0\n  PASS a compose file with no ports at all -> exit 0\n\n[sanctioned matching is on the normalised tuple]\n  PASS the 9096 ingress is sanctioned in long syntax too\n  PASS a sanction does not transfer to another compose file\n  PASS a sanctioned published port with a different target is rejected\n\n[input and wrapper failure modes]\n  PASS a root with no compose files fails rather than passing\n  PASS the wrapper copied without its gate fails loudly\n\n[current tree]\n  PASS the checked-in compose files pass the gate\n\n39 passed, 0 failed",
+      "stderr_tail": ""
+    },
+    {
+      "command": "sh scripts/ci/check-ports-loopback.sh",
+      "cwd": ".",
+      "exit_code": 0,
+      "stdout_tail": "PASS (check-ports-loopback): 10 compose file(s), 7 ports block(s) \u2014 all publishes loopback-only or explicitly sanctioned",
+      "stderr_tail": ""
+    }
+  ],
+  "source_sha256": {
+    "scripts/ci/check-ports-loopback.sh": "4b2705e17249c0817779b0796c2249420956fb624ff26fa7c60bc58de555fdd2",
+    "scripts/ci/check-ports-loopback.mjs": "ee4825451fa0230791323cc521dbe6bfe0f96ebb0a7e2f581cf8fcf9e267ff3c",
+    "tests/security/ports-gate.test.mjs": "0335363d561f33e7e103e8e3e4a4e86c4a21d22f77e35c00805f9a0d88d160cd",
+    ".github/workflows/invariants.yml": "ac33b67970d116ec9647e4d0d0d32199005a2bcca7764d65306a4b14542c4e23",
+    "docker-compose.yml": "e80e442593061ddf0f28015ec9729f636a680e7ada8d84c8a2b9c501e465a1c1"
+  },
+  "limitations": "The gate audits the compose SOURCE files matched by the root glob. It does not resolve overlay order, --env-file interpolation, `extends`, `include:` or files outside the repository root, and certifies nothing about a running deployment. A pass means the checked-in files declare no unsanctioned door."
+}

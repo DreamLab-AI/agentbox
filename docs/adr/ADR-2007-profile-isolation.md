@@ -31,19 +31,74 @@ fabric), with PRD-021 N-01 mandating the anti-mis-billing assertion.
 Session/harness isolation pins both `HOME` and `CLAUDE_CONFIG_DIR` to `$WORKSPACE/profiles/<slug>`
 in each harness wrapper, so each harness reads its own `settings.local.json` (its own
 `ANTHROPIC_BASE_URL` + token) and never the global `~/.claude`. Linux pseudo-user isolation is a dead
-path and must not be reintroduced as the primary model. Each wrapper hard-fails loudly (`_die`) if
-the profile directory/settings are missing or the provider redirect is absent or off-target. This
+path and must not be reintroduced as the primary model. Each wrapper must hard-fail loudly (`_die`) if
+the profile directory/settings are missing or the provider redirect is absent or off-target.
+The current off-target check is only substring matching, so it does not fully enforce this requirement. This
 forecloses pseudo-user isolation and any wrapper that launches without asserting its redirect.
 
 ## Consequences
 - Harnesses are isolated by directory, not by OS user — simpler under one supervisord/tmux runtime.
-- Mis-billing is caught at launch with a loud failure rather than a silent wrong-provider call.
+- Missing and wholly unrelated redirects fail at launch; hostname-substring collisions can still pass.
 - Cost: every harness needs a provisioned profile dir with a valid redirect; a missing/misconfigured
   profile is a hard launch failure by design, not a fallback to global config.
 
 ## Verification
-implementation_status = complete, established at verified_commit cbe7335b9.
+Historical verification recorded implementation_status = complete at cbe7335b9.
+The 2026-09-04 probe below narrows that claim and changes the status to partial.
 `config/harness-wrappers/zai.sh` pins `HOME`/`CLAUDE_CONFIG_DIR` to `$WORKSPACE/profiles/zai`
 (header :10-14), defines `_die` (:35), extracts and validates the `ANTHROPIC_BASE_URL` redirect
 (:75-85) and fails on a missing dir/settings/redirect. `config/harness-wrappers/openrouter.sh`
 mirrors this: profile pin at :10, `_die` at :34, redirect extraction/validation at :74-97.
+
+## Closeout extension — 2026-09-04
+
+CP-01/04/08. Owner remains jjohare with runtime maintainers. Actual wrapper probes using temporary profiles and a stub claude accept wrong hosts containing the expected hostname as a substring. Directory/profile routing is implemented; exact provider validation is not.
+
+**Acceptance condition:** parse and validate scheme, hostname and allowed port before launching; test suffix, user-info, path/query and malformed URLs. Verify effective settings without exposing credentials. Reopen on wrapper, provider or profile-provisioning changes. See the [profile/egress review](../../../../VisionFlow/docs/estate-review/runtime-egress-and-profiles.md) and [isolated receipt](../../../../VisionFlow/docs/estate-review/evidence/runtime-egress-probes.json). No live provider was called.
+
+## Acceptance progress — 2026-09-05
+
+- **Implemented** — the substring check is gone from both wrappers. New shared
+  parser `config/harness-wrappers/_provider-url.sh` exposes
+  `provider_url_validate <url> <expected-host> [allowed-ports]` in pure bash (no
+  jq/python/node, so it works in any boot context) and enforces: scheme MUST be
+  `https`; the authority host — taken after stripping user-info, IPv6 brackets
+  and the port — must equal the expected host exactly or be a dot-suffixed
+  subdomain of it; user-info is refused outright (the diagnostic names the REAL
+  host); the port defaults to 443 when absent and otherwise must be numeric, in
+  range, and a member of the named allow-list constant `PROVIDER_URL_ALLOWED_PORTS`
+  (= `443`); and malformed input (no scheme, empty/dot-edge/empty-label host,
+  `https://`, `://x`, whitespace, control characters, `:` with no port, IP
+  literals) is rejected. Both wrappers source the lib relative to
+  `${BASH_SOURCE[0]}` (pure-bash dirname, so it needs no PATH) and keep the
+  existing loud `_die` banner and `exit 1`. The launch banner now prints
+  `scheme://host:port` plus whether the port was explicit — the auth token is
+  never printed, not even a prefix or a length.
+- **Tests and results** — new `tests/security/provider-url-validation.test.sh`
+  (26 parser unit cases + 24 end-to-end wrapper cases across both wrappers,
+  temporary WORKSPACE profiles and a stub `claude` on PATH exactly as
+  `runtime-egress-probes.py` does, plus an explicit credential-leak assertion).
+  `bash tests/security/provider-url-validation.test.sh` → **52 passed, 0 failed,
+  exit 0**. Accepted: `https://openrouter.ai/api`, `https://sub.openrouter.ai/x`,
+  explicit `:443`, `https://api.z.ai/api/paas/v4`, `https://z.ai/api`,
+  `https://sub.z.ai/x`. Rejected with the banner on stderr and the stub never
+  launched: suffix host (`openrouter.ai.example.invalid`,
+  `api.z.ai.example.invalid`), user-info (`https://openrouter.ai@evil.invalid/`),
+  path-only (`https://evil.invalid/openrouter.ai`), `http://`, `:8443`, no
+  scheme, `https://`, empty, unrelated host. `bash -n` clean on all four shell
+  files.
+- **Receipts** — `docs/estate-closeout/2026-09-05/adr-2007-provider-url.json`
+  (full stdout, exit codes, syntax-check results, source SHA-256s). No live
+  provider was called; the fixture token is an invented literal.
+- **Remaining** — the parser is DNS-name based by design: an IP-literal endpoint
+  can never satisfy it, and no certificate/pinning check is attempted (TLS trust
+  remains the client's). Widening `PROVIDER_URL_ALLOWED_PORTS` beyond 443, or
+  adding a third provider wrapper, both re-open this record. Not exercised: a
+  real launch against a live provider endpoint.
+- **Status** — `implementation_status` returns to `complete`: the 2026-09-04
+  narrowing to `partial` cited exactly one gap — substring-only host matching —
+  and that gap is now closed and covered by an executable test. `verified_commit`
+  is left as recorded; `activation_status` remains `live`.
+- **Governed paths changed** — `config/harness-wrappers/_provider-url.sh` (new),
+  `config/harness-wrappers/openrouter.sh`, `config/harness-wrappers/zai.sh`,
+  `tests/security/provider-url-validation.test.sh` (new).

@@ -14,7 +14,9 @@
 #   * the OpenRouter redirect is asserted present and correct, and the wrapper
 #     HARD-FAILS LOUDLY if it is missing or points anywhere other than
 #     openrouter.ai — turning the silent mis-billing failure mode (the top
-#     sprint risk) into an immediate, visible launch failure.
+#     sprint risk) into an immediate, visible launch failure. "Correct" means a
+#     real URL parse of scheme, host and port (config/harness-wrappers/
+#     _provider-url.sh), not a hostname substring match — see ADR-2007.
 #
 # Then it execs claude. No key bytes are minted here; settings.local.json is the
 # runtime source of truth, provisioned by scripts/aoe-seed-sessions.mjs.
@@ -47,6 +49,22 @@ _die() {
   } >&2
   exit 1
 }
+
+# --- shared provider URL validator (ADR-2007) ------------------------------
+# Resolved relative to this script so the wrapper still works standalone
+# (baked image, repo bind mount, or a test copy).
+# Pure-bash dirname — this runs before any PATH guarantees exist.
+case "${BASH_SOURCE[0]}" in
+  */*) _PROVIDER_URL_DIR="${BASH_SOURCE[0]%/*}" ;;
+  *)   _PROVIDER_URL_DIR="." ;;
+esac
+_PROVIDER_URL_LIB="${_PROVIDER_URL_DIR}/_provider-url.sh"
+[ -r "$_PROVIDER_URL_LIB" ] || _die \
+  "provider URL validator missing: ${_PROVIDER_URL_LIB}" \
+  "config/harness-wrappers/_provider-url.sh must sit beside this wrapper —" \
+  "reinstall the wrappers or rebuild the image."
+# shellcheck source=./_provider-url.sh
+. "$_PROVIDER_URL_LIB"
 
 # --- JSON field reader (jq → python3 → node), never fatal ------------------
 _json_env_field() {
@@ -92,13 +110,21 @@ AUTH_TOKEN="$(_json_env_field "$SETTINGS" ANTHROPIC_AUTH_TOKEN || true)"
   "ANTHROPIC_AUTH_TOKEN is empty in ${SETTINGS}" \
   "set OPENROUTER_API_KEY in .env and reboot to reprovision the profile."
 
-case "$BASE_URL" in
-  *"$EXPECT_HOST"*) : ;;
-  *) _die \
-       "ANTHROPIC_BASE_URL does not point at ${EXPECT_HOST}:" \
-       "  ${BASE_URL}" \
-       "launching would mis-bill the direct-Anthropic key — aborting." ;;
-esac
+# ADR-2007 (closeout 2026-09-05): a real URL parse, not a substring match.
+# The old `case "$BASE_URL" in *"$EXPECT_HOST"*)` accepted
+# https://EXPECT_HOST.example.invalid/…, https://evil.invalid/EXPECT_HOST and
+# https://EXPECT_HOST@evil.invalid/ — every one of which would have handed this
+# profile's auth token to an attacker-chosen endpoint. Scheme, host and port are
+# now validated explicitly; see config/harness-wrappers/_provider-url.sh.
+if ! provider_url_validate "$BASE_URL" "$EXPECT_HOST" "$PROVIDER_URL_ALLOWED_PORTS" >/dev/null; then
+  _die \
+    "ANTHROPIC_BASE_URL is not a valid ${EXPECT_HOST} endpoint:" \
+    "  ${PROVIDER_URL_DIAG}" \
+    "required: https://${EXPECT_HOST} (or a *.${EXPECT_HOST} subdomain)," \
+    "          port ${PROVIDER_URL_ALLOWED_PORTS} only." \
+    "launching would leak this profile's token to the wrong endpoint and" \
+    "mis-bill the direct-Anthropic key — aborting."
+fi
 
 # --- pin the isolated profile + redirect, then hand off to claude ----------
 export HOME="$PROFILE"
@@ -110,5 +136,7 @@ export ANTHROPIC_API_KEY=""
 # yields a distinct persisted did:nostr for this session.
 export AGENTBOX_PROFILE="${AGENTBOX_PROFILE:-$SLUG}"
 
-echo "[harness-wrapper] ${PROVIDER} → ${BASE_URL} (profile ${SLUG}, isolated HOME=${PROFILE})"
+# Effective settings, verified and credential-free: scheme, host and port only.
+# The auth token is NEVER printed (not even a prefix or a length).
+echo "[harness-wrapper] ${PROVIDER} → ${PROVIDER_URL_SCHEME}://${PROVIDER_URL_HOST}:${PROVIDER_URL_PORT} (port ${PROVIDER_URL_PORT_SOURCE}, auth=present, profile ${SLUG}, isolated HOME=${PROFILE})"
 exec claude "$@"

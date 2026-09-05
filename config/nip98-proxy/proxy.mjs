@@ -49,7 +49,10 @@
  *                              supervisord environment= syntax cannot safely quote
  *                              JSON; ignored when NIP98_PROXY_ROUTES already carries
  *                              a /mgmt/ rule.
- *   NOSTR_BRIDGE_PATH          explicit path to nostr-bridge.js (else candidates tried)
+ *   NOSTR_BRIDGE_PATH          explicit path to nostr-bridge.js. AUTHORITATIVE when set:
+ *                              a missing/broken module fails closed (NIP-98 disabled)
+ *                              rather than falling back to another candidate. Unset =
+ *                              the built-in source-tree/image candidates are tried.
  *   NIP98_PROXY_ALLOW_BEARER   break-glass shared bearer token (unset = disabled)
  *   NIP98_PROXY_BEARER_PUBKEY  pubkey stamped for break-glass requests (default "break-glass")
  *   NIP98_PROXY_SESSION_TTL    NIP-07 browser session lifetime in seconds (default 43200 = 12h)
@@ -95,6 +98,105 @@ const BIND = process.env.NIP98_PROXY_HOST || '0.0.0.0';
 const UPSTREAM_URL = process.env.AOE_UPSTREAM || 'http://127.0.0.1:9095';
 const BREAK_GLASS = process.env.NIP98_PROXY_ALLOW_BEARER || '';
 const BREAK_GLASS_PUBKEY = process.env.NIP98_PROXY_BEARER_PUBKEY || 'break-glass';
+
+// ── ADR-2027 (closeout 2026-09-05): break-glass is BOUNDED authority ─────────
+//
+// The estate review found "a static break-glass token comparison without
+// branch-local expiry/scope checks", and that "returning a mode/identity is not
+// durable per-use audit". A break-glass credential that never expires, reaches
+// every route, and leaves no record is indistinguishable from a permanent
+// backdoor with a dramatic name.
+//
+// Three bounds, all default-OFF so an existing deployment is byte-compatible
+// until an operator sets them — the credential is no weaker than before, and
+// becomes materially stronger the moment either bound is configured:
+//
+//   NIP98_PROXY_BEARER_EXPIRES_AT   ISO-8601 instant, or epoch seconds. After
+//                                   it, the token is refused. Unset = no expiry
+//                                   (reported as such, never as "bounded").
+//   NIP98_PROXY_BEARER_SCOPE        Comma-separated `METHOD /path/prefix`
+//                                   entries (`*` for any method). A request
+//                                   outside the scope is refused even with the
+//                                   correct token. Unset = unrestricted.
+//
+// Every accepted AND every refused use is audited with a token FINGERPRINT
+// (sha256, first 12 hex) — never the token — so a reader can correlate uses of
+// one credential across a rotation without the audit log becoming a second
+// place the secret lives.
+const BREAK_GLASS_EXPIRES_RAW = String(process.env.NIP98_PROXY_BEARER_EXPIRES_AT || '').trim();
+const BREAK_GLASS_SCOPE_RAW = String(process.env.NIP98_PROXY_BEARER_SCOPE || '').trim();
+
+/** Parse the expiry into epoch milliseconds. Returns null when unset. */
+function parseBreakGlassExpiry(raw) {
+  if (!raw) return null;
+  // Bare digits are epoch seconds; anything else must be an ISO-8601 instant.
+  if (/^\d+$/.test(raw)) return Number(raw) * 1000;
+  const t = Date.parse(raw);
+  return Number.isFinite(t) ? t : NaN; // NaN = malformed, handled fail-closed
+}
+const BREAK_GLASS_EXPIRES_MS = parseBreakGlassExpiry(BREAK_GLASS_EXPIRES_RAW);
+
+/** Parse the scope list into { method, prefix } entries. */
+function parseBreakGlassScope(raw) {
+  if (!raw) return null;
+  const out = [];
+  for (const part of raw.split(',')) {
+    const entry = part.trim();
+    if (!entry) continue;
+    const bits = entry.split(/\s+/);
+    if (bits.length === 1) out.push({ method: '*', prefix: bits[0] });
+    else out.push({ method: bits[0].toUpperCase(), prefix: bits.slice(1).join(' ') });
+  }
+  return out.length ? out : null;
+}
+const BREAK_GLASS_SCOPE = parseBreakGlassScope(BREAK_GLASS_SCOPE_RAW);
+
+/** Non-reversible token fingerprint for audit correlation. Never the token. */
+function breakGlassFingerprint(token) {
+  try {
+    return crypto.createHash('sha256').update(String(token), 'utf8').digest('hex').slice(0, 12);
+  } catch { return 'unknown'; }
+}
+const BREAK_GLASS_FP = BREAK_GLASS ? breakGlassFingerprint(BREAK_GLASS) : null;
+
+// Per-use audit counters, surfaced on the health payload. In-process only: this
+// is a use RECEIPT, not a durable audit store, and it is labelled as such so
+// nobody mistakes a restart-resettable counter for a compliance record.
+const breakGlassUse = { accepted: 0, refused: 0, last_accepted_at: null, last_refused_reason: null };
+
+/**
+ * Is a break-glass request within the configured scope?
+ * @returns {{allowed:boolean, reason?:string}}
+ */
+function breakGlassScopeAllows(method, url) {
+  if (!BREAK_GLASS_SCOPE) return { allowed: true };
+  const m = String(method || 'GET').toUpperCase();
+  const rawPath = String(url || '/');
+  const q = rawPath.indexOf('?');
+  const pathOnly = q === -1 ? rawPath : rawPath.slice(0, q);
+  for (const entry of BREAK_GLASS_SCOPE) {
+    if (entry.method !== '*' && entry.method !== m) continue;
+    if (pathOnly === entry.prefix || pathOnly.startsWith(entry.prefix)) return { allowed: true };
+  }
+  return { allowed: false, reason: `outside break-glass scope (${m} ${pathOnly})` };
+}
+
+/**
+ * Is the break-glass credential still within its validity window?
+ * @returns {{allowed:boolean, reason?:string}}
+ */
+function breakGlassNotExpired(now = Date.now()) {
+  if (BREAK_GLASS_EXPIRES_MS === null) return { allowed: true };
+  if (Number.isNaN(BREAK_GLASS_EXPIRES_MS)) {
+    // A malformed expiry is fail-closed: an operator who tried to bound the
+    // credential and mistyped it must not silently get an unbounded one.
+    return { allowed: false, reason: `malformed NIP98_PROXY_BEARER_EXPIRES_AT (${BREAK_GLASS_EXPIRES_RAW})` };
+  }
+  if (now >= BREAK_GLASS_EXPIRES_MS) {
+    return { allowed: false, reason: `break-glass credential expired at ${new Date(BREAK_GLASS_EXPIRES_MS).toISOString()}` };
+  }
+  return { allowed: true };
+}
 // Upper bound on the request body we buffer for NIP-98 payload verification
 // (Finding 4). Bounds memory against a hostile large-body upload; oversize
 // requests are rejected 413 before any upstream contact. Default 25 MiB.
@@ -125,6 +227,21 @@ const ALLOWED_PUBKEYS = new Set(allowedPubkeyEntries);
 function pubkeyAllowed(pubkey) {
   if (ALLOWED_PUBKEYS.size === 0) return true;
   return ALLOWED_PUBKEYS.has(String(pubkey).toLowerCase());
+}
+
+/**
+ * ADR-2011 (hex-canonical identity): the ONLY durable identity form is a
+ * lowercase 64-hex BIP-340 x-only pubkey. Whatever the verifier hands back is
+ * normalised here and rejected if it is not that shape — an npub, an uppercase
+ * hex, a truncated key or a missing pubkey must never be stamped upstream as
+ * `X-Agentbox-Pubkey`, because storage paths, URLs and memory namespaces are
+ * keyed off it. Returns the canonical hex, or null when the value cannot be
+ * canonicalised (fail closed).
+ */
+function canonicalPubkey(raw) {
+  if (typeof raw !== 'string') return null;
+  const hex = raw.trim().toLowerCase();
+  return /^[0-9a-f]{64}$/.test(hex) ? hex : null;
 }
 
 let upstream;
@@ -357,8 +474,31 @@ function stripUrlCreds(path) {
 // ─── NIP-98 verifier: reuse NostrBridge.verifyNip98 (same path as auth.js) ─────
 
 function loadNostrBridge() {
+  // An EXPLICIT NOSTR_BRIDGE_PATH is authoritative: if the operator names the
+  // verifier module, a missing or broken file must NOT silently fall back to
+  // some other nostr-bridge.js found elsewhere on the box. Which module
+  // implements the identity boundary is not allowed to be a surprise — the
+  // fail-closed outcome (every NIP-98 token rejected) is the safe answer.
+  const explicit = process.env.NOSTR_BRIDGE_PATH;
+  if (explicit) {
+    if (!existsSync(explicit)) {
+      log('error', 'NOSTR_BRIDGE_PATH does not exist — NIP-98 verification unavailable (no fallback)', { path: explicit });
+      return null;
+    }
+    try {
+      const mod = require(explicit);
+      if (mod && mod.NostrBridge && typeof mod.NostrBridge.verifyNip98 === 'function') {
+        log('info', 'nostr-bridge loaded', { path: explicit });
+        return mod.NostrBridge;
+      }
+      log('error', 'NOSTR_BRIDGE_PATH exports no NostrBridge.verifyNip98 (no fallback)', { path: explicit });
+    } catch (err) {
+      log('error', 'NOSTR_BRIDGE_PATH failed to load (no fallback)', { path: explicit, error: err.message });
+    }
+    return null;
+  }
+
   const candidates = [
-    process.env.NOSTR_BRIDGE_PATH,
     // Source-tree layout: config/nip98-proxy/ → mcp/servers/nostr-bridge.js
     pathResolve(__dirname, '../../mcp/servers/nostr-bridge.js'),
     // Baked image layout (Builder A bakes proxy to /opt/agentbox/nip98-proxy).
@@ -486,12 +626,47 @@ function signedUrlFor(req) {
 function verifyIdentity(req, bearerToken, rawBody) {
   const authHeader = req.headers.authorization || '';
 
-  // Break-glass bearer (explicit opt-in only).
+  // Break-glass bearer (explicit opt-in only). ADR-2027: matching the token is
+  // necessary, not sufficient — the credential must also be unexpired and the
+  // request within its scope, and every outcome is audited by fingerprint.
   if (BREAK_GLASS) {
     let token = null;
     if (authHeader.startsWith('Bearer ')) token = authHeader.slice('Bearer '.length).trim();
     else if (bearerToken) token = bearerToken;
     if (token && constantTimeEqual(token, BREAK_GLASS)) {
+      const expiry = breakGlassNotExpired();
+      if (!expiry.allowed) {
+        breakGlassUse.refused++;
+        breakGlassUse.last_refused_reason = expiry.reason;
+        log('warn', 'break-glass REFUSED', {
+          reason: expiry.reason, fingerprint: BREAK_GLASS_FP,
+          method: req.method, path: String(req.url || '').split('?')[0],
+        });
+        return { ok: false, reason: `break_glass_expired: ${expiry.reason}` };
+      }
+      const scope = breakGlassScopeAllows(req.method, req.url);
+      if (!scope.allowed) {
+        breakGlassUse.refused++;
+        breakGlassUse.last_refused_reason = scope.reason;
+        log('warn', 'break-glass REFUSED', {
+          reason: scope.reason, fingerprint: BREAK_GLASS_FP,
+          method: req.method, path: String(req.url || '').split('?')[0],
+        });
+        return { ok: false, reason: `break_glass_out_of_scope: ${scope.reason}` };
+      }
+      // Auditable USE. The fingerprint correlates uses of one credential across
+      // a rotation; the token itself never enters the log.
+      breakGlassUse.accepted++;
+      breakGlassUse.last_accepted_at = new Date().toISOString();
+      log('warn', 'break-glass USED', {
+        fingerprint: BREAK_GLASS_FP,
+        method: req.method,
+        path: String(req.url || '').split('?')[0],
+        remote: (req.socket && req.socket.remoteAddress) || null,
+        expires_at: BREAK_GLASS_EXPIRES_MS ? new Date(BREAK_GLASS_EXPIRES_MS).toISOString() : null,
+        scoped: !!BREAK_GLASS_SCOPE,
+        use_count: breakGlassUse.accepted,
+      });
       return { ok: true, pubkey: BREAK_GLASS_PUBKEY, mode: 'break-glass' };
     }
   }
@@ -507,10 +682,18 @@ function verifyIdentity(req, bearerToken, rawBody) {
       return { ok: false, reason: `nip98_verify_error: ${err.message}` };
     }
     if (result && result.valid) {
-      if (!pubkeyAllowed(result.pubkey)) {
+      // ADR-2011: canonicalise BEFORE the allowlist test, so the gate and the
+      // injected header agree on exactly one identity encoding. A verifier that
+      // returns a non-canonical (or absent) pubkey is a verifier fault, not an
+      // authenticated request.
+      const pubkey = canonicalPubkey(result.pubkey);
+      if (!pubkey) {
+        return { ok: false, reason: 'nip98_noncanonical_pubkey' };
+      }
+      if (!pubkeyAllowed(pubkey)) {
         return { ok: false, reason: 'pubkey_not_allowed' };
       }
-      return { ok: true, pubkey: result.pubkey, mode: 'nip98' };
+      return { ok: true, pubkey, mode: 'nip98' };
     }
     return { ok: false, reason: `nip98_invalid: ${(result && result.error) || 'unknown'}` };
   }
@@ -758,7 +941,11 @@ const server = http.createServer((req, res) => {
     for (const [key, value] of Object.entries(req.headers)) {
       if (HOP_BY_HOP.has(key.toLowerCase())) continue;
       if (key.toLowerCase() === 'content-length') continue; // recomputed from the buffered body
-      if (key.toLowerCase() === 'x-agentbox-pubkey') continue; // never trust an inbound claim
+      // Never trust an inbound identity claim: both stamps are proxy-owned and
+      // are re-injected below from the AUTHENTICATED identity (ADR-2009).
+      if (key.toLowerCase() === 'x-agentbox-pubkey') continue;
+      if (key.toLowerCase() === 'x-agentbox-auth-mode') continue;
+      if (key.toLowerCase() === 'x-forwarded-host') continue; // re-emitted below
       if (key.toLowerCase() === 'cookie') {
         const kept = stripSessionCookie(value); // upstreams never see the session token
         if (kept) headers[key] = kept;
@@ -769,6 +956,10 @@ const server = http.createServer((req, res) => {
     headers.host = `${route.upstream.hostname}:${route.upstream.port}`;
     headers['x-forwarded-for'] = appendXff(req.headers['x-forwarded-for'], clientIp(req));
     headers['x-forwarded-proto'] = (req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
+    // ADR-2010: the host the client signed into the NIP-98 `u` tag. `Host` is
+    // rewritten to the upstream, so without this an upstream cannot rebuild the
+    // signed URL to re-verify the operator signature it is being handed.
+    headers['x-forwarded-host'] = req.headers.host || `127.0.0.1:${PORT}`;
     headers['x-agentbox-pubkey'] = auth.pubkey;
     headers['x-agentbox-auth-mode'] = auth.mode;
     // ADR-069 credential exchange: for routes that declare a bearer, inject the
@@ -777,7 +968,17 @@ const server = http.createServer((req, res) => {
     // NIP-98 header passes through untouched — upstreams like management-api
     // re-verify the signature themselves, and governance decisions REQUIRE the
     // operator's signed identity (a bearer alone must never release a gate).
-    if (route.bearer && auth.mode !== 'nip98') headers.authorization = `Bearer ${route.bearer}`;
+    if (!route.isAoe && auth.mode === 'nip98') {
+      // ADR-2010 title clause: a signed NIP-98 identity ALWAYS reaches the
+      // upstream gate. `authorization` is hop-by-hop and was dropped above, so
+      // it is re-attached verbatim here — the governance upstream re-verifies
+      // the operator's Schnorr signature itself and a bearer must never stand in
+      // for it. (The AoE default upstream is the deliberate exception below: it
+      // cannot verify NIP-98 at all and always gets the daemon token.)
+      headers.authorization = req.headers.authorization;
+    } else if (route.bearer && auth.mode !== 'nip98') {
+      headers.authorization = `Bearer ${route.bearer}`;
+    }
     // N-05 boundary: the AoE daemon runs `--auth token` and cannot verify a NIP-98
     // `Authorization: Nostr …` header itself — the proxy IS its authenticator. So
     // for the default AoE upstream we UNCONDITIONALLY replace Authorization with
@@ -905,6 +1106,7 @@ server.on('upgrade', (req, socket, head) => {
       if (lname === 'x-agentbox-pubkey' || lname === 'x-agentbox-auth-mode') continue;
       if (lname === 'host') { lines.push(`Host: ${route.upstream.hostname}:${route.upstream.port}`); continue; }
       if (lname === 'x-forwarded-for') continue; // re-emitted below, canonicalised
+      if (lname === 'x-forwarded-host') continue; // re-emitted below, canonicalised
       if (lname === 'cookie') {
         const kept = stripSessionCookie(value); // upstreams never see the session token
         if (kept) lines.push(`${name}: ${kept}`);
@@ -914,11 +1116,19 @@ server.on('upgrade', (req, socket, head) => {
     }
     lines.push(`X-Forwarded-For: ${appendXff(req.headers['x-forwarded-for'], clientIp(req))}`);
     lines.push(`X-Forwarded-Proto: ${(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim()}`);
+    lines.push(`X-Forwarded-Host: ${req.headers.host || `127.0.0.1:${PORT}`}`); // ADR-2010: signed-URL reconstruction
     lines.push(`X-Agentbox-Pubkey: ${auth.pubkey}`);
     lines.push(`X-Agentbox-Auth-Mode: ${auth.mode}`);
     // ADR-069 credential exchange (WS): the upstream's own bearer, never the
     // browser's; nip98-signed upgrades pass their own header (same rule as HTTP).
-    if (route.bearer && auth.mode !== 'nip98') lines.push(`Authorization: Bearer ${route.bearer}`);
+    if (!route.isAoe && auth.mode === 'nip98' && req.headers.authorization) {
+      // ADR-2010 (WS): same gate as HTTP — the signed identity, never a bearer,
+      // reaches a named upstream. Covers both carriers: a real Authorization
+      // header and the ?auth= query form lifted into it above.
+      lines.push(`Authorization: ${req.headers.authorization}`);
+    } else if (route.bearer && auth.mode !== 'nip98') {
+      lines.push(`Authorization: Bearer ${route.bearer}`);
+    }
     if (route.isAoe) lines.push(`Authorization: Bearer ${aoeWsToken}`); // N-05: aoe daemon token
     upstreamSocket.write(lines.join('\r\n') + '\r\n\r\n');
     if (head && head.length) upstreamSocket.write(head);
@@ -947,7 +1157,21 @@ server.listen(PORT, BIND, () => {
     upstream: `${upstream.hostname}:${upstream.port}`,
     routes: ROUTES.map((r) => `${r.prefix} -> ${r.upstream.hostname}:${r.upstream.port}${r.strip ? ' (strip)' : ''}`),
     nip98: NostrBridge ? 'enabled' : 'DISABLED (fail-closed)',
-    breakGlass: BREAK_GLASS ? 'ENABLED' : 'disabled',
+    breakGlass: BREAK_GLASS
+      ? {
+        state: 'ENABLED',
+        fingerprint: BREAK_GLASS_FP,
+        // Say plainly when a bound is ABSENT — an unbounded credential must not
+        // read as a bounded one on a status page (ADR-2027).
+        expires_at: BREAK_GLASS_EXPIRES_MS
+          ? (Number.isNaN(BREAK_GLASS_EXPIRES_MS) ? 'MALFORMED (fail-closed)' : new Date(BREAK_GLASS_EXPIRES_MS).toISOString())
+          : 'NO EXPIRY CONFIGURED',
+        scope: BREAK_GLASS_SCOPE
+          ? BREAK_GLASS_SCOPE.map((e) => `${e.method} ${e.prefix}`)
+          : 'UNRESTRICTED',
+        audit: 'per-use, by fingerprint, to the proxy log (in-process counters are not a durable audit store)',
+      }
+      : 'disabled',
     nip07Sessions: `enabled (ttl ${SESSION_TTL_S}s${process.env.NIP98_PROXY_SESSION_SECRET ? ', pinned secret' : ', per-boot secret'})`,
     allowedPubkeys: ALLOWED_PUBKEYS.size || 'any-valid-signature',
   });

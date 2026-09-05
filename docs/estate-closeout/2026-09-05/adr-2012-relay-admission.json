@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-05",
+  "adr": "ADR-2012",
+  "title": "Relay allowlist-only ingress \u2014 admission at the relay boundary",
+  "scope": "Rust unit tests over the new admission module plus the generated relay config text and the validator rule. No relay send, pod write or deployment ran.",
+  "implemented": {
+    "admission_at_the_boundary": "services/nostr-pod-bridge/src/admission.rs (new, 632 lines) gates EVENT frames before the embedded relay verifies, stores, broadcasts or acknowledges them. An unlisted author is refused with a NIP-20 negative OK (\"blocked: \u2026\") and never reaches the relay or the pod inbox.",
+    "empty_allowlist_policy": "DENY-ALL, applied consistently at both boundaries, with a distinct counter and an audit record under pods/<recipient>/events/audit/relay-admission.jsonl. Relay-OK and authorised-inbox-commit stay separate outcomes and are logged separately.",
+    "config_generator": "flake.nix now emits an explicit empty pubkey_whitelist for an empty list instead of omitting the key. nostr-rs-relay reads it as Option<Vec<String>>: omission yields None and the author check is skipped entirely (the relay accepts EVERY author), while [ ] yields Some([]) whose membership test is false for every author. NIP-42 stays on for every non-open policy; the interaction is documented in the generator.",
+    "validator_W039": "The message no longer claims a local-npub fallback that no backend implements. It now states the real deny-all consequence for both backends and notes that the embedded bridge still publishes its own locally-signed egress."
+  },
+  "tests": [
+    {
+      "command": "cargo test --offline",
+      "cwd": "services/nostr-pod-bridge",
+      "exit_code": 0,
+      "stdout_tail": "test run_returns_ok_on_invalid_stdin ... ok\ntest run_short_circuits_without_a_zai_key ... ok\ntest run_short_circuits_on_a_missing_transcript ... ok\ntest run_returns_ok_on_an_empty_transcript ... ok\ntest run_swallows_an_unreachable_zai_endpoint ... ok\n\ntest result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "stderr_tail": "     Running unittests src/main.rs (target/debug/deps/nostr_pod_bridge-65dbe78709d021c3)\n     Running tests/bootstrap.rs (target/debug/deps/bootstrap-1b4438b67861d20d)\n     Running tests/contract.rs (target/debug/deps/contract-e54336a10fa18724)\n     Running tests/identity.rs (target/debug/deps/identity-00650b47b605951b)\n     Running tests/session_summary.rs (target/debug/deps/session_summary-19f7892691122da5)\n   Doc-tests nostr_pod_bridge"
+    },
+    {
+      "command": "node node_modules/.bin/jest tests/config/semantic-rules.test.js --testEnvironment node -t W039",
+      "cwd": ".",
+      "exit_code": 0,
+      "stdout_tail": "",
+      "stderr_tail": "\nTest Suites: 1 passed, 1 total\nTests:       65 skipped, 3 passed, 68 total\nSnapshots:   0 total\nTime:        1.31 s, estimated 2 s\nRan all test suites matching /tests\\/config\\/semantic-rules.test.js/i with tests matching \"W039\"."
+    }
+  ],
+  "source_sha256": {
+    "services/nostr-pod-bridge/src/admission.rs": "67c49697822905bb757b8a66bbf29d57ef7fd187f4c336553976ef2cf6d0522c",
+    "services/nostr-pod-bridge/src/lib.rs": "d5bfa3832671f72dfae4dfd6c540ecffa27a09ed9cdbe82da0b55d579650678a",
+    "services/nostr-pod-bridge/src/main.rs": "98cbb8fb5262a3924b8f6dbf565e729b5a33c1fcd88c6975226aa277646dd0de",
+    "flake.nix": "188f141c236343a2fc0b599a196e06999bbd4ec24284827fdb4d962999f51478",
+    "scripts/agentbox-config-validate.js": "48c84b0f35198a64319989072fd8153b02ad992819bf725dcd579a622794a237",
+    "tests/config/semantic-rules.test.js": "caf4fccdd58fde11a130c1466b0d742ccbfcb7e6126c012aafc2102a51aa2e42"
+  },
+  "limitations": "No relay send, no pod write, no deployment, no subscriber-visibility or consumer-lag observation, and no durable-delivery or replay/recovery exercise against a running relay. Build/backend identity and the effective key list were not captured from a deployment; the publisher-key split remains a separate authority dependency."
+}

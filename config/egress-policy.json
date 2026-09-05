@@ -1,0 +1,48 @@
+{
+  "schema": "agentbox/egress-policy@1",
+  "adr": "ADR-2026",
+  "adopted": "2026-09-05",
+  "summary": "One content-egress policy for every path that sends session-derived text off this container. Both implementations (config/hooks/lib/egress-policy.cjs and services/nostr-pod-bridge/src/egress_policy.rs) MUST agree with this table and with tests/fixtures/egress-redaction.v1.json.",
+  "paths": [
+    {
+      "id": "live-mirror",
+      "implementation": "config/hooks/nostr-live-mirror.cjs",
+      "content": "Selected turn text: lifecycle lines, the user prompt, and the last assistant text. Never the whole transcript.",
+      "recipients": "A NIP-59 gift-wrapped self-DM to the derived mirror child key by default, or one explicit operator pubkey (legacy). Recipients must be 64-char lowercase hex and, when AGENTBOX_MIRROR_RECIPIENTS is set, must appear in that allowlist.",
+      "providers": "None. The body goes to a relay, not to a model provider.",
+      "encryption": "NIP-59 gift wrap (kind 1059). Encryption is NOT redaction: the body is redacted before it is wrapped.",
+      "transport": "One relay: NOSTR_MIRROR_RELAY, else the cloud default. NOSTR_RELAYS is deliberately not fanned out.",
+      "log_retention": "Dry-run previously wrote the composed body to stderr. Under this policy the dry run prints the REDACTED body only, so diagnostics can never retain more than the wire does."
+    },
+    {
+      "id": "session-digest",
+      "implementation": "services/nostr-pod-bridge/src/session_summary.rs",
+      "content": "Flattened, trimmed user/assistant transcript text sent to a summarisation provider; then a curated digest (summary, actions, questions) published as kind 30840.",
+      "recipients": "The signed kind-30840 is published to the configured relay and dual-written to the Solid pod. It is NOT gift-wrapped; recipient visibility is the relay/read policy, which is a separate boundary.",
+      "providers": "The configured summarisation endpoint (ZAI_URL, default the Z.AI API; commonly redirected to the LAN Ontology Loom). This is the only path that hands session text to a model provider.",
+      "encryption": "None on the provider hop beyond TLS; the published digest is signed, not encrypted.",
+      "transport": "Provider HTTP request, then relay publish and pod write.",
+      "log_retention": "Diagnostics name sizes and outcomes, never bodies."
+    }
+  ],
+  "switches": {
+    "AGENTBOX_EGRESS": "Global. '0' disables EVERY path in this table, whatever the per-path switch says. This is the single off switch the review found missing — AGENTBOX_LIVE_MIRROR=0 was never proof that the separately configured Rust digest path was off.",
+    "AGENTBOX_LIVE_MIRROR": "'0' disables the live-mirror path only.",
+    "AGENTBOX_SESSION_DIGEST": "'0' disables the session-digest path only.",
+    "AGENTBOX_MIRROR_RECIPIENTS": "Optional comma-separated allowlist of 64-hex recipient pubkeys. When set, a recipient outside it is refused.",
+    "AGENTBOX_EGRESS_REDACTION": "'0' disables redaction. Refused: the policy treats a disabled redactor as a disabled path, so the egress is SKIPPED rather than sent unredacted."
+  },
+  "invariants": [
+    "REDACT BEFORE EGRESS. Every path redacts the exact bytes it is about to send, before wrapping, before signing, and before any provider request. Encryption, gift-wrapping and curation are not redaction.",
+    "A path that cannot redact does not send. Redaction failure is a SKIP, never a fallback to sending the raw text.",
+    "Recipients are validated as 64-char lowercase hex and, when an allowlist is configured, against it.",
+    "Outcomes are reported with the vocabulary below so 'nothing happened' is distinguishable from 'it failed' and from 'it was delivered'."
+  ],
+  "outcomes": {
+    "skipped": "The path decided not to send. Nothing left the process. Carries a reason.",
+    "attempted": "Bytes were handed to a transport or provider; delivery is not confirmed.",
+    "accepted": "The peer positively acknowledged (relay OK / provider 2xx).",
+    "failed": "The attempt was made and the transport or peer rejected or errored."
+  },
+  "notes": "Exit code zero from either path means the calling session was not blocked. It is NOT proof of delivery and NOT proof the path was disabled — read the outcome, not the exit code."
+}

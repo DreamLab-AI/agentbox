@@ -43,6 +43,7 @@ use std::time::Duration;
 
 use sha2::{Digest, Sha256};
 
+use crate::egress_policy::{egress_decision, redact_for_egress, Outcome};
 use crate::envmap::EnvMap;
 use crate::{publish_session_summary, BridgeConfig, SessionSummary};
 
@@ -349,10 +350,33 @@ async fn mirror(env: &EnvMap, session_id: &str, transcript_path: &Path) -> Resul
     if transcript.trim().is_empty() {
         return Ok(false);
     }
-    let digest = summarise_via_zai(env, &transcript).await?;
+
+    // ── ADR-2026: REDACT BEFORE EGRESS ───────────────────────────────────────
+    // The provider hop is the one place session text leaves the LAN, and
+    // curating the provider's OUTPUT does not undo its receipt of the INPUT.
+    // So the exact bytes that go into the request are redacted here, before
+    // `summarise_via_zai` builds it. The same rules, and the same paired
+    // fixture, as the live-mirror hook.
+    let redacted = redact_for_egress(&transcript);
+    if redacted.trim().is_empty() {
+        log(&format!(
+            "egress {}: transcript empty after redaction",
+            Outcome::Skipped.as_str()
+        ));
+        return Ok(false);
+    }
+    log(&format!(
+        "egress {}: summariser provider, {} chars (redacted from {})",
+        Outcome::Attempted.as_str(),
+        redacted.len(),
+        transcript.len()
+    ));
+    let digest = summarise_via_zai(env, &redacted).await?;
     let summary = build_digest(env, digest, session_id)?;
     let cfg = BridgeConfig::from_env(env)?;
+    log(&format!("egress {}: relay publish", Outcome::Attempted.as_str()));
     publish_session_summary(&cfg, &summary).await?;
+    log(&format!("egress {}: digest published", Outcome::Accepted.as_str()));
     Ok(true)
 }
 
@@ -364,11 +388,25 @@ pub async fn run(env: &EnvMap, stdin: &str) -> Result<()> {
         return Ok(()); // no hook payload; nothing to do
     };
 
-    if !bridge_configured(env) {
-        return Ok(()); // mobile bridge not configured for this profile
-    }
-    if zai_api_key(env).is_empty() {
-        log("Z.AI key not set; skipping session summary");
+    // ADR-2026: the SHARED egress decision. The global AGENTBOX_EGRESS switch
+    // stops this path as well as the JavaScript live mirror — the review's
+    // finding was that setting the live-hook switch said nothing about this
+    // separately configured path. `identity_present` folds in the bridge and
+    // provider configuration this path has always required, so a skip now
+    // carries a reason instead of being a bare early return.
+    let identity_present = bridge_configured(env) && !zai_api_key(env).is_empty();
+    let decision = egress_decision(env, identity_present);
+    if !decision.allowed {
+        // A configured-off profile logs nothing new; an explicitly disabled or
+        // refused egress says so, so "disabled" is observable rather than
+        // indistinguishable from "nothing happened".
+        if decision.reason != "no-sender-identity" {
+            log(&format!(
+                "egress {}: {}",
+                decision.outcome.as_str(),
+                decision.reason
+            ));
+        }
         return Ok(());
     }
 
@@ -386,7 +424,12 @@ pub async fn run(env: &EnvMap, stdin: &str) -> Result<()> {
     match mirror(env, session_id, path).await {
         Ok(true) => log(&format!("session {session_id} mirrored to phone")),
         Ok(false) => {}
-        Err(e) => log(&format!("session summary failed (non-fatal): {e:#}")),
+        // ADR-2026: a failed attempt is a DIFFERENT state from a skip. Exit zero
+        // still holds (teardown is never blocked), but the outcome is named.
+        Err(e) => log(&format!(
+            "egress {}: session summary failed (non-fatal): {e:#}",
+            Outcome::Failed.as_str()
+        )),
     }
     Ok(())
 }

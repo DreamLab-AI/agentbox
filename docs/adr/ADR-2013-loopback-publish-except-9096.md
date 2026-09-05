@@ -3,11 +3,11 @@ id: ADR-2013
 title: Every compose publish binds 127.0.0.1 unless on the sanctioned-exposure list, CI-enforced across all overlays
 date: 2026-08-31
 decision_status: accepted
-implementation_status: complete
+implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d19073a82c319f7be01cf61d31521598dc044da5
+verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -38,13 +38,14 @@ ingress), voice `8443`/`8444` (cockpit TLS door — the former "second LAN
 ingress" is now modelled, not silent), browsercontainer `5903`/`8931`/`9222`
 (sidecar VNC / MCP SSE / raw CDP), gui-tools `5905`/`9876`/`9877`, xr-runtime
 `5904`. Anything else fails CI. Long-syntax `published:`/`host_ip:` mappings
-are forbidden in every file so a bypass is structurally impossible. Adding a
+are forbidden in every file as part of the intended syntax restriction; the dated closeout evidence shows
+that the scanner does not cover all equivalent forms. Adding a
 SANCTIONED line is a security decision requiring a citation. This forecloses
 silent new LAN doors in any overlay, present or future.
 
 ## Consequences
-- The complete LAN exposure surface is one reviewed list in one script plus a
-  passing CI gate — an auditor reads ten lines to know every door.
+- The list records sanctioned mappings in the scanned root compose files;
+  effective deployment inputs and active listeners need separate inventory.
 - The voice cockpit and sidecar exposures are now *decided* exposures; closing
   or narrowing any of them is a one-line delete that CI then enforces.
 - Cost: the sanctioned list must be maintained alongside overlay changes; a
@@ -58,3 +59,112 @@ sanctioned mappings and fails on any unsanctioned `0.0.0.0` publish (negative
 test: three deliberately-wrong container ports were rejected before the list
 was corrected). Wired in `.github/workflows/invariants.yml`. The `9096:9096`
 LAN publish remains declared at `flake.nix:1997` (D2 exposure policy).
+
+## Closeout extension — 2026-09-04
+
+CP-01/04/08. Owner remains jjohare with ingress/release maintainers. Current compose files pass the actual gate. Four isolated fixtures show that a block public port is rejected while equivalent nested service-flow and JSON-flow short mappings pass. The line walker misses `ports` keys that do not begin a line. Implementation is partial against the structural-bypass guarantee; sanctioned exposure decisions and historical live status are preserved without current deployment certification.
+
+**Acceptance condition:** Parse or reliably reject all supported configuration forms, then audit the resolved deployment input set, including overlay order, interpolation and external files. Cover block/flow, aliases/merges, long syntax and filename scope with negative controls. Bind each exposure exception to service identity, authentication, intended audience and active listener evidence. The root filename glob and a ten-entry mapping list do not establish every network door. Reopen on parser, workflow, deployment invocation or sanctioned mapping changes; dependencies are CP-01 release identity and CP-08 deployment receipts.
+
+See the [ingress review](../../../../VisionFlow/docs/estate-review/runtime-ingress.md#port-gate-syntax-and-exposure-coverage), [actual-gate reproducer](../../../../VisionFlow/docs/estate-review/evidence/ports-gate-probe.py) and [receipt](../../../../VisionFlow/docs/estate-review/evidence/ports-gate-probe.json). No compose deployment or port binding ran; fixtures do not assert a current exposed service.
+
+## Acceptance progress — 2026-09-05
+
+**Implemented.** The gate no longer pattern-matches lines; it parses the
+document.
+
+- `scripts/ci/check-ports-loopback.mjs` (new) carries a strict, dependency-free
+  YAML reader for the subset compose files use: block mappings and sequences,
+  flow mappings and sequences — so JSON parses for free, including a multi-line
+  whole-document JSON file — single/double-quoted scalars, block scalars,
+  multiple documents, anchors, aliases and merge keys. Anything outside that
+  subset (YAML tags, tabs in indentation, unterminated flow collections,
+  undefined aliases) is **rejected with a file and line**, never skipped. "Parse,
+  or reliably reject" is the guarantee; there is no third outcome in which a
+  construct is silently ignored, which is what the previous walker did.
+- Because the document is parsed, long syntax is no longer banned by spelling:
+  `{target, published, host_ip, protocol}` is normalised to the same tuple as
+  `"0.0.0.0:8080:80"` and judged identically. Anchors and merge keys are
+  resolved, so `ports: *public_ports` is audited on what it resolves to.
+- The sanctioned list is now explicit tuples matched **semantically**. A sanction
+  therefore cannot be smuggled in by re-spelling, does not transfer between
+  compose files, and a sanctioned published port with a different target is a
+  different door.
+- Still rejected as unauditable in every syntax: environment interpolation, port
+  ranges, bare container-only ports, IPv6 binds (including `[::1]`), a `ports`
+  value that is not a sequence, and unknown long-syntax keys.
+- `scripts/ci/check-ports-loopback.sh` remains the CI entry point and execs the
+  gate; a copy of the wrapper without its implementation exits 3 with an explicit
+  message rather than looking like a pass. `.github/workflows/invariants.yml` is
+  unchanged.
+
+**Tests and results.** `node tests/security/ports-gate.test.mjs` — **39 passed,
+0 failed**. The reproduced bypass is covered in all six spellings of the same
+door (block, nested service-flow, JSON-flow, flow-on-key, long syntax block and
+inline, and long syntax with no `host_ip`), plus alias and merge-key sources,
+filename scope (`.yaml`, a non-root-named overlay, a second YAML document, a
+top-level `x-` extension), the unauditable shapes, the accepted loopback shapes,
+semantic sanction matching, an empty root, and the lone-wrapper failure mode.
+`sh scripts/ci/check-ports-loopback.sh` on the current tree — exit 0, 10 compose
+files, 7 ports blocks.
+
+**Receipts.** `docs/estate-closeout/2026-09-05/adr-2013-ports-gate.json`.
+
+**Remaining.** The gate audits the compose **source** files matched by the root
+glob. It does not resolve overlay order, `--env-file` interpolation, `extends`,
+`include:` or files outside the repository root, and it certifies nothing about a
+running deployment: a pass means the checked-in files declare no unsanctioned
+door, not that no unsanctioned door is open. Binding each exposure exception to
+service identity, authentication, intended audience and active-listener evidence
+is not done, and no compose deployment or port binding ran.
+
+**Governed paths changed.** `scripts/ci/check-ports-loopback.sh`,
+`scripts/ci/check-ports-loopback.mjs` (new), `tests/security/ports-gate.test.mjs`
+(new).
+
+### Re-verification 2026-09-05
+
+Re-verified at `verified_commit` 89301ec7c911eab270c00a0cf81596d0d4f15535, on the
+uncommitted working tree above that SHA; re-run at the landing commit.
+`verified_paths` is emptied because the previous list named
+`scripts/ci/check-ports-loopback.sh` as the gate, and the gate has since moved to
+the sibling `.mjs`; the landing commit sets the correct list.
+
+Each claim re-checked against current lines:
+
+- **Entry point.** `scripts/ci/check-ports-loopback.sh:2-18` is now a wrapper that
+  resolves and execs `check-ports-loopback.mjs` relative to itself, and exits 3
+  with an explicit message if the gate is missing — a stray copy of the wrapper
+  cannot look like a pass. The `sh scripts/ci/check-ports-loopback.sh` invocation
+  in `.github/workflows/invariants.yml` is unchanged, so the workflow needed no edit.
+- **Parser.** `check-ports-loopback.mjs:2-47` states the subset and the
+  "parse, or reliably reject" guarantee; `:162-202` is the flow-collection reader
+  that makes JSON parse for free and raises `ParseError` with a line for
+  unterminated flow collections and comments inside them.
+- **Sanctioned list — ten entries, not two.** `check-ports-loopback.mjs:75-86`
+  is matched on the normalised `(host_ip, published, target, protocol)` tuple, not
+  on source spelling: `docker-compose.yml` 9096 (ADR-045 sovereign ingress);
+  `docker-compose.voice.yml` 8443 and 8444 (voice cockpit TLS door, "second LAN
+  ingress, modelled not hidden"); `docker-compose.browsercontainer.yml` 5903, 8931
+  and 9222→9223; `docker-compose.gui-tools.yml` 5905, 9876 and 9877;
+  `docker-compose.xr-runtime.yml` 5904. The comment block at `:55-73` carries the
+  governing citation for each.
+- **`host_ip: null`.** `:71-73` records that a mapping stating no host address is
+  read by Docker as every interface, that 9096 is written that way today, and that
+  it is sanctioned in that exact form.
+- **Current result.** `sh scripts/ci/check-ports-loopback.sh` →
+  `PASS (check-ports-loopback): 10 compose file(s), 7 ports block(s) — all
+  publishes loopback-only or explicitly sanctioned`, per the receipt at
+  `docs/estate-closeout/2026-09-05/adr-2013-ports-gate.json`.
+
+`implementation_status` stays `partial`, but the partial half has moved. The
+structural-bypass half of the 2026-09-04 acceptance condition is **closed** — all
+supported configuration forms now parse or are rejected with a location. What
+remains open is the deployment half: overlay order, interpolation, external files,
+and binding each exposure exception to service identity, authentication, intended
+audience and active-listener evidence. No compose deployment or port binding ran.
+
+**Correction to a downstream reading.** `docs/INGRESS-identity.md` "Compose
+exposure qualification — 2026-09-04" still describes the line-oriented walker as
+the current gate; that text is stale and is corrected under ADR-2047. Diagram
+AB-10.1 carries the same correction.

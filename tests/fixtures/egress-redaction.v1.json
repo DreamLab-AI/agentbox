@@ -1,0 +1,17 @@
+{
+  "schema": "agentbox/egress-redaction-fixture@1",
+  "adr": "ADR-2026",
+  "note": "Paired fixture. The JavaScript live-mirror redactor (config/hooks/lib/egress-policy.cjs) and the Rust digest redactor (services/nostr-pod-bridge/src/egress_policy.rs) must both turn every `input` into exactly `expected`. Values are invented; no real secret appears here.",
+  "cases": [
+    { "name": "bare-assignment", "input": "run with password=hunter2 now", "expected": "run with password=<redacted> now" },
+    { "name": "quoted-flag-value", "input": "mysql --password \"correct horse battery\" -h db", "expected": "mysql --password <redacted> -h db" },
+    { "name": "json-short-value", "input": "{\"password\":\"x\"}", "expected": "{\"password\":\"<redacted>\"}" },
+    { "name": "json-spaced-value", "input": "{\"api_key\": \"abcdef\"}", "expected": "{\"api_key\": \"<redacted>\"}" },
+    { "name": "uri-embedded", "input": "postgres://user:s3cr3t@host/db", "expected": "postgres://user:<redacted>@host/db" },
+    { "name": "bearer-header", "input": "Authorization: Bearer abc.def.ghi", "expected": "Authorization: <redacted>" },
+    { "name": "env-style-upper", "input": "export ZAI_API_KEY=sk-abc123", "expected": "export ZAI_API_KEY=<redacted>" },
+    { "name": "nostr-nsec-hex", "input": "key 5b1c9e2d4a7f60318b2c5d9e7a4f1c0b3e6d8a2f4c1b9e7d0a3f6c8b2e5d9a71 end", "expected": "key <redacted-hex> end" },
+    { "name": "prose-keyword-untouched", "input": "I reset the password reset flow today", "expected": "I reset the password reset flow today" },
+    { "name": "no-secret", "input": "ran the test suite and it passed", "expected": "ran the test suite and it passed" }
+  ]
+}

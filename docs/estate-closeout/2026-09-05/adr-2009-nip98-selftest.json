@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-05",
+  "adrs": [
+    "ADR-2002",
+    "ADR-2009",
+    "ADR-2010",
+    "ADR-2011"
+  ],
+  "title": "nip98-proxy identity boundary \u2014 extended selftest",
+  "scope": "Local fake-upstream proxy suite. No deployed acceptance, no live AoE daemon, no real provider and no key-persistence test against a booted image.",
+  "added_cases": {
+    "spoofed_identity_header": "A client that supplies the identity headers the proxy injects has them stripped and replaced by the authenticated identity, asserted on BOTH the HTTP and the WebSocket path; the upstream never observes the client-supplied value.",
+    "absent_verifier": "When the NIP-98 verifier is unavailable or throws, the proxy fails CLOSED and the upstream receives nothing.",
+    "allowlist_removal": "An identity removed from the allowlist is denied on the next request, including one carrying an already-established session cookie.",
+    "cookie_expiry_and_restart": "An expired signed-handshake cookie is rejected; a cookie minted under a previous HMAC key is rejected after restart; a control case under the current key still works. No upstream call in either rejection.",
+    "tokenless_denial": "A request with no NIP-98 header, no bearer and no cookie is denied 401 on HTTP, WS upgrade and named routes; the AoE daemon token is not injected and does not leak into the denial body.",
+    "adr_2010_bearer": "In auth.mode=nip98 the route bearer is NOT injected for named routes on HTTP or WS, while AoE still receives its daemon token in both; a bearer-only caller cannot reach a mutation route and the governance upstream is never contacted.",
+    "adr_2011_identity": "Lowercase 64-hex x-only output; npub/bech32, short and non-hex input rejected; an uppercase private hex still derives the lowercase canonical pubkey; key file mode 0600 (mint API and CLI); restart with the same key file yields the same identity; a persistence failure surfaces persisted:false rather than a silently unstable identity; no private key material in the returned identity, the CLI export, or proxy stdout/stderr (with a non-vacuousness control)."
+  },
+  "tests": [
+    {
+      "command": "node config/nip98-proxy/selftest.mjs",
+      "cwd": ".",
+      "exit_code": 0,
+      "stdout_tail": "  PASS  M4: the returned identity carries no private key material\n  PASS  M5: persistence failure surfaces persisted:false, not a silently unstable identity\n  PASS  M6: deriveXonly rejects npub/bech32 input\n  PASS  M6b: deriveXonly rejects a short key\n  PASS  M6c: deriveXonly rejects non-hex input\n  PASS  M6d: an uppercase private hex still derives the lowercase canonical pubkey\n  PASS  M7: the mint CLI exports the public DID and never the private key\n  PASS  M7b: CLI-minted key file is 0600\n  PASS  M8: no credential material appears in proxy stdout/stderr\n  PASS  M8b: child proxy logs were actually captured (the check is not vacuous)\n\nOK \u2014 0 failure(s), 0 skip(s)",
+      "stderr_tail": "{\"ts\":\"2026-09-05T17:41:16.159Z\",\"level\":\"warn\",\"component\":\"nip98-proxy\",\"msg\":\"nip07 session mint rejected\",\"reason\":\"no_credentials\",\"ip\":\"127.0.0.1\"}\n{\"ts\":\"2026-09-05T17:41:16.161Z\",\"level\":\"warn\",\"component\":\"nip98-proxy\",\"msg\":\"request rejected\",\"method\":\"GET\",\"url\":\"/api/sessions\",\"reason\":\"session_invalid_or_expired\",\"ip\":\"127.0.0.1\"}\n{\"ts\":\"2026-09-05T17:41:17.213Z\",\"level\":\"warn\",\"component\":\"nip98-proxy\",\"msg\":\"request rejected\",\"method\":\"POST\",\"url\":\"/api/sessions\",\"reason\":\"no_credentials\",\"ip\":\"127.0.0.1\"}\n{\"ts\":\"2026-09-05T17:41:17.214Z\",\"level\":\"warn\",\"component\":\"nip98-proxy\",\"msg\":\"ws upgrade rejected\",\"url\":\"/sessions/abc/live-ws\",\"reason\":\"no_credentials\",\"ip\":\"127.0.0.1\"}\n{\"ts\":\"2026-09-05T17:41:17.215Z\",\"level\":\"warn\",\"component\":\"nip98-proxy\",\"msg\":\"request rejected\",\"method\":\"POST\",\"url\":\"/mgmt/v1/system\",\"reason\":\"no_credentials\",\"ip\":\"127.0.0.1\"}\n{\"ts\":\"2026-09-05T17:41:17.230Z\",\"level\":\"warn\",\"component\":\"nip98-proxy\",\"msg\":\"request rejected\",\"method\":\"POST\",\"url\":\"/gov/approve\",\"reason\":\"no_credentials\",\"ip\":\"127.0.0.1\"}"
+    }
+  ],
+  "source_sha256": {
+    "config/nip98-proxy/proxy.mjs": "0a90ff78579d44a53cf5b2b912bd0112b25b2881303f5b19b7cace8b99a52059",
+    "config/nip98-proxy/selftest.mjs": "cd9210def9804855d366c8d5ef01443cd14aae4075e900b1172989288cc656ab",
+    "config/nip98-proxy/README.md": "b95281bb3960150855946f31e10abd1c9610dbe5f0bcb23c1a24058122e3adc7"
+  },
+  "limitations": "Fake upstreams throughout. Running binary/config identity was not captured, token rotation/revocation against the real AoE daemon was not exercised, the door inventory is not bound to deployed ports and credentials, and the same-UID residual is unchanged."
+}

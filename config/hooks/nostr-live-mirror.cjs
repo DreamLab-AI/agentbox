@@ -38,6 +38,10 @@
  */
 
 const crypto = require('crypto');
+
+// ADR-2026 (closeout 2026-09-05): the shared content-egress policy — the same
+// decision table and redaction contract the Rust digest path implements.
+const egress = require('./lib/egress-policy.cjs');
 const fs = require('fs');
 const path = require('path');
 
@@ -294,38 +298,59 @@ function bodyForEvent(event, payload) {
  * Publish ONE pre-signed gift wrap to the cloud relay and wait for the relay's
  * OK frame (or the deadline). Resolves on OK/close/timeout; never rejects.
  */
+// ADR-2026 (closeout 2026-09-05): publish and REPORT WHAT HAPPENED.
+//
+// This function used to resolve with nothing on every path — relay OK, relay
+// rejection, socket error, close-before-acknowledgement and deadline all looked
+// identical to the caller. That is the mechanical reason "exit zero cannot serve
+// as proof of delivery": there was no delivery signal to propagate. It still
+// never rejects and never blocks the session; it now returns which of the four
+// policy outcomes actually occurred, so a network-denied send reports `failed`
+// rather than being indistinguishable from an acknowledged one.
+//
+// @returns {Promise<{outcome:'accepted'|'failed', reason?:string}>}
 function publishWrap(WS, relayUrl, wrap, deadlineMs) {
   return new Promise((resolve) => {
     let done = false;
     let ws = null;
-    const finish = () => {
+    const finish = (result) => {
       if (done) return;
       done = true;
       try { if (ws) ws.close(); } catch { /* ignore */ }
-      resolve();
+      resolve(result);
     };
-    const timer = setTimeout(finish, deadlineMs);
+    const timer = setTimeout(
+      () => finish({ outcome: 'failed', reason: 'deadline expired before relay acknowledgement' }),
+      deadlineMs,
+    );
     try {
       ws = new WS(relayUrl, { handshakeTimeout: Math.min(deadlineMs, 4000) });
       ws.on('open', () => {
-        try { ws.send(JSON.stringify(['EVENT', wrap])); } catch { finish(); }
+        try { ws.send(JSON.stringify(['EVENT', wrap])); }
+        catch (e) { clearTimeout(timer); finish({ outcome: 'failed', reason: `send failed: ${e && e.message}` }); }
       });
       ws.on('message', (data) => {
         try {
           const frame = JSON.parse(String(data));
           // ['OK', <id>, <accepted:bool>, <msg>]
           if (Array.isArray(frame) && frame[0] === 'OK' && frame[1] === wrap.id) {
-            if (!frame[2]) log(`relay rejected wrap: ${frame[3] || 'no reason'}`);
             clearTimeout(timer);
-            finish();
+            if (frame[2]) finish({ outcome: 'accepted' });
+            else finish({ outcome: 'failed', reason: `relay rejected: ${frame[3] || 'no reason given'}` });
           }
         } catch { /* ignore non-JSON frames */ }
       });
-      ws.on('error', () => { clearTimeout(timer); finish(); });
-      ws.on('close', () => { clearTimeout(timer); finish(); });
-    } catch {
+      ws.on('error', (e) => {
+        clearTimeout(timer);
+        finish({ outcome: 'failed', reason: `transport error: ${(e && e.message) || 'unknown'}` });
+      });
+      ws.on('close', () => {
+        clearTimeout(timer);
+        finish({ outcome: 'failed', reason: 'connection closed before relay acknowledgement' });
+      });
+    } catch (e) {
       clearTimeout(timer);
-      finish();
+      finish({ outcome: 'failed', reason: `connect failed: ${e && e.message}` });
     }
   });
 }
@@ -352,10 +377,20 @@ async function main() {
 
   // Gate: explicit off switch → no-op. We then need EITHER a derivable child
   // key (default, preferred) OR an explicit recipient pubkey (legacy).
-  if (String(process.env.AGENTBOX_LIVE_MIRROR || '').trim() === '0') return 0;
+  // ADR-2026: the policy decides, not an ad-hoc switch read. This covers the
+  // GLOBAL AGENTBOX_EGRESS off switch (which the Rust digest path also obeys),
+  // the per-path switch, and the refusal to run with redaction disabled.
   const childSk = deriveChildKey();
   const explicitRecipient = recipientPubkey();
-  if (!childSk && !explicitRecipient) return 0;
+  const pre = egress.egressDecision('live-mirror', {
+    identityPresent: !!(childSk || explicitRecipient),
+  });
+  if (!pre.allowed) {
+    // Say which of the three states this is. Exit zero alone never distinguished
+    // "disabled" from "failed" from "delivered".
+    log(`egress ${pre.outcome}: ${pre.reason}`);
+    return 0;
+  }
 
   const raw = await readStdin();
   let payload = {};
@@ -364,7 +399,19 @@ async function main() {
   }
 
   let body = bodyForEvent(event, payload);
-  if (!body || !body.trim()) return 0;
+  if (!body || !body.trim()) { log('egress skipped: empty-body'); return 0; }
+
+  // ── REDACT BEFORE EGRESS (ADR-2026 invariant) ─────────────────────────────
+  // This happens BEFORE composition, before the gift wrap and before any
+  // transport. The review reproduced a `password=` sentinel surviving into the
+  // composed rumor precisely because there was no stage here. A redaction
+  // failure is a SKIP: there is no configuration in which the raw text is sent.
+  const redactedBody = egress.redactForEgress(body);
+  if (redactedBody == null) {
+    log(`egress ${egress.OUTCOME.SKIPPED}: redaction-failed (fail-closed — nothing sent)`);
+    return 0;
+  }
+  body = redactedBody;
 
   // REC-9: append the session's urn:agentbox:activity provenance reference,
   // minted via lib/uris.js (ADR-013), INSIDE the rumor body and within the cap.
@@ -377,7 +424,9 @@ async function main() {
   // smoke test observe the provenance reference without publishing to the relay.
   if (String(process.env.AGENTBOX_MIRROR_DRY_RUN || '').trim() === '1') {
     const to = explicitRecipient || (childSk ? 'child-self-dm' : 'none');
-    log(`DRY-RUN (${event}) recipient=${to} urn=${activityUrn || '(none — text-only)'} body:\n${body}`);
+    // The body printed here is the REDACTED one — diagnostics can never retain
+    // more than the wire carries (ADR-2026 log-retention rule).
+    log(`DRY-RUN (${event}) outcome=${egress.OUTCOME.SKIPPED} reason=dry-run recipient=${to} urn=${activityUrn || '(none — text-only)'} redacted-body:\n${body}`);
     return 0;
   }
 
@@ -395,6 +444,14 @@ async function main() {
     // explicit recipient pubkey.
     const sk = childSk || senderSecretKey(tools);
     const recipient = childSk ? tools.getPublicKey(childSk) : explicitRecipient;
+    // ADR-2026: recipient grammar AND the optional enumerated allowlist. A
+    // syntactically valid pubkey that is not on a configured allowlist is
+    // refused — the review noted the hook checked syntax only.
+    const rDecision = egress.egressDecision('live-mirror', { recipient, identityPresent: true });
+    if (!rDecision.allowed) {
+      log(`egress ${rDecision.outcome}: ${rDecision.reason}`);
+      return 0;
+    }
     const rumor = {
       kind: KIND_DM_RUMOR,
       content: body,
@@ -412,10 +469,19 @@ async function main() {
     return 0;
   }
 
+  // ADR-2026: three distinguishable outcomes. `attempted` is logged before the
+  // transport so a network denial that kills the process still leaves evidence
+  // that bytes were handed over; `accepted` only after the relay acknowledges.
+  log(`egress ${egress.OUTCOME.ATTEMPTED}: relay=${mirrorRelay()} wrap=${wrap.id ? wrap.id.slice(0, 12) : 'unknown'}`);
   try {
-    await publishWrap(WS, mirrorRelay(), wrap, DEADLINE_MS);
+    const result = await publishWrap(WS, mirrorRelay(), wrap, DEADLINE_MS);
+    if (result && result.outcome === 'accepted') {
+      log(`egress ${egress.OUTCOME.ACCEPTED}: relay acknowledged`);
+    } else {
+      log(`egress ${egress.OUTCOME.FAILED}: ${(result && result.reason) || 'no relay acknowledgement'}`);
+    }
   } catch (err) {
-    log(`publish failed (non-fatal): ${err && err.message}`);
+    log(`egress ${egress.OUTCOME.FAILED}: ${err && err.message}`);
   }
   return 0;
 }
@@ -429,6 +495,9 @@ module.exports = {
   activityScopePubkey,
   bodyForEvent,
   MAX_BODY_CHARS,
+  // ADR-2026: re-exported so a test can assert the hook and the policy module
+  // are the same implementation, not two that happen to agree today.
+  egress,
 };
 
 if (require.main === module) {

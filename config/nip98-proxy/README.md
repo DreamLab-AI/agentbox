@@ -124,6 +124,26 @@ only verified NIP-98 (header or NIP-07 session) is accepted. NIP-07 signing has
 now landed, so the bearer's remaining use is emergency access when no signer is
 available — keep it unset unless that emergency is live.
 
+## Credential exchange on named routes (ADR-2010)
+
+A route may name a `bearer_env`; the proxy then injects that upstream's own
+token as `Authorization: Bearer <token>` — but **only when the caller did not
+sign**. In `auth.mode === 'nip98'` the caller's own `Authorization: Nostr …`
+header is forwarded to the named upstream untouched, so a governance service
+re-verifies the operator's Schnorr signature itself and a stolen bearer alone
+can never release a gate. `X-Forwarded-Host` carries the original `Host` so the
+upstream can rebuild the URL the client signed into the NIP-98 `u` tag
+(`Host` itself is rewritten to the upstream). The default AoE route is the
+deliberate exception: it always receives the daemon's shared-secret token,
+because `aoe serve` cannot verify NIP-98 at all.
+
+## Hex-canonical identity (ADR-2011)
+
+A verified NIP-98 pubkey is canonicalised to lowercase 64-hex before it is
+allow-list-checked or stamped as `X-Agentbox-Pubkey`. Anything that cannot be
+canonicalised — an absent pubkey, an npub, a truncated key — is a verifier
+fault and the request is rejected (`nip98_noncanonical_pubkey`), never routed.
+
 ## Fail-closed
 
 If the Nostr bridge (and its vendored `nostr-tools`) cannot be loaded, Schnorr
@@ -140,7 +160,7 @@ the upstream. A loud `warn` is logged at startup.
 | `AOE_UPSTREAM` | `http://127.0.0.1:9095` | default upstream: AoE daemon base URL (loopback) |
 | `NIP98_PROXY_ROUTES` | *(unset)* | ADR-045 routing table, JSON `[{prefix, target, strip?}]` |
 | `NIP98_PROXY_MGMT_UPSTREAM` | *(unset)* | supervisord-friendly `/mgmt/` route target |
-| `NOSTR_BRIDGE_PATH` | *(candidates)* | explicit path to `nostr-bridge.js` |
+| `NOSTR_BRIDGE_PATH` | *(candidates)* | explicit path to `nostr-bridge.js`; **authoritative** when set — no fallback |
 | `NIP98_PROXY_ALLOW_BEARER` | *(unset)* | break-glass shared bearer token |
 | `NIP98_PROXY_BEARER_PUBKEY` | `break-glass` | pubkey stamped for break-glass requests |
 | `NIP98_PROXY_SESSION_TTL` | `43200` | NIP-07 browser session lifetime, seconds |
@@ -148,11 +168,16 @@ the upstream. A loud `warn` is logged at startup.
 | `NIP98_PROXY_ALLOWED_PUBKEYS` | *(unset)* | comma-separated hex npub gate for NIP-98 + session minting |
 | `MANAGEMENT_API_URL` | *(unset)* | informational; the proxy does not call it |
 
-`nostr-bridge.js` is resolved from `NOSTR_BRIDGE_PATH`, then the source-tree
-relative path (`../../mcp/servers/nostr-bridge.js`), then the baked image path
-(`/opt/agentbox/mcp/servers/nostr-bridge.js`). **`nostr-tools` must be resolvable
-from wherever `nostr-bridge.js` lives** — the same requirement the live
-management-api already satisfies.
+`nostr-bridge.js` is resolved from `NOSTR_BRIDGE_PATH` when that is set, and
+otherwise from the source-tree relative path
+(`../../mcp/servers/nostr-bridge.js`) then the baked image path
+(`/opt/agentbox/mcp/servers/nostr-bridge.js`). An explicit `NOSTR_BRIDGE_PATH`
+is **authoritative**: if that module is missing or does not export
+`NostrBridge.verifyNip98`, the proxy fails closed (NIP-98 disabled) rather than
+silently loading a different `nostr-bridge.js` found elsewhere on the box —
+which module implements the identity boundary must never be a surprise.
+**`nostr-tools` must be resolvable from wherever `nostr-bridge.js` lives** —
+the same requirement the live management-api already satisfies.
 
 ## Deployment
 
@@ -164,10 +189,18 @@ source.
 ## Checks
 
 ```bash
-node --check config/nip98-proxy/proxy.mjs   # syntax
-node config/nip98-proxy/selftest.mjs        # end-to-end: 401 / break-glass / NIP-98 / WS
+node --check config/nip98-proxy/proxy.mjs                                  # syntax
+NODE_PATH=management-api/node_modules node config/nip98-proxy/selftest.mjs # end-to-end
 ```
 
-The self-test skips the live-signature case only when `nostr-tools` is not
-installed at the bridge path (dev checkouts); it is exercised for real in the
-baked image where `nostr-tools` resolves.
+The self-test covers 401 / break-glass / NIP-98 / WS / routing / NIP-07
+sessions, plus the ADR closeout cases: spoofed identity headers, verifier
+absence and verifier faults, allowlist removal against a live session, cookie
+expiry and restart under a rotated HMAC key, tokenless denial, the ADR-2010
+bearer gate, and the ADR-2011 identity helper. Cases whose property only exists
+across a restart or a different boot configuration spawn their own `proxy.mjs`
+child process.
+
+`NODE_PATH` points at a tree where `nostr-tools` resolves; without it the
+live-signature cases skip (dev checkouts). In the baked image they resolve
+without help.
