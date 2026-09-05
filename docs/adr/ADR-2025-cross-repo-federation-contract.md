@@ -3,12 +3,12 @@ id: ADR-2025
 title: "Cross-repo federation contract: sha12 content address, urn:agentbox grammar, closed inbound kind-map"
 date: 2026-08-31
 decision_status: proposed
-implementation_status: none
+implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_paths: [management-api/lib/bc20-provenance-bridge.js, management-api/lib/uris.js]
 owner: jjohare
 review_trigger: any change to the sha12 truncation, the urn:agentbox mint/parse grammar, or the closed inbound kind-map on either repo
 repo: agentbox
@@ -51,7 +51,59 @@ Follow-on: promote the prose dependency to a typed field once the schema support
 it, and register this contract in the domain routing table.
 
 ## Verification
-None yet — proposed, not built. No conformance fixture exists and no cross-repo
-CI gate is wired; `implementation_status: none`, `verified_paths: []`. On
-acceptance, verification is the shared fixture passing in both agentbox and
-visionclaw CI at a recorded commit.
+
+The 2026-09-04 estate fixture executes both current helper implementations. Five string inputs agree on hash output; agent/activity/thing crossings agree; bead support differs, and both return unmapped for memory without elevation options. Rust precomputed KG addresses are only prefix-checked. A local review fixture now exists, but no shared two-repository CI gate is established by this pass. Implementation changes from none to partial for the existing primitives and paired evidence; decision remains proposed and activation inactive for the complete contract.
+
+## Closeout extension — 2026-09-04
+
+CP-01/02/04/05. Owner remains jjohare with both identifier maintainers. **Acceptance condition:** agree exact byte/serialisation and address grammar, reconcile supported kinds and elevation, persist recoverable mappings, and run versioned positive/negative fixtures in both CI pipelines. Reopen on either helper, parser or mapped-kind change. See the [protocol registry](../PROTOCOL-registry.md), [estate review](../../../../VisionFlow/docs/estate-review/federation-identifiers.md) and [paired receipt](../../../../VisionFlow/docs/estate-review/evidence/federation-identity-probe.json). No live ingest or mapping-store mutation ran.
+
+## Acceptance progress — 2026-09-05
+
+**Implemented — a versioned, two-language fixture.**
+`tests/fixtures/federation-identity.v1.json` is now the frozen acceptance
+artefact the ADR asked for. It pins, in one place: the **input byte encoding**
+(UTF-8, no normalisation on either side — the composed and decomposed forms of
+the same grapheme have different addresses, and that is the recorded contract
+rather than an accident); the **serialisation** distinction between the BC20
+bridge hashing an incoming URN string and `uris.js` stable-serialising a
+structured payload; the **exact grammar** (`^sha256-12-[0-9a-f]{12}$`, twelve
+lowercase hex, so a prefix-only check is not conformance); the **supported
+kinds** with an `expected_rust` column beside the JavaScript expectation;
+**elevation**; and the **explicit unmapped outcomes** — because `None` must
+surface as a visible refusal, never a fabricated identity.
+
+**Implemented — a CI-runnable check.**
+`scripts/ci/federation-fixture-check.mjs` runs the agentbox side: **35 checks,
+all passing**. It asserts the content addresses and their grammar, that the two
+Unicode forms still *differ* (a silent start of normalisation would
+re-identify existing records), each mapped crossing, each unmapped refusal, that
+a crossing returns a recoverable mapping record, the precomputed-address
+admission table including the empty, non-hex, uppercase and overlong suffixes the
+review found being accepted by a prefix check, the owner-scope grammar, and — in
+both directions — that the fixture's kinds and the bridge's declared kind map
+agree, so shipping a new kind without extending the fixture fails here.
+
+**Bead divergence — decision recorded.** The JavaScript bridge crosses `bead` by
+structural pass-through (agentbox bead locals are already `sha256-12` content
+addresses, identical to VisionClaw's bead shape); the Rust ordinary crossing has
+no bead arm and refuses it via the wildcard. The reconciliation is **resolved in
+favour of crossing**, matching the JavaScript bridge, and is recorded in
+[the protocol registry](../PROTOCOL-registry.md) against **ADR-2061**, which owns
+the Rust arm. Until that lands, a bead that crosses one way and not the other
+must be reported as an explicit unmapped result on the refusing side — the
+fixture marks the row `divergent` rather than pretending parity.
+
+**Receipts.**
+`docs/estate-closeout/2026-09-05/adr-2025-federation-fixture.json` (the check's
+own machine-readable output, including its honest `rust_side_status`).
+
+**Governed paths changed.** `tests/fixtures/federation-identity.v1.json` (new),
+`scripts/ci/federation-fixture-check.mjs` (new), `docs/PROTOCOL-registry.md`.
+
+**Remaining.** This gate covers **one side**. The contract is not closed until
+VisionClaw's pipeline executes the same file against `src/uri/mod.rs`, which is
+outside this repository; the check says so in its own output rather than
+implying two-sided coverage. Durable mapping persistence, replay and recovery
+remain untested — these are pure helper calls. `decision_status` stays
+`proposed`.

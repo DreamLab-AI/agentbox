@@ -1,0 +1,11 @@
+{
+  "schema": "agentbox/federation-fixture-check@1",
+  "adr": "ADR-2025",
+  "fixture_version": 1,
+  "ran_at": "2026-09-05T20:05:39.078Z",
+  "side": "agentbox-javascript",
+  "checks_run": 35,
+  "failures": [],
+  "pass": true,
+  "rust_side_status": "NOT RUN HERE — VisionClaw CI must execute this fixture against src/uri/mod.rs; the bead row is divergent pending ADR-2061"
+}

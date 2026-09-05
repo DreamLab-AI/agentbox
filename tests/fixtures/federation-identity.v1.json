@@ -1,0 +1,156 @@
+{
+  "schema": "agentbox/federation-identity-fixture@1",
+  "version": 1,
+  "adr": "ADR-2025",
+  "frozen": "2026-09-05",
+  "purpose": "The versioned, two-language acceptance fixture for the cross-repo identifier contract. Both the agentbox JavaScript bridge (management-api/lib/bc20-provenance-bridge.js) and the VisionClaw Rust crossing (src/uri/mod.rs) must reproduce every expectation below. Run it in BOTH CI pipelines before changing any shared primitive.",
+  "encoding_contract": {
+    "input_bytes": "UTF-8. The address is computed over the exact bytes of the input string; no Unicode normalisation is applied by either side.",
+    "serialisation": "The agentbox BC20 bridge hashes the incoming URN STRING. management-api/lib/uris.js stable-serialises a structured payload before hashing. These are different input contracts sharing one digest format; a fixture case states which is in use.",
+    "digest": "SHA-256, first twelve LOWERCASE hex characters of the digest, prefixed 'sha256-12-'.",
+    "grammar": "^sha256-12-[0-9a-f]{12}$ — twelve lowercase hex characters, no more, no fewer. A precomputed address that only matches the PREFIX is INVALID and must be rejected at admission.",
+    "owner_scope": "^[0-9a-f]{64}$ — 64 lowercase hex characters."
+  },
+  "content_address": [
+    {
+      "name": "empty",
+      "input": "",
+      "expected": "sha256-12-e3b0c44298fc"
+    },
+    {
+      "name": "ascii",
+      "input": "hello",
+      "expected": "sha256-12-2cf24dba5fb0"
+    },
+    {
+      "name": "json-text",
+      "input": "{\"a\":1,\"b\":[2,3]}",
+      "expected": "sha256-12-efbd0040190f"
+    },
+    {
+      "name": "unicode-nfc",
+      "input": "café",
+      "expected": "sha256-12-850f7dc43910",
+      "note": "Composed form. Its address DIFFERS from the decomposed form below — neither implementation normalises, and that is the recorded contract, not an accident."
+    },
+    {
+      "name": "unicode-nfd",
+      "input": "café",
+      "expected": "sha256-12-81ef060bcd98",
+      "note": "Decomposed form of the same grapheme. Different bytes, therefore a different address."
+    }
+  ],
+  "crossing": [
+    {
+      "kind": "agent",
+      "agentbox_urn": "urn:agentbox:agent:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:self",
+      "expected": "did:nostr:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected_rust": "did:nostr:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": "mapped"
+    },
+    {
+      "kind": "activity",
+      "agentbox_urn": "urn:agentbox:activity:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-cafebabe0011",
+      "expected": "urn:visionclaw:execution:sha256-12-7ea1acd40167",
+      "expected_rust": "same",
+      "status": "mapped",
+      "note": "Execution addresses re-hash the whole URN string; the owner travels in owner_did and the mapping record, not in the identifier."
+    },
+    {
+      "kind": "thing",
+      "agentbox_urn": "urn:agentbox:thing:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:node-1",
+      "expected": "urn:visionclaw:kg:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-4c5dc12aa4c3",
+      "expected_rust": "same",
+      "status": "mapped"
+    },
+    {
+      "kind": "bead",
+      "agentbox_urn": "urn:agentbox:bead:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+      "expected": "urn:visionclaw:bead:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+      "expected_rust": "DIVERGENT-see-adr-2061",
+      "status": "divergent",
+      "note": "The JavaScript bridge crosses beads by structural pass-through (agentbox bead locals are already sha256-12 content addresses, identical to VisionClaw's bead shape). VisionClaw's ordinary crossing has no bead arm and refuses it via the wildcard. RESOLVED IN FAVOUR OF CROSSING by ADR-2061 (proposed); until the Rust arm lands, a bead that crosses one way and not the other must be reported as an explicit unmapped result, never a fabricated identity."
+    },
+    {
+      "kind": "memory",
+      "agentbox_urn": "urn:agentbox:memory:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:effectiveness-sha256-12-abc123abc123",
+      "expected": null,
+      "expected_rust": null,
+      "status": "unmapped",
+      "note": "Deliberately unmapped WITHOUT elevation options. 'None' must surface as a visible unmapped result on both sides."
+    },
+    {
+      "kind": "memory",
+      "agentbox_urn": "urn:agentbox:memory:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:x",
+      "options": {
+        "domain": "ops",
+        "slug": "thing"
+      },
+      "expected": "urn:visionclaw:concept:ops:thing",
+      "expected_rust": "not-implemented",
+      "status": "elevation-js-only",
+      "note": "Memory elevation requires explicit domain/slug options. The Rust ordinary crossing deliberately returns None for memory; the elevation journey is a JS-side capability that has not been exercised as an end-to-end journey on either side."
+    }
+  ],
+  "precomputed_address_admission": [
+    {
+      "name": "valid",
+      "address": "sha256-12-0123456789ab",
+      "accept": true
+    },
+    {
+      "name": "empty-suffix",
+      "address": "sha256-12-",
+      "accept": false,
+      "note": "Prefix-only checking accepted this. The grammar requires twelve hex characters."
+    },
+    {
+      "name": "non-hex-suffix",
+      "address": "sha256-12-zzzzzzzzzzzz",
+      "accept": false
+    },
+    {
+      "name": "uppercase",
+      "address": "sha256-12-0123456789AB",
+      "accept": false,
+      "note": "Twelve LOWERCASE hex characters. Uppercase is a different byte string and must not alias."
+    },
+    {
+      "name": "overlong",
+      "address": "sha256-12-0123456789abcdef",
+      "accept": false
+    },
+    {
+      "name": "short",
+      "address": "sha256-12-0123456789a",
+      "accept": false
+    },
+    {
+      "name": "wrong-prefix",
+      "address": "sha256-16-0123456789ab",
+      "accept": false
+    }
+  ],
+  "owner_scope_admission": [
+    {
+      "name": "valid",
+      "scope": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "accept": true
+    },
+    {
+      "name": "uppercase",
+      "scope": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "accept": false
+    },
+    {
+      "name": "short",
+      "scope": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "accept": false
+    },
+    {
+      "name": "non-hex",
+      "scope": "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+      "accept": false
+    }
+  ]
+}
