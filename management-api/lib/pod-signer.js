@@ -9,13 +9,23 @@
  * authenticates to a default-deny Solid pod under its OWN `did:nostr`
  * (PRD-014 Seam C / C2). The signing key is loaded lazily and cached.
  *
- * Fail-open at the adapter layer: when signing is disabled, no stack is
- * resolvable, or the key cannot be decrypted, this returns `null` and the
- * adapter goes out unsigned exactly as before — the pod itself still fails
- * closed if it requires auth. This keeps default (unsigned) behaviour
- * byte-identical so enabling the flag is the only behavioural change.
+ * Returning `null` means "no originator could be built" — it does NOT decide
+ * the request outcome. That decision belongs to the adapter, keyed on the same
+ * `sign_requests` flag (ADR-2064):
  *
- * @see PRD-014 §4.2  @see ADR-005 §pods slot
+ *   - `sign_requests` OFF → no signer is wanted; the adapter goes out unsigned,
+ *     byte-identical to the pre-signing baseline.
+ *   - `sign_requests` ON  → the adapter is constructed with `requireSigned`.
+ *     A `null` here (no stack resolvable, key undecryptable) then makes every
+ *     request throw `SigningUnavailable` — signing was demanded and could not
+ *     be produced, so the slot fails CLOSED rather than silently emitting an
+ *     unsigned request at a default-deny pod.
+ *
+ * There is no dev-profile relaxation: as recorded at ADR-2041, a grep across
+ * agentbox for `AGENTBOX_DEV*` / `dev_profile` / `dev_mode` / `dev-profile`
+ * finds no such flag, and ADR-2064 does not invent one.
+ *
+ * @see PRD-014 §4.2  @see ADR-005 §pods slot  @see ADR-2064
  */
 
 /**

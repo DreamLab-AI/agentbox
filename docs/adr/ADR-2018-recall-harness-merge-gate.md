@@ -113,3 +113,25 @@ met or wrong. The gate is runnable but not yet wired into a CI workflow. Degrade
 mode and repaired embeddings are recorded in the binding but not yet exercised as
 deliberate fixture cases. `implementation_status` should not be read as "the
 corpus passes": the harness and its gate are complete; the corpus is failing.
+
+## Cause found and closed — 2026-09-05 (queen)
+
+The FAIL recorded above (self 164/200, true 96/120) had a cause, and it was not
+the documented suspect. Evidence, in order: every fixture row still exists (200/200
+self ids, 120/120 true ids present); no fixture namespace carries duplicate
+vectors where the misses cluster; `ef_search` set to 64 and 200 on the index
+changed nothing (151/200 all three); the misses persist at `LIMIT 200` through
+the index (155/200) while an exact scan ranks each missed row first — so the
+rows are **unreachable in the HNSW graph**, not far in vector space. A
+non-concurrent `REINDEX` under the sidecar's `max_parallel_maintenance_workers = 16`
+reproduced the defect and made it *worse* than the incrementally grown index
+(151 vs 164). The same `REINDEX` with `max_parallel_maintenance_workers = 0`
+(`maintenance_work_mem = 6GB`, ~8 min) gives 189/200 at LIMIT 10 and the full
+gate passes: **self 189/200, true 115/120, exact-token Δ +4.5, median-of-3, PASS**.
+Conclusion: the ruvector 0.3.0 HNSW parallel build produces a graph with
+unreachable nodes; the historical "rebuild after churn" remedy worked only when
+the build ran serially. Pinned with `ALTER DATABASE ruvector SET
+max_parallel_maintenance_workers = 0` (database scope, survives restarts; the
+16 came from `postgresql.auto.conf`, an earlier `ALTER SYSTEM`). Invariant 8 of
+LEARNING-memory now says serial. The "Remaining" bullet above ("the FAIL is
+unexplained") is closed; the gate is still not wired into CI.

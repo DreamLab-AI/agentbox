@@ -495,7 +495,15 @@ enable_mcp             = false    # → --mcp on the [program:solid-pod] command
 # prior behaviour. When on, the signing key is the active stack's nostr.key.enc
 # (resolved from AGENTBOX_STACK / integrations.solid_pod_rs.sign_stack); load
 # failures fail open (adapter goes out unsigned, pod still fails closed).
-sign_requests          = true     # originate signed NIP-98 from the pods adapter
+# QUEEN DECISION 2026-09-05 (ADR-2064 landing): the rebuilt image resolves NO
+# signing material — no stack holds nostr.key.enc, sign_stack is unset and the
+# supervised management-api has no AGENTBOX_STACK — so every pods request has
+# gone out unsigned since the flag was introduced (the fail-open bug ADR-2064
+# closes). Declared unsigned DELIBERATELY here until ADR-2078 provisions the
+# signer from the sovereign identity the boot already mints
+# (/var/lib/agentbox/identities/agent-did-main.key); flip back to true only
+# together with that wiring, or the pods slot degrades at the next restart.
+sign_requests          = false    # originate signed NIP-98 from the pods adapter (see ADR-2064/2078)
 enable_did_nostr       = true     # did:nostr:<pubkey> → Solid WebID resolver (ADR-013)
 enable_webhook_signing = true     # RFC 9421 Ed25519 outbound notification signing
 enable_rate_limit      = true     # sliding-window LRU per-connection guard

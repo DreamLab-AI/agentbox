@@ -253,3 +253,7 @@ One line per ADR that amended this document in the Phase 2 remediation pass.
   resolved with evidence and appended re-verification sections to both records.
 - **ADR-2040** — No supervised program offers an unauthenticated listener on a bridge-reachable
   interface. Replaced the `code-server` divergence bullet; the listener-side CI gate stays open.
+- **ADR-2072** — The briefing workflow VisionClaw already called now has a server: `/v1/briefs`,
+  `/v1/briefs/:id/execute` and `/v1/briefs/:id/debrief` in `management-api/routes/briefing.js`,
+  writing through the pods and beads slots, minting via `lib/uris.js`, and gating the execute step
+  through the same ADR-2041 action pipeline as `POST /v1/tasks`; staged until the next rebuild.

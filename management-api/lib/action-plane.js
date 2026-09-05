@@ -273,7 +273,11 @@ async function dispatchTaskSpawn(params, deps) {
     target: params.agent,
   });
 
-  if (result.decision === 'denied') {
+  // The pipeline's contract (tests/contract/agent-action-pipeline.contract.spec.js)
+  // is `decision: 'deny'`; this layer normalises it to `'denied'` for the route.
+  // Comparing against 'denied' here let a denial fall through to the allow
+  // branch and throw outside the route's try/catch (500 where 403 was meant).
+  if (result.decision === 'deny') {
     return { ready: true, decision: 'denied', denyReason: result.reason, journalEventId: result.journal_event_id };
   }
   return { ready: true, decision: 'allow', output: result.output, journalEventId: result.journal_event_id };

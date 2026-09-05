@@ -207,8 +207,16 @@ above, enabled but explicitly-invoke-only.
 2. **ADR-051 (Loom) is Proposed but the Loom is production-critical.** The load-bearing
    external-LLM subunit runs on a decision record that has not ratified. Interim authority:
    this document.
-3. **ADR-045 "one front door" publishes two LAN doors** — the scaffolded façade (:8084) and
-   raw model (:8085) are both reachable; consumers must pick correctly per task.
+3. **RESOLVED (ADR-2070) — not a divergence: ADR-045 governs ingress, the Loom doors are
+   egress.** ADR-045's "one front door" binds external control surfaces reaching *into* the box
+   (`:9096`, NIP-98). The scaffolded façade (`:8084`) and the raw model (`:8085`) are *egress* to
+   a LAN model host — a plane ADR-045 never addressed. The raw door is deliberate and named
+   (`flake.nix` `LOOM_RAW_BASE_URL`, the `slug = "loom-raw"` session seed): **agent-choice and
+   benchmark-only**, for raw coding where the ontology scaffold is cost without benefit. It is
+   **not** a fallback, **not** for knowledge work or ontology retrieval, and nothing may
+   auto-route to it when the façade errors — a scaffold failure must surface, not silently
+   downgrade. A third Loom-side endpoint requires an ADR. Residual: unenforced at runtime —
+   nothing checks which base URL a session actually opened.
 4. **Deferred-distillation MCP tools are not built** — ADR-051 names them; only beads
    substrate primitives exist, "after image rebuild".
 5. **AoE :9095 is token-gated, not loopback-gated (N-05 revised).** `aoe serve` runs
@@ -300,3 +308,28 @@ label-gated and skips without a secret.
 ## Remediation — 2026-09-05
 
 ADR-2057 is implemented, narrowing divergence 8: `[skills.podcast_ingest]` (default `true` = shipped behaviour) now wraps `[program:podcast-cron]` in `lib.optionalString`, the `harness`/`precedent` registration blocks read their own `.enabled` via `agentbox-manifest toml-bool`, all three carry honest apply classes in the system-manifest catalogue (60 gate paths, was 57), and `[skills.harness].template_dir` is projected as `HARNESS_TEMPLATE_DIR` instead of being inert — residual: gate-off skips registration but cannot retract a `.mcp.json` entry an earlier boot wrote (no remove-by-name subcommand), and the podcast gate removes the schedule, not the shared binary from the closure, so byte-identical-when-off now holds for runtime trace but not image closure; activation is staged until the next rebuild.
+
+ADR-2061 closes the federation kind-map divergence: the supported-kind list is now ONE versioned artefact, `schema/federation-kinds.json` (19 kinds, artefact 1.0.0), that both translators *derive* from rather than transcribe — `management-api/lib/bc20-provenance-bridge.js:112-127` reads it at require time and VisionClaw `src/uri/mod.rs` embeds the same bytes via `include_str!("../../agentbox/schema/federation-kinds.json")` (the agentbox tree is that checkout's `./agentbox` submodule) — with a paired fixture (50 jest cases here, 7 `cargo test` cases there) asserting both sides agree on crossed-vs-refused and on the target grammar when crossed, verified by flipping `memory` to `crosses: true` in the artefact and watching 3 JS and 4 Rust tests fail; `memory` is a **recorded** refusal (`refusal_class: "deliberate"`, naming the `{domain, slug}` elevation that would unlock it) rather than an absent arm, which is what makes it distinguishable from "not implemented" — residual: only the JS half is CI-gated (`contract-tests.yml` already globs `tests/contract/*.contract.spec.js`), because VisionClaw's `CPU_CRATES` list excludes the `visionclaw-server` crate that owns `src/uri`, so the Rust fixture needs a one-line `ci.yml` addition owned by another lead.
+
+ADR-2068 binds a session-boundary gate to every session class: `[ontology_monitor].enabled` reached only per-profile sessions (`stacks.rs`) while the root session — tmux window 0 and every unattended teammate pane — had neither the `SessionEnd` hook nor its `AGENTBOX_ONTOLOGY_MONITOR` master switch, so the manifest read "on" while the busiest session class never ran the review; the entrypoint now seeds both from the gate and, gate-off, retracts hook and env to the pre-gate bytes (a new byte-identical-when-off surface, tested five ways) — residual: two registration sites still exist and must be changed together, guarded only by the new `config/hooks/README.md` inventory, and activation is staged until the next boot.
+
+ADR-2069 turns an uncatalogued manifest gate key from a WARN into a build failure: at `e070514d8` the check printed 130 uncatalogued boolean keys and exited 0, so a capability could ship without ever appearing in `/v1/system`; `scripts/ci/check-manifest-catalogue.js` now fails on any boolean key that is neither catalogued nor in an explicit BASELINE, and the BASELINE is a ratchet — an entry that has since been catalogued, or is no longer in `agentbox.toml`, also fails, so the list can only shrink — residual: 17 baselined keys are real capabilities still owed a CATALOGUE entry (`ontology_monitor.enabled`, `skills.codeact.enabled`, `toolchains.claude`, `plugins.memory.enabled`, …), printed as a WARN on every run rather than laundered, and closing them means editing `management-api/lib/system-manifest.js`.
+
+ADR-2070 retires divergence 3 as a category error rather than a breach: ADR-045's "one front door" is an **ingress** invariant (`:9096`, NIP-98) and says nothing about **egress** to a LAN model host, so the Loom's two doors are not a violation of it; the raw `:8085` door stays as a deliberate, named, agent-choice/benchmark-only path for raw coding, explicitly not a fallback and never auto-routed on a façade error, with the model-swap contract (consumers hold `:8084`) unchanged as the load-bearing Loom invariant — residual: the constraint is documentary, nothing checks at runtime which base URL a session opened.
+
+ADR-2071 is **proposed, not landed**, and divergences 1 and 6 stay open: routing the nightly dream cycle through the ADR-2041 journal + policy pipeline would today deny the night on its first action, because its SSH/LLM/`git push`/forum side effects classify as `egress`/`mutate` (in `APPROVAL_REQUIRED`) and `action-plane.js` wires no approver — so the record stages journalling (~380 lines, HTTP-only because `local-jsonl` caches the hash-chain head in memory and appends unlocked, making any second writer a chain-forking corrupter) ahead of policing, keeps the engine's fail-open posture explicit, and names a two-character precondition: the pipeline returns `decision: 'deny'` while `action-plane.js:276` and `routes/tasks.js:85` both test `'denied'`, so the first guard anyone adds yields a 500 where a 403 was intended.
+
+- **ADR-2074** (proposed) — the ADR-051 deferred-distillation tools ship as a discrete,
+  manifest-gated MCP server (`ontology-distill`) holding the harness signing key, rather than as
+  tools on the fail-open `ontology-bridge`; adds the `job` URN kind with a per-kind RFC 8785 JCS
+  canonical form. Nothing of D2/D3 exists today. ADR-2023's "Remaining" is the ORIGIN of this
+  gap and is referenced (`see`), not superseded.
+- **ADR-2075** (proposed) — the Loom exposes a generation descriptor and the client reports the
+  **attested** generation; a configured value that disagrees fails labelled rather than being
+  served or relabelled, and the cache keys on the attested id. Preserves the model-swaps-behind-
+  the-façade invariant. ADR-2023's "Remaining" is the ORIGIN (`see`).
+- **ADR-2077** (proposed) — a procedure ADR closing ADR-2020's outstanding half: the exact
+  five-build `nix build .#runtime` sequence, closure identity and runtime trace proved
+  separately, gates that cannot pass recorded as named exceptions, and a receipt in
+  `docs/reference/gap-close-evidence/`. ADR-2020's "Remaining" is the ORIGIN (`see`); ADR-2033
+  removed the last blocker by resolving `nodeModulesHash`.

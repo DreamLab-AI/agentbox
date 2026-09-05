@@ -53,12 +53,28 @@ function slotConfig(slot, impl, manifest) {
     case 'pods': {
       // Originate signed NIP-98 per request when gated on (default off →
       // nip98 is null → unsigned, byte-identical to prior behaviour).
+      //
+      // ADR-2064: `sign_requests` is the fail-closed switch, not merely a
+      // best-effort hint. When it is on, `requireSigned` rides with the config
+      // even if the signer could NOT be built — the adapter then throws
+      // `SigningUnavailable` per request, so the pods slot degrades visibly
+      // instead of silently going out anonymous at a default-deny pod.
+      const podsIntegration = integrations.solid_pod_rs || {};
+      const requireSigned = podsIntegration.sign_requests === true;
       const nip98 = buildPodNip98(manifest, {
         onError: (err) =>
           // eslint-disable-next-line no-console
-          console.warn(`[adapters] pods NIP-98 signing disabled: ${err.message}`),
+          console.warn(
+            `[adapters] pods NIP-98 signing unavailable: ${err.message}` +
+              (requireSigned
+                ? ' — sign_requests is on, so the pods slot fails closed (ADR-2064)'
+                : '')
+          ),
       });
-      const withSigner = (cfg) => (nip98 ? { ...cfg, nip98 } : cfg);
+      const withSigner = (cfg) => {
+        if (nip98) return { ...cfg, nip98, requireSigned };
+        return requireSigned ? { ...cfg, requireSigned } : cfg;
+      };
 
       if (impl === 'external') {
         return withSigner({ externalUrl: fed.external_url || '' });

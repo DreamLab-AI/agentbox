@@ -142,4 +142,125 @@ describe('SolidHttpPodsAdapter NIP-98 origination', () => {
     await adapter.write('/kg/x', 'body', 'text/turtle');
     expect(calls[0].init.headers.Authorization).toBeUndefined();
   });
+
+  it('falls back to unsigned when the originator declines and signing is optional', async () => {
+    const { calls, fetchFn } = makeFetchSpy();
+    const adapter = new SolidHttpPodsAdapter({
+      baseUrl: 'http://h',
+      fetchFn,
+      nip98: async () => null,
+    });
+    await adapter.write('/kg/x', 'body', 'text/turtle');
+    expect(calls[0].init.headers.Authorization).toBeUndefined();
+  });
+});
+
+/**
+ * ADR-2064: `sign_requests` is a fail-closed switch. When signing is required
+ * but no header can be produced, the adapter MUST throw and emit no bytes —
+ * never a silent unsigned request against a default-deny pod.
+ */
+describe('SolidHttpPodsAdapter fail-closed signing (ADR-2064)', () => {
+  function makeFetchSpy() {
+    const calls = [];
+    const fetchFn = async (url, init = {}) => {
+      calls.push({ url, init });
+      return {
+        status: 200,
+        url,
+        headers: { get: () => 'text/turtle' },
+        text: async () => '',
+        json: async () => ({}),
+      };
+    };
+    return { calls, fetchFn };
+  }
+
+  it('throws SigningUnavailable when requireSigned but no originator is configured', async () => {
+    const { calls, fetchFn } = makeFetchSpy();
+    const adapter = new SolidHttpPodsAdapter({
+      baseUrl: 'http://h',
+      fetchFn,
+      requireSigned: true,
+    });
+    await expect(adapter.write('/kg/x', 'body', 'text/turtle')).rejects.toMatchObject({
+      name: 'SigningUnavailable',
+      code: 'SIGNING_UNAVAILABLE',
+      slot: 'pods',
+    });
+    // The critical assertion: nothing went out unsigned.
+    expect(calls).toHaveLength(0);
+  });
+
+  it('throws rather than going out unsigned when the originator declines', async () => {
+    const { calls, fetchFn } = makeFetchSpy();
+    const adapter = new SolidHttpPodsAdapter({
+      baseUrl: 'http://h',
+      fetchFn,
+      requireSigned: true,
+      nip98: async () => null, // key undecryptable / signer refused
+    });
+    await expect(adapter.read('/kg/x')).rejects.toThrow(/declined to sign/);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('surfaces a throwing originator as a typed SigningUnavailable', async () => {
+    const { calls, fetchFn } = makeFetchSpy();
+    const adapter = new SolidHttpPodsAdapter({
+      baseUrl: 'http://h',
+      fetchFn,
+      requireSigned: true,
+      nip98: async () => {
+        throw new Error('nostr.key.enc could not be decrypted');
+      },
+    });
+    await expect(adapter.list('/kg/')).rejects.toMatchObject({
+      code: 'SIGNING_UNAVAILABLE',
+    });
+    await expect(adapter.list('/kg/')).rejects.toThrow(/could not be decrypted/);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('fails closed across every verb, not just writes', async () => {
+    const { calls, fetchFn } = makeFetchSpy();
+    const adapter = new SolidHttpPodsAdapter({
+      baseUrl: 'http://h',
+      fetchFn,
+      requireSigned: true,
+    });
+    await expect(adapter.write('/kg/x', 'b')).rejects.toThrow(/Signing unavailable/);
+    await expect(adapter.read('/kg/x')).rejects.toThrow(/Signing unavailable/);
+    await expect(adapter.del('/kg/x')).rejects.toThrow(/Signing unavailable/);
+    await expect(adapter.list('/kg/')).rejects.toThrow(/Signing unavailable/);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('still signs normally when requireSigned and the originator works', async () => {
+    const { calls, fetchFn } = makeFetchSpy();
+    const nip98 = (method, url, body) =>
+      NostrBridge.buildNip98Header(echoSigner, method, url, { body });
+    const adapter = new SolidHttpPodsAdapter({
+      baseUrl: 'http://h:8484',
+      fetchFn,
+      nip98,
+      requireSigned: true,
+    });
+    await adapter.write('/kg/x', '<a> <b> <c> .', 'text/turtle');
+    expect(calls).toHaveLength(1);
+    expect(tagValue(decodeHeader(calls[0].init.headers.Authorization), 'method')).toBe('PUT');
+  });
+
+  it('trusts a caller-supplied Authorization header even when requireSigned', async () => {
+    const { calls, fetchFn } = makeFetchSpy();
+    const adapter = new SolidHttpPodsAdapter({
+      baseUrl: 'http://h',
+      fetchFn,
+      requireSigned: true,
+    });
+    await adapter._fetch('http://h/x', {
+      method: 'GET',
+      headers: { Authorization: 'Nostr preauthorised' },
+    });
+    expect(calls[0].init.headers.Authorization).toBe('Nostr preauthorised');
+  });
 });

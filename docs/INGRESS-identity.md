@@ -313,10 +313,15 @@ ADR-2012 is partial for relay-wide allowlisting. The pod bridge authorises inbox
 
 ## Remediation — 2026-09-05
 
+- ADR-2064 landing decision: `sign_requests = false` in both manifests, deliberately, until ADR-2078 (proposed) provisions the pods signer from the sovereign identity the boot mints; the fail-closed adapter stays staged.
+
 One line per ADR landing in this domain on 2026-09-05. Each amends the Current
 State, Invariants or divergence list above in the same change.
 
 - **ADR-2062** — EXTEND: the exposure gate (`scripts/ci/check-ports-loopback.sh`) grows a listener rule over the generated supervisor `command=`/`environment=` bind addresses in `flake.nix`, so the domain's exposure invariant now covers container-internal binds on the shared docker network and not only host-facing compose publishes; it detected one unsanctioned non-loopback listener (`[program:wayvnc]`), recorded as a finding for ADR-2040.
+- **ADR-2064** — FIX: pod request signing fails closed — when `[integrations.solid_pod_rs].sign_requests` is on and no NIP-98 header can be originated, the pods adapter throws the typed `SigningUnavailable` and emits no request, instead of silently going out unsigned at a default-deny pod; no dev-profile relaxation, since none exists (ADR-2041).
+- **ADR-2065** — CONSOLIDATE: exactly one process writes `pods/<npub>/events/inbox/` — the Rust `nostr-pod-bridge` daemon when it is running — ending a live duplicate write whose file-existence dedup was silently suppressing the JS consumer's ACSP governance, agent-intent and payment dispatch; the JS consumer is narrowed, not deleted, because it is still the only implementation of those four surfaces.
+- **ADR-2066** — FIX/DIVERGENCE: `loadSigner` derives the profiles root from `$WORKSPACE` instead of the retired literal `/workspace/profiles`, which could only `ENOENT`; the remaining provisioning gap (no `AGENTBOX_STACK`, no `sign_stack`, no `nostr.key.enc` on disk) is recorded as ADR-2064's activation prerequisite, not fixed in code.
 - **ADR-2041** — WIRE: the ADR-057 execution journal and the ADR-059 action
   pipeline are connected to the real action path (`POST /v1/tasks`) instead of
   existing only under `tests/contract/`.

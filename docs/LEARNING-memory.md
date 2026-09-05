@@ -268,7 +268,7 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
    requires a passing median-of-3 harness run against the frozen fixture.
 7. **384-dim embedding model** (`bge-small-en-v1.5`) is the active column; a
    dimension migration mints a fresh SONA scope, never reusing `agentbox_memory`.
-8. **Non-concurrent HNSW rebuild only** after bulk churn.
+8. **Non-concurrent AND serial HNSW rebuild only** after bulk churn — `max_parallel_maintenance_workers = 0` (pinned at database level 2026-09-05); the extension's parallel build leaves rows unreachable (ADR-2018 diagnosis 2026-09-05).
 
 ## Change process
 
@@ -319,3 +319,16 @@ longer the only control. Invariant 2 above states the enforced rule.
 - **ADR-2060** (proposed) — the D5 cross-store erasure gap gets a designed target: a
   durable reverse tombstone into RuVector and a restorable memory backup. Authority stays
   with VisionClaw's `DATA-authority-erasure`.
+
+- **ADR-2073** (proposed) — split the Loom store into `assert` and `inferred` named graphs so
+  seed and expand both carry a `GRAPH` clause and provenance scope is backend-enforced; until the
+  split, an unenforceable scope is refused with an explicit limitation rather than silently
+  merged. ADR-2023's "Remaining" is the ORIGIN of this gap and is referenced (`see`), not
+  superseded. `GOVERNANCE-capabilities.md` keeps the harness-side Loom façade authority.
+- **ADR-2076** (proposed) — benchmark the agent retrieval path (`/loom/search` + `/loom/sparql`)
+  on its own terms with a frozen recall band, in the shape of the ADR-040 D2/W-B RuVector recall
+  gate; scaffold and chat benchmark numbers are never cited as evidence for this path.
+
+## Remediation — 2026-09-05
+
+- ADR-2018 recall FAIL diagnosed and closed: not index churn (a 16-worker parallel `REINDEX` reproduced 151/200 self-recall, worse than the incrementally grown index) but the ruvector 0.3.0 HNSW **parallel build**, which leaves rows unreachable from the graph at any `ef_search` and any LIMIT. A serial rebuild (`SET max_parallel_maintenance_workers = 0; REINDEX INDEX idx_memory_embedding_hnsw;`, ~8 min) restores self 189/200 and true 115/120 (median-of-3, gate PASS). `ALTER DATABASE ruvector SET max_parallel_maintenance_workers = 0` pins it; the sidecar's `postgresql.auto.conf` still carries the `ALTER SYSTEM` 16 for other databases.

@@ -943,12 +943,17 @@ class NostrBridge {
  *
  * @param {string}  stack            - Profile/stack name.
  * @param {object}  [opts]
- * @param {string}  [opts.profilesRoot='/workspace/profiles'] - Override for tests.
+ * @param {string}  [opts.profilesRoot] - Override for tests. Defaults to
+ *   `$WORKSPACE/profiles`, falling back to `/home/devuser/workspace/profiles`.
+ *   ADR-2066: the previous default was the RETIRED literal `/workspace`, which
+ *   does not exist in this image, so every unoverridden call could only ENOENT
+ *   and pod NIP-98 signing could never load a key.
  * @param {string}  [opts.managementKey]  - Override MANAGEMENT_API_KEY.
  * @returns {{ sign(event: object): Promise<object> }}
  */
 function loadSigner(stack, opts = {}) {
-  const profilesRoot   = opts.profilesRoot   ?? '/workspace/profiles';
+  const profilesRoot   = opts.profilesRoot
+    ?? `${process.env.WORKSPACE || '/home/devuser/workspace'}/profiles`;
   const managementKey  = opts.managementKey  ?? process.env.MANAGEMENT_API_KEY;
 
   if (!managementKey) {

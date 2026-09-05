@@ -84,23 +84,47 @@ function _countCrossing(kind, direction) {
   }
 }
 
-// Closed kind map (B04). `agent` is special-cased to did:nostr (no URN kind).
+// ---------------------------------------------------------------------------
+// Closed kind map (B04), DERIVED — never transcribed (ADR-2061).
+//
+// `schema/federation-kinds.json` is the single versioned artefact both
+// translators read: this bridge loads it at require time, and VisionClaw's
+// `src/uri/mod.rs::cross_from_agentbox` embeds the same bytes via
+// `include_str!("../../agentbox/schema/federation-kinds.json")` (the agentbox
+// tree is the `./agentbox` submodule of the VisionClaw checkout). A paired
+// fixture — `tests/contract/federation-kind-parity.contract.spec.js` here and
+// `federation_kind_artefact_matches_translator` there — asserts both sides
+// agree on crossed-vs-refused and on the target grammar when crossed, so a
+// one-sided kind addition is a test failure rather than a runtime surprise.
+//
+// `agent` is special-cased to did:nostr (there is no urn:visionclaw:agent kind)
+// and so is excluded from the URN→URN map. `memory` keeps its `concept` entry
+// because the *governed elevation* path can cross it with an explicit
+// {domain, slug}; on the hot path the artefact records it as `crosses: false`
+// with a refusal reason, which is what makes "deliberately closed" legible as
+// something other than "not implemented".
+//
 // `bead` crosses structurally: both grammars are <pubkey>:<sha256-12> now that
 // agentbox beads are content-addressed (uris.js), so the local passes through
 // unchanged — content identity is preserved across the boundary and the
 // crossing round-trips without a UrnMapping store (audit 2026-06-09 A3).
-const AGENTBOX_TO_VISIONCLAW = Object.freeze({
-  activity: 'execution',
-  thing: 'kg',
-  memory: 'concept',
-  bead: 'bead',
-});
-const VISIONCLAW_TO_AGENTBOX = Object.freeze({
-  execution: 'activity',
-  kg: 'thing',
-  concept: 'memory',
-  bead: 'bead',
-});
+// ---------------------------------------------------------------------------
+const FEDERATION_KINDS_PATH = path.join(__dirname, '..', '..', 'schema', 'federation-kinds.json');
+const FEDERATION_KINDS = Object.freeze(
+  JSON.parse(fs.readFileSync(FEDERATION_KINDS_PATH, 'utf8')),
+);
+
+const AGENTBOX_TO_VISIONCLAW = Object.freeze(Object.fromEntries(
+  FEDERATION_KINDS.kinds
+    // A row carries `target_kind` whenever a VisionClaw counterpart exists at
+    // all — crossing rows and the deliberate-refusal row alike. `did:nostr` is
+    // an identity, not a URN kind, so it never enters this URN→URN map.
+    .filter((k) => k.target_kind && k.target_kind !== 'did:nostr')
+    .map((k) => [k.kind, k.target_kind]),
+));
+const VISIONCLAW_TO_AGENTBOX = Object.freeze(Object.fromEntries(
+  Object.entries(AGENTBOX_TO_VISIONCLAW).map(([ab, vc]) => [vc, ab]),
+));
 
 const PUBKEY_HEX_RE = /^[0-9a-f]{64}$/;
 const VC_URN_RE = /^urn:visionclaw:([a-z]+):(.+)$/;
@@ -363,6 +387,8 @@ function durableStore() {
 }
 
 module.exports = {
+  FEDERATION_KINDS,
+  FEDERATION_KINDS_PATH,
   AGENTBOX_TO_VISIONCLAW,
   VISIONCLAW_TO_AGENTBOX,
   sha12,

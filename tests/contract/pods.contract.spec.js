@@ -10,7 +10,8 @@
 
 const { assertMethodShape, assertContractVersion, assertOffClassThrows } =
   require('./fixtures/shared-assertions');
-const { AdapterDisabled } = require('../../management-api/adapters/errors');
+const { AdapterDisabled, SigningUnavailable } =
+  require('../../management-api/adapters/errors');
 
 const { LocalSolidRsPodsAdapter }  = require('../../management-api/adapters/pods/local-solid-rs');
 const { ExternalPodsAdapter }      = require('../../management-api/adapters/pods/external');
@@ -107,6 +108,13 @@ const IMPLS = [
     }),
     isReal: true,
     firstClass: true,
+    // ADR-2064: same impl, constructed with signing REQUIRED and no originator.
+    makeFailClosedAdapter: (fetchFn) => new LocalSolidRsPodsAdapter({
+      baseUrl: 'http://127.0.0.1:8484',
+      fetchFn,
+      probeCapabilities: false,
+      requireSigned: true,
+    }),
   },
   // local-jss row removed 2026-04-25 along with the legacy Python stub.
   // The base class (renamed to SolidHttpPodsAdapter in _solid-http-base.js)
@@ -117,6 +125,11 @@ const IMPLS = [
     makeAdapter: () => new ExternalPodsAdapter({ baseUrl: 'http://fake-host', fetchFn: makeJssFetch() }),
     isReal: true,
     firstClass: false,
+    makeFailClosedAdapter: (fetchFn) => new ExternalPodsAdapter({
+      baseUrl: 'http://fake-host',
+      fetchFn,
+      requireSigned: true,
+    }),
   },
   {
     label: 'off',
@@ -126,11 +139,54 @@ const IMPLS = [
   },
 ];
 
-for (const { label, makeAdapter, isReal, firstClass } of IMPLS) {
+for (const { label, makeAdapter, isReal, firstClass, makeFailClosedAdapter } of IMPLS) {
   describe(`pods :: ${label}`, () => {
 
     let adapter;
     beforeEach(() => { adapter = makeAdapter(); });
+
+    // ── ADR-2064: signing unavailable must fail CLOSED ────────────────────
+    // Every real impl inherits the fail-closed wrapper from the shared Solid
+    // HTTP base, so the guarantee is asserted per impl class rather than once
+    // on the base: when `[integrations.solid_pod_rs].sign_requests` is on and
+    // no NIP-98 header can be originated, the adapter throws and emits NO
+    // request — it never degrades to a silent unsigned call at a default-deny
+    // pod. The `off` class has no HTTP surface and is exempt.
+    if (makeFailClosedAdapter) {
+      describe('[ADR-2064] fail-closed request signing', () => {
+        it('throws SigningUnavailable on every verb when signing is required but absent', async () => {
+          const calls = [];
+          const spyFetch = async (url, init = {}) => {
+            calls.push({ url, init });
+            throw new Error('unreachable: an unsigned request escaped the adapter');
+          };
+          const failClosed = makeFailClosedAdapter(spyFetch);
+
+          for (const [method, args] of [
+            ['write', ['/docs/x', '{}', 'application/ld+json']],
+            ['read',  ['/docs/x']],
+            ['del',   ['/docs/x']],
+            ['list',  ['/docs/']],
+          ]) {
+            await expect(failClosed[method](...args)).rejects.toBeInstanceOf(SigningUnavailable);
+          }
+
+          // The load-bearing assertion: nothing left the process unsigned.
+          expect(calls).toHaveLength(0);
+        });
+
+        it('carries the typed SIGNING_UNAVAILABLE code and pods slot', async () => {
+          const failClosed = makeFailClosedAdapter(async () => {
+            throw new Error('unreachable');
+          });
+          await expect(failClosed.read('/docs/x')).rejects.toMatchObject({
+            name: 'SigningUnavailable',
+            code: 'SIGNING_UNAVAILABLE',
+            slot: 'pods',
+          });
+        });
+      });
+    }
 
     it('exposes all required interface methods', () => {
       assertMethodShape(adapter, REQUIRED_METHODS);

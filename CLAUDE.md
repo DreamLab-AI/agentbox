@@ -14,7 +14,7 @@ Agentbox is a standalone sovereign agent-container product (`github.com/DreamLab
 store      = ruvector-postgres sidecar (mandatory, ADR-015; ruvector-mcp.cjs fails closed, no sql.js fallback)
 access     = mcp__claude-flow__memory_* ONLY (CLI + raw SQL bypass the embedding pipeline → rows invisible to HNSW)
 embedding  = bge-small-en-v1.5 via Xinference, 384-dim, client-side (never MiniLM; A/B rejected bge-m3, Qwen3)
-index-law  = HNSW degrades silently under bulk churn → non-concurrent rebuild (m=16, ef_construction=128, ~5min)
+index-law  = HNSW degrades silently under bulk churn → non-concurrent AND serial HNSW rebuild (m=16, ef_construction=128, max_parallel_maintenance_workers=0, ~8 min); the parallel build (16 workers) leaves ~20% of rows unreachable (self-recall 151/200 vs 189/200 serial, measured 2026-09-05)
 FORBIDDEN  = CREATE INDEX CONCURRENTLY on ruvector HNSW AM (verified double-insertion)
 recall-gate= ./agentbox.sh ruvector recall — REQUIRED before/after any retrieval-geometry change
              frozen band: self ≥175/200, true ≥107/120 target; the ENFORCED floor is true ≥102/120
@@ -67,6 +67,7 @@ The image bakes `/opt/agentbox/skills` (126 skills). Skills are the JIT context 
 - Supervisord runs as PID 1 root; every long-running program drops to `user=devuser`. No agent-facing process runs as root after bootstrap.
 - Older docs describing `gemini-user`/`openai-user`/etc pseudo-users are legacy, not the runtime path.
 - Permission mode is **auto** (classifier per action) since 2026-09-03: `dsp` = `claude --permission-mode auto`, `dspb` = the legacy blanket bypass for isolated throwaway containers only (Claude Code 2.1.78+ stopped honouring bypass for `.git/` and `.claude/` writes). The entrypoint seeds `permissions.defaultMode = "auto"` if unset, pre-accepts the auto-mode opt-in dialog, and seeds folder trust for every checkout and worktree (`config/hooks/trust-seed.cjs`), so unattended tmux teammate panes do not block on dialogs.
+- **Not every file in `config/hooks/` is a hook.** Two registration sites exist — the entrypoint seeds ROOT-session hooks into `~/.claude/settings.json`, `stacks.rs` projects PER-PROFILE ones into `workspace/profiles/<stack>/.claude/` — and some files are neither: `project-tracking-publish.cjs` is a CLI the management API spawns, `fleet-tab-name.sh` a helper. Inventory + how to add one: [`config/hooks/README.md`](config/hooks/README.md) (ADR-2068).
 - Claude Fable 5.1 uses always-on adaptive thinking. Keep multi-turn API histories append-only and replay thinking blocks exactly as returned; do not force tool choice. In agent prompts, request concise progress updates during long tool loops, permit batching independent tool calls, require completion without re-asking for already-authorised steps, and prefer targeted edits over whole-file rewrites.
 
 ## Subsystem references (load on demand)

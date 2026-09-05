@@ -94,6 +94,11 @@ class RelayConsumer {
    * @param {string[]} [opts.relayUrls]            - Relays to subscribe; default local :7777 + NOSTR_RELAYS
    * @param {object}   [opts.adapters]             - { events, orchestrator } ADR-005 adapters
    * @param {string}   [opts.fanout="off"]         - bidirectional | publish-only | subscribe-only | off
+   * @param {boolean}  [opts.writeInbox=true]      - ADR-2065. False hands
+   *                                                  `pods/<npub>/events/inbox/` to the Rust
+   *                                                  nostr-pod-bridge daemon, so exactly one
+   *                                                  process writes it. This consumer then keeps
+   *                                                  only the surfaces the daemon lacks.
    * @param {Function} [opts.intentSpec]           - (event, context) => { command, args?, env?, cwd? }
    *                                                  Produces an orchestrator.spawnAgent spec for
    *                                                  agent-intent kinds (38000-38099). When absent,
@@ -147,6 +152,31 @@ class RelayConsumer {
     this._subId = null;
     this._outboxTimer = null;
     this._outboxActive = false;
+
+    // ADR-2065: who owns `pods/<npub>/events/inbox/<id>.json`.
+    //
+    // The Rust `nostr-pod-bridge` daemon is a kind-AGNOSTIC inbox writer: it
+    // writes every allow-listed, addressed event under the same outer event id
+    // this consumer uses, so when it is running both processes write the
+    // identical path. `writeInbox:false` hands that path to the daemon and
+    // leaves this consumer owning only the surfaces the Rust crate does not
+    // implement (ACSP governance 31400-31405, agent-intent 38000+, payments
+    // 38200/38201, the outbox publisher and external fanout).
+    //
+    // Default TRUE: when the relay slot is not served by the Rust bridge
+    // (`implementation = "external"`, or pod_bridge off), this consumer is the
+    // only inbox writer and must keep writing. Callers that know the daemon
+    // owns ingress pass false.
+    this._writeInbox = opts.writeInbox !== false;
+
+    // Dedup for delegated mode. When the daemon owns the inbox we can no
+    // longer dedup by "is the file already there" — the daemon's own write
+    // would look like a duplicate and suppress THIS consumer's governance,
+    // intent and payment dispatch (the live defect ADR-2065 closes). An
+    // in-process seen-set keeps dispatch exactly-once without reading a file
+    // another process owns.
+    this._seenEventIds = new Set();
+
     this._metrics = {
       inbound_accepted: 0,
       inbound_rejected_sig: 0,
@@ -267,26 +297,45 @@ class RelayConsumer {
       return;
     }
 
-    // I08: content-addressed dedup — reject if event id already in inbox.
-    const inboxPath = path.join(this._podRoot, 'pods', recipient, 'events', 'inbox');
-    const finalPath = path.join(inboxPath, `${event.id}.json`);
-    if (fs.existsSync(finalPath)) {
-      this._metrics.inbound_rejected_duplicate++;
-      return;
-    }
+    // I08: content-addressed dedup by event id.
+    // Compare against `false` explicitly, not truthiness: instances built by
+    // tests via `Object.create(RelayConsumer.prototype)` never run the
+    // constructor, so an unset field must mean the legacy "this consumer owns
+    // the inbox" default rather than silently selecting delegated mode.
+    if (this._writeInbox !== false) {
+      // This consumer owns the inbox: dedup against the file it wrote.
+      const inboxPath = path.join(this._podRoot, 'pods', recipient, 'events', 'inbox');
+      const finalPath = path.join(inboxPath, `${event.id}.json`);
+      if (fs.existsSync(finalPath)) {
+        this._metrics.inbound_rejected_duplicate++;
+        return;
+      }
 
-    // Persist atomically (write tmp + rename).
-    // PRD-010 F19: emit LDN-native AS2 JSON-LD instead of raw Nostr JSON.
-    // The full signed event is preserved in x:nostrEvent for provenance.
-    try {
-      fs.mkdirSync(inboxPath, { recursive: true });
-      const tmpPath = path.join(inboxPath, `.${event.id}.${process.pid}.tmp`);
-      const ldnPayload = this._formatAsLdn(event, recipient, relayUrl);
-      fs.writeFileSync(tmpPath, JSON.stringify(ldnPayload, null, 2));
-      fs.renameSync(tmpPath, finalPath);
-    } catch (err) {
-      this._logger.error({ err, eventId: event.id }, 'pod-inbox-write-failed');
-      return;
+      // Persist atomically (write tmp + rename).
+      // PRD-010 F19: emit LDN-native AS2 JSON-LD instead of raw Nostr JSON.
+      // The full signed event is preserved in x:nostrEvent for provenance.
+      try {
+        fs.mkdirSync(inboxPath, { recursive: true });
+        const tmpPath = path.join(inboxPath, `.${event.id}.${process.pid}.tmp`);
+        const ldnPayload = this._formatAsLdn(event, recipient, relayUrl);
+        fs.writeFileSync(tmpPath, JSON.stringify(ldnPayload, null, 2));
+        fs.renameSync(tmpPath, finalPath);
+      } catch (err) {
+        this._logger.error({ err, eventId: event.id }, 'pod-inbox-write-failed');
+        return;
+      }
+    } else {
+      // ADR-2065 delegated mode: the Rust nostr-pod-bridge daemon owns the
+      // inbox write. Dedup in-process — checking the file here would read the
+      // daemon's write as a duplicate and silently skip the governance /
+      // intent / payment dispatch below, which is exactly the defect this
+      // consolidation removes.
+      if (!this._seenEventIds) this._seenEventIds = new Set();
+      if (this._seenEventIds.has(event.id)) {
+        this._metrics.inbound_rejected_duplicate++;
+        return;
+      }
+      this._seenEventIds.add(event.id);
     }
 
     this._metrics.inbound_accepted++;

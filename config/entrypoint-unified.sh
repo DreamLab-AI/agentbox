@@ -1208,6 +1208,71 @@ else { console.log('  [fleet] fleet-session-start hook already registered'); }
 FLEETJS
 fi
 
+# ── Ontology monitor: register the gated SessionEnd hook in the ROOT settings.json ──
+# ADR-2068. `[ontology_monitor] enabled` already reaches every PROFILE session via
+# `agentbox-manifest provision-stacks` (stacks.rs `learning_hooks()` + the settings `env`
+# block), but the ROOT session — ~/.claude/settings.json, i.e. tmux window 0 and every
+# unattended teammate pane, where most of the work actually happens — was never wired, so
+# the gate read "on" while the session doing the concept-bearing work never ran the review.
+# Register the hook AND seed its master switch when the gate is on; DE-REGISTER both when
+# it is off, so flipping the gate to false leaves no runtime trace (ADR-2020
+# byte-identical-when-off). Idempotent, fail-open, never blocks boot.
+_ONTOLOGY_MONITOR_ON=0
+_ONTOLOGY_MONITOR_MODE="dryrun"
+if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _ONTOLOGY_MONITOR_ON="$(agentbox-manifest toml-bool \
+    --manifest "$AGENTBOX_CONFIG" --path ontology_monitor.enabled 2>/dev/null || echo 0)"
+  _ONTOLOGY_MONITOR_MODE="$(agentbox-manifest toml-string \
+    --manifest "$AGENTBOX_CONFIG" --path ontology_monitor.mode 2>/dev/null || echo dryrun)"
+fi
+_ONTOLOGY_HOOK="/opt/agentbox/config/hooks/ontology-monitor.cjs"
+if [ -f "$_ONTOLOGY_HOOK" ] && command -v node >/dev/null 2>&1; then
+  ONTOLOGY_HOOK="$_ONTOLOGY_HOOK" SETTINGS="$_CLAUDE_SETTINGS" \
+  ONTOLOGY_ON="$_ONTOLOGY_MONITOR_ON" ONTOLOGY_MODE="${_ONTOLOGY_MONITOR_MODE:-dryrun}" \
+  node <<'ONTOJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS;
+const MARKER = 'ontology-monitor.cjs';
+const on = /^(1|true|yes)$/i.test(process.env.ONTOLOGY_ON || '');
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { /* first boot */ }
+const before = JSON.stringify(s);
+if (on) {
+  // Timeout matches the profile wiring (stacks.rs) and the hook's own 180s budget.
+  s.hooks = s.hooks || {};
+  s.hooks.SessionEnd = s.hooks.SessionEnd || [];
+  const has = s.hooks.SessionEnd.some((g) => (g.hooks || []).some((h) => String(h.command || '').includes(MARKER)));
+  if (!has) {
+    s.hooks.SessionEnd.push({ hooks: [{ type: 'command', command: `node ${process.env.ONTOLOGY_HOOK} || true`, timeout: 200000 }] });
+  }
+  // The hook fails open unless its master switch is set; the profile settings seed it the
+  // same way (stacks.rs), so the root session must too or the hook is a registered no-op.
+  s.env = s.env || {};
+  s.env.AGENTBOX_ONTOLOGY_MONITOR = '1';
+  s.env.AGENTBOX_ONTOLOGY_MONITOR_MODE = process.env.ONTOLOGY_MODE || 'dryrun';
+} else {
+  // Gate off → retract anything an earlier on-boot wrote. Never create keys here.
+  if (s.hooks && Array.isArray(s.hooks.SessionEnd)) {
+    s.hooks.SessionEnd = s.hooks.SessionEnd
+      .map((g) => ({ ...g, hooks: (g.hooks || []).filter((h) => !String(h.command || '').includes(MARKER)) }))
+      .filter((g) => (g.hooks || []).length > 0);
+    if (!s.hooks.SessionEnd.length) delete s.hooks.SessionEnd;
+  }
+  if (s.env) {
+    delete s.env.AGENTBOX_ONTOLOGY_MONITOR;
+    delete s.env.AGENTBOX_ONTOLOGY_MONITOR_MODE;
+    // An `env` map the on-path created and nothing else uses is itself a trace.
+    if (!Object.keys(s.env).length) delete s.env;
+  }
+}
+if (JSON.stringify(s) !== before) {
+  fs.writeFileSync(f, JSON.stringify(s, null, 2));
+  console.log(`  [ontology] ${on ? 'registered' : 'de-registered'} ontology-monitor SessionEnd hook in settings.json`);
+} else {
+  console.log(`  [ontology] ontology-monitor hook already ${on ? 'registered' : 'absent'}`);
+}
+ONTOJS
+fi
+
 # ── Workspace trust seed: pre-accept Claude Code's folder-trust dialog ──
 # The "Do you trust the files in this folder?" gate blocks any unattended
 # session (tmux teammate panes, background agents, cron `claude -p`) started

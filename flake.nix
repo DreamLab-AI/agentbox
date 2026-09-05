@@ -3597,6 +3597,16 @@ ${ragflowNetworkDecl}
           "AGENTBOX_RELAY_DATA_DIR=${relayCfg.data_dir or "/var/lib/nostr-relay"}"
           "AGENTBOX_RELAY_POLICY=${relayCfg.ingress_policy or "allowlist"}"
           "AGENTBOX_RELAY_POD_BRIDGE=${boolEnv (relayCfg.pod_bridge or true)}"
+          # ADR-2065 — which process owns pods/<npub>/events/inbox/<id>.json.
+          # Projected from `podBridgeEnabled`, the SAME expression that gates the
+          # [program:nostr-relay] nostr-pod-bridge supervisor block, so this
+          # states whether that daemon is actually running rather than
+          # re-deriving it from the manifest. When it is, management-api's
+          # RelayConsumer stops writing the inbox (the daemon is a kind-agnostic
+          # writer keyed on the same outer event id) and keeps only the surfaces
+          # the Rust crate does not implement. When the relay slot is external,
+          # this stays "relay-consumer" and the JS consumer remains the writer.
+          "AGENTBOX_POD_INBOX_WRITER=${if podBridgeEnabled then "rust-pod-bridge" else "relay-consumer"}"
           "AGENTBOX_RELAY_FANOUT=${relayCfg.external_fanout or "off"}"
           "AGENTBOX_RELAY_RETENTION_DAYS=${toString (relayCfg.retention_days or 30)}"
           # PRD-014 Seam B — voice-origin intent dispatch (B3) + emit auth (B4).

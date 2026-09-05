@@ -423,6 +423,11 @@ describe('governance flow :: end-to-end', () => {
       consumer._logger             = opts.logger || logger;
       consumer._verifyEvent        = () => true;
       consumer._now                = () => Date.now();
+      // ADR-2065: default true preserves the legacy single-writer path; pass
+      // writeInbox:false to exercise delegated mode, where the Rust
+      // nostr-pod-bridge daemon owns pods/<npub>/events/inbox/.
+      consumer._writeInbox         = opts.writeInbox !== false;
+      consumer._seenEventIds       = new Set();
       consumer._metrics            = {
         inbound_accepted: 0,
         inbound_rejected_sig: 0,
@@ -548,6 +553,80 @@ describe('governance flow :: end-to-end', () => {
       expect(stored.type).toBe('Announce');
       expect(stored['x:nostrEvent']).toBeDefined();
       expect(stored['x:nostrEvent'].kind).toBe(kinds.ACTION_RESPONSE);
+    });
+
+    // ── ADR-2065: one inbox writer ──────────────────────────────────────
+    // The Rust nostr-pod-bridge daemon is a kind-agnostic inbox writer keyed
+    // on the same outer event id, so when it runs both processes wrote the
+    // identical path. In delegated mode this consumer stops writing the inbox
+    // but MUST keep dispatching the surfaces the Rust crate does not
+    // implement.
+    describe('[ADR-2065] delegated inbox mode', () => {
+
+      it('does not write the inbox when the pod-bridge daemon owns it', () => {
+        const consumer = makeTestConsumer({ writeInbox: false });
+        const response = makeActionResponse();
+
+        consumer._onInbound(response, 'ws://test-relay:7777');
+
+        const inboxFile = path.join(
+          podRoot, 'pods', TEST_NPUB, 'events', 'inbox', `${RESPONSE_EVENT_ID}.json`
+        );
+        expect(fs.existsSync(inboxFile)).toBe(false);
+      });
+
+      it('still routes governance events while the daemon owns the inbox', () => {
+        const consumer = makeTestConsumer({ writeInbox: false });
+        const response = makeActionResponse();
+
+        consumer._onInbound(response, 'ws://test-relay:7777');
+
+        const govFile = path.join(
+          podRoot, 'pods', TEST_NPUB, 'events', 'governance', `${RESPONSE_EVENT_ID}.json`
+        );
+        expect(fs.existsSync(govFile)).toBe(true);
+        expect(consumer._metrics.inbound_accepted).toBe(1);
+      });
+
+      /**
+       * The regression this consolidation exists to kill: the daemon writes
+       * the inbox file first, the old file-existence dedup read that as a
+       * duplicate, and the governance decision was silently dropped. In
+       * delegated mode dedup is in-process, so a pre-existing inbox file
+       * written by the daemon must NOT suppress dispatch.
+       */
+      it('is not suppressed by an inbox file the daemon already wrote', () => {
+        const consumer = makeTestConsumer({ writeInbox: false });
+        const response = makeActionResponse();
+
+        // Simulate the daemon winning the race.
+        const inboxDir = path.join(podRoot, 'pods', TEST_NPUB, 'events', 'inbox');
+        fs.mkdirSync(inboxDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(inboxDir, `${RESPONSE_EVENT_ID}.json`),
+          JSON.stringify({ written_by: 'nostr-pod-bridge' })
+        );
+
+        consumer._onInbound(response, 'ws://test-relay:7777');
+
+        const govFile = path.join(
+          podRoot, 'pods', TEST_NPUB, 'events', 'governance', `${RESPONSE_EVENT_ID}.json`
+        );
+        expect(govFile && fs.existsSync(govFile)).toBe(true);
+        expect(consumer._metrics.inbound_accepted).toBe(1);
+        expect(consumer._metrics.inbound_rejected_duplicate).toBe(0);
+      });
+
+      it('still dedups a genuinely repeated event in delegated mode', () => {
+        const consumer = makeTestConsumer({ writeInbox: false });
+        const response = makeActionResponse();
+
+        consumer._onInbound(response, 'ws://test-relay:7777');
+        consumer._onInbound(response, 'ws://test-relay:7777');
+
+        expect(consumer._metrics.inbound_accepted).toBe(1);
+        expect(consumer._metrics.inbound_rejected_duplicate).toBe(1);
+      });
     });
   });
 

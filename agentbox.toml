@@ -484,9 +484,28 @@ enable_mcp             = false    # → --mcp on the [program:solid-pod] command
 # autonomous agent authenticates to a default-deny pod under its OWN did:nostr
 # (PRD-014 Seam C / C2). Default OFF: unsigned requests are byte-identical to
 # prior behaviour. When on, the signing key is the active stack's nostr.key.enc
-# (resolved from AGENTBOX_STACK / integrations.solid_pod_rs.sign_stack); load
-# failures fail open (adapter goes out unsigned, pod still fails closed).
-sign_requests          = true     # originate signed NIP-98 from the pods adapter
+# (resolved from AGENTBOX_STACK / integrations.solid_pod_rs.sign_stack).
+#
+# ADR-2064: this key now FAILS CLOSED. When it is on and no NIP-98 header can be
+# originated (no stack resolved, key undecryptable, originator declines), the
+# pods adapter throws `SigningUnavailable` and the slot degrades visibly — it no
+# longer emits a silent unsigned request. There is no dev-profile relaxation
+# (none exists in this codebase; see ADR-2041).
+#
+# PREREQUISITE: leaving this `true` requires resolvable signing material —
+# AGENTBOX_STACK (or `sign_stack` below) naming a stack that holds
+# `nostr.key.enc` + `nostr.salt`. If signing is not provisioned, set this to
+# `false` to declare the pod path unsigned deliberately, rather than claiming
+# signing that the runtime cannot honour.
+# QUEEN DECISION 2026-09-05 (ADR-2064 landing): the rebuilt image resolves NO
+# signing material — no stack holds nostr.key.enc, sign_stack is unset and the
+# supervised management-api has no AGENTBOX_STACK — so every pods request has
+# gone out unsigned since the flag was introduced (the fail-open bug ADR-2064
+# closes). Declared unsigned DELIBERATELY here until ADR-2078 provisions the
+# signer from the sovereign identity the boot already mints
+# (/var/lib/agentbox/identities/agent-did-main.key); flip back to true only
+# together with that wiring, or the pods slot degrades at the next restart.
+sign_requests          = false    # originate signed NIP-98 from the pods adapter (see ADR-2064/2078)
 enable_did_nostr       = true     # did:nostr:<pubkey> → Solid WebID resolver (ADR-013)
 enable_webhook_signing = true     # RFC 9421 Ed25519 outbound notification signing
 enable_rate_limit      = true     # sliding-window LRU per-connection guard

@@ -1170,6 +1170,22 @@ async function start() {
       }
     }
 
+    // ── Briefing workflow surface (ADR-2072; closes VisionClaw ADR-2085) ────
+    // brief → execute → debrief, the server side of VisionClaw's
+    // BriefingService. Registered here (not with the top-level routes) because
+    // it dispatches every document write through the pods slot decorated onto
+    // `app.adapters` above; `processManager` drives the execute step's role
+    // spawns through the same ADR-2041 action pipeline as POST /v1/tasks.
+    {
+      try {
+        await app.register(require('./routes/briefing'), { logger, processManager });
+        const impl = resolvedAdapters && resolvedAdapters.pods ? resolvedAdapters.pods._implName : 'off';
+        logger.debug({ event: 'briefing.mounted', pods: impl }, 'Briefing route ready at /v1/briefs');
+      } catch (err) {
+        logger.error({ err: err.message }, 'Briefing route failed to mount');
+      }
+    }
+
     // ── SecurityProfileApplied event (PRD-003 §5.4a) ───────────────────────
     // Emit a structured log describing the resolved security posture so that
     // operators can verify hardening is in effect at startup time.
@@ -1281,11 +1297,36 @@ async function start() {
           // events. Null when AGENTBOX_INTENT_COMMAND is unset → marker-only
           // (prior behaviour), so wiring is a no-op until the operator opts in.
           const intentSpec = buildDefaultIntentSpec();
+          // ADR-2065: one inbox writer. When the relay slot is served by the
+          // Rust nostr-pod-bridge daemon, IT owns
+          // `pods/<npub>/events/inbox/<id>.json` — it is a kind-agnostic writer
+          // keyed on the same outer event id, so both processes were writing
+          // the identical path, and its write raced this consumer's
+          // file-existence dedup into silently skipping governance / intent /
+          // payment dispatch. The env var is projected by flake.nix from the
+          // SAME expression that gates the daemon's supervisor block, so it
+          // states a fact about the running system rather than re-deriving it.
+          // The explicit signal is authoritative once the image carries it.
+          // Until the next rebuild projects it (ADR-039 apply class: rebuild),
+          // fall back to reproducing the SAME Nix expression from env vars the
+          // running image already exports — `podBridgeEnabled = relayLocal &&
+          // pod_bridge`, where relayLocal means the relay slot is served
+          // locally by nostr-rs-relay|rnostr. That makes the consolidation
+          // effective on restart rather than only after a rebuild, and the two
+          // paths cannot disagree because they encode one expression.
+          const relayImpl = process.env.AGENTBOX_RELAY_IMPL || '';
+          const relayLocal = relayImpl === 'nostr-rs-relay' || relayImpl === 'rnostr';
+          const inboxWriterEnv = process.env.AGENTBOX_POD_INBOX_WRITER;
+          const podBridgeOwnsInbox = inboxWriterEnv
+            ? inboxWriterEnv === 'rust-pod-bridge'
+            : relayLocal; // AGENTBOX_RELAY_POD_BRIDGE === 'true' is already
+                          // asserted by the enclosing `if`.
           const consumer = new RelayConsumer({
             npubs,
             allowedPubkeys: (process.env.AGENTBOX_RELAY_ALLOWED_PUBKEYS || '').split(',').filter(Boolean),
             ingressPolicy: process.env.AGENTBOX_RELAY_POLICY || 'allowlist',
             fanout: process.env.AGENTBOX_RELAY_FANOUT || 'off',
+            writeInbox: !podBridgeOwnsInbox,
             ...(intentSpec ? { intentSpec } : {}),
             adapters: {
               events: resolvedAdapters.events || null,
@@ -1300,7 +1341,12 @@ async function start() {
           });
           await consumer.start();
           app.addHook('onClose', async () => { await consumer.stop(); });
-          logger.info('RelayConsumer started — pod-bridge active');
+          logger.info(
+            { inboxWriter: podBridgeOwnsInbox ? 'rust-pod-bridge' : 'relay-consumer' },
+            podBridgeOwnsInbox
+              ? 'RelayConsumer started — governance/intent/payment/outbox only; inbox owned by nostr-pod-bridge (ADR-2065)'
+              : 'RelayConsumer started — pod-bridge active (sole inbox writer)'
+          );
         } else {
           logger.warn('RelayConsumer skipped — AGENTBOX_NPUB is empty (sovereign-bootstrap may not have run)');
         }

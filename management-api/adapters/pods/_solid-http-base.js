@@ -19,7 +19,12 @@
  */
 
 const { BaseAdapter } = require('../base');
-const { NotFound, PermissionDenied, ValidationError } = require('../errors');
+const {
+  NotFound,
+  PermissionDenied,
+  ValidationError,
+  SigningUnavailable,
+} = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 
 const DEFAULT_BASE = 'http://localhost:8484';
@@ -35,32 +40,72 @@ class SolidHttpPodsAdapter extends BaseAdapter {
    *   attached to every request so the adapter authenticates to a
    *   default-deny pod instead of going out anonymous (PRD-014 Seam C / C2).
    *   Absent → requests are unsigned (backward compatible).
+   * @param {boolean} [opts.requireSigned=false] - ADR-2064 fail-closed switch.
+   *   Set from `[integrations.solid_pod_rs].sign_requests`. When true, every
+   *   request MUST carry an originated NIP-98 header: if no originator is
+   *   configured, the signer could not be built, or the originator declines,
+   *   the request THROWS `SigningUnavailable` instead of going out unsigned.
+   *   Default false keeps the unsigned path byte-identical.
    */
   constructor(opts = {}) {
     super('pods', opts.impl || 'solid-http', CONTRACT_VERSIONS.pods);
     this._base = (opts.baseUrl || DEFAULT_BASE).replace(/\/$/, '');
     this._rawFetch = opts.fetchFn || ((...a) => fetch(...a));
     this._nip98 = typeof opts.nip98 === 'function' ? opts.nip98 : null;
-    // Route every request through the signer when one is configured. All
-    // verbs (base and subclass overrides) call `this._fetch`, so wrapping
-    // here signs the whole surface in one place.
-    this._fetch = this._nip98 ? this._signedFetch.bind(this) : this._rawFetch;
+    this._requireSigned = opts.requireSigned === true;
+    // Route every request through the signer when one is configured, and ALSO
+    // when signing is required but no originator could be built — in that case
+    // `_signedFetch` is what turns the missing signer into a typed throw
+    // (ADR-2064) rather than a silent unsigned request. All verbs (base and
+    // subclass overrides) call `this._fetch`, so wrapping here covers the
+    // whole surface in one place.
+    this._fetch = (this._nip98 || this._requireSigned)
+      ? this._signedFetch.bind(this)
+      : this._rawFetch;
   }
 
   /**
-   * Fetch wrapper that originates and attaches a NIP-98 Authorization
-   * header. The originator may decline (return a falsy value), in which
-   * case the request proceeds unsigned. A caller-supplied Authorization
-   * header is never overwritten.
+   * Fetch wrapper that originates and attaches a NIP-98 Authorization header.
+   *
+   * Fail-closed contract (ADR-2064): when `requireSigned` is set, a request
+   * that cannot be signed THROWS `SigningUnavailable` and no bytes leave the
+   * process. When it is not set, an absent or declining originator falls back
+   * to the unsigned request exactly as before. A caller-supplied Authorization
+   * header is never overwritten and is trusted in both modes.
    * @private
+   * @throws {SigningUnavailable} requireSigned and no header could be built.
    */
   async _signedFetch(url, init = {}) {
     const method = (init.method || 'GET').toUpperCase();
     const existing = init.headers || {};
     const hasAuth = Object.keys(existing).some((k) => k.toLowerCase() === 'authorization');
     if (hasAuth) return this._rawFetch(url, init);
-    const header = await this._nip98(method, url, init.body);
-    if (!header) return this._rawFetch(url, init);
+
+    if (!this._nip98) {
+      // Only reachable when requireSigned is set (otherwise the constructor
+      // never routes here): signing was demanded but no originator exists.
+      throw new SigningUnavailable(
+        `no NIP-98 originator is configured for ${method} ${url} ` +
+          '(sign_requests is on but the signer could not be built)'
+      );
+    }
+
+    let header;
+    try {
+      header = await this._nip98(method, url, init.body);
+    } catch (err) {
+      if (this._requireSigned) {
+        throw new SigningUnavailable(`origination failed for ${method} ${url}: ${err.message}`);
+      }
+      throw err;
+    }
+
+    if (!header) {
+      if (this._requireSigned) {
+        throw new SigningUnavailable(`originator declined to sign ${method} ${url}`);
+      }
+      return this._rawFetch(url, init);
+    }
     return this._rawFetch(url, { ...init, headers: { ...existing, Authorization: header } });
   }
 

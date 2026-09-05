@@ -1,0 +1,258 @@
+{
+  "artefact": "federation-kinds",
+  "version": "1.0.0",
+  "adr": "ADR-2061",
+  "description": "The single versioned authority for which urn:agentbox kinds cross the agentbox -> VisionClaw federation boundary. Both translators derive their closed kind map from this file: the JS bridge (agentbox management-api/lib/bc20-provenance-bridge.js) reads it at load, and the Rust translator (VisionClaw src/uri/mod.rs::cross_from_agentbox) embeds it with include_str!(\"../../agentbox/schema/federation-kinds.json\") - the agentbox tree is the ./agentbox submodule of the VisionClaw checkout, so that relative path resolves from src/uri/. Neither side may transcribe the kind list; a paired fixture asserts symmetry and any disagreement is a test failure.",
+  "conventions": {
+    "content_address": "sha256-12-<12 lowercase hex chars> = first 12 hex of sha256(payload)",
+    "owner_scope": "64-char lowercase BIP-340 x-only pubkey hex",
+    "hot_path": "A crossing is evaluated with no side information beyond the URN itself. A kind that could only cross given extra arguments is crosses=false with an elevation block."
+  },
+  "crossing_forms": {
+    "identity": "The owner pubkey IS the target identifier; structural round-trip, no content address.",
+    "content-address-of-urn": "The target local is sha256-12 of the whole source URN string; the source is recovered from a durable UrnMapping store.",
+    "structural-passthrough": "Source and target grammars are identical, so the existing content address is preserved rather than re-hashed; round-trips without a store."
+  },
+  "refusal_classes": {
+    "deliberate": "A federated concept exists but the hot path cannot mint it without side information. Recorded, not absent - the crossing is deferred, never mis-mapped.",
+    "not-federated": "The kind has no VisionClaw counterpart at all. It is agentbox-local by design."
+  },
+  "identity_passthrough": {
+    "source_grammar": "did:nostr:<pubkey>",
+    "target_grammar": "did:nostr:<pubkey>",
+    "note": "Already-converged identity. Both translators pass it through unchanged and reject a non-64-hex tail.",
+    "fixture": {
+      "input": "did:nostr:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expect": "did:nostr:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "malformed_fixture": {
+      "input": "did:nostr:not-a-pubkey",
+      "expect": null
+    }
+  },
+  "kinds": [
+    {
+      "kind": "agent",
+      "crosses": true,
+      "requires_owner_scope": true,
+      "crossing_form": "identity",
+      "source_grammar": "urn:agentbox:agent:<pubkey>:<name>",
+      "target_kind": "did:nostr",
+      "target_grammar": "did:nostr:<pubkey>",
+      "note": "There is deliberately no urn:visionclaw:agent kind - an agent's identity IS its DID, so the crossing drops the human-readable name (node metadata, not identity).",
+      "fixture": {
+        "input": "urn:agentbox:agent:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:planner",
+        "expect": "did:nostr:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "unscoped_fixture": {
+        "input": "urn:agentbox:agent:planner",
+        "expect": null
+      }
+    },
+    {
+      "kind": "activity",
+      "crosses": true,
+      "requires_owner_scope": false,
+      "crossing_form": "content-address-of-urn",
+      "source_grammar": "urn:agentbox:activity:<pubkey>:<sha256-12>",
+      "target_kind": "execution",
+      "target_grammar": "urn:visionclaw:execution:<sha256-12>",
+      "note": "The target is unscoped: the owner travels in owner_did and the UrnMapping, not in the identifier.",
+      "fixture": {
+        "input": "urn:agentbox:activity:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+        "expect": "urn:visionclaw:execution:sha256-12-6ce98872df29"
+      }
+    },
+    {
+      "kind": "thing",
+      "crosses": true,
+      "requires_owner_scope": true,
+      "crossing_form": "content-address-of-urn",
+      "source_grammar": "urn:agentbox:thing:<pubkey>:<local>",
+      "target_kind": "kg",
+      "target_grammar": "urn:visionclaw:kg:<pubkey>:<sha256-12>",
+      "note": "thing scope is optional in uris.js but required to cross - an unscoped thing has no owner to bind the personal KG node to.",
+      "fixture": {
+        "input": "urn:agentbox:thing:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:proposal-42",
+        "expect": "urn:visionclaw:kg:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-d9acefeb6df6"
+      },
+      "unscoped_fixture": {
+        "input": "urn:agentbox:thing:mcp-foo",
+        "expect": null
+      }
+    },
+    {
+      "kind": "bead",
+      "crosses": true,
+      "requires_owner_scope": true,
+      "crossing_form": "structural-passthrough",
+      "source_grammar": "urn:agentbox:bead:<pubkey>:<sha256-12>",
+      "target_kind": "bead",
+      "target_grammar": "urn:visionclaw:bead:<pubkey>:<sha256-12>",
+      "note": "Both grammars are <pubkey>:<sha256-12> since uris.js made bead contentAddressed (audit 2026-06-09 A3), so content identity is preserved across the boundary and the crossing needs no UrnMapping store. ADR-2061 resolved the direction in favour of crossing.",
+      "fixture": {
+        "input": "urn:agentbox:bead:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+        "expect": "urn:visionclaw:bead:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab"
+      },
+      "unscoped_fixture": {
+        "input": "urn:agentbox:bead:sha256-12-0123456789ab",
+        "expect": null
+      }
+    },
+    {
+      "kind": "memory",
+      "crosses": false,
+      "refusal_class": "deliberate",
+      "refusal_reason": "memory -> concept needs the {domain, slug} elevation target, which the ingest hot path does not carry. Mapping it without those would fabricate a shared-ontology class from a private lesson, so the crossing is recorded raw and deferred to the governed elevation path.",
+      "source_grammar": "urn:agentbox:memory:<pubkey>:<local>",
+      "target_kind": "concept",
+      "target_grammar": "urn:visionclaw:concept:<domain>:<slug>",
+      "elevation": {
+        "required_args": ["domain", "slug"],
+        "js_entry_point": "bc20-provenance-bridge.js::toVisionclaw(urn, { domain, slug })",
+        "rust_entry_point": "uri::concept(domain, slug) - called by the governed elevation path, never by cross_from_agentbox",
+        "note": "This is what makes the refusal distinguishable from 'not implemented': the target kind and the arguments that would unlock it are both recorded."
+      },
+      "fixture": {
+        "input": "urn:agentbox:memory:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:lesson-abc",
+        "expect": null
+      }
+    },
+    {
+      "kind": "pod",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Solid pod container in the agentbox sovereign data stack. VisionClaw has no pod surface; pod contents federate as their own typed kinds, never as the container.",
+      "source_grammar": "urn:agentbox:pod:<pubkey>:<sha256-12>",
+      "fixture": {
+        "input": "urn:agentbox:pod:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+        "expect": null
+      }
+    },
+    {
+      "kind": "envelope",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Encrypted pod envelope. Crossing it would move ciphertext across a trust boundary that has no key material; the decrypted payload federates as its own kind instead.",
+      "source_grammar": "urn:agentbox:envelope:<pubkey>:<sha256-12>",
+      "fixture": {
+        "input": "urn:agentbox:envelope:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+        "expect": null
+      }
+    },
+    {
+      "kind": "credential",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Verifiable credential held in the agentbox identity layer. Authority is asserted by presentation to a verifier, not by federating the credential identifier.",
+      "source_grammar": "urn:agentbox:credential:<pubkey>:<sha256-12>",
+      "fixture": {
+        "input": "urn:agentbox:credential:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+        "expect": null
+      }
+    },
+    {
+      "kind": "mandate",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Delegation mandate in the agentbox authority chain. Authority is evaluated agentbox-side before any crossing happens, so the mandate itself never leaves.",
+      "source_grammar": "urn:agentbox:mandate:<pubkey>:<sha256-12>",
+      "fixture": {
+        "input": "urn:agentbox:mandate:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+        "expect": null
+      }
+    },
+    {
+      "kind": "receipt",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Payment/settlement receipt in the agentbox economy loop. VisionClaw has no settlement surface to bind it to.",
+      "source_grammar": "urn:agentbox:receipt:<pubkey>:<sha256-12>",
+      "fixture": {
+        "input": "urn:agentbox:receipt:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+        "expect": null
+      }
+    },
+    {
+      "kind": "event",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Hash-chained agent event on the agentbox audit surface. Its chain position is only meaningful inside that chain, so only the derived activity crosses as an execution.",
+      "source_grammar": "urn:agentbox:event:<pubkey>:<sha256-12>",
+      "fixture": {
+        "input": "urn:agentbox:event:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+        "expect": null
+      }
+    },
+    {
+      "kind": "decision",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "decision IS-A prov:Activity (ADR-048) but is governance-local: it records an agentbox authority act, not a VisionClaw execution. Federating it would let a governance record masquerade as compute provenance.",
+      "source_grammar": "urn:agentbox:decision:<pubkey>:<sha256-12>",
+      "fixture": {
+        "input": "urn:agentbox:decision:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-0123456789ab",
+        "expect": null
+      }
+    },
+    {
+      "kind": "dataset",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Owner-scoped dataset handle on the agentbox memory surface. VisionClaw has no dataset kind; dataset members federate individually where they federate at all.",
+      "source_grammar": "urn:agentbox:dataset:<pubkey>:<local>",
+      "fixture": {
+        "input": "urn:agentbox:dataset:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:corpus-1",
+        "expect": null
+      }
+    },
+    {
+      "kind": "mcp",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "MCP server registry entry - agentbox runtime tooling. It names a local process, which is meaningless outside this container.",
+      "source_grammar": "urn:agentbox:mcp:<local>",
+      "fixture": { "input": "urn:agentbox:mcp:codebase-memory", "expect": null }
+    },
+    {
+      "kind": "skill",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Baked skill in the agentbox image. Image-local content addressed by name, with no VisionClaw counterpart.",
+      "source_grammar": "urn:agentbox:skill:<local>",
+      "fixture": { "input": "urn:agentbox:skill:email-search", "expect": null }
+    },
+    {
+      "kind": "adr",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Governance document identifier. Each repository owns its own ADR ledger; a cross-repo ADR reference is cited by URL, never minted as a foreign URN.",
+      "source_grammar": "urn:agentbox:adr:<local>",
+      "fixture": { "input": "urn:agentbox:adr:adr-2061", "expect": null }
+    },
+    {
+      "kind": "prd",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Governance document identifier - same reasoning as adr.",
+      "source_grammar": "urn:agentbox:prd:<local>",
+      "fixture": { "input": "urn:agentbox:prd:prd-021", "expect": null }
+    },
+    {
+      "kind": "ddd",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Governance document identifier - same reasoning as adr.",
+      "source_grammar": "urn:agentbox:ddd:<local>",
+      "fixture": { "input": "urn:agentbox:ddd:ddd-012", "expect": null }
+    },
+    {
+      "kind": "meta",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "Reserved self-describing namespace for the URI scheme itself. Federating it would let the grammar describe a grammar it does not own.",
+      "source_grammar": "urn:agentbox:meta:<local>",
+      "fixture": { "input": "urn:agentbox:meta:uri-grammar", "expect": null }
+    }
+  ]
+}
