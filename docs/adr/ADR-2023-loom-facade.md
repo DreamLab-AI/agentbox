@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d3920a4eecc87268e87ce35a0e69f21bf6327b1e
+verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -51,9 +51,145 @@ discrete server** — hence implementation partial.
 
 ## Verification
 
+
+
 At `cbe7335b9`, `agentbox.toml`: `loom_url = "http://192.168.2.132:8084/v1"`,
 `loom_model = "qwen3.8-27B"`, `loom_max_tokens = 16384` (:1564-1566), and the
 condense `endpoint` façade at :650 commented "Ontology Loom façade (model-swap
 door; DNAT via ml). Was the dead .48 host."
 `mcp/servers/lib/ontology-retrieval.js`: `LOOM_FACADE_URL` seed+expand path with
 transparent VisionClaw fallback (:339-417).
+
+## Closeout extension — 2026-09-04
+
+**Work package:** CP-03, grounded execution. **Accountable owner:** the existing
+owner above, with the Loom maintainer responsible for served-bundle identity.
+**Dependencies:** CP-01 consumer revision/feature map and CP-02 corpus exports.
+
+The façade decision is implemented as a configuration boundary, but choosing
+the same URL does not prove equivalent grounding. Agent retrieval uses search
+and SPARQL, not Loom chat/scaffold. The current cache omits domain and token
+override from its key: the actual helper returned an AI seed and 830 tokens for
+a subsequent robotics request capped at 50 tokens. Expansion failure also
+returned `degraded: false`. See [agent grounding evidence](../../../../VisionFlow/docs/estate-review/agent-grounding-and-governance.md)
+and [receipts](../../../../VisionFlow/docs/estate-review/evidence/agent-snapshot.json).
+
+**Remaining work:** preserve every effective request constraint on cache hits,
+return stage-specific degradation, and distinguish requested provenance from
+backend-enforced provenance. Bind retrieval to the generation actually loaded
+by Loom. Define the behaviour of configured-but-unavailable Loom separately
+from the existing unset-URL VisionClaw selection.
+
+**Acceptance:** backend-selection, cache-hit, low-budget, domain-change,
+expansion-failure and two-generation activation fixtures preserve the declared
+contract or return an explicit limitation. Run these against the agent search/
+SPARQL path as well as chat where applicable. Retain the partial implementation
+status until the relevant evidence and deferred capability disposition are
+recorded; current passing helper tests alone do not close CP-03.
+
+## Acceptance progress — 2026-09-05
+
+- **Implemented** (`mcp/servers/lib/ontology-retrieval.js`)
+  - **Cache key completeness.** `cacheKey()` no longer hashes an implicit request shape. It
+    hashes `field=value` pairs for every entry of the named `CACHE_KEY_FIELDS` constant —
+    `query, model_tier, mode, depth, provenance, full, domain, max_tokens, budget (the resolved
+    ceiling), min_maturity, backend, generation` — with a comment recording that an omitted
+    field is a **correctness bug, not a perf tweak**. Absent/null/empty collapse to one
+    sentinel so absence cannot alias a value. This closes the reproduced defect where an
+    AI-domain 830-token body was served to a robotics request capped at 50 tokens.
+  - **Stage-specific degradation.** Results carry `degraded_stages` drawn from
+    `DEGRADED_STAGES` (`seed`, `expansion`, `sparql`, `backend-unavailable`) plus a named
+    `DEGRADED_OUTCOMES` error. An expansion failure is now `degraded: true` with the stage
+    named — previously `degraded: false`, which made a menu-only answer indistinguishable from
+    a fully expanded one. `defaultExpandFn` / `loomExpandFn` tag thrown SPARQL errors with
+    `stage: 'sparql'` so the sub-stage is nameable rather than inferred.
+  - **Cache-hit semantics.** A hit replays the degradation state it was stored with (a partial
+    answer stays partial) and is revalidated against the *current* request's constraints via
+    `cacheEntrySatisfies()`. Documented policy on a violation: **miss and re-retrieve**, never
+    truncate — the stored Turtle has already been clamped once, and a second deterministic cut
+    would slice a seed mid-triple and silently change what the grounding asserts. A
+    seed-stage transport failure is not cached, so an outage cannot pin an empty answer for
+    the TTL.
+  - **Configured-but-unavailable is a named outcome.** `selectBackend()` returns
+    `{name, url, configured, generation, reason}`. An unset `LOOM_FACADE_URL` selects
+    VisionClaw with reason `loom_facade_url_unset_visionclaw_selected` and is not a fault; a
+    *configured* Loom that fails on availability/timeout returns
+    `backend_configured_but_unavailable` with stages `[seed, backend-unavailable]`; an
+    unconfigured backend returns `backend_not_configured`; a 401/validation rejection returns
+    `seed_rejected` and is not treated as unavailability. Every result carries `backend`,
+    `backend_configured` and `generation`, so one backend's answer can never be mistaken for
+    another's.
+  - The dependency-injection shape (`seedFn`/`expandFn`/`cache`/`clock`) is unchanged;
+    `backend` and `generation` are new optional deps, and `getBackend()` exposes the selection.
+
+- **Tests and results**
+  - `node --test tests/integration/ontology-retrieval-cache.test.mjs` — **21 tests, 21 pass, 0
+    fail** (hermetic, injected transports, no network). Fixtures: backend-selection (4),
+    cache-hit preserving constraints (3), low budget after a high-budget hit for the same
+    domain (1), domain change with identical other fields (1), expansion failure → stage-named
+    degradation (3), two-generation activation (2), configured-but-unavailable Loom (5),
+    cache-key completeness (2).
+  - `node --test mcp/servers/lib/ontology-retrieval.test.js` — **20 tests, 20 pass, 0 fail**.
+    One stale assertion in that pre-existing suite was updated: the expansion-failure case
+    asserted `degraded: false`, which was the defect itself; it now asserts `degraded: true`
+    with the stages named.
+
+- **Receipts**
+  - `docs/estate-closeout/2026-09-05/adr-2023-loom-cache.json` (source hashes, per-defect
+    disposition, cache-hit policy rationale, fixture list, limitations).
+
+- **Remaining**
+  - Generation/bundle identity is honoured as an *input* (`deps.backend.generation`,
+    `LOOM_GENERATION`, or a per-request pin) and keyed on, so two generations are two cache
+    entries. Binding it to the generation the Loom has actually loaded needs a Loom-side
+    identity surface that does not exist yet; today the value is asserted by configuration,
+    not attested by the server.
+  - The Loom expand helper still queries one merged graph and does not isolate asserted from
+    inferred, so `provenance` remains a *requested* scope. Unchanged by this work, now visible
+    alongside the backend name on every result.
+  - Agent retrieval still uses `/loom/search` + `/loom/sparql`, not `/loom/scaffold` or chat;
+    Loom's scaffold/chat benchmarks remain no evidence for this path. These fixtures are
+    helper-level with injected transports and do not establish a live round-trip.
+  - The ADR-051 deferred-distillation MCP surface is still not a discrete server.
+  - `implementation_status` stays `partial` for those reasons.
+
+- **Governed paths changed**
+  - None. This is the client-side façade contract only: no manifest key, no authority class and
+    no ingress boundary changed. `loom_url` / `loom_model` in `agentbox.toml` are untouched, and
+    consumers still hold the `:8084` door. The observable change is the richer result shape
+    (`degraded_stages`, `backend`, `backend_configured`, `generation`, `domain`, `budget`,
+    `error`, `error_cause`) and the fact that a constraint-violating cache entry is no longer
+    served.
+
+### Re-verification 2026-09-05 (ADR-2023)
+
+Verification ran on the **uncommitted working tree** above `89301ec7c911eab270c00a0cf81596d0d4f15535`.
+`verified_commit` is set to that SHA and `verified_paths` emptied; **both must be
+restored at the landing commit** — the prior list was
+`[agentbox.toml, mcp/servers/lib/ontology-retrieval.js]`.
+
+Each claim re-checked, with **two corrections**:
+
+- **Façade URL — unchanged.** `agentbox.toml [dream_machine].loom_url` (`:1613`) is
+  `http://192.168.2.132:8084/v1`, and `[skills.ontology.condense].endpoint` (`:649`)
+  carries the same value with the comment "Ontology Loom façade (model-swap door; DNAT
+  via ml). Was the dead .48 host."
+- **CORRECTION — token cap.** This record's Verification said `loom_max_tokens = 16384`
+  at `:1564-1566`. The live value is **32768** at `[dream_machine].loom_max_tokens`
+  (`:1618`), raised after glm-5.3 exhausted the old cap and returned empty content twice.
+  `loom_model = "qwen3.8-27B"` (`:1614`) is unchanged. Per ADR-2052 these are now cited
+  by key rather than line.
+- **CORRECTION — `opf-router` is not a Loom surface.** `docs/BASELINE-container.md`
+  describes `opf-router` as an "OpenAI-compatible façade router" on `:8084`. It is the
+  **privacy-filter redaction sidecar** (legacy ADR-008) on **9092**
+  (`agentbox.toml [privacy_filter].port`, `scripts/opf-router.py:41`,
+  `flake.nix` `[program:opf-router]`). **No agentbox program binds `:8084`** — the only
+  two `8084` hits in `flake.nix` are outbound `LOOM_URL`/`LOOM_BASE_URL` client defaults.
+  The Loom façade is a service on machinelearn reached over the LAN, not a supervised
+  agentbox program. Recorded as ADR-2055; the BASELINE row edit is routed to its owner.
+- **Retrieval resolves through the Loom when configured — unchanged and extended.**
+  `mcp/servers/lib/ontology-retrieval.js:472` reads `LOOM_FACADE_URL` in `selectBackend`
+  (`:471`), with the three documented outcomes at `:463-467`. The 2026-09-05 acceptance
+  work is present: `CACHE_KEY_FIELDS` (`:46`) and `DEGRADED_STAGES` (`:93`).
+- `implementation_status` stays **partial** on its own terms: the ADR-051
+  deferred-distillation MCP surface is still not a discrete server.

@@ -17,7 +17,8 @@ embedding  = bge-small-en-v1.5 via Xinference, 384-dim, client-side (never MiniL
 index-law  = HNSW degrades silently under bulk churn → non-concurrent rebuild (m=16, ef_construction=128, ~5min)
 FORBIDDEN  = CREATE INDEX CONCURRENTLY on ruvector HNSW AM (verified double-insertion)
 recall-gate= ./agentbox.sh ruvector recall — REQUIRED before/after any retrieval-geometry change
-             frozen band: self ≥175/200, true ≥107/120 (188/200 is a pre-ingest number, not the bar)
+             frozen band: self ≥175/200, true ≥107/120 target; the ENFORCED floor is true ≥102/120
+             (188/200 is a pre-ingest number, not the bar)
 sona       = OFF (inert at 384-dim in @ruvector/sona@0.1.5 binary); attention_rerank = OFF (measured no-op)
 protected  = ruvnet-kb namespace (reference corpus, ingest-only writes)
 lifecycle  = ./agentbox.sh ruvector <status|check|test|update|rollback|recall>
@@ -27,7 +28,7 @@ Full audited state (learning loop, gates, corpus history): [ruvector-memory-stat
 
 ## Skills — progressive discovery
 
-The image bakes `/opt/agentbox/skills` (118 skills). Skills are the JIT context layer: trigger-led descriptions route, `references/` subdirs hold depth loaded on demand — keep it that way when adding or editing skills (no monolith SKILL.md; relocate depth to `references/`, never cull; skill docs use skill-relative paths, never `~/.claude/skills/<name>/`). Gate: `skills/lint-skills.sh` must pass before a rebuild. Directory + routing: [skills/SKILL-DIRECTORY.md](skills/SKILL-DIRECTORY.md); historical upgrade rationale: [docs/archive/skills-upgrade-plan-c5.md](docs/archive/skills-upgrade-plan-c5.md).
+The image bakes `/opt/agentbox/skills` (126 skills). Skills are the JIT context layer: trigger-led descriptions route, `references/` subdirs hold depth loaded on demand — keep it that way when adding or editing skills (no monolith SKILL.md; relocate depth to `references/`, never cull; skill docs use skill-relative paths, never `~/.claude/skills/<name>/`). Gate: `skills/lint-skills.sh` must pass before a rebuild. Directory + routing: [skills/SKILL-DIRECTORY.md](skills/SKILL-DIRECTORY.md); historical upgrade rationale: [docs/archive/skills-upgrade-plan-c5.md](docs/archive/skills-upgrade-plan-c5.md).
 
 ## Canonical runtime files
 

@@ -1,0 +1,29 @@
+{
+  "date": "2026-09-05",
+  "adr": "ADR-2030",
+  "title": "Permissive licensing for publishable service crates",
+  "scope": "Local package inventory and file placement. No registry lookup, archive creation or publication ran; this is not a legal-compatibility determination.",
+  "implemented": {
+    "permissive_crates": "Every MIT OR Apache-2.0 package directory under services/ now carries LICENSE-MIT, LICENSE-APACHE and a README stating what the crate is, its dual licence and the standard contribution paragraph.",
+    "agpl_crate": "services/nostr-pod-bridge keeps AGPL-3.0-only, with a full LICENSE text and a README that states it is NOT dual-licensed, so nobody publishes it under the permissive assumption.",
+    "notice": "services/LICENSING-NOTICE.md and docs/developer/licensing.md updated to the actual per-directory state.",
+    "gate": "scripts/ci/check-crate-licensing.sh fails if any services/ package directory lacks the texts and README its manifest declares; wired into .github/workflows/invariants.yml as an appended step.",
+    "crate_docs_match_code": "services/dream-engine/README.md gained an Acceptance path section describing the seven acceptance modules (manifest, readiness, candidate, receipts, gate, runstate, roster), the veto-class to verdict mapping (harness -> BLOCKED-ENV, evidence -> REJECT, unproven -> INCONCLUSIVE), the draft-PR-only-on-gate-upheld-ACCEPT rule, and both evaluatorEntrypoints forms with the fail-closed bare-string reading. Documentation only; no Rust source was touched."
+  },
+  "tests": [
+    {
+      "command": "sh scripts/ci/check-crate-licensing.sh",
+      "cwd": ".",
+      "exit_code": 0,
+      "stdout_tail": "OK (check-crate-licensing): 8 services/ package directories carry the texts they declare.",
+      "stderr_tail": ""
+    }
+  ],
+  "source_sha256": {
+    "scripts/ci/check-crate-licensing.sh": "3a3cd53723d3bd6f526cff5bdcc28e3cfbc4df69f01dc6ef8c2fd5699399bfe3",
+    "services/LICENSING-NOTICE.md": "d24f2a8ef5cc0b7e3ff801ce618787d13611e7b09cf71ff7c008a53a47853b27",
+    ".github/workflows/invariants.yml": "dd899a17e00f7afd75cb2fac6a369cf7c2b0a109ed9a8f78ceeb927cf4438dc1",
+    "services/dream-engine/README.md": "28c0ca94776bef56e7d6d29ec5801daa430325814c846737e3119f19f6b86435"
+  },
+  "limitations": "Metadata and file placement only. No packaged-archive inspection, no registry lookup, no publication, and no maintainer review of the distribution-specific dependency/licensing position. Extracted-repository and consumed Nix revisions are unverified."
+}

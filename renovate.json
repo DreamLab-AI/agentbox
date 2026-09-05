@@ -122,6 +122,16 @@
     },
     {
       "customType": "regex",
+      "description": "Track deepsec npm CLI version pinned in flake.nix (ADR-2033 security gate).",
+      "fileMatch": ["^flake\\.nix$"],
+      "matchStrings": [
+        "pkgName\\s*=\\s*\"deepsec\";\\s*\\n\\s*version\\s*=\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "depNameTemplate": "deepsec",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "customType": "regex",
       "description": "Track codebase-memory-mcp npm CLI version pinned in flake.nix.",
       "fileMatch": ["^flake\\.nix$"],
       "matchStrings": [

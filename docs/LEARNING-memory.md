@@ -115,19 +115,19 @@ into a best-effort agent-events emit (`ctcEmitBodyFromStep`,
 
 **2. Judge/aggregate — `scripts/ruvector-aggregate-sweep.mjs` +
 `mcp/servers/lib/aggregate-effectiveness.js`.**
-A scheduled, incremental, non-destructive sweep (gate `aggregate_sweep`,
-30-min cadence, `agentbox.toml:427,432`) groups `trajectory_steps` by `action`
+A scheduled, incremental, non-destructive sweep (gate `agentbox.toml [memory_learning].aggregate_sweep`,
+30-min cadence from `.aggregate_sweep_interval_mins`) groups `trajectory_steps` by `action`
 pattern and produces one effectiveness aggregate per pattern. The sweep is a thin
 wrapper; the maths lives in `aggregate-effectiveness.js`:
 - successes are steps with `quality >= 0.5`, **recency-weighted** by half-life decay
   `weight = 0.5^(age_days / RECENCY_HALF_LIFE_DAYS)` (default 14 days,
-  `agentbox.toml:426`);
+  `agentbox.toml [memory_learning].recency_half_life_days`);
 - **Wilson score-interval LOWER bound** (z = 1.96) of the recency-weighted success
   proportion over the recency-weighted effective sample size — not the raw rate
   (`wilsonLower`, `aggregate-effectiveness.js:71-80`). A single degenerate label
   cannot move the aggregate;
 - the **sample floor uses the RAW observation count** `n`: patterns with
-  `n < aggregate_min_samples` (default 20, `agentbox.toml:425`) are skipped (I06).
+  `n < aggregate_min_samples` (default 20, `agentbox.toml [memory_learning].aggregate_min_samples`) are skipped (I06).
 
 Each surviving aggregate is upserted through the governed `memStore` into
 `memory-learning-aggregates`, content-addressed key
@@ -139,7 +139,7 @@ is stored as ordinary governed memory tagged `sweep:cursor` so consumers never
 surface it as an aggregate (`ruvector-aggregate-sweep.mjs:20-31,105-107`).
 
 **3. Distil — `scripts/ruvector-pattern-distill.mjs`.**
-Gate `pattern_distillation` (live, `agentbox.toml:428`). Distils the judged corpus
+Gate `pattern_distillation` (live, `agentbox.toml [memory_learning].pattern_distillation`). Distils the judged corpus
 into content-addressed rows in the `patterns` table (id
 `distilled-sha256-12-<hash(action)>`, `ON CONFLICT DO UPDATE`), each carrying a real
 Xinference embedding and `metadata.provenance = 'judge:trajectory'`. It **embeds
@@ -156,17 +156,17 @@ trajectories / 8,806 judged steps → 12 Wilson aggregates past the floor → 13
 ### Consumers and their gates
 
 Consumers are gated separately from producers; the validator flags enabling a
-consumer ahead of its producer as W066 (`agentbox.toml:406-407`). Gate resolution is
+consumer ahead of its producer as W066 (`agentbox.toml [memory_learning]` header comment). Gate resolution is
 `RUVECTOR_FEED_RETRIEVAL` / `RUVECTOR_FEED_ROUTING`
 (`ruvector-gates.js:38-39`), mirrored from `agentbox.toml` by the entrypoint.
 
-- **`feed_retrieval = true`** (enabled 2026-08-31, `agentbox.toml:415`). The
+- **`feed_retrieval = true`** (enabled 2026-08-31, `agentbox.toml [memory_learning].feed_retrieval`). The
   consumer is the effectiveness re-rank in `memory-hybrid.js:57-101`: one bounded
   read (LIMIT 500) over `memory-learning-aggregates`, building a
   `action:<pattern> → max wilson` map, then adding a bounded bonus of
   `0.1 * wilson` to any result row whose `metadata.tags` intersect a
   high-effectiveness action tag. Fail-open: any error leaves base ranking untouched.
-- **`feed_routing = false`** (`agentbox.toml:416`) — aggregates surface only as
+- **`feed_routing = false`** (`agentbox.toml [memory_learning].feed_routing`) — aggregates surface only as
   advisory `[INTELLIGENCE]` hints; gated on a passing observation window after the
   `feed_retrieval` flip.
 
@@ -200,10 +200,12 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
   `agentbox_memory`, but the prebuilt `@ruvector/sona@0.1.5` NAPI binary hardcodes
   `embedding_dim = 256`: 384-dim learns return `status:learned` but accumulate
   nothing (verified live). Both gates stay off until a 384-dim-capable binary
-  (`agentbox.toml:429-431`). `attention_rerank` is OFF **by measurement** — on an
-  L2-normalised corpus the attention blend is a mathematical identity (max diff
-  4e-7), not caution (`agentbox.toml:430`).
-- **D2 — aggregate-count drift.** `agentbox.toml:415` justifies the `feed_retrieval`
+  (`agentbox.toml [memory_learning].sona_learn_enabled` / `.sona_apply_enabled`).
+  `attention_rerank` is OFF **by measurement** — on an L2-normalised corpus the
+  attention blend is a mathematical identity (max diff 4e-7), not caution
+  (`agentbox.toml [memory_learning].attention_rerank`).
+- **D2 — aggregate-count drift.** `agentbox.toml [memory_learning].feed_retrieval`
+  justifies the `feed_retrieval`
   flip with "78 aggregates ≥20 samples (2026-08-31)", while the reference-state doc
   records "12 aggregates" from the 2026-07-21 sweep (`ruvector-memory-state.md:8`).
   The toml is the running config and the more recent number; the reference doc is a
@@ -225,17 +227,37 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
   ground-truth doc; cross-reference it before designing any right-to-erasure flow.
   No point-in-time RuVector backup exists (SQLite-only `backup-sqlite.sh`), so there
   is no cross-store consistent restore, RPO or RTO for memory today.
+  **Design recorded — ADR-2060 (proposed, 2026-09-05):** a durable, replayable reverse
+  tombstone applied through the governed delete path plus a point-in-time RuVector backup
+  with a stated RPO/RTO. Note that VisionClaw has **no RuVector write client at all**, so
+  the tombstone must travel as a message to a RuVector-side consumer. D5 stays open until
+  that lands; cite it before any right-to-erasure work.
 - **D6 — v2 model-lifecycle keys RESERVED.** `embedding_dual_write`,
   `embedding_active_column`, `graph_backbone`, `param_tuning_enabled` and the m3/
   legacy-mining hygiene ops are declared and default-off, gated on a passing recall
-  harness run before any may flip (`agentbox.toml:400-403,433,443-446`).
+  harness run before any may flip (`agentbox.toml [memory_learning]` and
+  `[memory_hygiene]`).
+- **D7 — Resolved: manifest line citations.** Every `agentbox.toml:<line>` citation
+  in this document had drifted (the `[memory_learning]` keys had all moved). Prose
+  now cites `agentbox.toml [section].key` — Resolved — ADR-2052 (2026-09-05).
 
 ## Invariants (must not silently change)
 
-1. **MCP-only writes.** No raw `INSERT INTO memory_entries`; every write embeds
-   through Xinference via the governed `memStore`. Raw writes are HNSW-invisible.
-2. **Producer-before-consumer.** Never enable `feed_retrieval`/`feed_routing` ahead
-   of `record_trajectories` (validator W066).
+1. **MCP-only writes, and embedding is enforced.** No raw
+   `INSERT INTO memory_entries`; writes use the governed `memStore`. An embedding
+   failure **rejects the write** (`reason: 'embedding-unavailable'`) — the store
+   does not degrade silently, so no unsearchable row is created. The single route
+   to a row without an embedding is the explicit `RUVECTOR_EMBED_REPAIR=true`
+   path, which marks `embedding_state: 'pending'` for `memory_repair_embeddings`
+   to recover (ADR-2014, ADR-2051).
+2. **Producer-before-consumer, enforced at runtime.** A learning consumer takes
+   effect only when `consumerAdmission()` in `mcp/servers/lib/ruvector-gates.js`
+   admits it: the master gate on, the consumer's gate on, and **either** the
+   producer currently capturing **or** an operator-named retained-corpus receipt
+   (`RUVECTOR_RETAINED_CORPUS_ACCEPTED`) that is non-empty, dateable, and fresher
+   than `RUVECTOR_RETAINED_CORPUS_MAX_AGE_DAYS`. There is no environment override
+   that means "trust me". The static validator rule (E066/W066) mirrors the same
+   invariant at config time (ADR-2017, ADR-2051).
 3. **Outcome honesty (I04).** A step is written only with a real graded signal;
    never default an undetermined or interrupted call to success.
 4. **Privacy fail-closed (I10).** An un-redactable command is skipped, never
@@ -256,3 +278,44 @@ divergences above (they are the ratification checklist). Retrieval-geometry chan
 additionally require a passing `./agentbox.sh ruvector recall` run recorded under
 `backups/ruvector-sidecar/recall-runs/`. Cross-store erasure/backup changes must be
 co-designed with the VisionClaw DATA doc (D5).
+
+## Estate closeout qualification — 2026-09-04
+
+The [shared-memory review](../../../VisionFlow/docs/estate-review/shared-memory.md) and [probe](../../../VisionFlow/docs/estate-review/evidence/memory-store-probes.json) establish that Postgres failure and embedding failure differ. The latter can persist a NULL vector or retain the previous value's embedding. ADR-2014 is partial for the full searchable-write guarantee; MCP-only access remains mandatory. TTL defaults to semantic metadata, whereas the expiry sweep selects episodic rows only; ordinary reads do not immediately exclude expiry. Model identity/preprocessing, value/vector coherence, repair and expiry semantics need explicit acceptance receipts. Ten existing factory tests pass with mocks; no live recall, sweep or database mutation ran.
+
+**Resolved in part — ADR-2051 (2026-09-05).** The write-path half of this
+qualification no longer holds: `memStore` now *rejects* on embedding failure rather
+than persisting a NULL vector, and the `ON CONFLICT` clause assigns
+`EXCLUDED.embedding` rather than `COALESCE(...)`, so a re-store cannot retain the
+previous value's embedding. Invariant 1 above states the enforced rule. The
+model-identity, expiry-semantics and live-recall receipts this section asks for are
+still outstanding.
+
+## Trajectory privacy and recovery qualification — 2026-09-04
+
+The [learning evidence review](../../../VisionFlow/docs/estate-review/learning-evidence.md) qualifies I10: redaction exceptions skip writes, but successful regex processing can retain quoted-password fragments or short JSON secret fields. ADR-2015 is partial for its full privacy guarantee. Outcome quality measures command error status; Wilson confidence does not establish task achievement. Missing pg-module handling advances the local watermark, while query exceptions permit retry; partial writes and rollup/event consistency need recovery tests. Twenty-seven helper tests pass; no real transcript or deployed-loop validation ran.
+
+## Learning ordering qualification — 2026-09-04
+
+ADR-2017 is partial: W066 is advisory, and three consumer-before-producer manifests pass the actual validator. The actual hybrid helper with injected dependencies consumes an invented retained aggregate with recording off; this is not a deployed route test. Capture being off does not establish that durable aggregates are absent. [Evidence and acceptance](../../../VisionFlow/docs/estate-review/learning-evidence.md#producer-ordering-is-advisory) require explicit retained-corpus policy, master/consumer admission checks, freshness/provenance and restart/override coverage. No existing recall or sample gate is waived.
+
+**Resolved — ADR-2051 (2026-09-05).** Every item this section asks for is now
+implemented as `consumerAdmission()` in `mcp/servers/lib/ruvector-gates.js`: an
+explicit retained-corpus policy (an operator-named receipt in
+`RUVECTOR_RETAINED_CORPUS_ACCEPTED`), master **and** consumer admission checks, a
+freshness bound (`RUVECTOR_RETAINED_CORPUS_MAX_AGE_DAYS`, default 30) with
+empty-corpus and undateable-corpus both refused, and coverage of the runtime
+override case — the helper is the single decision every consumer calls before
+applying an effect, so an env override on a running process is caught. W066 is no
+longer the only control. Invariant 2 above states the enforced rule.
+
+## Remediation — 2026-09-05
+
+- **ADR-2051** — Invariants 1 and 2 restated as the enforcement the code provides
+  (embedding fail-closed; runtime `consumerAdmission`). Resolves the write-path half
+  of the estate-closeout qualification and all of the ordering qualification.
+- **ADR-2052** — `agentbox.toml` is cited by `[section].key`, never by line number;
+  every line citation in this document had drifted. Recorded as D7 above.
+- **ADR-2060** (proposed) — the D5 cross-store erasure gap gets a designed target: a
+  durable reverse tombstone into RuVector and a restorable memory backup. Authority stays
+  with VisionClaw's `DATA-authority-erasure`.

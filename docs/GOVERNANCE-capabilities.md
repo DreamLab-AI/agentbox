@@ -9,7 +9,7 @@ changelog:
   - "0.2.0 (2026-09-02): ADR-2028 — skills read and write the authored corpus through VAULT_ROOT/VAULT_PAGES and emit V2 frontmatter; no skill hard-codes a corpus path."
   - "0.1.1 (2026-08-31): fix wrong verified_commit (was outer-repo hash), correct agentbox.toml citations (loom_url 1564, loom_model 1565, session-seed models 1231/1238), and update N-05 to the revised token-auth boundary."
 sources:
-  - agentbox.toml (loom façade 650/1564, loom_model 1565, session-seed models 1231/1238, N-05 1137-1146, skill gates 539/554/582/585/621-624, direct_axiom_load 638)
+  - agentbox.toml (cited by [section].key per ADR-2052 — [skills.ontology.condense].endpoint, [dream_machine].loom_url/.loom_model/.loom_max_tokens, [[interaction_plane.session_seeds]], [interaction_plane] N-05 token auth, the [skills.*] gates, [skills.ontology].direct_axiom_load)
   - agentbox/skills/SKILL-DIRECTORY.md
   - agentbox/skills/lint-skills.sh
   - agentbox/skills/tree-search-coder/SKILL.md
@@ -54,6 +54,12 @@ the manifest and reachable in a turn:
   `agentbox.toml`) which runs unattended repository evolution 01:00–05:00 UTC.
 - **Tree-search-coder** — `[skills.tree_search_coder] enabled = true` (`:624`), N-candidate
   execution-gated generation.
+- **deepsec Security gate** — `[toolchains].deepsec = true` bakes the vercel-labs
+  vulnerability reviewer; `[security.deepsec]` bounds it (route, `fail_on`,
+  `max_duration`) and `skills/build-with-quality/scripts/deepsec-gate.sh` is the only
+  entry point (ADR-2033). It reads source and sends snippets to the configured model
+  route; the default route is the operator's own `claude` login, the LAN-only route is
+  the Loom façade.
 
 These surfaces are governed today only by their *individual* boundary guards — hook guards,
 per-MCP wrappers, the privacy filter, ACSP approvals, the spend policy, and harness-native
@@ -82,10 +88,16 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
 
 ### Skills system
 
-- **Directory** — `skills/SKILL-DIRECTORY.md` (912 lines) is the canonical index; skills
-  self-trigger from their `description` frontmatter.
-- **Lint gate** — `skills/lint-skills.sh` enforces estate hygiene and exits non-zero on any
-  finding: banned stale strings (dead hosts like `192.168.2.48`, retired SDKs), absolute
+- **Directory** — `skills/SKILL-DIRECTORY.md` is the canonical index; skills self-trigger
+  from their `description` frontmatter. The skill **count** has one authority,
+  `scripts/skill-count-check.js` (currently 126); no other document restates it, and this
+  one does not restate the directory's line count either — both drifted before (ADR-2056).
+- **Lint gate** — `skills/lint-skills.sh` (a thin shell wrapper over `lint-skills.mjs`)
+  enforces estate hygiene and exits non-zero on any finding. Its `SKIP_DIRS` holds only
+  genuinely non-skill directories: a skill is never excluded wholesale, and relief from a
+  single check goes in that check's own narrow exemption set with a reason. `toprank` was
+  formerly skipped entirely, which dropped it from all six checks and made this gate count
+  125 skills against `skill-count-check.js`'s 126 (ADR-2056). Checks: banned stale strings (dead hosts like `192.168.2.48`, retired SDKs), absolute
   `~/.claude/skills` paths (skills are baked at `/opt/agentbox/skills`), the retired bare
   `/workspace/` path, monolith SKILL.md files (>250 lines with no `references/`), and
   frontmatter sanity (`name` + `description` present).
@@ -113,7 +125,17 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
 The dream-engine itself is **real and shipped**: a Rust crate at `services/dream-engine/`
 with a built release binary (`services/dream-engine/target/release/dream-engine`,
 10.3 MB, 2026-08-30), driven by `dream.config.json`, gated `[dream_machine] enabled = true`,
-process owner supervisord, dispatched to HP (`10.10.10.1`) using the Loom/Qwen model. The
+process owner supervisord, dispatched to HP (`10.10.10.1`). **The default reasoning
+provider is Z.AI, not the Loom** — `[dream_machine].llm_provider = "zai"` with
+`zai_model = "glm-5.3"`, and the generated `[program:dream-engine]` block defaults
+`DREAM_LLM_PROVIDER` the same way. That is a deliberate choice for reasoning-token
+headroom (glm-5.3 hit the old 16384 cap with empty content; both caps are now 32768).
+**Egress consequence, stated plainly: under the default provider, nightly repository
+content leaves the LAN to a third-party API.** `llm_provider = "loom"` selects the
+LAN-only path via `[dream_machine].loom_url`/`.loom_model`, and only that setting makes
+the nightly cycle local-only. The `dream.config.json` `extraDisciplines` entry
+`secrets-never-in-report` bounds what may cross that boundary, as prose instruction to
+the model rather than an enforced outbound filter (ADR-2053). The
 `/dream` control skill (`skills/dream-machine/`), management route (`management-api/routes/
 dream.js`), ledger (`management-api/lib/dream-ledger.js`), and console
 (`voice/console/site/dream.html`) exist.
@@ -146,17 +168,19 @@ The Loom is **load-bearing in production** but its harness-side decision record
 ADR-051 ratifies, **this document is the interim authority for the harness-side Loom
 contract.** Verified live wiring:
 
-- **Façade** — `http://192.168.2.132:8084/v1` (`agentbox.toml:1564`, also at `:650`), an OpenAI
+- **Façade** — `http://192.168.2.132:8084/v1` (`agentbox.toml [dream_machine].loom_url`,
+  also `[skills.ontology.condense].endpoint`), an OpenAI
   chat-completions endpoint. The `.132` (machinelearn) address NATs to HP over the 25G rail;
   HP's old `.48` is dead. `/loom/search` + `/loom/sparql` retrieval is wired in
   `mcp/servers/lib/ontology-retrieval.js:345-393` via `LOOM_FACADE_URL`; the "one brain"
   ontology retrieval resolves through the Loom rather than re-deriving index state locally.
 - **Model-swap contract** — consumers hold the façade; the model is a URL behind it,
   swappable with zero consumer change. Session seeds encode both a scaffolded path
-  (`slug = "loom"` → `model = "loom-lan/qwen3.8-27B"`, `agentbox.toml:1231`) and a raw path
-  (`slug = "loom-raw"` → `model = "loom-raw/qwen3.8-27B"` via `:8085`, `agentbox.toml:1238`).
-- **Current model** — **Qwen3.8-27B** (`loom_model = "qwen3.8-27B"`, `agentbox.toml:1565`;
-  `loom_max_tokens = 16384`).
+  (`slug = "loom"` → `model = "loom-lan/qwen3.8-27B"`) and a raw path
+  (`slug = "loom-raw"` → `model = "loom-raw/qwen3.8-27B"` via `:8085`), both in
+  `agentbox.toml [[interaction_plane.session_seeds]]`.
+- **Current model** — **Qwen3.8-27B** (`agentbox.toml [dream_machine].loom_model`;
+  `.loom_max_tokens = 32768`, raised from 16384 after reasoning-token truncation).
 - **Distillation tools** — ADR-051's deferred-distillation MCP tools (submit/await/fetch as
   beads work items) are **not yet a discrete server**; only the beads substrate primitives
   (`mcp/servers/substrate-tools.js`, "activates after image rebuild") exist. Retrieval is
@@ -199,6 +223,15 @@ above, enabled but explicitly-invoke-only.
    decision-surface, self-GC, and telemetry-contract designs.
 7. **Skill lint is advisory** — `lint-skills.sh` gates estate hygiene but is not a runtime
    capability gate; an enabled skill with clean frontmatter is trusted.
+8. **Byte-identical-when-off is currently FALSE for three surfaces (PROPOSED
+   ADR-2057).** The invariant below is not softened — the code is wrong, not the
+   invariant. Raised by the ab-learning-capabilities lead: the podcast cron has no
+   gate wrapper, and `[skills.harness]` / `[skills.precedent]` never read their own
+   `.enabled` key, so disabling them leaves a runtime trace. Until ADR-2057 lands,
+   a disabled gate cannot be assumed inert for these three; treat "off" as
+   "unverified off" when reasoning about them. The build-evidence half of ADR-2020
+   (package and supervised-process absence for a disabled gate, bound to build
+   identity) is separately still unproven and needs an image rebuild.
 
 ## Invariants (must not silently change)
 
@@ -214,8 +247,11 @@ above, enabled but explicitly-invoke-only.
   (`dream.config.json` extraDisciplines / `self-referential`).
 - **Darwin evaluators must produce surface-dependent output** — any `@metaharness/darwin`
   entrypoint runs `--sandbox mock`/`agent`, never the no-op `real` default.
-- **Governed ontology writes only** — `direct_axiom_load = false` (`agentbox.toml`); the
-  ungoverned `POST /api/ontology/load` backdoor stays disabled outside bootstrap.
+- **Governed shared-ontology promotion is required** — `direct_axiom_load = false`
+  keeps the remote direct-load descriptor disabled outside bootstrap. Forced-local
+  dispatch can still edit authored Markdown before that guard; ADR-2022 now marks
+  implementation partial for the broad invariant. Local authoring and promotion
+  need separately enforced authority and end-to-end receipts.
 - **Consultant models come from the manifest** — `[consultants.<name>].model` is projected
   into the consultant's environment at boot by `agentbox-manifest toml-string`; a non-empty
   pre-boot environment override wins, a TUI save never resets an operator's model, and cost
@@ -233,3 +269,30 @@ ratifying (this doc cedes Loom authority back), a Loom model swap, a new `[skill
 or an AoE ingress change. Bump `version`, refresh `verified_commit`
 (`git -C /home/devuser/workspace/project rev-parse --short HEAD`), re-verify every
 file:line citation touched.
+
+## Estate grounding closeout — 2026-09-04
+
+[ADR-2023](adr/ADR-2023-loom-facade.md) now carries the CP-03 closeout conditions
+for backend selection, cache constraints, degradation and served generation.
+The stable façade remains the governing entry-point decision. That decision
+must not be interpreted as evidence that the agent search/SPARQL path inherits
+chat/scaffold evaluation results. The [estate review](../../../VisionFlow/docs/estate-review/agent-grounding-and-governance.md)
+records current helper-level gaps and the required evidence for closing them.
+
+## Dream acceptance qualification — 2026-09-04
+
+The [self-improvement review](../../../VisionFlow/docs/estate-review/self-improvement.md) distinguishes intended evidence gates from the actual service path. Evaluators run before the model emits its patch; their failures become text rather than a deterministic veto. The configured recall band and a witnessed report do not prove a tested candidate. ADR-2024 remains partial and now requires frozen candidate evaluation, typed required-check rejection and restart-safe receipts. The human-merge requirement is preserved.
+
+## Instruction and enforcement qualification — 2026-09-04
+
+ADR-2020/2021 are partial for hard-limit, off-state and frontmatter/context guarantees. Tree-search instructions do not establish a runtime spending limiter; copied skill files remain distinct from package/process gates. The actual lint accepts empty references directories and body-only metadata fields. Require executor and build receipts plus typed/frontmatter/context validation. See the [estate capability review](../../../VisionFlow/docs/estate-review/capability-instructions-and-enforcement.md).
+
+## Security gate adoption — 2026-09-05
+
+ADR-2033 makes the build-with-quality Security gate executed rather than declared:
+deepsec runs in PR mode under `[security.deepsec]`, every run leaves a receipt, and
+exit 78 is recorded as SKIPPED. Invariants added: credentials are env-var names only
+in the manifest (E072); the gate cannot be enabled without the baked binary (E070);
+model routes must pair with a baked harness (E071). The image is not yet rebuilt with
+the closure (placeholder `nodeModulesHash`), so activation is staged; the CI job is
+label-gated and skips without a secret.

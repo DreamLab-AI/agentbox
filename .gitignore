@@ -167,3 +167,6 @@ skills/podcast-knowledge-ingest/promotions/
 **/.claude-flow/
 **/.agentic-qe/
 *.key.pem
+
+# build-with-quality deepsec security gate workspace (ADR-2033): generated config + data/reports
+.deepsec-gate/

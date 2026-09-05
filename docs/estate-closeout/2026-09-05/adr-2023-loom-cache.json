@@ -1,0 +1,73 @@
+{
+  "receipt": "adr-2023-loom-cache",
+  "adr": "ADR-2023",
+  "title": "Loom façade client — cache-key completeness, stage-specific degradation, configured-but-unavailable backend",
+  "date": "2026-09-05",
+  "repo": "agentbox",
+  "node_version": "v22.23.1",
+  "hermetic": true,
+  "network_calls": 0,
+  "defects_addressed": [
+    {
+      "id": "cache-key-omits-constraints",
+      "evidence": "VisionFlow/docs/estate-review/agent-grounding-and-governance.md — an AI-domain seed of 830 tokens was returned with cache_hit:true to a robotics request capped at 50 tokens; the key excluded domain and max_tokens.",
+      "fix": "cacheKey() now hashes field=value pairs for every entry of the named CACHE_KEY_FIELDS constant: query, model_tier, mode, depth, provenance, full, domain, max_tokens, budget (resolved ceiling), min_maturity, backend, generation. Absence collapses to one sentinel so null/undefined/'' cannot alias a value.",
+      "status": "closed"
+    },
+    {
+      "id": "expansion-failure-reported-degraded-false",
+      "evidence": "Same review: a fixture where seed succeeded and expansion threw returned degraded:false with no error.",
+      "fix": "Degradation is stage-specific. Results carry degraded_stages drawn from DEGRADED_STAGES (seed | expansion | sparql | backend-unavailable) plus a named DEGRADED_OUTCOMES error. defaultExpandFn/loomExpandFn tag thrown SPARQL errors with stage:'sparql' so the sub-stage is nameable.",
+      "status": "closed"
+    },
+    {
+      "id": "configured-but-unavailable-loom-indistinguishable-from-unset",
+      "evidence": "ADR-2023 closeout extension: 'Define the behaviour of configured-but-unavailable Loom separately from the existing unset-URL VisionClaw selection.'",
+      "fix": "selectBackend() returns a named descriptor {name,url,configured,generation,reason}. An unset LOOM_FACADE_URL selects VisionClaw with reason loom_facade_url_unset_visionclaw_selected (not degraded). A configured Loom that fails on an availability/timeout cause returns error backend_configured_but_unavailable with stages [seed, backend-unavailable]; an unconfigured backend returns backend_not_configured; an auth/validation rejection returns seed_rejected and is NOT treated as unavailability.",
+      "status": "closed"
+    }
+  ],
+  "cache_hit_policy": {
+    "constraint_revalidation": "Every cache hit is revalidated against the CURRENT request's constraints via cacheEntrySatisfies(); a violation is a MISS, never a served body.",
+    "over_budget_choice": "miss-and-re-retrieve",
+    "rationale": "The stored Turtle has already been clamped once. A second deterministic cut would slice a seed mid-triple and silently change what the grounding asserts; a miss costs one retrieval, a bad truncation costs correctness.",
+    "degradation_preserved": "A cache hit replays the degraded flag and degraded_stages it was stored with — a partial answer stays partial.",
+    "transport_faults_not_cached": "A seed-stage transport failure returns without a cache write, so an outage cannot pin an empty answer for the TTL."
+  },
+  "files_changed": [
+    { "path": "mcp/servers/lib/ontology-retrieval.js", "sha256": "6aa57f76b02c58533c0656c57a28b675491aeb859befd22e0406c2d622cce27d" },
+    { "path": "mcp/servers/lib/ontology-retrieval.test.js", "sha256": "93dc631e735006de488382f5f806d3970c5704525b05eb660030d18177cba3b8", "note": "one stale assertion updated: expansion failure now asserts degraded:true with the stage named" },
+    { "path": "tests/integration/ontology-retrieval-cache.test.mjs", "sha256": "ff4be7f9366ec6be104ab6973e58493fedaece20dea73899424182ece6266949", "note": "new" }
+  ],
+  "new_exports": [
+    "CACHE_KEY_FIELDS", "DEGRADED_STAGES", "DEGRADED_OUTCOMES", "BACKENDS", "BACKEND_REASONS",
+    "selectBackend", "normaliseBackend", "cacheEntrySatisfies", "normaliseCacheEntry"
+  ],
+  "result_shape_additions": ["degraded_stages", "backend", "backend_configured", "generation", "domain", "budget", "error", "error_cause"],
+  "fixtures": {
+    "backend-selection": "4 tests — Loom selected when LOOM_FACADE_URL set; VisionClaw when unset (reason recorded); injected vcFetch overrides; the selected backend is carried on every result.",
+    "cache-hit-preserving-constraints": "3 tests — identical request served from cache with domain/budget/backend/generation intact; a stored PARTIAL result stays partial on replay; a stale-constraint entry is missed, not truncated.",
+    "low-budget-after-high-budget": "1 test — 1000-token then 50-token cap for the SAME domain: cache_hit false, backend consulted twice, tokens_used <= 50, truncated true.",
+    "domain-change": "1 test — identical query/tier, domain ai → robotics: cache_hit false, AI seeds gated out, tokens_used <= 50.",
+    "expansion-failure": "3 tests — degraded true with ['expansion','sparql']; a transport fault adds 'backend-unavailable'; a clean run reports degraded false with an empty stage list.",
+    "two-generation-activation": "2 tests — one shared cache, generations gen-1/gen-2: two distinct entries, second not replayed, repeat within a generation still hits; a per-request generation pin overrides the backend default.",
+    "configured-but-unavailable-loom": "5 tests — ECONNREFUSED and timeout both yield backend_configured_but_unavailable; an unconfigured backend yields backend_not_configured; a 401 yields seed_rejected; a transport fault is never cached.",
+    "cache-key-completeness": "2 tests — every one of the 12 enumerated fields changes the key; absent/null/empty collapse to one sentinel."
+  },
+  "tests": [
+    {
+      "command": "node --test tests/integration/ontology-retrieval-cache.test.mjs",
+      "tests": 21, "pass": 21, "fail": 0, "duration_ms": 120.677322
+    },
+    {
+      "command": "node --test mcp/servers/lib/ontology-retrieval.test.js",
+      "tests": 20, "pass": 20, "fail": 0, "duration_ms": 199.254607,
+      "note": "pre-existing suite, still green after the change"
+    }
+  ],
+  "limitations": [
+    "These are helper-level fixtures with injected transports. They establish the client contract, not a live Loom round-trip.",
+    "Generation/bundle identity is honoured as an input (deps.backend.generation, LOOM_GENERATION, or a per-request pin). Binding it to the generation the Loom actually has loaded requires a Loom-side identity surface that does not yet exist; until then the value is asserted by configuration, not attested by the server.",
+    "The Loom expand helper still queries one merged graph and does not isolate asserted from inferred; the result's provenance field remains a REQUESTED scope. That limitation is unchanged by this work and is now visible alongside the backend name on every result."
+  ]
+}

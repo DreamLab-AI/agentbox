@@ -79,9 +79,18 @@ rule `E057`).
 ## User lifecycle commands
 
 These endpoints are mounted by management-api when
-`[sovereign_mesh.multi_user].enabled = true`. They return `501 Not
-Implemented` in the current scaffold release; bodies land in the
-implementation pass.
+`[sovereign_mesh.multi_user].enabled = true`.
+
+**Provision is implemented** (ADR-2049): `POST /admin/users/provision`
+(`management-api/routes/admin-users.js:137`) validates a 64-hex pubkey, calls
+`/_admin/provision/<pubkey>` on solid-pod-rs-server (PSK-gated, `:42`), is
+idempotent, and returns 201 with `pod_url`, `web_id` and `git_url`.
+
+**Suspend and archive are still `501 Not Implemented`** — `admin-users.js:240`
+logs `stub: true` and returns `{ error: 'not_implemented', code: 501, message:
+'Suspend is queued post-alpha.15.' }`. Only those two are stubs; the blanket
+"they all return 501 in the scaffold release" statement that stood here was
+wrong from the point provisioning landed.
 
 ### Provision a user
 

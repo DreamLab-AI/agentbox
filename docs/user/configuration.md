@@ -279,6 +279,7 @@ claude_flow   = true
 agentic_qe    = true
 nagual_qe     = true     # Nagual QE test framework
 codebase_memory = true
+deepsec       = true     # vercel-labs deepsec vulnerability reviewer (ADR-2033); policy in [security.deepsec]
 rust          = true
 antigravity_cli = true   # Google Antigravity CLI (agy)
 codex         = true     # OpenAI Codex Rust CLI
@@ -753,6 +754,34 @@ Run `preflight` before `up` whenever you change `agentbox.toml`, the override fi
 ## `[security]` and `[security.exceptions.<feature>]`
 
 Hardening baseline is applied unconditionally. Feature-specific privilege expansions are manifest-declared.
+
+### `[security.deepsec]` — the build-with-quality Security gate (ADR-2033)
+
+Runtime policy for `skills/build-with-quality/scripts/deepsec-gate.sh`, which drives the
+baked `deepsec` CLI (`[toolchains].deepsec = true`) in PR mode and writes a receipt per run.
+
+```toml
+[security.deepsec]
+enabled = true
+agent = "claude"          # claude | codex | pi (pi only with model_auth = "custom")
+model_auth = "local"      # local = the logged-in claude/codex CLI, no key | direct | custom
+model = ""                # empty = deepsec's default for the agent
+thinking_level = "high"   # minimal | low | medium | high | xhigh
+fail_on = "HIGH"          # CRITICAL | HIGH | MEDIUM | HIGH_BUG | BUG | LOW
+max_duration = "45m"      # GNU timeout syntax; deepsec checkpoints and resumes
+batch_size = 5
+concurrency = 2
+ai_provider = ""          # direct: anthropic | openai; custom: label
+ai_api_key_env = ""       # NAME of the env var holding a key — never the key
+ai_base_url = ""          # custom: OpenAI-compatible base URL (e.g. the Loom, http://loom:8080/v1)
+```
+
+Validator: `E070` enabled without `[toolchains].deepsec`; `E071` route/toolchain pairing
+(`local`+`claude` needs `claude_code`, `local`+`codex` needs `codex`, `direct` needs
+`ai_provider` and `ai_api_key_env`, `custom` needs `pi`, `ai_api_key_env`, `ai_base_url`);
+`E072` a credential value in `ai_api_key_env`; `W070` baked but not enabled. Any key can be
+overridden per run with `DEEPSEC_GATE_<KEY>`. Exit `78` from the gate means SKIPPED, not
+passed. Apply-class: `[toolchains].deepsec` is rebuild; `[security.deepsec]` is read live.
 
 ### Supervisord user model (commit `2341480c`)
 

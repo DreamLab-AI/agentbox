@@ -5,15 +5,28 @@
  * adr-index-gen.js — walk an ADR docs tree, parse YAML frontmatter, validate,
  * and (re)generate a README.md index table from the frontmatter.
  *
- * Usage:  node scripts/adr-index-gen.js <dir> [--check]
+ * Usage:  node scripts/adr-index-gen.js <dir> [--check] [--check-index]
  *
- *   <dir>     directory to walk recursively for *.md ADR files
- *   --check   validate only; do not write README.md (still exits 1 on error)
+ *   <dir>          directory to walk recursively for *.md ADR files
+ *   --check        validate only; do not write README.md (still exits 1 on error)
+ *   --check-index  additionally compare the generated table against the README
+ *                  on disk and FAIL when they differ (implies --check)
  *
  * Exit codes:
- *   0  all validations passed (README written unless --check)
- *   1  one or more validation errors (README not written)
+ *   0  all validations passed (README written unless --check/--check-index)
+ *   1  one or more validation errors, or (with --check-index) a stale index
  *   2  usage / IO error
+ *
+ * ADR-2001. `--check` validates RECORDS; on its own it says nothing about the
+ * README. That is a real gap, not a nicety: a fixture with a deliberately stale
+ * index passes `--check` today, so the ledger's own navigation surface can drift
+ * from the records it indexes without any gate noticing. `--check-index` closes
+ * it by regenerating the table in memory and comparing byte-for-byte with the
+ * file, reporting the first differing line and the exact regeneration command.
+ * It is a separate flag rather than folded into `--check` so that wiring it into
+ * CI is a deliberate decision taken when the pack is settled — turning an
+ * existing green step red as a side effect would be a worse outcome than the
+ * drift it detects.
  *
  * The generated README.md is a build artefact — never hand-edit it.
  */
@@ -87,9 +100,10 @@ function walk(dir, acc) {
 
 function main() {
   const args = process.argv.slice(2);
-  const check = args.includes('--check');
+  const checkIndex = args.includes('--check-index');
+  const check = args.includes('--check') || checkIndex;
   const dir = args.find(a => !a.startsWith('--'));
-  if (!dir) { fail('usage: adr-index-gen.js <dir> [--check]'); process.exit(2); }
+  if (!dir) { fail('usage: adr-index-gen.js <dir> [--check] [--check-index]'); process.exit(2); }
   if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
     fail(`not a directory: ${dir}`); process.exit(2);
   }
@@ -243,8 +257,34 @@ function main() {
   }
 
   const outPath = path.join(dir, 'README.md');
+
+  if (checkIndex) {
+    // ADR-2001: compare the generated index with the file that is supposed to be
+    // it. Reported as a first-difference line pair rather than a whole diff, so
+    // the failure names what drifted instead of dumping the table.
+    let current = null;
+    try { current = fs.readFileSync(outPath, 'utf8'); }
+    catch { fail(`${path.relative(process.cwd(), outPath)} does not exist — the index has never been generated`); process.exit(1); }
+    if (current === md) {
+      console.log(`ok: ${rows.length} ADR(s) valid and ${path.relative(process.cwd(), outPath)} is in sync`);
+      process.exit(0);
+    }
+    const cur = current.split('\n');
+    const gen = md.split('\n');
+    const at = (() => {
+      for (let i = 0; i < Math.max(cur.length, gen.length); i++) if (cur[i] !== gen[i]) return i;
+      return -1;
+    })();
+    fail(`${path.relative(process.cwd(), outPath)} is STALE: it does not match the index generated from the ${rows.length} record(s) on disk`);
+    console.error(`  first difference at line ${at + 1}`);
+    console.error(`    on disk:   ${JSON.stringify(cur[at] ?? '<end of file>')}`);
+    console.error(`    generated: ${JSON.stringify(gen[at] ?? '<end of file>')}`);
+    console.error(`  regenerate with: node scripts/adr-index-gen.js ${dir}`);
+    process.exit(1);
+  }
+
   if (check) {
-    console.log(`ok: ${rows.length} ADR(s) valid (--check, README not written)`);
+    console.log(`ok: ${rows.length} ADR(s) valid (--check, README neither written nor compared — use --check-index to compare)`);
   } else {
     fs.writeFileSync(outPath, md);
     console.log(`ok: ${rows.length} ADR(s) valid; wrote ${path.relative(process.cwd(), outPath)}`);

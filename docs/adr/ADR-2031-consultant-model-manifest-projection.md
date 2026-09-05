@@ -59,3 +59,9 @@ tariff were checked against Google's model reference and release post. Nix
 evaluation of the staged fixture in `lib/agentbox-manifest.nix` and boot in the
 rebuilt image remain to be confirmed on the host (see
 `docs/reference/upgrades-2026-09.md`).
+
+## Closeout extension — 2026-09-04
+
+CP-01/08. Owner remains jjohare with consultant/runtime maintainers. Source reinspection confirms environment-over-manifest boot projection. Existing tests and pricing references retain their original scope/date; this pass does not re-verify external model availability or tariffs. Staged activation remains unchanged.
+
+**Acceptance condition:** retain the staged Nix/boot receipt, effective projected model and actual process argument across absent/empty/explicit overrides and TUI saves. Distinguish old sessions from newly created sessions. Report unknown tariff without an invented cost and date any future tariff verification. Reopen on model precedence, registry defaults, TUI write or boot changes. See the [configuration review](../../../../VisionFlow/docs/estate-review/configuration-projection.md).

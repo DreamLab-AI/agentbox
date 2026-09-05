@@ -48,3 +48,59 @@ the index; the legacy 241-file archive has not yet been physically relocated.
 Established at verified_commit 73540faa0 by running
 `node scripts/adr-index-gen.js docs/adr` (exit 0) and confirming a
 deliberately broken fixture exits 1.
+
+## Closeout extension — 2026-09-04
+
+CP-01/08. Owner remains jjohare with documentation/release maintainers. Partial/staged remains accurate. Archived material now exists under docs/archive; the historical statement that relocation had not begun is not current. The documentation entry page still used former reference paths and called that shelf authoritative. This pass redirects links where an exact archive target exists, identifies the operative series and marks historical material as rationale. Archive contents remain unchanged.
+
+The actual validator reports six stale records and does not regenerate the index. Its `--check` mode validates records without comparing README contents: an isolated fixture with an intentionally stale index passes. Staleness checks require non-empty verified_paths and compare the declared commit with HEAD; they do not establish semantic correctness, inspect uncommitted source changes or verify every historical record. Preserve those limitations rather than advancing commits merely to obtain a green gate.
+
+**Acceptance condition:** Finish legacy dispositions and governing-document routes, reconcile verified source claims, regenerate and compare the index in CI, and record current-worktree evidence separately from committed baselines. Keep the core decision concise with linked evidence/closeout companions when one page is insufficient. Validate reader routes and absence of conflicting authority claims across the entry pages. Reopen on archive references, generator behaviour, governing ownership or corpus growth. See the [assessment](../../../../VisionFlow/docs/estate-review/canon-and-verification.md#decision-register-and-reader-navigation) and [receipt](../../../../VisionFlow/docs/estate-review/evidence/adr-navigation-snapshot.json). No archive or source verification commit was rewritten.
+
+## Acceptance progress — 2026-09-05
+
+**Implemented.** One clause of the acceptance condition — *"regenerate and
+compare the index in CI"* — is now implementable rather than aspirational.
+
+- `scripts/adr-index-gen.js` gains **`--check-index`**: it regenerates the index
+  table in memory and compares it byte-for-byte with `README.md`, failing with
+  the first differing line, both versions of that line, and the exact
+  regeneration command. `--check-index` implies `--check`, so a malformed record
+  still fails before the index is considered.
+- `--check` now states plainly that it neither writes nor compares the index, so
+  its green result can no longer be misread as an index guarantee. That was the
+  precise defect: a fixture with a deliberately stale index passed.
+- **Wired into CI.** `.github/workflows/invariants.yml` gains a
+  `check-adr-index` step running `--check-index`, alongside the existing
+  `--check` step. The two answer different questions and both are now asked:
+  adding or editing a record without running
+  `node scripts/adr-index-gen.js docs/adr` fails the build. It is a separate flag
+  rather than folded into `--check` so a record-validation failure and an index
+  drift are distinguishable in the CI log.
+
+**Tests and results.** `node tests/config/adr-index-check.test.mjs` — **16
+passed, 0 failed**. Cases: a freshly generated index passes; the reproduced
+fixture (a record added without regenerating) still passes `--check` but FAILS
+`--check-index`; a hand-edited row is caught; a deleted record leaving a stale
+row is caught; a missing index fails rather than passing vacuously; and an
+invalid record fails before the index comparison.
+
+**Repository ledger state at close.** Run read-only against this repository,
+`node scripts/adr-index-gen.js docs/adr --check` passes (56 records) and
+`--check-index` reports `docs/adr/README.md` **in sync**, so the new CI step is
+green as landed. It went briefly stale mid-pass while records were being added
+concurrently, and the gate detected that correctly before the owning change
+regenerated it — which is the behaviour this clause was asking for. This pass did
+not itself regenerate the index.
+
+**Receipts.** `docs/estate-closeout/2026-09-05/adr-2001-index-gate.json`.
+
+**Remaining.** The gate compares the index with the records and nothing more: it
+establishes no semantic correctness, does not check `verified_paths` accuracy,
+and does not tell whether a `verified_commit` reflects the current worktree —
+those limitations are preserved rather than papered over. Legacy dispositions,
+governing-document routes, reader-route validation and current-worktree evidence
+recorded separately from committed baselines are all untouched by this pass.
+
+**Governed paths changed.** `scripts/adr-index-gen.js`,
+`tests/config/adr-index-check.test.mjs` (new).

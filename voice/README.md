@@ -14,7 +14,7 @@ laptop / phone / tablet browser (tailnet, self-signed TLS)
        ├─ /              the cockpit page  (site/, "Industrial Warmth" system)
        ├─ /embed         compact voice strip  → frontend:3000  (Unmute fork)
        ├─ /api/*         Unmute backend       → backend:80     (STT/TTS, /v1/realtime)
-       ├─ /feed  /bridge/*   tab0-bridge      → agentbox:8971  (turns, tabs, /tab0/send)
+       ├─ /feed  /bridge/*   tab0-bridge      → agentbox:9096  (NIP-98 proxy → :8971, ADR-069)
        ├─ /aoe/*         AoE sessions         → agentbox:9096  (NIP-98 proxy → :9095)
        └─ /approvals/*   governance           → agentbox:9090  (management-api)
        ├─ /mgmt/*        system discovery     → agentbox:9090  (authenticated)
@@ -97,8 +97,8 @@ All served under `https://<host>:8444`, same origin:
 |---|---|---|
 | `/embed`, `/_next/*`, voice worker assets | `frontend:3000` | Unmute fork; mic strip |
 | `/api/*` | `backend:80` | Unmute backend, `/v1/realtime` WS |
-| `/feed` | `agentbox:8971` | tab0-bridge turn feed (WS) |
-| `/bridge/*` | `agentbox:8971` | tab0-bridge REST — tabs, `/tab0/send`, `nostr/*` |
+| `/feed` | `agentbox:9096` | tab0-bridge turn feed (WS), **via the NIP-98 proxy** — ADR-069 credential exchange injects `BRIDGE_TOKEN` server-side (`console/Caddyfile:97-101`) |
+| `/bridge/*` | `agentbox:9096` | tab0-bridge REST — tabs, `/tab0/send`, `nostr/*` — **via the NIP-98 proxy**, same server-side credential exchange (`console/Caddyfile:102-105`) |
 | `/aoe/*` | `agentbox:9096` | AoE sessions API + session live-ws (WS), via NIP-98 proxy |
 | `/approvals/*` | `agentbox:9090` | `GET /v1/approvals`, `POST /v1/approvals/:id/decide` |
 | `/mgmt/*` | `agentbox:9090` | Authenticated system discovery, including `GET /v1/system`. |

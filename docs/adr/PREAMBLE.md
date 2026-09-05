@@ -25,3 +25,5 @@ governing document **in the same change**, and regenerate this index
 `.github/workflows/invariants.yml`: invalid frontmatter, asymmetric
 supersession edges, and stale `verified_commit`+`verified_paths` claims all
 fail the build).
+
+The [historical closeout routing note](../adr-history-closeout.md) points the 72 archived decision candidates at the estate historical map and section-level review; the archive remains historical and lineage mentions are not whole-document supersession.
