@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ec257a2567993518b25d69a34541544a2a54ef6c
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [services/agentbox-ops/src/procs.rs, services/agentbox-ops/src/bin/ruflo-daemon-gc.rs]
 owner: jjohare
 review_trigger: a new daemon launcher shape (new package path, wrapper script or runtime flags), any new binary that signals processes, or adoption of pidfd-based identity
@@ -64,6 +64,20 @@ CP-01/04/08. Owner remains jjohare with runtime/operations maintainers. Four exi
 Registry workspace data wins over a live sweep entry; confirmation checks launcher shape without captured process identity, and SIGTERM success does not prove exit. The [source review](../../../../VisionFlow/docs/estate-review/process-lifecycle.md) distinguishes these findings from tested behaviour; the [receipt](../../../../VisionFlow/docs/estate-review/evidence/process-lifecycle-snapshot.json) records source hashes and targeted test commands. No daemon signal or runtime PID-state mutation ran.
 
 **Acceptance condition:** Inventory every signalling caller, bind identity and authority to the intended process instance, reconcile registry/live workspace disagreement, and specify whether staleness is rechecked immediately before action. Exercise stale/reused PIDs, recognised replacement daemons, unknown wrappers, missing proc access, signal failure and delayed exit with isolated owned subprocesses. Preserve default read-only reaper behaviour. Report signal delivery separately from confirmed shutdown and retain recoverable state after failure. Reopen on launcher, signal caller, registry, TTL or process-identity changes; dependency is the CP-08 release and recovery receipt.
+
+## Re-verification — 2026-09-05 (landing, 08e817f39)
+
+`git diff ec257a256..08e817f39 -- services/agentbox-ops/src/procs.rs` is the
+205d370ba refactor only: the launcher allowlist moved verbatim into
+`services/agentbox-ops/src/process_identity.rs:327` (`is_ruflo_daemon_argv`,
+re-exported into `procs.rs:13`), the argv test corpus moved to
+`process_identity_tests.rs:301-309`, and `workspace_argv` (`procs.rs:29`) and
+the reaper's `registry_pid` bound are unchanged. The rule therefore still holds
+and is now shared with the Hermes stop path as the section below records.
+`cargo test --locked --offline` in `services/agentbox-ops`: 141 passed; in the
+rebuilt image the installed `ruflo-daemon-gc --json` confirmed seven live
+daemons (argv `node …/@claude-flow/cli/bin/cli.js daemon start --foreground
+--quiet`) and signalled nothing.
 
 ## Acceptance progress — 2026-09-05
 

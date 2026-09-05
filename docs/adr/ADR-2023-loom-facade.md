@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -59,6 +59,8 @@ condense `endpoint` façade at :650 commented "Ontology Loom façade (model-swap
 door; DNAT via ml). Was the dead .48 host."
 `mcp/servers/lib/ontology-retrieval.js`: `LOOM_FACADE_URL` seed+expand path with
 transparent VisionClaw fallback (:339-417).
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `agentbox.toml` gate additions elsewhere in the manifest and by the ADR-2016/2054 rework touching `mcp/servers/lib/ontology-retrieval.js`; neither alters the façade contract, so the decision still holds. Re-checked at HEAD: `agentbox.toml:1672-1673` `loom_url = "http://192.168.2.132:8084/v1"` and `loom_model = "qwen3.8-27B"`, `:1677` `loom_max_tokens = 32768`, and the condense endpoint façade at `:656` commented "Ontology Loom façade (model-swap door; DNAT via ml). Was the dead .48 host." (every line number in the Verification paragraph above — `:1564-1566`, `:650` — has drifted). `mcp/servers/lib/ontology-retrieval.js:472` reads `LOOM_FACADE_URL` and `:463-466` documents the transparent VisionClaw selection when it is unset, so the fallback is an ordinary path rather than a fault. The `loom_max_tokens = 16384` figure in the Verification paragraph above remains wrong at HEAD (live value 32768) — it is already flagged in the CORRECTION note in this record's closeout section and is repeated here so a reader arriving at the older paragraph is not misled. `implementation_status` stays `partial`: the ADR-051 deferred-distillation MCP tools are still not a discrete server, and no live call through :8084 was made by this pass. Commands: `git diff --name-only 89301ec7..HEAD -- agentbox.toml mcp/servers/lib/ontology-retrieval.js`, `grep -n 'loom_url\|loom_model\|loom_max_tokens' agentbox.toml`, `grep -n 'LOOM_FACADE_URL' mcp/servers/lib/ontology-retrieval.js`.
 
 ## Closeout extension — 2026-09-04
 

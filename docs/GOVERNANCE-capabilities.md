@@ -296,3 +296,7 @@ in the manifest (E072); the gate cannot be enabled without the baked binary (E07
 model routes must pair with a baked harness (E071). The image is not yet rebuilt with
 the closure (placeholder `nodeModulesHash`), so activation is staged; the CI job is
 label-gated and skips without a secret.
+
+## Remediation — 2026-09-05
+
+ADR-2057 is implemented, narrowing divergence 8: `[skills.podcast_ingest]` (default `true` = shipped behaviour) now wraps `[program:podcast-cron]` in `lib.optionalString`, the `harness`/`precedent` registration blocks read their own `.enabled` via `agentbox-manifest toml-bool`, all three carry honest apply classes in the system-manifest catalogue (60 gate paths, was 57), and `[skills.harness].template_dir` is projected as `HARNESS_TEMPLATE_DIR` instead of being inert — residual: gate-off skips registration but cannot retract a `.mcp.json` entry an earlier boot wrote (no remove-by-name subcommand), and the podcast gate removes the schedule, not the shared binary from the closure, so byte-identical-when-off now holds for runtime trace but not image closure; activation is staged until the next rebuild.

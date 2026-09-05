@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
-verified_paths: [config/hooks/nostr-live-mirror.cjs, services/nostr-pod-bridge/src/session_summary.rs, services/nostr-pod-bridge/src/lib.rs]
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, services/nostr-pod-bridge/src/egress_policy.rs, services/nostr-pod-bridge/src/session_summary.rs, services/nostr-pod-bridge/src/lib.rs, tests/fixtures/egress-redaction.v1.json]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
 repo: agentbox
@@ -51,6 +51,8 @@ verified_paths anchor before this ADR can move to accepted/complete.
 ## Verification
 
 2026-09-04 source inspection and isolated probes establish working off/no-identity gates in the live hook, derived-child default and legacy recipient paths, and raw sentinel preservation before wrapping. The digest source sends flattened transcript input to its provider before publication. Neither path establishes the proposed shared redaction/recipient policy. Status changes from none to partial for the existing gates and transport components; decision remains proposed and activation inactive for the complete policy.
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `11804ba4b` ("single egress redaction contract"), which landed the acceptance work recorded below. The decision still holds, and the four clauses it demanded now have code behind them: (a) **content scope** — `config/egress-policy.json` enumerates content, recipients, providers, encryption, transport and log retention per path, with `switches`, `invariants` and an `outcomes` vocabulary as top-level keys; (b) **authority model** — the same document names the signing key per path, implemented twice and held together by the paired fixture `tests/fixtures/egress-redaction.v1.json`, which `services/nostr-pod-bridge/src/egress_policy.rs:444-448` loads by `include_str!` so a Node/Rust divergence fails `cargo test` rather than a review; (c) **off-switch fail-mode** — `config/hooks/lib/egress-policy.cjs:143` refuses on the global disable, `:145-147` on the per-path switch (`AGENTBOX_LIVE_MIRROR` / `AGENTBOX_SESSION_DIGEST`), `:152` refuses outright when redaction is disabled, and `:155` when there is no sender identity, each returning `OUTCOME.SKIPPED` (`:29-30`) rather than proceeding; (d) **recipient allowlist** — `:42` resolves the configured allowlist and `:65` denies with `recipient-not-allowlisted`. The live hook now redacts before wrapping at `config/hooks/nostr-live-mirror.cjs:409-411`, where a `null` from `redactForEgress` is a fail-closed skip, closing the reviewed hole where a `password=` sentinel survived into the composed rumor. **The record's own status fields are deliberately left as they are**: `decision_status` stays `proposed` and `activation_status` `inactive` because this pass verified source and fixtures only — no deployed configuration, remote retention or actual delivery was exercised, which is exactly what the record says is missing. `implementation_status` stays `partial`. Commands: `git diff --stat 89301ec7..HEAD -- config/hooks/nostr-live-mirror.cjs services/nostr-pod-bridge/src/`, `grep -n 'OUTCOME\|allowlist\|redaction-disabled' config/hooks/lib/egress-policy.cjs`, `node -e` dump of `config/egress-policy.json` keys.
 
 ## Closeout extension — 2026-09-04
 

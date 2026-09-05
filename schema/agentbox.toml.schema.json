@@ -493,17 +493,29 @@
             }
           }
         },
+        "podcast_ingest": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2057: manifest gate for the podcast ingestion schedule ([program:podcast-cron], supercronic over skills/podcast-knowledge-ingest/crontab). Default true = today's shipped behaviour. REBUILD-class: the supervisor block is baked by flake.nix. Gates the schedule, not the shared podcast-ingest binary.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "false ⇒ flake.nix emits no [program:podcast-cron] supervisor block."
+            }
+          }
+        },
         "harness": {
           "type": "object",
           "additionalProperties": false,
           "description": "Harness Engineering MCP bridge (ADR-004).",
           "properties": {
             "enabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "ADR-2057 gap 2: honoured at MCP registration — false ⇒ the entrypoint does not add harness-bridge to .mcp.json. BOOT-class."
             },
             "template_dir": {
               "type": "string",
-              "description": "Path to harness template directory."
+              "description": "Path to harness template directory. ADR-2057 gap 4: exported by the entrypoint as HARNESS_TEMPLATE_DIR into the harness-bridge .mcp.json env, which mcp/servers/harness-bridge.js reads (default /var/lib/agentbox/harness-templates)."
             }
           }
         },
@@ -513,7 +525,8 @@
           "description": "Governance precedent system for promoted decisions.",
           "properties": {
             "enabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "ADR-2057 gap 2: honoured at MCP registration — false ⇒ the entrypoint does not add precedent-bridge to .mcp.json. BOOT-class."
             },
             "namespace": {
               "type": "string",

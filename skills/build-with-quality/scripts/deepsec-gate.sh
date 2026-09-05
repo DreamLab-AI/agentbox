@@ -191,7 +191,10 @@ CFG
 printf '%s\n' "$PLAN" > "$REPORT_DIR/plan.json"
 
 cd "$WS"
-common=(--project-id "$PROJECT_ID" --root "$ROOT" --no-tui)
+# NOTE: deepsec 2.3.9 (the pinned/baked CLI) accepts only --project-id,
+# --root and --matchers on `scan`, and rejects unknown options with exit 1.
+# It renders no TUI when stdout is not a TTY, which is how the gate runs it.
+common=(--project-id "$PROJECT_ID" --root "$ROOT")
 model_args=(--agent "$P_AGENT" --thinking-level "$P_THINKING_LEVEL" --batch-size "$P_BATCH_SIZE" --concurrency "$P_CONCURRENCY")
 [ -n "$P_MODEL" ] && model_args+=(--model "$P_MODEL")
 

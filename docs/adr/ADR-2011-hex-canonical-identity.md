@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -52,6 +52,8 @@ Re-checked at `cbe7335b9`: `management-api/lib/agent-identity.js:150`
 `config/nip98-proxy/proxy.mjs:120`, `:250`, `:396`. Residual placeholder
 fallback confirmed at `agent-identity.js:175`/`:184` (`did:nostr:local`,
 fail-open).
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by ADR-2044 (`management-api/lib/agent-identity.js`, +44/-6: the `mint` CLI now exits non-zero with no export lines on a failed mint or a failed persist, instead of failing open) and by `11804ba4b` in `config/nip98-proxy/proxy.mjs`. Both tighten the canonical-identity path; the decision still holds. The `cbe7335b9` citations above have drifted; at HEAD: `management-api/lib/agent-identity.js:168` (`did: \`did:nostr:${xOnly}\``), `:63` (`MULTIKEY_PREFIX = 'fe70102'`), `:68-69` (`multikeyFromXonly`, lowercased), `:154-161` (private key persisted 0600, `persisted` flag at `:173`). The proxy still accepts only `^[0-9a-f]{64}$`: `config/nip98-proxy/proxy.mjs:222` (allowlist entries), `:244` (`canonicalPubkey`), `:367` (route config), `:565` (session token). **The residual recorded in Consequences is unchanged and still real:** `config/entrypoint-unified.sh:915` still runs `export AGENTBOX_AGENT_DID="${AGENTBOX_AGENT_DID:-did:nostr:local}"` unconditionally, so the ADR-2044 CLI hardening does not by itself remove the non-canonical placeholder at boot — the module's own header says so at `agent-identity.js:42-43`. Commands: `git diff 89301ec7..HEAD -- management-api/lib/agent-identity.js config/nip98-proxy/proxy.mjs`, `grep -n 'did:nostr:local' config/entrypoint-unified.sh`, `grep -n '0-9a-f]{64}' config/nip98-proxy/proxy.mjs`.
 
 ## Closeout extension — 2026-09-04
 

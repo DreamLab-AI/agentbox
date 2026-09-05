@@ -46,8 +46,25 @@
 // nothing about a running deployment: a passing run means the checked-in files
 // declare no unsanctioned door, not that no unsanctioned door is open.
 //
+// ---------------------------------------------------------------------------
+// ADR-2062 (2026-09-05) — this is now a LISTENER gate as well as a publish gate.
+//
+// The publish rule above audits what compose exposes to the HOST. It cannot see
+// what a supervised process BINDS inside the container, and a container-internal
+// 0.0.0.0 bind on a shared docker network is reachable by every sibling
+// container. The second half of this file therefore audits the generated
+// supervisord `command=` / `environment=` lines in flake.nix for bind addresses
+// and applies a listener rule alongside the `ports:` rule. See the ADR-2062
+// section below for what it reads, how it resolves Nix interpolation, and the
+// limits it does not overclaim past.
+//
+// The publish rule's OUTPUT FORMAT is unchanged and load-bearing (other tooling
+// parses it); the listener rule adds its own clearly-prefixed lines after it.
+//
 // Usage: check-ports-loopback.mjs [root]      (default: the repository root)
-// Exit:  0 pass, 1 violation, 2 unparseable input, 3 usage/no input found.
+// Exit:  0 pass, 1 violation (publish or listener), 2 unauditable input
+//        (unparseable compose, or an unresolvable bind interpolation),
+//        3 usage/no input found.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -641,6 +658,408 @@ function checkFile(file) {
   return { violations, ports: found.length };
 }
 
+// ===========================================================================
+// ADR-2062 — the listener rule
+// ===========================================================================
+// A loopback *publish* constrains host->container only. It says nothing about
+// container->container traffic on a shared bridge, and agentbox joins the
+// external `visionclaw_network` (docker-compose.yml networks: -> the override's
+// `external: true`). So a supervised program that binds 0.0.0.0 inside the
+// container is reachable, unauthenticated, by every sibling container — and is
+// invisible to the `ports:` rule above in ANY syntax and at any level of
+// parsing rigour, because it is never declared as a port at all.
+//
+// This section therefore audits the OTHER plane: the generated supervisord text
+// inside flake.nix. For each `[program:NAME]` block it reads the `command=` and
+// `environment=` lines and extracts every stated bind address, from:
+//
+//   --bind / --bind-addr / --host / --listen / --ip / --address / --addr
+//     (both `--flag value` and `--flag=value`)
+//   --port with a host-carrying value (`--port 0.0.0.0:8888`)
+//   a BARE positional IPv4 literal (`wayvnc --output=… 0.0.0.0 5901`) — a
+//     dotted quad standing alone in a supervised command IS a bind address, and
+//     ignoring it would let the gate lie about the shape it most needs to catch
+//   environment assignments named BIND / HOST or suffixed _BIND / _BIND_ADDR /
+//     _LISTEN / _LISTEN_ADDR / _HOST (e.g. AGENTBOX_RELAY_BIND)
+//
+// The rule: a program that binds a non-loopback address must be on
+// LISTENER_SANCTIONED with a reason, or it is a violation naming the program,
+// the flag, the address and the flake.nix line.
+//
+// Nix interpolation. Bind values are frequently `${var}`. Resolution is
+// three-way and never silently optimistic:
+//   RESOLVED  — a plain string literal, or a `let` binding whose RHS is one.
+//   DEFAULTED — `cfg.attr or "127.0.0.1:9720"` (directly or via a `let`
+//               binding, e.g. `mcpHubBind`). The literal default is used and
+//               the listener is reported as manifest-overridable, because the
+//               operator's agentbox.toml can move it. A DEFAULTED value that
+//               defaults NON-loopback still needs a sanction.
+//   UNRESOLVED — anything else. Reported explicitly and exits 2 (unauditable),
+//               never passed over. "Resolve, or reject" — there is no third
+//               outcome in which a bind address is silently ignored.
+//
+// LIMITS, stated so the gate does not overclaim (cf. the publish rule's own
+// NO DEPLOYMENT CLAIM):
+//   - A program that binds every interface by DEFAULT while stating no address
+//     is undetectable statically (`x11vnc -rfbport 5901`, `Xvnc :1 -rfbport
+//     5901`). Static text cannot see a library default.
+//   - A DEFAULTED loopback value can be overridden non-loopback in
+//     agentbox.toml. The enumeration marks these so the override is visible.
+//   - Conditional Nix branches are all audited, since any of them may be the
+//     text that is generated. That is fail-closed and deliberate.
+//   - Auth posture is NOT inferred from the command line; a sanction records it
+//     by citation. This gate proves reachability, ADR-2040 owns the credential.
+
+// ---------------------------------------------------------------------------
+// Sanctioned non-loopback LISTENERS, keyed by supervisor program name. Adding
+// an entry is a security decision — the reason must cite the record that
+// establishes the program authenticates (or is otherwise sanctioned).
+//
+// Seeded with the two programs ADR-2040 names as authenticated non-loopback
+// listeners, each confirmed in flake.nix at the time of writing:
+//   code-server  — `--auth password`, password minted 0600 at boot by
+//                  config/entrypoint-unified.sh into the --config file.
+//   jupyter-lab  — the empty `--IdentityProvider.token=` was DROPPED, so
+//                  jupyter_server falls through to JUPYTER_TOKEN, minted 0600
+//                  at boot and exported into PID 1's environment.
+// ---------------------------------------------------------------------------
+const LISTENER_SANCTIONED = [
+  { program: 'code-server', reason: 'ADR-2040 — binds 0.0.0.0:8080 but authenticates: --auth password, credential minted 0600 at boot' },
+  { program: 'jupyter-lab', reason: 'ADR-2040 — binds 0.0.0.0:8888 but authenticates: JUPYTER_TOKEN minted 0600 at boot, empty --IdentityProvider.token= removed' },
+  // The three desktop-stack VNC servers (one runs per desktop.stack branch) are
+  // UNAUTHENTICATED by construction (wayvnc no auth, x11vnc -nopw, Xvnc
+  // -SecurityTypes None) and must bind a non-loopback address so the compose
+  // publish 127.0.0.1:5901:5901 (host loopback only, ADR-2013) can reach them.
+  // Sanctioned as a KNOWN, RECORDED exception of the ADR-2040 class: the
+  // exposure is the docker network only, and VNC authentication minted at boot
+  // is ADR-2040's open follow-on. x11vnc and Xvnc declare no bind flag (they
+  // bind every interface implicitly), so only wayvnc is visible to this rule.
+  { program: 'wayvnc', reason: 'ADR-2040 follow-on — VNC desktop server, unauthenticated, docker-network only; host publish is loopback-only (127.0.0.1:5901)' },
+  { program: 'x11vnc', reason: 'ADR-2040 follow-on — VNC desktop server (-nopw), docker-network only; host publish is loopback-only (127.0.0.1:5901)' },
+  { program: 'xvnc', reason: 'ADR-2040 follow-on — VNC desktop server (-SecurityTypes None), docker-network only; host publish is loopback-only (127.0.0.1:5901)' },
+];
+
+// Flags whose value is a bind address.
+const BIND_FLAGS = new Set([
+  '--bind', '--bind-addr', '--bind-address', '--host', '--hostname',
+  '--listen', '--listen-addr', '--listen-address', '--ip', '--address', '--addr', '--http-address',
+]);
+// `--port` only carries a host when its value is host:port.
+const PORT_FLAGS = new Set(['--port', '--http-port']);
+
+const IPV4 = /^\d{1,3}(?:\.\d{1,3}){3}$/;
+
+// --- Nix interpolation resolution -------------------------------------------
+
+// Single-line `let` bindings: `name = <expr>;`. Multi-line RHSs are not
+// collected, so an interpolation naming one resolves to UNRESOLVED rather than
+// to a guess.
+export function collectNixLetBindings(text) {
+  const lets = new Map();
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const m = /^\s{2,}([A-Za-z_][A-Za-z0-9_'-]*)\s*=\s*(.+?);\s*$/.exec(line);
+    if (m && !lets.has(m[1])) lets.set(m[1], m[2].trim());
+  }
+  return lets;
+}
+
+// Split a string into literal chunks and `${...}` interpolations, honouring
+// nested braces so `${toString (a or 1)}` and `${x}${y}` both split correctly.
+function splitInterpolations(s) {
+  const out = [];
+  let lit = '';
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '$' && s[i + 1] === '{') {
+      let depth = 1, j = i + 2, expr = '';
+      for (; j < s.length && depth > 0; j++) {
+        if (s[j] === '{') depth++;
+        else if (s[j] === '}') { depth--; if (depth === 0) break; }
+        expr += s[j];
+      }
+      if (depth !== 0) { lit += s.slice(i); break; }
+      if (lit) { out.push({ lit }); lit = ''; }
+      out.push({ expr });
+      i = j;
+      continue;
+    }
+    lit += s[i];
+  }
+  if (lit) out.push({ lit });
+  return out;
+}
+
+function resolveNixExpr(expr, lets, depth = 0) {
+  const e = expr.trim();
+  if (depth > 6) return { ok: false, why: 'interpolation nests too deeply to resolve' };
+  // "literal" — a plain double-quoted string with no interpolation of its own.
+  const q = /^"([^"$]*)"$/.exec(e);
+  if (q) return { ok: true, value: q[1], defaulted: false };
+  // (X) and toString (X) / toString X
+  let m = /^\((.*)\)$/s.exec(e);
+  if (m) return resolveNixExpr(m[1], lets, depth + 1);
+  m = /^toString\s+(.*)$/s.exec(e);
+  if (m) return resolveNixExpr(m[1], lets, depth + 1);
+  // <attrpath> or <default> — the manifest may override, the default is known.
+  m = /^(.+?)\s+or\s+(.+)$/s.exec(e);
+  if (m) {
+    const d = resolveNixExpr(m[2], lets, depth + 1);
+    if (!d.ok) {
+      const num = /^-?\d+$/.exec(m[2].trim());
+      if (num) return { ok: true, value: num[0], defaulted: true };
+      return d;
+    }
+    return { ok: true, value: d.value, defaulted: true };
+  }
+  // A bare number (a port default reached through `or`).
+  if (/^-?\d+$/.test(e)) return { ok: true, value: e, defaulted: false };
+  // A `let` identifier: recurse into its single-line RHS.
+  if (/^[A-Za-z_][A-Za-z0-9_'-]*$/.test(e)) {
+    if (!lets.has(e)) return { ok: false, why: `\`${e}\` is not a resolvable single-line let binding` };
+    return resolveNixExpr(lets.get(e), lets, depth + 1);
+  }
+  return { ok: false, why: `\`${e}\` is not a literal, a defaulted attribute, or a resolvable let binding` };
+}
+
+// Resolve a whole value (literals + interpolations) to a string.
+export function resolveNixValue(raw, lets) {
+  const parts = splitInterpolations(raw);
+  let value = '', defaulted = false;
+  for (const p of parts) {
+    if (p.lit !== undefined) { value += p.lit; continue; }
+    const r = resolveNixExpr(p.expr, lets);
+    if (!r.ok) return { ok: false, why: `\${${p.expr}}: ${r.why}` };
+    value += r.value;
+    defaulted = defaulted || r.defaulted;
+  }
+  return { ok: true, value, defaulted };
+}
+
+// --- supervisor block reading -----------------------------------------------
+
+// A block runs from its `[program:NAME]` header to the next header or to the
+// end of the enclosing Nix string (`''`), whichever comes first. Bounding on
+// `''` matters: without it, trailing Nix code far below the last block would be
+// attributed to that block.
+export function splitProgramBlocks(text) {
+  const lines = text.split('\n');
+  const blocks = [];
+  let cur = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const h = /^\s*\[program:([^\]]+)\]\s*$/.exec(line);
+    if (h) { cur = { program: h[1].trim(), startLine: i + 1, lines: [] }; blocks.push(cur); continue; }
+    if (!cur) continue;
+    if (/^\s*''/.test(line)) { cur = null; continue; }
+    cur.lines.push({ n: i + 1, text: line });
+  }
+  return blocks;
+}
+
+// Split an `environment=` payload on commas that are not inside quotes or
+// inside a `${...}` interpolation (Nix interpolations contain their own quotes,
+// e.g. `"${cfg.bind or "127.0.0.1"}:7777"`).
+function splitEnvAssignments(s) {
+  const out = [];
+  let cur = '', inQuote = false, depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '$' && s[i + 1] === '{') { depth++; cur += '${'; i++; continue; }
+    if (depth > 0) {
+      if (c === '{') depth++;
+      else if (c === '}') depth--;
+      cur += c;
+      continue;
+    }
+    if (c === '"') { inQuote = !inQuote; cur += c; continue; }
+    if (c === ',' && !inQuote) { if (cur.trim()) out.push(cur.trim()); cur = ''; continue; }
+    cur += c;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+
+const unquote = (s) => s.replace(/^['"]/, '').replace(/['"]$/, '');
+
+// Env var names that state a bind address. `_HOST` is included but treated
+// conservatively below, because a `*_HOST` far more often names a peer to
+// CONNECT to than an interface to bind.
+const ENV_BIND = /^(?:[A-Z0-9_]*_)?(BIND|BIND_ADDR|BIND_ADDRESS|LISTEN|LISTEN_ADDR|LISTEN_ADDRESS)$/;
+const ENV_HOST = /^(?:[A-Z0-9_]*_)?HOST$/;
+
+// Tokenise a `command=` value. Whitespace splitting is sufficient and
+// deliberately blunt: over-collecting tokens is harmless because every
+// candidate is then classified, while a clever tokeniser could drop one.
+function commandTokens(cmd) {
+  return cmd.split(/\s+/).filter(Boolean);
+}
+
+// Extract every stated bind address in one block.
+export function extractBinds(block, lets) {
+  const found = [];
+  const add = (o) => found.push({ program: block.program, ...o });
+
+  for (const { n, text } of block.lines) {
+    const cmd = /^\s*command=(.*)$/.exec(text);
+    if (cmd) {
+      const toks = commandTokens(cmd[1]);
+      for (let i = 0; i < toks.length; i++) {
+        const t = toks[i];
+        const eq = t.indexOf('=');
+        const flag = eq === -1 ? t : t.slice(0, eq);
+        if (BIND_FLAGS.has(flag) || PORT_FLAGS.has(flag)) {
+          const raw = eq === -1 ? (toks[i + 1] ?? '') : t.slice(eq + 1);
+          if (eq === -1) i++;
+          if (!raw) continue;
+          // `--port 9095` states no host; only a host:port form does.
+          if (PORT_FLAGS.has(flag) && !unquote(raw).includes(':')) continue;
+          add({ source: flag, raw: unquote(raw), line: n });
+          continue;
+        }
+        if (t.startsWith('-')) continue;
+        // A bare dotted quad IS a bind address, whether it stands alone (the
+        // wayvnc shape, `wayvnc --output=HEADLESS-1 0.0.0.0 5901`) or is the
+        // value of a flag this gate does not know by name (`--allowed-host
+        // 127.0.0.1`). Unknown flags are deliberately NOT allowed to swallow a
+        // following address: a missed bind is the failure mode that matters, so
+        // the address is reported and merely LABELLED with the preceding flag.
+        const bare = /^["']?(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?["']?$/.exec(t);
+        if (bare) {
+          const prev = toks[i - 1];
+          const label = prev && prev.startsWith('-') && !prev.includes('=') ? prev : '(positional)';
+          add({ source: label, raw: unquote(t), line: n });
+        }
+      }
+      continue;
+    }
+    const env = /^\s*environment=(.*)$/.exec(text);
+    if (env) {
+      for (const assign of splitEnvAssignments(env[1])) {
+        const m = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(assign);
+        if (!m) continue;
+        const [, name, rawVal] = m;
+        const val = unquote(rawVal.trim());
+        if (ENV_BIND.test(name)) { add({ source: `env ${name}`, raw: val, line: n }); continue; }
+        if (ENV_HOST.test(name)) {
+          // Conservative: only an address literal in a *_HOST is read as a bind.
+          const probe = val.replace(/^\[|\]$/g, '').split(':')[0];
+          if (IPV4.test(probe) || probe === 'localhost' || val.startsWith('[')) {
+            add({ source: `env ${name}`, raw: val, line: n });
+          }
+        }
+      }
+    }
+  }
+  return found;
+}
+
+// loopback | non-loopback | ignore
+export function classifyAddress(value) {
+  let v = String(value).trim();
+  if (!v) return 'ignore';
+  if (v.startsWith('[')) {                       // [::1]:8080 / [::]:8080
+    const end = v.indexOf(']');
+    if (end === -1) return 'ignore';
+    const inner = v.slice(1, end);
+    return (inner === '::1' || inner === '0:0:0:0:0:0:0:1') ? 'loopback' : 'non-loopback';
+  }
+  // A BARE IPv6 literal carries no port (a port needs the bracket form), so it
+  // must be judged whole. Without this, `::1` loses its `:1` to the port strip
+  // below and `::` — bind every v6 interface — would be silently ignored.
+  if ((v.match(/:/g) || []).length >= 2) {
+    return (v === '::1' || v === '0:0:0:0:0:0:0:1') ? 'loopback' : 'non-loopback';
+  }
+  // Strip a :port suffix only when what precedes it looks like a host.
+  const lastColon = v.lastIndexOf(':');
+  if (lastColon > 0 && /^\d+$/.test(v.slice(lastColon + 1))) v = v.slice(0, lastColon);
+  if (v === 'localhost' || v === '::1') return 'loopback';
+  if (v === '::' || v === '*') return 'non-loopback';
+  if (IPV4.test(v)) return v.startsWith('127.') ? 'loopback' : 'non-loopback';
+  if (/^%\(ENV_[A-Z0-9_]+\)s$/.test(v)) return 'ignore';   // supervisord's own expansion
+  if (/^[A-Za-z][A-Za-z0-9.-]*$/.test(v)) return 'non-loopback';  // a hostname bind
+  return 'ignore';
+}
+
+function listenerSanction(program) {
+  return LISTENER_SANCTIONED.find((s) => s.program === program);
+}
+
+// The listener gate over the generated supervisord text in flake.nix.
+export function checkListeners(text) {
+  const lets = collectNixLetBindings(text);
+  const listeners = [], violations = [], unresolved = [];
+  for (const block of splitProgramBlocks(text)) {
+    for (const b of extractBinds(block, lets)) {
+      const r = resolveNixValue(b.raw, lets);
+      if (!r.ok) {
+        unresolved.push(`flake.nix:${b.line}: [program:${b.program}] ${b.source} ${b.raw} — UNRESOLVED: ${r.why}`);
+        listeners.push({ ...b, verdict: 'UNRESOLVED', address: b.raw });
+        continue;
+      }
+      const verdict = classifyAddress(r.value);
+      if (verdict === 'ignore') continue;
+      const entry = { ...b, address: r.value, defaulted: r.defaulted, verdict };
+      if (verdict === 'non-loopback') {
+        const s = listenerSanction(b.program);
+        if (s) entry.sanction = s.reason;
+        else violations.push(`flake.nix:${b.line}: [program:${b.program}] ${b.source} ${b.raw === r.value ? b.raw : `${b.raw} -> ${r.value}`} binds ${r.value} — non-loopback, not sanctioned`);
+      }
+      listeners.push(entry);
+    }
+  }
+  return { listeners, violations, unresolved };
+}
+
+function renderListeners(listeners) {
+  const out = [];
+  const width = Math.max(0, ...listeners.map((l) => l.program.length + l.source.length));
+  for (const l of listeners) {
+    const head = `[program:${l.program}] ${l.source}`.padEnd(width + 12);
+    const marks = [];
+    if (l.verdict === 'loopback') marks.push('loopback');
+    if (l.verdict === 'non-loopback') marks.push('NON-LOOPBACK');
+    if (l.verdict === 'UNRESOLVED') marks.push('UNRESOLVED');
+    if (l.defaulted) marks.push('manifest-overridable');
+    if (l.sanction) marks.push(`sanctioned: ${l.sanction}`);
+    out.push(`    ${head} ${l.address}  [${marks.join('; ')}]  flake.nix:${l.line}`);
+  }
+  return out;
+}
+
+// Run the listener rule against `<root>/flake.nix`. A root with no flake.nix
+// (the shape every compose fixture uses) reports that the rule did not apply
+// rather than inventing a pass or a failure.
+function runListenerRule(root) {
+  const flake = path.join(root, 'flake.nix');
+  if (!fs.existsSync(flake)) {
+    console.log('NOTE (check-listeners, ADR-2062): no flake.nix under the audited root — the listener rule did not apply.');
+    return 0;
+  }
+  const { listeners, violations, unresolved } = checkListeners(fs.readFileSync(flake, 'utf8'));
+  if (unresolved.length) {
+    console.error('FAIL (check-listeners, ADR-2062): bind address(es) whose Nix interpolation could not be');
+    console.error('  resolved to a literal. An address this gate cannot resolve cannot be audited, so it is');
+    console.error('  rejected rather than skipped:');
+    for (const u of unresolved) console.error(`    ${u}`);
+  }
+  if (violations.length) {
+    console.error('FAIL (check-listeners, ADR-2062): supervised program(s) bind a non-loopback address without');
+    console.error('  authenticating. A loopback compose publish does not constrain container->container traffic');
+    console.error('  on the shared bridge, so these are reachable by every sibling container:');
+    for (const v of violations) console.error(`    ${v}`);
+    console.error('  Bind 127.0.0.1 where the surface is reached only by a co-resident process (ADR-2040 case 1),');
+    console.error('  authenticate it (ADR-2040 case 2), or add the program to LISTENER_SANCTIONED in');
+    console.error('  scripts/ci/check-ports-loopback.mjs with a reason citing the governing record.');
+  }
+  const enumeration = renderListeners(listeners);
+  const sink = (unresolved.length || violations.length) ? console.error : console.log;
+  sink(`LISTENERS (check-listeners, ADR-2062): ${listeners.length} declared bind address(es) across the generated supervisor blocks`);
+  for (const line of enumeration) sink(line);
+  if (unresolved.length) return 2;
+  if (violations.length) return 1;
+  return 0;
+}
+
 function main(argv) {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const root = argv[0] ? path.resolve(argv[0]) : path.resolve(here, '../..');
@@ -661,22 +1080,31 @@ function main(argv) {
     audited += r.ports;
     violations.push(...r.violations);
   }
+  // --- the publish rule (ADR-2013). Its output format is load-bearing: other
+  // --- tooling parses these exact lines, so nothing here changes shape.
+  let publishCode = 0;
   if (unparseable.length) {
     console.error('FAIL (check-ports-loopback): compose file(s) could not be parsed. A file this gate');
     console.error('  cannot parse cannot be audited, so it is rejected rather than skipped:');
     for (const u of unparseable) console.error(`    ${u}`);
-    return 2;
-  }
-  if (violations.length) {
+    publishCode = 2;
+  } else if (violations.length) {
     console.error('FAIL (check-ports-loopback): ports entries that are not loopback, not sanctioned,');
     console.error('  or not auditable (interpolation/ranges/IPv6/bare container ports are rejected):');
     for (const v of violations) console.error(`    ${v}`);
     console.error('  Bind 127.0.0.1:, or add the exact normalised mapping to SANCTIONED in');
     console.error('  scripts/ci/check-ports-loopback.mjs with a citation to the governing record.');
-    return 1;
+    publishCode = 1;
+  } else {
+    console.log(`PASS (check-ports-loopback): ${files.length} compose file(s), ${audited} ports block(s) — all publishes loopback-only or explicitly sanctioned`);
   }
-  console.log(`PASS (check-ports-loopback): ${files.length} compose file(s), ${audited} ports block(s) — all publishes loopback-only or explicitly sanctioned`);
-  return 0;
+
+  // --- the listener rule (ADR-2062). Always runs, whatever the publish rule
+  // --- decided, so one invocation reports both planes rather than hiding the
+  // --- second behind a failure in the first.
+  const listenerCode = runListenerRule(root);
+
+  return publishCode || listenerCode;
 }
 
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('check-ports-loopback.mjs')) {

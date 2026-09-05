@@ -299,6 +299,8 @@ for _vol_root in \
     /home/devuser/.local/share \
     /home/devuser/.local/share/code-server \
     /home/devuser/.config \
+    /home/devuser/.config/agent-of-empires \
+    /home/devuser/.config/agent-of-empires/profiles \
     /home/devuser/.cache \
     /home/devuser/.cache/huggingface \
     /home/devuser/.npm \
@@ -327,6 +329,11 @@ done
 if [ -d "$WORKSPACE" ]; then
   chown 1000:1000 "$WORKSPACE" 2>/dev/null || true
   chown 1000:1000 "$WORKSPACE/.cache/ruflo-npm" 2>/dev/null || true
+  # Worktree metadata created by a root-run `git submodule` init (Aug 2026)
+  # is root-owned, so devuser's `git worktree prune/remove` fails on it and
+  # AoE has to mint `<title>1` metadata dirs beside the dead ones. Small,
+  # bounded tree; the checkout itself is not walked.
+  chown -R 1000:1000 "$WORKSPACE/project/.git/worktrees" 2>/dev/null || true
 fi
 
 # Docker socket: make accessible to devuser (gid 965 on host, not mapped
@@ -1544,8 +1551,22 @@ JSON
 fi
 
 # ── Precedent bridge MCP: governance harness precedent system ──
+# ADR-2057 gap 2: registration is gated on [skills.precedent].enabled. Before
+# this, the block checked file presence only, so `enabled = false` was silently
+# ignored — the gate advertised control it did not have. No ENABLE_ var is
+# baked for it, so the gate is read from the manifest here (boot-class: a
+# restart applies a flip, no rebuild needed). Default 0 on an unreadable
+# manifest or absent key, matching every sibling gate read in this file
+# (_CODE_SERVER_ON, _CONSULTANTS_ON); both shipped manifests declare
+# `enabled = true`.
+_PRECEDENT_ON=0
+if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _PRECEDENT_ON="$(agentbox-manifest toml-bool \
+    --manifest "$AGENTBOX_CONFIG" --path skills.precedent.enabled 2>/dev/null || echo 0)"
+fi
 _PRECEDENT_BRIDGE="/opt/agentbox/mcp/servers/precedent-bridge.js"
-if [ -f "$_PRECEDENT_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
+if { [ "$_PRECEDENT_ON" = "1" ] || [ "$_PRECEDENT_ON" = "true" ]; } \
+   && [ -f "$_PRECEDENT_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
   if ! grep -q "precedent-bridge" "$_MCP_JSON" 2>/dev/null; then
     agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name precedent-bridge <<JSON 2>/dev/null && echo "  [mcp] Added precedent-bridge" || true
 {
@@ -1564,22 +1585,46 @@ JSON
 fi
 
 # ── Harness bridge MCP: VisionFlow harness template tools ──
+# ADR-2057 gap 2: registration is gated on [skills.harness].enabled, which the
+# old file-presence-only check ignored. Boot-class, read from the manifest here
+# for the same reason as the precedent gate above.
+# ADR-2057 gap 4: [skills.harness].template_dir was an inert manifest key —
+# harness-bridge.js has always read HARNESS_TEMPLATE_DIR (mcp/servers/
+# harness-bridge.js:25) but nothing exported it, so the server silently used
+# its hardcoded default. Project it into the server's env block. Empty/absent
+# manifest value ⇒ emit the server's own default verbatim, so the key being
+# unset is not a behaviour change.
+# No grep guard (mirrors the ontology-bridge block above): the entry is
+# upserted every boot so a template_dir change propagates instead of being
+# frozen at first registration — a key that only applies to workspaces which
+# have never booted is barely less inert than no key at all.
+_HARNESS_ON=0
+if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _HARNESS_ON="$(agentbox-manifest toml-bool \
+    --manifest "$AGENTBOX_CONFIG" --path skills.harness.enabled 2>/dev/null || echo 0)"
+fi
+_HARNESS_TEMPLATE_DIR=""
+if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _HARNESS_TEMPLATE_DIR="$(agentbox-manifest toml-string \
+    --manifest "$AGENTBOX_CONFIG" --path skills.harness.template_dir 2>/dev/null || true)"
+fi
+[ -n "$_HARNESS_TEMPLATE_DIR" ] || _HARNESS_TEMPLATE_DIR="/var/lib/agentbox/harness-templates"
 _HARNESS_BRIDGE="/opt/agentbox/mcp/servers/harness-bridge.js"
-if [ -f "$_HARNESS_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
-  if ! grep -q "harness-bridge" "$_MCP_JSON" 2>/dev/null; then
-    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name harness-bridge <<JSON 2>/dev/null && echo "  [mcp] Added harness-bridge" || true
+if { [ "$_HARNESS_ON" = "1" ] || [ "$_HARNESS_ON" = "true" ]; } \
+   && [ -f "$_HARNESS_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name harness-bridge <<JSON 2>/dev/null && echo "  [mcp] Upserted harness-bridge → $_HARNESS_TEMPLATE_DIR" || true
 {
   "command": "node",
   "args": ["$_HARNESS_BRIDGE"],
   "type": "stdio",
   "env": {
+    "HARNESS_TEMPLATE_DIR": "$_HARNESS_TEMPLATE_DIR",
     "NODE_PATH": "$_MCP_SERVERS_NODE_PATH"
   }
 }
 JSON
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
-  fi
 fi
 
 # ── Private Email Search MCP: register email-gateway when [skills.email_search]
@@ -1797,6 +1842,22 @@ if [ -f "$_MCP_JSON" ] && command -v agentbox-manifest >/dev/null 2>&1; then
   fi
   chown 1000:1000 "$_MCP_JSON" "$_MCP_HUB_STATE" "$_MCP_HUB_CONFIG" 2>/dev/null || true
   chmod 600 "$_MCP_JSON" "$_MCP_HUB_STATE" "$_MCP_HUB_CONFIG" 2>/dev/null || true
+  # [program:agentbox-mcp-hub] starts at priority 205, long before this block
+  # runs; the binary now waits for the file, but a config REWRITE only takes
+  # effect on restart, and a hub that exhausted its start retries (the
+  # 2026-09-05 rebuild parked it FATAL) needs a start. Best-effort: the gate
+  # may be off (no program) or supervisor absent (host-side runs).
+  if command -v supervisorctl >/dev/null 2>&1; then
+    _hub_state=$(supervisorctl status agentbox-mcp-hub 2>/dev/null | awk '{print $2}')
+    case "$_hub_state" in
+      RUNNING)
+        supervisorctl restart agentbox-mcp-hub >/dev/null 2>&1 \
+          && echo "  [mcp-hub] restarted agentbox-mcp-hub on new config" || true ;;
+      FATAL|EXITED|STOPPED|BACKOFF)
+        supervisorctl start agentbox-mcp-hub >/dev/null 2>&1 \
+          && echo "  [mcp-hub] started agentbox-mcp-hub (was $_hub_state)" || true ;;
+    esac
+  fi
 fi
 
 # ── Xinference embedding sidecar: wait for readiness + ensure model loaded ──

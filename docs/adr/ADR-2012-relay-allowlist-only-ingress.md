@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -49,6 +49,8 @@ event is dropped"), `:144-153` (static `allowed_pubkeys`), `:172`
 (`agent_event_auth = "nip98"`), `:148` (key-split pending, ADR-040 D3). Baked via
 `flake.nix:1186` (`relayAllowedPubkeysCsv`), exported as
 `AGENTBOX_ALLOWED_PUBKEYS` at `flake.nix:1852`.
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `11804ba4b` (the relay-admission fix this record's acceptance section describes: `flake.nix` now emits an explicit empty `pubkey_whitelist` rather than omitting the key) and by `agentbox.toml` gate additions elsewhere in the manifest. The decision still holds and is now enforced at the boundary it names. Re-checked at HEAD: `agentbox.toml:138` (`ingress_policy = "allowlist"`), `:140-141` ("NO fallback and NO auto-add … empty = every inbound relay event is dropped"), `:144-148` (static `allowed_pubkeys`, key-split still pending per ADR-040 D3 at `:148`), `:172` (`agent_event_auth = "nip98"`). Baked at `flake.nix:1436` (`relayAllowedPubkeysCsv`) and exported as `AGENTBOX_ALLOWED_PUBKEYS` at `flake.nix:2188` (the previously cited `:1186`/`:1852` have drifted). The deny-all defect is closed at `flake.nix:1440-1452`: the generator emits `pubkey_whitelist = [ ]` for an empty list with the `Option<Vec<String>>` rationale inline. Admission is at the relay boundary in `services/nostr-pod-bridge/src/admission.rs:101-109`, refusing unlisted authors and the empty-allowlist case with distinct NIP-20 `blocked:` reasons. `implementation_status` stays `partial`: the ADR-040 D3 publisher key-split is still outstanding and no deployed relay send was exercised. Commands: `git diff 89301ec7..HEAD -- agentbox.toml flake.nix`, `grep -n 'ingress_policy\|allowed_pubkeys\|agent_event_auth' agentbox.toml`, `grep -n 'pubkey_whitelist\|AGENTBOX_ALLOWED_PUBKEYS' flake.nix`.
 
 ## Closeout extension — 2026-09-04
 

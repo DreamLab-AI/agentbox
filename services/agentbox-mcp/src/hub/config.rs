@@ -59,9 +59,9 @@ impl HubConfig {
 pub fn is_valid_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 64
-        && name
-            .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_' || c == '.')
+        && name.chars().all(|c| {
+            c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_' || c == '.'
+        })
 }
 
 /// `host:port` where host is a loopback address or `localhost`.
@@ -108,10 +108,22 @@ mod tests {
 
     #[test]
     fn loopback_binds_only() {
-        for ok in ["127.0.0.1:9720", "localhost:1", "[::1]:9720", "127.5.5.5:80"] {
+        for ok in [
+            "127.0.0.1:9720",
+            "localhost:1",
+            "[::1]:9720",
+            "127.5.5.5:80",
+        ] {
             assert!(is_loopback_bind(ok), "{ok}");
         }
-        for bad in ["0.0.0.0:9720", "192.168.2.132:9720", "[::]:9720", "127.0.0.1", "127.0.0.1:x", ""] {
+        for bad in [
+            "0.0.0.0:9720",
+            "192.168.2.132:9720",
+            "[::]:9720",
+            "127.0.0.1",
+            "127.0.0.1:x",
+            "",
+        ] {
             assert!(!is_loopback_bind(bad), "{bad}");
         }
     }

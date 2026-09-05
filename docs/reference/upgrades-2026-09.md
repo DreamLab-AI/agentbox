@@ -1,7 +1,7 @@
 ---
 title: September upstream upgrade assessment and rebuild handoff
-status: implemented-awaiting-rebuild
-last_updated: 2026-09-04
+status: rebuilt-and-checked
+last_updated: 2026-09-05
 ---
 
 # September upstream upgrades
@@ -103,3 +103,36 @@ In the rebuilt container:
 Record the image identity, CLI/model results and any failures against this
 handoff. A successful rebuild does not by itself validate a scene renderer or
 forecast accuracy.
+
+## Post-rebuild results — 2026-09-05
+
+Image rebuilt 2026-09-05 21:20 UTC from 08e817f39 (this container). Results
+against the five checks above:
+
+1. `agentbox-manifest toml-string --manifest /etc/agentbox.toml --path consultants.antigravity.model`
+   prints `gemini-3.8-flash`; `AGENTBOX_ANTIGRAVITY_MODEL` is unset before boot, so the
+   manifest value is what the projection carries. Pass.
+2. The Antigravity consultant answers through the shared MCP hub
+   (`POST 127.0.0.1:9720/consultant-antigravity/mcp`, `serverInfo consultant-antigravity 0.1.0`):
+   `health` reports `model: gemini-3.8-flash` and `ok: false` because `agy` is not
+   authenticated in the rebuilt image (`~/.antigravity` is a tmpfs). Operator action:
+   run `HOME=/home/devuser/.antigravity agy` once for the interactive OAuth, then re-run
+   `health` and one short `consult`. URL context is a `reference`-managed skill-local MCP
+   (needs `GOOGLE_API_KEY`), not boot-projected, so no live request was made. Partial.
+3. The declarative Antigravity session was created at boot as
+   `env AGENTBOX_PROFILE=antigravity agy` with no model: AoE 1.13 drops `extra_args` for
+   native agents. Fixed the same day (ADR-2063): the model now rides the per-agent
+   override and the recreated session runs `agy --model gemini-3.8-flash`. Fail, then fixed.
+4. `ruflo-daemon-gc --json` discovers and confirms the seven live daemons, signals none;
+   `token-audit --help` prints usage. `codex --version` is 0.153.3 and
+   `codex-code-mode-host --help` runs; the CLI smoke suite passes. Pass.
+5. `spark-scene` is registered in both harness skill surfaces
+   (`~/.claude/skills/spark-scene` symlink, `codex-registered-skills.txt`), the tree holds
+   126 skills, and `references/integration.md` resolves. Pass.
+
+Failures found by the rebuild and fixed under ADR-2063: `agentbox-mcp-hub` FATAL on a
+priority race (ten hub-routed MCP servers refused connections until a manual
+`supervisorctl start`); AoE session records lost on every restart (tmpfs) while their
+worktrees accumulated on the persistent mount; the `loom-raw` seed blocked since
+2026-08-31 by a dead directory. The hub wait and the `aoe-profiles` volume activate at
+the next rebuild.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
@@ -51,6 +51,8 @@ and WS gate at `:880` (`if (route.bearer && auth.mode !== 'nip98')`).
 `normalizeRoute` at `:204-227` reads `bearer_env` and throws "fail closed" at
 `:219` when unset. NIP-07 session mint requires live NIP-98 at `:651`
 (`if (!auth.ok || auth.mode !== 'nip98')` → reject).
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `11804ba4b` (`proxy.mjs` break-glass scope/expiry bounds) and the ADR-2047 citation refresh of `docs/INGRESS-identity.md`; neither touches the bearer gate, so the decision still holds. The `cbe7335b9` line numbers above have drifted; at HEAD the gate is `} else if (route.bearer && auth.mode !== 'nip98') {` on the HTTP path at `config/nip98-proxy/proxy.mjs:979-980` and on the WS path at `:1129-1130`, `normalizeRoute` reads `bearer_env` at `:332-333` and throws \"fail closed\" when the named env var is unset at `:336`, and NIP-07 session minting still requires a live NIP-98 signature at `:863` (`if (!auth.ok || auth.mode !== 'nip98')`). The default AoE route still replaces `Authorization` with the daemon token in every mode (`:989-992`). Commands: `git diff --name-only 89301ec7..HEAD -- config/nip98-proxy/proxy.mjs docs/INGRESS-identity.md`, `grep -n \"route.bearer\\|bearer_env\\|auth.mode !== 'nip98'\" config/nip98-proxy/proxy.mjs`. The unproven-against-real-upstreams remainder recorded above is unchanged.
 
 ## Closeout extension — 2026-09-04
 

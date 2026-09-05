@@ -206,6 +206,19 @@ const CATALOGUE = [
   { id: 'ontology', name: 'Ontology bridge', layer: 'module',
     gate: 'skills.ontology', apply_class: 'boot',
     summary: 'ontology_ask / governed writeback MCP bridge (PRD-020 binding).' },
+  // ADR-2057 — the three gates that existed (or should have existed) without a
+  // catalogue entry. Apply classes differ by WHERE the gate is consumed, per the
+  // ADR-039 honesty rule: harness/precedent are read by the entrypoint at boot,
+  // podcast_ingest decides baked supervisor text and so needs a rebuild.
+  { id: 'harness-bridge', name: 'Harness Engineering MCP bridge', layer: 'module',
+    gate: 'skills.harness', apply_class: 'boot',
+    summary: 'ADR-004 harness_list/inspect/validate/audit over the guide-sensor pairing templates. ADR-2057 gap 2: the entrypoint now reads this gate before registering harness-bridge in .mcp.json (it previously checked only that the server file existed, so enabled=false was ignored). BOOT-class — a flip applies on restart. [skills.harness].template_dir is projected into the server env as HARNESS_TEMPLATE_DIR (ADR-2057 gap 4), upserted every boot. Skipping registration does not retract an entry a previous boot already wrote.' },
+  { id: 'precedent-bridge', name: 'Governance precedent system', layer: 'module',
+    gate: 'skills.precedent', apply_class: 'boot',
+    summary: 'PRD-harness-engineering M6 precedent_match/list/promote/retire over promoted governance decisions. ADR-2057 gap 2: the entrypoint now reads this gate before registering precedent-bridge in .mcp.json. BOOT-class — a flip applies on restart. namespace/similarity_threshold are consumed by the server, not projected by the entrypoint. Skipping registration does not retract an entry a previous boot already wrote.' },
+  { id: 'podcast-ingest', name: 'Podcast ingestion schedule', layer: 'module',
+    gate: 'skills.podcast_ingest', service: 'podcast-cron', apply_class: 'rebuild',
+    summary: 'ADR-2057 gap 1: [program:podcast-cron] (supercronic over skills/podcast-knowledge-ingest/crontab) was the last unconditionally supervised program. Default true = the behaviour it shipped with, so enabling is never a migration step. REBUILD-class — flake.nix bakes the supervisor text, so false only removes the program after ./agentbox.sh rebuild. Gates the SCHEDULE only: the podcast-ingest binary and supercronic stay in the closure, both shared with always-baked surfaces (the podcast-{knowledge,bulk}-ingest skills and forum-backup-cron).' },
   // ADR-2020 review_trigger (a new optional block in agentbox.toml) — the
   // [vault] section is split across TWO catalogue entries because its keys have
   // genuinely different apply classes (ADR-039 honesty rule): root/pages/format

@@ -160,6 +160,13 @@
         researchCfg = skillsCfg.research or {};
         codeInterpreterCfg = skillsCfg.code_interpreter or {};
         ruvnetBrainCfg = skillsCfg.ruvnet_brain or {};
+        # ADR-2057 gap 1: [program:podcast-cron] was the last ungated supervised
+        # program. `or true` is deliberate — the block shipped unconditionally,
+        # so an existing agentbox.toml with no [skills.podcast_ingest] section
+        # keeps the cron exactly as before (no silent capability removal, and no
+        # required migration step). Same defaulting shape as mcpHubEnabled /
+        # hookShimEnabled / teammateGcEnabled above.
+        podcastIngestEnabled = (skillsCfg.podcast_ingest or {}).enabled or true;
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         consultantsCfg = agentboxConfig.consultants or {};
@@ -2392,6 +2399,13 @@ priority=95
 stdout_logfile=/var/log/tmux-autostart.log
 stderr_logfile=/var/log/tmux-autostart.error.log
 
+${lib.optionalString podcastIngestEnabled ''
+; ADR-2057 gap 1: gated on [skills.podcast_ingest].enabled (default true =
+; the unconditional behaviour this block shipped with). Off ⇒ no supervisor
+; block at all, so `supervisorctl status` lists no podcast-cron. The
+; podcast-ingest binary and supercronic stay in the closure either way:
+; both are shared with always-baked surfaces (the podcast-{knowledge,bulk}-
+; ingest skills and [program:forum-backup-cron]). REBUILD-class.
 [program:podcast-cron]
 command=${bgNice}${supercronicPkg}/bin/supercronic -split-logs /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/crontab
 user=devuser
@@ -2404,6 +2418,7 @@ stdout_logfile=/var/log/podcast-cron.log
 stderr_logfile=/var/log/podcast-cron.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
+''}
 
 ; Nightly Cloudflare forum backup → NAS (dreamlab-ai-website issue #48).
 ; The crontab and script live in the mounted website repo, so schedule and
@@ -2967,6 +2982,12 @@ stderr_logfile_maxbytes=5MB
           "agentbox-events:/var/lib/agentbox/events"
           "consultations-data:/var/lib/agentbox/consultations"
           "telemetry-data:/var/lib/agentbox/telemetry"
+          # AoE keeps its session records (profiles/<profile>/sessions.json) under
+          # ~/.config, which is a bounded tmpfs. Without this volume every boot
+          # lost the records while the worktrees they created stayed on the
+          # persistent mount: 18 antigravity-N + 18 loom-N + ... checkouts by
+          # 2026-09-05. Persist the records so seeds reconcile instead of re-create.
+          "aoe-profiles:/home/devuser/.config/agent-of-empires/profiles"
           # The privacy model is ~2.8 GiB. Keep it out of the deliberately
           # bounded XDG cache tmpfs and retain it across rolling rebuilds.
           "hf-cache:/home/devuser/.cache/huggingface"
@@ -2999,7 +3020,7 @@ stderr_logfile_maxbytes=5MB
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "hf-cache" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );

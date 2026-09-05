@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -54,6 +54,8 @@ no-accumulation finding, with `SONA_SCOPE = 'agentbox_memory'` and
 `SONA_EMBEDDING_DIM = 384` at lines 128-129. `agentbox.toml:429-431` holds
 `attention_rerank`, `sona_learn_enabled`, `sona_apply_enabled` all `false` with the
 measured/blocked rationale. activation_status = inactive: gates stay sealed.
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `fa024cc08` (pinned embedding identity + recall gate) and the ADR-2016 closeout rework of `mcp/servers/lib/aggregate-effectiveness.js` (+169/-15: attributability exclusions, independence de-duplication and a harder promotion floor). None of it touches the dimension freeze or the SONA/attention gates — the promotion statistics sit above the embedding column, not in it — so the decision still holds. Re-checked at HEAD: `mcp/servers/lib/aggregate-effectiveness.js:48` still sets `const EMBEDDING_DIM = 384` and enforces it at `:118-119` (a non-384 embedding is a hard `dimension mismatch` throw, not a coercion); `scripts/ruvector-sona-feeder.mjs:128-129` still holds `SONA_SCOPE = 'agentbox_memory'` and `SONA_EMBEDDING_DIM = 384` with the I22 fresh-scope-on-migration rule documented at `:27-28`; `agentbox.toml:431` `attention_rerank = false` ("MEASURED 2026-07-21 … blend is an identity, zero benefit"), `:432` `sona_learn_enabled = false` ("engine hardcodes embedding_dim=256; 384-dim learns accepted-but-discarded"), `:433` `sona_apply_enabled = false`. `implementation_status` stays `none` and `activation_status` `inactive` — the gates are still deliberately sealed, which is the decision, not a shortfall. Commands: `git diff --stat 89301ec7..HEAD -- mcp/servers/lib/aggregate-effectiveness.js agentbox.toml`, `grep -n 'EMBEDDING_DIM' mcp/servers/lib/aggregate-effectiveness.js`, `grep -n 'attention_rerank\|sona_learn_enabled\|sona_apply_enabled' agentbox.toml`.
 
 ## Closeout extension — 2026-09-04
 

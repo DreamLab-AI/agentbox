@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -59,6 +59,10 @@ sanctioned mappings and fails on any unsanctioned `0.0.0.0` publish (negative
 test: three deliberately-wrong container ports were rejected before the list
 was corrected). Wired in `.github/workflows/invariants.yml`. The `9096:9096`
 LAN publish remains declared at `flake.nix:1997` (D2 exposure policy).
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `11804ba4b` (the parser rewrite this record's acceptance section describes) and by `7e7b2d586` (`.github/workflows/invariants.yml` gained the deepsec, ADR-index and crate-licensing jobs alongside this one). The decision still holds. Re-checked at HEAD: `scripts/ci/check-ports-loopback.sh` is now a thin wrapper that hard-fails (exit 3) when the `.mjs` gate or `node` is absent — a missing interpreter is a failure, never a skip — and `exec`s `scripts/ci/check-ports-loopback.mjs`, which carries the ten-entry `SANCTIONED` inventory at `:76-87` with a per-entry citation block at `:57-75` and matches on the normalised `(host_ip, published, target, protocol)` tuple at `:611`. Wired at `.github/workflows/invariants.yml:52-53`. The `9096` LAN publish is declared at `flake.nix:2645-2651` (`agentboxPorts`; the previously cited `flake.nix:1997` has drifted), with every other entry `127.0.0.1:`-bound. Live run: `sh scripts/ci/check-ports-loopback.sh` → exit 0, `PASS … 10 compose file(s), 7 ports block(s) — all publishes loopback-only or explicitly sanctioned`. `implementation_status` stays `partial`: the sanctioned list still records mappings in the scanned compose files, not deployed listeners, and the CP-08 deployment receipts remain outstanding. Commands: `git diff --name-only 89301ec7..HEAD -- scripts/ci/check-ports-loopback.sh .github/workflows/invariants.yml flake.nix docker-compose.yml`, `sh scripts/ci/check-ports-loopback.sh`.
+
+**2026-09-05 — the checker gained a listener rule (ADR-2062).** `scripts/ci/check-ports-loopback.sh` now applies two rules in one run: this record's publish rule over `docker-compose*.yml` `ports:`, unchanged in behaviour and byte-identical in output, and a new listener rule that reads the generated supervisord `command=` / `environment=` lines in `flake.nix` for `--bind` / `--bind-addr` / `--host` / `--listen` / `--ip` / `--address` / host-carrying `--port` arguments and `*_BIND` / `*_HOST` env assignments, resolving Nix `${…}` interpolation to a literal or reporting it UNRESOLVED. This closes the coverage gap ADR-2062 names: a loopback publish constrains host→container only, so a container-internal `0.0.0.0` bind on the shared `visionclaw_network` was invisible to a ports-based gate in every syntax. This record's own invariant, sanctioned list and exit codes for the publish plane are unchanged; `verified_commit` is not bumped here. Fixtures: `tests/security/check-listeners.test.mjs` (15 cases), wired in `.github/workflows/invariants.yml` next to the gate step.
 
 ## Closeout extension — 2026-09-04
 

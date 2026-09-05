@@ -12,6 +12,15 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GATE = join(HERE, 'deepsec-gate.sh');
 
+// The image bakes deepsec ([toolchains].deepsec), so the ambient PATH already
+// resolves it. Every test decides availability through its own shim dir, so any
+// inherited directory that provides `deepsec` must be stripped — otherwise the
+// "missing deepsec binary" case silently shells out to the real CLI and passes.
+const PATH_NO_DEEPSEC = (process.env.PATH || '')
+  .split(':')
+  .filter((d) => d && !existsSync(join(d, 'deepsec')))
+  .join(':');
+
 function makeRepo() {
   const root = mkdtempSync(join(process.env.TMPDIR || tmpdir(), 'deepsec-gate-'));
   const r = (args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
@@ -30,7 +39,22 @@ set -e
 echo "$@" >> "$FAKE_DEEPSEC_LOG"
 case "$1" in
   --version) echo "2.3.9"; exit 0 ;;
-  scan) mkdir -p "data/\${3}/files"; printf '{"filePath":"app.js","candidates":[{"vulnSlug":"xss"},{"vulnSlug":"sqli"}]}' > "data/\${3}/files/app.js.json"; exit 0 ;;
+  scan)
+    # Mirror the real CLI's option surface: deepsec 2.3.9 scan accepts only
+    # --project-id, --root and --matchers and exits 1 on anything else. A
+    # permissive double hid a gate that shipped an unsupported flag.
+    shift
+    pid=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --project-id) pid="$2"; shift 2 ;;
+        --root|--matchers) shift 2 ;;
+        *) echo "error: unknown option '$1'" >&2; exit 1 ;;
+      esac
+    done
+    mkdir -p "data/$pid/files"
+    printf '{"filePath":"app.js","candidates":[{"vulnSlug":"xss"},{"vulnSlug":"sqli"}]}' > "data/$pid/files/app.js.json"
+    exit 0 ;;
   process)
     if [ -n "\${FAKE_DEEPSEC_FINDINGS:-}" ] && [ "\${FAKE_DEEPSEC_FINDINGS}" != "[]" ]; then
       for ((i=1;i<=$#;i++)); do [ "\${!i}" = "--comment-out" ] && { j=$((i+1)); echo "findings" > "\${!j}"; }; done
@@ -66,7 +90,7 @@ const ENABLED = `[toolchains]\ndeepsec = true\n\n[security.deepsec]\nenabled = t
 test('disabled policy exits 78 and never invokes deepsec', () => {
   const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
   const m = manifest(root, ENABLED.replace('enabled = true', 'enabled = false'));
-  const r = run(root, ['--diff-working'], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m });
+  const r = run(root, ['--diff-working'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m });
   assert.equal(r.status, 78); assert.match(r.stderr, /disabled by policy/); assert.equal(r.log, '');
 });
 
@@ -74,14 +98,14 @@ test('missing deepsec binary exits 78 with the rebuild hint', () => {
   const root = makeRepo(); const bin = join(root, 'bin'); mkdirSync(bin);
   const m = manifest(root, ENABLED);
   // an empty shim dir first, then the real PATH (which has no deepsec)
-  const r = run(root, ['--diff-working'], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m });
+  const r = run(root, ['--diff-working'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m });
   assert.equal(r.status, 78, r.stderr); assert.match(r.stderr, /toolchains\]\.deepsec=true/);
 });
 
 test('dry-run prints the resolved plan with the local route and manifest policy', () => {
   const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
   const m = manifest(root, ENABLED);
-  const r = run(root, ['--diff', 'HEAD~0', '--dry-run'], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m });
+  const r = run(root, ['--diff', 'HEAD~0', '--dry-run'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m });
   assert.equal(r.status, 0, r.stderr);
   const plan = JSON.parse(r.stdout);
   assert.equal(plan.agent, 'claude'); assert.equal(plan.model_auth, 'local'); assert.equal(plan.batch_size, '3');
@@ -93,18 +117,18 @@ test('dry-run prints the resolved plan with the local route and manifest policy'
 test('env overrides beat the manifest and are validated', () => {
   const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
   const m = manifest(root, ENABLED);
-  const ok = run(root, ['--scan-only', '--dry-run'], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m, DEEPSEC_GATE_FAIL_ON: 'critical' });
+  const ok = run(root, ['--scan-only', '--dry-run'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m, DEEPSEC_GATE_FAIL_ON: 'critical' });
   assert.equal(JSON.parse(ok.stdout).fail_on, 'CRITICAL');
-  const bad = run(root, ['--scan-only', '--dry-run'], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m, DEEPSEC_GATE_THINKING_LEVEL: 'max' });
+  const bad = run(root, ['--scan-only', '--dry-run'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m, DEEPSEC_GATE_THINKING_LEVEL: 'max' });
   assert.equal(bad.status, 78); assert.match(bad.stderr, /thinking_level/);
 });
 
 test('direct route requires provider, key env name and a set credential; writes names only', () => {
   const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
   const m = manifest(root, ENABLED.replace('model_auth = "local"', 'model_auth = "direct"\nai_provider = "anthropic"\nai_api_key_env = "MY_TEST_KEY"'));
-  const unset = run(root, ['--diff-working'], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m });
+  const unset = run(root, ['--diff-working'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m });
   assert.equal(unset.status, 78); assert.match(unset.stderr, /MY_TEST_KEY/);
-  const set = run(root, ['--diff-working'], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m, MY_TEST_KEY: 'sk-secret-value' });
+  const set = run(root, ['--diff-working'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m, MY_TEST_KEY: 'sk-secret-value' });
   assert.equal(set.status, 0, set.stderr);
   const cfg = readFileSync(join(root, '.deepsec-gate', 'deepsec.config.mjs'), 'utf8');
   assert.match(cfg, /"apiKeyEnv": "MY_TEST_KEY"/); assert.doesNotMatch(cfg, /sk-secret-value/);
@@ -114,9 +138,9 @@ test('PR mode: clean run passes, writes a PASS receipt and the generated config'
   const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
   const m = manifest(root, ENABLED);
   const rep = join(root, 'rep');
-  const r = run(root, ['--diff', 'HEAD', '--report-dir', rep], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m });
+  const r = run(root, ['--diff', 'HEAD', '--report-dir', rep], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m });
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.log, /process --diff HEAD --project-id \S+ --root \S+ --no-tui --agent claude --thinking-level high --batch-size 3 --concurrency 1 --comment-out/);
+  assert.match(r.log, /process --diff HEAD --project-id \S+ --root \S+ --agent claude --thinking-level high --batch-size 3 --concurrency 1 --comment-out/);
   const receipt = JSON.parse(readFileSync(join(rep, 'receipt.json'), 'utf8'));
   assert.equal(receipt.result, 'PASS'); assert.equal(receipt.net_new_reported_by_deepsec, false);
   assert.match(readFileSync(join(root, '.deepsec-gate', 'deepsec.config.mjs'), 'utf8'), /"mode": "local"/);
@@ -127,13 +151,13 @@ test('PR mode: a HIGH finding blocks under fail_on=HIGH, a MEDIUM one does not',
   const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
   const m = manifest(root, ENABLED);
   const high = JSON.stringify([{ severity: 'HIGH', filePath: 'app.js', title: 'SQLi', lineNumbers: [3] }]);
-  const r1 = run(root, ['--diff', 'HEAD', '--report-dir', join(root, 'r1')], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m, FAKE_DEEPSEC_FINDINGS: high, FAKE_DEEPSEC_RC: '1' });
+  const r1 = run(root, ['--diff', 'HEAD', '--report-dir', join(root, 'r1')], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m, FAKE_DEEPSEC_FINDINGS: high, FAKE_DEEPSEC_RC: '1' });
   assert.equal(r1.status, 1, r1.stderr);
   const rc1 = JSON.parse(readFileSync(join(root, 'r1', 'receipt.json'), 'utf8'));
   assert.equal(rc1.result, 'BLOCK'); assert.equal(rc1.blocking.length, 1); assert.equal(rc1.blocking[0].severity, 'HIGH');
   assert.equal(rc1.net_new_reported_by_deepsec, true);
   const medium = JSON.stringify([{ severity: 'MEDIUM', filePath: 'app.js', title: 'weak', lineNumbers: [1] }]);
-  const r2 = run(root, ['--diff', 'HEAD', '--report-dir', join(root, 'r2')], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m, FAKE_DEEPSEC_FINDINGS: medium, FAKE_DEEPSEC_RC: '1' });
+  const r2 = run(root, ['--diff', 'HEAD', '--report-dir', join(root, 'r2')], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m, FAKE_DEEPSEC_FINDINGS: medium, FAKE_DEEPSEC_RC: '1' });
   assert.equal(r2.status, 0, r2.stderr);
   const rc2 = JSON.parse(readFileSync(join(root, 'r2', 'receipt.json'), 'utf8'));
   assert.equal(rc2.result, 'PASS'); assert.equal(rc2.findings_by_severity.MEDIUM, 1);
@@ -142,7 +166,7 @@ test('PR mode: a HIGH finding blocks under fail_on=HIGH, a MEDIUM one does not',
 test('PR mode: an unexpected deepsec exit is a runtime error (70), not a pass', () => {
   const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
   const m = manifest(root, ENABLED);
-  const r = run(root, ['--diff-staged'], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m, FAKE_DEEPSEC_RC: '3' });
+  const r = run(root, ['--diff-staged'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m, FAKE_DEEPSEC_RC: '3' });
   assert.equal(r.status, 70); assert.match(r.stderr, /runtime error/);
 });
 
@@ -150,7 +174,7 @@ test('scan-only never blocks and counts candidates without needing a model login
   const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin, { withClaude: false });
   const m = manifest(root, ENABLED);
   const rep = join(root, 'rep');
-  const r = run(root, ['--scan-only', '--report-dir', rep], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: m });
+  const r = run(root, ['--scan-only', '--report-dir', rep], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: m });
   assert.equal(r.status, 0, r.stderr);
   const receipt = JSON.parse(readFileSync(join(rep, 'receipt.json'), 'utf8'));
   assert.equal(receipt.result, 'SCANNED'); assert.equal(receipt.candidates, 2);
@@ -158,7 +182,7 @@ test('scan-only never blocks and counts candidates without needing a model login
 
 test('no manifest at all falls back to defaults (PR-mode still works in CI)', () => {
   const root = makeRepo(); const bin = join(root, 'bin'); makeFakeCli(bin);
-  const r = run(root, ['--diff', 'HEAD', '--dry-run'], { PATH: `${bin}:${process.env.PATH}`, AGENTBOX_CONFIG: join(root, 'absent.toml') });
+  const r = run(root, ['--diff', 'HEAD', '--dry-run'], { PATH: `${bin}:${PATH_NO_DEEPSEC}`, AGENTBOX_CONFIG: join(root, 'absent.toml') });
   assert.equal(r.status, 0, r.stderr);
   const plan = JSON.parse(r.stdout);
   assert.equal(plan.policy_source, 'defaults'); assert.equal(plan.fail_on, 'HIGH'); assert.equal(plan.max_duration, '45m');

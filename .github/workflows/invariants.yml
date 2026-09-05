@@ -52,6 +52,9 @@ jobs:
       - name: check-ports-loopback (loopback except ADR-045 NIP-98 ingress)
         run: sh scripts/ci/check-ports-loopback.sh
 
+      - name: check-listeners unit tests (ADR-2062 — supervisor bind-address listener rule)
+        run: node --test tests/security/check-listeners.test.mjs
+
       - name: check-db-password (no :-ruvector default)
         run: sh scripts/ci/check-db-password.sh
 

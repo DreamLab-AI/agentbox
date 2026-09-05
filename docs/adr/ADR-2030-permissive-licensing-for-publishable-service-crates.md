@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
-verified_paths: [services, docs/developer/licensing.md]
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/agentbox-manifest/Cargo.toml, services/agentbox-mcp/Cargo.toml, services/agentbox-ops/Cargo.toml, services/dream-engine/Cargo.toml, services/nostr-pod-bridge/Cargo.toml, services/ontology-tools/Cargo.toml, services/podcast-ingest/Cargo.toml, services/secret-backup/Cargo.toml, services/skill-tools/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
 repo: agentbox
@@ -37,10 +37,13 @@ of the repository remains AGPL-3.0-only under the root `LICENSE`. The
 permissive grant is per crate and travels with the crate on crates.io. An
 AGPL-3.0 repository may contain permissively licensed subtrees; the AGPL
 governs the aggregate hosted service, not the licence of each part. A
-`services/` crate that links an AGPL-licensed library (today
-`nostr-pod-bridge`, which links `solid-pod-rs-nostr`) is not permissive in
-effect and must declare `AGPL-3.0-only` in its manifest rather than
-advertise a grant it cannot give. Contributions to `services/` are accepted
+`services/` crate that links an AGPL-licensed library (`nostr-pod-bridge`,
+which links `solid-pod-rs-nostr`) is not permissive in effect and must
+declare `AGPL-3.0-only` in its manifest rather than advertise a grant it
+cannot give. A crate that is deliberately not offered for reuse may also
+declare `AGPL-3.0-only`, with `publish = false` and a README that says it is
+not dual-licensed (`secret-backup`, added 2026-09-05); the permissive default
+is a publication posture, not an obligation on every subtree crate. Contributions to `services/` are accepted
 under the same permissive terms.
 
 ## Consequences
@@ -59,6 +62,8 @@ shows `MIT OR Apache-2.0` on every crate except `nostr-pod-bridge`
 (`AGPL-3.0-only`, set by this change). `services/LICENSING-NOTICE.md` and
 `docs/developer/licensing.md` describe the split. Verified at the commit
 that lands this record.
+
+**2026-09-05 re-verified at 08e817f39.** `verified_paths` was the whole `services` directory, so this record went stale on every commit touching any crate's source — 88 files in the last diff, almost none of them licensing-relevant. It is now narrowed to the files the decision actually depends on: the licensing notice, the developer doc, the CI gate, and each crate's `Cargo.toml` (the manifests that carry the `license` field). Crate source files are deliberately excluded — editing `dream-engine/src/runner.rs` cannot change a licence grant. The decision still holds. Re-checked at HEAD: nine package manifests under `services/`, seven declaring `MIT OR Apache-2.0` with `LICENSE-MIT` + `LICENSE-APACHE` + `README.md` on disk, and two declaring `AGPL-3.0-only` with the full AGPL `LICENSE` text. `sh scripts/ci/check-crate-licensing.sh` → exit 0, `OK … 9 services/ package directories carry the texts they declare`; the gate is wired at `.github/workflows/invariants.yml:93-94` (new since the last verification, via `7e7b2d586`), which converts the 2026-09-04 closeout's "no adjacent LICENSE file or README" finding into an enforced invariant. **Divergence found and corrected by this pass:** `services/secret-backup` (added by `7905d2a64`) declares `AGPL-3.0-only` but its dependency graph is wholly permissive (`age`, `secrecy`, `tar`, `anyhow`, `clap`, `walkdir`, `tempfile` — `services/secret-backup/Cargo.toml:15-27`), so it is **not** the linked-AGPL exception this record's Decision described; it is AGPL by choice with `publish = false` (`:9`). `services/LICENSING-NOTICE.md` had not caught up: it named `nostr-pod-bridge` as the sole exception, omitted `secret-backup` from the per-directory table, and asserted "Eight package manifests, seven permissive and one AGPL" when there are nine and two. The notice and this record's Decision have both been corrected to describe the two exceptions and their different reasons. The CI gate itself was already correct — its rule keys on the declared licence, not on the dependency graph — which is why the divergence was documentary, not a code-compliance failure. `implementation_status` stays `partial`: no crate has been published to crates.io, so the per-crate grant has not been exercised where it matters, and the CP-01/CP-08 release-identity obligations are untouched. Commands: `git diff --name-only 89301ec7..HEAD -- services docs/developer/licensing.md`, `grep -h '^license' services/*/Cargo.toml | sort | uniq -c`, `sh scripts/ci/check-crate-licensing.sh`.
 
 ## Closeout extension — 2026-09-04
 

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 960394b145fc2f9ab1c3191b682f87079c712e9e
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [config/hooks/trajectory-recorder.cjs, config/hooks/lib/trajectory-util.cjs]
 owner: jjohare
 review_trigger: A Claude Code build lands where a successful Bash tool_response carries an exit code, or the redaction pattern set changes
@@ -57,6 +57,8 @@ registers only `Stop`/`SubagentStop`. `config/hooks/lib/trajectory-util.cjs`:
 204) and on absent `is_error` (line 212); `redact` (line 116) returns `null`
 fail-closed on non-string input (line 117) and on a thrown redaction (line 125).
 Activation is live but gated default-off.
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `11804ba4b` (single egress redaction contract): `config/hooks/lib/trajectory-util.cjs` +178 and `config/hooks/trajectory-recorder.cjs` +109. The change hardens the redactor — a shared `SECRET_WORD` class plus quoted-scalar patterns, and a new `hasResidualSecret()` rejection arm (`trajectory-util.cjs:165-182`) wired into `redact` at `:201`, so a command that still looks secret-bearing after substitution returns `null` instead of being persisted. That directly closes the closeout's counterexamples (quoted-password suffixes, short JSON password values) and strengthens the I10 fail-closed inversion rather than relaxing it, so the decision still holds. The `cbe7335b9` citations above have drifted; at HEAD: transcript-driven grading and the `PostToolUse` rejection are documented at `config/hooks/trajectory-recorder.cjs:16-26`, `util.gradeResult(...)` is called at `:340`, the double gate on `RUVECTOR_MEMORY_LEARNING_ENABLED` + `RUVECTOR_RECORD_TRAJECTORIES` is at `:559`, and only `Stop`/`SubagentStop` are registered at `:569-572`. In `config/hooks/lib/trajectory-util.cjs`, `gradeResult` is at `:285` and returns `null` on `interrupted` (`:286`) and on absent `is_error` (`:294`); `redact` is at `:196` and returns `null` on non-string input (`:197`), on residual secret (`:201`) and on a thrown redaction (`:207`). Executed directly (`node -e` against the module, since `tests/sovereign/trajectory-util.test.js` is Jest-shaped and no runner is wired): interrupted → null, absent `is_error` → null, `is_error:true` → `{success:false,quality:0}`, non-string → null, `--password="hunter2"` and `{"password": "s3cr3t"}` both redacted — 6/6. `implementation_status` stays `partial`: the CP-07/CP-08 persistence, watermark-recovery and live-loop obligations are untouched by this change. Commands: `git diff 960394b145fc2f9ab1c3191b682f87079c712e9e..HEAD -- config/hooks/trajectory-recorder.cjs config/hooks/lib/trajectory-util.cjs`, the `node -e` probe above.
 
 ## Closeout extension — 2026-09-04
 

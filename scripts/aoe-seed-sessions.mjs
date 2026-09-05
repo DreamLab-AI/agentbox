@@ -289,7 +289,13 @@ function buildCoverage() {
       // antigravity: the CLI installs as `agy` (nixpkgs `antigravity` is the
       // IDE — a different product; see lib/antigravity-cli.nix).
       const bin = resolveAgentBinary(tool === 'antigravity' ? 'agy' : tool);
-      overrides[tool] = `env AGENTBOX_PROFILE=${slug} ${bin}`;
+      // AoE 1.13 does not persist `extra_args` from POST /api/sessions for
+      // native agents (the 2026-09-05 rebuild created `antigravity` as
+      // `env AGENTBOX_PROFILE=antigravity agy`, no model), so the seed's
+      // model rides the override itself. One session per native tool keeps
+      // this collision-free; all three CLIs accept `--model`.
+      const modelArg = seed.model ? ` --model ${seed.model}` : '';
+      overrides[tool] = `env AGENTBOX_PROFILE=${slug} ${bin}${modelArg}`;
       sessionTools[slug] = tool;
       continue;
     }
@@ -555,6 +561,108 @@ function preflightOrphanGitlinks() {
   }
 }
 
+/**
+ * Reap worktrees the seeder itself left behind. AoE derives a worktree at
+ * `${PROJECT}-worktrees/<title>` (or `<title>-N` when that path is taken) for
+ * every `worktree: true` seed. Until 2026-09-05 the session records lived on
+ * a tmpfs and died with the container while the worktrees persisted, so each
+ * boot re-created the seed at the next free suffix: 18 copies per slug. The
+ * records are now on a volume, but this pass keeps the tree bounded either
+ * way. Identity is exact, never fuzzy (the ADR-2032 principle): a directory is
+ * a candidate only when its basename is `<slug>` or `<slug>-<digits>` for a
+ * worktree seed AND no session in any state references its path. A registered
+ * worktree is removed only when `git status` is clean (submodule state
+ * ignored: the submodule's commits live in its own repository) and its branch
+ * holds no commits beyond the main branch; anything else is left for a human.
+ * A candidate that is NOT a registered worktree (a dead directory, which makes
+ * AoE refuse the create with "Worktree already exists") is renamed aside, not
+ * deleted.
+ */
+function reapOrphanWorktrees(existing) {
+  const root = `${PROJECT}-worktrees`;
+  if (!fs.existsSync(root)) return;
+  // The daemon's GET /api/sessions objects carry `project_path` (the CLI's
+  // `aoe list --json` calls the same thing `path`). Accept both, and refuse
+  // to reap at all if any session that owns a managed worktree has no
+  // resolvable path: a field mismatch must fail closed, never empty the tree.
+  const sessionPath = (s) => s && (s.project_path || s.path);
+  const unresolved = existing.filter((s) => s && s.has_managed_worktree === true && !sessionPath(s));
+  if (unresolved.length) {
+    warn(`orphan reaper: ${unresolved.length} session(s) own a worktree but expose no path — refusing to reap (fail-closed).`);
+    return;
+  }
+  const live = new Set(existing.map(sessionPath).filter(Boolean).map((p) => path.resolve(p)));
+  const slugs = seeds.filter((s) => s.worktree === true).map((s) => s.slug);
+  if (slugs.length === 0) return;
+
+  const registered = new Map(); // resolved path → branch name
+  try {
+    const porcelain = execFileSync('git', ['-C', PROJECT, 'worktree', 'list', '--porcelain'], { encoding: 'utf8' });
+    let current = null;
+    for (const line of porcelain.split('\n')) {
+      if (line.startsWith('worktree ')) current = path.resolve(line.slice('worktree '.length));
+      else if (line.startsWith('branch ') && current) registered.set(current, line.slice('branch refs/heads/'.length));
+      else if (line === '') current = null;
+    }
+  } catch (e) {
+    warn(`orphan reaper: git worktree list failed: ${e.message} — skipping.`);
+    return;
+  }
+  let mainBranch = 'main';
+  try {
+    mainBranch = execFileSync('git', ['-C', PROJECT, 'symbolic-ref', '--short', 'HEAD'], { encoding: 'utf8' }).trim() || 'main';
+  } catch { /* detached superproject: keep the default */ }
+
+  let reaped = 0;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const name = entry.name;
+    const slug = slugs.find((sl) => name === sl || (name.startsWith(`${sl}-`) && /^\d+$/.test(name.slice(sl.length + 1))));
+    if (!slug) continue;
+    const dir = path.resolve(root, name);
+    if (live.has(dir)) continue;
+
+    const branch = registered.get(dir);
+    if (!branch) {
+      const aside = `${dir}.orphan-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+      try {
+        fs.renameSync(dir, aside);
+        warn(`orphan reaper: ${dir} is not a git worktree but blocked seed "${slug}" — moved aside to ${aside}; delete it by hand once checked.`);
+      } catch (e) {
+        warn(`orphan reaper: could not move ${dir} aside: ${e.message}`);
+      }
+      continue;
+    }
+
+    let dirty;
+    let ahead;
+    try {
+      dirty = execFileSync('git', ['-C', dir, 'status', '--porcelain', '--ignore-submodules=all'], { encoding: 'utf8' }).trim();
+      ahead = execFileSync('git', ['-C', dir, 'rev-list', '--count', `${mainBranch}..HEAD`], { encoding: 'utf8' }).trim();
+    } catch (e) {
+      warn(`orphan reaper: cannot inspect ${dir}: ${e.message} — leaving it.`);
+      continue;
+    }
+    if (dirty) { warn(`orphan reaper: ${dir} has uncommitted changes — leaving it for a human.`); continue; }
+    if (ahead !== '0') { warn(`orphan reaper: ${dir} holds ${ahead} commit(s) beyond ${mainBranch} — leaving it for a human.`); continue; }
+
+    try { execFileSync('git', ['-C', PROJECT, 'worktree', 'unlock', dir], { stdio: 'pipe' }); } catch { /* not locked */ }
+    try {
+      // --force twice: git refuses to remove a worktree containing submodules otherwise.
+      execFileSync('git', ['-C', PROJECT, 'worktree', 'remove', '--force', '--force', dir], { stdio: 'pipe' });
+    } catch (e) {
+      warn(`orphan reaper: could not remove ${dir}: ${String(e.stderr || e.message).trim()}`);
+      continue;
+    }
+    if (branch === name) {
+      try { execFileSync('git', ['-C', PROJECT, 'branch', '-D', branch], { stdio: 'pipe' }); } catch { /* already gone */ }
+    }
+    reaped += 1;
+    log(`orphan reaper: removed ${dir} (branch ${branch}: clean, no commits beyond ${mainBranch}, no session).`);
+  }
+  if (reaped) log(`orphan reaper: ${reaped} worktree(s) reaped under ${root}.`);
+}
+
 async function reconcileSessions(sessionTools) {
   if (!(await daemonReady())) {
     warn(`daemon not reachable on ${BASE} — config + settings are in place; session reconciliation deferred to the next boot (fail-open).`);
@@ -567,6 +675,11 @@ async function reconcileSessions(sessionTools) {
   } catch (e) {
     warn(`could not list sessions: ${e.message} — skipping session reconciliation (fail-open).`);
     return;
+  }
+  try {
+    reapOrphanWorktrees(existing);
+  } catch (e) {
+    warn(`orphan reaper failed: ${e.message} — continuing (fail-open).`);
   }
   const existingTitles = new Set(existing.map((s) => s && s.title).filter(Boolean));
 
@@ -639,7 +752,15 @@ async function main() {
   log('done.');
 }
 
-main().catch((e) => {
-  warn(`unexpected error: ${e && e.stack ? e.stack : e} — fail-open.`);
-  process.exit(0);
-});
+export { reapOrphanWorktrees };
+
+// Run only when executed as a script (the entrypoint's `node <path>`), so the
+// orphan reaper can be imported by tests/cli/aoe-seed-orphans.test.mjs.
+const invokedDirectly = Boolean(process.argv[1])
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) {
+  main().catch((e) => {
+    warn(`unexpected error: ${e && e.stack ? e.stack : e} — fail-open.`);
+    process.exit(0);
+  });
+}

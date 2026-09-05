@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.3.0
+version: 0.3.1
 status: draft-for-ratification
 verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
 changelog:
+  - 0.3.1 (2026-09-05) — ADR-2063: agentbox-mcp hub waits for /run/agentbox/mcp-hub.json (no FATAL on the priority race) and the entrypoint nudges it after projection; aoe-profiles volume persists AoE session records across restarts; the seeder carries the seed model on native-agent overrides and reaps only its own clean, unreferenced, commit-free orphan worktrees (fail-closed on a pathless session).
   - 0.3.0 (2026-09-05) — Phase 2 remediation sweep (ADR-2035/2036/2037/2039/2040, plus ADR-2055 routed from ab-learning-capabilities). The supervised-services table now cites `[program:<name>]` instead of line numbers, which had drifted by differing offsets. Corrected: opf-router is the privacy-filter redaction sidecar on 127.0.0.1:9092 (not an OpenAI facade on :8084); ruvector pins 0.3.0 (not 0.2.25); the CATALOGUE holds 60 entries = 13 surfaces + 47 modules (not 14 + ~35); skills/mcp.json holds 28 servers (not 30). Adapter boot probe rewritten: per-slot deadlines, quarantine-before-replace, four readiness states. Dispatch is two wrap layers; JSON-LD encoding is a gated route-level stage. The ADR-2008 and ADR-2032 qualifications are marked resolved with evidence.
   - 0.2.2 (2026-09-04) — ADR-2032: process-signalling tools (ruflo-daemon-gc, token-audit) identify daemons by argv boundaries against a launcher allowlist, fail closed on unknown launchers, and reject out-of-range registry PIDs; telemetry-data volume backs /var/lib/agentbox/telemetry; Codex ships as the full codex-package archive so codex-code-mode-host sits beside codex.
   - 0.2.1 (2026-09-02) — ADR-2028 amendment: `[vault].working` (second vault root, exported as VAULT_WORKING_ROOT/VAULT_WORKING_PAGES) and `[vault].transcripts` (podcast transcript store outside both vaults, VAULT_TRANSCRIPTS) for the sibling-vault corpus layout of jjohare/visionGraph; podcast-knowledge-ingest reads only these.
@@ -195,6 +196,7 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - GPU wrapping applies only when `gpu.backend == "local-cuda"`; `--suffix` (never `--prefix`) on `LD_LIBRARY_PATH`.
 - Manifest state is always introspected from `agentbox.toml`, never hard-coded in the catalogue (`system-manifest.js:11`).
 - Adding a gate means gating both the Nix package set and the supervisor block, plus a `system-manifest.js` catalogue entry with an honest apply-class.
+- A supervised program that depends on a file the bootstrap program writes later waits for it with a bounded timeout rather than failing into FATAL (ADR-2063, `services/agentbox-mcp/src/hub/mod.rs` `wait_for_config`); AoE session records live on the `aoe-profiles` volume, and the seeder's orphan reaper removes only clean, unreferenced, commit-free worktrees whose basename is exactly a seeded slug, refusing to act when a managed session exposes no path (ADR-2063, `scripts/aoe-seed-sessions.mjs` `reapOrphanWorktrees`).
 - Any tool that signals a process decides identity on argv elements against a known launcher allowlist and fails closed; joined-string matching is prohibited (ADR-2032, `services/agentbox-ops/src/procs.rs:23`).
 - Resource limits live only in `agentbox.toml [resources]` and the generated compose; `docker-compose.override.yml` never carries `deploy` limits or `shm_size` (ADR-2034).
 - The MCP hub binds loopback only (`services/agentbox-mcp/src/hub/config.rs` `is_loopback_bind`, refused otherwise) and is never published; `[resources.mcp_hub].servers` never lists a server with per-session state (claude-flow, code-interpreter, aci-shell, codebase-memory, agentic-qe) (ADR-2034).

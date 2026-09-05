@@ -24,7 +24,12 @@ describe('owned web-interface contracts', () => {
     expect(cockpitHtml).toContain('data-surface="jupyter"');
     expect(caddy).toMatch(/handle \/lo\*/);
     expect(caddy).toMatch(/handle \/docs\*/);
-    expect(caddy).toMatch(/handle_path \/mgmt\/\*/);
+    // ADR-045/ADR-069: the NIP-98 proxy at :9096 owns the /mgmt/ prefix and
+    // strips it itself (proxy.mjs `strip` defaults true) before forwarding to
+    // the management API. Caddy must therefore PRESERVE the prefix — a
+    // `handle_path` here would strip it twice and route /mgmt/* to the AoE
+    // upstream instead of management-api.
+    expect(caddy).toMatch(/handle \/mgmt\/\*/);
   });
 
   test('cockpit has keyboard-complete tabs, labelled composers, and safe approvals', () => {

@@ -705,6 +705,22 @@ working     = "/home/devuser/workspace/vault-working"
 # not index it. Exported as VAULT_TRANSCRIPTS.
 transcripts = "/home/devuser/workspace/vault-transcripts"
 
+[skills.podcast_ingest]
+# ADR-2057 gap 1: the manifest gate for the podcast ingestion SCHEDULE.
+# [program:podcast-cron] (supercronic driving
+# skills/podcast-knowledge-ingest/crontab) used to be supervised
+# unconditionally, so `true` is exactly today's shipped behaviour — flipping
+# this key on is never a migration step for an existing deployment.
+# false ⇒ flake.nix emits no [program:podcast-cron] block at all.
+# REBUILD-class: the supervisor text is baked at image composition, so a
+# change here needs `./agentbox.sh rebuild`, not a restart.
+# Scope note (ADR-039 honesty): this gates the scheduled job, NOT the
+# `podcast-ingest` binary. That binary is a shared knowledge-tool crate the
+# always-baked podcast-{knowledge,bulk}-ingest skills invoke by hand, and its
+# supercronic runner is shared with [program:forum-backup-cron]; neither
+# leaves the closure when this gate is false.
+enabled = true
+
 [skills.harness]
 # Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates
 # to understand guide-sensor pairings for their active topology. Four tools:

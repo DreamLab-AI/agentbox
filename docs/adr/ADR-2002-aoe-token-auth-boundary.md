@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -56,6 +56,8 @@ token → 200 (Bearer injected, HTTP and WS); `aoe-curl.sh` exfiltration attempt
 (`https://…`, `@`, non-/api paths, PUT) rejected exit 2; 63/65-hex tokens
 refused. Three codex adversarial rounds; residuals documented at
 `readAoeToken()` in `config/nip98-proxy/proxy.mjs`.
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `11804ba4b` (proxy break-glass expiry/scope/audit-fingerprint bounds, +242 lines in `proxy.mjs`, +634 in `selftest.mjs`) and by `flake.nix` edits across the ADR-2034 mcp-hub and resource-topology work; both tighten this boundary rather than relax it, so the decision still holds. Re-checked at HEAD: `flake.nix:2320` generates `aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port 9095` and `flake.nix:2647` states `:9095` is NEVER published; `readAoeToken()` at `config/nip98-proxy/proxy.mjs:278-296` still enforces exactly 64 hex with the read-then-stat torn-read retry (`:292`) and last-good caching (`:298-301`, deletion is still not revocation); the HTTP AoE path fails closed with 503 when no token is available at `proxy.mjs:986-993` and the WS upgrade path at `:1084-1091`; `scripts/aoe-curl.sh:4-30` is still positional-only (`METHOD PATH [JSON_BODY]`) and loopback-pinned to `http://127.0.0.1:${AGENTBOX_INTERACTION_PLANE_PORT:-9095}`. Commands: `git diff --name-only 89301ec7c911eab270c00a0cf81596d0d4f15535..HEAD -- config/nip98-proxy/proxy.mjs scripts/aoe-curl.sh flake.nix`, `grep -n 'aoe serve' flake.nix`, `grep -n 'readAoeToken\|503' config/nip98-proxy/proxy.mjs`. The residuals recorded above (same-uid token readability, fake-upstream-only coverage, no running-image receipt) are unchanged.
 
 ## Closeout extension — 2026-09-04
 

@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
-verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md]
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
 repo: agentbox
@@ -45,7 +45,11 @@ invoked only. The governing invariants live in
 
 - Turning a capability off is a one-line `enabled = false` edit with a defined
   apply-class, and the operator can trust the off-state is footprint-free.
-- Explicit routing and a spend cap are required policy. The inspected orchestration-only skill does not establish a runtime limiter or absence of every automatic route.
+- Explicit routing and a spend cap are required policy, and the cap is now an
+  enforced runtime limiter: every branch must be admitted by `tree-search-cap
+  reserve` before dispatch and settled after (`services/agentbox-ops/src/bin/tree-search-cap.rs`).
+  Absence of every automatic route is still established by the skill's own
+  declaration, not by a mechanism.
 - Cost: activation of a gate requires an image rebuild (nix-baked package +
   supervisord), so toggling is not hot; and the byte-identical-when-off
   guarantee must be re-checked whenever a new gate is added.
@@ -60,6 +64,8 @@ At `cbe7335b9`, `agentbox.toml`: `[skills.code_interpreter]` (:535),
 `skills/tree-search-coder/SKILL.md` frontmatter is orchestration-only and states
 "NEVER auto-routed; only ever invoked explicitly". Manifest apply-class mechanism
 defined in ADR-2003.
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `385027e71` (explicit gate declarations in `agentbox.toml`) and `205d370ba` (the `tree-search-cap` limiter), which rewrote `skills/tree-search-coder/SKILL.md` from an advisory cap to an enforced one. The decision still holds and is now backed by a mechanism. Re-checked at HEAD: `agentbox.toml:534` `[skills.code_interpreter]`, `:550` `[skills.codeact]`, `:578` `[skills.aci_shell]`, `:620` `[skills.tree_search_coder]` with `max_candidates = 5` (`:625`), `per_branch_timeout_s = 60` (`:626`), `spend_cap_usd = 0.50` (`:627`) and the "invoked, never auto-routed" comment at `:623`; `[dream_machine]` at `:1668` (the previously cited `:1560` has drifted, as have all four skill-block line numbers). `skills/tree-search-coder/SKILL.md:9` still states "NEVER auto-routed; only ever invoked explicitly". **Record correction made by this pass:** the Consequences bullet claimed "the inspected orchestration-only skill does not establish a runtime limiter". A limiter now exists — `services/agentbox-ops/src/bin/tree-search-cap.rs` requires `reserve` before every branch dispatch and `settle` after, refusing with `EXIT_REFUSED = 3` (`:32`) on spend, candidate count or wall clock, holding each reservation under a file lock so concurrent branches cannot jointly exceed the cap — so that bullet has been corrected in place and `tree-search-cap.rs` added to `verified_paths` as the file the enforcement claim now depends on. `implementation_status` stays `partial`: the byte-identical-when-off guarantee still has no build evidence, and no automatic-route absence proof exists beyond the skill's own declaration. Commands: `git diff 89301ec7..HEAD -- agentbox.toml skills/tree-search-coder/SKILL.md`, `grep -n '^\[skills\.' agentbox.toml`, `grep -n 'EXIT_REFUSED\|reserve' services/agentbox-ops/src/bin/tree-search-cap.rs`.
 
 ## Closeout extension — 2026-09-04
 

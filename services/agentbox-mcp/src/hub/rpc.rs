@@ -20,6 +20,13 @@ pub enum Kind {
     Invalid(String),
 }
 
+/// `notifications/initialized` from a client. The hub answers `initialize`
+/// itself and initialised the child once, so this must not be forwarded.
+pub fn is_initialized_notification(msg: &Value) -> bool {
+    msg.get("method").and_then(Value::as_str) == Some("notifications/initialized")
+        && msg.get("id").is_none()
+}
+
 pub fn classify(msg: &Value) -> Kind {
     let Some(obj) = msg.as_object() else {
         return Kind::Invalid("message is not an object".into());
@@ -63,15 +70,49 @@ mod tests {
     use super::*;
 
     #[test]
+    fn initialized_notification_is_recognised_only_without_an_id() {
+        assert!(is_initialized_notification(
+            &json!({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        ));
+        assert!(!is_initialized_notification(
+            &json!({"jsonrpc": "2.0", "id": 1, "method": "notifications/initialized"})
+        ));
+        assert!(!is_initialized_notification(
+            &json!({"jsonrpc": "2.0", "method": "notifications/progress"})
+        ));
+    }
+
+    #[test]
     fn classifies_every_shape() {
-        assert_eq!(classify(&json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})), Kind::Initialize(json!(1)));
-        assert_eq!(classify(&json!({"jsonrpc": "2.0", "id": "a", "method": "tools/list"})), Kind::Request(json!("a")));
-        assert_eq!(classify(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"})), Kind::Notification);
-        assert_eq!(classify(&json!({"jsonrpc": "2.0", "id": 3, "result": {}})), Kind::Response);
-        assert!(matches!(classify(&json!({"jsonrpc": "2.0", "method": "initialize"})), Kind::Invalid(_)));
+        assert_eq!(
+            classify(&json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})),
+            Kind::Initialize(json!(1))
+        );
+        assert_eq!(
+            classify(&json!({"jsonrpc": "2.0", "id": "a", "method": "tools/list"})),
+            Kind::Request(json!("a"))
+        );
+        assert_eq!(
+            classify(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"})),
+            Kind::Notification
+        );
+        assert_eq!(
+            classify(&json!({"jsonrpc": "2.0", "id": 3, "result": {}})),
+            Kind::Response
+        );
+        assert!(matches!(
+            classify(&json!({"jsonrpc": "2.0", "method": "initialize"})),
+            Kind::Invalid(_)
+        ));
         assert!(matches!(classify(&json!([1])), Kind::Invalid(_)));
-        assert!(matches!(classify(&json!({"jsonrpc": "2.0", "id": 1})), Kind::Invalid(_)));
-        assert_eq!(classify(&json!({"id": null, "method": "x"})), Kind::Notification);
+        assert!(matches!(
+            classify(&json!({"jsonrpc": "2.0", "id": 1})),
+            Kind::Invalid(_)
+        ));
+        assert_eq!(
+            classify(&json!({"id": null, "method": "x"})),
+            Kind::Notification
+        );
     }
 
     #[test]

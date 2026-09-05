@@ -59,7 +59,10 @@ impl Running {
             Ok(Err(_)) => Err(anyhow::anyhow!("child exited before replying")),
             Err(_) => {
                 self.pending.lock().await.remove(&id);
-                Err(anyhow::anyhow!("child did not reply within {}s", timeout.as_secs()))
+                Err(anyhow::anyhow!(
+                    "child did not reply within {}s",
+                    timeout.as_secs()
+                ))
             }
         }
     }
@@ -121,8 +124,14 @@ impl ChildServer {
         let mut child = cmd
             .spawn()
             .map_err(|e| anyhow::anyhow!("spawn {}: {e}", self.spec.command))?;
-        let stdin = child.stdin.take().ok_or_else(|| anyhow::anyhow!("no stdin"))?;
-        let stdout = child.stdout.take().ok_or_else(|| anyhow::anyhow!("no stdout"))?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("no stdin"))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("no stdout"))?;
         info!(server = %self.name, pid = ?child.id(), "spawned");
 
         let running = Arc::new(Running {
@@ -298,11 +307,16 @@ done
     async fn respawns_after_child_exit() {
         let s = ChildServer::new("fake".into(), fake_server());
         s.initialize_result().await.unwrap();
-        s.notify(&json!({"jsonrpc": "2.0", "method": "quit"})).await.unwrap();
+        s.notify(&json!({"jsonrpc": "2.0", "method": "quit"}))
+            .await
+            .unwrap();
         // Give the reader a moment to observe EOF.
         tokio::time::sleep(Duration::from_millis(300)).await;
         assert_eq!(s.status().await["running"], false);
-        let r = s.request(&json!({"jsonrpc": "2.0", "id": "x", "method": "ping"})).await.unwrap();
+        let r = s
+            .request(&json!({"jsonrpc": "2.0", "id": "x", "method": "ping"}))
+            .await
+            .unwrap();
         assert_eq!(r["result"]["pong"], true);
         assert_eq!(s.status().await["restarts"], 1);
         s.shutdown().await;
@@ -312,7 +326,12 @@ done
     async fn spawn_failure_is_an_error_not_a_panic() {
         let s = ChildServer::new(
             "missing".into(),
-            ServerSpec { command: "/nonexistent/agentbox-no-such-binary".into(), args: vec![], env: Default::default(), cwd: None },
+            ServerSpec {
+                command: "/nonexistent/agentbox-no-such-binary".into(),
+                args: vec![],
+                env: Default::default(),
+                cwd: None,
+            },
         );
         assert!(s.initialize_result().await.is_err());
         assert_eq!(s.status().await["running"], false);

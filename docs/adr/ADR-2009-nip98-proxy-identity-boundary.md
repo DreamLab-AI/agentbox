@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -55,6 +55,8 @@ inbound `x-agentbox-pubkey`, `:743` re-injects; WS path `:864` strips, `:876`
 re-injects. Fail-closed no-verifier at `:472` (`nip98_verifier_unavailable`).
 Boot-fatal: `:120` (bad allowlist throws), `:219`/`:259`/`:281` (`process.exit(1)`
 on invalid route/config).
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `11804ba4b` (`proxy.mjs` +242: break-glass scope/expiry bounds and an authoritative-`NOSTR_BRIDGE_PATH` rule that fails closed instead of falling back to another verifier candidate) and by the ADR-2047 citation refresh of `docs/INGRESS-identity.md`; both strengthen the fail-closed identity boundary, so the decision still holds. The `cbe7335b9` citations in the paragraph above have all drifted and are superseded by these HEAD line numbers: `flake.nix:2320` (`aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port 9095`) and `flake.nix:2313` (\"only IDENTITY ingress\"); inbound `x-agentbox-pubkey`/`x-agentbox-auth-mode` are dropped on the HTTP path at `config/nip98-proxy/proxy.mjs:946-947` and re-injected from the verified identity at `:963-964`; the WS path strips at `:1106` and re-injects at `:1120`; fail-closed no-verifier at `:676` (`nip98_verifier_unavailable`); boot-fatal config at `:336` (unset `bearer_env` throws \"fail closed\") and `:376`/`:398`/`:416` (`process.exit(1)` on invalid route/allowlist/upstream config). **Governing-doc correction made by this pass:** every `verifyIdentity` citation in `docs/INGRESS-identity.md:69-89` was off by the ~99 lines the break-glass block added — `verifyIdentity` is at `proxy.mjs:626` (not 527), `constantTimeEqual` `:540` called at `:636`, `canonicalPubkey` `:241` called at `:689`, `pubkeyAllowed` `:227` called at `:693`, `SESSION_COOKIE` `:213`, session mint `:858`, `verifySessionToken` `:561` called at `:705`, cookie strip `:594`, identity injection `:963`, 302/401 branch `:915-930`, and the corrected `--auth token` comment is at `flake.nix:2647` (not 2515). Those citations have been repointed in place. Commands: `git diff --name-only 89301ec7..HEAD -- config/nip98-proxy/proxy.mjs docs/INGRESS-identity.md flake.nix`, `grep -n` on each cited symbol. Remaining gaps from the 2026-09-05 acceptance section (fake upstreams, no deployed door inventory) are unchanged.
 
 ## Closeout extension — 2026-09-04
 

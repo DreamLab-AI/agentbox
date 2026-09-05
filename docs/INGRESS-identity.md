@@ -66,28 +66,31 @@ the daemon's bearer token, minted at launch into `~/.config/agent-of-empires/ser
 (not env-settable), so a co-resident process that never reads that file cannot drive
 sessions even on a loopback-reachable port (`flake.nix:1963-1975`, `proxy.mjs:18-21`).
 
-Auth precedence in `verifyIdentity` (`proxy.mjs:527`; ADR-2047 refreshed these
-citations — the previous `proxy.mjs:410-450` range predated intervening edits):
+Auth precedence in `verifyIdentity` (`proxy.mjs:626`; ADR-2047 refreshed these
+citations from the stale `proxy.mjs:410-450` range, and ADR-2058 re-verification at
+`08e817f39` shifted them again by the break-glass scope/expiry block added at
+`proxy.mjs:99-160`):
 
 1. **Break-glass bearer** — only if `NIP98_PROXY_ALLOW_BEARER` is set
    (`proxy.mjs:99`); constant-time compared via `constantTimeEqual`
-   (`proxy.mjs:441`, called at `:535`); stamps `mode: break-glass`, pubkey
-   `NIP98_PROXY_BEARER_PUBKEY` (default `"break-glass"`, `proxy.mjs:538`).
+   (`proxy.mjs:540`, called at `:636`); stamps `mode: break-glass`, pubkey
+   `NIP98_PROXY_BEARER_PUBKEY` (default `"break-glass"`, `proxy.mjs:100`, returned at
+   `:670`), and is additionally scope- and expiry-bounded (`proxy.mjs:104-160`).
 2. **NIP-98** (`Authorization: Nostr <base64(kind-27235)>`) verified through the SAME
-   `NostrBridge.verifyNip98` path management-api uses (`proxy.mjs:546`,
+   `NostrBridge.verifyNip98` path management-api uses (`proxy.mjs:680`,
    `mcp/servers/nostr-bridge.js:459`). The verified BIP-340 x-only pubkey is
-   canonicalised (`canonicalPubkey`, `proxy.mjs:142`, called at `:555`), allowlist-checked
-   (`pubkeyAllowed`, `proxy.mjs:128`, called at `:559`), then injected as
-   `X-Agentbox-Pubkey` (`proxy.mjs:986`).
+   canonicalised (`canonicalPubkey`, `proxy.mjs:241`, called at `:689`), allowlist-checked
+   (`pubkeyAllowed`, `proxy.mjs:227`, called at `:693`), then injected as
+   `X-Agentbox-Pubkey` (`proxy.mjs:963`).
 3. **NIP-07 browser session** — HttpOnly HMAC cookie `agentbox_nip07_session`
-   (`SESSION_COOKIE`, `proxy.mjs:114`), minted at `POST /nip07/session`
-   (`proxy.mjs:724`) after a signed kind-27235 handshake, stateless token
-   `v1.<pubkey>.<expiry>.<mac>` verified by `verifySessionToken` (`proxy.mjs:462`,
-   called at `:571`). The cookie is stripped before forwarding (`proxy.mjs:495`);
+   (`SESSION_COOKIE`, `proxy.mjs:213`), minted at `POST /nip07/session`
+   (`proxy.mjs:858`) after a signed kind-27235 handshake, stateless token
+   `v1.<pubkey>.<expiry>.<mac>` verified by `verifySessionToken` (`proxy.mjs:561`,
+   called at `:705`). The cookie is stripped before forwarding (`proxy.mjs:594`);
    upstreams never see it.
 
 On failure: HTML GETs are 302'd to `/nip07/`; API clients get JSON 401
-(`proxy.mjs:650-670`). If `NostrBridge` cannot load, the proxy fails **closed** — every
+(`proxy.mjs:915-930`). If `NostrBridge` cannot load, the proxy fails **closed** — every
 NIP-98 token is rejected, only break-glass (if configured) survives (`proxy.mjs:308-314`).
 
 Upstream header hygiene: inbound `X-Agentbox-Pubkey` is always dropped and re-injected
@@ -107,7 +110,8 @@ comment notes a co-resident process without the token file "can no longer drive 
 daemon") and `scripts/aoe-seed-sessions.mjs`. The nip98-proxy stays the only *identity*
 ingress (NIP-98 → pubkey); the token is defence-in-depth beneath it. The comment that
 formerly lagged this (`flake.nix`, "(aoe serve, --auth none) is NEVER published") has
-been corrected in the code and now reads `--auth token` at `flake.nix:2515` (ADR-2047).
+been corrected in the code and now reads `--auth token` at `flake.nix:2647` (ADR-2047;
+line re-pinned by ADR-2058 re-verification at `08e817f39`).
 
 ### `:9096` multi-upstream routing (legacy ADR-045)
 
@@ -191,7 +195,7 @@ kind-27235 header and stamps `source_urn` from the verified pubkey.
   LAN ports whose own auth is each surface's responsibility.** Note the earlier framing
   understated the count as well as mis-framing it.
 - **Resolved — ADR-2047 (2026-09-05): the `--auth none` comment was corrected in the
-  code.** This bullet is itself stale. `flake.nix:2515` now reads
+  code.** This bullet is itself stale. `flake.nix:2647` now reads
   `# (aoe serve, --auth token) is NEVER published.`, matching the live supervisor
   command. Nothing further to do.
 - **OPEN — the exposure invariant is host-facing only; container-internal binds are
@@ -312,6 +316,7 @@ ADR-2012 is partial for relay-wide allowlisting. The pod bridge authorises inbox
 One line per ADR landing in this domain on 2026-09-05. Each amends the Current
 State, Invariants or divergence list above in the same change.
 
+- **ADR-2062** — EXTEND: the exposure gate (`scripts/ci/check-ports-loopback.sh`) grows a listener rule over the generated supervisor `command=`/`environment=` bind addresses in `flake.nix`, so the domain's exposure invariant now covers container-internal binds on the shared docker network and not only host-facing compose publishes; it detected one unsanctioned non-loopback listener (`[program:wayvnc]`), recorded as a finding for ADR-2040.
 - **ADR-2041** — WIRE: the ADR-057 execution journal and the ADR-059 action
   pipeline are connected to the real action path (`POST /v1/tasks`) instead of
   existing only under `tests/contract/`.

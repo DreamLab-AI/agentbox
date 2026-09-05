@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -71,6 +71,8 @@ sha256 was computed from the registry download on 2026-09-05; the
 `nodeModulesHash` is the placeholder until the first `nix build .#runtime` on the
 host prints it — implementation is therefore **partial** and activation
 **staged** until that rebuild lands and a real `--diff` receipt exists.
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `7e7b2d586` (`.github/workflows/deepsec.yml` and the invariants wiring) and `08e817f39` (`flake.nix`). The decision still holds, and **one arm of the partial status has closed**: `deepsecPkg` at `flake.nix:444-448` (line numbers at HEAD `08e817f39`; the working tree carries other lanes' uncommitted edits that shift them) now carries a resolved `nodeModulesHash = "sha256-svwTvpVDYWCKfTnO4YL70f1qcDDiEQ0JLFpZfK36qIk="` rather than the placeholder the Verification paragraph above describes, together with `stripDevDeps = true` (`:460`) and the inline rationale at `:451-459` (deepsec 2.3.9's published tarball keeps `workspace:*` monorepo packages in `devDependencies`, which modern npm resolves before `--omit=dev` prunes, aborting the build; the shipped `dist/cli.mjs` is pre-bundled so they are never needed). Re-checked at HEAD: the exact 2.3.9 pin at `flake.nix:446` gated by `[toolchains].deepsec` at `:475`, `ENABLE_DEEPSEC` projected at `flake.nix:3517`, `agentbox.toml:1362` `deepsec = true`, the `[security.deepsec]` policy block from `:1615`, and the catalogue entry at `management-api/lib/system-manifest.js:91-93` reporting both gates with `apply_class: 'rebuild'`. Validator codes E070/E071/E072/W070 are implemented at `scripts/agentbox-config-validate.js:1225-1260`. The gate script documents exit `0/1/70/78/124` at `skills/build-with-quality/scripts/deepsec-gate.sh:22-23` with `EX_CONFIG=78` at `:27`, validates `fail_on` against the six-value set at `:111`, and writes `receipt.json` at `:232`. CI runs the same script in PR mode behind the `deepsec` label at `.github/workflows/deepsec.yml:32` and `:69`, with full-SHA action pins. Live runs: `node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs` → **10 pass, 0 fail**; `node scripts/agentbox-config-validate.js agentbox.toml` → valid (5 advisory warnings, none deepsec); `node scripts/ci/check-manifest-catalogue.js` → `PASS … all 57 catalogue gate paths resolve`. `implementation_status` stays `partial` and `activation_status` `staged`: the hash is resolved but no host `nix build .#runtime` image digest was captured by this pass and no real `--diff` receipt exists, which is the remaining acceptance condition. Commands: `git diff --name-only 89301ec7..HEAD -- flake.nix agentbox.toml .github/workflows/deepsec.yml skills/build-with-quality/`, the three test/validator runs above.
 
 ## Closeout extension — 2026-09-05
 

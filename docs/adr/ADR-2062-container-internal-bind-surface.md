@@ -2,12 +2,12 @@
 id: ADR-2062
 title: Extend the exposure gate from published ports to container-internal listeners
 date: 2026-09-05
-decision_status: proposed
-implementation_status: none
-activation_status: inactive
+decision_status: accepted
+implementation_status: complete
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: []
 owner: jjohare
 review_trigger: adding a supervised program that listens on a socket, joining agentbox to another shared docker network, or any change to a supervised program's bind address or auth mode
@@ -62,7 +62,8 @@ a YAML parser precisely to close a different structural bypass
 agentbox **ADR-2040** (ab-runtime) after that lead corrected a mistake in this
 record's first draft — see "Corrected remedy" below. ADR-2040 states the
 authentication invariant and makes the `flake.nix` changes; this ADR states the
-detection invariant and is `proposed` pending the gate work.
+detection invariant. The gate work landed on 2026-09-05 — see
+**Verification — 2026-09-05**.
 
 The exposure invariant is stated in terms of **listeners**, not publishes: for
 every supervised program, the bind address is declared alongside its supervisor
@@ -116,9 +117,11 @@ anything not bound to loopback.
   estate's. `docker-compose.yml` needs **no** change — the loopback publishes are
   correct and must stay, because a published port forwards to the container's
   bridge address and the publish is the operator's access path.
-- Lands as `proposed`: the gate is in another lead's files, so per the Phase 2
-  policy for cross-lead work this ADR records the decision and the acceptance
-  test rather than claiming an implementation.
+- Landed as `proposed` and moved to `accepted` when the gate was built
+  (2026-09-05). The cross-lead split held: the gate and its wiring are this
+  record's; `flake.nix` was not touched, so the one live listener the gate now
+  detects is recorded as a finding for ADR-2040 rather than silently fixed or
+  silently sanctioned.
 
 ## Acceptance test
 
@@ -139,10 +142,11 @@ and carries the runtime probes):
    posture, so the estate has one list rather than a per-program search. `:9096`
    remains the one identity-gated LAN door (ADR-2009).
 
-## Verification
+## Verification (pre-implementation evidence pass)
 
-Not implemented — `implementation_status: none`. The verification below
-establishes only that the exposure is real. It ran on the **uncommitted working
+Superseded by **Verification — 2026-09-05** at the foot of this record, which
+covers the implemented gate. The pass below establishes only that the exposure
+is real. It ran on the **uncommitted working
 tree** above SHA `89301ec7c911eab270c00a0cf81596d0d4f15535`; `verified_paths` is
 empty because the tree is uncommitted, and this must be re-run at the landing
 commit. No live container was probed — the acceptance test above is the runtime
@@ -194,3 +198,147 @@ This ADR's gap is orthogonal to both: a container-internal `0.0.0.0` bind is
 invisible to a *ports*-based gate in any syntax and at any level of parsing
 rigour, because it is never declared as a port at all. That is why the remedy is
 to state the invariant over listeners rather than to improve the parser.
+
+## Verification — 2026-09-05
+
+`implementation_status: partial`, not `complete`: the gate is fully implemented,
+wired and green on its own fixtures, but it **fails the live tree** on one
+genuine unauthenticated non-loopback listener that belongs to ADR-2040, not to
+this record. Per the cross-lead rule `flake.nix` was not touched and the gate's
+exit code was left honest. `activation_status: live` — CI runs it.
+
+Ran on the **uncommitted working tree** above SHA
+`08e817f394a908264c378745193bf7a0bbf6ec0e`; `verified_paths` is empty because
+the tree is uncommitted, and this must be re-run at the landing commit. No
+container was built or probed: every fixture feeds synthetic supervisor text to
+the checker, and the live run reads `flake.nix` as text.
+
+### What was implemented
+
+- `scripts/ci/check-ports-loopback.mjs` gains an ADR-2062 section. It splits the
+  generated supervisord text in `flake.nix` into `[program:NAME]` blocks —
+  bounded by the next header **or** the enclosing Nix string's `''`, so trailing
+  Nix code far below the last block is not attributed to it — and extracts every
+  stated bind address from `command=` and `environment=` lines:
+  `--bind` / `--bind-addr` / `--bind-address` / `--host` / `--hostname` /
+  `--listen` / `--listen-addr` / `--ip` / `--address` / `--addr` /
+  `--http-address` in both `--flag value` and `--flag=value` form; `--port` with
+  a host-carrying value; a bare IPv4 literal (the `wayvnc … 0.0.0.0 5901`
+  shape); and env assignments named `BIND` / `HOST` or suffixed `_BIND` /
+  `_BIND_ADDR` / `_LISTEN` / `_LISTEN_ADDR` / `_HOST`.
+- Nix `${…}` bind values resolve three ways, never silently optimistically:
+  **RESOLVED** (a string literal, or a single-line `let` binding that is one),
+  **DEFAULTED** (`cfg.attr or "127.0.0.1:9720"`, directly or through a `let`
+  such as `mcpHubBind` — the literal default is audited and the listener marked
+  manifest-overridable), **UNRESOLVED** (anything else — reported by program,
+  flag and line, exit 2, never passed over).
+- A separate `LISTENER_SANCTIONED` list keyed by program name with a required
+  reason string, seeded with the two programs ADR-2040 names as authenticated
+  non-loopback listeners, each confirmed in `flake.nix` before seeding:
+  `code-server` (`--bind-addr 0.0.0.0:8080 --auth password`) and `jupyter-lab`
+  (`--ip=0.0.0.0` with the empty `--IdentityProvider.token=` removed, so the
+  boot-minted `JUPYTER_TOKEN` applies).
+- The publish rule and **its output format are unchanged** — other tooling
+  parses it. Verified by capturing the gate's output before and after the
+  change: the `PASS (check-ports-loopback): 10 compose file(s), 7 ports block(s)
+  — all publishes loopback-only or explicitly sanctioned` line is byte-identical
+  (`python3` string comparison of the two captures), and the listener rule emits
+  only its own clearly-prefixed lines after it.
+- `tests/security/check-listeners.test.mjs` (15 `node:test` cases) plus the CI
+  step `check-listeners unit tests (ADR-2062 — supervisor bind-address listener
+  rule)` in `.github/workflows/invariants.yml`, placed immediately after the
+  `check-ports-loopback` step it exercises. Nothing was removed.
+
+### Commands and results
+
+- `bash scripts/ci/check-ports-loopback.sh` → **exit 1**. stdout carries the
+  unchanged publish PASS line; stderr carries `FAIL (check-listeners,
+  ADR-2062)` with the single finding below, then the listener enumeration
+  (8 declared bind addresses).
+- `node --test tests/security/check-listeners.test.mjs` → `# pass 15 # fail 0`.
+- `node tests/security/ports-gate.test.mjs` (the ADR-2013 sibling suite, which
+  is **not** wired into CI) → `38 passed, 1 failed`. The single failure is its
+  own final assertion *"the checked-in compose files pass the gate"*, which
+  asserts exit 0 on the real tree and now trips on the honest listener finding.
+  That file is not owned by this record and was not edited; it goes green when
+  the finding is resolved.
+- `node --check scripts/ci/check-ports-loopback.mjs` and
+  `sh -n scripts/ci/check-ports-loopback.sh` → clean.
+
+### Finding — one genuine unauthenticated non-loopback listener
+
+    flake.nix:2014: [program:wayvnc] (positional) 0.0.0.0 binds 0.0.0.0
+      — non-loopback, not sanctioned
+
+`command=${pkgs.wayvnc}/bin/wayvnc --output=HEADLESS-1 0.0.0.0 5901` — a VNC
+server on every interface with no credential stated, reachable by every peer on
+`visionclaw_network`. It is a third instance of exactly the class this ADR
+exists to make detectable, and it is **not** one of the two ADR-2040 enumerated,
+which is the argument for the gate made concrete on its first run. `flake.nix`
+is ADR-2040's file, so it was left untouched and the exit code left honest.
+Resolution belongs to that record: authenticate it, bind it loopback (5901 is
+not published from this container, so the aoe-serve shape is available), or
+sanction it with a reason. This record moves to `complete` when the live tree
+passes.
+
+Line numbers move: this tree carries other agents' uncommitted edits, and the
+`:1853` / `:2180` cited in the Context above now read `:1926` / `:2260`.
+Programs are cited by block **name** per ADR-2039; the numbers here are the
+gate's own output at the time of the run.
+
+### Against the acceptance test
+
+1. **Every argument spelling fails a fixture.** Met — `--bind-addr host:port`,
+   `--bind`, `--host` with a separate `--port`, `--listen`, `--ip=`,
+   `--address`, `--port host:port` and the bare-positional shape each produce
+   exactly one violation naming program, flag, address and line.
+2. **Passes the real `flake.nix` post-ADR-2040, would have failed before.** The
+   two ADR-2040 surfaces are recognised and would violate without their sanction
+   entries — the negative control is the `openBind` fixture, a `let` binding
+   defaulting `0.0.0.0` which fails. Not fully met on the live tree because of
+   the `wayvnc` finding above, which is why this record is `partial`.
+3. **A loopback, never-published program passes with no sanction.** Met —
+   `[program:aoe-serve]` (`--allowed-host 127.0.0.1 --host 127.0.0.1`) is
+   enumerated as loopback and is not flagged; a dedicated fixture asserts it.
+4. **Every supervised listener enumerated with bind address and posture.** Met —
+   the `LISTENERS (check-listeners, ADR-2062)` block prints all 8 with the
+   resolved address, a `loopback` / `NON-LOOPBACK` / `UNRESOLVED` verdict, a
+   `manifest-overridable` mark where the value came from a manifest default, and
+   the sanction reason where one applies. `:9096` remains the one identity-gated
+   LAN door and is untouched — it is a publish, governed by the other rule.
+
+### Limits this gate does not overclaim past
+
+Stated in the gate's own header so a reader of the code sees them:
+
+- A program that binds every interface **by default while stating no address**
+  is undetectable statically. `[program:x11vnc]` (`-rfbport 5901 -nopw`) and
+  `[program:Xvnc]` (`-rfbport 5901 -SecurityTypes None`) are in that class: both
+  are VNC servers with authentication disabled, both sit in desktop-stack
+  branches mutually exclusive with `wayvnc`, and neither is visible to this
+  rule. Closing that class needs a running-container listener probe
+  (`ss -ltnp`) — the same shape as the deployment half ADR-2013 leaves open, and
+  a separate decision from this one.
+- A DEFAULTED loopback value can be moved non-loopback in `agentbox.toml`
+  (`[resources.mcp_hub].bind`, `[sovereign.relay].bind`). The enumeration marks
+  these `manifest-overridable` so the override is visible rather than implied.
+- Every conditional Nix branch is audited, since any of them may be the text
+  generated. That is fail-closed and deliberate.
+- Auth posture is **not** inferred from a command line; a sanction records it by
+  citation. This gate proves reachability; ADR-2040 owns the credential.
+
+## Queen decision on finding 1 — 2026-09-05
+
+`[program:wayvnc]` is one of three desktop-stack VNC servers (wayvnc, x11vnc `-nopw`,
+Xvnc `-SecurityTypes None`; one runs per `desktop.stack` branch), all unauthenticated
+by construction and all bound to every interface so that the compose publish
+`127.0.0.1:5901:5901` (host loopback only, ADR-2013) can reach them; binding loopback
+inside the container would break that publish. They are sanctioned in
+`LISTENER_SANCTIONED` with the reason recorded, as a known exception of the ADR-2040
+class scoped to the docker network, and VNC authentication minted at boot is
+recorded in ADR-2040 as its open follow-on. Only wayvnc declares a bind flag; x11vnc
+and Xvnc bind implicitly and are outside this rule's reach, which the limits above
+already state. After the sanction `bash scripts/ci/check-ports-loopback.sh` exits 0
+(publish rule PASS, listener rule PASS with three sanctioned binds) and
+`node tests/security/ports-gate.test.mjs` passes again. `implementation_status`
+moves to `complete`: the gate half this ADR owns is implemented and green.

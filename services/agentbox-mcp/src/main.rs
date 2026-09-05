@@ -50,6 +50,10 @@ enum ServerCommand {
         /// Override the config's bind address (must be loopback).
         #[arg(long)]
         bind: Option<String>,
+        /// How long to wait for the config file before giving up. The
+        /// entrypoint writes it late in boot, after this program has started.
+        #[arg(long, default_value_t = 600)]
+        wait_config_secs: u64,
     },
 }
 
@@ -85,8 +89,17 @@ async fn main() -> anyhow::Result<()> {
                 .await?;
             service.waiting().await?;
         }
-        ServerCommand::Hub { config, bind } => {
-            hub::serve(&config, bind).await?;
+        ServerCommand::Hub {
+            config,
+            bind,
+            wait_config_secs,
+        } => {
+            hub::serve(
+                &config,
+                bind,
+                std::time::Duration::from_secs(wait_config_secs),
+            )
+            .await?;
         }
     }
 

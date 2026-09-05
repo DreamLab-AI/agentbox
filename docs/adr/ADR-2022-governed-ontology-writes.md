@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
-verified_paths: [agentbox.toml, mcp/servers/ontology-bridge.js, mcp/servers/ontology-propose.js, mcp/servers/lib/ontology-local.js]
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_paths: [agentbox.toml, mcp/servers/ontology-bridge.js, mcp/servers/ontology-propose.js, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-authoring-authority.js]
 owner: jjohare
 review_trigger: any change to direct_axiom_load default, or the authority-class of ontology_axiom_load
 repo: agentbox
@@ -40,9 +40,12 @@ authorisation is required. The named invariant lives in
 ## Consequences
 
 - The remote direct-load default prevents that descriptor from issuing an
-  ungoverned load. It does not enforce all local authoring paths: forced-local
-  dispatch precedes the remote guard and can edit the authored corpus directly.
-  Implementation is therefore partial for the broad governed-writes invariant.
+  ungoverned load, and since 2026-09-05 the local path is gated too: forced-local
+  dispatch selects a *backend*, not an authority to author, and every local write
+  passes `assertAuthoringAuthority` before reaching the Markdown writer
+  (`mcp/servers/lib/ontology-authoring-authority.js`). Local authoring needs both
+  `skills.ontology.local_authoring = true` and `ONTOLOGY_LOCAL_AUTHORING`, so a
+  single flag or env var cannot open it.
 - Bootstrap/admin bulk-load still exists but is an explicit, signed,
   zero-tolerance action — deliberately slow and auditable.
 - Cost: routine enrichment is gated behind a PR round-trip; there is no fast
@@ -54,6 +57,8 @@ At `cbe7335b9`, `agentbox.toml`: `direct_axiom_load = false` (:638) with rationa
 at :634-637 ("Default off = ontology_axiom_add refuses + redirects");
 `ontology_axiom_load = "zero-tolerance"` in `[skills.authority.classes]` (:724),
 commented "ungoverned KG write backdoor".
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `894e31fc7` ("explicit local-authoring gate for governed writes"): `mcp/servers/ontology-bridge.js` +60/-13 and `mcp/servers/lib/ontology-local.js` +48. The decision still holds and the gap its own Consequences named is now closed. Re-checked at HEAD: `agentbox.toml:637` `direct_axiom_load = false` and `:759` `ontology_axiom_load = "zero-tolerance"` in `[skills.authority.classes]`, commented "ungoverned KG write backdoor" (the previously cited `:638`/`:724` have drifted). New: `agentbox.toml:644` declares `local_authoring = false` explicitly, with the rationale at `:640-643` that a deny existing only as an omission is not reviewable. `mcp/servers/ontology-bridge.js:28-33` states that `FORCE_LOCAL` selects a backend and is not an authority to author; `:41-45` makes `localWriter()` the only route to the Markdown-writing helper; `:47` scopes `LOCAL_WRITE_TOOLS` to `ontology_axiom_add` and `ontology_propose`; both dispatch through `assertAuthoringAuthority` in `mcp/servers/lib/ontology-authoring-authority.js:255`, which requires **both** `env:ONTOLOGY_LOCAL_AUTHORING` (`:303`) and `manifest:skills.ontology.local_authoring` (`:304`) and otherwise denies with `ontology_local_authoring_not_authorised` (`:138`, `:306`). Live run: `node --test tests/integration/ontology-authoring-authority.test.mjs` → **24 pass, 0 fail**. **Record correction made by this pass:** the Consequences bullet still said forced-local dispatch "precedes the remote guard and can edit the authored corpus directly" — that hole is closed by construction, so the bullet has been corrected in place, and `mcp/servers/lib/ontology-authoring-authority.js` added to `verified_paths` as the file the gate now lives in. `implementation_status` stays `partial` pending the governed round-trip (Whelk → PR → merge) being exercised end to end against a live ontology. Commands: `git diff --stat 89301ec7..HEAD -- mcp/servers/`, `grep -n 'direct_axiom_load\|local_authoring' agentbox.toml`, `node --test tests/integration/ontology-authoring-authority.test.mjs`.
 
 ## Closeout extension — 2026-09-04
 

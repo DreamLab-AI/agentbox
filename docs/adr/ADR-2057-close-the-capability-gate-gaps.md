@@ -2,12 +2,12 @@
 id: ADR-2057
 title: Close the capability-gate gaps for podcast-cron, harness and precedent
 date: 2026-09-05
-decision_status: proposed
-implementation_status: none
-activation_status: inactive
+decision_status: accepted
+implementation_status: complete
+activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
 verified_paths: []
 owner: jjohare
 review_trigger: any of the three gaps being closed, or a new supervised program landing without a manifest gate
@@ -45,13 +45,14 @@ silently uses its hardcoded default. The manifest key is inert.
 
 ## Decision
 
-**Proposed, not implemented** — every file that must change belongs to the runtime lane
+**Accepted and implemented** (2026-09-05). The record was originally written as
+proposed-only because every file that had to change belongs to the runtime lane
 (`flake.nix`, `agentbox.toml`, `config/entrypoint-unified.sh`,
-`management-api/lib/system-manifest.js`). This ADR records the decision and the
-acceptance test so the gaps are tracked rather than re-discovered; the edits are routed
-to that owner.
+`management-api/lib/system-manifest.js`); that owner has now landed all four gaps.
+See *Verification — 2026-09-05* below for the executed evidence and the two places
+where the shipped implementation is narrower than the acceptance test.
 
-The decision, when taken, is:
+The decision is:
 
 - `podcast-cron` gains a manifest gate (`[skills.podcast_ingest] enabled`, default
   matching today's shipped behaviour so the change is not a silent capability removal)
@@ -75,12 +76,12 @@ The decision, when taken, is:
 - Gap 1's gate must default to today's behaviour, or enabling the manifest key becomes a
   required migration step for existing deployments.
 
-## Verification
+## Verification — findings (pre-implementation)
 
 Verification ran on the **uncommitted working tree** above
-`89301ec7c911eab270c00a0cf81596d0d4f15535` and must be re-run at the landing commit;
-`verified_paths` is therefore empty. `implementation_status: none` — this records
-findings and a plan, not a change.
+`89301ec7c911eab270c00a0cf81596d0d4f15535`. This section is the original
+gap-finding evidence, retained as the "before" state; the implementation evidence
+is in *Verification — 2026-09-05* below.
 
 Evidence for each gap:
 
@@ -101,3 +102,79 @@ boot produces a workspace `.mcp.json` with no `harness-bridge` entry and no
 the podcast gate false, `supervisorctl status` lists no `podcast-cron`; and
 `node scripts/agentbox-config-validate.js` exits 0 with the three new catalogue entries
 present.
+
+## Verification — 2026-09-05
+
+Verification ran on the **uncommitted working tree** above
+`08e817f394a908264c378745193bf7a0bbf6ec0e`, not on a landing commit, so
+`verified_paths` stays empty and the checks must be re-run at the commit that lands
+them. `nix eval` / `nix-instantiate` are not available in this container, so the
+`flake.nix` edit is verified by reading and by grep, not by evaluation —
+`activation_status: staged`, because the podcast gate only takes effect at the next
+`./agentbox.sh rebuild`.
+
+### Commands and results
+
+| Command | Result |
+|---|---|
+| `node scripts/agentbox-config-validate.js agentbox.toml` | **rc=0** — `agentbox manifest valid` (5 pre-existing advisory warnings: W017 ×3, W063, W045 — unchanged from before the edit) |
+| `node scripts/agentbox-config-validate.js setup/agentbox.default.toml` | **rc=0** — `agentbox manifest valid` (same 5 pre-existing warnings) |
+| `bash -n config/entrypoint-unified.sh` | **rc=0** |
+| `node scripts/ci/check-manifest-catalogue.js` | **rc=0** — `PASS: all 60 catalogue gate paths resolve` (was 57; +3). `skills.harness.enabled`, `skills.precedent.enabled` and `skills.podcast_ingest.enabled` no longer appear in the uncatalogued-drift warning list |
+| `node --test tests/config/mcp-projector.test.mjs` | **pass 1 / fail 0** |
+| `tests/config/semantic-rules.test.js` | **64 pass / 3 fail / 1 skipped.** The intended runner (`package.json` `test:config` = jest) did not terminate within 12 min in this container (whole-tree haste crawl) and `node --test` cannot load the file at all (`ReferenceError: describe is not defined`), so the suite was executed under a minimal `describe`/`test`/`expect` shim. All 3 failures are pre-existing drift in provider/consultant rules this change does not touch: the fixtures are built by a hand-written `baseValid()` literal, independent of both manifests. Probed directly — the E017 fixture now yields `W017 … exit 0` (the rule was downgraded from error to advisory warning and the test was never updated); `W038` fails symmetrically. No failure involves a `[skills.*]` gate |
+| schema negative control: append `[skills.definitely_not_a_real_gate]` to a copy of `agentbox.toml`, re-validate | **rc=1**, `E016 UnknownManifestKey: unknown key ... at /skills` — proves `skills` is `additionalProperties: false` and that the new `podcast_ingest` schema entry is load-bearing, not decorative |
+| `grep -n 'podcastIngestEnabled' flake.nix` | defined once (`flake.nix:169`), used once (`flake.nix:2402`) — see the scope note below on why there is no second use |
+| `grep -n 'HARNESS_TEMPLATE_DIR' mcp/servers/harness-bridge.js config/entrypoint-unified.sh` | server reads it at `harness-bridge.js:25`; the entrypoint now sets it (was **0** occurrences) |
+| `node scripts/adr-index-gen.js docs/adr` | reports **ADR-2031** STALE on `config/entrypoint-unified.sh`. Pre-existing, not caused here: `git diff --stat ec257a2..08e817f3 -- config/entrypoint-unified.sh` shows 204 insertions already landed between that record's `verified_commit` and HEAD. ADR-2031 is outside this change's ownership; the index regenerates once it is re-verified |
+
+### What landed, per gap
+
+1. **podcast-cron gated.** `[skills.podcast_ingest] enabled = true` in `agentbox.toml`,
+   `setup/agentbox.default.toml` and `schema/agentbox.toml.schema.json`;
+   `podcastIngestEnabled = (skillsCfg.podcast_ingest or {}).enabled or true`
+   (`flake.nix:169`, the same `or true` defaulting shape as `mcpHubEnabled` /
+   `hookShimEnabled` / `teammateGcEnabled`) wraps `[program:podcast-cron]` in
+   `lib.optionalString` (`flake.nix:2402`). The `or true` default is what keeps this
+   from being a silent capability removal, as *Consequences* requires.
+2. **harness / precedent gates honoured.** Both registration blocks in
+   `config/entrypoint-unified.sh` now read `skills.<gate>.enabled` via
+   `agentbox-manifest toml-bool` before registering, mirroring `_CODE_SERVER_ON` /
+   `_CONSULTANTS_ON`.
+3. **Catalogue entries added** to `management-api/lib/system-manifest.js`:
+   `harness-bridge` and `precedent-bridge` are `boot` (an entrypoint registration gate
+   applies on restart); `podcast-ingest` is `rebuild` (flake-baked supervisor text).
+4. **`template_dir` made live, not removed.** `harness-bridge.js:25` has always read
+   `HARNESS_TEMPLATE_DIR`; only the export was missing. The entrypoint now reads
+   `skills.harness.template_dir` with `agentbox-manifest toml-string` and projects it
+   into the server's `.mcp.json` env block, falling back to the server's own
+   `/var/lib/agentbox/harness-templates` when unset so an absent key changes nothing.
+   The harness block's `grep -q` guard was dropped (mirroring the ontology-bridge
+   block, which drops it for exactly this reason) so a `template_dir` change
+   propagates on every boot instead of being frozen at first registration.
+
+### Where the implementation is narrower than the acceptance test
+
+Two honest divergences, both recorded rather than papered over:
+
+- **Gate-off skips registration; it does not retract an existing entry.** The
+  acceptance test asks that a boot with `enabled = false` produce a `.mcp.json` with
+  no `harness-bridge`/`precedent-bridge` entry. That holds for a fresh workspace. It
+  does **not** retract an entry a previous boot already wrote: `agentbox-manifest` has
+  `mcp-set-server` but no remove-by-name subcommand, and neither bridge is in
+  `skills/mcp.json`, so the reconcile-and-remove path in `project-mcp-servers.mjs`
+  (which only manages projector-owned servers) never sees them. Closing this needs a
+  new `agentbox-manifest` subcommand — out of scope here, and the natural follow-up.
+- **The podcast gate governs the schedule, not the closure.** `false` removes
+  `[program:podcast-cron]` but leaves the `podcast-ingest` binary and `supercronic` in
+  the image. Both are shared with always-baked surfaces — the
+  `podcast-{knowledge,bulk}-ingest` skills invoke the binary by hand, and
+  `[program:forum-backup-cron]` uses the same supercronic derivation — so removing
+  either from the package set would break unrelated capability. `byte-identical-when-off`
+  therefore holds for the *runtime* trace (no program, no log files, no cron) but not
+  for the image closure. The catalogue summary and the manifest comment both say so.
+
+Consequently the *Consequences* note stands as written: anyone who had set
+`[skills.harness]`/`[skills.precedent]` `enabled = false` and never noticed it was
+ignored will now, on a fresh workspace, stop getting those MCP servers. That is the
+intended outcome.

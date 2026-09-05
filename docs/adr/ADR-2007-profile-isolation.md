@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 960394b145fc2f9ab1c3191b682f87079c712e9e
-verified_paths: [config/harness-wrappers/zai.sh, config/harness-wrappers/openrouter.sh]
+verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_paths: [config/harness-wrappers/zai.sh, config/harness-wrappers/openrouter.sh, config/harness-wrappers/_provider-url.sh, tests/security/provider-url-validation.test.sh]
 owner: jjohare
 review_trigger: A proposal to reintroduce Linux pseudo-user isolation as the primary model, or a harness wrapper omitting the redirect assertion
 repo: agentbox
@@ -33,12 +33,14 @@ in each harness wrapper, so each harness reads its own `settings.local.json` (it
 `ANTHROPIC_BASE_URL` + token) and never the global `~/.claude`. Linux pseudo-user isolation is a dead
 path and must not be reintroduced as the primary model. Each wrapper must hard-fail loudly (`_die`) if
 the profile directory/settings are missing or the provider redirect is absent or off-target.
-The current off-target check is only substring matching, so it does not fully enforce this requirement. This
+The redirect check parses and validates scheme, host and port rather than substring-matching the
+hostname (`config/harness-wrappers/_provider-url.sh`). This
 forecloses pseudo-user isolation and any wrapper that launches without asserting its redirect.
 
 ## Consequences
 - Harnesses are isolated by directory, not by OS user — simpler under one supervisord/tmux runtime.
-- Missing and wholly unrelated redirects fail at launch; hostname-substring collisions can still pass.
+- Missing, off-target and spoofed redirects all fail at launch: suffix-domain, user-info, path-only,
+  non-`https` and off-allow-list-port forms are each rejected by the shared parser.
 - Cost: every harness needs a provisioned profile dir with a valid redirect; a missing/misconfigured
   profile is a hard launch failure by design, not a fallback to global config.
 
@@ -49,6 +51,8 @@ The 2026-09-04 probe below narrows that claim and changes the status to partial.
 (header :10-14), defines `_die` (:35), extracts and validates the `ANTHROPIC_BASE_URL` redirect
 (:75-85) and fails on a missing dir/settings/redirect. `config/harness-wrappers/openrouter.sh`
 mirrors this: profile pin at :10, `_die` at :34, redirect extraction/validation at :74-97.
+
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by the ADR-2007 acceptance work recorded below: `config/harness-wrappers/_provider-url.sh` is new (+253) and both wrappers were rewritten to call it (+46/-15 each). The decision still holds and is now more strongly enforced than when it was written. Re-checked at HEAD: `config/harness-wrappers/openrouter.sh:130-131` and `config/harness-wrappers/zai.sh` pin `HOME` and `CLAUDE_CONFIG_DIR` to the profile dir; `_die` at `openrouter.sh:36` / `zai.sh:37`; the shared lib is sourced relative to `${BASH_SOURCE[0]}` with a readable-file precondition at `openrouter.sh:57-67` / `zai.sh:58-67`; the redirect gate is `provider_url_validate "$BASE_URL" "$EXPECT_HOST" "$PROVIDER_URL_ALLOWED_PORTS"` at `openrouter.sh:119-120`; `PROVIDER_URL_ALLOWED_PORTS` defaults to `443` at `_provider-url.sh:61` and `provider_url_validate` is defined at `:72`. The launch banner at `openrouter.sh:141` prints `scheme://host:port` and `auth=present`, never the token. Live run: `bash tests/security/provider-url-validation.test.sh` → **52 passed, 0 failed**. **Record correction made by this pass:** the Decision and Consequences text still asserted "the current off-target check is only substring matching" and "hostname-substring collisions can still pass". That is no longer true — `zai.sh:115` retains only a comment naming the *old* `case "$BASE_URL" in *"$EXPECT_HOST"*)` form as removed — so those two sentences have been corrected in place to match the code. `implementation_status` stays `complete`, consistent with the acceptance section's own status note. Commands: `git diff --stat 960394b145fc2f9ab1c3191b682f87079c712e9e..HEAD -- config/harness-wrappers/`, `grep -n 'provider_url_validate\|HOME=\|_die' config/harness-wrappers/*.sh`, `bash tests/security/provider-url-validation.test.sh`.
 
 ## Closeout extension — 2026-09-04
 

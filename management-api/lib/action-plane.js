@@ -58,10 +58,14 @@ const TASK_SPAWN_OPERATION = 'spawn';
 // `{ ready: boolean, reason: string|null, journal: ExecutionJournal|null, pipeline: AgentActionPipeline|null }`.
 let _singleton = null;
 
-// Bound at first successful getActionPlane() call carrying a processManager
-// (routes/tasks.js always supplies one). The pipeline's executor is fixed at
-// construction (ADR-059 constructor contract), so it closes over this rather
-// than taking processManager per dispatch.
+// Bound by any getActionPlane() call carrying a processManager (routes/tasks.js
+// always supplies one). The pipeline's executor is fixed at construction
+// (ADR-059 constructor contract), so it closes over this module binding rather
+// than taking processManager per dispatch — the executor reads it at dispatch
+// time, so re-binding here never changes the executor's identity. Latching on
+// the FIRST manager silently discarded every later one, which sent spawns to a
+// stale manager after an adapter-lifecycle re-registration (and made a second
+// Fastify app in one process dispatch into the first app's manager).
 let _boundProcessManager = null;
 
 function _warnEphemeralSecret(logger) {
@@ -104,11 +108,11 @@ function _classifyTaskSpawn() {
  * @param {object} [opts]
  * @param {object} [opts.logger] - pino-style logger for the ephemeral-secret warning
  * @param {object} [opts.processManager] - orchestrator process manager; the
- *   FIRST caller to supply one binds it for the executor's lifetime.
+ *   MOST RECENT caller to supply one binds it for subsequent dispatches.
  * @returns {{ready:boolean, reason:string|null, journal:object|null, pipeline:object|null}}
  */
 function getActionPlane(opts = {}) {
-  if (opts.processManager && !_boundProcessManager) {
+  if (opts.processManager && opts.processManager !== _boundProcessManager) {
     _boundProcessManager = opts.processManager;
   }
   if (_singleton) return _singleton;

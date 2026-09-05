@@ -77,6 +77,18 @@ The credential-minting pattern is the one already established for AoE at
 in this change, the CI listener gate does not. It moves to `complete`/`live` when a gate enforces the
 invariant mechanically.
 
+## Follow-on — VNC desktop servers (2026-09-05)
+
+The ADR-2062 listener gate, run on the working tree above 08e817f39, found a third
+unauthenticated non-loopback listener this record did not enumerate: the desktop-stack
+VNC servers (`[program:wayvnc]` `0.0.0.0 5901`, and implicitly x11vnc `-nopw` and Xvnc
+`-SecurityTypes None`, one per `desktop.stack` branch). The exposure is the docker
+network only (the host publish is `127.0.0.1:5901:5901`), so the queen sanctioned them
+in the gate with that reason rather than change the bind. Closing this record's
+invariant for them means minting a VNC password at boot (Xvnc `-SecurityTypes VncAuth
+-PasswordFile`, x11vnc `-rfbauth`, wayvnc config) the way code-server's credential is
+minted, then removing the three sanctions. `implementation_status` stays `partial`.
+
 ## Verification
 Verification ran on the **uncommitted working tree** above SHA
 `89301ec7c911eab270c00a0cf81596d0d4f15535`; `verified_commit` and `verified_paths` must be re-run and

@@ -11,15 +11,19 @@ The split is deliberate and recorded in `docs/adr/ADR-2030`: these crates are
 self-contained, clean-room modules meant for reuse and publication to
 crates.io, while the repository as a whole remains a copyleft hosted service.
 
-Exception: a crate here that links an AGPL-licensed library cannot grant
-permissive terms and declares `AGPL-3.0-only` in its own manifest
-(`nostr-pod-bridge`, which links `solid-pod-rs-nostr`). It ships the full AGPL
-text as `LICENSE` and a README that states in terms that it is **not**
-dual-licensed, so it cannot be published under the permissive assumption.
+Two exceptions, for two different reasons. A crate that links an AGPL-licensed
+library cannot grant permissive terms and declares `AGPL-3.0-only` in its own
+manifest (`nostr-pod-bridge`, which links `solid-pod-rs-nostr`). A crate that is
+deliberately not offered for reuse declares `AGPL-3.0-only` with
+`publish = false` (`secret-backup`, which handles operator secret material and is
+scoped to this container rather than to crates.io — its dependency graph is
+wholly permissive, so this is a choice, not a constraint). Both ship the full
+AGPL text as `LICENSE` and a README that states in terms that they are **not**
+dual-licensed, so neither can be published under the permissive assumption.
 
 Contributions to this subtree are accepted under the same MIT OR Apache-2.0
 terms unless a crate's manifest says otherwise; contributions to
-`nostr-pod-bridge` are accepted under AGPL-3.0-only.
+`nostr-pod-bridge` and `secret-backup` are accepted under AGPL-3.0-only.
 
 ## Per-directory state (2026-09-05)
 
@@ -37,10 +41,12 @@ the files inside each crate's package payload.
 | `nostr-pod-bridge` | **AGPL-3.0-only** | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
 | `ontology-tools` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `podcast-ingest` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
+| `secret-backup` | **AGPL-3.0-only** | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
 | `skill-tools` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 
-Eight package manifests, seven permissive and one AGPL — the same split the
-2026-09-04 inventory found, now with the declared texts actually on disk. The
+Nine package manifests, seven permissive and two AGPL. The 2026-09-04 inventory
+counted eight because `secret-backup` did not yet exist (added by `7905d2a64`);
+the declared texts are now actually on disk for all nine. The
 copyright holder and year range match the repository `NOTICE`:
 `Copyright (c) 2024-2026 DreamLab AI / Dr John O'Hare`. The Apache-2.0 text is
 the canonical upstream text with only the appendix boilerplate copyright line
