@@ -28,6 +28,7 @@ system in place of several specialized skills.
 - **Agents catalog:** [references/agents.md](./references/agents.md) — 114+ agents by domain.
 - **Methodologies:** [references/methodologies.md](./references/methodologies.md) — DDD, ADR (+ ruflo ADR tooling), TDD.
 - **Quality gates & workflow:** [references/quality-gates-and-workflow.md](./references/quality-gates-and-workflow.md) — gate thresholds and the 5-phase flow.
+- **Security gate (deepsec):** [references/deepsec-security-gate.md](./references/deepsec-security-gate.md) — run `scripts/deepsec-gate.sh --diff origin/main`; policy from `[security.deepsec]`, receipts in `.deepsec-gate/reports/`. ADR-2033.
 - **Architecture:** [references/architecture.md](./references/architecture.md) — learning system, memory, model routing, consensus, MCP/CLI execution, config.
 - **BHIL traceability:** [references/bhil-traceability.md](./references/bhil-traceability.md) — PRD→SPEC→ADR→TASK artifact chain, AI-native ADR types, eval/guardrail specs.
 - **Migration:** [references/migration.md](./references/migration.md) — moving off agentic-qe / reasoningbank-* / pair-programming.
@@ -39,6 +40,7 @@ system in place of several specialized skills.
 - Chasing a stubborn, multi-function bug — use the feedback-loop-first protocol.
 - Interrogating a design before writing code.
 - Running a coverage / security / accessibility / chaos quality-gate pass.
+- Reviewing changed code for vulnerabilities before merge (`scripts/deepsec-gate.sh --diff <base>`).
 
 ## When not to use
 
@@ -109,6 +111,14 @@ and the per-agent coordination hooks.
   control); Red-Green-Refactor with TDD agents that also stabilize proven EDD
   expectations into tests. See
   [references/methodologies.md](./references/methodologies.md).
+
+## Security gate at a glance
+
+The Security gate is executed, not asserted: [`scripts/deepsec-gate.sh`](./scripts/deepsec-gate.sh)
+runs deepsec in PR mode on the changed files, applies the manifest's
+`[security.deepsec].fail_on` threshold and writes `receipt.json`. Exit `78` means
+the gate is disabled or the CLI is not baked — record it as SKIPPED, never as
+passed. See [references/deepsec-security-gate.md](./references/deepsec-security-gate.md).
 
 ## Related skills (complementary)
 

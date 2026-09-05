@@ -113,3 +113,11 @@ The catalog consumes less than 4% of available context. There is no resource pre
 ## Notes
 
 This decision applies specifically to the SKILL.md interaction path (Claude reading the catalog file). The CLI path for batch/programmatic search is governed by ADR-007 and uses a different strategy.
+
+## Closeout extension — 2026-09-05
+
+Partial: the 72-line, 3,448-byte entry point now delegates to references rather than embedding the proposed full catalogue.
+
+**CP-01/03/07/08/09 acceptance:** Amend the load/context contract and verify what the actual agent reads and recommends.
+
+This is a local catalog-skill decision, not estate adoption of every catalogued technology. Original decision status and historical evidence are preserved. Current review is source-only: no search, model, swarm or benchmark ran. See the [estate catalog assessment](../../../../../../VisionFlow/docs/estate-review/catalog-decisions.md) and [source snapshot](../../../../../../VisionFlow/docs/estate-review/evidence/catalog-decision-snapshot.json).

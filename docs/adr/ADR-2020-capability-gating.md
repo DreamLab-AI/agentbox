@@ -3,11 +3,11 @@ id: ADR-2020
 title: Optional capabilities are manifest-gated and byte-identical-when-off; execution-gated tools are spend-capped and never auto-routed
 date: 2026-08-31
 decision_status: accepted
-implementation_status: complete
+implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d3920a4eecc87268e87ce35a0e69f21bf6327b1e
+verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -32,9 +32,10 @@ posture from the ACI/tree-search work (ADR-020).
 
 Every optional capability is gated by an `agentbox.toml` block that gates **both**
 the Nix package set and the supervisor block, each carrying a system-manifest
-apply-class. A disabled gate leaves **zero runtime footprint** (byte-identical-
-when-off): the package is not baked and no supervised process exists. The
-N-candidate execution-gated `tree_search_coder` additionally carries a hard
+apply-class. A disabled gate is intended to omit its executable package and supervised process.
+Instructional files are still copied with the skills tree; byte identity and zero
+footprint require separate build evidence. The
+N-candidate execution-gated `tree_search_coder` additionally requires an enforced
 per-invocation `spend_cap_usd` plus `max_candidates`/`per_branch_timeout_s`
 ceilings, and is **never wired into automatic routing** — it is explicitly
 invoked only. The governing invariants live in
@@ -44,8 +45,7 @@ invoked only. The governing invariants live in
 
 - Turning a capability off is a one-line `enabled = false` edit with a defined
   apply-class, and the operator can trust the off-state is footprint-free.
-- The slow path cannot be reached by a router heuristic or bleed past its cap,
-  so its N× token cost is always a deliberate, bounded choice.
+- Explicit routing and a spend cap are required policy. The inspected orchestration-only skill does not establish a runtime limiter or absence of every automatic route.
 - Cost: activation of a gate requires an image rebuild (nix-baked package +
   supervisord), so toggling is not hot; and the byte-identical-when-off
   guarantee must be re-checked whenever a new gate is added.
@@ -60,3 +60,58 @@ At `cbe7335b9`, `agentbox.toml`: `[skills.code_interpreter]` (:535),
 `skills/tree-search-coder/SKILL.md` frontmatter is orchestration-only and states
 "NEVER auto-routed; only ever invoked explicitly". Manifest apply-class mechanism
 defined in ADR-2003.
+
+## Closeout extension — 2026-09-04
+
+CP-01/07/08. Owner remains jjohare with capability/runtime maintainers. Tree-search is an orchestration-only skill; the named cap fields were not found consumed by a limiter in the inspected runtime paths. The flake copies the skills tree independently of per-capability execution gates.
+
+Implementation status changes to partial for the broader guarantee; existing conventions and manifest policy remain accepted. **Acceptance condition:** Prove package/process/registration/execution off-states independently and bind them to build/runtime identity. Exercise the real executor with concurrent and in-flight cost reservations, candidate/time limits and explicit invocation checks. Reopen on lint, registry, build, routing or executor changes. See the [capability review](../../../../VisionFlow/docs/estate-review/capability-instructions-and-enforcement.md) and [source/fixture receipt](../../../../VisionFlow/docs/estate-review/evidence/skill-lint-probes.json). No provider, model orchestration or image rebuild ran.
+
+## Acceptance progress — 2026-09-05
+
+- **Implemented**
+  - The declared cap fields are now consumed by an enforced limiter: `agentbox_ops::cost_cap` (`services/agentbox-ops/src/cost_cap/mod.rs` + `ledger.rs`), exposed as the `tree-search-cap` binary (`reserve` | `settle` | `status` | `reset` | `config`).
+  - **Why Rust, not JS.** No JS dispatcher routes tree-search — `management-api/` and `mcp/servers/` contain no invocation path for it (only `scripts/agentbox-config-validate.js`'s W051/W052 *validation* and `management-api/lib/system-manifest.js`'s gate catalogue). The skill is orchestration-only and runs as a sequence of short-lived tool calls, so the enforcement boundary is a callable limiter with durable, lock-guarded state; that belongs in `services/agentbox-ops`, beside the existing `token_audit` cost accounting it sits alongside rather than duplicating (`token_audit` reports historical transcript spend; `cost_cap` gates prospective spend).
+  - **Reserve before dispatch, settle after.** A branch's estimated cost is held against the run's budget for its whole lifetime, so concurrent and in-flight reservations cannot jointly exceed `spend_cap_usd`. `settle` releases the hold on **both** the success and the failure path; a double settle is refused as `unknown_reservation`. An unsettled hold expires at `per_branch_timeout_s` and is charged its **full estimate**, so a crashed branch can never hand back budget it may have spent.
+  - **Concurrency safety.** Every check-and-admit is a read-modify-write of the JSON ledger performed while holding an exclusive `flock` (rustix) — one atomic step across threads *and* processes, never a read-then-write.
+  - **All three declared ceilings enforced**, plus the manifest gate itself: `spend_cap_usd`, `max_candidates` (only granted reservations consume a slot), `per_branch_timeout_s` (`guard_branch` mid-branch and expiry at `reserve`), and `enabled = false` → every reservation refused. Refusals are typed (`spend_cap_exceeded`, `candidate_limit_exceeded`, `branch_timeout`, `capability_disabled`, …) and exit `3`.
+  - **Documented default.** An absent block or field falls back to `spend_cap_usd = 0.50`, `max_candidates = 5`, `per_branch_timeout_s = 60`, with the inferred field named in `CapConfig.defaulted`. There is no unlimited mode — an absent cap is 0.50 USD, never infinity.
+  - **Skill wired to the limiter.** `skills/tree-search-coder/SKILL.md` and `references/algorithm.md` §Enforced cost cap make reserve-before-dispatch and settle-after-completion mandatory steps of the algorithm; `references/exemplars.md` exemplar 3 now shows the limiter's refusal payload instead of an agent-side cost check.
+- **Tests and results**
+  - `cargo test -p agentbox-ops --offline` → **157 passed, 0 failed** (lib) plus 1 doc-test, including 17 `cost_cap` cases: under-cap succeeds; single over-cap refused; exactly-at-cap admitted and the next cent refused; in-flight holds block a second branch; release on both success and failure paths; double settle refused; **8 concurrent threads at 0.20 against a 0.50 cap admit exactly 2**; 12 threads at 0.15 against 1.00 admit exactly 6; candidate ceiling enforced independently of spend; per-branch wall clock enforced; abandoned reservation expires and is charged at estimate; overrun actual cost tightens remaining budget; disabled capability refuses; negative/non-finite amounts refused; runs accounted independently; the real `agentbox.toml` still declares an enforceable cap.
+  - `bash tests/capability/tree-search-cap.test.sh` → **13 passed, 0 failed** — the cross-**process** contract, which is what the real dispatch path looks like: **10 concurrent `tree-search-cap reserve --estimate 0.20` processes against a 0.50 cap admit exactly 2 and refuse 8 with exit 3**, outstanding holds measured at 0.40 ≤ cap; failure-path release; the 6th candidate refused at `max_candidates = 5`; an absent manifest block enforcing the documented 0.50 default; a disabled gate refusing.
+- **Receipts** — `docs/estate-closeout/2026-09-05/adr-2020-cost-cap.json`
+- **Remaining** — the other half of this ADR is untouched: byte-identical-when-off / zero-footprint build evidence for a disabled gate's package and supervised process, bound to build and runtime identity, still needs an image rebuild to establish. The never-auto-routed property remains an instruction in the skill description and routing tables, not a mechanical block. No provider, model orchestration or image rebuild ran.
+- **Governed paths changed** — `services/agentbox-ops/src/cost_cap/{mod.rs,ledger.rs,mod_tests.rs}` (new), `services/agentbox-ops/src/bin/tree-search-cap.rs` (new), `services/agentbox-ops/src/lib.rs`, `services/agentbox-ops/Cargo.toml` (new bin target + `toml` dependency), `tests/capability/tree-search-cap.test.sh` (new), `skills/tree-search-coder/SKILL.md`, `skills/tree-search-coder/references/{algorithm.md,exemplars.md}`, `docs/estate-closeout/2026-09-05/adr-2020-cost-cap.json` (new).
+
+### Re-verification 2026-09-05
+
+Re-verified at `verified_commit` 89301ec7c911eab270c00a0cf81596d0d4f15535, on the
+uncommitted working tree above that SHA; re-run at the landing commit. The
+staleness was `agentbox.toml` drift, so the manifest half is what was re-checked.
+`verified_paths` is emptied for the landing commit to repopulate.
+
+- **The spend cap is still declared and enforceable.** `agentbox.toml:620-627`
+  `[skills.tree_search_coder]` reads `enabled = true`, `max_candidates = 5`,
+  `per_branch_timeout_s = 60`, `spend_cap_usd = 0.50` — unchanged in value from the
+  previous verification, so the cross-process contract test's assumption still holds.
+- **Never-auto-routed is still declaration, not mechanism.** The comment at
+  `agentbox.toml:621-623` states "Slow path — explicitly invoked, never
+  auto-routed"; enforcement remains the skill description plus routing tables. That
+  is unchanged and is still the weaker half of this ADR's Invariant.
+- **Manifest-gate breadth.** 21 `[skills.*]` blocks now exist in `agentbox.toml`.
+  Each is a boot gate; none of them carries build-time off-state evidence.
+- **Validator coverage confirmed.** `scripts/agentbox-config-validate.js:1283-1350`
+  enforces this ADR's posture at config time: `E052` (`:1329`) requires
+  `code_interpreter.enabled` when `tree_search_coder.enabled`, `W051` (`:1336`)
+  warns above `max_candidates = 5`, `W052` (`:1340-1341`) treats an absent or zero
+  `spend_cap_usd` as a hard-error advisory — "the tree-search skill has no
+  default-unlimited mode". Note a pre-existing defect found while re-verifying: the
+  code `E052` is used twice in this validator for two unrelated rules — the
+  tree-search dependency at `:1329` and an SRI-hash format check at `:1103`. Not
+  fixed here; recorded so a future reader is not misled by a duplicate code.
+
+`implementation_status` stays `partial` for the reason already recorded: the
+byte-identical-when-off half still needs an image rebuild to establish package and
+supervised-process absence for a disabled gate. Diagram AB-15.1 carries that as a
+`DIVERGENCE:` note rather than asserting the property holds.

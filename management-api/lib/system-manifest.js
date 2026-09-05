@@ -88,6 +88,9 @@ const CATALOGUE = [
   { id: 'nagual-qe', name: 'nagual-qe', layer: 'module',
     gate: 'toolchains.nagual_qe', apply_class: 'rebuild',
     summary: 'Rust QE harness built from source (lib/nagual-qe.nix).' },
+  { id: 'deepsec', name: 'deepsec security gate', layer: 'module',
+    gates: ['toolchains.deepsec', 'security.deepsec.enabled'], apply_class: 'rebuild',
+    summary: 'ADR-2033: vercel-labs deepsec vulnerability reviewer baked as a CLI; build-with-quality drives it in PR mode via scripts/deepsec-gate.sh under the [security.deepsec] policy.' },
   { id: 'codebase-memory', name: 'codebase-memory MCP', layer: 'module',
     gate: 'toolchains.codebase_memory', apply_class: 'rebuild',
     summary: 'Structural code-graph index MCP (callers, architecture, snippets).' },
@@ -225,6 +228,21 @@ const CATALOGUE = [
   { id: 'gaussian-splatting', name: '3DGS stack', layer: 'module', heavy: true,
     gate: 'skills.spatial_and_3d.gaussian_splatting', apply_class: 'rebuild',
     summary: 'Gaussian-splatting toolchain (E006), CUDA-gated.' },
+  // ADR-2034 — resource topology. The envelope is BOOT-class (the generated
+  // compose is re-read on `up`), the resident paths are REBUILD-class (they
+  // add supervised programs and binaries to the image).
+  { id: 'resources-envelope', name: 'Container envelope (cpus/cpuset/pids/shm/tmpfs)', layer: 'module',
+    gate: 'resources.envelope', apply_class: 'boot',
+    summary: 'ADR-2034 §3: [resources] projected by flake.nix into the generated docker-compose.yml deploy block; the override carries no limits. Takes effect on compose re-up.' },
+  { id: 'mcp-hub', name: 'Shared MCP hub (loopback :9720)', layer: 'module',
+    gate: 'resources.mcp_hub.enabled', apply_class: 'rebuild',
+    summary: 'ADR-2034 §2: agentbox-mcp hub runs each stateless MCP server once and serves every session over streamable HTTP; the entrypoint projects listed .mcp.json entries to type: http.' },
+  { id: 'hook-shim', name: 'Resident hook shim + drain', layer: 'module',
+    gate: 'resources.hooks.shim', apply_class: 'rebuild',
+    summary: 'ADR-2034 §1: agentbox-hook replaces per-tool-call ruflo CLI boots with a <10 ms spool write; [program:agentbox-hook-drain] folds spools into the events volume.' },
+  { id: 'teammate-gc', name: 'Idle teammate reaper', layer: 'module',
+    gate: 'resources.session_hygiene.enabled', apply_class: 'rebuild',
+    summary: 'ADR-2034: teammate-gc SIGTERMs agent-team teammates whose CPU counter has not advanced for idle_secs (pid-reuse guarded, ADR-2032); reap=false reports only.' },
 ];
 
 /** Resolve a dotted gate path against the parsed manifest. */
@@ -286,7 +304,7 @@ function buildSystemView(manifest, adapters) {
       id: `adapter-${slot}`, name: `Adapter slot: ${slot}`, layer: 'core', state: 'core',
       impl: adapter ? adapter.impl : 'unresolved',
       contract_version: adapter ? adapter.CONTRACT_VERSION : null,
-      summary: 'Durable-state slot; every dispatch wrapped by observability → privacy → JSON-LD middleware (ADR-005/008/012).',
+      summary: 'Durable-state slot; every dispatch wrapped by observability → privacy redaction (ADR-2036). JSON-LD encoding is a per-surface gated stage invoked by the owning route, not a dispatch layer; its ordering is enforced by the privacy marker (ADR-012, DDD-004 §L08).',
     });
   }
 

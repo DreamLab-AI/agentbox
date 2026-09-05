@@ -762,6 +762,30 @@ describe('W039: ingress_policy=allowlist with empty allowed_pubkeys', () => {
     expect(r.exitCode).toBe(0);
   });
 
+  // ADR-2012 closeout: the message used to promise a "local npub fallback"
+  // that neither backend implements. It must now describe the real deny-all
+  // consequence — an empty allowlist rejects every remote publisher at the
+  // relay boundary and commits nothing to the pod inbox.
+  test('W039 describes deny-all and never claims a local-npub fallback', () => {
+    const m = baseValid();
+    m.sovereign_mesh.relay = {
+      enabled: true,
+      port: 7777,
+      ingress_policy: 'allowlist',
+      allowed_pubkeys: []
+    };
+    m.security.exceptions['nostr-relay'] = { reason: 'embedded relay' };
+    const r = runValidator(m);
+    const line = r.stderr.split('\n').find((l) => l.includes('W039')) || '';
+    expect(line).toMatch(/DENY-ALL/);
+    expect(line).toMatch(/no local-npub fallback/);
+    expect(line).toMatch(/relay boundary/);
+    expect(line).toMatch(/pod inbox/);
+    // The retired claim: "only the local npub will be accepted".
+    expect(line).not.toMatch(/only the local npub/);
+    expect(r.exitCode).toBe(0);
+  });
+
   test('silent when allowed_pubkeys is non-empty', () => {
     const m = baseValid();
     m.sovereign_mesh.relay = {

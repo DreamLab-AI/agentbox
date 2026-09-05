@@ -26,27 +26,27 @@
   },
   {
     "prompt": "Design and implement a Rust crate skeleton with src/lib.rs, Cargo.toml, and a passing unit test that verifies an 'add' function returns the correct sum of two integers.",
-    "expected_skill": "sparc-code",
+    "expected_skill": "sparc:code",
     "rationale": "Multi-file project scaffolding with no shared kernel state dependency — architect plans the structure, coder writes the files, no intermediate in-memory state required."
   },
   {
     "prompt": "Create a Python package layout for a CLI tool: pyproject.toml, src/mytool/__init__.py, src/mytool/cli.py using argparse, and tests/test_cli.py with one passing pytest assertion.",
-    "expected_skill": "sparc-code",
-    "rationale": "File-creation task across multiple files; no persistent kernel state needed — sparc-code plans and writes files without requiring a live interpreter between steps."
+    "expected_skill": "sparc:code",
+    "rationale": "File-creation task across multiple files; no persistent kernel state needed — sparc:code plans and writes files without requiring a live interpreter between steps."
   },
   {
     "prompt": "Refactor the existing authentication module at src/auth.py to extract password-hashing into a separate src/crypto.py module, update all imports, and add a docstring to each public function.",
-    "expected_skill": "sparc-code",
+    "expected_skill": "sparc:code",
     "rationale": "Cross-file refactoring: read existing files, plan the split, rewrite two files, update imports. No computation or intermediate variable state needed — this is an edit-and-review task."
   },
   {
     "prompt": "Write a Go HTTP handler that serves a health-check endpoint at /healthz returning JSON {status: 'ok'}, add a corresponding table-driven unit test, and ensure 'go test ./...' passes.",
-    "expected_skill": "sparc-code",
+    "expected_skill": "sparc:code",
     "rationale": "Multi-file Go project scaffold with test — the task is write-then-verify at the file level; no persistent kernel or shared interpreter state involved between code-generation steps."
   },
   {
     "prompt": "Generate an OpenAPI 3.1 YAML spec for a REST API with three endpoints (GET /users, POST /users, DELETE /users/{id}), then scaffold matching Express.js route handlers in routes/users.js with JSDoc annotations.",
-    "expected_skill": "sparc-code",
-    "rationale": "Orchestrator-shaped: specify contract first, then generate implementation files. Multiple files, no shared kernel state — sparc-code's plan-then-write model is the correct route."
+    "expected_skill": "sparc:code",
+    "rationale": "Orchestrator-shaped: specify contract first, then generate implementation files. Multiple files, no shared kernel state — sparc:code's plan-then-write model is the correct route."
   }
 ]

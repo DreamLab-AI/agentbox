@@ -1,0 +1,33 @@
+{
+  "adr": "ADR-2029",
+  "date": "2026-09-05",
+  "generated_utc": "2026-09-05T13:58:22.393274Z",
+  "title": "Notes window honours [vault].tui as an execution off-switch, the vault gate, and refuses to launch degraded",
+  "scope": "config/tmux-autostart.sh driven through its documented AGENTBOX_TMUX_AUTOSTART_DRY_RUN=notes hook with a recording tmux stub and fixture rune binaries; no tmux server, no real Rune, no session created",
+  "decision": {
+    "vault_tui": "EXECUTION off-switch (runtime, restart-class). tui=none/empty/unset blocks the launch even with a binary present, including the ~/workspace/.cargo/bin fallback.",
+    "package_selection": "SEPARATE gate, evaluated in flake.nix at BUILD time (rebuild-class): the image bakes rune only when [vault].tui = \"rune\".",
+    "operator_exposure": "each refusal message names the gate that refused and the manifest key, and states the build/runtime distinction."
+  },
+  "implementation": {
+    "changed": [
+      "config/tmux-autostart.sh (window-9 decision hoisted into _notes_window(), three gates, dry-run hook)"
+    ]
+  },
+  "test": {
+    "file": "tests/tui/notes-launcher.test.sh",
+    "command": "bash tests/tui/notes-launcher.test.sh",
+    "exit_code": 0,
+    "summary": "notes-launcher: 11 passed, 0 failed",
+    "stdout": "\u2500\u2500 ADR-2029 Notes-window gates \u2500\u2500\nPASS  tui=none + binary present \u2192 NOT launched; message names [vault].tui as an execution off-switch\nPASS  tui=none \u2192 message distinguishes execution off-switch from package selection\nPASS  VAULT_TUI unset \u2192 treated as none, NOT launched\nPASS  tui=rune + binary + vault \u2192 launched at the vault root with the recovery HOME\nPASS  launch \u2192 recovery home created at $WORKSPACE/.rune-home\nPASS  tui=rune + vault missing \u2192 workspace fallback, launched, warning printed\nPASS  AGENTBOX_VAULT_ENABLED=0 + tui=rune + binary \u2192 NOT launched; message names the vault gate\nPASS  unwritable recovery home \u2192 NOT launched; pane gets path, reason and fix\nPASS  tui=rune + no binary \u2192 NOT launched; rebuild notice printed\nPASS  window 9 is created in every case, so a refusal still leaves a usable shell\nPASS  dry-run hook creates no session and no window other than 9\n\n==================================================\nnotes-launcher: 11 passed, 0 failed\n==================================================\n",
+    "stderr": ""
+  },
+  "syntax_checks": {
+    "config/tmux-autostart.sh": 0,
+    "tests/tui/notes-launcher.test.sh": 0
+  },
+  "source_sha256": {
+    "config/tmux-autostart.sh": "d22da96ff25fbb562d2eb33ac10e3e0134ff88e897c0dc37e70208fa758d24e9",
+    "tests/tui/notes-launcher.test.sh": "bfc84210d7cad3adb8022aae1dd1286f0744b583f097af01a9903264018aa049"
+  }
+}

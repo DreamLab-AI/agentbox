@@ -128,3 +128,11 @@ The "build a chatbot" case illustrates why the scope boundary must be a soft heu
 ## Notes
 
 The phrasing of the out-of-scope section matters. "RuVector does NOT provide content generation" is a stronger signal to Claude than "RuVector is focused on AI/ML infrastructure." The explicit negation creates a decision boundary; the vague positive statement does not.
+
+## Closeout extension — 2026-09-05
+
+The TypeScript scope guard exists, while the proposed prominent negative-scope section is absent from the inspected entry point and capability map. Section matches and meta-query precedence qualify CLI rejection.
+
+**CP-01/03/07/08/09 acceptance:** Test separate Markdown-agent and CLI paths, mixed-scope queries and false-positive recommendations.
+
+This is a local catalog-skill decision, not estate adoption of every catalogued technology. Original decision status and historical evidence are preserved. Current review is source-only: no search, model, swarm or benchmark ran. See the [estate catalog assessment](../../../../../../VisionFlow/docs/estate-review/catalog-decisions.md) and [source snapshot](../../../../../../VisionFlow/docs/estate-review/evidence/catalog-decision-snapshot.json).

@@ -93,3 +93,53 @@ fake-hash mismatch against the repo's pinned nixpkgs
 evaluation: `[vault].tui = "rune"` → `runeActive=true`; section absent →
 `false`. `implementation_status: complete` when the rebuilt image is booted
 and `verified_commit` is recorded.
+
+## Closeout extension — 2026-09-04
+
+CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. The current Notes script launches on binary discovery without checking VAULT_TUI or AGENTBOX_VAULT_ENABLED, including the retained workspace cargo fallback. A missing vault uses the workspace; recovery-home creation failure can launch degraded. Existing staged activation and historical implementation evidence are preserved, not re-certified.
+
+**Acceptance condition:** Test mode-none with a binary present, missing/present vault, retained fallback binary, writable/unwritable recovery home, concurrent edits and restart recovery. Decide whether none is a package-selection setting or an execution off-switch, and expose that distinction to the operator. Reopen on resolver, consumer, launcher, storage or TUI changes. Both shell files pass syntax checking; no live terminal/editor or image activation test ran. See the [vault review](../../../../VisionFlow/docs/estate-review/authored-vault-transition.md#runtime-path-overrides-and-notes-launch) and [source/probe receipt](../../../../VisionFlow/docs/estate-review/evidence/vault-path-probe.json).
+
+## Acceptance progress — 2026-09-05
+
+- **Implemented** — the window-9 decision in `config/tmux-autostart.sh` is now a
+  single documented function `_notes_window()`, hoisted near the top, with three
+  gates evaluated BEFORE binary discovery decides anything. (1) `AGENTBOX_VAULT_ENABLED=0`
+  — the vault gate (ADR-2028): no `[vault]` means no corpus to open, so the TUI is
+  not launched and the pane says which gate refused; unset is treated as enabled,
+  so a standalone launch with a real vault behaves as before. (2) `VAULT_TUI`
+  (manifest key `[vault].tui`): `none`, empty or unset blocks the launch even when
+  a `rune` binary is present, including the interim `${NOTES_CARGO_BIN}/rune`
+  fallback. **The open question is decided and documented in the comment header
+  and in the pane message: `[vault].tui` is an EXECUTION off-switch (runtime,
+  restart-class); PACKAGE SELECTION is a separate gate evaluated in `flake.nix`
+  at BUILD time (rebuild-class), which is why the two can legitimately disagree.**
+  (3) Recovery home: `mkdir -p` failure, a non-directory, or a failed write probe
+  no longer launches degraded — the pane gets the path, the reason and the fix,
+  and the window is left on a shell, because a degraded Rune loses exactly the
+  crash-journal and external-change bookkeeping that makes concurrent
+  agent/operator edits safe. The window is created in every case, so a refusal
+  never costs the operator the tab. A documented, inert dry-run hook
+  (`AGENTBOX_TMUX_AUTOSTART_DRY_RUN=notes`) runs only this decision and exits;
+  nothing in the image, supervisord or compose sets it.
+- **Tests and results** — new `tests/tui/notes-launcher.test.sh`: no tmux server,
+  no real Rune (every PATH entry carrying a `rune` binary is dropped so the test
+  decides on its own fixtures), `tmux` replaced by a recording stub.
+  `bash tests/tui/notes-launcher.test.sh` → **11 passed, 0 failed, exit 0** —
+  tui=none with the binary present (no launch; message names the key and the
+  execution/package distinction); `VAULT_TUI` unset treated as none; tui=rune +
+  binary + vault (launched at the vault root under the recovery HOME, which is
+  created); tui=rune + vault missing (workspace fallback, launched, warning);
+  `AGENTBOX_VAULT_ENABLED=0` (no launch, vault gate named); unwritable recovery
+  home (no launch, path + reason + fix, explicit "not launching degraded");
+  no binary (rebuild notice); window 9 created in every case; the dry-run hook
+  creates no session and touches no other window. `bash -n` clean.
+- **Receipts** — `docs/estate-closeout/2026-09-05/adr-2029-notes-launcher.json`
+  (full stdout, exit codes, syntax-check results, source SHA-256s).
+- **Remaining** — concurrent-edit and restart-recovery behaviour of the Rune
+  journal itself is still untested (it needs a real Rune process and a real
+  terminal), as is image activation with the baked package. `activation_status`
+  stays `staged`; `implementation_status` is left at `complete` for the packaging
+  and window decisions now covered, with the live-editor evidence still open.
+- **Governed paths changed** — `config/tmux-autostart.sh`,
+  `tests/tui/notes-launcher.test.sh` (new).

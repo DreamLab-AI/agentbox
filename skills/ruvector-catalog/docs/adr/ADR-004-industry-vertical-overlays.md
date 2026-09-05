@@ -155,3 +155,11 @@ This 7.5x compression ratio (15,000 input tokens to 2,000 output tokens) is exac
 ## Notes
 
 The overlay files are living documents. As the hive mind performs deep analyses for new vertical queries (ADR-006), the results should be distilled back into the overlay files. This creates a flywheel: swarm analysis produces domain expertise, which is pre-computed into overlays, which reduces future swarm invocations.
+
+## Closeout extension — 2026-09-05
+
+All five proposed domain overlay files exist, with structured vertical mappings in source. File presence does not establish applicability or recommendation quality.
+
+**CP-01/03/07/08/09 acceptance:** Bind mappings to source revisions and evaluate complete domain-specific recommendations.
+
+This is a local catalog-skill decision, not estate adoption of every catalogued technology. Original decision status and historical evidence are preserved. Current review is source-only: no search, model, swarm or benchmark ran. See the [estate catalog assessment](../../../../../../VisionFlow/docs/estate-review/catalog-decisions.md) and [source snapshot](../../../../../../VisionFlow/docs/estate-review/evidence/catalog-decision-snapshot.json).

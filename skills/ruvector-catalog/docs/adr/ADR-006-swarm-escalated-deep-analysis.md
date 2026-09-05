@@ -160,3 +160,11 @@ Overhead (agent coordination, prompting): ~33,000 tokens. Total session: ~80,000
 The swarm composition is not fixed. For a finance-specific deep analysis, the Domain Specialist would be configured with finance context rather than healthcare. The 4-agent template is a starting point; queries that span only 2 domains might use 2 agents.
 
 The flywheel effect is the most important long-term consequence: every Phase 2 analysis that produces high-quality domain mappings should be reviewed and distilled into domain overlay files (ADR-004). Over time, the domain overlays get richer, and Phase 2 is triggered less frequently.
+
+## Closeout extension — 2026-09-05
+
+ProposalService constructs an RVBP from supplied matches. The inspected entry point and generator do not establish a multi-agent escalation executor or enforced triggers/budgets.
+
+**CP-01/03/07/08/09 acceptance:** Provide executor, source-review and budget receipts, or explicitly defer orchestration; do not treat formatted proposals as swarm execution.
+
+This is a local catalog-skill decision, not estate adoption of every catalogued technology. Original decision status and historical evidence are preserved. Current review is source-only: no search, model, swarm or benchmark ran. See the [estate catalog assessment](../../../../../../VisionFlow/docs/estate-review/catalog-decisions.md) and [source snapshot](../../../../../../VisionFlow/docs/estate-review/evidence/catalog-decision-snapshot.json).

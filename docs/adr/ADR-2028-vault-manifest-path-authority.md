@@ -3,7 +3,7 @@ id: ADR-2028
 title: "`[vault]` in agentbox.toml is the single path authority for the authored corpus; no consumer hard-codes a Logseq path"
 date: 2026-09-02
 decision_status: proposed
-implementation_status: complete
+implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
@@ -70,8 +70,7 @@ against a stale tree.
 ## Consequences
 
 - One edit in the manifest relocates the corpus for every agent surface.
-- Containers booted without a vault get a visible "vault disabled" line
-  instead of quietly indexing an empty or stale directory.
+- Containers without a manifest vault report disabled, but the retained legacy override can still direct consumers to a corpus. That compatibility path must be shown separately.
 - The skills directory prose (`SKILL-DIRECTORY.md`, the ontology-* skills)
   changes from "Logseq" to "vault" wording; historical archive docs are left
   untouched.
@@ -93,5 +92,68 @@ valid. `scripts/ci/check-no-logseq-paths.sh` (wired into
 planted literal. `management-api/lib/system-manifest.js` carries the
 `vault` catalogue entry (`apply_class: boot`; the Rune package is
 `rebuild`-class under ADR-2029) and reports the resolved root/pages/format.
-`implementation_status: complete`; `activation_status: staged` until the
+`implementation_status: partial`; `activation_status: staged` until the
 next container boot runs the new entrypoint.
+
+## Closeout extension — 2026-09-04
+
+CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. An isolated call to the actual resolver with no manifest vault retains ONTOLOGY_PAGES_DIR while setting AGENTBOX_VAULT_ENABLED=0. Consumers prefer that override. Implementation changes to partial for the broad all-consumers-disabled claim; the manifest projection itself remains implemented.
+
+**Acceptance condition:** Define and test manifest/environment/legacy precedence, disabled-with-override behaviour, path relocation and consumer read identity. Include namespaces, private pages and absent roots; removing old path literals is not proof of equivalent inclusion. Reopen on resolver, consumer, launcher, storage or TUI changes. Both shell files pass syntax checking; no live terminal/editor or image activation test ran. See the [vault review](../../../../VisionFlow/docs/estate-review/authored-vault-transition.md#runtime-path-overrides-and-notes-launch) and [source/probe receipt](../../../../VisionFlow/docs/estate-review/evidence/vault-path-probe.json).
+
+## Acceptance progress — 2026-09-05
+
+- **Implemented** — `_ab_vault_resolve()` in `config/entrypoint-unified.sh` now
+  documents and enforces an explicit three-tier precedence in its comment block:
+  (1) the manifest `[vault]` projection is the highest authority — `VAULT_PAGES`
+  is always the manifest's, whatever the inherited environment said; (2) an
+  explicit environment override is honoured ONLY while the vault is enabled, or
+  under the new opt-in `AGENTBOX_VAULT_LEGACY_PATHS=1`; (3) the deprecated
+  `ONTOLOGY_PAGES_DIR` is CLEARED (exported empty) with one clear warning naming
+  the path and the opt-in when `AGENTBOX_VAULT_ENABLED=0` and no opt-in is set,
+  so no consumer can silently fall back while the system reports the vault
+  disabled. Behaviour with the vault enabled is unchanged (the override still
+  applies, now with a note). All four consumers were given the matching guard and
+  fail clearly instead of using a legacy path: `ontology-local.js` refuses the
+  override and serves an empty index with a `REFUSING corpus path …` line;
+  `ontology-index-build.js` and `scripts/ontology-condense-refresh.sh` exit **2**
+  and leave the index and PUSH cache untouched; the scheduler returns
+  `error/legacy-path-vault-disabled`, exits 2 for `--once`/`--dry-run` and stops
+  the loop (a refused path is a configuration error, not a transient fault, so
+  the house fail-open rule does not apply). An explicitly typed `argv` pages dir
+  is still honoured — with a warning — because it is not a silent fallback.
+  Incidental fix in `ontology-condense-refresh.sh`: `exec 9>"$LOCK" 2>/dev/null`
+  had permanently re-pointed the whole script's stderr at `/dev/null`, swallowing
+  every diagnostic it printed; stderr is now saved on fd 8 and restored after the
+  lock attempt.
+- **Tests and results** — new `tests/config/vault-path-precedence.test.sh`
+  extracts the ACTUAL `_ab_vault_resolve` from `config/entrypoint-unified.sh`
+  (same anchored `^_ab_vault_resolve\(\) \{ … ^\}` extraction as
+  `vault-path-probe.py`) with a stub `_ab_toml_val`, and also drives the shell
+  consumer: **13 passed, 0 failed, exit 0** — no-vault+no-override;
+  no-vault+legacy-override (cleared, warning naming the path AND the opt-in);
+  no-vault+legacy-override+`AGENTBOX_VAULT_LEGACY_PATHS=1` (retained, says so);
+  vault-present with a competing env override (manifest wins for `VAULT_PAGES`,
+  tier-2 override still honoured and noted); vault-present with no override
+  (derived); relocation; relocation with a stale Logseq-era override still set.
+  New `tests/config/vault-consumer-fallback.test.mjs` runs each JS consumer as a
+  child process against throwaway fixture corpora: **13 passed, 0 failed, exit
+  0** — refusal, opt-in honouring, vault-enabled behaviour unchanged, typed-argv
+  warning, and the scheduler's exit codes. `bash -n` and `node --check` clean on
+  every file touched.
+- **Receipts** —
+  `docs/estate-closeout/2026-09-05/adr-2028-vault-path-precedence.json`
+  (both suites' full stdout, exit codes, syntax/`--check` results, source
+  SHA-256s). No real manifest, vault or corpus was read or written.
+- **Remaining** — not exercised here: namespace/private-page inclusion identity
+  between a Logseq-era tree and the Obsidian vault (path precedence is not proof
+  of equivalent inclusion), the podcast/transcript sibling roots, and activation
+  on a booted image running the new entrypoint. `activation_status` therefore
+  stays `staged` and `implementation_status` stays `partial`.
+- **Governed paths changed** — `config/entrypoint-unified.sh` (the
+  `_ab_vault_resolve` function and its comment block only),
+  `mcp/servers/lib/ontology-local.js`, `mcp/servers/lib/ontology-index-build.js`,
+  `scripts/ontology-condense-scheduler.mjs`,
+  `scripts/ontology-condense-refresh.sh`,
+  `tests/config/vault-path-precedence.test.sh` (new),
+  `tests/config/vault-consumer-fallback.test.mjs` (new).

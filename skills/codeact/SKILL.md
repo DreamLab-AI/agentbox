@@ -18,7 +18,7 @@ triggers:
 depends_on_mcps:
   - code-interpreter
 related_skills:
-  - sparc-code  # SPARC: orchestrator-shaped, plans then writes; CodeAct executes interactively
+  - "sparc:code"  # SPARC: orchestrator-shaped, plans then writes; CodeAct executes interactively
   - deepseek-reasoning  # math-heavy reasoning without execution
   - pytorch-ml  # heavy GPU scripts (no shared state)
   - build-with-quality  # full TDD swarm -- when assertions + tests matter more than exploration
@@ -83,7 +83,7 @@ see `references/exemplars.md`.
 | Instead of CodeAct, use… | When |
 |---|---|
 | **Bash** | One-shot execution, no state needed — no kernel overhead. |
-| **`sparc-code`** | Single-file code generation without execution; plan-then-write, stateless. |
+| **`sparc:code`** | Single-file code generation without execution; plan-then-write, stateless. |
 | **`deepseek-reasoning`** | Pure symbolic / mathematical reasoning with no data to load. |
 | **`pytorch-ml`** | Heavy GPU training or multi-file ML scripts — subprocess/script mode; the kernel MCP is CPU-only in v1. |
 | **`build-with-quality`** | Full TDD pipeline with assertion gates, coverage, defect prediction — a QE swarm, not exploration. |

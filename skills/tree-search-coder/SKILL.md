@@ -25,7 +25,7 @@ optional_mcps:
   - aci-shell               # ADR-020 Surface 1 — tree-search may route tests via aci.run_tests
 manifest_gate: "[skills.tree_search_coder] enabled = true"
 related_skills:
-  - sparc-coder            # tree-search invokes this N times internally; single attempt = use it directly
+  - "sparc:coder"          # tree-search invokes this N times internally; single attempt = use it directly
   - build-with-quality     # QE/TDD pipeline over ONE candidate, not candidate selection
   - codeact                # interactive stateful loop, one trajectory, no branching
   - verification-quality   # truth-score a single result; no exploration
@@ -77,10 +77,25 @@ reference below.
 
 Seven steps: generate N candidates (`sparc:coder`, varied framing) → fresh
 kernel per branch (`kernel.reset`) → execute assertions (`kernel.exec`) → score
-on assertion-pass count → select highest (tie-break shortest code) → honour the
-mandatory `spend_cap_usd` (halt + return best-so-far) → emit the audit
+on assertion-pass count → select highest (tie-break shortest code) → hold the
+**enforced** `spend_cap_usd` (halt + return best-so-far) → emit the audit
 trajectory. Full step contract, manifest gate (`E052`/`W051`/`W052`), and URN/
 span schema: **[references/algorithm.md](references/algorithm.md)**.
+
+The cap is enforced, not advisory (ADR-2020). Every branch must be admitted by
+the `tree-search-cap` limiter before dispatch and released after it finishes:
+
+```bash
+tree-search-cap reserve --run "$RUN_ID" --estimate 0.13   # exit 3 = REFUSED
+tree-search-cap settle  --run "$RUN_ID" --reservation res-… --actual 0.11
+tree-search-cap settle  --run "$RUN_ID" --reservation res-… --actual 0.00 --failed
+```
+
+A reservation holds its estimate against the run's budget for as long as the
+branch runs, under a file lock, so concurrent and in-flight branches cannot
+jointly exceed the cap; `max_candidates` and `per_branch_timeout_s` are enforced
+on the same call. Protocol, exit codes and guarantees:
+**[references/algorithm.md](references/algorithm.md)** §Enforced cost cap.
 
 ---
 

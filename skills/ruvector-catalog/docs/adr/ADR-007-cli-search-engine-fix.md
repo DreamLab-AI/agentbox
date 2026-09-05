@@ -179,3 +179,11 @@ These collisions are deterministic and affect every query. With 2,000+ terms in 
 ## Notes
 
 The CLI and CAG paths share the same underlying data model (catalog.json, extended per ADR-008). The CLI path transforms catalog.json into sparse TF-IDF vectors; the CAG path renders catalog.json into SKILL.md sections. Both benefit from the same data model improvements.
+
+## Closeout extension — 2026-09-05
+
+Sparse full-vocabulary search exists, but current source uses a direct scan, threshold 0.15, repeated text before sublinear TF and additive ranking bonuses. The proposed 0.25 threshold, weighted-vector formula, initial domain filtering and HNSW stage do not describe this implementation.
+
+**CP-01/03/07/08/09 acceptance:** Ratify or amend the algorithm and calibrate held-out ranking/scope queries. Report boosted scores separately from raw similarity or probability.
+
+This is a local catalog-skill decision, not estate adoption of every catalogued technology. Original decision status and historical evidence are preserved. Current review is source-only: no search, model, swarm or benchmark ran. See the [estate catalog assessment](../../../../../../VisionFlow/docs/estate-review/catalog-decisions.md) and [source snapshot](../../../../../../VisionFlow/docs/estate-review/evidence/catalog-decision-snapshot.json).

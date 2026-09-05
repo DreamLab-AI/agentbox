@@ -40,7 +40,7 @@ ruvnet-brain MCP is unavailable. `ruvnet_brain_status` reports corpus health
 
 The namespace is **write-protected** (`RUVECTOR_PROTECTED_NAMESPACES`): do not
 `memory_store` into `ruvnet-kb`. Reference corpus rows are loaded only by the
-ingest playbook (`scripts/ruvnet-brain-ingest.mjs`, auto-run at boot; manual:
+ingest playbook (`agentbox/scripts/ruvnet-brain-ingest.mjs`, auto-run at boot; manual:
 `./agentbox.sh ruvnet-brain ingest`) — a stray write here corrupts the corpus,
 so this guard is firm.
 

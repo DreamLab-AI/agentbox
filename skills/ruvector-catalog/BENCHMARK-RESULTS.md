@@ -1,5 +1,7 @@
 # RuVector Catalog V3 — Benchmark Results
 
+> Current closeout qualification — 2026-09-05: preserve the following as a historical report. The current entry point is 3,448 bytes/72 lines, and the referenced tests directory is absent from this checkout. ADR-009 distinguishes earlier predictions from measurements. This report is not a current reproduction receipt; see the [estate assessment](../../../../VisionFlow/docs/estate-review/catalog-decisions.md).
+
 ## 5-Query Comparison: Repo Search vs V1 vs V2 vs V3
 
 | Query | Repo Search | V1 Skill | V2 Skill | V3 Skill |

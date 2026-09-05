@@ -144,3 +144,11 @@ The `plainDescription` field is the minimum viable implementation. For V3.1+, co
 ```
 
 This level of audience granularity is not needed for V3 but is a natural extension of the architecture.
+
+## Closeout extension — 2026-09-05
+
+Audience guidance exists in references/capability-map.md and CLI/proposal code conditionally includes plainDescription. End-user readability and factual accuracy were not tested.
+
+**CP-01/03/07/08/09 acceptance:** Evaluate complete responses for intended readers while preserving technical provenance.
+
+This is a local catalog-skill decision, not estate adoption of every catalogued technology. Original decision status and historical evidence are preserved. Current review is source-only: no search, model, swarm or benchmark ran. See the [estate catalog assessment](../../../../../../VisionFlow/docs/estate-review/catalog-decisions.md) and [source snapshot](../../../../../../VisionFlow/docs/estate-review/evidence/catalog-decision-snapshot.json).

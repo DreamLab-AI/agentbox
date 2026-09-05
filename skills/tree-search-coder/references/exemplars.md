@@ -135,10 +135,18 @@ its kernel run is metered at ~$0.13.
 **Progress.**
 
 ```
-branch 1  generate+exec  running cost $0.13  → passed 3/4  (overflows on large inputs)
-branch 2  generate+exec  running cost $0.27  → passed 4/4  (max-subtract stabilised)
-branch 3  generate+exec  running cost $0.41  → passed 3/4  (no max-subtract; exp overflow)
-        pre-branch-4 cost check: 0.41 + ~0.13 = 0.54 > spend_cap_usd 0.50  → HALT
+branch 1  reserve 0.13 → granted   exec  committed $0.13  → passed 3/4  (overflows on large inputs)
+branch 2  reserve 0.13 → granted   exec  committed $0.27  → passed 4/4  (max-subtract stabilised)
+branch 3  reserve 0.13 → granted   exec  committed $0.41  → passed 3/4  (no max-subtract; exp overflow)
+branch 4  reserve 0.13 → REFUSED (exit 3)  → HALT
+```
+
+The refusal is the limiter's, not the agent's judgement:
+
+```json
+{"ok": false, "action": "reserve",
+ "refused": {"error": "spend_cap_exceeded", "cap_usd": 0.5,
+             "committed_usd": 0.41, "outstanding_usd": 0.0, "requested_usd": 0.13}}
 ```
 
 **Step 6 — halt and return best-so-far.** Branches 4 and 5 are never generated.

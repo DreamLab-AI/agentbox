@@ -132,3 +132,11 @@ Each section header (with synonym variants) costs approximately 15-25 tokens. 20
 ## Notes
 
 The distinction between "human-curated headers" and "auto-generated technology details" is critical. A regeneration pipeline (triggered when catalog.json updates) can rewrite the technology bullets beneath each header without touching the header itself. This means SKILL.md stays current with RuVector's crate inventory while preserving the curated intent layer.
+
+## Closeout extension — 2026-09-05
+
+The problem map survives in references/capability-map.md; current entry-point structure differs from the proposed single-file headers. The JSON regeneration path is not present in this checkout.
+
+**CP-01/03/07/08/09 acceptance:** Reconcile intended header coverage, authoritative data and reproducible generation.
+
+This is a local catalog-skill decision, not estate adoption of every catalogued technology. Original decision status and historical evidence are preserved. Current review is source-only: no search, model, swarm or benchmark ran. See the [estate catalog assessment](../../../../../../VisionFlow/docs/estate-review/catalog-decisions.md) and [source snapshot](../../../../../../VisionFlow/docs/estate-review/evidence/catalog-decision-snapshot.json).

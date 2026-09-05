@@ -45,6 +45,7 @@ capabilities:
     - contract_validation
     - visual_regression
     - accessibility_audit_wcag
+    - deepsec_security_gate  # scripts/deepsec-gate.sh, ADR-2033
 
   learning:
     - sona_optimization

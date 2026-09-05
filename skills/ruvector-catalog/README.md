@@ -346,3 +346,7 @@ bun src/cli.ts verify                     # Check for staleness
 **Questions:** [RuVector GitHub Discussions](https://github.com/ruvnet/ruvector)
 **Bugs:** [github.com/mamd69/ruvector-catalog/issues](https://github.com/mamd69/ruvector-catalog/issues)
 **New industry vertical:** Open a feature request with title "Industry Vertical: [Your Industry]"
+
+## Estate closeout scope — 2026-09-05
+
+The nine local ADRs now carry source-qualified extensions. See the [catalog assessment](../../../../VisionFlow/docs/estate-review/catalog-decisions.md) for the current interface, algorithm differences and outstanding benchmark reproduction. These records govern this skill; they do not ratify every catalogued technology for estate use.

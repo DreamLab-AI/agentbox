@@ -179,4 +179,4 @@ not a side effect; they are half the value of writing the explainer at all.
 - `scripts/style-check.sh <file…>` — em-dash and AI-tell vocabulary count.
 - `scripts/check-ledger.sh <ledger.md> <repo-root>` — gate C: every `path:line` exists and prints the cited line for review.
 - `scripts/check-links.sh <doc…>` — relative links resolve.
-- `scripts/kb/` — (day 2) `build-passages.mjs <target> <out.jsonl>`, `ingest.mjs <passages> <namespace>`, `grade.mjs <namespace> <questions…>`; run from here, pointed at the target.
+- `scripts/kb/` — (day 2, not yet on disk) `build-passages.mjs <target> <out.jsonl>`, `ingest.mjs <passages> <namespace>`, `grade.mjs <namespace> <questions…>`; run from here, pointed at the target. <!-- lint-ok: deliberate day-2 forward reference; the kb scripts are planned, not shipped -->

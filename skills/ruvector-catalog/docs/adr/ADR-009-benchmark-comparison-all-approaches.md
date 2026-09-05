@@ -306,3 +306,11 @@ The benchmark evidence supports the V3 architecture defined in ADR-001 through A
 5. **CAG eliminates the latency-vs-quality tradeoff.** V2's sub-millisecond internal search (0.2ms) is negated by 27-179ms process overhead. CAG operates in the LLM's context window with zero external process cost.
 
 The V3 predicted performance values in this ADR serve as the acceptance criteria for implementation. If V3 fails to meet them, the architecture must be revised before shipping.
+
+## Closeout extension — 2026-09-05
+
+Retain the accepted evaluation decision while separating predicted outcomes from measured receipts. The later benchmark report claims 168 tests, but the referenced tests directory is absent here; no benchmark was rerun. Internal search, CLI and LLM response latency have different scopes.
+
+**CP-01/03/07/08/09 acceptance:** Restore reproducible fixtures/harness, bind results to source/data/model revisions and retain separate timings and held-out quality evidence.
+
+This is a local catalog-skill decision, not estate adoption of every catalogued technology. Original decision status and historical evidence are preserved. Current review is source-only: no search, model, swarm or benchmark ran. See the [estate catalog assessment](../../../../../../VisionFlow/docs/estate-review/catalog-decisions.md) and [source snapshot](../../../../../../VisionFlow/docs/estate-review/evidence/catalog-decision-snapshot.json).

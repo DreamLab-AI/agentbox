@@ -1,0 +1,29 @@
+{
+  "date": "2026-09-05",
+  "adr": "ADR-2008",
+  "title": "MCP projector reconcile",
+  "scope": "Actual projector run as a child process against temporary registry/target/ledger triples with a fresh environment. No live .mcp.json was modified, no MCP server was launched and no boot ran.",
+  "defects_closed": {
+    "D1_deleted_definition_leaked": "An ownership ledger (sidecar JSON, MCP_PROJECTION_STATE) records the names this projector owns; an owned name that is no longer a projector-managed registry definition is removed from the target and recorded in the ledger deletion history. Entries the projector has never owned are never touched, so bespoke servers are preserved.",
+    "D2_no_schema_validation": "validateRegistry() checks root shape, managed-by vocabulary, gate grammar, requires grammar, transport (command or url), args/env/headers types. Every error is enumerated before anything is written.",
+    "D3_malformed_input_exited_zero": "Unreadable/unparseable/schema-invalid registry now exits 2 with the target byte-identical; target read or write failure exits 3. Boot is unaffected: the entrypoint pipes the script and appends || true, so the FAIL line surfaces without aborting.",
+    "D4_missing_requires_removed_entry": "requiresMet() is total and always returns {ok, why, explicit}; an absent or null requirements array is the empty requirement set and is reported explicitly in the run summary."
+  },
+  "also_changed": "binOnPath() no longer shells out to `command -v $name`; PATH is walked in-process with fs.accessSync, so no registry-controlled string reaches a shell.",
+  "atomicity": "Target and ledger are replaced by write-to-temp + fsync + rename(2) in the same directory, preserving the previous file mode. A failure leaves the previous file intact and removes the temp file (asserted).",
+  "tests": [
+    {
+      "command": "node tests/config/mcp-projector.test.mjs",
+      "cwd": ".",
+      "exit_code": 0,
+      "stdout_tail": "  PASS invalid registry (unknown managed-by) exits non-zero\n  PASS invalid registry (unknown managed-by) leaves the target byte-identical\n  PASS invalid registry (unknown managed-by) reports the reason on stderr\n  PASS invalid registry (env value is not a string) exits non-zero\n  PASS invalid registry (env value is not a string) leaves the target byte-identical\n  PASS invalid registry (env value is not a string) reports the reason on stderr\n\n[target failures]\n  PASS absent target exits non-zero and writes nothing\n  PASS unparseable target exits non-zero\n  PASS unparseable target is left untouched\n  PASS unwritable target directory exits non-zero\n  PASS unwritable target keeps its previous content\n  PASS no temp file is left behind\n\n[idempotence]\n  PASS second run is a no-op on content\n  PASS second run reports already-current\n  PASS dry run exits zero\n  PASS dry run writes nothing\n\n[live registry]\n  PASS skills/mcp.json passes schema validation\n\n60 passed, 0 failed",
+      "stderr_tail": ""
+    }
+  ],
+  "source_sha256": {
+    "scripts/project-mcp-servers.mjs": "c42f4eb29de1ea955cb0af6d8998a79be7414c6748edcb3788a08caecb268691",
+    "tests/config/mcp-projector.test.mjs": "c670a8fe03b1b145ae89e0875b26f2d32aa94335d2d810cb7ad1a5a8bfa03b6d",
+    "skills/mcp.json": "c3e6c5cd41d8d717ffa0627cf9749d33d9316619a6859ce76daec7a5cfa60ad6"
+  },
+  "limitations": "No boot, no MCP server launch, no live registry change. The live skills/mcp.json is only validated (dry run); its nine projector-managed definitions were not projected into a real target."
+}

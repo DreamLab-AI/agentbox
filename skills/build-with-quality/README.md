@@ -17,6 +17,7 @@ A powerful skill that combines the development capabilities of [Claude Flow V3](
 | **[EDD-PROTOCOL.md](./EDD-PROTOCOL.md)** | Expectation-Driven Development playbook (v1.2.0) |
 | **[SKILL.md](./SKILL.md)** | Skill specification |
 | **[config/skill.yaml](./config/skill.yaml)** | Full configuration |
+| **[references/deepsec-security-gate.md](./references/deepsec-security-gate.md)** | Security gate: deepsec PR-mode review via `scripts/deepsec-gate.sh` (ADR-2033) |
 
 ## Features
 

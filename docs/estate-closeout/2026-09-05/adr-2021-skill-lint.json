@@ -1,0 +1,113 @@
+{
+  "adr": "ADR-2021",
+  "date": "2026-09-05",
+  "title": "Skills JIT context lint \u2014 real frontmatter parse, enforced entry-context budget, resource validation",
+  "acceptance_condition": "Parse the actual frontmatter, enforce a deliberate entry-context budget and validate referenced resources; preserve documented suppressions without treating them as semantic validation.",
+  "implementation": {
+    "entry_point": "skills/lint-skills.sh (unchanged CI entry; .github/workflows/invariants.yml:68)",
+    "engine": "skills/lint-skills.mjs (Node 20+, ESM, no dependencies)",
+    "max_entry_lines": 250,
+    "max_entry_lines_provenance": "carried over unchanged from the line-grep lint's `-gt 250` threshold",
+    "checks": [
+      "STALE \u2014 banned stale strings (unchanged set)",
+      "ABSPATH \u2014 absolute ~/.claude/skills paths (unchanged exclusions)",
+      "RETIRED-PATH \u2014 retired literal /workspace/ prefix (unchanged)",
+      "FRONTMATTER \u2014 real YAML frontmatter block: --- on line 1, a closing --- line, top-level `name` and `description` as non-empty scalars inside the block; quoted values, block scalars (|/>), comments and nested mappings understood; empty/sequence-only/unclosed blocks fail; fields appearing only in the body fail",
+      "BUDGET \u2014 SKILL.md <= MAX_ENTRY_LINES, or references/ exists AND holds at least one readable file; an empty references/ no longer satisfies progressive disclosure",
+      "RESOURCE \u2014 every relative references/, scripts/, assets/ path cited by SKILL.md (markdown links, inline backtick paths, bare paths on their own line, outside fenced blocks) must resolve; a miss fails with skill, line and path"
+    ],
+    "suppression": {
+      "mechanism": "the documented `lint-ok` line marker (plus the historical STALE prose-context words DEAD/retired/legacy/deprecated/'is not'/'never target')",
+      "semantics": "suppressed hits are listed under a separate `-- suppressed --` heading and counted in the summary; they never count as semantic validation and cannot wave through a FRONTMATTER defect",
+      "count_on_real_tree": 40
+    },
+    "exit_codes": {
+      "0": "clean",
+      "non-zero": "violations"
+    }
+  },
+  "reproducer_cases_now_fixed": [
+    {
+      "case": "long_without_references",
+      "before_exit": 1,
+      "after_exit": 1,
+      "note": "already correct"
+    },
+    {
+      "case": "long_empty_references",
+      "before_exit": 0,
+      "after_exit": 1,
+      "finding": "BUDGET \u2026 references/ holds no readable file \u2014 progressive disclosure not satisfied"
+    },
+    {
+      "case": "fields_outside_frontmatter",
+      "before_exit": 0,
+      "after_exit": 1,
+      "finding": "FRONTMATTER \u2026 frontmatter block is empty"
+    }
+  ],
+  "tests": {
+    "command": "bash tests/config/skill-lint.test.sh",
+    "result": "19 passed, 0 failed",
+    "cases": [
+      "valid skill passes",
+      "empty frontmatter with body fields fails",
+      "over-budget with empty references/ fails",
+      "over-budget with populated references/ passes",
+      "over-budget with no references/ fails",
+      "missing referenced resource fails",
+      "missing backtick + bare paths fail",
+      "missing bare asset path fails",
+      "no frontmatter fails",
+      "unclosed frontmatter fails",
+      "empty description fails",
+      "nested (non-scalar) description fails",
+      "quoted name + folded description pass",
+      "comment-only description fails",
+      "sequence-only frontmatter fails",
+      "lint-ok suppresses a missing resource",
+      "suppression is reported in the summary",
+      "lint-ok cannot fake frontmatter validity",
+      "banned stale host still fails"
+    ]
+  },
+  "real_tree_run": {
+    "command": "bash skills/lint-skills.sh",
+    "exit": 0,
+    "summary": "OK \u2014 skills estate clean (125 skills, MAX_ENTRY_LINES=250, 40 suppressed)",
+    "frontmatter_violations": 0,
+    "budget_violations": 0,
+    "resource_violations_found_and_fixed": [
+      {
+        "skill": "ruvnet-brain",
+        "line": 43,
+        "path": "scripts/ruvnet-brain-ingest.mjs",
+        "diagnosis": "repo-root script cited with a skill-relative path",
+        "fix": "cited as agentbox/scripts/ruvnet-brain-ingest.mjs"
+      },
+      {
+        "skill": "mermaid-diagrams",
+        "line": 115,
+        "path": "references/import-mermaid.md",
+        "diagnosis": "sibling skill's reference cited as if it were this skill's",
+        "fix": "cited as diagram-design/references/import-mermaid.md"
+      },
+      {
+        "skill": "explainer",
+        "line": 182,
+        "path": "scripts/kb",
+        "diagnosis": "deliberate day-2 forward reference; the kb scripts are planned, not shipped",
+        "fix": "recorded through the documented suppression mechanism with a lint-ok comment; reported as SUPPRESSED, not as validated"
+      }
+    ]
+  },
+  "rules_weakened": "none",
+  "source_sha256": {
+    "skills/lint-skills.sh": "d82a592284c8bcd03f788fcba92a5cd2c2a79143ab6e81d07b41395ffa4c647f",
+    "skills/lint-skills.mjs": "607a429992fbaf8d08db4ac79aba2f58850f18294bd7967c6cf819fdd1d28db6",
+    "tests/config/skill-lint.test.sh": "33cf6fb1706be3de98c2692b70b64a07b096b68a77a1652bcc093a5d1b0e78ba",
+    "skills/explainer/SKILL.md": "8d6f50f68fbb65abf2ca3374219e99855813ddab329eaebd4d2492b6755d46b7",
+    "skills/mermaid-diagrams/SKILL.md": "e421a21687c0127b5e19cf121572c3a9b71f24eb1b7ca5d8e742318f470cf624",
+    "skills/ruvnet-brain/SKILL.md": "efd8ef87f2bddc98cacab57bb77f5ed84764cdbb0b15349e8dacfd47d7c36c93"
+  }
+}

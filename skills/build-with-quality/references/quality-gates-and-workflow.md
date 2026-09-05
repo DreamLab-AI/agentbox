@@ -6,7 +6,7 @@ sub-phase) execution workflow.
 ## Comprehensive Quality Gates
 
 - **Coverage**: 85% minimum, 95% critical paths, 100% new code
-- **Security**: SAST/DAST scanning, zero critical/high vulnerabilities
+- **Security**: zero critical/high vulnerabilities — executed by deepsec in PR mode via `scripts/deepsec-gate.sh --diff <base>` (threshold `[security.deepsec].fail_on`, receipt per run; see [deepsec-security-gate.md](./deepsec-security-gate.md)); DAST remains a separate, target-specific check
 - **Accessibility**: WCAG AA/AAA compliance (85% color contrast, 80% keyboard nav)
 - **Chaos Testing**: Network resilience (70%), resource exhaustion (75%), graceful degradation (80%)
 - **Contract Validation**: Schema validation, backward compatibility
@@ -33,6 +33,7 @@ Phase 2: DEVELOPMENT (Parallel)
 ├── Coder agent writes implementation against EXP-NNN + SPEC + ADR
 ├── Test-generation creates tests IN PARALLEL
 ├── Security-architect reviews for vulnerabilities
+├── deepsec-gate --diff-working on each coder increment (bounded, resumable)
 └── Coverage-analysis identifies gaps
 
 Phase 2.5: EVIDENCE PRODUCTION & AUDIT (NEW v1.2.0 — EDD steps 3-4)
@@ -54,6 +55,7 @@ Phase 2.5: EVIDENCE PRODUCTION & AUDIT (NEW v1.2.0 — EDD steps 3-4)
 
 Phase 3: QUALITY GATES
 ├── Quality-assessment evaluates readiness
+├── Security gate: deepsec-gate --diff <base> → receipt.json (exit 1 blocks, 78 = SKIPPED)
 ├── Defect-intelligence predicts bugs
 ├── Visual-accessibility checks WCAG compliance
 ├── Chaos-resilience validates fault tolerance
