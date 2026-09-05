@@ -1,0 +1,49 @@
+{
+  "schema": "agentbox/closeout-receipt@1",
+  "adr": "ADR-2027",
+  "dated": "2026-09-05",
+  "claim": "The break-glass bearer gains expiry, request scope and auditable per-use records; the secret backup produces an age-encrypted archive it cannot write in plaintext; and recovery has actually been exercised on synthetic data.",
+  "break_glass": {
+    "finding_addressed": "The review found 'a static break-glass token comparison without branch-local expiry/scope checks', and that returning a mode/identity 'is not durable per-use audit'.",
+    "implemented": {
+      "expiry": "NIP98_PROXY_BEARER_EXPIRES_AT (ISO-8601 or epoch seconds). A MALFORMED value is fail-closed — an operator who tried to bound the credential and mistyped must not silently get an unbounded one.",
+      "scope": "NIP98_PROXY_BEARER_SCOPE, comma-separated 'METHOD /path/prefix' entries ('*' for any method). A correct token outside its scope is refused, and the scope binds the method as well as the path.",
+      "audit": "Every acceptance AND every refusal is logged with a sha256-12 token FINGERPRINT — never the token — plus method, path, remote address and a use counter, so uses of one credential can be correlated across a rotation without the audit log becoming a second place the secret lives.",
+      "honest_status": "The health payload says 'NO EXPIRY CONFIGURED' / 'UNRESTRICTED' explicitly, so an unbounded credential cannot read as a bounded one. The in-process counters are labelled as NOT a durable audit store.",
+      "compatibility": "Both bounds default off, so an existing deployment is byte-compatible until an operator sets them."
+    },
+    "tests": {
+      "suite": "config/nip98-proxy/selftest.mjs (section N, against real proxy children on ports 19102-19104)",
+      "total_assertions": 134,
+      "failures": 0,
+      "skips": 0,
+      "new_assertions": 14,
+      "note": "134/0/0 is the POST-MERGE number across this change and the concurrent ADR-2009/2010 work in the same files."
+    }
+  },
+  "encrypted_backup": {
+    "finding_addressed": "The review found the backup path producing an ordinary ZIP with an unzip integrity check, specifying 'neither encryption nor explicit permission hardening', and noted that 'archive integrity does not establish restoration'.",
+    "implemented": "services/secret-backup — a Rust binary producing tar-inside-age. Both established formats with maintained implementations; the age crate is the reference Rust implementation of the age specification (X25519 or scrypt key wrapping, ChaCha20-Poly1305 under STREAM). No primitive is implemented here and there is no bespoke envelope.",
+    "hard_rule": "It CANNOT produce a plaintext archive. Recipients are resolved before anything is read, and with neither a recipient nor a passphrase the run fails having created no output file.",
+    "hardening": "Archive and manifest are written 0600; the manifest carries file NAMES only, never contents; restore refuses any entry path that could escape the destination.",
+    "recovery_exercise": "self-test PASS — backed up and restored 3 synthetic file(s) via age/scrypt-passphrase; archive contained no plaintext",
+    "tests": { "suite": "services/secret-backup (cargo test)", "result": "ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.33s" },
+    "covers": [
+      "synthetic backup restores byte for byte, and the archive is verified to be an age file containing none of the plaintext",
+      "refuses to write a plaintext archive, creating no output file",
+      "templates and vendored trees are excluded",
+      "restore rejects paths that escape the destination",
+      "a wrong passphrase fails rather than returning rubbish",
+      "a recipient-encrypted archive needs an identity, and round-trips with a real x25519 keypair",
+      "the archive is owner-only on disk"
+    ]
+  },
+  "remaining": [
+    "Custodians remain UNCONFIRMED. The register records roles to assign, not accepted custody.",
+    "No rotation was performed and no credential was revoked; rotation cadences and incident windows are still undefined.",
+    "The in-process use counters are not a durable audit store — a restart resets them.",
+    "Off-host survival and revocation of retained backup copies are untested; the tool makes an encrypted archive, which is not a retention or destruction policy.",
+    "The bounds are default-off, so a deployment that sets neither is exactly as unbounded as before. The register now says so rather than implying otherwise.",
+    "services/secret-backup is not yet wired into flake.nix, so the image does not ship the binary."
+  ]
+}

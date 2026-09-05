@@ -60,3 +60,87 @@ None yet — this record is `proposed`/`none`/`inactive`. Verification lands whe
 the custody register exists, the publisher key-split ships, and break-glass use is
 audit-logged; at that point set `verified_commit` and populate `verified_paths`.
 Governing surface: `docs/SECURITY-profiles.md`.
+
+## Closeout extension — 2026-09-04
+
+CP-01/04/07/08. Owner remains jjohare; actual custodians are not yet confirmed. The [provisional register](../SECURITY-profiles.md#provisional-custody-register--2026-09-04) now identifies seven credential roles, source interfaces and required evidence. Proposed/none/inactive is retained for the complete lifecycle policy: drafting rows does not implement custody, rotation or bounded break-glass authority.
+
+Source review finds a static break-glass token comparison without branch-local expiry/scope checks; SSH dispatch depends on ambient client configuration; secret backup uses an ordinary ZIP and archive-integrity test. Those are not lifecycle guarantees. Publisher removal must account for the relay/inbox distinction now recorded in ADR-2012; one rebuild alone is not a demonstrated revocation bound.
+
+**Acceptance condition:** Confirm custodians and deployed storage without recording values, enumerate remaining provider/service credentials, define rotation and incident windows, and test revoked/expired/wrong-scope rejection across running instances, caches, retained backups and restart. Establish durable use receipts without credential leakage. Test encrypted/protected backup recovery using synthetic data. Coordinate publisher key-split and session/daemon invalidation; preserve explicit evidence for failed persistence and failed rotation. See the [review](../../../../VisionFlow/docs/estate-review/runtime-ingress.md#custody-and-revocation-acceptance) and [source receipt](../../../../VisionFlow/docs/estate-review/evidence/custody-snapshot.json). No real credential was read, rotated or used.
+
+## Acceptance progress — 2026-09-05
+
+**Implemented — break-glass is bounded authority.** The review found "a static
+break-glass token comparison without branch-local expiry/scope checks", and that
+returning a mode/identity "is not durable per-use audit". A credential that never
+expires, reaches every route and leaves no record is indistinguishable from a
+permanent backdoor with a dramatic name. Three bounds now sit inside the
+break-glass branch itself, applied *after* the constant-time token compare:
+
+* **Expiry** — `NIP98_PROXY_BEARER_EXPIRES_AT` (ISO-8601 or epoch seconds). A
+  *malformed* value is fail-closed: an operator who tried to bound the credential
+  and mistyped must not silently receive an unbounded one.
+* **Request scope** — `NIP98_PROXY_BEARER_SCOPE`, comma-separated
+  `METHOD /path/prefix` entries. The correct token outside its scope is refused,
+  and the scope binds the method as well as the path.
+* **Auditable use** — every acceptance *and* every refusal is logged with a
+  sha256-12 token **fingerprint**, never the token, plus method, path, remote
+  address and a use counter. That lets uses of one credential be correlated
+  across a rotation without the audit log becoming a second place the secret
+  lives.
+
+The health payload reports `NO EXPIRY CONFIGURED` and `UNRESTRICTED` explicitly,
+so an unbounded credential cannot read as a bounded one on a status page, and the
+in-process counters are labelled as *not* a durable audit store. Both bounds
+default off, so an existing deployment is byte-compatible until an operator sets
+them — the credential is no weaker than before and materially stronger the moment
+either is configured.
+
+**Implemented — the backup is encrypted, and recovery has been exercised.** The
+review found an ordinary ZIP with an `unzip -t` check, "neither encryption nor
+explicit permission hardening", and noted that "archive integrity does not
+establish restoration". `services/secret-backup` replaces it with **tar inside
+age** — both established formats with maintained implementations; the `age` crate
+is the reference Rust implementation of the age specification (X25519 or scrypt
+key wrapping, ChaCha20-Poly1305 under STREAM). No primitive is implemented here
+and there is no bespoke envelope. The hard rule is that it **cannot produce a
+plaintext archive**: recipients are resolved before anything is read, and with
+neither a recipient nor a passphrase the run fails having created no output file.
+Archive and manifest are written `0600`; the manifest carries file *names* only;
+restore refuses any entry path that could escape its destination.
+
+**Tests and results.** `config/nip98-proxy/selftest.mjs` — **134 assertions, 0
+failures, 0 skips** (the post-merge number across this change and the concurrent
+ADR-2009/2010 work in the same files); 14 of those are the new section-N cases,
+run against real proxy children on ports 19102–19104, covering expired-but-valid
+token, in-scope acceptance, out-of-scope refusal, method binding, the fingerprint
+audit on both outcomes, the absence of the token from every audit record, the
+malformed-expiry fail-closed path, and back-compatibility when neither bound is
+set. `services/secret-backup` — **7 cargo tests pass**, including the synthetic
+recovery exercise the acceptance condition names: invented secrets are backed up,
+the archive is verified to be an age file containing none of the plaintext, and
+they are restored **byte for byte** into a different directory. The same exercise
+is available on demand as `agentbox-secret-backup self-test`. A recipient-based
+round trip with a real x25519 keypair is covered separately.
+
+**Receipts.**
+`docs/estate-closeout/2026-09-05/adr-2027-custody-break-glass.json`.
+
+**Governed paths changed.** `config/nip98-proxy/proxy.mjs` (break-glass branch,
+new env constants, health payload), `config/nip98-proxy/selftest.mjs` (section N
+appended), `services/secret-backup/` (new crate),
+`docs/SECURITY-profiles.md` (custody register).
+
+**Remaining — and this is most of the ADR.** Custodians are still
+**unconfirmed**: the register records roles to assign, not accepted custody. No
+rotation was performed and no credential revoked; rotation cadences and incident
+windows remain undefined. The in-process use counters are not a durable audit
+store — a restart resets them. Off-host survival and revocation of retained
+backup copies are untested: an encrypted archive is not a retention or
+destruction policy. The publisher key-split (ADR-2012) and session/daemon
+invalidation are untouched. The new crate is not yet wired into `flake.nix`, so
+the image does not ship the binary. `implementation_status` stays `none` for the
+full lifecycle policy; what has moved is that two of its concrete weaknesses —
+unbounded break-glass authority and a plaintext backup — now have code and tests
+behind them.

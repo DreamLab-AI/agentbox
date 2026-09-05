@@ -1,0 +1,34 @@
+[package]
+name = "agentbox-secret-backup"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+description = "Encrypted secret backup and restore for agentbox (ADR-2027). Produces an age-encrypted tar archive; never a plaintext one."
+repository = "https://github.com/DreamLab-AI/agentbox"
+readme = "README.md"
+publish = false
+
+[[bin]]
+name = "agentbox-secret-backup"
+path = "src/main.rs"
+
+[dependencies]
+# The established encryption format. `age` is the reference Rust implementation
+# of the age spec (X25519 / scrypt, ChaCha20-Poly1305 under STREAM). ADR-2027
+# forbids a bespoke envelope, and this is the crate that makes that unnecessary.
+age = { version = "0.11", features = ["armor"] }
+secrecy = "0.8"
+tar = "0.4"
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+walkdir = "2"
+# `self-test` is a first-class SUBCOMMAND (an operator must be able to prove
+# recovery works on demand), not only a test, so tempfile is a real dependency.
+tempfile = "3"
+
+[dev-dependencies]
+tempfile = "3"
+
+# Standalone crate: agentbox services are not members of the host project workspace
+# (the same posture as services/nostr-pod-bridge).
+[workspace]
