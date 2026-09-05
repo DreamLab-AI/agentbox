@@ -1,13 +1,21 @@
-//! agentbox-mcp — a single Rust `rmcp` binary that replaces three thin
-//! Python FastMCP servers (imagemagick, web-summary, gemini-url-context).
-//! Each subcommand serves exactly the tools of the server it replaces, over
-//! stdio, so the three MCP server *names* registered in `skills/mcp.json`
-//! and `mcp/mcp.json` are unchanged.
+//! agentbox-mcp — a single Rust binary for agentbox's MCP surfaces.
+//!
+//! Three `rmcp` stdio servers replace the thin Python FastMCP servers
+//! (imagemagick, web-summary, gemini-url-context); each subcommand serves
+//! exactly the tools of the server it replaces, so the MCP server *names*
+//! registered in `skills/mcp.json` and `mcp/mcp.json` are unchanged.
+//!
+//! `hub` is different: it is the shared streamable-HTTP front for stateless
+//! stdio MCP servers (ADR-2034), so forty Claude Code sessions share one
+//! process per server instead of spawning forty.
 
 mod common;
 mod gemini_url_context;
+mod hub;
 mod imagemagick;
 mod web_summary;
+
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use rmcp::ServiceExt;
@@ -17,7 +25,7 @@ use tracing_subscriber::EnvFilter;
 #[command(
     name = "agentbox-mcp",
     version,
-    about = "Unified agentbox MCP server (imagemagick, web-summary, gemini-url-context)"
+    about = "Unified agentbox MCP server (imagemagick, web-summary, gemini-url-context, hub)"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -34,6 +42,15 @@ enum ServerCommand {
     /// URL expansion and analysis using Gemini's URL Context API.
     #[command(name = "gemini-url-context")]
     GeminiUrlContext,
+    /// Shared streamable-HTTP hub for stateless stdio MCP servers (loopback only).
+    Hub {
+        /// Hub config written at boot by `agentbox-manifest mcp-hub-project`.
+        #[arg(long, default_value = "/run/agentbox/mcp-hub.json")]
+        config: PathBuf,
+        /// Override the config's bind address (must be loopback).
+        #[arg(long)]
+        bind: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -48,26 +65,28 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
-    let transport = rmcp::transport::stdio();
 
     match cli.server {
         ServerCommand::Imagemagick => {
             let service = imagemagick::ImageMagickServer::new()
-                .serve(transport)
+                .serve(rmcp::transport::stdio())
                 .await?;
             service.waiting().await?;
         }
         ServerCommand::WebSummary => {
             let service = web_summary::WebSummaryServer::new()
-                .serve(transport)
+                .serve(rmcp::transport::stdio())
                 .await?;
             service.waiting().await?;
         }
         ServerCommand::GeminiUrlContext => {
             let service = gemini_url_context::GeminiUrlContextServer::new()
-                .serve(transport)
+                .serve(rmcp::transport::stdio())
                 .await?;
             service.waiting().await?;
+        }
+        ServerCommand::Hub { config, bind } => {
+            hub::serve(&config, bind).await?;
         }
     }
 

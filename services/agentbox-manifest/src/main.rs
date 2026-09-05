@@ -21,6 +21,7 @@
 
 mod jsonio;
 mod mcp;
+mod mcp_hub;
 mod plugins;
 mod proxy;
 mod routing;
@@ -52,6 +53,27 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Move stateless MCP servers behind the shared loopback hub (ADR-2034):
+    /// lifts their stdio definitions into `--state`, rewrites `.mcp.json` to
+    /// `type: http` entries and writes the hub's runtime config to `--out`.
+    /// `--disable` restores the stdio entries from `--state`.
+    McpHubProject {
+        #[arg(long)]
+        file: PathBuf,
+        #[arg(long)]
+        state: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, default_value = "http://127.0.0.1:9720")]
+        hub_url: String,
+        #[arg(long, default_value = "127.0.0.1:9720")]
+        bind: String,
+        /// Comma-separated server names to hub.
+        #[arg(long, default_value = "")]
+        servers: String,
+        #[arg(long)]
+        disable: bool,
+    },
     /// Upsert one server into `.mcp.json`. The spec JSON is read from stdin so
     /// bearer tokens and passwords never appear in the process list.
     McpSetServer {
@@ -194,6 +216,23 @@ fn main() -> ExitCode {
 
 fn run(cmd: Command) -> Result<(), String> {
     match cmd {
+        Command::McpHubProject {
+            file,
+            state,
+            out,
+            hub_url,
+            bind,
+            servers,
+            disable,
+        } => {
+            let names: Vec<String> = servers
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .collect();
+            mcp_hub::project(&file, &state, &out, &hub_url, &bind, &names, !disable)
+        }
         Command::McpSetServer { file, name } => mcp::set_server(&file, &name),
         Command::McpReconcileAqe { file, provider } => {
             mcp::reconcile_aqe(&file, Some(provider.as_str()))

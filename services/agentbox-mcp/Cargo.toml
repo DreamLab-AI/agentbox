@@ -5,7 +5,9 @@ name = "agentbox-mcp"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Unified multi-tool MCP server for agentbox (imagemagick, web-summary, gemini-url-context)."
+description = "Unified multi-tool MCP server for agentbox (imagemagick, web-summary, gemini-url-context) and the shared loopback MCP hub."
+repository = "https://github.com/DreamLab-AI/agentbox"
+readme = "README.md"
 
 [[bin]]
 name = "agentbox-mcp"
@@ -13,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.104"
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 clap = { version = "4.6.6", features = ["derive"] }
 glob = "0.3.4"
 regex = "1.13.1"
@@ -21,6 +24,7 @@ rmcp = { version = "3.2", features = ["server", "macros", "schemars", "transport
 schemars = "1.2.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["preserve_order"] }
-tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process", "time", "fs", "io-std"] }
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "process", "time", "fs", "io-std", "io-util", "sync", "net", "signal"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4"] }
