@@ -63,6 +63,13 @@ pkgs.rustPlatform.buildRustPackage {
   doCheck = true;
   nativeCheckInputs = [ pkgs.python3 ];
 
+  # cost_cap::mod_tests::the_real_manifest_declares_an_enforceable_cap reads
+  # the real agentbox.toml to guard against the manifest drifting away from
+  # the fields the limiter reads. This crate's src is services/agentbox-ops/
+  # alone (see module comment above), so the repo-root manifest is not
+  # reachable by relative path inside the sandbox — hand it in explicitly.
+  AGENTBOX_TOML_PATH = ../agentbox.toml;
+
   meta = with lib; {
     description = "Operational CLI suite for agentbox — scheduler daemon, daemon reaper, token audit, ExpeL lesson distillation, Voyager verification gate, and skill helpers (Rust port of the retired Python scripts)";
     homepage    = "https://github.com/DreamLab-AI/agentbox";

@@ -392,9 +392,19 @@ fn runs_are_accounted_independently_and_reset_clears_one() {
 
 #[test]
 fn the_real_manifest_declares_an_enforceable_cap() {
-    // Guards against the manifest drifting away from the fields the limiter reads.
-    let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../agentbox.toml");
-    let text = std::fs::read_to_string(&manifest).expect("agentbox.toml");
+    // Guards against the manifest drifting away from the fields the limiter
+    // reads. The Nix package for this crate (lib/agentbox-ops.nix) builds
+    // from services/agentbox-ops/ alone — no sibling reassembly — so the
+    // repo-root agentbox.toml is not reachable by relative path inside that
+    // sandbox. The derivation instead exports AGENTBOX_TOML_PATH pointing at
+    // the real file's store path; a plain `cargo test` from a full checkout
+    // (no such env var) falls back to the relative path it always used.
+    let manifest = match std::env::var_os("AGENTBOX_TOML_PATH") {
+        Some(p) => std::path::PathBuf::from(p),
+        None => std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../agentbox.toml"),
+    };
+    let text = std::fs::read_to_string(&manifest)
+        .unwrap_or_else(|e| panic!("reading {}: {e}", manifest.display()));
     let c = CapConfig::from_manifest_toml(&text);
     assert!(
         c.spend_cap_usd > 0.0 && c.spend_cap_usd.is_finite(),

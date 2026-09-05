@@ -445,9 +445,19 @@
           pkgName         = "deepsec";
           version         = "2.3.9";
           sha256          = "sha256-5DHqDxepgjVhBmbjU5/b8U3VX+K9rsxSENt2o/BumHs=";
-          nodeModulesHash = lib.fakeHash;
+          nodeModulesHash = "sha256-svwTvpVDYWCKfTnO4YL70f1qcDDiEQ0JLFpZfK36qIk=";
           bin             = "deepsec";
           extraEnv        = { CLAUDE_CODE_EXECUTABLE = "claude"; };
+          # deepsec's published tarball keeps its own monorepo build-only
+          # packages (@deepsec/core, @deepsec/processor, @deepsec/scanner) as
+          # devDependencies pinned to `workspace:*` — never on the public
+          # registry. The shipped dist/cli.mjs is already pre-bundled (no
+          # build step runs here; dontBuild=true in stage 3), so those deps
+          # are never needed. Modern npm resolves the full graph before
+          # `--omit=dev` prunes it and aborts on the workspace: protocol
+          # regardless, so strip devDependencies before `npm install` (same
+          # fix as wrangler's @cloudflare/cli below).
+          stripDevDeps    = true;
         };
 
         # ruvector is always included; rest are feature-gated. nagual-qe is
