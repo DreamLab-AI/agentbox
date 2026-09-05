@@ -5,6 +5,8 @@ name = "agentbox-manifest"
 version = "0.1.0"
 edition = "2021"
 description = "Boot-time TOML/JSON projection for agentbox — replaces the inline python3 in config/entrypoint-unified.sh and the four manifest scripts"
+repository = "https://github.com/DreamLab-AI/agentbox"
+readme = "README.md"
 license = "MIT OR Apache-2.0"
 
 [[bin]]

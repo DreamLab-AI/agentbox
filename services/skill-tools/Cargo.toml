@@ -7,6 +7,8 @@ edition = "2021"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 description = "Rust ports of agentbox skill tooling: UI/UX Pro Max BM25 search & design-system generation, Wardley Map generation/analysis/heuristics, and docs-alignment validators (links, mermaid, ASCII diagrams, reports)."
+repository = "https://github.com/DreamLab-AI/agentbox"
+readme = "README.md"
 
 [lib]
 name = "skill_tools"

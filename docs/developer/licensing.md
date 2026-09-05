@@ -23,12 +23,21 @@ All permissive (MIT, Apache-2.0) components are compatible with AGPL-3.0.
 ## The `services/` subtree is permissive (ADR-2030)
 
 The Rust crates under `services/` are first-party but licensed
-`MIT OR Apache-2.0` by their own manifests (`LICENSE-MIT` / `LICENSE-APACHE`
-in each workspace, `services/LICENSING-NOTICE.md`), so they can be published
-to crates.io and reused outside the AGPL service. The one exception is a crate
-that links an AGPL library: `nostr-pod-bridge` links `solid-pod-rs-nostr` and
-declares `AGPL-3.0-only`. The aggregate hosted service remains AGPL-3.0; the
-permissive grant applies to each crate on its own.
+`MIT OR Apache-2.0` by their own manifests, and each package directory carries
+the `LICENSE-MIT` and `LICENSE-APACHE` texts plus a `README.md` stating the dual
+grant (`services/LICENSING-NOTICE.md` has the per-directory table), so they can
+be published to crates.io and reused outside the AGPL service. The one exception
+is a crate that links an AGPL library: `nostr-pod-bridge` links
+`solid-pod-rs-nostr`, declares `AGPL-3.0-only`, ships the full AGPL text as
+`LICENSE`, and says in its README that it is **not** dual-licensed. The
+aggregate hosted service remains AGPL-3.0; the permissive grant applies to each
+crate on its own.
+
+`scripts/ci/check-crate-licensing.sh` enforces this on every push and pull
+request (a step in `.github/workflows/invariants.yml`): a `services/` package
+directory whose manifest declares a grant with no adjacent text, no README, or
+a licence expression this gate does not recognise fails CI. Adding a crate with
+a new licence expression is therefore a deliberate change to the gate.
 
 ## AGPL-3.0 obligations for operators
 
@@ -75,4 +84,24 @@ deterministic closure of every derivation in the image.
 
 - [AGPL-3.0 full text](https://www.gnu.org/licenses/agpl-3.0.html)
 - [AGPL FAQ: network use is distribution](https://www.gnu.org/licenses/gpl-faq.html#UnchangedInterface)
-- [ADR-010 — solid-pod-rs as first-class pod server](../reference/adr/ADR-010-rust-solid-pod-adoption.md)
+- [ADR-010 — solid-pod-rs as first-class pod server](../archive/adr/ADR-010-rust-solid-pod-adoption.md)
+
+## Package evidence qualification — 2026-09-05
+
+The 2026-09-04 inventory found eight manifests with the declared
+seven-permissive/one-AGPL split and **no** adjacent licence texts or README
+files. That gap is now closed on disk: every package directory carries the texts
+its manifest declares, each manifest declares `description`, `repository` and
+`readme`, and `cargo package --list` shows those files inside the package
+payload for all eight crates. `scripts/ci/check-crate-licensing.sh` keeps it
+closed.
+
+What that does **not** establish: no registry lookup, archive creation or
+publication has run; no dependency graph has been reviewed for distribution
+licence compatibility; the prose-sanitiser and diagram-ir extraction account
+still needs separate source/package receipts. Files on disk are a packaging
+precondition, not a release.
+[Metadata evidence](../../../../VisionFlow/docs/estate-review/configuration-projection.md#service-package-and-release-metadata)
+does not certify a published archive, dependency compatibility or operator
+compliance. Complete release ownership, packaged contents and dependency review
+before claiming the package contract closed.

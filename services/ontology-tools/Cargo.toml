@@ -7,6 +7,8 @@ edition = "2021"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 description = "Vault OntologyBlock markdown parsing, OWL2 functional-syntax axiom validation, field-preserving edits, wiki-link validation and Perplexity-backed enrichment for agentbox."
+repository = "https://github.com/DreamLab-AI/agentbox"
+readme = "README.md"
 
 [[bin]]
 name = "ontology-tools"

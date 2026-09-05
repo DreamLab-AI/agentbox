@@ -5,6 +5,8 @@ edition = "2021"
 rust-version = "1.85"
 license = "AGPL-3.0-only"
 description = "Embedded Nostr relay + Solid-pod ingress bridge for agentbox. Consumes nostr-bbs-core crypto (NIP-44/26/59) and solid-pod-rs-nostr relay substrate (NIP-01/11/16) — no hand-rolled JS crypto."
+repository = "https://github.com/DreamLab-AI/agentbox"
+readme = "README.md"
 
 [[bin]]
 name = "nostr-pod-bridge"
