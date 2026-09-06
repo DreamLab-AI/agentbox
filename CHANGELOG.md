@@ -4,6 +4,23 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Fixed (2026-09-06 rebuild and tidy)
+
+- `scripts/aoe-seed-sessions.mjs` never ran in the baked image: its
+  run-as-script guard compared `path.resolve(argv[1])` (`/opt/agentbox/scripts/…`)
+  with `import.meta.url`, which Node resolves through the `/opt/agentbox/scripts`
+  symlink into the Nix store, so the seeder exited 0 without provisioning a single
+  AoE session or settings file. The guard now compares real paths. Verified live:
+  nine sessions seeded, including the ADR-2080 `router` seed.
+- `lib/solid-pod-rs.nix` lost its `let` in the v0.5.0-alpha.9 pin commit, so
+  every image evaluation failed with a syntax error at the `version` line.
+- The `[model_routing.neural]` TUI goldens were not moved with the ADR-2080
+  change, failing the `agentbox-manifest` build's byte-parity tests.
+- Docs tidy: 311 legacy citations repointed into `docs/archive/`, executed
+  handoffs shelved there, unreferenced material swept into the host repo's
+  untracked `archive/attic/`, and stale runtime facts (retired bootstrap script,
+  tmux layout, pod pin, `/workspace` literals, operator paths) corrected.
+
 ### Added (2026-09-06 metaharness router console — ADR-2080)
 
 - `[model_routing.neural]` + the AoE `router` session seed: the metaharness

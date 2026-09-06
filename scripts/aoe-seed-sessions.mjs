@@ -763,8 +763,13 @@ export { reapOrphanWorktrees };
 
 // Run only when executed as a script (the entrypoint's `node <path>`), so the
 // orphan reaper can be imported by tests/cli/aoe-seed-orphans.test.mjs.
+// Compare REAL paths: in the baked image /opt/agentbox/scripts is a symlink
+// into the Nix store and Node resolves import.meta.url through it, so a plain
+// path.resolve(argv[1]) comparison is false there and the seeder silently
+// exits 0 without provisioning anything (observed 2026-09-06).
+const realpathOr = (p) => { try { return fs.realpathSync(p); } catch { return p; } };
 const invokedDirectly = Boolean(process.argv[1])
-  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  && realpathOr(path.resolve(process.argv[1])) === realpathOr(fileURLToPath(import.meta.url));
 if (invokedDirectly) {
   main().catch((e) => {
     warn(`unexpected error: ${e && e.stack ? e.stack : e} — fail-open.`);
