@@ -86,6 +86,15 @@ debugging         = "claude:claude-fable-5-1"
 packaging         = "codex:gpt-5.5"
 release           = "claude:claude-sonnet-5"
 
+[model_routing.neural]
+enabled                   = false
+provider                  = "openrouter"
+quality_bar               = 0.50
+cost_ceiling_usd_per_mtok = 0
+privacy_tier              = "public"
+trajectory                = true
+assets_dir                = "/opt/agentbox/model-router"
+
 [privacy_filter]
 enabled = false
 mode    = "off"

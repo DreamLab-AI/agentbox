@@ -79,6 +79,7 @@
   "model_routing.primary_host": "claude",
   "model_routing.aqe_agent_overrides": true,
   "model_routing.dual_run": false,
+  "model_routing.neural.enabled": false,
   "privacy_filter.enabled": false,
   "privacy_filter.mode": "off",
   "privacy_filter.port": "9092",
