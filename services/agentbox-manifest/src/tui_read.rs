@@ -124,6 +124,7 @@ const FIELDS: &[F] = &[
     F("model_routing.primary_host", D::S("claude"), false),
     F("model_routing.aqe_agent_overrides", D::B(true), false),
     F("model_routing.dual_run", D::B(false), false),
+    F("model_routing.neural.enabled", D::B(false), false),
     F("privacy_filter.enabled", D::B(false), false),
     F("privacy_filter.mode", D::S("off"), false),
     F("privacy_filter.port", D::S("9092"), true),

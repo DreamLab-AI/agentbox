@@ -54,6 +54,7 @@ const BASELINE = [
   {
     reason: 'sub-option of a catalogued capability — /v1/system reports the parent gate',
     keys: [
+      'model_routing.neural.trajectory',  // ADR-2080 knob under the model-routing-neural gate
       'sovereign_mesh.solid_pod', 'sovereign_mesh.nostr_bridge', 'sovereign_mesh.https_bridge',
       'sovereign_mesh.publish_agent_events', 'sovereign_mesh.voice_intent', 'sovereign_mesh.kg_elevation',
       'sovereign_mesh.junkiejarvis', 'sovereign_mesh.per_user_agents', 'sovereign_mesh.mobile_bridge.enabled',

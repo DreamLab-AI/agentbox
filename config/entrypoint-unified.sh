@@ -1576,6 +1576,41 @@ if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ] && command -v aqe >/dev/null 2>&1 
   fi
 fi
 
+# ── ADR-2080: metaharness cost-optimal router console (AoE `router` seed) ──
+# [model_routing.neural] → AGENTBOX_MODEL_ROUTER_* in the runtime-env file so
+# the wrapper/console (and any shell) find the artefacts and the tuning knobs.
+# Deliberately NOT exporting CLAUDE_FLOW_ROUTER_* globally: the console sets
+# those in its own process, so the cost-optimal path is scoped to the dedicated
+# session and never silently re-routes other ruflo work to an external
+# provider (ADR-2079 §4). Fail-open: absent section ⇒ nothing exported.
+_MRN_EXPORTS=""
+_MRN_ENABLED=$(_ab_toml_bool model_routing.neural enabled)
+if [ "$_MRN_ENABLED" = "1" ]; then
+  _MRN_DIR="$(_ab_toml_val model_routing.neural assets_dir)"; _MRN_DIR="${_MRN_DIR:-/opt/agentbox/model-router}"
+  _MRN_FALLBACK="$WORKSPACE/.agentbox/model-router"
+  if [ ! -f "$_MRN_DIR/seed-router.krr.json" ] && [ -f "$_MRN_FALLBACK/seed-router.krr.json" ]; then
+    _MRN_DIR="$_MRN_FALLBACK"   # pre-rebuild: scripts/model-router-fetch.sh populated the fallback
+  fi
+  _MRN_PROVIDER="$(_ab_toml_val model_routing.neural provider)"
+  _MRN_BAR="$(_ab_toml_val model_routing.neural quality_bar)"
+  _MRN_CEIL="$(_ab_toml_val model_routing.neural cost_ceiling_usd_per_mtok)"
+  _MRN_TIER="$(_ab_toml_val model_routing.neural privacy_tier)"
+  _MRN_TRAJ=$(_ab_toml_bool model_routing.neural trajectory)
+  _MRN_EXPORTS="export AGENTBOX_MODEL_ROUTER_ENABLED=1
+export AGENTBOX_MODEL_ROUTER_DIR=\"$_MRN_DIR\"
+export AGENTBOX_MODEL_ROUTER_PROVIDER=\"${_MRN_PROVIDER:-openrouter}\"
+export AGENTBOX_MODEL_ROUTER_QUALITY_BAR=\"${_MRN_BAR:-0.50}\"
+export AGENTBOX_MODEL_ROUTER_COST_CEILING_USD_PER_MTOK=\"${_MRN_CEIL:-0}\"
+export AGENTBOX_MODEL_ROUTER_PRIVACY_TIER=\"${_MRN_TIER:-public}\"
+export AGENTBOX_MODEL_ROUTER_TRAJECTORY=\"$_MRN_TRAJ\"
+export AGENTBOX_MODEL_ROUTER_STATE_DIR=\"$WORKSPACE/.agentbox/model-router-state\""
+  if [ -f "$_MRN_DIR/seed-router.krr.json" ]; then
+    echo "  [model-router] ADR-2080 console enabled → artefacts $_MRN_DIR (provider ${_MRN_PROVIDER:-openrouter}, bar ${_MRN_BAR:-0.50})"
+  else
+    echo "  [model-router] ADR-2080 gate is on but no artefacts at $_MRN_DIR — run ./agentbox.sh model-router fetch (or rebuild)"
+  fi
+fi
+
 # ── ADR-069: project [interaction_plane.proxy] → nip98-proxy config file ──
 # Boot-class route + allowlist config for the sovereign ingress (supervisord
 # environment= cannot carry JSON). The proxy reads this at startup and fails
@@ -2279,6 +2314,8 @@ export EMBEDDING_MODEL="${EMBEDDING_MODEL}"
 # explicitly so an enabled plugin — ruflo-loop-workers / ruflo-autopilot —
 # can never flip headless Claude launches on without an operator export).
 export RUFLO_DAEMON_AI_WORKERS="${RUFLO_DAEMON_AI_WORKERS:-0}"
+# ADR-2080 model-router console knobs (empty unless [model_routing.neural].enabled)
+$_MRN_EXPORTS
 # Interaction plane (PRD-021 / ADR-042): expose the AoE daemon + NIP-98 proxy
 # ports so children (voice bridge repoint, session tooling, shells) resolve them
 # without re-parsing agentbox.toml. Empty/defaults when the plane is disabled.

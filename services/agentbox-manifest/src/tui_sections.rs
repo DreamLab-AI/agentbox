@@ -186,6 +186,19 @@ pub fn render(s: &Value) -> String {
             "packaging         = \"codex:gpt-5.5\"".into(),
             "release           = \"claude:claude-sonnet-5\"".into(),
             String::new(),
+            // ADR-2080: metaharness cost-optimal router console (AoE `router` seed).
+            "[model_routing.neural]".into(),
+            format!(
+                "enabled                   = {}",
+                b(s, "model_routing.neural.enabled")
+            ),
+            "provider                  = \"openrouter\"".into(),
+            "quality_bar               = 0.50".into(),
+            "cost_ceiling_usd_per_mtok = 0".into(),
+            "privacy_tier              = \"public\"".into(),
+            "trajectory                = true".into(),
+            "assets_dir                = \"/opt/agentbox/model-router\"".into(),
+            String::new(),
             "[privacy_filter]".into(),
             format!("enabled = {}", b(s, "privacy_filter.enabled")),
             format!("mode    = {}", q(s, "privacy_filter.mode", "off")),

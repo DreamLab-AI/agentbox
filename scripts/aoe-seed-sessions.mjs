@@ -103,8 +103,15 @@ const DEFAULT_SEEDS = [
 const seeds = Array.isArray(ip.session_seeds) && ip.session_seeds.length ? ip.session_seeds : DEFAULT_SEEDS;
 const coordinator = ip.coordinator || { slug: 'tab0', tool: 'claude', view: 'terminal' };
 
-// Slugs that are the redirected-Claude harnesses handled by the wrapper scripts.
-const WRAPPER_SLUGS = { openrouter: 'openrouter.sh', zai: 'zai.sh' };
+// Slugs whose session program is a hard-fail wrapper script under
+// config/harness-wrappers. openrouter/zai are redirected-Claude harnesses
+// (detect_as claude keeps AoE's status heuristics); `router` is the ADR-2080
+// model-router console (its own program, no detection alias).
+const WRAPPER_SLUGS = {
+  openrouter: { file: 'openrouter.sh', detectAs: 'claude' },
+  zai: { file: 'zai.sh', detectAs: 'claude' },
+  router: { file: 'router.sh', detectAs: null },
+};
 
 // ===========================================================================
 // Pass 1 — provision OpenRouter/ZAI settings.local.json (N-01 key injection)
@@ -263,9 +270,9 @@ function buildCoverage() {
       // distinct custom_agents (name == slug) pointing at the hard-fail wrapper
       // is the collision-free equivalent; agent_detect_as=claude keeps the
       // status heuristics. The wrapper is unchanged as the structural guard.
-      const wrapper = path.join(WRAPPER_DIR, WRAPPER_SLUGS[slug]);
+      const wrapper = path.join(WRAPPER_DIR, WRAPPER_SLUGS[slug].file);
       customAgents[slug] = wrapper; // wrapper self-exports AGENTBOX_PROFILE
-      detectAs[slug] = 'claude';
+      if (WRAPPER_SLUGS[slug].detectAs) detectAs[slug] = WRAPPER_SLUGS[slug].detectAs;
       sessionTools[slug] = slug;
       continue;
     }

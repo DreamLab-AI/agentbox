@@ -500,7 +500,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "false ⇒ flake.nix emits no [program:podcast-cron] supervisor block."
+              "description": "false \u21d2 flake.nix emits no [program:podcast-cron] supervisor block."
             }
           }
         },
@@ -511,7 +511,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "ADR-2057 gap 2: honoured at MCP registration — false ⇒ the entrypoint does not add harness-bridge to .mcp.json. BOOT-class."
+              "description": "ADR-2057 gap 2: honoured at MCP registration \u2014 false \u21d2 the entrypoint does not add harness-bridge to .mcp.json. BOOT-class."
             },
             "template_dir": {
               "type": "string",
@@ -526,7 +526,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "ADR-2057 gap 2: honoured at MCP registration — false ⇒ the entrypoint does not add precedent-bridge to .mcp.json. BOOT-class."
+              "description": "ADR-2057 gap 2: honoured at MCP registration \u2014 false \u21d2 the entrypoint does not add precedent-bridge to .mcp.json. BOOT-class."
             },
             "namespace": {
               "type": "string",
@@ -1240,6 +1240,58 @@
               "type": "string",
               "pattern": "^(claude|codex):[A-Za-z0-9._-]+([ ]*->[ ]*(claude|codex):[A-Za-z0-9._-]+)?$",
               "description": "\"host:model\" with an optional \" -> host:model\" escalation rung (cross-vendor preferred)."
+            }
+          }
+        },
+        "neural": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2080: metaharness cost-optimal router (KRR/k-NN inside the baked ruflo closure) exposed as the dedicated `router` AoE session. Bakes the pinned artefacts from config/model-router/artefacts.json (rebuild class) and exports AGENTBOX_MODEL_ROUTER_* for that session only. Public-tier work only.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Bake /opt/agentbox/model-router and export AGENTBOX_MODEL_ROUTER_* at boot (apply: rebuild for the artefacts, boot for the env)."
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "openrouter",
+                "anthropic"
+              ],
+              "default": "openrouter",
+              "description": "Execution provider for the console; openrouter enables the measured cross-vendor alternates, anthropic restricts picks to Claude tiers."
+            },
+            "quality_bar": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.5,
+              "description": "Cheapest candidate whose predicted quality clears this bar wins (CLAUDE_FLOW_ROUTER_QUALITY_BAR)."
+            },
+            "cost_ceiling_usd_per_mtok": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0,
+              "description": "Blended $/MTok ceiling applied before the quality pick; 0 disables (CLAUDE_FLOW_ROUTER_COST_CEILING_USD_PER_MTOK)."
+            },
+            "privacy_tier": {
+              "type": "string",
+              "enum": [
+                "public"
+              ],
+              "default": "public",
+              "description": "Only `public` is accepted \u2014 the console dispatches to an external provider (ADR-2079 \u00a74)."
+            },
+            "trajectory": {
+              "type": "boolean",
+              "default": true,
+              "description": "Write DRACO-shaped trajectory rows for ruflo's promotion-gate analyser (CLAUDE_FLOW_ROUTER_TRAJECTORY)."
+            },
+            "assets_dir": {
+              "type": "string",
+              "default": "/opt/agentbox/model-router",
+              "description": "Where the baked artefacts live; the console falls back to $WORKSPACE/.agentbox/model-router (scripts/model-router-fetch.sh) before a rebuild."
             }
           }
         }

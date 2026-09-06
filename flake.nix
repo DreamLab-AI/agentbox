@@ -100,6 +100,24 @@
         n2c = nix2container.packages.${system}.nix2container;
 
         agentboxConfig = builtins.fromTOML (builtins.readFile ./agentbox.toml);
+        # ADR-2080: metaharness cost-optimal router console. The @claude-flow/cli
+        # npm tarball ships no router artefacts (its `files` list excludes
+        # assets/model-router), so the pinned seed corpus, KRR/calibrator/FastGRNN
+        # artefacts and the MiniLM q8 embedder are vendored from ONE hash-verified
+        # manifest (config/model-router/artefacts.json — also read by
+        # scripts/model-router-fetch.sh for the pre-rebuild fallback dir) and
+        # baked at /opt/agentbox/model-router when [model_routing.neural] is on.
+        modelRoutingNeuralCfg = (agentboxConfig.model_routing or {}).neural or {};
+        modelRouterArtefacts = builtins.fromJSON (builtins.readFile ./config/model-router/artefacts.json);
+        modelRouterAssets = pkgs.runCommand "agentbox-model-router-assets" {} (
+          lib.concatMapStringsSep "\n" (f: ''
+            mkdir -p "$out/$(dirname "${f.dest}")"
+            cp ${pkgs.fetchurl { url = f.url; sha256 = f.sha256; }} "$out/${f.dest}"
+          '') modelRouterArtefacts.files
+          + ''
+            cp ${./config/model-router/artefacts.json} "$out/artefacts.json"
+          ''
+        );
         coreCfg = agentboxConfig.core or {};
         sovereignCfg = agentboxConfig.sovereign_mesh or {};
         networkingCfg = agentboxConfig.networking or {};
@@ -1709,6 +1727,14 @@ default_days = ${toString (relayCfg.retention_days or 30)}
             cp -r "$out/opt/agentbox/config/nip98-proxy" "$out/opt/agentbox/nip98-proxy"
             chmod -R u+w "$out/opt/agentbox/nip98-proxy"
           fi
+
+          ${lib.optionalString (modelRoutingNeuralCfg.enabled or false) ''
+          # ADR-2080: pinned router artefacts + offline MiniLM embedder for the
+          # AoE `router` seed. Gate off ⇒ nothing copied (byte-identical-when-off).
+          mkdir -p "$out/opt/agentbox/model-router"
+          cp -r ${modelRouterAssets}/. "$out/opt/agentbox/model-router/"
+          chmod -R u+w "$out/opt/agentbox/model-router"
+          ''}
 
           ${lib.optionalString (sovereignCfg.enabled or false) ''
           cp -rL ${nostrBridgePkg}/package/node_modules $out/opt/agentbox/mcp/node_modules

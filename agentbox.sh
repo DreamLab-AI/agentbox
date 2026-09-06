@@ -54,6 +54,7 @@ Local lifecycle commands:
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
   ${GREEN}voice${NC}            Manage/open the operator cockpit + Unmute stack [open|up|down|logs|health|status|certs|rebuild|shell]
+  ${GREEN}model-router${NC}     ADR-2080 metaharness router console [fetch|check|status|route "<task>" [--dry-run]|console]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}android${NC}          [EXPERIMENTAL, gated] redroid Android/Play sidecar [up|down|logs|status|screencap|shell|id] — needs AGENTBOX_ENABLE_ANDROID=1
   ${GREEN}preflight${NC}        Validate the local environment + manifest before up (W021 audit, missing host paths, override drift)
@@ -1762,7 +1763,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|xr-runtime|android|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|model-router|xr-runtime|android|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
@@ -1924,6 +1925,30 @@ _voice_compose_args() {
         VOICE_COMPOSE_ARGS+=(-f "${VOICE_UNMUTE_DIR}/docker-compose.yml" -f "$VOICE_OVERRIDE_FILE")
     fi
     VOICE_COMPOSE_ARGS+=(-f "$VOICE_FILE")
+}
+
+cmd_model_router() {
+    # ADR-2080: metaharness cost-optimal router console (AoE `router` seed).
+    local sub="${1:-status}"; shift || true
+    local console="${SCRIPT_DIR:-.}/config/model-router/console.mjs"
+    case "$sub" in
+        fetch)   exec "${SCRIPT_DIR:-.}/scripts/model-router-fetch.sh" "$@" ;;
+        check)   exec "${SCRIPT_DIR:-.}/scripts/model-router-fetch.sh" --check "$@" ;;
+        status)  exec node "$console" --status "$@" ;;
+        route)   [ $# -ge 1 ] || { echo "usage: $0 model-router route \"<task>\" [--dry-run] [--json]" >&2; exit 2; }
+                 local task="$1"; shift; exec node "$console" --once "$task" "$@" ;;
+        console) exec "${SCRIPT_DIR:-.}/config/harness-wrappers/router.sh" "$@" ;;
+        *)
+            cat <<USAGE
+usage: $0 model-router <fetch|check|status|route "<task>" [--dry-run]|console>
+  fetch    populate \$WORKSPACE/.agentbox/model-router (pre-rebuild fallback, hash-verified)
+  check    verify the fallback dir against config/model-router/artefacts.json
+  status   router backend, artefact dir, corpus provenance
+  route    route (and execute) one task; --dry-run routes only
+  console  open the interactive console (what the AoE \`router\` session runs)
+USAGE
+            exit 2 ;;
+    esac
 }
 
 cmd_voice() {
@@ -2095,6 +2120,7 @@ case "${CMD:-}" in
     gui-tools)         cmd_gui_tools "$@" ;;
     openmed)           cmd_openmed "$@" ;;
     voice)             cmd_voice "$@" ;;
+    model-router)      cmd_model_router "$@" ;;
     xr-runtime)        cmd_xr_runtime "$@" ;;
     android)           cmd_android "$@" ;;
     migrate-workspace) cmd_migrate_workspace "$@" ;;

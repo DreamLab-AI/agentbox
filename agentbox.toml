@@ -1023,6 +1023,27 @@ debugging         = "claude:claude-fable-5-1"
 packaging         = "codex:gpt-5.5"          # kit-originated activity (no upstream template)
 release           = "claude:claude-sonnet-5" # kit-originated activity (no upstream template)
 
+# ── ADR-2080: metaharness cost-optimal router as a dedicated AoE session ─────
+# Phase 0 of ADR-2079. The baked ruflo closure carries @metaharness/router
+# (KRR / k-NN, optional FastGRNN) but the npm tarball ships NO router artefacts
+# and ruflo's task-embedder imports a package the closure lacks, so the
+# cost-optimal path never fires on its own. This gate (a) bakes the pinned
+# artefacts from config/model-router/artefacts.json into /opt/agentbox/model-router
+# (rebuild class) and (b) exports AGENTBOX_MODEL_ROUTER_* for the `router`
+# session seed below, whose console embeds each task offline, asks the router
+# for the cheapest OpenRouter model above the quality bar, executes it and
+# writes a labelled receipt. Scoped to that session: the entrypoint never
+# exports CLAUDE_FLOW_ROUTER_* globally. PUBLIC WORK ONLY (privacy_tier is
+# pinned; the console refuses anything else — ADR-2079 §4).
+[model_routing.neural]
+enabled                   = true
+provider                  = "openrouter"   # openrouter | anthropic (anthropic = Claude tiers only)
+quality_bar               = 0.50           # 0.25 always-cheapest … 0.70 quality-strict (ADR-149 measured default)
+cost_ceiling_usd_per_mtok = 0              # blended $/MTok ceiling; 0 = off (5 = cheap+mid only, 20 = no Sonnet/Opus)
+privacy_tier              = "public"       # the ONLY accepted value; the console exits on anything else
+trajectory                = true           # DRACO-shaped rows → ruflo promotion-gate analyser
+assets_dir                = "/opt/agentbox/model-router"   # baked; pre-rebuild fallback $WORKSPACE/.agentbox/model-router
+
 # ── Privacy filter ──────────────────────────────────────────────────────────────
 # Local PII redaction sidecar using openai/privacy-filter (1.5B MoE, Apache-2.0).
 # See docs/reference/adr/ADR-008-privacy-filter-routing.md for the routing layer
@@ -1361,6 +1382,12 @@ slug          = "loom-raw"            # Raw Qwen via :8085 — no Loom scaffold,
 tool          = "opencode"
 model         = "loom-raw/qwen3.8-27B"
 worktree      = true
+eager_mandate = false
+
+[[interaction_plane.session_seeds]]
+slug          = "router"              # ADR-2080: metaharness cost-optimal router console (custom agent via config/harness-wrappers/router.sh)
+tool          = "custom:router"       # resolved by the seeder's WRAPPER_SLUGS → hard-fail wrapper; PUBLIC work only
+worktree      = false
 eager_mandate = false
 
 # tab-0 coordinator: named, special, TERMINAL VIEW. AoE's default ACP structured
