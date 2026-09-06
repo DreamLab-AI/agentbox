@@ -1,10 +1,12 @@
 # Backlog / Next Steps
 
-> **Combined register (2026-07-22):** this backlog and the VisionClaw remediation
-> ladder now share a single unified TODO with a six-state unblock taxonomy:
-> `../../../docs/TODO-unified.md` (governed by PRD-024 / ADR-133). Entries below
-> remain authoritative for agentbox detail; the unified register is the
-> cross-repo view the final-mile sprint works from.
+> **Combined register (2026-07-22, reconciled 2026-09-06):** this backlog and the
+> VisionClaw remediation ladder share a single unified TODO with a six-state
+> unblock taxonomy: `../../../docs/TODO-unified.md` (governed by PRD-024 /
+> ADR-133). Entries below remain authoritative for agentbox detail; the unified
+> register is the cross-repo view the final-mile sprint works from. The
+> 2026-09-01..06 sprint closed M-1, M-6, G-3 and G-9 there; the agentbox-owned
+> residue is recorded below.
 
 Living document for known gaps and deferred decisions. Each entry carries the
 date it was identified and what unblocks it. Remove entries when done; move
@@ -12,8 +14,9 @@ decisions into an ADR when they become architectural.
 
 ## Open TODOs
 
-_Both prior entries resolved and reviewed into the unified register 2026-08-31 —
-kept here struck-through for agentbox-local history._
+_The two 2026-08-31 entries are resolved and reviewed into the unified register;
+they are kept here struck-through for agentbox-local history. The entries below
+them were opened by the 2026-09-01..06 sprint reconciliation._
 
 ### ~~tree-search-coder implementation missing~~ **DONE 2026-08-31** (register C-4)
 
@@ -21,16 +24,72 @@ Authored per ADR-020 Surface 2: `skills/tree-search-coder/SKILL.md` + 4 referenc
 (execution-gated best-of-N, `spend_cap_usd` halt, audit JSONL); registered in
 SKILL-DIRECTORY, schema, `agentbox.toml`, `system-manifest.js`. Validators green.
 
-### ~~memory_learning consumers — corpus-gated~~ **PARTIAL** (register D-1)
+### ~~memory_learning consumers, corpus-gated~~ **PARTIAL** (register D-1)
 
-Floor cleared (78 aggregates ≥20); `feed_retrieval = true` applied 2026-08-31,
-recall gate re-run PASS. Remaining: observation window, then flip `feed_routing`.
+Floor cleared (78 aggregates >=20); `feed_retrieval = true` applied 2026-08-31.
+Recall gate re-measured 2026-09-06: **PASS, exit 0**, median self-recall
+**189/200** (band >=175), true-recall **115/120** (band >=102), 3 runs at k=10
+against corpus `corpus-9992e88f6165` (196,949/196,949 embedded), receipt
+`sha256-12-cbccf57f8d35`, artifact
+`backups/ruvector-sidecar/recall-runs/2026-09-06T08-55-47-514Z.json`. This
+confirms `fa024cc08` and supersedes the closeout addendum's 164/200 + 96/120
+FAIL, which measured the index before the serial HNSW rebuild landed. Remaining:
+the observation-window length is still undefined at `docs/LEARNING-memory.md:169`;
+define it, then flip `feed_routing` (`agentbox.toml:418`, still `false`).
 Tracked as D-1 in `../../../docs/TODO-unified.md`.
+
+### Publisher-key split not performed (register G-5)
+
+Identified 2026-09-06. `agentbox.toml:117` `[sovereign_mesh.operator].pubkey_hex`
+still carries the shared visionclaw-server key. `services/secret-backup`
+(ADR-2027, commit `7905d2a64`) supplies age-encrypted custody and rotation
+tooling, so what is missing is the split itself, not the tool. Unblocks when the
+M-3 rebuild bakes a distinct operator key.
+
+### `services/secret-backup` is outside the reproducible build (register G-17)
+
+Identified 2026-09-06. The crate is built and tested but `grep -c secret-backup
+flake.nix` returns 0, so a real custody capability is not part of `nix build
+.#runtime`. Unblocks when the service is wired into `flake.nix` alongside the
+other sovereign-mesh services.
+
+### Agent-DID mint still fail-open at the entrypoint (register G-6)
+
+Identified 2026-09-06, half resolved. `management-api/lib/agent-identity.js`
+`mint` now fails closed with a non-zero exit (ADR-2044). But
+`config/entrypoint-unified.sh:902,922` still preserves
+`AGENTBOX_AGENT_DID="${AGENTBOX_AGENT_DID:-did:nostr:local}"` on a failed or
+invalid mint, so boot continues with a placeholder DID. Unblocks when the
+entrypoint aborts instead of defaulting.
+
+### solid-pod-rs pin skew between Nix and the bridge (register G-20)
+
+Identified 2026-09-06. `lib/solid-pod-rs.nix:52-55` pins `version =
+"0.5.0-alpha.3"` at rev `87b35a1b32f9...`, while
+`services/nostr-pod-bridge/Cargo.toml:22` path-deps the live `solid-pod-rs`
+sibling checkout. The Nix build and the bridge build can therefore compile
+against different versions of the same crate. Unblocks when both reference one
+pinned revision.
+
+### ADR record status lags shipped code (register G-4, DOC-4)
+
+Identified 2026-09-06, both governance-only. ADR-2026: the session-mirror
+redaction it governs is live (`config/hooks/nostr-live-mirror.cjs` runs
+`redactForEgress(body)` and fails closed on null, commit `11804ba4b`), but the
+record is still `proposed`/`inactive` and a stale "fail-open everywhere"
+doc-comment survives nearby. ADR-2002 (AoE token auth boundary): picked up a
+fresh `verified_commit` (`796d85fcf`) this sprint but is still
+`activation_status: staged` while AoE actually runs `--auth token`; flip to
+active and reconcile with AB-2009.
 
 ## Deferred operator decisions (held 2026-07-05)
 
 Deliberately not enabled during the capability-matrix session; each is a
-posture/exposure choice, not a technical gap:
+posture/exposure choice, not a technical gap. All 8 re-confirmed unchanged
+2026-09-06 (register T-4). Solid OIDC gained context but not a decision:
+solid-pod-rs `40f160c` adds an OIDC compat matrix and its own ADR-2003
+"defer LWS-1.0", which documents why the issuer stays deferred rather than
+un-deferring it.
 
 | Surface | Flags | Consideration |
 |---|---|---|
@@ -48,30 +107,30 @@ posture/exposure choice, not a technical gap:
 | Capability | Flag(s) | Blocked on |
 |---|---|---|
 | ComfyUI | `integrations.comfyui_external` / `skills.media.comfyui_builtin` | No ComfyUI service on `visionclaw_network` (builtin also needs a heavy image rebuild + source hash) |
-| KG elevation / ontology axioms | `sovereign_mesh.kg_elevation`, `skills.ontology.direct_axiom_load` | `visionclaw-server:4000` unreachable |
+| KG elevation / ontology axioms | `sovereign_mesh.kg_elevation`, `skills.ontology.direct_axiom_load` | `visionclaw-server:4000` unreachable. **Register gap closed 2026-09-06:** carried in this table since 2026-07 with no counterpart in the unified register; now tracked there as **E-5** |
 | Ollama sidecar | `providers.ollama.sidecar` | Confirm whether host ollama on :11434 exists; sidecar off is correct while it does |
 | Nagual QE | `toolchains.nagual_qe` | Upstream sqlx 0.9 `SqlSafeStr` compilation error |
 
 ## Minor follow-ups
 
-_None currently — see below for the two items closed on 2026-07-22._
+_None currently; see below for the two items closed on 2026-07-22._
 
 ## Done
 
 - ~~`scripts/ruvector-sidecar-update.sh` backfill-embeddings curls Xinference
   from the host, where the compose DNS name `xinference:9997` does not
-  resolve~~ — fixed 2026-07-22: `XINFERENCE_ENDPOINT` now defaults to
+  resolve~~ (fixed 2026-07-22): `XINFERENCE_ENDPOINT` now defaults to
   `http://localhost:9997` when `getent hosts xinference` fails (host-side
   invocation), `http://xinference:9997` otherwise; an explicit
   `XINFERENCE_ENDPOINT` env var always wins.
-- ~~GitHub enrichment blocked on `GITHUB_TOKEN` unset~~ — cleared 2026-07-22:
+- ~~GitHub enrichment blocked on `GITHUB_TOKEN` unset~~ (cleared 2026-07-22):
   a valid token (validated HTTP 200 against api.github.com) is present in the
   runtime env and `.env` (0600); `[project_tracking].github_enrichment = true`,
   applies at next boot. Note: the token is a broad-scope classic PAT
-  (admin:org/repo/workflow) — consider swapping for a fine-grained read-only
+  (admin:org/repo/workflow); consider swapping for a fine-grained read-only
   PAT scoped to issues+metadata.
 - ~~`docs/user/browser.md` names a linked-data viewer doc, not browser
-  automation~~ — fixed 2026-07-22: content moved to
+  automation~~ (fixed 2026-07-22): content moved to
   `docs/user/linked-object-viewer.md`; `browser.md` is now a short redirect
   stub (kept because existing links point at it); `docs/README.md` and
   `README.md` updated to link the new filename.
