@@ -4,6 +4,25 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-09-06 metaharness router console — ADR-2080)
+
+- `[model_routing.neural]` + the AoE `router` session seed: the metaharness
+  cost-optimal router inside the baked ruflo closure, usable for public
+  day-to-day dev. `config/model-router/console.mjs` embeds each task offline
+  (MiniLM q8 via the closure's `@huggingface/transformers`), calls ruflo's
+  `ModelRouter.route(task, embedding)` so the KRR backend fires, executes the
+  pick through OpenRouter, and writes a labelled receipt plus bandit outcome and
+  trajectory row. `config/model-router/artefacts.json` is the single pinned,
+  hash-verified source for the 12 ruflo artefacts (tag v3.38.20) and 5 embedder
+  files; `flake.nix` bakes `/opt/agentbox/model-router` from it (rebuild class,
+  byte-identical-when-off) and `scripts/model-router-fetch.sh` populates the
+  pre-rebuild fallback. `./agentbox.sh model-router <fetch|check|status|route|console>`.
+  Why a console: the `@claude-flow/cli` tarball omits `assets/model-router/` and
+  ruflo's task-embedder imports the retired `@xenova/transformers` specifier, so the
+  upstream path silently falls back to the bandit. Scoped to the session (the
+  entrypoint exports only `AGENTBOX_MODEL_ROUTER_*`); privacy tier pinned to
+  `public`; `AGENTBOX_EGRESS=0` forces dry-run (ADR-2079 §4, ADR-2026).
+
 ### Added (2026-09-05 resource topology — ADR-2034)
 
 - Measured with 40 Claude Code sessions live: ≈7 of the container's 9.7 cores in

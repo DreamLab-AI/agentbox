@@ -345,6 +345,39 @@ The written `.agentic-qe/llm-config.json` files are **managed artefacts**
 preserves everything else. Edit the manifest, never the JSON. API keys are
 never written to the file (agentic-qe's own loader also strips them).
 
+## `[model_routing.neural]` — the metaharness router console (ADR-2080)
+
+The baked ruflo closure carries `@metaharness/router` (k-NN / kernel-ridge, optional
+FastGRNN) but the npm tarball ships none of its artefacts and ruflo's own task
+embedder imports a package the closure lacks, so the cost-optimal path never fires
+by itself. This gate vendors the pinned artefacts
+([`config/model-router/artefacts.json`](../../config/model-router/artefacts.json))
+and exposes the router as a dedicated AoE session, `router`, whose console embeds
+each task offline, picks the cheapest OpenRouter model above the quality bar,
+executes it and prints a labelled receipt. **Public, open-source work only** — the
+console refuses any other privacy tier and drops to dry-run when `AGENTBOX_EGRESS=0`.
+
+```toml
+[model_routing.neural]
+enabled                   = true
+provider                  = "openrouter"   # or "anthropic" (Claude tiers only)
+quality_bar               = 0.50           # 0.25 always-cheapest … 0.70 quality-strict
+cost_ceiling_usd_per_mtok = 0              # 0 = off; 5 = cheap+mid only; 20 = no Sonnet/Opus
+privacy_tier              = "public"       # the only accepted value
+trajectory                = true           # DRACO rows for ruflo's promotion-gate analyser
+assets_dir                = "/opt/agentbox/model-router"
+```
+
+Apply class **rebuild** for the baked artefacts (boot for the env). Before a rebuild:
+
+```
+./agentbox.sh model-router fetch                        # hash-verified fallback dir
+./agentbox.sh model-router route "write a jest test for parseUrn" --dry-run
+```
+
+Receipts, bandit state and trajectories live in `$WORKSPACE/.agentbox/model-router-state/`.
+Details: [`config/model-router/README.md`](../../config/model-router/README.md).
+
 ## `[project_tracking]`
 
 Helm-grade project tracking re-expressed on the sovereign substrate — no new
