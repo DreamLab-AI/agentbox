@@ -994,7 +994,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-core"
-version = "1.0.0-beta.9"
+version = "1.0.0-beta.10"
 dependencies = [
  "aes",
  "async-trait",
@@ -1724,7 +1724,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs"
-version = "0.5.0-alpha.8"
+version = "0.5.0-alpha.9"
 dependencies = [
  "async-trait",
  "base64",
@@ -1750,7 +1750,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-nostr"
-version = "0.5.0-alpha.8"
+version = "0.5.0-alpha.9"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -1760,7 +1760,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "solid-pod-rs 0.5.0-alpha.8",
+ "solid-pod-rs 0.5.0-alpha.9",
  "thiserror 1.0.69",
  "tokio",
  "tokio-tungstenite",

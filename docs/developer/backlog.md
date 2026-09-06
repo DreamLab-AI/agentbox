@@ -62,14 +62,15 @@ Identified 2026-09-06, half resolved. `management-api/lib/agent-identity.js`
 invalid mint, so boot continues with a placeholder DID. Unblocks when the
 entrypoint aborts instead of defaulting.
 
-### solid-pod-rs pin skew between Nix and the bridge (register G-20)
+### ~~solid-pod-rs pin skew between Nix and the bridge~~ **DONE 2026-09-06** (register G-20)
 
-Identified 2026-09-06. `lib/solid-pod-rs.nix:52-55` pins `version =
-"0.5.0-alpha.3"` at rev `87b35a1b32f9...`, while
-`services/nostr-pod-bridge/Cargo.toml:22` path-deps the live `solid-pod-rs`
-sibling checkout. The Nix build and the bridge build can therefore compile
-against different versions of the same crate. Unblocks when both reference one
-pinned revision.
+Resolved with the solid-pod-rs `v0.5.0-alpha.9` release (`1d9da527`, all eight
+crates published to crates.io at that version). `lib/solid-pod-rs.nix` and
+`lib/nostr-pod-bridge.nix` now pin the same tag commit and SRI hash, the vendored
+`lib/solid-pod-rs.cargo-lock` is the tag's own lockfile, and
+`services/nostr-pod-bridge/Cargo.lock` resolves `solid-pod-rs-nostr 0.5.0-alpha.9`;
+the path dependency and the Nix build therefore compile one snapshot. Superseded
+registry versions (`alpha.8` root, `alpha.7` siblings) yanked once this pin landed.
 
 ### ADR record status lags shipped code (register G-4, DOC-4)
 

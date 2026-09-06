@@ -34,46 +34,31 @@
 
 { lib, pkgs }:
 
-let
-  # v0.4.0-alpha.16 (2026-06-09): the first real solid-pod-rs git tag since
-  # alpha.11. It cuts an unambiguous version over what was previously the
-  # untagged post-alpha.15 HEAD, killing the alpha.15 aliasing (the same version
-  # string had denoted both the crates.io publish and an advanced git HEAD —
-  # the Nix-store binary built from the publish predated the resource-cost
-  # accounting fix and served cost-gated reads without consuming the cost; see
-  # docs/developer/economy-loop.md "key discovery"). alpha.16 carries the
-  # post-publish CORS allowlist, PSK admin provision endpoint, git control API,
-  # /.well-known/apps aggregation, MCP docs embedding, the WAC ancestor
-  # accessTo over-inheritance + git read-auth fix, and payments::debit wired
-  # into the WAC grant path (R-04).
-  # 0.5.0-alpha.3 (2026-06-28): latest tagged release. Bumped from alpha.0;
-  # includes 8 commits of fixes and improvements since the PROVENANCE release.
-  # Cargo.lock refresh required — run the procedure below after updating hashes.
-  version = "0.5.0-alpha.3";
-
-  # Pinned to the v0.5.0-alpha.3 tag commit.
-  rev     = "87b35a1b32f9789e296ebbf7277b9ecc01657c42";
-
-  # REFRESH REQUIRED: set to lib.fakeHash; `nix build .#runtime` prints the
-  # correct SRI hash. Then refresh the vendored Cargo.lock per the procedure
-  # below.
-  srcHash = "sha256-cz9rUqjQ0PuAjqGduyd3vVvrX31FNMuCciNeeq0tBjw=";
-
-  # Upstream solid-pod-rs at v0.4.0-alpha.5 does not ship its
-  # Cargo.lock (workspace builds without it locally because cargo
-  # generate-lockfile picks the latest compat versions on first run, but
-  # that is non-deterministic and breaks Nix's hermetic build). We vendor
-  # a lockfile alongside lib/solid-pod-rs.nix instead.
+  # Pin: solid-pod-rs v0.5.0-alpha.9 (2026-09-06), the tagged release cut from
+  # the estate closeout. It carries the OIDC compatibility matrix, WAC policy
+  # outcomes, provenance receipts, the chacha20 unyank and deterministic
+  # rate-limit tests, and re-aligns the crates.io set (every sibling crate is
+  # published at the same version again). This is the same snapshot that the
+  # `nostr-pod-bridge` path dependencies compile against, so the Nix-built
+  # server binary and any cargo build of the bridge share one upstream.
   #
-  # NOTE: cargoLockFile needs refresh for 0.4.0-alpha.5.
-  # Refresh procedure when the rev bumps:
-  #   1. Update version + rev above and re-run `nix build .#runtime`
-  #      to fetch the new src.
-  #   2. cd $(nix eval --raw nixpkgs#hello.src) → no, easier:
-  #        nix-shell -p cargo --run 'cd $(mktemp -d) && \
-  #          cp -r /nix/store/*-solid-pod-rs-*-source/. . && \
-  #          chmod -R u+w . && cargo generate-lockfile'
-  #      then copy the resulting Cargo.lock to lib/solid-pod-rs.cargo-lock.
+  # Refresh procedure when the rev bumps (no local nix needed):
+  #   1. Set `version` and `rev` to the new tag and its commit.
+  #   2. srcHash: docker run --rm nixos/nix sh -c \
+  #        'h=$(nix-prefetch-url --unpack \
+  #           https://github.com/DreamLab-AI/solid-pod-rs/archive/<rev>.tar.gz) && \
+  #         nix --extra-experimental-features nix-command hash convert \
+  #           --hash-algo sha256 --to sri "$h"'
+  #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
+  #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
+  #      Nix build hermetic and byte-identical to the tag).
+  version = "0.5.0-alpha.9";
+
+  # Pinned to the v0.5.0-alpha.9 tag commit.
+  rev     = "1d9da527076e733d6a5571f474a573c16e5a6047";
+
+  srcHash = "sha256-0/iDL8E9J5SGFnnJQwR3wP/qAjl9AHiKyKxU1U6qRfc=";
+
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 
   src = pkgs.fetchFromGitHub {

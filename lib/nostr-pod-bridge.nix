@@ -49,16 +49,14 @@ let
   forumHash = "sha256-+y77RdQBaQ3glm2KWPiV4ar7oJvphEUlP/bCRgnkAhs="; # refresh via the prefetch procedure above
 
   # solid-pod-rs → crates/solid-pod-rs-nostr (relay substrate) + crates/solid-pod-rs
-  # (the [patch.crates-io] target). Bumped to v0.5.0-alpha.8 (2026-09-05): the
-  # in-repo Cargo.lock (services/nostr-pod-bridge/Cargo.lock) already pins
-  # solid-pod-rs-nostr 0.5.0-alpha.8 — the ADR-2012 admission fix
-  # (admit_and_dispatch) calls dispatch_message_with_limits/RelayLimits, added
-  # upstream after alpha.3. This pin was not bumped alongside that Cargo.lock
-  # update, so the build failed with unresolved imports. NOT required to track
-  # the standalone server pin in lib/solid-pod-rs.nix — that derivation has
-  # its own self-consistent rev + vendored cargo-lock and is unaffected.
-  solidRev  = "cfdeae93fedf19ca02b5ec577ce727556c3098bc";
-  solidHash = "sha256-wdYo2l8zoQryJfpCElOx+Aru3PyUZnpKsoXosZHOrdY="; # refresh via the prefetch procedure above
+  # (the [patch.crates-io] target). Pinned to the v0.5.0-alpha.9 tag
+  # (2026-09-06), the same revision lib/solid-pod-rs.nix builds the standalone
+  # server from, so the bridge and the server compile one upstream snapshot
+  # (register G-20 closed). services/nostr-pod-bridge/Cargo.lock resolves
+  # solid-pod-rs-nostr 0.5.0-alpha.9 to match. Bump both files together;
+  # the hash is the SRI of the tag tarball (procedure above / lib/solid-pod-rs.nix).
+  solidRev  = "1d9da527076e733d6a5571f474a573c16e5a6047";
+  solidHash = "sha256-0/iDL8E9J5SGFnnJQwR3wP/qAjl9AHiKyKxU1U6qRfc="; # v0.5.0-alpha.9
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
