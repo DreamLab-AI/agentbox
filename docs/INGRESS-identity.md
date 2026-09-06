@@ -302,7 +302,7 @@ like a pass. Receipt: `docs/estate-closeout/2026-09-05/adr-2013-ports-gate.json`
 ADR-2013 remains `partial` for the *other* half only: the reviewed list covers mappings
 in root compose filenames and does not by itself certify effective deployment inputs
 (overlay order, interpolation, external files), authentication, or active listeners.
-[Reproducible evidence and acceptance](../../../VisionFlow/docs/estate-review/runtime-ingress.md#port-gate-syntax-and-exposure-coverage) require release-bound runtime exposure receipts. No service was launched or bound during the review.
+[Reproducible evidence and acceptance](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/runtime-ingress.md#port-gate-syntax-and-exposure-coverage) require release-bound runtime exposure receipts. No service was launched or bound during the review.
 
 Historical text (2026-09-04, no longer accurate): "ADR-2013 is partial: the current tree
 passes the gate, but nested service-flow and whole-file JSON-flow short port mappings
@@ -310,7 +310,7 @@ evade its line-oriented `ports` walker."
 
 ## Relay boundary qualification — 2026-09-04
 
-ADR-2012 is partial for relay-wide allowlisting. The pod bridge authorises inbox writes after embedded-relay signature verification, storage/broadcast and acknowledgement. An empty list blocks that consumer, not relay admission. The standalone generator omits an empty whitelist setting; its backend semantics remain to be verified. [Evidence and acceptance](../../../VisionFlow/docs/estate-review/runtime-ingress.md#relay-admission-versus-inbox-authorisation) distinguish three passing authorisation helper tests from the unexecuted complete journey and require separate publisher, subscriber and durable-delivery contracts.
+ADR-2012 is partial for relay-wide allowlisting. The pod bridge authorises inbox writes after embedded-relay signature verification, storage/broadcast and acknowledgement. An empty list blocks that consumer, not relay admission. The standalone generator omits an empty whitelist setting; its backend semantics remain to be verified. [Evidence and acceptance](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/runtime-ingress.md#relay-admission-versus-inbox-authorisation) distinguish three passing authorisation helper tests from the unexecuted complete journey and require separate publisher, subscriber and durable-delivery contracts.
 
 ## Remediation — 2026-09-05
 

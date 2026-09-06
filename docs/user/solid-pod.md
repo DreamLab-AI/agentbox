@@ -7,13 +7,13 @@ It is the durable-storage layer of the
 identity-plus-data substrate that lets external agents reach internal ones,
 and lets internal agents persist their state, without any third-party broker.
 
-Canonical spec: [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
+Canonical spec: [ADR-010](../archive/adr/ADR-010-rust-solid-pod-adoption.md).
 
 ## Why this matters
 
 A pod holds everything durable an agent produces or receives: briefs,
 debriefs, artefacts, system prompts, **and** the inbox/outbox mailboxes
-that back [ADR-009 external-agent messaging](../reference/adr/ADR-009-embedded-nostr-relay.md).
+that back [ADR-009 external-agent messaging](../archive/adr/ADR-009-embedded-nostr-relay.md).
 Every `pods/<npub>/events/inbox/<id>.json` entry is a verified Nostr event;
 every `events/outbox/<id>.json` is a signed outbound message waiting to
 fan out.
@@ -276,10 +276,10 @@ See [solid-pod-sidecar.md](solid-pod-sidecar.md) for the full setup walkthrough 
 
 ## Further reading
 
-- [ADR-010 — solid-pod-rs as first-class pod server](../reference/adr/ADR-010-rust-solid-pod-adoption.md)
-- [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../reference/adr/ADR-009-embedded-nostr-relay.md)
-- [DDD-003 — Sovereign messaging domain](../reference/ddd/DDD-003-sovereign-messaging-domain.md) (pod mailbox invariants I01, I08)
-- [ADR-005 — Pluggable adapter architecture](../reference/adr/ADR-005-pluggable-adapter-architecture.md)
+- [ADR-010 — solid-pod-rs as first-class pod server](../archive/adr/ADR-010-rust-solid-pod-adoption.md)
+- [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../archive/adr/ADR-009-embedded-nostr-relay.md)
+- [DDD-003 — Sovereign messaging domain](../archive/ddd/DDD-003-sovereign-messaging-domain.md) (pod mailbox invariants I01, I08)
+- [ADR-005 — Pluggable adapter architecture](../archive/adr/ADR-005-pluggable-adapter-architecture.md)
 - [Developer: sovereign mesh internals](../developer/sovereign-mesh.md)
 - [solid-pod-rs upstream](https://github.com/DreamLab-AI/solid-pod-rs)
 - [AGPL aggregation analysis](../developer/licensing.md)

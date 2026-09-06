@@ -2,7 +2,7 @@
 
 Every JSON-LD document agentbox emits — pod resources, Nostr envelopes, Verifiable Credentials, DID Documents, agent-event records, MCP capability descriptors, payment mandates, memory namespace catalogues, ADR/PRD/DDD frame headers, the runtime contract — carries an `@id`. This page explains what those `@id`s mean, the contract they satisfy, and how operators dereference them.
 
-The full architectural decision is [ADR-013](../reference/adr/ADR-013-canonical-uri-grammar.md). The bounded context lives in [DDD-004 §URICanonicaliser](../reference/ddd/DDD-004-linked-data-interchange-domain.md#uricanonicaliser).
+The full architectural decision is [ADR-013](../archive/adr/ADR-013-canonical-uri-grammar.md). The bounded context lives in [DDD-004 §URICanonicaliser](../archive/ddd/DDD-004-linked-data-interchange-domain.md#uricanonicaliser).
 
 > **TL;DR.** Two URI shapes: `did:nostr:<pubkey>` for identity, `urn:agentbox:<kind>:[<scope>:]<local>` for everything else. Uniqueness is unconditional. Resolvability is best-effort. The `/v1/uri/<urn>` endpoint dereferences the names that resolve, and tells you when one doesn't.
 
@@ -286,4 +286,4 @@ The URI grammar stands on:
 
 In memoriam: **Gregg Kellogg** (d. 2025-09-06). Editor of JSON-LD 1.0 and 1.1; the JSON-LD layer every URI in this grammar plays inside.
 
-The full PRD-006 / ADR-012 / ADR-013 / DDD-004 bibliography is in [PRD-006 §14](../reference/prd/PRD-006-linked-data-interfaces.md#14-acknowledgements-and-attribution).
+The full PRD-006 / ADR-012 / ADR-013 / DDD-004 bibliography is in [PRD-006 §14](../archive/prd/PRD-006-linked-data-interfaces.md#14-acknowledgements-and-attribution).

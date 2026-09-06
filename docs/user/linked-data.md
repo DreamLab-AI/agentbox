@@ -1,6 +1,6 @@
 # Linked-Data interfaces
 
-Agentbox can present every external surface — pod resources, Nostr envelopes, agent-event receipts, identity documents, payment mandates, MCP capabilities — as W3C [JSON-LD 1.1](https://www.w3.org/TR/json-ld11/). This page is the operator's one-pager. The full product spec is [PRD-006](../reference/prd/PRD-006-linked-data-interfaces.md); the architectural decision is [ADR-012](../reference/adr/ADR-012-jsonld-federation-grammar.md); the bounded context is [DDD-004](../reference/ddd/DDD-004-linked-data-interchange-domain.md).
+Agentbox can present every external surface — pod resources, Nostr envelopes, agent-event receipts, identity documents, payment mandates, MCP capabilities — as W3C [JSON-LD 1.1](https://www.w3.org/TR/json-ld11/). This page is the operator's one-pager. The full product spec is [PRD-006](../archive/prd/PRD-006-linked-data-interfaces.md); the architectural decision is [ADR-012](../archive/adr/ADR-012-jsonld-federation-grammar.md); the bounded context is [DDD-004](../archive/ddd/DDD-004-linked-data-interchange-domain.md).
 
 > **TL;DR.** Default off. Per-surface gates. The encoder runs after the privacy filter. Contexts are pinned at build time. Hand-authored docs use the LION subset.
 
@@ -150,4 +150,4 @@ Restart the container; nothing else changes.
 
 JSON-LD 1.1 — Gregg Kellogg (in memoriam), Pierre-Antoine Champin, Dave Longley. LION — Melvin Carvalho. Verifiable Credentials, DID Core, ActivityStreams, PROV-O, Schema.org, WoT TD, DCAT, ODRL, SKOS — W3C Working Groups. Solid Protocol — Sarven Capadisli, Tim Berners-Lee, Ruben Verborgh and contributors. JCS RFC 8785 — Anders Rundgren, Bret Jordan, Samuel Erdtman.
 
-The full bibliography: [PRD-006 §14](../reference/prd/PRD-006-linked-data-interfaces.md#14-acknowledgements-and-attribution).
+The full bibliography: [PRD-006 §14](../archive/prd/PRD-006-linked-data-interfaces.md#14-acknowledgements-and-attribution).

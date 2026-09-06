@@ -18,8 +18,6 @@ as its sovereign data layer. Every agent action is stamped with a `did:nostr` id
 in a Solid Pod backed by the JSS protocol surface. Protocol-level decisions and spec alignment
 defer to the upstream JSS repository.
 
-See [.github/CODEOWNERS](.github/CODEOWNERS) for path-level review routing.
-
 ## Process
 
 Maintainers follow the same workflow as other contributors (issue → branch → PR → review → merge).

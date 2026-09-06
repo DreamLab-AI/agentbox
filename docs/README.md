@@ -2,8 +2,6 @@
 
 ![Agentbox](agentbox.png)
 
-[September upgrade assessment and rebuild handoff](reference/upgrades-2026-09.md) covers Gemini, daemon monitoring, Spark, Utopia and TimesFM.
-
 Audience-tiered navigation. Pick the path that matches what you are trying to do — then follow the cross-links. Every doc here is a relative hop from this index.
 
 ```mermaid
@@ -11,7 +9,6 @@ flowchart LR
     subgraph docs["docs/"]
         U["user/<br/>You run agentbox"]
         D["developer/<br/>You change agentbox"]
-        I["integration/<br/>External service wiring"]
         R["adr/<br/>Living decisions"]
     end
     U -->|"first boot"| QS["user/quickstart.md"]
@@ -23,7 +20,7 @@ flowchart LR
     R -->|"domains"| DDD["archive/ddd/<br/>Historical domains"]
 ```
 
-Agentbox is a sovereign, manifest-driven headless agent runtime: manifest-selected skills, a governed URN namespace, five pluggable adapter slots, and an embedded did:nostr / solid-pod / Nostr-relay substrate. The interaction plane is Agent of Empires (`aoe serve` on loopback `:9095` behind the sole-ingress NIP-98 proxy `:9096`; PRD-021 / ADR-042). Start with the living governing documents and [operative ADRs](adr/README.md). The archived ADR/PRD/DDD shelf below preserves historical rationale; it is not implementation authority. The generated ADR index is regenerated from the reviewed records, but the validator's staleness gate still reports six records whose governed source changed after their `verified_commit`; consult individual records and the [estate closeout inventory](../../../VisionFlow/docs/estate-review/closeout/adr-inventory.md) for current declarations.
+Agentbox is a sovereign, manifest-driven headless agent runtime: manifest-selected skills, a governed URN namespace, five pluggable adapter slots, and an embedded did:nostr / solid-pod / Nostr-relay substrate. The interaction plane is Agent of Empires (`aoe serve` on loopback `:9095` behind the sole-ingress NIP-98 proxy `:9096`; PRD-021 / ADR-042). Start with the living governing documents and [operative ADRs](adr/README.md). The archived ADR/PRD/DDD shelf below preserves historical rationale; it is not implementation authority. The ADR index is generated from the reviewed records; `node scripts/adr-index-gen.js docs/adr --check-index` reports any record whose governed source changed after its `verified_commit`, and those records, not the index, are where a stale declaration is fixed. Local closeout receipts live in [estate-closeout/](estate-closeout/2026-09-05/).
 
 ---
 
@@ -89,6 +86,8 @@ You are adding a feature, implementing an adapter, or investigating a regression
 | Architecture | |
 |---|---|
 | [Architecture overview](developer/architecture.md) | How it all fits together — manifest → flake → image → runtime |
+| [Web interface design system](developer/web-interface-design-system.md) | Tokens and components shared by the operator cockpit, console and setup wizard |
+| [ComfyUI API](developer/comfyui-api.md) | REST/WebSocket surface the management API exposes for an external ComfyUI backend |
 | [Identity and tracing mesh](developer/identity-mesh.md) | secp256k1 identity root, 19-kind URN namespace, adapter dispatch pipeline, credential provenance, federation invariants |
 | [Adapter pattern](developer/adapters.md) | Five slots × three classes; how to write a new impl |
 | [Native pod mesh](developer/native-pod-mesh.md) | In-container git-versioned `solid-pod-rs` tier — architecture + wiring ([PRD-007](archive/prd/PRD-007-multi-tenant-federation.md) / [ADR-010](archive/adr/ADR-010-rust-solid-pod-adoption.md)) |
@@ -120,17 +119,9 @@ You are adding a feature, implementing an adapter, or investigating a regression
 
 ---
 
-## Integration — external service wiring
+## Archived decision shelf — historical rationale, not authority
 
-| Service | |
-|---|---|
-| [ComfyUI integration](integration/comfyui/README.md) | Historical patch artifacts for wiring an external ComfyUI backend — the integration is already applied in `management-api/server.js` |
-
----
-
-## Reference — canonical specs
-
-These are the authoritative sources of truth. Anything in `user/` or `developer/` that conflicts with these is a bug in the docs.
+The legacy ADR/PRD/DDD corpus is frozen under [`archive/`](archive/README.md). The living governing documents and the [operative ADR ledger](adr/README.md) are the compliance surface; where a record below conflicts with them, the living document wins.
 
 ### Architecture decisions (ADR)
 
@@ -181,7 +172,7 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | ADR-043 | [Session identity binding](archive/adr/ADR-043-session-identity-binding.md) | Proposed | Bind `did:nostr` + URN + beads epic + scoped memory namespace at each AoE session boundary |
 | ADR-044 | [Voice-plane repoint](archive/adr/ADR-044-voice-plane-aoe-repoint.md) | Proposed | Re-point the tab0-bridge voice injection seam onto the AoE API |
 | ADR-045 | [Sovereign ingress — npub front door](archive/adr/ADR-045-sovereign-ingress-npub-front-door.md) | Proposed | One npub-gated NIP-98 front door for all external control surfaces |
-| ADR-046 | [Semantica as a complement to VisionClaw](archive/adr/ADR-046-semantica-complement.md) | Proposed | Semantica complements, not replaces, VisionClaw |
+| ADR-046 | [Semantica as a complement to the host reasoner](archive/adr/ADR-046-semantica-complement.md) | Proposed | Semantica complements, not replaces, the host project's reasoner |
 | ADR-047 | [Native capability boundary for semantic integrity](archive/adr/ADR-047-semantica-tenant-integration-boundary.md) | Proposed | Native boundary for semantic integrity and provenance |
 | ADR-048 | [Decision records as graph nodes](archive/adr/ADR-048-decision-records-as-graph-nodes.md) | Proposed | Decision records as first-class, Whelk-classifiable graph nodes; adds the `decision` URN kind |
 | ADR-049 | [Bi-temporal facts and runtime PROV-O](archive/adr/ADR-049-bitemporal-facts-and-runtime-provenance.md) | Proposed | Bi-temporal facts and runtime PROV-O off the reasoned graph |
@@ -262,13 +253,6 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 | DDD-019 | [Interaction plane domain](archive/ddd/DDD-019-interaction-plane-domain.md) | AoE session boundary — SessionBoundary + identity/URN/beads/memory bindings (PRD-021) |
 | DDD-020 | [Semantic integrity & provenance domain](archive/ddd/DDD-020-semantic-integrity-provenance-domain.md) | DecisionNode + bi-temporal facts + PROV-O provenance + decision elevation (PRD-022) |
 
-### QE reviews
-
-| # | Document | Title | Status |
-|---|---|---|---|
-| QE-001 | [Code-as-harness traceability review](reference/qe-reviews/QE-001-code-as-harness-traceability-review.md) | PRD-008 / ADR-018 / ADR-019 / DDD-005 traceability review | Complete |
-| QE-002 | [Code-as-harness re-verification](reference/qe-reviews/QE-002-code-as-harness-reverification.md) | Re-verification of QE-001 defects on PRD-008 / ADR-018–020 / DDD-005 | Complete |
-
 ### Vocabulary
 
 | File | Contents |
@@ -289,8 +273,8 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 ### New contributors
 1. [`../README.md`](../README.md) — product pitch + top-level architecture
 2. [`developer/architecture.md`](developer/architecture.md) — how it works inside
-3. [`reference/prd/PRD-001-capabilities-and-adapters.md`](archive/prd/PRD-001-capabilities-and-adapters.md) — the full product spec
-4. [`reference/adr/ADR-005-pluggable-adapter-architecture.md`](archive/adr/ADR-005-pluggable-adapter-architecture.md) — adapter deep-dive
+3. [`archive/prd/PRD-001-capabilities-and-adapters.md`](archive/prd/PRD-001-capabilities-and-adapters.md) — the full product spec
+4. [`archive/adr/ADR-005-pluggable-adapter-architecture.md`](archive/adr/ADR-005-pluggable-adapter-architecture.md) — adapter deep-dive
 5. The other ADRs in order — they explain how the design got here
 
 ## Conventions
@@ -299,6 +283,6 @@ These are the authoritative sources of truth. Anything in `user/` or `developer/
 - **Relative cross-refs.** Every link is a relative path so the docs tree is portable.
 - **File size limit.** Docs stay under 500 lines; heavier material lives in siblings.
 - **Status tags.** ADRs carry `status:` frontmatter; PRDs carry a version/status block.
-- **Audience tiers are strict.** `user/` never references internal-only tooling; `developer/` never re-explains operator basics; `reference/` never loses a canonical claim to narrative drift.
+- **Audience tiers are strict.** `user/` never references internal-only tooling; `developer/` never re-explains operator basics; the governing docs never lose a canonical claim to narrative drift.
 - **Host-by-role.** Agentbox is standalone (`github.com/DreamLab-AI/agentbox`). The integrating host is referenced by role — "host project", "integrator", "external orchestrator" — never by name. Host-specific integration lives in the host's own docs.
 - **UK English.** All documentation uses British spelling (organisation, colour, initialise, behaviour, centre, analyse).

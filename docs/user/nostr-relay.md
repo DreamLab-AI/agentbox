@@ -4,10 +4,10 @@ Agentbox can run an embedded Nostr relay so external humans and agents can
 send signed, authenticated messages to the agents running inside your
 container, and so internal agents can publish durable, auditable messages
 back out. The decision and contract are specified in
-[ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md) and
-[PRD-004](../reference/prd/PRD-004-external-agent-messaging.md); the
+[ADR-009](../archive/adr/ADR-009-embedded-nostr-relay.md) and
+[PRD-004](../archive/prd/PRD-004-external-agent-messaging.md); the
 domain model lives in
-[DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md).
+[DDD-003](../archive/ddd/DDD-003-sovereign-messaging-domain.md).
 
 ## Why this exists
 
@@ -97,7 +97,7 @@ database is transport. If the relay is wiped but the pod survives, every
 received message is still there.
 
 The pod is served by [`solid-pod-rs`](solid-pod.md) — the first-party
-Rust Solid Protocol 0.11 server ([ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md))
+Rust Solid Protocol 0.11 server ([ADR-010](../archive/adr/ADR-010-rust-solid-pod-adoption.md))
 — using an atomic-rename filesystem backend. DDD-003 invariants I01
 (signature-before-write) and I08 (content-addressed mailbox, no duplicates)
 hold as real filesystem guarantees, not hopeful prose. The sovereign
@@ -239,9 +239,9 @@ added to the image, the bridge falls back to its pre-ADR-009 behaviour
 ## Further reading
 
 - [Nostr control gateway — drive the tmux fleet from your phone](nostr-control-gateway.md)
-- [PRD-004 — External agent messaging](../reference/prd/PRD-004-external-agent-messaging.md)
-- [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../reference/adr/ADR-009-embedded-nostr-relay.md)
-- [DDD-003 — Sovereign messaging domain](../reference/ddd/DDD-003-sovereign-messaging-domain.md)
+- [PRD-004 — External agent messaging](../archive/prd/PRD-004-external-agent-messaging.md)
+- [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../archive/adr/ADR-009-embedded-nostr-relay.md)
+- [DDD-003 — Sovereign messaging domain](../archive/ddd/DDD-003-sovereign-messaging-domain.md)
 - [Developer: sovereign mesh internals](../developer/sovereign-mesh.md)
 - [nostr-rs-relay upstream](https://sr.ht/~gheartsfield/nostr-rs-relay/)
 - [NIP-42 relay AUTH](https://github.com/nostr-protocol/nips/blob/master/42.md)

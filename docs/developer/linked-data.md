@@ -1,6 +1,6 @@
 # Linked-Data middleware — developer reference
 
-Implementer-facing notes for the Linked-Data Interchange domain. Pairs with [PRD-006](../reference/prd/PRD-006-linked-data-interfaces.md), [ADR-012](../reference/adr/ADR-012-jsonld-federation-grammar.md), and [DDD-004](../reference/ddd/DDD-004-linked-data-interchange-domain.md).
+Implementer-facing notes for the Linked-Data Interchange domain. Pairs with [PRD-006](../archive/prd/PRD-006-linked-data-interfaces.md), [ADR-012](../archive/adr/ADR-012-jsonld-federation-grammar.md), and [DDD-004](../archive/ddd/DDD-004-linked-data-interchange-domain.md).
 
 ## Code layout
 
@@ -65,7 +65,7 @@ The encoder picks the surface for a given dispatch by matching `slot + operation
 7. Register the module in `index.js`'s `surfaceModules` array.
 8. Add a smoke test to `tests/contract/linked-data/surfaces.spec.js`.
 9. Add a fixture to `tests/contract/linked-data/round-trip.spec.js` so CI catches regressions.
-10. Update [PRD-006 §3](../reference/prd/PRD-006-linked-data-interfaces.md#3-surface-inventory) and the user doc table.
+10. Update [PRD-006 §3](../archive/prd/PRD-006-linked-data-interfaces.md#3-surface-inventory) and the user doc table.
 
 ## Pipeline ordering — fixed in code
 

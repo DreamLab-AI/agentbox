@@ -1,7 +1,7 @@
 # NIP-98 ingress proxy (`config/nip98-proxy`)
 
 The **sole ingress** to the Agent of Empires (AoE) interaction-plane daemon —
-and, since [ADR-045](../../docs/reference/adr/ADR-045-sovereign-ingress-npub-front-door.md),
+and, since [ADR-045](../../docs/archive/adr/ADR-045-sovereign-ingress-npub-front-door.md),
 the **multi-upstream sovereign ingress**: the one identity-gated LAN door
 (published `9096:9096` in `docker-compose.yml`) that can also route
 prefix-matched paths to additional loopback surfaces (`/mgmt/` →

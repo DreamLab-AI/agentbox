@@ -201,7 +201,7 @@ The `events` adapter slot (see [adapters.md](adapters.md)) can be configured to 
 The `pods` adapter slot now defaults to [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs)
 — a first-party Rust Solid Protocol 0.11 server. This matters for
 `nostr-bridge` because ADR-009's pod-inbox invariants ([DDD-003 I01
-signature-before-write, I08 content-addressed by event id](../reference/ddd/DDD-003-sovereign-messaging-domain.md))
+signature-before-write, I08 content-addressed by event id](../archive/ddd/DDD-003-sovereign-messaging-domain.md))
 depend on atomic-rename filesystem semantics that the previous Python stub
 did not provide. `solid-pod-rs`'s `fs-backend` uses `rename(2)` for every
 write, so a partial-write crash leaves no half-formed pod entries.
@@ -280,7 +280,7 @@ async onOutboxPending(pendingFile) {
 }
 ```
 
-See [DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md) for
+See [DDD-003](../archive/ddd/DDD-003-sovereign-messaging-domain.md) for
 the aggregate model and every invariant (I01-I12) that
 `tests/contract/relay.contract.spec.js` asserts.
 
@@ -384,11 +384,11 @@ summaries.
 
 ## Related specs
 
-- [PRD-001 §Federation modes](../reference/prd/PRD-001-capabilities-and-adapters.md) — the standalone-vs-client distinction.
-- [PRD-004 — External agent messaging](../reference/prd/PRD-004-external-agent-messaging.md) — the relay surface.
-- [ADR-005 §Off-slot semantics](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — why the `events` adapter alone has no-op `off` instead of throwing.
-- [ADR-007 §4a](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md) — hardened baseline under which the bridge runs.
-- [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../reference/adr/ADR-009-embedded-nostr-relay.md) — the decision and contract for the relay.
-- [ADR-010 — solid-pod-rs as first-class pod server](../reference/adr/ADR-010-rust-solid-pod-adoption.md) — the decision to adopt the Rust pod.
-- [DDD-003 — Sovereign messaging domain](../reference/ddd/DDD-003-sovereign-messaging-domain.md) — aggregate model and invariants; I01 / I08 now hold for real.
+- [PRD-001 §Federation modes](../archive/prd/PRD-001-capabilities-and-adapters.md) — the standalone-vs-client distinction.
+- [PRD-004 — External agent messaging](../archive/prd/PRD-004-external-agent-messaging.md) — the relay surface.
+- [ADR-005 §Off-slot semantics](../archive/adr/ADR-005-pluggable-adapter-architecture.md) — why the `events` adapter alone has no-op `off` instead of throwing.
+- [ADR-007 §4a](../archive/adr/ADR-007-runtime-contract-and-container-hardening.md) — hardened baseline under which the bridge runs.
+- [ADR-009 — Embedded Nostr relay and pod-inbox bridge](../archive/adr/ADR-009-embedded-nostr-relay.md) — the decision and contract for the relay.
+- [ADR-010 — solid-pod-rs as first-class pod server](../archive/adr/ADR-010-rust-solid-pod-adoption.md) — the decision to adopt the Rust pod.
+- [DDD-003 — Sovereign messaging domain](../archive/ddd/DDD-003-sovereign-messaging-domain.md) — aggregate model and invariants; I01 / I08 now hold for real.
 - [licensing.md](licensing.md) — component licence matrix for agentbox (AGPL-3.0) and its bundled components.

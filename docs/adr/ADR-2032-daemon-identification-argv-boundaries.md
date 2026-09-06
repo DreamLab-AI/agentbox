@@ -46,7 +46,7 @@ flags is not discovered and must be added to the allowlist deliberately.
 Argv confirmation is still not an atomic identity: PID reuse between confirm
 and signal remains possible, so a pidfd plus captured start time is the next
 strengthening step. Wholesale adoption of NEEDLE's orchestrator and Utopia's
-temporal store stays deferred (`docs/reference/upgrades-orchestration-2026-09.md`).
+temporal store stays deferred (`docs/archive/upgrades-2026-09/upgrades-orchestration-2026-09.md`).
 
 ## Verification
 Working tree of 2026-09-04: `cargo test --locked` in `services/agentbox-ops`
@@ -61,7 +61,7 @@ signalled nothing.
 
 CP-01/04/08. Owner remains jjohare with runtime/operations maintainers. Four existing native helper tests pass. The ruflo reaper implements the argv allowlist and registry PID bounds, but this decision's rule for any signalling tool is not estate-wide: the Hermes scheduler Stop path checks PID existence without argv/start-time identity. Implementation is partial; staged activation and the historical verification account are retained.
 
-Registry workspace data wins over a live sweep entry; confirmation checks launcher shape without captured process identity, and SIGTERM success does not prove exit. The [source review](../../../../VisionFlow/docs/estate-review/process-lifecycle.md) distinguishes these findings from tested behaviour; the [receipt](../../../../VisionFlow/docs/estate-review/evidence/process-lifecycle-snapshot.json) records source hashes and targeted test commands. No daemon signal or runtime PID-state mutation ran.
+Registry workspace data wins over a live sweep entry; confirmation checks launcher shape without captured process identity, and SIGTERM success does not prove exit. The [source review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/process-lifecycle.md) distinguishes these findings from tested behaviour; the [receipt](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/process-lifecycle-snapshot.json) records source hashes and targeted test commands. No daemon signal or runtime PID-state mutation ran.
 
 **Acceptance condition:** Inventory every signalling caller, bind identity and authority to the intended process instance, reconcile registry/live workspace disagreement, and specify whether staleness is rechecked immediately before action. Exercise stale/reused PIDs, recognised replacement daemons, unknown wrappers, missing proc access, signal failure and delayed exit with isolated owned subprocesses. Preserve default read-only reaper behaviour. Report signal delivery separately from confirmed shutdown and retain recoverable state after failure. Reopen on launcher, signal caller, registry, TTL or process-identity changes; dependency is the CP-08 release and recovery receipt.
 

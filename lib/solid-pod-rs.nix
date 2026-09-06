@@ -130,7 +130,7 @@ in
           --replace-fail \
             "let trimmed = resource_path.trim_start_matches('/');" \
             "let trimmed = resource_path.trim_start_matches('/');
-    let trimmed = trimmed.strip_prefix(\"pods/\").unwrap_or(trimmed); // agentbox fix 2026-08-14: LDP writes are served at /pods/{pod}/..., not /{pod}/... — see docs/dream-machine-capability-investigation.md"
+    let trimmed = trimmed.strip_prefix(\"pods/\").unwrap_or(trimmed); // agentbox fix 2026-08-14: LDP writes are served at /pods/{pod}/..., not /{pod}/... — see docs/archive/dream-machine-capability-investigation.md"
       '';
 
       # The workspace member lives under crates/solid-pod-rs-server.

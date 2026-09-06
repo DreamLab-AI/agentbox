@@ -69,7 +69,7 @@ revision/feature identity and the downstream consumer contract.
 At `89301ec7c911eab270c00a0cf81596d0d4f15535`, the local proxy suite passes 45 assertions with no skips using
 `NODE_PATH=management-api/node_modules node config/nip98-proxy/selftest.mjs`.
 The initial default-resolution run skipped three signature cases; both runs
-are preserved in the [estate receipts](../../../../VisionFlow/docs/estate-review/evidence/ingress-selftest-runtime-deps.json).
+are preserved in the [estate receipts](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/ingress-selftest-runtime-deps.json).
 These are local fake-upstream checks, not deployed acceptance or, for the
 identity helper, a key-persistence test. Prior verification at `d19073a82c319f7be01cf61d31521598dc044da5` remains
 part of this record's history; the refreshed commit covers the scoped source

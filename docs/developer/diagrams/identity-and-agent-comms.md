@@ -261,13 +261,13 @@ flowchart TD
     subgraph URIs["management-api/lib/uris.js"]
         U1{"kind in KINDS?"}
         U2{"contentAddressed?"}
-        U3["_contentAddress(payload)\nsha256-12-<first 12 hex chars>"]
+        U3["_contentAddress(payload)<br/>sha256-12-<first 12 hex chars>"]
         U4["_slug(localId)"]
         U5{"ownerScope?"}
         U6{"scopeRequired?"}
-        U7["_normalisePubkey()\naccepts: 64-hex | did:nostr:hex | npub1 bech32"]
+        U7["_normalisePubkey()<br/>accepts: 64-hex | did:nostr:hex | npub1 bech32"]
         U8["urn:agentbox:<kind>:<pubkey>:<local>"]
-        U9["urn:agentbox:<kind>:<local>\n(unscoped form)"]
+        U9["urn:agentbox:<kind>:<local><br/>(unscoped form)"]
         U10["throw UnknownUriKind"]
         U11["throw MalformedUri"]
     end
@@ -278,22 +278,22 @@ flowchart TD
         R3["{managementApiBase}/v1/uri/<urn>?surface=<resolvableSurface>"]
     end
 
-    subgraph BC20["management-api/lib/bc20-provenance-bridge.js\n(B05: only cross-namespace importer)"]
+    subgraph BC20["management-api/lib/bc20-provenance-bridge.js<br/>(B05: only cross-namespace importer)"]
         B1["toVisionclaw(agentboxUrn)"]
-        B2["uris.parse(agentboxUrn)\n(B02 — never ad-hoc)"]
+        B2["uris.parse(agentboxUrn)<br/>(B02 — never ad-hoc)"]
         B3{"parsed.kind"}
-        B4["activity → execution\nurn:visionclaw:execution:sha256-12-<sha12(urn)>\n(unscoped, owner in owner_did)"]
-        B5["agent → did:nostr:<pubkey>\n(identity preserved structurally)"]
-        B6["thing → kg\nurn:visionclaw:kg:<pubkey>:sha256-12-<sha12(urn)>"]
-        B7["memory → concept\nurn:visionclaw:concept:<domain>:<slug>\n(requires opts.domain + opts.slug)"]
-        B8["bead → bead\nurn:visionclaw:bead:<pubkey>:<sha256-12>\n(structural pass-through — local unchanged)"]
-        B9["drop + log (B04)\n_countDrop(kind, reasonClass)"]
-        B10["UrnMapping store\n{ agentbox_urn, visionclaw_urn, owner_did }"]
-        B11["_bcCrossings counter\n(prom-client, soft-required)"]
-        BC_BACK["toAgentbox(visionclawId)\nbead: structural reverse\ndid:nostr: pubkey reverse\nothers: store.getByVisionclaw()"]
+        B4["activity → execution<br/>urn:visionclaw:execution:sha256-12-<sha12(urn)><br/>(unscoped, owner in owner_did)"]
+        B5["agent → did:nostr:<pubkey><br/>(identity preserved structurally)"]
+        B6["thing → kg<br/>urn:visionclaw:kg:<pubkey>:sha256-12-<sha12(urn)>"]
+        B7["memory → concept<br/>urn:visionclaw:concept:<domain>:<slug><br/>(requires opts.domain + opts.slug)"]
+        B8["bead → bead<br/>urn:visionclaw:bead:<pubkey>:<sha256-12><br/>(structural pass-through — local unchanged)"]
+        B9["drop + log (B04)<br/>_countDrop(kind, reasonClass)"]
+        B10["UrnMapping store<br/>{ agentbox_urn, visionclaw_urn, owner_did }"]
+        B11["_bcCrossings counter<br/>(prom-client, soft-required)"]
+        BC_BACK["toAgentbox(visionclawId)<br/>bead: structural reverse<br/>did:nostr: pubkey reverse<br/>others: store.getByVisionclaw()"]
     end
 
-    subgraph VC["Host-project namespace\n(federation boundary)"]
+    subgraph VC["Host-project namespace<br/>(federation boundary)"]
         V1["urn:visionclaw:execution:<sha256-12>"]
         V2["did:nostr:<pubkey>"]
         V3["urn:visionclaw:kg:<pubkey>:<sha256-12>"]
@@ -478,12 +478,14 @@ supervisord — which works at runtime but is not documented in any template.
 
 ---
 
-### F-05 — Env var `AGENTBOX_PUBKEY` used by mirror hook but not set by sovereign-bootstrap
+### F-05 — Env var `AGENTBOX_PUBKEY` used by mirror hook but not set by the bootstrap
 
-**Severity: MEDIUM. Classification: ENV-GAP.**
+**Severity: MEDIUM. Classification: ENV-GAP. (Historical: recorded against the retired
+`scripts/sovereign-bootstrap.py`; re-verify against `nostr-pod-bridge bootstrap`, which now
+writes `identity.env`.)**
 
 `nostr-live-mirror.cjs:72` reads `AGENTBOX_PUBKEY` as a recipient pubkey
-fallback. `scripts/sovereign-bootstrap.py` (lines 262-279) writes
+fallback. The bootstrap at the time (`scripts/sovereign-bootstrap.py`, lines 262-279) wrote
 `AGENTBOX_PUBKEY_HEX` and `AGENTBOX_X_ONLY_PUBKEY_HEX` to
 `/run/agentbox/identity.env`, but not `AGENTBOX_PUBKEY`. The mirror hook's
 priority chain is:

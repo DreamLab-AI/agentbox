@@ -1,8 +1,8 @@
 # Backlog / Next Steps
 
 > **Combined register (2026-07-22, reconciled 2026-09-06):** this backlog and the
-> VisionClaw remediation ladder share a single unified TODO with a six-state
-> unblock taxonomy: `../../../docs/TODO-unified.md` (governed by PRD-024 /
+> host project's remediation ladder share a single unified TODO with a six-state
+> unblock taxonomy, the host repo's `docs/TODO-unified.md` (governed by PRD-024 /
 > ADR-133). Entries below remain authoritative for agentbox detail; the unified
 > register is the cross-repo view the final-mile sprint works from. The
 > 2026-09-01..06 sprint closed M-1, M-6, G-3 and G-9 there; the agentbox-owned

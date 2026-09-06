@@ -7,12 +7,12 @@ enabled.
 
 If you are new to the terms, read [glossary.md](glossary.md) first. The
 canonical specs sit at
-[ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md) (privacy
-filter), [ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md)
+[ADR-008](../archive/adr/ADR-008-privacy-filter-routing.md) (privacy
+filter), [ADR-009](../archive/adr/ADR-009-embedded-nostr-relay.md)
 (Nostr relay + pod-inbox bridge),
-[ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md)
+[ADR-010](../archive/adr/ADR-010-rust-solid-pod-adoption.md)
 (solid-pod-rs first-class adoption), and
-[DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md)
+[DDD-003](../archive/ddd/DDD-003-sovereign-messaging-domain.md)
 (invariants I01-I12).
 
 ## What the stack is
@@ -287,6 +287,6 @@ it. That is what "first-class" means in agentbox.
 - [solid-pod.md](solid-pod.md) — the pod operator guide
 - [nostr-relay.md](nostr-relay.md) — the relay operator guide
 - [privacy-filter.md](privacy-filter.md) — the PII middleware operator guide
-- [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md) · [ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md) · [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md) — design records
-- [DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md) — invariants I01-I12
+- [ADR-008](../archive/adr/ADR-008-privacy-filter-routing.md) · [ADR-009](../archive/adr/ADR-009-embedded-nostr-relay.md) · [ADR-010](../archive/adr/ADR-010-rust-solid-pod-adoption.md) — design records
+- [DDD-003](../archive/ddd/DDD-003-sovereign-messaging-domain.md) — invariants I01-I12
 - [licensing.md](../developer/licensing.md) — AGPL aggregation analysis

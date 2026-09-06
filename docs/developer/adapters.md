@@ -1,10 +1,10 @@
 # Adapter pattern
 
-How agentbox plugs into durable state. Canonical spec: [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md). For the operator's view, see [user/configuration.md § adapters](../user/configuration.md#adapters).
+How agentbox plugs into durable state. Canonical spec: [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md). For the operator's view, see [user/configuration.md § adapters](../user/configuration.md#adapters).
 
 ## Context in one paragraph
 
-Agentbox needs durable state — somewhere to record task receipts, store artefacts, index memory vectors, append events, and spawn agent processes. But it must do that two ways without recompiling: standalone (local fallbacks, no external services required) and federated-client (plugged into a host project's existing mesh). The solution is the five-slot pluggable adapter pattern (a hexagonal-architecture port/adapter — application logic talks to a fixed interface, concrete implementations are swapped at boot). [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) is the canonical decision record; [PRD-001](../reference/prd/PRD-001-capabilities-and-adapters.md) is the product constraint that forces it. This file is for the contributor writing or modifying an implementation — the "how", not the "why".
+Agentbox needs durable state — somewhere to record task receipts, store artefacts, index memory vectors, append events, and spawn agent processes. But it must do that two ways without recompiling: standalone (local fallbacks, no external services required) and federated-client (plugged into a host project's existing mesh). The solution is the five-slot pluggable adapter pattern (a hexagonal-architecture port/adapter — application logic talks to a fixed interface, concrete implementations are swapped at boot). [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md) is the canonical decision record; [PRD-001](../archive/prd/PRD-001-capabilities-and-adapters.md) is the product constraint that forces it. This file is for the contributor writing or modifying an implementation — the "how", not the "why".
 
 ## Mental model
 
@@ -142,7 +142,7 @@ module.exports = BeadsOffAdapter;
 module.exports.contractVersion = '1.0.0';
 ```
 
-That is the minimum bar a new slot must clear before any `local-*` or `external` impl is written. The `events` slot is the one exception where `off` becomes a no-op dispatch rather than a throw — see [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) §Off-slot semantics.
+That is the minimum bar a new slot must clear before any `local-*` or `external` impl is written. The `events` slot is the one exception where `off` becomes a no-op dispatch rather than a throw — see [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md) §Off-slot semantics.
 
 ## Writing a new impl for an existing slot
 
@@ -212,7 +212,7 @@ Use stubbed memcached in-process for CI speed.
 
 - Add a row in [../user/configuration.md](../user/configuration.md) §`[adapters]`.
 - Note the impl's config shape in a new `docs/user/beads-external-memcached.md` if non-trivial.
-- Reference from [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) §Service-level objectives if it has different SLOs.
+- Reference from [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md) §Service-level objectives if it has different SLOs.
 
 ## Adding a new slot (rare)
 
@@ -298,7 +298,7 @@ See [testing.md](testing.md) §"New adapter impl".
 
 ## Related specs
 
-- [PRD-001 §Adapters](../reference/prd/PRD-001-capabilities-and-adapters.md) — product-level constraint.
-- [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — slots, SLOs, resolver.
-- [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md) — privacy filter as cross-cutting middleware layered on top of every adapter dispatch.
-- [DDD-002](../reference/ddd/DDD-002-runtime-contract-domain.md) — probe contract that consumes adapter health.
+- [PRD-001 §Adapters](../archive/prd/PRD-001-capabilities-and-adapters.md) — product-level constraint.
+- [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md) — slots, SLOs, resolver.
+- [ADR-008](../archive/adr/ADR-008-privacy-filter-routing.md) — privacy filter as cross-cutting middleware layered on top of every adapter dispatch.
+- [DDD-002](../archive/ddd/DDD-002-runtime-contract-domain.md) — probe contract that consumes adapter health.

@@ -70,15 +70,15 @@ The actual redactor leaves quoted-password suffixes and short JSON password valu
 
 Dependencies: shared-memory value/vector recovery, release identity and an explicit outcome/retention policy. Reopen on grader, redactor, transcript shape, persistence or promotion changes. Existing verification/activation fields retain their historical scope; this annex is source/helper evidence, not a live-loop certification.
 
-See [learning evidence review](../../../../VisionFlow/docs/estate-review/learning-evidence.md) and [receipt](../../../../VisionFlow/docs/estate-review/evidence/learning-snapshot.json).
+See [learning evidence review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/learning-evidence.md) and [receipt](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/learning-snapshot.json).
 
 ## Accounting closeout extension — 2026-09-05
 
-CP-01/07/08: the [CTC consumer review](../../../../VisionFlow/docs/estate-review/transaction-cost-accounting.md) verifies forwarding with seventeen existing tests, while distinguishing turn totals attached to each Bash step from cumulative DAG cost. Define usage identity/deduplication, delegation scope, missing versus zero, typed verification and complete delivery beyond the 200-event cap before accepting per-DAG reporting. Five synthetic helper assertions supplement source inspection; no live recorder-to-dashboard workflow ran. Preserve the earlier privacy and recovery obligations.
+CP-01/07/08: the [CTC consumer review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/transaction-cost-accounting.md) verifies forwarding with seventeen existing tests, while distinguishing turn totals attached to each Bash step from cumulative DAG cost. Define usage identity/deduplication, delegation scope, missing versus zero, typed verification and complete delivery beyond the 200-event cap before accepting per-DAG reporting. Five synthetic helper assertions supplement source inspection; no live recorder-to-dashboard workflow ran. Preserve the earlier privacy and recovery obligations.
 
 ## Failure telemetry closeout extension — 2026-09-05
 
-CP-01/06/07/08: the [failure review](../../../../VisionFlow/docs/estate-review/failure-telemetry.md) reproduces disagreement between the recorder's metadata mode and the publisher's top-level `unmapped` value. Sixteen existing tests and six additional route assertions verify selected boundaries, not every failure. Define a canonical field, account for skipped and missing steps, and prove durable deduplicated metrics across the receiver. QE and process-loss census remains open.
+CP-01/06/07/08: the [failure review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/failure-telemetry.md) reproduces disagreement between the recorder's metadata mode and the publisher's top-level `unmapped` value. Sixteen existing tests and six additional route assertions verify selected boundaries, not every failure. Define a canonical field, account for skipped and missing steps, and prove durable deduplicated metrics across the receiver. QE and process-loss census remains open.
 
 ## Acceptance progress — 2026-09-05
 

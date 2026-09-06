@@ -5,7 +5,7 @@ Agentbox can run a local PII redaction sidecar (an auxiliary process that runs a
 a 1.5-billion-parameter mixture-of-experts classifier (50M active), Apache-2.0
 licensed, released 2026-04-22. The routing contract that decides where the
 sidecar sits in the request flow is specified in
-[ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md).
+[ADR-008](../archive/adr/ADR-008-privacy-filter-routing.md).
 
 **When to skip this**: if nothing sensitive ever touches your agents, or you already redact upstream at the orchestrator, leave `enabled = false`. The sidecar adds ~3 GB of weights and a GPU/CPU footprint.
 
@@ -180,7 +180,7 @@ when disabled.
 
 ## Further reading
 
-- [ADR-008 — Privacy filter routing layer](../reference/adr/ADR-008-privacy-filter-routing.md)
-- [ADR-005 — Pluggable adapter architecture](../reference/adr/ADR-005-pluggable-adapter-architecture.md) (why the middleware sits where it does)
+- [ADR-008 — Privacy filter routing layer](../archive/adr/ADR-008-privacy-filter-routing.md)
+- [ADR-005 — Pluggable adapter architecture](../archive/adr/ADR-005-pluggable-adapter-architecture.md) (why the middleware sits where it does)
 - [openai/privacy-filter model card](https://huggingface.co/openai/privacy-filter)
 - [openai/privacy-filter GitHub repo](https://github.com/openai/privacy-filter)

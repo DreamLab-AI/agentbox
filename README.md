@@ -45,7 +45,7 @@ Agentbox is one component of **[VisionFlow](https://github.com/DreamLab-AI/Visio
 |:-----|:-----|
 | [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Ecosystem canon — ADRs, PRDs, compatibility matrix, vision report, marketing site |
 | [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Flagship engine — OWL 2 EL + Whelk reasoning, 82 CUDA kernels of GPU graph physics, one React Three Fiber renderer shared desktop↔headset; renders the embodied agent loop |
-| **Agentbox** (this repo) | **Sovereign agent runtime — Nix-built container, `did:nostr` identities, 124 skills, RuVector memory, Solid pod bridge, sovereign mesh** |
+| **Agentbox** (this repo) | **Sovereign agent runtime — Nix-built container, `did:nostr` identities, 126 skills, RuVector memory, Solid pod bridge, sovereign mesh** |
 | [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Rust Solid pod server — the personal-data-sovereignty layer under each human's and agent's own key |
 | [nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Nostr-native forum + relay — the one place a human decision gets cryptographically signed |
 | [dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | DreamLab AI company website — the commercial face, a thin consumer of the forum kit |
@@ -297,7 +297,7 @@ See [Tailscale guide](docs/user/tailscale.md) · [Mesh deployment](docs/user/mes
 
 **Developers** — [Architecture](docs/developer/architecture.md) · [Identity and tracing mesh](docs/developer/identity-mesh.md) · [Adapter pattern](docs/developer/adapters.md) · [Sovereign mesh](docs/developer/sovereign-mesh.md) · [Ecosystem integration](docs/developer/ecosystem.md) · [Testing](docs/developer/testing.md) · [Backlog / next steps](docs/developer/backlog.md)
 
-**Reference** — [ADR index](docs/archive/adr/) · [PRD index](docs/archive/prd/) · [DDD index](docs/archive/ddd/) · [System audit 2026-07-15](docs/reference/audit-2026-07-15.md) · [Docs hub](docs/README.md)
+**Reference** — [ADR index](docs/archive/adr/) · [PRD index](docs/archive/prd/) · [DDD index](docs/archive/ddd/) · [System audit 2026-07-15](docs/archive/audit-2026-07-15.md) · [Docs hub](docs/README.md)
 
 ---
 

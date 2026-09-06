@@ -1,16 +1,19 @@
 ---
-title: Agentbox reference
-description: Canonical specification corpus — ADRs, PRDs, DDDs, QE reviews, and the agbx vocabulary.
+title: Agentbox archived decision shelf
+description: Frozen legacy ADR/PRD/DDD corpus — historical rationale only, never implementation authority.
 ---
 
-# Agentbox reference
+# Agentbox archived decision shelf
 
-> [Agentbox Docs](../README.md) · Reference
+> [Agentbox Docs](../README.md) · Archive
 
-Canonical, version-controlled specifications for the agentbox subsystem. Every
-architectural decision, product requirement, domain model, and quality-engineering
-review lives here. Treat this corpus as the source of truth: user and developer
-docs explain and operationalise what these files decide.
+**Historical rationale only, never authority.** This shelf froze on 2026-08-31 (the archive
+cut). The compliance surface is the set of living governing documents in `docs/` and the
+[operative ADR ledger](../adr/README.md); where a record here conflicts with them, the
+living document wins. Consult these files for the *why* behind a decision, then verify the
+current state against the governing doc's `file:line` citations. Also shelved here: the
+2026-07-15 system audit, the September 2026 upgrade handoffs, the July gap-close receipts
+and the dream-machine capability investigation.
 
 ## Catalogues
 
@@ -19,8 +22,7 @@ docs explain and operationalise what these files decide.
 | [Architecture Decision Records](adr/README.md) | 72 | ADR-001..072 — the *why* behind each structural choice |
 | [Product Requirement Documents](prd/README.md) | 22 + 1 remediation | PRD-001..022 plus PRD-REMEDIATION-001 — the *what* and *acceptance criteria* |
 | [Domain-Driven Design models](ddd/README.md) | 20 | DDD-001..020 — bounded contexts, aggregates, invariants |
-| [QE reviews](qe-reviews/README.md) | 2 | QE-001..002 — traceability and re-verification gates |
-| [Extension vocabulary](_vocab/agbx.md) | — | `agbx:` term registry and the v1 JSON-LD context |
+| [Extension vocabulary](../reference/_vocab/agbx.md) | — | `agbx:` term registry and the v1 JSON-LD context |
 
 ## Decision chains by domain
 
@@ -37,7 +39,7 @@ review verifies traceability.
 | Meta-router & consultants | [005](prd/PRD-005-meta-router-consultants.md) | [011](adr/ADR-011-consultation-mcps.md), [041](adr/ADR-041-model-routing-one-policy-many-projections.md) | — | — |
 | Linked-data interfaces | [006](prd/PRD-006-linked-data-interfaces.md) | [012](adr/ADR-012-jsonld-federation-grammar.md), [013](adr/ADR-013-canonical-uri-grammar.md), [014](adr/ADR-014-bidirectional-graph-state-ingress.md) | [004](ddd/DDD-004-linked-data-interchange-domain.md) | — |
 | Multi-tenant federation | [007](prd/PRD-007-multi-tenant-federation.md) | [017](adr/ADR-017-multi-tenant-did-nostr-pods.md) | [011](ddd/DDD-011-multi-tenant-federation-domain.md) | — |
-| Code-as-harness | [008](prd/PRD-008-code-as-harness-integration.md) | [018](adr/ADR-018-persistent-code-interpreter-mcp.md), [019](adr/ADR-019-experiential-skill-learning.md), [020](adr/ADR-020-aci-mcp-tree-search.md) | [005](ddd/DDD-005-code-execution-domain.md) | [001](qe-reviews/QE-001-code-as-harness-traceability-review.md), [002](qe-reviews/QE-002-code-as-harness-reverification.md) |
+| Code-as-harness | [008](prd/PRD-008-code-as-harness-integration.md) | [018](adr/ADR-018-persistent-code-interpreter-mcp.md), [019](adr/ADR-019-experiential-skill-learning.md), [020](adr/ADR-020-aci-mcp-tree-search.md) | [005](ddd/DDD-005-code-execution-domain.md) | 001 (retired review), 002 (retired review) |
 | LLM resource marketplace | [009](prd/PRD-009-llm-resource-marketplace.md) | [021](adr/ADR-021-llm-resource-marketplace-kinds.md) | [006](ddd/DDD-006-llm-marketplace-domain.md) | — |
 | Runtime integrity hardening | [010](prd/PRD-010-runtime-integrity-hardening.md) | [022](adr/ADR-022-runtime-integrity-hardening.md) | [007](ddd/DDD-007-runtime-integrity-domain.md) | — |
 | Ontology bridge | [011](prd/PRD-011-ontology-bridge.md) | [023](adr/ADR-023-ontology-bridge.md) | [008](ddd/DDD-008-ontology-bridge-domain.md) | — |

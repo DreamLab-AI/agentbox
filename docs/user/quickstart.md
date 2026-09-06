@@ -105,7 +105,7 @@ Edit [`agentbox.toml`](../../agentbox.toml) before building. This file is the si
 Key sections:
 
 - `[mesh]` — `mode = "standalone"` (default; the container is complete on its own) or `"client"` (federates with an external host mesh through adapter endpoints).
-- `[adapters]` — one per durable-state slot (beads, pods, memory, events, orchestrator). An `adapter` is the pluggable-backend pattern from [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md): each slot resolves to `local-*`, `external`, or `off`, so you can run fully self-hosted or delegate to a host-mesh without changing code.
+- `[adapters]` — one per durable-state slot (beads, pods, memory, events, orchestrator). An `adapter` is the pluggable-backend pattern from [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md): each slot resolves to `local-*`, `external`, or `off`, so you can run fully self-hosted or delegate to a host-mesh without changing code.
 - `[sovereign_mesh]` — Nostr identity + NIP-98 auth
 - `[skills.*]` — 96-skill catalogue gates
 - `[toolchains]` — core CLIs (claude, ruflo, claude_flow, agentic_qe, antigravity_cli, etc.)
@@ -286,7 +286,7 @@ If the container is using an older image or an older entrypoint, use `agentbox.s
 
 ## 6. Verify Runtime Services
 
-The runtime exposes a small set of HTTP endpoints for liveness, readiness and metrics. These replace the usual "did the container boot?" guesswork with concrete signals. `/ready` goes green only after every required programme reaches RUNNING and the `bootstrap-seal` sentinel writes `/run/agentbox/bootstrap.done` — see [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) for the bootstrap contract.
+The runtime exposes a small set of HTTP endpoints for liveness, readiness and metrics. These replace the usual "did the container boot?" guesswork with concrete signals. `/ready` goes green only after every required programme reaches RUNNING and the `bootstrap-seal` sentinel writes `/run/agentbox/bootstrap.done` — see [ADR-006](../archive/adr/ADR-006-immutable-runtime-bootstrap.md) for the bootstrap contract.
 
 ```mermaid
 graph TB
@@ -331,7 +331,7 @@ docker exec agentbox ls -la /projects
 
 ## 7. Remote Access & Security
 
-Agentbox is headless; the operator reaches it from LAN devices. Two doors are published to the network, both identity-gated ([ADR-045](../reference/adr/ADR-045-sovereign-ingress-npub-front-door.md)):
+Agentbox is headless; the operator reaches it from LAN devices. Two doors are published to the network, both identity-gated ([ADR-045](../archive/adr/ADR-045-sovereign-ingress-npub-front-door.md)):
 
 | LAN door | What | Auth |
 |---|---|---|
@@ -411,7 +411,7 @@ The desktop runs TigerVNC Xvnc with `-SecurityTypes None` (no VNC password) and 
 | Agent Events | 9700 | 127.0.0.1:9700 | SSH tunnel |
 | Prometheus | 9091 | 127.0.0.1:9091 | SSH tunnel |
 
-Apart from the two identity-gated LAN doors above, ports are localhost-only on the host and reached through SSH authentication to the host machine. Cross-container calls are token-gated (WS auth is on by default and fails closed). The full default-secure posture — host-loopback publish, auth-default-on, no runtime privilege escalation, secrets in tmpfs files — is recorded in [ADR-027](../reference/adr/ADR-027-default-secure-posture.md).
+Apart from the two identity-gated LAN doors above, ports are localhost-only on the host and reached through SSH authentication to the host machine. Cross-container calls are token-gated (WS auth is on by default and fails closed). The full default-secure posture — host-loopback publish, auth-default-on, no runtime privilege escalation, secrets in tmpfs files — is recorded in [ADR-027](../archive/adr/ADR-027-default-secure-posture.md).
 
 ## Compose File Generation
 
@@ -541,8 +541,9 @@ The container runs a tmux session (`agentbox`) with operator windows plus a sing
 | 6 | VNC | VNC connection info |
 | 7 | Git | Project git status |
 | 8 | Sessions | Agent of Empires — the interaction plane (`aoe` TUI) |
+| 9 | Notes | Rune markdown TUI on the authored vault (ADR-2029) |
 
-The per-provider harness tabs 8–14 (OpenRouter, ZAI, Antigravity, DeepSeek, Perplexity, Ollama, Codex) are **superseded by Agent of Empires** ([PRD-021](../reference/prd/PRD-021-interaction-surface-consolidation.md)/[ADR-042](../reference/adr/ADR-042-agent-of-empires-interaction-plane.md)). Instead of hand-driven tmux windows, interactive agent sessions are now created, monitored, attached, and reviewed through AoE, each with a real status FSM, its own git worktree, a live terminal and diff, and — supplied by agentbox at the session boundary — its own `did:nostr`, session URN, beads epic, and scoped memory namespace ([ADR-043](../reference/adr/ADR-043-session-identity-binding.md)).
+The per-provider harness tabs 8–14 (OpenRouter, ZAI, Antigravity, DeepSeek, Perplexity, Ollama, Codex) are **superseded by Agent of Empires** ([PRD-021](../archive/prd/PRD-021-interaction-surface-consolidation.md)/[ADR-042](../archive/adr/ADR-042-agent-of-empires-interaction-plane.md)). Instead of hand-driven tmux windows, interactive agent sessions are now created, monitored, attached, and reviewed through AoE, each with a real status FSM, its own git worktree, a live terminal and diff, and — supplied by agentbox at the session boundary — its own `did:nostr`, session URN, beads epic, and scoped memory namespace ([ADR-043](../archive/adr/ADR-043-session-identity-binding.md)).
 
 ### The Sessions window (Agent of Empires)
 

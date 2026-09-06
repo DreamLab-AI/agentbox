@@ -4,7 +4,7 @@ Agentbox ships roughly 870 automated test cases — about 797 JavaScript `it()`/
 
 ## Context in one paragraph
 
-Testing in this repo serves two distinct contracts: the **adapter contract** (every impl of every slot must satisfy the same parameterised assertions — [ADR-005 §Service-level objectives](../reference/adr/ADR-005-pluggable-adapter-architecture.md)) and the **runtime contract** (every boot must satisfy [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) / [PRD-003](../reference/prd/PRD-003-runtime-contract-and-container-hardening.md) acceptance criteria, mapped 1:1 onto `tests/runtime-contract/RC-*.sh` scripts). Beyond those two, the suite covers validator semantics, TUI round-tripping, per-feature artefact probes, reproducibility of Nix builds, and the Nostr bridge. Read this file when you add a feature (you will almost certainly need a test in at least two categories) or when a PR fails CI and you need to know which workflow to look at.
+Testing in this repo serves two distinct contracts: the **adapter contract** (every impl of every slot must satisfy the same parameterised assertions — [ADR-005 §Service-level objectives](../archive/adr/ADR-005-pluggable-adapter-architecture.md)) and the **runtime contract** (every boot must satisfy [PRD-002](../archive/prd/PRD-002-immutable-runtime-bootstrap.md) / [PRD-003](../archive/prd/PRD-003-runtime-contract-and-container-hardening.md) acceptance criteria, mapped 1:1 onto `tests/runtime-contract/RC-*.sh` scripts). Beyond those two, the suite covers validator semantics, TUI round-tripping, per-feature artefact probes, reproducibility of Nix builds, and the Nostr bridge. Read this file when you add a feature (you will almost certainly need a test in at least two categories) or when a PR fails CI and you need to know which workflow to look at.
 
 ```mermaid
 graph TB
@@ -343,6 +343,6 @@ CI reruns all of this, but local is faster.
 
 ## Related specs
 
-- [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — defines the contract every `tests/contract/<slot>.contract.spec.js` enforces.
-- [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) + [PRD-003](../reference/prd/PRD-003-runtime-contract-and-container-hardening.md) — acceptance criteria mapped onto `tests/runtime-contract/RC-*.sh`.
-- [DDD-001](../reference/ddd/DDD-001-immutable-bootstrap-domain.md) + [DDD-002](../reference/ddd/DDD-002-runtime-contract-domain.md) — aggregates and invariants the bootstrap/runtime suites exercise.
+- [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md) — defines the contract every `tests/contract/<slot>.contract.spec.js` enforces.
+- [PRD-002](../archive/prd/PRD-002-immutable-runtime-bootstrap.md) + [PRD-003](../archive/prd/PRD-003-runtime-contract-and-container-hardening.md) — acceptance criteria mapped onto `tests/runtime-contract/RC-*.sh`.
+- [DDD-001](../archive/ddd/DDD-001-immutable-bootstrap-domain.md) + [DDD-002](../archive/ddd/DDD-002-runtime-contract-domain.md) — aggregates and invariants the bootstrap/runtime suites exercise.

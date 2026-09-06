@@ -2,7 +2,7 @@
 
 ## Why this page exists
 
-Most users should never build agentbox from source — CI publishes a signed, multi-arch image to GitHub Container Registry on every merge, and pulling that is an order of magnitude faster than `nix build .#runtime`. This page covers how to pick the right tag, how to pin to an immutable SHA for production, and how `AGENTBOX_IMAGE_REF` lets compose switch between a local Nix build and a registry image without editing files. Image-selection contract: [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
+Most users should never build agentbox from source — CI publishes a signed, multi-arch image to GitHub Container Registry on every merge, and pulling that is an order of magnitude faster than `nix build .#runtime`. This page covers how to pick the right tag, how to pin to an immutable SHA for production, and how `AGENTBOX_IMAGE_REF` lets compose switch between a local Nix build and a registry image without editing files. Image-selection contract: [ADR-007](../archive/adr/ADR-007-runtime-contract-and-container-hardening.md).
 
 **What it solves**
 

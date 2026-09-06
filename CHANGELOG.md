@@ -121,7 +121,7 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 - Default general-purpose Gemini paths to `gemini-3.8-flash`; project consultant model selection from the manifest at boot and preserve operator choices through TUI saves. Align API-equivalent tariff estimates with the published introductory period.
 - Tighten Rust daemon identification to argv boundaries and reject invalid registry PIDs. Make the missing-provider scheduler test hermetic.
 - Register the Spark scene integration skill for Claude Code and Codex. Document Utopia/NEEDLE fit and defer TimesFM production integration pending rights and monitor-history evaluation.
-- Add the [assessment and rebuild handoff](docs/reference/upgrades-2026-09.md), ledger records ADR-2031 (consultant model projection and dated tariffs) and ADR-2032 (argv-boundary daemon identification), and the matching GOVERNANCE-capabilities / BASELINE-container invariants.
+- Add the [assessment and rebuild handoff](docs/archive/upgrades-2026-09/upgrades-2026-09.md), ledger records ADR-2031 (consultant model projection and dated tariffs) and ADR-2032 (argv-boundary daemon identification), and the matching GOVERNANCE-capabilities / BASELINE-container invariants.
 
 ### Fixed (2026-09-04 post-rebuild check round)
 
@@ -441,11 +441,11 @@ What stays as `npub`:
 
 Spec updates:
 
-* [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md) §1
+* [ADR-013](docs/archive/adr/ADR-013-canonical-uri-grammar.md) §1
   grammar, §3 surface refactor table, §6 extension API.
-* [PRD-006 §16](docs/reference/prd/PRD-006-linked-data-interfaces.md#16-canonical-uri-grammar-adr-013-cross-reference)
+* [PRD-006 §16](docs/archive/prd/PRD-006-linked-data-interfaces.md#16-canonical-uri-grammar-adr-013-cross-reference)
   cross-reference grammar.
-* [DDD-004 §URICanonicaliser](docs/reference/ddd/DDD-004-linked-data-interchange-domain.md#uricanonicaliser)
+* [DDD-004 §URICanonicaliser](docs/archive/ddd/DDD-004-linked-data-interchange-domain.md#uricanonicaliser)
   ubiquitous language.
 * [`docs/user/uris.md`](docs/user/uris.md) — every worked example
   now uses pubkey hex; the "When is the pubkey scope present?"
@@ -541,10 +541,10 @@ with a "no representation available" badge.
 
 **Documentation:**
 
-- [ADR-013](docs/reference/adr/ADR-013-canonical-uri-grammar.md) — the URI grammar decision
-- [PRD-006 §15](docs/reference/prd/PRD-006-linked-data-interfaces.md#15-viewer-slot-s12) — viewer slot product spec
-- [PRD-006 §16](docs/reference/prd/PRD-006-linked-data-interfaces.md#16-canonical-uri-grammar-adr-013-cross-reference) — URI grammar cross-reference
-- [DDD-004 §URICanonicaliser](docs/reference/ddd/DDD-004-linked-data-interchange-domain.md#uricanonicaliser) and [§ViewerSurface](docs/reference/ddd/DDD-004-linked-data-interchange-domain.md#viewersurface) plus invariants L13–L18
+- [ADR-013](docs/archive/adr/ADR-013-canonical-uri-grammar.md) — the URI grammar decision
+- [PRD-006 §15](docs/archive/prd/PRD-006-linked-data-interfaces.md#15-viewer-slot-s12) — viewer slot product spec
+- [PRD-006 §16](docs/archive/prd/PRD-006-linked-data-interfaces.md#16-canonical-uri-grammar-adr-013-cross-reference) — URI grammar cross-reference
+- [DDD-004 §URICanonicaliser](docs/archive/ddd/DDD-004-linked-data-interchange-domain.md#uricanonicaliser) and [§ViewerSurface](docs/archive/ddd/DDD-004-linked-data-interchange-domain.md#viewersurface) plus invariants L13–L18
 - [`docs/user/uris.md`](docs/user/uris.md) — operator one-pager on the URI grammar with 12 worked examples
 - [`docs/user/browser.md`](docs/user/browser.md) — comprehensive viewer walkthrough; surface-by-surface clickable URLs; pane-authoring guide
 
@@ -623,9 +623,9 @@ JSON-LD 1.1 by construction.
 
 **Documentation.** New canonical specs:
 
-- [PRD-006](docs/reference/prd/PRD-006-linked-data-interfaces.md)
-- [ADR-012](docs/reference/adr/ADR-012-jsonld-federation-grammar.md)
-- [DDD-004](docs/reference/ddd/DDD-004-linked-data-interchange-domain.md)
+- [PRD-006](docs/archive/prd/PRD-006-linked-data-interfaces.md)
+- [ADR-012](docs/archive/adr/ADR-012-jsonld-federation-grammar.md)
+- [DDD-004](docs/archive/ddd/DDD-004-linked-data-interchange-domain.md)
 
 Operator one-pager at [`docs/user/linked-data.md`](docs/user/linked-data.md);
 implementer reference at [`docs/developer/linked-data.md`](docs/developer/linked-data.md);
@@ -644,7 +644,7 @@ Kellogg in memoriam, Pierre-Antoine Champin, Dave Longley), W3C VC
 Data Model 2.0, W3C DID Core, ActivityStreams 2.0, PROV-O, Schema.org,
 Web of Things TD 1.1, DCAT-3, ODRL 2.2, SKOS, Solid Protocol, JCS
 RFC 8785, jsonld.js (Digital Bazaar), and the LION specification.
-Full bibliography in [PRD-006 §14](docs/reference/prd/PRD-006-linked-data-interfaces.md#14-acknowledgements-and-attribution).
+Full bibliography in [PRD-006 §14](docs/archive/prd/PRD-006-linked-data-interfaces.md#14-acknowledgements-and-attribution).
 
 ### Sandbox-safe npm-cli builds + nagual-qe Rust source build (2026-04-25)
 
@@ -846,7 +846,7 @@ across 497 deps), the OCI image is assembled, `result` symlink populated,
 
 ### Consultant tier — meta-router as named-MCP dispatch (2026-04-25)
 
-Five new MCP servers exposing external LLM providers as labelled consultants the coordinator (Claude Code / ruflo) can invoke explicitly. Specified by [PRD-005](docs/reference/prd/PRD-005-meta-router-consultants.md) and [ADR-011](docs/reference/adr/ADR-011-consultation-mcps.md); reasoned through in conversation against `musistudio/claude-code-router` (rejected as the meta-router because its API-rewriting layer does not fit agentbox's MCP-everywhere + per-user-CLI-isolation patterns).
+Five new MCP servers exposing external LLM providers as labelled consultants the coordinator (Claude Code / ruflo) can invoke explicitly. Specified by [PRD-005](docs/archive/prd/PRD-005-meta-router-consultants.md) and [ADR-011](docs/archive/adr/ADR-011-consultation-mcps.md); reasoned through in conversation against `musistudio/claude-code-router` (rejected as the meta-router because its API-rewriting layer does not fit agentbox's MCP-everywhere + per-user-CLI-isolation patterns).
 
 **The five consultants:**
 
@@ -982,7 +982,7 @@ quota_default_bytes    = 10737418240   # 10 GiB
 Completes the DreamLab-AI sovereign data stack. The `pods` adapter slot now
 defaults to [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) —
 a first-party Rust Solid Protocol 0.11 server. Specified by
-[`ADR-010`](docs/reference/adr/ADR-010-rust-solid-pod-adoption.md).
+[`ADR-010`](docs/archive/adr/ADR-010-rust-solid-pod-adoption.md).
 
 The stack is now coherent end-to-end: one secp256k1 keypair per container,
 Schnorr-signed events on HTTP (NIP-98) and WebSocket (NIP-42) surfaces, WAC
@@ -1017,9 +1017,9 @@ Answers the open question "how do external agents reach internal ones":
 the pod is the inbox, the relay is how the envelope gets there.
 
 **Spec trio (quality-engineered):**
-- [`PRD-004`](docs/reference/prd/PRD-004-external-agent-messaging.md) (323 lines) — actors, inbound/outbound flows, NIP-11/42/17 support matrix, four options axes, SLOs with p95/throughput/error ceilings per op.
-- [`ADR-009`](docs/reference/adr/ADR-009-embedded-nostr-relay.md) (281 lines) — decision for `nostr-rs-relay` 0.9.0 (already in nixpkgs), alternatives weighed (rnostr, separate container, HTTP-only, custom Rust), contract-test names, failure-mode recovery.
-- [`DDD-003`](docs/reference/ddd/DDD-003-sovereign-messaging-domain.md) (374 lines) — six aggregates (AgentIdentity, PodMailbox, RelayEndpoint, InboundEnvelope, OutboundEnvelope, Subscription), twelve numbered testable invariants I01-I12, anti-corruption layer, property-based test strategy.
+- [`PRD-004`](docs/archive/prd/PRD-004-external-agent-messaging.md) (323 lines) — actors, inbound/outbound flows, NIP-11/42/17 support matrix, four options axes, SLOs with p95/throughput/error ceilings per op.
+- [`ADR-009`](docs/archive/adr/ADR-009-embedded-nostr-relay.md) (281 lines) — decision for `nostr-rs-relay` 0.9.0 (already in nixpkgs), alternatives weighed (rnostr, separate container, HTTP-only, custom Rust), contract-test names, failure-mode recovery.
+- [`DDD-003`](docs/archive/ddd/DDD-003-sovereign-messaging-domain.md) (374 lines) — six aggregates (AgentIdentity, PodMailbox, RelayEndpoint, InboundEnvelope, OutboundEnvelope, Subscription), twelve numbered testable invariants I01-I12, anti-corruption layer, property-based test strategy.
 
 **Implementation:**
 - `[sovereign_mesh.relay]` manifest block, schema with `additionalProperties: false`, validator rules E026-E029 + W030 + E031.
@@ -1033,7 +1033,7 @@ the pod is the inbox, the relay is how the envelope gets there.
 ### Local PII redaction via openai/privacy-filter (2026-04-24)
 
 **Spec:**
-- [`ADR-008`](docs/reference/adr/ADR-008-privacy-filter-routing.md) — dispatch-path middleware with per-adapter-slot policy (strict/soft/off); fail-closed defaults on `pods` and `memory`.
+- [`ADR-008`](docs/archive/adr/ADR-008-privacy-filter-routing.md) — dispatch-path middleware with per-adapter-slot policy (strict/soft/off); fail-closed defaults on `pods` and `memory`.
 
 **Implementation:**
 - `[privacy_filter]` manifest block + schema + validator rules E022-E025.
@@ -1080,7 +1080,7 @@ Top-level `README.md` rewritten as a world-class product pitch with Mermaid arch
 
 ### Runtime contract + container hardening (2026-04-24)
 
-Implements [PRD-003](docs/reference/prd/PRD-003-runtime-contract-and-container-hardening.md) + [ADR-007](docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md) + [DDD-002](docs/reference/ddd/DDD-002-runtime-contract-domain.md).
+Implements [PRD-003](docs/archive/prd/PRD-003-runtime-contract-and-container-hardening.md) + [ADR-007](docs/archive/adr/ADR-007-runtime-contract-and-container-hardening.md) + [DDD-002](docs/archive/ddd/DDD-002-runtime-contract-domain.md).
 
 **Image reference selection**:
 - Generated compose now uses `image: ${AGENTBOX_IMAGE_REF:-agentbox:runtime-<system>}` so operators can switch between local builds and registry-pulled images with an env var.
@@ -1103,7 +1103,7 @@ Implements [PRD-003](docs/reference/prd/PRD-003-runtime-contract-and-container-h
 
 ### Immutable runtime bootstrap (2026-04-24)
 
-Implements [PRD-002](docs/reference/prd/PRD-002-immutable-runtime-bootstrap.md) + [ADR-006](docs/reference/adr/ADR-006-immutable-runtime-bootstrap.md) + [DDD-001](docs/reference/ddd/DDD-001-immutable-bootstrap-domain.md).
+Implements [PRD-002](docs/archive/prd/PRD-002-immutable-runtime-bootstrap.md) + [ADR-006](docs/archive/adr/ADR-006-immutable-runtime-bootstrap.md) + [DDD-001](docs/archive/ddd/DDD-001-immutable-bootstrap-domain.md).
 
 **Packaged closures replace runtime installers**:
 - Six local npm services via `buildNpmPackage` (new `lib/npm-services.nix`): management-api, mcp/nostr-bridge, skills/openai-codex/mcp-server, skills/lazy-fetch/mcp-server, skills/playwright/mcp-server, skills/comfyui/mcp-server.

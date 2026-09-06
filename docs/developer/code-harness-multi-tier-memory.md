@@ -233,6 +233,6 @@ built on `metadata`. The store now holds 46,271 rows, fully embedded, correctly
 namespaced, GIN+HNSW indexed — the namespaces this domain writes to
 (`code-harness-lessons`, `code-harness-skills`, `code-harness-activities`,
 `code-harness-traces`) are part of that remediated set. See
-[ADR-036](../reference/adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md)
-and [PRD-018](../reference/prd/PRD-018-ruvector-native-memory-and-learning.md)
+[ADR-036](../archive/adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md)
+and [PRD-018](../archive/prd/PRD-018-ruvector-native-memory-and-learning.md)
 for the full decision record and remediation manifest.

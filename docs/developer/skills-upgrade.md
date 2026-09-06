@@ -2,7 +2,7 @@
 
 ## Context in one paragraph
 
-The "skills corpus" is the tree of ~96 skill packages (one agent playbook each — markdown brief + optional scripts + optional MCP server) that ship inside the image at `/opt/agentbox/skills`. Today the tree lives in-repo under `skills/` and is consumed by the flake (Nix's pure build descriptor, [ADR-001](../reference/adr/ADR-001-nixos-flakes.md)) as a `path:` input. The plan is to extract that tree into its own repository and switch the flake input to a `github:` pin so the corpus versions independently of the runtime. This file describes the current state, the target state, and the one-line migration that connects them. Driver: keeping the core agentbox repo focused on runtime concerns while allowing a larger team to iterate on the skills catalogue; constraint: the migration must be a zero-risk cutover because the skills tree is on every built image.
+The "skills corpus" is the tree of 126 skill packages (one agent playbook each — markdown brief + optional scripts + optional MCP server) that ship inside the image at `/opt/agentbox/skills`. Today the tree lives in-repo under `skills/` and is consumed by the flake (Nix's pure build descriptor, [ADR-001](../archive/adr/ADR-001-nixos-flakes.md)) as a `path:` input. The plan is to extract that tree into its own repository and switch the flake input to a `github:` pin so the corpus versions independently of the runtime. This file describes the current state, the target state, and the one-line migration that connects them. Driver: keeping the core agentbox repo focused on runtime concerns while allowing a larger team to iterate on the skills catalogue; constraint: the migration must be a zero-risk cutover because the skills tree is on every built image.
 
 ## Current state (path input)
 
@@ -98,6 +98,6 @@ second repo. See `CHANGELOG.md` D.9 entry for context.
 
 ## Related specs
 
-- [ADR-001](../reference/adr/ADR-001-nixos-flakes.md) — why the build graph uses Nix flakes, and what a flake input is in our terms.
-- [ADR-004](../reference/adr/ADR-004-upstream-sync.md) — upstream sync boundaries; the skills repo would be governed by this policy once extracted.
+- [ADR-001](../archive/adr/ADR-001-nixos-flakes.md) — why the build graph uses Nix flakes, and what a flake input is in our terms.
+- [ADR-004](../archive/adr/ADR-004-upstream-sync.md) — upstream sync boundaries; the skills repo would be governed by this policy once extracted.
 - [version-tracking.md](version-tracking.md) — once `skills` is a remote input, its pin flows through the standard `nix flake update` Monday workflow alongside `nixpkgs` and the others.

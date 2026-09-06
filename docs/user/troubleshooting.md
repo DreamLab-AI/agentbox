@@ -4,7 +4,7 @@ Common failure modes and what to do about them.
 
 ## Why this page exists
 
-Agentbox has multiple moving parts — a Nix-built image, a supervisor running 8-20 programs, five pluggable adapters, optional GPU passthrough, and a few HTTP endpoints. When something is wrong the signal you see (`/ready` never goes green, `docker compose up` hangs) is almost never the cause. This page lists the failure modes we actually see, in the order they are worth checking, with the one or two commands that isolate each one. Design context: [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) (bootstrap contract) and [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md) (probe and image contract).
+Agentbox has multiple moving parts — a Nix-built image, a supervisor running 8-20 programs, five pluggable adapters, optional GPU passthrough, and a few HTTP endpoints. When something is wrong the signal you see (`/ready` never goes green, `docker compose up` hangs) is almost never the cause. This page lists the failure modes we actually see, in the order they are worth checking, with the one or two commands that isolate each one. Design context: [ADR-006](../archive/adr/ADR-006-immutable-runtime-bootstrap.md) (bootstrap contract) and [ADR-007](../archive/adr/ADR-007-runtime-contract-and-container-hardening.md) (probe and image contract).
 
 When in doubt:
 
@@ -300,7 +300,7 @@ docker compose config | grep image:
 
 ## Validator rejects manifest with `E###`
 
-Every error code has a specific cause. Look up the rule in [ADR-005 §Validation](../reference/adr/ADR-005-pluggable-adapter-architecture.md) or [ADR-007 §4a](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
+Every error code has a specific cause. Look up the rule in [ADR-005 §Validation](../archive/adr/ADR-005-pluggable-adapter-architecture.md) or [ADR-007 §4a](../archive/adr/ADR-007-runtime-contract-and-container-hardening.md).
 
 Common ones:
 

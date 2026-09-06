@@ -16,17 +16,17 @@ The secp256k1 keypair is the single root of trust. All downstream identifiers de
 
 ```mermaid
 flowchart TB
-    KP[secp256k1 keypair\nBIP-340 x-only\nnostr-pod-bridge bootstrap]
-    HEX[64-char lowercase hex pubkey\ncanonical form]
-    DID[did:nostr:hex-pubkey\nW3C DID primary identity]
+    KP[secp256k1 keypair<br/>BIP-340 x-only<br/>nostr-pod-bridge bootstrap]
+    HEX[64-char lowercase hex pubkey<br/>canonical form]
+    DID[did:nostr:hex-pubkey<br/>W3C DID primary identity]
     KP --> HEX
     HEX --> DID
 
     subgraph auth_surfaces["Auth surfaces - all accept the same pubkey"]
-        NIP42[Nostr relay NIP-42\nAUTH challenge-response]
-        NIP98[Solid pod NIP-98\nHTTP request signing]
-        WAC[WAC policy subjects\nacl:agent field]
-        DID_DOC[DID Document\nverificationMethod]
+        NIP42[Nostr relay NIP-42<br/>AUTH challenge-response]
+        NIP98[Solid pod NIP-98<br/>HTTP request signing]
+        WAC[WAC policy subjects<br/>acl:agent field]
+        DID_DOC[DID Document<br/>verificationMethod]
     end
 
     DID --> NIP42
@@ -35,15 +35,15 @@ flowchart TB
     DID --> DID_DOC
 
     subgraph scoped_urns["Owner-scoped URNs - pubkey in scope segment"]
-        CRED[urn:agentbox:credential\nhex:sha256-12-...]
-        MAND[urn:agentbox:mandate\nhex:sha256-12-...]
-        RECE[urn:agentbox:receipt\nhex:sha256-12-...]
-        POD_U[urn:agentbox:pod\nhex:sha256-12-...]
-        ENV_U[urn:agentbox:envelope\nhex:sha256-12-...]
-        ACT_U[urn:agentbox:activity\nhex:sha256-12-...]
-        EVT_U[urn:agentbox:event\nhex:sha256-12-...]
-        BEAD_U[urn:agentbox:bead\nhex:sha256-12-...]
-        DATA_U[urn:agentbox:dataset\nhex:name]
+        CRED[urn:agentbox:credential<br/>hex:sha256-12-...]
+        MAND[urn:agentbox:mandate<br/>hex:sha256-12-...]
+        RECE[urn:agentbox:receipt<br/>hex:sha256-12-...]
+        POD_U[urn:agentbox:pod<br/>hex:sha256-12-...]
+        ENV_U[urn:agentbox:envelope<br/>hex:sha256-12-...]
+        ACT_U[urn:agentbox:activity<br/>hex:sha256-12-...]
+        EVT_U[urn:agentbox:event<br/>hex:sha256-12-...]
+        BEAD_U[urn:agentbox:bead<br/>hex:sha256-12-...]
+        DATA_U[urn:agentbox:dataset<br/>hex:name]
     end
 
     DID --> CRED
@@ -66,41 +66,41 @@ All 19 kinds fall into five categories (the `decision` kind was added by ADR-048
 ```mermaid
 flowchart LR
     subgraph identity_c["Identity"]
-        DID_K[did:nostr:hex-pubkey\nAgent primary DID]
+        DID_K[did:nostr:hex-pubkey<br/>Agent primary DID]
     end
 
-    subgraph durable_c["Durable state\nownerScope=true contentAddressed=true"]
-        POD_K[pod\nhex:sha256-12-...]
-        ENV_K[envelope\nhex:sha256-12-...]
-        CRED_K[credential\nhex:sha256-12-...]
-        MAND_K[mandate\nhex:sha256-12-...]
-        RECE_K[receipt\nhex:sha256-12-...]
+    subgraph durable_c["Durable state<br/>ownerScope=true contentAddressed=true"]
+        POD_K[pod<br/>hex:sha256-12-...]
+        ENV_K[envelope<br/>hex:sha256-12-...]
+        CRED_K[credential<br/>hex:sha256-12-...]
+        MAND_K[mandate<br/>hex:sha256-12-...]
+        RECE_K[receipt<br/>hex:sha256-12-...]
     end
 
-    subgraph events_c["Events\nownerScope=true contentAddressed=true"]
-        ACT_K[activity\nhex:sha256-12-...]
-        EVT_K[event\nhex:sha256-12-...]
+    subgraph events_c["Events<br/>ownerScope=true contentAddressed=true"]
+        ACT_K[activity<br/>hex:sha256-12-...]
+        EVT_K[event<br/>hex:sha256-12-...]
     end
 
-    subgraph knowledge_c["Knowledge\nmixed scope and addressing"]
-        MEM_K[memory\noptional-scope stable]
-        BEAD_K[bead\nhex:sha256-12-...]
-        DATA_K[dataset\nhex:name]
-        THING_K[thing\noptional-scope stable]
+    subgraph knowledge_c["Knowledge<br/>mixed scope and addressing"]
+        MEM_K[memory<br/>optional-scope stable]
+        BEAD_K[bead<br/>hex:sha256-12-...]
+        DATA_K[dataset<br/>hex:name]
+        THING_K[thing<br/>optional-scope stable]
     end
 
-    subgraph cap_c["Capabilities\nownerScope=false contentAddressed=false"]
-        MCP_K[mcp\nserver-id]
-        SKILL_K[skill\nskill-id]
-        AGENT_K[agent\nagent-name]
+    subgraph cap_c["Capabilities<br/>ownerScope=false contentAddressed=false"]
+        MCP_K[mcp<br/>server-id]
+        SKILL_K[skill<br/>skill-id]
+        AGENT_K[agent<br/>agent-name]
     end
 
-    subgraph gov_c["Governance\nownerScope=false contentAddressed=false"]
-        ADR_K[adr\ndoc-number]
-        PRD_K[prd\ndoc-number]
-        DDD_K[ddd\ndoc-number]
-        DECISION_K[decision\ndoc-label]
-        META_K[meta\nruntime]
+    subgraph gov_c["Governance<br/>ownerScope=false contentAddressed=false"]
+        ADR_K[adr<br/>doc-number]
+        PRD_K[prd<br/>doc-number]
+        DDD_K[ddd<br/>doc-number]
+        DECISION_K[decision<br/>doc-label]
+        META_K[meta<br/>runtime]
     end
 
     DID_K --> POD_K
@@ -148,19 +148,19 @@ Every write through the five adapter slots passes through three mandatory middle
 
 ```mermaid
 flowchart TB
-    CALL[adapter.write\nslot=pods payload=data]
+    CALL[adapter.write<br/>slot=pods payload=data]
 
     subgraph obs["1. Observability - ADR-005"]
-        OBS_B[span open\nagentbox.adapter.pods.write\nattach: slot op trace-id]
-        OBS_E[span close\nattach: resource-urn status latency]
+        OBS_B[span open<br/>agentbox.adapter.pods.write<br/>attach: slot op trace-id]
+        OBS_E[span close<br/>attach: resource-urn status latency]
     end
 
     subgraph pf["2. Privacy filter - ADR-008"]
-        PF_POLICY[lookup policy for slot\nstrict soft off]
+        PF_POLICY[lookup policy for slot<br/>strict soft off]
         PF_CALL[POST /redact to opf-router :9092]
-        PF_STRICT[fail-closed\nreject write 503]
-        PF_SOFT[fail-open\nwrite original log warn]
-        PF_OFF[pass-through\nno router call]
+        PF_STRICT[fail-closed<br/>reject write 503]
+        PF_SOFT[fail-open<br/>write original log warn]
+        PF_OFF[pass-through<br/>no router call]
     end
 
     subgraph enc["3. JSON-LD encoder - ADR-012"]
@@ -171,11 +171,11 @@ flowchart TB
     end
 
     subgraph slots["Adapter slots"]
-        S_PODS[pods\nlocal-solid-rs external off]
-        S_EVENTS[events\nlocal-jsonl external off]
-        S_MEMORY[memory\nembedded-ruvector external-pg off]
-        S_BEADS[beads\nlocal-sqlite external off]
-        S_ORCH[orchestrator\nlocal-process-manager stdio-bridge off]
+        S_PODS[pods<br/>local-solid-rs external off]
+        S_EVENTS[events<br/>local-jsonl external off]
+        S_MEMORY[memory<br/>embedded-ruvector external-pg off]
+        S_BEADS[beads<br/>local-sqlite external off]
+        S_ORCH[orchestrator<br/>local-process-manager stdio-bridge off]
     end
 
     CALL --> OBS_B
@@ -238,9 +238,9 @@ sequenceDiagram
     participant PO as solid-pod-rs :8484
     participant NF as Solid Notifications
 
-    AG->>MA: POST /v1/pods/:id/resources\nAuthorization: Nostr NIP-98 signed event
-    MA->>MA: verify NIP-98 Schnorr signature\npubkey=hex timestamp-bound
-    MA->>OT: span open agentbox.adapter.pods.write\ntrace-id=T1 pubkey=hex
+    AG->>MA: POST /v1/pods/:id/resources<br/>Authorization: Nostr NIP-98 signed event
+    MA->>MA: verify NIP-98 Schnorr signature<br/>pubkey=hex timestamp-bound
+    MA->>OT: span open agentbox.adapter.pods.write<br/>trace-id=T1 pubkey=hex
     MA->>AR: dispatch slot=pods op=write payload=body
     AR->>PF: POST /redact text=body slot=pods
     PF-->>AR: redacted payload entity-hits=[email,phone]
@@ -248,9 +248,9 @@ sequenceDiagram
     UM->>UM: sha256-12 of stableStringify redacted
     UM-->>AR: urn:agentbox:pod:hex:sha256-12-abc
     AR->>LD: encode slot=pods resource=redacted @id=urn:agentbox:pod:hex:sha256-12-abc
-    LD->>LD: apply @context agentbox-pods-v1\nJCS canonicalise
+    LD->>LD: apply @context agentbox-pods-v1<br/>JCS canonicalise
     LD-->>AR: compacted JSON-LD
-    AR->>PO: PUT /var/lib/solid/hex/resources/sha256-12-abc\nContent-Type: application/ld+json
+    AR->>PO: PUT /var/lib/solid/hex/resources/sha256-12-abc<br/>Content-Type: application/ld+json
     PO->>PO: WAC check acl:Write for did:nostr:hex
     PO->>PO: atomic rename to final path
     PO-->>AR: 201 ETag=sha256-12-abc
@@ -258,7 +258,7 @@ sequenceDiagram
     AR->>UM: mint kind=activity pubkey=hex payload=write+pod+sha256-12-abc
     UM-->>AR: urn:agentbox:activity:hex:sha256-12-prov
     AR->>AR: write provenance record @id=urn:agentbox:activity:hex:sha256-12-prov
-    AR->>OT: span close trace-id=T1\nresource.urn=urn:agentbox:pod:hex:sha256-12-abc\nactivity.urn=urn:agentbox:activity:hex:sha256-12-prov
+    AR->>OT: span close trace-id=T1<br/>resource.urn=urn:agentbox:pod:hex:sha256-12-abc<br/>activity.urn=urn:agentbox:activity:hex:sha256-12-prov
     MA-->>AG: 201 body=JSON-LD @id=urn:agentbox:pod:hex:sha256-12-abc
 ```
 
@@ -275,7 +275,7 @@ Credential issuance is the clearest demonstration of the determinism property. T
 
 ```mermaid
 sequenceDiagram
-    participant IA as Issuer Agent\ndid:nostr:A
+    participant IA as Issuer Agent<br/>did:nostr:A
     participant MA as management-api
     participant UM as uris.mint
     participant JCS as JCS canonicaliser
@@ -284,11 +284,11 @@ sequenceDiagram
     participant NR as nostr-rs-relay S2
     participant PR as provenance surface S5
 
-    IA->>MA: POST /v1/credentials\nbody={credentialSubject: {...}, type: [...]}
+    IA->>MA: POST /v1/credentials<br/>body={credentialSubject: {...}, type: [...]}
     MA->>PF: redact credentialSubject
     PF-->>MA: redacted subject
     MA->>UM: mint kind=credential pubkey=A payload=redacted-subject
-    UM->>UM: stableStringify redacted-subject\nsha256 first 12 hex chars
+    UM->>UM: stableStringify redacted-subject<br/>sha256 first 12 hex chars
     UM-->>MA: urn:agentbox:credential:A:sha256-12-xyz
 
     MA->>JCS: canonicalise full VC @id=urn:agentbox:credential:A:sha256-12-xyz
@@ -298,22 +298,22 @@ sequenceDiagram
     IA-->>MA: Ed25519 or secp256k1 proof over canonical bytes
 
     par emit S1 pod
-        MA->>PO: PUT credential JSON-LD\n@id=urn:agentbox:credential:A:sha256-12-xyz
+        MA->>PO: PUT credential JSON-LD<br/>@id=urn:agentbox:credential:A:sha256-12-xyz
         PO-->>MA: 201
     and emit S2 relay
-        MA->>NR: EVENT kind=1059 NIP-17 sealed-DM\ncontent contains VC @id=urn:agentbox:credential:A:sha256-12-xyz
+        MA->>NR: EVENT kind=1059 NIP-17 sealed-DM<br/>content contains VC @id=urn:agentbox:credential:A:sha256-12-xyz
         NR-->>MA: OK stored in SQLite
     end
 
-    MA->>UM: mint kind=activity pubkey=A\npayload=issue+credential+urn:agentbox:credential:A:sha256-12-xyz
+    MA->>UM: mint kind=activity pubkey=A<br/>payload=issue+credential+urn:agentbox:credential:A:sha256-12-xyz
     UM-->>MA: urn:agentbox:activity:A:sha256-12-prov
 
-    MA->>PR: write PROV-O activity\n@id=urn:agentbox:activity:A:sha256-12-prov\nprov:used=urn:agentbox:credential:A:sha256-12-xyz
+    MA->>PR: write PROV-O activity<br/>@id=urn:agentbox:activity:A:sha256-12-prov<br/>prov:used=urn:agentbox:credential:A:sha256-12-xyz
 
     MA->>UM: mint kind=receipt pubkey=A payload=mandate+credential+timestamp
     UM-->>MA: urn:agentbox:receipt:A:sha256-12-rec
 
-    MA-->>IA: 201 body={credentialUrn, activityUrn, receiptUrn}\nall three URNs stable identical across pod relay provenance
+    MA-->>IA: 201 body={credentialUrn, activityUrn, receiptUrn}<br/>all three URNs stable identical across pod relay provenance
 ```
 
 The credential URN `urn:agentbox:credential:A:sha256-12-xyz` is the same string in:
@@ -331,26 +331,26 @@ URNs survive backend swaps and host moves because a URN is a name, not a locatio
 
 ```mermaid
 flowchart LR
-    subgraph standalone["Standalone mode\nfederation.mode=standalone"]
-        SA_PODS[pods adapter\nlocal-solid-rs\n:8484]
-        SA_EVENTS[events adapter\nlocal-jsonl\n/workspace/events/*.jsonl]
-        SA_MEM[memory adapter\nembedded-ruvector\nin-process]
-        SA_BEADS[beads adapter\nlocal-sqlite\n/workspace/beads.db]
-        SA_ORCH[orchestrator adapter\nlocal-process-manager\nchild_process.spawn]
-        SA_URN[urn:agentbox:credential\nhex:sha256-12-xyz\nresolver -> :8484/pods/...]
+    subgraph standalone["Standalone mode<br/>federation.mode=standalone"]
+        SA_PODS[pods adapter<br/>local-solid-rs<br/>:8484]
+        SA_EVENTS[events adapter<br/>local-jsonl<br/>/home/devuser/workspace/events/*.jsonl]
+        SA_MEM[memory adapter<br/>embedded-ruvector<br/>in-process]
+        SA_BEADS[beads adapter<br/>local-sqlite<br/>/home/devuser/workspace/beads.db]
+        SA_ORCH[orchestrator adapter<br/>local-process-manager<br/>child_process.spawn]
+        SA_URN[urn:agentbox:credential<br/>hex:sha256-12-xyz<br/>resolver -> :8484/pods/...]
     end
 
-    subgraph client_mode["Client mode\nfederation.mode=client"]
-        CL_PODS[pods adapter\nexternal\nfederation.external_url]
-        CL_EVENTS[events adapter\nexternal\nHTTP POST]
-        CL_MEM[memory adapter\nexternal-pg\nruvector-postgres:5432]
-        CL_BEADS[beads adapter\nexternal\nfederation.external_url/v1/beads/*]
-        CL_ORCH[orchestrator adapter\nstdio-bridge\nJSON-RPC over stdio]
-        CL_URN[urn:agentbox:credential\nhex:sha256-12-xyz\nresolver -> host-mesh:8484/pods/...]
+    subgraph client_mode["Client mode<br/>federation.mode=client"]
+        CL_PODS[pods adapter<br/>external<br/>federation.external_url]
+        CL_EVENTS[events adapter<br/>external<br/>HTTP POST]
+        CL_MEM[memory adapter<br/>external-pg<br/>ruvector-postgres:5432]
+        CL_BEADS[beads adapter<br/>external<br/>federation.external_url/v1/beads/*]
+        CL_ORCH[orchestrator adapter<br/>stdio-bridge<br/>JSON-RPC over stdio]
+        CL_URN[urn:agentbox:credential<br/>hex:sha256-12-xyz<br/>resolver -> host-mesh:8484/pods/...]
     end
 
     subgraph urn_invariant["URN is identical in both modes"]
-        SAME_URN[urn:agentbox:credential:hex:sha256-12-xyz\nstable name regardless of adapter implementation]
+        SAME_URN[urn:agentbox:credential:hex:sha256-12-xyz<br/>stable name regardless of adapter implementation]
     end
 
     SA_URN --> SAME_URN

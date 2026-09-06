@@ -14,7 +14,7 @@
 
 ## Browser scenes with data overlays
 
-Use the [spark-scene skill](../../skills/spark-scene/SKILL.md) to integrate a trained capture into an existing Three.js application, with registered annotations and evidence links. Spark handles presentation; this stack handles reconstruction. The skill is shipped by the builder, but the host viewer still needs implementation and GPU validation. See the [assessment](../reference/upgrades-spark-2026-09.md).
+Use the [spark-scene skill](../../skills/spark-scene/SKILL.md) to integrate a trained capture into an existing Three.js application, with registered annotations and evidence links. Spark handles presentation; this stack handles reconstruction. The skill is shipped by the builder, but the host viewer still needs implementation and GPU validation. See the [assessment](../archive/upgrades-2026-09/upgrades-spark-2026-09.md).
 
 ## Prerequisites
 

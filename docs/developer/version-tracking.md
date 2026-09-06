@@ -4,7 +4,7 @@ Agentbox pins every upstream dependency by exact version or commit SHA. This gui
 
 ## Context in one paragraph
 
-Every input to the build is pinned to an exact version or content hash so a rebuild of the same repo state produces the same image byte-for-byte. That property — reproducibility — is load-bearing: it is how [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) makes "immutable boot" a meaningful claim, and how [ADR-001](../reference/adr/ADR-001-nixos-flakes.md) justifies the Nix flake (a pure hermetic build descriptor — inputs + lockfile fully determine outputs) as the build graph. Upgrading a pin is therefore a first-class action: it is a PR, it runs through CI, it ships as a reviewable diff. [ADR-004](../reference/adr/ADR-004-upstream-sync.md) is the policy governing which upstreams may be synced mechanically and which require human review; the mechanics below implement that policy.
+Every input to the build is pinned to an exact version or content hash so a rebuild of the same repo state produces the same image byte-for-byte. That property — reproducibility — is load-bearing: it is how [PRD-002](../archive/prd/PRD-002-immutable-runtime-bootstrap.md) makes "immutable boot" a meaningful claim, and how [ADR-001](../archive/adr/ADR-001-nixos-flakes.md) justifies the Nix flake (a pure hermetic build descriptor — inputs + lockfile fully determine outputs) as the build graph. Upgrading a pin is therefore a first-class action: it is a PR, it runs through CI, it ships as a reviewable diff. [ADR-004](../archive/adr/ADR-004-upstream-sync.md) is the policy governing which upstreams may be synced mechanically and which require human review; the mechanics below implement that policy.
 
 ## Glossary
 
@@ -103,9 +103,9 @@ Every bump is one PR. Revert with `git revert <sha>`.
 ## See also
 
 - [`skills-upgrade.md`](skills-upgrade.md) — moving skills from in-tree to a standalone Nix input.
-- [`../reference/adr/ADR-001-nixos-flakes.md`](../reference/adr/ADR-001-nixos-flakes.md) — why Nix flakes and what reproducibility buys us.
-- [`../reference/adr/ADR-004-upstream-sync.md`](../reference/adr/ADR-004-upstream-sync.md) — policy for what may and may not be synced.
-- [`../reference/prd/PRD-002-immutable-runtime-bootstrap.md`](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) — immutable-boot constraint that pinning enforces.
+- [`../reference/adr/ADR-001-nixos-flakes.md`](../archive/adr/ADR-001-nixos-flakes.md) — why Nix flakes and what reproducibility buys us.
+- [`../reference/adr/ADR-004-upstream-sync.md`](../archive/adr/ADR-004-upstream-sync.md) — policy for what may and may not be synced.
+- [`../reference/prd/PRD-002-immutable-runtime-bootstrap.md`](../archive/prd/PRD-002-immutable-runtime-bootstrap.md) — immutable-boot constraint that pinning enforces.
 - [`../../renovate.json`](../../renovate.json) — Renovate config.
 - [`../../.github/workflows/nix-flake-update.yml`](../../.github/workflows/nix-flake-update.yml) — the weekly workflow.
 - [`../../scripts/check-upstream-releases.sh`](../../scripts/check-upstream-releases.sh) — the human dashboard.

@@ -53,7 +53,7 @@ and swaps in the off impl (:1224-1234).
 
 CP-03/04/08. Owner remains jjohare with adapter/runtime maintainers. Explicit orchestrator connect rejection is fatal, but the aggregate ten-second timeout continues startup with partially connected adapters. Failed off-adapter construction leaves the degraded original in place. The accepted lifecycle requirement is not fully enforced across these cases.
 
-**Acceptance condition:** Exercise never-settling connect, late failure and failed replacement. Expose per-slot readiness, define load-bearing timeout policy and demonstrate recovery without dispatch into an ambiguous adapter. Dependencies include effective configuration and failure receipts. Reopen on slot methods, lifecycle, privacy or encoding changes. See the [dispatch review](../../../../VisionFlow/docs/estate-review/adapter-dispatch.md) and [source/probe receipt](../../../../VisionFlow/docs/estate-review/evidence/dispatch-privacy-probe.json). No real sidecar, adapter persistence or startup fault injection ran.
+**Acceptance condition:** Exercise never-settling connect, late failure and failed replacement. Expose per-slot readiness, define load-bearing timeout policy and demonstrate recovery without dispatch into an ambiguous adapter. Dependencies include effective configuration and failure receipts. Reopen on slot methods, lifecycle, privacy or encoding changes. See the [dispatch review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/adapter-dispatch.md) and [source/probe receipt](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/dispatch-privacy-probe.json). No real sidecar, adapter persistence or startup fault injection ran.
 
 ## Acceptance progress — 2026-09-05
 

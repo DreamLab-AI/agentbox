@@ -56,7 +56,7 @@ The 2026-09-04 estate fixture executes both current helper implementations. Five
 
 ## Closeout extension — 2026-09-04
 
-CP-01/02/04/05. Owner remains jjohare with both identifier maintainers. **Acceptance condition:** agree exact byte/serialisation and address grammar, reconcile supported kinds and elevation, persist recoverable mappings, and run versioned positive/negative fixtures in both CI pipelines. Reopen on either helper, parser or mapped-kind change. See the [protocol registry](../PROTOCOL-registry.md), [estate review](../../../../VisionFlow/docs/estate-review/federation-identifiers.md) and [paired receipt](../../../../VisionFlow/docs/estate-review/evidence/federation-identity-probe.json). No live ingest or mapping-store mutation ran.
+CP-01/02/04/05. Owner remains jjohare with both identifier maintainers. **Acceptance condition:** agree exact byte/serialisation and address grammar, reconcile supported kinds and elevation, persist recoverable mappings, and run versioned positive/negative fixtures in both CI pipelines. Reopen on either helper, parser or mapped-kind change. See the [protocol registry](../PROTOCOL-registry.md), [estate review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/federation-identifiers.md) and [paired receipt](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/federation-identity-probe.json). No live ingest or mapping-store mutation ran.
 
 ## Acceptance progress — 2026-09-05
 

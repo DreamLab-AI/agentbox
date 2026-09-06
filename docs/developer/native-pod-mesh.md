@@ -1,7 +1,7 @@
 # Native Pod Mesh — Architecture & Wiring
 
-> **Status**: Live. Shipped at alpha.15; `lib/solid-pod-rs.nix` is now pinned
-> to `v0.4.0-alpha.17` (the first unambiguous tag after the alpha.15 aliasing).
+> **Status**: Live. Shipped at alpha.15; `lib/solid-pod-rs.nix` now pins
+> `v0.5.0-alpha.9` (2026-09-06), the same revision the pod bridge builds against.
 > agentbox build: `./agentbox.sh update && nix build .#runtime`
 
 The native pod mesh extends the DreamLab platform with a sovereign, git-versioned Solid
@@ -18,37 +18,37 @@ pods.
 graph TB
     subgraph CF["Cloudflare Edge"]
         direction TB
-        FW["Forum Client\n(Leptos WASM)"]
-        AW["auth-worker\nWebAuthn · NIP-98\nProvisioning relay"]
-        PW["pod-worker\nSolid HTTP · R2\n(no git)"]
-        RW["relay-worker\nNostr WebSocket\nDurable Objects"]
+        FW["Forum Client<br/>(Leptos WASM)"]
+        AW["auth-worker<br/>WebAuthn · NIP-98<br/>Provisioning relay"]
+        PW["pod-worker<br/>Solid HTTP · R2<br/>(no git)"]
+        RW["relay-worker<br/>Nostr WebSocket<br/>Durable Objects"]
     end
 
     subgraph AGENTBOX["Agentbox Container (on-prem)"]
         direction TB
-        MGMT["management-api\nFastify · NIP-98\nPOST /admin/users/provision"]
-        SPR["solid-pod-rs-server\nv0.4.0-alpha.17 · git feature\nPSK /_admin/provision"]
-        NOSTR["Nostr Bridge\nnip98 · relay fanout"]
-        VC["Host project\nBrokerActor\nGovernance events 31400-31405"]
-        RUVEC["RuVector\nMiniLM-L6-v2 embeddings\nHNSW semantic search"]
+        MGMT["management-api<br/>Fastify · NIP-98<br/>POST /admin/users/provision"]
+        SPR["solid-pod-rs-server<br/>v0.4.0-alpha.17 · git feature<br/>PSK /_admin/provision"]
+        NOSTR["Nostr Bridge<br/>nip98 · relay fanout"]
+        VC["Host project<br/>BrokerActor<br/>Governance events 31400-31405"]
+        RUVEC["RuVector<br/>MiniLM-L6-v2 embeddings<br/>HNSW semantic search"]
     end
 
     subgraph TUNNEL["Cloudflare Tunnel"]
-        CFD["cloudflared\ndreamlab-native-pods"]
+        CFD["cloudflared<br/>dreamlab-native-pods"]
     end
 
     USER["User Browser"]
-    ADMIN["Forum Admin\nNative Pods tab"]
+    ADMIN["Forum Admin<br/>Native Pods tab"]
 
     USER -->|"passkey · NIP-98"| AW
     USER -->|"Solid HTTP"| PW
     USER -->|"Nostr events"| RW
-    FW -->|"2nd pod card\n(native probe)"| CFD
+    FW -->|"2nd pod card<br/>(native probe)"| CFD
     CFD -->|"pods-native.dreamlab-ai.com → :8484"| SPR
-    ADMIN -->|"POST /api/native-pod/provision\nNIP-98 admin"| AW
-    AW -->|"POST /_admin/provision/{pk}\nX-Pod-Admin-Key PSK"| CFD
-    MGMT -->|"POST /_admin/provision/{pk}\ninternal :8484"| SPR
-    VC -->|"kind 31400-31405\ngovernance events"| RW
+    ADMIN -->|"POST /api/native-pod/provision<br/>NIP-98 admin"| AW
+    AW -->|"POST /_admin/provision/{pk}<br/>X-Pod-Admin-Key PSK"| CFD
+    MGMT -->|"POST /_admin/provision/{pk}<br/>internal :8484"| SPR
+    VC -->|"kind 31400-31405<br/>governance events"| RW
     NOSTR -->|"relay fanout"| RW
     SPR --- RUVEC
     MGMT --- NOSTR
@@ -109,22 +109,22 @@ sequenceDiagram
 ```mermaid
 graph LR
     subgraph IDENTITY["Shared Identity Layer"]
-        PUBKEY["secp256k1 pubkey\n(hex, 64 chars)"]
+        PUBKEY["secp256k1 pubkey<br/>(hex, 64 chars)"]
         DID["did:nostr:&lt;pubkey&gt;"]
-        WEBID["WebID\nhttps://pods[-native].dreamlab-ai.com\n/{pubkey}/profile/card#me"]
-        NIP05["NIP-05 identity\nname@dreamlab.ai"]
+        WEBID["WebID<br/>https://pods[-native].dreamlab-ai.com<br/>/{pubkey}/profile/card#me"]
+        NIP05["NIP-05 identity<br/>name@dreamlab.ai"]
     end
 
     subgraph CF_TIER["CF Workers Tier"]
-        CF_POD["R2 Solid pod\npods.dreamlab-ai.com/{pk}/"]
-        CF_DID["did:nostr resolver\nauth-worker"]
-        CF_NIP["NIP-05 resolver\nD1 → pod fallback"]
+        CF_POD["R2 Solid pod<br/>pods.dreamlab-ai.com/{pk}/"]
+        CF_DID["did:nostr resolver<br/>auth-worker"]
+        CF_NIP["NIP-05 resolver<br/>D1 → pod fallback"]
     end
 
     subgraph NATIVE_TIER["Native Tier (agentbox)"]
-        NAT_POD["FS Solid pod\npods-native.dreamlab-ai.com/{pk}/\ngit-versioned"]
-        NAT_DID["did:nostr resolver\nsolid-pod-rs-nostr"]
-        NAT_GIT["Git API\n/_git/{pk}/*\n9 REST routes"]
+        NAT_POD["FS Solid pod<br/>pods-native.dreamlab-ai.com/{pk}/<br/>git-versioned"]
+        NAT_DID["did:nostr resolver<br/>solid-pod-rs-nostr"]
+        NAT_GIT["Git API<br/>/_git/{pk}/*<br/>9 REST routes"]
     end
 
     PUBKEY --> DID
@@ -153,42 +153,42 @@ surfaced as a second browser entry rather than replacing the CF pod.
 ```mermaid
 graph TB
     subgraph AGENTS["Agentbox Agents"]
-        VC["Host project\nBrokerActor\npubkey: 11ed6422..."]
-        KEA["Knowledge Enrichment Agent\npubkey: e18f1dc1..."]
-        MOD["Moderation Bot\npubkey: 5d80b5fa..."]
-        WB["Welcome Bot\npubkey: 94f74e9c..."]
+        VC["Host project<br/>BrokerActor<br/>pubkey: 11ed6422..."]
+        KEA["Knowledge Enrichment Agent<br/>pubkey: e18f1dc1..."]
+        MOD["Moderation Bot<br/>pubkey: 5d80b5fa..."]
+        WB["Welcome Bot<br/>pubkey: 94f74e9c..."]
     end
 
     subgraph RELAY["Nostr Relay (relay-worker)"]
         direction TB
-        R1["kind 1/42 — posts/DMs\nallowlist gated"]
+        R1["kind 1/42 — posts/DMs<br/>allowlist gated"]
         R2["kind 30910-30916 — moderation"]
-        R3["kind 31400-31405 — governance\nagent pubkeys only"]
+        R3["kind 31400-31405 — governance<br/>agent pubkeys only"]
     end
 
     subgraph FORUM["Forum Client (Human)"]
-        GOV["Governance Dashboard\n/community/#/governance"]
-        POD["Pod Browser\nCF pod + Native pod"]
+        GOV["Governance Dashboard<br/>/community/#/governance"]
+        POD["Pod Browser<br/>CF pod + Native pod"]
         CHAT["Chat / DMs"]
     end
 
     subgraph PODS["Solid Pods (shared state)"]
-        CPOD["CF R2 pod\n{pk}/profile/card\n{pk}/private/privkey.jsonld"]
-        NPOD["Native FS pod\n{pk}/ (git-versioned)\n{pk}/apps/manifest.json"]
+        CPOD["CF R2 pod<br/>{pk}/profile/card<br/>{pk}/private/privkey.jsonld"]
+        NPOD["Native FS pod<br/>{pk}/ (git-versioned)<br/>{pk}/apps/manifest.json"]
     end
 
-    VC -->|"31400 panel def\n31402 action request"| R3
+    VC -->|"31400 panel def<br/>31402 action request"| R3
     KEA -->|"31402 KG update proposal"| R3
-    MOD -->|"30910 ban\n30916 unban"| R2
+    MOD -->|"30910 ban<br/>30916 unban"| R2
     WB -->|"kind 1 welcome DM"| R1
     R3 -->|"stream"| GOV
     R2 -->|"enforce"| CHAT
     R1 --> CHAT
-    GOV -->|"31403 approve/reject\nNIP-98 signed"| R3
+    GOV -->|"31403 approve/reject<br/>NIP-98 signed"| R3
     R3 -->|"31403 response"| VC
     POD -->|"NIP-98 GET/PUT"| CPOD
     POD -->|"NIP-98 /_git/*"| NPOD
-    VC -->|"read/write\nagent memory"| NPOD
+    VC -->|"read/write<br/>agent memory"| NPOD
     KEA -->|"KG updates"| NPOD
 
     style AGENTS fill:#1a1a2e,color:#fff
@@ -204,26 +204,26 @@ graph TB
 ```mermaid
 graph LR
     subgraph INTERNET["Public Internet"]
-        BROWSER["User Browser\nhttps://dreamlab-ai.com"]
-        BAD["Untrusted Origin\ne.g. attacker.com"]
+        BROWSER["User Browser<br/>https://dreamlab-ai.com"]
+        BAD["Untrusted Origin<br/>e.g. attacker.com"]
     end
 
     subgraph EDGE["Cloudflare Edge"]
-        CFT["Cloudflare Tunnel\nTLS termination"]
+        CFT["Cloudflare Tunnel<br/>TLS termination"]
     end
 
     subgraph INTERNAL["Internal Network (pod-internal bridge)"]
-        SPR["solid-pod-rs-server\n:8484"]
+        SPR["solid-pod-rs-server<br/>:8484"]
     end
 
-    BROWSER -->|"Origin: https://dreamlab-ai.com\n→ ACAO header returned"| CFT
-    BAD -->|"Origin: attacker.com\n→ 403 (CORS denied)"| CFT
+    BROWSER -->|"Origin: https://dreamlab-ai.com<br/>→ ACAO header returned"| CFT
+    BAD -->|"Origin: attacker.com<br/>→ 403 (CORS denied)"| CFT
     CFT --> SPR
-    SPR -->|"SOLID_ALLOWED_ORIGINS check\non every request"| SPR
+    SPR -->|"SOLID_ALLOWED_ORIGINS check<br/>on every request"| SPR
 
     subgraph ADMIN_PATH["Admin Provision Path"]
-        AW2["auth-worker\n(CF)"]
-        AW2 -->|"X-Pod-Admin-Key: $PSK\nonly from CF Worker\nnot from browser"| CFT
+        AW2["auth-worker<br/>(CF)"]
+        AW2 -->|"X-Pod-Admin-Key: $PSK<br/>only from CF Worker<br/>not from browser"| CFT
     end
 
     style INTERNET fill:#cc3333,color:#fff
@@ -242,13 +242,13 @@ even if they intercept their own traffic.
 
 ```mermaid
 flowchart TD
-    A["1. Rev bump\nlib/solid-pod-rs.nix\nversion + rev"] --> B
-    B["2. ./agentbox.sh update\n→ prefetch-hashes.sh\n  • srcHash (nix-prefetch-url)\n  • Cargo.lock regen\n  • FOD loop (build iterations)"] --> C
-    C["3. nix build .#runtime\nsolid-pod-rs-server compiled\nwith features:\ngit · install · did-nostr\ncors-allowlist · quota\nrate-limit · security-primitives\n(MCP always compiled, runtime-gated)"] --> D
-    D["4. Host rebuild\n./scripts/launch.sh rebuild dev\nor ./agentbox.sh rebuild"] --> E
-    E["5. supervisord restarts\n[program:solid-pod]\nenv: SOLID_ADMIN_KEY\nSOLID_ALLOWED_ORIGINS"] --> F
-    F["6. Start tunnel sidecar\ndocker compose\n-f docker-compose.solid-pods.yml\nup -d cloudflared-pod"] --> G
-    G["7. Verify\ncurl https://pods-native.dreamlab-ai.com\n/.well-known/solid"]
+    A["1. Rev bump<br/>lib/solid-pod-rs.nix<br/>version + rev"] --> B
+    B["2. ./agentbox.sh update<br/>→ prefetch-hashes.sh<br/>  • srcHash (nix-prefetch-url)<br/>  • Cargo.lock regen<br/>  • FOD loop (build iterations)"] --> C
+    C["3. nix build .#runtime<br/>solid-pod-rs-server compiled<br/>with features:<br/>git · install · did-nostr<br/>cors-allowlist · quota<br/>rate-limit · security-primitives<br/>(MCP always compiled, runtime-gated)"] --> D
+    D["4. Host rebuild<br/>./scripts/launch.sh rebuild dev<br/>or ./agentbox.sh rebuild"] --> E
+    E["5. supervisord restarts<br/>[program:solid-pod]<br/>env: SOLID_ADMIN_KEY<br/>SOLID_ALLOWED_ORIGINS"] --> F
+    F["6. Start tunnel sidecar<br/>docker compose<br/>-f docker-compose.solid-pods.yml<br/>up -d cloudflared-pod"] --> G
+    G["7. Verify<br/>curl https://pods-native.dreamlab-ai.com<br/>/.well-known/solid"]
 
     style A fill:#2d2d44,color:#fff
     style B fill:#2d4a1e,color:#fff
@@ -289,16 +289,16 @@ No manual hash editing is required.
 
 ```mermaid
 graph LR
-    ENV[".env.solid-pods\n(on host, never committed)"]
-    GHS["GitHub Secrets\nNATIVE_POD_URL\nNATIVE_POD_ADMIN_KEY"]
-    CFS["CF Worker Secrets\ndreamlab-auth-api\nNATIVE_POD_URL\nNATIVE_POD_ADMIN_KEY"]
-    TRUNK["Trunk build env\nNATIVE_POD_URL\n(compile-time const)"]
-    SPRD["supervisord env\nSOLID_ADMIN_KEY\nSOLID_ALLOWED_ORIGINS"]
+    ENV[".env.solid-pods<br/>(on host, never committed)"]
+    GHS["GitHub Secrets<br/>NATIVE_POD_URL<br/>NATIVE_POD_ADMIN_KEY"]
+    CFS["CF Worker Secrets<br/>dreamlab-auth-api<br/>NATIVE_POD_URL<br/>NATIVE_POD_ADMIN_KEY"]
+    TRUNK["Trunk build env<br/>NATIVE_POD_URL<br/>(compile-time const)"]
+    SPRD["supervisord env<br/>SOLID_ADMIN_KEY<br/>SOLID_ALLOWED_ORIGINS"]
 
     ENV -->|"manual: set in GH UI"| GHS
-    GHS -->|"set-worker-secrets.yml\n(workflow dispatch)"| CFS
-    GHS -->|"deploy.yml Trunk step\nenv: NATIVE_POD_URL"| TRUNK
-    ENV -->|"--env-file .env.solid-pods\ndocker compose"| SPRD
+    GHS -->|"set-worker-secrets.yml<br/>(workflow dispatch)"| CFS
+    GHS -->|"deploy.yml Trunk step<br/>env: NATIVE_POD_URL"| TRUNK
+    ENV -->|"--env-file .env.solid-pods<br/>docker compose"| SPRD
 
     style ENV fill:#cc3333,color:#fff
     style GHS fill:#2d4a1e,color:#fff

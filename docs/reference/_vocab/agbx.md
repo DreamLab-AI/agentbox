@@ -2,7 +2,7 @@
 
 **Namespace IRI:** `https://agentbox.dreamlab-ai.systems/ns/v1#`
 **Context document:** [`agentbox-v1.context.jsonld`](./agentbox-v1.context.jsonld)
-**Published under:** [PRD-006](../prd/PRD-006-linked-data-interfaces.md) / [ADR-012](../adr/ADR-012-jsonld-federation-grammar.md) / [DDD-004](../ddd/DDD-004-linked-data-interchange-domain.md)
+**Published under:** [PRD-006](../../archive/prd/PRD-006-linked-data-interfaces.md) / [ADR-012](../../archive/adr/ADR-012-jsonld-federation-grammar.md) / [DDD-004](../../archive/ddd/DDD-004-linked-data-interchange-domain.md)
 
 The `agbx:` namespace covers terms with no upstream W3C / IETF / Schema.org equivalent. Each term has a documented rationale and a round-trip test fixture. We bind to upstream vocabularies whenever possible — see PRD-006 §8.4.
 

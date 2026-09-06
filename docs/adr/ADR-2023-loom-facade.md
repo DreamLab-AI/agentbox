@@ -73,8 +73,8 @@ the same URL does not prove equivalent grounding. Agent retrieval uses search
 and SPARQL, not Loom chat/scaffold. The current cache omits domain and token
 override from its key: the actual helper returned an AI seed and 830 tokens for
 a subsequent robotics request capped at 50 tokens. Expansion failure also
-returned `degraded: false`. See [agent grounding evidence](../../../../VisionFlow/docs/estate-review/agent-grounding-and-governance.md)
-and [receipts](../../../../VisionFlow/docs/estate-review/evidence/agent-snapshot.json).
+returned `degraded: false`. See [agent grounding evidence](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/agent-grounding-and-governance.md)
+and [receipts](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/agent-snapshot.json).
 
 **Remaining work:** preserve every effective request constraint on cache hits,
 return stage-specific degradation, and distinguish requested provenance from

@@ -149,7 +149,7 @@ runs from the workspace copy and the hook self-heals it.
 
 Claude working tabs are auto-named by project (git remote → toplevel → cwd
 basename) via the same `SessionStart` hook, so `/tabs` is human-readable. Curated
-utility/profile tab names (`OpenRouter`, `ZAI`, …) are left untouched because only
+utility tab names (`Services`, `Logs`, `Sessions`, …) are left untouched because only
 Claude sessions fire the hook.
 
 ## Troubleshooting

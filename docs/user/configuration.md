@@ -4,7 +4,7 @@ Every key in [`agentbox.toml`](../../agentbox.toml). This is the single source o
 
 ## Why this file exists
 
-Instead of editing Dockerfiles, compose YAML, supervisor configs and CLI flags separately, Agentbox puts the entire build-and-runtime surface into one TOML manifest. Change a key, re-validate, rebuild if needed; everything downstream follows. Full product spec: [PRD-001](../reference/prd/PRD-001-capabilities-and-adapters.md).
+Instead of editing Dockerfiles, compose YAML, supervisor configs and CLI flags separately, Agentbox puts the entire build-and-runtime surface into one TOML manifest. Change a key, re-validate, rebuild if needed; everything downstream follows. Full product spec: [PRD-001](../archive/prd/PRD-001-capabilities-and-adapters.md).
 
 **What it solves**
 
@@ -46,7 +46,7 @@ peer_relays = []                 # Required when mode="client". WebSocket URLs o
 
 ## `[adapters]`
 
-Five slots. Each resolves to one of three implementation classes. An `adapter` is the pluggable-backend pattern from [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) — every integration that touches durable state goes through one of these slots, so you can run everything locally, federate with a host mesh, or turn the slot off entirely without changing agent code.
+Five slots. Each resolves to one of three implementation classes. An `adapter` is the pluggable-backend pattern from [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md) — every integration that touches durable state goes through one of these slots, so you can run everything locally, federate with a host mesh, or turn the slot off entirely without changing agent code.
 
 ```mermaid
 graph LR
@@ -88,11 +88,11 @@ events       = "local-jsonl"           # local-jsonl | external | off
 orchestrator = "local-process-manager" # local-process-manager | stdio-bridge | off
 ```
 
-`beads = "local-sqlite"` is the shipped default since [PRD-021](../reference/prd/PRD-021-interaction-surface-consolidation.md) activated the work-ledger slot: every Agent of Empires session boundary maps to a durable beads epic (session create → `createEpic`, task/turn units → `createChild`/`claim`, session end → `close`), exposed over `/v1/beads` and each id minted through `lib/uris.js`. Selecting the beads implementation is resolved at Nix image composition, so a change here is **rebuild-class** (see [`[interaction_plane]`](#interaction_plane) and the rebuild table). Set it back to `off` to disable the ledger and its route.
+`beads = "local-sqlite"` is the shipped default since [PRD-021](../archive/prd/PRD-021-interaction-surface-consolidation.md) activated the work-ledger slot: every Agent of Empires session boundary maps to a durable beads epic (session create → `createEpic`, task/turn units → `createChild`/`claim`, session end → `close`), exposed over `/v1/beads` and each id minted through `lib/uris.js`. Selecting the beads implementation is resolved at Nix image composition, so a change here is **rebuild-class** (see [`[interaction_plane]`](#interaction_plane) and the rebuild table). Set it back to `off` to disable the ledger and its route.
 
 `pods = "local-solid-rs"` is the only first-party implementation. It runs the
 [`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs) Rust Solid
-Protocol 0.11 server described in [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
+Protocol 0.11 server described in [ADR-010](../archive/adr/ADR-010-rust-solid-pod-adoption.md).
 See [solid-pod.md](solid-pod.md) for the operator guide and
 `[integrations.solid_pod_rs]` below for the per-feature knobs. The legacy
 `local-jss` Python stub was removed 2026-04-25; old manifests carrying it
@@ -104,7 +104,7 @@ Validator rules:
 - **E003**: `orchestrator = "stdio-bridge"` must not bind an HTTP port.
 - **E033**: `integrations.solid_pod_rs.enable_dpop_cache = true` requires `enable_oidc = true`.
 
-Full adapter contract: [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
+Full adapter contract: [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md).
 
 ## `[gpu]`
 
@@ -166,7 +166,7 @@ Validator rules:
 - **E024**: `dtype = "q4"` requires `mode = "local-cpu"`.
 - **E025**: `port` must not collide with `observability.metrics_port`.
 
-Full routing contract: [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md).
+Full routing contract: [ADR-008](../archive/adr/ADR-008-privacy-filter-routing.md).
 Novice-friendly walkthrough: [privacy-filter.md](privacy-filter.md).
 
 ## `[desktop]`
@@ -320,7 +320,7 @@ IDE, not a CLI — it is not part of this integration path.
 ## `[model_routing]` and `[model_routing.routes]`
 
 One per-activity Claude/Codex routing policy, projected at every boot into
-agentic-qe's on-disk per-agent overrides ([ADR-041](../reference/adr/ADR-041-model-routing-one-policy-many-projections.md);
+agentic-qe's on-disk per-agent overrides ([ADR-041](../archive/adr/ADR-041-model-routing-one-policy-many-projections.md);
 requires agentic-qe ≥ 3.13.1, upstream issue #568). Both wizards expose the
 gates; the routes render schema-driven in the browser wizard.
 
@@ -381,7 +381,7 @@ Details: [`config/model-router/README.md`](../../config/model-router/README.md).
 ## `[project_tracking]`
 
 Helm-grade project tracking re-expressed on the sovereign substrate — no new
-URN kind, no new port, no new adapter slot ([PRD-017](../reference/prd/PRD-017-sovereign-project-tracking.md) / [ADR-035](../reference/adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md) / [DDD-015](../reference/ddd/DDD-015-project-tracking-domain.md)). Every tracked git
+URN kind, no new port, no new adapter slot ([PRD-017](../archive/prd/PRD-017-sovereign-project-tracking.md) / [ADR-035](../archive/adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md) / [DDD-015](../archive/ddd/DDD-015-project-tracking-domain.md)). Every tracked git
 repo under `scan_dirs` becomes a `urn:agentbox:thing:<scope>:project-<sha256-12>`;
 scans and primers ride the existing events/memory adapter slots.
 
@@ -406,10 +406,10 @@ key respectively).
 
 The interaction plane — how interactive agent sessions are created, monitored,
 attached, and reviewed — is [Agent of Empires](https://github.com/DreamLab-AI/agentbox-of-empires)
-(AoE), adopted as an overlay ([PRD-021](../reference/prd/PRD-021-interaction-surface-consolidation.md) /
-[ADR-042](../reference/adr/ADR-042-agent-of-empires-interaction-plane.md) /
-[043](../reference/adr/ADR-043-session-identity-binding.md) /
-[044](../reference/adr/ADR-044-voice-plane-aoe-repoint.md)). It supersedes the
+(AoE), adopted as an overlay ([PRD-021](../archive/prd/PRD-021-interaction-surface-consolidation.md) /
+[ADR-042](../archive/adr/ADR-042-agent-of-empires-interaction-plane.md) /
+[043](../archive/adr/ADR-043-session-identity-binding.md) /
+[044](../archive/adr/ADR-044-voice-plane-aoe-repoint.md)). It supersedes the
 hand-rolled MAD-style per-provider tmux harness tabs in place. With
 `enabled = false` no daemon starts and no seeds are provisioned — the runtime is
 byte-identical to the pre-PRD-021 product.
@@ -494,8 +494,8 @@ ws_url = "ws://comfyui:8188/ws"
 Each retrieval gate mirrors into the `RUVECTOR_*` env of the governed
 `ruvector-mcp.cjs` server — the legacy 20 tools plus `memory_hybrid_search`,
 `memory_orient`, `memory_health`, and `memory_sweep_episodic` (24 total).
-See [PRD-018](../reference/prd/PRD-018-ruvector-native-memory-and-learning.md)
-/ [ADR-036](../reference/adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md).
+See [PRD-018](../archive/prd/PRD-018-ruvector-native-memory-and-learning.md)
+/ [ADR-036](../archive/adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md).
 
 ## `[memory_learning]`
 
@@ -547,7 +547,7 @@ deleted (`archive-legacy`). Recovery archives from that run live under
 
 ## `[linked_data]` and `[linked_data.viewer]`
 
-Eleven JSON-LD federation surfaces ([PRD-006](../reference/prd/PRD-006-linked-data-interfaces.md) / [ADR-012](../reference/adr/ADR-012-jsonld-federation-grammar.md)) plus an optional JSON-LD-aware
+Eleven JSON-LD federation surfaces ([PRD-006](../archive/prd/PRD-006-linked-data-interfaces.md) / [ADR-012](../archive/adr/ADR-012-jsonld-federation-grammar.md)) plus an optional JSON-LD-aware
 browser at `/lo/*` (S12). Full walkthrough: [linked-data.md](linked-data.md)
 (surfaces) and [browser.md](browser.md) (viewer).
 
@@ -611,9 +611,9 @@ See [sovereign-mesh (developer)](../developer/sovereign-mesh.md) for internals.
 Embedded Nostr relay for external-agent messaging. Gives external humans
 and agents a signed, audited path to internal agents; every accepted
 event is persisted to the pod mailbox. Specified by
-[PRD-004](../reference/prd/PRD-004-external-agent-messaging.md) /
-[ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md) /
-[DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md).
+[PRD-004](../archive/prd/PRD-004-external-agent-messaging.md) /
+[ADR-009](../archive/adr/ADR-009-embedded-nostr-relay.md) /
+[DDD-003](../archive/ddd/DDD-003-sovereign-messaging-domain.md).
 
 ```toml
 [sovereign_mesh.relay]
@@ -930,7 +930,7 @@ Validator rules **E020/W021**:
 - E020: exception declared but feature not enabled → error.
 - W021: exception widens attack surface (cap_add / devices / seccomp=unconfined) but `audit_acknowledged` is missing → flake build fails closed.
 
-Full hardening spec: [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
+Full hardening spec: [ADR-007](../archive/adr/ADR-007-runtime-contract-and-container-hardening.md).
 
 ---
 

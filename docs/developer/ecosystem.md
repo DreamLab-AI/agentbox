@@ -87,16 +87,16 @@ URNs follow the existing 18-kind grammar (ADR-013): `KernelSession` → `thing`,
 
 ```mermaid
 graph LR
-    DID[did:nostr:hex-pubkey\nShared identity root]
+    DID[did:nostr:hex-pubkey<br/>Shared identity root]
 
-    DID --> SPR[solid-pod-rs\nNIP-98 WAC auth]
-    DID --> NRF[nostr-rust-forum\nEvent signing]
-    DID --> VC[Host project\nGraph governance]
-    DID --> DAW[dreamlab-ai-website\nForum config]
-    DID --> CAH[code-as-harness\nKernelSession / Lessons / Skills]
+    DID --> SPR[solid-pod-rs<br/>NIP-98 WAC auth]
+    DID --> NRF[nostr-rust-forum<br/>Event signing]
+    DID --> VC[Host project<br/>Graph governance]
+    DID --> DAW[dreamlab-ai-website<br/>Forum config]
+    DID --> CAH[code-as-harness<br/>KernelSession / Lessons / Skills]
 
-    CAH --> RV[(RuVector\ncode-harness-lessons\ncode-harness-skills\ncode-harness-activities)]
-    CAH --> AJ[(Audit JSONL\n/var/lib/agentbox/\ncode-harness/)]
+    CAH --> RV[(RuVector<br/>code-harness-lessons<br/>code-harness-skills<br/>code-harness-activities)]
+    CAH --> AJ[(Audit JSONL<br/>/var/lib/agentbox/<br/>code-harness/)]
 ```
 
 The `did:nostr` identity flows through all five identity-mesh participants. Federation surfaces for this domain are opt-in (`[linked_data.code_execution] enabled = true` in `agentbox.toml`), following the DDD-004 pattern: `LessonDistilled` and `SkillVerified` events are encoded as JSON-LD with the URN→IRI mapping (`urn:agentbox:K:S:L` ⇆ `https://urn.agentbox.dev/K/S/L`) before federation.
@@ -113,16 +113,16 @@ The novelty is in the **three egress surfaces**, mirroring the rest of the mesh 
 
 ```mermaid
 graph LR
-    DID[did:nostr:hex-pubkey\nShared identity root]
-    DID --> SPR[solid-pod-rs\nNIP-98 WAC auth]
-    DID --> NRF[nostr-rust-forum\nEvent signing]
-    DID --> VC[Host project\nGraph governance]
-    DID --> CAH[code-as-harness\nKernelSession / Lessons]
-    DID --> PT[project-tracking\nTrackedProject / kind-30841]
+    DID[did:nostr:hex-pubkey<br/>Shared identity root]
+    DID --> SPR[solid-pod-rs<br/>NIP-98 WAC auth]
+    DID --> NRF[nostr-rust-forum<br/>Event signing]
+    DID --> VC[Host project<br/>Graph governance]
+    DID --> CAH[code-as-harness<br/>KernelSession / Lessons]
+    DID --> PT[project-tracking<br/>TrackedProject / kind-30841]
 
-    PT --> MET[(/metrics\nagentbox_project_*)]
-    PT --> REL[(relay + pod\nkind-30841 digests)]
-    PT --> MEM[(RuVector\nproject-tracking-primers)]
+    PT --> MET[(/metrics<br/>agentbox_project_*)]
+    PT --> REL[(relay + pod<br/>kind-30841 digests)]
+    PT --> MEM[(RuVector<br/>project-tracking-primers)]
 ```
 
 Durable state rides the existing **memory** (primers) and **events** (scans) adapter slots — project tracking adds **no sixth adapter slot**. Both external hops (the Z.AI/GLM primer consultant and GitHub enrichment) are independently gated; the whole domain is off by default behind `[project_tracking]`.
@@ -159,7 +159,7 @@ Phase 1 closes the buy-side gap identified in PRD-015. Where previously agentbox
 - **B1 Well-known manifest** (`routes/well-known.js`) — `/.well-known/x402.json` generated at boot.
 - **C5 Skill** (`skills/payment-router/`) — `payFetch()` wraps the full pipeline as a drop-in for `fetch()`.
 
-Settlement stance: Lightning via NWC (NIP-47, PRD-015 C10) is the planned real-money rail — Phase 3. No native EVM/USDC rail (operator decision, v1.2). See [economy-loop.md](economy-loop.md) and [ADR-032](../reference/adr/ADR-032-402-scheme-grammar.md).
+Settlement stance: Lightning via NWC (NIP-47, PRD-015 C10) is the planned real-money rail — Phase 3. No native EVM/USDC rail (operator decision, v1.2). See [economy-loop.md](economy-loop.md) and [ADR-032](../archive/adr/ADR-032-402-scheme-grammar.md).
 
 ## Mesh participation
 
@@ -230,11 +230,11 @@ Two ecosystem boundaries make this clean:
 
 ```mermaid
 graph LR
-    ADMIN[did:nostr admin key\noperator identity root]
-    PHONE[Phone key\nNIP-26 delegated]
-    AGENT[Agent\nholds own nsec]
-    POD[(Solid pod\n/sessions/*.jsonld)]
-    RELAY[Embedded relay\nkind-1059 / kind-30840]
+    ADMIN[did:nostr admin key<br/>operator identity root]
+    PHONE[Phone key<br/>NIP-26 delegated]
+    AGENT[Agent<br/>holds own nsec]
+    POD[(Solid pod<br/>/sessions/*.jsonld)]
+    RELAY[Embedded relay<br/>kind-1059 / kind-30840]
 
     ADMIN -->|"signs delegation (kinds 14,1059, ttl)"| PHONE
     PHONE -->|"gift-wrapped DM"| RELAY
@@ -292,8 +292,8 @@ The adapter contract (ADR-005) guarantees that every feature works in both modes
 - [Sovereign mesh internals](sovereign-mesh.md)
 - [Adapter pattern](adapters.md)
 - [Identity and tracing mesh](identity-mesh.md)
-- [ADR-009 -- Embedded Nostr relay](../reference/adr/ADR-009-embedded-nostr-relay.md)
-- [ADR-010 -- solid-pod-rs adoption](../reference/adr/ADR-010-rust-solid-pod-adoption.md)
-- [ADR-014 -- Bi-directional graph-state ingress](../reference/adr/ADR-014-bidirectional-graph-state-ingress.md)
-- [ADR-026 -- Cross-substrate agent-loop seams](../reference/adr/ADR-026-cross-substrate-agent-loop-seams.md)
-- [PRD-014 -- Embodied agent loop](../reference/prd/PRD-014-embodied-agent-loop.md)
+- [ADR-009 -- Embedded Nostr relay](../archive/adr/ADR-009-embedded-nostr-relay.md)
+- [ADR-010 -- solid-pod-rs adoption](../archive/adr/ADR-010-rust-solid-pod-adoption.md)
+- [ADR-014 -- Bi-directional graph-state ingress](../archive/adr/ADR-014-bidirectional-graph-state-ingress.md)
+- [ADR-026 -- Cross-substrate agent-loop seams](../archive/adr/ADR-026-cross-substrate-agent-loop-seams.md)
+- [PRD-014 -- Embodied agent loop](../archive/prd/PRD-014-embodied-agent-loop.md)

@@ -62,7 +62,7 @@ The harness defines its frozen median-of-three band. This pass did not run it ag
 
 Dependencies: CP-01 release/model identity and the caller-authority contract. Reopen on model, write/fallback, TTL or retrieval changes. Historical verification fields are retained; this annex records source/mock evidence at `89301ec7c911eab270c00a0cf81596d0d4f15535`, not a new production or recall certification.
 
-See the [shared-memory review](../../../../VisionFlow/docs/estate-review/shared-memory.md), [source/test receipt](../../../../VisionFlow/docs/estate-review/evidence/memory-snapshot.json) and [isolated probe](../../../../VisionFlow/docs/estate-review/evidence/memory-store-probes.json).
+See the [shared-memory review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/shared-memory.md), [source/test receipt](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/memory-snapshot.json) and [isolated probe](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/memory-store-probes.json).
 
 ## Acceptance progress — 2026-09-05
 

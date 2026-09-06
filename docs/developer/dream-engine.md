@@ -4,7 +4,7 @@ The dream engine is agentbox's "dream machine": an overnight batch that picks on
 
 ## Context in one paragraph
 
-Left to itself, an LLM asked to "improve this repo" hallucinates plausible-sounding changes it never ran. The dream engine removes the hallucination surface by splitting the work across two planes: the **control plane** (this container) compiles a deterministic prompt and orchestrates; the **execution plane** (an SSH-reachable annexe host — HP-Desktop on the DreamLab estate, [ADR-052](../reference/adr/ADR-052-dream-machine-hp-annexe.md)) actually clones, builds, and runs the target repo's own evaluators. The evaluator receipts are appended to the prompt, so the model reasons over output it did not invent. A verdict is parsed deterministically, a ledger row is appended in the target repo, and a tamper-evident witness binds the report to the exact commit it judged. It is the Rust rewrite of `scripts/dream-machine-nightly.mjs`; the `.mjs` orchestrator is now the legacy fallback (see [below](#legacy-mjs-fallback)).
+Left to itself, an LLM asked to "improve this repo" hallucinates plausible-sounding changes it never ran. The dream engine removes the hallucination surface by splitting the work across two planes: the **control plane** (this container) compiles a deterministic prompt and orchestrates; the **execution plane** (an SSH-reachable annexe host — HP-Desktop on the DreamLab estate, [ADR-052](../archive/adr/ADR-052-dream-machine-hp-annexe.md)) actually clones, builds, and runs the target repo's own evaluators. The evaluator receipts are appended to the prompt, so the model reasons over output it did not invent. A verdict is parsed deterministically, a ledger row is appended in the target repo, and a tamper-evident witness binds the report to the exact commit it judged. It is the Rust rewrite of `scripts/dream-machine-nightly.mjs`; the `.mjs` orchestrator is now the legacy fallback (see [below](#legacy-mjs-fallback)).
 
 The engine holds **zero estate credentials on the annexe host**: it is a pull-nothing, push-work model. The control plane opens an outbound SSH session, ships a `git archive` of HEAD, runs commands, reads stdout back. The annexe never calls into agentbox, never holds an API key, and never sees the RuVector database. Secrets (the Z.AI key, the Postgres conninfo) live only in the control-plane process environment.
 
@@ -46,7 +46,7 @@ Any repository under the workspace root is nominated by dropping a `dream.config
 | `slots` | array (required) | Rotating focus areas. Each is `{ "deep": "<theme>", "scan": ["<area>", …] }`. Tonight's slot = `dayInt % slots.length`. |
 | `bonusModuli` | map | `{ "<modulus>": "<extra dive>" }`. A dive fires when `dayInt % modulus == 0` — periodic deep passes layered on the daily slot. |
 | `buildStep` | object | `{ "cmd": "<build command>", "degradeOnWasmFailure": false }`. Run on the annexe before evaluators. |
-| `annexeInclude` | array | Sibling workspace repos this repo's build/evaluators need — e.g. a crate with a Cargo `path = "../<sibling>"` dep on another repo. Each is archived from its own HEAD and extracted alongside the target on the annexe (`remote_dir/<repo>` + `remote_dir/<sibling>`), mirroring the workspace so the path-deps resolve ([ADR-060](../reference/adr/ADR-060-dream-annexe-path-dependencies.md)). Empty/absent ⇒ unchanged. Shipping siblings only helps if an evaluator actually builds against them. |
+| `annexeInclude` | array | Sibling workspace repos this repo's build/evaluators need — e.g. a crate with a Cargo `path = "../<sibling>"` dep on another repo. Each is archived from its own HEAD and extracted alongside the target on the annexe (`remote_dir/<repo>` + `remote_dir/<sibling>`), mirroring the workspace so the path-deps resolve ([ADR-060](../archive/adr/ADR-060-dream-annexe-path-dependencies.md)). Empty/absent ⇒ unchanged. Shipping siblings only helps if an evaluator actually builds against them. |
 | `evaluatorEntrypoints` | map | `{ "<name>": "<command>" }`. Each is run on the annexe; its stdout tail becomes evidence. **This is the load-bearing field** — see [evaluator liveness](#evaluator-liveness-the-1-failure-mode). |
 | `competitors` | array | Named comparators the prompt asks the model to beat. |
 | `adrConvention` | string | ADR numbering convention (default `"4-digit"`). |
@@ -248,7 +248,7 @@ Verify state before and after: `nvidia-smi --query-gpu=memory.used,memory.total 
 
 ## Related
 
-* [ADR-052 — HP annexe execution plane](../reference/adr/ADR-052-dream-machine-hp-annexe.md)
+* [ADR-052 — HP annexe execution plane](../archive/adr/ADR-052-dream-machine-hp-annexe.md)
 * [Architecture overview](architecture.md) — manifest → flake → image → runtime
 * `lib/dream-engine.nix` — the buildRustPackage derivation
 * `services/dream-engine/` — the crate (57 hermetic tests)

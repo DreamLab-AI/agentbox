@@ -4,7 +4,7 @@ For contributors. If you are an operator, start at [user/quickstart.md](../user/
 
 ## Context in one paragraph
 
-Agentbox is the runtime container that executes autonomous coding agents. This document is the map you land on when you need to change behaviour: it explains how the manifest drives the build, how the build produces the image, and how the image boots into a hardened, observable runtime with pluggable durable-state adapters. The [adapter pattern](adapters.md), [testing](testing.md), and [sovereign mesh](sovereign-mesh.md) pages cover the specifics; this page is the structural overview. The design is constrained by [PRD-001](../reference/prd/PRD-001-capabilities-and-adapters.md) (the product must ship standalone or federated with the same binary) and driven by three foundational ADRs — [ADR-001](../reference/adr/ADR-001-nixos-flakes.md) (Nix flake build), [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md) (pluggable adapters), [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) (immutable boot) — with [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md) and [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md) layering hardening and cross-cutting middleware on top. Read that paragraph twice; the rest of this file is the mechanical elaboration.
+Agentbox is the runtime container that executes autonomous coding agents. This document is the map you land on when you need to change behaviour: it explains how the manifest drives the build, how the build produces the image, and how the image boots into a hardened, observable runtime with pluggable durable-state adapters. The [adapter pattern](adapters.md), [testing](testing.md), and [sovereign mesh](sovereign-mesh.md) pages cover the specifics; this page is the structural overview. The design is constrained by [PRD-001](../archive/prd/PRD-001-capabilities-and-adapters.md) (the product must ship standalone or federated with the same binary) and driven by three foundational ADRs — [ADR-001](../archive/adr/ADR-001-nixos-flakes.md) (Nix flake build), [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md) (pluggable adapters), [ADR-006](../archive/adr/ADR-006-immutable-runtime-bootstrap.md) (immutable boot) — with [ADR-007](../archive/adr/ADR-007-runtime-contract-and-container-hardening.md) and [ADR-008](../archive/adr/ADR-008-privacy-filter-routing.md) layering hardening and cross-cutting middleware on top. Read that paragraph twice; the rest of this file is the mechanical elaboration.
 
 ## One-sentence summary
 
@@ -13,10 +13,10 @@ Agentbox is a manifest-driven Nix-built Linux container that hosts software agen
 ## Glossary — terms used throughout these docs
 
 - **Manifest** — `agentbox.toml`, the single source of truth for what gets built. Validated against a JSON Schema plus 30 semantic rules (E001-E031 + W021 + W030, E009 reserved).
-- **Flake** — Nix's pure, hermetic build descriptor (`flake.nix` + `flake.lock`). Pure means identical inputs produce identical outputs byte-for-byte. Background: [ADR-001](../reference/adr/ADR-001-nixos-flakes.md).
-- **Adapter slot** — one of five fixed integration points (`beads`, `pods`, `memory`, `events`, `orchestrator`) defined in [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md). Each slot has three implementation classes: `local-*`, `external`, `off`.
+- **Flake** — Nix's pure, hermetic build descriptor (`flake.nix` + `flake.lock`). Pure means identical inputs produce identical outputs byte-for-byte. Background: [ADR-001](../archive/adr/ADR-001-nixos-flakes.md).
+- **Adapter slot** — one of five fixed integration points (`beads`, `pods`, `memory`, `events`, `orchestrator`) defined in [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md). Each slot has three implementation classes: `local-*`, `external`, `off`.
 - **Sovereign mesh** — the optional Nostr-based inter-agent identity and event layer detailed in [sovereign-mesh.md](sovereign-mesh.md); sovereign because each container owns its own cryptographic keypair.
-- **Bootstrap seal** — the one-shot sentinel file written at `/run/agentbox/bootstrap.done` once every required supervisord programme reaches `RUNNING`. Consumed by `/ready`. See [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md).
+- **Bootstrap seal** — the one-shot sentinel file written at `/run/agentbox/bootstrap.done` once every required supervisord programme reaches `RUNNING`. Consumed by `/ready`. See [PRD-002](../archive/prd/PRD-002-immutable-runtime-bootstrap.md).
 - **Skills corpus** — the content-addressed Nix input holding ~96 skill packages (agent playbooks), copied into the image at `/opt/agentbox/skills`. Migration path: [skills-upgrade.md](skills-upgrade.md).
 - **RuntimeClosure** — the DDD-001 aggregate that represents a validated boot outcome: manifest + artifact probes + sealed sentinel.
 
@@ -32,11 +32,11 @@ Every design decision traces back to one of these:
 
 ### Why not: run dependency install at container start?
 
-It is the default pattern for VM-style containers and it is rejected here. [PRD-002 §1](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) and [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) document the decision: deferred install makes boot non-deterministic (depends on upstream registries, network, startup timing), hides packaging regressions behind `|| true`, and breaks the "manifest is the contract" claim. The cost paid is heavier images and slower rebuilds; the benefit is that a green CI means a green boot on any host with the same image digest.
+It is the default pattern for VM-style containers and it is rejected here. [PRD-002 §1](../archive/prd/PRD-002-immutable-runtime-bootstrap.md) and [ADR-006](../archive/adr/ADR-006-immutable-runtime-bootstrap.md) document the decision: deferred install makes boot non-deterministic (depends on upstream registries, network, startup timing), hides packaging regressions behind `|| true`, and breaks the "manifest is the contract" claim. The cost paid is heavier images and slower rebuilds; the benefit is that a green CI means a green boot on any host with the same image digest.
 
 ### Why not: a single hardcoded backend per capability?
 
-Rejected in [ADR-005 §Context](../reference/adr/ADR-005-pluggable-adapter-architecture.md). Agentbox must run standalone (developer laptop, local SQLite + JSONL) and federated (host mesh with Postgres-backed vector memory, remote orchestrator) from the same image. Two codepaths would drift. Five slots × three impl classes × one contract test harness is the compromise.
+Rejected in [ADR-005 §Context](../archive/adr/ADR-005-pluggable-adapter-architecture.md). Agentbox must run standalone (developer laptop, local SQLite + JSONL) and federated (host mesh with Postgres-backed vector memory, remote orchestrator) from the same image. Two codepaths would drift. Five slots × three impl classes × one contract test harness is the compromise.
 
 ## The layer cake
 
@@ -140,7 +140,7 @@ Late: [program:bootstrap-seal] priority=99
 Bootstrap events emitted as pino JSON, tagged `agentbox.stage: bootstrap`:
 - `BootstrapStarted`, `ImmutableRootWritable`, `CapabilityValidated`, `MissingArtifactDetected`, `RuntimeClosureValidated`, `BootstrapFailed`, `BootstrapSealStarted`, `BootstrapCompleted`, `BootstrapSealTimeout`.
 
-Full spec: [PRD-002](../reference/prd/PRD-002-immutable-runtime-bootstrap.md) + [ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md) + [DDD-001](../reference/ddd/DDD-001-immutable-bootstrap-domain.md).
+Full spec: [PRD-002](../archive/prd/PRD-002-immutable-runtime-bootstrap.md) + [ADR-006](../archive/adr/ADR-006-immutable-runtime-bootstrap.md) + [DDD-001](../archive/ddd/DDD-001-immutable-bootstrap-domain.md).
 
 The bootstrap seal (the sentinel file written by `[program:bootstrap-seal]`) is the join point between the supervisord world (the process supervisor that manages child programmes) and the probe world. Nothing answers `/ready` with 200 until that file exists.
 
@@ -206,7 +206,7 @@ See [adapters.md](adapters.md). Summary: `management-api/adapters/index.js` at s
 - Non-critical slots degrade to `off` (and `/health` reports `degraded`)
 - `orchestrator` failure is fatal (`process.exit(1)`) — no agent work is possible without it
 
-The asymmetry is deliberate: losing the orchestrator means no agent can spawn, so there is no useful degraded mode. Losing memory means retrieval quality drops but the container still accepts work. This is encoded as SLO class per slot in [ADR-005 §Service-level objectives](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
+The asymmetry is deliberate: losing the orchestrator means no agent can spawn, so there is no useful degraded mode. Losing memory means retrieval quality drops but the container still accepts work. This is encoded as SLO class per slot in [ADR-005 §Service-level objectives](../archive/adr/ADR-005-pluggable-adapter-architecture.md).
 
 ## Probe semantics
 
@@ -214,7 +214,7 @@ The asymmetry is deliberate: losing the orchestrator means no agent can spawn, s
 - **`/ready`** — bootstrap sentinel present + every non-`off` adapter `healthy` + required filesystem mounts accessible + (when `[sovereign_mesh].publish_agent_events=true`) at least one Nostr relay reachable. Returns 503 with `{ready, reason, missing[]}` when any requirement unmet.
 - **`/health`** — aggregate snapshot for humans. Not used by Docker healthcheck or by `agentbox.sh up` (they use `/ready`).
 
-Full spec: [PRD-003 §5.2](../reference/prd/PRD-003-runtime-contract-and-container-hardening.md) + [DDD-002](../reference/ddd/DDD-002-runtime-contract-domain.md).
+Full spec: [PRD-003 §5.2](../archive/prd/PRD-003-runtime-contract-and-container-hardening.md) + [DDD-002](../archive/ddd/DDD-002-runtime-contract-domain.md).
 
 ## Hardened baseline + feature exceptions
 
@@ -240,17 +240,17 @@ ports:
   # ...
 ```
 
-The seccomp profile is an **allow-by-default supplemental denylist** (47 high-risk syscall denials layered on Docker's default), not a replacement allowlist — see [ADR-027 §D2](../reference/adr/ADR-027-default-secure-posture.md). All published ports bind `127.0.0.1` on the host; cross-container reach is token-gated (auth-default-on). Root exists only during the supervisord boot phase; there is no runtime privilege-escalation path (no setuid sudo, no `SETUID`/`SETGID` caps).
+The seccomp profile is an **allow-by-default supplemental denylist** (47 high-risk syscall denials layered on Docker's default), not a replacement allowlist — see [ADR-027 §D2](../archive/adr/ADR-027-default-secure-posture.md). All published ports bind `127.0.0.1` on the host; cross-container reach is token-gated (auth-default-on). Root exists only during the supervisord boot phase; there is no runtime privilege-escalation path (no setuid sudo, no `SETUID`/`SETGID` caps).
 
 Feature-specific privilege expansions live in `[security.exceptions.<feature>]` manifest blocks. Activation is gated on the corresponding feature flag (validator rule E020). Baseline drops are never removed by exceptions — they can only add devices, tmpfs paths, caps, or runtime hints.
 
 Seven current exception keys: `solid-pod-rs`, `desktop`, `code-server`, `gpu-cuda`, `tailscale`, `nostr-relay`, `consultants`.
 
-Full spec: [ADR-007 §4a](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
+Full spec: [ADR-007 §4a](../archive/adr/ADR-007-runtime-contract-and-container-hardening.md).
 
 ### Why not: run as root with default caps?
 
-Rejected in [ADR-007 §Context](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md). Agentbox frequently executes agent-authored code; a compromised agent on a root-capable container owns the daemon socket and the host in practice. The hardened baseline is not defence in depth so much as it is the minimum acceptable boundary when the workload is adversarial by design. Feature exceptions layer privilege additively and require an explicit manifest key, making every escalation auditable.
+Rejected in [ADR-007 §Context](../archive/adr/ADR-007-runtime-contract-and-container-hardening.md). Agentbox frequently executes agent-authored code; a compromised agent on a root-capable container owns the daemon socket and the host in practice. The hardened baseline is not defence in depth so much as it is the minimum acceptable boundary when the workload is adversarial by design. Feature exceptions layer privilege additively and require an explicit manifest key, making every escalation auditable.
 
 ## Observability chain
 
@@ -293,6 +293,7 @@ Every link is verified by `RC-003-08.sh`. Breaking any link = this chain breaks.
 - [Sovereign mesh](sovereign-mesh.md) — Nostr client internals
 - [Testing](testing.md) — suite layout, running, CI wiring
 - [Version tracking](version-tracking.md) — Renovate + Nix flake update
-- [ADR index](../reference/adr/) — every design decision
-- [PRD index](../reference/prd/) — every product requirement
-- [DDD index](../reference/ddd/) — every bounded context
+- [Operative ADR ledger](../adr/README.md) — the living decisions
+- [Legacy ADR index](../archive/adr/README.md) — frozen design rationale
+- [Legacy PRD index](../archive/prd/README.md) — frozen product requirements
+- [Legacy DDD index](../archive/ddd/README.md) — frozen bounded contexts

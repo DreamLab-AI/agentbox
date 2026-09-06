@@ -287,16 +287,16 @@ file:line citation touched.
 for backend selection, cache constraints, degradation and served generation.
 The stable façade remains the governing entry-point decision. That decision
 must not be interpreted as evidence that the agent search/SPARQL path inherits
-chat/scaffold evaluation results. The [estate review](../../../VisionFlow/docs/estate-review/agent-grounding-and-governance.md)
+chat/scaffold evaluation results. The [estate review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/agent-grounding-and-governance.md)
 records current helper-level gaps and the required evidence for closing them.
 
 ## Dream acceptance qualification — 2026-09-04
 
-The [self-improvement review](../../../VisionFlow/docs/estate-review/self-improvement.md) distinguishes intended evidence gates from the actual service path. Evaluators run before the model emits its patch; their failures become text rather than a deterministic veto. The configured recall band and a witnessed report do not prove a tested candidate. ADR-2024 remains partial and now requires frozen candidate evaluation, typed required-check rejection and restart-safe receipts. The human-merge requirement is preserved.
+The [self-improvement review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/self-improvement.md) distinguishes intended evidence gates from the actual service path. Evaluators run before the model emits its patch; their failures become text rather than a deterministic veto. The configured recall band and a witnessed report do not prove a tested candidate. ADR-2024 remains partial and now requires frozen candidate evaluation, typed required-check rejection and restart-safe receipts. The human-merge requirement is preserved.
 
 ## Instruction and enforcement qualification — 2026-09-04
 
-ADR-2020/2021 are partial for hard-limit, off-state and frontmatter/context guarantees. Tree-search instructions do not establish a runtime spending limiter; copied skill files remain distinct from package/process gates. The actual lint accepts empty references directories and body-only metadata fields. Require executor and build receipts plus typed/frontmatter/context validation. See the [estate capability review](../../../VisionFlow/docs/estate-review/capability-instructions-and-enforcement.md).
+ADR-2020/2021 are partial for hard-limit, off-state and frontmatter/context guarantees. Tree-search instructions do not establish a runtime spending limiter; copied skill files remain distinct from package/process gates. The actual lint accepts empty references directories and body-only metadata fields. Require executor and build receipts plus typed/frontmatter/context validation. See the [estate capability review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/capability-instructions-and-enforcement.md).
 
 ## Security gate adoption — 2026-09-05
 
@@ -334,7 +334,7 @@ ADR-2071 is **proposed, not landed**, and divergences 1 and 6 stay open: routing
 - **ADR-2077** (proposed) — a procedure ADR closing ADR-2020's outstanding half: the exact
   five-build `nix build .#runtime` sequence, closure identity and runtime trace proved
   separately, gates that cannot pass recorded as named exceptions, and a receipt in
-  `docs/reference/gap-close-evidence/`. ADR-2020's "Remaining" is the ORIGIN (`see`); ADR-2033
+  `docs/estate-closeout/` (the July receipts are frozen under `docs/archive/gap-close-evidence/`). ADR-2020's "Remaining" is the ORIGIN (`see`); ADR-2033
   removed the last blocker by resolving `nodeModulesHash`.
 - **ADR-2079** (proposed, option to examine) — Agent of Empires (window 8) as the fleet model
   router's **dispatch plane**, never its decision plane: a Rust routing crate in agentbox holds

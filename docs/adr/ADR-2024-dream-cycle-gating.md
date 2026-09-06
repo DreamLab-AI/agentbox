@@ -72,7 +72,7 @@ Source reinspection and repeated synthetic verdict probes establish that evaluat
 
 **Acceptance condition:** freeze the complete baseline/candidate/dependency manifest; apply the candidate in isolation; rerun typed required evaluators; reject blocked/silent/failing results before any acceptance label; persist raw receipts and a restart-safe run identity. Exercise a deliberately broken candidate and interrupted persistence. Dependencies include shared-memory repair, fair roster scheduling and explicit human review. Reopen on any evaluation, verdict, witness or patch-application change.
 
-See [self-improvement review](../../../../VisionFlow/docs/estate-review/self-improvement.md) and [reproduced parser results](../../../../VisionFlow/docs/estate-review/evidence/dream-snapshot.json). No nightly dispatch, provider call, external publication or production mutation ran for this review.
+See [self-improvement review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/self-improvement.md) and [reproduced parser results](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/dream-snapshot.json). No nightly dispatch, provider call, external publication or production mutation ran for this review.
 
 ## Acceptance progress — 2026-09-05
 

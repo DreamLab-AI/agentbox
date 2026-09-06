@@ -13,15 +13,15 @@ This page is the operator's walkthrough. The companion docs:
 
 - [`docs/user/linked-data.md`](linked-data.md) — the eleven JSON-LD federation surfaces (S1–S11) that produce the documents the viewer renders
 - [`docs/user/uris.md`](uris.md) — the canonical URI grammar that lets every emitted document have a stable, dereferenceable name
-- [PRD-006](../reference/prd/PRD-006-linked-data-interfaces.md) — full product spec
-- [ADR-012](../reference/adr/ADR-012-jsonld-federation-grammar.md) — JSON-LD adoption decision
-- [ADR-013](../reference/adr/ADR-013-canonical-uri-grammar.md) — URI grammar decision
+- [PRD-006](../archive/prd/PRD-006-linked-data-interfaces.md) — full product spec
+- [ADR-012](../archive/adr/ADR-012-jsonld-federation-grammar.md) — JSON-LD adoption decision
+- [ADR-013](../archive/adr/ADR-013-canonical-uri-grammar.md) — URI grammar decision
 
 > **TL;DR.** The shipped `agentbox.toml` enables this by default: `[linked_data.viewer].mode = "local-linkedobjects"` and `expose_port = true` mount a JSON-LD-aware browser at `/lo/*`, served by the management-api. It reads `/lo/manifest.json` at boot, follows `@id` URIs through `/v1/uri/<urn>`, and renders every PRD-006 surface with a per-`@type` pane. AGPL-3.0; uses [linkedobjects/browser](https://github.com/linkedobjects/browser) (Melvin Carvalho et al.) as the first viewer implementation. A from-scratch manifest that omits `[linked_data.viewer]` falls back to `mode = "off"` (every `/lo/*` request 404s) — see the Quickstart below to turn it on explicitly.
 
 ## The URI surface in one paragraph
 
-Every agentbox JSON-LD document carries an `@id` minted through the canonical grammar (`did:nostr:<pubkey>` or `urn:agentbox:<kind>:[<scope>:]<local>`, [ADR-013](../reference/adr/ADR-013-canonical-uri-grammar.md)). The `/v1/uri/<urn>` resolver dereferences names to current HTTPS IRIs (best-effort: 307 when known, 404 when not). The viewer follows those redirects automatically. This means: if you can produce a URI that names something agentbox manages — a credential, an event, a pod resource, an MCP server — you can drop it into a browser address bar and get a rendered view, even when the URI is name-only and the resolver only knows the redirect target on this specific deployment. **Names are unconditional; views are best-effort. The browser handles both.**
+Every agentbox JSON-LD document carries an `@id` minted through the canonical grammar (`did:nostr:<pubkey>` or `urn:agentbox:<kind>:[<scope>:]<local>`, [ADR-013](../archive/adr/ADR-013-canonical-uri-grammar.md)). The `/v1/uri/<urn>` resolver dereferences names to current HTTPS IRIs (best-effort: 307 when known, 404 when not). The viewer follows those redirects automatically. This means: if you can produce a URI that names something agentbox manages — a credential, an event, a pod resource, an MCP server — you can drop it into a browser address bar and get a rendered view, even when the URI is name-only and the resolver only knows the redirect target on this specific deployment. **Names are unconditional; views are best-effort. The browser handles both.**
 
 ## Quickstart — turn it on
 

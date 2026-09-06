@@ -81,7 +81,8 @@ the run below, or it is not claimed. When executed:
    in the closure (ADR-2057) — is recorded as a **named exception** in ADR-2020's decision
    text. A partial pass narrows the claim; it never rounds up to a full one.
 6. **The receipt is a file, not a commit message.** It lands in
-   `docs/reference/gap-close-evidence/` alongside the existing `P*-REC-*.md` receipts,
+   `docs/estate-closeout/` alongside the 2026-09-05 receipts (the July `P*-REC-*.md`
+   receipts are frozen under `docs/archive/gap-close-evidence/`),
    carrying the commit, the store paths, the NAR hashes, the full `diff-closures` output,
    the per-gate pass/fail table and the exceptions. ADR-2020 then moves to `complete` (or
    stays `partial` with the exception list) with `verified_commit` and `verified_paths` set
@@ -117,7 +118,7 @@ shows `nodeModulesHash` resolved to a real hash with the comment that the first
 `nix build .#runtime` prints it — the blocker ADR-2033 removed.
 
 **Acceptance test.** This ADR is satisfied when a receipt file exists in
-`docs/reference/gap-close-evidence/` that:
+`docs/estate-closeout/` that:
 
 1. Names the commit and contains the verbatim command sequence from Decision item 3.
 2. Shows `$BASE == $BASE2` and `$BASE == $OFF` by store path **and** NAR hash.

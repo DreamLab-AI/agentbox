@@ -56,7 +56,7 @@ flowchart LR
 - **Adapter** — a swappable backend for one of the five durable-state slots
   (beads, pods, memory, events, orchestrator). Every adapter has three
   implementations: `local-*`, `external`, `off`. Defined canonically in
-  [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
+  [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md).
 - **Agent** — an autonomous software process that plans, calls tools, and
   edits files on your behalf. In agentbox, agents are shipped as CLIs (Claude
   Code, ruflo, Antigravity, Codex) that run inside the container.
@@ -75,7 +75,7 @@ flowchart LR
   `urn:agentbox:memory:<scope>:lesson-<sha256-12>` records; verified skills
   become `urn:agentbox:skill:<scope>:<name>:v<n>` entries. See
   [developer/code-as-harness.md](../developer/code-as-harness.md) and
-  [PRD-008](../reference/prd/PRD-008-code-as-harness-integration.md).
+  [PRD-008](../archive/prd/PRD-008-code-as-harness-integration.md).
 - **Compose** — short for docker compose. The generated `docker-compose.yml`
   wires the agentbox container, optional ollama sidecar, and any external
   endpoints. Never hand-edited; regenerated from the manifest.
@@ -83,11 +83,11 @@ flowchart LR
   contents. Two builds of the same manifest with the same `flake.lock`
   produce byte-identical image hashes.
 - **DDD** — Domain-Driven Design. Used in agentbox for the canonical
-  state-model specs under [`docs/archive/ddd/`](../reference/ddd/).
+  state-model specs under [`docs/archive/ddd/`](../archive/ddd/).
 - **Embedded relay** — the optional `nostr-rs-relay` supervisord program on
   loopback `:7777`, turning the container into its own Nostr endpoint. Every
   accepted event is persisted to the pod mailbox. Spec:
-  [ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md).
+  [ADR-009](../archive/adr/ADR-009-embedded-nostr-relay.md).
 - **Embedding** — a fixed-length numeric vector representing a piece of text,
   used for semantic search. The governed memory MCP computes embeddings
   client-side via Xinference `bge-small-en-v1.5` (384-dim) — not MiniLM, and
@@ -105,14 +105,14 @@ flowchart LR
   federates with a host container mesh through adapter endpoints.
 - **Flake** — a Nix build descriptor (`flake.nix` + `flake.lock`). Pure and
   hermetic: identical inputs produce identical outputs. Defined in
-  [ADR-001](../reference/adr/ADR-001-nixos-flakes.md).
+  [ADR-001](../archive/adr/ADR-001-nixos-flakes.md).
 - **gum** — a zero-dependency TUI toolkit from Charm. Used by the legacy
   terminal wizard (`scripts/start-agentbox.sh --tui`). The primary setup
   path is now a browser-based SPA (PRD-012 / ADR-024).
 - **Hardened baseline** — the default security posture: non-root user
   `1000:1000`, `read_only: true`, `cap_drop: [ALL]`, `no-new-privileges`,
   `seccomp=default`, explicit tmpfs list. See
-  [ADR-007](../reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
+  [ADR-007](../archive/adr/ADR-007-runtime-contract-and-container-hardening.md).
 - **Headless** — no graphical session by default. The container exposes HTTP
   probes and a management API; operators usually drive it over SSH, code-server
   or the optional VNC desktop.
@@ -141,7 +141,7 @@ flowchart LR
   profile management, adapter dispatch, health probes (`/ready`, `/livez`,
   `/health`), metrics (`/metrics`), and agent event streaming
   (`/v1/agent-events`). All adapter calls go through this service; no agent
-  talks to a backend directly. See [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md).
+  talks to a backend directly. See [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md).
 - **Manifest** — `agentbox.toml`. The single source of truth for what is
   built, what boots, and what is validated. See
   [configuration.md](configuration.md).
@@ -154,8 +154,8 @@ flowchart LR
   speaks to two kinds: the optional Nostr sovereign mesh (inter-agent) and an
   external host mesh (federated adapters).
 - **Middleware** — a layer that wraps every adapter dispatch. Agentbox has
-  two: observability (always on, [ADR-005](../reference/adr/ADR-005-pluggable-adapter-architecture.md))
-  and the privacy filter (optional, [ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md)).
+  two: observability (always on, [ADR-005](../archive/adr/ADR-005-pluggable-adapter-architecture.md))
+  and the privacy filter (optional, [ADR-008](../archive/adr/ADR-008-privacy-filter-routing.md)).
 - **Nix** — the package manager and build system that composes the agentbox
   image. Pinned by `flake.lock`; no Dockerfile exists.
 - **NIP** — Nostr Implementation Possibility, the numbered specs that extend
@@ -189,7 +189,7 @@ flowchart LR
   sovereign pod. The bridge treats them as append-only content-addressed
   stores keyed by Nostr event id; this is the durability contract behind
   external-agent messaging. See
-  [DDD-003](../reference/ddd/DDD-003-sovereign-messaging-domain.md).
+  [DDD-003](../archive/ddd/DDD-003-sovereign-messaging-domain.md).
 - **Profile** — an isolated agent workspace under
   `workspace/profiles/<stack>/` with its own HOME directory, per-profile
   config files, and symlinks to the shared `/home/devuser/workspace` and `/projects`
@@ -203,7 +203,7 @@ flowchart LR
   read-only; writable paths are explicit tmpfs entries plus mounted volumes.
 - **RuVector** — the vector retrieval engine, used two ways. `vector_db =
   "ruvector-embedded"` is a per-session cache, not a durable store (see
-  [ADR-002](../reference/adr/ADR-002-ruvector-standalone.md)). The shipped
+  [ADR-002](../archive/adr/ADR-002-ruvector-standalone.md)). The shipped
   `memory` adapter is `external-pg` instead: an external `ruvector-postgres`
   (pgvector) sidecar is the actual durable memory backend, with hybrid
   search, typed metadata, and a trajectory-recording learning loop layered on
@@ -228,19 +228,19 @@ flowchart LR
   LDP containers, Schnorr NIP-98, Solid Notifications 0.2, atomic-rename
   storage). The `pods` adapter can also federate with an external server or
   disable storage entirely. See [solid-pod.md](solid-pod.md) and
-  [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
+  [ADR-010](../archive/adr/ADR-010-rust-solid-pod-adoption.md).
 - **Consultant** — an external LLM provider (Codex, Antigravity, Z.AI, Perplexity,
   DeepSeek) exposed to the coordinator as a named MCP tool. The coordinator
   asks `/consult deepseek "verify this proof"` and gets a labelled answer
   with provenance: model, tokens, cost, citations. Distinct from a
   cost-rewriting router (e.g. `claude-code-router`), which silently swaps
   providers under the hood. See [consultants.md](consultants.md) and
-  [ADR-011](../reference/adr/ADR-011-consultation-mcps.md).
+  [ADR-011](../archive/adr/ADR-011-consultation-mcps.md).
 - **Meta-router (consultant tier)** — agentbox's name for the coordinator +
   consultant pattern: explicit dispatch (`/consult <name>` or
   `subagent_type="auto-consultant"`), labelled response, JSONL audit trail,
   optional ADR-043 quality signal. Specified by
-  [PRD-005](../reference/prd/PRD-005-meta-router-consultants.md). The
+  [PRD-005](../archive/prd/PRD-005-meta-router-consultants.md). The
   alternative — transparent API rewriting per `claude-code-router` — was
   weighed and rejected; ADR-011 records why.
 - **Sovereign data stack** — the coherent identity-plus-data substrate every
@@ -254,7 +254,7 @@ flowchart LR
 - **did:nostr** — the DID method (Tier 1 + Tier 3 with `alsoKnownAs`) that
   maps a Nostr npub to a resolvable DID document. Served by `solid-pod-rs`
   at `GET /did:nostr:<pubkey>` after the Sprint 6 upstream absorption
-  ([ADR-010 §Upstream absorption log](../reference/adr/ADR-010-rust-solid-pod-adoption.md#upstream-absorption-log-sprint-5-9)).
+  ([ADR-010 §Upstream absorption log](../archive/adr/ADR-010-rust-solid-pod-adoption.md#upstream-absorption-log-sprint-5-9)).
   WAC policies can reference the DID directly; the pod validates against
   the same key the relay accepted under NIP-42.
 - **Sovereign mesh** — the optional Nostr-based identity and event layer.
@@ -282,12 +282,12 @@ flowchart LR
 - **workspace mount** — the shared host-mounted volume at `/home/devuser/workspace`
   (plus `/projects`). All profiles see the same content. Profile-local state lives
   under `/home/devuser/workspace/profiles/<stack>/`.
-- **tmux** — the terminal multiplexer agentbox uses for its MAD-style
-  multi-tab workspace. The session launches 10 windows automatically:
-  Claude, Agent, Services, Build, Logs, System, VNC, Git, OpenRouter, ZAI.
+- **tmux** — the terminal multiplexer behind the agentbox workspace. The
+  session launches 10 windows automatically: Claude, Agent, Services, Build,
+  Logs, System, VNC, Git, Sessions (Agent of Empires) and Notes (the vault TUI).
   Attach with `tmux attach -t agentbox` or use the `ta` alias. **Legacy
   pre-PRD-021 model** — the current interaction plane is Agent of Empires
-  (AoE); see [ADR-042](../reference/adr/ADR-042-agent-of-empires-interaction-plane.md).
+  (AoE); see [ADR-042](../archive/adr/ADR-042-agent-of-empires-interaction-plane.md).
 
 ## Common confusions
 
@@ -300,7 +300,7 @@ a Nix build that outputs an OCI image via nix2container; `nix run .#runtime.copy
 Only features enabled in `agentbox.toml` contribute to the image. The base
 runtime target is under 4 GB compressed; a full CUDA image stays under 25 GB.
 Disabled skills, toolchains, and providers are not compiled in. Goals are
-listed in [PRD-001 §8](../reference/prd/PRD-001-capabilities-and-adapters.md).
+listed in [PRD-001 §8](../archive/prd/PRD-001-capabilities-and-adapters.md).
 
 **Can I use this without Nix?**
 You can consume prebuilt images from GHCR (`ghcr.io/dreamlab-ai/agentbox`)
@@ -317,7 +317,7 @@ shared skills, memory, and durable state.
 Immutable boot is a design rule, not an oversight. Deferred install makes
 boot depend on upstream registries and network timing, and hides packaging
 regressions behind `|| true`. The decision is recorded in
-[ADR-006](../reference/adr/ADR-006-immutable-runtime-bootstrap.md); every
+[ADR-006](../archive/adr/ADR-006-immutable-runtime-bootstrap.md); every
 runtime dependency must be baked into the image.
 
 **Why does the adapter say "off" - is the feature broken?**
@@ -337,7 +337,7 @@ every adapter dispatch. You need it if agents handle user data that must not
 be embedded verbatim into memory or leaked into logs. It is disabled by
 default; enable it via `[privacy_filter].enabled = true`. See
 [privacy-filter.md](privacy-filter.md) and
-[ADR-008](../reference/adr/ADR-008-privacy-filter-routing.md).
+[ADR-008](../archive/adr/ADR-008-privacy-filter-routing.md).
 
 **What is the Nostr relay for, and do I need it?**
 It is an optional embedded relay (`nostr-rs-relay`, Apache-2.0) that lets
@@ -348,18 +348,18 @@ up in the pod with a stamped event id. You need it if you federate two or
 more agentbox containers, or you want external clients (Damus, Amethyst,
 bespoke scripts) to message the agents inside yours. Disabled by default.
 See [nostr-relay.md](nostr-relay.md) and
-[ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md).
+[ADR-009](../archive/adr/ADR-009-embedded-nostr-relay.md).
 
 **What is solid-pod-rs and why is it the default?**
 `solid-pod-rs` is the first-party Rust Solid Protocol 0.11 server that powers
 the `pods` adapter. It replaces the legacy 108-line Python stub that only
 implemented GET/PUT/HEAD with no WAC enforcement. With solid-pod-rs the
-`.acl.json` policies written by `sovereign-bootstrap.py` actually apply,
+`.acl.json` policies written by `nostr-pod-bridge bootstrap` actually apply,
 LDP containers work, PATCH works (N3 / SPARQL / JSON), Solid Notifications
-fire on writes, and atomic-rename durability makes [ADR-009](../reference/adr/ADR-009-embedded-nostr-relay.md)
+fire on writes, and atomic-rename durability makes [ADR-009](../archive/adr/ADR-009-embedded-nostr-relay.md)
 pod-inbox invariants hold for real. The legacy `local-jss` Python stub was removed 2026-04-25
 with W034 warnings for anyone relying on the old behaviour. See
-[solid-pod.md](solid-pod.md) and [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md).
+[solid-pod.md](solid-pod.md) and [ADR-010](../archive/adr/ADR-010-rust-solid-pod-adoption.md).
 
 **What is the difference between the sovereign mesh and the Nostr relay?**
 The sovereign mesh (`[sovereign_mesh].enabled`) gives the container its own
@@ -383,6 +383,6 @@ inbound events *at* the container. You can run the mesh without the relay
 | Operator tuning the Solid pod | [solid-pod.md](solid-pod.md) |
 | Contributor changing agentbox | [developer/architecture.md](../developer/architecture.md) |
 | Contributor adding an adapter | [developer/adapters.md](../developer/adapters.md) |
-| Spec reader | [reference/prd/PRD-001-capabilities-and-adapters.md](../reference/prd/PRD-001-capabilities-and-adapters.md) |
-| Adapter deep-dive | [reference/adr/ADR-005-pluggable-adapter-architecture.md](../reference/adr/ADR-005-pluggable-adapter-architecture.md) |
-| Sovereign messaging deep-dive | [reference/adr/ADR-009-embedded-nostr-relay.md](../reference/adr/ADR-009-embedded-nostr-relay.md) and [reference/ddd/DDD-003-sovereign-messaging-domain.md](../reference/ddd/DDD-003-sovereign-messaging-domain.md) |
+| Spec reader | [archive/prd/PRD-001-capabilities-and-adapters.md](../archive/prd/PRD-001-capabilities-and-adapters.md) |
+| Adapter deep-dive | [archive/adr/ADR-005-pluggable-adapter-architecture.md](../archive/adr/ADR-005-pluggable-adapter-architecture.md) |
+| Sovereign messaging deep-dive | [archive/adr/ADR-009-embedded-nostr-relay.md](../archive/adr/ADR-009-embedded-nostr-relay.md) and [archive/ddd/DDD-003-sovereign-messaging-domain.md](../archive/ddd/DDD-003-sovereign-messaging-domain.md) |

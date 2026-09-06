@@ -72,6 +72,6 @@ The wizard renders one card per top-level `agentbox.toml` section:
 ## See also
 
 - [configuration.md](configuration.md) — full `agentbox.toml` field reference
-- [ADR-024](../reference/adr/ADR-024-setup-dashboard.md) — dashboard architecture decisions
-- [PRD-012](../reference/prd/PRD-012-setup-dashboard.md) — setup wizard product spec
+- [ADR-024](../archive/adr/ADR-024-setup-dashboard.md) — dashboard architecture decisions
+- [PRD-012](../archive/prd/PRD-012-setup-dashboard.md) — setup wizard product spec
 - [web-interfaces.md](web-interfaces.md) — all running-system browser surfaces

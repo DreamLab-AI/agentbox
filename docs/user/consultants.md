@@ -3,13 +3,13 @@
 Five MCP servers expose external LLM providers as **named consultants** the
 Claude Code / ruflo coordinator can invoke explicitly. Each returns a
 labelled answer with provenance: model, token usage, cost, citations,
-latency. Specified by [PRD-005](../reference/prd/PRD-005-meta-router-consultants.md)
-and [ADR-011](../reference/adr/ADR-011-consultation-mcps.md).
+latency. Specified by [PRD-005](../archive/prd/PRD-005-meta-router-consultants.md)
+and [ADR-011](../archive/adr/ADR-011-consultation-mcps.md).
 
 
 The Antigravity consultant defaults to `gemini-3.8-flash`. A non-empty
 `AGENTBOX_ANTIGRAVITY_MODEL` overrides `[consultants.antigravity].model` at boot.
-See [model selection and cost estimates](../reference/upgrades-2026-09.md#gemini-selection-and-limits)
+See [model selection and cost estimates](../archive/upgrades-2026-09/upgrades-2026-09.md#gemini-selection-and-limits)
 for override precedence, specialised endpoints and rebuild checks.
 
 ## Why this exists
@@ -240,8 +240,8 @@ the Prometheus counter `consultant_cost_usd_total{consultant}` at port
 
 ## Further reading
 
-- [PRD-005 — Meta-router and consultant tier](../reference/prd/PRD-005-meta-router-consultants.md)
-- [ADR-011 — Consultation MCP servers](../reference/adr/ADR-011-consultation-mcps.md)
-- [ADR-005 — Pluggable adapter architecture](../reference/adr/ADR-005-pluggable-adapter-architecture.md) (consultants are tools, not durable-state adapters — different layer)
+- [PRD-005 — Meta-router and consultant tier](../archive/prd/PRD-005-meta-router-consultants.md)
+- [ADR-011 — Consultation MCP servers](../archive/adr/ADR-011-consultation-mcps.md)
+- [ADR-005 — Pluggable adapter architecture](../archive/adr/ADR-005-pluggable-adapter-architecture.md) (consultants are tools, not durable-state adapters — different layer)
 - [`mcp/consultants/README.md`](../../mcp/consultants/README.md) — implementation notes
 - [`skills/skill-router/SKILL.md`](../../skills/skill-router/SKILL.md) — manual dispatch surface

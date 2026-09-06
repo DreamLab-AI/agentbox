@@ -9,7 +9,7 @@ Status: proposed governing surface, 2026-09-04. Owner: agentbox maintainers with
 | Precomputed KG address | Rust constructor/parser checks prefix | Validate complete address grammar at admission |
 | Durable translation | Helpers return mapping/source identity | Persistence, replay, round-trip and recovery receipts |
 
-[ADR-2025](adr/ADR-2025-cross-repo-federation-contract.md) proposes the shared contract and CI gate. [Estate evidence](../../../VisionFlow/docs/estate-review/federation-identifiers.md) distinguishes tested helper parity from open deployment and persistence work. Changes to encoding, scope, hash length, kind mapping or retention require joint review and paired fixtures. No secret key material belongs in this registry.
+[ADR-2025](adr/ADR-2025-cross-repo-federation-contract.md) proposes the shared contract and CI gate. [Estate evidence](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/federation-identifiers.md) distinguishes tested helper parity from open deployment and persistence work. Changes to encoding, scope, hash length, kind mapping or retention require joint review and paired fixtures. No secret key material belongs in this registry.
 
 ## Remediation — 2026-09-05
 

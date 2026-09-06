@@ -61,7 +61,7 @@ It is started automatically by the management-api when both env vars are true:
 
 These are set by `flake.nix` from the `[sovereign_mesh.relay]` section in
 `agentbox.toml`. The consumer requires `AGENTBOX_NPUB` (set by
-`sovereign-bootstrap.py`) to know which local identities to accept events for.
+`nostr-pod-bridge bootstrap`) to know which local identities to accept events for.
 
 ### Runtime flow
 

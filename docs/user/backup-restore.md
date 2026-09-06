@@ -102,7 +102,7 @@ runs independently of `agentbox.sh`, as a host systemd timer:
 
 ```
 ruvector-backup.timer   → OnCalendar=*-*-* 03:00:00, RandomizedDelaySec=900
-ruvector-backup.service → runs /mnt/mldata/backups/ruvector-postgres/backup-ruvector.sh
+ruvector-backup.service → runs <backup-root>/ruvector-postgres/backup-ruvector.sh   # host-specific path
 ```
 
 The script:
@@ -115,7 +115,7 @@ The script:
 Restore from one of these dumps with a plain `pg_dump`-compatible replay:
 
 ```bash
-gunzip -c /mnt/mldata/backups/ruvector-postgres/ruvector_<timestamp>.sql.gz \
+gunzip -c <backup-root>/ruvector-postgres/ruvector_<timestamp>.sql.gz \
   | docker exec -i ruvector-postgres psql -U ruvector -d ruvector
 ```
 

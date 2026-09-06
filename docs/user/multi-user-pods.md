@@ -1,11 +1,12 @@
 # Multi-User did:nostr Pods
 
-> **Status:** scaffolded. Defaults OFF. Provisioning logic lands after
-> solid-pod-rs alpha.12 ships and the `[sovereign_mesh.git]` wiring is
-> in place. This page documents the design surface so operators can
+> **Status:** scaffolded. Defaults OFF. `lib/solid-pod-rs.nix` pins
+> v0.5.0-alpha.9 and the `[sovereign_mesh.git]` wiring is live
+> ([git-pods](git-pods.md)); per-tenant provisioning itself is not yet
+> switched on. This page documents the design surface so operators can
 > plan deployment shapes today. See
-> [ADR-017](../reference/adr/ADR-017-multi-tenant-did-nostr-pods.md) and
-> [PRD-007](../reference/prd/PRD-007-multi-tenant-federation.md).
+> [ADR-017](../archive/adr/ADR-017-multi-tenant-did-nostr-pods.md) and
+> [PRD-007](../archive/prd/PRD-007-multi-tenant-federation.md).
 
 ## When to enable multi-user mode
 
@@ -185,8 +186,8 @@ Validator rules:
 
 ## See also
 
-- [ADR-017](../reference/adr/ADR-017-multi-tenant-did-nostr-pods.md) — design rationale
-- [PRD-007](../reference/prd/PRD-007-multi-tenant-federation.md) — product requirements
+- [ADR-017](../archive/adr/ADR-017-multi-tenant-did-nostr-pods.md) — design rationale
+- [PRD-007](../archive/prd/PRD-007-multi-tenant-federation.md) — product requirements
 - [docs/user/nostr-relay.md](nostr-relay.md) — pod inbox routing
-- [ADR-010](../reference/adr/ADR-010-rust-solid-pod-adoption.md) — solid-pod-rs adoption
-- [ADR-016](../reference/adr/ADR-016-license-consolidation.md) — AGPL-3.0-only across the board
+- [ADR-010](../archive/adr/ADR-010-rust-solid-pod-adoption.md) — solid-pod-rs adoption
+- [ADR-016](../archive/adr/ADR-016-license-consolidation.md) — AGPL-3.0-only across the board

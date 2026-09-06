@@ -1,7 +1,7 @@
 # HP-Desktop peer node
 
-A second agentbox runs on HP-Desktop (`john@10.10.10.1`, reachable from machinelearn only over the
-25 G rail `10.10.10.0/30`). It is a full agentbox with its own `did:nostr` identity, not an annexe:
+A second agentbox runs on a peer workstation (`<user>@<peer-ip>`, reachable from the primary host
+only over a point-to-point 25 G rail). It is a full agentbox with its own `did:nostr` identity, not an annexe:
 the dream-engine annexe (ADR-052) is a bare SSH working directory on the same host and stays
 separate. First brought up 2026-09-02; this page records the layout, the manifest deltas, and what
 the mesh does and does not do between the two nodes today.

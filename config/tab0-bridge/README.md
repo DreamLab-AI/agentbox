@@ -9,8 +9,8 @@ the Nostr plane (`/nostr/status`, `/nostr/events`, `/nostr/send`).
 ## Injection seam — repointed onto Agent of Empires (ADR-044)
 
 The single write path is repointed off raw `tmux send-keys -t agentbox:0` onto
-the Agent of Empires interaction plane ([ADR-044](../../docs/reference/adr/ADR-044-voice-plane-aoe-repoint.md),
-WS5 of [PRD-021](../../docs/reference/prd/PRD-021-interaction-surface-consolidation.md)):
+the Agent of Empires interaction plane ([ADR-044](../../docs/archive/adr/ADR-044-voice-plane-aoe-repoint.md),
+WS5 of [PRD-021](../../docs/archive/prd/PRD-021-interaction-surface-consolidation.md)):
 
 - `sendToTab0()` POSTs the intent to `POST /api/sessions/{id}/send` on the
   loopback AoE daemon (`AGENTBOX_INTERACTION_PLANE_PORT`, default `:9095`),

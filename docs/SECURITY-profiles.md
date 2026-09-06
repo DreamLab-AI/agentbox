@@ -10,7 +10,7 @@ Changes to profiles, keys, mirror providers, recipients, transport or diagnostic
 
 ADR-2026 is now source-reviewed but remains proposed/partial/inactive for its complete egress policy. The live hook composes unredacted selected text before NIP-59 wrapping; the digest path sends flattened input to its configured summarisation provider and publishes a separately signed digest. Their configuration gates and encryption differ. A shared off/redaction/recipient/retention contract remains open, alongside ADR-2027 secret custody.
 
-See the [estate review](../../../VisionFlow/docs/estate-review/runtime-egress-and-profiles.md) for isolated probes and current source scope. No live provider call, relay send or custody change is certified here.
+See the [estate review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/runtime-egress-and-profiles.md) for isolated probes and current source scope. No live provider call, relay send or custody change is certified here.
 
 ## Provisional custody register — 2026-09-04
 
@@ -28,7 +28,7 @@ This register identifies credential roles and source-configured storage interfac
 
 No cadence is invented here. Before adoption, each row needs an accepted custodian, exact deployed storage reference, rotation trigger/cadence, revocation procedure and maximum response window, plus a dated successful failure/recovery receipt. Provider credentials and other estate identities must be inventoried too; these seven rows are a starting set, not completeness certification.
 
-The proxy's break-glass branch compares a configured token and returns a sentinel identity without expiry or request-scope checks there. It does not establish per-use durable audit. The backup script invokes ordinary zip and unzip integrity testing without encryption flags or explicit umask/chmod; final permissions depend on the invoking environment. Integrity testing is not a recovery exercise. The script was not run, and no backup contents were inspected. See the [estate evidence](../../../VisionFlow/docs/estate-review/runtime-ingress.md#custody-and-revocation-acceptance).
+The proxy's break-glass branch compares a configured token and returns a sentinel identity without expiry or request-scope checks there. It does not establish per-use durable audit. The backup script invokes ordinary zip and unzip integrity testing without encryption flags or explicit umask/chmod; final permissions depend on the invoking environment. Integrity testing is not a recovery exercise. The script was not run, and no backup contents were inspected. See the [estate evidence](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/runtime-ingress.md#custody-and-revocation-acceptance).
 
 
 ## Custody register update — 2026-09-05

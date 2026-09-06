@@ -58,7 +58,7 @@ mirrors this: profile pin at :10, `_die` at :34, redirect extraction/validation 
 
 CP-01/04/08. Owner remains jjohare with runtime maintainers. Actual wrapper probes using temporary profiles and a stub claude accept wrong hosts containing the expected hostname as a substring. Directory/profile routing is implemented; exact provider validation is not.
 
-**Acceptance condition:** parse and validate scheme, hostname and allowed port before launching; test suffix, user-info, path/query and malformed URLs. Verify effective settings without exposing credentials. Reopen on wrapper, provider or profile-provisioning changes. See the [profile/egress review](../../../../VisionFlow/docs/estate-review/runtime-egress-and-profiles.md) and [isolated receipt](../../../../VisionFlow/docs/estate-review/evidence/runtime-egress-probes.json). No live provider was called.
+**Acceptance condition:** parse and validate scheme, hostname and allowed port before launching; test suffix, user-info, path/query and malformed URLs. Verify effective settings without exposing credentials. Reopen on wrapper, provider or profile-provisioning changes. See the [profile/egress review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/runtime-egress-and-profiles.md) and [isolated receipt](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/runtime-egress-probes.json). No live provider was called.
 
 ## Acceptance progress — 2026-09-05
 

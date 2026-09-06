@@ -43,14 +43,14 @@ code-harness-audit   # follows the kernel MCP audit log
 
 ```mermaid
 flowchart LR
-    CI[code-interpreter MCP\nPhase 1]
-    EX[ExpeL extractor\nPhase 1]
-    AC[ACI MCP\nPhase 2 — live]
-    CA[CodeAct skill\nPhase 1-2]
-    VS[Voyager library\nPhase 2 — live]
-    TS[tree-search-coder\nPhase 2 — live]
-    RV[(RuVector\ncode-harness-lessons\ncode-harness-skills)]
-    AT[(Audit JSONL\n/var/lib/agentbox/\ncode-harness/)]
+    CI[code-interpreter MCP<br/>Phase 1]
+    EX[ExpeL extractor<br/>Phase 1]
+    AC[ACI MCP<br/>Phase 2 — live]
+    CA[CodeAct skill<br/>Phase 1-2]
+    VS[Voyager library<br/>Phase 2 — live]
+    TS[tree-search-coder<br/>Phase 2 — live]
+    RV[(RuVector<br/>code-harness-lessons<br/>code-harness-skills)]
+    AT[(Audit JSONL<br/>/var/lib/agentbox/<br/>code-harness/)]
 
     CA -->|depends on| CI
     VS -->|depends on| CI

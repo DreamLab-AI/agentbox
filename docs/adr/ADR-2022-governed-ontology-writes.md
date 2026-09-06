@@ -68,7 +68,7 @@ VisionClaw and authored-corpus maintainers at the promotion boundary.
 **Status correction:** prior `implementation_status: complete` was supported
 only by manifest defaults. Current source at `89301ec7c911eab270c00a0cf81596d0d4f15535` retains
 `direct_axiom_load = false`, but `FORCE_LOCAL` dispatch occurs before the remote
-axiom descriptor and calls a Markdown-writing helper. The [actual helper probe](../../../../VisionFlow/docs/estate-review/evidence/agent-snapshot.json)
+axiom descriptor and calls a Markdown-writing helper. The [actual helper probe](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/agent-snapshot.json)
 edited a temporary corpus without a Whelk or human gate. This establishes local
 authoring, not a demonstrated remote shared-store bypass on default network
 failure. The broad invariant now has partial implementation; activation of the

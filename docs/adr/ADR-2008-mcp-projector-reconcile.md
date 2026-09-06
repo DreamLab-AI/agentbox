@@ -51,7 +51,7 @@ untouched.
 
 CP-01/04/08. Owner remains jjohare with configuration/runtime maintainers. The actual isolated projector preserves a target entry after its definition is removed and retains old configuration on malformed registry input while exiting zero. Missing requirements arrays also remove an otherwise gated-on entry; all nine current managed definitions have arrays.
 
-**Acceptance condition:** retain ownership history for deletion/rename, validate schema, distinguish persistence from planned counters, and test atomic target replacement plus reader reload. Preserve bespoke entries. Exercise no-op/error/boot paths and report degraded reconciliation without exposing secrets. Reopen on registry schema, ownership, writer or boot changes. See the [review](../../../../VisionFlow/docs/estate-review/configuration-projection.md) and [actual-script receipt](../../../../VisionFlow/docs/estate-review/evidence/mcp-projection-probes.json).
+**Acceptance condition:** retain ownership history for deletion/rename, validate schema, distinguish persistence from planned counters, and test atomic target replacement plus reader reload. Preserve bespoke entries. Exercise no-op/error/boot paths and report degraded reconciliation without exposing secrets. Reopen on registry schema, ownership, writer or boot changes. See the [review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/configuration-projection.md) and [actual-script receipt](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/mcp-projection-probes.json).
 
 ## Acceptance progress — 2026-09-05
 

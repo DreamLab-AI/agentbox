@@ -101,7 +101,7 @@ publication has run; no dependency graph has been reviewed for distribution
 licence compatibility; the prose-sanitiser and diagram-ir extraction account
 still needs separate source/package receipts. Files on disk are a packaging
 precondition, not a release.
-[Metadata evidence](../../../../VisionFlow/docs/estate-review/configuration-projection.md#service-package-and-release-metadata)
+[Metadata evidence](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/configuration-projection.md#service-package-and-release-metadata)
 does not certify a published archive, dependency compatibility or operator
 compliance. Complete release ownership, packaged contents and dependency review
 before claiming the package contract closed.

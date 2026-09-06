@@ -62,7 +62,7 @@ Twenty-seven learning/helper tests pass. Wilson weighting and the raw-count floo
 
 Dependencies: shared-memory value/vector recovery, release identity and an explicit outcome/retention policy. Reopen on grader, redactor, transcript shape, persistence or promotion changes. Existing verification/activation fields retain their historical scope; this annex is source/helper evidence, not a live-loop certification.
 
-See [learning evidence review](../../../../VisionFlow/docs/estate-review/learning-evidence.md) and [receipt](../../../../VisionFlow/docs/estate-review/evidence/learning-snapshot.json).
+See [learning evidence review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/learning-evidence.md) and [receipt](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/learning-snapshot.json).
 
 ## Acceptance progress — 2026-09-05
 

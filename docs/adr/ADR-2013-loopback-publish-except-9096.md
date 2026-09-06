@@ -70,7 +70,7 @@ CP-01/04/08. Owner remains jjohare with ingress/release maintainers. Current com
 
 **Acceptance condition:** Parse or reliably reject all supported configuration forms, then audit the resolved deployment input set, including overlay order, interpolation and external files. Cover block/flow, aliases/merges, long syntax and filename scope with negative controls. Bind each exposure exception to service identity, authentication, intended audience and active listener evidence. The root filename glob and a ten-entry mapping list do not establish every network door. Reopen on parser, workflow, deployment invocation or sanctioned mapping changes; dependencies are CP-01 release identity and CP-08 deployment receipts.
 
-See the [ingress review](../../../../VisionFlow/docs/estate-review/runtime-ingress.md#port-gate-syntax-and-exposure-coverage), [actual-gate reproducer](../../../../VisionFlow/docs/estate-review/evidence/ports-gate-probe.py) and [receipt](../../../../VisionFlow/docs/estate-review/evidence/ports-gate-probe.json). No compose deployment or port binding ran; fixtures do not assert a current exposed service.
+See the [ingress review](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/runtime-ingress.md#port-gate-syntax-and-exposure-coverage), [actual-gate reproducer](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/ports-gate-probe.py) and [receipt](https://github.com/DreamLab-AI/VisionFlow/blob/main/docs/estate-review/evidence/ports-gate-probe.json). No compose deployment or port binding ran; fixtures do not assert a current exposed service.
 
 ## Acceptance progress — 2026-09-05
 

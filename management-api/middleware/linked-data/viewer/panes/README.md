@@ -1,7 +1,7 @@
 # Built-in viewer panes
 
 This directory holds agentbox's first-party panes for the viewer slot
-([PRD-006 §15](../../../../../docs/reference/prd/PRD-006-linked-data-interfaces.md#15-viewer-slot)).
+([PRD-006 §15](../../../../../docs/archive/prd/PRD-006-linked-data-interfaces.md#15-viewer-slot)).
 They cover the surfaces the upstream linkedobjects/browser does not
 ship — every other surface is rendered by an upstream pane (folder,
 profile, markdown, todo, playlist, sharing, source).
