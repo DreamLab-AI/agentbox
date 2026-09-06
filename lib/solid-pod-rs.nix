@@ -7,12 +7,8 @@
 # Built from source via buildRustPackage — the crate is not yet in nixpkgs
 # (tracked for upstream submission in the ADR-010 follow-ups).
 #
-# Version-bump procedure:
-#   1. Update `version` and `rev` below.
-#   2. Run: nix-prefetch-url --unpack https://github.com/DreamLab-AI/solid-pod-rs/archive/<rev>.tar.gz
-#      Replace `srcHash` with the returned sha256 (or sri form).
-#   3. Run: nix build .#runtime (or .#solid-pod-rs) — Nix will print the
-#      cargoHash mismatch with the correct value. Paste it into `cargoHash`.
+# Version-bump procedure: see the "Refresh procedure" comment on the pin
+# below (version + rev + SRI srcHash + vendored Cargo.lock; no cargoHash).
 #
 # Cargo features enabled by default:
 #   - fs-backend      — POSIX filesystem with atomic-rename (ADR-010 invariant)
@@ -33,6 +29,8 @@
 # See docs/developer/licensing.md for the component license matrix.
 
 { lib, pkgs }:
+
+let
 
   # Pin: solid-pod-rs v0.5.0-alpha.9 (2026-09-06), the tagged release cut from
   # the estate closeout. It carries the OIDC compatibility matrix, WAC policy
