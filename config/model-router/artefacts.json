@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "purpose": "Pinned, hash-verified inputs for the ADR-2080 model-router console. ONE source of truth: flake.nix reads this file to bake /opt/agentbox/model-router (rebuild class) and scripts/model-router-fetch.sh reads it to populate the pre-rebuild fallback dir $WORKSPACE/.agentbox/model-router. Never edit hashes by hand \u2014 re-pin with a new upstream ref and recompute.",
+  "why_vendored": "@claude-flow/cli's npm tarball excludes assets/model-router (package.json files: dist, bin, plugins\u2026), so the baked ruflo closure has no seed corpus, KRR artefact, calibrator or OpenRouter alternates; without them ruflo's cost-optimal path (ADR-148/149) returns null and falls back to the Thompson bandit. The artefacts live only in the git repo.",
+  "ruflo": {
+    "repo": "ruvnet/ruflo",
+    "ref": "v3.38.20",
+    "commit": "e21aa352fdc80fd2d3cc4e83404a76a18d118b96",
+    "path": "v3/@claude-flow/cli/assets/model-router",
+    "matches_baked_cli": "@claude-flow/cli 3.38.21 (ruflo 3.38.20 closure)"
+  },
+  "embedder": {
+    "model": "Xenova/all-MiniLM-L6-v2",
+    "revision": "751bff37182d3f1213fa05d7196b954e230abad9",
+    "dim": 384,
+    "dtype": "q8 (onnx/model_quantized.onnx)",
+    "layout": "@huggingface/transformers env.cacheDir layout: <dir>/models/<org>/<name>/\u2026",
+    "why": "seed-rows.provenance.json records the corpus was embedded with Xenova/all-MiniLM-L6-v2 quantized; the query embedding MUST come from the same model or every KRR prediction is garbage. Loaded via the closure's @huggingface/transformers 4.2.0 (ruflo's own task-embedder imports the retired '@xenova/transformers' specifier, absent from the closure, which is why the console embeds the task itself)."
+  },
+  "files": [
+    {
+      "dest": "openrouter-alts.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/openrouter-alts.json",
+      "sha256": "b416faf22db5a3812724a6e15bfc07868e4eb565308aae1acabfefea3f567710",
+      "size": 7736,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-router.calibrator.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-router.calibrator.json",
+      "sha256": "1b4a4784cca3e55057936ff55b9e3838dce3694b91f90904455557bd935aa70a",
+      "size": 1272,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-router.calibrator.low.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-router.calibrator.low.json",
+      "sha256": "590cf9b9fabf76b8f49654e14ddda7a0e445087f2ee2ddd98d74c8905606b20d",
+      "size": 664,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-router.calibrator.med.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-router.calibrator.med.json",
+      "sha256": "fbdcb0e2d3d3e0bd371c56f2483ba6772c0ed0685a5ec893c9805cd8527ac6ac",
+      "size": 577,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-router.calibrator.high.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-router.calibrator.high.json",
+      "sha256": "aae35126279a5a992ec25b4d95aa5f3e31fd2276ba405c4669cb76085137e44b",
+      "size": 632,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-router.fastgrnn.safetensors",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-router.fastgrnn.safetensors",
+      "sha256": "d6928cc24b273da0d9c555f9b7d6f4cd62be9301c584079ca71bd69b983bd1d7",
+      "size": 56860,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-router.krr.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-router.krr.json",
+      "sha256": "48d008d93a55139c7255b2ced72f7c515fc61aec490562c2eac1fb064173e70a",
+      "size": 2259439,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-router.krr.low.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-router.krr.low.json",
+      "sha256": "7ccb1008c070123eb86040a35b90ccd221a101787dab199eb2567ab4823dbb16",
+      "size": 678578,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-router.krr.med.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-router.krr.med.json",
+      "sha256": "f99c8b5dc35164bd152fd6ab047597925246c2fe5fce8ec6316aa90976e137c2",
+      "size": 565492,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-router.krr.high.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-router.krr.high.json",
+      "sha256": "86b68decbaf0c34fc679e43ee00cf14583e6de043cfaf401c6bc9a8684b572b7",
+      "size": 1016671,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-rows.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-rows.json",
+      "sha256": "38e61e909a296a95dd0d60b3427c63c426de6aa61ca43f72ad5d803b46630544",
+      "size": 347380,
+      "source": "ruflo"
+    },
+    {
+      "dest": "seed-rows.provenance.json",
+      "url": "https://raw.githubusercontent.com/ruvnet/ruflo/e21aa352fdc80fd2d3cc4e83404a76a18d118b96/v3/@claude-flow/cli/assets/model-router/seed-rows.provenance.json",
+      "sha256": "41e99320fd7b32cde44bfa82316b2392182e4eb41c657cfcd3fd5da83c9ec6f0",
+      "size": 1205,
+      "source": "ruflo"
+    },
+    {
+      "dest": "models/Xenova/all-MiniLM-L6-v2/config.json",
+      "url": "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/751bff37182d3f1213fa05d7196b954e230abad9/config.json",
+      "sha256": "7135149f7cffa1a573466c6e4d8423ed73b62fd2332c575bf738a0d033f70df7",
+      "size": 650,
+      "source": "huggingface"
+    },
+    {
+      "dest": "models/Xenova/all-MiniLM-L6-v2/tokenizer.json",
+      "url": "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/751bff37182d3f1213fa05d7196b954e230abad9/tokenizer.json",
+      "sha256": "da0e79933b9ed51798a3ae27893d3c5fa4a201126cef75586296df9b4d2c62a0",
+      "size": 711661,
+      "source": "huggingface"
+    },
+    {
+      "dest": "models/Xenova/all-MiniLM-L6-v2/tokenizer_config.json",
+      "url": "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/751bff37182d3f1213fa05d7196b954e230abad9/tokenizer_config.json",
+      "sha256": "9261e7d79b44c8195c1cada2b453e55b00aeb81e907a6664974b4d7776172ab3",
+      "size": 366,
+      "source": "huggingface"
+    },
+    {
+      "dest": "models/Xenova/all-MiniLM-L6-v2/special_tokens_map.json",
+      "url": "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/751bff37182d3f1213fa05d7196b954e230abad9/special_tokens_map.json",
+      "sha256": "b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3",
+      "size": 125,
+      "source": "huggingface"
+    },
+    {
+      "dest": "models/Xenova/all-MiniLM-L6-v2/onnx/model_quantized.onnx",
+      "url": "https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/751bff37182d3f1213fa05d7196b954e230abad9/onnx/model_quantized.onnx",
+      "sha256": "afdb6f1a0e45b715d0bb9b11772f032c399babd23bfc31fed1c170afc848bdb1",
+      "size": 22972370,
+      "source": "huggingface"
+    }
+  ]
+}
