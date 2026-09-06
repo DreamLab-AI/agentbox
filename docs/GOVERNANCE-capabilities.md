@@ -1,10 +1,12 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.3.1
+version: 0.3.3
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.3.3 (2026-09-06): ADR-2080 — the metaharness cost-optimal router runs as the dedicated AoE `router` session (Phase 0 of ADR-2079): artefacts vendored from one pinned manifest, task embedded offline, scoped to that session, public tier only."
+  - "0.3.2 (2026-09-06): ADR-2079 (proposed) — examine AoE as the DISPATCH plane of a fleet model router; the routing policy lives in a Rust crate outside the session manager, privacy tier is the first routing axis, subagent models are out of reach, a research spike precedes any build."
   - "0.3.1 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.3.0 (2026-09-04): ADR-2031 — consultant model is projected from the manifest at boot (env override wins, TUI preserves the operator's choice); general-purpose Gemini default is gemini-3.8-flash with a dated tariff."
   - "0.2.0 (2026-09-02): ADR-2028 — skills read and write the authored corpus through VAULT_ROOT/VAULT_PAGES and emit V2 frontmatter; no skill hard-codes a corpus path."
@@ -334,3 +336,23 @@ ADR-2071 is **proposed, not landed**, and divergences 1 and 6 stay open: routing
   separately, gates that cannot pass recorded as named exceptions, and a receipt in
   `docs/reference/gap-close-evidence/`. ADR-2020's "Remaining" is the ORIGIN (`see`); ADR-2033
   removed the last blocker by resolving `nodeModulesHash`.
+- **ADR-2079** (proposed, option to examine) — Agent of Empires (window 8) as the fleet model
+  router's **dispatch plane**, never its decision plane: a Rust routing crate in agentbox holds
+  the policy table, per-task-class scorecard and RuVector outcome writer; AoE receives
+  `(task, backend)` and runs it, its source tree unpatched. Privacy tier gates before cost
+  (nothing personal leaves its tier; `loom-raw` is never a fallback, ADR-2070); Claude Code
+  subagents cannot have their model swapped, so the router's choice at that seam is "Claude
+  subagent or AoE session". Precondition is a research spike (fleet inventory with dated
+  tariffs, six to ten task classes, one week routed-vs-default). Consolidates the four
+  scattered model-choice mechanisms (`[model_routing.routes]`, `[consultants.<name>].model`,
+  seed `model` keys, the regex prompt-routing hook). PRD-005 is the ORIGIN (`see`).
+- **ADR-2080** (accepted, partial, staged) — Phase 0 of ADR-2079 landed as a *dedicated AoE
+  session* rather than a router inside AoE: `config/model-router/console.mjs` embeds each task
+  offline with the closure's `@huggingface/transformers`, calls ruflo's `ModelRouter.route(task,
+  embedding)` so `@metaharness/router`'s KRR fires, executes through OpenRouter and writes a
+  labelled receipt + bandit outcome + trajectory row. Vendored because the `@claude-flow/cli`
+  tarball omits `assets/model-router/` and ruflo's task-embedder imports a package the closure
+  lacks (`config/model-router/artefacts.json` is the one pinned source; `flake.nix` bakes it,
+  `scripts/model-router-fetch.sh` fills the fallback). Gate `[model_routing.neural]` (rebuild
+  class); `AGENTBOX_MODEL_ROUTER_*` only — never `CLAUDE_FLOW_ROUTER_*` globally; privacy tier
+  pinned `public`; egress switch honoured. Fallback path measured live; baked path staged.
