@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 796d85fcffb2153c7507d5bb2934f569b3994582
+verified_commit: f7a3915f91a5f7d16a56c19a46fcfde68ae1e4b1
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -117,3 +117,7 @@ Governed paths changed in the landing commit: docs/INGRESS-identity.md: one line
 ## Landing re-verification — 2026-09-06 (796d85fcf)
 
 Governed paths changed in the Wave 3 landing commit: docs/INGRESS-identity.md, flake.nix. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.
+
+## Landing re-verification — 2026-09-06 (f7a3915f9)
+
+Governed paths changed in the doc-sync commit: docs/INGRESS-identity.md — frontmatter `version`/`verified_commit` bump and changelog entry for the Remediation — 2026-09-05 section; no code or citation this record depends on changed. `verified_commit` moved to the doc-sync commit.
