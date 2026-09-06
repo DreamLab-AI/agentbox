@@ -1,10 +1,11 @@
 ---
 title: "Agentbox Memory & Learning — Ground Truth"
 doc_id: AB-LEARNING
-version: 0.1.1
+version: 0.1.2
 status: draft-for-ratification
-verified_commit: 73540faa0
+verified_commit: 
 changelog:
+  - "0.1.2 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.1.1: correct duration invariant — zero/null durations are recorded, not skipped (no bug-skip branch exists)"
 sources:
   - agentbox/agentbox.toml

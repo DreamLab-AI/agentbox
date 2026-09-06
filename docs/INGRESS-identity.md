@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.1.2
+version: 0.1.3
 status: draft-for-ratification
-verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
+verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.1.3 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.1.2 (2026-09-05, ADR-2047): refresh the drifted `verifyIdentity` citations (proxy.mjs:527, not 410-450); restate the door inventory as ten CI-sanctioned publishes; mark the two now-answered divergence bullets Resolved; supersede the compose-exposure qualification (the line-walker bypass is fixed by a parsing gate); correct the :8444 cockpit routing to reflect ADR-069 credential exchange via :9096. Adds the Remediation — 2026-09-05 section."
   - "0.1.1 (2026-08-31): correct AoE auth state — live command is `aoe serve --auth token` (flake.nix:1977), token auth has landed not staged; fix door-inventory row, sole-ingress cite, and the two now-stale divergences."
 sources:

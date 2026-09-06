@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.3.0
+version: 0.3.1
 status: draft-for-ratification
-verified_commit: cdc18cf53
+verified_commit: 
 changelog:
+  - "0.3.1 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.3.0 (2026-09-04): ADR-2031 — consultant model is projected from the manifest at boot (env override wins, TUI preserves the operator's choice); general-purpose Gemini default is gemini-3.8-flash with a dated tariff."
   - "0.2.0 (2026-09-02): ADR-2028 — skills read and write the authored corpus through VAULT_ROOT/VAULT_PAGES and emit V2 frontmatter; no skill hard-codes a corpus path."
   - "0.1.1 (2026-08-31): fix wrong verified_commit (was outer-repo hash), correct agentbox.toml citations (loom_url 1564, loom_model 1565, session-seed models 1231/1238), and update N-05 to the revised token-auth boundary."

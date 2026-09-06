@@ -16,3 +16,4 @@
 | 2026-09-03 | ontology-monitor | Given the annexe clone of DreamLab-AI/agentbox at `ed45bfe` with the 2026-08-28  | NONE | NONE | yes | ACCEPT |  | d8ee927e87ae |  |
 | 2026-09-04 | dream-engine | Given the annexe clone of DreamLab-AI/agentbox at `e6e07da` with sibling repos a | NONE | NONE | yes | ACCEPT |  | 405e8d13da9f |  |
 | 2026-09-05 | hooks-pipeline | Given the annexe clone at `89301ec` where `scripts/dream-hooks-syntax.sh` report | NONE | NONE | yes | ACCEPT |  | d942478694a1 |  |
+| 2026-09-06 | sovereign-mesh | Given the `sovereign-mesh-bridge` entrypoint pipes cargo through `tail` (`cd ser | NONE | https://github.com/DreamLab-AI/agentbox/pull/4 | yes | ACCEPT |  | ce7342117589 |  |
