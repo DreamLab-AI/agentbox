@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1b43b70ff09b971b440c9964743402aec45ef515
+verified_commit: 7bf2382c031d696b0b2f5eb466f7e6615c88cc2c
 verified_paths: [agentbox.toml, mcp/servers/ontology-bridge.js, mcp/servers/ontology-propose.js, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-authoring-authority.js]
 owner: jjohare
 review_trigger: any change to direct_axiom_load default, or the authority-class of ontology_axiom_load
@@ -163,3 +163,11 @@ Governed paths changed in the landing commit: agentbox.toml: a new `[skills.podc
 ## Landing re-verification — 2026-09-06 (796d85fcf)
 
 Governed paths changed in the Wave 3 landing commit: agentbox.toml. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.
+
+### 2026-09-07 documentation and workflow pin re-verification
+
+The governed manifest diff at `7bf2382c031d696b0b2f5eb466f7e6615c88cc2c`
+adds only two comments distinguishing the consultant wire alias from the documented
+weight variant. The invariants workflow replaces action version tags with exact
+commit pins and retains the same checks. Neither diff changes this decision’s
+runtime behaviour; existing implementation and activation qualifications remain.

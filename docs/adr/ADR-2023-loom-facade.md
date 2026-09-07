@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e
+verified_commit: 7bf2382c031d696b0b2f5eb466f7e6615c88cc2c
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -208,3 +208,11 @@ Governed paths changed in the Wave 3 landing commit: agentbox.toml. The changes 
 ## Bounded source re-verification — 2026-09-07
 
 The retrieval source now verifies loaded Loom identity before cache and requires matching per-response headers.27 local retrieval tests pass. Older live Loom and mixed semantic/graph generations are explicitly rejected by the staged client; source implementation does not establish rollout. The complete intervening change to the governed source was reviewed at `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; prior runtime/approval limitations remain.
+
+### 2026-09-07 documentation and workflow pin re-verification
+
+The governed manifest diff at `7bf2382c031d696b0b2f5eb466f7e6615c88cc2c`
+adds only two comments distinguishing the consultant wire alias from the documented
+weight variant. The invariants workflow replaces action version tags with exact
+commit pins and retains the same checks. Neither diff changes this decision’s
+runtime behaviour; existing implementation and activation qualifications remain.

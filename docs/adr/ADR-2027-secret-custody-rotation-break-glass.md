@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: b0c963c663dc34e6547c8a6da112848bc44fb2bc
+verified_commit: e7bfc158a45bf97061fd6e7202e9ee053aa1f765
 verified_paths: [lib/secret-backup.nix, flake.nix, services/secret-backup/src/main.rs, services/secret-backup/Cargo.lock]
 owner: jjohare
 review_trigger: introduction or rotation of any load-bearing secret; compromise incident
@@ -168,3 +168,14 @@ This changes reproducible package installation, not the ADR's admission, custody
 or publication rule. Source verification is renewed at this commit; existing
 activation evidence and limits remain unchanged. The active local container was
 not replaced, and no key was rotated.
+
+### 2026-09-07 Nix custody build and ancestor regression
+
+The actual HP Nix build exposed an absolute-path pruning defect: a requested
+backup tree beneath `/build` was skipped entirely. `collect` now applies directory
+exclusions to paths relative to the requested root. The new ancestor regression
+retains nested build-directory exclusion while including the root secret fixture.
+All eight synthetic tests pass both locally and in the pinned Nix derivation,
+which installs `agentbox-secret-backup`. This verifies the standalone package,
+not deployment of the runtime image or recovery of real credentials. No real
+secret material was read or rotated. Source: `e7bfc158a45bf97061fd6e7202e9ee053aa1f765`.

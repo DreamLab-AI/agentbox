@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b0c963c663dc34e6547c8a6da112848bc44fb2bc
+verified_commit: 7bf2382c031d696b0b2f5eb466f7e6615c88cc2c
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -130,3 +130,11 @@ This changes reproducible package installation, not the ADR's admission, custody
 or publication rule. Source verification is renewed at this commit; existing
 activation evidence and limits remain unchanged. The active local container was
 not replaced, and no key was rotated.
+
+### 2026-09-07 documentation and workflow pin re-verification
+
+The governed manifest diff at `7bf2382c031d696b0b2f5eb466f7e6615c88cc2c`
+adds only two comments distinguishing the consultant wire alias from the documented
+weight variant. The invariants workflow replaces action version tags with exact
+commit pins and retains the same checks. Neither diff changes this decision’s
+runtime behaviour; existing implementation and activation qualifications remain.
