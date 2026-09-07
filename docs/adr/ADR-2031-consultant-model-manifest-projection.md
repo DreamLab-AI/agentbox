@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 796d85fcffb2153c7507d5bb2934f569b3994582
+verified_commit: a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -73,3 +73,8 @@ Governed paths changed in the landing commit: config/entrypoint-unified.sh: the 
 ## Landing re-verification — 2026-09-06 (796d85fcf)
 
 Governed paths changed in the Wave 3 landing commit: config/entrypoint-unified.sh. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.
+
+
+## Bounded source re-verification — 2026-09-07
+
+The entrypoint delta replaces only the agent identity block; consultants.antigravity.model projection and operator-override precedence are unchanged. A failed identity now aborts boot rather than allowing downstream consumers to start with a placeholder. The complete intervening change to the governed source was reviewed at `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; prior runtime/approval limitations remain.

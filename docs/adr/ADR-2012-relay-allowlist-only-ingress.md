@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 796d85fcffb2153c7507d5bb2934f569b3994582
+verified_commit: b0c963c663dc34e6547c8a6da112848bc44fb2bc
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -161,3 +161,20 @@ Governed paths changed in the landing commit: agentbox.toml: a new `[skills.podc
 ## Landing re-verification — 2026-09-06 (796d85fcf)
 
 Governed paths changed in the Wave 3 landing commit: agentbox.toml, flake.nix. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.
+
+
+## Bounded source re-verification — 2026-09-07
+
+The flake delta adds only secretBackupPkg; relay local/admission/bind expressions are unchanged. The exposed-relay profile remains disabled. The complete intervening change to the governed source was reviewed at `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; prior runtime/approval limitations remain.
+
+### 2026-09-07 npm closure re-verification
+
+The intervening governed `flake.nix` change adds exact package-lock inputs for
+the nine existing npm CLIs and updates five dependency-output hashes after a
+manifest-by-manifest comparison. No existing package version changed; additions
+are optional musl packages already present in the original locks. All nine
+fixed-output derivations passed an explicit HP `nix build --rebuild` replay.
+This changes reproducible package installation, not the ADR's admission, custody
+or publication rule. Source verification is renewed at this commit; existing
+activation evidence and limits remain unchanged. The active local container was
+not replaced, and no key was rotated.

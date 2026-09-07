@@ -36,10 +36,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Set up Node 22 (matches the runtime image — nodejs_22 in flake.nix)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
           cache: 'npm'
@@ -49,13 +49,20 @@ jobs:
         working-directory: management-api
         run: npm ci
 
+      # tests/contract/*.spec.js resolve their own helpers (ajv, ajv-formats,
+      # @iarna/toml) from the REPO-ROOT package.json, not management-api's;
+      # without this step execution-journal.contract.spec.js fails with
+      # "Cannot find module 'ajv'" (red since 2026-08-16).
+      - name: Install repo-root test dependencies
+        run: npm ci --ignore-scripts
+
       - name: Run contract test suites
         working-directory: management-api
         run: npx jest ../tests/contract/ --testPathPattern='\.contract\.spec\.js$' --ci --forceExit
 
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: contract-test-results
           path: management-api/coverage/

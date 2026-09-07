@@ -40,10 +40,10 @@ jobs:
             fail_level: warning
             continue_on_error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Run ShellCheck (${{ matrix.severity }})
-        uses: ludeeus/action-shellcheck@2.0.0
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38
         with:
           severity: ${{ matrix.severity }}
           ignore_paths: >-

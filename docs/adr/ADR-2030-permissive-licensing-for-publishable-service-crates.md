@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ddd1f1ec8ff1459fd7f7ad6654392e7bfac05286
+verified_commit: 1b43b70ff09b971b440c9964743402aec45ef515
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/agentbox-manifest/Cargo.toml, services/agentbox-mcp/Cargo.toml, services/agentbox-ops/Cargo.toml, services/dream-engine/Cargo.toml, services/nostr-pod-bridge/Cargo.toml, services/ontology-tools/Cargo.toml, services/podcast-ingest/Cargo.toml, services/secret-backup/Cargo.toml, services/skill-tools/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io

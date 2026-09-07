@@ -37,7 +37,7 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Resolve image reference
         id: ref
@@ -52,14 +52,14 @@ jobs:
           echo "image ref: $ref"
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Trivy — HIGH/CRITICAL (failure gate)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
         with:
           image-ref: ${{ steps.ref.outputs.ref }}
           format: sarif
@@ -71,14 +71,14 @@ jobs:
 
       - name: Upload SARIF to GitHub Security
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d
         with:
           sarif_file: trivy-results.sarif
           category: trivy-${{ steps.ref.outputs.ref }}
 
       - name: Run Trivy — ALL severities (informational)
         if: always()
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
         with:
           image-ref: ${{ steps.ref.outputs.ref }}
           format: table
@@ -87,7 +87,7 @@ jobs:
           exit-code: '0'
 
       - name: Generate SBOM (CycloneDX)
-        uses: anchore/sbom-action@v0.24.0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
         with:
           image: ${{ steps.ref.outputs.ref }}
           format: cyclonedx-json
@@ -95,7 +95,7 @@ jobs:
           upload-release-assets: false
 
       - name: Generate SBOM (SPDX)
-        uses: anchore/sbom-action@v0.24.0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
         with:
           image: ${{ steps.ref.outputs.ref }}
           format: spdx-json
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload scan artefacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: image-scan-${{ github.event.workflow_run.head_sha || github.sha }}
           path: |

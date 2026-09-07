@@ -3,12 +3,12 @@ id: ADR-2075
 title: Attest the Loom's loaded generation at the server, instead of asserting it from configuration
 date: 2026-09-05
 decision_status: proposed
-implementation_status: none
+implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e070514d808b218574403377fb75e0e1a0a256b3
-verified_paths: []
+verified_commit: a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e
+verified_paths: [mcp/servers/lib/ontology-retrieval.js, tests/integration/loom-served-identity.test.mjs, tests/integration/ontology-retrieval-cache.test.mjs]
 owner: jjohare
 review_trigger: a Loom generation rebuild or model swap, a cache-poisoning or stale-answer incident, or ADR-2023's generation-identity Remaining item being taken up
 repo: agentbox
@@ -104,3 +104,28 @@ words: "asserted by configuration, not attested by the server".
 ## Estate audit — 2026-09-07
 
 The Rust Loom server already implements GET `/loom/generation` ([Loom routes](../../../../loom/crates/loom-facade/src/routes/mod.rs), lines 51 and 86-88) and [bundle verification](../../../../loom/crates/loom-facade/src/bundle.rs) (lines 210-246). The missing estate seam is the Agentbox consumer: `mcp/servers/lib/ontology-retrieval.js` selects a configured generation and calls search/SPARQL without verifying the served generation endpoint. Retain proposed/none/inactive for this consumer contract; do not describe the server endpoint itself as absent. Require wrong-generation, swapped-bundle, cache and degraded-backend tests before activation. CP-02/03. See the [Agentbox audit](../../../../VisionFlow/docs/estate-review/2026-09-07-agentbox-audit.md).
+
+
+## Source implementation — 2026-09-07 (EA-05)
+
+`ontology-retrieval.js::loomGenerationVerifier` now calls GET /loom/generation
+before cache lookup, checks a loaded content digest, generation, atomicity/drift,
+matching semantic generation and the 384-dimensional bge-small-en-v1.5 cosine
+contract. The cache discriminator binds generation, content, embedding model and
+dimensions. Configured generation is a pin to compare. The actual search/SPARQL
+response must carry matching `x-loom-generation`, `x-loom-content-digest` and
+`x-loom-atomicity-verified` headers; a mixed response is not returned or cached.
+An unavailable or older identity endpoint produces empty labelled degradation,
+never a silent VisionClaw fallback. The Loom route body shapes remain unchanged;
+Agentbox normalises Rust's label-search array into its internal hits envelope.
+
+Local targeted tests and Loom workspace tests pass. Activation remains inactive:
+the observed live façade reports lexical generation 2026-08-22 but semantic
+2026-08-17 and has no new loaded-identity/embedding fields. Deploying this client
+before a matching rebuilt Loom bundle would deliberately refuse grounding.
+Coordinate the server/data rollout, verify the response headers and then rebuild
+Agentbox. These are assertions from the selected HTTP service, not cryptographic
+remote attestation. The generation descriptor does not implement corpus reload.
+Evidence: VisionFlow docs/estate-review/closeout/execution-2026-09-07/.
+
+The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; it does not identify the loaded container.

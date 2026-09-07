@@ -7,8 +7,8 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: b0c963c663dc34e6547c8a6da112848bc44fb2bc
+verified_paths: [lib/secret-backup.nix, flake.nix, services/secret-backup/src/main.rs, services/secret-backup/Cargo.lock]
 owner: jjohare
 review_trigger: introduction or rotation of any load-bearing secret; compromise incident
 repo: agentbox
@@ -144,3 +144,27 @@ the image does not ship the binary. `implementation_status` stays `none` for the
 full lifecycle policy; what has moved is that two of its concrete weaknesses —
 unbounded break-glass authority and a plaintext backup — now have code and tests
 behind them.
+
+
+## Packaging implementation — 2026-09-07 (G-17)
+
+`lib/secret-backup.nix` now builds the locked standalone crate with checks enabled;
+`flake.nix::secretBackupPkg` includes the operator-invoked binary in the runtime
+package list. Seven isolated Rust custody tests pass. This does not perform a
+publisher-key split, rotate a credential or demonstrate a loaded runtime closure.
+The earlier unwired-build statement is historical; final Nix build and deployment
+validation remain separate acceptance evidence.
+
+The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; it does not identify the loaded container.
+
+### 2026-09-07 npm closure re-verification
+
+The intervening governed `flake.nix` change adds exact package-lock inputs for
+the nine existing npm CLIs and updates five dependency-output hashes after a
+manifest-by-manifest comparison. No existing package version changed; additions
+are optional musl packages already present in the original locks. All nine
+fixed-output derivations passed an explicit HP `nix build --rebuild` replay.
+This changes reproducible package installation, not the ADR's admission, custody
+or publication rule. Source verification is renewed at this commit; existing
+activation evidence and limits remain unchanged. The active local container was
+not replaced, and no key was rotated.

@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
-verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, services/nostr-pod-bridge/src/egress_policy.rs, services/nostr-pod-bridge/src/session_summary.rs, services/nostr-pod-bridge/src/lib.rs, tests/fixtures/egress-redaction.v1.json]
+verified_commit: a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e
+verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
 repo: agentbox
@@ -147,3 +147,22 @@ not demonstrated. The archive is a provenance record, not a database — retenti
 is bounded by rotation. Relay/read policy for the signed kind-30840 digest
 remains a separate boundary. `decision_status` stays `proposed` pending
 maintainer adoption of the policy document.
+
+
+## Recipient enumeration implementation — 2026-09-07 (G-4)
+
+`recipientAllowed` now refuses absent, empty or malformed allowlists, as well as
+unlisted recipients. `nostr-live-mirror.cjs` derives the actual child or explicit
+recipient and checks it before reading/composing turn text, including dry-run.
+The policy JSON now declares mandatory enumeration for live mirror; the separate
+public signed digest's visibility remains the relay/read policy, not a falsely
+claimed gift-wrap recipient list. Twenty-five isolated egress tests pass,
+including unset/invalid lists, permitted/denied keys and no diagnostic body output
+before admission. This closes the source enumeration gap.
+
+Activation is staged: configure an explicit reviewed AGENTBOX_MIRROR_RECIPIENTS
+set containing the actual recipient public keys before enabling the new hook.
+No recipient set was inferred from private runtime state and no message sent.
+The source change does not certify external retention or per-process key custody.
+
+The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; it does not identify the loaded container.

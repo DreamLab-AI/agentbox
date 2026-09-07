@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f7a3915f91a5f7d16a56c19a46fcfde68ae1e4b1
+verified_commit: b0c963c663dc34e6547c8a6da112848bc44fb2bc
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -121,3 +121,20 @@ Governed paths changed in the Wave 3 landing commit: docs/INGRESS-identity.md, f
 ## Landing re-verification — 2026-09-06 (f7a3915f9)
 
 Governed paths changed in the doc-sync commit: docs/INGRESS-identity.md — frontmatter `version`/`verified_commit` bump and changelog entry for the Remediation — 2026-09-05 section; no code or citation this record depends on changed. `verified_commit` moved to the doc-sync commit.
+
+
+## Bounded source re-verification — 2026-09-07
+
+The flake delta adds only secretBackupPkg; proxy bindings and authentication forwarding are unchanged. No new network surface was introduced. The complete intervening change to the governed source was reviewed at `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; prior runtime/approval limitations remain.
+
+### 2026-09-07 npm closure re-verification
+
+The intervening governed `flake.nix` change adds exact package-lock inputs for
+the nine existing npm CLIs and updates five dependency-output hashes after a
+manifest-by-manifest comparison. No existing package version changed; additions
+are optional musl packages already present in the original locks. All nine
+fixed-output derivations passed an explicit HP `nix build --rebuild` replay.
+This changes reproducible package installation, not the ADR's admission, custody
+or publication rule. Source verification is renewed at this commit; existing
+activation evidence and limits remain unchanged. The active local container was
+not replaced, and no key was rotated.

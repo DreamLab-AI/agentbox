@@ -333,3 +333,18 @@ longer the only control. Invariant 2 above states the enforced rule.
 ## Remediation — 2026-09-05
 
 - ADR-2018 recall FAIL diagnosed and closed: not index churn (a 16-worker parallel `REINDEX` reproduced 151/200 self-recall, worse than the incrementally grown index) but the ruvector 0.3.0 HNSW **parallel build**, which leaves rows unreachable from the graph at any `ef_search` and any LIMIT. A serial rebuild (`SET max_parallel_maintenance_workers = 0; REINDEX INDEX idx_memory_embedding_hnsw;`, ~8 min) restores self 189/200 and true 115/120 (median-of-3, gate PASS). `ALTER DATABASE ruvector SET max_parallel_maintenance_workers = 0` pins it; the sidecar's `postgresql.auto.conf` still carries the `ALTER SYSTEM` 16 for other databases.
+
+
+## Routing observation gate — 2026-09-07 closeout (D-1)
+
+Keep `[memory_learning].feed_routing = false`. The observation window is seven
+complete consecutive UTC days beginning with a recorded deployed retrieval
+configuration, current corpus identity and a passing recall receipt. Before
+activation, retain daily recall receipts at the established >=175/200 self and
+>=102/120 true bands, with no unexplained corpus/index change; confirm the existing
+raw-sample and independent-trajectory promotion floors and review routing advice
+against structured outcomes. Any failing day or index/model change restarts the
+window. Missing receipts are missing evidence, not a passing day. The historical
+2026-09-06 recall pass alone does not supply seven days of observations. Activation
+is an explicit reviewed configuration change after that window, not a clock-only
+flip; no live learning gate was changed in this closeout.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 796d85fcffb2153c7507d5bb2934f569b3994582
+verified_commit: a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -203,3 +203,8 @@ Governed paths changed in the landing commit: agentbox.toml: a new `[skills.podc
 ## Landing re-verification — 2026-09-06 (796d85fcf)
 
 Governed paths changed in the Wave 3 landing commit: agentbox.toml. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.
+
+
+## Bounded source re-verification — 2026-09-07
+
+The retrieval source now verifies loaded Loom identity before cache and requires matching per-response headers.27 local retrieval tests pass. Older live Loom and mixed semantic/graph generations are explicitly rejected by the staged client; source implementation does not establish rollout. The complete intervening change to the governed source was reviewed at `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; prior runtime/approval limitations remain.

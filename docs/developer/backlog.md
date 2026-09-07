@@ -135,3 +135,35 @@ _None currently; see below for the two items closed on 2026-07-22._
   `docs/user/linked-object-viewer.md`; `browser.md` is now a short redirect
   stub (kept because existing links point at it); `docs/README.md` and
   `README.md` updated to link the new filename.
+
+
+## Supported profile decision — 2026-09-07 closeout
+
+T-1/T-4 and the M-2 exposure prerequisite are resolved as **retain the existing
+closed profile**: relay publication, mobile bridge, multi-user/per-user agents,
+public git pods/host gateway, payments, Solid OIDC, pod MCP and kernel pip remain
+disabled. No new rail or LAN listener, counterparty, issuer or phone workflow is
+selected. Reopening any of these is a new reviewed profile change after publisher
+custody and explicit admission/deployment evidence; it is not unfinished work for
+this profile. Selected booleans were checked from the tracked manifest on this date.
+
+M-5 reconciliation: existing commit2c521c5bb already materialises
+`annexeInclude` repositories through `engine::clone_repo_and_siblings` at their
+canonical workspace depth. The symlink/depth/fallback regression passes. Each
+archive is its repository HEAD, excluding uncommitted files. This closes the
+original standalone clone-layout gap; a completed live sovereign-mesh nightly
+receipt remains separate. The HP baseline b5bfc03db includes the layout fix,
+but an image rebuild alone is not a completed nightly evaluation.
+
+G-4 recipient enumeration is now enforced before turn text is composed, including
+dry-run: absent/empty/malformed lists and unlisted recipients refuse. Twenty-five
+isolated tests pass. Activation requires a reviewed explicit recipient set; no
+private configuration was read or message sent. External retention/key custody
+remain separate from source enforcement.
+G-5 still needs a concretely reviewed replacement publisher identity/custody and
+allowlist migration; no private key was rotated by this closeout.
+
+G-6 now rejects failed/invalid mint output before consumers start, without eval;
+G-17 now packages secret-backup in the flake. These are tested source changes,
+not evidence that this running container loaded them. D-1's seven-day evidence
+window is defined in LEARNING-memory; routing remains disabled until it passes.

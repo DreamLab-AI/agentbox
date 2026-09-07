@@ -1732,6 +1732,8 @@ enabled                = true
 hp_host                = "john@10.10.10.1"
 hp_annexe_dir          = "/home/john/dream-annexe"
 loom_url               = "http://192.168.2.132:8084/v1"
+# Wire alias only. Documented weight variant: Heretic abliterated Qwen3.8-27B Q8_0;
+# this alias is not an attestation of the running GGUF (see Loom QWEN3.8-CONNECTION.md).
 loom_model             = "qwen3.8-27B"
 # Token budgets must cover reasoning + content: glm-5.3 burned ~16k tokens of
 # thinking on hard nights (2026-09-01) and hit the old 16384 cap with empty

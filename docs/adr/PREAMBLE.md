@@ -27,3 +27,5 @@ supersession edges, and stale `verified_commit`+`verified_paths` claims all
 fail the build).
 
 The [historical closeout routing note](../adr-history-closeout.md) points the 72 archived decision candidates at the estate historical map and section-level review; the archive remains historical and lineage mentions are not whole-document supersession.
+
+The [estate status/evidence contract](../../../../VisionFlow/docs/architecture/adr-status-contract.md) defines the independent decision, implementation and activation axes and distinguishes lineage from supersession (2026-09-07).

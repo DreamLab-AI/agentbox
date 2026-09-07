@@ -32,12 +32,14 @@ fail the build).
 
 The [historical closeout routing note](../adr-history-closeout.md) points the 72 archived decision candidates at the estate historical map and section-level review; the archive remains historical and lineage mentions are not whole-document supersession.
 
+The [estate status/evidence contract](../../../../VisionFlow/docs/architecture/adr-status-contract.md) defines the independent decision, implementation and activation axes and distinguishes lineage from supersession (2026-09-07).
+
 _74 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
 | [ADR-2001](ADR-2001-corpus-consolidation.md) | Consolidate the documentation corpus onto a thin living ADR series | — | 2026-08-31 | accepted | partial | staged | — | — | jjohare | agentbox |
-| [ADR-2002](ADR-2002-aoe-token-auth-boundary.md) | AoE interaction plane requires token auth — loopback is not a boundary | — | 2026-08-31 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2002](ADR-2002-aoe-token-auth-boundary.md) | AoE interaction plane requires token auth — loopback is not a boundary | — | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2003](ADR-2003-nix-flake-composition.md) | Compose the whole image from agentbox.toml via one Nix flake, with honest per-gate apply-classes | BASELINE-container | 2026-08-31 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2004](ADR-2004-five-adapter-slots.md) | Durable state rides exactly five adapter slots; orchestrator boot-probe failure is fatal, the other four degrade to off | BASELINE-container | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2005](ADR-2005-dispatch-middleware-order.md) | Every adapter dispatch is wrapped in a fixed order — observability, then privacy filter, then JSON-LD encoder | BASELINE-container | 2026-08-31 | superseded | partial | live | — | ADR-2036 | jjohare | agentbox |
@@ -103,7 +105,7 @@ _74 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2072](ADR-2072-briefing-workflow-route-surface.md) | Serve the briefing workflow (brief, execute, debrief) from management-api | BASELINE-container | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2073](ADR-2073-loom-asserted-inferred-graph-isolation.md) | Isolate asserted from inferred in the Loom backend so provenance scope is backend-enforced, not requested | LEARNING-memory | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2074](ADR-2074-deferred-distillation-mcp-server.md) | Build the ADR-051 deferred-distillation tools as a discrete, separately gated MCP server | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
-| [ADR-2075](ADR-2075-loom-attested-generation-identity.md) | Attest the Loom's loaded generation at the server, instead of asserting it from configuration | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2075](ADR-2075-loom-attested-generation-identity.md) | Attest the Loom's loaded generation at the server, instead of asserting it from configuration | GOVERNANCE-capabilities | 2026-09-05 | proposed | partial | inactive | — | — | jjohare | agentbox |
 | [ADR-2076](ADR-2076-benchmark-the-agent-retrieval-path.md) | Benchmark the agent retrieval path (/loom/search + /loom/sparql) on its own terms, with a frozen recall band | LEARNING-memory | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2077](ADR-2077-byte-identical-when-off-rebuild-proof.md) | Prove byte-identical-when-off with an actual image rebuild — the procedure, the commands and the receipts | GOVERNANCE-capabilities | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2078](ADR-2078-provision-pods-signer-from-sovereign-identity.md) | Provision the pods signer from the sovereign identity the boot already mints | INGRESS-identity | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |

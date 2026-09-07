@@ -147,7 +147,7 @@ When `[mesh].mode = "federated"`, the agentbox container is a
 ## Phase 1: git per user (forward reference)
 
 When solid-pod-rs alpha.12 ships and the
-[`[sovereign_mesh.git]`](../reference/adr/ADR-010-rust-solid-pod-adoption.md)
+[`[sovereign_mesh.git]`](../archive/adr/ADR-010-rust-solid-pod-adoption.md)
 wiring lands (queued task: `agentbox-git-wiring`), every provisioned pod
 additionally gets:
 
