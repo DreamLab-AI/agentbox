@@ -3809,7 +3809,7 @@ ${ragflowNetworkDecl}
         devShells.default = pkgs.mkShell {
           buildInputs = allPackages ++ [
             pkgs.nix
-            n2c.nix2container
+            nix2container.packages.${system}.nix2container-bin
             # Nix developer tools
             pkgs.nurl      # generate fetchFromGitHub/fetchCrate calls with pre-computed hashes
             pkgs.statix    # lint Nix files for antipatterns
