@@ -455,6 +455,8 @@ async function llmMarketplaceRoutes(fastify, opts) {
     if (authorityEnabled) {
       const gate = await authorityGate.guard({
         actionClass: 'mandate_revoke',
+        operation: { kind: 'llm-grant-revoke', grant_id: body.grant_id, revoked_by: pubkey,
+          grantee_pubkey: body.grantee_pubkey || '', reason: body.reason || '' },
         action: `Revoke LLM grant ${body.grant_id}`,
         reasoning: body.reason || 'provider-initiated LLM grant revocation (irreversible)',
       });

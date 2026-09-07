@@ -43,6 +43,7 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 const uris = require('../lib/uris');
+const { ApplicationReceiptStore } = require('../lib/governance-application-receipts');
 const { buildAuthorityGate } = require('../lib/authority');
 const governanceWaiter = require('../lib/governance-decision-waiter');
 
@@ -233,6 +234,7 @@ async function brokerBridgeRoutes(fastify, options) {
   // consumer's embedded-relay awaitDecision); fall back to a locally-built gate
   // over the governance-decision waiter when the shared one is absent (tests /
   // consumer unwired).
+  const applicationReceipts = options.applicationReceipts || new ApplicationReceiptStore();
   const authorityGate = options.authorityGate || fastify.authorityGate || buildAuthorityGate(manifest, {
     logger,
     publishActionRequest: options.publishActionRequest,
@@ -406,6 +408,7 @@ async function brokerBridgeRoutes(fastify, options) {
             upstream_result: { type: 'object', additionalProperties: true },
             activity_urn: { type: 'string' },
             receipt_urn: { type: 'string' },
+            application_receipt: { type: 'object', additionalProperties: true },
             authority_class: { type: 'string' },
             authority_request_event_id: { type: 'string' },
             authority_response_event_id: { type: 'string' },
@@ -417,6 +420,14 @@ async function brokerBridgeRoutes(fastify, options) {
     const { id } = request.params;
     const { decision, note, timestamp } = request.body;
 
+    const decidingPubkey = request.auth?.pubkey
+      || request.headers['x-agent-pubkey']
+      || AGENTBOX_PUBKEY;
+    const operation = {
+      kind: 'broker-enrichment-decision', case_id: id,
+      payload: { outcome: decision, broker_pubkey: decidingPubkey, reasoning: note || '' },
+    };
+
     // ── REC-6 authority gate — block the irreversible write-back BEFORE it is
     // proxied to VisionClaw (ADR-037 D2). A recoverable decision returns
     // decision:'allow' with no wait; a zero-tolerance/escalation decision blocks
@@ -427,6 +438,7 @@ async function brokerBridgeRoutes(fastify, options) {
       const actionClass = _actionClassForDecision(decision);
       gate = await authorityGate.guard({
         actionClass,
+        operation,
         action: `Broker "${decision}" on enrichment case ${id}`,
         reasoning: note
           || `broker governance decision "${decision}" (${WRITEBACK_DECISIONS.has(decision)
@@ -454,14 +466,22 @@ async function brokerBridgeRoutes(fastify, options) {
       }
     }
 
-    // Resolve the deciding broker's did:nostr pubkey. Prefer the authenticated
-    // caller, then an explicit x-agent-pubkey header, then this agentbox's own
-    // x-only pubkey. Never send the literal string 'unknown': VisionClaw treats
-    // a non-hex broker_pubkey as UNATTRIBUTED and refuses to commit the KG
-    // write-back, so 'unknown' would silently suppress every write-back.
-    const decidingPubkey = request.auth?.pubkey
-      || request.headers['x-agent-pubkey']
-      || AGENTBOX_PUBKEY;
+    let applicationClaim = null;
+    let applicationReceipt = null;
+    if (gate?.released) {
+      try { applicationClaim = applicationReceipts.begin(gate, operation); }
+      catch (error) {
+        return reply.code(503).send({ error: 'application-receipt-unavailable', message: error.message, success: false });
+      }
+      if (!applicationClaim.fresh) {
+        return reply.code(409).send({
+          error: applicationClaim.outcome?.stage === 'applied' ? 'operation-already-applied' : 'application-reconciliation-required',
+          message: 'This signed decision already has a durable application claim; no mutation was repeated.',
+          application_receipt: applicationClaim.outcome,
+          success: false,
+        });
+      }
+    }
 
     // 1. Proxy the decision to VisionClaw's enrichment-proposals decide endpoint.
     // The BrokerActor performs the KG write-back internally for approved
@@ -471,14 +491,14 @@ async function brokerBridgeRoutes(fastify, options) {
     try {
       decisionResult = await _vcFetch(`/api/enrichment-proposals/${encodeURIComponent(id)}/decide`, {
         method: 'POST',
-        body: {
-          outcome: decision,
-          broker_pubkey: decidingPubkey,
-          reasoning: note || '',
-        },
+        body: operation.payload,
       });
     } catch (err) {
       logger.error({ err: err.message, caseId: id, decision }, 'broker-bridge: decision proxy failed');
+      if (applicationClaim) {
+        try { applicationReceipts.finish(applicationClaim, 'unknown', { error: 'upstream-request-failed' }); }
+        catch (receiptError) { logger.error({ err: receiptError.message }, 'application outcome not persisted; received claim retained'); }
+      }
       return reply.code(err.statusCode || 502).send({
         error: 'upstream-error',
         message: `Failed to submit decision: ${err.message}`,
@@ -496,6 +516,19 @@ async function brokerBridgeRoutes(fastify, options) {
     const upstreamTriggered = !!(decisionResult && decisionResult.writeback_triggered === true);
     const upstreamCommitted = !!(decisionResult && decisionResult.writeback_committed === true);
     const upstreamAttributed = !!(decisionResult && decisionResult.attributed === true);
+
+    if (applicationClaim) {
+      try {
+        applicationReceipt = applicationReceipts.finish(applicationClaim,
+          upstreamCommitted ? 'applied' : 'not-applied', {
+            case_id: id, outcome: decision, attributed: upstreamAttributed,
+            writeback_triggered: upstreamTriggered, writeback_committed: upstreamCommitted,
+          });
+      } catch (error) {
+        return reply.code(503).send({ error: 'application-outcome-unrecorded', message: error.message,
+          writeback_committed: upstreamCommitted, success: false });
+      }
+    }
 
     if (writebackExpected && upstreamTriggered && upstreamAttributed && !upstreamCommitted) {
       logger.error(
@@ -568,9 +601,11 @@ async function brokerBridgeRoutes(fastify, options) {
         decided_by: request.body.decided_by || 'unknown',
         decided_at: decidedAt,
         agent_did: `did:nostr:${decidingPubkey}`,
+        operation_sha256: gate?.operation_sha256 || null,
+        application_receipt: applicationReceipt,
         source_event_ids: {
-          request: request.body.request_event_id || null,
-          response: request.body.response_event_id || null,
+          request: gate?.request_event_id || null,
+          response: gate?.response_event_id || null,
         },
       };
 
@@ -599,6 +634,7 @@ async function brokerBridgeRoutes(fastify, options) {
       writeback_result: writebackResult,
       activity_urn: activity_urn || undefined,
       receipt_urn: receipt_urn || undefined,
+      application_receipt: applicationReceipt || undefined,
       authority_class: authorityClass || undefined,
       authority_request_event_id: (gate && gate.request_event_id) || undefined,
       authority_response_event_id: (gate && gate.response_event_id) || undefined,

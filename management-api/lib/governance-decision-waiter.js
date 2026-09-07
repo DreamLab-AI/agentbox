@@ -11,14 +11,12 @@
  * receives 31403s lives in `mcp/nostr-bridge/relay-consumer.js` (the governance
  * branch that hands each 31403 to `orchestrator.handleGovernanceDecision`). This
  * module reuses THAT seam: the consumer additionally calls `notify(event)` here,
- * and any gate awaiting a matching request id / case_id resolves. There is NO
+ * and any gate awaiting a matching signed request id resolves. There is NO
  * second relay client — the value is the wait registry, the transport stays the
  * one connected consumer.
  *
- * Matching mirrors lib/authority.js readOutcome exactly: a 31403 references its
- * request either by an `e` tag equal to the request event id, or by a `case_id`
- * in its JSON content equal to the request's `case_id`. A `d` tag (NIP-33 panel
- * id) is also honoured as a fallback correlation key.
+ * Matching requires one unambiguous `e` reference to the signed request event.
+ * Optional case/panel identifiers must agree; they never provide a fallback.
  *
  * Fail-closed: a request whose response never arrives times out to `null`, which
  * the gate treats as a DENY. No response is ever fabricated here.
@@ -27,6 +25,8 @@
  * @see mcp/nostr-bridge/relay-consumer.js       (the notifier — governance branch)
  * @see management-api/routes/broker-bridge.js    (the gated route)
  */
+
+const { requestReference, responseMatchesRequest } = require('./governance-correlation');
 
 const DEFAULT_TIMEOUT_MS = 120000;
 
@@ -52,27 +52,16 @@ class GovernanceDecisionWaiter {
    * Correlation keys a REQUEST can be matched by (what a future 31403 must carry).
    */
   _keysForRequest(signedRequest) {
-    const keys = [];
-    if (signedRequest && typeof signedRequest.id === 'string') keys.push(`e:${signedRequest.id}`);
-    const c = _parseContent(signedRequest && signedRequest.content);
-    if (c && typeof c.case_id === 'string') keys.push(`case:${c.case_id}`);
-    const d = _tagVal(signedRequest, 'd');
-    if (d) keys.push(`d:${d}`);
-    return keys;
+    const id = signedRequest && signedRequest.id;
+    return typeof id === 'string' && id ? [`e:${id}`] : [];
   }
 
   /**
    * Correlation keys a RESPONSE (31403) carries (what request it references).
    */
   _keysForResponse(responseEvent) {
-    const keys = [];
-    const e = _tagVal(responseEvent, 'e');
-    if (e) keys.push(`e:${e}`);
-    const c = _parseContent(responseEvent && responseEvent.content);
-    if (c && typeof c.case_id === 'string') keys.push(`case:${c.case_id}`);
-    const d = _tagVal(responseEvent, 'd');
-    if (d) keys.push(`d:${d}`);
-    return keys;
+    const id = requestReference(responseEvent);
+    return id ? [`e:${id}`] : [];
   }
 
   _remove(entry) {
@@ -104,7 +93,7 @@ class GovernanceDecisionWaiter {
     if (keys.length === 0) return Promise.resolve(null);
 
     return new Promise((resolve) => {
-      const entry = { keys, resolve, timer: null };
+      const entry = { keys, request: signedRequest, resolve, timer: null };
       // The timer is intentionally NOT unref'd: a pending governance wait is an
       // in-flight request whose bounded timeout (≤ timeoutMs) must reliably fire
       // to fail-closed, so it keeps the loop alive exactly as long as the wait.
@@ -133,7 +122,9 @@ class GovernanceDecisionWaiter {
     for (const k of keys) {
       const set = this._pending.get(k);
       if (!set) continue;
-      for (const entry of Array.from(set)) resolved.add(entry);
+      for (const entry of Array.from(set)) {
+        if (responseMatchesRequest(responseEvent, entry.request)) resolved.add(entry);
+      }
     }
     for (const entry of resolved) {
       if (entry.timer) clearTimeout(entry.timer);

@@ -90,7 +90,7 @@ describe('authority.buildAuthorityGate.guard', () => {
       awaitDecision: async () => { awaited = true; return null; },
       publishActionRequest: async () => { throw new Error('should not publish for recoverable'); },
     });
-    const r = await gate.guard({ actionClass: 'research' });
+    const r = await gate.guard({ operation: { kind: 'test-authority-operation' }, actionClass: 'research' });
     expect(r.decision).toBe('allow');
     expect(r.blocked).toBe(false);
     expect(r.authority_class).toBe('recoverable');
@@ -108,7 +108,7 @@ describe('authority.buildAuthorityGate.guard', () => {
       awaitDecision: async (signedReq) => signedResponse(signedReq.id, 'approve'),
       verifyEvent: () => true,
     });
-    const r = await gate.guard({ actionClass: 'ontology_axiom_load', action: 'load axioms' });
+    const r = await gate.guard({ operation: { kind: 'test-authority-operation' }, actionClass: 'ontology_axiom_load', action: 'load axioms' });
 
     expect(published).toHaveLength(1);
     expect(published[0].kind).toBe(authority.ACTION_REQUEST_KIND); // it PRODUCED a 31402 request
@@ -126,7 +126,7 @@ describe('authority.buildAuthorityGate.guard', () => {
       // no awaitDecision wired
       publishActionRequest: async (u) => ({ ...u, id: 'req-x' }),
     });
-    const r = await gate.guard({ actionClass: 'payment_settlement' });
+    const r = await gate.guard({ operation: { kind: 'test-authority-operation' }, actionClass: 'payment_settlement' });
     expect(r.decision).toBe('deny');
     expect(r.released).toBe(false);
     expect(r.reason).toBe('no-decision-surface');
@@ -138,7 +138,7 @@ describe('authority.buildAuthorityGate.guard', () => {
       awaitDecision: async () => null, // timeout / unavailable
       verifyEvent: () => true,
     });
-    const r = await gate.guard({ actionClass: 'ontology_axiom_load' });
+    const r = await gate.guard({ operation: { kind: 'test-authority-operation' }, actionClass: 'ontology_axiom_load' });
     expect(r.decision).toBe('deny');
     expect(r.released).toBe(false);
     expect(r.reason).toBe('no-signed-response');
@@ -150,7 +150,7 @@ describe('authority.buildAuthorityGate.guard', () => {
       awaitDecision: async (req) => signedResponse(req.id, 'reject'),
       verifyEvent: () => true,
     });
-    const r = await gate.guard({ actionClass: 'ontology_axiom_load' });
+    const r = await gate.guard({ operation: { kind: 'test-authority-operation' }, actionClass: 'ontology_axiom_load' });
     expect(r.decision).toBe('deny');
     expect(r.released).toBe(false);
     expect(r.outcome).toBe('reject');
@@ -162,7 +162,7 @@ describe('authority.buildAuthorityGate.guard', () => {
       awaitDecision: async (req) => signedResponse(req.id, 'approve'),
       verifyEvent: () => false, // signature does not verify
     });
-    const r = await gate.guard({ actionClass: 'ontology_axiom_load' });
+    const r = await gate.guard({ operation: { kind: 'test-authority-operation' }, actionClass: 'ontology_axiom_load' });
     expect(r.decision).toBe('deny');
     expect(r.reason).toBe('unverified-signature');
   });
@@ -174,7 +174,7 @@ describe('authority.buildAuthorityGate.guard', () => {
       awaitDecision: async (req) => signedResponse(req.id, 'approve'),
       verifyEvent: () => true,
     });
-    const r = await gate.guard({ actionClass: 'never_seen_before' });
+    const r = await gate.guard({ operation: { kind: 'test-authority-operation' }, actionClass: 'never_seen_before' });
     expect(r.authority_class).toBe(authority.ESCALATION_REQUIRED);
     expect(published).toHaveLength(1); // an unclassified action still blocks on a signed response
     expect(r.decision).toBe('allow');

@@ -42,6 +42,8 @@
 const acs = require('./agent-control-surface');
 const authz = require('./authz');
 
+const { requestReference, responseMatchesRequest } = require('./governance-correlation');
+
 const ACTION_RESPONSE_KIND = acs.kinds.ACTION_RESPONSE; // 31403 — we CONSUME
 const DEFAULT_TIMEOUT_MS = 120000;
 const DECIDED_CACHE_MAX = 512; // bound the decided-request cache
@@ -60,25 +62,14 @@ function _tagVal(event, name) {
 
 /** Correlation keys a REQUEST can be matched by (what a future 31403 must carry). */
 function _keysForRequest(signedRequest) {
-  const keys = [];
-  if (signedRequest && typeof signedRequest.id === 'string') keys.push(`e:${signedRequest.id}`);
-  const c = _parseContent(signedRequest && signedRequest.content);
-  if (c && typeof c.case_id === 'string') keys.push(`case:${c.case_id}`);
-  const d = _tagVal(signedRequest, 'd');
-  if (d) keys.push(`d:${d}`);
-  return keys;
+    const id = signedRequest && signedRequest.id;
+    return typeof id === 'string' && id ? [`e:${id}`] : [];
 }
 
 /** Correlation keys a RESPONSE (31403) carries (what request it references). */
 function _keysForResponse(responseEvent) {
-  const keys = [];
-  const e = _tagVal(responseEvent, 'e');
-  if (e) keys.push(`e:${e}`);
-  const c = _parseContent(responseEvent && responseEvent.content);
-  if (c && typeof c.case_id === 'string') keys.push(`case:${c.case_id}`);
-  const d = _tagVal(responseEvent, 'd');
-  if (d) keys.push(`d:${d}`);
-  return keys;
+    const id = requestReference(responseEvent);
+    return id ? [`e:${id}`] : [];
 }
 
 /**
@@ -283,7 +274,9 @@ function buildAuthorityConsumer(opts = {}) {
     for (const k of keys) {
       const set = pendingByKey.get(k);
       if (!set) continue;
-      for (const entry of Array.from(set)) resolved.add(entry);
+      for (const entry of Array.from(set)) {
+        if (responseMatchesRequest(responseEvent, entry.request)) resolved.add(entry);
+      }
     }
     for (const entry of resolved) {
       if (entry.timer) clearTimeout(entry.timer);
@@ -296,13 +289,14 @@ function buildAuthorityConsumer(opts = {}) {
     // local awaitDecision waiter existed. Covers the mobile path too: a verified
     // 31403 answered on Amethyst marks the open request decided + closes it.
     const decidedIds = new Set();
-    const refId = _tagVal(responseEvent, 'e');
-    if (refId) decidedIds.add(refId);
+    const refId = requestReference(responseEvent);
+    const open = openRequests.get(refId);
+    if (open && responseMatchesRequest(responseEvent, open.request)) decidedIds.add(refId);
     for (const entry of resolved) if (entry.requestId) decidedIds.add(entry.requestId);
     if (decidedIds.size) {
       const outcome = String(_parseContent(responseEvent.content).outcome || '').toLowerCase() || null;
       for (const rid of decidedIds) {
-        _markDecided(rid, { outcome, response_event_id: responseEvent.id || null, decided_at: Math.floor(Date.now() / 1000) });
+        _markDecided(rid, { outcome, response_event_id: responseEvent.id || null, decided_at: Math.floor(Date.now() / 1000), response: responseEvent });
         openRequests.delete(rid);
       }
     }
@@ -339,6 +333,8 @@ function buildAuthorityConsumer(opts = {}) {
    * (→ the gate DENIES, fail-closed).
    */
   function awaitDecision(signedRequest, waitOpts = {}) {
+    const already = decided.get(signedRequest?.id);
+    if (already?.response && responseMatchesRequest(already.response, signedRequest)) return Promise.resolve(already.response);
     const keys = _keysForRequest(signedRequest);
     const timeoutMs = Number.isFinite(waitOpts.timeoutMs) ? waitOpts.timeoutMs : defaultTimeoutMs;
     if (keys.length === 0) return Promise.resolve(null);
@@ -346,6 +342,7 @@ function buildAuthorityConsumer(opts = {}) {
     return new Promise((resolve) => {
       const entry = {
         keys,
+        request: signedRequest,
         requestId: signedRequest && typeof signedRequest.id === 'string' ? signedRequest.id : null,
         resolve,
         timer: null,
@@ -468,6 +465,7 @@ function buildAuthorityConsumer(opts = {}) {
     _markDecided(p.requestId, {
       outcome: String(p.outcome || '').toLowerCase() || null,
       response_event_id: signed && signed.id ? signed.id : null,
+      response: signed,
       decided_at: Math.floor(Date.now() / 1000),
     });
     openRequests.delete(p.requestId);

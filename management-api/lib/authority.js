@@ -43,6 +43,7 @@
  */
 
 const acs = require('./agent-control-surface');
+const { responseMatchesRequest, canonicalOperation, operationDigest } = require('./governance-correlation');
 
 const AUTHORITY_CLASSES = Object.freeze(['recoverable', 'zero-tolerance']);
 /** Disposition of an unclassified action — a prompt, never a silent proceed. */
@@ -166,27 +167,16 @@ function buildAuthorityGate(manifest, deps = {}) {
 
   /**
    * Read the decision outcome from a signed ActionResponse (kind 31403). The
-   * response references the request via an `e` tag (or a matching content
-   * case_id). Returns 'approve' | 'reject' | 'defer' | null.
+   * response references the exact signed request via an `e` tag. Case/panel
+   * labels never substitute for signed-payload identity. Returns 'approve' | 'reject' | 'defer' | null.
    */
   function readOutcome(responseEvent, requestEvent) {
     if (!responseEvent || responseEvent.kind !== ACTION_RESPONSE_KIND) return null;
-    // The response must reference our request — either by e-tag or by case_id.
-    const tags = Array.isArray(responseEvent.tags) ? responseEvent.tags : [];
-    const refsRequest = tags.some((t) => Array.isArray(t) && t[0] === 'e' && t[1] === requestEvent.id);
-    let content = {};
-    try {
-      content = typeof responseEvent.content === 'string'
-        ? JSON.parse(responseEvent.content) : (responseEvent.content || {});
-    } catch { content = {}; }
-    let reqContent = {};
-    try {
-      reqContent = typeof requestEvent.content === 'string'
-        ? JSON.parse(requestEvent.content) : (requestEvent.content || {});
-    } catch { reqContent = {}; }
-    const caseMatch = content.case_id && reqContent.case_id && content.case_id === reqContent.case_id;
-    if (!refsRequest && !caseMatch) return null;
-    const outcome = typeof content.outcome === 'string' ? content.outcome.toLowerCase() : null;
+    if (!responseMatchesRequest(responseEvent, requestEvent)) return null;
+    let content;
+    try { content = JSON.parse(responseEvent.content); } catch { return null; }
+    const value = content.outcome ?? content.action;
+    const outcome = typeof value === 'string' ? value.toLowerCase() : null;
     return outcome;
   }
 
@@ -223,6 +213,15 @@ function buildAuthorityGate(manifest, deps = {}) {
       };
     }
 
+    let operation, operationHash;
+    try {
+      if (!params.operation || typeof params.operation !== 'object') throw new TypeError('missing operation');
+      operation = JSON.parse(canonicalOperation(params.operation));
+      operationHash = operationDigest(operation);
+    } catch (_) {
+      return { decision: 'deny', blocked: true, released: false, authority_class: cls, reason: 'missing-or-invalid-operation' };
+    }
+
     const panelId = params.panelId
       || `urn:agentbox:authority:${params.actionClass || 'action'}:${Date.now()}`;
     const unsigned = acs.buildActionRequest({
@@ -233,7 +232,7 @@ function buildAuthorityGate(manifest, deps = {}) {
       subjectId: params.actionClass || 'action',
       title: params.action || `Authorise ${cls} action "${params.actionClass}"`,
       reasoning: params.reasoning,
-      fields: { action_class: params.actionClass || null, authority_class: cls },
+      fields: { action_class: params.actionClass || null, authority_class: cls, operation, operation_sha256: operationHash },
     });
 
     let signedRequest;
@@ -246,6 +245,12 @@ function buildAuthorityGate(manifest, deps = {}) {
     }
     if (!signedRequest || typeof signedRequest.id !== 'string') {
       return { decision: 'deny', blocked: true, released: false, authority_class: cls, reason: 'no-request-id' };
+    }
+
+    // Refuse a producer that signs a different payload than the operation
+    // awaiting approval. The response's exact e-tag then binds these bytes.
+    if (signedRequest.content !== unsigned.content) {
+      return { decision: 'deny', blocked: true, released: false, authority_class: cls, reason: 'request-payload-changed' };
     }
 
     let signedResponse;
@@ -289,6 +294,7 @@ function buildAuthorityGate(manifest, deps = {}) {
       request_event_id: signedRequest.id,
       response_event_id: signedResponse.id,
       outcome,
+      operation_sha256: operationHash,
       reason: approved ? undefined : `not-approved: ${outcome || 'unknown'}`,
     };
   }

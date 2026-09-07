@@ -21,6 +21,10 @@ const Fastify = require('fastify');
 
 const brokerBridgeRoutes = require('../routes/broker-bridge');
 const authority = require('../lib/authority');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { ApplicationReceiptStore } = require('../lib/governance-application-receipts');
 
 const NOOP_LOGGER = { info() {}, warn() {}, error() {}, debug() {} };
 
@@ -79,6 +83,7 @@ async function buildApp(upstreamBody, captured, authorityGate = buildGate('appro
   const originalFetch = global.fetch;
   global.fetch = async (url, opts = {}) => {
     if (String(url).includes('/api/enrichment-proposals/')) {
+      captured.calls = (captured.calls || 0) + 1;
       captured.url = String(url);
       captured.body = opts.body ? JSON.parse(opts.body) : null;
       return {
@@ -93,7 +98,9 @@ async function buildApp(upstreamBody, captured, authorityGate = buildGate('appro
   };
 
   const app = Fastify();
-  await app.register(brokerBridgeRoutes, { logger: NOOP_LOGGER, authorityGate });
+  const receiptDir = fs.mkdtempSync(path.join(os.tmpdir(), 'broker-receipt-test-'));
+  await app.register(brokerBridgeRoutes, { logger: NOOP_LOGGER, authorityGate, applicationReceipts: new ApplicationReceiptStore(receiptDir) });
+  app.addHook('onClose', async () => fs.rmSync(receiptDir, { recursive: true, force: true }));
   await app.ready();
 
   app.__restoreFetch = () => { global.fetch = originalFetch; };
@@ -348,7 +355,7 @@ test('AUTHORITY: a recoverable decision (reject) passes UNGATED even with no dec
 test('WAITER: notify() with a matching 31403 resolves an awaitDecision by request e-tag', async () => {
   const { GovernanceDecisionWaiter } = require('../lib/governance-decision-waiter');
   const waiter = new GovernanceDecisionWaiter();
-  const signedRequest = { id: 'req-abc', content: JSON.stringify({ case_id: 'case-9' }), tags: [['d', 'panel-9']] };
+  const signedRequest = { kind: authority.ACTION_REQUEST_KIND, id: 'req-abc', content: JSON.stringify({ case_id: 'case-9' }), tags: [['d', 'panel-9']] };
   const p = waiter.awaitDecision(signedRequest, { timeoutMs: 5000 });
   assert.equal(waiter.pendingKeyCount() > 0, true);
   const resp = signedResponse('req-abc', 'approve');
@@ -359,22 +366,43 @@ test('WAITER: notify() with a matching 31403 resolves an awaitDecision by reques
   assert.equal(waiter.pendingKeyCount(), 0, 'waiter is cleaned up after resolution');
 });
 
-test('WAITER: notify() with a matching case_id resolves even without an e-tag', async () => {
+test('WAITER: matching case_id cannot release without the exact signed-request e-tag', async () => {
   const { GovernanceDecisionWaiter } = require('../lib/governance-decision-waiter');
   const waiter = new GovernanceDecisionWaiter();
-  const signedRequest = { id: 'req-def', content: JSON.stringify({ case_id: 'case-77' }), tags: [] };
-  const p = waiter.awaitDecision(signedRequest, { timeoutMs: 5000 });
+  const signedRequest = { kind: authority.ACTION_REQUEST_KIND, id: 'req-def', content: JSON.stringify({ case_id: 'case-77' }), tags: [] };
+  const p = waiter.awaitDecision(signedRequest, { timeoutMs: 30 });
   const resp = { id: 'r2', kind: authority.ACTION_RESPONSE_KIND, content: JSON.stringify({ case_id: 'case-77', outcome: 'approve' }), tags: [] };
-  assert.equal(waiter.notify(resp), true);
-  assert.equal((await p).id, 'r2');
+  assert.equal(waiter.notify(resp), false);
+  assert.equal(await p, null);
 });
 
 test('WAITER: an unrelated 31403 does not resolve a pending waiter', async () => {
   const { GovernanceDecisionWaiter } = require('../lib/governance-decision-waiter');
   const waiter = new GovernanceDecisionWaiter();
-  const signedRequest = { id: 'req-ghi', content: JSON.stringify({ case_id: 'case-1' }), tags: [] };
+  const signedRequest = { kind: authority.ACTION_REQUEST_KIND, id: 'req-ghi', content: JSON.stringify({ case_id: 'case-1' }), tags: [] };
   const p = waiter.awaitDecision(signedRequest, { timeoutMs: 30 });
   assert.equal(waiter.notify(signedResponse('some-other-request', 'approve')), false);
   const resolved = await p; // times out → null (fail-closed)
   assert.equal(resolved, null);
+});
+
+test('EA04: repeated signed approval never repeats the committed upstream operation', async () => {
+  const captured = {};
+  const app = await buildApp({ success: true, attributed: true, writeback_triggered: true, writeback_committed: true }, captured);
+  try {
+    const request = { method: 'POST', url: '/api/broker/bridge/cases/case-ea04/decide',
+      headers: { 'content-type': 'application/json', 'x-agent-pubkey': PK },
+      payload: { decision: 'approve', note: 'reviewed', request_event_id: 'caller-forgery', response_event_id: 'caller-forgery' } };
+    const first = await app.inject(request);
+    assert.equal(first.statusCode, 200);
+    const receipt = first.json().application_receipt;
+    assert.equal(receipt.stage, 'applied');
+    assert.equal(receipt.request_event_id, 'req-broker-1');
+    assert.equal(receipt.response_event_id, 'resp-req-broker-1');
+    assert.equal(receipt.acknowledgement.writeback_committed, true);
+    const second = await app.inject(request);
+    assert.equal(second.statusCode, 409);
+    assert.equal(second.json().error, 'operation-already-applied');
+    assert.equal(captured.calls, 1);
+  } finally { app.__restoreFetch(); await app.close(); }
 });
