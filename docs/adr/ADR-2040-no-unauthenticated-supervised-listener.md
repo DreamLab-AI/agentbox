@@ -109,3 +109,26 @@ restored at the landing commit.
 - Post-change: `bash -n agentbox/config/entrypoint-unified.sh`; a grep proving no credential appears
   in the generated supervisor text; `node scripts/agentbox-config-validate.js` exit 0. Results
   recorded in the Phase 2 report.
+
+
+## Source qualification — 2026-09-07 estate audit
+
+The intended universal rule above is broader than the currently sanctioned source.
+`config/entrypoint-unified.sh` mints or honours operator-supplied code-server and
+Jupyter credentials, and `flake.nix` selects password/token authentication for
+those programs. However, `scripts/ci/check-ports-loopback.mjs::LISTENER_SANCTIONED`
+explicitly exempts the desktop VNC listeners, including `wayvnc` and `x11vnc`
+(the latter with `-nopw`), as unauthenticated services on the container network.
+Their host publish is loopback-only; that does not make the listener itself
+container-loopback or prevent access by a sibling container on its network.
+The scanner therefore enforces an inventory with named exceptions, not complete
+satisfaction of this ADR's universal authenticated-or-container-loopback rule.
+
+Disposition remains partial. The existing credential-custody/profile closeout
+must either authenticate or restrict those listeners, or explicitly ratify the
+residual network boundary and revise the universal rule. This source annex does
+not approve an exception, activate a deployment, or claim a live listener probe.
+No private runtime configuration or credential content was read. The declared
+approval/implementation/activation metadata and historical verification remain
+unchanged; verification anchors must be refreshed only after final source review
+and landing validation.

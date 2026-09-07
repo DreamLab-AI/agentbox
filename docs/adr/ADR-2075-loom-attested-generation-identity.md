@@ -100,3 +100,7 @@ words: "asserted by configuration, not attested by the server".
    grep confirms the configured value is not substituted into that field.
 5. Swapping the model behind the façade with the corpus unchanged leaves the reported
    generation unchanged and requires no consumer edit.
+
+## Estate audit — 2026-09-07
+
+The Rust Loom server already implements GET `/loom/generation` ([Loom routes](../../../../loom/crates/loom-facade/src/routes/mod.rs), lines 51 and 86-88) and [bundle verification](../../../../loom/crates/loom-facade/src/bundle.rs) (lines 210-246). The missing estate seam is the Agentbox consumer: `mcp/servers/lib/ontology-retrieval.js` selects a configured generation and calls search/SPARQL without verifying the served generation endpoint. Retain proposed/none/inactive for this consumer contract; do not describe the server endpoint itself as absent. Require wrong-generation, swapped-bundle, cache and degraded-backend tests before activation. CP-02/03. See the [Agentbox audit](../../../../VisionFlow/docs/estate-review/2026-09-07-agentbox-audit.md).
