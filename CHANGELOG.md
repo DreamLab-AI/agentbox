@@ -4,6 +4,51 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-09-07 — ADR-2082 orchestration proxy)
+
+- The `claude-flow` MCP server's swarm/agent/task/coordination tools had been
+  honest `unimplemented` stubs since the 2026-06-11 audit removed the legacy
+  server; 41 agent templates bind them as `mcp__claude-flow__*`. Behind the new
+  `[integrations.ruvector_external].orchestration_proxy` gate the governed
+  `ruvector-mcp.cjs` now spawns one filtered `ruflo mcp start` child per session
+  (`CLAUDE_FLOW_MCP_TOOLS` = `orchestration_tools`, default
+  `swarm,agent,task,coordination`) and forwards exactly those tools
+  (`mcp/servers/lib/orchestration-proxy.js`). Legacy v2 names are aliased with an
+  argument shim (`task_orchestrate`→`coordination_orchestrate`,
+  `load_balance`→`coordination_load_balance`, `type`→`agentType`). `memory_*`,
+  `agentdb_*`, `embeddings_*`, `hooks_*` are denied on the proxy side so the
+  ADR-2014 access invariant holds; orchestration fails open to the stubs, memory
+  keeps failing closed. Gate off ⇒ the 26-tool list is advertised byte-identically.
+  Verified against the baked ruflo 3.38.21: 59 tools, mesh swarm created, ~105 MB
+  child RSS. Live after the next image rebuild (the `/opt/agentbox` copy is baked).
+  Entrypoint, schema, catalogue (`orchestration-proxy`, apply class boot),
+  LEARNING-memory invariant 9, configuration docs, and a standalone test
+  (`mcp/servers/lib/orchestration-proxy.test.js`, 11 cases) ride along.
+- `ruvector-mcp.cjs` now drains in-flight requests (bounded 30 s) before exiting on
+  stdin close, so a reply in progress is never dropped.
+
+### Fixed (2026-09-07 post-rebuild check)
+
+- `~/.npm` (1G RAM tmpfs) filled to 100 % and broke `npx` with ENOSPC again
+  (2026-09-05, 2026-09-07). Root cause is not the size: something in the
+  container ran `npx @claude-flow/cli@^3.38.21` against the registry at
+  06:39 on 2026-09-07 while the baked closure is ruflo 3.38.20, and 40 skill
+  docs + 10 agent templates + `config/agentbox-aliases.sh` still tell agents
+  to `npx claude-flow@alpha` / `npx -y agentic-qe`. A persistent on-disk
+  cache was tried and reverted the same day: it would have made registry
+  installs durable, the opposite of the Nix-closure intent. Cache cleared;
+  enforcement (offline npm / template repair) left as an open decision.
+- `Security Invariants` CI went red on the rebuild push: twelve ADR records were
+  re-staled by the ADR-2080 gates and the citation repair (additive changes that
+  leave every invariant intact). Re-verified at `1b43b70ff`; index regenerated.
+- `Contract tests` CI (red since 2026-08-16): `execution-journal.contract.spec.js`
+  resolves `ajv`/`ajv-formats` from the repo-root `package.json`, which the
+  workflow never installed. Added a root `npm ci --ignore-scripts` step.
+- `tests/config/semantic-rules.test.js` had drifted from the validator: the
+  missing-provider-env case was demoted from blocking E017 to advisory W017 in
+  2026-06, and the W038 fixture lacked the `[security.exceptions.consultants]`
+  block E021 now demands. Assertions realigned; 67/68 pass (1 intentional skip).
+
 ### Fixed (2026-09-06 rebuild and tidy)
 
 - `scripts/aoe-seed-sessions.mjs` never ran in the baked image: its

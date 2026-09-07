@@ -33,6 +33,9 @@ const gates = {
   healthTool:      () => boolGate('RUVECTOR_HEALTH_TOOL'),
   episodicTtlSweep:() => boolGate('RUVECTOR_EPISODIC_TTL_SWEEP'),
   memoryOrient:    () => boolGate('RUVECTOR_MEMORY_ORIENT'),
+  // ADR-2082: forward swarm/agent/task/coordination tools to a filtered ruflo
+  // child. Orchestration-only; memory_* never crosses (DENIED_PREFIXES).
+  orchestrationProxy: () => boolGate('RUVECTOR_ORCHESTRATION_PROXY'),
   learningEnabled: () => boolGate('RUVECTOR_MEMORY_LEARNING_ENABLED'),
   recordTrajectories: () => boolGate('RUVECTOR_RECORD_TRAJECTORIES'),
   feedRetrieval:   () => boolGate('RUVECTOR_FEED_RETRIEVAL'),

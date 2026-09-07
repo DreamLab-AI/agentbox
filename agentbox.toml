@@ -391,6 +391,18 @@ metadata_gin       = true    # require/build the GIN on metadata jsonb for tag r
 health_tool        = true    # expose memory_health read-only diagnostics
 episodic_ttl_sweep = true    # honour TTL, sweep expired episodic entries (implements delete)
 memory_orient      = true    # memory_orient OODA cold-start bundle (semantic + effectiveness aggregates + episodic)
+# ── ADR-2082: orchestration proxy — the swarm capability behind mcp__claude-flow__* ──
+# The governed server implements memory_* only; swarm_init / agent_spawn / task_* /
+# coordination_* had been honest "unimplemented" stubs since the 2026-06-11 audit.
+# With this gate ON the server spawns ONE filtered `ruflo mcp start` child per
+# session (CLAUDE_FLOW_MCP_TOOLS = orchestration_tools) and forwards exactly those
+# categories; memory_*/agentdb_*/embeddings_*/hooks_* are denied on the proxy side
+# so ruflo's SQLite memory can never be reached (ADR-2014). Fail-OPEN for
+# orchestration only: no ruflo ⇒ the stubs come back, memory is unaffected.
+# Apply class BOOT (env is projected into .mcp.json; a new Claude session picks
+# it up). Adding categories widens the per-session schema cost (~185 tok/tool).
+orchestration_proxy = true
+orchestration_tools = "swarm,agent,task,coordination"   # ruflo categories or exact tool names (#2726 syntax)
 # ── PRD-020 / ADR-040 D10: v2 model-lifecycle & graph gates (all default-off, W-B-gated) ──
 # Retrieval-geometry keys extend this existing sidecar section. Every one defaults to
 # today's post-PRD-018 behaviour, so a manifest with all v2 keys at default is byte-

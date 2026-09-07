@@ -975,6 +975,9 @@ _RV_METADATA_GIN=$(_ab_toml_bool integrations.ruvector_external metadata_gin)
 _RV_HEALTH_TOOL=$(_ab_toml_bool integrations.ruvector_external health_tool)
 _RV_EPISODIC_TTL_SWEEP=$(_ab_toml_bool integrations.ruvector_external episodic_ttl_sweep)
 _RV_MEMORY_ORIENT=$(_ab_toml_bool integrations.ruvector_external memory_orient)
+# ADR-2082: orchestration proxy gate + the ruflo category filter it passes on.
+_RV_ORCH_PROXY=$(_ab_toml_bool integrations.ruvector_external orchestration_proxy)
+_RV_ORCH_TOOLS=$(_ab_toml_val integrations.ruvector_external orchestration_tools)
 _ML_ENABLED=$(_ab_toml_bool memory_learning enabled)
 _ML_RECORD_TRAJ=$(_ab_toml_bool memory_learning record_trajectories)
 _ML_FEED_RETRIEVAL=$(_ab_toml_bool memory_learning feed_retrieval)
@@ -1083,6 +1086,7 @@ if [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
   RV_TYPED_METADATA="$_RV_TYPED_METADATA" RV_HYBRID_SEARCH="$_RV_HYBRID_SEARCH" \
   RV_METADATA_GIN="$_RV_METADATA_GIN" RV_HEALTH_TOOL="$_RV_HEALTH_TOOL" \
   RV_EPISODIC_TTL_SWEEP="$_RV_EPISODIC_TTL_SWEEP" RV_MEMORY_ORIENT="$_RV_MEMORY_ORIENT" \
+  RV_ORCH_PROXY="$_RV_ORCH_PROXY" RV_ORCH_TOOLS="$_RV_ORCH_TOOLS" \
   ML_ENABLED="$_ML_ENABLED" ML_RECORD_TRAJ="$_ML_RECORD_TRAJ" \
   ML_FEED_RETRIEVAL="$_ML_FEED_RETRIEVAL" ML_FEED_ROUTING="$_ML_FEED_ROUTING" \
   ML_AGG_MIN="$_ML_AGG_MIN" ML_HALFLIFE="$_ML_HALFLIFE" \
@@ -1107,6 +1111,9 @@ const gates = {
   RUVECTOR_HEALTH_TOOL:             process.env.RV_HEALTH_TOOL,
   RUVECTOR_EPISODIC_TTL_SWEEP:      process.env.RV_EPISODIC_TTL_SWEEP,
   RUVECTOR_MEMORY_ORIENT:           process.env.RV_MEMORY_ORIENT,
+  // ADR-2082 orchestration proxy (gate + ruflo category filter).
+  RUVECTOR_ORCHESTRATION_PROXY:     process.env.RV_ORCH_PROXY,
+  RUVECTOR_ORCHESTRATION_TOOLS:     process.env.RV_ORCH_TOOLS,
   RUVECTOR_MEMORY_LEARNING_ENABLED: process.env.ML_ENABLED,
   RUVECTOR_RECORD_TRAJECTORIES:     process.env.ML_RECORD_TRAJ,
   RUVECTOR_FEED_RETRIEVAL:          process.env.ML_FEED_RETRIEVAL,

@@ -484,6 +484,9 @@ metadata_gin       = true   # GIN index on metadata jsonb for tag @> retrieval
 health_tool        = true   # memory_health read-only diagnostics
 episodic_ttl_sweep = true   # honour TTL, sweep expired episodic entries
 memory_orient      = true   # memory_orient OODA cold-start bundle
+# ADR-2082 — swarm/agent/task/coordination tools behind mcp__claude-flow__*
+orchestration_proxy = true                               # one filtered `ruflo mcp start` child per session
+orchestration_tools = "swarm,agent,task,coordination"    # CLAUDE_FLOW_MCP_TOOLS categories/names (ruflo #2726)
 
 [integrations.comfyui_external]
 enabled = false
@@ -494,6 +497,16 @@ ws_url = "ws://comfyui:8188/ws"
 Each retrieval gate mirrors into the `RUVECTOR_*` env of the governed
 `ruvector-mcp.cjs` server — the legacy 20 tools plus `memory_hybrid_search`,
 `memory_orient`, `memory_health`, and `memory_sweep_episodic` (24 total).
+
+`orchestration_proxy` (ADR-2082) makes the same server forward `swarm_init`,
+`agent_spawn`, `task_*`, `coordination_*` (and any other category you name in
+`orchestration_tools`) to a single `ruflo mcp start` child per Claude session,
+so the `mcp__claude-flow__*` names the agent templates use resolve to real
+implementations. `memory_*`, `agentdb_*`, `embeddings_*` and `hooks_*` are never
+forwarded, whatever the filter says. If ruflo is missing the server falls back to
+its honest `unimplemented` stubs; memory is unaffected. Each extra category costs
+schema tokens in every session (~185 per tool), so widen it deliberately. Gate off
+⇒ the 26-tool list above, byte-identical. Apply class: boot.
 See [PRD-018](../archive/prd/PRD-018-ruvector-native-memory-and-learning.md)
 / [ADR-036](../archive/adr/ADR-036-ruvector-capability-adoption-and-learning-loop.md).
 

@@ -34,7 +34,7 @@ The [historical closeout routing note](../adr-history-closeout.md) points the 72
 
 The [estate status/evidence contract](../../../../VisionFlow/docs/architecture/adr-status-contract.md) defines the independent decision, implementation and activation axes and distinguishes lineage from supersession (2026-09-07).
 
-_74 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_75 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -112,3 +112,4 @@ _74 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2079](ADR-2079-aoe-is-the-dispatch-plane-of-a-fleet-model-router.md) | Examine AoE as the dispatch plane of a fleet model router — the routing policy lives outside the session manager, and privacy is its first axis | GOVERNANCE-capabilities | 2026-09-06 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2080](ADR-2080-metaharness-router-console-under-aoe.md) | Run the metaharness cost-optimal router as a dedicated AoE session for public day-to-day dev — artefacts vendored, embedding done offline, scoped to that session | GOVERNANCE-capabilities | 2026-09-06 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2081](ADR-2081-annexe-depth-law-and-honest-evaluator-receipts.md) | Annexe mirrors workspace depth; evaluator receipts carry the producer's exit code; a no-patch ACCEPT is unproven, not a harness fault | — | 2026-09-07 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2082](ADR-2082-orchestration-proxy-behind-governed-memory-server.md) | The governed claude-flow server forwards orchestration tools to a filtered ruflo child; memory never crosses | LEARNING-memory | 2026-09-07 | accepted | complete | staged | — | — | jjohare | agentbox |

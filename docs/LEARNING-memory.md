@@ -1,10 +1,11 @@
 ---
 title: "Agentbox Memory & Learning — Ground Truth"
 doc_id: AB-LEARNING
-version: 0.1.2
+version: 0.1.3
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.1.3 (2026-09-07): ADR-2082 — the governed server forwards swarm/agent/task/coordination tools to one filtered ruflo child per session; memory_* is denied on the proxy side, so the access invariant is unchanged (invariant 9)"
   - "0.1.2 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.1.1: correct duration invariant — zero/null durations are recorded, not skipped (no bug-skip branch exists)"
 sources:
@@ -14,6 +15,7 @@ sources:
   - agentbox/mcp/servers/lib/aggregate-effectiveness.js
   - agentbox/mcp/servers/lib/memory-hybrid.js
   - agentbox/mcp/servers/lib/ruvector-gates.js
+  - agentbox/mcp/servers/lib/orchestration-proxy.js
   - agentbox/scripts/ruvector-aggregate-sweep.mjs
   - agentbox/scripts/ruvector-pattern-distill.mjs
   - agentbox/scripts/ruvector-sona-feeder.mjs
@@ -49,6 +51,16 @@ NULL-embedding rows that are invisible to HNSW search (DDD-016 I03). Every learn
 component below honours this: aggregates and cursors are upserted through the
 governed `createMemoryTools({backend:'external-pg'}).memStore` path, never raw SQL
 (`aggregate-effectiveness.js:24-30`, `ruvector-aggregate-sweep.mjs:16-28`).
+
+**Orchestration is not memory (ADR-2082).** The same `claude-flow` server also
+advertises ruflo's swarm/agent/task/coordination tools. With
+`[integrations.ruvector_external].orchestration_proxy` on it forwards them to one
+filtered `ruflo mcp start` child per session (`orchestration-proxy.js`); with it
+off they are honest `unimplemented` stubs. Either way the proxy's
+`DENIED_PREFIXES` (`memory_`, `agentdb_`, `embeddings_`, `hooks_`, …) means no
+ruflo memory tool is ever reachable through this server — the access invariant
+above is unchanged. Swarm state lives in `<cwd>/.claude-flow/`, not in
+`memory_entries`. The proxy fails **open** to the stubs; memory keeps failing closed.
 
 **Namespaces in use.** Learning writes land in `memory-learning-aggregates`
 (`aggregate-effectiveness.js:45`). Context namespaces searched before tasks:
@@ -270,6 +282,11 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
 7. **384-dim embedding model** (`bge-small-en-v1.5`) is the active column; a
    dimension migration mints a fresh SONA scope, never reusing `agentbox_memory`.
 8. **Non-concurrent AND serial HNSW rebuild only** after bulk churn — `max_parallel_maintenance_workers = 0` (pinned at database level 2026-09-05); the extension's parallel build leaves rows unreachable (ADR-2018 diagnosis 2026-09-05).
+9. **No memory tool through the orchestration proxy (ADR-2082).** The ruflo child
+   behind `claude-flow` receives only the categories named in
+   `orchestration_tools`, and `DENIED_PREFIXES` in `orchestration-proxy.js` drops
+   every `memory_*` / `agentdb_*` / `embeddings_*` / `hooks_*` tool it advertises
+   anyway. Orchestration fails open to stubs; that never extends to memory.
 
 ## Change process
 

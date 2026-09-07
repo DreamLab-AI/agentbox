@@ -13,6 +13,9 @@ Agentbox is a standalone sovereign agent-container product (`github.com/DreamLab
 ```
 store      = ruvector-postgres sidecar (mandatory, ADR-015; ruvector-mcp.cjs fails closed, no sql.js fallback)
 access     = mcp__claude-flow__memory_* ONLY (CLI + raw SQL bypass the embedding pipeline → rows invisible to HNSW)
+orchestr.  = the SAME claude-flow server forwards swarm/agent/task/coordination tools to one filtered `ruflo mcp start`
+             child per session (ADR-2082, gate [integrations.ruvector_external].orchestration_proxy); memory_* is denied
+             on the proxy side, fail-open to honest stubs — never register ruflo as a second MCP server
 embedding  = bge-small-en-v1.5 via Xinference, 384-dim, client-side (never MiniLM; A/B rejected bge-m3, Qwen3)
 index-law  = HNSW degrades silently under bulk churn → non-concurrent AND serial HNSW rebuild (m=16, ef_construction=128, max_parallel_maintenance_workers=0, ~8 min); the parallel build (16 workers) leaves ~20% of rows unreachable (self-recall 151/200 vs 189/200 serial, measured 2026-09-05)
 FORBIDDEN  = CREATE INDEX CONCURRENTLY on ruvector HNSW AM (verified double-insertion)

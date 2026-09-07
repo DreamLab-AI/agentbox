@@ -27,6 +27,7 @@ let EMBEDDING_IDENTITY = null;
 const { gates, boolGate, intGate } = require('./lib/ruvector-gates');
 const { createHybridTools } = require('./lib/memory-hybrid');
 const { createHealthTools } = require('./lib/memory-health');
+const { createOrchestrationProxy } = require('./lib/orchestration-proxy');
 
 // ── PostgreSQL pool ───────────────────────────────────────────────────────────
 
@@ -288,12 +289,17 @@ const TOOLS = [
       required: ['query'],
     },
   },
-  // Orchestration tools — UNIMPLEMENTED. The legacy mcp-server.js that carried
-  // the real implementations was removed in the 2026-06-11 audit. This server
-  // backs the memory_* tools only; every tool below returns an honest
+  // Orchestration tools — UNIMPLEMENTED HERE. The legacy mcp-server.js that
+  // carried the real implementations was removed in the 2026-06-11 audit. This
+  // server backs the memory_* tools only; every tool below returns an honest
   // { ok:false, error:'unimplemented' } rather than fabricating success, so a
   // coordinating agent never believes a swarm/agent/task was created when it
   // was not. They are advertised so the tool surface stays discoverable.
+  //
+  // ADR-2082: with RUVECTOR_ORCHESTRATION_PROXY on, tools/list replaces these
+  // stubs with the real ruflo implementations (lib/orchestration-proxy.js —
+  // one filtered `ruflo mcp start` child per session, memory_* never
+  // forwarded). Gate off ⇒ this list is advertised byte-identically.
   {
     name: 'swarm_init',
     description: '[unimplemented in ruvector-mcp] Returns { ok:false, error:"unimplemented" }; this server backs memory_* tools only.',
@@ -513,6 +519,23 @@ if (phase0.aggregateSweep()) {
 // must return an honest error rather than fabricating success.
 const ADVERTISED_TOOLS = new Set(TOOLS.map((t) => t.name));
 
+// ── ADR-2082 orchestration proxy (gated, fail-open for orchestration only) ───
+// Nothing is spawned until the client's first tools/list. When the gate is off
+// `orchestration` is null and every code path below is byte-identical to the
+// pre-ADR-2082 server.
+const orchestration = gates.orchestrationProxy() ? createOrchestrationProxy({ log }) : null;
+if (orchestration) {
+  log('INFO', `ADR-2082: orchestration proxy ON → ${orchestration.command} ${orchestration.args.join(' ')} (categories: ${orchestration.categories.join(',')}); memory_* stays on ruvector-postgres`);
+}
+// The tool list served to the client. Resolved once per process; the stubs are
+// the fallback when the proxy is off or the child cannot be reached.
+let advertisedToolList = null;
+async function currentToolList() {
+  if (advertisedToolList) return advertisedToolList;
+  advertisedToolList = orchestration ? await orchestration.advertise(TOOLS) : TOOLS;
+  return advertisedToolList;
+}
+
 // Honest unknown-tool response — a gate-off call to a gated tool name lands here.
 function unknownTool(name) {
   log('WARN', `tool ${name}: unknown or gate-disabled`);
@@ -605,6 +628,11 @@ async function executeTool(name, args = {}) {
       }
 
       default:
+        // ADR-2082: forwarded orchestration tools go to the ruflo child. The
+        // proxy owns its own honest errors (timeout, child gone, not forwarded).
+        if (orchestration && orchestration.handles(name)) {
+          return await orchestration.call(name, args);
+        }
         // Honest failure. Advertised orchestration tools (swarm_init,
         // agent_spawn, task_orchestrate, swarm_status, neural_patterns,
         // coordination_sync, load_balance, performance_report,
@@ -645,7 +673,7 @@ async function handleMessage(msg) {
       };
 
     case 'tools/list':
-      return { jsonrpc: '2.0', id, result: { tools: TOOLS } };
+      return { jsonrpc: '2.0', id, result: { tools: await currentToolList() } };
 
     case 'tools/call': {
       const { name, arguments: args } = params;
@@ -690,6 +718,11 @@ process.stdout.write(JSON.stringify({
 
 const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
 
+// Requests still being answered. The close handler drains these (bounded)
+// before exiting, so a client that closes stdin right after a request — or a
+// slow first tools/list while the ADR-2082 child starts — still gets its reply.
+let inFlight = 0;
+
 rl.on('line', async line => {
   const trimmed = line.trim();
   if (!trimmed) return;
@@ -698,6 +731,7 @@ rl.on('line', async line => {
     log('WARN', `json parse failed: ${trimmed.slice(0, 80)}`);
     return;
   }
+  inFlight++;
   try {
     const response = await handleMessage(msg);
     if (response !== null) process.stdout.write(JSON.stringify(response) + '\n');
@@ -706,14 +740,23 @@ rl.on('line', async line => {
     if (msg.id !== undefined) {
       process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, error: { code: -32603, message: 'Internal error', data: err.message } }) + '\n');
     }
+  } finally {
+    inFlight--;
   }
 });
 
 rl.on('close', () => {
   log('INFO', `(${sessionId}) stdin closed, shutting down`);
-  if (pool) pool.end().catch(() => {});
-  process.exit(0);
+  const deadline = Date.now() + 30000;
+  const finish = () => {
+    if (inFlight > 0 && Date.now() < deadline) { setTimeout(finish, 50); return; }
+    if (inFlight > 0) log('WARN', `exiting with ${inFlight} request(s) still in flight`);
+    if (orchestration) orchestration.shutdown();
+    if (pool) pool.end().catch(() => {});
+    process.exit(0);
+  };
+  finish();
 });
 
-process.on('SIGTERM', () => { if (pool) pool.end().catch(() => {}); process.exit(0); });
-process.on('SIGINT',  () => { if (pool) pool.end().catch(() => {}); process.exit(0); });
+process.on('SIGTERM', () => { if (orchestration) orchestration.shutdown(); if (pool) pool.end().catch(() => {}); process.exit(0); });
+process.on('SIGINT',  () => { if (orchestration) orchestration.shutdown(); if (pool) pool.end().catch(() => {}); process.exit(0); });

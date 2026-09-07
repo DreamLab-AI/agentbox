@@ -273,16 +273,19 @@ describe('E008: gpu.backend=local-cuda is x86_64 only', () => {
 // provider-credential design; it was superseded and renumbered to E017 when the
 // provider loop was reimplemented (see validator line 186 comment).
 // Canonical code: E017. E009 is a deprecated alias — the validator emits E017.
-// Tests below assert the canonical E017 behaviour under the E009 semantic label.
+// Since 2026-06 (commit 10267f491) the missing-env case is DEMOTED to the
+// advisory W017 — env vars are deployment-specific and absent in CI — so the
+// validator exits 0 and E017 is reserved for the oauth/placeholder paths.
+// Tests below assert that current behaviour under the E009 semantic label.
 describe('E009 (→ E017 canonical): every enabled provider must have env_var present', () => {
-  test('invalid: enabled provider, env var unset in environment → E017 error contains provider name', () => {
+  test('advisory: enabled provider, env var unset in environment → W017 names the provider, exit 0', () => {
     const m = baseValid();
     m.providers = { anthropic: { enabled: true, env_var: 'ANTHROPIC_API_KEY_TEST_E009', optional_env_vars: [] } };
-    // Pass empty string so the env var is present-but-empty (falsy → E017 fires).
+    // Pass empty string so the env var is present-but-empty (falsy → W017 fires).
     const r = runValidator(m, { ANTHROPIC_API_KEY_TEST_E009: '' });
-    expect(r.exitCode).not.toBe(0);
-    // Canonical error code is E017 (E009 is the deprecated alias).
-    expect(stderrContains(r, 'E017')).toBe(true);
+    expect(r.exitCode).toBe(0);
+    expect(stderrContains(r, 'W017')).toBe(true);
+    expect(stderrContains(r, 'E017')).toBe(false);
     expect(r.stderr).toMatch(/anthropic/);
     expect(r.stderr).toMatch(/ANTHROPIC_API_KEY_TEST_E009/);
   });
@@ -297,12 +300,14 @@ describe('E009 (→ E017 canonical): every enabled provider must have env_var pr
 
 // ─── E017 ─────────────────────────────────────────────────────────────────────
 describe('E017: enabled provider requires its env_var to be present in the environment', () => {
-  test('invalid: provider enabled but env var missing (empty string)', () => {
+  test('advisory: provider enabled but env var missing (empty string) → W017, exit 0', () => {
     const m = baseValid();
     m.providers = { anthropic: { enabled: true, env_var: 'ANTHROPIC_API_KEY_TEST_E017', optional_env_vars: [] } };
     const r = runValidator(m, { ANTHROPIC_API_KEY_TEST_E017: '' });
-    expect(r.exitCode).not.toBe(0);
-    expect(stderrContains(r, 'E017')).toBe(true);
+    // Demoted from blocking E017 to advisory W017 in 2026-06 (see the E009 block).
+    expect(r.exitCode).toBe(0);
+    expect(stderrContains(r, 'W017')).toBe(true);
+    // (no `E017` absence check here: the env var name itself contains "E017")
     expect(r.stderr).toMatch(/anthropic/);
     expect(r.stderr).toMatch(/ANTHROPIC_API_KEY_TEST_E017/);
   });
@@ -702,6 +707,9 @@ describe('W038: intelligence_signal env missing is advisory', () => {
   test('W038 fires + exits 0 when no env is set', () => {
     const m = baseValid();
     m.consultants = { enabled: true, intelligence_signal: true, codex: { enabled: false } };
+    // E021 demands a [security.exceptions.<feature>] block for every enabled
+    // feature; this test is about the env, so satisfy E021 explicitly.
+    m.security.exceptions.consultants = { reason: 'consultant tier under test' };
     const r = runValidator(m, { AGENTBOX_INTELLIGENCE_DIR: '', WORKSPACE: '' });
     expect(stderrContains(r, 'W038')).toBe(true);
     expect(r.exitCode).toBe(0);

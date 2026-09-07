@@ -752,6 +752,15 @@
               "type": "boolean",
               "description": "PRD-018/ADR-036 D6: expose the memory_orient OODA cold-start tool (semantic + effectiveness aggregates + episodic bundle). Injected as RUVECTOR_MEMORY_ORIENT."
             },
+            "orchestration_proxy": {
+              "type": "boolean",
+              "description": "ADR-2082: forward the swarm/agent/task/coordination tools of the governed claude-flow server to one filtered `ruflo mcp start` child per session. memory_*/agentdb_*/embeddings_*/hooks_* are never forwarded (ADR-2014). Fail-open for orchestration only. Injected as RUVECTOR_ORCHESTRATION_PROXY."
+            },
+            "orchestration_tools": {
+              "type": "string",
+              "default": "swarm,agent,task,coordination",
+              "description": "ADR-2082: comma-separated ruflo tool categories and/or exact tool names passed to the child as CLAUDE_FLOW_MCP_TOOLS (ruflo #2726). Denied memory prefixes are dropped even if named. Injected as RUVECTOR_ORCHESTRATION_TOOLS."
+            },
             "embedding_dual_write": {
               "type": "boolean",
               "description": "PRD-020/ADR-040 D7: dual-write new memory_store embeddings to the parallel candidate column during an embedding migration (I17). Default false. Injected as RUVECTOR_EMBEDDING_DUAL_WRITE."
