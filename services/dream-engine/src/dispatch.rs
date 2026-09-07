@@ -145,7 +145,9 @@ pub fn clone_to_hp(
     remote_dir: &str,
     repo_name: &str,
 ) -> Result<(), DispatchError> {
-    let archive_name = format!("dream-{}.tar.gz", repo_name);
+    // `repo_name` may be a nested annexe subpath (`project/agentbox`); the
+    // archive is a flat file in `remote_dir`, so flatten the separators.
+    let archive_name = format!("dream-{}.tar.gz", repo_name.replace('/', "-"));
     let archive_path = std::env::temp_dir().join(&archive_name);
 
     let archive_file = std::fs::File::create(&archive_path)?;

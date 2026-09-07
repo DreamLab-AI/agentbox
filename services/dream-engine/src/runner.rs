@@ -53,9 +53,16 @@ pub trait EvaluatorRunner: Send + Sync {
 /// Wrap `command` so the remote shell enforces the timeout and reports 124 on
 /// expiry. `--kill-after` guarantees a hung child is reaped rather than
 /// inherited by the next night.
+///
+/// `-o pipefail` is load-bearing (2026-09-06 dream night, agentbox
+/// sovereign-mesh): every declared evaluator tails its output (`cargo build
+/// 2>&1 | tail -12`), and without pipefail the pipeline's status is `tail`'s
+/// 0, so a cargo abort was recorded `outcome=PASSED exit=0` — a pipe-masked
+/// false positive that made a REQUIRED gate vacuous. With pipefail the
+/// receipt carries the failing stage's exit code and the gate can veto.
 fn timeout_wrapped(work_dir: &str, command: &str, timeout_secs: u64) -> String {
     format!(
-        "cd {} && timeout --signal=TERM --kill-after=30s {}s bash -c {}",
+        "cd {} && timeout --signal=TERM --kill-after=30s {}s bash -o pipefail -c {}",
         shell_quote(work_dir),
         timeout_secs,
         shell_quote(command)
@@ -89,7 +96,7 @@ impl EvaluatorRunner for LocalRunner {
         // Same timeout semantics as the SSH path, so a receipt means the same
         // thing whichever runner produced it.
         let wrapped = format!(
-            "timeout --signal=TERM --kill-after=30s {}s bash -c {}",
+            "timeout --signal=TERM --kill-after=30s {}s bash -o pipefail -c {}",
             timeout_secs,
             shell_quote(command)
         );
@@ -196,7 +203,28 @@ mod tests {
     fn timeout_wrapper_quotes_the_command_and_the_directory() {
         let w = timeout_wrapped("/tmp/it's here", "cargo test --all", 900);
         assert!(w.starts_with("cd '/tmp/it'\\''s here' && timeout"), "got {w}");
-        assert!(w.contains("--kill-after=30s 900s bash -c 'cargo test --all'"), "got {w}");
+        assert!(
+            w.contains("--kill-after=30s 900s bash -o pipefail -c 'cargo test --all'"),
+            "got {w}"
+        );
+    }
+
+    /// The 2026-09-06 pipe-masked false positive: a failing producer piped
+    /// through `tail` must surface its own exit code, not tail's 0.
+    #[test]
+    fn local_runner_does_not_let_a_tail_pipe_mask_a_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = LocalRunner.run(
+            dir.path().to_str().unwrap(),
+            "sh -c 'echo error: manifest missing; exit 101' 2>&1 | tail -3",
+            30,
+        );
+        assert_eq!(
+            out.exit_code,
+            Some(101),
+            "pipefail must propagate the producer's exit: {out:?}"
+        );
+        assert!(out.stdout.contains("manifest missing"));
     }
 
     #[test]

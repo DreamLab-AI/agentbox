@@ -234,8 +234,14 @@ pub fn decide(
     }
 
     // 3. Required evaluators on the candidate tree. This is the veto proper,
-    //    and it applies whatever the report's prose says.
-    if matches!(candidate, CandidateState::Applied { .. }) || claimed_accept {
+    //    and it applies whatever the report's prose says — but only when a
+    //    candidate tree exists to have been evaluated. An ACCEPT that shipped
+    //    no patch (2026-09-07 dreamlab-ai-website) has nothing to run: grading
+    //    its absent receipts as "never ran" turned a model failing into three
+    //    false harness vetoes, a BLOCKED-ENV verdict and an operator alert
+    //    about a harness that had in fact passed every baseline evaluator.
+    //    That case is `unproven` → INCONCLUSIVE, which is what step 2 records.
+    if matches!(candidate, CandidateState::Applied { .. }) {
         for r in completed.iter().filter(|r| r.required) {
             if let Some(v) = veto_for(&r.name, &r.outcome) {
                 vetoes.push(v);
@@ -468,13 +474,23 @@ mod tests {
         assert!(d.accepted, "{}", d.summary);
     }
 
+    /// 2026-09-07 dreamlab-ai-website: bench/lint/pin-parity all PASSED on
+    /// baseline, the model claimed ACCEPT without a patch, and the gate
+    /// reported "required evaluator produced no receipt — it never ran" three
+    /// times → BLOCKED-ENV. No patch means nothing to re-run; that is the
+    /// model's failing (unproven), not the harness's.
     #[test]
-    fn accept_without_a_candidate_patch_is_unproven() {
+    fn accept_without_a_candidate_patch_is_unproven_not_a_harness_fault() {
         let m = manifest(vec![ident("tests", true)]);
         let d = decide(&m, &Ok(Verdict::Accept), &CandidateState::NoPatch, &[]);
         assert!(!d.accepted);
-        assert_eq!(d.verdict, "BLOCKED-ENV", "the missing-receipt veto dominates");
+        assert_eq!(d.verdict, "INCONCLUSIVE", "{}", d.summary);
         assert!(d.vetoes.iter().any(|v| v.subject == "candidate"), "{:?}", d.vetoes);
+        assert!(
+            d.vetoes.iter().all(|v| v.class != VetoClass::Harness),
+            "absent candidate receipts must not read as a broken harness: {:?}",
+            d.vetoes
+        );
     }
 
     #[test]

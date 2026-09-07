@@ -32,7 +32,7 @@ fail the build).
 
 The [historical closeout routing note](../adr-history-closeout.md) points the 72 archived decision candidates at the estate historical map and section-level review; the archive remains historical and lineage mentions are not whole-document supersession.
 
-_73 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_74 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -109,3 +109,4 @@ _73 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2078](ADR-2078-provision-pods-signer-from-sovereign-identity.md) | Provision the pods signer from the sovereign identity the boot already mints | INGRESS-identity | 2026-09-05 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2079](ADR-2079-aoe-is-the-dispatch-plane-of-a-fleet-model-router.md) | Examine AoE as the dispatch plane of a fleet model router — the routing policy lives outside the session manager, and privacy is its first axis | GOVERNANCE-capabilities | 2026-09-06 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2080](ADR-2080-metaharness-router-console-under-aoe.md) | Run the metaharness cost-optimal router as a dedicated AoE session for public day-to-day dev — artefacts vendored, embedding done offline, scoped to that session | GOVERNANCE-capabilities | 2026-09-06 | accepted | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2081](ADR-2081-annexe-depth-law-and-honest-evaluator-receipts.md) | Annexe mirrors workspace depth; evaluator receipts carry the producer's exit code; a no-patch ACCEPT is unproven, not a harness fault | — | 2026-09-07 | accepted | complete | staged | — | — | jjohare | agentbox |

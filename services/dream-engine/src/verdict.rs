@@ -345,7 +345,69 @@ fn after_colon(line: &str) -> &str {
 /// The chosen text is then whitespace-collapsed, stripped of `|`, and truncated
 /// to 80 characters.
 pub fn sanitise_finding(report: &str, verdict: Verdict) -> String {
+    // 0. The ledger row the report authored itself (Step 19). Every night
+    //    since 2026-09-02 wrote a self-contained, ≤80-char finding cell there,
+    //    and the engine discarded it for the truncated hypothesis — which is
+    //    exactly what the ledger row contract (dream-engine PR #10,
+    //    `finding-hypothesis-leak`) rejects. Only a contract-satisfying cell
+    //    is taken; anything else falls through to the older heuristics.
+    if let Some(cell) = report_ledger_row_finding(report) {
+        return cell;
+    }
+    // 1. A self-contained `Finding:` line that satisfies the contract.
+    for line in report.lines() {
+        if line.contains("Finding:") {
+            let text = finalize(&strip_markdown(after_colon(line)));
+            if ledger_cell_ok(&text) {
+                return text;
+            }
+        }
+    }
     select_finding(report, verdict).chars().take(80).collect()
+}
+
+/// The ledger-row contract for the finding cell (mirrors dream-engine
+/// `packages/ledger/src/rowContract.ts`): non-empty, ≤80 chars, not a pointer
+/// ("see report" / "see gist"), and not frozen-hypothesis prose ("Given …").
+fn ledger_cell_ok(cell: &str) -> bool {
+    let lower = cell.to_ascii_lowercase();
+    !cell.is_empty()
+        && cell.chars().count() <= 80
+        && !lower.starts_with("given")
+        && !lower.starts_with("see ")
+        && !lower.starts_with("gist")
+        && !lower.contains("see report")
+        && !lower.contains("see gist")
+}
+
+/// The finding cell of the first ledger table row the report contains — the
+/// row the model is asked to append at Step 19 — when that cell satisfies the
+/// contract. A ledger row is a `|`-delimited line with at least ten cells
+/// whose first cell is an ISO date.
+fn report_ledger_row_finding(report: &str) -> Option<String> {
+    for line in report.lines() {
+        let t = line.trim();
+        if !t.starts_with('|') {
+            continue;
+        }
+        let cells: Vec<&str> = t.split('|').map(str::trim).collect();
+        if cells.len() < 12 {
+            continue;
+        }
+        let date = cells[1].as_bytes();
+        let is_date = date.len() == 10
+            && date[4] == b'-'
+            && date[7] == b'-'
+            && date.iter().filter(|b| b.is_ascii_digit()).count() == 8;
+        if !is_date {
+            continue;
+        }
+        let finding = finalize(cells[3]);
+        if ledger_cell_ok(&finding) {
+            return Some(finding);
+        }
+    }
+    None
 }
 
 /// The same finding selection as [`sanitise_finding`], without the 80-char
@@ -510,6 +572,61 @@ More prose here.
         assert_eq!(
             finding,
             "Given a cold cache, the second request should be faster than the first."
+        );
+    }
+
+    /// 2026-09-07: the report's own Step-19 row wins over the hypothesis.
+    #[test]
+    fn sanitise_prefers_the_reports_own_ledger_row_cell() {
+        let report = "\
+> Given the `sovereign-mesh-bridge` entrypoint pipes cargo through `tail`, when cargo aborts, then the harness still records PASSED.
+
+### Step 19 — Ledger row (appended in annexe clone)
+
+```
+| 2026-09-06 | sovereign-mesh | sovereign-mesh-bridge PASS is pipe-masked (cargo dep err, exit=0): FALLBACK rule | NONE | NONE | yes | ACCEPT | docs-only marker | BLOCKED | |
+```
+VERDICT: ACCEPT
+";
+        assert_eq!(
+            sanitise_finding(report, Verdict::Accept),
+            "sovereign-mesh-bridge PASS is pipe-masked (cargo dep err, exit=0): FALLBACK rule"
+        );
+        // The full variant still carries the whole hypothesis for memory/PR bodies.
+        assert!(sanitise_finding_full(report, Verdict::Accept).starts_with("Given the"));
+    }
+
+    /// A Step-19 cell that itself leaks the hypothesis, points elsewhere or
+    /// overruns the cell is ignored, and the older heuristics apply.
+    #[test]
+    fn sanitise_ignores_a_ledger_row_cell_that_breaks_the_contract() {
+        let leak = "| 2026-09-07 | x | Given the annexe clone lacks the siblings, when… | NONE | NONE | yes | ACCEPT |  | abc |  |\n**Finding:** siblings absent on the annexe\n";
+        assert_eq!(
+            sanitise_finding(leak, Verdict::Accept),
+            "siblings absent on the annexe"
+        );
+        let pointer = "| 2026-09-07 | x | INCONCLUSIVE — see report | NONE | NONE | yes | INCONCLUSIVE |  | abc |  |\n";
+        assert_eq!(
+            sanitise_finding(pointer, Verdict::Inconclusive),
+            "INCONCLUSIVE — see report"
+        );
+        let long = format!(
+            "| 2026-09-07 | x | {} | NONE | NONE | yes | ACCEPT |  | abc |  |\n",
+            "y ".repeat(60)
+        );
+        assert_eq!(
+            sanitise_finding(&long, Verdict::Inconclusive),
+            "INCONCLUSIVE — see report"
+        );
+    }
+
+    /// A contract-satisfying `Finding:` line beats the hypothesis for the cell.
+    #[test]
+    fn sanitise_prefers_a_self_contained_finding_line_over_the_hypothesis() {
+        let report = "Given a cold cache, the second request should be faster than the first.\n**Finding:** warm cache halves p50 latency (412ms → 198ms)\n";
+        assert_eq!(
+            sanitise_finding(report, Verdict::Accept),
+            "warm cache halves p50 latency (412ms → 198ms)"
         );
     }
 

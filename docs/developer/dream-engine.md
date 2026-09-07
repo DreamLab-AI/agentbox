@@ -46,7 +46,7 @@ Any repository under the workspace root is nominated by dropping a `dream.config
 | `slots` | array (required) | Rotating focus areas. Each is `{ "deep": "<theme>", "scan": ["<area>", …] }`. Tonight's slot = `dayInt % slots.length`. |
 | `bonusModuli` | map | `{ "<modulus>": "<extra dive>" }`. A dive fires when `dayInt % modulus == 0` — periodic deep passes layered on the daily slot. |
 | `buildStep` | object | `{ "cmd": "<build command>", "degradeOnWasmFailure": false }`. Run on the annexe before evaluators. |
-| `annexeInclude` | array | Sibling workspace repos this repo's build/evaluators need — e.g. a crate with a Cargo `path = "../<sibling>"` dep on another repo. Each is archived from its own HEAD and extracted alongside the target on the annexe (`remote_dir/<repo>` + `remote_dir/<sibling>`), mirroring the workspace so the path-deps resolve ([ADR-060](../archive/adr/ADR-060-dream-annexe-path-dependencies.md)). Empty/absent ⇒ unchanged. Shipping siblings only helps if an evaluator actually builds against them. |
+| `annexeInclude` | array | Sibling workspace repos this repo's build/evaluators need — e.g. a crate with a Cargo `path = "../<sibling>"` dep on another repo. Each is archived from its own HEAD and extracted on the annexe at its **real depth under the workspace**: the target at `remote_dir/<its canonical path relative to the workspace root>` (`project/agentbox`, resolved through the `workspace/agentbox` symlink) and each sibling likewise (`nostr-rust-forum`), so a `../../../../<sibling>` path-dep climbs to `remote_dir/` exactly as it climbs to the workspace root locally ([ADR-060](../archive/adr/ADR-060-dream-annexe-path-dependencies.md); depth law added 2026-09-07 after the sovereign-mesh gate was found vacuous — the target had sat one level too shallow and cargo looked for the siblings one directory *above* the night dir). Empty/absent ⇒ unchanged. Shipping siblings only helps if an evaluator actually builds against them. |
 | `evaluatorEntrypoints` | map | `{ "<name>": "<command>" }`. Each is run on the annexe; its stdout tail becomes evidence. **This is the load-bearing field** — see [evaluator liveness](#evaluator-liveness-the-1-failure-mode). |
 | `competitors` | array | Named comparators the prompt asks the model to beat. |
 | `adrConvention` | string | ADR numbering convention (default `"4-digit"`). |
@@ -135,6 +135,8 @@ A draft PR is opened **only** when the gate upholds the ACCEPT; a vetoed candida
   "hooks": { "cmd": "bash scripts/hooks.sh", "deeps": ["hooks-pipeline"], "timeoutSecs": 600 }
 }
 ```
+
+Every command runs under `bash -o pipefail -c` (both the SSH and the local runner), so `cargo build 2>&1 | tail -12` reports cargo's exit code, not `tail`'s. Before 2026-09-07 the pipe masked a cargo manifest-resolution abort into `outcome=PASSED exit=0` for six consecutive nights, which made the REQUIRED `sovereign-mesh-bridge` gate vacuous; tail your output freely, the receipt still carries the producer's status.
 
 A bare string reads **fail-closed**: `required: true`, every deep, a 1800 s budget. That is deliberate — an evaluator a repo bothered to declare is one the night is expected to honour — but it does mean every declared evaluator can veto. Mark genuinely advisory ones (`required: false`) explicitly. Load-time validation rejects an empty command, a zero timeout, and a `deeps` entry naming no declared slot.
 

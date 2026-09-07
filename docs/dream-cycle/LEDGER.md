@@ -15,5 +15,12 @@
 | 2026-09-02 | sovereign-mesh | Given the per-night clone at `~/dream-annexe/2026-09-02-agentbox-p303/agentbox`  | NONE | NONE | yes | ACCEPT |  | 5c6385435532 |  |
 | 2026-09-03 | ontology-monitor | Given the annexe clone of DreamLab-AI/agentbox at `ed45bfe` with the 2026-08-28  | NONE | NONE | yes | ACCEPT |  | d8ee927e87ae |  |
 | 2026-09-04 | dream-engine | Given the annexe clone of DreamLab-AI/agentbox at `e6e07da` with sibling repos a | NONE | NONE | yes | ACCEPT |  | 405e8d13da9f |  |
-| 2026-09-05 | hooks-pipeline | Given the annexe clone at `89301ec` where `scripts/dream-hooks-syntax.sh` report | NONE | NONE | yes | ACCEPT |  | d942478694a1 |  |
+| 2026-09-05 | hooks-pipeline | Given the annexe clone at `89301ec` where `scripts/dream-hooks-syntax.sh` report | NONE | NONE | yes | ACCEPT | WITHDRAWN 2026-09-07: candidate cited docs/hooks.md + hooks/05-evidence-classify.sh, never in this repo | d942478694a1 |  |
 | 2026-09-06 | sovereign-mesh | Given the `sovereign-mesh-bridge` entrypoint pipes cargo through `tail` (`cd ser | NONE | https://github.com/DreamLab-AI/agentbox/pull/4 | yes | ACCEPT |  | ce7342117589 |  |
+| 2026-09-07 | ontology-monitor | Given the annexe clone at `1b43b70` lacks the sibling repos path-depped by `serv | NONE | NONE | yes | INCONCLUSIVE |  | 63631ca99d78 |  |
+| 2026-09-07 | operator-handoff | OPERATOR: 09-05 ACCEPT withdrawn — diff and Grade-A claims targeted paths that never existed | NONE | NONE | n/a | OPERATOR |  | operator |  |
+| 2026-09-07 | operator-handoff | OPERATOR FIX: annexe now mirrors real workspace depth (project/agentbox + siblings) — bridge builds | NONE | NONE | n/a | OPERATOR | engine annexe_subpath; closes 09-01..09-07 vacuous sovereign-mesh PASS | operator | #4:CLOSED |
+| 2026-09-07 | operator-handoff | OPERATOR FIX: evaluators run under bash -o pipefail; tail pipes no longer mask exit codes | NONE | NONE | n/a | OPERATOR | runner.rs; paired with the sibling fix per PR #4's warning | operator |  |
+| 2026-09-07 | operator-handoff | OPERATOR FIX: gate no longer grades a no-patch ACCEPT as BLOCKED-ENV — unproven → INCONCLUSIVE | NONE | NONE | n/a | OPERATOR | gate.rs; website 09-07 false harness veto | operator |  |
+| 2026-09-07 | operator-handoff | OPERATOR FIX: ledger finding cell now taken from the report's own Step-19 row, not the hypothesis | NONE | NONE | n/a | OPERATOR | verdict.rs; row contract (dream-engine PR #10) | operator |  |
+| 2026-09-07 | operator-handoff | OPERATOR: 8th hook is config/hooks/trust-seed.cjs (79bc6f2a1, 2026-09-02); census now also bash -n *.sh | NONE | NONE | n/a | OPERATOR | answers the 09-04 question; scripts/dream-hooks-syntax.sh | operator |  |
