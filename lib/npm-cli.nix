@@ -143,6 +143,8 @@ in
     # root package's peer as dev in package-lock.json, so production pruning can
     # remove a CLI's required runtime even with --include=peer.
     runtimeDependencies ? {},
+    # Optional reviewed dependency closure. npm ci refuses manifest/lock drift.
+    packageLock ? null,
     # npm's legacy peer-dependency mode is required by most of the historical
     # CLI graph, but packages such as Mermaid declare a required runtime only
     # as a peer. Disable this per-package so npm resolves that peer into the
@@ -261,7 +263,8 @@ in
           # Ensure deterministic timestamps inside node_modules so that
           # outputHashMode = "recursive" + content addressing yields a stable
           # hash. SOURCE_DATE_EPOCH defaults to 1 inside Nix builds.
-          npm install \
+          ${lib.optionalString (packageLock != null) "cp ${packageLock} package-lock.json"}
+          npm ${if packageLock != null then "ci" else "install"} \
             ${if legacyPeerDeps then "--production" else "--omit=dev --include=peer"} \
             --ignore-scripts \
             ${lib.optionalString legacyPeerDeps "--legacy-peer-deps"} \

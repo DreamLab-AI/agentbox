@@ -262,8 +262,9 @@
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
           version         = "0.3.0";
+          packageLock = ./config/npm-locks/ruvector-0.3.0.package-lock.json;
           sha256          = "sha256-WJY5s7nvQaZBQJaJbSI8PVZh4PfYriGlTUME2mOcQEc=";
-          nodeModulesHash = "sha256-SRSLsu4OmGUwCKLtkHPr8gM2rFio/dZ+VU0maKVdIDE=";
+          nodeModulesHash = "sha256-TZrJFgDTWW5MFWciq48Yvr5NQjtD+uhi08KEZAGM280=";
           bin             = "ruvector";
         };
 
@@ -290,8 +291,9 @@
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
           version         = "3.38.20";
+          packageLock = ./config/npm-locks/ruflo-3.38.20.package-lock.json;
           sha256          = "sha256-secbxYLZ8uA0Vb7h8RYamkH4qhizG+4mO17ylQ2aYOM=";
-          nodeModulesHash = "sha256-0bcqRddGbH9d/MgEC6yrqA6PsNaadQxakEbBqKgke7U=";
+          nodeModulesHash = "sha256-e00J764yirfyJvf4tPGelmP3ROj7OMdNhhIKk+uo2VQ=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -312,6 +314,7 @@
         metaharnessPkg = mkNpmCli {
           pkgName         = "metaharness";
           version         = "0.3.2";
+          packageLock = ./config/npm-locks/metaharness-0.3.2.package-lock.json;
           sha256          = "sha256-BJNgg/cM4D1G4Pj42/6wNcQ4rdTtdKpyTgYsC2KNR5I=";
           nodeModulesHash = "sha256-2qRTIkXMaMHwDixqAcPDYuiIyF3xT5gcrjREvo8RYDM=";
           bin             = "metaharness";
@@ -325,6 +328,7 @@
         metaharnessDarwinPkg = mkNpmCli {
           pkgName         = "@metaharness/darwin";
           version         = "0.8.3";
+          packageLock = ./config/npm-locks/metaharness-darwin-0.8.3.package-lock.json;
           sha256          = "sha256-k/pb1mzN6Wzy+/7exSp1oSo5cbQfKn/6rcue3tq2kGI=";
           nodeModulesHash = "sha256-zt6pF/Zp4qxKrm6PL8aksrHSCyQXtwAV2jjmqdOwf9s=";
           bin             = "metaharness-darwin";
@@ -348,8 +352,9 @@
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
           version         = "3.13.12";
+          packageLock = ./config/npm-locks/agentic-qe-3.13.12.package-lock.json;
           sha256          = "sha256-l1OKbvij0zWQFmkVh8tg5J/fWug3xpFem/s0WZtKqdo=";
-          nodeModulesHash = "sha256-P3+gOXR0UkiifJ5izmvSdPS+p1KtfhqxFSNGRePxY7A=";
+          nodeModulesHash = "sha256-di3k986pcOVtEr88BQ9ckHwQXSj6dCFStYj0GSAvfAU=";
           bin             = "aqe";
         };
 
@@ -393,6 +398,7 @@
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
           version         = "0.10.8";
+          packageLock = ./config/npm-locks/codebase-memory-mcp-0.10.8.package-lock.json;
           sha256          = "sha256-C68m1vT9SrZuIoL1t/K7oi1+CMV7tUhMNuESIoRFOZA=";
           nodeModulesHash = "sha256-1seDTzkcR6n0VQ/B7w29iSKMbtFz1s5a9kkoePWHYy4=";
           bin             = "codebase-memory-mcp";
@@ -419,10 +425,11 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.16.0";
           sha256          = "sha256-ZdeVGRv5ymypCkCh6jA1SmpJHiBmdMr9TZ3mL+kHVDk=";
-          nodeModulesHash = "sha256-sre+cioZS94WbD7KfRBoSQN28sHQJ0KCqJ3h198sjsM=";
+          nodeModulesHash = "sha256-/0YsG5ePzd3ADD1kaQ9tziEMF+Xfj/Fw8e4IeELEPDo=";
           bin             = "mmdc";
           legacyPeerDeps  = false;
           runtimeDependencies.puppeteer = "25.10.0";
+          packageLock = ./config/npm-locks/mermaid-js-mermaid-cli-11.16.0.package-lock.json;
           extraEnv.PUPPETEER_EXECUTABLE_PATH = "${pkgs.chromium}/bin/chromium";
           extraArgs = [ "--puppeteerConfigFile" mermaidPuppeteerConfig ];
         };
@@ -443,8 +450,9 @@
           # this rebuild (2026-08-27); 4.125.0 (2026-08-20) is the newest release
           # outside the window. Bump forward at the next rebuild.
           version         = "4.125.0";
+          packageLock = ./config/npm-locks/wrangler-4.125.0.package-lock.json;
           sha256          = "sha256-/pM8fMq69B568wUTjx3p/Sv7HghMfi/VC6PQynekRQI=";
-          nodeModulesHash = "sha256-IFzCLmNdoAG7ZiMitJzitWNzqRw9yIIXJ2q9Pn0LeDo=";
+          nodeModulesHash = "sha256-mLh2AhJRAhnoDmZWwEwN03wj+oK39EvbOyKfezupsrA=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -469,6 +477,7 @@
         deepsecPkg = mkNpmCli {
           pkgName         = "deepsec";
           version         = "2.3.9";
+          packageLock = ./config/npm-locks/deepsec-2.3.9.package-lock.json;
           sha256          = "sha256-5DHqDxepgjVhBmbjU5/b8U3VX+K9rsxSENt2o/BumHs=";
           nodeModulesHash = "sha256-svwTvpVDYWCKfTnO4YL70f1qcDDiEQ0JLFpZfK36qIk=";
           bin             = "deepsec";
