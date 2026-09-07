@@ -50,7 +50,23 @@
   "evaluatorEntrypoints": {
     "dream-engine-tests": "cd services/dream-engine && cargo test 2>&1 | tail -15",
     "sovereign-mesh-bridge": "cd services/nostr-pod-bridge && cargo build --release 2>&1 | tail -12",
-    "hooks-syntax": "bash scripts/dream-hooks-syntax.sh"
+    "hooks-syntax": "bash scripts/dream-hooks-syntax.sh",
+    "ontology-tools-tests": {
+      "cmd": "cd services/ontology-tools && cargo test 2>&1 | tail -20",
+      "required": true,
+      "deeps": [
+        "ontology-monitor"
+      ],
+      "timeoutSecs": 900
+    },
+    "broker-gate-tests": {
+      "cmd": "cd management-api && npm ci --ignore-scripts --no-audit --no-fund 2>&1 | tail -2 && node --test tests/broker-bridge.test.js 2>&1 | tail -12",
+      "required": false,
+      "deeps": [
+        "ontology-monitor"
+      ],
+      "timeoutSecs": 900
+    }
   },
   "competitors": [],
   "adrConvention": "3-digit",
@@ -59,7 +75,8 @@
     "nix-build-out-of-annexe: the full image build (flake.nix) needs nixpkgs and the host build shell (tmux tab 6) — the HP annexe cannot run it. The evaluable surface here is the Rust crates + node hook syntax. Record image/Nix findings as 'HANDOFF (rebuild):' notes; never invent a nix-build evaluator that would silently no-op.",
     "sibling-path-deps: services/nostr-pod-bridge path-deps the nostr-rust-forum and solid-pod-rs sibling repos (../../../../); since 2026-09-07 the engine ships them to the annexe at their real workspace depth (annexeInclude), so the sovereign-mesh-bridge evaluator is a REAL required gate. Changes to the sibling crates themselves still belong to those repos' own cycles — propose there, not here.",
     "secrets-never-in-report: agentbox holds keys and env; never quote .env, agentbox/.env, or any *_KEY/*_PRIVKEY value into a report, ledger, or gist.",
-    "cite-existing-adrs: cite only ADR ids that exist under docs/adr/ (4-digit ADR-2xxx ledger + the archived 3-digit corpus); propose a new decision by title and leave the id to the operator — nights have cited ADR-056/ADR-0057/ADR-2024 that do not exist."
+    "cite-existing-adrs: cite only ADR ids that exist under docs/adr/ (4-digit ADR-2xxx ledger + the archived 3-digit corpus); propose a new decision by title and leave the id to the operator — nights have cited ADR-056/ADR-0057/ADR-2024 that do not exist.",
+    "ontology-monitor-evaluators: the deep is measured by services/ontology-tools (OWL2 axiom validation, OntologyBlock parsing, wiki-link validation — 34 tests, REQUIRED) and advisory broker-gate-tests (management-api/tests/broker-bridge.test.js, node:test, needs npm ci on the annexe). Scan proposal-idempotency reads mcp/servers/ontology-propose.js; broker-gate reads management-api/routes/broker-bridge.js. Cite receipts from these, never infer from headers."
   ],
   "ledgerPath": "docs/dream-cycle/LEDGER.md",
   "branchPrefix": "dream/",

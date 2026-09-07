@@ -24,3 +24,4 @@
 | 2026-09-07 | operator-handoff | OPERATOR FIX: gate no longer grades a no-patch ACCEPT as BLOCKED-ENV — unproven → INCONCLUSIVE | NONE | NONE | n/a | OPERATOR | gate.rs; website 09-07 false harness veto | operator |  |
 | 2026-09-07 | operator-handoff | OPERATOR FIX: ledger finding cell now taken from the report's own Step-19 row, not the hypothesis | NONE | NONE | n/a | OPERATOR | verdict.rs; row contract (dream-engine PR #10) | operator |  |
 | 2026-09-07 | operator-handoff | OPERATOR: 8th hook is config/hooks/trust-seed.cjs (79bc6f2a1, 2026-09-02); census now also bash -n *.sh | NONE | NONE | n/a | OPERATOR | answers the 09-04 question; scripts/dream-hooks-syntax.sh | operator |  |
+| 2026-09-07 | ontology-monitor | ontology-monitor untestable: no deep evaluator or scan data; parents true-green | NONE | NONE | yes | INCONCLUSIVE |  | 8f5c4d0989af |  |
