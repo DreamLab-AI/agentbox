@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 771d96ed5ac6f5daa1e78a60d109c130b9ef9b99
-verified_paths: []               # arm with [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh] once the change is committed and verified_commit re-stamped
+verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
+verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a ruflo major bump that renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
 repo: agentbox
@@ -71,7 +71,7 @@ tools replace the stubs of the same name and are appended otherwise
   after the next image rebuild; until then sessions see the stubs.
 
 ## Verification
-Uncommitted working tree on top of `771d96ed5`, 2026-09-07 (verified_paths left empty until the landing commit is stamped, so the staleness gate does not fire on the commit that introduces the change):
+Verified at `ee742ade5` (the landing commit), 2026-09-07:
 - `node mcp/servers/lib/orchestration-proxy.test.js` — 11 pass (pure merge/alias/deny
   rules; fake child for spawn, forward, timeout, crash-respawn, missing-binary
   fail-open).
