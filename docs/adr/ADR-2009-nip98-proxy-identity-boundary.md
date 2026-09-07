@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b0c963c663dc34e6547c8a6da112848bc44fb2bc
+verified_commit: 8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -138,3 +138,13 @@ This changes reproducible package installation, not the ADR's admission, custody
 or publication rule. Source verification is renewed at this commit; existing
 activation evidence and limits remain unchanged. The active local container was
 not replaced, and no key was rotated.
+
+### 2026-09-07 development-shell re-verification
+
+The only intervening governed flake change selects the upstream executable
+`nix2container.packages.${system}.nix2container-bin` for devShell buildInputs;
+the former `n2c.nix2container` attribute does not exist. The selected executable
+derivation evaluates on the pinned HP input. Container package selection,
+admission and custody behaviour are unchanged by this development-shell repair.
+Existing runtime activation limits remain. Verification is renewed at
+`8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.

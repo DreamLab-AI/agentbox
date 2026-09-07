@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 7bf2382c031d696b0b2f5eb466f7e6615c88cc2c
+verified_commit: 8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -138,3 +138,13 @@ adds only two comments distinguishing the consultant wire alias from the documen
 weight variant. The invariants workflow replaces action version tags with exact
 commit pins and retains the same checks. Neither diff changes this decision’s
 runtime behaviour; existing implementation and activation qualifications remain.
+
+### 2026-09-07 development-shell re-verification
+
+The only intervening governed flake change selects the upstream executable
+`nix2container.packages.${system}.nix2container-bin` for devShell buildInputs;
+the former `n2c.nix2container` attribute does not exist. The selected executable
+derivation evaluates on the pinned HP input. Container package selection,
+admission and custody behaviour are unchanged by this development-shell repair.
+Existing runtime activation limits remain. Verification is renewed at
+`8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.

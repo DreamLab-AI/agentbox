@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e7bfc158a45bf97061fd6e7202e9ee053aa1f765
+verified_commit: 8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3
 verified_paths: [lib/secret-backup.nix, flake.nix, services/secret-backup/src/main.rs, services/secret-backup/Cargo.lock]
 owner: jjohare
 review_trigger: introduction or rotation of any load-bearing secret; compromise incident
@@ -179,3 +179,13 @@ All eight synthetic tests pass both locally and in the pinned Nix derivation,
 which installs `agentbox-secret-backup`. This verifies the standalone package,
 not deployment of the runtime image or recovery of real credentials. No real
 secret material was read or rotated. Source: `e7bfc158a45bf97061fd6e7202e9ee053aa1f765`.
+
+### 2026-09-07 development-shell re-verification
+
+The only intervening governed flake change selects the upstream executable
+`nix2container.packages.${system}.nix2container-bin` for devShell buildInputs;
+the former `n2c.nix2container` attribute does not exist. The selected executable
+derivation evaluates on the pinned HP input. Container package selection,
+admission and custody behaviour are unchanged by this development-shell repair.
+Existing runtime activation limits remain. Verification is renewed at
+`8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.
