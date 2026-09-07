@@ -23,7 +23,7 @@
  * NOSTR_RELAYS fan-out list; the cloud relay is hardcoded as the default with a
  * single env override (NOSTR_MIRROR_RELAY) for testing.
  *
- * Privacy: unlike the digest path there is NO external LLM hop — the raw turn
+ * Privacy: unlike the digest path there is NO external LLM hop — redacted turn
  * text is end-to-end-sealed (NIP-59) straight to the operator's pubkey. The only
  * network egress is the encrypted gift wrap to the cloud relay.
  *
@@ -34,7 +34,8 @@
  *
  * Discipline (Claude Code hook contract): reads the hook JSON on STDIN, exits 0
  * FAST, never blocks the session. A hard deadline aborts the publish and every
- * error is swallowed. Fail-open everywhere.
+ * error returns control to the session. Egress itself skips/refuses on policy
+ * or redaction failure; a successful hook exit does not prove delivery.
  */
 
 const crypto = require('crypto');
@@ -392,6 +393,17 @@ async function main() {
     return 0;
   }
 
+  const tools = loadNostrTools();
+  if (childSk && !tools) { log('egress skipped: recipient-derivation-unavailable'); return 0; }
+  let recipient;
+  try { recipient = childSk ? tools.getPublicKey(childSk) : explicitRecipient; }
+  catch { log('egress skipped: recipient-derivation-failed'); return 0; }
+  const rDecision = egress.egressDecision('live-mirror', { recipient, identityPresent: true });
+  if (!rDecision.allowed) {
+    log(`egress ${rDecision.outcome}: ${rDecision.reason}`);
+    return 0;
+  }
+
   const raw = await readStdin();
   let payload = {};
   if (raw && raw.trim()) {
@@ -430,7 +442,6 @@ async function main() {
     return 0;
   }
 
-  const tools = loadNostrTools();
   const WS = loadWs();
   if (!tools || !tools.nip59 || typeof tools.nip59.wrapEvent !== 'function' || !WS) {
     log('nostr-tools/ws unavailable; skipping mirror');
@@ -443,15 +454,7 @@ async function main() {
     // never reaches the phone. Legacy fallback: operator-signed DM to an
     // explicit recipient pubkey.
     const sk = childSk || senderSecretKey(tools);
-    const recipient = childSk ? tools.getPublicKey(childSk) : explicitRecipient;
-    // ADR-2026: recipient grammar AND the optional enumerated allowlist. A
-    // syntactically valid pubkey that is not on a configured allowlist is
-    // refused — the review noted the hook checked syntax only.
-    const rDecision = egress.egressDecision('live-mirror', { recipient, identityPresent: true });
-    if (!rDecision.allowed) {
-      log(`egress ${rDecision.outcome}: ${rDecision.reason}`);
-      return 0;
-    }
+    // Recipient enumeration was checked before reading or composing turn text.
     const rumor = {
       kind: KIND_DM_RUMOR,
       content: body,

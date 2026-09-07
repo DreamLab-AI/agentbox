@@ -34,6 +34,8 @@ const FAKE_SK = 'a'.repeat(64);
 const FAKE_RECIPIENT = 'b'.repeat(64);
 // An address nothing can reach: the discard port on loopback.
 const DENIED_RELAY = 'ws://127.0.0.1:1';
+// Public test vector for the synthetic FAKE_SK / agentbox-mirror-v1 derivation.
+const CHILD_RECIPIENT = '175704cfcc83cb41eb05259fe87888b54dfb48a5c98e3d04cad7f9865a07a33a';
 
 function runHook(event, env, payload) {
   const base = {
@@ -49,6 +51,7 @@ function runHook(event, env, payload) {
     AGENTBOX_ADMIN_PUBKEY: '',
     AGENTBOX_BRIDGE_RECIPIENT_PUBKEY: '',
     NOSTR_MIRROR_RELAY: DENIED_RELAY,
+    AGENTBOX_MIRROR_RECIPIENTS: `${FAKE_RECIPIENT},${CHILD_RECIPIENT}`,
   };
   const r = spawnSync('node', [HOOK, event], {
     input: JSON.stringify(payload || { session_id: 's1', prompt: 'test' }),
@@ -174,11 +177,20 @@ describe('ADR-2026 — recipient allowlist (syntax was never sufficient)', () =>
     expect(decision.allowed).toBe(true);
   });
 
-  test('with NO allowlist configured, a well-formed recipient is permitted (back-compatible)', () => {
+  test.each([undefined, '', '   ', 'invalid', `${FAKE_RECIPIENT},invalid`])('missing/empty/invalid allowlist %s refuses egress', (value) => {
     const decision = egress.egressDecision('live-mirror', {
-      env: {}, recipient: FAKE_RECIPIENT, identityPresent: true,
+      env: { AGENTBOX_MIRROR_RECIPIENTS: value }, recipient: FAKE_RECIPIENT, identityPresent: true,
     });
-    expect(decision.allowed).toBe(true);
+    expect(decision.allowed).toBe(false);
+    expect(decision.reason).toBe('recipient-allowlist-missing-or-invalid');
+  });
+
+  test('missing enumeration stops even dry-run before transcript content is composed', () => {
+    const r = runHook('UserPromptSubmit', {
+      AGENTBOX_PRIVKEY_HEX: FAKE_SK, AGENTBOX_MIRROR_RECIPIENTS: '', AGENTBOX_MIRROR_DRY_RUN: '1',
+    }, {prompt: 'PRIVATE_CANARY_NO_OUTPUT'});
+    expect(r.stderr).toMatch(/recipient-allowlist-missing-or-invalid/);
+    expect(r.stderr).not.toMatch(/PRIVATE_CANARY|DRY-RUN|attempted/);
   });
 
   test('a malformed recipient is refused whatever the allowlist says', () => {
@@ -224,6 +236,7 @@ describe('ADR-2026 — network denial distinguishes skipped, attempted and accep
     const r = runHook('UserPromptSubmit', {
       AGENTBOX_PRIVKEY_HEX: FAKE_SK,
       NOSTR_MIRROR_RELAY: DENIED_RELAY,
+    AGENTBOX_MIRROR_RECIPIENTS: `${FAKE_RECIPIENT},${CHILD_RECIPIENT}`,
     });
     expect(r.status).toBe(0); // best-effort: the session is never blocked
     if (/nostr-tools\/ws unavailable/.test(r.stderr)) {

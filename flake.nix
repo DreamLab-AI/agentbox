@@ -1403,6 +1403,7 @@
           if dreamEngineEnabled
           then (import ./lib/dream-engine.nix { inherit lib; pkgs = rustPkgs; })
           else null;
+        secretBackupPkg = import ./lib/secret-backup.nix { inherit lib; pkgs = rustPkgs; };
         dreamEnginePackages = lib.optionals dreamEngineEnabled [ dreamEnginePkg ];
 
         # agentbox-ops — operational CLI suite (Rust port of the Python scripts
@@ -1435,6 +1436,7 @@
         knowledgeToolPackages = [
           ontologyToolsPkg
           podcastIngestPkg
+          secretBackupPkg
           agentboxMcpPkg
           skillToolsPkg
         ];

@@ -61,7 +61,10 @@ function recipientAllowed(recipient, env = process.env) {
     return { allowed: false, reason: 'malformed-recipient' };
   }
   const list = recipientAllowlist(env);
-  if (list && !list.has(recipient)) {
+  if (!list || [...list].some((key) => !isHexPubkey(key))) {
+    return { allowed: false, reason: 'recipient-allowlist-missing-or-invalid' };
+  }
+  if (!list.has(recipient)) {
     return { allowed: false, reason: 'recipient-not-allowlisted' };
   }
   return { allowed: true };

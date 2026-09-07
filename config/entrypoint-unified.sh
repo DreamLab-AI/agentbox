@@ -897,30 +897,35 @@ fi
 # identity, and export the public did:nostr:<hex> (plus x-only pubkey and the
 # ADR-033 Multikey form) for the four consumers that read AGENTBOX_AGENT_DID at
 # import. The private key stays in the profile key file and never enters the
-# environment or any log. Fail-open: if node/nostr-tools are unavailable the
-# `${VAR:-did:nostr:local}` fallback below is preserved.
+# environment or any log. Missing tools, failed mint or invalid identity abort
+# boot before consumers start (ADR-2044 / G-6). Never evaluate mint output.
 if [ -z "${AGENTBOX_AGENT_DID:-}" ] || [ "${AGENTBOX_AGENT_DID}" = "did:nostr:local" ]; then
   _AGENT_ID_NODE="$(command -v node 2>/dev/null || true)"
   _AGENT_ID_SCRIPT="/opt/agentbox/management-api/lib/agent-identity.js"
-  if [ -n "$_AGENT_ID_NODE" ] && [ -f "$_AGENT_ID_SCRIPT" ]; then
-    _AGENT_ID_EXPORTS="$("$_AGENT_ID_NODE" "$_AGENT_ID_SCRIPT" mint 2>&1 1>/tmp/.agent-did-exports.$$)" || true
-    _AGENT_ID_OUT="$(cat /tmp/.agent-did-exports.$$ 2>/dev/null || true)"
-    rm -f /tmp/.agent-did-exports.$$ 2>/dev/null || true
-    # Only eval output that is exactly the expected export lines with a real
-    # 64-hex did:nostr — never eval arbitrary text on the shell.
-    if printf '%s\n' "$_AGENT_ID_OUT" | grep -Eq '^export AGENTBOX_AGENT_DID=did:nostr:[0-9a-f]{64}$'; then
-      eval "$_AGENT_ID_OUT"
-      echo "[identity] per-agent did:nostr ready: ${AGENTBOX_AGENT_DID}"
-    else
-      echo "[identity] WARN: agent-identity mint produced no usable did:nostr — falling back to placeholder"
-      [ -n "$_AGENT_ID_EXPORTS" ] && echo "[identity]   $_AGENT_ID_EXPORTS"
-    fi
-    unset _AGENT_ID_EXPORTS _AGENT_ID_OUT
+  if [ -z "$_AGENT_ID_NODE" ] || [ ! -f "$_AGENT_ID_SCRIPT" ]; then
+    echo "[identity] FATAL: identity mint runtime unavailable" >&2
+    exit 1
   fi
-  unset _AGENT_ID_NODE _AGENT_ID_SCRIPT
+  if ! _AGENT_ID_OUT="$("$_AGENT_ID_NODE" "$_AGENT_ID_SCRIPT" mint)"; then
+    echo "[identity] FATAL: identity mint failed" >&2
+    exit 1
+  fi
+  _AGENT_ID_DID="$(printf '%s\n' "$_AGENT_ID_OUT" | sed -n 's/^export AGENTBOX_AGENT_DID=//p')"
+  _AGENT_ID_PK="${_AGENT_ID_DID#did:nostr:}"
+  _AGENT_ID_EXPECTED="$(printf 'export AGENTBOX_AGENT_DID=did:nostr:%s\nexport AGENTBOX_AGENT_PUBKEY=%s\nexport AGENTBOX_AGENT_DID_MULTIKEY=fe70102%s' "$_AGENT_ID_PK" "$_AGENT_ID_PK" "$_AGENT_ID_PK")"
+  if ! printf '%s\n' "$_AGENT_ID_DID" | grep -Eq '^did:nostr:[0-9a-f]{64}$' || [ "$_AGENT_ID_OUT" != "$_AGENT_ID_EXPECTED" ]; then
+    echo "[identity] FATAL: invalid or inconsistent mint output" >&2
+    exit 1
+  fi
+  export AGENTBOX_AGENT_DID="$_AGENT_ID_DID"
+  unset _AGENT_ID_NODE _AGENT_ID_SCRIPT _AGENT_ID_OUT _AGENT_ID_DID _AGENT_ID_PK _AGENT_ID_EXPECTED
 fi
-export AGENTBOX_AGENT_DID="${AGENTBOX_AGENT_DID:-did:nostr:local}"
-export AGENTBOX_AGENT_PUBKEY="${AGENTBOX_AGENT_PUBKEY:-local}"
+if ! printf '%s\n' "$AGENTBOX_AGENT_DID" | grep -Eq '^did:nostr:[0-9a-f]{64}$'; then
+  echo "[identity] FATAL: configured identity must be a canonical did:nostr" >&2
+  exit 1
+fi
+export AGENTBOX_AGENT_PUBKEY="${AGENTBOX_AGENT_DID#did:nostr:}"
+export AGENTBOX_AGENT_DID_MULTIKEY="fe70102${AGENTBOX_AGENT_PUBKEY}"
 
 # ---------------------------------------------------------------------------
 # Phase 7 — Native ruflo plugin bootstrap

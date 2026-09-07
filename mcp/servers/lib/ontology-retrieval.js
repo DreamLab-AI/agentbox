@@ -14,6 +14,7 @@
 
 const budget = require('./ontology-budget');
 const { createTelemetrySink } = require('./ontology-telemetry');
+const { createHash } = require('node:crypto');
 
 const VC_PREFIXES = [
   'PREFIX vc: <https://narrativegoldmine.com/ns/v1#>',
@@ -320,6 +321,21 @@ function createOntologyRetrieval(deps = {}) {
 
     if (!req.query.trim()) return empty();
 
+    // Verify before cache lookup: a healthy old cache must not mask drift,
+    // an unavailable identity endpoint, or a caller's generation mismatch.
+    if (deps.verifyGeneration) {
+      try {
+        const served = await deps.verifyGeneration(req.generation);
+        req.served_identity = served.identity;
+        req.generation = served.cacheGeneration;
+      } catch (err) {
+        telemetry.record({ event: 'fail_open', stage: 'generation', cause: 'auth_or_validation' });
+        return empty({ degraded: true, degraded_stages: ['generation'],
+          error: 'loom_identity_rejected', error_cause: 'auth_or_validation' });
+      }
+    }
+
+
     // Constraints the answer must satisfy, in the same vocabulary the key uses.
     const constraints = {};
     for (const f of CACHE_KEY_FIELDS) constraints[f] = req[f];
@@ -355,7 +371,7 @@ function createOntologyRetrieval(deps = {}) {
     // ---- seed (fail-open) ----
     let seeds = [];
     try {
-      seeds = (await seedFn({ query: req.query, limit: 8, domain: req.domain })) || [];
+      seeds = (await seedFn({ query: req.query, limit: 8, domain: req.domain, served_identity: req.served_identity })) || [];
     } catch (err) {
       const cause = classifyCause(err);
       const stages = [DEGRADED_STAGES.SEED];
@@ -396,8 +412,12 @@ function createOntologyRetrieval(deps = {}) {
           seedIris: seeds.map((s) => s.iri),
           depth: Math.min(req.depth, cfg.depth),
           provenance: req.provenance,
+          served_identity: req.served_identity,
         })) || [];
       } catch (err) {
+        if (err && err.error === 'loom_identity_mismatch') {
+          return empty({ degraded: true, degraded_stages: ['generation'], error: 'loom_identity_rejected' });
+        }
         const cause = classifyCause(err);
         telemetry.record({ event: 'fail_open', stage: 'expand', cause });
         // Degrade to menu rather than failing the whole call — but SAY SO, and
@@ -597,18 +617,29 @@ function makeLoomFetch(opts = {}) {
   const base = (opts.loomUrl || process.env.LOOM_FACADE_URL || '').replace(/\/$/, '');
   const timeoutMs = opts.timeoutMs || parseInt(process.env.ONTOLOGY_TIMEOUT_MS || '10000', 10);
   const doFetch = opts.fetchImpl || globalThis.fetch;
-  return async function loomFetch(path, { body } = {}) {
+  return async function loomFetch(path, { body, method = 'POST' } = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const res = await doFetch(base + path, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal,
+        method, headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal,
       });
       if (!res.ok) {
         const t = await res.text().catch(() => '');
         return { error: `loom_http_${res.status}`, message: t || res.statusText };
       }
-      return await res.json();
+      const payload = await res.json();
+      if (path === '/loom/search' || path === '/loom/sparql') {
+        // Rust label search returns an array; legacy Python returns {hits}.
+        const result = Array.isArray(payload)
+          ? { [path === '/loom/search' ? 'hits' : 'rows']: payload } : payload;
+        return { ...result, serving_identity: {
+          generation: { id: res.headers.get('x-loom-generation') },
+          content_digest: res.headers.get('x-loom-content-digest'),
+          atomicity_verified: res.headers.get('x-loom-atomicity-verified') === 'true',
+        } };
+      }
+      return payload;
     } catch (err) {
       if (err.name === 'AbortError') return { error: 'ontology_timeout', message: `no response in ${timeoutMs}ms` };
       return { error: 'ontology_unavailable', message: err.message };
@@ -621,11 +652,46 @@ function makeLoomFetch(opts = {}) {
 const _SUBCLASS = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
 const _wrapTerm = (v) => (v == null ? '?' : (/^(https?:|urn:|did:)/.test(String(v)) ? `<${v}>` : JSON.stringify(v)));
 
+/** Reject a different loaded bundle, including behind a mixed-generation proxy. */
+function checkLoomIdentity(response, expected) {
+  if (!expected) return; // direct transport helpers remain injectable
+  const got = response && response.serving_identity;
+  if (!got || got.content_digest !== expected.content_digest
+      || got.generation?.id !== expected.generation?.id || got.atomicity_verified !== true) {
+    throw { error: 'loom_identity_mismatch', message: 'retrieval response belongs to another bundle' };
+  }
+}
+
+function loomGenerationVerifier(loomFetch) {
+  return async (expectedGeneration) => {
+    const report = await loomFetch('/loom/generation', { method: 'GET' });
+    const identity = report?.identity;
+    const embedding = report?.embedding;
+    if (report?.error || !identity || !identity.generation?.id
+        || !/^[0-9a-f]{64}$/.test(identity.content_digest || '')
+        || identity.atomicity_verified !== true || report.drift?.checked !== true
+        || report.drift?.ok !== true || report.disk?.matches_loaded !== true
+        || report.id !== identity.generation.id
+        || report.semantic_generation?.id !== report.id
+        || embedding?.model_id !== 'bge-small-en-v1.5' || embedding.dimensions !== 384
+        || embedding.metric !== 'cosine'
+        || !Array.isArray(embedding.rejections) || embedding.rejections.length
+        || (expectedGeneration && expectedGeneration !== report.id)) {
+      throw new Error('Loom generation/model/corpus identity rejected');
+    }
+    const cacheGeneration = createHash('sha256').update(JSON.stringify([
+      identity.generation.id, identity.content_digest, embedding.model_id, embedding.dimensions,
+    ])).digest('hex');
+    return { identity, cacheGeneration };
+  };
+}
+
 /** Seed via the Loom's label/title search over the whole reasoned graph. */
 function loomSeedFn(loomFetch) {
-  return async function ({ query, limit }) {
+  return async function ({ query, limit, served_identity }) {
     const res = await loomFetch('/loom/search', { body: JSON.stringify({ q: query, limit: limit ?? 8 }) });
     if (res && res.error) throw res;
+    checkLoomIdentity(res, served_identity);
     const hits = (res && res.hits) || [];
     return hits.map((h, i) => ({ iri: h.iri, label: h.label, score: 1 - i * 0.01 })).filter((h) => h.iri);
   };
@@ -633,7 +699,7 @@ function loomSeedFn(loomFetch) {
 
 /** Expand via the Loom's clamped SPARQL (children-first, hierarchy-complete — ADR-112). */
 function loomExpandFn(loomFetch) {
-  return async function ({ seedIris, depth }) {
+  return async function ({ seedIris, depth, served_identity }) {
     if (!seedIris || !seedIris.length) return [];
     const values = seedIris.slice(0, 8).map((i) => `<${i}>`).join(' ');
     const outLimit = Math.min(80 * Math.max(1, depth || 1), 300);
@@ -645,6 +711,7 @@ function loomExpandFn(loomFetch) {
       const res = await loomFetch('/loom/sparql', { body: JSON.stringify({ query: q }) });
       // Sub-stage tag — see defaultExpandFn.
       if (res && res.error) throw Object.assign(new Error(res.message || res.error), { error: res.error, stage: 'sparql' });
+      checkLoomIdentity(res, served_identity);
       return (res && res.rows) || [];
     };
     // Children first so the downstream budget clamp never trims them (ADR-112).
@@ -667,10 +734,11 @@ function loomExpandFn(loomFetch) {
 function createDefaultRetrieval(opts = {}) {
   const backend = selectBackend(opts, opts.env || process.env);
   if (backend.name === BACKENDS.LOOM) {
-    const loomFetch = opts.loomFetch || makeLoomFetch(opts);
+    const loomFetch = opts.loomFetch || makeLoomFetch({ ...opts, loomUrl: backend.url });
     const telemetry = opts.telemetry || createTelemetrySink({ clock: opts.clock, filePath: opts.telemetryPath });
     if (typeof telemetry.canary === 'function') telemetry.canary();
     return createOntologyRetrieval({
+      verifyGeneration: loomGenerationVerifier(loomFetch),
       seedFn: loomSeedFn(loomFetch),
       expandFn: loomExpandFn(loomFetch),
       cache: opts.cache, clock: opts.clock, minMaturity: opts.minMaturity, telemetry, backend,
@@ -713,6 +781,8 @@ module.exports = {
   defaultExpandFn,
   makeLoomFetch,
   loomSeedFn,
+  loomGenerationVerifier,
+  checkLoomIdentity,
   loomExpandFn,
   createTtlCache,
   serialiseTurtle,

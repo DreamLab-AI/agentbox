@@ -8,7 +8,7 @@
       "id": "live-mirror",
       "implementation": "config/hooks/nostr-live-mirror.cjs",
       "content": "Selected turn text: lifecycle lines, the user prompt, and the last assistant text. Never the whole transcript.",
-      "recipients": "A NIP-59 gift-wrapped self-DM to the derived mirror child key by default, or one explicit operator pubkey (legacy). Recipients must be 64-char lowercase hex and, when AGENTBOX_MIRROR_RECIPIENTS is set, must appear in that allowlist.",
+      "recipients": "A NIP-59 gift-wrapped self-DM to the derived mirror child key by default, or one explicit operator pubkey (legacy). Recipients must be 64-char lowercase hex and must appear in the non-empty AGENTBOX_MIRROR_RECIPIENTS allowlist.",
       "providers": "None. The body goes to a relay, not to a model provider.",
       "encryption": "NIP-59 gift wrap (kind 1059). Encryption is NOT redaction: the body is redacted before it is wrapped.",
       "transport": "One relay: NOSTR_MIRROR_RELAY, else the cloud default. NOSTR_RELAYS is deliberately not fanned out.",
@@ -29,13 +29,13 @@
     "AGENTBOX_EGRESS": "Global. '0' disables EVERY path in this table, whatever the per-path switch says. This is the single off switch the review found missing — AGENTBOX_LIVE_MIRROR=0 was never proof that the separately configured Rust digest path was off.",
     "AGENTBOX_LIVE_MIRROR": "'0' disables the live-mirror path only.",
     "AGENTBOX_SESSION_DIGEST": "'0' disables the session-digest path only.",
-    "AGENTBOX_MIRROR_RECIPIENTS": "Optional comma-separated allowlist of 64-hex recipient pubkeys. When set, a recipient outside it is refused.",
+    "AGENTBOX_MIRROR_RECIPIENTS": "Required comma-separated allowlist of 64-hex live-mirror recipient pubkeys. Missing, empty, malformed or non-matching lists refuse the path before content is read, including dry-run.",
     "AGENTBOX_EGRESS_REDACTION": "'0' disables redaction. Refused: the policy treats a disabled redactor as a disabled path, so the egress is SKIPPED rather than sent unredacted."
   },
   "invariants": [
     "REDACT BEFORE EGRESS. Every path redacts the exact bytes it is about to send, before wrapping, before signing, and before any provider request. Encryption, gift-wrapping and curation are not redaction.",
     "A path that cannot redact does not send. Redaction failure is a SKIP, never a fallback to sending the raw text.",
-    "Recipients are validated as 64-char lowercase hex and, when an allowlist is configured, against it.",
+    "Recipients are validated as 64-char lowercase hex against a mandatory non-empty allowlist for the live-mirror path.",
     "Outcomes are reported with the vocabulary below so 'nothing happened' is distinguishable from 'it failed' and from 'it was delivered'."
   ],
   "outcomes": {
