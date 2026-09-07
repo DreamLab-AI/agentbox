@@ -38,7 +38,8 @@ jobs:
         run: |
           set -euo pipefail
           before=$(sha256sum flake.lock | cut -d' ' -f1)
-          nix flake update --commit-lock-file=false
+          # Updating the lock does not commit unless --commit-lock-file is supplied.
+          nix flake update
           after=$(sha256sum flake.lock | cut -d' ' -f1)
           if [ "$before" = "$after" ]; then
             echo "no-changes=true" >> "$GITHUB_OUTPUT"
