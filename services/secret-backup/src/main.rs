@@ -76,8 +76,19 @@ const EXCLUDE_NAMES: &[&str] = &[
 
 /// Directories never descended into.
 const PRUNE_DIRS: &[&str] = &[
-    "node_modules", "target", ".git", "dist", "build", "out", ".cache",
-    ".pnpm-store", "venv", ".venv", "__pycache__", ".cargo", ".claude/worktrees",
+    "node_modules",
+    "target",
+    ".git",
+    "dist",
+    "build",
+    "out",
+    ".cache",
+    ".pnpm-store",
+    "venv",
+    ".venv",
+    "__pycache__",
+    ".cargo",
+    ".claude/worktrees",
 ];
 
 #[derive(Parser)]
@@ -145,7 +156,13 @@ fn collect(root: &Path) -> Result<Vec<PathBuf>> {
     for entry in walkdir::WalkDir::new(root)
         .follow_links(false)
         .into_iter()
-        .filter_entry(|e| !is_pruned(e.path()))
+        .filter_entry(|e| {
+            // Exclusions apply inside the requested tree, not to its ancestors.
+            // A checkout beneath /build must not become an empty backup.
+            e.path()
+                .strip_prefix(root)
+                .is_ok_and(|relative| !is_pruned(relative))
+        })
     {
         let entry = match entry {
             Ok(e) => e,
@@ -171,7 +188,10 @@ fn collect(root: &Path) -> Result<Vec<PathBuf>> {
 
 /// Resolve the encryption recipients. Returns an error when NOTHING is
 /// available — the rule that makes a plaintext archive unreachable.
-fn encryptor(recipients: &[String], passphrase: Option<&str>) -> Result<(age::Encryptor, &'static str)> {
+fn encryptor(
+    recipients: &[String],
+    passphrase: Option<&str>,
+) -> Result<(age::Encryptor, &'static str)> {
     if !recipients.is_empty() {
         let mut parsed: Vec<age::x25519::Recipient> = Vec::new();
         for r in recipients {
@@ -219,8 +239,7 @@ fn backup(
 
     if let Some(parent) = out_path.parent() {
         if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("creating {}", parent.display()))?;
+            fs::create_dir_all(parent).with_context(|| format!("creating {}", parent.display()))?;
         }
     }
 
@@ -280,7 +299,10 @@ fn is_unsafe_entry_path(path: &Path) -> bool {
     use std::path::Component;
     path.is_absolute()
         || path.components().any(|c| {
-            matches!(c, Component::ParentDir | Component::RootDir | Component::Prefix(_))
+            matches!(
+                c,
+                Component::ParentDir | Component::RootDir | Component::Prefix(_)
+            )
         })
 }
 
@@ -365,9 +387,18 @@ fn self_test() -> Result<String> {
     fs::create_dir_all(root.join("node_modules/pkg"))?;
 
     let synthetic = [
-        (root.join(".env"), "SYNTHETIC_TOKEN=not-a-real-secret-0001\n"),
-        (nested.join(".env.local"), "SYNTHETIC_KEY=not-a-real-secret-0002\n"),
-        (root.join("credentials.json"), "{\"synthetic\":\"not-a-real-secret-0003\"}\n"),
+        (
+            root.join(".env"),
+            "SYNTHETIC_TOKEN=not-a-real-secret-0001\n",
+        ),
+        (
+            nested.join(".env.local"),
+            "SYNTHETIC_KEY=not-a-real-secret-0002\n",
+        ),
+        (
+            root.join("credentials.json"),
+            "{\"synthetic\":\"not-a-real-secret-0003\"}\n",
+        ),
     ];
     for (p, body) in &synthetic {
         fs::write(p, body)?;
@@ -379,7 +410,10 @@ fn self_test() -> Result<String> {
     let archive = dir.path().join("secrets.tar.age");
     let (count, mode) = backup(&root, &archive, &[], Some(SYNTHETIC_PASSPHRASE), None)?;
     if count != synthetic.len() {
-        bail!("collected {count} files, expected {} (the exclusion rules did not hold)", synthetic.len());
+        bail!(
+            "collected {count} files, expected {} (the exclusion rules did not hold)",
+            synthetic.len()
+        );
     }
 
     // The archive must not contain the plaintext. This is the property the ZIP
@@ -416,9 +450,20 @@ fn self_test() -> Result<String> {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Backup { root, out, recipients, manifest } => {
+        Command::Backup {
+            root,
+            out,
+            recipients,
+            manifest,
+        } => {
             let pass = std::env::var("AGENTBOX_BACKUP_PASSPHRASE").ok();
-            let (count, mode) = backup(&root, &out, &recipients, pass.as_deref(), manifest.as_deref())?;
+            let (count, mode) = backup(
+                &root,
+                &out,
+                &recipients,
+                pass.as_deref(),
+                manifest.as_deref(),
+            )?;
             println!(
                 "encrypted backup written: {} ({count} file(s), age/{mode}, mode 0600)",
                 out.display()
@@ -430,14 +475,22 @@ fn main() -> Result<()> {
                 );
             }
         }
-        Command::Restore { archive, dest, identity } => {
+        Command::Restore {
+            archive,
+            dest,
+            identity,
+        } => {
             let pass = std::env::var("AGENTBOX_BACKUP_PASSPHRASE").ok();
             let n = restore(&archive, &dest, identity.as_deref(), pass.as_deref())?;
             println!("restored {n} file(s) into {}", dest.display());
         }
         Command::Plan { root } => {
             let files = collect(&root)?;
-            println!("{} secret-class file(s) under {}:", files.len(), root.display());
+            println!(
+                "{} secret-class file(s) under {}:",
+                files.len(),
+                root.display()
+            );
             for f in &files {
                 println!("  {}", f.display());
             }
@@ -472,7 +525,9 @@ mod tests {
         fs::write(root.join(".env"), "X=1\n").unwrap();
         let out = dir.path().join("nope.tar.age");
         let err = backup(&root, &out, &[], None, None).unwrap_err();
-        assert!(err.to_string().contains("refusing to write an UNENCRYPTED backup"));
+        assert!(err
+            .to_string()
+            .contains("refusing to write an UNENCRYPTED backup"));
         assert!(!out.exists(), "no output file may be created on refusal");
     }
 
@@ -488,6 +543,16 @@ mod tests {
         fs::write(root.join("target/.env"), "C=3").unwrap();
         let files = collect(root).unwrap();
         assert_eq!(files, vec![PathBuf::from(".env")]);
+    }
+
+    #[test]
+    fn excluded_ancestor_does_not_hide_the_requested_tree() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("build").join("project");
+        fs::create_dir_all(root.join("build")).unwrap();
+        fs::write(root.join(".env"), "SYNTHETIC=1").unwrap();
+        fs::write(root.join("build/.env"), "EXCLUDED=1").unwrap();
+        assert_eq!(collect(&root).unwrap(), vec![PathBuf::from(".env")]);
     }
 
     #[test]
@@ -556,7 +621,10 @@ mod tests {
             let archive = dir.path().join("p.tar.age");
             backup(&root, &archive, &[], Some("pw"), None).unwrap();
             let mode = fs::metadata(&archive).unwrap().permissions().mode() & 0o777;
-            assert_eq!(mode, 0o600, "the archive must not be group or world readable");
+            assert_eq!(
+                mode, 0o600,
+                "the archive must not be group or world readable"
+            );
         }
     }
 }
