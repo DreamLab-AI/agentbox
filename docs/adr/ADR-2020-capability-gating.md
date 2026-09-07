@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 7bf2382c031d696b0b2f5eb466f7e6615c88cc2c
+verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -137,3 +137,5 @@ adds only two comments distinguishing the consultant wire alias from the documen
 weight variant. The invariants workflow replaces action version tags with exact
 commit pins and retains the same checks. Neither diff changes this decision’s
 runtime behaviour; existing implementation and activation qualifications remain.
+
+**2026-09-07 re-verified at `ee742ade5`.** Governed paths changed by `ee742ade5` (ADR-2082 orchestration proxy): agentbox.toml. The changes are additive — two new `[integrations.ruvector_external]` keys, their entrypoint env projection, one catalogue entry and two schema properties — and touch none of the sections this record governs; the decision and its invariant hold unchanged. Re-verified by `git diff 7bf2382c0..ee742ade5 -- <verified_paths>`; no re-implementation was needed.

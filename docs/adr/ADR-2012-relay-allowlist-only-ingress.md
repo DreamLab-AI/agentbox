@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3
+verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -196,3 +196,5 @@ derivation evaluates on the pinned HP input. Container package selection,
 admission and custody behaviour are unchanged by this development-shell repair.
 Existing runtime activation limits remain. Verification is renewed at
 `8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.
+
+**2026-09-07 re-verified at `ee742ade5`.** Governed paths changed by `ee742ade5` (ADR-2082 orchestration proxy): agentbox.toml. The changes are additive — two new `[integrations.ruvector_external]` keys, their entrypoint env projection, one catalogue entry and two schema properties — and touch none of the sections this record governs; the decision and its invariant hold unchanged. Re-verified by `git diff 8fcc7b79b..ee742ade5 -- <verified_paths>`; no re-implementation was needed.
