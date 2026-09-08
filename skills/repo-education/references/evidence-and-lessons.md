@@ -75,6 +75,15 @@ cases, not tests that repeat implementation expressions.
   iframe policy error. Inspect the full image and keep newly observed errors;
   a passing headline assertion is not a complete visual check.
 
+- Inspect the substitutions inside an integration test before borrowing its claim.
+  A real wrapper and Git workspace can still call stub compiler/test binaries.
+  For a teaching drill about compiler refusal, run the installed compiler, retain
+  its actual diagnostic and exit code, and independently compare the restored
+  file and Git status. Label scripted edits separately from real verification.
+- Scope restart evidence to the specific store. A persistent proposal ledger
+  does not establish persistence of an engineering request held in another
+  component's memory map. Map each durable and ephemeral record independently.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
