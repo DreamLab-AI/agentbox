@@ -93,6 +93,13 @@ cases, not tests that repeat implementation expressions.
   taught. Likewise, distinguish approval of a plan from approval of an already
   implemented draft even when both use the same review-state name.
 
+- Follow a decision across sibling UI panels, not just its success toast. A real
+  approval moved a row out of review while the reported queue stayed empty until
+  reload; isolated panel tests missed the handoff. Compare the fresh API row,
+  the source panel and the destination panel in one browser journey. Check the
+  status sentence too: a bound review approval was incorrectly presented as
+  publication underway, although no publish action had occurred.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
