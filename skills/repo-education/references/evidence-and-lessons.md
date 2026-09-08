@@ -84,6 +84,15 @@ cases, not tests that repeat implementation expressions.
   does not establish persistence of an engineering request held in another
   component's memory map. Map each durable and ephemeral record independently.
 
+- Check the rehearsal engine at every lifecycle phase, including planning. In the
+  pilot, a prepared-change engine wrote its files on a describe-only turn before
+  the restore point, making the proposed edit part of the baseline. Assert an
+  unchanged workspace and no consumed implementation attempt after planning;
+  then resume through real checks and independently verify restoration. A green
+  rehearsal is only evidence if its substitutions preserve the lifecycle being
+  taught. Likewise, distinguish approval of a plan from approval of an already
+  implemented draft even when both use the same review-state name.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
