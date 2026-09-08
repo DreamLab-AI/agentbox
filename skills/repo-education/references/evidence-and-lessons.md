@@ -1,0 +1,84 @@
+# Evidence and lessons
+
+## Evidence record
+
+For each chapter maintain a compact claim ledger: the reader's question, the
+assertion, the exact source path/range and hash, runtime/test evidence where
+needed, limitations and review status. Useful evidence classes are source-backed,
+test-observed, runtime-observed and unverified. They are different types of support,
+not successive scores on a confidence scale.
+
+Capture receipts should identify command or URL, application mode, screenshot
+hash and actual pixel dimensions. Record authentication bypass separately from
+engine and data mode. Preserve only the relevant application's outputs; shared
+browser tabs and environment dumps can contain unrelated private information.
+
+A changed file can invalidate line references even when its name and exported
+function are unchanged. Check hashes before final delivery. Do not silently update
+a claim's provenance while retaining old runtime observations as if they were
+fresh. Keep observations dated and scoped to the inputs they actually exercised.
+
+## End-to-end analysis while teaching
+
+Teaching exposes inconsistencies: terminology that no longer matches the UI,
+diagrams whose arrows skip a gate, stale configuration assumptions and failure
+paths hidden by successful demonstrations. Reproduce an issue before asserting a
+bug. Where the user authorised fixes, repair it and verify the result; otherwise
+record the finding and required decision. Version control aids recovery but is
+not evidence that a change is correct or that a production mutation is reversible.
+
+Keep before/after evidence for findings. Refresh affected screenshots, narration
+and line references after a fix. Existing tests can be sufficient for copy changes;
+behaviour changes need checks that exercise the trigger and meaningful failure
+cases, not tests that repeat implementation expressions.
+
+## Lessons established in the Campaignbuilder pilot
+
+- A nested product repository can differ from the engagement/tracker repo. Locate
+  the authoritative source and delivery tree before writing artifacts.
+- Experienced developers still need a cold start: explain design intent, actors
+  and terms, then provide multiple independently useful entry points.
+- A first-run screenshot revealed stale tab counts and future-milestone wording.
+  A live screen is evidence to inspect, not merely an attractive illustration.
+- Transport, data provenance and engine mode are separate dimensions. Demonstration
+  badges must not be treated as proof of production operation.
+- Freeze test evidence in the pack. A subsequent non-coverage test run removed a
+  package's normal coverage directory and broke a generator that read it directly.
+- Users can revise delivery policy mid-production. Keep final media paths and Git
+  ignore rules consistent with the latest policy, and test a clean local copy.
+
+- The split source pane passed browser checks for full-file rendering, cited-line
+  selection, file switching, history/deep links, missing-file handling and mobile
+  return focus. Visual inspection found an offset error that numeric checks alone
+  missed: verify that the highlighted source is actually visible.
+
+- A bundled local launcher can stay dependency-free with Python while providing
+  byte-range delivery for video seeking, SVG/HTML diagrams and indexed source.
+  Check media MIME types and range responses, not only successful HTML loads.
+- Adjustable reading/source panes need explicit pixel minima, keyboard controls
+  and saved preferences; validate them on real pointer input and on a fresh
+  browser context so a prior mobile emulation does not contaminate desktop checks.
+
+- A first narrated four-scene clip was compressed to 1.73 MB for 93 seconds at
+  1600×900 with H.264 CRF 23 and AAC 96 kbit/s. Every scene was visually inspected;
+  local-browser playback, five seeks and WebVTT loading passed. This is a measured
+  example, not a size target for footage with more motion or detail.
+- Reset capture scroll position explicitly. A correct viewport size and complete
+  DOM text did not stop a source slide from being captured at a stale scroll offset.
+- Convert SRT timestamp punctuation only; a global comma replacement also changes
+  the spoken text. Treat subtitle-format conversion as structured text handling.
+- Distinguish audio decoding and muted playback checks from listening. Passing
+  either cannot establish pronunciation, pacing or caption alignment.
+
+- Full-page screenshot bounds do not trigger viewport-dependent content. In the
+  pilot, scrolling and settling exposed missing sections and a previously unseen
+  iframe policy error. Inspect the full image and keep newly observed errors;
+  a passing headline assertion is not a complete visual check.
+
+## Still being validated in the pilot
+
+The full narrated media pipeline, complete runtime journeys, whole-curriculum
+responsive review and clean-clone acceptance remain under
+active development. The workflow in this skill specifies their required outcomes;
+it does not assert the pilot has already achieved them. Update this section after
+verified results and move only reusable lessons into the established list.
