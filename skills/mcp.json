@@ -154,18 +154,18 @@
       ],
       "type": "stdio",
       "env": {
-        "COMFYUI_URL": "http://192.168.0.51:8188",
-        "COMFYUI_WS_URL": "ws://192.168.0.51:8188/ws",
+        "COMFYUI_URL": "http://comfyui:8188",
+        "COMFYUI_WS_URL": "ws://comfyui:8188/ws",
         "COMFYUI_OUTPUT_DIR": "/tmp/comfyui-outputs",
         "ZAI_URL": "http://localhost:9600/chat",
         "DISPLAY": ":1"
       },
-      "description": "AI image and video generation with ComfyUI workflows (remote SAM3D GPU)",
+      "description": "AI image and video generation with the local ComfyUI GPU sidecar",
       "protocol": "mcp-sdk",
       "version": "1.0.0",
       "x-agentbox-managed-by": "reference",
       "x-agentbox-gate": "env:ENABLE_COMFYUI_EXTERNAL",
-      "x-agentbox-note": "skill-local mcp-server (remote GPU) — not boot-projected"
+      "x-agentbox-note": "skill-local mcp-server (ComfyUI sidecar) — not boot-projected"
     },
     "blender": {
       "command": "node",
@@ -382,7 +382,7 @@
       ],
       "type": "stdio",
       "env": {
-        "AGENTBOX_CODEX_MODEL": "${AGENTBOX_CODEX_MODEL:-gpt-5.4}"
+        "AGENTBOX_CODEX_MODEL": "${AGENTBOX_CODEX_MODEL:-gpt-6-astra}"
       },
       "description": "Codex consultant (PRD-005 / ADR-011): second-opinion code reasoning, refactors, test generation via OpenAI Codex Rust CLI. Tools: consult, health, cost_estimate. Inherits OPENAI_API_KEY from session env.",
       "protocol": "stdio",

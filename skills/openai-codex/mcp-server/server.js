@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ============================================================================
 // OpenAI Codex MCP Server v2.0.0
-// Exposes GPT-5.4 coding capabilities as MCP tools for cross-agent delegation
+// Exposes GPT-6 Astra coding capabilities as MCP tools for cross-agent delegation
 // Runs as openai-user (UID 1002), called by devuser (Ruflo) via MCP bridge
 // ============================================================================
 
@@ -14,7 +14,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const MODEL = process.env.OPENAI_DEFAULT_MODEL || 'gpt-5.5';
+const MODEL = process.env.OPENAI_DEFAULT_MODEL || 'gpt-6-astra';
 
 const server = new Server(
   { name: 'openai-codex', version: '2.0.0' },

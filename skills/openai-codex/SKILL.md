@@ -1,6 +1,6 @@
 ---
 name: openai-codex
-description: "Delegate a coding or reasoning task to OpenAI Codex (GPT-5.4) via MCP for a second opinion from a non-Claude model. Use when you want to cross-check a hard algorithm, design, or refactor against a different frontier model, or get an independent bug/security/performance review of a code snippet. Not for tasks Claude handles directly, chain-of-thought traces (use deepseek-reasoning), live web research (use perplexity-research), or GitHub-PR review swarms (use github-code-review)."
+description: "Delegate a coding or reasoning task to OpenAI Codex (GPT-6 Astra) via MCP for a second opinion from a non-Claude model. Use when you want to cross-check a hard algorithm, design, or refactor against a different frontier model, or get an independent bug/security/performance review of a code snippet. Not for tasks Claude handles directly, chain-of-thought traces (use deepseek-reasoning), live web research (use perplexity-research), or GitHub-PR review swarms (use github-code-review)."
 mcp_server: true
 protocol: stdio
 entry_point: mcp-server/server.js
@@ -8,18 +8,18 @@ entry_point: mcp-server/server.js
 
 # OpenAI Codex Skill
 
-Bridges OpenAI GPT-5.4 into the Ruflo multi-agent environment as a first-class MCP tool.
+Bridges OpenAI GPT-6 Astra into the Ruflo multi-agent environment as a first-class MCP tool.
 
 ## Tools
 
 | Tool | Description |
 |------|-------------|
-| `codex_generate` | Generate code, solve algorithmic problems, or get architectural advice from GPT-5.4 |
-| `codex_review` | Submit code for bug/security/performance review by GPT-5.4 |
+| `codex_generate` | Generate code, solve algorithmic problems, or get architectural advice from GPT-6 Astra |
+| `codex_review` | Submit code for bug/security/performance review by GPT-6 Astra |
 
 ## When Not To Use
 
-- For tasks Claude can handle directly -- only delegate to Codex when you specifically need GPT-5.4 capabilities
+- For tasks Claude can handle directly -- only delegate to Codex when you specifically need GPT-6 Astra capabilities
 - For multi-step reasoning with chain-of-thought traces -- use the deepseek-reasoning skill instead
 - For web research or fetching live information -- use the perplexity-research or gemini-url-context skills instead
 - For code review on GitHub PRs with swarm coordination -- use the github-code-review skill instead
@@ -42,4 +42,12 @@ which runs as `devuser` under profile isolation (supervisord-managed), not a pse
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENAI_API_KEY` | (required) | OpenAI API key |
-| `OPENAI_DEFAULT_MODEL` | `gpt-5.4` | Model to use for completions |
+| `OPENAI_DEFAULT_MODEL` | `gpt-6-astra` | Model to use for completions |
+
+## Addendum (2026-09-08): large-context reviews go through `codex exec`
+
+This MCP bridge and the `consultant-codex` server take a pasted excerpt only. For reviews
+that must read a whole repository or a multi-document bundle (the model has a
+one-million-token context), use the direct CLI path documented in
+`skills/codex-companion/SKILL.md` under "Two consultation paths". Model for both paths:
+`gpt-6-astra`.

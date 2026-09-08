@@ -50,8 +50,8 @@ artifact and demands the agent prove each one.
        ▼
   4. AUDIT          Different agent (evidence-auditor, distinct model) —
                     run via `/codex:adversarial-review` or `codex exec -m
-                    gpt-5.4` (GPT-5.4: the latest model on the local Codex
-                    harness) so the auditor is a genuinely different model
+                    gpt-6-astra` (GPT-6 Astra: the Codex bundled default,
+                    verified 2026-09-08) so the auditor is a genuinely different model
                     family from the Claude producer; independently verifies
                     evidence against code. Fail-open to a Claude reviewer
                     subagent if Codex is unavailable (note the degraded
@@ -76,10 +76,11 @@ artifact and demands the agent prove each one.
   expected".
 - Step 4 auditor agent MUST be a different agent from Step 2/3 producer.
   Anti-fox separation is mandatory, not optional. Preferred realization: the
-  auditor runs on **GPT-5.4** via `/codex:adversarial-review` (codex-plugin-cc)
-  or `codex exec -m gpt-5.4` — the latest model the local Codex harness
-  supports (the `-codex` suffixed IDs are rejected on a ChatGPT-account
-  harness), and a different model family from the Claude producer — the
+  auditor runs on **GPT-6 Astra** via `/codex:adversarial-review` (codex-plugin-cc)
+  or `codex exec -m gpt-6-astra` — the Codex bundled default since 2026-09-03,
+  accepted by the local codex-cli 0.153.3 (the `-codex` suffixed IDs are still
+  rejected on a ChatGPT-account harness), and a different model family from the
+  Claude producer — the
   strongest form of anti-fox separation. Fall back to a distinct Claude
   subagent only if Codex is unavailable, and record that the audit was
   same-family (weaker).

@@ -52,7 +52,7 @@ Returns:
 ```json
 {
   "ok": true,
-  "model": "gpt-5.4",
+  "model": "gpt-6-astra",
   "last_error": null,
   "last_check_at": "2026-04-25T12:34:56Z"
 }

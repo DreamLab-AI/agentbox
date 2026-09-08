@@ -403,7 +403,7 @@ mod tests {
         );
         assert!(r.esc_host.is_none());
 
-        let r = parse_route(&re, "codex:gpt-5.5 -> claude:claude-fable-5-1").unwrap();
+        let r = parse_route(&re, "codex:gpt-6-astra -> claude:claude-fable-5-1").unwrap();
         assert_eq!(r.esc_host.as_deref(), Some("claude"));
         assert_eq!(r.esc_model.as_deref(), Some("claude-fable-5-1"));
     }
@@ -418,7 +418,7 @@ mod tests {
     #[test]
     fn agent_overrides_follow_the_activity_map_order() {
         let cfg = build_config(&mr(
-            "[model_routing.routes]\nsecurity-scan = \"codex:gpt-5.5\"\ntesting = \"claude:claude-opus-5\"\n",
+            "[model_routing.routes]\nsecurity-scan = \"codex:gpt-6-astra\"\ntesting = \"claude:claude-opus-5\"\n",
         ));
         let keys: Vec<&String> = cfg["agentOverrides"].as_object().unwrap().keys().collect();
         assert_eq!(
@@ -449,7 +449,7 @@ mod tests {
     fn fallback_chain_priorities_descend_and_models_are_sorted() {
         let cfg = build_config(&mr(
             "[model_routing]\naqe_fallback_chain = \"claude-code,codex\"\n\
-             [model_routing.routes]\ntesting = \"codex:gpt-5.5 -> claude:zeta\"\nreview = \"claude:alpha\"\n",
+             [model_routing.routes]\ntesting = \"codex:gpt-6-astra -> claude:zeta\"\nreview = \"claude:alpha\"\n",
         ));
         let entries = cfg["fallbackChain"]["entries"].as_array().unwrap();
         assert_eq!(entries[0]["provider"], "claude-code");

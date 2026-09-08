@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **126 active skills**. Estate-wide audit + progressive-discovery pass 2026-08-21 (Opus swarm, adversarially verified): 82 findings, 38 skills fixed/restructured (stale endpoints, retired `openai-user` pseudo-user references, dead links, monolith SKILL.md files split into `references/`); `dream-machine` gained a SKILL.md; deprecated bencium stubs stripped to redirects. House lint: `./lint-skills.sh` (banned stale strings, absolute `~/.claude/skills/` paths, retired `/workspace` path, >250-line monoliths without `references/`, frontmatter sanity) — run before every rebuild. <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
+> **127 active skills**. Estate-wide audit + progressive-discovery pass 2026-08-21 (Opus swarm, adversarially verified): 82 findings, 38 skills fixed/restructured (stale endpoints, retired `openai-user` pseudo-user references, dead links, monolith SKILL.md files split into `references/`); `dream-machine` gained a SKILL.md; deprecated bencium stubs stripped to redirects. House lint: `./lint-skills.sh` (banned stale strings, absolute `~/.claude/skills/` paths, retired `/workspace` path, >250-line monoliths without `references/`, frontmatter sanity) — run before every rebuild. <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
 > (`tree-search-coder` SKILL.md authored 2026-08-21 — ADR-020 Surface 2 execution-gated tree-search, previously enabled-in-manifest against a non-existent skill dir; `gcloud` added 2026-07-28 — Google Cloud CLI (gcloud/gsutil/bq) provisioned in the nix flake `basePackages`; operator-interactive auth, impersonation-over-keys, creds in the writable `~/.config/gcloud`; carries the canonical `campaignbuilder` VPS-behind-IAP deploy runbook; `token-audit` added 2026-07-24 — comprehensive Claude Code usage audit from local transcripts, adapted MIT from pacphi/agentic-kit, with `ruflo-daemon-gc` + `npx-stale-scan.sh` hygiene companions; `uk-solar-planner` added 2026-07-15 — UK ground-mounted solar farm planning, composing qgis + blender with PVGIS/quartz-solar-forecast/OpenDSS; `ruvnet-brain` added 2026-07-07 — RuvNet-ecosystem source corpus (~90k chunks, 21+ repos) in the ruvector-postgres sidecar, `search_ruvnet` MCP + grounding hook; `pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
 > Updated 2026-07-22. Reference this file from CLAUDE.md for intelligent routing.
 
@@ -31,13 +31,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (126 Active Skills)
+## Artefact 1: Categorised Skill Inventory (127 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 126 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 127 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -116,8 +116,8 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `cuda` | Yes | 4 specialist agents, kernel optimisation, compilation, GPU profiling | Custom CUDA kernel development and GPU programming |
 | `flow-nexus-neural` | Yes | Distributed neural network training in E2B sandboxes (feedforward, LSTM, GAN, transformer) | Training models in cloud sandboxes via Flow Nexus ⚠️ NOT INSTALLED — requires Flow Nexus account |
 | `deepseek-reasoning` | Yes | DeepSeek special model endpoint, structured chain-of-thought, multi-step reasoning | Complex reasoning tasks requiring DeepSeek's reasoning model |
-| `openai-codex` | Yes | GPT-5.4 code generation and review via MCP bridge | Delegating specific tasks to GPT-5.4 capabilities |
-| `codex-companion` | No | Full OpenAI Codex plugin: code review, adversarial review, rescue agent, GPT-5.4 structured prompting, stop-review gate | Cross-model validation, when Claude is stuck, adversarial design review, substantial code delegation |
+| `openai-codex` | Yes | GPT-6 Astra code generation and review via MCP bridge | Delegating specific tasks to GPT-6 Astra capabilities |
+| `codex-companion` | No | Full OpenAI Codex plugin: code review, adversarial review, rescue agent, GPT-6 Astra structured prompting, stop-review gate | Cross-model validation, when Claude is stuck, adversarial design review, substantial code delegation |
 
 ### Browser Automation and Web
 
@@ -218,6 +218,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `echoloop` | No | Real-time meeting copilot: dual audio capture, faster-whisper/Deepgram transcription, Claude/GPT coaching loop, session logging | Live meeting coaching, transcription, meeting recap, negotiation support |
 | `imagemagick` | Yes | Format conversion, resize, crop, filter, batch ops, watermarks, metadata | Image format conversion, thumbnails, batch image processing |
 | `comfyui` | Yes | Stable Diffusion, FLUX, node-based workflows, distributed GPU (Salad Cloud) | AI image/video generation from prompts or workflows |
+| `codebase-video` | No | Repository-grounded audience explainer; local ComfyUI footage, screenshots, diagrams, narration, captions and verified MP4 | Explain this codebase to a nominated audience in a complete video |
 | `open-montage` | No | Agentic video production: 11 pipelines, 49 tools, TTS, avatar, music, zero-key mode. On-demand clone | "Make a video", explainers, trailers, podcast-to-video, avatar presentations |
 | `clipcannon` | Yes | AI video editor: 51 MCP tools (12 categories), 22-stage analysis DAG, 14 ML models, 5 embedding spaces, voice clone (Qwen3-TTS), lip-sync (LatentSync 1.6), AI music (ACE-Step), text-to-video gen, Voice Agent ("Jarvis"), 7 platform renders, credit billing. Local GPU | Edit existing video, find moments, highlight reels, captions, voice clone, lip-sync, TikTok/Reels render, text-to-video, voice agent |
 
@@ -296,7 +297,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 126 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 127 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -606,7 +607,7 @@ Q3: What ML task?
     +-- Delegate reasoning to DeepSeek R1
     |   --> deepseek-reasoning
     |
-    +-- Delegate coding to GPT-5.4
+    +-- Delegate coding to GPT-6 Astra
         --> openai-codex or codex-companion (/codex:rescue for full Codex plugin)
 ```
 

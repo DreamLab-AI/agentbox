@@ -335,7 +335,7 @@ aqe_fallback_chain  = "claude-code,codex"
 
 [model_routing.routes]
 architecture   = "claude:claude-fable-5-1"
-implementation = "codex:gpt-5.5 -> claude:claude-fable-5-1"   # optional cross-vendor escalation rung
+implementation = "codex:gpt-6-astra -> claude:claude-fable-5-1"   # optional cross-vendor escalation rung
 # … 12 activities total; models are soft defaults — tune freely
 ```
 

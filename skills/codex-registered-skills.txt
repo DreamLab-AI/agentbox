@@ -38,3 +38,4 @@ ruvnet-brain
 
 # Captured 3D scenes and registered data overlays
 spark-scene
+codebase-video

@@ -57,7 +57,7 @@ function _emitConsultEvent(consultant, envelope) {
  *   const consultant = new BaseConsultant({
  *     name: 'codex',
  *     description: 'OpenAI Codex Rust CLI consultant',
- *     model: 'gpt-5.5',
+ *     model: 'gpt-6-astra',
  *     callConsult: async ({ question, context_excerpt, format }) => ({
  *       response, model, tokens, cost_usd, citations,
  *     }),

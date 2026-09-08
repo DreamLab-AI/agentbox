@@ -25,6 +25,7 @@ check, because errors compound when the next piece snaps or parents to a wrong o
 
 ## When to use
 
+- For an explainer-video shot, read [references/explainer-video.md](references/explainer-video.md): editable scene, PNG sequence and a timed handoff to `codebase-video` or ComfyUI.
 - Create or edit 3D models, sculpts, or scenes programmatically
 - Author PBR materials / shader node graphs
 - Set up cameras, lights, and render a scene

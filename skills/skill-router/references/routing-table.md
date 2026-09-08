@@ -119,6 +119,7 @@ Manual call form (slash-command): `/consult <name> "<question>"` (e.g.
 | Video/audio transcode, edit, stream | `ffmpeg-processing` |
 | Image format conversion, resize, batch | `imagemagick` |
 | AI image/video generation (SD, FLUX) | `comfyui` |
+| Explain the current codebase to a nominated audience in a complete video, with screenshots, diagrams, animation and locally generated hero footage | `codebase-video` |
 | 3D modelling and rendering | `blender` |
 | Game development (Godot/Unity/Unreal) | `game-dev` |
 | "Unreal Engine", "UE5", "spawn actor", "blueprint", "PIE session" | `unreal-engine` (60+ MCP tools for direct editor control) |
@@ -149,8 +150,8 @@ Manual call form (slash-command): `/consult <name> "<question>"` (e.g.
 | Jupyter notebook experiments | `jupyter-notebooks` |
 | Reinforcement learning agents (Decision Transformer, Q-Learning, SARSA, etc.) | `agentdb-advanced` (RL Plugins section) |
 | Delegate reasoning to DeepSeek | `deepseek-reasoning` |
-| Delegate coding to GPT-5.4 (simple MCP bridge) | `openai-codex` |
-| "Consult with OpenAI", "talk to codex", "ask GPT-5.4", code review by Codex, adversarial review, rescue when stuck | `codex-companion` (`/codex:review`, `/codex:rescue`) |
+| Delegate coding to GPT-6 Astra (simple MCP bridge) | `openai-codex` |
+| "Consult with OpenAI", "talk to codex", "ask GPT-6 Astra", code review by Codex, adversarial review, rescue when stuck | `codex-companion` (`/codex:review`, `/codex:rescue`) |
 
 ## Memory and Learning
 | If the request involves... | Route to |

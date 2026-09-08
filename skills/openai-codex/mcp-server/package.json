@@ -1,7 +1,7 @@
 {
   "name": "openai-codex-mcp",
   "version": "2.0.0",
-  "description": "MCP server bridging OpenAI GPT-5.4 Codex capabilities to Ruflo agents",
+  "description": "MCP server bridging OpenAI GPT-6 Astra Codex capabilities to Ruflo agents",
   "main": "server.js",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

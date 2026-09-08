@@ -30,6 +30,7 @@ describe('model-diversity.familyOf', () => {
 
   test('resolves concrete model ids by prefix (producer side)', () => {
     expect(diversity.familyOf('gpt-5.5')).toBe('openai');
+    expect(diversity.familyOf('gpt-6-astra')).toBe('openai');
     expect(diversity.familyOf('o3-mini')).toBe('openai');
     expect(diversity.familyOf('gemini-3.5-flash')).toBe('google');
     expect(diversity.familyOf('glm-5.2')).toBe('zhipu');

@@ -24,6 +24,7 @@ qe-browser
 
 # --- 3D / GIS (GPU gui-tools-service sidecar) ---
 blender
+codebase-video
 qgis
 
 # --- research / search ---

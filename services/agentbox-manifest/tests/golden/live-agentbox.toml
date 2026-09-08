@@ -860,7 +860,7 @@ intelligence_signal = true                      # write ADR-043 QualitySignal fi
 
 [consultants.codex]
 enabled = true
-model   = "gpt-5.5"
+model   = "gpt-6-astra"
 home    = "/home/devuser/.codex"
 timeout_ms = 180000
 
@@ -914,19 +914,19 @@ aqe_fallback_chain = "claude-code,codex"  # ordered AQE_LLM_FALLBACK_CHAIN — c
 # Defaults grounded in upstream @claude-flow/codex CollaborationTemplates
 # (Claude: reasoning/review; Codex: execution); packaging/release are
 # kit-originated gap-fills (agentic-kit ADR-0002), flagged as such.
-# Models are SOFT defaults (last verified 2026-09-01) — tune per activity.
+# Models are SOFT defaults (last verified 2026-09-08: codex → gpt-6-astra, the Codex bundled default since 2026-09-03) — tune per activity.
 [model_routing.routes]
 specification     = "claude:claude-sonnet-5"
 architecture      = "claude:claude-fable-5-1"
 design            = "claude:claude-opus-5"
-implementation    = "codex:gpt-5.5 -> claude:claude-fable-5-1"
-testing           = "codex:gpt-5.5 -> claude:claude-opus-5"
+implementation    = "codex:gpt-6-astra -> claude:claude-fable-5-1"
+testing           = "codex:gpt-6-astra -> claude:claude-opus-5"
 review            = "claude:claude-sonnet-5"
-security-scan     = "codex:gpt-5.5"
+security-scan     = "codex:gpt-6-astra"
 security-analysis = "claude:claude-fable-5-1"
-documentation     = "codex:gpt-5.5"
+documentation     = "codex:gpt-6-astra"
 debugging         = "claude:claude-fable-5-1"
-packaging         = "codex:gpt-5.5"          # kit-originated activity (no upstream template)
+packaging         = "codex:gpt-6-astra"          # kit-originated activity (no upstream template)
 release           = "claude:claude-sonnet-5" # kit-originated activity (no upstream template)
 
 # ── Privacy filter ──────────────────────────────────────────────────────────────

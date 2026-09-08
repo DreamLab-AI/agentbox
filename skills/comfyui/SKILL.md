@@ -50,6 +50,15 @@ curl -s http://comfyui:8188/system_stats | jq '.devices[0].name'
 
 ## Quick path
 
+To build or repair the local GPU service, follow
+[`references/sidecar-operations.md`](references/sidecar-operations.md).
+
+For resumable video jobs, use `scripts/comfy_client.py`; read
+[`references/agent-kit.md`](references/agent-kit.md) for graph validation and durable
+submission receipts. Local video model setup and workflows are documented in
+[`references/video-models.md`](references/video-models.md). For a complete explainer
+of the current repository, start with `codebase-video`.
+
 Generate a FLUX 2 image end-to-end with the bundled runnable script:
 
 ```bash

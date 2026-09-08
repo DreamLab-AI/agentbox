@@ -1914,6 +1914,11 @@ if [ -z "${AGENTBOX_ANTIGRAVITY_MODEL:-}" ] && command -v agentbox-manifest >/de
     --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" \
     --path consultants.antigravity.model 2>/dev/null || true)"
 fi
+if [ -z "${AGENTBOX_CODEX_MODEL:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  export AGENTBOX_CODEX_MODEL="$(agentbox-manifest toml-string \
+    --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" \
+    --path consultants.codex.model 2>/dev/null || true)"
+fi
 if [ -f "$_MCP_PROJECTOR" ] && [ -f "$_MCP_REGISTRY" ] && [ -f "$_MCP_JSON" ] && command -v node >/dev/null 2>&1; then
   # Master consultant gate ([consultants].enabled) — no ENABLE_ var is exported for
   # it, so derive it from the manifest here (best-effort; default off). Per-provider

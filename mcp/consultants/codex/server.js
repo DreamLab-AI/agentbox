@@ -21,11 +21,12 @@ const { spawnCli } = require('../shared/spawn-cli');
 
 const CODEX_BIN = process.env.AGENTBOX_CODEX_BIN || '/usr/local/bin/codex';
 const CODEX_HOME = process.env.AGENTBOX_CODEX_HOME || '/home/openai-user/.codex';
-const MODEL = process.env.AGENTBOX_CODEX_MODEL || 'gpt-5.5';
+const MODEL = process.env.AGENTBOX_CODEX_MODEL || 'gpt-6-astra';
 
-// Rough USD per 1k tokens — gpt-5.5 published rates (refresh on model bump).
+// Rough USD per 1k tokens — gpt-6-astra published rates ($10 / $50 per MTok,
+// developers.openai.com/api/docs/pricing, verified 2026-09-08; refresh on model bump).
 const PRICE_PER_1K_PROMPT     = 0.010;
-const PRICE_PER_1K_COMPLETION = 0.030;
+const PRICE_PER_1K_COMPLETION = 0.050;
 
 function formatPrompt(question, context) {
   return context

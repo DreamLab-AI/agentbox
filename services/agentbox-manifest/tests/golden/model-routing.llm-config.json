@@ -4,15 +4,15 @@
   "agentOverrides": {
     "qe-security-scanner": {
       "provider": "codex",
-      "model": "gpt-5.5"
+      "model": "gpt-6-astra"
     },
     "qe-security-auditor": {
       "provider": "codex",
-      "model": "gpt-5.5"
+      "model": "gpt-6-astra"
     },
     "qe-pentest-validator": {
       "provider": "codex",
-      "model": "gpt-5.5"
+      "model": "gpt-6-astra"
     },
     "qe-security-reviewer": {
       "provider": "claude-code",
@@ -20,19 +20,19 @@
     },
     "qe-test-architect": {
       "provider": "codex",
-      "model": "gpt-5.5"
+      "model": "gpt-6-astra"
     },
     "qe-test-generator": {
       "provider": "codex",
-      "model": "gpt-5.5"
+      "model": "gpt-6-astra"
     },
     "qe-coverage-specialist": {
       "provider": "codex",
-      "model": "gpt-5.5"
+      "model": "gpt-6-astra"
     },
     "qe-mutation-tester": {
       "provider": "codex",
-      "model": "gpt-5.5"
+      "model": "gpt-6-astra"
     },
     "qe-code-reviewer": {
       "provider": "claude-code",
@@ -67,7 +67,7 @@
       {
         "provider": "codex",
         "models": [
-          "gpt-5.5"
+          "gpt-6-astra"
         ],
         "enabled": true,
         "priority": 1

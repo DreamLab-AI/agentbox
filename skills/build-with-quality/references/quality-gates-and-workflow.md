@@ -43,9 +43,10 @@ Phase 2.5: EVIDENCE PRODUCTION & AUDIT (NEW v1.2.0 — EDD steps 3-4)
 ├── evidence-auditor (DIFFERENT model family) independently verifies
 │   ├── Mandate: find counter-example, do not confirm
 │   └── RUN VIA CODEX: invoke `/codex:adversarial-review` — or directly
-│       `codex exec -m gpt-5.4` — as the auditor. **GPT-5.4** is the latest
-│       model the local Codex harness supports (ChatGPT-account harness;
-│       `gpt-5.4-codex` is rejected there — verified 2026-08-17) and is a
+│       `codex exec -m gpt-6-astra` — as the auditor. **GPT-6 Astra** is the
+│       Codex bundled default since 2026-09-03, accepted by the local
+│       codex-cli 0.153.3 under the ChatGPT-account harness (verified
+│       2026-09-08; `-codex` suffixed IDs are still rejected) and is a
 │       genuinely different model family from the Claude producer, which is
 │       exactly what the anti-fox rule requires. Fail-open: if the codex
 │       plugin / Codex CLI is unavailable, fall back to a Claude

@@ -219,7 +219,7 @@ mod tests {
     fn doc() -> Value {
         json!({"mcpServers": {
             "consultant-codex": {"command": "sh", "args": ["-c", "exec node x.js"], "type": "stdio",
-                                 "env": {"AGENTBOX_CODEX_MODEL": "gpt-5.4"}, "description": "Codex consultant"},
+                                 "env": {"AGENTBOX_CODEX_MODEL": "gpt-6-astra"}, "description": "Codex consultant"},
             "perplexity": {"command": "node", "args": ["p.js"], "type": "stdio", "env": {"PERPLEXITY_API_KEY": "k"}},
             "code-interpreter": {"command": "python3", "args": ["s.py"], "type": "stdio"},
             "browser-gpu": {"type": "sse", "url": "http://browsercontainer:8931/sse"}

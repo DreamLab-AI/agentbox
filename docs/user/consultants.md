@@ -51,7 +51,7 @@ intelligence_signal  = true   # feeds the SONA learning loop; set false to disab
 
 [consultants.codex]
 enabled    = true
-model      = "gpt-5.5"
+model      = "gpt-6-astra"
 home       = "/home/devuser/.codex"
 timeout_ms = 180000
 
@@ -125,7 +125,7 @@ The coordinator picks a `context_excerpt` from the current chat (curated
 response is rendered with provenance:
 
 ```
-[codex / gpt-5.5, 412→180 tokens, $0.0021, 2.1s]
+[codex / gpt-6-astra, 412→180 tokens, $0.0021, 2.1s]
 
 The unsafe block is sound provided buf is non-null and aligned for u8…
 ```
@@ -168,7 +168,7 @@ Every consultation returns the same envelope:
   "ok":         true,
   "consultant": "codex",
   "response":   "<the consultant's answer>",
-  "model":      "gpt-5.5",
+  "model":      "gpt-6-astra",
   "tokens":     { "prompt": 412, "completion": 180, "total": 592 },
   "cost_usd":   0.0021,
   "citations":  [],
@@ -194,7 +194,7 @@ docker exec agentbox tail -f /var/lib/agentbox/consultations/codex-$(date -u +%F
 #   "id": "1c8d…", "ts": "2026-04-25T13:14:15Z", "consultant": "codex",
 #   "ok": true, "question": "Is this Rust unsafe block sound?",
 #   "context_size": 318, "response_len": 712,
-#   "model": "gpt-5.5", "tokens": {…}, "cost_usd": 0.0021,
+#   "model": "gpt-6-astra", "tokens": {…}, "cost_usd": 0.0021,
 #   "latency_ms": 2143, "citations": 0
 # }
 ```

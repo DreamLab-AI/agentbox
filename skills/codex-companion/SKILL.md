@@ -1,11 +1,11 @@
 ---
 name: codex-companion
 description: >
-  OpenAI Codex / GPT-5.4 integration for Claude Code. Use when the user says
-  "consult with openai", "talk to codex", "ask gpt-5.4", "get a second opinion
+  OpenAI Codex / GPT-6 Astra integration for Claude Code. Use when the user says
+  "consult with openai", "talk to codex", "ask gpt-6", "get a second opinion
   from openai", "delegate to codex", "openai review", or "codex rescue". Provides
   code reviews, adversarial reviews, rescue operations (when Claude is stuck),
-  and GPT-5.4 task delegation with structured prompting. Runs the baked Codex
+  and GPT-6 Astra task delegation with structured prompting. Runs the baked Codex
   CLI under the current profile; auth resolves from ~/.codex ([consultants.codex])
   wired by the entrypoint. NOT for non-code tasks (research/content/design →
   dedicated skills), simple one-off edits Claude can finish alone, or DeepSeek
@@ -15,7 +15,7 @@ author: OpenAI (adapted for Agentbox)
 tags:
   - codex
   - openai
-  - gpt-5.4
+  - gpt-6
   - review
   - rescue
   - adversarial
@@ -25,14 +25,14 @@ env_vars:
 
 # Codex Companion
 
-OpenAI's official Codex plugin for Claude Code, adapted for the Agentbox container. Delegates code review, adversarial review, and rescue tasks to GPT-5.4 via the Codex CLI.
+OpenAI's official Codex plugin for Claude Code, adapted for the Agentbox container. Delegates code review, adversarial review, and rescue tasks to GPT-6 Astra via the Codex CLI.
 
 ## When to Use This Skill
 
 - **Code review**: Get a Codex review of your git changes (working tree or branch)
 - **Adversarial review**: Challenge your implementation approach and design choices
 - **Rescue**: When Claude is stuck, hand the task to Codex for a second opinion
-- **GPT-5.4 delegation**: Offload substantial coding, debugging, or research tasks
+- **GPT-6 Astra delegation**: Offload substantial coding, debugging, or research tasks
 - **Cross-model validation**: Use Codex as a check on Claude's work
 
 ## When Not to Use
@@ -82,7 +82,7 @@ The `codex-rescue` subagent activates proactively when:
 
 The rescue agent uses this skill's bundled prompting reference library (`skills/gpt-5-4-prompting/` — prompt blocks, recipes, and antipatterns) to compose tight, structured Codex prompts with XML tags, output contracts, and verification loops.
 
-## GPT-5.4 Prompting Patterns
+## Codex Prompting Patterns
 
 The skill includes a reference library for composing effective Codex prompts:
 
@@ -111,7 +111,7 @@ Reviews follow a structured JSON schema (`review-output.schema.json`) with:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | No | Optional override; auth normally resolves from `~/.codex` (`[consultants.codex]`) wired by the entrypoint |
-| `CODEX_MODEL` | No | Override model (default: GPT-5.4, `spark` maps to `gpt-5.3-codex-spark`) |
+| `CODEX_MODEL` | No | Override model (default: GPT-6 Astra, `spark` maps to `gpt-5.3-codex-spark`) |
 
 ## Setup
 
@@ -123,6 +123,50 @@ Reviews follow a structured JSON schema (`review-output.schema.json`) with:
 # Verify:
 /codex:status
 ```
+
+## Two consultation paths (addendum 2026-09-08)
+
+The consultant model is **`gpt-6-astra`** (`[consultants.codex] model` in `agentbox.toml`,
+the Codex bundled default since 2026-09-03; the `-codex` suffixed IDs are rejected on a
+ChatGPT-account harness). Two ways to reach it; pick by how much context the task needs.
+
+| | Path 1: MCP `consultant-codex` → `consult` | Path 2: direct `codex exec` |
+|---|---|---|
+| Context | Curated `context_excerpt` you paste (keep under ~100k tokens) | The model reads files itself; one-million-token context, whole repositories and bundles |
+| File access | None | Everything the container can read |
+| Shape | One shot; returns an envelope with model, tokens, cost, citations | Agentic; runs for 5–15 min; final message captured to a file |
+| Cost check | `cost_estimate` tool first (about $1.10 per 92k prompt tokens, 2026-09-08) | Same rate; no estimator, so size the bundle with `wc -w` |
+| Use for | Second opinion on a snippet, a design note, a short document | Adversarial review of a client package against the full engagement history; audits that must open specs, ADRs, quotes and prior correspondence |
+
+**Path 2 recipe (verified 2026-09-08 on codex-cli 0.153.3):**
+
+```bash
+S=/path/to/scratchpad
+# 1. Optional: assemble a "golden path" bundle in reading order so the model does not
+#    have to discover the history: arc → quotation → client emails → our replies →
+#    internal memos → evidence base → prior reviews → the package under review.
+{ cat docs/strategy/*.md; cat docs/rfq-source/email-*.md; ...; } > $S/bundle.md
+# 2. Brief: task, file paths, output structure, and a closing "Context I still need"
+#    section so the model can ask for what it could not find.
+# 3. Run detached; -o captures the final message; the log carries the tool trace.
+codex exec -m gpt-6-astra -s danger-full-access -C /path/to/repo --skip-git-repo-check \
+  -o "$S/review.md" "$(cat $S/brief.md)" > "$S/review.log" 2>&1
+# 4. Afterwards: git status must be clean (the brief says do not write).
+```
+
+Gotchas that cost a run each:
+
+- **`-s read-only` does not work in this container.** bwrap is unavailable under
+  `no-new-privileges`, so a read-only sandbox cannot be set up and every shell call the
+  model makes fails; the model then reports the material as "inaccessible" and writes a
+  review of nothing. Use `-s danger-full-access` (the container is the sandbox, as
+  `~/.codex/config.toml` says) and put the no-write rule in the brief.
+- **Approval policy is `never`** in exec mode, so MCP tools that need approval
+  (`agentbox-memory/memory_search`) fail. Harmless; tell the model not to call them.
+- **Prompt as argument, not stdin.** `codex exec` prints "Reading additional input from
+  stdin..." when stdin is a terminal; when run detached, stdin is closed and it proceeds.
+- **Always ask for a "Context I still need" section.** A second pass with the listed
+  material is cheaper than a first pass that guessed.
 
 ## Integration with Other Skills
 

@@ -4,6 +4,43 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-09-08 — local codebase video explainers)
+
+- Added the progressively discoverable `codebase-video` skill for audience-led
+  repository explainers with screenshots, diagrams, Blender animation, local
+  ComfyUI hero footage, narration, captions and source/asset receipts.
+- Added a standalone Docker/pip ComfyUI sidecar, pinned H3 and LTX-2.3 download
+  profiles, API workflows and a durable submit/resume/download harness. H3 smoke
+  and 243-frame production execution passed on one RTX 6000 Ada with staged
+  loading. Python development headers are included for Triton compilation.
+- Added an editable Blender animation handoff with narration-matched duration.
+  The complete 50.8-second sample was rendered, reviewed and accepted by the user.
+
+### Changed (2026-09-08 — Codex consultant on GPT-6 Astra)
+
+- Every Codex default moves from `gpt-5.5` to `gpt-6-astra`, the model OpenAI
+  made the Codex bundled default on 2026-09-03 (`gpt-5.5` is no longer listed on
+  the current models page). Touched together so no surface disagrees:
+  `[consultants.codex].model` and the six `codex:` `[model_routing.routes]` in
+  `agentbox.toml` and `setup/agentbox.default.toml`; the `${AGENTBOX_CODEX_MODEL:-…}`
+  registry default in `skills/mcp.json`; the fallbacks in
+  `mcp/consultants/codex/server.js` (pricing constants refreshed to the published
+  $10 / $50 per MTok) and `skills/openai-codex/mcp-server/server.js`; the
+  `agentbox-manifest` TUI defaults, test fixtures and golden files; user docs; and
+  the build-with-quality, codex-companion, openai-codex, context7 and open-montage
+  skill texts that still named GPT-5.4 as the auditor/delegate. Verified against
+  the installed codex-cli 0.153.3 (`codex exec --model gpt-6-astra` answers; the
+  id is in `~/.codex/models_cache.json`).
+- **Wiring fix:** `[consultants.codex].model` was decorative — nothing read it, so
+  the consultant's model came only from the registry default. The entrypoint now
+  projects it into `AGENTBOX_CODEX_MODEL` (same shape as the existing
+  `consultants.antigravity.model` export), so the manifest key is authoritative
+  and an explicit environment override still wins.
+- Applied in place on the running container by rewriting `/run/agentbox/mcp-hub.json`
+  and restarting `agentbox-mcp-hub`; the consultant's `health` tool reports
+  `gpt-6-astra`. The baked `server.js` still carries the old pricing constants
+  until the next rebuild, so `cost_estimate` under-reports output cost by 40% until then.
+
 ### Added (2026-09-07 — ADR-2082 orchestration proxy)
 
 - The `claude-flow` MCP server's swarm/agent/task/coordination tools had been

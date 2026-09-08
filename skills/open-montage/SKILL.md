@@ -46,6 +46,7 @@ Describe your video idea. The agent orchestrates the entire production pipeline:
 
 ## When Not to Use
 
+- For an audience-targeted explainer of the current codebase with local GPU footage — use `codebase-video`.
 - For simple image generation — use `art` (Nano Banana 2) or `comfyui`
 - For video transcoding/editing only — use `ffmpeg-processing`
 - For academic diagrams — use `paperbanana`
@@ -185,7 +186,7 @@ cost_governance:
 | Image gen | `art` | Nano Banana 2 for stylised thumbnails and editorial art |
 | Post-production | `ffmpeg-processing` | Direct overlap — can use either |
 | Narration review | `notebooklm` | Generate audio overview of script for review |
-| Script quality | `codex-companion` | Cross-model review of script via GPT-5.4 |
+| Script quality | `codex-companion` | Cross-model review of script via GPT-6 Astra |
 
 ## Troubleshooting
 

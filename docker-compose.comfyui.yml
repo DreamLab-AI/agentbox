@@ -1,0 +1,40 @@
+# Standalone local GPU sidecar; shares the network used by agentbox.
+services:
+  comfyui:
+    build:
+      context: ./comfyui-sidecar
+    image: agentbox-comfyui:local
+    container_name: comfyui
+    restart: unless-stopped
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['${COMFYUI_GPU_DEVICE:-0}']
+              capabilities: [gpu]
+    volumes:
+      - comfyui-models:/opt/ComfyUI/models
+      - comfyui-output:/opt/ComfyUI/output
+      - comfyui-input:/opt/ComfyUI/input
+      - comfyui-user:/opt/ComfyUI/user
+    networks: [agentbox]
+    ports: ['127.0.0.1:8188:8188']
+    shm_size: 8gb
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=5)']
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+networks:
+  agentbox:
+    external: true
+    name: ${COMFYUI_NETWORK:-agentbox_default}
+volumes:
+  comfyui-models:
+  comfyui-output:
+  comfyui-input:
+  comfyui-user:
