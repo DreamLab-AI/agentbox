@@ -107,6 +107,22 @@ cases, not tests that repeat implementation expressions.
   injected forge response cannot prove authentication, branch protection, PR
   creation, merge or a healthy hosting deployment.
 
+- Check the state after a successful recovery command, including newly created
+  objects. In the pilot, restoring a database dump recovered an existing row but
+  left a table created by the failed migration; a zero exit status had been
+  reported as complete rollback. Exercise both modifications to existing objects
+  and additions absent from the backup. Keep residual state and operator recovery
+  visible even when the workspace itself is clean.
+
+- Distinguish the version displayed for review from a binding recorded after the
+  approval arrives. The pilot accepted changed migration SQL from a stale screen.
+  An actual browser drill revised the server row after the read, submitted the
+  earlier review version and verified refusal before database or approval-audit
+  effects; a refreshed review then reached execution. Explain what the fingerprint
+  covers and what it cannot observe, such as unrecorded filesystem changes.
+  Inspect awaited boundaries too: a healthy audit preflight did not guarantee the
+  approval append succeeded, and its returned failure needed to stop execution.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
