@@ -100,6 +100,13 @@ cases, not tests that repeat implementation expressions.
   status sentence too: a bound review approval was incorrectly presented as
   publication underway, although no publish action had occurred.
 
+- Verify rollback separately at each side-effect destination. A failed PR-opening
+  step after a real Git push restored the local workspace but left the remote
+  draft branch intact. Record local files, current branch, remote draft and base
+  branch independently. A disposable bare remote can prove Git effects; an
+  injected forge response cannot prove authentication, branch protection, PR
+  creation, merge or a healthy hosting deployment.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
