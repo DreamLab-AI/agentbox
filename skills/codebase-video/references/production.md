@@ -1,5 +1,20 @@
 # Production manifest and delivery
 
+## Invocation defaults
+
+An invocation such as “codebase video” selects the full production workflow.
+The user supplies the audience, context, per-request MP4 destination and any
+constraints. Choose the runtime needed to explain the material to that audience;
+there is no default 60–90 second limit. Set scene durations from measured narration
+and the required visual pacing. An explicitly requested duration takes precedence.
+
+Screenshots, diagrams, appropriate Blender animation, a local ComfyUI hero,
+narration, captions, evidence, review and the editable project are defaults.
+Use the installed H3 profile after compatibility checks unless the user chooses
+another model. Manage GPU staging and job recovery as part of production.
+Keep the editable project together, then copy the validated MP4 to the destination
+specified for this invocation and verify the copied file's hash.
+
 ## Project layout
 
 Keep the project next to the nominated repository or in the user's output folder:

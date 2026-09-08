@@ -10,6 +10,12 @@ repository in the current working directory. Tailor the story to the nominated
 audience. A storyboard, silent montage or unreviewed render is an intermediate
 artifact, not the completed request.
 
+Asking for **codebase video** invokes the complete process below by default.
+The user supplies the audience, relevant context and the final MP4 destination
+for that request, plus any explicit constraints. Source grounding, visual asset
+production, local generation, narration, captions, verification and the editable
+project are the skill's responsibility; they need no additional prompt wording.
+
 ## Ground the story
 
 Read the repository's instructions, entrypoints, README, relevant implementation
@@ -19,10 +25,11 @@ where useful, line ranges in `research.md`. Do not send private source files to
 external generation services. Prompts for local hero scenes should contain visual
 descriptions rather than repository contents.
 
-Use the user's audience, purpose, duration and brand constraints. If only an
-audience is given, aim for a focused 60–90 second explanation and state that
-assumption. If the audience is absent, inspect context and ask one short question
-while gathering evidence. Explain user outcomes to buyers, concrete interactions
+Use the user's audience, purpose and brand constraints. Let the material and the
+audience's needs determine the video's length, then derive scene timings from
+the narration. Honour an explicit duration constraint when supplied; otherwise
+there is no fixed runtime target. If the audience is absent, inspect context and
+ask one short question while gathering evidence. Explain user outcomes to buyers, concrete interactions
 to users, and interfaces/data flow/tradeoffs to engineers. Do not narrate a
 README's claims as tested behaviour.
 
@@ -32,6 +39,10 @@ ComfyUI workflow JSON and runtime receipts together. Read
 [the manifest and production reference](references/production.md) before planning
 or composing. Read [seed design decisions](references/seed-design.md) only when
 extending the implementation or evaluating alternative renderers.
+
+Use the final MP4 destination specified for the current request. If it is missing,
+ask while progressing with research and production. After validation, copy the
+finished MP4 there and verify that its hash matches the project export.
 
 ## Produce the scenes
 
@@ -50,13 +61,18 @@ understandable mechanism and a useful next action. Plan a varied visual sequence
   current video workflow reference, probe the sidecar and installed models, and
   follow the model download and smoke-test path before committing to a model.
   Save the API workflow, model identity, seed, prompt ID, history and downloaded
-  output. Include at least one actual local model-generated hero when requested;
+  output. Use the installed H3 profile by default after checking service/model
+  compatibility; follow an explicitly requested model choice. Include at least
+  one actual local model-generated hero by default unless the user opts out;
   a colour card or stock clip does not satisfy that requirement. Check current
   official model sources before calling a model state of the art.
 - Use **blender** when explanatory 3D geometry, camera moves or spatial mechanisms
   clarify the topic. Render a short deterministic clip or guide frames for
   ComfyUI; follow its video handoff reference. Coordinate GPU use: finish and
   unload the heavy model before a Blender render if VRAM is tight.
+  Stage and unload models between phases as needed; use a second available GPU
+  when necessary, following the ComfyUI device-selection reference. Preserve
+  receipts and resume the same submitted job after an observation timeout.
 
 Generate narration **before locking durations**, using an available local TTS
 service or user recordings. The optional `scripts/narrate.py` helper runs

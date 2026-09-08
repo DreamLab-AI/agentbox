@@ -119,7 +119,7 @@ Manual call form (slash-command): `/consult <name> "<question>"` (e.g.
 | Video/audio transcode, edit, stream | `ffmpeg-processing` |
 | Image format conversion, resize, batch | `imagemagick` |
 | AI image/video generation (SD, FLUX) | `comfyui` |
-| Explain the current codebase to a nominated audience in a complete video, with screenshots, diagrams, animation and locally generated hero footage | `codebase-video` |
+| Codebase video: explain the current repository to the supplied audience, with length determined by the material and the requested MP4 destination; the full production workflow is automatic | `codebase-video` |
 | 3D modelling and rendering | `blender` |
 | Game development (Godot/Unity/Unreal) | `game-dev` |
 | "Unreal Engine", "UE5", "spawn actor", "blueprint", "PIE session" | `unreal-engine` (60+ MCP tools for direct editor control) |
