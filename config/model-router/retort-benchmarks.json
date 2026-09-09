@@ -1,0 +1,58 @@
+{
+  "_meta": {
+    "purpose": "Retort project benchmark findings ingested as routing heuristics for the ADR-2080 model-router console. These are EXTERNAL measurements from adrianco/retort (Adrian Cockcroft), not our own benchmarks — we trust the ranking, not the absolute numbers.",
+    "source": "https://github.com/adrianco/retort",
+    "source_blog": "https://github.com/adrianco/retort/blob/main/model-blog.md",
+    "ingested": "2026-09-09",
+    "methodology": "Controlled factorial experiments: language × model × effort × prompt methodology. Easy task = REST API CRUD (bookshop); hard task = Brazilian-soccer MCP server (12 capabilities). 13 languages, 258+ scored runs. Key metric: requirement_coverage (binary 1.00 or fail), plus code_quality, test_coverage, defect_rate, maintainability, cost_usd, duration_seconds.",
+    "caveat_agent_vs_api": "All costs are AGENT-LEVEL (total per-run including all API calls in the agentic loop), not raw per-token API costs. codex agents stay terse (10-19 turns regardless of effort); claude-code agents scale with effort (15-140 turns). This makes per-token list price a poor proxy for per-task cost.",
+    "caveat_judge_bias": "Retort uses its own scoring rubric; absolute scores are not directly comparable to the ruflo seed corpus judge (Sonnet 4.6 LLM-judged 5-criterion rubric). Trust the RANKING and cost ratios, not absolute quality numbers."
+  },
+  "routine_task_ranking": {
+    "description": "Easy (REST API CRUD), low effort, all models at requirement_coverage 1.00 — cost and speed are the only differentiators",
+    "models": [
+      { "name": "Qwen3-Coder 80B", "agent": "hermes", "provider": "local", "cost_usd_per_run": 0.00, "duration_s": 600, "coverage": 1.00, "languages_tested": ["python", "go", "typescript"], "note": "local-only, limited language support" },
+      { "name": "GPT-5.6 Terra",    "agent": "codex",  "provider": "openai", "cost_usd_per_run": 0.19, "duration_s": null, "coverage": 1.00, "note": "cheapest cloud; steps do not scale with effort (10-19 turns flat)" },
+      { "name": "GPT-6 Astra",      "agent": "codex",  "provider": "openai", "cost_usd_per_run": 0.79, "duration_s": null, "coverage": 1.00, "note": "exp-72: 1.64x cheaper than Fable 5.1, 1.69x slower; $50/M list but codex terse" },
+      { "name": "Opus 4.7",         "agent": "claude-code", "provider": "anthropic", "cost_usd_per_run": 0.92, "duration_s": null, "coverage": 1.00 },
+      { "name": "Opus 4.8",         "agent": "claude-code", "provider": "anthropic", "cost_usd_per_run": 0.93, "duration_s": null, "coverage": 1.00 },
+      { "name": "Sonnet 5",         "agent": "claude-code", "provider": "anthropic", "cost_usd_per_run": 1.10, "duration_s": null, "coverage": 1.00 },
+      { "name": "Fable 5.1",        "agent": "claude-code", "provider": "anthropic", "cost_usd_per_run": 1.30, "duration_s": null, "coverage": 1.00 },
+      { "name": "Opus 5",           "agent": "claude-code", "provider": "anthropic", "cost_usd_per_run": 3.23, "duration_s": null, "coverage": 1.00 }
+    ],
+    "cost_ranking": "Terra << Astra < Opus4.7 ~ Opus4.8 < Sonnet5 < Fable5.1 < Opus5",
+    "speed_ranking_worst_last": "Astra is slowest (1.69x slower than Fable)"
+  },
+  "hard_task_ranking": {
+    "description": "Hard (12-capability MCP server), reliability diverges — model choice is a reliability decision, not a cost decision",
+    "models": [
+      { "name": "Opus 5",    "agent": "claude-code", "pass_rate": 1.00, "cost_usd_per_run": 26.48, "note": "reliable but 2.5x pricier than Fable for same result" },
+      { "name": "Fable 5",   "agent": "claude-code", "pass_rate": 1.00, "cost_usd_per_run": 10.47, "note": "BEST cost-reliability: same 1.00 as Opus 5 at 40% of cost" },
+      { "name": "Sonnet 5",  "agent": "claude-code", "pass_rate": 0.93, "cost_usd_per_run": 7.64,  "note": "best reliability-per-dollar if 0.93 is acceptable" },
+      { "name": "Opus 4.8",  "agent": "claude-code", "pass_rate": 0.59, "cost_usd_per_run": 3.27 },
+      { "name": "Opus 4.7",  "agent": "claude-code", "pass_rate": 0.40, "cost_usd_per_run": 2.95 },
+      { "name": "Qwen3-Coder 80B", "agent": "hermes", "pass_rate": 0.00, "cost_usd_per_run": 0.00, "note": "local model cannot handle hard tasks" }
+    ],
+    "note": "Terra and Astra not yet tested on hard tasks by Retort"
+  },
+  "effort_cost_scaling": {
+    "description": "Same routine task (1.00 coverage everywhere) — how cost scales with effort level. Key finding: codex/Terra stays FLAT, claude-code/Opus explodes.",
+    "terra_vs_opus5": [
+      { "effort": "low",    "terra_usd": 0.19, "opus5_usd": 0.81,  "ratio": 4.3 },
+      { "effort": "medium", "terra_usd": 0.15, "opus5_usd": 1.15,  "ratio": 7.5 },
+      { "effort": "high",   "terra_usd": 0.18, "opus5_usd": 1.84,  "ratio": 10.4 },
+      { "effort": "max",    "terra_usd": 0.35, "opus5_usd": 14.21, "ratio": 40.1 }
+    ],
+    "explanation": "Terra/codex uses 10-19 agent turns regardless of effort; Opus/claude-code scales from 15 to 140 turns. Agent verbosity is the dominant cost driver, not per-token price."
+  },
+  "routing_heuristics": {
+    "h1_routine_cheapest_wins": "For routine/easy tasks all tested models achieve 1.00 requirement_coverage. Optimise purely for cost: local > Terra > Astra > Claude tiers. Leave effort at LOW — proven-reliable work matches max-effort reliability at a fraction of cost.",
+    "h2_hard_fable_over_opus": "For hard/complex tasks Fable 5 matches Opus 5 reliability (both 1.00) at 40% of the cost ($10.47 vs $26.48). Prefer Fable for hard tasks unless Opus-specific capabilities are needed.",
+    "h3_budget_hard_sonnet": "Budget-constrained hard tasks: Sonnet 5 at 0.93 pass rate for $7.64 is the best reliability-per-dollar trade-off.",
+    "h4_language_not_model": "Language choice drives code quality (94-96% of variance), NOT model choice. Model drives requirement_coverage (reliability). Do not upgrade model tier for 'better code' — that is wasted money.",
+    "h5_fast_mode_routine_only": "Fast mode (Opus 4.8 vs 4.7) gives 20-40% speed gain on routine tasks but 26-48% cost increase, and NO speed gain on hard tasks. Use only when a human is waiting on routine work.",
+    "h6_agent_verbosity_multiplier": "Agent architecture dominates cost more than per-token price. codex stays terse at any effort; claude-code token usage scales superlinearly with effort. A $50/M-token model via a terse agent can be cheaper per task than a $3/M-token model via a verbose agent.",
+    "h7_tdd_free_quality": "TDD prompting is a nearly-free quality knob for cloud models. ATDD actively hurts local models.",
+    "h8_repair_amplifies_not_creates": "Self-repair loops double local model pass rates for languages the model partially knows; zero improvement on unsupported languages. Repair amplifies competence, does not create it."
+  }
+}

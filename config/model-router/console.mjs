@@ -189,6 +189,10 @@ const status = await neuralRouterStatus();
 const alts = JSON.parse(fs.readFileSync(path.join(ASSETS, 'openrouter-alts.json'), 'utf8'));
 const provenance = fs.existsSync(path.join(ASSETS, 'seed-rows.provenance.json'))
   ? JSON.parse(fs.readFileSync(path.join(ASSETS, 'seed-rows.provenance.json'), 'utf8')) : {};
+const CONSOLE_DIR = path.dirname(new URL(import.meta.url).pathname);
+const RETORT_PATH = path.join(CONSOLE_DIR, 'retort-benchmarks.json');
+const retort = fs.existsSync(RETORT_PATH)
+  ? JSON.parse(fs.readFileSync(RETORT_PATH, 'utf8')) : null;
 
 if (!status.available) die(`neural router unavailable: ${status.reason || 'unknown'}`, `artefacts: ${ASSETS}`);
 
@@ -198,10 +202,11 @@ function banner() {
   say(c.dim(`  corpus    ${provenance.rows ?? '?'} rows, embedder ${provenance.embedder ?? 'MiniLM'}, measured ${String(provenance.measured_at ?? '').slice(0, 10)}`));
   say(c.dim(`  provider  ${PROVIDER} · quality bar ${process.env.CLAUDE_FLOW_ROUTER_QUALITY_BAR} · cost ceiling ${process.env.CLAUDE_FLOW_ROUTER_COST_CEILING_USD_PER_MTOK} $/MTok · state ${STATE_DIR}`));
   say(c.yellow(`  PUBLIC WORK ONLY — every task leaves the LAN to ${PROVIDER}. ${DRY ? 'DRY-RUN: route only, no provider calls.' : ''}`));
+  if (retort) say(c.dim(`  retort   ${retort._meta?.source ?? 'adrianco/retort'} ingested ${retort._meta?.ingested ?? '?'} — routine: cheapest wins; hard: Fable > Opus on cost/reliability`));
   say(c.dim(`  ready in ${Date.now() - t0} ms`));
 }
 if (STATUS_ONLY) {
-  process.stdout.write(JSON.stringify({ ok: true, assets: ASSETS, stateDir: STATE_DIR, provider: PROVIDER, dryRun: DRY, router: status, provenance }, null, 2) + '\n');
+  process.stdout.write(JSON.stringify({ ok: true, assets: ASSETS, stateDir: STATE_DIR, provider: PROVIDER, dryRun: DRY, router: status, provenance, retort: retort ? { ingested: retort._meta?.ingested, source: retort._meta?.source, heuristics: Object.keys(retort.routing_heuristics || {}) } : null }, null, 2) + '\n');
   process.exit(0);
 }
 
@@ -226,16 +231,39 @@ function slugForTier(tier) {
 }
 const taskHash = (s) => createHash('sha256').update(s).digest('hex').slice(0, 12);
 
+// Retort complexity thresholds — below ROUTINE, all models pass (cheapest wins);
+// above HARD, reliability premium applies (Fable > Opus on cost/reliability).
+const RETORT_CX_ROUTINE = 0.3;
+const RETORT_CX_HARD = 0.6;
+
 async function route(task) {
   const embedding = await embed(task);
   const t1 = Date.now();
   const r = await router.route(task, embedding);
-  const tier = TIER_ORDER.includes(r.model) ? r.model : 'sonnet';
-  const modelId = r.modelId || r.openrouterModel || slugForTier(tier);
+  let tier = TIER_ORDER.includes(r.model) ? r.model : 'sonnet';
+  let modelId = r.modelId || r.openrouterModel || slugForTier(tier);
+  let routedBy = r.routedBy;
+  const cx = Number(r.complexity?.toFixed?.(3) ?? r.complexity);
+
+  // Retort-driven tier adjustment: complexity-aware model selection.
+  // h1: routine tasks pass on all models — force cheapest tier.
+  // h2: hard tasks need reliability — never use the cheapest tier.
+  if (retort) {
+    if (cx < RETORT_CX_ROUTINE && tier !== 'haiku') {
+      tier = 'haiku';
+      modelId = slugForTier('haiku');
+      routedBy += '+retort-h1';
+    } else if (cx > RETORT_CX_HARD && tier === 'haiku') {
+      tier = 'sonnet';
+      modelId = slugForTier('sonnet');
+      routedBy += '+retort-h2';
+    }
+  }
+
   const d = {
     task, task_hash: taskHash(task), tier, modelId,
-    provider: r.provider || PROVIDER, routedBy: r.routedBy,
-    confidence: Number(r.confidence?.toFixed?.(3) ?? r.confidence), complexity: Number(r.complexity?.toFixed?.(3) ?? r.complexity),
+    provider: r.provider || PROVIDER, routedBy,
+    confidence: Number(r.confidence?.toFixed?.(3) ?? r.confidence), complexity: cx,
     predictedQuality: r.predictedQuality ?? null,
     alternatives: (r.alternatives || []).map((a) => ({ tier: a.model, modelId: a.modelId || slugForTier(a.model), score: Number((a.score ?? a.predictedQuality ?? 0).toFixed?.(3) ?? 0) })),
     routeMs: Date.now() - t1,
@@ -311,11 +339,16 @@ function recordOutcome(decision, outcome) {
 }
 
 function printDecision(d) {
-  if (JSON_OUT) { process.stdout.write(JSON.stringify({ type: 'decision', ...d }) + '\n'); return; }
+  if (JSON_OUT) { process.stdout.write(JSON.stringify({ type: 'decision', ...d, retort_hint: retort ? (d.complexity < 0.3 ? 'routine-cheapest-wins' : d.complexity > 0.6 ? 'hard-reliability-premium' : null) : null }) + '\n'); return; }
   const cost = costFor(d.tier, d.modelId);
   say(c.cyan('→ route') + `  ${c.bold(d.modelId)}  ${c.dim(`[bandit tier ${d.tier} · ${d.provider} · ${d.routedBy} · conf ${d.confidence} · cx ${d.complexity} · ${d.routeMs} ms · $${cost.inUsd}/$${cost.outUsd} per MTok in/out]`)}`);
   if (d.unavailablePick) say(c.yellow(`  router picked ${d.unavailablePick} but the live model list does not offer it — using ${d.modelId}`));
   if (d.alternatives.length) say(c.dim('  alternatives: ' + d.alternatives.map((a) => `${a.tier}=${a.modelId} (${a.score})`).join(' · ')));
+  if (retort) {
+    const cx = d.complexity ?? 0;
+    if (cx < 0.3) say(c.dim('  retort: routine-complexity task — all models pass, cheapest wins (h1)'));
+    else if (cx > 0.6) say(c.dim('  retort: high-complexity task — reliability premium applies; Fable > Opus on cost/reliability (h2)'));
+  }
 }
 function printResult(d, r) {
   if (JSON_OUT) { process.stdout.write(JSON.stringify({ type: 'result', task_hash: d.task_hash, ...r, output: undefined, outputChars: r.output.length }) + '\n'); process.stdout.write(r.output + '\n'); return; }
@@ -389,12 +422,19 @@ rl.on('line', async (line) => {
     if (!s) return;
     if (s === '/quit' || s === '/exit') { rl.close(); return; }
     if (s === '/help') {
-      say('  /file <path>   attach a file as context for the next task\n  /dry on|off    route only / route + execute\n  /verdict s|f|e record success / failure / escalate for the last answer (default: success)\n  /escalate      re-run the last task one tier up\n  /status        router backend + artefact status\n  /quit');
+      say('  /file <path>   attach a file as context for the next task\n  /dry on|off    route only / route + execute\n  /verdict s|f|e record success / failure / escalate for the last answer (default: success)\n  /escalate      re-run the last task one tier up\n  /retort        show Retort price-performance heuristics\n  /status        router backend + artefact status\n  /quit');
       return;
     }
     if (s.startsWith('/file ')) { const p = s.slice(6).trim(); attached = fs.readFileSync(p, 'utf8'); say(c.dim(`  attached ${p} (${attached.length} chars)`)); return; }
     if (s.startsWith('/dry')) { const v = s.split(/\s+/)[1]; if (v === 'off' && EGRESS_OFF) { say(c.yellow('  AGENTBOX_EGRESS=0 — cannot leave dry-run')); return; } DRY = v !== 'off'; say(c.dim(`  dry-run ${DRY ? 'on' : 'off'}`)); return; }
-    if (s === '/status') { say(JSON.stringify({ router: status, assets: ASSETS, stateDir: STATE_DIR, provider: PROVIDER, dryRun: DRY }, null, 2)); return; }
+    if (s === '/status') { say(JSON.stringify({ router: status, assets: ASSETS, stateDir: STATE_DIR, provider: PROVIDER, dryRun: DRY, retort: retort ? { ingested: retort._meta?.ingested, source: retort._meta?.source } : null }, null, 2)); return; }
+    if (s === '/retort') {
+      if (!retort) { say(c.yellow('  retort-benchmarks.json not found')); return; }
+      say(c.bold('Retort price-performance heuristics') + c.dim(`  (${retort._meta?.source}, ingested ${retort._meta?.ingested})`));
+      say(c.dim('  routine cost: ' + (retort.routine_task_ranking?.cost_ranking || '(no data)')));
+      for (const [k, v] of Object.entries(retort.routing_heuristics || {})) say(`  ${c.cyan(k)}: ${v}`);
+      return;
+    }
     if (s.startsWith('/verdict')) {
       if (!last || !last.r) { say(c.yellow('  nothing to record')); return; }
       const v = (s.split(/\s+/)[1] || 's')[0];

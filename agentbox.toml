@@ -1051,6 +1051,9 @@ release           = "claude:claude-sonnet-5" # kit-originated activity (no upstr
 enabled                   = true
 provider                  = "openrouter"   # openrouter | anthropic (anthropic = Claude tiers only)
 quality_bar               = 0.50           # 0.25 always-cheapest … 0.70 quality-strict (ADR-149 measured default)
+                                           # Retort (2026-09-09): routine tasks pass on ALL models — bar 0.25-0.35
+                                           # routes to cheapest without reliability loss. Hard tasks need bar ≥0.60.
+                                           # See config/model-router/retort-benchmarks.json for full data.
 cost_ceiling_usd_per_mtok = 0              # blended $/MTok ceiling; 0 = off (5 = cheap+mid only, 20 = no Sonnet/Opus)
 privacy_tier              = "public"       # the ONLY accepted value; the console exits on anything else
 trajectory                = true           # DRACO-shaped rows → ruflo promotion-gate analyser
