@@ -155,6 +155,15 @@ cases, not tests that repeat implementation expressions.
   omitted reporting views and broke the dashboard, even though the inbox worked.
   Record those exclusions before claiming a complete local installation.
 
+- Budget generated media from a measured production shot, not the smoke test.
+  The pilot's H3 smoke completed in 47.73 seconds; its larger 8.708-second shot
+  took 23 minutes 45 seconds on the available A6000. A busy default GPU did not
+  require disturbing the shared service: an isolated worker reused verified
+  weights read-only on the free card, retained queue/history receipts, and was
+  stopped after download. Check progress on the same job after observation
+  timeouts. Keep the compressed illustrative source with the editable project,
+  and keep its provenance separate from factual screenshots and narration.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
