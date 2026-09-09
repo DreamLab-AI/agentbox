@@ -26,6 +26,14 @@ journey, connect the user's intent to the visible surface, API or command,
 permission decision, state/data change, verification and failure/recovery path.
 Scale the curriculum to the product; do not force a fixed chapter count.
 
+When the user prioritises simplification, apply it to both implementation and
+teaching. Prefer an existing path and a bounded fix for a demonstrated problem.
+Add an abstraction, dependency, configuration option or production helper only
+when its concrete benefit justifies the maintenance cost. Preserve useful
+features and requested evidence. Extend the investigation when it resolves a
+reader's question, tests an important claim or diagnoses an observed failure;
+record other unverified cases as limits rather than an ever-growing backlog.
+
 ## Compose the specialist skills
 
 This is an orchestration skill. **Invoke the relevant specialist by reading its
