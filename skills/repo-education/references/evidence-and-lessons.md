@@ -164,6 +164,15 @@ cases, not tests that repeat implementation expressions.
   timeouts. Keep the compressed illustrative source with the editable project,
   and keep its provenance separate from factual screenshots and narration.
 
+- For browser persistence proofs, wait for the new document before checking its
+  fields; a navigation command can return while the old DOM is still visible.
+  Select the intended record by stable identity after reload, rather than assuming
+  database row order. The brand pilot needed both corrections before its capture
+  reliably matched the saved record. Verify a reversible edit through the API
+  response, reloaded UI and independent storage read, then restore it through the
+  same surface. If the API submits a full record, limit restoration claims to the
+  fields actually compared.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
