@@ -6,6 +6,10 @@ used by the pilot; equivalent available skills can fill a capability. If one is
 missing, discover it before choosing a fallback. Do not fabricate outputs or
 claim a skill ran when only a plan was written.
 
+Pass the entrypoint's direct HP Qwen language/vision policy to specialists that
+draft or inspect content. Rendering, speech synthesis and generated visual assets
+still use their dedicated tools; no specialist silently adds Loom or a cloud LLM.
+
 | Work | Skill to invoke | Input handoff | Required result |
 |---|---|---|---|
 | Microsite visual system | open-design | Audience, concern entry points, density, offline/brand constraints | Local design tokens, functioning reading layout and browser critique |

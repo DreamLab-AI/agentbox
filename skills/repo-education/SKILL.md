@@ -1,6 +1,6 @@
 ---
 name: repo-education
-description: Build a repository-bundled instructional microsite that teaches an unfamiliar codebase through design rationale, evidence-linked source panes, verified runtime journeys, diagrams and narrated videos. Use for developer onboarding, client due diligence and closing a code comprehension gap; not for a single README or standalone video.
+description: Build a repository-bundled instructional microsite using direct HP Qwen language and vision, with design rationale, evidence-linked source panes, verified runtime journeys, diagrams and narrated videos. Use for developer onboarding, client due diligence and closing a code comprehension gap; not for a single README or standalone video.
 ---
 
 # Repository Education
@@ -67,6 +67,21 @@ platform or pack as complete while it remains. Honest technical boundaries and
 evidence scope still matter: they must not disguise unfinished requirements or
 justify unsupported claims. Keep the internal completion audit separate from the
 finished teaching narrative.
+
+## Use HP Qwen for language and vision
+
+Use the HP-hosted local Qwen model for evidence synthesis, section drafting and
+visual inspection in the same multimodal workflow. Call its direct llama.cpp
+interface without the Loom facade, ontology scaffold or automatic cloud fallback.
+The controlling agent gathers evidence, runs tools and independently checks the
+result; a model response is not runtime evidence or permission to edit product code.
+
+Read [hp-qwen.md](references/hp-qwen.md) before the first model call. Discover the
+actual model and vision capability; a familiar model name or a text-only response
+does not establish combined mode. Use bounded source excerpts and real captures
+for one reader question at a time, retain exact source locations, and qualify a
+representative section before batching the pack. Keep this model policy scoped to
+skill runs; do not change the enclosing session's model or other services.
 
 ## Compose the specialist skills
 

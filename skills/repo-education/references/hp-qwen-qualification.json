@@ -1,0 +1,147 @@
+{
+  "date": "2026-09-09",
+  "decision": "Qualified for supervised source-grounded section drafting and visual inspection; each section still requires independent source and evidence checks. No unattended acceptance.",
+  "transport": "SSH to HP, docker exec into owned network-none CPU container; direct llama.cpp, no Loom request",
+  "residentServiceChanged": false,
+  "model": {
+    "servedAlias": "repo-education-qwen-vision",
+    "weights": "/models/qwen3.8-27B-heretic/RVN-Q8_0.gguf",
+    "quantization": "Q8_0",
+    "weightsBytes": 28584769536,
+    "weightsDigest": "Not independently hashed in this qualification; path and loaded model metadata recorded.",
+    "projector": "/models/qwen3.8-27B/mmproj-BF16.gguf",
+    "projectorSha256": "83ee4f4f205fa514161778c41df1ea14144faa0f713510893b63c2395f5c2d53",
+    "templateSha256": "12827f24b742ea4e80cdc12dbcf9622227056b9f797252a3149263d4f9aaadce",
+    "imageId": "sha256:62b263c9d21998044604260bb6dad02d6d59dd2bd34c6bfe361f3f2007c2e79e",
+    "serverBuild": "b1-cc83d7b",
+    "context": 8192,
+    "threads": 16,
+    "vision": true
+  },
+  "input": {
+    "codeSha256": "f94d9b23538c392bc6d357cc0c575414dd136105c6e05b7c0b950bd1dc4cc501",
+    "screenshotSha256": "5dc94f6071aa112f2002a0fd2abb6a2727d5ba2c7625c290eedb7e3cb45c26b8",
+    "sourceRanges": [
+      [
+        1912,
+        1945
+      ],
+      [
+        11454,
+        11496
+      ]
+    ],
+    "referenceSection": "authoring.html#section-edit"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "assessment": "Rejected: reasoning consumed the answer budget; no completed section.",
+      "finishReason": "length",
+      "usage": {
+        "completion_tokens": 650,
+        "prompt_tokens": 2732,
+        "total_tokens": 3382,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 2732,
+        "prompt_ms": 107039.697,
+        "prompt_per_token_ms": 39.179976939970715,
+        "prompt_per_second": 25.52324115790425,
+        "predicted_n": 650,
+        "predicted_ms": 210313.585,
+        "predicted_per_token_ms": 324.0579121725732,
+        "predicted_per_second": 3.0858681810782698
+      },
+      "wallSeconds": 317.5591192529537,
+      "responseSha256": "1f6f68286ddc3484ca9aae9bfac7f3c7797d2c3fbfa959fcc52179744ef71683"
+    },
+    {
+      "attempt": 2,
+      "assessment": "Completed JSON and exact visual facts; rejected wording implying confirmed persistence.",
+      "finishReason": "stop",
+      "usage": {
+        "completion_tokens": 348,
+        "prompt_tokens": 2614,
+        "total_tokens": 2962,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 2614,
+        "prompt_ms": 101715.931,
+        "prompt_per_token_ms": 38.91198584544759,
+        "prompt_per_second": 25.6990225061205,
+        "predicted_n": 348,
+        "predicted_ms": 106961.158,
+        "predicted_per_token_ms": 308.2454121037464,
+        "predicted_per_second": 3.244168317624235
+      },
+      "wallSeconds": 208.8875166971702,
+      "responseSha256": "5168123117cb4d3b458ab6e2070de57a11c89eec44780300cd3851dbd8476f9d"
+    },
+    {
+      "attempt": 3,
+      "assessment": "Accepted content after source review; retained JSON format recorded separately.",
+      "finishReason": "stop",
+      "usage": {
+        "completion_tokens": 250,
+        "prompt_tokens": 3077,
+        "total_tokens": 3327,
+        "prompt_tokens_details": {
+          "cached_tokens": 2961
+        }
+      },
+      "timings": {
+        "cache_n": 2961,
+        "prompt_n": 116,
+        "prompt_ms": 5004.774,
+        "prompt_per_token_ms": 43.144603448275866,
+        "prompt_per_second": 23.177869769943655,
+        "predicted_n": 250,
+        "predicted_ms": 63136.898,
+        "predicted_per_token_ms": 253.56183935742973,
+        "predicted_per_second": 3.9438111134316416
+      },
+      "wallSeconds": 68.352766337106,
+      "responseSha256": "645b08095e131898aa73ffdab60c395210b53fc56faebadb32ae008f087e889a"
+    }
+  ],
+  "quality": {
+    "visualHeadline": "Exact; absent from textual evidence",
+    "selectedPanel": "Exact: Component",
+    "sourceCitations": {
+      "web-surface/components/campaign-builder.tsx:11462": "updateActiveThemeDraft(",
+      "web-surface/components/campaign-builder.tsx:1912": "if (!activeCampaignId) {",
+      "web-surface/components/campaign-builder.tsx:1935": "const timeout = window.setTimeout(() => {",
+      "web-surface/components/campaign-builder.tsx:1945": "return () => window.clearTimeout(timeout);"
+    },
+    "claimReview": "Final text describes local draft updates, hydration guards, debounce and timer cleanup without asserting successful persistence or deployment.",
+    "editorialReview": "Concise delivered-state explanation, no remediation history.",
+    "formatObservation": "The follow-up requested a plain paragraph but the model retained the original JSON schema. Keep the output contract consistent across revisions and parse/validate it.",
+    "firstDraftAccepted": false,
+    "acceptedAfterClaimRevision": true
+  },
+  "acceptedSection": {
+    "visible_headline": "A clear onboarding plan for the whole team",
+    "selected_panel": "Component",
+    "explanation": "The screenshot shows the 'Component' panel selected with the 'Headline' field active in the Hero section. Editing this field triggers a local state update via updateActiveThemeDraft, which modifies the section's draft data and field maps. This change initiates an autosave sequence guarded by checks for an activeCampaignId, hydration status, and page initialization. If these conditions pass, an 800ms debounce timer is set. Upon expiration, the system logs the event and calls persistPageState to schedule persistence. The effect also returns a cleanup function to clear the timer if the component unmounts or dependencies change before the delay completes.",
+    "source_lines": [
+      "web-surface/components/campaign-builder.tsx:11462",
+      "web-surface/components/campaign-builder.tsx:1912",
+      "web-surface/components/campaign-builder.tsx:1935",
+      "web-surface/components/campaign-builder.tsx:1945"
+    ]
+  },
+  "cleanup": {
+    "scratchDeleted": true,
+    "ownedContainerAbsent": true,
+    "residentHealth": "ok"
+  }
+}
