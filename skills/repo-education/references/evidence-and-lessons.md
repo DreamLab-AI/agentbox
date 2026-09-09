@@ -140,6 +140,21 @@ cases, not tests that repeat implementation expressions.
   inputs; supply current defaults or explicitly construct the malformed runtime
   record rather than weakening production schemas to fit an old fixture.
 
+- Trace a successful form beyond its confirmation screen. In the pilot, a page
+  and its submission handler resolved different legacy field IDs; unit suites
+  passed while a filled browser form failed. Check stored page overrides as well
+  as composed defaults, preserve server-side required-field checks, and join the
+  resulting contact to its submission in the database. Exercise a native form
+  separately when the product promises operation without JavaScript.
+
+- Verify that automation actually entered the values the application received.
+  A native input setter did not reliably update the pilot's reactive form state;
+  browser text-input events plus a retained-value assertion produced a reliable
+  capture. Treat a failed capture script separately from a reproduced product
+  failure. A database clone also has a scope: copying only the public schema
+  omitted reporting views and broke the dashboard, even though the inbox worked.
+  Record those exclusions before claiming a complete local installation.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
