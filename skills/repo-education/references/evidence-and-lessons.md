@@ -173,6 +173,14 @@ cases, not tests that repeat implementation expressions.
   same surface. If the API submits a full record, limit restoration claims to the
   fields actually compared.
 
+- Prefer simplification while repairing the paths uncovered by the walkthrough.
+  Reuse the existing source of truth for a contract instead of adding another
+  registry or parallel implementation. Preserve useful features and authored data;
+  do not confuse smaller code with removed behaviour. The pilot's fallback/save
+  mismatch was repaired by sharing layout rules, and its autosave deadlock by
+  checking the already available page configuration. Neither needed a new subsystem.
+  Keep unrelated findings in the review backlog instead of expanding each repair.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
