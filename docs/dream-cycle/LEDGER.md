@@ -26,3 +26,4 @@
 | 2026-09-07 | operator-handoff | OPERATOR: 8th hook is config/hooks/trust-seed.cjs (79bc6f2a1, 2026-09-02); census now also bash -n *.sh | NONE | NONE | n/a | OPERATOR | answers the 09-04 question; scripts/dream-hooks-syntax.sh | operator |  |
 | 2026-09-07 | ontology-monitor | ontology-monitor untestable: no deep evaluator or scan data; parents true-green | NONE | NONE | yes | INCONCLUSIVE |  | 8f5c4d0989af |  |
 | 2026-09-08 | dream-engine | Baseline 155/155, hooks 10/10, bridge OK; scans surfaced no code — no candidate | NONE | NONE | yes | INCONCLUSIVE |  | de33fddbbea1 |  |
+| 2026-09-09 | hooks-pipeline | fail-open scan empty; hook-syntax census-only; no code surface, no candidate | NONE | NONE | yes | INCONCLUSIVE |  | f5821dac3e5e |  |

@@ -163,8 +163,10 @@ Gotchas that cost a run each:
   `~/.codex/config.toml` says) and put the no-write rule in the brief.
 - **Approval policy is `never`** in exec mode, so MCP tools that need approval
   (`agentbox-memory/memory_search`) fail. Harmless; tell the model not to call them.
-- **Prompt as argument, not stdin.** `codex exec` prints "Reading additional input from
-  stdin..." when stdin is a terminal; when run detached, stdin is closed and it proceeds.
+- **Always close stdin: `< /dev/null`.** `codex exec` prints "Reading additional input from
+  stdin..." and, if stdin is open but silent, waits on it indefinitely with no tool calls
+  and no timeout (a run sat 69 minutes at one log line, 2026-09-09). Redirecting stdin from
+  /dev/null makes it proceed at once. Pass the prompt as the argument.
 - **Always ask for a "Context I still need" section.** A second pass with the listed
   material is cheaper than a first pass that guessed.
 
