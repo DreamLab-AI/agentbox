@@ -76,6 +76,10 @@ interface without the Loom facade, ontology scaffold or automatic cloud fallback
 The controlling agent gathers evidence, runs tools and independently checks the
 result; a model response is not runtime evidence or permission to edit product code.
 
+Read [qwen-prompting.md](references/qwen-prompting.md) when preparing the first
+section packet. Use its shared orientation, evidence distinctions and reusable
+section/review prompts; independently verify the claims before media production.
+
 Read [hp-qwen.md](references/hp-qwen.md) before the first model call. Discover the
 actual model and vision capability; a familiar model name or a text-only response
 does not establish combined mode. Use bounded source excerpts and real captures

@@ -1,0 +1,12 @@
+Task: review and revise the supplied draft against the evidence packet. This is a claim audit, not a style-only rewrite.
+Check every consequential assertion: active implementation, source citation, runtime mode, successful versus attempted action, image content and code/build identity. Look for a missing caller, callee, configuration choice or failure path that changes the meaning. Do not assume the draft is correct because it has citations. A cited test name or function name alone is not proof of the assertion.
+Correct unsupported wording only when the remaining explanation still answers the required reader question. Otherwise return needs_evidence or blocked with the exact dependency. Verify that high-level rationale is supported or labelled as inference, and that the explanation makes sense from a cold start. Keep the same JSON contract; return the complete revised result, not a patch or a different output format.
+
+EVIDENCE PACKET:
+{{evidence_packet}}
+
+DRAFT TO REVIEW:
+{{draft_json}}
+
+INDEPENDENT REVIEW NOTES (if available; verify them against evidence):
+{{review_notes}}

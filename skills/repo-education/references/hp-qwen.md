@@ -65,6 +65,11 @@ GPUs by stopping another workload or silently changing the resource plan.
 
 ## Evidence packet and request
 
+Use [qwen-prompting.md](qwen-prompting.md) and the referenced prompt templates for
+context checking, a consistent output contract and targeted revision. The compact
+request below illustrates transport only; set its answer budget for the actual
+section contract rather than copying the pilot's 650-token cap unchanged.
+
 Give the model a narrow reader question, exact file/line excerpts, declared runtime
 mode and one relevant real screenshot. Supply enough surrounding code to support
 the requested explanation. Avoid entire repositories, repeated full chapters,

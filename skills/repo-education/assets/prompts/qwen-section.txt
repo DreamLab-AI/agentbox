@@ -1,0 +1,6 @@
+Task: prepare one section for the reader question in the evidence packet.
+Check context before drafting. If the active path or a required downstream result is missing, return needs_evidence with a focused request. Preserve independently useful supported explanation even when requesting evidence, without claiming the missing result. When the required evidence is sufficient, write a concise explanation connecting purpose, visible action or entry point, relevant code, authority/state change and observed outcome. Include failure/recovery behaviour only where relevant and evidenced.
+For requested media, suggest treatments tied to the same supported claims. Do not generate a diagram, slide or narration that asserts more than reader_text. Return the standard JSON object.
+
+EVIDENCE PACKET:
+{{evidence_packet}}
