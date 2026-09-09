@@ -123,6 +123,23 @@ cases, not tests that repeat implementation expressions.
   Inspect awaited boundaries too: a healthy audit preflight did not guarantee the
   approval append succeeded, and its returned failure needed to stop execution.
 
+- Follow edited code into verification subprocesses as well as the model worker.
+  The pilot's worker UID could not read private files, but its test runner still
+  ran as the control-plane UID and could. Environment filtering did not prevent
+  that read. After restricting the runner, verify legitimate checks too: build
+  tools need writable scratch output without gaining write access to governing
+  configuration or dependencies. Use the deployed ownership pattern in rehearsal
+  fixtures; a same-user temporary directory missed a prepared-copy failure.
+
+- Extend a minimal demonstration to the full checkout before borrowing its
+  conclusion. The pilot's small TypeScript fixture passed while the tenant had
+  120 compiler errors, even though its production build and runtime tests passed.
+  Distinguish a gate that accepts no new diagnostics from a completely passing
+  check. Preserve complete diagnostics when the displayed output is truncated.
+  When repairing schema drift in tests, retain assertions and intentional legacy
+  inputs; supply current defaults or explicitly construct the malformed runtime
+  record rather than weakening production schemas to fit an old fixture.
+
 ## Still being validated in the pilot
 
 The full narrated media pipeline, complete runtime journeys, whole-curriculum
