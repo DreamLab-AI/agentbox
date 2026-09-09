@@ -8,12 +8,14 @@ the objective to the pages or videos already made.
 | Requirement | Evidence to inspect |
 |---|---|
 | Cold-start teaching | Problem, actors, vocabulary, design rationale and useful independent entry points actually rendered |
+| Delivered-state narrative | Chapters, media, captions, screenshots, diagrams and linked evidence explain final behaviour; no remediation diary, finding IDs or before/after fix stories in the reader path |
+| Delivery blockers | Required behaviour and its verification work; unresolved blockers prevent dependent delivery and are reported with evidence and the input needed to proceed, not recast as limits |
 | Feature/journey coverage | Each requested user/developer journey traced through UI, API/command, state, controls and failure/recovery; omissions explicit |
 | Architecture and code | Reviewed diagram relationships, full-file pane, cited lines, source identity and current drift check |
 | Quality and security | Fresh scoped commands/results, meaningful failure cases, coverage denominator and excluded/unobserved environments |
 | Runtime surfaces | Real captures and actions with mode, input identity and outcomes; synthetic aspects clearly labelled |
 | Narrated media | Every requested clip exists and plays; every scene visually inspected, narration listened to, captions and transcript reviewed |
-| Corrections | Findings reconciled to fixes and checks; affected explanatory media refreshed |
+| Corrections (internal audit) | Findings reconciled to fixes and checks; affected explanatory media refreshed to describe the final product without remediation history |
 | Normal-clone delivery | All required media/source present in a clean copy, no ignored intermediates or external runtime dependency referenced |
 | Site interaction | Links, code switching and line targets, back/forward navigation, errors, keyboard/focus, desktop/mobile and readable screenshots |
 | Reproduction | Build/serve instructions and durable production inputs sufficient for another developer; no accidental secrets or unrelated artifacts |

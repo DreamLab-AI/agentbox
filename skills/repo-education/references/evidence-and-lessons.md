@@ -27,7 +27,8 @@ bug. Where the user authorised fixes, repair it and verify the result; otherwise
 record the finding and required decision. Version control aids recovery but is
 not evidence that a change is correct or that a production mutation is reversible.
 
-Keep before/after evidence for findings. Refresh affected screenshots, narration
+Keep before/after evidence for findings in internal investigation records, not in
+the delivered reader's teaching path. Refresh affected screenshots, narration
 and line references after a fix. Existing tests can be sufficient for copy changes;
 behaviour changes need checks that exercise the trigger and meaningful failure
 cases, not tests that repeat implementation expressions.

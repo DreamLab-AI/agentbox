@@ -32,7 +32,30 @@ Add an abstraction, dependency, configuration option or production helper only
 when its concrete benefit justifies the maintenance cost. Preserve useful
 features and requested evidence. Extend the investigation when it resolves a
 reader's question, tests an important claim or diagnoses an observed failure;
-record other unverified cases as limits rather than an ever-growing backlog.
+separate optional investigations from requirements that must work at delivery.
+
+## Teach the delivered platform
+
+The walkthrough teaches the product's final behaviour, not the history of building
+or repairing it. Do not include remediation stories, finding IDs, before/after fix
+comparisons, abandoned implementations or links into the investigation diary.
+Keep that history in internal working records outside the reader's teaching path.
+Explain intent, implementation, observable behaviour and operation in the present
+tense. Failure demonstrations should exercise the delivered error and recovery
+behaviour. Audit existing chapters and all media, captions, transcripts, diagrams,
+screenshots and linked evidence when this contract changes; prose edits alone do
+not update an embedded recording.
+
+When the brief calls for a fully realised platform, missing required behaviour,
+broken journeys and insufficient proof of delivery claims are blockers. Do not
+launder them into “limits”, “out of scope”, future work or a narrower demonstration.
+Fix and verify within the user's authority. If a blocker cannot be resolved with
+available access, inputs or resources, stop the dependent delivery work and report
+the exact blocker, its evidence and what is needed to proceed. Do not present the
+platform or pack as complete while it remains. Honest technical boundaries and
+evidence scope still matter: they must not disguise unfinished requirements or
+justify unsupported claims. Keep the internal completion audit separate from the
+finished teaching narrative.
 
 ## Compose the specialist skills
 
