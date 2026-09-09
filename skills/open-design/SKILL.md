@@ -189,6 +189,8 @@ resembles generic AI startup pages:
 
 One sentence before the artifact describing what's delivered. Nothing after.
 
+Claude Code only: the `<artifact>` tag is a Claude/Claude-Code affordance. On Codex / GPT-6 Astra: write the HTML to a file and report its path instead of emitting an `<artifact>` block.
+
 ---
 
 ## Tone Library (26 Directions)

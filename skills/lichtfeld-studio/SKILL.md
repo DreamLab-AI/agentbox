@@ -24,6 +24,15 @@ Splatting — via its built-in MCP HTTP server on port 45677.
 - 2D image processing — use the **imagemagick** skill
 - Geospatial 3D — use the **qgis** skill
 
+## Gate
+
+`agentbox.toml`'s `[skills.spatial_and_3d]` sets `gaussian_splatting = false` by
+default. Unlike spark-scene, which discloses its own gate landscape up front,
+this means the binary and bridge below are not started automatically: build
+LichtFeld Studio and launch it (or `--headless`) yourself before the MCP tools
+below can reach it. Loading this skill still requires neither an image rebuild
+nor a new MCP daemon — only the manual start.
+
 ## Architecture
 
 LichtFeld Studio has a built-in MCP server speaking JSON-RPC 2.0 over HTTP POST at

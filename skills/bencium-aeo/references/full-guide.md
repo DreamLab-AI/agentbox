@@ -1,14 +1,17 @@
-# AISEO - Answer Engine Optimization Content Generator
+# bencium-aeo: Usage Guide
 
-Generate machine-readable content that earns citations from ChatGPT, Claude, Gemini, and Google AI Overviews.
+Detailed human-facing walkthrough for the `bencium-aeo` skill — generating machine-readable
+content that earns citations from ChatGPT, Claude, Gemini, and Google AI Overviews. See
+`../SKILL.md` for the always-loaded trigger contract and quick reference; this file is the
+deeper worked-example companion (folded in from the skill's originally-vendored README, 2026-09-09).
 
 **Not a tool or app** - this is a guided workflow with templates for use with Claude Code.
 
 ---
 
-## What This Repository Does
+## What This Skill Does
 
-This repo contains instructions and templates for Claude Code to generate AEO-optimized content for any website. When you start a Claude Code session here, Claude will:
+Invoke it and Claude will:
 
 1. Analyze your website for AEO gaps
 2. Generate optimized content using research-backed templates
@@ -21,41 +24,37 @@ This repo contains instructions and templates for Claude Code to generate AEO-op
 
 ## Quick Start
 
-### 1. Open Claude Code in this directory
-```bash
-cd /Users/bencium/AISEO
-# Start Claude Code session
-```
-
-### 2. Make a request
+### 1. Ask Claude to generate AEO content
 ```
 "Generate AEO content for my product at example.com/product"
 ```
 
-### 3. Receive optimized content
+### 2. Receive optimized content
 - Product overview (50 words + schema)
 - 15 FAQs (30-50 words each + FAQPage schema)
 - Evidence blocks with citations
 - Complete JSON-LD markup
 
-### 4. Implement on your site
+### 3. Implement on your site
 Copy the generated HTML into your website or CMS.
 
-### 5. Validate
+### 4. Validate
 - Test schema with [Google Rich Results Test](https://search.google.com/test/rich-results)
 - Run manual prompts on ChatGPT, Claude, Gemini
 
 ---
 
-## Files in This Repository
+## Files in This Skill
 
 | File | Purpose | Audience |
 |------|---------|----------|
-| `prd.md` | Complete AEO content generation guide with templates | Claude Code |
-| `CLAUDE.md` | Project context and development guidelines | Claude Code |
-| `README.md` | Usage instructions and workflow | You (human) |
+| `../SKILL.md` | Trigger contract and quick reference | Claude Code |
+| `../prd.md` | Complete AEO content generation guide with templates | Claude Code |
+| `../story-structured.md` | Princeton study insights and strategic framework | Claude Code |
+| `full-guide.md` (this file) | Usage instructions and worked example | You (human) |
+| `geo-techniques.md` | Merged GEO technique library (from `toprank/geo-content-optimizer`) | Claude Code |
 
-**Key file:** `prd.md` contains all the templates, best practices, and guidelines Claude uses to generate content.
+**Key file:** `../prd.md` contains all the templates, best practices, and guidelines Claude uses to generate content.
 
 ---
 
@@ -110,7 +109,7 @@ When relevant:
 
 ---
 
-## How to Use This Repository
+## How to Use This Skill
 
 ### Preparation (Before Starting Claude Session)
 
@@ -166,7 +165,7 @@ Generate:
 
 Claude will:
 1. Ask clarifying questions if needed
-2. Use templates from `prd.md` to generate content
+2. Use templates from `../prd.md` to generate content
 3. Create complete, working HTML/schema
 4. Provide implementation guidance
 
@@ -465,7 +464,7 @@ Run these prompts across ChatGPT, Claude, and Gemini:
 
 ## Future Claude Code Sessions
 
-Each new Claude Code session in this directory can:
+Any Claude Code session with this skill available can:
 
 ### Generate New Content
 ```
@@ -507,7 +506,7 @@ Each new Claude Code session in this directory can:
 2. GENERATE (Claude Code session)
    ├─ "Generate AEO content for [URL/product]"
    ├─ Claude analyzes requirements
-   ├─ Claude uses prd.md templates
+   ├─ Claude uses ../prd.md templates
    └─ Receive complete HTML + schema
 
 3. IMPLEMENT
@@ -587,7 +586,7 @@ Transform blog content with FAQ sections, evidence blocks, and proper schema to 
 
 ## Next Steps
 
-1. **Read prd.md** - Familiarize yourself with the templates and best practices
+1. **Read ../prd.md** - Familiarize yourself with the templates and best practices
 2. **Prepare your info** - Gather product details and customer questions
 3. **Start a Claude session** - Say "Generate AEO content for [your website]"
 4. **Implement & validate** - Copy content to your site, test schema
@@ -599,4 +598,4 @@ Transform blog content with FAQ sections, evidence blocks, and proper schema to 
 
 ## License
 
-This repository contains guides and templates for content generation. Generated content is yours to use freely.
+This skill's files contain guides and templates for content generation. Generated content is yours to use freely.

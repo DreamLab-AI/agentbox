@@ -18,7 +18,6 @@ tools:
   - Read
   - Write
   - Edit
-  - Agent
   - Grep
   - Glob
 memory:
@@ -29,6 +28,11 @@ memory:
 # Autoresearch: Autonomous Experiment Loop
 
 Adapted from Feynman's autoresearch methodology for Claude Code + RuVector memory.
+
+The six-step loop below (Bash/Read/Write/Edit/Grep/Glob only) runs identically on Codex / GPT-6
+Astra. Claude Code only: running several experiment branches in parallel would need the
+Agent/fork tool, which this skill does not use by default; on Codex / GPT-6 Astra, run branches
+sequentially instead.
 
 ## Step 1: Gather Context
 

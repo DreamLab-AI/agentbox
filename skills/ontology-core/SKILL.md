@@ -1,6 +1,6 @@
 ---
 name: ontology-core
-description: "Author and export the vault knowledge-graph ontology to OWL2 DL Turtle for WebVOWL/VisionClaw. Use when writing or fixing OntologyBlock entries, generating or debugging output/ontology.ttl, sanitizing IRI local names or literals, resolving Turtle prefix-not-bound errors, or validating the 6 narrativegoldmine source-domain prefixes (ai/bc/mv/rb/tc/ngm). This is the data/build layer — not ontology-enrich (validate existing data) or ontology-augment (query the live OWL graph)."
+description: "Author the vault knowledge-graph ontology (OntologyBlock entries) for OWL2 DL / VisionClaw. Use when writing or fixing OntologyBlock entries, sanitizing IRI local names or literals, resolving Turtle prefix-not-bound errors, or validating the 6 narrativegoldmine source-domain prefixes (ai/bc/mv/rb/tc/ngm). This is the data/build layer — not ontology-enrich (validate existing data) or ontology-augment (query the live OWL graph). Note: TTL/output/ontology.ttl export is not yet ported to the Rust ontology-tools crate (see below) — do not promise a working export from this skill until that lands."
 version: 2.0.0
 author: Claude Code
 tags: [ontology, owl2, vault, obsidian, ttl, webvowl, validation]
@@ -38,16 +38,28 @@ during the bounded transition window (VAULT-corpus-format Invariant 6).
    - `ontology-tools validate <file>` — OWL2 functional-syntax axiom validation
    - `ontology-tools roundtrip <file>` — verify the zero-data-loss
      parse/write/parse contract for a specific file
-2. Author blocks to the gold-standard shape and export to a single
-   `output/ontology.ttl` (git handles versioning — no `-v14` filenames).
+2. Author blocks to the gold-standard shape. Target output remains a single
+   `output/ontology.ttl` (git handles versioning — no `-v14` filenames) once
+   an exporter exists (see below).
 3. Keep `@prefix` declarations at line 1 and `source-domain` to one of the 6
    valid prefixes below.
 
 Note: `ontology-tools` parses vault markdown `OntologyBlock` property blocks
 and validates OWL2 *functional-syntax* axioms embedded in ```clojure fences —
-it is not an OWL/DL parser or reasoner. TTL export/conversion is a separate
-concern, handled by the `Ontology-Tools/tools/converters/convert-to-turtle.py`
-converter referenced below.
+it is not an OWL/DL parser or reasoner.
+
+**TTL export is currently blocked.** The Python `Ontology-Tools/tools/converters/convert-to-turtle.py`
+converter this workflow used to reference does not exist anywhere in this
+checkout (verified 2026-09-09). The Rust `ontology-tools` crate that replaced
+the retired Python tooling has no TTL/turtle export subcommand either — its
+full command surface is `parse | validate | roundtrip | modify | links |
+enrich | batch-enrich` (verified against `ontology-tools --help`, 2026-09-09).
+No other TTL/Turtle exporter was found under `services/` or `scripts/`. Until
+one is built, treat `output/ontology.ttl` generation as unavailable rather
+than following a workflow step that shells to a nonexistent path — the
+natural home for a future `ontology-tools export-ttl` subcommand is this
+same Rust crate (`services/ontology-tools`), given it already owns parsing
+and validation of the same OntologyBlock data.
 
 ## Valid source-domain prefixes
 
@@ -63,7 +75,5 @@ the error→fix catalog, and cross-cutting-domain rules live in
 ## References
 
 - Detailed authoring & TTL rules: [references/ttl-authoring.md](references/ttl-authoring.md)
-- OntologyBlock parser/validator/modifier binary: `services/ontology-tools` (standalone Rust crate; `cd services/ontology-tools && cargo run -- --help`)
-- Converter: `Ontology-Tools/tools/converters/convert-to-turtle.py`
-- Parser: `Ontology-Tools/tools/lib/ontology_block_parser.py`
-- Loader: `Ontology-Tools/tools/lib/ontology_loader.py`
+- OntologyBlock parser/validator/modifier binary: `services/ontology-tools` (standalone Rust crate; `ontology-tools --help`, or `cd services/ontology-tools && cargo run -- --help`)
+- TTL/Turtle export: not yet ported (no Python converter exists in this checkout; the Rust crate above has no export subcommand) — see the note above

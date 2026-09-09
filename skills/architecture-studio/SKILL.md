@@ -25,6 +25,10 @@ tags:
 
 **36 skills, 7 agents** — AEC (Architecture, Engineering, Construction) intelligence. Single entry point: `/studio [your task]` or call any skill directly.
 
+The 36 nested skills below are reached via `/studio` or by name from inside this skill; they are intentionally not registered as separate top-level estate skills.
+
+Claude Code only: the `hooks/` automation and the `allowed-tools`/`user-invocable` frontmatter on nested dispatcher skills (e.g. `studio`) are Claude Code-specific and inert under Codex/GPT-6 Astra, which can still use the plain skill content routed by `/studio`.
+
 ## When to Use This Skill
 
 - **Site analysis**: environmental, mobility, demographics, history for any address

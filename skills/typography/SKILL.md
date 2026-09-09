@@ -34,6 +34,7 @@ specific design calls for it, not by accident.
 ## When Not to Use
 
 - Font pairing, type-scale selection, brand type systems → **ui-ux-pro-max-skill**
+- On-screen UI body-text line-height (dashboards, apps, responsive web) → **ui-ux-pro-max-skill**'s 1.5–1.75 rule; this skill's 120–145% line spacing rule is scoped to print/typeset body copy at a fixed point size
 - Text accessibility audits (contrast, screen readers, WCAG) → **bencium-controlled-ux-designer**
 - LaTeX typesetting / academic paper prep → **latex-documents**
 - Plain markdown or text with no UI rendering → standard editing suffices
@@ -46,7 +47,7 @@ Apply these directly; the reasoning, edge cases, and full catalogue live in `ref
 2. Three distinct dashes: hyphen (-), en dash (`&ndash;`), em dash (`&mdash;`) — don't approximate with `--`
 3. One space after punctuation, not two
 4. Line length 45–90 characters (`max-width: 65ch`)
-5. Line spacing 120–145% of point size (`line-height: 1.2`–`1.45`)
+5. Line spacing 120–145% of point size (`line-height: 1.2`–`1.45`) — this is the **print/typeset body copy** rule (fixed point size, close reading distance on paper or a PDF page). For on-screen UI body text (dashboards, apps, responsive web copy), use the `ui-ux-pro-max-skill` skill's 1.5–1.75 range instead; don't apply this tighter print range to responsive UI text.
 6. Bold or italic, not both at once
 7. Letterspace ALL CAPS (5–12%) with kerning on
 8. Avoid underlining for emphasis in UI — use bold or italic

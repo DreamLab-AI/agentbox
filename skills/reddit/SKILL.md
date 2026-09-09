@@ -142,7 +142,7 @@ export REDDIT_USERNAME="your-username"
 export REDDIT_PASSWORD="your-password"
 
 # Or add to .env
-cat >> /home/devuser/.claude/skills/.env << 'EOF'
+cat >> "$HOME/.claude/skills/.env" << 'EOF'
 REDDIT_CLIENT_ID=your-client-id
 REDDIT_CLIENT_SECRET=your-client-secret
 EOF

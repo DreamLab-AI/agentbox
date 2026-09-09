@@ -1,8 +1,17 @@
-# Verification & Quality — Complete Guide
+# Verification & Quality — Design (Aspirational, dated 2026-09-09)
+
+> **Design, not shipped.** None of the command surface below (`truth`, `verify
+> check`/`batch`/`report`/`dashboard`/`watch`, per-file thresholds, auto-rollback)
+> exists in the installed ruflo v3.38.21 binary. `claude-flow truth --help` →
+> "Unknown command: truth"; `claude-flow verify --help` shows a completely different,
+> real command (signed-witness-manifest verification — see `../SKILL.md`). This
+> document is kept as a design reference for a truth-scoring/rollback/dashboard
+> system that has not shipped, sourced from an earlier aspirational draft of this
+> skill. Do not present any command below as current; if you need working
+> verification today, use `ruflo verify` per `../SKILL.md`.
 
 Full command reference, output formats, CI/CD recipes, and troubleshooting for the
-`verification-quality` skill. The lean SKILL.md covers the quick-path and when-to-use;
-this file is the on-demand detail tier.
+aspirational truth-scoring/rollback/dashboard design.
 
 ## Truth Scoring System
 

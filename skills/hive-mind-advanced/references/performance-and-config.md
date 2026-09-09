@@ -109,19 +109,23 @@ Hive Mind integrates with Claude Flow hooks for automation:
 
 ### 1. Choose the Right Queen Type
 
-**Strategic Queens** - For research, planning, and analysis
+There is no `--queen-type` flag on `spawn` in the deployed CLI (verified:
+`claude-flow hive-mind spawn --help`) — the queen-type framing shapes the
+objective text you pass, not a parameter:
+
+**Strategic** - For research, planning, and analysis
 ```bash
-npx claude-flow hive-mind spawn "Research ML frameworks" --queen-type strategic
+claude-flow hive-mind spawn -o "Research ML frameworks"
 ```
 
-**Tactical Queens** - For implementation and execution
+**Tactical** - For implementation and execution
 ```bash
-npx claude-flow hive-mind spawn "Build authentication" --queen-type tactical
+claude-flow hive-mind spawn -o "Build authentication"
 ```
 
-**Adaptive Queens** - For optimisation and dynamic tasks
+**Adaptive** - For optimisation and dynamic tasks
 ```bash
-npx claude-flow hive-mind spawn "Optimize performance" --queen-type adaptive
+claude-flow hive-mind spawn -o "Optimize performance"
 ```
 
 ### 2. Leverage Consensus
@@ -157,13 +161,10 @@ await memory.associate('jwt-auth', 'oauth2', 0.7);
 
 ```bash
 # Regular status checks
-npx claude-flow hive-mind status
+claude-flow hive-mind status
 
-# Track metrics
-npx claude-flow hive-mind metrics
-
-# Analyze memory usage
-npx claude-flow hive-mind memory
+# Inspect collective memory (there is no `hive-mind metrics` subcommand)
+claude-flow hive-mind memory
 ```
 
 ### 5. Session Management
@@ -179,7 +180,13 @@ await sessionManager.saveCheckpoint(
 ```
 
 **Resume Sessions**
+
+There is no `hive-mind resume` subcommand in the deployed CLI (verified:
+`hive-mind --help` full subcommand list has no session-lifecycle commands).
+Collective memory persists across invocations automatically — re-run `spawn`
+with the same objective/namespace and it picks up shared memory:
+
 ```bash
-# Resume from any previous state
-npx claude-flow hive-mind resume <session-id>
+claude-flow hive-mind memory
+claude-flow hive-mind spawn -o "Continue: <same objective>"
 ```

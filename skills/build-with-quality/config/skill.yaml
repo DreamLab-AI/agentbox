@@ -2,10 +2,10 @@
 # "Build with Quality" - Optimal project building with integrated quality engineering
 
 name: build-with-quality
-version: 1.2.1
+version: 1.3.0  # single source of truth: SKILL.md frontmatter metadata.version — keep in sync
 description: |
   Combined Claude Code V3 and Agentic QE skill for optimal project building
-  with integrated quality engineering. Provides 114+ specialized agents,
+  with integrated quality engineering. Provides 34 specialized agents,
   unified learning (SONA + ReasoningBank), and comprehensive quality gates.
 
   New in v1.2.0:

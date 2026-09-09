@@ -72,6 +72,11 @@ a structured markdown archive with extracted sources and downloadable assets.
 - For asset downloads: Perplexity MCP tools (`perplexity_search`)
 - For URL summarisation: `WebFetch` tool
 
+Claude Code only: the enrichment/asset/swarm phases assume Claude Code affordances
+(Agent/Task spawning, `WebFetch`). On Codex / GPT-6 Astra: run the phases
+sequentially in one session and fetch URLs with a shell HTTP client instead of
+`WebFetch`.
+
 ## Output structure
 
 ```
@@ -79,7 +84,7 @@ output-dir/
 ├── episode-title-slug.md          # One per episode
 ├── assets/
 │   ├── mckinsey-ai-adoption-2026.pdf
-│   └── openai-system-card-gpt5.pdf
+│   └── vendor-technical-report-2026.pdf
 ├── source-index.md                # Cross-episode source index
 └── .subs_tmp/                     # Temporary subtitle files (cleaned up)
 ```

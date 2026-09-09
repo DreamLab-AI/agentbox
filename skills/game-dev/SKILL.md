@@ -67,8 +67,8 @@ Unsure where you are? Run `/game-dev start` — it detects project state and rou
 
 | Engine | Availability | Notes |
 |--------|-------------|-------|
-| **Godot** 4.6.1 | Native (`godot` on `$PATH`) | Full support, headless testing, GDScript/C#/GDExtension. |
-| **Blender** 5.0.1 | Native (`blender`) | Asset pipeline: model, texture, animation export. |
+| **Godot** 4.6.1 | Host-side/CI only — not installed in this image (see `godot-development`) | Full support once available: headless testing, GDScript/C#/GDExtension. |
+| **Blender** 5.1.2 | Native (`blender`) | Asset pipeline: model, texture, animation export. |
 | **Unity** 2023+ | External MCP bridge | Host machine required; file-only fallback without it. |
 | **Unreal** 5.x | External MCP bridge | Host machine required; file-only fallback without it. |
 

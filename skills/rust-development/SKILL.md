@@ -1,5 +1,5 @@
 ---
-name: Rust Development
+name: rust-development
 description: "Complete Rust toolchain with cargo, rustfmt, clippy, and WASM support. Use when writing Rust code, running cargo build/test/clippy, compiling to WASM, or debugging Rust compilation errors."
 ---
 
@@ -144,9 +144,31 @@ impl Drawable for Circle {
 - **Targets**: wasm32-unknown-unknown
 - **Path**: ~/.cargo/bin added to PATH
 
+## House rules
+
+- **Pinned toolchain**: this image bakes its Rust toolchain via rust-overlay
+  (`flake.nix`) — stable plus a nightly toolchain for `llvm-tools`. The
+  `wasm32-unknown-unknown` target is already baked into that toolchain; don't run
+  `rustup target add wasm32-unknown-unknown`, it's redundant and can drift from the
+  pinned set.
+- **Never hand-roll cryptography.** Use the most trusted RustCrypto-ecosystem
+  crates — `aes-gcm`, `chacha20poly1305`, `sha2`, `hmac`, `pbkdf2`, `argon2`,
+  `k256`/`secp256k1`, `ring`/`rustls`, `ed25519-dalek` — pinned and verified against
+  published test vectors. If existing code hand-rolls a primitive, replacing it is
+  the highest-priority change.
+- **Clean-room reusable modules go to crates.io.** A published crate ships full
+  inline rustdoc (crate-level `//!` plus every public item documented, with examples
+  that compile), a README, licence and repository metadata, and passes
+  `cargo doc --no-deps` without warnings. Never publish a bespoke crypto envelope or
+  token format as a reusable crate — keep project-specific constructions private and
+  point new work at established formats (age, JWE/COSE via maintained crates)
+  instead.
+
 ## Related Skills
 
-None currently required. Standard Claude Code tools handle version control and containerisation.
+- `cuda` — safe CUDA bindings in Rust, GPU kernel development
+- `leptos` — full-stack Rust web apps (fine-grained reactive framework, SSR/hydration)
+- `wasm-js` — WASM+JS interop architecture when JS-side bindings/graphics are involved
 
 ## Notes
 

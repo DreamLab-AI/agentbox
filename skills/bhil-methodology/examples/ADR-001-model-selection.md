@@ -15,6 +15,10 @@ tags: [llm, model-selection, rag, cost]
 
 # ADR-001: Use Claude Sonnet 4 for RAG Chat Response Generation
 
+> **Frozen illustrative example (2026-05), not current.** The models and figures
+> below are a worked ADR-MODEL-SELECTION sample, not live model guidance. Current
+> lineup: Claude Fable 5.1, Opus 5, Sonnet 5, Haiku 4.5.
+
 ## Context and problem statement
 
 The RAG-powered enterprise knowledge chat feature (PRD-001) requires a language model to synthesize retrieved document chunks into accurate, cited responses. The model must handle domain-specific enterprise content, follow strict citation instructions, and stay within a 5-second P95 latency budget and $0.05 per-query cost ceiling. Three Anthropic models were evaluated; the choice has significant cost and quality implications at production scale.

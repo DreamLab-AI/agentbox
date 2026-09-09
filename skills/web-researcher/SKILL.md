@@ -2,23 +2,19 @@
 name: web-researcher
 authority_class: recoverable   # REC-6: read-only research; proceeds without an escalation wait
 description: >
-  Multi-source web research via the web-researcher-mcp Go server (deployed binary
-  v1.43.0) — you pick the search ENGINE and the trusted SOURCES, and every citation
-  is a real, checkable link. 21 live MCP tools (verified against tools/list):
-  web/image/news/academic/patent search, search_and_scrape, sequential_search,
-  awesome_list_search, brand_research; domain search (clinical_search,
-  legal_search/CourtListener, econ_search/World Bank+FRED); scrape_page (full
-  PDF/DOCX/PPTX/YouTube/HN, not snippets); citation integrity (verify_citation,
-  verify_recommendation, audit_bibliography, citation_graph, archive_source/Wayback,
-  format_bibliography APA/MLA/BibTeX/RIS/CSL); research session memory + export
-  (get_research_session, research_export). Search LENSES restrict results to trusted
-  domains (academic, clinical, legal, finance, government, journalism, devops, docs).
-  Pluggable backends (Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa), DuckDuckGo
-  fallback. Use for reputation-attached research needing verifiable citations — the
-  open, auditable, private counterpart to perplexity-research (fast closed synthesis).
-  NOT for quick uncited lookups (use perplexity/ceramic), interactive browser flows or
-  JS-rendered pages (headless scrape tier DISABLED here → delegate to the `browser`
-  sidecar), or grounding in our own ontology (use ontology-augment).
+  Multi-source web research via the web-researcher-mcp Go server — you pick the
+  search ENGINE and the trusted SOURCES, and every citation is a real, checkable
+  link. Covers web/image/news/academic/patent search, full-page scraping
+  (PDF/DOCX/PPTX/YouTube/HN), domain search (clinical/legal/econ),
+  citation-integrity (verify/audit/archive/format bibliography), and session
+  export. LENSES restrict results to trusted domains (academic, clinical, legal,
+  finance, government, journalism, devops, docs); pluggable backends (Google
+  PSE/Brave/Serper/SearXNG/SearchAPI/Exa) with DuckDuckGo fallback. Use for
+  reputation-attached research needing verifiable citations — the open,
+  auditable, private counterpart to perplexity-research (fast closed synthesis).
+  NOT for quick uncited lookups (use perplexity/ceramic), interactive browser
+  flows or JS-rendered pages (headless scrape tier DISABLED here → delegate to
+  `browser`), or grounding in our own ontology (use ontology-augment).
 version: 1.43.0
 triggers:
   - /research
@@ -86,11 +82,12 @@ One-liner: **ceramic = primary keyword search with dense extracts; perplexity = 
 
 ## Connection
 
-MCP stdio server registered as `web-researcher` in `mcp/mcp.json`. Deployed binary is
-**`web-researcher-mcp-1.43.0`** (Nix-baked, resolved from `$PATH`); the full v1.33+
-toolset — the 21 tools tabled below — is registered and live, verified against the
-running server's `tools/list`. Registration, version-bump (`flake.nix` pin) and
-provider-gating detail: [`references/deployment.md`](references/deployment.md).
+MCP stdio server registered as `web-researcher` in `mcp/mcp.json`. Deployed binary
+is **`web-researcher-mcp`** (Nix-baked, resolved from `$PATH`; see the frontmatter
+`version` field for the exact pin); the full toolset — the 21 tools tabled below —
+is registered and live, verified against the running server's `tools/list`.
+Registration, version-bump (`flake.nix` pin) and provider-gating detail:
+[`references/deployment.md`](references/deployment.md).
 
 ## Tools (live set depends on configured providers — see notes)
 
@@ -131,8 +128,9 @@ provider-gating detail: [`references/deployment.md`](references/deployment.md).
 | `get_research_session` | Recover a session after context loss |
 | `research_export` | Export a provenance-tracked report (md/JSON) |
 
-All 21 tools above are live in the deployed v1.43.0 binary (verified via `tools/list`).
-Some are inert without provider keys — see [`references/deployment.md`](references/deployment.md).
+All 21 tools above are live in the deployed binary (verified via `tools/list`; see
+the frontmatter `version` field for the exact pin). Some are inert without provider
+keys — see [`references/deployment.md`](references/deployment.md).
 `docs/TOOLS.md` upstream is the authoritative, CI-verified tool list + schemas.
 
 ## Search Lenses (the differentiator)
@@ -224,13 +222,8 @@ Hold stdin open long enough for the response (the server exits on EOF):
 ## References
 
 - Deployment / Nix pin / provider gating: [`references/deployment.md`](references/deployment.md)
-- Upstream (binary v1.43.0): https://github.com/zoharbabin/web-researcher-mcp
+- Upstream: https://github.com/zoharbabin/web-researcher-mcp
 - Authoritative tools: `docs/TOOLS.md` ; deployment: `docs/DEPLOYMENT.md` (upstream)
 - Related skills: `perplexity-research` (fast closed synthesis), `deep-research`
   (multi-agent harness), `browser` (JS-rendered pages / interactive flows),
   `provenance-tracking`, `autoresearch`, `ontology-augment`
-
-> Note: `gemini-url-context` / `web-summary` are referenced by some older skill docs but
-> the backing `gemini` CLI is **not on PATH** here — those routes are non-functional
-> pending a gemini CLI install. Use `scrape_page` (this skill) or the `browser` sidecar
-> for single-URL expansion instead.

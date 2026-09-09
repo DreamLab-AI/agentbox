@@ -26,7 +26,7 @@ providers:
       
   # Uncomment to run comparative eval across models:
   # - id: anthropic:claude-haiku-4-5-20251001
-  # - id: openai:gpt-4o
+  # - id: openai:gpt-6-astra
 
 # ============================================================
 # EVALUATION METRICS

@@ -116,3 +116,14 @@ Deliver `explainer.mp4`, `poster.jpg`, `captions.srt`, `transcript.md`, `plan.js
 any unresolved limitation accurately. Completion requires the audience's central
 question to be answered by the rendered and reviewed video, not merely green
 manifest validation. Publishing is a separate action and needs user authority.
+
+## Related skills
+
+- `explainer` — the family hub for codebase explainers. When its video delivery
+  hands off here, it passes the audience and a claims ledger (`claim →
+  file:line`) already gathered from its own orientation pass; this skill still
+  independently re-verifies runtime behaviour rather than accepting a claim on
+  trust.
+- `open-montage` — use it instead for video with no codebase grounding: a
+  trailer, an avatar spokesperson, a podcast repurpose, or any request not
+  targeting the current repository.

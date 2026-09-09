@@ -10,7 +10,7 @@ version: 1.0.0
 author: Upstash
 mcp_server: true
 protocol: stdio
-entry_point: npx -y @upstash/context7-mcp@latest
+entry_point: npx -y @upstash/context7-mcp@4.0.7
 tags:
   - documentation
   - mcp
@@ -92,7 +92,7 @@ Full list: https://context7.com/libraries
 {
   "context7": {
     "command": "npx",
-    "args": ["-y", "@upstash/context7-mcp@latest"],
+    "args": ["-y", "@upstash/context7-mcp@4.0.7"],
     "env": {
       "CONTEXT7_API_KEY": "<your_key>"
     }

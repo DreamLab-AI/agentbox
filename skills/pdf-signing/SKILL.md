@@ -86,11 +86,13 @@ whose final page carries only remittance details). Control it:
 
 ## Durable install (bake into the image)
 `setup.sh` prefers an ambient `python3` that already imports pyHanko and only builds a
-venv as a fallback. To make it venv-free after a rebuild, add to `flake.nix`'s
-`pythonRuntimeEnv` (the `python.withPackages` list): `pyhanko  pillow  fonttools`
-(`cryptography`/`asn1crypto`/`oscrypto` come transitively). `poppler-utils` (for
-`pdfsig` verification) and `qpdf` are already in the image. See the block near
-`pikepdf` in `pythonRuntimeEnv`.
+venv as a fallback. `pyhanko` (plus `pillow`, `fonttools`; `cryptography`/`asn1crypto`/
+`oscrypto` come transitively) is **already declared** in `flake.nix`'s
+`pythonRuntimeEnv` (the block near `pikepdf`, ~line 876) — there is nothing to add.
+`poppler-utils` (for `pdfsig` verification) and `qpdf` are already in the image too. If
+the running container's ambient `python3 -c "import pyhanko"` still fails, the image
+predates that flake.nix change: the fix is a **rebuild of the image**, not another
+flake.nix edit — until then `setup.sh`'s venv fallback carries you through.
 
 ## Verifying
 ```bash

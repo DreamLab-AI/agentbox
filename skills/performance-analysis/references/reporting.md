@@ -1,21 +1,29 @@
 # Performance Report Generation
 
-Full reference for `claude-flow analysis performance-report` — formats, sections,
-examples, and a sample rendered output.
+Full reference for `claude-flow performance metrics` — formats, sections,
+examples, and a sample rendered output. There is no `analysis` top-level
+command or `performance-report` subcommand in the deployed CLI (verified:
+`claude-flow analysis --help` → "Unknown command: analysis, did you mean
+analyze?"; `claude-flow analyze --help` lists diff/code/deps/ast/complexity/
+symbols/imports/boundaries/modules/dependencies/circular, none named
+`performance-report`). Reporting in this build goes through `performance
+metrics` and `performance benchmark`.
 
 ## Command Syntax
 
 ```bash
-npx claude-flow analysis performance-report [options]
+claude-flow performance metrics [options]
 ```
 
-### Options
-- `--format <type>` - Report format: json, html, markdown (default: markdown)
-- `--include-metrics` - Include detailed metrics and charts
-- `--compare <id>` - Compare with previous swarm
-- `--time-range <range>` - Analysis period: 1h, 24h, 7d, 30d, all
-- `--output <file>` - Output file path
-- `--sections <list>` - Comma-separated sections to include
+### Options (verified: `claude-flow performance metrics --help`)
+- `-t, --timeframe <range>` - Timeframe: 1h, 24h, 7d, 30d (default: 24h)
+- `-f, --format <type>` - Output format: text, json, prometheus (default: text)
+- `-c, --component <name>` - Component to filter
+
+There is no `--include-metrics`, `--compare`, `--output`, or `--sections` flag
+on `metrics` in this build. For a full-scope benchmark run instead, see
+`claude-flow performance benchmark` (options: `-s/--suite`, `-i/--iterations`,
+`-w/--warmup`, `-o/--output` format).
 
 ## Report Sections
 
@@ -53,29 +61,20 @@ npx claude-flow analysis performance-report [options]
 ## Usage Examples
 
 ```bash
-# Generate HTML report with all metrics
-npx claude-flow analysis performance-report --format html --include-metrics
+# Text metrics for the last 24h (default)
+claude-flow performance metrics
 
-# Compare current swarm with previous
-npx claude-flow analysis performance-report --compare swarm-123 --format markdown
+# Weekly metrics, filtered to one component
+claude-flow performance metrics -t 7d -c coordinator
 
-# Custom output with specific sections
-npx claude-flow analysis performance-report \
-  --sections summary,metrics,recommendations \
-  --output reports/perf-analysis.html \
-  --format html
+# Prometheus format for scraping
+claude-flow performance metrics -f prometheus
 
-# Weekly performance report
-npx claude-flow analysis performance-report \
-  --time-range 7d \
-  --include-metrics \
-  --format markdown \
-  --output docs/weekly-performance.md
+# JSON for CI/CD integration
+claude-flow performance metrics -f json > build/performance.json
 
-# JSON format for CI/CD integration
-npx claude-flow analysis performance-report \
-  --format json \
-  --output build/performance.json
+# Full benchmark suite (a different command — not filterable by timeframe)
+claude-flow performance benchmark -s all -o json > build/benchmark.json
 ```
 
 ## Sample Markdown Output

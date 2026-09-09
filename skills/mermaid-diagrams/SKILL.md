@@ -87,9 +87,9 @@ flowchart TD
     C --> E[Return Response]
 EOF
 
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png
-mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
-mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
 ```
 
 Prerequisite: `browsercontainer` sidecar running.

@@ -4,7 +4,7 @@
 #
 # Supports both local and remote Chrome instances:
 #   cdp-connect.sh 9222 list                      # local Chrome
-#   cdp-connect.sh browsercontainer:9222 list      # sidecar Chrome
+#   cdp-connect.sh browsercontainer:9223 list      # sidecar Chrome (socat proxy, in-network)
 #   cdp-connect.sh list                            # auto-detect (BROWSER_CDP_HOST or localhost:9222)
 
 # Parse first arg: if it looks like a command (no digits/colons), use defaults

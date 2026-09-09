@@ -16,26 +16,37 @@ memory. This is the most structured coordination model in Claude Flow — reach 
 it when decisions need formal voting and agents need to share knowledge across a
 session.
 
+Claude Code only: `--claude` below launches Claude Code with a coordination
+prompt, and MCP-flavoured framing throughout this skill assumes the Claude
+harness. On Codex / GPT-6 Astra: drop `--claude` and drive `hive-mind spawn`/
+`task`/`memory` as plain CLI calls in one session; there is no claude-flow MCP
+wiring for Codex unless registered in `~/.codex/config.toml`.
+
 ## Quick path
 
+Verified against the deployed CLI (`claude-flow hive-mind --help` / `hive-mind
+<subcommand> --help`, ruflo v3.38.21) — the `--queen-type`/`--max-workers`
+flags some upstream docs show do not exist on this build's `spawn`; topology,
+consensus, and agent cap are set at `init`, not per-spawn:
+
 ```bash
-# 1. Initialize
-npx claude-flow hive-mind init
+# 1. Initialize (topology + consensus + agent cap chosen here)
+claude-flow hive-mind init -t hierarchical-mesh -c weighted -m 8
 
-# 2. Spawn a swarm against an objective (pick a queen type + consensus)
-npx claude-flow hive-mind spawn "Build microservices architecture" \
-  --queen-type strategic --max-workers 8 --consensus weighted --claude
+# 2. Spawn workers against an objective (pick a role, optionally launch Claude Code)
+claude-flow hive-mind spawn -n 8 -r worker --claude -o "Build microservices architecture"
 
-# 3. Monitor
-npx claude-flow hive-mind status
-npx claude-flow hive-mind metrics
-npx claude-flow hive-mind memory
+# 3. Monitor (there is no `hive-mind metrics` subcommand — use status + memory)
+claude-flow hive-mind status
+claude-flow hive-mind memory
 ```
 
-Queen types: `strategic` (research/planning), `tactical` (implementation),
-`adaptive` (optimisation/dynamic). Consensus: `majority`, `weighted` (queen 3x),
-`byzantine` (2/3 supermajority). Memory persists to RuVector PostgreSQL
-(pgvector/HNSW) in production, SQLite locally.
+Consensus (`init -c`): `majority`, `weighted` (queen 3x), `byzantine` (2/3
+supermajority, the default). The "queen type" framing (`strategic` for
+research/planning, `tactical` for implementation, `adaptive` for optimisation)
+is conceptual in this CLI build — it shapes the objective/prompt you pass, not
+a flag. Memory persists to RuVector PostgreSQL (pgvector/HNSW) in production,
+SQLite locally.
 
 ## When to use
 

@@ -16,7 +16,7 @@ This skill **replaces** the following skills:
 npx aqe agent spawn test-generator -t "Generate tests"
 
 # New
-npx claude-flow@alpha agent spawn --type unit-test-generator
+claude-flow agent spawn --type unit-test-generator
 ```
 
 ### From reasoningbank-intelligence
@@ -36,7 +36,7 @@ const memory = new UnifiedMemory({ sonaMode: 'balanced' });
 claude-flow pair --start --mode tdd
 
 # New - Use TDD agents directly
-npx claude-flow@alpha agent spawn --type tdd-red-phase
-npx claude-flow@alpha agent spawn --type tdd-green-phase
-npx claude-flow@alpha agent spawn --type tdd-refactor-phase
+claude-flow agent spawn --type tdd-red-phase
+claude-flow agent spawn --type tdd-green-phase
+claude-flow agent spawn --type tdd-refactor-phase
 ```

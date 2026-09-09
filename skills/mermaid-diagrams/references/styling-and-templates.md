@@ -29,7 +29,7 @@ cat > mermaid-dark.json << 'EOF'
 EOF
 
 # Render with dark theme
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png -t dark
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png -t dark
 ```
 
 ### Light Theme (academic papers)
@@ -51,7 +51,7 @@ cat > mermaid-light.json << 'EOF'
 }
 EOF
 
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png
 ```
 
 Ready-made theme configs also live in `resources/templates/theme-dark.json` and

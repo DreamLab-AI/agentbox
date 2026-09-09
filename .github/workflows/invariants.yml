@@ -69,6 +69,10 @@ jobs:
 
       - name: lint-skills (skill estate structure gate — required before rebuild)
         run: bash skills/lint-skills.sh
+      - name: skill-count-check (ADR-2056 — the single count authority; was RED and unwired 2026-09-09)
+        run: node scripts/skill-count-check.js
+      - name: routing-table freshness (generated from frontmatter; ADR-2021)
+        run: node skills/gen-routing-table.mjs --check
 
       - name: deepsec-gate unit tests (ADR-2033 — Security gate exit-code/threshold/receipt contract)
         run: node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs

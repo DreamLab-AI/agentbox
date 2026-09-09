@@ -120,6 +120,7 @@ wasm-pack build --target web --release
 - `rust-development` - Rust toolchain and patterns
 - `performance-analysis` - Profiling and optimisation
 - `playwright` - Visual testing of graphics output
+- `leptos` - Full-stack reactive Rust web framework; reach for it instead of this skill when the WASM/JS work is happening inside a Leptos component tree rather than a standalone hand-wired WASM module
 
 ## References
 

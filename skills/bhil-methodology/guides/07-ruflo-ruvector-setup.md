@@ -164,7 +164,7 @@ import RuVector from 'ruvector';
 const db = new RuVector({ path: '.claude-flow/memory/project.rvf' });
 await db.init();
 
-// Store a decision with metadata
+// Store a decision with metadata (frozen illustrative example, 2026-05 — see ADR-001)
 await db.insert({
   content: "Chose Claude Sonnet 4 for RAG response generation based on 0.91 faithfulness score",
   metadata: {

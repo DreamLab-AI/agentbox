@@ -212,6 +212,14 @@ metrics. The legal and evidential grounding for that position, including the EU
 AI Act Article 50(4) editorial-review exemption, is in
 [provenance.md](references/provenance.md) P11.
 
+## Related skills
+
+`docs-alignment` runs a structural, corpus-wide audit (links, front matter, diagrams,
+UK-English spelling by wordlist); this skill runs a sense-aware, per-file de-slop pass
+(AI tells, provenance metadata, invisible Unicode). Both apply to a docs modernisation:
+run docs-alignment first, then this skill. `report-builder` produces the prose this
+skill can review as an optional Phase 5 reviewer before final assembly.
+
 ## Reference sections
 
 Load one on demand. Do not hold all of them in context at once.

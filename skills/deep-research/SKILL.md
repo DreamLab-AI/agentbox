@@ -41,6 +41,9 @@ provenance trail — a topic survey, a decision-support brief, a claim you must 
 defend. For a single fact or a quick lookup, just search directly; the full harness is
 overkill.
 
+Claude Code only: parallel researcher fan-out (step 3) uses the Agent/fork tool. On Codex /
+GPT-6 Astra: run the phases sequentially in one session instead of fanning out subagents.
+
 ## Quick path
 
 1. **Plan** — derive a `<slug>` (lowercase, hyphens, ≤5 words). List the key questions,

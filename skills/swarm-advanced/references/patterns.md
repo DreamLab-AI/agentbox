@@ -49,11 +49,14 @@ mcp__claude-flow__memory_usage({
 
 ### Phase 2: Analysis and Validation
 ```javascript
-// NOTE: mcp__claude-flow__pattern_recognize is not currently available — use claude-flow CLI instead
-// npx claude-flow analyze --pattern trend,correlation,outlier
+// NOTE: mcp__claude-flow__pattern_recognize is not currently available; no CLI
+// equivalent exists either — `claude-flow analyze` has no free-form --pattern
+// flag (verified: `claude-flow analyze --help` lists diff/code/deps/ast/
+// complexity/symbols/imports/boundaries/modules/dependencies/circular only).
 
-// NOTE: mcp__claude-flow__cognitive_analyze is not currently available — use claude-flow CLI instead
-// NOTE: mcp__claude-flow__quality_assess is not currently available — use claude-flow CLI instead
+// NOTE: mcp__claude-flow__cognitive_analyze is not currently available — no CLI equivalent.
+// NOTE: mcp__claude-flow__quality_assess is not currently available — use the CLI instead:
+// claude-flow analyze code --type quality
 
 mcp__claude-flow__neural_patterns({
   "action": "analyze",
@@ -104,8 +107,7 @@ mcp__claude-flow__workflow_execute({
 
 ### CLI Fallback
 ```bash
-npx claude-flow swarm "research AI trends in 2025" \
-  --strategy research --mode distributed --max-agents 6 --parallel --output research-report.md
+claude-flow swarm start -o "research AI trends in 2025" -s research -p
 ```
 
 ---
@@ -176,8 +178,8 @@ mcp__claude-flow__parallel_execute({
   ]
 })
 
-// NOTE: mcp__claude-flow__quality_assess is not currently available — use claude-flow CLI instead
-// npx claude-flow quality assess --criteria coverage,complexity,maintainability,security
+// NOTE: mcp__claude-flow__quality_assess is not currently available — use the CLI instead:
+// claude-flow analyze code --type quality
 ```
 
 ### Phase 4: Review and Deployment
@@ -192,8 +194,7 @@ mcp__claude-flow__workflow_execute({
 
 ### CLI Fallback
 ```bash
-npx claude-flow swarm "build REST API with authentication" \
-  --strategy development --mode hierarchical --monitor --output sqlite
+claude-flow swarm start -o "build REST API with authentication" -s development --monitor
 ```
 
 ---
@@ -221,10 +222,10 @@ testingTeam.forEach(tester => {
 
 ### Phase 1: Test Planning
 ```javascript
-// NOTE: mcp__claude-flow__quality_assess is not currently available — use claude-flow CLI instead
-// npx claude-flow quality assess --criteria line-coverage,branch-coverage,function-coverage
+// NOTE: mcp__claude-flow__quality_assess is not currently available — use the CLI instead:
+// claude-flow analyze code --type quality
 
-// NOTE: mcp__claude-flow__pattern_recognize is not currently available — use claude-flow CLI instead
+// NOTE: mcp__claude-flow__pattern_recognize is not currently available — no CLI equivalent.
 
 mcp__claude-flow__memory_usage({
   "action": "store",
@@ -256,19 +257,18 @@ mcp__claude-flow__bottleneck_analyze({
 
 mcp__claude-flow__performance_report({ "format": "detailed", "timeframe": "current-run" })
 
-// NOTE: mcp__claude-flow__security_scan is not currently available — use claude-flow CLI instead
-// npx claude-flow security scan --target application --depth comprehensive
+// NOTE: mcp__claude-flow__security_scan is not currently available — use the CLI instead:
+// claude-flow security scan -t . --depth deep
 
-// NOTE: mcp__claude-flow__error_analysis is not currently available — use claude-flow CLI instead
-// NOTE: mcp__claude-flow__trend_analysis is not currently available — use claude-flow CLI instead
+// NOTE: mcp__claude-flow__error_analysis is not currently available — no CLI equivalent.
+// NOTE: mcp__claude-flow__trend_analysis is not currently available — no CLI equivalent.
 // NOTE: mcp__claude-flow__task_results is not currently available — use swarm_status instead
 mcp__claude-flow__swarm_status({ "swarmId": "testing-swarm" })
 ```
 
 ### CLI Fallback
 ```bash
-npx claude-flow swarm "test application comprehensively" \
-  --strategy testing --mode star --parallel --timeout 600
+claude-flow swarm start -o "test application comprehensively" -s testing -p
 ```
 
 ---
@@ -306,8 +306,8 @@ mcp__claude-flow__parallel_execute({
 mcp__claude-flow__bottleneck_analyze({ "component": "application", "metrics": ["response-time", "memory", "cpu"] })
 mcp__claude-flow__performance_report({ "format": "detailed", "timeframe": "current" })
 
-// NOTE: mcp__claude-flow__cost_analysis is not currently available — use claude-flow CLI instead
-// npx claude-flow metrics cost --timeframe 30d
+// NOTE: mcp__claude-flow__cost_analysis is not currently available; there is no
+// top-level `metrics` command either — see the cost-estimation skill instead.
 ```
 
 ---
@@ -317,16 +317,17 @@ mcp__claude-flow__performance_report({ "format": "detailed", "timeframe": "curre
 ### Error Handling and Fault Tolerance
 
 ```javascript
-// NOTE: mcp__claude-flow__daa_fault_tolerance is not currently available — use claude-flow CLI instead
-// npx claude-flow agent fault-tolerance --agent all --strategy auto-recovery
+// NOTE: mcp__claude-flow__daa_fault_tolerance is not currently available; there
+// is no `agent fault-tolerance` CLI subcommand either (verified against
+// `claude-flow agent --help`: spawn/list/status/stop/metrics/pool/health/logs/
+// wasm-*/publish only) — fall back to swarm_status polling below.
 
 try {
   await mcp__claude-flow__task_orchestrate({ "task": "complex operation", "strategy": "parallel", "priority": "high" })
 } catch (error) {
   const status = await mcp__claude-flow__swarm_status({})
 
-  // NOTE: mcp__claude-flow__error_analysis is not currently available — use claude-flow CLI instead
-  // npx claude-flow analyze error --log "${error.message}"
+  // NOTE: mcp__claude-flow__error_analysis is not currently available — no CLI equivalent.
 
   if (status.healthy) {
     await mcp__claude-flow__task_orchestrate({ "task": "retry failed operation", "strategy": "sequential" })
@@ -343,8 +344,8 @@ mcp__claude-flow__memory_usage({ "action": "store", "key": "session-state", "nam
 // NOTE: mcp__claude-flow__memory_namespace is not currently available — use namespace param in memory_usage instead
 // NOTE: mcp__claude-flow__state_snapshot is not currently available — use memory_usage for checkpoints instead
 // NOTE: mcp__claude-flow__context_restore is not currently available — use memory_retrieve instead
-// NOTE: mcp__claude-flow__memory_backup is not currently available — use claude-flow CLI instead
-// npx claude-flow memory export --path /workspaces/backups/swarm-memory.json
+// NOTE: mcp__claude-flow__memory_backup is not currently available — use the CLI instead:
+// claude-flow memory export -o ./backups/swarm-memory.json
 ```
 
 ### Neural Pattern Learning
@@ -356,8 +357,9 @@ mcp__claude-flow__neural_patterns({ "action": "learn", "operation": "coordinatio
 // NOTE: mcp__claude-flow__learning_adapt is not currently available — use neural_patterns instead
 mcp__claude-flow__neural_patterns({ "action": "learn", "operation": "workflow-optimization", "metadata": { "workflow": "research-to-report", "success": true } })
 
-// NOTE: mcp__claude-flow__pattern_recognize is not currently available — use claude-flow CLI instead
-// npx claude-flow analyze --pattern bottleneck,optimization-opportunity
+// NOTE: mcp__claude-flow__pattern_recognize is not currently available; no CLI
+// equivalent exists (see the Phase 2 note above for the verified `analyze`
+// subcommand list).
 ```
 
 ### Workflow Automation
@@ -382,14 +384,15 @@ mcp__claude-flow__workflow_create({
 ### Performance Optimisation
 
 ```javascript
-// NOTE: mcp__claude-flow__topology_optimize is not currently available — use claude-flow CLI instead
-// npx claude-flow swarm optimize --swarm-id current-swarm
+// NOTE: mcp__claude-flow__topology_optimize is not currently available — use the CLI instead:
+// claude-flow performance optimize --target all --apply
 
 mcp__claude-flow__load_balance({ "swarmId": "development-swarm", "tasks": taskQueue })
 mcp__claude-flow__coordination_sync({ "swarmId": "development-swarm" })
 
-// NOTE: mcp__claude-flow__swarm_scale is not currently available — use claude-flow CLI instead
-// npx claude-flow swarm scale --swarm-id development-swarm --size 12
+// NOTE: mcp__claude-flow__swarm_scale is not currently available — use the CLI instead
+// (there is no --swarm-id/--size; `swarm scale` targets the current swarm):
+// claude-flow swarm scale -a 12
 ```
 
 ### Monitoring and Metrics
@@ -403,6 +406,7 @@ mcp__claude-flow__performance_report({ "format": "detailed", "timeframe": "curre
 
 // NOTE: mcp__claude-flow__health_check is not currently available — use swarm_status instead
 // NOTE: mcp__claude-flow__usage_stats is not currently available — use performance_report instead
-// NOTE: mcp__claude-flow__trend_analysis is not currently available — use claude-flow CLI instead
-// npx claude-flow metrics trend --metric agent-performance --period 7d
+// NOTE: mcp__claude-flow__trend_analysis is not currently available; there is no
+// top-level `metrics` command — use the verified equivalent instead:
+// claude-flow performance metrics -t 7d
 ```

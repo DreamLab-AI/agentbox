@@ -71,7 +71,7 @@ Both stages are wrapped: a `seed` failure returns `{degraded:true, error:'seed_u
 (empty), an `expand` failure degrades to the seed *menu* rather than failing the whole call.
 Grounding never blocks a turn.
 
-## SPARQL via `graph_query`
+## SPARQL via `ontology_graph_query`
 
 - Read-only: only `SELECT`/`ASK`/`DESCRIBE`/`CONSTRUCT`. `UPDATE`/`INSERT`/`DELETE` rejected
   (`sparql_readonly`).

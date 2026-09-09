@@ -15,8 +15,9 @@ Google's `chrome-devtools-mcp` (40+ tools) over MCP SSE.
 # MCP SSE (chrome-devtools-mcp — preferred for agents)
 http://browsercontainer:8931/sse
 
-# CDP direct (for cdp.mjs scripts)
-browsercontainer:9222
+# CDP direct (for cdp.mjs scripts) — in-network, socat proxy
+# 9222 is the host-mapped port only, from the host machine
+browsercontainer:9223
 
 # VNC desktop (visual debugging)
 vnc://localhost:5903   # from host

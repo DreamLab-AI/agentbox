@@ -5,8 +5,9 @@ description: >
   the agent orchestrates research, scripting, asset generation, editing, and
   rendering across 11 pipelines and 49 tools. Supports zero-key mode (Piper TTS +
   Pexels stock + Remotion + FFmpeg) and premium APIs (ElevenLabs, Runway, Kling,
-  Veo 3, Suno). Use when the user says "make a video", "create an explainer",
-  "produce a trailer", "video production", "animate", or "podcast to video".
+  Veo 3, Suno). Use when the user says "make a video", "create an explainer
+  video", "produce a trailer", "video production", "animate", or "podcast to
+  video".
   From calesthio/OpenMontage.
 version: 1.0.0
 author: calesthio (OpenMontage)
@@ -47,6 +48,7 @@ Describe your video idea. The agent orchestrates the entire production pipeline:
 ## When Not to Use
 
 - For an audience-targeted explainer of the current codebase with local GPU footage — use `codebase-video`.
+- For a written docs bundle or an instructional microsite (no standalone video requested) — use `explainer`.
 - For simple image generation — use `art` (Nano Banana 2) or `comfyui`
 - For video transcoding/editing only — use `ffmpeg-processing`
 - For academic diagrams — use `paperbanana`

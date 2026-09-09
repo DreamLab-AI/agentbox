@@ -1,6 +1,6 @@
 ---
 name: ontology-enrich
-description: "Validate and enrich the vault knowledge-graph ontology and generate WebVOWL-ready TTL. Use when fixing source-domain prefixes (ai/bc/mv/rb/tc/ngm), regenerating output/ontology.ttl, debugging WebVOWL 'prefix not bound' or bad-syntax parse errors, checking orphan is-subclass-of targets, or making pages meet VisionClaw github_sync field requirements."
+description: "Validate and enrich the vault knowledge-graph ontology. Use when fixing source-domain prefixes (ai/bc/mv/rb/tc/ngm), checking orphan is-subclass-of targets, or making pages meet VisionClaw github_sync field requirements. Note: WebVOWL TTL generation/regeneration (output/ontology.ttl) is not yet ported to the Rust ontology-tools crate — see SKILL.md before promising a TTL export from this skill."
 version: 2.0.0
 category: ontology
 layer: 1
@@ -48,32 +48,44 @@ grep -rhn "source-domain::" "$VAULT_PAGES"/*.md | \
 # INVALID: blockchain, metaverse, telecollaboration, data, etc.
 ```
 
-**Fix invalid values**:
+**Fix invalid values** — use `ontology-tools modify`, not raw `sed`: it is the
+same field-preserving, OWL2-validated, auto-backed-up path `ontology-core`
+documents for editing this exact field, so both skills route source-domain
+edits through one safe mechanism instead of two (one safe, one blind):
+
 ```bash
 # blockchain -> bc
 grep -rln "source-domain:: blockchain" "$VAULT_PAGES"/*.md | \
-  xargs -I {} sed -i 's/source-domain:: blockchain/source-domain:: bc/g' {}
+  xargs -I {} ontology-tools modify {} --set source-domain=bc
 
 # metaverse -> mv
 grep -rln "source-domain:: metaverse" "$VAULT_PAGES"/*.md | \
-  xargs -I {} sed -i 's/source-domain:: metaverse/source-domain:: mv/g' {}
+  xargs -I {} ontology-tools modify {} --set source-domain=mv
 
 # telecollaboration -> tc
 grep -rln "source-domain:: telecollaboration" "$VAULT_PAGES"/*.md | \
-  xargs -I {} sed -i 's/source-domain:: telecollaboration/source-domain:: tc/g' {}
+  xargs -I {} ontology-tools modify {} --set source-domain=tc
 ```
 
-### 2. Generate TTL
+### 2. Generate TTL — currently blocked
 
-```bash
-python3 Ontology-Tools/tools/converters/convert-to-turtle.py \
-  "$VAULT_PAGES"/ \
-  output/ontology.ttl
-```
+The Python converter this step used to invoke,
+`Ontology-Tools/tools/converters/convert-to-turtle.py`, does not exist
+anywhere in this checkout (verified 2026-09-09). The Rust `ontology-tools`
+crate that replaced the retired Python tooling (`services/ontology-tools`,
+on `PATH`) never gained an export subcommand — its full surface is `parse |
+validate | roundtrip | modify | links | enrich | batch-enrich`. No other
+TTL/Turtle exporter was found under `services/` or `scripts/`.
 
-**Output**: Single `output/ontology.ttl` (git provides versioning)
+Until a real exporter lands (the natural home is an `ontology-tools
+export-ttl` subcommand in that same crate, since it already parses and
+validates this data), `output/ontology.ttl` generation is not available from
+this skill.
 
 ### 3. Validate TTL for WebVOWL
+
+These checks assume an `output/ontology.ttl` already exists from some prior
+run; they cannot be exercised until TTL export (above) is unblocked.
 
 ```bash
 # Check @prefix comes first (REQUIRED for format detection)
@@ -101,25 +113,7 @@ cargo run -- batch-enrich "$VAULT_PAGES"/StubPage1.md "$VAULT_PAGES"/StubPage2.m
 
 ## Common Issues and Fixes
 
-### WebVOWL Parser Errors
-
-| Error | Root Cause | Fix |
-|-------|-----------|-----|
-| `Prefix "X:" not bound` | Invalid source-domain value | Use valid 2-letter prefix |
-| `Prefix ":" not bound` | Bare colon in property decls | Use `ngm:` prefix for properties |
-| `Bad syntax (']' expected)` | `&` in WikiLink target | sanitize_local_name() |
-| `unexpected token '#'` | Comments before @prefix | @prefix MUST be line 1 |
-| `Encountered '['` | WikiLinks in definition | sanitize_literal() |
-
-### Fixing Malformed Pages
-
-```bash
-# Find pages with all fields on one line
-grep -l "ontology:: true.*term-id::" "$VAULT_PAGES"/*.md
-
-# Find pages with & in relationships
-grep -rn "enables.*&\|requires.*&\|has-part.*&" "$VAULT_PAGES"/*.md
-```
+WebVOWL parser error table, malformed-page fixes: [references/common-issues-and-validation.md](references/common-issues-and-validation.md).
 
 ## Relationship Best Practices
 
@@ -174,31 +168,14 @@ VisionClaw's `github_sync_service.rs` expects:
 
 ## Quick Validation Script
 
-```bash
-#!/bin/bash
-# validate-ontology.sh
-
-echo "=== Checking source-domain values ==="
-grep -rhn "source-domain::" "$VAULT_PAGES"/*.md | \
-  sed 's/.*source-domain::\s*//' | sort | uniq -c | sort -rn
-
-echo "=== Regenerating TTL ==="
-python3 Ontology-Tools/tools/converters/convert-to-turtle.py \
-  "$VAULT_PAGES"/ output/ontology.ttl
-
-echo "=== Checking for unbound prefixes ==="
-grep -c "blockchain:\|metaverse:\|data:" output/ontology.ttl && \
-  echo "ERROR: Unbound prefixes found" || echo "OK: No unbound prefixes"
-
-echo "=== Verifying @prefix first ==="
-head -1 output/ontology.ttl | grep -q "@prefix" && \
-  echo "OK: @prefix is first" || echo "ERROR: @prefix not first"
-```
+Full runnable script (source-domain check plus the TTL-dependent checks,
+which currently skip cleanly since export is blocked): [references/common-issues-and-validation.md](references/common-issues-and-validation.md).
 
 ## References
 
-- Enrichment/validation/link-check binary: `services/ontology-tools` (Rust crate; `cd services/ontology-tools && cargo run -- --help`)
-- Converter: `Ontology-Tools/tools/converters/convert-to-turtle.py`
+- Enrichment/validation/link-check binary: `services/ontology-tools` (Rust crate; `ontology-tools --help`, or `cd services/ontology-tools && cargo run -- --help`)
+- TTL/Turtle export: not yet ported (no Python converter exists in this checkout; the Rust crate above has no export subcommand) — see "Generate TTL" above
+- Common issues, malformed-page fixes, validation script: [references/common-issues-and-validation.md](references/common-issues-and-validation.md)
 - Workflow: `.github/workflows/publish.yml`
-- TTL Output: `output/ontology.ttl`
+- TTL Output: `output/ontology.ttl` (once export exists)
 - Domain pages: `$VAULT_PAGES/*Domain.md`

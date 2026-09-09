@@ -22,6 +22,8 @@ Generate accurate daisyUI 5 components and themes with MCP-enhanced context.
 
 Three options ranked by capability. Choose ONE and add to Claude Code.
 
+Claude Code only: `claude mcp add` is the Claude Code CLI's registration command. On Codex / GPT-6 Astra: register the equivalent server in `~/.codex/config.toml` under `[mcp_servers.<name>]` instead.
+
 ### Option 1: daisyUI Blueprint (Official, Recommended)
 
 Full component library context with Figma-to-code support. Requires license.
@@ -89,129 +91,14 @@ module.exports = {
 
 ## Component Patterns
 
-### Button Variants
-
-```html
-<button class="btn">Default</button>
-<button class="btn btn-primary">Primary</button>
-<button class="btn btn-secondary">Secondary</button>
-<button class="btn btn-accent">Accent</button>
-<button class="btn btn-ghost">Ghost</button>
-<button class="btn btn-link">Link</button>
-<button class="btn btn-outline btn-primary">Outlined</button>
-```
-
-### Card
-
-```html
-<div class="card bg-base-100 shadow-xl">
-  <figure><img src="image.jpg" alt="Card" /></figure>
-  <div class="card-body">
-    <h2 class="card-title">Title</h2>
-    <p>Description text</p>
-    <div class="card-actions justify-end">
-      <button class="btn btn-primary">Action</button>
-    </div>
-  </div>
-</div>
-```
-
-### Modal
-
-```html
-<button class="btn" onclick="my_modal.showModal()">Open</button>
-<dialog id="my_modal" class="modal">
-  <div class="modal-box">
-    <h3 class="font-bold text-lg">Title</h3>
-    <p class="py-4">Content here</p>
-    <div class="modal-action">
-      <form method="dialog">
-        <button class="btn">Close</button>
-      </form>
-    </div>
-  </div>
-</dialog>
-```
-
-### Navbar
-
-```html
-<div class="navbar bg-base-100">
-  <div class="flex-1">
-    <a class="btn btn-ghost text-xl">Brand</a>
-  </div>
-  <div class="flex-none">
-    <ul class="menu menu-horizontal px-1">
-      <li><a>Link 1</a></li>
-      <li><a>Link 2</a></li>
-    </ul>
-  </div>
-</div>
-```
-
-### Drawer Layout
-
-```html
-<div class="drawer lg:drawer-open">
-  <input id="drawer" type="checkbox" class="drawer-toggle" />
-  <div class="drawer-content">
-    <!-- Page content -->
-    <label for="drawer" class="btn btn-primary drawer-button lg:hidden">Menu</label>
-  </div>
-  <div class="drawer-side">
-    <label for="drawer" aria-label="close sidebar" class="drawer-overlay"></label>
-    <ul class="menu bg-base-200 text-base-content min-h-full w-80 p-4">
-      <li><a>Sidebar Item 1</a></li>
-      <li><a>Sidebar Item 2</a></li>
-    </ul>
-  </div>
-</div>
-```
+Button, card, modal, navbar and drawer snippets moved to
+[references/components.md](references/components.md) — read on demand rather
+than duplicating them here.
 
 ## Themes
 
-### Apply a Theme
-
-```html
-<html data-theme="dark">
-<!-- or any of 35+ built-in themes -->
-```
-
-### Built-in Themes
-
-`light` `dark` `cupcake` `bumblebee` `emerald` `corporate` `synthwave` `retro` `cyberpunk` `valentine` `halloween` `garden` `forest` `aqua` `lofi` `pastel` `fantasy` `wireframe` `black` `luxury` `dracula` `cmyk` `autumn` `business` `acid` `lemonade` `night` `coffee` `winter` `dim` `nord` `sunset` `caramellatte` `abyss` `silk`
-
-### Custom Theme
-
-```css
-@plugin "daisyui" {
-  themes: light --default, dark,
-  mytheme {
-    primary: oklch(65% 0.3 340);
-    secondary: oklch(70% 0.25 200);
-    accent: oklch(75% 0.2 150);
-    neutral: oklch(40% 0.02 264);
-    base-100: oklch(98% 0.01 264);
-  }
-}
-```
-
-### Theme Switcher Pattern
-
-```html
-<select data-choose-theme class="select select-bordered">
-  <option value="light">Light</option>
-  <option value="dark">Dark</option>
-  <option value="cyberpunk">Cyberpunk</option>
-</select>
-
-<script>
-  // Use theme-change package or manual:
-  document.querySelector('[data-choose-theme]').addEventListener('change', (e) => {
-    document.documentElement.setAttribute('data-theme', e.target.value);
-  });
-</script>
-```
+Theme application, the built-in theme list, custom-theme authoring and the
+theme-switcher pattern moved to [references/themes.md](references/themes.md).
 
 ## Tips
 

@@ -1,5 +1,5 @@
 ---
-name: Leptos
+name: leptos
 description: >
   Opinionated playbook and current reference for building full-stack web apps in Leptos
   (the Rust fine-grained-reactive framework). Use whenever the task involves Leptos: writing
@@ -167,11 +167,13 @@ Per workspace policy, use RuVector MCP tools — never file-based memory.
 
 ---
 
-## Composition With Sibling Skills
+## Related Skills / Composition With Sibling Skills
 
 | Skill | Boundary |
 |-------|----------|
 | `open-design` / `design-audit` | Own the **visual** spec (tokens, hierarchy, anti-slop). They produce the design; this skill builds it in Leptos. Implement their tokens as Tailwind/Stylance, their components as `#[component]`s. |
+| `rust-development` | Owns general Rust toolchain, idioms and patterns outside the reactive/full-stack web layer. Reach for it for non-Leptos Rust work (CLIs, services, libraries); come back here for anything view!/signal/server-fn specific. |
+| `wasm-js` | Owns WASM/JS interop for performance-critical graphics (computational geometry, Canvas/WebGL compute) outside a full Leptos app. Use it when the task is a standalone WASM module driven by hand-written JS, not a Leptos component tree. |
 | `skill-builder` / `skill-creator` | If extending *this* skill (new reference, new pattern), follow their progressive-disclosure spec. |
 | `browser` / `playwright` | Drive the running Leptos dev server (`localhost:3000`) for visual/interaction verification and WebGPU/WebGL eye-candy checks. |
 | `verification-quality` | Gate generated Leptos code through truth scoring before claiming done. |

@@ -25,17 +25,25 @@ apply optimisation recommendations for Claude Flow swarms.
 - General swarm orchestration without a performance focus → use **swarm-advanced**
 - AgentDB vector-search performance tuning → use **agentdb-vector-search**
 
+Claude Code only: the `mcp__claude-flow__*` tool call below needs the
+claude-flow MCP server registered (already wired in this container). On Codex
+/ GPT-6 Astra: use the CLI form instead.
+
 ## Quick Start
 
+Verified against the deployed CLI (`claude-flow performance --help` and
+`claude-flow performance bottleneck --help`, ruflo v3.38.21) — there is no
+top-level `bottleneck` or `analysis` command; both live under `performance`:
+
 ```bash
-# Detect bottlenecks in the current swarm
-npx claude-flow bottleneck detect
+# Detect bottlenecks in the current swarm (quick pass; -d full for deep analysis)
+claude-flow performance bottleneck -d full
 
-# Generate an HTML report with full metrics
-npx claude-flow analysis performance-report --format html --include-metrics
+# View/export metrics (there is no `analysis performance-report`; use metrics)
+claude-flow performance metrics -t 24h -f prometheus
 
-# Detect and auto-apply fixes at a tighter threshold
-npx claude-flow bottleneck detect --fix --threshold 15
+# Run optimisation recommendations and apply them
+claude-flow performance optimize --apply
 ```
 
 From Claude Code (MCP):
@@ -55,20 +63,21 @@ mcp__claude-flow__bottleneck_analyze({ timeRange: "1h", threshold: 20, autoFix: 
 Load these on demand for the full detail:
 
 - [`references/bottleneck-detection.md`](references/bottleneck-detection.md) —
-  `bottleneck detect` options, the metric taxonomy, output format, common
+  `performance bottleneck` options, the metric taxonomy, output format, common
   patterns, and MCP integration (JSON result shapes).
 - [`references/reporting.md`](references/reporting.md) —
-  `analysis performance-report` formats, sections, examples, and a sample report.
+  `performance metrics` formats, sections, examples, and a sample report.
 - [`references/optimisation-and-operations.md`](references/optimisation-and-operations.md) —
-  `--fix` catalog, expected performance impact, continuous monitoring, CI/CD
+  `performance optimize` catalog, expected performance impact, continuous monitoring, CI/CD
   integration, custom scripts, best practices, and troubleshooting recipes.
 
 ## Related
-- `npx claude-flow swarm monitor` — real-time monitoring
-- `npx claude-flow token usage` — token optimisation analysis
-- `npx claude-flow cache manage` — cache optimisation
-- `npx claude-flow agent metrics` — agent performance metrics
-- [Swarm Monitoring](../swarm-orchestration/SKILL.md) · [Memory Management](../memory-management/SKILL.md)
+Verified against `claude-flow --help` (ruflo v3.38.21) — `swarm monitor`,
+`token`, and `cache` are not real top-level or subcommands in this build:
+- `claude-flow performance metrics` — real-time and historical metrics (no `swarm monitor` exists)
+- `claude-flow agent metrics` — agent performance metrics
+- `claude-flow performance benchmark` — benchmark suites (wasm/neural/memory/search)
+- [swarm-advanced](../swarm-advanced/SKILL.md) · [agentdb-memory-patterns](../agentdb-memory-patterns/SKILL.md)
 
 ---
 

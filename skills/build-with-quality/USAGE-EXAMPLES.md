@@ -22,7 +22,7 @@ This guide shows how to invoke the **Build with Quality** skill for different pr
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
+build-with-quality v1.2.0 (34 agents, hierarchical-mesh, EDD)
 Config: skill.yaml
 
 ## Project Context
@@ -71,7 +71,7 @@ Deliver working todo app with tests.
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
+build-with-quality v1.2.0 (34 agents, hierarchical-mesh, EDD)
 Config: skill.yaml
 
 ## Project Context
@@ -227,7 +227,7 @@ Deliver production-ready API with full test coverage and proven evidence.
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
+build-with-quality v1.2.0 (34 agents, hierarchical-mesh, EDD)
 Config: skill.yaml - FULL CAPABILITY MODE
 
 ## Project Context
@@ -320,7 +320,7 @@ Deliver production-ready e-commerce with full quality assurance.
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
+build-with-quality v1.2.0 (34 agents, hierarchical-mesh, EDD)
 Config: skill.yaml
 
 ## Project Context
@@ -387,7 +387,7 @@ Deliver polished CLI with excellent error messages.
 # Build with Quality - Claude Flow V3 Swarm
 
 ## Skill Activation
-build-with-quality v1.2.0 (114+ agents, hierarchical-mesh, EDD)
+build-with-quality v1.2.0 (34 agents, hierarchical-mesh, EDD)
 Config: skill.yaml - FULL CAPABILITY MODE
 
 ## Project Context

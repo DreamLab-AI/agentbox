@@ -138,7 +138,7 @@ python3 -c "import fitz; doc=fitz.open('diagram.pdf'); doc[0].get_pixmap(dpi=200
 ### Mermaid Diagrams
 ```bash
 # Render via browsercontainer sidecar
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png
 ```
 
 ### Nano Banana Infographic Upgrade
@@ -175,6 +175,12 @@ curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flas
 - OpenAI via `OPENAI_API_KEY`
 - DeepSeek via `DEEPSEEK_API_KEY`
 - Z.AI via local service (port 9600)
+
+**Optional prose-sanitiser pass** — a compiled report's chapter prose is exactly the
+"public-facing content" the `prose-sanitiser` skill targets. Run it per chapter after
+the four specialist reviewers and before Phase 6 to catch AI writing tells (em-dash
+density, hedge padding, generic phrasing) that fact/regulatory/science/tech review does
+not check.
 
 **Review actions:**
 - Data corrections applied surgically

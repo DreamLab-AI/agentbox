@@ -65,13 +65,18 @@ an exact tool name, a model's VRAM budget, or the credit cost of an operation.
 
 ## Quick Path
 
+**Not baked into this image.** `command -v clipcannon` returns nothing in a stock
+container — install it (below) or run the separate Docker stack before any
+`clipcannon_*` MCP tool call will succeed.
+
 ```bash
 # Install (requires Python 3.12+, CUDA GPU, 8+ GB VRAM min, 24+ GB recommended)
 pip install clipcannon
 clipcannon serve                       # start the MCP server
 
-# Docker (Dashboard :3200, License server :3100)
-cd config && docker compose up -d
+# Docker (Dashboard :3200, License server :3100) -- config/ lives in the upstream
+# repo, not in this skill directory; clone it first (see "From Source" below)
+cd jlma-clipcannon/config && docker compose up -d
 ```
 
 Typical MCP flow once the server is up:
@@ -85,10 +90,14 @@ Typical MCP flow once the server is up:
 Voice / avatar extras: `clipcannon_speak` (cloned voice), `clipcannon_lip_sync`,
 `clipcannon_generate_music`, `clipcannon_generate_video` (text -> voice -> lip-sync).
 
-## Voice Agent ("Jarvis")
+## Voice Agent ("Jarvis") -- human-operated, outside agent scope
 
 Real-time, all-local conversational AI with "Hey Jarvis" wake word. It pauses other GPU
 workers on activation and resumes them on deactivation to share a single GPU's VRAM.
+This is a long-running, stateful, turn-by-turn audio loop a human runs and talks to
+directly -- neither Claude Code nor Codex has persistent audio I/O to drive it, so it
+is out of scope for an agent to invoke. The MCP-tool-driven editing capabilities
+elsewhere in this skill remain agent-usable; this section is not.
 
 ```bash
 python -m voiceagent talk --voice boris        # Pipecat + Ollama, all local

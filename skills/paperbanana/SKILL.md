@@ -1,6 +1,6 @@
 ---
-name: "PaperBanana"
-description: "Generate publication-quality academic diagrams and statistical plots from text via a multi-agent VLM pipeline with iterative refinement (OpenAI or Google Gemini / nano-banana-2). Use when creating methodology diagrams, architecture overviews, flow charts, NeurIPS/ICML-style figures, or data plots for research papers and technical reports, or upgrading rough diagrams-as-code into polished illustrations; integrates with the report-builder skill for LaTeX inclusion. NOT for interactive/web diagrams (use mermaid-diagrams), TikZ/Wardley maps (use report-builder/latex-documents), photo/raster editing (use imagemagick), simple charts from data (use matplotlib), or 3D (use blender)."
+name: "paperbanana"
+description: "Generate publication-quality academic diagrams and statistical plots from text via a multi-agent VLM pipeline with iterative refinement (OpenAI or Google Gemini / nano-banana-2). Use when creating methodology diagrams, architecture overviews, flow charts, NeurIPS/ICML-style figures, or data plots for research papers and technical reports, or upgrading rough diagrams-as-code into polished illustrations; integrates with the report-builder skill for LaTeX inclusion. NOT for interactive/web diagrams (use mermaid-diagrams), TikZ/Wardley maps (use report-builder/latex-documents), photo/raster editing (use imagemagick), simple charts from data (use matplotlib), 3D (use blender), or accessible re-editable SVG/HTML diagrams (use diagram-design)."
 upstream: "https://github.com/llmsresearch/paperbanana"
 version: "0.1.0"
 status: active
@@ -36,8 +36,17 @@ Generate publication-quality methodology diagrams, architecture overviews, and s
 - For photo editing or raster manipulation — use the imagemagick skill
 - For simple bar/line charts from data — use Python matplotlib directly
 - For 3D visualisations — use the blender skill
+- For accessible, re-editable SVG/HTML diagrams (architecture, flowcharts, org charts) —
+  use the diagram-design skill instead. Both claim "publication-quality" but render
+  differently: paperbanana produces a VLM-rendered raster figure matching a specific
+  journal's visual convention; diagram-design produces re-editable, accessible SVG/HTML.
 
 ## Prerequisites
+
+Unlike most of the diagrams/documents skills, **paperbanana is not baked into this
+image** — it is an external PyPI package installed on first use, gated on a provisioned
+API key. Do not assume the zero-install parity that e.g. docs-alignment or mermaid-diagrams
+have.
 
 ```bash
 # Check installation

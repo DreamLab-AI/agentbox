@@ -16,11 +16,13 @@ Hooks are opt-in — they run from your local Claude Code settings, not from the
 
 ### Step 1: Make scripts executable
 
-```bash
-chmod +x ~/.claude/plugins/skills-for-architects/hooks/*.sh
-```
+The path below (`skills-for-architects`) is illustrative, carried over from the
+upstream plugin source — in agentbox this skill bakes to
+`/opt/agentbox/skills/architecture-studio`, so adjust accordingly:
 
-If you cloned the repo elsewhere, adjust the path accordingly.
+```bash
+chmod +x /opt/agentbox/skills/architecture-studio/hooks/*.sh
+```
 
 ### Step 2: Add to your Claude Code settings
 

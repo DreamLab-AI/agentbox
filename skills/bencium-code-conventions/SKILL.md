@@ -1,14 +1,17 @@
 ---
 name: bencium-code-conventions
-description: "Bence's code style, tech stack, and workflow conventions. Use when enforcing Bence's React/Next.js/TypeScript/Tailwind code style and workflow conventions."
-when_to_use: When writing code or setting up projects for Bence
+description: "Bence's personal code style, tech stack, and workflow conventions for his own projects. Use ONLY when the active project is identified as Bence's own repository (explicitly named as his, or the user identifies themselves as Bence) — not general React/Next.js/TypeScript/Tailwind guidance for other users' work, even when the tech stack overlaps."
+when_to_use: When writing code or setting up projects for Bence, and only once the active project is confirmed to be his
 ---
 
 # Code Conventions
 
+**Scope:** these are one person's (Bence's) personal preferences for his own repositories, not estate-wide conventions. Apply them only when the active project is identified as Bence's — do not apply on tech-stack keyword overlap (React/Next.js/TypeScript) alone, since that overlaps with other users' work in this shared estate.
+
 ## Core Technologies
 - **Frontend:** ReactJS, Next.js (App Router structure), TypeScript
-- **Styling:** TailwindCSS v3.x (never v4), Shadcn UI
+- **Styling:** TailwindCSS v3.x (never v4) — scoped to Bence's own project; this is a personal pin, not an estate-wide rule. Other skills in this estate (`daisyui`, `leptos`) are current on Tailwind v4 for their own work.
+- **Component Library:** Shadcn UI
 - **Build Tools:** Vite (when applicable)
 - **Backend:** Postgres compatible convex.dev or Supabase (always ask, never local postgres)
 - **Deployment:** Netlify or Vercel or Fly - suggest

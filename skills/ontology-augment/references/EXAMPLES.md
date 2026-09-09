@@ -81,7 +81,7 @@ node scripts/ontology-ask.cjs "escrow" --sparql              # print the read-on
 node scripts/ontology-ask.cjs "metaverse avatar" --domain mv --json
 ```
 
-## Read-only SPARQL — `graph_query`
+## Read-only SPARQL — `ontology_graph_query`
 
 ```sparql
 PREFIX vc: <https://narrativegoldmine.com/ns/v1#>

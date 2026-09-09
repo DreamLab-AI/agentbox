@@ -22,6 +22,8 @@ Two input formats: **compact** (token-efficient, for LLM generation) and
 - Standard flowcharts, sequence diagrams, or Mermaid-supported types → mermaid-diagrams skill
 - Academic publication figures → paperbanana skill
 - General architecture documentation → report-builder skill
+- Editorial HTML/SVG diagrams (architecture, flowcharts, org charts) with a branded design
+  system and non-isometric layout → diagram-design skill
 
 ## Workflow
 

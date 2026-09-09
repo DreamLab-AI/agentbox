@@ -48,7 +48,7 @@ revision to verify.
 | `custom` | `agent = "pi"`, `ai_base_url`, `ai_api_key_env` | `{ mode: "custom", baseUrl, apiKeyEnv, bearer header }` — LAN-only path via the Loom façade (`http://loom:8080/v1`) |
 
 Override any policy key per run with `DEEPSEC_GATE_<KEY>` (e.g.
-`DEEPSEC_GATE_FAIL_ON=CRITICAL`, `DEEPSEC_GATE_MODEL=claude-sonnet-4-6`) or the
+`DEEPSEC_GATE_FAIL_ON=CRITICAL`, `DEEPSEC_GATE_MODEL=agent:model-a`) or the
 matching CLI flag.
 
 ## Reading deepsec's own docs

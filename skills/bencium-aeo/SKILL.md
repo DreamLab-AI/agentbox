@@ -19,6 +19,23 @@ Use this skill when:
 
 **NOT for traditional SEO** - This is specifically for AI/LLM citation optimization.
 
+## Core Philosophy: Machine-First Content
+
+Optimise for **AI agents as primary consumers** (~90%), humans secondary (~10%):
+- Make facts **copyable** — JSON snippets, 18-token sentences.
+- Make claims **verifiable** — evidence panels with methods, dates, sources.
+- Make structure **scannable** — short answers, clear hierarchy, anchors.
+- Make updates **visible** — dated change logs, freshness signals.
+
+## Related Skills
+
+- `toprank` — SEO suite; its `geo-content-optimizer` sub-skill points back here for GEO/AI-citation
+  technique when that work happens inside a broader SEO engagement. Use this skill directly for
+  AI-citation work with no SEO context; see [`references/geo-techniques.md`](references/geo-techniques.md)
+  for the merged technique library (18-token rule, CORE-EEAT checklist, worked examples).
+- `perplexity-research` — research competitor content and citation patterns before generating
+  AEO content for a new page.
+
 ## Core Reference
 
 **Full templates and guidelines:** Read `prd.md` in this directory for complete implementation details.
@@ -138,3 +155,7 @@ After implementation, test with:
 For complete templates, examples, and detailed guidelines, read:
 - `prd.md` - Full AEO content generation guide with HTML templates
 - `story-structured.md` - Framework summary from Princeton study
+- [`references/full-guide.md`](references/full-guide.md) - human-facing usage walkthrough (setup, worked example, validation checklist, FAQ)
+- [`references/geo-techniques.md`](references/geo-techniques.md) - merged GEO technique library (from `toprank/geo-content-optimizer`)
+- [`references/ai-citation-patterns.md`](references/ai-citation-patterns.md) - how each AI engine selects and cites sources
+- [`references/quotable-content-examples.md`](references/quotable-content-examples.md) - more before/after quotable-content pairs
