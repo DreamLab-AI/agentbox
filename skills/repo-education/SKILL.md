@@ -27,12 +27,23 @@ permission decision, state/data change, verification and failure/recovery path.
 Scale the curriculum to the product; do not force a fixed chapter count.
 
 When the user prioritises simplification, apply it to both implementation and
-teaching. Prefer an existing path and a bounded fix for a demonstrated problem.
+teaching. Prefer an existing path and a bounded proposed fix for a demonstrated problem.
 Add an abstraction, dependency, configuration option or production helper only
 when its concrete benefit justifies the maintenance cost. Preserve useful
 features and requested evidence. Extend the investigation when it resolves a
 reader's question, tests an important claim or diagnoses an observed failure;
 separate optional investigations from requirements that must work at delivery.
+
+## Stop before fixing product code
+
+By default, this skill diagnoses product problems; it does not repair product
+code. Reproduce the issue, retain the evidence and stop the affected walkthrough
+work. Tell the user what failed, why it blocks the delivered journey and the
+concrete proposed correction, then ask how they want to proceed. Do not implement
+the fix merely because Git makes it reversible or because the task includes
+analysis. Work on independent teaching material can continue. This rule does not
+prevent edits to the explainer itself. An explicit user override for the current
+session takes precedence; do not carry that exception into future skill runs.
 
 ## Teach the delivered platform
 
@@ -49,8 +60,8 @@ not update an embedded recording.
 When the brief calls for a fully realised platform, missing required behaviour,
 broken journeys and insufficient proof of delivery claims are blockers. Do not
 launder them into “limits”, “out of scope”, future work or a narrower demonstration.
-Fix and verify within the user's authority. If a blocker cannot be resolved with
-available access, inputs or resources, stop the dependent delivery work and report
+For a product-code blocker, follow the stop-and-ask rule above. If a blocker cannot
+be resolved with available access, inputs or resources, stop dependent delivery and report
 the exact blocker, its evidence and what is needed to proceed. Do not present the
 platform or pack as complete while it remains. Honest technical boundaries and
 evidence scope still matter: they must not disguise unfinished requirements or

@@ -16,7 +16,7 @@ claim a skill ran when only a plan was written.
 | Explanatory 3D | blender, only when geometry clarifies the topic | Mechanism to explain, coordinates/scale if relevant, render requirements | Editable scene and inspected frames/clip |
 | Delivery encoding | ffmpeg-processing | Reviewed master, target browser/size/readability constraints, captions | Compressed MP4, ffprobe/size/hash receipt, playback and visual/audio review |
 | Prose and explanatory text | prose-sanitiser | Audience, claim ledger and draft | Concrete comprehensible text that retains the evidence and limitations |
-| Reproduced product issue | build-with-quality, plus relevant language/framework skill | Trigger, expected/actual result, bounded fix authority | Reproduction, scoped fix, appropriate checks and finding record |
+| Reproduced product issue | build-with-quality, plus relevant language/framework skill | Trigger, expected/actual result and evidence | Default: diagnosis and concrete proposed correction, then stop and ask before changing product code; implementation requires an explicit session override |
 | Requested security analysis | security-testing | Authorised environment and scope, threat boundary, synthetic identities | Verified findings/refusals with limitations; do not imply a full audit from a narrow check |
 
 Keep the orchestration in the site production record: chosen specialist, exact

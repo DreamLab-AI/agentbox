@@ -23,8 +23,9 @@ fresh. Keep observations dated and scoped to the inputs they actually exercised.
 Teaching exposes inconsistencies: terminology that no longer matches the UI,
 diagrams whose arrows skip a gate, stale configuration assumptions and failure
 paths hidden by successful demonstrations. Reproduce an issue before asserting a
-bug. Where the user authorised fixes, repair it and verify the result; otherwise
-record the finding and required decision. Version control aids recovery but is
+bug. The skill's default is to stop the affected work and ask the user before
+changing product code; follow the entrypoint's stop-and-ask rule. After an explicit
+session override authorises a correction, verify its result. Version control aids recovery but is
 not evidence that a change is correct or that a production mutation is reversible.
 
 Keep before/after evidence for findings in internal investigation records, not in
