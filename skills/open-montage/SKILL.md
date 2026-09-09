@@ -5,8 +5,9 @@ description: >
   the agent orchestrates research, scripting, asset generation, editing, and
   rendering across 11 pipelines and 49 tools. Supports zero-key mode (Piper TTS +
   Pexels stock + Remotion + FFmpeg) and premium APIs (ElevenLabs, Runway, Kling,
-  Veo 3, Suno). Use when the user says "make a video", "create an explainer",
-  "produce a trailer", "video production", "animate", or "podcast to video".
+  Veo 3, Suno). Use when the user says "make a video", "create an explainer
+  video", "produce a trailer", "video production", "animate", or "podcast to
+  video".
   From calesthio/OpenMontage.
 version: 1.0.0
 author: calesthio (OpenMontage)
@@ -47,6 +48,7 @@ Describe your video idea. The agent orchestrates the entire production pipeline:
 ## When Not to Use
 
 - For an audience-targeted explainer of the current codebase with local GPU footage — use `codebase-video`.
+- For a written docs bundle or an instructional microsite (no standalone video requested) — use `explainer`.
 - For simple image generation — use `art` (Nano Banana 2) or `comfyui`
 - For video transcoding/editing only — use `ffmpeg-processing`
 - For academic diagrams — use `paperbanana`
@@ -103,16 +105,29 @@ User: "Make a 45-second explainer about black holes"
 ## On First Use — Clone Full Repository
 
 The pipeline defs are baked into this skill, but the 49 Python tools and 767 skill
-files live in the full repository. On first invocation:
+files live in the full repository. On first invocation, clone and check out a
+**pinned** revision rather than floating on the default branch — an unpinned
+`git pull --rebase` on every invocation silently rebases onto upstream's current
+head, and none of the 49 tools or 767 skill files it fetches are reviewed in
+this repo. Upstream ships no tagged releases (`git ls-remote --tags
+https://github.com/calesthio/OpenMontage.git` returned nothing as of
+2026-09-09), so `OPEN_MONTAGE_REF` pins a specific commit reviewed at that date
+instead of a version tag; re-run that `ls-remote` periodically and the operator
+should update the pin (and re-review) when it is time to move forward. If the
+network is unavailable when first setting this up, use `OPEN_MONTAGE_REF=main`
+and treat that as a known supply-chain gap until it is pinned.
 
 ```bash
-# Clone or update OpenMontage
+# Clone or update OpenMontage at a pinned revision.
+OPEN_MONTAGE_REF="${OPEN_MONTAGE_REF:-08e2151fa02de28a5d6a312b3d575692bf147ad7}"
 if [ ! -d ~/.open-montage ]; then
-  git clone --depth 1 https://github.com/calesthio/OpenMontage.git ~/.open-montage
+  git clone https://github.com/calesthio/OpenMontage.git ~/.open-montage
+  git -C ~/.open-montage checkout "$OPEN_MONTAGE_REF"
   cd ~/.open-montage && pip install -r requirements.txt --break-system-packages
   cd remotion-composer && npm install
 else
-  cd ~/.open-montage && git pull --rebase
+  git -C ~/.open-montage fetch origin "$OPEN_MONTAGE_REF"
+  git -C ~/.open-montage checkout "$OPEN_MONTAGE_REF"
 fi
 ```
 
@@ -184,6 +199,9 @@ cost_governance:
 | Research | `perplexity-research` | Substitute for OpenMontage's built-in web search |
 | Image gen | `comfyui` | Alternative for local Stable Diffusion when available |
 | Image gen | `art` | Nano Banana 2 for stylised thumbnails and editorial art |
+| Codebase explainer | `codebase-video` | Route here instead when the request is grounded in the current repository — claims tied to source, not a general topic |
+| 3D | `blender` | Explanatory 3D geometry or camera moves as a source clip or guide frames, when neither pipeline's generators are photoreal 3D |
+| Diagrams | `mermaid-diagrams` | Source-accurate diagrams and flowcharts feeding a scene, instead of an AI-generated infographic |
 | Post-production | `ffmpeg-processing` | Direct overlap — can use either |
 | Narration review | `notebooklm` | Generate audio overview of script for review |
 | Script quality | `codex-companion` | Cross-model review of script via GPT-6 Astra |

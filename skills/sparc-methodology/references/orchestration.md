@@ -29,55 +29,28 @@ mcp__claude-flow__swarm_init {
 
 // Spawn specialized agents
 mcp__claude-flow__agent_spawn {
-  type: "<agent-type>",
+  agentType: "<agent-type>",
   capabilities: ["<capability1>", "<capability2>"]
 }
 
-// Monitor execution
-mcp__claude-flow__swarm_monitor {
-  swarmId: "current",
-  interval: 5000
+// Check swarm state (point-in-time, not a live stream)
+mcp__claude-flow__swarm_status {
+  swarmId: "current"
 }
 ```
 
-### Method 2: NPX CLI (Fallback)
+### Method 2: CLI (historical, v2 — does not work against the installed binary)
 
-**Best for**: Terminal usage or when MCP tools unavailable
+Older docs described a `claude-flow sparc run|modes|help|tdd|batch|pipeline` CLI.
+The installed ruflo v3.38.21 binary has no `sparc` subcommand at all
+(`claude-flow sparc --help` → "Unknown command: sparc / Did you mean: start, swarm,
+status"). Do not use `npx claude-flow ...` either way — it resolves a stale cached
+version. Method 1 (`mcp__claude-flow__sparc_mode`) is the only verified activation
+path in this image.
 
-```bash
-# Execute specific mode
-npx claude-flow sparc run <mode> "task description"
-
-# Use alpha features
-npx claude-flow@alpha sparc run <mode> "task description"
-
-# List all available modes
-npx claude-flow sparc modes
-
-# Get help for specific mode
-npx claude-flow sparc help <mode>
-
-# Run with options
-npx claude-flow sparc run <mode> "task" --parallel --monitor
-
-# Execute TDD workflow
-npx claude-flow sparc tdd "feature description"
-
-# Batch execution
-npx claude-flow sparc batch <mode1,mode2,mode3> "task"
-
-# Pipeline execution
-npx claude-flow sparc pipeline "task description"
-```
-
-### Method 3: Local Installation
-
-**Best for**: Projects with local claude-flow installation
-
-```bash
-# If claude-flow is installed locally
-./claude-flow sparc run <mode> "task description"
-```
+Claude Code only: Method 1 needs an MCP client. On Codex / GPT-6 Astra with no MCP
+proxy reachable: run the mode's phase manually in one session using the prompt from
+[modes.md](modes.md), sequentially rather than via swarm orchestration.
 
 ---
 
@@ -96,15 +69,15 @@ mcp__claude-flow__swarm_init {
 
 // Spawn coordinator
 mcp__claude-flow__agent_spawn {
-  type: "coordinator",
+  agentType: "coordinator",
   capabilities: ["planning", "delegation", "monitoring"]
 }
 
 // Spawn specialized workers
-mcp__claude-flow__agent_spawn { type: "architect" }
-mcp__claude-flow__agent_spawn { type: "coder" }
-mcp__claude-flow__agent_spawn { type: "tester" }
-mcp__claude-flow__agent_spawn { type: "reviewer" }
+mcp__claude-flow__agent_spawn { agentType: "architect" }
+mcp__claude-flow__agent_spawn { agentType: "coder" }
+mcp__claude-flow__agent_spawn { agentType: "tester" }
+mcp__claude-flow__agent_spawn { agentType: "reviewer" }
 ```
 
 ### Pattern 2: Mesh Coordination

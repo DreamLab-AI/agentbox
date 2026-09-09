@@ -4,11 +4,8 @@ description: "Schedule recurring agent tasks on cron/interval/one-shot schedules
 version: 1.0.0
 author: jjohare
 license: MIT
-metadata:
-  hermes:
-    tags: [scheduler, cron, background, daemon, polling, always-on]
-    category: automation
-    related_skills: []
+tags: [scheduler, cron, background, daemon, polling, always-on]
+category: automation
 ---
 
 # Hermes Scheduler

@@ -4,6 +4,48 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-09-09 — skills estate re-audit for Fable 5.1 / GPT-6 Astra workloads)
+
+Master copy only (`skills/`), for the next image bake; running copies were not touched.
+Fable 5.1 queen over 13 Sonnet auditors (11 domain batches, discovery layer, external
+standards) followed by 12 fixers with adversarial verification. Findings, fact sheet and the cited standards brief are archived under
+`docs/archive/skills-audit-2026-09-09/`; the decision record is ADR-2083.
+
+- **Authoring contract** adopted estate-wide (agentskills.io + Claude Code + Codex):
+  `name` equals the directory (7 Title-Case names fixed), `description` ≤ 1024 chars
+  with what/when/when-not, depth in `references/`, one-line "Claude Code only … on
+  Codex …" fallbacks. `skill-builder` rewritten; it previously taught the opposite.
+- **Merges**: `repo-education` → `explainer` (hub with docs / microsite / video delivery
+  references; direct HP-model path demoted behind the Loom façade); `latex-book` →
+  `book-publishing`; toprank's `geo-content-optimizer` technique → `bencium-aeo`.
+  Merged skills remain as deprecated redirect stubs for one bake cycle.
+- **Discovery layer**: `skill-router/references/routing-table.md` is now genuinely
+  generated (`skills/gen-routing-table.mjs` + `references/section-map.json`, all 128
+  skills; it had been hand-maintained and 38 skills behind); six unlisted skills added
+  to `SKILL-DIRECTORY.md`; MCP Server Summary regenerated from `skills/mcp.json`;
+  history moved out of the directory header into this file.
+- **Registration**: Claude always-loaded set trimmed to 18 (playwright, qe-browser,
+  browser-automation, leptos out; build-with-quality, codebase-memory in). Codex gains a
+  reconciled manifest (`codex-registered-skills.txt`, 17 skills) symlinked into
+  `~/.codex/skills` at boot by the existing reconciler, and `~/.codex/AGENTS.md` now
+  points GPT-6 Astra at the directory and routing table. Previously Codex saw two
+  hand-made symlinks.
+- **Lint** (`lint-skills.mjs`): NAME, DESCLEN, REGISTERED, DIRECTORY (incl. section map),
+  ROUTING (generated table current), DEPRECATED stub keys; expanded
+  `/home/devuser/.claude/skills` paths banned; advisory KEYS and MODEL warnings.
+  `scripts/skill-count-check.js` and the routing check wired into `invariants.yml`
+  (the count gate had been red and unwired).
+- **Rot removed**: dead `claude-flow` CLI examples (`sparc`, `truth`, `stream-chain`,
+  `bottleneck`, `hive-mind metrics`) re-verified against ruflo v3.38.21; wrong CDP port
+  (9222 → 9223) cascaded through the browser cluster; false "gemini-url-context is dead"
+  notes; orphaned `web-summary/mcp-server`; `codex-companion`'s dead mirror of the baked
+  plugin; fabricated DeepSeek endpoint; stale model ids; missing-binary caveats
+  (scrapling, clipcannon, soft-ue-cli, terracraft, paperbanana); `mcp.json` server
+  paths repointed from `~/.claude/skills` to the baked tree.
+- **Runtime follow-ups** (not in this pass): retire the `openai-codex/mcp-server` Nix
+  closure (superseded by `consultant-codex`); gate linkedin/reddit/notebooklm MCP
+  servers in `agentbox.toml`; port TTL export into the `ontology-tools` crate.
+
 ### Added (2026-09-08 — local codebase video explainers)
 
 - Added the progressively discoverable `codebase-video` skill for audience-led

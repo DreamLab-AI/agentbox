@@ -17,19 +17,13 @@
     "cd ${SKILL_PATH} && npm install"
   ],
   "dependencies": {
-    "system": ["chromium", "openssl"],
-    "npm": ["playwright", "@modelcontextprotocol/sdk"]
+    "system": ["openssl"],
+    "npm": ["@modelcontextprotocol/sdk"]
   },
   "features": [
     "HTTPS to HTTP bridge proxy",
-    "Screenshot capture via Playwright",
     "CORS debugging",
     "Host server health checking",
     "Auto-detect Docker gateway IP"
-  ],
-  "displayRequirements": {
-    "display": ":1",
-    "vncPort": 5901,
-    "description": "Browser visible via VNC on port 5901"
-  }
+  ]
 }

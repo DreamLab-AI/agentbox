@@ -61,7 +61,7 @@ Or in `.mcp.json`:
 curl -s http://browsercontainer:8931/health
 
 # List CDP tabs
-curl -s http://browsercontainer:9222/json/list | jq '.[].url'
+curl -s http://browsercontainer:9223/json/list | jq '.[].url'
 
 # VNC into Chrome desktop
 vncviewer localhost:5903

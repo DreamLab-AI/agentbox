@@ -112,7 +112,11 @@ stable, **model-swappable façade** that adds ontology grounding and keeps email
 
 The gateway container is on the `visionclaw_network` bridge at `email-mcp-gateway:8765`. A stale
 `REASONER_BASE_URL` (anything pointing at a raw model port or `192.168.2.48`) is the top suspect for <!-- lint-ok -->
-hangs — point it at `http://loom:8080/v1` and let the Loom own the model path.
+hangs — point it at `http://192.168.2.132:8084/v1` (the Loom façade, Deployment A; the confirmed
+fix, with verification steps, is in [Failure handling](#failure-handling) below).
+`http://loom:8080/v1` (Deployment B, the `visionclaw_network` sidecar, compose profile `loom`) is
+only the alternative topology for when the Loom itself is colocated with consumers instead of the
+model — don't reach for it as the default fix.
 
 ## Tier 1 — `ask_email` (default, sanitized)
 **Input:** `query` (required); optional `date_from`, `date_to` (ISO), `sender`, `folder`, `top_k`.

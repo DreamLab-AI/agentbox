@@ -21,15 +21,20 @@ Master advanced swarm patterns for distributed research, development, and testin
 - For structured development workflows with 17 SPARC modes -- use the sparc-methodology skill instead
 - For Byzantine fault-tolerant consensus -- use the hive-mind-advanced skill instead
 
+Claude Code only: the `mcp__claude-flow__*` tool calls below need the claude-flow
+MCP server registered (already wired in this container). On Codex / GPT-6 Astra:
+use the CLI form instead — the `claude-flow` binary is on PATH, no MCP needed.
+
 ## Quick Start
 
 ### Prerequisites
+The `claude-flow` CLI (ruflo) is already baked on PATH in this image — no install
+step needed. If registering the MCP server in a fresh environment, point it at
+the baked binary, not `npx` (`npx claude-flow` resolves a separate, older cached
+package — verified: pinned PATH binary reports `ruflo v3.38.21`, `npx claude-flow
+--version` reports a different `ruflo v3.5.75`):
 ```bash
-# Ensure Claude Flow is installed
-npm install -g claude-flow@alpha
-
-# Add MCP server (if using MCP tools)
-claude mcp add claude-flow npx claude-flow@alpha mcp start
+claude mcp add claude-flow claude-flow mcp start
 ```
 
 ### Basic Pattern
@@ -38,7 +43,7 @@ claude mcp add claude-flow npx claude-flow@alpha mcp start
 mcp__claude-flow__swarm_init({ topology: "mesh", maxAgents: 6 })
 
 // 2. Spawn specialized agents
-mcp__claude-flow__agent_spawn({ type: "researcher", name: "Agent 1" })
+mcp__claude-flow__agent_spawn({ agentType: "researcher", name: "Agent 1" })
 
 // 3. Orchestrate tasks
 mcp__claude-flow__task_orchestrate({ task: "...", strategy: "parallel" })
@@ -46,7 +51,7 @@ mcp__claude-flow__task_orchestrate({ task: "...", strategy: "parallel" })
 
 ### CLI Alternative
 ```bash
-npx claude-flow swarm "your task here" --strategy research --mode distributed --max-agents 6
+claude-flow swarm start -o "your task here" -s research -p
 ```
 
 ## Core Concepts
@@ -69,7 +74,7 @@ npx claude-flow swarm "your task here" --strategy research --mode distributed --
 
 ## Swarm Patterns Overview
 
-See [PATTERNS.md](PATTERNS.md) for detailed topology examples including full agent configuration and multi-phase workflows for each pattern below.
+See [references/patterns.md](references/patterns.md) for detailed topology examples including full agent configuration and multi-phase workflows for each pattern below.
 
 ### Pattern 1: Research Swarm (Mesh)
 - 6 agents: 2 researchers, 2 analysts, 1 documenter
@@ -118,7 +123,7 @@ The following `mcp__claude-flow__*` tools are available in this environment:
 | `github_repo_analyze` | Analyze a GitHub repository |
 | `github_pr_manage` | Manage GitHub pull requests |
 
-Tools NOT in this list (e.g. `swarm_monitor`, `batch_process`, `quality_assess`, `pattern_recognize`, `neural_train`, `pipeline_create`, `daa_fault_tolerance`, `memory_persist`, `state_snapshot`, `metrics_collect`, `health_check`, `trend_analysis`, `automation_setup`, `cost_analysis`) are ghost tools — not currently available. Use `claude-flow` CLI equivalents or `swarm_status` / `performance_report` as substitutes. See PATTERNS.md for annotated examples.
+Tools NOT in this list (e.g. `swarm_monitor`, `batch_process`, `quality_assess`, `pattern_recognize`, `neural_train`, `pipeline_create`, `daa_fault_tolerance`, `memory_persist`, `state_snapshot`, `metrics_collect`, `health_check`, `trend_analysis`, `automation_setup`, `cost_analysis`) are ghost tools — not currently available. Use `claude-flow` CLI equivalents or `swarm_status` / `performance_report` as substitutes. See references/patterns.md for annotated examples.
 
 ## Real-World Quick Examples
 
@@ -196,12 +201,13 @@ try {
 - `hive-mind-advanced` - Byzantine fault-tolerant queen-led coordination
 - `github-code-review` - Repository management and PR automation
 - `build-with-quality` - 111+ agent QE pipeline
+- `performance-analysis` - Bottleneck detection and profiling for a running swarm
 
 ## References
 
 - [Claude Flow Documentation](https://github.com/ruvnet/claude-flow)
 - [Swarm Orchestration Guide](https://github.com/ruvnet/claude-flow/wiki/swarm)
-- [PATTERNS.md](PATTERNS.md) - Detailed topology examples
+- [references/patterns.md](references/patterns.md) - Detailed topology examples
 
 ---
 

@@ -1,4 +1,6 @@
-# Build with Quality Skill (v1.2.1)
+# Build with Quality Skill
+
+Current version: see `metadata.version` in [SKILL.md](./SKILL.md) frontmatter (single source of truth).
 
 **[Claude Flow V3](https://github.com/ruvnet/claude-flow/tree/main/v3) + [Agentic QE](https://github.com/proffesor-for-testing/agentic-qe) Combined Skill — now with Expectation-Driven Development**
 
@@ -21,13 +23,17 @@ A powerful skill that combines the development capabilities of [Claude Flow V3](
 
 ## Features
 
-### 114+ Specialized Agents
+### 34 Specialized Agents
 
-| Source | Count | Examples |
+Recounted from [references/agents.md](./references/agents.md)'s Agent Domains catalogue.
+
+| Domain | Count | Examples |
 |--------|-------|----------|
-| [Claude Flow V3](https://github.com/ruvnet/claude-flow/tree/main/v3) | 62+ | architect, coder, reviewer, security-architect, deployer, expectation-author, tdd-stabilizer |
-| [Agentic QE](https://github.com/proffesor-for-testing/agentic-qe) | 53 | test-strategist, coverage-analyzer, defect-predictor, chaos-engineer, evidence-producer, evidence-auditor |
-| Shared | 3 | unified-coordinator, event-bridge, unified-memory-coordinator |
+| Development (Claude Code V3) | 7 | architect, coder, reviewer, deployer, expectation-author, tdd-stabilizer |
+| Quality (Agentic QE) | 12 | test-strategist, coverage-analyzer, defect-predictor, chaos-engineer, evidence-producer, evidence-auditor |
+| Security (mixed) | 6 | security-architect, sast-scanner, dast-scanner, compliance-auditor |
+| Learning (shared) | 6 | sona-optimizer, memory-indexer, reasoning-bank-manager |
+| TDD subagents | 3 | tdd-red-phase, tdd-green-phase, tdd-refactor-phase |
 
 ### Unified Learning System
 
@@ -389,18 +395,21 @@ The skill supports two execution modes:
 ### Option A: MCP Tools (Preferred)
 ```javascript
 mcp__claude-flow__swarm_init { topology: "hierarchical-mesh", maxAgents: 100 }
-mcp__claude-flow__agent_spawn { type: "architect" }
-mcp__claude-flow__agent_spawn { type: "coder" }
+mcp__claude-flow__agent_spawn { agentType: "architect" }
+mcp__claude-flow__agent_spawn { agentType: "coder" }
 mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 ```
 
 ### Option B: CLI Commands (Fallback)
 ```bash
-npx claude-flow@alpha swarm init --topology hierarchical-mesh
-npx claude-flow@alpha agent spawn --type architect
-npx claude-flow@alpha agent spawn --type coder
-npx claude-flow@alpha task orchestrate --task "[PROJECT]"
+claude-flow swarm init --topology hierarchical --v3-mode
+claude-flow agent spawn --type architect
+claude-flow agent spawn --type coder
+claude-flow task create --type "implementation" --description "[PROJECT]"
 ```
+The CLI has no `task orchestrate` subcommand (`task create/list/status/cancel/assign/retry`
+only) — full multi-agent orchestration is MCP-native
+(`mcp__claude-flow__task_orchestrate`, Option A above).
 
 ## Consensus Mechanisms
 

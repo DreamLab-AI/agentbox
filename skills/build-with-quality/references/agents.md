@@ -1,16 +1,20 @@
 # Agents Catalog
 
 The full agent roster and per-domain breakdown for build-with-quality. Spawn these
-via `mcp__claude-flow__agent_spawn { type: "..." }`, the Claude Code `Task` tool
-(`subagent_type`), or `npx claude-flow@alpha agent spawn --type ...`.
+via `mcp__claude-flow__agent_spawn { agentType: "..." }`, the Claude Code `Task` tool
+(`subagent_type`), or `claude-flow agent spawn --type ...`.
 
-## 114+ Specialized Agents
+## 34 Specialized Agents
 
-| Source | Count | Examples |
+Recounted directly from the "Agent Domains" catalogue below (2026-09-09).
+
+| Domain | Count | Examples |
 |--------|-------|----------|
-| Claude Flow V3 | 62+ | architect, coder, reviewer, security-architect, deployer, expectation-author, tdd-stabilizer |
-| Agentic QE | 53 | test-strategist, coverage-analyzer, defect-predictor, chaos-engineer, evidence-producer, evidence-auditor |
-| Shared | 3 | unified-coordinator, event-bridge, unified-memory-coordinator |
+| Development (Claude Code V3) | 7 | architect, coder, reviewer, deployer, expectation-author, tdd-stabilizer |
+| Quality (Agentic QE) | 12 | test-strategist, coverage-analyzer, defect-predictor, chaos-engineer, evidence-producer, evidence-auditor |
+| Security (mixed) | 6 | security-architect, sast-scanner, dast-scanner, compliance-auditor |
+| Learning (shared) | 6 | sona-optimizer, memory-indexer, reasoning-bank-manager |
+| TDD subagents | 3 | tdd-red-phase, tdd-green-phase, tdd-refactor-phase |
 
 ## Agent Domains
 

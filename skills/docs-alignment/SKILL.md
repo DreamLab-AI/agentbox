@@ -22,6 +22,15 @@ Skip in favour of a more direct path when:
 - Generating API docs from code — use code-level doc tools directly.
 - General code quality/testing workflows — use `build-with-quality`.
 
+## Sequencing with prose-sanitiser
+
+`validate-spelling.sh` is a structural, corpus-wide check: file by file, pass or fail,
+against a UK-English wordlist. It does not catch AI writing tells such as em-dash
+density, hedge padding, or generic phrasing. For a full modernisation, run
+`docs-alignment` first to fix links, front matter, diagrams, and spelling, then run
+`prose-sanitiser` per file for the prose-quality pass. Skipping the second step leaves
+AI-tell removal undone.
+
 ## Prerequisites
 
 - `docs-alignment` and sibling `docs-*` binaries (Rust, built from
@@ -97,3 +106,7 @@ memory-coordination keys are in [`references/swarm.md`](references/swarm.md).
   performance tuning.
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — install/validation/permission/
   performance/swarm failure modes and fixes.
+
+## Related skills
+
+- `skill-tuning` measures whether a skill's wording raises task success; this skill only checks corpus consistency.

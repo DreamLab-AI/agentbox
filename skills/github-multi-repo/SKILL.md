@@ -65,6 +65,11 @@ npx claude-flow skill run github-multi-repo optimize \
   --analyze-structure --suggest-improvements --create-templates
 ```
 
+**Claude Code only:** the swarm orchestration above (`claude-flow skill run`) needs the
+claude-flow MCP server. On Codex / GPT-6 Astra (or any session without it): see
+[../github-code-review/references/plain-gh-fallback.md](../github-code-review/references/plain-gh-fallback.md)
+for the plain `gh`-only path (the org-wide safety rules above still apply).
+
 ## Core capabilities
 - **Multi-repository swarm coordination** — cross-repo AI swarm orchestration for
   distributed workflows.

@@ -24,18 +24,29 @@ Bridges OpenAI GPT-6 Astra into the Ruflo multi-agent environment as a first-cla
 - For web research or fetching live information -- use the perplexity-research or gemini-url-context skills instead
 - For code review on GitHub PRs with swarm coordination -- use the github-code-review skill instead
 
-## Architecture
+## Status: reference-only, not the live bridge
 
-- Runs as `devuser` via supervisord (skill files under ~/.claude/skills)
-- Communicates over stdio MCP protocol
-- Auto-discovered by `generate-mcp-settings.sh`
+The bundled `mcp-server/` (this skill's `codex_generate`/`codex_review` tools, calling the
+raw `openai` SDK directly) is **not registered as an MCP server anywhere** — it is legacy
+code kept only because `flake.nix` (~573-578), the repo's prefetch-hashes.sh, and the
+entrypoint (`config/entrypoint-unified.sh` ~841) prefetch it as an npm closure. It is not
+symlinked into `~/.claude/skills` (this skill is absent from `registered-skills.txt`) and no
+reconciler auto-discovers `entry_point`/`mcp_server` frontmatter for it. Read it as
+documentation of a superseded approach, not as something to debug when Codex delegation
+fails.
+
+The live GPT-6 Astra bridge is the **`consultant-codex`** MCP server
+(`/opt/agentbox/mcp/consultants/package/codex/server.js`, registered in `skills/mcp.json`),
+reached on demand by the MCP client — not a standing supervisord program. Its tools are
+`consult`, `health`, and `cost_estimate`. Use it directly, or via the `codex-companion`
+skill's higher-level commands.
+
+## Architecture (legacy bridge, as designed)
+
+- Would run as `devuser`, invoked directly over stdio MCP protocol (no pseudo-user; the
+  `openai-user`/UID-1002 model is retired estate-wide)
 - API key injected from `$OPENAI_API_KEY` environment variable
-
-## Usage from Ruflo (devuser)
-
-The MCP bridge makes these tools transparently available to Claude Code and Ruflo agents.
-When devuser invokes `codex_generate`, the request is routed through the MCP server —
-which runs as `devuser` under profile isolation (supervisord-managed), not a pseudo-user.
+- Superseded by `consultant-codex` — see Status above
 
 ## Configuration
 

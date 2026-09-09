@@ -1,41 +1,35 @@
-# codex-registered-skills.txt — Codex-native progressive-disclosure surface
-#
-# This manifest is intentionally independent of registered-skills.txt (the
-# Claude Code surface). Codex initially budgets at most 2% of context for skill
-# metadata, so expose a compact set of high-value workflows plus skill-router;
-# the remaining baked corpus stays available on demand through the router and
-# /opt/agentbox/skills/SKILL-DIRECTORY.md.
+# codex-registered-skills.txt — the curated set of skills exposed to the OpenAI Codex CLI
+# (GPT-6 Astra). Reconciled at boot into ~/.codex/skills by scripts/reconcile-skills.sh
+# (CLAUDE_SKILLS_DIR=$HOME/.codex/skills REGISTERED_SKILLS_MANIFEST=<this file>), symlinking
+# each entry from /opt/agentbox/skills/<name>. Independent of registered-skills.txt (the
+# Claude Code surface) on purpose: Codex caps its always-loaded skill index at 2 % of context
+# or 8,000 characters and shortens/drops descriptions past that, so this list stays short and
+# favours skills whose bodies do not depend on Claude-only affordances (Agent/fork, Artifact,
+# Skill tool, /route, claude-flow hooks). Everything else stays reachable on demand through
+# /opt/agentbox/skills/SKILL-DIRECTORY.md and skill-router/references/routing-table.md, which
+# ~/.codex/AGENTS.md points at.
 
-# Discovery and general software delivery
+# Discovery and delivery
 skill-router
-lazy-fetch
-build-with-quality
 codebase-memory
-agentdb-memory-patterns
-verification-quality
+build-with-quality
 docs-alignment
+explainer
+codebase-video
 
 # Coding and repository workflows
 rust-development
 agentic-jujutsu
 github-code-review
-github-workflow-automation
 security-testing
-leptos
 
-# Browser, spatial, and design workflows
+# Browser, spatial, design, writing
 browser
-browser-automation
-playwright
 qgis
 blender
 open-design
 prose-sanitiser
 
-# Knowledge and shared-memory workflows
+# Knowledge and shared memory
 ontology-augment
 ruvnet-brain
-
-# Captured 3D scenes and registered data overlays
-spark-scene
-codebase-video

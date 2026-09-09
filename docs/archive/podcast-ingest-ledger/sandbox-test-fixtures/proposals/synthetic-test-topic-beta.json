@@ -1,0 +1,156 @@
+{
+  "topic": "Synthetic Test Topic Beta",
+  "topic_slug": "synthetic-test-topic-beta",
+  "status": "candidate_survivor",
+  "reasons": [],
+  "n_assertions": 5,
+  "episodes": [
+    "synthetic-ep-b",
+    "synthetic-ep-c"
+  ],
+  "assertion_fingerprints": [
+    "bbbb0000000000b1",
+    "bbbb0000000000b2",
+    "bbbb0000000000b3",
+    "cccc0000000000c1",
+    "cccc0000000000c2"
+  ],
+  "target_page": "Synthetic Test Topic Beta.md",
+  "assertions": [
+    {
+      "claim": "Synthetic Test Topic Beta introduced a shared memory layer across agent sessions this quarter.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-b",
+      "claim_date": "2026-08-23",
+      "evidence": "The host describes a new shared memory layer spanning agent sessions.",
+      "fp": "bbbb0000000000b1"
+    },
+    {
+      "claim": "Synthetic Test Topic Beta's pricing model shifted to per-token billing for long-running agents.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-b",
+      "claim_date": "2026-08-23",
+      "evidence": "The host notes the pricing shift to per-token billing for long-running agent workloads.",
+      "fp": "bbbb0000000000b2"
+    },
+    {
+      "claim": "Synthetic Test Topic Beta added native support for scheduled recurring agent runs.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-b",
+      "claim_date": "2026-08-23",
+      "evidence": "Scheduled recurring agent runs are now natively supported.",
+      "fp": "bbbb0000000000b3"
+    },
+    {
+      "claim": "Synthetic Test Topic Beta's evaluation harness now reports per-tool failure attribution.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-c",
+      "claim_date": "2026-08-23",
+      "evidence": "Per-tool failure attribution was added to the evaluation harness.",
+      "fp": "cccc0000000000c1"
+    },
+    {
+      "claim": "Synthetic Test Topic Beta gained a rollback mechanism for failed multi-step agent plans.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-c",
+      "claim_date": "2026-08-23",
+      "evidence": "A rollback mechanism for failed multi-step plans shipped this release.",
+      "fp": "cccc0000000000c2"
+    }
+  ],
+  "draft": {
+    "ok": true,
+    "error": null,
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "### Applications",
+      "content": "### Recent Developments\n\n- Synthetic Test Topic Beta introduced a shared memory layer across agent sessions this quarter. (The host describes a new shared memory layer spanning agent sessions.) [source: Host (AI Daily Brief), confidence 0.9, tier 1]\n- Synthetic Test Topic Beta's pricing model shifted to per-token billing for long-running agents. (The host notes the pricing shift to per-token billing for long-running agent workloads.) [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n- Synthetic Test Topic Beta added native support for scheduled recurring agent runs. (Scheduled recurring agent runs are now natively supported.) [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n- Synthetic Test Topic Beta's evaluation harness now reports per-tool failure attribution. (Per-tool failure attribution was added to the evaluation harness.) [source: Host (AI Daily Brief), confidence 0.75, tier 2]\n- Synthetic Test Topic Beta gained a rollback mechanism for failed multi-step agent plans. (A rollback mechanism for failed multi-step plans shipped this release.) [source: Host (AI Daily Brief), confidence 0.7, tier 3]\n\n### Applications"
+    }
+  },
+  "judge": {
+    "ok": true,
+    "error": null,
+    "rubric_a_improvement": 1.0,
+    "rubric_b_improvement": 2.0,
+    "raw_a": {
+      "factual_grounding": 4,
+      "relevance": 5,
+      "coherence": 3,
+      "better_version": "B",
+      "improvement": 1
+    },
+    "raw_b": {
+      "factual_grounding": 2,
+      "relevance": 2,
+      "coherence": 4,
+      "better_version": "A",
+      "improvement": -2
+    }
+  },
+  "completeness": {
+    "score": 1.0,
+    "detail": [
+      {
+        "fp": "bbbb0000000000b1",
+        "claim": "Synthetic Test Topic Beta introduced a shared memory layer across agent sessions this quarter.",
+        "matched": true
+      },
+      {
+        "fp": "bbbb0000000000b2",
+        "claim": "Synthetic Test Topic Beta's pricing model shifted to per-token billing for long-running agents.",
+        "matched": true
+      },
+      {
+        "fp": "bbbb0000000000b3",
+        "claim": "Synthetic Test Topic Beta added native support for scheduled recurring agent runs.",
+        "matched": true
+      },
+      {
+        "fp": "cccc0000000000c1",
+        "claim": "Synthetic Test Topic Beta's evaluation harness now reports per-tool failure attribution.",
+        "matched": true
+      },
+      {
+        "fp": "cccc0000000000c2",
+        "claim": "Synthetic Test Topic Beta gained a rollback mechanism for failed multi-step agent plans.",
+        "matched": true
+      }
+    ]
+  },
+  "ontology_propose_payload": {
+    "target_page": "Synthetic Test Topic Beta.md",
+    "edit": {
+      "mode": "insert_after",
+      "anchor": "### Applications",
+      "content": "### Recent Developments\n\n- Synthetic Test Topic Beta introduced a shared memory layer across agent sessions this quarter. (The host describes a new shared memory layer spanning agent sessions.) [source: Host (AI Daily Brief), confidence 0.9, tier 1]\n- Synthetic Test Topic Beta's pricing model shifted to per-token billing for long-running agents. (The host notes the pricing shift to per-token billing for long-running agent workloads.) [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n- Synthetic Test Topic Beta added native support for scheduled recurring agent runs. (Scheduled recurring agent runs are now natively supported.) [source: Host (AI Daily Brief), confidence 0.8, tier 2]\n- Synthetic Test Topic Beta's evaluation harness now reports per-tool failure attribution. (Per-tool failure attribution was added to the evaluation harness.) [source: Host (AI Daily Brief), confidence 0.75, tier 2]\n- Synthetic Test Topic Beta gained a rollback mechanism for failed multi-step agent plans. (A rollback mechanism for failed multi-step plans shipped this release.) [source: Host (AI Daily Brief), confidence 0.7, tier 3]\n\n### Applications"
+    },
+    "provenance": {
+      "assertion_fingerprints": [
+        "bbbb0000000000b1",
+        "bbbb0000000000b2",
+        "bbbb0000000000b3",
+        "cccc0000000000c1",
+        "cccc0000000000c2"
+      ],
+      "source_episodes": [
+        "synthetic-ep-b",
+        "synthetic-ep-c"
+      ]
+    },
+    "scores": {
+      "rubric_a_improvement": 1.0,
+      "rubric_b_improvement": 2.0,
+      "completeness": 1.0
+    }
+  }
+}

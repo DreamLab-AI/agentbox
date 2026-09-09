@@ -126,11 +126,15 @@ tagged for cross-cutting queries.
 
 ## Converter & library locations
 
-- Converter: `Ontology-Tools/tools/converters/convert-to-turtle.py`
-- Parser: `Ontology-Tools/tools/lib/ontology_block_parser.py`
-- Loader: `Ontology-Tools/tools/lib/ontology_loader.py`
+TTL export is not yet ported. The Python converter/parser/loader this section
+used to point at (`Ontology-Tools/tools/converters/convert-to-turtle.py` and
+its `tools/lib/` siblings) does not exist anywhere in this checkout, and the
+Rust `ontology-tools` crate (`services/ontology-tools`) that replaced the
+retired Python tooling has no export subcommand — only `parse | validate |
+roundtrip | modify | links | enrich | batch-enrich` (verified 2026-09-09).
+The generation rules above are the target spec for whichever exporter is
+built next (most naturally an `ontology-tools export-ttl` subcommand in that
+same crate), not a description of working code today.
 
-The skill also ships runnable Python in `../src/`:
-- `ontology_parser.py` — parse OntologyBlock structures
-- `ontology_modifier.py` — field-preserving edits
-- `owl2_validator.py` — OWL2 DL validation
+This skill has no `src/` directory of its own — all parsing/modification/
+validation goes through the `ontology-tools` binary above.

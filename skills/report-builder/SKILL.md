@@ -68,7 +68,8 @@ Phase 1 RESEARCH   → parallel research swarm, Perplexity search, structured da
 Phase 2 STRUCTURE  → LaTeX skeleton (book class), figure/table/diagram plan
 Phase 3 WRITE      → parallel chapter agents, Python charts, BibLaTeX, compile
 Phase 4 VISUALISE  → TikZ/Mermaid renders, Nano Banana infographic upgrade
-Phase 5 REVIEW     → 4 specialist reviewers + optional cross-LLM review
+Phase 5 REVIEW     → 4 specialist reviewers + optional cross-LLM review + optional
+                     prose-sanitiser de-slop pass
 Phase 6 PUBLISH    → clean 3-pass build, PDF verify, asset audit, git commit
 ```
 

@@ -7,6 +7,8 @@ description: "UI/UX design intelligence for web and mobile: recommends styles, c
 
 Comprehensive design guide for web and mobile applications. Contains 50+ styles, 97 color palettes, 57 font pairings, 99 UX guidelines, and 25 chart types across 9 technology stacks. Searchable database with priority-based recommendations.
 
+This directory also ships the upstream project's vendored multi-platform scaffold (`.cursor/`, `.windsurf/`, `.kiro/`, `.roo/`, `.agent/`, `.github/`, `.claude-plugin/`, `cli/`, its own `CLAUDE.md`). That scaffold is upstream packaging for the standalone `uipro init` CLI installer and is not agentbox wiring — agentbox discovers and loads this skill via `SKILL.md` directly, never via that installer or the `.shared/` symlink layout it describes.
+
 ## When to Apply
 
 Reference these guidelines when:
@@ -80,7 +82,7 @@ Reference these guidelines when:
 
 ### 5. Typography & Color (MEDIUM)
 
-- `line-height` - Use 1.5-1.75 for body text
+- `line-height` - Use 1.5-1.75 for **on-screen UI body text** (dashboards, apps, responsive web copy read up close on a screen). This is a distinct scope from the `typography` skill's 120-145% (1.2-1.45) rule, which covers print/typeset body copy set at a fixed point size — see `typography/SKILL.md` for that scope. Don't apply the tighter print range to responsive UI text.
 - `line-length` - Limit to 65-75 characters per line
 - `font-pairing` - Match heading/body font personalities
 

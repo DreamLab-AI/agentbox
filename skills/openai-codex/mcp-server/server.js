@@ -2,7 +2,12 @@
 // ============================================================================
 // OpenAI Codex MCP Server v2.0.0
 // Exposes GPT-6 Astra coding capabilities as MCP tools for cross-agent delegation
-// Runs as openai-user (UID 1002), called by devuser (Ruflo) via MCP bridge
+// Legacy bridge kept only so its source tree stays in the Nix closure
+// (flake.nix ~573-578, scripts/prefetch-hashes.sh); not wired into any live
+// MCP registration. Runs as `devuser` if ever invoked directly — the
+// openai-user/UID-1002 pseudo-user model is retired estate-wide. The live
+// GPT-6 Astra tool is the consultant-codex MCP server (consult / health /
+// cost_estimate), registered in skills/mcp.json.
 // ============================================================================
 
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');

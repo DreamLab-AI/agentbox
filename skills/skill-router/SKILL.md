@@ -40,10 +40,9 @@ duplicates each skill's front-matter description and is regenerated after descri
 changes; it is not kept inline here to avoid drift). Route as follows:
 
 1. Read the user's input — everything after `/route`.
-2. Load `references/routing-table.md` and classify intent against its sections
-   (Code Development, GitHub, Multi-Agent/Swarm, Consultants, Research/Web/Content,
-   Economics, Documents, Media/3D/Art, Browser, AI/ML, Memory/Learning, Infrastructure,
-   UI/UX, Architecture, Domain-Specific, Security).
+2. Load `references/routing-table.md` and classify intent against its sections (they mirror
+   the category headings of `SKILL-DIRECTORY.md`; one row per skill, each row's text is the
+   skill's own trigger description).
 3. Apply the routing rules below to dispatch, clarify, or compose.
 
 ## Routing Rules
@@ -84,7 +83,14 @@ Or browse the full inventory: see SKILL-DIRECTORY.md
 - It does not ask more than one clarifying question.
 
 ## Maintaining the routing table
-`references/routing-table.md` is a **generated artefact** derived from every skill's
-front-matter `description`. It is drift-prone by construction, so **regenerate it after any
-skill description changes** (e.g. the `UPGRADE-PLAN-c5.md` §5 rewrites) rather than editing
-routing rows to diverge from their owning skill's description.
+`references/routing-table.md` is **generated**: `node skills/gen-routing-table.mjs` reads every
+skill's frontmatter `description` (and `deprecated`/`replacement`) and the section for each
+skill from `references/section-map.json`, and rewrites the table. `bash skills/lint-skills.sh`
+fails when the table is stale (`--check`) or a skill directory is missing from the section map.
+Never hand-edit a row: fix the owning skill's description, add the skill to the section map if
+it is new, and regenerate. (Until 2026-09-09 the table claimed to be generated but was
+hand-maintained and 38 skills behind the tree.)
+
+## Cross-harness note
+`/route` is a Claude Code slash command. On Codex (GPT-6 Astra) read
+`references/routing-table.md` directly; the same rows, the same descriptions.

@@ -170,7 +170,7 @@ What makes Claude's design truly distinctive is its warm neutral palette. Every 
 ### Distinctive Components
 
 **Model Comparison Cards**
-- Opus 4.5, Sonnet 4.5, Haiku 4.5 presented in a clean card grid
+- Opus 5, Sonnet 5, Haiku 4.5 presented in a clean card grid
 - Each model gets a bordered card with name, description, and capability badges
 - Border Warm (`#e8e6dc`) separation between items
 

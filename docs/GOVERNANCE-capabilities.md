@@ -93,17 +93,31 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
 
 - **Directory** — `skills/SKILL-DIRECTORY.md` is the canonical index; skills self-trigger
   from their `description` frontmatter. The skill **count** has one authority,
-  `scripts/skill-count-check.js` (currently 126); no other document restates it, and this
-  one does not restate the directory's line count either — both drifted before (ADR-2056).
-- **Lint gate** — `skills/lint-skills.sh` (a thin shell wrapper over `lint-skills.mjs`)
-  enforces estate hygiene and exits non-zero on any finding. Its `SKIP_DIRS` holds only
-  genuinely non-skill directories: a skill is never excluded wholesale, and relief from a
-  single check goes in that check's own narrow exemption set with a reason. `toprank` was
-  formerly skipped entirely, which dropped it from all six checks and made this gate count
-  125 skills against `skill-count-check.js`'s 126 (ADR-2056). Checks: banned stale strings (dead hosts like `192.168.2.48`, retired SDKs), absolute
-  `~/.claude/skills` paths (skills are baked at `/opt/agentbox/skills`), the retired bare
-  `/workspace/` path, monolith SKILL.md files (>250 lines with no `references/`), and
-  frontmatter sanity (`name` + `description` present).
+  `scripts/skill-count-check.js` (run in `invariants.yml`); no other document restates it
+  (ADR-2056). The router's `skill-router/references/routing-table.md` is **generated** from
+  frontmatter by `skills/gen-routing-table.mjs` and `skill-router/references/section-map.json`
+  (ADR-2083); it is never hand-edited.
+- **Authoring contract** (ADR-2083, taught by `skills/skill-builder`): `name` equals the
+  directory (lowercase-hyphen); `description` ≤ 1024 chars with what/when/when-not; depth in
+  `references/`; portable frontmatter core per agentskills.io plus Claude Code's documented
+  extras and an allow-listed estate vocabulary; redirect stubs carry `deprecated: true` +
+  `replacement:`; Claude-only affordances are stated in one line with the Codex fallback.
+- **Lint gate** — `skills/lint-skills.sh` (thin wrapper over `lint-skills.mjs`) exits non-zero
+  on any finding. Checks: banned stale strings (dead hosts, retired SDKs), absolute
+  `~/.claude/skills` and `/home/devuser/.claude/skills` paths (skills bake at
+  `/opt/agentbox/skills`), the retired bare `/workspace/` path, a real frontmatter parse,
+  NAME (== directory), DESCLEN (≤ 1024), the 250-line/`references/` budget, every cited
+  `references|scripts|assets` path resolving, REGISTERED (both manifests resolve to live,
+  non-deprecated skills), DIRECTORY (every skill named in the directory and the section map),
+  ROUTING (generated table current), DEPRECATED (stub keys). Unknown frontmatter keys and stale
+  model ids are advisory warnings. `SKIP_DIRS` holds only non-skill directories; per-check
+  exemptions carry a reason. Contract tests: `tests/config/skill-lint.test.sh`.
+- **Registration** — `skills/registered-skills.txt` (Claude Code, always-loaded native Skill
+  list) and `skills/codex-registered-skills.txt` (Codex / GPT-6 Astra, sized for its
+  8,000-character skill index) are reconciled at boot by `scripts/reconcile-skills.sh` into
+  `~/.claude/skills` and `~/.codex/skills` from the baked tree; `~/.codex/AGENTS.md` points
+  Codex at the directory and routing table for reference-only skills. Manifest-disabled or
+  not-installed skills are never registered.
 - **Manifest gates** — `agentbox.toml` `[skills.*]` blocks are the boot gates; each skill
   declares its own `manifest_gate` (e.g. tree-search-coder → `[skills.tree_search_coder]
   enabled = true`). "Byte-identical-when-off" is the discipline: a disabled skill leaves no

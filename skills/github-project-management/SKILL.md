@@ -13,7 +13,6 @@ tags:
   - sprint-planning
   - agile
   - swarm-coordination
-difficulty: intermediate
 prerequisites:
   - GitHub CLI (gh) installed and authenticated
   - claude-flow MCP server configured
@@ -30,7 +29,6 @@ related_skills:
   - github-release-management
   - github-workflow-automation
   - github-multi-repo
-estimated_time: 30-45 minutes
 ---
 
 # GitHub Project Management
@@ -64,6 +62,11 @@ Board setup:
 PROJECT_ID=$(gh project list --owner @me --format json | jq -r '.projects[0].id')
 npx ruv-swarm github board-init --project-id "$PROJECT_ID" --sync-mode "bidirectional"
 ```
+
+**Claude Code only:** the swarm coordination step above (`claude-flow hooks`) needs
+the claude-flow MCP server. On Codex / GPT-6 Astra (or any session without it): see
+[../github-code-review/references/plain-gh-fallback.md](../github-code-review/references/plain-gh-fallback.md)
+for the plain `gh`-only path.
 
 ## Full Reference
 

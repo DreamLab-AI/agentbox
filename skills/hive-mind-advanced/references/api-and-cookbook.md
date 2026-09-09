@@ -5,15 +5,21 @@
 ### Memory Issues
 
 **High Memory Usage**
+
+`hive-mind memory` in the deployed CLI takes `-a/--action` (default: list),
+`-k/--key`, `-v/--value` — there is no `--gc`/`--optimize`/`--export`/`--clear`
+flag (verified: `claude-flow hive-mind memory --help`). Use the dedicated
+optimisation subcommand and generic memory export instead:
+
 ```bash
-# Run garbage collection
-npx claude-flow hive-mind memory --gc
+# Optimize hive memory and patterns
+claude-flow hive-mind optimize-memory
 
-# Optimize database
-npx claude-flow hive-mind memory --optimize
+# Aggressive optimisation with a lower quality threshold
+claude-flow hive-mind optimize-memory -a --threshold 0.6
 
-# Export and clear
-npx claude-flow hive-mind memory --export --clear
+# Export collective memory (generic Claude Flow memory command)
+claude-flow memory export -o ./hive-memory-backup.json
 ```
 
 **Low Cache Hit Rate**
@@ -45,12 +51,16 @@ npx claude-flow hive-mind memory --export --clear
 ### Consensus Failures
 
 **No Consensus Reached (Byzantine)**
+
+Consensus is set at `init`, not on `spawn` (verified: `hive-mind spawn --help`
+has no `--consensus` flag). Re-initialise with a different strategy:
+
 ```bash
 # Switch to weighted consensus for more decisive results
-npx claude-flow hive-mind spawn "..." --consensus weighted
+claude-flow hive-mind init -c weighted
 
 # Or use simple majority
-npx claude-flow hive-mind spawn "..." --consensus majority
+claude-flow hive-mind init -c majority
 ```
 
 ## Advanced Topics
@@ -83,26 +93,32 @@ The system trains on successful patterns:
 
 ### Multi-Hive Coordination
 
-Run multiple hive minds simultaneously:
+Run multiple hive minds simultaneously. There is no `--name` flag on `spawn`
+(verified: `hive-mind spawn --help`) — use `-p/--prefix` to distinguish worker
+IDs between hives instead:
 
 ```bash
 # Frontend hive
-npx claude-flow hive-mind spawn "Build UI" --name frontend-hive
+claude-flow hive-mind spawn -p frontend -o "Build UI"
 
 # Backend hive
-npx claude-flow hive-mind spawn "Build API" --name backend-hive
+claude-flow hive-mind spawn -p backend -o "Build API"
 
 # They share collective memory for coordination
 ```
 
-### Export/Import Sessions
+### Export/Import Collective Memory
+
+There is no `hive-mind export`/`import` subcommand (verified: `hive-mind
+--help` full subcommand list). Use the generic memory commands, which persist
+to the same RuVector/SQLite-backed store the hive reads from:
 
 ```bash
-# Export session for backup
-npx claude-flow hive-mind export <session-id> --output backup.json
+# Export for backup
+claude-flow memory export -o ./backup.json
 
-# Import session
-npx claude-flow hive-mind import backup.json
+# Import
+claude-flow memory import ./backup.json
 ```
 
 ## API Reference
@@ -168,15 +184,11 @@ await sessionManager.completeSession(sessionId);
 ### Full-Stack Development
 
 ```bash
-# Initialize hive mind
-npx claude-flow hive-mind init
+# Initialize hive mind (topology, consensus, and agent cap set here)
+claude-flow hive-mind init -t hierarchical-mesh -c weighted -m 10
 
 # Spawn full-stack hive
-npx claude-flow hive-mind spawn "Build e-commerce platform" \
-  --queen-type strategic \
-  --max-workers 10 \
-  --consensus weighted \
-  --claude
+claude-flow hive-mind spawn -n 10 --claude -o "Build e-commerce platform"
 
 # Output generates Claude Code commands:
 # - Queen coordinator
@@ -192,10 +204,9 @@ npx claude-flow hive-mind spawn "Build e-commerce platform" \
 ### Research and Analysis
 
 ```bash
-# Spawn research hive
-npx claude-flow hive-mind spawn "Research GraphQL vs REST" \
-  --queen-type adaptive \
-  --consensus byzantine
+# Initialize with byzantine consensus, then spawn a research hive
+claude-flow hive-mind init -c byzantine
+claude-flow hive-mind spawn -o "Research GraphQL vs REST"
 
 # Researchers gather data
 # Analysts process findings
@@ -207,9 +218,7 @@ npx claude-flow hive-mind spawn "Research GraphQL vs REST" \
 
 ```bash
 # Review coordination
-npx claude-flow hive-mind spawn "Review PR #456" \
-  --queen-type tactical \
-  --max-workers 6
+claude-flow hive-mind spawn -n 6 -o "Review PR #456"
 
 # Spawns:
 # - Code analyzers

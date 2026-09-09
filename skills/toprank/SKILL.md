@@ -34,12 +34,18 @@ AI-powered SEO and SEM automation through 6 specialised skills with Google Searc
 
 ## When Not to Use
 
-- For Answer Engine Optimisation without SEO context -- use `bencium-aeo` instead
+- For Answer Engine Optimisation with **no SEO context** -- use `bencium-aeo` instead; it owns
+  the GEO/AI-citation technique library (`geo-content-optimizer` below is a pointer to it, kept
+  for when GEO work happens inside a toprank SEO engagement)
 - For general web research -- use `perplexity-research` instead
 - For URL content analysis -- use `gemini-url-context` instead
 - For LinkedIn/social media optimisation -- use `linkedin` instead
 
 ## Sub-Skills
+
+7 nested sub-skills, each with its own `SKILL.md`, reachable only through this table (they are
+intentionally **not** independently listed in `SKILL-DIRECTORY.md` or the router's
+routing-table — this is the deliberate nested-pack pattern, not an oversight):
 
 | Skill | Trigger | What It Does |
 |-------|---------|-------------|
@@ -48,7 +54,8 @@ AI-powered SEO and SEM automation through 6 specialised skills with Google Searc
 | `keyword-research` | "keyword research", "content ideas" | Keyword discovery, intent classification, topic clusters |
 | `meta-tags-optimizer` | "optimise title", "improve CTR" | Title/description/OG tags, social preview optimisation |
 | `schema-markup-generator` | "schema markup", "rich snippets" | JSON-LD structured data for articles, FAQ, products, etc. |
-| `geo-content-optimizer` | "optimise for AI", "AI answers" | Generative Engine Optimisation for ChatGPT/Perplexity/Claude citations |
+| `geo-content-optimizer` | "optimise for AI", "AI answers" | **Pointer** to `bencium-aeo`'s GEO technique library, framed for SEO-workflow use |
+| `toprank-upgrade` | (internal) | Suite upgrade/maintenance tooling |
 
 ## Setup
 
@@ -92,6 +99,9 @@ The skill auto-detects your site URL when run inside a website repo.
 ## Integration with Other Skills
 
 - `perplexity-research`: Research competitor strategies before keyword planning
-- `bencium-aeo`: Complement traditional SEO with AI citation optimisation
+- `bencium-aeo`: The GEO/AI-citation technique authority (see `geo-content-optimizer` above,
+  which now points at it). Use `bencium-aeo` directly for AI-citation work with no SEO context;
+  use toprank's `geo-content-optimizer` pointer when GEO is one step inside a broader SEO
+  engagement running through this suite.
 - `report-builder`: Generate comprehensive SEO reports with charts and Wardley maps
 - `wardley-maps`: Map SEO component evolution and competitive positioning

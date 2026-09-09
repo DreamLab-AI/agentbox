@@ -1,0 +1,138 @@
+{
+  "batch": "12-discovery-layer",
+  "findings": [
+    {
+      "area": "directory",
+      "severity": "high",
+      "evidence": "skills/SKILL-DIRECTORY.md:3,34,40,300 and CLAUDE.md:34 all state 127/'for 127 skills'; `node scripts/skill-count-check.js` (the declared single source of truth, ADR-2056/ADR-037-D8) counts 128 live skill directories and exits 1 (RED) right now",
+      "fix": "Bump the four SKILL-DIRECTORY.md occurrences and the CLAUDE.md line to the live count, then wire `node scripts/skill-count-check.js` into .github/workflows/invariants.yml so this class of drift fails CI instead of sitting RED indefinitely"
+    },
+    {
+      "area": "directory",
+      "severity": "high",
+      "evidence": "verified via `comm` against skill-count-check.js's own definition of a skill (dir + SKILL.md): payment-router, podcast-bulk-ingest, podcast-knowledge-ingest, repo-education, uk-solar-planner, youtube-transcript-archiver have no row in any of SKILL-DIRECTORY.md's 25 categorised tables — six, not the five named in the brief. uk-solar-planner is additionally one of the 20 always-loaded skills in registered-skills.txt and is mentioned ONLY in the header prose changelog (SKILL-DIRECTORY.md:4), never in a category table or the decision tree",
+      "fix": "Add category rows for all six (Domain Planners: uk-solar-planner; Payments: payment-router; Media/Content ingest: podcast-bulk-ingest, podcast-knowledge-ingest, youtube-transcript-archiver; repo-education alongside explainer/codebase-video in the 'Explain this codebase' cluster) and add skill-count-check.js-style enforcement that every on-disk skill appears at least once in the directory text"
+    },
+    {
+      "area": "router",
+      "severity": "high",
+      "evidence": "skills/skill-router/references/routing-table.md:1-9 self-describes as 'a generated artefact' that 'must be regenerated after description changes'; no generator script exists anywhere under scripts/ or skills/skill-router/ (grep found none). The table is missing 38 on-disk skills, several of which are always-loaded (email-search, ontology-augment) with zero row in the very table meant to route to them",
+      "fix": "Either write the generator the file claims to have (derive each row mechanically from front-matter `description`) or drop the 'generated' framing and own it as hand-maintained with the same coverage gate as SKILL-DIRECTORY.md (every on-disk skill named at least once)"
+    },
+    {
+      "area": "router",
+      "severity": "med",
+      "evidence": "Two independently hand-maintained routing artefacts exist for the same job with different taxonomies: SKILL-DIRECTORY.md's Decision Tree (Artefact 2, categories A-P) has no 'Consultants' or 'Economics' branch, while skill-router/references/routing-table.md:65-104 has both, routing to consultant MCP slugs (codex/gemini/zai/perplexity/deepseek) that are not skill directory names at all",
+      "fix": "Pick one source of truth (front-matter descriptions) and generate both the decision tree and the routing table from it, or explicitly scope routing-table.md as the superset (MCP tools + skills) and say so in both files"
+    },
+    {
+      "area": "registration",
+      "severity": "high",
+      "evidence": "skills/registered-skills.txt contains exactly 20 non-comment entries (verified: `grep -vE '^#|^$' registered-skills.txt | wc -l` = 20), not the 22 commonly cited; its own header comment additionally claims 'not all 115 baked skills' against a live count of 128",
+      "fix": "Correct the header comment's baked-count claim and reconcile which figure (20 vs 22) is authoritative before this drifts further; consider having skill-count-check.js also assert registered-skills.txt's entry count against a stated claim"
+    },
+    {
+      "area": "registration",
+      "severity": "high",
+      "evidence": "skills/registered-skills.txt lists `playwright` as always-loaded; agentbox.toml:313 sets `playwright = false  # superseded by the browsercontainer sidecar (browser / browser-automation skills)`. A manifest-disabled, superseded skill occupies a permanent ~163-token entry slot in every session for both Claude and (were Codex ever wired up) GPT-6 Astra",
+      "fix": "Remove playwright from registered-skills.txt (browser/browser-automation already cover the sidecar); reconcile-skills.sh should also refuse to link a skill whose manifest gate is off"
+    },
+    {
+      "area": "registration",
+      "severity": "med",
+      "evidence": "qe-browser is always-loaded in registered-skills.txt, but SKILL-DIRECTORY.md:129 flags it '⚠️ NOT INSTALLED — run aqe init to install'. Entry budget is spent on a tool that is not present until a separate manual install step",
+      "fix": "Gate qe-browser's registration on the aqe fleet actually being installed, or demote it to reference-only until `aqe init` is a boot-time step"
+    },
+    {
+      "area": "registration",
+      "severity": "med",
+      "evidence": "docs/archive/skills-upgrade-plan-c5.md §2 ('Dual-path set — do first') explicitly names build-with-quality, docs-alignment, and deep-research as the estate's most-used skills; none of the three appears in registered-skills.txt's 20 always-loaded slots, while niche single-domain skills (uk-solar-planner, spark-scene) do",
+      "fix": "Use skills/token-audit (already baked, purpose-built for exactly this) to pull real per-skill invocation frequency from ~/.claude/projects/**/*.jsonl and re-derive the always-loaded set from evidence rather than the current ad-hoc curation"
+    },
+    {
+      "area": "codex-parity",
+      "severity": "high",
+      "evidence": "~/.codex/skills holds exactly two entries, both hand-made symlinks (`codebase-video`, `repo-education`) pointing at the workspace source tree /home/devuser/workspace/project/agentbox/skills/*, NOT the baked /opt/agentbox/skills tree reconcile-skills.sh targets for Claude. scripts/reconcile-skills.sh writes only to $HOME/.claude/skills (CLAUDE_SKILLS_DIR default); config/entrypoint-unified.sh:2267-2274 invokes it once, Claude-only. ~/.codex/AGENTS.md (16 lines, read in full) contains only RuVector memory-tool instructions — no mention of skills, SKILL-DIRECTORY.md, or /route",
+      "fix": "See codex_parity paragraph below"
+    },
+    {
+      "area": "gates",
+      "severity": "high",
+      "evidence": ".github/workflows/invariants.yml runs `bash skills/lint-skills.sh` but never `node scripts/skill-count-check.js` — the script ADR-2056/ADR-037-D8 name as the count's sole authority, currently RED (exit 1, verified by running it directly). It is wired into scripts/agentbox-config-validate.js, consumed by a *different* workflow (manifest-validate.yml), not the skills-focused invariants gate",
+      "fix": "Add a `check-skill-count` step to invariants.yml calling scripts/skill-count-check.js directly so a count-claim drift fails the same gate that already covers lint-skills.sh"
+    },
+    {
+      "area": "gates",
+      "severity": "med",
+      "evidence": "tests/fixtures/skill-router-prompts.json holds 10 prompts but only 2 distinct expected_skill values (codeact ×5, sparc:code ×5); tests/integration/skill-router-fixture.test.mjs (read in full) validates the fixture's own schema/uniqueness/existence soundly but exercises zero of the other 126 skills' routing intent and zero ambiguous/composition cases, despite skill-router/SKILL.md's own Rules 2-3 (ask-one-clarifying-question, multi-skill composition) being untested by anything in the repo",
+      "fix": "Extend the fixture with representative prompts spanning at least one skill per SKILL-DIRECTORY.md category, plus 2-3 deliberately ambiguous prompts asserting Rule 2/3 behaviour conceptually (e.g. that two plausible expected_skills both resolve)"
+    },
+    {
+      "area": "gates",
+      "severity": "med",
+      "evidence": "skills/lint-skills.mjs (439 lines, read in full) implements exactly 6 checks (STALE, ABSPATH, RETIRED-PATH, FRONTMATTER, BUDGET, RESOURCE) and none of: name==directory-name equality, description length bounds, cross-skill backtick-reference resolution, stale current-model-id detection, on-disk-skill-named-in-SKILL-DIRECTORY.md coverage, or registered-skills.txt entry resolution",
+      "fix": "See lint_extensions below, ranked"
+    },
+    {
+      "area": "governance",
+      "severity": "med",
+      "evidence": "docs/GOVERNANCE-capabilities.md:96 states the skill count as 'currently 126' — stale against the live 128, and the same paragraph explicitly says 'no other document restates it', contradicting itself by restating it",
+      "fix": "Replace the hardcoded figure with a pointer only ('see scripts/skill-count-check.js'), consistent with the paragraph's own stated discipline"
+    },
+    {
+      "area": "governance",
+      "severity": "low",
+      "evidence": "docs/archive/skills-upgrade-plan-c5.md line 1 says 'Fully executed 2026-08-21' and §7 sequences a closing gate: 'Gate after Batch 0 and Batch 3: regenerate skill-router's table + re-check routing' — but the router table is still hand-maintained, unregenerated, and missing 38 skills (finding above), meaning this gate from a plan marked fully executed never actually ran",
+      "fix": "Either correct the 'Fully executed' claim to note the routing-table regeneration gate as outstanding, or execute it now and update the archive note"
+    },
+    {
+      "area": "vocabulary",
+      "severity": "med",
+      "evidence": "7 skills carry a Title-Case `name` != their directory name (cost-estimation, leptos, ontology-augment, paperbanana, rust-development, skill-builder, skill-tuning), contradicting agentskills.io (lowercase-hyphen name==dir) and the ruflo SKILL.md validator regex `/^[a-z][a-z0-9-]*$/` the estate cites elsewhere as authoritative. skill-builder — the meta-skill that teaches skill authoring — actively instructs authors to use Title Case, propagating the violation it should be preventing",
+      "fix": "Rename the 7 frontmatter `name` values to match their directories; fix skill-builder/SKILL.md's own authoring guidance to match the ruflo/agentskills.io convention instead of contradicting it"
+    },
+    {
+      "area": "directory",
+      "severity": "low",
+      "evidence": "SKILL-DIRECTORY.md:3-4 folds a running audit changelog (82 findings, 38 skills fixed/restructured, a dated parenthetical list of every skill addition with rationale) directly into the header of a document agents load for live routing every time; this duplicates docs/archive/skills-upgrade-plan-c5.md and the ADR ledger and will keep growing unbounded",
+      "fix": "Move the changelog prose to CHANGELOG.md or an ADR; leave one line: 'Updated <date>. History: docs/adr/, docs/archive/skills-upgrade-plan-c5.md'"
+    }
+  ],
+  "stale_directory_rows": [
+    {
+      "skill": "web-researcher",
+      "row_says": "v1.33.0, ~26 tools (SKILL-DIRECTORY.md:150)",
+      "skill_says": "v1.43.0 ... 21 live MCP tools (verified against tools/list) — per the skill's own current front-matter description",
+      "line": 150
+    },
+    {
+      "skill": "playwright",
+      "row_says": "Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp 40+ tools, Chrome Beta 149+); listed as one of the browser family's equal options with no disabled caveat (SKILL-DIRECTORY.md:128)",
+      "skill_says": "agentbox.toml:313 — 'playwright = false # superseded by the browsercontainer sidecar' — the manifest treats the skill itself as superseded, not merely sidecar-routed",
+      "line": 128
+    }
+  ],
+  "registration_proposal": {
+    "keep": ["skill-router", "browser", "chrome-cdp", "ceramic-search", "perplexity-research", "design-audit", "open-design", "prose-sanitiser", "email-search", "ontology-augment", "blender", "qgis", "codebase-video", "spark-scene"],
+    "demote": ["playwright (manifest-disabled — remove outright)", "qe-browser (gate on aqe init having run)", "browser-automation (fold into browser's own description per skills-upgrade-plan-c5 §5 dedupe note)", "web-researcher (336 tokens, heaviest of the 20; reputation-attached specialist use case reached fine via router)", "leptos (single-framework, project-dependent)", "uk-solar-planner (niche domain, no usage evidence yet)"],
+    "promote": ["codebase-memory (project CLAUDE.md mandates it before Grep/Glob/Read)", "build-with-quality (named most-used, skills-upgrade-plan-c5 §2)", "docs-alignment (named most-used, skills-upgrade-plan-c5 §2)", "deep-research (named most-used, skills-upgrade-plan-c5 §2)"],
+    "token_cost_now": 2709,
+    "token_cost_all": 14012
+  },
+  "lint_extensions": [
+    {"name": "name-equals-dir", "rule": "frontmatter `name` must match /^[a-z][a-z0-9-]*$/ AND equal the skill's directory basename", "hard": true, "value": "high"},
+    {"name": "registered-entries-resolve", "rule": "every non-comment line in registered-skills.txt must have a matching skills/<name>/SKILL.md, AND (new) its manifest gate in agentbox.toml (if any) must not be explicitly false", "hard": true, "value": "high"},
+    {"name": "directory-coverage", "rule": "every skillEntries() name must appear as a word-boundary match in skills/SKILL-DIRECTORY.md (same technique as tests/integration/skill-router-fixture.test.mjs assertion 3)", "hard": true, "value": "high"},
+    {"name": "description-length", "rule": "frontmatter `description` length must satisfy 40 <= len <= 1024 (agentskills.io cap; floor catches vague one-liners)", "hard": false, "value": "med"},
+    {"name": "deprecated-stub-keys", "rule": "a SKILL.md whose skill name appears in SKILL-DIRECTORY.md's Deprecated table must itself carry frontmatter keys `deprecated: true` and `replacement: <name>`", "hard": false, "value": "med"},
+    {"name": "known-key-allowlist", "rule": "flag any top-level frontmatter key not in an allowlist (name, description, version, license, allowed-tools, compatibility, metadata, + the estate's own honoured set); direct new estate-private keys under metadata:", "hard": false, "value": "med"},
+    {"name": "cross-skill-ref-resolve", "rule": "extend citedResources()'s RESOURCE_ROOTS check to also resolve a backtick path of the form `other-skill-name/references/...` against ../other-skill-name/references/...", "hard": false, "value": "low"},
+    {"name": "stale-model-id", "rule": "regex /Opus 4\\.|Sonnet 4\\.|GPT-5\\.|gpt-4o|\\bo3\\b/ as a CURRENT-model claim, reusing lint-skills.mjs's existing STALE_CONTEXT_SUPPRESS idiom (DEAD|retired|legacy|deprecated|historical) for historical-context suppression", "hard": false, "value": "low"}
+  ],
+  "controlled_vocabulary": {
+    "standard": ["name", "description", "version", "license", "allowed-tools", "compatibility"],
+    "estate_metadata": ["mcp_server", "protocol", "entry_point", "triggers", "env_vars", "dependencies", "category", "related_skills", "status", "depends_on_mcps", "user-invocable", "author", "tags", "cron", "gate", "layer", "port", "priority", "authority_class"],
+    "drop": ["estimated_time", "difficulty"]
+  },
+  "codex_parity": "GPT-6 Astra has no discovery layer at all today, only a historical accident: two hand-symlinked skills (codebase-video, repo-education) in ~/.codex/skills pointing at the live workspace source tree rather than the baked /opt/agentbox/skills tree Claude's reconcile-skills.sh uses, so a rebuild can silently desync them from what Claude sees. scripts/reconcile-skills.sh is Claude-only by construction (default CLAUDE_SKILLS_DIR=$HOME/.claude/skills) and config/entrypoint-unified.sh invokes it exactly once, targeting only Claude (lines 2267-2274); the separate AGENTS.md write at lines 2119-2138 is unrelated — it documents RuVector MCP memory tools, never skills, SKILL-DIRECTORY.md, or /route. The minimal parity fix is two independent, additive pieces: (1) a second manifest file, skills/registered-skills-codex.txt (start with the same 20, or a Codex-appropriate subset given it lacks Claude-only affordances — no Agent/fork/Artifact/Skill tool, no /route, no claude-flow hooks — several always-loaded skills like skill-router and codebase-video's forking workflow may not translate), reconciled at boot by a Codex-side sibling of reconcile-skills.sh into ~/.codex/skills the same way, sourced from the same baked tree; (2) a short pointer appended to ~/.codex/AGENTS.md's heredoc in entrypoint-unified.sh directing Codex to skills/SKILL-DIRECTORY.md for the other 108+ reference-only skills, since Codex has no /route slash command and no Skill tool to browse them interactively otherwise. Both are additive manifest/config changes, not implemented here per the read-only constraint."
+}

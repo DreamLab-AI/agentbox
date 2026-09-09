@@ -27,6 +27,11 @@ The analyzer checks for:
 ## Advanced Features
 
 ### Custom Compilation Flags
+
+`cuda_compile` takes a single `--arch`; to target both card architectures in this
+container (RTX A6000 = sm_86, RTX 6000 Ada Generation x2 = sm_89), compile per arch
+or pass both `-gencode` clauses through `--extra-flags` to nvcc directly:
+
 ```bash
 cuda_compile \
   --arch sm_89 \
@@ -34,6 +39,11 @@ cuda_compile \
   --use_fast_math \
   --maxrregcount 32 \
   --extra-flags "-lineinfo -Xptxas -v"
+
+# Multi-arch fat binary covering both GPU architectures in this container:
+nvcc -gencode arch=compute_86,code=sm_86 \
+     -gencode arch=compute_89,code=sm_89 \
+     -lineinfo -Xptxas -v -o kernel.o -c kernel.cu
 ```
 
 ### Profiling Integration

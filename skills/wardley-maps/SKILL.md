@@ -20,6 +20,13 @@ names render unquoted, label sanitisation no longer mangles parentheses,
 all 147 maps in the upstream `WARDLEY-MAP-REPOSITORY` parse cleanly. This
 is now the recommended default.
 
+**Model-fit:** `tools/advanced_nlp_parser.py` (optional NLP-assisted component
+extraction) needs a Python execution context (code-interpreter MCP, or a shell) --
+it is not a standalone binary and cannot be invoked as a bare import by either
+harness. The `wardley-mapper` / `wardley-generate` / `wardley-heuristics` Rust
+binaries (verified present on PATH) are the primary path for both Claude Code and
+Codex / GPT-6 Astra; they need no Python.
+
 ## Quick Start
 
 1. **Identify the scope**: What system/business/concept are we mapping?
@@ -133,9 +140,9 @@ evolve "Eval / Guardrails" 0.40
 Render:
 
 ```bash
-mmdc-sidecar.sh -i map.mmd -o map.svg                     # vector
-mmdc-sidecar.sh -i map.mmd -o map.png -e png              # raster
-mmdc-sidecar.sh -i map.mmd -o map.pdf                     # LaTeX inclusion
+/opt/agentbox/scripts/mmdc-sidecar.sh -i map.mmd -o map.svg                     # vector
+/opt/agentbox/scripts/mmdc-sidecar.sh -i map.mmd -o map.png -e png              # raster
+/opt/agentbox/scripts/mmdc-sidecar.sh -i map.mmd -o map.pdf                     # LaTeX inclusion
 ```
 
 Grammar reference (Mermaid 11.15.0): https://mermaid.js.org/syntax/wardleyMap.html
@@ -169,24 +176,12 @@ binaries -- retained for report-builder use:
 wardley-generate
 
 # Programmatic use: send create_map over the wardley-mapper stdin/stdout JSON
-# protocol (see "Module 5: MCP Tool" in IMPLEMENTATION_GUIDE.md) instead of
-# importing a WardleyMapGenerator class -- Rust binaries aren't importable
+# protocol (see "Module 5: MCP Tool" in references/IMPLEMENTATION_GUIDE.md) instead
+# of importing a WardleyMapGenerator class -- Rust binaries aren't importable
 # like Python modules.
 echo '{"method":"create_map","params":{"components":COMPONENTS,"dependencies":DEPENDENCIES}}' \
   | wardley-mapper
 # -> {"result": {"success": true, "map_html": "...", "components": [...], ...}}
-```
-
-### Text-Based Sketch
-
-```
-User Need
-    |
-    +-- [Visible Component] ------------> Product (0.7)
-            |
-            +-- [Supporting Component] ---> Custom (0.4)
-                    |
-                    +-- [Infrastructure] --> Commodity (0.9)
 ```
 
 ## Advanced Patterns
@@ -231,62 +226,10 @@ wardley-quick-map
 
 ## LaTeX Integration
 
-Workflow for including Wardley maps in LaTeX documents:
-
-### Step 1 — Write the `.mmd` file
-
-```
-wardley-beta
-title Creative Industries -- AI Strategic Positioning 2026
-size [1100, 700]
-evolution genesis / concept -> custom / emerging -> product / converging -> commodity / accepted
-
-anchor creator [0.95, 0.50]
-anchor audience [0.95, 0.80]
-
-component "Creative Output" [0.85, 0.50] label [12, -6]
-component "AI Tools" [0.60, 0.50] label [12, -6]
-component "Distribution" [0.75, 0.80] label [12, -6]
-component "Brand/Reputation" [0.70, 0.25] label [-90, 0]
-component "AI Training Data" [0.30, 0.50] label [12, -6]
-component "Compute" [0.15, 0.50] label [12, -6]
-
-creator -> "Creative Output"
-creator -> "Brand/Reputation"
-"Creative Output" -> "AI Tools"
-"Creative Output" -> "Distribution"
-audience -> "Distribution"
-"AI Tools" -> "AI Training Data"
-"AI Training Data" -> "Compute"
-```
-
-**Four strategic positions for creative industries:**
-
-| Position | Description | Map signal |
-|----------|-------------|------------|
-| All-in | Fully embrace AI in all workflows | AI Tools near product/commodity |
-| AI-native | Build with AI from the ground up | AI Tools as anchor component |
-| Refusal | Human-only, premium positioning | AI Tools absent from map |
-| Middle | Selective AI augmentation | AI Tools in custom/emerging |
-
-### Step 2 — Render via browsercontainer sidecar
-
-```bash
-mmdc-sidecar.sh -i map.mmd -o figures/wardley/creative_industries.png
-# Or for vector output:
-mmdc-sidecar.sh -i map.mmd -o figures/wardley/creative_industries.svg
-```
-
-### Step 3 — Include in LaTeX
-
-```latex
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.9\textwidth]{figures/wardley/creative_industries.png}
-  \caption{Strategic positioning for creative industries, May 2026.}
-  \label{fig:wardley-creative}
-\end{figure}
-```
+Same `.mmd` -> `/opt/agentbox/scripts/mmdc-sidecar.sh` -> `\includegraphics` workflow as the Mermaid
+example above. For a full worked example (creative-industries positioning, the
+render command, and the LaTeX `\includegraphics` block) see
+[references/latex-integration.md](references/latex-integration.md).
 
 ## Quality Indicators
 
@@ -296,3 +239,9 @@ Good maps have:
 - Justified evolution positions
 - Actionable insights
 - Strategic options visible
+
+## Further Reading
+
+- [references/README.md](references/README.md) — full feature tour of the mapping engine (NLP parsing, heuristics, strategic analysis, interactive maps)
+- [references/IMPLEMENTATION_GUIDE.md](references/IMPLEMENTATION_GUIDE.md) — installation checklist and a smoke test per module
+- [references/SKILL_UPGRADE_SUMMARY.md](references/SKILL_UPGRADE_SUMMARY.md) — history of the Python-to-Rust port, including bugs fixed along the way

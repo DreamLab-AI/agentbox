@@ -1,7 +1,6 @@
 ---
 name: human-architect-mindset
-description: Systematic architectural thinking for the decisions AI can't own — domain modeling, systems thinking, constraint navigation, AI-aware decomposition. Use when facing system design, technology choices, integration or breaking-change planning, or any decision spanning multiple components, teams, or compliance boundaries.
-when_to_use: proactively when detecting system design, architecture discussions, technology choices, problem decomposition, integration planning, breaking change discussions, or any decision that affects multiple components, teams, or has compliance implications
+description: Systematic architectural thinking for the decisions AI can't own — domain modeling, systems thinking, constraint navigation, AI-aware decomposition. Use when facing system design, technology choices, integration or breaking-change planning, or any decision spanning multiple components, teams, or compliance boundaries. Trigger proactively on system design, architecture discussions, technology choices, problem decomposition, integration planning, or breaking-change discussions.
 ---
 
 # Human Architect Mindset
@@ -140,6 +139,10 @@ Progressive disclosure — pull the detail on demand:
 - Before implementation: `superpowers:brainstorming`, `superpowers:writing-plans`.
 - During design: `relationship-design` (AI-first interfaces), `scientific-critical-thinking`.
 - Before committing: `superpowers:verification-before-completion`.
+- Overlapping architecture/design-decision lenses, angle-distinct — use one primary lens,
+  not all three: `negentropy-lens` (entropy/negentropy and tacit-knowledge framing),
+  `vanity-engineering-review` (over-engineering and unjustified complexity detection),
+  `renaissance-architecture` (first-principles architecture design and system decomposition).
 
 ## Remember
 

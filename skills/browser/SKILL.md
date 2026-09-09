@@ -28,9 +28,12 @@ and `browser-automation` skills point here rather than restating it.
 
 ```
 MCP SSE:  http://browsercontainer:8931/sse   (chrome-devtools-mcp)
-CDP:      browsercontainer:9222              (raw Chrome DevTools Protocol)
+CDP:      browsercontainer:9223              (raw Chrome DevTools Protocol, socat proxy, in-network)
 VNC:      localhost:5903                     (visual debugging, Display :2)
 ```
+
+9222 is the host-mapped port (socat rebinds Chrome's localhost-only :9222 to :9223
+in-network); use it only from the host, never from inside agentbox.
 
 Auto-registered at boot as `browser-gpu` in `.mcp.json`. Manual registration:
 
@@ -97,7 +100,7 @@ agentbox.sh browsercontainer rebuild   # full rebuild
 
 ```bash
 curl -s http://browsercontainer:8931/health
-curl -s http://browsercontainer:9222/json/list | jq '.[].url'
+curl -s http://browsercontainer:9223/json/list | jq '.[].url'
 ```
 
 ## LaTeX and Diagram Workflows

@@ -52,8 +52,8 @@ directly on `:8085`) can be pointed at via `LLM_URL`.
 For multi-URL comparison or structured data extraction from URLs, use the
 `web-researcher` skill's `scrape_page` / `search_and_scrape` (full PDF/DOCX/
 YouTube extraction, verifiable citations) or the `browser` sidecar for
-JS-rendered pages. The old `gemini-url-context` route is dead — its `gemini`
-CLI is not installed in this image.
+JS-rendered pages. `gemini-url-context` is a separate, active skill (Rust
+`rmcp`, `agentbox-mcp gemini-url-context`) — not this skill's legacy route.
 
 ## Environment variables
 

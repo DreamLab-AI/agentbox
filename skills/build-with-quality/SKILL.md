@@ -25,7 +25,7 @@ system in place of several specialized skills.
 - **Worked examples:** [USAGE-EXAMPLES.md](./USAGE-EXAMPLES.md) — 5 complete project examples.
 - **EDD loop:** [EDD-PROTOCOL.md](./EDD-PROTOCOL.md) — Expectation-Driven Development, evidence categories, anti-fox separation.
 - **Debugging:** [DEBUGGING-PROTOCOL.md](./DEBUGGING-PROTOCOL.md) — feedback-loop-first protocol, design interrogation, **Diagram-Driven Diagnosis** (complex multi-function bug / suspected parallel implementations), and **Reasoning Without a Runtime (Static-Oracle Mode)** (implementing from a spec or restoring a stub with no shell/compiler/test runner).
-- **Agents catalog:** [references/agents.md](./references/agents.md) — 114+ agents by domain.
+- **Agents catalog:** [references/agents.md](./references/agents.md) — 34 agents by domain.
 - **Methodologies:** [references/methodologies.md](./references/methodologies.md) — DDD, ADR (+ ruflo ADR tooling), TDD.
 - **Quality gates & workflow:** [references/quality-gates-and-workflow.md](./references/quality-gates-and-workflow.md) — gate thresholds and the 5-phase flow.
 - **Security gate (deepsec):** [references/deepsec-security-gate.md](./references/deepsec-security-gate.md) — run `scripts/deepsec-gate.sh --diff origin/main`; policy from `[security.deepsec]`, receipts in `.deepsec-gate/reports/`. ADR-2033.
@@ -61,23 +61,22 @@ Methodology: DDD + ADR + TDD (EDD design-time first)
 Quality: 85% coverage, security scan, WCAG AA
 ```
 
-**Option 2 — CLI.**
+**Option 2 — CLI.** There is no `claude-flow skill ...` subcommand; compose the
+same workflow from primitives:
 ```bash
-claude-flow skill build-with-quality "implement user authentication with JWT"
-# or, lower level:
-npx claude-flow@alpha swarm init --topology hierarchical-mesh --strategy specialized
-npx claude-flow@alpha agent spawn --type architect
-npx claude-flow@alpha agent spawn --type coder
-npx claude-flow@alpha agent spawn --type test-strategist
-npx claude-flow@alpha task create --type "implementation" --quality-gates true
+claude-flow swarm init --topology hierarchical --v3-mode
+claude-flow agent spawn --type architect
+claude-flow agent spawn --type coder
+claude-flow agent spawn --type test-strategist
+claude-flow task create --type implementation --description "[TASK]"
 ```
 
 **Option 3 — MCP tools (when available).**
 ```javascript
-mcp__claude-flow__swarm_init { topology: "hierarchical-mesh", maxAgents: 100, strategy: "specialized" }
-mcp__claude-flow__agent_spawn { type: "architect" }
-mcp__claude-flow__agent_spawn { type: "coder" }
-mcp__claude-flow__agent_spawn { type: "test-strategist" }
+mcp__claude-flow__swarm_init { topology: "hierarchical", maxAgents: 15, strategy: "specialized" }
+mcp__claude-flow__agent_spawn { agentType: "architect" }
+mcp__claude-flow__agent_spawn { agentType: "coder" }
+mcp__claude-flow__agent_spawn { agentType: "test-strategist" }
 mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 ```
 
@@ -86,9 +85,12 @@ mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 Task({ prompt: "Implement user authentication with JWT, following TDD", subagent_type: "coder", model: "sonnet" })
 Task({ prompt: "Generate tests for auth module with 95% coverage", subagent_type: "tester", model: "haiku" })
 ```
+Claude Code only: Option 4 uses the Task tool. On Codex / GPT-6 Astra: use Option 2
+(CLI) or Option 3 (MCP, if the ruflo MCP proxy is reachable from Codex).
 
 MCP is preferred when `mcp__claude-flow__*` tools are available; otherwise fall back
-to the `npx claude-flow@alpha` CLI. See
+to the `claude-flow` CLI (baked on PATH — never `npx claude-flow@alpha`, which
+resolves a stale cached version). See
 [references/architecture.md](./references/architecture.md) for the detection logic
 and the per-agent coordination hooks.
 

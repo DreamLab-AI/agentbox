@@ -1,60 +1,62 @@
 ---
 name: hooks-automation
-description: "Automate coordination, formatting, and learning around Claude Code operations with hooks. Use when setting up pre/post task hooks, session handoffs between agents, Git commit gating, memory coordination, or neural pattern training."
+description: "Automate coordination, formatting, and learning around Claude Code operations with claude-flow hooks. Use when setting up pre/post task hooks, session handoffs between agents, risk assessment before a command runs, memory coordination, or agent-routing/neural-pattern learning. Not for one-off swarm orchestration without persistent hooks, full TDD/quality-gate pipelines, or single-agent plan/memory/security-scan hooks (see Related Skills)."
+compatibility: "Claude Code only -- hooks are a Claude Code harness feature (PreToolUse/PostToolUse/SessionStart/SessionEnd matchers in .claude/settings.json). On Codex/GPT-6 Astra: no hook equivalent; call the underlying mcp__claude-flow__* tools directly, or run the claude-flow hooks CLI as a plain shell step in your own workflow."
 ---
 
 # Hooks Automation
 
-Intelligent automation system that coordinates, validates, and learns from Claude Code operations through hooks integrated with MCP tools and neural pattern training.
+Intelligent automation system that coordinates, validates, and learns from
+Claude Code operations through hooks integrated with MCP tools and
+neural/routing pattern training.
 
-See [EXAMPLES.md](EXAMPLES.md) for complete configuration templates, Git hook scripts, and real-world workflow examples.
+See [references/examples.md](references/examples.md) for complete
+configuration templates and Git hook scripts.
 
 ## What This Skill Does
 
-**Key Capabilities:**
-- **Pre-Operation Hooks**: Validate, prepare, and auto-assign agents before operations
-- **Post-Operation Hooks**: Format, analyze, and train patterns after operations
-- **Session Management**: Persist state, restore context, generate summaries
-- **Memory Coordination**: Synchronize knowledge across swarm agents via three-phase protocol
-- **Git Integration**: Automated commit hooks with quality verification
-- **Neural Training**: Continuous learning from successful patterns
-- **MCP Integration**: Seamless coordination with swarm tools
+**Key capabilities:**
+- **Pre-operation hooks**: risk-assess a command, get agent-routing suggestions before a file edit or task
+- **Post-operation hooks**: record edit/task/command outcomes for learning
+- **Session management**: persist and restore session state
+- **Memory coordination**: read/write shared context via `mcp__claude-flow__memory_usage`
+- **Agent routing**: `route`/`explain` — route a task to the best-fit agent and see why
+- **Pattern learning**: outcomes recorded by hooks feed `claude-flow hooks pretrain`/`metrics`
 
 ## When Not To Use
 
-- For one-off swarm orchestration without persistent hooks -- use the swarm-advanced skill instead
-- For full development pipelines with quality gates -- use the build-with-quality skill instead
-- For GitHub-specific CI/CD workflow authoring -- use the github-workflow-automation skill instead
-- For standalone performance profiling and bottleneck detection -- use the performance-analysis skill instead
-- For agent memory and pattern storage without hooks -- use the agentdb-memory-patterns skill instead
+- One-off swarm orchestration without persistent hooks -- use `swarm-advanced` instead
+- Full development pipelines with quality gates -- use `build-with-quality` instead
+- Single-agent plan/memory/security-scan hooks -- use `lazy-fetch` instead (see Related Skills for the ownership split)
+- GitHub-specific CI/CD workflow authoring -- use a GitHub workflow-automation skill instead
+- Standalone performance profiling -- use a performance-analysis skill instead
 
 ## Prerequisites
 
 **Required:**
-- Claude Flow CLI installed (`npm install -g claude-flow@alpha`)
+- `claude-flow` already on PATH as the baked ruflo CLI (Nix store derivation) -- no install needed; do not run `npm install -g claude-flow@alpha`, it is redundant and may fail in this read-only-Nix-store container
 - Claude Code with hooks enabled
 - `.claude/settings.json` with hook configurations
 
 **Optional:**
-- MCP servers configured (claude-flow, ruv-swarm)
-- Git repository for version control
-- Testing framework for quality verification
+- Git repository for version control (for the Git hook scripts in references/examples.md)
 
 ## Quick Start
 
 ```bash
-# Initialize with default hooks configuration
-npx claude-flow init --hooks
+# Verify the CLI and see every real subcommand
+claude-flow hooks --help
 ```
 
-Creates `.claude/settings.json` with pre-configured hooks and hook command documentation in `.claude/commands/hooks/`.
+Add hook entries under `.claude/settings.json`'s `hooks` key (Claude Code's
+own config, not a claude-flow subcommand):
 
 ### Basic Hook Usage
 
 ```bash
-npx claude-flow hook pre-task --description "Implement authentication"
-npx claude-flow hook post-edit --file "src/auth.js" --memory-key "auth/login"
-npx claude-flow hook session-end --session-id "dev-session" --export-metrics
+claude-flow hooks pre-task -d "Implement authentication"
+claude-flow hooks post-edit -f "src/auth.js" --success true
+claude-flow hooks session-end
 ```
 
 ### Minimal `settings.json`
@@ -65,21 +67,21 @@ npx claude-flow hook session-end --session-id "dev-session" --export-metrics
     "PreToolUse": [
       {
         "matcher": "^(Write|Edit|MultiEdit)$",
-        "hooks": [{ "type": "command", "command": "npx claude-flow hook pre-edit --file '${tool.params.file_path}' --memory-key 'swarm/editor/current'" }]
+        "hooks": [{ "type": "command", "command": "claude-flow hooks pre-edit -f '${tool.params.file_path}'" }]
       },
       {
         "matcher": "^Bash$",
-        "hooks": [{ "type": "command", "command": "npx claude-flow hook pre-bash --command '${tool.params.command}'" }]
+        "hooks": [{ "type": "command", "command": "claude-flow hooks pre-command -c '${tool.params.command}'" }]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "^(Write|Edit|MultiEdit)$",
-        "hooks": [{ "type": "command", "command": "npx claude-flow hook post-edit --file '${tool.params.file_path}' --memory-key 'swarm/editor/complete' --auto-format --train-patterns" }]
+        "hooks": [{ "type": "command", "command": "claude-flow hooks post-edit -f '${tool.params.file_path}' --success true" }]
       },
       {
         "matcher": "^Bash$",
-        "hooks": [{ "type": "command", "command": "npx claude-flow hook post-bash --command '${tool.params.command}' --update-metrics" }]
+        "hooks": [{ "type": "command", "command": "claude-flow hooks post-command -c '${tool.params.command}' --success true" }]
       }
     ]
   }
@@ -88,101 +90,114 @@ npx claude-flow hook session-end --session-id "dev-session" --export-metrics
 
 ---
 
-## Available Hooks
+## Available Hooks (verified against `claude-flow hooks --help`, 2026-09-09)
 
-### Pre-Operation Hooks (run BEFORE the tool)
+### Pre-operation hooks (run BEFORE the tool)
 
-| Hook | Trigger | Key Options |
+| Hook | Purpose | Key options |
 |------|---------|-------------|
-| `pre-edit` | File write/edit | `--file`, `--auto-assign-agent`, `--validate-syntax`, `--backup-file` |
-| `pre-bash` | Bash command | `--command`, `--check-safety`, `--estimate-resources` |
-| `pre-task` | Task tool | `--description`, `--auto-spawn-agents`, `--load-memory`, `--optimize-topology` |
-| `pre-search` | Grep tool | `--query`, `--check-cache`, `--optimize-query` |
+| `pre-edit` | Get context and agent suggestions before editing | `-f/--file`, `-o/--operation` (create/update/delete/refactor), `-c/--context` |
+| `pre-command` (alias `pre-bash`) | Assess risk before executing a command | `-c/--command`, `-d/--dry-run` (default true) |
+| `pre-task` | Record task start and get agent suggestions | `-i/--task-id`, `-d/--description` (required), `-a/--auto-spawn` |
 
-**`pre-edit`** — Validate file, assign best agent, detect conflicts:
 ```bash
-npx claude-flow hook pre-edit --file "src/auth.js" --auto-assign-agent --validate-syntax
-npx claude-flow hook pre-edit --file "production.env" --backup-file --check-conflicts
+claude-flow hooks pre-edit -f src/auth.js -o refactor
+claude-flow hooks pre-command -c "rm -rf dist"
+claude-flow hooks pre-task -d "Implement user authentication" --auto-spawn
 ```
 
-**`pre-task`** — Spawn agents, load memory context, estimate complexity:
-```bash
-npx claude-flow hook pre-task --description "Implement user authentication" --auto-spawn-agents --load-memory
-npx claude-flow hook pre-task --description "Refactor codebase" --optimize-topology
-```
+### Post-operation hooks (run AFTER the tool)
 
-### Post-Operation Hooks (run AFTER the tool)
-
-| Hook | Trigger | Key Options |
+| Hook | Purpose | Key options |
 |------|---------|-------------|
-| `post-edit` | File write/edit | `--file`, `--auto-format`, `--memory-key`, `--train-patterns`, `--validate-output` |
-| `post-bash` | Bash command | `--command`, `--log-output`, `--update-metrics`, `--store-result` |
-| `post-task` | Task tool | `--task-id`, `--analyze-performance`, `--store-decisions`, `--export-learnings` |
-| `post-search` | Grep tool | `--query`, `--results`, `--cache-results`, `--train-patterns` |
-
-**`post-edit`** — Auto-format, store to memory, train neural patterns:
-```bash
-npx claude-flow hook post-edit --file "src/components/Button.jsx" --auto-format
-npx claude-flow hook post-edit --file "api/auth.js" --memory-key "auth/login" --train-patterns
-```
-
-**`post-task`** — Measure performance, record decisions, export learnings:
-```bash
-npx claude-flow hook post-task --task-id "auth-implementation" --analyze-performance --store-decisions
-```
-
-### MCP Integration Hooks
+| `post-edit` | Record editing outcome for learning | `-f/--file`, `-s/--success`, `-o/--outcome`, `-m/--metrics` |
+| `post-command` (alias `post-bash`) | Record command execution outcome | `-c/--command`, `-s/--success`, `-e/--exit-code`, `-d/--duration` |
+| `post-task` | Record task completion for learning | `-i/--task-id`, `-s/--success`, `-q/--quality`, `-a/--agent`, `-t/--task`, `--store-results` |
 
 ```bash
-npx claude-flow hook mcp-initialized --swarm-id <id>   # Persist swarm topology to memory
-npx claude-flow hook agent-spawned --agent-id <id>     # Register agent in coordination memory
-npx claude-flow hook task-orchestrated --task-id <id>  # Track task progress
-npx claude-flow hook neural-trained --pattern <name>   # Export trained patterns
-npx claude-flow hook memory-sync --namespace <ns>      # Sync memory across agents
+claude-flow hooks post-edit -f src/auth.js --success true
+claude-flow hooks post-command -c "npm test" --success true
+claude-flow hooks post-task -i task-123 --success true -q 0.9
 ```
 
-### Session Hooks
+### Routing hooks
+
+| Hook | Purpose | Key options |
+|------|---------|-------------|
+| `route` | Route task to optimal agent using learned patterns | `-t/--task` (required), `-K/--top-k`, `--mode` (single/moa) |
+| `explain` | Explain a routing decision with transparency | `-t/--task`, `-a/--agent`, `-v/--verbose` |
 
 ```bash
-npx claude-flow hook session-start --session-id "dev-2024" --load-context
-npx claude-flow hook session-restore --session-id "swarm-20241019" --restore-memory
-npx claude-flow hook session-end --session-id "dev-2024" --export-metrics --generate-summary --cleanup-temp
-npx claude-flow hook notify --message "Task complete" --level info --broadcast
+claude-flow hooks route -t "Fix authentication bug"
+claude-flow hooks explain -t "Fix authentication bug" -a coder --verbose
 ```
+
+### Session hooks
+
+| Hook | Purpose | Key options |
+|------|---------|-------------|
+| `session-end` | End current session and persist state | `-s/--save-state` (default true) |
+| `session-restore` | Restore a previous session | `-i/--session-id` (default "latest"), `-a/--restore-agents`, `-t/--restore-tasks` |
+| `notify` | Send a notification message (logged to session) | `-m/--message` (required), `-l/--level`, `-c/--channel` |
+
+```bash
+claude-flow hooks session-end
+claude-flow hooks session-restore -i latest
+claude-flow hooks notify -m "Task complete" -l info
+```
+
+### Learning and diagnostics
+
+| Hook | Purpose |
+|------|---------|
+| `pretrain` | Bootstrap intelligence from the repository (4-step pipeline + embeddings) |
+| `metrics` | View the learning-metrics dashboard (`-p/--period`, `--v3-dashboard`) |
+| `list` | List all registered hooks (alias `ls`) |
+
+```bash
+claude-flow hooks metrics --period 7d --v3-dashboard
+claude-flow hooks list --enabled
+```
+
+`claude-flow hooks --help` lists every subcommand, including
+`worker`/`progress`/`statusline`/`coverage-*`/`token-optimize`/`model-*` --
+check there before relying on a flag not shown above, the CLI is the source
+of truth, not this table.
 
 ---
 
 ## Which Hook to Use When
 
-| Situation | Hook | Flag |
-|-----------|------|------|
-| About to edit a sensitive file | `pre-edit` | `--backup-file --check-conflicts` |
-| Starting complex multi-file task | `pre-task` | `--auto-spawn-agents --load-memory` |
-| Finished editing code file | `post-edit` | `--auto-format --train-patterns` |
-| Completed a task | `post-task` | `--analyze-performance --store-decisions` |
-| Starting new session | `session-start` | `--load-context` |
-| Ending session | `session-end` | `--export-metrics --generate-summary` |
-| Agent to agent handoff | `notify` | `--broadcast` + `session-restore` on receiver |
-| Before git commit | Git `pre-commit` | Run `pre-edit` per staged file |
-| Before git push | Git `pre-push` | Run tests + `session-end --generate-report` |
+| Situation | Hook |
+|-----------|------|
+| About to run a risky shell command | `pre-command` (`-d false` to actually assess, not just dry-run) |
+| Starting a multi-file task | `pre-task` |
+| Finished editing a file | `post-edit` |
+| Completed a task | `post-task` |
+| Need to know which agent should own a task | `route` / `explain` |
+| Ending a session | `session-end` |
+| Resuming a session | `session-restore` |
+| Agent-to-agent handoff | `notify`, then `session-restore` on the receiver |
 
 ---
 
 ## Memory Coordination
 
-All hooks follow a three-phase status→progress→complete pattern using `mcp__claude-flow__memory_usage`. Namespace: `coordination`. Keys follow the pattern `swarm/hooks/<hook-name>/<phase>`.
-
-Full protocol code with all three phases: see [EXAMPLES.md](EXAMPLES.md#memory-coordination-protocol).
+Hooks that need to share state across agents do it through
+`mcp__claude-flow__memory_usage` directly (namespace `coordination`), not
+through a dedicated hook subcommand. A three-phase status -> progress ->
+complete pattern is a convention you can apply in a custom hook script, not
+an automatic behaviour of the built-in hooks above. Worked example:
+[references/examples.md#memory-coordination-pattern](references/examples.md#memory-coordination-pattern).
 
 ---
 
 ## Performance Tips
 
-1. Keep hooks under 100ms — use `--async` for heavy operations
-2. Cache aggressively — `--cache-results`, `--check-cache`
-3. Batch related operations — combine memory writes
-4. Set timeouts explicitly — `"timeout": 3000` in settings.json
-5. Use `continueOnError: true` for non-blocking hooks
+1. Prefer the deprecation-free, current subcommand names (`pre-command`, not the deprecated `route-task`/`session-start` aliases)
+2. Keep custom hook scripts fast; heavy work belongs in a background job, not the hook's PreToolUse/PostToolUse path
+3. Batch related `memory_usage` writes rather than one call per field
+4. Set an explicit `"timeout"` in `settings.json` hook entries for anything that shells out
 
 ---
 
@@ -190,50 +205,27 @@ Full protocol code with all three phases: see [EXAMPLES.md](EXAMPLES.md#memory-c
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| Hooks not executing | Bad `settings.json` syntax or wrong matcher | Enable debug: `export CLAUDE_FLOW_DEBUG=true`; run `npx claude-flow hook validate-config` |
-| Hook timeouts | Heavy sync operations | Add `"async": true` or increase `"timeout"` |
-| Memory issues | Missing TTL, namespace collisions | Set TTL; use `npx claude-flow memory usage` to audit |
-| Performance problems | Blocking operations, no caching | Profile with `--debug`; add `--check-cache` |
-
-```bash
-# Debug mode
-export CLAUDE_FLOW_DEBUG=true
-npx claude-flow hook pre-edit --file "test.js" --debug
-cat .claude-flow/logs/hooks-$(date +%Y-%m-%d).log
-npx claude-flow hook validate-config
-```
-
----
-
-## Benefits
-
-- Automatic agent assignment per file type
-- Consistent language-specific auto-formatting (Prettier, Black, gofmt)
-- Continuous neural pattern learning
-- Cross-session memory persistence
-- Comprehensive performance metrics
-- Quality gates before commits/pushes
+| Hooks not executing | Bad `settings.json` syntax or wrong matcher regex | Validate the JSON; check the matcher against the actual tool name |
+| Unknown command errors | A documented flag/subcommand that isn't real | `claude-flow hooks --help` and `claude-flow hooks <cmd> --help` are the source of truth -- this file can drift, the binary cannot |
+| Nothing shows in `metrics` | No hooks have run yet, or `pretrain` was never run | `claude-flow hooks list` to confirm registration; `claude-flow hooks pretrain` to bootstrap |
 
 ---
 
 ## Integration with Other Skills
 
-- **SPARC Methodology** - Hooks enhance SPARC workflows
-- **Pair Programming** - Automated quality in pairing sessions
-- **Verification Quality** - Truth-score validation in hooks
-- **GitHub Workflows** - Git integration for commits/PRs
-- **Performance Analysis** - Metrics collection in hooks
-- **Swarm Advanced** - Multi-agent coordination via hooks
+- **SPARC Methodology** -- hooks enhance SPARC workflows
+- **build-with-quality** -- automated quality gates in a full dev+QE pipeline (supersedes the old "Pair Programming" skill, deprecated and merged in)
+- **lazy-fetch** -- owns the single-agent plan/memory/security-scan hook lifecycle (SessionStart/PostToolUse/PreCompact/Stop); this skill owns swarm-coordination and neural/routing-pattern hooks. Install both together if you need both lifecycles; they do not register the same hook events.
+- **GitHub workflows** -- Git integration for commits/PRs (see references/examples.md)
+- **Performance analysis** -- metrics collection in hooks
 
 ---
 
 ## Related Commands
 
 ```bash
-npx claude-flow init --hooks          # Initialize hooks system
-npx claude-flow hook --list           # List available hooks
-npx claude-flow hook --test <hook>    # Test specific hook
-npx claude-flow memory usage          # Manage memory
-npx claude-flow agent spawn           # Spawn agents
-npx claude-flow swarm init            # Initialize swarm
+claude-flow hooks --help              # every real subcommand
+claude-flow hooks list                # list registered hooks
+claude-flow hooks metrics             # learning metrics dashboard
+claude-flow hooks pretrain            # bootstrap intelligence from repo
 ```

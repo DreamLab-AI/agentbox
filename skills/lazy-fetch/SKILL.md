@@ -26,6 +26,7 @@ dependencies:
   - nodejs >= 23
   - typescript >= 6
 author: Clemens865 (ported by agentbox)
+compatibility: "Claude Code only -- Claude Code hook events, /project: slash commands, .claude/settings.json. On Codex/GPT-6 Astra: no hook or slash-command equivalent; use the CLI directly (lazy read/plan/check/remember) or write findings to a file and report the path."
 ---
 
 # Lazy Fetch -- Context, Persistence, and Process Tracking
@@ -175,6 +176,12 @@ Deterministic steps run automatically. Agentic steps return prompts for Claude C
 | PreCompact | `pre-compact.sh` | Preserve plan + memory through context compression |
 | Stop | `session-stop.sh` | Auto-journal changes, update file access patterns |
 
+**Hook ownership vs `hooks-automation`:** both skills register Claude Code
+hooks and can be installed together. lazy-fetch owns the single-agent
+lifecycle -- plan/memory persistence and the security scanner, above. It
+does not register swarm-coordination or neural-pattern-training hooks; for
+those, see `hooks-automation`.
+
 ## Slash Commands
 
 Fifteen commands are available in `commands/` for Claude Code's `/project:` prefix:
@@ -241,7 +248,9 @@ skills/lazy-fetch/
       secure.ts         23-rule security scanner
       yolo.ts           PRD-to-sprints autonomous execution
       selftest.ts       Self-validation test suite
-    dist/               Compiled JavaScript (ready to run)
+    dist/               Compiled JavaScript -- NOT present in the master copy;
+                         run the Installation build step below before this
+                         MCP server can start
     package.json        Dependencies
     tsconfig.json       TypeScript configuration
   hooks/
@@ -265,6 +274,12 @@ skills/lazy-fetch/
 ```
 
 ## Installation
+
+**Build required -- not ready to run out of the box.** The master copy ships
+only `mcp-server/src/` and `package.json`; there is no `dist/` and no
+`node_modules/`, and lazy-fetch is not registered in `skills/mcp.json`
+(verified 2026-09-09 -- only `codebase-memory` is registered there). Build
+and register it manually before the MCP server can start:
 
 ```bash
 cd skills/lazy-fetch/mcp-server

@@ -1,0 +1,226 @@
+{
+  "batch": "05-design-frontend",
+  "skills": [
+    {
+      "skill": "open-design",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "open-design/design-systems/claude/DESIGN.md:173 — \"Model Comparison Cards — Opus 4.5, Sonnet 4.5, Haiku 4.5 presented in a clean card grid\"",
+          "fix": "Update the named models to Opus 5 / Sonnet 5 / Haiku 4.5 (current per fact sheet); this is content the skill will literally emit verbatim into a generated 'Claude'-branded artifact, not a historical note.",
+          "cross_skill": []
+        },
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "open-design/SKILL.md:229 states \"138 brand specifications\" (verified: `ls -d design-systems/*/` returns 138, so open-design itself is correct) vs SKILL-DIRECTORY.md:186, :701, :730 and agentbox.toml:548 all say \"129 brand specs\"",
+          "fix": "Update SKILL-DIRECTORY.md (3 sites) and agentbox.toml:548 comment to 138, or point them at open-design/SKILL.md as the stated single source of truth instead of restating a number that drifts.",
+          "cross_skill": ["SKILL-DIRECTORY.md"]
+        },
+        {
+          "class": "contradiction",
+          "severity": "low",
+          "evidence": "agentbox.toml:549 comment says \"Default off\" directly above agentbox.toml:551 `open_design = true`",
+          "fix": "Fix the stale comment (the gate is on) or flip the value if off was intended — self-contradictory manifest text either way.",
+          "cross_skill": []
+        },
+        {
+          "class": "model-fit",
+          "severity": "high",
+          "evidence": "open-design/SKILL.md:183-187 (Phase 7 — Emit) hardcodes `<artifact identifier=\"kebab-case-slug\" type=\"text/html\" title=\"Human Title\">...</artifact>` as the sole output contract, with no Claude-only caveat",
+          "fix": "State explicitly that the `<artifact>` emission format is a Claude/Claude-Code affordance, and give GPT-6 Astra/Codex sessions a fallback (write the HTML to a file and report the path) — this skill is discoverable via SKILL-DIRECTORY/router which both harnesses can reach.",
+          "cross_skill": []
+        },
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "open-design has no own line-height rule, but its recommended pipeline (SKILL.md:256-261) chains into ui-ux-pro-max-skill and typography, which give contradictory line-height ranges (see ui-ux-pro-max-skill finding below)",
+          "fix": "No direct fix to open-design; flag for the typography/ui-ux-pro-max-skill owners to reconcile (see cross_skill).",
+          "cross_skill": ["ui-ux-pro-max-skill", "typography"]
+        }
+      ]
+    },
+    {
+      "skill": "design-audit",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "ui-ux-pro-max-skill",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "ui-ux-pro-max-skill/SKILL.md:83 — \"`line-height` - Use 1.5-1.75 for body text\" vs typography/SKILL.md:49 — \"Line spacing 120–145% of point size (`line-height: 1.2`–`1.45`)\"",
+          "fix": "Ranges do not overlap (1.2–1.45 vs 1.5–1.75). Reconcile with typography (batch 04) on one authoritative body-text line-height range, or have ui-ux-pro-max-skill defer to typography for that specific rule the way it already defers to bencium-controlled-ux-designer for accessibility.",
+          "cross_skill": ["typography"]
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "ui-ux-pro-max-skill/ contains a vendored multi-platform scaffold (.cursor/ .windsurf/ .kiro/ .roo/ .agent/ .github/ .claude-plugin/, plus its own top-level CLAUDE.md describing a `cli/` npm installer and a `.shared/` symlink layout) — none of which is used by this estate's actual registration/discovery mechanism",
+          "fix": "Either strip the vendored platform-config directories that aren't consumed here (agentbox never runs `uipro init` or the CLI installer) or leave them but note in SKILL.md that they're upstream-vendor scaffolding, not agentbox wiring, so an auditor doesn't mistake them for dead paths.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "daisyui",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "disclosure",
+          "severity": "med",
+          "evidence": "daisyui/ is a single file, no references/ dir at all (find confirms only SKILL.md under the directory); 225 lines vs open-design's 294/150-file, bencium-creative's 149/7-file, bencium-controlled-ux-designer's 71/10-file structures, all of which use references/",
+          "fix": "Not a lint failure (under the 250-line threshold), but inconsistent with every sibling design skill's progressive-disclosure pattern. Split component-pattern snippets (button/card/modal/navbar/drawer) and the theme list into references/components.md and references/themes.md, per ADR-2021.",
+          "cross_skill": []
+        },
+        {
+          "class": "model-fit",
+          "severity": "high",
+          "evidence": "daisyui/SKILL.md:29-34, :45-51, :55-60 — all three MCP Server Setup options use `claude mcp add ...` CLI syntax exclusively (e.g. line 30: \"claude mcp add daisyui-blueprint ...\")",
+          "fix": "These instructions are unusable as written from GPT-6 Astra/Codex (different CLI, no `claude mcp add`). Add a one-line note that this section is Claude-Code-CLI-specific, or give the Codex-side MCP registration equivalent.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "bencium-creative",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "bencium-creative/SKILL.md:11-20 — frontmatter carries `replaces` (array) and `user-invocable: true`, neither in the fact sheet's enumerated ~50-key estate vocabulary",
+          "fix": "No action needed unless the estate adopts a controlled frontmatter schema; `replaces`/`user-invocable` are self-explanatory and harmless, but note them if/when a lint rule for key vocabulary is added.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "bencium-controlled-ux-designer",
+      "verdict": "keep",
+      "health": 8,
+      "findings": []
+    },
+    {
+      "skill": "bencium-impact-designer",
+      "verdict": "redirect",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "bencium-impact-designer/SKILL.md:1-6 — correctly formatted deprecated stub (`deprecated: true`, `replacement: bencium-creative`), matches SKILL-DIRECTORY.md:15 deprecated table entry exactly",
+          "fix": "Keep as-is. Recommend keep-as-redirect over delete: the stub is 15 lines/negligible cost, still counted by skill-count-check.js either way (dir has a SKILL.md), and deleting it would turn a stray direct invocation into a silent failure instead of a redirect — the stub is strictly better than removal for the same estate-count cost.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "bencium-innovative-ux-designer",
+      "verdict": "redirect",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "bencium-innovative-ux-designer/SKILL.md:1-6 — identical redirect pattern to bencium-impact-designer, matches SKILL-DIRECTORY.md:16",
+          "fix": "Keep as-is, same reasoning as bencium-impact-designer.",
+          "cross_skill": ["bencium-impact-designer"]
+        }
+      ]
+    },
+    {
+      "skill": "bencium-code-conventions",
+      "verdict": "fix",
+      "health": 4,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "bencium-code-conventions/SKILL.md:11 — \"TailwindCSS v3.x (never v4)\" vs daisyui/SKILL.md:73-79 (Tailwind v4 `@import \"tailwindcss\"; @plugin \"daisyui\";` given as current config) and leptos/SKILL.md:70,120-121 (Tailwind v4 named as the current recommended stack for a fast-start Leptos project)",
+          "fix": "Either scope this rule explicitly to Bence's own project (it already is scoped to \"Bence\" in the description, but the router has no way to know which project that is) or drop the blanket \"never v4\" language, which now actively conflicts with two other skills in the same design cluster recommending v4 as current.",
+          "cross_skill": ["daisyui", "leptos"]
+        },
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "bencium-code-conventions/SKILL.md:1-16 (whole file) describes a named individual's personal machine (\"Environment: Mac M2 ... no CUDA, no Docker\") and workflow preferences, with no reference to \"Bence\" or \"Bencium\" anywhere in ~/.claude/CLAUDE.md, ~/workspace/CLAUDE.md, project/CLAUDE.md, project/CLAUDE.local.md, or project/agentbox/CLAUDE.md (grepped: no hits) — i.e. nothing in this workspace's own governing docs identifies who Bence is or which repo this applies to",
+          "fix": "This is the team lead's governance question made concrete: as written the skill is presented as generally invocable (\"Use when writing code or setting up projects for Bence\") inside a shared multi-tenant estate that has no record of who Bence is. Recommend either (a) moving it to a project-scoped skill inside Bence's actual repo rather than the shared agentbox master estate, or (b) keeping it here but reframing the description to make explicit it only applies when the active project is identified as Bence's, so it doesn't silently compete for router attention on other users' Next.js/React work purely on tech-stack keyword overlap.",
+          "cross_skill": []
+        },
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "bencium-code-conventions/SKILL.md:4 — `when_to_use:` key, not in the fact sheet's frontmatter key census",
+          "fix": "Fold into `description` (which already states the same thing) or leave — low-severity, informational only.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "Confirmed isolated: `grep -rl bencium-code-conventions --include=SKILL.md .` finds no inbound references from any other skill, and bencium-code-conventions/SKILL.md itself references no sibling skill",
+          "fix": "Matches the fact sheet's isolated-skill list; no fix required beyond the scoping question above — isolation itself isn't a defect for a narrowly personal skill.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "relationship-design",
+      "verdict": "keep",
+      "health": 8,
+      "findings": []
+    },
+    {
+      "skill": "renaissance-architecture",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "renaissance-architecture/SKILL.md:3 — \"Use when designing or architecting a feature, choosing a stack or framework, reviewing a design, or in strategy discussions\" — no \"When NOT to use\" section anywhere in the 72-line body, unlike relationship-design/SKILL.md:32-36 which carries an explicit NOT-list in the same batch",
+          "fix": "Add a When-NOT-to-use carve-out (e.g. routine bug fixes, small well-scoped features, or work already governed by an existing ADR/architecture doc) so the router doesn't over-match this philosophy skill against ordinary architecture/design requests that system-architect, ddd-domain-expert or architecture-studio already own.",
+          "cross_skill": ["architecture-studio"]
+        }
+      ]
+    },
+    {
+      "skill": "leptos",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "high",
+          "evidence": "leptos/SKILL.md:2 — `name: Leptos` (Title Case) vs directory name `leptos`",
+          "fix": "Change frontmatter `name` to lowercase `leptos` to match the directory, per the ruflo SKILL.md validator (`/^[a-z][a-z0-9-]*$/`, must equal dir) and the agentskills.io open standard both Fable and Codex consume. Confirmed part of the fact sheet's 7-skill Title-Case list.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "registered-skills.txt:44 lists `leptos` as one of only 22 harness-registered (always-loaded) skills, in the same block as skill-router/ontology-augment/email-search — but no other skill's SKILL.md links to it (`grep -rl leptos --include=SKILL.md .` returns only leptos/SKILL.md itself), and it is absent from skill-router/references/routing-table.md (grepped, no hit) despite being always-loaded",
+          "fix": "leptos is a narrow single-framework playbook, not broad infrastructure like its 21 registration-siblings (browser automation, 3D/GIS, research, design pipeline, dispatch). rust-development — a strictly broader, more commonly relevant Rust skill — is deliberately reference-only (SKILL-DIRECTORY.md:272, not in registered-skills.txt). Recommend deregistering leptos to reference-only (drop from registered-skills.txt) so it stops consuming always-loaded token budget for the majority of sessions that never touch Leptos, and add it to routing-table.md so the router can still surface it on demand.",
+          "cross_skill": ["rust-development"]
+        }
+      ]
+    },
+    {
+      "skill": "wasm-js",
+      "verdict": "keep",
+      "health": 8,
+      "findings": []
+    }
+  ],
+  "cluster_recommendation": "The canonical map is coherent and already documented in three places (open-design's own 'Recommended Pipeline', SKILL-DIRECTORY.md:730, skill-router routing-table.md): open-design owns 'design a UI from scratch' as the brand-constrained production pipeline (verified 138 design-systems dirs, matching its own SKILL.md claim — SKILL-DIRECTORY.md and agentbox.toml both carry the stale '129' instead); ui-ux-pro-max-skill is explicitly subordinate to it as a discovery/inspiration database (palettes/fonts/styles), not a competing entry point; bencium-creative owns the downstream bold/anti-slop shadcn+Tailwind+Phosphor build step; design-audit uncontested owns post-build audit/polish; daisyui uncontested owns the Tailwind component-library layer but is the one design skill with zero references/ and Claude-CLI-only MCP setup instructions, needing a progressive-disclosure pass and a Codex-compatible fallback. The earlier bencium-innovative-ux-designer + bencium-impact-designer -> bencium-creative consolidation was executed correctly (clean deprecated-stub format, matches the SKILL-DIRECTORY deprecated table) and both stubs should stay as redirects, not be deleted — they cost nothing extra against the skill-count gate either way and a redirect beats a silent invocation failure. The remaining bencium-* skills are not actually redundant with each other (bencium-creative = bold anti-slop direction, bencium-controlled-ux-designer = WCAG/enterprise, bencium-aeo = AI-search optimisation, out of scope here) except bencium-code-conventions, which is qualitatively different: a named individual's personal machine/workflow preferences (Mac M2, no Docker/CUDA, Tailwind v3-never-v4) presented as a generally-invocable estate skill, with no trace of that individual anywhere in this workspace's own CLAUDE.md tiers, and a direct version-pin contradiction against daisyui and leptos (both current on Tailwind v4). Recommend scoping it to Bence's actual project rather than the shared master estate, or making the person/project binding explicit in the description. renaissance-architecture and relationship-design both function correctly as 'philosophy' skills and are NOT isolated in the cross-reference graph, but only relationship-design carries an explicit When-NOT-to-use guard; renaissance-architecture's broad 'designing/architecting/reviewing a design' trigger has no such guard and risks over-matching ordinary work. leptos and wasm-js are both high-quality, well-referenced, rot-free skills, but only wasm-js is correctly positioned relative to rust-development (bidirectional cross-links, reference-only tier); leptos has a genuine name!=dir bug, zero inbound cross-references, is missing from routing-table.md, and — most notably — occupies one of only 22 always-loaded registration slots despite being narrower in scope than rust-development, which the estate deliberately keeps reference-only. Also found: a real numeric contradiction between ui-ux-pro-max-skill (line-height 1.5-1.75) and typography/batch-04 (line-height 1.2-1.45) with zero overlap, needing reconciliation with the typography auditor."
+}

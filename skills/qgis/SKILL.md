@@ -10,7 +10,7 @@ version: 3.0.0
 author: agentbox-claude
 mcp_server: true
 protocol: fastmcp
-entry_point: uv run --project /home/devuser/workspace/qgis-mcp src/qgis_mcp/server.py
+entry_point: python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py
 port: 9877
 dependencies:
   - qgis
@@ -44,17 +44,32 @@ Geospatial analysis and GIS operations via the nkarasiak/qgis-mcp plugin and Fas
 
 ## Architecture
 
+This is the deployed topology (verified against `/etc/supervisord.conf` and
+`supervisorctl status qgis-mcp`), which mirrors blender's own GPU-sidecar
+proxy pattern (`tools/blender-mcp-proxy.js`):
+
 ```
 Claude Code (MCP Client)
     |
     | MCP Protocol (stdio)
     v
-FastMCP Server (uv run src/qgis_mcp/server.py)
+FastMCP Server (uv run src/qgis_mcp/server.py) -- registered in mcp.json
     |
     | TCP Socket (length-prefixed framing, port 9877)
     v
-QGIS Desktop (Display :1) with qgis_mcp_plugin
+qgis-mcp supervisor proxy (/opt/agentbox/scripts/qgis_mcp_standalone.py)
+    |  thin TCP-to-TCP bridge: local 0.0.0.0:9877 -> gui-tools-service:9877
+    v
+QGIS Desktop on the gui-tools-service GPU sidecar, with qgis_mcp_plugin loaded
 ```
+
+QGIS itself runs on the **gui-tools-service GPU sidecar**, not on a local
+Display :1 — nix-built QGIS in the main image cannot reach the nvidia driver
+libraries injected into `/usr/lib`, the same constraint that put Blender's
+interactive path on the same sidecar. `[program:qgis-mcp]` is a supervised,
+always-running local proxy (`autostart=true`); it only bridges the socket. If
+the sidecar is down, the proxy accepts the TCP connection and then closes it
+with no reply — bring the sidecar up first with `./agentbox.sh gui-tools up`.
 
 The nkarasiak/qgis-mcp plugin uses **length-prefixed binary framing** (4-byte big-endian uint32 header followed by JSON payload), not newline-delimited JSON. The FastMCP server handles this protocol automatically.
 
@@ -63,7 +78,14 @@ The nkarasiak/qgis-mcp plugin uses **length-prefixed binary framing** (4-byte bi
 Cloned at: `/home/devuser/workspace/qgis-mcp`
 Symlinked to QGIS at: `~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/qgis_mcp_plugin`
 
-## Auto-Install / Verification
+## Auto-Install / Verification (legacy git-clone shim)
+
+This is the client-side MCP registration mcp.json currently uses
+(`mcp-server/server.py`, which runs the `ensure_repo()`/`ensure_plugin_symlink()`
+steps below before exec-ing into the FastMCP server). It is a legacy, fragile
+bootstrap — it clones from GitHub and patches source files at runtime rather
+than shipping pre-baked — kept only until it is replaced with a pre-baked
+stdio-to-TCP bridge in the shape of blender's `tools/mcp-blender-client.js`.
 
 Before using QGIS tools, verify the plugin is installed:
 
@@ -82,6 +104,9 @@ ln -s /home/devuser/workspace/qgis-mcp/qgis_mcp_plugin \
 ```
 
 ## Adding as MCP Server to Claude Code
+
+Legacy form (same git-clone shim as above; the deployed `mcp.json` entry is
+queen-owned and currently wraps this via `mcp-server/server.py`):
 
 ```bash
 claude mcp add --transport stdio qgis -- uv run --project /home/devuser/workspace/qgis-mcp src/qgis_mcp/server.py
@@ -153,6 +178,9 @@ transform_coordinates(
 | `QGIS_MCP_LOG_LEVEL` | `INFO` | Log level |
 | `QGIS_MCP_TOOL_MODE` | `granular` | `granular` (51 tools) or `compound` (~19 grouped) |
 
+`mcp.json`'s live qgis registration (queen-owned) already sets this same
+`QGIS_MCP_HOST` / `QGIS_MCP_PORT` pair, so the two are consistent.
+
 ## Compound Tool Mode
 
 To reduce schema overhead, use compound mode (~19 grouped tools instead of 51):
@@ -164,8 +192,11 @@ QGIS_MCP_TOOL_MODE=compound uv run --project /home/devuser/workspace/qgis-mcp sr
 
 **Connection refused:**
 ```bash
-# Check QGIS is running on Display :1
-supervisorctl status qgis
+# Check the local supervisor proxy is running (there is no [program:qgis])
+supervisorctl status qgis-mcp
+
+# Check the gui-tools GPU sidecar (QGIS itself) is up
+./agentbox.sh gui-tools up
 
 # Verify plugin is loaded and server started
 # In QGIS: Plugins > Manage Plugins > search "QGIS MCP" > check enabled

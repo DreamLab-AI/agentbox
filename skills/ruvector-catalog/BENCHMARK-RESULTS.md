@@ -1,6 +1,6 @@
 # RuVector Catalog V3 — Benchmark Results
 
-> Current closeout qualification — 2026-09-05: preserve the following as a historical report. The current entry point is 3,448 bytes/72 lines, and the referenced tests directory is absent from this checkout. ADR-009 distinguishes earlier predictions from measurements. This report is not a current reproduction receipt; see the [estate assessment](../../../../VisionFlow/docs/estate-review/catalog-decisions.md).
+> Current closeout qualification — 2026-09-05: preserve the following as a historical report. The current entry point is 3,448 bytes/72 lines, and the referenced tests directory is absent from this checkout. ADR-009 distinguishes earlier predictions from measurements. This report is not a current reproduction receipt; see the [estate assessment](../../../../VisionFlow/docs/estate-review/catalog-decisions.md) — note that link is a cross-repo relative path into a sibling checkout (`VisionFlow`, outside this `agentbox` repo) and will 404 in an agentbox-only deployment that lacks that sibling.
 
 ## 5-Query Comparison: Repo Search vs V1 vs V2 vs V3
 

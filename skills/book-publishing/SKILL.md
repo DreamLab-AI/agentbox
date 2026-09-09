@@ -8,6 +8,9 @@ triggers:
   - KDP publishing
   - manuscript to PDF
   - book pipeline
+  - convert book to latex
+  - markdown to latex
+  - memoir class
 ---
 
 # Book Publishing Skill
@@ -48,6 +51,11 @@ Creates the root `main.tex` with:
 
 **All other converters wait for skeleton before starting.**
 
+Full memoir/biblatex package list, UK typography rules (spaced endash, scene breaks,
+drop caps), chapter-style code, and the arXiv folder layout are in
+[references/latex-conventions.md](references/latex-conventions.md) — load it before
+building the skeleton or hand-editing a chapter.
+
 ## Stage 2: Parallel Foundation
 
 Run simultaneously after skeleton:
@@ -57,6 +65,8 @@ Run simultaneously after skeleton:
 # Scans all markdown footnotes, extracts URLs and references
 # Outputs: references.bib + cite_mapping.json
 # cite_mapping.json format: {chapter: {footnote_num: cite_key}}
+# Full pattern, footnote-vs-cite-key decision rule, and worked example:
+# references/latex-conventions.md#cite_mappingjson-pattern
 
 # Chapter Converters — split into batches of 6
 # Batch A: chapters 1–6
@@ -82,19 +92,19 @@ All run simultaneously:
 
 ## Stage 4: Image Upcycling
 
-After diagrams exist, upscale them for print. **This container has no configured Gemini
-CLI/API path, so the default is the offline ImageMagick pass** — deterministic and never
+After diagrams exist, upscale them for print. **A Gemini image path exists when
+`GOOGLE_API_KEY` is provisioned** — see [art/references/diagram-upcycling.md](../art/references/diagram-upcycling.md)
+for the current nano-banana model ids and the route-through-the-skill's-own-tool
+pattern; otherwise the offline ImageMagick pass is the default, deterministic and never
 hallucinates text:
 
 ```bash
 convert diagram.png -resize 200% -unsharp 0x1.0 diagram_hires.png
 ```
 
-Prefer regenerating charts as vector PDF over raster upscaling where possible.
-
-An optional AI enhancement path (current `google-genai` client + a current Gemini image
-model) exists but requires a provisioned API key and must be visually diffed against the
-source — its output can alter text/data. Full code and guardrails:
+Prefer regenerating charts as vector PDF over raster upscaling where possible. Even
+with a provisioned key, an AI-enhanced diagram must be visually diffed against the
+source before shipping — its output can alter text/data. Full guardrails:
 [references/image-upcycling.md](references/image-upcycling.md).
 
 ## Stage 5: Build and Verify
@@ -121,28 +131,28 @@ mcp__claude-flow__swarm_init({
 
 // Stage 1: skeleton (blocking)
 await mcp__claude-flow__agent_spawn({
-  type: "coder",
+  agentType: "coder",
   name: "skeleton-builder",
   task: "Build main.tex skeleton with memoir class, all chapter stubs, preamble"
 })
 
 // Stage 2: parallel foundation (after skeleton signals complete)
 await Promise.all([
-  mcp__claude-flow__agent_spawn({ type: "coder", name: "bibtex-extractor", ... }),
-  mcp__claude-flow__agent_spawn({ type: "coder", name: "chapter-conv-A", ... }),
-  mcp__claude-flow__agent_spawn({ type: "coder", name: "chapter-conv-B", ... }),
-  mcp__claude-flow__agent_spawn({ type: "coder", name: "chapter-conv-C", ... }),
-  mcp__claude-flow__agent_spawn({ type: "coder", name: "front-matter", ... }),
-  mcp__claude-flow__agent_spawn({ type: "coder", name: "appendix-conv", ... }),
-  mcp__claude-flow__agent_spawn({ type: "coder", name: "design-consultant", ... }),
-  mcp__claude-flow__agent_spawn({ type: "coder", name: "diagram-engineer", ... }),
-  mcp__claude-flow__agent_spawn({ type: "analyst", name: "market-analyst", ... }),
-  mcp__claude-flow__agent_spawn({ type: "researcher", name: "research-verifier", ... }),
-  mcp__claude-flow__agent_spawn({ type: "coder", name: "wardley-mapper", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "coder", name: "bibtex-extractor", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "coder", name: "chapter-conv-A", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "coder", name: "chapter-conv-B", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "coder", name: "chapter-conv-C", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "coder", name: "front-matter", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "coder", name: "appendix-conv", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "coder", name: "design-consultant", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "coder", name: "diagram-engineer", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "analyst", name: "market-analyst", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "researcher", name: "research-verifier", ... }),
+  mcp__claude-flow__agent_spawn({ agentType: "coder", name: "wardley-mapper", ... }),
 ])
 
 // Stage 3: after diagrams
-await mcp__claude-flow__agent_spawn({ type: "coder", name: "image-upcycler", ... })
+await mcp__claude-flow__agent_spawn({ agentType: "coder", name: "image-upcycler", ... })
 ```
 
 ## Publication Targets
@@ -151,6 +161,7 @@ await mcp__claude-flow__agent_spawn({ type: "coder", name: "image-upcycler", ...
 - memoir class, XeLaTeX, biber-compiled `.bbl`
 - All fonts embedded, no shell-escape
 - Submit: source `.tex` + `.bbl` + figures (PDF/PNG/JPG)
+- Full compliance checklist: [references/latex-conventions.md](references/latex-conventions.md#arxiv-compliance-checklist)
 
 ### KDP (Kindle Direct Publishing)
 - PDF/X-1a or PDF/X-4 for print
@@ -174,8 +185,12 @@ Before shipping:
 
 ## Related Skills
 
-- `latex-book` — LaTeX conventions, memoir class, citation patterns
 - `wardley-maps` — Wardley map generation with LaTeX integration
 - `art` — Gemini API image enhancement (diagram upcycling)
 - `browser` — PDF preview, Mermaid rendering workaround
-- `latex-documents` — general LaTeX compilation
+- `latex-documents` — general LaTeX compilation outside the book pipeline
+
+LaTeX conventions, memoir class packages, UK typography, and citation patterns
+(formerly the `latex-book` skill) now live in
+[references/latex-conventions.md](references/latex-conventions.md); `latex-book` is a
+deprecated redirect stub.

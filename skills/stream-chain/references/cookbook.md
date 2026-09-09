@@ -1,5 +1,14 @@
 # Stream-Chain — Cookbook, Integration & Troubleshooting
 
+**Historical note (2026-09-09, ruflo v3.38.21)**: every `claude-flow
+stream-chain ...` command on this page is retired in the deployed CLI (verified:
+`claude-flow stream-chain --help` → "Unknown command"). Kept for reference in
+case a future image restores it — the *shape* of each example (which prompts,
+in which order, feeding output forward) is still the right way to think about a
+chain; only the invocation mechanics changed. For today's working mechanics —
+`mcp__claude-flow__task_orchestrate` / `workflow_create` / `workflow_execute` —
+see [SKILL.md](../SKILL.md#quick-start-mcp-tools).
+
 ## Custom Chain Options
 
 | Option | Description | Default |

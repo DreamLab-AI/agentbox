@@ -1,187 +1,118 @@
-# DeepSeek Reasoning — Install, Configure, Operate
+# DeepSeek Reasoning — Operations
 
-MCP bridge for the DeepSeek special model, invoked directly by Claude Code as the current user.
+The real wiring is much simpler than a bespoke bridge would be: `consultant-deepseek`
+is one of five uniform consultant MCP servers baked into the image and registered
+declaratively in `skills/mcp.json`. There is no bundled server in this skill, no
+credential file, and no supervisord program — the MCP client launches the server
+on demand.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│ Claude Code (devuser)                           │
-│ - Detects complex query needing reasoning       │
-│ - Invokes MCP tool: deepseek_reason()           │
-└─────────────────┬───────────────────────────────┘
-                  │ MCP Protocol (stdio)
-┌─────────────────▼───────────────────────────────┐
-│ DeepSeek MCP Server (devuser)                   │
-│ - Receives tool call, validates parameters      │
-│ - Spawns deepseek_client.js directly            │
-└─────────────────┬───────────────────────────────┘
-                  │ node tools/deepseek_client.js (direct spawn, current user)
-┌─────────────────▼───────────────────────────────┐
-│ DeepSeek Client (devuser)                       │
-│ - Loads credentials from config                 │
-│ - Constructs reasoning prompt                   │
-│ - Calls special endpoint                        │
-└─────────────────┬───────────────────────────────┘
-                  │ HTTPS
-┌─────────────────▼───────────────────────────────┐
-│ DeepSeek Special Endpoint (api.deepseek.com)    │
-│ - Processes with thinking mode                  │
-│ - Returns structured reasoning                  │
-└─────────────────────────────────────────────────┘
+Claude Code
+  ↓ MCP tool call: consult / health / cost_estimate
+consultant-deepseek (stdio MCP server)
+  /opt/agentbox/mcp/consultants/package/deepseek/server.js
+  ↓ HTTPS
+api.deepseek.com  (or $DEEPSEEK_BASE_URL)
 ```
 
-## Files
-
-```
-deepseek-reasoning/
-├── SKILL.md                # Skill entry (read by Claude Code)
-├── references/             # Depth loaded on demand
-│   ├── tools.md            # Tool signatures + return schemas
-│   ├── workflows.md        # Usage, hybrid workflow, advanced usage
-│   └── operations.md       # This file — install/config/ops
-├── mcp-server/
-│   └── server.js           # MCP protocol server (runs as devuser)
-└── tools/
-    └── deepseek_client.js  # API client (runs as devuser, spawned directly)
-```
-
-## Installation
-
-```bash
-# Copy to container
-docker cp skills/deepseek-reasoning <host-container>:/home/devuser/.claude/skills/
-
-# Set permissions
-docker exec <host-container> bash -c "
-  chmod +x /home/devuser/.claude/skills/deepseek-reasoning/mcp-server/server.js
-  chmod +x /home/devuser/.claude/skills/deepseek-reasoning/tools/deepseek_client.js
-  chown -R devuser:devuser /home/devuser/.claude/skills/deepseek-reasoning
-"
-```
-
-## Configuration
-
-Credentials live in `$HOME/.config/deepseek/config.json` (typically
-`/home/devuser/.config/deepseek/config.json`), mode `0600`, owned by `devuser`:
+## Registration (`skills/mcp.json`)
 
 ```json
-{
-  "apiKey": "${DEEPSEEK_API_KEY}",
-  "availableEndpoints": {
-    "special": "https://api.deepseek.com/v3.2_speciale_expires_on_20251215"
-  },
-  "models": {
-    "chat": "deepseek-chat"
-  }
+"consultant-deepseek": {
+  "command": "node",
+  "args": ["/opt/agentbox/mcp/consultants/package/deepseek/server.js"],
+  "type": "stdio",
+  "env": { "AGENTBOX_DEEPSEEK_MODEL": "${AGENTBOX_DEEPSEEK_MODEL:-deepseek-v4-flash}" },
+  "x-agentbox-gate": "env:AGENTBOX_CONSULTANTS_ENABLED",
+  "x-agentbox-requires": [
+    { "envset": "DEEPSEEK_API_KEY" },
+    { "file": "/opt/agentbox/mcp/consultants/package/deepseek/server.js" }
+  ]
 }
 ```
 
-Environment-variable form:
+The `agentbox-manifest` projector writes this entry at boot when
+`AGENTBOX_CONSULTANTS_ENABLED` is set. There is nothing to install, symlink, or
+`chmod` — the server ships baked in the image.
 
-```bash
-DEEPSEEK_API_KEY=sk-[your deepseek api key]
-DEEPSEEK_SPECIAL_ENDPOINT=https://api.deepseek.com/v1
-DEEPSEEK_MODEL=deepseek-chat  # Verify current model name at https://platform.deepseek.com/docs — model IDs change with API versions.
-```
+## Configuration
 
-## Supervisord
+Environment variables only, read directly by the server process:
 
-Add to `/home/devuser/.config/supervisord.unified.conf`:
+| Variable | Required | Default | Description |
+|----------|----------|---------|--------------|
+| `DEEPSEEK_API_KEY` | Yes | — | DeepSeek API key, inherited from session env |
+| `DEEPSEEK_BASE_URL` | No | `https://api.deepseek.com` | Override the API endpoint |
+| `AGENTBOX_DEEPSEEK_MODEL` | No | `deepseek-v4-flash` | Model id (`agentbox.toml` `[consultants.deepseek] model`) |
 
-```ini
-[program:deepseek-reasoning-mcp]
-command=/usr/local/bin/node /home/devuser/.claude/skills/deepseek-reasoning/mcp-server/server.js
-directory=/home/devuser/.claude/skills/deepseek-reasoning/mcp-server
-user=devuser
-environment=HOME="/home/devuser"
-autostart=true
-autorestart=true
-priority=530
-stdout_logfile=/var/log/deepseek-reasoning-mcp.log
-stderr_logfile=/var/log/deepseek-reasoning-mcp.error.log
-```
-
-Start the service:
-
-```bash
-docker exec <host-container> supervisorctl reread
-docker exec <host-container> supervisorctl add deepseek-reasoning-mcp
-docker exec <host-container> supervisorctl start deepseek-reasoning-mcp
-```
+Configuration is environment variables only — there is no on-disk credential
+file and no supervisord program. Documentation describing either predates
+this MCP-launched-on-demand design and does not apply to this container.
 
 ## Manual testing
 
-```bash
-# Test client directly
-docker exec <host-container> node \
-  /home/devuser/.claude/skills/deepseek-reasoning/tools/deepseek_client.js \
-  --tool deepseek_reason \
-  --params '{"query":"What is 2+2?","format":"steps"}'
+Check liveness without spending a paid call:
 
-# Test MCP server
-echo '{"method":"tools/list","params":{},"id":1}' | \
-docker exec -i <host-container> \
-  /home/devuser/.claude/skills/deepseek-reasoning/mcp-server/server.js
 ```
+Use the health tool on consultant-deepseek (MCP), or from a shell with the
+key exported:
+curl -s https://api.deepseek.com/v1/models -H "Authorization: Bearer $DEEPSEEK_API_KEY"
+```
+
+Exercise a real consult from Claude Code by calling the `consult` tool with a
+short `question` and checking the returned `tokens`/`cost_usd`.
 
 ## Security
 
-- **Credentials protected:** API key stored in `$HOME/.config/deepseek/config.json` with mode `0600`.
-- **Direct spawn:** the MCP server spawns `deepseek_client.js` as the current user — no sudo bridge, no separate OS user.
-- **No global exposure:** the config file is readable only by its owner.
-- MCP server and API client both run as `devuser`; no workspace separation is required.
+- **Credentials**: `DEEPSEEK_API_KEY` is read from session environment only —
+  no credential file on disk to protect or leak.
+- **No workspace separation needed**: the server runs under the current
+  profile, not a separate OS user (the historical pseudo-user model is
+  retired estate-wide).
+- Requests go straight to `api.deepseek.com` over HTTPS; no local proxy.
 
 ## Performance
 
 - **Latency:** 2-5 seconds (includes reasoning time).
-- **Token usage:** 200-500 tokens per reasoning query; higher than standard (includes reasoning tokens).
-- **Concurrency:** one request at a time (special endpoint).
-- **Quality:** superior for multi-step logic, debugging, planning.
-- **Cost:** special-endpoint pricing (check DeepSeek docs).
-
-## Limitations
-
-- Requires thinking mode (cannot disable).
-- Verify current endpoint availability at https://platform.deepseek.com/docs.
-- Higher latency than standard deepseek-chat.
-- Reasoning tokens count toward usage.
+- **Concurrency:** the MCP client serialises calls per session; DeepSeek's own
+  API has its own rate limits.
+- **Quality:** strong for multi-step logic, debugging, planning; DeepSeek
+  returns its chain-of-thought explicitly (see `references/tools.md`).
+- **Cost:** call `cost_estimate` before a large `consult`; current baked
+  pricing is $0.00055/1K prompt tokens and $0.00219/1K completion tokens.
 
 ## Troubleshooting
 
-### "invalid_request_error: non-thinking mode"
-- The special endpoint requires reasoning mode (automatic in this skill).
+### `health` returns `ok: false`
 
-### MCP server won't start
-```bash
-docker exec <host-container> tail -f /var/log/deepseek-reasoning-mcp.error.log
-docker exec <host-container> which node
-docker exec <host-container> ls -la /home/devuser/.claude/skills/deepseek-reasoning/
-```
+- `last_error: "DEEPSEEK_API_KEY is not set"` — export `DEEPSEEK_API_KEY` in
+  the session environment before the MCP server starts.
+- `last_error: "HTTP 401"` or similar — the key is invalid or revoked; check
+  the DeepSeek dashboard.
+- Any other `last_error` — usually a transient network or endpoint issue;
+  retry, then check `DEEPSEEK_BASE_URL` if you have overridden it.
 
-### "Permission denied" errors
-- Check `$HOME/.config/deepseek/config.json` exists with mode `0600`.
-- Confirm the file is owned by `devuser`.
+### The tool doesn't appear at all
 
-### API / API-key errors
-```bash
-# Test endpoint directly
-docker exec <host-container> curl \
-  https://api.deepseek.com/v3.2_speciale_expires_on_20251215/v1/models \
-  -H "Authorization: Bearer <your-api-key>"
-
-# Verify config
-docker exec <host-container> cat /home/devuser/.config/deepseek/config.json
-```
-- Check the API key is valid and the special endpoint URL is correct.
+- Confirm the consultants gate is on: `AGENTBOX_CONSULTANTS_ENABLED` must be
+  set for `agentbox-manifest` to project the `consultant-deepseek` entry into
+  `skills/mcp.json` at boot.
+- Confirm the file exists in the image:
+  `ls /opt/agentbox/mcp/consultants/package/deepseek/server.js`.
 
 ### Slow responses
+
 - Normal for a reasoning model (includes thinking time).
-- Reduce `max_steps` if too slow.
-- Use `format: quick`/`depth: quick` for faster responses.
+- Ask for a shorter or more scoped answer in `question` if latency matters —
+  there is no `max_steps`/`depth` parameter to tune; the model decides how
+  much reasoning to show.
 
 ## See also
 
 - DeepSeek API docs: https://api-docs.deepseek.com/
 - MCP protocol: https://github.com/anthropics/mcp
-- Claude Code skills: https://docs.claude.ai/code/skills
+- `/opt/agentbox/mcp/consultants/shared/consultant-base.js` — the shared
+  scaffolding every consultant server (codex, deepseek, perplexity,
+  antigravity, zai) is built on.

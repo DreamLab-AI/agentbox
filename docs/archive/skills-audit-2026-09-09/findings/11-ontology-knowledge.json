@@ -1,0 +1,143 @@
+{
+  "batch": "11-ontology-knowledge",
+  "skills": [
+    {
+      "skill": "ontology-augment",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "high",
+          "evidence": "ontology-augment/SKILL.md:2 — name: \"Ontology Augment\" (dir is ontology-augment); this is one of the 22 always-registered skills (registered-skills.txt:42) so the mismatch ships live, not just as an estate curiosity",
+          "fix": "Set name: ontology-augment to match the dir, the agentskills.io standard, and the ruflo validator (^[a-z][a-z0-9-]*$ == dir) — both sibling skills ontology-core and ontology-enrich already comply.",
+          "cross_skill": ["ontology-core", "ontology-enrich"]
+        },
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "ontology-augment/SKILL.md:75-76 tool-surface table lists `search` / `class_get` / `class_list` / `graph_query`; REFERENCE.md:74 heading \"SPARQL via `graph_query`\" repeats the same short name. The live registered MCP server (agentbox/mcp/mcp.json:156-166, and this session's own mcp__ontology-bridge__* tool roster) exposes the prefixed names ontology_search, ontology_class_get, ontology_class_list, ontology_graph_query, ontology_health, ontology_validate, ontology_axiom_add and kg_node_search — none of which match the short names documented, and four of which (health, validate, axiom_add, kg_node_search) aren't mentioned at all.",
+          "fix": "Rewrite the tool-surface table to the live prefixed names (ontology_search, ontology_class_get, ontology_class_list, ontology_graph_query) and add rows for ontology_health, ontology_validate, ontology_axiom_add, kg_node_search.",
+          "cross_skill": []
+        },
+        {
+          "class": "disclosure",
+          "severity": "med",
+          "evidence": "ontology-augment/ (ls) carries flat REFERENCE.md + EXAMPLES.md siblings (skill-builder's contradicted layout) while its own cluster-mates ontology-core (references/ttl-authoring.md) and ontology-enrich use the ADR-2021 references/ subdir convention",
+          "fix": "Move REFERENCE.md and EXAMPLES.md into a references/ subdirectory to match ontology-core and the rest of the estate.",
+          "cross_skill": ["ontology-core", "ontology-enrich"]
+        }
+      ]
+    },
+    {
+      "skill": "ontology-core",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "ontology-core/SKILL.md:49 (\"Converter: Ontology-Tools/tools/converters/convert-to-turtle.py\") and :67-69 References section (Converter/Parser/Loader under Ontology-Tools/tools/). `find /home/devuser/workspace/project -iname 'convert-to-turtle.py' -o -iname 'ontology_block_parser.py' -o -iname 'ontology_loader.py'` returns zero hits anywhere in the checkout. The only thing named ontology-tools that exists is the Rust crate at services/ontology-tools (binary verified on PATH), whose src/main.rs Commands enum is Parse/Validate/Roundtrip/Modify/Links/Enrich/BatchEnrich only — no ttl/turtle/export subcommand — and whose own header comment (main.rs:1-9) says it is a full replacement surface for the retired Python originals, yet TTL conversion was never ported.",
+          "fix": "Either add an `ontology-tools export-ttl` subcommand to the Rust crate (natural home given the rest of the port), or update SKILL.md/REFERENCE.md to point at wherever TTL conversion now actually lives — as written, the skill's own headline promise (\"export the vault ontology to OWL2 DL Turtle\") is unactionable.",
+          "cross_skill": ["ontology-enrich"]
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "ontology-core/README.md is 0 bytes (ls -la)",
+          "fix": "Remove the empty stub or fill it in.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "ontology-enrich",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "ontology-enrich/SKILL.md:66-72 (\"2. Generate TTL\") and :185-187 (Quick Validation Script) both shell to `python3 Ontology-Tools/tools/converters/convert-to-turtle.py` — same nonexistent path verified missing for ontology-core above (zero find hits repo-wide; Rust ontology-tools has no ttl subcommand).",
+          "fix": "Same as ontology-core: point at a real TTL exporter once one exists, or remove the workflow.",
+          "cross_skill": ["ontology-core"]
+        },
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "ontology-enrich/SKILL.md:53-63 fixes invalid source-domain values with raw `sed -i 's/source-domain:: blockchain/source-domain:: bc/g'` (no backup, no validation) on the same OntologyBlock field that ontology-core/SKILL.md:38-40 documents as the job of `ontology-tools modify <file> --set field=value — field-preserving edits with automatic backup and OWL2-validated rollback`. Two sibling skills prescribe two different procedures — one safe, one blind — for editing the same corpus field.",
+          "fix": "Replace the sed recipes with `ontology-tools modify <file> --set source-domain=bc` (etc.) so both skills route field edits through the same safe path.",
+          "cross_skill": ["ontology-core"]
+        },
+        {
+          "class": "disclosure",
+          "severity": "low",
+          "evidence": "ontology-enrich/SKILL.md is 204 lines with no references/ subdir (only a config/ dir) — under the 250-line lint threshold so it isn't flagged, but it is the longest of the three ontology siblings and closest to needing one",
+          "fix": "Move \"Common Issues and Fixes\" and the Quick Validation Script into references/ pre-emptively, matching ontology-core's layout.",
+          "cross_skill": ["ontology-core"]
+        }
+      ]
+    },
+    {
+      "skill": "podcast-bulk-ingest",
+      "verdict": "keep",
+      "health": 7,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "high",
+          "evidence": "grep of SKILL-DIRECTORY.md's full skill table (lines ~200-260 area, the podcast section is absent) and of skill-router/references/routing-table.md (podcast hits are only notebooklm:91 and open-montage:129, plus echoloop:130 — no podcast-bulk-ingest row in either file)",
+          "fix": "Add a SKILL-DIRECTORY.md row and a routing-table.md entry (e.g. trigger phrases \"bulk ingest podcast\", \"backfill podcast transcripts\").",
+          "cross_skill": ["podcast-knowledge-ingest"]
+        }
+      ]
+    },
+    {
+      "skill": "podcast-knowledge-ingest",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "high",
+          "evidence": "Same grep as podcast-bulk-ingest: absent from both SKILL-DIRECTORY.md and skill-router/references/routing-table.md, despite carrying a `cron:` frontmatter key (SKILL.md:20-22) unique among the estate's frontmatter vocabulary",
+          "fix": "Add directory + routing-table entries (e.g. \"weekly podcast ingest\", \"promote podcast evidence\").",
+          "cross_skill": ["podcast-bulk-ingest"]
+        },
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "`find podcast-knowledge-ingest -type f | wc -l` = 349 (184 .md, 157 .json). 307 of those live under promotions/rejects/ and promotions/proposals/ — real accumulated pipeline OUTPUT from live runs (e.g. promotions/rejects/microsoft-copilot.md, promotions/rejects/nvidia-h200.md), plus a .sandbox/ fixture tree (pages/proposals/rejects), plus RUNBOOK.md at the skill root — 766KB / 8650 lines, not under references/ — which self-declares in its own header (RUNBOOK.md:1-12) as \"the historical record of the live supervised Python-era ingest run\", i.e. dead weight by its own admission. All of this bakes into /opt/agentbox/skills on the next image build.",
+          "fix": "Move RUNBOOK.md under references/ (or archive it out of the skill tree, since it's explicitly historical-only per its own header); relocate promotions/ and .sandbox/ (operational/test data, not skill documentation) to a data volume or the vault working graph so the container image doesn't ship a growing corpus of production ledger output as \"skill\" content.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "echoloop",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "echoloop/config.py:49 — `openai_model: str = os.getenv(\"ECHOLOOP_OPENAI_MODEL\", \"gpt-4o\")`. The fact sheet names gpt-4o explicitly as a stale example (current OpenAI model is GPT-6 Astra / gpt-6-astra). Note config.py:48's Anthropic default, `claude-sonnet-5`, IS current — only the OpenAI side has drifted.",
+          "fix": "Change the default to gpt-6-astra (the env override ECHOLOOP_OPENAI_MODEL already exists, so this only bites users who never set it).",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "echoloop/.github/workflows/ci.yml is vendored upstream CI boilerplate with no function inside a baked agentbox skill tree",
+          "fix": "Drop .github/ from the vendored copy, or leave as harmless cosmetic clutter — no functional impact.",
+          "cross_skill": []
+        }
+      ]
+    }
+  ],
+  "cluster_recommendation": "The three-way ontology split (ontology-core authors/exports, ontology-enrich validates/regenerates, ontology-augment consumes at inference time) is the right shape and should stay three skills, not merge — but two structural defects need fixing before the split is trustworthy: (1) both ontology-core and ontology-enrich document a TTL-generation workflow that shells to Ontology-Tools/tools/converters/convert-to-turtle.py, a Python path that does not exist anywhere in this checkout — the Rust ontology-tools crate that replaced the Python originals (confirmed on PATH, confirmed via its own source) never implemented TTL export, so the estate's actual Turtle-generation story is currently broken in both skills' docs and needs either a real `ontology-tools export-ttl` subcommand or corrected references; while there, ontology-enrich's raw `sed -i` field edits should be replaced with ontology-core's own safe `ontology-tools modify --set` path. (2) ontology-augment — the one always-loaded, load-bearing member of the trio — has a frontmatter name that doesn't match its directory and a tool-surface table (repeated in REFERENCE.md) that documents unprefixed tool names (`search`, `class_get`, `graph_query`) which don't match the live registered ontology-bridge MCP server's actual tool names (ontology_search, ontology_class_get, ontology_graph_query, plus four undocumented tools); both are concrete, fixable defects, not just estate-wide vocabulary drift. The podcast pair is a legitimate, well-evidenced one-off-backfill-vs-weekly-cron split — all three Rust binaries (podcast-ingest, podcast-promote, podcast-bulk-ingest) and every cited module/config path were verified to exist and match agentbox.toml's [vault]/[skills.podcast_ingest] ground truth, and even the external OntoCast bootstrap dependency in podcast-bulk-ingest checks out against a real sibling checkout — so the 0.50 Jaccard score is shared vocabulary, not genuine overlap; the real problems are that both skills are invisible to SKILL-DIRECTORY.md and routing-table.md, and podcast-knowledge-ingest's tree has accumulated 349 files of live pipeline output, test fixtures and a 766KB self-declared-historical runbook that all bake into the shipped image and belong in references/ or an external data store instead. echoloop is a legitimately self-contained vendored tool — confirmed to have no dependency on the container's voice/tab0-bridge/Unmute plane, correctly excluded from registered-skills.txt, and correctly listed in both discovery docs — its only real defect is a hardcoded stale gpt-4o default model.",
+  "unverifiable_items": [
+    "ontology-augment's PUSH-hook mechanics (ONTOLOGY_PUSH_MIN_RELEVANCE=0.11 floor, ~80-token breadcrumb budget) are described only in SKILL.md/REFERENCE.md prose; the hook implementation itself wasn't located in agentbox.toml or the entrypoint scripts checked, so its accuracy against live behaviour couldn't be independently confirmed within this batch.",
+    "podcast-bulk-ingest's OntoCast bootstrap flow depends on the `ontocast` PyPI package, which is not installed in this container (pip show ontocast -> not found) — expected, since the skill correctly frames it as an optional external install, but the flow itself has therefore not been run end-to-end."
+  ]
+}

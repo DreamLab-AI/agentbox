@@ -132,7 +132,7 @@ open vnc://localhost:5903   # no password
            ▼
 ┌──────────────────────────────────────┐
 │  Chrome CDP endpoint                 │
-│  browsercontainer:9222 (sidecar)     │
+│  browsercontainer:9223 (sidecar)     │
 │  or localhost:9222 (local)           │
 └──────────────────────────────────────┘
 ```
@@ -149,7 +149,7 @@ open vnc://localhost:5903   # no password
 │  │ cdp.mjs  │      │  RTX 6000 GPU       │   │
 │  │ skills/  │      │                     │   │
 │  └──────────┘      │  :8931 MCP SSE      │   │
-│                     │  :9222 CDP          │   │
+│                     │  :9223 CDP          │   │
 │                     │  :5903 VNC          │   │
 │                     └─────────────────────┘   │
 └──────────────────────────────────────────────┘
@@ -161,7 +161,7 @@ open vnc://localhost:5903   # no password
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BROWSER_CDP_HOST` | `browsercontainer` | CDP target host for sidecar scripts |
-| `BROWSER_CDP_PORT` | `9222` | CDP target port |
+| `BROWSER_CDP_PORT` | `9223` | CDP target port |
 | `CDP_PORT_FILE` | Auto-detected | DevToolsActivePort file path |
 | `CDP_HOST` | `127.0.0.1` | Host used by cdp.mjs internally |
 
@@ -172,10 +172,10 @@ open vnc://localhost:5903   # no password
 curl -s http://browsercontainer:8931/health | python3 -m json.tool
 
 # CDP reachable?
-curl -s http://browsercontainer:9222/json/version
+curl -s http://browsercontainer:9223/json/version
 
 # List tabs
-curl -s http://browsercontainer:9222/json/list | python3 -m json.tool
+curl -s http://browsercontainer:9223/json/list | python3 -m json.tool
 
 # GPU check
 docker exec browsercontainer nvidia-smi

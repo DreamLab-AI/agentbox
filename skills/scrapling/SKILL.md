@@ -52,6 +52,10 @@ Blazing fast crawls with real-time stats and streaming. Built by Web Scrapers fo
 
 ## Setup (once)
 
+Not baked into this image: `scrapling` is not on `$PATH` and no Nix package or
+build step installs it, even though `mcp.json` registers an MCP server command
+for it — install it manually before relying on that registration.
+
 Create a virtual Python environment through any way available, like `venv`, then inside the environment do:
 
 `pip install "scrapling[all]>=0.4.3"`

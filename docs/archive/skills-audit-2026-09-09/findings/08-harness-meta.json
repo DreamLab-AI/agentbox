@@ -1,0 +1,308 @@
+{
+  "batch": "08-harness-meta",
+  "skills": [
+    {
+      "skill": "codeact",
+      "verdict": "keep",
+      "health": 9,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skills/codeact/SKILL.md declares real triggers (`/codeact`, \"write code and run\", \"persistent python\") and is live-gated (agentbox.toml:581-584 `[skills.codeact] enabled = true`, depends on `[skills.code_interpreter] enabled = true` at agentbox.toml:565-569 — both true). It is absent from skill-router/references/routing-table.md (grep for the literal name returns 0 hits in the 205-line file).",
+          "fix": "Add a Code Development row to routing-table.md (or the generator once built — see routing_table_generator) so `/route write code and run this` resolves to codeact.",
+          "cross_skill": "skill-router"
+        }
+      ]
+    },
+    {
+      "skill": "expel-lesson-extractor",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "Frontmatter and body are internally consistent and match the live gate (agentbox.toml:586-596 `[features.expel_lesson_extraction] enabled = true`). Absent from routing-table.md (0 hits for the exact skill name).",
+          "fix": "Add a row under Multi-Agent/Swarm or a new \"Code-as-Harness\" section.",
+          "cross_skill": "skill-router"
+        }
+      ]
+    },
+    {
+      "skill": "voyager-skill-library",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "voyager-skill-library/SKILL.md:167-175 (Manifest Gates block) documents `enabled = false  # set true; requires skills.code_interpreter.enabled = true`, and SKILL.md:24-28 frames this as \"Phase 2 scaffolding... will be activated only after Phase 1 (expel-lesson-extractor) has been validated and skills.code_interpreter.enabled = true is confirmed live\". The live agentbox.toml has `[skills.voyager_skill_library] enabled = true` at agentbox.toml:604, with both prerequisite gates already true (`[skills.code_interpreter] enabled = true` agentbox.toml:569; `[features.expel_lesson_extraction] enabled = true` agentbox.toml:591). The skill's own documented gate example and dormancy narrative are stale relative to the manifest it is describing.",
+          "fix": "Update the Manifest Gates snippet to `enabled = true` and rewrite the Status line to reflect that the VerificationGate write path is live now, not pending activation.",
+          "cross_skill": ""
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "Absent from skill-router/references/routing-table.md (0 hits).",
+          "fix": "Add a routing-table row once the status text above is corrected.",
+          "cross_skill": "skill-router"
+        }
+      ]
+    },
+    {
+      "skill": "tree-search-coder",
+      "verdict": "keep",
+      "health": 7,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "agentbox.toml:651-655: the `[skills.tree_search_coder]` block's own comment reads \"Phase 2 — off by default\" directly above `enabled = true`. tree-search-coder/SKILL.md's frontmatter `manifest_gate: \"[skills.tree_search_coder] enabled = true\"` matches the real (true) value, so the skill file itself is accurate; the drift is in agentbox.toml's stale comment, not the skill.",
+          "fix": "Not a skill-content fix — flag agentbox.toml:654's comment for correction so future readers of the manifest don't infer the opposite of the skill's own documented gate.",
+          "cross_skill": ""
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "Absent from routing-table.md despite carrying explicit `triggers:` (SKILL.md:16-21: \"tree search this\", \"best of N candidates\") that the router's own classification method is supposed to catch.",
+          "fix": "Add a row; note the hard never-auto-route rule so the generator doesn't imply it fires automatically.",
+          "cross_skill": "skill-router"
+        }
+      ]
+    },
+    {
+      "skill": "skill-builder",
+      "verdict": "fix",
+      "health": 2,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "skill-builder/SKILL.md:60,65 and REFERENCE.md:14-25 teach `name` as a \"Title Case\" display name (examples: \"API Documentation Generator\"). This is independently wrong on three counts, all directly verified: (1) agentskills.io's live specification (fetched 2026-09-09, /specification) states the `name` field \"May only contain unicode lowercase alphanumeric characters (a-z, 0-9) and hyphens\" and \"Must match the parent directory name\" — Title Case is an explicit invalid example there (\"name: PDF-Processing # uppercase not allowed\"). (2) The vendored ruflo/Codex validator at `/nix/store/0xnypllb59schiqc36jpq7xvmddysh29-ruflo-3.38.20/lib/ruflo/node_modules/@claude-flow/cli/node_modules/@claude-flow/codex/dist/validators/index.js:216` hard-errors any name failing `/^[a-z][a-z0-9-]*$/` with message \"must be lowercase with hyphens only\". (3) skill-builder's own frontmatter at SKILL.md:2 is `name: \"Skill Builder\"` against directory `skill-builder` — the skill fails its own taught rule and would fail both the agentskills.io and ruflo validators if it were validated.",
+          "fix": "Rewrite the name rule to: lowercase-hyphen, must equal directory name, max 64 chars, no leading/trailing/consecutive hyphens (agentskills.io wording) — and fix skill-builder's own frontmatter name to `skill-builder`.",
+          "cross_skill": "skill-router"
+        },
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "skill-builder/SKILL.md:77 (\"No other frontmatter fields are recognised by the Claude runtime\") and REFERENCE.md:74-82 (\"Only name and description are used by the Claude runtime. Additional fields are silently ignored\") is materially false for this estate: the fact sheet's estate scan found 50 distinct frontmatter keys in live productive use (version×58, author×36, tags×32, mcp_server×21, etc.); the agentskills.io spec (verified live) explicitly defines `license`, `compatibility`, `metadata`, `allowed-tools` as first-class recognised optional fields; and this batch's own skill-tuning/SKILL.md:4-9 uses `license:` and a `metadata:` map productively (`version`, `author`, `tags`, `mcp_server` nested under it).",
+          "fix": "Document the real recognised optional set (license, compatibility ≤500 chars, metadata as a flat string map, allowed-tools) per agentskills.io, and note that additional agentbox-local keys (triggers, depends_on_mcps, related_skills, manifest_gate, etc.) are estate convention layered on top, not spec, and not \"ignored\".",
+          "cross_skill": "skill-tuning"
+        },
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "skill-builder/SKILL.md:83-94 and REFERENCE.md:86-120 teach flat sibling files `REFERENCE.md`/`EXAMPLES.md` at the skill root as the progressive-disclosure mechanism. `skills/lint-skills.mjs`'s BUDGET check (lines 371-392, the ADR-2021 enforcement) only recognises a literal `references/` subdirectory holding a readable file as satisfying progressive disclosure for a >250-line SKILL.md — a skill authored exactly to skill-builder's own template, once past 250 lines, fails the pre-rebuild lint. Corroborating evidence that the estate already knows this: lint-skills.mjs:50 special-cases `skill-builder` itself in `ABSPATH_SKIP_DIRS` so its own documented `~/.claude/skills/...` example paths don't trip the ABSPATH check — the maintainers suppressed the symptom in the lint rather than fix skill-builder's content.",
+          "fix": "Teach `references/` (with REFERENCE.md, topic files inside it) as the only disclosure mechanism the lint recognises, matching agentskills.io's own directory-structure example (`references/` holding `REFERENCE.md`, `FORMS.md`, domain files).",
+          "cross_skill": ""
+        },
+        {
+          "class": "contradiction",
+          "severity": "medium",
+          "evidence": "skill-builder/SKILL.md:84,94 and REFERENCE.md:122-136 state the skill directory \"MUST sit directly under ~/.claude/skills/ or .claude/skills/\" with no deeper nesting. This estate's single master copy is `/home/devuser/workspace/project/agentbox/skills` (bakes to `/opt/agentbox/skills`); reaching `~/.claude/skills/` at all requires the boot-time reconciler (`registered-skills.txt` → symlink) and covers only 22 of 128 skills — the other 106, including 7 of this batch's non-meta skills, are never placed under `~/.claude/skills/`.",
+          "fix": "State the actual model: author at the master copy path; registration is a separate, opt-in step via registered-skills.txt (Claude) / codex-registered-skills.txt (Codex, currently unreconciled — verify before relying on it); everything else is reference-only via SKILL-DIRECTORY.md → skill-router → routing-table.md.",
+          "cross_skill": "skill-router"
+        },
+        {
+          "class": "model-fit",
+          "severity": "medium",
+          "evidence": "Zero mention of Codex/GPT-6 Astra anywhere in SKILL.md, REFERENCE.md or EXAMPLES.md, despite this being the skill that will shape every future skill's authoring in an estate that must serve both harnesses (per the audit brief's model-fit lens) and despite agentskills.io itself providing exactly the field for this (`compatibility:`).",
+          "fix": "Add a `compatibility:` guidance section instructing authors to state Claude-only vs cross-harness reach explicitly, and to verify Codex registration is real (see skill-router finding) before claiming it.",
+          "cross_skill": "skill-router"
+        }
+      ]
+    },
+    {
+      "skill": "skill-tuning",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "divergence",
+          "severity": "medium",
+          "evidence": "skill-tuning/SKILL.md:2 frontmatter `name: \"Skill Tuning\"` vs directory `skill-tuning` — fails agentskills.io's verified \"must match the parent directory name\" rule and the ruflo/codex lowercase-hyphen validator (see skill-builder findings for both sources).",
+          "fix": "Set `name: skill-tuning`.",
+          "cross_skill": "skill-builder"
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "220 lines (verified via wc -l), under the 250-line MAX_ENTRY_LINES so lint-skills.mjs does not fire, but no `references/` directory exists. The Harness asset table (SKILL.md:144-163) and \"Hard-Won Lessons\" section (SKILL.md:117-142) are reference-grade detail per agentskills.io's own recommendation to move such material out of the main body.",
+          "fix": "Pre-emptively split Harness/Hard-Won-Lessons into references/ before the next addition trips the 250-line gate with no disclosure escape valve.",
+          "cross_skill": ""
+        },
+        {
+          "class": "verified-not-rot",
+          "severity": "low",
+          "evidence": "The `skillopt-lab` harness IS real: `/home/devuser/workspace/skillopt-lab` exists with `repo/` (skillopt pkg), `rust-task/`, `runs/`, `.venv/` all present exactly as SKILL.md:144-160 claims. Model table (SKILL.md:162-163: target `claude-haiku-4-5-20251001`, optimizer `claude-fable-5-1`, mesh tier `claude-sonnet-5`) matches the fact sheet's current-model list — not stale.",
+          "fix": "None needed — recorded to prevent a future auditor re-flagging this as unverified.",
+          "cross_skill": ""
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "Absent from routing-table.md; isolated in the estate cross-reference graph per the fact sheet despite naming skill-builder/build-with-quality/docs-alignment as related (SKILL.md:210-216) — the relation is one-directional, none of those three link back.",
+          "fix": "Add a routing-table row; ask the three named skills' owners to add a back-reference.",
+          "cross_skill": "skill-builder"
+        }
+      ]
+    },
+    {
+      "skill": "skill-router",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "skill-router/SKILL.md:87-90 and routing-table.md:1-9 both assert the table is \"a generated artefact derived from every skill's front-matter description\" and must be \"regenerated\" after description changes. No generator script exists anywhere in the repo (`find` for routing-table/generator scripts and `grep -rl routing-table scripts/` both return nothing). Direct evidence from this batch alone: routing-table.md is missing codeact, expel-lesson-extractor, voyager-skill-library, tree-search-coder, skill-tuning, dream-machine, hermes-scheduler, and skill-router itself — 8 of 13 audited skills, all real and gated/registered.",
+          "fix": "Either build the generator (see routing_table_generator spec) or change the SKILL.md/routing-table.md language from \"generated\" to \"hand-maintained; audit against skills/*/SKILL.md periodically\" so the false-freshness claim stops masking real coverage gaps.",
+          "cross_skill": "codeact, expel-lesson-extractor, voyager-skill-library, tree-search-coder, skill-tuning, dream-machine, hermes-scheduler"
+        },
+        {
+          "class": "rot",
+          "severity": "medium",
+          "evidence": "codex-registered-skills.txt:10-11 lists skill-router and lazy-fetch (and :13 codebase-memory) as Codex-native registered skills, with a header claiming this is \"the Codex-native progressive-disclosure surface\". `grep -rln codex-registered-skills` across scripts/*.sh/*.rs/*.mjs/*.js/*.toml finds zero consumers — nothing reconciles this file. Live probe of `~/.codex/skills` shows only two hand-made symlinks: `codebase-video` and `repo-education` — neither of which matches codex-registered-skills.txt's own list correctly (repo-education isn't even listed in the file). skill-router, lazy-fetch and codebase-memory are therefore NOT actually reachable by a Codex/GPT-6 Astra session today, contrary to what the file claims.",
+          "fix": "Either wire a reconciler for codex-registered-skills.txt (mirroring scripts/reconcile-skills.sh's model for registered-skills.txt) or mark the file explicitly aspirational/unwired until one exists, and note in skill-router/SKILL.md that its own Codex reach is currently zero.",
+          "cross_skill": "lazy-fetch, codebase-memory"
+        }
+      ]
+    },
+    {
+      "skill": "lazy-fetch",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "lazy-fetch/SKILL.md:22-24 frontmatter declares `mcp_server: true`, `entry_point: mcp-server/dist/mcp-server.js`; SKILL.md:244 File Structure lists `dist/ Compiled JavaScript (ready to run)`; SKILL.md:278-287 gives a ready `.mcp.json` snippet pointing at `dist/mcp-server.js`. Verified: `lazy-fetch/mcp-server/` contains only `src/` (10 .ts files) and `package.json` — no `dist/`, no `node_modules/`. The server cannot start until the Installation section's `npm install && npm run build` (SKILL.md:270-273) is run manually; nothing in boot reconciliation does this, and lazy-fetch does not appear in `skills/mcp.json`'s registered server list (only `codebase-memory` is present there).",
+          "fix": "Either commit a built `dist/` (or a build step in the Nix derivation / boot reconciler), or change the framing from \"ready to run\" to \"build required\" and add lazy-fetch to skills/mcp.json once built.",
+          "cross_skill": ""
+        },
+        {
+          "class": "verified-not-rot",
+          "severity": "low",
+          "evidence": "\"25 MCP tools\" (SKILL.md:39, :108) is accurate: `grep -c \"server.tool(\" mcp-server/src/mcp-server.ts` = 25.",
+          "fix": "None needed.",
+          "cross_skill": ""
+        },
+        {
+          "class": "duplication",
+          "severity": "medium",
+          "evidence": "lazy-fetch's Hooks table (SKILL.md:169-176: SessionStart/PostToolUse/PreCompact/Stop, own bash scripts under `hooks/`) and hooks-automation's hook lifecycle (Pre/Post-Operation + Session hooks via `npx claude-flow hook ...`) both independently own the same Claude Code hook-lifecycle surface for context/session persistence. Neither SKILL.md references the other; lazy-fetch's own disambiguation table (\"Complementing Ruflo\", SKILL.md:213-224) only distinguishes itself from ruflo/claude-flow swarm orchestration, not from hooks-automation's overlapping hook registrations.",
+          "fix": "Add a cross-reference in both: lazy-fetch owns single-agent plan/memory/security hooks; hooks-automation owns swarm-coordination and neural-pattern-training hooks — state explicitly which hook events each expects to own if both are installed together.",
+          "cross_skill": "hooks-automation"
+        },
+        {
+          "class": "model-fit",
+          "severity": "medium",
+          "evidence": "Entirely Claude-Code-specific (Claude Code hook events, `/project:*` slash commands, `.claude/settings.json`) with no stated Codex/GPT-6 Astra limitation, yet codex-registered-skills.txt:11 lists it as Codex-registered while (per the skill-router finding above) nothing actually reconciles that file — Codex sessions get neither the skill nor a documented reason why not.",
+          "fix": "Add a `compatibility:`-style line stating Claude-Code-only, and fix or drop the codex-registered-skills.txt entry.",
+          "cross_skill": "skill-router"
+        }
+      ]
+    },
+    {
+      "skill": "codebase-memory",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "hooks-automation",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "medium",
+          "evidence": "hooks-automation/SKILL.md:219-227 (\"Integration with Other Skills\") lists \"Pair Programming\" as a live integration partner. Verified: no `pair-programming` directory exists under skills/, and SKILL-DIRECTORY.md:17 and :899 explicitly record it DEPRECATED → superseded by `build-with-quality` (\"Both reasoningbank-agentdb, reasoningbank-intelligence, and pair-programming are deprecated; all merged into build-with-quality. Complete.\").",
+          "fix": "Replace the \"Pair Programming\" bullet with `build-with-quality`.",
+          "cross_skill": ""
+        },
+        {
+          "class": "model-fit",
+          "severity": "medium",
+          "evidence": "Every example in SKILL.md and EXAMPLES.md is `npx claude-flow hook ...` inside `.claude/settings.json` PreToolUse/PostToolUse matchers — Claude Code-specific hook plumbing with no GPT-6 Astra/Codex equivalent and no stated limitation, despite the audit brief explicitly calling this skill out for the disclosure.",
+          "fix": "Add a one-line compatibility note: Claude-Code-only (hooks are a Claude Code harness feature).",
+          "cross_skill": ""
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "SKILL.md:34 Prerequisites says \"Claude Flow CLI installed (`npm install -g claude-flow@alpha`)\". Verified: `claude-flow` is already a baked Nix binary — `which claude-flow` resolves inside the `ruflo-3.38.20` Nix store derivation (`claude-flow` is `ruflo`'s CLI alias). A global npm install is redundant and likely to fail or no-op in this read-only-Nix-store container.",
+          "fix": "Change to \"already on PATH as `claude-flow` (the baked ruflo CLI) — no install needed\".",
+          "cross_skill": ""
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "239 lines (verified), no `references/` directory — EXAMPLES.md is a flat top-level sibling, the same disclosure-shape drift skill-builder teaches (see skill-builder findings). Currently under the 250-line lint threshold so no lint failure yet.",
+          "fix": "Move EXAMPLES.md content into `references/` before the next addition trips MAX_ENTRY_LINES.",
+          "cross_skill": "skill-builder"
+        },
+        {
+          "class": "duplication",
+          "severity": "medium",
+          "evidence": "See lazy-fetch finding: both skills independently own SessionStart/PostToolUse/session-lifecycle hooks with no cross-reference.",
+          "fix": "See lazy-fetch fix.",
+          "cross_skill": "lazy-fetch"
+        }
+      ]
+    },
+    {
+      "skill": "dream-machine",
+      "verdict": "keep",
+      "health": 9,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "28-line thin-router SKILL.md correctly delegates depth to commands/dream.md (verified present) and services/dream-engine/, and correctly disambiguates itself from `mcp__agentic-qe__qe_learning_dream` (verified this AQE tool exists in the live deferred-tool list) at SKILL.md:9. Isolated in the estate cross-reference graph per the fact sheet and absent from routing-table.md — a `/route did anything dream last night` query has no table row to match against, though the skill's own description would still trigger it if loaded directly.",
+          "fix": "Add a routing-table row.",
+          "cross_skill": "skill-router"
+        }
+      ]
+    },
+    {
+      "skill": "hermes-scheduler",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "divergence",
+          "severity": "low",
+          "evidence": "SKILL.md:7-11 nests `metadata.hermes: {tags, category, related_skills}` — a doubly-nested structure. agentskills.io's verified spec defines `metadata` as a flat string-to-string map; nesting a further object under it is off-spec (values must be strings) even though harmless in practice since nothing currently validates metadata contents.",
+          "fix": "Flatten to top-level `tags:`/`category:` (estate convention, matches lazy-fetch/codebase-memory) or move each to a `metadata.hermes_tags` string.",
+          "cross_skill": ""
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "Binary confirmed present and on PATH (`hermes-scheduler` inside the `agentbox-ops` Nix package, matching `command -v` output). Absent from routing-table.md and isolated in the cross-reference graph despite explicit natural-language triggers (\"run this every 30m\", \"schedule a daily 9am job\") that the router's classification method exists precisely to catch.",
+          "fix": "Add a routing-table row under Automation/Infrastructure.",
+          "cross_skill": "skill-router"
+        }
+      ]
+    },
+    {
+      "skill": "adaptive-communication",
+      "verdict": "keep",
+      "health": 6,
+      "findings": [
+        {
+          "class": "estate-fit",
+          "severity": "low",
+          "evidence": "92 lines of generic conversational-register guidance (hedging-language detection, high/low-context adaptation) with no agentbox-specific grounding — no RuVector, MCP, gate, or tool reference anywhere in the file, unlike the rest of this batch. The audit brief's model-fit lens explicitly warns that skills restating \"generic engineering advice... waste the entry budget\"; this reads as generic communication advice rather than an estate capability. Cost is bounded: not in registered-skills.txt (no native-list token cost), isolated in the cross-reference graph, absent from routing-table.md, so it only costs anything when actively fetched.",
+          "fix": "No urgent fix — flag for a consolidation review: fold into a general communication-style note elsewhere, or keep as-is if the estate wants a standalone discoverable skill for this.",
+          "cross_skill": "skill-router"
+        }
+      ]
+    }
+  ],
+  "cluster_recommendation": "This batch is two clusters bolted together. (1) The code-as-harness family (codeact, expel-lesson-extractor, voyager-skill-library, tree-search-coder) is healthy and internally consistent, and every SKILL.md's claimed manifest gate matches agentbox.toml's live value with one exception: voyager-skill-library documents its own gate as `enabled = false` (dormant, Phase-2-pending) when the live toml already has it `true` alongside both its prerequisite gates — a stale status narrative in an otherwise sound skill. (2) The meta-skills (skill-builder, skill-tuning, skill-router) are where the estate's own authoring contract is broken, and because they define/discover everything else, contradictions here propagate estate-wide exactly as the brief warns. skill-builder actively teaches Title-Case names, flat REFERENCE.md/EXAMPLES.md siblings, \"no other frontmatter fields recognised\", and mandatory `~/.claude/skills/` placement — every one of these is independently and directly falsified: by the agentskills.io open standard (fetched live during this audit), by the vendored ruflo/Codex SKILL.md validator (source read directly: lowercase-hyphen name enforced, version/author/tags recommended as fields — not banned), and by ADR-2021's own lint mechanism (which only recognises a `references/` directory, not flat siblings, for progressive disclosure). The lint's own `ABSPATH_SKIP_DIRS` carve-out for `skill-builder` is corroborating evidence the estate already knows this content is wrong and suppressed the symptom rather than the cause. skill-router's \"generated\" routing table has no generator anywhere in the tree and is blind to 8 of this batch's 13 skills (including itself) — the estate's one discoverability mechanism for the 106 reference-only skills is silently failing for most of what this audit reviewed. A second, independent finding — codex-registered-skills.txt claims skill-router, lazy-fetch and codebase-memory are Codex-registered, but nothing reconciles that file and live `~/.codex/skills` holds neither of the first two — undermines any GPT-6 Astra-parity claim these skills make. Everything else in the batch (lazy-fetch, codebase-memory, hooks-automation, dream-machine, hermes-scheduler, adaptive-communication) is individually low-risk; the one real cross-cutting gap is that lazy-fetch and hooks-automation both silently own the same Claude-Code-only hook lifecycle with no cross-reference and no stated Codex limitation, and lazy-fetch's own MCP server is unbuilt (no dist/, no node_modules) despite being documented as ready-to-run. Fix order: skill-builder and skill-router first (foundation), then voyager-skill-library's stale gate table, then lazy-fetch's build state plus the lazy-fetch/hooks-automation overlap; skill-tuning's name/layout and adaptive-communication's estate-fit are lower-priority polish.",
+  "proposed_contract": "# Skill-Authoring Contract (supersedes skill-builder v1)\n\n## `name`\n- Lowercase letters, digits, hyphens only: `/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/`. No leading/trailing/consecutive hyphens. Max 64 chars.\n- MUST equal the parent directory name exactly (agentskills.io spec, verified live; the vendored ruflo/Codex validator enforces the character class today — `services/…/@claude-flow/codex/dist/validators/index.js:216`).\n\n## `description`\n- Max 1024 chars, plain text. States WHAT + WHEN (+ WHEN-NOT strongly recommended). Front-load keywords.\n- This is the only text always loaded (the 22 registered skills) or matched by skill-router for the other 106 — a trigger contract, not marketing copy.\n\n## Known/allowed frontmatter keys (agentskills.io, verified live 2026-09-09)\n- `name`, `description` — required, rules above.\n- `license` — optional, short name or pointer to a bundled LICENSE.\n- `compatibility` — optional, ≤500 chars. Use this, not prose, to declare cross-harness reach, e.g. `compatibility: \"Claude Code only — uses hooks/Skill/Artifact tools\"` or `compatibility: \"Claude + Codex — CLI-only\"`. Verify a claimed Codex registration is actually reconciled into `~/.codex/skills` before writing it.\n- `metadata` — optional, FLAT string→string map only (no nested objects). `version`, `author`, `tags`, `category` belong here, or as estate-convention top-level keys (see below) — not invented ad hoc.\n- `allowed-tools` — optional, space-separated, experimental.\n- Everything else in live estate use (`triggers`, `depends_on_mcps`, `related_skills`, `manifest_gate`, `env_vars`, …) is agentbox-local convention layered on the spec, not part of it. Keep using it where load-bearing (a manifest gate belongs in frontmatter too, not only prose, so it's greppable) — but check SKILL-DIRECTORY.md's existing vocabulary before adding a new key.\n\n## Layout\n```\nskills/<name>/\n  SKILL.md        required; body <500 lines (agentskills.io) / hard-capped 250 by this estate's lint unless references/ exists\n  references/     depth: REFERENCE.md, topic files — loaded on demand\n  scripts/        executables\n  assets/         templates, static resources\n```\nNo `EXAMPLES.md`/`REFERENCE.md` as flat top-level siblings — they live inside `references/`. `skills/lint-skills.mjs`'s BUDGET check only recognises a `references/` directory; flat siblings do not satisfy it once a SKILL.md exceeds 250 lines.\n\n## Location & registration model\n- Master copy only: `/home/devuser/workspace/project/agentbox/skills`. Never author directly under `~/.claude/skills/` or `~/.codex/skills/` — those are boot-time symlink/reconciliation targets, not source.\n- `registered-skills.txt` → reconciled every boot into `~/.claude/skills/` (Claude Code's always-in-context native Skill list, currently 22 skills). `codex-registered-skills.txt` → NOT currently reconciled by anything (verified: zero script consumers, live `~/.codex/skills` holds only 2 unrelated hand-symlinks) — treat any entry in it as aspirational until a reconciler exists.\n- Everything else is reference-only: SKILL-DIRECTORY.md → skill-router (`/route`) → routing-table.md → lazy-fetch. A new skill needs an entry in both SKILL-DIRECTORY.md and routing-table.md or it is undiscoverable except by literal grep.\n\n## Budgets\n- Body <500 lines / hard cap 250 without a populated `references/`.\n- Registration is a real, permanent per-session token cost — default new skills to reference-only; reserve registration for high-frequency, low-ambiguity skills.\n\n## Lint gate (mandatory pre-rebuild)\n`bash skills/lint-skills.sh` checks: banned stale strings; `~/.claude/skills` abspaths; retired `/workspace` paths; a real frontmatter parse (non-empty `name`+`description`); the 250-line/`references/` budget; every cited `references|scripts|assets` path resolves. It does NOT check name format, name==dir, description quality, cross-skill links, model staleness, or duplication (ADR-2021 §Consequences) — a clean lint run is not proof of a well-formed skill.\n\n## Codex / GPT-6 Astra parity\nState cross-harness reach explicitly via `compatibility:`. Codex consumes plain SKILL.md text only — no Agent/Skill/Artifact/`/route`/claude-flow-hooks affordances. Do not claim Codex coverage from `codex-registered-skills.txt` alone; confirm the live `~/.codex/skills` symlink exists.",
+  "routing_table_generator": "Input: every `skills/*/SKILL.md` frontmatter, parsed with the same real-YAML parser `lint-skills.mjs` already exports (`parseFrontmatter`) — do not write a second bespoke parser. Fields consumed: `name`, `description`, and `category`/`tags`/`related_skills` where present.\nGrouping: bucket by an explicit `category:` frontmatter key where present; otherwise fall back via a checked-in static lookup (`skill-router/references/section-map.json`) to the 16 existing routing-table.md sections. The generator must WARN (not silently drop) any skill absent from that lookup.\nOutput row: `| trigger phrase(s) (from frontmatter `triggers:` or extracted keywords) | -> skill-name | condensed description (≤120 chars, truncated verbatim from frontmatter, never hand-written) |`, grouped by section, alphabetical within section.\nFreshness check: emit a manifest of every `skills/*/SKILL.md` name absent from its own output (must be empty for anything in `registered-skills.txt`) and exit non-zero if not.\nWiring: new `scripts/skill-router-gen.mjs`, invoked from `skills/lint-skills.sh` (same pre-rebuild gate) and re-run whenever any `skills/*/SKILL.md` changes.\nUntil built: skill-router/SKILL.md:87-90 and routing-table.md:1-9 must stop claiming \"generated\" — replace with \"hand-maintained; audit against skills/*/SKILL.md periodically\" so the freshness claim stops masking real coverage gaps (8 of this batch's 13 skills currently missing)."
+}

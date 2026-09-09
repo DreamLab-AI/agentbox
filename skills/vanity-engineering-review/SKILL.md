@@ -41,7 +41,7 @@ Apply this review to any of:
 - For domain modelling, bounded contexts, and strategic design -- use the **human-architect-mindset** skill instead
 - For systematic code quality improvement with testing and quality gates -- use the **build-with-quality** skill instead
 - For simple code formatting or style fixes -- standard linting and formatting tools suffice
-- For performance profiling and optimisation -- use the **pytorch-ml** or **cuda** skills as appropriate
+- For general performance profiling and optimisation -- use the **performance-analysis** skill; **pytorch-ml**/**cuda** only for GPU-kernel- or training-specific perf work
 
 ## The Review Process
 

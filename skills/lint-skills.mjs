@@ -13,6 +13,19 @@
 //                     progressive disclosure (a `references/` dir holding >=1 readable file)
 //   6. RESOURCE       every relative `references/`, `scripts/`, `assets/` path cited by
 //                     SKILL.md resolves to something that exists
+//   7. NAME           frontmatter `name` is lowercase-hyphen and equals the directory name
+//                     (agentskills.io; ruflo validator) — audit 2026-09-09 found 7 Title-Case names
+//   8. DESCLEN        `description` <= 1024 chars (agentskills.io cap; it is the always-loaded
+//                     trigger contract); < 40 chars is a warning
+//   9. REGISTERED     every entry in registered-skills.txt / codex-registered-skills.txt names a
+//                     baked skill that is not a deprecated redirect
+//  10. DIRECTORY      every skill directory is named in SKILL-DIRECTORY.md and in
+//                     skill-router/references/section-map.json (the router's single source)
+//  11. ROUTING        skill-router/references/routing-table.md is current (gen-routing-table --check)
+//  12. DEPRECATED     a redirect stub (description starts "DEPRECATED") carries `deprecated: true`
+//                     and a `replacement:` that exists
+//  Warnings (printed, never fail): unknown frontmatter keys outside the documented vocabulary
+//  (KEYS), and stale model ids presented as current in SKILL.md (MODEL).
 //
 // Suppression (documented, unchanged in spirit from the 2026-08-21 lint):
 //   * a line carrying the `lint-ok` marker is waved through by every check;
@@ -22,6 +35,7 @@
 //   separately in the summary so the estate can see what it is choosing to ignore.
 
 import { readFileSync, readdirSync, statSync, existsSync, accessSync, constants } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join, dirname, resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -45,9 +59,39 @@ const SKIP_DIRS = new Set(['node_modules', '.git']);
 const BANNED =
   /MiniLM|google\.generativeai|gemini-2\.0-flash-exp|openai-user|gemini-user|192\.168\.2\.48|agent-browser|@claude-flow\/browser/;
 const STALE_CONTEXT_SUPPRESS = /DEAD|dead|retired|legacy|is not|never target|lint-ok|deprecated/;
-const ABSPATH = /~\/\.claude\/skills\//;
+const ABSPATH = /(~|\/home\/devuser)\/\.claude\/skills\//;
 const ABSPATH_OK = /\/opt\/agentbox\/skills|lint-ok/;
-const ABSPATH_SKIP_DIRS = new Set(['skill-builder', 'architecture-studio', 'toprank']);
+// ADR-2021 / audit 2026-09-09: `skill-builder` was skipped because it taught `~/.claude/skills`
+// placement; it now teaches the master-copy model and carries no absolute paths, so it is linted.
+const ABSPATH_SKIP_DIRS = new Set(['architecture-studio', 'toprank']);
+
+/** Frontmatter `name` rule (agentskills.io §name; ruflo SKILL.md validator). */
+const NAME_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+const NAME_MAX = 64;
+/** `description` bounds: agentskills.io cap, and a floor that catches vague one-liners. */
+const DESC_MAX = 1024;
+const DESC_MIN = 40;
+/** Registration manifests reconciled at boot (Claude → ~/.claude/skills, Codex → ~/.codex/skills). */
+const MANIFESTS = ['registered-skills.txt', 'codex-registered-skills.txt'];
+/** Documented frontmatter vocabulary: agentskills.io core, Claude Code extras, estate conventions. */
+const KNOWN_KEYS = new Set([
+  // agentskills.io
+  'name', 'description', 'license', 'compatibility', 'metadata', 'allowed-tools',
+  // Claude Code (code.claude.com/docs/en/skills)
+  'when_to_use', 'argument-hint', 'arguments', 'user-invocable', 'disable-model-invocation', 'model',
+  'effort', 'context', 'agent', 'background', 'hooks', 'paths', 'shell', 'disallowed-tools',
+  // estate conventions in live use (see skill-builder/SKILL.md)
+  'version', 'author', 'authors', 'tags', 'triggers', 'related_skills', 'depends_on_mcps', 'optional_mcps',
+  'env_vars', 'dependencies', 'mcp_server', 'protocol', 'entry_point', 'port', 'manifest_gate', 'gate',
+  'deprecated', 'replacement', 'replaces', 'status', 'category', 'cron', 'tools', 'tools_required',
+  'requires', 'prerequisites', 'memory', 'section', 'skill', 'args', 'upstream', 'upstream_version',
+  'provenance', 'progressive_disclosure', 'priority', 'layer', 'depends_on', 'capabilities',
+  'authority_class', 'title', 'repo', 'workflows',
+]);
+/** Model ids that are stale as a CURRENT claim (estate lineup: Fable 5.1 / Opus 5 / Sonnet 5 /
+ *  Haiku 4.5 / GPT-6 Astra). Historical context words suppress, as for STALE. */
+const STALE_MODEL = /\b(opus[ -]?4(\.[0-9])?|sonnet[ -]?4(\.[0-9])?|claude-3|gpt-?4o?|gpt-?5(\.[0-9])?|o3-mini|o4-mini)\b/i;
+const STALE_MODEL_SUPPRESS = /DEAD|dead|retired|legacy|deprecated|historical|not current|was |formerly|lint-ok|20(24|25|26)-[01][0-9]/;
 const RETIRED_PATH = /(^|[^a-zA-Z0-9_./~-])\/workspace\//;
 
 /** Resource roots a SKILL.md may cite relatively. */
@@ -55,6 +99,10 @@ const RESOURCE_ROOTS = ['references', 'scripts', 'assets'];
 
 const findings = [];
 const suppressions = [];
+const warnings = [];
+function warn(code, file, line, message) {
+  warnings.push({ code, file, line, message });
+}
 
 function fail(code, file, line, message) {
   findings.push({ code, file, line, message });
@@ -368,6 +416,41 @@ function checkSkill(skill) {
     }
   }
 
+  // --- 7/8/12. NAME, DESCLEN, DEPRECATED, KEYS, MODEL -----------------------
+  if (fm.ok) {
+    const nameE = fm.keys.get('name');
+    if (nameE && nameE.kind === 'scalar') {
+      if (!NAME_RE.test(nameE.value) || nameE.value.length > NAME_MAX) {
+        fail('NAME', r, nameE.line, `${r}:${nameE.line}: name \`${nameE.value}\` must match ${NAME_RE} and be <= ${NAME_MAX} chars`);
+      } else if (nameE.value !== skill.name) {
+        fail('NAME', r, nameE.line, `${r}:${nameE.line}: name \`${nameE.value}\` must equal the directory name \`${skill.name}\``);
+      }
+    }
+    const descE = fm.keys.get('description');
+    if (descE && descE.kind === 'scalar') {
+      const len = descE.value.length;
+      if (len > DESC_MAX) fail('DESCLEN', r, descE.line, `${r}:${descE.line}: description is ${len} chars (max ${DESC_MAX})`);
+      else if (len < DESC_MIN) warn('DESCLEN', r, descE.line, `${r}:${descE.line}: description is ${len} chars (< ${DESC_MIN}; say what + when)`);
+      if (/^\s*DEPRECATED\b/i.test(descE.value)) {
+        const dep = fm.keys.get('deprecated');
+        const rep = fm.keys.get('replacement');
+        if (!dep || !/^(true|yes)$/i.test(dep.value)) fail('DEPRECATED', r, descE.line, `${skill.name}: redirect stub must carry \`deprecated: true\``);
+        if (!rep || rep.kind !== 'scalar' || !rep.value) fail('DEPRECATED', r, descE.line, `${skill.name}: redirect stub must carry \`replacement: <skill>\``);
+        else if (!existsSync(join(SKILLS_DIR, rep.value, 'SKILL.md'))) fail('DEPRECATED', r, rep.line, `${skill.name}: replacement \`${rep.value}\` is not a skill directory`);
+      }
+    }
+    for (const [k, e] of fm.keys) {
+      if (!KNOWN_KEYS.has(k)) warn('KEYS', r, e.line, `${r}:${e.line}: frontmatter key \`${k}\` is outside the documented vocabulary (see skill-builder)`);
+    }
+    // MODEL: only the entry file, only lines that read as current claims.
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (STALE_MODEL.test(line) && !STALE_MODEL_SUPPRESS.test(line)) {
+        warn('MODEL', r, i + 1, `${r}:${i + 1}: stale model id presented as current: ${line.trim().slice(0, 120)}`);
+      }
+    }
+  }
+
   // --- 5. BUDGET ------------------------------------------------------------
   // `wc -l` semantics: count newline-terminated lines.
   const lineCount = text.endsWith('\n') ? lines.length - 1 : lines.length;
@@ -404,15 +487,95 @@ function checkSkill(skill) {
   }
 }
 
+function readManifest(name) {
+  const p = join(SKILLS_DIR, name);
+  if (!existsSync(p)) return null;
+  return readFileSync(p, 'utf8')
+    .split('\n')
+    .map((l, i) => ({ line: i + 1, name: l.replace(/#.*/, '').trim() }))
+    .filter((e) => e.name);
+}
+
+function isDeprecated(skill) {
+  const fm = parseFrontmatter(readFileSync(skill.skillMd, 'utf8'));
+  if (!fm.ok) return false;
+  const d = fm.keys.get('deprecated');
+  return !!d && /^(true|yes)$/i.test(d.value);
+}
+
+function checkEstate(entries) {
+  const byName = new Map(entries.map((s) => [s.name, s]));
+
+  // --- 9. REGISTERED --------------------------------------------------------
+  for (const m of MANIFESTS) {
+    const list = readManifest(m);
+    if (!list) continue;
+    for (const e of list) {
+      const s = byName.get(e.name);
+      if (!s) fail('REGISTERED', m, e.line, `${m}:${e.line}: \`${e.name}\` has no skills/${e.name}/SKILL.md`);
+      else if (isDeprecated(s)) fail('REGISTERED', m, e.line, `${m}:${e.line}: \`${e.name}\` is a deprecated redirect stub — register its replacement instead`);
+    }
+  }
+
+  // --- 10. DIRECTORY --------------------------------------------------------
+  const dirPath = join(SKILLS_DIR, 'SKILL-DIRECTORY.md');
+  const dirText = existsSync(dirPath) ? readFileSync(dirPath, 'utf8') : '';
+  const mapPath = join(SKILLS_DIR, 'skill-router', 'references', 'section-map.json');
+  // The section map is required in the real estate; a bare fixture tree (tests/config/
+  // skill-lint.test.sh) has neither it nor SKILL-DIRECTORY.md, so both checks are
+  // conditional on the file existing — absence is a warning, corruption a failure.
+  let sectionMap = null;
+  if (existsSync(mapPath)) {
+    try {
+      sectionMap = JSON.parse(readFileSync(mapPath, 'utf8')).skills || {};
+    } catch {
+      fail('DIRECTORY', rel(mapPath), 1, `${rel(mapPath)}: unparseable (the router's single source of sections)`);
+    }
+  } else {
+    warn('DIRECTORY', rel(mapPath), 1, `${rel(mapPath)} is absent — section coverage not checked`);
+  }
+  if (!dirText) warn('DIRECTORY', 'SKILL-DIRECTORY.md', 1, 'SKILL-DIRECTORY.md is absent — directory coverage not checked');
+  for (const s of entries) {
+    if (dirText && !dirText.includes('`' + s.name + '`')) {
+      fail('DIRECTORY', 'SKILL-DIRECTORY.md', 1, `SKILL-DIRECTORY.md never names \`${s.name}\` — add a category row (or a deprecated-table row)`);
+    }
+    if (sectionMap && !(s.name in sectionMap)) {
+      fail('DIRECTORY', rel(mapPath), 1, `${rel(mapPath)}: no section for \`${s.name}\``);
+    }
+  }
+  if (sectionMap) {
+    for (const n of Object.keys(sectionMap)) {
+      if (!byName.has(n)) fail('DIRECTORY', rel(mapPath), 1, `${rel(mapPath)}: \`${n}\` is mapped but has no skill directory`);
+    }
+  }
+
+  // --- 11. ROUTING ----------------------------------------------------------
+  const gen = join(SKILLS_DIR, 'gen-routing-table.mjs');
+  if (existsSync(gen)) {
+    const r = spawnSync(process.execPath, [gen, '--check'], { encoding: 'utf8' });
+    if (r.status !== 0) {
+      fail('ROUTING', 'skill-router/references/routing-table.md', 1,
+        `routing-table.md is stale or ungeneratable: ${(r.stderr || r.stdout || '').trim().split('\n')[0]} — run: node skills/gen-routing-table.mjs`);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 function main() {
   checkTextPatterns();
-  for (const skill of skillEntries()) checkSkill(skill);
+  const entries = skillEntries();
+  for (const skill of entries) checkSkill(skill);
+  checkEstate(entries);
 
   for (const f of findings) console.log(`${f.code}  ${f.message}`);
+
+  if (warnings.length) {
+    console.log(`\n-- warnings (${warnings.length}) — advisory, do not fail the gate --`);
+    for (const w of warnings) console.log(`WARN ${w.code}  ${w.message}`);
+  }
 
   if (suppressions.length) {
     console.log(`\n-- suppressed (${suppressions.length}) — waved through by marker/context, NOT validated --`);
@@ -421,7 +584,7 @@ function main() {
 
   if (findings.length === 0) {
     console.log(
-      `\nOK — skills estate clean (${skillEntries().length} skills, MAX_ENTRY_LINES=${MAX_ENTRY_LINES}, ${suppressions.length} suppressed)`,
+      `\nOK — skills estate clean (${skillEntries().length} skills, MAX_ENTRY_LINES=${MAX_ENTRY_LINES}, ${suppressions.length} suppressed, ${warnings.length} warnings)`,
     );
     return 0;
   }

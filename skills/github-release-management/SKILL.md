@@ -15,10 +15,10 @@ dependencies:
   - npm or yarn
   - node >= 20.0.0
 related_skills:
-  - github-pr-management
-  - github-issue-tracking
+  - github-code-review
+  - github-project-management
   - github-workflow-automation
-  - multi-repo-coordination
+  - github-multi-repo
 ---
 
 # GitHub Release Management Skill
@@ -45,7 +45,7 @@ deployment with rollback capabilities, optionally coordinated by an AI swarm.
 
 ## Quick Start
 
-### Simple release
+### Simple release (no MCP required — Codex/GPT-6 Astra compatible)
 ```bash
 # Plan and create a release (draft, auto-generated notes)
 gh release create v2.0.0 --draft --generate-notes --title "Release v2.0.0"
@@ -61,9 +61,14 @@ npx claude-flow swarm init --topology hierarchical
 npx claude-flow sparc pipeline "Release v2.0.0 with full validation"
 ```
 
+**Claude Code only:** `Full automated release` and any `npx claude-flow`/swarm command
+above needs the claude-flow MCP server. On Codex / GPT-6 Astra (or any session without
+it): use the plain `gh`/`npm` examples in this file (marked below) — see also
+[../github-code-review/references/plain-gh-fallback.md](../github-code-review/references/plain-gh-fallback.md).
+
 ## Essential Commands
 
-### Create a release draft with a generated changelog
+### Create a release draft with a generated changelog (no MCP required)
 ```bash
 LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
 CHANGELOG=$(gh api repos/:owner/:repo/compare/${LAST_TAG}...HEAD \
@@ -72,13 +77,13 @@ gh release create v2.0.0 \
   --draft --title "Release v2.0.0" --notes "$CHANGELOG" --target main
 ```
 
-### Version bump
+### Version bump (no MCP required)
 ```bash
 npm version patch          # or minor, major
 git push --follow-tags
 ```
 
-### Simple deployment
+### Simple deployment (no MCP required)
 ```bash
 npm run build && npm publish
 gh release create $(npm pkg get version) --generate-notes

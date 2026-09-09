@@ -89,9 +89,14 @@ The generation pipeline runs in five sequential steps:
 
 ## Quick Start
 
+`terracraft` is not on `$PATH` in this image; invoke the skill-relative script
+directly. It also requires arnis built to `/usr/local/bin/arnis` — see
+[references/arnis-and-elevation.md](references/arnis-and-elevation.md) if you
+hit `arnis: command not found`.
+
 ```bash
-terracraft geocode "Edinburgh Castle"          # place name -> bounding box
-terracraft generate <lat1,lng1,lat2,lng2> --scale 1 --enrich
+tools/terracraft.sh geocode "Edinburgh Castle"          # place name -> bounding box
+tools/terracraft.sh generate <lat1,lng1,lat2,lng2> --scale 1 --enrich
 ```
 
 ## References

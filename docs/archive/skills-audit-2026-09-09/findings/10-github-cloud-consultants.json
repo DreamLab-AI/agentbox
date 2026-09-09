@@ -1,0 +1,227 @@
+{
+  "batch": "10-github-cloud-consultants",
+  "skills": [
+    {
+      "skill": "github-code-review",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "github-code-review/SKILL.md:46,60-65 — every Quick Start path pipes through `npx ruv-swarm github review-init` / claude-flow swarm tools; no plain-`gh`-only fallback is documented",
+          "fix": "Add a short 'Without claude-flow MCP (e.g. GPT-6 Astra via Codex)' subsection: `gh pr diff`/`gh pr review --comment` used directly, no swarm.",
+          "cross_skill": ["github-multi-repo", "github-project-management", "github-release-management", "github-workflow-automation"]
+        }
+      ]
+    },
+    {
+      "skill": "github-multi-repo",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "github-multi-repo/SKILL.md:50-65 — Quick start is entirely `npx claude-flow skill run github-multi-repo ...`; no gh-only path for a Claude-only-tool-less consumer",
+          "fix": "Same fallback note as github-code-review; the org-wide safety section (lines 34-44) already stands alone and needs no swarm.",
+          "cross_skill": ["github-code-review"]
+        }
+      ]
+    },
+    {
+      "skill": "github-project-management",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "github-project-management/SKILL.md:3-33 — carries `title`, `difficulty`, `prerequisites`, `tools_required`, `related_skills`, `estimated_time` alongside `name`; all decorative, not consumed by lint-skills.mjs or any reconciler",
+          "fix": "No functional bug (name==dir is correct here), but folds into the estate-wide 50-key vocabulary problem the fact sheet already flags — leave for the skill-builder/ADR-2021 cleanup pass rather than a per-skill fix.",
+          "cross_skill": []
+        },
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "github-project-management/SKILL.md:57-58 — swarm coordination step is `npx claude-flow@alpha hooks pre-task`, no gh-only path",
+          "fix": "Same fallback note as sibling github-* skills.",
+          "cross_skill": ["github-code-review"]
+        }
+      ]
+    },
+    {
+      "skill": "github-release-management",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "github-release-management/SKILL.md:17-21 — frontmatter `related_skills:` lists `github-pr-management`, `github-issue-tracking`, `multi-repo-coordination`; none of those directories exist. The real batch dirs are `github-code-review`, `github-project-management`, `github-multi-repo` (confirmed absent via `find` on the skills tree; the SKILL.md *body*'s own '## When Not To Use' section at lines 38-44 correctly names the real dirs)",
+          "fix": "Replace the three stale related_skills values with github-code-review / github-project-management / github-multi-repo to match the body text, which is already correct.",
+          "cross_skill": ["github-code-review", "github-project-management", "github-multi-repo"]
+        },
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "github-release-management/SKILL.md:54,60-61 — swarm-only quick starts (`npx claude-flow github release-create`, `npx claude-flow sparc pipeline`); the one gh-only example (lines 49-51, 66-85) exists but isn't labelled as the Codex-compatible path",
+          "fix": "Label the existing plain-gh examples as the no-MCP fallback explicitly.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "github-workflow-automation",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "github-workflow-automation/SKILL.md:51-63 — Quick start uses `npx ruv-swarm actions ...` exclusively; `gh run view` appears only piped into ruv-swarm, never standalone",
+          "fix": "Add a standalone `gh workflow`/`gh run` fallback block for non-claude-flow consumers.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "gcloud",
+      "verdict": "keep",
+      "health": 7,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "registered-skills.txt (full 20-entry list, checked) does not include gcloud; skill-router/references/routing-table.md has zero hits for `gcloud` (grep -c = 0); SKILL-DIRECTORY.md:266 does list it correctly and fact sheet's own isolated-node list names gcloud",
+          "fix": "Content is accurate and the toolchain is genuinely installed (`gcloud --version` → Google Cloud SDK 570.0.0, gsutil 5.37, bq 2.1.32, all runnable) and the read-only-$HOME claim was verified live (`touch $HOME/x` → Read-only file system). Add gcloud to routing-table.md once a generator exists, or link it from a deployment-adjacent skill so it isn't undiscoverable outside a literal name match.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "flow-nexus-neural",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "flow-nexus-platform",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "flow-nexus-swarm",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "openai-codex",
+      "verdict": "fix",
+      "health": 4,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "openai-codex/mcp-server/server.js:1-20 is a hand-rolled MCP server calling the raw `openai` SDK directly; skills/mcp.json's actual registered GPT-6 Astra bridge is `consultant-codex` at mcp.json:397 (`/opt/agentbox/mcp/consultants/package/codex/server.js`), a different codebase entirely. `~/.claude.json` shows the skill's mcp-server directory only as `cd`-history trust-dialog state (`hasTrustDialogAccepted`), not an MCP registration",
+          "fix": "Either delete the orphaned mcp-server/ (and its package.json/package-lock.json) and rewrite the skill purely as a usage guide for the `consultant-codex` MCP tool, or explicitly label it 'legacy/unused — real wiring is consultant-codex in mcp.json' so nobody debugs dead code.",
+          "cross_skill": ["codex-companion"]
+        },
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "openai-codex/mcp-server/server.js:5 — \"// Runs as openai-user (UID 1002), called by devuser (Ruflo) via MCP bridge\"; agentbox/CLAUDE.md 'Runtime model gotchas' states the openai-user/UID-100x pseudo-user model is retired and no agent-facing process runs as root/pseudo-user after bootstrap",
+          "fix": "Delete the file (see rot finding) or at minimum correct the header comment.",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "openai-codex/SKILL.md:31 — \"Auto-discovered by `generate-mcp-settings.sh`\"; verified with `find / -iname generate-mcp-settings.sh` across the container — no such file exists anywhere",
+          "fix": "Remove the claim or name the actual reconciler (none currently processes this skill's `entry_point`/`mcp_server` frontmatter — grepped services/scripts/config for `entry_point`, zero hits).",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "openai-codex/SKILL.md:29 — \"Runs as `devuser` via supervisord (skill files under ~/.claude/skills)\"; registered-skills.txt (the single source of truth for what's symlinked into ~/.claude/skills) does not list openai-codex — confirmed by grepping the full uncommented list (20 entries, none matching)",
+          "fix": "Correct to state the skill is reference-only, reached via SKILL-DIRECTORY/router, and that the live GPT-6 Astra bridge is consultant-codex (running under the ordinary MCP-on-demand model, not a standing supervisord program).",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "codex-companion",
+      "verdict": "fix",
+      "health": 4,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "The live `/codex:*` commands run from the Claude Code PLUGIN `codex@openai-codex` (~/.claude/plugins/installed_plugins.json), whose installPath `~/.claude/plugins/marketplaces/openai-codex/plugins/codex` is a Nix-store symlink resolving to the SAME flake bake as `/opt/agentbox/plugins/codex-plugin-cc/plugins/codex` (md5 of agents/codex-rescue.md identical: 8ceb0104f6...). All plugin commands/hooks invoke `${CLAUDE_PLUGIN_ROOT}/scripts/...` (verified in commands/rescue.md:26,41 and hooks/hooks.json), i.e. that baked path — NEVER `skills/codex-companion/scripts/...`. Yet 15 of 40 files shared with the baked tree have already diverged (comm -3 + per-file md5 loop), including a hand-edited `skills/codex-companion/scripts/codex-companion.mjs` that removes the `transfer` subcommand (commit 5b3a08b26, 'update Codex routing') — an edit with zero effect on what actually executes.",
+          "fix": "Stop maintaining scripts/commands/agents/hooks/schemas as a second live-looking copy. Either (a) reduce codex-companion to SKILL.md + the genuinely-consulted references (Path 2 `codex exec` recipe, prompting library) and replace the rest with a one-line pointer to the real plugin install path, or (b) if local behavioural patches (e.g. the stdin-hang fix) are wanted in the *executing* code, apply them via the flake overlay so /opt/agentbox/plugins/codex-plugin-cc (and hence the live plugin symlink) actually picks them up.",
+          "cross_skill": ["openai-codex"]
+        },
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "Team-lead brief framed this as 'is codex-companion a duplicate of the baked plugin' — verified NOT a passive duplicate: it is an actively hand-edited fork that has diverged in 15/40 shared files (agents/codex-rescue.md, all six commands/*.md that overlap, scripts/codex-companion.mjs + 5 lib files, prompts/adversarial-review.md), while lacking `.claude-plugin/plugin.json` and the baked plugin's `transfer` command/lib entirely",
+          "fix": "See the rot finding above — the fix is architectural (stop dual-maintaining), not a merge/delete-duplicate operation.",
+          "cross_skill": ["openai-codex"]
+        },
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "codex-companion/skills/gpt-5-4-prompting/SKILL.md:3,7,9 and its references/*.md (prompt-blocks.md:3, codex-prompt-recipes.md:3,131, codex-prompt-antipatterns.md:3) all name 'GPT-5.4' as the model Codex prompting targets. This directory is byte-identical to the baked plugin's copy (not in the 15-file diverged list) — confirmed vendored-as-is from upstream openai/codex-plugin-cc, not locally stale-drifted. codex-companion's own top-level SKILL.md correctly says gpt-6-astra throughout (lines 4,8,18,35,114,129-131,152)",
+          "fix": "Since this estate DOES hand-patch this exact vendor tree already (agents/codex-rescue.md, scripts/*), patch gpt-5-4-prompting's model references too (and ideally its directory name) in the same pass, applied to both the skill copy and the baked source so they don't diverge further; the content is otherwise version-agnostic prompting-style advice, so a minimal fix is to genericise the wording rather than chase a moving model name.",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "Team-lead brief cited a `codex-companion/promotions` directory with '1,976 stale model hits' — searched exhaustively (`find codex-companion -iname '*promotion*'`, full recursive listing, `du -sh` per top-level dir): no such directory or file exists anywhere under codex-companion. Total tree is 41 files / ~320K across agents, schemas, skills, prompts, scripts, commands, hooks — none named promotions",
+          "fix": "No action on codex-companion. The brief's claim is unverifiable against the current tree; a `promotions`-style workflow (run-promote.sh, submit-proposals.mjs) does exist under a different, unrelated skill (podcast-knowledge-ingest, outside this batch) and may be what was actually meant.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "deepseek-reasoning",
+      "verdict": "fix",
+      "health": 3,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "deepseek-reasoning/mcp-server/server.js + tools/deepseek_client.js is a self-contained bridge spawned as a subprocess; the actually-registered DeepSeek MCP is `consultant-deepseek` in mcp.json:505-524 (`/opt/agentbox/mcp/consultants/package/deepseek/server.js`, env `AGENTBOX_DEEPSEEK_MODEL` default `deepseek-v4-flash`, requires `DEEPSEEK_API_KEY` from session env, no config file, no supervisord entry, launched on-demand by the MCP client)",
+          "fix": "Retire the bundled mcp-server/tools tree and rewrite the skill as a usage guide for the consultant-deepseek MCP tool (consult/health/cost_estimate), mirroring the recommended openai-codex cleanup.",
+          "cross_skill": ["openai-codex"]
+        },
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "deepseek-reasoning/references/operations.md:74-85,155-179 documents a fictional dated 'special endpoint' (`https://api.deepseek.com/v3.2_speciale_expires_on_20251215`, expired relative to today 2026-09-09), model id `deepseek-chat`, a `$HOME/.config/deepseek/config.json` credential file, and a `[program:deepseek-reasoning-mcp]` supervisord entry at `/home/devuser/.claude/skills/deepseek-reasoning/mcp-server/server.js` — none of which match the real consultant-deepseek wiring (plain env var, model deepseek-v4-flash, no supervisord program, no config file). This also self-contradicts `tools/deepseek_client.js:30`, which correctly hardcodes `MODEL = 'deepseek-v4-flash'` matching agentbox.toml:993 `[consultants.deepseek] model = \"deepseek-v4-flash\"`",
+          "fix": "Rewrite operations.md's Configuration/Supervisord/Troubleshooting sections to match consultant-deepseek's actual (much simpler) wiring; delete the fabricated dated endpoint and the config.json/supervisord instructions entirely.",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "deepseek-reasoning/references/tools.md:97 — comparison table header \"Claude Sonnet 4.6\" presented as the current Claude model; fact sheet's current roster is Claude Fable 5.1 / Opus 5 / Sonnet 5 / Haiku 4.5",
+          "fix": "Update the table header to Sonnet 5 (or Fable 5.1, whichever is the intended comparison point).",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "deepseek-reasoning is not in registered-skills.txt (confirmed, full list checked) yet references/operations.md's Supervisord section instructs installing from `/home/devuser/.claude/skills/deepseek-reasoning/...`, a path that would not exist for this skill; lint-skills.mjs's ABSPATH rule only matches the tilde form `~/.claude/skills/` (lint-skills.mjs:48) so this fully-expanded-path variant escapes the lint gate entirely",
+          "fix": "Fix the path claim (see rot/contradiction fixes above); separately worth flagging to whoever owns lint-skills.mjs that ABSPATH should also match the expanded `/home/devuser/.claude/skills/` form.",
+          "cross_skill": []
+        }
+      ]
+    }
+  ],
+  "cluster_recommendation": "Codex pair: openai-codex and codex-companion are not simple duplicates — they're differently-scoped (curated-excerpt MCP consult vs whole-repo `codex exec`) and already cross-reference each other correctly, including calling openai-codex 'legacy' in codex-companion's own table. The real problem is architectural: codex-companion's scripts/commands/agents/hooks tree looks executable but isn't — the live `/codex:*` commands run from the Claude Code PLUGIN `codex@openai-codex`, which is a Nix-store symlink to the exact same flake bake as /opt/agentbox/plugins/codex-plugin-cc (md5-verified). The skill copy has already silently diverged in 15/40 shared files because someone hand-patched it believing it was live. Target shape: trim codex-companion down to SKILL.md plus the genuinely-consulted references (the Path 2 codex-exec recipe, the prompting library), and either delete the dead scripts/commands/agents/hooks mirror or route any wanted behavioural fix through the flake overlay so the *actual* plugin picks it up. openai-codex should lose its own orphaned mcp-server/ (superseded by consultant-codex in mcp.json) and its two fabricated claims (generate-mcp-settings.sh, ~/.claude/skills registration). Deepseek-reasoning has the identical orphaned-bridge disease one level worse: its reference docs describe a fictional expired endpoint and a supervisord service that don't exist in the real consultant-deepseek wiring — same fix pattern (retire the bundled bridge, document the real MCP tool). For 'how does Codex find our skills': per the fact sheet, ~/.codex/skills has only two ad hoc symlinks with no reconciler; extend the registered-skills.txt boot-reconciler pattern to populate ~/.codex/skills for a Codex-relevant subset so Path-2 `codex exec` sessions see the same skill set Claude does, instead of hand-symlinking one skill at a time. The five github-* skills are cleanly separated by GitHub object type with mutual when-not-to-use cross-links and real progressive disclosure — keep as five, not one merged skill — but every one leans on claude-flow/ruv-swarm MCP tools with no documented plain-`gh` path, which is a genuine gap for GPT-6 Astra/Codex sessions that can't reach claude-flow MCP; add one fallback subsection per skill (or one shared references file) rather than restructuring. github-release-management's related_skills frontmatter cites three non-existent directory names and should be corrected to the real siblings. The three flow-nexus-* stubs are honest, short, correctly marked not-installed, and already point to local alternatives — keep as-is; they cost negligible token budget and any 'retire' saves nothing since the estate skill-count dispute is about the SKILL-DIRECTORY/registered-skills/ADR-2056 headline numbers, not stub bulk. gcloud is accurate and its toolchain is genuinely installed and healthy (gcloud/gsutil/bq all present, $HOME read-only claim verified live) but is completely undiscoverable outside a literal name match (not registered, zero hits in routing-table.md, isolated in the cross-reference graph) — worth a routing-table/link fix, not a rewrite. One correction to the brief: no `codex-companion/promotions` directory exists anywhere in the current tree; that claim did not verify."
+}

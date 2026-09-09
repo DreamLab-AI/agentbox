@@ -65,6 +65,11 @@ npx ruv-swarm github review-init \
   --depth comprehensive
 ```
 
+**Claude Code only:** the swarm orchestration above (`ruv-swarm`/`claude-flow`) needs
+the claude-flow MCP server. On Codex / GPT-6 Astra (or any session without it): see
+[references/plain-gh-fallback.md](references/plain-gh-fallback.md) for the plain
+`gh`-only path.
+
 ## Reference library
 
 Detailed agent catalogs, config schemas, and end-to-end recipes live in `references/`.

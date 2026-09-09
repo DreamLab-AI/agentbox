@@ -102,19 +102,18 @@
       "version": "2.1.0",
       "x-agentbox-managed-by": "reference",
       "x-agentbox-gate": "env:ENABLE_IMAGEMAGICK",
-      "x-agentbox-note": "skill-local mcp-server under ~/.claude/skills/imagemagick — registered by the skill, not the boot projector"
+      "x-agentbox-note": "served by the shared Rust rmcp binary `agentbox-mcp imagemagick` (same binary as web-summary and gemini-url-context); the former skill-local Python server was retired — see skills/imagemagick/SKILL.md"
     },
     "qgis": {
       "command": "python3",
       "args": [
         "-u",
-        "/home/devuser/.claude/skills/qgis/mcp-server/server.py"
+        "/opt/agentbox/skills/qgis/mcp-server/server.py"
       ],
       "type": "stdio",
       "env": {
-        "QGIS_HOST": "localhost",
-        "QGIS_PORT": "9877",
-        "QGIS_TIMEOUT": "60"
+        "QGIS_MCP_HOST": "localhost",
+        "QGIS_MCP_PORT": "9877"
       },
       "description": "Geospatial analysis and GIS operations via QGIS",
       "protocol": "fastmcp",
@@ -150,7 +149,7 @@
     "comfyui": {
       "command": "node",
       "args": [
-        "/home/devuser/.claude/skills/comfyui/mcp-server/server.js"
+        "/opt/agentbox/skills/comfyui/mcp-server/server.js"
       ],
       "type": "stdio",
       "env": {
@@ -170,7 +169,7 @@
     "blender": {
       "command": "node",
       "args": [
-        "/home/devuser/.claude/skills/blender/tools/mcp-blender-client.js"
+        "/opt/agentbox/skills/blender/tools/mcp-blender-client.js"
       ],
       "type": "stdio",
       "env": {
@@ -205,7 +204,7 @@
       "command": "python3",
       "args": [
         "-u",
-        "/home/devuser/.claude/skills/notebooklm/mcp-server/server.py"
+        "/opt/agentbox/skills/notebooklm/mcp-server/server.py"
       ],
       "type": "stdio",
       "env": {

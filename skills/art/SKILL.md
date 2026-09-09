@@ -31,6 +31,16 @@ workflows:
 
 Complete visual content system supporting **multiple brand aesthetics**.
 
+## When Not to Use
+
+- AI-generated photoreal images or video -- use `comfyui` (local diffusion) or
+  `clipcannon` (video) instead
+- Academic/publication diagrams destined for a LaTeX document -- prefer TikZ via
+  `book-publishing` (references/latex-conventions.md); only reach for this skill's `diagram-upcycling.md` path to polish a
+  TikZ/Mermaid render, not to author the diagram itself
+- Plain image editing (resize, crop, format convert, batch watermark) with no
+  generation involved -- use `imagemagick`
+
 ---
 
 ## Aesthetic Routing

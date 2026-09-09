@@ -1,11 +1,27 @@
 # Optimisation Recommendations & Operations
 
-Automatic fixes applied by `--fix`, expected performance impact, continuous
-monitoring / CI-CD integration, best practices, and troubleshooting recipes.
+Automatic fixes applied by `claude-flow performance optimize --apply`,
+expected performance impact, continuous monitoring / CI-CD integration, best
+practices, and troubleshooting recipes.
 
-## Automatic Fixes (`--fix`)
+## Automatic Fixes (`performance optimize --apply`)
 
-When using `--fix`, the following optimizations may be applied:
+Verified against `claude-flow performance optimize --help` (options: `-t/
+--target memory|cpu|latency|all`, `-a/--apply`, `-d/--dry-run`) — there is no
+`--fix` flag on `bottleneck`; optimisation is its own command:
+
+```bash
+# Preview optimisations without applying
+claude-flow performance optimize --dry-run
+
+# Apply all recommended optimisations
+claude-flow performance optimize --apply
+
+# Target one area
+claude-flow performance optimize -t memory --apply
+```
+
+The following optimizations may be applied:
 
 **1. Topology Optimisation**
 - Switch to more efficient topology (mesh → hierarchical)
@@ -49,15 +65,20 @@ Typical improvements after bottleneck resolution:
 
 ## Continuous Monitoring
 
-```bash
-# Monitor performance in real-time
-npx claude-flow swarm monitor --interval 5
+There is no `swarm monitor` subcommand (verified: `claude-flow swarm --help`
+lists init/start/status/stop/scale/coordinate/compress-message/pheromone/join
+only). Poll `performance metrics` on an interval instead:
 
-# Generate hourly reports
+```bash
+# Poll metrics every 5 seconds (no built-in --interval flag; loop it yourself)
 while true; do
-  npx claude-flow analysis performance-report \
-    --format json \
-    --output logs/perf-$(date +%Y%m%d-%H%M).json
+  claude-flow performance metrics -f json
+  sleep 5
+done
+
+# Generate hourly metrics snapshots
+while true; do
+  claude-flow performance metrics -f json > "logs/perf-$(date +%Y%m%d-%H%M).json"
   sleep 3600
 done
 ```
@@ -76,21 +97,18 @@ jobs:
       - uses: actions/checkout@v2
       - name: Run Performance Analysis
         run: |
-          npx claude-flow analysis performance-report \
-            --format json \
-            --output performance.json
+          claude-flow performance metrics -f json > performance.json
       - name: Check Performance Thresholds
         run: |
-          npx claude-flow bottleneck detect \
-            --threshold 15 \
-            --export bottlenecks.json
+          # No `--format` flag on `bottleneck` (text output only); capture as text
+          claude-flow performance bottleneck -d full > bottlenecks.txt
       - name: Upload Reports
         uses: actions/upload-artifact@v2
         with:
           name: performance-reports
           path: |
             performance.json
-            bottlenecks.json
+            bottlenecks.txt
 ```
 
 ## Custom Analysis Scripts
@@ -101,19 +119,22 @@ const { exec } = require('child_process');
 const fs = require('fs');
 
 async function analyzePerformance() {
-  // Run bottleneck detection
+  // Run bottleneck detection (there is no --format flag on `bottleneck`;
+  // it always prints its report, so parse text or use the MCP tool for JSON)
   const bottlenecks = await runCommand(
-    'npx claude-flow bottleneck detect --format json'
+    'claude-flow performance bottleneck -d full'
   );
 
-  // Generate performance report
+  // Fetch metrics as JSON (there is no `analysis performance-report`)
   const report = await runCommand(
-    'npx claude-flow analysis performance-report --format json'
+    'claude-flow performance metrics -f json'
   );
 
-  // Analyze results
+  // bottlenecks is plain text (no --format flag exists); keep it as-is rather
+  // than JSON.parse-ing it. Use the MCP tool (mcp__claude-flow__bottleneck_analyze)
+  // instead of this script if you need a structured result.
   const analysis = {
-    bottlenecks: JSON.parse(bottlenecks),
+    bottlenecksReport: bottlenecks,
     performance: JSON.parse(report),
     timestamp: new Date().toISOString()
   };
@@ -124,8 +145,8 @@ async function analyzePerformance() {
     JSON.stringify(analysis, null, 2)
   );
 
-  // Generate alerts if needed
-  if (analysis.bottlenecks.critical.length > 0) {
+  // Generate alerts if needed (text heuristic, since the CLI output isn't structured)
+  if (/critical/i.test(bottlenecks)) {
     console.error('CRITICAL: Performance bottlenecks detected!');
     process.exit(1);
   }
@@ -177,49 +198,51 @@ analyzePerformance().catch(console.error);
 
 ## Troubleshooting
 
+There is no top-level `token` or `cache` command in this build (verified:
+`claude-flow token --help` and `claude-flow cache --help` both →
+"Unknown command"). Use `performance metrics`/`memory stats` instead.
+
 **High Memory Usage**
 ```bash
-# Analyze memory bottlenecks
-npx claude-flow bottleneck detect --threshold 10
+# Analyze memory-related bottlenecks
+claude-flow performance bottleneck -c memory -d full
 
-# Check cache performance
-npx claude-flow cache manage --action stats
-
-# Review memory metrics
-npx claude-flow memory usage
+# Review memory metrics (no `cache manage`; use memory stats)
+claude-flow memory stats
 ```
 
 **Slow Task Execution**
 ```bash
 # Identify slow tasks
-npx claude-flow task status --detailed
+claude-flow task list --all
 
 # Analyze coordination overhead
-npx claude-flow bottleneck detect --time-range 1h
+claude-flow performance bottleneck -c coordinator -d full
 
 # Check agent utilization
-npx claude-flow agent metrics
+claude-flow agent metrics
 ```
 
 **Poor Cache Performance**
 ```bash
-# Analyze cache hit rates
-npx claude-flow analysis performance-report --sections metrics
+# Review metrics (no `analysis performance-report --sections`; filter by component)
+claude-flow performance metrics -c cache
 
-# Review cache strategy
-npx claude-flow cache manage --action analyze
+# Review embedding cache specifically (a different subsystem — see `embeddings --help`)
+claude-flow embeddings cache
 
-# Enable cache warming
-npx claude-flow bottleneck detect --fix
+# Apply recommended optimisations, including caching
+claude-flow performance optimize --apply
 ```
 
 ## Related Commands
 
-- `npx claude-flow swarm monitor` - Real-time monitoring
-- `npx claude-flow token usage` - Token optimisation analysis
-- `npx claude-flow cache manage` - Cache optimisation
-- `npx claude-flow agent metrics` - Agent performance metrics
-- `npx claude-flow task status` - Task execution analysis
+Verified against `claude-flow --help` (ruflo v3.38.21):
+- `claude-flow performance metrics` - Real-time and historical metrics (no `swarm monitor` exists)
+- `claude-flow performance benchmark` - Benchmark suites (wasm/neural/memory/search)
+- `claude-flow agent metrics` - Agent performance metrics
+- `claude-flow task list` / `task status <id>` - Task execution analysis
+- `claude-flow memory stats` - Memory backend statistics (no top-level `cache` or `token` command exists)
 
 ## Integration with Other Skills
 

@@ -545,13 +545,13 @@ report_builder = true
 mermaid = true
 
 [skills.design]
-# open-design: structured intake pipeline, 129 brand specs, 5-dimensional critique gate,
-# P0/P1/P2 checklists, layout libraries (web/mobile/dashboard/deck). Default off.
+# open-design: structured intake pipeline, 138 brand specs, 5-dimensional critique gate,
+# P0/P1/P2 checklists, layout libraries (web/mobile/dashboard/deck). Default on (`open_design = true` below).
 # NOT a replacement for the setup wizard SPA (PRD-012 / ADR-024).
 open_design = true
 
 [skills.research]
-# web-researcher-mcp (Go binary, v1.36.4). Provides ~26 MCP research tools
+# web-researcher-mcp (Go binary, v1.43.0). Provides 21 MCP research tools
 # (search incl. domain/clinical/legal/econ/SEC, citation integrity, grounded answer, lenses).
 # Headless-browser scrape tier is force-disabled at runtime; JS-rendered
 # pages route to the external browsercontainer sidecar (`browser` skill).
@@ -651,7 +651,7 @@ embed_batch = 32                    # passages per Xinference /v1/embeddings cal
 [skills.tree_search_coder]
 # Execution-gated tree-search. Generates N candidates, executes each
 # in fresh kernel, scores by assertion pass. Slow path — explicitly
-# invoked, never auto-routed. Phase 2 — off by default.
+# invoked, never auto-routed. Enabled in the live manifest (explicit invocation only, never auto-routed).
 enabled = true
 max_candidates = 5
 per_branch_timeout_s = 60

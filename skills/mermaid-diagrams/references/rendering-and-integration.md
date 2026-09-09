@@ -10,9 +10,9 @@ cannot render locally (no browser). Use the sidecar wrapper or the HTTP API.
 
 ```bash
 # Same interface as mmdc — delegates to browsercontainer over HTTP
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png
-mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
-mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
 ```
 
 The wrapper POSTs to `http://browsercontainer:8931/render-mermaid`, which
@@ -42,7 +42,7 @@ curl -s -X POST http://browsercontainer:8931/render-mermaid \
 ### Sidecar wrapper flags
 
 ```bash
-mmdc-sidecar.sh -i <input.mmd> -o <output.png|svg|pdf>
+/opt/agentbox/scripts/mmdc-sidecar.sh -i <input.mmd> -o <output.png|svg|pdf>
     -e <format>           # svg | png | pdf (inferred from -o extension if omitted)
     -t <theme>            # dark | default | forest | neutral
     --help                # Usage information
@@ -53,7 +53,7 @@ mmdc-sidecar.sh -i <input.mmd> -o <output.png|svg|pdf>
 ```bash
 # Render all .mmd files in a directory
 for f in diagrams/*.mmd; do
-    mmdc-sidecar.sh -i "$f" -o "${f%.mmd}.png" -t dark
+    /opt/agentbox/scripts/mmdc-sidecar.sh -i "$f" -o "${f%.mmd}.png" -t dark
 done
 ```
 
@@ -61,10 +61,10 @@ done
 
 ```bash
 # Render as PDF for vector quality in LaTeX
-mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
 
 # Or render as SVG and convert
-mmdc-sidecar.sh -i diagram.mmd -o diagram.svg
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.svg
 ```
 
 Then in LaTeX:
@@ -120,4 +120,3 @@ Escape with quotes: `A["Node with {braces} and [brackets]"]`
 
 ### Diagram too complex
 Split into subgraphs or multiple diagrams. Keep under 40 nodes per diagram.
-</content>

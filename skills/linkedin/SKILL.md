@@ -68,6 +68,19 @@ Browser-automated LinkedIn integration that scrapes profiles, searches jobs, sen
 
 No API key required. The server uses browser-based login with a persistent Chromium profile stored at `~/.linkedin-mcp/profile/`. On first use, the browser opens a login page; after authenticating once, the session persists across restarts.
 
+> **A private Patchright Chromium is a scoped exception, not a policy breach.** This skill drives
+> its own Patchright-managed browser instead of the `browsercontainer` GPU sidecar because
+> LinkedIn ties a session to a **persistent per-site profile** — cookies, device fingerprint, and
+> login state that must survive restarts, or every call re-triggers a login prompt or CAPTCHA. The
+> shared sidecar's session model is not built for that kind of long-lived, single-site auth state
+> shared across unrelated tasks, so it is not a substitute here (see the `notebooklm` skill's
+> equivalent exception for its own OAuth browser). This is a per-site auth-persistence requirement,
+> not general-purpose scraping or automation, so the container's sidecar-only browser policy does
+> not apply to it. The ToS risk stands regardless of browser choice: LinkedIn prohibits automated
+> scraping and bulk messaging, so keep usage to targeted, low-volume research and
+> account-holder-authorised messaging (see When Not To Use below) — routing through the sidecar
+> would not remove that risk, only the profile-persistence problem is specific to the local browser.
+
 ## Tools
 
 | Tool | Description |
