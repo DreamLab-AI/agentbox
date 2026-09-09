@@ -181,10 +181,23 @@ cases, not tests that repeat implementation expressions.
   checking the already available page configuration. Neither needed a new subsystem.
   Keep unrelated findings in the review backlog instead of expanding each repair.
 
+- When an agent runtime supports custom providers, a small deterministic provider
+  can emit fixed tool calls through the real executor and extension loader. The
+  Pi pilot verified allowed writes, policy refusals and an OS permission failure
+  this way, then checked filesystem state and loaded-source hashes. Call this a
+  scripted-provider runtime test, not a model-judgement test; keep any unexercised
+  control-plane transport and audit path explicit.
+
+- A clean dependency check needs an empty dependency store, not an unusable host
+  toolchain. Preserve the host's certificate and package-manager bootstrap settings
+  while isolating the install cache. The pilot first lost registry verification by
+  dropping CA settings, then hit a noexec home cache; neither required weakening
+  signature verification or changing the product lockfile. Report bootstrap,
+  dependency installation, application build and full deployment as separate scopes.
+
 ## Still being validated in the pilot
 
-The full narrated media pipeline, complete runtime journeys, whole-curriculum
-responsive review and clean-clone acceptance remain under
-active development. The workflow in this skill specifies their required outcomes;
+Narration editorial acceptance, remaining runtime journeys, manual accessibility
+review and full deployment verification remain under active development. The workflow in this skill specifies their required outcomes;
 it does not assert the pilot has already achieved them. Update this section after
 verified results and move only reusable lessons into the established list.
