@@ -62,21 +62,25 @@ Honest technical boundaries and evidence scope still matter: they must not
 disguise unfinished requirements or justify unsupported claims. Keep the
 internal completion audit separate from the finished teaching narrative.
 
-## Draft on the HP model directly; the Ontology Loom is for ontology subjects only
+## Draft on the HP model through the Loom façade, scaffold off
 
-**Corrected 2026-09-09.** The earlier guidance (Loom façade first) failed in practice: with
-`LOOM_VERBATIM_MODE=1` the façade answers any lexical hit against the DreamLab ontology
-*without calling the model* (a packet about `pnpm verify` came back as the blockchain
-"Node" class in 40 ms, `served_mode: verbatim`, zero completion tokens), and no request-level
-opt-out exists. A codebase explainer is not an ontology subject. The default drafting path
-is therefore the model itself, `http://10.10.10.1:8085/v1` (llama.cpp, reachable from the
-turbo-flow container over the 25G rail; `/v1/models` and `/props` answer), driven by
-`scripts/loom-draft.mjs` sequentially in the background so the session model only orients,
-checks and decides. Use the façade (`--base http://192.168.2.132:8084/v1`) only when the
-subject genuinely lives in the ontology. Vision remains the manually qualified exception in
+The estate's model door is the Ontology Loom façade, `http://192.168.2.132:8084/v1`; the
+model behind it swaps with no consumer change. A codebase is not an ontology subject, and on
+2026-09-09 the façade's verbatim mode answered a packet about `pnpm verify` with the
+blockchain "Node" class in 40 ms without calling the model. The Loom now honours a
+per-request opt-out (ADR-139, 2026-09-10): `{"loom_options": {"scaffold": false}}` makes the
+façade a plain proxy for that request (no retrieval, no injection, no verbatim, no thinking
+control) and the response carries `loom.served_mode: passthrough`.
+
+`scripts/loom-draft.mjs` sends that option on every call and refuses a response that was not
+passed through, so it fails loudly against a façade without the ADR-139 build. Run it as a
+sequential, resumable background batch; the session model only orients, checks ranges and
+decides. The direct rail port `http://10.10.10.1:8085/v1` works from hosts that can reach it
+(`EXPLAINER_MODEL_BASE`) but is an implementation detail behind the door, not the path to
+document. Vision remains the manually qualified exception in
 [microsite/hp-qwen-direct.md](microsite/hp-qwen-direct.md). The controlling agent gathers
-evidence, runs tools and independently checks every draft either way; a model response is
-not runtime evidence or permission to edit product code.
+evidence, runs tools and independently checks every draft; a model response is not runtime
+evidence or permission to edit product code.
 
 Read [microsite/qwen-prompting.md](microsite/qwen-prompting.md) when preparing
 the first section packet, whichever backend is in use: shared orientation,

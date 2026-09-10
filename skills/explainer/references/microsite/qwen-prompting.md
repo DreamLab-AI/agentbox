@@ -1,6 +1,6 @@
 # Qwen evidence and presentation prompts
 
-Use this scaffold for direct HP Qwen calls during repo-education runs. It supplies
+Use this scaffold for the model calls that draft microsite sections (`scripts/loom-draft.mjs`). It supplies
 context discipline to the model; it does not replace repository discovery, runtime
 tools or independent review. Keep the enclosing session's model and repair authority
 unchanged. Read hp-qwen-direct.md for transport, multimodal qualification and cleanup.

@@ -27,8 +27,9 @@ The estate's direct endpoint is the HP model at `http://10.10.10.1:8085` (llama.
 0.0.0.0:8085; reachable from the turbo-flow container over the 25G rail, verified
 2026-09-09); its OpenAI-compatible API is under `/v1`. The old `192.168.2.132:8085` address
 does not exist: machinelearn NATs only `:8084` (the Loom façade) onto the LAN. Text-only
-drafting through this endpoint is now the skill's default (`scripts/loom-draft.mjs`); this
-document covers the vision exception. Read
+drafting goes through the façade with `loom_options.scaffold=false` (ADR-139), which
+`scripts/loom-draft.mjs` sends by default; the rail port is a fallback for hosts that reach
+it. This document covers the vision exception. Read
 `/health`, `/v1/models` and `/props`, and use the returned model ID. Do not assume
 that an installed model has a loaded vision projector.
 

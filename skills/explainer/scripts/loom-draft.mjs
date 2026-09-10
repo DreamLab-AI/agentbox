@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// Draft explainer sections on the LAN model (HP, Qwen3.8-27B via llama.cpp), directly.
-// The Ontology Loom façade (:8084) is NOT the default: in verbatim mode it answers lexical hits
-// from the DreamLab ontology without calling the model (measured 2026-09-09: a packet about
-// `pnpm verify` came back as the blockchain 'Node' class). Pass --base to the façade only for
-// ontology-grounded subjects.
+// Draft explainer sections on the LAN model (HP, Qwen3.8-27B) through the Ontology Loom
+// façade, with the scaffold declined per request (ADR-139: `loom_options.scaffold=false`).
+// The façade is the estate's stable model door; the option makes it a plain proxy for a
+// subject the ontology does not cover. Without it, verbatim mode answered a packet about
+// `pnpm verify` with the blockchain 'Node' class (2026-09-09). The direct model port on the
+// 25G rail remains a fallback for hosts that can reach it (EXPLAINER_MODEL_BASE).
 // Long-running, sequential, resumable: meant to run in the background (nohup / tmux) so
 // the expensive session model only orients, checks and decides.
 //
 //   node loom-draft.mjs --packet p.json [--out p.out.json]           one section
 //   node loom-draft.mjs --batch packets/ --out-dir drafts/            every *.json, skips done
-//   options: --base http://10.10.10.1:8085/v1 (default; env EXPLAINER_MODEL_BASE)  --model <id or auto>  --max-tokens 1400
+//   options: --base http://192.168.2.132:8084/v1 (default; env EXPLAINER_MODEL_BASE; the direct
+//            rail port http://10.10.10.1:8085/v1 also works)  --model <id or auto>  --max-tokens 1400
 //            --system <file>  --template <file>  --review <draft.json>  --timeout 900
 //
 // A packet is the JSON described in ../references/microsite/qwen-prompting.md. The
@@ -23,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? argv[i + 1] : d; };
-const base = (opt('base', process.env.EXPLAINER_MODEL_BASE || 'http://10.10.10.1:8085/v1')).replace(/\/$/, '');
+const base = (opt('base', process.env.EXPLAINER_MODEL_BASE || 'http://192.168.2.132:8084/v1')).replace(/\/$/, '');
 const systemText = readFileSync(opt('system', join(here, '../references/microsite/prompts/qwen-system.txt')), 'utf8');
 const templateText = readFileSync(opt('template', join(here, opt('review') ? '../references/microsite/prompts/qwen-review.txt' : '../references/microsite/prompts/qwen-section.txt')), 'utf8');
 const timeoutMs = Number(opt('timeout', 900)) * 1000;
@@ -67,6 +69,8 @@ async function draftOne(packetPath, outPath, model) {
       res = await fetch(base + '/chat/completions', {
         method: 'POST', signal: ctl.signal, headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ model, temperature: 0, max_tokens: budget, stream: false,
+          // The Loom strips this before delegating; a bare llama.cpp server ignores it.
+          loom_options: { scaffold: false, verbatim: false },
           chat_template_kwargs: { enable_thinking: false },
           messages: [{ role: 'system', content: systemText }, { role: 'user', content: user }] }),
       });
@@ -85,7 +89,10 @@ async function draftOne(packetPath, outPath, model) {
     catch (e) { writeFileSync(outPath.replace(/\.json$/, '.raw.json'), JSON.stringify(body, null, 2)); throw new Error(`${e.message}; raw response saved beside the output`); }
     const receipt = { packet: basename(packetPath), model: body.model || model, base, attempt, max_tokens: budget,
       finish_reason: choice.finish_reason, prompt_tokens: usage.prompt_tokens, completion_tokens: usage.completion_tokens,
-      ms, loom: body.loom ? { fusion_path: body.loom.fusion_path, exposure: body.loom.exposure } : undefined };
+      ms, loom: body.loom ? { served_mode: body.loom.served_mode, grounding_status: body.loom.grounding?.status } : undefined };
+    if (body.loom && body.loom.served_mode !== 'passthrough') {
+      throw new Error(`the façade did not pass the request through (served_mode=${body.loom.served_mode}); it needs the ADR-139 build`);
+    }
     writeFileSync(outPath, JSON.stringify({ result, receipt }, null, 2) + '\n');
     console.log(`${basename(packetPath)}: ${result.status}, ${result.claims.length} claims, ${usage.completion_tokens ?? '?'} tokens, ${(ms / 1000).toFixed(1)} s → ${outPath}`);
     return result;

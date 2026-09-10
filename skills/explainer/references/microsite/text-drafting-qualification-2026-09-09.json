@@ -50,5 +50,20 @@
     }
   ],
   "assessment": "Qualified for supervised background drafting. The model abstains (needs_evidence) when the packet lacks the file that supports a claim and names exactly what it needs; when the packet is complete it returns a clean present-tense draft with correctly ranged claims that passes voice-lint.sh. Cost: ~13-20 s per section on the GPU service, ~2-4k prompt tokens. Packets must carry the mapping evidence (e.g. package.json for a script name), the ADR section for the why, and a known_gaps line saying non-blocking gaps go in requests rather than withholding prose. Independent range checking by the session model remains mandatory.",
-  "reader_text_sample": "The root `package.json` maps the `verify` script to `bash scripts/verify.sh` [S2]. This script executes every repository gate in sequence, collecting outcomes rather than stopping at the first failure [S1]. The gates cover control-plane tests and typecheck, Foreman tests with coverage and dependency rules, seven enclosure tool suites, Caddyfile and compose validation, the diagram corpus, ADR records, and header lint [S1]. ADR-028 establishes this single command as the standard verification entry point, replacing a previous list of disparate checks [A1]. The tenant suite is excluded because it runs only inside the tenant image [S1]. If Docker is absent and `SKIP_DOCKER` is not set, the container-dependent gates fail explicitly [S1]. The script exits with status 0 only when no gates failed; otherwise it exits with status 1 [S1]."
+  "reader_text_sample": "The root `package.json` maps the `verify` script to `bash scripts/verify.sh` [S2]. This script executes every repository gate in sequence, collecting outcomes rather than stopping at the first failure [S1]. The gates cover control-plane tests and typecheck, Foreman tests with coverage and dependency rules, seven enclosure tool suites, Caddyfile and compose validation, the diagram corpus, ADR records, and header lint [S1]. ADR-028 establishes this single command as the standard verification entry point, replacing a previous list of disparate checks [A1]. The tenant suite is excluded because it runs only inside the tenant image [S1]. If Docker is absent and `SKIP_DOCKER` is not set, the container-dependent gates fail explicitly [S1]. The script exits with status 0 only when no gates failed; otherwise it exits with status 1 [S1].",
+  "followup_2026_09_10": {
+    "change": "Loom ADR-139 deployed (loom commit 4adcccf, loom-facade-a recreated on HP 2026-09-10): loom_options.scaffold=false makes the fa\u00e7ade a plain proxy per request.",
+    "default_endpoint": "http://192.168.2.132:8084/v1 (fa\u00e7ade, LAN door) with loom_options {scaffold:false, verbatim:false} on every call; EXPLAINER_MODEL_BASE overrides; the rail port 10.10.10.1:8085 remains a fallback and ignores the option",
+    "control": "the 2026-09-09 request without the option still returns served_mode=verbatim (0 tokens); with the option it returns served_mode=passthrough, grounding.status=passthrough, corpus_backed=false, 244 completion tokens in 7.9 s",
+    "drafter_run": {
+      "packet": "verify-full2.json",
+      "status": "draft",
+      "claims": 6,
+      "completion_tokens": 797,
+      "ms": 22028,
+      "served_mode": "passthrough",
+      "voice_lint_hits": 0
+    },
+    "assessment": "The fa\u00e7ade is now the drafting door for non-ontology subjects with no hack; the drafter refuses any response that was not passed through, so an old fa\u00e7ade build fails loudly rather than silently serving ontology text."
+  }
 }

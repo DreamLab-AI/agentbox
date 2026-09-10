@@ -236,7 +236,9 @@ judged the result. What the run taught:
   (28 records, status, one line each) pushed it to 2,000 words, over the 1,600 target; a
   compact lookup table is worth the length because a newcomer will otherwise open the
   records in numeric order and read two superseded ones first.
-- **The direct model is the background path; the façade is not.** See
-  `text-drafting-qualification-2026-09-09.json`: the HP model drafted a clean, correctly
-  ranged section in 13–20 s once its packet carried the mapping evidence it asked for; the
-  Loom façade served an ontology passage instead of calling the model.
+- **Fix the door, do not go round it.** See `text-drafting-qualification-2026-09-09.json`:
+  the HP model drafted a clean, correctly ranged section in 13–20 s once its packet carried
+  the mapping evidence it asked for, while the Loom façade served an ontology passage instead
+  of calling the model. The first workaround targeted the model port on the rail; the fix that
+  stayed is a per-request `loom_options.scaffold=false` in the Loom itself (ADR-139,
+  2026-09-10), so every consumer keeps one door.

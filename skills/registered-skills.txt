@@ -38,6 +38,7 @@ prose-sanitiser
 
 # --- knowledge / dispatch / misc ---
 skill-router
+explainer
 ontology-augment
 email-search
 

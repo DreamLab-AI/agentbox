@@ -122,11 +122,13 @@ sentences, the corrected chapter shape and the gate. Four things changed:
    by a dependency-free build in the target into the reading shell; `src:path#L10-L20` links
    open the file in the source pane and the build fails on a missing path or a range outside
    the file. Content and shell stay separate; media is added later without touching prose.
-4. **The model path.** The Loom façade in verbatim mode answers lexical ontology hits without
-   calling the model, so it is not the drafting path for a codebase. `scripts/loom-draft.mjs`
-   drives the HP model directly (`http://10.10.10.1:8085/v1`, measured 13 s for a 400-token
-   section) as a sequential, resumable background batch; the session model orients, checks
-   ranges and decides. See the corrected section in `references/delivery-microsite.md`.
+4. **The model path.** The Loom façade in verbatim mode answered a codebase packet with an
+   ontology class instead of calling the model. The fix went into the Loom (ADR-139):
+   `loom_options.scaffold=false` makes the façade a plain proxy for that request.
+   `scripts/loom-draft.mjs` sends it on every call and drives the HP model through the façade
+   (`http://192.168.2.132:8084/v1`, about 13–20 s for a 400–900-token section) as a
+   sequential, resumable background batch; the session model orients, checks ranges and
+   decides. See the model-path section in `references/delivery-microsite.md`.
 
 The pipeline that replaced the pilot: per chapter, a researcher writes a fact sheet (files,
 exact ranges, ADR sections, pinning tests, measured commands); a writer produces the chapter
