@@ -27,6 +27,17 @@ in `~/.claude/skills` at the run root for the duration of the run and restores t
 exit. Runs are serialised, so the swap is safe; do not start a Claude Code session that
 needs the hot copy while a run is in progress.
 
+When the deliverable lands in the target repository, pass `--target-seed` and
+`--target-subdir` so each run starts from identical inputs: the deliverable directory is
+reset to the seed before the run, archived to `target-after/` afterwards, and the target is
+left as it was found. Without this the second variant inherits the first one's chapters
+(measured 2026-09-10, the baseline run wrote its chapters straight into the target).
+
+`opencode run` is non-interactive and auto-rejects any permission it would otherwise ask
+for, so the per-run config allows edit, bash, web fetch and reads of the workspace, the
+prompt directory, the skill root and any `--allow` directory, while denying `git push` and
+recursive deletes. A run without those permissions stops after its first step.
+
 Hand-ups are part of the result. `scripts/handup.mjs stats --record outputs` gives the
 per-run hand-up count, reason mix and tokens by tier; the analyst pass reads those
 alongside the assertion grades. A candidate that scores the same on assertions but hands

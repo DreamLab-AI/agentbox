@@ -4,13 +4,14 @@
 #   run-case.sh --workspace DIR --iteration N --eval ID --variant old_skill|with_skill \
 #               --skills-root DIR --prompt-file FILE [--target DIR] [--profile provider/model]
 #               [--timeout SECONDS] [--startup-timeout SECONDS] [--startup-attempts N] [--allow DIR]...
+#               [--target-seed DIR --target-subdir REL]
 #
 # Writes <workspace>/iteration-N/eval-ID/<variant>/{outputs,transcript.jsonl,timing.json,opencode.json}.
 # Set RUN_CASE_DEBUG=1 to keep OpenCode's debug log in stderr.log.
 # Resume a run's session with: opencode run --session <id> -m <profile> ... (same HOME).
 # The production record for the run is outputs/; the prompt should tell the model to work there.
 set -euo pipefail
-workspace= iteration= evalid= variant= root= promptfile= target=$PWD profile=loom-agent/current timeout=14400; allow_dirs=()
+workspace= iteration= evalid= variant= root= promptfile= target=$PWD profile=loom-agent/current timeout=14400; allow_dirs=(); target_seed= target_subdir=
 while [ $# -gt 0 ]; do
   case "$1" in
     --workspace) workspace=$2; shift 2;; --iteration) iteration=$2; shift 2;; --eval) evalid=$2; shift 2;;
@@ -18,6 +19,7 @@ while [ $# -gt 0 ]; do
     --target) target=$2; shift 2;; --profile) profile=$2; shift 2;; --timeout) timeout=$2; shift 2;;
     --startup-timeout) startup_timeout=$2; shift 2;; --startup-attempts) startup_attempts=$2; shift 2;;
     --allow) allow_dirs+=("$2"); shift 2;;
+    --target-seed) target_seed=$2; shift 2;; --target-subdir) target_subdir=$2; shift 2;;
     *) echo "unknown option $1" >&2; exit 1;;
   esac
 done
@@ -70,6 +72,23 @@ Production record for this run: $run/outputs (write every artefact, receipt and 
 # stall before the first event has cost nothing, so watch for the first transcript line
 # and relaunch after --startup-timeout seconds, up to --startup-attempts times.
 startup_timeout=${startup_timeout:-90}; startup_attempts=${startup_attempts:-8}
+# A run that writes its deliverable into the target mutates shared state, and the next
+# variant would start from the previous one's chapters. When a seed is given, the deliverable
+# directory is reset to it before the run and archived to target-after/ afterwards, so every
+# variant starts from identical inputs and the target is left as it was found.
+if [ -n "$target_seed" ] && [ -n "$target_subdir" ]; then
+  [ -d "$target_seed" ] || { echo "--target-seed $target_seed not found" >&2; exit 1; }
+  case "$target_subdir" in /*|*..*|"") echo "--target-subdir must be a relative path inside the target" >&2; exit 1;; esac
+  [ "$(tr -cd / <<<"$target_subdir" | wc -c)" -ge 1 ] || { echo "--target-subdir must be at least two segments deep (got $target_subdir)" >&2; exit 1; }
+  seed_dest="$target/$target_subdir"
+  rm -rf "$seed_dest"; mkdir -p "$seed_dest"; cp -r "$target_seed/." "$seed_dest/"
+  archive_target() {
+    mkdir -p "$run/target-after"; cp -r "$seed_dest/." "$run/target-after/" 2>/dev/null || true
+    rm -rf "$seed_dest"; mkdir -p "$seed_dest"; cp -r "$target_seed/." "$seed_dest/"
+  }
+  trap 'restore; archive_target' EXIT
+fi
+
 start=$(date -u +%s)
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 attempt=0; status=124; launches=()
@@ -100,7 +119,7 @@ tools=$( { grep -c '"type":"tool_use"' "$run/transcript.jsonl" || true; } | tail
 tools=${tools:-0}
 cat > "$run/timing.json" <<JSON
 { "eval": "$evalid", "variant": "$variant", "iteration": $iteration, "profile": "$profile", "skills_root": "$root",
-  "skills_root_hash": "$roothash", "pinned_via": "$hot/{explainer,codebase-video}", "session": "${session:-null}", "started": "$started", "wall_seconds": $((end-start)),
+  "skills_root_hash": "$roothash", "pinned_via": "$hot/{explainer,codebase-video}", "target_seed": "${target_seed:-none}", "session": "${session:-null}", "started": "$started", "wall_seconds": $((end-start)),
   "exit_status": $status, "tool_calls": $tools, "launches": [$(IFS=,; echo "${launches[*]}")], "cache": "unrecorded" }
 JSON
 echo "eval-$evalid $variant: exit $status, $((end-start))s, $tools tool calls, session ${session:-none} → $run"
