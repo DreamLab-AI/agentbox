@@ -31,11 +31,20 @@ the queue is empty.
 | a fresh reader cannot answer the seven questions (gate B) | cold reader | nothing: this needs judgement | T1, `gate-b`: bar wrong or content wrong |
 | a load-bearing claim stays `needs_evidence` | ledger check | one more search of source, tests, design records | T1, `needs-evidence` |
 | a specialist is unavailable or its job ends in error | missing receipt, error state | resumes the handle once; never resubmits blindly | T1, `specialist` |
+| a prerequisite cannot be satisfied: no data to photograph, no fixture, a service that will not start | twenty minutes on one sub-goal with no artefact to show for it | states what is missing and what it tried | T1, `prerequisite` |
 | the same gate stays red with no change between attempts | `handup.mjs attempt` refuses the identical retry | nothing | T1, `stall` |
 | a product defect is reproduced | T0, per the hub's stop-before-fixing rule | records diagnosis and proposed correction, marks the chapter blocked, continues independent work | T2, `product-defect`, always |
 | a cap on tokens, wall clock or hand-ups per chapter is reached | controller | nothing | T2, `budget` |
 
-Two rules make the table work. **An identical retry is not an attempt**: before each
+The prerequisite row is the one that costs most when it is ignored. A run measured on
+2026-09-10 wrote two chapters in forty minutes and then spent two hours trying to seed a
+database so that a screenshot would have something to show, and finished with no media at
+all. Nothing was failing; each step looked like the next reasonable thing. The rule is
+therefore a clock, not a judgement: **twenty minutes on one sub-goal with nothing to show
+is a hand-up**, whatever the model believes about the next command. Say what is missing,
+what was tried, and what would unblock it, then move to the next chapter.
+
+Three rules make the table work. **An identical retry is not an attempt**: before each
 retry T0 records what it changed with `handup.mjs attempt`, and the tool refuses to
 count a retry whose chapter hash equals the last one. **Blocked is a valid end state**:
 an unattended run may finish with chapters blocked on T2, and that is the correct

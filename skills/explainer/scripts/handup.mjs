@@ -21,7 +21,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, append
 import { join, resolve, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const REASONS = ['lint-cap', 'build-cap', 'checker-cap', 'gate-b', 'needs-evidence', 'specialist', 'stall', 'product-defect', 'budget'];
+const REASONS = ['lint-cap', 'build-cap', 'checker-cap', 'gate-b', 'needs-evidence', 'specialist', 'prerequisite', 'stall', 'product-defect', 'budget'];
 const ASKS = ['fix', 'decide', 'unblock', 'judge'];
 const VERDICTS = ['resolved', 'guidance', 'override', 'blocked'];
 const TIERS = ['T1', 'T2'];
