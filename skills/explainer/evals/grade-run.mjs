@@ -9,6 +9,7 @@
 //
 // Exit codes: 0 measured, 1 the run directory is unusable, 2 usage.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve, relative, extname, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
@@ -55,6 +56,31 @@ const media = { images: produced.filter((f) => /\.(png|jpe?g|webp)$/i.test(f)).l
   captions: produced.filter((f) => /\.(vtt|srt)$/i.test(f)).length,
   diagram_sources: produced.filter((f) => /\.(mmd|puml|dot|d2)$/i.test(f)).length,
   rendered_diagrams: produced.filter((f) => /diagram.*\.svg$|\.svg$/i.test(f)).length };
+// --- media the run did not make: a produced file that is byte-identical to one already in
+// the repository outside the deliverable was imported, not produced. One run passed every
+// count by copying a neighbouring pack's clips (2026-09-10), and nothing mechanical caught it.
+const MEDIA = /\.(png|jpe?g|webp|gif|mp4|webm|mov|wav|mp3|m4a|opus|svg|vtt|srt)$/i;
+const producedMedia = produced.filter((f) => MEDIA.test(f));
+const importedMedia = [];
+if (producedMedia.length && existsSync(repo)) {
+  const wanted = new Map();
+  for (const f of producedMedia) { const h = createHash('sha256').update(readFileSync(f)).digest('hex'); wanted.set(h, (wanted.get(h) ?? []).concat(relative(run, f))); }
+  const skip = new Set(['node_modules', '.git', '.next', 'dist', 'build']);
+  const scan = (d) => {
+    let entries; try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (skip.has(e.name) || e.name.startsWith('.')) continue;
+      const p2 = join(d, e.name);
+      if (p2.startsWith(run)) continue;
+      if (e.isDirectory()) { scan(p2); continue; }
+      if (!MEDIA.test(e.name)) continue;
+      let h; try { h = createHash('sha256').update(readFileSync(p2)).digest('hex'); } catch { continue; }
+      if (wanted.has(h)) for (const w of wanted.get(h)) if (!importedMedia.some((m) => m.produced === w)) importedMedia.push({ produced: w, identical_to: relative(repo, p2) });
+    }
+  };
+  scan(repo);
+}
+
 const receipts = produced.filter((f) => /receipt|manifest|narration|render/i.test(f) && f.endsWith('.json')).map((f) => relative(run, f));
 
 // --- every source link the run wrote must resolve, and stay inside its file
@@ -97,7 +123,7 @@ const result = {
   steps, finish_reasons: finishReasons, tokens: lastTokens, tool_calls: tools, tool_errors: toolErrors,
   skills_loaded: [...new Set(skillsLoaded)], providers: [...providers], off_profile_providers: offProfile,
   produced_files: produced.length, by_extension: byExt, chapters: chapters.map((f) => relative(run, f)),
-  media, receipts, source_links: links.length, bad_source_links: badLinks, lint, handups,
+  media, media_files: producedMedia.length, imported_media: importedMedia, receipts, source_links: links.length, bad_source_links: badLinks, lint, handups,
   last_text: lastText.trim().slice(0, 300),
 };
 if (args.json) { console.log(JSON.stringify(result, null, 2)); process.exit(0); }
@@ -107,5 +133,6 @@ console.log(`tools: ${Object.entries(tools).map(([k, v]) => `${k} ${v}`).join(' 
 console.log(`produced ${result.produced_files} files: ${Object.entries(byExt).map(([k, v]) => `${k} ${v}`).join(' ')}`);
 console.log(`chapters ${chapters.length} · diagrams ${media.diagram_sources}/${media.rendered_diagrams} · images ${media.images} · video ${media.video} · audio ${media.audio} · captions ${media.captions} · receipts ${receipts.length}`);
 console.log(`source links ${links.length}, ${badLinks.length} unresolved or out of range${badLinks.length ? ': ' + badLinks.slice(0, 4).map((l) => `${l.path}#L${l.start}-L${l.end}${l.exists ? ` (file has ${l.file_lines})` : ' (missing)'}`).join(', ') : ''}`);
+console.log(`imported media: ${importedMedia.length} of ${producedMedia.length} media files are byte-identical to existing repository media${importedMedia.length ? ' — e.g. ' + importedMedia.slice(0, 3).map((m) => `${m.produced} == ${m.identical_to}`).join('; ') : ''}`);
 console.log(`lint: ${lint ? `${lint.hits} hit(s)${lint.failed ? ' (non-zero exit)' : ''}` : 'not run'}`);
 console.log(`hand-ups ${handups.length}${handups.length ? ': ' + handups.map((h) => `${h.id}/${h.reason}/${h.tier}${h.verdict ? '→' + h.verdict : ' pending'}`).join(', ') : ''}`);
