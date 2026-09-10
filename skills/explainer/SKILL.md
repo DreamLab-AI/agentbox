@@ -172,7 +172,12 @@ reference is self-contained once the shared core above is done.
 
 **Production tier:** the long run is designed for a local OpenAI-compatible model with
 tool calls (OpenCode profile `loom-agent/current`); it discovers this skill and its
-specialists through the normal catalogue and hands up by packet when stuck. Claude Code
+specialists through the normal catalogue and hands up by packet when stuck. Such a harness
+usually has a shell and little else, so read `references/local-harness.md` before reaching
+for a capability: resolve it as a skill, then as a documented service, then hand up. Do not
+hand-roll a browser, encoder or renderer; work produced that way carries no receipt and
+cannot be reviewed. Work chapter by chapter in separate sessions rather than one long one,
+so context stays bounded and a failure costs one chapter. Claude Code
 and Codex are the controller and grader tiers, not the drafter, unless the user says so.
 
 **Claude Code only:** the docs delivery's parallel-authoring step needs the
@@ -199,4 +204,5 @@ mesh find it. Each delivery reference repeats this as its final step.
 - `references/gates.md` — the five gates, bars and ledger format in full.
 - `references/handup.md` — escalating a red gate to a stronger tier by packet, not by session; `scripts/handup.mjs`.
 - `references/diagram-corpus.md` — mining the repository's own diagrams-as-code tree; `scripts/diagram-corpus.mjs`.
+- `references/local-harness.md` — running where the specialists are not tools: skill, then documented service, then hand up.
 - `evals/evals.json` — the pilot eval prompts for this skill.

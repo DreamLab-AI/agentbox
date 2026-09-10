@@ -1,7 +1,10 @@
 # Specialist handoffs
 
 Resolve the actual skill in the current Agentbox/Codex catalogue, then read its
-entrypoint and selected references. Names below describe the installed estate
+entrypoint and selected references. When the harness offers no such tools at all, read
+[../local-harness.md](../local-harness.md) before doing anything else: the order is skill,
+then a documented service from the engagement's manifest, then a hand-up — never a
+hand-rolled protocol client. Names below describe the installed estate
 used by the pilot; equivalent available skills can fill a capability. If one is
 missing, discover it before choosing a fallback. Do not fabricate outputs or
 claim a skill ran when only a plan was written.
