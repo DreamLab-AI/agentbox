@@ -101,6 +101,19 @@ diagnosis loop.
 | D — Media | audio/video teaches a true beginner | out of scope by default | per delivery choice | `codebase-video`'s own scene-by-scene review satisfies this |
 | E — Visuals | each hard concept has an accurate diagram | reader | reader, plus the inspectable source pane | frame inspection at delivery resolution |
 
+## Hand up when a gate stays red
+
+The production run belongs to the local model (today Qwen through the Loom, in a
+resumable OpenCode session) so that hours of drafting cost GPU time, not tokens. When a
+gate stays red after the capped retries in `references/gates.md`, do not keep retrying
+and do not pull a cloud model into the session: write a **hand-up packet** with
+`scripts/handup.mjs` and carry on with chapters the packet does not block. A Claude Code
+controller polls the queue and answers each packet from a cold start with a minimal fix,
+guidance, an override or a block; product defects and budget overruns always go to the
+user. An identical retry is not an attempt, and a run that ends with blocked chapters
+has ended correctly. `references/handup.md` has the tiers, triggers, packet and reply
+shapes, and what the skill-improvement loop reads from them.
+
 ## Addendum 2026-09-09: the microsite pilot's verdict, and what changed
 
 The first microsite (campaignbuilder, 20 pages, 180 commits over two days) was grounded,
@@ -149,6 +162,11 @@ reference is self-contained once the shared core above is done.
 
 ## Model-fit
 
+**Production tier:** the long run is designed for a local OpenAI-compatible model with
+tool calls (OpenCode profile `loom-agent/current`); it discovers this skill and its
+specialists through the normal catalogue and hands up by packet when stuck. Claude Code
+and Codex are the controller and grader tiers, not the drafter, unless the user says so.
+
 **Claude Code only:** the docs delivery's parallel-authoring step needs the
 Agent/fork tool (`subagent_type: fork`) to write the three audience documents
 from a shared orientation context. On Codex / GPT-6 Astra, which has no fork
@@ -171,4 +189,5 @@ mesh find it. Each delivery reference repeats this as its final step.
 - `references/delivery-video.md` — the video handoff to `codebase-video`.
 - `references/comprehension-arc.md` — the seven questions, per audience.
 - `references/gates.md` — the five gates, bars and ledger format in full.
+- `references/handup.md` — escalating a red gate to a stronger tier by packet, not by session; `scripts/handup.mjs`.
 - `evals/evals.json` — the pilot eval prompts for this skill.

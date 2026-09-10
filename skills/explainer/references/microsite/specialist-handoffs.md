@@ -31,7 +31,9 @@ status. A specialist's successful return is an input to the final review, not an
 automatic declaration of complete delivery.
 
 Do not run a new generation job merely because observation timed out. Resume the
-submitted handle, or establish it is terminal/missing before replacing it. Share
+submitted handle, or establish it is terminal/missing before replacing it. A specialist
+that is absent from the catalogue, or a job that ends in error after one resume, is a
+hand-up with `reason=specialist` (`references/handup.md`), not a reason to improvise. Share
 GPU capacity conservatively with other work and preserve completed outputs.
 
 Narration precedes final scene timing. Diagram and source text should be rendered

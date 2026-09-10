@@ -35,6 +35,13 @@ Diagnose each failing question or check into one bucket, apply the smallest fix,
 Cap at five iterations; if still red, the bar is wrong or the product is undocumented in
 that area, and either is a finding worth writing down.
 
+In an unattended production run the caps are per gate and lower: three attempts for a
+lint, build, range or link failure, two for an independent checker's issue list, and none
+for a cold-reader failure or a reproduced product defect. Record each attempt with
+`scripts/handup.mjs attempt`, which refuses a retry that changed nothing; at the cap, or
+on a refusal, write a packet (`scripts/handup.mjs write`) and move to work the packet
+does not block. `references/handup.md` has the triggers and the reply verdicts.
+
 ## The microsite gate, mechanised (2026-09-09)
 
 A microsite chapter ships only when all four hold; the first, second and fourth are scripts,
