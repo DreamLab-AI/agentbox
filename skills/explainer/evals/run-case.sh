@@ -98,18 +98,21 @@ start=$(date -u +%s)
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 attempt=0; status=124; launches=()
 while [ $attempt -lt "$startup_attempts" ]; do
-  attempt=$((attempt+1)); t0=$(date -u +%s); : > "$run/transcript.jsonl"
+  attempt=$((attempt+1)); t0=$(date -u +%s); stalled=0; : > "$run/transcript.jsonl"
   ( cd "$target" && OPENCODE_CONFIG="$run/opencode.json" exec timeout "$timeout" opencode run -m "$profile" --format json ${RUN_CASE_DEBUG:+--print-logs --log-level DEBUG} "$prompt" ) > "$run/transcript.jsonl" 2>> "$run/stderr.log" &
   child=$!
   while kill -0 $child 2>/dev/null; do
     if [ -s "$run/transcript.jsonl" ]; then break; fi
     if [ $(( $(date -u +%s) - t0 )) -ge "$startup_timeout" ]; then
       echo "attempt $attempt: no event after ${startup_timeout}s; relaunching" >&2
+      stalled=1
       kill -TERM $child 2>/dev/null; sleep 2; kill -KILL $child 2>/dev/null; break
     fi
     sleep 2
   done
-  if [ -s "$run/transcript.jsonl" ] || ! kill -0 $child 2>/dev/null; then
+  # A child killed for stalling has not finished. Without this the first stall ended the
+  # run instead of retrying it, so --startup-attempts never took effect (2026-09-10).
+  if [ "$stalled" = 0 ] && { [ -s "$run/transcript.jsonl" ] || ! kill -0 $child 2>/dev/null; }; then
     set +e; wait $child; status=$?; set -e
     launches+=("{\"attempt\":$attempt,\"seconds\":$(( $(date -u +%s) - t0 )),\"stalled\":false,\"exit\":$status}")
     break
@@ -118,6 +121,7 @@ while [ $attempt -lt "$startup_attempts" ]; do
   launches+=("{\"attempt\":$attempt,\"seconds\":$(( $(date -u +%s) - t0 )),\"stalled\":true}")
   sleep 30
 done
+if [ "$stalled" = 1 ]; then echo "every one of $startup_attempts launches stalled before an event" >&2; status=124; fi
 end=$(date -u +%s)
 session=$( { grep -o '"sessionID":"[^"]*"' "$run/transcript.jsonl" || true; } | head -1 | cut -d'"' -f4)
 tools=$( { grep -c '"type":"tool_use"' "$run/transcript.jsonl" || true; } | tail -1)
