@@ -13,7 +13,7 @@ code. This reference separates the two jobs the pilot conflated.
 | Register | Audience | Lives in | Content |
 |---|---|---|---|
 | Ledger | the authoring agents and the completion audit | `production/`, `evidence/`, the claims ledger, memory | evidence classes, hashes, runtime receipts, fixture identities, findings, before/after, what was not tested |
-| Reader | the engineer who did not build the system | `chapters/*.md` and the rendered pages | what the code does, why (design record), where (file:line), what to read first, what will surprise you |
+| Reader | whoever the delivery names: an engineer inheriting the code, an executive assessing it, a user of it | `chapters/*.md` and the rendered pages | what the system does, why (design record), and — for a reader who will open files — where (file:line) and what to read first |
 
 The ledger constrains the reader text (a sentence with no supporting range does not
 ship). The ledger never appears in the reader text. The pilot let it leak: every
@@ -71,7 +71,14 @@ system by its parts.
 - Offline, dependency-free reading (system fonts, no CDN, one Python launcher).
 - The design tokens (paper, ink, muted teal) and the 76ch reading measure.
 
-## The chapter shape that replaced it
+## The chapter shape, and how the audience changes it
+
+The spine is the same for every reader. A question as the eyebrow, a direct answer in two
+to four sentences before any heading, the decision before the mechanism, and a closing
+section that tells the reader what to do next. What fills each section, and how long the
+chapter runs, comes from the audience decision made at the start of the delivery. Do not
+carry one audience's shape to another; the pilot's engineer shape below is an instance,
+not the template.
 
 ```
 ---
@@ -81,18 +88,30 @@ title: Identity and authorisation
 question: Why does signing in not grant permission?
 ---
 <Direct answer, 2–4 sentences, no heading.>
-## Why it is this way        <the decision, linked to its ADR section>
-## How it works              <walk the code; every mechanism sentence carries a src: link>
-## <optional: The state machine / Routes / Services>
-## What to read first        <3–6 files, one line each, linked>
-## Traps                     <3–6 surprises in the code, each linked; properties of the
-                              system, never of the evidence>
+## Why it is this way        <the decision, linked to its design record>
+## How it works              <the mechanism, in the depth this reader needs>
+## <optional: the state machine, the routes, the services>
+## What to do next           <the concrete step this reader would actually take>
+## Traps                     <3–6 surprises, each grounded; properties of the system,
+                              never of the evidence>
 ```
 
-900–1,600 words. Present tense. UK English. Sentences around 20 words. Product terms
-defined on first use. Link syntax `[text](src:path#L10-L20)`; the build rejects a missing
-path or a range outside the file; the checker rejects a range that does not support its
-sentence.
+| Reader | Mechanism section | What to do next | Source links | Length |
+|---|---|---|---|---|
+| Engineer inheriting the code | walk the code; every mechanism sentence carries a `src:` link | 3–6 files to read first, one line each | inline, in the reading path | 900–1,600 words |
+| Executive or investor assessing it | the behaviour and the decision, in the product's own vocabulary; no file names in the prose | the one thing to try, or the question to put to the team | below the reading path, in an optional inspection layer | 500–900 words |
+| User of the product | what they can do and what happens when they do it | the task they came to perform | none in the prose | 400–800 words |
+
+Present tense, UK English, sentences around 20 words, product terms defined on first use.
+Link syntax `[text](src:path#L10-L20)`; the build rejects a missing path or a range outside
+the file, and the checker rejects a range that does not support its sentence — whichever
+layer the link sits in.
+
+A note on the lint. It bans the vocabulary of authorship, and some products genuinely own
+those words: an audit hash chain, a checkpoint, a published video. Pass the engagement's
+product vocabulary with `voice-lint.sh --allow <file>`, listing phrases rather than bare
+words, so "audit hash chain" is allowed while "hash" stays banned everywhere else. Adding a
+bare word to that file to clear a hit is how the lint stops working.
 
 ## The gate
 

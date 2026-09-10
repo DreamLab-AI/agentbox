@@ -47,8 +47,10 @@ does not block. `references/handup.md` has the triggers and the reply verdicts.
 A microsite chapter ships only when all four hold; the first, second and fourth are scripts,
 the third is an agent with the brief and the chapter and nothing else:
 
-1. `scripts/voice-lint.sh chapters/*.md` prints `hits=0` for every chapter (self-reference,
-   evidence vocabulary, fix history, hedges, trust adjectives, media, slop).
+1. `scripts/voice-lint.sh [--allow <product vocabulary>] chapters/*.md` prints `hits=0` for
+   every chapter (self-reference, evidence vocabulary, fix history, hedges, trust adjectives,
+   media, slop). The allow file lists the engagement's own product phrases so a system that
+   really has an audit hash chain can say so; phrases, never bare words.
 2. The target's build passes: every `src:path#Lx-Ly` path exists, every range is inside its
    file, every chapter link is in the chapter map.
 3. An independent checker opened every linked range and confirmed it supports its sentence,

@@ -18,7 +18,7 @@ the objective to the pages or videos already made.
 | Corrections (internal audit) | Findings reconciled to fixes and checks; affected explanatory media refreshed to describe the final product without remediation history |
 | Normal-clone delivery | All required media/source present in a clean copy, no ignored intermediates or external runtime dependency referenced |
 | Site interaction | Links, code switching and line targets, back/forward navigation, errors, keyboard/focus, desktop/mobile and readable screenshots |
-| Reader voice | `scripts/voice-lint.sh` at `hits=0` on every chapter source; no process narration, evidence vocabulary, fix history, hedges, trust adjectives or media provenance in reader text (`reader-voice.md`) |
+| Reader voice | `scripts/voice-lint.sh` (with the engagement's `--allow` vocabulary) at `hits=0` on every chapter source; the chapter shape and length match the audience decision, not another audience's; no process narration, evidence vocabulary, fix history, hedges, trust adjectives or media provenance in reader text (`reader-voice.md`) |
 | Link ranges | the target build green (paths exist, ranges inside files, chapter links in the map) and an independent checker's pass on every `src:` range supporting its sentence |
 | Anatomy coverage | `scripts/anatomy-coverage.mjs` reports every source directory, route, compose service and design record mentioned by some chapter, or lists the deliberate omissions |
 | Reproduction | Build/serve instructions and durable production inputs sufficient for another developer; no accidental secrets or unrelated artifacts |
