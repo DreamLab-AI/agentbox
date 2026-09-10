@@ -50,7 +50,8 @@ trap restore EXIT
 # the target was refused as an external directory). An unattended production run needs edit,
 # bash and reads of the engagement workspace allowed; pushing and recursive deletes stay denied.
 allow_json=""
-for d in "$workspace" "$(cd "$(dirname "$promptfile")" && pwd)" "$root" "${allow_dirs[@]}"; do allow_json="$allow_json, \"$d/**\": \"allow\""; done
+mkdir -p "$run/scratch"
+for d in "$workspace" "$(cd "$(dirname "$promptfile")" && pwd)" "$root" /tmp "${allow_dirs[@]}"; do allow_json="$allow_json, \"$d/**\": \"allow\""; done
 allow_json=${allow_json#, }
 cat > "$run/opencode.json" <<JSON
 { "\$schema": "https://opencode.ai/config.json",
@@ -66,7 +67,7 @@ roothash=$(cd "$root" && find explainer codebase-video -type f 2>/dev/null | LC_
 prompt=$(cat "$promptfile")
 prompt="$prompt
 
-Production record for this run: $run/outputs (write every artefact, receipt and hand-up packet there). Target repository: $target."
+Production record for this run: $run/outputs (write every artefact, receipt and hand-up packet there). Scratch space for intermediates: $run/scratch. Target repository: $target."
 # OpenCode 1.17.18 in this container intermittently stalls before creating a session
 # (no event for minutes, in ~10-minute windows; cause not yet identified, 2026-09-10). A
 # stall before the first event has cost nothing, so watch for the first transcript line

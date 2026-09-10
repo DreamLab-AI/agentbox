@@ -41,6 +41,14 @@ test counts as measured, not as the README claims, and the gap between what the
 gates cover and what they do not is exactly what a developer document or a
 debug pass needs.
 
+Then look for the repository's own diagrams: `scripts/diagram-corpus.mjs --repo <target>`
+reports a diagrams-as-code tree if there is one, what it covers, and which of it has gone
+stale against HEAD. A corpus is the best scaffold an explainer can have, because someone
+who knew the system already decided how it divides into parts; absence is normal and the
+script says so and exits 0. Read `references/diagram-corpus.md` before using what it finds:
+a corpus is a catalogue at a declared revision, it is usually internal audit material, and
+mining it is not the same as shipping it.
+
 Search memory first (`memory_search`, namespaces `project-state` and
 `personal-context`) for prior decisions about the product, and `search_ruvnet`
 for anything in the RuvNet stack the explainer will mention. Do not describe a
@@ -190,4 +198,5 @@ mesh find it. Each delivery reference repeats this as its final step.
 - `references/comprehension-arc.md` — the seven questions, per audience.
 - `references/gates.md` — the five gates, bars and ledger format in full.
 - `references/handup.md` — escalating a red gate to a stronger tier by packet, not by session; `scripts/handup.mjs`.
+- `references/diagram-corpus.md` — mining the repository's own diagrams-as-code tree; `scripts/diagram-corpus.mjs`.
 - `evals/evals.json` — the pilot eval prompts for this skill.
