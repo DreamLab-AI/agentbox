@@ -3,20 +3,21 @@
 #
 #   run-case.sh --workspace DIR --iteration N --eval ID --variant old_skill|with_skill \
 #               --skills-root DIR --prompt-file FILE [--target DIR] [--profile provider/model]
-#               [--timeout SECONDS] [--startup-timeout SECONDS] [--startup-attempts N]
+#               [--timeout SECONDS] [--startup-timeout SECONDS] [--startup-attempts N] [--allow DIR]...
 #
 # Writes <workspace>/iteration-N/eval-ID/<variant>/{outputs,transcript.jsonl,timing.json,opencode.json}.
 # Set RUN_CASE_DEBUG=1 to keep OpenCode's debug log in stderr.log.
 # Resume a run's session with: opencode run --session <id> -m <profile> ... (same HOME).
 # The production record for the run is outputs/; the prompt should tell the model to work there.
 set -euo pipefail
-workspace= iteration= evalid= variant= root= promptfile= target=$PWD profile=loom-agent/current timeout=14400
+workspace= iteration= evalid= variant= root= promptfile= target=$PWD profile=loom-agent/current timeout=14400; allow_dirs=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --workspace) workspace=$2; shift 2;; --iteration) iteration=$2; shift 2;; --eval) evalid=$2; shift 2;;
     --variant) variant=$2; shift 2;; --skills-root) root=$2; shift 2;; --prompt-file) promptfile=$2; shift 2;;
     --target) target=$2; shift 2;; --profile) profile=$2; shift 2;; --timeout) timeout=$2; shift 2;;
     --startup-timeout) startup_timeout=$2; shift 2;; --startup-attempts) startup_attempts=$2; shift 2;;
+    --allow) allow_dirs+=("$2"); shift 2;;
     *) echo "unknown option $1" >&2; exit 1;;
   esac
 done
@@ -24,6 +25,7 @@ for v in workspace iteration evalid variant root promptfile; do [ -n "${!v}" ] |
 case "$variant" in old_skill|with_skill) ;; *) echo "variant must be old_skill or with_skill" >&2; exit 1;; esac
 [ -d "$root/explainer" ] || { echo "skills root $root has no explainer/" >&2; exit 1; }
 command -v opencode >/dev/null || { echo "opencode not on PATH" >&2; exit 1; }
+workspace=$(mkdir -p "$workspace" && cd "$workspace" && pwd)
 run="$workspace/iteration-$iteration/eval-$evalid/$variant"
 mkdir -p "$run/outputs"
 root=$(cd "$root" && pwd)
@@ -41,8 +43,22 @@ for s in explainer codebase-video; do
   ln -sfn "$root/$s" "$hot/$s"
 done
 trap restore EXIT
+# Non-interactive `opencode run` auto-rejects every permission it would normally ask for,
+# and the model then stops after its first step (measured 2026-09-10: the fact sheet outside
+# the target was refused as an external directory). An unattended production run needs edit,
+# bash and reads of the engagement workspace allowed; pushing and recursive deletes stay denied.
+allow_json=""
+for d in "$workspace" "$(cd "$(dirname "$promptfile")" && pwd)" "$root" "${allow_dirs[@]}"; do allow_json="$allow_json, \"$d/**\": \"allow\""; done
+allow_json=${allow_json#, }
 cat > "$run/opencode.json" <<JSON
-{ "\$schema": "https://opencode.ai/config.json", "skills": { "paths": ["$root"] }}
+{ "\$schema": "https://opencode.ai/config.json",
+  "skills": { "paths": ["$root"] },
+  "permission": {
+    "edit": "allow",
+    "bash": { "*": "allow", "git push*": "deny", "rm -rf *": "deny" },
+    "webfetch": "allow",
+    "external_directory": { $allow_json }
+  } }
 JSON
 roothash=$(cd "$root" && find explainer codebase-video -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -c1-16)
 prompt=$(cat "$promptfile")
