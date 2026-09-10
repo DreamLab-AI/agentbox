@@ -103,6 +103,17 @@ question: Why does signing in not grant permission?
 | User of the product | what they can do and what happens when they do it | the task they came to perform | none in the prose | 400–800 words |
 
 Present tense, UK English, sentences around 20 words, product terms defined on first use.
+
+The lint is not a secret rubric; write to it from the first draft. It rejects, in order of
+how often each one actually fires: the em dash, in any use — start a new sentence, or use a
+comma or a colon; the chapter referring to itself ("this chapter", "the reader"); the
+vocabulary of evidence (evidence, receipt, verified, drill, fixture, reproduce) where it
+describes the author's work rather than the product's; fix history; hedges about what the
+author could prove; "actual" and "real" as trust adjectives; media provenance in prose; and
+the usual generative filler (delve, seamless, robust, leverage, deep dive). A first draft
+written with these in mind reaches `hits=0` without a cleanup pass; a draft written without
+them typically fails on punctuation alone (measured 2026-09-10: ten of twelve hits on one
+chapter were em dashes).
 Link syntax `[text](src:path#L10-L20)`; the build rejects a missing path or a range outside
 the file, and the checker rejects a range that does not support its sentence — whichever
 layer the link sits in.
