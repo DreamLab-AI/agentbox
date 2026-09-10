@@ -1,4 +1,34 @@
-# HP Qwen: direct language and vision (exception path)
+# HP model: current agent route and historical vision qualification
+
+## Current estate route — 2026-09-10
+
+The shared HP service now loads the matching vision projector and Qwen template
+with speculation disabled. Use Agentbox's OpenCode profile `loom-agent/current`
+through the Loom facade with `loom_options.scaffold=false` for tools and image
+input. The facade supports agent SSE streams; ontology requests without the
+opt-out retain their existing behaviour. No direct LAN model port or temporary
+CPU model is needed for the currently qualified service.
+
+The profile discovers the served model ID and advertised image/context capability.
+Refresh it with `node scripts/aoe-seed-sessions.mjs --providers-only` from the
+Agentbox checkout after a model swap, then start a new agent process. Do not infer
+successful vision from the alias or capability flag: qualification exercised an
+image-only review code, an overlapping UI element, image results returned through
+a tool, a corrected render, session resumption and missing-image refusal. A model,
+template or projector change requires fresh qualification. These are bounded
+integration results, not proof of explainer quality or arbitrary visual accuracy.
+
+`scripts/loom-draft.mjs` remains a fixed-packet drafting helper; it does not provide
+the tool-execution or progressive skill-discovery loop. Use the agent harness when
+evaluating those capabilities. Agentbox's `docs/user/loom-agent.md` describes the
+provider profile and model-swap procedure.
+
+## Historical isolated qualification — 2026-09-09
+
+The remainder records the earlier exception and its receipts. Its statements
+about the resident service lacking vision apply to 9 September, not the current
+deployment. Use it only when reproducing that experiment or diagnosing a similar
+configuration gap; it is not the standing production route.
 
 **This is a manually qualified exception, not the standing path.** The default LLM
 path for drafting the microsite is the Ontology Loom façade,

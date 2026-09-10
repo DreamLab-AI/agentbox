@@ -1393,9 +1393,9 @@ worktree      = true
 eager_mandate = false
 
 [[interaction_plane.session_seeds]]
-slug          = "loom-raw"            # Raw Qwen via :8085 — no Loom scaffold, for coding tasks
+slug          = "loom-raw"            # Model-agnostic Loom passthrough; legacy slug preserves sessions
 tool          = "opencode"
-model         = "loom-raw/qwen3.8-27B"
+model         = "loom-agent/current"
 worktree      = true
 eager_mandate = false
 
