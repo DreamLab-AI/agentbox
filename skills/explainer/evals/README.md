@@ -38,6 +38,14 @@ for, so the per-run config allows edit, bash, web fetch and reads of the workspa
 prompt directory, the skill root and any `--allow` directory, while denying `git push` and
 recursive deletes. A run without those permissions stops after its first step.
 
+Measure before you judge. `evals/grade-run.mjs --run <run-dir> --repo <target>` settles
+everything a script can: which skills were loaded, whether any request went off the pinned
+profile, what the run produced by kind, whether every `src:` link it wrote resolves and stays
+inside its file, the lint result, the hand-up record, and whether the run reached a stop or
+was cut off. Give the grader agent those measurements and the transcript, and let it judge
+only what remains — whether the prose teaches, whether a diagram is right, whether a capture
+shows what it claims.
+
 Hand-ups are part of the result. `scripts/handup.mjs stats --record outputs` gives the
 per-run hand-up count, reason mix and tokens by tier; the analyst pass reads those
 alongside the assertion grades. A candidate that scores the same on assertions but hands

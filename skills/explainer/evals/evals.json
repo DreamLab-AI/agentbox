@@ -31,6 +31,21 @@
       "expected_output": "Two chapters in the executive register that pass voice-lint and the target build; the diagram, screenshots and clip produced through the specialist handoffs with receipts (pocket-tts narration, ComfyUI illustration labelled as illustration, ffmpeg receipt, captions); gates recorded per chapter; exactly one hand-up packet for the seeded bad range, written after a changed retry rather than an identical one, with the run continuing on unblocked work; no cloud model calls from the run; project facts kept in the engagement fixtures, not the skill.",
       "files": [
         "walkthroughs/executive/teaching-contract.md"
+      ],
+      "expectations": [
+        "Chapters 1 and 2 exist as Markdown with front matter, written in the executive register rather than an engineer's",
+        "Every src: link in the produced chapters resolves to a file and its line range is inside that file",
+        "scripts/voice-lint.sh reports 0 hits on every produced chapter",
+        "The out-of-range citation supplied in the fact sheet appears in no chapter",
+        "Exactly one hand-up packet was written for that out-of-range citation, after a retry that changed something, and the run continued on unblocked work",
+        "A request-to-publication diagram exists as both source and a render the reader can see",
+        "The screenshots were captured from the running application, with mode and input identity labelled, not authored as markup",
+        "A clip of 30 to 60 seconds exists with captions, a transcript, narration from the local speech service and a render receipt",
+        "Generated illustration is labelled as illustration and never presented as software behaviour",
+        "The media specialists were discovered through the catalogue and loaded, rather than their work improvised in shell",
+        "No provider other than the pinned local profile answered any request",
+        "Gate results are recorded per chapter in the production record, with the date and revision",
+        "Project facts stayed in the engagement fixtures and the skill tree was not modified by the run"
       ]
     }
   ]
