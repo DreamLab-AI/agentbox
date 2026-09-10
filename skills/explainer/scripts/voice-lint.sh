@@ -12,7 +12,9 @@ TRUST='\b(the (actual|real) [a-z]+|actual [a-z]+ (output|gate|executor|renderer|
 MEDIA='\b(narrat(ion|ed|or)|caption|transcript|video|clip|screenshot|recording|bm_[a-z]+)\b'
 SLOP='—|\b(delve|delving|seamless(ly)?|robust(ly)?|leverage[sd]?|leveraging|worth noting|it is important to note|tapestry|game-changer|cutting-edge|unlock|dive into|deep dive)\b'
 for f in "$@"; do
-  text=$(sed -e 's/<[^>]*>/ /g' "$f")
+  # Strip HTML tags, fenced code, inline code spans and Markdown link targets: identifiers such as
+  # a route named /screenshot or a file called evidence.ts are code, not prose.
+  text=$(sed -e 's/<[^>]*>/ /g' "$f" | awk '/^```/{f=!f;next} !f' | sed -E 's/`[^`]*`/ /g; s/\]\([^)]*\)/]/g')
   total=0
   for name in SELF EVID HIST HEDGE TRUST MEDIA SLOP; do
     pat=${!name}

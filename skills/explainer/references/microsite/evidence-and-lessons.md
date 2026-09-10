@@ -203,3 +203,40 @@ Narration editorial acceptance, remaining runtime journeys, manual accessibility
 review and full deployment verification remain under active development. The workflow in this skill specifies their required outcomes;
 it does not assert the pilot has already achieved them. Update this section after
 verified results and move only reusable lessons into the established list.
+
+## Lessons from the campaignbuilder rewrite (2026-09-09)
+
+The pilot's twenty pages were replaced in one evening by fifteen anatomy-sectioned chapters
+(23,974 words, 900+ source links, 173 files in the pane index) written by a research → write
+→ adversarial check → revise pipeline: 87 agent runs, 41 minutes wall clock, about 10M
+subagent tokens. Sonnet researched and checked; Opus wrote and revised; the session model
+(the queen) wrote the brief, the build, the lints, fixed the last mechanical issues and
+judged the result. What the run taught:
+
+- **The checker earns its cost.** First-round checks failed 12 of 15 chapters, almost
+  always on link-range precision: a range that stopped one line short of the clause it
+  supported, a count taken from a table rather than the tree, a sentence over 30 words.
+  Two rounds cleared 12; the last three needed one more mechanical pass by the queen. Give
+  the checker the brief and the "must cover" list, not just the chapter.
+- **Section by anatomy, then measure it.** `anatomy-coverage.mjs` found nine parts of the
+  system no chapter mentioned after the mesh finished (an asset store, a test helper, six
+  routes, one design record set). Each took one sentence to close. Without the measure they
+  would have stayed invisible, because every chapter was individually "complete".
+- **A lint needs a code-aware tokeniser.** The first voice lint flagged a route literally
+  named `/screenshot` and the word `evidence` inside a file path; strip code spans and link
+  targets before matching prose.
+- **The brief is the coordination mechanism.** Fifteen parallel writers stayed consistent
+  because the brief fixed the reader, the voice, the chapter shape, the link syntax and the
+  chapter map in one file every agent read first. Cross-chapter links resolved on the first
+  build for 14 of 15 chapters.
+- **Parallel builds need a tolerant build.** While chapters are being written in parallel,
+  "unknown chapter" errors for ids in the map are expected noise; the build reports them but
+  writers are told which errors are theirs.
+- **The reference table belongs to the reader.** The opening chapter's design-record table
+  (28 records, status, one line each) pushed it to 2,000 words, over the 1,600 target; a
+  compact lookup table is worth the length because a newcomer will otherwise open the
+  records in numeric order and read two superseded ones first.
+- **The direct model is the background path; the façade is not.** See
+  `text-drafting-qualification-2026-09-09.json`: the HP model drafted a clean, correctly
+  ranged section in 13–20 s once its packet carried the mapping evidence it asked for; the
+  Loom façade served an ontology passage instead of calling the model.
