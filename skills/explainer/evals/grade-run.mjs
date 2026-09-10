@@ -117,7 +117,7 @@ const handups = packets.map((f) => { const d = JSON.parse(readFileSync(join(hand
 
 const result = {
   run: relative(process.cwd(), run), variant: timing?.variant ?? null, iteration: timing?.iteration ?? null,
-  skills_root_hash: timing?.skills_root_hash ?? null, wall_seconds: timing?.wall_seconds ?? null,
+  skills_root_hash: timing?.skills_root_hash ?? null, prompt_sha256: timing?.prompt_sha256 ?? null, wall_seconds: timing?.wall_seconds ?? null,
   exit_status: timing?.exit_status ?? null, launches: timing?.launches?.length ?? null,
   completed: (finishReasons.stop ?? 0) > 0 || (timing?.exit_status === 0 && !Object.keys(finishReasons).includes('tool-calls')),
   steps, finish_reasons: finishReasons, tokens: lastTokens, tool_calls: tools, tool_errors: toolErrors,

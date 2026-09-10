@@ -64,6 +64,7 @@ cat > "$run/opencode.json" <<JSON
     "external_directory": { "*": "allow"$deny_json }
   } }
 JSON
+prompthash=$(sha256sum "$promptfile" | cut -c1-16)
 roothash=$(cd "$root" && find explainer codebase-video -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -c1-16)
 prompt=$(cat "$promptfile")
 prompt="$prompt
@@ -121,7 +122,7 @@ tools=$( { grep -c '"type":"tool_use"' "$run/transcript.jsonl" || true; } | tail
 tools=${tools:-0}
 cat > "$run/timing.json" <<JSON
 { "eval": "$evalid", "variant": "$variant", "iteration": $iteration, "profile": "$profile", "skills_root": "$root",
-  "skills_root_hash": "$roothash", "pinned_via": "$hot/{explainer,codebase-video}", "target_seed": "${target_seed:-none}", "session": "${session:-null}", "started": "$started", "wall_seconds": $((end-start)),
+  "skills_root_hash": "$roothash", "prompt_sha256": "$prompthash", "prompt_file": "$promptfile", "pinned_via": "$hot/{explainer,codebase-video}", "target_seed": "${target_seed:-none}", "session": "${session:-null}", "started": "$started", "wall_seconds": $((end-start)),
   "exit_status": $status, "tool_calls": $tools, "launches": [$(IFS=,; echo "${launches[*]}")], "cache": "unrecorded" }
 JSON
 echo "eval-$evalid $variant: exit $status, $((end-start))s, $tools tool calls, session ${session:-none} → $run"
