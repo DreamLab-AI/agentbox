@@ -36,6 +36,13 @@ that is absent from the catalogue, or a job that ends in error after one resume,
 hand-up with `reason=specialist` (`references/handup.md`), not a reason to improvise. Share
 GPU capacity conservatively with other work and preserve completed outputs.
 
+Media made for another deliverable is not media made for this one. Reusing an existing
+clip, capture or diagram is legitimate only when it answers this chapter's review question,
+and it is then re-reviewed and labelled as carried over, with its origin in the production
+record. Copying a neighbouring pack's files into this one and counting them as delivered is
+the failure this rule exists to stop: a run did exactly that on 2026-09-10, importing four
+clips from a developer pack into an executive one where none of them answered the chapter.
+
 Narration precedes final scene timing. Diagram and source text should be rendered
 deterministically even when a generated clip supplies atmosphere. Review every
 scene at delivery resolution and listen through narration and cuts; encoded
