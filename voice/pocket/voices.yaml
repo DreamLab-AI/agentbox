@@ -1,0 +1,20 @@
+- name: Alba
+  good: true
+  source:
+    source_type: file
+    path_on_server: alba
+- name: Marius
+  good: true
+  source:
+    source_type: file
+    path_on_server: marius
+- name: Cosette
+  good: true
+  source:
+    source_type: file
+    path_on_server: cosette
+- name: Javert
+  good: true
+  source:
+    source_type: file
+    path_on_server: javert

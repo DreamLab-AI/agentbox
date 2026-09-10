@@ -1,0 +1,71 @@
+# One shared speech plane for all estate consumers: current streaming ASR and
+# CPU speech synthesis. Web voice clients attach to this project over the
+# external VisionClaw network; they do not own model containers.
+name: agentbox-speech
+services:
+  speech-to-text:
+    image: agentbox-nemotron-asr:local
+    build:
+      context: ./voice/nemotron
+    container_name: nemotron-asr
+    ports: ["127.0.0.1:8897:8000"]
+    restart: unless-stopped
+    init: true
+    shm_size: 2gb
+    environment:
+      ASR_MODEL: ${ASR_MODEL:-nvidia/nemotron-3.5-asr-streaming-0.6b}
+      ASR_LANGUAGE: ${ASR_LANGUAGE:-auto}
+      ASR_LOOKAHEAD_TOKENS: ${ASR_LOOKAHEAD_TOKENS:-3}
+      HF_HOME: /models/huggingface
+      TRANSFORMERS_CACHE: /models/huggingface
+      CUDA_VISIBLE_DEVICES: ${ASR_CUDA_VISIBLE_DEVICES:-0}
+    volumes:
+      - speech-models:/models
+    networks: [visionclaw]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5m
+      retries: 60
+
+  pocket-tts:
+    image: agentbox-pocket-tts:local
+    build:
+      context: ./voice/pocket
+    container_name: pocket-tts
+    ports: ["127.0.0.1:8898:8000"]
+    restart: unless-stopped
+    init: true
+    cpu_shares: 2048
+    mem_limit: 4g
+    pids_limit: 256
+    environment:
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+    volumes:
+      - pocket-cache:/root/.cache
+    networks: [visionclaw]
+    healthcheck:
+      test: [CMD, /app/.venv/bin/python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network
+volumes:
+  pocket-cache:
+    name: agentbox-pocket-cache
+  speech-models:
+    name: agentbox-speech-models

@@ -156,51 +156,28 @@ Selectable MP4 captions are enabled through the player's caption control; for
 social exports that need permanent captions, use the **ffmpeg-processing** skill
 and the rendered SRT, and review safe areas on the target aspect ratio.
 
-## Repeatable local narration with Kokoro
+## Repeatable local narration with Pocket
 
-On Nix-based runtimes, an installed wheel may fail to load `libstdc++.so.6` even
-when its Python package is present. Run in a development shell with the GCC
-runtime available, or include the directory reported by
-`dirname "$(g++ -print-file-name=libstdc++.so.6)"` in `LD_LIBRARY_PATH` for the
-narration process. Preserve the underlying import error when diagnosing this.
-Use a writable project cache via `UV_CACHE_DIR` if the home cache is a small tmpfs.
-
-The optional helper uses [Kokoro-ONNX](https://github.com/thewh1teagle/kokoro-onnx)
-on CPU, leaving the GPU available for video. Its isolated environment is created
-inside the production project, not installed into Agentbox's managed Python:
+The helper uses Python's standard library and the shared CPU speech service.
+Start it with `agentbox.sh up` or `docker compose -f docker-compose.speech.yml up -d`.
+Do not install a second speech model in the skill environment. Within the estate,
+`http://pocket-tts:8000` is reachable on `visionclaw_network`; from a host-side
+script, pass a reachable service address explicitly with `--endpoint`.
 
 ```bash
-uv venv /absolute/project/tts-venv
-uv pip install --python /absolute/project/tts-venv/bin/python \
-  'kokoro-onnx==0.6.1' soundfile
-```
-
-Download `kokoro-v1.0.onnx` and `voices-v1.0.bin` from the official
-[model-files-v1.0 release](https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0)
-to a reusable model folder. Record the release and downloaded hashes. Check the
-current upstream documentation when intentionally changing the model version;
-model and voices must be a compatible pair. The helper receives explicit paths
-and never downloads or silently upgrades a model.
-
-```bash
-/absolute/project/tts-venv/bin/python scripts/narrate.py \
-  /absolute/project/plan.json --output /absolute/project/narration-v1 \
-  --model /absolute/models/kokoro-v1.0.onnx \
-  --voices /absolute/models/voices-v1.0.bin \
-  --voice af_sarah --lang en-us --speed 1.0 --breathing 0.3
+python3 scripts/narrate.py /absolute/project/plan.json \
+  --output /absolute/project/narration-v1 --voice alba --speed 1.0 --breathing 0.3
 python3 scripts/video_project.py validate /absolute/project/narration-v1/plan.json
 python3 scripts/video_project.py compose /absolute/project/narration-v1/plan.json \
   --output /absolute/project/delivery-v1
 ```
 
-The output directory must be new. The source plan is preserved. Each scene gets a
-WAV, a measured speech duration and a frame-aligned scene duration that covers
-speech plus breathing time and the caption reading budget. The generated
-`plan.json` resolves original asset paths, and `narration-receipt.json` preserves
-model/voice hashes, package version, voice settings and audio hashes. Visual
-assets can still be in progress while speech is generated; run full video plan
-validation after those assets exist. Listen before full composition. A numerical
-non-silence check catches empty model output, not incorrect speech.
+The output directory must be new. Source plans are preserved. Each scene gets a
+WAV and a frame-aligned duration covering measured speech, breathing and caption
+reading time. The receipt preserves endpoint, voice, CPU provider and audio
+hashes. Background requests yield to interactive requests between bounded text
+segments. Inspect pronunciation before composition; non-silence is not proof of
+correct speech. Only English and synthesis speed 1.0 are currently supported.
 
 ## Quality evidence
 

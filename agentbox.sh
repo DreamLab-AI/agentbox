@@ -53,7 +53,7 @@ Local lifecycle commands:
   ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
-  ${GREEN}voice${NC}            Manage/open the operator cockpit + Unmute stack [open|up|down|logs|health|status|certs|rebuild|shell]
+  ${GREEN}voice${NC}            Manage/open the operator cockpit + web voice stack [open|up|down|logs|health|status|certs|rebuild|shell]
   ${GREEN}model-router${NC}     ADR-2080 metaharness router console [fetch|check|status|route "<task>" [--dry-run]|console]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}android${NC}          [EXPERIMENTAL, gated] redroid Android/Play sidecar [up|down|logs|status|screencap|shell|id] — needs AGENTBOX_ENABLE_ANDROID=1
@@ -574,15 +574,18 @@ GUI_TOOLS_FILE="${SCRIPT_DIR}/docker-compose.gui-tools.yml"
 GUI_TOOLS_COMPOSE_ARGS=(--project-name agentbox -f "$GUI_TOOLS_FILE")
 OPENMED_FILE="${SCRIPT_DIR}/docker-compose.openmed.yml"
 OPENMED_COMPOSE_ARGS=(--project-name agentbox -f "$OPENMED_FILE")
+SPEECH_FILE="${SCRIPT_DIR}/docker-compose.speech.yml"
+SPEECH_COMPOSE_ARGS=(--project-name agentbox-speech -f "$SPEECH_FILE")
 # Voice + AoE operator console sidecar (its own lifecycle, like browsercontainer).
-# The caddy console lives in docker-compose.voice.yml; the Kyutai Unmute speech
-# stack is an external build context (voice-stack/unmute clone) layered via
-# voice/unmute-override.yml. VOICE_UNMUTE_DIR is the container path to that clone
+# The Caddy console lives in docker-compose.voice.yml. The web client/backend
+# sources come from an external checkout and are layered via compose.web.yml plus
+# unmute-override.yml. Nemotron ASR + Pocket TTS are the shared speech plane.
 # (bind SOURCES inside the compose resolve on the HOST — see voice/README.md).
 VOICE_FILE="${SCRIPT_DIR}/docker-compose.voice.yml"
 VOICE_OVERRIDE_FILE="${SCRIPT_DIR}/voice/unmute-override.yml"
 VOICE_CONSOLE_DIR="${SCRIPT_DIR}/voice/console"
 VOICE_UNMUTE_DIR="${VOICE_UNMUTE_DIR:-$(dirname "$SCRIPT_DIR")/voice-stack/unmute}"
+export VOICE_UNMUTE_DIR
 # HOST path mapping to the container's ~/workspace/project — compose bind SOURCES
 # resolve on the host docker daemon, so they must be host paths. The product config
 # (docker-compose.voice.yml / voice/unmute-override.yml) references VOICE_HOST_ROOT
@@ -614,7 +617,7 @@ cd "$SCRIPT_DIR"
 # The tab0-bridge authenticates every write surface with BRIDGE_TOKEN. It must
 # exist in .env BEFORE the agentbox container starts, because compose loads .env
 # as env_file -> PID-1 -> supervisord -> the supervised [program:tab0-bridge]
-# inherits it. `voice up` reads the SAME .env so the Unmute backend
+# inherits it. `voice up` reads the SAME .env so the web voice backend
 # (KYUTAI_LLM_API_KEY) and the console break-glass bearer
 # (NIP98_PROXY_ALLOW_BEARER) present the matching token — no more silent 401s.
 ENV_FILE="${SCRIPT_DIR}/.env"
@@ -703,6 +706,13 @@ _sha256_file() {
     fi
 }
 
+_ensure_visionclaw_network() {
+    if ! docker network inspect visionclaw_network >/dev/null 2>&1; then
+        echo -e "${CYAN}Creating external network visionclaw_network...${NC}"
+        docker network create visionclaw_network
+    fi
+}
+
 cmd_up() {
     local do_build=0
     local do_registry=0
@@ -769,10 +779,7 @@ cmd_up() {
 
     # Ensure the external network exists (standalone-first: no pre-existing
     # host deployment required). Silently succeeds if already present.
-    if ! docker network inspect visionclaw_network >/dev/null 2>&1; then
-        echo -e "${CYAN}Creating external network visionclaw_network...${NC}"
-        docker network create visionclaw_network
-    fi
+    _ensure_visionclaw_network
 
     # Adopt an orphaned ruvector-postgres container if one exists outside
     # compose management (e.g. started by hand with `docker run` during the
@@ -797,6 +804,7 @@ cmd_up() {
     _ensure_bridge_token || echo -e "${YELLOW}Continuing without BRIDGE_TOKEN — tab0-bridge will not start on a non-loopback bind.${NC}"
 
     echo -e "${CYAN}Starting Docker stack...${NC}"
+    docker compose "${SPEECH_COMPOSE_ARGS[@]}" up -d --build --wait || return 1
     docker compose "${COMPOSE_ARGS[@]}" up -d
 
     if [[ "$wait_live" -eq 1 ]]; then
@@ -872,6 +880,10 @@ cmd_down() {
     echo -e "${CYAN}Stopping Docker stack...${NC}"
     # shellcheck disable=SC2086
     docker compose "${COMPOSE_ARGS[@]}" down $flags
+    # The unified Pocket service is part of the core AgentBox lifecycle. Keep
+    # its model cache unless the operator explicitly requested --volumes.
+    # shellcheck disable=SC2086
+    docker compose "${SPEECH_COMPOSE_ARGS[@]}" down $flags
 
     echo ""
     echo -e "${GREEN}Stack stopped.${NC}"
@@ -1177,7 +1189,21 @@ cmd_health() {
             fi
         fi
 
-        if [[ -n "$degraded" || "$degraded_count" -gt 0 ]]; then
+        local speech_failed=0
+        if curl -sf http://localhost:8897/health >/dev/null 2>&1; then
+            echo -e "${GREEN}  speech/nemotron-asr: healthy${NC}"
+        else
+            echo -e "${RED}  speech/nemotron-asr: unavailable${NC}"
+            speech_failed=1
+        fi
+        if curl -sf http://localhost:8898/health >/dev/null 2>&1; then
+            echo -e "${GREEN}  speech/pocket-tts: healthy${NC}"
+        else
+            echo -e "${RED}  speech/pocket-tts: unavailable${NC}"
+            speech_failed=1
+        fi
+
+        if [[ -n "$degraded" || "$degraded_count" -gt 0 || "$speech_failed" -gt 0 ]]; then
             exit 1
         fi
     else
@@ -1884,7 +1910,7 @@ OM_HELP
 
 # ---------------------------------------------------------------------------
 # voice lifecycle — voice + AoE operator console (Caddy :8444/:8443) + the
-# external Kyutai Unmute speech stack. Own lifecycle, like browsercontainer.
+# external web conversation sources. Own lifecycle, like browsercontainer.
 # ---------------------------------------------------------------------------
 
 # Generate a self-signed TLS pair for the console origin if one is absent.
@@ -1916,13 +1942,13 @@ _voice_ensure_certs() {
     echo -e "${GREEN}Cert written to ${certdir}/ (self-signed; accept once in the browser).${NC}"
 }
 
-# Assemble the compose invocation. The caddy console (this repo) always
-# participates; the Unmute clone's compose + our override are layered in only
-# when the clone is present (26 GB external build context, not vendored).
+# Assemble the compose invocation. The Caddy console always participates; the
+# maintained web stack and its runtime override are layered in when the external
+# source checkout is present. Legacy upstream TTS/LLM services are never loaded.
 _voice_compose_args() {
     VOICE_COMPOSE_ARGS=(--project-name agentbox-voice)
     if [[ -f "${VOICE_UNMUTE_DIR}/docker-compose.yml" ]]; then
-        VOICE_COMPOSE_ARGS+=(-f "${VOICE_UNMUTE_DIR}/docker-compose.yml" -f "$VOICE_OVERRIDE_FILE")
+        VOICE_COMPOSE_ARGS+=(-f "${SCRIPT_DIR}/voice/compose.web.yml" -f "$VOICE_OVERRIDE_FILE")
     fi
     VOICE_COMPOSE_ARGS+=(-f "$VOICE_FILE")
 }
@@ -1971,6 +1997,8 @@ cmd_voice() {
             ;;
         up)
             _voice_ensure_certs || exit 1
+            _ensure_visionclaw_network
+            docker compose "${SPEECH_COMPOSE_ARGS[@]}" up -d --build --wait || return 1
             if [[ ! -f "${VOICE_UNMUTE_DIR}/docker-compose.yml" ]]; then
                 echo -e "${YELLOW}Unmute clone not found at ${VOICE_UNMUTE_DIR}.${NC}"
                 echo -e "${YELLOW}Bringing up the console only — the /embed voice strip and /api routes"
@@ -2017,9 +2045,9 @@ cmd_voice() {
             echo -e "  Routes: /embed (voice) · /feed+/bridge (tab0-bridge) · /aoe/* (sessions) · /approvals/* (governance)"
             ;;
         down)
-            echo -e "${CYAN}Stopping the voice console + speech stack...${NC}"
+            echo -e "${CYAN}Stopping the voice console + web conversation stack...${NC}"
             docker compose "${VOICE_COMPOSE_ARGS[@]}" down
-            echo -e "${GREEN}Voice stack stopped.${NC}"
+            echo -e "${GREEN}Voice UI stopped. Shared Nemotron/Pocket speech remains available.${NC}"
             ;;
         logs)
             docker compose "${VOICE_COMPOSE_ARGS[@]}" logs -f --tail 100
@@ -2036,9 +2064,21 @@ cmd_voice() {
             fi
             # Upstreams are best-effort — report but don't fail on them.
             if curl -skf https://localhost:8444/api/v1/health >/dev/null 2>&1; then
-                echo -e "${GREEN}Unmute backend reachable via /api${NC}"
+                echo -e "${GREEN}Web voice backend reachable via /api${NC}"
             else
-                echo -e "${YELLOW}Unmute backend not reachable via /api (speech stack down?)${NC}"
+                echo -e "${YELLOW}Web voice backend not reachable via /api${NC}"
+            fi
+            if curl -sf http://localhost:8898/health >/dev/null 2>&1; then
+                echo -e "${GREEN}Unified Pocket TTS service healthy${NC}"
+            else
+                echo -e "${RED}Unified Pocket TTS service unavailable${NC}"
+                exit 1
+            fi
+            if curl -sf http://localhost:8897/health >/dev/null 2>&1; then
+                echo -e "${GREEN}Unified Nemotron ASR service healthy${NC}"
+            else
+                echo -e "${RED}Unified Nemotron ASR service unavailable${NC}"
+                exit 1
             fi
             ;;
         certs)
@@ -2057,7 +2097,7 @@ cmd_voice() {
             ;;
         help|*)
             cat <<VOICE_HELP
-${CYAN}voice — voice + AoE operator console (Caddy :8444) + Kyutai Unmute speech stack${NC}
+${CYAN}voice — voice + AoE operator console (Caddy :8444) + unified speech plane${NC}
 
 Usage: $0 voice <command>
 
@@ -2066,7 +2106,7 @@ Usage: $0 voice <command>
   ${GREEN}down${NC}      Stop the voice stack
   ${GREEN}logs${NC}      Follow logs
   ${GREEN}status${NC}    Compose ps
-  ${GREEN}health${NC}    Check the console origin (and, best-effort, the Unmute backend)
+  ${GREEN}health${NC}    Check console, backend, Nemotron ASR, and Pocket TTS
   ${GREEN}certs${NC}     Regenerate the self-signed console TLS pair (certs/ is gitignored)
   ${GREEN}rebuild${NC}   Full rebuild (down + build --no-cache + up)
   ${GREEN}shell${NC}     Shell into the caddy console container

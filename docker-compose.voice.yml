@@ -5,23 +5,22 @@
 # Its own lifecycle (apply-class: sidecar) — it is NOT part of `agentbox.sh up`.
 #
 # This file owns the AGENTBOX-native part of the voice plane: the Caddy
-# operator origin (:8444 console, :8443 stock-Unmute debug) that consolidates
+# operator origin (:8444 console, :8443 web-voice debug) that consolidates
 # every surface same-origin — the voice /embed strip, the AoE session board
 # (via the NIP-98 proxy), governance approvals, and the tab0-bridge feed.
 #
-# The Kyutai Unmute speech stack (STT/TTS/backend/frontend) is an EXTERNAL
+# The web conversation stack (backend/frontend) is an EXTERNAL
 # build context — the kyutai-labs/unmute clone at voice-stack/unmute (26 GB,
 # its own .git, deliberately NOT vendored). agentbox.sh voice up layers, in
 # one compose project:
-#     <unmute-clone>/docker-compose.yml   (upstream services + build contexts)
+#     voice/compose.web.yml             (maintained services + build contexts)
 #   + voice/unmute-override.yml           (agentbox tweaks: LLM=tab0-bridge, GPU pin)
 #   + docker-compose.voice.yml            (this file: the caddy console)
 # so `frontend`/`backend` resolve on the shared project network and the
 # console reaches them by service name.
 #
-# FOLLOW-UP (documented, ADR-044): pin the Unmute fork to a build-arg commit /
-# published image the way browsercontainer/Dockerfile pins Chrome, so the
-# console no longer depends on an out-of-tree working clone.
+# Shared Nemotron ASR and CPU Pocket TTS have their own core-lifecycle project;
+# this sidecar owns only the web client, backend, and console.
 #
 # HOST-PATH NOTE: the docker CLI here drives the HOST daemon, so every bind
 # SOURCE resolves on the host filesystem. VOICE_HOST_ROOT is the host path that
@@ -35,7 +34,7 @@ services:
     hostname: voice-console
     restart: unless-stopped
     ports:
-      # :8443 stock Unmute debug UI; :8444 the operator console (self-signed TLS)
+      # :8443 web voice debug UI; :8444 the operator console (self-signed TLS)
       - "0.0.0.0:8443:8443"
       - "0.0.0.0:8444:8444"
     volumes:
