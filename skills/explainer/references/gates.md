@@ -1,15 +1,18 @@
 # The five gates
 
 Adapted from Repo-Explainer's gates A–E. The headline score is the **lowest** gate; the
-bundle is not linked from the docs index until A, B, C and E are green. D is out of scope
-unless the owner asks for media.
+bundle is not linked from the docs index until every gate the delivery contract requires is
+green. Which gates those are comes from the contract, not from this table's defaults: a
+contract that names videos makes D required, and a docs bundle with no knowledge base makes
+A inapplicable. Decide the required set when the contract is accepted, write it down, and do
+not renegotiate it when a gate turns red.
 
 | Gate | What it checks | Bar | How |
 |---|---|---|---|
 | **A — Knowledge base** | each question in `kb/questions/{tuned,heldout}.jsonl` answered from the `<repo>-kb` namespace via `memory_search`; retrieval scores on `wantPaths` (0.6 top-1 + 0.4 any-top-k), correctness on `mustContain` coverage minus `forbidden` penalty; per-question = 100·(0.4·M1 + 0.6·M2) | every stage ≥ 95, overall ≥ 98, both sets | `kb/grade.mjs` |
 | **B — Comprehension** | a fresh agent (no access to the authoring session) role-plays one audience on the rendered output and must: say what it is; name three concrete uses; recite the first concrete step; confirm each hard concept has a visual | yes on all four, all audiences | manual; record in `gates/ledgers/audit-<audience>.md` |
 | **C — Consistency** | every ledger line resolves to a `file:line` that still says it; built / blocked / deferred matches the README status; links resolve; no invented route, flag, status or command | pass / fail | `scripts/check-ledger.sh`, `scripts/check-links.sh`, then a reader — for the microsite, mechanised by `scripts/voice-lint.sh`, the target build, an independent link-range check and `scripts/anatomy-coverage.mjs` (see below) |
-| **D — Media** | audio / slides teach a true beginner | out of scope by default | — |
+| **D — Media** | audio / video teaches a true beginner, and every clip answers the chapter it sits in | required when the accepted delivery contract names media, out of scope when it does not | scene-by-scene review, plus `evals/grade-run.mjs` for imported media |
 | **E — Visuals** | each hard concept has an accurate diagram that renders where the reader reads (GitHub mermaid and the page) | pass / fail | reader |
 
 ## Ledger format

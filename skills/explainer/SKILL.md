@@ -96,8 +96,9 @@ our own write-up accuracy, never licence to recommend our stack to the target.
 
 ## The gates (A–E)
 
-The headline score is the **lowest** gate; nothing is linked from the repo's
-docs index, or presented as finished, until A, B, C and E are green.
+The headline score is the **lowest** gate; nothing is linked from the repo's docs index,
+or presented as finished, until every gate the accepted delivery contract requires is
+green. A, B, C and E are the usual set; a contract that names media makes D required too.
 `references/gates.md` has the full bars, mechanics and the fail-below-bar
 diagnosis loop.
 

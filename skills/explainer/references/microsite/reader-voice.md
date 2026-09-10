@@ -128,7 +128,15 @@ A chapter ships when all four hold:
 
 ## Where the ledger goes instead
 
-Keep `production/` (scripts and receipts), `evidence/` (raw outputs) and the completion
-audit in the target repo only while the work is live; move them to the engagement archive
-at close-out. They are the author's notebook. The reader gets the chapters, the shell, the
-launcher and `evidence/code-index.json` (the pane's file index), nothing else.
+The author's notebook never enters the target. Scripts, receipts, raw outputs, the claims
+ledger and the completion audit live in the engagement workspace from the first day, beside
+the fixtures, not in the target with a promise to move them at close-out: a temporary
+directory in someone else's repository is a directory that gets committed. What the target
+receives is the reader's material only — the chapters, the shell, the launcher, whatever
+index the source pane needs, and the media that shipped.
+
+The one thing that does legitimately land in the target is the build the reader needs to
+read a clean clone: a dependency-free renderer and its launcher, owned by the deliverable
+and named in it. That is a delivery artefact, not instrumentation. Everything that exists
+to check the work — linters, coverage scripts, graders, the hand-up tool — stays in the
+skill, parameterised by target path.
