@@ -45,6 +45,7 @@ for s in explainer codebase-video; do
   ln -sfn "$root/$s" "$hot/$s"
 done
 trap restore EXIT
+trap 'restore; exit 143' TERM INT HUP
 # Non-interactive `opencode run` auto-rejects every permission it would otherwise ask for,
 # and a rejection ENDS THE RUN mid-task: two runs died that way on 2026-09-10, one writing a
 # capture script to /tmp at 31 minutes, one reading /proc/1/cgroup at 47 minutes. Enumerating
@@ -90,6 +91,7 @@ if [ -n "$target_seed" ] && [ -n "$target_subdir" ]; then
     rm -rf "$seed_dest"; mkdir -p "$seed_dest"; cp -r "$target_seed/." "$seed_dest/"
   }
   trap 'restore; archive_target' EXIT
+  trap 'restore; archive_target; exit 143' TERM INT HUP
 fi
 
 start=$(date -u +%s)
