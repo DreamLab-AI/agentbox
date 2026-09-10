@@ -18,11 +18,14 @@ layout skill-creator's grader, viewer and `aggregate_benchmark.py` expect:
   opencode.json     the per-run config that pinned the skill root
 ```
 
-The skill root is pinned per run with `OPENCODE_CONFIG`, which OpenCode merges as an
-extra config file, so old and candidate never share a skills path. The baseline root is a
-frozen copy of the skill (skill-creator's "snapshot before editing"); the candidate root
-is the source tree. Both roots must also contain the specialists the case will discover
-(at least `codebase-video`), because discovery is part of what is measured.
+The skill root is pinned per run in place. OpenCode discovers skills from `~/.claude/skills`
+first, then the project walk-up, the Codex skills dir and `skills.paths`, and keeps the
+first copy of a name, so an extra config file alone pins nothing (measured 2026-09-10: the
+run root was logged as the duplicate), and a sandbox `HOME` stalls in OpenCode's embedded
+package manager. The runner therefore points the `explainer` and `codebase-video` symlinks
+in `~/.claude/skills` at the run root for the duration of the run and restores them on
+exit. Runs are serialised, so the swap is safe; do not start a Claude Code session that
+needs the hot copy while a run is in progress.
 
 Hand-ups are part of the result. `scripts/handup.mjs stats --record outputs` gives the
 per-run hand-up count, reason mix and tokens by tier; the analyst pass reads those

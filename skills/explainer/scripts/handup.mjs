@@ -5,7 +5,8 @@
 //   handup.mjs attempt  --record DIR --chapter PATH --gate NAME --changed TEXT [--result TEXT] [--cap N]
 //   handup.mjs write    --record DIR --id ID --reason R --ask A --question Q --gate NAME --chapter PATH
 //                       [--gate-output PATH] [--artifact k=v]... [--blocks PATH]... [--session ID]
-//                       [--model ID] [--profile provider/model] [--harness opencode] [--tokens N] [--wall N] [--tier T1|T2]
+//                       [--model ID] [--profile provider/model] [--harness opencode] [--home DIR]
+//                       [--tokens N] [--wall N] [--tier T1|T2]
 //   handup.mjs list     --record DIR [--all] [--json]
 //   handup.mjs reply    --record DIR --id ID --verdict V [--note TEXT] [--guidance TEXT] [--file PATH]...
 //                       [--lesson TEXT] [--by TIER] [--tokens N]
@@ -124,7 +125,7 @@ function cmdWrite(args) {
     id, written: now(), tier_requested: tier, reason, ask, question,
     gate: { name: gate, output: args['gate-output'] ?? null },
     artifacts, attempts,
-    resume: { harness: args.harness ?? 'opencode', session: args.session ?? null, model: args.model ?? null, profile: args.profile ?? null },
+    resume: { harness: args.harness ?? 'opencode', session: args.session ?? null, model: args.model ?? null, profile: args.profile ?? null, home: args.home ?? process.env.HOME ?? null },
     budget_spent: { tokens: Number(args.tokens ?? 0), wall_seconds: Number(args.wall ?? 0) },
     blocks: list(args.blocks),
   };
@@ -184,9 +185,11 @@ function cmdResume(args) {
     ? `Hand-up ${id} answered with guidance. Apply it on the next attempt and re-run the gate.\n\n${reply.guidance}`
     : `Hand-up ${id} resolved by ${reply.by}: the following files were changed (${reply.files.join(', ')}). ${reply.note ?? ''}\nRe-run the gate on the edited chapter and continue.`;
   const cmd = ['opencode', 'run', '--session', session, '--format', 'json', ...(profile ? ['-m', profile] : []), message];
-  if (args['dry-run']) { console.log(cmd.map((c) => (/\s/.test(c) ? JSON.stringify(c) : c)).join(' ')); return; }
+  if (args['dry-run']) { console.log(`HOME=${packet.resume.home ?? process.env.HOME} ` + cmd.map((c) => (/\s/.test(c) ? JSON.stringify(c) : c)).join(' ')); return; }
   const cwd = args.cwd ? resolve(args.cwd) : dir;
-  const res = spawnSync(cmd[0], cmd.slice(1), { cwd, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  const home = packet.resume.home ?? process.env.HOME;
+  const env = { ...process.env, HOME: home, XDG_CONFIG_HOME: `${home}/.config`, XDG_DATA_HOME: `${home}/.local/share` };
+  const res = spawnSync(cmd[0], cmd.slice(1), { cwd, env, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
   appendFileSync(join(hu, `${id}.resume.jsonl`), (res.stdout ?? '') + (res.stderr ? `\n{"stderr":${JSON.stringify(res.stderr)}}\n` : ''));
   if (res.status !== 0) fail(`opencode exited ${res.status}; see handup/${id}.resume.jsonl`, 1);
   console.log(`resumed session ${session} for ${id}; events in handup/${id}.resume.jsonl`);
