@@ -67,6 +67,11 @@ The image bakes `/opt/agentbox/skills` (128 skills). Skills are the JIT context 
 
 ## Runtime model gotchas
 
+- Deploy with `./agentbox.sh rebuild` (`--no-cleanup` preserves recovery images/caches).
+  It loads `docker-compose.override.yml`, which supplies the existing workspace volume,
+  external project mounts and `.env`. A base-only `docker compose -f docker-compose.yml`
+  recreation omits these and exposes an unrelated workspace bind. Never replace the
+  normal launch path with a base-only restart; inspect effective mounts after deployment.
 - `HOME=/home/devuser`; workspace at `/home/devuser/workspace` (`$WORKSPACE`). The literal path `/workspace` is retired and will break.
 - Supervisord runs as PID 1 root; every long-running program drops to `user=devuser`. No agent-facing process runs as root after bootstrap.
 - Older docs describing `gemini-user`/`openai-user`/etc pseudo-users are legacy, not the runtime path.

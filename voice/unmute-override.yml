@@ -68,7 +68,6 @@ services:
       - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/unmute:/app/unmute
       - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT}/agentbox/voice/pocket/voices.yaml:/app/voices.yaml:ro
     networks:
-      - default
       - visionclaw
 
   frontend:

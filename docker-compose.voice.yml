@@ -51,7 +51,6 @@ services:
       retries: 3
       start_period: 20s
     networks:
-      - default
       - visionclaw
 
 volumes:

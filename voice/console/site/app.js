@@ -9,7 +9,7 @@
 //   /bridge/* + /feed  — tab0-bridge bearer (BRIDGE_TOKEN) when set; otherwise
 //                        a NIP-98 header signed via window.nostr (the bridge
 //                        verifies against its operator/allowlist keys). Header
-//                        for fetch, ?token= / ?auth=<signed NIP-98> for the
+//                        for fetch, ?access_token= / ?auth=<signed NIP-98> for the
 //                        WebSocket upgrade (browsers can't set headers on a WS
 //                        handshake).
 //   /aoe/* + /approvals/* — governed. Preferred: a NIP-98 (kind-27235) header
@@ -86,7 +86,8 @@ function stripPrefix(path) {
 // prefix-stripped URL so the server-side `u`-tag match succeeds.
 async function signNip98(method, path, bodyString) {
   const url = location.origin + stripPrefix(path.split('?')[0]);
-  const tags = [['u', url], ['method', method.toUpperCase()]];
+  // Same-second requests must have distinct event IDs under replay protection.
+  const tags = [['u', url], ['method', method.toUpperCase()], ['nonce', crypto.randomUUID()]];
   if (bodyString) tags.push(['payload', await sha256hex(bodyString)]);
   const event = { kind: 27235, created_at: Math.floor(Date.now() / 1000), tags, content: '' };
   const signed = await window.nostr.signEvent(event);
@@ -146,7 +147,7 @@ async function authHeader(path, method, bodyString, preferBearer) {
 let sessionActive = false;
 async function probeSession() {
   try {
-    const r = await fetch('/approvals/v1/approvals', { credentials: 'same-origin' });
+    const r = await fetch('/nip07/session', { credentials: 'same-origin', cache: 'no-store' });
     sessionActive = r.ok;
   } catch { sessionActive = false; }
   refreshAuthBadge();
@@ -259,13 +260,21 @@ function renderTurn(turn) {
 }
 
 let feedWs = null;
-let feedManualClose = false;
+let feedGeneration = 0;
 let feedRetry = 0;
 let feedRetryTimer = null;
 async function connectFeed() {
-  const bearer = getBearer();
-  let cred = bearer ? `?token=${encodeURIComponent(bearer)}` : '';
-  if (!cred && hasNostr()) {
+  const generation = ++feedGeneration;
+  clearTimeout(feedRetryTimer);
+  const previous = feedWs;
+  feedWs = null;
+  if (previous) {
+    previous.onclose = null;
+    previous.close();
+  }
+  const bearer = sessionActive ? '' : getBearer();
+  let cred = bearer ? `?access_token=${encodeURIComponent(bearer)}` : '';
+  if (!sessionActive && !cred && hasNostr()) {
     // Browsers cannot set headers on a WS handshake: carry the signed NIP-98
     // event as ?auth= (the bridge verifies it exactly like the header form).
     try {
@@ -273,8 +282,9 @@ async function connectFeed() {
       cred = `?auth=${encodeURIComponent(header.slice('Nostr '.length))}`;
     } catch { /* signer refused — connect open; bridge will 401 if gated */ }
   }
+  // Signing may outlive an auth change or a newer connection attempt.
+  if (generation !== feedGeneration) return;
   const url = `wss://${location.host}/feed` + cred;
-  feedManualClose = false;
   try { feedWs = new WebSocket(url); } catch { $('feed-state').textContent = 'error'; return; }
   const ws = feedWs;
   ws.onopen = () => { feedRetry = 0; $('feed-state').textContent = 'live'; };
@@ -284,7 +294,7 @@ async function connectFeed() {
     else if (msg.type === 'turn' || msg.type === 'turn-update') renderTurn(msg.turn);
   };
   ws.onclose = () => {
-    if (feedManualClose) return;               // deliberate reconnect handles itself
+    if (generation !== feedGeneration) return;
     $('feed-state').textContent = 'reconnecting';
     const delay = Math.min(30000, 1000 * (2 ** feedRetry)) + Math.floor(Math.random() * 500);
     feedRetry += 1;
@@ -295,11 +305,7 @@ async function connectFeed() {
 }
 // Re-open the feed with the new credential when the bearer changes.
 function reconnectFeed() {
-  if (feedWs && (feedWs.readyState === 0 || feedWs.readyState === 1)) {
-    feedManualClose = true;
-    try { feedWs.close(); } catch { /* ignore */ }
-  }
-  connectFeed();
+  return connectFeed();
 }
 
 // ── AoE session board ─────────────────────────────────────────────────────────
@@ -796,13 +802,11 @@ wireForm('nostr-send', 'nostr-text', async (text) => {
 
 refreshAuthBadge();
 setVoiceState('idle');
-connectFeed();
-pollHealth();
-probeSession().then((ok) => { if (ok) reconnectFeed(); });
-pollSessions();
-pollApprovals();
-pollNostrEvents();
-pollSystemView();
+// Resolve the HttpOnly session before asking the signer for polling/WS auth.
+probeSession().then(() => {
+  connectFeed();
+  pollHealth(); pollSessions(); pollApprovals(); pollNostrEvents(); pollSystemView();
+});
 
 const pollSchedule = [
   [pollHealth, 12000],

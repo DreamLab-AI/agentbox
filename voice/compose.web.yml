@@ -2,6 +2,7 @@
 services:
   traefik:
     image: traefik:v3.3.1
+    networks: [visionclaw]
     command:
       # Swarm provider configuration
       - "--providers.docker=true"
@@ -17,6 +18,7 @@ services:
 
   frontend:
     image: unmute-frontend:latest
+    networks: [visionclaw]
     build:
       context: ${VOICE_UNMUTE_DIR}/frontend
       dockerfile: hot-reloading.Dockerfile
@@ -31,6 +33,7 @@ services:
 
   backend:
     image: unmute-backend:latest
+    networks: [visionclaw]
     build:
       context: ${VOICE_UNMUTE_DIR}
       target: hot-reloading
@@ -53,4 +56,6 @@ services:
       - "prometheus-port=80"
 
 networks:
-  default:
+  visionclaw:
+    external: true
+    name: visionclaw_network

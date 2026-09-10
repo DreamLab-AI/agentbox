@@ -1,5 +1,14 @@
 # agentbox/voice — voice + AoE operator console
 
+All web services and shared speech models join `visionclaw_network`; no private
+voice network is required. Rebuild the core with `./agentbox.sh rebuild` so its
+workspace volume, external project mounts and `.env` credentials are included.
+The cockpit probes `/nip07/session` before opening its feed; an active login
+uses the HttpOnly cookie. Signed fallbacks include a per-request nonce, and the
+loopback bridge verifies the original public host and `/bridge` path forwarded
+through the identity proxy. `voice health` checks the backend's dependency JSON,
+including its authenticated LLM connection, rather than HTTP status alone.
+
 The **operator cockpit**: one same-origin surface that unifies the local
 **voice loop** and the **AoE session board** as co-equals — voice control of the
 agent plane on one side, the live session/approvals view on the other. This is

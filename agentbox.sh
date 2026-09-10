@@ -2062,11 +2062,15 @@ cmd_voice() {
                 echo -e "${RED}voice console not responding at https://localhost:8444${NC}"
                 exit 1
             fi
-            # Upstreams are best-effort — report but don't fail on them.
-            if curl -skf https://localhost:8444/api/v1/health >/dev/null 2>&1; then
-                echo -e "${GREEN}Web voice backend reachable via /api${NC}"
+            # The backend returns HTTP 200 even when its LLM/STT/TTS is down.
+            # Validate the payload so an auth failure cannot look healthy.
+            local voice_health
+            voice_health=$(curl -skf --max-time 15 https://localhost:8444/api/v1/health) || return 1
+            if printf '%s' "$voice_health" | jq -e '.ok == true and .llm_up == true and .stt_up == true and .tts_up == true' >/dev/null; then
+                echo -e "${GREEN}Web voice backend healthy (LLM, ASR, TTS)${NC}"
             else
-                echo -e "${YELLOW}Web voice backend not reachable via /api${NC}"
+                echo -e "${RED}Web voice dependency check failed: ${voice_health}${NC}"
+                return 1
             fi
             if curl -sf http://localhost:8898/health >/dev/null 2>&1; then
                 echo -e "${GREEN}Unified Pocket TTS service healthy${NC}"
