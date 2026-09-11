@@ -12,7 +12,15 @@
 #                    [--profile provider/model] [--item-timeout SECONDS] [--from N] [--only N]
 #
 # The plan is a JSON array of items:
-#   [{ "id": "ch1", "prompt": "…", "needs": ["ch0"], "timeout": 1800, "attach": ["glob", …] }, …]
+#   [{ "id": "ch1", "prompt": "…", "needs": ["ch0"], "timeout": 1800,
+#      "attach": ["glob", …], "produces": ["glob", …] }, …]
+#
+# `produces` is what the item is for. A prerequisite is satisfied when the work exists, not
+# when the step exited tidily: an item that spends its budget polishing has still produced
+# what the next step needs, and treating that as failure skips the steps that would have
+# judged it (measured 2026-09-11, where a diagram that passed every gate was followed by two
+# skipped items). With `produces`, the runner looks for the artefact; without it, the exit
+# status is all there is to go on.
 #
 # `attach` is how an item SEES something. A model inside a session cannot open an image it
 # wrote: the session carries text, and the picture is just a path. Files listed here are
@@ -154,7 +162,25 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
   tools=$( { grep -c '"type":"tool_use"' "$dir/transcript.jsonl" || true; } | tail -1 )
   printf '{ "id": "%s", "exit": %s, "wall_seconds": %s, "tool_calls": %s, "profile": "%s", "skills_root": "%s" }\n' \
     "$id" "$st" "$secs" "${tools:-0}" "$profile" "$root" > "$dir/timing.json"
-  if [ "$st" = 0 ]; then set_status "$id" "done"; else set_status "$id" "failed"; fi
+  produced_globs=$(python3 -c "import json,sys; print('\n'.join(json.load(open(sys.argv[1]))[int(sys.argv[2])-1].get('produces',[])))" "$plan" "$n")
+  produced=0
+  if [ -n "$produced_globs" ]; then
+    produced=1
+    while IFS= read -r g; do
+      [ -z "$g" ] && continue
+      found=0
+      for f in $g; do [ -s "$f" ] && found=1; done
+      [ "$found" = 0 ] && produced=0
+    done <<< "$produced_globs"
+  fi
+  if [ "$st" = 0 ]; then
+    set_status "$id" "done"
+  elif [ "$produced" = 1 ]; then
+    set_status "$id" "done"
+    echo "[$(date -u +%H:%M:%S)]   $id: exited $st but produced what it was for; counting it done"
+  else
+    set_status "$id" "failed"
+  fi
   echo "[$(date -u +%H:%M:%S)]   $id: exit $st, ${secs}s, ${tools:-0} tool calls"
 done
 echo "[$(date -u +%H:%M:%S)] [plan done]"
