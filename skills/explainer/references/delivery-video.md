@@ -121,6 +121,31 @@ claims, whether the diagram is true, and whether the whole thing teaches anyone 
 a session that can look at the frames, which is a different session from the one that made
 them.
 
+## Encode for where it will live, and ship one delivery
+
+A composed master is not a deliverable. It is sized for the compositor's convenience, and it
+arrives beside every earlier attempt, because iterating correctly means writing a new
+delivery folder rather than overwriting a reviewed one. Both of those have to be resolved
+before the work leaves the workspace.
+
+**Encode for the destination.** Hand the accepted master to `ffmpeg-processing` with the
+constraint that actually applies: a repository has a per-file ceiling and a whole-clone
+cost, a page has a first-paint budget, an email has neither. State the budget before
+encoding, then measure the result and write the measurement down. A CRF value is a setting,
+not an outcome; only the file on disk tells you the size, and only watching it tells you
+whether the text survived. Check the encode at delivery resolution for readable labels and
+intact narration before the master is put away.
+
+**Ship one delivery.** The accepted folder goes to the target. Superseded folders, masters,
+scene stills and intermediate renders are production material: they belong in the engagement
+record with the receipts, not in the target where a reader will find two videos and not know
+which one is the work. A run that leaves `delivery-v1` beside `delivery-v2` has not finished
+tidying, whatever its review said.
+
+**Say what it cost.** The production record carries the measured size of what shipped, the
+encode settings, and the size before and after, so the next engagement can budget from a
+number rather than a guess.
+
 ## What this reference does not do
 
 It does not compose scenes, generate hero clips, run FFmpeg or write
