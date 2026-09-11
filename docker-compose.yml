@@ -153,6 +153,11 @@ services:
       - agentbox-events:/var/lib/agentbox/events
       - hf-cache:/home/devuser/.cache/huggingface
       - codeserver-config:/home/devuser/.local/share/code-server
+      # OpenCode's session store. ~/.local is a 128 MB tmpfs shared with every
+      # XDG-aware CLI; a day of agent runs filled it and the next session died on a
+      # database checkpoint reporting a full disk (2026-09-11). Layered like
+      # code-server's: the tmpfs mounts first, this volume on top.
+      - opencode-store:/home/devuser/.local/share/opencode
       - aoe-profiles:/home/devuser/.config/agent-of-empires/profiles
       - consultations-data:/var/lib/agentbox/consultations
       - telemetry-data:/var/lib/agentbox/telemetry
@@ -182,6 +187,8 @@ volumes:
     name: agentbox-hf-cache
   codeserver-config:
     name: agentbox-codeserver-config
+  opencode-store:
+    name: agentbox-opencode-store
   aoe-profiles:
     name: agentbox-aoe-profiles
   consultations-data:

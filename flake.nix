@@ -2899,10 +2899,14 @@ stderr_logfile_maxbytes=5MB
           # devuser's XDG_DATA_HOME. zoxide, fzf, atuin, npm globals,
           # pip --user, pipx, and a long tail of other XDG-aware CLIs
           # write here. Same Read-only-fs symptom as .cache without it.
-          # The codeserver-config named volume mounts INSIDE this tmpfs
-          # at .../code-server — Docker handles the layered mount order
-          # (tmpfs first, then volumes on top), so persistence for
-          # code-server is preserved.
+          # The codeserver-config and opencode-store named volumes mount
+          # INSIDE this tmpfs at .../code-server and .../opencode — Docker
+          # handles the layered mount order (tmpfs first, then volumes on
+          # top), so persistence is preserved and neither eats the 128M.
+          # OpenCode's session database is the reason for the second: a day
+          # of agent runs filled this tmpfs and the next session failed on a
+          # database checkpoint reporting a full disk (2026-09-11), an error
+          # that named neither the writer nor the run that caused it.
           "/home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000"
           # devuser's XDG_CONFIG_HOME. Many CLIs that don't honor
           # XDG_CONFIG_HOME still write to $HOME/.config (git, gh, kube,
