@@ -39,6 +39,14 @@ that is absent from the catalogue, or a job that ends in error after one resume,
 hand-up with `reason=specialist` (`references/handup.md`), not a reason to improvise. Share
 GPU capacity conservatively with other work and preserve completed outputs.
 
+Capture the product in a state it ships. A product that boots a deliberate first-run or
+demo world, and labels it as one, is showing you its real first surface; photograph that and
+say what it is. Manufacturing data to photograph is the opposite: seeding a database or
+inventing an identifier so a page looks richer produces a picture of something the customer
+would never see, and it eats hours. Two measured runs lost four hours between them that way,
+both while the product's own shipped surface sat one click behind a modal. If the subject
+cannot be reached in a state the product ships, that is a prerequisite hand-up.
+
 Media made for another deliverable is not media made for this one. Reusing an existing
 clip, capture or diagram is legitimate only when it answers this chapter's review question,
 and it is then re-reviewed and labelled as carried over, with its origin in the production
