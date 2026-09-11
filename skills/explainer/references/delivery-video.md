@@ -121,6 +121,48 @@ claims, whether the diagram is true, and whether the whole thing teaches anyone 
 a session that can look at the frames, which is a different session from the one that made
 them.
 
+## What a delivered pack looks like, and what it costs
+
+A deliverable holds what a reader needs and nothing else. Everything that made it lives in
+the engagement record, except one file: the notes for rebuilding it.
+
+```
+walkthroughs/<audience>/
+  chapters/<id>.md
+  assets/
+    diagrams/<id>.svg  <id>.png  <id>.mmd     source beside render
+    screenshots/<id>.png
+    videos/<chapter-id>/
+      explainer.mp4        the delivered encode, not the master
+      captions.vtt         and .srt where the destination wants it
+      transcript.md
+      poster.jpg
+      construction.md      how to rebuild this clip without the master
+```
+
+`construction.md` is what lets the master be deleted. It names the scene plan and its
+timings, the assets each scene used with their hashes, the narration script and the voice
+and speed that produced it, the encode settings, and the one command that recomposes. A
+clip whose master is gone and whose construction notes are complete can be remade; a clip
+with a 200 MB master in the repository and no notes cannot be remade cheaply and costs
+every clone.
+
+**The budget, from measurement rather than habit.** A diagram-led scene is a still with
+overlays and compresses to almost nothing: a measured 96-second chapter clip at 1600x900
+came to 2.2 MB, 185 kbps, with every sublabel legible. Generated motion costs roughly eight
+times that per second. So:
+
+| Budget | Figure | Why |
+|---|---|---|
+| Diagram and capture-led video | 2 MB per delivered minute | measured at 1.4 with labels still readable |
+| Generated-motion video | 4 MB per delivered minute | motion needs the bitrate; a five-second shot does not need 11 |
+| Any single file | 25 MB | far below a repository's hard ceiling; above this, something other than the video is wrong |
+| All media in one pack | 25 MB | a seven-chapter pack with a clip each lands near 17 MB, leaving room |
+
+Treat these as the default for a repository-hosted pack and restate them when the
+destination differs. A page with a first-paint budget is stricter; an offline bundle on a
+memory stick is not. Whatever the number, say it before encoding and measure after.
+
 ## Encode for where it will live, and ship one delivery
 
 A composed master is not a deliverable. It is sized for the compositor's convenience, and it
@@ -136,11 +178,12 @@ not an outcome; only the file on disk tells you the size, and only watching it t
 whether the text survived. Check the encode at delivery resolution for readable labels and
 intact narration before the master is put away.
 
-**Ship one delivery.** The accepted folder goes to the target. Superseded folders, masters,
-scene stills and intermediate renders are production material: they belong in the engagement
-record with the receipts, not in the target where a reader will find two videos and not know
-which one is the work. A run that leaves `delivery-v1` beside `delivery-v2` has not finished
-tidying, whatever its review said.
+**Ship one delivery, and delete the master.** The accepted encode goes to the target in the
+layout above, with its construction notes. Superseded delivery folders, masters, scene
+stills and intermediate renders are production material: they belong in the engagement
+record, and once the construction notes are complete the master can go entirely. A run that
+leaves `delivery-v1` beside `delivery-v2`, or a 4 MB master beside a 2 MB delivery, has not
+finished tidying, whatever its review said.
 
 **Say what it cost.** The production record carries the measured size of what shipped, the
 encode settings, and the size before and after, so the next engagement can budget from a

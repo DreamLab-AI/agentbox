@@ -124,6 +124,11 @@ product vocabulary with `voice-lint.sh --allow <file>`, listing phrases rather t
 words, so "audit hash chain" is allowed while "hash" stays banned everywhere else. Adding a
 bare word to that file to clear a hit is how the lint stops working.
 
+The media rule is aimed at provenance narration, not at the reader's own alternatives. A
+link offering the same journey in words, or captions on a clip, is accessibility and belongs
+in the reading path; the lint will still flag the obvious words, so phrase the link for the
+reader ("read the same journey in words") rather than naming the artefact type.
+
 ## The gate
 
 A chapter ships when all four hold:
