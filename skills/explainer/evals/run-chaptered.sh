@@ -16,7 +16,8 @@
 #
 # `attach` is how an item SEES something. A model inside a session cannot open an image it
 # wrote: the session carries text, and the picture is just a path. Files listed here are
-# attached to the item's opening message, so a review item is launched already looking at the
+# attached to the item's opening message with opencode's --file flag, so a review item is launched
+# already looking at the
 # frames it must judge. An item that captures and an item that inspects are therefore always
 # two items, never one (measured 2026-09-11: a capture item took seven screenshots, was told
 # to look at each, and could not).
@@ -37,6 +38,34 @@ for v in workspace plan target root; do [ -n "${!v}" ] || { echo "--$v is requir
 command -v opencode >/dev/null || { echo "opencode not on PATH" >&2; exit 2; }
 mkdir -p "$workspace"; workspace=$(cd "$workspace" && pwd); root=$(cd "$root" && pwd); target=$(cd "$target" && pwd)
 record="$workspace/record"; mkdir -p "$record" "$workspace/items"
+
+# An agent harness writes a session store, and a long plan writes a lot of it. Here that
+# store lives on a 128 MB tmpfs, and a day of runs filled it: the next session died on a
+# database checkpoint with "database or disk is full", which looks nothing like the cause
+# (2026-09-11). Runs that last hours must check their own headroom and prune, because the
+# failure arrives long after the growth and blames the wrong thing.
+# Better than pruning a small filesystem is not using one. OpenCode honours XDG_DATA_HOME,
+# so the run keeps its session store beside its own output on real disk, where a long plan
+# can grow without starving anything else. The home default here is a 128 MB memory
+# filesystem shared with other tools, and a day of runs filled it (2026-09-11).
+export XDG_DATA_HOME="${XDG_DATA_HOME_OVERRIDE:-$workspace/.store}"
+mkdir -p "$XDG_DATA_HOME"
+store="$XDG_DATA_HOME/opencode"
+mkdir -p "$store"
+prune_store() {
+  local free_mb
+  free_mb=$(df -Pm "$store" 2>/dev/null | awk 'NR==2{print $4}')
+  [ -z "$free_mb" ] && return 0
+  echo "[$(date -u +%H:%M:%S)] session store: ${free_mb} MB free"
+  [ "$free_mb" -ge "${MIN_STORE_MB:-40}" ] && return 0
+  echo "[$(date -u +%H:%M:%S)] session store below ${MIN_STORE_MB:-40} MB; pruning"
+  find "$store/log" -type f -mtime +0 -delete 2>/dev/null || true
+  # The session database is a cache of past conversations, not a deliverable: nothing in a
+  # plan reads it. Removing it costs the resume history and buys the run its disk back.
+  rm -f "$store"/*.db "$store"/*.db-wal "$store"/*.db-shm 2>/dev/null || true
+  echo "[$(date -u +%H:%M:%S)] session store now $(df -Pm "$store" 2>/dev/null | awk 'NR==2{print $4}') MB free"
+}
+
 
 # Pin the skill root the way run-case.sh does: OpenCode keeps the first copy of a skill name
 # and reads ~/.claude/skills first, so the hot links point at this root for the whole plan.
@@ -100,9 +129,11 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
   # taking the screenshot it was asked for). The harness enforces the budget and writes the
   # packet, so the plan moves on and a person sees what was missing.
   budget=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))[int(sys.argv[2])-1].get('timeout', $item_timeout))" "$plan" "$n")
+  prune_store
   echo "[$(date -u +%H:%M:%S)] item $n/$count: $id (budget ${budget}s)"
   attach_globs=$(python3 -c "import json,sys; print('\n'.join(json.load(open(sys.argv[1]))[int(sys.argv[2])-1].get('attach',[])))" "$plan" "$n")
   attach_args=()
+  # --file is an array option and swallows the following positional, so the prompt goes after --
   if [ -n "$attach_globs" ]; then
     while IFS= read -r g; do
       [ -z "$g" ] && continue
@@ -112,7 +143,7 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
     printf '%s\n' "${attach_args[@]}" > "$dir/attached.txt"
   fi
   t0=$(date -u +%s); set +e
-  ( cd "$target" && OPENCODE_CONFIG="$cfg" timeout "$budget" opencode run -m "$profile" --format json "${attach_args[@]}" "$prompt" ) > "$dir/transcript.jsonl" 2> "$dir/stderr.log"
+  ( cd "$target" && OPENCODE_CONFIG="$cfg" timeout "$budget" opencode run -m "$profile" --format json "${attach_args[@]}" -- "$prompt" ) > "$dir/transcript.jsonl" 2> "$dir/stderr.log"
   st=$?; set -e
   if [ "$st" = 124 ]; then
     mkdir -p "$record/handup"

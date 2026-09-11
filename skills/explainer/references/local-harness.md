@@ -59,6 +59,26 @@ The general form is worth remembering beyond these two cases: **if a rule asks a
 judge its own work against something the session cannot perceive, the rule is decoration.**
 Put the perception in the harness, or put the judgement in a second session that can see.
 
+## A long run prunes what it writes
+
+An agent harness keeps a session store, and an unattended plan writes to it for hours. On
+this estate that store sits on a 128 MB memory filesystem, and a day of runs filled it; the
+next session died on a database checkpoint reporting that the disk was full, an error that
+names neither the harness nor the plan that caused it. The growth is silent, the failure is
+late, and it blames the wrong thing.
+
+Two measures, in order. First, do not use the small filesystem: most harnesses take an
+environment variable for their data directory, so point it at the run's own workspace on
+real disk, where a long plan can grow without starving anything else. Second, keep pruning
+as the safety net: a run that lasts hours checks its own headroom before each step and
+prunes when it is low. The session store is a cache of past conversations, not a deliverable: no step reads
+it, and removing it costs only the ability to resume an old session. Logs older than a day
+go too. `evals/run-chaptered.sh` does this between work items.
+
+The same care applies to what a run leaves behind: generated frames, intermediate renders
+and model caches belong in the engagement workspace where they can be swept, never in the
+target and never in a memory filesystem that something else depends on.
+
 ## What a service call still owes
 
 A service reached over HTTP is a specialist by another route, so it owes what a specialist
