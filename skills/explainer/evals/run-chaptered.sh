@@ -85,10 +85,22 @@ for n in $(seq 1 "$count"); do
   prompt="$prompt
 
 You are one step of a larger job. Everything earlier steps produced is on disk; read what you need from the production record at $record and the target at $target, and do not try to reproduce their work. Write what you produce to the target, and write your own receipts and any hand-up packets to $record. Do one thing: the step above, and nothing beyond it. When it is done, stop."
-  echo "[$(date -u +%H:%M:%S)] item $n/$count: $id"
+  # A per-item deadline is the only clock the run actually has. An instruction to hand up
+  # after twenty minutes cannot work: a model inside a session has no wall clock, and one
+  # deep in a rabbit hole is the last thing able to notice it is in one (measured
+  # 2026-09-11: an item spent forty minutes debugging its own protocol client instead of
+  # taking the screenshot it was asked for). The harness enforces the budget and writes the
+  # packet, so the plan moves on and a person sees what was missing.
+  budget=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))[int(sys.argv[2])-1].get('timeout', $item_timeout))" "$plan" "$n")
+  echo "[$(date -u +%H:%M:%S)] item $n/$count: $id (budget ${budget}s)"
   t0=$(date -u +%s); set +e
-  ( cd "$target" && OPENCODE_CONFIG="$cfg" timeout "$item_timeout" opencode run -m "$profile" --format json "$prompt" ) > "$dir/transcript.jsonl" 2> "$dir/stderr.log"
+  ( cd "$target" && OPENCODE_CONFIG="$cfg" timeout "$budget" opencode run -m "$profile" --format json "$prompt" ) > "$dir/transcript.jsonl" 2> "$dir/stderr.log"
   st=$?; set -e
+  if [ "$st" = 124 ]; then
+    mkdir -p "$record/handup"
+    python3 "$(dirname "$0")/handup-budget.py" "$record/handup/$id-budget.json" "$id" "$budget" "$dir"
+    echo "[$(date -u +%H:%M:%S)]   $id: budget spent without its artefact; hand-up packet written"
+  fi
   secs=$(( $(date -u +%s) - t0 ))
   tools=$( { grep -c '"type":"tool_use"' "$dir/transcript.jsonl" || true; } | tail -1 )
   printf '{ "id": "%s", "exit": %s, "wall_seconds": %s, "tool_calls": %s, "profile": "%s", "skills_root": "%s" }\n' \
