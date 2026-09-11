@@ -39,6 +39,13 @@ that is absent from the catalogue, or a job that ends in error after one resume,
 hand-up with `reason=specialist` (`references/handup.md`), not a reason to improvise. Share
 GPU capacity conservatively with other work and preserve completed outputs.
 
+A frame showing the product failing is not a frame showing the product. An error panel, a
+perpetual spinner, an empty table or a status code where content belongs means the
+environment is wrong, not that the feature looks like that; saving it under a filename that
+names the feature is how a broken run becomes a published claim. Choose the mode that shows
+the product working, which is usually the one it ships with rather than a live mode pointed
+at a backend that is not running, and check the frame for those tells before it is linked.
+
 Capture the product in a state it ships. A product that boots a deliberate first-run or
 demo world, and labels it as one, is showing you its real first surface; photograph that and
 say what it is. Manufacturing data to photograph is the opposite: seeding a database or

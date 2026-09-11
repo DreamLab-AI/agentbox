@@ -11,7 +11,15 @@
 #   run-chaptered.sh --workspace DIR --plan FILE --target DIR --skills-root DIR
 #                    [--profile provider/model] [--item-timeout SECONDS] [--from N] [--only N]
 #
-# The plan is a JSON array of items: [{ "id": "ch1", "prompt": "…", "needs": ["ch0"] }, …].
+# The plan is a JSON array of items:
+#   [{ "id": "ch1", "prompt": "…", "needs": ["ch0"], "timeout": 1800, "attach": ["glob", …] }, …]
+#
+# `attach` is how an item SEES something. A model inside a session cannot open an image it
+# wrote: the session carries text, and the picture is just a path. Files listed here are
+# attached to the item's opening message, so a review item is launched already looking at the
+# frames it must judge. An item that captures and an item that inspects are therefore always
+# two items, never one (measured 2026-09-11: a capture item took seven screenshots, was told
+# to look at each, and could not).
 # Each item runs in its own `opencode run`, in the target, with the shared production record
 # on disk as its only inheritance. An item whose prerequisite failed is skipped, not guessed.
 set -euo pipefail
@@ -93,8 +101,18 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
   # packet, so the plan moves on and a person sees what was missing.
   budget=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))[int(sys.argv[2])-1].get('timeout', $item_timeout))" "$plan" "$n")
   echo "[$(date -u +%H:%M:%S)] item $n/$count: $id (budget ${budget}s)"
+  attach_globs=$(python3 -c "import json,sys; print('\n'.join(json.load(open(sys.argv[1]))[int(sys.argv[2])-1].get('attach',[])))" "$plan" "$n")
+  attach_args=()
+  if [ -n "$attach_globs" ]; then
+    while IFS= read -r g; do
+      [ -z "$g" ] && continue
+      for f in $g; do [ -f "$f" ] && attach_args+=(-f "$f"); done
+    done <<< "$attach_globs"
+    echo "[$(date -u +%H:%M:%S)]   $id: attaching ${#attach_args[@]} file argument(s)"
+    printf '%s\n' "${attach_args[@]}" > "$dir/attached.txt"
+  fi
   t0=$(date -u +%s); set +e
-  ( cd "$target" && OPENCODE_CONFIG="$cfg" timeout "$budget" opencode run -m "$profile" --format json "$prompt" ) > "$dir/transcript.jsonl" 2> "$dir/stderr.log"
+  ( cd "$target" && OPENCODE_CONFIG="$cfg" timeout "$budget" opencode run -m "$profile" --format json "${attach_args[@]}" "$prompt" ) > "$dir/transcript.jsonl" 2> "$dir/stderr.log"
   st=$?; set -e
   if [ "$st" = 124 ]; then
     mkdir -p "$record/handup"

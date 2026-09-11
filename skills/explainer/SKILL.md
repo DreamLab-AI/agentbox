@@ -169,6 +169,11 @@ a reviser resolves it; the checker runs again. Media is a later pass over an acc
 Pick one delivery per request unless the user asks for more than one; each
 reference is self-contained once the shared core above is done.
 
+For a hard concept whose change over time needs explanation, use
+[manim](../manim/SKILL.md) after the relevant claims and chapter are accepted.
+Its [handoffs](../manim/references/handoffs.md) cover optional playback, named
+steps and static alternatives in a knowledge page, or clips for the video owner.
+
 ## Model-fit
 
 **Production tier:** the long run is designed for a local OpenAI-compatible model with

@@ -32,6 +32,33 @@ A service manifest is small and belongs beside the other fixtures:
   "speech":   { "endpoint": "…", "health": "…", "records": "engine, voice, measured duration" } }
 ```
 
+## A session cannot check itself
+
+Two of this method's rules turned out to be unenforceable from inside a session, for the
+same reason, and the fix is the same both times: move the check into a different session.
+
+**A session has no clock.** "Hand up after twenty minutes on one sub-goal" cannot be obeyed
+by something with no sense of elapsed time, and the moment it matters most is the moment the
+model has least perspective. A measured item spent forty minutes building a protocol client
+instead of taking the screenshot it was asked for, with that rule sitting unread in its
+context. The budget belongs to the harness, which can end the item and write the packet.
+
+**A session cannot see what it wrote.** "Look at every screenshot you take" cannot be obeyed
+either: inside a session the picture is a path, not an image, and there is no way for the
+model to attach a file to itself. A measured item captured seven frames, was told to inspect
+each, and inspected none — not from carelessness, but because the tools available to it
+carry text. One of those frames showed the product failing to load, with three panels
+reading "fetch failed", under a filename claiming it showed the feature working.
+
+So capture and inspection are always two steps. The capturing step writes frames and a
+manifest of what each was meant to show. The inspecting step is launched with those frames
+attached as input, sees them, and says what is actually there. `evals/run-chaptered.sh`
+takes an `attach` list per work item for exactly this.
+
+The general form is worth remembering beyond these two cases: **if a rule asks a session to
+judge its own work against something the session cannot perceive, the rule is decoration.**
+Put the perception in the harness, or put the judgement in a second session that can see.
+
 ## What a service call still owes
 
 A service reached over HTTP is a specialist by another route, so it owes what a specialist
