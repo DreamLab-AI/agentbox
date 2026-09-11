@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Draft explainer sections on the LAN model (HP, Qwen3.8-27B) through the Ontology Loom
+// Draft explainer sections on the LAN model (the connected node, Qwen3.8-27B) through the Ontology Loom
 // façade, with the scaffold declined per request (ADR-139: `loom_options.scaffold=false`).
 // The façade is the estate's stable model door; the option makes it a plain proxy for a
 // subject the ontology does not cover. Without it, verbatim mode answered a packet about
@@ -10,8 +10,8 @@
 //
 //   node loom-draft.mjs --packet p.json [--out p.out.json]           one section
 //   node loom-draft.mjs --batch packets/ --out-dir drafts/            every *.json, skips done
-//   options: --base http://192.168.2.132:8084/v1 (default; env EXPLAINER_MODEL_BASE; the direct
-//            rail port http://10.10.10.1:8085/v1 also works)  --model <id or auto>  --max-tokens 1400
+//   options: --base <url> (env EXPLAINER_MODEL_BASE, else LOOM_BASE_URL, else the
+//            sidecar default below; a directly reachable model port also works)  --model <id or auto>  --max-tokens 1400
 //            --system <file>  --template <file>  --review <draft.json>  --timeout 900
 //
 // A packet is the JSON described in ../references/microsite/qwen-prompting.md. The
@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? argv[i + 1] : d; };
-const base = (opt('base', process.env.EXPLAINER_MODEL_BASE || 'http://192.168.2.132:8084/v1')).replace(/\/$/, '');
+const base = (opt('base', process.env.EXPLAINER_MODEL_BASE || process.env.LOOM_BASE_URL || 'http://loom:8080/v1')).replace(/\/$/, '');
 const systemText = readFileSync(opt('system', join(here, '../references/microsite/prompts/qwen-system.txt')), 'utf8');
 const templateText = readFileSync(opt('template', join(here, opt('review') ? '../references/microsite/prompts/qwen-review.txt' : '../references/microsite/prompts/qwen-section.txt')), 'utf8');
 const timeoutMs = Number(opt('timeout', 900)) * 1000;

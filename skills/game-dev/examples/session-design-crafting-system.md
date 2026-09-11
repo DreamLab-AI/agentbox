@@ -189,7 +189,7 @@
 ## Turn 9: User Resolves Edge Case
 
 **User:**
-> Option C - let's procedurally generate minor potions. If someone finds Fire+Water (not a designed recipe), give them "Warm Water" that restores 5 HP. Rewards experimentation even when "off the beaten path."
+> Option C - let's procedurally generate minor potions. If someone finds Fire+Water (not a designed recipe), give them "Warm Water" that restores 5 the connected node. Rewards experimentation even when "off the beaten path."
 
 ## Turn 10: Agent Completes Remaining Sections
 

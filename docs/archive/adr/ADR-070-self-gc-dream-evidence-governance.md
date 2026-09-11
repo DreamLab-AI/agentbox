@@ -1,7 +1,7 @@
 # ADR-070: Self-GC evidence governance for the dream engine
 
 **Status**: Accepted (2026-08-28)
-**Relates to**: ADR-052 (HP annexe), ADR-061 (draft-PR persistence), ADR-065 (evaluator liveness)
+**Relates to**: ADR-052 (the connected node annexe), ADR-061 (draft-PR persistence), ADR-065 (evaluator liveness)
 
 ## Context
 
@@ -61,6 +61,6 @@ Adopt the Self-GC architecture in `services/dream-engine/src/context.rs`:
 - The deployed binary is Nix-built (`lib/dream-engine.nix`); this ships on
   the next image rebuild. No manifest gate: the feature is runtime-env-gated
   (`DREAM_SELF_GC`), not a build-composition change.
-- Artefact dirs grow by full receipt sizes per night; the existing 3-day HP
+- Artefact dirs grow by full receipt sizes per night; the existing 3-day the connected node
   annexe sweep does not cover local artefacts — revisit retention if disk
   pressure appears.

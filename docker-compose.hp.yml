@@ -1,5 +1,5 @@
-# HP-Desktop peer node overlay (2026-09-02). Used INSTEAD of
-# docker-compose.override.yml (that file is machinelearn-specific: MAD
+# the connected node peer node overlay (2026-09-02). Used INSTEAD of
+# docker-compose.override.yml (that file is the gateway host-specific: MAD
 # workspace volume, /mnt/dell NFS, PROJECT_DIR_* binds, docker.sock).
 #   docker compose -f docker-compose.yml -f docker-compose.hp.yml up -d
 services:

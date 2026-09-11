@@ -421,7 +421,7 @@ echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  
 # ============================================================================
 # Dream-engine nightly loop — FALLBACK ONLY. Since the 2026-08 image rebuild
 # supervisord owns [program:dream-engine]; starting a tmux copy alongside it
-# double-runs the night and races dispatch/cleanup on the HP annexe (observed
+# double-runs the night and races dispatch/cleanup on the connected node annexe (observed
 # 2026-08-20/21: tarball vanished mid-scp, checkout rm'd mid-evaluation).
 # Only start here when supervisord does NOT manage it.
 # ============================================================================

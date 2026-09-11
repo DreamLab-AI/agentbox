@@ -35,7 +35,7 @@ they describe the Loom:
   `scripts/opf-router.py` `PORT = int(os.environ.get("OPF_PORT", "9092"))`, and the
   generated `[program:opf-router]` supervisor block sets `OPF_PORT` from the same
   manifest key with a 9092 fallback.
-- `:8084` is the **Ontology Loom facade** on machinelearn (ADR-2023), a different service
+- `:8084` is the **Ontology Loom facade** on the gateway host (ADR-2023), a different service
   on a different host reached by DNAT. **No agentbox program serves `:8084`.**
 
 The conflation is load-bearing, not cosmetic: it caused a downstream reader of this
@@ -51,7 +51,7 @@ supervised-program row reads, in substance: *privacy-filter redaction sidecar
 
 No document describes any agentbox-supervised program as serving `:8084`. Where a doc
 needs to mention `:8084` it says explicitly that it is the Ontology Loom facade on
-machinelearn, reached over the LAN, and cross-references ADR-2023.
+the gateway host, reached over the LAN, and cross-references ADR-2023.
 
 `docs/BASELINE-container.md` is owned by the runtime lane, so the exact row edit is
 **routed** to that owner rather than applied here; `implementation_status` stays
@@ -90,7 +90,7 @@ Verification ran on the **uncommitted working tree** above
   designed port and the BASELINE row is the outlier.
 - `grep -n '8084' flake.nix` → two matches, **both outbound client URLs and neither a
   bind**: the `[program:dream-engine]` environment line's
-  `LOOM_URL=…192.168.2.132:8084/v1` default, and a compose `LOOM_BASE_URL` default.
+  `LOOM_URL=…${LOOM_HOST}/v1` default, and a compose `LOOM_BASE_URL` default.
   No supervisor block listens on `:8084`.
 - Table-drift sample, showing the stale line references are **not** a uniform offset and
   need a per-row sweep rather than a bulk shift:

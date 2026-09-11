@@ -1,7 +1,7 @@
 {
   "date": "2026-09-09",
   "decision": "Qualified for supervised source-grounded section drafting and visual inspection; each section still requires independent source and evidence checks. No unattended acceptance.",
-  "transport": "SSH to HP, docker exec into owned network-none CPU container; direct llama.cpp, no Loom request",
+  "transport": "SSH to the connected node, docker exec into owned network-none CPU container; direct llama.cpp, no Loom request",
   "residentServiceChanged": false,
   "model": {
     "servedAlias": "repo-education-qwen-vision",

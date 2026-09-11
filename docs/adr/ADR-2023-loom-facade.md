@@ -21,16 +21,16 @@ lineage: legacy ADR-051 (Loom client + deferred distillation, status 'proposed')
 ## Context
 
 The self-hosted reasoning model must be swappable without touching every
-consumer. The old `192.168.2.48` model host is dead; naming a raw model port in
+consumer. The old `a retired address` model host is dead; naming a raw model port in
 consumer config re-creates the same brittle coupling. ADR-045 established one
 front door; ADR-051 (still 'proposed') sketched the Loom client and deferred
 distillation. The Loom is the stable model-swap door — a façade at
-`http://192.168.2.132:8084/v1` that grounds calls in the ontology and delegates
+`${LOOM_BASE_URL}` that grounds calls in the ontology and delegates
 to whatever model sits behind it (currently `qwen3.8-27B`).
 
 ## Decision
 
-Scaffolded consumers call the stable façade `http://192.168.2.132:8084/v1` and
+Scaffolded consumers call the stable façade `${LOOM_BASE_URL}` and
 **never a raw model port**. Ontology retrieval resolves through the Loom when
 `LOOM_FACADE_URL` is set (seed via `/loom/search`, expand via `/loom/sparql`),
 falling back transparently to VisionClaw when it is unset. Swapping the deployed
@@ -53,14 +53,14 @@ discrete server** — hence implementation partial.
 
 
 
-At `cbe7335b9`, `agentbox.toml`: `loom_url = "http://192.168.2.132:8084/v1"`,
+At `cbe7335b9`, `agentbox.toml`: `loom_url = "${LOOM_BASE_URL}"`,
 `loom_model = "qwen3.8-27B"`, `loom_max_tokens = 16384` (:1564-1566), and the
 condense `endpoint` façade at :650 commented "Ontology Loom façade (model-swap
 door; DNAT via ml). Was the dead .48 host."
 `mcp/servers/lib/ontology-retrieval.js`: `LOOM_FACADE_URL` seed+expand path with
 transparent VisionClaw fallback (:339-417).
 
-**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `agentbox.toml` gate additions elsewhere in the manifest and by the ADR-2016/2054 rework touching `mcp/servers/lib/ontology-retrieval.js`; neither alters the façade contract, so the decision still holds. Re-checked at HEAD: `agentbox.toml:1672-1673` `loom_url = "http://192.168.2.132:8084/v1"` and `loom_model = "qwen3.8-27B"`, `:1677` `loom_max_tokens = 32768`, and the condense endpoint façade at `:656` commented "Ontology Loom façade (model-swap door; DNAT via ml). Was the dead .48 host." (every line number in the Verification paragraph above — `:1564-1566`, `:650` — has drifted). `mcp/servers/lib/ontology-retrieval.js:472` reads `LOOM_FACADE_URL` and `:463-466` documents the transparent VisionClaw selection when it is unset, so the fallback is an ordinary path rather than a fault. The `loom_max_tokens = 16384` figure in the Verification paragraph above remains wrong at HEAD (live value 32768) — it is already flagged in the CORRECTION note in this record's closeout section and is repeated here so a reader arriving at the older paragraph is not misled. `implementation_status` stays `partial`: the ADR-051 deferred-distillation MCP tools are still not a discrete server, and no live call through :8084 was made by this pass. Commands: `git diff --name-only 89301ec7..HEAD -- agentbox.toml mcp/servers/lib/ontology-retrieval.js`, `grep -n 'loom_url\|loom_model\|loom_max_tokens' agentbox.toml`, `grep -n 'LOOM_FACADE_URL' mcp/servers/lib/ontology-retrieval.js`.
+**2026-09-05 re-verified at 08e817f39.** Governed paths changed by `agentbox.toml` gate additions elsewhere in the manifest and by the ADR-2016/2054 rework touching `mcp/servers/lib/ontology-retrieval.js`; neither alters the façade contract, so the decision still holds. Re-checked at HEAD: `agentbox.toml:1672-1673` `loom_url = "${LOOM_BASE_URL}"` and `loom_model = "qwen3.8-27B"`, `:1677` `loom_max_tokens = 32768`, and the condense endpoint façade at `:656` commented "Ontology Loom façade (model-swap door; DNAT via ml). Was the dead .48 host." (every line number in the Verification paragraph above — `:1564-1566`, `:650` — has drifted). `mcp/servers/lib/ontology-retrieval.js:472` reads `LOOM_FACADE_URL` and `:463-466` documents the transparent VisionClaw selection when it is unset, so the fallback is an ordinary path rather than a fault. The `loom_max_tokens = 16384` figure in the Verification paragraph above remains wrong at HEAD (live value 32768) — it is already flagged in the CORRECTION note in this record's closeout section and is repeated here so a reader arriving at the older paragraph is not misled. `implementation_status` stays `partial`: the ADR-051 deferred-distillation MCP tools are still not a discrete server, and no live call through :8084 was made by this pass. Commands: `git diff --name-only 89301ec7..HEAD -- agentbox.toml mcp/servers/lib/ontology-retrieval.js`, `grep -n 'loom_url\|loom_model\|loom_max_tokens' agentbox.toml`, `grep -n 'LOOM_FACADE_URL' mcp/servers/lib/ontology-retrieval.js`.
 
 ## Closeout extension — 2026-09-04
 
@@ -173,7 +173,7 @@ restored at the landing commit** — the prior list was
 Each claim re-checked, with **two corrections**:
 
 - **Façade URL — unchanged.** `agentbox.toml [dream_machine].loom_url` (`:1613`) is
-  `http://192.168.2.132:8084/v1`, and `[skills.ontology.condense].endpoint` (`:649`)
+  `${LOOM_BASE_URL}`, and `[skills.ontology.condense].endpoint` (`:649`)
   carries the same value with the comment "Ontology Loom façade (model-swap door; DNAT
   via ml). Was the dead .48 host."
 - **CORRECTION — token cap.** This record's Verification said `loom_max_tokens = 16384`
@@ -187,7 +187,7 @@ Each claim re-checked, with **two corrections**:
   (`agentbox.toml [privacy_filter].port`, `scripts/opf-router.py:41`,
   `flake.nix` `[program:opf-router]`). **No agentbox program binds `:8084`** — the only
   two `8084` hits in `flake.nix` are outbound `LOOM_URL`/`LOOM_BASE_URL` client defaults.
-  The Loom façade is a service on machinelearn reached over the LAN, not a supervised
+  The Loom façade is a service on the gateway host reached over the LAN, not a supervised
   agentbox program. Recorded as ADR-2055; the BASELINE row edit is routed to its owner.
 - **Retrieval resolves through the Loom when configured — unchanged and extended.**
   `mcp/servers/lib/ontology-retrieval.js:472` reads `LOOM_FACADE_URL` in `selectBackend`

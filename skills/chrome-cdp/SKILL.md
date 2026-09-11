@@ -38,7 +38,7 @@ agentbox.sh browsercontainer health
 scripts/cdp-sidecar.sh list
 
 # Open your WebGPU app
-scripts/cdp-sidecar.sh open http://192.168.2.132:3001
+scripts/cdp-sidecar.sh open http://the model host:3001
 
 # Screenshot / accessibility snapshot
 scripts/cdp-sidecar.sh shot <target>

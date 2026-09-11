@@ -2,6 +2,10 @@
 
 Animation explains a complete static diagram; it never supplies missing meaning. Load this reference only when motion is explicitly requested or materially clarifies order, accumulation, evaluation, containment, or propagation. Otherwise use mode `none` and ship static HTML.
 
+For longer mechanism sequences, changing quantities, graph traversal or formula
+transformations exported as video, use [manim](../../manim/SKILL.md). Keep this
+reference for accessible HTML/SVG motion; its static-first contract still applies.
+
 ## Modes
 
 Choose one mode per figure with `data-motion-mode="none|reveal|step|loop"`.

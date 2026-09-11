@@ -51,7 +51,7 @@ next image build). Do NOT touch /opt/agentbox/skills, ~/.claude/skills, ~/.codex
 ## Divergence / duplication clusters (lexical + structural signals; auditors must judge)
 - "Explain this codebase" cluster, all authored 2026-09-05..09 in three different shapes with no shared
   contract: explainer (docs bundle + RuVector kb, forks, gates A–E), codebase-video (MP4 + ComfyUI hero clips,
-  Kokoro TTS), repo-education (microsite, pins DIRECT HP Qwen on 192.168.2.132:8085 bypassing the Loom façade on
+  Kokoro TTS), repo-education (microsite, pins DIRECT the connected node Qwen on ${CONNECTED_NODE_HOST} bypassing the Loom façade on
   :8084 — the workspace CLAUDE.md says consumers must hold the Loom façade, not the raw model port), plus
   open-montage (vendored generic video pipeline, 11 pipelines/49 tools, premium API keys) and docs-alignment.
   explainer and repo-education are ISOLATED in the cross-reference graph (no skill links to them).
@@ -85,9 +85,9 @@ next image build). Do NOT touch /opt/agentbox/skills, ~/.claude/skills, ~/.codex
 - Current models: Claude Fable 5.1 (claude-fable-5-1, adaptive thinking always on), Opus 5, Sonnet 5,
   Haiku 4.5; OpenAI GPT-6 Astra (gpt-6-astra) via baked Codex CLI; DeepSeek; Z.AI glm-5.3 consultant.
   Any "Opus 4.x / Sonnet 4.x / GPT-5.x / gpt-4o / o3" as a CURRENT model is stale (historical mentions OK).
-- LLM endpoints: Ontology Loom façade http://192.168.2.132:8084/v1 (the door consumers must hold);
-  raw model 127.0.0.1:8085 ON HP ONLY (not a consumer target); embeddings bge-small-en-v1.5 384-dim via
-  Xinference 192.168.2.132:9997; HP's old 192.168.2.48 is DEAD. Memory access is mcp__claude-flow__memory_*
+- LLM endpoints: Ontology Loom façade ${LOOM_BASE_URL} (the door consumers must hold);
+  raw model 127.0.0.1:8085 ON the connected node ONLY (not a consumer target); embeddings bge-small-en-v1.5 384-dim via
+  Xinference ${EMBEDDINGS_HOST}; the connected node's old a retired address is DEAD. Memory access is mcp__claude-flow__memory_*
   ONLY (CLI/SQL bypass embeddings).
 - Browser automation: browsercontainer sidecar, MCP SSE http://browsercontainer:8931/sse (registered as
   browser-gpu), CDP browsercontainer:9223 via socat (agentbox.toml still says 9222), VNC :5903.

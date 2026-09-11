@@ -210,8 +210,8 @@
         {
           "class": "contradiction",
           "severity": "high",
-          "evidence": "email-search/SKILL.md:113-115 says 'A stale REASONER_BASE_URL ... is the top suspect for hangs → point it at http://loom:8080/v1'; the same file's 'Failure handling' section at lines 208-221 documents the actually-confirmed-and-applied fix as 'set REASONER_BASE_URL=http://192.168.2.132:8084/v1 (ml DNATs to the Loom façade on HP...)' — two different endpoint values offered as the fix for the identical named failure within one file",
-          "fix": "delete or correct line 115 to match the verified fix at line 213-214 (http://192.168.2.132:8084/v1); if Deployment B (http://loom:8080, visionclaw_network sidecar) is also valid, say so explicitly as an alternative topology rather than stating it bare as 'the' fix",
+          "evidence": "email-search/SKILL.md:113-115 says 'A stale REASONER_BASE_URL ... is the top suspect for hangs → point it at http://loom:8080/v1'; the same file's 'Failure handling' section at lines 208-221 documents the actually-confirmed-and-applied fix as 'set REASONER_BASE_URL=${LOOM_BASE_URL} (ml DNATs to the Loom façade on the connected node...)' — two different endpoint values offered as the fix for the identical named failure within one file",
+          "fix": "delete or correct line 115 to match the verified fix at line 213-214 (${LOOM_BASE_URL}); if Deployment B (http://loom:8080, visionclaw_network sidecar) is also valid, say so explicitly as an alternative topology rather than stating it bare as 'the' fix",
           "cross_skill": []
         }
       ]

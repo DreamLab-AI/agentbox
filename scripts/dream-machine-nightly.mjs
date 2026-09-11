@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// dream-machine-nightly.mjs — HP annexe orchestrator (ADR-052)
+// dream-machine-nightly.mjs — the connected node annexe orchestrator (ADR-052)
 //
 // Control-plane nightly loop: discovers nominated repos by marker file
-// (dream.config.json), compiles each night's prompt, dispatches to HP for
+// (dream.config.json), compiles each night's prompt, dispatches to the connected node for
 // execution against the self-hosted Loom/Qwen model, pulls artefacts back,
 // and persists results (ledger row, RuVector memory if significant).
 //
@@ -24,10 +24,12 @@ import http from 'node:http';
 const AGENTBOX_ROOT = process.env.AGENTBOX_ROOT || '/home/devuser/workspace/project/agentbox';
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || '/home/devuser/workspace';
 const DREAM_MACHINE_ROOT = process.env.DREAM_MACHINE_ROOT || join(WORKSPACE_ROOT, 'dream-machine');
-const HP_HOST = process.env.HP_HOST || 'john@10.10.10.1';
-const HP_ANNEXE_DIR = process.env.HP_ANNEXE_DIR || '/home/john/dream-annexe';
+// The connected node is a deployment fact: set CONNECTED_NODE_SSH (user@host) in the
+// environment. Unset, the nightly declines rather than guessing at someone's network.
+const HP_HOST = process.env.CONNECTED_NODE_SSH || process.env.HP_HOST || '';
+const HP_ANNEXE_DIR = process.env.HP_ANNEXE_DIR || '/srv/dream-annexe';
 const LLM_PROVIDER = process.env.DREAM_LLM_PROVIDER || 'zai';
-const LOOM_URL = process.env.LOOM_URL || 'http://192.168.2.132:8084/v1';
+const LOOM_URL = process.env.LOOM_URL || process.env.LOOM_BASE_URL || 'http://loom:8080/v1';
 const LOOM_MODEL = process.env.LOOM_MODEL || 'qwen3.8-27B';
 const LOOM_MAX_TOKENS = parseInt(process.env.LOOM_MAX_TOKENS || '16384', 10);
 // Coding Plan subscription endpoint, Anthropic Messages protocol (callZai posts
@@ -138,7 +140,7 @@ function scpFrom(remotePath, localPath) {
 }
 
 // ---------------------------------------------------------------------------
-// HP dispatch: clone repo, run build, send prompt to Loom
+// the connected node dispatch: clone repo, run build, send prompt to Loom
 // ---------------------------------------------------------------------------
 
 function dispatchToHP(nominated, prompt, nightId) {
@@ -147,13 +149,13 @@ function dispatchToHP(nominated, prompt, nightId) {
   const remoteRepo = `${remoteDir}/${repoName}`;
   const config = nominated.config;
 
-  log('INFO', `dispatch: ${repoName} → HP:${remoteDir}`);
+  log('INFO', `dispatch: ${repoName} → the connected node:${remoteDir}`);
 
-  // 1. Create annexe directory on HP
+  // 1. Create annexe directory on the connected node
   ssh(`mkdir -p ${remoteDir}`);
 
-  // 2. Clone the repo fresh on HP (from the local checkout via archive)
-  log('INFO', `cloning ${repoName} to HP`);
+  // 2. Clone the repo fresh on the connected node (from the local checkout via archive)
+  log('INFO', `cloning ${repoName} to the connected node`);
   const archivePath = `/tmp/dream-${nightId}-${repoName}.tar.gz`;
   execSync(`git -C ${nominated.path} archive --format=tar.gz HEAD > ${archivePath}`, {
     timeout: 60_000,
@@ -204,11 +206,11 @@ function dispatchToHP(nominated, prompt, nightId) {
 
   const loomResponse = callLLM(fullPrompt);
 
-  // 6. Write artefacts on HP (SCP is quoting-safe; heredoc through SSH is not)
+  // 6. Write artefacts on the connected node (SCP is quoting-safe; heredoc through SSH is not)
   const tmpReport = join(ARTEFACT_DIR, '.tmp-report.md');
   mkdirSync(dirname(tmpReport), { recursive: true });
   writeFileSync(tmpReport, loomResponse.slice(0, 50000));
-  try { scp(tmpReport, `${remoteDir}/report.md`); } catch { /* HP pull-back has a local fallback */ }
+  try { scp(tmpReport, `${remoteDir}/report.md`); } catch { /* the connected node pull-back has a local fallback */ }
 
   // 7. Parse verdict — prefer the structured "Done." line or "verdict=" field, fall back to last occurrence
   const doneMatch = loomResponse.match(/verdict[=:]\s*(ACCEPT|REJECT|INCONCLUSIVE)/i);
@@ -543,15 +545,15 @@ async function storeToRuVector(persisted, result, nightId) {
 }
 
 // ---------------------------------------------------------------------------
-// Cleanup HP annexe (disk hygiene)
+// Cleanup the connected node annexe (disk hygiene)
 // ---------------------------------------------------------------------------
 
 function cleanupHP(remoteDir) {
   try {
     ssh(`rm -rf ${remoteDir}`, { timeout: 30_000 });
-    log('INFO', `HP cleanup: ${remoteDir}`);
+    log('INFO', `the connected node cleanup: ${remoteDir}`);
   } catch {
-    log('WARN', `HP cleanup failed: ${remoteDir}`);
+    log('WARN', `the connected node cleanup failed: ${remoteDir}`);
   }
 }
 
@@ -574,11 +576,11 @@ function isNightlyWindow() {
 async function runOnce(opts = {}) {
   log('INFO', 'cycle start');
 
-  // HP reachability probe
+  // the connected node reachability probe
   try {
     ssh('echo ok', { timeout: 15_000 });
   } catch (e) {
-    log('ERROR', `HP unreachable: ${e.message}`);
+    log('ERROR', `the connected node unreachable: ${e.message}`);
     return;
   }
 
@@ -663,7 +665,7 @@ async function runOnce(opts = {}) {
     try { await storeToRuVector(persisted, result, nightId); } catch (e) { log('WARN', `RuVector: ${e.message}`); }
   }
 
-  // Cleanup HP (keep last 7 nights)
+  // Cleanup the connected node (keep last 7 nights)
   try {
     const nights = ssh(`ls -1 ${HP_ANNEXE_DIR} 2>/dev/null || true`).trim().split('\n').filter(Boolean);
     if (nights.length > 7) {

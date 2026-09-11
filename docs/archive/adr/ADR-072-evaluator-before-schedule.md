@@ -2,7 +2,7 @@
 
 - Status: Proposed (dream night 2026-08-29, slot 1; human review required)
 - Deciders: human maintainers of DreamLab-AI/agentbox
-- Relates to: [ADR-052](ADR-052-dream-machine-hp-annexe.md) (HP annexe), [ADR-065](ADR-065-dream-darwin-evaluator-liveness.md) (evaluator liveness contract)
+- Relates to: [ADR-052](ADR-052-dream-machine-hp-annexe.md) (the connected node annexe), [ADR-065](ADR-065-dream-darwin-evaluator-liveness.md) (evaluator liveness contract)
 - Evidence: ../../dream-cycle/LEDGER.md rows 2026-08-17 .. 2026-08-29
 
 ## Context
@@ -34,7 +34,7 @@ opens, it names at least one evaluator that is:
 
 1. a checked-in script under scripts/ (no inline quoted logic in
    dream.config.json — see the ssh-quoting bug class), and
-2. runnable inside the target execution environment (the HP annexe for
+2. runnable inside the target execution environment (the connected node annexe for
    annexe nights), and
 3. decidable: it emits an unambiguous pass/fail token on stdout.
 

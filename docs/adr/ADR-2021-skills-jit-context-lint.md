@@ -51,7 +51,7 @@ does not sandbox execution.
 ## Verification
 
 At `cbe7335b9`, `skills/lint-skills.sh`: banned-string set including the dead
-`192.168.2.48` host (:8), absolute-path ban (:15-17), retired `/workspace` ban
+`a retired address` host (:8), absolute-path ban (:15-17), retired `/workspace` ban
 (:20-22), monolith >250-line/no-`references/` check (:25-31), frontmatter sanity
 (:33-38). Skills are baked at `/opt/agentbox/skills`. Line numbers drifted from
 the source record but every construct is present and live.

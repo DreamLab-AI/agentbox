@@ -6,13 +6,13 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::OnceLock;
 
-pub const DEFAULT_LOOM_URL: &str = "http://192.168.2.132:8084/v1";
+pub const DEFAULT_LOOM_URL: &str = "http://loom:8080/v1";
 pub const DEFAULT_LOOM_MODEL: &str = "qwen3.8-27b";
 pub const DEFAULT_MAX_ASSERTIONS: usize = 15;
 pub const DEFAULT_MIN_CONFIDENCE: f64 = 0.4;
 pub const DEFAULT_MAX_EPISODES: usize = 15;
 pub const DEFAULT_BACKLOG_BATCH: usize = 50;
-const DEFAULT_LOOM_FALLBACK_URL: &str = "http://10.10.10.1:8084/v1";
+const DEFAULT_LOOM_FALLBACK_URL: &str = "http://the connected node:8084/v1";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Podcast {
@@ -236,8 +236,8 @@ podcasts:
     ontology_dir: "${VAULT_PAGES}"
 
 settings:
-  loom_url: "http://192.168.2.132:8084/v1"
-  loom_fallback_urls: ["http://10.10.10.1:8084/v1"]
+  loom_url: "http://loom:8080/v1"
+  loom_fallback_urls: ["http://the connected node:8084/v1"]
   loom_model: "qwen3.8-27b"
   max_assertions_per_episode: 15
   min_confidence: 0.4

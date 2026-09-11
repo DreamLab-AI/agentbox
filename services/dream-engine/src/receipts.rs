@@ -390,7 +390,7 @@ mod tests {
     #[test]
     fn transport_error_is_blocked_not_failed() {
         let mut e = exec(None, "", "");
-        e.transport_error = Some("ssh: connect to host 10.10.10.1 port 22: No route".into());
+        e.transport_error = Some("ssh: connect to host the connected node port 22: No route".into());
         let o = classify(&e, 60);
         assert!(matches!(o, EvaluatorOutcome::Blocked { .. }), "got {o:?}");
         assert!(o.is_harness_fault());

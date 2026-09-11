@@ -305,8 +305,8 @@ test('two-generation: a per-request generation pin overrides the backend default
 
 test('configured-but-unavailable: a dead Loom is a NAMED outcome, not a quiet fallback', async () => {
   const r = brain({
-    seedFn: async () => { throw { error: 'ontology_unavailable', message: 'connect ECONNREFUSED 192.168.2.132:8084' }; },
-    backend: { name: BACKENDS.LOOM, url: 'http://192.168.2.132:8084', configured: true, generation: 'gen-1' },
+    seedFn: async () => { throw { error: 'ontology_unavailable', message: 'connect ECONNREFUSED loom:8080' }; },
+    backend: { name: BACKENDS.LOOM, url: 'http://loom:8080/v1', configured: true, generation: 'gen-1' },
   });
   const out = await r.ask({ query: 'what is an agent', model_tier: 'sonnet' });
 
@@ -321,7 +321,7 @@ test('configured-but-unavailable: a dead Loom is a NAMED outcome, not a quiet fa
 test('configured-but-unavailable: a timeout is the same named outcome', async () => {
   const r = brain({
     seedFn: async () => { throw { error: 'ontology_timeout', message: 'no response in 10000ms' }; },
-    backend: { name: BACKENDS.LOOM, url: 'http://192.168.2.132:8084', configured: true },
+    backend: { name: BACKENDS.LOOM, url: 'http://loom:8080/v1', configured: true },
   });
   const out = await r.ask({ query: 'what is an agent' });
   assert.equal(out.error, DEGRADED_OUTCOMES.BACKEND_CONFIGURED_UNAVAILABLE);

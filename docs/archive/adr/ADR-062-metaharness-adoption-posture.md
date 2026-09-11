@@ -17,7 +17,7 @@ must not be conflated:
   and in the boot cache (`/var/cache/ruflo-plugins/plugins/`), **not installed**.
 - **T2 — dream-engine darwin evaluators**: **already live** — target repos declare
   `@metaharness/darwin` evaluator entrypoints in `dream.config.json`, executed on the
-  HP annexe (`agentbox.toml:1514` sandbox policy).
+  the connected node annexe (`agentbox.toml:1514` sandbox policy).
 
 Package maturity (verified against npm + the ruvnet-kb corpus, 2026-08-27):
 darwin 0.9.3 and router 0.4.0 are actively developed and production-consumed by ruflo;

@@ -376,7 +376,7 @@ ssh -L 5901:localhost:5901 \
     -L 9090:localhost:9090 \
     -L 8080:localhost:8080 \
     -L 8484:localhost:8484 \
-    -N machinelearn@YOUR_HOST_IP
+    -N the gateway host@YOUR_HOST_IP
 ```
 
 Or use the built-in helper:

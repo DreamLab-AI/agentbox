@@ -9,7 +9,7 @@
 > consultant-deepseek, consultant-perplexity, consultant-zai, consultant-antigravity) are
 > not skills; route to them directly via their `consult` tool when a second model opinion is wanted.
 
-Skills: 123 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
+Skills: 124 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
 
 ## How to route
 
@@ -146,6 +146,7 @@ Skills: 123 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md A
 | `echoloop` | Real-time AI meeting copilot. Dual audio capture (system + mic), live transcription (faster-whisper local or Deepgram cloud), LLM coaching loop (Claude/GPT … |
 | `ffmpeg-processing` | Professional video and audio processing - transcode, edit, stream, and analyze media files. Use when transcoding, editing, streaming, or analysing video and … |
 | `imagemagick` | Process and manipulate images with format conversion (PNG→JPG→WebP→GIF), resizing, cropping, filtering, batch operations, and image metadata extraction. Use … |
+| `manim` | Creates precise explanatory animations with Manim Community: algorithms, graph traversal, queues, state transitions, equations and changing data. Use when … |
 | `open-montage` | Agentic video production system. Describe a video idea in natural language; the agent orchestrates research, scripting, asset generation, editing, and … |
 
 ## Memory, Learning, and Intelligence

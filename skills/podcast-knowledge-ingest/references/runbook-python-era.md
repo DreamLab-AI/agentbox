@@ -216,7 +216,7 @@ Top wisdom:
 - Structural signal (tier 2): Google TPUs emerging as a credible Nvidia-GPU alternative (Gemini 3
   reportedly TPU-trained; Meta reportedly evaluating purchases) — semi-durable industry-structure
   shift, outlasts the 6% intraday stock move it sits beside.
-- Operating principle (tier 3, HP CEO Enrique Lores): agentic-AI productivity comes from redesigning
+- Operating principle (tier 3, the connected node CEO Enrique Lores): agentic-AI productivity comes from redesigning
   business processes ground-up, not bolting AI onto existing workflows.
 
 INPUT-ADJUSTMENT PROPOSALS:
@@ -3830,7 +3830,7 @@ Top wisdom:
   responses while simultaneously INCREASING sycophancy and deception — a concrete safety/agreeableness RLHF trade-off.
 - Narrow-RL-beats-general framing (page 4, durable): OpenAI RL-trained a specialised GPT-5 Mini for shopping
   research that beat full-size GPT-5 Thinking on internal product-accuracy benchmarks — transferable insight about
-  scoped RL-tuned small models outperforming larger general ones. Plus HP CEO Enrique Lores: ground-up agentic
+  scoped RL-tuned small models outperforming larger general ones. Plus the connected node CEO Enrique Lores: ground-up agentic
   process REDESIGN yields far larger gains than bolting AI onto existing workflows.
 - Karp AI-sovereignty + AI-washing diagnostics (page 5, durable): enterprises increasingly demand maximal control
   over data/prompts/BI to avoid handing labs 'the keys to their institutions'; and 'AI washing' = claiming to do
@@ -5796,7 +5796,7 @@ Defects by kind:
   Textbook PC-6: prose names a resolvable concept ([[Model Performance]] or a ChatGPT/Gemini entity) → apply
   the link-coverage floor, mint the SINGLE highest-precision PC-1-cleared anchor, orphan only if none clears.
 - semantically-loose (resolving-but-imprecise) wikilink (LOW, PC-1 sub-case (d)-adjacent): [[AI Governance
-  Law and Privacy]] hangs off the HP job-cuts assertion (L11) and the enterprise-reorganisation analysis (L91),
+  Law and Privacy]] hangs off the connected node job-cuts assertion (L11) and the enterprise-reorganisation analysis (L91),
   neither a governance/privacy claim. Links RESOLVE (so this is the milder cousin of PC-1's HIGH wrong-sense
   arm, not a dangling edge) but are topically weak and will pollute that page's backlinks. Fix: on L11 re-point
   to a labour/workforce entity ([[AI-Driven Workforce Reduction]] alone), drop the loose governance link. Folds
@@ -5840,7 +5840,7 @@ INPUT-ADJUSTMENT PROPOSALS:
    owed; page does NOT join the DEFERRED pre-fix re-date backlog.
 2. PC-6 apply: mint one PC-1-cleared anchor on the orphan FT Gemini-vs-ChatGPT assertion (L31) — e.g.
    [[Model Performance]] or a ChatGPT/Gemini entity — so it joins the graph; orphan beats a false edge if none clears.
-3. PC-1 apply: re-point the HP job-cuts link (L11) from [[AI Governance Law and Privacy]] to [[AI-Driven
+3. PC-1 apply: re-point the connected node job-cuts link (L11) from [[AI Governance Law and Privacy]] to [[AI-Driven
    Workforce Reduction]] alone (drop the loose governance edge); the same loose governance link on the
    enterprise-reorg analysis (L91) is likewise topically weak — subtract or replace with an enterprise/adoption entity.
 4. PC-8 apply: normalise 'Enterprise Ai' → 'Enterprise AI' graph-wide (3rd occurrence of this exact surface,

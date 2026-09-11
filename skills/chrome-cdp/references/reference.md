@@ -78,7 +78,7 @@ The `<target>` is a unique prefix of the targetId from `list` (minimum 8 chars).
 agentbox.sh browsercontainer up
 
 # 2. Navigate to app
-scripts/cdp-sidecar.sh open http://192.168.2.132:3001
+scripts/cdp-sidecar.sh open http://the model host:3001
 sleep 5
 
 # 3. Check rendering state
@@ -101,7 +101,7 @@ scripts/cdp-sidecar.sh eval <target> "JSON.stringify(
 )"
 
 # 6. Full diagnostic (runs inside sidecar)
-docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js http://192.168.2.132:3001
+docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js http://the model host:3001
 ```
 
 ## VNC Monitoring

@@ -142,7 +142,7 @@ separately, along with model identity, input/output hashes, latency and reviewer
 judgment. Delete task scratch outputs after retaining the compact qualification
 receipt. Preserve failures in that receipt; do not cherry-pick only the best draft.
 
-The original HP pilot demonstrates one supervised multimodal section. These new
+The original the connected node pilot demonstrates one supervised multimodal section. These new
 prompts are safeguards informed by that failure and later custody checks; they are
 not evidence of whole-pack parity or an unattended quality guarantee. Record fresh
 model trials separately before claiming measured improvement.

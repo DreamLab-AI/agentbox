@@ -4,7 +4,7 @@
 # nightly evidence-gated repository evolution against nominated workspace repos.
 # It discovers repos carrying a `dream.config.json` marker, compiles a
 # deterministic nightly prompt, dispatches the build + evaluators to the
-# HP-Desktop annexe over SSH (control plane here, execution plane on HP —
+# the connected node annexe over SSH (control plane here, execution plane on the connected node —
 # ADR-052), calls an LLM (Z.AI GLM by default, self-hosted Loom façade as the
 # fallback), parses an ACCEPT/REJECT/INCONCLUSIVE verdict, appends a ledger row
 # in the target repo, computes a witness = sha256(sha256(report)+commit), and
@@ -57,7 +57,7 @@ pkgs.rustPlatform.buildRustPackage {
   nativeCheckInputs = [ pkgs.git ];
 
   meta = with lib; {
-    description = "Nightly evidence-gated repository evolution engine for agentbox (HP annexe, ADR-052) — compiles config into deterministic prompts, dispatches to HP, calls an LLM, parses verdicts, persists ledger + witness + RuVector";
+    description = "Nightly evidence-gated repository evolution engine for agentbox (the connected node annexe, ADR-052) — compiles config into deterministic prompts, dispatches to the connected node, calls an LLM, parses verdicts, persists ledger + witness + RuVector";
     homepage    = "https://github.com/DreamLab-AI/agentbox";
     license     = with licenses; [ mit asl20 ];
     mainProgram = "dream-engine";

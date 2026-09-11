@@ -3,7 +3,7 @@
 - **Status:** Accepted — mechanism built + unit-tested (2026-08-27). Per-repo
   config (agentbox) validated on the live annexe by one `/dream run agentbox`.
 - **Date:** 2026-08-26 (built 2026-08-27)
-- **Relates to:** [ADR-052](ADR-052-dream-machine-hp-annexe.md) (dream engine + HP annexe),
+- **Relates to:** [ADR-052](ADR-052-dream-machine-hp-annexe.md) (dream engine + the connected node annexe),
   the one-week dreaming audit (2026-08-26)
 
 ## Context

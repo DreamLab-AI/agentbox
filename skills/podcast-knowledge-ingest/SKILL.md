@@ -84,8 +84,8 @@ podcasts:
     ontology_dir: "${VAULT_PAGES}"
 
 settings:
-  loom_url: "http://192.168.2.132:8084/v1"          # canonical LAN façade (via ml hp-nat DNAT)
-  loom_fallback_urls: ["http://10.10.10.1:8084/v1"]  # direct 25G-rail path when the DNAT is down
+  loom_url: "${LOOM_BASE_URL}"          # canonical LAN façade (via ml hp-nat DNAT)
+  loom_fallback_urls: ["http://the connected node:8084/v1"]  # direct 25G-rail path when the DNAT is down
   loom_model: "qwen3.8-27b"
   max_assertions_per_episode: 15
   min_confidence: 0.4
@@ -95,7 +95,7 @@ settings:
 ```
 
 The Loom URL is resolved once per run by probing `/health` on each candidate in
-order; a fallback hit is logged. Both addresses serve the same façade on HP.
+order; a fallback hit is logged. Both addresses serve the same façade on the connected node.
 
 ## Ingest-status lifecycle
 

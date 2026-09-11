@@ -295,13 +295,13 @@ fn default_true() -> bool {
     true
 }
 fn default_hp_host() -> String {
-    "john@10.10.10.1".into()
+    std::env::var("CONNECTED_NODE_SSH").unwrap_or_default()
 }
 fn default_hp_annexe_dir() -> String {
-    "/home/john/dream-annexe".into()
+    "/srv/dream-annexe".into()
 }
 fn default_loom_url() -> String {
-    "http://192.168.2.132:8084/v1".into()
+    "http://loom:8080/v1".into()
 }
 fn default_loom_model() -> String {
     "qwen3.8-27B".into()

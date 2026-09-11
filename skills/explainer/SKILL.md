@@ -125,7 +125,7 @@ shapes, and what the skill-improvement loop reads from them.
 
 ## Addendum 2026-09-09: the microsite pilot's verdict, and what changed
 
-The first microsite (campaignbuilder, 20 pages, 180 commits over two days) was grounded,
+The first microsite (the target repository, 20 pages, 180 commits over two days) was grounded,
 linked and rejected by its owner: it explained the process of making itself rather than the
 code. Its pages described evidence classes, drills, fixtures, receipts, the bugs found while
 learning the product's UI, and the narration of its own videos; the reader wanted the system.
@@ -147,8 +147,8 @@ sentences, the corrected chapter shape and the gate. Four things changed:
 4. **The model path.** The Loom façade in verbatim mode answered a codebase packet with an
    ontology class instead of calling the model. The fix went into the Loom (ADR-139):
    `loom_options.scaffold=false` makes the façade a plain proxy for that request.
-   `scripts/loom-draft.mjs` sends it on every call and drives the HP model through the façade
-   (`http://192.168.2.132:8084/v1`, about 13–20 s for a 400–900-token section) as a
+   `scripts/loom-draft.mjs` sends it on every call and drives the connected node model through the façade
+   (`${LOOM_BASE_URL}`, about 13–20 s for a 400–900-token section) as a
    sequential, resumable background batch; the session model orients, checks ranges and
    decides. See the model-path section in `references/delivery-microsite.md`.
 

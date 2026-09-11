@@ -204,7 +204,7 @@ review and full deployment verification remain under active development. The wor
 it does not assert the pilot has already achieved them. Update this section after
 verified results and move only reusable lessons into the established list.
 
-## Lessons from the campaignbuilder rewrite (2026-09-09)
+## Lessons from the the target repository rewrite (2026-09-09)
 
 The pilot's twenty pages were replaced in one evening by fifteen anatomy-sectioned chapters
 (23,974 words, 900+ source links, 173 files in the pane index) written by a research → write
@@ -237,7 +237,7 @@ judged the result. What the run taught:
   compact lookup table is worth the length because a newcomer will otherwise open the
   records in numeric order and read two superseded ones first.
 - **Fix the door, do not go round it.** See `text-drafting-qualification-2026-09-09.json`:
-  the HP model drafted a clean, correctly ranged section in 13–20 s once its packet carried
+  the connected node model drafted a clean, correctly ranged section in 13–20 s once its packet carried
   the mapping evidence it asked for, while the Loom façade served an ontology passage instead
   of calling the model. The first workaround targeted the model port on the rail; the fix that
   stayed is a per-request `loom_options.scaffold=false` in the Loom itself (ADR-139,

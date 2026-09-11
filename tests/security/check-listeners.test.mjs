@@ -162,7 +162,7 @@ test('block boundaries stop at the end of the Nix string', () => {
 test('address classification', () => {
   for (const a of ['127.0.0.1', '127.0.0.1:8080', 'localhost', '::1', '[::1]:80'])
     assert.equal(classifyAddress(a), 'loopback', a);
-  for (const a of ['0.0.0.0', '0.0.0.0:8080', '192.168.2.132', '::', '[::]:80'])
+  for (const a of ['0.0.0.0', '0.0.0.0:8080', 'the model host', '::', '[::]:80'])
     assert.equal(classifyAddress(a), 'non-loopback', a);
   assert.equal(classifyAddress('%(ENV_MANAGEMENT_API_PORT)s'), 'ignore');
 });

@@ -111,7 +111,7 @@ fingerprint in `RUVECTOR_EMBED_IDENTITY_OVERRIDE`; there is no boolean that mean
 "trust me".
 
 **Tests and results.** Measured against the live Xinference at
-`192.168.2.132:9997`: `bge-small-en-v1.5`, 384 dimensions, fingerprint
+`${EMBEDDINGS_HOST}`: `bge-small-en-v1.5`, 384 dimensions, fingerprint
 `emb1-384-cd25d147dcb748fd`, **identical across three probes in two processes** —
 which is what makes it usable as a gate rather than a source of false alarms. The
 pin verdict is `accepted`. The identity is also carried into every recall receipt

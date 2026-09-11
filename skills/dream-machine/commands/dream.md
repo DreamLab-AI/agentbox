@@ -1,6 +1,6 @@
 # /dream — control the nightly dream machine
 
-Control the dream-engine (nightly evidence-gated repository evolution, ADR-052 HP annexe). Reference: `docs/developer/dream-engine.md` in the agentbox repo.
+Control the dream-engine (nightly evidence-gated repository evolution, ADR-052 the connected node annexe). Reference: `docs/developer/dream-engine.md` in the agentbox repo.
 
 Parse the argument and act:
 

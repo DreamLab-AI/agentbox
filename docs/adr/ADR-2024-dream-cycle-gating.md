@@ -12,19 +12,19 @@ owner: jjohare
 review_trigger: any change to the recall band, the nightly window, or the darwin sandbox contract
 repo: agentbox
 domain: GOVERNANCE-capabilities
-lineage: legacy ADR-052 (dream machine HP annexe), ADR-065 (darwin evaluator liveness contract), ADR-070 (self-GC dream evidence governance); recall band reuses the LEARNING harness gate (ADR-2018)
+lineage: legacy ADR-052 (dream machine the connected node annexe), ADR-065 (darwin evaluator liveness contract), ADR-070 (self-GC dream evidence governance); recall band reuses the LEARNING harness gate (ADR-2018)
 ---
 
 # ADR-2024 — Dream cycles are evidence-gated and human-merge-gated, and darwin evaluators must emit surface-dependent output
 
 ## Context
 
-The nightly dream-engine evolves nominated repos overnight on the HP annexe,
+The nightly dream-engine evolves nominated repos overnight on the connected node annexe,
 and agentbox contains the very crate that dreams it (`services/dream-engine`) —
 a self-modifying surface. Two failure modes to foreclose: a self-referential
 change slipping in unwitnessed, and a darwin evaluator running the default
 `--sandbox real` mode, which is surface-independent and therefore silently
-no-ops (ADR-065). Prior art: ADR-052 (HP annexe), ADR-070 (dream evidence
+no-ops (ADR-065). Prior art: ADR-052 (the connected node annexe), ADR-070 (dream evidence
 governance).
 
 ## Decision
@@ -35,7 +35,7 @@ witnessed. Every `@metaharness/darwin` entrypoint MUST run `--sandbox mock` (or
 `--sandbox agent`), never the no-op `real` default, so it provably produces
 surface-dependent output. Configuration declares recall-band thresholds
 (`recall_band_self_min = 175`, `recall_band_true_min = 102`, reused from the
-LEARNING harness) and a nightly 1–5 UTC window, dispatched to HP. These are
+LEARNING harness) and a nightly 1–5 UTC window, dispatched to the connected node. These are
 configuration requirements; the current source review does not establish a
 deterministic candidate gate or re-certify the historical live deployment.
 The merge-gate and darwin-liveness rules rely on config/toml discipline rather
@@ -62,7 +62,7 @@ self-referential rule and "never let a self-modifying hypothesis bypass the
 human-merge gate". `agentbox.toml` `[dream_machine]` (:1560-1595): mandatory
 `--sandbox mock` evaluator-liveness note, `recall_band_self_min = 175`,
 `recall_band_true_min = 102`, nightly window `window_start = 1`/`window_end = 5`
-UTC, dispatched to `john@10.10.10.1`.
+UTC, dispatched to `${CONNECTED_NODE_SSH}`.
 
 ## Closeout extension — 2026-09-04
 

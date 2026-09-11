@@ -58,7 +58,7 @@ this profile does not advertise native video or audio understanding.
 
 Qwen-specific generation options are applied in the Agentbox profile only when
 the discovered model ID identifies Qwen. Its matching projector, Jinja template
-and inference configuration belong to the HP model deployment. No Qwen-specific
+and inference configuration belong to the connected node model deployment. No Qwen-specific
 logic is added to Loom's ontology or streaming implementation.
 
 ## Model swaps and qualification
@@ -78,9 +78,9 @@ change or projector change invalidates the prior qualification; finish or stop
 the affected run and requalify. The harness does not yet enforce a deployment
 fingerprint lock on every request.
 
-## HP vision profile
+## the connected node vision profile
 
-The Loom repository's `deploy/compose.model-vision.yml` runs the shared HP model
+The Loom repository's `deploy/compose.model-vision.yml` runs the shared the connected node model
 with its matching projector and template. It uses the existing model image and
 mounts the launcher from source. The pinned serving build requires DFlash to be
 disabled for image turns; the profile sets `VISION=1` and `SPEC=off`. This affects

@@ -277,7 +277,7 @@ a second `accepts[]` entry advertises it without touching the first.
   because it reuses the nostr identity/transport substrate (NIP-47 rides the
   same relays and key discipline as everything else here) and needs no
   resident node. *2026-08-25:* a resident node now exists regardless — the LAN
-  Bitcoin node at 192.168.2.27 (solid-pod-rs ADR-061; successor to VM 107,
+  Bitcoin node on the trusted server segment (solid-pod-rs ADR-061; successor to VM 107,
   Core-Lightning `hsm_secret` preserved for it). The node runs **dual-network**
   (mainnet + testnet4); Core-Lightning on **mainnet** with the restored
   `hsm_secret` is the C10 substrate. C10's sovereign-preferred deployment is

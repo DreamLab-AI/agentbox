@@ -1,8 +1,8 @@
-# HP model: current agent route and historical vision qualification
+# the connected node model: current agent route and historical vision qualification
 
 ## Current estate route — 2026-09-10
 
-The shared HP service now loads the matching vision projector and Qwen template
+The shared the connected node service now loads the matching vision projector and Qwen template
 with speculation disabled. Use Agentbox's OpenCode profile `loom-agent/current`
 through the Loom facade with `loom_options.scaffold=false` for tools and image
 input. The facade supports agent SSE streams; ontology requests without the
@@ -32,7 +32,7 @@ configuration gap; it is not the standing production route.
 
 **This is a manually qualified exception, not the standing path.** The default LLM
 path for drafting the microsite is the Ontology Loom façade,
-`http://192.168.2.132:8084/v1` — consumers hold the façade; the model behind it
+`${LOOM_BASE_URL}` — consumers hold the façade; the model behind it
 swaps with zero consumer change. Reach for this direct path only when a section
 genuinely needs combined vision and language and the Loom's backend model cannot
 supply it: as of 2026-09-09 the Loom's backend (the same `qwen3.8-27b-heretic`
@@ -53,10 +53,10 @@ fall back to a hosted model — that would defeat the reason for using this path
 
 ## Discover before calling
 
-The estate's direct endpoint is the HP model at `http://10.10.10.1:8085` (llama.cpp binds
+The estate's direct endpoint is the connected node model at `${CONNECTED_NODE_URL}` (llama.cpp binds
 0.0.0.0:8085; reachable from the turbo-flow container over the 25G rail, verified
-2026-09-09); its OpenAI-compatible API is under `/v1`. The old `192.168.2.132:8085` address
-does not exist: machinelearn NATs only `:8084` (the Loom façade) onto the LAN. Text-only
+2026-09-09); its OpenAI-compatible API is under `/v1`. The old `${CONNECTED_NODE_HOST}` address
+does not exist: the gateway host NATs only `:8084` (the Loom façade) onto the LAN. Text-only
 drafting goes through the façade with `loom_options.scaffold=false` (ADR-139), which
 `scripts/loom-draft.mjs` sends by default; the rail port is a fallback for hosts that reach
 it. This document covers the vision exception. Read
@@ -66,8 +66,8 @@ that an installed model has a loaded vision projector.
 On 2026-09-09 the shared endpoint served `qwen3.8-27b-heretic-q8_0` using
 `/models/qwen3.8-27B-heretic/RVN-Q8_0.gguf`. Its `/props` reported vision false.
 A successful text request to that service is insufficient for this skill.
-The matching projector was available on HP at
-`/home/john/models/qwen3.8-27B/mmproj-BF16.gguf`.
+The matching projector was available on the connected node at
+`${CONNECTED_NODE_HOME}/models/qwen3.8-27B/mmproj-BF16.gguf`.
 
 Prefer an already configured direct multimodal service. If it lacks vision, report
 that condition and use an authorised isolated process with the matching projector,
@@ -78,7 +78,7 @@ model endpoint. An owned process with no network interface can be reached throug
 
 ## Isolated CPU qualification
 
-HP is reachable as `john@10.10.10.1`. The pilot used the existing `loom-model:local`
+the connected node is reachable as `${CONNECTED_NODE_SSH}`. The pilot used the existing `loom-model:local`
 image but overrode its entrypoint, so neither its Loom facade nor its resident
 model process handled the request. Models were mounted read-only. Adapt paths
 only after inspecting the current host, image and model files.
@@ -87,7 +87,7 @@ only after inspecting the current host, image and model files.
 docker run -d --name OWNED_UNIQUE_NAME --label task=repo-education-model-probe \
   --network none --memory 64g --cpus 16 --gpus all -e CUDA_VISIBLE_DEVICES=-1 \
   --read-only --tmpfs /tmp:rw,size=1g \
-  --mount type=bind,src=/home/john/models,dst=/models,readonly \
+  --mount type=bind,src=${CONNECTED_NODE_HOME}/models,dst=/models,readonly \
   --entrypoint /usr/local/bin/llama-server loom-model:local \
   -m /models/qwen3.8-27B-heretic/RVN-Q8_0.gguf \
   --mmproj /models/qwen3.8-27B/mmproj-BF16.gguf --no-mmproj-offload \

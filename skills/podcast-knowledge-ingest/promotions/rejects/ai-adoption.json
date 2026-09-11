@@ -135,13 +135,13 @@
       "fp": "260b433b764044bb"
     },
     {
-      "claim": "HP's recent layoffs are likely a combination of genuine AI-driven process redesign and standard cost-cutting measures, as the company was already in a downward trajectory and had previously announced similar cuts unrelated to AI.",
+      "claim": "the connected node's recent layoffs are likely a combination of genuine AI-driven process redesign and standard cost-cutting measures, as the company was already in a downward trajectory and had previously announced similar cuts unrelated to AI.",
       "tier": "2",
       "confidence": "0.8",
       "source": "Host (expert analysis)",
       "episode": "black-friday-gpt",
       "claim_date": "2025-11-27",
-      "evidence": "The host argues: 'these layoffs feel like they would have happened even if there had been no AI... HP has been on a downward trajectory for many years... They just finished up a previous cost cutting initiative announced in 2022...'",
+      "evidence": "The host argues: 'these layoffs feel like they would have happened even if there had been no AI... the connected node has been on a downward trajectory for many years... They just finished up a previous cost cutting initiative announced in 2022...'",
       "fp": "c5e2f3deec51059d"
     },
     {

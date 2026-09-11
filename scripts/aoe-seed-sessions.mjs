@@ -210,7 +210,7 @@ export function selectLoomModel(listing, env = {}) {
 // supported configuration surface instead of inventing custom wrapper agents.
 export function openCodeConfig(env = process.env, home = os.homedir(), existing = {}, selected) {
   if (!selected?.id) throw new Error("A discovered Loom model is required");
-  const loomBase = normalizedV1Url(env.LOOM_BASE_URL || env.GEMMA_BASE_URL, 'http://192.168.2.132:8084/v1');
+  const loomBase = normalizedV1Url(env.LOOM_BASE_URL || env.GEMMA_BASE_URL, 'http://loom:8080/v1');
   const deepseekBase = normalizedV1Url(env.DEEPSEEK_BASE_URL, 'https://api.deepseek.com/v1');
   const loomModel = env.LOOM_MODEL || env.GEMMA_MODEL || 'qwen3.8-27B';
   // New agents use a stable logical ID; legacy sessions retain their alias.
@@ -268,7 +268,7 @@ export async function provisionOpenCode({ env = process.env, home = os.homedir()
   const configPath = path.join(configHome, 'opencode', 'opencode.json');
   // Refuse unreadable settings and failed/ambiguous discovery before any write.
   const existing = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, 'utf8')) : {};
-  const base = normalizedV1Url(env.LOOM_BASE_URL || env.GEMMA_BASE_URL, 'http://192.168.2.132:8084/v1');
+  const base = normalizedV1Url(env.LOOM_BASE_URL || env.GEMMA_BASE_URL, 'http://loom:8080/v1');
   const response = await fetchImpl(`${base}/models`, { signal: AbortSignal.timeout(5000) });
   if (!response.ok) throw new Error(`Loom model discovery HTTP ${response.status}`);
   const selected = selectLoomModel(await response.json(), env);

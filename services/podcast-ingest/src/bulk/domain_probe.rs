@@ -215,7 +215,7 @@ pub fn run_domain_probe(out_dir: &Path, ontology_dir: Option<&Path>) -> Value {
         println!("    1. Install: pip install 'ontocast[server,openai]'");
         println!("    2. Configure LLM backend (Loom or external):");
         println!("       export LLM_PROVIDER=openai_compatible");
-        println!("       export LLM_BASE_URL=http://192.168.2.132:8084/v1");
+        println!("       export LLM_BASE_URL=http://loom:8080/v1");
         println!("       export LLM_API_KEY=not-needed");
         println!("       export LLM_MODEL_NAME=qwen3.8-27b");
         println!("    3. Run OntoCast on a sample transcript:");

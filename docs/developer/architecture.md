@@ -182,12 +182,12 @@ When `mesh.mode = "client"`, the container participates in a host mesh. The life
 sequenceDiagram
     participant AB as Agentbox
     participant HO as Host orchestrator
-    participant HP as Host pods/memory
+    participant the connected node as Host pods/memory
 
     AB->>HO: POST /v1/register (image hash, adapter versions)
     HO-->>AB: 200 {session_id, endpoints}
     AB->>AB: Resolve adapters to external impls
-    AB->>HP: connect() per slot (10 s timeout)
+    AB->>the connected node: connect() per slot (10 s timeout)
     HP-->>AB: connected
 
     loop Heartbeat (30 s)

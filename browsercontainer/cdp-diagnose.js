@@ -5,7 +5,7 @@ const WebSocket = require('ws');
 
 const CDP_HOST = '127.0.0.1';
 const CDP_PORT = parseInt(process.env.CDP_PORT || '9222', 10);
-const TARGET_URL = process.argv[2] || process.env.TARGET_URL || 'http://192.168.2.132:3001';
+const TARGET_URL = process.argv[2] || process.env.TARGET_URL || 'http://the model host:3001';
 const WAIT_MS = parseInt(process.argv[3] || '15000', 10);
 
 async function getWsUrl() {

@@ -7,7 +7,7 @@ related: [ADR-2034]
 
 # Resource topology scoping (September 2026)
 
-The agentbox container is the dominant consumer on machinelearn. It hits its
+The agentbox container is the dominant consumer on the gateway host. It hits its
 ceiling not because the ceiling is low but because most of what it spends goes
 on its own overhead: per-tool-call hook boots and a full private copy of every
 MCP server for every Claude Code session. This document records the

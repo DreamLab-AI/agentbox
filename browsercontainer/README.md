@@ -54,7 +54,7 @@ agentbox.sh browsercontainer health
 agentbox.sh browsercontainer cdp
 
 # Run diagnostic against a target URL
-docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js http://192.168.2.132:3001
+docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js http://the model host:3001
 
 # VNC into the desktop
 open vnc://localhost:5903
@@ -74,7 +74,7 @@ The `TREAT_AS_SECURE` env var lists comma-separated origins that Chrome should
 treat as secure contexts. Set in `docker-compose.browsercontainer.yml`:
 
 ```yaml
-- TREAT_AS_SECURE=http://192.168.2.132:3001,http://192.168.2.132:3000
+- TREAT_AS_SECURE=http://the model host:3001,http://the model host:3000
 ```
 
 The `launch-chromium.sh` script expands these into individual
@@ -108,7 +108,7 @@ waits for it to load, then reports:
 - Screenshot saved to `/tmp/visionclaw-diagnose.png`
 
 ```bash
-# Default target (192.168.2.132:3001), 15s wait
+# Default target (the model host:3001), 15s wait
 docker exec browsercontainer node /opt/browsercontainer/cdp-diagnose.js
 
 # Custom target and wait time

@@ -57,6 +57,10 @@ understandable mechanism and a useful next action. Plan a varied visual sequence
   compositor provides a sequential diagram reveal; use **mermaid-diagrams** or
   code-native browser visuals for richer diagrams and frame-exact animations.
   Keep graph labels, code, captions, logos and exact UI text deterministic.
+  For precise algorithms, queues, graph traversal or mathematical transformations,
+  use [manim](../manim/SKILL.md) and its
+  [video handoff](../manim/references/handoffs.md). Import its render as a video
+  asset, retaining scene source and receipt beside it.
 - Generate cinematic metaphor/hero sequences locally with **comfyui**. Read its
   current video workflow reference, probe the sidecar and installed models, and
   follow the model download and smoke-test path before committing to a model.
@@ -99,7 +103,7 @@ python3 scripts/video_project.py compose /absolute/project/plan.json \
 
 Use `--preview` only for explicitly labelled drafts without narration. A delivery
 folder must be new; iteration creates `delivery-v2` rather than overwriting the
-previous review. Import richer Remotion/Videowright/Blender exports as video scenes
+previous review. Import richer Remotion/Videowright/Blender/Manim exports as video scenes
 rather than stretching the bundled simple compositor beyond its purpose.
 
 Open the final MP4, inspect representative frames from **every scene**, play the

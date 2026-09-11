@@ -34,7 +34,7 @@ C7  Model-fit line: if a skill needs a Claude-Code-only affordance (Agent/fork/T
     in ~/.codex/config.toml>." Do not pad.
 C8  Not-baked tools: say so once, near the setup step ("not baked into this image; install with … / runs host-side").
 C9  Endpoints/paths per the fact sheet: browsercontainer 8931 SSE, CDP 9223 in-network (9222 is host-mapped only),
-    Loom façade http://192.168.2.132:8084/v1 is the consumer door, 192.168.2.48 is dead, no `~/.claude/skills/…` or
+    Loom façade ${LOOM_BASE_URL} is the consumer door, a retired address is dead, no `~/.claude/skills/…` or
     `/home/devuser/.claude/skills/…` absolute paths in skill docs (skill-relative paths or /opt/agentbox/skills),
     no literal `/workspace/`, memory via mcp__claude-flow__memory_* only.
 C10 Cross-links: every skill that names a sibling gets a reciprocal mention in that sibling's "Related skills" /

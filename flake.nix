@@ -1397,11 +1397,11 @@
         agentboxManifestPkg = import ./lib/agentbox-manifest.nix { inherit lib; pkgs = rustPkgs; };
 
         # ---------------------------------------------------------------------------
-        # dream-engine — nightly evidence-gated repo evolution (ADR-052 HP annexe).
+        # dream-engine — nightly evidence-gated repo evolution (ADR-052 the connected node annexe).
         # Gate: dream_machine.enabled = true (default off keeps the image
         # byte-identical). Built from source via lib/dream-engine.nix
         # (services/dream-engine crate — self-contained, rustls, no openssl).
-        # Supervised block below dispatches nightly cycles to the HP annexe.
+        # Supervised block below dispatches nightly cycles to the connected node annexe.
         # ---------------------------------------------------------------------------
         dreamMachineCfg = agentboxConfig.dream_machine or {};
         dreamEngineEnabled = (dreamMachineCfg.enabled or false) == true;
@@ -2320,9 +2320,9 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
 ''}
 ${lib.optionalString dreamEngineEnabled ''
 
-# Dream machine (ADR-052 HP annexe). Nightly evidence-gated repo evolution:
+# Dream machine (ADR-052 the connected node annexe). Nightly evidence-gated repo evolution:
 # one cycle per UTC night inside [dream_machine].window_start..window_end, then
-# idle. The binary reads [dream_machine] from /etc/agentbox.toml (window + HP
+# idle. The binary reads [dream_machine] from /etc/agentbox.toml (window + the connected node
 # settings — that path is the image-materialised manifest, see the etc/ closure
 # above); the environment= line below carries only the Nix-known LLM selection
 # so the provider/model are visible in the supervisor block. SECRETS are NOT
@@ -2333,7 +2333,7 @@ ${lib.optionalString dreamEngineEnabled ''
 command=${bgNice}${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
 directory=/home/devuser/workspace
 user=devuser
-environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}",LOOM_URL="${dreamMachineCfg.loom_url or "http://192.168.2.132:8084/v1"}",LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
+environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}",LOOM_URL="${dreamMachineCfg.loom_url or "${LOOM_BASE_URL}"}",LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
 autostart=true
 autorestart=true
 priority=230
@@ -3111,8 +3111,8 @@ ${agentboxPorts}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
       - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen3.8-27B}
-      - LOOM_BASE_URL=''${LOOM_BASE_URL:-http://192.168.2.132:8084/v1}
-      - LOOM_RAW_BASE_URL=''${LOOM_RAW_BASE_URL:-http://192.168.2.132:8085/v1}
+      - LOOM_BASE_URL=''${LOOM_BASE_URL:-${LOOM_BASE_URL}}
+      - LOOM_RAW_BASE_URL=''${LOOM_RAW_BASE_URL:-${CONNECTED_NODE_URL}/v1}
       - LOOM_MODEL=''${LOOM_MODEL:-qwen3.8-27B}
       - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-}
       - GEMMA_MODEL=''${GEMMA_MODEL:-}

@@ -62,9 +62,9 @@ Honest technical boundaries and evidence scope still matter: they must not
 disguise unfinished requirements or justify unsupported claims. Keep the
 internal completion audit separate from the finished teaching narrative.
 
-## Draft on the HP model through the Loom façade, scaffold off
+## Draft on the connected node model through the Loom façade, scaffold off
 
-The estate's model door is the Ontology Loom façade, `http://192.168.2.132:8084/v1`; the
+The estate's model door is the Ontology Loom façade, `${LOOM_BASE_URL}`; the
 model behind it swaps with no consumer change. A codebase is not an ontology subject, and on
 2026-09-09 the façade's verbatim mode answered a packet about `pnpm verify` with the
 blockchain "Node" class in 40 ms without calling the model. The Loom now honours a
@@ -75,7 +75,7 @@ control) and the response carries `loom.served_mode: passthrough`.
 `scripts/loom-draft.mjs` sends that option on every call and refuses a response that was not
 passed through, so it fails loudly against a façade without the ADR-139 build. Run it as a
 sequential, resumable background batch; the session model only orients, checks ranges and
-decides. The direct rail port `http://10.10.10.1:8085/v1` works from hosts that can reach it
+decides. The direct rail port `${CONNECTED_NODE_URL}/v1` works from hosts that can reach it
 (`EXPLAINER_MODEL_BASE`) but is an implementation detail behind the door, not the path to
 document. Vision remains the manually qualified exception in
 [microsite/hp-qwen-direct.md](microsite/hp-qwen-direct.md). The controlling agent gathers

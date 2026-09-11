@@ -206,7 +206,7 @@ name: fixture
 description: points at a host that no longer exists.
 ---
 
-Call the model at http://192.168.2.48:8084/v1 for inference.
+Call the model at http://a retired address:8084/v1 for inference.
 EOF
 check "banned stale host still fails" 1 "STALE" "$T"
 rm -rf "$T"

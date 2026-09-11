@@ -125,7 +125,7 @@ The intervening governed `flake.nix` change adds exact package-lock inputs for
 the nine existing npm CLIs and updates five dependency-output hashes after a
 manifest-by-manifest comparison. No existing package version changed; additions
 are optional musl packages already present in the original locks. All nine
-fixed-output derivations passed an explicit HP `nix build --rebuild` replay.
+fixed-output derivations passed an explicit the connected node `nix build --rebuild` replay.
 This changes reproducible package installation, not the ADR's admission, custody
 or publication rule. Source verification is renewed at this commit; existing
 activation evidence and limits remain unchanged. The active local container was
@@ -144,7 +144,7 @@ runtime behaviour; existing implementation and activation qualifications remain.
 The only intervening governed flake change selects the upstream executable
 `nix2container.packages.${system}.nix2container-bin` for devShell buildInputs;
 the former `n2c.nix2container` attribute does not exist. The selected executable
-derivation evaluates on the pinned HP input. Container package selection,
+derivation evaluates on the pinned the connected node input. Container package selection,
 admission and custody behaviour are unchanged by this development-shell repair.
 Existing runtime activation limits remain. Verification is renewed at
 `8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.

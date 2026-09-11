@@ -142,7 +142,7 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
 The dream-engine itself is **real and shipped**: a Rust crate at `services/dream-engine/`
 with a built release binary (`services/dream-engine/target/release/dream-engine`,
 10.3 MB, 2026-08-30), driven by `dream.config.json`, gated `[dream_machine] enabled = true`,
-process owner supervisord, dispatched to HP (`10.10.10.1`). **The default reasoning
+process owner supervisord, dispatched to the connected node (`the connected node`). **The default reasoning
 provider is Z.AI, not the Loom** — `[dream_machine].llm_provider = "zai"` with
 `zai_model = "glm-5.3"`, and the generated `[program:dream-engine]` block defaults
 `DREAM_LLM_PROVIDER` the same way. That is a deliberate choice for reasoning-token
@@ -161,7 +161,7 @@ Shipped-vs-paper inventory of the ADR-052/055–072 band:
 
 | ADR | Subject | State |
 |-----|---------|-------|
-| 052 | Dream machine HP annexe | **Shipped** — engine binary, config, supervisor gate, HP dispatch |
+| 052 | Dream machine the connected node annexe | **Shipped** — engine binary, config, supervisor gate, the connected node dispatch |
 | 055 | Dream cockpit panel | Partial — `dream.html` console exists; full cockpit unverified |
 | 056 | Dream decision surface | Paper |
 | 057 | Replayable execution journal | **Proposed, no code** |
@@ -185,10 +185,10 @@ The Loom is **load-bearing in production** but its harness-side decision record
 ADR-051 ratifies, **this document is the interim authority for the harness-side Loom
 contract.** Verified live wiring:
 
-- **Façade** — `http://192.168.2.132:8084/v1` (`agentbox.toml [dream_machine].loom_url`,
+- **Façade** — `${LOOM_BASE_URL}` (`agentbox.toml [dream_machine].loom_url`,
   also `[skills.ontology.condense].endpoint`), an OpenAI
-  chat-completions endpoint. The `.132` (machinelearn) address NATs to HP over the 25G rail;
-  HP's old `.48` is dead. `/loom/search` + `/loom/sparql` retrieval is wired in
+  chat-completions endpoint. The `.132` (the gateway host) address NATs to the connected node over the 25G rail;
+  the connected node's old `.48` is dead. `/loom/search` + `/loom/sparql` retrieval is wired in
   `mcp/servers/lib/ontology-retrieval.js:345-393` via `LOOM_FACADE_URL`; the "one brain"
   ontology retrieval resolves through the Loom rather than re-deriving index state locally.
 - **Model-swap contract** — consumers hold the façade; the model is a URL behind it,

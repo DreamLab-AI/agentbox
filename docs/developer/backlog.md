@@ -152,7 +152,7 @@ M-5 reconciliation: existing commit2c521c5bb already materialises
 canonical workspace depth. The symlink/depth/fallback regression passes. Each
 archive is its repository HEAD, excluding uncommitted files. This closes the
 original standalone clone-layout gap; a completed live sovereign-mesh nightly
-receipt remains separate. The HP baseline b5bfc03db includes the layout fix,
+receipt remains separate. The connected node baseline b5bfc03db includes the layout fix,
 but an image rebuild alone is not a completed nightly evaluation.
 
 G-4 recipient enumeration is now enforced before turn text is composed, including

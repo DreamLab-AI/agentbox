@@ -11,7 +11,7 @@ const selected = seeder.selectLoomModel(listing);
 test('generic and legacy agent IDs use discovered wire model, passthrough, tools and advertised images', () => {
   const config = seeder.openCodeConfig({}, '/agent-home', {}, selected);
   const provider = config.provider['loom-agent'];
-  assert.equal(provider.options.baseURL, 'http://192.168.2.132:8084/v1');
+  assert.equal(provider.options.baseURL, 'http://loom:8080/v1');
   const model = provider.models.current;
   assert.equal(model.id, selected.id);
   assert.deepEqual(config.provider['loom-raw'].models['qwen3.8-27B'], model);

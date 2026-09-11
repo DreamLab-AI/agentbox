@@ -66,7 +66,7 @@ podcast-promote --pages-dir <scratch>/pages --proposals-dir <scratch>/proposals 
 | `--judge-b-min` | `0.0` | survive if rubric-B improvement `>` this (strict) |
 | `--completeness-min` | `0.6` | survive if completeness score `>= this` |
 | `--judge-seed` | `42` | seed for blind A/B before/after ordering |
-| `--loom-url` | `http://192.168.2.132:8084/v1` | Ontology Loom façade |
+| `--loom-url` | `${LOOM_BASE_URL}` | Ontology Loom façade |
 | `--loom-model` | `qwen3.8-27b` | Loom model id |
 | `--dry-run` | off | stop after candidacy detection; no network calls, no writes |
 | `--limit N` | none | process at most N candidates this run |
@@ -351,7 +351,7 @@ into image builds regardless, so it has since moved to
 
 3. **Full live end-to-end run** on `Synthetic Test Topic Beta`:
    - Loom reachability check: **live**, `GET
-     http://192.168.2.132:8084/health` → `ok: true`.
+     ${LOOM_BASE_URL}/health` → `ok: true`.
    - Draft assembly: **live** Loom call (`qwen3.8-27b`,
      `loom_options.verbatim=false`) returned a valid `insert_after` splice
      anchored on `### Applications`, which validated and applied cleanly.

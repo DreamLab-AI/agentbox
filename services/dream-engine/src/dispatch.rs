@@ -17,9 +17,9 @@ pub enum DispatchError {
     Io(#[from] std::io::Error),
 }
 
-/// Run a command on HP via SSH.
+/// Run a command on the connected node via SSH.
 ///
-/// HP's login shell is fish — every remote command is wrapped in `bash -lc`
+/// the connected node's login shell is fish — every remote command is wrapped in `bash -lc`
 /// so POSIX syntax (&&, redirects, cd) behaves as written.
 pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
     let wrapped = format!("bash -lc {}", shell_quote(cmd));
@@ -45,7 +45,7 @@ pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-/// Run a command on HP and capture the full result, *without* treating a
+/// Run a command on the connected node and capture the full result, *without* treating a
 /// non-zero exit as an error.
 ///
 /// [`ssh`] collapses "the evaluator disagreed" and "the transport broke" into
@@ -93,7 +93,7 @@ pub fn ssh_capture(hp_host: &str, cmd: &str) -> crate::runner::ExecOutcome {
     }
 }
 
-/// SCP a local file to HP.
+/// SCP a local file to the connected node.
 pub fn scp_to(local: &Path, hp_host: &str, remote: &str) -> Result<(), DispatchError> {
     let output = Command::new("scp")
         .args([
@@ -113,7 +113,7 @@ pub fn scp_to(local: &Path, hp_host: &str, remote: &str) -> Result<(), DispatchE
     Ok(())
 }
 
-/// SCP a remote file from HP to local.
+/// SCP a remote file from the connected node to local.
 pub fn scp_from(hp_host: &str, remote: &str, local: &Path) -> Result<(), DispatchError> {
     let output = Command::new("scp")
         .args([
@@ -133,10 +133,10 @@ pub fn scp_from(hp_host: &str, remote: &str, local: &Path) -> Result<(), Dispatc
     Ok(())
 }
 
-/// Clone a repo to the HP annexe.
+/// Clone a repo to the connected node annexe.
 ///
 /// Uses `git archive` locally (this container has no system tar; git carries
-/// its own tar writer) and extracts with HP's tar on the remote side.
+/// its own tar writer) and extracts with the connected node's tar on the remote side.
 /// Archives HEAD — uncommitted changes are deliberately excluded so the
 /// witness commit always matches the evaluated tree.
 pub fn clone_to_hp(
@@ -183,7 +183,7 @@ pub fn clone_to_hp(
     Ok(())
 }
 
-/// Run build + evaluators on HP. Returns (build_output, eval_outputs).
+/// Run build + evaluators on the connected node. Returns (build_output, eval_outputs).
 pub fn run_on_hp(
     hp_host: &str,
     remote_dir: &str,

@@ -84,7 +84,7 @@ pip install "ontocast[server,openai]"
 
 # Or use the Loom as the LLM backend (no external API needed):
 export LLM_PROVIDER=openai_compatible
-export LLM_BASE_URL=http://192.168.2.132:8084/v1
+export LLM_BASE_URL=${LOOM_BASE_URL}
 export LLM_API_KEY=not-needed
 export LLM_MODEL_NAME=qwen3.8-27b
 ```

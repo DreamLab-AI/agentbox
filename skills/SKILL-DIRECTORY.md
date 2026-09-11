@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **128 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
+> **129 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
 > Updated 2026-09-09 (estate re-audit for Fable 5.1 / GPT-6 Astra workloads; history in `CHANGELOG.md` and `docs/adr/`). Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -32,13 +32,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (128 Active Skills)
+## Artefact 1: Categorised Skill Inventory (129 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 128 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 129 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -69,7 +69,7 @@ Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP)
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `verification-quality` | No | Truth scoring (0.0-1.0), automatic rollback at 0.95 threshold, CI/CD export | Ensuring code correctness with truth-score verification and auto-rollback |
-| `explainer` | No | **Explain-this-codebase family hub**: shared core (seven-question comprehension arc, claims ledgers to file:line, scope ringfence, stop-before-fixing-product-code rule, gates A–E) plus three delivery references — docs bundle (three audience documents + RuVector `<repo>-kb`), instructional microsite (formerly `repo-education`), video (hands off to `codebase-video`). Microsite chapters are Markdown gated by `voice-lint.sh`, an independent range check and `anatomy-coverage.mjs` (`references/microsite/reader-voice.md`); drafting runs on the HP model through the Loom façade with the scaffold declined per request (ADR-139), the direct vision path a documented exception | Explaining, onboarding or handing over a repo or product to people who did not build it ("explain this to the CEO", "handover doc", "repo primer", "teaching site", "what does this actually do"); pairs with `docs-alignment` (corpus audit) and `design-audit` (visual polish) |
+| `explainer` | No | **Explain-this-codebase family hub**: shared core (seven-question comprehension arc, claims ledgers to file:line, scope ringfence, stop-before-fixing-product-code rule, gates A–E) plus three delivery references — docs bundle (three audience documents + RuVector `<repo>-kb`), instructional microsite (formerly `repo-education`), video (hands off to `codebase-video`). Microsite chapters are Markdown gated by `voice-lint.sh`, an independent range check and `anatomy-coverage.mjs` (`references/microsite/reader-voice.md`); drafting runs on the connected node model through the Loom façade with the scaffold declined per request (ADR-139), the direct vision path a documented exception | Explaining, onboarding or handing over a repo or product to people who did not build it ("explain this to the CEO", "handover doc", "repo primer", "teaching site", "what does this actually do"); pairs with `docs-alignment` (corpus audit) and `design-audit` (visual polish) |
 | `docs-alignment` | No | 15-agent swarm for documentation validation, Diataxis framework, link coverage, Mermaid diagrams | Validating and modernising project documentation against codebase |
 | `security-testing` | No | OWASP Top 10 validation, auth/authorisation testing, API security, dependency CVE scanning, secrets detection, SAST/DAST | Application-layer security testing for web services and APIs (not Linux hardening — use `defense-security` for that) |
 | `prose-sanitiser` | No | Remove LLM writing fingerprints: em-dash overuse, "The X" headings, tier-1 slop vocabulary, sycophantic filler, structural tells. Substance-first editorial method, draft review (keep/revise/ask-author/cut), interview-driven co-writing. Enforces UK English. Deterministic layers run on the `sanitise` binaries from [DreamLab-AI/prose-sanitiser](https://github.com/DreamLab-AI/prose-sanitiser) | Cleaning public-facing content, docs, articles, or presentations that should read as human-authored; reviewing or co-writing drafts; fixing hollow or generic prose |
@@ -221,6 +221,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `echoloop` | No | Real-time meeting copilot: dual audio capture, faster-whisper/Deepgram transcription, Claude/GPT coaching loop, session logging | Live meeting coaching, transcription, meeting recap, negotiation support |
 | `imagemagick` | Yes | Format conversion, resize, crop, filter, batch ops, watermarks, metadata | Image format conversion, thumbnails, batch image processing |
 | `comfyui` | Yes | Stable Diffusion, FLUX, node-based workflows, distributed GPU (Salad Cloud) | AI image/video generation from prompts or workflows |
+| `manim` | No | Precise Python animations for algorithms, queues, graphs, equations and state changes; video, section clips and static frames | A mechanism needs motion; hands clips to codebase-video or embeds them in knowledge pages. Optional pinned runtime |
 | `codebase-video` | No | Repository-grounded audience explainer; local ComfyUI footage, screenshots, diagrams, narration, captions and verified MP4 | Explain this codebase to a nominated audience in a complete video |
 | `open-montage` | No | Agentic video production: 11 pipelines, 49 tools, TTS, avatar, music, zero-key mode. On-demand clone | "Make a video", explainers, trailers, podcast-to-video, avatar presentations |
 | `clipcannon` | Yes | AI video editor: 51 MCP tools (12 categories), 22-stage analysis DAG, 14 ML models, 5 embedding spaces, voice clone (Qwen3-TTS), lip-sync (LatentSync 1.6), AI music (ACE-Step), text-to-video gen, Voice Agent ("Jarvis"), 7 platform renders, credit billing. Local GPU | Edit existing video, find moments, highlight reels, captions, voice clone, lip-sync, TikTok/Reels render, text-to-video, voice agent |
@@ -267,7 +268,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `hermes-scheduler` | No | Recurring task scheduling, cron jobs for Claude Code agents, routine automation | Scheduling periodic agent tasks, autonomous routines |
 | `dream-machine` | No | Control/inspect the nightly dream-engine loop (ADR-052): `/dream status\|pause\|resume\|standby\|inbox`, ledger + roster + last-night health | "/dream", dream-machine questions, pausing/resuming nightly repo evolution, dream inbox triage |
 | `cost-estimation` | No | GPU endpoint cost tiers, agent job estimate-hold-run-settle lifecycle, DREAM/sats token conversion, COCOMO-hybrid infrastructure valuation, /pay/.estimate integration | Pricing inference/image-gen/analytics endpoints, agent job cost planning, DREAM token economics |
-| `gcloud` | No | Google Cloud CLI (gcloud/gsutil/bq) — Compute Engine, IAP, Secret Manager, Cloud Run, Artifact Registry. Nix-provisioned; interactive/operator auth, creds in writable `~/.config/gcloud`; impersonation-over-keys. Canonical `campaignbuilder` VPS-behind-IAP deploy | Deploying to or operating Google Cloud: standing up a VM behind IAP, granting/impersonating a deploy SA, GCP secrets, the campaignbuilder deployment |
+| `gcloud` | No | Google Cloud CLI (gcloud/gsutil/bq) — Compute Engine, IAP, Secret Manager, Cloud Run, Artifact Registry. Nix-provisioned; interactive/operator auth, creds in writable `~/.config/gcloud`; impersonation-over-keys. Canonical `the target repository` VPS-behind-IAP deploy | Deploying to or operating Google Cloud: standing up a VM behind IAP, granting/impersonating a deploy SA, GCP secrets, the the target repository deployment |
 | `payment-router` | No | Transparent HTTP 402 detect-classify-pay-retry loop for cost-gated external resources; fail-closed spend gate (`[skills.payment_router]`, PRD-015, management-api routes) | Any skill/adapter calling a paid endpoint that answers 402; budget-bounded machine payments |
 
 ### Systems Programming
@@ -302,7 +303,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 128 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 129 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -547,6 +548,9 @@ Q3: What media type?
     +-- AI art (Nano Banana 2): blog headers, infographics, technical illustrations, comics
     |   --> art
     |
+    +-- Precise mechanism animation (algorithms, queues, graphs, equations)
+    |   --> manim (optional Cairo renderer; exports clips to the video/page owner)
+    |
     +-- Full video production (explainers, trailers, podcasts, avatars, TTS)
     |   --> open-montage
     |
@@ -690,7 +694,7 @@ Q3: What infrastructure task?
     |   --> hermes-scheduler
     |
     +-- Google Cloud: deploy a VM behind IAP, impersonate a deploy SA, GCP secrets,
-    |   the campaignbuilder VPS deployment
+    |   the the target repository VPS deployment
     |   --> gcloud
     |
     +-- Creating new skills for this system

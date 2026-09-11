@@ -99,7 +99,7 @@ Hard-won facts baked into the current code — do not regress them:
 - **Zero assertions ≠ broken pipeline.** Loom connection errors degrade
   gracefully to "No assertions met threshold" per file. If a whole run yields
   nothing, check Loom reachability first (`curl <loom>/health`), then the
-  hp-nat DNAT on machinelearn (the `.48`-is-dead / stale-route family of
+  hp-nat DNAT on the gateway host (the `.48`-is-dead / stale-route family of
   failures — see agentbox email-search skill for the fingerprint).
 - **Supercronic reads the crontab only at start.** After editing `crontab`,
   `supervisorctl restart podcast-cron`.

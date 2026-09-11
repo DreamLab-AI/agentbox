@@ -1,6 +1,6 @@
 ---
 id: ADR-052
-title: Dream Machine HP annexe — isolated overnight evidence-gated evolution with a pull-model control plane
+title: Dream Machine the connected node annexe — isolated overnight evidence-gated evolution with a pull-model control plane
 status: proposed
 date: 2026-08-14
 type: integration
@@ -9,16 +9,16 @@ author: Dr John O'Hare
 depends_on: [ADR-051, ADR-053]
 references: [VisionClaw ADR-135, VisionClaw PRD-025, dream-machine ADR-0001, dream-machine ADR-0002]
 investigation: docs/integration/dream-machine-capability-investigation.md
-review_trigger: Qwen3.8 lands behind the Loom façade (model swap on HP :8085), or the first ten annexe nights complete (evaluate the significance-bar and verdict-quality assumptions against real ledger rows)
+review_trigger: Qwen3.8 lands behind the Loom façade (model swap on the connected node :8085), or the first ten annexe nights complete (evaluate the significance-bar and verdict-quality assumptions against real ledger rows)
 ---
 
-# ADR-052 — Dream Machine HP annexe
+# ADR-052 — Dream Machine the connected node annexe
 
 > **Numbering:** re-checked next-free at draft — ADR-045…051 all landed. ADR-052
 > is free; this doc claims it. Renumber on merge conflict as per house rule.
 >
 > **Scope boundary.** This ADR owns the **agentbox-side control plane** and the
-> **topology contract** with the HP execution plane. The Dream Machine engine
+> **topology contract** with the connected node execution plane. The Dream Machine engine
 > itself (config compiler, ledger/witness/entrypoint toolkits) is upstream
 > (`/home/devuser/workspace/dream-machine`, its ADR-0001/0002) and is consumed
 > as-is via its documented seams. The Loom façade contract is VisionClaw
@@ -39,16 +39,16 @@ verdicts), and overnight agentic runs share the day-job container's blast
 radius and credential surface.
 
 The operator resolved the scope question with a different shape: run the
-nights on **HP-Desktop** (downstream of machinelearn over the 25 G rail,
-`10.10.10.0/30`, no LAN IP), standing up an **experimental instance of each
+nights on **the connected node** (downstream of the gateway host over the 25 G rail,
+`a private point-to-point link`, no LAN IP), standing up an **experimental instance of each
 prospective project there**, using **exclusively the Ontology Loom**
-(`http://192.168.2.132:8084/v1`, the load-bearing model-swap façade) backed by
-the **self-hosted Qwen3.8 model being installed on HP :8085** (Muse-Glimmer-30B
+(`${LOOM_BASE_URL}`, the load-bearing model-swap façade) backed by
+the **self-hosted Qwen3.8 model being installed on the connected node :8085** (Muse-Glimmer-30B
 serves there today; the façade makes the swap a config change, ADR-135).
 
 ## 2. Decision
 
-Adopt the **HP dream annexe** topology — agentbox is the control plane, HP is
+Adopt the **the connected node dream annexe** topology — agentbox is the control plane, the connected node is
 the execution plane, and the boundary is **pull-model unidirectional**:
 
 1. **Control plane (agentbox, supervisord house pattern).** A
@@ -59,8 +59,8 @@ the execution plane, and the boundary is **pull-model unidirectional**:
    its own `dream.config.json`; `scan_dirs` widened with the workspace root as
    a role-based third entry, discovery filtered to marker-carrying repos);
    compiles each night's prompt with `dream-machine compile`; dispatches the
-   job to HP; and afterwards **pulls** the night's artefacts back.
-2. **Execution plane (HP, zero estate credentials).** HP holds **no**
+   job to the connected node; and afterwards **pulls** the night's artefacts back.
+2. **Execution plane (the connected node, zero estate credentials).** the connected node holds **no**
    credentials for ruvector-postgres, the management API, GitHub, or the
    relay. It receives the compiled prompt + a fresh clone instruction over
    ssh, runs the night in an experimental instance (its own checkouts, its
@@ -85,7 +85,7 @@ the execution plane, and the boundary is **pull-model unidirectional**:
    see the investigation report §3.1 band-discrepancy note).
 5. **Initial roster (decision confirmed):** `solid-pod-rs` and
    `nostr-rust-forum` — both Rust, clean native `cargo test` evaluator
-   entrypoints, both build fully in a fresh clone on HP. Each needs an
+   entrypoints, both build fully in a fresh clone on the connected node. Each needs an
    authored `dream.config.json` before its first night.
 6. **Sequencing:** one repo per cycle, sequential; per-cycle post-ingest HNSW
    rebuild only when the night actually wrote memory; recall gate against the
@@ -95,25 +95,25 @@ the execution plane, and the boundary is **pull-model unidirectional**:
 
 - **ssh provisioning is DONE** (2026-08-14). A dedicated ed25519 orchestrator
   keypair (`~/.ssh/agentbox-hp/` on the host, distinct from any personal key)
-  is authorised on `john@10.10.10.1` and bind-mounted read-only into the
+  is authorised on `${CONNECTED_NODE_SSH}` and bind-mounted read-only into the
   container at `/home/devuser/.ssh` via `docker-compose.override.yml` (the
   rootfs is `read_only`, so `.ssh` cannot be written at runtime). The
   writable-`UserKnownHostsFile` requirement is obviated by **pre-seeding**
-  `known_hosts` with HP's host key (fingerprint cross-checked against a live
+  `known_hosts` with the connected node's host key (fingerprint cross-checked against a live
   authenticated connection) and setting `StrictHostKeyChecking yes` — no
-  runtime write is needed. In-container agents reach HP non-interactively via
-  `ssh john` / `ssh hp` (config aliases `john hp hp-desktop 10.10.10.1`,
-  `BatchMode yes`). Trust is one-way: HP holds no estate credentials; the key
+  runtime write is needed. In-container agents reach the connected node non-interactively via
+  `ssh john` / `ssh hp` (config aliases `john hp hp-desktop the connected node`,
+  `BatchMode yes`). Trust is one-way: the connected node holds no estate credentials; the key
   is revocable independently by removing its line from
-  `john@10.10.10.1:~/.ssh/authorized_keys`. **Caveat for the dispatch wrapper:**
-  `john`'s login shell on HP is fish, so remote command strings must be run
+  `${CONNECTED_NODE_SSH}:~/.ssh/authorized_keys`. **Caveat for the dispatch wrapper:**
+  `john`'s login shell on the connected node is fish, so remote command strings must be run
   through `ssh john bash -lc '…'`, not passed as bare argv.
 - **Loom verified healthy** (`/health`: scaffold mode, backend reachable,
   8,143 classes / 286k triples). **Qwen3.8 swap is DONE** (verified
   2026-08-14 ~19:30): `/v1/models` now serves **qwen3.8-27B** and a live
   `/v1/chat/completions` round-trip through the façade answers correctly —
   the swap required zero consumer changes, exactly the ADR-135 property this
-  annexe leans on. HP carries 2× Quadro RTX 6000 (24 GB each), both loaded
+  annexe leans on. the connected node carries 2× Quadro RTX 6000 (24 GB each), both loaded
   with the model resident. Note the deployed model is **27B-class**
   (comparable in scale to the Muse-Glimmer-30B it replaced), not the 8B
   class §6's capability caveat originally assumed — the open question is now
@@ -135,11 +135,11 @@ the execution plane, and the boundary is **pull-model unidirectional**:
   symlink indirection that caused the walk miss.
 - **Orchestrator is BUILT** (2026-08-14). `dream-machine-nightly.mjs` in
   `agentbox/scripts/` implements the full control-plane loop: marker-file
-  discovery, dream-machine compile, ssh dispatch to HP (git archive → clone →
-  build → eval), Loom API call, artefact pull-back, ledger append, and HP disk
+  discovery, dream-machine compile, ssh dispatch to the connected node (git archive → clone →
+  build → eval), Loom API call, artefact pull-back, ledger append, and the connected node disk
   hygiene. Gated by `[dream_machine] enabled` in agentbox.toml (off by
   default). Modes: `--once`, `--loop`, `--dry-run`.
-- **Rust toolchain on HP is DONE** (2026-08-14). `rustup` installed under
+- **Rust toolchain on the connected node is DONE** (2026-08-14). `rustup` installed under
   `john`'s home (user-level, cargo 1.97.1 / rustc 1.97.1). The orchestrator
   sources `~/.cargo/env` before every remote command.
 - **Nomination markers authored**: `dream.config.json` committed to
@@ -175,8 +175,8 @@ observatory (report §11) consumes the federated ledger later.
   (structurally disqualified for shared memory); the `RemoteTrigger` body
   contract remains unverified. Dead for now; revisit only if the annexe
   proves insufficient.
-- **HP writes memory / publishes PRs directly.** Rejected: breaks the
-  unidirectional isolation that is the annexe's core property. HP must remain
+- **the connected node writes memory / publishes PRs directly.** Rejected: breaks the
+  unidirectional isolation that is the annexe's core property. the connected node must remain
   credential-free toward the estate.
 
 ## 6. Consequences and risks
@@ -204,11 +204,11 @@ observatory (report §11) consumes the federated ledger later.
 
 This ADR is satisfied when: (1) a nominated repo's marker `dream.config.json`
 is discovered by the widened role-based scan; (2) an unattended nightly cycle
-dispatches to HP, runs research + evaluation in the experimental instance via
+dispatches to the connected node, runs research + evaluation in the experimental instance via
 the Loom exclusively, and the pull returns artefacts with a valid witness;
 (3) the repo's `LEDGER.md` gains exactly one row and `dream-cycle` RuVector
 rows appear only for significant/evaluated findings, with correct `source`
-metadata; (4) HP is verifiably credential-free toward the estate (no ruvector,
-management-api, GitHub, or relay secrets present on HP); (5) a full cycle with
+metadata; (4) the connected node is verifiably credential-free toward the estate (no ruvector,
+management-api, GitHub, or relay secrets present on the connected node); (5) a full cycle with
 the Loom unreachable ends in a recorded degraded night, not a crash; (6) the
 recall gate passes at the §2.4 re-frozen band after a memory-writing cycle.

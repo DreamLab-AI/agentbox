@@ -1,7 +1,7 @@
 //! How an evaluator command is actually executed, and the seam that makes the
 //! acceptance path testable without an annexe.
 //!
-//! Production runs evaluators over SSH on the HP annexe ([`SshRunner`]).
+//! Production runs evaluators over SSH on the connected node annexe ([`SshRunner`]).
 //! Tests — and any future local-mode dry run — use [`LocalRunner`] against a
 //! real directory, or [`ScriptedRunner`] to replay a fixed set of outcomes.
 //! Everything downstream (receipts, the required-check gate, the verdict)
@@ -69,7 +69,7 @@ fn timeout_wrapped(work_dir: &str, command: &str, timeout_secs: u64) -> String {
     )
 }
 
-/// The production runner: evaluators execute on the HP annexe over SSH.
+/// The production runner: evaluators execute on the connected node annexe over SSH.
 pub struct SshRunner {
     pub host: String,
 }

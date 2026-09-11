@@ -1,6 +1,6 @@
 # Reader voice: explain the system, not the making of the explanation
 
-The September 2026 microsite pilot (campaignbuilder, 20 pages, 180 commits) produced
+The September 2026 microsite pilot (the target repository, 20 pages, 180 commits) produced
 pages that were accurate, linked to source and almost useless to their reader. They
 described the process of producing the site: the evidence it had gathered, the drills it
 had run, the bugs it had found while learning the product's interface, and the standards

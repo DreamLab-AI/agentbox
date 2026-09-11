@@ -66,7 +66,7 @@ pub struct Engine {
     pub llm_fallback: Option<LlmConfig>,
     pub ruvector: RuVectorConfig,
     /// How evaluator commands are executed. Production wires
-    /// [`crate::runner::SshRunner`] at the HP annexe; tests substitute a local
+    /// [`crate::runner::SshRunner`] at the connected node annexe; tests substitute a local
     /// or scripted runner so the acceptance path is exercisable offline.
     pub runner: Arc<dyn EvaluatorRunner>,
     /// Durable fair-scheduling state (least-recently-dreamed first).
@@ -519,7 +519,7 @@ impl Engine {
         };
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::ManifestFrozen);
 
-        // 3. Dispatch to the HP annexe: clone, build, run evaluators.
+        // 3. Dispatch to the connected node annexe: clone, build, run evaluators.
         //    Hygiene first: sweep night dirs older than 3 days so the annexe
         //    never accumulates stale clones/build trees (fail-open).
         //    The remote dir carries the RUN ID, not the pid: two attempts at the
@@ -535,7 +535,7 @@ impl Engine {
         ) {
             warn!(error = %e, "annexe retention sweep failed (fail-open)");
         }
-        info!(remote = %remote_dir, "dispatching to HP");
+        info!(remote = %remote_dir, "dispatching to the connected node");
         // Mirror the repo's real depth under the workspace so sibling
         // path-deps resolve on the annexe (see `clone_repo_and_siblings`).
         let repo_subpath = annexe_subpath(&repo_path, &self.workspace);
@@ -548,7 +548,7 @@ impl Engine {
             &self.workspace,
         )?;
 
-        // Pre-flight probe: the checkout must exist and be non-empty on HP
+        // Pre-flight probe: the checkout must exist and be non-empty on the connected node
         // before any evaluator runs. A broken environment (vanished cwd,
         // empty extraction) must become BLOCKED-ENV — a verdict the LLM never
         // sees and the dry streak never counts — not an INCONCLUSIVE night
@@ -653,10 +653,10 @@ impl Engine {
         // 5. Append evidence receipts to the prompt so the LLM reasons over
         //    real evaluator output, not imagination. The LLM has no shell:
         //    everything it may cite — receipts, prior ledger rows, the session
-        //    commit — must be in this pack. HP paths are redacted before they
+        //    commit — must be in this pack. the connected node paths are redacted before they
         //    reach an external provider.
         let commit = baseline_rev.clone();
-        prompt.push_str("\n\n---\n\n# TONIGHT'S EVIDENCE (receipts from the HP annexe)\n\n");
+        prompt.push_str("\n\n---\n\n# TONIGHT'S EVIDENCE (receipts from the connected node annexe)\n\n");
         prompt.push_str(&format!(
             "## Session commit\n`{}` (tree `{}`, run `{}`)\n\n",
             commit, baseline_tree, frozen.run_id
@@ -1033,8 +1033,8 @@ impl Engine {
             &self.runtime.hp_host,
             &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
         ) {
-            Ok(_) => info!(remote = %remote_dir, "HP annexe night dir cleaned"),
-            Err(e) => warn!(error = %e, "HP annexe cleanup failed (fail-open)"),
+            Ok(_) => info!(remote = %remote_dir, "the connected node annexe night dir cleaned"),
+            Err(e) => warn!(error = %e, "the connected node annexe cleanup failed (fail-open)"),
         }
 
         let _ = runstate::complete(&night_dir, &mut run, v.as_str());
@@ -1375,7 +1375,7 @@ pub fn ruvector_config(rt: &RuntimeConfig) -> RuVectorConfig {
     RuVectorConfig {
         pg_url,
         xinference_url: std::env::var("XINFERENCE_URL")
-            .unwrap_or_else(|_| "http://192.168.2.132:9997".into()),
+            .unwrap_or_else(|_| "http://embeddings:9997".into()),
         namespace: rt.memory_namespace.clone(),
     }
 }
