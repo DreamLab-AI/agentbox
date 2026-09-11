@@ -2,77 +2,73 @@
 
 ## Getting Started
 
+Verified against the deployed CLI (`claude-flow hive-mind --help` and each
+subcommand's `--help`, ruflo v3.38.21). Use the bare `claude-flow` binary
+(baked on PATH) — `npx claude-flow` resolves a separate, older cached package.
+
 ### 1. Initialize Hive Mind
 
 ```bash
-# Basic initialization
-npx claude-flow hive-mind init
+# Basic initialization (defaults: hierarchical-mesh topology, byzantine consensus, 15 agents)
+claude-flow hive-mind init
 
-# Force reinitialize
-npx claude-flow hive-mind init --force
-
-# Custom configuration
-npx claude-flow hive-mind init --config hive-config.json
+# Custom topology, consensus, and agent cap
+claude-flow hive-mind init -t hierarchical-mesh -c byzantine -m 20
 ```
 
-### 2. Spawn a Swarm
+There is no `--force` or `--config <file>` option on `init` in this build.
+
+### 2. Spawn Workers
 
 ```bash
 # Basic spawn with objective
-npx claude-flow hive-mind spawn "Build microservices architecture"
+claude-flow hive-mind spawn -o "Build microservices architecture"
 
-# Strategic queen type
-npx claude-flow hive-mind spawn "Research AI patterns" --queen-type strategic
-
-# Tactical queen with max workers
-npx claude-flow hive-mind spawn "Implement API" --queen-type tactical --max-workers 12
-
-# Adaptive queen with consensus
-npx claude-flow hive-mind spawn "Optimize system" --queen-type adaptive --consensus byzantine
+# Spawn 12 workers for implementation-style work
+claude-flow hive-mind spawn -n 12 -o "Implement API"
 
 # Generate Claude Code commands
-npx claude-flow hive-mind spawn "Build full-stack app" --claude
+claude-flow hive-mind spawn --claude -o "Build full-stack app"
 ```
+
+There is no `--queen-type` or `--consensus` flag on `spawn` — set consensus at
+`init` time (above); the queen-type framing (strategic/tactical/adaptive)
+shapes the objective text, not a CLI flag.
 
 ### 3. Monitor Status
 
 ```bash
 # Check hive mind status
-npx claude-flow hive-mind status
+claude-flow hive-mind status
 
-# Get detailed metrics
-npx claude-flow hive-mind metrics
-
-# Monitor collective memory
-npx claude-flow hive-mind memory
+# Inspect collective memory (there is no `hive-mind metrics` subcommand)
+claude-flow hive-mind memory
 ```
 
 ## Advanced Workflows
 
 ### Session Management
 
-**Create and Manage Sessions**
+There is no `hive-mind sessions`/`pause`/`resume`/`stop`/`export`/`import`
+subcommand in the deployed CLI (verified: `hive-mind --help` lists init, spawn,
+status, task, join, leave, consensus, broadcast, memory, optimize-memory,
+shutdown only — no session-lifecycle subcommands). Session-level save/restore
+is generic Claude Flow session management, not hive-mind-specific:
 
 ```bash
-# List active sessions
-npx claude-flow hive-mind sessions
+# Save/restore the encompassing Claude Flow session (not hive-specific)
+claude-flow session save -n "checkpoint-1"
+claude-flow session restore <session-id>
 
-# Pause a session
-npx claude-flow hive-mind pause <session-id>
-
-# Resume a paused session
-npx claude-flow hive-mind resume <session-id>
-
-# Stop a running session
-npx claude-flow hive-mind stop <session-id>
+# End the hive mind itself (persists state by default)
+claude-flow hive-mind shutdown
 ```
 
-**Session Features**
-- Automatic checkpoint creation
-- Progress tracking with completion percentages
-- Parent-child process management
-- Session logs with event tracking
-- Export/import capabilities
+**Session Features** (persistent-memory-backed, not a distinct session API)
+- Collective memory persists across `hive-mind` invocations via RuVector/SQLite
+- `hive-mind shutdown -s` (default: on) saves state before terminating
+- Export/import of collective memory: use `memory export`/`memory import`
+  (generic Claude Flow memory commands), not a hive-specific session format
 
 ### Consensus Building
 
@@ -174,7 +170,7 @@ const config = {
 Generate Claude Code spawn commands directly:
 
 ```bash
-npx claude-flow hive-mind spawn "Build REST API" --claude
+claude-flow hive-mind spawn --claude -o "Build REST API"
 ```
 
 Output:
@@ -187,24 +183,23 @@ Task("Test Engineer", "Create Jest test suite...", "tester")
 
 ### With SPARC Methodology
 
-```bash
-# Use hive mind for SPARC workflow
-npx claude-flow sparc tdd "User authentication" --hive-mind
+There is no `sparc` top-level command in the deployed CLI (verified:
+`claude-flow sparc --help` → "Unknown command: sparc", suggesting
+start/swarm/status instead). SPARC-style phased development under hive-mind
+coordination is a matter of the objective text and worker roles you spawn, not
+a `--hive-mind` flag:
 
-# Spawns:
-# - Specification agent
-# - Architecture agent
-# - Coder agents
-# - Tester agents
-# - Reviewer agents
+```bash
+claude-flow hive-mind spawn -o "User authentication: spec, architecture, TDD implementation, review"
 ```
 
 ### With GitHub Integration
 
 ```bash
-# Repository analysis with hive mind
-npx claude-flow hive-mind spawn "Analyze repo quality" --objective "owner/repo"
+# Repository analysis with hive mind (there is no --objective flag; put the
+# repo in the objective text itself)
+claude-flow hive-mind spawn -o "Analyze repo quality: owner/repo"
 
 # PR review coordination
-npx claude-flow hive-mind spawn "Review PR #123" --queen-type tactical
+claude-flow hive-mind spawn -o "Review PR #123"
 ```

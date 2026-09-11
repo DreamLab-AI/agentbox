@@ -89,11 +89,12 @@ CREATE TABLE entities (id TEXT PK, kind TEXT, name TEXT, properties JSONB);
 CREATE TABLE edges (source TEXT, target TEXT, relation TEXT, weight FLOAT, metadata JSONB);
 ```
 
-Expose via MCP:
+Expose via MCP (proposed shape — `entity_create`/`entity_link`/`entity_search` are
+not implemented and do not exist as `mcp__claude-flow__*` tools today):
 ```typescript
-mcp__claude-flow__entity_create({ name: "solid-pod-rs", kind: "project", properties: {...} })
-mcp__claude-flow__entity_link({ source: "...", target: "...", relation: "depends_on" })
-mcp__claude-flow__entity_search({ linked_to: "...", relation: "depends_on" })
+entity_create({ name: "solid-pod-rs", kind: "project", properties: {...} })
+entity_link({ source: "...", target: "...", relation: "depends_on" })
+entity_search({ linked_to: "...", relation: "depends_on" })
 ```
 
 ### 2.4 The Task-DAG Pattern
@@ -117,7 +118,9 @@ mcp__claude-flow__task_create({
   depends_on: ["verify-nip98-fields"],
   tags: ["sso", "cross-repo"]
 })
-mcp__claude-flow__task_next({ limit: 3 })  // Unblocked only
+// NOTE: mcp__claude-flow__task_next does not exist; task_list has no
+// dependency-aware filter today, so the next() verb below remains a proposal.
+task_next({ limit: 3 })  // Unblocked only
 mcp__claude-flow__task_complete({ id: "...", result: "Verified: ±60s window matches" })
 ```
 

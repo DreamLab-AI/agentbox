@@ -44,11 +44,13 @@ graph.
 ```bash
 podcast-promote --pages-dir <ledger+graph pages dir> --proposals-dir <output dir> [options]
 
-# Candidacy scan only, no Loom/judge calls, no writes:
-podcast-promote --pages-dir .sandbox/pages --proposals-dir .sandbox/proposals --dry-run
+# Candidacy scan only, no Loom/judge calls, no writes (point --pages-dir/--proposals-dir
+# at your own scratch dirs; the original test fixtures now live in
+# docs/archive/podcast-ingest-ledger/sandbox-test-fixtures/, see "Testing" below):
+podcast-promote --pages-dir <scratch>/pages --proposals-dir <scratch>/proposals --dry-run
 
 # Full run, at most 3 candidates this invocation:
-podcast-promote --pages-dir .sandbox/pages --proposals-dir .sandbox/proposals --limit 3
+podcast-promote --pages-dir <scratch>/pages --proposals-dir <scratch>/proposals --limit 3
 ```
 
 ### CLI flags
@@ -64,7 +66,7 @@ podcast-promote --pages-dir .sandbox/pages --proposals-dir .sandbox/proposals --
 | `--judge-b-min` | `0.0` | survive if rubric-B improvement `>` this (strict) |
 | `--completeness-min` | `0.6` | survive if completeness score `>= this` |
 | `--judge-seed` | `42` | seed for blind A/B before/after ordering |
-| `--loom-url` | `http://192.168.2.132:8084/v1` | Ontology Loom façade |
+| `--loom-url` | `${LOOM_BASE_URL}` | Ontology Loom façade |
 | `--loom-model` | `qwen3.8-27b` | Loom model id |
 | `--dry-run` | off | stop after candidacy detection; no network calls, no writes |
 | `--limit N` | none | process at most N candidates this run |
@@ -306,9 +308,12 @@ here so the dossier shape doesn't need to change when it's built.
 
 ## Testing (real runs, not description)
 
-All tests ran against `.sandbox/` under this skill directory — the live
+All tests ran against a `.sandbox/` tree under this skill directory — the live
 graph (`project4/mainKnowledgeGraph/pages/`) was never written to, only read
-once to copy target-page fixtures.
+once to copy target-page fixtures. That fixture tree was gitignored but baked
+into image builds regardless, so it has since moved to
+[`docs/archive/podcast-ingest-ledger/sandbox-test-fixtures/`](../../../docs/archive/podcast-ingest-ledger/sandbox-test-fixtures/)
+(2026-09-09); paths below are as they were at test time.
 
 1. **Real production fixture** — the actual
    `podcast-evidence___10-ai-projects-to-learn-gemini-3-nano-banana-and-opus-45.md`
@@ -346,7 +351,7 @@ once to copy target-page fixtures.
 
 3. **Full live end-to-end run** on `Synthetic Test Topic Beta`:
    - Loom reachability check: **live**, `GET
-     http://192.168.2.132:8084/health` → `ok: true`.
+     ${LOOM_BASE_URL}/health` → `ok: true`.
    - Draft assembly: **live** Loom call (`qwen3.8-27b`,
      `loom_options.verbatim=false`) returned a valid `insert_after` splice
      anchored on `### Applications`, which validated and applied cleanly.

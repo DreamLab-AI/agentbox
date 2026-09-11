@@ -4,7 +4,7 @@
   "pinned_at": "2026-09-05T00:00:00Z",
   "model": "bge-small-en-v1.5",
   "dim": 384,
-  "endpoint_at_pin": "http://192.168.2.132:9997",
+  "endpoint_at_pin": "http://${EMBEDDINGS_HOST}",
   "preprocessing": {
     "embed_prefix_chars": 2000,
     "normalisation": "none (transport returns L2-normalised bge vectors)",

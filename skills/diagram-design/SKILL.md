@@ -57,6 +57,8 @@ Use for any of the 28 visual types (§3) when a reader will learn more from a vi
 - Lists of things → table or bullets.
 - Simple before/after → table.
 - One-shape "diagrams" → just write the sentence.
+- Isometric network/infrastructure/cloud-topology maps → use **fossflow**.
+- VLM-rendered academic figures matching a specific journal's visual convention → use **paperbanana**.
 
 Before drawing, ask: *Would the reader learn more from this than from a well-written paragraph?* If no, don't draw.
 

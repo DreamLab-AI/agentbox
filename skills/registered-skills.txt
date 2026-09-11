@@ -11,16 +11,15 @@
 # here (it must have /opt/agentbox/skills/<name>/SKILL.md). Blank lines and #comments
 # are ignored.
 #
-# WHY a curated subset and not all 115 baked skills: the native Skill list is always in
+# WHY a curated subset and not every baked skill: the native Skill list is always in
 # context, so keeping it small preserves the token budget; heavier/rarer skills are
 # discovered on demand through the router.
 
 # --- browser / web automation (GPU browsercontainer sidecar) ---
+# playwright (manifest-disabled, superseded), qe-browser (not installed until `aqe init`)
+# and browser-automation (router, reached via /route) were demoted 2026-09-09.
 browser
-browser-automation
 chrome-cdp
-playwright
-qe-browser
 
 # --- 3D / GIS (GPU gui-tools-service sidecar) ---
 blender
@@ -39,12 +38,19 @@ prose-sanitiser
 
 # --- knowledge / dispatch / misc ---
 skill-router
+explainer
 ontology-augment
 email-search
-leptos
+
+# --- development (most-used per skills-upgrade-plan-c5 §2; project CLAUDE.md mandates codebase-memory) ---
+build-with-quality
+codebase-memory
 
 # --- domain planners ---
 uk-solar-planner
 
 # Captured 3D scenes and registered data overlays
 spark-scene
+
+# Codex (GPT-6 Astra) has its own manifest: codex-registered-skills.txt, reconciled into
+# ~/.codex/skills by the same reconciler. Keep the two in step deliberately, not by copy.

@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Generate local Kokoro speech and a new measured video plan (optional dependencies)."""
+"""Generate Pocket speech through the shared estate service and retime a video plan."""
 import argparse
 import copy
-import importlib.metadata
+import io
+import urllib.request
+import wave
+import array
 import json
 import math
 import os
@@ -37,51 +40,46 @@ def retime(seconds, narration, fps, breathing):
     return math.ceil(max(seconds + breathing, readable) * fps) / fps
 
 
-def narrate(plan_path, output, model, voices, voice='af_sarah', lang='en-us', speed=1.0, breathing=.3):
+def narrate(plan_path, output, endpoint='http://pocket-tts:8000', voice='alba', lang='en', speed=1.0, breathing=.3):
     if not math.isfinite(speed) or not .5 <= speed <= 2:
         raise ValueError('speed must be between 0.5 and 2')
     if not math.isfinite(breathing) or not 0 <= breathing <= 3:
         raise ValueError('breathing interval must be between 0 and 3 seconds')
     plan_path, output = Path(plan_path).resolve(), Path(output).resolve()
-    model, voices = Path(model).resolve(), Path(voices).resolve()
-    if not model.is_file() or not voices.is_file():
-        raise ValueError('explicit model and voices files must already exist')
     if output.exists():
         raise ValueError('output already exists; choose a new narration directory')
     plan = json.loads(plan_path.read_text())
     check_script(plan)
-    try:
-        import numpy as np
-        import onnxruntime as rt
-        import soundfile as sf
-        from kokoro_onnx import Kokoro
-    except ImportError as error:
-        raise ValueError('Narration dependencies could not load. Install kokoro-onnx==0.6.1 and soundfile in the project venv; on Nix check the shared-library search path. Details: ' + str(error)) from error
-    # CPU inference leaves the shared GPU available to ComfyUI and Blender.
-    options = rt.SessionOptions()
-    options.intra_op_num_threads = min(4, os.cpu_count() or 1)
-    session = rt.InferenceSession(str(model), sess_options=options, providers=['CPUExecutionProvider'])
-    engine = Kokoro.from_session(session, str(voices))
+    if speed != 1.0:
+        raise ValueError('Shared Pocket service uses speed=1.0')
+    if lang not in ('en', 'en-us', 'english'):
+        raise ValueError('This deployment uses the English model')
     result = copy.deepcopy(plan)
     base = plan_path.parent
     result['repo_root'] = str((base / plan['repo_root']).resolve())
     if result.get('font_file'):
         result['font_file'] = str((base / result['font_file']).resolve())
     output.parent.mkdir(parents=True, exist_ok=True)
-    receipt = {'engine': 'kokoro-onnx', 'version': importlib.metadata.version('kokoro-onnx'), 'provider': 'CPUExecutionProvider', 'model': str(model), 'model_sha256': sha256_file(model), 'voices': str(voices), 'voices_sha256': sha256_file(voices), 'voice': voice, 'lang': lang, 'speed': speed, 'breathing': breathing, 'scenes': []}
+    receipt = {'engine': 'pocket-tts', 'endpoint': endpoint, 'provider': 'CPU', 'voice': voice, 'lang': lang, 'speed': speed, 'breathing': breathing, 'scenes': []}
     with tempfile.TemporaryDirectory(prefix='.narration-', dir=output.parent) as tmp:
         work = Path(tmp)
         delivery = work / 'narration'
         delivery.mkdir()
         for scene in result['scenes']:
-            samples, sample_rate = engine.create(scene['narration'], voice=voice, speed=speed, lang=lang)
-            samples = np.asarray(samples)
-            if not len(samples) or not np.isfinite(samples).all() or np.max(np.abs(samples)) < 1e-5:
-                raise ValueError(f"{scene['id']}: speech engine returned empty, invalid or silent audio")
+            body = json.dumps({'input': scene['narration'], 'voice': voice, 'model': 'pocket-tts', 'response_format': 'wav', 'priority': 'background'}).encode()
+            request = urllib.request.Request(endpoint.rstrip('/') + '/v1/audio/speech', data=body, headers={'Content-Type': 'application/json'})
+            with urllib.request.urlopen(request, timeout=300) as response:
+                audio = response.read()
+            with wave.open(io.BytesIO(audio), 'rb') as wav:
+                if wav.getnchannels() != 1 or wav.getsampwidth() != 2:
+                    raise ValueError('Expected mono PCM16 WAV from Pocket')
+                samples = array.array('h', wav.readframes(wav.getnframes()))
+                seconds = wav.getnframes() / wav.getframerate()
+            if not samples or max(map(abs, samples)) < 2:
+                raise ValueError(f"{scene['id']}: empty or silent speech")
             filename = scene['id'] + '.wav'
             target = delivery / filename
-            sf.write(str(target), samples, sample_rate, subtype='PCM_16')
-            seconds = sf.info(str(target)).duration
+            target.write_bytes(audio)
             scene['duration'] = retime(seconds, scene['narration'], plan['fps'], breathing)
             if scene['duration'] > 300:
                 raise ValueError(f"{scene['id']}: narration exceeds 300 seconds; split the scene")
@@ -104,15 +102,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('plan', type=Path)
     parser.add_argument('--output', type=Path, required=True, help='new directory for WAV files and retimed plan')
-    parser.add_argument('--model', type=Path, required=True)
-    parser.add_argument('--voices', type=Path, required=True)
-    parser.add_argument('--voice', default='af_sarah')
+    parser.add_argument('--endpoint', default=os.environ.get('POCKET_TTS_URL', 'http://pocket-tts:8000'))
+    parser.add_argument('--voice', default='alba')
     parser.add_argument('--lang', default='en-us')
     parser.add_argument('--speed', type=float, default=1.0)
     parser.add_argument('--breathing', type=float, default=.3)
     args = parser.parse_args()
     try:
-        print(narrate(args.plan, args.output, args.model, args.voices, args.voice, args.lang, args.speed, args.breathing))
+        print(narrate(args.plan, args.output, args.endpoint, args.voice, args.lang, args.speed, args.breathing))
     except (ValueError, OSError, KeyError, TypeError, RuntimeError) as error:
         parser.exit(1, f'narrate: {error}\n')
 

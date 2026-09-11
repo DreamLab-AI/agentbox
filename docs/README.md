@@ -102,8 +102,8 @@ You are adding a feature, implementing an adapter, or investigating a regression
 | [Code-harness multi-tier memory](developer/code-harness-multi-tier-memory.md) | How kernel state, distilled lessons, and verified skills layer over RuVector |
 | [Economy loop](developer/economy-loop.md) | End-to-end cross-repo demo — an agent pays for a cost-gated pod read, settles via the 402 consumer pipeline, emits URN receipts ([PRD-015](archive/prd/PRD-015-consumer-broadcast-economy.md)) |
 | [Agent control surface panels](developer/agent-control-surface-panels.md) | ACSP panel schema — emit valid Nostr events (kinds 31400-31405) that render governance control panels |
-| [Dream engine](developer/dream-engine.md) | Nightly evidence-gated repo evolution — control plane here / execution plane on the HP annexe ([ADR-052](archive/adr/ADR-052-dream-machine-hp-annexe.md)); `dream.config.json` nomination, verdict + witness, evaluator-liveness discipline |
-| [HP peer node](developer/hp-peer-node.md) | Second agentbox on HP-Desktop over the 25 G rail — layout, manifest deltas, what federates today (NIP-98 door yes, relay no) |
+| [Dream engine](developer/dream-engine.md) | Nightly evidence-gated repo evolution — control plane here / execution plane on the connected node annexe ([ADR-052](archive/adr/ADR-052-dream-machine-hp-annexe.md)); `dream.config.json` nomination, verdict + witness, evaluator-liveness discipline |
+| [the connected node peer node](developer/hp-peer-node.md) | Second agentbox on the connected node over the 25 G rail — layout, manifest deltas, what federates today (NIP-98 door yes, relay no) |
 
 | Diagrams — cartographic audits | |
 |---|---|
@@ -178,7 +178,7 @@ The legacy ADR/PRD/DDD corpus is frozen under [`archive/`](archive/README.md). T
 | ADR-049 | [Bi-temporal facts and runtime PROV-O](archive/adr/ADR-049-bitemporal-facts-and-runtime-provenance.md) | Proposed | Bi-temporal facts and runtime PROV-O off the reasoned graph |
 | ADR-050 | [Decision elevation — inverse corpus path](archive/adr/ADR-050-decision-elevation-inverse-corpus-path.md) | Proposed | The inverse corpus path for decision elevation |
 | ADR-051 | [Loom client and deferred distillation](archive/adr/ADR-051-loom-client-and-deferred-distillation.md) | Proposed | Ontology Loom client with deferred distillation |
-| ADR-052 | [Dream Machine HP annexe](archive/adr/ADR-052-dream-machine-hp-annexe.md) | Proposed | Execution plane for the nightly dream loop on the HP annexe |
+| ADR-052 | [Dream Machine the connected node annexe](archive/adr/ADR-052-dream-machine-hp-annexe.md) | Proposed | Execution plane for the nightly dream loop on the connected node annexe |
 | ADR-053 | [Hex-canonical pod naming](archive/adr/ADR-053-hex-canonical-pod-naming.md) | Accepted | Hex-canonical pod directory naming |
 | ADR-054 | [Ontology-bridge write-path findings](archive/adr/ADR-054-ontology-bridge-write-path-findings.md) | Proposed | Findings from the terminology live test of the ontology-bridge write path |
 | ADR-055 | [Dream cockpit panel](archive/adr/ADR-055-dream-cockpit-panel.md) | Accepted | Surface the nightly dream loop on the operator console |

@@ -10,7 +10,7 @@
 
 The dream-engine is agentbox's primary live MetaHarness consumer: target repos
 declare `@metaharness/darwin` evaluator entrypoints in `dream.config.json`
-(`config.rs::DreamConfig.evaluator_entrypoints`), executed on the HP annexe, with
+(`config.rs::DreamConfig.evaluator_entrypoints`), executed on the connected node annexe, with
 output fed as evidence receipts into the nightly LLM verdict.
 
 Darwin's default `--sandbox real` mode is **surface-independent**: it emits the same

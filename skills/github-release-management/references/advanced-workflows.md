@@ -110,8 +110,9 @@ npx claude-flow github multi-release \
   Bash("gh api repos/org/backend/dispatches --method POST -f event_type='release' -F client_payload[version]=v2.1.0")
   Bash("gh api repos/org/cli/dispatches --method POST -f event_type='release' -F client_payload[version]=v1.5.0")
 
-  // Monitor all releases
-  mcp__claude-flow__swarm_monitor { interval: 5, duration: 300 }
+  // NOTE: mcp__claude-flow__swarm_monitor is not currently available — poll
+  // swarm_status on an interval instead.
+  mcp__claude-flow__swarm_status { swarmId: "current" }
 ```
 
 ### Hotfix Emergency Procedures

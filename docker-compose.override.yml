@@ -32,7 +32,7 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
       - CUDA_VISIBLE_DEVICES=0,1,2
       # ComfyUI external
-      - COMFYUI_API_ENDPOINT=${COMFYUI_API_ENDPOINT:-http://192.168.2.48:3001}
+      - COMFYUI_API_ENDPOINT=${COMFYUI_API_ENDPOINT:-http://a retired address:3001}
       # Hardened rootfs (read_only:true) means /home/devuser/* is not writable
       # without an explicit volume. Route comfyui outputs to the uid-1000 /run
       # tmpfs so the adapter's `mkdir -p` succeeds at boot. Outputs are
@@ -40,7 +40,7 @@ services:
       - COMFYUI_OUTPUTS=${COMFYUI_OUTPUTS:-/run/comfyui/output}
       - COMFYUI_LOCAL_ENDPOINT=${COMFYUI_LOCAL_ENDPOINT:-http://172.18.0.10:8188}
       # Local LLM
-      - LOCAL_LLM_HOST=${LOCAL_LLM_HOST:-192.168.2.48}
+      - LOCAL_LLM_HOST=${LOCAL_LLM_HOST:-a retired address}
       - LOCAL_LLM_PORT=${LOCAL_LLM_PORT:-8080}
       # Display for desktop/browser
       - DISPLAY=:1
@@ -95,14 +95,14 @@ services:
       # ChatGPT/API login and token refresh are shared with the host. The host
       # file must exist before compose starts (agentbox.sh preflight checks it).
       - ${HOME}/.codex/auth.json:/home/devuser/.codex/auth.json:rw
-      # ADR-052 prerequisite #1 — SSH access to the isolated HP execution plane
+      # ADR-052 prerequisite #1 — SSH access to the isolated the connected node execution plane
       # (dream-machine annexe). Read-only bind of a DEDICATED orchestrator
       # keypair + config + pre-seeded known_hosts; the container rootfs is
       # read_only, so `.ssh` cannot be provisioned at runtime and arrives here.
-      # In-container agents get non-interactive `ssh john` / `ssh hp` -> HP.
-      # Trust is one-way (estate -> HP); HP holds no estate credentials. The key
+      # In-container agents get non-interactive `ssh john` / `ssh hp` -> the connected node.
+      # Trust is one-way (estate -> the connected node); the connected node holds no estate credentials. The key
       # is revocable independently of any personal key (drop the matching line
-      # in john@10.10.10.1:~/.ssh/authorized_keys). Host-side layout:
+      # in ${CONNECTED_NODE_SSH}:~/.ssh/authorized_keys). Host-side layout:
       # ${HOME}/.ssh/agentbox-hp/{id_ed25519,id_ed25519.pub,config,known_hosts}.
       # Absent source -> Docker creates an empty dir -> capability simply inert.
       - ${HOME}/.ssh/agentbox-hp:/home/devuser/.ssh:ro
@@ -133,7 +133,7 @@ services:
       # Sidecar mounts the same volume at /home/devuser/exchange.
       - gui-tools-exchange:/home/devuser/gui-tools
       # Dell R610 "research" LUKS store (/srv/store, XFS 3.64T) over 10G NFS.
-      # Host mounts 192.168.2.5:/srv/store at /mnt/dell (see host /etc/fstab).
+      # The host mounts its own storage server at /mnt/dell (see the host's /etc/fstab).
       # rslave propagation makes host NFS (re)mounts flow into the container;
       # it requires the host mount to be *shared* (mnt-dell-shared.service).
       # uid/gid 1000 == devuser, so writes into /mnt/dell/shared work rw.

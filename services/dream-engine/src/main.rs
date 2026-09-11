@@ -9,11 +9,11 @@ use dream_engine::engine::{fallback_llm_config, llm_config, ruvector_config, Eng
 use dream_engine::roster;
 use dream_engine::runner::{EvaluatorRunner, SshRunner};
 
-/// Dream Engine — nightly evidence-gated repository evolution (HP annexe).
+/// Dream Engine — nightly evidence-gated repository evolution (the connected node annexe).
 ///
 /// Rust rewrite of scripts/dream-machine-nightly.mjs. Discovers repos
 /// nominated by a dream.config.json marker file, compiles a deterministic
-/// nightly prompt, dispatches build + evaluators to the HP annexe over SSH,
+/// nightly prompt, dispatches build + evaluators to the connected node annexe over SSH,
 /// calls the LLM (Z.AI GLM by default), parses the verdict, and persists
 /// report + ledger row + witness + RuVector memory.
 #[derive(Parser, Debug)]
@@ -104,13 +104,13 @@ async fn main() {
 
     // Singleton guard: exactly one engine may dream. A localhost port bind is
     // a lock the kernel releases on ANY process death — no stale lockfiles.
-    // Two loops racing the shared HP annexe corrupted nights 2026-08-20/21
+    // Two loops racing the shared the connected node annexe corrupted nights 2026-08-20/21
     // (supervisord + a leftover tmux launcher); this makes that class of
     // fault impossible regardless of who starts us.
     let _singleton = match std::net::TcpListener::bind("127.0.0.1:49172") {
         Ok(l) => l,
         Err(_) => {
-            error!("another dream-engine instance holds the singleton lock (127.0.0.1:49172) — exiting to avoid racing the HP annexe");
+            error!("another dream-engine instance holds the singleton lock (127.0.0.1:49172) — exiting to avoid racing the connected node annexe");
             std::process::exit(if cli.loop_mode { 0 } else { 1 });
         }
     };

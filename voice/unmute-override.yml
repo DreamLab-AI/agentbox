@@ -1,8 +1,8 @@
-# Compose override for the Kyutai Unmute stack → agentbox voice meta-controller.
+# Runtime overrides for the maintained web conversation stack.
 #
-# Layered onto the unmute clone's own docker-compose.yml. Driven by
+# Layered onto voice/compose.web.yml. Driven by
 # `./agentbox.sh voice up`, which composes, in one project:
-#   <unmute-clone>/docker-compose.yml + voice/unmute-override.yml (this file)
+#   voice/compose.web.yml + voice/unmute-override.yml (this file)
 #   + docker-compose.voice.yml (the caddy console)
 # Run manually from the clone:
 #   cd ~/workspace/project/voice-stack/unmute
@@ -20,25 +20,22 @@
 # would resolve against the container cwd and be auto-created as empty host
 # dirs — silently wrong; keep these absolute-via-env.
 #
-# What it changes vs stock Unmute:
-#   - drops the vLLM `llm` service (profiles: disabled)
+# What it configures:
+#   - uses shared Nemotron ASR + Pocket TTS; no local model containers
 #   - backend "LLM" = tab0-bridge http://agentbox:8971 on visionclaw_network
 #   - carries BRIDGE_TOKEN as the OpenAI-style key so the bridge's global auth
 #     (Part A finding 1) admits the backend's /v1/chat/completions calls
-#   - pins STT/TTS to the RTX A6000 (host CUDA device 0)
 #   - moves traefik off host port 80 → 8990
 # The caddy voice-console (:8443/:8444) now lives in docker-compose.voice.yml.
 
 services:
-  llm:
-    profiles: ["disabled"]
-
   backend:
     # Stock unmute ships no restart policy — without unless-stopped a host
     # reboot or daemon restart leaves the whole voice plane down.
     restart: unless-stopped
     environment:
       - KYUTAI_LLM_URL=http://agentbox:8971
+      - KYUTAI_TTS_URL=ws://pocket-tts:8000
       # tab0-bridge now enforces global auth (Part A finding 1). The Unmute
       # backend is an on-network caller of /v1/chat/completions — it must
       # present the bearer. Unmute forwards KYUTAI_LLM_API_KEY as the OpenAI
@@ -58,7 +55,7 @@ services:
       # Global speaking pace, all voices: server-side WSOLA time-stretch
       # (unmute/tts/time_stretch.py) — >1 is faster, pitch preserved.
       # Operator preference: very fast. Clamped to [0.5, 3].
-      - UNMUTE_TTS_SPEED=1.4
+      - UNMUTE_TTS_SPEED=1.0
       # Fast-iteration barge-in profile (operator preference):
       #   session-start VAD grace 3s → 0.5s
       #   VAD trigger threshold 0.4 → 0.6 (fires on shorter speech)
@@ -69,38 +66,14 @@ services:
       - UNMUTE_AUDIO_LEAD_FRAMES=2
     volumes: !override
       - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/unmute:/app/unmute
+      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT}/agentbox/voice/pocket/voices.yaml:/app/voices.yaml:ro
     networks:
-      - default
       - visionclaw
 
   frontend:
     restart: unless-stopped
     volumes: !override
       - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/frontend/src:/app/src
-
-  stt:
-    restart: unless-stopped
-    environment:
-      - CUDA_VISIBLE_DEVICES=0
-    volumes: !override
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/hf-cache:/root/.cache/huggingface
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/cargo-registry-stt:/root/.cargo/registry
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/stt-target:/app/target
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/uv-cache:/root/.cache/uv
-      - /tmp/models/:/models
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/stt-logs:/tmp/unmute_logs
-
-  tts:
-    restart: unless-stopped
-    environment:
-      - CUDA_VISIBLE_DEVICES=0
-    volumes: !override
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/hf-cache:/root/.cache/huggingface
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/cargo-registry-tts:/root/.cargo/registry
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/tts-target:/app/target
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/uv-cache:/root/.cache/uv
-      - /tmp/models/:/models
-      - ${VOICE_HOST_ROOT:?set VOICE_HOST_ROOT to your host workspace path (agentbox.sh voice sets it; see voice/README.md)}/voice-stack/unmute/volumes/tts-logs:/tmp/unmute_logs
 
   traefik:
     restart: unless-stopped

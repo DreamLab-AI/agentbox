@@ -33,7 +33,7 @@ review_trigger: a second distillation provider lands (the N=1→platform thresho
 
 The Ontology Loom (operator reframe, 2026-08-11) is a first-class VisionFlow node
 that weaves the corpus into a reasoned ontology, holds it as canonical, and serves
-it behind a stable, model-swappable façade. HP-Desktop is its reference deployment;
+it behind a stable, model-swappable façade. the connected node is its reference deployment;
 the role is host-portable and the distillation backend behind the façade is a config
 line (`DISTILL_BACKEND_URL`), not an architecture decision. The estate is dev/test,
 so per operator decision this integration is built **direct-to-target**: no staged
@@ -152,7 +152,7 @@ provider (WS-E); without it the loop does not close for a real agent.
 Steps the tool performs, in order:
 
 1. **Build the identity core** and canonicalise it with **RFC 8785 JCS** (named so the
-   harness and the HP provider derive byte-identical bytes). The identity core is
+   harness and the connected node provider derive byte-identical bytes). The identity core is
    **only**:
    `{ kind:"ontology.distill", corpusSha, scope:{ slugs sorted+deduped | domain | question-normalised }, budget_tokens }`.
    `budget_tokens` **is** content — it changes the answer — and is hashed. Execution
@@ -223,7 +223,7 @@ job: { ownerScope: true, scopeRequired: true, contentAddressed: true,
 `_contentAddress` gains a per-kind `canonicalForm` switch: existing kinds keep the
 legacy `_stableStringify` ("deterministic enough for a name"); **`job` uses RFC 8785
 JCS** because the job URN is *both* a name *and* a cross-implementation idempotency
-anchor the HP provider must reproduce byte-for-byte. Add the resolver `case 'job':` in
+anchor the connected node provider must reproduce byte-for-byte. Add the resolver `case 'job':` in
 `routes/uri-resolver.js` (surface `jobs`) and a contract test asserting
 `urn:agentbox:job:<pubkey>:sha256-12-<hex>` round-trips and that identical identity
 cores from two independent serialisers collide. **Do not overload the `bead` kind** —
@@ -291,7 +291,7 @@ recombine *worker* (D6), which reads the blocker's `outcome` before dereferencin
 ### D4 — RuVector rendezvous conventions (namespace `ontology-distilled`)
 
 The Phase-1 load-bearing delivery path is **(a) RuVector payload + (c) bead close**,
-strictly ordered, close last (OCP §Delivery). HP has no MCP, so the **harness-side**
+strictly ordered, close last (OCP §Delivery). the connected node has no MCP, so the **harness-side**
 result-upload handler (fed by the VisionClaw WS-D provider door's result-upload verb)
 does the `memory_store` on receipt.
 
@@ -324,7 +324,7 @@ does the `memory_store` on receipt.
 
 ### D5 — Reconciliation janitor + deadline reaper (harness-side)
 
-Both live harness-side and make "HP absence never blocks a turn" TRUE. The signed
+Both live harness-side and make "the connected node absence never blocks a turn" TRUE. The signed
 result envelope is **courier-of-record**: it is self-contained and signed, so the sweep
 can complete a tail from it alone.
 
@@ -345,7 +345,7 @@ memory_TTL) / 2`:
 **Deadline reaper** — at a job's deadline, CAS-closes the distill bead `expired` with a
 cause split (`cause: unclaimed | claimed-not-delivered | gpu-contended |
 model-unavailable | corpus-unavailable`), unblocking the recombine to proceed
-search-only. This is the mechanism that makes the HP being down a *labelled* absence,
+search-only. This is the mechanism that makes the connected node being down a *labelled* absence,
 never a stalled turn.
 
 ---
@@ -377,7 +377,7 @@ already-fenced payloads.
 
 ### D7 — Liveness (ADR-119): heartbeat, not boot canary
 
-- **jobd heartbeat staleness.** The HP `jobd` heartbeats every poll (short-TTL RuVector
+- **jobd heartbeat staleness.** The connected node `jobd` heartbeats every poll (short-TTL RuVector
   key / management-api provider-status). Liveness = **heartbeat-staleness threshold**,
   which kills the "green-but-zero" / ".48-is-dead" failure class. **Boot completion is
   NOT liveness.**
@@ -457,7 +457,7 @@ replay is best-effort same-binary/same-weights only).
 - The beads ledger gains lease fencing, CAS close, conditional claim, a typed
   `result_ref`, and a deterministic `job` URN kind — a fenced, content-addressed,
   reconcilable substrate for remote-delivered work, tested by contract.
-- HP absence is a **labelled** absence: the reaper closes expired jobs with a cause and
+- the connected node absence is a **labelled** absence: the reaper closes expired jobs with a cause and
   the recombine degrades search-only; no turn ever stalls on the LLM.
 - Cost: a schema migration + contract-test surface, a signing key the harness must
   custody, and a janitor/reaper daemon the operator must enable. The RuVector TTL law

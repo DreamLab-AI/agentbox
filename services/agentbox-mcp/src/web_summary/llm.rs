@@ -26,7 +26,7 @@ impl LlmConfig {
             .ok()
             .filter(|v| !v.is_empty())
             .or_else(|| std::env::var("ZAI_URL").ok().filter(|v| !v.is_empty()))
-            .unwrap_or_else(|| "http://192.168.2.132:8084/v1".to_string());
+            .unwrap_or_else(|| "http://loom:8080/v1".to_string());
         let url = url.trim_end_matches('/').to_string();
 
         let model = crate::common::env_or("LLM_MODEL", "loom");
@@ -78,7 +78,7 @@ pub async fn call_llm(config: &LlmConfig, prompt: &str, max_tokens: i64) -> Valu
                 return json!({
                     "success": false,
                     "error": format!(
-                        "Cannot connect to the Ontology Loom facade at {}. Check the facade health: curl -s http://192.168.2.132:8084/health (override with LLM_URL). Do not target the dead HP address 192.168.2.48.",
+                        "Cannot connect to the Ontology Loom facade at {}. Check the facade's health endpoint, and set LLM_URL if the facade is somewhere else.",
                         config.url
                     ),
                 });
@@ -138,7 +138,7 @@ mod tests {
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         clear_env();
         let config = LlmConfig::from_env();
-        assert_eq!(config.url, "http://192.168.2.132:8084/v1");
+        assert_eq!(config.url, "http://loom:8080/v1");
         assert_eq!(config.timeout, Duration::from_secs(120));
         clear_env();
     }

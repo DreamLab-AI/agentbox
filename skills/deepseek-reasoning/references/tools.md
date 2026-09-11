@@ -1,104 +1,84 @@
 # DeepSeek Reasoning — Tools Reference
 
-The MCP server exposes three reasoning tools. All run as `devuser`; the server spawns
-`tools/deepseek_client.js` directly (no sudo bridge).
+The `consultant-deepseek` MCP server exposes the same three tools every consultant
+server exposes (`/opt/agentbox/mcp/consultants/shared/consultant-base.js`), backed
+by DeepSeek's HTTPS API (`/opt/agentbox/mcp/consultants/package/deepseek/server.js`).
 
-## deepseek_reason
+## consult
 
-**Purpose:** Complex multi-step reasoning.
+**Purpose:** Submit a question, with optional curated context, and get DeepSeek's
+answer plus usage metadata.
 
 **Parameters:**
-- `query` (required) — Question requiring reasoning
-- `context` (optional) — Background information
-- `max_steps` (optional) — Max reasoning steps (default: 10)
-- `format` (optional) — Output format: `prose|structured|steps` (default: structured)
-- `strategy` (optional) — Reasoning approach: `first_principles|incremental|analogical`
+- `question` (required) — the question or task to put to the consultant.
+- `context_excerpt` (optional) — curated context to consider. Keep this small;
+  pick what matters rather than pasting everything.
+- `format` (optional) — `markdown|plain|json`, default `markdown`.
+- `timeout_ms` (optional) — override the per-call timeout (default 120000, capped at 600000).
+- `producer_family` (optional) — REC-8 anti-fox: set this when the consult is a
+  cross-model closure verification of a change another model family produced.
+- `ontology_context` (optional, boolean) — prepend budget-bounded ontology
+  grounding (PRD-020 PULL-A). Fail-open; off by default.
 
 **Returns:**
 ```json
 {
-  "reasoning": {
-    "steps": [
-      {"step": 1, "thought": "...", "conclusion": "..."},
-      {"step": 2, "thought": "...", "conclusion": "..."}
-    ],
-    "final_answer": "...",
-    "confidence": 0.95
-  },
-  "usage": {"total_tokens": 450}
+  "ok": true,
+  "consultant": "deepseek",
+  "response": "<reasoning>\n...chain-of-thought...\n</reasoning>\n\n...answer...",
+  "model": "deepseek-v4-flash",
+  "tokens": { "prompt": 120, "completion": 340, "total": 460 },
+  "cost_usd": 0.00081,
+  "citations": [],
+  "latency_ms": 3120,
+  "consultation_urn": "urn:agentbox:activity:...:sha256-12-...",
+  "source_urn": "..."
 }
 ```
 
-## deepseek_analyze
+DeepSeek-v4-flash returns its chain-of-thought separately, in
+`message.reasoning_content`; the server folds it into `response` under a
+`<reasoning>...</reasoning>` preamble ahead of the answer, so the caller sees
+both without a second field to check.
 
-**Purpose:** Code/system analysis with root-cause reasoning.
+## health
 
-**Parameters:**
-- `code` (required) — Code to analyse
-- `issue` (required) — Problem description
-- `language` (optional) — Programming language
-- `depth` (optional) — Analysis depth: `quick|normal|deep` (default: normal)
+**Purpose:** Liveness + auth probe. Does not consume a paid call.
+
+**Parameters:** none.
 
 **Returns:**
 ```json
-{
-  "analysis": {
-    "root_cause": "...",
-    "reasoning_trace": ["...", "...", "..."],
-    "recommendations": [
-      {"priority": "high", "action": "...", "rationale": "..."}
-    ]
-  },
-  "code_issues": [
-    {"line": 42, "severity": "error", "message": "..."}
-  ]
-}
+{ "ok": true, "consultant": "deepseek", "model": "deepseek-v4-flash", "last_error": null, "last_check_at": "2026-09-09T12:00:00.000Z" }
 ```
 
-## deepseek_plan
+`ok: false` with `last_error: "DEEPSEEK_API_KEY is not set"` is the common failure —
+see [operations.md](operations.md) for the full troubleshooting flow.
 
-**Purpose:** Task planning with dependency analysis.
+## cost_estimate
+
+**Purpose:** Estimate the USD cost of a `consult` call before making it.
 
 **Parameters:**
-- `goal` (required) — What to achieve
-- `constraints` (optional) — Limitations or requirements
-- `context` (optional) — Existing system context
-- `granularity` (optional) — Task size: `coarse|medium|fine` (default: medium)
+- `question_size` (required) — approximate token count of the question + context excerpt.
+- `expected_response_size` (optional, default 800) — approximate token count of the expected response.
 
 **Returns:**
 ```json
-{
-  "plan": {
-    "phases": [
-      {
-        "name": "Phase 1: Setup",
-        "tasks": [
-          {"id": "T1", "description": "...", "dependencies": [], "reasoning": "..."}
-        ],
-        "reasoning": "Why this phase is needed"
-      }
-    ],
-    "critical_path": ["T1", "T3", "T7"],
-    "estimated_complexity": "high"
-  }
-}
+{ "consultant": "deepseek", "estimated_tokens": { "prompt": 500, "completion": 800 }, "estimated_usd": 0.0021, "currency": "USD" }
 ```
 
-## Special model features
-
-The special endpoint model provides:
-- **Required thinking mode** — reasoning cannot be disabled
-- **Extended context** — handles complex multi-step problems
-- **Structured output** — clear reasoning + conclusion format
-- **Metacognitive traces** — shows how the model thinks
+Current DeepSeek pricing baked into the estimator: $0.00055 / 1K prompt tokens,
+$0.00219 / 1K completion tokens (`deepseek/server.js`; check DeepSeek's own pricing
+page for the authoritative current rate).
 
 ## DeepSeek vs Claude reasoning
 
-| Aspect | DeepSeek Special | Claude Sonnet 4.6 |
-|--------|------------------|-------------------|
+| Aspect | DeepSeek V4 Flash | Claude Sonnet 5 |
+|--------|--------------------|-------------------|
 | Multi-step logic | Excellent | Very Good |
 | Code generation | Good | Excellent |
-| Reasoning transparency | Explicit traces | Implicit |
+| Reasoning transparency | Explicit `<reasoning>` trace | Implicit |
 | Speed | Medium (2-5s) | Fast (<1s) |
 | Cost | Lower | Higher |
 | Best for | Planning, analysis | Execution, polish |

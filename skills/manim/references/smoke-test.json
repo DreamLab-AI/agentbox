@@ -1,0 +1,89 @@
+{
+  "date": "2026-09-11",
+  "status": "silent-smoke-test-passed",
+  "upstream_inspected_commit": "b949b73e5bd49bc0ef250eba4a9a757554a6f2b0",
+  "runtime_image": "manimcommunity/manim@sha256:89ab433ce59134a4dcf351deb2511e067ab354393c0bb7d1859f3e8f0b2406a3",
+  "platform": "linux/amd64",
+  "manim_version": "0.21.0",
+  "renderer": "cairo",
+  "font": "Noto Sans",
+  "command": [
+    "manim",
+    "--renderer",
+    "cairo",
+    "-ql",
+    "--fps",
+    "24",
+    "--save_sections",
+    "--media_dir",
+    "/tmp/media",
+    "/tmp/queue_demo.py",
+    "QueueDemo"
+  ],
+  "exit_code": 0,
+  "scene_sha256": "625ef3470eace6bddc92d8caeaa0e407a23f50f0e285ea67a17ee3b348501e64",
+  "clip_sha256": "c896cce7242a9f41d832f229e558e2f515c4280479c7fb451f65606e82736d26",
+  "video": {
+    "width": 854,
+    "height": 480,
+    "avg_frame_rate": "24/1",
+    "nb_frames": "168",
+    "codec_name": "h264",
+    "pix_fmt": "yuv420p",
+    "duration": "7.000000"
+  },
+  "sections": [
+    {
+      "name": "overview",
+      "type": "default.normal",
+      "video": "QueueDemo_0000_overview.mp4",
+      "width": 854,
+      "height": 480,
+      "nb_frames": "24",
+      "duration": "1.000000",
+      "avg_frame_rate": "24/1",
+      "codec_name": "h264",
+      "pix_fmt": "yuv420p"
+    },
+    {
+      "name": "arrivals",
+      "type": "default.normal",
+      "video": "QueueDemo_0001_arrivals.mp4",
+      "width": 854,
+      "height": 480,
+      "nb_frames": "72",
+      "duration": "3.000000",
+      "avg_frame_rate": "24/1",
+      "codec_name": "h264",
+      "pix_fmt": "yuv420p"
+    },
+    {
+      "name": "departure",
+      "type": "default.normal",
+      "video": "QueueDemo_0002_departure.mp4",
+      "width": 854,
+      "height": 480,
+      "nb_frames": "72",
+      "duration": "3.000000",
+      "avg_frame_rate": "24/1",
+      "codec_name": "h264",
+      "pix_fmt": "yuv420p"
+    }
+  ],
+  "compositor": {
+    "status": "preview",
+    "output_sha256": "9f16c0e1a3cd9c99871e447ed4a88f899c6db037c1adb4152f56d66d127206df",
+    "duration": "7.021333",
+    "full_decode_exit_code": 0
+  },
+  "review": {
+    "method": "Contact sheets sampled at 4 fps across all three sections, plus final frame; full composed-file decode.",
+    "findings": "Separate token travel lanes; available Noto Sans; content clear of title overlay; counts 0,1,2,1; final explanation visible.",
+    "limits": [
+      "Silent preview with synthetic silence from compositor; no speech quality claim",
+      "No browser accessibility or presentation-player test",
+      "No OpenGL, TeX, Typst or plugin test"
+    ]
+  },
+  "scratch_directory": "/tmp/agentbox-manim-study"
+}

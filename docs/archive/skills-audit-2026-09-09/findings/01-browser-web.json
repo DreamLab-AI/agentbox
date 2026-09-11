@@ -1,0 +1,194 @@
+{
+  "batch": "01-browser-web",
+  "skills": [
+    {
+      "skill": "browser",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "skills/browser/SKILL.md:31 — \"CDP:      browsercontainer:9222              (raw Chrome DevTools Protocol)\" inside the block explicitly labelled \"This is the canonical sidecar-connection block; the chrome-cdp, playwright, and browser-automation skills point here rather than restating it.\"",
+          "fix": "Change to browsercontainer:9223 (socat proxy, in-network) and note 9222 is the host-mapped port only, matching chrome-cdp/scripts/cdp-sidecar.sh:12 (BROWSER_CDP_PORT default 9223) and playwright/SKILL.md:122-126's correct two-row table. The fact sheet also independently confirms 9223 is canonical and agentbox.toml still (wrongly) says 9222.",
+          "cross_skill": ["browser-automation", "chrome-cdp", "playwright"]
+        },
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "skills/browser/SKILL.md:26-27 declares itself the single source of truth for the sidecar connection block, yet its own port value is wrong while the dependent playwright/SKILL.md independently has the correct value — the \"canonical owner\" is less accurate than a skill that defers to it.",
+          "fix": "Once the port is fixed, diff browser/SKILL.md's block against playwright/SKILL.md and chrome-cdp's own top-level table to confirm all three now agree.",
+          "cross_skill": ["playwright", "chrome-cdp"]
+        }
+      ]
+    },
+    {
+      "skill": "browser-automation",
+      "verdict": "fix",
+      "health": 7,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "skills/browser-automation/references/sidecar.md:19 — \"# CDP direct (for cdp.mjs scripts)\\nbrowsercontainer:9222\" — inherited verbatim from browser/SKILL.md's wrong canonical block.",
+          "fix": "Update to 9223 once the upstream browser/SKILL.md block is corrected (references/sidecar.md explicitly says it mirrors that block).",
+          "cross_skill": ["browser", "chrome-cdp"]
+        }
+      ]
+    },
+    {
+      "skill": "chrome-cdp",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "skills/chrome-cdp/SKILL.md:22 correctly states the sidecar target is browsercontainer:9223, but skills/chrome-cdp/references/reference.md self-contradicts this in ~6 places: line 19 \"browsercontainer:9222\" in the network topology diagram, line ~135 the CDP endpoint diagram \"browsercontainer:9222 (sidecar)\", line ~152/156 \"9222 CDP\" / \"Host ports: 9222 (CDP)\", the env-var table's \"BROWSER_CDP_PORT | 9222\" default, and the troubleshooting curl commands (\"curl -s http://browsercontainer:9222/json/version\").",
+          "fix": "Correct references/reference.md throughout to 9223 for the in-network sidecar path (9222 stays correct only as the host-mapped port), matching the script default already in scripts/cdp-sidecar.sh:12 and the top-level SKILL.md.",
+          "cross_skill": ["browser", "browser-automation"]
+        }
+      ]
+    },
+    {
+      "skill": "playwright",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "skills/SKILL-DIRECTORY.md:877 \"playwright | mcp-sdk | mcp-server/server.js\" in the MCP Server Summary table — no mcp-server/ directory exists anywhere under skills/playwright/ (confirmed via `find`; the only files are SKILL.md, mcp-config.json, and references/legacy-local-scripts/*). playwright/SKILL.md itself carries no mcp_server/protocol/entry_point frontmatter at all — it correctly routes everything through the external browser-gpu SSE sidecar, not a local server.js.",
+          "fix": "Remove the playwright row from SKILL-DIRECTORY.md's MCP Server Summary table (it isn't an MCP server in its own right) or repoint it at the shared browser-gpu SSE registration.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "qe-browser",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "scrapling",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "skills/mcp.json:326-330 registers scrapling as `\"command\": \"scrapling\", \"args\": [\"mcp\"]` with no path/env qualification, implying it's a ready-to-run baked binary. `command -v scrapling` exits 1 in this container; `grep -rn scrapling flake.nix` and every *.nix file returns zero hits (no Python package, no pip-install step anywhere in the image build); scrapling/SKILL.md:53-65 itself says the user must run `pip install \"scrapling[all]>=0.4.3\"` and `scrapling install --force` before it works. Unlike qe-browser, which SKILL-DIRECTORY.md marks with an explicit \"⚠️ NOT INSTALLED — run aqe init\" caveat, SKILL-DIRECTORY.md:132 lists scrapling as MCP=\"Yes\" with no install caveat.",
+          "fix": "Either bake scrapling + its browser deps into the Nix closure and drop the manual pip-install section, or mark it \"requires manual pip install\" in SKILL-DIRECTORY.md and mcp.json comments the same way qe-browser is flagged, so agents don't assume it's live.",
+          "cross_skill": ["qe-browser"]
+        }
+      ]
+    },
+    {
+      "skill": "host-webserver-debug",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "skills/host-webserver-debug/mcp-config.json:16-19 lists `\"dependencies\":{\"system\":[\"chromium\",\"openssl\"],\"npm\":[\"playwright\",\"@modelcontextprotocol/sdk\"]}` and `\"features\":[...\"Screenshot capture via Playwright\"...]`, but skills/host-webserver-debug/package.json:14-16 only depends on `@modelcontextprotocol/sdk` (no playwright), and SKILL.md:28-33/82-89 explicitly states screenshots go through the browsercontainer sidecar's browser-gpu MCP tools, not local Playwright/Chromium — confirmed by references/deprecated-local-playwright-screenshot.js:1-8, which is explicitly marked deprecated/do-not-use.",
+          "fix": "Strip \"playwright\" and \"chromium\" from mcp-config.json's dependency list and drop the \"Screenshot capture via Playwright\" feature line — it's a pre-sidecar leftover that contradicts the skill's own current architecture.",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "skills/host-webserver-debug/mcp-config.json:26-30 `\"displayRequirements\":{\"display\":\":1\",\"vncPort\":5901,...}` — no other part of the skill or the sidecar architecture (VNC :5903, Display :2, per SKILL.md and the browser skill) uses display :1 / port 5901; this looks like a stale local-Chromium-era display binding never updated for the sidecar model.",
+          "fix": "Remove or update displayRequirements to reference the sidecar's actual VNC (5903 / Display :2), or drop the block entirely since this skill no longer drives a local display.",
+          "cross_skill": ["browser"]
+        }
+      ]
+    },
+    {
+      "skill": "web-summary",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "skills/web-summary/references/architecture.md:55-56 — \"The old gemini-url-context route is dead — its gemini CLI is not installed in this image.\" This is false: gemini-url-context/SKILL.md in this same batch describes a live, working skill (agentbox-mcp gemini-url-context, Rust rmcp), it is registered in skills/mcp.json:187-193, and listed as active (MCP=Yes) in SKILL-DIRECTORY.md:151.",
+          "fix": "Delete or correct the \"gemini-url-context is dead\" line in web-summary/references/architecture.md — it appears to describe an even older iteration (a literal `gemini` CLI shim) that predates both the Python-fastmcp and current Rust-rmcp gemini-url-context implementations, and is now flatly wrong.",
+          "cross_skill": ["gemini-url-context"]
+        },
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "skills/web-summary/mcp-server/server.js (252 lines) is dead legacy code: it spawns `python3` against a hardcoded path `/home/devuser/.claude/skills/web-summary/tools/web_summary_tool.py` (no such `tools/` directory exists anywhere under skills/web-summary/), and its own top comment calls itself a \"Legacy Node wrapper (superseded by server.py)\". Neither this file nor a server.py is the actual registered entry point — skills/mcp.json:134-139 registers `\"command\":\"agentbox-mcp\",\"args\":[\"web-summary\"]` (the Rust rmcp binary), matching web-summary/SKILL.md's own frontmatter (protocol: rmcp, entry_point: agentbox-mcp web-summary).",
+          "fix": "Delete skills/web-summary/mcp-server/ entirely (server.js + its package.json/package-lock.json) — it is orphaned, unreferenced by SKILL.md or mcp.json, and its internal path reference doesn't exist either.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "gemini-url-context",
+      "verdict": "keep",
+      "health": 6,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "web-summary/references/architecture.md:55-56 (in this same batch) wrongly declares this skill dead/uninstalled — see the paired finding filed under web-summary.",
+          "fix": "No change needed to gemini-url-context/SKILL.md itself; fix lives in web-summary's reference doc.",
+          "cross_skill": ["web-summary"]
+        },
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "skills/SKILL-DIRECTORY.md:872 MCP Server Summary table lists \"gemini-url-context | fastmcp | mcp-server/server.py\" — no such file or directory exists under skills/gemini-url-context/ (the whole skill dir contains only SKILL.md, confirmed via `find`), and the real protocol per this skill's own frontmatter is `rmcp` via `agentbox-mcp gemini-url-context`.",
+          "fix": "Correct or remove the SKILL-DIRECTORY.md row — point it at the shared agentbox-mcp rmcp binary, not a non-existent fastmcp server.py.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "context7",
+      "verdict": "keep",
+      "health": 9,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "skills/context7/SKILL.md:13 entry_point `npx -y @upstash/context7-mcp@latest` — unpinned `@latest`, unlike the estate's general Nix-pinned/reproducible-build ethos (agentbox CLAUDE.md's canonical-runtime-files list, RuVector's own pinned-version discipline).",
+          "fix": "Pin to a specific @upstash/context7-mcp version and bump deliberately, so a silent upstream release can't change behaviour under an agent mid-session.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "youtube-transcript-archiver",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "Not present in skills/SKILL-DIRECTORY.md (grep for it returns nothing), not present in skills/skill-router/references/routing-table.md (same), and not listed in skills/registered-skills.txt's browser/web-automation block or anywhere else in that file — all three independently confirmed by direct grep, matching the fact sheet's own claim.",
+          "fix": "Add a row to SKILL-DIRECTORY.md (e.g. under a new \"Content Archival\" heading or the Research Workflows section) and to routing-table.md so it's reachable via /route; it doesn't need to join the 22 always-loaded registered-skills.txt slots given its narrow/batch use case.",
+          "cross_skill": []
+        },
+        {
+          "class": "model-fit",
+          "severity": "med",
+          "evidence": "skills/youtube-transcript-archiver/SKILL.md:71-73 \"For enrichment: Haiku model access (via claude API or agent spawning)\" and \"For URL summarisation: WebFetch tool\", plus the \"Swarm deployment\" section (lines 117-125) assuming Task/Agent-style sub-agent spawning — all Claude Code-specific affordances (WebFetch, Agent/fork) named without a one-line \"Claude-only, no Codex/GPT-6 Astra fallback\" disclaimer per the estate's own model-fit lens.",
+          "fix": "Add a short note that the enrichment/asset/swarm phases assume Claude Code tool names (WebFetch, Agent spawning) and either state the Codex-side equivalent or mark those phases Claude-only.",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "low",
+          "evidence": "skills/youtube-transcript-archiver/SKILL.md:110 example output table cites \"openai-system-card-gpt5.pdf\" as a downloaded asset filename — current estate model is GPT-6 Astra (gpt-6-astra); this is one of the four files the fact sheet independently flags as \"themselves carry stale model ids\".",
+          "fix": "Genericise the example filename (or update to a current-era example) so it doesn't read as an implicit \"gpt-5 is current\" claim.",
+          "cross_skill": []
+        }
+      ]
+    }
+  ],
+  "cluster_recommendation": "The browser cluster (browser, browser-automation, chrome-cdp, playwright, qe-browser) is functionally well-differentiated by capability tier (AI-snapshot automation / routing meta-skill / raw CDP / heavyweight 40+-tool automation / QE-typed-assertions) and SKILL-DIRECTORY.md's own audit note (\"4 active + 1 meta... no merge needed\") is right on structure — but wrong on freshness: it doesn't catch that the group shares one bad fact. browser/SKILL.md should stay canonical for the sidecar connection block (it's the right ownership model, correctly deferred-to by browser-automation, chrome-cdp and playwright), but its CDP port (9222) is wrong and has propagated verbatim into browser-automation/references/sidecar.md and independently duplicated in chrome-cdp/references/reference.md — fix the one canonical block and cascade the correction, using playwright/SKILL.md's already-correct two-port table (9223 in-network / 9222 host-mapped) as the reference. No merges or redirects needed in this sub-cluster; it's a single stale-fact propagation bug, not a structural duplication problem. Separately, web-summary and gemini-url-context are wrongly cross-contradictory (web-summary's own reference doc calls gemini-url-context dead when it's the healthiest skill in the batch) and both carry SKILL-DIRECTORY.md MCP-table rot pointing at non-existent/legacy server files — these two plus playwright's phantom mcp-server/server.js row mean the SKILL-DIRECTORY.md \"MCP Server Summary\" table is unreliable for at least 3/11 skills in this batch and should be regenerated from mcp.json + each skill's own frontmatter rather than hand-maintained. scrapling and youtube-transcript-archiver are the two \"silently not really there\" cases: scrapling registers an MCP command with no baked binary and no install-status caveat (unlike qe-browser, which is honest about NOT INSTALLED), and youtube-transcript-archiver is functionally sound (its yt-transcript-archive binary genuinely exists) but is invisible to discovery and untested against the Codex/GPT-6 Astra half of the estate."
+}

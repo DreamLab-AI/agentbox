@@ -10,7 +10,7 @@
     "supervised_override": "RUVECTOR_EMBED_IDENTITY_OVERRIDE must name the exact divergent fingerprint. There is no boolean that means 'trust me'."
   },
   "measured": {
-    "endpoint": "http://192.168.2.132:9997",
+    "endpoint": "http://${EMBEDDINGS_HOST}",
     "model": "bge-small-en-v1.5",
     "observed_dim": 384,
     "fingerprint": "emb1-384-cd25d147dcb748fd",

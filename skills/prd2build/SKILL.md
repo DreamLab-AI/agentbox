@@ -64,6 +64,10 @@ then executes the build in the background.
 Spawn the whole batch in one message and let the Task tool block until every agent
 completes — don't run them in waves or add per-phase checkpoints; docs don't need them.
 
+Claude Code only: the 8-agent batch spawn uses the Task tool. On Codex / GPT-6 Astra:
+run the 8 agents' prompts sequentially in one session instead — there is no
+equivalent built-in subagent-batch tool.
+
 **The full agent prompts and the exact execution/build batch → `references/agent-prompts.md`.**
 
 ## Output & next steps

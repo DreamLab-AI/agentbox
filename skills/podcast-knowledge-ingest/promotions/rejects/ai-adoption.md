@@ -20,7 +20,7 @@
   - tier 1, confidence 0.95, source Adobe Analytics (cited by Host), episode `black-friday-gpt`, fp `96a500d37e8438bd`
 - **AI-assisted shopping is expected to see a 520% surge this year, with 53% of shoppers considering using AI for recommendations, deal finding, and gift inspiration.**
   - tier 2, confidence 0.85, source Adobe (cited by Host), episode `black-friday-gpt`, fp `260b433b764044bb`
-- **HP's recent layoffs are likely a combination of genuine AI-driven process redesign and standard cost-cutting measures, as the company was already in a downward trajectory and had previously announced similar cuts unrelated to AI.**
+- **the connected node's recent layoffs are likely a combination of genuine AI-driven process redesign and standard cost-cutting measures, as the company was already in a downward trajectory and had previously announced similar cuts unrelated to AI.**
   - tier 2, confidence 0.8, source Host (expert analysis), episode `black-friday-gpt`, fp `c5e2f3deec51059d`
 - **Palantir reported quarterly revenue of $1.94 billion, representing a 93% year-over-year increase, with commercial sales growing 149% and net income reaching $1 billion.**
   - tier 1, confidence 0.95, source Palantir Earnings Report (cited by AI Daily Brief host), episode `can-open-models-solve-corporate-ai-washing`, fp `90340f011e3f3b76`

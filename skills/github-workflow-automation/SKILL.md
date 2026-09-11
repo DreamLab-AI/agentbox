@@ -63,6 +63,14 @@ gh run view <run-id> --json jobs,conclusion | \
   npx ruv-swarm actions analyze-failure --suggest-fixes
 ```
 
+**Claude Code only:** the swarm generation/optimisation above (`ruv-swarm actions`) needs
+the claude-flow MCP server. On Codex / GPT-6 Astra (or any session without it), inspect
+and drive runs with plain `gh` instead: `gh run list --workflow=ci.yml`, `gh run view
+<run-id> --log-failed`, `gh run rerun <run-id> --failed`, `gh workflow run ci.yml --ref
+main` — see
+[../github-code-review/references/plain-gh-fallback.md](../github-code-review/references/plain-gh-fallback.md)
+for the full set. Writing/editing the workflow YAML itself is a plain text edit either way.
+
 ## Prerequisites
 
 `gh` installed and authenticated · `git` configured · Node.js v16+ ·

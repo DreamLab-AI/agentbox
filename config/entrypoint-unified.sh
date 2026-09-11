@@ -2135,6 +2135,17 @@ After a verified result, call `memory_store`. Preserve the tool's exact schema:
 `ttl`; `memory_search` requires `query`, with optional `namespace`, `limit`, and
 `source_type`. Standard namespaces include `patterns`, `project-state`, `tasks`,
 and `default`. Never write to protected namespace `ruvnet-kb`.
+
+## Skills
+
+A curated subset of the agentbox skills estate is registered in `~/.codex/skills`
+(manifest: `/opt/agentbox/skills/codex-registered-skills.txt`). Every other baked skill
+is reachable on demand: read `/opt/agentbox/skills/SKILL-DIRECTORY.md` (categorised
+inventory and decision tree) or `/opt/agentbox/skills/skill-router/references/routing-table.md`
+(one row per skill, generated from each skill's own trigger description), then open
+`/opt/agentbox/skills/<name>/SKILL.md`. Skills follow the agentskills.io layout
+(`SKILL.md` + `references/` + `scripts/`). A line beginning "Claude Code only:" marks an
+affordance this harness lacks; use the fallback that follows it.
 AGENTSEOF
   chown 1000:1000 "$_CODEX_AGENTS" 2>/dev/null || true
 fi
@@ -2271,6 +2282,18 @@ if [ -f "$_RECONCILE_SKILLS" ]; then
   REGISTERED_SKILLS_MANIFEST="${SKILLS_TREE:-/opt/agentbox/skills}/registered-skills.txt" \
     bash "$_RECONCILE_SKILLS" 2>&1 | sed 's/^/  [skills] /' || true
   chown -h 1000:1000 /home/devuser/.claude/skills/* 2>/dev/null || true
+  # Codex (GPT-6 Astra) parity — audit 2026-09-09: ~/.codex/skills held two hand-made
+  # symlinks into the workspace tree and nothing reconciled codex-registered-skills.txt.
+  # Same reconciler, same baked tree, its own curated manifest (Codex caps the always-
+  # loaded skill index at 2 % of context / 8,000 chars). Idempotent, fail-open.
+  if [ -f "${SKILLS_TREE:-/opt/agentbox/skills}/codex-registered-skills.txt" ]; then
+    mkdir -p /home/devuser/.codex/skills 2>/dev/null || true
+    CLAUDE_SKILLS_DIR="/home/devuser/.codex/skills" \
+    SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}" \
+    REGISTERED_SKILLS_MANIFEST="${SKILLS_TREE:-/opt/agentbox/skills}/codex-registered-skills.txt" \
+      bash "$_RECONCILE_SKILLS" 2>&1 | sed 's/^/  [codex-skills] /' || true
+    chown -h 1000:1000 /home/devuser/.codex/skills/* 2>/dev/null || true
+  fi
 fi
 
 # ── SK-2: collapse the divergent ancestor skill roots ──────────────────────

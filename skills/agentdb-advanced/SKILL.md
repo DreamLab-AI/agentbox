@@ -5,6 +5,8 @@ description: "Advanced AgentDB beyond single-database vector search: distributed
 
 # AgentDB Advanced Features
 
+AgentDB is a standalone RuvNet package, not this deployment's memory path; durable agent/project memory here is RuVector-postgres via `mcp__claude-flow__memory_*` (bge-small-en-v1.5, 384-dim).
+
 Distributed and advanced AgentDB patterns. For AgentDB architecture, performance
 benchmarks, and common API patterns, see [AgentDB Overview](./docs/agentdb-overview.md).
 

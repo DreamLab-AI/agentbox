@@ -2,6 +2,13 @@
 
 Shared reference for all AgentDB skills. Individual skills should link here rather than duplicating this content.
 
+> **AgentDB is a standalone RuvNet package, not this deployment's memory path.**
+> Durable agent/project memory in this container is RuVector-postgres via
+> `mcp__claude-flow__memory_*` (bge-small-en-v1.5, 384-dim). Use AgentDB only when
+> explicitly building an AgentDB-based product/package; a stray AgentDB `.db`
+> file is invisible to `mcp__claude-flow__memory_*` and to every other agent in
+> the mesh.
+
 ---
 
 ## What is AgentDB?
@@ -73,7 +80,12 @@ npx agentdb@latest benchmark
 ## Prerequisites
 
 - Node.js 18+
-- AgentDB v1.0.7+ (via `agentic-flow` or standalone `agentdb`)
+- AgentDB v1.0.7+ for the CLI/API shown below (via `agentic-flow` or standalone
+  `agentdb`). The ruvnet-brain corpus shows a newer v2.0.0 backend-abstraction
+  rewrite exists upstream (dual SQLite+RuVector storage, pluggable SQLite/
+  better-sqlite3/RuVector-core/GNN backends — see `agentdb/docs/architecture/
+  BACKENDS.md` upstream) that this page has not been re-verified against; treat
+  the v1.0.7 examples below as the confirmed-working baseline, not a ceiling.
 
 ---
 

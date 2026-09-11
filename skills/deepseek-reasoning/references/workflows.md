@@ -2,39 +2,38 @@
 
 ## Invocation from Claude Code
 
-Once the MCP server is running, the tools are available directly:
+The MCP tool is `mcp__consultant-deepseek__consult` (plus `health` and
+`cost_estimate`); there is one tool for every kind of question, shaped by what
+you put in `question` and `context_excerpt` — there are no separate
+`reason`/`analyze`/`plan` tools.
 
 ```javascript
 // Complex reasoning
-const reasoning = await deepseek_reason({
-  query: "Why does binary search achieve O(log n)?",
+const reasoning = await mcp__consultant_deepseek__consult({
+  question: "Why does binary search achieve O(log n)?",
   format: "structured"
 });
 
-// Code analysis
-const analysis = await deepseek_analyze({
-  code: readFileSync('app.js', 'utf8'),
-  issue: "Memory leak in event handlers",
-  depth: "deep"
+// Code analysis — put the code and the problem statement in context_excerpt/question
+const analysis = await mcp__consultant_deepseek__consult({
+  question: "Find the root cause of this memory leak and recommend a fix.",
+  context_excerpt: readFileSync('app.js', 'utf8')
 });
 
 // Task planning
-const plan = await deepseek_plan({
-  goal: "Implement rate limiter",
-  constraints: "Redis-backed, 1000 req/s",
-  granularity: "medium"
+const plan = await mcp__consultant_deepseek__consult({
+  question: "Plan implementing a Redis-backed rate limiter at 1000 req/s. " +
+            "Break it into phases with dependencies and a critical path.",
 });
 ```
 
-CLI-style equivalents:
+Check cost before an expensive call:
 
-```bash
-deepseek_reason "Explain why quicksort is O(n log n) average but O(n²) worst case"
-
-deepseek_analyze --code "$(cat buggy_code.py)" --issue "Memory leak on repeated calls"
-
-deepseek_plan --goal "Implement distributed cache" \
-  --constraints "Must handle 10k req/s, 5 nodes max"
+```javascript
+const estimate = await mcp__consultant_deepseek__cost_estimate({
+  question_size: 500,
+  expected_response_size: 1200
+});
 ```
 
 ## Hybrid workflow — DeepSeek plans, Claude executes
@@ -42,8 +41,9 @@ deepseek_plan --goal "Implement distributed cache" \
 **Pattern:** DeepSeek as reasoning planner, Claude as executor.
 
 1. Claude receives a complex query.
-2. Forwards it to DeepSeek via MCP for reasoning.
-3. DeepSeek returns a structured plan with chain-of-thought.
+2. Forwards it to DeepSeek via `consult`, asking explicitly for a structured
+   phased plan with reasoning per phase.
+3. DeepSeek returns a `<reasoning>...</reasoning>` trace followed by the answer.
 4. Claude executes the plan with polished code/responses.
 
 **Example flow:**
@@ -51,7 +51,7 @@ deepseek_plan --goal "Implement distributed cache" \
 ```yaml
 Query: "Build a distributed rate limiter"
   ↓
-DeepSeek Reasoning:
+DeepSeek consult (question asks for phased plan + reasoning):
   - Algorithm: Token bucket vs sliding window
   - Data structure: Redis sorted sets
   - Synchronization: Lua scripts for atomicity
@@ -69,80 +69,71 @@ Claude Execution:
 ### Debugging a complex issue
 
 ```javascript
-// Claude Code detects a tricky bug
 const bug = await readFile('app.js');
 
-// Send to DeepSeek for deep reasoning
-const analysis = await deepseek_analyze({
-  code: bug,
-  issue: 'Race condition causing data corruption',
-  depth: 'deep'
+const analysis = await mcp__consultant_deepseek__consult({
+  question: "Root-cause this race condition causing data corruption. " +
+            "Show your reasoning step by step, then give a fix.",
+  context_excerpt: bug
 });
 
-console.log('Root cause:', analysis.root_cause);
-// Implement fix based on recommendations
+console.log(analysis.response); // <reasoning>...</reasoning> then the fix
 ```
 
 ### Algorithm design
 
 ```javascript
-const plan = await deepseek_plan({
-  goal: 'Design consistent hashing for distributed cache',
-  constraints: 'Min rebalancing on node add/remove, uniform distribution'
-});
-
-plan.phases.forEach(phase => {
-  phase.tasks.forEach(task => {
-    console.log(`Implementing: ${task.description}`);
-    console.log(`Reasoning: ${task.reasoning}`);
-  });
+const plan = await mcp__consultant_deepseek__consult({
+  question: "Design consistent hashing for a distributed cache. " +
+            "Minimise rebalancing on node add/remove; keep distribution uniform. " +
+            "Return a phased task breakdown with dependencies."
 });
 ```
 
 ### Multi-step problem solving
 
 ```javascript
-const reasoning = await deepseek_reason({
-  query: 'Why does my ML model overfit on validation but not training data?',
-  context: 'Using 80/20 split, early stopping, L2 regularization',
-  format: 'steps'
+const reasoning = await mcp__consultant_deepseek__consult({
+  question: "Why does my ML model overfit on validation but not training data? " +
+            "Setup: 80/20 split, early stopping, L2 regularization. " +
+            "Walk through the reasoning in numbered steps."
 });
-
-reasoning.steps.forEach((step, i) => {
-  console.log(`Step ${i+1}: ${step.thought}`);
-});
-console.log('Solution:', reasoning.final_answer);
 ```
 
 ## Advanced usage
 
-### Custom reasoning strategies
+### Cross-model closure verification
+
+When a change was produced by one model family and needs an independent
+check, pass `producer_family` so the envelope records whether this consult is
+a genuine cross-model verification (REC-8 anti-fox):
 
 ```javascript
-const result = await deepseek_reason({
-  query: 'Design database schema for social network',
-  context: 'Must support 1M users, complex friend relationships',
-  strategy: 'first_principles',  // vs incremental, analogical
-  max_steps: 15
+const verification = await mcp__consultant_deepseek__consult({
+  question: "Review this diff for correctness issues the author might have missed.",
+  context_excerpt: diffText,
+  producer_family: "claude"
 });
 ```
 
 ### Chaining reasoning
 
 ```javascript
-const stage1 = await deepseek_plan({goal: 'Build payment system'});
-const stage2 = await deepseek_analyze({
-  code: 'existing_payment_code.js',
-  issue: 'Identify integration points'
+const stage1 = await mcp__consultant_deepseek__consult({
+  question: "Plan a payment system implementation."
+});
+const stage2 = await mcp__consultant_deepseek__consult({
+  question: "Identify integration points for this existing payment code.",
+  context_excerpt: existingPaymentCode
 });
 
-const implementation = synthesize(stage1, stage2);
+const implementation = synthesize(stage1.response, stage2.response);
 ```
 
 ## Best practices
 
 1. **Use for complex reasoning only** — simple queries go to Claude directly.
-2. **Provide context** — more background yields better reasoning.
-3. **Check reasoning traces** — understand the model's logic before executing.
+2. **Provide context via `context_excerpt`** — more background yields better reasoning, but keep it curated and small.
+3. **Check the `<reasoning>` trace** — understand the model's logic before executing.
 4. **Hybrid approach** — DeepSeek plans, Claude executes.
-5. **Monitor costs** — reasoning tokens add up quickly.
+5. **Check cost first** — call `cost_estimate` before a large `consult`.

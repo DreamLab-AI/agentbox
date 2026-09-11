@@ -4,7 +4,7 @@
 # socat proxy on 9223 exposes CDP to the Docker host
 # Prefers google-chrome-beta (149+, WebMCP), falls back to chromium
 
-SECURE_ORIGINS="${TREAT_AS_SECURE:-http://192.168.2.132:3001,http://192.168.2.132:3000,http://host.docker.internal:3001,http://host.docker.internal:3000}"
+SECURE_ORIGINS="${TREAT_AS_SECURE:-http://the model host:3001,http://the model host:3000,http://host.docker.internal:3001,http://host.docker.internal:3000}"
 
 CHROME_BIN="${CHROME_BIN:-}"
 if [ -z "$CHROME_BIN" ]; then

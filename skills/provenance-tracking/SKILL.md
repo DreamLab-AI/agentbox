@@ -4,26 +4,25 @@ description: >
   Add provenance tracking to any research or analysis output. Use when you need source
   verification, citation tracking, or evidence chains. Creates a .provenance.md sidecar
   documenting sources, verification status, and confidence levels. Integrates with RuVector.
-args: <output-file-path>
-section: Quality & Verification
 triggers:
   - add provenance
   - track sources
   - citation check
   - verify sources
   - provenance
-tools:
-  - Read
-  - Write
-  - Grep
-  - WebFetch
-memory:
-  after: mcp__claude-flow__memory_store({namespace: "patterns", key: "provenance-[slug]", value: "[verification summary]"})
 ---
 
 # Provenance Tracking
 
-Attach verifiable source chains to any research output.
+Attach verifiable source chains to any research output. Uses Read, Write, Grep,
+and WebFetch to build the sidecar below.
+
+## When Not To Use
+
+This is a file-sidecar workflow for research you have already produced — it
+does not fetch or verify anything live beyond the URLs already in your output.
+For live citation verification tools (`verify_citation`, `audit_bibliography`,
+`citation_graph`) during active research, use `web-researcher` instead.
 
 ## Usage
 
@@ -81,7 +80,9 @@ For each source URL:
 
 ## Integration with RuVector
 
-Store provenance summaries for future retrieval:
+After completing a provenance record, store a summary for future retrieval —
+`mcp__claude-flow__memory_store({namespace: "patterns", key: "provenance-[slug]",
+value: "[verification summary]"})`:
 ```javascript
 mcp__claude-flow__memory_store({
   namespace: "patterns",

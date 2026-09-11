@@ -21,7 +21,7 @@ this file holds the diagram, LLM backend wiring, env vars, and troubleshooting.
                ▼
 ┌─────────────────────────────┐
 │  Ontology Loom facade       │
-│  (192.168.2.132:8084/v1)    │
+│  (${LOOM_HOST}/v1)    │
 │  model-swappable LLM door    │
 └─────────────────────────────┘
 ```
@@ -33,14 +33,14 @@ The former Z.AI service (supervisord program `claude-zai`, port 9600) is
 now routes LLM calls through the **Ontology Loom facade**, the load-bearing,
 model-swappable external-LLM door (agentbox ADR-051 / VisionClaw PRD-025).
 
-- Primary endpoint: `http://192.168.2.132:8084/v1` (OpenAI-compatible
+- Primary endpoint: `${LOOM_BASE_URL}` (OpenAI-compatible
   `/chat/completions`). The facade grounds each call in the ontology and
   delegates to whatever model sits behind it (currently Qwen3.8-27B on `:8085`),
   so this skill never changes when the model is swapped.
 - Sidecar alternative (Deployment B): `http://loom:8080/v1` on
   `visionclaw_network` (compose profile `loom`).
-- Health without a model round-trip: `curl -s http://192.168.2.132:8084/health`.
-- **Never target `192.168.2.48`** — HP's old address is dead and black-holes
+- Health without a model round-trip: `curl -s ${LOOM_BASE_URL}/health`.
+- **Never target `a retired address`** — the connected node's old address is dead and black-holes
   every synthesis into a timeout.
 
 If the Loom is unavailable, fall back to the built-in summarisation path: any
@@ -52,14 +52,14 @@ directly on `:8085`) can be pointed at via `LLM_URL`.
 For multi-URL comparison or structured data extraction from URLs, use the
 `web-researcher` skill's `scrape_page` / `search_and_scrape` (full PDF/DOCX/
 YouTube extraction, verifiable citations) or the `browser` sidecar for
-JS-rendered pages. The old `gemini-url-context` route is dead — its `gemini`
-CLI is not installed in this image.
+JS-rendered pages. `gemini-url-context` is a separate, active skill (Rust
+`rmcp`, `agentbox-mcp gemini-url-context`) — not this skill's legacy route.
 
 ## Environment variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LLM_URL` | `http://192.168.2.132:8084/v1` | OpenAI-compatible base of the Loom facade. Falls back to `ZAI_URL` if set (legacy). |
+| `LLM_URL` | `${LOOM_BASE_URL}` | OpenAI-compatible base of the Loom facade. Falls back to `ZAI_URL` if set (legacy). |
 | `LLM_MODEL` | `loom` | Model name passed to the facade (the facade swaps the real model behind it). |
 | `LLM_TIMEOUT` | `120` | Request timeout in seconds. Falls back to `ZAI_TIMEOUT` (legacy). |
 
@@ -72,10 +72,10 @@ importer; both call the Loom facade.
 
 ```bash
 # Check the Loom facade is up (retrieval-only, no model round-trip)
-curl -s http://192.168.2.132:8084/health
+curl -s ${LOOM_BASE_URL}/health
 
 # Test a completion end-to-end
-curl -s http://192.168.2.132:8084/v1/chat/completions \
+curl -s ${LOOM_BASE_URL}/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"loom","messages":[{"role":"user","content":"Say OK"}],"max_tokens":1536}'
 ```

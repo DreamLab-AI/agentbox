@@ -15,7 +15,7 @@ external `visionclaw_network`, managed through `agentbox.sh xr-runtime …`. It 
 
 > **This sidecar is the headless/CI route, NOT the primary on-device validator (updated 2026-08-22).**
 > The **real** headset validation is now done on a **physical HTC VIVE Pro via
-> SteamVR on HP-Desktop** — native X11, NVIDIA 580, **Godot 4.6.1** on the
+> SteamVR on the connected node** — native X11, NVIDIA 580, **Godot 4.6.1** on the
 > **Compatibility (OpenGL) renderer** — where the client achieved its first working
 > both-eyes render on 2026-08-22 (branch `xr-vive-runtime`; see
 > `docs/adr/ADR-136-desktop-openxr-vive-validation-target.md` and PRD-008 §7.4). A

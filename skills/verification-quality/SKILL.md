@@ -1,61 +1,86 @@
 ---
 name: verification-quality
-description: "Truth scoring, code-quality verification, and verification-gated automatic rollback for agent and file output via claude-flow. Use when you need confidence scores on agent output, rollback safety checks, or lightweight truth verification without the full build-with-quality pipeline."
+description: "Verify an installed artifact against the signed witness manifest via `ruflo verify`, and read the real in-CI regression-guard stack (smoke tests, discoverability audit, cryptographic witness, temporal history). Use when you need to check that documented fixes are still present in the tree, or to understand what's actually enforced in CI vs. designed-but-unshipped. Not for per-file truth scoring, confidence thresholds, or auto-rollback — that surface is design only, see references/design-aspirational.md."
 version: "2.0.0"
 category: "quality-assurance"
-tags: ["verification", "truth-scoring", "quality", "rollback", "metrics", "ci-cd"]
+tags: ["verification", "witness-manifest", "quality", "ci-cd"]
 ---
 
 # Verification & Quality Assurance
 
-Lightweight verification layer over `claude-flow`: reliability scores (0.0-1.0) for
-code/agents/tasks, automated correctness/security/best-practice checks, and automatic
-rollback of changes that fail a threshold.
+> **Shipped vs. aspirational.** The *concrete, in-CI* verification stack — regression-guard
+> jobs, the witness manifest, the tool-discoverability audit — is real and runs on every
+> push in the upstream ruflo repo. A truth-scoring / auto-rollback / WebSocket-dashboard
+> surface was drafted for this skill in an earlier version but never shipped: no `truth`
+> or `verify check/batch/report/dashboard/watch` command exists in the installed ruflo
+> v3.38.21 binary. `ruflo verify` (below) is the real, current command. Treat this section
+> as the authoritative current state; the old draft is kept for reference in
+> [references/design-aspirational.md](references/design-aspirational.md), dated and marked
+> not current.
 
 ## When to use
 
-- You want a confidence score on an agent's or a file's output.
-- You want changes auto-reverted when they fall below a quality threshold.
-- You want truth-metric dashboards/reports without standing up the full pipeline.
+- You want to verify that an installed artifact still matches its signed witness manifest
+  (e.g. after a rebuild, or before trusting a claimed fix is present).
+- You want to understand what ruflo's own CI actually enforces, to model a similar guard
+  in this project.
 
 ## When not to use
 
 - Full development pipelines with quality gates → **build-with-quality**.
 - Swarm performance profiling / bottleneck detection → **performance-analysis**.
 - GitHub PR code review with specialised agents → **github-code-review**.
-- Test generation + coverage without truth scoring → TDD workflow in **sparc-methodology**.
+- Test generation + coverage → TDD workflow in **sparc-methodology**.
 - Simple linting/formatting → run the project's lint/format tools directly.
-
-## Prerequisites
-
-- Claude Flow (`npx claude-flow@alpha`)
-- Git repository (for rollback features)
-- Node.js 18+ (for dashboard features)
+- Per-file truth/confidence scoring or automatic rollback on a threshold — this does not
+  exist in the installed CLI; see [references/design-aspirational.md](references/design-aspirational.md)
+  for the design if you are considering building it.
 
 ## Quick start
 
 ```bash
-# View current truth scores
-npx claude-flow@alpha truth
+# Verify against the latest manifest from the default branch
+claude-flow verify
 
-# Run verification check (default threshold 0.95)
-npx claude-flow@alpha verify check
+# Verify against a specific branch
+claude-flow verify --branch main
 
-# Verify a specific file with a custom threshold
-npx claude-flow@alpha verify check --file src/app.js --threshold 0.98
+# Verify against a local manifest copy
+claude-flow verify --manifest ./verification.md.json
 
-# Rollback the last failed verification
-npx claude-flow@alpha verify rollback --last-good
+# Machine-readable output for CI
+claude-flow verify --json
 ```
 
-Threshold guidance: 0.99 critical code · 0.95 standard · 0.90 experimental. Exit codes:
-`0` passed, `1` failed (score < threshold), `2` error.
+`claude-flow verify` (`ruflo verify` — same binary, invoked via the `claude-flow`
+alias baked on PATH) checks an installed artifact against a signed witness manifest:
+for each documented fix it hashes the on-disk file and checks that a distinctive
+marker substring is still present, so a regression that deletes the fix is caught
+even if the file changed for other reasons. Flags: `-b/--branch` (defaults to the
+manifest-issuing branch), `-m/--manifest` (use a local file instead of fetching),
+`--json`.
 
-## Full reference
+## CI Guards — what's actually shipped upstream (current state)
 
-The complete command surface — truth-metric formats and dashboard, all `verify check`/
-`batch`/`report`/`dashboard`/`watch` flags, the five verification criteria, JSON schema,
-rollback modes, `.claude-flow/config.json` schema, per-environment thresholds, CI/CD
-recipes (GitHub Actions, GitLab), swarm/pair/pre-commit integration, monitoring
-export (Prometheus/DataDog/webhook), performance figures, and troubleshooting — lives in
-[references/complete-guide.md](references/complete-guide.md).
+Ruflo's own regression protection is three layers, all gated before publish
+(source: ruflo repo `.agents/skills/verification-quality/SKILL.md`, pulled 2026-09-09):
+
+| Layer | What | ADR |
+|---|---|---|
+| **1 — install/behavioral smoke** | Exercise user-visible failure modes against a real build (npm install without prebuilds, hook flag parsing, MCP wire format, memory import path/key sanitisation, paired-tool round-trips) | ADR-102 |
+| **1 — discoverability gate** | Every MCP tool description must answer "use this over native when?" (monotone-decreasing baseline: no-guidance / too-short / duplicate counts) | ADR-112 |
+| **2 — cryptographic witness** | Every documented fix's load-bearing marker must still be present in the built artifact; Ed25519-signed, per-OS bundles — this is what `ruflo verify` checks | ADR-103 |
+| **3 — temporal history** | An append-only log answering "when was a regression introduced" | ADR-103 |
+
+This project does not run that CI itself; it consumes the same `verify` binary as a
+standalone check. If you want an equivalent guard here, model it on layer 2 (a
+witness manifest of `{ id, file, sha256, marker }` entries, checked with `ruflo verify
+--manifest <path>`) rather than reaching for the truth-scoring surface below, which
+was never built.
+
+## Design surface (not shipped)
+
+Truth-metric dashboards, per-file/per-agent confidence scores, threshold-gated
+auto-rollback, and CI/CD recipes built around that non-existent surface are recorded
+in [references/design-aspirational.md](references/design-aspirational.md), dated and
+marked as design only. Do not follow it as current guidance.

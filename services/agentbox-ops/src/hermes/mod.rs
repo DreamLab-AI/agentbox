@@ -131,6 +131,15 @@ struct TickLock {
     _file: File,
 }
 
+impl Drop for TickLock {
+    fn drop(&mut self) {
+        // Release explicitly. Relying only on close is normally sufficient,
+        // but an explicit unlock also behaves deterministically under the
+        // Nix sandbox's overlay filesystem and in-process lock tests.
+        let _ = rustix::fs::flock(&self._file, rustix::fs::FlockOperation::Unlock);
+    }
+}
+
 impl TickLock {
     /// Takes the exclusive non-blocking lock, or `None` when another tick
     /// already holds it.

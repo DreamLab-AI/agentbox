@@ -428,9 +428,9 @@ apply tax on post-discount amount → return total. An empty cart returns
 ---
 expectation_id: EXP-042
 git_sha: 3f9a2c1
-produced_by: agent:claude-sonnet-4-6
+produced_by: agent:model-a
 produced_at: 2026-05-03T14:22:11Z
-audited_by: agent:claude-opus-4-7   # MUST differ from produced_by
+audited_by: agent:model-b   # MUST differ from produced_by
 audited_at: 2026-05-03T14:24:08Z
 auditor_verdict: pass
 auditor_counter_examples_attempted: 3

@@ -1,0 +1,317 @@
+{
+  "batch": "09-swarm-memory",
+  "skills": [
+    {
+      "skill": "swarm-advanced",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "skills/swarm-advanced/SKILL.md:29,32 — \"npm install -g claude-flow@alpha\" / \"claude mcp add claude-flow npx claude-flow@alpha mcp start\". Verified live: `claude-flow --version` (the pinned PATH binary at /nix/store/.../ruflo-3.38.20/bin/claude-flow) reports \"ruflo v3.38.21\", but `npx claude-flow --version` reports a DIFFERENT \"ruflo v3.5.75\" — npx does not resolve the baked/pinned binary, it fetches/caches a separate, much older package version.",
+          "fix": "Drop the npm-install prerequisite (the CLI is already baked on PATH as `claude-flow`/`ruflo` v3.38.x); replace every `npx claude-flow ...` example with the bare `claude-flow ...` form, or note explicitly that `npx claude-flow` may run a stale cached version.",
+          "cross_skill": ["hive-mind-advanced", "stream-chain", "performance-analysis"]
+        },
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "skills/swarm-advanced/SKILL.md:32,38-44 — all examples use `mcp__claude-flow__*` tool-call syntax and `claude mcp add` (Claude Code-specific) with no note that GPT-6 Astra via Codex has no claude-flow MCP wiring (fact sheet, Codex side confirmed to hold only 2 unrelated skill symlinks, no claude-flow MCP parity).",
+          "fix": "Add a one-line \"Claude Code only (MCP tools); Codex falls back to the CLI form if the binary is on PATH\" caveat.",
+          "cross_skill": []
+        },
+        {
+          "class": "disclosure",
+          "severity": "low",
+          "evidence": "skills/swarm-advanced/ — SKILL.md is 9116 bytes (~210 lines) with a sibling PATTERNS.md (16829 bytes) at the top level, not under references/; ADR-2021 says depth belongs in references/.",
+          "fix": "Move PATTERNS.md into references/patterns.md for consistency with the rest of the batch (hive-mind-advanced, stream-chain, performance-analysis, agentdb-* all already do this correctly).",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "hive-mind-advanced",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "skills/hive-mind-advanced/SKILL.md:31 — \"npx claude-flow hive-mind metrics\" in the copy-pasteable Quick path. Verified live: `claude-flow hive-mind --help` lists subcommands init/spawn/status/task/join/leave/consensus/broadcast/memory/optimize-memory/shutdown — there is no `metrics` subcommand (`claude-flow hive-mind metrics --help` silently re-prints the parent help, i.e. it isn't recognised).",
+          "fix": "Remove `hive-mind metrics` or replace with the real `hive-mind status` (health) / `hive-mind memory` (collective memory) combination.",
+          "cross_skill": ["swarm-advanced"]
+        },
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "skills/hive-mind-advanced/SKILL.md:1-93 — no line states the skill is Claude Code-only, though `--claude` flags and MCP-flavoured framing assume the Claude harness.",
+          "fix": "One-line Claude-Code-only caveat, as for swarm-advanced.",
+          "cross_skill": ["swarm-advanced"]
+        }
+      ]
+    },
+    {
+      "skill": "stream-chain",
+      "verdict": "fix",
+      "health": 2,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "skills/stream-chain/SKILL.md:36,45 — \"claude-flow stream-chain run ...\" and \"claude-flow stream-chain pipeline analysis\". Verified live: `claude-flow stream-chain --help` → \"[ERROR] Unknown command: stream-chain\". The top-level `stream-chain` command does not exist anywhere in the deployed ruflo v3.38.21 CLI (checked `claude-flow --help` full command list: no stream-chain; not a workflow/analyze/performance subcommand either).",
+          "fix": "Either restore/re-verify the `stream-chain` command against the currently-baked ruflo version before next image build, or mark the skill broken-in-this-deployment until it is.",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "skills/stream-chain/scripts/qa-chain.sh:11 — `claude-flow stream-chain pipeline \"${stage}\" --timeout \"${TIMEOUT}\" --verbose`. This is the skill's one bundled, runnable helper script and it shells out to the same non-existent top-level command, so the sole executable asset in this skill is also non-functional.",
+          "fix": "Same as above — the fix must cover both the doc examples and this script.",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "low",
+          "evidence": "mcp__ruvnet-brain__search_ruvnet(repo:ruflo, query:\"stream-chain command pipeline\") returned three near-identical upstream copies of this exact SKILL.md (ruflo/.agents/skills/stream-chain/SKILL.md, ruflo/.claude/skills/stream-chain/SKILL.md, ruflo/v3/@claude-flow/cli/.claude/skills/stream-chain/SKILL.md) — confirming the content is a faithful, non-hallucinated upstream vendor copy, not locally invented; the break is a deployment/version mismatch, not authoring drift.",
+          "fix": "N/A — informational; strengthens confidence the fix is \"re-sync with a ruflo version that ships this command\" rather than \"rewrite the skill\".",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "performance-analysis",
+      "verdict": "fix",
+      "health": 3,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "skills/performance-analysis/SKILL.md:32,35,38 — \"npx claude-flow bottleneck detect\", \"npx claude-flow analysis performance-report --format html --include-metrics\", \"npx claude-flow bottleneck detect --fix --threshold 15\". Verified live: `claude-flow bottleneck --help` → \"Unknown command: bottleneck\"; `claude-flow analysis --help` → \"Unknown command: analysis\" (did-you-mean \"analyze\"). The real path is `claude-flow performance bottleneck [-c component] [-d quick|full]` (verified via `claude-flow performance --help` / `claude-flow performance bottleneck --help`) — no top-level `bottleneck` or `analysis` command exists, and no `performance-report` subcommand exists under either `performance` or `analyze`.",
+          "fix": "Rewrite Quick Start to `claude-flow performance bottleneck [-d full]`; either drop the performance-report example or point it at a verified subcommand (`performance benchmark`/`performance metrics`).",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "skills/performance-analysis/SKILL.md:67-70 (Related section) — \"npx claude-flow swarm monitor\", \"npx claude-flow token usage\", \"npx claude-flow cache manage\", \"npx claude-flow agent metrics\". Verified live: `claude-flow swarm --help` subcommands are init/start/status/stop/scale/coordinate/compress-message/pheromone/join — no `monitor`; `claude-flow token --help` and `claude-flow cache --help` both → \"Unknown command\" (neither `token` nor `cache` appear anywhere in the full `claude-flow --help` command list). 3 of these 4 \"Related\" commands are confirmed non-existent; the 4th (`agent metrics`) was not individually re-verified but `agent` is a real top-level command.",
+          "fix": "Re-derive the Related section from `claude-flow --help` / subcommand help rather than from memory; `agent metrics` needs a final check.",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "skills/performance-analysis/SKILL.md:71 — `[Swarm Monitoring](../swarm-orchestration/SKILL.md)` and `[Memory Management](../memory-management/SKILL.md)`. Both target directories do not exist under skills/ (checked directly: `skills/swarm-orchestration` and `skills/memory-management` are both absent).",
+          "fix": "Remove or repoint these two dead relative links (likely meant swarm-advanced and agentdb-memory-patterns).",
+          "cross_skill": ["swarm-advanced", "agentdb-memory-patterns"]
+        }
+      ]
+    },
+    {
+      "skill": "agentdb-advanced",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "skills/agentdb-advanced/SKILL.md:3,37 and docs/agentdb-overview.md:1-127 — the entire skill (Quick path imports `createAgentDBAdapter` from `agentic-flow/reasoningbank`, writes to `.agentdb/distributed.db`, QUIC-syncs across peer hosts) presents local AgentDB SQLite files as the memory substrate, with zero mention that this deployment's durable memory is `mcp__claude-flow__memory_*` → RuVector-postgres (bge-small-en-v1.5, 384-dim) and that a stray AgentDB `.db` file is invisible to that system.",
+          "fix": "Add a one-line banner in docs/agentdb-overview.md (inherited by all agentdb-* skills that link to it): \"AgentDB is a separate, standalone RuvNet package — NOT this deployment's agent-memory path. For durable agent/project memory in this container use mcp__claude-flow__memory_* (RuVector-postgres). Use AgentDB only when explicitly building an AgentDB-based product/package.\"",
+          "cross_skill": ["agentdb-memory-patterns", "agentdb-vector-search"]
+        },
+        {
+          "class": "stale",
+          "severity": "low",
+          "evidence": "skills/agentdb-advanced/docs/agentdb-overview.md:76 — \"AgentDB v1.0.7+ (via agentic-flow or standalone agentdb)\". mcp__ruvnet-brain__search_ruvnet(repo:agentdb) shows the current upstream is a v2.0.0 backend-abstraction rewrite (dual SQLite+RuVector storage, pluggable SQLite/better-sqlite3/RuVector-core/GNN backends; see agentdb/docs/architecture/BACKENDS.md and docs/research/RUVECTOR-INTEGRATION-V2.md) — the v1.0.7 prerequisite pin looks behind the grounded corpus state.",
+          "fix": "Bump the version prerequisite and note the v2 dual-storage architecture, or explicitly say which major version this skill targets.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "agentdb-learning",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "agentdb-memory-patterns",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "skills/agentdb-memory-patterns/SKILL.md:61 — \"npx agentdb@latest migrate --source .swarm/memory.db\" presented under \"ReasoningBank Integration\" with no mention that this deployment's actual ReasoningBank-equivalent path is RuVector-postgres via mcp__claude-flow__memory_*, not a local AgentDB migration.",
+          "fix": "Same shared banner as agentdb-advanced (docs/agentdb-overview.md).",
+          "cross_skill": ["agentdb-advanced", "agentdb-vector-search"]
+        },
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "skills/agentdb-memory-patterns/KHIVE-LEARNINGS.md:145 — the sibling reference doc DOES correctly state \"RuVector uses bge-small-en-v1.5 (384-dim) via xinference\", i.e. the accurate distinction already exists in this skill's own tree, but only inside a deep comparison table linked from the v2.0-roadmap section, never surfaced in the top-level SKILL.md an agent actually loads first.",
+          "fix": "Pull the one-sentence distinction up into SKILL.md itself rather than leaving it buried in KHIVE-LEARNINGS.md.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "agentdb-vector-search",
+      "verdict": "fix",
+      "health": 4,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "skills/agentdb-vector-search/SKILL.md:12 — \"Additional prerequisites: OpenAI API key (for embeddings) or a custom embedding model.\" This line carries no disclaimer and directly instructs toward the estate-banned pattern (external OpenAI embeddings) for \"building RAG pipelines, running semantic/similarity vector search\" — the deployment mandates bge-small-en-v1.5 via Xinference through mcp__claude-flow__memory_* exclusively (MiniLM/OpenAI explicitly banned per doctrine except as documented third-party fact).",
+          "fix": "Add the shared banner AND qualify line 12 as \"AgentDB's own default — this deployment's memory goes through mcp__claude-flow__memory_* instead\".",
+          "cross_skill": ["agentdb-advanced", "agentdb-memory-patterns"]
+        },
+        {
+          "class": "stale",
+          "severity": "low",
+          "evidence": "skills/agentdb-vector-search/references/cli-cookbook.md:13 and references/performance-and-troubleshooting.md:10,44 already carry \"<!-- lint-ok: third-party/meta fact, not a RuVector claim -->\" markers next to MiniLM/OpenAI dimension examples — i.e. the reference tier is already lint-aware of this exact risk, but the top-level SKILL.md:12 prerequisites line (the always-loaded part) has no equivalent marker or caveat.",
+          "fix": "Extend the same lint-ok convention/caveat to SKILL.md itself, not just the references/ tier.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "ruvector-catalog",
+      "verdict": "fix",
+      "health": 7,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "skills/ruvector-catalog/SKILL.md:18-19 and references/inventory.md:19 — \"Verified 2026-03-30 against commit ff5acfb2\" (repeated verbatim in both files). skills/ruvector-catalog/BENCHMARK-RESULTS.md:1 (dated 2026-09-05, 5+ months later) and README.md:1 (\"RuVector Catalog v3.5.0\") show the vendored directory has moved on since the freshness line was last bumped — the headline freshness claim is out of sync with the directory's own newer content.",
+          "fix": "Bump the Verified date/commit, or replace the fixed claim with \"see BENCHMARK-RESULTS.md for current freshness\".",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "skills/ruvector-catalog/BENCHMARK-RESULTS.md:1 — points readers to \"../../../../VisionFlow/docs/estate-review/catalog-decisions.md\", i.e. a sibling repository outside agentbox (/home/devuser/workspace/VisionFlow/...). Verified this path does resolve in the current workspace layout, but it is a hard dependency on a co-located sibling checkout that would break in an agentbox-only environment (e.g. the standalone product distribution described in agentbox/CLAUDE.md).",
+          "fix": "Note the external dependency explicitly, or inline a summary instead of a cross-repo relative link.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skills/ruvnet-brain/SKILL.md:11-15 (related_skills: lazy-fetch, agentdb-memory-patterns, agentdb-vector-search, claude-flow-memory) omits ruvector-catalog even though both skills cover RuVector and ruvector-catalog (62 files) is the deeper, hand-maintained authority on it.",
+          "fix": "Add ruvector-catalog to ruvnet-brain's related_skills.",
+          "cross_skill": ["ruvnet-brain"]
+        }
+      ]
+    },
+    {
+      "skill": "ruvnet-brain",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skills/ruvnet-brain/SKILL.md:11-15 — related_skills omits ruvector-catalog (see ruvector-catalog finding above); also 0 mentions in skill-router/references/routing-table.md (confirmed by grep), matching the fact sheet's list of 38 skills the (non-generated) routing table is missing.",
+          "fix": "Add to routing-table.md and cross-link ruvector-catalog.",
+          "cross_skill": ["ruvector-catalog"]
+        }
+      ]
+    },
+    {
+      "skill": "token-audit",
+      "verdict": "keep",
+      "health": 9,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "`find /home/devuser/workspace/project/agentbox/services -maxdepth 2` + `command -v token-audit ruflo-daemon-gc` confirm both binaries are real and on PATH (/nix/store/9bgmkwfzhri52sghmcjmbrzqdxl8sswx-agentbox-ops-0.1.0/bin/{token-audit,ruflo-daemon-gc}, source at services/agentbox-ops/src/bin/{token-audit,ruflo-daemon-gc}.rs) — the skill's claims are entirely accurate; the only gap is 0 mentions in skill-router/references/routing-table.md (grep-verified) despite 2 mentions in SKILL-DIRECTORY.md.",
+          "fix": "Add to routing-table.md.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "cost-estimation",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "med",
+          "evidence": "skills/cost-estimation/SKILL.md:2 — `name: \"Cost Estimation\"` (Title Case, quoted) ≠ directory name `cost-estimation`, contradicting the ruflo SKILL.md validator (name must equal directory, /^[a-z][a-z0-9-]*$/) and the agentskills.io standard.",
+          "fix": "Change `name:` to `cost-estimation`.",
+          "cross_skill": []
+        },
+        {
+          "class": "disclosure",
+          "severity": "low",
+          "evidence": "skills/cost-estimation/ — SKILL.md (5043 bytes, ~153 lines) plus two flat sibling docs (cost-model.md 6222 bytes, examples.md 5176 bytes) are NOT under references/, unlike every other multi-doc skill in this batch (hive-mind-advanced, stream-chain, performance-analysis, agentdb-*, ruvector-catalog, agentic-jujutsu all use references/).",
+          "fix": "Move cost-model.md and examples.md into references/.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "SKILL-DIRECTORY.md has only 1 mention of cost-estimation despite it documenting a real, wired subsystem (management-api/routes/payments.js implements the cited `/pay/.estimate` route; also referenced from docs/developer/ecosystem.md, docs/developer/economy-loop.md, docs/archive/prd/PRD-015-consumer-broadcast-economy.md, and scripts/agentbox-config-validate.js — all confirmed via grep) — under-linked relative to its actual footprint. routing-table.md coverage (4 mentions) is fine.",
+          "fix": "Add a second SKILL-DIRECTORY.md entry in an economy/payments category alongside payment-router.",
+          "cross_skill": ["payment-router"]
+        }
+      ]
+    },
+    {
+      "skill": "payment-router",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "high",
+          "evidence": "`grep -c payment-router SKILL-DIRECTORY.md` and the same against skill-router/references/routing-table.md both return 0; `grep -rl payment-router skills --include=SKILL.md` returns only payment-router/SKILL.md itself (no other skill links to it) — yet the feature is real and live: `[skills.payment_router]` gate exists at agentbox.toml:1227, and both files it depends on exist (management-api/lib/pay402.js, skills/payment-router/scripts/pay-fetch.mjs), plus it is documented in docs/developer/ecosystem.md, docs/developer/economy-loop.md, docs/archive/prd/PRD-015-consumer-broadcast-economy.md, and scripts/agentbox-config-validate.js.",
+          "fix": "This is a discovery gap, not dead code — add payment-router to SKILL-DIRECTORY.md and routing-table.md (economy/payments category, alongside cost-estimation) so agents can actually find a security-sensitive, fail-closed spend-gate skill.",
+          "cross_skill": ["cost-estimation"]
+        },
+        {
+          "class": "disclosure",
+          "severity": "low",
+          "evidence": "skills/payment-router/SKILL.md is 8861 bytes (~204 lines), over the informal 250-line/progressive-disclosure norm this batch otherwise follows, with only a scripts/ sibling and no references/.",
+          "fix": "Split the Payment loop / Failure semantics / Security sections into references/ if the file grows further; borderline at current length.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "provenance-tracking",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "med",
+          "evidence": "skills/provenance-tracking/SKILL.md:1-22 — uses a legacy, non-standard frontmatter shape (args/section/triggers/tools/memory) with no `version` field, unlike every other skill in this batch (all use the agentskills.io-style name/description[/version]).",
+          "fix": "Modernise to the standard shape used elsewhere in this batch; keep the useful `memory:` hint as prose in the body instead.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skills/provenance-tracking/SKILL.md — no \"When NOT to use\" section anywhere in the file (confirmed by full read); triggers are broad (\"citation check\", \"verify sources\") with no boundary against web-researcher's own citation-integrity tools (verify_citation, audit_bibliography, citation_graph — confirmed present in the live MCP tool list for web-researcher).",
+          "fix": "Add a When-Not-To-Use line distinguishing this file-sidecar workflow from web-researcher's live citation-verification tools.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "agentic-jujutsu",
+      "verdict": "keep",
+      "health": 8,
+      "findings": []
+    }
+  ],
+  "cluster_recommendation": "Two real, distinct problems, neither solved by merging skills. (1) CLI rot across the orchestration cluster (swarm-advanced, hive-mind-advanced, stream-chain, performance-analysis): every `npx claude-flow ...` example risks resolving a different, older ruflo build than the pinned PATH binary (verified: npx → v3.5.75 vs pinned → v3.38.21), and several exact command names no longer exist in the deployed CLI — stream-chain's entire top-level command (and its only script) is dead, performance-analysis has 6 of 7 cited CLI invocations and 2 relative doc links broken, hive-mind-advanced cites a non-existent `hive-mind metrics` subcommand. The skills themselves are not duplicative — each owns a distinct, correctly cross-referenced niche (topology-swarm vs consensus-hive vs sequential-pipeline vs profiling) — so the fix is a CLI-example re-verification sweep against `claude-flow <cmd> --help`, not consolidation. (2) The agentdb-* family genuinely contradicts the estate memory doctrine, confirmed rather than assumed: agentdb-advanced and agentdb-memory-patterns instruct local AgentDB SQLite/QUIC workflows with zero mention that mcp__claude-flow__memory_* → RuVector-postgres (bge-small-en-v1.5) is this deployment's actual agent-memory path, and agentdb-vector-search's own \"OpenAI API key\" prerequisite line is the sharpest instance — worse, the correct distinction already exists (KHIVE-LEARNINGS.md correctly cites bge-small-en-v1.5) but is buried, never surfacing in the top-level SKILL.md. Recommend one shared banner in docs/agentdb-overview.md rather than collapsing the three skills or merging into ruvector-catalog — their content (RL/QUIC vs session memory vs HNSW/RAG tuning) is legitimately non-overlapping, well cross-referenced, and agentdb-learning's deprecation stub is healthy as-is. Separately: payment-router and cost-estimation were suspected dead/orphaned by their cross-reference isolation, but both are real, wired, gated subsystems (agentbox.toml gate, management-api routes, PRD-015, config validator all confirmed) — the actual defect is a discovery gap (payment-router: zero SKILL-DIRECTORY.md/routing-table.md entries) to fix by adding entries, not retiring. token-audit, agentic-jujutsu and ruvnet-brain are healthy and accurately grounded (verified live against binaries and the ruvnet-brain corpus itself); ruvector-catalog only needs its freshness date resynced with its own actively-updated benchmark file, plus a related_skills link from ruvnet-brain. provenance-tracking needs frontmatter modernisation and a when-not-to-use line against web-researcher's overlapping citation tools. None of the 15 skills in this batch state they are Claude-Code-only, though most assume Claude-specific `mcp__claude-flow__*` tool-call syntax or the `claude mcp add`/`--claude` CLI flags that GPT-6 Astra via Codex cannot use directly.",
+  "unverifiable_items": [
+    "agentdb-advanced's QUIC-sync multi-node deployment and 9 RL algorithms were confirmed to exist upstream via ruvnet-brain (agentdb v2 backend docs) but not exercised live in this environment.",
+    "payment-router's full 402 detect-classify-pay-retry loop was verified structurally (gate + both source files exist, wired into docs/PRD-015) but not run end-to-end against a live 402 challenge.",
+    "performance-analysis's `agent metrics` and `performance metrics` CLI paths were not individually re-verified beyond confirming their parent commands exist."
+  ]
+}

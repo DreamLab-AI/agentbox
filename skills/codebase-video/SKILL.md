@@ -57,6 +57,10 @@ understandable mechanism and a useful next action. Plan a varied visual sequence
   compositor provides a sequential diagram reveal; use **mermaid-diagrams** or
   code-native browser visuals for richer diagrams and frame-exact animations.
   Keep graph labels, code, captions, logos and exact UI text deterministic.
+  For precise algorithms, queues, graph traversal or mathematical transformations,
+  use [manim](../manim/SKILL.md) and its
+  [video handoff](../manim/references/handoffs.md). Import its render as a video
+  asset, retaining scene source and receipt beside it.
 - Generate cinematic metaphor/hero sequences locally with **comfyui**. Read its
   current video workflow reference, probe the sidecar and installed models, and
   follow the model download and smoke-test path before committing to a model.
@@ -75,9 +79,10 @@ understandable mechanism and a useful next action. Plan a varied visual sequence
   receipts and resume the same submitted job after an observation timeout.
 
 Generate narration **before locking durations**, using an available local TTS
-service or user recordings. The optional `scripts/narrate.py` helper runs
-Kokoro locally on CPU; see the local narration recipe in the production
-reference for its isolated environment and explicit model paths. Measure every
+service or user recordings. The `scripts/narrate.py` helper calls the shared
+CPU Pocket service at `POCKET_TTS_URL` (default `http://pocket-tts:8000`), using
+background priority so interactive speech gets preference between segments.
+See the local narration recipe in the production reference. Measure every
 audio asset with `ffprobe`. Select an
 intelligible voice, listen for names/acronyms and correct pronunciation. Set each
 scene duration to cover its measured narration plus a short breathing interval.
@@ -98,7 +103,7 @@ python3 scripts/video_project.py compose /absolute/project/plan.json \
 
 Use `--preview` only for explicitly labelled drafts without narration. A delivery
 folder must be new; iteration creates `delivery-v2` rather than overwriting the
-previous review. Import richer Remotion/Videowright/Blender exports as video scenes
+previous review. Import richer Remotion/Videowright/Blender/Manim exports as video scenes
 rather than stretching the bundled simple compositor beyond its purpose.
 
 Open the final MP4, inspect representative frames from **every scene**, play the
@@ -116,3 +121,14 @@ Deliver `explainer.mp4`, `poster.jpg`, `captions.srt`, `transcript.md`, `plan.js
 any unresolved limitation accurately. Completion requires the audience's central
 question to be answered by the rendered and reviewed video, not merely green
 manifest validation. Publishing is a separate action and needs user authority.
+
+## Related skills
+
+- `explainer` — the family hub for codebase explainers. When its video delivery
+  hands off here, it passes the audience and a claims ledger (`claim →
+  file:line`) already gathered from its own orientation pass; this skill still
+  independently re-verifies runtime behaviour rather than accepting a claim on
+  trust.
+- `open-montage` — use it instead for video with no codebase grounding: a
+  trailer, an avatar spokesperson, a podcast repurpose, or any request not
+  targeting the current repository.

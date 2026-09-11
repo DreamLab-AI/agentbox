@@ -4,7 +4,7 @@
 
 This is a **self-contained, copy-paste prompt** that invokes the full Claude Flow V3 + Agentic QE skill for building software with integrated quality engineering. Use this prompt when starting any new project or feature.
 
-> **EXECUTION REQUIREMENT:** Claude Code MUST use **Claude Flow** to orchestrate the swarm. Use MCP tools (`mcp__claude-flow__*`) if available, otherwise use **CLI commands** (`npx claude-flow@alpha ...`) as fallback. See [CLAUDE FLOW SWARM ORCHESTRATION](#claude-flow-swarm-orchestration) section for both approaches.
+> **EXECUTION REQUIREMENT:** Claude Code MUST use **Claude Flow** to orchestrate the swarm. Use MCP tools (`mcp__claude-flow__*`) if available, otherwise use **CLI commands** (`claude-flow ...`) as fallback. See [CLAUDE FLOW SWARM ORCHESTRATION](#claude-flow-swarm-orchestration) section for both approaches.
 
 ## Configuration Reference
 
@@ -21,7 +21,7 @@ All thresholds, agent definitions, methodology settings, and quality gates are d
 | "EDD 7-step loop" (v1.2.0) | `methodologies.edd.loop` |
 | "Evidence Coverage gate" (v1.2.0) | `quality_gates.evidence_coverage` |
 | "anti-fox separation" (v1.2.0) | `methodologies.edd.anti_fox` |
-| "114+ agents" | `swarm.domains[*].agents` |
+| "34 agents" | `swarm.domains[*].agents` |
 | "SONA balanced mode" | `learning.sona.mode: balanced` |
 | "WCAG AA" | `quality_gates.accessibility.level: AA` |
 
@@ -39,10 +39,9 @@ Copy everything below the line and paste it when starting a new project:
 ## SKILL ACTIVATION
 
 I am invoking the **Build with Quality** skill (v1.2.0) which combines:
-- **Claude Flow V3**: 62+ development agents (incl. expectation-author, tdd-stabilizer)
-- **Agentic QE**: 53 quality engineering agents (incl. evidence-producer, evidence-auditor)
-- **Shared Coordination**: 3 coordination agents
-- **Total**: 114+ specialized agents
+- **Claude Flow V3**: development + coordination agents (incl. expectation-author, tdd-stabilizer)
+- **Agentic QE**: quality engineering agents (incl. evidence-producer, evidence-auditor)
+- **Total**: 34 specialized agents — see [references/agents.md](./references/agents.md)
 
 **v1.2.0 adds Expectation-Driven Development (EDD)** as the design-time
 conversation layer that wraps the existing DDD/ADR/TDD stack. See
@@ -59,10 +58,10 @@ Before proceeding, ensure **BOTH** orchestration tools are initialized:
 ### 1. Claude Flow V3 (Development & Coordination Agents)
 ```bash
 # Check if installed
-npx claude-flow --version
+claude-flow --version
 
 # If not installed, initialize:
-npx claude-flow@alpha init
+claude-flow init
 
 # Or full installation with MCP:
 curl -fsSL https://cdn.jsdelivr.net/gh/ruvnet/claude-flow@main/scripts/install.sh | bash -s -- --full
@@ -85,7 +84,7 @@ claude mcp list  # Should show 'aqe' server
 
 ### 3. Verify Both Tools
 ```bash
-npx claude-flow --version   # Should show version
+claude-flow --version   # Should show version
 aqe --version               # Should show version
 claude mcp list             # Should show 'aqe' in list
 ```
@@ -477,7 +476,7 @@ At completion, ensure:
 
 Claude Flow can be used in two ways:
 1. **MCP Tools** (preferred) - If `mcp__claude-flow__*` tools are available
-2. **CLI Commands** (fallback) - If MCP is not configured, use `npx claude-flow@alpha` commands
+2. **CLI Commands** (fallback) - If MCP is not configured, use `claude-flow` commands
 
 ---
 
@@ -492,22 +491,22 @@ mcp__claude-flow__swarm_init {
   strategy: "parallel"
 }
 
-mcp__claude-flow__agent_spawn { type: "coordinator", name: "unified-coordinator" }
-mcp__claude-flow__agent_spawn { type: "architect", name: "system-architect" }
-mcp__claude-flow__agent_spawn { type: "researcher", name: "expectation-author", model: "sonnet" }     // NEW v1.2.0
-mcp__claude-flow__agent_spawn { type: "coder", name: "primary-developer", model: "sonnet" }
-mcp__claude-flow__agent_spawn { type: "coder", name: "secondary-developer", model: "sonnet" }
-mcp__claude-flow__agent_spawn { type: "reviewer", name: "code-reviewer" }
-mcp__claude-flow__agent_spawn { type: "tester", name: "test-strategist" }
-mcp__claude-flow__agent_spawn { type: "tester", name: "unit-test-generator" }
-mcp__claude-flow__agent_spawn { type: "tester", name: "e2e-test-generator" }
-mcp__claude-flow__agent_spawn { type: "tester", name: "tdd-stabilizer" }                              // NEW v1.2.0
-mcp__claude-flow__agent_spawn { type: "tester", name: "evidence-producer", model: "sonnet" }          // NEW v1.2.0 — PRODUCER
-mcp__claude-flow__agent_spawn { type: "analyst", name: "evidence-auditor", model: "opus" }            // NEW v1.2.0 — AUDITOR (different model family)
-mcp__claude-flow__agent_spawn { type: "analyst", name: "coverage-analyzer" }
-mcp__claude-flow__agent_spawn { type: "security", name: "security-scanner" }
-mcp__claude-flow__agent_spawn { type: "researcher", name: "tech-researcher" }
-mcp__claude-flow__agent_spawn { type: "coordinator", name: "quality-coordinator" }
+mcp__claude-flow__agent_spawn { agentType: "coordinator", name: "unified-coordinator" }
+mcp__claude-flow__agent_spawn { agentType: "architect", name: "system-architect" }
+mcp__claude-flow__agent_spawn { agentType: "researcher", name: "expectation-author", model: "sonnet" }     // NEW v1.2.0
+mcp__claude-flow__agent_spawn { agentType: "coder", name: "primary-developer", model: "sonnet" }
+mcp__claude-flow__agent_spawn { agentType: "coder", name: "secondary-developer", model: "sonnet" }
+mcp__claude-flow__agent_spawn { agentType: "reviewer", name: "code-reviewer" }
+mcp__claude-flow__agent_spawn { agentType: "tester", name: "test-strategist" }
+mcp__claude-flow__agent_spawn { agentType: "tester", name: "unit-test-generator" }
+mcp__claude-flow__agent_spawn { agentType: "tester", name: "e2e-test-generator" }
+mcp__claude-flow__agent_spawn { agentType: "tester", name: "tdd-stabilizer" }                              // NEW v1.2.0
+mcp__claude-flow__agent_spawn { agentType: "tester", name: "evidence-producer", model: "sonnet" }          // NEW v1.2.0 — PRODUCER
+mcp__claude-flow__agent_spawn { agentType: "analyst", name: "evidence-auditor", model: "opus" }            // NEW v1.2.0 — AUDITOR (different model family)
+mcp__claude-flow__agent_spawn { agentType: "analyst", name: "coverage-analyzer" }
+mcp__claude-flow__agent_spawn { agentType: "security", name: "security-scanner" }
+mcp__claude-flow__agent_spawn { agentType: "researcher", name: "tech-researcher" }
+mcp__claude-flow__agent_spawn { agentType: "coordinator", name: "quality-coordinator" }
 ```
 
 **Anti-fox rule:** `evidence-producer` and `evidence-auditor` MUST be on
@@ -530,45 +529,48 @@ mcp__claude-flow__swarm_status { verbose: true }
 
 #### Step 1: Initialize Swarm
 ```bash
-npx claude-flow@alpha swarm init --topology hierarchical-mesh --max-agents 17 --strategy parallel
+claude-flow swarm init --topology hierarchical --v3-mode
 ```
 
 #### Step 2: Spawn Agents (run in parallel via Bash)
 ```bash
-npx claude-flow@alpha agent spawn --type coordinator --name unified-coordinator &
-npx claude-flow@alpha agent spawn --type architect --name system-architect &
-npx claude-flow@alpha agent spawn --type researcher --name expectation-author --model sonnet &       # NEW v1.2.0
-npx claude-flow@alpha agent spawn --type coder --name primary-developer --model sonnet &
-npx claude-flow@alpha agent spawn --type coder --name secondary-developer --model sonnet &
-npx claude-flow@alpha agent spawn --type reviewer --name code-reviewer &
-npx claude-flow@alpha agent spawn --type tester --name test-strategist &
-npx claude-flow@alpha agent spawn --type tester --name unit-test-generator &
-npx claude-flow@alpha agent spawn --type tester --name e2e-test-generator &
-npx claude-flow@alpha agent spawn --type tester --name tdd-stabilizer &                              # NEW v1.2.0
-npx claude-flow@alpha agent spawn --type tester --name evidence-producer --model sonnet &            # NEW v1.2.0 — PRODUCER
-npx claude-flow@alpha agent spawn --type analyst --name evidence-auditor --model opus &              # NEW v1.2.0 — AUDITOR (different model family)
-npx claude-flow@alpha agent spawn --type analyst --name coverage-analyzer &
-npx claude-flow@alpha agent spawn --type security --name security-scanner &
-npx claude-flow@alpha agent spawn --type researcher --name tech-researcher &
-npx claude-flow@alpha agent spawn --type coordinator --name quality-coordinator &
+claude-flow agent spawn --type coordinator --name unified-coordinator &
+claude-flow agent spawn --type architect --name system-architect &
+claude-flow agent spawn --type researcher --name expectation-author --model sonnet &       # NEW v1.2.0
+claude-flow agent spawn --type coder --name primary-developer --model sonnet &
+claude-flow agent spawn --type coder --name secondary-developer --model sonnet &
+claude-flow agent spawn --type reviewer --name code-reviewer &
+claude-flow agent spawn --type tester --name test-strategist &
+claude-flow agent spawn --type tester --name unit-test-generator &
+claude-flow agent spawn --type tester --name e2e-test-generator &
+claude-flow agent spawn --type tester --name tdd-stabilizer &                              # NEW v1.2.0
+claude-flow agent spawn --type tester --name evidence-producer --model sonnet &            # NEW v1.2.0 — PRODUCER
+claude-flow agent spawn --type analyst --name evidence-auditor --model opus &              # NEW v1.2.0 — AUDITOR (different model family)
+claude-flow agent spawn --type analyst --name coverage-analyzer &
+claude-flow agent spawn --type security --name security-scanner &
+claude-flow agent spawn --type researcher --name tech-researcher &
+claude-flow agent spawn --type coordinator --name quality-coordinator &
 wait
 ```
 
 #### Step 3: Orchestrate Tasks
+The CLI has no `task orchestrate` subcommand — multi-agent orchestration is
+MCP-native (`mcp__claude-flow__task_orchestrate`, Option A above). CLI fallback
+creates a single tracked task instead:
 ```bash
-npx claude-flow@alpha task orchestrate --task "[PROJECT_DESCRIPTION]" --strategy parallel
+claude-flow task create --type "implementation" --description "[PROJECT_DESCRIPTION]"
 ```
 
 #### Step 4: Store Memory
 ```bash
-npx claude-flow@alpha memory store --key "project/phase/decisions" --value '{"decision": "value"}'
+claude-flow memory store --key "project/phase/decisions" --value '{"decision": "value"}'
 ```
 
 #### Step 5: Monitor Progress
 ```bash
-npx claude-flow@alpha swarm status --verbose
-npx claude-flow@alpha agent list
-npx claude-flow@alpha agent metrics
+claude-flow swarm status --verbose
+claude-flow agent list
+claude-flow agent metrics
 ```
 
 ---
@@ -579,22 +581,22 @@ Each spawned Task agent MUST run these CLI hooks for coordination:
 
 **Before starting work:**
 ```bash
-npx claude-flow@alpha hooks pre-task --description "[task description]" --auto-spawn-agents false
+claude-flow hooks pre-task --description "[task description]" --auto-spawn false
 ```
 
 **After each file operation:**
 ```bash
-npx claude-flow@alpha hooks post-edit --file "[filepath]" --memory-key "agent/[step]"
+claude-flow hooks post-edit --file "[filepath]" --success true --outcome "[what changed]"
 ```
 
 **To share decisions with other agents:**
 ```bash
-npx claude-flow@alpha hooks notification --message "[what was decided/done]" --telemetry true
+claude-flow hooks notify --message "[what was decided/done]"
 ```
 
 **After completing work:**
 ```bash
-npx claude-flow@alpha hooks post-task --task-id "[task]" --analyze-performance true
+claude-flow hooks post-task --task-id "[task]" --success true --quality 0.9
 ```
 
 ---
@@ -804,7 +806,7 @@ For meaningful skill benefits, install at least **one** tool:
 
 ```bash
 # Option A: Development focus (faster coding, parallel work)
-npx claude-flow@alpha init
+claude-flow init
 
 # Option B: Quality focus (better tests, mutation, prediction)
 npm install -g agentic-qe && aqe init --auto && claude mcp add aqe -- aqe-mcp

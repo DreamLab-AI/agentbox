@@ -53,6 +53,13 @@ It isn't about rejecting modern tools — it's about using them to build genuine
 
 Reach for it when designing features, architecting software, brainstorming apps, choosing a stack, reviewing designs, or in strategy discussions — any moment where you're deciding *what* to build and *how much machinery* it deserves.
 
+## When NOT to use this skill
+
+- Routine bug fixes — there's no "what to build" question, just a defect to correct
+- Small, well-scoped feature additions that fit the existing architecture without a stack or paradigm decision
+- Work already governed by an existing ADR or architecture doc — follow that record rather than re-litigating it here
+- Owning the actual system design for a codebase — that belongs to `architecture-studio`; this skill is the philosophy check applied before or alongside that work, not a replacement for it
+
 ## Detailed guidance (on-demand references)
 
 Load these when the decision at hand needs the full tables and rationale:

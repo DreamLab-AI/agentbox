@@ -453,7 +453,7 @@ function log(level, msg, extra) {
  */
 function redactUrlCreds(rawUrl) {
   return String(rawUrl || '').replace(
-    /([?&])(auth|access_token|bearer)=[^&]*/gi,
+    /([?&])(auth|access_token|bearer|token)=[^&]*/gi,
     '$1$2=REDACTED'
   );
 }
@@ -465,7 +465,7 @@ function redactUrlCreds(rawUrl) {
  */
 function stripUrlCreds(path) {
   const stripped = String(path || '').replace(
-    /([?&])(auth|access_token|bearer)=[^&]*/gi,
+    /([?&])(auth|access_token|bearer|token)=[^&]*/gi,
     '$1'
   ).replace(/[?&]+$/, '').replace(/\?&/, '?').replace(/&&+/g, '&');
   return stripped === '' ? '/' : stripped;
@@ -852,6 +852,18 @@ function handleNip07(req, res, rawBody) {
   if ((pathOnly === '/nip07' || pathOnly === '/nip07/' || pathOnly === '/nip07/login') && req.method === 'GET') {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
     res.end(HANDSHAKE_PAGE);
+    return true;
+  }
+
+  if (pathOnly === '/nip07/session' && req.method === 'GET') {
+    // Probe the cookie itself; unrelated upstream availability/authorization
+    // must not make a signed-in browser start prompting its signer again.
+    const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+    const session = token && verifySessionToken(token);
+    res.writeHead(session ? 200 : 401, {
+      'content-type': 'application/json', 'cache-control': 'no-store',
+    });
+    res.end(JSON.stringify(session ? { ok: true, pubkey: session.pubkey } : { ok: false }));
     return true;
   }
 

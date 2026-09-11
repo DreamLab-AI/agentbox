@@ -64,4 +64,4 @@ Load the reference that matches the task:
 **Skill Status**: Production Ready
 **CUDA Support**: 11.0 - 13.0
 **GPU Architectures**: Pascal, Volta, Turing, Ampere, Ada Lovelace, Hopper
-**Container GPUs**: 3x (RTX A6000 + 2x Quadro RTX 6000)
+**Container GPUs**: 3x (RTX A6000 + 2x RTX 6000 Ada Generation) — sm_86 (A6000) + sm_89 (Ada Generation)

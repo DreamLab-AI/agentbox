@@ -473,9 +473,9 @@ npx ruv-swarm github board-kpis
 
 ```javascript
 mcp__claude-flow__swarm_init { topology: "star", maxAgents: 3 }
-mcp__claude-flow__agent_spawn { type: "coordinator", name: "Issue Coordinator" }
-mcp__claude-flow__agent_spawn { type: "researcher",  name: "Requirements Analyst" }
-mcp__claude-flow__agent_spawn { type: "coder",       name: "Implementation Planner" }
+mcp__claude-flow__agent_spawn { agentType: "coordinator", name: "Issue Coordinator" }
+mcp__claude-flow__agent_spawn { agentType: "researcher",  name: "Requirements Analyst" }
+mcp__claude-flow__agent_spawn { agentType: "coder",       name: "Implementation Planner" }
 ```
 
 #### Issue-to-Swarm Conversion

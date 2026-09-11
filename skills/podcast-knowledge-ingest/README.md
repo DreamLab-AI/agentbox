@@ -1,0 +1,1 @@
+The `.sandbox/` test-fixture tree formerly here (gitignored, but baked into image builds regardless) moved to [`docs/archive/podcast-ingest-ledger/sandbox-test-fixtures/`](../../docs/archive/podcast-ingest-ledger/sandbox-test-fixtures/) — see `references/promotion.md` for the test record it supports.

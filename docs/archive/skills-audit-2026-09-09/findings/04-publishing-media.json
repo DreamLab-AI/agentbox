@@ -1,0 +1,226 @@
+{
+  "batch": "04-publishing-media",
+  "skills": [
+    {
+      "skill": "latex-book",
+      "verdict": "merge",
+      "health": 6,
+      "findings": [
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "latex-book/SKILL.md:142-163 (Parallel Swarm Topology table: skeleton-builder, bibtex-extractor, chapter-conv-A..E, front-matter, appendix-conv, citation-index, design-consultant, diagram-engineer, market-analyst, research-verifier, wardley-mapper, image-upcycler) vs book-publishing/SKILL.md:17-146 (Pipeline Overview + Stage 1-4 + Swarm Topology code) — near-identical agent/stage set restated independently in both files with no shared source-of-truth reference",
+          "fix": "Collapse latex-book's swarm table into a single citation of book-publishing's pipeline (or vice versa); keep only the LaTeX-convention/citation-pattern content (unique to latex-book) in this file and delegate orchestration detail to book-publishing to stop the two drifting (they already differ: latex-book lists 'citation-index' and 'research-verifier' as distinct rows book-publishing folds differently).",
+          "cross_skill": ["book-publishing"]
+        },
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "latex-book/SKILL.md:4-9 — frontmatter carries a `triggers:` list, a key not in the agentskills.io standard and explicitly said to be unrecognised by the skill-builder meta-skill contract (per estate fact sheet); latex-documents (the sibling general-LaTeX skill) carries no such key",
+          "fix": "Drop `triggers:` from frontmatter (it does nothing for the 22 registered/Skill-tool-loaded skills, which read only name+description) or move the trigger phrases into the description sentence itself.",
+          "cross_skill": ["latex-documents", "book-publishing"]
+        },
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "skill-router/references/routing-table.md — grep for 'latex-book' returns zero matches (verified); SKILL-DIRECTORY.md:172,498 does list it",
+          "fix": "Add latex-book to routing-table.md (or fix/regenerate the router table — no generator script currently exists per the fact sheet) so /route can find it; currently only discoverable via SKILL-DIRECTORY.md's static table.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "latex-documents",
+      "verdict": "keep",
+      "health": 8,
+      "findings": []
+    },
+    {
+      "skill": "book-publishing",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "book-publishing/SKILL.md:85-87 states \"This container has no configured Gemini CLI/API path, so the default is the offline ImageMagick pass\" — but `GOOGLE_API_KEY` is in fact set in this environment (verified: `[ -n \"$GOOGLE_API_KEY\" ]` → set; `~/.claude/.env` exists) and art/SKILL.md:152-154 documents that exact key as the credential the art skill's nano-banana image models consume",
+          "fix": "Reword to reflect that a Gemini path CAN exist when GOOGLE_API_KEY is provisioned (delegate to art's nano-banana-guide.md rather than asserting it is categorically unavailable), or clarify this is a per-deployment/per-profile statement, not a container-wide fact.",
+          "cross_skill": ["art"]
+        },
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "book-publishing/SKILL.md:17-146 duplicates latex-book/SKILL.md:142-197's staged agent list and folder structure almost stage-for-stage",
+          "fix": "See latex-book finding — pick one file as the canonical pipeline description and have the other cite it.",
+          "cross_skill": ["latex-book"]
+        },
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "skill-router/references/routing-table.md — grep for 'book-publishing' returns zero matches (verified, and matches the fact sheet's list of 38 skills missing from the router table); SKILL-DIRECTORY.md:173,495 does list it",
+          "fix": "Add to routing-table.md so router-based dispatch (not just the static directory) can find it.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "pdf-signing",
+      "verdict": "fix",
+      "health": 7,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "low",
+          "evidence": "pdf-signing/SKILL.md:87-93 instructs \"To make it venv-free after a rebuild, add to flake.nix's pythonRuntimeEnv (the python.withPackages list): pyhanko pillow fonttools\" as future work — but flake.nix:876 already lists `pyhanko` in pythonRuntimeEnv (pikepdf at :861). Ambient `python3 -c \"import pyhanko\"` in the current running container still fails with ModuleNotFoundError, confirming the running image predates that flake.nix change.",
+          "fix": "Reword the section to state pyhanko is already declared in flake.nix's pythonRuntimeEnv and that a stale ambient environment means the image needs a `rebuild` (not a `flake.nix` edit) — otherwise an agent will re-add an already-present line or wrongly conclude the fallback venv path is the permanent design.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "skill-router/references/routing-table.md — grep for 'pdf-signing' returns zero matches (verified); SKILL-DIRECTORY.md:4,176,501 does list it",
+          "fix": "Add to routing-table.md.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "wardley-maps",
+      "verdict": "fix",
+      "health": 7,
+      "findings": [
+        {
+          "class": "disclosure",
+          "severity": "low",
+          "evidence": "wardley-maps/SKILL.md is 298 lines (verified `wc -l`), over the lint's 250-line progressive-disclosure threshold; lint passes only because references/ is non-empty. Separately, README.md, IMPLEMENTATION_GUIDE.md and SKILL_UPGRADE_SUMMARY.md sit as top-level siblings of SKILL.md rather than under references/ (contra ADR-2021 'depth in references/')",
+          "fix": "Trim SKILL.md's body (e.g. the full Mermaid wardley-beta worked examples in both the main body and the 'LaTeX Integration' section largely repeat the same syntax) and move README.md/IMPLEMENTATION_GUIDE.md/SKILL_UPGRADE_SUMMARY.md content under references/.",
+          "cross_skill": []
+        },
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "wardley-maps/SKILL.md:16 and README.md:67,164 point at `tools/advanced_nlp_parser.py` (a spaCy-based Python module) invoked as `from tools.advanced_nlp_parser import ...` — this is a bare Python import, not a standalone binary; GPT-6 Astra via Codex has no Python REPL/import context the way Claude's code-interpreter MCP does, and the skill does not say how a non-Claude agent should invoke it",
+          "fix": "State explicitly that `advanced_nlp_parser.py` requires a Python execution context (code-interpreter MCP or a shell) and is optional — the primary `wardley-mapper`/`wardley-generate` Rust binaries (verified present on PATH) work for both agents without Python.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "jupyter-notebooks",
+      "verdict": "fix",
+      "health": 4,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "jupyter-notebooks/SKILL.md:222-233 documents MCP registration via `~/.claude/settings.json` pointing at `/home/devuser/.claude/skills/jupyter-notebooks/server.js`. Verified: (1) 'jupyter-notebooks' is absent from skills/mcp.json's 28-server registry (the CANONICAL BOOT-PROJECTION SOURCE per that file's own `_role` field); (2) absent from config/entrypoint-unified.sh; (3) `grep -rl jupyter-notebooks` across all *.rs/*.sh/*.toml/*.js/*.json in the repo returns nothing outside the skill's own directory and the discovery docs; (4) the skill dir has package.json/package-lock.json/server.js but no installed node_modules. The skill is also one of the 24 cross-reference-isolated skills per the fact sheet.",
+          "fix": "Either wire jupyter-notebooks into skills/mcp.json (with an honest x-agentbox-gate) and confirm server.js actually starts, or mark the skill's MCP capability as aspirational/manual-setup-only and rewrite the 'Configuration' section to say so — as written it claims a working integration that does not exist in the current registry.",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "low",
+          "evidence": "jupyter-notebooks/SKILL.md:3 description ('run a notebook from Claude ... driving cell and kernel operations') vs codeact (batch 08, not opened this pass — flagging per team-lead's cross-batch question, unverified against codeact's own text)",
+          "fix": "Cross-batch: confirm with the codeact auditor whether codeact's 'run Python' scope overlaps kernel-level notebook cell execution or is limited to one-shot script execution; if overlapping, codeact's when-not should name jupyter-notebooks explicitly.",
+          "cross_skill": ["codeact"]
+        }
+      ]
+    },
+    {
+      "skill": "art",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "art/SKILL.md:4-27 frontmatter carries `user-invocable: true`, `triggers:` (3 entries) and `workflows:` (16 entries) — none of these are read by the Skill-tool loader (which reads only name+description for the always-loaded registered set) nor part of the agentskills.io standard; this is the same uncontrolled-key problem the fact sheet documents estate-wide, concretely instantiated here",
+          "fix": "Fold the workflow-routing table (already duplicated in the body at SKILL.md:92-112) into the body only, and drop the frontmatter `triggers`/`workflows`/`user-invocable` keys — they are dead weight for the harness and duplicate content already in the body.",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "low",
+          "evidence": "art/SKILL.md:3 description ('generating blog headers, infographics, editorial art, diagrams, or comics') has no explicit exclusion clause, unlike imagemagick/SKILL.md:36-42 and ffmpeg-processing/SKILL.md:32-38 which both carry explicit 'When Not To Use' cross-links. SKILL-DIRECTORY.md:229/542-543 does disambiguate art vs comfyui vs clipcannon at the decision-tree level, so live routing risk is mitigated, but the SKILL.md itself gives an agent reading it standalone no signal to route AI-photoreal/video work to comfyui/clipcannon instead.",
+          "fix": "Add a short 'When Not to Use' section to art/SKILL.md itself (AI photoreal/video generation → comfyui/clipcannon; academic diagrams for LaTeX → prefer TikZ via latex-book, only upcycle with art per diagram-upcycling.md) so the skill is self-disambiguating without relying solely on SKILL-DIRECTORY.md staying in sync.",
+          "cross_skill": ["imagemagick", "comfyui", "clipcannon"]
+        }
+      ]
+    },
+    {
+      "skill": "typography",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "imagemagick",
+      "verdict": "fix",
+      "health": 7,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "skills/mcp.json imagemagick entry carries `\"x-agentbox-note\": \"skill-local mcp-server under ~/.claude/skills/imagemagick — registered by the skill, not the boot projector\"`. But imagemagick/SKILL.md:19-23 states the skill \"replaces the former Python FastMCP server one-for-one\" and now runs via `agentbox-mcp imagemagick` (entry_point in its own frontmatter, SKILL.md:12), a single Rust rmcp binary shared with web-summary/gemini-url-context. Verified: `find .../skills/imagemagick` shows only SKILL.md — no server.js/mcp-server directory exists to be \"skill-local\" any more (unlike comfyui/blender/qgis/notebooklm, whose mcp.json entries correctly still point at real `~/.claude/skills/<name>/...` server files).",
+          "fix": "Update the mcp.json imagemagick entry's `x-agentbox-note` to describe the current Rust-binary architecture instead of the retired skill-local Python server — the note is describing a design that no longer exists in the master skill directory.",
+          "cross_skill": []
+        },
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "imagemagick/SKILL.md:8-14 frontmatter carries version/author/mcp_server/protocol/entry_point/dependencies — 6 non-standard keys, part of the fact sheet's documented 50-key uncontrolled vocabulary, though here they are load-bearing (protocol/entry_point genuinely describe the rmcp wiring) rather than decorative",
+          "fix": "No action required beyond the estate-wide frontmatter-schema decision the fact sheet already flags; these keys are more justified here than in most instances since they encode real registration metadata.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "ffmpeg-processing",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "disclosure",
+          "severity": "low",
+          "evidence": "ffmpeg-processing/SKILL.md is 243 lines (verified `wc -l`), just under the lint's 250-line non-empty-references/ requirement, and uses a `recipes/` directory instead of `references/` for its depth (9 files, all verified present and all cited paths resolve)",
+          "fix": "No fix required — under threshold and all citations resolve; note only that `recipes/` vs `references/` naming is a minor estate-wide inconsistency (compare wardley-maps/pdf-signing/typography, which use `references/`), worth a naming-convention pass if the estate standardises the depth-directory name.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "clipcannon",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "skills/mcp.json clipcannon entry states `\"x-agentbox-note\": \"external clipcannon CLI — not present in this image\"`, and this was verified directly: `command -v clipcannon` returns nothing. clipcannon/SKILL.md:66-75 ('Quick Path') gives `pip install clipcannon; clipcannon serve` with no container caveat, presenting it as directly runnable.",
+          "fix": "Add a container-availability caveat to the Quick Path (mirroring pdf-signing's and book-publishing's honest disclosures elsewhere in this same batch) stating the CLI is not baked into this image and must be pip-installed or run via the separate docker-compose stack before any MCP tool call will succeed.",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "clipcannon/SKILL.md:73-75 references `cd config && docker compose up -d` for the Dashboard/License-server stack, but `find .../skills/clipcannon -maxdepth 2` (verified) shows only `SKILL.md` and `references/tools-and-models.md` — no `config/` directory ships with the skill",
+          "fix": "Either vendor a minimal `config/docker-compose.yml` into the skill package, or point at the upstream repo path explicitly (`git clone ...jlma-clipcannon && cd jlma-clipcannon/config`) rather than implying a local `config/` exists relative to the skill.",
+          "cross_skill": []
+        },
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "clipcannon/SKILL.md:88-96 'Voice Agent (\"Jarvis\")' section assumes a long-running local voice loop (Pipecat + Ollama) with wake-word activation and GPU-sharing pause/resume semantics — a fundamentally interactive, stateful capability that neither Fable 5.1 nor GPT-6 Astra can drive turn-by-turn (no persistent audio I/O). The skill doesn't flag this as a human-operated feature outside agent scope.",
+          "fix": "Mark the Voice Agent section as human-operated / out of agent scope, distinct from the MCP-tool-driven editing capabilities the rest of the skill correctly frames for agent use.",
+          "cross_skill": []
+        }
+      ]
+    }
+  ],
+  "cluster_recommendation": "The LaTeX/book cluster (latex-book, latex-documents, book-publishing, plus out-of-batch report-builder) has a workable division in principle — latex-documents for single-document/Beamer compilation, latex-book for arXiv/memoir conventions, book-publishing for the end-to-end swarm pipeline — but latex-book and book-publishing duplicate the same staged-agent pipeline almost verbatim with no shared source, so they will keep drifting (they already differ in how citation-index/research-verifier are grouped); pick one as canonical and have the other cite it. book-publishing also asserts no Gemini path is configured while GOOGLE_API_KEY is in fact set and consumed by art's nano-banana models — reword rather than assert a container-wide absence. Three of this batch's skills (latex-book, book-publishing, pdf-signing) are confirmed absent from skill-router/references/routing-table.md (zero grep hits each), consistent with the fact sheet's list of 38 router-table gaps — this needs either a real generator script or a manual backfill, since SKILL-DIRECTORY.md alone is not what /route consults. The image/video cluster (art, imagemagick, ffmpeg-processing, clipcannon) is well-disambiguated at the SKILL-DIRECTORY.md decision-tree level, but two skills silently assume unavailable capabilities: clipcannon's CLI is verified absent from this image (mcp.json says so explicitly; SKILL.md doesn't) and jupyter-notebooks' MCP server is verified never registered anywhere in the boot path despite a fully-specified 'Configuration' section — both should either be wired up for real or have their docs downgraded to 'manual setup only.' imagemagick's mcp.json note describes a retired skill-local Python server architecture that the master skill directory no longer contains (it now delegates to the shared agentbox-mcp Rust rmcp binary, verified present on PATH) — a small but genuine drift between the registry's descriptive metadata and the skill's actual implementation. typography, latex-documents and ffmpeg-processing are the cleanest skills in the batch: correctly scoped, honest about exclusions, all cited paths resolve, no stale model/endpoint claims.",
+  "unverifiable_cross_batch": [
+    "Gemini image-model currency (gemini-3.1-flash-image-preview / gemini-3-pro-image-preview in art) against the live Nano Banana product line — the fact sheet pins Claude/OpenAI/DeepSeek/Z.AI model currency but not Gemini image-model versioning; gemini-url-context/consultant-antigravity pin a separate gemini-3.8-flash TEXT model, which is not the same lineage as the image-preview models, so no staleness can be asserted either way.",
+    "jupyter-notebooks vs codeact (batch 08) overlap on 'run Python' — codeact's SKILL.md was not opened this pass; flagged for the batch-08 auditor to confirm scope.",
+    "latex-documents/book-publishing vs report-builder (batch 03) canonical-output boundary — report-builder's SKILL.md was not opened this pass; latex-documents explicitly defers 'comprehensive reports with multi-LLM research, charts, Wardley maps' to report-builder, which is consistent with what latex-documents claims, but report-builder's own text was not cross-checked."
+  ]
+}

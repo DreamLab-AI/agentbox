@@ -42,6 +42,10 @@ Two engines for two jobs. **Pick the right one before drawing.**
 | Diagram inside a markdown report or LaTeX doc | **Mermaid** | PNG/SVG/PDF export, embeds cleanly |
 | Rapid iteration on structure before polish | **Mermaid** | Faster cycle; convert to diagram-design later |
 
+For mechanism animation (queues, algorithms, evolving graphs or equations),
+load [manim](../manim/SKILL.md). It exports video and static frames; the two
+diagram engines above retain ownership of static and interactive SVG output.
+
 **Default: diagram-design** — unless the user explicitly asks for Mermaid or the output
 is a `.mmd` file committed to a repo.
 
@@ -87,9 +91,9 @@ flowchart TD
     C --> E[Return Response]
 EOF
 
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png
-mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
-mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
 ```
 
 Prerequisite: `browsercontainer` sidecar running.

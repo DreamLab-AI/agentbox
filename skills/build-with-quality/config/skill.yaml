@@ -2,10 +2,10 @@
 # "Build with Quality" - Optimal project building with integrated quality engineering
 
 name: build-with-quality
-version: 1.2.1
+version: 1.3.0  # single source of truth: SKILL.md frontmatter metadata.version — keep in sync
 description: |
   Combined Claude Code V3 and Agentic QE skill for optimal project building
-  with integrated quality engineering. Provides 114+ specialized agents,
+  with integrated quality engineering. Provides 34 specialized agents,
   unified learning (SONA + ReasoningBank), and comprehensive quality gates.
 
   New in v1.2.0:
@@ -485,18 +485,20 @@ execution:
       preferred: false
       detection: fallback when MCP not available
       commands:
-        - npx claude-flow@alpha swarm init
-        - npx claude-flow@alpha agent spawn
-        - npx claude-flow@alpha task orchestrate
-        - npx claude-flow@alpha memory store
-        - npx claude-flow@alpha swarm status
+        - claude-flow swarm init
+        - claude-flow agent spawn
+        - claude-flow memory store
+        - claude-flow swarm status
+        # task orchestration has no CLI subcommand (`claude-flow task` only
+        # supports create/list/status/cancel/assign/retry) — use the
+        # mcp__claude-flow__task_orchestrate MCP tool instead
 
   agent_coordination:
     hooks:
-      pre_task: npx claude-flow@alpha hooks pre-task --description "[task]"
-      post_edit: npx claude-flow@alpha hooks post-edit --file "[file]"
-      notification: npx claude-flow@alpha hooks notification --message "[msg]"
-      post_task: npx claude-flow@alpha hooks post-task --task-id "[id]"
+      pre_task: claude-flow hooks pre-task --description "[task]"
+      post_edit: claude-flow hooks post-edit --file "[file]"
+      notification: claude-flow hooks notify --message "[msg]"
+      post_task: claude-flow hooks post-task --task-id "[id]"
 
 # Integration points
 integrations:

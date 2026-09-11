@@ -25,7 +25,7 @@ They are: the visionclaw bridge key (visionclaw ADR-2013); the "currently
 shared" visionclaw-server publisher key, whose per-consumer split is explicitly
 pending (agentbox ADR-2012); the break-glass bearer (agentbox ADR-2009/2010) —
 the only credential surviving verifier failure and the least governed, i.e. an
-ungoverned master; the dream-dispatch SSH credential to `john@10.10.10.1`
+ungoverned master; the dream-dispatch SSH credential to `${CONNECTED_NODE_SSH}`
 (agentbox ADR-2024); and `backup-secrets.sh` (visionclaw ADR-2017). The relay
 allowlist in agentbox ADR-2012 is baked at nix build, so publisher revocation
 needs a full rebuild — the compromise window is one build-deploy cycle.
@@ -163,7 +163,7 @@ The intervening governed `flake.nix` change adds exact package-lock inputs for
 the nine existing npm CLIs and updates five dependency-output hashes after a
 manifest-by-manifest comparison. No existing package version changed; additions
 are optional musl packages already present in the original locks. All nine
-fixed-output derivations passed an explicit HP `nix build --rebuild` replay.
+fixed-output derivations passed an explicit the connected node `nix build --rebuild` replay.
 This changes reproducible package installation, not the ADR's admission, custody
 or publication rule. Source verification is renewed at this commit; existing
 activation evidence and limits remain unchanged. The active local container was
@@ -171,7 +171,7 @@ not replaced, and no key was rotated.
 
 ### 2026-09-07 Nix custody build and ancestor regression
 
-The actual HP Nix build exposed an absolute-path pruning defect: a requested
+The actual the connected node Nix build exposed an absolute-path pruning defect: a requested
 backup tree beneath `/build` was skipped entirely. `collect` now applies directory
 exclusions to paths relative to the requested root. The new ancestor regression
 retains nested build-directory exclusion while including the root secret fixture.
@@ -185,7 +185,7 @@ secret material was read or rotated. Source: `e7bfc158a45bf97061fd6e7202e9ee053a
 The only intervening governed flake change selects the upstream executable
 `nix2container.packages.${system}.nix2container-bin` for devShell buildInputs;
 the former `n2c.nix2container` attribute does not exist. The selected executable
-derivation evaluates on the pinned HP input. Container package selection,
+derivation evaluates on the pinned the connected node input. Container package selection,
 admission and custody behaviour are unchanged by this development-shell repair.
 Existing runtime activation limits remain. Verification is renewed at
 `8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.

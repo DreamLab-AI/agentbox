@@ -5,11 +5,13 @@ description: "Use when building RAG pipelines, running semantic/similarity vecto
 
 # AgentDB Vector Search
 
+AgentDB is a standalone RuvNet package, not this deployment's memory path; durable agent/project memory here is RuVector-postgres via `mcp__claude-flow__memory_*` (bge-small-en-v1.5, 384-dim).
+
 Semantic vector search, RAG pipelines, similarity matching, quantization and HNSW tuning, caching, batch operations, and MCP server integration with local AgentDB. (Includes all content previously in the deprecated agentdb-optimisation skill.)
 
 For AgentDB architecture and performance overview, see [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md).
 
-**Additional prerequisites**: OpenAI API key (for embeddings) or a custom embedding model.
+<!-- lint-ok: third-party/meta fact, not a RuVector claim --> **Additional prerequisites**: an OpenAI API key (for embeddings) or a custom embedding model — this is AgentDB's own default requirement, not something this deployment's memory path needs; `mcp__claude-flow__memory_*` here uses bge-small-en-v1.5 via Xinference instead.
 
 ## When Not To Use
 

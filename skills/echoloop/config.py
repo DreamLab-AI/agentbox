@@ -46,7 +46,7 @@ class LLMConfig:
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
     openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
     anthropic_model: str = os.getenv("ECHOLOOP_ANTHROPIC_MODEL", "claude-sonnet-5")
-    openai_model: str = os.getenv("ECHOLOOP_OPENAI_MODEL", "gpt-4o")
+    openai_model: str = os.getenv("ECHOLOOP_OPENAI_MODEL", "gpt-6-astra")
     # How often (seconds) to push transcript to the LLM
     push_interval: float = float(os.getenv("ECHOLOOP_PUSH_INTERVAL", "35"))
     # Silence duration (seconds) that triggers an early push

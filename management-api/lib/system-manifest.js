@@ -165,7 +165,7 @@ const CATALOGUE = [
     summary: 'FHS GPU sidecar for BlenderMCP (:9876) and QGIS (:9877); ./agentbox.sh gui-tools.' },
   { id: 'voice-console', name: 'Voice + AoE operator console', layer: 'module', heavy: true,
     gate: 'voice', service: 'voice-console', apply_class: 'live',
-    summary: 'ADR-044: same-origin operator cockpit (Caddy :8444) unifying the Kyutai Unmute voice loop and the AoE session board — /embed voice · /feed+/bridge tab0-bridge · /aoe/* sessions (via the NIP-98 proxy :9096) · /approvals/* governance (:9090). Sidecar with its own lifecycle (./agentbox.sh voice), like browsercontainer; the Unmute speech stack is an external build context (voice-stack/unmute clone, not vendored). Console + Caddyfile + override live in agentbox/voice/.' },
+    summary: 'ADR-044: same-origin operator cockpit (Caddy :8444) unifying the web voice loop and AoE session board. The UI/backend sidecar uses ./agentbox.sh voice; shared Nemotron ASR + Pocket TTS follow the core AgentBox lifecycle through docker-compose.speech.yml.' },
   { id: 'sovereign-mesh', name: 'Sovereign mesh (relay + pod bridge)', layer: 'module',
     gate: 'sovereign_mesh', service: 'nostr-pod-bridge', apply_class: 'rebuild',
     summary: 'nostr relay, pod-inbox bridge, kind-30840/30841 publishing (ADR-009). Rebuild-class: the solid-pod/https-bridge/relay supervisor blocks are composed conditionally in flake.nix (optionalString sovereignCfg.enabled) — flipping the gate changes the image, a restart does not apply it.' },

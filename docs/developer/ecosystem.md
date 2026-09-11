@@ -47,7 +47,7 @@ VisionFlow is the canon. The journey and the substrates it crosses:
 
 ```mermaid
 flowchart TB
-    V["Host project — voice (PTT to Whisper to Kokoro)<br/>+ selected agent actor"]
+    V["Host project — unified speech (Nemotron streaming ASR to Pocket TTS)<br/>+ selected agent actor"]
     AB["agentbox — agent forms intent<br/>(did:nostr, ACSP kinds 31400-31405)"]
     POD["solid-pod-rs — write personal KG to pod<br/>(NIP-98, WAC acl:agent mandate)"]
     ELEV["agentbox to host project — elevate personal KG<br/>to shared ontology (Whelk gate + ACSP approval)"]

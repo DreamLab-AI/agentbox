@@ -4,7 +4,7 @@ The dream engine is agentbox's "dream machine": an overnight batch that picks on
 
 ## Context in one paragraph
 
-Left to itself, an LLM asked to "improve this repo" hallucinates plausible-sounding changes it never ran. The dream engine removes the hallucination surface by splitting the work across two planes: the **control plane** (this container) compiles a deterministic prompt and orchestrates; the **execution plane** (an SSH-reachable annexe host — HP-Desktop on the DreamLab estate, [ADR-052](../archive/adr/ADR-052-dream-machine-hp-annexe.md)) actually clones, builds, and runs the target repo's own evaluators. The evaluator receipts are appended to the prompt, so the model reasons over output it did not invent. A verdict is parsed deterministically, a ledger row is appended in the target repo, and a tamper-evident witness binds the report to the exact commit it judged. It is the Rust rewrite of `scripts/dream-machine-nightly.mjs`; the `.mjs` orchestrator is now the legacy fallback (see [below](#legacy-mjs-fallback)).
+Left to itself, an LLM asked to "improve this repo" hallucinates plausible-sounding changes it never ran. The dream engine removes the hallucination surface by splitting the work across two planes: the **control plane** (this container) compiles a deterministic prompt and orchestrates; the **execution plane** (an SSH-reachable annexe host — the connected node on the DreamLab estate, [ADR-052](../archive/adr/ADR-052-dream-machine-hp-annexe.md)) actually clones, builds, and runs the target repo's own evaluators. The evaluator receipts are appended to the prompt, so the model reasons over output it did not invent. A verdict is parsed deterministically, a ledger row is appended in the target repo, and a tamper-evident witness binds the report to the exact commit it judged. It is the Rust rewrite of `scripts/dream-machine-nightly.mjs`; the `.mjs` orchestrator is now the legacy fallback (see [below](#legacy-mjs-fallback)).
 
 The engine holds **zero estate credentials on the annexe host**: it is a pull-nothing, push-work model. The control plane opens an outbound SSH session, ships a `git archive` of HEAD, runs commands, reads stdout back. The annexe never calls into agentbox, never holds an API key, and never sees the RuVector database. Secrets (the Z.AI key, the Postgres conninfo) live only in the control-plane process environment.
 
@@ -99,7 +99,7 @@ Splitting "untestable (environment)" out of INCONCLUSIVE is load-bearing: enviro
 
 ### Self-healing & operator loop (2026-08-21)
 
-- **Singleton lock** — the engine binds `127.0.0.1:49172`; a second instance exits instead of racing the shared HP annexe (the 2026-08-20/21 double-loop corruption class). One-shots require stopping the loop first.
+- **Singleton lock** — the engine binds `127.0.0.1:49172`; a second instance exits instead of racing the shared the connected node annexe (the 2026-08-20/21 double-loop corruption class). One-shots require stopping the loop first.
 - **Pre-flight probe** — after `clone_to_hp`, the checkout must exist and be non-empty; one re-provision retry, then `BLOCKED-ENV`.
 - **Unique annexe dirs** — remote night dirs carry a `-r<run_id>` suffix. The run id is deterministic, so two attempts at the same experiment share one workspace while two different experiments never collide — and the name survives a restart, which a pid could not.
 - **Carry-over** — the previous night's `Next steps` / `Biggest uncertainty` / `Main lesson` lines and any answered operator questions are appended to the next compiled prompt, so nights compound.
@@ -193,7 +193,7 @@ Night artefacts (reports, receipts) are written under `workspace/.tmp/dream-anne
 
 ### How the manifest reaches the binary
 
-The binary reads the `[dream_machine]` table (window, HP host, annexe dir, model names) from the file passed to `--agentbox-toml`. The image materialises the full manifest at the stable path `/etc/agentbox.toml`, which is what the supervisor block passes. The `environment=` line adds only the Nix-known LLM selection (`DREAM_LLM_PROVIDER`, `ZAI_MODEL`, `LOOM_URL`, `LOOM_MODEL`) so the provider is visible in the supervisor block; secrets are inherited from the entrypoint environment, never written into generated text.
+The binary reads the `[dream_machine]` table (window, the connected node host, annexe dir, model names) from the file passed to `--agentbox-toml`. The image materialises the full manifest at the stable path `/etc/agentbox.toml`, which is what the supervisor block passes. The `environment=` line adds only the Nix-known LLM selection (`DREAM_LLM_PROVIDER`, `ZAI_MODEL`, `LOOM_URL`, `LOOM_MODEL`) so the provider is visible in the supervisor block; secrets are inherited from the entrypoint environment, never written into generated text.
 
 ### Environment variables
 
@@ -204,7 +204,7 @@ The binary reads the `[dream_machine]` table (window, HP host, annexe dir, model
 | `ZAI_URL`, `ZAI_MODEL` | Z.AI endpoint + model override. | Supervisor block / shell. |
 | `LOOM_URL`, `LOOM_MODEL` | Loom façade endpoint + model override. | Supervisor block / shell. |
 | `RUVECTOR_PG_URL` / `RUVECTOR_PG_CONNINFO` | Memory Postgres DSN (URL form, or libpq conninfo which is converted). **Secret-bearing.** | Container env. |
-| `XINFERENCE_URL` | Embedding endpoint (default `http://192.168.2.132:9997`). | Container env. |
+| `XINFERENCE_URL` | Embedding endpoint (default `http://${EMBEDDINGS_HOST}`). | Container env. |
 | `RUST_LOG` | Log filter (default `info`). | Supervisor block / shell. |
 
 ## Roster & standby pruning
@@ -226,16 +226,16 @@ Governance shape (operator decision, 2026-08-15): **the digest is visibility, no
 - Routing overrides: `DREAM_DIGEST_RELAY`, `DREAM_DIGEST_CHANNEL`, `DREAM_DIGEST_SECTION`.
 - Manual (re-)issue: `node scripts/dream-night-digest.mjs [--date YYYY-MM-DD] [--dry-run]` or `/dream digest`.
 
-## HP hygiene & VRAM runbook
+## the connected node hygiene & VRAM runbook
 
-**Annexe cleanup is automatic.** Each successful cycle removes its own night dir on HP (`rm -rf <annexe>/<date>-<repo>`) once the report, ledger row, witness, and memory write are all control-plane side; failed cycles keep the dir for debugging. A retention sweep at dispatch time removes any night dir older than 3 days, so debug leftovers cannot accumulate either. Nothing on HP is a source of truth — every dir under the annexe is disposable at any time.
+**Annexe cleanup is automatic.** Each successful cycle removes its own night dir on the connected node (`rm -rf <annexe>/<date>-<repo>`) once the report, ledger row, witness, and memory write are all control-plane side; failed cycles keep the dir for debugging. A retention sweep at dispatch time removes any night dir older than 3 days, so debug leftovers cannot accumulate either. Nothing on the connected node is a source of truth — every dir under the annexe is disposable at any time.
 
-**Freeing VRAM for GPU work on HP.** The `loom-model` container (qwen3.8-27B) holds ~45 GB across both Quadro RTX 6000s while running. To run GPU code on HP:
+**Freeing VRAM for GPU work on the connected node.** The `loom-model` container (qwen3.8-27B) holds ~45 GB across both Quadro RTX 6000s while running. To run GPU code on the connected node:
 
 ```bash
-ssh john@10.10.10.1 "bash -lc 'docker stop loom-model'"   # frees VRAM (~2 min to stop)
+ssh ${CONNECTED_NODE_SSH} "bash -lc 'docker stop loom-model'"   # frees VRAM (~2 min to stop)
 # ... run GPU workload ...
-ssh john@10.10.10.1 "bash -lc 'docker start loom-model'"  # model reload takes a few minutes
+ssh ${CONNECTED_NODE_SSH} "bash -lc 'docker start loom-model'"  # model reload takes a few minutes
 ```
 
 Use `docker stop`, **not** `docker pause` — pause freezes the processes but leaves VRAM allocated. While `loom-model` is down:
@@ -252,7 +252,7 @@ Verify state before and after: `nvidia-smi --query-gpu=memory.used,memory.total 
 
 ## Related
 
-* [ADR-052 — HP annexe execution plane](../archive/adr/ADR-052-dream-machine-hp-annexe.md)
+* [ADR-052 — the connected node annexe execution plane](../archive/adr/ADR-052-dream-machine-hp-annexe.md)
 * [Architecture overview](architecture.md) — manifest → flake → image → runtime
 * `lib/dream-engine.nix` — the buildRustPackage derivation
 * `services/dream-engine/` — the crate (57 hermetic tests)

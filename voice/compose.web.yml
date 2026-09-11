@@ -1,0 +1,61 @@
+# See NOTE comments for places to modify.
+services:
+  traefik:
+    image: traefik:v3.3.1
+    networks: [visionclaw]
+    command:
+      # Swarm provider configuration
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+
+      # This is set up for HTTP. If you want HTTPS support for production, use Docker Swarm
+      # (check out swarm-deploy.yml) or ask ChatGPT to modify this file for you.
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  frontend:
+    image: unmute-frontend:latest
+    networks: [visionclaw]
+    build:
+      context: ${VOICE_UNMUTE_DIR}/frontend
+      dockerfile: hot-reloading.Dockerfile
+    volumes:
+      - ${VOICE_UNMUTE_DIR}/frontend/src:/app/src
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+      - "traefik.http.routers.frontend.priority=10" # lowest priority
+
+  backend:
+    image: unmute-backend:latest
+    networks: [visionclaw]
+    build:
+      context: ${VOICE_UNMUTE_DIR}
+      target: hot-reloading
+    volumes:
+      - ${VOICE_UNMUTE_DIR}/unmute:/app/unmute
+    environment:
+      - KYUTAI_STT_URL=ws://speech-to-text:8000
+      - KYUTAI_TTS_URL=ws://pocket-tts:8000
+      - KYUTAI_LLM_URL=http://agentbox:8971
+      - NEWSAPI_API_KEY=$NEWSAPI_API_KEY
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.middlewares=strip-api"
+      - "traefik.http.middlewares.strip-api.replacepathregex.regex=^/api/(.*)"
+      - "traefik.http.middlewares.strip-api.replacepathregex.replacement=/$$1"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=80"
+      - "traefik.http.routers.backend.priority=100" # higher priority than frontend
+      - "prometheus-port=80"
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network

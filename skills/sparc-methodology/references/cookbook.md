@@ -33,14 +33,14 @@ Batch related operations in a single message:
 ```javascript
 // ✅ CORRECT: All operations together
 [Single Message]:
-  mcp__claude-flow__agent_spawn { type: "researcher" }
-  mcp__claude-flow__agent_spawn { type: "coder" }
-  mcp__claude-flow__agent_spawn { type: "tester" }
+  mcp__claude-flow__agent_spawn { agentType: "researcher" }
+  mcp__claude-flow__agent_spawn { agentType: "coder" }
+  mcp__claude-flow__agent_spawn { agentType: "tester" }
   TodoWrite { todos: [8-10 todos] }
 
 // ❌ WRONG: Multiple messages
-Message 1: mcp__claude-flow__agent_spawn { type: "researcher" }
-Message 2: mcp__claude-flow__agent_spawn { type: "coder" }
+Message 1: mcp__claude-flow__agent_spawn { agentType: "researcher" }
+Message 2: mcp__claude-flow__agent_spawn { agentType: "coder" }
 Message 3: TodoWrite { todos: [...] }
 ```
 
@@ -50,13 +50,13 @@ Wire SPARC modes to hooks for lifecycle coordination:
 
 ```bash
 # Before work
-npx claude-flow@alpha hooks pre-task --description "implement auth"
+claude-flow hooks pre-task --description "implement auth"
 
 # During work
-npx claude-flow@alpha hooks post-edit --file "auth.js"
+claude-flow hooks post-edit --file "auth.js"
 
 # After work
-npx claude-flow@alpha hooks post-task --task-id "task-123"
+claude-flow hooks post-task --task-id "task-123"
 ```
 
 ### 4. Test Coverage
@@ -237,64 +237,48 @@ mcp__claude-flow__sparc_mode {
 
 ## Common Workflows
 
+Historical note: earlier docs ran these workflows via a `claude-flow sparc run|tdd|
+pipeline` CLI. That subcommand does not exist in the installed ruflo v3.38.21 binary
+(`claude-flow sparc --help` → "Unknown command: sparc"). The workflows below use the
+verified `mcp__claude-flow__sparc_mode` path instead. Claude Code only: on Codex /
+GPT-6 Astra with no MCP proxy reachable, run each mode's phase sequentially in one
+session using the prompt from [modes.md](modes.md).
+
 ### Workflow 1: Feature Development
 
-```bash
-# Step 1: Research and planning
-npx claude-flow sparc run researcher "authentication patterns"
-
-# Step 2: Architecture design
-npx claude-flow sparc run architect "design auth system"
-
-# Step 3: TDD implementation
-npx claude-flow sparc tdd "user authentication feature"
-
-# Step 4: Code review
-npx claude-flow sparc run reviewer "review auth implementation"
-
-# Step 5: Documentation
-npx claude-flow sparc run documenter "document auth API"
+```javascript
+mcp__claude-flow__sparc_mode { mode: "researcher", task_description: "authentication patterns" }
+mcp__claude-flow__sparc_mode { mode: "architect", task_description: "design auth system" }
+mcp__claude-flow__sparc_mode { mode: "tdd", task_description: "user authentication feature" }
+mcp__claude-flow__sparc_mode { mode: "reviewer", task_description: "review auth implementation" }
+mcp__claude-flow__sparc_mode { mode: "documenter", task_description: "document auth API" }
 ```
 
 ### Workflow 2: Bug Investigation
 
-```bash
-# Step 1: Analyze issue
-npx claude-flow sparc run analyzer "investigate bug #456"
-
-# Step 2: Debug systematically
-npx claude-flow sparc run debugger "fix memory leak in service X"
-
-# Step 3: Create tests
-npx claude-flow sparc run tester "regression tests for bug #456"
-
-# Step 4: Review fix
-npx claude-flow sparc run reviewer "validate bug fix"
+```javascript
+mcp__claude-flow__sparc_mode { mode: "analyzer", task_description: "investigate bug #456" }
+mcp__claude-flow__sparc_mode { mode: "debugger", task_description: "fix memory leak in service X" }
+mcp__claude-flow__sparc_mode { mode: "tester", task_description: "regression tests for bug #456" }
+mcp__claude-flow__sparc_mode { mode: "reviewer", task_description: "validate bug fix" }
 ```
 
 ### Workflow 3: Performance Optimisation
 
-```bash
-# Step 1: Profile performance
-npx claude-flow sparc run analyzer "profile API response times"
-
-# Step 2: Identify bottlenecks
-npx claude-flow sparc run optimizer "optimize database queries"
-
-# Step 3: Implement improvements
-npx claude-flow sparc run coder "implement caching layer"
-
-# Step 4: Benchmark results
-npx claude-flow sparc run tester "performance benchmarks"
+```javascript
+mcp__claude-flow__sparc_mode { mode: "analyzer", task_description: "profile API response times" }
+mcp__claude-flow__sparc_mode { mode: "optimizer", task_description: "optimize database queries" }
+mcp__claude-flow__sparc_mode { mode: "coder", task_description: "implement caching layer" }
+mcp__claude-flow__sparc_mode { mode: "tester", task_description: "performance benchmarks" }
 ```
 
 ### Workflow 4: Complete Pipeline
 
-```bash
-# Execute full development pipeline
-npx claude-flow sparc pipeline "e-commerce checkout feature"
+Run each phase's mode in sequence (researcher → architect → coder/tdd → reviewer →
+documenter) via `mcp__claude-flow__sparc_mode`; there is no single-call CLI pipeline
+in this image.
 
-# This automatically runs:
+```
 # 1. researcher - Gather requirements
 # 2. architect - Design system
 # 3. coder - Implement features
@@ -308,69 +292,57 @@ npx claude-flow sparc pipeline "e-commerce checkout feature"
 
 ## Advanced Features
 
-### Neural Pattern Training
+### Neural Pattern Learning
 
 ```javascript
-// Train patterns from successful workflows
-mcp__claude-flow__neural_train {
-  pattern_type: "coordination",
-  training_data: "successful_tdd_workflow.json",
-  epochs: 50
-}
+mcp__claude-flow__neural_patterns { action: "train" }
 ```
+Not baked into this image: `neural_patterns` is a registered MCP tool but
+currently returns `{ ok: false, error: "unimplemented" }` in ruvector-mcp — treat
+it as a stub, not a working feature.
 
 ### Cross-Session Memory
 
 ```javascript
 // Save session state
-mcp__claude-flow__memory_persist {
-  sessionId: "feature-auth-v1"
+mcp__claude-flow__memory_store {
+  key: "feature-auth-v1",
+  value: "<session summary>",
+  namespace: "sparc-sessions"
 }
 
-// Restore in new session
-mcp__claude-flow__context_restore {
-  snapshotId: "feature-auth-v1"
+// Restore in a new session
+mcp__claude-flow__memory_retrieve {
+  key: "feature-auth-v1",
+  namespace: "sparc-sessions"
 }
 ```
+There is no `memory_persist`/`context_restore` pair in this image; `memory_store`
+and `memory_retrieve` are the real tools and cover the same save/restore need.
 
 ### GitHub Integration
 
 ```javascript
-// Analyze repository
-mcp__claude-flow__github_repo_analyze {
-  repo: "owner/repo",
-  analysis_type: "code_quality"
-}
-
-// Manage pull requests
-mcp__claude-flow__github_pr_manage {
-  repo: "owner/repo",
-  pr_number: 123,
-  action: "review"
-}
+mcp__claude-flow__github_repo_analyze { repo: "owner/repo", analysis_type: "code_quality" }
+mcp__claude-flow__github_pr_manage { repo: "owner/repo", pr_number: 123, action: "review" }
 ```
+Not baked into this image: both tools are registered but currently return
+`{ ok: false, error: "unimplemented" }` in ruvector-mcp.
 
 ### Performance Monitoring
 
 ```javascript
-// Real-time swarm monitoring
-mcp__claude-flow__swarm_monitor {
-  swarmId: "current",
-  interval: 5000
-}
+// Swarm state (point-in-time, not a live stream)
+mcp__claude-flow__swarm_status { swarmId: "current" }
 
 // Bottleneck analysis
-mcp__claude-flow__bottleneck_analyze {
-  component: "api-layer",
-  metrics: ["latency", "throughput", "errors"]
-}
-
-// Token usage tracking
-mcp__claude-flow__token_usage {
-  operation: "feature-development",
-  timeframe: "24h"
-}
+mcp__claude-flow__bottleneck_analyze { component: "api-layer" }
 ```
+Not baked into this image: `bottleneck_analyze` is registered but currently
+returns `{ ok: false, error: "unimplemented" }`. There is no `swarm_monitor` or
+`token_usage` tool in this build — use `swarm_status` for point-in-time state;
+`mcp__claude-flow__performance_report` covers token/performance figures and is
+also currently unimplemented in ruvector-mcp.
 
 ---
 

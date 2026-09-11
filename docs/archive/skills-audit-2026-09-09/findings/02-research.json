@@ -1,0 +1,225 @@
+{
+  "batch": "02-research",
+  "skills": [
+    {
+      "skill": "perplexity-research",
+      "verdict": "keep",
+      "health": 8,
+      "findings": []
+    },
+    {
+      "skill": "ceramic-search",
+      "verdict": "fix",
+      "health": 7.5,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "skill-router/references/routing-table.md — grep -c ceramic-search returns 0; skills/registered-skills.txt:31 lists ceramic-search as one of the 22 always-loaded skills; project/CLAUDE.md 'Skill routing' names ceramic-search first in the web-search priority order",
+          "fix": "add ceramic-search to skill-router/references/routing-table.md — it is both registered (always-loaded) and the designated primary web-search engine, yet the dispatcher that is supposed to route to it has no entry for it",
+          "cross_skill": ["perplexity-research", "web-researcher"]
+        }
+      ]
+    },
+    {
+      "skill": "web-researcher",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "high",
+          "evidence": "web-researcher/SKILL.md:5-21 — description field measured at 1381 chars (script-extracted from the YAML block), exceeding the agentskills.io 1024-char cap the FACT-SHEET cites as the estate's applicable standard",
+          "fix": "trim the description to ≤1024 chars, moving detail (the full 21-tool inventory, backend list) into the body; keep only what+when+when-not front-loaded",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "web-researcher/SKILL.md:233-235 — 'gemini-url-context / web-summary ... the backing gemini CLI is not on PATH here — those routes are non-functional pending a gemini CLI install'; contradicted by skills/gemini-url-context/SKILL.md:1-19 ('via the gemini-url-context subcommand of agentbox-mcp — a single Rust rmcp binary ... It replaces the former Python FastMCP server one-for-one') and skills/mcp.json:187-195 which registers it as `agentbox-mcp gemini-url-context`, not a `gemini` CLI; verified `agentbox-mcp` resolves on PATH (/nix/store/zqsysnz1992gzaqwfbhkg6zhfmckgg79-agentbox-mcp-0.1.0/bin/agentbox-mcp) and `command -v gemini` fails (no such binary is expected — the skill never calls one)",
+          "fix": "delete the stale note; gemini-url-context is a live, registered, working skill via agentbox-mcp — the 'gemini CLI' dependency it describes was retired along with the old Python FastMCP server",
+          "cross_skill": ["gemini-url-context"]
+        },
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "web-researcher/SKILL.md:22 declares version 1.43.0, matching the actually-installed Nix-store binary (web-researcher-mcp-1.43.0); SKILL-DIRECTORY.md:150 and :456 both say 'v1.33.0'; agentbox.toml:554 comment says 'v1.36.4' — three different version numbers for the same binary across three files, only SKILL.md matches ground truth",
+          "fix": "update SKILL-DIRECTORY.md (2 lines) and the agentbox.toml comment (line 554) to v1.43.0",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "low",
+          "evidence": "web-researcher/SKILL.md:6-7 claims '21 live MCP tools (verified against tools/list)'; SKILL-DIRECTORY.md:150 claims '~26 tools' for the same binary",
+          "fix": "re-run tools/list against the deployed binary and reconcile the count in whichever file is wrong; SKILL.md's wording implies it was verified more recently/rigorously",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "deep-research",
+      "verdict": "fix",
+      "health": 6.5,
+      "findings": [
+        {
+          "class": "model-fit",
+          "severity": "high",
+          "evidence": "deep-research/SKILL.md:17-19 frontmatter lists `tools: [Agent, WebSearch, WebFetch, Read, Write, Bash, Grep]`; body step 3 (line 50-51) 'Spawn researchers — parallel Agent calls, each with a disjoint dimension' — the entire fan-out design is load-bearing on the Agent/subagent-fork tool, which GPT-6 Astra via Codex does not have, and the skill states no fallback",
+          "fix": "add a one-line note: 'Claude-only (needs the Agent/fork tool for parallel researchers); on Codex/GPT-6 Astra run the phases sequentially in one session instead of fanning out subagents'",
+          "cross_skill": ["autoresearch"]
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skill-router/references/routing-table.md — grep -c deep-research returns 0, despite deep-research being named as the harness-of-record in project/CLAUDE.md ('deep-research orchestrates') and cross-referenced from perplexity-research, ceramic-search and web-researcher's own SKILL.md tables",
+          "fix": "add deep-research to routing-table.md",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "notebooklm",
+      "verdict": "keep",
+      "health": 8,
+      "findings": []
+    },
+    {
+      "skill": "linkedin",
+      "verdict": "fix",
+      "health": 4.5,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "linkedin/SKILL.md:41-65 architecture diagram + line 69 'persistent Chromium profile stored at ~/.linkedin-mcp/profile/' — the skill drives its own Patchright-managed Chromium instance, directly contradicting the canonical browser policy stated in workspace/CLAUDE.md ('Do not install local Playwright ... Canonical path: chrome-devtools-mcp on the browsercontainer sidecar') and echoed by web-researcher/SKILL.md:157-177 ('a second Chromium duplicates the browsercontainer sidecar ... One Chrome surface, one GPU allocation, one audit trail')",
+          "fix": "either route linkedin through the browsercontainer sidecar (browser-gpu MCP) instead of a private Patchright Chromium, or add an explicit, justified exception note (per-site auth persistence requirement) the way notebooklm's SKILL.md does for its own OAuth Playwright use",
+          "cross_skill": ["web-researcher", "browser", "notebooklm"]
+        },
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "grep across agentbox.toml for 'linkedin' returns no match at all — no [skills.linkedin] gate, no entry in system-manifest.js catalogue-referencing files (checked services/agentbox-manifest and all *.js/*.rs/*.toml outside skills/) — yet linkedin is unconditionally registered in skills/mcp.json:221-226",
+          "fix": "add a manifest gate per agentbox/CLAUDE.md's 'Rules for changes' ('Optional features are manifest-gated through agentbox.toml ... add a system-manifest.js catalogue entry'), especially given the skill's own ToS-risk disclosure ('violates LinkedIn ToS' at line 38)",
+          "cross_skill": ["reddit", "notebooklm"]
+        }
+      ]
+    },
+    {
+      "skill": "reddit",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "reddit/SKILL.md:145 — `cat >> /home/devuser/.claude/skills/.env << 'EOF'` hardcodes the expanded absolute per-user path; skills/lint-skills.mjs:9,45 bans literal `~/.claude/skills` strings but the check is tilde-form only, so this expanded form slips past `bash skills/lint-skills.sh` uncaught; agentbox/CLAUDE.md explicitly says 'skill docs use skill-relative paths, never ~/.claude/skills/<name>/'",
+          "fix": "replace with a skill-relative or $HOME-relative instruction and file a lint gap (the ABSPATH rule should also match the expanded /home/devuser/.claude/skills form)",
+          "cross_skill": []
+        },
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "no '[skills.reddit]' key anywhere in agentbox.toml (grep -i reddit returns nothing); reddit is unconditionally registered in skills/mcp.json:256-261 with no manifest gate",
+          "fix": "same as linkedin — add a manifest gate and system-manifest.js entry",
+          "cross_skill": ["linkedin", "notebooklm"]
+        }
+      ]
+    },
+    {
+      "skill": "toprank",
+      "verdict": "fix",
+      "health": 5.5,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "toprank/VERSION:1 reads '0.6.0'; toprank/SKILL.md:8 frontmatter reads 'version: 1.0.0' — same package, two different version numbers in the same directory",
+          "fix": "sync VERSION and SKILL.md frontmatter to a single source of truth",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "toprank's 6 nested sub-skills each carry their own SKILL.md (toprank/seo-analysis/SKILL.md, content-writer, keyword-research, meta-tags-optimizer, schema-markup-generator, geo-content-optimizer) plus toprank/toprank-upgrade/SKILL.md — none of these 7 names appear in registered-skills.txt, SKILL-DIRECTORY.md, or skill-router/references/routing-table.md (all three greps returned zero hits); they are reachable only via the table inside toprank/SKILL.md itself",
+          "fix": "either list the 7 nested skills in SKILL-DIRECTORY.md as toprank sub-entries, or document in toprank/SKILL.md that they are intentionally not independently discoverable (nested-pack pattern) so an auditor doesn't read this as an oversight",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "toprank/geo-content-optimizer/SKILL.md:2-9 ('Optimize content for AI citations: ChatGPT, Perplexity, AI Overviews, Gemini, Claude ... quotable statements, Q&A formatting, authority signals') vs bencium-aeo/SKILL.md:3 ('Generate AEO-optimized content ... AI citations') and its 18-token-rule/evidence-panel framework — both skills solve the same problem (make content quotable/citable by AI answer engines) with near-identical technique vocabulary; toprank/SKILL.md:37 does draw a boundary ('For Answer Engine Optimisation without SEO context -- use bencium-aeo instead') but bencium-aeo/SKILL.md has no reciprocal pointer back and the boundary ('with vs without SEO context') is thin given both produce FAQ schema, evidence/citations, and freshness signals",
+          "fix": "either merge geo-content-optimizer's technique library into bencium-aeo as the single AEO/GEO authority and make toprank's geo-content-optimizer a thin pointer, or sharpen the documented boundary with concrete non-overlapping examples",
+          "cross_skill": ["bencium-aeo"]
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "toprank/geo-content-optimizer/SKILL.md — mid-body stray sentence 'Use this whenever the task needs a shippable asset or transformation that should feed directly into quality review, deployment, or monitoring.' has no connection to GEO/AI-citation content and reads like boilerplate pasted from an unrelated skill template",
+          "fix": "delete the stray sentence",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "bencium-aeo",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "bencium-aeo/CLAUDE.md:1-4 and bencium-aeo/README.md:1-11 are a wholesale-vendored external repo ('AISEO — Answer Engine Optimization Content Generator'), written as if it is its own standalone project ('When you start a Claude Code session here, Claude will...'); a nested CLAUDE.md inside a skill directory is itself an anomaly — no other skill in this batch carries one",
+          "fix": "either strip the vendored CLAUDE.md/README (fold any unique content into SKILL.md/prd.md) or clearly mark the directory as a vendored snapshot so it isn't mistaken for a live project root if an agent ever cds into it",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "see toprank finding above — bencium-aeo/SKILL.md has no 'Related skills' or cross-reference section at all (confirmed by full read), so the toprank→bencium-aeo boundary documented in toprank/SKILL.md:37 is one-directional",
+          "fix": "add a reciprocal 'When not to use → toprank geo-content-optimizer (SEO-context AI optimisation)' note",
+          "cross_skill": ["toprank"]
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "FACT-SHEET.md lists bencium-aeo among the '24 skills isolated in the cross-reference graph'; confirmed — bencium-aeo/SKILL.md has zero outbound links to any other skill",
+          "fix": "add at minimum a pointer to toprank and perplexity-research (competitor content research) as the two nearest neighbours",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "autoresearch",
+      "verdict": "keep",
+      "health": 7.5,
+      "findings": [
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "autoresearch/SKILL.md:16-23 frontmatter declares `tools: [Bash, Read, Write, Edit, Agent, Grep, Glob]` including Agent, but the six-step body (lines 33-136) never actually calls Agent — every step uses Bash/Edit/Write/Grep, all of which are available to both Fable and Codex",
+          "fix": "drop Agent from the tools list (or note it as optional for parallel experiment branches) so the declared dependency matches what the workflow actually needs — the skill is otherwise portable as written",
+          "cross_skill": ["deep-research"]
+        }
+      ]
+    },
+    {
+      "skill": "email-search",
+      "verdict": "fix",
+      "health": 7,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "email-search/SKILL.md:113-115 says 'A stale REASONER_BASE_URL ... is the top suspect for hangs → point it at http://loom:8080/v1'; the same file's 'Failure handling' section at lines 208-221 documents the actually-confirmed-and-applied fix as 'set REASONER_BASE_URL=${LOOM_BASE_URL} (ml DNATs to the Loom façade on the connected node...)' — two different endpoint values offered as the fix for the identical named failure within one file",
+          "fix": "delete or correct line 115 to match the verified fix at line 213-214 (${LOOM_BASE_URL}); if Deployment B (http://loom:8080, visionclaw_network sidecar) is also valid, say so explicitly as an alternative topology rather than stating it bare as 'the' fix",
+          "cross_skill": []
+        }
+      ]
+    }
+  ],
+  "cluster_recommendation": "The core research cluster (ceramic-search → perplexity-research → web-researcher → deep-research) is conceptually sound and consistently cross-referenced in the right priority order across all four files, but web-researcher carries the batch's worst rot: a stale claim that gemini-url-context is broken (it isn't — it was rewritten onto the agentbox-mcp Rust binary months ago and is live), a description that busts the 1024-char cap, and a version number that only its own file gets right (SKILL-DIRECTORY.md and agentbox.toml both cite older, wrong versions). Fix web-researcher first — its 'gemini-url-context is dead' line actively steers agents (and other skills' authors) away from a working tool. Second priority: close the routing-table.md gap for ceramic-search, deep-research, autoresearch and email-search (web-researcher is already known-missing per the fact sheet) so the dispatcher actually knows about the estate's primary search engine and its own orchestrator. Third: the AEO/GEO duplication between bencium-aeo and toprank's nested geo-content-optimizer needs a single owner — right now the boundary is thin, one-directional, and both bodies teach the same 18-token/citation/freshness techniques independently. Fourth: linkedin's private Patchright Chromium is a direct, self-inflicted violation of the sidecar-only browser policy that web-researcher itself enforces two directories over — and together with reddit and notebooklm it has zero agentbox.toml manifest gate, leaving three MCP servers (one with a self-disclosed ToS risk) permanently on with no kill switch. Everything else in the batch — perplexity-research, ceramic-search, notebooklm, autoresearch, and email-search bar one internal contradiction about which REASONER_BASE_URL is correct — is in good shape and matches the live-infrastructure fact sheet closely; email-search in particular is the best-maintained skill in the batch and should be the template for how the others reference the Loom façade.",
+  "unverifiable": [
+    "Live reachability of api.ceramic.ai, api.perplexity.ai, LinkedIn/Reddit OAuth endpoints, and the NotebookLM SDK were not probed — no network egress check was performed, only static/file evidence.",
+    "Whether toprank's SEO scripts (seo-analysis/scripts/*.py) actually run was not executed — only presence-checked via find."
+  ]
+}

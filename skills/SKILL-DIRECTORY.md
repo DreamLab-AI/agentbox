@@ -1,8 +1,7 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **127 active skills**. Estate-wide audit + progressive-discovery pass 2026-08-21 (Opus swarm, adversarially verified): 82 findings, 38 skills fixed/restructured (stale endpoints, retired `openai-user` pseudo-user references, dead links, monolith SKILL.md files split into `references/`); `dream-machine` gained a SKILL.md; deprecated bencium stubs stripped to redirects. House lint: `./lint-skills.sh` (banned stale strings, absolute `~/.claude/skills/` paths, retired `/workspace` path, >250-line monoliths without `references/`, frontmatter sanity) — run before every rebuild. <!-- lint-ok: third-party/meta fact, not a RuVector claim -->
-> (`tree-search-coder` SKILL.md authored 2026-08-21 — ADR-020 Surface 2 execution-gated tree-search, previously enabled-in-manifest against a non-existent skill dir; `gcloud` added 2026-07-28 — Google Cloud CLI (gcloud/gsutil/bq) provisioned in the nix flake `basePackages`; operator-interactive auth, impersonation-over-keys, creds in the writable `~/.config/gcloud`; carries the canonical `campaignbuilder` VPS-behind-IAP deploy runbook; `token-audit` added 2026-07-24 — comprehensive Claude Code usage audit from local transcripts, adapted MIT from pacphi/agentic-kit, with `ruflo-daemon-gc` + `npx-stale-scan.sh` hygiene companions; `uk-solar-planner` added 2026-07-15 — UK ground-mounted solar farm planning, composing qgis + blender with PVGIS/quartz-solar-forecast/OpenDSS; `ruvnet-brain` added 2026-07-07 — RuvNet-ecosystem source corpus (~90k chunks, 21+ repos) in the ruvector-postgres sidecar, `search_ruvnet` MCP + grounding hook; `pdf-signing` added 2026-07-06 — open-source cryptographic PDF signing (pyHanko/PAdES), self-signed identity + visible panel + trust/eIDAS upgrade path; `leptos` added 2026-06-28 — Leptos full-stack Rust web playbook + 0.7/0.8 reference; `ceramic-search` added 2026-06-20 — Ceramic.ai keyword web search with rich page extracts; `ontology-augment` added 2026-06-14). 18 formerly deprecated/archived skills removed (see table below for history).
-> Updated 2026-07-22. Reference this file from CLAUDE.md for intelligent routing.
+> **129 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
+> Updated 2026-09-09 (estate re-audit for Fable 5.1 / GPT-6 Astra workloads; history in `CHANGELOG.md` and `docs/adr/`). Reference this file from CLAUDE.md for intelligent routing.
 
 ---
 
@@ -28,16 +27,18 @@
 | `v3-performance-optimization` | ARCHIVED | Reference only (v3 shipped) |
 | `v3-security-overhaul` | ARCHIVED | Reference only (v3 shipped) |
 | `v3-swarm-coordination` | ARCHIVED | Reference only (v3 shipped) |
+| `repo-education` | DEPRECATED (2026-09-09) | `explainer` (references/delivery-microsite.md) |
+| `latex-book` | DEPRECATED (2026-09-09) | `book-publishing` (references/latex-conventions.md) |
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (127 Active Skills)
+## Artefact 1: Categorised Skill Inventory (129 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 127 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 129 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -68,7 +69,7 @@ Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP)
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `verification-quality` | No | Truth scoring (0.0-1.0), automatic rollback at 0.95 threshold, CI/CD export | Ensuring code correctness with truth-score verification and auto-rollback |
-| `explainer` | No | **Dual-audience explainer bundle from a codebase**: three audience documents (user / onward developer / executive) written by grounded forks with claim→file:line ledgers, a self-contained visual page, and an AI half (the repo's own tree in a RuVector `<repo>-kb` namespace with graded question sets), gated A–E before linking. Repo-Explainer's method, run locally on private code | Explaining, onboarding or handing over a repo or product to people who did not build it ("explain this to the CEO", "handover doc", "repo primer", "what does this actually do"); pairs with `docs-alignment` (corpus audit) and `design-audit` (visual polish) |
+| `explainer` | No | **Explain-this-codebase family hub**: shared core (seven-question comprehension arc, claims ledgers to file:line, scope ringfence, stop-before-fixing-product-code rule, gates A–E) plus three delivery references — docs bundle (three audience documents + RuVector `<repo>-kb`), instructional microsite (formerly `repo-education`), video (hands off to `codebase-video`). Microsite chapters are Markdown gated by `voice-lint.sh`, an independent range check and `anatomy-coverage.mjs` (`references/microsite/reader-voice.md`); drafting runs on the connected node model through the Loom façade with the scaffold declined per request (ADR-139), the direct vision path a documented exception | Explaining, onboarding or handing over a repo or product to people who did not build it ("explain this to the CEO", "handover doc", "repo primer", "teaching site", "what does this actually do"); pairs with `docs-alignment` (corpus audit) and `design-audit` (visual polish) |
 | `docs-alignment` | No | 15-agent swarm for documentation validation, Diataxis framework, link coverage, Mermaid diagrams | Validating and modernising project documentation against codebase |
 | `security-testing` | No | OWASP Top 10 validation, auth/authorisation testing, API security, dependency CVE scanning, secrets detection, SAST/DAST | Application-layer security testing for web services and APIs (not Linux hardening — use `defense-security` for that) |
 | `prose-sanitiser` | No | Remove LLM writing fingerprints: em-dash overuse, "The X" headings, tier-1 slop vocabulary, sycophantic filler, structural tells. Substance-first editorial method, draft review (keep/revise/ask-author/cut), interview-driven co-writing. Enforces UK English. Deterministic layers run on the `sanitise` binaries from [DreamLab-AI/prose-sanitiser](https://github.com/DreamLab-AI/prose-sanitiser) | Cleaning public-facing content, docs, articles, or presentations that should read as human-authored; reviewing or co-writing drafts; fixing hollow or generic prose |
@@ -125,11 +126,11 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `browser-automation` | No | **Meta-skill**: decision framework for choosing between 6 browser tools + Claude in Chrome (official) | Unsure which browser tool to use -- start here |
 | `browser` | No | Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp SSE) | Page navigation, screenshots, form fills, JS eval |
-| `playwright` | No | Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp 40+ tools, Chrome Beta 149+) | Full browser interaction, WebGPU/WebGL validation, visual testing |
+| `playwright` | No | Browser automation via the external browsercontainer sidecar (chrome-devtools-mcp 40+ tools, Chrome Beta 149+) | Full browser interaction, WebGPU/WebGL validation, visual testing. ⚠️ `[skills.browser] playwright = false` (superseded by `browser`); reference-only, not always-loaded |
 | `qe-browser` | No | **Vibium** (WebDriver BiDi, W3C standard, 10MB vs 300MB Playwright). 16 typed assertion kinds, multi-step batch pre-validation, pixel-perfect visual-diff baselines, 14-pattern prompt-injection scanner, 15-intent semantic element finder (`submit_form`, `accept_cookies`, `primary_cta`, …). Part of AQE fleet — installed via `aqe init`. 11 QE skills delegate to it (a11y, visual, security, localization, etc.) | QE-grade browser testing with typed assertions and visual regression; AQE fleet integration; when Playwright is too heavy ⚠️ NOT INSTALLED — run aqe init to install |
 | `chrome-cdp` | No | CDP CLI for live Chromium sessions, 100+ tabs, no Puppeteer dependency | Inspecting already-open browser tabs, logged-in sessions |
 | `host-webserver-debug` | Yes | HTTPS-to-HTTP bridge for debugging host web servers from Docker | Cross-origin/CORS issues when accessing host dev servers |
-| `scrapling` | Yes | Adaptive web scraping: 9 MCP tools, Cloudflare Turnstile bypass, stealth browser, spider framework with pause/resume | Web scraping, internal infra monitoring, authorized client scraping, anti-bot bypass |
+| `scrapling` | Yes (⚠️ NOT BAKED — `pip install "scrapling[all]"` + `scrapling install` first) | Adaptive web scraping: 9 MCP tools, Cloudflare Turnstile bypass, stealth browser, spider framework with pause/resume | Web scraping, internal infra monitoring, authorized client scraping, anti-bot bypass |
 
 > Note: The browsercontainer sidecar (Chrome + CDP + MCP SSE) is Docker infrastructure, not a skill. See `browsercontainer/README.md`.
 
@@ -147,7 +148,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `ceramic-search` | No | **PRIMARY web search.** High-recall keyword engine, 10 results per query, up to 8k chars per description. Fast (sub-200ms). Best for LLM-augmented retrieval where you need dense source context. Multi-query strategies recommended | **Default first choice** for all web search; dense page extracts for LLM grounding; multi-query aggregation. For complex/important queries, run alongside perplexity + Claude WebSearch |
 | `perplexity-research` | No | **SECONDARY web search.** Closed engine, synthesized answer. Three-API client: Search API (/search) structured results with domain/date filters, Agent API (/v1/agent) multi-step deep research, Chat Completions (sonar). Academic/UK-ecology presets | **Second choice** after ceramic-search; authoritative primary sources (gov/academic), synthesized answers, domain-filtered research. For complex/important queries, run alongside ceramic + Claude WebSearch |
-| `web-researcher` | Yes | **You pick the engine + trusted-domain LENSES; real, verifiable citations.** v1.33.0, ~26 tools: web/image/news/academic/patent/structured search, search_and_scrape, sequential; domain search (clinical/legal-CourtListener/econ-WorldBank+FRED/filing-SEC EDGAR); full scrape (PDF/DOCX/PPTX/YouTube/HN); **citation integrity** (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback, format_bibliography); grounded `answer`; session memory+export. Backends Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa; browser tier OFF → delegates to `browser` sidecar | **Reputation-attached** research needing verifiable citations: client work, filings, publications, legal/medical/finance; restrict to trusted sources via lenses; verify/audit citations |
+| `web-researcher` | Yes | **You pick the engine + trusted-domain LENSES; real, verifiable citations.** v1.43.0, 21 live tools: web/image/news/academic/patent/structured search, search_and_scrape, sequential; domain search (clinical/legal-CourtListener/econ-WorldBank+FRED/filing-SEC EDGAR); full scrape (PDF/DOCX/PPTX/YouTube/HN); **citation integrity** (verify_citation, audit_bibliography, citation_graph, archive_source/Wayback, format_bibliography); grounded `answer`; session memory+export. Backends Google PSE/Brave/Serper/SearXNG/SearchAPI/Exa; browser tier OFF → delegates to `browser` sidecar | **Reputation-attached** research needing verifiable citations: client work, filings, publications, legal/medical/finance; restrict to trusted sources via lenses; verify/audit citations |
 | `gemini-url-context` | Yes | Gemini 3.8 Flash URL expansion, up to 20 URLs per request, grounding metadata | Analysing or summarising specific known URLs |
 | `web-summary` | Yes | URL summarisation, YouTube transcript extraction, Obsidian vault topic links | Summarising articles, YouTube videos, generating note links |
 | `notebooklm` | Yes | Google NotebookLM SDK: notebooks, sources, chat, audio/video/slides/quiz/report generation | Research automation, podcast generation, study material creation, knowledge management |
@@ -156,6 +157,9 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `toprank` | No | 6 SEO sub-skills: GSC audit, E-E-A-T content writing, keyword research, meta tags, schema markup, GEO | SEO audit, content optimisation, keyword research, schema markup, AI search visibility |
 | `context7` | Yes | Version-specific documentation for 800+ libraries (Next.js, Supabase, React, etc.). `resolve-library-id` + `query-docs`. Eliminates hallucination from stale training data | Writing code with external libraries, "use context7", needing current API docs |
 | `email-search` | Yes | Single tool `ask_email` over a local Private Email MCP Gateway (DreamLab-AI/email-mcp-gateway) on the LAN. Local-model synthesis + privacy filter — returns schema-abstracted, PII-masked evidence, never raw mail. Gated by `[skills.email_search] enabled = true` + `AGENTBOX_EMAIL_GATEWAY_TOKEN`; entrypoint auto-registers the streamable-HTTP server when `/health` is reachable | Questions about the owner's **personal** email — invoices, threads, "did X email me", "search for anyone called <name>". NOT for work mail, calendar, or sending |
+| `podcast-knowledge-ingest` | No | Weekly cron ingest of podcast feeds into the vault via the Rust `podcast-ingest`/`podcast-promote` binaries: transcripts, evidence packets, promotion proposals with V2 frontmatter (`[skills.podcast_ingest]`, ADR-2028 `[vault]` paths) | Standing podcast → knowledge-graph pipeline; promoting podcast evidence into pages |
+| `podcast-bulk-ingest` | No | One-off backfill of a whole podcast archive through the same Rust crate (`podcast-bulk-ingest`), with OntoCast bootstrap | Bulk/backfill ingest of an archive, not the weekly cron |
+| `youtube-transcript-archiver` | No | Archive YouTube transcripts and assets to the vault with the `yt-transcript-archive` binary; optional enrichment and summarisation | Capturing talks/interviews as searchable notes |
 
 ### Security and Compliance
 
@@ -169,7 +173,6 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `report-builder` | No | LaTeX reports, Python analytics, Wardley maps, TikZ+Mermaid diagrams, multi-LLM research | Research reports, white papers, sector analyses, policy briefs |
 | `latex-documents` | No | TeX Live toolchain, Beamer presentations, BibTeX, mathematical typesetting | Academic papers, presentations, publication-quality documents |
-| `latex-book` | No | Convert markdown/HTML manuscripts to arXiv-compliant LaTeX: memoir class, biblatex citations, parallel swarm conversion, UK typography conventions, cite_mapping.json footnote pipeline | Converting a multi-chapter markdown book to LaTeX for arXiv submission or print-ready PDF |
 | `book-publishing` | No | End-to-end book pipeline: markdown → arXiv/KDP/print-ready PDF using parallel agent swarms (LaTeX conversion, BibTeX extraction, TikZ diagrams, matplotlib charts, Wardley maps, Gemini image upcycling, visual verification) | Publishing a book or preparing a full manuscript for academic or commercial publication |
 | `diagram-design` | No | Editorial-quality HTML/SVG diagrams: 28 visual types, branded design system, semantic patterns, draw.io/Mermaid import, light/dark/terminal/sketchy variants, accessible animation, self-contained output | Presentation diagrams, blog visuals, branded architecture diagrams, editorial charts, any diagram that will be shared or published |
 | `mermaid-diagrams` | No | Diagrams-as-code routing hub (routes to diagram-design or Mermaid). Mermaid engine: 25 types, PNG/SVG/PDF via browsercontainer sidecar | Quick technical diagrams in code, version-controlled .mmd files, report/LaTeX embeds. Routes to diagram-design for editorial output |
@@ -183,7 +186,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `open-design` | No | **Design production pipeline**: structured intake, 129 brand specs (DESIGN.md), 5-dimensional critique gate, P0/P1/P2 checklists, **deterministic slop detector** (`slop-detect`, a baked binary, no-LLM, 20 coded rules + inline disables) + 3-layer slop catalogue (CLI/browser/LLM, adapted from impeccable), layout libraries (web/mobile/dashboard/deck). Composes with all other design skills | Generating prototypes from brand specs, landing pages, dashboards, mobile mockups, any HTML artifact needing quality-gated design; statically scanning code for design anti-patterns |
+| `open-design` | No | **Design production pipeline**: structured intake, 138 brand specs (DESIGN.md), 5-dimensional critique gate, P0/P1/P2 checklists, **deterministic slop detector** (`slop-detect`, a baked binary, no-LLM, 20 coded rules + inline disables) + 3-layer slop catalogue (CLI/browser/LLM, adapted from impeccable), layout libraries (web/mobile/dashboard/deck). Composes with all other design skills | Generating prototypes from brand specs, landing pages, dashboards, mobile mockups, any HTML artifact needing quality-gated design; statically scanning code for design anti-patterns |
 | `ui-ux-pro-max-skill` | No | 50 styles, 97 palettes, 57 font pairings, 9 tech stacks, shadcn/ui MCP | Discovery/inspiration: choosing palettes, typography, styles before locking a brand spec |
 | `daisyui` | No | daisyUI 5 components, theme configuration, Tailwind CSS patterns | Building web interfaces specifically with daisyUI components |
 | `bencium-controlled-ux-designer` | No | WCAG 2.1 AA, mathematical scales, always-ask-first protocol, design system templates | Enterprise/regulated UX design with accessibility-first approach |
@@ -218,6 +221,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `echoloop` | No | Real-time meeting copilot: dual audio capture, faster-whisper/Deepgram transcription, Claude/GPT coaching loop, session logging | Live meeting coaching, transcription, meeting recap, negotiation support |
 | `imagemagick` | Yes | Format conversion, resize, crop, filter, batch ops, watermarks, metadata | Image format conversion, thumbnails, batch image processing |
 | `comfyui` | Yes | Stable Diffusion, FLUX, node-based workflows, distributed GPU (Salad Cloud) | AI image/video generation from prompts or workflows |
+| `manim` | No | Precise Python animations for algorithms, queues, graphs, equations and state changes; video, section clips and static frames | A mechanism needs motion; hands clips to codebase-video or embeds them in knowledge pages. Optional pinned runtime |
 | `codebase-video` | No | Repository-grounded audience explainer; local ComfyUI footage, screenshots, diagrams, narration, captions and verified MP4 | Explain this codebase to a nominated audience in a complete video |
 | `open-montage` | No | Agentic video production: 11 pipelines, 49 tools, TTS, avatar, music, zero-key mode. On-demand clone | "Make a video", explainers, trailers, podcast-to-video, avatar presentations |
 | `clipcannon` | Yes | AI video editor: 51 MCP tools (12 categories), 22-stage analysis DAG, 14 ML models, 5 embedding spaces, voice clone (Qwen3-TTS), lip-sync (LatentSync 1.6), AI music (ACE-Step), text-to-video gen, Voice Agent ("Jarvis"), 7 platform renders, credit billing. Local GPU | Edit existing video, find moments, highlight reels, captions, voice clone, lip-sync, TikTok/Reels render, text-to-video, voice agent |
@@ -240,6 +244,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `qgis` | Yes | 51 MCP tools: layer management, geoprocessing, rendering, styling, CRS transforms | GIS operations, geospatial analysis, map generation |
+| `uk-solar-planner` | No | UK ground-mounted solar farm planning end-to-end: site suitability, tilt/row spacing, capacity and yield (PVGIS, quartz-solar-forecast), 3D layout with shadow review (blender), DNO pre-checks; composes `qgis` + `blender` | Assessing a UK field/parcel for utility-scale PV, sizing, layout, grid feasibility |
 
 ### Version Control (AI-Native)
 
@@ -263,7 +268,8 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `hermes-scheduler` | No | Recurring task scheduling, cron jobs for Claude Code agents, routine automation | Scheduling periodic agent tasks, autonomous routines |
 | `dream-machine` | No | Control/inspect the nightly dream-engine loop (ADR-052): `/dream status\|pause\|resume\|standby\|inbox`, ledger + roster + last-night health | "/dream", dream-machine questions, pausing/resuming nightly repo evolution, dream inbox triage |
 | `cost-estimation` | No | GPU endpoint cost tiers, agent job estimate-hold-run-settle lifecycle, DREAM/sats token conversion, COCOMO-hybrid infrastructure valuation, /pay/.estimate integration | Pricing inference/image-gen/analytics endpoints, agent job cost planning, DREAM token economics |
-| `gcloud` | No | Google Cloud CLI (gcloud/gsutil/bq) — Compute Engine, IAP, Secret Manager, Cloud Run, Artifact Registry. Nix-provisioned; interactive/operator auth, creds in writable `~/.config/gcloud`; impersonation-over-keys. Canonical `campaignbuilder` VPS-behind-IAP deploy | Deploying to or operating Google Cloud: standing up a VM behind IAP, granting/impersonating a deploy SA, GCP secrets, the campaignbuilder deployment |
+| `gcloud` | No | Google Cloud CLI (gcloud/gsutil/bq) — Compute Engine, IAP, Secret Manager, Cloud Run, Artifact Registry. Nix-provisioned; interactive/operator auth, creds in writable `~/.config/gcloud`; impersonation-over-keys. Canonical `the target repository` VPS-behind-IAP deploy | Deploying to or operating Google Cloud: standing up a VM behind IAP, granting/impersonating a deploy SA, GCP secrets, the the target repository deployment |
+| `payment-router` | No | Transparent HTTP 402 detect-classify-pay-retry loop for cost-gated external resources; fail-closed spend gate (`[skills.payment_router]`, PRD-015, management-api routes) | Any skill/adapter calling a paid endpoint that answers 402; budget-bounded machine payments |
 
 ### Systems Programming
 
@@ -297,7 +303,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 127 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 129 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -453,7 +459,7 @@ Q3: What do you need?
     |
     +-- Verifiable, reputation-attached research: real citations, trusted-domain lenses,
     |   full-source read, verify_citation/citation_graph; academic/legal/clinical/SEC/patent
-    |   --> web-researcher  (v1.33.0; you pick the engine + sources)
+    |   --> web-researcher  (v1.43.0; you pick the engine + sources)
     |
     +-- Multi-agent deep report: fan-out + adversarial verification + cited synthesis
     |   --> deep-research  (orchestrates perplexity-research / web-researcher as backends)
@@ -495,7 +501,7 @@ Q3: What kind of document?
     |   --> book-publishing  (parallel agent swarms, image upcycling, visual verification)
     |
     +-- Markdown/HTML book → arXiv-compliant LaTeX (memoir class, biblatex, UK typography)
-    |   --> latex-book  (LaTeX conventions, cite_mapping.json footnote pipeline)
+    |   --> book-publishing  (references/latex-conventions.md: memoir class, biblatex, cite_mapping.json footnote pipeline)
     |
     +-- Cryptographically sign a PDF (invoice, contract) — digital/e-signature
     |   --> pdf-signing  (pyHanko/PAdES; self-signed identity → trust/eIDAS upgrade path)
@@ -541,6 +547,9 @@ Q3: What media type?
     |
     +-- AI art (Nano Banana 2): blog headers, infographics, technical illustrations, comics
     |   --> art
+    |
+    +-- Precise mechanism animation (algorithms, queues, graphs, equations)
+    |   --> manim (optional Cairo renderer; exports clips to the video/page owner)
     |
     +-- Full video production (explainers, trailers, podcasts, avatars, TTS)
     |   --> open-montage
@@ -685,7 +694,7 @@ Q3: What infrastructure task?
     |   --> hermes-scheduler
     |
     +-- Google Cloud: deploy a VM behind IAP, impersonate a deploy SA, GCP secrets,
-    |   the campaignbuilder VPS deployment
+    |   the the target repository VPS deployment
     |   --> gcloud
     |
     +-- Creating new skills for this system
@@ -698,7 +707,7 @@ Q3: What infrastructure task?
 Q3: What kind of design work?
     |
     +-- Prototype from brand spec / quality-gated HTML artifact
-    |   --> open-design (structured intake, 129 brands, critique gate, layout libraries)
+    |   --> open-design (structured intake, 138 brands, critique gate, layout libraries)
     |       Pipeline: intake → DESIGN.md → compose → critique → P0/P1/P2 → emit
     |
     +-- Discovery: palettes, fonts, styles (before locking brand spec)
@@ -860,29 +869,32 @@ Some tasks benefit from combining skills. Common compositions:
 
 ## MCP Server Summary
 
-19 skills provide MCP servers (registered in `skills/mcp.json`, `mcp/mcp.json`, or invocable via skill config):
+Generated 2026-09-09 from `skills/mcp.json` (the boot-projection registry; 28 servers, several not skill-owned: consultants, claude-flow, browser-gpu, aci-shell, code-interpreter) and each skill's `mcp_server:` frontmatter. A skill listed as "declared only" ships or documents a server that nothing registers at boot; treat it as manual setup until it is added to `mcp.json` with a gate.
 
-| Skill | Protocol | Entry Point |
-|-------|----------|-------------|
-| `lazy-fetch` | stdio | `mcp-server/dist/mcp-server.js` |
-| `ruvnet-brain` | mcp-sdk | `/opt/agentbox/mcp/ruvnet-brain/server.js` (registered via `mcp/mcp.json` + entrypoint) |
-| `cuda` | stdio | `mcp-server/server.py` |
-| `deepseek-reasoning` | mcp-sdk | `mcp-server/server.js` |
-| `flow-nexus-neural` | flow-nexus | via `npx flow-nexus@latest` |
-| `gemini-url-context` | fastmcp | `mcp-server/server.py` |
-| `host-webserver-debug` | mcp-sdk | `mcp-server/server.js` |
-| `imagemagick` | fastmcp | `mcp-server/server.py` |
-| `notebooklm` | fastmcp | `mcp-server/server.py` |
-| `openai-codex` | stdio | `mcp-server/server.js` |
-| `playwright` | mcp-sdk | `mcp-server/server.js` |
-| `qgis` | fastmcp | `mcp-server/server.py` |
-| `web-summary` | fastmcp | `mcp-server/server.py` |
-| `comfyui` | fastmcp | `mcp-server/server.py` |
-| `blender` | stdio | `mcp-server/server.py` |
-| `lichtfeld-studio` | stdio | `mcp-server/server.js` |
-| `linkedin` | stdio | via uvx linkedin-scraper-mcp |
-| `defense-security` | stdio | via npx defense-mcp-server |
-| `reddit` | stdio | via npx reddit-mcp-buddy |
+| Skill | Status | Command | Gate |
+|---|---|---|---|
+| `blender` | registered in `skills/mcp.json` | `node /opt/agentbox/skills/blender/tools/mcp-blender-client.js` | env:ENABLE_BLENDER |
+| `clipcannon` | registered in `skills/mcp.json` | `clipcannon serve` | always |
+| `codebase-memory` | registered in `skills/mcp.json` | `codebase-memory-mcp` | env:ENABLE_CODEBASE_MEMORY |
+| `comfyui` | registered in `skills/mcp.json` | `node /opt/agentbox/skills/comfyui/mcp-server/server.js` | env:ENABLE_COMFYUI_EXTERNAL |
+| `context7` | registered in `skills/mcp.json` | `npx -y @upstash/context7-mcp@latest` | envset:CONTEXT7_API_KEY |
+| `cuda` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
+| `deepseek-reasoning` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
+| `defense-security` | registered in `skills/mcp.json` | `npx -y defense-mcp-server` | always |
+| `gemini-url-context` | registered in `skills/mcp.json` | `agentbox-mcp gemini-url-context` | always |
+| `host-webserver-debug` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
+| `imagemagick` | registered in `skills/mcp.json` | `agentbox-mcp imagemagick` | env:ENABLE_IMAGEMAGICK |
+| `lazy-fetch` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
+| `linkedin` | registered in `skills/mcp.json` | `uvx linkedin-scraper-mcp` | always |
+| `meta-xr-sdk` | registered in `skills/mcp.json` | `npx @meta-quest/hzdb mcp server` | always |
+| `notebooklm` | registered in `skills/mcp.json` | `python3 -u /opt/agentbox/skills/notebooklm/mcp-server/server.py` | always |
+| `openai-codex` | declared in frontmatter only (not in the boot registry) | see SKILL.md | manual |
+| `qgis` | registered in `skills/mcp.json` | `python3 -u /opt/agentbox/skills/qgis/mcp-server/server.py` | env:ENABLE_QGIS |
+| `reddit` | registered in `skills/mcp.json` | `npx -y reddit-mcp-buddy` | always |
+| `scrapling` | registered in `skills/mcp.json` | `scrapling mcp` | always |
+| `unreal-engine` | registered in `skills/mcp.json` | `soft-ue-cli mcp-serve` | always |
+| `web-researcher` | registered in `skills/mcp.json` | `web-researcher-mcp` | requires |
+| `web-summary` | registered in `skills/mcp.json` | `agentbox-mcp web-summary` | always |
 
 ---
 
@@ -909,6 +921,18 @@ Some tasks benefit from combining skills. Common compositions:
 **9. Development Meta-Skills**: `build-with-quality` vs `sparc-methodology` -- distinct. BWQ focuses on quality engineering with 111+ agents; SPARC focuses on phased methodology. Both are needed.
 
 **10. Flow Nexus Trio**: `flow-nexus-platform`, `flow-nexus-neural`, `flow-nexus-swarm` -- well-separated by concern (platform admin vs ML training vs swarm deployment). No merge needed.
+
+### 2026-09-09 re-audit outcomes (Fable 5.1 / GPT-6 Astra workloads)
+
+**11. Explain-this-codebase family**: `explainer` (docs), `repo-education` (microsite) and `codebase-video` (video) were three independently authored answers to one brief. Merged into an `explainer` hub with shared core + three delivery references; `repo-education` is a redirect; `codebase-video` stays standalone and cross-linked. Complete.
+
+**12. Book pipeline**: `latex-book` and `book-publishing` restated the same swarm pipeline and had drifted. `latex-book` merged into `book-publishing/references/latex-conventions.md`; redirect stub left. Complete.
+
+**13. AEO/GEO**: `bencium-aeo` and toprank's nested `geo-content-optimizer` taught the same technique. `bencium-aeo` is the single owner; the nested skill is a pointer. Complete.
+
+**14. Browser (5), research (4), methodology (5), GitHub (5), ontology (3), podcast (2), thinking-lens (4), agentdb (3 + stub)**: audited for merge and kept — each cluster is differentiated by tier or object type with reciprocal when-not-to-use links; the defects were stale facts (CDP port, dead CLI commands, missing-binary caveats, memory-doctrine banners), now fixed. No merge.
+
+**15. Codex pair**: `codex-companion` was a hand-patched mirror of the baked `codex-plugin-cc` plugin (the live `/codex:*` commands never ran from it); trimmed to SKILL.md + references. `openai-codex` keeps its legacy bridge only for the Nix closure; the live GPT-6 Astra tool is `consultant-codex`. `deepseek-reasoning` likewise re-pointed at `consultant-deepseek`. Complete (runtime closure retirement is a follow-up).
 
 ### Potential Future Consolidation
 

@@ -1,5 +1,5 @@
 ---
-name: "Ontology Augment"
+name: ontology-augment
 description: "Ground agent reasoning in DreamLab's formal knowledge graph (5,975 OWL classes, Oxigraph/Whelk) via the pervasive ontology binding (PRD-020/ADR-112). Use when you want to ground or augment thinking in the ontology, check what the knowledge graph says about a concept, retrieve a budget-bounded provenance-scoped subgraph (ontology_ask), run read-only SPARQL, find class neighbours or shortest paths, or propose a governed enrichment. Read-pervasive, write-governed; budget-bounded and fail-open so it never bloats the context window or blocks a turn."
 ---
 
@@ -72,9 +72,16 @@ node scripts/ontology-ask.cjs "price oracle" --sparql   # emit the read-only SPA
 | Tool | Purpose |
 |---|---|
 | `ontology_ask` | budget-bounded, provenance-scoped subgraph for a concept (primary) |
-| `search` / `class_get` / `class_list` | semantic class lookup / fetch / enumerate |
-| `graph_query` | read-only SPARQL (SELECT/ASK/DESCRIBE/CONSTRUCT; clamped, SERVICE blocked) |
-| `kg_neighbors` / `kg_pathfind` | local neighbourhood / shortest path between classes |
+| `ontology_search` | semantic class lookup by natural-language query |
+| `ontology_class_get` | fetch a single class by IRI/slug |
+| `ontology_class_list` | enumerate classes, optionally domain-filtered |
+| `ontology_graph_query` | read-only SPARQL (SELECT/ASK/DESCRIBE/CONSTRUCT; clamped, SERVICE blocked) |
+| `ontology_health` | backend reachability / degraded-mode check |
+| `ontology_validate` | OWL2 functional-syntax axiom validation |
+| `kg_node_search` | lexical/keyword node search over the graph (distinct from the semantic `ontology_search`) |
+| `kg_neighbors` | local neighbourhood of a class |
+| `kg_pathfind` | shortest path between two classes |
+| `ontology_axiom_add` | add an OWL2 axiom (governed write) |
 | `ontology_propose` | **governed** writeback — auth-gated, queued for sign-off |
 
 Writes never land directly: proposals go to the governance queue (broker inbox);
@@ -83,8 +90,8 @@ derived facts are fenced to the `:summary` graph and may not touch `:assert`/`:i
 ## Reference & Examples
 
 - Full tool params, budget/tier model (ADR-116), provenance scoping, maturity gate,
-  PUSH mechanics, consultant seam, governed writeback: **[REFERENCE.md](REFERENCE.md)**
-- Worked examples with real live outputs + trigger phrasings: **[EXAMPLES.md](EXAMPLES.md)**
+  PUSH mechanics, consultant seam, governed writeback: **[references/REFERENCE.md](references/REFERENCE.md)**
+- Worked examples with real live outputs + trigger phrasings: **[references/EXAMPLES.md](references/EXAMPLES.md)**
 
 ## Local route (internal dev path — VisionClaw-free)
 

@@ -1,0 +1,282 @@
+{
+  "batch": "07-dev-method",
+  "skills": [
+    {
+      "skill": "build-with-quality",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "high",
+          "evidence": "skills/build-with-quality/{package.json,tsconfig.json,src/**/*.ts} (6338 lines across 15 .ts files) — none of it is linked from SKILL.md's 'Pointers (progressive disclosure)' section (lines 22-35), which only lists .md references and scripts/deepsec-gate.sh",
+          "fix": "Delete src/, package.json, tsconfig.json (unreferenced compiled-package scaffold, violates ADR-2021 JIT-context/progressive-disclosure — no model will ever read or run it since nothing in SKILL.md points to it), or if it backs something real, add a Pointers entry explaining what invokes it and how.",
+          "cross_skill": []
+        },
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "SKILL.md frontmatter metadata.version: 1.3.0 (line 6) vs package.json \"version\": \"1.2.0\" vs config/skill.yaml version: 1.2.1 — three different version strings for one skill",
+          "fix": "Pick one version field and source of truth (SKILL.md frontmatter per the estate's own skill-authoring norm) and stop hand-maintaining the others, or wire a check that fails CI on drift.",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "build-with-quality/references/agents.md:7 '## 114+ Specialized Agents' vs sparc-methodology/SKILL.md:32 'Full quality engineering with 111+ agents ... use build-with-quality' — the two skills disagree on build-with-quality's own headline agent count. ruvnet-kb's own v3 planning doc (ruflo/v3/implementation/integration/AGENTS-SKILLS-COMMANDS-HOOKS.md) describes a v3-target of 76 agents in 7 categories, not 111+/114+, so neither number is well-grounded against the ecosystem source.",
+          "fix": "Recount references/agents.md's actual catalogue and use one figure everywhere it's cited (including sparc-methodology's redirect line); if the true count is closer to ruvnet's documented 76, correct the marketing-style '114+'.",
+          "cross_skill": ["sparc-methodology"]
+        },
+        {
+          "class": "stale",
+          "severity": "low",
+          "evidence": "EDD-PROTOCOL.md:431 'produced_by: agent:claude-sonnet-4-6' and :433 'audited_by: agent:claude-opus-4-7' in a worked evidence-file example; references/deepsec-security-gate.md:51 example 'DEEPSEC_GATE_MODEL=claude-sonnet-4-6'; src/methodologies/edd.ts:76 same pattern in a comment",
+          "fix": "These are illustrative placeholder model IDs (not real Anthropic version strings even historically) inside worked examples, so low-risk, but replace with generic 'agent:model-a'/'agent:model-b' or the actual current lineup (Fable 5.1 / Opus 5) to stop them reading as a real, current routing target.",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "SKILL.md:68 Option 2 example: 'npx claude-flow@alpha swarm init --topology hierarchical-mesh --strategy specialized'. Live binary check: `claude-flow swarm init --help` shows `-t, --topology [default: hierarchical]` and a separate `--v3-mode` flag documented as 'Enable V3 15-agent hierarchical mesh mode' — there is no single 'hierarchical-mesh' topology token in the current CLI.",
+          "fix": "Change the example to `--topology hierarchical --v3-mode` to match the installed ruflo v3.38.21 CLI surface actually observed.",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "RUNBOOK.md does not exist anywhere under skills/build-with-quality/ (confirmed by `find` over the full directory tree and by `git log --all -- skills/build-with-quality/RUNBOOK.md` returning nothing); the only RUNBOOK.md in the estate is skills/podcast-knowledge-ingest/RUNBOOK.md, a different skill",
+          "fix": "No action needed on this skill — this closes out a premise in the audit brief that doesn't hold for build-with-quality; the '~208 stale model-name hits in RUNBOOK.md' claim belongs to a different file/skill or predates a since-completed cleanup.",
+          "cross_skill": []
+        },
+        {
+          "class": "model-fit",
+          "severity": "low",
+          "evidence": "SKILL.md:84-88 Option 4 uses Claude Code's Task tool ('Task({ prompt: ..., subagent_type: \"coder\", model: \"sonnet\" })') without noting it's Claude-only",
+          "fix": "Add a one-line note that Option 4 (Task tool) is Claude Code-only; GPT-6 Astra/Codex should use Option 2 (CLI) or Option 3 (MCP, if the ruflo MCP proxy is reachable from Codex).",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "sparc-methodology",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "SKILL.md:73-78 'Quick path' CLI block: `npx claude-flow sparc modes|run|tdd|pipeline|batch`. Live check: `claude-flow sparc --help` → '[ERROR] Unknown command: sparc / Did you mean one of these? - start - swarm - status'. The installed ruflo v3.38.21 binary's top-level `--help` also lists no `sparc` subcommand at all.",
+          "fix": "Drop or clearly mark the `npx claude-flow sparc ...` CLI examples as historical/v2; keep only the verified-working MCP path (`mcp__claude-flow__sparc_mode`, still present in the live tool list) as the primary quick-path.",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "SKILL.md:32 states build-with-quality has '111+ agents', contradicting build-with-quality's own references/agents.md:7 ('114+ Specialized Agents')",
+          "fix": "Sync the number with whatever build-with-quality settles on after its own recount (see that skill's finding).",
+          "cross_skill": ["build-with-quality"]
+        },
+        {
+          "class": "duplicate",
+          "severity": "low",
+          "evidence": "routing-table.md:20-24 gives sparc-methodology, build-with-quality, prd2build, bhil-methodology, verification-quality distinct trigger phrases ('spec through deployment/SPARC' vs 'implement/feature/TDD/quality gates' vs 'I have a PRD' vs 'SPEC/ADR/TASK chain' vs 'verify/rollback/confidence score'), and every one of the five SKILL.md files has an explicit 'when not to use → other skill' redirect naming the other four — this is a deliberately disambiguated pentad, not lexical duplication, though 'implement'/'feature' could plausibly still fire both build-with-quality and prd2build/bhil-methodology on an ambiguous prompt",
+          "fix": "No merge warranted; the SKILL-DIRECTORY 'sequential phases, not competing' claim holds up under inspection. Consider tightening prd2build/bhil-methodology's description keywords to front-load 'PRD'/'traceability' ahead of 'implement' to reduce false-positive co-triggering.",
+          "cross_skill": ["build-with-quality", "prd2build", "bhil-methodology", "verification-quality"]
+        }
+      ]
+    },
+    {
+      "skill": "prd2build",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "model-fit",
+          "severity": "med",
+          "evidence": "SKILL.md:64 'Spawn the whole batch in one message and let the Task tool block until every agent completes' — the 8-agent documentation batch is defined entirely in terms of Claude Code's Task tool, with no mention this is Claude-only",
+          "fix": "Add a one-line note that the 8-agent batch spawn assumes Claude Code's Task tool; document a sequential/CLI fallback for GPT-6 Astra via Codex (which has no equivalent built-in subagent tool).",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "bhil-methodology",
+      "verdict": "keep",
+      "health": 7,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "examples/ADR-001-model-selection.md:3,16,40,60,68,78 and guides/07-ruflo-ruvector-setup.md:169 use 'Claude Sonnet 4'/'Claude Opus 4' as the winning/compared models in a worked ADR-MODEL-SELECTION example, with no dateline or 'illustrative, not current' disclaimer; current lineup is Fable 5.1 / Opus 5 / Sonnet 5 / Haiku 4.5 (Haiku 4.5 itself is coincidentally still current)",
+          "fix": "Add a one-line disclaimer at the top of examples/ADR-001-model-selection.md that the models/figures are a frozen illustrative example, or refresh the model names to the current lineup so the worked example doesn't read as live guidance.",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "low",
+          "evidence": "templates/EVAL-SUITE-TEMPLATE.yaml:29 commented example '# - id: openai:gpt-4o'",
+          "fix": "Swap the commented example id to a current-generation model (e.g. openai:gpt-6-astra) so copy-paste doesn't propagate a retired id.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "verification-quality",
+      "verdict": "fix",
+      "health": 3,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "SKILL.md:39-49 and references/complete-guide.md:1-60+ instruct `npx claude-flow@alpha truth`, `verify check --file ... --threshold ...`, `verify rollback --last-good`, plus (per complete-guide.md, not re-quoted here) `verify batch`/`report`/`dashboard`/`watch`. Live checks: `claude-flow truth --help` → 'Unknown command: truth'; `claude-flow verify --help` → real command is 'Verify installed artifact against the signed witness manifest' with only `--branch`/`--manifest`/`--json` flags — no check/rollback/batch/report/dashboard/watch/threshold/file surface exists at all in the installed ruflo v3.38.21 binary.",
+          "fix": "Rewrite the skill around what `ruflo verify` (witness-manifest verification) actually does, or retire the skill if that scope isn't useful standalone. Do not present the truth-scoring/rollback/dashboard CLI as current.",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "mcp__ruvnet-brain__search_ruvnet on 'truth scoring verification rollback' returns the upstream ruflo repo's OWN current copy of this same skill (repo 'ruflo', path '.agents/skills/verification-quality/SKILL.md') which already carries a corrective banner: '> Shipped vs. aspirational. The concrete, in-CI verification stack ... is real and runs on every push. The truth-scoring / auto-rollback / WebSocket-dashboard surface described later in this doc is partly shipped (`ruflo verify` runs the witness checks) and partly design.' agentbox's copy has no such banner anywhere in SKILL.md or references/complete-guide.md.",
+          "fix": "Pull the 'Shipped vs. aspirational' framing and the corrected 'CI Guards' section from upstream's current version of this skill rather than the older aspirational draft this copy was forked from.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "security-testing",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "skill-router/references/routing-table.md has no entry for security-testing (confirmed by grep across the file); it is also absent from SKILL-DIRECTORY.md's routing but present as a full table row (SKILL-DIRECTORY.md:73) with a clear boundary note ('not for Linux hardening — use defense-security')",
+          "fix": "Add a routing-table.md row, e.g. 'OWASP/API/dependency security testing | `security-testing` | \"OWASP\", \"pen test\", \"CVE scan\", \"secrets scan\"' so /route can reach it without a full SKILL-DIRECTORY scan.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "defense-security",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "'Integration with Other Skills' section lists build-with-quality, report-builder, sparc-methodology, github-workflow-automation but not security-testing, even though security-testing's own SKILL.md links back to defense-security under 'See also'",
+          "fix": "Add security-testing to the integration list for a symmetric cross-link (app-layer vs system-layer security).",
+          "cross_skill": ["security-testing"]
+        }
+      ]
+    },
+    {
+      "skill": "rust-development",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "med",
+          "evidence": "SKILL.md:2 'name: Rust Development' vs directory `rust-development` — one of the estate's 7 confirmed Title-Case-name-vs-dir mismatches",
+          "fix": "Change frontmatter name to `rust-development` (lowercase-hyphen, matching the directory) per the ruflo SKILL.md validator and the agentskills.io standard both Fable and Codex consume.",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "med",
+          "evidence": "SKILL.md's entire body (Commands, Cargo.toml Example, Common Patterns) is generic public rustup/cargo documentation with no mention of the workspace's pinned toolchain (flake.nix:901-923 pins `rust-bin.stable.latest` via rust-overlay plus a nightly toolchain for llvm-tools, and builds a dedicated `rustPlatformFleet`/`rustPkgs`), the global 'never hand-roll cryptography, use RustCrypto crates' policy (~/.claude/CLAUDE.md), or the crates.io-publishing workflow for clean-room ports — none of the house-specific guidance that would actually matter here is present",
+          "fix": "Add a short section pointing at the pinned toolchain (rust-overlay stable + nightly llvm-tools, wasm32-unknown-unknown target already baked — no need to `rustup target add`), and the RustCrypto/crates.io publishing policy, so the skill earns its entry-budget instead of duplicating public docs.",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "low",
+          "evidence": "SKILL.md's 'Related Skills' section says 'None currently required', but cuda/SKILL.md and pytorch-ml don't cite it either at that spot — however cuda/SKILL.md's own 'Related Skills' list DOES include 'rust-development - Safe CUDA bindings in Rust', an unreciprocated link",
+          "fix": "Add cuda, leptos, and wasm-js to rust-development's Related Skills so the existing one-way references become two-way.",
+          "cross_skill": ["cuda", "leptos"]
+        }
+      ]
+    },
+    {
+      "skill": "cuda",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "SKILL.md footer: 'Container GPUs: 3x (RTX A6000 + 2x Quadro RTX 6000)'. Live check `nvidia-smi -L`: 'GPU 0: NVIDIA RTX A6000 ... GPU 1: NVIDIA RTX 6000 Ada Generation ... GPU 2: NVIDIA RTX 6000 Ada Generation'. 'Quadro RTX 6000' (Turing, sm_75, 2018) and 'RTX 6000 Ada Generation' (Ada Lovelace, sm_89, current) are different architectures.",
+          "fix": "Correct the footer to 'RTX A6000 + 2x RTX 6000 Ada Generation' — this matters in practice for nvcc `-arch`/`-gencode` flags and occupancy/shared-memory guidance the skill gives via references/optimisation.md.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "pytorch-ml",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "human-architect-mindset",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "SKILL.md:5 carries a non-standard `when_to_use:` frontmatter key duplicating content already covered by the description's 'Use when...' clause",
+          "fix": "Fold `when_to_use` into the description (lint doesn't check key vocabulary, so this won't be caught automatically) or drop it as redundant.",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "low",
+          "evidence": "Description keywords ('system design', 'technology choices', 'architecture', multi-component decisions) overlap substantially with negentropy-lens ('architecture decision', 'system design', 'auditing an existing system') and vanity-engineering-review ('architecture proposals', 'technology selection decisions') — all three could plausibly fire on one prompt like 'review this architecture proposal'",
+          "fix": "No merge warranted (distinct angles: domain/loyalty vs entropy/tacit-knowledge vs over-engineering detection) but cross-link all three explicitly so a router or model picks a primary lens rather than stacking all three.",
+          "cross_skill": ["negentropy-lens", "vanity-engineering-review"]
+        }
+      ]
+    },
+    {
+      "skill": "vanity-engineering-review",
+      "verdict": "fix",
+      "health": 7,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "'When Not to Use' section: 'For performance profiling and optimisation -- use the pytorch-ml or cuda skills as appropriate'. pytorch-ml and cuda are ML/GPU domain skills, not general performance-profiling tools; the estate has a dedicated `performance-analysis` skill (referenced by name from sparc-methodology, verification-quality and build-with-quality) that is the actual general-purpose redirect target.",
+          "fix": "Change the redirect to 'use performance-analysis for general profiling; cuda/pytorch-ml only for GPU-kernel- or training-specific perf work'.",
+          "cross_skill": ["cuda", "pytorch-ml"]
+        },
+        {
+          "class": "duplicate",
+          "severity": "low",
+          "evidence": "'Integration with Negentropy Lens' section cross-references negentropy-lens, but negentropy-lens/SKILL.md has no 'Related skills' section and doesn't reciprocate — consistent with the fact sheet listing negentropy-lens as isolated in the cross-reference graph despite being pointed to from here",
+          "fix": "See negentropy-lens finding — add a two-way link.",
+          "cross_skill": ["negentropy-lens"]
+        }
+      ]
+    },
+    {
+      "skill": "negentropy-lens",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "Flagged as one of the estate's 24 cross-reference-graph-isolated skills; confirmed the SKILL.md has no 'Related skills' section at all, even though vanity-engineering-review already links to it one-way ('Integration with Negentropy Lens')",
+          "fix": "Add a short 'Related skills' section linking back to human-architect-mindset and vanity-engineering-review to close the loop and de-isolate it in the graph.",
+          "cross_skill": ["vanity-engineering-review", "human-architect-mindset"]
+        }
+      ]
+    }
+  ],
+  "cluster_recommendation": "The five-skill methodology pentad (sparc-methodology, build-with-quality, prd2build, bhil-methodology, verification-quality) genuinely is disambiguated, not duplicative — every SKILL.md redirects to the other four by name and routing-table.md gives each distinct trigger phrases — so SKILL-DIRECTORY's 'sequential phases, not competing' claim survives testing. The real problem is CLI rot, verified directly against the installed ruflo v3.38.21 binary: `sparc` and `truth` are not recognised top-level commands at all, and `verify` exists but does something completely different (signed-witness-manifest checking, not per-file truth scoring/rollback) — verification-quality's entire command surface is fictional against this build, and ruvnet-kb's own current copy of the same upstream skill already carries a 'shipped vs. aspirational' correction that agentbox's copy never received. For 'build feature X with tests' a Fable-class model should route to build-with-quality (MCP path preferred, e.g. `mcp__claude-flow__swarm_init`/`task_orchestrate`, which are live); GPT-6 Astra via Codex has no Task-tool or Claude-only MCP path but the CLI/global-`claude-flow`-binary route works identically for both models once the `sparc`/`truth` examples are fixed — the model-fit gap here is 'stale CLI for everyone', not a Claude-vs-Codex split. security-testing/defense-security/build-with-quality's deepsec-gate have clean, non-overlapping scopes (app-layer OWASP vs Linux hardening vs automated CI diff gate) confirmed by reading all three bodies; deepsec-gate.sh and its ADR-2033 both exist and match. rust-development is thin and generic relative to the estate's Rust-first, RustCrypto-only, crates.io-publishing policy, and its frontmatter name doesn't match its directory; cuda is otherwise strong but states the wrong GPU model for two of the container's three cards (Quadro RTX 6000 vs the actual RTX 6000 Ada Generation), a correctness issue with real consequences for arch flags. The three thinking-lens skills (human-architect-mindset, vanity-engineering-review, negentropy-lens) overlap on architecture/design-decision trigger vocabulary but are angle-distinct enough not to merge; negentropy-lens remains graph-isolated only because nothing links back to it, and vanity-engineering-review's performance redirect points at the wrong skills (pytorch-ml/cuda instead of performance-analysis).",
+  "unverifiable_items": [
+    "Whether build-with-quality's true agent count is 111+, 114+, or the 76 seen in a ruvnet-kb v3 planning doc — no single authoritative live count was found; only the internal 111+/114+ mismatch and the ecosystem doc's lower figure are confirmed.",
+    "Whether 'gpt-5.3-codex-spark' (build-with-quality/config/skill.yaml:351, a fast/cheap Codex sub-tier distinct from the chat model gpt-6-astra) is a real current OpenAI/Codex product name or a stale leftover — not groundable via ruvnet-brain (OpenAI-side, not RuvNet ecosystem) and no other estate doc corroborates or contradicts it."
+  ]
+}

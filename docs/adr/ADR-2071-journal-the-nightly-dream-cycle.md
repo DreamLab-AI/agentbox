@@ -26,7 +26,7 @@ agent-initiated side effect proceeds unjournalled* (503 rather than a silent spa
 The nightly dream cycle is the largest side-effect path in the box and does not
 cross it: `services/dream-engine` is a separate Rust process (~8.5k lines,
 `Engine::cycle_repo` ≈830 of them) supervised as `[program:dream-engine]`, and its
-ten side effects — SSH clone and remote evaluator runs on the HP annexe, external
+ten side effects — SSH clone and remote evaluator runs on the connected node annexe, external
 LLM calls, git worktree and patch apply, `git push` plus a draft GitHub PR, ledger
 append, RuVector write, operator-inbox writes, a public forum post as JunkieJarvis,
 `ssh rm -rf` cleanup — reach nothing that a journal sees. It makes no HTTP call to
@@ -69,7 +69,7 @@ The proposal is therefore staged, and **journalling comes before policing**:
   **auditability, not enforcement**, and must not be described as closing
   divergence 1.
 - **Phase 2 — policing — is out of scope here** and blocked on an approver. It needs
-  honest per-capability classification of the ten side effects, guards for the HP
+  honest per-capability classification of the ten side effects, guards for the connected node
   and GitHub egress, and a decision on whether a night may proceed unapproved.
 
 ## Consequences

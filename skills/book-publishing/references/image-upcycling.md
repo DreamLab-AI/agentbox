@@ -5,8 +5,8 @@ before the final build.
 
 ## Default path: ImageMagick (no API, no network)
 
-The container ships ImageMagick 7 and **no configured Gemini CLI/API path**, so this is
-the default. It is deterministic, offline, and never hallucinates text — always start here.
+This is the default when no Gemini API key is provisioned. It is deterministic,
+offline, and never hallucinates text — always start here if in doubt.
 
 ```bash
 # Upscale + light sharpen; vector sources (PDF charts) don't need this at all.
@@ -22,54 +22,26 @@ Notes:
 
 ## Optional path: Gemini image enhancement (requires API access)
 
-Only usable if a Google Gemini API key is provisioned (`GOOGLE_API_KEY` /
-`GEMINI_API_KEY`) and the `google-genai` package is installed
-(`uv pip install google-genai`). This is an **AI** enhancement: it can subtly alter text
-labels and data values, so treat its output as a candidate that must be visually verified
-against the source before use.
+A Gemini image path exists when `GOOGLE_API_KEY` is provisioned — the same key the
+`art` skill's nano-banana models consume. This is an **AI** enhancement: it can subtly
+alter text labels and data values, so treat its output as a candidate that must be
+visually verified against the source before use.
 
-Uses the current unified `google-genai` client (`from google import genai`) — **not** the
-deprecated `google.generativeai` SDK — and a current image-capable model
-(`gemini-2.5-flash-image`; check the model list for the latest id).
-
-```python
-import os
-from google import genai
-from google.genai import types
-
-client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
-
-with open("diagram.png", "rb") as f:
-    img_bytes = f.read()
-
-response = client.models.generate_content(
-    model="gemini-2.5-flash-image",  # current image model; verify with client.models.list()
-    contents=[
-        types.Part.from_bytes(data=img_bytes, mime_type="image/png"),
-        (
-            "Enhance this diagram for professional publication. "
-            "Preserve all text labels, data values, and structural relationships exactly. "
-            "Improve visual clarity, contrast, and professional appearance. "
-            "Output at 2x the input resolution minimum."
-        ),
-    ],
-)
-
-# Image parts come back as inline_data; write the first image part out.
-for part in response.candidates[0].content.parts:
-    if getattr(part, "inline_data", None) and part.inline_data.data:
-        with open("diagram_enhanced.png", "wb") as out:
-            out.write(part.inline_data.data)
-        break
-```
+Do not hand-roll the SDK call here. The current model ids (nano-banana-2 /
+`gemini-3.1-flash-image-preview`, nano-banana-pro / `gemini-3-pro-image-preview`), the
+`generate-image.ts` CLI route, and the raw-SDK fallback all live in one place, already
+built for this exact pipeline:
+[`art/references/diagram-upcycling.md`](../../art/references/diagram-upcycling.md)
+("Integration with LaTeX (book-publishing pipeline)"). Use it so model ids stay current
+in one place instead of drifting between skills.
 
 **Guardrails:**
 - High output resolution (≥2×) mitigates AI text hallucinations in enhanced images, but does
   not eliminate them — diff every enhanced diagram against its source (browser sidecar
   screenshot compare) before shipping.
-- If the key or package is absent, fall back to the ImageMagick path above; the pipeline must
+- If the key is absent, fall back to the ImageMagick path above; the pipeline must
   still complete offline.
 
 ## Related
 
-- `art` skill — Gemini API image enhancement conventions.
+- `art` skill, specifically [`references/diagram-upcycling.md`](../../art/references/diagram-upcycling.md) — Gemini API image enhancement conventions and current model ids.

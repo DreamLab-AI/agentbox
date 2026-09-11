@@ -545,13 +545,13 @@ report_builder = true
 mermaid = true
 
 [skills.design]
-# open-design: structured intake pipeline, 129 brand specs, 5-dimensional critique gate,
-# P0/P1/P2 checklists, layout libraries (web/mobile/dashboard/deck). Default off.
+# open-design: structured intake pipeline, 138 brand specs, 5-dimensional critique gate,
+# P0/P1/P2 checklists, layout libraries (web/mobile/dashboard/deck). Default on (`open_design = true` below).
 # NOT a replacement for the setup wizard SPA (PRD-012 / ADR-024).
 open_design = true
 
 [skills.research]
-# web-researcher-mcp (Go binary, v1.36.4). Provides ~26 MCP research tools
+# web-researcher-mcp (Go binary, v1.43.0). Provides 21 MCP research tools
 # (search incl. domain/clinical/legal/econ/SEC, citation integrity, grounded answer, lenses).
 # Headless-browser scrape tier is force-disabled at runtime; JS-rendered
 # pages route to the external browsercontainer sidecar (`browser` skill).
@@ -651,7 +651,7 @@ embed_batch = 32                    # passages per Xinference /v1/embeddings cal
 [skills.tree_search_coder]
 # Execution-gated tree-search. Generates N candidates, executes each
 # in fresh kernel, scores by assertion pass. Slow path — explicitly
-# invoked, never auto-routed. Phase 2 — off by default.
+# invoked, never auto-routed. Enabled in the live manifest (explicit invocation only, never auto-routed).
 enabled = true
 max_candidates = 5
 per_branch_timeout_s = 60
@@ -684,7 +684,7 @@ local_authoring = false
 # be raised if the KV budget allows.
 [skills.ontology.condense]
 enabled = true
-endpoint = "http://192.168.2.132:8084/v1"   # Ontology Loom façade (model-swap door; DNAT via ml). Was the dead .48 host.
+endpoint = "${LOOM_BASE_URL}"   # Ontology Loom façade (model-swap door; DNAT via ml). Was the dead .48 host.
 model = "qwen3.8-27B"
 style = "openai"                            # openai | ollama
 max_concurrency = 2                         # llama.cpp serves multiple KV slots
@@ -1311,7 +1311,7 @@ proxy_port  = 9096                  # nip98-proxy listen port — the sole IDENT
 # roster's operator key. Empty list = any validly-signed key (NOT recommended).
 [interaction_plane.proxy]
 allowed_pubkeys = [
-  "c32b71bc1d4ab9d25cd0bd2a457ede15e6538d0d6311fc3c0543f9e8ca1bc13c",  # agentbox-core on HP-Desktop — peer node (added 2026-09-02, HP mesh bring-up)
+  "c32b71bc1d4ab9d25cd0bd2a457ede15e6538d0d6311fc3c0543f9e8ca1bc13c",  # agentbox-core on the connected node — peer node (added 2026-09-02, the connected node mesh bring-up)
   "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare (dreamlab roster)
   "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # visionclaw-server governance publisher / active NIP-07 signer
   "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # agentbox sovereign / house key (browsercontainer Podkey vault)
@@ -1393,9 +1393,9 @@ worktree      = true
 eager_mandate = false
 
 [[interaction_plane.session_seeds]]
-slug          = "loom-raw"            # Raw Qwen via :8085 — no Loom scaffold, for coding tasks
+slug          = "loom-raw"            # Model-agnostic Loom passthrough; legacy slug preserves sessions
 tool          = "opencode"
-model         = "loom-raw/qwen3.8-27B"
+model         = "loom-agent/current"
 worktree      = true
 eager_mandate = false
 
@@ -1418,15 +1418,14 @@ eager_mandate = false
 # Documentation-as-data for the voice plane. This is a SIDECAR with its own
 # lifecycle (./agentbox.sh voice up|down|...), NOT part of ./agentbox.sh up —
 # so `enabled` here is descriptive state for /v1/system, not a boot gate. The
-# caddy console (docker-compose.voice.yml) plus the external Kyutai Unmute
-# speech stack (voice-stack/unmute clone, layered via voice/unmute-override.yml)
-# give one same-origin operator cockpit unifying the voice loop and the AoE
-# session board. See agentbox/voice/README.md.
+# Caddy console plus the external web client/backend sources give one
+# same-origin operator cockpit. Nemotron ASR and Pocket TTS are shared
+# and follows the core AgentBox lifecycle via docker-compose.speech.yml.
 [voice]
 enabled              = false            # sidecar state (apply-class: sidecar — its own lifecycle, not `agentbox up`)
 console_port         = 8444             # operator cockpit origin (self-signed TLS; mic secure-context)
-debug_port           = 8443             # stock Unmute demo UI (diagnostics only)
-unmute_build_context = "../voice-stack/unmute"  # external Kyutai fork clone (26 GB, not vendored); override VOICE_UNMUTE_DIR
+debug_port           = 8443             # web voice debug UI (diagnostics only)
+unmute_build_context = "../voice-stack/unmute"  # external web/backend source checkout; override VOICE_UNMUTE_DIR
 
 [toolchains]
 claude = true
@@ -1738,15 +1737,15 @@ writable_volumes = ["tailscale-state:/var/lib/tailscale"]
 cap_add = ["NET_ADMIN"]
 reason = "tailscaled needs persistent state dir and NET_ADMIN for userspace networking socket"
 
-# ── Dream Machine HP annexe (ADR-052/053) ─────────────────────────────────────
-# Overnight evidence-gated evolution against nominated repos, dispatched to HP
-# (10.10.10.1, 25G rail) using the self-hosted Loom/Qwen model exclusively.
+# ── Dream Machine the connected node annexe (ADR-052/053) ─────────────────────────────────────
+# Overnight evidence-gated evolution against nominated repos, dispatched to the connected node
+# (the connected node, 25G rail) using the self-hosted Loom/Qwen model exclusively.
 # Off by default (byte-identical-when-off). Enable to start nightly cycles.
 [dream_machine]
 enabled                = true
-hp_host                = "john@10.10.10.1"
-hp_annexe_dir          = "/home/john/dream-annexe"
-loom_url               = "http://192.168.2.132:8084/v1"
+hp_host                = "${CONNECTED_NODE_SSH}"
+hp_annexe_dir          = "${CONNECTED_NODE_HOME}/dream-annexe"
+loom_url               = "${LOOM_BASE_URL}"
 # Wire alias only. Documented weight variant: Heretic abliterated Qwen3.8-27B Q8_0;
 # this alias is not an attestation of the running GGUF (see Loom QWEN3.8-CONNECTION.md).
 loom_model             = "qwen3.8-27B"

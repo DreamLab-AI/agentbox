@@ -214,3 +214,5 @@ Combine with:
 - `report-builder`: Generate compliance audit reports in PDF/HTML
 - `sparc-methodology`: Include security hardening in architecture specifications
 - `github-workflow-automation`: Trigger security scans on PR merge
+- `security-testing`: app-layer security testing (OWASP/API/dependency/CVE scans) —
+  this skill covers system/Linux-hardening; use both for full-stack coverage

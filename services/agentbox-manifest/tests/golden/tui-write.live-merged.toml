@@ -182,7 +182,7 @@ direct_axiom_load = false
 
 [skills.ontology.condense]
 enabled = true
-endpoint = "http://192.168.2.132:8084/v1"
+endpoint = "${LOOM_BASE_URL}"
 model = "qwen3.8-27B"
 style = "openai"
 max_concurrency = 2
@@ -916,9 +916,9 @@ reason = "consultant tier writes JSONL audit log per call"
 
 [dream_machine]
 enabled = true
-hp_host = "john@10.10.10.1"
-hp_annexe_dir = "/home/john/dream-annexe"
-loom_url = "http://192.168.2.132:8084/v1"
+hp_host = "${CONNECTED_NODE_SSH}"
+hp_annexe_dir = "${CONNECTED_NODE_HOME}/dream-annexe"
+loom_url = "${LOOM_BASE_URL}"
 loom_model = "qwen3.8-27B"
 loom_max_tokens = 32768
 llm_provider = "zai"

@@ -25,8 +25,8 @@ fn strip_v1_suffix(url: &str) -> String {
 /// Pick the first reachable Loom façade, once per process. Mirrors
 /// `resolve_loom_url`'s module-level memoisation (`_RESOLVED_LOOM_URL`).
 ///
-/// The LAN address (via machinelearn's hp-nat DNAT) is canonical; the 25G
-/// rail address reaches HP directly when the DNAT is down. Both serve the
+/// The LAN address (via the gateway host's hp-nat DNAT) is canonical; the 25G
+/// rail address reaches the connected node directly when the DNAT is down. Both serve the
 /// same façade on `:8084`.
 pub async fn resolve_loom_url(loom_url: &str, loom_fallback_urls: &[String]) -> String {
     {
@@ -138,8 +138,8 @@ mod tests {
     #[test]
     fn strips_trailing_v1() {
         assert_eq!(
-            strip_v1_suffix("http://192.168.2.132:8084/v1"),
-            "http://192.168.2.132:8084"
+            strip_v1_suffix("http://loom:8080/v1"),
+            "http://loom:8080/v1"
         );
     }
 

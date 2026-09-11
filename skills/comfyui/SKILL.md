@@ -10,6 +10,10 @@ distributed GPU compute via the Salad Cloud API. ComfyUI runs in an **external
 Docker container** reached over the Docker network — you talk to it through its
 HTTP API, never the local filesystem.
 
+`agentbox.toml`'s `skills.media.comfyui_builtin = false` and this skill's
+`mcp.json` entry `"x-agentbox-gate": "env:ENABLE_COMFYUI_EXTERNAL"` name the
+same fact: ComfyUI is not baked into the image, it runs externally.
+
 ## Container architecture (read first)
 
 ComfyUI runs in an EXTERNAL Docker container, not locally. When calling from Claude
@@ -124,3 +128,7 @@ Bundled runnable assets in this directory:
 - **ffmpeg-processing** — assemble/transcode generated video
 - **blender** — 3D-to-2D workflows
 - **pytorch-ml** — custom model training
+
+## Related skills
+
+- `art` for editorial illustration, infographics and comics via the Nano Banana image models; ComfyUI is the local-GPU FLUX/Stable Diffusion/video path.

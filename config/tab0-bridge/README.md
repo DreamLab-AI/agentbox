@@ -60,10 +60,12 @@ path. Auth is therefore global, with two carriers and one hard startup gate:
     network (set in `agentbox/voice/unmute-override.yml`);
   - the **console via Caddy**, which forwards `Authorization` on `/aoe/*` etc.;
   - any CLI caller.
-- **`?token=<BRIDGE_TOKEN>` query param** — for **browser WebSocket** clients,
-  which cannot set request headers on the `/feed` upgrade. Connect to
-  `wss://…/feed?token=<TOKEN>`. Accepted on any surface as a fallback to the
-  header.
+- **`?token=<BRIDGE_TOKEN>` query param** — direct bridge compatibility only.
+  The console goes through the identity proxy, using its NIP-07 session cookie,
+  `?auth=<signed-event>`, or the opt-in `?access_token=` break-glass carrier.
+  For signed requests forwarded by the loopback proxy, the bridge verifies the
+  public `X-Forwarded-Host` and restores the stripped `/bridge` prefix; `/feed`
+  is forwarded unchanged. The signature and signer allowlist remain enforced.
 - **`BRIDGE_BIND`** (default `0.0.0.0`) — the listen interface. `0.0.0.0` keeps
   the bridge reachable at `agentbox:8971` for the Unmute backend. A **non-loopback
   bind with no `BRIDGE_TOKEN` set is refused at startup** (`process.exit(1)`) —

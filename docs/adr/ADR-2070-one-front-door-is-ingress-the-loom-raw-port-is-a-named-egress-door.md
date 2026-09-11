@@ -28,10 +28,10 @@ design as a governance breach, and it is a category error. ADR-045 is about
 NIP-98-verifying proxy on `:9096` as sole identity ingress
 (`docs/archive/adr/ADR-045-sovereign-ingress-npub-front-door.md`). The Loom
 endpoints are **egress**: the box reaching **out** to a LAN model host on
-machinelearn. Two different planes; ADR-045 never spoke to the second. Meanwhile the
+the gateway host. Two different planes; ADR-045 never spoke to the second. Meanwhile the
 raw door is not an accident — it is named in two places
 (`agentbox.toml` `[[interaction_plane.session_seeds]]` `slug = "loom-raw"`,
-`flake.nix` `LOOM_RAW_BASE_URL` defaulting to `http://192.168.2.132:8085/v1`) with a
+`flake.nix` `LOOM_RAW_BASE_URL` defaulting to `${CONNECTED_NODE_URL}/v1`) with a
 stated purpose.
 
 ## Decision
@@ -72,8 +72,8 @@ these conditions:
 ## Verification
 
 At `e070514d808b218574403377fb75e0e1a0a256b3`: the façade is `agentbox.toml`
-`[dream_machine].loom_url = "http://192.168.2.132:8084/v1"`; the raw door is
-`flake.nix` `LOOM_RAW_BASE_URL` (default `http://192.168.2.132:8085/v1`) and the
+`[dream_machine].loom_url = "${LOOM_BASE_URL}"`; the raw door is
+`flake.nix` `LOOM_RAW_BASE_URL` (default `${CONNECTED_NODE_URL}/v1`) and the
 `slug = "loom-raw"` / `model = "loom-raw/qwen3.8-27B"` session seed in
 `agentbox.toml [[interaction_plane.session_seeds]]`, commented "Raw Qwen via :8085 —
 no Loom scaffold, for coding tasks". ADR-045's scope was read directly from its

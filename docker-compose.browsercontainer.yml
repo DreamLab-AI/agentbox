@@ -29,7 +29,7 @@ services:
       #     non-secure origins. Without `visionclaw_container:3001` in
       #     this list, the client silently falls back to WebGL and the
       #     embedding-cloud rendering path swamps the GPU.
-      - TREAT_AS_SECURE=http://visionclaw_container:3001,http://visionclaw_container:3000,http://visionclaw_container:4000,http://192.168.2.132:3001,http://192.168.2.132:3000,http://host.docker.internal:3001,http://host.docker.internal:3000
+      - TREAT_AS_SECURE=http://visionclaw_container:3001,http://visionclaw_container:3000,http://visionclaw_container:4000,http://the model host:3001,http://the model host:3000,http://host.docker.internal:3001,http://host.docker.internal:3000
     deploy:
       resources:
         limits:

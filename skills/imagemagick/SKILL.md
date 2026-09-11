@@ -85,6 +85,10 @@ batch_process({
 |----------|---------|-------------|
 | `IMAGEMAGICK_TIMEOUT` | `300` | Command timeout in seconds |
 
-## VisionClaw Integration
+## Host Discovery Integration
 
-This skill exposes `imagemagick://capabilities` resource for discovery by VisionClaw's MCP TCP client on port 9500.
+This skill exposes `imagemagick://capabilities` resource for discovery by the host project's MCP TCP client on port 9500.
+
+## Related skills
+
+- `art` for generating new editorial images; ImageMagick only transforms existing ones (convert, resize, crop, batch).

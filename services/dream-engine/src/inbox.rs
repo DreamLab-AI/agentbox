@@ -166,7 +166,7 @@ mod tests {
     fn extracts_numbered_recommendations() {
         let report = "\
 ## Summary
-- **Human action recommended:** (1) Re-provision the HP annexe workspace. (2) Re-run pin-parity manually.
+- **Human action recommended:** (1) Re-provision the connected node annexe workspace. (2) Re-run pin-parity manually.
 - **Next steps:** something else
 ";
         let qs = extract_questions(report);
@@ -178,7 +178,7 @@ mod tests {
     fn extracts_bullet_list_form() {
         let report = "\
 **Human action recommended:**
-- Re-provision the HP annexe workspace mount.
+- Re-provision the connected node annexe workspace mount.
 - Verify pin parity once readable.
 
 Other text.

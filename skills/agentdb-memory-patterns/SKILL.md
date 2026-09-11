@@ -5,6 +5,8 @@ description: "Implement persistent memory patterns for AI agents using AgentDB �
 
 # AgentDB Memory Patterns
 
+AgentDB is a standalone RuvNet package, not this deployment's memory path; durable agent/project memory here is RuVector-postgres via `mcp__claude-flow__memory_*` (bge-small-en-v1.5, 384-dim) — see [KHIVE-LEARNINGS.md §3](KHIVE-LEARNINGS.md) for the detailed comparison.
+
 For AgentDB architecture and performance overview, see [AgentDB Overview](../agentdb-advanced/docs/agentdb-overview.md).
 
 ## What This Skill Covers

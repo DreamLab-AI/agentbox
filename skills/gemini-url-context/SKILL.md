@@ -141,8 +141,8 @@ Responses include `urlContextMetadata` with:
 # Set API key (add to .env or export)
 export GOOGLE_API_KEY="your-api-key"
 
-# Or add to /home/devuser/.claude/skills/.env
-echo 'GOOGLE_API_KEY=your-key' >> /home/devuser/.claude/skills/.env
+# Or add to your skills .env
+echo 'GOOGLE_API_KEY=your-key' >> "$HOME/.claude/skills/.env"
 ```
 
 ## Troubleshooting

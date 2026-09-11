@@ -169,6 +169,17 @@ vocabulary and framework naturally. Ground abstract concepts in concrete example
 One or two sentences noting the entropy/negentropy dimension. Don't derail the conversation —
 just surface the lens and let the user decide whether to go deeper.
 
+## Related skills
+
+Overlapping architecture/design-decision trigger vocabulary, angle-distinct — use one
+primary lens per review rather than stacking all three:
+
+- `human-architect-mindset` — domain modelling, systems thinking, constraint navigation
+  for decisions AI can't own.
+- `vanity-engineering-review` — detects over-engineering and unjustified complexity
+  specifically; a vanity finding is one manifestation of entropy (see "Integration with
+  Negentropy Lens" in that skill).
+
 ## Anti-Patterns to Watch For
 
 - **Entropy cosplay**: Adding complexity (new tools, frameworks, abstractions) that looks like

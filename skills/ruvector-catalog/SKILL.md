@@ -16,7 +16,10 @@ deep lookups, in `docs/ruvector-reference/INVENTORY.md` (~2,000 lines) in the pr
 directory.
 
 **Freshness**: 113 Rust crates, 56 npm packages, 30 WASM builds, 131 ADRs, 42 examples,
-170 npm exports. Verified 2026-03-30 against commit `ff5acfb2`.
+170 npm exports (2026-03-30 snapshot against commit `ff5acfb2`) — this directory has
+moved on since (README.md now reports "RuVector Catalog v3.5.0"); see
+[BENCHMARK-RESULTS.md](BENCHMARK-RESULTS.md) for the current freshness/qualification
+status rather than trusting this fixed date.
 
 ---
 
@@ -70,3 +73,12 @@ Need a RuVector feature?
 
 Domain overlays (`domains/*.md`) and design records (`docs/adr/`, `docs/ddd/`) provide
 vertical-specific and architectural detail.
+
+## Related skills
+
+- `ruvnet-brain` — source-grounded Q&A across the whole RuvNet ecosystem (ruflo,
+  ruvector, safla, agentdb, agentic-flow, sparc); reach for this catalog instead
+  when the question is specifically "what RuVector capability solves X" or a
+  migration off aging vector tech.
+- `agentdb-memory-patterns` / `agentdb-vector-search` — AgentDB is a separate
+  RuvNet package, not a RuVector capability; this catalog does not cover it.

@@ -101,6 +101,11 @@ into a bounded session:
 ADR-045 D2: when set, only those identities pass NIP-98 verification or mint
 sessions. Unset preserves prior behaviour (any validly-signed pubkey).
 
+`GET /nip07/session` probes the existing cookie without contacting an upstream
+or minting a replacement. It returns 200 with the public key for a valid session,
+401 otherwise, with `Cache-Control: no-store`. The cockpit probes this before
+opening its WebSocket to avoid signing again after a successful login.
+
 **Signer not detected?** NIP-07 extensions inject `window.nostr` into page
 JavaScript only — nothing is visible to the server until the page asks for a
 signature. If the handshake page reports no signer, check the extension is

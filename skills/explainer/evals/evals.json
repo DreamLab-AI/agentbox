@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "We just finished a build sprint on ~/workspace/co-created/campaignbuilder for a client. Before I hand it over I need it explained properly to three kinds of people: the marketing users, whoever picks up the code next, and their CTO who is not that technical. Can you set that up?",
+      "prompt": "We just finished a build sprint on ~/workspace/co-created/the target repository for a client. Before I hand it over I need it explained properly to three kinds of people: the marketing users, whoever picks up the code next, and their CTO who is not that technical. Can you set that up?",
       "expected_output": "Scaffolds docs/explainer with the three audience documents grounded in code, ledgers per document, a kb/ and gates/ plan, measured (not quoted) gate numbers, and an honest built-vs-not-built section; states what is not gated yet.",
       "files": []
     },
@@ -18,6 +18,35 @@
       "prompt": "explain what this product does to my CEO in a page, she'll ask what it costs and what could go wrong",
       "expected_output": "One for-executives document in board-memo register with the five trust properties, built/blocked/deferred table, costs only from documented sources, and a decisions checklist; no invented numbers.",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Build an explainer site for the target repository for an experienced engineer who did not write it and is wary of AI-generated filler. Explain the code as it stands, why it is shaped that way, and where to look. Don't narrate how the site was made.",
+      "expected_output": "Sections the site by the system's anatomy (repository, runtime, each service, each lane, consoles, tenant, operating it), not by evidence journeys; writes chapters as Markdown with front matter rendered by a dependency-free build into a reading shell with a source pane; every mechanism claim carries a src:path#Lx-Ly link the build validates; runs the research \u2192 write \u2192 independent check \u2192 revise pipeline; passes scripts/voice-lint.sh with hits=0 (no 'this guide', 'evidence', 'actual/real', drills, fixtures, fix history, media provenance), the target build, a range check and scripts/anatomy-coverage.mjs with no uncovered anchor; drafts on the connected node model in the background rather than through the Loom scaffold; keeps the ledger, receipts and completion audit out of the reader text; records the result in project-state.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Start the executive explainer for ~/workspace/co-created/the target repository for a technically literate CEO or investor, following walkthroughs/executive/teaching-contract.md. Produce only this slice: chapters 1 (purpose and people) and 2 (one campaign change) as Markdown with front matter; one diagram of request to publication; two or three labelled screenshots of a headline change and preview; one 30 to 60 second captioned clip of chapter 2's journey with local narration; and run the gates on each. One src: range in the supplied fact sheet is outside its file. Work on the local model only; when a gate stays red after the capped attempts, write a hand-up packet and continue.",
+      "expected_output": "Two chapters in the executive register that pass voice-lint and the target build; the diagram, screenshots and clip produced through the specialist handoffs with receipts (pocket-tts narration, ComfyUI illustration labelled as illustration, ffmpeg receipt, captions); gates recorded per chapter; exactly one hand-up packet for the seeded bad range, written after a changed retry rather than an identical one, with the run continuing on unblocked work; no cloud model calls from the run; project facts kept in the engagement fixtures, not the skill.",
+      "files": [
+        "walkthroughs/executive/teaching-contract.md"
+      ],
+      "expectations": [
+        "Chapters 1 and 2 exist as Markdown with front matter, written in the executive register rather than an engineer's",
+        "Every src: link in the produced chapters resolves to a file and its line range is inside that file",
+        "scripts/voice-lint.sh reports 0 hits on every produced chapter",
+        "The out-of-range citation supplied in the fact sheet appears in no chapter",
+        "Exactly one hand-up packet was written for that out-of-range citation, after a retry that changed something, and the run continued on unblocked work",
+        "A request-to-publication diagram exists as both source and a render the reader can see",
+        "The screenshots were captured from the running application, with mode and input identity labelled, not authored as markup",
+        "A clip of 30 to 60 seconds exists with captions, a transcript, narration from the local speech service and a render receipt",
+        "Generated illustration is labelled as illustration and never presented as software behaviour",
+        "The media specialists were discovered through the catalogue and loaded, rather than their work improvised in shell",
+        "No provider other than the pinned local profile answered any request",
+        "Gate results are recorded per chapter in the production record, with the date and revision",
+        "Project facts stayed in the engagement fixtures and the skill tree was not modified by the run"
+      ]
     }
   ]
 }

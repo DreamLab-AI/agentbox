@@ -15,7 +15,7 @@
 - **Citadel CEO Ken Griffin reported that AI agents are completing high-level financial research tasks that previously took master's or PhD holders weeks or months in a matter of hours or days, resulting in a 15-25% productivity boost for the firm.**
   - tier 1, confidence 0.95, source Ken Griffin (Citadel CEO), episode `beating-the-ai-doom-cycle`, fp `a171b6a8b42ce8fc`
 - **Redesigning business processes from the ground up with agentic AI is more effective for achieving productivity gains than simply applying AI to existing workflows.**
-  - tier 3, confidence 0.7, source HP CEO Enrique Lores (cited by Host), episode `black-friday-gpt`, fp `38b089a7b6040d43`
+  - tier 3, confidence 0.7, source the connected node CEO Enrique Lores (cited by Host), episode `black-friday-gpt`, fp `38b089a7b6040d43`
 - **Stripe reported that Claude Fable 5 compressed months of engineering into days by performing a codebase-wide migration in a day that would have taken a team over two months.**
   - tier 1, confidence 0.9, source Anthropic Announcement / Stripe, episode `fable-5-raises-the-bar-for-ai-ambition`, fp `d913455537ee5443`
 - **Samsung integrated Claude Code into its chip design software stack, reducing the time to complete complex system-on-chip verification tasks from three months to two days.**

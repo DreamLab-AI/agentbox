@@ -29,7 +29,7 @@ reviewed, deployed code, or running a spec→design→TDD→review pipeline.
 
 ## When not to use
 
-- Full quality engineering with 111+ agents, coverage gates, and defect prediction — use **build-with-quality**.
+- Full quality engineering with 34 agents, coverage gates, and defect prediction — use **build-with-quality**.
 - GitHub-specific code-review swarms on PRs — use **github-code-review**.
 - Queen-led hive-mind / Byzantine consensus without a full dev lifecycle — use **hive-mind-advanced**.
 - PRD-to-documentation generation without the SPARC lifecycle — use **prd2build**.
@@ -61,28 +61,27 @@ snippets: **[references/modes.md](references/modes.md)**.
 
 ## Quick path
 
-Run a single mode (preferred inside Claude Code):
+`mcp__claude-flow__sparc_mode` is the primary, verified path — run a single mode:
 
 ```javascript
 mcp__claude-flow__sparc_mode { mode: "coder", task_description: "implement JWT auth" }
 ```
 
-Or from the terminal:
+Claude Code only: the MCP tool above requires an MCP client. On Codex / GPT-6 Astra:
+run the phase sequentially in one session using the mode's prompt from
+[references/modes.md](references/modes.md) instead.
 
-```bash
-npx claude-flow sparc modes                     # list all modes
-npx claude-flow sparc run <mode> "task"         # run one mode
-npx claude-flow sparc tdd "feature"             # full TDD workflow
-npx claude-flow sparc pipeline "task"           # full spec→completion pipeline
-npx claude-flow sparc batch <mode1,mode2> "task"
-```
+Historical (v2, not current): earlier docs showed a `claude-flow sparc modes|run|tdd|
+pipeline|batch` CLI. The installed ruflo v3.38.21 binary has no `sparc` subcommand
+(`claude-flow sparc --help` → "Unknown command: sparc") — that surface does not exist
+in this image. Use the MCP tool above.
 
 For complex work, initialize a swarm first, then spawn agents and monitor:
 
 ```javascript
-mcp__claude-flow__swarm_init { topology: "hierarchical", strategy: "auto", maxAgents: 8 }
+mcp__claude-flow__swarm_init { topology: "hierarchical", strategy: "adaptive", maxAgents: 8 }
 mcp__claude-flow__sparc_mode { mode: "orchestrator", task_description: "coordinate feature dev" }
-mcp__claude-flow__swarm_monitor { swarmId: "current", interval: 5000 }
+mcp__claude-flow__swarm_status { swarmId: "current" }
 ```
 
 ## References

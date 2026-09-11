@@ -1,0 +1,94 @@
+{
+  "topic": "Synthetic Test Topic Alpha",
+  "topic_slug": "synthetic-test-topic-alpha",
+  "status": "candidate_rejected",
+  "reasons": [
+    "no_target_page: Synthetic Test Topic Alpha.md does not exist in pages-dir"
+  ],
+  "n_assertions": 6,
+  "episodes": [
+    "synthetic-ep-a"
+  ],
+  "assertion_fingerprints": [
+    "aaaa0000000000a1",
+    "aaaa0000000000a2",
+    "aaaa0000000000a3",
+    "aaaa0000000000a4",
+    "aaaa0000000000a5",
+    "aaaa0000000000a6"
+  ],
+  "target_page": "Synthetic Test Topic Alpha.md",
+  "assertions": [
+    {
+      "claim": "Synthetic Test Topic Alpha models now support 128k token context windows in local inference.",
+      "tier": "1",
+      "confidence": "0.9",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-a",
+      "claim_date": "2026-08-23",
+      "evidence": "The host cites a benchmark showing 128k context support shipped this week.",
+      "fp": "aaaa0000000000a1"
+    },
+    {
+      "claim": "Synthetic Test Topic Alpha inference latency dropped by 40 percent after the Q3 kernel rewrite.",
+      "tier": "2",
+      "confidence": "0.85",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-a",
+      "claim_date": "2026-08-23",
+      "evidence": "Benchmarks show a 40% latency reduction attributed to the new kernel.",
+      "fp": "aaaa0000000000a2"
+    },
+    {
+      "claim": "Synthetic Test Topic Alpha now ships a built-in retrieval cache reducing repeated tool calls.",
+      "tier": "2",
+      "confidence": "0.8",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-a",
+      "claim_date": "2026-08-23",
+      "evidence": "The host describes the new retrieval cache cutting duplicate tool calls significantly.",
+      "fp": "aaaa0000000000a3"
+    },
+    {
+      "claim": "Synthetic Test Topic Alpha adds a safety classifier that runs before every generation step.",
+      "tier": "2",
+      "confidence": "0.75",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-a",
+      "claim_date": "2026-08-23",
+      "evidence": "A pre-generation safety classifier was added this release.",
+      "fp": "aaaa0000000000a4"
+    },
+    {
+      "claim": "Synthetic Test Topic Alpha's open weights release drew criticism for its restrictive license terms.",
+      "tier": "3",
+      "confidence": "0.7",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-a",
+      "claim_date": "2026-08-23",
+      "evidence": "Community criticism focused on license restrictions in the open weights release.",
+      "fp": "aaaa0000000000a5"
+    },
+    {
+      "claim": "Synthetic Test Topic Alpha's benchmark suite now includes a long-horizon agentic evaluation track.",
+      "tier": "3",
+      "confidence": "0.65",
+      "source": "Host (AI Daily Brief)",
+      "episode": "synthetic-ep-a",
+      "claim_date": "2026-08-23",
+      "evidence": "A new long-horizon agentic evaluation track was added to the benchmark suite.",
+      "fp": "aaaa0000000000a6"
+    }
+  ],
+  "draft": {
+    "ok": false,
+    "error": "no_target_page",
+    "edit": null
+  },
+  "judge": null,
+  "completeness": {
+    "score": 0.0,
+    "detail": []
+  },
+  "ontology_propose_payload": null
+}

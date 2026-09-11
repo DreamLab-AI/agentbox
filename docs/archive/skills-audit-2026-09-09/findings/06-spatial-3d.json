@@ -1,0 +1,208 @@
+{
+  "batch": "06-spatial-3d",
+  "skills": [
+    {
+      "skill": "blender",
+      "verdict": "keep",
+      "health": 9,
+      "findings": []
+    },
+    {
+      "skill": "comfyui",
+      "verdict": "keep",
+      "health": 9,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "low",
+          "evidence": "agentbox.toml:326 `comfyui_builtin = false` vs skills/mcp.json comfyui entry `\"x-agentbox-gate\": \"env:ENABLE_COMFYUI_EXTERNAL\"` — two independently-named toggles (manifest key `comfyui_builtin`, mcp.json env gate `ENABLE_COMFYUI_EXTERNAL`) describe the same fact (ComfyUI is external, not baked) without cross-referencing each other by name.",
+          "fix": "Note in comfyui/SKILL.md or mcp.json that agentbox.toml's `skills.media.comfyui_builtin` and mcp.json's `ENABLE_COMFYUI_EXTERNAL` env gate are the same concept, to stop a future editor treating them as independent flags.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "lichtfeld-studio",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "agentbox.toml:536 `gaussian_splatting = false` (under `[skills.spatial_and_3d]`, sibling of `qgis = true` / `blender = true`) — lichtfeld-studio/SKILL.md (96 lines, read in full) never mentions this gate, a `gaussian_splatting` toggle, or any ENABLE_* env var; it presents itself as unconditionally live (built binary path, bridge script, port 45677 all stated as present). lichtfeld-studio is also absent from skills/mcp.json's 28-server registry (verified by listing all keys), so nothing centrally documents whether/how this skill is switched on.",
+          "fix": "Add a short 'Gate' note to lichtfeld-studio/SKILL.md stating that `gaussian_splatting` is off by default in agentbox.toml, what that means in practice (binary/bridge must be started manually — matches the skill's own Setup section), and cross-reference spark-scene's honesty pattern ('Loading this skill requires neither the CUDA training gate nor a new MCP daemon') as the model to follow.",
+          "cross_skill": ["spark-scene"]
+        }
+      ]
+    },
+    {
+      "skill": "spark-scene",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skill-router/references/routing-table.md (205 lines, grepped case-insensitively for 'spark-scene') has zero hits — spark-scene is registered (registered-skills.txt:50) so it is always in the native Skill list regardless, but the reference-only routing path omits it, matching the fact sheet's list of 38 skills missing from that file.",
+          "fix": "No action needed beyond the estate-wide routing-table.md regeneration the fact sheet already calls for; low priority since spark-scene is natively registered anyway.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "game-dev",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "game-dev/SKILL.md:70 'Godot 4.6.1 | Native (`godot` on `$PATH`) | Full support, headless testing...' — live-probed `command -v godot4` (rc=1, not found) and `which godot` (not found in image PATH). godot-development/SKILL.md:1 description states the opposite and correctly: 'Godot 4 itself is not installed in this container (see Environment)', and its own Environment section (lines 13-19) explains godot4 is on neither PATH nor /usr/bin. Both skills are cross-linked from the same SKILL-DIRECTORY.md decision tree (lines 775/778/808/811), so an agent following game-dev's table would attempt native `godot4` commands that fail.",
+          "fix": "Correct game-dev/SKILL.md's engine table: mark Godot as host-side/CI-only like Unity and Unreal are already marked, not 'Native', matching godot-development's verified Environment section.",
+          "cross_skill": ["godot-development"]
+        },
+        {
+          "class": "stale",
+          "severity": "low",
+          "evidence": "game-dev/SKILL.md:71 claims 'Blender 5.0.1 | Native (`blender`) |...' — the installed binary is Blender 5.1.2 (`command -v blender` resolves to `.../blender-5.1.2-gpuwrapped/bin/blender`), and blender/SKILL.md:127 itself states 'verified against the installed Blender 5.1.2'.",
+          "fix": "Update the version string in game-dev's engine table to 5.1.2 to match blender/SKILL.md and the live binary.",
+          "cross_skill": ["blender"]
+        }
+      ]
+    },
+    {
+      "skill": "godot-development",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skill-router/references/routing-table.md has zero case-insensitive hits for 'godot-development' or plain 'godot' as a routed target (only game-dev, unreal-engine, lichtfeld-studio, terracraft, qgis, architecture-studio appear); this matches the fact sheet's explicit list of 38 skills missing from that file.",
+          "fix": "No new action — already tracked estate-wide; regenerating routing-table.md will pick it up.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "unreal-engine",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "unreal-engine/SKILL.md:50-58 'Setup' presents `pip install \"soft-ue-cli[mcp]\"` as a plain install step with no caveat; live probe `command -v soft-ue-cli` returns rc=1 (not found). skills/mcp.json's own unreal-engine entry is honest about this: `\"x-agentbox-note\": \"external UE CLI — not present in this image\"`. The SKILL.md never repeats that disclosure, unlike blender/SKILL.md and comfyui/SKILL.md which both state their external/sidecar nature up front.",
+          "fix": "Add a one-line note near the Setup section: soft-ue-cli is not baked into this image (mcp.json: 'not present in this image') and must be installed + a UE5 Editor with the bridge plugin run host-side; the MCP server in this container can only reach it once that external editor process is up.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "meta-xr-sdk",
+      "verdict": "keep",
+      "health": 7,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skill-router/references/routing-table.md has zero hits for 'meta-xr' (case-insensitive grep across the whole 205-line file); the skill is reference-only (absent from registered-skills.txt), so the router is its main discovery path aside from SKILL-DIRECTORY.md:236, which does list it correctly.",
+          "fix": "No new action — matches the fact sheet's known missing-38 list; will be fixed by regenerating routing-table.md.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "terracraft",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "terracraft/SKILL.md:92-95 Quick Start shows bare `terracraft geocode \"Edinburgh Castle\"` / `terracraft generate ...`; live probe `command -v terracraft` returns nothing (not on PATH anywhere in the image — checked nix agentbox-ops bin listing, which ships comfyui-generate/pvgis-fetch/solar-optimize but no terracraft entry). The real entry point is `tools/terracraft.sh` (confirmed present, 8398 bytes), which the top-level Quick Start doesn't name.",
+          "fix": "Either package terracraft.sh as a PATH-installed `terracraft` command via the same nix agentbox-ops route used for comfyui-generate/solar-optimize, or change the Quick Start snippet to `tools/terracraft.sh geocode ...`.",
+          "cross_skill": []
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "tools/terracraft.sh:6 defaults `ARNIS_BIN=\"${ARNIS_BIN:-/usr/local/bin/arnis}\"`; live probe shows no /usr/local/bin/arnis and no compiled arnis binary anywhere (checked /home/devuser/workspace/arnis/target/release/arnis — source checkout present, unbuilt). references/arnis-and-elevation.md:8-15 does disclose 'If arnis is not installed, build from source' + `cargo build --release && cp target/release/arnis /usr/local/bin/`, but that caveat is one reference-file hop away from the SKILL.md Quick Start, which presents the pipeline as ready to run.",
+          "fix": "Add a one-line prerequisite note directly under the Quick Start in terracraft/SKILL.md: 'requires arnis built to /usr/local/bin/arnis — see references/arnis-and-elevation.md if `arnis: command not found`.'",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "qgis",
+      "verdict": "fix",
+      "health": 4,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "high",
+          "evidence": "Three divergent QGIS MCP server implementations coexist with no cross-reference: (1) skills/mcp.json qgis entry runs `python3 /home/devuser/.claude/skills/qgis/mcp-server/server.py`, a shim (qgis/mcp-server/server.py:1-20) that git-clones nkarasiak/qgis-mcp to /home/devuser/workspace/qgis-mcp and delegates via `uv run`; (2) qgis/SKILL.md:13 frontmatter `entry_point: uv run --project /home/devuser/workspace/qgis-mcp src/qgis_mcp/server.py` matches (1); but (3) the actual, always-running supervised process (`supervisorctl status` shows `qgis-mcp RUNNING`; /etc/supervisord.conf `[program:qgis-mcp]` runs `python3 -u /opt/agentbox/scripts/qgis_mcp_standalone.py`) is a completely different thin TCP proxy bridging straight to `gui-tools-service:9877` — mirroring blender's own proxy pattern — and is not mentioned anywhere in qgis/SKILL.md (96 lines, read in full).",
+          "fix": "Rewrite qgis/SKILL.md's Architecture section to describe the actual deployed topology (local qgis-mcp supervisor proxy → gui-tools-service:9877, same shape as blender/tools/blender-mcp-proxy.js), and either remove the uv/git-clone entry_point + mcp.json shim as dead alternate paths, or clearly label them as an unused/legacy option so an agent doesn't try to stand up a second server on the same port 9877 the live proxy already owns.",
+          "cross_skill": ["blender"]
+        },
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "qgis/SKILL.md:168 troubleshooting instructs `supervisorctl status qgis`; live check of /etc/supervisord.conf shows no `[program:qgis]` block exists — only `[program:qgis-mcp]` (confirmed via `grep -n '^\\[program:qgis\\]$' /etc/supervisord.conf`, zero hits). The documented command would report 'no such process'.",
+          "fix": "Change the troubleshooting command to `supervisorctl status qgis-mcp`.",
+          "cross_skill": []
+        },
+        {
+          "class": "contradiction",
+          "severity": "low",
+          "evidence": "qgis/SKILL.md:149-154 env-var table lists QGIS_MCP_HOST/QGIS_MCP_PORT/QGIS_MCP_TRANSPORT/etc., but skills/mcp.json's live qgis entry sets a differently-named pair: `QGIS_HOST=localhost`, `QGIS_PORT=9877`.",
+          "fix": "Reconcile the env-var names between the mcp.json registration and the SKILL.md table (pick one prefix, e.g. QGIS_MCP_*, and update mcp.json to match, or vice versa).",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "uk-solar-planner",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skill-router/references/routing-table.md has zero hits for 'uk-solar' (case-insensitive grep); registered natively (registered-skills.txt:47) so this only affects the reference-only routing path, not native discovery.",
+          "fix": "No new action — already on the fact sheet's known-missing-38 list.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "architecture-studio",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "model-fit",
+          "severity": "high",
+          "evidence": "architecture-studio/hooks/README.md:1-3 documents genuine Claude-Code-native PreToolUse/PostToolUse hooks (post-write-disclaimer-check.sh reads `tool_input.file_path` from a stdin JSON payload — the Claude Code hook contract), and the nested `studio` dispatcher skill (plugins/08-dispatcher/skills/studio/SKILL.md:5-6) carries `allowed-tools:` and `user-invocable: true` frontmatter keys. None of this has a Codex/GPT-6 Astra equivalent (per the workspace fact sheet's model-fit lens: Codex lacks Claude-only affordances including hooks). Root architecture-studio/SKILL.md (161 lines, read in full) never states the skill's hooks/agent layer is Claude-Code-only.",
+          "fix": "Add a one-line disclosure to the root SKILL.md: the `hooks/` automation and `allowed-tools`/`user-invocable` frontmatter on nested dispatcher skills are Claude Code-specific and inert under Codex/GPT-6 Astra, which can still use the plain `/studio`-routed skill content.",
+          "cross_skill": []
+        },
+        {
+          "class": "stale",
+          "severity": "low",
+          "evidence": "architecture-studio/hooks/README.md 'Installation' step 1 says `chmod +x ~/.claude/plugins/skills-for-architects/hooks/*.sh` — that path (`skills-for-architects`) doesn't match this skill's actual name or bake location (`architecture-studio`, baking to /opt/agentbox/skills/architecture-studio); it is an unmodified carry-over from the upstream AlpacaLabs 'Skills for Architects' plugin source (attribution line, root SKILL.md:161: 'Skills for Architects by AlpacaLabs LLC').",
+          "fix": "Update the hooks README install path to the agentbox bake location, or state plainly that the path is illustrative/upstream and must be adjusted.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "architecture-studio genuinely contains 36 nested skills (verified: `find . -iname SKILL.md` returns 37 hits — the root plus 34 domain-plugin skills under plugins/00-07 plus 2 dispatcher skills `studio`/`skills-menu` under plugins/08-dispatcher = 36, matching the '36 skills' claim in root SKILL.md:26 and SKILL-DIRECTORY.md:211 exactly). None of the 36 nested skill names appear in SKILL-DIRECTORY.md or skill-router/references/routing-table.md — only the single top-level 'architecture-studio' row does — so the estate-wide discovery layer and the '128 skill dirs' / skill-count-check.js inventory the fact sheet describes are structurally blind to these 36 real, independently-frontmattered skills (each carries its own `.claude-plugin/plugin.json`).",
+          "fix": "No fix required for architecture-studio itself (its own root SKILL.md fully documents the nested skills in-file, which is sufficient self-disclosure); worth a footnote in the estate-wide count/lint tooling that nested plugin skills exist and are out of scope by design, so future audits don't re-flag this as unexplained drift.",
+          "cross_skill": []
+        }
+      ]
+    }
+  ],
+  "cluster_recommendation": "This batch splits into a healthy always-loaded spatial/GIS trio (blender, qgis, comfyui — all verified against live infra: gui-tools-service sidecar exposes 9876/9877 exactly as documented, comfyui runs in its own healthy Docker container exactly as comfyui_builtin=false implies) and a set of reference-only engine/domain skills of uneven quality. The one must-fix is qgis: three non-cross-referenced MCP server implementations (mcp.json shim, SKILL.md's uv/git-clone entry_point, and the actual live supervisor proxy to gui-tools-service) mean the documented path and the deployed path have diverged, with a stale `supervisorctl status qgis` troubleshooting command as a symptom. lichtfeld-studio silently ignores its own `gaussian_splatting=false` manifest gate, unlike spark-scene which correctly discloses the gate landscape — the two are genuinely complementary (capture/training vs browser presentation) and should stay separate, but lichtfeld-studio needs the gate disclosed. game-dev vs godot-development is a verified factual contradiction (game-dev wrongly claims Godot is natively on PATH; godot-development correctly says it isn't) that could send an agent down a dead command path. terracraft and unreal-engine both under-disclose missing binaries/CLIs their own Quick Starts imply are ready (arnis, terracraft, soft-ue-cli — all absent from PATH, verified live). architecture-studio's 36 nested skills are real and well self-documented internally but invisible to every estate-wide discovery/count tool, and its Claude-Code-native hooks/allowed-tools layer is undisclosed as Claude-only for GPT-6 Astra/Codex consumers. None of these are duplication problems — every cross-skill relationship in this batch (blender/qgis/comfyui triad, lichtfeld-studio/spark-scene, game-dev/godot-development/unreal-engine/meta-xr-sdk, terracraft's integrations) is a correctly-declared handoff, not an overlap."
+}

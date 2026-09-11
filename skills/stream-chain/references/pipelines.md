@@ -1,8 +1,16 @@
 # Stream-Chain — Predefined & Custom Pipelines
 
+**Historical note (2026-09-09, ruflo v3.38.21)**: every `claude-flow
+stream-chain ...` command on this page is retired in the deployed CLI (verified:
+`claude-flow stream-chain --help` → "Unknown command"). Kept for reference in
+case a future image restores it. For today's working equivalent — the same four
+pipelines expressed as `mcp__claude-flow__workflow_create` step lists — see
+[SKILL.md](../SKILL.md#quick-start-mcp-tools).
+
 Predefined pipelines are battle-tested workflows for common development tasks.
 
 ```bash
+# Historical CLI syntax — not available in this deployment; see the note above.
 claude-flow stream-chain pipeline <type> [options]
 ```
 

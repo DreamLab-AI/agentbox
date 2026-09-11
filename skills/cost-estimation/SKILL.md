@@ -1,5 +1,5 @@
 ---
-name: "Cost Estimation"
+name: cost-estimation
 description: >
   Estimate GPU endpoint costs, agent job costs, and MRC20 token operations for the DreamLab AI
   ecosystem. Use when pricing inference/image-gen/analytics endpoints, calculating agent job
@@ -149,5 +149,5 @@ project-specific configuration fact.
 
 ## Reference
 
-- Full COCOMO-hybrid valuation model and research citations: [cost-model.md](cost-model.md)
-- Worked examples (single job, batch, token conversion, lifecycle): [examples.md](examples.md)
+- Full COCOMO-hybrid valuation model and research citations: [references/cost-model.md](references/cost-model.md)
+- Worked examples (single job, batch, token conversion, lifecycle): [references/examples.md](references/examples.md)

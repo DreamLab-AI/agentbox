@@ -74,8 +74,8 @@ The gateway reasons **locally**, and as of Aug 2026 it reasons **through the Ont
 raw model port. The Loom (VisionClaw PRD-025 / ADR-135; agentbox ADR-051) is a portable node with a
 stable, **model-swappable façade** that adds ontology grounding and keeps email content on the LAN.
 
-- **`REASONER_BASE_URL` = `http://192.168.2.132:8084/v1`** — the Loom façade, **colocated with
-  the model on HP-Desktop** (Deployment A: `~/githubs/loom` docker container on `:8084`,
+- **`REASONER_BASE_URL` = `${LOOM_BASE_URL}`** — the Loom façade, **colocated with
+  the model on the connected node** (Deployment A: `~/githubs/loom` docker container on `:8084`,
   delegating to the `loom-model` container on `:8085`). Reached over the LAN via the existing ml DNAT — the
   SAME endpoint value the gateway historically used, but `:8084` is now the **Loom façade**, not a
   raw model port. It scaffold-injects ontology context, then delegates to the local model. (A
@@ -93,12 +93,12 @@ stable, **model-swappable façade** that adds ontology grounding and keeps email
 - **Current model behind the Loom** — **Qwen3.8-27B** (cutover 2026-08-14; runs inside the Loom
   stack as the `loom-model` container on `:8085`). This is a **swappable** choice behind the Loom
   façade — earlier deployments (Muse, Gemma) sat here before it, and the next will sit here after,
-  with **zero change to the gateway**. Reached by the Loom over the LAN rail; HP is downstream of
-  machinelearn with **no LAN IP** (`hp-nat.service` DNAT over the 25 G rail; old `192.168.2.48` is <!-- lint-ok -->
+  with **zero change to the gateway**. Reached by the Loom over the LAN rail; the connected node is downstream of
+  the gateway host with **no LAN IP** (`the gateway's NAT service` DNAT over the 25 G rail; old `a retired address` is <!-- lint-ok -->
   **dead**). To change the model, change the Loom's backend — **the gateway config does not change.**
   - **Backend-swap runbook** (verified 2026-08-25, Gemma↔Qwen). The serving model is a host-network
     `loom-model` container binding `:8085`; alternates are parked as `loom-model-<name>bak`
-    (`Exited`). Only one can hold `:8085`, so swap by stop-park-promote-start over `ssh john@10.10.10.1`:
+    (`Exited`). Only one can hold `:8085`, so swap by stop-park-promote-start over `ssh ${CONNECTED_NODE_SSH}`:
     `docker stop loom-model` → `docker rename loom-model loom-model-<old>bak` →
     `docker rename loom-model-<new>bak loom-model` → `docker start loom-model`. Both carry
     `restart-policy=unless-stopped`, so a manually-stopped alternate stays down and won't fight for
@@ -106,13 +106,17 @@ stable, **model-swappable façade** that adds ontology grounding and keeps email
     — check `MAIN_GGUF`/`ALIAS`) so you promote the right one. Verify:
     `curl -s :8084/v1/models` shows the new alias and `/health` shows `backend_reachable:true`, then
     smoke-test a real `/v1/chat/completions` (reasoning models need `max_tokens≥2048` or they return
-    empty). Gotcha: HP's login shell is fish — `set -e` in the SSH heredoc errors harmlessly; the
+    empty). Gotcha: the connected node's login shell is fish — `set -e` in the SSH heredoc errors harmlessly; the
     `docker` lines still run. Swap is reversible: the parked `<old>bak` container restores the same way.
-- **Embeddings** — served on **machinelearn** at **`:9997`** (bge models on xinference), unchanged.
+- **Embeddings** — served on **the gateway host** at **`:9997`** (bge models on xinference), unchanged.
 
 The gateway container is on the `visionclaw_network` bridge at `email-mcp-gateway:8765`. A stale
-`REASONER_BASE_URL` (anything pointing at a raw model port or `192.168.2.48`) is the top suspect for <!-- lint-ok -->
-hangs — point it at `http://loom:8080/v1` and let the Loom own the model path.
+`REASONER_BASE_URL` (anything pointing at a raw model port or `a retired address`) is the top suspect for <!-- lint-ok -->
+hangs — point it at `${LOOM_BASE_URL}` (the Loom façade, Deployment A; the confirmed
+fix, with verification steps, is in [Failure handling](#failure-handling) below).
+`http://loom:8080/v1` (Deployment B, the `visionclaw_network` sidecar, compose profile `loom`) is
+only the alternative topology for when the Loom itself is colocated with consumers instead of the
+model — don't reach for it as the default fix.
 
 ## Tier 1 — `ask_email` (default, sanitized)
 **Input:** `query` (required); optional `date_from`, `date_to` (ISO), `sender`, `folder`, `top_k`.
@@ -207,14 +211,14 @@ the Bridge stays logged in, so no password/2FA is needed and the listener return
   LAN routing to the gateway.
 - **Gateway hangs / `refresh_inbox` 180 s timeouts / whole-session unreachability *after the Aug
   2026 network rework*** → the **reasoning-LLM route moved**, not the gateway. **Confirmed + fixed
-  10 Aug 2026:** the gateway's **`REASONER_BASE_URL`** was still `http://192.168.2.48:8084/v1` — <!-- lint-ok -->
-  HP's dead old LAN IP — so every synthesis black-holed while `GET /health` still answered (container
+  10 Aug 2026:** the gateway's **`REASONER_BASE_URL`** was still `http://a retired address:8084/v1` — <!-- lint-ok -->
+  the connected node's dead old LAN IP — so every synthesis black-holed while `GET /health` still answered (container
   healthy on `visionclaw_network`, safeguard + embedder ready). Symptom fingerprint is exactly that
   split: health green, all reasoning calls stall to timeout. **Fix:** set
-  `REASONER_BASE_URL=http://192.168.2.132:8084/v1` (ml DNATs to the Loom façade on HP, which
+  `REASONER_BASE_URL=${LOOM_BASE_URL}` (ml DNATs to the Loom façade on the connected node, which
   delegates to the current `loom-model` container on `:8085` over the rail) and recreate the
   container. **Verify** from the gateway host / `visionclaw_network`:
-  `curl -s http://192.168.2.132:8084/v1/models` should return the real model list — currently
+  `curl -s ${LOOM_BASE_URL}/models` should return the real model list — currently
   Qwen3.8-27B (`{"models":[{"name":"Qwen3.8-27B"…}]}`); the exact name tracks whatever model is
   deployed behind the Loom, so match it to the current backend rather than a fixed string. Ref:
   `dreamlab-cumbria/infrastructure/network/experiments/deployed/hp-nat.sh` (DNAT + MSS-clamp) and

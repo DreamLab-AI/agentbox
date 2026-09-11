@@ -398,7 +398,7 @@
                 },
                 "endpoint": {
                   "type": "string",
-                  "description": "Base URL of your OpenAI-compatible or ollama LLM endpoint, e.g. http://192.168.2.132:8084/v1 (Ontology Loom fa\u00e7ade) or http://ollama:11434. Leave blank when disabled.",
+                  "description": "Base URL of your OpenAI-compatible or ollama LLM endpoint, e.g. ${LOOM_BASE_URL} (Ontology Loom fa\u00e7ade) or http://ollama:11434. Leave blank when disabled.",
                   "default": ""
                 },
                 "model": {
@@ -2665,7 +2665,7 @@
     "voice": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Voice + AoE operator console (ADR-044). A sidecar with its own lifecycle (./agentbox.sh voice up|down|...), NOT part of ./agentbox.sh up \u2014 so 'enabled' is descriptive state for /v1/system, not a boot gate. A Caddy console (docker-compose.voice.yml) plus the external Kyutai Unmute speech stack (voice-stack/unmute clone, layered via voice/unmute-override.yml) give one same-origin operator cockpit unifying the voice loop and the AoE session board. See agentbox/voice/README.md.",
+      "description": "Voice + AoE operator console (ADR-044). UI/backend sidecars are managed by ./agentbox.sh voice; unified Nemotron ASR + Pocket TTS follow the core lifecycle through docker-compose.speech.yml.",
       "properties": {
         "enabled": {
           "type": "boolean",
@@ -2681,11 +2681,11 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 65535,
-          "description": "Stock Unmute demo UI origin, diagnostics only. Default 8443."
+          "description": "Web voice debug UI origin, diagnostics only. Default 8443."
         },
         "unmute_build_context": {
           "type": "string",
-          "description": "Path to the external Kyutai Unmute fork clone (26 GB, its own .git, not vendored). Relative to the agentbox checkout, or overridden at runtime via VOICE_UNMUTE_DIR."
+          "description": "Path to the external web client/backend source checkout. Relative to the agentbox checkout, or overridden at runtime via VOICE_UNMUTE_DIR."
         }
       }
     },

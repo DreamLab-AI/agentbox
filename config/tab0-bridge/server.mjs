@@ -682,12 +682,18 @@ const NIP98_ALLOWED = (() => {
 function verifyNip98Credential(req, headerValue) {
   if (!NostrBridge || !headerValue || NIP98_ALLOWED.size === 0) return false;
   try {
-    // Reconstruct the URL the signer committed to: forwarded proto (Caddy sets
-    // x-forwarded-proto), original Host (Caddy preserves it), path sans query —
-    // the same shape the nip98-proxy verifies (signedUrlFor).
+    // The loopback ingress rewrites Host and strips /bridge before forwarding.
+    // Rebuild its public URL to re-verify the original operator signature.
+    // Only the local proxy may supply the forwarded host; sibling containers
+    // authenticate against their direct request URL.
+    const peer = req.socket.remoteAddress;
+    const fromProxy = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(peer)
+      && typeof req.headers['x-forwarded-host'] === 'string';
     const proto = String(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
-    const host = req.headers.host || `127.0.0.1:${PORT}`;
-    const path = String(req.url || '/').split('?')[0];
+    const host = (fromProxy ? req.headers['x-forwarded-host'] : req.headers.host)
+      || `127.0.0.1:${PORT}`;
+    const upstreamPath = String(req.url || '/').split('?')[0];
+    const path = fromProxy && upstreamPath !== '/feed' ? `/bridge${upstreamPath}` : upstreamPath;
     const result = NostrBridge.verifyNip98(headerValue, req.method || 'GET', `${proto}://${host}${path}`);
     return Boolean(result?.valid && NIP98_ALLOWED.has(String(result.pubkey || '').toLowerCase()));
   } catch {

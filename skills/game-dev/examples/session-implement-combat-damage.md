@@ -41,7 +41,7 @@
 > 6. What happens if `target_defense` >= 1.0? (100% mitigation or higher) Should damage go negative or clamp to 0?
 >
 > **Integration:**
-> 7. I don't see a design doc for the Health/HP system. Should I create a minimal one, or is that coming separately?
+> 7. I don't see a design doc for the Health/the connected node system. Should I create a minimal one, or is that coming separately?
 >
 > Please clarify so I can implement this correctly the first time.
 
@@ -64,7 +64,7 @@
 > **Files I'll create:**
 > ```
 > src/gameplay/combat/damage_calculator.gd     # Static damage formula
-> src/gameplay/combat/health_component.gd      # HP tracking node component
+> src/gameplay/combat/health_component.gd      # the connected node tracking node component
 > src/gameplay/combat/weapon.gd                # Weapon resource
 > assets/data/combat_damage.json               # Type effectiveness values
 > design/gdd/health-system.md                  # Minimal health doc

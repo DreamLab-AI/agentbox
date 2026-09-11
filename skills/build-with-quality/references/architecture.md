@@ -60,7 +60,7 @@ See [agentdb-memory-patterns/KHIVE-LEARNINGS.md](../../agentdb-memory-patterns/K
 The skill supports two execution modes:
 
 1. **MCP Tools (Preferred)**: Use `mcp__claude-flow__*` tools when available
-2. **CLI Fallback**: Use `npx claude-flow@alpha` commands when MCP is not configured
+2. **CLI Fallback**: Use `claude-flow` commands when MCP is not configured
 
 Detection logic:
 ```
@@ -77,16 +77,16 @@ in sync:
 
 ```bash
 # Before starting work
-npx claude-flow@alpha hooks pre-task --description "[task]"
+claude-flow hooks pre-task --description "[task]"
 
 # After file operations
-npx claude-flow@alpha hooks post-edit --file "[file]"
+claude-flow hooks post-edit --file "[file]"
 
 # Share with other agents
-npx claude-flow@alpha hooks notification --message "[update]"
+claude-flow hooks notify --message "[update]"
 
 # After completing
-npx claude-flow@alpha hooks post-task --task-id "[id]"
+claude-flow hooks post-task --task-id "[id]"
 ```
 
 ## Configuration

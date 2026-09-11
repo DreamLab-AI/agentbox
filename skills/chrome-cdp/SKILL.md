@@ -38,7 +38,7 @@ agentbox.sh browsercontainer health
 scripts/cdp-sidecar.sh list
 
 # Open your WebGPU app
-scripts/cdp-sidecar.sh open http://192.168.2.132:3001
+scripts/cdp-sidecar.sh open http://the model host:3001
 
 # Screenshot / accessibility snapshot
 scripts/cdp-sidecar.sh shot <target>
@@ -64,7 +64,7 @@ scripts/cdp-connect.sh 9222 list
 # Any remote host (or via env vars). Canonical GPU target is the sidecar:
 # browsercontainer:9223 (raw CDP via socat) — see the browser skill.
 scripts/cdp-connect.sh remote-host.example:9222 list
-export BROWSER_CDP_HOST=browsercontainer BROWSER_CDP_PORT=9222
+export BROWSER_CDP_HOST=browsercontainer BROWSER_CDP_PORT=9223
 scripts/cdp-connect.sh list
 ```
 

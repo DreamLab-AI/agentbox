@@ -1,48 +1,23 @@
 ---
 name: explainer
-description: "Turn a codebase into a proven, dual-audience explainer bundle: a human half (three audience documents — user, onward developer, executive — plus one self-contained visual page) and an AI half (the repo's own tree ingested into a RuVector namespace so agents answer from source), every claim ledgered to file:line and passed through quality gates before it is called done. Use this whenever someone asks to explain, document, onboard, hand over, or 'make sense of' a repo or product for people who did not build it — 'explain this to the CEO', 'write the handover', 'onboarding doc for the next dev', 'what does this product actually do', 'make an explainer', 'welcome mat', 'repo primer' — even when they only say 'docs'. Grounded in the Repo-Explainer method (seven-question comprehension arc, for-humans/for-ai halves, scope boundary, gates) but run locally on private code; never the hosted public pipeline. Not for a single README edit (write it), a whole-corpus Diátaxis audit (docs-alignment), or a visual-only polish (design-audit)."
+description: "Turn a codebase into a proven, grounded explainer for people who did not build it: a docs bundle (three audience documents, a visual page, a queryable RuVector knowledge base), an instructional microsite (evidence-linked source panes, runtime journeys, diagrams, reviewed media), or a video (handed off to codebase-video). Every claim is ledgered to file:line and source, runtime or visual evidence. Use whenever someone asks to explain, document, onboard, hand over or 'make sense of' a repo — 'explain this to the CEO', 'write the handover', 'make an explainer', 'build an instructional microsite', 'client due diligence', 'close a comprehension gap', 'repo primer' — even when they only say 'docs'. Grounded in the Repo-Explainer method (seven-question arc, for-humans/for-ai halves, scope boundary, gates), run locally on private code. Not for a single README edit (write it), a whole-corpus audit (docs-alignment), visual-only polish (design-audit), or a video with no codebase grounding (open-montage)."
 ---
 
 # Explainer — a proven bundle, not a page of prose
 
 Most repos are written by the people who understand them for the people who
-understand them. An explainer is the on-ramp for everyone else, and it is only worth
-having if a newcomer can actually answer the seven questions afterwards and an agent
-can actually use the thing. So the output is a **bundle with two halves and a gate**,
-not a document.
+understand them. An explainer is the on-ramp for everyone else, and it is only
+worth having if the reader can actually use it afterwards and every claim in it
+is grounded. This skill is the family hub for three deliveries that share one
+contract and diverge only in output shape.
 
-```
-<repo>/docs/explainer/
-├─ README.md            index: three doors, the seven questions answered once, gate status
-├─ for-users.md         human half · whoever uses the product day to day
-├─ for-developers.md    human half · whoever inherits the code
-├─ for-executives.md    human half · whoever signs it off
-├─ site/                human half · one self-contained HTML page (optional, day 3)
-├─ kb/                  AI half · passages → RuVector namespace <repo>-kb, question sets, grader
-├─ gates/ledgers/       claim → file:line, one ledger per document; gate C reads them
-└─ assets/              diagrams the page and the documents share
-```
-
-The `kb/` directory in the target holds **only** the question sets and a README; the
-build, ingest and grading scripts stay in this skill (see the ringfence below).
-
-The first instance is `co-created/campaignbuilder/docs/explainer/` (tranche 2, Sep 2026);
-read it when you want to see the shape filled in.
-
-## Lineage, and what not to do
-
-This is ruvnet/Repo-Explainer's **method** (Stuart Kerr, 2026): the seven-question
-comprehension arc, the `for-humans/` + `for-ai/` bundle, the scope boundary, "done means
-proven with evidence". Its **pipeline** is not used: it clones a public URL, authors each
-section with one gpt-4o prompt over a README excerpt, gates on structure (file exists,
-page over 5,000 chars, no secrets), and publishes to a public GitHub repo and domain.
-For private or client code that path is a leak, and for any code it produces confident
-prose with no grounding. Keep the arc and the gates; replace the prompt loop with
-grounded authoring. See `references/lineage.md` for the full comparison.
+The first two pilots — one docs bundle, one instructional microsite — were run
+against the same private repository in September 2026; their evals live in
+`evals/`.
 
 ## The seven questions (the acceptance bar)
 
-A newcomer who reads the human half must be able to answer, unaided:
+Whatever the delivery, a reader who finishes it must be able to answer, unaided:
 
 1. What is this?
 2. What can you do with it?
@@ -52,131 +27,188 @@ A newcomer who reads the human half must be able to answer, unaided:
 6. Three or four other application areas.
 7. How exactly do I run or implement it (a concrete path)?
 
-Every audience document follows this spine, adapted to what that reader needs from each
-question. The index answers all seven once, briefly, so the bundle has a backbone.
-`references/comprehension-arc.md` has the per-audience adaptation.
+`references/comprehension-arc.md` has the per-audience adaptation used by the
+docs delivery; the microsite and video deliveries adapt the same spine to their
+own reader tracks and review questions.
 
-## Workflow
+## Orient before you write (an hour, not a day)
 
-### 0. Orient before you write (an hour, not a day)
+Read the root README, the docs index, and any handoff or status document, and
+open whatever design record the repo keeps (ADRs). Then **run the project's own
+gates** with the stack down (tests, typecheck, coverage, dependency rules) and
+write the numbers down with the date and the commit: the explainer must state
+test counts as measured, not as the README claims, and the gap between what the
+gates cover and what they do not is exactly what a developer document or a
+debug pass needs.
 
-Read the root README, the docs index, and any handoff or status document, and open
-whatever design record the repo keeps (ADRs). Then **run the project's own gates** with
-the stack down (tests, typecheck, coverage, dependency rules) and write the numbers
-down with the date and the commit. Two reasons: the explainer must state test counts as
-measured, not as the README claims; and the gap between what the gates cover and what
-they do not is exactly what the developer document and any debug pass need.
+Then look for the repository's own diagrams: `scripts/diagram-corpus.mjs --repo <target>`
+reports a diagrams-as-code tree if there is one, what it covers, and which of it has gone
+stale against HEAD. A corpus is the best scaffold an explainer can have, because someone
+who knew the system already decided how it divides into parts; absence is normal and the
+script says so and exits 0. Read `references/diagram-corpus.md` before using what it finds:
+a corpus is a catalogue at a declared revision, it is usually internal audit material, and
+mining it is not the same as shipping it.
 
-Search memory first (`memory_search`, namespaces `project-state` and `personal-context`)
-for prior decisions about the product, and `search_ruvnet` for anything in the RuvNet
-stack the explainer will mention. Do not describe a RuvNet tool from training data.
+Search memory first (`memory_search`, namespaces `project-state` and
+`personal-context`) for prior decisions about the product, and `search_ruvnet`
+for anything in the RuvNet stack the explainer will mention. Do not describe a
+RuvNet tool from training data.
 
-### 1. Scaffold the bundle
+## Ground every claim
 
-Create the tree above with a README in each directory saying what will live there and
-its status (`NOT BUILT` / `DRAFT` / `GATED`). Status lines are load-bearing: a reader
-who lands on a half-built bundle must be able to tell what is trustworthy.
+Every delivery produces a **claims ledger**: `claim → file:line`, one line each,
+for the load-bearing statements. Ground each claim in one of three evidence
+classes, borrowed from the microsite delivery's evidence-packet discipline and
+shared across all three deliveries:
 
-### 2. Author the three documents in parallel, grounded
+- **source** — a file and line range, opened and read, not guessed;
+- **runtime** — a command actually run, its exit status and output;
+- **visual** — an actual screenshot or capture, not an assumed one.
 
-Spawn **three forks** (they inherit your orientation) with the prompt templates in
-`references/audience-prompts.md`. Each fork:
+When a claim cannot yet be supported, its status is `needs_evidence` (say
+exactly what is missing) or `blocked` (the code fails the required behaviour).
+Never launder a gap into "out of scope", a "limitation", or silence.
 
-- writes exactly one file and touches nothing else;
-- opens every file it cites, never guesses a function name, route, flag or status;
-- states plainly what is fail-closed, designed-but-not-built, or blocked on someone;
-- returns a **claims ledger**: the 10–15 most load-bearing claims as `claim → file:line`.
+## Stop before fixing product code
 
-Write each ledger to `gates/ledgers/<audience>.md` with the date and commit. The
-ledgers are how a second reader checks the document without re-deriving it, and they
-are where documents disagree with each other or with the code. Expect that: in the first
-instance, the executive draft said the user "is told" of a review park and the user
-draft, having read the chat route, found no such message exists. The ledger caught it;
-the fix was one sentence and a new debug item.
-
-Style for all three: UK English, plain, one idea per sentence, no em-dashes, no AI-tell
-vocabulary (`scripts/style-check.sh` flags the usual words), no superlatives, honest
-about what is not built. Warm is fine; puffery is not.
-
-### 3. Build the AI half
-
-`references/kb-recipe.md` is the recipe. The short version: walk **only the repo's own
-authored tree** (the scope boundary; vendored or tenant code is excluded except its
-README), chunk at structure boundaries (function, class, heading) to ≤ 512 tokens with a
-`source_type` tag on every passage, and ingest into RuVector namespace `<repo>-kb`
-using the same client-side embedding path as `agentbox/scripts/ruvnet-brain-ingest.mjs`.
-Tests and examples go in: they are the best usage documentation a repo has. After any
-bulk ingest, the index law applies (non-concurrent HNSW rebuild, then the recall gate).
-
-Then write two question sets, 3–4 per arc stage, with `wantPaths`, `mustContain` and
-`forbidden` tokens **verified to exist in source before authoring** — a guessed
-`mustContain` is a bug in the question. `tuned.jsonl` may be consulted while tuning;
-`heldout.jsonl` never, so the score cannot be overfitted.
-
-### 4. Build the visual page (if the reader is not a repo reader)
-
-One self-contained HTML file: hero, three doors as tabs rendering the three documents,
-one diagram per hard concept, real screenshots embedded as data URIs, the honest
-built / blocked / deferred table, provenance (commit and date). No external scripts or
-styles; light and dark themes explicit. Publish it as a **private** Artifact; sharing the
-link is the owner's decision, say so rather than deciding it.
-
-### 5. Gate, then link
-
-`references/gates.md` defines the five gates. The headline score is the **lowest** gate,
-and nothing is linked from the repo's docs index until A, B, C and E are green:
-
-- **A** knowledge base — graded answers on both question sets, every stage ≥ 95, overall ≥ 98;
-- **B** comprehension — a fresh agent role-plays each audience on the rendered output and must say what it is, name three uses, recite the first concrete step, and confirm every hard concept has a visual;
-- **C** consistency — every ledger line still says what the claim says (`scripts/check-ledger.sh`), built-vs-designed matches the README, links resolve, no invented identifiers;
-- **D** media — out of scope unless asked;
-- **E** visuals — each hard concept has an accurate diagram that renders where the reader reads.
-
-### 6. Record
-
-Store the bundle's location, gate status and the decisions it surfaced in
-`project-state` via `memory_store`, so the next session and the rest of the mesh find it.
+By default this skill diagnoses product problems; it does not repair them.
+Reproduce the issue, keep the evidence, and stop the affected work. Tell the
+user what failed, why it blocks the deliverable, and the concrete proposed
+correction, then ask how they want to proceed. Do not implement the fix merely
+because Git makes it reversible or because the task includes analysis. Work on
+independent material can continue; this rule does not prevent edits to the
+explainer deliverable itself. An explicit user override for the current session
+takes precedence; do not carry that exception into future runs.
 
 ## The ringfence: our instrumentation never enters the target
 
-The skill is DreamLab tooling: forks, RuVector namespaces, ruvbrain grounding, and, in
-time, Rust helpers under `agentbox/services/skill-tools`. The **target** repo may be a
-deliberately conservative pipeline (campaignbuilder is Node, TypeScript, Docker Compose,
-Vercel; no Rust, no WASM, no RuvNet runtime), and an explainer that leaks our stack into
-it conflates the two in exactly the way its owner ringfenced against. So:
+The skill is DreamLab tooling: forks, RuVector namespaces, ruvbrain grounding,
+generated media pipelines. The **target** repo may be a deliberately
+conservative stack, and an explainer that leaks our tooling into it conflates
+the two in exactly the way its owner likely ringfenced against. So: nothing
+lands in the target except the delivery artefacts themselves (documents, the
+visual page or site, the video) and plain data fixtures (question sets,
+ledgers); passage builders, ingest, graders and checkers live in this skill,
+parameterised by target path, never added to the target's tree; the deliverable
+describes the target in the target's own vocabulary, never mentioning RuVector,
+ruflo, agentbox, forks or this skill; and grounding via `search_ruvnet` is for
+our own write-up accuracy, never licence to recommend our stack to the target.
 
-- Nothing lands in the target except the explainer documents, the visual page, and plain
-  data fixtures (the question sets, the ledgers). Passage builders, ingest, graders and
-  checkers live **here**, parameterised by target path and namespace, never in the
-  target's tree, and never add a dependency, a tool directory or a config file to it.
-- The documents describe the target in the target's own vocabulary and design record.
-  They do not mention RuVector, ruflo, agentbox, forks or this skill; the AI half is
-  described in the target's index as "a queryable knowledge base held by DreamLab" with
-  a pointer, not as part of the product.
-- Grounding for RuvNet-stack facts (via `search_ruvnet`) is for **our** write-up
-  accuracy when the target genuinely uses that stack; it is not a licence to compare the
-  target to it or recommend it.
-- Before finishing, `git status` the target: tool state (`.claude-flow/`, `.agentic-qe/`,
-  `.claude/`) must be ignored or absent, and the only untracked additions are the ones
-  above.
+## The gates (A–E)
 
-## Why the forks, and why the ledgers
+The headline score is the **lowest** gate; nothing is linked from the repo's docs index,
+or presented as finished, until every gate the accepted delivery contract requires is
+green. A, B, C and E are the usual set; a contract that names media makes D required too.
+`references/gates.md` has the full bars, mechanics and the fail-below-bar
+diagnosis loop.
 
-A single agent writing three audiences from one context flattens them into one voice
-and one level of detail; three forks that share the orientation but write alone keep
-the registers distinct. The ledger is what makes a fork's confidence checkable: without
-it a reviewer either re-derives the document or trusts it, and both are how explainers
-go stale with confidence. The debug findings that drop out of ledger disagreements are
-not a side effect; they are half the value of writing the explainer at all.
+| Gate | Checks | Docs bundle | Microsite | Video |
+|---|---|---|---|---|
+| A — Knowledge base | graded question sets against the RuVector namespace | `kb/grade.mjs` | — | — |
+| B — Comprehension | a fresh, unbriefed reader can state what it is, name three uses, recite the first step | manual audit | the teaching contract's cold-start check | the audience's central question, per `codebase-video`'s own production reference |
+| C — Consistency | every ledger line still resolves; no invented route, flag or status | `scripts/check-ledger.sh` | `microsite/completion-audit.md` | editorial review in `review.md` |
+| D — Media | audio/video teaches a true beginner | out of scope by default | per delivery choice | `codebase-video`'s own scene-by-scene review satisfies this |
+| E — Visuals | each hard concept has an accurate diagram | reader | reader, plus the inspectable source pane | frame inspection at delivery resolution |
+
+## Hand up when a gate stays red
+
+The production run belongs to the local model (today Qwen through the Loom, in a
+resumable OpenCode session) so that hours of drafting cost GPU time, not tokens. When a
+gate stays red after the capped retries in `references/gates.md`, do not keep retrying
+and do not pull a cloud model into the session: write a **hand-up packet** with
+`scripts/handup.mjs` and carry on with chapters the packet does not block. A Claude Code
+controller polls the queue and answers each packet from a cold start with a minimal fix,
+guidance, an override or a block; product defects and budget overruns always go to the
+user. An identical retry is not an attempt, and a run that ends with blocked chapters
+has ended correctly. `references/handup.md` has the tiers, triggers, packet and reply
+shapes, and what the skill-improvement loop reads from them.
+
+## Addendum 2026-09-09: the microsite pilot's verdict, and what changed
+
+The first microsite (the target repository, 20 pages, 180 commits over two days) was grounded,
+linked and rejected by its owner: it explained the process of making itself rather than the
+code. Its pages described evidence classes, drills, fixtures, receipts, the bugs found while
+learning the product's UI, and the narration of its own videos; the reader wanted the system.
+Read `references/microsite/reader-voice.md` first on any microsite; it holds the failed
+sentences, the corrected chapter shape and the gate. Four things changed:
+
+1. **Two registers.** The claims ledger, evidence classes and completion audit are the
+   authors' notebook and never enter the reader text. `scripts/voice-lint.sh` fails a chapter
+   that mentions its own making, its evidence, its fixes, or uses "actual"/"real" as trust
+   adjectives.
+2. **Section by anatomy.** Chapters follow the system's parts (repository, runtime, each
+   service, each lane, each console, the tenant, operating it), never the evidence journeys
+   the authors happened to run. `scripts/anatomy-coverage.mjs` lists the directories, routes,
+   compose services and design records that no chapter mentions.
+3. **Chapters are Markdown.** One `chapters/<id>.md` per chapter with front matter, rendered
+   by a dependency-free build in the target into the reading shell; `src:path#L10-L20` links
+   open the file in the source pane and the build fails on a missing path or a range outside
+   the file. Content and shell stay separate; media is added later without touching prose.
+4. **The model path.** The Loom façade in verbatim mode answered a codebase packet with an
+   ontology class instead of calling the model. The fix went into the Loom (ADR-139):
+   `loom_options.scaffold=false` makes the façade a plain proxy for that request.
+   `scripts/loom-draft.mjs` sends it on every call and drives the connected node model through the façade
+   (`${LOOM_BASE_URL}`, about 13–20 s for a 400–900-token section) as a
+   sequential, resumable background batch; the session model orients, checks ranges and
+   decides. See the model-path section in `references/delivery-microsite.md`.
+
+The pipeline that replaced the pilot: per chapter, a researcher writes a fact sheet (files,
+exact ranges, ADR sections, pinning tests, measured commands); a writer produces the chapter
+from the sheet and the open files; an independent checker opens every linked range, greps
+every named identifier, runs the lint and the build, and returns pass or a precise issue list;
+a reviser resolves it; the checker runs again. Media is a later pass over an accepted chapter.
+
+## Choose the delivery
+
+| Delivery | Reference | Shape |
+|---|---|---|
+| Docs bundle | `references/delivery-docs.md` | three audience documents (user, developer, executive), an optional self-contained visual page, and a queryable AI-half knowledge base in RuVector |
+| Instructional microsite | `references/delivery-microsite.md` | a locally-served, inspectable reading surface with evidence-linked source panes, verified runtime journeys, diagrams and reviewed media — for onboarding or client due diligence |
+| Video | `references/delivery-video.md` | a narrated video explainer; thin — hands off to the standalone `codebase-video` skill with the audience and the claims ledger already gathered |
+
+Pick one delivery per request unless the user asks for more than one; each
+reference is self-contained once the shared core above is done.
+
+For a hard concept whose change over time needs explanation, use
+[manim](../manim/SKILL.md) after the relevant claims and chapter are accepted.
+Its [handoffs](../manim/references/handoffs.md) cover optional playback, named
+steps and static alternatives in a knowledge page, or clips for the video owner.
+
+## Model-fit
+
+**Production tier:** the long run is designed for a local OpenAI-compatible model with
+tool calls (OpenCode profile `loom-agent/current`); it discovers this skill and its
+specialists through the normal catalogue and hands up by packet when stuck. Such a harness
+usually has a shell and little else, so read `references/local-harness.md` before reaching
+for a capability: resolve it as a skill, then as a documented service, then hand up. Do not
+hand-roll a browser, encoder or renderer; work produced that way carries no receipt and
+cannot be reviewed. Work chapter by chapter in separate sessions rather than one long one,
+so context stays bounded and a failure costs one chapter. Claude Code
+and Codex are the controller and grader tiers, not the drafter, unless the user says so.
+
+**Claude Code only:** the docs delivery's parallel-authoring step needs the
+Agent/fork tool (`subagent_type: fork`) to write the three audience documents
+from a shared orientation context. On Codex / GPT-6 Astra, which has no fork
+tool: write the three documents sequentially in one session instead, re-reading
+the orientation notes before each one so the registers stay distinct. See
+`references/delivery-docs.md` step 2 for the full fallback.
+
+## Record
+
+Store the deliverable's location, gate status and the decisions it surfaced in
+`project-state` via `memory_store`, so the next session and the rest of the
+mesh find it. Each delivery reference repeats this as its final step.
 
 ## Resources
 
+- `references/delivery-docs.md` — the docs-bundle workflow, its own resources
+  and scripts.
+- `references/delivery-microsite.md` — the instructional-microsite workflow,
+  evidence model and media production.
+- `references/delivery-video.md` — the video handoff to `codebase-video`, the make/see/revise loop for visual work, and `scripts/asset-gate.mjs`.
 - `references/comprehension-arc.md` — the seven questions, per audience.
-- `references/audience-prompts.md` — the three fork prompt templates, ready to fill.
-- `references/gates.md` — the five gates, bars, and the ledger format.
-- `references/kb-recipe.md` — scope boundary, chunking, ingest, question sets, grading.
-- `references/lineage.md` — what Repo-Explainer does, what was kept, what was dropped.
-- `scripts/style-check.sh <file…>` — em-dash and AI-tell vocabulary count.
-- `scripts/check-ledger.sh <ledger.md> <repo-root>` — gate C: every `path:line` exists and prints the cited line for review.
-- `scripts/check-links.sh <doc…>` — relative links resolve.
-- `scripts/kb/` — (day 2, not yet on disk) `build-passages.mjs <target> <out.jsonl>`, `ingest.mjs <passages> <namespace>`, `grade.mjs <namespace> <questions…>`; run from here, pointed at the target. <!-- lint-ok: deliberate day-2 forward reference; the kb scripts are planned, not shipped -->
+- `references/gates.md` — the five gates, bars and ledger format in full.
+- `references/handup.md` — escalating a red gate to a stronger tier by packet, not by session; `scripts/handup.mjs`.
+- `references/diagram-corpus.md` — mining the repository's own diagrams-as-code tree; `scripts/diagram-corpus.mjs`.
+- `references/local-harness.md` — running where the specialists are not tools: skill, then documented service, then hand up.
+- `evals/evals.json` — the pilot eval prompts for this skill.

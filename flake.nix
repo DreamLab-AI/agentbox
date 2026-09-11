@@ -284,16 +284,15 @@
         #    the scoped tarball basename is `cli-<ver>.tgz`, and the unscoped
         #    `claude-flow` npm package is a third artefact of the same code.
         #
-        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.38.20.tgz
-        #    3.38.20 (2026-08-24): closes the ADR-064 CLI↔plugin-tree skew —
-        #    the boot-cloned plugin cache tracks the same release line, so
-        #    plugins/ruflo-metaharness and the baked CLI now agree.
+        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.41.0.tgz
+        #    3.41.0 (2026-09-10): federation topology, trust, routing, and
+        #    lifecycle support plus the corresponding MCP tool surface.
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.38.20";
-          packageLock = ./config/npm-locks/ruflo-3.38.20.package-lock.json;
-          sha256          = "sha256-secbxYLZ8uA0Vb7h8RYamkH4qhizG+4mO17ylQ2aYOM=";
-          nodeModulesHash = "sha256-e00J764yirfyJvf4tPGelmP3ROj7OMdNhhIKk+uo2VQ=";
+          version         = "3.41.0";
+          packageLock = ./config/npm-locks/ruflo-3.41.0.package-lock.json;
+          sha256          = "sha256-N1K0Z237jU40Tpf2Bu2y7f7KTaXKwJQb9v9ojnYuKsM=";
+          nodeModulesHash = "sha256-flBLN/e/PV7ZeDPHmXBSGCzAJV25+kgyZ69v6WmPTqw=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -304,19 +303,18 @@
         # 3b+3c. metaharness runtime binaries — gated by toolchains.metaharness
         #    (ADR-062/063/064). Bakes the CLIs the ruflo-metaharness plugin
         #    skills shell out to, at the versions the plugin tree pins
-        #    (metaharness@~0.3.0, @metaharness/darwin@~0.8.0 — verified against
-        #    the 3.38.20 plugin cache). Without these the plugin's
+        #    (metaharness@0.4, @metaharness/darwin@0.10). Without these the plugin's
         #    score/genome/evolve/security-bench paths degrade gracefully
         #    ({degraded:true}) on this offline container. NEVER @latest
         #    (ADR-067); darwin invocations must pass --sandbox mock|agent
         #    (ADR-065; agentbox.toml [dream_machine] note).
-        #    nix-prefetch-url https://registry.npmjs.org/metaharness/-/metaharness-0.3.2.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/metaharness/-/metaharness-0.4.16.tgz
         metaharnessPkg = mkNpmCli {
           pkgName         = "metaharness";
-          version         = "0.3.2";
-          packageLock = ./config/npm-locks/metaharness-0.3.2.package-lock.json;
-          sha256          = "sha256-BJNgg/cM4D1G4Pj42/6wNcQ4rdTtdKpyTgYsC2KNR5I=";
-          nodeModulesHash = "sha256-2qRTIkXMaMHwDixqAcPDYuiIyF3xT5gcrjREvo8RYDM=";
+          version         = "0.4.16";
+          packageLock = ./config/npm-locks/metaharness-0.4.16.package-lock.json;
+          sha256          = "sha256-nQ4CFlayNt0gyBuPPK8ylHIUSm7A2Iio0qw8zCqIqxI=";
+          nodeModulesHash = "sha256-e9SD6MeRWJV5pll5Y5LwwQ5veU9bBUd9okk9O5uTq4U=";
           bin             = "metaharness";
           extraBins = {
             # own-package bin — path is package-root-relative (dependency bins
@@ -324,13 +322,13 @@
             "harness" = "dist/harness-bin.js";
           };
         };
-        #    nix-prefetch-url https://registry.npmjs.org/%40metaharness/darwin/-/darwin-0.8.3.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/%40metaharness/darwin/-/darwin-0.10.2.tgz
         metaharnessDarwinPkg = mkNpmCli {
           pkgName         = "@metaharness/darwin";
-          version         = "0.8.3";
-          packageLock = ./config/npm-locks/metaharness-darwin-0.8.3.package-lock.json;
-          sha256          = "sha256-k/pb1mzN6Wzy+/7exSp1oSo5cbQfKn/6rcue3tq2kGI=";
-          nodeModulesHash = "sha256-zt6pF/Zp4qxKrm6PL8aksrHSCyQXtwAV2jjmqdOwf9s=";
+          version         = "0.10.2";
+          packageLock = ./config/npm-locks/metaharness-darwin-0.10.2.package-lock.json;
+          sha256          = "sha256-rnXeVyFetVQQr/WTHg2IDFqsjEV48s/ctD0esEcLXhU=";
+          nodeModulesHash = "sha256-2aRNYsfxUqzRYjxoJMqeYq5B+LETNlNtCIZgNXYjIik=";
           bin             = "metaharness-darwin";
         };
 
@@ -351,10 +349,10 @@
         #    nodeModulesHash resolved 2026-07-24 during the ADR-041 rebuild.
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.13.12";
-          packageLock = ./config/npm-locks/agentic-qe-3.13.12.package-lock.json;
-          sha256          = "sha256-l1OKbvij0zWQFmkVh8tg5J/fWug3xpFem/s0WZtKqdo=";
-          nodeModulesHash = "sha256-di3k986pcOVtEr88BQ9ckHwQXSj6dCFStYj0GSAvfAU=";
+          version         = "3.14.1";
+          packageLock = ./config/npm-locks/agentic-qe-3.14.1.package-lock.json;
+          sha256          = "sha256-EGZGAFijEllObRh6SEswMWJyepebUm8UjdtAUPBdEh8=";
+          nodeModulesHash = "sha256-9B9cg0vlqY+5QXiDY1N5IhUooZ2ONqpQVl6Hk+7cCzk=";
           bin             = "aqe";
         };
 
@@ -423,13 +421,13 @@
           });
         mermaidCliPkg = mkNpmCli {
           pkgName         = "@mermaid-js/mermaid-cli";
-          version         = "11.16.0";
-          sha256          = "sha256-ZdeVGRv5ymypCkCh6jA1SmpJHiBmdMr9TZ3mL+kHVDk=";
-          nodeModulesHash = "sha256-/0YsG5ePzd3ADD1kaQ9tziEMF+Xfj/Fw8e4IeELEPDo=";
+          version         = "11.17.0";
+          sha256          = "sha256-I/LCciJi2YNHz5edptiLyGk+7yzYeYo4rDk6fwBpOKA=";
+          nodeModulesHash = "sha256-8BnljHfU/gxIU5bf1E8b6+x+r0JXAfEjDQxgyWY8mSg=";
           bin             = "mmdc";
           legacyPeerDeps  = false;
           runtimeDependencies.puppeteer = "25.10.0";
-          packageLock = ./config/npm-locks/mermaid-js-mermaid-cli-11.16.0.package-lock.json;
+          packageLock = ./config/npm-locks/mermaid-js-mermaid-cli-11.17.0.package-lock.json;
           extraEnv.PUPPETEER_EXECUTABLE_PATH = "${pkgs.chromium}/bin/chromium";
           extraArgs = [ "--puppeteerConfigFile" mermaidPuppeteerConfig ];
         };
@@ -446,13 +444,12 @@
         # devDependencies (verified against the registry manifest).
         wranglerPkg = mkNpmCli {
           pkgName         = "wrangler";
-          # 4.125.0 not 4.127.0: freshness gate — 4.127.0 published <72h before
-          # this rebuild (2026-08-27); 4.125.0 (2026-08-20) is the newest release
-          # outside the window. Bump forward at the next rebuild.
-          version         = "4.125.0";
-          packageLock = ./config/npm-locks/wrangler-4.125.0.package-lock.json;
-          sha256          = "sha256-/pM8fMq69B568wUTjx3p/Sv7HghMfi/VC6PQynekRQI=";
-          nodeModulesHash = "sha256-mLh2AhJRAhnoDmZWwEwN03wj+oK39EvbOyKfezupsrA=";
+          # 4.130.0 remains inside the 72-hour freshness window. 4.129.1 is
+          # the newest stable release outside it for this rebuild.
+          version         = "4.129.1";
+          packageLock = ./config/npm-locks/wrangler-4.129.1.package-lock.json;
+          sha256          = "sha256-ZUwKXAppp3+PtAcB2IBuAnPpZ95SaTkygpcF3WY4et4=";
+          nodeModulesHash = "sha256-mmino6rjYoqtxOWpnKssFSpvELjz+cGhJfTn6X2p9FM=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -1400,11 +1397,11 @@
         agentboxManifestPkg = import ./lib/agentbox-manifest.nix { inherit lib; pkgs = rustPkgs; };
 
         # ---------------------------------------------------------------------------
-        # dream-engine — nightly evidence-gated repo evolution (ADR-052 HP annexe).
+        # dream-engine — nightly evidence-gated repo evolution (ADR-052 the connected node annexe).
         # Gate: dream_machine.enabled = true (default off keeps the image
         # byte-identical). Built from source via lib/dream-engine.nix
         # (services/dream-engine crate — self-contained, rustls, no openssl).
-        # Supervised block below dispatches nightly cycles to the HP annexe.
+        # Supervised block below dispatches nightly cycles to the connected node annexe.
         # ---------------------------------------------------------------------------
         dreamMachineCfg = agentboxConfig.dream_machine or {};
         dreamEngineEnabled = (dreamMachineCfg.enabled or false) == true;
@@ -2323,9 +2320,9 @@ stderr_logfile=/var/log/comfyui-builtin.error.log
 ''}
 ${lib.optionalString dreamEngineEnabled ''
 
-# Dream machine (ADR-052 HP annexe). Nightly evidence-gated repo evolution:
+# Dream machine (ADR-052 the connected node annexe). Nightly evidence-gated repo evolution:
 # one cycle per UTC night inside [dream_machine].window_start..window_end, then
-# idle. The binary reads [dream_machine] from /etc/agentbox.toml (window + HP
+# idle. The binary reads [dream_machine] from /etc/agentbox.toml (window + the connected node
 # settings — that path is the image-materialised manifest, see the etc/ closure
 # above); the environment= line below carries only the Nix-known LLM selection
 # so the provider/model are visible in the supervisor block. SECRETS are NOT
@@ -2336,7 +2333,7 @@ ${lib.optionalString dreamEngineEnabled ''
 command=${bgNice}${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
 directory=/home/devuser/workspace
 user=devuser
-environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}",LOOM_URL="${dreamMachineCfg.loom_url or "http://192.168.2.132:8084/v1"}",LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
+environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}",LOOM_URL="${dreamMachineCfg.loom_url or "${LOOM_BASE_URL}"}",LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
 autostart=true
 autorestart=true
 priority=230
@@ -2902,10 +2899,14 @@ stderr_logfile_maxbytes=5MB
           # devuser's XDG_DATA_HOME. zoxide, fzf, atuin, npm globals,
           # pip --user, pipx, and a long tail of other XDG-aware CLIs
           # write here. Same Read-only-fs symptom as .cache without it.
-          # The codeserver-config named volume mounts INSIDE this tmpfs
-          # at .../code-server — Docker handles the layered mount order
-          # (tmpfs first, then volumes on top), so persistence for
-          # code-server is preserved.
+          # The codeserver-config and opencode-store named volumes mount
+          # INSIDE this tmpfs at .../code-server and .../opencode — Docker
+          # handles the layered mount order (tmpfs first, then volumes on
+          # top), so persistence is preserved and neither eats the 128M.
+          # OpenCode's session database is the reason for the second: a day
+          # of agent runs filled this tmpfs and the next session failed on a
+          # database checkpoint reporting a full disk (2026-09-11), an error
+          # that named neither the writer nor the run that caused it.
           "/home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000"
           # devuser's XDG_CONFIG_HOME. Many CLIs that don't honor
           # XDG_CONFIG_HOME still write to $HOME/.config (git, gh, kube,
@@ -3110,8 +3111,8 @@ ${agentboxPorts}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
       - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen3.8-27B}
-      - LOOM_BASE_URL=''${LOOM_BASE_URL:-http://192.168.2.132:8084/v1}
-      - LOOM_RAW_BASE_URL=''${LOOM_RAW_BASE_URL:-http://192.168.2.132:8085/v1}
+      - LOOM_BASE_URL=''${LOOM_BASE_URL:-${LOOM_BASE_URL}}
+      - LOOM_RAW_BASE_URL=''${LOOM_RAW_BASE_URL:-${CONNECTED_NODE_URL}/v1}
       - LOOM_MODEL=''${LOOM_MODEL:-qwen3.8-27B}
       - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-}
       - GEMMA_MODEL=''${GEMMA_MODEL:-}

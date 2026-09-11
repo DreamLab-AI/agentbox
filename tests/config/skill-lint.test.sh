@@ -10,14 +10,15 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 LINT_SH="$REPO/skills/lint-skills.sh"
-LINT_MJS="$REPO/skills/lint-skills.mjs"
+LINT_MJS="${LINT_MJS:-$REPO/skills/lint-skills.mjs}"
 
 pass=0
 fail=0
 
 # make_tree <dir> — seed a temp skills root with the real lint.
 make_tree() {
-  cp "$LINT_SH" "$LINT_MJS" "$1/"
+  cp "$LINT_SH" "$1/lint-skills.sh"
+  cp "$LINT_MJS" "$1/lint-skills.mjs"   # LINT_MJS may point at a staged copy; the wrapper execs ./lint-skills.mjs
 }
 
 # check <name> <expected-exit> <expected-substring|-> <tree-dir>
@@ -152,7 +153,7 @@ rm -rf "$T"
 T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/fixture"
 cat > "$T/fixture/SKILL.md" <<'EOF'
 ---
-name: "quoted-name"   # trailing comment
+name: "fixture"   # trailing comment
 description: >
   A folded block scalar spanning
   two physical lines.
@@ -205,10 +206,44 @@ name: fixture
 description: points at a host that no longer exists.
 ---
 
-Call the model at http://192.168.2.48:8084/v1 for inference.
+Call the model at http://a retired address:8084/v1 for inference.
 EOF
 check "banned stale host still fails" 1 "STALE" "$T"
 rm -rf "$T"
+
+# --- 13. NAME: frontmatter name must equal the directory (audit 2026-09-09) ---
+T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/my-skill"
+printf -- '---\nname: "My Skill"\ndescription: Title-case display names were taught by the old skill-builder.\n---\n# x\n' > "$T/my-skill/SKILL.md"
+check "Title-Case name fails NAME" 1 "NAME" "$T"
+T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/my-skill"
+printf -- '---\nname: other-skill\ndescription: A lowercase name that does not match its directory still fails.\n---\n# x\n' > "$T/my-skill/SKILL.md"
+check "name != directory fails NAME" 1 "must equal the directory name" "$T"
+
+# --- 14. DESCLEN: description over the agentskills.io cap fails ------------
+T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/longdesc"
+{ printf -- '---\nname: longdesc\ndescription: "'; head -c 1100 /dev/zero | tr '\0' 'x'; printf '"\n---\n# x\n'; } > "$T/longdesc/SKILL.md"
+check "description > 1024 chars fails DESCLEN" 1 "DESCLEN" "$T"
+
+# --- 15. DEPRECATED: a redirect stub must carry deprecated + replacement ---
+T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/old-skill" "$T/new-skill"
+printf -- '---\nname: new-skill\ndescription: The replacement skill that the stub should point at explicitly.\n---\n# x\n' > "$T/new-skill/SKILL.md"
+printf -- '---\nname: old-skill\ndescription: "DEPRECATED — merged into new-skill. Use new-skill for everything this did."\n---\n# x\n' > "$T/old-skill/SKILL.md"
+check "redirect stub without keys fails DEPRECATED" 1 "DEPRECATED" "$T"
+printf -- '---\nname: old-skill\ndescription: "DEPRECATED — merged into new-skill. Use new-skill for everything this did."\ndeprecated: true\nreplacement: new-skill\n---\n# x\n' > "$T/old-skill/SKILL.md"
+check "redirect stub with keys passes" 0 "OK — skills estate clean" "$T"
+
+# --- 16. REGISTERED: manifest entries must resolve and not be stubs ------
+T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/real"
+printf -- '---\nname: real\ndescription: A registered skill that exists and is not a redirect stub at all.\n---\n# x\n' > "$T/real/SKILL.md"
+printf 'real\nghost\n' > "$T/registered-skills.txt"
+check "manifest entry without a skill dir fails REGISTERED" 1 "REGISTERED" "$T"
+printf 'real\n' > "$T/registered-skills.txt"
+check "manifest entry that resolves passes" 0 "OK — skills estate clean" "$T"
+
+# --- 17. ABSPATH: the expanded /home/devuser form is banned too ----------
+T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/abs"
+printf -- '---\nname: abs\ndescription: Documents an install step with an expanded absolute skills path.\n---\ncp x /home/devuser/.claude/skills/abs/\n' > "$T/abs/SKILL.md"
+check "expanded ~/.claude/skills path fails ABSPATH" 1 "ABSPATH" "$T"
 
 echo
 echo "skill-lint: $pass passed, $fail failed"

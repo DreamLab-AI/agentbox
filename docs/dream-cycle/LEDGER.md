@@ -27,3 +27,4 @@
 | 2026-09-07 | ontology-monitor | ontology-monitor untestable: no deep evaluator or scan data; parents true-green | NONE | NONE | yes | INCONCLUSIVE |  | 8f5c4d0989af |  |
 | 2026-09-08 | dream-engine | Baseline 155/155, hooks 10/10, bridge OK; scans surfaced no code — no candidate | NONE | NONE | yes | INCONCLUSIVE |  | de33fddbbea1 |  |
 | 2026-09-09 | hooks-pipeline | fail-open scan empty; hook-syntax census-only; no code surface, no candidate | NONE | NONE | yes | INCONCLUSIVE |  | f5821dac3e5e |  |
+| 2026-09-10 | sovereign-mesh | Scan payload absent; baseline green; no candidate; bridge builds 2 solid-pod-rs | NONE | NONE | yes | INCONCLUSIVE |  | d562be6c0dc4 |  |

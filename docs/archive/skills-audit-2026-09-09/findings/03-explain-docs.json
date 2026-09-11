@@ -1,0 +1,265 @@
+{
+  "batch": "03-explain-docs",
+  "skills": [
+    {
+      "skill": "explainer",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "skills/explainer/SKILL.md:29-30 — \"The first instance is `co-created/the target repository/docs/explainer/` (tranche 2, Sep 2026); read it when you want to see the shape filled in.\" Verified: `ls /home/devuser/workspace/co-created/the target repository/docs/explainer` → \"No such file or directory\". README.md:5-6 repeats the same dead pointer.",
+          "fix": "Remove the worked-example pointer from SKILL.md and README.md until the bundle actually exists, or replace with a genuinely-built example; a reader following \"read it\" hits a dead end on the one concrete illustration the skill offers.",
+          "cross_skill": []
+        },
+        {
+          "class": "frontmatter",
+          "severity": "med",
+          "evidence": "skills/explainer/SKILL.md:3 — the single-line `description:` string is 1068 bytes (measured with the YAML key included; body text alone is ~1040 chars per the fact sheet), over agentskills.io's 1024-char description cap.",
+          "fix": "Trim the description to ≤1024 chars — move the lineage/Repo-Explainer explanation (currently inline) into the body, which already has a \"Lineage\" section that duplicates it.",
+          "cross_skill": []
+        },
+        {
+          "class": "model-fit",
+          "severity": "high",
+          "evidence": "skills/explainer/SKILL.md:82-88 — \"Spawn three forks (they inherit your orientation) with the prompt templates...\" and references/audience-prompts.md:3 — \"Spawn all three in one turn as `subagent_type: fork`\". No fallback or Codex/GPT-6 Astra note anywhere in SKILL.md or references/.",
+          "fix": "State explicitly that step 2 needs the Agent/fork tool and is Claude-only, with a sequential-subagent or single-context fallback for GPT-6 Astra via Codex (which has no fork tool per the environment's model-fit lens).",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "high",
+          "evidence": "skills/explainer/evals/evals.json:6 pilots the same target (\"~/workspace/co-created/the target repository\") that skills/repo-education/references/evidence-and-lessons.md:37 calls \"the Campaignbuilder pilot\". Both skills authored 2026-09-05..09, both proven against the same repo, zero cross-reference in either direction (grep for the other skill's name in both trees returns nothing).",
+          "fix": "See cluster_recommendation — the two pilots on the same repo are the clearest evidence the estate needs one shared contract, not two independently re-derived ones.",
+          "cross_skill": ["repo-education"]
+        },
+        {
+          "class": "discovery",
+          "severity": "med",
+          "evidence": "Not in skills/registered-skills.txt (grep returns nothing); present in SKILL-DIRECTORY.md:71 but absent from skills/skill-router/references/routing-table.md (no \"explainer\" line, despite routing-table.md covering docs-alignment, report-builder, mermaid-diagrams etc. in the same document).",
+          "fix": "Add an explainer row to routing-table.md so the router can actually dispatch to it; currently only reachable if the agent already knows the skill exists and reads SKILL.md directly.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "codebase-video",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "skills/codebase-video/SKILL.md (whole file) and skills/open-montage/SKILL.md:92 (\"animated-explainer\" pipeline) both claim the \"video explainer\" trigger space. open-montage's own body excludes codebase-video (SKILL.md:49: \"For an audience-targeted explainer of the current codebase with local GPU footage — use codebase-video\") but codebase-video's SKILL.md never mentions open-montage at all — the disambiguation is one-directional.",
+          "fix": "Add a one-line pointer in codebase-video/SKILL.md to open-montage for non-codebase video requests (trailers, avatars, podcast-to-video), mirroring open-montage's existing pointer back.",
+          "cross_skill": ["open-montage"]
+        },
+        {
+          "class": "duplicate",
+          "severity": "high",
+          "evidence": "codebase-video (MP4 + ComfyUI hero clips + Kokoro TTS, references/production.md) and repo-education (microsite + the connected node Qwen, references/specialist-handoffs.md:18) both claim \"explain the current codebase to an audience\" as their core deliverable, and repo-education's specialist-handoffs.md:18 explicitly hands off to codebase-video for the video component — so repo-education treats codebase-video as a sub-tool, while codebase-video's own SKILL.md never acknowledges being callable from a larger orchestration skill.",
+          "fix": "See cluster_recommendation. codebase-video is the only one of the three with a working, tested, deterministic compose/validate pipeline (tests/test_video_project.py, tests/test_narrate.py) — it should stay the video delivery reference, explicitly documented as reusable by repo-education/explainer rather than siloed.",
+          "cross_skill": ["repo-education", "explainer"]
+        }
+      ]
+    },
+    {
+      "skill": "repo-education",
+      "verdict": "fix",
+      "health": 5,
+      "findings": [
+        {
+          "class": "stale",
+          "severity": "high",
+          "evidence": "skills/repo-education/SKILL.md:71-73 — \"Use the HP-hosted local Qwen model for evidence synthesis, section drafting and visual inspection in the same multimodal workflow\" (frontmatter also promises \"vision\"). But references/hp-qwen.md:15-17: on 2026-09-09 the shared endpoint's `/props` \"reported vision false\", and hp-qwen.md:28-60 shows the only working vision path is a manually launched, network-isolated, CPU-only Docker container (`--gpus all -e CUDA_VISIBLE_DEVICES=-1 ... -ngl 0`) that took 208.9s for one 348-token response (hp-qwen.md:128).",
+          "fix": "Reword the SKILL.md/description promise from \"language and vision\" (steady-state capability) to \"language, with vision available only via a manually qualified, CPU-bound, per-session isolated container (~3.5min/request) — not a standing service\". As written the description overclaims a capability the shared endpoint does not have.",
+          "cross_skill": []
+        },
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "skills/repo-education/SKILL.md:76-77 — \"Call its direct llama.cpp interface without the Loom facade, ontology scaffold or automatic cloud fallback\" against /home/devuser/workspace/CLAUDE.md's \"Ontology Loom = ... LOAD-BEARING façade — the stable model-swap door. ... Consumers hold THIS; model swaps happen behind it with zero consumer change.\" Curl-verified live: :8084/health responds `backend\":\"http://127.0.0.1:8085/v1\"` — Loom's own backend IS the same model repo-education calls directly, so bypassing Loom does not buy vision (the resident model lacks it either way, per the finding above) and only forfeits Loom's ontology-grounded scaffold (fact sheet: \"static scaffold ≈3.5× recall\") and the model-swap insulation.",
+          "fix": "This is a well-reasoned, well-documented exception (hp-qwen.md is thorough about why), but it is undocumented as an architecture exception anywhere the Loom's own governing doc would show it (no ADR, no note in the workspace CLAUDE.md's Loom section). Either record a short ADR/exception note next to the Loom entry, or reconsider: since Loom's backend model has the same vision limitation, the bypass currently buys nothing but loses grounding.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "high",
+          "evidence": "Confirmed absent from skills/SKILL-DIRECTORY.md (no match), skills/skill-router/references/routing-table.md (no match), and skills/registered-skills.txt (no match) — matches and independently verifies the fact sheet's note. Only reachable via two hand-made symlinks in ~/.codex/skills (Codex only, per the fact sheet), not from Claude Code at all.",
+          "fix": "Add to SKILL-DIRECTORY.md and routing-table.md at minimum; currently a whole orchestration skill with the deepest evidence discipline in this batch is invisible to Claude Code's own routing.",
+          "cross_skill": []
+        },
+        {
+          "class": "duplicate",
+          "severity": "high",
+          "evidence": "See explainer finding — same Campaignbuilder pilot target, same week, zero cross-reference.",
+          "fix": "See cluster_recommendation.",
+          "cross_skill": ["explainer"]
+        }
+      ]
+    },
+    {
+      "skill": "open-montage",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "med",
+          "evidence": "skills/open-montage/SKILL.md:3-9 (frontmatter description) — \"Use when the user says ... 'create an explainer' ...\" — collides with explainer's own trigger (SKILL.md:3: \"'make an explainer' ... even when they only say 'docs'\") and with codebase-video's trigger (\"repository explainer videos\"). The body's \"When Not to Use\" (SKILL.md:47-54) only excludes codebase-video, not explainer's docs-bundle use case, even though a bare \"create an explainer\" utterance is genuinely ambiguous between all three.",
+          "fix": "Add explainer to open-montage's \"When Not to Use\" list (\"for a written docs bundle with a RuVector knowledge base — use explainer\"), and narrow the frontmatter trigger phrase to something video-specific (\"create an explainer video\").",
+          "cross_skill": ["explainer", "codebase-video"]
+        },
+        {
+          "class": "rot",
+          "severity": "med",
+          "evidence": "skills/open-montage/SKILL.md:108-117 — \"On first invocation: git clone --depth 1 https://github.com/calesthio/OpenMontage.git ~/.open-montage ... else cd ~/.open-montage && git pull --rebase\". No tag/commit pin; every subsequent invocation silently rebases onto upstream's current default branch, and the 49 tools/767 skill files it depends on are not vendored or reviewed in this repo at all — the entire capability surface is fetched at runtime and unaudited, unlike every other skill in the image (which is baked/pinned via Nix).",
+          "fix": "Pin to a specific commit/tag and vendor (or at minimum lockfile) the clone; an unpinned `git pull --rebase` from a third party into an agent's home directory on every use is a supply-chain gap worth a decision, not silence.",
+          "cross_skill": []
+        },
+        {
+          "class": "contradiction",
+          "severity": "low",
+          "evidence": "skills/open-montage/SKILL.md:184-189 (\"Integration with Existing Skills\" table) references `ffmpeg-processing`, `notebooklm`, `codex-companion` by name but not `codebase-video`, `mermaid-diagrams`, `diagram-design`, or `blender`/`comfyui` even though those are the media/diagram skills actually present in this batch's cluster and in codebase-video's own dependency list.",
+          "fix": "Extend the integration table, or explicitly state open-montage is deliberately self-contained (own Remotion/FFmpeg/ManimCE stack) and does not compose with the Agentbox-native blender/comfyui sidecars codebase-video uses.",
+          "cross_skill": ["codebase-video"]
+        }
+      ]
+    },
+    {
+      "skill": "docs-alignment",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "skills/docs-alignment/SKILL.md:3 (\"UK-English spelling\" as one of its checks, `scripts/validate-spelling.sh`) vs skills/prose-sanitiser/SKILL.md:3-13 (\"enforce UK English with sense-aware rules\"). Neither SKILL.md mentions the other anywhere (`grep -i prose-sanitiser skills/docs-alignment/SKILL.md` and `grep -i docs-alignment skills/prose-sanitiser/SKILL.md` both return nothing).",
+          "fix": "docs-alignment's spelling check is corpus-wide and structural (file-by-file pass/fail); prose-sanitiser's is sense-aware and part of a larger de-slop pipeline. Cross-link: docs-alignment should point to prose-sanitiser for the actual prose-quality pass once structural spelling is fixed, so a full docs modernisation doesn't silently skip AI-tell removal.",
+          "cross_skill": ["prose-sanitiser"]
+        }
+      ]
+    },
+    {
+      "skill": "mermaid-diagrams",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "rot",
+          "severity": "high",
+          "evidence": "skills/mermaid-diagrams/SKILL.md:90-92 and references/rendering-and-integration.md:12-15,45,56,64,67 and references/diagram-types.md:82 all invoke the bare command `mmdc-sidecar.sh`. Verified the script exists only at `/opt/agentbox/scripts/mmdc-sidecar.sh` (root-owned, r-x); verified `/opt/agentbox/scripts` is not added to `$PATH` anywhere in `config/entrypoint-unified.sh` (no `export PATH` line references it, unlike other baked script dirs that ship as proper Nix-store `bin/` packages) and the script is not symlinked into any directory that is on `$PATH`.",
+          "fix": "Either add `/opt/agentbox/scripts` to the runtime `$PATH` (entrypoint/profile), or change every example in SKILL.md and the three references files to the full path `/opt/agentbox/scripts/mmdc-sidecar.sh`. As written, every quick-start and reference example in this skill fails with \"command not found\" on a fresh shell.",
+          "cross_skill": []
+        },
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "skills/mermaid-diagrams/SKILL.md:10-28 — `triggers:` is a non-standard frontmatter key (fact sheet: triggers(16) among 50 uncontrolled keys), listing slash-commands (`/diagram`, `/mermaid`) not recognised by the agentskills.io standard or by skill-builder's own \"no other frontmatter fields are recognised\" claim.",
+          "fix": "Move the trigger phrase list into the body (it already duplicates content a reader would find in \"Decision: which engine?\"); keep frontmatter to name/description only, consistent with the majority of this batch's other skills.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "diagram-design",
+      "verdict": "keep",
+      "health": 7,
+      "findings": [
+        {
+          "class": "disclosure",
+          "severity": "low",
+          "evidence": "skills/diagram-design/SKILL.md is 566 lines / 37,782 bytes despite having 152 files under references/ (28 confirmed type-*.md files present, one per visual type claimed in SKILL.md's table) — the hub file itself is far past the lint's 250-line trigger and is closer in size to several of its own reference files combined, even though the type-specific depth is correctly split out.",
+          "fix": "Not urgent — the length is mostly the 28-row decision table and philosophy section, which arguably belong at the hub level for selection to work. Worth a pass to see if §1 Philosophy / §7 complexity-budget material (not yet read in full) can move to a references/philosophy.md.",
+          "cross_skill": []
+        },
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "skills/diagram-design/SKILL.md:4-6 — `license: MIT` and `metadata: {version: \"2.4\"}` are non-standard keys per skill-builder's own claim (\"no other frontmatter fields are recognised\") and the fact sheet's uncontrolled-key list.",
+          "fix": "Consistent with the estate-wide frontmatter-vocabulary finding already in the fact sheet — no unique fix needed beyond whatever estate-wide frontmatter schema decision resolves it.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skills/diagram-design/SKILL.md never mentions `fossflow` (isometric diagrams) or `paperbanana` (VLM-generated academic figures) anywhere in its 566 lines, despite mermaid-diagrams (which sits above it) linking to it directly. fossflow and paperbanana likewise never mention diagram-design.",
+          "fix": "Low severity because the three don't actually overlap in output mechanism (SVG/HTML vs FossFLOW-app JSON vs VLM-rendered raster) — but a one-line \"for isometric infra maps see fossflow; for VLM-photoreal academic figures see paperbanana\" in diagram-design's §2 would close the gap mermaid-diagrams already half-closes for it.",
+          "cross_skill": ["fossflow", "paperbanana"]
+        }
+      ]
+    },
+    {
+      "skill": "fossflow",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "skills/fossflow/SKILL.md:20-24 (\"When Not To Use\") correctly redirects to mermaid-diagrams, paperbanana and report-builder, but diagram-design (the actual sibling engine one hop away via mermaid-diagrams) is not mentioned in either direction.",
+          "fix": "Same gap as diagram-design's discovery finding above — one line each way would close it.",
+          "cross_skill": ["diagram-design"]
+        }
+      ]
+    },
+    {
+      "skill": "paperbanana",
+      "verdict": "fix",
+      "health": 6,
+      "findings": [
+        {
+          "class": "frontmatter",
+          "severity": "low",
+          "evidence": "skills/paperbanana/SKILL.md:2 — `name: \"PaperBanana\"` (Title Case) ≠ directory name `paperbanana`. Confirmed against the fact sheet's list of 7 such mismatches.",
+          "fix": "Change frontmatter `name` to `paperbanana` to match the directory, per the ruflo validator (`/^[a-z][a-z0-9-]*$/`, must equal dir) and agentskills.io.",
+          "cross_skill": []
+        },
+        {
+          "class": "discovery",
+          "severity": "low",
+          "evidence": "No cross-reference to diagram-design in either direction (verified by grep in both trees); paperbanana's own \"upgrading rough diagrams-as-code into polished academic illustrations\" (SKILL.md description) is adjacent to diagram-design's editorial HTML output, which some users will reach for first per mermaid-diagrams' explicit \"preferred for anything published\" default.",
+          "fix": "Add a one-line disambiguator: paperbanana for VLM-rendered raster figures matching a specific journal's visual convention; diagram-design for accessible, re-editable SVG/HTML. Not a hard contradiction — different rendering mechanisms — but worth a pointer given both claim \"publication-quality\".",
+          "cross_skill": ["diagram-design"]
+        },
+        {
+          "class": "rot",
+          "severity": "low",
+          "evidence": "skills/paperbanana/SKILL.md:42-50 — `paperbanana --help` / `pip install \"paperbanana[google]\"`; verified `pip show paperbanana` reports \"Package(s) not found\" and no `paperbanana` binary is on `$PATH` in this container, unlike every other tool this batch depends on (docs-alignment, report-preflight, mermaid-extract all confirmed present and baked). The skill itself documents this correctly as an install-on-first-use step, so this is disclosed rather than hidden rot, but it is the one skill in the batch not baked into the image at all.",
+          "fix": "No fix required if the install step is intentional (external API-key-gated tool); worth a note in the skill that it is the exception to the batch's otherwise-baked-binary norm, so a user doesn't assume parity with e.g. docs-alignment's zero-install path.",
+          "cross_skill": []
+        }
+      ]
+    },
+    {
+      "skill": "report-builder",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "duplicate",
+          "severity": "low",
+          "evidence": "skills/report-builder/SKILL.md:71 — Phase 5 REVIEW (\"4 specialist reviewers + optional cross-LLM review\") never mentions prose-sanitiser, even though report-builder's own quality gates (SKILL.md:79-84) don't include an AI-tell/de-slop pass and prose-sanitiser is registered (always-on) precisely for that.",
+          "fix": "Add prose-sanitiser as one of the Phase 5 reviewer roles or a documented optional step, since a report-builder chapter is exactly the \"public-facing content\" prose-sanitiser's own description targets.",
+          "cross_skill": ["prose-sanitiser"]
+        }
+      ]
+    },
+    {
+      "skill": "prose-sanitiser",
+      "verdict": "keep",
+      "health": 8,
+      "findings": [
+        {
+          "class": "duplicate",
+          "severity": "med",
+          "evidence": "See docs-alignment finding — UK-English enforcement duplicated on both sides with zero cross-reference; prose-sanitiser's SKILL.md never mentions docs-alignment or report-builder despite \"docs\" being explicitly in prose-sanitiser's own trigger list (\"editing public-facing content, blog posts, docs, tutorials\").",
+          "fix": "Add a one-line disambiguator distinguishing prose-sanitiser's per-file de-slop/de-provenance pass from docs-alignment's whole-corpus structural audit, so \"clean up the docs\" routes correctly depending on whether the ask is structural (docs-alignment) or prose-quality (prose-sanitiser) — often both apply and should be sequenced.",
+          "cross_skill": ["docs-alignment", "report-builder"]
+        }
+      ]
+    }
+  ],
+  "cluster_recommendation": "explainer, codebase-video and repo-education are not three views of one product; they are three independently invented answers to the same brief, proven on the literal same pilot target (the target repository) within days of each other, with zero mutual awareness. But they are not equally shaped: explainer's promised worked example doesn't exist on disk, repo-education is invisible to Claude Code's own routing entirely, and codebase-video is the only one with a tested, deterministic, receipt-producing delivery mechanism (video_project.py + unit tests). The comprehension/grounding/evidence disciplines, however, are genuinely different and each has real ideas worth keeping: explainer's claims-ledger + graded-KB-with-heldout-questions gate (A-E) is the strongest correctness mechanism in the batch; repo-education's evidence-packet schema (source/runtime/visual basis, cited IDs, needs_evidence/blocked states) and its stop-and-ask-before-fixing-product-code discipline are the strongest safety mechanism; codebase-video's manifest schema + hash-verified receipts is the strongest delivery mechanism.\n\nRecommended target shape: one `explainer` family, `agentbox/skills/explainer/` as the hub, with a shared core (comprehension arc + claims-ledger format + scope boundary + stop-and-ask rule, merged from all three) and three delivery references selected by requested output — `references/delivery-docs.md` (the current docs+kb bundle, gates A/C/E), `references/delivery-video.md` (codebase-video's manifest/compositor, reused verbatim rather than re-specified), `references/delivery-microsite.md` (repo-education's inspectable reading-surface + evidence-packet model, with the connected node Qwen direct-vision step demoted from \"the workflow\" to an optional, clearly-labelled supervised-drafting aid given it needs a manual per-session container and loses Loom's grounding for no vision benefit). codebase-video stays a standalone skill too (it has legitimate standalone callers — \"technical onboarding films\" without a docs bundle) but should be explicitly documented as both a specialist codebase-video pulls the docs' claims ledger will hand off to, cross-linked from the new explainer hub. If a full merge is too large a single change, the minimum viable fix is: (1) delete or fix explainer's dead the target repository pointer, (2) register repo-education in SKILL-DIRECTORY.md and routing-table.md, (3) add a \"when to choose which\" table cross-linked from all three SKILL.md files stating the audience/output/grounding-method differences verbatim, so the next author doesn't reinvent a fourth shape."
+}

@@ -21,10 +21,10 @@ lineage: ADR-2023 (the Loom façade is the stable model-swap door), ADR-2055 (op
 ## Context
 
 `skills/email-search/SKILL.md` documents the August 2026 failure precisely: a stale
-`REASONER_BASE_URL` pointing at `192.168.2.48:8084` — HP's dead old LAN address — makes
+`REASONER_BASE_URL` pointing at `a retired address:8084` — the connected node's dead old LAN address — makes
 every synthesis stall to a 180 s timeout while `GET /health` still returns 200. Health is
 green, the container is alive, and every reasoning call black-holes. The recorded fix is
-`REASONER_BASE_URL=http://192.168.2.132:8084/v1` and a recreate.
+`REASONER_BASE_URL=${LOOM_BASE_URL}` and a recreate.
 
 The documentation is correct and complete. What is missing is **detection**: nothing
 fails fast on a reasoner URL that resolves but does not answer. The operator experiences
@@ -74,12 +74,12 @@ Verification ran on the **uncommitted working tree** above
 decision and a plan, not a change.
 
 - The failure mode and its fix are documented in `skills/email-search/SKILL.md`
-  (failure-handling section): a stale `REASONER_BASE_URL` at `192.168.2.48:8084`
+  (failure-handling section): a stale `REASONER_BASE_URL` at `a retired address:8084`
   black-holes synthesis while `/health` returns 200, producing 180 s `refresh_inbox`
   stalls. Three of that file's lines carrying the dead `.48` address are `lint-ok`-suppressed
   precisely because they are the documented fingerprint rather than live configuration.
-- The dead address is estate-wide knowledge: `grep -rn '192.168.2.48' skills/` also hits
-  `web-summary/references/architecture.md` ("Never target `192.168.2.48` — HP's old
+- The dead address is estate-wide knowledge: `grep -rn 'a retired address' skills/` also hits
+  `web-summary/references/architecture.md` ("Never target `a retired address` — the connected node's old
   address is dead and black-holes"), and `skills/lint-skills.mjs` bans the string as a
   stale-host check.
 - The precedent for the degraded-state vocabulary is live in

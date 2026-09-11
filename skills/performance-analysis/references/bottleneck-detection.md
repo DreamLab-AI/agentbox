@@ -1,39 +1,40 @@
 # Bottleneck Detection & Profiling
 
-Full reference for `claude-flow bottleneck detect` and real-time performance
-profiling. Covers command options, the metric taxonomy, output format, common
-bottleneck patterns, and MCP integration.
+Full reference for `claude-flow performance bottleneck` and real-time
+performance profiling. Covers command options, the metric taxonomy, output
+format, common bottleneck patterns, and MCP integration.
 
 ## Command Syntax
 
+Verified against `claude-flow performance bottleneck --help` (ruflo v3.38.21) —
+this is the real, minimal option set. There is no top-level `bottleneck`
+command (it lives under `performance`), and no `--swarm-id`/`--time-range`/
+`--threshold`/`--export`/`--fix` flag in this build:
+
 ```bash
-npx claude-flow bottleneck detect [options]
+claude-flow performance bottleneck [options]
 ```
 
 ### Options
-- `--swarm-id, -s <id>` - Analyze specific swarm (default: current)
-- `--time-range, -t <range>` - Analysis period: 1h, 24h, 7d, all (default: 1h)
-- `--threshold <percent>` - Bottleneck threshold percentage (default: 20)
-- `--export, -e <file>` - Export analysis to file
-- `--fix` - Apply automatic optimizations
+- `-c, --component <name>` - Component to analyze
+- `-d, --depth <level>` - Analysis depth: quick, full (default: quick)
 
 ### Usage Examples
 ```bash
-# Basic detection for current swarm
-npx claude-flow bottleneck detect
+# Quick detection pass
+claude-flow performance bottleneck
 
-# Analyze specific swarm over 24 hours
-npx claude-flow bottleneck detect --swarm-id swarm-123 -t 24h
+# Full analysis
+claude-flow performance bottleneck -d full
 
-# Export detailed analysis
-npx claude-flow bottleneck detect -t 24h -e bottlenecks.json
-
-# Auto-fix detected issues
-npx claude-flow bottleneck detect --fix --threshold 15
-
-# Low threshold for sensitive detection
-npx claude-flow bottleneck detect --threshold 10 --export critical-issues.json
+# Scope to one component
+claude-flow performance bottleneck -c coordinator -d full
 ```
+
+To apply fixes, follow up with `claude-flow performance optimize --apply` (see
+[optimisation-and-operations.md](optimisation-and-operations.md)) — bottleneck
+detection and fix application are separate commands in this build, not one
+`--fix` flag on `bottleneck`.
 
 ## Metrics Analyzed
 
@@ -94,11 +95,15 @@ npx claude-flow bottleneck detect --threshold 10 --export critical-issues.json
 3. Increase agent concurrency to 8 (est. 20% improvement)
 
 ✅ Quick Fixes Available
-Run with --fix to apply:
+Run `claude-flow performance optimize --apply` to apply:
 - Enable smart caching
 - Optimize message routing
 - Adjust agent priorities
 ```
+
+Illustrative report shape above; the live CLI does not print box-drawing
+output by default — pass `--format json`/`table` on `performance metrics` for
+machine-readable results.
 
 ## Real-time Profiling
 
@@ -138,11 +143,9 @@ mcp__claude-flow__bottleneck_analyze({
   autoFix: false
 })
 
-// Get detailed task results with bottleneck analysis
-mcp__claude-flow__task_results({
-  taskId: "task-123",
-  format: "detailed"
-})
+// NOTE: mcp__claude-flow__task_results is not currently available — use
+// mcp__claude-flow__task_status or swarm_status for task-level detail instead.
+mcp__claude-flow__task_status({ taskId: "task-123" })
 ```
 
 **Result Format:**

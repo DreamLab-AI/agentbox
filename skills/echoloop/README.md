@@ -209,7 +209,7 @@ All settings are controlled via environment variables. See [`.env.example`](.env
 | `ECHOLOOP_LANGUAGE` | `en` | Language code (`en`, `fr`, `de`, `ja`, etc.) or empty for auto-detect |
 | `ECHOLOOP_LLM_PROVIDER` | `anthropic` | `anthropic` or `openai` |
 | `ECHOLOOP_ANTHROPIC_MODEL` | `claude-sonnet-5` | Anthropic model ID |
-| `ECHOLOOP_OPENAI_MODEL` | `gpt-4o` | OpenAI model ID |
+| `ECHOLOOP_OPENAI_MODEL` | `gpt-6-astra` | OpenAI model ID |
 | `ECHOLOOP_LLM_TEMPERATURE` | `0.4` | LLM temperature (lower = more deterministic) |
 | `ECHOLOOP_PUSH_INTERVAL` | `35` | Seconds between LLM coaching calls |
 | `ECHOLOOP_SILENCE_TRIGGER` | `4.0` | Seconds of silence before early LLM trigger |

@@ -37,6 +37,7 @@ Use this skill when you need to:
 - For GPU kernel development and CUDA programming -- use the cuda skill instead
 - For deploying trained models to production -- use the pytorch-ml or flow-nexus-neural skills instead
 - For non-Python data processing pipelines -- use the stream-chain skill or appropriate language-specific tooling
+- For stateful Python execution without notebook structure (no .ipynb, no cell-by-cell narrative) -- use the codeact skill instead
 
 ## Prerequisites
 
@@ -145,46 +146,6 @@ Notebooks can be exported to:
 5. **Clear Outputs**: Clear sensitive data before committing
 6. **Kernel Management**: Restart kernel when imports change
 
-## Example Workflows
-
-### Data Science Pipeline
-1. Create notebook with data exploration cells
-2. Execute EDA (exploratory data analysis)
-3. Add visualization cells
-4. Run statistical analysis
-5. Export results to HTML report
-
-### Machine Learning Experiment
-1. Set up experiment notebook
-2. Load training data
-3. Define model architecture
-4. Train with progress tracking
-5. Evaluate on test set
-6. Save model and metrics
-
-### Research Documentation
-1. Create markdown cells for methodology
-2. Add code cells for implementations
-3. Include result visualizations
-4. Export to PDF for publication
-
-## Error Handling
-
-The skill provides detailed error messages for:
-- Kernel execution failures
-- Cell syntax errors
-- Missing dependencies
-- File I/O errors
-- nbformat validation issues
-
-## Performance Considerations
-
-- Notebooks execute in isolated kernels
-- CUDA operations utilize GPU when available
-- Large datasets may require memory management
-- Long-running cells can be interrupted
-- Output size limits may apply
-
 ## Related Skills
 
 - **pytorch-ml** - Deep learning workflows
@@ -192,49 +153,39 @@ The skill provides detailed error messages for:
 - **report-builder** - Advanced plotting and report generation
 - **cuda** - GPU programming
 
-## Technical Details
+For example workflows, error handling, performance notes, technical details, and
+troubleshooting, see [references/usage-guide.md](references/usage-guide.md).
 
-- **Protocol**: Model Context Protocol (MCP) over stdio
-- **Server**: Node.js-based MCP server
-- **Format**: nbformat 4.x JSON schema
-- **Kernel**: IPython kernel with Python 3.x
-- **Extensions**: JupyterLab extensions supported
+## Configuration (manual setup — not wired into the boot path)
 
-## Troubleshooting
+This skill's `server.js` is **not** registered in `skills/mcp.json` (the canonical
+boot-projection source) or in `config/entrypoint-unified.sh`, and its `node_modules`
+are not installed by default. Nothing auto-provisions this MCP server on container
+start — treat everything below as a one-off manual setup, not a working-out-of-the-box
+integration.
 
-### Kernel Not Starting
-- Check `/opt/venv/bin/python` exists
-- Verify ipykernel installed
-- Check kernel specifications: `jupyter kernelspec list`
+To use it, from the skill directory: `npm install`, then register it yourself.
 
-### Import Errors
-- Activate virtual environment: `source /opt/venv/bin/activate`
-- Install missing packages: `pip install <package>`
-- Verify CUDA installation for GPU packages
-
-### Cell Execution Hangs
-- Interrupt kernel execution
-- Restart kernel
-- Check for infinite loops or blocking operations
-
-## Configuration
-
-MCP server configuration in `~/.claude/settings.json`:
+Claude Code — add to `~/.claude/settings.json`:
 ```json
 {
   "mcpServers": {
     "jupyter-notebooks": {
       "command": "node",
-      "args": ["/home/devuser/.claude/skills/jupyter-notebooks/server.js"],
-      "cwd": "/home/devuser/.claude/skills/jupyter-notebooks"
+      "args": ["<skill-dir>/jupyter-notebooks/server.js"],
+      "cwd": "<skill-dir>/jupyter-notebooks"
     }
   }
 }
 ```
+Replace `<skill-dir>` with wherever this skill is checked out (skill-relative — never
+hard-code an absolute path under the user's home `.claude/skills` directory).
+
+Codex / GPT-6 Astra — add an equivalent stdio server entry under `~/.codex/config.toml`.
 
 ## Notes
 
-- Compatible with Claude Code and other MCP clients
+- Compatible with Claude Code and other MCP clients once manually registered
 - Supports both JupyterLab and classic Notebook interfaces
 - Full compatibility with existing .ipynb files
 - Execution state preserved across sessions

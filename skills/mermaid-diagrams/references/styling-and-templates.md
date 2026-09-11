@@ -29,7 +29,7 @@ cat > mermaid-dark.json << 'EOF'
 EOF
 
 # Render with dark theme
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png -t dark
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png -t dark
 ```
 
 ### Light Theme (academic papers)
@@ -51,7 +51,7 @@ cat > mermaid-light.json << 'EOF'
 }
 EOF
 
-mmdc-sidecar.sh -i diagram.mmd -o diagram.png
+/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png
 ```
 
 Ready-made theme configs also live in `resources/templates/theme-dark.json` and
@@ -241,4 +241,3 @@ C4Context
 6. **Theme consistency**: Use the same config across all diagrams in a project
 7. **Label edges**: Always label arrows to show relationships: `A -->|"sends data"| B`
 8. **Subgraphs for grouping**: Use subgraphs to create logical sections
-</content>

@@ -21,11 +21,11 @@ depends_on_mcps:
 
 # Voyager Verified Skill Library
 
-**Status: Phase 2 scaffolding. The SKILL.md and verification implementation
-(the `voyager-gate` binary) ship now. The VerificationGate write path
-will be activated only after Phase 1 (expel-lesson-extractor) has been
-validated and `skills.code_interpreter.enabled = true` is confirmed live
-(ADR-019 §Rollout, PRD-008 §6 Phase 2b).**
+**Status: live. The VerificationGate write path is active** — Phase 1
+(expel-lesson-extractor) is validated, `skills.code_interpreter.enabled =
+true`, and `skills.voyager_skill_library.enabled = true` are all confirmed
+live in `agentbox.toml` (verified 2026-09-09; ADR-019 §Rollout, PRD-008 §6
+Phase 2b).
 
 See: ADR-019 §Mechanism 2, PRD-008 §3.5 / §7 Phase 2b (D1-D5), DDD-005
 §VerifiedSkill aggregate, invariants I08-I15.
@@ -130,7 +130,7 @@ Pin a specific version via the `version` filter in the retrieval query.
 search before the main task prompt:
 
 ```python
-results = mcp__ruvector__memory_search(
+results = mcp__claude-flow__memory_search(
     query=task_description,
     namespace="code-harness-skills",
     limit=3,
@@ -168,7 +168,7 @@ stdout/stderr) so it bypasses privacy redaction by design; a second record with
 
 ```toml
 [skills.voyager_skill_library]
-enabled              = false  # set true; requires skills.code_interpreter.enabled = true
+enabled              = true   # live (verified 2026-09-09); requires skills.code_interpreter.enabled = true
 max_skill_body_lines = 80     # reject candidate skills exceeding this line count
 archive_after_days   = 30     # demote superseded skill versions to archive namespace
 max_evidence_age_s   = 3600   # verified_by trace URN must reference a trace younger than this
@@ -188,7 +188,7 @@ Validator rules:
 - The implementation lives in `services/agentbox-ops/src/voyager/` plus
   `src/bin/voyager-gate.rs` (Phase 2 write-gate implementation). The scheduled archival job is not yet
   implemented.
-- All RuVector writes use `mcp__ruvector__memory_store` exclusively. Never
+- All RuVector writes use `mcp__claude-flow__memory_store` exclusively. Never
   raw SQL, never `claude-flow memory *` CLI (ADR-015 mandate).
 - The `embed_text` field is the primary semantic signal embedded by
   bge-small-en-v1.5 (384-dim, via Xinference) for HNSW search. Write it as a

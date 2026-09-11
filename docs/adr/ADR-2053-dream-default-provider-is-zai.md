@@ -13,15 +13,15 @@ owner: jjohare
 review_trigger: a change to [dream_machine].llm_provider, to the DREAM_LLM_PROVIDER default in the generated supervisor block, or to the set of repos in the nightly roster
 repo: agentbox
 domain: GOVERNANCE-capabilities
-lineage: ADR-2023 (Loom facade), ADR-2024 (dream cycle gating), legacy ADR-052 (dream machine HP annexe)
+lineage: ADR-2023 (Loom facade), ADR-2024 (dream cycle gating), legacy ADR-052 (dream machine the connected node annexe)
 ---
 
 # ADR-2053 — Record that the dream engine's default reasoning provider is Z.AI and name the egress posture
 
 ## Context
 
-`docs/GOVERNANCE-capabilities.md` describes the dream engine as "dispatched to HP
-(`10.10.10.1`) using the Loom/Qwen model". The running configuration disagrees:
+`docs/GOVERNANCE-capabilities.md` describes the dream engine as "dispatched to the connected node
+(`the connected node`) using the Loom/Qwen model". The running configuration disagrees:
 `agentbox.toml [dream_machine].llm_provider = "zai"` with
 `zai_model = "glm-5.3"`, and the generated supervisor block defaults the same way
 (`DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}"` in `flake.nix`).
@@ -77,7 +77,7 @@ Verification ran on the **uncommitted working tree** above
 - `sed -n '/^\[dream_machine\]/,/^\[security/p' agentbox.toml` → `llm_provider = "zai"`,
   `zai_model = "glm-5.3"`, `zai_max_tokens = 32768`, `loom_url`, `loom_model = "qwen3.8-27B"`,
   `loom_max_tokens = 32768`, `window_start = 1`, `window_end = 5`,
-  `hp_host = "john@10.10.10.1"`, `max_repos_per_night = 5`, `prune_dry_streak = 5`.
+  `hp_host = "${CONNECTED_NODE_SSH}"`, `max_repos_per_night = 5`, `prune_dry_streak = 5`.
 - `grep -n 'DREAM_LLM_PROVIDER' flake.nix` → the `[program:dream-engine]` environment line
   defaulting to `"zai"`.
 - `grep -n 'secrets-never-in-report' dream.config.json` → present in `extraDisciplines`.

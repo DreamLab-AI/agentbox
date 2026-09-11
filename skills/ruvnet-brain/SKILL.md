@@ -13,6 +13,7 @@ related_skills:
   - agentdb-memory-patterns
   - agentdb-vector-search
   - claude-flow-memory
+  - ruvector-catalog
 depends_on_mcps:
   - ruvnet-brain
   - claude-flow

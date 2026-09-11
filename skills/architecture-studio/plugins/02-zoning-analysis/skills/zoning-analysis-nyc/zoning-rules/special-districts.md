@@ -131,7 +131,7 @@ Common `spdist` codes:
 | TA | Transit Land Use (various) |
 | TMU | Tribeca Mixed Use |
 | SHP | Southern Hunters Point |
-| HP | Hudson Park |
+| the connected node | Hudson Park |
 
 ## How to Handle Special Districts in Analysis
 

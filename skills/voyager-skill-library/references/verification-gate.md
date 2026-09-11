@@ -49,7 +49,7 @@ with reason `"example-mismatch"`.
 version = current_max_version + 1
 skill_urn = f"urn:agentbox:skill:{scope}:{name}:v{version}"
 
-mcp__ruvector__memory_store(
+mcp__claude-flow__memory_store(
     namespace="code-harness-skills",
     key=f"skill:{scope}:{name}:v{version}",
     # value = embed_text (semantic hook) + full JSON
@@ -62,7 +62,7 @@ mcp__ruvector__memory_store(
 ## On rejection: quarantine
 
 ```python
-mcp__ruvector__memory_store(
+mcp__claude-flow__memory_store(
     namespace="code-harness-skills-rejected",
     key=f"rejected:{name}:{short_timestamp}",
     value=f"Rejected: {reason} | {json.dumps(rejection_record)}",

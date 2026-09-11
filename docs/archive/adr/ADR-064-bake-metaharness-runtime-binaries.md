@@ -36,5 +36,5 @@ At the next scheduled rebuild:
   [ADR-065](ADR-065-dream-darwin-evaluator-liveness.md) and the governance
   boundaries of [ADR-066](ADR-066-metaharness-governance-boundaries.md).
 - Note the dream-engine is **not** a consumer of these baked binaries — its darwin
-  runs on the HP annexe with HP-supplied packages (ADR-065). Do not assume version
+  runs on the connected node annexe with HP-supplied packages (ADR-065). Do not assume version
   identity between container-baked and annexe darwin.

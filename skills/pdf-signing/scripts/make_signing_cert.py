@@ -44,7 +44,7 @@ def main() -> int:
     ap.add_argument("--years", type=int, default=5, help="validity in years (default 5)")
     ap.add_argument("--cn", default="DreamLab AI Consulting Ltd")
     ap.add_argument("--org", default="DreamLab AI Consulting Ltd")
-    ap.add_argument("--email", default="john@thedreamlab.uk")
+    ap.add_argument("--email", default=os.environ.get("SIGNING_EMAIL", "signer@example.invalid"))
     ap.add_argument("--country", default="GB")
     ap.add_argument("--locality", default="Eskdale")
     args = ap.parse_args()
