@@ -205,7 +205,7 @@ mesh find it. Each delivery reference repeats this as its final step.
   and scripts.
 - `references/delivery-microsite.md` — the instructional-microsite workflow,
   evidence model and media production.
-- `references/delivery-video.md` — the video handoff to `codebase-video`.
+- `references/delivery-video.md` — the video handoff to `codebase-video`, the make/see/revise loop for visual work, and `scripts/asset-gate.mjs`.
 - `references/comprehension-arc.md` — the seven questions, per audience.
 - `references/gates.md` — the five gates, bars and ledger format in full.
 - `references/handup.md` — escalating a red gate to a stronger tier by packet, not by session; `scripts/handup.mjs`.

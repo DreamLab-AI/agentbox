@@ -60,6 +60,43 @@ So before rendering, decide from the frame, not from the habit:
 The same applies to a screenshot: trim the viewport to the content rather than leaving half
 the frame blank, and dismiss a first-run modal that covers what the scene is about.
 
+## Visual work is made, seen, then revised
+
+Prose in this method gets four steps: research, write, an independent check, revision. The
+chapters produced that way came out accurate and lint-clean first time. Media on the same
+run got two steps, make and ship, and produced a video showing a broken product behind an
+unreadable drawing. The difference was the loop, not the subject.
+
+So anything visual takes the same four:
+
+1. **Make** the asset, and write down what it is meant to show.
+2. **Gate** it mechanically: `scripts/asset-gate.mjs` below.
+3. **See** it. A session cannot look at a picture it wrote, so this is a separate session
+   with the frames attached as input (`evals/run-chaptered.sh` takes an `attach` list). Ask
+   it what is actually there, whether the product is working in it, whether the file name is
+   honest, and what is unreadable.
+4. **Revise** from that review, then gate and see again. Two passes is usually enough; a
+   third means the asset is wrong in kind rather than in detail.
+
+The seeing step is not optional politeness. On a measured run it caught a header crop that
+proved nothing, two frames misnamed for states they did not show, and two mangled labels in
+a diagram that every other check had passed.
+
+## Compose with the compositor, not with invention
+
+`codebase-video` ships a deterministic compositor with a validate step and a compose step,
+and a plan format that carries scenes, their assets and their measured narration. Use it.
+
+A measured run ignored it and assembled the video with hand-written FFmpeg filter graphs
+instead. The result was 1920 by 1080, correctly timed to the narration, with captions that
+matched the transcript line for line, and unusable: the diagram sat in a sixty-pixel column
+down one edge and two fifths of every frame was blank. Composition is where a video is made
+or lost, and it is the part least suited to invention under time pressure, because the
+failure is invisible to every check except looking.
+
+Hand-rolled FFmpeg is for a transformation the compositor does not offer, recorded as such
+in the production record, never for laying out a scene.
+
 ## Gate the assets before they reach the cut
 
 `scripts/asset-gate.mjs --assets <dir> --frame 1920x1080` refuses a picture on the three

@@ -39,6 +39,13 @@ that is absent from the catalogue, or a job that ends in error after one resume,
 hand-up with `reason=specialist` (`references/handup.md`), not a reason to improvise. Share
 GPU capacity conservatively with other work and preserve completed outputs.
 
+Ask the page before you photograph it. A browser session can read the document it is showing,
+so check for the failure before saving the frame rather than discovering it three steps
+later: look for the product's own error text, an unresolved loading state, or an empty
+region where content belongs, and fix the environment before capturing. This costs one
+evaluation and saves the whole downstream chain, because once a bad frame is saved it gets
+named, linked, narrated over and encoded before anyone looks at it.
+
 A frame showing the product failing is not a frame showing the product. An error panel, a
 perpetual spinner, an empty table or a status code where content belongs means the
 environment is wrong, not that the feature looks like that; saving it under a filename that
