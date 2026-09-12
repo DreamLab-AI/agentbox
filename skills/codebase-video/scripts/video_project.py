@@ -173,10 +173,32 @@ def text_filter(work, name, text, size, x, y, extra=''):
 
 def scene_filter(plan, scene, work):
     w, h, fps = (plan[k] for k in ('width', 'height', 'fps'))
-    filters = [f'scale={w}:{h}:force_original_aspect_ratio=decrease', f'pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=0x101827', 'setsar=1', f'fps={fps}']
+    # THE BAND IS OPAQUE, SO NOTHING MAY BE COMPOSED UNDER IT.
+    #
+    # The scene image used to be scaled to the whole frame and the title band drawn on top,
+    # which meant the top 19 per cent of every picture was covered. On a diagram that is
+    # exactly where its own heading sits: seven delivered clips were reviewed frame by frame
+    # on 2026-09-12 and every one had its title colliding with the drawing beneath it, losing
+    # between two words and a whole heading. A later pass deleted the headings from the
+    # diagrams, which fixed the collision by removing the thing collided with and then let the
+    # band cut the top row of boxes in half instead. The heading was never the problem.
+    #
+    # So the image is composed into the region BELOW the band, and the zoom is applied inside
+    # that region before it is placed. Zooming the placed frame would walk the content back up
+    # under the band: a 6 per cent zoom lifts the top edge by about two per cent of the frame.
+    # Both must be even: libx264 refuses odd dimensions, and a 1080-high frame gives a 205-high
+    # band and an 875-high region, which fails to open the encoder at all.
+    band = (int(h * .19) // 2) * 2
+    region = h - band
+    filters = [
+        f'scale={w}:{region}:force_original_aspect_ratio=decrease',
+        f'pad={w}:{region}:(ow-iw)/2:(oh-ih)/2:color=0x101827',
+        'setsar=1', f'fps={fps}',
+    ]
     if scene['kind'] == 'image' and scene.get('motion', True):
-        filters += [f"zoompan=z='min(zoom+0.0005,1.06)':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s={w}x{h}:fps={fps}"]
-    filters += [f'drawbox=x=0:y=0:w=iw:h={int(h*.19)}:color=0x101827@0.8:t=fill']
+        filters += [f"zoompan=z='min(zoom+0.0005,1.06)':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s={w}x{region}:fps={fps}"]
+    filters += [f'pad={w}:{h}:0:{band}:color=0x101827']
+    filters += [f'drawbox=x=0:y=0:w=iw:h={band}:color=0x101827@0.8:t=fill']
     title = '\n'.join(overlay_lines(plan, scene['title'], 'title'))
     filters += [text_filter(work, 'title.txt', title, overlay_size(plan, 'title'), '(w-tw)/2', str(int(h*.045)))]
     if scene['kind'] == 'diagram':
