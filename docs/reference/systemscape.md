@@ -4,22 +4,40 @@ Agentbox packages [DreamLab-AI/systemscape](https://github.com/DreamLab-AI/syste
 previously named `thermal3d`. The binary remains `systemscape`. It uses
 `gemini-engine 1.2.1`, the current published renderer version checked on 12 September
 2026; it is not a Ratatui graphics pipeline. The System window also runs `bottom`
-for detailed process telemetry.
+for detailed process telemetry. It starts zoomed to the landscape; tmux prefix
+then `z` reveals the companion process monitor.
 
 The new Activity window is normally index 10. It runs `systemscape --activity`,
 a continuous 3D tour inspired by [bough](https://github.com/nickelsec/bough).
 Time runs along textured paths on a procedural ASCII island. Agents occupy
-districts, and coloured beacons represent
-prompts, tool calls, failures and recorded commit receipts. The camera flies a relaxed 52-second circuit through the full-screen landscape, six times
-wider and deeper than the original, at an altitude of 30–46 world units with a moderately downward camera angle.
-Both telemetry and activity use muted pastel terrain, vivid warm data colours and black descriptive panels.
+districts, and coloured beacons represent prompts, tool calls, failures and
+recorded commit receipts. The camera flies a relaxed 52-second circuit through
+the full-screen landscape, six times wider and deeper than the original, at an
+altitude of 30–46 world units with a moderately downward camera angle.
+
+Both views separate vivid warm data colours from muted pastel terrain and
+landmarks. Amber, orange, red, gold and pink identify the data; black panels keep
+text readable. Telemetry bars use three times the original vertical relief,
+remaining linear in each channel's normalised value. Terrain relief is decorative.
 Record selection advances every four seconds. The tour traverses the retained
 record pages, lane pages and UTC days.
+
+## Controls and the centre reticule
 
 Use arrows to rotate and tilt, `+`/`-` to zoom, `j`/`k` to select, `[`/`]` for
 days, Tab for lane pages and Page Up/Down for record pages. Navigation pauses
 the tour; Space resumes it. Enter shows the source path, `f` switches to a flat
 view, and `q` exits. Small panes use the flat view automatically.
+
+In the 3D Activity view, a centre reticule describes the nearest action beacon
+within five columns and two rows of its centre. Depth resolves overlapping
+candidates. This is a small screen-space aiming aperture, not a terrain-occlusion
+ray trace. The opaque black panel hides graphics behind the summary and shows
+“No action in sight” when the aperture contains no beacon. Enter opens the aimed
+action's source; without a target it opens the selected record. The detailed HUD
+and flat view replace the reticule panel.
+
+## Inputs and rendering
 
 Activity reads local Claude and Codex histories, profile histories under
 `$WORKSPACE/profiles`, and the shared event archive at
@@ -33,7 +51,19 @@ Press `?` for details and coverage or `h` for the district sidebar; both are
 hidden by default to give the terrain more space. Paused views redraw only on change.
 Collection is bounded to 8 MiB per two-second poll, 1 MiB per file, 256 files
 and 5,000 retained records. Coverage shows pending files, omissions and limits.
+Both views compare front/back row buffers and publish changed rows plus panel
+regions inside synchronized terminal updates. Normal frames do not erase the
+screen; resizes clear stale content. This reduces clear-and-redraw flicker,
+although terminal support and transport latency still affect presentation.
+
 This feature makes no model calls and needs no additional service or database.
+
+## Screenshots and upstream documentation
+
+The [SystemScape README](https://github.com/DreamLab-AI/systemscape#readme)
+includes real terminal screenshots of the activity landscape, flat history and
+system telemetry. Its [capture guide](https://github.com/DreamLab-AI/systemscape/blob/main/docs/SCREENSHOTS.md)
+explains how to regenerate them from synthetic activity fixtures.
 
 ## Rebuild
 
