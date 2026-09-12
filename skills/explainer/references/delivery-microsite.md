@@ -137,6 +137,12 @@ pilot.
 
 ## Build an inspectable reading surface
 
+Read the delivery's own contract before choosing the shape. The source pane below is written
+for a reader who came to read code; an audience whose contract says otherwise gets the same
+viewer in a closed layer beneath the chapter instead of a pane beside it. Reusing another
+pack's build is sensible and reusing its layout is not, because the layout is the promise.
+
+
 Keep explanation and media on the left and a swappable source pane on the right
 when the reader benefits from comparing them. A reference should open the
 entire file at its cited lines without losing the narrative position. Preserve

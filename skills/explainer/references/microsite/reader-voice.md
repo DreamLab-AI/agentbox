@@ -102,6 +102,18 @@ question: Why does signing in not grant permission?
 | Executive or investor assessing it | the behaviour and the decision, in the product's own vocabulary; no file names in the prose | the one thing to try, or the question to put to the team | below the reading path, in an optional inspection layer | 500–900 words |
 | User of the product | what they can do and what happens when they do it | the task they came to perform | none in the prose | 400–800 words |
 
+The audience decides the layout, not only the words. A split view with the source beside the
+prose tells the reader that reading the code is part of the job; for an engineer inheriting
+the system that is exactly right, and for an executive it contradicts the promise the pack
+made them. Where the contract says source inspection sits below the reading path, the build
+must put it there: one column, a comfortable measure, and the viewer in a closed layer under
+the chapter with a line saying nothing above needs it.
+
+This is easy to get wrong by reuse. A build copied from another audience's pack brings that
+audience's shape with it, and the shape is the part that matters most: a measured run copied
+a working code viewer into an executive pack, and the result contradicted its own teaching
+contract while every mechanical check passed (2026-09-12). Copy the renderer, not the layout.
+
 Present tense, UK English, sentences around 20 words, product terms defined on first use.
 
 The lint is not a secret rubric; write to it from the first draft. It rejects, in order of
