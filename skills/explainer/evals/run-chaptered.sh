@@ -143,16 +143,44 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
   attach_args=()
   # --file is an array option and swallows the following positional, so the prompt goes after --
   if [ -n "$attach_globs" ]; then
+    # An attachment has to fit in a request. Nine console captures at 3840px filled the body
+    # limit and the server refused the whole thing, leaving the item running blind with no
+    # sign in its own output that it could not see (measured 2026-09-12). So images are
+    # downscaled into the item's directory first and the batch is capped; anything over the
+    # cap is left for a second review item rather than silently dropped from this one.
+    mkdir -p "$dir/attached"
+    raw=()
     while IFS= read -r g; do
       [ -z "$g" ] && continue
-      for f in $g; do [ -f "$f" ] && attach_args+=(-f "$f"); done
+      for f in $g; do [ -f "$f" ] && raw+=("$f"); done
     done <<< "$attach_globs"
-    echo "[$(date -u +%H:%M:%S)]   $id: attaching ${#attach_args[@]} file argument(s)"
+    max_attach=${MAX_ATTACH:-8}
+    kept=0
+    for f in "${raw[@]}"; do
+      [ "$kept" -ge "$max_attach" ] && break
+      case "$f" in
+        *.png|*.jpg|*.jpeg|*.webp)
+          small="$dir/attached/$(printf '%02d' $((kept+1)))-$(basename "${f%.*}").jpg"
+          if ffmpeg -v error -i "$f" -vf "scale='min(1100,iw)':-2" -q:v 4 "$small" -y 2>/dev/null && [ -s "$small" ]; then
+            attach_args+=(-f "$small")
+          else
+            attach_args+=(-f "$f")
+          fi;;
+        *) attach_args+=(-f "$f");;
+      esac
+      kept=$((kept+1))
+    done
+    echo "[$(date -u +%H:%M:%S)]   $id: attaching $kept of ${#raw[@]} file(s), downscaled for the request body"
+    [ "${#raw[@]}" -gt "$max_attach" ] && echo "[$(date -u +%H:%M:%S)]   $id: $(( ${#raw[@]} - max_attach )) file(s) beyond the cap of $max_attach were not attached; give them their own review item"
     printf '%s\n' "${attach_args[@]}" > "$dir/attached.txt"
   fi
   t0=$(date -u +%s); set +e
   ( cd "$target" && OPENCODE_CONFIG="$cfg" timeout "$budget" opencode run -m "$profile" --format json "${attach_args[@]}" -- "$prompt" ) > "$dir/transcript.jsonl" 2> "$dir/stderr.log"
   st=$?; set -e
+  if [ -s "$dir/transcript.jsonl" ] && grep -q '"ContextOverflowError"\|Payload Too Large' "$dir/transcript.jsonl" 2>/dev/null; then
+    echo "[$(date -u +%H:%M:%S)]   $id: the attachments were refused as too large; this item judged nothing it could see" >&2
+    st=65
+  fi
   if [ "$st" = 124 ]; then
     mkdir -p "$record/handup"
     python3 "$(dirname "$0")/handup-budget.py" "$record/handup/$id-budget.json" "$id" "$budget" "$dir"
