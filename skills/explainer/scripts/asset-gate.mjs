@@ -4,7 +4,7 @@
 // mechanical check in the pipeline passed anyway: the file existed, played, matched its
 // narration to the frame, and showed a broken product behind an illegible drawing.
 //
-//   asset-gate.mjs --assets DIR [--frame 1920x1080] [--medium video|page] [--json] [--min-ink 0.55]
+//   asset-gate.mjs --assets DIR [--frame 1920x1080] [--medium video|page] [--json] [--min-ink 0.55] [--max-hole 0.35]
 //
 // The medium matters, and getting it wrong rejects good work. A portrait capture of a phone is a
 // fault in a 1920x1080 video frame and perfectly ordinary on a web page. A 580px-wide diagram has
@@ -51,6 +51,7 @@ const medium = String(args.medium ?? 'video').toLowerCase();
 if (!['video', 'page'].includes(medium)) { console.error(`asset-gate.mjs: --medium must be video or page`); process.exit(2); }
 const forFrame = medium === 'video';   // the checks that only mean something inside a fixed frame
 const minInk = Number(args['min-ink'] ?? 0.55);
+const maxHole = Number(args['max-hole'] ?? 0.35);
 const have = (cmd) => { try { execFileSync('sh', ['-c', `command -v ${cmd}`], { stdio: 'pipe' }); return true; } catch { return false; } };
 
 // Phrases that mean the thing in the picture is not working. Kept narrow on purpose: a
@@ -102,6 +103,32 @@ const ink = (f) => {
   } catch { return null; }
 };
 
+// A page that never painted its middle passes the ink test: trim sees content at the top and
+// content at the bottom and reports a full frame. So look down the image for a band of rows with
+// no variation across them, bounded by content above and below. A trailing flat band is left
+// alone, because that is border and trim already sees it.
+const HOLE_ROWS = 256, HOLE_COLS = 64, HOLE_FLAT = 6 / 255;
+const hole = (f) => {
+  if (!have('magick')) return null;
+  let txt;
+  try {
+    txt = execFileSync('magick', [f, '-colorspace', 'Gray', '-resize', `${HOLE_COLS}x${HOLE_ROWS}!`,
+                                  '-depth', '8', 'txt:-'], { encoding: 'utf8', stdio: 'pipe' });
+  } catch { return null; }
+  const rows = Array.from({ length: HOLE_ROWS }, () => []);
+  for (const line of txt.split('\n')) {
+    const m = line.match(/^(\d+),(\d+):\s*\((\d+)/);
+    if (m && rows[+m[2]]) rows[+m[2]].push(+m[3] / 255);
+  }
+  const flat = rows.map((r) => r.length > 0 && Math.max(...r) - Math.min(...r) < HOLE_FLAT);
+  let best = 0, run = 0, start = -1;
+  for (let y = 0; y < HOLE_ROWS; y++) {
+    if (flat[y]) { if (run === 0) start = y; run++; }
+    else { if (start > 0 && run > best) best = run; run = 0; start = -1; }
+  }
+  return best / HOLE_ROWS;
+};
+
 const geometry = (f) => {
   if (!have('magick') && !have('convert')) return null;
   const bin = have('magick') ? 'magick' : 'convert';
@@ -126,7 +153,17 @@ for (const f of images) {
   if (coverage === null) r.notes.push('no ImageMagick; emptiness check skipped');
   else {
     r.ink = Number(coverage.toFixed(4));
-    if (coverage < minInk) r.problems.push({ code: 'EMPTY', detail: `content occupies only ${(coverage * 100).toFixed(1)}% of the frame; the rest is blank border (floor ${(minInk * 100).toFixed(0)}%)` });
+    // A header band or a toolbar strip is mostly the space its one line of text does not need.
+    // Holding it to the same fill as a full screenshot rejects a perfectly good capture.
+    const strip = g && Math.max(g.w / g.h, g.h / g.w) >= 8;
+    if (strip) r.notes.push('a narrow strip, so the blank-border floor does not apply');
+    if (!strip && coverage < minInk) r.problems.push({ code: 'EMPTY', detail: `content occupies only ${(coverage * 100).toFixed(1)}% of the frame; the rest is blank border (floor ${(minInk * 100).toFixed(0)}%)` });
+  }
+
+  const gap = hole(f);
+  if (gap !== null) {
+    r.hole = Number(gap.toFixed(3));
+    if (gap >= maxHole) r.problems.push({ code: 'HOLE', detail: `${(gap * 100).toFixed(0)}% of the height is one unbroken blank band with content above and below it; the page did not finish painting` });
   }
 
   if (g && fw && fh) {
