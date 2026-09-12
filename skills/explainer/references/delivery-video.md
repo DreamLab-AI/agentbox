@@ -199,3 +199,21 @@ number rather than a guess.
 It does not compose scenes, generate hero clips, run FFmpeg or write
 narration. If `codebase-video` is not installed or reachable, say so rather
 than approximating a video with the docs bundle or the microsite.
+
+## Smoke-test the chain before fifteen items depend on it
+
+Fifteen clip items, each narrating and composing one chapter, is fifteen budgets riding on a
+path nobody has run in this engagement yet. Run it once, on a one-scene plan, before they start:
+synthesise a line of speech, retime the scene from the measured audio, compose the clip. It takes
+two minutes and it answers the questions the items cannot.
+
+Doing that here found the one that would have cost the most. `video_project.py` refuses any scene
+without `evidence` — a non-empty list of repository-relative paths that exist — and says only
+"source evidence is required". A clip item that has written its narration, called the speech
+service and assembled its scenes discovers this at the last step, and a plan is not obviously
+missing a field nobody told it to write. Fifteen items would have failed the same way.
+
+The requirement is right: it is the compositor refusing to make a film about a claim with nothing
+behind it. So the item is told about it, and told where the paths already are — the chapter's own
+grounding section lists the file and lines behind every claim it makes, which is exactly the
+evidence list with the line numbers dropped.
