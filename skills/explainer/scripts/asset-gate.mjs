@@ -107,7 +107,7 @@ const ink = (f) => {
 // content at the bottom and reports a full frame. So look down the image for a band of rows with
 // no variation across them, bounded by content above and below. A trailing flat band is left
 // alone, because that is border and trim already sees it.
-const HOLE_ROWS = 256, HOLE_COLS = 64, HOLE_FLAT = 6 / 255;
+const HOLE_ROWS = 256, HOLE_COLS = 64, HOLE_FLAT = 6 / 255, HOLE_WIDE = 4;
 const hole = (f) => {
   if (!have('magick')) return null;
   let txt;
@@ -120,11 +120,22 @@ const hole = (f) => {
     const m = line.match(/^(\d+),(\d+):\s*\((\d+)/);
     if (m && rows[+m[2]]) rows[+m[2]].push(+m[3] / 255);
   }
-  const flat = rows.map((r) => r.length > 0 && Math.max(...r) - Math.min(...r) < HOLE_FLAT);
+  // A row counts as content only when a real slice of its width departs from its own base tone.
+  // Taking max minus min instead makes one floating button in a corner enough to call a row
+  // content, which turns the empty rest of a sparse page into an interior hole.
+  const flat = rows.map((r) => {
+    if (!r.length) return true;
+    const base = r.slice().sort((a, b) => a - b)[Math.floor(r.length / 2)];
+    return r.filter((v) => Math.abs(v - base) > HOLE_FLAT).length < HOLE_WIDE;
+  });
+  // Content below the band has to amount to something. A sparse page whose content stops near
+  // the top often carries a floating button in the bottom corner, and without this that one
+  // element turns the empty rest of the page into an interior hole.
+  const below = (y) => flat.slice(y).filter((f) => !f).length;
   let best = 0, run = 0, start = -1;
   for (let y = 0; y < HOLE_ROWS; y++) {
     if (flat[y]) { if (run === 0) start = y; run++; }
-    else { if (start > 0 && run > best) best = run; run = 0; start = -1; }
+    else { if (start > 0 && run > best && below(start + run) >= 8) best = run; run = 0; start = -1; }
   }
   return best / HOLE_ROWS;
 };
