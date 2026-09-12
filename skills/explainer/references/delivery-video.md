@@ -217,3 +217,25 @@ The requirement is right: it is the compositor refusing to make a film about a c
 behind it. So the item is told about it, and told where the paths already are — the chapter's own
 grounding section lists the file and lines behind every claim it makes, which is exactly the
 evidence list with the line numbers dropped.
+
+## A label that does not fit its own box
+
+The asset gate measures whether a drawing fills its frame and whether its type is large enough
+once scaled. It does not measure whether a label fits the box it sits in, and that is the fault
+that actually shipped: twenty-nine labels across six of one pack's seven diagrams were between 4
+and 79 pixels too wide for their boxes, so the words ran out through the sides. Every clip showed
+it. Every gate passed it.
+
+The cause was the generator sizing each box from its label with a character metric narrower than
+the font renders at, which is an easy few per cent to be wrong by and an invisible one until
+something is drawn.
+
+So after rendering, look at the picture. Every label inside its box, every edge label clear of
+the line it names, nothing against the frame edge. Where one does not fit, shorten the label or
+widen the box.
+
+**Do not shrink the type to make it fit.** That was tried on the pack above: it fits the marginal
+cases and leaves the worst ones needing to drop below 22px, so the diagram ends up with
+inconsistent type AND clipped words. Widening the box is invisible when it works and honest when
+it does not — a box that cannot grow without colliding is telling you the row needs re-laying-out,
+which is a thing you can then decide to do or to record.
