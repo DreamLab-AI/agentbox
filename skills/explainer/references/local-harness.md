@@ -139,6 +139,18 @@ thing to write — grounded, checked, consistent, documented — ask what the mo
 type to satisfy it. If the answer is not obvious to you, it will not be obvious to a session with
 no memory of the convention.
 
+**The browser's localhost is not yours.** A capture item runs in one container and drives a
+browser in another. The session can `curl http://localhost:3000` and get the product; hand the
+browser that same URL and it opens its own container's nothing. The failure is quiet: a
+screenshot of a blank page or a connection error, saved under a filename claiming it shows the
+product.
+
+So the engagement's service manifest names both addresses and says which is which, and the
+capture item is told to use the browser one. Check before the item runs, not after: open the
+product in the browser yourself, from the address you are about to write down, and look at what
+comes back. That also answers the second question the item cannot answer for itself — whether
+the product is currently in a state worth photographing at all.
+
 ## Hand the session an inventory, not a search
 
 The failure above was not really about delegation. It was asked to derive a curriculum by
