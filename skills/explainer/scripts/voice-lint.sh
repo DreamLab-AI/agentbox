@@ -22,6 +22,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 if [ -n "$allow_file" ] && [ ! -f "$allow_file" ]; then echo "voice-lint: --allow file not found: $allow_file" >&2; exit 2; fi
+# A chapter must not narrate its own making, but it may point at its own media: "watch this
+# chapter as a film" is navigation, not process narration, and a pack whose contract requires
+# a clip per chapter cannot link to one without naming it. grep -E has no lookahead, so the
+# sanctioned sentence is removed before matching rather than excepted inside the pattern.
+MEDIA_LINK='[Ww]atch (this|the) (chapter|section)[^.]{0,80}\.'
 SELF='\b(this (pack|chapter|walkthrough|guide|page|site|section|explainer|curriculum)|the reader|reading pack|curriculum)\b'
 EVID='\b(evidence|receipts?|recorded|observed|verified|verification of this|checkpoint|export(ed)?|hash(es|ed)?|provenance|drill|fixture|demonstration|demonstrat(es|ed)|reproduce|reproducible)\b'
 HIST='\b(earlier regression|was corrected|after the fix|before the fix|now (works|passes)|F0[0-9]{2}|finding [0-9]+|remediat(ion|ed))\b'
@@ -34,6 +39,7 @@ for f in "$@"; do
   # a route named /screenshot or a file called evidence.ts are code, not prose.
   text=$(sed -e 's/<[^>]*>/ /g' "$f" | awk '/^```/{f=!f;next} !f' | sed -E 's/`[^`]*`/ /g; s/\]\([^)]*\)/]/g')
   words=$(printf '%s' "$text" | wc -w)
+  text=$(printf '%s' "$text" | sed -E "s/$MEDIA_LINK/ /g")
   if [ -n "$allow_file" ]; then
     while IFS= read -r phrase; do
       case "$phrase" in ''|'#'*) continue;; esac

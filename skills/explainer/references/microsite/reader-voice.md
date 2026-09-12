@@ -116,6 +116,13 @@ contract while every mechanical check passed (2026-09-12). Copy the renderer, no
 
 Present tense, UK English, sentences around 20 words, product terms defined on first use.
 
+One exception is built in. A chapter may point at its own clip — "watch this chapter as a
+one-minute film, or read the same chapter in words" — because that is navigation, not
+process narration, and a delivery whose contract requires a clip per chapter cannot link to
+one without naming what it points at. Every chapter of a measured pack failed on that single
+template line, which is a rule catching the wrong thing rather than seven separate slips.
+Nothing else about the chapter's own existence is allowed.
+
 The lint is not a secret rubric; write to it from the first draft. It rejects, in order of
 how often each one actually fires: the em dash, in any use — start a new sentence, or use a
 comma or a colon; the chapter referring to itself ("this chapter", "the reader"); the
