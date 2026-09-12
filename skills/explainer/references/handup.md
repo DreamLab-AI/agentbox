@@ -36,6 +36,10 @@ the queue is empty.
 | a product defect is reproduced | T0, per the hub's stop-before-fixing rule | records diagnosis and proposed correction, marks the chapter blocked, continues independent work | T2, `product-defect`, always |
 | a cap on tokens, wall clock or hand-ups per chapter is reached | controller | nothing | T2, `budget` |
 
+A packet whose only content is that the clock ran out tells nobody anything. If most of a
+run's packets say that, the budgets are wrong, not the work: see the measured costs in
+`gates.md`. Budget so that a step which spends its whole allowance is genuinely stuck.
+
 The prerequisite row is the one that costs most when it is ignored. A run measured on
 2026-09-10 wrote two chapters in forty minutes and then spent two hours trying to seed a
 database so that a screenshot would have something to show, and finished with no media at

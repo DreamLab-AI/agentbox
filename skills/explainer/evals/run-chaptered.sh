@@ -11,6 +11,10 @@
 #   run-chaptered.sh --workspace DIR --plan FILE --target DIR --skills-root DIR
 #                    [--profile provider/model] [--item-timeout SECONDS] [--from N] [--only N]
 #
+# --item-timeout is the fallback for an item that declares no timeout of its own; it defaults
+# to 150 minutes because a budget that cuts off honest work teaches nothing. See the budget
+# table in references/gates.md for what steps actually cost.
+#
 # The plan is a JSON array of items:
 #   [{ "id": "ch1", "prompt": "…", "needs": ["ch0"], "timeout": 1800,
 #      "attach": ["glob", …], "produces": ["glob", …] }, …]
@@ -32,7 +36,7 @@
 # Each item runs in its own `opencode run`, in the target, with the shared production record
 # on disk as its only inheritance. An item whose prerequisite failed is skipped, not guessed.
 set -euo pipefail
-workspace= plan= target= root= profile=loom-agent/current item_timeout=5400 from=1 only=
+workspace= plan= target= root= profile=loom-agent/current item_timeout=9000 from=1 only=
 while [ $# -gt 0 ]; do
   case "$1" in
     --workspace) workspace=$2; shift 2;; --plan) plan=$2; shift 2;; --target) target=$2; shift 2;;

@@ -45,6 +45,34 @@ for a cold-reader failure or a reproduced product defect. Record each attempt wi
 on a refusal, write a packet (`scripts/handup.mjs write`) and move to work the packet
 does not block. `references/handup.md` has the triggers and the reply verdicts.
 
+## What the steps cost, and how to budget them
+
+A budget exists to stop a step digging, not to stop it working. Set too tight it does the
+opposite: it ends honest work at the moment of finishing and leaves a hand-up packet saying
+nothing more useful than "time ran out". A seven-chapter pack measured on 12 September, on a
+local model, cost this:
+
+| Step | Measured | Note |
+|---|---|---|
+| Orientation | 20 min, 61 tool calls | one for the whole pack, before any chapter |
+| One chapter | 8 to 32 min, median 17 | the spread is the subject, not the model |
+| Reading surface | over 40 | hit its ceiling |
+| Diagrams, all chapters | over 60 | hit its ceiling |
+| Captures | over 45 | hit its ceiling |
+| Narration, all chapters | over 45 | hit its ceiling |
+| Gates, all chapters | over 45, 107 tool calls | hit its ceiling |
+
+The shape is plain. A step that writes one chapter has a bounded job and finishes. A step
+that touches every chapter costs roughly in proportion to how many there are, and a flat
+budget that suited two chapters starves seven. Verifying the pack turned out to be the
+single most expensive step in it, which is worth knowing before promising a delivery date.
+
+So budget per chapter, not per step: give a whole-pack step something like twenty minutes
+plus a quarter of an hour per chapter, and a single-chapter step three quarters of an hour.
+Round up. The cost of a generous budget is that a genuinely stuck step takes longer to
+declare itself; the cost of a tight one is that you cannot tell the stuck steps from the
+finishing ones, and every packet says the same thing.
+
 ## The microsite gate, mechanised (2026-09-09)
 
 A microsite chapter ships only when all four hold; the first, second and fourth are scripts,
