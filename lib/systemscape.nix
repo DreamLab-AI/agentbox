@@ -1,4 +1,4 @@
-# SystemScape — DreamLab's ANSI 3D telemetry history renderer.
+# SystemScape — DreamLab's 3D telemetry and agent-activity flying tour.
 #
 # Pin source and Cargo dependencies so the monitor is part of the immutable
 # Agentbox runtime rather than depending on a mutable workspace checkout.
@@ -6,21 +6,23 @@
 
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "systemscape";
-  version = "0.1.0-2026-08-01";
+  version = "0.2.0";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
-    repo = "thermal3d";
-    rev = "780847146edf7a0becd8275114031afb4f58828b";
-    hash = "sha256-HcSmGMDL17EimpnKqeaYet69Qx17g8S4PxUkIAupX7Y=";
+    repo = "systemscape";
+    rev = "975608a892a9cf8dbfce03c522b63fe5e1b9511a";
+    hash = "sha256-nsJVxBUuFYSdWMQolftPpHQrKa0VhpFgmGcqNvKNj80=";
   };
 
-  cargoHash = "sha256-12O6r2Gdxz+7holc2nuw9ZJQ00XIL2UM6VySy39Z3Wc=";
+  # Exact upstream lock, copied locally to avoid fetching source during evaluation.
+  # Registry checksums in this lock supply the fixed-output dependency hashes.
+  cargoLock.lockFile = ./systemscape-Cargo.lock;
   doCheck = true;
 
   meta = {
-    description = "Scrolling 3D telemetry history for true-colour terminals";
-    homepage = "https://github.com/DreamLab-AI/thermal3d";
+    description = "Interactive 3D telemetry and local agent work history for terminals";
+    homepage = "https://github.com/DreamLab-AI/systemscape";
     license = lib.licenses.asl20;
     mainProgram = "systemscape";
     platforms = lib.platforms.linux;

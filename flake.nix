@@ -3731,6 +3731,7 @@ ${ragflowNetworkDecl}
         # shell; operators use Docker Desktop to pull the published multi-arch
         # image (see docs/guides/platforms.md).
         packages = lib.optionalAttrs pkgs.stdenv.isLinux {
+          systemscape = systemscapePkg; # fast standalone verification before an image rebuild
           runtime = mkImage { tag = "runtime-${system}"; };
           full = mkImage {
             tag = "full-${system}";

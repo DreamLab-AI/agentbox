@@ -7,7 +7,7 @@
 # Obsidian vault (ADR-2029).
 #
 #   0:Claude  1:Agent  2:Services  3:Build  4:Logs
-#   5:System  6:VNC    7:Git       8:Sessions(AoE)  9:Notes(Rune)
+#   5:System  6:VNC    7:Git       8:Sessions(AoE)  9:Notes(Rune)  10:Activity
 #
 # Replaces Zellij layouts; fish shell configs (config.fish,
 # bashrc.agentbox) are sourced automatically by fish in each window.
@@ -196,6 +196,27 @@ _notes_window() {
 # touched. It is inert unless that exact value is set, and is never set in
 # production (nothing in flake.nix, supervisord or the compose env sets it).
 # ----------------------------------------------------------------------------
+_activity_window() {
+  # Upgrade existing sessions without restarting an agent or replacing a pane.
+  if tmux list-windows -t "$SESSION" -F '#{window_name}' 2>/dev/null | grep -qx Activity; then
+    return 0
+  fi
+  local target="${SESSION}:10"
+  if tmux list-windows -t "$SESSION" -F '#{window_index}' 2>/dev/null | grep -qx 10; then
+    target="${SESSION}:" # preserve an operator-created window at index 10
+  fi
+  if command -v systemscape >/dev/null 2>&1 && systemscape --help 2>/dev/null | grep -q -- '--activity'; then
+    tmux new-window -d -t "$target" -n Activity -c "$PROJECT" 'systemscape --activity'
+  else
+    tmux new-window -d -t "$target" -n Activity -c "$PROJECT"
+    tmux send-keys -t "${SESSION}:Activity" "echo 'Activity needs SystemScape 0.2 or newer. Rebuild on the host: ./agentbox.sh rebuild'" C-m
+  fi
+}
+
+if [ "${AGENTBOX_TMUX_AUTOSTART_DRY_RUN:-}" = "activity" ]; then
+  _activity_window
+  exit 0
+fi
 if [ "${AGENTBOX_TMUX_AUTOSTART_DRY_RUN:-}" = "notes" ]; then
   _notes_window
   exit 0
@@ -211,7 +232,8 @@ AOE_SEED="${AGENTBOX_ROOT}/scripts/aoe-seed-sessions.mjs"
 
 # If session already exists, skip creation
 if tmux has-session -t "$SESSION" 2>/dev/null; then
-  echo "[tmux-autostart] Session '$SESSION' already exists — skipping"
+  _activity_window
+  echo "[tmux-autostart] Session '$SESSION' already exists — reconciled Activity"
   exit 0
 fi
 
@@ -238,7 +260,7 @@ tmux send-keys -t "${SESSION}:0" "export CLAUDE_CONFIG_DIR=/home/devuser/.claude
 
 # Welcome dashboard — gum renders a styled panel, falls back to plain text
 if command -v gum >/dev/null 2>&1; then
-  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git · Sessions (AoE) · Notes\\n\\n  Interactive agent sessions live in the Sessions tab (Agent of Empires).\\n  Vault pages open in the Notes tab (Rune markdown TUI).\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
+  WELCOME_CMD="clear; gum style --border rounded --border-foreground '#7aa2f7' --padding '1 2' --margin '1 0' --bold --foreground '#a9b1d6' \"\$(printf '  AGENTBOX\\n\\n  Project: $PROJECT\\n  Shell:   fish + starship\\n  Tabs:    Claude · Agent · Services · Build · Logs · System · VNC · Git · Sessions (AoE) · Notes · Activity\\n\\n  Interactive agent sessions live in the Sessions tab (Agent of Empires).\\n  Vault pages open in the Notes tab (Rune markdown TUI).\\n  agentbox-help    quick reference\\n  svc-status       service health\\n  cf-doctor        system diagnostics')\""
   tmux send-keys -t "${SESSION}:0" "$WELCOME_CMD" C-m
 else
   tmux send-keys -t "${SESSION}:0" "echo ''" C-m
@@ -294,6 +316,9 @@ tmux send-keys -t "${SESSION}:5" "while true; systemscape; printf '\\nSystemScap
 # in a narrower companion pane. Focus either pane and press Ctrl-Space z to zoom.
 tmux split-window -h -p 38 -t "${SESSION}:5" -c "$WORKSPACE_DIR"
 tmux send-keys -t "${SESSION}:5.1" "command -v btm >/dev/null && btm --basic || htop" C-m
+# Start the landscape full-screen; prefix-z reveals the companion process monitor.
+tmux select-pane -t "${SESSION}:5.0"
+tmux resize-pane -Z -t "${SESSION}:5.0"
 tmux select-pane -t "${SESSION}:5.0"
 
 # ============================================================================
@@ -360,6 +385,7 @@ fi
 # can exercise it without creating a session.
 # ============================================================================
 _notes_window
+_activity_window
 
 # ============================================================================
 # Harness-merge helper — reworked for the AoE per-session worktree model.
@@ -415,8 +441,8 @@ else
   tmux select-window -t "${SESSION}:0"
 fi
 
-echo "[tmux-autostart] Session '$SESSION' created with 10 windows"
-echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:Sessions(AoE)  9:Notes(Rune)"
+echo "[tmux-autostart] Session '$SESSION' created with 11 windows"
+echo "  0:Claude  1:Agent  2:Services  3:Build  4:Logs  5:System  6:VNC  7:Git  8:Sessions(AoE)  9:Notes(Rune)  10:Activity"
 
 # ============================================================================
 # Dream-engine nightly loop — FALLBACK ONLY. Since the 2026-08 image rebuild

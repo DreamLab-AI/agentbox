@@ -53,6 +53,11 @@ So before rendering, decide from the frame, not from the habit:
 - **Judge the label, not the canvas.** A caption under roughly 20 pixels tall at delivery
   resolution cannot be read on a laptop, whatever the frame's dimensions are. Measure the
   rendered text, or look at the frame and say honestly whether you can read it.
+- **Leave the title to the scene.** A compositor puts the scene's name at the top of the
+  frame, so a diagram that carries its own heading gets two, overlapping. Draw the diagram
+  without a title band and let the clip name it; on the page, the chapter's own heading does
+  the same job. This recurs because fixing one video's assets does not change the drawing
+  rule that produced them.
 - **Never upscale a portrait graph into a landscape frame** and call the result 1080p. If
   the drawing is genuinely portrait, keep it portrait on the page and draw a different one
   for the video.

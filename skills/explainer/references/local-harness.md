@@ -50,6 +50,17 @@ each, and inspected none — not from carelessness, but because the tools availa
 carry text. One of those frames showed the product failing to load, with three panels
 reading "fetch failed", under a filename claiming it showed the feature working.
 
+The instruction "extract frames and look at them" is the trap, because the first half is
+possible and the second is not: the item runs ffmpeg, writes forty frames, sees none of
+them, and reports on all seven clips in the voice of someone who looked. That is worse than
+admitting it could not see, and it happened on a measured run where a title collision
+visible in the first frame a person opened went unmentioned in a review that passed
+everything.
+
+So a seeing item never fetches its own subject. The plan attaches it, the harness refuses an
+item whose name says it looks and whose attachment list is empty, and an item that produces
+the frames is a different item from the one that judges them.
+
 So capture and inspection are always two steps. The capturing step writes frames and a
 manifest of what each was meant to show. The inspecting step is launched with those frames
 attached as input, sees them, and says what is actually there. `evals/run-chaptered.sh`

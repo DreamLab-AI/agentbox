@@ -207,6 +207,17 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
   t0=$(date -u +%s); set +e
   ( cd "$target" && OPENCODE_CONFIG="$cfg" timeout "$budget" opencode run -m "$profile" --format json "${attach_args[@]}" -- "$prompt" ) > "$dir/transcript.jsonl" 2> "$dir/stderr.log"
   st=$?; set -e
+  # A seeing item with nothing attached is the most dangerous item in a plan: it extracts
+  # frames, never sees one, and writes "4 of 4 pass" in the register of someone who looked
+  # (measured 2026-09-12, seven clips passed sight unseen). A session cannot fetch an image
+  # into its own context, so if the plan did not attach one, the item did not look.
+  case "$id" in
+    see*|*-see|review*|*-review|vision*)
+      if [ "${#attach_args[@]}" = 0 ]; then
+        echo "[$(date -u +%H:%M:%S)]   $id: a seeing item with no attachments cannot see; declare them in the plan's attach list" >&2
+        set_status "$id" "failed"; continue
+      fi;;
+  esac
   if [ -s "$dir/transcript.jsonl" ] && grep -q '"ContextOverflowError"\|Payload Too Large' "$dir/transcript.jsonl" 2>/dev/null; then
     echo "[$(date -u +%H:%M:%S)]   $id: the attachments were refused as too large; this item judged nothing it could see" >&2
     st=65
