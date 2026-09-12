@@ -105,6 +105,22 @@ the first action, from whatever is already known, and improve it in place: a fil
 right beats a better one the item did not reach. This also gives `produces` something to find,
 which is what turns a timed-out item into a satisfied prerequisite.
 
+**A long document has to be written in pieces.** An orientation item did the work — eighty-five
+tool calls, every source range opened and checked — generated a twenty-three-thousand-character
+note covering all fifteen chapters, and lost it: the write was rejected because a second tool
+call's arguments were spliced into the middle of the content string, so the JSON would not parse.
+Ten minutes of generation, one malformed call, nothing on disk. The larger the single write, the
+likelier this is, and a local model asked for a long document will reach for one call.
+
+So say it in the item: write the file with the first section, then append each further section in
+its own call. That also makes the earlier advice real — an item that writes as it goes has
+something on disk when the budget ends, and an item that writes once has nothing.
+
+When it does happen, the output is usually recoverable: the rejected payload is in the
+transcript, and reproducing it verbatim (cut at the splice, with the truncation marked) is
+faithful to what the model produced. It is the transport that failed, not the judgement. Say in
+the file that it was recovered and where it was cut.
+
 ## Hand the session an inventory, not a search
 
 The failure above was not really about delegation. It was asked to derive a curriculum by
