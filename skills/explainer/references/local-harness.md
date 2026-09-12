@@ -208,3 +208,62 @@ resubmitting when an observation times out, because a second job wastes shared c
 usually produces a second artefact nobody reviews. And never let a missing capability
 quietly change the deliverable: if the clip cannot be made, the chapter ships without one
 and says so in the production record, rather than borrowing something that looks similar.
+
+## A produced asset is not a delivered asset
+
+Three times on one project, assets were made, gated and then reached nobody: clips no page
+referenced, diagrams no chapter linked, captures no build attached. Each time everything looked
+finished — files on disk, a gate passing them — and each time a reader would have seen none of it.
+
+Existence and reachability are different properties, and only one of them is easy to check. So
+have the build state reachability out loud, every run:
+
+    Built 15 chapters + index; 12 of 15 have a clip, 9 have a picture, 11 have captures.
+    3 chapter(s) still have no clip.
+    41 capture(s) in the pack are shown on no page; declare them in the manifest or delete them.
+
+That last line is the whole point. It converts a property no session can verify by looking at a
+directory into a string a session can grep for. Then the instruction becomes a form rather than an
+aspiration: *run the build and keep working until it stops printing that line*.
+
+Attach by declaration, not by inference, whenever the asset's name is not already the chapter's.
+A manifest of chapter id to file and caption also separates two things that want to be different:
+the file name has to be honest so a review can judge it, and the caption has to be written for the
+reader. Deriving the caption from the file name is what makes captions read like file names.
+
+## The producer's file name is not evidence
+
+A capture run wrote 133 files holding 76 distinct images: 24 pictures had each been saved under
+several names, and the names contradicted each other. One image arrived as
+`choose-a-campaign-variant-5`, `heatmap-by-section-and-variant-5` and
+`timeline-for-the-selected-visit-5`. At most one of those is true, and a reviewer holding only one
+of them cannot tell which.
+
+Deduplicate by content hash before dealing review batches, keep the aliases in a file, and tell the
+reading sessions plainly that names are not evidence. Otherwise the duplicates land in different
+batches, no reviewer sees the contradiction, and a false name is copied into a caption.
+
+## A measure that is a bounding box cannot see a hole
+
+The emptiness check compared the trimmed bounding box to the whole frame. It is a good test for
+blank border and a blind one for blank middle: a page that never painted its centre has content at
+the top and content at the bottom, so it trims to nearly the full frame and scores 98%.
+
+The fault's shape was one the measure could not represent. Reading down the image for a run of rows
+with no variation across them, bounded by content above and below, separates cleanly — broken
+pages read 47 to 52 per cent, sound ones nine or below.
+
+Before trusting a gate, ask what shape of fault its measure cannot represent. Then take one bad
+asset you know is bad and confirm the gate says so.
+
+## An artefact that arrives late still counts
+
+The runner judges an item when its process exits. An item that times out having already written
+what the next step needs is recorded failed, and everything downstream is skipped — including the
+steps that would have checked the work. A rescue that places the artefact ninety seconds later
+cannot change that verdict, because the verdict has already been cast.
+
+So apply the artefact rule on a loop rather than once: poll the status file, and for any failed
+item whose `produces` globs all match non-empty files, promote it to done and log that it was
+promoted and has not been looked at. A blind seeing item is not promoted by this, because its
+refused output is moved aside and its globs no longer match, which is the right answer.
