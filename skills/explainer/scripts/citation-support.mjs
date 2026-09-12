@@ -75,11 +75,17 @@ const looksLikeCode = (s, citedPath) => {
 // enough here and a parser would be a dependency: find the line that declares the name, then read
 // forward until the braces opened on that line close again.
 function spanOf(body, name) {
-  const decl = body.findIndex((l) =>
-    new RegExp(`(?:function|class|interface|type|const|let|var|async|export|\\bdef\\b)[^\\n]*\\b${
-      name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(l)
-    || new RegExp(`^\\s*${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[(:<]`).test(l));
-  if (decl < 0) return null;
+  const safe = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const declares = (l) =>
+    new RegExp(`(?:function|class|interface|type|const|let|var|async|export|\\bdef\\b)[^\\n]*\\b${safe}\\b`).test(l)
+    || new RegExp(`^\\s*${safe}\\s*[(:<]`).test(l);
+  // An interface signature and its implementation both look like declarations, and the
+  // signature usually comes first. Only the implementation has a body, so a span taken from
+  // the signature is meaningless and puts every citation into the method outside it.
+  const candidates = [];
+  body.forEach((l, i) => { if (declares(l)) candidates.push(i); });
+  if (!candidates.length) return null;
+  const decl = candidates.find((i) => /\{\s*$/.test(body[i])) ?? candidates[0];
   let depth = 0, seen = false;
   for (let i = decl; i < body.length; i++) {
     for (const ch of body[i]) {
