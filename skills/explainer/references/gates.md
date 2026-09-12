@@ -92,3 +92,42 @@ the third is an agent with the brief and the chapter and nothing else:
 These sit inside gate C for the microsite; B (a cold reader can answer the seven questions)
 and E (diagrams) are judged as before. `references/microsite/reader-voice.md` explains why
 the lint exists and what it caught.
+
+## Checking a thousand citations
+
+"Does this range support the sentence citing it" reads as a job only a reader can do, and for a
+pack with a hundred citations it is. For one with a thousand it has to be split, because the
+honest alternative is the gate that says "not checked".
+
+A developer-facing pack usually cites by naming the thing: the link text is `routeLane` or
+`AUTONOMY_SIGNALS` or `POST /api/chat`, and the claim is that the cited lines are where that is.
+Whether they are is a fact. `scripts/citation-support.mjs` decides it:
+
+```
+node scripts/citation-support.mjs --chapters <pack>/chapters --repo <target>
+```
+
+It separates the citations whose link text names something from the ones whose link text is
+prose, and on a real pack of 996 it settled 456 of them mechanically and left 540 to read. That
+is the point: the reading is then spent where judgement is actually required.
+
+Four readings had to be taught before its verdicts were worth anything, each found by running it
+over real work and looking at what it rejected:
+
+- **A link text that is the cited file's own name.** `[store.ts](src:…/store.ts)` cites a file;
+  asking whether the file contains its own name is meaningless.
+- **A route.** Prose says `GET /api/world`; the source says `app.get('/api/world'`. Look for the
+  path, which is the part that is there.
+- **A single English word.** `Decision`, `Context`, `the gate` are prose. An identifier claim is
+  backticked or shaped like code: a case change inside it, an underscore, a dot, a trailing call.
+- **The body rather than the signature.** A citation usually points at where the behaviour is,
+  not at the line that declares it, which is the right place to point. If the cited range sits
+  inside the named thing's span, the citation is supported.
+
+Before those four, it reported 93 problems on a pack that had one. A gate with that error rate is
+worse than no gate, because the next person turns it off. **A support checker has to be
+calibrated against work known to be good before its verdicts mean anything.**
+
+What it does not settle: whether a claim is a good one, and whether a prose citation holds. The
+second is what the remaining reading is for, and a pack should say how many are in that state
+rather than counting them as checked.
