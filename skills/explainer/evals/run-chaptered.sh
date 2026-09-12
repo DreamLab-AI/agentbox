@@ -173,7 +173,12 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
   attach_args=()
   # --file is an array option and swallows the following positional, so the prompt goes after --
   if [ -n "$attach_globs" ]; then
-    # An attachment has to fit in a request. Nine console captures at 3840px filled the body
+    # An attachment has to fit in a request, and the request is the whole conversation: every
+    # turn re-sends each image, so the ceiling is crossed partway through an item rather than at
+    # its first call. Four frames at 1100px did it, against an HTTP body limit rather than the
+    # model's context. 820px at a lower quality is about a third of the bytes and still legible
+    # enough to judge a title collision or a panel that failed to load.
+    # Nine console captures at 3840px filled the body
     # limit and the server refused the whole thing, leaving the item running blind with no
     # sign in its own output that it could not see (measured 2026-09-12). So images are
     # downscaled into the item's directory first and the batch is capped; anything over the
@@ -191,7 +196,7 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
       case "$f" in
         *.png|*.jpg|*.jpeg|*.webp)
           small="$dir/attached/$(printf '%02d' $((kept+1)))-$(basename "${f%.*}").jpg"
-          if ffmpeg -v error -i "$f" -vf "scale='min(1100,iw)':-2" -q:v 4 "$small" -y 2>/dev/null && [ -s "$small" ]; then
+          if ffmpeg -v error -i "$f" -vf "scale='min(${ATTACH_PX:-820},iw)':-2" -q:v "${ATTACH_Q:-5}" "$small" -y 2>/dev/null && [ -s "$small" ]; then
             attach_args+=(-f "$small")
           else
             attach_args+=(-f "$f")
@@ -218,9 +223,10 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
         set_status "$id" "failed"; continue
       fi;;
   esac
+  blind=0
   if [ -s "$dir/transcript.jsonl" ] && grep -q '"ContextOverflowError"\|Payload Too Large' "$dir/transcript.jsonl" 2>/dev/null; then
     echo "[$(date -u +%H:%M:%S)]   $id: the attachments were refused as too large; this item judged nothing it could see" >&2
-    st=65
+    st=65; blind=1
   fi
   if [ "$st" = 124 ]; then
     mkdir -p "$record/handup"
@@ -241,6 +247,21 @@ You are one step of a larger job. Everything earlier steps produced is on disk; 
       for f in $g; do [ -s "$f" ] && found=1; done
       [ "$found" = 0 ] && produced=0
     done <<< "$produced_globs"
+  fi
+  # An artefact normally settles it: a prerequisite is met by the file, not by a tidy exit. A
+  # blind seeing item is the one case where that rule is wrong and dangerous. The model was sent
+  # frames, the server refused them, and it wrote the review anyway, naming the four files it had
+  # never seen (measured 2026-09-12). Counting that as done launders a fabrication into the
+  # record, so it fails, and the file is moved aside rather than left where the next item globs.
+  if [ "$blind" = 1 ]; then
+    if [ -n "$produced_globs" ]; then
+      while IFS= read -r g; do
+        [ -z "$g" ] && continue
+        for f in $g; do [ -s "$f" ] && mv -f "$f" "$f.unseen-attachments-refused"; done
+      done <<< "$produced_globs"
+    fi
+    echo "[$(date -u +%H:%M:%S)]   $id: saw nothing, so its output is not a review; moved aside and failed" >&2
+    set_status "$id" "failed"; continue
   fi
   if [ "$st" = 0 ]; then
     set_status "$id" "done"

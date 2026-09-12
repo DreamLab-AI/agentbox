@@ -49,6 +49,18 @@ script says so and exits 0. Read `references/diagram-corpus.md` before using wha
 a corpus is a catalogue at a declared revision, it is usually internal audit material, and
 mining it is not the same as shipping it.
 
+If the pack is for the people who use the product, run
+`scripts/surface-inventory.mjs --repo <app dir> --out <file>` next. It writes every route a
+person can reach and, under each, the headings, buttons, table columns, field labels and
+messages that appear there. Do this before deciding chapters: a front end is tens of thousands
+of lines, an audience's curriculum is shaped by what the product actually lets them do, and a
+local model asked to derive one by reading the code spends its whole budget reading. Two
+hundred lines out of thirty-four thousand, in the product's own words — which is also what
+makes the chapter titles match the screen and lets the later capture item find the thing.
+
+Compute anything mechanical and hand it in. The session's budget is for judgement, not
+discovery.
+
 Search memory first (`memory_search`, namespaces `project-state` and
 `personal-context`) for prior decisions about the product, and `search_ruvnet`
 for anything in the RuvNet stack the explainer will mention. Do not describe a
@@ -165,9 +177,28 @@ a reviser resolves it; the checker runs again. Media is a later pass over an acc
 | Docs bundle | `references/delivery-docs.md` | three audience documents (user, developer, executive), an optional self-contained visual page, and a queryable AI-half knowledge base in RuVector |
 | Instructional microsite | `references/delivery-microsite.md` | a locally-served, inspectable reading surface with evidence-linked source panes, verified runtime journeys, diagrams and reviewed media — for onboarding or client due diligence |
 | Video | `references/delivery-video.md` | a narrated video explainer; thin — hands off to the standalone `codebase-video` skill with the audience and the claims ledger already gathered |
+| The repository's own documentation | `scripts/docs-stack.mjs` | the `docs/` tree the codebase already carries, rendered browsable in the house style: every mermaid block shown as drawn with its source one click below, front matter kept so a topic still names the files it was checked against |
 
 Pick one delivery per request unless the user asks for more than one; each
 reference is self-contained once the shared core above is done.
+
+The documentation stack is not a pack and is not written for anyone: it is the working
+documentation of the codebase, made readable. Offer it alongside a pack rather than instead of
+one — a pack is a route through a system, and this is the map underneath it. Two passes:
+
+```
+node scripts/render-diagrams.mjs --src <docs dir> --cache <dir>          # draw what nothing drew
+node scripts/docs-stack.mjs --src <docs dir> --out <dir> --repo <target> \
+     --title <product> --diagram-cache <dir>
+```
+
+A diagrams-as-code corpus normally keeps rendered art beside each topic, but the prose pages
+around it — explanations, how-to pages, decision records — carry mermaid inline with no
+rendered mirror, because nothing in the repository's workflow needed one. A reader needs one: a
+fenced graph definition is not a diagram. The first pass renders those into a content-addressed
+cache, marks them as drawn here rather than by the repository, and reports any whose source does
+not parse. Say so on the page where the picture would have been. Three unparseable diagrams is a
+finding about the repository, and more use to whoever maintains it than a silence.
 
 For a hard concept whose change over time needs explanation, use
 [manim](../manim/SKILL.md) after the relevant claims and chapter are accepted.

@@ -61,6 +61,26 @@ So a seeing item never fetches its own subject. The plan attaches it, the harnes
 item whose name says it looks and whose attachment list is empty, and an item that produces
 the frames is a different item from the one that judges them.
 
+**And an artefact does not prove it looked.** The rule that a prerequisite is satisfied by the
+file rather than by a tidy exit is right nearly everywhere, and wrong for exactly this case. A
+review item was sent four frames, the server refused them as too large, and the model wrote the
+review anyway — listing the four filenames it had never received, in the voice of someone who
+had opened them. The harness saw a file where its `produces` glob pointed and marked the item
+done. That is how a fabrication gets laundered into a record.
+
+So a seeing item whose attachments were refused now fails, whatever it wrote, and the file is
+moved aside so the next item cannot glob it. The refusal is detectable — the transcript carries
+the server's error — and detecting it is the whole job. **An output produced after the input was
+refused is not evidence; it is what the model would have written with no input at all.**
+
+The refusal itself is worth understanding, because the obvious mitigation is the wrong one. It
+was not the model's context: it was an HTTP body limit, and the body is the whole conversation.
+Every turn re-sends every attached image, so an item with four frames crosses the limit partway
+through, after several tool calls have already succeeded. Capping the count is not enough; the
+frames have to be small enough that the conversation containing them several times over still
+fits. `ATTACH_PX` and `ATTACH_Q` set that, defaulting to 820px at a lower quality, which is about
+a third of the bytes and still shows a title collision or a panel that failed to load.
+
 So capture and inspection are always two steps. The capturing step writes frames and a
 manifest of what each was meant to show. The inspecting step is launched with those frames
 attached as input, sees them, and says what is actually there. `evals/run-chaptered.sh`
@@ -69,6 +89,45 @@ takes an `attach` list per work item for exactly this.
 The general form is worth remembering beyond these two cases: **if a rule asks a session to
 judge its own work against something the session cannot perceive, the rule is decoration.**
 Put the perception in the harness, or put the judgement in a second session that can see.
+
+**A session must not delegate.** A local model handed an open-ended exploration will reach for
+a sub-agent, and that is the most expensive thing it can do: the nested session has none of the
+context, gets none of the budget, and the outer session blocks on it with the clock running. A
+measured item spent its full seventy-five minutes this way — eighteen file reads, one delegation,
+and nothing written — on work that took four minutes once the reading was done for it. Say so in
+the item: do it yourself in this session, do not delegate.
+
+**A session that writes at the end writes nothing.** The item above had an answer worth keeping
+at the forty-minute mark and no file to show for it, because it was still gathering. An item
+whose output appears only after the last read loses everything when the budget ends, and the
+budget ending is normal rather than exceptional. So the instruction is to write the artefact as
+the first action, from whatever is already known, and improve it in place: a file that is half
+right beats a better one the item did not reach. This also gives `produces` something to find,
+which is what turns a timed-out item into a satisfied prerequisite.
+
+## Hand the session an inventory, not a search
+
+The failure above was not really about delegation. It was asked to derive a curriculum by
+reading a thirty-four-thousand-line front end, which is not work a local model can finish, so it
+did the only thing it could and tried to farm it out.
+
+Reading a codebase to find out what a product lets someone do is mechanical, and mechanical work
+belongs in a script. `scripts/surface-inventory.mjs` walks the interface code and writes the
+route list with, under each route, the headings, buttons, table columns, field labels and
+messages that appear on it:
+
+```
+node scripts/surface-inventory.mjs --repo <app dir> --out <slice>/user-surface-inventory.md
+```
+
+Two hundred lines out of thirty-four thousand, and the item reads it in one call. What comes back
+is better than a summary the model would have written, because it is the product's own
+vocabulary: a chapter named from it uses the words on the screen, which is also what lets the
+capture item find the thing later and what lets a reader match the page to the pack.
+
+The same principle applies wherever a session would otherwise search: the diagram corpus
+(`scripts/diagram-corpus.mjs`), the citation index, the route map. Compute it once, hand it in,
+and spend the session's budget on judgement instead of discovery.
 
 ## A long run prunes what it writes
 

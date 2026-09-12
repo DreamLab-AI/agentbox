@@ -1,0 +1,79 @@
+/* The documentation stack, in the explainer house style.
+   The palette and type are the packs'. What differs is the layout: a pack is a reading path,
+   so it is one narrow column, while this is reference material browsed across 200-odd pages,
+   so it keeps a standing sidebar and lets a wide diagram be wide. */
+:root{--paper:#f6f5f0;--surface:#fff;--ink:#202c30;--muted:#526368;--line:#cbd3d1;--accent:#08665e;--caution:#775114;
+  --display:system-ui,sans-serif;--body:system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.65 var(--body)}
+header{padding:20px 32px;border-bottom:1px solid var(--line);font-weight:750;letter-spacing:.06em}
+header span{margin-left:24px;font-size:14px;font-weight:400;letter-spacing:0;color:var(--muted)}
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr);max-width:1600px;margin:auto}
+nav{padding:28px 18px;align-self:start;position:sticky;top:0}
+nav a{display:block;padding:10px 12px;font-size:15px;border-bottom:1px solid var(--line);color:inherit}
+main{padding:44px 5vw 90px;border-left:1px solid var(--line);min-width:0;max-width:1180px}
+h1,h2,h3,h4{font-family:var(--display);line-height:1.18;text-wrap:balance}
+h1{font-size:clamp(30px,3.6vw,48px);letter-spacing:-.045em;margin:14px 0 24px}
+h2{font-size:26px;letter-spacing:-.025em;margin-top:46px}
+h3{font-size:20px;margin-top:34px}
+p,li,dd{max-width:78ch}
+.lead{font-size:20px;line-height:1.55}
+.eyebrow{font-size:14px;color:var(--accent);font-weight:700;margin:0}
+a{color:inherit;text-underline-offset:4px}
+a:hover{color:var(--accent)}
+a:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
+table{width:100%;border-collapse:collapse;font-size:15px;overflow-wrap:anywhere;margin:22px 0}
+th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:750}
+li{padding-left:4px;margin-bottom:12px}
+pre{overflow:auto;padding:18px;background:var(--ink);color:var(--paper);font-size:13px;line-height:1.6}
+code{font-family:ui-monospace,monospace;overflow-wrap:anywhere}
+/* A path in running prose reads as a path; a border around every one of them reads as noise. */
+:not(pre)>code{font-size:.93em;background:var(--surface);padding:1px 3px;box-shadow:0 0 0 1px var(--line) inset;border-radius:2px}
+blockquote{margin:22px 0;padding:2px 0 2px 20px;border-left:4px solid var(--line);color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:38px 0}
+.skip{position:absolute;left:10px;top:-100px;padding:12px;background:var(--surface)}
+.skip:focus{top:10px}
+
+/* Front matter, shown rather than stripped: a topic that names the files it was checked
+   against and the commit at which that held is making a claim a reader can test. */
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 22px;margin:0 0 34px;padding:18px 20px;
+  background:var(--surface);border:1px solid var(--line);font-size:15px}
+.facts dt{font-weight:750;margin:0}
+.facts dd{margin:0;color:var(--muted);min-width:0}
+.paths{margin:0}
+.paths>summary{cursor:pointer;color:var(--accent);font-weight:700}
+.paths p{margin:10px 0 0;line-height:2.2;max-width:none}
+.paths code{margin-right:5px}
+
+/* A diagram from the corpus is often much wider than the measure. Scrolling it inside its own
+   box is better than shrinking a 40-node graph until the labels are unreadable. */
+figure.diagram{margin:34px 0;padding:0}
+figure.diagram img{display:block;max-width:100%;height:auto;background:var(--surface);border:1px solid var(--line)}
+figcaption{font-size:14px;color:var(--muted);margin-top:10px;font-family:ui-monospace,monospace}
+details.as-code{background:var(--surface);border:1px solid var(--line);padding:12px 15px;margin:14px 0 0}
+details.as-code>summary{cursor:pointer;font:14px/1.6 ui-monospace,monospace;color:var(--muted)}
+details.as-code pre{margin:14px 0 0}
+
+/* A path the stack does not publish is text, not a broken link. */
+.unlinked{border-bottom:1px dotted var(--line);font-family:ui-monospace,monospace;font-size:.92em}
+
+@media(max-width:920px){
+  .layout{display:block}
+  nav{position:static;display:flex;overflow:auto;padding:10px;gap:10px}
+  nav a{min-width:150px;white-space:nowrap}
+  main{padding:26px 20px;border-left:0}
+  header{padding:18px 20px}
+  header span{display:block;margin:8px 0 0}
+  table{font-size:13px}
+  th,td{padding:10px 5px}
+  .facts{grid-template-columns:1fr;gap:2px 0}
+  .facts dd{margin-bottom:10px}
+}
+@media(min-width:921px){nav{max-height:calc(100vh - 5rem);overflow-y:auto;overscroll-behavior:contain}}
+@media print{nav,header,.skip{display:none}.layout{display:block}main{max-width:none;padding:0;border:0}
+  pre{white-space:pre-wrap}figure.diagram{break-inside:avoid}a{color:var(--ink)}}
+
+/* A diagram drawn for this stack rather than by the repository says so. */
+.drawn-here{color:var(--accent);font-family:var(--body);font-size:13px}
+.notice{padding:14px 18px;border-left:4px solid var(--caution);background:var(--surface);font-size:15px;margin:0 0 12px}
