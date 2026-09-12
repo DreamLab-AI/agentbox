@@ -259,13 +259,37 @@ for (const f of mdFiles) {
 }
 
 // ---------------------------------------------------------------- assets travel
-let copied = 0;
+// An SVG from mermaid declares width="100%" and no height, with its real size only in a
+// max-width style. Inside an <img> that resolves to the default 150px box, so the browser has
+// no intrinsic size to reserve and a page of eleven lazily-loaded diagrams jumps under the
+// reader as each one arrives. The proportions were never wrong; the space was just unknown. So
+// the root gets explicit dimensions from its own viewBox on the way past.
+function withIntrinsicSize(svg) {
+  const end = svg.indexOf('>');
+  if (end < 0) return svg;
+  let root = svg.slice(0, end);
+  const vb = root.match(/viewBox\s*=\s*["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)/i);
+  if (!vb) return svg;
+  root = root.replace(/\swidth\s*=\s*["'][^"']*["']/i, '').replace(/\sheight\s*=\s*["'][^"']*["']/i, '');
+  root = root.replace(/max-width:\s*[^;"']*;?/i, '');
+  root = root.replace(/^<svg/i, `<svg width="${vb[1]}" height="${vb[2]}"`);
+  return root + svg.slice(end);
+}
+
+let copied = 0, sized = 0;
 for (const a of assets) {
   const r = rel(a);
   if (r.startsWith('diagrams/rendered/') && !usedDiagrams.has(r)) continue;  // unreferenced mirror art
   const dest = join(OUT, r);
   mkdirSync(dirname(dest), { recursive: true });
-  copyFileSync(a, dest);
+  if (extname(a).toLowerCase() === '.svg') {
+    const text = readFileSync(a, 'utf8');
+    const fixed = withIntrinsicSize(text);
+    writeFileSync(dest, fixed);
+    if (fixed !== text) sized++;
+  } else {
+    copyFileSync(a, dest);
+  }
   copied++;
 }
 
@@ -275,7 +299,10 @@ let generatedCopied = 0;
 if (CACHE && generatedDiagrams.size) {
   const dest = join(OUT, 'diagrams', 'generated');
   mkdirSync(dest, { recursive: true });
-  for (const name of generatedDiagrams) { copyFileSync(join(CACHE, name), join(dest, name)); generatedCopied++; }
+  for (const name of generatedDiagrams) {
+    writeFileSync(join(dest, name), withIntrinsicSize(readFileSync(join(CACHE, name), 'utf8')));
+    generatedCopied++;
+  }
 }
 
 // ---------------------------------------------------------------- section indexes
@@ -374,7 +401,8 @@ mkdirSync(join(OUT, 'assets'), { recursive: true });
 writeFileSync(join(OUT, 'assets', 'docs.css'), readFileSync(new URL('../assets/docs.css', import.meta.url), 'utf8'));
 
 console.log(`${pages.length} pages, ${usedDiagrams.size} corpus diagrams + ${generatedCopied} drawn here `
-  + `= ${usedDiagrams.size + generatedCopied} of ${mermaidTotal} blocks; ${copied} assets copied`);
+  + `= ${usedDiagrams.size + generatedCopied} of ${mermaidTotal} blocks; ${copied} assets copied, `
+  + `${sized} given an intrinsic size`);
 if (unrenderedTotal.length) {
   console.log(`${unrenderedTotal.length} mermaid block(s) had no rendered SVG and show as source only:`);
   for (const u of unrenderedTotal.slice(0, 12)) console.log('  ' + u);
