@@ -121,6 +121,24 @@ transcript, and reproducing it verbatim (cut at the splice, with the truncation 
 faithful to what the model produced. It is the transport that failed, not the judgement. Say in
 the file that it was recovered and where it was cut.
 
+**An instruction without a form is not an instruction.** "Ground every claim about behaviour by
+citing it below the reading path" produced four chapters, five and a half thousand words, and not
+one citation. The prose was excellent and entirely uncheckable. The model was not ignoring the
+rule; it was told what to achieve and not what to write, and for an audience whose contract says
+file paths must stay out of the reading path, "below the reading path" has no obvious shape.
+
+The same thing happened in the same run with front matter: the reader build requires it, the item
+was not given the block, and the chapter arrived without one.
+
+So an item that must produce a particular shape is given that shape, literally, in the prompt:
+the heading, the link form, the number of bullets that is usual. It costs four lines and it is the
+difference between a chapter that can be audited and one that cannot.
+
+The tell is worth learning to spot. When a rule states a property of the output rather than a
+thing to write — grounded, checked, consistent, documented — ask what the model would have to
+type to satisfy it. If the answer is not obvious to you, it will not be obvious to a session with
+no memory of the convention.
+
 ## Hand the session an inventory, not a search
 
 The failure above was not really about delegation. It was asked to derive a curriculum by

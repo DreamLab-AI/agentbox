@@ -44,7 +44,12 @@ const looksLikeCode = (s, citedPath) => {
   // 1. The link text is the cited file's own name. "[store.ts](src:.../store.ts)" is a correct
   //    citation of a file; asking whether the file contains its own name is meaningless.
   const base = citedPath.split('/').pop();
-  if (bare === base || bare === citedPath) return { kind: 'filename', name: bare };
+  // Also when the link text is a tail of the cited path: a pack whose reader works from a
+  // sub-tree writes `components/brands-editor.tsx` for a file cited as
+  // `web-surface/components/brands-editor.tsx`, which is the same kind of claim.
+  if (bare === base || bare === citedPath || (bare.includes('/') && citedPath.endsWith('/' + bare))) {
+    return { kind: 'filename', name: bare };
+  }
 
   // 2. A route is written in prose as "GET /api/world" and in code as app.get('/api/world').
   //    Look for the path, which is the part that is actually in the source.
