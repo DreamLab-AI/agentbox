@@ -89,8 +89,8 @@ for s in explainer codebase-video; do
   if [ -L "$hot/$s" ]; then prev[$s]=$(readlink "$hot/$s"); elif [ -e "$hot/$s" ]; then echo "$hot/$s is a real directory; refusing" >&2; exit 1; else prev[$s]=""; fi
   ln -sfn "$root/$s" "$hot/$s"
 done
-trap restore EXIT
-trap 'restore; exit 143' TERM INT HUP
+trap 'restore; release_lock 2>/dev/null' EXIT
+trap 'restore; release_lock 2>/dev/null; exit 143' TERM INT HUP
 
 cfg="$workspace/opencode.json"
 cat > "$cfg" <<JSON
@@ -100,6 +100,32 @@ cat > "$cfg" <<JSON
                   "webfetch": "allow",
                   "external_directory": { "*": "allow", "$HOME/.ssh/**": "deny", "$HOME/.aws/**": "deny" } } }
 JSON
+
+# One model, one plan at a time. Two plans chained to the same trigger both woke at 02:21
+# and shared a single model slot: each managed a third of its usual tool calls, neither
+# produced its artefact, and both skipped everything downstream (2026-09-12). Contention
+# does not announce itself — it looks exactly like a slow model — so the runner takes a lock
+# rather than trusting whoever queued the work to have sequenced it.
+lockdir=${PLAN_LOCK:-${TMPDIR:-/tmp}/explainer-plan.lock}
+lock_wait=${PLAN_LOCK_WAIT:-14400}
+waited=0
+until mkdir "$lockdir" 2>/dev/null; do
+  holder=$(cat "$lockdir/owner" 2>/dev/null || echo unknown)
+  if [ ! -d /proc/"$(cat "$lockdir/pid" 2>/dev/null || echo 0)" ]; then
+    echo "[$(date -u +%H:%M:%S)] clearing a lock left by a dead run ($holder)" >&2
+    rm -rf "$lockdir"; continue
+  fi
+  [ "$waited" = 0 ] && echo "[$(date -u +%H:%M:%S)] another plan holds the model ($holder); waiting"
+  sleep 30; waited=$((waited+30))
+  if [ "$waited" -ge "$lock_wait" ]; then
+    echo "[$(date -u +%H:%M:%S)] waited ${lock_wait}s for the model and gave up; $holder still holds it" >&2
+    exit 75
+  fi
+done
+printf '%s\n' "$(basename "$plan") in $workspace" > "$lockdir/owner"
+printf '%s\n' "$$" > "$lockdir/pid"
+release_lock() { rm -rf "$lockdir"; }
+[ "$waited" -gt 0 ] && echo "[$(date -u +%H:%M:%S)] model free after ${waited}s; starting"
 
 count=$(python3 -c "import json,sys; print(len(json.load(open(sys.argv[1]))))" "$plan")
 echo "plan: $count item(s); record $record"
