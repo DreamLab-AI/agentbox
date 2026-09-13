@@ -159,7 +159,8 @@ sentences, the corrected chapter shape and the gate. Four things changed:
 4. **The model path.** The Loom façade in verbatim mode answered a codebase packet with an
    ontology class instead of calling the model. The fix went into the Loom (ADR-139):
    `loom_options.scaffold=false` makes the façade a plain proxy for that request.
-   `scripts/loom-draft.mjs` sends it on every call and drives the connected node model through the façade
+   `explainer-loom-draft` (a baked binary — no `node`, no install) sends it on every call and
+   drives the connected node model through the façade
    (`${LOOM_BASE_URL}`, about 13–20 s for a 400–900-token section) as a
    sequential, resumable background batch; the session model orients, checks ranges and
    decides. See the model-path section in `references/delivery-microsite.md`.

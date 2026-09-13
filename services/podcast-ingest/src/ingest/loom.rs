@@ -1,10 +1,27 @@
-//! Ontology Loom client for the extraction phase — port of `resolve_loom_url`
-//! and `call_loom` in `ingest.py`.
+//! Ontology Loom client for the extraction phase.
+//!
+//! The hand-rolled request this replaced worked, but it could not see the two
+//! things `loom-client` checks: whether the façade actually called the model,
+//! and whether the answer stopped at the token budget. Extraction is exactly
+//! where both hurt — a truncated JSON array parses as nothing, and scaffold
+//! prose parses as nothing while looking like a model that had no opinion.
 
 use crate::common::http::client;
-use serde_json::json;
+use loom_client::{ChatRequest, LoomClient, LoomOptions, Message};
 use std::sync::OnceLock;
+use std::time::Duration;
 use tokio::sync::Mutex;
+
+/// Qwen3.8's reasoning tokens count against `max_tokens`; 4096 truncated real
+/// extractions mid-array.
+const EXTRACTION_MAX_TOKENS: u64 = 12288;
+
+/// Reasoning over a full episode transcript regularly exceeds three minutes;
+/// 180s was producing spurious read timeouts.
+const EXTRACTION_TIMEOUT: Duration = Duration::from_secs(600);
+
+/// Health-probe timeout when choosing between façade addresses.
+const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 
 static RESOLVED_LOOM_URL: OnceLock<Mutex<Option<String>>> = OnceLock::new();
 
@@ -12,22 +29,20 @@ fn resolved_cell() -> &'static Mutex<Option<String>> {
     RESOLVED_LOOM_URL.get_or_init(|| Mutex::new(None))
 }
 
-/// `url.rsplit("/v1", 1)[0]` — the base URL with a trailing `/v1` (the last
-/// occurrence of the substring) stripped, or the original string unchanged
-/// if `/v1` does not appear.
-fn strip_v1_suffix(url: &str) -> String {
-    match url.rfind("/v1") {
-        Some(idx) => url[..idx].to_string(),
-        None => url.to_string(),
-    }
+/// A client for `loom_url`, sharing the process-wide connection pool.
+fn loom(loom_url: &str, timeout: Duration) -> LoomClient {
+    LoomClient::builder(loom_url)
+        .timeout(timeout)
+        .http_client(client().clone())
+        .build()
 }
 
-/// Pick the first reachable Loom façade, once per process. Mirrors
-/// `resolve_loom_url`'s module-level memoisation (`_RESOLVED_LOOM_URL`).
+/// Pick the first reachable Loom façade, once per process.
 ///
-/// The LAN address (via the gateway host's hp-nat DNAT) is canonical; the 25G
-/// rail address reaches the connected node directly when the DNAT is down. Both serve the
-/// same façade on `:8084`.
+/// The LAN address (via the gateway host's NAT) is canonical; the direct rail
+/// address reaches the connected node when the NAT is down. Both serve the same
+/// façade. The crate does the probing; the memoisation stays here, because a
+/// library holding process-global state is a library that surprises somebody.
 pub async fn resolve_loom_url(loom_url: &str, loom_fallback_urls: &[String]) -> String {
     {
         let cached = resolved_cell().lock().await;
@@ -39,91 +54,46 @@ pub async fn resolve_loom_url(loom_url: &str, loom_fallback_urls: &[String]) -> 
     let mut candidates: Vec<String> = vec![loom_url.to_string()];
     candidates.extend(loom_fallback_urls.iter().cloned());
 
-    for (i, url) in candidates.iter().enumerate() {
-        let base = strip_v1_suffix(url);
-        let health_url = format!("{base}/health");
-        let resp = client()
-            .get(&health_url)
-            .timeout(std::time::Duration::from_secs(5))
-            .send()
-            .await;
-        if let Ok(resp) = resp {
-            if resp.status().is_success() {
-                if let Ok(body) = resp.json::<serde_json::Value>().await {
-                    if body.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
-                        if i != 0 {
-                            println!("  Loom primary unreachable, using fallback: {url}");
-                        }
-                        let mut cached = resolved_cell().lock().await;
-                        *cached = Some(url.clone());
-                        return url.clone();
-                    }
-                }
+    let chosen = match loom_client::resolve_base(&candidates, PROBE_TIMEOUT).await {
+        Some(url) => {
+            if url != candidates[0] {
+                println!("  Loom primary unreachable, using fallback: {url}");
             }
+            url
         }
-    }
+        // Nothing answered. Keep the primary so the caller's own error path
+        // reports a refused request rather than an unset URL.
+        None => candidates[0].clone(),
+    };
 
-    let fallback = candidates[0].clone();
     let mut cached = resolved_cell().lock().await;
-    *cached = Some(fallback.clone());
-    fallback
+    *cached = Some(chosen.clone());
+    chosen
 }
 
-/// Python:
-/// ```python
-/// def call_loom(prompt: str, loom_url: str, model: str) -> str | None:
-///     ...
-///     resp = requests.post(f"{loom_url}/chat/completions", json={...}, timeout=600)
-///     resp.raise_for_status()
-///     return resp.json()["choices"][0]["message"]["content"]
-/// ```
+/// Ask the façade to extract knowledge from `prompt`, returning the raw
+/// assistant text. `None` on any failure, logged — extraction is best-effort
+/// per episode and one bad call must not stop the run.
 pub async fn call_loom(prompt: &str, loom_url: &str, model: &str) -> Option<String> {
-    let body = json!({
-        "model": model,
-        "messages": [
-            {"role": "system", "content": "You are a knowledge extraction assistant. Return ONLY valid JSON. No markdown fencing, no thinking tags."},
-            {"role": "user", "content": prompt},
+    let request = ChatRequest::new(
+        model,
+        vec![
+            Message::system(
+                "You are a knowledge extraction assistant. Return ONLY valid JSON. \
+                 No markdown fencing, no thinking tags.",
+            ),
+            Message::user(prompt),
         ],
-        "temperature": 0.2,
-        // Qwen3.8's reasoning tokens count against max_tokens; 4096
-        // truncated real extractions mid-array (finish_reason=length).
-        "max_tokens": 12288,
-        // Scaffold injection ON (default budget): grounded extraction
-        // resolves far more ontology_terms to existing KG pages than raw
-        // generation. verbatim:false blocks the Loom's retrieval
-        // short-circuit.
-        "loom_options": {"verbatim": false},
-    });
+    )
+    .temperature(0.2)
+    .max_tokens(EXTRACTION_MAX_TOKENS)
+    // Scaffold injection ON: grounded extraction resolves far more
+    // ontology_terms to existing KG pages than raw generation does.
+    // Declining verbatim blocks the retrieval short-circuit.
+    .options(LoomOptions::declining_verbatim());
 
-    let result = client()
-        .post(format!("{loom_url}/chat/completions"))
-        .json(&body)
-        // Qwen3.8-27B reasoning over a full episode transcript regularly
-        // exceeds 3 minutes; 180s was producing spurious read timeouts.
-        .timeout(std::time::Duration::from_secs(600))
-        .send()
-        .await;
-
-    match result {
-        Ok(resp) => match resp.error_for_status() {
-            Ok(resp) => match resp.json::<serde_json::Value>().await {
-                Ok(v) => v
-                    .get("choices")
-                    .and_then(|c| c.get(0))
-                    .and_then(|c| c.get("message"))
-                    .and_then(|m| m.get("content"))
-                    .and_then(|c| c.as_str())
-                    .map(|s| s.to_string()),
-                Err(e) => {
-                    println!("  Loom error: {e}");
-                    None
-                }
-            },
-            Err(e) => {
-                println!("  Loom error: {e}");
-                None
-            }
-        },
+    match loom(loom_url, EXTRACTION_TIMEOUT).chat(request).await {
+        Ok(answer) => Some(answer.content),
         Err(e) => {
             println!("  Loom error: {e}");
             None
@@ -133,18 +103,18 @@ pub async fn call_loom(prompt: &str, loom_url: &str, model: &str) -> Option<Stri
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use loom_client::LoomClient;
 
     #[test]
-    fn strips_trailing_v1() {
-        assert_eq!(
-            strip_v1_suffix("http://loom:8080/v1"),
-            "http://loom:8080/v1"
-        );
+    fn the_health_root_drops_a_trailing_v1() {
+        // Regression: the test that stood here asserted the opposite of its own
+        // name, and had been red on main. /health lives at the façade root, so
+        // a base of `…/v1` must probe `…/health`.
+        assert_eq!(LoomClient::new("http://loom:8080/v1").root(), "http://loom:8080");
     }
 
     #[test]
-    fn leaves_url_without_v1_unchanged() {
-        assert_eq!(strip_v1_suffix("http://example.com"), "http://example.com");
+    fn a_base_without_v1_is_unchanged() {
+        assert_eq!(LoomClient::new("http://example.com").root(), "http://example.com");
     }
 }

@@ -1430,6 +1430,8 @@
         #   agentbox-mcp    <- the imagemagick / web-summary / gemini-url-context
         #                      Python MCP servers (one rmcp binary, 3 subcommands)
         #   skill-tools     <- ui-ux-pro-max BM25, wardley-maps, docs-alignment
+        #   explainer-tools <- the explainer skill's Node scripts; talks to the
+        #                      Loom façade through the published loom-client crate
         # Each crate is a self-contained [workspace] on crates.io deps with
         # reqwest pinned to rustls-tls, so none of them add an openssl closure.
         # ---------------------------------------------------------------------------
@@ -1439,12 +1441,14 @@
         # block below runs this same derivation's binary.
         agentboxMcpPkg   = import ./lib/agentbox-mcp.nix   { inherit lib; pkgs = rustPkgs; };
         skillToolsPkg    = import ./lib/skill-tools.nix    { inherit lib; pkgs = rustPkgs; };
+        explainerToolsPkg = import ./lib/explainer-tools.nix { inherit lib; pkgs = rustPkgs; };
         knowledgeToolPackages = [
           ontologyToolsPkg
           podcastIngestPkg
           secretBackupPkg
           agentboxMcpPkg
           skillToolsPkg
+          explainerToolsPkg
         ];
         # ---------------------------------------------------------------------------
         # Skill tool binaries — Rust replacements for Python that used to ship

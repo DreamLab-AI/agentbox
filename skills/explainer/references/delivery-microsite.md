@@ -72,10 +72,20 @@ per-request opt-out (ADR-139, 2026-09-10): `{"loom_options": {"scaffold": false}
 façade a plain proxy for that request (no retrieval, no injection, no verbatim, no thinking
 control) and the response carries `loom.served_mode: passthrough`.
 
-`scripts/loom-draft.mjs` sends that option on every call and refuses a response that was not
-passed through, so it fails loudly against a façade without the ADR-139 build. Run it as a
-sequential, resumable background batch; the session model only orients, checks ranges and
-decides. The direct rail port `${CONNECTED_NODE_URL}/v1` works from hosts that can reach it
+`explainer-loom-draft` sends that option on every call and refuses a response that was not
+passed through, so it fails loudly against a façade without the ADR-139 build. It is a baked
+Rust binary (`services/explainer-tools`) and speaks to the façade through the published
+`loom-client` crate, which is also what the dream engine and the podcast ingest use — the three
+of them used to carry three different partial understandings of how a façade call can fail.
+Run it as a sequential, resumable background batch; a batch skips packets that already have
+output, so an interrupted run continues where it stopped. The session model only orients,
+checks ranges and decides.
+
+```bash
+explainer-loom-draft --batch packets/ --out-dir drafts/ \
+  --system references/microsite/prompts/qwen-system.txt \
+  --template references/microsite/prompts/qwen-section.txt
+``` The direct rail port `${CONNECTED_NODE_URL}/v1` works from hosts that can reach it
 (`EXPLAINER_MODEL_BASE`) but is an implementation detail behind the door, not the path to
 document. Vision remains the manually qualified exception in
 [microsite/hp-qwen-direct.md](microsite/hp-qwen-direct.md). The controlling agent gathers

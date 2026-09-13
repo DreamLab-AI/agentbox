@@ -5,7 +5,9 @@
 use super::ledger_parse::Assertion;
 use super::splice::{apply_splice, clean_loom_response, extract_splice_json};
 use crate::common::http::client;
-use serde_json::{json, Value};
+use loom_client::{ChatRequest, LoomClient, LoomOptions, Message};
+use serde_json::Value;
+use std::time::Duration;
 
 pub const DOSSIER_SYSTEM_PROMPT: &str =
     "You are a knowledge-base editing assistant integrating verified podcast \
@@ -53,8 +55,10 @@ anchor that is unambiguous (appears exactly once) in CURRENT PAGE.\n"
     )
 }
 
-/// Port of `call_loom` (promote.py's version — `urllib.request`-based in
-/// Python; ported to `reqwest`, matching the same request shape).
+/// Ask the façade for a splice edit, returning the raw assistant text.
+///
+/// `None` on any failure, logged: a dossier that cannot be drafted is a
+/// skipped page, not a failed run.
 pub async fn call_loom(
     prompt: &str,
     loom_url: &str,
@@ -62,45 +66,23 @@ pub async fn call_loom(
     timeout_secs: u64,
     max_tokens: u64,
 ) -> Option<String> {
-    let body = json!({
-        "model": model,
-        "messages": [
-            {"role": "system", "content": DOSSIER_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0.2,
-        "max_tokens": max_tokens,
-        "loom_options": {"verbatim": false},
-    });
+    let client = LoomClient::builder(loom_url)
+        .timeout(Duration::from_secs(timeout_secs))
+        .http_client(client().clone())
+        .build();
 
-    let url = format!("{}/chat/completions", loom_url.trim_end_matches('/'));
-    let result = client()
-        .post(&url)
-        .json(&body)
-        .timeout(std::time::Duration::from_secs(timeout_secs))
-        .send()
-        .await;
+    let request = ChatRequest::new(
+        model,
+        vec![Message::system(DOSSIER_SYSTEM_PROMPT), Message::user(prompt)],
+    )
+    .temperature(0.2)
+    .max_tokens(max_tokens)
+    // The page's subject is in the ontology: ground the edit, but never accept
+    // retrieval in place of a drafted splice.
+    .options(LoomOptions::declining_verbatim());
 
-    match result {
-        Ok(resp) => match resp.json::<Value>().await {
-            Ok(v) => v
-                .get("choices")
-                .and_then(|c| c.get(0))
-                .and_then(|c| c.get("message"))
-                .and_then(|m| m.get("content"))
-                .and_then(|c| c.as_str())
-                .map(|s| s.to_string())
-                .or_else(|| {
-                    eprintln!(
-                        "    [loom] error: malformed response (missing choices[0].message.content)"
-                    );
-                    None
-                }),
-            Err(e) => {
-                eprintln!("    [loom] error: {e}");
-                None
-            }
-        },
+    match client.chat(request).await {
+        Ok(answer) => Some(answer.content),
         Err(e) => {
             eprintln!("    [loom] error: {e}");
             None
@@ -108,33 +90,17 @@ pub async fn call_loom(
     }
 }
 
-/// Port of `check_loom_reachable`.
+/// Is the façade up? `GET {root}/health`, where the root is the base URL with
+/// any trailing `/v1` removed.
 pub async fn check_loom_reachable(loom_url: &str, timeout_secs: u64) -> bool {
-    let mut health_url = loom_url.trim_end_matches('/').to_string();
-    if let Some(stripped) = health_url.strip_suffix("/v1") {
-        health_url = stripped.to_string();
+    let client = LoomClient::builder(loom_url)
+        .http_client(client().clone())
+        .build();
+    let up = client.healthy(Duration::from_secs(timeout_secs)).await;
+    if !up {
+        eprintln!("  [loom] health check failed at {}/health", client.root());
     }
-    health_url.push_str("/health");
-
-    let result = client()
-        .get(&health_url)
-        .timeout(std::time::Duration::from_secs(timeout_secs))
-        .send()
-        .await;
-
-    match result {
-        Ok(resp) => match resp.json::<Value>().await {
-            Ok(body) => body.get("ok").and_then(|v| v.as_bool()).unwrap_or(true),
-            Err(e) => {
-                eprintln!("  [loom] health check failed at {health_url}: {e}");
-                false
-            }
-        },
-        Err(e) => {
-            eprintln!("  [loom] health check failed at {health_url}: {e}");
-            false
-        }
-    }
+    up
 }
 
 #[derive(Debug, Clone)]

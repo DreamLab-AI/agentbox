@@ -1,3 +1,4 @@
+use loom_client::{ChatRequest, LoomClient, LoomOptions, Message};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -14,6 +15,11 @@ pub enum LlmError {
     EmptyResponse,
     #[error("missing credentials: {0}")]
     MissingCredentials(String),
+    /// A façade call that the client refused to treat as an answer — scaffold
+    /// retrieval served instead of generation, exhausted truncation retries, or
+    /// grounding applied where passthrough was asked for.
+    #[error("Loom: {0}")]
+    Loom(#[from] loom_client::Error),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,24 +47,22 @@ pub struct LlmConfig {
 }
 
 pub async fn call(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
-    // One retry after a short backoff on transient failures (gateway 5xx like
-    // Cloudflare 524, transport errors, empty bodies). A single retry saved
-    // nights are cheap; hard API errors (4xx) are not retried.
-    let first = dispatch_call(cfg, prompt).await;
-    match first {
-        Err(ref e) if is_transient(e) => {
-            tracing::warn!(error = %e, "transient LLM failure — retrying once in 20s");
-            tokio::time::sleep(Duration::from_secs(20)).await;
-            dispatch_call(cfg, prompt).await
-        }
-        other => other,
-    }
-}
-
-async fn dispatch_call(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
     match cfg.provider {
-        Provider::Zai => call_zai(cfg, prompt).await,
+        // `loom-client` owns the Loom path's retries: three attempts, the same
+        // 20s apart, plus a doubling retry on truncation that this wrapper
+        // could not have done (it cannot see finish_reason).
         Provider::Loom => call_loom(cfg, prompt).await,
+        // One retry after a short backoff on transient failures (gateway 5xx
+        // like Cloudflare 524, transport errors, empty bodies). A single retry
+        // is cheap; hard API errors (4xx) are not retried.
+        Provider::Zai => match call_zai(cfg, prompt).await {
+            Err(ref e) if is_transient(e) => {
+                tracing::warn!(error = %e, "transient LLM failure — retrying once in 20s");
+                tokio::time::sleep(Duration::from_secs(20)).await;
+                call_zai(cfg, prompt).await
+            }
+            other => other,
+        },
     }
 }
 
@@ -69,7 +73,9 @@ fn is_transient(e: &LlmError) -> bool {
             // HTTP 5xx (incl. Cloudflare 52x) are worth one retry; 4xx are not.
             msg.contains("HTTP 5")
         }
-        LlmError::MissingCredentials(_) => false,
+        // The client already retried these to its own ceiling; a further
+        // retry here would just multiply the wait.
+        LlmError::Loom(_) | LlmError::MissingCredentials(_) => false,
     }
 }
 
@@ -171,116 +177,50 @@ async fn call_zai(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
     Ok(text_parts.join("\n"))
 }
 
-// --- Loom (OpenAI chat completions format) ---
+// --- Loom (façade client) ---
 
-#[derive(Serialize)]
-struct LoomRequest {
-    model: String,
-    max_tokens: u32,
-    messages: Vec<LoomMessage>,
-    temperature: f32,
-    top_p: f32,
-    top_k: u32,
-    /// Loom façade extension (ignored by plain OpenAI servers). Profile A runs
-    /// `LOOM_VERBATIM_MODE=1`: a single-turn prompt whose wording lexically
-    /// matches an ontology class title is answered with the scaffold markdown
-    /// verbatim and NO model call. Dream prompts are generative, so always
-    /// force the delegate path.
-    loom_options: LoomOptions,
-}
-
-#[derive(Serialize)]
-struct LoomOptions {
-    verbatim: bool,
-}
-
-#[derive(Serialize)]
-struct LoomMessage {
-    role: String,
-    content: String,
-}
-
-#[derive(Deserialize)]
-struct LoomResponse {
-    choices: Option<Vec<LoomChoice>>,
-    error: Option<serde_json::Value>,
-}
-
-#[derive(Deserialize)]
-struct LoomChoice {
-    message: LoomChoiceMessage,
-}
-
-#[derive(Deserialize)]
-struct LoomChoiceMessage {
-    content: Option<String>,
-    reasoning_content: Option<String>,
-}
-
+/// Talk to the Ontology Loom façade through `loom-client`.
+///
+/// The hand-rolled version of this lived here for months and learned one
+/// lesson the hard way: a façade in verbatim mode answers 200 with ontology
+/// prose and never calls the model, and two nights of verdicts were derived
+/// from that text before anyone noticed (2026-09-01). The crate encodes that
+/// as `Error::ScaffoldOnly`, alongside two more it did not know about —
+/// truncation on a reasoning model returns EMPTY content, and a budget below
+/// ~1536 tokens triggers it — so this path now gets a token floor and a
+/// doubling retry it never had.
+///
+/// Retries live in the client (three attempts, 20s apart to match what the
+/// Z.AI path does for gateway 52x), which is why `call` does not wrap this
+/// one in its own retry.
 async fn call_loom(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
-    let client = Client::builder()
+    let client = LoomClient::builder(&cfg.url)
         .timeout(Duration::from_secs(600))
-        .build()?;
+        .retry_backoff(Duration::from_secs(20))
+        .build();
 
-    let body = LoomRequest {
-        model: cfg.model.clone(),
-        max_tokens: cfg.max_tokens,
-        messages: vec![LoomMessage {
-            role: "user".into(),
-            content: prompt.into(),
-        }],
-        temperature: 1.0,
-        top_p: 0.95,
-        top_k: 20,
-        loom_options: LoomOptions { verbatim: false },
-    };
-
-    let resp = client
-        .post(format!("{}/chat/completions", cfg.url))
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
+    let answer = client
+        .chat(
+            ChatRequest::new(&cfg.model, vec![Message::user(prompt)])
+                .temperature(1.0)
+                .top_p(0.95)
+                .top_k(20)
+                .max_tokens(u64::from(cfg.max_tokens))
+                // Dream prompts are generative and their subject IS in the
+                // ontology: keep the scaffold, refuse a retrieval-only serve.
+                .options(LoomOptions::declining_verbatim()),
+        )
         .await?;
 
-    let status = resp.status();
-    let text = resp.text().await?;
-    info!(bytes = text.len(), http_status = %status, "Loom response received");
-
-    if !status.is_success() {
-        return Err(LlmError::Api(format!(
-            "HTTP {}: {}",
-            status,
-            &text[..text.len().min(500)]
-        )));
-    }
-
-    let parsed: LoomResponse = serde_json::from_str(&text)
-        .map_err(|e| LlmError::Api(format!("JSON parse error: {}", e)))?;
-
-    if let Some(err) = parsed.error {
-        return Err(LlmError::Api(format!("API error: {}", err)));
-    }
-
-    let choices = parsed.choices.ok_or(LlmError::EmptyResponse)?;
-    let first = choices.into_iter().next().ok_or(LlmError::EmptyResponse)?;
-
-    if let Some(ref reasoning) = first.message.reasoning_content {
+    if let Some(reasoning) = &answer.reasoning {
         info!(reasoning_chars = reasoning.len(), "Loom reasoning block");
     }
+    info!(
+        bytes = answer.content.len(),
+        served_mode = %answer.served_mode,
+        attempts = answer.attempts,
+        "Loom response received"
+    );
 
-    let content = first.message.content.ok_or(LlmError::EmptyResponse)?;
-
-    // A scaffold-mode façade answers 200 with verbatim ontology retrieval and
-    // no model generation (2026-09-01: two nights parsed this junk into
-    // INCONCLUSIVE verdicts). Refuse it loudly rather than returning it as a
-    // model response.
-    if content.contains("no model generation was performed") {
-        return Err(LlmError::Api(
-            "Loom served scaffold retrieval without model generation \
-             (façade in scaffold mode or model backend unavailable)"
-                .into(),
-        ));
-    }
-
-    Ok(content)
+    Ok(answer.content)
 }

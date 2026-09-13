@@ -18,7 +18,7 @@ a tool, a corrected render, session resumption and missing-image refusal. A mode
 template or projector change requires fresh qualification. These are bounded
 integration results, not proof of explainer quality or arbitrary visual accuracy.
 
-`scripts/loom-draft.mjs` remains a fixed-packet drafting helper; it does not provide
+`explainer-loom-draft` remains a fixed-packet drafting helper; it does not provide
 the tool-execution or progressive skill-discovery loop. Use the agent harness when
 evaluating those capabilities. Agentbox's `docs/user/loom-agent.md` describes the
 provider profile and model-swap procedure.
@@ -58,7 +58,7 @@ The estate's direct endpoint is the connected node model at `${CONNECTED_NODE_UR
 2026-09-09); its OpenAI-compatible API is under `/v1`. The old `${CONNECTED_NODE_HOST}` address
 does not exist: the gateway host NATs only `:8084` (the Loom façade) onto the LAN. Text-only
 drafting goes through the façade with `loom_options.scaffold=false` (ADR-139), which
-`scripts/loom-draft.mjs` sends by default; the rail port is a fallback for hosts that reach
+`explainer-loom-draft` sends by default; the rail port is a fallback for hosts that reach
 it. This document covers the vision exception. Read
 `/health`, `/v1/models` and `/props`, and use the returned model ID. Do not assume
 that an installed model has a loaded vision projector.

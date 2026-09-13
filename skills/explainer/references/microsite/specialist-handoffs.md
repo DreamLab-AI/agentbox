@@ -11,7 +11,7 @@ claim a skill ran when only a plan was written.
 
 Pass the entrypoint's model policy to specialists that draft or inspect content:
 the connected node model through the Loom façade with the scaffold declined per request
-(`scripts/loom-draft.mjs`), vision only as the qualified exception. Rendering,
+(`explainer-loom-draft`), vision only as the qualified exception. Rendering,
 speech synthesis and generated visual assets still use their dedicated tools; no
 specialist silently switches to a cloud LLM or re-enables the scaffold.
 

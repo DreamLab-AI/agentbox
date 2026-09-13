@@ -1,0 +1,31 @@
+[workspace]
+
+[package]
+name = "explainer-tools"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT OR Apache-2.0"
+description = "Rust ports of the agentbox explainer skill's tooling: façade-backed section drafting, and (progressively) the evidence, diagram and media gates."
+repository = "https://github.com/DreamLab-AI/agentbox"
+publish = false
+
+[lib]
+name = "explainer_tools"
+path = "src/lib.rs"
+
+[[bin]]
+name = "explainer-loom-draft"
+path = "src/bin/loom_draft.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+loom-client = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+
+[dev-dependencies]
+tempfile = "3"
+wiremock = "0.6"

@@ -29,6 +29,7 @@ path = "src/bin/podcast_bulk_ingest.rs"
 [dependencies]
 clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }
+loom-client = "0.1"
 serde_json = { version = "1", features = ["preserve_order"] }
 serde_yaml = "0.9"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "fs", "time", "signal"] }
