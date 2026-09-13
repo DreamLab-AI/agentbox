@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: 62e1657fcd7237e6ff0c08464717459e7a45c3ee
 verified_paths: [services/dream-engine/src/llm.rs, services/podcast-ingest/src/ingest/loom.rs, services/podcast-ingest/src/promote/loom.rs, services/explainer-tools/src/bin/loom_draft.rs, lib/explainer-tools.nix]
 owner: jjohare
 review_trigger: the Loom façade changes its request or telemetry contract, or a fifth caller appears
