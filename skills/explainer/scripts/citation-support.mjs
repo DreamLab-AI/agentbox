@@ -104,7 +104,11 @@ for (const file of readdirSync(args.chapters).filter((f) => f.endsWith('.md')).s
   // splits link text across a newline, and a per-line scan silently sees only the citations
   // short enough to fit on one. On a wrapped pack that is most of them missing.
   {
-    for (const m of text.matchAll(/\[([^\]]*)\]\(src:([^)\s]+)\)/g)) {
+    // Link text often quotes code that contains brackets — ALIASES['__proto__'],
+    // profiles: ["civic-quest"], /v/[shortcode]/page.tsx — and a link-text class that stops
+    // at the first ] cannot see those citations at all. One level of nesting covers every
+    // case in three packs; three citations were invisible without it.
+    for (const m of text.matchAll(/\[((?:[^[\]]|\[[^\]]*\])*)\]\(src:([^)\s]+)\)/g)) {
       const linkText = m[1].replace(/\s+/g, ' ').trim();
       const target = m[2];
       const i = text.slice(0, m.index).split('\n').length - 1;
