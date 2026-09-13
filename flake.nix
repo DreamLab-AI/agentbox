@@ -2339,7 +2339,7 @@ ${lib.optionalString dreamEngineEnabled ''
 command=${bgNice}${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
 directory=/home/devuser/workspace
 user=devuser
-environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}",LOOM_URL="${dreamMachineCfg.loom_url or "${LOOM_BASE_URL}"}",LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
+environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}",LOOM_URL="${dreamMachineCfg.loom_url or "\${LOOM_BASE_URL}"}",LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
 autostart=true
 autorestart=true
 priority=230
@@ -3117,8 +3117,8 @@ ${agentboxPorts}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
       - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen3.8-27B}
-      - LOOM_BASE_URL=''${LOOM_BASE_URL:-${LOOM_BASE_URL}}
-      - LOOM_RAW_BASE_URL=''${LOOM_RAW_BASE_URL:-${CONNECTED_NODE_URL}/v1}
+      - LOOM_BASE_URL=''${LOOM_BASE_URL:-http://loom:8080/v1}
+      - LOOM_RAW_BASE_URL=''${LOOM_RAW_BASE_URL:-http://loom-raw:8080/v1}
       - LOOM_MODEL=''${LOOM_MODEL:-qwen3.8-27B}
       - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-}
       - GEMMA_MODEL=''${GEMMA_MODEL:-}
