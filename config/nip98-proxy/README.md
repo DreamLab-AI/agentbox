@@ -68,6 +68,13 @@ their own auth — the ingress **adds** identity, it does not replace surface
 checks (defence in depth). Malformed route config is fatal at boot (fail
 closed). Route additions are ADR-worthy events (ADR-045 review trigger).
 
+The cockpit routes `/code/` to code-server and `/jupyter/` to JupyterLab.
+Both set `preserve_host = true` in the manifest so browser Origin checks see
+the console host on HTTP requests and WebSocket upgrades. This option changes
+the forwarded Host header; the connection target still comes from the route
+configuration. Jupyter also sets `strip = false` and runs with
+`--ServerApp.base_url=/jupyter/`. Both services retain their own login checks.
+
 ## NIP-07 browser sessions (`/nip07/*`)
 
 Browsers cannot attach an `Authorization` header to navigations, so per-request

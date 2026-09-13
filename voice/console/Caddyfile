@@ -74,6 +74,11 @@ https://:8444 {
 			header_up Authorization {http.request.header.Authorization}
 		}
 	}
+	# IDE and notebooks share the console identity gate, including WebSockets.
+	@workspace path /code /code/* /jupyter /jupyter/*
+	handle @workspace {
+		reverse_proxy agentbox:9096
+	}
 	handle /lo* {
 		reverse_proxy agentbox:9090
 	}

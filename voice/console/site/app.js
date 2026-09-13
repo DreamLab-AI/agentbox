@@ -771,11 +771,6 @@ document.querySelector('.view-toggle').addEventListener('keydown', (event) => {
   $(next === 'term' ? 'tab-term' : 'tab-diff').focus();
 });
 
-document.querySelectorAll('[data-port]').forEach((link) => {
-  const scheme = link.dataset.port === '8080' || link.dataset.port === '8888' ? 'http:' : location.protocol;
-  link.href = `${scheme}//${location.hostname}:${link.dataset.port}/`;
-});
-
 async function pollSystemView() {
   try {
     const res = await authFetch('/mgmt/v1/system');

@@ -1957,7 +1957,9 @@ stderr_logfile=/var/log/ontology-condense-scheduler.error.log
 ; exports it into PID 1's environment before supervisord starts, so it is
 ; inherited here without ever being interpolated into this generated,
 ; world-readable supervisor text.
-command=${bgNice}${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --LabApp.app_dir=${pkgs.python312Packages.jupyterlab}/share/jupyter/lab
+; The console proxy preserves the external Host for Jupyter's Origin checks.
+; Accept that host and forwarded HTTPS scheme; token auth remains enabled.
+command=${bgNice}${pkgs.python312Packages.jupyterlab}/bin/jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --ServerApp.base_url=/jupyter/ --ServerApp.trust_xheaders=True --ServerApp.allow_remote_access=True --LabApp.app_dir=${pkgs.python312Packages.jupyterlab}/share/jupyter/lab
 directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser"

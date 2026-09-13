@@ -340,6 +340,9 @@ function normalizeRoute(r, i, source) {
   return {
     prefix: r.prefix.endsWith('/') ? r.prefix : `${r.prefix}/`,
     strip: r.strip !== false,
+    // Browser applications compare Host with Origin for HTTP and WebSockets.
+    // Opt in per route; connection targets remain fixed by the trusted config.
+    preserveHost: r.preserve_host === true,
     upstream: parseUpstreamTarget(r.target, `${source} route[${i}].target`),
     bearer,
   };
@@ -434,7 +437,7 @@ function routeFor(rawUrl) {
       if (isBare) path = url === bare ? '/' : `/${url.slice(bare.length)}`;
       else path = `/${url.slice(r.prefix.length)}`;
     }
-    return { upstream: r.upstream, path, bearer: r.bearer, isAoe: false };
+    return { upstream: r.upstream, path, bearer: r.bearer, preserveHost: r.preserveHost, isAoe: false };
   }
   return { upstream, path: url, bearer: null, isAoe: true };
 }
@@ -965,7 +968,8 @@ const server = http.createServer((req, res) => {
       }
       headers[key] = value;
     }
-    headers.host = `${route.upstream.hostname}:${route.upstream.port}`;
+    headers.host = route.preserveHost && req.headers.host
+      ? req.headers.host : `${route.upstream.hostname}:${route.upstream.port}`;
     headers['x-forwarded-for'] = appendXff(req.headers['x-forwarded-for'], clientIp(req));
     headers['x-forwarded-proto'] = (req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim();
     // ADR-2010: the host the client signed into the NIP-98 `u` tag. `Host` is
@@ -1116,7 +1120,10 @@ server.on('upgrade', (req, socket, head) => {
       const lname = name.toLowerCase();
       if (lname === 'authorization') continue;
       if (lname === 'x-agentbox-pubkey' || lname === 'x-agentbox-auth-mode') continue;
-      if (lname === 'host') { lines.push(`Host: ${route.upstream.hostname}:${route.upstream.port}`); continue; }
+      if (lname === 'host') {
+        lines.push(`Host: ${route.preserveHost ? value : `${route.upstream.hostname}:${route.upstream.port}`}`);
+        continue;
+      }
       if (lname === 'x-forwarded-for') continue; // re-emitted below, canonicalised
       if (lname === 'x-forwarded-host') continue; // re-emitted below, canonicalised
       if (lname === 'cookie') {

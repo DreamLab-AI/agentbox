@@ -1347,6 +1347,17 @@ target = "http://127.0.0.1:8971"
 strip  = false
 bearer_env = "BRIDGE_TOKEN"
 
+[[interaction_plane.proxy.routes]]
+prefix = "/code"
+target = "http://127.0.0.1:8080"
+preserve_host = true
+
+[[interaction_plane.proxy.routes]]
+prefix = "/jupyter"
+target = "http://127.0.0.1:8888"
+strip = false
+preserve_host = true
+
 # Declarative sessions replacing tmux-autostart harness windows 8–14 (WS2). Each
 # seed becomes an AoE session under SESSION_PREFIX aoe_. eager_mandate defaults
 # false (mandates are lazy, minted on first pod write — ADR-043 D4.5); flip true
