@@ -239,3 +239,29 @@ cases and leaves the worst ones needing to drop below 22px, so the diagram ends 
 inconsistent type AND clipped words. Widening the box is invisible when it works and honest when
 it does not — a box that cannot grow without colliding is telling you the row needs re-laying-out,
 which is a thing you can then decide to do or to record.
+
+## The frame's usable ratio is not the frame's ratio
+
+The compositor reserves the top of the frame for the scene's title, so the picture does not
+sit in 1920 by 1080. It sits in what is left, which at a 19 per cent band is **1920 by 875 —
+2.19:1**. Every source has to be cropped to that, and getting it wrong is visible either way:
+
+    16:9 screenshot   fills the height, 364 px of dark bar down each side, text shrinks to match
+    3.9:1 strip       fills the width, a third of the frame dark above and below
+    2.19:1            fills it
+
+Both mistakes were made in one session on one pack. The first came from feeding whole page
+captures straight in; the second from over-correcting into wide, short bands when cropping each
+scene to the part it talks about. "Crop it to the part the scene is about" is only half the
+instruction — the other half is *at the region's own ratio*, and it is the half that decides
+whether the reader is looking at a picture or at a strip floating in a dark field.
+
+Two consequences worth planning for:
+
+- **Capture at the ratio you will compose at.** A page captured at 1600 by 900 and cropped to
+  2432 by 1110 at 2x is one operation; the same page captured tall and cropped down is a guess
+  about where the cards are, which was wrong twice here before card-sized bands worked.
+- **Text size follows from it.** A 2.19:1 source scales to the region 1:1 in width, so a 2x
+  capture lands at roughly 1.2x CSS pixels and stays crisp. A 16:9 source of the same page is
+  scaled down a further 19 per cent for no gain, which is exactly the legibility this audience
+  cannot spare.
