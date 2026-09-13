@@ -100,10 +100,14 @@ function spanOf(body, name) {
 const rows = [];
 for (const file of readdirSync(args.chapters).filter((f) => f.endsWith('.md')).sort()) {
   const text = readFileSync(join(args.chapters, file), 'utf8');
-  const lines = text.split('\n');
-  lines.forEach((line, i) => {
-    for (const m of line.matchAll(/\[([^\]]*)\]\(src:([^)]+)\)/g)) {
-      const [linkText, target] = [m[1], m[2]];
+  // Scanned over the whole document, not line by line: a chapter that hard-wraps its prose
+  // splits link text across a newline, and a per-line scan silently sees only the citations
+  // short enough to fit on one. On a wrapped pack that is most of them missing.
+  {
+    for (const m of text.matchAll(/\[([^\]]*)\]\(src:([^)\s]+)\)/g)) {
+      const linkText = m[1].replace(/\s+/g, ' ').trim();
+      const target = m[2];
+      const i = text.slice(0, m.index).split('\n').length - 1;
       const row = { file, line: i + 1, linkText, target, verdict: 'PROSE' };
       const at = target.match(/^(.+?)#L(\d+)(?:-L(\d+))?$/);
       const path = at ? at[1] : target;
@@ -150,7 +154,7 @@ for (const file of readdirSync(args.chapters).filter((f) => f.endsWith('.md')).s
       else { row.verdict = 'NAMED-MISS'; row.detail = `${code.name} does not appear in ${path}`; }
       rows.push(row);
     }
-  });
+  }
 }
 
 const tally = rows.reduce((t, r) => (t[r.verdict] = (t[r.verdict] ?? 0) + 1, t), {});
