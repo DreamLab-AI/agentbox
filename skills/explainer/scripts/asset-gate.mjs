@@ -52,6 +52,7 @@ if (!['video', 'page'].includes(medium)) { console.error(`asset-gate.mjs: --medi
 const forFrame = medium === 'video';   // the checks that only mean something inside a fixed frame
 const minInk = Number(args['min-ink'] ?? 0.55);
 const maxHole = Number(args['max-hole'] ?? 0.35);
+const MAX_UPSCALE = Number(args['max-upscale'] ?? 2.5);
 const have = (cmd) => { try { execFileSync('sh', ['-c', `command -v ${cmd}`], { stdio: 'pipe' }); return true; } catch { return false; } };
 
 // Phrases that mean the thing in the picture is not working. Kept narrow on purpose: a
@@ -181,7 +182,12 @@ for (const f of images) {
     const scale = Math.min(fw / g.w, fh / g.h);
     const used = (g.w * scale * g.h * scale) / (fw * fh);
     r.frame_fill = Number(used.toFixed(3));
-    if (forFrame && used < 0.55) r.problems.push({ code: 'SHRUNK', detail: `fills only ${(used * 100).toFixed(0)}% of a ${fw}x${fh} frame; lay the content along the frame's long axis or split it across scenes` });
+    // Frame fill is measured AFTER scaling, so a thumbnail scores highly: a 152x84 capture
+    // enlarged 12x fills 98% of a 1080p frame and is unreadable mush. Fill answers "is the
+    // frame used", not "is there enough picture to use it with".
+    if (forFrame && scale > MAX_UPSCALE) {
+      r.problems.push({ code: 'THIN', detail: `only ${g.w}x${g.h}, so filling a ${fw}x${fh} frame enlarges it ${scale.toFixed(1)} times; recapture it at the size it will be shown` });
+    } else if (forFrame && used < 0.55) r.problems.push({ code: 'SHRUNK', detail: `fills only ${(used * 100).toFixed(0)}% of a ${fw}x${fh} frame; lay the content along the frame's long axis or split it across scenes` });
     else if (!forFrame && used < 0.55) r.notes.push(`portrait or narrow for a ${fw}x${fh} frame, which is fine on a page`);
   }
   results.push(r);
