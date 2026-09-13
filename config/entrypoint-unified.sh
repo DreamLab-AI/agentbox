@@ -1696,6 +1696,53 @@ JSON
   fi
 fi
 
+# ── Colloquy MCP: cq shared-agent-learning knowledge units ──
+# ADR-2085. Registration is gated on [skills.colloquy].enabled and follows the
+# precedent-bridge shape exactly (boot-class read from the manifest; the binary
+# itself is always baked). This server supersedes precedent-bridge: the same
+# promote/retire machinery, generalised off governance decisions onto four
+# ladder kinds.
+#
+# ADR-2086: the server attests on behalf of a member, so it MUST be told both
+# who it is and who authorises it, and those must differ. COLLOQUY_PRINCIPAL is
+# the operator this container runs for — an agent that authorises itself defeats
+# principal collapse, and the binary exits 2 rather than start that way. If the
+# principal is not configured the registration is SKIPPED with a warning: a
+# knowledge store that miscounts principals is worse than one that is absent.
+_COLLOQUY_ON=0
+if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _COLLOQUY_ON="$(agentbox-manifest toml-bool \
+    --manifest "$AGENTBOX_CONFIG" --path skills.colloquy.enabled 2>/dev/null || echo 0)"
+fi
+_COLLOQUY_BIN="$(command -v colloquy-mcp 2>/dev/null || echo /opt/agentbox/bin/colloquy-mcp)"
+_COLLOQUY_STORE="${COLLOQUY_STORE_PATH:-/var/lib/agentbox/colloquy/units.jsonl}"
+_COLLOQUY_PRINCIPAL="${COLLOQUY_PRINCIPAL:-${AGENTBOX_OPERATOR_DID:-}}"
+if { [ "$_COLLOQUY_ON" = "1" ] || [ "$_COLLOQUY_ON" = "true" ]; } \
+   && [ -x "$_COLLOQUY_BIN" ] && [ -f "$_MCP_JSON" ]; then
+  if [ -z "${AGENTBOX_PUBKEY:-}" ] || [ -z "$_COLLOQUY_PRINCIPAL" ]; then
+    echo "  [mcp] colloquy SKIPPED: need AGENTBOX_PUBKEY and COLLOQUY_PRINCIPAL (or AGENTBOX_OPERATOR_DID)." >&2
+    echo "        Confidence is counted per authorising principal (ADR-2086); an unidentified member cannot attest." >&2
+  elif ! grep -q '"colloquy"' "$_MCP_JSON" 2>/dev/null; then
+    mkdir -p "$(dirname "$_COLLOQUY_STORE")" 2>/dev/null || true
+    chown -R 1000:1000 "$(dirname "$_COLLOQUY_STORE")" 2>/dev/null || true
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name colloquy <<JSON 2>/dev/null && echo "  [mcp] Added colloquy" || true
+{
+  "command": "$_COLLOQUY_BIN",
+  "args": [],
+  "type": "stdio",
+  "env": {
+    "COLLOQUY_MEMBER": "did:nostr:${AGENTBOX_PUBKEY:-}",
+    "COLLOQUY_PRINCIPAL": "$_COLLOQUY_PRINCIPAL",
+    "COLLOQUY_CLASS": "agent",
+    "COLLOQUY_STORE_PATH": "$_COLLOQUY_STORE"
+  }
+}
+JSON
+    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
+    chmod 600 "$_MCP_JSON" 2>/dev/null || true
+  fi
+fi
+
 # ── Harness bridge MCP: VisionFlow harness template tools ──
 # ADR-2057 gap 2: registration is gated on [skills.harness].enabled, which the
 # old file-presence-only check ignored. Boot-class, read from the manifest here

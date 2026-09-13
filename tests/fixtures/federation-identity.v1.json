@@ -90,6 +90,14 @@
       "expected_rust": "not-implemented",
       "status": "elevation-js-only",
       "note": "Memory elevation requires explicit domain/slug options. The Rust ordinary crossing deliberately returns None for memory; the elevation journey is a JS-side capability that has not been exercised as an end-to-end journey on either side."
+    },
+    {
+      "kind": "knowledge",
+      "agentbox_urn": "urn:agentbox:knowledge:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-c1a22b203994",
+      "expected": null,
+      "expected_rust": null,
+      "status": "unmapped",
+      "note": "ADR-2085. A colloquy knowledge unit has no VisionClaw counterpart: VisionClaw models ontology concepts and provenance, not agent-learned units, and inventing a `urn:visionclaw:concept:` target would fabricate an identity nothing resolves. Deliberately unmapped WITHOUT elevation options, exactly like `memory` — both sides must surface an explicit unmapped result. The twelve digest characters are the SAME ones the cq id `ku_c1a22b203994` carries, so the address is one value in two grammars; only the crossing is refused, never the address."
     }
   ],
   "precomputed_address_admission": [

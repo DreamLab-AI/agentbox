@@ -762,6 +762,19 @@ enabled = true
 namespace = "governance-precedents"
 similarity_threshold = 0.85
 
+[skills.colloquy]
+# Colloquy — cq shared-agent-learning knowledge units (ADR-2085, ADR-2086).
+# Six tools: query, propose, confirm, flag, reflect, status. Gates the MCP
+# registration only; the binary is always baked, exactly as the precedent
+# bridge it supersedes was. Apply class: boot (a restart applies a flip).
+enabled = true
+# Local-tier append log. Unset for an in-memory store that dies with the session.
+store_path = "/var/lib/agentbox/colloquy/units.jsonl"
+# The SHARED tier's RuVector namespace. Its own, never `patterns` — mixing units
+# into a namespace the frozen recall band is measured against moves the band
+# (LEARNING-memory.md invariant 11).
+namespace = "colloquy"
+
 [skills.email_search]
 # Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). Now runs as the
 # `email-mcp-gateway` container on the shared `visionclaw_network`, so it is reached

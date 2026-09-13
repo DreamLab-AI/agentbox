@@ -1462,6 +1462,10 @@
         agentboxMcpPkg   = import ./lib/agentbox-mcp.nix   { inherit lib; pkgs = rustPkgs; };
         skillToolsPkg    = import ./lib/skill-tools.nix    { inherit lib; pkgs = rustPkgs; };
         explainerToolsPkg = import ./lib/explainer-tools.nix { inherit lib; pkgs = rustPkgs; };
+        # colloquy — the cq shared-learning model (ADR-2085). Always baked, like
+        # the precedent bridge it supersedes: the skill is in the image and only
+        # the MCP *registration* is manifest-gated, in the entrypoint.
+        colloquyPkg = import ./lib/colloquy.nix { inherit lib; pkgs = rustPkgs; };
         knowledgeToolPackages = [
           ontologyToolsPkg
           podcastIngestPkg
@@ -1469,6 +1473,7 @@
           agentboxMcpPkg
           skillToolsPkg
           explainerToolsPkg
+          colloquyPkg
         ];
         # ---------------------------------------------------------------------------
         # Skill tool binaries — Rust replacements for Python that used to ship

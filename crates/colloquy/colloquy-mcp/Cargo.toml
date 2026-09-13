@@ -1,0 +1,32 @@
+[package]
+name = "colloquy-mcp"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license = "AGPL-3.0-only"
+description = "The six colloquy verbs (query, propose, confirm, flag, reflect, status) as an MCP server over stdio. Supersedes the JavaScript precedent-bridge."
+publish = false
+
+[lib]
+name = "colloquy_mcp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "colloquy-mcp"
+path = "src/main.rs"
+
+[dependencies]
+colloquy-core = { path = "../colloquy-core" }
+colloquy-store = { path = "../colloquy-store" }
+colloquy-backends = { path = "../colloquy-backends" }
+colloquy-nostr = { path = "../colloquy-nostr" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util", "fs", "sync"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tempfile = "3"

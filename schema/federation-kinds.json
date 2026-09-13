@@ -108,7 +108,10 @@
       "target_kind": "concept",
       "target_grammar": "urn:visionclaw:concept:<domain>:<slug>",
       "elevation": {
-        "required_args": ["domain", "slug"],
+        "required_args": [
+          "domain",
+          "slug"
+        ],
         "js_entry_point": "bc20-provenance-bridge.js::toVisionclaw(urn, { domain, slug })",
         "rust_entry_point": "uri::concept(domain, slug) - called by the governed elevation path, never by cross_from_agentbox",
         "note": "This is what makes the refusal distinguishable from 'not implemented': the target kind and the arguments that would unlock it are both recorded."
@@ -212,7 +215,10 @@
       "refusal_class": "not-federated",
       "refusal_reason": "MCP server registry entry - agentbox runtime tooling. It names a local process, which is meaningless outside this container.",
       "source_grammar": "urn:agentbox:mcp:<local>",
-      "fixture": { "input": "urn:agentbox:mcp:codebase-memory", "expect": null }
+      "fixture": {
+        "input": "urn:agentbox:mcp:codebase-memory",
+        "expect": null
+      }
     },
     {
       "kind": "skill",
@@ -220,7 +226,10 @@
       "refusal_class": "not-federated",
       "refusal_reason": "Baked skill in the agentbox image. Image-local content addressed by name, with no VisionClaw counterpart.",
       "source_grammar": "urn:agentbox:skill:<local>",
-      "fixture": { "input": "urn:agentbox:skill:email-search", "expect": null }
+      "fixture": {
+        "input": "urn:agentbox:skill:email-search",
+        "expect": null
+      }
     },
     {
       "kind": "adr",
@@ -228,7 +237,10 @@
       "refusal_class": "not-federated",
       "refusal_reason": "Governance document identifier. Each repository owns its own ADR ledger; a cross-repo ADR reference is cited by URL, never minted as a foreign URN.",
       "source_grammar": "urn:agentbox:adr:<local>",
-      "fixture": { "input": "urn:agentbox:adr:adr-2061", "expect": null }
+      "fixture": {
+        "input": "urn:agentbox:adr:adr-2061",
+        "expect": null
+      }
     },
     {
       "kind": "prd",
@@ -236,7 +248,10 @@
       "refusal_class": "not-federated",
       "refusal_reason": "Governance document identifier - same reasoning as adr.",
       "source_grammar": "urn:agentbox:prd:<local>",
-      "fixture": { "input": "urn:agentbox:prd:prd-021", "expect": null }
+      "fixture": {
+        "input": "urn:agentbox:prd:prd-021",
+        "expect": null
+      }
     },
     {
       "kind": "ddd",
@@ -244,7 +259,10 @@
       "refusal_class": "not-federated",
       "refusal_reason": "Governance document identifier - same reasoning as adr.",
       "source_grammar": "urn:agentbox:ddd:<local>",
-      "fixture": { "input": "urn:agentbox:ddd:ddd-012", "expect": null }
+      "fixture": {
+        "input": "urn:agentbox:ddd:ddd-012",
+        "expect": null
+      }
     },
     {
       "kind": "meta",
@@ -252,7 +270,22 @@
       "refusal_class": "not-federated",
       "refusal_reason": "Reserved self-describing namespace for the URI scheme itself. Federating it would let the grammar describe a grammar it does not own.",
       "source_grammar": "urn:agentbox:meta:<local>",
-      "fixture": { "input": "urn:agentbox:meta:uri-grammar", "expect": null }
+      "fixture": {
+        "input": "urn:agentbox:meta:uri-grammar",
+        "expect": null
+      }
+    },
+    {
+      "kind": "knowledge",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "ADR-2085. A colloquy knowledge unit is an agent-learned claim with its own evidence and lifecycle; VisionClaw models ontology concepts and provenance, and has no counterpart for it. Elevating one into `urn:visionclaw:concept:` would assert a shared-ontology class from a private learning - the same fabrication `memory` refuses, without even the {domain, slug} path to defer to. The address itself still crosses meaning: the twelve digest characters are the ones the cq id `ku_<hex>` carries, so a knowledge unit has one address in two grammars and only the URN crossing is refused.",
+      "requires_owner_scope": true,
+      "source_grammar": "urn:agentbox:knowledge:<pubkey>:<sha256-12>",
+      "fixture": {
+        "input": "urn:agentbox:knowledge:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-c1a22b203994",
+        "expect": null
+      }
     }
   ]
 }

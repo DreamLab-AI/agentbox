@@ -1,4 +1,21 @@
 #!/usr/bin/env node
+
+/**
+ * SUPERSEDED by the `colloquy` MCP server (ADR-2085) — scheduled for deletion.
+ *
+ * `crates/colloquy` generalises this bridge off governance decisions onto the
+ * four-level cq ladder: the same match/promote/retire machinery, plus lifecycle,
+ * decay, and confidence counted per authorising principal (ADR-2086).
+ *
+ * It is still here on purpose. Removing it means migrating the
+ * `governance-precedents` namespace into `colloquy` and repointing the
+ * governance callers, and that migration writes legacy rows into a fresh
+ * namespace — so it runs behind its own recall measurement and must stay
+ * revertible independently of the rest of colloquy. Deleting live governance
+ * tooling in the same change that introduces its replacement would forfeit that.
+ *
+ * Do not add features here. New behaviour goes to `colloquy-core`.
+ */
 // precedent-bridge.js — MCP server providing precedent system tools for
 // the governance harness improvement loop (PRD-harness M6).
 //

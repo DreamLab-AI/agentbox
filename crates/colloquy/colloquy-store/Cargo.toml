@@ -1,0 +1,24 @@
+[package]
+name = "colloquy-store"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license = "AGPL-3.0-only"
+description = "KnowledgeStore trait and the three tier implementations: local file, shared vector memory, and the Nostr relay."
+publish = false
+
+[dependencies]
+colloquy-core = { path = "../colloquy-core" }
+colloquy-nostr = { path = "../colloquy-nostr" }
+nostr-bbs-core = { path = "../../../../../nostr-rust-forum/crates/nostr-bbs-core" }
+async-trait = "0.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["sync", "fs", "io-util", "rt"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tempfile = "3"

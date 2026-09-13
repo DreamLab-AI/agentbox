@@ -1,0 +1,23 @@
+[package]
+name = "colloquy-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license = "Apache-2.0"
+description = "A clean-room Rust implementation of the cq shared-agent-learning standard: knowledge units, the pitfall/workaround/tool ladder, diversity-weighted confidence over authorising principals, and per-kind staleness decay. Pure - no clock, no I/O, no network - and builds for wasm32 as well as native."
+readme = "README.md"
+keywords = ["agents", "knowledge", "cq", "provenance", "memory"]
+categories = ["data-structures", "science"]
+documentation = "https://docs.rs/colloquy-core"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

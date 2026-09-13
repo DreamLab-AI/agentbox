@@ -1,0 +1,17 @@
+[package]
+name = "colloquy-nostr"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license = "AGPL-3.0-only"
+description = "Nostr event binding for colloquy knowledge units: kinds 38100-38105, the tag grammar, and ledger reconstruction from a signed event set."
+publish = false
+
+[dependencies]
+colloquy-core = { path = "../colloquy-core" }
+nostr-bbs-core = { path = "../../../../../nostr-rust-forum/crates/nostr-bbs-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

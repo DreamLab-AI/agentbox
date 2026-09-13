@@ -107,6 +107,11 @@ const KINDS = Object.freeze({
   // (`urn:visionclaw:bead:<pubkey>:<sha256-12>`) so the BC20 bridge can
   // cross beads structurally instead of dropping them (audit 2026-06-09 A3).
   bead:       { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'beads' },
+  // knowledge (ADR-2085): a colloquy knowledge unit. Content-addressed with a
+  // scope, so `urn:agentbox:knowledge:<pubkey>:sha256-12-<hex>` and the cq id
+  // `ku_<hex>` carry the SAME twelve digest characters — one address in two
+  // grammars, rather than two identities to keep in step.
+  knowledge:  { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'memory' },
   agent:      { ownerScope: true,  scopeRequired: false, contentAddressed: false, resolvableSurface: 'agents' },
   meta:       { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'meta' },
 });

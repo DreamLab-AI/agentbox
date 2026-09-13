@@ -1,0 +1,33 @@
+[package]
+name = "colloquy-backends"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license = "AGPL-3.0-only"
+description = "Production transports for the colloquy shared and public tiers: the governed RuVector memory MCP server, and the sovereign Nostr relay. No fakes, no in-memory stand-ins."
+publish = false
+
+[dependencies]
+colloquy-core = { path = "../colloquy-core" }
+colloquy-nostr = { path = "../colloquy-nostr" }
+colloquy-store = { path = "../colloquy-store" }
+nostr-bbs-core = { path = "../../../../../nostr-rust-forum/crates/nostr-bbs-core" }
+async-trait = "0.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "sync", "time", "net", "fs"] }
+# Version-matched to nostr-pod-bridge so the lock graph stays single-source.
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+k256 = { version = "0.13", features = ["schnorr"] }
+hex = { workspace = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+[[example]]
+name = "relay_smoke"
+path = "examples/relay_smoke.rs"

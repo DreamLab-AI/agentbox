@@ -288,6 +288,20 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
    every `memory_*` / `agentdb_*` / `embeddings_*` / `hooks_*` tool it advertises
    anyway. Orchestration fails open to stubs; that never extends to memory.
 
+10. **Confirmation weight follows authorising principals (ADR-2086).** Colloquy
+   knowledge-unit confidence is computed over *authorising principals*, never
+   member accounts: N agents under one principal count once, repeat attestations
+   from one member do not accrue, and a pubkey the membership registry does not
+   resolve is **dropped and reported**, never treated as its own principal.
+   Graduation gates on the *count* of distinct principals (two plus a human for
+   the shared tier, three plus a signed `31403` for the public tier), not on
+   weight — which is what makes "a single member can never promote alone"
+   structural rather than probabilistic.
+11. **The colloquy namespace is its own (ADR-2085).** Knowledge units are written
+   to a dedicated `colloquy` namespace, never into `patterns` or any namespace
+   the frozen recall band is measured against. Bulk ingest into it inherits
+   invariant 8: serial, non-concurrent HNSW rebuild afterwards.
+
 ## Change process
 
 This is a living document. On any change to the loop: read the code, update the

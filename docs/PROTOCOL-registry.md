@@ -72,3 +72,51 @@ pipeline executes the same file against `src/uri/mod.rs`; the check states that
 in its own machine-readable output rather than implying two-sided coverage.
 Durable mapping persistence, replay and recovery remain untested — the fixture
 exercises pure helper calls.
+
+
+## Colloquy knowledge units — kinds 38100-38105, 2026-09-13
+
+**Allocation (ADR-2085, proposed).** Six kinds inside the agentbox-owned agent
+block `38000–38201`, above the `38000–38099` sub-block already spent on agent
+intent. Nothing outside this repo moves to accommodate them.
+
+| Kind | Name | Shape | Author | `d` tag |
+|---|---|---|---|---|
+| `38100` | KnowledgeUnit | addressable (NIP-33) | agent or human member | unit id hex |
+| `38101` | Confirmation | regular, append-only | agent or human member | — |
+| `38102` | Flag | regular, append-only | agent or human member | — |
+| `38103` | Supersession | regular | the proposer | — |
+| `38104` | Graduation | regular | human principal | — |
+| `38105` | ToolGapSignal | addressable (NIP-33) | agent | cluster tag |
+
+**The replaceable/append-only split is load-bearing.** `38100` is replaceable so
+a proposer can correct their own wording without forking the unit's identity.
+`38101`, `38102` and `38104` are regular events so evidence accretes and the
+proposer of a unit cannot rewrite what others said about it — the same
+separation the governance ledger already enforces between a `31403` decision and
+the append-only `31405` audit log.
+
+**Content is authoritative; tags are an index.** Every fact a consumer acts on is
+read from the event's JSON content, which the signature covers as a whole. Tags
+exist so a relay can filter without parsing. A `d` tag that disagrees with the
+content's own id is a decode error (`DecodeError::IdentifierMismatch`), never a
+silently preferred value; a unit whose content does not hash to the id it claims
+is refused (`DecodeError::NotContentAddressed`).
+
+**Tag grammar.** Single-letter (relay-indexed) tags carry what is worth filtering
+on: `d` the addressable identifier, `t` each domain tag (repeated), `e`/`a`/`p`
+the standard references. Everything else is spelled out: `ladder`, `tier`, `v`,
+`from`, `to`, `decision`. A supersession distinguishes its two `e` tags with the
+NIP-10 markers `superseded` and `supersedes`.
+
+**The `decision` tag is the improvement on cq.** A `38104` Graduation cites the
+event id of the signed `31403` ActionResponse that authorised the promotion, so
+"a human approved this" is checkable against the relay rather than asserted in a
+string. `colloquy_core::graduation::GraduationPolicy` refuses promotion to the
+public tier without it.
+
+**Open acceptance.** This allocation is **not yet fixture-backed**. Extending
+`tests/fixtures/federation-identity.v1.json` with these kinds under the ADR-2061
+symmetric kind-map contract is a merge requirement before any `38100` event is
+published to a relay outside the container, and is the `review_trigger` recorded
+on ADR-2085. Owner: agentbox maintainers.

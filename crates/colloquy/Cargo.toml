@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = [
+    # The standard, clean-room and pure. Publishable.
+    "colloquy-core",
+    # Presentation models for the forum surface. Depends on colloquy-core only,
+    # so it is publishable and the forum never path-deps this repo.
+    "colloquy-view",
+    # Nostr event binding (kinds 38100-38105).
+    "colloquy-nostr",
+    # KnowledgeStore trait + local / ruvector / relay implementations.
+    "colloquy-store",
+    # Production transports for those implementations: the governed RuVector
+    # memory MCP server and the sovereign Nostr relay. Nothing in here is a fake.
+    "colloquy-backends",
+    # The six verbs as an MCP server.
+    "colloquy-mcp",
+]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.85"
+repository = "https://github.com/DreamLab-AI/agentbox"
+authors = ["DreamLab AI"]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+hex = "0.4"
+thiserror = "2"

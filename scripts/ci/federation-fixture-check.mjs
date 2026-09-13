@@ -102,8 +102,22 @@ for (const c of fx.owner_scope_admission) {
 // ── 4. the kind map is the fixture's, not an independent list ───────────────
 {
   const declared = Object.keys(bridge.AGENTBOX_TO_VISIONCLAW).sort();
+  // A kind can be DECLARED in the shared artefact and still have no VisionClaw
+  // counterpart at all (`refusal_class: 'not-federated'`). Those carry no
+  // `target_kind`, so they never enter the URN→URN map — but the fixture should
+  // still be able to exercise them, because "this kind must produce an explicit
+  // unmapped result" is exactly the expectation ADR-2025 asks the fixture to
+  // pin. Reading the artefact directly is what lets the map stay a map while
+  // the fixture stays the contract.
+  const artefactKinds = new Map(bridge.FEDERATION_KINDS.kinds.map((k) => [k.kind, k]));
+  const notFederated = new Set(
+    [...artefactKinds.values()].filter((k) => k.crosses === false && !k.target_kind).map((k) => k.kind),
+  );
   const inFixture = [...new Set(fx.crossing.map((c) => c.kind))].filter((k) => k !== 'agent').sort();
-  const missing = inFixture.filter((k) => !declared.includes(k));
+  const missing = inFixture.filter((k) => !declared.includes(k) && !artefactKinds.has(k));
+  check('kind-map/not-federated-kinds-are-declared-in-the-artefact',
+    inFixture.filter((k) => !declared.includes(k)).every((k) => notFederated.has(k)),
+    'a fixture kind is neither mapped nor declared not-federated in schema/federation-kinds.json');
   check('kind-map/fixture-kinds-are-declared', missing.length === 0,
     `kinds in the fixture but absent from the bridge map: ${missing.join(', ')}`);
   const untested = declared.filter((k) => !inFixture.includes(k));

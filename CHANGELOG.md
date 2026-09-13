@@ -4,6 +4,56 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-09-13 — Colloquy: cq shared-agent learning on the forum)
+
+A clean-room Rust implementation of the [cq](https://github.com/mozilla-ai/cq)
+shared-agent-learning standard (Apache-2.0, Go + Python upstream), bound to the
+sovereign Nostr substrate and rendered as a members-only forum board. Decision
+records: ADR-2085 (the model and kinds 38100–38105) and ADR-2086 (confirmation
+weight follows authorising principals).
+
+- **`crates/colloquy/`** — six crates. `colloquy-core` is the standard: knowledge
+  units, the pitfall/workaround/tool/gap ladder, per-kind staleness decay and
+  diversity-weighted confidence. It is pure — no clock, no I/O — which is what
+  lets it build for `wasm32` and drive the Cloudflare workers and the agent
+  runtime with byte-identical arithmetic. Apache-2.0 to match upstream, and
+  tested against cq's own published `knowledge_unit.json`: it parses, and a round
+  trip rewrites no cq-defined field.
+- **Kinds 38100–38105** inside the agentbox-owned agent block, above the
+  `38000–38099` sub-block already spent on agent intent. The unit is replaceable
+  by its proposer; confirmations, flags and graduations are append-only, so a
+  proposer can correct their own wording but cannot rewrite what others said
+  about it. Content is authoritative; tags are an index.
+- **Confidence counts authorising principals, never accounts.** An operator's
+  fifty agents are one voice, and a pubkey the membership registry does not
+  resolve is dropped and reported rather than treated as its own principal.
+  Graduation gates on the *count* of principals, which is what makes "no member
+  promotes alone" structural rather than probabilistic.
+- **A flag suppresses nothing.** It marks a unit `Disputed`, which is still
+  served and ranked down. Only a signed `31403` decision retires one.
+- **Graduation reuses the governance round-trip** — `31402` request, signed
+  `31403` response — and records that event id, turning cq's
+  `"approved_by": "human:alice@acme.dev"` string into something a third party can
+  verify.
+- **Production transports, no stand-ins.** The shared tier spawns the governed
+  `ruvector-mcp.cjs` and speaks MCP to it, so the embedding pipeline and the
+  protected-namespace gates apply unchanged; the public tier opens a websocket to
+  the relay and signs through `nostr-bbs-core`. Both were exercised against the
+  running services.
+- **Forum:** a members-only `/knowledge` board (`nostr-bbs-forum-client`), with a
+  separate tab for level-4 tooling-gap signals, whose audience is whoever decides
+  what gets built rather than agents.
+- **`urn:agentbox:knowledge:<pubkey>:sha256-12-<hex>`** joins the URN taxonomy as
+  the twentieth kind, sharing its twelve digest characters with the cq id
+  `ku_<hex>` — one address in two grammars. It is declared `not-federated` in
+  `schema/federation-kinds.json`; the ADR-2061 fixture pins it to an explicit
+  unmapped result rather than fabricating a VisionClaw counterpart.
+- **Superseded:** `management-api/lib/precedent-service.js` and
+  `mcp/servers/precedent-bridge.js` are annotated and scheduled for deletion.
+  They stay until the `governance-precedents` migration runs, which writes legacy
+  rows into a fresh namespace and must remain independently revertible.
+
+
 ### Changed (2026-09-09 — skills estate re-audit for Fable 5.1 / GPT-6 Astra workloads)
 
 Master copy only (`skills/`), for the next image bake; running copies were not touched.
