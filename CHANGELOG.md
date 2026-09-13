@@ -48,6 +48,13 @@ weight follows authorising principals).
   `ku_<hex>` — one address in two grammars. It is declared `not-federated` in
   `schema/federation-kinds.json`; the ADR-2061 fixture pins it to an explicit
   unmapped result rather than fabricating a VisionClaw counterpart.
+- **Published:** [`colloquy-core` 0.1.0](https://crates.io/crates/colloquy-core)
+  and [`colloquy-view` 0.1.0](https://crates.io/crates/colloquy-view), both
+  Apache-2.0. `nostr-rust-forum` now takes both from the registry, so it has no
+  path edge into this repo and builds from a clean checkout with nothing beside
+  it. Three spec proposals are open upstream: mozilla-ai/cq#536 (verifiable
+  graduation), #537 (diversity over attested principals), #538 (a distinct
+  disputed status).
 - **Superseded:** `management-api/lib/precedent-service.js` and
   `mcp/servers/precedent-bridge.js` are annotated and scheduled for deletion.
   They stay until the `governance-precedents` migration runs, which writes legacy

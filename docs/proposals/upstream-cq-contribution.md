@@ -1,6 +1,6 @@
 ---
 title: "Upstream contribution to mozilla-ai/cq"
-status: drafted, NOT yet posted — needs owner sign-off before anything leaves the container
+status: POSTED 2026-09-13 — mozilla-ai/cq#536, #537, #538
 date: 2026-09-13
 upstream: https://github.com/mozilla-ai/cq
 licence_position: Apache-2.0 both sides; code contributions are Apache-2.0 by their CONTRIBUTING
@@ -20,9 +20,19 @@ match, so a reference implementation can be pointed at or upstreamed without a
 relicensing step. Note their separate **Contributor Agreement for knowledge-unit
 contributions** — that covers *units*, not code, and none of this touches it.
 
-**Nothing has been posted.** These are drafts in our repo. Posting is an outward
-action against a third-party project under a real account and is the owner's to
-take.
+**Posted 2026-09-13**, under the owner's GitHub account:
+
+| Issue | Subject |
+|---|---|
+| [mozilla-ai/cq#536](https://github.com/mozilla-ai/cq/issues/536) | Optional `authorising_event` on graduation entries |
+| [mozilla-ai/cq#537](https://github.com/mozilla-ai/cq/issues/537) | Confirmation diversity over an attested authorising principal |
+| [mozilla-ai/cq#538](https://github.com/mozilla-ai/cq/issues/538) | A distinct status for flagged-but-not-retired units |
+
+The reference implementation they point at is published:
+[`colloquy-core` 0.1.0](https://crates.io/crates/colloquy-core) (Apache-2.0).
+Their review window is 5 business days for a first response; issues inactive for
+30+ days may be closed, so #537 in particular — the one that argues an existing
+guarantee is weaker than it reads — is worth watching.
 
 ---
 

@@ -296,7 +296,9 @@ own recall measurement and can be reverted independently of the rest of Phase 2.
 | 4 — the forum | **done** | `colloquy-view` + `pages/knowledge.rs`, routed at `/knowledge` behind `auth_gated!`. |
 | 5 — reflect | **verb done, feed not wired** | Coverage-check-before-propose, reporting `proposed`/`already_known`/`refused`. |
 | ADR-2061 fixture | **done on the agentbox side** | `schema/federation-kinds.json` declares `knowledge` as `not-federated`; the fixture pins an explicit unmapped result; the checker passes **37** checks (was 35). |
-| Upstream | **drafted, not posted** | Three issues written to cq's CONTRIBUTING conventions. |
+| Upstream | **posted** | [cq#536](https://github.com/mozilla-ai/cq/issues/536), [#537](https://github.com/mozilla-ai/cq/issues/537), [#538](https://github.com/mozilla-ai/cq/issues/538). |
+| Published | **done** | [`colloquy-core` 0.1.0](https://crates.io/crates/colloquy-core) and [`colloquy-view` 0.1.0](https://crates.io/crates/colloquy-view), both Apache-2.0. |
+| Pins | **reissued** | `lib/colloquy.nix` advanced to forum `9b21937` with a NAR hash computed locally and **validated against the previous known-good pin** before being trusted. |
 
 ### Nothing is mocked
 
@@ -341,8 +343,12 @@ binary exits 2 if an agent's principal equals its own member id.
 3. **`reflect` has no automatic feed** from the trajectory recorder.
 4. **`lib/colloquy.nix` has not been realised.** A Nix build from inside this
    container resolves against the host filesystem; build it from the host shell.
-5. **The forum still path-deps this repo.** `colloquy-core` and `colloquy-view`
-   depend on nothing of ours but each other, so publishing them to crates.io
-   turns those two path deps into version deps and removes the cross-repo edge
-   entirely. That is the pin worth reissuing.
-6. **The upstream issues are not posted.**
+5. **`lib/nostr-pod-bridge.nix` is still on the old pin** (`c4a94d17`), while
+   `lib/colloquy.nix` is on forum HEAD. Deliberate: advancing the bridge needs a
+   `cargo generate-lockfile` and a build, which is host-side work. It is safe
+   because these are separate binaries with separate closures, and the one shared
+   surface that could bite —
+   `crates/nostr-bbs-core/src/event.rs`, which decides event-id hashing and
+   signature verification — is **byte-identical** across the two revisions
+   (`git diff c4a94d17..9b21937 -- …/event.rs` is empty). The drift is confined
+   to `keys.rs`, which colloquy does not use.

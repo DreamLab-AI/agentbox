@@ -685,3 +685,8 @@ mod tests {
         assert!(v.evidence.headline.contains("1 independent principal."), "{}", v.evidence.headline);
     }
 }
+
+/// The README's examples, compiled and run as doctests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+pub struct Readme;

@@ -22,10 +22,27 @@
 # is fetched as a fixed-output derivation and the on-disk layout the relative
 # path-deps expect is reassembled around the source.
 #
-# **forumRev/forumHash must stay in step with lib/nostr-pod-bridge.nix.** Both
-# consume nostr-bbs-core; two revisions in one image would mean two definitions
-# of NostrEvent. Bump them together, and regenerate this workspace's Cargo.lock
-# when you do. Refresh procedure is documented in lib/nostr-pod-bridge.nix.
+# **This pin is AHEAD of lib/nostr-pod-bridge.nix, deliberately and verifiably.**
+# colloquy is pinned to 9b21937 (forum HEAD: the /knowledge board, plus the
+# switch to registry deps); the bridge is still on c4a94d17 because its Cargo.lock was generated
+# against that tree and advancing it needs a `cargo generate-lockfile` plus a
+# build, which is host-side work.
+#
+# Two revisions in one image would be a problem if a SINGLE binary saw two
+# definitions of NostrEvent — it does not: these are separate binaries with
+# separate closures. The shared surface that could still bite is the event
+# contract itself, and that is VERIFIED identical:
+#
+#   git diff c4a94d17..9b21937 -- crates/nostr-bbs-core/src/event.rs   # empty
+#
+# so both binaries hash event ids and verify signatures the same way. The drift
+# is confined to keys.rs and the crate's Cargo.toml, neither of which colloquy
+# uses (it takes SigningKey from k256 directly and signing from event.rs).
+# Advance the bridge on the next host rebuild and the two converge again.
+#
+# Hash refresh: `nix-prefetch-url --unpack --type sha256 \
+#   https://github.com/DreamLab-AI/nostr-rust-forum/archive/<rev>.tar.gz`
+# then `nix hash convert --hash-algo sha256 --to sri <base32>`.
 #
 # Licence: colloquy-core is Apache-2.0; the other three crates are
 # AGPL-3.0-only, and the shipped binary aggregates AGPL — same handling as the
@@ -36,9 +53,10 @@
 let
   version = "0.1.0";
 
-  # Keep in step with lib/nostr-pod-bridge.nix — see the header.
-  forumRev  = "c4a94d17d85fa458f28c663739b28efb1b77c9d6";
-  forumHash = "sha256-+y77RdQBaQ3glm2KWPiV4ar7oJvphEUlP/bCRgnkAhs=";
+  # Ahead of lib/nostr-pod-bridge.nix on purpose — see the header for why that
+  # is safe here and what closes the gap.
+  forumRev  = "9b2193720b868e57d83a223d4b114faab79295e9";
+  forumHash = "sha256-tAiwRkUuK6o7y3SVev1uAcjIMYSndtjA90DhGfBuDqM=";
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
