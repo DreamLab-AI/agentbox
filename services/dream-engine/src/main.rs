@@ -61,7 +61,8 @@ fn load_runtime(cli: &Cli) -> RuntimeConfig {
         if let Ok(text) = std::fs::read_to_string(path) {
             if let Ok(value) = text.parse::<toml::Table>() {
                 if let Some(dm) = value.get("dream_machine") {
-                    if let Ok(rt) = dm.clone().try_into::<RuntimeConfig>() {
+                    if let Ok(mut rt) = dm.clone().try_into::<RuntimeConfig>() {
+                        rt.resolve_placeholders();
                         return rt;
                     }
                 }

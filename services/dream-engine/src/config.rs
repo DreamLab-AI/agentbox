@@ -300,6 +300,40 @@ fn default_hp_host() -> String {
 fn default_hp_annexe_dir() -> String {
     "/srv/dream-annexe".into()
 }
+/// Resolve a manifest value that may be an unexpanded `${NAME}` environment
+/// placeholder.
+///
+/// `agentbox.toml` carries placeholders instead of estate addresses, because
+/// the repository is public, and nothing expands them before they reach here.
+/// Left alone the literal gets used where a URL or a hostname belongs, and the
+/// perfectly good default sitting beside it never fires — which is how
+/// `LOOM_URL=${LOOM_BASE_URL}` reached a running dream engine.
+///
+///   not a placeholder     the value, trimmed
+///   `${NAME}`, NAME set   whatever the environment says
+///   `${NAME}`, NAME unset `None` — absent, so the caller's default applies
+pub fn resolve_env_placeholder(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    let Some(name) = trimmed.strip_prefix("${").and_then(|r| r.strip_suffix('}')) else {
+        return (!trimmed.is_empty()).then(|| trimmed.to_owned());
+    };
+    std::env::var(name)
+        .ok()
+        .map(|v| v.trim().to_owned())
+        .filter(|v| !v.is_empty())
+}
+
+impl RuntimeConfig {
+    /// Expand the `${NAME}` placeholders the manifest carried, falling back to
+    /// this struct's own defaults wherever the variable is unset. Call once,
+    /// straight after deserialising, so no consumer has to remember.
+    pub fn resolve_placeholders(&mut self) {
+        self.hp_host = resolve_env_placeholder(&self.hp_host).unwrap_or_else(default_hp_host);
+        self.loom_url = resolve_env_placeholder(&self.loom_url).unwrap_or_else(default_loom_url);
+        self.zai_url = resolve_env_placeholder(&self.zai_url).unwrap_or_else(default_zai_url);
+    }
+}
+
 fn default_loom_url() -> String {
     "http://loom:8080/v1".into()
 }
@@ -375,6 +409,95 @@ pub fn bonus_dives(cfg: &DreamConfig, day_int: u32) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    mod placeholders {
+        use super::super::*;
+        use std::sync::Mutex;
+
+        /// `resolve_env_placeholder` reads process-global env, so these must
+        /// not run alongside each other.
+        static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+        fn with_var<T>(key: &str, value: Option<&str>, f: impl FnOnce() -> T) -> T {
+            let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            unsafe {
+                match value {
+                    Some(v) => std::env::set_var(key, v),
+                    None => std::env::remove_var(key),
+                }
+            }
+            let out = f();
+            unsafe { std::env::remove_var(key) };
+            out
+        }
+
+        #[test]
+        fn a_plain_value_passes_through() {
+            assert_eq!(
+                resolve_env_placeholder("http://loom:8080/v1"),
+                Some("http://loom:8080/v1".to_owned())
+            );
+        }
+
+        #[test]
+        fn a_placeholder_resolves_from_the_environment() {
+            let got = with_var("DREAM_TEST_BASE", Some("http://facade:8084/v1"), || {
+                resolve_env_placeholder("${DREAM_TEST_BASE}")
+            });
+            assert_eq!(got, Some("http://facade:8084/v1".to_owned()));
+        }
+
+        #[test]
+        fn an_unset_placeholder_is_absent_not_a_literal() {
+            // The whole point: absent means the caller's default applies. A
+            // literal "${DREAM_TEST_MISSING}" would be used as a URL.
+            let got = with_var("DREAM_TEST_MISSING", None, || {
+                resolve_env_placeholder("${DREAM_TEST_MISSING}")
+            });
+            assert_eq!(got, None);
+        }
+
+        #[test]
+        fn an_empty_variable_counts_as_unset() {
+            let got = with_var("DREAM_TEST_EMPTY", Some("   "), || {
+                resolve_env_placeholder("${DREAM_TEST_EMPTY}")
+            });
+            assert_eq!(got, None);
+        }
+
+        #[test]
+        fn a_placeholder_in_the_middle_is_left_alone() {
+            // Only a value that is ENTIRELY a placeholder is one; a path that
+            // happens to contain braces is a path.
+            assert_eq!(
+                resolve_env_placeholder("http://h/${x}/p"),
+                Some("http://h/${x}/p".to_owned())
+            );
+        }
+
+        #[test]
+        fn the_manifest_placeholder_no_longer_reaches_the_loom_client() {
+            // The exact regression: agentbox.toml ships loom_url as a
+            // placeholder, and the running engine was given it verbatim.
+            let mut rt: RuntimeConfig = toml::Table::new().try_into().unwrap();
+            rt.loom_url = "${DREAM_TEST_LOOM}".to_owned();
+            let resolved = with_var("DREAM_TEST_LOOM", Some("http://facade:8084/v1"), || {
+                let mut rt = rt.clone();
+                rt.resolve_placeholders();
+                rt.loom_url
+            });
+            assert_eq!(resolved, "http://facade:8084/v1");
+        }
+
+        #[test]
+        fn an_unresolvable_manifest_placeholder_falls_back_to_the_default() {
+            let mut rt: RuntimeConfig = toml::Table::new().try_into().unwrap();
+            rt.loom_url = "${DREAM_TEST_ABSENT}".to_owned();
+            with_var("DREAM_TEST_ABSENT", None, || rt.resolve_placeholders());
+            assert_eq!(rt.loom_url, default_loom_url());
+            assert!(!rt.loom_url.contains("${"), "a placeholder survived into the config");
+        }
+    }
+
     use super::*;
 
     #[test]

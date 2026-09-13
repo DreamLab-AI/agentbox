@@ -170,6 +170,26 @@
         # subtree_control), so nice(1) is the weighting lever available without
         # a sibling container.
         bgNice = if bgNiceLevel > 0 then "${pkgs.coreutils}/bin/nice -n ${toString bgNiceLevel} " else "";
+        # A manifest value still wrapped in a shell placeholder never got
+        # expanded. Nothing in the image expands them; agentbox.toml carries
+        # them so estate addresses stay out of a public repository. Emitting one
+        # as a value ships the literal text where a URL belongs, which is what
+        # reached the running dream-engine after the addressing was generalised
+        # (LOOM_URL was set to the placeholder itself, overriding the perfectly
+        # good default the binary already had).
+        #
+        # So an unexpanded placeholder is UNSET, and the consumer's own default
+        # applies: dream-engine falls back to the loom sidecar, ontology-condense
+        # refuses to start and says which variable is missing. Both beat a
+        # confident request to a hostname that cannot resolve.
+        unplaceheld = value:
+          let v = toString (if value == null then "" else value);
+          in if lib.hasPrefix "\${" v && lib.hasSuffix "}" v then "" else v;
+        # LOOM_URL only when the manifest actually carries one. Omitted, the
+        # dream engine uses default_loom_url() (the loom sidecar).
+        dreamLoomEnv =
+          let u = unplaceheld (dreamMachineCfg.loom_url or "");
+          in lib.optionalString (u != "") ",LOOM_URL=\"${u}\"";
         browserCfg = skillsCfg.browser or {};
         mediaCfg = skillsCfg.media or {};
         spatialCfg = skillsCfg.spatial_and_3d or {};
@@ -2339,7 +2359,7 @@ ${lib.optionalString dreamEngineEnabled ''
 command=${bgNice}${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
 directory=/home/devuser/workspace
 user=devuser
-environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}",LOOM_URL="${dreamMachineCfg.loom_url or "\${LOOM_BASE_URL}"}",LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
+environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}"${dreamLoomEnv},LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
 autostart=true
 autorestart=true
 priority=230
@@ -3539,7 +3559,7 @@ ${ragflowNetworkDecl}
           # cache. Vanilla default OFF + empty endpoint; the operator fills these
           # via [skills.ontology.condense] at onboarding/build time.
           "ONTOLOGY_CONDENSE_ENABLED=${boolEnv (((skillsCfg.ontology or {}).condense or {}).enabled or false)}"
-          "ONTOLOGY_CONDENSE_ENDPOINT=${((skillsCfg.ontology or {}).condense or {}).endpoint or ""}"
+          "ONTOLOGY_CONDENSE_ENDPOINT=${unplaceheld (((skillsCfg.ontology or {}).condense or {}).endpoint or "")}"
           "ONTOLOGY_CONDENSE_MODEL=${((skillsCfg.ontology or {}).condense or {}).model or ""}"
           "ONTOLOGY_CONDENSE_STYLE=${((skillsCfg.ontology or {}).condense or {}).style or "openai"}"
           "ONTOLOGY_CONDENSE_N_BLOCKS=${toString (((skillsCfg.ontology or {}).condense or {}).n_blocks or 3)}"

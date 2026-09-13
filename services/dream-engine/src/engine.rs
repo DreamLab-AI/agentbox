@@ -1316,7 +1316,12 @@ pub fn llm_config(rt: &RuntimeConfig) -> LlmConfig {
         },
         Provider::Loom => LlmConfig {
             provider,
-            url: std::env::var("LOOM_URL").unwrap_or_else(|_| rt.loom_url.clone()),
+            url: std::env::var("LOOM_URL")
+                .ok()
+                // An image built before the placeholder fix bakes the
+                // literal `${LOOM_BASE_URL}` into this variable.
+                .and_then(|v| config::resolve_env_placeholder(&v))
+                .unwrap_or_else(|| rt.loom_url.clone()),
             model: std::env::var("LOOM_MODEL").unwrap_or_else(|_| rt.loom_model.clone()),
             max_tokens: env_u32("LOOM_MAX_TOKENS", rt.loom_max_tokens),
             api_key: None,
@@ -1343,7 +1348,12 @@ pub fn fallback_llm_config(rt: &RuntimeConfig, primary: &LlmConfig) -> Option<Ll
     match primary.provider {
         Provider::Zai => Some(LlmConfig {
             provider: Provider::Loom,
-            url: std::env::var("LOOM_URL").unwrap_or_else(|_| rt.loom_url.clone()),
+            url: std::env::var("LOOM_URL")
+                .ok()
+                // An image built before the placeholder fix bakes the
+                // literal `${LOOM_BASE_URL}` into this variable.
+                .and_then(|v| config::resolve_env_placeholder(&v))
+                .unwrap_or_else(|| rt.loom_url.clone()),
             model: std::env::var("LOOM_MODEL").unwrap_or_else(|_| rt.loom_model.clone()),
             max_tokens: env_u32("LOOM_MAX_TOKENS", rt.loom_max_tokens),
             api_key: None,

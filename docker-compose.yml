@@ -67,7 +67,22 @@ services:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma-4-31B-it-qat}
-      - GEMMA_BASE_URL=${GEMMA_BASE_URL:-${LOOM_BASE_URL}}
+      # The Loom facade, as one name the whole container agrees on. The image
+      # bakes no estate address (this repository is public), so the value has
+      # to arrive here: LOOM_BASE_URL from .env if the operator sets it, else
+      # derived from LOOM_FACADE_URL, else the in-network loom sidecar. The
+      # /v1 lives inside the default so a LOOM_BASE_URL that already carries
+      # one is not given a second.
+      - LOOM_BASE_URL=${LOOM_BASE_URL:-${LOOM_FACADE_URL:-http://loom:8080}/v1}
+      # The dream engine's ssh target for the annexe host. Referenced by
+      # [dream_machine].hp_host; empty is fine and means "no annexe", which
+      # the engine reports rather than shelling out to nowhere.
+      - CONNECTED_NODE_SSH=${CONNECTED_NODE_SSH:-}
+      - GEMMA_BASE_URL=${GEMMA_BASE_URL:-${LOOM_BASE_URL:-${LOOM_FACADE_URL:-http://loom:8080}/v1}}
+      # Ontology condensation posts to {endpoint}/chat/completions, so this is
+      # a /v1 base. Empty is a working state: the server reports the missing
+      # variable and stops, rather than fetching a hostname that cannot resolve.
+      - ONTOLOGY_CONDENSE_ENDPOINT=${ONTOLOGY_CONDENSE_ENDPOINT:-${LOOM_BASE_URL:-${LOOM_FACADE_URL:-http://loom:8080}/v1}}
       - GEMMA_MODEL=${GEMMA_MODEL:-gemma-4-31B-it-qat}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
