@@ -8,7 +8,7 @@ activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 62e1657fcd7237e6ff0c08464717459e7a45c3ee
-verified_paths: [services/dream-engine/src/llm.rs, services/podcast-ingest/src/ingest/loom.rs, services/podcast-ingest/src/promote/loom.rs, services/explainer-tools/src/bin/loom_draft.rs, lib/explainer-tools.nix]
+verified_paths: [services/dream-engine/src/llm.rs, services/podcast-ingest/src/ingest/loom.rs, services/podcast-ingest/src/promote/loom.rs, services/explainer-tools/src/bin/loom_draft.rs, services/agentbox-mcp/src/web_summary/llm.rs, lib/explainer-tools.nix]
 owner: jjohare
 review_trigger: the Loom façade changes its request or telemetry contract, or a fifth caller appears
 repo: agentbox
@@ -18,16 +18,19 @@ repo: agentbox
 
 ## Context
 
-Four callers of the Ontology Loom façade grew up independently: `dream-engine/src/llm.rs`,
-both `podcast-ingest` Loom modules, and `skills/explainer/scripts/loom-draft.mjs` in
-JavaScript. Each hand-rolled `/v1/chat/completions` and each had learned a different subset
-of the same lessons. Only dream-engine knew a façade can answer HTTP 200 with ontology prose
-and never call the model; only loom-draft knew about truncation retries and the ADR-139
-passthrough assertion; none of the Rust callers floored `max_tokens`, so any of them could
-have asked a reasoning model for 400 tokens and got empty content back as a success.
+Five callers of the Ontology Loom façade grew up independently: `dream-engine/src/llm.rs`,
+both `podcast-ingest` Loom modules, `agentbox-mcp/src/web_summary/llm.rs`, and
+`skills/explainer/scripts/loom-draft.mjs` in JavaScript. Each hand-rolled
+`/v1/chat/completions` and each had learned a different subset of the same lessons. Only
+dream-engine knew a façade can answer HTTP 200 with ontology prose and never call the model;
+only loom-draft knew about truncation retries and the ADR-139 passthrough assertion; only
+agentbox-mcp floored `max_tokens`, so the others could ask a reasoning model for 400 tokens
+and read the resulting empty content as a success.
 
 The façade's two per-request switches were also being conflated. `loom_options.verbatim` and
-`loom_options.scaffold` are independent controls, and three callers sent only the first.
+`loom_options.scaffold` are independent controls: three callers sent only the first, and
+agentbox-mcp sent neither, leaving a page-summary request open to being answered from the
+ontology without the page being read at all.
 
 ## Decision
 
@@ -52,9 +55,14 @@ than merely permitting either branch, so a future copyleft dependency fails CI.
 
 `skills/explainer/scripts/loom-draft.mjs` is deleted; `explainer-loom-draft` in the new
 `services/explainer-tools` crate replaces it, and the explainer skill no longer needs `node`
-on that path. Three callers gained behaviour they did not have: the token floor everywhere,
-truncation retries in the podcast and dream paths, and the scaffold-only refusal in the
-podcast paths.
+on that path. Four callers gained behaviour they did not have: the token floor in the dream
+and podcast paths, truncation retries everywhere but the explainer, the scaffold-only
+refusal in the podcast and web-summary paths, and a verbatim opt-out in web summary.
+
+One behaviour is deliberately dropped. `agentbox-mcp` used to fall back to `content` or
+`response` at the body root and, failing those, return an empty string as a success. An
+empty summary reported as a success is worse than an error, so an unusable body is now
+`Error::Empty`.
 
 The cost is a crates.io release cadence for a protocol that changes with the façade. The
 `review_trigger` above exists for that: a contract change means a new `loom-client` version
@@ -66,7 +74,7 @@ before consumers can follow.
 `loom-client` 0.1.0 is published and carries 51 tests (24 unit, 8 doctest, 19 wire-level
 against a mock façade), clippy pedantic clean, `cargo doc -D warnings` clean.
 
-In agentbox: `cargo test` gives 155 passing in `dream-engine`, 117 in `podcast-ingest`
+In agentbox: `cargo test` gives 155 passing in `dream-engine`, 77 in `agentbox-mcp`, 117 in `podcast-ingest`
 (previously 113 passing with 1 failing — `ingest::loom::tests::strips_trailing_v1` asserted
 the opposite of its own name and was red on main), and 18 in `explainer-tools` including six
 end-to-end tests that run the built binary against a mock façade. `skills/lint-skills.sh`

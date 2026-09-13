@@ -1,14 +1,22 @@
-//! Ontology Loom facade client, ported from `call_llm()` (formerly
-//! `call_zai`) in the Python source.
+//! Ontology Loom facade client for web summarisation.
+//!
+//! The request itself comes from `loom-client` (ADR-2084), so this path now
+//! gets three things the hand-rolled version did not have: a truncation retry
+//! on a doubled budget, a refusal when the facade answers from ontology
+//! retrieval instead of calling the model, and a transient retry.
+//!
+//! The token floor was already here and is now the crate's, at the same 1536:
+//! reasoning models spend their budget on `reasoning_content` first, so a
+//! smaller ask comes back as empty content rather than a short summary.
 
 use std::time::Duration;
 
+use loom_client::{ChatRequest, LoomClient, LoomOptions, Message};
 use serde_json::{json, Value};
 
 /// Reasoning models behind the Loom need generous headroom; 400 truncates
-/// some of them to empty (see agentbox CLAUDE.md bench note) — the Python
-/// source always clamps up to at least 1536, regardless of the caller's
-/// requested `max_tokens`.
+/// some of them to empty (see agentbox CLAUDE.md bench note), so every ask is
+/// clamped up to at least this regardless of what the caller requested.
 const MIN_MAX_TOKENS: i64 = 1536;
 
 #[derive(Debug, Clone)]
@@ -49,70 +57,34 @@ impl LlmConfig {
     }
 }
 
-/// Call the Ontology Loom facade (OpenAI-compatible chat/completions).
+/// Call the Ontology Loom facade, returning the MCP tool's result shape:
+/// `{"success": true, "content": …}` or `{"success": false, "error": …}`.
 pub async fn call_llm(config: &LlmConfig, prompt: &str, max_tokens: i64) -> Value {
     let max_tokens = max_tokens.max(MIN_MAX_TOKENS);
 
-    let client = match reqwest::Client::builder().timeout(config.timeout).build() {
-        Ok(client) => client,
-        Err(e) => return json!({"success": false, "error": e.to_string()}),
-    };
+    let client = LoomClient::builder(&config.url)
+        .timeout(config.timeout)
+        .build();
 
-    let endpoint = format!("{}/chat/completions", config.url);
-    let body = json!({
-        "model": config.model,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": max_tokens,
-    });
+    let request = ChatRequest::new(&config.model, vec![Message::user(prompt)])
+        .max_tokens(u64::try_from(max_tokens).unwrap_or(u64::MAX))
+        // The page being summarised is in the prompt, so a verbatim serve
+        // would answer from the ontology and ignore the page entirely. Keep
+        // the scaffold — grounding a summary is harmless and sometimes useful,
+        // and declining it would fail against a facade predating ADR-139.
+        .options(LoomOptions::declining_verbatim());
 
-    let response = match client
-        .post(&endpoint)
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await
-    {
-        Ok(response) => response,
-        Err(e) => {
-            if e.is_connect() {
-                return json!({
-                    "success": false,
-                    "error": format!(
-                        "Cannot connect to the Ontology Loom facade at {}. Check the facade's health endpoint, and set LLM_URL if the facade is somewhere else.",
-                        config.url
-                    ),
-                });
-            }
-            return json!({"success": false, "error": e.to_string()});
-        }
-    };
-
-    let status = response.status();
-    if status.as_u16() != 200 {
-        return json!({"success": false, "error": format!("Loom facade returned {}", status.as_u16())});
+    match client.chat(request).await {
+        Ok(answer) => json!({ "success": true, "content": answer.content }),
+        Err(loom_client::Error::Transport { source, .. }) if source.is_connect() => json!({
+            "success": false,
+            "error": format!(
+                "Cannot connect to the Ontology Loom facade at {}. Check the facade's health endpoint, and set LLM_URL if the facade is somewhere else.",
+                config.url
+            ),
+        }),
+        Err(e) => json!({ "success": false, "error": e.to_string() }),
     }
-
-    let data: Value = match response.json().await {
-        Ok(data) => data,
-        Err(e) => return json!({"success": false, "error": e.to_string()}),
-    };
-
-    let content = data
-        .get("choices")
-        .and_then(|c| c.get(0))
-        .and_then(|c| c.get("message"))
-        .and_then(|m| m.get("content"))
-        .and_then(|c| c.as_str())
-        .map(str::to_string)
-        .unwrap_or_else(|| {
-            data.get("content")
-                .and_then(|c| c.as_str())
-                .or_else(|| data.get("response").and_then(|c| c.as_str()))
-                .unwrap_or("")
-                .to_string()
-        });
-
-    json!({"success": true, "content": content})
 }
 
 #[cfg(test)]
@@ -179,5 +151,93 @@ mod tests {
     fn max_tokens_is_always_clamped_to_at_least_1536() {
         assert_eq!(10i64.max(MIN_MAX_TOKENS), 1536);
         assert_eq!(2000i64.max(MIN_MAX_TOKENS), 2000);
+    }
+
+    mod wire {
+        use super::super::{call_llm, LlmConfig};
+        use serde_json::{json, Value};
+        use std::time::Duration;
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        fn config(server: &MockServer) -> LlmConfig {
+            LlmConfig {
+                url: format!("{}/v1", server.uri()),
+                model: "loom".to_string(),
+                timeout: Duration::from_secs(5),
+            }
+        }
+
+        fn completion(content: &str) -> Value {
+            json!({
+                "choices": [{ "finish_reason": "stop", "message": { "content": content } }]
+            })
+        }
+
+        #[tokio::test]
+        async fn a_summary_declines_the_verbatim_short_circuit() {
+            // Without this the facade can answer a page-summary request from
+            // the ontology and never look at the page that was supplied.
+            let server = MockServer::start().await;
+            Mock::given(method("POST"))
+                .and(path("/v1/chat/completions"))
+                .respond_with(ResponseTemplate::new(200).set_body_json(completion("a summary")))
+                .mount(&server)
+                .await;
+
+            let out = call_llm(&config(&server), "summarise this page", 500).await;
+
+            assert_eq!(out["success"], true);
+            assert_eq!(out["content"], "a summary");
+            let sent: Value = server.received_requests().await.unwrap()[0].body_json().unwrap();
+            assert_eq!(sent["loom_options"], json!({ "verbatim": false }));
+            assert_eq!(sent["max_tokens"], 1536, "a 500-token ask is floored");
+        }
+
+        #[tokio::test]
+        async fn scaffold_retrieval_is_reported_as_a_failure() {
+            let server = MockServer::start().await;
+            Mock::given(method("POST"))
+                .respond_with(ResponseTemplate::new(200).set_body_json(completion(
+                    "Ontology page text; no model generation was performed.",
+                )))
+                .mount(&server)
+                .await;
+
+            let out = call_llm(&config(&server), "summarise", 500).await;
+
+            assert_eq!(out["success"], false);
+            assert!(
+                out["error"].as_str().unwrap().contains("scaffold retrieval"),
+                "error was {}",
+                out["error"]
+            );
+        }
+
+        #[tokio::test]
+        async fn a_truncated_summary_is_retried_on_a_doubled_budget() {
+            let server = MockServer::start().await;
+            Mock::given(method("POST"))
+                .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                    "choices": [{ "finish_reason": "length", "message": { "content": "" } }]
+                })))
+                .up_to_n_times(1)
+                .with_priority(1)
+                .mount(&server)
+                .await;
+            Mock::given(method("POST"))
+                .respond_with(ResponseTemplate::new(200).set_body_json(completion("full summary")))
+                .with_priority(2)
+                .mount(&server)
+                .await;
+
+            let out = call_llm(&config(&server), "summarise", 2000).await;
+
+            assert_eq!(out["content"], "full summary");
+            let sent = server.received_requests().await.unwrap();
+            let budget = |i: usize| sent[i].body_json::<Value>().unwrap()["max_tokens"].as_u64().unwrap();
+            assert_eq!(budget(0), 2000);
+            assert_eq!(budget(1), 4000);
+        }
     }
 }
