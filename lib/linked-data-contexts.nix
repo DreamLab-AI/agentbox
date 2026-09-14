@@ -119,7 +119,7 @@ let
       name = "prov-o.context.jsonld";
       iri  = "http://www.w3.org/ns/prov-o#";
       url  = "https://openprovenance.org/prov-jsonld/context.jsonld";
-      sha256 = "sha256-6wJWjYVlygFsH7MPijfgxow3CvkQiJfpvrZHEh4YRmw=";
+      sha256 = "sha256-gR1elNjLVo19xEYe9qJHZE3Q53XNyItlxCI42Ogyvh4=";
       vocabulary = "PROV-O";
       authors = "Timothy Lebo, Satya Sahoo, Deborah McGuinness";
       status = "W3C Recommendation 2013-04-30";
