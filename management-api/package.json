@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "test": "jest && npm run test:node",
-    "test:node": "node --test ../tests/contract/harness-bridge.contract.spec.js ../tests/contract/precedent.contract.spec.js ../tests/contract/upstream_vectors/all_fixtures.test.js"
+    "test:node": "node --test ../tests/contract/harness-bridge.contract.spec.js ../tests/contract/upstream_vectors/all_fixtures.test.js"
   },
   "jest": {
     "roots": [
@@ -25,8 +25,7 @@
       "/node_modules/",
       "/docker/",
       "/tests/contract/upstream_vectors/",
-      "/tests/contract/harness-bridge.contract.spec.js",
-      "/tests/contract/precedent.contract.spec.js"
+      "/tests/contract/harness-bridge.contract.spec.js"
     ],
     "watchPathIgnorePatterns": [
       "/node_modules/",

@@ -1386,6 +1386,72 @@ elif [ "$_IP_ENABLED" = "1" ]; then
   echo "[interaction-plane] session seeder $_AOE_SEED not present yet — skipping (fail-open)"
 fi
 
+# ── ADR-2085: register the colloquy reflect-candidate hook ──
+# config/hooks/colloquy-reflect-candidates.cjs scans the finished transcript for
+# a command that failed and then worked on the next attempt, and writes those to
+# $AGENTBOX_STATE/colloquy/candidates/. It writes no knowledge units and touches
+# no database — deciding what is worth writing up is the model's job, and the
+# `reflect` tool checks coverage before filing anything. Same shape as the
+# trajectory block below: idempotent, fail-open, and it DE-REGISTERS itself when
+# the gate is off so toggling the manifest restores prior behaviour on reboot.
+# Both gates are read here rather than reused from the MCP registration block —
+# that block runs several hundred lines LATER in this file, so referencing its
+# variable would compare against an empty string and silently de-register the
+# hook on every boot. A gate that is cheap to read is cheaper to read twice than
+# to couple to statement order.
+_COLLOQUY_REFLECT=0
+_COLLOQUY_GATE=0
+if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _COLLOQUY_REFLECT="$(agentbox-manifest toml-bool \
+    --manifest "$AGENTBOX_CONFIG" --path skills.colloquy.reflect_candidates 2>/dev/null || echo 0)"
+  _COLLOQUY_GATE="$(agentbox-manifest toml-bool \
+    --manifest "$AGENTBOX_CONFIG" --path skills.colloquy.enabled 2>/dev/null || echo 0)"
+fi
+_CQ_HOOK="/opt/agentbox/config/hooks/colloquy-reflect-candidates.cjs"
+if { [ "$_COLLOQUY_REFLECT" = "1" ] || [ "$_COLLOQUY_REFLECT" = "true" ]; } \
+   && { [ "$_COLLOQUY_GATE" = "1" ] || [ "$_COLLOQUY_GATE" = "true" ]; } \
+   && [ -f "$_CQ_HOOK" ] && command -v node >/dev/null 2>&1; then
+  mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
+  CQ_HOOK="$_CQ_HOOK" SETTINGS="$_CLAUDE_SETTINGS" CQ_STATE="${AGENTBOX_STATE:-}" \
+  node <<'CQJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, hook = process.env.CQ_HOOK;
+// The gate is inlined so the hook's own default-off check passes exactly when
+// the operator opted in, independent of the ambient hook environment.
+let pfx = 'COLLOQUY_REFLECT_CANDIDATES=1';
+if (process.env.CQ_STATE) pfx += ` AGENTBOX_STATE=${JSON.stringify(process.env.CQ_STATE)}`;
+let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
+s.hooks = s.hooks || {};
+for (const evt of ['Stop', 'SubagentStop']) {
+  if (!Array.isArray(s.hooks[evt])) continue;
+  s.hooks[evt] = s.hooks[evt].filter((g) => !(g.hooks || []).some((h) => String(h.command || '').includes('colloquy-reflect-candidates.cjs')));
+}
+for (const evt of ['Stop', 'SubagentStop']) {
+  s.hooks[evt] = s.hooks[evt] || [];
+  s.hooks[evt].push({ hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10000 }] });
+}
+const nextText = JSON.stringify(s, null, 2);
+if (nextText !== origText) { fs.writeFileSync(f, nextText); console.log('  [colloquy] registered reflect-candidate hooks (Stop/SubagentStop)'); }
+else { console.log('  [colloquy] reflect-candidate hooks already registered'); }
+CQJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+elif [ -f "$_CLAUDE_SETTINGS" ] && command -v node >/dev/null 2>&1; then
+  SETTINGS="$_CLAUDE_SETTINGS" node <<'CQUNJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS;
+let s; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { process.exit(0); }
+if (!s.hooks) process.exit(0);
+let changed = false;
+for (const evt of ['Stop', 'SubagentStop']) {
+  if (!Array.isArray(s.hooks[evt])) continue;
+  const before = s.hooks[evt].length;
+  s.hooks[evt] = s.hooks[evt].filter((g) => !(g.hooks || []).some((h) => String(h.command || '').includes('colloquy-reflect-candidates.cjs')));
+  if (s.hooks[evt].length !== before) changed = true;
+}
+if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [colloquy] de-registered reflect-candidate hooks (gate off)'); }
+CQUNJS
+fi
+
 # ── PRD-018 / ADR-036 D6 (D1): register the learning-loop trajectory hook ──
 # config/hooks/trajectory-recorder.cjs records (action, outcome, duration) tuples
 # into the trajectory tables. Registered on Stop + SubagentStop: it grades from the
@@ -1662,46 +1728,12 @@ JSON
     chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
 fi
 
-# ── Precedent bridge MCP: governance harness precedent system ──
-# ADR-2057 gap 2: registration is gated on [skills.precedent].enabled. Before
-# this, the block checked file presence only, so `enabled = false` was silently
-# ignored — the gate advertised control it did not have. No ENABLE_ var is
-# baked for it, so the gate is read from the manifest here (boot-class: a
-# restart applies a flip, no rebuild needed). Default 0 on an unreadable
-# manifest or absent key, matching every sibling gate read in this file
-# (_CODE_SERVER_ON, _CONSULTANTS_ON); both shipped manifests declare
-# `enabled = true`.
-_PRECEDENT_ON=0
-if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
-  _PRECEDENT_ON="$(agentbox-manifest toml-bool \
-    --manifest "$AGENTBOX_CONFIG" --path skills.precedent.enabled 2>/dev/null || echo 0)"
-fi
-_PRECEDENT_BRIDGE="/opt/agentbox/mcp/servers/precedent-bridge.js"
-if { [ "$_PRECEDENT_ON" = "1" ] || [ "$_PRECEDENT_ON" = "true" ]; } \
-   && [ -f "$_PRECEDENT_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
-  if ! grep -q "precedent-bridge" "$_MCP_JSON" 2>/dev/null; then
-    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name precedent-bridge <<JSON 2>/dev/null && echo "  [mcp] Added precedent-bridge" || true
-{
-  "command": "node",
-  "args": ["$_PRECEDENT_BRIDGE"],
-  "type": "stdio",
-  "env": {
-    "AGENTBOX_POD_ROOT": "/var/lib/agentbox",
-    "NODE_PATH": "$_MCP_SERVERS_NODE_PATH"
-  }
-}
-JSON
-    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
-    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
-  fi
-fi
-
 # ── Colloquy MCP: cq shared-agent-learning knowledge units ──
 # ADR-2085. Registration is gated on [skills.colloquy].enabled and follows the
-# precedent-bridge shape exactly (boot-class read from the manifest; the binary
-# itself is always baked). This server supersedes precedent-bridge: the same
-# promote/retire machinery, generalised off governance decisions onto four
-# ladder kinds.
+# shape the precedent bridge used (boot-class read from the manifest; the binary
+# itself is always baked). It REPLACED that bridge, which is now deleted: the
+# same promote/retire machinery, generalised off governance decisions onto four
+# ladder kinds, with lifecycle, decay and diversity-weighted confidence on top.
 #
 # ADR-2086: the server attests on behalf of a member, so it MUST be told both
 # who it is and who authorises it, and those must differ. COLLOQUY_PRINCIPAL is
@@ -1779,7 +1811,7 @@ fi
 # ── Harness bridge MCP: VisionFlow harness template tools ──
 # ADR-2057 gap 2: registration is gated on [skills.harness].enabled, which the
 # old file-presence-only check ignored. Boot-class, read from the manifest here
-# for the same reason as the precedent gate above.
+# for the same reason as the colloquy gate above.
 # ADR-2057 gap 4: [skills.harness].template_dir was an inert manifest key —
 # harness-bridge.js has always read HARNESS_TEMPLATE_DIR (mcp/servers/
 # harness-bridge.js:25) but nothing exported it, so the server silently used
@@ -1978,7 +2010,7 @@ fi
 # registry the SOURCE and the entrypoint its PROJECTOR (same shape as
 # registered-skills.txt + reconcile-skills.sh for skills). It ONLY touches servers
 # the registry marks x-agentbox-managed-by="projector"; the bespoke blocks above
-# (claude-flow, browser-gpu, perplexity, agentic-qe, ontology/precedent/harness,
+# (claude-flow, browser-gpu, perplexity, agentic-qe, ontology/colloquy/harness,
 # email-gateway, ruvnet-brain) are left byte-identical for their gates. MCP-2:
 # codebase-memory is projected here (binary present + ENABLE_CODEBASE_MEMORY on).
 # Reconcile-not-append: a managed server whose gate/requires now fail is removed

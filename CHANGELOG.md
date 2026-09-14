@@ -64,10 +64,31 @@ weight follows authorising principals).
   it. Three spec proposals are open upstream: mozilla-ai/cq#536 (verifiable
   graduation), #537 (diversity over attested principals), #538 (a distinct
   disputed status).
-- **Superseded:** `management-api/lib/precedent-service.js` and
-  `mcp/servers/precedent-bridge.js` are annotated and scheduled for deletion.
-  They stay until the `governance-precedents` migration runs, which writes legacy
-  rows into a fresh namespace and must remain independently revertible.
+- **Removed:** `management-api/lib/precedent-service.js`,
+  `mcp/servers/precedent-bridge.js` and their contract spec, plus the
+  `[skills.precedent]` gate, the entrypoint registration, the MCP-hub entry and
+  the catalogue row. The migration they were being held for turned out not to
+  exist: the `governance-precedents` namespace is **empty**, and nothing outside
+  the bridge itself ever called the four tools — the 2026-07-15 audit had already
+  recorded the server running with no registrant and an empty `AGENTBOX_PUBKEY`.
+  The auto-apply behaviour is not carried over as-is; anyone wanting it builds it
+  on colloquy's `query` with a confidence floor, which is strictly better because
+  that confidence is diversity-weighted and the promotion behind it is
+  human-gated.
+- **`reflect` now has evidence to work from.**
+  `config/hooks/colloquy-reflect-candidates.cjs` (Stop / SubagentStop, gated on
+  `[skills.colloquy].reflect_candidates`) scans the finished transcript for a
+  command that failed and then worked *on the next attempt* — the shape of
+  somebody working something out — and writes those to
+  `$AGENTBOX_STATE/colloquy/candidates/`. It writes no knowledge units and
+  touches no database: deciding what is worth writing up is the model's job, and
+  minting units mechanically from graded steps would fill the store with "this
+  command exited 1". Redaction and grading are the trajectory recorder's, not a
+  second implementation.
+- **ADR-2061 closed on both sides.** The `knowledge` row is asserted by the JS
+  half (`tests/contract/federation-kind-parity.contract.spec.js`, 52 tests) and
+  the Rust half (`uri::tests::federation_*` in VisionClaw, 7 tests), both
+  generated from the one shared artefact.
 
 
 ### Changed (2026-09-09 — skills estate re-audit for Fable 5.1 / GPT-6 Astra workloads)

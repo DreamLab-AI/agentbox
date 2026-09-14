@@ -66,10 +66,14 @@ decision retires a unit).
 
 ## Consequences
 
-- Learnings become reviewable artefacts with a human-readable surface, and the
-  `governance-precedents` namespace becomes one kind of unit among four rather
-  than a special case. `precedent-service.js` and `precedent-bridge.js` are
-  deleted, not ported alongside.
+- Learnings become reviewable artefacts with a human-readable surface.
+  `precedent-service.js`, `precedent-bridge.js` and their contract spec are
+  **deleted**, along with the `[skills.precedent]` gate and its registration.
+  The migration that deletion was gated on turned out not to exist: the
+  `governance-precedents` namespace is empty and nothing outside the bridge
+  called the tools. The auto-apply behaviour is deliberately not carried over —
+  it is rebuilt, if wanted, on `query` plus a confidence floor, where the
+  confidence is diversity-weighted and the promotion behind it human-gated.
 - The kind allocation is subject to ADR-2061's symmetric kind-map contract, and
   the paired fixture **is extended**: `schema/federation-kinds.json` declares
   `knowledge` as `not-federated`, `tests/fixtures/federation-identity.v1.json`
@@ -77,8 +81,10 @@ decision retires a unit).
   `scripts/ci/federation-fixture-check.mjs` passes 37 checks. Extending the
   checker was itself necessary: it could not previously express "declared in the
   shared artefact, and deliberately without a counterpart", so a refusal row had
-  no way to be tested. The **VisionClaw half has not run** — that is the
-  outstanding half of the gate.
+  no way to be tested. **Both halves of the ADR-2061 gate now pass** — the JS
+  parity spec (52 tests) and the Rust `uri::tests::federation_*` suite (7 tests)
+  each generate every case from the one shared artefact, so the `knowledge`
+  refusal is asserted in both languages.
 - The shared tier writes to a **new `colloquy` namespace**, not `patterns`.
   Mixing units into a namespace the recall band is measured against would move
   the band and make both numbers meaningless. Consequence: the
@@ -126,6 +132,15 @@ path listed above and would be a stale anchor in the sense ADR-2058 names. In
   framing, signature and policy in one answer.
 
 **Not yet verified, and therefore `activation_status: inactive`:** no `38100`
-event has been *accepted* by a relay (the smoke key is not on the allowlist, by
-design — the container's own key is root-owned and unreadable to the agent), and
-the VisionClaw half of the ADR-2061 fixture has not been run.
+event has been *accepted* by a relay. That is blocked on two independent things,
+both by design rather than oversight. The relay runs `ingress_policy =
+"allowlist"` and the list is **baked into the supervisor environment at Nix build
+time** (`flake.nix relayAllowedPubkeysCsv`), so admitting a new publisher needs a
+manifest edit and a rebuild; and the container's agent pubkey is not on that list
+while the six that are belong to keys this process does not hold — the sovereign
+identity secret is root-owned at `/run/agentbox/identity.env`, 0600, correctly
+unreadable to an agent. The clean unblock is a signing-on-behalf path:
+`nostr-pod-bridge` already holds the key and already signs kinds 30840/30841 for
+`summarise`/`track`, so a `publish` subcommand there would let the public tier
+emit without any agent ever touching key material. That is a change to the
+sovereign identity binary and is left for an explicit decision.

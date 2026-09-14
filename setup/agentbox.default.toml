@@ -749,15 +749,6 @@ enabled = true
 enabled = true
 template_dir = "/home/devuser/workspace/VisionFlow/docs/engineering/templates"
 
-[skills.precedent]
-# Precedent system for governance decisions (PRD-harness-engineering M6).
-# Stores promoted governance decisions and auto-applies them to matching
-# future ActionRequests. Four tools: precedent_match, precedent_list,
-# precedent_promote, precedent_retire.
-enabled = true
-namespace = "governance-precedents"
-similarity_threshold = 0.85
-
 [skills.colloquy]
 # Colloquy — cq shared-agent-learning knowledge units (ADR-2085, ADR-2086).
 # Six tools: query, propose, confirm, flag, reflect, status. Gates the MCP
@@ -784,6 +775,13 @@ namespace = "colloquy"
 # authorises itself defeats principal collapse, and the binary exits 2 rather
 # than start that way.
 principal = ""
+# Surface reflect candidates at session end (ADR-2085). A Stop hook scans the
+# transcript for a command that failed and then worked on the next attempt —
+# the shape of "somebody worked something out" — and writes those to
+# $AGENTBOX_STATE/colloquy/candidates/. It writes NO knowledge units: deciding
+# what is worth writing up is the model's job, and mechanically minting units
+# from graded steps would fill the store with "this command exited 1".
+reflect_candidates = true
 
 [skills.email_search]
 # Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). Now runs as the

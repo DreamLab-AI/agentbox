@@ -19,6 +19,7 @@ window 0 and every unattended teammate pane.
 | `nostr-live-mirror.cjs` | `SessionStart`, `UserPromptSubmit`, `Stop`, `SessionEnd` | always registered; silent no-op without a recipient pubkey. Off: `AGENTBOX_LIVE_MIRROR=0` |
 | `fleet-session-start.sh` | `SessionStart` | always registered. Off: `AGENTBOX_NOSTR_GATEWAY=0` |
 | `trust-seed.cjs` | `SessionStart` (plus one direct run at boot) | `AGENTBOX_TRUST_SEED` |
+| `colloquy-reflect-candidates.cjs` | `Stop`, `SubagentStop` | `[skills.colloquy].reflect_candidates` (and `.enabled`) — de-registers itself when either gate is off |
 | `trajectory-recorder.cjs` | `Stop`, `SubagentStop` | `[memory_learning].record_trajectories` — de-registers itself when the gate is off |
 | `dream-inbox-surface.cjs` | `UserPromptSubmit` | `DREAM_INBOX_HOOK` |
 | `ruvnet-brain-ground.cjs` | `UserPromptSubmit` | `[skills.ruvnet_brain].grounding_hook` |
