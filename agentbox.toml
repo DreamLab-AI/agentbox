@@ -173,6 +173,17 @@ agent_event_auth = "nip98"             # off | nip98 — IR1: default hardened; 
 # Private point-to-point relay for governance event exchange with the forum.
 # Set via NOSTR_RELAYS env var at runtime; this field documents the target.
 forum_relay_url  = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
+# Base URL of the forum AUTH WORKER (not the relay). It owns the governance
+# receipts endpoint the mutation owner posts to:
+#   POST {forum_auth_api}/api/governance/receipts/{response_event_id}/application
+# under NIP-98, advancing the receipt ladder past projection-committed to
+# consumer-received → applied | not-applied | applied-manually. This is how a
+# human who approved an action learns whether it took effect
+# (PRD-augmentation-conditions FR4.2; management-api/lib/governance-receipt-publisher.js).
+# The FORUM_AUTH_API env var overrides this at runtime. Empty = not configured:
+# receipts are journalled as authority.receipt-post-failed and QUEUED for
+# replay, never dropped.
+forum_auth_api   = ""
 max_event_bytes  = 131072
 messages_per_sec = 5
 retention_days   = 30
@@ -847,6 +858,81 @@ ontology_query          = "recoverable"      # class lookup / SPARQL read
 code_interpreter_exec   = "recoverable"      # sandboxed kernel, reset-able
 aci_view                = "recoverable"      # read a file through the ACI surface
 docs_render             = "recoverable"      # latex / mermaid / report render
+
+# ── ADR-2011: the task-property triple ────────────────────────────────────────
+# `authority_class` above answers ONE question — is this action reversible. The
+# escalation boundary between agent and human is set by THREE properties of the
+# task: verifiability, reversibility, stakes. Reversibility is derived from the
+# table above (zero-tolerance ⇒ irreversible, recoverable ⇒ compensable) and is
+# never declared here, so "zero-tolerance ⇒ irreversible" stays an invariant
+# rather than a default someone can edit. These keys supply the other two axes.
+#
+# management-api/lib/task-properties.js resolves the triple and stamps it on
+# every kind-31402 the authority gate publishes, as the tags the forum reads:
+# `tp-verifiability`, `tp-reversibility`, `tp-stakes`. A requesting agent may
+# pass `task_properties` to TIGHTEN the triple; nothing can loosen it.
+[skills.authority.task_properties]
+verifiability = "partial"      # inspectable | partial | opaque  (default per action class)
+stakes        = "significant"  # bounded | significant | critical (default per action class)
+
+# Per-action-class overrides, keyed exactly as [skills.authority.classes].
+# Sub-sections, not inline tables: the boot manifest loader
+# (management-api/adapters/manifest-loader.js) is line-based and parses no
+# inline tables.
+[skills.authority.task_properties.classes.ontology_axiom_load]
+verifiability = "opaque"       # a KG write is not inspectable from the outside
+stakes        = "critical"
+[skills.authority.task_properties.classes.memory_namespace_repair]
+verifiability = "opaque"       # HNSW degradation is silent (see the index law)
+stakes        = "critical"
+[skills.authority.task_properties.classes.memory_embedding_backfill]
+verifiability = "opaque"       # rewrites embeddings in place; no external check
+stakes        = "critical"
+[skills.authority.task_properties.classes.memory_legacy_archival]
+verifiability = "partial"
+stakes        = "critical"
+[skills.authority.task_properties.classes.payment_settlement]
+verifiability = "inspectable"  # an on-chain / ledger settlement is checkable
+stakes        = "critical"
+[skills.authority.task_properties.classes.pod_delete]
+verifiability = "inspectable"  # the resource is either there or it is not
+stakes        = "critical"
+[skills.authority.task_properties.classes.pod_git_push]
+verifiability = "inspectable"  # the remote ref is checkable
+stakes        = "significant"
+[skills.authority.task_properties.classes.mandate_revoke]
+verifiability = "inspectable"
+stakes        = "significant"
+[skills.authority.task_properties.classes.broker_enrichment_writeback]
+verifiability = "partial"      # the derived write is checkable, its effects less so
+stakes        = "critical"
+[skills.authority.task_properties.classes.broker_enrichment_review]
+verifiability = "inspectable"
+stakes        = "bounded"
+[skills.authority.task_properties.classes.memory_read]
+verifiability = "inspectable"
+stakes        = "bounded"
+[skills.authority.task_properties.classes.ontology_query]
+verifiability = "inspectable"
+stakes        = "bounded"
+[skills.authority.task_properties.classes.research]
+verifiability = "inspectable"
+stakes        = "bounded"
+[skills.authority.task_properties.classes.aci_view]
+verifiability = "inspectable"
+stakes        = "bounded"
+[skills.authority.task_properties.classes.docs_render]
+verifiability = "inspectable"
+stakes        = "bounded"
+[skills.authority.task_properties.classes.code_interpreter_exec]
+verifiability = "inspectable"  # sandboxed and reset-able
+stakes        = "bounded"
+[skills.authority.task_properties.classes.skill_browser]
+verifiability = "partial"
+stakes        = "bounded"
+[skills.authority.task_properties.classes.memory_store]
+verifiability = "inspectable"
+stakes        = "bounded"
 
 [providers.anthropic]
 enabled = true

@@ -9,9 +9,22 @@
 // relay-consumer's outbox flusher adds pubkey, id, and sig before
 // publishing to relays.
 //
+// ADR-2011 / PRD-augmentation-conditions FR3.4: every ActionRequest this server
+// publishes carries the TASK-PROPERTY TRIPLE as tags (`tp-verifiability`,
+// `tp-reversibility`, `tp-stakes`). The triple is derived from the operator's
+// manifest — `authority_class` seeds reversibility — and a caller-supplied
+// `task_properties` may only TIGHTEN it. The forum's `effective_tier()` reads
+// these tags; a request with none folds to the panel default, which is exactly
+// the silent under-tiering ADR-2011 removes, so they are never omitted.
+//
+// FR7.1 adds `governance_manual_continue`: the operator's path when the mesh is
+// down and an already-approved action must be executed by hand.
+//
 // Environment:
-//   AGENTBOX_PUBKEY   — 64-char hex pubkey of the agent
-//   AGENTBOX_POD_ROOT — pod root directory (default: /var/lib/agentbox)
+//   AGENTBOX_PUBKEY        — 64-char hex pubkey of the agent
+//   AGENTBOX_POD_ROOT      — pod root directory (default: /var/lib/agentbox)
+//   AGENTBOX_MANIFEST_PATH — agentbox.toml (default: /etc/agentbox.toml)
+//   FORUM_AUTH_API         — forum auth worker base URL (receipt mirroring)
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -20,6 +33,7 @@ import {
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
@@ -28,6 +42,32 @@ const require = createRequire(import.meta.url);
 
 const PUBKEY = process.env.AGENTBOX_PUBKEY || '';
 const POD_ROOT = process.env.AGENTBOX_POD_ROOT || '/var/lib/agentbox';
+
+// ── governance libraries (CJS, shared with management-api) ──────────────────
+// These are the SAME modules the authority gate uses, so a triple derived here
+// and a triple stamped by the gate can never disagree.
+const taskProperties = require('../../management-api/lib/task-properties');
+const { ApplicationReceiptStore } = require('../../management-api/lib/governance-application-receipts');
+const { manualContinue } = require('../../management-api/lib/governance-manual-continue');
+const { buildReceiptPublisher } = require('../../management-api/lib/governance-receipt-publisher');
+
+/**
+ * The parsed manifest, loaded once and cached. A missing/unreadable manifest is
+ * NOT fatal: `derive()` then falls back to its own fail-closed defaults
+ * (partial / irreversible / significant), which is a tighter boundary than any
+ * manifest would set, never a looser one.
+ */
+let _manifest;
+function manifest() {
+  if (_manifest !== undefined) return _manifest;
+  try {
+    _manifest = require('../../management-api/adapters/manifest-loader').loadManifest();
+  } catch (err) {
+    console.error(`[governance-bridge] manifest unavailable (${err.message}); task properties fall back to fail-closed defaults`);
+    _manifest = null;
+  }
+  return _manifest;
+}
 
 // ── npub derivation ─────────────────────────────────────────────────────────
 // Pod directories use bech32 npub (npub1…).  Defer to nostr-tools when
@@ -155,8 +195,41 @@ const TOOLS = [
           description: 'Arbitrary context data for the human operator',
           additionalProperties: true,
         },
+        action_class: {
+          type: 'string',
+          description: 'Action-class key from agentbox.toml [skills.authority.classes]. Seeds the task-property triple (zero-tolerance => irreversible, recoverable => compensable). Omitted or unknown => escalation-required, which derives the tightest triple.',
+        },
+        task_properties: {
+          type: 'object',
+          description: 'ADR-2011 task-property triple. TIGHTENING ONLY: a value looser than the operator-declared default for this action class is ignored. Omit to publish the operator default.',
+          properties: {
+            verifiability: { type: 'string', enum: ['inspectable', 'partial', 'opaque'] },
+            reversibility: { type: 'string', enum: ['reversible', 'compensable', 'irreversible'] },
+            stakes: { type: 'string', enum: ['bounded', 'significant', 'critical'] },
+          },
+          additionalProperties: false,
+        },
       },
       required: ['panel_id', 'title', 'description'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'governance_manual_continue',
+    description: 'Record that a HUMAN operator executed an already-approved action by hand during a mesh outage (PRD-augmentation-conditions FR7.1). Writes an `applied-manually` application receipt bound to the approved operation digest, mints a PROV-O activity associated with the human, and mirrors the receipt to the forum (queued if unreachable). Refuses any case that was not approved, whose operation digest differs, that already reached a terminal stage, or whose executor is an agent identity.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        case_id: { type: 'string', description: 'The approved case being continued by hand' },
+        executed_by: { type: 'string', description: 'The HUMAN operator who performed the action, as did:nostr:<64 lower-case hex>. Never an agent DID.' },
+        evidence: { type: 'string', description: "What the operator actually did, in their own words — the receipt's only human-authored content. Mandatory." },
+        operation: {
+          type: 'object',
+          description: 'The operation as executed. When supplied its canonical digest must equal the approved one; omit to bind to the recorded approval.',
+          additionalProperties: true,
+        },
+      },
+      required: ['case_id', 'executed_by', 'evidence'],
       additionalProperties: false,
     },
   },
@@ -256,12 +329,24 @@ async function handleTool(name, args) {
 
       const caseId = args.case_id || crypto.randomUUID();
 
+      // ADR-2011 — derive the triple from the OPERATOR's manifest. A caller's
+      // own `task_properties` is merged on the tightening lattice, so a request
+      // can raise the boundary for its own action but never lower it.
+      const properties = taskProperties.derive(args.action_class, {
+        manifest: manifest(),
+        requested: args.task_properties,
+      });
+
       const requestPayload = {
         case_id: caseId,
         panel_id: args.panel_id,
         title: args.title,
         description: args.description,
         priority: args.priority || 'medium',
+        // Carried in the content as well as the tags: the tags are what the
+        // relay projects, the content is what the reviewer's card renders.
+        task_properties: properties,
+        ...(args.action_class ? { action_class: args.action_class } : {}),
         ...(args.context ? { context: args.context } : {}),
       };
 
@@ -271,6 +356,9 @@ async function handleTool(name, args) {
         tags: [
           ['d', caseId],
           ['e', args.panel_id],
+          // ALWAYS all three. An absent tag reads as "legacy, use the panel
+          // default", which is indistinguishable from deliberate under-tiering.
+          ...taskProperties.toTags(properties),
         ],
         created_at: nowUnix(),
       };
@@ -278,7 +366,41 @@ async function handleTool(name, args) {
       const dir = outboxDir();
       const outboxPath = writeEvent(dir, `${caseId}.json`, event);
 
-      return { published: true, case_id: caseId, outbox_path: outboxPath };
+      return {
+        published: true, case_id: caseId, outbox_path: outboxPath,
+        task_properties: properties,
+      };
+    }
+
+    case 'governance_manual_continue': {
+      const caseErr = validateString(args.case_id, 'case_id', 256);
+      if (caseErr) return caseErr;
+      const execErr = validateString(args.executed_by, 'executed_by', 128);
+      if (execErr) return execErr;
+      const evidenceErr = validateString(args.evidence, 'evidence', 4096);
+      if (evidenceErr) return evidenceErr;
+
+      const result = await manualContinue(
+        {
+          case_id: args.case_id,
+          executed_by: args.executed_by,
+          evidence: args.evidence,
+          ...(args.operation ? { operation: args.operation } : {}),
+        },
+        {
+          receipts: new ApplicationReceiptStore(),
+          publisher: buildReceiptPublisher({ manifest: manifest() }),
+          // This server's own identity: it publishes the record, it can never
+          // be its subject.
+          agentDid: PUBKEY ? `did:nostr:${PUBKEY}` : null,
+          logger: { debug() {}, info() {}, warn() {}, error() {} },
+        },
+      );
+
+      if (!result.ok) {
+        return { error: result.error, message: result.message };
+      }
+      return result;
     }
 
     case 'governance_update_panel': {
@@ -416,6 +538,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   };
 });
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error(`[governance-bridge] Connected to MCP, pubkey=${PUBKEY.slice(0, 8)}…, pod_root=${POD_ROOT}`);
+// Connect ONLY when this file is the process entrypoint. Importing it (from a
+// test, or another server that wants the tool table) must not open a stdio
+// transport or claim the MCP channel.
+const isEntrypoint = process.argv[1]
+  && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+
+if (isEntrypoint) {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error(`[governance-bridge] Connected to MCP, pubkey=${PUBKEY.slice(0, 8)}…, pod_root=${POD_ROOT}`);
+}
+
+export { TOOLS, handleTool, server };

@@ -37,6 +37,26 @@
  * not hardcoded here, so the action surface is classified declaratively and the
  * table can grow without a code change.
  *
+ * Two additions land here from PRD-augmentation-conditions (ADR-2087):
+ *
+ *   4. THE TASK-PROPERTY TRIPLE IS STAMPED ON THE REQUEST (FR3.4, ADR-2011).
+ *      `authority_class` answers reversibility alone. The forum sets escalation
+ *      posture from three properties of the TASK — verifiability, reversibility,
+ *      stakes — so the gate derives the triple (lib/task-properties.js) and
+ *      stamps it on its own 31402 as `tp-*` tags AND inside `fields`. A caller
+ *      may pass `taskProperties` to TIGHTEN it; nothing can loosen it.
+ *
+ *   5. EVERY DENY IS JOURNALLED (FR4.4, EXP-AC-004). A denial that exists only
+ *      as a `logger.warn` is invisible to the operator surface at
+ *      `/v1/agent-events`. Each deny path now also appends a hash-chained
+ *      `authority.deny {agent_did, stage, reason, action_class,
+ *      operation_sha256}` record through the injected journal. The journal is
+ *      best-effort: a journal failure is itself logged and NEVER converts a
+ *      deny into an exception — fail-closed on the action, fail-open on the
+ *      record of it.
+ *
+ * @see lib/task-properties.js        (the ADR-2011 triple derivation)
+ * @see lib/authority-journal.js      (the hash-chained authority.deny sink)
  * @see lib/agent-control-surface.js  (buildActionRequest / publishPanelEvent — the 31402 producer)
  * @see lib/mandate.js                (the orthogonal WAC resource axis)
  * @see management-api/routes/broker-bridge.js (the broker REST the forum drives)
@@ -44,6 +64,7 @@
 
 const acs = require('./agent-control-surface');
 const { responseMatchesRequest, canonicalOperation, operationDigest } = require('./governance-correlation');
+const taskProperties = require('./task-properties');
 
 const AUTHORITY_CLASSES = Object.freeze(['recoverable', 'zero-tolerance']);
 /** Disposition of an unclassified action — a prompt, never a silent proceed. */
@@ -131,6 +152,10 @@ function classifyAction(actionClass, opts = {}) {
  *   Schnorr signature. Defaults to nostr-tools verifyEvent (lazy require).
  * @param {object}   [deps.bridge]  - a connected NostrBridge (production wiring)
  * @param {object}   [deps.signer]  - a loaded signer (production wiring)
+ * @param {object}   [deps.journal] - `{ append(record) }` sink for `authority.deny`
+ *   records (lib/authority-journal.js in production). Absent → denials are only
+ *   logged, as before this change.
+ * @param {string}   [deps.agentDid] - the DID stamped on journalled denials.
  * @param {number}   [deps.defaultTimeoutMs=120000]
  * @returns {{ classifyAction: Function, guard: Function, table: object }}
  */
@@ -165,6 +190,56 @@ function buildAuthorityGate(manifest, deps = {}) {
   // gate must deny (fail-closed), never invent one.
   const awaitDecision = deps.awaitDecision || null;
 
+  // The `authority.deny` sink. Optional: without one the gate behaves exactly as
+  // it did before FR4.4, denying identically but leaving no durable record.
+  const journal = (deps.journal && typeof deps.journal.append === 'function') ? deps.journal : null;
+  const agentDid = typeof deps.agentDid === 'string' ? deps.agentDid : null;
+
+  /**
+   * Record one denial and return the structured gate result. EVERY deny path
+   * goes through here, so "was this denial journalled?" has exactly one answer
+   * for all of them rather than one per branch.
+   *
+   * @param {object} ctx - { cls, actionClass, props, operationHash, requestId, responseId, agent_did }
+   * @param {string} stage  - where in the gate the denial happened
+   * @param {string} reason - the machine-readable reason (legacy field, preserved)
+   * @param {object} [extra] - additional fields merged into the result
+   */
+  async function deny(ctx, stage, reason, extra = {}) {
+    const record = {
+      type: 'authority.deny',
+      agent_did: ctx.agent_did || agentDid,
+      stage,
+      reason,
+      action_class: ctx.actionClass || null,
+      authority_class: ctx.cls,
+      operation_sha256: ctx.operationHash || null,
+      task_properties: ctx.props || null,
+      request_event_id: ctx.requestId || null,
+      response_event_id: ctx.responseId || null,
+    };
+    if (journal) {
+      try {
+        await journal.append(record);
+      } catch (err) {
+        // Fail-open on the RECORD, never on the decision: the action stays
+        // denied, and the failure to journal it is itself surfaced loudly.
+        logger.warn({ event: 'authority.deny-unjournalled', stage, reason, err: err.message },
+          'authority.deny record could not be journalled — the denial stands but is unrecorded');
+      }
+    }
+    return {
+      decision: 'deny', blocked: true, released: false,
+      authority_class: ctx.cls,
+      task_properties: ctx.props || null,
+      stage,
+      reason,
+      ...(ctx.requestId ? { request_event_id: ctx.requestId } : {}),
+      ...(ctx.responseId ? { response_event_id: ctx.responseId } : {}),
+      ...extra,
+    };
+  }
+
   /**
    * Read the decision outcome from a signed ActionResponse (kind 31403). The
    * response references the exact signed request via an `e` tag. Case/panel
@@ -197,20 +272,37 @@ function buildAuthorityGate(manifest, deps = {}) {
   async function guard(params = {}) {
     const cls = classifyAction(params.actionClass, { table, frontmatter: params.frontmatter });
 
+    // ADR-2011 — derive the OPERATOR-declared task-property triple. The action's
+    // authority class seeds reversibility; verifiability and stakes come from
+    // the manifest (or the skill's frontmatter). `params.taskProperties` is the
+    // caller's own declaration: it may only tighten.
+    const props = taskProperties.derive(params.actionClass, {
+      manifest,
+      authorityClass: cls,
+      frontmatter: params.frontmatter,
+      requested: params.taskProperties,
+    });
+    const ctx = { cls, actionClass: params.actionClass || null, props, agent_did: params.agentDid };
+
     // Recoverable — proceed with no blocking wait. The classification is returned
     // so the caller stamps it on the agent-events envelope (acceptance #4).
     if (cls === 'recoverable') {
-      return { decision: 'allow', blocked: false, released: false, authority_class: cls };
+      return { decision: 'allow', blocked: false, released: false, authority_class: cls, task_properties: props };
     }
 
     // zero-tolerance OR escalation-required — block on a signed, approving response.
     if (!awaitDecision) {
       logger.warn({ event: 'authority.deny', actionClass: params.actionClass, cls },
         'no decision consumer wired — zero-tolerance/escalation action DENIED (fail-closed)');
-      return {
-        decision: 'deny', blocked: true, released: false, authority_class: cls,
-        reason: 'no-decision-surface',
-      };
+      // FR7.3 — the operator learns the continuation option AT THE DENIAL. With
+      // the mesh down there IS a legitimate path (execute by hand against an
+      // existing Approve, then file an `applied-manually` receipt); naming the
+      // tool here is what makes "meaningful human control during unavailability"
+      // (condition C2) reachable instead of merely documented.
+      return deny(ctx, 'decision-surface', 'no-decision-surface', {
+        code: 'no-decision-surface',
+        hint: 'governance_manual_continue',
+      });
     }
 
     let operation, operationHash;
@@ -219,8 +311,9 @@ function buildAuthorityGate(manifest, deps = {}) {
       operation = JSON.parse(canonicalOperation(params.operation));
       operationHash = operationDigest(operation);
     } catch (_) {
-      return { decision: 'deny', blocked: true, released: false, authority_class: cls, reason: 'missing-or-invalid-operation' };
+      return deny(ctx, 'operation', 'missing-or-invalid-operation');
     }
+    ctx.operationHash = operationHash;
 
     const panelId = params.panelId
       || `urn:agentbox:authority:${params.actionClass || 'action'}:${Date.now()}`;
@@ -232,7 +325,18 @@ function buildAuthorityGate(manifest, deps = {}) {
       subjectId: params.actionClass || 'action',
       title: params.action || `Authorise ${cls} action "${params.actionClass}"`,
       reasoning: params.reasoning,
-      fields: { action_class: params.actionClass || null, authority_class: cls, operation, operation_sha256: operationHash },
+      fields: {
+        action_class: params.actionClass || null,
+        authority_class: cls,
+        // ADR-2011: the triple rides the content as well as the tags. Tags are
+        // what the relay projects; `fields` is what the reviewer's decision card
+        // renders, and a reviewer who cannot see the boundary properties cannot
+        // tell a bounded action from a critical one (condition C2).
+        task_properties: props,
+        operation,
+        operation_sha256: operationHash,
+      },
+      extraTags: taskProperties.toTags(props),
     });
 
     let signedRequest;
@@ -241,16 +345,17 @@ function buildAuthorityGate(manifest, deps = {}) {
     } catch (err) {
       logger.warn({ event: 'authority.deny', err: err.message },
         'failed to publish ACSP request — action DENIED (fail-closed)');
-      return { decision: 'deny', blocked: true, released: false, authority_class: cls, reason: `publish-failed: ${err.message}` };
+      return deny(ctx, 'publish', `publish-failed: ${err.message}`);
     }
     if (!signedRequest || typeof signedRequest.id !== 'string') {
-      return { decision: 'deny', blocked: true, released: false, authority_class: cls, reason: 'no-request-id' };
+      return deny(ctx, 'publish', 'no-request-id');
     }
+    ctx.requestId = signedRequest.id;
 
     // Refuse a producer that signs a different payload than the operation
     // awaiting approval. The response's exact e-tag then binds these bytes.
     if (signedRequest.content !== unsigned.content) {
-      return { decision: 'deny', blocked: true, released: false, authority_class: cls, reason: 'request-payload-changed' };
+      return deny(ctx, 'publish', 'request-payload-changed');
     }
 
     let signedResponse;
@@ -261,41 +366,40 @@ function buildAuthorityGate(manifest, deps = {}) {
     } catch (err) {
       logger.warn({ event: 'authority.deny', err: err.message },
         'decision wait errored — action DENIED (fail-closed)');
-      return {
-        decision: 'deny', blocked: true, released: false, authority_class: cls,
-        request_event_id: signedRequest.id, reason: `await-failed: ${err.message}`,
-      };
+      return deny(ctx, 'await-decision', `await-failed: ${err.message}`);
     }
 
     // No response (timeout / unavailable) → DENY. A zero-tolerance action never
     // proceeds without a signed-response wait that RESOLVED to an approval.
     if (!signedResponse) {
-      return {
-        decision: 'deny', blocked: true, released: false, authority_class: cls,
-        request_event_id: signedRequest.id, reason: 'no-signed-response',
-      };
+      return deny(ctx, 'await-decision', 'no-signed-response');
     }
 
     // The signature must verify (consume the forum's signing, do not trust blindly).
     if (!verifyEvent(signedResponse)) {
-      return {
-        decision: 'deny', blocked: true, released: false, authority_class: cls,
-        request_event_id: signedRequest.id, response_event_id: signedResponse.id, reason: 'unverified-signature',
-      };
+      ctx.responseId = signedResponse.id;
+      return deny(ctx, 'verify-signature', 'unverified-signature');
     }
+    ctx.responseId = signedResponse.id;
 
     const outcome = readOutcome(signedResponse, signedRequest);
     const approved = outcome === 'approve' || outcome === 'approved' || outcome === 'allow';
+    if (!approved) {
+      return deny(ctx, 'outcome', `not-approved: ${outcome || 'unknown'}`, {
+        outcome,
+        operation_sha256: operationHash,
+      });
+    }
     return {
-      decision: approved ? 'allow' : 'deny',
+      decision: 'allow',
       blocked: true,
-      released: approved,
+      released: true,
       authority_class: cls,
+      task_properties: props,
       request_event_id: signedRequest.id,
       response_event_id: signedResponse.id,
       outcome,
       operation_sha256: operationHash,
-      reason: approved ? undefined : `not-approved: ${outcome || 'unknown'}`,
     };
   }
 

@@ -35,6 +35,7 @@ const { PrimerGenerator } = require('./lib/project-primer');
 // authority approval loop. The authority consumer (D4.7) is the canonical
 // awaitDecision seam wired into buildAuthorityGate at boot.
 const { buildAuthorityGate } = require('./lib/authority');
+const { buildAuthorityJournal } = require('./lib/authority-journal');
 const { buildAuthorityConsumer } = require('./lib/authority-consumer');
 const governanceWaiter = require('./lib/governance-decision-waiter');
 
@@ -1109,14 +1110,25 @@ async function start() {
     {
       try {
         const authorityConsumer = buildAuthorityConsumer({ manifest, logger });
+        // FR4.4 / EXP-AC-004 — every gate DENIAL is appended to the hash-chained
+        // events log and published to /v1/agent-events. Built over the already
+        // resolved ADR-005 events adapter (app.decorate('adapters') above), so a
+        // denial inherits the ADR-039 chain rather than opening a second store.
+        const authorityDenyJournal = buildAuthorityJournal({
+          eventsAdapter: resolvedAdapters && resolvedAdapters.events,
+          logger,
+        });
         const authorityGate = buildAuthorityGate(manifest, {
           logger,
+          journal: authorityDenyJournal,
+          agentDid: process.env.AGENTBOX_PUBKEY ? `did:nostr:${process.env.AGENTBOX_PUBKEY}` : null,
           publishActionRequest: authorityConsumer ? authorityConsumer.publishActionRequest : undefined,
           awaitDecision: authorityConsumer
             ? authorityConsumer.awaitDecision
             : ((signedRequest, opts) => governanceWaiter.awaitDecision(signedRequest, opts)),
           verifyEvent: authorityConsumer ? authorityConsumer.verifyEvent : undefined,
         });
+        app.decorate('authorityDenyJournal', authorityDenyJournal);
         app.decorate('authorityConsumer', authorityConsumer);
         app.decorate('authorityGate', authorityGate);
         logger.info({ event: 'authority-consumer.boot', wired: !!authorityConsumer },

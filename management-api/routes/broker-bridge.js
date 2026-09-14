@@ -44,6 +44,7 @@ const path = require('path');
 const WebSocket = require('ws');
 const uris = require('../lib/uris');
 const { ApplicationReceiptStore } = require('../lib/governance-application-receipts');
+const { buildReceiptPublisher } = require('../lib/governance-receipt-publisher');
 const { buildAuthorityGate } = require('../lib/authority');
 const governanceWaiter = require('../lib/governance-decision-waiter');
 
@@ -235,6 +236,39 @@ async function brokerBridgeRoutes(fastify, options) {
   // over the governance-decision waiter when the shared one is absent (tests /
   // consumer unwired).
   const applicationReceipts = options.applicationReceipts || new ApplicationReceiptStore();
+
+  // ── FR4.2 / EXP-AC-004: the receipt ladder reaches the human ───────────────
+  // `ApplicationReceiptStore` records the outcome LOCALLY and durably; that is
+  // what stops a replayed decision repeating a mutation. It tells the human who
+  // signed the approval nothing. The publisher mirrors each stage to the forum
+  // under NIP-98 so the decision chain the reviewer reads advances from
+  // "projection-committed" (the relay stored it) to "applied" / "not-applied"
+  // (it actually took effect). A failed post is journalled and queued by the
+  // publisher — never swallowed here, and never allowed to fail the decision:
+  // the mutation has already happened, and refusing to report it would make the
+  // gap this closes worse, not better.
+  const receiptPublisher = options.receiptPublisher
+    || fastify.governanceReceiptPublisher
+    || buildReceiptPublisher({
+      manifest, logger,
+      journal: options.authorityDenyJournal || fastify.authorityDenyJournal || null,
+    });
+
+  /**
+   * Mirror one receipt stage. Always resolves; the decide route's outcome never
+   * depends on the forum being reachable.
+   */
+  async function mirrorReceipt(receipt) {
+    try {
+      return await receiptPublisher.post(receipt);
+    } catch (err) {
+      // A malformed receipt (e.g. a non-hex response id from a test double) is
+      // a programming error, not an operational one — surfaced, not fatal.
+      logger.error({ event: 'governance.receipt-post-invalid', err: err.message, stage: receipt && receipt.stage },
+        'application receipt could not be mirrored to the forum');
+      return { ok: false, queued: false, error: err.message };
+    }
+  }
   const authorityGate = options.authorityGate || fastify.authorityGate || buildAuthorityGate(manifest, {
     logger,
     publishActionRequest: options.publishActionRequest,
@@ -473,6 +507,17 @@ async function brokerBridgeRoutes(fastify, options) {
       catch (error) {
         return reply.code(503).send({ error: 'application-receipt-unavailable', message: error.message, success: false });
       }
+      if (applicationClaim.fresh) {
+        // Stage 1 of the ladder: the approval reached the actor that will act
+        // on it. Posted BEFORE the mutation is attempted, so a crash between
+        // here and the outcome leaves the human looking at "consumer-received"
+        // — an honest "in flight" — rather than silence.
+        await mirrorReceipt({
+          response_event_id: gate.response_event_id,
+          stage: 'consumer-received',
+          acknowledgement: { case_id: id, outcome: decision, operation_sha256: gate.operation_sha256 },
+        });
+      }
       if (!applicationClaim.fresh) {
         return reply.code(409).send({
           error: applicationClaim.outcome?.stage === 'applied' ? 'operation-already-applied' : 'application-reconciliation-required',
@@ -498,6 +543,15 @@ async function brokerBridgeRoutes(fastify, options) {
       if (applicationClaim) {
         try { applicationReceipts.finish(applicationClaim, 'unknown', { error: 'upstream-request-failed' }); }
         catch (receiptError) { logger.error({ err: receiptError.message }, 'application outcome not persisted; received claim retained'); }
+        // NO forum receipt here on purpose. `unknown` means the request never
+        // got an answer, so neither `applied` nor `not-applied` is true, and
+        // the receipt ladder has no stage for "we do not know". Publishing
+        // either would be a fabricated outcome (the NFR this PRD opens with).
+        // The human keeps the honest `consumer-received` already posted, and
+        // the local `unknown` claim forces reconciliation before any retry.
+        logger.warn({ event: 'governance.receipt-unknown', caseId: id, decision,
+          response_event_id: gate && gate.response_event_id },
+          'application outcome UNKNOWN — no forum receipt posted; the case needs reconciliation');
       }
       return reply.code(err.statusCode || 502).send({
         error: 'upstream-error',
@@ -519,11 +573,21 @@ async function brokerBridgeRoutes(fastify, options) {
 
     if (applicationClaim) {
       try {
-        applicationReceipt = applicationReceipts.finish(applicationClaim,
-          upstreamCommitted ? 'applied' : 'not-applied', {
+        const finalStage = upstreamCommitted ? 'applied' : 'not-applied';
+        applicationReceipt = applicationReceipts.finish(applicationClaim, finalStage, {
+          case_id: id, outcome: decision, attributed: upstreamAttributed,
+          writeback_triggered: upstreamTriggered, writeback_committed: upstreamCommitted,
+        });
+        // Stage 2: the terminal fact. This is the receipt the human is waiting
+        // for — the answer to "did my approval do anything?".
+        await mirrorReceipt({
+          response_event_id: gate.response_event_id,
+          stage: finalStage,
+          acknowledgement: {
             case_id: id, outcome: decision, attributed: upstreamAttributed,
             writeback_triggered: upstreamTriggered, writeback_committed: upstreamCommitted,
-          });
+          },
+        });
       } catch (error) {
         return reply.code(503).send({ error: 'application-outcome-unrecorded', message: error.message,
           writeback_committed: upstreamCommitted, success: false });

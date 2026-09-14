@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.3.3
+version: 0.4.0
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.4.0 (2026-09-14): ADR-2087 — the action authority axis gains the ADR-2011 task-property triple (stamped as tp-* tags on every 31402 agentbox publishes), every gate denial is journalled as a hash-chained authority.deny readable at /v1/agent-events, application receipts are mirrored to the forum so the approving human learns the outcome, governance_manual_continue gives an outage a signed continuation path, and the dream ledger gains Reviewer / Review-minutes."
   - "0.3.3 (2026-09-06): ADR-2080 — the metaharness cost-optimal router runs as the dedicated AoE `router` session (Phase 0 of ADR-2079): artefacts vendored from one pinned manifest, task embedded offline, scoped to that session, public tier only."
   - "0.3.2 (2026-09-06): ADR-2079 (proposed) — examine AoE as the DISPATCH plane of a fleet model router; the routing policy lives in a Rust crate outside the session manager, privacy tier is the first routing axis, subagent models are out of reach, a research spike precedes any build."
   - "0.3.1 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
@@ -18,7 +19,8 @@ sources:
   - agentbox/skills/tree-search-coder/SKILL.md
   - agentbox/skills/dream-machine/SKILL.md
   - agentbox/dream.config.json
-  - agentbox/services/dream-engine/
+  - agentbox/services/dream-engine/ (ledger.rs — the 12-column row incl. Reviewer / Review-minutes)
+  - agentbox/management-api/lib/{authority,task-properties,authority-journal,governance-receipt-publisher,governance-manual-continue,governance-application-receipts}.js
   - agentbox/mcp/servers/lib/ontology-retrieval.js
   - agentbox/mcp/mcp.json
   - agentbox/config/nip98-proxy/README.md
@@ -283,6 +285,29 @@ above, enabled but explicitly-invoke-only.
   figures are dated API-equivalent estimates or `null`, never a stale constant (ADR-2031).
 - **The Loom model swaps behind the façade** — changing the model must not touch a consumer;
   consumers hold `:8084`, never a raw model port, for scaffolded work.
+- **The boundary is a property of the TASK, not of the requesting agent** (ADR-2011/ADR-2087)
+  — every kind-31402 agentbox publishes carries all three of `tp-verifiability`,
+  `tp-reversibility`, `tp-stakes`, derived from `[skills.authority.classes]` and
+  `[skills.authority.task_properties]` (`management-api/lib/task-properties.js:172`). A
+  requesting agent's own `task_properties` merges on the TIGHTENING lattice only; an
+  unclassified action class derives `irreversible`. `zero-tolerance ⇒ irreversible` is an
+  invariant, not a default: reversibility is never declarable in the task-property table.
+- **No gate outcome is silent** (ADR-2087) — every deny path in
+  `management-api/lib/authority.js:213` appends `authority.deny {agent_did, stage, reason,
+  action_class, operation_sha256}` through the events adapter (ADR-039 hash chain) and to
+  `/v1/agent-events`. A failure to journal is logged loudly and never converts a deny into an
+  exception: fail-closed on the action, fail-open on the record of it.
+- **A mutation owner reports the outcome to the human who approved it** (ADR-2087) — each
+  `ApplicationReceiptStore` stage is mirrored to the forum receipts endpoint under NIP-98
+  (`management-api/lib/governance-receipt-publisher.js`). A transport failure is journalled as
+  `authority.receipt-post-failed` and queued for replay; a 409/403 is journalled and retired.
+  An `unknown` local outcome publishes NOTHING — the ladder has no stage for "we do not know",
+  and inventing one is the same class of dishonesty as a fabricated rationale.
+- **Manual continuation presupposes an approval and names a human** (ADR-2087) —
+  `governance_manual_continue` binds to the approved operation digest, refuses a case that
+  was never approved or already resolved, refuses an agent (or this container's own) DID as
+  `executed_by`, and mints a PROV-O activity whose `prov:wasAssociatedWith` is that human.
+  The gate's `no-decision-surface` deny names the tool in its structured result.
 
 ## Change process
 

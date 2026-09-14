@@ -4,18 +4,38 @@
  * dream-ledger — read-only aggregation of the dream engine's per-repo ledgers
  * for the cockpit `/dream` panel (ADR-055).
  *
- * The dream engine (services/dream-engine, ADR-052) appends a 10-column row to
- * each nominated repo's `docs/dream-cycle/LEDGER.md`. This module discovers the
+ * The dream engine (services/dream-engine, ADR-052) appends a row to each
+ * nominated repo's `docs/dream-cycle/LEDGER.md`. This module discovers the
  * nominated repos, parses their ledgers, and computes the small summaries the
  * panel renders. It never writes and never shells out — pure parsing plus
  * read-only fs, path-guarded against traversal.
+ *
+ * ── FR6.6 / EXP-AC-006: the human columns ────────────────────────────────────
+ * The row was ten columns, every one of them about the AGENT's night: what it
+ * found, what the evaluator said, what the effect was. Nothing measured the
+ * human who reviewed the PR it opened. Augmentation conditions C4 (deepening
+ * learning) and C6 (job purpose) are longitudinal — they need a human
+ * measurement, repeated — so the schema gains two columns, `Reviewer` and
+ * `Review-minutes`, populated from the PR merge event (`merged_by`, and
+ * `merged_at − pr_opened_at`).
+ *
+ * TWO RULES GOVERN THEM.
+ *
+ *   1. LEGACY ROWS STILL PARSE. Every ledger in the estate is ten columns wide
+ *      and those rows are the baseline any longitudinal reading is measured
+ *      against. A ten-column row parses exactly as before, with both new fields
+ *      `null`. The new columns are APPENDED so no existing cell changes key.
+ *   2. ABSENCE RENDERS AS ABSENCE. An unmerged PR, an unparseable timestamp or
+ *      an empty cell yields `null` — never `0` minutes and never an empty-string
+ *      reviewer. A fabricated zero would read as "reviewed instantly", which is
+ *      the same class of lie as a fabricated rationale (the PRD's opening NFR).
  */
 
 const fs = require('fs');
 const path = require('path');
 
-/** Canonical 10-column ledger order → stable object keys. */
-const LEDGER_KEYS = [
+/** The original 10-column order. Preserved as the compatibility floor. */
+const LEGACY_LEDGER_KEYS = [
   'date',
   'deep',
   'finding',
@@ -27,6 +47,36 @@ const LEDGER_KEYS = [
   'witness',
   'priorFates',
 ];
+
+/** Canonical 12-column ledger order → stable object keys (FR6.6). */
+const LEDGER_KEYS = [
+  ...LEGACY_LEDGER_KEYS,
+  'reviewer',        // merged_by: a GitHub login or a did:nostr
+  'reviewMinutes',   // merged_at − pr_opened_at, whole minutes
+];
+
+/**
+ * Cell values that MEAN "nothing was recorded". A ledger is written by hand and
+ * by agents, so the empty cell arrives in several dialects; every one of them
+ * must read back as null rather than as a reviewer called "NONE".
+ */
+const EMPTY_CELLS = new Set(['', '-', '--', '—', '–', 'none', 'n/a', 'na', 'null', 'nil']);
+
+/** A cell's value, or null when it is any spelling of empty. */
+function cellOrNull(value) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (EMPTY_CELLS.has(trimmed.toLowerCase())) return null;
+  return trimmed;
+}
+
+/** Whole non-negative minutes, or null. Never NaN, never a negative duration. */
+function minutesOrNull(value) {
+  const raw = cellOrNull(value);
+  if (raw === null) return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n);
+}
 
 const VERDICTS = ['ACCEPT', 'REJECT', 'INCONCLUSIVE'];
 
@@ -66,11 +116,16 @@ function parseLedger(md) {
       // A pipe-row before any separator that is not the header is unusual; skip.
       continue;
     }
-    if (cells.length < LEDGER_KEYS.length) continue; // malformed / short row
+    // The COMPATIBILITY FLOOR is the legacy width: a ten-column row is a valid
+    // row and always will be. Anything narrower is malformed.
+    if (cells.length < LEGACY_LEDGER_KEYS.length) continue;
     const row = {};
-    LEDGER_KEYS.forEach((k, i) => {
+    LEGACY_LEDGER_KEYS.forEach((k, i) => {
       row[k] = cells[i] ?? '';
     });
+    // The human columns, when the row is wide enough to carry them.
+    row.reviewer = cells.length > 10 ? cellOrNull(cells[10]) : null;
+    row.reviewMinutes = cells.length > 11 ? minutesOrNull(cells[11]) : null;
     rows.push(row);
   }
   return { rows };
@@ -91,6 +146,82 @@ function verdictStats(rows) {
 function latestNights(rows, n = 5) {
   const take = Math.max(0, n);
   return rows.slice(-take).reverse();
+}
+
+/**
+ * Derive the two human columns from a PR merge event.
+ *
+ * Nothing here guesses. An unmerged PR has no reviewer and no duration; a merge
+ * event missing either timestamp yields a null duration even though the
+ * reviewer is known; a `merged_at` before `pr_opened_at` (a clock skew, or a
+ * back-dated import) is refused rather than recorded as a negative review.
+ *
+ * @param {object} event
+ * @param {string|{login?: string, did?: string}} [event.merged_by]
+ * @param {string|number|Date} [event.merged_at]
+ * @param {string|number|Date} [event.pr_opened_at]
+ * @returns {{reviewer: string|null, reviewMinutes: number|null}}
+ */
+function reviewFromMergeEvent(event) {
+  const e = (event && typeof event === 'object') ? event : {};
+
+  let reviewer = null;
+  const by = e.merged_by;
+  if (typeof by === 'string') reviewer = cellOrNull(by);
+  else if (by && typeof by === 'object') reviewer = cellOrNull(by.did || by.login || by.name || '');
+
+  const opened = Date.parse(e.pr_opened_at ?? '');
+  const merged = Date.parse(e.merged_at ?? '');
+  let reviewMinutes = null;
+  if (Number.isFinite(opened) && Number.isFinite(merged) && merged >= opened) {
+    reviewMinutes = Math.round((merged - opened) / 60000);
+  }
+  return { reviewer, reviewMinutes };
+}
+
+/** Median of a numeric array (mean of the middle two when even). */
+function median(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * The human side of the ledger: who reviewed, how many nights, how long they
+ * took. This is the C4/C6 measurement — a BASELINE on first reading, since a
+ * longitudinal condition needs a second measurement before it means anything
+ * (DDD §6 invariant 9).
+ *
+ * `unreviewed` is reported alongside, so the denominator is never hidden: a
+ * high median over two measured nights out of ninety is not a reviewer metric.
+ *
+ * @param {Array<object>} rows - parsed ledger rows
+ * @returns {{reviewers: Record<string, {reviews: number, medianReviewMinutes: number|null,
+ *            measuredMinutes: number}>, reviewed: number, unreviewed: number}}
+ */
+function reviewerStats(rows) {
+  const out = { reviewers: {}, reviewed: 0, unreviewed: 0 };
+  if (!Array.isArray(rows)) return out;
+  const minutesBy = new Map();
+  for (const r of rows) {
+    const reviewer = r && r.reviewer ? r.reviewer : null;
+    if (!reviewer) { out.unreviewed += 1; continue; }
+    out.reviewed += 1;
+    if (!out.reviewers[reviewer]) {
+      out.reviewers[reviewer] = { reviews: 0, medianReviewMinutes: null, measuredMinutes: 0 };
+      minutesBy.set(reviewer, []);
+    }
+    out.reviewers[reviewer].reviews += 1;
+    if (Number.isFinite(r.reviewMinutes)) {
+      out.reviewers[reviewer].measuredMinutes += 1;
+      minutesBy.get(reviewer).push(r.reviewMinutes);
+    }
+  }
+  for (const [reviewer, values] of minutesBy) {
+    out.reviewers[reviewer].medianReviewMinutes = median(values);
+  }
+  return out;
 }
 
 /**
@@ -213,7 +344,7 @@ function pendingMerges(rows, repo) {
 
 /** Read + summarise one nominated repo's ledger. Never throws on missing files. */
 function readRepoDreamStatus(entry, { limit = 5 } = {}) {
-  const base = { repo: entry.repo, dir: entry.name, ledgerExists: false, rowCount: 0, stats: verdictStats([]), latest: [], lastNight: null, pending: [], pendingCount: 0 };
+  const base = { repo: entry.repo, dir: entry.name, ledgerExists: false, rowCount: 0, stats: verdictStats([]), latest: [], lastNight: null, pending: [], pendingCount: 0, reviewers: reviewerStats([]) };
   if (entry.error) return { ...base, error: entry.error };
   let ledgerAbs;
   try {
@@ -254,6 +385,8 @@ function readRepoDreamStatus(entry, { limit = 5 } = {}) {
     lastNight: rows.length ? rows[rows.length - 1].date : null,
     pending,
     pendingCount: pending.length,
+    // FR6.6 — the human measurement, alongside the agent's.
+    reviewers: reviewerStats(rows),
   };
 }
 
@@ -281,7 +414,10 @@ function aggregateDreamStatus(workspaceRoot, { limit = 5 } = {}) {
 
 module.exports = {
   LEDGER_KEYS,
+  LEGACY_LEDGER_KEYS,
   parseLedger,
+  reviewFromMergeEvent,
+  reviewerStats,
   verdictStats,
   latestNights,
   mergedFromFates,
