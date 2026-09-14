@@ -5,13 +5,14 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 authors.workspace = true
-license = "AGPL-3.0-only"
-description = "Nostr event binding for colloquy knowledge units: kinds 38100-38105, the tag grammar, and ledger reconstruction from a signed event set."
-publish = false
+license = "Apache-2.0"
+description = "Nostr event binding for colloquy knowledge units: kinds 38100-38105, the tag grammar, content-authoritative decoding, and ledger reconstruction that counts authorising principals rather than accounts."
+readme = "README.md"
+keywords = ["nostr", "agents", "knowledge", "cq"]
+categories = ["data-structures"]
 
 [dependencies]
-colloquy-core = { path = "../colloquy-core" }
-nostr-bbs-core = { path = "../../../../../nostr-rust-forum/crates/nostr-bbs-core" }
+colloquy-core = { path = "../colloquy-core", version = "0.1" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

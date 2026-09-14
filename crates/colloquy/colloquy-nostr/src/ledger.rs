@@ -31,7 +31,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use colloquy_core::confidence::Ledger;
 use colloquy_core::principal::{Attestation, MemberClass, PrincipalId};
-use nostr_bbs_core::event::NostrEvent;
+use crate::event::NostrEvent;
 
 use crate::decode::{attestation_from_event, unit_from_event};
 use crate::kinds::*;
@@ -190,7 +190,7 @@ mod tests {
         format!("{seed:0>64}")
     }
 
-    fn signed(u: nostr_bbs_core::event::UnsignedEvent, id: &str) -> NostrEvent {
+    fn signed(u: crate::event::UnsignedEvent, id: &str) -> NostrEvent {
         NostrEvent {
             id: id.to_string(),
             pubkey: u.pubkey,

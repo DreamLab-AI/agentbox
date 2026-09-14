@@ -5,11 +5,12 @@
 //!
 //! # What this crate does not do
 //!
-//! It does not sign, and it does not verify signatures. Signing goes through
-//! [`nostr_bbs_core::signer::Signer`], which already owns the estate's key
-//! handling; verification is `nostr_bbs_core::verify_event_strict`, which must
-//! be run *before* anything here is called. Keeping both out means this crate
-//! has no key material to leak and no crypto to get wrong.
+//! It does not sign, and it does not verify signatures. Both belong to whoever
+//! holds the key: pass already-verified events in, get unsigned templates out,
+//! and hand those to your own signer. Keeping both out means this crate has no
+//! key material to leak and no crypto to get wrong — and it is why [`event`]
+//! defines the NIP-01 structs itself rather than depending on a Nostr library,
+//! which would have coupled every consumer to one particular implementation.
 //!
 //! # The two decisions that matter
 //!
@@ -40,11 +41,13 @@
 #![warn(missing_docs, missing_debug_implementations, rustdoc::broken_intra_doc_links)]
 
 pub mod decode;
+pub mod event;
 pub mod encode;
 pub mod kinds;
 pub mod ledger;
 pub mod tags;
 
+pub use event::{NostrEvent, UnsignedEvent};
 pub use decode::{
     attestation_from_event, graduation_from_event, supersession_from_event, unit_from_event,
     AttestationRef, DecodeError, GraduationRef, SupersessionRef,
@@ -55,3 +58,8 @@ pub use encode::{
 };
 pub use kinds::{is_colloquy_kind, ALL_KINDS, COLLOQUY_KIND_RANGE};
 pub use ledger::{reconstruct, PrincipalResolver, Reconstruction, ResolvedMember, StaticRegistry};
+
+/// The README's examples, compiled and run as doctests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+pub struct Readme;

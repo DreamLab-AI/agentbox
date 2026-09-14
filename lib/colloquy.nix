@@ -16,15 +16,16 @@
 # arithmetic can run in the Cloudflare workers. Nothing here depends on that
 # target; it is checked in CI, not baked.
 #
-# Like lib/nostr-pod-bridge.nix, this path-deps a sibling DreamLab-AI repo that
-# is deliberately unpublished (nostr-rust-forum → crates/nostr-bbs-core, for the
-# event types colloquy-nostr binds to). The sandbox has no network, so the repo
-# is fetched as a fixed-output derivation and the on-disk layout the relative
-# path-deps expect is reassembled around the source.
+# Exactly ONE crate here still path-deps a sibling DreamLab-AI repo:
+# colloquy-backends needs nostr-rust-forum → crates/nostr-bbs-core for audited
+# BIP-340 signing and verification. The other five are free of it —
+# colloquy-nostr owns the NIP-01 structs, which were never library-specific, and
+# that is what made core/view/nostr/store publishable. The sandbox has no
+# network, so the repo is fetched as a fixed-output derivation and the on-disk
+# layout the relative path-dep expects is reassembled around the source.
 #
 # **This pin is AHEAD of lib/nostr-pod-bridge.nix, deliberately and verifiably.**
-# colloquy is pinned to 9b21937 (forum HEAD: the /knowledge board, plus the
-# switch to registry deps); the bridge is still on c4a94d17 because its Cargo.lock was generated
+# colloquy is pinned to fcb6b16 (forum HEAD); the bridge is still on c4a94d17 because its Cargo.lock was generated
 # against that tree and advancing it needs a `cargo generate-lockfile` plus a
 # build, which is host-side work.
 #
@@ -33,7 +34,7 @@
 # separate closures. The shared surface that could still bite is the event
 # contract itself, and that is VERIFIED identical:
 #
-#   git diff c4a94d17..9b21937 -- crates/nostr-bbs-core/src/event.rs   # empty
+#   git diff c4a94d17..fcb6b16 -- crates/nostr-bbs-core/src/event.rs   # empty
 #
 # so both binaries hash event ids and verify signatures the same way. The drift
 # is confined to keys.rs and the crate's Cargo.toml, neither of which colloquy
@@ -55,8 +56,8 @@ let
 
   # Ahead of lib/nostr-pod-bridge.nix on purpose — see the header for why that
   # is safe here and what closes the gap.
-  forumRev  = "9b2193720b868e57d83a223d4b114faab79295e9";
-  forumHash = "sha256-tAiwRkUuK6o7y3SVev1uAcjIMYSndtjA90DhGfBuDqM=";
+  forumRev  = "fcb6b160c42b06b4053a55a772abed3650bcaabc";
+  forumHash = "sha256-W8X5ZbIJJEjBHF0D/rEYO3V1n8VfYhlpqkaGSY/aKdQ=";
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";

@@ -297,7 +297,8 @@ own recall measurement and can be reverted independently of the rest of Phase 2.
 | 5 — reflect | **verb done, feed not wired** | Coverage-check-before-propose, reporting `proposed`/`already_known`/`refused`. |
 | ADR-2061 fixture | **done on the agentbox side** | `schema/federation-kinds.json` declares `knowledge` as `not-federated`; the fixture pins an explicit unmapped result; the checker passes **37** checks (was 35). |
 | Upstream | **posted** | [cq#536](https://github.com/mozilla-ai/cq/issues/536), [#537](https://github.com/mozilla-ai/cq/issues/537), [#538](https://github.com/mozilla-ai/cq/issues/538). |
-| Published | **done** | [`colloquy-core` 0.1.0](https://crates.io/crates/colloquy-core) and [`colloquy-view` 0.1.0](https://crates.io/crates/colloquy-view), both Apache-2.0. |
+| Published | **four of six** | [`colloquy-core`](https://crates.io/crates/colloquy-core), [`colloquy-view`](https://crates.io/crates/colloquy-view), [`colloquy-nostr`](https://crates.io/crates/colloquy-nostr), [`colloquy-store`](https://crates.io/crates/colloquy-store) — 0.1.0, Apache-2.0. `colloquy-backends` and `colloquy-mcp` stay internal: the first is bound to this estate's governed memory server and audited signing, the second is a binary. |
+| Registration | **live** | `[skills.colloquy]` gained `tier` and `principal`; the principal now comes from `[sovereign_mesh.operator].pubkey_hex` instead of an env var nobody sets. Registered and answering against the real shared tier. |
 | Pins | **reissued** | `lib/colloquy.nix` advanced to forum `9b21937` with a NAR hash computed locally and **validated against the previous known-good pin** before being trusted. |
 
 ### Nothing is mocked

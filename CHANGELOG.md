@@ -48,9 +48,18 @@ weight follows authorising principals).
   `ku_<hex>` — one address in two grammars. It is declared `not-federated` in
   `schema/federation-kinds.json`; the ADR-2061 fixture pins it to an explicit
   unmapped result rather than fabricating a VisionClaw counterpart.
-- **Published:** [`colloquy-core` 0.1.0](https://crates.io/crates/colloquy-core)
-  and [`colloquy-view` 0.1.0](https://crates.io/crates/colloquy-view), both
-  Apache-2.0. `nostr-rust-forum` now takes both from the registry, so it has no
+- **Published:** [`colloquy-core`](https://crates.io/crates/colloquy-core),
+  [`colloquy-view`](https://crates.io/crates/colloquy-view),
+  [`colloquy-nostr`](https://crates.io/crates/colloquy-nostr) and
+  [`colloquy-store`](https://crates.io/crates/colloquy-store) at 0.1.0, all
+  Apache-2.0. `colloquy-nostr` and `colloquy-store` were unpublishable at first
+  only because they took their NIP-01 event structs from `nostr-bbs-core`, which
+  is deliberately not on crates.io — a coupling that bought nothing, since those
+  seven fields are fixed by the spec and not by any library. `colloquy-nostr`
+  now owns them; `colloquy-backends` converts at the one seam where signing
+  actually happens. `colloquy-backends` and `colloquy-mcp` stay internal on
+  purpose: the first binds to this estate's governed memory server and audited
+  signing, the second is a binary. `nostr-rust-forum` now takes both from the registry, so it has no
   path edge into this repo and builds from a clean checkout with nothing beside
   it. Three spec proposals are open upstream: mozilla-ai/cq#536 (verifiable
   graduation), #537 (diversity over attested principals), #538 (a distinct

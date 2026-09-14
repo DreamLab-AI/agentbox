@@ -27,7 +27,7 @@ use colloquy_core::{Timestamp, UnitId};
 use colloquy_nostr::kinds::{KIND_CONFIRMATION, KIND_FLAG, KIND_KNOWLEDGE_UNIT};
 use colloquy_nostr::ledger::{reconstruct, PrincipalResolver};
 use colloquy_nostr::{confirmation_event, flag_event, unit_event};
-use nostr_bbs_core::event::{NostrEvent, UnsignedEvent};
+use colloquy_nostr::event::{NostrEvent, UnsignedEvent};
 
 use crate::query::{Hit, Query, Stats};
 use crate::store::{

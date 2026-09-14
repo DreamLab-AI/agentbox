@@ -10,9 +10,9 @@ description = "Production transports for the colloquy shared and public tiers: t
 publish = false
 
 [dependencies]
-colloquy-core = { path = "../colloquy-core" }
-colloquy-nostr = { path = "../colloquy-nostr" }
-colloquy-store = { path = "../colloquy-store" }
+colloquy-core = { path = "../colloquy-core", version = "0.1" }
+colloquy-nostr = { path = "../colloquy-nostr", version = "0.1" }
+colloquy-store = { path = "../colloquy-store", version = "0.1" }
 nostr-bbs-core = { path = "../../../../../nostr-rust-forum/crates/nostr-bbs-core" }
 async-trait = "0.1"
 serde = { workspace = true }

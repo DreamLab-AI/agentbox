@@ -10,7 +10,7 @@
 use colloquy_core::time::Timestamp;
 use colloquy_core::unit::{KnowledgeUnit, Tier};
 use colloquy_core::UnitId;
-use nostr_bbs_core::event::NostrEvent;
+use crate::event::NostrEvent;
 
 use crate::kinds::*;
 use crate::tags::{self, *};
@@ -236,7 +236,7 @@ mod tests {
         seed.repeat(64 / seed.len())
     }
 
-    fn signed(u: nostr_bbs_core::event::UnsignedEvent, id: &str) -> NostrEvent {
+    fn signed(u: crate::event::UnsignedEvent, id: &str) -> NostrEvent {
         NostrEvent {
             id: id.to_string(),
             pubkey: u.pubkey,

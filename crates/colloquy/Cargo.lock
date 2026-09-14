@@ -293,7 +293,6 @@ name = "colloquy-nostr"
 version = "0.1.0"
 dependencies = [
  "colloquy-core",
- "nostr-bbs-core",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
@@ -306,7 +305,6 @@ dependencies = [
  "async-trait",
  "colloquy-core",
  "colloquy-nostr",
- "nostr-bbs-core",
  "serde",
  "serde_json",
  "tempfile",

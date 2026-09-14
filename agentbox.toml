@@ -769,11 +769,25 @@ similarity_threshold = 0.85
 # bridge it supersedes was. Apply class: boot (a restart applies a flip).
 enabled = true
 # Local-tier append log. Unset for an in-memory store that dies with the session.
+# Which tier the stdio server serves. `shared` is the default on purpose: the
+# agents in one container are one operator's, so a private tier-1 store would
+# lose every learning at the end of the session — which is the problem colloquy
+# exists to solve. `local` is cq's offline tier-1 and is the right choice for a
+# throwaway or air-gapped profile. `public` needs a relay key and a registry.
+tier = "shared"
+# Tier-1 append log, used when tier = "local". Unset for an in-memory store.
 store_path = "/var/lib/agentbox/colloquy/units.jsonl"
 # The SHARED tier's RuVector namespace. Its own, never `patterns` — mixing units
 # into a namespace the frozen recall band is measured against moves the band
 # (LEARNING-memory.md invariant 11).
 namespace = "colloquy"
+# The authorising principal these agents act under (ADR-2086). Empty = derive it
+# from [sovereign_mesh.operator].pubkey_hex, which is already "the person this
+# box runs for". Set it only when the colloquy principal differs from the Nostr
+# operator. It must NEVER equal the agent's own member id: an agent that
+# authorises itself defeats principal collapse, and the binary exits 2 rather
+# than start that way.
+principal = ""
 
 [skills.email_search]
 # Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). Now runs as the

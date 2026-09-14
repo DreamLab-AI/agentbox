@@ -1,5 +1,6 @@
-//! Building the unsigned events. Signing is the caller's, through
-//! [`nostr_bbs_core::signer::Signer`] — this crate never touches key material.
+//! Building the unsigned events. Signing is the caller's — this crate never
+//! touches key material, and every function here returns a template for
+//! whoever holds the key to sign.
 //!
 //! ```
 //! use colloquy_core::{kind::UnitKind, unit::{Insight, KnowledgeUnit}, time::Timestamp};
@@ -21,7 +22,7 @@ use colloquy_core::cluster::GapCandidate;
 use colloquy_core::time::Timestamp;
 use colloquy_core::unit::{KnowledgeUnit, Tier};
 use colloquy_core::UnitId;
-use nostr_bbs_core::event::UnsignedEvent;
+use crate::event::UnsignedEvent;
 
 use crate::kinds::*;
 use crate::tags::{self, *};

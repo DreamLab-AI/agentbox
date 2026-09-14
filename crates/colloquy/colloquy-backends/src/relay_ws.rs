@@ -1,7 +1,8 @@
 //! The public tier's real backend: a websocket to the sovereign Nostr relay.
 //!
 //! NIP-01 over `ws://`, with events signed by the container's own key through
-//! `nostr_bbs_core::event::sign_event`. No crypto is implemented here — the
+//! `nostr_bbs_core::event::sign_event`, crossing the one seam in [`crate::compat`].
+//! No crypto is implemented here — the
 //! Schnorr signing, the event-id hashing and the key handling all come from the
 //! estate's audited crate, and this file is transport plus the filter mapping.
 //!
@@ -23,7 +24,10 @@ use serde_json::{json, Value};
 use tokio_tungstenite::tungstenite::Message;
 
 use colloquy_store::relay::{Filter, RelayBackend};
-use nostr_bbs_core::event::{sign_event, NostrEvent, UnsignedEvent};
+use colloquy_nostr::event::{NostrEvent, UnsignedEvent};
+use nostr_bbs_core::event::sign_event;
+
+use crate::compat::{from_bbs_event, to_bbs_event, to_bbs_unsigned};
 
 /// Why a relay operation failed.
 #[derive(Debug, thiserror::Error)]
@@ -158,8 +162,10 @@ impl RelayBackend for WsRelayBackend {
         // than validated — otherwise every caller has to know our key.
         event.pubkey.clone_from(&self.pubkey);
 
-        let signed =
-            sign_event(event, &self.signing_key).map_err(|e| RelayWsError::Signing(e.to_string()).to_string())?;
+        let signed = from_bbs_event(
+            sign_event(to_bbs_unsigned(event), &self.signing_key)
+                .map_err(|e| RelayWsError::Signing(e.to_string()).to_string())?,
+        );
         let id = signed.id.clone();
 
         let mut ws = self.connect().await.map_err(|e| e.to_string())?;
@@ -220,7 +226,10 @@ impl RelayBackend for WsRelayBackend {
                             if let Ok(ev) = serde_json::from_value::<NostrEvent>(ev) {
                                 // Signature verification is not optional, and it
                                 // is not this crate's to reimplement.
-                                if nostr_bbs_core::event::verify_event(&ev) {
+                                // Verification is not optional and is not this
+                                // crate's to reimplement — it crosses the seam
+                                // to the estate's audited implementation.
+                                if nostr_bbs_core::event::verify_event(&to_bbs_event(ev.clone())) {
                                     out.push(ev);
                                 }
                             }

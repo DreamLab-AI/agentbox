@@ -5,14 +5,15 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 authors.workspace = true
-license = "AGPL-3.0-only"
-description = "KnowledgeStore trait and the three tier implementations: local file, shared vector memory, and the Nostr relay."
-publish = false
+license = "Apache-2.0"
+description = "One KnowledgeStore contract over cq's three tiers: a local append-only file, shared vector memory, and a Nostr relay. Transports are traits, so the mapping is testable without a database or a network."
+readme = "README.md"
+keywords = ["agents", "knowledge", "cq", "storage"]
+categories = ["database"]
 
 [dependencies]
-colloquy-core = { path = "../colloquy-core" }
-colloquy-nostr = { path = "../colloquy-nostr" }
-nostr-bbs-core = { path = "../../../../../nostr-rust-forum/crates/nostr-bbs-core" }
+colloquy-core = { path = "../colloquy-core", version = "0.1" }
+colloquy-nostr = { path = "../colloquy-nostr", version = "0.1" }
 async-trait = "0.1"
 serde = { workspace = true }
 serde_json = { workspace = true }

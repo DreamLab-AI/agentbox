@@ -14,6 +14,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, missing_debug_implementations, rustdoc::broken_intra_doc_links)]
 
+pub mod compat;
 pub mod mcp_client;
 pub mod relay_ws;
 pub mod ruvector;

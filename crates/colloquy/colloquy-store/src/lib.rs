@@ -36,3 +36,8 @@ pub use query::{Hit, Query, Stats};
 pub use relay::{Filter, RelayBackend, RelayStore};
 pub use shared::{SharedStore, VectorBackend};
 pub use store::{KnowledgeStore, StoreError, StorePolicies, StoredUnit};
+
+/// The README's examples, compiled and run as doctests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+pub struct Readme;

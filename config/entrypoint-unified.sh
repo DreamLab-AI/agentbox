@@ -1716,11 +1716,37 @@ if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1
 fi
 _COLLOQUY_BIN="$(command -v colloquy-mcp 2>/dev/null || echo /opt/agentbox/bin/colloquy-mcp)"
 _COLLOQUY_STORE="${COLLOQUY_STORE_PATH:-/var/lib/agentbox/colloquy/units.jsonl}"
+_COLLOQUY_TIER="${COLLOQUY_TIER:-}"
+_COLLOQUY_NS="${COLLOQUY_NAMESPACE:-}"
+if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  [ -z "$_COLLOQUY_TIER" ] && _COLLOQUY_TIER="$(agentbox-manifest toml-string \
+    --manifest "$AGENTBOX_CONFIG" --path skills.colloquy.tier 2>/dev/null || echo "")"
+  [ -z "$_COLLOQUY_NS" ] && _COLLOQUY_NS="$(agentbox-manifest toml-string \
+    --manifest "$AGENTBOX_CONFIG" --path skills.colloquy.namespace 2>/dev/null || echo "")"
+fi
+[ -z "$_COLLOQUY_TIER" ] && _COLLOQUY_TIER="shared"
+[ -z "$_COLLOQUY_NS" ] && _COLLOQUY_NS="colloquy"
+# The authorising principal: whoever this container's agents act for. Read from
+# the manifest rather than demanded as an env var, because the answer is already
+# configured — [sovereign_mesh.operator].pubkey_hex is exactly "the person this
+# box runs for". An explicit [skills.colloquy].principal overrides it for a
+# deployment whose colloquy principal differs from its Nostr operator.
 _COLLOQUY_PRINCIPAL="${COLLOQUY_PRINCIPAL:-${AGENTBOX_OPERATOR_DID:-}}"
+if [ -z "$_COLLOQUY_PRINCIPAL" ] && [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _COLLOQUY_PRINCIPAL="$(agentbox-manifest toml-string \
+    --manifest "$AGENTBOX_CONFIG" --path skills.colloquy.principal 2>/dev/null || echo "")"
+  if [ -z "$_COLLOQUY_PRINCIPAL" ]; then
+    _COLLOQUY_OP="$(agentbox-manifest toml-string \
+      --manifest "$AGENTBOX_CONFIG" --path sovereign_mesh.operator.pubkey_hex 2>/dev/null || echo "")"
+    [ -n "$_COLLOQUY_OP" ] && _COLLOQUY_PRINCIPAL="did:nostr:$_COLLOQUY_OP"
+  fi
+fi
 if { [ "$_COLLOQUY_ON" = "1" ] || [ "$_COLLOQUY_ON" = "true" ]; } \
    && [ -x "$_COLLOQUY_BIN" ] && [ -f "$_MCP_JSON" ]; then
   if [ -z "${AGENTBOX_PUBKEY:-}" ] || [ -z "$_COLLOQUY_PRINCIPAL" ]; then
-    echo "  [mcp] colloquy SKIPPED: need AGENTBOX_PUBKEY and COLLOQUY_PRINCIPAL (or AGENTBOX_OPERATOR_DID)." >&2
+    echo "  [mcp] colloquy SKIPPED: no member or no authorising principal." >&2
+    echo "        member    = AGENTBOX_PUBKEY (from identity.env)" >&2
+    echo "        principal = [skills.colloquy].principal, else [sovereign_mesh.operator].pubkey_hex, else COLLOQUY_PRINCIPAL" >&2
     echo "        Confidence is counted per authorising principal (ADR-2086); an unidentified member cannot attest." >&2
   elif ! grep -q '"colloquy"' "$_MCP_JSON" 2>/dev/null; then
     mkdir -p "$(dirname "$_COLLOQUY_STORE")" 2>/dev/null || true
@@ -1734,7 +1760,14 @@ if { [ "$_COLLOQUY_ON" = "1" ] || [ "$_COLLOQUY_ON" = "true" ]; } \
     "COLLOQUY_MEMBER": "did:nostr:${AGENTBOX_PUBKEY:-}",
     "COLLOQUY_PRINCIPAL": "$_COLLOQUY_PRINCIPAL",
     "COLLOQUY_CLASS": "agent",
-    "COLLOQUY_STORE_PATH": "$_COLLOQUY_STORE"
+    "COLLOQUY_TIER": "$_COLLOQUY_TIER",
+    "COLLOQUY_NAMESPACE": "$_COLLOQUY_NS",
+    "COLLOQUY_STORE_PATH": "$_COLLOQUY_STORE",
+    "COLLOQUY_RUVECTOR_SERVER": "/opt/agentbox/mcp/servers/ruvector-mcp.cjs",
+    "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=ruvector}",
+    "XINFERENCE_ENDPOINT": "${XINFERENCE_ENDPOINT:-http://xinference:9997}",
+    "EMBEDDING_MODEL": "${EMBEDDING_MODEL:-bge-small-en-v1.5}",
+    "NODE_PATH": "$_MCP_SERVERS_NODE_PATH"
   }
 }
 JSON
