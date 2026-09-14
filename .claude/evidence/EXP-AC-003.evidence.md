@@ -6,7 +6,11 @@ git_sha: bc4a9b259483b99e57bc8ba73feeac54c7dae19e
 produced_by: agent:claude-opus
 produced_at: 2026-09-14T15:30:00Z
 repo: agentbox
-audited_by:
+audited_by: agent:claude-sonnet-5
+audited_at: 2026-09-14T00:00:00Z
+auditor_verdict: fail
+auditor_counter_examples_attempted: 2
+auditor_counter_examples_found: 1
 ---
 
 # Evidence: EXP-AC-003 — the effective tier derives from operator task properties, and a request can only tighten it
@@ -170,3 +174,92 @@ same class publishes `{opaque, irreversible, critical}` — the counter-example
 - The member-suppression rule for `Opaque` verifiability.
 - Activation: the container has not been rebuilt, so no running agent has yet
   published a triple-tagged 31402 to the live relay.
+
+## Auditor adversarial probes
+
+Re-ran the producer's three stated commands first — all three PASS exactly as
+claimed (20/20, 19/19, 10/10 tests, git sha `19463a588` HEAD or later on
+`feat/augmentation-conditions`). Then ran probes the producer did not run.
+
+### Probe 1 — an agent-requested triple loosening the class default (a variant of the producer's own `merge` test, run against the real manifest, not a fixture)
+
+Command (`/tmp/audit-scratch/probe-ac003-1-loosen-request.js`, throwaway, not committed):
+
+```js
+const props = tp.derive('ontology_axiom_load', {
+  manifest,                 // the REAL agentbox.toml
+  authorityClass: 'zero-tolerance',
+  requested: { verifiability: 'inspectable', reversibility: 'reversible', stakes: 'bounded' },
+});
+```
+
+Output:
+
+```
+derived with LOOSENING request: {"verifiability":"opaque","reversibility":"irreversible","stakes":"critical"}
+VERDICT: PASS (tightened, request loosening rejected)
+```
+
+**Verdict: no counter-example.** `derive()`'s `merge()` step held the tightest
+triple against a fully-loosened request on the real manifest, not just the
+test fixture.
+
+### Probe 2 — a zero-tolerance class with a SKILL.md `authority_class` override to `recoverable` (the exact probe the mandate asked for: "which wins?")
+
+The evidence's own scenarios never call `classifyAction`/`derive` with a
+`frontmatter.authority_class` that DISAGREES with the manifest's classification
+for the SAME action class — every frontmatter case in
+`tests/sovereign/task-properties.test.js` and `authority-augmentation.test.js`
+either matches the manifest or targets an undeclared class. This probe forces
+that disagreement directly against the real `agentbox.toml`, where
+`ontology_axiom_load` is `zero-tolerance`:
+
+Command (`/tmp/audit-scratch/probe-ac003-2-skillmd-override.js`):
+
+```js
+const cls = authority.classifyAction('ontology_axiom_load', {
+  table, frontmatter: { authority_class: 'recoverable' },
+});
+const props = tp.derive('ontology_axiom_load', { manifest, frontmatter: { authority_class: 'recoverable' } });
+```
+
+Output:
+
+```
+manifest classification for ontology_axiom_load: zero-tolerance
+classifyAction() with SKILL.md frontmatter override authority_class=recoverable: recoverable
+derived task-properties with the same override: {"verifiability":"opaque","reversibility":"compensable","stakes":"critical"}
+VERDICT: FRONTMATTER WINS
+```
+
+**Verdict: CONFIRMED counter-example, inside EXP-AC-003 scope.** `lib/authority.js:123-132`
+(`classifyAction`) checks `fm.authority_class` FIRST, ahead of the manifest
+table. `lib/task-properties.js:190-197` (`derive`) calls `classifyAction` with
+the SAME `frontmatter` before deriving reversibility from it. The result: a
+`frontmatter.authority_class` of `recoverable` turns `zero-tolerance`'s
+`irreversible` seed into `compensable` — the exact shape of counter-example
+EXP-AC-003 names ("a request tag lowering `Irreversible` to `Reversible`"),
+via a *different* input (`frontmatter.authority_class`, not
+`taskProperties`/the "request tag" the expectation and the producer's tests
+actually exercise). `lib/task-properties.js`'s own docstring asserts
+"Reversibility is tightening-only against the `authority_class` seed on every
+surface, so 'zero-tolerance ⇒ irreversible' is an invariant, not a default" —
+that invariant does not hold once `frontmatter.authority_class` is allowed to
+change the seed itself, because nothing downstream re-checks that a
+frontmatter-selected class is at least as tight as the manifest's.
+
+**Scope check (why this is not "PASS with a caveat"):** verified by reading
+every production call site (`management-api/server.js:1121`,
+`routes/broker-bridge.js:272`, `routes/llm-marketplace.js:71`,
+`mcp/servers/governance-bridge.js`) — NONE of them currently pass
+`params.frontmatter` into `guard()`, so this path is **not reachable through
+any route wired today** (confirmed by `grep -rn frontmatter management-api/lib
+management-api/routes management-api/server.js`, which shows `frontmatter`
+used only inside `lib/authority.js` and `lib/task-properties.js` themselves).
+It is a latent defect in the shared module's contract, not a live exploit —
+but `guard()` accepts `frontmatter` as a first-class, documented parameter
+specifically for this purpose (the module's own comments describe a per-skill
+SKILL.md override as intended), so the gap is in the mechanism the PRD asks
+for, waiting for its first caller.
+
+Reported as a defect, not fixed (auditor mandate: find and report, not patch).

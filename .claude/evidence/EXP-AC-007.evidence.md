@@ -6,7 +6,11 @@ git_sha: bc4a9b259483b99e57bc8ba73feeac54c7dae19e
 produced_by: agent:claude-opus
 produced_at: 2026-09-14T15:36:00Z
 repo: agentbox
-audited_by:
+audited_by: agent:claude-sonnet-5
+audited_at: 2026-09-14T00:00:00Z
+auditor_verdict: pass
+auditor_counter_examples_attempted: 5
+auditor_counter_examples_found: 0
 ---
 
 # Evidence: EXP-AC-007 — an operator can execute an approved action by hand during an outage and leave a signed, bound receipt
@@ -134,3 +138,76 @@ preserving the legacy `reason` field, so existing consumers are unaffected.
 - Activation: no forum endpoint is deployed and `forum_auth_api` is unset, so no
   `applied-manually` receipt has reached a live relay. The queue-and-replay path
   is what is evidenced.
+
+## Auditor adversarial probes
+
+Re-ran the producer's three stated commands — all PASS as claimed (12/12,
+10/10, and the 1 FR7.3 case), git sha `19463a588` HEAD or later on
+`feat/augmentation-conditions`. Then ran `governance-manual-continue.js`
+against a REAL `ApplicationReceiptStore` writing to a throwaway directory on
+disk (the producer's `node --test` suite uses an in-memory/mocked
+`receipts` object; this probe uses the actual filesystem-backed store from
+`lib/governance-application-receipts.js`), under `/tmp/audit-scratch` (not
+committed).
+
+### Probe 1 — manual continuation of a `Reject`ed case
+
+Seeded a real receipt via `store.begin({..., outcome: 'reject'}, ...)`, then
+called `manualContinue({case_id: 'case-rejected', executed_by: <human DID>,
+evidence: '...'})`.
+
+```
+1) Reject-case manual continue: {"ok":false,"error":"not-approved","message":"case case-rejected was not approved (outcome: reject)"}
+```
+
+**PASS** — refused with `not-approved`, matching the expectation's counter-example
+("`applied-manually` recorded for a `Reject`ed ... case").
+
+### Probe 2 — `executed_by` is an AGENT DID, registered in a real `agentRegistry.isAgent()` (not the container's own DID, which the producer's suite already covers — a *third-party* agent identity)
+
+```
+2) Agent-DID-as-executor manual continue: {"ok":false,"error":"executor-not-human", ...}
+```
+
+**PASS** — refused with `executor-not-human` for an agent identity distinct
+from the container's own DID.
+
+### Probe 3 — an approved case, operation digest MISMATCH
+
+Approval recorded against `operationDigest({op:'z'})`; manual continue
+supplied `{op: 'NOT-z'}`.
+
+```
+3) Operation-digest-mismatch manual continue: {"ok":false,"error":"operation-digest-mismatch", ...}
+```
+
+**PASS.**
+
+### Probe 4 — happy-path control (approved, human executor, matching digest)
+
+```
+4) Happy-path control: {"ok":true,"stage":"applied-manually"}
+```
+
+**PASS** — confirms probes 1-3 failed for the asserted reason, not because the
+harness itself is broken (the real `ApplicationReceiptStore` + real
+`manualContinue` pairing does succeed on a genuine approval).
+
+### Probe 5 — `isHumanDid()` on an upper-case-hex `did:nostr`
+
+The spec requires lower-case hex (`DID_NOSTR = /^did:nostr:[0-9a-f]{64}$/`).
+Fed `did:nostr:BB…BB` (valid length, wrong case).
+
+```
+5) isHumanDid on UPPER-CASE hex DID: false
+```
+
+**PASS** — rejected rather than silently accepted (a case-insensitive match
+here could let two different-cased spellings of the same pubkey both pass as
+"different" executors in a way the receipt store's `HUMAN_DID` regex — same
+pattern — would not dedupe).
+
+**Overall verdict for EXP-AC-007: PASS.** No counter-example found; all four
+of the mandate's named EXP-AC-007 probe shapes (Reject case, agent DID as
+`executed_by`, mismatched operation digest, plus a fifth case-sensitivity
+check) hold against the real store, not just the producer's mocks.

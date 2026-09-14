@@ -6,7 +6,11 @@ git_sha: bc4a9b259483b99e57bc8ba73feeac54c7dae19e
 produced_by: agent:claude-opus
 produced_at: 2026-09-14T15:34:00Z
 repo: agentbox
-audited_by:
+audited_by: agent:claude-sonnet-5
+audited_at: 2026-09-14T00:00:00Z
+auditor_verdict: pass
+auditor_counter_examples_attempted: 5
+auditor_counter_examples_found: 0
 ---
 
 # Evidence: EXP-AC-006 — the dream-cycle ledger measures the human, not only the agent
@@ -130,3 +134,56 @@ recorded before its PR opened. The full crate suite is 166 passed.
   empty until a night's PR merges with an available merge event. This evidence
   establishes the schema and the writer, not a data series. The C4/C6 baseline
   begins at the first populated row.
+
+## Auditor adversarial probes
+
+Re-ran the producer's two stated commands — both PASS as claimed (19/19 JS,
+12 relevant Rust ledger tests + 154 filtered out of the full 166-test crate
+suite), git sha `19463a588` HEAD or later on `feat/augmentation-conditions`.
+Then five adversarial probes against `management-api/lib/dream-ledger.js`
+(the agentbox-owned clause: the row schema includes `Reviewer` and
+`Review-minutes`), on synthetic markdown built by hand rather than the
+producer's fixtures, under `/tmp/audit-scratch` (not committed).
+
+### Probe 1 — a genuine 10-column legacy row, WITH a pipe-escape in a data cell
+
+```
+| 2026-09-01 | yes | a race \| condition in X | #12 | #8 | yes | ACCEPT | fixed flaky test | agent-1 | #8:MERGED |
+```
+
+Output: `reviewer: null, reviewMinutes: null`, `finding` contains a literal
+`|`. **PASS** — the legacy floor parses, and the pipe-escape does not corrupt
+column alignment (a narrower probe than the producer's fixture, which did not
+combine a legacy-width row with an escaped pipe in the same case).
+
+### Probe 2 — one file containing BOTH a 10-column and a 12-column row (the exact "reads as one series" claim)
+
+Ten-column row → `reviewer: null`; twelve-column row → `reviewer:
+"did:nostr:dd…", reviewMinutes: 42`. **PASS.**
+
+### Probe 3 — negative review-minutes via two different paths
+
+`reviewFromMergeEvent({merged_at: <before> pr_opened_at})` → `reviewMinutes:
+null` (refused, not negated). A ledger row with a literal `-5` in the
+Review-minutes cell → also `null`, not `-5`. **PASS**, both paths agree
+(the merge-event path was producer-tested; the literal-negative-cell path was
+not).
+
+### Probe 4 — a row one cell SHORT of the legacy floor (9 cells)
+
+`cells.length < LEGACY_LEDGER_KEYS.length` (10) → row dropped entirely, not
+partially parsed with a missing trailing field. **PASS**, `rows.length === 0`.
+
+### Probe 5 — `reviewerStats()` on a mix of measured/unmeasured reviews by the SAME reviewer, plus a legacy row
+
+Four rows: one legacy (no reviewer), three by `alice` (minutes `10`, empty,
+`30`). Result: `unreviewed: 1`, `alice.reviews: 3`, `alice.measuredMinutes:
+2`, `alice.medianReviewMinutes: 20` (median of `[10, 30]`, the empty-minutes
+review correctly excluded from the median but still counted as a review).
+**PASS** — this is a case the producer's suite exercises with single
+reviewers per test; this probe forces a mixed measured/unmeasured set for one
+identity within a single ledger.
+
+**Overall verdict for EXP-AC-006 (agentbox scope only): PASS.** No
+counter-example found in the schema, parser, or reviewer-statistics
+aggregation.

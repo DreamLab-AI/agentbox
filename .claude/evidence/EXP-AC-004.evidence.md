@@ -6,7 +6,11 @@ git_sha: bc4a9b259483b99e57bc8ba73feeac54c7dae19e
 produced_by: agent:claude-opus
 produced_at: 2026-09-14T15:32:00Z
 repo: agentbox
-audited_by:
+audited_by: agent:claude-sonnet-5
+audited_at: 2026-09-14T00:00:00Z
+auditor_verdict: pass
+auditor_counter_examples_attempted: 3
+auditor_counter_examples_found: 0
 ---
 
 # Evidence: EXP-AC-004 — a human learns whether their decision applied, and no denial is silent
@@ -207,3 +211,97 @@ An exhausted entry is parked on disk as `failed` and never deleted.
   is not deployed, so no receipt has yet posted to a live forum. Every attempt
   in that state is journalled and queued — which is the intended degraded
   behaviour, not a passing integration.
+
+## Auditor adversarial probes
+
+Re-ran the producer's four stated commands — all PASS as claimed (13/13
+combined across scenarios 1+3 blocks, 9/9, 6/6, 17/17), git sha `19463a588` HEAD
+or later on `feat/augmentation-conditions`. Then three adversarial probes the
+producer did not run, against the real modules on throwaway fixtures under
+`/tmp/audit-scratch` (not committed).
+
+### Probe 1 — `governance-receipt-publisher` on a genuine network-throw vs. a 409, in the same run
+
+Unlike the producer's suite (separate `describe` blocks with distinct fetch
+doubles), this probe runs a `fetchImpl` that actually `throw`s (not merely
+rejects with an HTTP-shaped object) for the network case, and inspects the
+outbox directory on disk directly rather than trusting the returned summary.
+
+```js
+const fetchThrows = async () => { throw new Error('ECONNREFUSED (simulated)'); };
+// ...
+const res1 = await pub1.post({ response_event_id: rid, stage: 'applied' });
+```
+
+Output:
+
+```
+(a) network-throw result: {"ok":false,"queued":true,"error":"receipt POST failed: ECONNREFUSED (simulated)","exhausted":false}
+(a) journal calls so far: 1 {"type":"authority.receipt-post-failed", ... "terminal":false}
+(a) outbox files after network throw: [ '8b776a9b1689e1bb87a5b55d1e67192a.json' ]
+(b) 409 result: {"ok":false,"queued":false,"status":409,"error":"receipt refused as a stage regression (409): stage already applied","regression":true}
+(b) journal calls: 1 {"type":"authority.receipt-post-failed", ... "status":409,"terminal":true}
+(b) outbox files after 409 (should be EMPTY -- terminal, never queued): []
+```
+
+**Verdict: no counter-example.** Journal record written in both cases (never
+silent); disk state matches the ladder's semantics exactly — network failure
+leaves one file on disk (queued for `flush()`), 409 leaves zero (retired, not
+retried).
+
+### Probe 2 — an unknown/malformed stage must POST NOTHING (not merely "post and get refused")
+
+```js
+let fetchCalledC = false;
+const fetchC = async () => { fetchCalledC = true; return { ok: true, status: 200 }; };
+await pub3.post({ response_event_id: rid, stage: 'bogus-stage-not-in-ladder' });
+```
+
+Output:
+
+```
+(c) unknown stage threw: receipt stage must be one of consumer-received | applied | not-applied | applied-manually | fetch called: false
+VERDICT (c) unknown stage posts nothing (throws before any fetch): PASS
+```
+
+**Verdict: no counter-example.** `normalise()` rejects an out-of-ladder stage
+before `attempt()` is ever called — confirmed by a `fetchImpl` spy that
+records whether it was invoked, not just by reading the error message.
+
+### Probe 3 — drive `lib/authority.js` guard() through all 9 deny paths directly (bypassing `authority-augmentation.test.js`'s fixtures) and assert EACH ONE reaches a real `eventsAdapter.dispatch`
+
+```js
+const eventsAdapter = { dispatch: async (rec) => { dispatched.push(rec); } };
+const journal = buildAuthorityJournal({ eventsAdapter, publisher: null });
+const gate = buildAuthorityGate(manifest, { journal, ...deps });
+```
+
+Output (one line per path, `dispatched` = calls to the events adapter, `kind` = the record's chained-event kind):
+
+```
+[1 no-decision-surface] decision=deny stage=decision-surface reason=no-decision-surface dispatched=1 kind=authority.deny
+[2 missing-or-invalid-operation] decision=deny stage=operation reason=missing-or-invalid-operation dispatched=1 kind=authority.deny
+[3 publish-failed] decision=deny stage=publish reason=publish-failed: relay down dispatched=1 kind=authority.deny
+[4 no-request-id] decision=deny stage=publish reason=no-request-id dispatched=1 kind=authority.deny
+[5 request-payload-changed] decision=deny stage=publish reason=request-payload-changed dispatched=1 kind=authority.deny
+[6 await-failed] decision=deny stage=await-decision reason=await-failed: ws closed dispatched=1 kind=authority.deny
+[7 no-signed-response] decision=deny stage=await-decision reason=no-signed-response dispatched=1 kind=authority.deny
+[8 unverified-signature] decision=deny stage=verify-signature reason=unverified-signature dispatched=1 kind=authority.deny
+[9 not-approved] decision=deny stage=outcome reason=not-approved: reject dispatched=1 kind=authority.deny
+[10 journal-throws] decision=deny stage=decision-surface (must still be deny)
+[11 recoverable] decision=allow dispatched=0 (must be allow, 0 dispatched)
+```
+
+**Verdict: no counter-example.** All 9 deny paths dispatch exactly once to the
+events adapter (`kind: 'authority.deny'`, so the ADR-039 hash chain picks it
+up), matching the "count that ALL 9 route through deny() and that the record
+reaches the events adapter" probe from the mandate. Two extras pinned as
+regression guards: a throwing journal (`append` rejects) still leaves the gate
+result as `deny` (fail-closed on the action holds even when the record of it
+fails), and a `recoverable` action dispatches to the events adapter zero
+times (only denials are ever journalled, as the module's own docstring
+claims).
+
+**Overall verdict for EXP-AC-004: PASS.** No counter-example found across
+transport failure, semantic refusal, malformed input, or the full deny-path
+enumeration.
