@@ -35,14 +35,25 @@
  *     [skills.authority.task_properties.classes]   # per-action-class overrides
  *     pod_delete = { verifiability = "opaque", stakes = "critical" }
  *
- * WHO MAY LOOSEN. The manifest and a SKILL.md frontmatter `task_properties`
- * block are OPERATOR surfaces: they SET verifiability and stakes freely. A
- * request-supplied triple (an agent calling `governance_request_action` with
- * `task_properties`) is TIGHTENING-ONLY — it is the same rule the forum applies
- * to `ActionRequest` against `PanelDefinition` (EXP-AC-003), enforced here too
- * so agentbox never publishes a 31402 looser than its operator's declaration.
- * Reversibility is tightening-only against the `authority_class` seed on every
- * surface, so "zero-tolerance ⇒ irreversible" is an invariant, not a default.
+ * WHO MAY LOOSEN. Exactly one surface: `agentbox.toml`. The operator's manifest
+ * SETS verifiability and stakes freely, because the operator is the party the
+ * escalation boundary belongs to. EVERY OTHER SURFACE IS TIGHTENING-ONLY:
+ *
+ *   - a request-supplied triple (an agent calling `governance_request_action`
+ *     with `task_properties`) — the same rule the forum applies to
+ *     `ActionRequest` against `PanelDefinition`;
+ *   - a SKILL.md `task_properties` block — a SKILL.md ships with the skill, so
+ *     treating it as an operator surface would let shipped content declare
+ *     itself inspectable and bounded on an action the operator declared opaque
+ *     and critical;
+ *   - a SKILL.md `authority_class` — resolved against the manifest class on the
+ *     tightening lattice in lib/authority.js `classifyAction`, so it can raise
+ *     `recoverable` to `zero-tolerance` but never the reverse. A refused
+ *     loosening is logged and journalled, never silent.
+ *
+ * So "zero-tolerance ⇒ irreversible" is an invariant, not a default: no surface
+ * below the operator's manifest can turn that seed into `compensable`
+ * (EXP-AC-003 auditor counter-example, commit 887679ff3).
  *
  * Pure and total: no I/O, no clock, every input tolerated.
  *
@@ -154,8 +165,14 @@ function merge(base, other) {
 }
 
 /**
- * Apply an OPERATOR override (manifest class entry or SKILL.md frontmatter):
- * verifiability and stakes are SET, reversibility may only tighten.
+ * Apply a TRUE OPERATOR override — a `[skills.authority.task_properties.classes]`
+ * entry in agentbox.toml: verifiability and stakes are SET, reversibility may
+ * only tighten.
+ *
+ * NOT for SKILL.md frontmatter. A SKILL.md is shipped content, not the
+ * operator's manifest; `derive` puts frontmatter through `merge` so it can only
+ * tighten every axis (EXP-AC-003). Retained for manifest-shaped callers and for
+ * the `derive` internals that read a class entry directly.
  */
 function applyOperatorOverride(base, override) {
   const out = { ...base };
@@ -177,22 +194,28 @@ function applyOperatorOverride(base, override) {
  * @param {object} [opts.manifest]        - parsed agentbox.toml
  * @param {object} [opts.table]           - a pre-loaded loadTaskPropertyTable() result
  * @param {string} [opts.authorityClass]  - a pre-resolved authority class (skips classification)
- * @param {object} [opts.frontmatter]     - SKILL.md frontmatter (authority_class / task_properties)
+ * @param {object} [opts.frontmatter]     - SKILL.md frontmatter (authority_class / task_properties) — TIGHTENING ONLY
  * @param {object} [opts.requested]       - an agent-supplied triple — TIGHTENING ONLY
+ * @param {object} [opts.logger]          - structured logger for a refused frontmatter loosening
+ * @param {Function} [opts.onLoosening]   - reporter for a refused frontmatter authority_class loosening
  * @returns {{verifiability: string, reversibility: string, stakes: string}}
  */
 function derive(actionClass, opts = {}) {
   const table = opts.table || loadTaskPropertyTable(opts.manifest);
   const frontmatter = (opts.frontmatter && typeof opts.frontmatter === 'object') ? opts.frontmatter : {};
 
-  // Reversibility seed: an explicitly supplied class, else the frontmatter
-  // override, else the manifest table, else escalation-required (fail-closed).
+  // Reversibility seed: an explicitly supplied class, else classifyAction — which
+  // resolves the manifest table against the frontmatter ON THE TIGHTENING
+  // LATTICE, so a frontmatter `authority_class: recoverable` on a zero-tolerance
+  // action cannot reach `reversibilityFor` as `recoverable` (EXP-AC-003).
   let authorityClass = opts.authorityClass;
   if (!authorityClass) {
     const { classifyAction, loadClassificationTable } = require('./authority');
     authorityClass = classifyAction(actionClass, {
       table: loadClassificationTable(opts.manifest),
       frontmatter,
+      logger: opts.logger,
+      onLoosening: opts.onLoosening,
     });
   }
 
@@ -203,7 +226,10 @@ function derive(actionClass, opts = {}) {
     stakes: classEntry.stakes || table.defaults.stakes,
   };
 
-  props = applyOperatorOverride(props, frontmatter.task_properties);
+  // A SKILL.md ships WITH THE SKILL — it is not the operator's agentbox.toml, so
+  // it goes through the same tightening lattice as an agent-supplied request
+  // triple rather than the operator SET path (EXP-AC-003 counter-example).
+  props = merge(props, frontmatter.task_properties);
   // An agent's own declaration may only tighten what the operator declared.
   props = merge(props, opts.requested);
   return props;

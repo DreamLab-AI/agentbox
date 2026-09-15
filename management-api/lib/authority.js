@@ -12,11 +12,16 @@
  *
  * Three rules the gate enforces:
  *
- *   1. ESCALATION BY DEFAULT. An action class that is neither in the config
- *      classification table nor carried on the skill's frontmatter is
- *      `escalation-required`, NOT permissive. The cost of forgetting to classify
- *      is a blocking prompt, never an unreviewed irreversible action
- *      (ADR-037 D2 rejected alternative 2; falsification clause 1).
+ *   1. ESCALATION BY DEFAULT, AND FRONTMATTER TIGHTENS ONLY. An action class
+ *      that is neither in the config classification table nor carried on the
+ *      skill's frontmatter is `escalation-required`, NOT permissive. The cost of
+ *      forgetting to classify is a blocking prompt, never an unreviewed
+ *      irreversible action (ADR-037 D2 rejected alternative 2; falsification
+ *      clause 1). Where BOTH surfaces speak, the operator's manifest is the seed
+ *      and a SKILL.md `authority_class` may only TIGHTEN it — a frontmatter
+ *      demoting a zero-tolerance action to `recoverable` is ignored and
+ *      reported, never honoured (EXP-AC-003 counter-example). Tightening is an
+ *      invariant here, not a default.
  *
  *   2. ZERO-TOLERANCE BLOCKS ON A SIGNED RESPONSE. A `zero-tolerance` action (or
  *      an unclassified/escalation-required one) does not proceed until a signed
@@ -111,24 +116,83 @@ function loadClassificationTable(manifest) {
 }
 
 /**
- * Classify one action. Priority: per-skill frontmatter override, then the config
- * table, then escalation-required. Never returns "permissive".
+ * Tightness rank of an authority class. `recoverable` proceeds with no wait;
+ * `zero-tolerance` and `escalation-required` both block on a signed, approving
+ * response, so they share the tighter rank. Comparing ranks — rather than
+ * letting one surface win outright — is what makes tightening a LATTICE JOIN
+ * instead of a precedence rule.
+ *
+ * @param {string} cls
+ * @returns {number} 0 = loosest (recoverable), 1 = blocks on a signed decision
+ */
+function authorityRank(cls) {
+  return cls === 'recoverable' ? 0 : 1;
+}
+
+/**
+ * Classify one action. Never returns "permissive".
+ *
+ * TIGHTENING IS AN INVARIANT, NOT A DEFAULT (EXP-AC-003 counter-example,
+ * auditor commit 887679ff3). The OPERATOR's `[skills.authority.classes]` entry
+ * in agentbox.toml is the seed. A SKILL.md frontmatter `authority_class` may
+ * only TIGHTEN that seed:
+ *
+ *   manifest recoverable      + frontmatter zero-tolerance ⇒ zero-tolerance  (tighten — honoured)
+ *   manifest zero-tolerance   + frontmatter recoverable     ⇒ zero-tolerance  (loosen  — IGNORED + reported)
+ *   manifest declares nothing + frontmatter <either>        ⇒ the frontmatter class
+ *
+ * The third line is deliberate and is not a hole: rule 1 of this module says an
+ * action carried on NEITHER surface escalates, which means frontmatter is a
+ * legitimate place to classify an action the operator has not tabled. What it
+ * may never do is demote one the operator HAS tabled — a SKILL.md ships with the
+ * skill, so treating it as co-equal with the operator's manifest would let
+ * shipped content downgrade an irreversible action to an unblocked proceed, and
+ * would turn the ADR-2011 reversibility seed from `irreversible` into
+ * `compensable` (see lib/task-properties.js `derive`).
+ *
+ * A refused loosening is never silent: it is named on `opts.logger` as a
+ * structured `authority.frontmatter-loosening-ignored` line and handed to
+ * `opts.onLoosening` so the gate can journal it beside the deny it caused.
  *
  * @param {string} actionClass - the action-class key (matches a table key)
  * @param {object} [opts]
  * @param {object} [opts.table]        - a table from loadClassificationTable()
  * @param {object} [opts.frontmatter]  - a SKILL.md frontmatter object (may carry authority_class)
+ * @param {object} [opts.logger]       - structured logger for a refused loosening
+ * @param {Function} [opts.onLoosening]- ({action_class, manifest_class, frontmatter_class}) => void
  * @returns {'recoverable'|'zero-tolerance'|'escalation-required'}
  */
 function classifyAction(actionClass, opts = {}) {
   const fm = opts.frontmatter || {};
-  if (isAuthorityClass(fm.authority_class)) return fm.authority_class;
-
   const table = opts.table || { classes: {} };
-  const fromTable = table.classes && table.classes[actionClass];
-  if (isAuthorityClass(fromTable)) return fromTable;
 
-  return ESCALATION_REQUIRED;
+  const fromTable = table.classes && table.classes[actionClass];
+  const manifestClass = isAuthorityClass(fromTable) ? fromTable : null;
+  const frontmatterClass = isAuthorityClass(fm.authority_class) ? fm.authority_class : null;
+
+  // No frontmatter declaration — the manifest, else escalation-required.
+  if (!frontmatterClass) return manifestClass || ESCALATION_REQUIRED;
+
+  // The operator tabled nothing for this action, so the skill's own declaration
+  // is the only one there is and it classifies (rule 1).
+  if (!manifestClass) return frontmatterClass;
+
+  // Both declared: the TIGHTER wins, whichever surface it came from.
+  if (authorityRank(frontmatterClass) >= authorityRank(manifestClass)) return frontmatterClass;
+
+  const attempt = {
+    action_class: actionClass || null,
+    manifest_class: manifestClass,
+    frontmatter_class: frontmatterClass,
+  };
+  if (opts.logger && typeof opts.logger.warn === 'function') {
+    opts.logger.warn({ event: 'authority.frontmatter-loosening-ignored', ...attempt },
+      `SKILL.md frontmatter tried to loosen "${attempt.action_class}" from ${manifestClass} to ${frontmatterClass} — IGNORED, the manifest class stands`);
+  }
+  if (typeof opts.onLoosening === 'function') {
+    try { opts.onLoosening(attempt); } catch { /* reporting never changes the classification */ }
+  }
+  return manifestClass;
 }
 
 /**
@@ -194,6 +258,28 @@ function buildAuthorityGate(manifest, deps = {}) {
   // it did before FR4.4, denying identically but leaving no durable record.
   const journal = (deps.journal && typeof deps.journal.append === 'function') ? deps.journal : null;
   const agentDid = typeof deps.agentDid === 'string' ? deps.agentDid : null;
+
+  /**
+   * Record a REFUSED frontmatter loosening. Best-effort on exactly the same
+   * terms as `deny`: a journal failure is logged and never propagates, because
+   * failing to record the attempt must not change what the gate decided.
+   *
+   * @param {object} attempt - { action_class, manifest_class, frontmatter_class }
+   * @param {string} [did]   - the DID to stamp, falling back to deps.agentDid
+   */
+  async function journalLoosening(attempt, did) {
+    if (!journal) return;
+    try {
+      await journal.append({
+        type: 'authority.frontmatter-loosening-ignored',
+        agent_did: did || agentDid,
+        ...attempt,
+      });
+    } catch (err) {
+      logger.warn({ event: 'authority.loosening-unjournalled', ...attempt, err: err.message },
+        'refused frontmatter loosening could not be journalled — the refusal stands but is unrecorded');
+    }
+  }
 
   /**
    * Record one denial and return the structured gate result. EVERY deny path
@@ -270,7 +356,20 @@ function buildAuthorityGate(manifest, deps = {}) {
    *   outcome?:string|null, reason?:string }>}
    */
   async function guard(params = {}) {
-    const cls = classifyAction(params.actionClass, { table, frontmatter: params.frontmatter });
+    // A frontmatter that tries to LOOSEN the operator's class is ignored by
+    // classifyAction; we capture the attempt so it lands in the same durable
+    // record as the denial it will usually cause (FR4.4). Silent refusal would
+    // leave the operator surface unable to see a skill probing the boundary.
+    const looseningAttempts = [];
+    const cls = classifyAction(params.actionClass, {
+      table,
+      frontmatter: params.frontmatter,
+      logger,
+      onLoosening: (attempt) => looseningAttempts.push(attempt),
+    });
+    for (const attempt of looseningAttempts) {
+      await journalLoosening(attempt, params.agentDid);
+    }
 
     // ADR-2011 — derive the OPERATOR-declared task-property triple. The action's
     // authority class seeds reversibility; verifiability and stakes come from
@@ -415,5 +514,6 @@ module.exports = {
   isAuthorityClass,
   loadClassificationTable,
   classifyAction,
+  authorityRank,
   buildAuthorityGate,
 };
