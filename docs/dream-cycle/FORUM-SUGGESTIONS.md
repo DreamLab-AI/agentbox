@@ -25,3 +25,9 @@ the operator. Nothing here merges or ships without the human gate.
 | 2026-09-14 | c95085583324 | a3af4977 | action | forum | Slightly more streamlined / compact / thoughtful design system particularly good mobile. Lots of space and overlap making it hard to follow a thread | Pure UI/layout quality-of-life pass on forum thread readability with no security or scope surface — ideal action candidate. |
 | 2026-09-14 | 256b42cbdaa7 | a3af4977 | defer | agentbox | Configurable / add your own emojis | User-supplied emojis imply uploads, storage, and a content-moderation surface, which are scope/policy calls for the operator rather than a low-risk overnight item. |
 | 2026-09-14 | 2f1ccf26c812 | a3af4977 | defer | agentbox | DM history  isn't viewable - more generally broken | DM history touches privacy/encrypted-message surfaces and the report lacks repro detail, so it must go to the operator rather than the overnight queue. |
+
+## Close-out DM — 2026-09-15
+
+| Sent (UTC) | From | To | Wrap event id | Relay | Items |
+|---|---|---|---|---|---|
+| 2026-09-15T22:26:59Z | junkiejarvis `2de44d56…916e9` | RedDread `a3af4977…fd954` | `f418ef2f577714a47ce72853b55ba710c2491b086f68c418638ad3fd6f8503ce` | dreamlab-nostr-relay (OK true, NIP-42 authed) | 9 feedback items: 7 shipped, 1 partial (mentions composer), 1 behaviour (clarify-before-acting); forum kit 64b15d5, awaiting edge deploy |
