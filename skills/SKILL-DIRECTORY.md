@@ -175,6 +175,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `latex-documents` | No | TeX Live toolchain, Beamer presentations, BibTeX, mathematical typesetting | Academic papers, presentations, publication-quality documents |
 | `book-publishing` | No | End-to-end book pipeline: markdown → arXiv/KDP/print-ready PDF using parallel agent swarms (LaTeX conversion, BibTeX extraction, TikZ diagrams, matplotlib charts, Wardley maps, Gemini image upcycling, visual verification) | Publishing a book or preparing a full manuscript for academic or commercial publication |
 | `diagram-design` | No | Editorial-quality HTML/SVG diagrams: 28 visual types, branded design system, semantic patterns, draw.io/Mermaid import, light/dark/terminal/sketchy variants, accessible animation, self-contained output | Presentation diagrams, blog visuals, branded architecture diagrams, editorial charts, any diagram that will be shared or published |
+| `diagrams-as-code` | No | Citation-verified Mermaid corpus for a whole repository or estate: one topic file per subsystem with dual developer/business narratives, every diagram claim resolved to `path:line` at a declared `verified_commit`, Tension/Debt/Drift/Open/Invariant markers collected into a generated REGISTER.md, plus COVERAGE.md, an index block and a JSON report. Ships the zero-dependency gate `scripts/diagram-index-gen.cjs` (`--check`, `--cite-check`, `--strict-citations`, `--worktree-citations`, `--no-source-paths`, `--render` via mmdc at a 4500px legibility ceiling, `--report`) | Mapping, cataloguing or cartographing a whole codebase in diagrams; extending or re-verifying an existing `docs/diagrams` tree against HEAD; a state-of-play audit that must cite its evidence. NOT a single diagram (`mermaid-diagrams`), a published visual (`diagram-design`), or an audience-facing explainer built on a corpus (`explainer`) |
 | `mermaid-diagrams` | No | Diagrams-as-code routing hub (routes to diagram-design or Mermaid). Mermaid engine: 25 types, PNG/SVG/PDF via browsercontainer sidecar | Quick technical diagrams in code, version-controlled .mmd files, report/LaTeX embeds. Routes to diagram-design for editorial output |
 | `pdf-signing` | No | Cryptographic PDF signing via **pyHanko** (PAdES/eIDAS-aligned): self-signed identity generation (X.509/RSA-3072), visible signature panel, RFC-3161 timestamps, LTV, `pdfsig` verification, PKCS#11/HSM + eIDAS QES upgrade path. Private key stays in `$PDF_SIGNING_KEYS_DIR`, never in the image | "Digitally sign / e-sign this PDF/invoice/contract", a counterparty requires signed documents, generating a signing identity, verifying or timestamping a signature. NOT for stamping a signature image only (imagemagick) or form-fill (pdftk) |
 | `paperbanana` | No | Publication-quality academic figures via multi-agent VLM pipeline (Gemini/OpenAI) | Research paper figures, methodology diagrams, statistical plots |
@@ -511,6 +512,10 @@ Q3: What kind of document?
     |
     +-- Code-first .mmd diagrams (version-controlled, PNG/SVG/PDF export)
     |   --> mermaid-diagrams  (routes to diagram-design for editorial needs)
+    |
+    +-- Diagram the WHOLE repository / estate as a verified corpus (topic files,
+    |   path:line citations at a declared commit, register of tensions and debt)
+    |   --> diagrams-as-code  (generator gates structure, citations, grammar, width)
     |
     +-- Publication-quality academic figures (methodology, stats plots)
     |   --> paperbanana

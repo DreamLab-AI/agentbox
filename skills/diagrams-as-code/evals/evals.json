@@ -1,0 +1,29 @@
+{
+  "skill_name": "diagrams-as-code",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Nobody here can explain how this repo fits together any more. I want the whole thing mapped in diagrams, in the repo, checked in, so the next person can read it — and I want to know what's dodgy in it while you're at it.",
+      "expected_output": "Scaffolds docs/diagrams with an area set decided from an anatomy pass (not mirrored from the directory layout), a diagrams.config.json pinning the areas and reading order, a README with the developer/business/register doors, and topic files whose frontmatter declares governing docs, ADRs, sources and a verified_commit. Every diagram claim carries a path:line inside that topic's sources:. Writes both narrative sections per topic. Marks Tension/Debt/Drift/Open/Invariant in place rather than collecting them at the end, and generates REGISTER.md and COVERAGE.md with the generator. Runs --check --cite-check to zero warnings and --render before declaring any topic done. Does not edit product code; the 'dodgy' findings land as register markers with citations, not as fixes.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "There's a docs/diagrams tree in here from a few months ago. Is any of it still true? We've shipped a lot since.",
+      "expected_output": "Treats each topic as a claim about the commit it declares, not as a live view. Resolves every verified_commit (bare sha and {repo: sha} map), diffs each topic's own sources: against HEAD to list which topics are unverified rather than wrong, and runs the generator's --check --cite-check to classify the warnings — separating 'unresolvable, never checked' (a citation whose file is absent from sources:) from a line that has moved. Reports citationsChecked against the number of citations written. Re-stamps only the topics whose sources actually changed, re-deriving each moved line number from the symbol rather than shifting it by a diff offset, and leaves untouched topics on their old shas. Does not claim verification it did not perform, and does not use --worktree-citations as the gate.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "We're handing this codebase to a client next week. Use the diagram corpus in docs/diagrams to build them something they can actually read, and add a couple of diagrams for the bits it doesn't cover.",
+      "expected_output": "Splits the two jobs and names the boundary. Extends the corpus in place for the uncovered areas — new topics under the existing area/id scheme, both narratives, citations resolved at a declared revision, gated with --check --cite-check --render. For the client-facing deliverable, hands off to the explainer skill and honours the ringfence: no topic ids, no register or marker numbering, no tension/debt/drift wording and no fix history in reader text; a limitation learnt from the register is restated in ordinary product terms grounded in the same source file and line. Verifies each corpus topic it leans on against HEAD before reuse and cites the source file, never the corpus topic. Produces the --report JSON as the interface between the two, and does not edit the target's product code.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Put a CI gate on our diagrams so this stops rotting. The runner only checks out this one repo, and half our diagrams cite the sibling repos.",
+      "expected_output": "Distinguishes the two gates. Uses --check --no-source-paths on the hosted runner for the structural half (frontmatter, area/prefix agreement, unique ids, H2 binding, narrative sections, forbidden kinds, dark rect fills), and states that citation checking is meaningless there — declining to combine --strict-citations with --no-source-paths, which the tool refuses anyway. Puts the full --check --cite-check --render (and --strict-citations only once the corpus is at zero warnings) on a runner or local hook that has the sibling checkouts, explaining that adopting strict mode while warnings remain leaves the gate permanently red. Keeps the generator zero-dependency and notes mmdc as the only optional requirement for --render.",
+      "files": []
+    }
+  ]
+}

@@ -1,5 +1,15 @@
 # Hand-up: escalating a red gate to a stronger tier
 
+**The posture is chosen, not inferred.** Everything below assumes a run that asked the user
+which model posture to work under — local and private, hosted frontier, or local with
+escalation — and recorded the answer before the first draft call. That question is asked every
+run, with no default and no carrying forward of a previous run's answer; see "First, choose the
+model posture" in `SKILL.md`. Hand-up is the machinery of the third posture and the safety
+valve of the first: under a local posture a hosted call is a fault rather than a shortcut, so a
+model that cannot finish writes a packet instead. It never escalates itself quietly, and a run
+that discovers it needs the hosted model for the bulk of the work goes back to the user to
+change the posture rather than changing it in passing.
+
 The production run of an explainer is meant to be done by a local model, in the
 background, for hours, at GPU cost only. That model will sometimes be unable to turn a
 red gate green, and the wrong responses are the two extremes: retrying the same thing

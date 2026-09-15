@@ -9,7 +9,7 @@
 > consultant-deepseek, consultant-perplexity, consultant-zai, consultant-antigravity) are
 > not skills; route to them directly via their `consult` tool when a second model opinion is wanted.
 
-Skills: 124 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
+Skills: 125 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
 
 ## How to route
 
@@ -111,6 +111,7 @@ Skills: 124 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md A
 | `art` | Complete visual content system for Claude Code. Use when generating blog headers, infographics, editorial art, diagrams, or comics. Default aesthetic: light … |
 | `book-publishing` | Use when publishing a book, preparing an arXiv submission, formatting a manuscript for KDP, or turning a markdown manuscript into a print-ready PDF. End-to-end … |
 | `diagram-design` | Create branded architecture, IT current-state, flowchart, sequence, state machine, ER/data model, timeline, swimlane, quadrant, radar/spider, loop/flywheel, … |
+| `diagrams-as-code` | Build, extend, verify and render a citation-verified Mermaid corpus for a whole repository: one topic file per subsystem, every diagram citing the code it was … |
 | `fossflow` | Generate isometric network-topology, infrastructure, and architecture diagrams as FossFLOW JSON (compact LLM-optimised format or full verbose SVG/JSON with … |
 | `latex-documents` | Compile LaTeX documents to PDF - academic papers, theses, Beamer presentations, technical docs with math, bibliographies, and multi-file projects. Use when … |
 | `mermaid-diagrams` | Diagrams-as-code routing hub. Two engines: (1) diagram-design — editorial-quality self-contained HTML/SVG diagrams with 28 visual types, branded design system, … |
