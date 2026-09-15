@@ -75,6 +75,23 @@ docs-alignment --project-root . --docs-dir ./docs \
   --full-validation --git-compliant --uk-english --diataxis-strict
 ```
 
+## A diagrams-as-code corpus is audited by its own gate
+
+`validate-mermaid.sh` checks loose diagrams for syntax. A repository whose `docs/diagrams/`
+follows the topic contract (frontmatter with `id`/`area`/`sources`/`verified_commit`, two
+narratives, register markers — see `diagrams-as-code`) has a stronger check available and
+this audit must run it, because a diagram that parses can still cite a line that moved:
+
+```bash
+node ../diagrams-as-code/scripts/diagram-index-gen.cjs docs/diagrams \
+  --check --cite-check --worktree-citations --report ./docs/working/diagrams-report.json
+```
+
+Every citation warning in the report is an alignment finding (record → code drift) and is
+listed in the scorecard beside broken links; a topic whose `sources:` changed since its
+`verified_commit` is stale even with zero warnings. Fixing is the corpus owner's job
+through that skill's verification recipe — this audit reports, it does not re-stamp.
+
 ## Swarm path (large corpora)
 
 For a comprehensive modernisation, deploy the 15-agent swarm via the Task tool:
@@ -110,3 +127,5 @@ memory-coordination keys are in [`references/swarm.md`](references/swarm.md).
 ## Related skills
 
 - `skill-tuning` measures whether a skill's wording raises task success; this skill only checks corpus consistency.
+- `diagrams-as-code` owns the citation-verified diagram corpus and its generator; this audit runs that generator as one of its gates and reports its warnings, never edits the corpus.
+- `explainer` ships a verified corpus as the Diagrams door of a repository explainer; run this audit and the corpus gate first.

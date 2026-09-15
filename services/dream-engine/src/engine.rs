@@ -998,6 +998,12 @@ impl Engine {
             effect: String::new(),
             witness: wit_short.clone(),
             prior_fates: String::new(),
+            // FR6.6 — the human columns are EMPTY tonight. A PR opened by this
+            // night has not been reviewed yet; they are filled on a later night
+            // from the merge event (ledger::review_from_merge), alongside the
+            // prior-night fate token for the same PR.
+            reviewer: String::new(),
+            review_minutes: String::new(),
         };
         ledger::append_row(&ledger_path, &row)?;
         info!(path = %ledger_path.display(), "ledger row appended");
@@ -1176,6 +1182,8 @@ impl Engine {
                 effect: String::new(),
                 witness: "BLOCKED".into(),
                 prior_fates: String::new(),
+                reviewer: String::new(),
+                review_minutes: String::new(),
             },
         )?;
 
@@ -1270,6 +1278,8 @@ impl Engine {
                 effect: String::new(),
                 witness: "NONE".into(),
                 prior_fates: String::new(),
+                reviewer: String::new(),
+                review_minutes: String::new(),
             },
         )?;
 
@@ -1620,11 +1630,11 @@ mod tests {
         assert!(s.ends_with(t));
     }
 
-    const LEDGER_HEADER: &str = "| Date | Deep | Finding | Issue | PR | Evaluated? | Verdict | Effect | Witness | Prior-night fates |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n";
+    const LEDGER_HEADER: &str = "| Date | Deep | Finding | Issue | PR | Evaluated? | Verdict | Effect | Witness | Prior-night fates | Reviewer | Review-minutes |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n";
 
     fn row(verdict: &str) -> String {
         format!(
-            "| 2026-08-15 | deep | finding | NONE | NONE | yes | {} |  | abcd1234 |  |\n",
+            "| 2026-08-15 | deep | finding | NONE | NONE | yes | {} |  | abcd1234 |  |  |  |\n",
             verdict
         )
     }

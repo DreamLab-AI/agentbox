@@ -1,10 +1,27 @@
 //! Append-only markdown-table ledger.
 //!
-//! Each night's outcome is recorded as one row in a 10-column markdown table.
+//! Each night's outcome is recorded as one row in a 12-column markdown table.
 //! The table is human-readable in a repo and machine-appendable: [`append_row`]
 //! bootstraps the header the first time and thereafter appends exactly one line,
 //! escaping every cell so a stray `|` or newline can never break the table.
+//!
+//! The last two columns — `Reviewer` and `Review-minutes` — are the human side
+//! of the night (PRD-augmentation-conditions FR6.6). Ten of the twelve columns
+//! measure what the AGENT did; these two measure the person who reviewed the PR
+//! it opened, which is what makes the longitudinal augmentation conditions (C4
+//! deepening learning, C6 job purpose) readable from the ledger at all.
+//!
+//! They are populated from the PR merge event — `merged_by`, and
+//! `merged_at − pr_opened_at` in whole minutes — and left EMPTY whenever the PR
+//! is unmerged or the event is unavailable. An empty cell reads back as `null`
+//! in the cockpit parser (`management-api/lib/dream-ledger.js`); a fabricated
+//! `0` would read as "reviewed instantly", so absence is written as absence.
+//!
+//! Ledgers written before this change are ten columns wide and stay valid: the
+//! parser's compatibility floor is the legacy width, and the two new columns
+//! are appended, never inserted.
 
+use chrono::DateTime;
 use std::path::Path;
 use thiserror::Error;
 
@@ -15,8 +32,8 @@ pub enum LedgerError {
     Io(#[from] std::io::Error),
 }
 
-/// The ten column headers, in order.
-const COLUMNS: [&str; 10] = [
+/// The twelve column headers, in order.
+const COLUMNS: [&str; 12] = [
     "Date",
     "Deep",
     "Finding",
@@ -27,6 +44,8 @@ const COLUMNS: [&str; 10] = [
     "Effect",
     "Witness",
     "Prior-night fates",
+    "Reviewer",
+    "Review-minutes",
 ];
 
 /// One ledger row. Fields map one-to-one onto [`COLUMNS`].
@@ -49,6 +68,74 @@ pub struct LedgerRow {
     /// The short (12-char) witness.
     pub witness: String,
     pub prior_fates: String,
+    /// Who merged this night's PR — a GitHub login or a `did:nostr`. EMPTY when
+    /// the PR is unmerged or the merge event was unavailable (FR6.6).
+    pub reviewer: String,
+    /// `merged_at − pr_opened_at` in whole minutes, as a decimal string. EMPTY
+    /// when either timestamp is unavailable — never `0`.
+    pub review_minutes: String,
+}
+
+impl LedgerRow {
+    /// A row with the human columns empty: the shape every night starts in,
+    /// since a PR opened tonight has not been reviewed yet.
+    ///
+    /// Callers that later learn the merge event fill [`LedgerRow::reviewer`] and
+    /// [`LedgerRow::review_minutes`] with [`review_from_merge`].
+    pub fn unreviewed(
+        date: String,
+        deep: String,
+        finding: String,
+        issue: String,
+        pr: String,
+        evaluated: String,
+        verdict: String,
+        effect: String,
+        witness: String,
+        prior_fates: String,
+    ) -> Self {
+        Self {
+            date,
+            deep,
+            finding,
+            issue,
+            pr,
+            evaluated,
+            verdict,
+            effect,
+            witness,
+            prior_fates,
+            reviewer: String::new(),
+            review_minutes: String::new(),
+        }
+    }
+}
+
+/// Derive the two human columns from a PR merge event.
+///
+/// `merged_by` is written verbatim (a login or a `did:nostr`). The duration is
+/// whole minutes between the two RFC-3339 timestamps, and is EMPTY whenever it
+/// cannot be computed honestly: a missing timestamp, an unparseable one, or a
+/// merge recorded before the PR opened (clock skew, or a back-dated import).
+/// Rounding is to the nearest minute, so a two-minute review is `2`, not `1`.
+pub fn review_from_merge(
+    merged_by: Option<&str>,
+    pr_opened_at: Option<&str>,
+    merged_at: Option<&str>,
+) -> (String, String) {
+    let reviewer = merged_by.unwrap_or("").trim().to_string();
+
+    let parse = |s: Option<&str>| DateTime::parse_from_rfc3339(s?.trim()).ok();
+    let minutes = match (parse(pr_opened_at), parse(merged_at)) {
+        (Some(opened), Some(merged)) if merged >= opened => {
+            let seconds = (merged - opened).num_seconds();
+            // Nearest whole minute, computed in integers so no float rounding
+            // can turn a 90-second review into "1".
+            (((seconds * 10) / 60 + 5) / 10).to_string()
+        }
+        _ => String::new(),
+    };
+    (reviewer, minutes)
 }
 
 /// Escape a cell so it can never break the markdown table: `|` becomes `\|` and
@@ -70,6 +157,8 @@ fn row_line(row: &LedgerRow) -> String {
         &row.effect,
         &row.witness,
         &row.prior_fates,
+        &row.reviewer,
+        &row.review_minutes,
     ];
     let escaped: Vec<String> = cells.iter().map(|c| escape_cell(c)).collect();
     format!("| {} |", escaped.join(" | "))
@@ -80,7 +169,7 @@ fn header_line() -> String {
     format!("| {} |", COLUMNS.join(" | "))
 }
 
-/// The divider line, e.g. `| --- | --- | ... |` (ten columns).
+/// The divider line, e.g. `| --- | --- | ... |` (twelve columns).
 fn divider_line() -> String {
     let dashes: Vec<&str> = COLUMNS.iter().map(|_| "---").collect();
     format!("| {} |", dashes.join(" | "))
@@ -141,6 +230,8 @@ mod tests {
             effect: "merged".into(),
             witness: "8522806be1fd".into(),
             prior_fates: "REJECT, INCONCLUSIVE".into(),
+            reviewer: "jjohare".into(),
+            review_minutes: "42".into(),
         }
     }
 
@@ -164,7 +255,7 @@ mod tests {
         assert_eq!(lines.len(), 3); // header + divider + one row
         assert_eq!(lines[0], header_line());
         assert_eq!(lines[1], divider_line());
-        assert_eq!(lines[0].matches('|').count(), 11); // 10 columns -> 11 bars
+        assert_eq!(lines[0].matches('|').count(), 13); // 12 columns -> 13 bars
         assert!(lines[2].starts_with("| 2026-08-15 |"));
     }
 
@@ -209,16 +300,16 @@ mod tests {
 
         let content = fs::read_to_string(&path).unwrap();
         let last = content.lines().last().unwrap();
-        // Exactly the two outer bars plus nine inner separators = 11 bars,
+        // Exactly the two outer bars plus eleven inner separators = 13 bars,
         // because the literal pipe was escaped (backslash-pipe is not counted
         // as an unescaped separator below).
         let unescaped_bars = count_unescaped_bars(last);
-        assert_eq!(unescaped_bars, 11);
+        assert_eq!(unescaped_bars, 13);
         assert!(!last.contains('\n'));
     }
 
     #[test]
-    fn round_trip_parses_into_ten_cells() {
+    fn round_trip_parses_into_twelve_cells() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("LEDGER.md");
         let row = sample_row();
@@ -227,10 +318,79 @@ mod tests {
         let content = fs::read_to_string(&path).unwrap();
         let last = content.lines().last().unwrap();
         let cells = parse_row(last);
-        assert_eq!(cells.len(), 10);
+        assert_eq!(cells.len(), 12);
         assert_eq!(cells[0], "2026-08-15");
         assert_eq!(cells[6], "ACCEPT");
         assert_eq!(cells[8], "8522806be1fd");
+        assert_eq!(cells[10], "jjohare");
+        assert_eq!(cells[11], "42");
+    }
+
+    #[test]
+    fn unreviewed_leaves_the_human_columns_empty() {
+        let row = LedgerRow::unreviewed(
+            "2026-09-14".into(),
+            "deep".into(),
+            "finding".into(),
+            "NONE".into(),
+            "#7".into(),
+            "yes".into(),
+            "ACCEPT".into(),
+            String::new(),
+            "abcd1234abcd".into(),
+            String::new(),
+        );
+        assert_eq!(row.reviewer, "");
+        assert_eq!(row.review_minutes, "");
+        // Still a well-formed twelve-cell row.
+        assert_eq!(parse_row(&row_line(&row)).len(), 12);
+    }
+
+    #[test]
+    fn review_from_merge_reads_the_merge_event() {
+        let (reviewer, minutes) = review_from_merge(
+            Some("jjohare"),
+            Some("2026-09-14T09:00:00Z"),
+            Some("2026-09-14T10:30:00Z"),
+        );
+        assert_eq!(reviewer, "jjohare");
+        assert_eq!(minutes, "90");
+    }
+
+    #[test]
+    fn review_from_merge_rounds_to_the_nearest_minute() {
+        let (_, minutes) = review_from_merge(
+            Some("x"),
+            Some("2026-09-14T09:00:00Z"),
+            Some("2026-09-14T09:00:40Z"),
+        );
+        assert_eq!(minutes, "1");
+        let (_, minutes) = review_from_merge(
+            Some("x"),
+            Some("2026-09-14T09:00:00Z"),
+            Some("2026-09-14T09:00:20Z"),
+        );
+        assert_eq!(minutes, "0");
+    }
+
+    #[test]
+    fn review_from_merge_never_fabricates_a_duration() {
+        // Unmerged: nothing at all.
+        assert_eq!(review_from_merge(None, None, None), (String::new(), String::new()));
+        // Known reviewer, unknown timing: the reviewer stands, the duration does not.
+        let (reviewer, minutes) = review_from_merge(Some("jjohare"), None, Some("2026-09-14T10:00:00Z"));
+        assert_eq!(reviewer, "jjohare");
+        assert_eq!(minutes, "");
+        // Unparseable timestamp.
+        let (_, minutes) = review_from_merge(Some("x"), Some("nonsense"), Some("2026-09-14T10:00:00Z"));
+        assert_eq!(minutes, "");
+        // A merge before its PR opened is refused, never negated.
+        let (_, minutes) = review_from_merge(
+            Some("x"),
+            Some("2026-09-14T10:00:00Z"),
+            Some("2026-09-14T09:00:00Z"),
+        );
+        assert_eq!(minutes, "");
     }
 
     /// Count `|` characters that are not escaped as `\|`.

@@ -639,6 +639,59 @@
                   "zero-tolerance"
                 ]
               }
+            },
+            "task_properties": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "ADR-2011 task-property triple defaults. The escalation boundary derives from three OPERATOR-declared properties of the task, not the requesting agent's self-declared risk_tier. Reversibility is derived from [skills.authority.classes] (zero-tolerance => irreversible, recoverable => compensable) and is never declared here; these keys supply the other two axes. management-api/lib/task-properties.js stamps the resolved triple on every kind-31402 the authority gate publishes, as tags tp-verifiability / tp-reversibility / tp-stakes.",
+              "properties": {
+                "verifiability": {
+                  "type": "string",
+                  "enum": [
+                    "inspectable",
+                    "partial",
+                    "opaque"
+                  ],
+                  "default": "partial",
+                  "description": "Estate-wide default verifiability: can an error in this class of action be inspected after the fact? Overridden per action class under [skills.authority.task_properties.classes.<action_class>]."
+                },
+                "stakes": {
+                  "type": "string",
+                  "enum": [
+                    "bounded",
+                    "significant",
+                    "critical"
+                  ],
+                  "default": "significant",
+                  "description": "Estate-wide default stakes: how consequential is an error in this class of action? Overridden per action class."
+                },
+                "classes": {
+                  "type": "object",
+                  "description": "Per-action-class overrides, keyed by the same action-class label as [skills.authority.classes]. Declared as TOML sub-sections ([skills.authority.task_properties.classes.<action_class>]) because the boot manifest loader is line-based and does not parse inline tables.",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "verifiability": {
+                        "type": "string",
+                        "enum": [
+                          "inspectable",
+                          "partial",
+                          "opaque"
+                        ]
+                      },
+                      "stakes": {
+                        "type": "string",
+                        "enum": [
+                          "bounded",
+                          "significant",
+                          "critical"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -1676,6 +1729,10 @@
                 "nip98"
               ],
               "description": "PRD-014 Seam B/B4: per-agent did:nostr auth on POST /v1/agent-events/emit. 'off' keeps caller-asserted/env-defaulted attribution; 'nip98' requires a kind-27235 header and stamps source_urn from the verified pubkey."
+            },
+            "forum_auth_api": {
+              "type": "string",
+              "description": "Base URL of the forum auth worker that owns the governance receipts endpoint (POST {base}/api/governance/receipts/{response_event_id}/application, NIP-98). management-api/lib/governance-receipt-publisher.js mirrors each mutation-owner receipt stage there so a human learns whether their approval applied (PRD-augmentation-conditions FR4.2). Overridden at runtime by the FORUM_AUTH_API env var. Empty = not configured: receipts are journalled and queued, never silently dropped."
             }
           }
         },

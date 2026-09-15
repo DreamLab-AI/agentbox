@@ -31,6 +31,39 @@ Whatever the delivery, a reader who finishes it must be able to answer, unaided:
 docs delivery; the microsite and video deliveries adapt the same spine to their
 own reader tracks and review questions.
 
+## First, choose the model posture (ask every run)
+
+**Ask before anything else, and ask every run.** Which model reads the source and writes the
+draft is a confidentiality decision about someone else's private code, and it is the user's to
+take, not one to infer from the harness you happen to be running in, from how the request was
+phrased, or from what a previous run chose. There is no default. A run that starts drafting
+without having asked has already made the decision.
+
+Use `AskUserQuestion` with exactly these three options, each stating what it costs in
+confidentiality and the provenance sentence the delivery will then carry:
+
+| Option | What happens | Confidentiality | Provenance the delivery carries |
+|---|---|---|---|
+| **Local model — private** | every drafting call goes through the Ontology Loom façade with `loom_options.scaffold=false`, to a model on the LAN | the source never reaches a hosted endpoint; slower, hours of GPU time rather than minutes | made on local hardware |
+| **Claude Code native** | the hosted frontier model drafts and verifies directly | the private source is read by a hosted model — only under an engagement whose terms allow it | written by a hosted frontier model, said plainly, as the Repo-Explainer landing page does for its second edition |
+| **Combination — escalation** | the local model does the work; a frontier controller reviews and takes over only the packets the local model fails | most of the source stays local; the escalated packets, and only those, reach a hosted model | made on local hardware, with the escalated steps named |
+
+Record the answer in the production record before the first draft call. It then drives three
+things, and they are not optional consequences of it:
+
+1. **Which draft path runs** — the Loom-façade batch (`references/delivery-microsite.md`, the
+   model-path section, and `references/local-harness.md`) for posture 1 and 3, the session
+   model for posture 2.
+2. **The provenance sentence** on the delivery's landing page or README, in the wording above.
+   A pack that does not say who wrote it is not finished.
+3. **A gate**: under posture 1 a hosted drafting call is a fault, not a shortcut. If the local
+   path is failing, that is a hand-up (`references/handup.md`), or a question back to the user
+   about changing posture — never a quiet escalation.
+
+Posture 3 is posture 1 plus a named exception list, so it inherits the same gate: the
+controller answers packets and does not take over the run. `evals/handup-budget.py` bounds how
+much of it may be escalated before the posture has stopped being true.
+
 ## Orient before you write (an hour, not a day)
 
 Read the root README, the docs index, and any handoff or status document, and
@@ -48,6 +81,14 @@ who knew the system already decided how it divides into parts; absence is normal
 script says so and exits 0. Read `references/diagram-corpus.md` before using what it finds:
 a corpus is a catalogue at a declared revision, it is usually internal audit material, and
 mining it is not the same as shipping it.
+
+If that script finds a corpus, **the diagrams pack is part of the delivery**: fifty topics of
+machine-checked drawings are the drawn account of the whole system, and shipping prose about a
+system while leaving its own drawings in the repository wastes the best material the target
+has. Verify it first with the `diagrams-as-code` skill's generator —
+`--check --cite-check --worktree-citations`, which `scripts/diagrams-pack.mjs` runs for you —
+and publish what it found, including what it found wrong. The register is the one part that
+waits for its owner's agreement (`--no-register`).
 
 If the pack is for the people who use the product, run
 `scripts/surface-inventory.mjs --repo <app dir> --out <file>` next. It writes every route a
@@ -179,6 +220,7 @@ a reviser resolves it; the checker runs again. Media is a later pass over an acc
 | Instructional microsite | `references/delivery-microsite.md` | a locally-served, inspectable reading surface with evidence-linked source panes, verified runtime journeys, diagrams and reviewed media — for onboarding or client due diligence |
 | Video | `references/delivery-video.md` | a narrated video explainer; thin — hands off to the standalone `codebase-video` skill with the audience and the claims ledger already gathered |
 | The repository's own documentation | `scripts/docs-stack.mjs` | the `docs/` tree the codebase already carries, rendered browsable in the house style: every mermaid block shown as drawn with its source one click below, front matter kept so a topic still names the files it was checked against |
+| The repository's own diagrams | `scripts/diagrams-pack.mjs` | the diagrams-as-code corpus as a pack of its own: a front door stating what has been checked, an area level, a page per topic with both narratives and every diagram beside its source and its citation verdict, and the register and the timeline as two further doors |
 
 Pick one delivery per request unless the user asks for more than one; each
 reference is self-contained once the shared core above is done.
@@ -192,6 +234,22 @@ node scripts/render-diagrams.mjs --src <docs dir> --cache <dir>          # draw 
 node scripts/docs-stack.mjs --src <docs dir> --out <dir> --repo <target> \
      --title <product> --diagram-cache <dir>
 ```
+
+The diagrams pack is the corpus given its own front door rather than a section of someone
+else's. It is one invocation, and it runs the corpus's own checker on the way past so the pack
+can state what was verified rather than implying it:
+
+```
+node scripts/diagrams-pack.mjs --repo <target> --out <dir> --title <product> [--no-render]
+```
+
+`--no-render` is right when the corpus already ships rendered SVGs; without it the generator
+redraws them. `--no-register` holds back the register until its owner has agreed to it. The
+script refuses to claim success: a diagram with no art where rendering was asked for, a link
+to a page the pack does not hold, or a placeholder left in the shell each exit 1. It ends with
+one line naming the topics, diagrams, citations checked, warnings and revision, which is the
+line to quote in the production record. `references/diagram-corpus.md` covers what the pack
+shows and what the ringfence still forbids.
 
 A diagrams-as-code corpus normally keeps rendered art beside each topic, but the prose pages
 around it — explanations, how-to pages, decision records — carry mermaid inline with no
@@ -207,6 +265,10 @@ Its [handoffs](../manim/references/handoffs.md) cover optional playback, named
 steps and static alternatives in a knowledge page, or clips for the video owner.
 
 ## Model-fit
+
+This section describes the tiers, not the choice between them: which one drafts is settled by
+the posture question at the top of this file, asked every run. What follows is what each
+posture is like to run in.
 
 **Production tier:** the long run is designed for a local OpenAI-compatible model with
 tool calls (OpenCode profile `loom-agent/current`); it discovers this skill and its
@@ -241,6 +303,7 @@ mesh find it. Each delivery reference repeats this as its final step.
 - `references/comprehension-arc.md` — the seven questions, per audience.
 - `references/gates.md` — the five gates, bars and ledger format in full.
 - `references/handup.md` — escalating a red gate to a stronger tier by packet, not by session; `scripts/handup.mjs`.
-- `references/diagram-corpus.md` — mining the repository's own diagrams-as-code tree; `scripts/diagram-corpus.mjs`.
+- `references/diagram-corpus.md` — mining the repository's own diagrams-as-code tree, and shipping it as a pack; `scripts/diagram-corpus.mjs`, `scripts/diagrams-pack.mjs`.
+- `scripts/lib/markdown.mjs` — the dependency-free Markdown renderer the diagrams pack builds on: GitHub heading slugs, GFM tables, and fenced blocks handed to the caller so a mermaid block can become a picture.
 - `references/local-harness.md` — running where the specialists are not tools: skill, then documented service, then hand up.
 - `evals/evals.json` — the pilot eval prompts for this skill.

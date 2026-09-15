@@ -10,7 +10,17 @@ stop-before-fixing-product-code rule and gates before and during this workflow
 
 ## Establish the teaching contract
 
-Infer what the user has already specified: audience, prior knowledge, concerns,
+**The model posture is part of the contract, and it is asked rather than inferred.** Before any
+drafting, ask which posture this run works under — local and private through the Loom façade,
+the hosted frontier model directly, or local with named escalations — using the question in
+`SKILL.md`'s "First, choose the model posture". Every run asks, with no default and no
+inheritance from a previous run: it decides whether the client's source is read by a hosted
+model, which is the client's call and not a detail of how the site gets built. The answer goes
+in the production record, selects the draft path in the model-path section below, fixes the
+provenance sentence the finished site carries, and — under a local posture — makes a hosted
+drafting call a fault to be handed up rather than a shortcut to be taken.
+
+Then infer what the user has already specified: audience, prior knowledge, concerns,
 requested media, output location, packaging and authority to fix discovered
 problems. Ask only for material gaps while continuing independent research.
 Keep distinct audience tracks separate. An experienced developer can still have
@@ -173,6 +183,20 @@ finished local clone unless the user chose that model. Avoid CDN-only diagrams,
 fonts or video players in an offline deliverable. Do not conceal implementation
 context from the developer audience, but keep site controls about reading
 rather than production tooling.
+
+### The Diagrams door, beside the audience packs
+
+Where the target keeps a diagrams-as-code corpus, it ships as a door of its own beside the
+audience packs, not folded into one of them. The packs are routes chosen for a reader; the
+corpus is the whole system drawn, in its authors' order, and the two answer different
+questions — "take me through this" against "show me the part I am looking at". Build it with
+`scripts/diagrams-pack.mjs` (one invocation; see `references/diagram-corpus.md`) and give it a
+card in the same style as the packs, saying what it is and how large it is in real numbers:
+topics, diagrams, areas, and the revision. Two things to hold to. It is offered as the
+system's own material rather than as something written for the reader, which is what keeps it
+honest beside a pack that was. And the register ships only with the corpus owner's agreement —
+`--no-register` builds the rest — because that page is the one written about the project
+rather than about the code.
 
 ## Produce and review the media
 
