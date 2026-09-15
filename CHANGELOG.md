@@ -4,6 +4,39 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-09-15 — JunkieJarvis grills before acting on forum suggestions)
+
+The nightly forum-suggestions tenant no longer triages a post it cannot understand.
+An item whose actionable detail is unclear earns a gift-wrapped DM with concrete
+questions and a parked ledger row instead of a guessed verdict. Decision record:
+ADR-2088.
+
+- **A deterministic clarity gate, not a model call.**
+  `management-api/lib/junkiejarvis-clarify.js` checks four named signals —
+  reproduction steps (required only of something that reads as a defect report), a
+  named surface, an unambiguous target, and a composite specificity floor. It is
+  pure and total: no clock, no network, the same verdict for the same text every
+  night, and malformed input is "unclear" rather than a throw.
+- **1–3 questions, one DM, ever.** Questions are generated one per missing signal in
+  the fixed order repro → target → surface → specificity. An item that has been asked
+  once is never asked again, whatever the outcome — a member is grilled, not nagged.
+- **The item is parked where a human can see it.** `awaiting-clarification` is
+  recorded in the tenant state with the question set, the author pubkey and the DM
+  event id, and a matching row lands in `docs/dream-cycle/FORUM-SUGGESTIONS.md`.
+- **Resuming re-runs the same check.** A reply is matched to a parked item by author
+  plus an e-tag or a post-DM timestamp, appended to the original text, and re-assessed.
+  Replying is not a free pass: a waffly reply leaves the item unclear. Seven days of
+  silence expires it to `stale`, and a late reply cannot revive it.
+- **One gift-wrap site.** `sendGiftWrappedDm` (with its mirror `unwrapDmRumor`) was
+  lifted out of `JunkieJarvisAgent._sendDm`, which now delegates to it, so the nightly
+  tenant reuses the identical NIP-59 envelope. No cryptography was written — the
+  sealing is still `nostr-tools`' `nip59`.
+- **Gate `[sovereign_mesh].junkiejarvis_clarify_before_acting`, default `true`**, env
+  override `JUNKIEJARVIS_CLARIFY_BEFORE_ACTING`. A flat key, not a `[junkiejarvis]`
+  table: `agentbox.toml` is read by a line-based parser with no inline tables.
+- Scope is the *ingest* path only. The agent's live DM and kind-42 mention paths answer
+  freely, unchanged.
+
 ### Added (2026-09-13 — Colloquy: cq shared-agent learning on the forum)
 
 A clean-room Rust implementation of the [cq](https://github.com/mozilla-ai/cq)

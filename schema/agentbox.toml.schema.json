@@ -1554,6 +1554,10 @@
           "type": "boolean",
           "description": "JunkieJarvis forum agent \u2014 rides the management-api process and answers forum mentions over Nostr. Requires BOTH this gate AND the JUNKIEJARVIS_ENABLED=true env var; the env var remains the runtime override, so deployments without a manifest keep working. Default false."
         },
+        "junkiejarvis_clarify_before_acting": {
+          "type": "boolean",
+          "description": "Clarify-before-acting gate (ADR-2088). When true, JunkieJarvis never triages or queues a forum issue/suggestion whose actionable detail is unclear \u2014 missing reproduction steps, missing surface, an ambiguous target, or below the specificity floor. It gift-wrap DMs the author 1\u20133 clarifying questions, records the item as awaiting-clarification with the question set and the DM event id, and resumes only when that author replies, re-running the same check with the reply appended. One DM per item; 7 days of silence expires the item to stale. Default TRUE (grilling first is the safe behaviour); JUNKIEJARVIS_CLARIFY_BEFORE_ACTING is the runtime override."
+        },
         "per_user_agents": {
           "type": "boolean",
           "description": "Per-user agent sessions (per-user-agent.js + run-per-user-agent.cjs): one Claude session per pod user, spawned on inbound relay messages. Canonical gate for ADR-028 (Per-User Agent Fabric, Accepted) \u2014 this key, [sovereign_mesh].per_user_agents, is the gate, NOT a top-level [per_user_agents] table (see ADR-028 gate-key alignment + ADR-030). Default false."
