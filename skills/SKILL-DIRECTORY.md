@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **129 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
+> **130 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
 > Updated 2026-09-09 (estate re-audit for Fable 5.1 / GPT-6 Astra workloads; history in `CHANGELOG.md` and `docs/adr/`). Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -32,13 +32,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (129 Active Skills)
+## Artefact 1: Categorised Skill Inventory (130 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 129 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 130 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -304,7 +304,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 129 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 130 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)

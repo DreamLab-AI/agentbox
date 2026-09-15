@@ -457,3 +457,71 @@ out of this repo's scope. The production call sites the auditor checked still do
 not pass `params.frontmatter` into `guard()`, so this remains a fix to the
 shared module's contract ahead of its first caller — the difference is that the
 contract now holds.
+
+## Post-merge config-gate triage (main 93456a8f3)
+
+After the merge into `main`, `./node_modules/.bin/jest --config package.json`
+reported 2 suites / 72 tests / **10 failed**. Split by bisecting against a
+detached worktree at the pre-merge `main` (`5b4d63846`), same command, same
+runner:
+
+| Failure | Origin |
+|---|---|
+| 9 × `tests/config/semantic-rules.test.js` (E016 "valid: no unknown keys", `skills.ontology` gate, W017 ×2, W031, W038, W039 ×2, W041) | **Introduced by the merge** — fixed below |
+| 1 × `tests/config/multi-user-regression.test.js` "admin-users routes module exists and is a stub returning 501" | **Pre-existing at 5b4d63846** — the guard greps the routes module's docstring for `/PRD-007/` and that file cites its endpoints and `[sovereign_mesh.multi_user]` but never names PRD-007; unrelated to this branch, left as found. |
+
+Baseline at `5b4d63846`: 1 failed / 70 passed / 1 skipped. Merged `main` after
+the fix: **1 failed / 70 passed / 1 skipped** — identical, so the merge now adds
+no config-gate failure of its own.
+
+### The cause was not the schema
+
+The suspicion was that the new `[skills.authority.task_properties]` sub-sections
+were unknown to `schema/agentbox.toml.schema.json`. They are not: the nine cases
+all assert `exitCode === 0` on a **fixture** manifest, and every one of them was
+failing on the same unrelated error, visible only by running the validator by
+hand:
+
+```
+$ node scripts/agentbox-config-validate.js /tmp/base.toml
+E-SKILL1: skill-count drift — skills/SKILL-DIRECTORY.md:3 states 129 skills but skills/*/SKILL.md counts 130
+E-SKILL1: ... SKILL-DIRECTORY.md:35 ... :41 ... :307 ... CLAUDE.md:34
+EXIT=1
+```
+
+`scripts/agentbox-config-validate.js` runs the RES-d repo-wide skill-count check
+regardless of which manifest file it is handed, so a documentation count drift
+fails the validator for EVERY fixture and takes all nine "expect exit 0" cases
+with it. `feat/augmentation-conditions` added a 130th skill (`diagrams-as-code`,
+commit 690847280) and the merge carried it to `main`, while five prose claims
+still said 129.
+
+The rest of that skill's discovery wiring had landed correctly — its
+`SKILL-DIRECTORY.md` rows, its `skill-router/references/section-map.json` entry
+and its `skills/registered-skills.txt` registration are all present, and
+`skills/lint-skills.sh` was already passing and already reporting 130. Only the
+counts were stale, so the fix is the five lines the checker names, not a schema
+or a wiring change.
+
+```
+$ node scripts/skill-count-check.js   # after
+count 130
+all ok: True
+```
+
+### Counts after the fix
+
+```
+$ cd management-api && HOME=$SCRATCH ../node_modules/.bin/jest
+Test Suites: 86 passed, 86 total
+Tests:       3 skipped, 34 todo, 1399 passed, 1436 total
+
+$ cd management-api && HOME=$SCRATCH npm run test:node
+# suites 9
+# pass 56
+# fail 0
+
+$ HOME=$SCRATCH ./node_modules/.bin/jest --config package.json
+Test Suites: 1 failed, 1 passed, 2 total
+Tests:       1 failed, 1 skipped, 70 passed, 72 total    # the pre-existing PRD-007 guard
+```
