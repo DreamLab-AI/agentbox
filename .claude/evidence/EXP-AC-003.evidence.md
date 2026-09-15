@@ -2,7 +2,7 @@
 expectation_id: EXP-AC-003
 parent_spec: PRD-augmentation-conditions FR3.4
 linked_adrs: [ADR-2011, ADR-2087]
-git_sha: bc4a9b259483b99e57bc8ba73feeac54c7dae19e
+git_sha: 37a1a1988
 produced_by: agent:claude-opus
 produced_at: 2026-09-14T15:30:00Z
 repo: agentbox
