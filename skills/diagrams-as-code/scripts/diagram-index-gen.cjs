@@ -243,7 +243,10 @@ function parseFrontmatter(text, file, errors) {
 }
 
 // ---------------------------------------------------------------- parse topic files
-const REG_PROSE_RE = new RegExp(`^\\s*(?:>\\s*)?\\*\\*(${REGISTER_KINDS.join('|')})(?:\\s*\\(([^)]*)\\))?:\\*\\*\\s*(.+)$`);
+const REG_NEAR_MISS_RE = new RegExp(`^\\s*(?:>\\s*)?\\*\\*(?:${REGISTER_KINDS.join('|')})\\b`);
+// The text may start on the label's own line or on the next one (a label at the end of
+// a wrapped line is common); the paragraph collector below gathers the rest either way.
+const REG_PROSE_RE = new RegExp(`^\\s*(?:>\\s*)?\\*\\*(${REGISTER_KINDS.join('|')})(?:\\s*\\(([^)]*)\\))?:\\*\\*\\s*(.*)$`);
 // A marker inside a diagram runs to the end of its label (a quote or a closing
 // bracket); `<br/>` line breaks are part of the text and are flattened to spaces.
 const REG_MERMAID_RE = new RegExp(`\\b(${REGISTER_KINDS.map((k) => k.toUpperCase()).join('|')}):\\s*((?:<br\\s*/?>|[^"\\]<])+)`, 'g');
@@ -298,6 +301,11 @@ function parseTopic(file, errors) {
       const h = ln.match(/^##\s+(\S+)\s*(.*)$/);
       if (h) { currentH2 = { id: h[1], title: h[2].trim(), line: i, full: `${h[1]} ${h[2]}`.trim() }; h2s.push(currentH2.full); continue; }
       const rm = ln.match(REG_PROSE_RE);
+      // A bold label that starts with a marker word but does not match the contract
+      // (`**Tension (scope)** — …`, `**Debt, resolved 2026-09-15:**`) renders normally and
+      // silently vanishes from the register. Refuse it: a marker nobody can find is a
+      // marker nobody will resolve (nine such were found by hand on 2026-09-15).
+      if (!rm && REG_NEAR_MISS_RE.test(ln)) errors.push(`${rel}:${i + 1}: looks like a register marker but does not parse — write \`**Kind:**\` or \`**Kind (scope):**\` (a resolution goes in the text, after an em dash)`);
       if (rm) {
         // A marker paragraph may wrap over several lines; it ends at a blank line, a
         // heading, a fence, a list item, a table row, or the next labelled paragraph.
@@ -698,7 +706,18 @@ function writeIndexes(topics) {
       const anchor = r.diagram ? `${t.rel}#${slug(r.diagram.id, r.diagram.title)}` : t.rel;
       const where = r.diagram ? `[${r.diagram.id}](${anchor})` : `[${t.fm.id}](${anchor})`;
       const scope = r.scope ? ` _(${r.scope})_` : '';
-      reg.push(`| ${kind[0]}-${String(i + 1).padStart(2, '0')} | ${where}${scope} | ${r.text.replace(/\|/g, '\\|')} |`);
+      // Marker prose is written inside a topic file and hoisted here, one directory up:
+      // a sibling-relative link (`[FM-05.6](05-operations-….md#…)`) or a bare anchor
+      // (`[above](#fm-031-…)`) is right in the topic and wrong here unless re-rooted.
+      const dir = path.posix.dirname(t.rel);
+      const hoisted = r.text.replace(/\]\(([^)\s]+)\)/g, (m0, href) => {
+        if (/^(?:[a-z]+:|\/)/i.test(href)) return m0;                  // absolute or URL: leave
+        if (href.startsWith('#')) return `](${t.rel}${href})`;            // same-topic anchor
+        if (href.startsWith('../')) return `](${path.posix.normalize(path.posix.join(dir, href))})`;
+        if (!href.includes('/')) return `](${dir === '.' ? '' : dir + '/'}${href})`; // sibling in the same area
+        return m0;                                                        // already corpus-relative
+      });
+      reg.push(`| ${kind[0]}-${String(i + 1).padStart(2, '0')} | ${where}${scope} | ${hoisted.replace(/\|/g, '\\|')} |`);
     });
     reg.push('');
   }
