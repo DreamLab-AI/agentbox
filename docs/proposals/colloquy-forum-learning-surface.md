@@ -292,7 +292,7 @@ own recall measurement and can be reverted independently of the rest of Phase 2.
 | 0 — Decide | **done** | ADR-2085, ADR-2086; PROTOCOL-registry kind block; LEARNING-memory invariants 10–11; `urn:agentbox:knowledge` as the 20th URN kind. |
 | 1 — `colloquy-core` | **done** | 76 tests incl. the cq interop fixture; docs clean; wasm32; README examples run as doctests; Apache-2.0 + LICENSE. |
 | 2 — store + verbs | **done, minus the migration** | `colloquy-store` (three tiers, one trait) and `colloquy-mcp` (six verbs, tier chosen by `COLLOQUY_TIER`). |
-| 3 — the wire | **done in code; publish blocked by the allowlist** | `colloquy-nostr` kinds 38100–38105 and a real websocket backend. |
+| 3 — the wire | **done, end to end** | Kinds 38100–38105, a real websocket backend, and an accepted `38100` on the relay (`28f85361…`). `nostr-pod-bridge publish` signs on an agent's behalf. |
 | 4 — the forum | **done** | `colloquy-view` + `pages/knowledge.rs`, routed at `/knowledge` behind `auth_gated!`. |
 | 5 — reflect | **done** | The verb does coverage-check-before-propose; `colloquy-reflect-candidates.cjs` (Stop/SubagentStop) surfaces failed-then-worked pairs as evidence. It writes no units — that judgement is the model's. |
 | ADR-2061 fixture | **done, both sides** | `knowledge` declared `not-federated`; JS parity spec 52 tests, Rust `uri::tests::federation_*` 7 tests, both generated from the one shared artefact. |

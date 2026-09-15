@@ -4,6 +4,67 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-09-14 — Augmentation conditions: task properties, receipts, manual continuation)
+
+The authority gate was cryptographically complete and semantically thin: the only
+boundary signal on a request was the requesting agent's own risk tier, a denial
+left nothing but a log line, an approving human never learned whether their
+approval took effect, and an outage left an operator with no sanctioned way to
+act. ADR-2087 closes those four gaps, applying VisionFlow's ADR-2010/ADR-2011
+(the six augmentation conditions of arXiv 2609.12482) to agentbox's half of the
+Judgment Broker loop.
+
+- **Task-property triple (FR3.4, ADR-2011).** New `management-api/lib/task-properties.js`
+  derives `{verifiability, reversibility, stakes}` for an action class:
+  reversibility from `authority_class` (`zero-tolerance` ⇒ `irreversible`,
+  `recoverable` ⇒ `compensable`, unclassified ⇒ `irreversible`), the other two
+  axes from the new `[skills.authority.task_properties]` manifest table
+  (defaults `partial` / `significant`, overridable per action class and in
+  SKILL.md frontmatter). The authority gate and the MCP tool
+  `governance_request_action` stamp all three on every kind-31402 they publish,
+  as tags `tp-verifiability` / `tp-reversibility` / `tp-stakes` and inside
+  `fields`. A request-supplied `task_properties` merges on the **tightening**
+  lattice: an agent may raise the boundary for its own action, never lower it.
+- **Authority-deny journal (FR4.4).** New `management-api/lib/authority-journal.js`
+  appends `authority.deny {agent_did, stage, reason, action_class,
+  operation_sha256, task_properties}` through the ADR-005 events adapter — so it
+  inherits the ADR-039 hash chain — and publishes it to `/v1/agent-events`. Every
+  deny path routes through one helper, so the answer to "was this denial
+  recorded?" is the same for all nine of them. Fail-closed on the action,
+  fail-open and loud on the record of it.
+- **Receipt ladder reaches the human (FR4.2).** New
+  `management-api/lib/governance-receipt-publisher.js` mirrors each mutation-owner
+  stage (`consumer-received`, then `applied` / `not-applied` /
+  `applied-manually`) to `POST {forum_auth_api}/api/governance/receipts/{id}/application`
+  under NIP-98; `routes/broker-bridge.js` posts after `ApplicationReceiptStore.begin`
+  and `finish`. Transport failures are journalled as `authority.receipt-post-failed`
+  and queued for replay in a dedicated outbox (**not** the pod outbox, whose flusher
+  signs and publishes Nostr events and would fail an HTTP receipt silently); 409 and
+  403 are journalled and retired, since a retry cannot change that answer. An
+  `unknown` local outcome publishes nothing — the ladder has no stage for "we do not
+  know".
+- **Manual continuation (FR7.1/FR7.3).** New MCP tool `governance_manual_continue
+  {case_id, executed_by, evidence}` records an operator's hand-execution of an
+  already-approved action during an outage: bound to the approved operation digest,
+  written as `applied-manually`, with a PROV-O activity whose
+  `prov:wasAssociatedWith` is the human `did:nostr`. An agent DID — or this
+  container's own — is refused as `executed_by`. The gate's `no-decision-surface`
+  deny now returns `{code, hint: "governance_manual_continue"}` so the operator
+  learns the option at the moment of denial.
+- **Dream ledger measures the human (FR6.6).** The row schema gains `Reviewer` and
+  `Review-minutes`, populated from the PR merge event (`merged_by`;
+  `merged_at − pr_opened_at` in whole minutes) and left empty otherwise — never a
+  fabricated `0`, which would read as "reviewed instantly". Ten-column ledgers stay
+  valid: the parser's compatibility floor is the legacy width, and `dream-engine`'s
+  `ledger.rs` now writes twelve.
+- **Config.** `[skills.authority.task_properties]` (+ per-class sub-sections) and
+  `[sovereign_mesh.relay].forum_auth_api` (env override `FORUM_AUTH_API`), both
+  schema-validated. An unset `forum_auth_api` queues receipts rather than dropping
+  them.
+- **Testability.** `mcp/servers/governance-bridge.js` connects its stdio transport
+  only when it is the process entrypoint, and exports `TOOLS` / `handleTool`, so the
+  tool surface is exercisable without claiming the MCP channel.
+
 ### Added (2026-09-13 — Colloquy: cq shared-agent learning on the forum)
 
 A clean-room Rust implementation of the [cq](https://github.com/mozilla-ai/cq)
@@ -85,6 +146,17 @@ weight follows authorising principals).
   minting units mechanically from graded steps would fill the store with "this
   command exited 1". Redaction and grading are the trajectory recorder's, not a
   second implementation.
+- **A `38100` event is accepted by the relay**, signed under the container
+  identity and read back. `nostr-pod-bridge` gains a `publish` subcommand: an
+  agent composes an unsigned colloquy event, the bridge signs and publishes it,
+  and the relay admits it as `SelfAuthored`. Kinds are allowlisted —
+  `38100`/`38101`/`38102`/`38103`/`38105` — with graduations and governance kinds
+  excluded, so nothing in the estate offers "get a `31403` signed" as a service.
+  That allowlist is **discipline, not enforcement**: `/run/secrets/nostr.key` is
+  `devuser`-readable 0400 by design (the daemon runs as `devuser`), so any agent
+  could sign directly. The module documents that distinction rather than claiming
+  a boundary it does not provide, and the shape is the one that *becomes* a
+  boundary under a profile-isolated or remote signer.
 - **ADR-2061 closed on both sides.** The `knowledge` row is asserted by the JS
   half (`tests/contract/federation-kind-parity.contract.spec.js`, 52 tests) and
   the Rust half (`uri::tests::federation_*` in VisionClaw, 7 tests), both

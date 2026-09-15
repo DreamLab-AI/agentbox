@@ -62,6 +62,7 @@ use std::sync::Arc;
 
 pub mod admission;
 pub mod bootstrap;
+pub mod colloquy_publish;
 pub mod contract;
 pub mod egress_policy;
 pub mod envmap;
@@ -531,6 +532,57 @@ pub async fn publish_session_summary(
 
     info!(event_id = %signed.id, session = %summary.session_id, "session summary dual-written to pod");
     Ok(())
+}
+
+// ── Colloquy egress (kinds 38100-38105) ─────────────────────────────────────
+//
+// Signing on behalf. The agent composes an unsigned colloquy event and hands it
+// over; this binary signs it under the sovereign identity and pushes it to the
+// relay, which admits it as SelfAuthored. It is one place for the publish path
+// and an explicit statement of which kinds colloquy may emit — NOT a security
+// boundary in this container, where the signing key is devuser-readable by
+// design. See `colloquy_publish` for that distinction in full.
+//
+// Unlike the session-summary and project-tracking paths, this does NOT dual-write
+// to the pod. Those digests exist only as the event, so the pod is their
+// durability; a knowledge unit is already durable in the shared tier before it
+// is ever published, and writing it into the identity's *inbox* would file the
+// container's own output as a message addressed to itself.
+
+/// Sign a colloquy event under the sovereign identity and publish it.
+///
+/// Refuses anything outside [`colloquy_publish::SIGNABLE_KINDS`] *before*
+/// touching the key — see that module for why the list is short and why it is an
+/// allowlist. Returns the signed event id.
+pub async fn publish_colloquy(
+    cfg: &BridgeConfig,
+    req: &colloquy_publish::PublishRequest,
+) -> anyhow::Result<String> {
+    // Admission first: no key material is loaded for a request that will be
+    // refused, so a caller probing for a signing oracle never reaches the key.
+    colloquy_publish::admit(req.kind)?;
+
+    let signing_key = signing_key_from_bytes(&cfg.recipient_sk)
+        .map_err(|e| anyhow::anyhow!("invalid agent secret key: {e}"))?;
+
+    let unsigned = UnsignedEvent {
+        // Never the caller's to choose. PublishRequest has no pubkey field, and
+        // this is the only place an author is set.
+        pubkey: cfg.recipient_pubkey.clone(),
+        created_at: req.created_at.unwrap_or_else(now_unix),
+        kind: req.kind,
+        tags: req.tags.clone(),
+        content: req.content.clone(),
+    };
+    let signed = sign_event(unsigned, &signing_key)
+        .map_err(|e| anyhow::anyhow!("colloquy signing failed: {e}"))?;
+
+    publish_to_relay(&cfg.bind_addr, &signed)
+        .await
+        .with_context(|| format!("publishing colloquy kind-{} to the relay", req.kind))?;
+
+    info!(event_id = %signed.id, kind = req.kind, "colloquy event signed and published");
+    Ok(signed.id)
 }
 
 // ── Project-tracking egress (kind-30841) ────────────────────────────────────

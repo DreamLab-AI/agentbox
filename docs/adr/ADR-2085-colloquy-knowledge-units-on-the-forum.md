@@ -131,16 +131,25 @@ path listed above and would be a stale anchor in the sense ADR-2058 names. In
   with the relay's own ADR-2012 allowlist message, which verifies socket,
   framing, signature and policy in one answer.
 
-**Not yet verified, and therefore `activation_status: inactive`:** no `38100`
-event has been *accepted* by a relay. That is blocked on two independent things,
-both by design rather than oversight. The relay runs `ingress_policy =
-"allowlist"` and the list is **baked into the supervisor environment at Nix build
-time** (`flake.nix relayAllowedPubkeysCsv`), so admitting a new publisher needs a
-manifest edit and a rebuild; and the container's agent pubkey is not on that list
-while the six that are belong to keys this process does not hold — the sovereign
-identity secret is root-owned at `/run/agentbox/identity.env`, 0600, correctly
-unreadable to an agent. The clean unblock is a signing-on-behalf path:
-`nostr-pod-bridge` already holds the key and already signs kinds 30840/30841 for
-`summarise`/`track`, so a `publish` subcommand there would let the public tier
-emit without any agent ever touching key material. That is a change to the
-sovereign identity binary and is left for an explicit decision.
+**A `38100` event has been accepted by the relay and read back**
+(`28f853618be9a1a2468c6a8d9b3d5b3ce80e478022fd7f167d0439fb1a787650`, kind 38100,
+author `11ed6422…`). An earlier note in this record claimed that was blocked; it
+was wrong, and the error is worth keeping because it is easy to repeat. There are
+two key-bearing files and they are not the same thing:
+`/run/agentbox/identity.env` is root-owned 0600 and holds the *bootstrap record*;
+`/run/secrets/nostr.key` is `devuser`-owned 0400 and holds the *signing key*,
+because the bridge daemon runs as `devuser` and must read it. The relay then
+admits the container's own events as `AdmitReason::SelfAuthored` — locally
+authored egress is not a remote publisher, so it passes even under a deny-all
+allowlist. Nothing was blocked; a file had been misread.
+
+The consequence is recorded rather than buried: **any process running as
+`devuser` in this container can sign as the container identity.** That is the
+designed arrangement, not a defect — the container's trust model treats anything
+running inside it as the container — but it means
+`nostr-pod-bridge publish` is *discipline, not enforcement*, and
+`colloquy_publish` says so in its own documentation rather than claiming a guard
+it does not provide.
+
+`activation_status` stays `inactive` only because the entrypoint registration and
+the `publish` subcommand both need a rebuild to be live in the image.

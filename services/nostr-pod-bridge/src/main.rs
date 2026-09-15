@@ -22,6 +22,10 @@
 //! |                   | ([`SessionSummary`] JSON on stdin) → kind-30840.        |
 //! | `track`           | One-shot egress for a project digest                    |
 //! |                   | ([`ProjectTrackingDigest`] JSON on stdin) → kind-30841. |
+//! | `publish`         | Sign a colloquy event on an agent's behalf and publish  |
+//! |                   | it (ADR-2085). Colloquy kinds ONLY — see                |
+//! |                   | [`nostr_pod_bridge::colloquy_publish`] for the          |
+//! |                   | allowlist and the two deliberate exclusions.            |
 //!
 //! Only the subcommands that actually publish need the bridge secrets, so
 //! `bootstrap` — which *creates* those secrets — resolves its own configuration
@@ -42,7 +46,8 @@ use tracing_subscriber::EnvFilter;
 
 use nostr_pod_bridge::envmap::EnvMap;
 use nostr_pod_bridge::{
-    bootstrap, publish_project_tracking, publish_session_summary, serve, session_summary,
+    bootstrap, publish_colloquy, publish_project_tracking, publish_session_summary, serve,
+    session_summary,
     spawn_consumer, BridgeConfig, ProjectTrackingDigest, SessionSummary,
 };
 
@@ -62,9 +67,10 @@ async fn main() -> anyhow::Result<()> {
         Some("session-summary") => run_session_summary(&env).await,
         Some("summarise") => run_summarise(&BridgeConfig::from_env(&env)?).await,
         Some("track") => run_track(&BridgeConfig::from_env(&env)?).await,
+        Some("publish") => run_publish(&BridgeConfig::from_env(&env)?).await,
         Some(other) => Err(anyhow!(
             "unknown subcommand '{other}'; expected 'bootstrap', 'session-summary', \
-             'summarise', 'track', or no argument (daemon mode)"
+             'summarise', 'track', 'publish', or no argument (daemon mode)"
         )),
         None => run_daemon(BridgeConfig::from_env(&env)?).await,
     }
@@ -103,6 +109,21 @@ async fn run_track(cfg: &BridgeConfig) -> anyhow::Result<()> {
     let digest: ProjectTrackingDigest =
         serde_json::from_str(&raw).context("parsing ProjectTrackingDigest JSON from stdin")?;
     publish_project_tracking(cfg, &digest).await
+}
+
+/// One-shot egress: sign a colloquy event under the sovereign identity and
+/// publish it (ADR-2085). The agent composing the event never holds the key —
+/// that is the point of routing through this binary rather than handing an agent
+/// the secret. Refuses every kind outside the colloquy allowlist; see
+/// `colloquy_publish` for why that list excludes graduations and governance.
+///
+/// Prints the signed event id on stdout so the caller can reference it.
+async fn run_publish(cfg: &BridgeConfig) -> anyhow::Result<()> {
+    let raw = read_stdin("colloquy publish JSON")?;
+    let req = nostr_pod_bridge::colloquy_publish::parse_request(&raw)?;
+    let id = publish_colloquy(cfg, &req).await?;
+    println!("{id}");
+    Ok(())
 }
 
 /// Long-running daemon: bind the relay, serve WS, run the pod-ingress consumer.
