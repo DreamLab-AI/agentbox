@@ -58,10 +58,13 @@ its status. A member is grilled, not nagged.
 **Seven days of silence expires the item to `stale`.** A stale item is neither acted on
 nor re-asked, and a late reply cannot revive it.
 
-**Gift-wrapped DMs are built in exactly one place.** `sendGiftWrappedDm` was lifted out
-of `JunkieJarvisAgent._sendDm` (which now delegates to it) and exported, with
-`unwrapDmRumor` as its mirror. The tenant reuses both. No cryptography was written here:
-`nip59.wrapEvent`/`unwrapEvent` from `nostr-tools` do the sealing, as before.
+**Gift-wrapped DMs are built in exactly one place — on this surface.**
+`sendGiftWrappedDm` was lifted out of `JunkieJarvisAgent._sendDm` (which now delegates to
+it) and exported, with `unwrapDmRumor` as its mirror. The tenant reuses both. No
+cryptography was written here: `nip59.wrapEvent`/`unwrapEvent` from `nostr-tools` do the
+sealing, as before. This is deliberately a claim about the JunkieJarvis surface only —
+`per-user-agent.js`, `nostr-live-mirror.cjs` and the nostr-gateway each still hold their
+own `nip59` call site, and consolidating them is work this ADR does not do.
 
 **Gated by `[sovereign_mesh].junkiejarvis_clarify_before_acting`, default `true`**, with
 `JUNKIEJARVIS_CLARIFY_BEFORE_ACTING` as the runtime override per the mesh convention

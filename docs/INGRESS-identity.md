@@ -280,10 +280,15 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    conversational DM and kind-42 mention paths still answer freely; grilling a member
    mid-conversation would be the wrong behaviour there. Exactly ONE clarification DM is
    sent per item, and 7 days of silence expires the item to `stale` rather than acting on it.
-9. Gift-wrapped (NIP-59) DMs are constructed in exactly ONE place —
-   `sendGiftWrappedDm` in `management-api/lib/junkiejarvis-agent.js`, which delegates the
-   sealing to `nostr-tools`' `nip59.wrapEvent`. `JunkieJarvisAgent._sendDm` and the
-   nightly forum tenant both call it; a second envelope site is a defect, not an option.
+9. On the **JunkieJarvis surface**, gift-wrapped (NIP-59) DMs are constructed in exactly
+   ONE place — `sendGiftWrappedDm` in `management-api/lib/junkiejarvis-agent.js`, which
+   delegates the sealing to `nostr-tools`' `nip59.wrapEvent`. `JunkieJarvisAgent._sendDm`
+   and the nightly forum tenant both call it; a second envelope site on this surface is a
+   defect, not an option.
+   **Scope, stated explicitly:** this is NOT an estate-wide claim. Other surfaces keep
+   their own `nip59` call sites — `management-api/lib/per-user-agent.js`,
+   `config/hooks/nostr-live-mirror.cjs`, `config/nostr-gateway/{gateway,nostr-send}.cjs`.
+   Consolidating those is unresolved work, not something ADR-2088 did.
 
 ## Change process
 
