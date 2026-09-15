@@ -180,6 +180,14 @@ junkiejarvis bridge agent, operator mobile (Amethyst/Amber). `agent_event_auth =
 (`agentbox.toml:172`) — hardened by default; `POST /v1/agent-events/emit` requires a
 kind-27235 header and stamps `source_urn` from the verified pubkey.
 
+**Clarify-before-acting on the ingest path (ADR-2088).** `[sovereign_mesh].junkiejarvis_clarify_before_acting`
+(default `true`) gates the forum-suggestions tenant: a vague suggestion is answered with a
+gift-wrapped clarification DM and parked, never triaged. The one gift-wrap site is
+`sendGiftWrappedDm` (`management-api/lib/junkiejarvis-agent.js`); its unwrap mirror is
+`unwrapDmRumor`. No new key material, no new relay, no new door — the tenant reuses the
+JunkieJarvis signer and the existing authenticated `NostrBridge`.
+
+
 ## Known divergences & open items
 
 - **Resolved — ADR-2047 (2026-09-05): the LAN surface is ten sanctioned publishes, all
@@ -259,6 +267,28 @@ kind-27235 header and stamps `source_urn` from the verified pubkey.
    invisible to it and is NOT covered. Read this invariant as "no unintended
    host-facing port", never as "no unintended listener". The listener-level
    statement is proposed in ADR-2062 and is not yet an invariant.
+
+8. JunkieJarvis never acts on a forum item it does not understand. Before the nightly
+   forum-suggestions tenant triages or queues a suggestion, `junkiejarvis-clarify.js`
+   runs a deterministic clarity check (reproduction steps for a defect report, a named
+   surface, an unambiguous target, and a specificity floor); a failing item is DMed 1–3
+   questions over the shared NIP-59 envelope and parked as `awaiting-clarification`
+   instead of triaged (ADR-2088). Gate `[sovereign_mesh].junkiejarvis_clarify_before_acting`,
+   default **true**, env override `JUNKIEJARVIS_CLARIFY_BEFORE_ACTING`.
+   **Scope, stated explicitly:** this governs the *forum-suggestions ingest path* — the
+   post→handoff pipeline in `scripts/dream-forum-suggestions.mjs`. The agent's live
+   conversational DM and kind-42 mention paths still answer freely; grilling a member
+   mid-conversation would be the wrong behaviour there. Exactly ONE clarification DM is
+   sent per item, and 7 days of silence expires the item to `stale` rather than acting on it.
+9. On the **JunkieJarvis surface**, gift-wrapped (NIP-59) DMs are constructed in exactly
+   ONE place — `sendGiftWrappedDm` in `management-api/lib/junkiejarvis-agent.js`, which
+   delegates the sealing to `nostr-tools`' `nip59.wrapEvent`. `JunkieJarvisAgent._sendDm`
+   and the nightly forum tenant both call it; a second envelope site on this surface is a
+   defect, not an option.
+   **Scope, stated explicitly:** this is NOT an estate-wide claim. Other surfaces keep
+   their own `nip59` call sites — `management-api/lib/per-user-agent.js`,
+   `config/hooks/nostr-live-mirror.cjs`, `config/nostr-gateway/{gateway,nostr-send}.cjs`.
+   Consolidating those is unresolved work, not something ADR-2088 did.
 
 ## Change process
 

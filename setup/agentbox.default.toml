@@ -60,6 +60,19 @@ kg_elevation = true
 # manifest is absent.
 # Gate semantics + subsystem boundary: ADR-030.
 junkiejarvis = false
+# Clarify-before-acting (ADR-2088): when JunkieJarvis ingests a forum issue or
+# suggestion whose actionable detail is unclear (no reproduction steps, no
+# surface, an ambiguous target, or below the specificity floor), it MUST NOT act
+# on it. It gift-wrap DMs the author 1-3 concrete questions, parks the item as
+# `awaiting-clarification` in the suggestion ledger, and resumes only when that
+# author replies. One DM per item; 7 days of silence expires it to `stale`.
+# DEFAULT TRUE — grilling first is the safe behaviour, so an absent manifest
+# still gets the gate. JUNKIEJARVIS_CLARIFY_BEFORE_ACTING is the runtime
+# override, per the mesh convention (ADR-030).
+# Flat key, not a [junkiejarvis] table: agentbox.toml is read by a LINE-BASED
+# parser with no inline tables (management-api/adapters/manifest-loader.js), and
+# a top-level table would repeat the ADR-028 gate-key misalignment.
+junkiejarvis_clarify_before_acting = true
 # Per-user agent sessions (management-api/lib/per-user-agent.js +
 # scripts/run-per-user-agent.cjs): one Claude session per pod user, spawned on
 # inbound relay messages. Manifest declaration of the live feature gate.

@@ -601,6 +601,79 @@ function signerFromHex(privHex) {
   };
 }
 
+// ─── Gift-wrapped DM send (the single NIP-59 envelope site) ─────────
+
+/**
+ * Send a NIP-17 DM to `recipientPubkey`, gift-wrapped per NIP-59.
+ *
+ * This is the ONE place in the repo that builds a gift wrap. It was lifted out
+ * of `JunkieJarvisAgent._sendDm` (which now delegates to it) so the nightly
+ * forum-suggestions tenant — scripts/dream-forum-suggestions.mjs, which has a
+ * bridge and a signer but no agent instance — can send a clarification DM
+ * through the identical envelope rather than hand-rolling a second one
+ * (ADR-2088). No crypto is implemented here: `nip59.wrapEvent` from nostr-tools
+ * does the sealing.
+ *
+ * The wrap it returns is already signed by an EPHEMERAL key, so it is published
+ * raw with a pass-through signer — re-signing with the sender's identity would
+ * both destroy the wrap and leak the sender.
+ *
+ * Fail-open: every failure path returns null. A DM that cannot be sent must
+ * never take down the caller.
+ *
+ * @param {object} args
+ * @param {{ publish(event, signer): Promise<object> }} args.bridge
+ * @param {{ skBytes: Uint8Array }} args.signer  from signerFromHex
+ * @param {string} args.recipientPubkey  64-hex
+ * @param {string} args.text             the DM body
+ * @param {number} [args.createdAt]      unix seconds, for deterministic tests
+ * @returns {Promise<object|null>} the published kind-1059 gift wrap, or null
+ */
+async function sendGiftWrappedDm({ bridge, signer, recipientPubkey, text, createdAt } = {}) {
+  try {
+    if (!bridge || typeof bridge.publish !== 'function') return null;
+    if (!signer || !signer.skBytes) return null;
+    if (typeof recipientPubkey !== 'string' || !recipientPubkey.trim()) return null;
+    const body = typeof text === 'string' ? text : '';
+    if (!body.trim()) return null;
+
+    const { nip59 } = getNostrTools();
+    const rumor = {
+      kind: KIND_DM_RUMOR,
+      content: body,
+      tags: [['p', recipientPubkey]],
+      created_at: Number.isFinite(createdAt) ? Math.floor(createdAt) : Math.floor(Date.now() / 1000),
+    };
+    // wrapEvent(event, senderPrivkey, recipientPubkey) → signed kind-1059.
+    const wrapped = nip59.wrapEvent(rumor, signer.skBytes, recipientPubkey);
+    await bridge.publish(wrapped, { sign: (e) => e });
+    return wrapped;
+  } catch (_err) {
+    return null;
+  }
+}
+
+/**
+ * Unwrap a NIP-59 gift wrap into its NIP-17 DM rumor. The mirror of
+ * `sendGiftWrappedDm`, exported for the same reason: the nightly
+ * forum-suggestions tenant reads clarification replies without opening a second
+ * unwrap site. Returns null on anything that is not a wrap for this key.
+ *
+ * @param {object} wrap  a kind-1059 event
+ * @param {Uint8Array} skBytes  recipient secret key (signer.skBytes)
+ * @returns {object|null} the kind-14 rumor, or null
+ */
+function unwrapDmRumor(wrap, skBytes) {
+  try {
+    if (!wrap || typeof wrap !== 'object' || !skBytes) return null;
+    const { nip59 } = getNostrTools();
+    const rumor = nip59.unwrapEvent(wrap, skBytes);
+    return rumor && typeof rumor === 'object' ? rumor : null;
+  } catch (_err) {
+    return null;
+  }
+}
+
 // ─── JunkieJarvisAgent ──────────────────────────────────────────────────────
 
 const DEFAULT_DEDUP_CAP = 2000;
@@ -782,22 +855,19 @@ class JunkieJarvisAgent {
     await this._sendDm(asker, reply);
   }
 
+  /**
+   * Delegates to the shared `sendGiftWrappedDm` envelope — one gift-wrap site
+   * for the agent and the nightly forum tenant alike (ADR-2088).
+   */
   async _sendDm(recipientPubkey, replyText) {
-    try {
-      const { nip59 } = getNostrTools();
-      const rumor = {
-        kind: KIND_DM_RUMOR,
-        content: replyText,
-        tags: [['p', recipientPubkey]],
-        created_at: Math.floor(Date.now() / 1000),
-      };
-      // wrapEvent(event, senderPrivkey, recipientPubkey) → signed kind-1059.
-      const wrapped = nip59.wrapEvent(rumor, this.signer.skBytes, recipientPubkey);
-      // The gift wrap is already fully signed (by an ephemeral key); publish raw.
-      await this.bridge.publish(wrapped, { sign: (e) => e });
-    } catch (err) {
-      this._logErr('dm-send', err);
-    }
+    const wrapped = await sendGiftWrappedDm({
+      bridge: this.bridge,
+      signer: this.signer,
+      recipientPubkey,
+      text: replyText,
+    });
+    if (!wrapped) this._logErr('dm-send', new Error('gift-wrapped DM not sent'));
+    return wrapped;
   }
 
   // ── Channel path (kind-42 mention) ──
@@ -1003,6 +1073,8 @@ module.exports = {
   JunkieJarvisAgent,
   startJunkieJarvis,
   signerFromHex,
+  sendGiftWrappedDm,
+  unwrapDmRumor,
   callLlm,
   readPrivHex,
   // pure helpers (exported for tests / reuse)

@@ -57,7 +57,7 @@ const BASELINE = [
       'model_routing.neural.trajectory',  // ADR-2080 knob under the model-routing-neural gate
       'sovereign_mesh.solid_pod', 'sovereign_mesh.nostr_bridge', 'sovereign_mesh.https_bridge',
       'sovereign_mesh.publish_agent_events', 'sovereign_mesh.voice_intent', 'sovereign_mesh.kg_elevation',
-      'sovereign_mesh.junkiejarvis', 'sovereign_mesh.per_user_agents', 'sovereign_mesh.mobile_bridge.enabled',
+      'sovereign_mesh.junkiejarvis', 'sovereign_mesh.junkiejarvis_clarify_before_acting', 'sovereign_mesh.per_user_agents', 'sovereign_mesh.mobile_bridge.enabled',
       'sovereign_mesh.relay.enabled', 'sovereign_mesh.relay.expose', 'sovereign_mesh.relay.pod_bridge',
       'sovereign_mesh.relay.allow_nip04', 'sovereign_mesh.git.enabled', 'sovereign_mesh.git.auto_init',
       'sovereign_mesh.git.read_public', 'sovereign_mesh.multi_user.enabled',

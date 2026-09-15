@@ -14,8 +14,14 @@
 // The relay zone-gates reads behind NIP-42 AUTH, so all queries ride the
 // authenticated NostrBridge with the JunkieJarvis signer.
 //
+// Clarify-before-acting (ADR-2088): a post whose actionable detail is unclear is
+// NEVER triaged. JunkieJarvis gift-wrap DMs the author 1-3 concrete questions,
+// parks the item as `awaiting-clarification`, and resumes only when that author
+// replies — re-running the same clarity check with the reply appended. One DM
+// per item, ever; 7 days without a reply expires the item to `stale`.
+//
 // State: $WORKSPACE/.agentbox/dream-forum-suggestions.json
-//   { rootId, repliedEventIds: [], lastRunAt }
+//   { rootId, repliedEventIds: [], lastRunAt, clarify: { pending: {...} } }
 // Fail-open everywhere: any error logs and exits 0 so the nightly cycle is
 // never blocked by forum weather.
 
@@ -136,7 +142,7 @@ function collect(bridge, filter, { quietMs = 3000, maxMs = 15000 } = {}) {
 // ---------------------------------------------------------------------------
 
 function loadState() {
-  try { return JSON.parse(readFileSync(STATE_FILE, 'utf8')); } catch { return { rootId: null, repliedEventIds: [], lastRunAt: null }; }
+  try { return JSON.parse(readFileSync(STATE_FILE, 'utf8')); } catch { return { rootId: null, repliedEventIds: [], lastRunAt: null, clarify: { pending: {} } }; }
 }
 
 function saveState(state) {
@@ -153,6 +159,10 @@ function queueHandoff(post, verdict) {
       'Mined nightly from the community feature-suggestions thread. `action` rows are',
       'candidates for the next engineering night of the target repo; `defer` rows need',
       'the operator. Nothing here merges or ships without the human gate.',
+      '',
+      '`awaiting-clarification` rows were NOT triaged: the post was too vague to act on,',
+      'so JunkieJarvis DMed the author the questions in the Reason column and is waiting',
+      'for a reply (ADR-2088). They expire to `stale` after 7 days.',
       '',
       '| Date | Event | Author | Decision | Target | Suggestion | Reason |',
       '| --- | --- | --- | --- | --- | --- | --- |',
@@ -173,11 +183,28 @@ async function main() {
   if (!privHex) { log('ERROR', 'JUNKIEJARVIS_PRIVKEY_HEX not set — skipping'); return; }
 
   const { NostrBridge } = require(join(AGENTBOX_DIR, 'mcp/servers/nostr-bridge.js'));
-  const { signerFromHex } = require(join(AGENTBOX_DIR, 'management-api/lib/junkiejarvis-agent.js'));
+  const { signerFromHex, sendGiftWrappedDm, unwrapDmRumor } =
+    require(join(AGENTBOX_DIR, 'management-api/lib/junkiejarvis-agent.js'));
+  const clarify = require(join(AGENTBOX_DIR, 'management-api/lib/junkiejarvis-clarify.js'));
   const signer = signerFromHex(privHex);
   if (signer.pubkey !== JJ_PUBKEY) log('WARN', `signer pubkey ${signer.pubkey.slice(0, 8)}… is not the canonical JunkieJarvis key`);
 
   const state = loadState();
+
+  // Clarify-before-acting gate (ADR-2088). Manifest key
+  // [sovereign_mesh].junkiejarvis_clarify_before_acting, env override
+  // JUNKIEJARVIS_CLARIFY_BEFORE_ACTING; DEFAULT ON, and an unreadable manifest
+  // leaves it on rather than silently acting on vague posts.
+  let manifest = {};
+  try {
+    manifest = require(join(AGENTBOX_DIR, 'management-api/adapters/manifest-loader.js')).loadManifest();
+  } catch { manifest = {}; }
+  const clarifyOn = clarify.clarifyBeforeActingEnabled(manifest, process.env);
+  let clarifyState = state.clarify && state.clarify.pending
+    ? state.clarify
+    : clarify.emptyClarifyState();
+  log('INFO', `clarify-before-acting ${clarifyOn ? 'ON' : 'OFF'}`);
+
   const bridge = new NostrBridge({ relays: [RELAY_URL] });
   if (typeof bridge.setAuthSigner === 'function') bridge.setAuthSigner(signer);
   await bridge.connect();
@@ -199,19 +226,107 @@ async function main() {
     const thread = [...roots, ...replies].sort((a, b) => a.created_at - b.created_at);
     log('INFO', `thread has ${thread.length} event(s)`);
 
+    // 2b. Clarification lifecycle: expire the 7-day stragglers, then pull any
+    //     gift-wrapped DMs addressed to JunkieJarvis and attach each one to the
+    //     parked item its author was asked about.
+    if (clarifyOn) {
+      const expiry = clarify.expireStale(clarifyState, Date.now());
+      clarifyState = expiry.state;
+      for (const id of expiry.expired) log('INFO', `clarification for ${id.slice(0, 12)} expired to stale (no reply in 7 days)`);
+
+      const awaiting = Object.entries(clarifyState.pending)
+        .filter(([, e]) => e.status === clarify.STATUS_AWAITING);
+      if (awaiting.length > 0) {
+        const since = Math.floor(Math.min(...awaiting.map(([, e]) => e.askedAt || 0)) / 1000);
+        const wraps = await collect(bridge, { kinds: [1059], '#p': [JJ_PUBKEY], since, limit: 500 });
+        log('INFO', `${wraps.length} gift wrap(s) to check against ${awaiting.length} parked item(s)`);
+        for (const wrap of wraps) {
+          const rumor = unwrapDmRumor(wrap, signer.skBytes);
+          if (!rumor) continue;
+          const itemId = clarify.matchReplyToPending(clarifyState, rumor);
+          if (!itemId) continue;
+          const applied = clarify.applyReply(clarifyState, {
+            itemId,
+            replyText: rumor.content,
+            replyEventId: rumor.id || wrap.id,
+            now: Date.now(),
+          });
+          clarifyState = applied.state;
+          if (applied.resumed) log('INFO', `clarification reply received for ${itemId.slice(0, 12)} — re-checking`);
+        }
+      }
+    }
+
     // 3. New user posts: not JJ, not already replied to, not the operator's own
     //    seed post (the root), capped per night.
     const replied = new Set(state.repliedEventIds || []);
-    const fresh = thread.filter((e) =>
+    const candidates = thread.filter((e) =>
       e.id !== state.rootId
       && e.pubkey !== JJ_PUBKEY
       && !replied.has(e.id)
       // skip posts that are themselves JJ-thread replies to a triaged post
       && !(e.tags || []).some((t) => t[0] === 'p' && t[1] === JJ_PUBKEY)
-    ).slice(0, MAX_PER_NIGHT);
-    log('INFO', `${fresh.length} new suggestion(s) to triage${fresh.length > MAX_PER_NIGHT ? ` (capped at ${MAX_PER_NIGHT})` : ''}`);
+      // Parked items are excluded BEFORE the nightly cap, not inside the loop:
+      // a backlog of items awaiting (or stale on) clarification must not starve
+      // genuinely new suggestions of their slots (ADR-2088).
+      && !(clarifyOn && (() => {
+        const parked = clarify.findPending(clarifyState, e.id);
+        return parked && parked.status !== clarify.STATUS_CLARIFIED;
+      })())
+    );
+    const fresh = candidates.slice(0, MAX_PER_NIGHT);
+    // Compare the PRE-slice count: `fresh.length` can never exceed the cap, so
+    // testing it would make the notice dead code and hide a real backlog.
+    log('INFO', `${fresh.length} new suggestion(s) to triage${candidates.length > MAX_PER_NIGHT ? ` (capped at ${MAX_PER_NIGHT} of ${candidates.length})` : ''}`);
 
     for (const post of fresh) {
+      // ── Clarify-before-acting gate (ADR-2088) ──
+      // An item whose actionable detail is unclear is never triaged. The check
+      // runs on the post PLUS any clarification replies already gathered, so a
+      // member who answers gets acted on; a member who waffles does not.
+      if (clarifyOn) {
+        // Awaiting/stale items were already filtered out above, so `parked` here
+        // is either absent (never asked) or `clarified` (a reply is in hand).
+        const parked = clarify.findPending(clarifyState, post.id);
+        const merged = clarify.composeForRecheck(post.content, parked ? parked.replies : []);
+        const assessment = clarify.assessClarity({ content: merged });
+        if (!assessment.clear) {
+          if (!clarify.shouldSendClarification(clarifyState, post.id)) {
+            // Already asked once and the reply did not close the gaps. One DM
+            // per item, ever — we do not grill a member twice.
+            log('INFO', `${post.id.slice(0, 12)} still unclear after a reply — leaving it, no second DM`);
+            continue;
+          }
+          const body = clarify.composeClarificationDm(post, assessment);
+          if (DRY_RUN) {
+            log('INFO', `[dry-run] would DM ${post.pubkey.slice(0, 8)}…: ${assessment.questions.join(' | ')}`);
+            continue;
+          }
+          const wrapped = await sendGiftWrappedDm({
+            bridge, signer, recipientPubkey: post.pubkey, text: body,
+          });
+          if (!wrapped) {
+            log('ERROR', `clarification DM failed for ${post.id.slice(0, 12)} — leaving for next night`);
+            continue;
+          }
+          clarifyState = clarify.openClarification(clarifyState, {
+            itemId: post.id,
+            pubkey: post.pubkey,
+            questions: assessment.questions,
+            dmEventId: wrapped.id,
+            text: post.content,
+            now: Date.now(),
+          });
+          queueHandoff(post, {
+            decision: 'awaiting-clarification',
+            target: '—',
+            reason: `DM ${wrapped.id.slice(0, 12)}: ${assessment.questions.join(' ')}`,
+          });
+          log('INFO', `${post.id.slice(0, 12)} unclear (${assessment.missing.join(',')}) — DMed ${assessment.questions.length} question(s), not acting`);
+          continue;
+        }
+      }
+
       let verdict;
       try {
         verdict = await triage(post);
@@ -251,6 +366,7 @@ async function main() {
 
     if (!DRY_RUN) {
       state.repliedEventIds = [...replied].slice(-2000);
+      state.clarify = clarifyState;
       state.lastRunAt = new Date().toISOString();
       saveState(state);
     }
