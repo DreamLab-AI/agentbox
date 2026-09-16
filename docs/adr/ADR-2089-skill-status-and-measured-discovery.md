@@ -72,8 +72,13 @@ with frontmatter) and the generated routing table's `DESC_MAX = 160`.
   router is a separate decision, not taken here: the state of a routing call is the user's own
   prompt, the widest data class in the estate, with no redaction story
   (`skills/system-one/references/routing-cost-and-scope.md`).
-- Costs: measured 15,839 input + 1,319 output tokens and ~636 ms per full-fleet routing call.
-  Output scales with option count, so re-running the rig over the whole estate is not free.
+- Costs: measured ~15.8k input tokens and ~600 ms per full-fleet routing call. At Jev's
+  $0.042/MTok input with **output free**, that is **$0.000662 per route** — roughly half what
+  one turn of the 20 always-loaded skill descriptions costs in Opus cache reads ($0.001446),
+  and ~124× cheaper than one `/route`, which pulls ~16k tokens into our own context at
+  $5.00/MTok. Re-running the rig over the whole estate is effectively free; the scarce
+  resource is our context window, not the judge's tokens
+  (`skills/system-one/references/routing-cost-and-scope.md`).
 - Known limitation: **the judge is not deterministic at fleet scale.** At 10 candidates picks
   were bit-identical across repeats; at 131 candidates two runs of an identical configuration
   scored 34/40 and 36/40. Single-rep comparisons are inside the noise. `--reps 3` and the soft

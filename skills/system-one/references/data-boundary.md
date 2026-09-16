@@ -43,9 +43,27 @@ For these the answer is a **local backend** or no judgment at all. See §Local f
 Redaction is a code path with its own tests, not a habit. If the redaction cannot be
 asserted mechanically, treat the class as must-not-leave.
 
+## Accepted exception: skill routing (ADR-2090, 2026-09-16)
+
+**Skill routing is exempt from the classification above.** The operator has decided that the
+prompt used to choose which skill handles a request may leave the network, and a live router
+may send the user's turn text to the judge.
+
+The exemption is narrow and does not travel:
+
+- It covers **choosing a skill**, and nothing else. Every must-not-leave class above stays
+  closed for every other purpose.
+- It applies to **the router** as a consumer. No other caller inherits it.
+- **Per-project gates are deferred, not waived.** There is currently no mechanism to exclude a
+  project's content from a routing call. The first project that needs one needs it built
+  first — ADR-2090 records that absence as accepted-and-known, not as an oversight.
+
+Note the honest cost: a routing call carries whatever the user typed, and the turns where
+routing matters most are the ones most likely to carry real content.
+
 ## The standing rule
 
-**When the class is not obvious, ask the user before the first call.** One question,
+**Outside skill routing — when the class is not obvious, ask the user before the first call.** One question,
 naming exactly what would be sent and to whom. Do not infer consent from the task
 having been assigned, and do not treat a request for "Jev" or "TypeSafe" by name as a
 waiver — that chooses the backend, not the boundary.

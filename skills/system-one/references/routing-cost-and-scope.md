@@ -1,89 +1,93 @@
-# Option 2 — Jev as a live skill router: scope and cost
+# The economics of skill selection
 
-Measured 2026-09-16 with `../scripts/route-eval.mjs` over 40 labelled items against all
-131 skills. **Option 1 (offline description tuning) is implemented and needs none of
-this.** What follows scopes the live-router variant and prices it.
+**Corrects an earlier version of this file that priced output tokens as a cost driver and
+never priced the alternative. Jev's output tokens are free, and the alternative — skill
+selection paid in *our* context — was the cost that mattered all along.**
 
-## Measured unit economics
+Rates used (2026-09-16): **Jev $0.042/MTok input, output free.** Claude Opus 5 **$5.00/MTok**
+input, cache reads ~0.1× (**$0.50/MTok**), cache writes ~1.25× (**$6.25/MTok**); Sonnet 5
+$2.00/MTok. Substitute your own if the tier differs — the ratios are what matter.
 
-Per routing call, flat over the whole fleet, full descriptions:
+## Measured unit costs
 
-| | Measured |
-|---|---|
-| Input tokens | **15,839** |
-| Output tokens | **1,319** |
-| Latency | **636 ms** (p50-ish, n=120) |
-| Accuracy | **92%** soft over 3 reps (96% on the independent tier) |
+| | Tokens | Rate | Cost |
+|---|---|---|---|
+| **Jev route over all 127 skills** | 15,772 in / 1,269 out | $0.042 in, out free | **$0.000662** |
+| **Always-loaded descriptions** (20 registered skills, in every request's system prompt) | 2,892 | $0.50/MTok cache read | **$0.001446 per turn** |
+| **One `/route`** (skill-router SKILL.md + routing-table.md pulled into context) | ~16,462 | $5.00/MTok, uncached | **$0.0823** |
+| **Reading SKILL-DIRECTORY.md instead** | ~18,544 | $5.00/MTok | **$0.0927** |
 
-Two cost properties are unusual and drive everything below.
+Latency: 598–636 ms per Jev route, measured over 120 calls.
 
-**Input is re-sent every call.** The 131 descriptions are byte-identical on every
-request, and no prompt-caching mechanism is documented. So ~15.8k input tokens is a
-fixed toll per route, not an amortised corpus load.
+## The two comparisons that matter
 
-**Output scales with the option count.** 1,319 output tokens is not an answer — it is a
-probability for each of 131 options. Halve the candidate set and the output cost
-roughly halves with it. This is the opposite of the usual LLM profile and it is why a
-two-stage design pays twice.
+**A full-fleet Jev route costs less than half of one turn's residency tax — and sees 6.3×
+more skills.** We pay $0.001446 every turn to keep 20 of 127 descriptions resident. A Jev
+call that reads *all 127* costs $0.000662, once, only on turns that actually route.
+
+**A Jev route is ~124× cheaper than one `/route`.** $0.000662 against $0.0823 — and the
+`/route` number understates it, because those ~16,000 tokens then *stay in the context
+window* for the rest of the session.
 
 ## Volume
 
-TypeSafe publishes no public pricing page (`/pricing` and `/limits` are 404 as of
-2026-09-16; the console is the only source). Substitute the real per-million rate for
-`$P_in` / `$P_out`:
+| Routes/day | Jev, flat over 127 skills | For comparison: today's always-loaded tax at the same turn count |
+|---|---|---|
+| 100 | $0.07/day · **$2/month** | $0.14/day · $4/month |
+| 1,000 | $0.66/day · **$20/month** | $1.45/day · $43/month |
+| 10,000 | $6.62/day · **$199/month** | $14.46/day · $434/month |
 
-| Routes/day | Input tokens/day | Output tokens/day | Cost/month |
-|---|---|---|---|
-| 100 | 1.58 M | 0.13 M | `47.5 M × $P_in + 4.0 M × $P_out` |
-| 1,000 | 15.8 M | 1.3 M | `475 M × $P_in + 40 M × $P_out` |
-| 10,000 | 158 M | 13.2 M | `4.75 B × $P_in + 396 M × $P_out` |
+The right-hand column is what we already spend, for one sixth of the coverage, on every turn
+whether or not a skill is needed.
 
-At 10k routes/day — plausible if *every* agent turn across the estate routes — this is
-billions of input tokens a month to re-send the same 131 descriptions. That is the
-finding: Jev is cheap per call, and "often" is what makes it expensive. The question is
-not the unit price, it is how many turns actually need routing.
+## Corrections to the earlier analysis
 
-## Cheaper shapes, in order of expected saving
+- **"Output scales with option count, so a two-stage design pays twice."** Wrong — output is
+  free. Option count costs nothing on the output side. A 127-option Choice and a 5-option
+  Choice bill identically for output.
+- **"Two-stage section→skill gives a ~4.5× saving."** It saves input only: ~15.8k → ~3.5k
+  tokens, about $0.00047 per route. At 1,000 routes/day that is $15/month against an added
+  round trip (~1.2 s) and stage-1 error compounding into stage-2. **Not worth building.**
+- **"Prune the candidate set / shorten descriptions."** Both now pointless as cost levers.
+  Truncation *costs* accuracy (160 chars → 78%, full → 90%) and saves fractions of a cent.
+  Send the full text.
+- **"Don't wire it live — the economics don't justify it."** The economics now argue the
+  other way. Cost was never the real objection.
 
-1. **Route only on ambiguity, not every turn.** Most turns do not need a router at all —
-   the harness already matched a skill, or none applies. A router invoked on every turn
-   pays the full toll to confirm what was already known. *Blocker: the harness exposes
-   no "I am uncertain" signal to gate on, so this needs a trigger design first.*
-2. **Two-stage: section, then skill within section.** Stage 1 chooses among the 26
-   routing sections; stage 2 chooses among that section's ~5–10 skills. **Projected**
-   from two measured points (10 candidates = ~2.0k input / ~100 output; 131 = 15.8k /
-   1.3k): roughly **3.5k input and ~250 output per route, a ~4.5× saving**, at the cost
-   of a second round trip (~1.2 s total) and compounding stage-1 error into stage-2.
-   Hierarchical classification is a documented vendor pattern and our `section-map.json`
-   already carries the hierarchy. **Not yet measured — measure before adopting.**
-3. **Prune the candidate set.** Demoted skills (`status` ≠ live) need not be offered at
-   all. That is ~8 skills today: a few percent, not a fix on its own.
-4. **Shorter descriptions.** Measured: 640 chars holds 88% at ~94% of full-text cost —
-   truncation is a poor lever because description length is already near the knee.
+## Egress: decided (ADR-2090)
 
-## What still blocks Option 2 — unchanged by any of this
+**Resolved 2026-09-16.** The operator has accepted that skill-routing prompts may leave the
+network. The exemption covers skill routing only; every other must-not-leave class stays
+closed, and **per-project gates are deferred rather than waived** — the first project that
+cannot accept this needs a gate built before it runs, and none exists today.
 
-The state of a routing call is **the user's own turn text**. That is the widest and
-least controllable data class in the estate, and unlike the reranking case it cannot be
-scoped to a public corpus. Everything in `data-boundary.md` §Must not leave would flow
-through the router on the turns where it matters most.
+The honest cost stands on the record: a routing call carries whatever the user typed, and the
+turns where routing matters most are the ones most likely to carry real content.
 
-Three consequences, all needing a decision before a line of router code is written:
+Two engineering consequences remain, both decisions rather than measurements:
 
-- **Egress.** Ratify or refuse in an ADR. There is no redaction story for "the user's
-  prompt" — you cannot strip the meaning and still route on it.
-- **Availability coupling.** A router that is the sole dispatch path fails closed when
-  the vendor 429s or 529s. The rig retries; a live router needs a defined fallback to
-  the existing description matching, and that fallback must be the *normal* path when
-  the service is slow, not an error case.
-- **Confidence is not a safety net.** Measured here: a wrong answer arrived at **0.94**
-  confidence. A "low confidence → ask the user" rule does not catch this failure mode.
+- **Availability coupling.** A sole-dispatch router fails closed on 429/529. The fallback to
+  existing description matching must be the *normal* path when the service is slow, not an
+  error case.
+- **Confidence is not a safety net.** Measured here: a wrong pick at **0.94** confidence. The
+  vendor's own intent-routing guidance gates escalation on `confidence < 0.5`; that is their
+  pattern for their customer-service use case and does not transfer on this evidence.
 
 ## Recommendation
 
-Do not wire a live router yet. The measured accuracy (92%) is good but not better than
-the existing arrangement by enough to justify sending every user turn off-network. The
-cheap, decision-free wins are all in Option 1, which is implemented. If Option 2 is
-wanted later, the order is: (1) measure the two-stage variant, (2) design the ambiguity
-trigger so routing is occasional rather than per-turn, (3) then take the egress decision
-to an ADR with real numbers attached.
+Both objections are now settled: cost argues **for** the router, and egress is decided
+(ADR-2090). A live router is cheaper than the status quo, covers all 127 skills rather than a
+curated 20, and returns ~2,900 tokens per turn to the context window.
+
+Build order, cheapest-first:
+
+1. **Re-choose the always-loaded twenty by measurement.** They were curated by taste when
+   context was the binding constraint. The same offline rig can say which descriptions
+   actually earn a permanent slot. No new runtime, no egress, immediate context saving.
+2. **A router with fail-open.** The fallback to existing description matching must be the
+   normal path when the judge is slow or rate-limited, not an error branch.
+3. **A per-project bypass**, before the first project that needs one — the debt ADR-2090
+   records.
+
+Do not build the two-stage section→skill variant: it saves ~$15/month at 1,000 routes/day and
+costs a round trip plus compounding error.
