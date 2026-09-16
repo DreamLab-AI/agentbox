@@ -684,6 +684,23 @@ describe('E016: unknown manifest keys are rejected (UnknownManifestKey)', () => 
     expect(r.exitCode).toBe(0);
     expect(stderrContains(r, 'E016')).toBe(false);
   });
+
+  test('valid: runtime URL placeholder and proxy preserve_host contract', () => {
+    const m = baseValid();
+    m.dream_machine = { loom_url: '${LOOM_BASE_URL}' };
+    m.interaction_plane = {
+      proxy: {
+        routes: [{
+          prefix: '/code',
+          target: 'http://127.0.0.1:8080',
+          preserve_host: true
+        }]
+      }
+    };
+    const r = runValidator(m);
+    expect(r.exitCode).toBe(0);
+    expect(stderrContains(r, 'E016')).toBe(false);
+  });
 });
 
 // ─── W031 ─────────────────────────────────────────────────────────────────────

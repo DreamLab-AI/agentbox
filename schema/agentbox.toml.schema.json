@@ -2561,7 +2561,7 @@
         },
         "loom_url": {
           "type": "string",
-          "pattern": "^https?://"
+          "pattern": "^(https?://|\\$\\{[A-Za-z_][A-Za-z0-9_]*\\}$)"
         },
         "loom_model": {
           "type": "string"
@@ -2696,6 +2696,10 @@
                   "strip": {
                     "type": "boolean",
                     "description": "Strip the matching prefix before forwarding."
+                  },
+                  "preserve_host": {
+                    "type": "boolean",
+                    "description": "Forward the browser-facing Host header instead of rewriting it to the upstream origin."
                   },
                   "bearer_env": {
                     "type": "string",
