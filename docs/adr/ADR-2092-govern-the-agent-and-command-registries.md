@@ -4,19 +4,11 @@ title: Agents and slash-commands get the same manifest governance skills already
 date: 2026-09-16
 decision_status: accepted
 implementation_status: complete
-activation_status: pending-rebuild
+activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 03a3b13b5135768a28332e346dbe577cf8a8662d
-verified_paths:
-  - agents/registered-agents.txt
-  - scripts/reconcile-agents.sh
-  - scripts/reconcile-commands.sh
-  - scripts/project-skill-roots.mjs
-  - config/registered-commands.txt
-  - config/entrypoint-unified.sh
-  - flake.nix
-  - tests/config/agent-reconcile.test.sh
+verified_commit: 64c00fd00da8c271d4c5a299cb811de68f1cc90d
+verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
 repo: agentbox
