@@ -37,8 +37,7 @@ Apply this review to any of:
 
 ## When Not to Use
 
-- For first-principles architecture design and system decomposition -- use the **renaissance-architecture** skill instead
-- For domain modelling, bounded contexts, and strategic design -- use the **human-architect-mindset** skill instead
+- For domain modelling, bounded contexts, and strategic design -- use the **build-with-quality** skill instead
 - For systematic code quality improvement with testing and quality gates -- use the **build-with-quality** skill instead
 - For simple code formatting or style fixes -- standard linting and formatting tools suffice
 - For general performance profiling and optimisation -- use the **performance-analysis** skill; **pytorch-ml**/**cuda** only for GPU-kernel- or training-specific perf work
@@ -200,11 +199,11 @@ Two is suspicious. Three is where abstraction starts to pay off.
 
 ## Integration with Negentropy Lens
 
-Vanity engineering is a specific manifestation of entropy. When the negentropy-lens skill is
+Vanity engineering is a specific manifestation of entropy. When an entropy/negentropy framing is
 available, cross-reference findings:
 
 - Vanity patterns are entropic by definition — complexity increase without capability gain
-- The "Tacit Knowledge Gap" from negentropy-lens often reveals vanity: if only the author
+- A "tacit knowledge gap" often reveals vanity: if only the author
   understands it, the complexity serves the author, not the system
 - Apply the negentropy "compounding value" test: does this engineering decision make adjacent
   decisions easier or harder?

@@ -42,7 +42,7 @@ Claude Code only: the `hooks/` automation and the `allowed-tools`/`user-invocabl
 
 ## When Not to Use
 
-- For software architecture decisions — use `renaissance-architecture` or `human-architect-mindset`
+- For software architecture decisions — use `build-with-quality` (design interrogation) or `codebase-memory` (structural analysis); this skill is BUILDING architecture (AEC), not software
 - For general UI/UX design — use `ui-ux-pro-max-skill` or the bencium designers
 - For 3D modelling/rendering — use `blender`
 - For geospatial GIS analysis — use `qgis` (complementary for site data)

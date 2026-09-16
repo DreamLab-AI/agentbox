@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **131 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
+> **127 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
 > Updated 2026-09-09 (estate re-audit for Fable 5.1 / GPT-6 Astra workloads; history in `CHANGELOG.md` and `docs/adr/`). Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -32,13 +32,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (131 Active Skills)
+## Artefact 1: Categorised Skill Inventory (127 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 131 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 127 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -201,15 +201,11 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `adaptive-communication` | No | Detects relational vs transactional communication style, adapts responses | Ambiguous user intent, hedging language, relational conversations |
-| `negentropy-lens` | No | Entropy vs negentropy evaluation framework, surfaces tacit knowledge gaps | Architecture decisions, system evaluation, strategy review |
 
 ### Software Architecture and Strategic Review
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `renaissance-architecture` | No | First-principles architecture, simplicity-first, building new vs derivative | Designing genuinely new features/products, avoiding over-engineering |
-| `human-architect-mindset` | No | Domain modeling, systems thinking, constraint navigation, AI-aware decomposition | Multi-component architecture, integration planning, breaking changes |
 | `vanity-engineering-review` | No | Detects ego-driven engineering: unnecessary abstractions, resume-driven tech choices | Code review, architecture review, complexity audit |
 | `bencium-code-conventions` | No | React/Next.js/TypeScript/TailwindCSS stack conventions, style guide | Projects using Bencium's preferred tech stack |
 | `bencium-aeo` | No | Answer Engine Optimisation for AI search visibility (ChatGPT, Claude, Gemini) | Optimising content for AI citations, not traditional SEO |
@@ -305,7 +301,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 131 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 127 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)
@@ -751,19 +747,15 @@ Recommended full pipeline:
 Q3: What architecture need?
     |
     +-- First-principles thinking, build genuinely new things
-    |   --> renaissance-architecture
     |
     +-- Domain modelling, systems thinking, constraint navigation
-    |   --> human-architect-mindset
     |
     +-- Over-engineering / vanity check on existing code
     |   --> vanity-engineering-review
     |
     +-- Entropy vs negentropy evaluation of systems/decisions
-    |   --> negentropy-lens
     |
     +-- Detect relational vs transactional communication style
-    |   --> adaptive-communication
     |
     +-- Strategic positioning, technology evolution, competitive Wardley mapping
         --> wardley-maps
@@ -964,26 +956,50 @@ explicit boundary was written. Item 15 recorded the codex pair "Complete" — it
 carries `status: superseded`, `replacement: codex-companion` — making explicit what item 15
 already recorded in prose.
 
-**Open — genuine design questions, recorded rather than silently merged:**
+**Known blind spot:** the scan compares pairs *within* a routing section. Cross-section
+near-neighbours are invisible to it, and two are known to misroute despite scoring below the
+0.60 threshold or sitting in different sections: `diagrams-as-code` ↔
+`github-workflow-automation` ("put a CI gate on our diagrams" — diagrams-as-code ships its own
+gate) and `perplexity-research` ↔ `web-researcher` (0.63/0.33 on an academic-citation request).
+Both are recorded rather than fixed, to avoid tuning descriptions to a 40-item test set.
+
+**Open — genuine design questions, recorded rather than silently merged** (the
+`human-architect-mindset` ↔ `renaissance-architecture` pair at 0.70 was resolved by removing
+both — see the innate-capability scan below):
 
 | Pair | Overlap | Question |
 |---|---|---|
-| `bhil-methodology` ↔ `sparc-methodology` | 0.74 | Two phased methodologies. Is the distinction real, or is one the successor? |
-| `human-architect-mindset` ↔ `renaissance-architecture` | 0.70 | Both scored high on the innate-capability scan too (0.69/0.66) — the strongest merge-or-retire candidates in the estate |
-| `bencium-controlled-ux-designer` ↔ `ui-ux-pro-max-skill` | 0.60 | Survived the scoping fix; may need its own boundary |
-| `clipcannon` ↔ `open-montage` | 0.60 | Both media assembly; differentiated by source material, which the descriptions state weakly |
 
-Estate overlap fell from **9 pairs at ≥0.60 to 4** across this audit.
+**Estate overlap: 9 pairs at ≥0.60 → 0.** `bhil-methodology`↔`sparc-methodology` (0.74),
+`bencium-controlled-ux-designer`↔`ui-ux-pro-max-skill` (0.60) and `clipcannon`↔`open-montage`
+(0.60) were each cleared by naming the boundary in both descriptions — artefact-trail vs build
+cycle, locked-spec process vs lookup table, existing footage vs generated material. The
+`human-architect-mindset`↔`renaissance-architecture` pair (0.70) was resolved by removing both.
+
+Routing accuracy after the full audit: **90% soft over 3 reps across 127 skills, 96% on the
+independent tier** (was 92%/96% at 131 skills before the cull; the difference is one
+cross-section item, within the documented run-to-run noise).
 
 ### Innate-capability scan (2026-09-16, candidates only)
 
 Skills were also scored on whether they mainly teach what a 2026 frontier model does
 natively, against whether they supply tooling it cannot reach alone. **This is a candidate
 list for human review, not a verdict** — `build-with-quality` scores 0.43 and is plainly not
-chaff, which bounds how far the signal can be trusted. Highest margin (innate minus tooling):
-`adaptive-communication` +0.73, `human-architect-mindset` +0.63, `negentropy-lens` +0.59,
-`renaissance-architecture` +0.59, `vanity-engineering-review` +0.58, `typography` +0.48.
-No skill has been deprecated on this evidence alone.
+chaff, which bounds how far the signal can be trusted.
+
+**Outcome (operator decision, 2026-09-16):** the four highest-margin skills were **removed**
+— adaptive-communication (+0.73), human-architect-mindset (+0.63), negentropy-lens (+0.59)
+and renaissance-architecture (+0.59). All four were pure-prose thinking lenses with no
+tooling, and two of them were also each other's only overlap pair (0.70): a double signal.
+Recoverable from git history; inbound references in `vanity-engineering-review`,
+`architecture-studio` and `system-one` were re-pointed at `build-with-quality` and
+`codebase-memory` rather than left dangling.
+
+`typography` (+0.48) and `vanity-engineering-review` (+0.58) were **kept**: the first carries
+craft rules models reliably get wrong, the second is a review posture that costs little.
+
+This is the estate's first cull rather than deprecation. The measurement informed it; it did
+not decide it.
 
 ### Potential Future Consolidation
 

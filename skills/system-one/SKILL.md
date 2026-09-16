@@ -18,7 +18,7 @@ description: >-
   code already decides.
 triggers: "typesafe, jev, system one, system-one, typed judgment, choice/score/noul, noul, structured decision, classifier instead of prompt, rerank candidates, llm guardrail, semantic lint"
 compatibility: "Claude Code and Codex both read this SKILL.md. Live-doc reads use WebFetch in Claude Code; a Codex/GPT-6 Astra session uses its own fetch tool or `curl` against the same URLs. Fan-out over many candidate judgments may use the Agent tool in Claude Code; sequential in Codex. No MCP server and no Claude-only affordance is required to build an integration."
-related_skills: [ontology-augment, build-with-quality, deep-research, codebase-memory, autoresearch, adaptive-communication]
+related_skills: [ontology-augment, build-with-quality, deep-research, codebase-memory, autoresearch]
 env_vars: [TYPESAFE_API_KEY]
 ---
 

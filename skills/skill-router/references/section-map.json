@@ -29,7 +29,6 @@
     "Web Research and Content"
   ],
   "skills": {
-    "adaptive-communication": "Communication & Decision Support",
     "agentdb-advanced": "Memory, Learning, and Intelligence",
     "agentdb-learning": "Deprecated and Archived",
     "agentdb-memory-patterns": "Memory, Learning, and Intelligence",
@@ -92,7 +91,6 @@
     "hive-mind-advanced": "Swarm and Multi-Agent Orchestration",
     "hooks-automation": "Swarm and Multi-Agent Orchestration",
     "host-webserver-debug": "Browser Automation and Web",
-    "human-architect-mindset": "Software Architecture and Strategic Review",
     "imagemagick": "Media Processing",
     "jupyter-notebooks": "Data Science and Notebooks",
     "latex-book": "Deprecated and Archived",
@@ -104,7 +102,6 @@
     "manim": "Media Processing",
     "mermaid-diagrams": "Documentation and Reports",
     "meta-xr-sdk": "3D and Game Development",
-    "negentropy-lens": "Communication & Decision Support",
     "notebooklm": "Web Research and Content",
     "ontology-augment": "Ontology and Knowledge Graphs",
     "ontology-core": "Ontology and Knowledge Graphs",
@@ -128,7 +125,6 @@
     "qgis": "Geospatial",
     "reddit": "Web Research and Content",
     "relationship-design": "UI/UX Design",
-    "renaissance-architecture": "Software Architecture and Strategic Review",
     "repo-education": "Deprecated and Archived",
     "report-builder": "Documentation and Reports",
     "rust-development": "Systems Programming",

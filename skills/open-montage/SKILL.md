@@ -1,14 +1,15 @@
 ---
 name: open-montage
-description: >
-  Agentic video production system. Describe a video idea in natural language;
-  the agent orchestrates research, scripting, asset generation, editing, and
+description: >-
+  Assembles a montage from GENERATED or mixed-source material with no single source
+  reel. For cutting and clipping existing footage you already hold choose
+  `clipcannon`. Agentic video production system. Describe a video idea in natural
+  language; the agent orchestrates research, scripting, asset generation, editing, and
   rendering across 11 pipelines and 49 tools. Supports zero-key mode (Piper TTS +
-  Pexels stock + Remotion + FFmpeg) and premium APIs (ElevenLabs, Runway, Kling,
-  Veo 3, Suno). Use when the user says "make a video", "create an explainer
-  video", "produce a trailer", "video production", "animate", or "podcast to
-  video".
-  From calesthio/OpenMontage.
+  Pexels stock + Remotion + FFmpeg) and premium APIs (ElevenLabs, Runway, Kling, Veo
+  3, Suno). Use when the user says "make a video", "create an explainer video",
+  "produce a trailer", "video production", "animate", or "podcast to video". From
+  calesthio/OpenMontage.
 version: 1.0.0
 author: calesthio (OpenMontage)
 tags:

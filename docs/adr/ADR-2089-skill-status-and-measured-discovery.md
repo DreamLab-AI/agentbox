@@ -49,7 +49,12 @@ with frontmatter) and the generated routing table's `DESC_MAX = 160`.
 5. **Cluster overlap is settled by measurement, not assertion.** The overlap ledger records a
    measured pairwise number and the date. A claim of "no merge needed" without one is not a
    finding. The instrument is `route-eval.mjs` plus the pairwise overlap scan.
-6. **Prefer an explicit boundary to a merge.** Where two skills measure as overlapping, first
+6. **A skill may be removed, not only deprecated,** when measurement and an operator decision
+   agree. Applied 2026-09-16 to four tooling-free thinking lenses (`adaptive-communication`,
+   `human-architect-mindset`, `negentropy-lens`, `renaissance-architecture`), two of which were
+   also each other's only overlap pair. Removal is git-recoverable and requires re-pointing every
+   inbound reference; it does not licence trimming depth out of a skill that stays.
+7. **Prefer an explicit boundary to a merge.** Where two skills measure as overlapping, first
    try naming the boundary in both descriptions and re-measure; merge only if that fails.
    Two of three clusters resolved this way, with no content lost.
 
@@ -61,7 +66,7 @@ with frontmatter) and the generated routing table's `DESC_MAX = 160`.
 - Discovery quality is a number. Measured over 40 labelled items across all 131 skills:
   **92% soft accuracy (3 reps), 96% on the independent tier.** Truncation curve: 160 chars
   → 78%, 320 → 83%, 640 → 88%, untruncated → 90% (1 rep). Estate overlap fell from 9 pairs
-  at ≥0.60 to 4 after this ADR's boundary fixes.
+  at ≥0.60 to **0**: five cleared by naming boundaries, one by supersession, one by removal.
 - The measurement instrument is a third-party cloud API (TypeSafe System One / Jev). It is
   used **offline against this repo's own public skill descriptions only**. Using it as a live
   router is a separate decision, not taken here: the state of a routing call is the user's own
@@ -88,16 +93,17 @@ with frontmatter) and the generated routing table's `DESC_MAX = 160`.
 
 At the commit recording this ADR:
 
-- `bash skills/lint-skills.sh` → `OK — skills estate clean (131 skills … 0 warnings)`, with the
+- `bash skills/lint-skills.sh` → `OK — skills estate clean (127 skills … 0 warnings)`, with the
   new `STATUS` and `DIRECTORY` (MCP) checks active. The STATUS gate failed 9 skills on first
   run — including two that had invented their own vocabularies (`active`, `requires-install`) —
   all since remediated.
 - `node scripts/skill-count-check.js --quiet` → exit 0.
 - `node skills/gen-routing-table.mjs --check` → clean (run by the lint above).
 - Routing accuracy: `node skills/system-one/scripts/route-eval.mjs --items items.json --reps 3`
-  → 36.7/40 soft (92%), tier B 25.0/26 (96%).
+  → 36.0/40 soft (90%) across 127 skills, tier B 25.0/26 (96%). Before the cull, at 131
+  skills: 36.7/40 (92%), tier B 96%.
 - Overlap: the pairwise scan over within-section live skills reports 4 pairs at ≥0.60
-  (`bhil-methodology`↔`sparc-methodology` 0.74, `human-architect-mindset`↔
-  `renaissance-architecture` 0.70, `bencium-controlled-ux-designer`↔`ui-ux-pro-max-skill` 0.60,
-  `clipcannon`↔`open-montage` 0.60) — each an open design question, recorded in the ledger
-  rather than silently merged.
+  reports **0 pairs at ≥0.60**, down from 9. Known blind spot: it compares pairs within a
+  routing section, so cross-section near-neighbours are invisible — two that misroute anyway
+  (`diagrams-as-code`↔`github-workflow-automation`, `perplexity-research`↔`web-researcher`) are
+  recorded in the ledger rather than fixed, to avoid tuning descriptions to a 40-item test set.

@@ -1,6 +1,14 @@
 ---
 name: sparc-methodology
-description: "SPARC — a systematic 5-phase development lifecycle (Specification, Pseudocode, Architecture, Refinement, Completion) run through Claude Flow multi-agent orchestration. Use when driving a feature from spec through review and deployment with coordinated agents, or when you want a structured spec→design→TDD→review→completion pipeline rather than ad-hoc edits."
+description: >-
+  Pick this over `bhil-methodology` when the deliverable is WORKING CODE moved through
+  phases (Specification, Pseudocode, Architecture, Refinement, Completion). `bhil-
+  methodology` owns the artefact trail and traceability; this owns the build cycle.
+  SPARC — a systematic 5-phase development lifecycle (Specification, Pseudocode,
+  Architecture, Refinement, Completion) run through Claude Flow multi-agent
+  orchestration. Use when driving a feature from spec through review and deployment
+  with coordinated agents, or when you want a structured
+  spec→design→TDD→review→completion pipeline rather than ad-hoc edits.
 version: 2.7.0
 category: development
 tags:
