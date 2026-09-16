@@ -95,7 +95,7 @@ let
       name = "schema-org.context.jsonld";
       iri  = "http://schema.org/";
       url  = "https://schema.org/docs/jsonldcontext.jsonld";
-      sha256 = "sha256-WPcJQIku9O3WbpSCuf/FBVnKzAghx0rdjN3AhFGi6wM=";
+      sha256 = "sha256-ZdDF0X3vmxcbdpe7CSnu0XqjLxmvU54VMCtsIEebiTA=";
       vocabulary = "Schema.org";
       authors = "Ramanathan V. Guha and the schema.org community";
       status = "Living standard, multi-vendor";
