@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: 5e213c3ecdf132c5b2fa72b89f1222e36c94551c
 verified_paths: []
 owner: jjohare
 review_trigger: the first project whose content must not reach the judge, or any proposal to widen this beyond skill routing
