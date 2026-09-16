@@ -29,6 +29,35 @@ lifecycle  = ./agentbox.sh ruvector <status|check|test|update|rollback|recall>
 
 Full audited state (learning loop, gates, corpus history): [ruvector-memory-state](docs/reference/claude-context/ruvector-memory-state.md).
 
+## Agents & commands — manifest-governed (ADR-2092)
+
+The image bakes `/opt/agentbox/agents` (12 subagents) and registers them from
+`agents/registered-agents.txt`; `scripts/reconcile-agents.sh` projects that set into
+`~/.claude/agents` at boot, retires vendor dumps to a recoverable `.superseded/` sidecar,
+and collapses `$WORKSPACE/.claude/agents` + `$WORKSPACE/project/.claude/agents` so the
+visible set never depends on the launch CWD. Same model as the skills manifest below, and
+added for the same reason: nothing governed the agent roots, so `ruflo init`
+(`@claude-flow/cli`) and `aqe init --auto` accreted **97 agents across two roots** on a
+host mount that survives every rebuild — 74 present in both, 37 byte-divergent, and the
+nested root *shadows* the user root, so the older truncated copy was the one being served.
+Slash-commands get the prune-only sibling (`config/registered-commands.txt` +
+`scripts/reconcile-commands.sh`, 244 → `dream.md` alone).
+
+**To add an agent:** write `agents/<name>.md`, add the basename to
+`agents/registered-agents.txt`, rebuild. Registration is a repo change by design — the old
+cost of adding one was zero, which is how 97 accumulated. A hand-written agent dropped flat
+into `~/.claude/agents` with no vendor marker is preserved and reported, so experiments
+still work. Gate: `bash tests/config/agent-reconcile.test.sh` (26 assertions) before a
+rebuild.
+
+**Never write a `/nix/store/...` path into persistent config.** Store paths are
+content-addressed and change every rebuild; `.mcp.json` and `~/.claude` are host mounts that
+outlive them. Pin `/opt/agentbox/bin/<tool>` (baked in `flake.nix` as a symlink) and make the
+registration self-healing — compare the recorded value against the canonical one rather than
+guarding with `grep -q '"name"'`, which registers once and can never correct a stale entry.
+Both mistakes together are what left the colloquy MCP server failing `ENOENT` against a
+garbage-collected store path while the container looked healthy.
+
 ## Skills — progressive discovery
 
 The image bakes `/opt/agentbox/skills` (127 skills). Skills are the JIT context layer: trigger-led descriptions route, `references/` subdirs hold depth loaded on demand — keep it that way when adding or editing skills (no monolith SKILL.md; relocate depth to `references/` rather than deleting it; skill docs use skill-relative paths, never `~/.claude/skills/<name>/`). A whole skill may be **removed** when measurement plus an operator decision support it (ADR-2089; first applied 2026-09-16 to four tooling-free thinking lenses) — that is a deliberate, git-recoverable act, not a licence to trim depth out of a skill that stays. One authoring contract (ADR-2083, taught by `skills/skill-builder`): `name` equals the directory, `description` ≤ 1024 chars with what/when/when-not, Claude-only affordances stated in one line with the Codex fallback. Discovery is generated: `skills/gen-routing-table.mjs` + `skill-router/references/section-map.json` produce the router table; a new skill needs a section-map entry and a `SKILL-DIRECTORY.md` row. Registration is by manifest — `skills/registered-skills.txt` (Claude Code, always-loaded) and `skills/codex-registered-skills.txt` (Codex / GPT-6 Astra) — reconciled into `~/.claude/skills` and `~/.codex/skills` at boot. Routing is live by default (ADR-2091): `[skills.routing].router = "jev"` registers `config/hooks/skill-route.cjs` on `UserPromptSubmit`, one System One Choice over every routable description per turn injected as advisory context, and `/route` shares its library; it fails open to `"table"` (the always-loaded descriptions + `routing-table.md`, the pre-2091 path) on any failure — never treat the pick's probability as a gate (ADR-2090). Gate: `skills/lint-skills.sh` must pass before a rebuild. Directory + routing: [skills/SKILL-DIRECTORY.md](skills/SKILL-DIRECTORY.md); historical upgrade rationale: [docs/archive/skills-upgrade-plan-c5.md](docs/archive/skills-upgrade-plan-c5.md).

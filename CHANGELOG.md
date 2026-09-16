@@ -4,6 +4,127 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-09-16 — Agent and command registries get manifest governance; colloquy stops pinning a store path)
+
+Skills have had a governed pipeline since SK-1/SK-2: one baked canonical tree, a
+curated manifest, a boot reconciler, a projector for the ancestor roots. Agents and
+slash-commands never did. `ruflo init` (`@claude-flow/cli`) and `aqe init --auto`
+dump their template sets into `~/.claude/agents` and `~/.claude/commands`, a second
+copy lands under `$WORKSPACE/.claude/` whenever init runs from a nested CWD, and
+`~/.claude` is a host mount — so every dump survived every rebuild with nothing to
+refresh, deduplicate or remove it. ADR-2092 closes that.
+
+The 2026-09-16 audit of the live container: **97 unique agents** across two roots
+(≈6,540 prompt tokens per turn), **244 command files** of which 225 carry no
+`description:` frontmatter and render as bare unroutable names (≈1,915 tokens), and
+**26 skills** in `$WORKSPACE/.claude/skills` of which **zero** were registered
+(≈2,377 tokens). Worse than the cost: 74 of the 97 agents existed in *both* roots
+and only 37 were byte-identical — the nested root shadows the user root, and the
+nested copies were the older, truncated ones. `collective-intelligence-coordinator`
+was being served at 3,854 bytes with a 31,403-byte revision sitting unused one
+directory up; `adaptive-coordinator` 15,744 against 36,250. The agent that ran was
+not the agent that had been written.
+
+- **`agents/` + `agents/registered-agents.txt`** — canonical subagent tree, baked to
+  `/opt/agentbox/agents`, with the manifest as single source of truth for what the
+  harness always loads.
+- **`scripts/reconcile-agents.sh`** — boot reconciler. Links the registered set,
+  retires vendor dumps to a recoverable `.superseded/` sidecar, collapses the
+  secondary roots. A vendor copy sharing a registered basename (`v3/adr-architect.md`)
+  is retired *before* the registered-name check, so it cannot survive to shadow the
+  real one — that being the exact bug the script exists to remove. Hand-written flat
+  agents with no vendor marker are preserved and reported.
+- **`config/registered-commands.txt` + `scripts/reconcile-commands.sh`** — prune-only
+  (commands are installed by their owning subsystem, so there is nothing to project).
+  244 → 1; `dream.md` is kept.
+- **`scripts/project-skill-roots.mjs`** — the skills manifest was being **bypassed** on
+  the ancestor roots: the loop only ever *repaired* what it found, so an entry whose
+  name happened to be baked was freshened to a canonical link and kept, registered or
+  not. The roots now mirror the registered set; unregistered entries are retired
+  unless named in the new **`skills/overlay-skills.txt`** allowlist, which turns the
+  project-local overlay from "whatever is on disk" into a decision. Pruning is
+  disabled outright when a manifest cannot be read, so a transient error cannot empty
+  a root.
+- **The registered agent set is 12, rewritten rather than inherited.** 63 of the old 97
+  carried V2 claude-flow hook theatre (`echo "🐝 …"`, `npx claude-flow hooks`,
+  `ruv-swarm`); 9 targeted a Flow Nexus account this estate does not have; 13 `github-*`
+  agents duplicated the `github-*` skills; the SPARC agents duplicated
+  `sparc-methodology`. Only 9 were free of legacy markers. The replacements —
+  `code-reviewer`, `test-engineer`, `security-reviewer`, `rust-engineer`,
+  `system-architect`, `performance-engineer`, `memory-curator`, `adr-architect`,
+  `ontology-curator`, `harness-janitor`, `nix-image-engineer`, `auto-consultant` —
+  each merge a family of the old set, carry an explicit `tools:` restriction, and
+  encode estate rules previously living only in `CLAUDE.md` prose (RuVector's ~512-token
+  embed cap and serial-HNSW index law; never-hand-roll-crypto; never build from inside
+  the container).
+- **Net ≈9,500 tokens per turn** off the always-loaded registry (10,832 → 1,273).
+  Nothing is lost: demoted skills stay reachable through the router and
+  `SKILL-DIRECTORY.md`, and every retired file sits under `.superseded/`.
+- **`tests/config/agent-reconcile.test.sh`** — 26 assertions covering linkage, recoverable
+  retirement, the shadowing class, overlay preservation, secondary-root collapse,
+  idempotency, `--dry-run` inertness and fail-open on a missing manifest.
+
+### Added (2026-09-16 — the federation fixture gate actually runs now)
+
+`scripts/ci/federation-fixture-check.mjs` was governed by ADR-2025 and ADR-2085 and
+documented in `docs/PROTOCOL-registry.md`, but was wired into nothing — an
+ADR-mandated contract check that had never executed in CI. Found by the script-estate
+audit. Now a step in `.github/workflows/invariants.yml` (37 checks, green). The point
+of the fixture is that agentbox and VisionClaw assert the *same* identifier table
+rather than two tables that happen to agree; an ungated check cannot deliver that. The
+Rust half continues to run in VisionClaw CI.
+
+### Removed (2026-09-16 — 12.1 GB of completed-operation artefacts)
+
+- `backups/ruvector-sidecar/archive-legacy-20260705T101743Z.copy.gz` (11 GB) and the
+  two `repair-namespaces-20260705T*.copy.gz` dumps (5.2 MB) — the outputs of the
+  completed July 2026 `archive-legacy` / namespace-repair operations. **The live
+  contents of `backups/ruvector-sidecar/` were deliberately kept**: `recall-runs/` and
+  `state.json` are working state, not backups — `scripts/recall-gate.mjs:47` reads
+  `recall-runs/latest-receipt.json`, and removing the directory wholesale would have
+  broken the recall gate.
+- The regenerable bulk of `.video-sprint/` (1.05 GB): `tts-venv`, `kokoro-v1.0.onnx`,
+  `hf-cache`, `uv-cache`, `voices-v1.0.bin`, the two blender render dirs, `sample` and
+  `api-smoke-output`. `production-project` is retained — `docs/development/codebase-video-sprint.md`
+  names it as the editable project.
+
+Cargo `target/` caches (43 GB) were left alone: `scripts/reap-cargo-targets.sh --dry-run`
+reports 0 reapable, 11 kept — every one is inside the size cap and recently touched.
+
+### Removed (2026-09-16 — dead claude-flow v3alpha bootstrap)
+
+`mcp/scripts/init-claude-flow-agents.sh` (161 lines, last touched 2026-05-01) — a
+pre-governance bootstrap that ran `claude-flow swarm init --v3-mode` and defined
+`cf_*` shell helpers. Unreferenced by the entrypoint, the flake, CI, the manifest and
+the docs, and targeting a `/workspace` layout this image does not use. A full audit of
+the script estate found this to be the *only* orphan: `scripts/ci/*` is wired to
+`.github/workflows/invariants.yml`, `scripts/provision-*.sh` are documented entry
+points in `docs/user/provisioning.md`, `scripts/manual-tests/` is self-declared ad-hoc,
+and every `config/hooks/*.cjs` is registered. Git-recoverable.
+
+### Fixed (2026-09-16 — colloquy MCP: a `/nix/store` path written into persistent config)
+
+`colloquy` had been failing `ENOENT` against
+`/nix/store/g1iqddx…-colloquy-0.1.0/bin/colloquy-mcp` while the container was
+otherwise healthy. Two compounding defects, both in
+`config/entrypoint-unified.sh`:
+
+- The registration took its command from `command -v colloquy-mcp`, which resolves to a
+  **content-addressed store path**. That path changes whenever the derivation rebuilds,
+  but `.mcp.json` is a host mount that survives the rebuild — so after a rebuild and a
+  GC the recorded path names a store entry that no longer exists. `flake.nix` now bakes
+  `/opt/agentbox/bin/colloquy-mcp` as a stable symlink into the current store path, and
+  the entrypoint records *that*. (The documented fallback `/opt/agentbox/bin/colloquy-mcp`
+  had never existed — the directory was not created.)
+- The registration was **write-once**, guarded by `grep -q '"colloquy"'`. Once a stale
+  path was in `.mcp.json` nothing could correct it short of hand-editing. It now compares
+  the recorded command against the canonical binary and re-registers on drift, reporting
+  the change.
+
+colloquy was the only store-pinned entry in `.mcp.json`; the class is now documented in
+the `nix-image-engineer` agent so it does not recur.
+
+
 ### Added (2026-09-14 — Augmentation conditions: task properties, receipts, manual continuation)
 
 The authority gate was cryptographically complete and semantically thin: the only

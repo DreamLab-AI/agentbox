@@ -1746,7 +1746,16 @@ if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1
   _COLLOQUY_ON="$(agentbox-manifest toml-bool \
     --manifest "$AGENTBOX_CONFIG" --path skills.colloquy.enabled 2>/dev/null || echo 0)"
 fi
-_COLLOQUY_BIN="$(command -v colloquy-mcp 2>/dev/null || echo /opt/agentbox/bin/colloquy-mcp)"
+# Prefer the STABLE baked path over `command -v`. `command -v colloquy-mcp`
+# resolves to /nix/store/<hash>-colloquy-0.1.0/bin/colloquy-mcp, and that hash
+# changes whenever the derivation rebuilds. .mcp.json is a host mount, so the
+# path written there outlives the store entry it names: after a rebuild + GC the
+# server fails ENOENT with the container otherwise healthy. flake.nix bakes
+# /opt/agentbox/bin/colloquy-mcp as a symlink into the current store path, so
+# that name stays correct across rebuilds. `command -v` remains the fallback for
+# a dev shell where /opt is not populated.
+_COLLOQUY_BIN="/opt/agentbox/bin/colloquy-mcp"
+[ -x "$_COLLOQUY_BIN" ] || _COLLOQUY_BIN="$(command -v colloquy-mcp 2>/dev/null || echo /opt/agentbox/bin/colloquy-mcp)"
 _COLLOQUY_STORE="${COLLOQUY_STORE_PATH:-/var/lib/agentbox/colloquy/units.jsonl}"
 _COLLOQUY_TIER="${COLLOQUY_TIER:-}"
 _COLLOQUY_NS="${COLLOQUY_NAMESPACE:-}"
@@ -1780,10 +1789,19 @@ if { [ "$_COLLOQUY_ON" = "1" ] || [ "$_COLLOQUY_ON" = "true" ]; } \
     echo "        member    = AGENTBOX_PUBKEY (from identity.env)" >&2
     echo "        principal = [skills.colloquy].principal, else [sovereign_mesh.operator].pubkey_hex, else COLLOQUY_PRINCIPAL" >&2
     echo "        Confidence is counted per authorising principal (ADR-2086); an unidentified member cannot attest." >&2
-  elif ! grep -q '"colloquy"' "$_MCP_JSON" 2>/dev/null; then
+  else
+  # Self-healing, not write-once. The previous guard was `grep -q '"colloquy"'`,
+  # which registered the server once and then never looked again — so a stale
+  # command path (the /nix/store case above) could never be corrected by a
+  # rebuild, only by hand-editing .mcp.json. Compare what is recorded against
+  # the canonical binary and rewrite when they differ.
+  _CQ_RECORDED="$(node -e 'try{const j=require(process.argv[1]);process.stdout.write(((j.mcpServers||{}).colloquy||{}).command||"")}catch(e){}' "$_MCP_JSON" 2>/dev/null || echo "")"
+  if [ "$_CQ_RECORDED" != "$_COLLOQUY_BIN" ]; then
+    [ -n "$_CQ_RECORDED" ] && echo "  [mcp] colloquy command drifted ($_CQ_RECORDED -> $_COLLOQUY_BIN); re-registering"
+
     mkdir -p "$(dirname "$_COLLOQUY_STORE")" 2>/dev/null || true
     chown -R 1000:1000 "$(dirname "$_COLLOQUY_STORE")" 2>/dev/null || true
-    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name colloquy <<JSON 2>/dev/null && echo "  [mcp] Added colloquy" || true
+    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name colloquy <<JSON 2>/dev/null && echo "  [mcp] registered colloquy -> $_COLLOQUY_BIN" || true
 {
   "command": "$_COLLOQUY_BIN",
   "args": [],
@@ -1805,6 +1823,7 @@ if { [ "$_COLLOQUY_ON" = "1" ] || [ "$_COLLOQUY_ON" = "true" ]; } \
 JSON
     chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
     chmod 600 "$_MCP_JSON" 2>/dev/null || true
+  fi
   fi
 fi
 
@@ -2482,6 +2501,45 @@ if [ -f "$_SKILL_ROOTS_PROJECTOR" ] && command -v node >/dev/null 2>&1; then
     node "$_SKILL_ROOTS_PROJECTOR" 2>&1 | sed 's/^/  [skill-roots] /' || true
   chown -h 1000:1000 "$WORKSPACE/.claude/skills"/* 2>/dev/null || true
   chown -h 1000:1000 "$WORKSPACE/project/.claude/skills"/* 2>/dev/null || true
+fi
+
+# ── Reconcile ~/.claude/agents from the curated manifest (ADR-2092) ────────
+# The agent counterpart of the skills reconciler above, and overdue for the same
+# reason: nothing governed the agent roots. `ruflo init` (@claude-flow/cli) and
+# `aqe init --auto` each dump their template sets into ~/.claude/agents, the
+# directory is a host mount so the dumps survive every rebuild, and a second copy
+# lands in $WORKSPACE/.claude/agents whenever init runs from a nested CWD. The
+# 2026-09-16 audit found 97 unique agents across the two roots (~6,540 prompt
+# tokens per turn), 74 present in BOTH with 37 byte-divergent — and since the
+# nested root shadows the user root, the truncated copy was the one being served.
+# This links the 12 registered agents, retires the vendor dump to a recoverable
+# .superseded/ sidecar, and collapses the secondary roots so the visible set no
+# longer depends on the launch directory. Privileged boot phase (can replace
+# root-owned legacy files); idempotent and fail-open.
+_RECONCILE_AGENTS="/opt/agentbox/scripts/reconcile-agents.sh"
+if [ -f "$_RECONCILE_AGENTS" ]; then
+  CLAUDE_AGENTS_DIR="/home/devuser/.claude/agents" \
+  AGENTS_TREE="${AGENTS_TREE:-/opt/agentbox/agents}" \
+  AGENT_ROOT_TARGETS="$WORKSPACE/.claude/agents:$WORKSPACE/project/.claude/agents" \
+  REGISTERED_AGENTS_MANIFEST="${AGENTS_TREE:-/opt/agentbox/agents}/registered-agents.txt" \
+    bash "$_RECONCILE_AGENTS" 2>&1 | sed 's/^/  [agents] /' || true
+  chown -h 1000:1000 /home/devuser/.claude/agents/* 2>/dev/null || true
+fi
+
+# ── Retire the inherited slash-command dump (ADR-2092) ─────────────────────
+# Same provenance, same host-mount persistence: ~140 claude-flow command files in
+# ~/.claude/commands and ~104 near-duplicates in $WORKSPACE/.claude/commands, 225
+# of the 244 carrying no `description:` frontmatter so they render as bare
+# unroutable names for ~1,915 tokens a turn — while colliding with the skills
+# that supersede them. Prune-only against config/registered-commands.txt, which
+# keeps dream.md. Runs AFTER the dream.md install above, so the kept command is
+# in place before the sweep. Idempotent and fail-open.
+_RECONCILE_COMMANDS="/opt/agentbox/scripts/reconcile-commands.sh"
+if [ -f "$_RECONCILE_COMMANDS" ]; then
+  COMMAND_ROOT_TARGETS="/home/devuser/.claude/commands:$WORKSPACE/.claude/commands:$WORKSPACE/project/.claude/commands" \
+  REGISTERED_COMMANDS_MANIFEST="/opt/agentbox/config/registered-commands.txt" \
+    bash "$_RECONCILE_COMMANDS" 2>&1 | sed 's/^/  [commands] /' || true
+  chown 1000:1000 /home/devuser/.claude/commands/* 2>/dev/null || true
 fi
 
 # ---------------------------------------------------------------------------

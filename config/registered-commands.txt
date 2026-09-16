@@ -1,0 +1,25 @@
+# registered-commands.txt — the slash-commands kept in ~/.claude/commands.
+#
+# Prune-list semantics, the inverse of registered-skills.txt: commands are not
+# baked from a canonical tree (the ones we ship are installed by their owning
+# subsystem, e.g. skills/dream-machine/commands/dream.md), so this file names
+# what SURVIVES and scripts/reconcile-commands.sh retires everything else to a
+# recoverable .superseded/ sidecar.
+#
+# WHY: `ruflo init` (@claude-flow/cli) dumps ~140 command files into
+# ~/.claude/commands and another ~104 into $WORKSPACE/.claude/commands — two
+# near-identical copies of the same claude-flow command tree. Audited
+# 2026-09-16: 244 entries, of which 225 carry NO `description:` frontmatter, so
+# they render in the prompt as bare unroutable names (`sparc:tdd`,
+# `swarm:swarm-modes`) for ~1,915 tokens a turn. They also collide with the
+# skills that supersede them — sparc:* against the sparc-methodology skill,
+# github:* against the github-* skills, swarm:* against the Workflow tool.
+# The operator does not invoke them. See ADR-2092.
+#
+# One name per line, matched against the path relative to the commands root
+# (so `dream.md`, or `mine/thing.md` for a nested one). Blank lines and
+# #comments are ignored. To keep a command, add it here.
+
+# The dream machine's control surface — installed by config/entrypoint-unified.sh
+# from skills/dream-machine/commands/dream.md, and genuinely used.
+dream.md

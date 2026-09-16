@@ -86,6 +86,13 @@ jobs:
       - name: check-no-logseq-paths (ADR-2028 — [vault] is the only corpus path authority)
         run: sh scripts/ci/check-no-logseq-paths.sh
 
+      # ADR-2025 / ADR-2085 governed this check but nothing ever ran it (found in the
+      # 2026-09-16 script audit). The fixture's whole point is that agentbox and
+      # VisionClaw assert the SAME table rather than two tables that happen to agree —
+      # which an ungated check cannot deliver. The Rust half still runs in VisionClaw CI.
+      - name: federation-fixture-check (ADR-2025 — cross-repo identifier contract, agentbox side)
+        run: node scripts/ci/federation-fixture-check.mjs
+
       - name: vault-frontmatter unit tests (VAULT-corpus-format V2/V5 writer contract)
         run: node --test mcp/servers/lib/__tests__/*.test.js
 

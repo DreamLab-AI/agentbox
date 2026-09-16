@@ -1,0 +1,19 @@
+# overlay-skills.txt — names kept visible in the ANCESTOR skill roots
+# ($WORKSPACE/.claude/skills, $WORKSPACE/project/.claude/skills) even though they
+# are not in registered-skills.txt.
+#
+# scripts/project-skill-roots.mjs mirrors the registered set into those roots and
+# retires everything else to a recoverable .superseded/ sidecar. This file is the
+# exemption list: the project-local overlay layer the projector's DESIGN DECISION
+# always intended (e.g. the per-project agentic-qe fleet installed by `aqe init`,
+# which is legitimately project-scoped and should not be baked into the image).
+#
+# Before 2026-09-16 the overlay was implicit — whatever happened to be on disk —
+# so `ruflo init`'s 26-skill claude-flow dump rode along, unregistered and
+# unreviewed, at ~2,377 prompt tokens a turn. Making it an allowlist is what turns
+# "preserved" into a decision instead of an accident. See ADR-2092.
+#
+# One name per line; '#' comments and blanks ignored. Empty by default: add a name
+# here only when you mean that root to surface a skill the image does not register.
+
+# (intentionally empty)

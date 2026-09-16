@@ -1691,6 +1691,25 @@ default_days = ${toString (relayCfg.retention_days or 30)}
 
           cp -r ${skillsTree} $out/opt/agentbox/skills
 
+          # Curated subagent set + its registration manifest (ADR-2092). The
+          # counterpart to the skills tree above: scripts/reconcile-agents.sh
+          # projects the registered names into ~/.claude/agents at boot and
+          # retires the ungoverned ruflo/aqe template dump that used to accrete
+          # there. Canonical under /opt so a rebuild always yields the current
+          # agent, never a stale host-mount snapshot.
+          cp -r ${./agents} $out/opt/agentbox/agents
+
+          # Stable paths for baked binaries that get written into PERSISTENT
+          # config. /nix/store paths are content-addressed and change on every
+          # rebuild, but .mcp.json and ~/.claude are host mounts that survive it —
+          # so a store path recorded there dangles the moment the derivation
+          # rehashes and the old path is garbage-collected. That is exactly how
+          # the colloquy MCP server came to fail ENOENT against a
+          # g1iqddx…-colloquy-0.1.0 path no longer on disk. Record THIS path in
+          # config instead; the image re-points it at each rebuild.
+          mkdir -p $out/opt/agentbox/bin
+          ln -s ${colloquyPkg}/bin/colloquy-mcp $out/opt/agentbox/bin/colloquy-mcp
+
           ${lib.optionalString (toolchainCfg.codex or false) ''
           # Codex-native progressive-disclosure projection. Codex scans the
           # machine/admin root /etc/codex/skills directly; keep the curated

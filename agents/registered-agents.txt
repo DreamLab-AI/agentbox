@@ -1,0 +1,53 @@
+# registered-agents.txt — the curated set of subagents exposed to the Claude Code
+# harness (symlinked into ~/.claude/agents/<name>.md so they appear in the native
+# Agent list). This file is the SINGLE SOURCE OF TRUTH for agent registration.
+#
+# The boot reconciler (scripts/reconcile-agents.sh, called from
+# config/entrypoint-unified.sh) links each name below from /opt/agentbox/agents/
+# every boot — idempotent, fail-open. To register a new agent: add its basename
+# here; it must exist as /opt/agentbox/agents/<name>.md. Blank lines and
+# #comments are ignored.
+#
+# WHY a curated set: every registered agent's name + description sits in the
+# system prompt of EVERY turn. The inherited claude-flow/ruflo/aqe template dump
+# was 97 agents ≈ 6,540 tokens, of which 63 carried V2 emoji-echo hook theatre
+# and none had been reviewed against Fable-era subagent practice (a precise
+# trigger description, an explicit tool restriction, no swarm boilerplate).
+# Built-in agents (Explore, Plan, general-purpose) already cover generic search,
+# planning and catch-all work — an entry here must beat them at something.
+#
+# Superseded wholesale, NOT re-registered (see ADR-2092):
+#   sparc-*, specification, pseudocode, refinement, architecture
+#       -> the `sparc-methodology` skill
+#   github-*, pr-manager, issue-tracker, release-*, swarm-pr, swarm-issue,
+#   repo-architect, project-board-sync, sync-coordinator, multi-repo-swarm
+#       -> the `github-*` skills
+#   flow-nexus-* (9)        -> no Flow Nexus account on this estate
+#   byzantine/raft/gossip/quorum/crdt/consensus-*, matrix-optimizer,
+#   pagerank-analyzer, trading-predictor, agentic-payments, sublinear-*
+#       -> unused distributed-systems and finance demos from upstream
+#   hive-mind/*, swarm/*, optimization/*, templates/*
+#       -> swarm orchestration is the Workflow tool's job, not an agent's
+#   coder, backend-dev, mobile-dev, ml-developer, cicd-engineer, sparc-coder,
+#   base-template-generator, smart-agent, researcher, scout-explorer
+#       -> built-in general-purpose / Explore, or a skill
+
+# --- review & quality ---
+code-reviewer
+test-engineer
+security-reviewer
+
+# --- implementation & design ---
+rust-engineer
+system-architect
+performance-engineer
+
+# --- estate-specific (nothing upstream covers these) ---
+memory-curator
+adr-architect
+ontology-curator
+harness-janitor
+nix-image-engineer
+
+# --- dispatch ---
+auto-consultant
