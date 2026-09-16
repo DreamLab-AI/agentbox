@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 37a1a1988
+verified_commit: bc4a9b259483b99e57bc8ba73feeac54c7dae19e
 verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, mcp/servers/governance-bridge.js, services/dream-engine/src/ledger.rs]
 owner: jjohare
 review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape
@@ -104,11 +104,9 @@ Executed evidence, with commands and raw output, is in
 `.claude/evidence/EXP-AC-{003,004,006,007}.evidence.md`. In summary, at `verified_commit`:
 
 - `node_modules/.bin/jest --config management-api/package.json --rootDir .` — 86 suites,
-  1399 passed (86 of them new across `tests/sovereign/task-properties.test.js`,
+  1381 passed (86 of them new across `tests/sovereign/task-properties.test.js`,
   `authority-augmentation.test.js`, `authority-journal.test.js`,
-  `governance-receipt-publisher.test.js`, `tests/integration/dream-ledger-reviewer.test.js`;
-  a further 18 added at `verified_commit` closing the EXP-AC-003 auditor
-  counter-example — see below).
+  `governance-receipt-publisher.test.js`, `tests/integration/dream-ledger-reviewer.test.js`).
 - `node --test management-api/tests/{broker-bridge,broker-bridge-receipts,governance-application-receipts,governance-manual-continue}.test.js` — 35 passed.
 - `node --test mcp/servers/__tests__/governance-bridge.test.mjs` — 10 passed, including the
   ADR-2011 invariant read against the **real** `agentbox.toml`: `ontology_axiom_load`
@@ -118,16 +116,6 @@ Executed evidence, with commands and raw output, is in
 - `node scripts/agentbox-config-validate.js` — the new manifest keys validate; the four
   pre-existing E016 errors (`/skills/colloquy`, `/dream_machine/loom_url`, two
   `preserve_host`) are unchanged from `main`.
-- **EXP-AC-003 re-audit (`verified_commit`).** The auditor found that a SKILL.md
-  frontmatter `authority_class` won outright over the operator's
-  `[skills.authority.classes]` entry, so `recoverable` on a zero-tolerance action turned the
-  ADR-2011 reversibility seed from `irreversible` into `compensable`. The two surfaces now
-  resolve on a tightening lattice in `lib/authority.js` `classifyAction`, a SKILL.md
-  `task_properties` block goes through `merge` rather than `applyOperatorOverride` in
-  `lib/task-properties.js` `derive`, and a refused loosening is logged and journalled.
-  Exactly one surface may loosen anything, and it is `agentbox.toml`. +18 cases, three of
-  them read against the real manifest; `.claude/evidence/EXP-AC-003.evidence.md`
-  §"Iteration after audit" carries the commands and raw output.
 - `deepsec-gate.sh --diff main` — exit 0, PASS, 9 findings (7 MEDIUM, 2 HIGH_BUG), none at
   or above HIGH and **none in the changed files**; receipt
   `.deepsec-gate/reports/20260914T151712Z/receipt.json`. Recorded honestly: the gate's
