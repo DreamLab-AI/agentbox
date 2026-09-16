@@ -30,6 +30,8 @@ triggers:
 upstream: https://github.com/zoharbabin/web-researcher-mcp
 upstream_version: 1.43.0
 license: MIT
+depends_on_mcps:
+  - web-researcher
 ---
 
 # Web Researcher Skill

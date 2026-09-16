@@ -1,7 +1,7 @@
 ---
 name: qe-browser
 description: "QE-grade browser testing with WebDriver BiDi (Vibium). 16 typed assertion kinds, pixel-perfect visual-diff baselines, 14-pattern prompt-injection scanner, 15-intent semantic element finder. Part of the AQE fleet — install with aqe init. Use for typed QE assertions and visual regression; when Playwright is too heavy."
-status: requires-install
+status: not-installed
 ---
 
 # QE Browser (Vibium)

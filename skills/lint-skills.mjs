@@ -71,6 +71,18 @@ const NAME_MAX = 64;
 /** `description` bounds: agentskills.io cap, and a floor that catches vague one-liners. */
 const DESC_MAX = 1024;
 const DESC_MIN = 40;
+/** `status` vocabulary (ADR pending): availability, not maturity. Omitted == `live`.
+ *  A skill that is NOT the live path must say so in its own frontmatter — before this,
+ *  that fact lived only in registered-skills.txt comments and SKILL-DIRECTORY markers,
+ *  invisible to every consumer that matches on descriptions (Claude's own trigger
+ *  matching included). Measured 2026-09-16: two demoted browser skills absorbed 1.07 of
+ *  routing probability from the canonical one because nothing they expose said so. */
+const STATUS_VALUES = new Set(['live', 'foundation', 'gated', 'router-only', 'not-installed', 'superseded', 'deprecated']);
+/** Statuses that must name what to use instead. */
+const STATUS_NEEDS_REPLACEMENT = new Set(['superseded', 'deprecated']);
+/** Statuses that mean "do not choose this for new work" — rendered by gen-routing-table. */
+const STATUS_DEMOTED = new Set(['gated', 'router-only', 'not-installed', 'superseded', 'deprecated']);
+
 /** Registration manifests reconciled at boot (Claude → ~/.claude/skills, Codex → ~/.codex/skills). */
 const MANIFESTS = ['registered-skills.txt', 'codex-registered-skills.txt'];
 /** Documented frontmatter vocabulary: agentskills.io core, Claude Code extras, estate conventions. */
@@ -439,6 +451,18 @@ function checkSkill(skill) {
         else if (!existsSync(join(SKILLS_DIR, rep.value, 'SKILL.md'))) fail('DEPRECATED', r, rep.line, `${skill.name}: replacement \`${rep.value}\` is not a skill directory`);
       }
     }
+    // --- 13. STATUS: availability is part of the contract -------------------
+    const statusE = fm.keys.get('status');
+    const status = statusE && statusE.kind === 'scalar' ? statusE.value.trim() : 'live';
+    if (statusE && statusE.kind === 'scalar' && !STATUS_VALUES.has(status)) {
+      fail('STATUS', r, statusE.line, `${r}:${statusE.line}: status \`${status}\` is outside the vocabulary {${[...STATUS_VALUES].join(', ')}}`);
+    } else if (STATUS_NEEDS_REPLACEMENT.has(status)) {
+      const rep = fm.keys.get('replacement');
+      if (!rep || rep.kind !== 'scalar' || !rep.value) fail('STATUS', r, statusE.line, `${skill.name}: status \`${status}\` must carry \`replacement: <skill>\``);
+      else if (!existsSync(join(SKILLS_DIR, rep.value, 'SKILL.md'))) fail('STATUS', r, rep.line, `${skill.name}: replacement \`${rep.value}\` is not a skill directory`);
+    }
+    skill.status = status;
+    skill.usesMcp = /^(mcp_server:\s*true|depends_on_mcps:)/m.test(text);
     for (const [k, e] of fm.keys) {
       if (!KNOWN_KEYS.has(k)) warn('KEYS', r, e.line, `${r}:${e.line}: frontmatter key \`${k}\` is outside the documented vocabulary (see skill-builder)`);
     }
@@ -535,6 +559,40 @@ function checkEstate(entries) {
     warn('DIRECTORY', rel(mapPath), 1, `${rel(mapPath)} is absent — section coverage not checked`);
   }
   if (!dirText) warn('DIRECTORY', 'SKILL-DIRECTORY.md', 1, 'SKILL-DIRECTORY.md is absent — directory coverage not checked');
+
+  // --- 13c. DIRECTORY MCP column: derivable, therefore checkable ------------
+  // The inventory's `MCP` column is fully derived from frontmatter (`mcp_server: true`
+  // or a `depends_on_mcps:` list). It was hand-maintained and disagreed with the
+  // frontmatter for 12 skills (audit 2026-09-16). The prose columns stay hand-written —
+  // they carry operator routing nuance the description does not — but this one is a
+  // fact, so it is gated rather than trusted.
+  if (dirText) {
+    for (const s2 of entries) {
+      const row = dirText.match(new RegExp(`^\\|\\s*\`${s2.name.replace(/[-]/g, '\\-')}\`\\s*\\|\\s*(Yes|No)\\s*\\|`, 'm'));
+      if (!row) continue;
+      const claimed = row[1] === 'Yes';
+      if (claimed !== !!s2.usesMcp) {
+        fail('DIRECTORY', 'SKILL-DIRECTORY.md', 1, `\`${s2.name}\`: inventory MCP column says ${row[1]} but frontmatter ${s2.usesMcp ? 'declares an MCP dependency' : 'declares none'}`);
+      }
+    }
+  }
+
+  // --- 13b. STATUS drift: the directory and the frontmatter must agree ------
+  // SKILL-DIRECTORY rows and registered-skills.txt comments have historically been the
+  // ONLY place a skill's demotion was recorded. Nothing that matches on descriptions can
+  // read either, so a demoted skill kept competing for triggers. This gate makes the
+  // directory's own marker force a frontmatter `status`, so the two cannot diverge.
+  if (dirText) {
+    for (const s2 of entries) {
+      const row = dirText.match(new RegExp(`^\\|\\s*\`${s2.name.replace(/[-]/g, '\\-')}\`\\s*\\|.*$`, 'm'));
+      if (!row) continue;
+      const flagged = /NOT INSTALLED|\bDEPRECATED\b|\bARCHIVED\b|default off|scaffold — default|manifest-disabled/.test(row[0]);
+      const declared = (s2.status || 'live') !== 'live';
+      if (flagged && !declared) {
+        fail('STATUS', 'SKILL-DIRECTORY.md', 1, `\`${s2.name}\`: the directory row flags it as unavailable/superseded but its frontmatter declares no \`status:\` — consumers that match on descriptions cannot see the directory`);
+      }
+    }
+  }
   for (const s of entries) {
     if (dirText && !dirText.includes('`' + s.name + '`')) {
       fail('DIRECTORY', 'SKILL-DIRECTORY.md', 1, `SKILL-DIRECTORY.md never names \`${s.name}\` — add a category row (or a deprecated-table row)`);

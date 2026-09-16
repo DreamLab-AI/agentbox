@@ -1,5 +1,6 @@
 ---
 name: bencium-innovative-ux-designer
+status: deprecated
 description: "DEPRECATED — replaced by bencium-creative. Use bencium-creative with --design flag for bold creative UX and --build flag for production frontend implementation."
 deprecated: true
 replacement: bencium-creative

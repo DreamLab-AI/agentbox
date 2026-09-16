@@ -1,5 +1,6 @@
 ---
 name: voyager-skill-library
+status: gated
 description: >
   Store and retrieve verified, executable Python skill primitives (a function
   plus assertions plus at least one example) in the code-harness procedural

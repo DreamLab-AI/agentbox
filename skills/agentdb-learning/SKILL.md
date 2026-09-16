@@ -1,5 +1,6 @@
 ---
 name: agentdb-learning
+status: deprecated
 description: "DEPRECATED — merged into agentdb-advanced. Use agentdb-advanced skill (RL Plugins section) for all reinforcement learning algorithms including Decision Transformer, Q-Learning, SARSA, Actor-Critic, and Federated RL."
 deprecated: true
 replacement: agentdb-advanced

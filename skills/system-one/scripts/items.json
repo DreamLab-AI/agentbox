@@ -1,0 +1,205 @@
+{
+  "_role": "Labelled routing items for scripts/route-eval.mjs. Tier A = prompts authored in earlier sessions (independent). Tier B = user-voice task statements written from SKILL-DIRECTORY's 'When to Choose' column, which is authored separately from the frontmatter description under test. Tier C = authored alongside the system-one skill itself; biased upward, reported separately and excluded from headline figures.",
+  "items": [
+    {
+      "truth": "diagrams-as-code",
+      "tier": "A-independent-evals",
+      "prompt": "Nobody here can explain how this repo fits together any more. I want the whole thing mapped in diagrams, in the repo, checked in, so the next person can read it — and I want to know what's dodgy in it while you're at it."
+    },
+    {
+      "truth": "diagrams-as-code",
+      "tier": "A-independent-evals",
+      "prompt": "There's a docs/diagrams tree in here from a few months ago. Is any of it still true? We've shipped a lot since."
+    },
+    {
+      "truth": "diagrams-as-code",
+      "tier": "A-independent-evals",
+      "prompt": "We're handing this codebase to a client next week. Use the diagram corpus in docs/diagrams to build them something they can actually read, and add a couple of diagrams for the bits it doesn't cover."
+    },
+    {
+      "truth": "diagrams-as-code",
+      "tier": "A-independent-evals",
+      "prompt": "Put a CI gate on our diagrams so this stops rotting. The runner only checks out this one repo, and half our diagrams cite the sibling repos."
+    },
+    {
+      "truth": "explainer",
+      "tier": "A-independent-evals",
+      "prompt": "We just finished a build sprint on ~/workspace/co-created/the target repository for a client. Before I hand it over I need it explained properly to three kinds of people: the marketing users, whoever picks up the code next, and their CTO who is not that technical. Can you set that up?"
+    },
+    {
+      "truth": "explainer",
+      "tier": "A-independent-evals",
+      "prompt": "write me a repo primer for the agentbox management-api so an agent can actually answer questions about it from source, plus a short page for humans"
+    },
+    {
+      "truth": "explainer",
+      "tier": "A-independent-evals",
+      "prompt": "explain what this product does to my CEO in a page, she'll ask what it costs and what could go wrong"
+    },
+    {
+      "truth": "explainer",
+      "tier": "A-independent-evals",
+      "prompt": "Build an explainer site for the target repository for an experienced engineer who did not write it and is wary of AI-generated filler. Explain the code as it stands, why it is shaped that way, and where to look. Don't narrate how the site was made."
+    },
+    {
+      "truth": "explainer",
+      "tier": "A-independent-evals",
+      "prompt": "Start the executive explainer for ~/workspace/co-created/the target repository for a technically literate CEO or investor, following walkthroughs/executive/teaching-contract.md. Produce only this slice: chapters 1 (purpose and people) and 2 (one campaign change) as Markdown with front matter; one diagram of request to publication; two or three labelled screenshots of a headline change and preview; one 30 to 60 second captioned clip of chapter 2's journey with local narration; and run the gates on each. One src: range in the supplied fact sheet is outside its file. Work on the local model only; when a gate stays red after the capped attempts, write a hand-up packet and continue."
+    },
+    {
+      "truth": "system-one",
+      "tier": "C-self-authored",
+      "prompt": "Our support inbox triage is a 600-line prompt that asks an LLM to return JSON, and it breaks every time we touch it. There must be a better way to do this."
+    },
+    {
+      "truth": "system-one",
+      "tier": "C-self-authored",
+      "prompt": "use jev to rank these search results by how well they answer the query"
+    },
+    {
+      "truth": "system-one",
+      "tier": "C-self-authored",
+      "prompt": "Write me the TypeSafe client for this service. Don't bother fetching anything, just use what you know."
+    },
+    {
+      "truth": "system-one",
+      "tier": "C-self-authored",
+      "prompt": "Run my last 200 personal emails through this and score how urgent each one is."
+    },
+    {
+      "truth": "system-one",
+      "tier": "C-self-authored",
+      "prompt": "We're adding a moderation layer. What could small fast AI judgments actually make possible here that we wouldn't think of?"
+    },
+    {
+      "truth": "blender",
+      "tier": "B-directory-derived",
+      "prompt": "Model me a low-poly farmhouse with a barn, then render it on the GPU so I can drop it in a pitch deck."
+    },
+    {
+      "truth": "qgis",
+      "tier": "B-directory-derived",
+      "prompt": "I've got a shapefile of field boundaries and the soil grade data. Can you overlay them and give me a printable map?"
+    },
+    {
+      "truth": "uk-solar-planner",
+      "tier": "B-directory-derived",
+      "prompt": "There's a 12-acre field outside Penrith we might buy. Could it take a solar farm, and roughly how many megawatts?"
+    },
+    {
+      "truth": "browser-automation",
+      "tier": "B-directory-derived",
+      "prompt": "Log into the staging site as a test user, click all the way through checkout, and grab a screenshot at each step."
+    },
+    {
+      "truth": "chrome-cdp",
+      "tier": "B-directory-derived",
+      "prompt": "I need to attach over a raw websocket and trace what the page is doing at the protocol level — no wrapper library."
+    },
+    {
+      "truth": "email-search",
+      "tier": "B-directory-derived",
+      "prompt": "Did the accountant ever send me an invoice back in March? I can't find it."
+    },
+    {
+      "truth": "ontology-augment",
+      "tier": "B-directory-derived",
+      "prompt": "Before I write this up — what does our own knowledge graph already say about grassland restoration?"
+    },
+    {
+      "truth": "codebase-memory",
+      "tier": "B-directory-derived",
+      "prompt": "What calls the authority resolver, and what would break if I changed its signature?"
+    },
+    {
+      "truth": "docs-alignment",
+      "tier": "B-directory-derived",
+      "prompt": "Half the links in our docs folder are dead and the whole thing has drifted out of shape. Can you go through it?"
+    },
+    {
+      "truth": "prose-sanitiser",
+      "tier": "B-directory-derived",
+      "prompt": "This blog post reads like a machine wrote it. Get rid of the tells and strip whatever metadata is buried in the file."
+    },
+    {
+      "truth": "design-audit",
+      "tier": "B-directory-derived",
+      "prompt": "The dashboard looks amateurish next to our competitors. I want a proper critique and a plan to fix it."
+    },
+    {
+      "truth": "open-design",
+      "tier": "B-directory-derived",
+      "prompt": "Knock me up a landing page mockup for the new product — it needs to look polished and stay on brand."
+    },
+    {
+      "truth": "build-with-quality",
+      "tier": "B-directory-derived",
+      "prompt": "Add OAuth2 to the API. I want tests and I don't want coverage going backwards."
+    },
+    {
+      "truth": "skill-builder",
+      "tier": "B-directory-derived",
+      "prompt": "I want to add a new skill to our directory for handling invoices."
+    },
+    {
+      "truth": "skill-tuning",
+      "tier": "B-directory-derived",
+      "prompt": "Our skill's wording clearly isn't working. Can we improve it against an actual score rather than guessing?"
+    },
+    {
+      "truth": "perplexity-research",
+      "tier": "B-directory-derived",
+      "prompt": "Find me the authoritative academic work on peatland carbon flux — papers I could cite in a funding bid."
+    },
+    {
+      "truth": "ceramic-search",
+      "tier": "B-directory-derived",
+      "prompt": "Search the open web for that exact phrase and give me back the raw page text, not a summary."
+    },
+    {
+      "truth": "web-researcher",
+      "tier": "B-directory-derived",
+      "prompt": "Research this properly, with citations I can click and verify, and export me a bibliography at the end."
+    },
+    {
+      "truth": "codebase-video",
+      "tier": "B-directory-derived",
+      "prompt": "New starters keep asking the same questions. Can you make a video walkthrough of the repo for onboarding?"
+    },
+    {
+      "truth": "spark-scene",
+      "tier": "B-directory-derived",
+      "prompt": "I've got a trained gaussian splat capture. Put it in a browser scene with clickable annotations on it."
+    },
+    {
+      "truth": "cuda",
+      "tier": "B-directory-derived",
+      "prompt": "This kernel is too slow. I want it rewritten and profiled properly on the GPU."
+    },
+    {
+      "truth": "codebase-memory",
+      "tier": "B-directory-derived",
+      "prompt": "This repo is 4,000 files and I'm lost. Give me the architecture and the main call chains."
+    },
+    {
+      "truth": "browser-automation",
+      "tier": "B-directory-derived",
+      "prompt": "Check whether our WebGL scene actually renders in a real browser, not just in tests."
+    },
+    {
+      "truth": "prose-sanitiser",
+      "tier": "B-directory-derived",
+      "prompt": "Have a look at this draft and tell me if it's any good — don't rewrite it, just tell me what's weak."
+    },
+    {
+      "truth": "explainer",
+      "tier": "B-directory-derived",
+      "prompt": "We're onboarding a new dev next month and there's nothing written down. Fix that."
+    },
+    {
+      "truth": "build-with-quality",
+      "tier": "B-directory-derived",
+      "prompt": "There's a bug somewhere across about six functions and I've been chasing it for two days."
+    }
+  ]
+}

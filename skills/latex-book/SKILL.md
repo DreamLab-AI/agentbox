@@ -1,5 +1,6 @@
 ---
 name: latex-book
+status: deprecated
 description: "DEPRECATED — merged into book-publishing. Was: convert markdown/HTML manuscripts to arXiv-compliant LaTeX with memoir class and biblatex citations."
 deprecated: true
 replacement: book-publishing

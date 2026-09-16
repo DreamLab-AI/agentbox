@@ -1,6 +1,8 @@
 ---
 name: blender
 description: "Meta-skill for driving Blender via BlenderMCP: 3D modelling (box, hard-surface, boolean), digital sculpting, PBR material authoring, lighting, rendering, and scene assembly. Claude writes and runs bpy Python (execute_code), screenshots the viewport, inspects, and corrects — with GPU renders via blender-batch and interactive sessions via the gui-tools GPU sidecar. Use this whenever a task involves Blender, a .blend file, 3D modelling/sculpting/texturing, a Cycles or EEVEE render, or generating and processing 3D assets — even when the user does not name Blender explicitly (e.g. 'model a low-poly house', 'sculpt a creature head', 'make a PBR metal material', 'render this scene on the GPU', 'build a modular sci-fi corridor kit'). Not for 2D image editing (use imagemagick), text-to-image generation (use comfyui), or GIS map rendering (use qgis)."
+depends_on_mcps:
+  - blender-mcp
 ---
 
 # Blender 3D Skill

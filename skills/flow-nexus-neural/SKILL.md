@@ -2,6 +2,8 @@
 name: flow-nexus-neural
 description: "Train distributed neural networks (feedforward, LSTM, GAN, transformer) in E2B cloud sandboxes via Flow Nexus, no local GPU. Use when a task needs cloud-fleet distributed NN training via Flow Nexus. Not installed here (needs a Flow Nexus account); for local GPU training use pytorch-ml or cuda."
 status: not-installed
+depends_on_mcps:
+  - flow-nexus
 ---
 
 # Flow Nexus Neural

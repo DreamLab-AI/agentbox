@@ -9,6 +9,8 @@ description: >-
   now (password resets, one-time codes, verification links). Defaults to privacy-sanitized
   answers; verbatim raw mail is an owner-authorised break-glass tier (see body). Skip for
   sending email, calendar, or work/non-personal mailboxes.
+depends_on_mcps:
+  - email-gateway
 ---
 
 # Private Email Search (on-demand MCP gateway)

@@ -3,19 +3,19 @@ name: system-one
 license: MIT
 status: foundation
 description: >-
-  Build software around small typed AI judgments used as programming primitives —
-  a model call returning a `choice`, an ordered `score`, or a 0–1 probability your
-  code branches on, instead of prose you prompt-and-parse. Covers designing the
-  judgment set, batching independent questions into one call, composing the answers
-  in code, and calibrating thresholds on your own data. Backend is TypeSafe's
-  System One API (model Jev; Choice / Score / Noul primitives), whose live docs are
-  read per task. Use when a feature needs programmable common sense — routing,
+  Build software around small typed AI judgments used as programming primitives — a
+  model call returning a `choice`, an ordered `score`, or a 0–1 probability your code
+  branches on, instead of prose you prompt-and-parse. Covers judgment design, batching
+  questions into one call, composing answers in code, and threshold calibration.
+  Backend is TypeSafe's System One API (model Jev; Choice / Score / Noul), whose live
+  docs are read per task. Use when writing or debugging a TypeSafe or Jev client,
+  service or integration; when a feature needs programmable common sense — routing,
   ranking, reranking, extraction, moderation, guardrails on another model's input or
-  output, verification, ML feature extraction, knowledge-graph annotation — when an
-  LLM prompt-and-parse step should become a structured decision, or when the user
-  asks for TypeSafe or Jev by name. NOT for generating text, code or explanations,
-  NOT before the egress decision in references/data-boundary.md, and NOT for exact
-  lookups, arithmetic or rules code already decides.
+  output, verification, ML feature extraction, knowledge-graph annotation; when an LLM
+  prompt-and-parse step should become a structured decision; or when the user names
+  TypeSafe or Jev. The model itself never writes prose or code. Not before the egress
+  decision in references/data-boundary.md; not for exact lookups, arithmetic or rules
+  code already decides.
 triggers: "typesafe, jev, system one, system-one, typed judgment, choice/score/noul, noul, structured decision, classifier instead of prompt, rerank candidates, llm guardrail, semantic lint"
 compatibility: "Claude Code and Codex both read this SKILL.md. Live-doc reads use WebFetch in Claude Code; a Codex/GPT-6 Astra session uses its own fetch tool or `curl` against the same URLs. Fan-out over many candidate judgments may use the Agent tool in Claude Code; sequential in Codex. No MCP server and no Claude-only affordance is required to build an integration."
 related_skills: [ontology-augment, build-with-quality, deep-research, codebase-memory, autoresearch, adaptive-communication]
@@ -162,9 +162,16 @@ mapped, with their egress posture and their open questions, in
 `references/estate-integration.md`. **None of them are wired yet**; that file is the
 design surface for the next pass, not a description of running code.
 
+`references/routing-cost-and-scope.md` — measured unit economics of using these
+judgments to route the skill fleet (15.8k input tokens and ~636 ms per route, 92%
+accuracy over the full 131-skill estate), and what still blocks doing it live.
+`scripts/route-eval.mjs` + `scripts/items.json` — the measurement rig and its labelled
+items. It sends only this repo's own skill descriptions, never a live user turn.
+
 ## Status
 
 Foundation layout (2026-09-16). The judgment-design and composition guidance is
 distilled and usable now; the estate integration points, the local-backend fallback
-and the eval harness under `scripts/` are scaffolded and named but not built. See
+remain scaffolded and unbuilt; the routing-eval harness under `scripts/` is built and
+measured. See
 `references/estate-integration.md` §Open questions before extending.

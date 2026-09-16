@@ -1,12 +1,13 @@
 ---
 name: browser-automation
-description: >
-  Router for browser-automation tasks — picks the right tool and points to the
-  canonical sidecar setup. Use when driving a real browser: navigating pages,
-  clicking, filling forms, taking screenshots, reading console or network traffic,
-  debugging a web UI, or validating WebGPU/WebGL/GPU rendering on hardware. Sends
-  GPU and standard automation to the browsercontainer sidecar, raw CDP scripting
-  to chrome-cdp, and AQE injection scanning to qe-browser.
+description: >-
+  THE ENTRY POINT FOR ALL BROWSER WORK in this estate — choose this for any task
+  needing a browser; it dispatches onward. Router for browser-automation tasks — picks
+  the right tool and points to the canonical sidecar setup. Use when driving a real
+  browser: navigating pages, clicking, filling forms, taking screenshots, reading
+  console or network traffic, debugging a web UI, or validating WebGPU/WebGL/GPU
+  rendering on hardware. Sends GPU and standard automation to the browsercontainer
+  sidecar, raw CDP scripting to chrome-cdp, and AQE injection scanning to qe-browser.
 ---
 
 # Browser Automation — routing meta-skill

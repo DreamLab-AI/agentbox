@@ -13,6 +13,8 @@ version: 2.0.0
 author: agentbox-claude
 dependencies:
   - deepseek-api
+depends_on_mcps:
+  - consultant-deepseek
 ---
 
 # DeepSeek Reasoning Skill

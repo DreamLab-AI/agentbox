@@ -1,5 +1,6 @@
 ---
 name: repo-education
+status: deprecated
 description: DEPRECATED — merged into explainer. Use `explainer` for a repository-bundled instructional microsite (plus its docs-bundle and video deliveries).
 deprecated: true
 replacement: explainer

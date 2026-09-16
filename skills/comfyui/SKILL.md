@@ -1,6 +1,8 @@
 ---
 name: comfyui
 description: "Generate AI images and video with ComfyUI's node-based workflows (FLUX, Stable Diffusion, video models) on a local GPU or distributed Salad Cloud compute. Use when a task needs text-to-image, image-to-image, or text/image-to-video generation, ComfyUI workflow authoring, or scaling generation across GPUs."
+depends_on_mcps:
+  - comfyui
 ---
 
 # ComfyUI Skill

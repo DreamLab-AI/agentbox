@@ -3,7 +3,7 @@ name: "paperbanana"
 description: "Generate publication-quality academic diagrams and statistical plots from text via a multi-agent VLM pipeline with iterative refinement (OpenAI or Google Gemini / nano-banana-2). Use when creating methodology diagrams, architecture overviews, flow charts, NeurIPS/ICML-style figures, or data plots for research papers and technical reports, or upgrading rough diagrams-as-code into polished illustrations; integrates with the report-builder skill for LaTeX inclusion. NOT for interactive/web diagrams (use mermaid-diagrams), TikZ/Wardley maps (use report-builder/latex-documents), photo/raster editing (use imagemagick), simple charts from data (use matplotlib), 3D (use blender), or accessible re-editable SVG/HTML diagrams (use diagram-design)."
 upstream: "https://github.com/llmsresearch/paperbanana"
 version: "0.1.0"
-status: active
+status: live
 tags:
   - diagrams
   - academic

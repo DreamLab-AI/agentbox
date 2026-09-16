@@ -1,6 +1,8 @@
 ---
 name: lichtfeld-studio
 description: "Drive LichtFeld Studio (native C++/CUDA 3D Gaussian Splatting workstation) via its built-in MCP server. Use when training, rendering, editing, or exporting 3D Gaussian Splats, or converting video into a COLMAP dataset for splat training."
+depends_on_mcps:
+  - lichtfeld-studio
 ---
 
 # LichtFeld Studio Skill

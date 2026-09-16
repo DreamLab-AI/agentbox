@@ -60,9 +60,9 @@ Phase 1 surfaces require `[skills.code_interpreter] enabled = true` (kernel MCP)
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
 | `codeact` | Yes (code-interpreter) | Plan-execute-reflect loop over a persistent IPython kernel; variables survive across tool calls. Research-validated lift: +12 pp BBH (PoT/CoC patterns), +20% success rate on tool-use benchmarks (CodeAct). Token-efficient vs JSON-format actions (10–81% reduction). Requires `[skills.code_interpreter] enabled = true`. Degrades to `pytorch-ml` script mode if kernel is unavailable | Multi-step numerical reasoning, data wrangling, scientific Q&A, multi-step calculations that need state to persist between tool calls. NOT for single-file edits or one-shot scripts — use `sparc:code` or direct Edit for those |
-| `expel-lesson-extractor` | No | Post-task lesson distillation. Completed trajectory + outcome + execution traces → 0–N `DistilledLesson` rules written to RuVector namespace `code-harness-lessons` (`memory_type=semantic`). Privacy-filtered before write; confidence-decremented on contradiction; garbage-collected below threshold. Auto-invoked at task-end via `hooks post-task` when `[features.expel_lesson_extraction] enabled = true`. Lessons retrieved at future task start via semantic search | Cross-run learning when `ExecutionTrace` evidence is the verification source. Invoke manually after a complex or failed task (≥3 tool calls) to explicitly extract generalisable rules. Do NOT invoke for trivial one-liner tasks |
-| `voyager-skill-library` | No | Verified executable skill library. Candidate Python functions pass a three-step `VerificationGate` (static BannedAPI scan → `KernelSession` assertion execution → example execution) before storage in RuVector namespace `code-harness-skills` (`memory_type=procedural`). URN-versioned (`urn:agentbox:skill:<scope>:<name>:v<n>`); superseded versions archived after 30 days. Retrieved by semantic similarity at task start for context injection (≤3 functions, ≤600 tokens). Requires `[skills.voyager_skill_library] enabled = true` and kernel MCP. **Phase 2 scaffold — default off** | Building a reusable corpus of executable utility functions across sessions. Use when a function is likely to recur (parsers, validators, retry wrappers). NOT for one-off scripts or domain-specific logic unlikely to transfer |
-| `tree-search-coder` | No | Execution-gated branching code generation. N candidates (≤5) generated via `sparc:coder`, each executed in a fresh `KernelSession`, scored by assertion-pass rate; highest-scoring branch selected (tie-break: shortest code). Slow path — never auto-routed; requires explicit `/tree-search-coder` directive or user request. `spend_cap_usd` is mandatory (no default-unlimited mode). Requires `[skills.tree_search_coder] enabled = true` and kernel MCP (enabled in the live manifest; explicit invocation only, never auto-routed) | Correctness-critical code generation where a single attempt is demonstrably insufficient and the +26.9% correctness lift justifies the N× token cost. NOT a replacement for `sparc:coder`, `build-with-quality`, or direct Edit |
+| `expel-lesson-extractor` | Yes | Post-task lesson distillation. Completed trajectory + outcome + execution traces → 0–N `DistilledLesson` rules written to RuVector namespace `code-harness-lessons` (`memory_type=semantic`). Privacy-filtered before write; confidence-decremented on contradiction; garbage-collected below threshold. Auto-invoked at task-end via `hooks post-task` when `[features.expel_lesson_extraction] enabled = true`. Lessons retrieved at future task start via semantic search | Cross-run learning when `ExecutionTrace` evidence is the verification source. Invoke manually after a complex or failed task (≥3 tool calls) to explicitly extract generalisable rules. Do NOT invoke for trivial one-liner tasks |
+| `voyager-skill-library` | Yes | Verified executable skill library. Candidate Python functions pass a three-step `VerificationGate` (static BannedAPI scan → `KernelSession` assertion execution → example execution) before storage in RuVector namespace `code-harness-skills` (`memory_type=procedural`). URN-versioned (`urn:agentbox:skill:<scope>:<name>:v<n>`); superseded versions archived after 30 days. Retrieved by semantic similarity at task start for context injection (≤3 functions, ≤600 tokens). Requires `[skills.voyager_skill_library] enabled = true` and kernel MCP. **Phase 2 scaffold — default off** | Building a reusable corpus of executable utility functions across sessions. Use when a function is likely to recur (parsers, validators, retry wrappers). NOT for one-off scripts or domain-specific logic unlikely to transfer |
+| `tree-search-coder` | Yes | Execution-gated branching code generation. N candidates (≤5) generated via `sparc:coder`, each executed in a fresh `KernelSession`, scored by assertion-pass rate; highest-scoring branch selected (tie-break: shortest code). Slow path — never auto-routed; requires explicit `/tree-search-coder` directive or user request. `spend_cap_usd` is mandatory (no default-unlimited mode). Requires `[skills.tree_search_coder] enabled = true` and kernel MCP (enabled in the live manifest; explicit invocation only, never auto-routed) | Correctness-critical code generation where a single attempt is demonstrably insufficient and the +26.9% correctness lift justifies the N× token cost. NOT a replacement for `sparc:coder`, `build-with-quality`, or direct Edit |
 
 ### Code Quality, Review, and Verification
 
@@ -939,6 +939,51 @@ Generated 2026-09-09 from `skills/mcp.json` (the boot-projection registry; 28 se
 **14. Browser (5), research (4), methodology (5), GitHub (5), ontology (3), podcast (2), thinking-lens (4), agentdb (3 + stub)**: audited for merge and kept — each cluster is differentiated by tier or object type with reciprocal when-not-to-use links; the defects were stale facts (CDP port, dead CLI commands, missing-binary caveats, memory-doctrine banners), now fixed. No merge.
 
 **15. Codex pair**: `codex-companion` was a hand-patched mirror of the baked `codex-plugin-cc` plugin (the live `/codex:*` commands never ran from it); trimmed to SKILL.md + references. `openai-codex` keeps its legacy bridge only for the Nix closure; the live GPT-6 Astra tool is `consultant-codex`. `deepseek-reasoning` likewise re-pointed at `consultant-deepseek`. Complete (runtime closure retirement is a follow-up).
+
+### 2026-09-16 measured re-audit (ADR-2089)
+
+Overlap is now **measured**, not asserted. Instrument: a pairwise judgement over every
+within-section pair of live skills (`system-one/scripts/`, method in ADR-2089). A claim of
+"no merge needed" without a number is no longer a finding.
+
+The two entries above that this contradicted: item 7 called the browser cluster
+"well-differentiated, no merge needed" — it measured **0.80** and failed routing until an
+explicit boundary was written. Item 15 recorded the codex pair "Complete" — it measured
+**0.76**.
+
+**Resolved by explicit boundary, no merge, no content lost:**
+
+| Pair | Before | After | Fix |
+|---|---|---|---|
+| `browser` ↔ `browser-automation` | 0.80 | cleared | `browser-automation` declared the entry point for all browser work; `browser` states it is reached via it |
+| `bencium-creative` ↔ `ui-ux-pro-max-skill` | 0.75 | cleared | `ui-ux-pro-max-skill` scoped to the reference/lookup tier it actually occupies |
+| `design-audit` ↔ `ui-ux-pro-max-skill` | 0.69 | cleared | as above |
+| `open-design` ↔ `ui-ux-pro-max-skill` | 0.66 | cleared | as above |
+
+**Resolved by supersession:** `codex-companion` ↔ `openai-codex` (0.76). `openai-codex` now
+carries `status: superseded`, `replacement: codex-companion` — making explicit what item 15
+already recorded in prose.
+
+**Open — genuine design questions, recorded rather than silently merged:**
+
+| Pair | Overlap | Question |
+|---|---|---|
+| `bhil-methodology` ↔ `sparc-methodology` | 0.74 | Two phased methodologies. Is the distinction real, or is one the successor? |
+| `human-architect-mindset` ↔ `renaissance-architecture` | 0.70 | Both scored high on the innate-capability scan too (0.69/0.66) — the strongest merge-or-retire candidates in the estate |
+| `bencium-controlled-ux-designer` ↔ `ui-ux-pro-max-skill` | 0.60 | Survived the scoping fix; may need its own boundary |
+| `clipcannon` ↔ `open-montage` | 0.60 | Both media assembly; differentiated by source material, which the descriptions state weakly |
+
+Estate overlap fell from **9 pairs at ≥0.60 to 4** across this audit.
+
+### Innate-capability scan (2026-09-16, candidates only)
+
+Skills were also scored on whether they mainly teach what a 2026 frontier model does
+natively, against whether they supply tooling it cannot reach alone. **This is a candidate
+list for human review, not a verdict** — `build-with-quality` scores 0.43 and is plainly not
+chaff, which bounds how far the signal can be trusted. Highest margin (innate minus tooling):
+`adaptive-communication` +0.73, `human-architect-mindset` +0.63, `negentropy-lens` +0.59,
+`renaissance-architecture` +0.59, `vanity-engineering-review` +0.58, `typography` +0.48.
+No skill has been deprecated on this evidence alone.
 
 ### Potential Future Consolidation
 

@@ -1,6 +1,18 @@
 ---
 name: ui-ux-pro-max-skill
-description: "UI/UX design intelligence for web and mobile: recommends styles, colour palettes, font pairings, layouts, and chart types, plus stack-specific implementation guidance (React, Next.js, Vue, Svelte, SwiftUI, React Native, Flutter, Tailwind, shadcn/ui). Use when designing, building, reviewing, or refining a UI — landing pages, dashboards, admin panels, SaaS, e-commerce, portfolios, mobile apps — or when choosing palettes, typography, components, spacing, animation, or accessibility fixes. Not for backend-only code, 3D (blender), text-to-image (comfyui), or diagrams (mermaid-diagrams)."
+description: >-
+  A REFERENCE DATABASE to look values UP in, not a design process — choose it to pick
+  a palette, font pairing, style or chart type before a brand spec is locked. For a
+  visual critique of an existing UI choose `design-audit`; to generate a brand-
+  constrained artefact choose `open-design`; for creative UX direction choose
+  `bencium-creative`. UI/UX design intelligence for web and mobile: recommends styles,
+  colour palettes, font pairings, layouts, and chart types, plus stack-specific
+  implementation guidance (React, Next.js, Vue, Svelte, SwiftUI, React Native,
+  Flutter, Tailwind, shadcn/ui). Use when designing, building, reviewing, or refining
+  a UI — landing pages, dashboards, admin panels, SaaS, e-commerce, portfolios, mobile
+  apps — or when choosing palettes, typography, components, spacing, animation, or
+  accessibility fixes. Not for backend-only code, 3D (blender), text-to-image
+  (comfyui), or diagrams (mermaid-diagrams).
 ---
 
 # UI/UX Pro Max - Design Intelligence

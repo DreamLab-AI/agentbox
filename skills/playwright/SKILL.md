@@ -1,5 +1,7 @@
 ---
 name: playwright
+status: superseded
+replacement: browser-automation
 description: >
   Browser automation, web scraping, visual testing, and WebGPU validation via the
   browsercontainer sidecar (chrome-devtools-mcp, 40+ tools). Use for navigating pages,
