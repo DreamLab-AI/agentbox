@@ -77,6 +77,9 @@ jobs:
       - name: deepsec-gate unit tests (ADR-2033 — Security gate exit-code/threshold/receipt contract)
         run: node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs
 
+      - name: research-gates unit tests (deep-research integrity gates — quote/citation/independence contract)
+        run: node --test skills/deep-research/scripts/research-gates.test.mjs
+
       - name: check-manifest-catalogue (ADR-039 gate-path parity)
         run: node scripts/ci/check-manifest-catalogue.js
 

@@ -9,7 +9,7 @@
 > consultant-deepseek, consultant-perplexity, consultant-zai, consultant-antigravity) are
 > not skills; route to them directly via their `consult` tool when a second model opinion is wanted.
 
-Skills: 125 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
+Skills: 126 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
 
 ## How to route
 
@@ -40,6 +40,7 @@ Skills: 125 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md A
 | `flow-nexus-neural` | Train distributed neural networks (feedforward, LSTM, GAN, transformer) in E2B cloud sandboxes via Flow Nexus, no local GPU. Use when a task needs cloud-fleet … |
 | `openai-codex` | Delegate a coding or reasoning task to OpenAI Codex (GPT-6 Astra) via MCP for a second opinion from a non-Claude model. Use when you want to cross-check a hard … |
 | `pytorch-ml` | Train and fine-tune deep learning models in PyTorch with CUDA GPU acceleration — nn.Module definition, training loops, DataLoaders, checkpointing, … |
+| `system-one` | Build software around small typed AI judgments used as programming primitives — a model call returning a `choice`, an ordered `score`, or a 0–1 probability … |
 
 ## Browser Automation and Web
 
@@ -191,7 +192,7 @@ Skills: 125 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md A
 | Skill | Route when (from the skill's own description) |
 |---|---|
 | `autoresearch` | Autonomous experiment loop that tries ideas, measures results, keeps what works, and discards what doesn't. Use when the user asks to optimize a metric, run an … |
-| `deep-research` | Fan-out multi-agent web research that cross-checks claims against independent sources and produces a cited research brief with a verifier and reviewer pass. … |
+| `deep-research` | Fan-out multi-agent web research that cross-checks claims against independent sources and produces a cited research brief with a verifier and reviewer pass, … |
 | `provenance-tracking` | Add provenance tracking to any research or analysis output. Use when you need source verification, citation tracking, or evidence chains. Creates a … |
 
 ## Security and Compliance

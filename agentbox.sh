@@ -57,6 +57,7 @@ Local lifecycle commands:
   ${GREEN}model-router${NC}     ADR-2080 metaharness router console [fetch|check|status|route "<task>" [--dry-run]|console]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}android${NC}          [EXPERIMENTAL, gated] redroid Android/Play sidecar [up|down|logs|status|screencap|shell|id] — needs AGENTBOX_ENABLE_ANDROID=1
+  ${GREEN}concat${NC}           [EXPERIMENTAL, gated] headless Concat video engine [up|down|logs|status|rebuild|shell|api|version] — needs AGENTBOX_ENABLE_CONCAT=1
   ${GREEN}preflight${NC}        Validate the local environment + manifest before up (W021 audit, missing host paths, override drift)
 
 Options:
@@ -596,6 +597,13 @@ export VOICE_HOST_ROOT
 # EXPERIMENTAL, GATED OFF: Android (redroid) sidecar — a genuine Play client.
 # The compose service is behind the `android` profile and cmd_android additionally
 # requires AGENTBOX_ENABLE_ANDROID=1. See docs/user/android.md.
+# EXPERIMENTAL, GATED OFF: headless Concat video engine sidecar. `concat-cli api`
+# speaks the Concat API as line-delimited JSON on stdin/stdout. No ADR yet, and a
+# ~15-minute Rust build, so cmd_concat requires AGENTBOX_ENABLE_CONCAT=1.
+# See concatcontainer/README.md.
+CONCAT_FILE="${SCRIPT_DIR}/docker-compose.concat.yml"
+CONCAT_COMPOSE_ARGS=(--project-name agentbox -f "$CONCAT_FILE")
+
 ANDROID_FILE="${SCRIPT_DIR}/docker-compose.android.yml"
 ANDROID_COMPOSE_ARGS=(--project-name agentbox -f "$ANDROID_FILE" --profile android)
 # Standard ports — MAD has been deprecated; no port remap needed.
@@ -1325,6 +1333,114 @@ AND_HELP
 }
 
 # ---------------------------------------------------------------------------
+# concat lifecycle (EXPERIMENTAL, gated) — headless Concat video engine
+#
+# The Concat API's only transport today is stdin/stdout, so there is no daemon
+# and no port: `api` pipes one JSON request per line through `docker exec -i`.
+# A socket or MCP transport is what the pending ADR has to scope; inventing one
+# here would prejudge it. Concat is AGPL-3.0-or-later — see
+# concatcontainer/README.md for the licence boundary that keeps agentbox code
+# an Independent Module.
+# ---------------------------------------------------------------------------
+
+cmd_concat() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+
+    if [[ "$subcmd" != "help" && "${AGENTBOX_ENABLE_CONCAT:-0}" != "1" ]]; then
+        echo -e "${YELLOW}concat sidecar is EXPERIMENTAL and gated off.${NC}"
+        echo -e "Enable with: ${CYAN}AGENTBOX_ENABLE_CONCAT=1 $0 concat $subcmd${NC}"
+        echo -e "Why gated: no ADR yet, AGPL-3.0-or-later payload, ~15 min first build."
+        echo -e "See ${CYAN}concatcontainer/README.md${NC}."
+        return 1
+    fi
+
+    case "$subcmd" in
+        up)
+            echo -e "${CYAN}Building and starting concatcontainer (first build is slow — FFmpeg, whisper.cpp and ONNX Runtime compile from source)...${NC}"
+            docker compose "${CONCAT_COMPOSE_ARGS[@]}" up -d --build || return 1
+            echo -e "${CYAN}Checking the API answers...${NC}"
+            if docker exec -i concatcontainer concat-cli api '{"method":"version"}' 2>/dev/null | grep -q apiVersion; then
+                echo -e "${GREEN}concatcontainer up — the API dispatcher answers.${NC}"
+                echo -e "  ${GREEN}Drive it :${NC} $0 concat api '{\"method\":\"project.list\"}'"
+                echo -e "  ${GREEN}Projects :${NC} volume agentbox_concat-projects → /home/devuser/projects"
+                echo -e "  ${GREEN}Exchange :${NC} volume agentbox_gui-tools-exchange → /home/devuser/exchange"
+            else
+                echo -e "${RED}Container started but the API did not answer.${NC}"
+                echo "Check logs: $0 concat logs"
+                return 1
+            fi
+            ;;
+        down)
+            docker compose "${CONCAT_COMPOSE_ARGS[@]}" down
+            echo -e "${GREEN}concatcontainer stopped.${NC}"
+            ;;
+        logs)
+            docker compose "${CONCAT_COMPOSE_ARGS[@]}" logs -f --tail 100
+            ;;
+        status)
+            docker compose "${CONCAT_COMPOSE_ARGS[@]}" ps
+            ;;
+        rebuild)
+            docker compose "${CONCAT_COMPOSE_ARGS[@]}" down
+            docker compose "${CONCAT_COMPOSE_ARGS[@]}" build --no-cache
+            cmd_concat up
+            ;;
+        shell)
+            docker exec -it concatcontainer bash
+            ;;
+        version)
+            docker exec -i concatcontainer concat-cli api '{"method":"version"}'
+            ;;
+        api)
+            # One JSON request per line in, one JSON object per line out
+            # (events as they happen, then the response). With no argument,
+            # stdin is piped straight through so a script can hold a session.
+            if [[ $# -gt 0 ]]; then
+                docker exec -i concatcontainer concat-cli api "$1"
+            else
+                docker exec -i concatcontainer concat-cli api
+            fi
+            ;;
+        help|*)
+            cat <<CONCAT_HELP
+${CYAN}Concat — headless video engine sidecar${NC} ${YELLOW}[EXPERIMENTAL, gated, no ADR yet]${NC}
+
+Usage: AGENTBOX_ENABLE_CONCAT=1 $0 concat <command>
+
+  ${GREEN}up${NC}        Build and start (first build compiles FFmpeg bindings, whisper.cpp, ONNX Runtime)
+  ${GREEN}down${NC}      Stop the container
+  ${GREEN}logs${NC}      Follow container logs
+  ${GREEN}status${NC}    Show container status
+  ${GREEN}rebuild${NC}   Full rebuild (down + build --no-cache + up)
+  ${GREEN}shell${NC}     Open bash in the container
+  ${GREEN}version${NC}   Ask the API its version (exercises the real dispatcher)
+  ${GREEN}api${NC}       Send one JSON request, or pipe a session on stdin
+
+The Concat API is 21 methods over line-delimited JSON. Worth knowing:
+  project.create / open / get / document / save     project lifecycle
+  media.probe / media.import                        what is in a file; add to the bin
+  edit.apply / edit.undo / edit.redo                the edit, as JSON commands
+  catalogue.list                                    every effect WITH its parameters
+  preview.frame                                     composite one frame to PNG
+  export.run / export.cancel                        render the timeline
+
+Examples:
+  $0 concat api '{"method":"media.probe","path":"/home/devuser/exchange/clip.mp4"}'
+  $0 concat api '{"method":"catalogue.list","kind":"transition"}'
+
+${YELLOW}Not yet built (the ADR's scope):${NC} MCP server, socket transport, manifest
+gate, skill, and the desktop window for human timeline review.
+
+${YELLOW}Licence:${NC} Concat is AGPL-3.0-or-later. This image contains it; the
+corresponding source ships at /usr/local/src/concat-src.tar.gz. Agentbox code
+must reach it only through this API/IPC surface — see concatcontainer/README.md.
+CONCAT_HELP
+            ;;
+    esac
+}
+
+# ---------------------------------------------------------------------------
 # browsercontainer lifecycle
 # ---------------------------------------------------------------------------
 
@@ -1789,7 +1905,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|model-router|xr-runtime|android|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|model-router|xr-runtime|android|concat|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
@@ -2167,6 +2283,7 @@ case "${CMD:-}" in
     model-router)      cmd_model_router "$@" ;;
     xr-runtime)        cmd_xr_runtime "$@" ;;
     android)           cmd_android "$@" ;;
+    concat)            cmd_concat "$@" ;;
     migrate-workspace) cmd_migrate_workspace "$@" ;;
     preflight)         cmd_preflight "$@" ;;
     *)                 usage ;;

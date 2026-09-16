@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **130 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
+> **131 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
 > Updated 2026-09-09 (estate re-audit for Fable 5.1 / GPT-6 Astra workloads; history in `CHANGELOG.md` and `docs/adr/`). Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -32,13 +32,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (130 Active Skills)
+## Artefact 1: Categorised Skill Inventory (131 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 130 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 131 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -119,6 +119,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `deepseek-reasoning` | Yes | DeepSeek special model endpoint, structured chain-of-thought, multi-step reasoning | Complex reasoning tasks requiring DeepSeek's reasoning model |
 | `openai-codex` | Yes | GPT-6 Astra code generation and review via MCP bridge | Delegating specific tasks to GPT-6 Astra capabilities |
 | `codex-companion` | No | Full OpenAI Codex plugin: code review, adversarial review, rescue agent, GPT-6 Astra structured prompting, stop-review gate | Cross-model validation, when Claude is stuck, adversarial design review, substantial code delegation |
+| `system-one` | No | Typed AI judgments as programming primitives via TypeSafe's System One API (model Jev): `Choice` / `Score` / `Noul` questions evaluated in parallel against one `state`, returning a typed value plus a probability distribution your code branches on — no prose, no parsing. Live vendor docs are the source of truth and are read per task; `references/` holds the estate's egress boundary, integration map and calibration discipline. **Foundation — no integration wired yet** | Replacing an LLM prompt-and-parse step with a structured decision; routing, reranking, extraction, moderation, guardrails, verification, ML feature extraction, KG annotation; or the user asks for TypeSafe or Jev by name. NOT for generating text or code, and NOT before the egress decision in `references/data-boundary.md` |
 
 ### Browser Automation and Web
 
@@ -138,7 +139,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `deep-research` | No | Multi-source cited investigation with parallel researcher agents, provenance tracking, verification pass | Thorough research briefs, multi-source investigations, cited reports |
+| `deep-research` | No | Multi-source cited investigation with parallel researcher agents, provenance tracking, and executable integrity gates (fabricated-quote, citation-binding, source-independence) | Thorough research briefs, multi-source investigations, cited reports that must survive scrutiny |
 | `autoresearch` | No | Autonomous experiment loop: try ideas, measure results, keep what works, discard what doesn't | GPU kernel optimization, benchmark sweeps, performance tuning, iterative improvement |
 | `provenance-tracking` | No | Source chain verification with .provenance.md sidecar, URL checking, confidence scoring | Adding citations and verification to any research output |
 
@@ -304,7 +305,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 130 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 131 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)

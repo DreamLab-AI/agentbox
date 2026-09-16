@@ -1,0 +1,85 @@
+# docker-compose.concat.yml — headless Concat engine sidecar.
+#
+# EXPERIMENTAL and un-ADR'd. Follows the browsercontainer / gui-tools pattern:
+# a standalone, runtime-managed compose file with its own lifecycle
+# (`./agentbox.sh concat <up|down|...>`), NOT part of `agentbox.sh up`. Gated
+# behind AGENTBOX_ENABLE_CONCAT=1 the way the android sidecar is, so an
+# experimental 15-minute Rust build is never something an operator trips over.
+#
+# WHAT THIS IS. `concat-cli api` speaks the Concat API as line-delimited JSON
+# on stdin/stdout — 21 methods covering projects, media, edits, templates,
+# preview frames and export. Two of them are why this is interesting to an
+# agent estate at all:
+#   preview.frame     composites the true frame at a timeline instant to PNG,
+#                     so an agent can SEE the edit it just made
+#   project.document  returns the project, so an agent can author an edit that
+#                     a human then opens in the desktop window and adjusts
+#
+# WHAT THIS IS NOT, YET. There is no MCP server, no socket transport, no
+# manifest gate and no skill. Those are the ADR's job. Today the surface is
+# `./agentbox.sh concat api '<json>'`, which is a `docker exec -i` pipe.
+#
+# LICENCE. Concat is AGPL-3.0-or-later; this image contains it, so the AGPL's
+# section 13 source offer applies if the sidecar is ever exposed over a
+# network. The corresponding source for the pinned revision ships inside the
+# image at /usr/local/src/concat-src.tar.gz. Agentbox code driving it stays an
+# Independent Module under the Concat Plugin Exception v1.0 only while it goes
+# through the API/IPC surface — see concatcontainer/README.md.
+
+services:
+  concatcontainer:
+    container_name: concatcontainer
+    hostname: concatcontainer
+    build:
+      context: ./concatcontainer
+      dockerfile: Dockerfile
+      args:
+        # Pin the revision explicitly: Concat is a v0.2.x beta and the API
+        # message shape (concat-api/src/message.rs) will churn. A floating
+        # HEAD would silently change the wire format under us.
+        CONCAT_REV: ${CONCAT_REV:-042688f53834b0a440228198be7fa3de27ad2cc3}
+    restart: unless-stopped
+    # No ports: the only transport today is stdin/stdout. Publishing a port
+    # would imply a daemon that does not exist, and would be the moment AGPL
+    # section 13 starts to bite.
+    environment:
+      - HOME=/home/devuser
+      - CONCAT_PROJECTS=/home/devuser/projects
+      # CONCAT_LOG=debug turns the engine's own logging up.
+      - CONCAT_LOG=${CONCAT_LOG:-info}
+    healthcheck:
+      # The engine has no health endpoint; `version` exercises the real
+      # dispatcher (Request::Version through Api::dispatch), so a pass means
+      # the API answers, not merely that the process is alive.
+      test: ["CMD-SHELL", "concat-cli api '{\"method\":\"version\"}' | grep -q apiVersion"]
+      interval: 60s
+      timeout: 20s
+      retries: 3
+      start_period: 15s
+    volumes:
+      # Project folders: the agent writes here through the API, and the same
+      # folder is what a human opens in the desktop window.
+      - concat-projects:/home/devuser/projects
+      # Shared exchange with browsercontainer / gui-tools — where source media
+      # and rendered output are handed between sidecars.
+      - gui-tools-exchange:/home/devuser/exchange
+    deploy:
+      resources:
+        limits:
+          cpus: '6'
+          memory: 8G
+    networks:
+      - visionclaw
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network
+
+volumes:
+  concat-projects:
+  # Declared plainly, exactly as docker-compose.browsercontainer.yml does: both
+  # files run under `--project-name agentbox`, so this resolves to the same
+  # `agentbox_gui-tools-exchange` volume. Marking it external instead would make
+  # this sidecar refuse to start unless browsercontainer had been up first.
+  gui-tools-exchange:

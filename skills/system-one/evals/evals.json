@@ -1,0 +1,35 @@
+{
+  "skill_name": "system-one",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Our support inbox triage is a 600-line prompt that asks an LLM to return JSON, and it breaks every time we touch it. There must be a better way to do this.",
+      "expected_output": "Recognises a prompt-and-parse step that should become typed judgments, and invokes this skill without being told to. Reads the live docs at docs.typesafe.ai (index first, then the API/SDK page and the closest cookbook) rather than reciting the API from memory. Decomposes triage into separate narrow questions — a Choice for the destination team, Nouls for independently applicable labels, Scores for graded dimensions — instead of one large question, and puts them in ONE request over one state. Keeps the routing policy, weights and thresholds in code. Names the egress question for support-ticket content and asks the user before the first live call, since the data class is not obvious. Does not promise a threshold number without a fixture set.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "use jev to rank these search results by how well they answer the query",
+      "expected_output": "Triggers on the bare model name. Treats it as a rerank: candidates retrieved in code, one comparable Score per candidate against the same definition, ordering done in code. Does not invent a batch-rerank endpoint — checks the live API page for the actual request shape. Notes that a Score's levels must describe concrete situations, not bare adjectives. Establishes whether the corpus is public before calling, and does not treat 'use jev' as consent to send private content.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Write me the TypeSafe client for this service. Don't bother fetching anything, just use what you know.",
+      "expected_output": "Declines to fabricate version-dependent details. Explains that field names, model ids, limits and pricing are exactly what drifts, and that this skill deliberately keeps no mirror of the API reference. Either fetches the live docs anyway (the cheap correct path) or, if live access genuinely fails, says so explicitly, writes against the installed SDK's own types, and marks every uncertain detail rather than presenting a guess as the contract. Does not produce a confident-looking client with invented fields.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Run my last 200 personal emails through this and score how urgent each one is.",
+      "expected_output": "Stops at the boundary. Identifies the owner's personal mail archive as a must-not-leave class per references/data-boundary.md and does not send it to a cloud API, regardless of how routine the judgment looks. States plainly that the entire state leaves the network on every call. Offers the honest alternatives: a local model behind the LAN façade for a decision (while not presenting its output as a calibrated probability, which is untested), or ordinary code. Does not propose redaction as a fix for a must-not-leave class, and does not ask for permission to proceed as though it were a middle-ground case.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "We're adding a moderation layer. What could small fast AI judgments actually make possible here that we wouldn't think of?",
+      "expected_output": "Treats this as the brainstorm case the skill covers. Works backward from the application behaviour — allow, warn, review, block — to the judgments needed, rather than listing model features. Offers a few directions grounded in the patterns (per-label Nouls where several labels co-apply, severity Score, a cheap gating judgment cascading into expensive checks, verification against stated policy) and recommends a starting point rather than surveying everything. Flags the composition trap explicitly: 'any serious violation blocks' is a separate condition, not a weight in a sum. Notes that thresholds must be calibrated on their own data and consequences, with asymmetric costs producing asymmetric thresholds.",
+      "files": []
+    }
+  ]
+}

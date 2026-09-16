@@ -1,7 +1,7 @@
 # Deep Research — full workflow reference
 
-The detailed eight-phase Lead Researcher loop. SKILL.md carries the quick-path and
-the scale decision; this file holds the templates, agent briefs, and file conventions.
+The detailed Lead Researcher loop. SKILL.md carries the quick-path, the tier table and
+the integrity rules; this file holds the templates, agent briefs, and file conventions.
 You are the Lead Researcher: you plan, delegate, evaluate, verify, write, and cite.
 
 ## 1. Plan
@@ -49,12 +49,17 @@ Present the plan and get user confirmation before proceeding.
 
 ## 2. Scale Decision
 
-| Query type | Execution |
-|---|---|
-| Single fact or narrow question | Search directly, no subagents, 3-10 tool calls |
-| Direct comparison (2-3 items) | 2 parallel researcher agents |
-| Broad survey or multi-faceted topic | 3-4 parallel researcher agents |
-| Complex multi-domain research | 4-6 parallel researcher agents |
+Declare a tier and record it in the plan, so the cost of the run is a decision rather
+than something discovered at the end.
+
+| Tier | Query type | Execution | Gate |
+|---|---|---|---|
+| `quick` | Single fact or narrow question | Search directly, no subagents, 3-10 tool calls | n/a (exit 78) |
+| `brief` | Direct comparison (2-3 items) | 2 parallel researcher agents | final brief |
+| `brief` | Broad survey or multi-faceted topic | 3-4 parallel researcher agents | final brief |
+| `deep` | Complex, contested or multi-domain | 4-6 researchers, 2-3 rounds | draft + final, `--strict` |
+
+If a run exceeds its declared tier, tell the user rather than spending silently.
 
 ## 3. Spawn Researchers
 
@@ -74,6 +79,25 @@ Agent({
   prompt: "[structured brief with objective, boundaries, output path]"
 })
 ```
+
+### Evidence format (required in every researcher brief)
+
+Each researcher writes evidence as per-source blocks, because the integrity gates check a
+quote against *the source cited for it* only when these exist:
+
+```markdown
+### [1] Ofgem, Connections Reform Decision
+URL: https://www.ofgem.gov.uk/...
+Retrieved: 2026-09-15
+Status: verified
+
+<untrusted-source url="https://www.ofgem.gov.uk/..." retrieved="2026-09-15">
+> the connection queue has more than doubled since 2023
+</untrusted-source>
+```
+
+Numbering is global to the run: the Lead Researcher allocates a disjoint number range to
+each researcher in its brief, so two researchers never mint the same `[n]`.
 
 ### Researcher Integrity Rules (passed to each agent)
 1. Never fabricate a source — every citation must have a verifiable URL
@@ -118,6 +142,23 @@ Unresolved issues, source disagreements, evidence gaps.
 
 Save draft to `docs/research/.drafts/<slug>-draft.md`.
 
+## 5b. Gate the draft
+
+Run the integrity gates before spawning the verifier — the findings are its work list, and
+a mechanical check is cheaper than an agent round:
+
+```bash
+node skills/deep-research/scripts/research-gates.mjs --slug <slug> --root docs/research
+```
+
+Fix every FAIL by surgical edit (`R010` fabricated quote, `R011` quote not in the cited
+source, `R020` dangling citation, `R021` source without URL) and triage the WARNs —
+`R030`/`R031` mean a claim has fewer independent witnesses than its citation count
+suggests, which usually needs another source rather than a wording change.
+
+What each code means, the authoring contract and the independence model are in
+[`integrity-gates.md`](integrity-gates.md).
+
 ## 6. Verify
 
 Spawn a verifier agent to add inline citations and verify URLs:
@@ -126,9 +167,13 @@ Spawn a verifier agent to add inline citations and verify URLs:
 Agent({
   description: "Verify citations",
   subagent_type: "reviewer",
-  prompt: "Add inline citations to docs/research/.drafts/<slug>-draft.md using the research files. Verify every URL resolves. Remove unsourced claims. Output: docs/research/<slug>-brief.md"
+  prompt: "Add inline citations to docs/research/.drafts/<slug>-draft.md using the research files. Verify every URL resolves. Remove unsourced claims. Output: docs/research/<slug>.md"
 })
 ```
+
+The verifier writes the final path `docs/research/<slug>.md` directly. Do not invent an
+intermediate `<slug>-brief.md`: the gate reads `<slug>-research-*.md` as evidence, and a
+stray artefact sharing the slug prefix is how a brief ends up corroborating itself.
 
 ## 7. Review
 
@@ -142,7 +187,16 @@ If FATAL issues found, fix and re-verify. MAJOR issues noted in Open Questions.
 
 ## 8. Deliver
 
-Save final output as `docs/research/<slug>.md`.
+Save final output as `docs/research/<slug>.md`, then run the ship gate on it:
+
+```bash
+node skills/deep-research/scripts/research-gates.mjs --slug <slug> --strict   # deep tier
+node skills/deep-research/scripts/research-gates.mjs --slug <slug>            # brief tier
+```
+
+Exit 0 is the ship condition. Exit 78 means no brief was found — record that as SKIPPED,
+never as passed. Before shipping, also do the one check the script cannot: re-check the
+critical citations for **retractions** at ship time, not fetch time.
 
 Write provenance record as `docs/research/<slug>.provenance.md`:
 
@@ -151,10 +205,14 @@ Write provenance record as `docs/research/<slug>.provenance.md`:
 
 - **Date:** [date]
 - **Rounds:** [number of researcher rounds]
+- **Tier:** [quick / brief / deep]
 - **Sources consulted:** [total unique sources]
 - **Sources accepted:** [survived verification]
 - **Sources rejected:** [dead links, unverifiable]
+- **Independent origins:** [distinct clusters after the R030/R031 audit]
 - **Verification:** [PASS / PASS WITH NOTES]
+- **Gate receipt:** docs/research/<slug>-gates.json — [N fail, M warn, strict yes/no]
+- **Retraction check:** [date, method, result]
 - **Plan:** docs/research/.plans/<slug>.md
 - **Research files:** [list]
 ```
@@ -173,5 +231,6 @@ All files in a single run use the same slug prefix:
 - Final: `docs/research/<slug>.md`
 - Provenance: `docs/research/<slug>.provenance.md`
 - Verification: `docs/research/<slug>-verification.md`
+- Gate receipt: `docs/research/<slug>-gates.json` (written by research-gates.mjs)
 
 Never use generic names like `research.md` or `draft.md`. Concurrent runs must not collide.
