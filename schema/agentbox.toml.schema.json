@@ -504,6 +504,38 @@
             }
           }
         },
+        "colloquy": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2085/2086 Colloquy shared-agent-learning knowledge units (query/propose/confirm/flag/reflect/status). BOOT-class: the entrypoint reads this gate before registering the colloquy MCP server and the reflect-candidate hooks.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Register the colloquy MCP server in .mcp.json. Skipped with a warning when no principal (AGENTBOX_PUBKEY / COLLOQUY_PRINCIPAL) is available — an unidentified member must not attest."
+            },
+            "tier": {
+              "type": "string",
+              "enum": ["local", "shared", "public"],
+              "description": "Store tier the stdio server runs at (COLLOQUY_TIER)."
+            },
+            "store_path": {
+              "type": "string",
+              "description": "Local-tier JSONL store, projected as COLLOQUY_STORE_PATH."
+            },
+            "namespace": {
+              "type": "string",
+              "description": "RuVector namespace for the SHARED tier (composed by the management API, not the stdio server)."
+            },
+            "principal": {
+              "type": "string",
+              "description": "Explicit authorising principal pubkey; empty ⇒ the sovereign identity (AGENTBOX_PUBKEY)."
+            },
+            "reflect_candidates": {
+              "type": "boolean",
+              "description": "Register config/hooks/colloquy-reflect-candidates.cjs on Stop/SubagentStop (requires enabled = true); false de-registers it."
+            }
+          }
+        },
         "routing": {
           "type": "object",
           "additionalProperties": false,
