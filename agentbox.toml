@@ -777,6 +777,31 @@ enabled = true
 enabled = true
 template_dir = "/home/devuser/workspace/VisionFlow/docs/engineering/templates"
 
+[skills.routing]
+# ADR-2091 — live skill router. Skill selection is a typed judgement: every
+# routable skill's frontmatter description goes to TypeSafe System One (model
+# Jev) as ONE Choice question with the user's turn as state, and the pick is
+# injected as advisory context. Measured (ADR-2089): 90% soft accuracy over the
+# full fleet at $0.00066/route (input $0.042/MTok, output free) versus
+# $0.0014/turn for the always-loaded twenty in Opus cache reads and $0.08 for a
+# table-read /route. Egress of the routing prompt is an accepted operator
+# decision for skill routing ONLY (ADR-2090); per-project gates are deferred.
+#
+# router = "jev"   → hook + /route ask the judge; FAIL OPEN to "table" on any
+#                    error, timeout, 429/529, missing TYPESAFE_API_KEY or a
+#                    `none` pick. The old path is never removed, only bypassed.
+# router = "table" → the pre-2091 system exactly: always-loaded descriptions
+#                    self-trigger and /route reads references/routing-table.md.
+#                    The hook is de-registered (byte-identical-when-off).
+# BOOT-class: the entrypoint inlines these values into the registered hook
+# command and runtime-env.sh; a flip applies on restart, never a rebuild.
+# Validator: E073 (router enum), W071 (jev without TYPESAFE_API_KEY at boot).
+router = "jev"
+hook = true                     # register the UserPromptSubmit hook (router = "jev" only)
+model = "jev-latest"            # resolved server-side; pin (e.g. "jev-1.13.0") to freeze behaviour
+timeout_ms = 4000               # hook budget per call; the hook itself is registered at 8000
+min_prompt_chars = 24           # shorter turns are never sent (and never routed)
+
 [skills.colloquy]
 # Colloquy — cq shared-agent-learning knowledge units (ADR-2085, ADR-2086).
 # Six tools: query, propose, confirm, flag, reflect, status. Gates the MCP

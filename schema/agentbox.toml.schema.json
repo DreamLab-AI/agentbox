@@ -504,6 +504,36 @@
             }
           }
         },
+        "routing": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2091 live skill router: one System One (Jev) Choice over every routable skill description per turn, injected as advisory context. Fails open to the pre-2091 table path. BOOT-class.",
+          "properties": {
+            "router": {
+              "type": "string",
+              "enum": ["jev", "table"],
+              "description": "\"jev\" (default): hook + /route ask the judge and fall back to \"table\" on any failure. \"table\": the pre-2091 path only; the hook is de-registered at boot."
+            },
+            "hook": {
+              "type": "boolean",
+              "description": "Register config/hooks/skill-route.cjs on UserPromptSubmit (router=\"jev\" only). false leaves /route on the judge but stops per-turn routing."
+            },
+            "model": {
+              "type": "string",
+              "description": "System One model id, e.g. \"jev-latest\" or a pin such as \"jev-1.13.0\"."
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 250,
+              "description": "Per-call budget for the judge; the hook is registered at max(8000, 2x this)."
+            },
+            "min_prompt_chars": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Turns shorter than this are never sent to the judge."
+            }
+          }
+        },
         "harness": {
           "type": "object",
           "additionalProperties": false,

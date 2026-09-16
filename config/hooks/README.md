@@ -24,6 +24,7 @@ window 0 and every unattended teammate pane.
 | `dream-inbox-surface.cjs` | `UserPromptSubmit` | `DREAM_INBOX_HOOK` |
 | `ruvnet-brain-ground.cjs` | `UserPromptSubmit` | `[skills.ruvnet_brain].grounding_hook` |
 | `ontology-monitor.cjs` | `SessionEnd` | `[ontology_monitor].enabled` — de-registers itself, and its `env` master switch, when the gate is off (ADR-2068, ADR-2020) |
+| `skill-route.cjs` | `UserPromptSubmit` | `[skills.routing].router = "jev"` and `.hook = true` (ADR-2091) — the manifest's model/timeout/min-chars are inlined into the command as `AGENTBOX_SKILL_ROUTE_*`; `router = "table"` or `hook = false` de-registers it. Puts the turn to System One as one Choice over every routable skill and injects the pick as advisory context; fails open (no injection) on timeout, 429/529, any error, a missing `TYPESAFE_API_KEY` or a `none` pick. Shares `lib/skill-route.cjs` with `/route` (`skills/skill-router/scripts/route.mjs`). Log: `~/.claude/skill-route.jsonl` (outcomes and cost, never the prompt; `AGENTBOX_SKILL_ROUTE_LOG=0` disables) |
 
 ## 2. Hooks registered in PER-PROFILE sessions — `workspace/profiles/<stack>/.claude/settings.json`
 
@@ -44,7 +45,7 @@ Never registered on any event. Nothing will call these on a session boundary.
 |---|---|
 | `project-tracking-publish.cjs` | A **CLI**, spawned by the management API from `POST /v1/projects/:id/publish` (`management-api/routes/projects.js:28,322`), reading a `ProjectTrackingDigest` on stdin. It is the Node sibling of the `nostr-pod-bridge session-summary` publish path, not a Claude Code hook. |
 | `fleet-tab-name.sh` | A helper shelled by `fleet-session-start.sh:17`. No independent registration. |
-| `lib/egress-policy.cjs`, `lib/trajectory-util.cjs` | Shared libraries `require`d by the hooks above. |
+| `lib/egress-policy.cjs`, `lib/trajectory-util.cjs`, `lib/skill-route.cjs` | Shared libraries `require`d by the hooks above (`skill-route.cjs` is also loaded by the `/route` CLI, which is why the judge's wire shape lives here and nowhere else). |
 
 ## Adding one
 

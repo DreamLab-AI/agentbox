@@ -1280,6 +1280,31 @@ if (ldEnabled) {
   }
 }
 
+// ─── E073 / W071: live skill router (ADR-2091, egress per ADR-2090) ──────────
+//
+// E073 — [skills.routing].router must be "jev" or "table"; any other value is
+//         a typo that would silently land on the fallback and look like a
+//         working router with a permanently slow judge.
+// W071 — router="jev" with no TYPESAFE_API_KEY in the validating environment:
+//         legal (the router fails open to the table on every turn) but the
+//         operator asked for a judge and will not get one. Advisory only —
+//         CI validates without the key by design.
+{
+  const rt = (manifest.skills || {}).routing || {};
+  if (rt.router !== undefined && rt.router !== 'jev' && rt.router !== 'table') {
+    errors.push({
+      code: 'E073',
+      message: `E073: [skills.routing].router must be "jev" or "table" (got "${rt.router}") — ADR-2091`,
+    });
+  }
+  if (rt.router === 'jev' && !process.env.TYPESAFE_API_KEY) {
+    warnings.push({
+      code: 'W071',
+      message: 'W071: [skills.routing].router="jev" but TYPESAFE_API_KEY is not set in this environment — the router will fail open to the routing table on every turn until the key is provided in .env (ADR-2091)',
+    });
+  }
+}
+
 // ─── E050-E052 / W050-W052: ACI MCP + tree-search (ADR-020 / PRD-008) ───────
 //
 // E050 — aci_shell.enabled=true requires code_interpreter.enabled=true

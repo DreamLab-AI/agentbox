@@ -2004,6 +2004,62 @@ else
     && echo "  [ruvnet-brain] MCP closure not found at $_RB_MCP_DIR — skipping"
 fi
 
+# ── ADR-2091: live skill router — register/de-register the UserPromptSubmit hook ──
+# [skills.routing].router = "jev" puts every turn to System One as one Choice
+# over the routable skills' descriptions and injects the pick as advisory
+# context; "table" is the pre-2091 path (always-loaded descriptions + /route
+# reading the routing table) and leaves no hook behind. Same shape as the
+# colloquy registration above: the manifest values are INLINED into the hook
+# command, so the hook's own default-off check passes exactly when the operator
+# opted in, and the off state retracts anything an earlier boot wrote. The
+# values are also published to runtime-env.sh (Phase 8) so /route in a shell
+# agrees with the hook. TYPESAFE_API_KEY comes from the container env (.env);
+# absent, the hook fails open on every turn and W071 says so at validate time.
+_SR_ROUTER="$(_ab_toml_val skills.routing router)"; _SR_ROUTER="${_SR_ROUTER:-table}"
+_SR_HOOK="$(_ab_toml_bool skills.routing hook)"
+_SR_MODEL="$(_ab_toml_val skills.routing model)"; _SR_MODEL="${_SR_MODEL:-jev-latest}"
+_SR_TIMEOUT="$(_ab_toml_int skills.routing timeout_ms 4000)"
+_SR_MIN_CHARS="$(_ab_toml_int skills.routing min_prompt_chars 24)"
+_SR_HOOK_FILE="/opt/agentbox/config/hooks/skill-route.cjs"
+if [ "$_SR_ROUTER" = "jev" ] && [ "$_SR_HOOK" = "1" ] \
+   && [ -f "$_SR_HOOK_FILE" ] && command -v node >/dev/null 2>&1; then
+  [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [skill-route] router=jev but TYPESAFE_API_KEY is unset — hook registered, will fail open to the table (W071)"
+  mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
+  SR_HOOK="$_SR_HOOK_FILE" SETTINGS="$_CLAUDE_SETTINGS" SR_MODEL="$_SR_MODEL" \
+  SR_TIMEOUT="$_SR_TIMEOUT" SR_MIN_CHARS="$_SR_MIN_CHARS" node <<'SRJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, hook = process.env.SR_HOOK;
+const pfx = `AGENTBOX_SKILL_ROUTER=jev AGENTBOX_SKILL_ROUTE_MODEL=${process.env.SR_MODEL} ` +
+  `AGENTBOX_SKILL_ROUTE_TIMEOUT_MS=${process.env.SR_TIMEOUT} AGENTBOX_SKILL_ROUTE_MIN_CHARS=${process.env.SR_MIN_CHARS}`;
+let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
+s.hooks = s.hooks || {};
+s.hooks.UserPromptSubmit = (s.hooks.UserPromptSubmit || []).filter((g) =>
+  !(g.hooks || []).some((h) => String(h.command || '').includes('skill-route.cjs')));
+// Registered at twice the judge timeout: the hook must return before Claude Code
+// gives up on it, and a timed-out hook is indistinguishable from a broken one.
+s.hooks.UserPromptSubmit.push({ hooks: [{ type: 'command', command: `${pfx} node ${hook} || true`,
+  timeout: Math.max(8000, 2 * Number(process.env.SR_TIMEOUT)) }] });
+const nextText = JSON.stringify(s, null, 2);
+if (nextText !== origText) { fs.writeFileSync(f, nextText); console.log('  [skill-route] registered Jev routing hook on UserPromptSubmit'); }
+else { console.log('  [skill-route] routing hook already registered'); }
+SRJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+elif [ -f "$_CLAUDE_SETTINGS" ] && command -v node >/dev/null 2>&1; then
+  SETTINGS="$_CLAUDE_SETTINGS" node <<'SRUNJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS;
+let s; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { process.exit(0); }
+if (!s.hooks || !Array.isArray(s.hooks.UserPromptSubmit)) process.exit(0);
+const before = s.hooks.UserPromptSubmit.length;
+s.hooks.UserPromptSubmit = s.hooks.UserPromptSubmit.filter((g) =>
+  !(g.hooks || []).some((h) => String(h.command || '').includes('skill-route.cjs')));
+if (s.hooks.UserPromptSubmit.length !== before) {
+  fs.writeFileSync(f, JSON.stringify(s, null, 2));
+  console.log('  [skill-route] de-registered routing hook (router=table or hook=false)');
+}
+SRUNJS
+fi
+
 # ── MCP registry projection (MCP-1 / MCP-2): project .mcp.json FROM skills/mcp.json ──
 # audit-2026-07-15 MCP-1: skills/mcp.json (the 28-server registry) had NO runtime
 # consumer — ~19 gated servers registered nowhere the harness reads. This makes the
@@ -2474,6 +2530,13 @@ $_MRN_EXPORTS
 export AGENTBOX_INTERACTION_PLANE_ENABLED="$_IP_ENABLED"
 export AGENTBOX_INTERACTION_PLANE_PORT="$_IP_PORT"
 export AGENTBOX_INTERACTION_PLANE_PROXY_PORT="$_IP_PROXY_PORT"
+# ADR-2091: the skill router's manifest choice, so /route in any shell agrees
+# with the UserPromptSubmit hook. "table" = the pre-2091 path; TYPESAFE_API_KEY
+# is NOT republished here — it stays in the container env from .env.
+export AGENTBOX_SKILL_ROUTER="${_SR_ROUTER:-table}"
+export AGENTBOX_SKILL_ROUTE_MODEL="${_SR_MODEL:-jev-latest}"
+export AGENTBOX_SKILL_ROUTE_TIMEOUT_MS="${_SR_TIMEOUT:-4000}"
+export AGENTBOX_SKILL_ROUTE_MIN_CHARS="${_SR_MIN_CHARS:-24}"
 # ADR-2028: the vault path authority. Sourced by every tmux window and
 # interactive shell (bash via /etc/profile.d, fish via conf.d) so the Notes
 # window, the skills and the MCP servers all agree on one corpus root. Empty

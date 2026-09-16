@@ -44,6 +44,21 @@ relabelled to `browser-automation` on operator policy after the judge picked it 
 label. **A disagreement between the judge and a label is not automatically a model
 error** — check the label first.
 
+## The runtime path is measured separately
+
+The live router (ADR-2091) does not use this rig; it uses
+`config/hooks/lib/skill-route.cjs`, whose candidate map excludes never-routable statuses and
+adds a `none` option. Measure *that* path with the same items:
+
+```bash
+AGENTBOX_SKILL_ROUTER=jev AGENTBOX_SKILL_ROUTE_SKILLS_DIR=../.. \
+  node ../../skill-router/scripts/route.mjs --eval items.json --reps 3
+```
+
+2026-09-16: 36.0/40 soft (90%), 3 `none`-picks, 0 failed calls — the same headline as the rig,
+so the exclusions and the `none` option cost nothing measurable. Report the two numbers
+separately; they answer different questions (description quality vs. what a turn gets).
+
 ## Not built
 
 - **`probe.mjs`** — one-shot state + questions, printing full distributions; the thing

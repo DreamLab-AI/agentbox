@@ -12,6 +12,7 @@ tags:
   - dispatcher
   - meta-skill
 user-invocable: true
+status: router-only
 ---
 
 # /route — Unified Skill Dispatcher
@@ -35,15 +36,40 @@ Examples:
 
 ## Routing Method
 
-The full routing table lives in **`references/routing-table.md`** (loaded on demand — it
-duplicates each skill's front-matter description and is regenerated after description
-changes; it is not kept inline here to avoid drift). Route as follows:
+Two paths, chosen by `[skills.routing].router` in `agentbox.toml` (ADR-2091). The default
+is the judge; the table is its fallback and is never removed.
 
-1. Read the user's input — everything after `/route`.
-2. Load `references/routing-table.md` and classify intent against its sections (they mirror
-   the category headings of `SKILL-DIRECTORY.md`; one row per skill, each row's text is the
-   skill's own trigger description).
+**1. Ask the judge (default, `router = "jev"`).** Run, with the user's input verbatim:
+
+```bash
+node scripts/route.mjs "<everything after /route>"
+```
+
+It puts the request to TypeSafe System One as one Choice over every routable skill's own
+description (the `system-one` skill owns that backend) and prints ranked picks with
+probabilities and a `dispatch:` line — ~1 s, ~15k input tokens, about $0.0006. Take the
+`dispatch:` skill to the routing rules below. The probability is advisory: a wrong pick has
+been measured at 0.94, so a low number is a reason to ask, and a high number is not proof
+(ADR-2090). `dispatch: none` means the judge saw no skill that would change your approach —
+answer directly. `--json` gives the raw outcome; `--router table` forces path 2.
+
+**2. Read the table (fallback, or `router = "table"`).** Whenever the script prints
+`router: table (fallback: …)` — judge off, no key, timeout, 429/529, any error — do what
+`/route` always did:
+
+1. Load **`references/routing-table.md`** (generated from every skill's front-matter
+   description and `references/section-map.json`; not inlined here to avoid drift).
+2. Classify intent against its sections (they mirror the category headings of
+   `SKILL-DIRECTORY.md`; one row per skill, each row's text is the skill's trigger description).
 3. Apply the routing rules below to dispatch, clarify, or compose.
+
+The fallback is the normal path when the judge is slow, not an error to report — say
+`(routed by table)` in your one-sentence dispatch and carry on.
+
+The same library also runs as a per-turn hook (`config/hooks/skill-route.cjs`) that injects
+one short line — `[route] x 0.91 · y 0.05 · z 0.02 — advisory; load a skill only if it fits
+this turn.` — into ordinary turns; `/route` is for when you want the full ranking or the hook
+is off.
 
 ## Routing Rules
 
@@ -92,5 +118,6 @@ it is new, and regenerate. (Until 2026-09-09 the table claimed to be generated b
 hand-maintained and 38 skills behind the tree.)
 
 ## Cross-harness note
-`/route` is a Claude Code slash command. On Codex (GPT-6 Astra) read
+`/route` is a Claude Code slash command. On Codex (GPT-6 Astra) run `scripts/route.mjs`
+the same way (it is plain Node, no harness affordance) or read
 `references/routing-table.md` directly; the same rows, the same descriptions.

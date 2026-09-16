@@ -120,6 +120,18 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   `~/.claude/skills` and `~/.codex/skills` from the baked tree; `~/.codex/AGENTS.md` points
   Codex at the directory and routing table for reference-only skills. Manifest-disabled or
   not-installed skills are never registered.
+- **Live routing** (ADR-2091) — `[skills.routing].router` selects how a turn finds its skill.
+  `"jev"` (default): `config/hooks/skill-route.cjs` on `UserPromptSubmit` puts the turn to
+  TypeSafe System One as one Choice over every routable skill's description (`status`
+  composed at the point of use; deprecated/superseded/not-installed/router-only never
+  offered) and injects the pick as advisory context; `/route` uses the same library
+  (`config/hooks/lib/skill-route.cjs`). `"table"`: the always-loaded descriptions
+  self-trigger and `/route` reads the routing table — the pre-2091 path, kept intact as the
+  fallback. Invariant: the router **fails open** to the table on timeout, 429/529, any error,
+  a missing `TYPESAFE_API_KEY` or a `none` pick, and the hook never retries. Egress of the
+  routing prompt is accepted for skill routing only (ADR-2090); per-project gates are deferred.
+  Measured 2026-09-16: 90% soft accuracy over the fleet, ~0.7–1.1 s, $0.00062 per route.
+  Contract tests: `tests/config/skill-route.test.js`.
 - **Manifest gates** — `agentbox.toml` `[skills.*]` blocks are the boot gates; each skill
   declares its own `manifest_gate` (e.g. tree-search-coder → `[skills.tree_search_coder]
   enabled = true`). "Byte-identical-when-off" is the discipline: a disabled skill leaves no

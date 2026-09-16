@@ -67,3 +67,12 @@ Not implemented. `implementation_status: none` is the honest state: this ADR rec
 decision that unblocks work, not work that has been done. No live router exists; skill
 selection is still the always-loaded manifest plus `/route`. When a router is built, it gets
 its own record and this one gains a `superseded_by` or an amendment.
+
+## Amendment — 2026-09-16
+
+The router was built the same day: **ADR-2091** (`[skills.routing]`, `config/hooks/skill-route.cjs`,
+`/route` over the shared library). This record is unchanged in force — it is the egress
+decision ADR-2091 relies on — and its `implementation_status` stays `none` because it never
+described work of its own. The two carried-over consequences are now tested rather than
+stated: fail-open on 429/529/timeout and the no-retry rule are contract cases in
+`tests/config/skill-route.test.js`. The per-project bypass remains the open debt.

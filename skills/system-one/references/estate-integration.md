@@ -1,9 +1,23 @@
 # Estate integration map
 
-**Status: foundation. Nothing below is wired. This is the design surface for the next
-pass — a list of candidate invocation points with their egress posture and the
-question that has to be answered before each is built.** Do not read any entry here as
-a description of running code.
+**Status: one invocation point is live; the seven candidates below are not wired.** The
+candidates are the design surface for the next pass — each with its egress posture and the
+question that has to be answered before it is built. Do not read any *candidate* entry as a
+description of running code.
+
+## Live
+
+### 0. Skill routing (ADR-2091, 2026-09-16)
+**Where** — `config/hooks/skill-route.cjs` on `UserPromptSubmit` and `/route`
+(`skills/skill-router/scripts/route.mjs`), both over `config/hooks/lib/skill-route.cjs`.
+**Judgment** — one Choice per turn: every routable skill's frontmatter description as the
+option rubric (ADR-2089 `status` composed at the point of use), plus a `none` option; the
+user's turn is the state. Gate: `[skills.routing].router = "jev" | "table"`.
+**Replaced** — nothing removed: the always-loaded descriptions and the routing table are the
+fail-open fallback (timeout, 429/529, any error, no key, `none`), and the hook never retries.
+**Egress** — accepted for this use only (ADR-2090); per-project gates deferred.
+**Measured** — 90% soft accuracy over 115 candidates + `none` (3 reps × 40 items, 0 failed
+calls), 676–1,100 ms, ~14.8k input tokens, **$0.00062 per route**.
 
 The reason this file exists: a typed-judgment primitive is not mainly a thing to build
 apps with. It is a component other skills and services call, and the interesting

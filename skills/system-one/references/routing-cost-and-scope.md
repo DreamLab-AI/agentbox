@@ -84,10 +84,69 @@ Build order, cheapest-first:
 1. **Re-choose the always-loaded twenty by measurement.** They were curated by taste when
    context was the binding constraint. The same offline rig can say which descriptions
    actually earn a permanent slot. No new runtime, no egress, immediate context saving.
-2. **A router with fail-open.** The fallback to existing description matching must be the
-   normal path when the judge is slow or rate-limited, not an error branch.
+2. **A router with fail-open.** — **Built, ADR-2091 (2026-09-16).** `[skills.routing].router`
+   defaults to `"jev"`; the hook and `/route` share `config/hooks/lib/skill-route.cjs` and fall
+   open to `"table"` on timeout, 429/529, any error, a missing key or a `none` pick. Measured
+   through the runtime path: 90% soft, $0.00062/route, 0 failed calls in 120.
 3. **A per-project bypass**, before the first project that needs one — the debt ADR-2090
-   records.
+   records. Still open: `[skills.routing]` has no per-project key yet.
 
 Do not build the two-stage section→skill variant: it saves ~$15/month at 1,000 routes/day and
 costs a round trip plus compounding error.
+
+## Mid-run routing — analysis, not yet a build (2026-09-16)
+
+The question raised once the per-turn router landed: if a route costs $0.0006 and ~1 s, why
+not route *every* model call — every step of an agentic run — rather than only the user's
+turn? Skills discovered mid-run are a real value unlock (the task at step 40 is often not the
+task at step 0). Three things have to be understood before that is wired.
+
+**1. Recursion.** The judge is a leaf: the hook calls an HTTP API, never a model, so the hook
+itself cannot recurse. The loop is one level up. A mid-run injection that says "`x` fits" can
+cause the model to load `x` (a `Skill` tool call), which is a tool event, which fires the
+hook, which routes again, which suggests `y`… Every injection is a potential cause of the
+next event. That loop is bounded only if the hook refuses to fire on the events its own
+output produces. Concretely: never route on `Skill`, `Read`, `Glob`, `Grep`, `TodoWrite` or
+`AskUserQuestion`; never inject the same pick twice in a turn; never inject a skill already
+loaded in the session (readable from the transcript); cap injections per user turn. Subagents
+add fan-out, not recursion: each profile session has its own hooks, so a routed run that
+spawns five subagents pays five hook chains, and a `none`-heavy judge keeps each chain short.
+
+**2. Cost — and it is not the judge.** Per step, Jev is $0.00062 and the injected line is ~33
+tokens. What compounds is *residency*: every injected line stays in context and is re-read on
+every subsequent step. For a 150-step turn with a route on each step:
+
+| Component | Working | Cost |
+|---|---|---|
+| Jev, 150 routes | 150 × $0.00062 | **$0.093** |
+| Injected lines, first write | 150 × 33 tok × $6.25/MTok cache write | $0.031 |
+| Injected lines, re-read | 33 tok × (150²/2) ≈ 371k tok × $0.50/MTok cache read | **$0.186** |
+| Latency | 150 × ~0.8 s | **~2 min added to the turn** |
+
+The same finding as ADR-2089, one level down: our own context tax on the routing output
+outweighs the judge. The fix is the same too — inject **only on change**. Route on every
+eligible step but emit a line only when the top pick differs from the last line emitted this
+turn. A typical run then carries 3–8 lines, not 150, and the table collapses to roughly
+$0.09 Jev + $0.01 residency + the latency, which stays the real cost.
+
+**3. What is the state?** The user's turn is a natural state. Mid-run there are three
+candidates: the tool call's input (poor — a `sed` command says little about intent), the
+model's most recent assistant text (its stated next step, good, available via the hook's
+`transcript_path`), or a rolling window of the last few steps. The second is the right first
+choice, clamped to ~2k chars.
+
+**Plan, cheapest first.**
+
+1. **Replay before wiring.** `[memory_learning].record_trajectories` already persists
+   transcripts. Replay recorded runs through the judge offline, one route per eligible step,
+   and measure two numbers: how often the mid-run pick differs from the turn-start pick (the
+   value signal), and how many of those differences the model would plausibly have acted on.
+   Exact cost, zero latency, no hook. If the mid-run pick rarely differs, stop here.
+2. **`[skills.routing].mid_run = false`** (default) gating a `PostToolUse` registration of
+   the same library with: the event blocklist above; state = last assistant text; inject on
+   change only; a per-turn cap; `timeout_ms` of ~2000 because it sits inside the tool loop.
+   Off ⇒ byte-identical (the existing de-registration idiom).
+3. **Measure live** with the log already in place — it records consumer, outcome and cost
+   per call, so the residency and latency numbers above become observed rather than modelled.
+
+Not before 1: it is the step that says whether 2 is worth its latency.

@@ -1001,6 +1001,17 @@ craft rules models reliably get wrong, the second is a review posture that costs
 This is the estate's first cull rather than deprecation. The measurement informed it; it did
 not decide it.
 
+### Live router (2026-09-16, ADR-2091)
+
+The measurement rig became the runtime. `[skills.routing].router = "jev"` (the default)
+registers `config/hooks/skill-route.cjs` on `UserPromptSubmit`: one System One Choice over
+every routable skill's description per turn, the pick injected as advisory context; `/route`
+runs the same library and prints the ranking. `"table"` is the pre-2091 path, kept whole as
+the fail-open fallback (timeout, 429/529, any error, no `TYPESAFE_API_KEY`, `none` pick).
+Runtime-path measurement: 36.0/40 soft (90%) over 115 candidates + `none`, 0 failed calls in
+120, $0.00062 per route. `skill-router` now carries `status: router-only` so it is never
+offered as a candidate. Egress: ADR-2090.
+
 ### Potential Future Consolidation
 
 - **AgentDB family** (4 skills): Consider a meta-skill `agentdb` that routes to the correct sub-skill, similar to how `browser-automation` routes browser tools.
