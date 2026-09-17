@@ -15,6 +15,12 @@ pub enum DispatchError {
     Scp(String),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error(
+        "no annexe host configured: CONNECTED_NODE_SSH is unset or empty \
+         (the docker-compose contract says empty means \"no annexe\" — \
+         reported here instead of shelling out to nowhere)"
+    )]
+    NoAnnexeHost,
 }
 
 /// Run a command on the connected node via SSH.
@@ -22,6 +28,9 @@ pub enum DispatchError {
 /// the connected node's login shell is fish — every remote command is wrapped in `bash -lc`
 /// so POSIX syntax (&&, redirects, cd) behaves as written.
 pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
+    if hp_host.trim().is_empty() {
+        return Err(DispatchError::NoAnnexeHost);
+    }
     let wrapped = format!("bash -lc {}", shell_quote(cmd));
     let output = Command::new("ssh")
         .args([
@@ -56,6 +65,9 @@ pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
 /// [`crate::receipts::classify`].
 pub fn ssh_capture(hp_host: &str, cmd: &str) -> crate::runner::ExecOutcome {
     use crate::runner::ExecOutcome;
+    if hp_host.trim().is_empty() {
+        return ExecOutcome::blocked(DispatchError::NoAnnexeHost.to_string());
+    }
     let started_at = chrono::Utc::now().to_rfc3339();
     let t0 = std::time::Instant::now();
     let wrapped = format!("bash -lc {}", shell_quote(cmd));
@@ -95,6 +107,9 @@ pub fn ssh_capture(hp_host: &str, cmd: &str) -> crate::runner::ExecOutcome {
 
 /// SCP a local file to the connected node.
 pub fn scp_to(local: &Path, hp_host: &str, remote: &str) -> Result<(), DispatchError> {
+    if hp_host.trim().is_empty() {
+        return Err(DispatchError::NoAnnexeHost);
+    }
     let output = Command::new("scp")
         .args([
             "-o",

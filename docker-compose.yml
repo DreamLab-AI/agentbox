@@ -78,6 +78,10 @@ services:
       # [dream_machine].hp_host; empty is fine and means "no annexe", which
       # the engine reports rather than shelling out to nowhere.
       - CONNECTED_NODE_SSH=${CONNECTED_NODE_SSH:-}
+      # Home of the annexe user on that node. Referenced by
+      # [dream_machine].hp_annexe_dir ("${CONNECTED_NODE_HOME}/dream-annexe");
+      # empty falls back to the engine's default annexe dir.
+      - CONNECTED_NODE_HOME=${CONNECTED_NODE_HOME:-}
       - GEMMA_BASE_URL=${GEMMA_BASE_URL:-${LOOM_BASE_URL:-${LOOM_FACADE_URL:-http://loom:8080}/v1}}
       # Ontology condensation posts to {endpoint}/chat/completions, so this is
       # a /v1 base. Empty is a working state: the server reports the missing

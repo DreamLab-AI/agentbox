@@ -331,7 +331,41 @@ impl RuntimeConfig {
         self.hp_host = resolve_env_placeholder(&self.hp_host).unwrap_or_else(default_hp_host);
         self.loom_url = resolve_env_placeholder(&self.loom_url).unwrap_or_else(default_loom_url);
         self.zai_url = resolve_env_placeholder(&self.zai_url).unwrap_or_else(default_zai_url);
+        // hp_annexe_dir is a COMPOSITE value ("${CONNECTED_NODE_HOME}/dream-annexe"),
+        // so it takes the infix expander; unresolved it reached a live ssh
+        // command verbatim (2026-09-17: the literal `${CONNECTED_NODE_HOME}`
+        // was the remote mkdir target of the failed campaignbuilder night).
+        self.hp_annexe_dir = resolve_env_placeholders_infix(&self.hp_annexe_dir)
+            .unwrap_or_else(default_hp_annexe_dir);
     }
+}
+
+/// Expand every embedded `${NAME}` in a composite value ("${HOME}/dream-annexe").
+///
+/// `resolve_env_placeholder` handles values that ARE a placeholder; this
+/// handles values that CONTAIN one. Any referenced variable unset or empty
+/// poisons the whole value to `None` — a half-expanded path is worse than the
+/// caller's default.
+pub fn resolve_env_placeholders_infix(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let mut out = String::with_capacity(trimmed.len());
+    let mut rest = trimmed;
+    while let Some(start) = rest.find("${") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 2..];
+        let end = after.find('}')?; // unterminated placeholder → poison
+        let name = &after[..end];
+        match std::env::var(name).ok().map(|v| v.trim().to_owned()) {
+            Some(v) if !v.is_empty() => out.push_str(&v),
+            _ => return None,
+        }
+        rest = &after[end + 1..];
+    }
+    out.push_str(rest);
+    Some(out)
 }
 
 fn default_loom_url() -> String {
@@ -472,6 +506,46 @@ mod tests {
                 resolve_env_placeholder("http://h/${x}/p"),
                 Some("http://h/${x}/p".to_owned())
             );
+        }
+
+        #[test]
+        fn an_infix_placeholder_expands_inside_a_composite_value() {
+            let got = with_var("DREAM_TEST_NODE_HOME", Some("/home/john"), || {
+                resolve_env_placeholders_infix("${DREAM_TEST_NODE_HOME}/dream-annexe")
+            });
+            assert_eq!(got, Some("/home/john/dream-annexe".to_owned()));
+        }
+
+        #[test]
+        fn an_unset_infix_placeholder_poisons_the_whole_value() {
+            // Half a path is worse than no path: the caller's default must
+            // apply, not "/dream-annexe" or a literal "${…}/dream-annexe".
+            let got = with_var("DREAM_TEST_NODE_HOME", None, || {
+                resolve_env_placeholders_infix("${DREAM_TEST_NODE_HOME}/dream-annexe")
+            });
+            assert_eq!(got, None);
+        }
+
+        #[test]
+        fn the_annexe_dir_literal_no_longer_reaches_a_live_ssh_command() {
+            // The 2026-09-17 regression: hp_annexe_dir was never resolved and
+            // the literal `${CONNECTED_NODE_HOME}/dream-annexe` became the
+            // remote night-dir of a dispatched cycle.
+            let mut rt: RuntimeConfig = toml::Table::new().try_into().unwrap();
+            rt.hp_annexe_dir = "${DREAM_TEST_NODE_HOME}/dream-annexe".to_owned();
+            let resolved = with_var("DREAM_TEST_NODE_HOME", Some("/home/john"), || {
+                let mut rt = rt.clone();
+                rt.resolve_placeholders();
+                rt.hp_annexe_dir
+            });
+            assert_eq!(resolved, "/home/john/dream-annexe");
+
+            let fallback = with_var("DREAM_TEST_NODE_HOME", None, || {
+                let mut rt = rt.clone();
+                rt.resolve_placeholders();
+                rt.hp_annexe_dir
+            });
+            assert_eq!(fallback, default_hp_annexe_dir());
         }
 
         #[test]
