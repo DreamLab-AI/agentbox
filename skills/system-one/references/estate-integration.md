@@ -100,7 +100,11 @@ whether two precedents conflict.
 dependency does not belong in it. Any integration is a consumer-side concern, above
 the core crate, and must not add a network edge to the standard.
 
-### 8. Verbatim context compaction — evaluated 2026-09-18, not integrated
+### 8. Verbatim context compaction — evaluated 2026-09-18; **integrated the same day (ADR-2093)**
+**Landed** — `config/claude-plugins/jev-compaction`, gate `[features.jev_compaction]`, Claude
+Code pinned 2.1.276, email always fenced out (`hooks/policy.mjs`), `/jev-compact on|off|status`.
+The evaluation below is kept as written: the two blockers were resolved by a pin bump and an
+operator decision with the email carve-out, and the residency figure is now the review trigger.
 **What** — [tamaratran/fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction)
 (MIT, v0.3.0, 2.2k stars in a day, 29/29 unit tests pass offline here). Replaces Claude
 Code's compaction *summary* with Jev decisions: every non-pinned tool call gets two Noul

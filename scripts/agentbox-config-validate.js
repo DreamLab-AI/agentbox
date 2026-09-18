@@ -1305,6 +1305,33 @@ if (ldEnabled) {
   }
 }
 
+// ─── E074 / W072: Jev verbatim compaction (ADR-2093) ─────────────────────────
+//
+// E074 — [features.jev_compaction].taint_tools must keep the email gateway
+//         prefix: the email carve-out is the standing operator condition on
+//         the egress decision, not a tunable.
+// W072 — enabled=true with no TYPESAFE_API_KEY in the validating environment:
+//         legal (the plugin falls back to the built-in summary every time) but
+//         the operator asked for Jev and will not get it. Advisory; CI has no key.
+{
+  const jc = (manifest.features || {}).jev_compaction || {};
+  if (jc.enabled) {
+    const tools = String(jc.taint_tools ?? 'mcp__email-gateway__');
+    if (!tools.split(',').map((s) => s.trim()).includes('mcp__email-gateway__')) {
+      errors.push({
+        code: 'E074',
+        message: 'E074: [features.jev_compaction].taint_tools must include "mcp__email-gateway__" — email never leaves to the compaction judge (ADR-2093 operator condition)',
+      });
+    }
+    if (!process.env.TYPESAFE_API_KEY) {
+      warnings.push({
+        code: 'W072',
+        message: 'W072: [features.jev_compaction].enabled=true but TYPESAFE_API_KEY is not set in this environment — every compaction will use the built-in summary until the key is provided in .env (ADR-2093)',
+      });
+    }
+  }
+}
+
 // ─── E050-E052 / W050-W052: ACI MCP + tree-search (ADR-020 / PRD-008) ───────
 //
 // E050 — aci_shell.enabled=true requires code_interpreter.enabled=true

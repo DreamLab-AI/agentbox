@@ -43,6 +43,19 @@ For these the answer is a **local backend** or no judgment at all. See §Local f
 Redaction is a code path with its own tests, not a habit. If the redaction cannot be
 asserted mechanically, treat the class as must-not-leave.
 
+## Accepted exception 2: context compaction with an email fence (ADR-2093, 2026-09-18)
+
+The `jev-compaction` plugin sends the conversation — user and assistant text, tool
+inputs (≤1,000 chars each), tool-result *sizes* — to the judge at every compaction. The
+operator accepted that with one standing condition, enforced in code rather than habit:
+**a transcript containing any email tool call (`mcp__email-gateway__*`, Gmail) or an
+`email-search` Skill load is never sent**; the built-in summary runs instead
+(`config/claude-plugins/jev-compaction/hooks/policy.mjs`, tested). The fence is a
+tool-name prefix list (`taint_tools`), so any other must-not-leave class above can be
+fenced per project by adding its MCP prefix — no code change, and the validator (E074)
+refuses a manifest that drops the email prefix. Tool-result contents never leave on this
+path at all; the class that does leave is whatever the *model wrote* about them.
+
 ## Accepted exception: skill routing (ADR-2090, 2026-09-16)
 
 **Skill routing is exempt from the classification above.** The operator has decided that the

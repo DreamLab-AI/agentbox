@@ -2821,6 +2821,21 @@
       "additionalProperties": false,
       "description": "Feature flags for cross-cutting capabilities.",
       "properties": {
+        "jev_compaction": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2093 verbatim context compaction judged by Jev (Claude Code plugin config/claude-plugins/jev-compaction). BOOT-class; needs Claude Code >= 2.1.274.",
+          "properties": {
+            "enabled": { "type": "boolean", "description": "Register the plugin, the agentbox marketplace and CLAUDE_CODE_ENABLE_FUNCTION_HOOKS in ~/.claude/settings.json; false retracts all three." },
+            "enabled_by_default": { "type": "boolean", "description": "Starting position of the /jev-compact switch (projected as the plugin's enabledByDefault)." },
+            "taint_tools": { "type": "string", "description": "Comma-separated tool-name prefixes; a transcript containing any such call is never sent to Jev." },
+            "taint_skills": { "type": "string", "description": "Comma-separated skill names whose Skill load fences the session." },
+            "compact_at_percent": { "type": "integer", "minimum": 10, "maximum": 95, "description": "Context fill at which the plugin requests compaction." },
+            "keep_threshold": { "type": "number", "minimum": 0, "maximum": 1, "description": "Minimum Jev probability for a call or result to stay." },
+            "min_reduction_ratio": { "type": "number", "minimum": 0, "maximum": 1, "description": "Below this estimated reduction the built-in summary runs instead." },
+            "model": { "type": "string", "description": "System One model id." }
+          }
+        },
         "expel_lesson_extraction": {
           "type": "object",
           "additionalProperties": false,

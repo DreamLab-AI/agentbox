@@ -1,0 +1,84 @@
+{
+  "name": "jev-compaction",
+  "version": "0.1.0",
+  "description": "Verbatim Jev-guided compaction with an email taint gate and a /jev-compact switch (agentbox ADR-2093; library from tamaratran/fast-jev-compaction, MIT).",
+  "license": "MIT",
+  "author": {
+    "name": "DreamLab AI",
+    "url": "https://github.com/DreamLab-AI/agentbox"
+  },
+  "userConfig": {
+    "apiKey": {
+      "type": "string",
+      "title": "TypeSafe API key",
+      "description": "Leave unset to use TYPESAFE_API_KEY from the container environment (.env).",
+      "sensitive": true
+    },
+    "enabledByDefault": {
+      "type": "boolean",
+      "title": "Enabled by default",
+      "description": "Starting position of the /jev-compact switch; the entrypoint projects [features.jev_compaction].enabled_by_default here.",
+      "default": true
+    },
+    "taintTools": {
+      "type": "string",
+      "title": "Taint tool prefixes",
+      "description": "Comma-separated tool-name prefixes; a transcript containing any such call is never sent to Jev. Default: the private email gateway and Gmail.",
+      "default": "mcp__email-gateway__,mcp__claude_ai_Gmail__"
+    },
+    "taintSkills": {
+      "type": "string",
+      "title": "Taint skills",
+      "description": "Comma-separated skill names whose Skill load taints the session. Default: email-search.",
+      "default": "email-search"
+    },
+    "keepThreshold": {
+      "type": "number",
+      "title": "Keep threshold",
+      "description": "Minimum Jev probability that a tool call or result is still needed; below it the item is removed.",
+      "default": 0.5
+    },
+    "preserveRecentMessages": {
+      "type": "number",
+      "title": "Recent messages to preserve",
+      "description": "Newest messages pinned from compaction.",
+      "default": 6
+    },
+    "compactAtPercent": {
+      "type": "number",
+      "title": "Compaction percentage",
+      "description": "Context percentage at which turn.complete requests compaction.",
+      "default": 60
+    },
+    "minReductionRatio": {
+      "type": "number",
+      "title": "Minimum reduction ratio",
+      "description": "Below this estimated reduction the built-in summary runs instead.",
+      "default": 0.25
+    },
+    "maxStateTokens": {
+      "type": "number",
+      "title": "Maximum Jev state tokens",
+      "description": "Estimated budget for the conversation state per request.",
+      "default": 25000
+    },
+    "maxRequestTokens": {
+      "type": "number",
+      "title": "Maximum Jev request tokens",
+      "description": "Estimated budget for state plus questions per request.",
+      "default": 30000
+    },
+    "truncateHeadChars": {
+      "type": "number",
+      "title": "Truncated result head",
+      "description": "Characters of a dropped tool result kept before its note.",
+      "default": 300
+    },
+    "model": {
+      "type": "string",
+      "title": "Jev model",
+      "description": "System One model id.",
+      "default": "jev-latest"
+    }
+  }
+}

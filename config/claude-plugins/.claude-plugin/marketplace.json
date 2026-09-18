@@ -1,0 +1,17 @@
+{
+  "name": "agentbox",
+  "description": "Claude Code plugins baked into the agentbox image (config/claude-plugins); each is manifest-gated in agentbox.toml.",
+  "owner": {
+    "name": "DreamLab AI",
+    "url": "https://github.com/DreamLab-AI/agentbox"
+  },
+  "plugins": [
+    {
+      "name": "jev-compaction",
+      "source": "./jev-compaction",
+      "description": "Verbatim Jev-guided compaction with an email taint gate and a /jev-compact switch (ADR-2093).",
+      "version": "0.1.0",
+      "license": "MIT"
+    }
+  ]
+}

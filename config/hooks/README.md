@@ -47,6 +47,18 @@ Never registered on any event. Nothing will call these on a session boundary.
 | `fleet-tab-name.sh` | A helper shelled by `fleet-session-start.sh:17`. No independent registration. |
 | `lib/egress-policy.cjs`, `lib/trajectory-util.cjs`, `lib/skill-route.cjs` | Shared libraries `require`d by the hooks above (`skill-route.cjs` is also loaded by the `/route` CLI, which is why the judge's wire shape lives here and nowhere else). |
 
+## 4. NOT here — Claude Code function-hook PLUGINS live in `config/claude-plugins/`
+
+A different mechanism again (ADR-2093): TypeScript modules the engine loads in-process
+through `claude plugin install <name>@agentbox` from the directory marketplace
+`config/claude-plugins/.claude-plugin/marketplace.json`, gated by
+`CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` in `settings.json` `env`. They are neither shell hooks
+nor MCP servers, and nothing in this directory registers them.
+
+| Plugin | Events | Gate |
+|---|---|---|
+| `jev-compaction` | `session.compact`, `turn.complete`, `session.start`, `command.run{jev-compact}` | `[features.jev_compaction].enabled` — the entrypoint installs/uninstalls via `claude plugin` and sets/clears the env flag (byte-identical-when-off) |
+
 ## Adding one
 
 A new hook is not wired by dropping a file here. Register it in the site that

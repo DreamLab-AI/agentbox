@@ -132,6 +132,17 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   routing prompt is accepted for skill routing only (ADR-2090); per-project gates are deferred.
   Measured 2026-09-16: 90% soft accuracy over the fleet, ~0.7–1.1 s, $0.00062 per route.
   Contract tests: `tests/config/skill-route.test.js`.
+- **Verbatim compaction** (ADR-2093) — `[features.jev_compaction]` registers the Claude
+  Code function-hook plugin `config/claude-plugins/jev-compaction` (needs Claude Code ≥
+  2.1.274; image pins 2.1.276). At compaction Jev scores every non-pinned tool call twice
+  (keep the call? keep its result verbatim?) and only what it lets go is dropped or
+  truncated; text is never rewritten. Invariants: **email never leaves** — a transcript with
+  any `mcp__email-gateway__*`/Gmail call or `email-search` load gets the built-in summary
+  (validator E074 refuses a manifest without that prefix in `taint_tools`); the built-in
+  compaction is the **fail-open** path on any error, missing key or reduction under
+  `min_reduction_ratio`; `/jev-compact on|off|status` is the operator switch. Egress
+  widened from ADR-2090 by operator decision. Contract tests:
+  `tests/config/jev-compaction-policy.test.mjs`.
 - **Manifest gates** — `agentbox.toml` `[skills.*]` blocks are the boot gates; each skill
   declares its own `manifest_gate` (e.g. tree-search-coder → `[skills.tree_search_coder]
   enabled = true`). "Byte-identical-when-off" is the discipline: a disabled skill leaves no

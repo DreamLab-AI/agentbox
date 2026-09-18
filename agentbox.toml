@@ -619,6 +619,38 @@ confidence_floor = 0.3         # below this, lesson is auto-archived (ADR-019 §
 archive_after_days = 30        # lessons below floor demoted to *-archive after this many days
 contradiction_sample_rate = 0.1  # 1/10 retrievals sampled for LLM-judge contradiction check
 
+[features.jev_compaction]
+# ADR-2093 — verbatim context compaction judged by Jev. At compaction every
+# non-pinned tool call is scored twice by TypeSafe System One (keep the call?
+# keep its result verbatim?); what Jev lets go is dropped or truncated, and
+# user/assistant text is never rewritten. Claude Code plugin at
+# config/claude-plugins/jev-compaction (library vendored from
+# tamaratran/fast-jev-compaction, MIT).
+#
+# EGRESS: each compaction sends the conversation — text and tool inputs, never
+# tool-result contents — to TypeSafe. Accepted by operator decision with one
+# standing carve-out: a transcript containing ANY email tool call (or a Skill
+# load of email-search) is never sent; the built-in summary runs instead.
+# Widen the fence per project with taint_tools. Widens ADR-2090.
+#
+# COST (measured 2026-09-18): Jev ≈ $0.005/compaction; the verbatim-kept
+# context ≈ $14–18 per busy agent-hour in cache reads vs the summary.
+#
+# enabled            → BOOT-class: the entrypoint sets CLAUDE_CODE_ENABLE_FUNCTION_HOOKS,
+#                      registers the `agentbox` marketplace and enables the plugin in
+#                      ~/.claude/settings.json; false retracts all three.
+# enabled_by_default → the /jev-compact switch's starting position (persisted per
+#                      operator in the plugin store once toggled).
+# Needs Claude Code >= 2.1.274 (lib/claude-code-binary.nix). Validator: W072.
+enabled = true
+enabled_by_default = true
+taint_tools = "mcp__email-gateway__,mcp__claude_ai_Gmail__"   # tool-name prefixes that fence a session
+taint_skills = "email-search"                                 # Skill loads that fence a session
+compact_at_percent = 60
+keep_threshold = 0.5
+min_reduction_ratio = 0.25
+model = "jev-latest"
+
 [skills.voyager_skill_library]
 # Verified executable skill library. ex:VerifiedSkill records in
 # code-harness-skills (memory_type=procedural). Three-gate VerificationGate.

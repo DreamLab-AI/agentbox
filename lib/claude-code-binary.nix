@@ -21,7 +21,10 @@
 { lib, pkgs }:
 
 let
-  claudeCodeVersion = "2.1.257";
+  # 2.1.276 (2026-09-18): first pin with the function-hook surface
+  # (`session.compact`, `command.register`, `$.http.fetch`) that the
+  # jev-compaction plugin needs (ADR-2093). 2.1.257 had none of it.
+  claudeCodeVersion = "2.1.276";
 
   # Map agentbox's system string to the upstream download platform slug.
   platforms = {
@@ -42,10 +45,10 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = "sha256-mmS9qdhyKh+gW++aWWHQfgMxuZWX7ani9qcy86D/fwU=";
+      sha256 = "sha256-ilbIoUvTyyRuK9t+YK7+D2Cb/3jIu8xeprGBfBEcYUU=";
     };
     "aarch64-linux" = {
-      sha256 = "sha256-IvfUjxcZOVLDwtC4vy8x2yzQj9X7CaN0+jIUlrcR0Bc=";
+      sha256 = "sha256-6aw9+VYINkVXijgq1k7DBEaGZuNiwzv979gDzW/1lrA=";
     };
   };
 

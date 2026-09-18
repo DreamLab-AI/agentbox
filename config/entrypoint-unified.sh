@@ -2079,6 +2079,72 @@ if (s.hooks.UserPromptSubmit.length !== before) {
 SRUNJS
 fi
 
+# ── ADR-2093: Jev verbatim compaction — install/uninstall the function-hook plugin ──
+# [features.jev_compaction].enabled = true ⇒ three things in the root session:
+# CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 in settings.json `env` (the early-access
+# surface the plugin needs), the baked directory marketplace `agentbox`
+# registered, and jev-compaction@agentbox installed with the manifest's values
+# as its userConfig. `claude plugin install` copies the plugin into
+# ~/.claude/plugins/cache/<marketplace>/<name>/<version>/ — a host mount that
+# outlives rebuilds — so a rebuilt plugin at the same version would be served
+# stale; the cache is compared to the baked tree by content and reinstalled on
+# any difference. Off ⇒ uninstall, drop the marketplace, delete the env key:
+# byte-identical-when-off (ADR-2020). Never writes a /nix/store path anywhere.
+_JC_ON="$(_ab_toml_bool features.jev_compaction enabled)"
+_JC_MARKET="/opt/agentbox/config/claude-plugins"
+_JC_PLUGIN="$_JC_MARKET/jev-compaction"
+if command -v claude >/dev/null 2>&1 && [ -f "$_CLAUDE_SETTINGS" ] || [ "$_JC_ON" = "1" ]; then
+  SETTINGS="$_CLAUDE_SETTINGS" JC_ON="$_JC_ON" node <<'JCENVJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, on = process.env.JC_ON === '1';
+let s = {}, orig = ''; try { orig = fs.readFileSync(f, 'utf8'); s = JSON.parse(orig); } catch {}
+if (on) { s.env = s.env || {}; s.env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS = '1'; }
+else if (s.env) { delete s.env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS; if (!Object.keys(s.env).length) delete s.env; }
+const next = JSON.stringify(s, null, 2);
+if (next !== orig) { fs.mkdirSync(require('path').dirname(f), { recursive: true }); fs.writeFileSync(f, next); console.log(`  [jev-compaction] ${on ? 'set' : 'cleared'} CLAUDE_CODE_ENABLE_FUNCTION_HOOKS in settings.json`); }
+JCENVJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+fi
+if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && command -v claude >/dev/null 2>&1; then
+  [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [jev-compaction] enabled but TYPESAFE_API_KEY is unset — every compaction will use the built-in summary (W072)"
+  _JC_VER="$(node -e "process.stdout.write(require('$_JC_PLUGIN/.claude-plugin/plugin.json').version)" 2>/dev/null || echo 0.0.0)"
+  _JC_CACHE="/home/devuser/.claude/plugins/cache/agentbox/jev-compaction/$_JC_VER"
+  _jc_digest() { ( cd "$1" 2>/dev/null && find hooks lib .claude-plugin -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum 2>/dev/null | sha256sum | cut -c1-16 ); }
+  _JC_BAKED="$(_jc_digest "$_JC_PLUGIN")"; _JC_HAVE="$(_jc_digest "$_JC_CACHE")"
+  run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace add "$_JC_MARKET" >/dev/null 2>&1 \
+    || echo "  [jev-compaction] marketplace add failed (continuing; a stale registration may remain)"
+  if [ -d "$_JC_CACHE" ] && [ "$_JC_BAKED" = "$_JC_HAVE" ]; then
+    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin enable jev-compaction@agentbox >/dev/null 2>&1 || true
+    echo "  [jev-compaction] plugin $_JC_VER already installed and current (${_JC_BAKED})"
+  else
+    [ -d "$_JC_CACHE" ] && run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall jev-compaction@agentbox >/dev/null 2>&1 || true
+    _JC_ARGS="--config enabledByDefault=$(_ab_toml_bool features.jev_compaction enabled_by_default | sed 's/1/true/;s/0/false/')"
+    for kv in "taintTools=$(_ab_toml_val features.jev_compaction taint_tools)" \
+              "taintSkills=$(_ab_toml_val features.jev_compaction taint_skills)" \
+              "compactAtPercent=$(_ab_toml_int features.jev_compaction compact_at_percent 60)" \
+              "keepThreshold=$(_ab_toml_val features.jev_compaction keep_threshold)" \
+              "minReductionRatio=$(_ab_toml_val features.jev_compaction min_reduction_ratio)" \
+              "model=$(_ab_toml_val features.jev_compaction model)"; do
+      case "$kv" in *=) ;; *) _JC_ARGS="$_JC_ARGS --config $kv" ;; esac
+    done
+    # shellcheck disable=SC2086 — _JC_ARGS is a deliberate word list of --config KEY=VALUE pairs
+    if run_as_devuser env HOME=/home/devuser timeout 120 claude plugin install jev-compaction@agentbox $_JC_ARGS >/dev/null 2>&1; then
+      echo "  [jev-compaction] installed plugin $_JC_VER (${_JC_BAKED}) with manifest userConfig"
+    else
+      echo "  [jev-compaction] plugin install FAILED — compaction stays built-in (check: claude plugin install jev-compaction@agentbox)"
+    fi
+  fi
+elif command -v claude >/dev/null 2>&1 && [ -d /home/devuser/.claude/plugins ]; then
+  if grep -q '"jev-compaction@agentbox"' /home/devuser/.claude/plugins/installed_plugins.json 2>/dev/null; then
+    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall jev-compaction@agentbox >/dev/null 2>&1 \
+      && echo "  [jev-compaction] uninstalled plugin (gate off)"
+  fi
+  if grep -q '"agentbox"' /home/devuser/.claude/plugins/known_marketplaces.json 2>/dev/null; then
+    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace remove agentbox >/dev/null 2>&1 \
+      && echo "  [jev-compaction] removed agentbox marketplace (gate off)"
+  fi
+fi
+
 # ── MCP registry projection (MCP-1 / MCP-2): project .mcp.json FROM skills/mcp.json ──
 # audit-2026-07-15 MCP-1: skills/mcp.json (the 28-server registry) had NO runtime
 # consumer — ~19 gated servers registered nowhere the harness reads. This makes the
