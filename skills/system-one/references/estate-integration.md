@@ -100,6 +100,44 @@ whether two precedents conflict.
 dependency does not belong in it. Any integration is a consumer-side concern, above
 the core crate, and must not add a network edge to the standard.
 
+### 8. Verbatim context compaction — evaluated 2026-09-18, not integrated
+**What** — [tamaratran/fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction)
+(MIT, v0.3.0, 2.2k stars in a day, 29/29 unit tests pass offline here). Replaces Claude
+Code's compaction *summary* with Jev decisions: every non-pinned tool call gets two Noul
+questions (keep the call? keep its result verbatim?); calls under `keepThreshold` 0.5 are
+dropped, results are truncated to 300 chars; user and assistant text is never touched. The
+whole conversation goes to Jev as state (results replaced by size notes, fitted into 25k
+tokens through six shrink stages); questions are batched into ≤30k-token requests run
+concurrently. Falls back to the built-in summary on any error or <25% reduction.
+**Blocker 1 — harness.** It is a Claude Code *function-hook* plugin (`session.compact`,
+`turn.complete`, `$.http.fetch`) needing **2.1.274+**; the image bakes **2.1.257**
+(`lib/claude-code-binary.nix`), which contains none of those symbols. npm has 2.1.276.
+Rebuild-class bump with the usual blast radius.
+**Blocker 2 — egress.** ADR-2090 covers the routing *prompt* only. This sends the **entire
+transcript** — every user turn, every assistant turn, every tool input (Write contents,
+Bash commands, up to 1k chars each) — and transcripts here routinely carry `email-search`
+answers, `personal-context` recall and private KG data: three must-not-leave classes above.
+No per-session exclusion exists. This needs its own operator decision; it is not covered.
+**Cost, measured against the last 7 days of this container's transcripts** (66 busy
+sessions, ≥20 tool calls/active hour): a busy agent-hour is **43 tool calls, 81 API calls,
+~140k tokens ingested**; sessions run to the 1M window (peak seen 1,000k). At
+`compactAtPercent` 60 that is one compaction per ~1–4 busy hours; each costs ~4 requests ×
+≤30k tokens = **$0.005 in Jev**. A ten-agent swarm: **≈ $0.05/hour**. Negligible.
+**The cost that is not negligible — residency.** The built-in summary drops a 600k context to
+~10–20k; this keeps 60–75% of it verbatim. Every one of the next ~81 API calls per hour then
+re-reads ~350–450k more cached tokens: at Opus 5 cache-read ($0.50/MTok) that is
+**≈ $14–18 per busy agent-hour, ≈ $150/hour for ten agents**, until the next compaction.
+The same finding as ADR-2089 and §Mid-run routing: the judge is free, our context is not.
+Against that: no lossy summary, so fewer re-reads of files and fewer repeated mistakes —
+real, but unmeasured, and the only thing that could justify the residency bill. On a 200k
+window the ratio holds and the absolute numbers are 5× smaller.
+**Verdict** — do not integrate as-is. Worth revisiting only as a **local-backend** design
+(no egress) and after a measured A/B on task success against the built-in summary, which the
+skill-tuning harness could run. If the operator accepts the egress anyway, the build order
+is: bump the Claude Code pin → manifest gate `[features.jev_compaction]` default **off** →
+register the marketplace in `settings.json` from the entrypoint → an ADR that widens
+ADR-2090 explicitly, with the residency figure in its Consequences.
+
 ## Cross-cutting open questions
 
 1. **Where does the call live?** A skill that tells an agent to call an HTTP API, a
