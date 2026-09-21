@@ -110,7 +110,7 @@ pub struct Reconstruction {
     /// One ledger per unit, keyed by the unit's **event id** — which is what
     /// attestations reference on the wire.
     pub ledgers: BTreeMap<String, Ledger>,
-    /// Units recovered from `38210` events, keyed by event id.
+    /// Units recovered from `38410` events, keyed by event id.
     pub units: BTreeMap<String, colloquy_core::unit::KnowledgeUnit>,
     /// Pubkeys that attested but were not in the registry, with a count each.
     ///

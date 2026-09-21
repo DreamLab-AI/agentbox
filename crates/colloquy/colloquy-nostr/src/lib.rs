@@ -1,6 +1,6 @@
 //! `colloquy-nostr` — the wire binding between [`colloquy_core`] and Nostr.
 //!
-//! Six event kinds (`38210`–`38215`), a tag grammar, and the reconstruction that
+//! Six event kinds (`38410`–`38415`), a tag grammar, and the reconstruction that
 //! turns a subscription's worth of signed events back into per-unit evidence.
 //!
 //! # What this crate does not do

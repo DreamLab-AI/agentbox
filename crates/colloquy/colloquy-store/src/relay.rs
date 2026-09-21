@@ -1,8 +1,8 @@
 //! Tier 3 — the public store, over the Nostr relay.
 //!
 //! cq's global tier is "federated, content-addressed, public-readable". Here it
-//! is the relay: units are addressable `38210` events, attestations are
-//! append-only `38211`/`38212` events, and the store is a projection of
+//! is the relay: units are addressable `38410` events, attestations are
+//! append-only `38411`/`38412` events, and the store is a projection of
 //! whatever the relay returns.
 //!
 //! # What is different about this tier
@@ -95,7 +95,7 @@ impl<B: RelayBackend, R: PrincipalResolver + Send + Sync> RelayStore<B, R> {
         self
     }
 
-    /// Fetch a unit's `38210` event id, which attestations must reference.
+    /// Fetch a unit's `38410` event id, which attestations must reference.
     async fn event_id_of(&self, id: &UnitId) -> Result<Option<String>, StoreError> {
         let evs = self
             .backend

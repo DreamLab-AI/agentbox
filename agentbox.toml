@@ -168,10 +168,10 @@ allowed_pubkeys  = [
 # 30840 = addressable session-summary (the durable conversation record, dual-written
 # to relay + pod). 30841 = addressable project-tracking digest (per-project status,
 # PRD-017 / ADR-035 §D3, dual-written to relay + pod, d-tag = project slug).
-# 27235 = NIP-98 HTTP auth. 38xxx = agent-intent/event surfaces. 38210-38215 are the
+# 27235 = NIP-98 HTTP auth. 38xxx = agent-intent/event surfaces. 38410-38415 are the
 # colloquy knowledge-unit kinds, moved out of the reserved agent-response range by
 # ADR-2105; see docs/PROTOCOL-registry.md for the band table every allocation cites.
-allowed_kinds    = [1, 1059, 30078, 30840, 30841, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38210, 38211, 38212, 38213, 38214, 38215, 38300, 38301, 38302, 38303, 38304, 38305]
+allowed_kinds    = [1, 1059, 30078, 30840, 30841, 27235, 31400, 31401, 31402, 31403, 31404, 31405, 38000, 38100, 38200, 38201, 38410, 38411, 38412, 38413, 38414, 38415, 38300, 38301, 38302, 38303, 38304, 38305]
 pod_bridge       = true
 external_fanout  = "bidirectional"     # bidirectional | publish-only | subscribe-only | off
 # PRD-014 Seam B / B3 — deterministic responder dispatch for voice-origin

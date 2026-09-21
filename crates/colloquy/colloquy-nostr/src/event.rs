@@ -19,10 +19,10 @@
 //! ```
 //! use colloquy_nostr::event::{NostrEvent, UnsignedEvent};
 //!
-//! let json = r#"{"id":"ab","pubkey":"cd","created_at":1,"kind":38210,
+//! let json = r#"{"id":"ab","pubkey":"cd","created_at":1,"kind":38410,
 //!                "tags":[["d","x"]],"content":"{}","sig":"ef"}"#;
 //! let ev: NostrEvent = serde_json::from_str(json).unwrap();
-//! assert_eq!(ev.kind, 38210);
+//! assert_eq!(ev.kind, 38410);
 //! assert_eq!(ev.tags[0], vec!["d", "x"]);
 //! ```
 
@@ -39,7 +39,7 @@ pub struct UnsignedEvent {
     pub pubkey: String,
     /// Unix seconds.
     pub created_at: u64,
-    /// Event kind. Colloquy's are `38210`–`38215`; see [`crate::kinds`].
+    /// Event kind. Colloquy's are `38410`–`38415`; see [`crate::kinds`].
     pub kind: u64,
     /// Tags, each a non-empty list whose first element is the tag name.
     pub tags: Vec<Vec<String>>,
@@ -95,7 +95,7 @@ mod tests {
             id: "a".repeat(64),
             pubkey: "b".repeat(64),
             created_at: 1_767_225_600,
-            kind: 38_210,
+            kind: 38_410,
             tags: vec![vec!["d".into(), "abc".into()], vec!["t".into(), "http".into()]],
             content: "{}".into(),
             sig: "c".repeat(128),

@@ -72,8 +72,8 @@ Serving them into retrieval is how a store starts answering "how do I do X" with
 ### 0.2.0 (2026-09-21) — breaking, wire
 
 Follows `colloquy-nostr` 0.2: the relay store's kinds moved from `38100`-`38105`
-to `38210`-`38215`, out of the agent-response range agentbox ADR-009 reserved
-and into the second allocation band `38202`-`38299` (agentbox ADR-2105). The
+to `38410`-`38415`, out of the agent-response range agentbox ADR-009 reserved
+and into the second allocation band `38400`-`38499` (agentbox ADR-2105). The
 `KnowledgeStore` trait and every local/shared behaviour are unchanged.
 
 ## Licence

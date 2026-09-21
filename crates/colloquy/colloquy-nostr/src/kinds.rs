@@ -1,22 +1,23 @@
-//! Event-kind allocation, inside the range this repo already owns.
+//! Event-kind allocation, inside the band this repo owns.
 //!
 //! Kinds are not free: an allocation has to be recorded in the protocol
 //! registry, carried by an ADR, and backed by paired cross-repo fixtures, or CI
-//! refuses it. These six sit in the agentbox second allocation band
-//! `38202-38299` (ADR-2105), which no record reserves: the first band
-//! `38000-38201` is fully spoken for by `38000-38099` agent intent (ADR-009,
-//! PRD-004), `38100-38199` agent response (the same two records, enforced live
-//! at `mcp/nostr-bridge/relay-consumer.js`) and the `38200`/`38201` payment
-//! pair. Nothing outside this repo has to move to accommodate them.
+//! refuses it. These six sit in the agentbox band `38400`-`38499` (ADR-2105),
+//! the first `38xxx` hundred no record reserves. Every hundred below it is a
+//! band reservation: `38000`-`38099` agent intent and `38100`-`38199` agent
+//! response (ADR-009 §4.2, PRD-004 §4.2, the latter enforced live at
+//! `mcp/nostr-bridge/relay-consumer.js`), `38200`-`38299` agent job and payment,
+//! `38300`-`38399` the LLM resource marketplace (ADR-021). Nothing outside this
+//! repo has to move to accommodate these six.
 //!
 //! | Kind | Name | Shape | Author |
 //! |---|---|---|---|
-//! | 38210 | [`KIND_KNOWLEDGE_UNIT`] | addressable, `d` = unit id hex | agent or human |
-//! | 38211 | [`KIND_CONFIRMATION`] | regular, append-only | agent or human |
-//! | 38212 | [`KIND_FLAG`] | regular, append-only | agent or human |
-//! | 38213 | [`KIND_SUPERSESSION`] | regular | the proposer |
-//! | 38214 | [`KIND_GRADUATION`] | regular, cites a signed `31403` | human principal |
-//! | 38215 | [`KIND_TOOL_GAP_SIGNAL`] | addressable, `d` = cluster id | agent |
+//! | 38410 | [`KIND_KNOWLEDGE_UNIT`] | addressable, `d` = unit id hex | agent or human |
+//! | 38411 | [`KIND_CONFIRMATION`] | regular, append-only | agent or human |
+//! | 38412 | [`KIND_FLAG`] | regular, append-only | agent or human |
+//! | 38413 | [`KIND_SUPERSESSION`] | regular | the proposer |
+//! | 38414 | [`KIND_GRADUATION`] | regular, cites a signed `31403` | human principal |
+//! | 38415 | [`KIND_TOOL_GAP_SIGNAL`] | addressable, `d` = cluster id | agent |
 //!
 //! # Why the split
 //!
@@ -27,17 +28,17 @@
 //! enforces between a decision and its append-only audit log.
 
 /// The knowledge unit. Addressable: `d` carries the unit id's hex portion.
-pub const KIND_KNOWLEDGE_UNIT: u64 = 38210;
+pub const KIND_KNOWLEDGE_UNIT: u64 = 38410;
 /// An independent confirmation of a unit. Append-only.
-pub const KIND_CONFIRMATION: u64 = 38211;
+pub const KIND_CONFIRMATION: u64 = 38411;
 /// A flag: this unit is wrong or stale. Append-only, and suppresses nothing.
-pub const KIND_FLAG: u64 = 38212;
+pub const KIND_FLAG: u64 = 38412;
 /// A supersession: this unit replaces that one.
-pub const KIND_SUPERSESSION: u64 = 38213;
+pub const KIND_SUPERSESSION: u64 = 38413;
 /// A tier promotion, citing the signed decision that authorised it.
-pub const KIND_GRADUATION: u64 = 38214;
+pub const KIND_GRADUATION: u64 = 38414;
 /// An emergent tooling-gap signal aggregated from level-2 workarounds.
-pub const KIND_TOOL_GAP_SIGNAL: u64 = 38215;
+pub const KIND_TOOL_GAP_SIGNAL: u64 = 38415;
 
 /// The contiguous range these kinds occupy.
 pub const COLLOQUY_KIND_RANGE: std::ops::RangeInclusive<u64> =
@@ -91,15 +92,16 @@ mod tests {
     fn the_block_does_not_collide_with_any_reserved_range() {
         for k in ALL_KINDS {
             assert!(
-                (38_202..=38_299).contains(&k),
-                "{k} must sit in the agentbox second allocation band"
+                (38_400..=38_499).contains(&k),
+                "{k} must sit in the agentbox 38400-38499 band"
             );
             assert!(!(38_000..=38_099).contains(&k), "{k} collides with agent intent");
             assert!(
                 !(38_100..=38_199).contains(&k),
                 "{k} collides with the ADR-009 agent-response reservation"
             );
-            assert!(k != 38_200 && k != 38_201, "{k} collides with the payment pair");
+            assert!(!(38_200..=38_299).contains(&k), "{k} collides with the payment band");
+            assert!(!(38_300..=38_399).contains(&k), "{k} collides with the marketplace band");
             assert!(!(31_400..=31_405).contains(&k), "{k} collides with governance");
         }
     }
@@ -115,8 +117,8 @@ mod tests {
         for k in ALL_KINDS {
             assert!(kind_name(k).is_some(), "{k} needs a name");
         }
-        assert_eq!(kind_name(38_209), None);
-        assert_eq!(kind_name(38_216), None);
+        assert_eq!(kind_name(38_409), None);
+        assert_eq!(kind_name(38_416), None);
     }
 
     #[test]

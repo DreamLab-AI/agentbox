@@ -303,7 +303,7 @@ mod tests {
             ..Filter::default()
         };
         let j = filter_to_json(&f);
-        assert_eq!(j["kinds"], json!([38210]));
+        assert_eq!(j["kinds"], json!([38410]));
         assert_eq!(j["limit"], json!(100));
         assert!(j.get("#t").is_none(), "{j}");
         assert!(j.get("#d").is_none());
@@ -313,7 +313,7 @@ mod tests {
     #[test]
     fn populated_tag_filters_use_the_nip01_spelling() {
         let f = Filter {
-            kinds: vec![38211, 38212],
+            kinds: vec![38411, 38412],
             d: vec!["a1b2c3".into()],
             t: vec!["http".into()],
             e: vec!["ev1".into()],
@@ -323,7 +323,7 @@ mod tests {
         assert_eq!(j["#d"], json!(["a1b2c3"]));
         assert_eq!(j["#t"], json!(["http"]));
         assert_eq!(j["#e"], json!(["ev1"]));
-        assert_eq!(j["kinds"], json!([38211, 38212]));
+        assert_eq!(j["kinds"], json!([38411, 38412]));
     }
 
     #[test]

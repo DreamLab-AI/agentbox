@@ -109,17 +109,17 @@ mod tests {
 
     #[test]
     fn addresses_round_trip_and_tolerate_colons_in_the_identifier() {
-        let a = address(38_210, "ab".repeat(32).as_str(), "id:with:colons");
+        let a = address(38_410, "ab".repeat(32).as_str(), "id:with:colons");
         let (kind, pk, d) = parse_address(&a).unwrap();
-        assert_eq!(kind, 38_210);
+        assert_eq!(kind, 38_410);
         assert_eq!(pk.len(), 64);
         assert_eq!(d, "id:with:colons");
     }
 
     #[test]
     fn a_malformed_address_is_refused_rather_than_half_read() {
-        assert_eq!(parse_address("38210"), None);
-        assert_eq!(parse_address("38210:onlypubkey"), None);
+        assert_eq!(parse_address("38410"), None);
+        assert_eq!(parse_address("38410:onlypubkey"), None);
         assert_eq!(parse_address("notakind:pk:d"), None);
     }
 }

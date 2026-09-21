@@ -53,7 +53,7 @@ pub enum DecodeError {
     BadTier(String),
 }
 
-/// Read a knowledge unit from a `38210` event.
+/// Read a knowledge unit from a `38410` event.
 ///
 /// Verifying the event signature is the caller's job and must happen first —
 /// `nostr_bbs_core::verify_event_strict` is the function for it. This decoder
@@ -113,7 +113,7 @@ pub struct AttestationRef {
     pub note: String,
 }
 
-/// Read a `38211` or `38212` event.
+/// Read a `38411` or `38412` event.
 pub fn attestation_from_event(ev: &NostrEvent) -> Result<AttestationRef, DecodeError> {
     let is_flag = match ev.kind {
         KIND_CONFIRMATION => false,
@@ -167,7 +167,7 @@ fn tier_from_token(s: &str) -> Result<Tier, DecodeError> {
     }
 }
 
-/// Read a `38214` event.
+/// Read a `38414` event.
 pub fn graduation_from_event(ev: &NostrEvent) -> Result<GraduationRef, DecodeError> {
     if ev.kind != KIND_GRADUATION {
         return Err(DecodeError::WrongKind {
@@ -204,7 +204,7 @@ pub struct SupersessionRef {
     pub at: Timestamp,
 }
 
-/// Read a `38213` event.
+/// Read a `38413` event.
 pub fn supersession_from_event(ev: &NostrEvent) -> Result<SupersessionRef, DecodeError> {
     if ev.kind != KIND_SUPERSESSION {
         return Err(DecodeError::WrongKind {
