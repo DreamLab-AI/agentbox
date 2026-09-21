@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -152,3 +152,7 @@ runtime behaviour; existing implementation and activation qualifications remain.
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `agentbox.toml` gaining unrelated feature blocks; `mcp/servers/lib/aggregate-effectiveness.js` and `scripts/ruvector-sona-feeder.mjs` are unchanged since the previous anchor. Every frozen value is intact at `HEAD`: `embedding_active_column = "embedding"` (`:437`, the 384-dim column), `embedding_dual_write = false` (`:436`), `attention_rerank = false` (`:467`), `sona_learn_enabled = false` / `sona_apply_enabled = false` (`:468-469`), `sona_enabled = false` (`:455`). No dimension migration was started. Claim STILL TRUE.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by `agentbox.toml` alone (`b680a7ae`, ADR-2094); `mcp/servers/lib/aggregate-effectiveness.js` and `scripts/ruvector-sona-feeder.mjs` are unchanged since the previous anchor. The added `[features.sovereign_system_one]` block is the one place in this diff that could have opened a second embedding space, so it was read rather than assumed: it pins `embeddings_model = "bge-small-en-v1.5"` against `embeddings_url = "http://192.168.2.132:9997/v1/embeddings"` — the same 384-dim model on the same Xinference host as the memory column, used for option shortlisting and window ranking, not for storage. No new column, no second dimension, no SONA scope string. `sona_learn` / `sona_apply` / `attention_rerank` are still off at HEAD. Claim STILL TRUE, and I22 is upheld rather than merely undisturbed: the new consumer was made to join the frozen space instead of minting its own.

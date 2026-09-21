@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [agentbox.toml, mcp/servers/ontology-bridge.js, mcp/servers/ontology-propose.js, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-authoring-authority.js]
 owner: jjohare
 review_trigger: any change to direct_axiom_load default, or the authority-class of ontology_axiom_load
@@ -177,3 +177,7 @@ runtime behaviour; existing implementation and activation qualifications remain.
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `agentbox.toml` alone; all four ontology libraries in `verified_paths` are unchanged since the previous anchor. `direct_axiom_load = false` at `agentbox.toml:724`, and `ontology_axiom_load` is still classed `"zero-tolerance"` in the authority table (`:912`). The backdoor remains disabled outside bootstrap. Claim STILL TRUE.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by `agentbox.toml` alone (`b680a7ae`, ADR-2094); the four `mcp/servers/**` paths are unchanged since the previous anchor. The added `[features.sovereign_system_one]` block introduces a typed-decision façade and touches no ontology surface. Re-read at HEAD in a detached worktree: `agentbox.toml:788` `direct_axiom_load = false` and `:976` `ontology_axiom_load = "zero-tolerance"` in the authority table. The governed path (`ontology_propose → Whelk → PR → review/merge`) is unaltered. Claim STILL TRUE.

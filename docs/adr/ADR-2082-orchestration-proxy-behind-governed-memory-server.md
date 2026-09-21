@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a ruflo major bump that renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -91,3 +91,7 @@ Verified at `ee742ade5` (the landing commit), 2026-09-07:
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `config/entrypoint-unified.sh` alone (`0950527d3`, the ADR-2093 compaction block — 66 pure insertions elsewhere in the file); `orchestration-proxy.js`, `ruvector-mcp.cjs` and `ruvector-gates.js` are unchanged since the previous anchor. The boot projection is intact at `HEAD`: the gate and filter are read at `config/entrypoint-unified.sh:979-980` (`_ab_toml_bool integrations.ruvector_external orchestration_proxy` / `_ab_toml_val … orchestration_tools`) and projected into the `claude-flow` env block of `.mcp.json` at `:1115` (`RUVECTOR_ORCHESTRATION_PROXY`). Claim STILL TRUE.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by `config/entrypoint-unified.sh` alone (`b680a7ae`, ADR-2094); the three `mcp/servers/**` paths are unchanged since the previous anchor, so the proxy's own logic — `DENIED_PREFIXES`, the alias table, the fail-open-for-orchestration-only rule — is untouched by this diff. ADR-2094's entrypoint edits are three insertions (a projector block at `:2026`, two consumer sites, and a `runtime-env.sh` line at `:2722`), all after the ruvector projection this record governs. Re-read at HEAD in a detached worktree: `:980` still reads `orchestration_tools` with `_ab_toml_val` and `:1115` still projects `RUVECTOR_ORCHESTRATION_PROXY` into the `claude-flow` env block of `.mcp.json`, which is the apply-class-`boot` mechanism decision point 6 claims. `bash -n config/entrypoint-unified.sh` → clean. Gate-off byte-identity is unaffected: nothing in the ADR-2094 additions reads or writes the ruvector gate. Claim STILL TRUE.

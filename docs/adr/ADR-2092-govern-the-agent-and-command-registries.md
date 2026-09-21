@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -136,3 +136,7 @@ overlay supported without that coupling.
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `config/entrypoint-unified.sh` alone (`0950527d3`, ADR-2093); the seven other governed paths are unchanged. Re-established at `HEAD`: the agent reconciler runs with the manifest, the baked tree and both secondary roots (`config/entrypoint-unified.sh:2585-2593`, `REGISTERED_AGENTS_MANIFEST=…/registered-agents.txt`, `AGENT_ROOT_TARGETS` collapsing `$WORKSPACE/.claude/agents` and `$WORKSPACE/project/.claude/agents`), and the prune-only command reconciler follows it over three roots (`:2603-2609`). `bash tests/config/agent-reconcile.test.sh` in a clean worktree at `HEAD` → **26 passed, 0 failed**, including "every registered agent is baked". Claim STILL TRUE.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by `config/entrypoint-unified.sh` alone (`b680a7ae`, ADR-2094); the seven other governed paths — the two registration manifests, the three reconcilers, `flake.nix` and `tests/config/agent-reconcile.test.sh` — are unchanged since the previous anchor. ADR-2094's entrypoint edits are additive and sit before the reconciliation block. Re-read at HEAD in a detached worktree: `:2620` `project-skill-roots.mjs`, `:2643` `reconcile-agents.sh` and `:2661` `reconcile-commands.sh` are still invoked from `/opt/agentbox/scripts`, in that order, at boot. `bash -n config/entrypoint-unified.sh` → clean. The registered set is still the 12 named in the Decision, and no new agent or command root is introduced by the SSO work. Claim STILL TRUE.

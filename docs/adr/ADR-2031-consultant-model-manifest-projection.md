@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -28,7 +28,7 @@ that doubles on 2027-01-01, making both problems visible.
 ## Decision
 The manifest is the source of the consultant model. At boot the entrypoint
 projects `consultants.antigravity.model` into `AGENTBOX_ANTIGRAVITY_MODEL`
-through `agentbox-manifest toml-string` (`config/entrypoint-unified.sh:1585`),
+through `agentbox-manifest toml-string` (`config/entrypoint-unified.sh:2223`),
 a fail-open subcommand that prints an empty string for a missing, non-string or
 unparseable value. Precedence is fixed: a non-empty environment variable set
 before boot wins, then the manifest, then the registry default. The TUI writer
@@ -107,3 +107,11 @@ cheaper: cite a stable anchor (a function or shell variable name, e.g.
 `entrypoint-unified.sh` `_SR_ROUTER`) and let the line number be advisory, so a reader can
 `grep` their way back when it drifts. Recorded so the next person re-verifying this pack
 knows line numbers carry no guarantee.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by `config/entrypoint-unified.sh` alone (`b680a7ae`, ADR-2094); `services/agentbox-manifest/src/tui_write.rs`, `mcp/consultants/antigravity/server.js` and `skills/mcp.json` are unchanged since the previous anchor. ADR-2094's edits to the entrypoint are three insertions for the Sovereign System One projection and touch no consultant surface.
+
+Re-read at HEAD in a detached worktree: the projection is intact and unchanged in behaviour — `if [ -z "${AGENTBOX_ANTIGRAVITY_MODEL:-}" ]` guards `export AGENTBOX_ANTIGRAVITY_MODEL="$(agentbox-manifest toml-string --path consultants.antigravity.model …)"`, so the fixed precedence this record claims (pre-set env wins, then the manifest, then the registry default) still holds structurally. `bash -n config/entrypoint-unified.sh` → clean.
+
+**Record correction made by this pass:** the Decision cited `config/entrypoint-unified.sh:1585` for that projection. It is at `:2223` at HEAD, and was already at `:2165` at the previous anchor `b680a7ae` (`git show b680a7ae:config/entrypoint-unified.sh | grep -n AGENTBOX_ANTIGRAVITY_MODEL`), so the citation was long-standing drift rather than anything ADR-2094 caused. It has been corrected in place. The claim itself was never affected — only the pointer to it. Claim STILL TRUE.

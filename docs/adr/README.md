@@ -34,7 +34,32 @@ The [historical closeout routing note](../adr-history-closeout.md) points the 72
 
 The [estate status/evidence contract](../../../../VisionFlow/docs/architecture/adr-status-contract.md) defines the independent decision, implementation and activation axes and distinguishes lineage from supersession (2026-09-07).
 
-_75 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+**Re-verifying a record — read and check, never diff and bump.** The staleness gate
+answers one question: *did anything move under `verified_paths` since `verified_commit`*.
+It cannot answer whether the record is still **true**. Those two are much less correlated
+than they look. In the 2026-09-21 backlog clearance, 19 records were tripped by estate-address
+generalisation, additive manifest blocks and insertions elsewhere in a shared file, and all
+19 were still true; the one record that had genuinely become false (ADR-2030) was tripped by
+a harmless dependency bump, and what actually falsified it was a file its `verified_paths`
+did not name at all. Signal and truth were uncorrelated in both directions. So: read what
+the record claims, run the domain's own gate or tests, check the claim against the code as
+it stands — and only then set `verified_commit` to the commit at which you established it.
+A `verified_commit` is a claim about a commit, so the evidence must reproduce **at that
+commit**: verify against committed state (`git show`, or a detached worktree), never a dirty
+tree. Three outcomes are legitimate and should be recorded as such — still true (bump, and
+note the command you ran); no longer true (**do not bump** — leave it stale and say why, since
+a false `verified_commit` is worse than an honest stale one); and unverifiable by reading,
+needing a running service or a measurement (do not bump; say what evidence would settle it,
+and use `verified_paths: []` for a record that should assert nothing checkable).
+
+**Arm the gate on the set the `review_trigger` names.** `verified_paths` entries are git
+pathspecs passed straight to `git diff`, so a glob such as `services/*/Cargo.toml` works and
+is preferred wherever the trigger describes a set that can *grow*. An enumeration can only
+detect changes to files it already lists — it is structurally blind to **additions**, which
+is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
+verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
+
+_87 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -113,3 +138,15 @@ _75 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2080](ADR-2080-metaharness-router-console-under-aoe.md) | Run the metaharness cost-optimal router as a dedicated AoE session for public day-to-day dev — artefacts vendored, embedding done offline, scoped to that session | GOVERNANCE-capabilities | 2026-09-06 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2081](ADR-2081-annexe-depth-law-and-honest-evaluator-receipts.md) | Annexe mirrors workspace depth; evaluator receipts carry the producer's exit code; a no-patch ACCEPT is unproven, not a harness fault | — | 2026-09-07 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2082](ADR-2082-orchestration-proxy-behind-governed-memory-server.md) | The governed claude-flow server forwards orchestration tools to a filtered ruflo child; memory never crosses | LEARNING-memory | 2026-09-07 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2083](ADR-2083-skills-estate-authoring-contract-and-generated-discovery.md) | Skills carry one authoring contract, discovery is generated, and both harnesses register from manifests | GOVERNANCE-capabilities | 2026-09-09 | accepted | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2084](ADR-2084-one-published-loom-client-for-every-facade-caller.md) | One published loom-client for every façade caller | — | 2026-09-13 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2085](ADR-2085-colloquy-knowledge-units-on-the-forum.md) | Adopt the cq shared-learning model as signed knowledge units on kinds 38100-38105 | — | 2026-09-13 | proposed | partial | inactive | — | — | jjohare | agentbox |
+| [ADR-2086](ADR-2086-confirmation-weight-follows-authorising-principals.md) | Confirmation weight follows authorising principals, never member accounts | — | 2026-09-13 | proposed | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2087](ADR-2087-task-properties-receipts-and-manual-continuation.md) | Action authority carries a task-property triple, every gate outcome leaves a record, and an outage has a signed continuation path | — | 2026-09-14 | accepted | complete | inactive | — | — | jjohare | agentbox |
+| [ADR-2088](ADR-2088-grill-before-acting-on-forum-suggestions.md) | JunkieJarvis grills the author before acting on an unclear forum item | — | 2026-09-15 | proposed | complete | inactive | — | — | jjohare | agentbox |
+| [ADR-2089](ADR-2089-skill-status-and-measured-discovery.md) | Make skill availability a contract field and gate progressive discovery on measurement | — | 2026-09-16 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2090](ADR-2090-skill-routing-prompt-egress.md) | Skill-routing prompts may egress to the judge; per-project gates are deferred, not waived | — | 2026-09-16 | accepted | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2091](ADR-2091-live-skill-router.md) | Route each turn to a skill with one typed judgement, failing open to the table | — | 2026-09-16 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2092](ADR-2092-govern-the-agent-and-command-registries.md) | Agents and slash-commands get the same manifest governance skills already have | — | 2026-09-16 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2093](ADR-2093-jev-verbatim-compaction.md) | Compact context by Jev judgement, verbatim, with email fenced out and a switch | — | 2026-09-18 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2094](ADR-2094-local-capacity-adapting-typed-decision-facade.md) | Answer typed decisions on a local capacity-adapting façade, and relax the email fence only on proven backend locality | GOVERNANCE-capabilities | 2026-09-20 | accepted | partial | inactive | — | — | jjohare | agentbox |

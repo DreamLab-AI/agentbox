@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -222,3 +222,7 @@ runtime behaviour; existing implementation and activation qualifications remain.
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `agentbox.toml`; `mcp/servers/lib/ontology-retrieval.js` also moved (attestation work, ADR-2075). The façade contract is intact at `HEAD`: consumers hold `${LOOM_BASE_URL}` (`agentbox.toml:743`, `:1940`) and no consumer names a raw model port — commit `2899b3b7e` generalised the literal estate address out of this public repository, which strengthens rather than breaks "the model is a swappable URL behind the door". Retrieval still resolves through the Loom when `LOOM_FACADE_URL` is set and falls back transparently to VisionClaw when it is not (`ontology-retrieval.js:492-514`, `:611-617`), seeding via `/loom/search` (`:692`) and expanding via `/loom/sparql` (`:711`). Claim STILL TRUE. Note the Consequences prose above still says "a change behind :8084"; that is a narrative address, not a config value, and is left as written.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by `agentbox.toml` alone (`b680a7ae`, ADR-2094); `mcp/servers/lib/ontology-retrieval.js` is unchanged since the previous anchor. ADR-2094 adds a second external endpoint to the manifest, so this record's "never a raw model port" clause was checked directly rather than waved through. The added block names `endpoint = "http://systemone:8097/v1/systemone"` (the typed-decision façade — choice/score/noul, its own protocol, not an OpenAI chat surface) and `embeddings_url = "http://192.168.2.132:9997/v1/embeddings"` (the estate's Xinference embeddings service). Neither is a model port behind the Loom, and no scaffolded consumer is re-pointed: `agentbox.toml:807` `endpoint = "${LOOM_BASE_URL}"` and `:2004` `loom_url = "${LOOM_BASE_URL}"` are unchanged, so the façade remains the door for every consumer that had it. The two subsystems are disjoint — the Loom is the model-swap door for grounded generation, the SSO façade is the door for typed decisions — and each keeps a stable endpoint its consumers hold. Claim STILL TRUE.

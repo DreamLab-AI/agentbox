@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 0950527d349d53b9824432af1bd8f2031e32c849
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [config/claude-plugins/jev-compaction/hooks/jev-compaction.ts, config/claude-plugins/jev-compaction/hooks/policy.mjs, config/entrypoint-unified.sh, lib/claude-code-binary.nix, tests/config/jev-compaction-policy.test.mjs]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, or a request to fence a class other than email
@@ -104,3 +104,76 @@ At `verified_commit`, before the rebuild:
   2.1.257 lacked.
 - Not yet verified: the plugin loaded by a booted image. `activation_status: staged`
   until the rebuild boots and `/jev-compact status` answers in a fresh session.
+
+## Amendment — 2026-09-21: ADR-2094 relaxes the taint fence on *declared* backend locality
+
+**ADR-2094** (Sovereign System One) amends decision point 3 and, consequentially, point 5.
+Point 3 states the taint rule without condition: a tainted transcript "is not sent to Jev;
+the built-in summary runs". That is no longer the whole of the rule in `hooks/policy.mjs`,
+and this record says so rather than leaving the prose to drift.
+
+`decide()` now takes a fourth input, `backendLocal`. When a transcript is tainted:
+
+- `backendLocal !== true` ⇒ `{ run: false, reason: 'tainted' }` — point 3 exactly as written;
+- `backendLocal === true` ⇒ `{ run: true, reason: 'ok-local' }` — the transcript **is** judged,
+  because the judge is the local SSO façade and the transcript does not leave the LAN. The
+  fence exists to stop egress, not to stop compaction, so removing the egress removes the
+  reason for the fence.
+
+Four properties keep that relaxation from being a hole, and all four are verified at HEAD:
+
+1. **It is declared, never inferred.** `backendLocal` is a boolean the caller passes from
+   resolved configuration. Nothing derives it from `baseUrl` — a hostname is evidence of the
+   host you dialled, not of where the bytes come to rest.
+2. **It defaults shut.** `resolveConfig` sets it true only for a real `true` or the exact
+   string `"true"`; absent, `undefined`, `null`, a URL or any other truthy string all leave
+   it false. Saying nothing yields the safe answer.
+3. **Precedence above it is unchanged.** `switched-off` still beats `no-key`, which still
+   beats the taint decision. A local backend does not resurrect a switched-off or keyless
+   session.
+4. **It is auditable.** The outcome is reported as `ok-local`, never `ok`, so a tainted
+   session that was compacted is distinguishable in the log from a clean one.
+
+**In production the fence is still shut, by two independent mechanisms.**
+`[features.sovereign_system_one].enabled = false` in the committed manifest, so nothing is
+projected at all; and — verified at HEAD — the baked plugin's `.claude-plugin/plugin.json`
+declares no `backendLocal` or `baseUrl` in its `userConfig` (its keys are `apiKey`,
+`enabledByDefault`, `taintTools`, `taintSkills`, `keepThreshold`, `preserveRecentMessages`,
+`compactAtPercent`, `minReductionRatio`, `maxStateTokens`, `maxRequestTokens`,
+`truncateHeadChars`, `model`), while the projector emits exactly `baseUrl=…` and
+`backendLocal=true` (`services/agentbox-manifest/src/sso.rs:145,147`). The entrypoint passes
+only pairs the plugin declares and logs the rest as "plugin declares no userConfig key … —
+not projecting it", so at HEAD even flipping the gate on would leave this consumer on the
+vendor cloud with `backendLocal` false. The relaxation is specified and unit-tested, but not
+yet reachable end-to-end — consistent with ADR-2094's own `implementation_status: partial`.
+
+Points 1, 2, 4, 6 and 7 are unaffected. E074 still refuses a manifest that drops the email
+prefix, and the default taint set is unchanged (`mcp__email-gateway__`,
+`mcp__claude_ai_Gmail__`, skill `email-search`). Point 5's "missing `TYPESAFE_API_KEY`
+(W072)" acquires the same stated exception as ADR-2091's W071: the validator suppresses W072
+when the SSO gate is on, because the key is then not on the path.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by four governed paths (`b680a7ae`, ADR-2094): `hooks/jev-compaction.ts`,
+`hooks/policy.mjs`, `config/entrypoint-unified.sh` and
+`tests/config/jev-compaction-policy.test.mjs`. `lib/claude-code-binary.nix` is unchanged, so
+point 1's 2.1.276 pin stands untouched. Checked in a detached worktree at HEAD.
+
+- `node --test tests/config/jev-compaction-policy.test.mjs` → **22 passed, 0 failed** (14 at
+  the previous anchor; the 8 added cover the `backendLocal` input, including the assertion
+  that the pre-2094 cloud contract is bit-identical when that input is absent).
+- `bash -n config/entrypoint-unified.sh` → clean.
+- `env -u TYPESAFE_API_KEY node scripts/agentbox-config-validate.js agentbox.toml` → **W072
+  fires**, as this record's Verification section records; against a copy with the SSO gate
+  flipped on, W072 stands down and W073 appears instead. The committed manifest has that gate
+  off, so the reproduction command in Verification still behaves as written.
+- `node scripts/agentbox-config-validate.js agentbox.toml` → `agentbox manifest valid (5
+  advisory warnings)`, none new; a copy with a public `endpoint` under the enabled gate →
+  `E075`, confirming the façade cannot be pointed off-LAN.
+
+Point 3 is **narrowed, and amended above rather than silently bumped**; with that amendment
+the record describes `hooks/policy.mjs` at HEAD correctly, and the email fence is described
+truthfully — closed in production, conditionally openable only on an explicit,
+default-false, audited locality declaration. `activation_status` stays `staged`: the plugin
+still has not been loaded by a booted image.

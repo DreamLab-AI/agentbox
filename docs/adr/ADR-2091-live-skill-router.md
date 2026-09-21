@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -112,3 +112,15 @@ At `verified_commit`:
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `config/entrypoint-unified.sh` alone (`0950527d3`, ADR-2093, purely additive elsewhere in the file); the four other governed paths are unchanged since the previous anchor. Decision point 6 re-established at `HEAD`: the section is read with `_ab_toml_val` / `_ab_toml_bool` / `_ab_toml_int` (`:2037-2042`), `AGENTBOX_SKILL_ROUTER` / `_ROUTE_MODEL` / `_ROUTE_TIMEOUT_MS` / `_ROUTE_MIN_CHARS` are inlined into the registered command (`:2051-2052`) and published to the runtime-env file for shells (`:2660-2663`), and `router = "table"` or `hook = false` still filters the registration back out (`:2065-2078`, logging "de-registered routing hook"). Claim STILL TRUE. Verified against committed `HEAD` deliberately: `config/hooks/lib/skill-route.cjs` carries uncommitted working-tree changes that this record does not cover.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by `config/entrypoint-unified.sh` and `config/hooks/lib/skill-route.cjs` (`b680a7ae`, ADR-2094 Sovereign System One — the working-tree changes the previous note declined to cover are now committed and are re-verified here). `config/hooks/skill-route.cjs`, `skills/skill-router/scripts/route.mjs` and `tests/config/skill-route.test.js` are unchanged since the previous anchor. Checked in a detached worktree at HEAD.
+
+Three decision points were touched and each was re-established against the code rather than the commit message:
+
+- **Point 4, fail-open.** The clause is unchanged in the library and still tested: `HOME=<scratch> node_modules/.bin/jest tests/config/skill-route.test.js` → **23 passed**, the same 23 as at the previous anchor, including the missing-key, timeout, 429/529/500, malformed-JSON, wrong-shape, unreachable and no-retry cases.
+- **Point 5, the advisory line.** `formatContext()` now filters zero-probability options before its top-3 slice and falls back to naming the pick when nothing carries mass (`skill-route.cjs:275-290`). On the cloud path every option carries some mass, so this is a no-op there; it exists so a shortlisting backend cannot inject two skill names the judge gave no weight to. The line is still one short ranking, still advisory, and **no threshold rule was added** — the prohibition in point 5 is intact.
+- **Point 7, the log.** The per-token price is now configuration (`AGENTBOX_SKILL_ROUTE_USD_PER_MTOK_IN`, default unchanged at the measured Jev rate `0.042`), and each line additionally records `usd_per_mtok_in`. The log still carries no prompt — the one property this point actually protects. Additive.
+
+**Narrowing recorded, not glossed.** Point 6 lists "W071 (jev without key)" among the accompaniments. At HEAD that warning is conditional: `scripts/agentbox-config-validate.js` suppresses it when `[features.sovereign_system_one].enabled` is true, because the judge is then on the LAN and a missing `TYPESAFE_API_KEY` is no longer a defect. Verified both ways against the committed manifest: `env -u TYPESAFE_API_KEY node scripts/agentbox-config-validate.js agentbox.toml` → **W071 fires**, exactly as this record's Verification section records; the same command against a copy with the SSO gate flipped on → **W071 stands down and W073 appears** instead. Since the committed manifest has that gate `enabled = false`, the record's claim and its reproduction command are both still true as written at HEAD; the exception is governed by ADR-2094 and is named here so the ledger carries it. `bash -n config/entrypoint-unified.sh` → clean; the registration/de-registration mechanism of point 6 is unchanged, with the SSO endpoint inlined only when projected (empty otherwise, leaving the pre-2094 command byte-for-byte). Claim STILL TRUE.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -202,3 +202,7 @@ Existing runtime activation limits remain. Verification is renewed at
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by feature blocks added to `agentbox.toml` (colloquy, jev-compaction, skills.routing) and by unrelated `flake.nix` churn. The posture itself is unchanged at `HEAD`: `agentbox.toml:151 ingress_policy = "allowlist"` with the "there is NO fallback and NO auto-add: empty = every inbound relay event is dropped" comment and the explicit `allowed_pubkeys` list (`:157-`); `flake.nix:1499-1519` still emits `pubkey_whitelist = [ ]  # ADR-2012 deny-all` for an empty allowlist and only turns the gate off for `ingress_policy = "open"`. Claim STILL TRUE.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by `agentbox.toml` alone (`b680a7ae`, ADR-2094 Sovereign System One); `flake.nix` is unchanged since the previous anchor. `git diff b680a7ae..HEAD -- agentbox.toml flake.nix` shows one addition: a `[features.sovereign_system_one]` block with `enabled = false`. It adds no publisher, no relay mode and no ingress path — the allowlist sections this record governs are untouched. Re-read at HEAD in a detached worktree: relay ingress policy and the 64-hex allowlist are as recorded, `agent_event_auth = "nip98"` stands, and nothing auto-inserts the operator pubkey. Claim STILL TRUE.

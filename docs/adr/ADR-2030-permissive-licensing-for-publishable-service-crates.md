@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1b43b70ff09b971b440c9964743402aec45ef515
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -284,3 +284,14 @@ This does not by itself make the enumeration-vs-trigger problem a solved class. 
 records in this pack arm the gate on fixed path lists while their `review_trigger` prose
 describes a *set* that can grow — ADR-2084's "or a fifth caller appears" is the same shape
 and also fired unactioned. Where a trigger names a set, the governed paths should glob it.
+
+## Re-verification — 2026-09-21
+
+Left STALE on the 2026-09-21 ledger pass because its claim was false at `b680a7ae`:
+`services/explainer-tools` declared `MIT OR Apache-2.0` and shipped no licence texts
+or README, and `scripts/ci/check-crate-licensing.sh` exited 1 — a drift the previous
+enumerated `verified_paths` could not see, since the crate was added after the list
+was written. Fixed in `e57156a8f`. Re-established at `e57156a8f` in a detached
+worktree (not the working tree): `check-crate-licensing.sh` → "10 services/ package
+directories carry the texts they declare", exit 0; `git ls-files 'services/*/Cargo.toml'`
+returns the same 10 manifests the gate covers. Claim STILL TRUE at this commit.

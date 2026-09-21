@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -143,3 +143,13 @@ runtime behaviour; existing implementation and activation qualifications remain.
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `agentbox.toml`; `skills/tree-search-coder/SKILL.md` and `services/agentbox-ops/src/bin/tree-search-cap.rs` are unchanged. The tree-search posture is intact at `HEAD` (`agentbox.toml:707-714`): `enabled = true` with the "explicitly invoked, never auto-routed" comment, `spend_cap_usd = 0.50`, `max_candidates = 5`, `per_branch_timeout_s = 60`. The blocks added since the previous anchor are themselves manifest-gated with an off path — `[features.jev_compaction]` (uninstalls the plugin and deletes the env key when off, `config/entrypoint-unified.sh:2083-2148`) and `[skills.routing]` (de-registers the hook when `router = "table"` or `hook = false`, `:2065-2078`) — so the gating law held for the new capabilities rather than being bypassed by them. `node scripts/agentbox-config-validate.js agentbox.toml` at `HEAD` → valid, 5 advisory warnings, no errors. Claim STILL TRUE.
+
+## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
+
+Tripped by `agentbox.toml` (`b680a7ae`, ADR-2094); `skills/tree-search-coder/SKILL.md` and `services/agentbox-ops/src/bin/tree-search-cap.rs` are unchanged since the previous anchor, so the `tree_search_coder` clauses stand untouched (re-read at HEAD: `max_candidates`, `per_branch_timeout_s`, `spend_cap_usd` and the "invoked, never auto-routed" comment are all present).
+
+The diff adds a new capability, which makes this record the one being *tested* rather than merely disturbed. `[features.sovereign_system_one]` is gated, defaults `enabled = false`, and carries a `system-manifest.js` catalogue entry (`management-api/lib/system-manifest.js:215`, id `sovereign-system-one`, gate `features.sovereign_system_one`) with `apply_class: 'boot'` — which is the honest class: the consumer projection is an entrypoint re-read, and the record's own summary separates it from the REBUILD-class sidecar lifecycle. So the decision's procedural requirement was met by the new gate rather than bypassed.
+
+**One caveat recorded honestly, not papered over.** The entrypoint emits `$_SSO_EXPORTS` unquoted into the expanding heredoc that generates `runtime-env.sh` (`config/entrypoint-unified.sh:2722`). With the gate off that variable is empty, so the *exported environment* is byte-identical to the pre-2094 state — every consumer resolves exactly what it did before — but the generated *file* gains three comment lines and one blank line. This is the same shape already in place for `$_MRN_EXPORTS` (ADR-2080) two dozen lines above, so it is an established pattern rather than a new departure, and it is inert. It is noted here because this record's Consequences explicitly say the byte-identical-when-off guarantee "must be re-checked whenever a new gate is added" — this is that re-check, and its result is: identical in effect, not identical in bytes, for the generated env file. `implementation_status` stays `partial` for the reason already recorded: that guarantee still has no build evidence.
+
+Commands: `git diff b680a7ae..HEAD -- agentbox.toml skills/tree-search-coder/SKILL.md services/agentbox-ops/src/bin/tree-search-cap.rs`; `node scripts/agentbox-config-validate.js agentbox.toml` → `agentbox manifest valid (5 advisory warnings)`, none of them new. Claim STILL TRUE.

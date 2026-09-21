@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.4.0
+version: 0.5.0
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.0 (2026-09-20): ADR-2094 — typed decisions may be answered by a local capacity-adapting facade (Sovereign System One) that speaks the Jev wire protocol; gated off by default, no cloud fallback on any path, and the ADR-2093 email fence relaxes only on an explicit backendLocal boolean from resolved config, never inferred from a URL."
   - "0.4.0 (2026-09-14): ADR-2087 — the action authority axis gains the ADR-2011 task-property triple (stamped as tp-* tags on every 31402 agentbox publishes), every gate denial is journalled as a hash-chained authority.deny readable at /v1/agent-events, application receipts are mirrored to the forum so the approving human learns the outcome, governance_manual_continue gives an outage a signed continuation path, and the dream ledger gains Reviewer / Review-minutes."
   - "0.3.3 (2026-09-06): ADR-2080 — the metaharness cost-optimal router runs as the dedicated AoE `router` session (Phase 0 of ADR-2079): artefacts vendored from one pinned manifest, task embedded offline, scoped to that session, public tier only."
   - "0.3.2 (2026-09-06): ADR-2079 (proposed) — examine AoE as the DISPATCH plane of a fleet model router; the routing policy lives in a Rust crate outside the session manager, privacy tier is the first routing axis, subagent models are out of reach, a research spike precedes any build."
@@ -15,6 +16,7 @@ changelog:
 sources:
   - agentbox.toml (cited by [section].key per ADR-2052 — [skills.ontology.condense].endpoint, [dream_machine].loom_url/.loom_model/.loom_max_tokens, [[interaction_plane.session_seeds]], [interaction_plane] N-05 token auth, the [skills.*] gates, [skills.ontology].direct_axiom_load)
   - agentbox/skills/SKILL-DIRECTORY.md
+  - agentbox/docs/proposals/sovereign-system-one.md (PRD-023) + sovereign-system-one-domain.md (DDD-021/BC24)
   - agentbox/skills/lint-skills.sh
   - agentbox/skills/tree-search-coder/SKILL.md
   - agentbox/skills/dream-machine/SKILL.md
@@ -143,6 +145,21 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   `min_reduction_ratio`; `/jev-compact on|off|status` is the operator switch. Egress
   widened from ADR-2090 by operator decision. Contract tests:
   `tests/config/jev-compaction-policy.test.mjs`.
+- **Typed-decision backend** (ADR-2094, PRD-023/DDD-021) — the two System One consumers
+  above (router, compaction) address a *protocol*, not a vendor. `[features.sovereign_system_one]`
+  (off by default, rebuild class) projects both at a local capacity-adapting facade,
+  `system-one-facade` on `:8097`, which speaks the same Jev wire format and answers from a
+  loopback-only engine. The facade absorbs the capacity mismatch — 115 routable skills render
+  59,004 chars of criteria and a real route sends a mean 14,969 input tokens (measured
+  2026-09-20 over a live, growing route log) against a
+  512–1024-token engine context — by option shortlisting and state windowing, and declares
+  every reduction in an additive `sso` block. Invariants: the answer's probability mass is
+  always stated over the caller's **original** option keys (shortlisted-away options at
+  `0.0`); the facade has **no cloud fallback on any path** and fails loud, consumers owning
+  fail-open as before; the budget is read from the engine's `/v1/models`, never configured.
+  Gate off ⇒ both consumers keep today's cloud configuration byte-for-byte. Not measured yet:
+  `activation_status: inactive` until a run against the ADR-2089 baseline exists.
+
 - **Manifest gates** — `agentbox.toml` `[skills.*]` blocks are the boot gates; each skill
   declares its own `manifest_gate` (e.g. tree-search-coder → `[skills.tree_search_coder]
   enabled = true`). "Byte-identical-when-off" is the discipline: a disabled skill leaves no
@@ -308,6 +325,20 @@ above, enabled but explicitly-invoke-only.
   figures are dated API-equivalent estimates or `null`, never a stale constant (ADR-2031).
 - **The Loom model swaps behind the façade** — changing the model must not touch a consumer;
   consumers hold `:8084`, never a raw model port, for scaffolded work.
+- **A typed-decision facade never narrows the caller's world** (ADR-2094) — a `choice` answer
+  is always one of the caller's original option keys and `probabilities` covers all of them,
+  with shortlisted-away options at exactly `0.0`; `usage.input_tokens` counts what the engine
+  read, not what the caller sent; and every reduction applied is declared in the `sso` block.
+  An undeclared reduction is indistinguishable from an engine that read everything.
+- **A typed-decision facade has no non-LAN upstream** (ADR-2094) — no cloud fallback on engine
+  failure, timeout, degraded mode or behind a flag. It fails loud; the router falls open to the
+  table and compaction to the built-in summary, as ADR-2091/ADR-2093 already require.
+- **Backend locality is asserted, never inferred** (ADR-2094) — the ADR-2093 email taint fence
+  relaxes only when `decide()` receives an explicit `backendLocal: true` passed from resolved
+  configuration. Default `false`; a missing, non-boolean or truthy-string value keeps the fence
+  closed; it is never derived from a hostname, URL, IP literal or network probe. E074 and the
+  `taint_tools` prefix list are unchanged — `backendLocal` gates *when* the fence is consulted,
+  not *what* it fences.
 - **The boundary is a property of the TASK, not of the requesting agent** (ADR-2011/ADR-2087)
   — every kind-31402 agentbox publishes carries all three of `tp-verifiability`,
   `tp-reversibility`, `tp-stakes`, derived from `[skills.authority.classes]` and
@@ -418,3 +449,27 @@ ADR-2071 is **proposed, not landed**, and divergences 1 and 6 stay open: routing
   `scripts/model-router-fetch.sh` fills the fallback). Gate `[model_routing.neural]` (rebuild
   class); `AGENTBOX_MODEL_ROUTER_*` only — never `CLAUDE_FLOW_ROUTER_*` globally; privacy tier
   pinned `public`; egress switch honoured. Fallback path measured live; baked path staged.
+
+## Typed-decision sovereignty — 2026-09-20
+
+ADR-2094 records the decision to answer the estate's typed decisions locally behind a
+capacity-adapting façade (Sovereign System One), and PRD-023/DDD-021 carry the product case
+and the domain model. Three things are deliberately *not* claimed by that record. The gate
+is off, so ADR-2090's accepted routing egress and ADR-2093's widened compaction egress stay
+in force unchanged for every consumer still pointing at the cloud — this work removes the
+need to egress, it does not retract the permission. The ADR-2089 baseline (90% soft
+accuracy, p50 1.1 s, $0.00063/route) was measured on a prompt the local engine cannot
+receive, so the façade is measured *after* shortlisting and windowing: a different
+experiment on the same task, and the `sso` declaration is what makes a shortfall
+attributable to the adaptation rather than the engine. Both upstream repositories are days
+old with self-reported benchmarks, and the estate's GPUs are Ada rather than the Blackwell
+the C++ runtime was tested on, so every number that governs a decision is re-measured here.
+`activation_status` stays `inactive` until a booted, measured run exists. The engine itself
+is the swappable half and is named nowhere in the invariants: laya holds the slot because it
+is the only open-weights model answering all three primitives natively, and a candidate
+cross-encoder path (`AlexWortega/openjev`, which implements no System One primitive) is
+recorded in ADR-2094 *Alternatives considered* as exactly what the façade exists to permit —
+selected, if ever, by a `system-one-eval` run and never by a model card. The
+security-relevant half of the record is the `backendLocal` invariant above; it lands last
+and separately, because it is the only change in the programme that can weaken an existing
+control.
