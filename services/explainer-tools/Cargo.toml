@@ -8,6 +8,7 @@ rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 description = "Rust ports of the agentbox explainer skill's tooling: façade-backed section drafting, and (progressively) the evidence, diagram and media gates."
 repository = "https://github.com/DreamLab-AI/agentbox"
+readme = "README.md"
 publish = false
 
 [lib]
