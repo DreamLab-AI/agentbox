@@ -2529,14 +2529,22 @@ ${lib.optionalString mcpHubEnabled ''
 ; Code session. Reads /run/agentbox/mcp-hub.json, written by the entrypoint's
 ; `agentbox-manifest mcp-hub-project` after every bespoke/projected .mcp.json
 ; write. Loopback only — the binary refuses any other bind. Never published.
+;
+; ADR-2104 fail-hard wiring: the binary waits 120s for the projection, then
+; exits loudly. startsecs=130 is deliberately LONGER than that wait, so a
+; missing projection is a FAILED START, not a successful program that exits:
+; supervisord backs off, retries startretries times and parks the program
+; FATAL. Before this, autorestart=true + startsecs=2 made `supervisorctl
+; status` report RUNNING for three days over a port that was never bound.
 [program:agentbox-mcp-hub]
-command=${agentboxMcpPkg}/bin/agentbox-mcp hub --config /run/agentbox/mcp-hub.json --bind ${mcpHubBind}
+command=${agentboxMcpPkg}/bin/agentbox-mcp hub --config /run/agentbox/mcp-hub.json --bind ${mcpHubBind} --wait-config-secs 120
 directory=/home/devuser/workspace
 user=devuser
 environment=HOME="/home/devuser",RUST_LOG="info"
 autostart=true
-autorestart=true
-startsecs=2
+autorestart=unexpected
+startsecs=130
+startretries=2
 priority=205
 stdout_logfile=/var/log/agentbox-mcp-hub.log
 stderr_logfile=/var/log/agentbox-mcp-hub.error.log

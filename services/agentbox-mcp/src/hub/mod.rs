@@ -36,7 +36,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use serde_json::{json, Value};
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use child::ChildServer;
 use config::HubConfig;
@@ -257,8 +257,25 @@ pub async fn wait_for_config(
     let mut last_log = std::time::Instant::now() - std::time::Duration::from_secs(60);
     while !path.exists() {
         if started.elapsed() >= timeout {
+            // Fail HARD and loudly, naming the projection that did not run.
+            // Before ADR-2104 this bailed quietly after 600 s into an
+            // autorestart=true program, so `supervisorctl status` read
+            // RUNNING for three days while the port was never bound and
+            // every hub-routed server in .mcp.json refused connections.
+            error!(
+                path = %path.display(),
+                projection = "agentbox-manifest mcp-hub-project",
+                gate = "[resources.mcp_hub]",
+                waited_s = started.elapsed().as_secs(),
+                "hub config MISSING: the boot never ran the mcp-hub projection, \
+                 so every [resources.mcp_hub].servers entry in .mcp.json points \
+                 at a hub that cannot start. Check the tail of /var/log/bootstrap.log \
+                 for the last line the entrypoint printed before it stopped."
+            );
             anyhow::bail!(
-                "{}: not written within {}s (is the bootstrap program projecting the hub config?)",
+                "{}: not written within {}s — the boot never ran `agentbox-manifest \
+                 mcp-hub-project` ([resources.mcp_hub] is enabled). Refusing to idle: \
+                 a hub with no config serves nothing.",
                 path.display(),
                 timeout.as_secs()
             );

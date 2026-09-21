@@ -17,6 +17,21 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
+# Abort announcer (ADR-2104)
+# ---------------------------------------------------------------------------
+# `set -e` used to end this script SILENTLY: on 2026-09-18 a digest helper
+# returned 1 for a directory that did not exist yet, the boot stopped two
+# blocks before the MCP hub projection, nothing was printed, and
+# bootstrap-seal wrote bootstrap.done regardless. A boot that stops must say
+# where. This costs one trap and turns every future early exit into a line in
+# /var/log/bootstrap.log naming the line and the command.
+_ab_boot_abort() { # <rc> <line> <command>
+  printf '[bootstrap] ABORTED rc=%s at line %s — command: %s\n' "$1" "$2" "$3"
+  printf '[bootstrap] ABORTED rc=%s at line %s — command: %s\n' "$1" "$2" "$3" >&2
+}
+trap '_ab_boot_abort "$?" "$LINENO" "$BASH_COMMAND"' ERR
+
+# ---------------------------------------------------------------------------
 # Manifest readers (hoisted above the stage dispatch)
 # ---------------------------------------------------------------------------
 # Anchored-awk section parse of $AGENTBOX_CONFIG, same style as
@@ -2149,7 +2164,11 @@ if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && command -v claude >/dev/null 2
   fi
   _JC_VER="$(node -e "process.stdout.write(require('$_JC_PLUGIN/.claude-plugin/plugin.json').version)" 2>/dev/null || echo 0.0.0)"
   _JC_CACHE="/home/devuser/.claude/plugins/cache/agentbox/jev-compaction/$_JC_VER"
-  _jc_digest() { ( cd "$1" 2>/dev/null && find hooks lib .claude-plugin -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum 2>/dev/null | sha256sum | cut -c1-16 ); }
+  # Trailing `; true`: a first install has no cache directory, so the `cd`
+  # fails and the subshell returns 1 — which under `set -e` ended the whole
+  # boot before the MCP projections ran (2026-09-18, ADR-2104). An absent or
+  # unreadable tree is an empty digest, i.e. "differs", i.e. reinstall.
+  _jc_digest() { ( cd "$1" 2>/dev/null && find hooks lib .claude-plugin -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum 2>/dev/null | sha256sum | cut -c1-16 ); true; }
   _JC_BAKED="$(_jc_digest "$_JC_PLUGIN")"; _JC_HAVE="$(_jc_digest "$_JC_CACHE")"
   run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace add "$_JC_MARKET" >/dev/null 2>&1 \
     || echo "  [jev-compaction] marketplace add failed (continuing; a stale registration may remain)"

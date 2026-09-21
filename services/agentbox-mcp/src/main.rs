@@ -51,8 +51,12 @@ enum ServerCommand {
         #[arg(long)]
         bind: Option<String>,
         /// How long to wait for the config file before giving up. The
-        /// entrypoint writes it late in boot, after this program has started.
-        #[arg(long, default_value_t = 600)]
+        /// entrypoint writes it late in boot, after this program has started,
+        /// so some wait is required — but it is bounded well below the
+        /// supervisor's `startsecs` so a missing projection lands the program
+        /// in FATAL after `startretries` instead of restarting forever
+        /// (ADR-2104).
+        #[arg(long, default_value_t = 120)]
         wait_config_secs: u64,
     },
 }

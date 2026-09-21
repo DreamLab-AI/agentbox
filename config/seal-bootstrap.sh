@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-_SENTINEL_DIR="/run/agentbox"
+_SENTINEL_DIR="${AGENTBOX_RUN_DIR:-/run/agentbox}"
 _SENTINEL="${_SENTINEL_DIR}/bootstrap.done"
 _SUPERVISORCTL="${SUPERVISORCTL:-supervisorctl}"
 _TIMEOUT="${BOOTSTRAP_SEAL_TIMEOUT:-120}"
@@ -74,7 +74,19 @@ _required_programs() {
   ' "$_SUPERVISORD_CONF"
 }
 
+# `--projections-only` runs the boot-projection contract alone (used by
+# tests/config/boot-projection-contract.test.sh; never by supervisord).
+if [ "${1:-}" = "--projections-only" ]; then
+  _projections_only=1
+else
+  _projections_only=0
+fi
+
 mapfile -t REQUIRED_PROGRAMS < <(_required_programs)
+
+if [ "$_projections_only" = "1" ]; then
+  REQUIRED_PROGRAMS=()
+fi
 
 _log "info" "BootstrapSealStarted" \
   "required_programs=$(IFS=','; echo "${REQUIRED_PROGRAMS[*]:-none}")" \
@@ -107,6 +119,65 @@ if [ "$_elapsed" -ge "$_TIMEOUT" ]; then
     "reason=required programs did not reach RUNNING within ${_TIMEOUT}s" \
     "timeout_seconds=${_TIMEOUT}"
   # Do NOT write the sentinel — bootstrap is not complete.
+  exit 1
+fi
+
+# ── Boot-projection contract (ADR-2104) ────────────────────────────────────
+# Every projection the manifest PROMISES must exist before the sentinel is
+# written. Without this the sentinel only means "the daemons came up": on
+# 2026-09-18 the entrypoint died under `set -e` two blocks before the MCP hub
+# projection, bootstrap.done was written anyway, and agentbox-mcp-hub
+# restarted for three days without ever binding its port while /ready said
+# 200. A missing promised projection is now a bootstrap FAILURE that names
+# the gate and the path.
+#
+# Table rows are  <manifest bool path>:<projected file>  — one per promise.
+# Add a row when a boot step starts producing a file another program needs.
+_MANIFEST="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
+_PROJECTION_TIMEOUT="${BOOTSTRAP_PROJECTION_TIMEOUT:-300}"
+_PROJECTIONS="${AGENTBOX_BOOT_PROJECTIONS:-resources.mcp_hub.enabled:${_SENTINEL_DIR}/mcp-hub.json}"
+
+_gate_on() {
+  # Absent manifest or projector ⇒ not a promise we can read; treat as off.
+  command -v agentbox-manifest >/dev/null 2>&1 || return 1
+  [ -f "$_MANIFEST" ] || return 1
+  [ "$(agentbox-manifest toml-bool --manifest "$_MANIFEST" --path "$1" 2>/dev/null || echo 0)" = "1" ]
+}
+
+# Returns 0 when every promised projection is present, 1 otherwise (having
+# logged the first one missing).
+_check_projections() {
+  local row gate path waited=0 missing_gate='' missing_path=''
+  for row in $_PROJECTIONS; do
+    [ -n "$row" ] || continue
+    gate="${row%%:*}"
+    path="${row#*:}"
+    _gate_on "$gate" || continue
+    waited=0
+    while [ ! -e "$path" ]; do
+      if [ "$waited" -ge "$_PROJECTION_TIMEOUT" ]; then
+        missing_gate="$gate"; missing_path="$path"
+        break
+      fi
+      sleep "$_POLL_INTERVAL"
+      waited=$(( waited + _POLL_INTERVAL ))
+    done
+    if [ -n "$missing_gate" ]; then
+      _log "error" "BootstrapProjectionMissing" \
+        "gate=${missing_gate}" \
+        "path=${missing_path}" \
+        "waited_seconds=${_PROJECTION_TIMEOUT}" \
+        "reason=the manifest enables this gate but the boot never wrote its projection; the entrypoint stopped early (tail /var/log/bootstrap.log)"
+      return 1
+    fi
+    _log "info" "BootstrapProjectionPresent" "gate=${gate}" "path=${path}"
+  done
+  return 0
+}
+
+if ! _check_projections; then
+  # Do NOT write the sentinel — bootstrap did not do what it promised.
+  _log "error" "BootstrapSealFailed" "reason=promised projection missing"
   exit 1
 fi
 
