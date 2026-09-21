@@ -1,12 +1,12 @@
 [package]
 name = "colloquy-nostr"
-version = "0.1.0"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 authors.workspace = true
 license = "Apache-2.0"
-description = "Nostr event binding for colloquy knowledge units: kinds 38100-38105, the tag grammar, content-authoritative decoding, and ledger reconstruction that counts authorising principals rather than accounts."
+description = "Nostr event binding for colloquy knowledge units: kinds 38210-38215, the tag grammar, content-authoritative decoding, and ledger reconstruction that counts authorising principals rather than accounts."
 readme = "README.md"
 keywords = ["nostr", "agents", "knowledge", "cq"]
 categories = ["data-structures"]

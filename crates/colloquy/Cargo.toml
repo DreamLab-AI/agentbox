@@ -6,7 +6,7 @@ members = [
     # Presentation models for the forum surface. Depends on colloquy-core only,
     # so it is publishable and the forum never path-deps this repo.
     "colloquy-view",
-    # Nostr event binding (kinds 38100-38105).
+    # Nostr event binding (kinds 38210-38215).
     "colloquy-nostr",
     # KnowledgeStore trait + local / ruvector / relay implementations.
     "colloquy-store",

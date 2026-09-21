@@ -11,8 +11,8 @@ publish = false
 
 [dependencies]
 colloquy-core = { path = "../colloquy-core", version = "0.1" }
-colloquy-nostr = { path = "../colloquy-nostr", version = "0.1" }
-colloquy-store = { path = "../colloquy-store", version = "0.1" }
+colloquy-nostr = { path = "../colloquy-nostr", version = "0.2" }
+colloquy-store = { path = "../colloquy-store", version = "0.2" }
 nostr-bbs-core = { path = "../../../../../nostr-rust-forum/crates/nostr-bbs-core" }
 async-trait = "0.1"
 serde = { workspace = true }

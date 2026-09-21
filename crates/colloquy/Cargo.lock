@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "colloquy-nostr"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "colloquy-core",
  "serde",
@@ -300,7 +300,7 @@ dependencies = [
 
 [[package]]
 name = "colloquy-store"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "colloquy-core",
@@ -913,7 +913,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-core"
-version = "1.0.0-beta.10"
+version = "1.0.0-beta.11"
 dependencies = [
  "aes",
  "async-trait",

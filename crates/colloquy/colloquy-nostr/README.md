@@ -7,7 +7,7 @@ accounts.
 
 ```toml
 [dependencies]
-colloquy-nostr = "0.1"
+colloquy-nostr = "0.2"
 ```
 
 ## What it does not do
@@ -23,12 +23,12 @@ so a caller with its own Nostr library converts at the boundary.
 
 | Kind | Name | Shape | `d` tag |
 |---|---|---|---|
-| 38100 | KnowledgeUnit | addressable (NIP-33) | unit id hex |
-| 38101 | Confirmation | regular, append-only | — |
-| 38102 | Flag | regular, append-only | — |
-| 38103 | Supersession | regular | — |
-| 38104 | Graduation | regular | — |
-| 38105 | ToolGapSignal | addressable (NIP-33) | cluster tag |
+| 38210 | KnowledgeUnit | addressable (NIP-33) | unit id hex |
+| 38211 | Confirmation | regular, append-only | — |
+| 38212 | Flag | regular, append-only | — |
+| 38213 | Supersession | regular | — |
+| 38214 | Graduation | regular | — |
+| 38215 | ToolGapSignal | addressable (NIP-33) | cluster tag |
 
 The replaceable/append-only split is load-bearing. A unit is replaceable so its
 proposer can fix their own wording without forking its identity; confirmations,
@@ -76,6 +76,19 @@ registry.register_agent("aa".repeat(32), "did:nostr:operator");
 assert!(registry.resolve(&"aa".repeat(32)).is_some());
 assert!(registry.resolve(&"bb".repeat(32)).is_none());
 ```
+
+## Changelog
+
+### 0.2.0 (2026-09-21) — breaking, wire
+
+The six kinds moved from `38100`-`38105` to `38210`-`38215`. The original block
+sat inside `38100`-`38199`, which agentbox ADR-009 and PRD-004 had already
+reserved for agent-response events and which a live consumer still reads as a
+range, so a reader could not tell a knowledge unit from an agent response. The
+new block sits in the agentbox second allocation band `38202`-`38299`, which no
+record reserves (agentbox ADR-2105). Nothing else changed: the tag grammar,
+content encoding and ledger reconstruction are identical. Any event published
+under the old kinds must be republished.
 
 ## Licence
 

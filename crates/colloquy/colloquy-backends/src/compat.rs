@@ -57,7 +57,7 @@ mod tests {
             id: "a".repeat(64),
             pubkey: "b".repeat(64),
             created_at: 42,
-            kind: 38_100,
+            kind: 38_210,
             tags: vec![vec!["d".into(), "abc".into()]],
             content: "{\"x\":1}".into(),
             sig: "c".repeat(128),

@@ -2,18 +2,21 @@
 //!
 //! Kinds are not free: an allocation has to be recorded in the protocol
 //! registry, carried by an ADR, and backed by paired cross-repo fixtures, or CI
-//! refuses it. These six sit inside the Agentbox-owned agent block
-//! `38000–38201`, above the `38000–38099` sub-block already spent on agent
-//! intent, so nothing outside this repo has to move to accommodate them.
+//! refuses it. These six sit in the agentbox second allocation band
+//! `38202-38299` (ADR-2105), which no record reserves: the first band
+//! `38000-38201` is fully spoken for by `38000-38099` agent intent (ADR-009,
+//! PRD-004), `38100-38199` agent response (the same two records, enforced live
+//! at `mcp/nostr-bridge/relay-consumer.js`) and the `38200`/`38201` payment
+//! pair. Nothing outside this repo has to move to accommodate them.
 //!
 //! | Kind | Name | Shape | Author |
 //! |---|---|---|---|
-//! | 38100 | [`KIND_KNOWLEDGE_UNIT`] | addressable, `d` = unit id hex | agent or human |
-//! | 38101 | [`KIND_CONFIRMATION`] | regular, append-only | agent or human |
-//! | 38102 | [`KIND_FLAG`] | regular, append-only | agent or human |
-//! | 38103 | [`KIND_SUPERSESSION`] | regular | the proposer |
-//! | 38104 | [`KIND_GRADUATION`] | regular, cites a signed `31403` | human principal |
-//! | 38105 | [`KIND_TOOL_GAP_SIGNAL`] | addressable, `d` = cluster id | agent |
+//! | 38210 | [`KIND_KNOWLEDGE_UNIT`] | addressable, `d` = unit id hex | agent or human |
+//! | 38211 | [`KIND_CONFIRMATION`] | regular, append-only | agent or human |
+//! | 38212 | [`KIND_FLAG`] | regular, append-only | agent or human |
+//! | 38213 | [`KIND_SUPERSESSION`] | regular | the proposer |
+//! | 38214 | [`KIND_GRADUATION`] | regular, cites a signed `31403` | human principal |
+//! | 38215 | [`KIND_TOOL_GAP_SIGNAL`] | addressable, `d` = cluster id | agent |
 //!
 //! # Why the split
 //!
@@ -24,17 +27,17 @@
 //! enforces between a decision and its append-only audit log.
 
 /// The knowledge unit. Addressable: `d` carries the unit id's hex portion.
-pub const KIND_KNOWLEDGE_UNIT: u64 = 38100;
+pub const KIND_KNOWLEDGE_UNIT: u64 = 38210;
 /// An independent confirmation of a unit. Append-only.
-pub const KIND_CONFIRMATION: u64 = 38101;
+pub const KIND_CONFIRMATION: u64 = 38211;
 /// A flag: this unit is wrong or stale. Append-only, and suppresses nothing.
-pub const KIND_FLAG: u64 = 38102;
+pub const KIND_FLAG: u64 = 38212;
 /// A supersession: this unit replaces that one.
-pub const KIND_SUPERSESSION: u64 = 38103;
+pub const KIND_SUPERSESSION: u64 = 38213;
 /// A tier promotion, citing the signed decision that authorised it.
-pub const KIND_GRADUATION: u64 = 38104;
+pub const KIND_GRADUATION: u64 = 38214;
 /// An emergent tooling-gap signal aggregated from level-2 workarounds.
-pub const KIND_TOOL_GAP_SIGNAL: u64 = 38105;
+pub const KIND_TOOL_GAP_SIGNAL: u64 = 38215;
 
 /// The contiguous range these kinds occupy.
 pub const COLLOQUY_KIND_RANGE: std::ops::RangeInclusive<u64> =
@@ -85,13 +88,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_block_does_not_collide_with_agent_intent_or_governance() {
+    fn the_block_does_not_collide_with_any_reserved_range() {
         for k in ALL_KINDS {
             assert!(
-                (38_100..=38_201).contains(&k),
-                "{k} must sit in the free part of the agentbox block"
+                (38_202..=38_299).contains(&k),
+                "{k} must sit in the agentbox second allocation band"
             );
             assert!(!(38_000..=38_099).contains(&k), "{k} collides with agent intent");
+            assert!(
+                !(38_100..=38_199).contains(&k),
+                "{k} collides with the ADR-009 agent-response reservation"
+            );
+            assert!(k != 38_200 && k != 38_201, "{k} collides with the payment pair");
             assert!(!(31_400..=31_405).contains(&k), "{k} collides with governance");
         }
     }
@@ -107,8 +115,8 @@ mod tests {
         for k in ALL_KINDS {
             assert!(kind_name(k).is_some(), "{k} needs a name");
         }
-        assert_eq!(kind_name(38_099), None);
-        assert_eq!(kind_name(38_106), None);
+        assert_eq!(kind_name(38_209), None);
+        assert_eq!(kind_name(38_216), None);
     }
 
     #[test]

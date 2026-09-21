@@ -5,7 +5,7 @@ shared vector memory, and a Nostr relay.
 
 ```toml
 [dependencies]
-colloquy-store = "0.1"
+colloquy-store = "0.2"
 ```
 
 | Tier | Implementation | Retrieval | Backed by |
@@ -66,6 +66,15 @@ asked.
 signal is a message to whoever decides what to build, not advice to act on.
 Serving them into retrieval is how a store starts answering "how do I do X" with
 "several people wish X were easier".
+
+## Changelog
+
+### 0.2.0 (2026-09-21) — breaking, wire
+
+Follows `colloquy-nostr` 0.2: the relay store's kinds moved from `38100`-`38105`
+to `38210`-`38215`, out of the agent-response range agentbox ADR-009 reserved
+and into the second allocation band `38202`-`38299` (agentbox ADR-2105). The
+`KnowledgeStore` trait and every local/shared behaviour are unchanged.
 
 ## Licence
 

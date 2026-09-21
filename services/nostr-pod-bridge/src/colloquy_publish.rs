@@ -37,7 +37,7 @@
 //! after it was written. Five kinds are admitted, and two exclusions carry the
 //! reasoning:
 //!
-//! - **`38104` Graduation is refused.** A graduation is the *record of a human
+//! - **`38214` Graduation is refused.** A graduation is the *record of a human
 //!   decision*. Routing it through the container's signature puts the wrong key
 //!   behind a human's judgement. It can be admitted once a reader verifies the
 //!   `31403` it cites rather than trusting the record's own signature; until
@@ -60,15 +60,15 @@ use serde::Deserialize;
 /// The colloquy kinds this door will sign. See the module docs for the two
 /// deliberate exclusions.
 pub const SIGNABLE_KINDS: &[u64] = &[
-    38_100, // KnowledgeUnit
-    38_101, // Confirmation
-    38_102, // Flag
-    38_103, // Supersession
-    38_105, // ToolGapSignal
+    38_210, // KnowledgeUnit
+    38_211, // Confirmation
+    38_212, // Flag
+    38_213, // Supersession
+    38_215, // ToolGapSignal
 ];
 
 /// Graduation. Refused on purpose — see the module docs.
-pub const KIND_GRADUATION: u64 = 38_104;
+pub const KIND_GRADUATION: u64 = 38_214;
 
 /// An unsigned colloquy event, as an agent hands it over on stdin.
 ///
@@ -97,7 +97,7 @@ pub struct PublishRequest {
 pub enum Refusal {
     /// A graduation records a human decision and must not carry this key.
     #[error(
-        "kind 38104 (Graduation) is refused: it records a human decision, and signing it with the \
+        "kind 38214 (Graduation) is refused: it records a human decision, and signing it with the \
          container identity would put the wrong key behind that judgement. Publish it from the \
          approver's own key, or cite the signed 31403 and let the reader verify that instead."
     )]
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn every_colloquy_kind_except_graduation_is_admitted() {
-        for kind in [38_100, 38_101, 38_102, 38_103, 38_105] {
+        for kind in [38_210, 38_211, 38_212, 38_213, 38_215] {
             assert!(admit(kind).is_ok(), "kind {kind} should be signable");
         }
     }
@@ -188,17 +188,17 @@ mod tests {
         // A caller sending an event-shaped document gets its pubkey ignored
         // rather than honoured — there is no field to carry it into signing.
         let req = parse_request(
-            r#"{"pubkey":"deadbeef","kind":38100,"tags":[["d","abc"]],"content":"{}"}"#,
+            r#"{"pubkey":"deadbeef","kind":38210,"tags":[["d","abc"]],"content":"{}"}"#,
         )
         .unwrap();
-        assert_eq!(req.kind, 38_100);
+        assert_eq!(req.kind, 38_210);
         assert_eq!(req.tags[0], vec!["d", "abc"]);
         // PublishRequest has no pubkey field at all; this is a type-level guard.
     }
 
     #[test]
     fn created_at_is_optional_and_tags_default_to_empty() {
-        let req = parse_request(r#"{"kind":38101}"#).unwrap();
+        let req = parse_request(r#"{"kind":38211}"#).unwrap();
         assert_eq!(req.created_at, None);
         assert!(req.tags.is_empty());
         assert_eq!(req.content, "");
