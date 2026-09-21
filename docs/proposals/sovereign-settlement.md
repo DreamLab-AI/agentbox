@@ -152,7 +152,7 @@ flowchart TB
     FO["forum D1 view"]
     VC["VisionClaw: FsPaymentStore deleted; proxy to /v1/wallet"]
   end
-  RELAY["Nostr relays (public + estate chain relays): 23500, 33333, 33500-33502, 38110"]
+  RELAY["Nostr relays (public + estate chain relays): 23500, 33333, 33500-33502, 38220"]
   BTC -->|peg-in / peg-out / ckpt| RC
   RC --> PROD --> NODE
   RC ==nested parent==> C1
@@ -168,7 +168,7 @@ flowchart TB
 **Identity.** A `did:nostr` x-only key is already a chain address. We keep that as the
 binding, not the spending key: identity `k_id` never spends or signs blocks; `k_spend(chain)`
 and `k_sign(chain)` are domain-separated children (`derive_subkey`, nostr-bbs-core
-`keys.rs:251-265`), published as kind **38110** account bindings signed by `k_id` and as a
+`keys.rs:251-265`), published as kind **38220** account bindings signed by `k_id` and as a
 second Multikey in the DID document. This amends ADR-033's single-Multikey form and leaves
 its I1 (no identity migration) intact. Why: upstream reuses one raw key for Nostr identity,
 taproot spends, block sealing and an EVM account with no domain separation; a compromised
@@ -309,7 +309,7 @@ Numbered so ADRs, tests and the DDD invariants can cite them. "Must" is testable
 ### 6.7 Documentation and registry (D)
 
 - **D1** `docs/PROTOCOL-registry.md` (agentbox and host) gains a Nostr-kind table recording
-  the sidestr kinds as externally owned and 38110 as ours.
+  the sidestr kinds as externally owned and 38220 as ours.
 - **D2** `docs/developer/economy-loop.md` is rewritten (it says "Lightning-first"), as is
   solid-pod-rs `docs/explanation/payments-and-web-ledger.md` (it teaches `credit`/`debit` as
   the core operations and fixes the money model as Lightning/L402/NWC), and the VisionFlow
@@ -494,9 +494,12 @@ Still open, and each changes what gets built:
     activity that could count as promotion or custody, which may precede mainnet.
 15. **Child participants.** Recommended: any principal bound on the root chain may hold value
     on a child, nobody else, always validated with the root view. Awaiting confirmation.
-16. **Node access.** The LAN node answers mainnet RPC from agentbox but not testnet4 RPC on the
-    standard port (checked 2026-09-21); the producer needs testnet4 RPC with `txindex` and a
-    dedicated peg wallet reachable from the container.
+16. **Node access.** Closed 2026-09-21: a separate Bitcoin Core testnet4 instance
+    (`bitcoind-testnet4.service`, `txindex=1`, RPC 48332 on the LAN with its own rpcauth users)
+    and a separate Core Lightning testnet4 instance now run on the Dell VM beside the untouched
+    mainnet daemons; the `sidestr-peg` descriptor wallet exists and RPC is verified reachable
+    from the container. Credentials are root-only on the VM. Awaiting funding of the peg
+    address and the end of the initial sync.
 17. **Relay for tips.** Which relay the owner's Damus client reads, if 33333 announcements are
     to be mirrored there; otherwise the estate relay only.
 18. **Upstream engagement.** Melvin shipped spec 0.0.2 (parent aliases, header family from
