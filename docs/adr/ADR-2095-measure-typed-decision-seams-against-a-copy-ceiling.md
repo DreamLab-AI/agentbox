@@ -40,7 +40,7 @@ Four rules, each from a measured failure:
 2. **Exclusion clauses are dropped before indexing.** 50 of our 115 skill rubrics say what
    the skill is *not* for. Indexed as ordinary text they are dense in the vocabulary they
    disclaim, so a turn scores highest on the rubric that exists to reject it. This cost the
-   ceiling a further 5.8 points. It is also an authoring finding: a negative clause buried
+   ceiling a further 4.6 points (79.1 to 83.7). It is also an authoring finding: a negative clause buried
    in positive prose misleads every lexical retrieval over our skill corpus, including
    `/route` and the router's own shortlist.
 3. **A ranker that scores every option identically is flagged, not counted.** Where no
@@ -88,3 +88,7 @@ released corpus at `tests/system-one/routing-cases.json`, and the three rig fixe
 regression tests in `crates/system-one/system-one-eval/src/copy.rs` that construct each
 failure. `verified_paths` is left empty deliberately: this record asserts a practice and a
 set of measurements, not a state of the code that a path diff can check.
+
+## See also
+
+The research write-up of this measurement, the operational harness notes, the corpus, per-run reports and analysis scripts all live in the loom repository: `loom/docs/research/companion-routing/` (write-up, `HARNESS-NOTES.md`, drafts), `loom/uplift-results/routing/` (evidence), `loom/tools/routing-eval/` (rig snapshot). Split from the loom paper on 2026-09-21 after external review; nothing paper-facing is kept in this repository.
