@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
+verified_commit: 5763f1014682c4a69175cd2e30528c6a46f80850
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -167,3 +167,7 @@ The four that moved were all extended for a new gate, not edited for this one, a
 - **Point 4, the default route.** `[security.deepsec]` in `agentbox.toml` is untouched by the diff; `model_auth = "local"` stands, and the LAN-only `custom` alternative through the Loom façade is unaffected — ADR-2094's façade is a typed-decision endpoint, not a deepsec model route, and does not re-point one.
 
 `node scripts/agentbox-config-validate.js agentbox.toml` → `agentbox manifest valid: agentbox.toml (5 advisory warnings)`, none of them deepsec's and none new. Claim STILL TRUE.
+
+### Re-verified 2026-09-21 at 5763f1014682c4a69175cd2e30528c6a46f80850
+
+Two governed paths moved for reasons outside this claim. `management-api/lib/system-manifest.js` changed in two places, both about the ADR-2091 skill router: its catalogue gate moved from the section `skills.routing` (which has no `enabled` key, so it resolved to undefined and failed the ADR-039 parity gate) to the mode string `skills.routing.router`, and `stateOf` learned per-entry `off_values` so `router = "table"` reads as off. The `deepsec` catalogue entry, its `security.deepsec` gate and its apply class are byte-identical. `flake.nix` moved only in the mcp-hub supervisor block (ADR-2104); `git diff e57156a8f..HEAD -- flake.nix | grep -i deepsec` is empty, so the baked CLI, its manifest gate and the names-only credential policy are untouched. Re-established at HEAD: `node scripts/ci/check-manifest-catalogue.js` PASSes all 65 gate paths, the composed view reports `deepsec: on`, and `node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs` is green. Claim STILL TRUE.

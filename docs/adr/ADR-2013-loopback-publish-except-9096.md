@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: 5763f1014682c4a69175cd2e30528c6a46f80850
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -219,3 +219,7 @@ Existing runtime activation limits remain. Verification is renewed at
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `.github/workflows/invariants.yml` (new unrelated steps), `docker-compose.yml` (Loom/annexe env, an `opencode-store` volume) and `flake.nix`. Re-established by running the gate itself over a clean worktree at `HEAD` (`git worktree add --detach … HEAD; bash scripts/ci/check-ports-loopback.sh`) → exit 0, with the 8 declared supervisor binds reported and every non-loopback one sanctioned. The CI wiring is still present at `.github/workflows/invariants.yml:52-53`. Claim STILL TRUE. **Caveat for the record, not a defect in it:** the same check fails in the *working tree* on the untracked `docker-compose.system-one.yml:85` (`0.0.0.0:8097:8097`), which will break this invariant the moment that work is committed unsanctioned.
+
+### Re-verified 2026-09-21 at 5763f1014682c4a69175cd2e30528c6a46f80850
+
+Two governed paths moved, neither touching the exposure surface. `.github/workflows/invariants.yml` gained ONE trigger path, `tests/security/**`, so that editing a gate's own unit test re-runs the job that asserts the rule: the check-ports-loopback and check-listeners steps themselves are unchanged and still run on every push and pull request. `flake.nix` changed only the supervisor restart policy of `[program:agentbox-mcp-hub]` (ADR-2104: `--wait-config-secs 120`, `autorestart=unexpected`, `startsecs=130`, `startretries=2`); its bind is still `--bind ${mcpHubBind}`, loopback, and no publish or listener was added or moved. Re-established at HEAD: `sh scripts/ci/check-ports-loopback.sh` PASSes over every compose overlay, and `node --test tests/security/check-listeners.test.mjs` is 15/15 including the restored non-loopback fixtures. Claim STILL TRUE.

@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_96 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_97 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -159,3 +159,4 @@ _96 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2101](ADR-2101-federation-topology-and-key-separation.md) | One root chain signed k-of-n by the federated instances, ephemeral child chains bound at session create, and domain-separated spend and signer keys that amend ADR-033 | INGRESS-identity | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2102](ADR-2102-assets-are-bridged-in-rgb-as-a-wrapped-asset.md) | External assets are bridged in; RGB enters only as a wrapped asset behind an isolated rgb-lib process, re-sequencing ADR-124 for the bridged case alone | BASELINE-container | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2103](ADR-2103-parent-chain-and-header-profile-are-configuration-behind-the-p21-gate.md) | The parent network and header profile are manifest configuration exposed by onboarding, bound into the chain document at genesis, with mainnet variants behind an implemented owner-and-legal gate | BASELINE-container | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2104](ADR-2104-direct-control-over-mcp.md) | A crate is the control surface; an MCP server is a disposable adapter over it | BASELINE-container | 2026-09-21 | proposed | partial | staged | — | — | jjohare | agentbox |
