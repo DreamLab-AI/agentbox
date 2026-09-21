@@ -106,9 +106,10 @@ struct RunArgs {
     /// Bearer token. Prefer `--key-env`.
     #[arg(long)]
     key: Option<String>,
-    /// Environment variable holding the bearer token.
-    #[arg(long)]
-    key_env: Option<String>,
+    /// Environment variable holding the bearer token. Defaults to
+    /// `SSO_API_KEY`, so exporting that is enough.
+    #[arg(long, default_value = "SSO_API_KEY")]
+    key_env: String,
     /// Concurrent in-flight requests.
     #[arg(long, default_value_t = 4)]
     concurrency: usize,
@@ -153,9 +154,10 @@ struct CopyCeilingArgs {
     /// Bearer token. Prefer `--key-env`.
     #[arg(long)]
     key: Option<String>,
-    /// Environment variable holding the bearer token.
-    #[arg(long)]
-    key_env: Option<String>,
+    /// Environment variable holding the bearer token. Defaults to
+    /// `SSO_API_KEY`, so exporting that is enough.
+    #[arg(long, default_value = "SSO_API_KEY")]
+    key_env: String,
     /// Concurrent in-flight requests. One by default: the openjev engine is
     /// serialised by a tokeniser lock, so more in flight only queues.
     #[arg(long, default_value_t = 1)]
@@ -291,6 +293,35 @@ fn write_json(path: &Option<PathBuf>, value: &impl serde::Serialize) -> Result<(
     std::fs::write(path, text).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
     eprintln!("report written to {}", path.display());
     Ok(())
+}
+
+/// Is this backend on this machine or this network?
+///
+/// Deliberately conservative: anything that is not obviously loopback or a
+/// private range counts as remote and therefore requires a credential. The
+/// cost of a false "remote" is one flag; the cost of a false "local" is a run
+/// that reports 403s as if the service were down.
+fn is_local_url(url: &str) -> bool {
+    let host = url
+        .split("://")
+        .nth(1)
+        .unwrap_or(url)
+        .split('/')
+        .next()
+        .unwrap_or("")
+        .split('@')
+        .next_back()
+        .unwrap_or("")
+        .rsplit(':')
+        .next_back()
+        .unwrap_or("");
+    host == "localhost"
+        || host == "systemone"
+        || host.starts_with("127.")
+        || host.starts_with("10.")
+        || host.starts_with("192.168.")
+        || host.starts_with("172.16.")
+        || host == "::1"
 }
 
 #[tokio::main]
@@ -455,12 +486,22 @@ async fn judge_report(args: &CopyCeilingArgs, loaded: &Loaded) -> Result<Report,
     let key = args
         .key
         .clone()
-        .or_else(|| {
-            args.key_env
-                .as_ref()
-                .and_then(|name| std::env::var(name).ok())
-        })
+        .or_else(|| std::env::var(&args.key_env).ok())
         .filter(|k| !k.is_empty());
+    // A remote backend with no credential answers 403 for every case, and the
+    // report then shows a judge that "never answered" — which reads exactly
+    // like an outage. Refuse instead: a measurement rig must not let a missing
+    // credential masquerade as an unavailable service. Loopback backends stay
+    // unauthenticated by design (ADR-2094 §2).
+    if key.is_none() && !is_local_url(&url) {
+        return Err(format!(
+            "no bearer token for remote backend {url}. Pass --key, or export {} \
+             (or name another var with --key-env). Refusing to run: an \
+             unauthenticated remote run returns 403 on every case, and the \
+             report is then indistinguishable from the backend being unavailable.",
+            args.key_env
+        ));
+    }
     let backend = Backend {
         label: args.label.clone(),
         url,
@@ -519,11 +560,7 @@ fn backend_of(args: &RunArgs) -> Backend {
     let key = args
         .key
         .clone()
-        .or_else(|| {
-            args.key_env
-                .as_ref()
-                .and_then(|name| std::env::var(name).ok())
-        })
+        .or_else(|| std::env::var(&args.key_env).ok())
         .filter(|k| !k.is_empty());
     Backend {
         label: args.label.clone(),

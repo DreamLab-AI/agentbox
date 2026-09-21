@@ -38,7 +38,8 @@
 //!
 //! The copy threshold is **oracle-tuned**: swept over this corpus and reported
 //! at the value that maximises the *baseline's own* accuracy on the very data
-//! it is evaluated on. The judge keeps whatever threshold the run used. That
+//! it is evaluated on, and that tuning must actually FIND the maximum or the
+//! floor argument it buys is void. The judge keeps whatever threshold the run used. That
 //! handicaps the judge, so the reported gain is a **floor** on its advantage —
 //! which is the direction an honest control should err in.
 //!
@@ -46,8 +47,10 @@
 //!
 //! Both rankers are deterministic: the tokeniser, the stoplist and the BM25
 //! constants are fixed here, ties break to the lower candidate index (stable
-//! sort), and the threshold grid is a fixed 41-point sweep between the observed
-//! minimum and maximum best-score. The embedding ranker sends **one text per
+//! sort), and the threshold sweep enumerates every breakpoint of the decline
+//! rule — one below the smallest observed score, the midpoint of each adjacent
+//! pair, and one above the largest — so the oracle search cannot miss the
+//! maximum the way a fixed-width grid can. The embedding ranker sends **one text per
 //! request, sequentially** — the estate's Xinference endpoint returns global
 //! batch offsets in `data[].index` when concurrent requests merge (verified
 //! 2026-09-20), so only positional order within a single-input request is
@@ -68,7 +71,11 @@ pub const BM25_K1: f64 = 1.5;
 /// BM25 length normalisation.
 pub const BM25_B: f64 = 0.75;
 
-/// Points in the oracle threshold sweep, inclusive of both ends.
+/// Retired: the oracle sweep no longer uses a fixed-width grid, because one
+/// cannot be guaranteed to contain the maximising threshold. See
+/// [`Ranked::grid`]. Kept only so a downstream reader of this constant fails
+/// loudly rather than silently sweeping the wrong thing.
+#[deprecated(note = "the threshold sweep is exhaustive over breakpoints; see Ranked::grid")]
 pub const SWEEP_POINTS: usize = 41;
 
 /// Characters of a text sent to the embeddings endpoint.
@@ -302,13 +309,70 @@ pub struct Exposure {
     pub doc_tokens: Vec<Vec<String>>,
 }
 
+/// Markers that open an option's EXCLUSION clause — the part of a rubric that
+/// says what the option is *not* for, and which option to use instead.
+///
+/// Lower-cased substring match, first hit wins, everything from the marker to
+/// the end of the rubric is dropped before indexing.
+pub const EXCLUSION_MARKERS: &[&str] = &[
+    "not for",
+    "never for",
+    "skip for",
+    "skip when",
+    "do not use",
+    "do not choose",
+    "choose this only when",
+    "rather than this",
+    ", not this",
+    "instead of this",
+    "use the ",
+];
+
+/// Everything before the first exclusion marker, or the whole rubric.
+///
+/// Why a copy control MUST do this. A rubric's exclusion clause names the
+/// option's topical NEIGHBOURS: "NOT for distributed sync, use X" is dense in
+/// exactly the vocabulary of the thing it disclaims. Indexed as ordinary
+/// positive text — which is what a single undifferentiated bag does — it scores
+/// a turn about distributed sync HIGHEST on the rubric that exists to say it is
+/// not for distributed sync. That is not a conservative ceiling, it is a
+/// mis-indexed one, and it understates the copy a real copier could perform.
+///
+/// Deletion, not subtraction. Subtracting an exclusion field as negative
+/// evidence was measured WORSE at every weight tried, for the same reason the
+/// clause is dangerous in the first place: penalising a rubric on its own
+/// neighbourhood pushes it down precisely where it is most relevant.
+///
+/// The paper this instrument implements argues that a copy ceiling must be the
+/// strongest judge-free procedure available, because the whole value of the
+/// control is that the gain above it is a floor. On this repository's routing
+/// corpus, indexing exclusion clauses positively cost the ceiling 5.8 points
+/// (79.1% to 84.9%) and manufactured most of a judge advantage that does not
+/// survive their removal. An instrument that deflates other people's results
+/// has to survive its own test first.
+fn strip_exclusion_clause(rubric: &str) -> &str {
+    let lower = rubric.to_lowercase();
+    match EXCLUSION_MARKERS
+        .iter()
+        .filter_map(|m| lower.find(m))
+        .min()
+    {
+        Some(cut) => rubric[..cut].trim_end(),
+        None => rubric,
+    }
+}
+
 impl Exposure {
     /// Build the exposure from the rig's candidate map.
+    ///
+    /// Each option is rendered `"<key>: <rubric>"` with its exclusion clause
+    /// removed (see [`strip_exclusion_clause`]). The key is kept because the
+    /// judge sees it too.
     pub fn new(candidates: &indexmap::IndexMap<String, String>) -> Self {
         let names: Vec<String> = candidates.keys().cloned().collect();
         let rubrics: Vec<String> = candidates
             .iter()
-            .map(|(name, rubric)| format!("{name}: {rubric}"))
+            .map(|(name, rubric)| format!("{name}: {}", strip_exclusion_clause(rubric)))
             .collect();
         let doc_tokens = rubrics.iter().map(|r| tokenise(r)).collect();
         Self {
@@ -316,6 +380,14 @@ impl Exposure {
             rubrics,
             doc_tokens,
         }
+    }
+
+    /// How many options carried an exclusion clause that was dropped.
+    pub fn excluded_clause_count(candidates: &indexmap::IndexMap<String, String>) -> usize {
+        candidates
+            .values()
+            .filter(|r| strip_exclusion_clause(r).len() < r.len())
+            .count()
     }
 }
 
@@ -326,10 +398,24 @@ pub struct Pick {
     pub top: Vec<String>,
     /// The absolute score of the best option — what the decline threshold sees.
     pub best_score: f64,
+    /// Every option scored identically, so this "pick" is the tie-break order
+    /// and nothing else. Overwhelmingly the all-zero case: no option's text
+    /// shares a content token with the state.
+    ///
+    /// Reported rather than hidden because a ceiling built from degenerate
+    /// picks is not a measurement of what a copier achieves — it is the rate at
+    /// which the candidate-map order happens to put the gold first, which is
+    /// chance. Long, overlapping rubrics hide this completely (it never occurs
+    /// on this repository's routing corpus); short option labels do not, and
+    /// external suites reach 100% degenerate on some slices.
+    #[serde(default)]
+    pub degenerate: bool,
 }
 
 /// Rank scores into a [`Pick`], ties breaking to the lower candidate index.
 fn pick_from(scores: &[f64], names: &[String]) -> Pick {
+    let first = scores.first().copied().unwrap_or(0.0);
+    let degenerate = scores.len() > 1 && scores.iter().all(|s| (s - first).abs() < f64::EPSILON);
     let mut order: Vec<usize> = (0..names.len()).collect();
     // Stable sort: equal scores keep candidate-map order, so the ranking is
     // reproducible rather than dependent on the sort's internals.
@@ -345,6 +431,7 @@ fn pick_from(scores: &[f64], names: &[String]) -> Pick {
             .map(|i| names[*i].clone())
             .collect::<Vec<_>>(),
         best_score: order.first().map_or(f64::NEG_INFINITY, |i| scores[*i]),
+        degenerate,
     }
 }
 
@@ -434,21 +521,43 @@ impl Ranker {
         }
     }
 
-    /// The fixed 41-point threshold grid between the observed score extremes.
+    /// Every threshold that can change this ranker's answer: one below the
+    /// smallest observed score, the midpoint between each adjacent pair of
+    /// observed scores, and one above the largest.
+    ///
+    /// A `decline if best_score < t` rule is a step function of `t` whose only
+    /// breakpoints are the observed scores, so this enumeration is exhaustive:
+    /// it is guaranteed to contain the accuracy-maximising threshold. An
+    /// evenly-spaced grid is NOT, and the difference is not academic — the
+    /// previous 41-point grid stepped over the true optimum on this repository's
+    /// own routing corpus, reporting a BM25 ceiling of 66/86 where 68/86 was
+    /// attainable in the window `9.5715 < t <= 9.7420`. That understated the
+    /// ceiling by 2.3 points and so OVERSTATED the judge's gain by the same
+    /// amount, which is the one direction an oracle-tuned control must never
+    /// err in: the whole argument for tuning the baseline on its own evaluation
+    /// set is that doing so makes the reported gain a floor, and a grid search
+    /// that misses the maximum silently withdraws that guarantee.
     pub fn grid(&self) -> Vec<f64> {
-        let mut lo = f64::INFINITY;
-        let mut hi = f64::NEG_INFINITY;
-        for pick in &self.picks {
-            lo = lo.min(pick.best_score);
-            hi = hi.max(pick.best_score);
-        }
-        if !lo.is_finite() || !hi.is_finite() {
+        let mut scores: Vec<f64> = self
+            .picks
+            .iter()
+            .map(|p| p.best_score)
+            .filter(|s| s.is_finite())
+            .collect();
+        if scores.is_empty() {
             return vec![f64::NEG_INFINITY];
         }
-        let steps = SWEEP_POINTS - 1;
-        (0..=steps)
-            .map(|i| lo + (hi - lo) * i as f64 / steps as f64)
-            .collect()
+        scores.sort_by(|a, b| a.partial_cmp(b).expect("finite"));
+        scores.dedup();
+        let mut out = Vec::with_capacity(scores.len() + 1);
+        // Below every score: decline nothing.
+        out.push(scores[0] - 1.0);
+        for pair in scores.windows(2) {
+            out.push(f64::midpoint(pair[0], pair[1]));
+        }
+        // Above every score: decline everything.
+        out.push(scores[scores.len() - 1] + 1.0);
+        out
     }
 
     /// The threshold that maximises this ranker's OWN top-1 accuracy here.
@@ -1052,10 +1161,12 @@ mod tests {
                 Pick {
                     top: vec!["a".into(), "b".into(), "c".into()],
                     best_score: 0.9,
+                    degenerate: false,
                 },
                 Pick {
                     top: vec!["b".into(), "a".into(), "c".into()],
                     best_score: 0.1,
+                    degenerate: false,
                 },
             ],
         }
@@ -1090,11 +1201,63 @@ mod tests {
         let best = ranker().oracle(&expected);
         assert!((best.top1 - 1.0).abs() < 1e-12);
         assert!(best.threshold > 0.1 && best.threshold <= 0.9);
-        // 41 points spanning the observed scores, ends inclusive.
+        // The sweep enumerates the decline rule's breakpoints: one below the
+        // smallest score, a midpoint per adjacent pair, one above the largest.
         let grid = ranker().grid();
-        assert_eq!(grid.len(), SWEEP_POINTS);
-        assert!((grid[0] - 0.1).abs() < 1e-12);
-        assert!((grid[SWEEP_POINTS - 1] - 0.9).abs() < 1e-12);
+        assert_eq!(grid.len(), 3, "two distinct scores yield below/mid/above");
+        assert!(grid[0] < 0.1, "first threshold declines nothing");
+        assert!(grid[2] > 0.9, "last threshold declines everything");
+        assert!(grid[1] > 0.1 && grid[1] < 0.9, "midpoint separates the two");
+    }
+
+    #[test]
+    fn an_all_equal_score_vector_is_flagged_degenerate() {
+        // No option's text shares a content token with the state, so BM25
+        // returns zeros and the "pick" is only the candidate-map order. On
+        // external suites with short option labels this reaches 100% of a
+        // slice; a ceiling built from these is chance, not a copy.
+        let names = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let flat = pick_from(&[0.0, 0.0, 0.0], &names);
+        assert!(flat.degenerate, "an all-zero score vector is not a ranking");
+        assert_eq!(flat.top[0], "a", "ties still break to candidate-map order");
+        let real = pick_from(&[0.0, 2.0, 0.0], &names);
+        assert!(!real.degenerate);
+        assert_eq!(real.top[0], "b");
+    }
+
+    #[test]
+    fn a_fixed_width_grid_can_miss_the_maximum_that_the_breakpoint_sweep_finds() {
+        // The regression this guards: on the routing corpus a 41-point even
+        // grid reported a BM25 ceiling of 66/86 where 68/86 was attainable,
+        // because the winning window was narrower than one grid step. Two
+        // `none` items sat just under a cluster of correctly-answered skill
+        // items, so only a threshold inside that gap recovers them.
+        let scores = [0.10_f64, 9.5715, 9.5716, 9.7420, 9.7421];
+        let picks: Vec<Pick> = scores
+            .iter()
+            .map(|s| Pick {
+                top: vec!["a".into(), "b".into(), "c".into()],
+                best_score: *s,
+                degenerate: false,
+            })
+            .collect();
+        let ranked = Ranker {
+            label: "t".into(),
+            picks,
+        };
+        let grid = ranked.grid();
+        // Exhaustive: a threshold strictly inside the narrow gap exists.
+        assert!(
+            grid.iter().any(|t| *t > 9.5716 && *t <= 9.7420),
+            "breakpoint sweep must contain a threshold inside the winning window"
+        );
+        // A 41-point even sweep over the same range does not.
+        let (lo, hi) = (0.10_f64, 9.7421_f64);
+        let even: Vec<f64> = (0..=40).map(|i| lo + (hi - lo) * i as f64 / 40.0).collect();
+        assert!(
+            !even.iter().any(|t| *t > 9.5716 && *t <= 9.7420),
+            "the even grid is expected to step over the window — that was the bug"
+        );
     }
 
     #[test]
