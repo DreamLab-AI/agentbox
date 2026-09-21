@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_97 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_98 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -140,7 +140,7 @@ _97 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2082](ADR-2082-orchestration-proxy-behind-governed-memory-server.md) | The governed claude-flow server forwards orchestration tools to a filtered ruflo child; memory never crosses | LEARNING-memory | 2026-09-07 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2083](ADR-2083-skills-estate-authoring-contract-and-generated-discovery.md) | Skills carry one authoring contract, discovery is generated, and both harnesses register from manifests | GOVERNANCE-capabilities | 2026-09-09 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2084](ADR-2084-one-published-loom-client-for-every-facade-caller.md) | One published loom-client for every façade caller | — | 2026-09-13 | accepted | complete | live | — | — | jjohare | agentbox |
-| [ADR-2085](ADR-2085-colloquy-knowledge-units-on-the-forum.md) | Adopt the cq shared-learning model as signed knowledge units on kinds 38100-38105 | — | 2026-09-13 | proposed | partial | inactive | — | — | jjohare | agentbox |
+| [ADR-2085](ADR-2085-colloquy-knowledge-units-on-the-forum.md) | Adopt the cq shared-learning model as signed knowledge units on kinds 38410-38415 (minted at 38100-38105, moved by ADR-2105) | — | 2026-09-13 | proposed | partial | inactive | — | — | jjohare | agentbox |
 | [ADR-2086](ADR-2086-confirmation-weight-follows-authorising-principals.md) | Confirmation weight follows authorising principals, never member accounts | — | 2026-09-13 | proposed | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2087](ADR-2087-task-properties-receipts-and-manual-continuation.md) | Action authority carries a task-property triple, every gate outcome leaves a record, and an outage has a signed continuation path | — | 2026-09-14 | accepted | complete | inactive | — | — | jjohare | agentbox |
 | [ADR-2088](ADR-2088-grill-before-acting-on-forum-suggestions.md) | JunkieJarvis grills the author before acting on an unclear forum item | — | 2026-09-15 | proposed | complete | inactive | — | — | jjohare | agentbox |
@@ -160,3 +160,4 @@ _97 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2102](ADR-2102-assets-are-bridged-in-rgb-as-a-wrapped-asset.md) | External assets are bridged in; RGB enters only as a wrapped asset behind an isolated rgb-lib process, re-sequencing ADR-124 for the bridged case alone | BASELINE-container | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2103](ADR-2103-parent-chain-and-header-profile-are-configuration-behind-the-p21-gate.md) | The parent network and header profile are manifest configuration exposed by onboarding, bound into the chain document at genesis, with mainnet variants behind an implemented owner-and-legal gate | BASELINE-container | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2104](ADR-2104-direct-control-over-mcp.md) | A crate is the control surface; an MCP server is a disposable adapter over it | BASELINE-container | 2026-09-21 | proposed | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2105](ADR-2105-agentbox-kind-bands-and-the-colloquy-move.md) | The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499 | — | 2026-09-21 | proposed | partial | inactive | — | — | jjohare | agentbox |

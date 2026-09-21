@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
+verified_commit: 224afae65a3bae1391e76e3e9a5fcbe114cac8a4
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -153,3 +153,5 @@ The diff adds a new capability, which makes this record the one being *tested* r
 **One caveat recorded honestly, not papered over.** The entrypoint emits `$_SSO_EXPORTS` unquoted into the expanding heredoc that generates `runtime-env.sh` (`config/entrypoint-unified.sh:2722`). With the gate off that variable is empty, so the *exported environment* is byte-identical to the pre-2094 state — every consumer resolves exactly what it did before — but the generated *file* gains three comment lines and one blank line. This is the same shape already in place for `$_MRN_EXPORTS` (ADR-2080) two dozen lines above, so it is an established pattern rather than a new departure, and it is inert. It is noted here because this record's Consequences explicitly say the byte-identical-when-off guarantee "must be re-checked whenever a new gate is added" — this is that re-check, and its result is: identical in effect, not identical in bytes, for the generated env file. `implementation_status` stays `partial` for the reason already recorded: that guarantee still has no build evidence.
 
 Commands: `git diff b680a7ae..HEAD -- agentbox.toml skills/tree-search-coder/SKILL.md services/agentbox-ops/src/bin/tree-search-cap.rs`; `node scripts/agentbox-config-validate.js agentbox.toml` → `agentbox manifest valid (5 advisory warnings)`, none of them new. Claim STILL TRUE.
+
+**2026-09-21 re-verified at `224afae65`.** Governed paths changed by the ADR-2105 kind move: agentbox.toml. The change is a kind-number relocation (colloquy 38100-38105 to 38410-38415, settlement 38110-38115 to 38420-38425) plus six numbers appended to `[sovereign_mesh.relay].allowed_kinds` and a comment above it; it touches no section this record governs. The decision and its invariant hold unchanged. Re-verified by `git diff e57156a8f..224afae65 -- <verified_paths>`; no re-implementation was needed.

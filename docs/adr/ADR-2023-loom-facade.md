@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
+verified_commit: 224afae65a3bae1391e76e3e9a5fcbe114cac8a4
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -226,3 +226,5 @@ Tripped by `agentbox.toml`; `mcp/servers/lib/ontology-retrieval.js` also moved (
 ## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
 
 Tripped by `agentbox.toml` alone (`b680a7ae`, ADR-2094); `mcp/servers/lib/ontology-retrieval.js` is unchanged since the previous anchor. ADR-2094 adds a second external endpoint to the manifest, so this record's "never a raw model port" clause was checked directly rather than waved through. The added block names `endpoint = "http://systemone:8097/v1/systemone"` (the typed-decision façade — choice/score/noul, its own protocol, not an OpenAI chat surface) and `embeddings_url = "http://192.168.2.132:9997/v1/embeddings"` (the estate's Xinference embeddings service). Neither is a model port behind the Loom, and no scaffolded consumer is re-pointed: `agentbox.toml:807` `endpoint = "${LOOM_BASE_URL}"` and `:2004` `loom_url = "${LOOM_BASE_URL}"` are unchanged, so the façade remains the door for every consumer that had it. The two subsystems are disjoint — the Loom is the model-swap door for grounded generation, the SSO façade is the door for typed decisions — and each keeps a stable endpoint its consumers hold. Claim STILL TRUE.
+
+**2026-09-21 re-verified at `224afae65`.** Governed paths changed by the ADR-2105 kind move: agentbox.toml. The change is a kind-number relocation (colloquy 38100-38105 to 38410-38415, settlement 38110-38115 to 38420-38425) plus six numbers appended to `[sovereign_mesh.relay].allowed_kinds` and a comment above it; it touches no section this record governs. The decision and its invariant hold unchanged. Re-verified by `git diff e57156a8f..224afae65 -- <verified_paths>`; no re-implementation was needed.

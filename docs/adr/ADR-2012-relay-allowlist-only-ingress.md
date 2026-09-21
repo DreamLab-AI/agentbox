@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1639f86abded1441ce148d6c47924dfaf34f96af
+verified_commit: 224afae65a3bae1391e76e3e9a5fcbe114cac8a4
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -206,3 +206,5 @@ Tripped by feature blocks added to `agentbox.toml` (colloquy, jev-compaction, sk
 ## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
 
 Tripped by `agentbox.toml` alone (`b680a7ae`, ADR-2094 Sovereign System One); `flake.nix` is unchanged since the previous anchor. `git diff b680a7ae..HEAD -- agentbox.toml flake.nix` shows one addition: a `[features.sovereign_system_one]` block with `enabled = false`. It adds no publisher, no relay mode and no ingress path — the allowlist sections this record governs are untouched. Re-read at HEAD in a detached worktree: relay ingress policy and the 64-hex allowlist are as recorded, `agent_event_auth = "nip98"` stands, and nothing auto-inserts the operator pubkey. Claim STILL TRUE.
+
+**2026-09-21 re-verified at `224afae65`.** Governed paths changed by the ADR-2105 kind move: agentbox.toml. This record governs `[sovereign_mesh.relay]` directly, so the diff was read in full: `ingress_policy = "allowlist"` (`agentbox.toml:151`) and `allowed_pubkeys` (`:157`) are untouched, and the only change is six kind numbers (38410-38415) appended to `allowed_kinds` with an explanatory comment. `allowed_kinds` widens *what* an already-admitted publisher may write, never *who* may write; the allowlist-only admission decision and its invariant hold unchanged. Re-verified by `git diff 1639f86ab..224afae65 -- agentbox.toml flake.nix`.
