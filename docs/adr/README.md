@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_88 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_96 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -151,3 +151,11 @@ _88 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2093](ADR-2093-jev-verbatim-compaction.md) | Compact context by Jev judgement, verbatim, with email fenced out and a switch | — | 2026-09-18 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2094](ADR-2094-local-capacity-adapting-typed-decision-facade.md) | Answer typed decisions on a local capacity-adapting façade, and relax the email fence only on proven backend locality | GOVERNANCE-capabilities | 2026-09-20 | accepted | partial | inactive | — | — | jjohare | agentbox |
 | [ADR-2095](ADR-2095-measure-typed-decision-seams-against-a-copy-ceiling.md) | Measure every typed-decision seam against a copy ceiling before choosing a judge | LEARNING-memory | 2026-09-21 | accepted | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2096](ADR-2096-sidestr-sidechains-are-the-sole-value-instrument.md) | Our own sidestr sidechains are the sole value instrument, built clean-room in Rust with rust-bitcoin accepted | BASELINE-container | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2097](ADR-2097-sidestr-rail-supersedes-lightning-first.md) | The sidestr rail supersedes Lightning-first, and pay402 gains a fixtured sidestr scheme | GOVERNANCE-capabilities | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2098](ADR-2098-chain-and-asset-urn-kinds-and-the-chain-nostr-plane.md) | Mint chain and asset URN kinds, register the sidestr Nostr kinds, and carry chain traffic on a dedicated program authenticated by consensus rather than the identity relay allowlist | INGRESS-identity | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2099](ADR-2099-the-chain-is-the-ledger-of-record.md) | The chain is the ledger of record; a balance is a UTXO fold, every existing ledger is a derived view, and the blocktrail txo seam opens onto the gitmark provenance chain | BASELINE-container | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2100](ADR-2100-every-settlement-passes-the-authority-gate.md) | Every chain settlement passes the payment_settlement authority gate, the spend budget is durable, and no settlement gate fails open | GOVERNANCE-capabilities | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2101](ADR-2101-federation-topology-and-key-separation.md) | One root chain signed k-of-n by the federated instances, ephemeral child chains bound at session create, and domain-separated spend and signer keys that amend ADR-033 | INGRESS-identity | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2102](ADR-2102-assets-are-bridged-in-rgb-as-a-wrapped-asset.md) | External assets are bridged in; RGB enters only as a wrapped asset behind an isolated rgb-lib process, re-sequencing ADR-124 for the bridged case alone | BASELINE-container | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
+| [ADR-2103](ADR-2103-parent-chain-and-header-profile-are-configuration-behind-the-p21-gate.md) | The parent network and header profile are manifest configuration exposed by onboarding, bound into the chain document at genesis, with mainnet variants behind an implemented owner-and-legal gate | BASELINE-container | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
