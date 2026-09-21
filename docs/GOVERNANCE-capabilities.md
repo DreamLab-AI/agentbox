@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.5.0
+version: 0.6.0
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.0 (2026-09-21): PROPOSED, not ratified. ADR-2097/2100/2103 (PRD-024 sovereign settlement): every chain settlement passes the payment_settlement authority class (31402 out, signed 31403 in, hash-chained authority.deny, mirrored receipt), the daily spend budget becomes durable on the memory slot, settlement fails closed, spend authorisation counts authorising principals rather than accounts, the P21 mainnet gate becomes a build and deploy gate whose 31403 receipt is bound on-seal, and the anchor-not-seal vocabulary rule. Recorded as proposed invariants in a clearly marked section; the Invariants compliance surface above is unchanged."
   - "0.5.0 (2026-09-20): ADR-2094 — typed decisions may be answered by a local capacity-adapting facade (Sovereign System One) that speaks the Jev wire protocol; gated off by default, no cloud fallback on any path, and the ADR-2093 email fence relaxes only on an explicit backendLocal boolean from resolved config, never inferred from a URL."
   - "0.4.0 (2026-09-14): ADR-2087 — the action authority axis gains the ADR-2011 task-property triple (stamped as tp-* tags on every 31402 agentbox publishes), every gate denial is journalled as a hash-chained authority.deny readable at /v1/agent-events, application receipts are mirrored to the forum so the approving human learns the outcome, governance_manual_continue gives an outage a signed continuation path, and the dream ledger gains Reviewer / Review-minutes."
   - "0.3.3 (2026-09-06): ADR-2080 — the metaharness cost-optimal router runs as the dedicated AoE `router` session (Phase 0 of ADR-2079): artefacts vendored from one pinned manifest, task embedded offline, scoped to that session, public tier only."
@@ -473,3 +474,78 @@ selected, if ever, by a `system-one-eval` run and never by a model card. The
 security-relevant half of the record is the `backendLocal` invariant above; it lands last
 and separately, because it is the only change in the programme that can weaken an existing
 control.
+
+## Settlement authority — PROPOSED, 2026-09-21
+
+**`decision_status: proposed`. Nothing here is built, and the gap this section exists to close is
+live today.** Verified 2026-09-21: `agentbox.toml [skills.authority.classes]` declares
+`payment_settlement = "zero-tolerance"` with `verifiability = inspectable` and `stakes = critical`,
+and the Invariants above already require a zero-tolerance action to block on a signed 31402 to
+31403 round trip, journal every deny as a hash-chained `authority.deny` and mirror the outcome to
+the approving human (ADR-2087). But `management-api/routes/payments.js` never requires
+`lib/authority.js` (only `broker-bridge.js` and `llm-marketplace.js` do), so **the class currently
+gates nothing**. ADR-2100 closes that; ADR-2097 and ADR-2103 carry the rail and the mainnet gate.
+
+The invariants below join [Invariants](#invariants-must-not-silently-change) verbatim on
+ratification of [PRD-024](proposals/sovereign-settlement.md). Until then they are candidates and no
+gate, test or review may cite them as binding.
+
+- **PROPOSED — every settlement passes the gate, from the first commit (ADR-2100 D1).** Every chain
+  spend, peg-out, child-chain funding and bridge redemption passes `lib/authority.js` under
+  `payment_settlement`: emit a kind-31402 carrying the task-property triple
+  (`management-api/lib/task-properties.js:172`), block on a signed kind-31403 above
+  `[payments.consumer].approval_threshold_sats`, journal every deny through
+  `management-api/lib/authority.js:213`, and mirror the outcome via
+  `governance-receipt-publisher.js`. This applies to `/v1/wallet/*` and `/v1/chain/*` from their
+  first commit and is retrofitted onto `/v1/pay/*`. **No new governance mechanism is added; the
+  existing one is called.**
+- **PROPOSED — deterministic policy is the only authoriser, and the budget is durable (ADR-2100 D2).**
+  `middleware/spend-policy.js` keeps `max_sats_per_call`, `daily_budget_sats`, the origin allowlist
+  and the approval threshold. A model may *request* a spend and can never *authorise* one above
+  policy. The daily budget stops living in process memory (`spend-policy.js:36-39`, reset on every
+  restart) and becomes durable through the existing `memory` adapter slot, on the ADR-2085
+  precedent of consuming a slot rather than adding one; the privacy filter (ADR-2036) classifies
+  the financial state it carries. Thresholds are per asset with a per-principal multiplier, because
+  one global sats figure is wrong for a wrapped USD asset (D6).
+- **PROPOSED — settlement fails closed (ADR-2100 D3).** `COST_GATE_FAIL_CLOSED` is forced true on
+  any chain-settling path: "backend unreachable" never means "assume unspent". The fail-open
+  default at `middleware/cost-gate.js:67-70` remains acceptable only for the legacy sats
+  micro-debit and is retired with it.
+- **PROPOSED — every outcome mints a receipt, including denied and failed (ADR-2100 D4).** Through
+  `lib/uris.js` (`receipt-minter.js` OUTCOMES), appended to the ADR-039 hash-chained events log.
+  The audit trail has no gaps, which is the discipline the buy-side already keeps.
+- **PROPOSED — spend authorisation counts authorising principals, never accounts (ADR-2100 D5).**
+  `sidestr-wallet` takes `colloquy-core` as a library dependency (ADR-2086): an operator's fifty
+  agents are one voice, and an unregistered pubkey is dropped rather than self-authorising.
+  Authorisation is frozen to a point-in-time receipt, so a later revocation never un-confirms a
+  settled spend.
+- **PROPOSED — the P21 gate is a build and deploy gate, and its receipt is bound on-seal
+  (ADR-2103 D4).** A chain document whose `parent` is a mainnet variant, or whose `currencyPin` is
+  `btc`, or whose `cashOut` is enabled, cannot be sealed unless a signed kind-31403 approval from
+  the owner and legal principals exists and **its event id is written into the document as
+  `p21Receipt` before `genesisHash` is computed**. A CI check fails the build if a mainnet chain
+  document exists without a resolvable receipt, and the node refuses to open one. The faucet (kind
+  23501) is compiled out for mainnet variants, and `cash_out = false` with the bridge disabled are
+  the defaults. Host ADR-124 §7 specified this containment as an on-seal commitment and none of it
+  was built; this makes it a property of the chain document rather than a flag.
+- **PROPOSED — the rail is fixture-gated, not an extension point (ADR-2097).** `pay402.js` gains a
+  fourth scheme, `sidestr`, as a revision of legacy ADR-032 D2 rather than a runtime extension
+  point: detection shape frozen and fixtured in `tests/contract/pay402/` as captured bytes,
+  immutable once landed (ADR-032 D4), `payable: true` only when `CONSUMER_ENABLED` and
+  `[sidechain]` both hold. `x402` and `l402` keep classifying and stay `payable: false`;
+  `unknown` remains terminal and unpayable. **Lightning-first (legacy ADR-032 D5, PRD-015 C10) is
+  superseded**: NWC, NIP-47 and the L402 payable path are not built, and Lightning may return only
+  as a bridge on-ramp into a chain, never as the planned rail. The `[llm_marketplace]` barter
+  economy (kinds 38300 to 38305) stays independent: a grant is not a spend, and the marketplace
+  does not settle on the chain.
+- **PROPOSED — vocabulary: anchor, not seal (ADR-2099 D6).** Until `AnchorConfirmer` is green
+  against `sidestr-node`, the words for this construction are **anchor**, **peg**, **claim** and
+  **marker**. "Single-use seal" is not used in code, documents or interfaces, and a vocabulary lint
+  enforces it (host ADR-124 §2.3 forbids the phrase until a spent-exactly-once check exists).
+
+**What ratification has to show, because the absence is the point.** The proof that the gap is shut
+is a test that does not exist today: a spend above threshold blocks on a signed 31403, and a
+refusal journals `authority.deny`. Alongside it,
+`grep -n "require('../lib/authority')" management-api/routes/payments.js` must be non-empty, the
+daily budget must survive `supervisorctl restart management-api`, and a chain-settling call with
+`sidestr-node` stopped must be refused rather than waved through.

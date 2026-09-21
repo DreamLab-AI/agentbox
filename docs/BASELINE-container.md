@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.3.2
+version: 0.4.0
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.4.0 (2026-09-21): PROPOSED, not ratified. ADR-2096/2098/2099/2102/2103 (PRD-024 sovereign settlement): the [sidechain] manifest block and its validated parent/header_profile enums, the sidestr-node and sidestr-producer supervised programs plus the isolated sidestr-bridge, loopback :9097 behind the nip98-proxy /chain/ upstream, the crates/sidestr workspace and its licensing posture, rust-bitcoin accepted estate-wide and the k256-only posture retired, and three proposed invariants (chain is truth, no sixth adapter slot, byte-identical-when-off). Recorded in a clearly marked proposed section; the Invariants compliance surface above is unchanged."
   - "0.3.2 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.3.1 (2026-09-05) — ADR-2063: agentbox-mcp hub waits for /run/agentbox/mcp-hub.json (no FATAL on the priority race) and the entrypoint nudges it after projection; aoe-profiles volume persists AoE session records across restarts; the seeder carries the seed model on native-agent overrides and reaps only its own clean, unreferenced, commit-free orphan worktrees (fail-closed on a pathless session)."
   - "0.3.0 (2026-09-05) — Phase 2 remediation sweep (ADR-2035/2036/2037/2039/2040, plus ADR-2055 routed from ab-learning-capabilities). The supervised-services table now cites `[program:<name>]` instead of line numbers, which had drifted by differing offsets. Corrected: opf-router is the privacy-filter redaction sidecar on 127.0.0.1:9092 (not an OpenAI facade on :8084); ruvector pins 0.3.0 (not 0.2.25); the CATALOGUE holds 60 entries = 13 surfaces + 47 modules (not 14 + ~35); skills/mcp.json holds 28 servers (not 30). Adapter boot probe rewritten: per-slot deadlines, quarantine-before-replace, four readiness states. Dispatch is two wrap layers; JSON-LD encoding is a gated route-level stage. The ADR-2008 and ADR-2032 qualifications are marked resolved with evidence."
@@ -185,6 +186,7 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - **Resolved — ADR-2040 (2026-09-05).** `code-server` bound `0.0.0.0:8080` with `--auth none`, and `jupyter-lab` bound `0.0.0.0:8888` with an empty `--IdentityProvider.token=`. A loopback *publish* only constrains host→container, so both were reachable unauthenticated by every peer on `visionclaw_network`. Both now authenticate with a credential minted at boot; the listener-side CI gate remains open work.
 - **GPU wrapper is CUDA-only by design** — no Nix-binary Vulkan/GLX presentation path; interactive 3D depends on the FHS gui-tools sidecar. Not a bug, but a hard capability boundary.
 - **Legacy ADR-005 conflates the four validation stages** into "contract tests"; this document separates them because they live in different files and fire at different lifecycle points (see Current State). ADR-2005's dispatch-ordering claim is superseded by ADR-2036.
+- **Sovereign settlement is PROPOSED, not built (PRD-024, ADR-2096/2098/2099/2102/2103).** No `[sidechain]` gate, no `sidestr-node` / `sidestr-producer` / `sidestr-bridge` program, no `crates/sidestr/` workspace and no `:9097` bind exists today. The manifest block, the supervised set, the port, the crate licensing posture and three candidate invariants are recorded in [Sovereign settlement (PROPOSED)](#sovereign-settlement--proposed-2026-09-21) below; none of them is part of the compliance surface until PRD-024 is ratified.
 - Setup wizard exits after saving (`system-manifest.js:47`); operations moved to the AoE cockpit — legacy docs describing pseudo-user isolation (`gemini-user` etc.) are dead paths.
 
 ## Invariants (must not silently change)
@@ -258,3 +260,129 @@ One line per ADR that amended this document in the Phase 2 remediation pass.
   `/v1/briefs/:id/execute` and `/v1/briefs/:id/debrief` in `management-api/routes/briefing.js`,
   writing through the pods and beads slots, minting via `lib/uris.js`, and gating the execute step
   through the same ADR-2041 action pipeline as `POST /v1/tasks`; staged until the next rebuild.
+
+## Sovereign settlement — PROPOSED, 2026-09-21
+
+**`decision_status: proposed`. Nothing in this section is built, gated or running.** It records
+what [PRD-024](proposals/sovereign-settlement.md) and ADR-2096, ADR-2098, ADR-2099, ADR-2102 and
+ADR-2103 would add to the container baseline, so the governing document moves in the same change
+as the records. The Invariants section above is deliberately untouched: the three candidate
+invariants at the end of this section join it only on ratification.
+
+### `[sidechain]` — the settlement manifest block (ADR-2103)
+
+A new gated manifest section, fail-closed by default on the `spend-policy` precedent. The two
+consequential keys are the parent network and the header family, because both are inputs to the
+chain document's `genesisHash` and therefore bound on-seal:
+
+| Key | Values | Notes |
+|---|---|---|
+| `enabled` | bool, default `false` | gates the node, the rail and every wallet route |
+| `chain` | string | the root chain name, `sidestr:dreamlab` at P1 |
+| `parent` | **validated enum** `btc:testnet4-blake2b \| btc:mainnet-blake2b \| btc:testnet4 \| btc:mainnet` | default follows upstream (`btc:testnet4-blake2b`) so the live gitmark chain and its tooling are reusable on day one |
+| `header_profile` | **validated enum** `knots-blake2b-v2 \| sha256d` | decides which header codec the validator must parse |
+| `mirror_url`, `relays` | string, list | chain relays, never the `[sovereign_mesh.relay]` allowlist relay |
+| `custody` | honest label, `federation-k-of-n` | the root is custodial and says so (ADR-2096 D6) |
+| `cash_out` | bool, default `false` | P21 |
+| `[sidechain.signer]` | `enabled`, `threshold` (k), `signers` (x-only hex) | only on federated instances holding a key |
+| `[sidechain.bridge]` | `enabled` (default `false`), `assets` | the `rgb-lib` process boundary (ADR-2102) |
+
+`services/agentbox-manifest` validates both enums **by name at boot and hard-fails an unknown
+value**, never soft-defaults (the failure mode to avoid is solid-pod-rs `mrc20.rs:474-487`, where
+any non-`"mainnet"` string including a typo silently yields a testnet address). It also refuses to
+change `parent` or `header_profile` against an on-disk chain document that already has a genesis,
+warns by name on a mixed pairing, and projects the validated values into the chain document, both
+program environments and the rail config so no consumer re-derives them. The same block is exposed
+by all four onboarding surfaces (projector `sidechain show`, TUI pick-lists rather than free text,
+stack provisioning with no per-profile override, first-run question with mainnet options shown but
+disabled and the gate named).
+
+**Honest apply classes** for the `system-manifest.js` catalogue, following the `payments` rows and
+the ADR-039 honesty rule:
+
+| Entry | Gate | Apply class | Why |
+|---|---|---|---|
+| `sidestr` | `payments.sidestr` | **`rebuild`** | bakes the node and producer binaries into the Nix closure; changing the header family changes what the validator binary must parse |
+| `sidestr-bridge` | `sidechain.bridge` | **`rebuild`** | bakes `sidestr-bridge` and its confined `rgb-lib` closure |
+| `sidestr-signer` | `sidechain.signer` | **`boot`** | key presence, threshold and relay list are configuration the entrypoint reconciles |
+
+Calling the first two `boot` would be dishonest, which ADR-039 forbids.
+
+### Supervised programs and the one new port (ADR-2098, ADR-2102)
+
+| Program | Role | Port (bind) | Gate |
+|---|---|---|---|
+| `sidestr-node` | chain validator and mirror; serves block files, `chain.json` with `pegs` **populated**, and `pegouts.json` | `127.0.0.1:9097` | `[sidechain].enabled` |
+| `sidestr-producer` | block producer; upstream JS `siding` at P0 to P2, the Rust producer from P3 | — | `[sidechain.signer].enabled` |
+| `sidestr-bridge` | isolated `rgb-lib` custodian for wrapped assets; talks to the producer over the same Nostr and HTTP surfaces any client uses | — | `[sidechain.bridge].enabled` |
+
+Chain traffic never runs inside `nostr-pod-bridge`: that binary holds the identity key and is the
+ADR-2065 sole writer of `pods/<npub>/events/inbox/`, and consensus validation needs its own
+restart, resource and failure semantics. `:9097` binds loopback per the ADR-2013 rule and reaches
+the LAN only as a new upstream under the nip98-proxy at `/chain/`, joining `/mgmt/` on the existing
+multi-upstream sovereign ingress, so the ten-entry `SANCTIONED` publish list does not grow.
+
+A mirror that serves `pegs: []` (the shape every `chain.json` bundled upstream carries) leaves no
+cold validator able to replay genesis, because `open()` rebuilds genesis deterministically from
+`chain.pegs`. Serving populated `pegs` is a correctness requirement on whoever writes the mirror.
+
+### `crates/sidestr/` and the licensing posture (ADR-2096)
+
+A new Rust workspace on the colloquy precedent (ADR-2085/2086), split by what is reusable:
+
+- **Published, permissive, clean-room** (`MIT OR Apache-2.0`, `publish = true`): `sidestr-core`
+  (chain document, block and transaction validation, overlay rules, records codec),
+  `sidestr-nostr` (kinds and event codecs, its own NIP-01 structs), `sidestr-wallet` (folds, coin
+  selection, key-path spends). Written from the SPEC prose and catalogued wire formats, never from
+  the AGPL JS; each README states that. ADR-2030 applies.
+- **Internal** (`publish = false`): `sidestr-producer`, `sidestr-bridge`, `sidestr-mcp`.
+- **The AGPL boundary is a process boundary, not a crate feature.** The upstream JS `siding` runs
+  only as the container-internal `[program:sidestr-producer]` until the Rust producer validates the
+  same 1,000-block range to the same tip hash, and is never linked by a published crate. The same
+  rule confines `rgb-lib`: no published crate's dependency graph may contain `rgb-lib`, `rgb-core`
+  or AluVM (ADR-2102 D3).
+- **`rust-bitcoin` and `secp256k1` are accepted estate-wide, and the k256-only posture is
+  retired** (host ADR-124 §2.2, solid-pod-rs `bitcoin_tx.rs:24`). Schnorr signing becomes
+  libsecp256k1 BIP-340 verified against the published vectors; `bitcoin_tx.rs` and `mrc20.rs` port
+  to `rust-bitcoin` with golden fixtures byte-identical. This is the house crypto rule finally
+  applied to the one place that hand-rolled a sighash.
+
+`sidestr-core` deliberately does **not** implement the `evm`, `pool` or `desk` overlays, and RGB
+never enters as an in-chain VM.
+
+### Proposed invariants (NOT yet part of the compliance surface)
+
+On ratification these move into [Invariants](#invariants-must-not-silently-change) verbatim. Until
+then they are candidates, and no gate, test or review may cite them as binding.
+
+- **PROPOSED — the chain is the ledger of record (ADR-2099).** A `did:nostr` balance is a fold over
+  chain UTXOs, never a stored number; every existing sats ledger (solid-pod-rs `WebLedger`, the
+  forum D1 adapter, the host's `FsPaymentStore`) is a derived, height-stamped view with a staleness
+  bound that is an error rather than a slightly old number. No code path may spend, credit, debit or
+  gate on a view without resolving to the chain. The only credit is a peg-in claim and the only
+  debit is a chain spend: `credit`/`debit` leave the public API and the TXO stand-in deposit path is
+  deleted, not left default-off.
+- **PROPOSED — settlement consumes an existing adapter slot; there is no sixth (ADR-2096, ADR-2100).**
+  The five slots stay `beads, pods, memory, events, orchestrator`. The durable spend budget rides
+  the `memory` slot on the ADR-2085 precedent that a new capability is a consumer of durable state,
+  not a new class of it, and the privacy filter (ADR-2036) classifies the financial state it carries.
+- **PROPOSED — byte-identical-when-off (ADR-2077 rule applied to the new gates).** With
+  `[sidechain].enabled = false` the generated supervisor text, the projected `.mcp.json` and
+  the runtime environment are byte-identical to a build without the block: no program, no port, no
+  chain relay connection and no trace of the rail in `pay402`'s result set.
+
+### Vocabulary
+
+Until `AnchorConfirmer` is green against `sidestr-node`, the words for this construction are
+**anchor**, **peg**, **claim** and **marker**. "Single-use seal" is not used in code, documents or
+interfaces, and a vocabulary lint enforces it over `docs/` and `crates/sidestr/` (ADR-2099 D6,
+host ADR-124 §2.3).
+
+### Recorded divergence between the records and the plan
+
+ADR-2103 and ADR-2098 place the settlement configuration at **`[sidechain]`**, which is what
+this section documents. `S/PLAN-integration.md` §6.1 revision 2 proposes pulling it up to a
+top-level **`[sidechain]`** block, on the argument that the chain is the substrate under payments,
+provenance anchoring and session budgets rather than a payment rail. The ADR ledger is the
+ratifying artefact, so the records win here; the ratification review of PRD-024 should settle the
+name once, because it changes every gate path, catalogue row and projector citation above.

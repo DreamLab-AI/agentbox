@@ -140,7 +140,7 @@ Key invariants:
 - **Fail-closed classifier.** `unknown` scheme is unpayable by construction. Malformed, oversized, or attacker-controlled bodies classify `unknown` and leave a denied-outcome receipt.
 - **Sole-mint.** All receipt and activity URNs go through `lib/uris.js mint()` — same discipline as the sell side.
 - **Idempotency.** The debit endpoint receives an `Idempotency-Key` header and `idempotency_key` in the body; a 409 replay is treated as success (no double-charge).
-- **Lightning-first.** `x402` and `l402` classify correctly but `payable:false` in Phase 1 (no native rail yet). Phase 3 adds Lightning via NWC.
+- **The sidestr rail (PROPOSED, ADR-2097).** `x402` and `l402` classify correctly but stay `payable:false`, and they keep that status permanently: **Lightning-first is superseded** (legacy ADR-032 D5, PRD-015 C10 Phase 3), NWC and NIP-47 are not built, and Lightning may return only as a bridge on-ramp into a chain, never as the planned rail. The native rail is a fourth scheme, `sidestr`, added as an ADR-032 revision rather than a runtime extension point: `payable: true` only when `CONSUMER_ENABLED` and `[sidechain]` both hold, with captured-bytes fixtures in `tests/contract/pay402/` that are immutable once landed. `unknown` remains terminal and unpayable. Proposed, not built: see [Sovereign settlement (proposed)](#sovereign-settlement-proposed) below.
 
 ## How an operator runs the demo for real
 
@@ -232,10 +232,51 @@ is not yet wired**:
    operator-provisioned stack identity is required to run against a federated
    pod mesh rather than a locally-seeded one.
 
-4. **Deposit settlement (PRD-015 C12 — Phase 3).** The Web Ledger is credited by writing the ledger doc
-   (WAC-gated). There is no Lightning-invoice settlement check on deposit
-   (solid-pod-rs audit A-4) — crediting is trusted-write today. Real-money
-   settlement is a separate workstream.
+4. **Deposit settlement (PRD-015 C12).** The Web Ledger is credited by writing the ledger doc
+   (WAC-gated), so crediting is a trusted write today (solid-pod-rs audit A-4). The
+   Lightning-invoice settlement check that was once scheduled here is **not** the plan any
+   more. Under the proposed sidestr rail the only credit is a peg-in claim and the only debit
+   is a chain spend: `WebLedger::credit` and `debit` leave the public API entirely, and the
+   Web Ledger becomes a derived, height-stamped view over the chain rather than a store of
+   record (ADR-2099). See [Sovereign settlement (proposed)](#sovereign-settlement-proposed).
+
+## Sovereign settlement (proposed)
+
+> **Status: PROPOSED, not ratified and not built.** Nothing described here exists in the
+> container today. It is recorded so this document stops describing a plan
+> (Lightning-first) that was dropped on 2026-09-21.
+
+[PRD-024 Sovereign Settlement](../proposals/sovereign-settlement.md) makes **our own sidestr
+sidechains the sole value instrument of the ecosystem**: value is a UTXO on a chain DreamLab
+signs, and on-ramps and bridges feed the chain rather than competing with it (ADR-2096).
+
+The consequence for this loop is [ADR-2099](../adr/ADR-2099-the-chain-is-the-ledger-of-record.md),
+**the chain is the ledger of record**:
+
+- A `did:nostr` **balance is a fold**, never a stored number: it sums the UTXOs whose script is
+  `0x5120 ‖ xonly(k_spend(chain))` across the root chain and the principal's live child chains.
+  There is no wallet object, and no `wallet` URN.
+- The three independent, unsynced sats ledgers the estate runs today (solid-pod-rs
+  `StoragePaymentStore`, the host's `FsPaymentStore`, the forum's D1 adapter) all become
+  **derived, height-stamped views**, with a staleness bound that is an error rather than a
+  slightly old number. No code path may spend, credit, debit or gate on a view without resolving
+  to the chain.
+- The blocktrail `txo[]` that legacy ADR-033 reserved as the anchor seam, constructed empty at
+  `services/nostr-pod-bridge/src/contract.rs:139`, is populated per epoch from the anchor outpoint
+  on the root chain. On our own chain an anchor's spent status is exact, so
+  `states.len() == txo.len()` becomes checkable rather than asserted.
+
+Everything that moves value passes the existing governance machinery under the
+`payment_settlement` authority class, which is declared today and currently gates nothing: see
+[GOVERNANCE-capabilities.md](../GOVERNANCE-capabilities.md#settlement-authority--proposed-2026-09-21).
+The substrate (manifest block, supervised programs, port `:9097`, crate workspace) is in
+[BASELINE-container.md](../BASELINE-container.md#sovereign-settlement--proposed-2026-09-21), and
+the kinds and URN grammar are in
+[PROTOCOL-registry.md](../PROTOCOL-registry.md#sidestr-chain-plane--nostr-kinds-and-two-urn-kinds-proposed-2026-09-21).
+
+**The verified sell-side and buy-side descriptions above are unaffected.** They record what is
+landed and test-gated; the rail changes what settles underneath them, not how the 402 loop is
+shaped.
 
 ## See also
 

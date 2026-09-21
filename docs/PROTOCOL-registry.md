@@ -120,3 +120,62 @@ public tier without it.
 symmetric kind-map contract is a merge requirement before any `38100` event is
 published to a relay outside the container, and is the `review_trigger` recorded
 on ADR-2085. Owner: agentbox maintainers.
+
+
+## sidestr chain plane — Nostr kinds and two URN kinds, PROPOSED 2026-09-21
+
+**`decision_status: proposed` (ADR-2098, [PRD-024](proposals/sovereign-settlement.md)). Not
+ratified, nothing implemented.** This document records no Nostr kinds at all today, so the
+estate's kind list had to be assembled by grep; that is the gap this section closes. The rows
+above are unchanged.
+
+### Nostr kinds
+
+| Kind | Owner | Direction | Notes |
+|---|---|---|---|
+| `23500` | **external (sidestr)** | pub + sub | transaction; throwaway key per event |
+| `23501` | external (sidestr) | pub | faucet; testnet only, compiled out for mainnet variants (ADR-2103 D4) |
+| `23510`-`23514` | external (sidestr) | pub + sub | level-2 signing round; only on signer instances |
+| `33333` | external (sidestr) | pub + sub | chain tip; `#d` filterable |
+| `33500` | external (sidestr) | pub + sub | rule document; **no upstream wire example** — our codec is conformant to SPEC prose only |
+| `33501` | external (sidestr) | pub | genesis document; **no upstream wire example** — SPEC prose only |
+| `33502` | external (sidestr) | sub | **dual-schema**: peg record *or* desk pledge. The decoder returns `PegRecord \| Pledge \| Ambiguous` and **never guesses** |
+| `38110` | **agentbox** | pub | `sidestr-account-binding`: addressable, `d` = `<chain id>:<did hex>`, content = the derived spend pubkey, signed by the identity key `k_id` (ADR-2101 D4). Allocated from the free `38106`-`38201` range inside the agentbox-owned `38000`-`38201` block; nothing outside this repo moves to accommodate it |
+
+**The `external` classification is load-bearing, not a formality.** The `2xxxx` and `3xxxx` kinds
+above are owned by the sidestr spec (v0.0.1, 2026-09-15), which explicitly states that field names,
+kinds and document shapes are provisional. We do not control their evolution, so the registry says
+so rather than implying a stability we do not have. An upstream change to any of these kind numbers
+or tag shapes is the recorded `review_trigger` on ADR-2098.
+
+**Acceptance is open.** This allocation is not fixture-backed. Extending
+[`tests/fixtures/federation-identity.v1.json`](../tests/fixtures/federation-identity.v1.json) under
+the ADR-2061 symmetric kind-map contract is a merge requirement before any `38110` event is
+published to a relay outside the container, on the same terms as the 38100-38105 allocation above.
+The mirror of this table in the VisionFlow host's `PROTOCOL-registry.md` is part of the same change.
+
+### URN kinds (ADR-013 sole-mint discipline)
+
+Two new kinds, minted **only** through `management-api/lib/uris.js` (`:69`). Ad-hoc `format!()` and
+template-literal URNs remain prohibited.
+
+| Kind | `ownerScope` | `scopeRequired` | `contentAddressed` | `resolvableSurface` | Local part |
+|---|---|---|---|---|---|
+| `chain` | `false` | `false` | `false` | `chains` | the sidestr chain name |
+| `asset` | `true` (the issuer) | `true` | `true` (over the origin contract id) | `chains` | `sha256-12-<12hex>` |
+
+- **`chain`** is a durable, long-lived, externally-referenced object with no owner: the root
+  belongs to the federation and a child belongs to a session that will end. It must resolve so a
+  receipt can cite which chain settled it. `ownerScope: false` mirrors `mcp` and `skill`. It is not
+  content-addressed because the id *is* the chain name upstream uses, and re-minting it under a
+  hash would create a second id for one thing.
+- **`asset`** is a wrapped asset class: owner-scoped to the issuer and content-addressed over the
+  origin RGB contract id, binding an agentbox URN to a foreign identifier scheme without a second
+  parallel id. This is exactly the `knowledge`-kind precedent at `uris.js:91-94`. The wrapped asset
+  id is `<origin chain id>:<origin contract id>` (ADR-2102 D1).
+- **Rejected, and why it matters:** `wallet` (a `did:nostr` already identifies it uniquely; a second
+  identifier for one thing is the failure mode ADR-013 and ADR-033 I1 both prevent), `pegin` and
+  `pegout` (these are *events*; `receipt` and `activity` already cover events, and a peg is a
+  `receipt` whose payload names the chain URN, the parent outpoint and the claim height).
+
+Resolvability stays best-effort via `/v1/uri/<urn>` (307/404/410), as for every other kind.

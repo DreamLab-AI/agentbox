@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.1.3
+version: 0.2.0
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.0 (2026-09-21): PROPOSED, not ratified. ADR-2098/2101 (PRD-024 sovereign settlement): three domain-separated keys where the identity key k_id never spends and never seals blocks, kind 38110 sidestr-account-binding, a second Multikey in the DID document that amends ADR-033 D2'/D3' with I1 intact, ADR-2012's scope narrowed to identity ingress with chain ingress authenticated by consensus, and NIP-98 selecting the spend key on /v1/wallet/*. Recorded in a clearly marked proposed section plus a proposed scope note on Invariant 6; the live compliance surface is unchanged."
   - "0.1.3 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.1.2 (2026-09-05, ADR-2047): refresh the drifted `verifyIdentity` citations (proxy.mjs:527, not 410-450); restate the door inventory as ten CI-sanctioned publishes; mark the two now-answered divergence bullets Resolved; supersede the compose-exposure qualification (the line-walker bypass is fixed by a parsing gate); correct the :8444 cockpit routing to reflect ADR-069 credential exchange via :9096. Adds the Remediation — 2026-09-05 section."
   - "0.1.1 (2026-08-31): correct AoE auth state — live command is `aoe serve --auth token` (flake.nix:1977), token auth has landed not staged; fix door-inventory row, sole-ingress cite, and the two now-stale divergences."
@@ -258,6 +259,15 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
 5. The DID is `did:nostr:<64-hex>`; hex x-only pubkey is the single storage/URL identity.
    Private keys never leave `agent-identity.js` and persist at 0600.
 6. Relay ingress is allowlist-only with no auto-add; an empty allowlist drops everything.
+   **Scope, PROPOSED (ADR-2098, not ratified):** this invariant governs *identity* ingress,
+   which is what it actually controls. ADR-2098 would narrow the scope statement to say so
+   and carry chain traffic outside it entirely: `sidestr-node` and `sidestr-producer` open
+   their own connections to chain relays, and chain events authenticate against chain state
+   (a block signature against `challenge`, a transaction against the UTXO it spends, a tip
+   against the signer key) rather than against a pubkey list baked at nix build time
+   (`relayAllowedPubkeysCsv`), which a federation with a changing signer set cannot live
+   behind. **Chain pubkeys are never added to the identity allowlist.** This is a narrowing
+   of a claim, not a loosening of a control, and it is not in force until PRD-024 is ratified.
 7. Every host publish binds `127.0.0.1` unless it is on the `SANCTIONED` list in
    `scripts/ci/check-ports-loopback.mjs:75-86` (ten entries, each with a governing
    citation at `:55-73`) — the loopback-ports CI gate enforces this.
@@ -377,3 +387,78 @@ State, Invariants or divergence list above in the same change.
   state; scope the multi-user `501` claim to suspend/archive.
 - **ADR-2050** — PROPOSED: close the four PROTOCOL-registry federation contract
   rows with paired fixtures.
+
+## Settlement identity and key separation — PROPOSED, 2026-09-21
+
+**`decision_status: proposed`. Nothing here is built.** It records what
+[PRD-024](proposals/sovereign-settlement.md), ADR-2101 and ADR-2098 would add to the identity
+surface, so this governing document moves in the same change as the records. The Invariants
+section above is unchanged apart from the explicitly proposed scope note on Invariant 6.
+
+### Three keys, domain separated (ADR-2101 D3)
+
+sidestr upstream reuses one raw private key as Nostr identity, taproot spending key and block
+sealing key, with no domain separation, so one compromise yields all three. The estate refuses
+that shape and already owns the tool to avoid it: HMAC-SHA256 domain-separated child derivation
+with a JS-parity vector (`nostr-bbs-core keys.rs:251-265`).
+
+| Key | Derivation | Held by | May |
+|---|---|---|---|
+| `k_id` | the sovereign identity key (`services/nostr-pod-bridge/src/identity.rs:130-158`) | the identity binary | sign identity events, sign the 38110 binding. **Never spends, never seals a block.** |
+| `k_spend(chain)` | `derive_subkey(k_id, "sidestr/spend/" ‖ chain_id)` | the wallet path | spend UTXOs on exactly that chain |
+| `k_sign(chain)` | `derive_subkey(k_id, "sidestr/sign/" ‖ chain_id)` | federated instance operators only | seal blocks on exactly that chain |
+
+Per-chain derivation is what makes a leaked child-chain spend key unable to touch root coins and a
+compromised session unable to seal root blocks. The peg descriptor never contains an identity key,
+and the nsec never enters the settlement domain: signing happens behind the identity port.
+
+### The cost of separation, and kind 38110 (ADR-2101 D4, ADR-2098 D2)
+
+Domain separation costs the property that the DID *is* the address. That is bought back explicitly,
+never inferred:
+
+- **Kind 38110 `sidestr-account-binding`** (agentbox-owned, from the free `38106-38201` range):
+  addressable, `d` = `<chain id>:<did hex>`, content = the derived spend pubkey, signed by `k_id`.
+  Registered in [PROTOCOL-registry.md](PROTOCOL-registry.md).
+- **A second Multikey entry** in the DID document for the per-chain spend key. **This amends
+  legacy ADR-033 D2'/D3'**, the single-Multikey form emitted by `build_did_document`
+  (`services/nostr-pod-bridge/src/contract.rs:60-84`), and **leaves ADR-033 I1 intact**: the DID
+  string does not change, no identity migrates, and the hex-canonical identity (ADR-2011, legacy
+  ADR-053) is untouched. Consumers that assumed exactly one verification method must be checked;
+  that check is a ratification requirement, not an afterthought.
+
+No `wallet` URN is minted. A wallet is a derived view over UTXOs keyed by a `did:nostr`, and
+`did:nostr:<hex>` already identifies it uniquely: a second identifier for one thing is the failure
+mode ADR-013 and ADR-033 I1 both exist to prevent (ADR-2098 D1, rejected kinds).
+
+### Chain ingress is authenticated by consensus (ADR-2098 D3, D4)
+
+Chain traffic runs on its own supervised programs, `sidestr-node` and `sidestr-producer`
+(see [BASELINE-container.md](BASELINE-container.md#sovereign-settlement--proposed-2026-09-21)),
+never inside `nostr-pod-bridge`: mixing consensus validation into the process that holds the
+identity key is exactly the key-role conflation the derivation above exists to prevent, and chain
+events have no business in an ADR-2065 pod inbox. Those programs subscribe to chain relays (public
+plus estate-operated) as their own connections, outside the `[sovereign_mesh.relay]` allowlist.
+Estate-operated chain relays are needed for child-chain traffic because ephemeral kinds are
+filterable only by kind at the relay. The proposed scope note on Invariant 6 above carries the
+narrowing of ADR-2012.
+
+### NIP-98 selects the spend key (ADR-2098 D5, ADR-2101 D2)
+
+`/v1/wallet/{balance,holdings,send,peg-in,peg-out}` and `/v1/chain/{info,tip,open,close}` sit
+behind the existing global auth hook on management-api, the same arrangement `routes/payments.js:29`
+documents for `/v1/pay/*`; AoE-plane callers reach them through nip98-proxy `/mgmt/v1/wallet/*`,
+and the mirror is published at `/chain/`. **The authenticated `did:nostr` from NIP-98 is what
+selects the spend key.** There is no separate wallet auth, no API key and no session token for
+money, and a request whose NIP-98 DID does not match the addressed wallet is refused *before*
+policy is consulted.
+
+Session identity binding gains a fifth binding at `phase=create`
+(`management-api/routes/sessions-boundary.js:212-296`, after the memory namespace at `:259-266`):
+an ephemeral child chain `sidestr:dl-s-<sha12>`, level 1, parent = the root chain, signer = the
+session's own derived key, funded by a policy-capped peg-in and recorded as `chain_urn` alongside
+`session_urn`, `epic_urn` and `memory_namespace`. It **fails open like its siblings** (the session
+starts and simply cannot spend) while the money fails closed. `phase=close` closes the chain, pays
+every holder pro rata in the closing coinbase and checkpoints the closing hash as the tombstone; a
+child cannot outlive its session, and an orphaned open child holding value is an alertable
+condition.
