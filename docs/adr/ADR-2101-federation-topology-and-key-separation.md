@@ -78,7 +78,7 @@ nowhere. The owner chose one root chain with instances as signers and ephemeral 
    principal, with per-purpose receive addresses, so a DID does not publicly enumerate its
    whole balance forever.
 4. **The address binding is explicit.** Domain separation costs the property that the DID is
-   the address; it is bought back with kind 38110 `sidestr-account-binding` (ADR-2098) signed
+   the address; it is bought back with kind 38420 `sidestr-account-binding` (ADR-2098) signed
    by `k_id`, and a second Multikey entry in the DID document for the per-chain spend key.
    **This amends ADR-033** D2'/D3' (the single-Multikey form emitted by `build_did_document`,
    `contract.rs:60-84`) and leaves ADR-033 I1 intact: the DID string and the hex-canonical

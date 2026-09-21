@@ -4,6 +4,34 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-09-21 — Colloquy and the settlement pack move out of the reserved agent-response range)
+
+ADR-009 §4.2 and PRD-004 §4.2 reserve `38100`-`38199` for agent-response events,
+and `mcp/nostr-bridge/relay-consumer.js` enforces that as a live range
+(`AGENT_RESPONSE_MIN`/`AGENT_RESPONSE_MAX`). Two later records allocated inside
+it anyway: ADR-2085 minted colloquy knowledge units at `38100`-`38105`, and the
+settlement pack took `38110` plus `38111`-`38115` from what it called "the free
+`38106`-`38201` range". That range was never free. A consumer reading the range,
+which the shipped relay consumer does, cannot tell an agent response from a
+knowledge unit.
+
+**ADR-2105** keeps ADR-009's reservation and moves the newcomers. agentbox now
+has two declared kind bands: band one `38000`-`38201` is fully allocated and
+closed to new work; band two `38400`-`38499` is where new kinds come from.
+Colloquy takes `38410`-`38415` in its minted order; `sidestr-account-binding`
+takes `38420` and the five DDD-022 domain events take `38421`-`38425`, still
+proposed. `docs/PROTOCOL-registry.md` gains the band table, and the rule is that
+every allocation cites the row it occupies rather than quoting a range.
+
+A kind number is wire, so this is breaking: **`colloquy-nostr` and
+`colloquy-store` bumped to `0.2.0`** (staged, not yet published: `cargo publish`
+was refused by the session permission classifier), the forum's pins moved with
+them, and no event is migrated (none existed outside the container but the single `38100`
+smoke event recorded in ADR-2085, which stays as observed). One latent defect
+fell out: `[sovereign_mesh.relay].allowed_kinds` listed `38100` and none of
+`38101`-`38105`, so five of the six colloquy kinds had never been allowlisted;
+all six new numbers are listed now.
+
 ### Added (2026-09-16 — Agent and command registries get manifest governance; colloquy stops pinning a store path)
 
 Skills have had a governed pipeline since SK-1/SK-2: one baked canonical tree, a

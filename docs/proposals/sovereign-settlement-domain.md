@@ -557,26 +557,27 @@ tamper-evident audit record, and a Nostr kind is the federated announcement.
 | `PegInRefunded` | Refund script path spent after `refundBlocks` | Parent chain; events log |
 | `PegOutBurned` | Chain-side burn at or above `pegoutMin` | The chain; events log |
 | `PegOutPaid` | Parent payment with the `pegout:` marker | Parent chain; events log; `SettlementReceipt` |
-| `PegOutDefaulted` | `pegoutBlocks` elapsed unpaid | Events log; **new kind (38111)**; alert. Ours: upstream has no such fact. |
+| `PegOutDefaulted` | `pegoutBlocks` elapsed unpaid | Events log; **new kind (38421)**; alert. Ours: upstream has no such fact. |
 | `BridgeClaimValidated` | rgb-lib accepts a consignment and the reserve is confirmed | Bridge-internal; events log |
 | `WrappedAssetClaimed` | `bridge:` marker issues or increases wrapped supply | The chain; events log; `SettlementReceipt` |
 | `WrappedAssetRedeemed` | Wrapped supply burned and origin asset released | The chain plus origin; events log; `SettlementReceipt` |
-| `ChildChainOpened` | A child chain is sealed and bound at `phase=create` | **New kind (38112)**; events log; the session's `LedgerEpic` |
-| `ChildChainClosing` | `closePolicy` boundary reached | **New kind (38113)**; events log |
+| `ChildChainOpened` | A child chain is sealed and bound at `phase=create` | **New kind (38422)**; events log; the session's `LedgerEpic` |
+| `ChildChainClosing` | `closePolicy` boundary reached | **New kind (38423)**; events log |
 | `ChildChainClosed` | Pro-rata closing coinbase paid; peg paid out in proportion | The chain; events log; `SettlementReceipt` per holder |
-| `ChainTombstoned` | Closing hash checkpointed into the parent | Parent `ckpt:` record; **new kind (38114)**; events log |
+| `ChainTombstoned` | Closing hash checkpointed into the parent | Parent `ckpt:` record; **new kind (38424)**; events log |
 | `AnchorRecorded` | A blocktrail anchor lands on the gitmark chain | The gitmark chain; `txo[]` in `contract.rs`; DDD-020 owns its meaning |
 | `SpendAuthorisationRequested` | A spend above the threshold is attempted | **kind 31402** (ACSP ActionRequest) with the task-property triple |
 | `SpendAuthorisationGranted` | A human approves | **kind 31403** (signed approval) |
 | `SpendAuthorisationDenied` / `Expired` | Denied or lapsed | Events log; `authority.js:213` deny journal |
-| `SettlementRecorded` | Any settlement finalises | `SettlementReceipt` URN; events log; **new kind (38115)** if PRD-024 decides receipts federate |
+| `SettlementRecorded` | Any settlement finalises | `SettlementReceipt` URN; events log; **new kind (38425)** if PRD-024 decides receipts federate |
 | `BalanceViewRefreshed` | A legacy view recomputes from the chain | Internal only. Deliberately **not** federated: a view is not news. |
 
 **Kind allocation and carriage.** Upstream's kinds (23500, 23501, 23510-23514, 33333, 33500,
 33501, 33502) are a third party's published language, consumed and published as-is and
-registered in `docs/PROTOCOL-registry.md` (ADR-2098). 38110 is the account binding (ADR-2098); our five domain events take 38111-38115 from
-the free part of agentbox's owned 38000-38201 block, following the ADR-2085 precedent of
-allocating inside the block this repo already owns.
+registered in `docs/PROTOCOL-registry.md` (ADR-2098). 38420 is the account binding (ADR-2098); our five domain events take 38421-38425 from
+agentbox's kind band 38400-38499 (ADR-2105), the first 38xxx hundred no record reserves.
+Every hundred below it is a band reservation, so both this pack and colloquy moved out;
+colloquy now occupies 38410-38415 immediately below.
 
 Chain traffic rides a **dedicated supervised program on its own relays, outside the identity
 relay allowlist** (ADR-2098). Mixing consensus validation into the process holding the

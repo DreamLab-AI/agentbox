@@ -348,7 +348,7 @@ long-lived and should be human-recognisable.
 Domain separation breaks the beautiful property that `did:nostr` *is* the address. We pay for
 that deliberately and buy it back with an explicit binding:
 
-- New addressable Nostr kind **38110 `sidestr-account-binding`** (carved from agentbox's free
+- New addressable Nostr kind **38420 `sidestr-account-binding`** (carved from agentbox's free
   `38106–38201` range, R2 §5.2), `d` = `<chain id>:<did hex>`, content = the derived x-only
   spend pubkey, **signed by the identity key**. Anyone can verify "these coins are that DID's"
   without the DID ever touching the coins.
@@ -673,7 +673,7 @@ rows are content address, URN crossing, precomputed KG address, durable translat
 | 33500 | external | pub + sub | rule doc; **no upstream wire example** |
 | 33501 | external | pub | genesis |
 | 33502 | external | sub | peg record; **dual-schema, see §3.2** |
-| **38110** | **agentbox** | pub | `sidestr-account-binding` (§2.3), new, from the free `38106–38201` range |
+| **38420** | **agentbox** | pub | `sidestr-account-binding` (§2.3), new, from the free `38106–38201` range |
 
 Recording 2xxxx/3xxxx kinds as *externally owned* is the honest classification and it matters:
 we do not control their evolution, a pre-0.0.1 spec explicitly says "field names, kinds and

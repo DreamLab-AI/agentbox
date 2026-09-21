@@ -91,17 +91,18 @@ An honest audit. The point of this section is that the scope is smaller than it 
 
 ### 3.1 The wire binding (Nostr)
 
-KUs ride the Agentbox-owned agent-kind block `38000–38201`, of which `38000–38099`
-is already taken by agent-intent (`ddd-mesh-federation-context.md`). Proposed:
+KUs ride the agentbox kind band `38400–38499` (ADR-2105), the first 38xxx hundred no record
+reserves; `38000–38099` is agent intent, `38100–38199` agent response, `38200–38299` payment
+and `38300–38399` the marketplace. Proposed:
 
 | Kind | Name | Shape | Author |
 |---|---|---|---|
-| 38100 | `KnowledgeUnit` | addressable / parameterised-replaceable, `d` = KU id | agent |
-| 38101 | `Confirmation` | regular, append-only, `e`→KU, `a`→KU address | agent or human |
-| 38102 | `Flag` | regular, append-only, `e`→KU, reason in content | agent or human |
-| 38103 | `Supersession` | regular, `e`→old, `e`→new, marker `superseded_by` | agent |
-| 38104 | `Graduation` | regular, cites the 31403 `ActionResponse` that authorised it | human principal |
-| 38105 | `ToolGapSignal` | addressable, `d` = cluster id, L4 emergent | agent |
+| 38410 | `KnowledgeUnit` | addressable / parameterised-replaceable, `d` = KU id | agent |
+| 38411 | `Confirmation` | regular, append-only, `e`→KU, `a`→KU address | agent or human |
+| 38412 | `Flag` | regular, append-only, `e`→KU, reason in content | agent or human |
+| 38413 | `Supersession` | regular, `e`→old, `e`→new, marker `superseded_by` | agent |
+| 38414 | `Graduation` | regular, cites the 31403 `ActionResponse` that authorised it | human principal |
+| 38415 | `ToolGapSignal` | addressable, `d` = cluster id, L4 emergent | agent |
 
 The KU body is replaceable **by its proposer only**; confirmations and flags are
 separate append-only events so evidence accretes and cannot be rewritten by the
@@ -292,7 +293,7 @@ own recall measurement and can be reverted independently of the rest of Phase 2.
 | 0 — Decide | **done** | ADR-2085, ADR-2086; PROTOCOL-registry kind block; LEARNING-memory invariants 10–11; `urn:agentbox:knowledge` as the 20th URN kind. |
 | 1 — `colloquy-core` | **done** | 76 tests incl. the cq interop fixture; docs clean; wasm32; README examples run as doctests; Apache-2.0 + LICENSE. |
 | 2 — store + verbs | **done, minus the migration** | `colloquy-store` (three tiers, one trait) and `colloquy-mcp` (six verbs, tier chosen by `COLLOQUY_TIER`). |
-| 3 — the wire | **done, end to end** | Kinds 38100–38105, a real websocket backend, and an accepted `38100` on the relay (`28f85361…`). `nostr-pod-bridge publish` signs on an agent's behalf. |
+| 3 — the wire | **done, end to end** | Kinds 38410–38415, a real websocket backend, and an accepted `38410` on the relay (`28f85361…`). `nostr-pod-bridge publish` signs on an agent's behalf. |
 | 4 — the forum | **done** | `colloquy-view` + `pages/knowledge.rs`, routed at `/knowledge` behind `auth_gated!`. |
 | 5 — reflect | **done** | The verb does coverage-check-before-propose; `colloquy-reflect-candidates.cjs` (Stop/SubagentStop) surfaces failed-then-worked pairs as evidence. It writes no units — that judgement is the model's. |
 | ADR-2061 fixture | **done, both sides** | `knowledge` declared `not-federated`; JS parity spec 52 tests, Rust `uri::tests::federation_*` 7 tests, both generated from the one shared artefact. |

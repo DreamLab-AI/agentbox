@@ -26,8 +26,10 @@ fallback, baked at Nix build time (ADR-2012, `agentbox.toml:151-159`), so a fede
 signer set changes cannot live behind it. `nostr-pod-bridge` holds the identity key and is the
 ADR-2065 sole writer of `pods/<npub>/events/inbox/`. sidestr uses kinds 23500, 23501, 23510 to
 23514, 33333, 33500 to 33502; 33502 carries two schemas (peg record and desk pledge) and 33500
-and 33501 have no upstream implementing code. agentbox owns kind block 38000 to 38201 with
-38106 to 38201 free.
+and 33501 have no upstream implementing code. agentbox's first kind band 38000 to 38201 is
+fully allocated (38000 to 38099 agent intent, 38100 to 38199 agent response, 38200 and 38201
+payments), as are 38200 to 38299 and 38300 to 38399; the free agentbox numbers are
+38400 to 38499 (ADR-2105).
 
 ## Decision
 
@@ -39,7 +41,7 @@ and 33501 have no upstream implementing code. agentbox owns kind block 38000 to 
    already cover them).
 2. **Kind registration.** `docs/PROTOCOL-registry.md` (agentbox and the host mirror) gains a
    Nostr-kind table: 23500, 23501, 23510 to 23514, 33333, 33500, 33501, 33502 recorded as
-   **externally owned** (pre-0.0.1, provisional); **38110 `sidestr-account-binding`**
+   **externally owned** (pre-0.0.1, provisional); **38420 `sidestr-account-binding`**
    (addressable, `d` = `<chain id>:<did hex>`, content = the derived spend pubkey, signed by the
    identity key) is ours. The 33502 decoder returns `PegRecord | Pledge | Ambiguous` and never
    guesses; 33500 and 33501 codecs are marked as conformant to SPEC prose only.
@@ -64,11 +66,11 @@ and 33501 have no upstream implementing code. agentbox owns kind block 38000 to 
 - **A name is never monetary identity.** Upstream admits a chain id is a name, not a proof, and
   discovery trusts the signer found in an announcement. The `chain` URN therefore carries the
   genesis hash (`urn:agentbox:chain:<name>:<genesis-sha256-12>` for display, full digest in the
-  record), and every account binding (38110), approval, receipt, reserve reference and cache key
+  record), and every account binding (38420), approval, receipt, reserve reference and cache key
   pins genesis and the protocol profile. A resolver never redirects a monetary identity to a
   different genesis. `asset` URNs use the full origin-contract digest authoritatively; twelve
   hex characters are display only.
-- **Domain-event kinds.** DDD-022's five events take 38111 to 38115; 38110 is the account
+- **Domain-event kinds.** DDD-022's five events take 38421 to 38425; 38420 is the account
   binding alone. One registry lists all six with addressability and retention semantics.
 - **Relay drop is a normal condition.** Transactions, proposals, partial signatures and PSBT
   rounds are persisted locally before publication, with acknowledgements, retries and

@@ -74,24 +74,51 @@ Durable mapping persistence, replay and recovery remain untested — the fixture
 exercises pure helper calls.
 
 
-## Colloquy knowledge units — kinds 38100-38105, 2026-09-13
+## agentbox Nostr kind bands: the allocation rule, 2026-09-21
 
-**Allocation (ADR-2085, proposed).** Six kinds inside the agentbox-owned agent
-block `38000–38201`, above the `38000–38099` sub-block already spent on agent
-intent. Nothing outside this repo moves to accommodate them.
+**Every agentbox kind allocation cites the registry row it occupies (ADR-2105).**
+A number is free only when this table says so, and the table is ordered by number
+so a gap is visible rather than inferred.
+
+| Range | State | Record |
+|---|---|---|
+| `38000`-`38099` | **reserved**, agent intent | ADR-009 §4.2, PRD-004 §4.2 |
+| `38100`-`38199` | **reserved**, agent response | ADR-009 §4.2, PRD-004 §4.2, enforced live at `mcp/nostr-bridge/relay-consumer.js` (`AGENT_RESPONSE_MIN`/`MAX`) |
+| `38200`-`38299` | **reserved**, agent job and payment; `38200` estimate and `38201` settlement are spent | PRD-006 §S8, `[payments]`, band convention in the VisionFlow host's `docs/protocol/event-kind-registry.md` §2.3 |
+| `38300`-`38399` | **reserved**, LLM resource marketplace; `38300`-`38305` spent | ADR-021, same host §2.3 |
+| `38400`-`38409` | free | — |
+| `38410`-`38415` | **spent**, colloquy knowledge units | ADR-2085, moved here by ADR-2105 |
+| `38416`-`38419` | free | — |
+| `38420`-`38425` | **allocated (proposed)**, sidestr account binding and settlement domain events | ADR-2098, ADR-2101, moved here by ADR-2105 |
+| `38426`-`38499` | free | — |
+
+**Everything below `38400` is spoken for.** The phrase "the free `38106`-`38201`
+range", which carried ADR-2085's allocation and the settlement pack's, was wrong:
+`38100`-`38199` is the agent-response reservation in its entirety, and a consumer
+that reads the range (the relay consumer does) cannot tell a reserved agent
+response from a knowledge unit. `38200`-`38299` and `38300`-`38399` are band
+reservations in the host registry, not two and six loose numbers. `38400`-`38499`
+is the first hundred no record reserves, so new agentbox kinds come from there.
+
+## Colloquy knowledge units — kinds 38410-38415, 2026-09-13, moved 2026-09-21
+
+**Allocation (ADR-2085, proposed; kinds moved by ADR-2105).** Six kinds in the
+agentbox band `38400`-`38499`. They were minted at `38100`-`38105`, inside
+the ADR-009 agent-response reservation, and moved out on 2026-09-21. Nothing
+outside this repo moves to accommodate them.
 
 | Kind | Name | Shape | Author | `d` tag |
 |---|---|---|---|---|
-| `38100` | KnowledgeUnit | addressable (NIP-33) | agent or human member | unit id hex |
-| `38101` | Confirmation | regular, append-only | agent or human member | — |
-| `38102` | Flag | regular, append-only | agent or human member | — |
-| `38103` | Supersession | regular | the proposer | — |
-| `38104` | Graduation | regular | human principal | — |
-| `38105` | ToolGapSignal | addressable (NIP-33) | agent | cluster tag |
+| `38410` | KnowledgeUnit | addressable (NIP-33) | agent or human member | unit id hex |
+| `38411` | Confirmation | regular, append-only | agent or human member | — |
+| `38412` | Flag | regular, append-only | agent or human member | — |
+| `38413` | Supersession | regular | the proposer | — |
+| `38414` | Graduation | regular | human principal | — |
+| `38415` | ToolGapSignal | addressable (NIP-33) | agent | cluster tag |
 
-**The replaceable/append-only split is load-bearing.** `38100` is replaceable so
+**The replaceable/append-only split is load-bearing.** `38410` is replaceable so
 a proposer can correct their own wording without forking the unit's identity.
-`38101`, `38102` and `38104` are regular events so evidence accretes and the
+`38411`, `38412` and `38414` are regular events so evidence accretes and the
 proposer of a unit cannot rewrite what others said about it — the same
 separation the governance ledger already enforces between a `31403` decision and
 the append-only `31405` audit log.
@@ -109,7 +136,7 @@ the standard references. Everything else is spelled out: `ladder`, `tier`, `v`,
 `from`, `to`, `decision`. A supersession distinguishes its two `e` tags with the
 NIP-10 markers `superseded` and `supersedes`.
 
-**The `decision` tag is the improvement on cq.** A `38104` Graduation cites the
+**The `decision` tag is the improvement on cq.** A `38414` Graduation cites the
 event id of the signed `31403` ActionResponse that authorised the promotion, so
 "a human approved this" is checkable against the relay rather than asserted in a
 string. `colloquy_core::graduation::GraduationPolicy` refuses promotion to the
@@ -117,7 +144,7 @@ public tier without it.
 
 **Open acceptance.** This allocation is **not yet fixture-backed**. Extending
 `tests/fixtures/federation-identity.v1.json` with these kinds under the ADR-2061
-symmetric kind-map contract is a merge requirement before any `38100` event is
+symmetric kind-map contract is a merge requirement before any `38410` event is
 published to a relay outside the container, and is the `review_trigger` recorded
 on ADR-2085. Owner: agentbox maintainers.
 
@@ -140,7 +167,8 @@ above are unchanged.
 | `33500` | external (sidestr) | pub + sub | rule document; **no upstream wire example** — our codec is conformant to SPEC prose only |
 | `33501` | external (sidestr) | pub | genesis document; **no upstream wire example** — SPEC prose only |
 | `33502` | external (sidestr) | sub | **dual-schema**: peg record *or* desk pledge. The decoder returns `PegRecord \| Pledge \| Ambiguous` and **never guesses** |
-| `38110` | **agentbox** | pub | `sidestr-account-binding`: addressable, `d` = `<chain id>:<did hex>`, content = the derived spend pubkey, signed by the identity key `k_id` (ADR-2101 D4). Allocated from the free `38106`-`38201` range inside the agentbox-owned `38000`-`38201` block; nothing outside this repo moves to accommodate it |
+| `38420` | **agentbox** | pub | `sidestr-account-binding`: addressable, `d` = `<chain id>:<did hex>`, content = the derived spend pubkey, signed by the identity key `k_id` (ADR-2101 D4). Allocated from the agentbox band `38400`-`38499` (ADR-2105), the first hundred no record reserves; the earlier `38110` allocation sat inside the agent-response reservation and moved. Nothing outside this repo moves to accommodate it |
+| `38421`-`38425` | **agentbox** | pub | settlement domain events: `38421` PegOutDefaulted, `38422` ChildChainOpened, `38423` ChildChainClosing, `38424` ChainTombstoned, `38425` SettlementRecorded (DDD-022). Same band, same record (ADR-2105) |
 
 **The `external` classification is load-bearing, not a formality.** The `2xxxx` and `3xxxx` kinds
 above are owned by the sidestr spec (v0.0.1, 2026-09-15), which explicitly states that field names,
@@ -150,8 +178,8 @@ or tag shapes is the recorded `review_trigger` on ADR-2098.
 
 **Acceptance is open.** This allocation is not fixture-backed. Extending
 [`tests/fixtures/federation-identity.v1.json`](../tests/fixtures/federation-identity.v1.json) under
-the ADR-2061 symmetric kind-map contract is a merge requirement before any `38110` event is
-published to a relay outside the container, on the same terms as the 38100-38105 allocation above.
+the ADR-2061 symmetric kind-map contract is a merge requirement before any `38420` event is
+published to a relay outside the container, on the same terms as the 38410-38415 allocation above.
 The mirror of this table in the VisionFlow host's `PROTOCOL-registry.md` is part of the same change.
 
 ### URN kinds (ADR-013 sole-mint discipline)

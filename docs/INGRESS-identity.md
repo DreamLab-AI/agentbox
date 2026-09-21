@@ -6,7 +6,7 @@ status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
-  - "0.2.0 (2026-09-21): PROPOSED, not ratified. ADR-2098/2101 (PRD-024 sovereign settlement): three domain-separated keys where the identity key k_id never spends and never seals blocks, kind 38110 sidestr-account-binding, a second Multikey in the DID document that amends ADR-033 D2'/D3' with I1 intact, ADR-2012's scope narrowed to identity ingress with chain ingress authenticated by consensus, and NIP-98 selecting the spend key on /v1/wallet/*. Recorded in a clearly marked proposed section plus a proposed scope note on Invariant 6; the live compliance surface is unchanged."
+  - "0.2.0 (2026-09-21): PROPOSED, not ratified. ADR-2098/2101 (PRD-024 sovereign settlement): three domain-separated keys where the identity key k_id never spends and never seals blocks, kind 38420 sidestr-account-binding, a second Multikey in the DID document that amends ADR-033 D2'/D3' with I1 intact, ADR-2012's scope narrowed to identity ingress with chain ingress authenticated by consensus, and NIP-98 selecting the spend key on /v1/wallet/*. Recorded in a clearly marked proposed section plus a proposed scope note on Invariant 6; the live compliance surface is unchanged."
   - "0.1.3 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.1.2 (2026-09-05, ADR-2047): refresh the drifted `verifyIdentity` citations (proxy.mjs:527, not 410-450); restate the door inventory as ten CI-sanctioned publishes; mark the two now-answered divergence bullets Resolved; supersede the compose-exposure qualification (the line-walker bypass is fixed by a parsing gate); correct the :8444 cockpit routing to reflect ADR-069 credential exchange via :9096. Adds the Remediation — 2026-09-05 section."
   - "0.1.1 (2026-08-31): correct AoE auth state — live command is `aoe serve --auth token` (flake.nix:1977), token auth has landed not staged; fix door-inventory row, sole-ingress cite, and the two now-stale divergences."
@@ -404,7 +404,7 @@ with a JS-parity vector (`nostr-bbs-core keys.rs:251-265`).
 
 | Key | Derivation | Held by | May |
 |---|---|---|---|
-| `k_id` | the sovereign identity key (`services/nostr-pod-bridge/src/identity.rs:130-158`) | the identity binary | sign identity events, sign the 38110 binding. **Never spends, never seals a block.** |
+| `k_id` | the sovereign identity key (`services/nostr-pod-bridge/src/identity.rs:130-158`) | the identity binary | sign identity events, sign the 38420 binding. **Never spends, never seals a block.** |
 | `k_spend(chain)` | `derive_subkey(k_id, "sidestr/spend/" ‖ chain_id)` | the wallet path | spend UTXOs on exactly that chain |
 | `k_sign(chain)` | `derive_subkey(k_id, "sidestr/sign/" ‖ chain_id)` | federated instance operators only | seal blocks on exactly that chain |
 
@@ -412,12 +412,12 @@ Per-chain derivation is what makes a leaked child-chain spend key unable to touc
 compromised session unable to seal root blocks. The peg descriptor never contains an identity key,
 and the nsec never enters the settlement domain: signing happens behind the identity port.
 
-### The cost of separation, and kind 38110 (ADR-2101 D4, ADR-2098 D2)
+### The cost of separation, and kind 38420 (ADR-2101 D4, ADR-2098 D2)
 
 Domain separation costs the property that the DID *is* the address. That is bought back explicitly,
 never inferred:
 
-- **Kind 38110 `sidestr-account-binding`** (agentbox-owned, from the free `38106-38201` range):
+- **Kind 38420 `sidestr-account-binding`** (agentbox-owned, from the free band `38400-38499`, ADR-2105):
   addressable, `d` = `<chain id>:<did hex>`, content = the derived spend pubkey, signed by `k_id`.
   Registered in [PROTOCOL-registry.md](PROTOCOL-registry.md).
 - **A second Multikey entry** in the DID document for the per-chain spend key. **This amends

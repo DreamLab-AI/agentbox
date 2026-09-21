@@ -1,6 +1,6 @@
 ---
 id: ADR-2085
-title: Adopt the cq shared-learning model as signed knowledge units on kinds 38100-38105
+title: Adopt the cq shared-learning model as signed knowledge units on kinds 38410-38415 (minted at 38100-38105, moved by ADR-2105)
 date: 2026-09-13
 decision_status: proposed
 implementation_status: partial
@@ -10,11 +10,17 @@ superseded_by: []
 verified_commit:
 verified_paths: [crates/colloquy/colloquy-core/src, crates/colloquy/colloquy-nostr/src/kinds.rs, crates/colloquy/colloquy-store/src, crates/colloquy/colloquy-mcp/src]
 owner: jjohare
-review_trigger: first publication of a 38100 event to a relay outside the container
+review_trigger: first publication of a 38410 event to a relay outside the container
 repo: agentbox
 ---
 
-# ADR-2085 — Adopt the cq shared-learning model as signed knowledge units on kinds 38100-38105
+# ADR-2085 — Adopt the cq shared-learning model as signed knowledge units on kinds 38410-38415
+
+> **Amended 2026-09-21 by [ADR-2105](ADR-2105-agentbox-kind-bands-and-the-colloquy-move.md).** The six kinds
+> were minted at `38100`-`38105`, inside the `38100`-`38199` agent-response range ADR-009 and
+> PRD-004 reserve and `mcp/nostr-bridge/relay-consumer.js` still enforces. They moved to
+> `38410`-`38415`, in the `38400`-`38499` band. The Decision below now names the new numbers;
+> the Verification section keeps the original observation verbatim, because it happened.
 
 ## Context
 
@@ -39,11 +45,10 @@ and rules as a pure crate (no clock, no I/O), published to crates.io under
 Apache-2.0 to match upstream, and tested against cq's own published
 `knowledge_unit.json` so interoperability is demonstrated rather than asserted.
 
-**Allocate six kinds inside the block this repo already owns.** `38100`
-KnowledgeUnit (addressable, `d` = unit id hex), `38101` Confirmation, `38102`
-Flag, `38103` Supersession, `38104` Graduation, `38105` ToolGapSignal. The block
-`38000–38201` is agentbox's; `38000–38099` is spent on agent intent, so nothing
-outside this repo moves. The unit is replaceable by its proposer; confirmations,
+**Allocate six kinds inside the band this repo already owns.** `38410`
+KnowledgeUnit (addressable, `d` = unit id hex), `38411` Confirmation, `38412`
+Flag, `38413` Supersession, `38414` Graduation, `38415` ToolGapSignal, from the
+agentbox band `38400`-`38499` (ADR-2105). Nothing outside this repo moves. The unit is replaceable by its proposer; confirmations,
 flags and graduations are **regular, append-only** events, so a proposer can
 correct their own wording but cannot rewrite what others said about it.
 
@@ -133,7 +138,8 @@ path listed above and would be a stale anchor in the sense ADR-2058 names. In
 
 **A `38100` event has been accepted by the relay and read back**
 (`28f853618be9a1a2468c6a8d9b3d5b3ce80e478022fd7f167d0439fb1a787650`, kind 38100,
-author `11ed6422…`). An earlier note in this record claimed that was blocked; it
+author `11ed6422…`). That kind number is the pre-move one and is left as observed;
+under ADR-2105 the equivalent event is kind `38410`, and this one is not republished. An earlier note in this record claimed that was blocked; it
 was wrong, and the error is worth keeping because it is easy to repeat. There are
 two key-bearing files and they are not the same thing:
 `/run/agentbox/identity.env` is root-owned 0600 and holds the *bootstrap record*;

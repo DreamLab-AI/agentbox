@@ -152,7 +152,7 @@ flowchart TB
     FO["forum D1 view"]
     VC["VisionClaw: FsPaymentStore deleted; proxy to /v1/wallet"]
   end
-  RELAY["Nostr relays (public + estate chain relays): 23500, 33333, 33500-33502, 38220"]
+  RELAY["Nostr relays (public + estate chain relays): 23500, 33333, 33500-33502, 38420"]
   BTC -->|peg-in / peg-out / ckpt| RC
   RC --> PROD --> NODE
   RC ==nested parent==> C1
@@ -168,7 +168,7 @@ flowchart TB
 **Identity.** A `did:nostr` x-only key is already a chain address. We keep that as the
 binding, not the spending key: identity `k_id` never spends or signs blocks; `k_spend(chain)`
 and `k_sign(chain)` are domain-separated children (`derive_subkey`, nostr-bbs-core
-`keys.rs:251-265`), published as kind **38220** account bindings signed by `k_id` and as a
+`keys.rs:251-265`), published as kind **38420** account bindings signed by `k_id` and as a
 second Multikey in the DID document. This amends ADR-033's single-Multikey form and leaves
 its I1 (no identity migration) intact. Why: upstream reuses one raw key for Nostr identity,
 taproot spends, block sealing and an EVM account with no domain separation; a compromised
@@ -309,7 +309,7 @@ Numbered so ADRs, tests and the DDD invariants can cite them. "Must" is testable
 ### 6.7 Documentation and registry (D)
 
 - **D1** `docs/PROTOCOL-registry.md` (agentbox and host) gains a Nostr-kind table recording
-  the sidestr kinds as externally owned and 38220 as ours.
+  the sidestr kinds as externally owned and 38420 as ours.
 - **D2** `docs/developer/economy-loop.md` is rewritten (it says "Lightning-first"), as is
   solid-pod-rs `docs/explanation/payments-and-web-ledger.md` (it teaches `credit`/`debit` as
   the core operations and fixes the money model as Lightning/L402/NWC), and the VisionFlow
