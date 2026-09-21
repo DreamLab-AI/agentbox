@@ -120,10 +120,10 @@ pub fn render(manifest: &Value, format: Format, warn: &mut dyn FnMut(String)) ->
     };
     match format {
         Format::Shell => [
-            format!("export AGENTBOX_SYSTEM_ONE_ENABLED=1"),
+            "export AGENTBOX_SYSTEM_ONE_ENABLED=1".to_string(),
             format!("export AGENTBOX_SYSTEM_ONE_ENDPOINT={}", shq(&p.endpoint)),
             format!("export AGENTBOX_SYSTEM_ONE_MODEL={}", shq(&p.model)),
-            format!("export AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1"),
+            "export AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1".to_string(),
             format!("export AGENTBOX_SYSTEM_ONE_SHORTLIST_K={}", p.shortlist_k),
             format!("export AGENTBOX_SYSTEM_ONE_WINDOW_K={}", p.window_k),
             format!(
