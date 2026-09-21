@@ -2204,7 +2204,12 @@ if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && command -v claude >/dev/null 2
 $_SSO_PLUGIN_CONFIG
 SSOCFG
     fi
-    # shellcheck disable=SC2086 — _JC_ARGS is a deliberate word list of --config KEY=VALUE pairs
+    # A ShellCheck directive takes key=value pairs only: prose appended directly
+    # after the code is parsed as another pair (SC1125) and the WHOLE directive is
+    # ignored, so SC2086 was never actually suppressed here. The rationale has to
+    # be its own comment: _JC_ARGS is a deliberate word list of --config KEY=VALUE
+    # pairs, so it must stay unquoted.
+    # shellcheck disable=SC2086
     if run_as_devuser env HOME=/home/devuser timeout 120 claude plugin install jev-compaction@agentbox $_JC_ARGS >/dev/null 2>&1; then
       echo "  [jev-compaction] installed plugin $_JC_VER (${_JC_BAKED}) with manifest userConfig"
     else
