@@ -83,10 +83,33 @@ export function parseSwitchArgs(args) {
 /**
  * The one decision the compact hook makes: run Jev, or hand the event to the
  * built-in summary with a stated reason. Reasons are the log vocabulary.
+ *
+ * `backendLocal` is the Sovereign System One relaxation (SSO contract §7). The
+ * email-taint fence exists because the transcript leaves the LAN; when the
+ * judge is the local SSO façade it does not, and a tainted session may be
+ * compacted. Three properties of that input are load-bearing:
+ *
+ *   • it is EXPLICIT — the caller passes it from resolved configuration. It is
+ *     never inferred from a URL string, because "looks like a LAN address" is
+ *     a guess and a DNS name, a proxy or a redirect can make that guess wrong;
+ *   • it defaults to FALSE — `backendLocal !== true`, so an absent, undefined,
+ *     null, `"true"`-as-a-string or otherwise non-boolean value fences. The
+ *     safe answer is the one you get by saying nothing;
+ *   • when it opens the fence the outcome is reported as `ok-local`, never
+ *     `ok`. A tainted session that was compacted must be distinguishable in
+ *     the log from a clean one that was, or the relaxation is unauditable.
+ *
+ * Precedence is unchanged above it: `switched-off` beats `no-key` beats the
+ * taint decision. A local backend does not resurrect a switched-off or
+ * keyless session.
  */
-export function decide({ enabled, apiKey, taint }) {
+export function decide({ enabled, apiKey, taint, backendLocal }) {
   if (!enabled) return { run: false, reason: 'switched-off' };
   if (!apiKey) return { run: false, reason: 'no-key' };
-  if (taint?.tainted) return { run: false, reason: 'tainted', detail: `${taint.count} call(s): ${taint.sample.join(', ')}` };
+  if (taint?.tainted) {
+    const detail = `${taint.count} call(s): ${taint.sample.join(', ')}`;
+    if (backendLocal !== true) return { run: false, reason: 'tainted', detail };
+    return { run: true, reason: 'ok-local', detail };
+  }
   return { run: true, reason: 'ok' };
 }

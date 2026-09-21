@@ -38,6 +38,21 @@ const PROMPT_HEAD_CHARS = 9000;
 const PROMPT_TAIL_CHARS = 3000;
 /** $/MTok input, output free forever — ADR-2089 measured cost model. */
 const JEV_USD_PER_MTOK_IN = 0.042;
+/**
+ * The unit price is configuration, because this library cannot know it. A self-hosted
+ * endpoint bills nothing; a metered one bills its own rate; the default above is Jev's.
+ * Applying one endpoint's price to another's tokens is a correct calculation of a
+ * meaningless quantity — and a dangerous one, because a cheaper endpoint also consumes
+ * far fewer input tokens, so a stale price reads as a large saving rather than an
+ * unrelated number. Each log line therefore records the price it was costed at, so a log
+ * spanning a migration can still be totalled honestly instead of silently mixing two
+ * currencies of meaning.
+ *
+ * Note what this deliberately is NOT: the library never asks who answers. It takes a
+ * price, not an identity, and infers neither from the endpoint URL — a URL tells you the
+ * host you dialled, not who is billing you or where the bytes came to rest.
+ */
+const USD_PER_MTOK_IN_ENV = 'AGENTBOX_SKILL_ROUTE_USD_PER_MTOK_IN';
 
 /** The option that lets the judge say "no skill applies" on conversational turns. */
 const NONE = 'none';
@@ -122,6 +137,12 @@ function asBool(v, dflt) {
   if (v === undefined || v === null || v === '') return dflt;
   return ['1', 'true', 'yes', 'on'].includes(String(v).toLowerCase());
 }
+/** A non-negative rate; anything unparseable falls back rather than costing at NaN. */
+function asRate(v, dflt) {
+  if (v === undefined || v === null || v === '') return dflt;
+  const n = Number.parseFloat(String(v));
+  return Number.isFinite(n) && n >= 0 ? n : dflt;
+}
 function asInt(v, dflt) {
   const n = Number.parseInt(String(v ?? ''), 10);
   return Number.isFinite(n) && n > 0 ? n : dflt;
@@ -151,6 +172,9 @@ function config(env = process.env, opts = {}) {
     minChars: asInt(minChars, DEFAULT_MIN_CHARS),
     skillsDir: env.AGENTBOX_SKILL_ROUTE_SKILLS_DIR || env.SKILLS_TREE || DEFAULT_SKILLS_DIR,
     key: env.TYPESAFE_API_KEY || '',
+    // Declared alongside the endpoint by whoever selects one; undeclared means the
+    // metered default, so a misconfiguration over-states cost rather than hiding it.
+    usdPerMTokIn: asRate(env[USD_PER_MTOK_IN_ENV], JEV_USD_PER_MTOK_IN),
     logPath: env.AGENTBOX_SKILL_ROUTE_LOG === '0' ? '' :
       (env.AGENTBOX_SKILL_ROUTE_LOG || path.join(os.homedir(), '.claude', 'skill-route.jsonl')),
   };
@@ -231,7 +255,8 @@ async function route(prompt, cfg, { retries = 0, candidates } = {}) {
       confidence: typeof a.confidence === 'number' ? a.confidence : null,
       ranked,
       usage: { input_tokens: inTok, output_tokens: (j.usage && j.usage.output_tokens) || 0 },
-      usd: inTok * JEV_USD_PER_MTOK_IN / 1e6,
+      usdPerMTokIn: cfg.usdPerMTokIn,
+      usd: inTok * cfg.usdPerMTokIn / 1e6,
     };
   }
 }
@@ -247,17 +272,32 @@ async function route(prompt, cfg, { retries = 0, candidates } = {}) {
  */
 function formatContext(r) {
   if (!r || r.outcome !== 'routed' || r.none) return '';
-  const top = r.ranked.filter(([k]) => k !== NONE).slice(0, 3)
+  // Zero-mass entries are dropped before the slice, not after: a sovereign backend
+  // shortlists the candidate set and reports the options it set aside at exactly 0.0
+  // (ADR-2094), so an unfiltered top-3 would inject two skill names the judge gave no
+  // weight to into every routed turn. On the cloud path every option carries some mass,
+  // so this is a no-op there.
+  // The pick is always advertised; probabilities are shown only where they carry
+  // meaning. A backend may legitimately omit `probabilities`, and a shortlisting one
+  // reports the options it set aside at exactly 0.0 — in both cases a number would be
+  // noise, but the pick itself is the whole point of having asked.
+  const scored = r.ranked.filter(([k, v]) => k !== NONE && v > 0).slice(0, 3)
     .map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ');
+  const top = scored || r.choice;
+  if (!top) return '';
   return `[route] ${top} — advisory; load a skill only if it fits this turn.`;
 }
 
 /** One JSON line per call: outcome accounting without the prompt. */
 function appendLog(cfg, record) {
   if (!cfg.logPath) return;
-  const { candidates, chars, truncated, ms, outcome, reason, choice, confidence, usage, usd, model, consumer } = record;
+  const { candidates, chars, truncated, ms, outcome, reason, choice, confidence, usage, usd, usdPerMTokIn,
+    model, consumer } = record;
   const line = JSON.stringify({ ts: new Date().toISOString(), consumer, outcome, reason, model, choice, confidence,
-    candidates, chars, truncated, ms, input_tokens: usage && usage.input_tokens, usd });
+    candidates, chars, truncated, ms, input_tokens: usage && usage.input_tokens,
+    // `usd` is only meaningful against the price it was costed at; carry both so a log
+    // spanning a change of endpoint can still be totalled honestly (ADR-2094).
+    usd_per_mtok_in: usdPerMTokIn, usd });
   try {
     fs.mkdirSync(path.dirname(cfg.logPath), { recursive: true });
     fs.appendFileSync(cfg.logPath, line + '\n');
@@ -265,6 +305,6 @@ function appendLog(cfg, record) {
 }
 
 module.exports = {
-  NONE, INSTRUCTIONS, JEV_USD_PER_MTOK_IN, DEFAULT_API, DEFAULT_MODEL,
+  NONE, INSTRUCTIONS, JEV_USD_PER_MTOK_IN, USD_PER_MTOK_IN_ENV, DEFAULT_API, DEFAULT_MODEL,
   description, loadCandidates, readTomlSection, config, clampPrompt, route, formatContext, appendLog,
 };

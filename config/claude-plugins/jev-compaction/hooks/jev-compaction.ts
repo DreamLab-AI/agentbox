@@ -36,6 +36,15 @@ const COMMAND = 'jev-compact';
 
 type Config = CompactOptions & {
   apiKey?: string;
+  /** Endpoint override. Absent ⇒ the vendor cloud, which is the default posture. */
+  baseUrl?: string;
+  /**
+   * Whether the endpoint above is on this network. DECLARED by the projector from the
+   * manifest gate (ADR-2094 §7), never inferred from `baseUrl` — a hostname is not
+   * evidence of where bytes come to rest, and this boolean is what decides whether an
+   * email-tainted session may be judged at all. Absent ⇒ false ⇒ the fence stays shut.
+   */
+  backendLocal: boolean;
   compactAtPercent: number;
   minReductionRatio: number;
   model: string;
@@ -65,9 +74,15 @@ export function resolveConfig(options: PluginOptions): Config {
     minReductionRatio: num(options, 'minReductionRatio', 0.25),
     model: str(options, 'model') ?? DEFAULT_MODEL,
     enabledByDefault: options['enabledByDefault'],
+    // `true` only from a real boolean, or the exact string a shell-projected config
+    // carries. Any other shape — including a truthy string like "false" or a URL —
+    // leaves the fence shut, because this is a data-boundary control, not a flag.
+    backendLocal: options['backendLocal'] === true || options['backendLocal'] === 'true',
     taintTools: listOption(options['taintTools'], DEFAULT_TAINT_TOOLS),
     taintSkills: listOption(options['taintSkills'], DEFAULT_TAINT_SKILLS),
   };
+  const baseUrl = str(options, 'baseUrl');
+  if (baseUrl) config.baseUrl = baseUrl;
   const apiKey = str(options, 'apiKey');
   if (apiKey) config.apiKey = apiKey;
   return config;
@@ -76,10 +91,10 @@ export function resolveConfig(options: PluginOptions): Config {
 type Fetch = (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) =>
   Promise<{ status: number; ok: boolean; text: string }>;
 
-function asker(fetchFn: Fetch, apiKey: string, model: string): JevAsker {
+function asker(fetchFn: Fetch, apiKey: string, model: string, baseUrl?: string): JevAsker {
   return {
     async ask(state, questions) {
-      const r = buildJevRequest({ apiKey, model }, state, questions);
+      const r = buildJevRequest({ apiKey, model, baseUrl }, state, questions);
       const res = await fetchFn(r.url, { method: r.method, headers: r.headers, body: r.body });
       return parseJevResponse(res.status, res.ok, res.text);
     },
@@ -149,11 +164,14 @@ export const register: Register = (on: On, options: PluginOptions) => {
     const enabled = resolveEnabled(await $.store.get(STORE_ENABLED), cfg.enabledByDefault);
     const key = await apiKeyFor($, cfg);
     const taint = scanTaint(await $.session.messages(), cfg.taintTools, cfg.taintSkills);
-    const d = decide({ enabled, apiKey: key, taint });
+    const d = decide({ enabled, apiKey: key, taint, backendLocal: cfg.backendLocal });
     const last = (await $.store.get(STORE_LAST)) as string | undefined;
     const lines = [
       `jev-compaction: ${enabled ? 'ON' : 'OFF'}${mode === 'on' || mode === 'off' ? ' (saved)' : ''} · model ${cfg.model} · trigger at ${cfg.compactAtPercent}% · keep ≥ ${cfg.keepThreshold ?? 0.5}`,
       `this session would ${d.run ? 'compact via Jev' : `use the built-in summary (${d.reason}${d.detail ? `: ${d.detail}` : ''})`}`,
+      // Where a transcript would go is the fact an operator most needs before typing
+      // `/jev-compact on`, and the one thing no other surface shows them.
+      `endpoint: ${cfg.baseUrl ?? 'vendor cloud (default)'} · declared ${cfg.backendLocal ? 'LOCAL — tainted sessions may be judged' : 'NON-LOCAL — email-tainted sessions always use the built-in summary'}`,
       `taint rule: tools ${cfg.taintTools.join(', ')} · skills ${cfg.taintSkills.join(', ')}`,
       last ? `last outcome: ${last}` : 'no compaction yet this install',
       mode === 'help' ? 'usage: /jev-compact on | off | status' : '',
@@ -165,7 +183,7 @@ export const register: Register = (on: On, options: PluginOptions) => {
     const enabled = resolveEnabled(await $.store.get(STORE_ENABLED), cfg.enabledByDefault);
     const key = await apiKeyFor($, cfg);
     const taint = scanTaint(event.messages, cfg.taintTools, cfg.taintSkills);
-    const d = decide({ enabled, apiKey: key, taint });
+    const d = decide({ enabled, apiKey: key, taint, backendLocal: cfg.backendLocal });
     if (!d.run) {
       const note = `jev-compaction: built-in summary (${d.reason}${d.detail ? `: ${d.detail}` : ''})`;
       $.ui.log(note);
@@ -179,7 +197,7 @@ export const register: Register = (on: On, options: PluginOptions) => {
         asker(async (url, init) => {
           const r = await $.http.fetch(url, init);
           return { status: r.status, ok: r.ok, text: r.text };
-        }, key as string, cfg.model),
+        }, key as string, cfg.model, cfg.baseUrl),
         cfg,
       );
       const summary = summarise(result);
