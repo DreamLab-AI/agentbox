@@ -169,7 +169,10 @@ programs replace per-session/per-call overhead: `[program:agentbox-mcp-hub]`
 (`agentbox-mcp hub`, loopback `:9720`, serves the `[resources.mcp_hub].servers`
 list once for every session; `agentbox-manifest mcp-hub-project` rewrites those
 `.mcp.json` entries to `type: http` at the end of the boot MCP sequence and keeps
-the stdio definitions in `$WORKSPACE/.mcp-hub-servers.json`),
+the stdio definitions in `$WORKSPACE/.mcp-hub-servers.json`; a hub whose
+projection never arrives exits after 120 s naming the projection and the gate,
+and `startsecs=130`/`startretries=2` park it FATAL rather than restart it
+forever — ADR-2104),
 `[program:agentbox-hook-drain]` (folds the `/run/agentbox/hooks` spools written
 by `agentbox-hook event` — the shim the boot `agentbox-hook reconcile` installs
 into every project's `.claude/settings.json` in place of the ruflo/aqe CLI hooks
@@ -199,7 +202,9 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - GPU wrapping applies only when `gpu.backend == "local-cuda"`; `--suffix` (never `--prefix`) on `LD_LIBRARY_PATH`.
 - Manifest state is always introspected from `agentbox.toml`, never hard-coded in the catalogue (`system-manifest.js:11`).
 - Adding a gate means gating both the Nix package set and the supervisor block, plus a `system-manifest.js` catalogue entry with an honest apply-class.
-- A supervised program that depends on a file the bootstrap program writes later waits for it with a bounded timeout rather than failing into FATAL (ADR-2063, `services/agentbox-mcp/src/hub/mod.rs` `wait_for_config`); AoE session records live on the `aoe-profiles` volume, and the seeder's orphan reaper removes only clean, unreferenced, commit-free worktrees whose basename is exactly a seeded slug, refusing to act when a managed session exposes no path (ADR-2063, `scripts/aoe-seed-sessions.mjs` `reapOrphanWorktrees`).
+- A supervised program that depends on a file the bootstrap program writes later waits for it with a bounded timeout, then exits loudly naming the projection and its manifest gate; its supervisor block sets `startsecs` above that wait so the exit is a failed START and the program parks FATAL rather than restarting forever (ADR-2063 as amended by ADR-2104, `services/agentbox-mcp/src/hub/mod.rs` `wait_for_config`, `flake.nix` `[program:agentbox-mcp-hub]`); AoE session records live on the `aoe-profiles` volume, and the seeder's orphan reaper removes only clean, unreferenced, commit-free worktrees whose basename is exactly a seeded slug, refusing to act when a managed session exposes no path (ADR-2063, `scripts/aoe-seed-sessions.mjs` `reapOrphanWorktrees`).
+- `/run/agentbox/bootstrap.done` is written only after every projection the manifest promises exists; a promised projection that never arrives is `BootstrapProjectionMissing` naming the gate and the path, no sentinel, and `/ready` stays 503 (ADR-2104, `config/seal-bootstrap.sh` `_check_projections`, `tests/config/boot-projection-contract.test.sh`).
+- An MCP server is a disposable adapter over a crate that owns the capability, never the control surface; a new MCP server needs a reason a library plus CLI cannot meet, stated in the change (ADR-2104).
 - Any tool that signals a process decides identity on argv elements against a known launcher allowlist and fails closed; joined-string matching is prohibited (ADR-2032, `services/agentbox-ops/src/procs.rs:23`).
 - Resource limits live only in `agentbox.toml [resources]` and the generated compose; `docker-compose.override.yml` never carries `deploy` limits or `shm_size` (ADR-2034).
 - The MCP hub binds loopback only (`services/agentbox-mcp/src/hub/config.rs` `is_loopback_bind`, refused otherwise) and is never published; `[resources.mcp_hub].servers` never lists a server with per-session state (claude-flow, code-interpreter, aci-shell, codebase-memory, agentic-qe) (ADR-2034).
