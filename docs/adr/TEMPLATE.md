@@ -8,7 +8,7 @@ activation_status: inactive      # inactive | staged | live
 supersedes: []                   # e.g. [ADR-0042]
 superseded_by: []                # e.g. [ADR-2050]
 verified_commit:                 # git sha at which implementation_status was verified (use full 40-char SHA; non-empty verified_paths enables staleness checking)
-verified_paths: []               # optional: repo-relative paths the verification inspected; CI fails if they change after verified_commit
+verified_paths: []               # optional: repo-relative git pathspecs the verification inspected; CI fails if they change after verified_commit. Globs work (`services/*/Cargo.toml`) — prefer one wherever review_trigger names a set that can GROW, since an enumeration cannot see additions
 owner:                           # accountable person/handle
 review_trigger:                  # the event/date that forces a re-review of this ADR
 repo: agentbox                   # visionclaw | agentbox

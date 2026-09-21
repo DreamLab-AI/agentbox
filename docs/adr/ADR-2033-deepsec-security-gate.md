@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -150,3 +150,7 @@ Existing runtime activation limits remain. Verification is renewed at
 `8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.
 
 **2026-09-07 re-verified at `ee742ade5`.** Governed paths changed by `ee742ade5` (ADR-2082 orchestration proxy): agentbox.toml management-api/lib/system-manifest.js schema/agentbox.toml.schema.json. The changes are additive — two new `[integrations.ruvector_external]` keys, their entrypoint env projection, one catalogue entry and two schema properties — and touch none of the sections this record governs; the decision and its invariant hold unchanged. Re-verified by `git diff 8fcc7b79b..ee742ade5 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by six of its eight governed paths, all moving for unrelated reasons (feature blocks, the Loom generalisation, new validator rules). Every numbered point re-established at `HEAD`: (1) `deepsecPkg` pinned to 2.3.9 via `mkNpmCli` (`flake.nix:480-500`) behind `[toolchains].deepsec = true` (`agentbox.toml:1630`), catalogue entry `deepsec` naming both gates with `apply_class: rebuild` (`management-api/lib/system-manifest.js:91-93`); (2) `[security.deepsec]` policy block intact with env-var *names* only (`agentbox.toml:1887-1899`), and E070/E071/E072/W070 all present (`scripts/agentbox-config-validate.js:1225-1258`); (3) `skills/build-with-quality/scripts/deepsec-gate.sh` is the sole entry point, documents `78 gate unavailable or misconfigured`, sets `EX_CONFIG=78`, instructs "record the gate as SKIPPED, not passed" and generates its own `deepsec.config.mjs` without `deepsec init`; (4) `model_auth = "local"`, `agent = "claude"`; (5) `.github/workflows/deepsec.yml` present. `node scripts/agentbox-config-validate.js agentbox.toml` → valid, no E070/E071. Claim STILL TRUE.

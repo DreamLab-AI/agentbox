@@ -8,7 +8,7 @@ activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: 1b43b70ff09b971b440c9964743402aec45ef515
-verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/agentbox-manifest/Cargo.toml, services/agentbox-mcp/Cargo.toml, services/agentbox-ops/Cargo.toml, services/dream-engine/Cargo.toml, services/nostr-pod-bridge/Cargo.toml, services/ontology-tools/Cargo.toml, services/podcast-ingest/Cargo.toml, services/secret-backup/Cargo.toml, services/skill-tools/Cargo.toml]
+verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
 repo: agentbox
@@ -205,3 +205,82 @@ plus the licence files actually present):
 ## Landing re-verification — 2026-09-05 (ddd1f1ec8)
 
 Governed paths changed in the landing commit: services/LICENSING-NOTICE.md: the correction this record's own 2026-09-05 re-verification made (secret-backup is AGPL by choice with publish = false; nine manifests, two AGPL); `scripts/ci/check-crate-licensing.sh` OK, 9 package directories. Decision unaffected; `verified_commit` moved to the landing commit.
+
+## Re-verification attempted — 2026-09-21 — NOT RE-VERIFIED, RECORD HAS DRIFTED
+
+`verified_commit` is deliberately **left at `1b43b70ff09b971b440c9964743402aec45ef515`**. It
+is stale, and it stays stale, because this record's own CI gate does not pass at
+`b680a7aeef604276af73e00e1eb5156f379530ae`. Bumping the SHA here would convert "unknown"
+into "confirmed" against the evidence.
+
+What the staleness gate pointed at was innocuous: the three tripped Cargo manifests gained
+a `loom-client = "0.1"` dependency (ADR-2084) and one description was reworded. Running the
+gate itself is what found the drift.
+
+```
+$ bash scripts/ci/check-crate-licensing.sh          # clean worktree at HEAD
+FAIL (check-crate-licensing): services/explainer-tools: [package] has no readme
+FAIL (check-crate-licensing): services/explainer-tools: LICENSE-MIT is missing or empty
+FAIL (check-crate-licensing): services/explainer-tools: LICENSE-APACHE is missing or empty
+FAIL (check-crate-licensing): services/explainer-tools: README.md is missing or empty
+FAIL (check-crate-licensing): 9 problem(s) across 10 package directories.
+exit 1
+```
+
+`services/explainer-tools/Cargo.toml` declares `license = "MIT OR Apache-2.0"` and
+`publish = false`, but the crate directory holds only `Cargo.toml`, `Cargo.lock`, `src/`
+and `tests/` — no `LICENSE-MIT`, no `LICENSE-APACHE`, no `README.md`, and no `readme`
+key. That is precisely the state this record forbids: "the `LICENSE-MIT` / `LICENSE-APACHE`
+texts in each workspace" and "the dual grant must be stated in every crate README". It is
+also not the record's own escape hatch, which requires `AGPL-3.0-only` **plus** a README
+saying the crate is not dual-licensed (the `secret-backup` precedent).
+
+**Two consequences worth separating.** First, `.github/workflows/invariants.yml:110-111`
+runs this check, so the invariants job is red at `HEAD` for a second, independent reason
+beyond the ADR index — fixing the ledger will not turn CI green on its own. Second, this is
+a gap in the record's *own* staleness contract: `verified_paths` enumerates ten specific
+`Cargo.toml` files, so a crate added under `services/` that is on none of them is invisible
+to the gate. The record's `review_trigger` says "any new crate under `services/`" — that
+trigger fired when `explainer-tools` landed and was not honoured.
+
+**To clear this record:** give `services/explainer-tools` the `LICENSE-MIT`,
+`LICENSE-APACHE` and `README.md` its manifest declares (or relicense it `AGPL-3.0-only`
+with the README the escape hatch requires), add a `readme` key to `[package]`, add
+`services/explainer-tools/Cargo.toml` to `verified_paths`, re-run
+`scripts/ci/check-crate-licensing.sh` to exit 0, and only then bump `verified_commit`.
+That is a code change under `services/`, outside this agent's remit.
+
+## Structural fix — 2026-09-21 — `verified_paths` now globs `services/`
+
+The missing licence files were the symptom; the enumeration was the defect. This record's
+`verified_paths` named nine specific `Cargo.toml` files, so a **new** crate under
+`services/` was invisible to the staleness gate — which is how `explainer-tools` landed
+without licence texts while this record still read as verified. The `review_trigger`
+already said "any new crate under `services/`"; nothing could act on it.
+
+`verified_paths` now carries `services/*/Cargo.toml` in place of the nine entries. The
+generator passes each entry straight to `git diff --name-only <commit>..HEAD -- <paths>`
+via `execFileSync` (no shell), so the `*` reaches git as pathspec magic rather than being
+expanded or mangled — verified against the very commit range that hid the drift:
+
+```
+$ git diff --name-only 1b43b70f..HEAD -- 'services/*/Cargo.toml'
+services/agentbox-mcp/Cargo.toml
+services/dream-engine/Cargo.toml
+services/explainer-tools/Cargo.toml     # <- the added crate the enumeration could not see
+services/podcast-ingest/Cargo.toml
+```
+
+`git ls-files 'services/*/Cargo.toml'` returns exactly the 10 package directories
+`scripts/ci/check-crate-licensing.sh` reports, so the glob and the gate now cover the same
+set by construction. Note that git's `*` spans `/`, so a future nested workspace member
+(`services/<crate>/crates/<sub>/Cargo.toml`) is also caught — a superset, and the right one
+for a record that governs the licensing of everything under `services/`.
+
+The three non-manifest paths (`LICENSING-NOTICE.md`, `docs/developer/licensing.md`, the
+gate script) stay enumerated: they are singular files, not a growing set.
+
+This does not by itself make the enumeration-vs-trigger problem a solved class. Other
+records in this pack arm the gate on fixed path lists while their `review_trigger` prose
+describes a *set* that can grow — ADR-2084's "or a fifth caller appears" is the same shape
+and also fired unactioned. Where a trigger names a set, the governed paths should glob it.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -218,3 +218,7 @@ commit pins and retains the same checks. Neither diff changes this decision’s
 runtime behaviour; existing implementation and activation qualifications remain.
 
 **2026-09-07 re-verified at `ee742ade5`.** Governed paths changed by `ee742ade5` (ADR-2082 orchestration proxy): agentbox.toml. The changes are additive — two new `[integrations.ruvector_external]` keys, their entrypoint env projection, one catalogue entry and two schema properties — and touch none of the sections this record governs; the decision and its invariant hold unchanged. Re-verified by `git diff 7bf2382c0..ee742ade5 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `agentbox.toml`; `mcp/servers/lib/ontology-retrieval.js` also moved (attestation work, ADR-2075). The façade contract is intact at `HEAD`: consumers hold `${LOOM_BASE_URL}` (`agentbox.toml:743`, `:1940`) and no consumer names a raw model port — commit `2899b3b7e` generalised the literal estate address out of this public repository, which strengthens rather than breaks "the model is a swappable URL behind the door". Retrieval still resolves through the Loom when `LOOM_FACADE_URL` is set and falls back transparently to VisionClaw when it is not (`ontology-retrieval.js:492-514`, `:611-617`), seeding via `/loom/search` (`:692`) and expanding via `/loom/sparql` (`:711`). Claim STILL TRUE. Note the Consequences prose above still says "a change behind :8084"; that is a narrative address, not a config value, and is left as written.

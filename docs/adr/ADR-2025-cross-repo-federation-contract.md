@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 796d85fcffb2153c7507d5bb2934f569b3994582
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [management-api/lib/bc20-provenance-bridge.js, management-api/lib/uris.js]
 owner: jjohare
 review_trigger: any change to the sha12 truncation, the urn:agentbox mint/parse grammar, or the closed inbound kind-map on either repo
@@ -111,3 +111,7 @@ remain untested — these are pure helper calls. `decision_status` stays
 ## Landing re-verification — 2026-09-06 (796d85fcf)
 
 Governed paths changed in the Wave 3 landing commit: management-api/lib/bc20-provenance-bridge.js. The changes are the ones recorded by the Wave 3 records landed in that commit (ADR-2061, 2064, 2065, 2066, 2068, 2069, 2070, 2072, the proposed 2071/2073–2078) and the ADR-2018 recall diagnosis; none alters this record's decision. Gates at the landing commit: management-api 81 suites / 1290 tests, exposure gate PASS, catalogue 60 paths, config validation clean. `verified_commit` moved to the landing commit.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `management-api/lib/uris.js`, whose only change since the previous anchor is the additive `knowledge` kind (ADR-2085) — content-addressed with a scope, minted through the same grammar, so the contract was extended by its own rules rather than broken. `management-api/lib/bc20-provenance-bridge.js` is unchanged. Re-established by running the fixture, which is now wired into CI (`.github/workflows/invariants.yml`, added since the previous anchor): `node scripts/ci/federation-fixture-check.mjs` at `HEAD` → `PASS, 37 checks run`. The agentbox half of the contract holds. **Still `proposed` for a reason the fixture itself prints:** the VisionClaw half is not run here, and the bead row remains divergent pending ADR-2061 — that is the cross-repo evidence this record still lacks.

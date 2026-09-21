@@ -8,7 +8,7 @@ activation_status: inactive
 supersedes: []
 superseded_by: []
 verified_commit: 8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3
-verified_paths: [lib/secret-backup.nix, flake.nix, services/secret-backup/src/main.rs, services/secret-backup/Cargo.lock]
+verified_paths: []
 owner: jjohare
 review_trigger: introduction or rotation of any load-bearing secret; compromise incident
 repo: agentbox
@@ -189,3 +189,32 @@ derivation evaluates on the pinned the connected node input. Container package s
 admission and custody behaviour are unchanged by this development-shell repair.
 Existing runtime activation limits remain. Verification is renewed at
 `8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.
+
+## Re-verification attempted — 2026-09-21 — NOT VERIFIABLE BY READING
+
+`verified_paths` is set to `[]`, the documented escape hatch for a record that asserts
+nothing mechanically checkable. `verified_commit` is **left at
+`8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`** as a provenance pointer and deliberately not
+bumped.
+
+The gate fired on `flake.nix`, but `git diff 8fcc7b79…..HEAD -- flake.nix` contains no
+secret-backup line at all; `lib/secret-backup.nix`, `services/secret-backup/src/main.rs`
+and `services/secret-backup/Cargo.lock` are untouched since the anchor. So the gate was
+reporting churn adjacent to this record, not drift in it — and arming the gate on those
+paths was the wrong instrument in the first place, because they are the *backup tool*,
+not the custody lifecycle this record governs.
+
+More to the point, the record already says so itself: "None yet — this record is
+`proposed`/`none`/`inactive`. Verification lands when the custody register exists, the
+publisher key-split ships, and break-glass use is audit-logged; at that point set
+`verified_commit` and populate `verified_paths`." A populated `verified_paths` contradicted
+that sentence. Emptying it restores the record's stated position and leaves the staleness
+gate inert until there is something to check.
+
+**What would settle it** is named in the record's own Acceptance condition and none of it
+is readable from source: confirmed custodians and deployed storage; rejection of
+revoked / expired / wrong-scope credentials tested **across running instances, caches,
+retained backups and a restart**; durable per-use receipts observed without credential
+leakage; encrypted-backup recovery exercised on synthetic data; the ADR-040 D3 publisher
+key-split landed with session and daemon invalidation demonstrated. Those are measurements
+against running services, not a commit to point at.

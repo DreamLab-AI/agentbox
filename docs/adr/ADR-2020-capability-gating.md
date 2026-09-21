@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -139,3 +139,7 @@ commit pins and retains the same checks. Neither diff changes this decision’s
 runtime behaviour; existing implementation and activation qualifications remain.
 
 **2026-09-07 re-verified at `ee742ade5`.** Governed paths changed by `ee742ade5` (ADR-2082 orchestration proxy): agentbox.toml. The changes are additive — two new `[integrations.ruvector_external]` keys, their entrypoint env projection, one catalogue entry and two schema properties — and touch none of the sections this record governs; the decision and its invariant hold unchanged. Re-verified by `git diff 7bf2382c0..ee742ade5 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `agentbox.toml`; `skills/tree-search-coder/SKILL.md` and `services/agentbox-ops/src/bin/tree-search-cap.rs` are unchanged. The tree-search posture is intact at `HEAD` (`agentbox.toml:707-714`): `enabled = true` with the "explicitly invoked, never auto-routed" comment, `spend_cap_usd = 0.50`, `max_candidates = 5`, `per_branch_timeout_s = 60`. The blocks added since the previous anchor are themselves manifest-gated with an off path — `[features.jev_compaction]` (uninstalls the plugin and deletes the env key when off, `config/entrypoint-unified.sh:2083-2148`) and `[skills.routing]` (de-registers the hook when `router = "table"` or `hook = false`, `:2065-2078`) — so the gating law held for the new capabilities rather than being bypassed by them. `node scripts/agentbox-config-validate.js agentbox.toml` at `HEAD` → valid, 5 advisory warnings, no errors. Claim STILL TRUE.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [mcp/servers/lib/ontology-retrieval.js, tests/integration/loom-served-identity.test.mjs, tests/integration/ontology-retrieval-cache.test.mjs]
 owner: jjohare
 review_trigger: a Loom generation rebuild or model swap, a cache-poisoning or stale-answer incident, or ADR-2023's generation-identity Remaining item being taken up
@@ -129,3 +129,7 @@ remote attestation. The generation descriptor does not implement corpus reload.
 Evidence: VisionFlow docs/estate-review/closeout/execution-2026-09-07/.
 
 The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; it does not identify the loaded container.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `tests/integration/ontology-retrieval-cache.test.mjs`, whose only change since the previous anchor is the estate-address generalisation (`http://192.168.2.132:8084` → `http://loom:8080/v1`, commit `2899b3b7e`) — a fixture URL, not a behaviour. Re-established at `HEAD`: `HOME=<scratch> node --test tests/integration/ontology-retrieval-cache.test.mjs tests/integration/loom-served-identity.test.mjs` → **27 pass, 0 fail**; `loomGenerationVerifier` is still the pre-cache identity read (`mcp/servers/lib/ontology-retrieval.js:665`, wired at `:741`, exported at `:784`), the configured value is still only a pin to compare (`:494-496` sources it from `opts` / `LOOM_GENERATION` / `ONTOLOGY_GENERATION`), and the cache key still binds the resolved generation (`:330`, `:453`). The EA-05 narrative remains the operative one. Still `proposed` / `inactive` for the reason EA-05 gives and which reading cannot settle: the **live façade** reports lexical generation 2026-08-22 against semantic 2026-08-17 and carries no loaded-identity or embedding fields, so activation waits on a coordinated Loom bundle rebuild and observed response headers — a running-service measurement, not a source claim. Note the older `## Verification` section above ("sources generation only from options and environment … no identity read") describes the **pre-EA-05** state and is superseded by the EA-05 section; it is left in place as the pack's append-only convention requires.

@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -148,3 +148,7 @@ commit pins and retains the same checks. Neither diff changes this decision’s
 runtime behaviour; existing implementation and activation qualifications remain.
 
 **2026-09-07 re-verified at `ee742ade5`.** Governed paths changed by `ee742ade5` (ADR-2082 orchestration proxy): agentbox.toml. The changes are additive — two new `[integrations.ruvector_external]` keys, their entrypoint env projection, one catalogue entry and two schema properties — and touch none of the sections this record governs; the decision and its invariant hold unchanged. Re-verified by `git diff 7bf2382c0..ee742ade5 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `agentbox.toml` gaining unrelated feature blocks; `mcp/servers/lib/aggregate-effectiveness.js` and `scripts/ruvector-sona-feeder.mjs` are unchanged since the previous anchor. Every frozen value is intact at `HEAD`: `embedding_active_column = "embedding"` (`:437`, the 384-dim column), `embedding_dual_write = false` (`:436`), `attention_rerank = false` (`:467`), `sona_learn_enabled = false` / `sona_apply_enabled = false` (`:468-469`), `sona_enabled = false` (`:455`). No dimension migration was started. Claim STILL TRUE.

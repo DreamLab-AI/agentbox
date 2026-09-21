@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -155,3 +155,7 @@ derivation evaluates on the pinned the connected node input. Container package s
 admission and custody behaviour are unchanged by this development-shell repair.
 Existing runtime activation limits remain. Verification is renewed at
 `8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Gate tripped by unrelated churn in `flake.nix` and `config/nip98-proxy/proxy.mjs` (`de37998a8` NIP-07 session probe + token redaction, `cae729aa7` per-route `preserve_host`); neither touches the token boundary. Re-established against committed `HEAD`: `git show HEAD:flake.nix | grep -n "aoe serve"` → `:2411 aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port 9095`; `git show HEAD:config/nip98-proxy/proxy.mjs` still fails closed with no daemon token on both paths — `503` at `:1008` (HTTP) and `:1107` (`HTTP/1.1 503` on the WS upgrade, written **before** connecting), with the read-then-stat torn-read retry at `:281-292`. `scripts/aoe-curl.sh` unchanged since the previous anchor. Claim STILL TRUE.

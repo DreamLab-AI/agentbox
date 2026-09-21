@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -215,3 +215,7 @@ derivation evaluates on the pinned the connected node input. Container package s
 admission and custody behaviour are unchanged by this development-shell repair.
 Existing runtime activation limits remain. Verification is renewed at
 `8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `.github/workflows/invariants.yml` (new unrelated steps), `docker-compose.yml` (Loom/annexe env, an `opencode-store` volume) and `flake.nix`. Re-established by running the gate itself over a clean worktree at `HEAD` (`git worktree add --detach … HEAD; bash scripts/ci/check-ports-loopback.sh`) → exit 0, with the 8 declared supervisor binds reported and every non-loopback one sanctioned. The CI wiring is still present at `.github/workflows/invariants.yml:52-53`. Claim STILL TRUE. **Caveat for the record, not a defect in it:** the same check fails in the *working tree* on the untracked `docker-compose.system-one.yml:85` (`0.0.0.0:8097:8097`), which will break this invariant the moment that work is committed unsanctioned.

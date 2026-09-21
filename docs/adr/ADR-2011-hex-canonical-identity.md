@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -105,3 +105,7 @@ identity migration, and no booted-image key-persistence test ran.
 
 **Governed paths changed.** `config/nip98-proxy/selftest.mjs`,
 `config/nip98-proxy/proxy.mjs`.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Only `config/nip98-proxy/proxy.mjs` moved (`de37998a8`, `cae729aa7`); `management-api/lib/agent-identity.js` is untouched since the previous anchor. The hex-only acceptance is intact at `HEAD` — `^[0-9a-f]{64}$` guards the boot allowlist (`proxy.mjs:222`), the verifier's returned pubkey (`:244`), each route allowlist entry (`:370`) and the session-token pubkey (`:568`). No bech32 acceptance path was added. Claim STILL TRUE.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -198,3 +198,7 @@ Existing runtime activation limits remain. Verification is renewed at
 `8fcc7b79b7c93c0744ca68b7a09fa14fdae8f5e3`; the project flake.lock has not been updated.
 
 **2026-09-07 re-verified at `ee742ade5`.** Governed paths changed by `ee742ade5` (ADR-2082 orchestration proxy): agentbox.toml. The changes are additive — two new `[integrations.ruvector_external]` keys, their entrypoint env projection, one catalogue entry and two schema properties — and touch none of the sections this record governs; the decision and its invariant hold unchanged. Re-verified by `git diff 8fcc7b79b..ee742ade5 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by feature blocks added to `agentbox.toml` (colloquy, jev-compaction, skills.routing) and by unrelated `flake.nix` churn. The posture itself is unchanged at `HEAD`: `agentbox.toml:151 ingress_policy = "allowlist"` with the "there is NO fallback and NO auto-add: empty = every inbound relay event is dropped" comment and the explicit `allowed_pubkeys` list (`:157-`); `flake.nix:1499-1519` still emits `pubkey_whitelist = [ ]  # ADR-2012 deny-all` for an empty allowlist and only turns the gate off for `ingress_policy = "open"`. Claim STILL TRUE.

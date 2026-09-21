@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -80,3 +80,30 @@ Governed paths changed in the Wave 3 landing commit: config/entrypoint-unified.s
 The entrypoint delta replaces only the agent identity block; consultants.antigravity.model projection and operator-override precedence are unchanged. A failed identity now aborts boot rather than allowing downstream consumers to start with a placeholder. The complete intervening change to the governed source was reviewed at `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; prior runtime/approval limitations remain.
 
 **2026-09-07 re-verified at `ee742ade5`.** Governed paths changed by `ee742ade5` (ADR-2082 orchestration proxy): config/entrypoint-unified.sh. The changes are additive — two new `[integrations.ruvector_external]` keys, their entrypoint env projection, one catalogue entry and two schema properties — and touch none of the sections this record governs; the decision and its invariant hold unchanged. Re-verified by `git diff a0ee1fe57..ee742ade5 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `config/entrypoint-unified.sh` (six unrelated blocks added) and `skills/mcp.json` (skill paths moved to `/opt/agentbox`, ComfyUI moved to the sidecar, Codex default → `gpt-6-astra`); neither touched the antigravity projection. Re-established at `HEAD`: the environment-wins precedence is still `if [ -z "${AGENTBOX_ANTIGRAVITY_MODEL:-}" ] … export AGENTBOX_ANTIGRAVITY_MODEL="$(agentbox-manifest toml-string …)"` — **now at `config/entrypoint-unified.sh:2165-2169`, not `:1585` as the Decision cites**; the TUI carry-forward is at `services/agentbox-manifest/src/tui_write.rs:37` as cited; and `gemini-3.8-flash` is still the single default across `agentbox.toml:1156`/`:1555`, `schema/agentbox.toml.schema.json:1111`/`:1119`, `mcp/consultants/antigravity/server.js:20`/`:25` and `skills/mcp.json:194`/`:408`. Claim STILL TRUE; the `:1585` citation in the Decision is stale line-drift and should be read as `:2165`.
+
+### Finding — `file:line` citations are ungated
+
+The `:1585` → `:2165` drift above is worth naming as a class problem rather than a typo.
+The pack's own lookup order (`PREAMBLE.md`) is "governing doc → its `file:line` citations
+into code → the ledger records", which makes those citations part of the compliance
+surface. Nothing checks them. The staleness gate watches *whether a governed file changed*,
+not whether the line a record points into still holds what the record says it holds — so a
+citation degrades silently under ordinary insertions above it, and does so most
+aggressively in exactly the files that attract the most additive change
+(`config/entrypoint-unified.sh` has taken six unrelated blocks since this record's previous
+anchor, moving this citation by ~580 lines).
+
+The failure is quiet and asymmetric: a *stale* citation sends a reader to unrelated code,
+which they will usually notice; a citation that has drifted onto *plausible but different*
+code is the dangerous one, because it reads as confirmation. Both are worse than a citation
+that names a symbol.
+
+No gate is proposed here — building one is separate work, and the cheap mitigation is
+cheaper: cite a stable anchor (a function or shell variable name, e.g.
+`entrypoint-unified.sh` `_SR_ROUTER`) and let the line number be advisory, so a reader can
+`grep` their way back when it drifts. Recorded so the next person re-verifying this pack
+knows line numbers carry no guarantee.

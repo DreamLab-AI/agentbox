@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1b43b70ff09b971b440c9964743402aec45ef515
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
@@ -113,3 +113,7 @@ Governed paths changed in the Wave 3 landing commit: docs/INGRESS-identity.md. T
 ## Landing re-verification — 2026-09-06 (f7a3915f9)
 
 Governed paths changed in the doc-sync commit: docs/INGRESS-identity.md — frontmatter `version`/`verified_commit` bump and changelog entry for the Remediation — 2026-09-05 section; no code or citation this record depends on changed. `verified_commit` moved to the doc-sync commit.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `cae729aa7` (`preserve_host`) and `de37998a8` (session probe) on `proxy.mjs`, plus the additive ADR-2088 text in `docs/INGRESS-identity.md`. The bearer-gating branches are unchanged at `HEAD`: a signed NIP-98 request keeps its own `Authorization` on a named route (`proxy.mjs:987` HTTP, `:1143` WS), the route bearer is injected only `else if (route.bearer && auth.mode !== 'nip98')` (`:995`, `:1148`), NIP-07 minting rejects anything but `auth.mode === 'nip98'` (`:878`), and `bearer_env` is boot-fatal when unset (`:336`). Claim STILL TRUE.

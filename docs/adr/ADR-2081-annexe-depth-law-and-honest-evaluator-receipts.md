@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b48847316f559c9fcb5d4ef4cc56c826ef440e7e
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/gate.rs, services/dream-engine/src/verdict.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
@@ -53,3 +53,7 @@ The initial ADR gate correctly refused the older `verified_commit`: the four gov
 `cargo test --locked --offline --lib` in `services/dream-engine` passed **155 tests, 0 failed** on the inspected clean governed source paths. [Exact output](../../../../VisionFlow/docs/estate-review/evidence/2026-09-07/adr2081-dream-engine-tests.log) and the [source/test receipt](../../../../VisionFlow/docs/estate-review/evidence/2026-09-07/adr2081-reverification.json) bind this run to the updated revision and working-file hashes. The four source blobs are unchanged between the implementation commit and that revision. No implementation code changed during re-verification.
 
 Retain **accepted / complete / staged** for this source-and-local-test scope. The supervised Nix-store process, rebuilt image, actual the connected node annexe layout and live evaluator receipts were not inspected or exercised. The original rebuild/activation acceptance remains required.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `services/dream-engine/src/{engine,runner}.rs` via `2899b3b7e` (address generalisation), `fb80b1be7` (Loom placeholder resolution) and `bc4a9b259` (ADR-2087 task properties); `gate.rs` and `verdict.rs` are unchanged. All four decision points re-established at `HEAD`: `pub fn annexe_subpath(repo_path, workspace_root)` with its symlink-resolving depth test (`engine.rs:1471`, test `:1574`); both runners still build `bash -o pipefail -c` with the load-bearing comment and the propagation test (`runner.rs:65`, `:99`, `:225`); a no-patch ACCEPT is still `Veto::unproven` → `INCONCLUSIVE` (`gate.rs:62`, `:220`, `:229`, test `accept_without_a_candidate_patch_is_unproven_not_a_harness_fault` at `:483`); `sanitise_finding` / `sanitise_finding_full` both present (`verdict.rs:347`, `:417`). Claim STILL TRUE. `activation_status: staged` is unchanged — activation is still a supervised-loop receipt from a rebuilt image, which reading cannot supply.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ee742ade57ddca06ba846676e6006171ec76c49d
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [agentbox.toml, mcp/servers/ontology-bridge.js, mcp/servers/ontology-propose.js, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-authoring-authority.js]
 owner: jjohare
 review_trigger: any change to direct_axiom_load default, or the authority-class of ontology_axiom_load
@@ -173,3 +173,7 @@ commit pins and retains the same checks. Neither diff changes this decision’s
 runtime behaviour; existing implementation and activation qualifications remain.
 
 **2026-09-07 re-verified at `ee742ade5`.** Governed paths changed by `ee742ade5` (ADR-2082 orchestration proxy): agentbox.toml. The changes are additive — two new `[integrations.ruvector_external]` keys, their entrypoint env projection, one catalogue entry and two schema properties — and touch none of the sections this record governs; the decision and its invariant hold unchanged. Re-verified by `git diff 7bf2382c0..ee742ade5 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `agentbox.toml` alone; all four ontology libraries in `verified_paths` are unchanged since the previous anchor. `direct_axiom_load = false` at `agentbox.toml:724`, and `ontology_axiom_load` is still classed `"zero-tolerance"` in the authority table (`:912`). The backdoor remains disabled outside bootstrap. Claim STILL TRUE.

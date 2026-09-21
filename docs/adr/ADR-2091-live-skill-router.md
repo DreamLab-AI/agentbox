@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 64c00fd00da8c271d4c5a299cb811de68f1cc90d
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -108,3 +108,7 @@ At `verified_commit`:
   $0.000620/call`.
 - First real dispatch: a standing project-state item (nested `block_on` in the ontology
   query handlers) routed to `rust-development` at 0.92 with `build-with-quality` at 0.07.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `config/entrypoint-unified.sh` alone (`0950527d3`, ADR-2093, purely additive elsewhere in the file); the four other governed paths are unchanged since the previous anchor. Decision point 6 re-established at `HEAD`: the section is read with `_ab_toml_val` / `_ab_toml_bool` / `_ab_toml_int` (`:2037-2042`), `AGENTBOX_SKILL_ROUTER` / `_ROUTE_MODEL` / `_ROUTE_TIMEOUT_MS` / `_ROUTE_MIN_CHARS` are inlined into the registered command (`:2051-2052`) and published to the runtime-env file for shells (`:2660-2663`), and `router = "table"` or `hook = false` still filters the registration back out (`:2065-2078`, logging "de-registered routing hook"). Claim STILL TRUE. Verified against committed `HEAD` deliberately: `config/hooks/lib/skill-route.cjs` carries uncommitted working-tree changes that this record does not cover.

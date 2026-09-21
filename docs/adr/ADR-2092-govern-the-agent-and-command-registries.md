@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 64c00fd00da8c271d4c5a299cb811de68f1cc90d
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -132,3 +132,7 @@ disk that this estate has and buys a way back from a bad cull.
 for a reason that still holds: the `aqe init` fleet is legitimately project-scoped, and
 baking it would couple the image to one project's QE choices. The allowlist keeps the
 overlay supported without that coupling.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `config/entrypoint-unified.sh` alone (`0950527d3`, ADR-2093); the seven other governed paths are unchanged. Re-established at `HEAD`: the agent reconciler runs with the manifest, the baked tree and both secondary roots (`config/entrypoint-unified.sh:2585-2593`, `REGISTERED_AGENTS_MANIFEST=…/registered-agents.txt`, `AGENT_ROOT_TARGETS` collapsing `$WORKSPACE/.claude/agents` and `$WORKSPACE/project/.claude/agents`), and the prune-only command reconciler follows it over three roots (`:2603-2609`). `bash tests/config/agent-reconcile.test.sh` in a clean worktree at `HEAD` → **26 passed, 0 failed**, including "every registered agent is baked". Claim STILL TRUE.

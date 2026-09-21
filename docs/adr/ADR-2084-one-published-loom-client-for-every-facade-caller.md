@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 62e1657fcd7237e6ff0c08464717459e7a45c3ee
+verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
 verified_paths: [services/dream-engine/src/llm.rs, services/podcast-ingest/src/ingest/loom.rs, services/podcast-ingest/src/promote/loom.rs, services/explainer-tools/src/bin/loom_draft.rs, services/agentbox-mcp/src/web_summary/llm.rs, lib/explainer-tools.nix]
 owner: jjohare
 review_trigger: the Loom façade changes its request or telemetry contract, or a fifth caller appears
@@ -79,3 +79,7 @@ In agentbox: `cargo test` gives 155 passing in `dream-engine`, 77 in `agentbox-m
 the opposite of its own name and was red on main), and 18 in `explainer-tools` including six
 end-to-end tests that run the built binary against a mock façade. `skills/lint-skills.sh`
 reports the estate clean at 129 skills, 0 warnings.
+
+## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
+
+Tripped by `services/agentbox-mcp/src/web_summary/llm.rs` via `e2fdb363f` — **the fifth caller named in this record's own `review_trigger`**, which ported web-summary onto `loom-client` rather than away from it. Re-established at `HEAD`: `grep -rln loom_client services/*/src/` returns `agentbox-mcp/src/web_summary/llm.rs`, `podcast-ingest/src/{ingest,promote}/loom.rs`, `dream-engine/src/{llm,config}.rs` and `explainer-tools/src/bin/loom_draft.rs` — every façade caller in the repository, with no hand-rolled `reqwest` chat/completions path left; `lib/explainer-tools.nix:12,19,47` still documents the shared crate as the sole protocol owner. The claim is not merely still true but strictly stronger than at the previous anchor. Claim STILL TRUE.
