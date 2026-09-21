@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: fa93fcaaacdda0549add06cbfeec8ad002912606
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -152,3 +152,7 @@ Existing runtime activation limits remain. Verification is renewed at
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Governed paths moved for reasons outside this claim: `docs/INGRESS-identity.md` gained invariants 8 and 9 (ADR-2088, purely additive — `git diff <old>..HEAD -- docs/INGRESS-identity.md` is 30 insertions, 0 deletions); `proxy.mjs` gained `/nip07/session` (a cookie probe that 401s without a valid session, not a new identity door) and an opt-in `preserve_host` whose connection targets stay fixed by the trusted config. Re-established at `HEAD`: `aoe serve --behind-proxy --host 127.0.0.1 --port 9095` (`flake.nix:2411`); inbound `x-agentbox-pubkey` / `x-agentbox-auth-mode` unconditionally dropped and re-injected from the verified identity on HTTP (`proxy.mjs:961-962`, `:979-980`) and on WS upgrade (`:1122`, `:1140`); a verifier that will not load yields `nip98_verifier_unavailable` → reject (`:679`); boot-fatal config validation for a bad allowlist entry (`:222`) and an unset `bearer_env` (`:336`). Claim STILL TRUE.
+
+### Re-verified 2026-09-21 at fa93fcaaacdda0549add06cbfeec8ad002912606
+
+Governed paths changed in the PRD-024 governing-doc commit: docs/INGRESS-identity.md only, and only additively: the frontmatter version bump to 0.2.0 with its changelog line, a scope note appended to Invariant 6 (the relay allowlist, ADR-2012's concern, marked "not in force until PRD-024 is ratified") and a new section "Settlement identity and key separation, PROPOSED". The nip98-proxy identity boundary, the bearer gating and their citations into `config/nip98-proxy/proxy.mjs` are untouched (`git diff b680a7ae..fa93fcaaa -- config/nip98-proxy/proxy.mjs` is empty). Decision unaffected; `verified_commit` moved to the landing commit.
