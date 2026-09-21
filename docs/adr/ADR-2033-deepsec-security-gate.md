@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 224afae65a3bae1391e76e3e9a5fcbe114cac8a4
+verified_commit: ab785f08c00b443db44b8b8a6a501b085ce4d0be
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -172,4 +172,4 @@ The four that moved were all extended for a new gate, not edited for this one, a
 
 Two governed paths moved for reasons outside this claim. `management-api/lib/system-manifest.js` changed in two places, both about the ADR-2091 skill router: its catalogue gate moved from the section `skills.routing` (which has no `enabled` key, so it resolved to undefined and failed the ADR-039 parity gate) to the mode string `skills.routing.router`, and `stateOf` learned per-entry `off_values` so `router = "table"` reads as off. The `deepsec` catalogue entry, its `security.deepsec` gate and its apply class are byte-identical. `flake.nix` moved only in the mcp-hub supervisor block (ADR-2104); `git diff e57156a8f..HEAD -- flake.nix | grep -i deepsec` is empty, so the baked CLI, its manifest gate and the names-only credential policy are untouched. Re-established at HEAD: `node scripts/ci/check-manifest-catalogue.js` PASSes all 65 gate paths, the composed view reports `deepsec: on`, and `node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs` is green. Claim STILL TRUE.
 
-**2026-09-21 re-verified at `224afae65`.** Governed paths changed by the ADR-2105 kind move: agentbox.toml. The change is a kind-number relocation (colloquy 38100-38105 to 38410-38415, settlement 38110-38115 to 38420-38425) plus six numbers appended to `[sovereign_mesh.relay].allowed_kinds` and a comment above it; it touches no section this record governs. The decision and its invariant hold unchanged. Re-verified by `git diff 5763f1014..224afae65 -- <verified_paths>`; no re-implementation was needed.
+**2026-09-21 re-verified at `ab785f08c`.** Governed paths changed by the ADR-2105 kind move: agentbox.toml. The change is a kind-number relocation (colloquy 38100-38105 to 38410-38415, settlement 38110-38115 to 38420-38425) plus six numbers appended to `[sovereign_mesh.relay].allowed_kinds` and a comment above it; it touches no section this record governs. The decision and its invariant hold unchanged. Re-verified by `git diff 5763f1014..224afae65 -- <verified_paths>`; no re-implementation was needed.

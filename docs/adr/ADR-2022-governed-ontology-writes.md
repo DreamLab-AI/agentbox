@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 224afae65a3bae1391e76e3e9a5fcbe114cac8a4
+verified_commit: ab785f08c00b443db44b8b8a6a501b085ce4d0be
 verified_paths: [agentbox.toml, mcp/servers/ontology-bridge.js, mcp/servers/ontology-propose.js, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-authoring-authority.js]
 owner: jjohare
 review_trigger: any change to direct_axiom_load default, or the authority-class of ontology_axiom_load
@@ -182,4 +182,4 @@ Tripped by `agentbox.toml` alone; all four ontology libraries in `verified_paths
 
 Tripped by `agentbox.toml` alone (`b680a7ae`, ADR-2094); the four `mcp/servers/**` paths are unchanged since the previous anchor. The added `[features.sovereign_system_one]` block introduces a typed-decision façade and touches no ontology surface. Re-read at HEAD in a detached worktree: `agentbox.toml:788` `direct_axiom_load = false` and `:976` `ontology_axiom_load = "zero-tolerance"` in the authority table. The governed path (`ontology_propose → Whelk → PR → review/merge`) is unaltered. Claim STILL TRUE.
 
-**2026-09-21 re-verified at `224afae65`.** Governed paths changed by the ADR-2105 kind move: agentbox.toml. The change is a kind-number relocation (colloquy 38100-38105 to 38410-38415, settlement 38110-38115 to 38420-38425) plus six numbers appended to `[sovereign_mesh.relay].allowed_kinds` and a comment above it; it touches no section this record governs. The decision and its invariant hold unchanged. Re-verified by `git diff e57156a8f..224afae65 -- <verified_paths>`; no re-implementation was needed.
+**2026-09-21 re-verified at `ab785f08c`.** Governed paths changed by the ADR-2105 kind move: agentbox.toml. The change is a kind-number relocation (colloquy 38100-38105 to 38410-38415, settlement 38110-38115 to 38420-38425) plus six numbers appended to `[sovereign_mesh.relay].allowed_kinds` and a comment above it; it touches no section this record governs. The decision and its invariant hold unchanged. Re-verified by `git diff e57156a8f..224afae65 -- <verified_paths>`; no re-implementation was needed.
