@@ -215,8 +215,13 @@ const CATALOGUE = [
   { id: 'sovereign-system-one', name: 'Sovereign System One (local typed decisions)', layer: 'module',
     gate: 'features.sovereign_system_one', apply_class: 'boot',
     summary: 'ADR-2094: repoints BOTH System One consumers (the live skill router, ADR-2091, and Jev verbatim compaction, ADR-2093) from api.typesafe.ai at a LAN sidecar — system-one-facade on systemone:8097 over a loopback-only laya engine (services/laya-engine, open weights, Apache-2.0). The façade absorbs the capacity gap the cloud never had: option shortlisting (embedding-ranked top shortlist_k, always retaining none/other) and state windowing (top window_k), then re-expands so the answer names one of the CALLER\'S original options with probability mass over ALL of them. BOOT-class HERE: the entrypoint runs `agentbox-manifest sso-project` and projects AGENTBOX_SKILL_ROUTE_API/_MODEL into runtime-env.sh and the router hook, plus baseUrl/model/backendLocal into the jev-compaction plugin userConfig — a flip applies on container restart and needs no image rebuild. The SIDECAR is a separate lifecycle (./agentbox.sh systemone up, docker-compose.system-one.yml, GPU, ~1.7 GB of weights on a named volume); enabling the gate without the sidecar running leaves the consumers failing open to their built-in paths. Disabled ⇒ NOTHING is projected and the cloud path is byte-identical (ADR-2020). An endpoint that is not LAN/loopback is REFUSED, not projected (E075), and the email taint fence keys off the explicit backendLocal boolean, never off the URL (ADR-2094 §5). Validator: E075/W073; W071/W072 stand down when this gate is on because TYPESAFE_API_KEY is no longer on the path.' },
+  // The gate is the MODE STRING, not the section: [skills.routing] has no
+  // `enabled` key — router = "jev" | "table" carries the state — so the section
+  // path resolved to undefined and the capability was reported as unconfigured.
+  // "table" is this capability's off value: it is the pre-2091 path with the
+  // hook de-registered (ADR-2091), hence off_values rather than a global rule.
   { id: 'skill-router', name: 'Live skill router (System One / Jev)', layer: 'module',
-    gate: 'skills.routing', apply_class: 'boot',
+    gate: 'skills.routing.router', off_values: ['table'], apply_class: 'boot',
     summary: 'ADR-2091: [skills.routing].router="jev" registers config/hooks/skill-route.cjs on UserPromptSubmit — one Choice over every routable skill description per turn, pick injected as advisory context — and /route (skills/skill-router/scripts/route.mjs) uses the same library. FAILS OPEN to router="table" (the pre-2091 path: always-loaded descriptions + routing-table.md) on any error, timeout, 429/529, missing TYPESAFE_API_KEY or a `none` pick. Egress of the routing prompt is accepted for skill routing only (ADR-2090). BOOT-class: the entrypoint inlines model/timeout/min-chars into the hook command and runtime-env.sh; router="table" or hook=false retracts the registration on the next boot (byte-identical-when-off). No image change on either value.' },
   { id: 'ontology', name: 'Ontology bridge', layer: 'module',
     gate: 'skills.ontology', apply_class: 'boot',
@@ -305,7 +310,12 @@ function stateOf(manifest, entry) {
   // than an explicit off-mode means the surface is active. Both spellings count
   // as off — "none" is the conventional disabled value for a mode string that
   // names a thing rather than a state (vault.tui = "rune" | "none").
-  if (typeof value === 'string') return (value === 'off' || value === 'none') ? 'off' : 'on';
+  // A capability may name its own off modes (skill-router: "table"); 'off' and
+  // 'none' are the conventional ones every mode gate gets for free.
+  if (typeof value === 'string') {
+    const offModes = new Set(['off', 'none', ...(Array.isArray(entry.off_values) ? entry.off_values : [])]);
+    return offModes.has(value) ? 'off' : 'on';
+  }
   return 'available'; // gate absent from the manifest — catalogued but unconfigured
 }
 

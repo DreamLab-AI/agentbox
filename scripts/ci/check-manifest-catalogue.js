@@ -66,6 +66,13 @@ const BASELINE = [
       'skills.ontology.direct_axiom_load', 'skills.ontology.local_authoring',
       'skills.ontology.condense.enabled', 'skills.ontology.condense.schedule_enabled',
       'skills.browser.playwright', 'skills.browser.qe_browser',
+      // ADR-2085 Stop-hook knob under the catalogued `skills.colloquy` gate: it
+      // writes reflect candidates, never knowledge units, and is inert when the
+      // parent is off.
+      'skills.colloquy.reflect_candidates',
+      // ADR-2093 starting position of the /jev-compact switch, under the
+      // catalogued `features.jev_compaction` gate that installs the plugin.
+      'features.jev_compaction.enabled_by_default',
       'skills.code_interpreter.allow_pip_install',
       'integrations.ruvector_external.manage_sidecar', 'integrations.ruvector_external.hybrid_search',
       'integrations.ruvector_external.typed_metadata', 'integrations.ruvector_external.metadata_gin',
@@ -88,7 +95,11 @@ const BASELINE = [
       'payments.broadcast.accepts_block', 'payments.broadcast.health_signals',
       'project_tracking.github_enrichment', 'project_tracking.primer_on_scan',
       'project_tracking.nostr_publish', 'project_tracking.metrics',
-      'interaction_plane.proxy.strip', 'interaction_plane.proxy.worktree',
+      // Per-route HTTP fields of [[interaction_plane.proxy.routes]], flattened to
+      // one path by the walker. They shape a single route, not a capability; the
+      // catalogued `interaction_plane` gate is what /v1/system reports.
+      'interaction_plane.proxy.strip', 'interaction_plane.proxy.preserve_host',
+      'interaction_plane.proxy.worktree',
       'interaction_plane.proxy.eager_mandate', 'interaction_plane.coordinator.eager_mandate',
       'model_routing.aqe_agent_overrides', 'model_routing.dual_run',
       'resources.session_hygiene.reap',

@@ -11,6 +11,10 @@
 #   docs/archive/  — the frozen pre-consolidation corpus (rationale, never authority)
 #   docs/adr/      — the decision ledger; ADR-2028 itself cites the old literals
 #                    as the Context it removes, and ADRs are immutable once written
+# Also skipped: .claude/worktrees/ — gitignored ephemeral agent worktrees, i.e.
+# copies of this tree, not repository content. CI never has them; a developer box
+# does, and their hits are echoes of the same files the gate already scanned.
+# Tracked .claude/ files are still scanned.
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
@@ -21,7 +25,8 @@ matches="$(cd "$ROOT" && grep -rn "workspace/logseq" \
   --exclude-dir=node_modules --exclude-dir=.git 2>/dev/null \
   | grep -v '^\./docs/archive/' \
   | grep -v '^\./docs/adr/' \
-  | grep -v '^\./scripts/ci/check-no-logseq-paths\.sh:' || true)"
+  | grep -v '^\./scripts/ci/check-no-logseq-paths\.sh:' \
+  | grep -v '^\./\.claude/worktrees/' || true)"
 
 count="$(printf '%s' "$matches" | grep -c . || true)"
 count="${count:-0}"
