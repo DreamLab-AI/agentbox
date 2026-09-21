@@ -651,6 +651,70 @@ keep_threshold = 0.5
 min_reduction_ratio = 0.25
 model = "jev-latest"
 
+[features.sovereign_system_one]
+# ADR-2094 — Sovereign System One: the local, capacity-adapting typed-decision
+# façade. The two System One consumers (the live skill router, ADR-2091, and the
+# Jev compaction plugin, ADR-2093) speak one wire format; this gate repoints
+# them from TypeSafe's cloud at a LAN sidecar that speaks the same format over
+# open-weights laya (Apache-2.0) — nothing leaves the LAN.
+#
+# The mismatch the façade absorbs: laya's context is 512-1024 tokens, a real
+# route sends ~14,976 and a compaction up to 25,000. The façade shortlists
+# options (embedding-ranked, top shortlist_k) and windows state (top window_k),
+# then re-expands so the answer always names one of the CALLER'S original
+# options with probability mass over ALL of them. The `sso` block in the
+# response reports what it actually did.
+#
+# REBUILD-class: `./agentbox.sh systemone up` builds and starts the sidecar
+# (docker-compose.system-one.yml, service `systemone`, GPU, port 8097). The
+# projection below is BOOT-class inside the agentbox container.
+#
+# enabled = false  ⇒ nothing is projected and the cloud path is byte-identical
+#                    to today (ADR-2020). Default off until measured against the
+#                    ADR-2089 baseline with ./agentbox.sh systemone eval.
+# enabled = true   ⇒ services/agentbox-manifest projects AGENTBOX_SKILL_ROUTE_API
+#                    and AGENTBOX_SKILL_ROUTE_MODEL into runtime-env.sh and the
+#                    router hook, and baseUrl/model into the jev-compaction
+#                    plugin's userConfig. Validator: W073, E075.
+enabled = false
+endpoint = "http://systemone:8097/v1/systemone"
+model = "laya-typed-decisions"
+shortlist_k = 8                # options kept per Choice after embedding-rank
+window_k = 2                   # state windows evaluated per question
+embeddings_url = "http://192.168.2.132:9997/v1/embeddings"
+embeddings_model = "bge-small-en-v1.5"
+
+# ── the second engine (SSO contract §11) ─────────────────────────────────────
+# Two engines speak one contract (`POST /predict`, `GET /v1/models`,
+# `GET /health`), so `engine` is the only key that changes which one answers.
+# The façade learns the rest from `/v1/models` and must never branch on a name.
+#
+#   laya    — ModernBERT encoder, ~30 ms, ONE shared head budget for all
+#             options. Measured 2026-09-20 over 86 cases / 116 options: 53.5%
+#             accuracy, 67.4% soft. Raising head_max_len 256→768 made it worse
+#             overall and collapsed `none` from 35.7% to 7.1%, because every
+#             option competes for the same budget. That trade is architectural;
+#             no shortlist_k escapes it.
+#   openjev — Qwen3.5-4B NLI cross-encoder, scores every option in its OWN
+#             sequence (no shared head budget, no rubric compression, no option
+#             cap), so `none` becomes a THRESHOLD on honest entailment rather
+#             than a competitor for probability mass. A 4B decoder is not free:
+#             report latency alongside accuracy, from the same rig and corpus
+#             (§11.5), before making it the default.
+#
+# REBUILD-class for the sidecar: `docker compose -f docker-compose.system-one.yml
+# --profile openjev up -d`, then point the façade with
+# SSO_ENGINE_URL=http://127.0.0.1:8099.
+engine = "laya"                            # laya | openjev
+# FULL commit SHA of AlexWortega/openjev. Never a branch: the repository is
+# days old and ships a helper module that this engine executes, so tracking
+# `main` would let code change between two identical deployments. The vendored
+# copy of that helper is digest-pinned to the same commit
+# (services/openjev-engine/vendor/PROVENANCE.md).
+openjev_revision = "4395b29714015162db6112de91c35688e6e42717"
+openjev_hypothesis_chunk = 32              # options scored per forward pass; halves itself on CUDA OOM
+openjev_noul_mode = "entailment"           # entailment | ent_vs_contra — both are always reported
+
 [skills.voyager_skill_library]
 # Verified executable skill library. ex:VerifiedSkill records in
 # code-harness-skills (memory_type=procedural). Three-gate VerificationGate.

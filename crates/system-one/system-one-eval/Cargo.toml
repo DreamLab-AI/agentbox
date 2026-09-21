@@ -1,0 +1,36 @@
+[package]
+name = "system-one-eval"
+version = "0.1.0"
+description = "Measurement rig for System One backends: accuracy, latency, cost and backend-vs-backend parity."
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "system-one-eval"
+path = "src/main.rs"
+
+[dependencies]
+# The rig speaks the protocol through the published client and the published
+# core, so it measures the same wire the consumers use.
+system-one-core.workspace = true
+system-one-client.workspace = true
+# Only for `compress::boundary_offset`, which classifies the late-discriminator
+# subgroup. See the note in that module: it belongs in `system-one-core`.
+system-one-facade = { path = "../system-one-facade" }
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
+futures.workspace = true
+clap = { version = "4", features = ["derive"] }
+
+[dev-dependencies]
+# The stub System One backend the integration tests drive.
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+tokio = { version = "1", features = ["full"] }

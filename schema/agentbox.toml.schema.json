@@ -2821,6 +2821,24 @@
       "additionalProperties": false,
       "description": "Feature flags for cross-cutting capabilities.",
       "properties": {
+        "sovereign_system_one": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2094 Sovereign System One: the local capacity-adapting typed-decision facade (docker-compose.system-one.yml, service `systemone`). REBUILD-class for the sidecar; the consumer projection is BOOT-class. Off => the cloud path is byte-identical.",
+          "properties": {
+            "enabled": { "type": "boolean", "description": "Project endpoint/model into the skill router and the jev-compaction plugin. false leaves both untouched (ADR-2020)." },
+            "endpoint": { "type": "string", "format": "uri", "description": "Facade ingress speaking the Jev wire format. MUST be LAN/loopback — the facade has no cloud fallback." },
+            "model": { "type": "string", "description": "Model id the facade serves, e.g. laya-typed-decisions." },
+            "shortlist_k": { "type": "integer", "minimum": 2, "maximum": 64, "description": "Options kept per Choice after embedding-rank shortlisting. Below 2 the facade returns options_unfittable rather than guess." },
+            "window_k": { "type": "integer", "minimum": 1, "maximum": 16, "description": "State windows evaluated per question; state cost is per-question, so few windows is the point." },
+            "embeddings_url": { "type": "string", "format": "uri", "description": "OpenAI-shaped embeddings endpoint used for shortlisting and window ranking (bge-small on Xinference)." },
+            "embeddings_model": { "type": "string", "description": "Embedding model id, 384-dim bge-small-en-v1.5 to match the estate's memory space." },
+            "engine": { "type": "string", "enum": ["laya", "openjev"], "description": "Which engine answers behind the facade (SSO contract §11). Both speak one /predict + /v1/models + /health contract, so this is the only key that changes which one runs: laya = ModernBERT encoder with ONE shared head budget for all options; openjev = Qwen3.5-4B NLI cross-encoder scoring each option in its own sequence, which turns `none` into a threshold instead of a competitor for probability mass. The facade learns capabilities from /v1/models and must never branch on this name." },
+            "openjev_revision": { "type": "string", "pattern": "^[0-9a-f]{40}$", "description": "FULL commit SHA of AlexWortega/openjev, pinning both the weights and the vendored modeling_openjev.py helper. A branch name is rejected on purpose: the repository is days old and its helper module is executed by the engine, so tracking main would let code change between two identical deployments." },
+            "openjev_hypothesis_chunk": { "type": "integer", "minimum": 1, "maximum": 256, "description": "Hypotheses scored per forward pass. The shared prefix is prefilled once per chunk and its branched KV cache scales with the chunk, so this is the memory/latency dial; the engine halves it itself on a CUDA OOM and reports the reduction at /health." },
+            "openjev_noul_mode": { "type": "string", "enum": ["entailment", "ent_vs_contra"], "description": "How a noul reads off the three NLI classes: P(ent), or P(ent)/(P(ent)+P(con)) excluding neutral mass. Both values appear in every noul answer regardless; this only picks which is called `noul`, because which is better is a measurement (SSO §11.2)." }
+          }
+        },
         "jev_compaction": {
           "type": "object",
           "additionalProperties": false,

@@ -1,0 +1,11 @@
+# Pinned by contract (SSO §5). torch/numpy come from the CUDA base image
+# (pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime — sm_86 Ampere + sm_89 Ada);
+# pinning them here would fight the image's own build.
+laya==0.3.4
+transformers==4.52.4
+safetensors==0.5.3
+huggingface_hub==0.34.4
+tokenizers==0.21.1
+fastapi==0.115.12
+uvicorn==0.34.3
+pydantic==2.11.5

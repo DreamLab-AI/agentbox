@@ -2023,6 +2023,32 @@ else
     && echo "  [ruvnet-brain] MCP closure not found at $_RB_MCP_DIR — skipping"
 fi
 
+# ── ADR-2094: Sovereign System One — resolve the local façade projection once ──
+# [features.sovereign_system_one].enabled = true repoints BOTH System One
+# consumers (the router below and the Jev compaction plugin above) at the LAN
+# façade. The projector prints NOTHING when the gate is off or the endpoint is
+# not LAN/loopback, so `_SSO_*` stay empty and every consumer keeps the cloud
+# path byte-identically (ADR-2020). Fail-open: a projection failure leaves the
+# variables empty rather than aborting boot.
+_SSO_EXPORTS=""
+_SSO_API=""
+_SSO_MODEL=""
+_SSO_PLUGIN_CONFIG=""
+if command -v agentbox-manifest >/dev/null 2>&1; then
+  _SSO_EXPORTS="$(agentbox-manifest sso-project \
+    --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format shell 2>/dev/null || true)"
+  _SSO_PLUGIN_CONFIG="$(agentbox-manifest sso-project \
+    --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format plugin-config 2>/dev/null || true)"
+fi
+if [ -n "$_SSO_EXPORTS" ]; then
+  # eval of the projector's own quoting: the values are single-quoted by
+  # `shq()` there, and nothing else is ever evaluated here.
+  eval "$_SSO_EXPORTS"
+  _SSO_API="${AGENTBOX_SKILL_ROUTE_API:-}"
+  _SSO_MODEL="${AGENTBOX_SKILL_ROUTE_MODEL:-}"
+  echo "  [system-one] local façade projected: $_SSO_API (model $_SSO_MODEL) — TYPESAFE_API_KEY is off the path"
+fi
+
 # ── ADR-2091: live skill router — register/de-register the UserPromptSubmit hook ──
 # [skills.routing].router = "jev" puts every turn to System One as one Choice
 # over the routable skills' descriptions and injects the pick as advisory
@@ -2042,13 +2068,25 @@ _SR_MIN_CHARS="$(_ab_toml_int skills.routing min_prompt_chars 24)"
 _SR_HOOK_FILE="/opt/agentbox/config/hooks/skill-route.cjs"
 if [ "$_SR_ROUTER" = "jev" ] && [ "$_SR_HOOK" = "1" ] \
    && [ -f "$_SR_HOOK_FILE" ] && command -v node >/dev/null 2>&1; then
-  [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [skill-route] router=jev but TYPESAFE_API_KEY is unset — hook registered, will fail open to the table (W071)"
+  # ADR-2094: with the local façade projected the judge is on the LAN, so a
+  # missing TYPESAFE_API_KEY is not a defect and must not be reported as one.
+  if [ -z "$_SSO_API" ]; then
+    [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [skill-route] router=jev but TYPESAFE_API_KEY is unset — hook registered, will fail open to the table (W071)"
+  else
+    _SR_MODEL="${_SSO_MODEL:-$_SR_MODEL}"
+  fi
   mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
   SR_HOOK="$_SR_HOOK_FILE" SETTINGS="$_CLAUDE_SETTINGS" SR_MODEL="$_SR_MODEL" \
+  SR_API="$_SSO_API" \
   SR_TIMEOUT="$_SR_TIMEOUT" SR_MIN_CHARS="$_SR_MIN_CHARS" node <<'SRJS' || true
 const fs = require('fs');
 const f = process.env.SETTINGS, hook = process.env.SR_HOOK;
+// ADR-2094: SR_API is the sovereign façade endpoint, empty unless
+// [features.sovereign_system_one] is on AND its endpoint is LAN/loopback. Empty
+// leaves the hook on its own default (TypeSafe), i.e. the pre-2094 command.
+const api = String(process.env.SR_API || '');
 const pfx = `AGENTBOX_SKILL_ROUTER=jev AGENTBOX_SKILL_ROUTE_MODEL=${process.env.SR_MODEL} ` +
+  (api ? `AGENTBOX_SKILL_ROUTE_API=${api} ` : '') +
   `AGENTBOX_SKILL_ROUTE_TIMEOUT_MS=${process.env.SR_TIMEOUT} AGENTBOX_SKILL_ROUTE_MIN_CHARS=${process.env.SR_MIN_CHARS}`;
 let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
 s.hooks = s.hooks || {};
@@ -2106,7 +2144,9 @@ JCENVJS
   chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
 fi
 if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && command -v claude >/dev/null 2>&1; then
-  [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [jev-compaction] enabled but TYPESAFE_API_KEY is unset — every compaction will use the built-in summary (W072)"
+  if [ -z "$_SSO_PLUGIN_CONFIG" ]; then
+    [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [jev-compaction] enabled but TYPESAFE_API_KEY is unset — every compaction will use the built-in summary (W072)"
+  fi
   _JC_VER="$(node -e "process.stdout.write(require('$_JC_PLUGIN/.claude-plugin/plugin.json').version)" 2>/dev/null || echo 0.0.0)"
   _JC_CACHE="/home/devuser/.claude/plugins/cache/agentbox/jev-compaction/$_JC_VER"
   _jc_digest() { ( cd "$1" 2>/dev/null && find hooks lib .claude-plugin -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum 2>/dev/null | sha256sum | cut -c1-16 ); }
@@ -2127,6 +2167,24 @@ if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && command -v claude >/dev/null 2
               "model=$(_ab_toml_val features.jev_compaction model)"; do
       case "$kv" in *=) ;; *) _JC_ARGS="$_JC_ARGS --config $kv" ;; esac
     done
+    # ADR-2094: repoint the plugin at the local façade and tell it, explicitly,
+    # that the backend is local — the taint fence keys off THIS boolean, never
+    # off the URL (ADR-2094 §5). A pair whose userConfig key the baked plugin
+    # does not declare is skipped rather than passed: an unknown --config key
+    # would fail the whole install and take compaction down with it.
+    if [ -n "$_SSO_PLUGIN_CONFIG" ]; then
+      while IFS= read -r kv; do
+        [ -n "$kv" ] || continue
+        _JC_KEY="${kv%%=*}"
+        if grep -q "\"$_JC_KEY\"" "$_JC_PLUGIN/.claude-plugin/plugin.json" 2>/dev/null; then
+          _JC_ARGS="$_JC_ARGS --config $kv"
+        else
+          echo "  [jev-compaction] plugin declares no userConfig key '$_JC_KEY' — not projecting it (ADR-2094)"
+        fi
+      done <<SSOCFG
+$_SSO_PLUGIN_CONFIG
+SSOCFG
+    fi
     # shellcheck disable=SC2086 — _JC_ARGS is a deliberate word list of --config KEY=VALUE pairs
     if run_as_devuser env HOME=/home/devuser timeout 120 claude plugin install jev-compaction@agentbox $_JC_ARGS >/dev/null 2>&1; then
       echo "  [jev-compaction] installed plugin $_JC_VER (${_JC_BAKED}) with manifest userConfig"
@@ -2661,6 +2719,10 @@ export AGENTBOX_SKILL_ROUTER="${_SR_ROUTER:-table}"
 export AGENTBOX_SKILL_ROUTE_MODEL="${_SR_MODEL:-jev-latest}"
 export AGENTBOX_SKILL_ROUTE_TIMEOUT_MS="${_SR_TIMEOUT:-4000}"
 export AGENTBOX_SKILL_ROUTE_MIN_CHARS="${_SR_MIN_CHARS:-24}"
+# ADR-2094: the sovereign façade, if projected. Empty when the gate is off, so
+# the two lines above keep their pre-2094 values; when on, these come LAST and
+# win, and every shell, tmux window and MCP server agrees with the hook.
+$_SSO_EXPORTS
 # ADR-2028: the vault path authority. Sourced by every tmux window and
 # interactive shell (bash via /etc/profile.d, fish via conf.d) so the Notes
 # window, the skills and the MCP servers all agree on one corpus root. Empty

@@ -1297,7 +1297,11 @@ if (ldEnabled) {
       message: `E073: [skills.routing].router must be "jev" or "table" (got "${rt.router}") — ADR-2091`,
     });
   }
-  if (rt.router === 'jev' && !process.env.TYPESAFE_API_KEY) {
+  // ADR-2094: with the sovereign façade enabled the judge is LOCAL, so a
+  // missing TYPESAFE_API_KEY is not a defect — warning about it would train
+  // the operator to ignore W071 exactly when it still matters.
+  const ssoOn = Boolean(((manifest.features || {}).sovereign_system_one || {}).enabled);
+  if (rt.router === 'jev' && !ssoOn && !process.env.TYPESAFE_API_KEY) {
     warnings.push({
       code: 'W071',
       message: 'W071: [skills.routing].router="jev" but TYPESAFE_API_KEY is not set in this environment — the router will fail open to the routing table on every turn until the key is provided in .env (ADR-2091)',
@@ -1323,13 +1327,81 @@ if (ldEnabled) {
         message: 'E074: [features.jev_compaction].taint_tools must include "mcp__email-gateway__" — email never leaves to the compaction judge (ADR-2093 operator condition)',
       });
     }
-    if (!process.env.TYPESAFE_API_KEY) {
+    // Same reasoning as W071: the façade supplies the judge locally (ADR-2094).
+    if (!process.env.TYPESAFE_API_KEY
+        && !((manifest.features || {}).sovereign_system_one || {}).enabled) {
       warnings.push({
         code: 'W072',
         message: 'W072: [features.jev_compaction].enabled=true but TYPESAFE_API_KEY is not set in this environment — every compaction will use the built-in summary until the key is provided in .env (ADR-2093)',
       });
     }
   }
+}
+
+// ─── E075 / W073: Sovereign System One façade (ADR-2094) ─────────────────────
+//
+// E075 — [features.sovereign_system_one].endpoint must resolve to a LAN or
+//         loopback host. The façade has no cloud fallback by decision, and a
+//         public endpoint here would quietly restore the egress ADR-2094 exists
+//         to remove — while the operator believes the backend is local. This is
+//         a sanity check on the manifest, NOT the locality proof: the email
+//         fence keys off an explicit `backendLocal` boolean the caller passes
+//         from resolved config, never off a URL string (ADR-2094 §5).
+// W073 — enabled=true: both Jev consumers are repointed at the local façade, so
+//         TYPESAFE_API_KEY is no longer on the path. Advisory, so the change of
+//         backend is visible in the same place the egress warnings were.
+//
+// Deliberately NOT implemented here: a "sidecar unreachable" probe. Every other
+// check in this file is a pure function of the manifest and the environment;
+// opening a socket would make CI depend on a GPU host being up and would turn a
+// config validator into a monitor. Reachability is `./agentbox.sh systemone
+// health`, which is where an operator can act on it.
+{
+  const sso = (manifest.features || {}).sovereign_system_one || {};
+  if (sso.enabled) {
+    const endpoint = String(sso.endpoint ?? '');
+    if (!isLocalEndpoint(endpoint)) {
+      errors.push({
+        code: 'E075',
+        message: `E075: [features.sovereign_system_one].endpoint must be a LAN or loopback URL (got "${endpoint}") — the façade never forwards off-LAN and has no cloud fallback (ADR-2094 §4)`,
+      });
+    }
+    warnings.push({
+      code: 'W073',
+      message: `W073: [features.sovereign_system_one].enabled=true — the skill router and Jev compaction are projected at ${endpoint || '<unset endpoint>'} (model "${sso.model ?? 'laya-typed-decisions'}"); TYPESAFE_API_KEY is no longer on the path. Verify the sidecar with ./agentbox.sh systemone health (ADR-2094)`,
+    });
+  }
+}
+
+/**
+ * True when a URL's host is loopback, an RFC1918/CGNAT/link-local address, a
+ * `.local`/`.internal` name, or a dotless hostname (a Docker service name such
+ * as `systemone`). Anything else — including every public DNS name — is off-LAN
+ * as far as this manifest is concerned.
+ */
+function isLocalEndpoint(endpoint) {
+  let url;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+  const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (host === 'localhost' || host === '::1' || host.startsWith('127.')) return true;
+  if (host.endsWith('.local') || host.endsWith('.internal')) return true;
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (a === 10) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT (Tailscale et al)
+    if (a === 169 && b === 254) return true;           // link-local
+    return false;
+  }
+  if (host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return true;
+  return !host.includes('.'); // a Docker/compose service name
 }
 
 // ─── E050-E052 / W050-W052: ACI MCP + tree-search (ADR-020 / PRD-008) ───────

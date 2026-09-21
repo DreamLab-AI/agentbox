@@ -25,6 +25,7 @@ mod mcp_hub;
 mod plugins;
 mod proxy;
 mod routing;
+mod sso;
 mod stacks;
 mod stacks_env;
 mod tomlval;
@@ -150,6 +151,16 @@ enum Command {
         state: PathBuf,
         output: PathBuf,
         existing: Option<PathBuf>,
+    },
+    /// ADR-2094: project `[features.sovereign_system_one]` for its consumers.
+    /// Disabled (or unusable) prints NOTHING and exits 0, so the cloud path is
+    /// byte-identical to a manifest without the block.
+    SsoProject {
+        #[arg(long)]
+        manifest: PathBuf,
+        /// `shell` (export lines), `plugin-config` (`key=value` pairs) or `json`.
+        #[arg(long, default_value = "shell")]
+        format: String,
     },
     /// Print `1` or `0` for a dotted manifest path. Always exits 0.
     TomlBool {
@@ -294,6 +305,11 @@ fn run(cmd: Command) -> Result<(), String> {
             existing,
         } => tui_write::run(&state, &output, existing.as_deref()),
 
+        Command::SsoProject { manifest, format } => {
+            let format = format.parse::<sso::Format>()?;
+            sso::run(&manifest, format);
+            Ok(())
+        }
         Command::TomlBool { manifest, path } => {
             let cfg = tomlval::parse_file_lenient(&manifest);
             println!("{}", u8::from(tomlval::get_bool(&cfg, &path, false)));

@@ -1,0 +1,38 @@
+[package]
+name = "system-one-facade"
+version = "0.1.0"
+description = "Capacity-adapting Sovereign System One facade: Jev-compatible ingress over a local Laya engine."
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+name = "system_one_facade"
+path = "src/lib.rs"
+
+[[bin]]
+name = "system-one-facade"
+path = "src/main.rs"
+
+[dependencies]
+# The protocol, the budget arithmetic and the two adaptations live in the
+# published standard; this binary is the server around them, not a second copy.
+system-one-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+thiserror.workspace = true
+sha2.workspace = true
+hex.workspace = true
+tokio.workspace = true
+reqwest.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+futures.workspace = true
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }

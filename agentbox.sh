@@ -54,6 +54,7 @@ Local lifecycle commands:
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
   ${GREEN}voice${NC}            Manage/open the operator cockpit + web voice stack [open|up|down|logs|health|status|certs|rebuild|shell]
+  ${GREEN}systemone${NC}        ADR-2094 Sovereign System One sidecar (laya + façade) [up|down|logs|health|status|eval|models|rebuild|shell]
   ${GREEN}model-router${NC}     ADR-2080 metaharness router console [fetch|check|status|route "<task>" [--dry-run]|console]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}android${NC}          [EXPERIMENTAL, gated] redroid Android/Play sidecar [up|down|logs|status|screencap|shell|id] — needs AGENTBOX_ENABLE_ANDROID=1
@@ -575,6 +576,8 @@ GUI_TOOLS_FILE="${SCRIPT_DIR}/docker-compose.gui-tools.yml"
 GUI_TOOLS_COMPOSE_ARGS=(--project-name agentbox -f "$GUI_TOOLS_FILE")
 OPENMED_FILE="${SCRIPT_DIR}/docker-compose.openmed.yml"
 OPENMED_COMPOSE_ARGS=(--project-name agentbox -f "$OPENMED_FILE")
+SYSTEMONE_FILE="${SCRIPT_DIR}/docker-compose.system-one.yml"
+SYSTEMONE_COMPOSE_ARGS=(--project-name agentbox -f "$SYSTEMONE_FILE")
 SPEECH_FILE="${SCRIPT_DIR}/docker-compose.speech.yml"
 SPEECH_COMPOSE_ARGS=(--project-name agentbox-speech -f "$SPEECH_FILE")
 # Voice + AoE operator console sidecar (its own lifecycle, like browsercontainer).
@@ -1905,7 +1908,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|model-router|xr-runtime|android|concat|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|preflight)
             CMD="$1"
             shift
             break
@@ -2090,6 +2093,183 @@ usage: $0 model-router <fetch|check|status|route "<task>" [--dry-run]|console>
   console  open the interactive console (what the AoE \`router\` session runs)
 USAGE
             exit 2 ;;
+    esac
+}
+
+# ── ADR-2094: Sovereign System One — the local typed-decision sidecar ────────
+# One container, two processes: the Rust façade on :8097 (sole ingress, Jev wire
+# format) over the Python laya engine on container-loopback :8098. The image
+# bakes its own code; there is no source bind mount, because host and container
+# repo paths diverge and a bind would mount the wrong tree.
+# The façade answers on two names depending on WHERE this script runs: on the
+# host it is the published port (localhost:8097); from inside a container on
+# visionclaw_network it is the compose service name. Probing both means
+# `systemone health` tells the truth in either place instead of reporting a
+# healthy sidecar as down.
+_SYSTEMONE_URLS=("http://localhost:8097" "http://systemone:8097")
+
+_systemone_facade_url() {
+    local u
+    for u in "${_SYSTEMONE_URLS[@]}"; do
+        if curl -sf --max-time 3 "${u}/health" >/dev/null 2>&1; then echo "$u"; return 0; fi
+    done
+    # Nothing answering: return the host name, so error messages name the URL an
+    # operator on the host would actually try.
+    echo "${_SYSTEMONE_URLS[0]}"
+    return 1
+}
+
+cmd_systemone() {
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+    local url; url="$(_systemone_facade_url)" || true
+
+    case "$subcmd" in
+        up)
+            _ensure_visionclaw_network
+            echo -e "${CYAN}Building and starting the Sovereign System One sidecar...${NC}"
+            echo -e "${YELLOW}First boot downloads ~1.7 GB of open weights into the systemone-models volume.${NC}"
+            docker compose "${SYSTEMONE_COMPOSE_ARGS[@]}" up -d --build || {
+                echo -e "${RED}Build or start failed. Logs: $0 systemone logs${NC}" >&2
+                exit 1
+            }
+            # Generous deadline: weight download + two cold checkpoint loads.
+            local deadline=$(( $(date +%s) + 600 )) ready=0
+            echo -e "${CYAN}Waiting for the façade /health (up to 10 min on a cold volume)...${NC}"
+            while [[ $(date +%s) -lt $deadline ]]; do
+                if ! docker ps --format '{{.Names}}' | grep -qx systemone; then
+                    echo -e "${RED}The systemone container exited. Logs: $0 systemone logs${NC}" >&2
+                    exit 1
+                fi
+                if url="$(_systemone_facade_url)"; then ready=1; break; fi
+                sleep 5
+            done
+            if [[ "$ready" -eq 0 ]]; then
+                echo -e "${RED}Sidecar did not become healthy within 600s.${NC}"
+                echo "Check logs: $0 systemone logs"
+                exit 1
+            fi
+            echo -e "${GREEN}Sovereign System One is up.${NC}"
+            echo -e "  ${GREEN}Façade  :${NC} ${url}/v1/systemone   (Jev wire format; from the agentbox container: http://systemone:8097)"
+            echo -e "  ${GREEN}Health  :${NC} ${url}/health"
+            echo -e "  ${GREEN}Models  :${NC} ${url}/v1/models"
+            echo -e "${YELLOW}The gate is separate: set [features.sovereign_system_one].enabled = true in agentbox.toml"
+            echo -e "and restart the agentbox container to repoint the router and compaction at it.${NC}"
+            ;;
+        down)
+            echo -e "${CYAN}Stopping the Sovereign System One sidecar...${NC}"
+            docker compose "${SYSTEMONE_COMPOSE_ARGS[@]}" down
+            echo -e "${GREEN}Stopped. The weights volume (systemone-models) is kept.${NC}"
+            ;;
+        logs)
+            docker compose "${SYSTEMONE_COMPOSE_ARGS[@]}" logs -f --tail 100
+            ;;
+        status)
+            docker compose "${SYSTEMONE_COMPOSE_ARGS[@]}" ps
+            ;;
+        health)
+            local facade engine
+            url="$(_systemone_facade_url)" || true
+            facade=$(curl -sf --max-time 10 "${url}/health" 2>/dev/null) || {
+                echo -e "${RED}façade not responding at ${url}/health${NC}"
+                echo "Is it up? $0 systemone status"
+                exit 1
+            }
+            echo -e "${GREEN}façade:${NC} ${facade}"
+            # The engine is loopback-only by design, so ask it from inside the
+            # container rather than publishing a port to make a probe easier.
+            engine=$(docker exec systemone curl -s --max-time 10 http://127.0.0.1:8098/health 2>/dev/null) || engine=""
+            if [[ -z "$engine" ]]; then
+                echo -e "${RED}engine: no answer on container loopback :8098${NC}"
+                exit 1
+            fi
+            echo -e "${GREEN}engine:${NC} ${engine}"
+            # A CPU fallback still answers 200 and still routes — and is ~10-15x
+            # slower. Saying so is the difference between healthy and honest.
+            if command -v jq >/dev/null 2>&1; then
+                if ! printf '%s' "$engine" | jq -e '.status == "ok"' >/dev/null; then
+                    echo -e "${YELLOW}engine status is not \"ok\" — a checkpoint failed to load or fell back to CPU (see cpu_fallback above).${NC}"
+                    exit 1
+                fi
+            fi
+            ;;
+        models)
+            url="$(_systemone_facade_url)" || true
+            curl -sf --max-time 10 "${url}/v1/models" | { command -v jq >/dev/null 2>&1 && jq . || cat; }
+            ;;
+        eval)
+            # The measurement rig (system-one-eval) is baked into the sidecar
+            # image, so it exercises the same binaries the sidecar serves. Its
+            # INPUTS live in this repo, not in that image: the labelled corpus
+            # (tests/system-one/routing-cases.json) and the skills tree the
+            # router really reads. They are staged in with `docker cp` rather
+            # than bind-mounted, because a bind path would resolve against the
+            # HOST filesystem and silently mount the wrong tree (or nothing)
+            # when this is run from inside the agentbox container.
+            if ! docker ps --format '{{.Names}}' | grep -qx systemone; then
+                echo -e "${RED}systemone is not running. Start it: $0 systemone up${NC}" >&2
+                exit 1
+            fi
+            local cases_file="${SCRIPT_DIR}/tests/system-one/routing-cases.json"
+            local skills_dir="${SCRIPT_DIR}/skills"
+            if [[ ! -f "$cases_file" ]]; then
+                echo -e "${RED}Labelled corpus not found: $cases_file${NC}" >&2
+                exit 1
+            fi
+            echo -e "${CYAN}Staging the corpus and skills tree into the sidecar...${NC}"
+            docker exec systemone rm -rf /tmp/sso-eval >/dev/null 2>&1 || true
+            docker exec systemone mkdir -p /tmp/sso-eval || exit 1
+            docker cp "$cases_file" systemone:/tmp/sso-eval/routing-cases.json || exit 1
+            docker cp "$skills_dir" systemone:/tmp/sso-eval/skills || exit 1
+            # First positional arg is the eval subcommand (run|parity|inspect).
+            local sub="run"
+            if [[ $# -gt 0 && "$1" != -* ]]; then sub="$1"; shift; fi
+            local args=("$sub" "$@")
+            [[ " $* " == *" --cases "* ]] || args+=(--cases /tmp/sso-eval/routing-cases.json)
+            [[ " $* " == *" --skills-dir "* ]] || args+=(--skills-dir /tmp/sso-eval/skills)
+            # `sweep` takes --backend exactly as `run` does; defaulting it for only
+            # one of them made the documented `systemone eval sweep` invocation fail
+            # on a missing required argument.
+            if [[ "$sub" == "run" || "$sub" == "sweep" ]] && [[ " $* " != *" --backend "* ]]; then
+                args+=(--backend http://127.0.0.1:8097/v1/systemone)
+            fi
+            docker exec -i systemone system-one-eval "${args[@]}"
+            ;;
+        rebuild)
+            docker compose "${SYSTEMONE_COMPOSE_ARGS[@]}" down
+            docker compose "${SYSTEMONE_COMPOSE_ARGS[@]}" build --no-cache
+            cmd_systemone up
+            ;;
+        shell)
+            docker exec -it systemone bash
+            ;;
+        help|*)
+            cat <<SYSTEMONE_HELP
+${CYAN}systemone — Sovereign System One: local typed decisions (ADR-2094)${NC}
+
+Usage: $0 systemone <command>
+
+  ${GREEN}up${NC}        Build and start the sidecar, wait for /health (cold: ~1.7 GB of weights)
+  ${GREEN}down${NC}      Stop it (the weights volume is kept)
+  ${GREEN}logs${NC}      Follow logs
+  ${GREEN}status${NC}    Compose ps
+  ${GREEN}health${NC}    Façade /health AND the loopback engine /health, incl. CPU-fallback state
+  ${GREEN}models${NC}    The engine's REAL max_len / head_max_len per checkpoint
+  ${GREEN}eval${NC}      Measure against the labelled corpus: eval [run|parity|inspect] [args]
+            (the corpus and the skills tree are staged in from this checkout)
+  ${GREEN}rebuild${NC}   down + build --no-cache + up
+  ${GREEN}shell${NC}     Shell into the container
+
+Topology: consumer → systemone:8097 (Rust façade, Jev wire format) → 127.0.0.1:8098
+(Python laya engine, loopback only, never published). The façade shortlists options
+and windows state to fit the engine's context, and NEVER forwards off-LAN.
+
+Turning the sidecar on does not repoint anything. The consumers move only when
+[features.sovereign_system_one].enabled = true in agentbox.toml and the agentbox
+container restarts; until then the skill router and Jev compaction keep the cloud
+path byte-identically.
+SYSTEMONE_HELP
+            ;;
     esac
 }
 
@@ -2280,6 +2460,7 @@ case "${CMD:-}" in
     gui-tools)         cmd_gui_tools "$@" ;;
     openmed)           cmd_openmed "$@" ;;
     voice)             cmd_voice "$@" ;;
+    systemone)         cmd_systemone "$@" ;;
     model-router)      cmd_model_router "$@" ;;
     xr-runtime)        cmd_xr_runtime "$@" ;;
     android)           cmd_android "$@" ;;

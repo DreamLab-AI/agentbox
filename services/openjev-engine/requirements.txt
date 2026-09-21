@@ -1,0 +1,16 @@
+# Pinned. torch / torchvision / numpy / pillow come from the CUDA base image
+# (pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime, torch 2.7.1+cu128, sm_86 +
+# sm_89); pinning them here would fight the image's own build.
+#
+# transformers 5.x is NOT optional and is why this engine is a separate image
+# from services/laya-engine: the checkpoint declares `model_type: qwen3_5` and
+# `transformers_version: 5.15.0`, while laya is pinned to transformers 4.52.4.
+# One Python environment cannot satisfy both, so they get one container each
+# and share a loopback network namespace instead.
+transformers==5.15.1
+tokenizers==0.22.2
+huggingface_hub==1.32.0
+safetensors==0.8.0
+fastapi==0.115.12
+uvicorn==0.34.3
+pydantic==2.11.5

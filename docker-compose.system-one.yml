@@ -1,0 +1,234 @@
+# Sovereign System One (ADR-2094) — the local typed-decision sidecar.
+#
+#   consumer → systemone:8097  (system-one-facade, Jev wire format)
+#                 └─ 127.0.0.1:8098 (laya-engine, loopback only, never published)
+#
+# Lifecycle: ./agentbox.sh systemone <up|down|status|health|eval|logs>
+#
+# The container bakes its own code — there is deliberately NO source bind mount.
+# Host and container repo paths diverge (the agent edits /home/devuser/workspace/
+# project/agentbox, the daemon resolves /mnt/mldata/...), so a bind would mount
+# the wrong tree or nothing at all. A baked image is what makes this buildable
+# from inside the container: compose tars the build context client-side.
+services:
+  systemone:
+    container_name: systemone
+    hostname: systemone
+    build:
+      context: ./services/laya-engine
+      dockerfile: Dockerfile
+      target: runtime
+      additional_contexts:
+        # The Rust workspace is a SECOND build context rather than a parent
+        # context, so the build tar stays at a few hundred kB instead of
+        # sweeping in node_modules/, target/ and result/ from the repo root.
+        crates: ./crates/system-one
+    image: agentbox/system-one:latest
+    restart: unless-stopped
+    environment:
+      # ── engine (Python) ────────────────────────────────────────────────────
+      # English deployment. Both checkpoints live in one HF repo, so the two
+      # entries share a single ~843 MB download each into the models volume.
+      - LAYA_MODELS=${LAYA_MODELS:-laya-typed-decisions=convaiinnovations/laya:typed-decisions,laya=convaiinnovations/laya}
+      - LAYA_DEFAULT_MODEL=${LAYA_DEFAULT_MODEL:-laya-typed-decisions}
+      - LAYA_DEVICE=${LAYA_DEVICE:-cuda}
+      - LAYA_BIND_HOST=127.0.0.1
+      - LAYA_PORT=8098
+      - LAYA_MODEL_DIR=/models
+      - HF_HOME=/models/.hf
+      - HF_TOKEN=${HF_TOKEN:-}
+      # Raising the budget departs from the training distribution, so it is a
+      # MEASURED operator choice (ADR-2094 addendum §4) — empty means "use the
+      # checkpoint's own max_len/head_max_len", which is the honest default.
+      - LAYA_MAX_LEN=${LAYA_MAX_LEN:-}
+      - LAYA_HEAD_MAX_LEN=${LAYA_HEAD_MAX_LEN:-}
+      - LAYA_REQUEST_LOG=${LAYA_REQUEST_LOG:-0}
+      # ── façade (Rust) ──────────────────────────────────────────────────────
+      - SSO_BIND=0.0.0.0:8097
+      # ENGINE SELECTION (SSO contract §11.1). Two engines speak the identical
+      # /predict + /v1/models + /health contract, so which one answers is ONE
+      # variable and nothing else changes:
+      #   laya    (default) http://127.0.0.1:8098  — this container's own engine
+      #   openjev           http://127.0.0.1:8099  — the `openjev` compose
+      #                     profile, a separate container sharing this
+      #                     container's network namespace (so 127.0.0.1 really
+      #                     is the same loopback, and neither engine is ever
+      #                     published). The façade reads the engine's
+      #                     capability fields; it must not branch on the name.
+      #
+      # SET THESE TWO IN `.env`, NOT ON THE COMMAND LINE. A shell-level
+      # `SSO_ENGINE_URL=... docker compose up -d` is NOT sticky: the next
+      # `compose up` without it silently reverts the façade to laya — and
+      # `up -d openjev` alone is enough to recreate `systemone` and do it,
+      # because the engine is a dependency of nothing but shares its netns.
+      # Measured, not theorised: it happened during bring-up, and the only
+      # visible symptom was `"model":"laya-typed-decisions"` in /health.
+      #   .env:  SSO_ENGINE_URL=http://127.0.0.1:8099
+      #          SSO_MODEL=openjev
+      - SSO_ENGINE_URL=${SSO_ENGINE_URL:-http://127.0.0.1:8098}
+      - SSO_MODEL=${SSO_MODEL:-laya-typed-decisions}
+      - SSO_SHORTLIST_K=${SSO_SHORTLIST_K:-8}
+      - SSO_WINDOW_K=${SSO_WINDOW_K:-2}
+      - SSO_EMBEDDINGS_URL=${SSO_EMBEDDINGS_URL:-http://192.168.2.132:9997/v1/embeddings}
+      - SSO_EMBEDDINGS_MODEL=${SSO_EMBEDDINGS_MODEL:-bge-small-en-v1.5}
+      # Unset ⇒ auth is not enforced (loopback/LAN posture) but the header is
+      # still accepted; set it to require Bearer on /v1/systemone.
+      - SSO_API_KEY=${SSO_API_KEY:-}
+      # A FILE, not a directory: the façade appends its embedding cache as JSONL
+      # (SHA-256 keyed), and it must outlive restarts — 115 skill rubrics only
+      # change on a rebuild.
+      - SSO_CACHE_PATH=/models/.sso-cache/embeddings.jsonl
+      - RUST_LOG=${SSO_LOG:-info}
+      - NVIDIA_VISIBLE_DEVICES=${SYSTEMONE_GPU:-all}
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          # ModernBERT-large x2 checkpoints plus the tokenisers; the cap exists
+          # so a runaway request cannot evict the rest of the estate from RAM.
+          memory: 16G
+        reservations:
+          cpus: '1'
+          memory: 4G
+          devices:
+            - driver: nvidia
+              capabilities: [gpu, compute, utility]
+              # Operator-configurable, matching NVIDIA_VISIBLE_DEVICES: pin one
+              # card with SYSTEMONE_GPU=GPU-<uuid> in .env. The estate is
+              # 1x RTX A6000 (sm_86) + 2x RTX 6000 Ada (sm_89); any of them
+              # runs this model.
+              device_ids: ['${SYSTEMONE_GPU:-all}']
+    ports:
+      # The façade only. The engine's 8098 is loopback inside the container and
+      # is never published — the façade is the sole ingress (ADR-2094 §1).
+      # Loopback ONLY (ADR-2013, scripts/ci/check-ports-loopback.sh). Consumers reach
+      # the façade as `systemone:8097` over visionclaw_network, which needs no published
+      # port at all; this mapping exists solely for host-side debugging. A 0.0.0.0 bind
+      # would put an endpoint whose whole premise is "data does not leave the machine"
+      # on the LAN, unauthenticated whenever SSO_API_KEY is unset.
+      - "127.0.0.1:8097:8097"
+    volumes:
+      # HF weights + the façade's persistent embedding cache. Named volume, so
+      # a rebuild never re-downloads 1.7 GB.
+      - systemone-models:/models
+    networks:
+      - visionclaw
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8097/health"]
+      interval: 15s
+      timeout: 10s
+      # First boot downloads ~1.7 GB of weights and cold-loads two checkpoints.
+      start_period: 300s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # The SECOND engine (SSO contract §11). Opt-in: `--profile openjev`, so the
+  # default `up` is byte-identical to the laya-only stack it replaced nothing of.
+  #
+  # Separate CONTAINER, not a second process in the systemone image, because the
+  # dependency sets are mutually exclusive: laya pins transformers 4.52.4 while
+  # this checkpoint is `model_type: qwen3_5` and needs transformers >= 5.15.
+  #
+  # Separate container, but NOT a separate network: `network_mode:
+  # service:systemone` puts it in the façade's network namespace, so its
+  # loopback bind on 127.0.0.1:8099 is the same loopback the façade dials and
+  # the engine still never binds a reachable interface (§1). The cost of that
+  # choice, stated plainly: this container's networking dies with the systemone
+  # container, so recreating systemone means recreating this one too
+  #   docker compose -f docker-compose.system-one.yml --profile openjev up -d --force-recreate
+  # ───────────────────────────────────────────────────────────────────────────
+  openjev:
+    profiles: ["openjev"]
+    container_name: openjev
+    build:
+      context: ./services/openjev-engine
+      dockerfile: Dockerfile
+      target: engine
+    image: agentbox/openjev-engine:latest
+    restart: unless-stopped
+    depends_on:
+      # service_started, not service_healthy: the façade's healthcheck has a
+      # 300 s start period and this container only needs the netns to exist.
+      systemone:
+        condition: service_started
+    # Shares the façade container's network namespace — hence no `ports:` and
+    # no `networks:` here, which compose forbids in this mode anyway.
+    network_mode: "service:systemone"
+    environment:
+      # name=repo:subfolder@revision. The revision is a FULL COMMIT SHA and is
+      # mandatory: an unpinned spec is refused at load unless
+      # OPENJEV_ALLOW_UNPINNED=1. The repository is days old, its default
+      # branch moves, and the helper module it ships is executed here.
+      - OPENJEV_MODELS=${OPENJEV_MODELS:-openjev=AlexWortega/openjev:qwen3.5-4b-nli-v2@4395b29714015162db6112de91c35688e6e42717}
+      - OPENJEV_DEFAULT_MODEL=${OPENJEV_DEFAULT_MODEL:-openjev}
+      - OPENJEV_DEVICE=${OPENJEV_DEVICE:-cuda}
+      - OPENJEV_DTYPE=${OPENJEV_DTYPE:-}
+      - OPENJEV_BIND_HOST=127.0.0.1
+      - OPENJEV_PORT=8099
+      - OPENJEV_MODEL_DIR=/models
+      - HF_HOME=/models/.hf
+      - HF_TOKEN=${HF_TOKEN:-}
+      # Empty ⇒ the model card's 4k context, which is the honest default.
+      # Raising it leaves the training distribution, so it is a MEASURED
+      # operator choice exactly as laya's budget is.
+      - OPENJEV_MAX_LEN=${OPENJEV_MAX_LEN:-}
+      # Hypotheses per forward pass. The shared prefix is prefilled once per
+      # chunk and its branched KV cache scales with the chunk, so this is the
+      # memory/latency dial. The engine halves it itself on a CUDA OOM and says
+      # so at /health.
+      - OPENJEV_HYP_CHUNK=${OPENJEV_HYP_CHUNK:-32}
+      # `entailment` (default) or `ent_vs_contra`. Both readings appear in every
+      # noul answer regardless; this only picks which one is called `noul`.
+      - OPENJEV_NOUL_MODE=${OPENJEV_NOUL_MODE:-entailment}
+      - OPENJEV_REQUEST_LOG=${OPENJEV_REQUEST_LOG:-0}
+      - NVIDIA_VISIBLE_DEVICES=${OPENJEV_GPU:-${SYSTEMONE_GPU:-all}}
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          # A 4B bf16 checkpoint is ~8.5 GiB on the GPU; the host-RAM cap covers
+          # the safetensors load and the tokeniser, not the weights at rest.
+          memory: 24G
+        reservations:
+          cpus: '1'
+          memory: 8G
+          devices:
+            - driver: nvidia
+              capabilities: [gpu, compute, utility]
+              # Pin a card with OPENJEV_GPU=GPU-<uuid> in .env to keep the two
+              # engines off each other's memory. 1x RTX A6000 (sm_86) and
+              # 2x RTX 6000 Ada (sm_89), 48 GB each — any of them runs this.
+              device_ids: ['${OPENJEV_GPU:-${SYSTEMONE_GPU:-all}}']
+    volumes:
+      # A SEPARATE named volume from the laya weights: ~8.5 GiB of a ~87.6 GB
+      # repository, and neither engine's lifecycle should be able to evict the
+      # other's download.
+      - openjev-models:/models
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8099/health"]
+      interval: 15s
+      timeout: 10s
+      # First boot downloads ~8.5 GiB and cold-loads a 4B checkpoint.
+      start_period: 1800s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network
+
+volumes:
+  systemone-models:
+  openjev-models:

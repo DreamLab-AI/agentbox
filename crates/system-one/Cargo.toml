@@ -1,0 +1,46 @@
+# Sovereign System One — workspace root.
+#
+# One workspace per crate family is this repo's convention (see crates/colloquy);
+# there is deliberately no workspace at `crates/`.
+[workspace]
+resolver = "2"
+members = [
+    # Pure protocol: wire types, validation, token budgeting, option fitting,
+    # state windowing, window aggregation. No I/O, no tokio, wasm-capable.
+    # Publishable, Apache-2.0.
+    "system-one-core",
+    # Async HTTP client for ANY System One endpoint (TypeSafe Jev or the
+    # sovereign facade). Depends on the core types alone. Publishable.
+    "system-one-client",
+    # The capacity-adapting facade of the wire contract. Internal binary.
+    "system-one-facade",
+    # The measurement rig: accuracy, latency, cost, backend parity. Internal.
+    "system-one-eval",
+]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.85"
+repository = "https://github.com/DreamLab-AI/agentbox"
+authors = ["DreamLab AI"]
+license = "Apache-2.0"
+
+[workspace.dependencies]
+system-one-core = { version = "0.1.0", path = "system-one-core" }
+system-one-client = { version = "0.1.0", path = "system-one-client" }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+indexmap = { version = "2", features = ["serde"] }
+thiserror = "2"
+sha2 = "0.10"
+hex = "0.4"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal", "fs"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+futures = "0.3"
+
+[profile.release]
+lto = "thin"
+strip = true

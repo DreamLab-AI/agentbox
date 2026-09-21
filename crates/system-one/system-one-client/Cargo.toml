@@ -1,0 +1,25 @@
+[package]
+name = "system-one-client"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license = "Apache-2.0"
+description = "Async HTTP client for any System One typed-decision endpoint: bearer auth, timeouts, bounded retries on 429/529, and errors that separate transport from timeout from HTTP status from a malformed body."
+readme = "README.md"
+keywords = ["llm", "classification", "client", "http", "typed-decisions"]
+categories = ["api-bindings", "web-programming::http-client", "asynchronous"]
+documentation = "https://docs.rs/system-one-client"
+
+[dependencies]
+system-one-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+reqwest = { workspace = true }
+tokio = { version = "1", default-features = false, features = ["time"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync"] }
+indexmap = { workspace = true }
