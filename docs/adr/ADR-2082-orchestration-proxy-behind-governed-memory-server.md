@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 1639f86abded1441ce148d6c47924dfaf34f96af
+verified_commit: 6669e9f3b22af1e2b651037cf39a4a551a346d3f
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a ruflo major bump that renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -95,3 +95,7 @@ Tripped by `config/entrypoint-unified.sh` alone (`0950527d3`, the ADR-2093 compa
 ## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
 
 Tripped by `config/entrypoint-unified.sh` alone (`b680a7ae`, ADR-2094); the three `mcp/servers/**` paths are unchanged since the previous anchor, so the proxy's own logic — `DENIED_PREFIXES`, the alias table, the fail-open-for-orchestration-only rule — is untouched by this diff. ADR-2094's entrypoint edits are three insertions (a projector block at `:2026`, two consumer sites, and a `runtime-env.sh` line at `:2722`), all after the ruvector projection this record governs. Re-read at HEAD in a detached worktree: `:980` still reads `orchestration_tools` with `_ab_toml_val` and `:1115` still projects `RUVECTOR_ORCHESTRATION_PROXY` into the `claude-flow` env block of `.mcp.json`, which is the apply-class-`boot` mechanism decision point 6 claims. `bash -n config/entrypoint-unified.sh` → clean. Gate-off byte-identity is unaffected: nothing in the ADR-2094 additions reads or writes the ruvector gate. Claim STILL TRUE.
+
+### Re-verified 2026-09-21 at 6669e9f3b22af1e2b651037cf39a4a551a346d3f
+
+One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk: `git diff 1639f86ab..6669e9f3b -- config/entrypoint-unified.sh` is 6 insertions and 1 deletion, all of them `#` lines. The ShellCheck directive above the jev-compaction plugin install carried its rationale inside the directive, which SC1125 rejects and which made ShellCheck ignore the whole directive; the rationale is now a separate comment above a bare `# shellcheck disable=SC2086`. No executable line changed anywhere in the file, and the shell ignores comments, so runtime behaviour is byte-identical. The entrypoint's role in this claim is the .mcp.json registration of the governed claude-flow server and the orchestration_proxy gate read; neither line is in the hunk, and the other three governed paths (orchestration-proxy.js, ruvector-mcp.cjs, ruvector-gates.js) did not move at all. Claim STILL TRUE.

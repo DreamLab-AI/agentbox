@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 1639f86abded1441ce148d6c47924dfaf34f96af
+verified_commit: 6669e9f3b22af1e2b651037cf39a4a551a346d3f
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -115,3 +115,7 @@ Tripped by `config/entrypoint-unified.sh` alone (`b680a7ae`, ADR-2094); `service
 Re-read at HEAD in a detached worktree: the projection is intact and unchanged in behaviour — `if [ -z "${AGENTBOX_ANTIGRAVITY_MODEL:-}" ]` guards `export AGENTBOX_ANTIGRAVITY_MODEL="$(agentbox-manifest toml-string --path consultants.antigravity.model …)"`, so the fixed precedence this record claims (pre-set env wins, then the manifest, then the registry default) still holds structurally. `bash -n config/entrypoint-unified.sh` → clean.
 
 **Record correction made by this pass:** the Decision cited `config/entrypoint-unified.sh:1585` for that projection. It is at `:2223` at HEAD, and was already at `:2165` at the previous anchor `b680a7ae` (`git show b680a7ae:config/entrypoint-unified.sh | grep -n AGENTBOX_ANTIGRAVITY_MODEL`), so the citation was long-standing drift rather than anything ADR-2094 caused. It has been corrected in place. The claim itself was never affected — only the pointer to it. Claim STILL TRUE.
+
+### Re-verified 2026-09-21 at 6669e9f3b22af1e2b651037cf39a4a551a346d3f
+
+One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk: `git diff 1639f86ab..6669e9f3b -- config/entrypoint-unified.sh` is 6 insertions and 1 deletion, all of them `#` lines. The ShellCheck directive above the jev-compaction plugin install carried its rationale inside the directive, which SC1125 rejects and which made ShellCheck ignore the whole directive; the rationale is now a separate comment above a bare `# shellcheck disable=SC2086`. No executable line changed anywhere in the file, and the shell ignores comments, so runtime behaviour is byte-identical. The consultant projection block (model selection read from the manifest at boot, environment winning, dated tariffs) is untouched: the hunk is in the jev-compaction plugin phase, hundreds of lines away, and none of its lines execute. Claim STILL TRUE.

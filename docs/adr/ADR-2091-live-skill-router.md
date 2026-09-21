@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 1639f86abded1441ce148d6c47924dfaf34f96af
+verified_commit: 6669e9f3b22af1e2b651037cf39a4a551a346d3f
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -124,3 +124,7 @@ Three decision points were touched and each was re-established against the code 
 - **Point 7, the log.** The per-token price is now configuration (`AGENTBOX_SKILL_ROUTE_USD_PER_MTOK_IN`, default unchanged at the measured Jev rate `0.042`), and each line additionally records `usd_per_mtok_in`. The log still carries no prompt — the one property this point actually protects. Additive.
 
 **Narrowing recorded, not glossed.** Point 6 lists "W071 (jev without key)" among the accompaniments. At HEAD that warning is conditional: `scripts/agentbox-config-validate.js` suppresses it when `[features.sovereign_system_one].enabled` is true, because the judge is then on the LAN and a missing `TYPESAFE_API_KEY` is no longer a defect. Verified both ways against the committed manifest: `env -u TYPESAFE_API_KEY node scripts/agentbox-config-validate.js agentbox.toml` → **W071 fires**, exactly as this record's Verification section records; the same command against a copy with the SSO gate flipped on → **W071 stands down and W073 appears** instead. Since the committed manifest has that gate `enabled = false`, the record's claim and its reproduction command are both still true as written at HEAD; the exception is governed by ADR-2094 and is named here so the ledger carries it. `bash -n config/entrypoint-unified.sh` → clean; the registration/de-registration mechanism of point 6 is unchanged, with the SSO endpoint inlined only when projected (empty otherwise, leaving the pre-2094 command byte-for-byte). Claim STILL TRUE.
+
+### Re-verified 2026-09-21 at 6669e9f3b22af1e2b651037cf39a4a551a346d3f
+
+One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk: `git diff 1639f86ab..6669e9f3b -- config/entrypoint-unified.sh` is 6 insertions and 1 deletion, all of them `#` lines. The ShellCheck directive above the jev-compaction plugin install carried its rationale inside the directive, which SC1125 rejects and which made ShellCheck ignore the whole directive; the rationale is now a separate comment above a bare `# shellcheck disable=SC2086`. No executable line changed anywhere in the file, and the shell ignores comments, so runtime behaviour is byte-identical. The entrypoint's role here is registering config/hooks/skill-route.cjs on UserPromptSubmit and inlining model/timeout/min-chars; none of those lines is in the hunk, and the hook, the /route script and tests/config/skill-route.test.js did not move. (Separately, the ADR-2091 gate is now correctly catalogued: 8302d8f4d moved the system-manifest entry from the section `skills.routing` to the mode string `skills.routing.router`, which does not change this decision's mechanism, only how /v1/system reports it.) Claim STILL TRUE.

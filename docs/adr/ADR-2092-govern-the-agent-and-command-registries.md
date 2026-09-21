@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 1639f86abded1441ce148d6c47924dfaf34f96af
+verified_commit: 6669e9f3b22af1e2b651037cf39a4a551a346d3f
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -140,3 +140,7 @@ Tripped by `config/entrypoint-unified.sh` alone (`0950527d3`, ADR-2093); the sev
 ## Re-verification — 2026-09-21 (`e57156a8ff72a4b84145b7de1d67d8d0c79fd41d`)
 
 Tripped by `config/entrypoint-unified.sh` alone (`b680a7ae`, ADR-2094); the seven other governed paths — the two registration manifests, the three reconcilers, `flake.nix` and `tests/config/agent-reconcile.test.sh` — are unchanged since the previous anchor. ADR-2094's entrypoint edits are additive and sit before the reconciliation block. Re-read at HEAD in a detached worktree: `:2620` `project-skill-roots.mjs`, `:2643` `reconcile-agents.sh` and `:2661` `reconcile-commands.sh` are still invoked from `/opt/agentbox/scripts`, in that order, at boot. `bash -n config/entrypoint-unified.sh` → clean. The registered set is still the 12 named in the Decision, and no new agent or command root is introduced by the SSO work. Claim STILL TRUE.
+
+### Re-verified 2026-09-21 at 6669e9f3b22af1e2b651037cf39a4a551a346d3f
+
+One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk: `git diff 1639f86ab..6669e9f3b -- config/entrypoint-unified.sh` is 6 insertions and 1 deletion, all of them `#` lines. The ShellCheck directive above the jev-compaction plugin install carried its rationale inside the directive, which SC1125 rejects and which made ShellCheck ignore the whole directive; the rationale is now a separate comment above a bare `# shellcheck disable=SC2086`. No executable line changed anywhere in the file, and the shell ignores comments, so runtime behaviour is byte-identical. The agent and command reconciliation calls in the entrypoint are unchanged, as are registered-agents.txt, registered-commands.txt and the reconcile scripts. Claim STILL TRUE.
