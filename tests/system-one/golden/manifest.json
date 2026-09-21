@@ -1,0 +1,115 @@
+{
+  "_role": "Index of the golden System One fixtures, for both consumers of this directory: tests/system-one/*.test.mjs (JS, the two live consumers) and crates/system-one/system-one-client (Rust, protocol parity). Every entry states the file, the wire shape it is an instance of, what it is an instance FOR, and the assertions a parser should be able to make about it without reading the file. Metadata lives here and never inside a fixture, so each fixture file is a pure \u00a72 wire document that a strict deserialiser can take whole.",
+  "_origin": "SYNTHESISED, not recorded. No response body from api.typesafe.ai is stored in this repo \u2014 the router logs outcomes only (~/.claude/skill-route.jsonl carries choice, confidence, usage and cost; never the body, by design). These fixtures are built from the SSO contract \u00a72 wire format, the field names documented in skills/system-one/references/primitives.md, the Laya answer shape in SSO contract \u00a710.7, and the real scalar values observed in the router log (model jev-1.13.0, input_tokens 14748/14708, confidence 0.43/0.44, 115 candidates + none). They are therefore evidence that our parsers agree with the documented contract \u2014 NOT evidence that the cloud service emits exactly this. The first live call against either backend should be captured and diffed against these; until then, treat them as a specification, not an observation.",
+  "_option_universe": "The two router fixtures use the real 115-skill candidate set from loadCandidates('/opt/agentbox/skills') plus `none` = 116 keys, in sorted order. That is what makes the zero-probability re-expansion rule testable at full scale.",
+  "fixtures": [
+    {
+      "file": "typesafe-choice-router.json",
+      "shape": "typesafe",
+      "role": "The ADR-2091 router's normal cloud answer: one Choice over 116 options, a low-confidence pick, runners-up above zero.",
+      "http_status": 200,
+      "assert": {
+        "model": "jev-1.13.0",
+        "answers.skill.choice": "cost-estimation",
+        "probabilities_keys": 116,
+        "probabilities_sum": 1.0,
+        "nonzero_options": 8,
+        "usage.input_tokens": 14748
+      }
+    },
+    {
+      "file": "typesafe-choice-none.json",
+      "shape": "typesafe",
+      "role": "A `none` pick \u2014 the majority outcome in the real log (66 of the 101 routed turns). The router injects nothing for it, and that is a success, not a failure.",
+      "http_status": 200,
+      "assert": {
+        "answers.skill.choice": "none",
+        "probabilities_keys": 116,
+        "nonzero_options": 5
+      }
+    },
+    {
+      "file": "typesafe-mixed-primitives.json",
+      "shape": "typesafe",
+      "role": "All three primitives in one response: Choice, Score (with `legend`, string-keyed `probabilities` AND the array `distribution`), Noul. Exists so the client's answer enum is exercised on every variant, including the Score key-type trap documented in primitives.md.",
+      "http_status": 200,
+      "assert": {
+        "answer_kinds": [
+          "choice",
+          "score",
+          "noul"
+        ],
+        "score.legend_keys": 3,
+        "score.probabilities_keys_are_strings": true
+      }
+    },
+    {
+      "file": "typesafe-error-401.json",
+      "shape": "typesafe",
+      "role": "The error envelope. Carried with HTTP 401; the body has no `answers` key at all, so a parser that treats `answers` as optional-but-required-on-200 is the one that behaves.",
+      "http_status": 401,
+      "assert": {
+        "error.code": "unauthorized"
+      }
+    },
+    {
+      "file": "sso-choice-router-shortlisted.json",
+      "shape": "sso",
+      "role": "The same router question answered locally: 116 options shortlisted to 8, probabilities RE-EXPANDED over all 116 original keys with the 108 shortlisted-away options at exactly 0.0 (contract \u00a72 hard rule), usage.input_tokens counting what the engine actually consumed (486, not 14748).",
+      "http_status": 200,
+      "assert": {
+        "model": "laya-typed-decisions",
+        "probabilities_keys": 116,
+        "probabilities_sum": 1.0,
+        "nonzero_options": 8,
+        "zero_options": 108,
+        "sso.shortlisted.skill.from": 116,
+        "sso.shortlisted.skill.to": 8,
+        "usage.input_tokens": 486
+      }
+    },
+    {
+      "file": "sso-choice-zero-probability-runners-up.json",
+      "shape": "sso",
+      "role": "The degenerate distribution: the whole mass on one option, EVERY runner-up at 0.0. This is the fixture that breaks a consumer which assumes a ranked list has a meaningful second place \u2014 formatContext() must still produce one sane advisory line from it.",
+      "http_status": 200,
+      "assert": {
+        "probabilities_keys": 116,
+        "nonzero_options": 1,
+        "answers.skill.confidence": 1.0
+      }
+    },
+    {
+      "file": "sso-choice-windowed-compaction.json",
+      "shape": "sso",
+      "role": "A compaction-shaped request answered over a windowed state: two questions (Choice + Noul) against 7 windows with 2 selected each, `truncate_left` true because recency is what compaction needs (contract \u00a710.5). Few options, large state \u2014 the mirror image of the router's shape.",
+      "http_status": 200,
+      "assert": {
+        "sso.windowed.keep_tool_call.windows": 7,
+        "sso.windowed.keep_tool_call.selected": 2,
+        "answer_kinds": [
+          "choice",
+          "noul"
+        ]
+      }
+    },
+    {
+      "file": "sso-error-options-unfittable.json",
+      "shape": "sso",
+      "role": "The fa\u00e7ade refusing to guess: the shortlist cannot be reduced below 2 and still fit head_max_len, so it errors instead of letting the SDK squeeze every option to 4 tokens (contract \u00a73.1.5, \u00a710.2, \u00a710.3). A response body a consumer must never see as an answer.",
+      "http_status": 422,
+      "assert": {
+        "error.code": "options_unfittable"
+      }
+    },
+    {
+      "file": "sso-error-engine-down.json",
+      "shape": "sso",
+      "role": "The engine is down and there is no cloud fallback, ever (contract \u00a77). The fa\u00e7ade fails loud; the consumer fails open to its built-in path. Both halves of that sentence are contract.",
+      "http_status": 503,
+      "assert": {
+        "error.code": "engine_unavailable"
+      }
+    }
+  ]
+}

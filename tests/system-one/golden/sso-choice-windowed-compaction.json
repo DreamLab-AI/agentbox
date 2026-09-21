@@ -1,0 +1,43 @@
+{
+  "model": "laya-typed-decisions",
+  "answers": {
+    "keep_tool_call": {
+      "type": "choice",
+      "choice": "drop",
+      "probabilities": {
+        "keep": 0.12,
+        "truncate": 0.29,
+        "drop": 0.59
+      },
+      "confidence": 0.59,
+      "action": {
+        "act_probability": 0.55
+      }
+    },
+    "still_referenced": {
+      "type": "noul",
+      "noul": 0.08
+    }
+  },
+  "usage": {
+    "input_tokens": 1988,
+    "output_tokens": 0
+  },
+  "sso": {
+    "shortlisted": {},
+    "windowed": {
+      "keep_tool_call": {
+        "windows": 7,
+        "selected": 2,
+        "truncate_left": true
+      },
+      "still_referenced": {
+        "windows": 7,
+        "selected": 2,
+        "truncate_left": true
+      }
+    },
+    "engine_ms": 62,
+    "facade_ms": 91
+  }
+}

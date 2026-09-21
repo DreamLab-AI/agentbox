@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "options_unfittable",
+    "message": "question \"skill\": shortlist of 2 options still exceeds head_max_len=192; refusing to squeeze options to 4 tokens each"
+  }
+}

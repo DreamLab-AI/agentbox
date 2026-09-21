@@ -1,0 +1,46 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "destination": {
+      "type": "choice",
+      "choice": "billing",
+      "probabilities": {
+        "billing": 0.72,
+        "engineering": 0.2,
+        "other": 0.08
+      },
+      "confidence": 0.72,
+      "action": {
+        "act_probability": 0.66
+      }
+    },
+    "severity": {
+      "type": "score",
+      "score": 1.84,
+      "legend": {
+        "0": "a question with no service impact",
+        "1": "one user degraded",
+        "2": "the service is down for everyone"
+      },
+      "probabilities": {
+        "0": 0.04,
+        "1": 0.08,
+        "2": 0.88
+      },
+      "distribution": [
+        0.04,
+        0.08,
+        0.88
+      ],
+      "confidence": 0.8
+    },
+    "mentions_refund": {
+      "type": "noul",
+      "noul": 0.87
+    }
+  },
+  "usage": {
+    "input_tokens": 1234,
+    "output_tokens": 0
+  }
+}

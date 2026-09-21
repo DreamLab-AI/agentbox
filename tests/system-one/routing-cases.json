@@ -1,0 +1,743 @@
+{
+  "_role": "Labelled routing cases for the Sovereign System One evaluator (SSO contract §8.5) and for backend-vs-backend parity between TypeSafe Jev and the local laya façade. Consumed by system-one-eval (Rust) and by tests/system-one/routing-corpus.test.mjs (JS validation). Schema and honest limitations: tests/system-one/README.md.",
+  "_schema": {
+    "prompt": "A user turn, as a user would actually type it. Always >= 24 chars so the router's min_prompt_chars skip never fires on a case.",
+    "expected_skill": "A directory name under the skills tree that survives loadCandidates(), or the literal \"none\".",
+    "rationale": "Why that label and not the nearest wrong one. A label without a stated reason is an opinion.",
+    "class": "none | near-neighbour | boundary | single",
+    "provenance": "items-json-tier-A | directory-derived | log-shaped",
+    "late_discriminative": "true when the expected skill's rubric is longer than 48 tokens AND its first when-to-use / when-NOT-to-use boundary clause begins after the 48-token cut, so laya's unconditional per-option truncation (SSO contract §10.1) would amputate the clause that makes the label correct. Computed, not judged: 48 tokens taken as 192 chars from the estate's own datum (median 461-char description ≈ 115 tokens), first boundary clause located by the marker regex recorded in tests/system-one/README.md. An estimate of a cut, not a tokenisation of it — the façade reports the real compressed token count in sso.shortlisted. system-one-eval reports this subgroup separately; it is never excluded from the headline number."
+  },
+  "_provenance": {
+    "items-json-tier-A": "Verbatim from skills/system-one/scripts/items.json tier A — prompts authored in earlier sessions, before this corpus and by a different task. The only genuinely independent prompts here.",
+    "directory-derived": "Written from the 'When to Choose' / 'NOT for' columns of skills/SKILL-DIRECTORY.md, which is authored separately from the frontmatter `description` the router actually scores. Independent of the text under test, but not of this repo.",
+    "log-shaped": "Conversational turns written to match the SHAPE of the 66 `none` picks and 13 short-prompt skips in ~/.claude/skill-route.jsonl. The log records outcomes, never prompt text, so nothing here is a recovered user turn.",
+    "re-adjudication-2026-09-21": {
+      "method": "ranker/judge disagreement as a label audit (paper v7 §Routing): the 7 turns a BM25 ranker got right and the judge got wrong were re-read against the rubrics' own stated boundaries",
+      "relabelled": [
+        {
+          "index": 14,
+          "from": "browser",
+          "to": "browser-automation"
+        }
+      ],
+      "kept": [
+        {
+          "index": 18,
+          "reason": "ambiguous; synthesis + authoritative gov/academic matches perplexity-research verbatim"
+        },
+        {
+          "index": 25,
+          "reason": "judge declined against a verbatim rubric match"
+        },
+        {
+          "index": 27,
+          "reason": "validate+fill+TTL is ontology-enrich; augment is grounding"
+        },
+        {
+          "index": 28,
+          "reason": "the sibling rubric redirects to design-audit"
+        },
+        {
+          "index": 33,
+          "reason": "repository explainer with narration/captions is codebase-video verbatim"
+        },
+        {
+          "index": 65,
+          "reason": "judge declined against a verbatim rubric match"
+        }
+      ],
+      "note": "1 of 7 disputed labels was a corpus error; 6 were judge errors. The corpus is self-authored by the estate that runs the router."
+    }
+  },
+  "cases": [
+    {
+      "prompt": "Nobody here can explain how this repo fits together any more. I want the whole thing mapped in diagrams, in the repo, checked in, so the next person can read it — and I want to know what's dodgy in it while you're at it.",
+      "expected_skill": "diagrams-as-code",
+      "rationale": "Whole-repo diagram corpus, checked in, with an audit of what is wrong — diagrams-as-code's stated scope against mermaid-diagrams (a single diagram) and diagram-design (a published visual).",
+      "class": "near-neighbour",
+      "provenance": "items-json-tier-A",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "There's a docs/diagrams tree in here from a few months ago. Is any of it still true? We've shipped a lot since.",
+      "expected_skill": "diagrams-as-code",
+      "rationale": "Re-verifying an existing docs/diagrams tree against HEAD is named explicitly in the skill's when-to-choose.",
+      "class": "near-neighbour",
+      "provenance": "items-json-tier-A",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "We're handing this codebase to a client next week. Use the diagram corpus in docs/diagrams to build them something they can actually read, and add a couple of diagrams for the bits it doesn't cover.",
+      "expected_skill": "diagrams-as-code",
+      "rationale": "Known-ambiguous: the audience-facing half is explainer's. items.json records this as a genuine dual-skill request; kept as a deliberate hard case, and a pick of `explainer` should be read as a near-miss, not a failure.",
+      "class": "near-neighbour",
+      "provenance": "items-json-tier-A",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Put a CI gate on our diagrams so this stops rotting. The runner only checks out this one repo, and half our diagrams cite the sibling repos.",
+      "expected_skill": "diagrams-as-code",
+      "rationale": "The gate binary with --worktree-citations is the skill's own, and no CI skill covers diagram citation checking.",
+      "class": "single",
+      "provenance": "items-json-tier-A",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "We just finished a build sprint on ~/workspace/co-created/the target repository for a client. Before I hand it over I need it explained properly to three kinds of people: the marketing users, whoever picks up the code next, and their CTO who is not that technical. Can you set that up?",
+      "expected_skill": "explainer",
+      "rationale": "Three-audience handover of a repo to people who did not build it is explainer's headline case.",
+      "class": "single",
+      "provenance": "items-json-tier-A",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "write me a repo primer for the agentbox management-api so an agent can actually answer questions about it from source, plus a short page for humans",
+      "expected_skill": "explainer",
+      "rationale": "\"Repo primer\" is a stated trigger; the docs-bundle delivery reference covers the agent-readable corpus.",
+      "class": "single",
+      "provenance": "items-json-tier-A",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "explain what this product does to my CEO in a page, she'll ask what it costs and what could go wrong",
+      "expected_skill": "explainer",
+      "rationale": "\"Explain this to the CEO\" is quoted verbatim in the directory's when-to-choose column.",
+      "class": "single",
+      "provenance": "items-json-tier-A",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Build an explainer site for the target repository for an experienced engineer who did not write it and is wary of AI-generated filler. Explain the code as it stands, why it is shaped that way, and where to look. Don't narrate how the site was made.",
+      "expected_skill": "explainer",
+      "rationale": "Instructional microsite (the former repo-education) is now an explainer delivery reference, so the deprecated skill must not be picked.",
+      "class": "boundary",
+      "provenance": "items-json-tier-A",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Start the executive explainer for ~/workspace/co-created/the target repository for a technically literate CEO or investor, following walkthroughs/executive/teaching-contract.md. Produce only this slice: chapters 1 and 2 as Markdown with front matter; one diagram of request to publication; two or three labelled screenshots; one 30 to 60 second captioned clip with local narration; and run the gates on each.",
+      "expected_skill": "explainer",
+      "rationale": "Multi-artefact but explainer owns the arc and hands the clip to codebase-video; a pick of codebase-video is a near-miss on the hand-off, not a different intent.",
+      "class": "near-neighbour",
+      "provenance": "items-json-tier-A",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "I need one sequence diagram of the auth handshake to drop into the README, as a .mmd file we can version.",
+      "expected_skill": "mermaid-diagrams",
+      "rationale": "A single version-controlled .mmd is mermaid-diagrams; diagrams-as-code explicitly excludes the single-diagram case.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "We're publishing a blog post about our architecture next week and the diagram needs to look like it belongs in a magazine — branded, dark mode, self-contained SVG.",
+      "expected_skill": "diagram-design",
+      "rationale": "Editorial, branded, shared-publicly output is diagram-design's boundary against mermaid-diagrams.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Map our whole VPC and the on-prem racks as one isometric infrastructure picture I can put in the runbook.",
+      "expected_skill": "fossflow",
+      "rationale": "Isometric network/infrastructure topology is fossflow's sole stated niche inside the diagram family.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Plot where container orchestration sits on the evolution axis against our competitors so I can argue build versus buy to the board.",
+      "expected_skill": "wardley-maps",
+      "rationale": "Evolution axis and competitive positioning name Wardley mapping; report-builder can render one but the intent is the strategic analysis.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Which of the browser tools should I be using for this job? I genuinely don't know where to start.",
+      "expected_skill": "browser-automation",
+      "rationale": "The meta-skill's entire purpose is the \"unsure which browser tool\" turn; picking a concrete browser skill here is the error it exists to prevent.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Take a screenshot of the staging login page and fill in the demo credentials for me.",
+      "expected_skill": "browser-automation",
+      "rationale": "Navigate/screenshot/form-fill via the sidecar is `browser`; `playwright` is superseded and must never be offered at runtime. | RE-ADJUDICATED 2026-09-21: was `browser`. The `browser` rubric itself states \"for a browser TASK choose `browser-automation`, not this; choose this only when the sidecar connection details themselves are the subject\". A screenshot-and-fill request is a browser task. Two independent judges (openjev 4B cross-encoder, TypeSafe Jev at 0.98) both chose browser-automation; the original label rewarded lexical overlap with the `browser` entry.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "I've got forty tabs open in my logged-in Chrome and I want the console errors out of one of them without restarting the browser.",
+      "expected_skill": "chrome-cdp",
+      "rationale": "Inspecting already-open, logged-in tabs is chrome-cdp's stated boundary against launching a fresh browser session.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Scrape the product listings off this supplier site — it's behind Cloudflare Turnstile and rate-limits hard.",
+      "expected_skill": "scrapling",
+      "rationale": "Anti-bot bypass and spidering is scrapling, not general browser automation.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Search the web for what's been published on HNSW recall degradation under bulk updates. I want dense page extracts to ground on, not somebody's synthesis.",
+      "expected_skill": "ceramic-search",
+      "rationale": "Dense extracts for LLM grounding and default-first web search is ceramic-search; perplexity-research is the synthesised-answer neighbour.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Get me the authoritative government and academic sources on UK grid connection queue reform, filtered to gov and ac domains, with a synthesised answer.",
+      "expected_skill": "perplexity-research",
+      "rationale": "Authoritative primary sources with domain filters and a synthesised answer is perplexity-research's stated second-choice role.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "This goes into a client filing, so every citation has to be verifiable and archived. Restrict the search to SEC EDGAR and court records and audit the bibliography afterwards.",
+      "expected_skill": "web-researcher",
+      "rationale": "Reputation-attached work with trusted-domain lenses and citation integrity tooling is web-researcher's explicit boundary against the two search skills.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Write me a cited research brief on solid-state battery manufacturing that will survive a hostile reviewer picking at the sources.",
+      "expected_skill": "deep-research",
+      "rationale": "Multi-source cited brief with integrity gates is deep-research; the single-engine search skills are its tools, not the intent.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Summarise these three articles and the conference talk on YouTube, and drop the note links into my vault.",
+      "expected_skill": "web-summary",
+      "rationale": "URL and YouTube summarisation with vault note links is web-summary; gemini-url-context is the nearest neighbour but has no vault step.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Review PR #482 before I merge it — I want the security and performance problems called out.",
+      "expected_skill": "github-code-review",
+      "rationale": "PR review is the one GitHub skill whose scope is reviewing rather than automating.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Our release process is manual and error-prone. Automate the versioning, the changelog and the rollback path.",
+      "expected_skill": "github-release-management",
+      "rationale": "Versioning, changelog and rollback are release management, not workflow authoring.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Add a GitHub Actions workflow that runs the test suite on every push to main and caches the cargo registry.",
+      "expected_skill": "github-workflow-automation",
+      "rationale": "Authoring an Actions pipeline is workflow-automation's sole scope.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "What does our knowledge graph actually say about the Loom façade? Ground the answer in the KG rather than guessing from memory.",
+      "expected_skill": "ontology-augment",
+      "rationale": "\"What does our KG say about X\" at inference time is ontology-augment; the other two ontology skills build and enrich schemas.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Build a fresh OWL2 schema out of the vault pages for the podcast domain and export it as TTL for WebVOWL.",
+      "expected_skill": "ontology-core",
+      "rationale": "Creating a new schema from the vault corpus is ontology-core, not enrichment of an existing dataset.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "We have an existing ontology dataset with gaps. Validate it and fill in the missing properties before we regenerate the TTL.",
+      "expected_skill": "ontology-enrich",
+      "rationale": "Validation and enrichment of existing ontology data is the stated split from ontology-core.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Make the dashboard bolder — the type is timid and the hierarchy reads flat. One pass, just that.",
+      "expected_skill": "design-audit",
+      "rationale": "\"Make it bolder / fix the type\" is design-audit's inferred-intent refinement lens, quoted in the directory.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Generate a landing page prototype from our DESIGN.md brand spec and put it through the critique gate.",
+      "expected_skill": "open-design",
+      "rationale": "Producing an artefact from a brand spec through the critique gate is open-design; design-audit reviews what already exists.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "I haven't picked a palette or a font pairing yet and I'd like to see the options before we lock a brand.",
+      "expected_skill": "ui-ux-pro-max-skill",
+      "rationale": "Discovery and inspiration before a brand spec exists is explicitly upstream of open-design.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Batch-transcode this directory of 4K MOV files to H.264 MP4 with CUDA acceleration, two-pass.",
+      "expected_skill": "ffmpeg-processing",
+      "rationale": "Mechanical transcode is ffmpeg-processing; clipcannon and open-montage are editorial.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Cut a highlight reel out of this two-hour recording, caption it, and render a vertical version for Reels.",
+      "expected_skill": "clipcannon",
+      "rationale": "Editing existing footage into platform renders is clipcannon's stated scope against ffmpeg's mechanical one.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Make a five-minute explainer video for this repository aimed at a non-technical buyer, with narration and captions.",
+      "expected_skill": "codebase-video",
+      "rationale": "Repository-grounded audience video is codebase-video; open-montage is the general video producer with no repo grounding.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Animate how the HNSW graph is traversed during a nearest-neighbour search — precise, mathematical, as a short clip.",
+      "expected_skill": "manim",
+      "rationale": "A mechanism that needs precise motion is manim; the video skills assemble rather than animate.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Model a hard-surface drone chassis in Blender with PBR materials and give me a GPU render of it.",
+      "expected_skill": "blender",
+      "rationale": "Hard-surface modelling, materials and GPU render name blender directly.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Implement double-jump with coyote time in my Godot 4 project. Just that one mechanic, not a whole studio.",
+      "expected_skill": "godot-development",
+      "rationale": "A targeted single mechanic without the 48-agent studio is godot-development's explicit boundary against game-dev.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Train a Gaussian splat from this COLMAP capture, clean it up in the viewer and export the scene.",
+      "expected_skill": "lichtfeld-studio",
+      "rationale": "3DGS training, editing and export is lichtfeld-studio; spark-scene is the annotated-viewer neighbour.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Where are my tokens going? I keep hitting plan limits and I think something automated is looping overnight.",
+      "expected_skill": "token-audit",
+      "rationale": "\"Where are my tokens going\" plus a suspected runaway daemon is token-audit verbatim; cost-estimation prices endpoints instead.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Price up what it would cost to run this image-generation endpoint for a month, with the estimate-hold-settle flow.",
+      "expected_skill": "cost-estimation",
+      "rationale": "Endpoint cost tiers and the job lifecycle are cost-estimation, not local transcript accounting.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Trace every caller of resolveEnabled across this nine-hundred-file repo and tell me the blast radius of changing its signature.",
+      "expected_skill": "codebase-memory",
+      "rationale": "Call-graph tracing and diff blast radius on a large codebase is codebase-memory's headline capability.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "I have a PRD. Generate the full documentation set from it — specs, ADRs, DDD files, task breakdown.",
+      "expected_skill": "prd2build",
+      "rationale": "PRD to complete documentation is phase 1 of the methodology ladder; build-with-quality is phase 3.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "This refactor touches the API, the client and the migration scripts. I want coverage and quality gates on it, not a cowboy job.",
+      "expected_skill": "build-with-quality",
+      "rationale": "Multi-file feature or refactor needing gates and coverage is build-with-quality's stated trigger.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Take this from specification through pseudocode, architecture and refinement to completion, phase by phase.",
+      "expected_skill": "sparc-methodology",
+      "rationale": "The five named SPARC phases are unambiguous once they are spelled out.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Run an OWASP Top 10 pass over our REST API — auth, authorisation, dependency CVEs and secrets.",
+      "expected_skill": "security-testing",
+      "rationale": "Application-layer security testing is explicitly separated from Linux hardening in the skill's own description.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Harden this Ubuntu box to the CIS benchmark and tell me where we stand on SOC2 compliance.",
+      "expected_skill": "defense-security",
+      "rationale": "Linux hardening and compliance is defense-security, the other half of the same explicit split.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Stamp our signature PNG onto the bottom right of this PDF invoice. It just needs to look signed for the client.",
+      "expected_skill": "imagemagick",
+      "rationale": "pdf-signing's description names this as its NOT case — stamping a signature image is imagemagick.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Our counterparty requires a cryptographically signed, RFC-3161 timestamped PDF contract with a visible signature panel.",
+      "expected_skill": "pdf-signing",
+      "rationale": "PAdES signing with a visible panel and timestamping is the real pdf-signing case, paired with the imagemagick boundary above.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Did anyone email me an invoice from Hetzner last month? Have a look through my mail.",
+      "expected_skill": "email-search",
+      "rationale": "Invoices in the owner's personal email is email-search's quoted trigger.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Check my work calendar for Thursday and send a reply on the client thread confirming the time.",
+      "expected_skill": "none",
+      "rationale": "email-search's description excludes work mail, calendar and sending outright, and nothing else covers it — the correct answer is to decline, not to pick the nearest mail-shaped skill.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "I need to carry variables between steps while I work through this multi-stage numerical analysis interactively.",
+      "expected_skill": "codeact",
+      "rationale": "State persisting across tool calls in a kernel is codeact's stated case.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Knock out a quick one-shot Python script that renames these files by their EXIF date.",
+      "expected_skill": "none",
+      "rationale": "codeact's description names one-shot scripts as its NOT case; a plain edit handles this, so the honest answer is none.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "This parser has to be right first time. Generate several candidates, execute each against the assertions, and keep the one that passes.",
+      "expected_skill": "tree-search-coder",
+      "rationale": "Execution-gated branching generation where one attempt is insufficient is tree-search-coder's explicit scope.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Replace this prompt-and-parse moderation step with a typed decision my code can branch on — TypeSafe Jev style, with a probability distribution.",
+      "expected_skill": "system-one",
+      "rationale": "A typed Choice/Score/Noul primitive replacing prompt-and-parse, or TypeSafe named directly, is system-one.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Clean the LLM fingerprints out of this article — em-dashes everywhere, hollow openers, and it reads like slop.",
+      "expected_skill": "prose-sanitiser",
+      "rationale": "Removing LLM writing tells from public-facing prose is prose-sanitiser; docs-alignment audits a corpus for accuracy instead.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Audit our docs tree against the actual codebase and tell me what's stale, against the Diataxis quadrants.",
+      "expected_skill": "docs-alignment",
+      "rationale": "Corpus validation against code under Diataxis is docs-alignment, the accuracy half of the prose pair.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Write a new skill for our internal deployment runbook, with proper frontmatter and progressive disclosure.",
+      "expected_skill": "skill-builder",
+      "rationale": "Authoring a new skill is skill-builder; skill-tuning optimises one that already exists.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Our diagrams skill picks the wrong output format half the time. Optimise its description against a measurable score with a held-out A/B.",
+      "expected_skill": "skill-tuning",
+      "rationale": "Raising a skill's success rate by evidence on a scoreable task is skill-tuning's stated boundary against eyeballing prose.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Write a fused layernorm CUDA kernel and profile it against the cuBLAS baseline on this GPU.",
+      "expected_skill": "cuda",
+      "rationale": "Custom kernel development and GPU profiling is cuda; pytorch-ml trains models with existing kernels.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Set up distributed PyTorch training for this model across the two GPUs, with mixed precision.",
+      "expected_skill": "pytorch-ml",
+      "rationale": "Distributed deep-learning training is pytorch-ml, the other half of the cuda pair.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "My Leptos app has a hydration mismatch on the dashboard route and the ssr feature build is broken.",
+      "expected_skill": "leptos",
+      "rationale": "Hydration mismatch and ssr/hydrate build breaks are named in leptos's description; rust-development is the generic neighbour.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Port this Python CLI to Rust, clippy and rustfmt clean, cross-compiled for musl.",
+      "expected_skill": "rust-development",
+      "rationale": "Cargo, clippy, cross-compilation on a CLI is rust-development's scope with no web framework involved.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Assess this parcel in Lincolnshire for a ground-mounted solar farm — tilt, row spacing, yield and DNO feasibility.",
+      "expected_skill": "uk-solar-planner",
+      "rationale": "UK utility-scale PV siting composes qgis and blender but is its own skill.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Reproject these shapefiles to EPSG:27700 and render a styled map with the layers ordered properly.",
+      "expected_skill": "qgis",
+      "rationale": "CRS transforms, layer management and rendering are plain GIS operations.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Do an SEO audit on the marketing site: Search Console, keyword research, schema markup and meta tags.",
+      "expected_skill": "toprank",
+      "rationale": "Traditional SEO is toprank; bencium-aeo covers AI-search citation visibility instead.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "I'm writing against Next.js 15 and your API knowledge is stale. Pull the current documentation before you write anything.",
+      "expected_skill": "context7",
+      "rationale": "Version-specific library documentation to avoid stale-training hallucination is context7's whole purpose.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Is the nightly dream loop still paused? Tell me what happened last night and what's in the inbox.",
+      "expected_skill": "dream-machine",
+      "rationale": "Dream-engine status, pause state and inbox triage are dream-machine; the phrasing avoids a slash command, which the router skips.",
+      "class": "single",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Set up a recurring agent task that runs at 3am every night and reports in the morning.",
+      "expected_skill": "hermes-scheduler",
+      "rationale": "Cron-style recurring agent tasks are hermes-scheduler; hooks-automation is event-driven rather than scheduled.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": true
+    },
+    {
+      "prompt": "Write the LaTeX for a Beamer deck with BibTeX references for the conference next month.",
+      "expected_skill": "latex-documents",
+      "rationale": "Beamer and BibTeX are latex-documents; latex-book is deprecated and book-publishing is a whole manuscript.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Turn this markdown manuscript into a print-ready and arXiv-ready book PDF with the figures redrawn.",
+      "expected_skill": "book-publishing",
+      "rationale": "End-to-end book pipeline to KDP/arXiv is book-publishing, and it is the stated replacement for the deprecated latex-book.",
+      "class": "boundary",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Spin up a mesh swarm of researcher agents with fault tolerance to work through this investigation in parallel.",
+      "expected_skill": "swarm-advanced",
+      "rationale": "Mesh topology and fault tolerance for parallel local work is swarm-advanced; hive-mind is for consensus.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "I want the agents to reach Byzantine consensus on the design before any of them commit to code.",
+      "expected_skill": "hive-mind-advanced",
+      "rationale": "Consensus-driven decisions with a queen-led hierarchy is hive-mind-advanced, the other half of the swarm pair.",
+      "class": "near-neighbour",
+      "provenance": "directory-derived",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "yes, that looks right — go ahead and apply it to the other two files as well",
+      "expected_skill": "none",
+      "rationale": "Approval of work already in progress. The `none` rubric names follow-ups on in-session work explicitly.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Thanks, that worked. What was the actual cause in the end?",
+      "expected_skill": "none",
+      "rationale": "A conversational follow-up about work just done; no skill changes how it is answered.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Can you re-run that command and show me the full output this time, not the tail?",
+      "expected_skill": "none",
+      "rationale": "A re-run request. Naming a tooling skill here would inject advice the turn cannot use.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "No, I meant the other file — the one under tests, not the one in src.",
+      "expected_skill": "none",
+      "rationale": "A clarification of a previous instruction; the `none` rubric lists clarifications first.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Carry on with what you were doing, I just wanted to check in on progress.",
+      "expected_skill": "none",
+      "rationale": "A check-in with no new task. A plausible pick here would be a false positive on an idle turn.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Rename the variable foo to candidateCount everywhere in this one file, nothing else.",
+      "expected_skill": "none",
+      "rationale": "A trivial edit, named in the `none` rubric. build-with-quality is the tempting wrong pick and is explicitly scoped to multi-file work.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Why did that test fail? Just read the stack trace and tell me what it says.",
+      "expected_skill": "none",
+      "rationale": "Reading one stack trace is ordinary assistant work; no skill's guidance would change the answer.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Undo that last edit please, it broke the build and I want to think again.",
+      "expected_skill": "none",
+      "rationale": "A revert request on in-session work. agentic-jujutsu is the tempting wrong pick but is about multi-agent concurrent VCS.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Give me a one-line summary of what you just changed so I can put it in the commit.",
+      "expected_skill": "none",
+      "rationale": "A summary of the session's own work; prose-sanitiser is the tempting wrong pick and is for public-facing prose.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Commit what we've got with a sensible message and push it to the branch.",
+      "expected_skill": "none",
+      "rationale": "Plain git work. The github-* skills are about PRs, releases, boards and Actions, not a local commit.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Is 0.74 a reasonable confidence for a classifier, generally speaking? Just curious.",
+      "expected_skill": "none",
+      "rationale": "A general knowledge question. system-one is the tempting wrong pick because of the word confidence, but nothing is being built.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Explain what a monad is in two sentences, no code, I'm on my phone.",
+      "expected_skill": "none",
+      "rationale": "explainer is the tempting wrong pick; it is scoped to explaining a repo or product, not a general concept.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "Let's pause here for the night. Pick it up tomorrow from where we left off.",
+      "expected_skill": "none",
+      "rationale": "Session housekeeping. lazy-fetch is the tempting wrong pick — it is the single most over-fired skill in the real log (9 of 99 routes).",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    },
+    {
+      "prompt": "What time is it in Tokyo right now, roughly? I need to book a call.",
+      "expected_skill": "none",
+      "rationale": "A trivial factual question with no repo, no artefact and no tool that changes the answer.",
+      "class": "none",
+      "provenance": "log-shaped",
+      "late_discriminative": false
+    }
+  ]
+}
