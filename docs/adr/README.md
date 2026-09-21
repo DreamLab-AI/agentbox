@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_87 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_88 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -150,3 +150,4 @@ _87 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2092](ADR-2092-govern-the-agent-and-command-registries.md) | Agents and slash-commands get the same manifest governance skills already have | — | 2026-09-16 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2093](ADR-2093-jev-verbatim-compaction.md) | Compact context by Jev judgement, verbatim, with email fenced out and a switch | — | 2026-09-18 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2094](ADR-2094-local-capacity-adapting-typed-decision-facade.md) | Answer typed decisions on a local capacity-adapting façade, and relax the email fence only on proven backend locality | GOVERNANCE-capabilities | 2026-09-20 | accepted | partial | inactive | — | — | jjohare | agentbox |
+| [ADR-2095](ADR-2095-measure-typed-decision-seams-against-a-copy-ceiling.md) | Measure every typed-decision seam against a copy ceiling before choosing a judge | LEARNING-memory | 2026-09-21 | accepted | partial | staged | — | — | jjohare | agentbox |
