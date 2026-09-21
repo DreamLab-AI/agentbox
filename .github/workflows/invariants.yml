@@ -13,6 +13,10 @@ on:
       - 'management-api/**'
       - 'lib/**'
       - 'scripts/**'
+      # The gates' own unit tests run in this job, so a change to one of them must
+      # re-run it. Without this, tests/security/check-listeners.test.mjs could be
+      # edited on main and the listener rule never re-asserted on that push.
+      - 'tests/security/**'
       - 'flake.nix'
       - 'skills/**'
       - 'mcp/**'

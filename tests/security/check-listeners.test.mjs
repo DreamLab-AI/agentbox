@@ -162,7 +162,11 @@ test('block boundaries stop at the end of the Nix string', () => {
 test('address classification', () => {
   for (const a of ['127.0.0.1', '127.0.0.1:8080', 'localhost', '::1', '[::1]:80'])
     assert.equal(classifyAddress(a), 'loopback', a);
-  for (const a of ['0.0.0.0', '0.0.0.0:8080', 'the model host', '::', '[::]:80'])
+  // RFC 5737 / RFC 2606 reserved values: a real non-loopback literal and a real
+  // hostname bind, with no site address in a public repository. Keep them as
+  // ADDRESSES — a prose substitution here silently turns the case into 'ignore'
+  // and the gate stops asserting that a LAN bind is caught.
+  for (const a of ['0.0.0.0', '0.0.0.0:8080', '198.51.100.7', '198.51.100.7:8080', 'db.invalid', '::', '[::]:80'])
     assert.equal(classifyAddress(a), 'non-loopback', a);
   assert.equal(classifyAddress('%(ENV_MANAGEMENT_API_PORT)s'), 'ignore');
 });
