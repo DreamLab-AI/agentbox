@@ -79,6 +79,17 @@
       "title": "Jev model",
       "description": "System One model id.",
       "default": "jev-latest"
+    },
+    "baseUrl": {
+      "type": "string",
+      "title": "System One endpoint",
+      "description": "Full URL of the typed-decision endpoint. Unset means the vendor cloud, which is the default posture. The manifest projector sets this when [features.sovereign_system_one] is enabled (ADR-2094)."
+    },
+    "backendLocal": {
+      "type": "boolean",
+      "title": "Endpoint is on this network",
+      "description": "DECLARED, never inferred from baseUrl: a hostname is not evidence of where bytes come to rest. True permits an email-tainted session to be compacted, because nothing leaves the network; false or unset keeps the taint fence shut (ADR-2093 as amended by ADR-2094). Default false.",
+      "default": false
     }
   }
 }
