@@ -73,11 +73,20 @@ document come from `sidestr-core` and are not duplicated.
   parent node: `pegin` produces the outputs, the unsigned transaction, and
   the `[{address: btc}, {data: hex}]` argument Bitcoin Core's `send` takes,
   as `parent.mjs` does.
+- **Parent records are bounded before they are built.** `pegoutMarkerData`
+  and the checkpoint go on the parent inside its 80-byte `OP_RETURN` policy,
+  and every marker push must fit the one length byte the shared grammar reads
+  (255 bytes); `pegin::pegout_payment_outputs` returns
+  `Error::MarkerTooLong` past either bound rather than a well-formed
+  `OP_PUSHDATA2` output that `parse_pegout_marker` would never read back
+  (audit F4, 0.2.1; the checkpoint's 80-byte bound is `sidestr-core`'s
+  `checkpoint_data`). The reference does not check; its `send` fails at the
+  node.
 - **Not carried:** the `--evm` deposit branch (ADR-2096 excludes the `evm`
   rule), assets (SPEC 12, reserved), the faucet's relay loop and rate state
   (its payment is `build_spend`; the request template is `deliver::faucet_request`).
 
-## Status — 0.1.0
+## Status — 0.2.1
 
 Spend, burn, peg-in shape, delivery data, coin listing and selection, the
 signer and policy ports. Proven:

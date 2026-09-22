@@ -37,6 +37,7 @@ assert_eq!(parse_tip(&ev).unwrap().mirrors, ["https://mirror.example/x"]);
 This crate is a port of **siding**, the reference implementation of sidestr by
 Melvin Carvalho — [github.com/sidestr/spec](https://github.com/sidestr/spec),
 AGPL-3.0 — ported from commit `2de40bdac4cba01be0864156a553d8287c22e279`
+(the tip parser follows `announce.mjs` at `e457737`, spec 0.0.3)
 (`siding/lib/{announce,relay,pledge,round,pegoutround,spend}.mjs`,
 `bin/siding.mjs`, `test/announce-test.mjs`). The event id and signature rule
 comes from the schema kernel siding loads, by the same author and under the
@@ -61,12 +62,15 @@ not upstream's.
   `sign_pledge`, `sign_proposal`, `sign_account_binding`, …); the request type
   has no public constructor, so there is no generic "sign this payload" path.
   siding passes a raw hex key to every function.
-- **Both header families parse.** siding's `parseTip` accepts only content
-  whose length divides by 328 (the 164-byte Knots v2 header) and therefore
-  returns `null` for every announcement of a chain beside a stock Bitcoin
-  parent (80-byte headers, 160 hex characters) — including the live
-  `sidestr:dreamlab` announcement carried in `fixtures/live-33333.json`. The
-  kernel's own NIP-333 reader (`schema/codec/nostr.js`) uses 160. Here the
+- **Both header families parse** (upstream matched at spec 0.0.3). Before
+  sidestr/spec PR #7, siding's `parseTip` accepted only content whose length
+  divides by 328 (the 164-byte Knots v2 header) and therefore returned `null`
+  for every announcement of a chain beside a stock Bitcoin parent (80-byte
+  headers, 160 hex characters) — including the live `sidestr:dreamlab`
+  announcement carried in `fixtures/live-33333.json`. Since 0.0.3
+  `headerWidth` reads the width from the content, bounded to `TIP_HEADERS`
+  headers and hex-checked before slicing; this crate applies the same bound.
+  The kernel's own NIP-333 reader (`schema/codec/nostr.js`) uses 160. Here the
   family is inferred from the length, or taken from the chain's parent; a
   length that fits both is refused rather than guessed.
 - Refusals are typed errors with the reason, not `null`.

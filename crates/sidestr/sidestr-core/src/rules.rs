@@ -39,7 +39,7 @@ use crate::block::{
     block_weight, merkle_root_of_txs, verify_block_signature, witness_root_of_txs, HeaderFamily,
     SidestrBlock,
 };
-use crate::marker::{looks_like_pegout, op_return_data, parse_claims, parse_pegout, Burn};
+use crate::marker::{looks_like_pegout, parse_claims, parse_pegout, Burn};
 use crate::sighash::verify_taproot_key_path;
 
 /// Network parameters a sidestr chain inherits (`btc:regtest` in
@@ -750,7 +750,9 @@ pub fn validate_block_context<F: HeaderFamily>(
         for tx in txdata.iter().skip(1) {
             let txid = tx.compute_txid().to_string();
             for (vout, o) in tx.output.iter().enumerate() {
-                if op_return_data(&o.script_pubkey).is_none() || !looks_like_pegout(o) {
+                // one push whose data starts `pegout:`, in either push form; anything else is not
+                // a burn and is ignored, but a burn-shaped output that does not parse refuses the block
+                if !looks_like_pegout(o) {
                     continue;
                 }
                 let Some(script) = parse_pegout(&o.script_pubkey) else {

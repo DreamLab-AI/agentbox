@@ -80,9 +80,13 @@ pub enum Error {
         /// The parent alias from the document.
         parent: String,
     },
-    /// A peg-in marker longer than the parent's 80-byte `OP_RETURN` relay
-    /// policy allows (a 61-byte marker for a 15-byte chain id fits).
-    #[error("peg-in marker of {0} bytes exceeds the parent's 80-byte data limit; the chain id is too long")]
+    /// A parent-side marker (peg-in, peg-out record) longer than the
+    /// parent's 80-byte `OP_RETURN` relay policy allows, or any marker push
+    /// over the 255 bytes the shared grammar reads back (a 61-byte peg-in
+    /// marker for a 15-byte chain id fits).
+    #[error(
+        "marker of {0} bytes exceeds the parent's 80-byte data limit; the chain id is too long"
+    )]
     MarkerTooLong(usize),
     /// The [`SpendPolicy`](crate::policy::SpendPolicy) refused the intent.
     #[error("policy refused: {0}")]

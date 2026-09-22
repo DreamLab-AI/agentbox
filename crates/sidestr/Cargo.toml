@@ -16,6 +16,9 @@ members = [
     # transactions (23500/23501), rule and genesis documents, the dual-schema 33502 record,
     # the level-2 round codecs and the estate's 38420-38425 (ADR-2098 D2, ADR-2106).
     "sidestr-nostr",
+    # The level-2 co-signing round as a pure state machine on upstream's wire (23510-23514),
+    # the peg-out PSBT round, a durable vote journal and the `cosign` signer (ADR-2101).
+    "sidestr-round",
 ]
 
 [workspace.package]

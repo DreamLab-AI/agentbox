@@ -72,8 +72,19 @@ pub fn parent_network(parent: &Parent) -> Option<Network> {
     }
 }
 
-/// `OP_RETURN` with one minimal push of `data`, at most 255 bytes.
+/// The most a marker's push carries: the shared grammar
+/// ([`sidestr_core::marker::op_return_data`]) reads a direct push or
+/// `OP_PUSHDATA1`, one length byte, so 255 bytes; `PushBytesBuf` itself would
+/// happily build an `OP_PUSHDATA2` push no parser reads back (audit F4).
+pub const MARKER_DATA_LIMIT: usize = 255;
+
+/// `OP_RETURN` with one minimal push of `data`, held to
+/// [`MARKER_DATA_LIMIT`] so the script parses back through the shared marker
+/// grammar; [`Error::MarkerTooLong`] otherwise.
 fn op_return(data: &[u8]) -> Result<ScriptBuf> {
+    if data.len() > MARKER_DATA_LIMIT {
+        return Err(Error::MarkerTooLong(data.len()));
+    }
     let push = PushBytesBuf::try_from(data.to_vec())
         .map_err(|_| Error::Encoding("push over 255 bytes".into()))?;
     Ok(ScriptBuf::new_op_return(&push))
@@ -246,6 +257,12 @@ pub fn scan_pegin(tx: &Transaction, chain_id: &str) -> Option<FoundPegIn> {
 /// bytes>` so a validator with a parent view pairs the payment with its
 /// burn. The parent's fee comes from the peg outputs, which is the parent
 /// wallet's business.
+///
+/// The record is `8 + chain id + 32` bytes and goes on the parent, so it is
+/// held to [`PARENT_DATA_LIMIT`] like the peg-in marker: a chain id over 40
+/// bytes is [`Error::MarkerTooLong`] here rather than a transaction the
+/// parent will not relay. (The reference `pegoutMarkerData` does not check;
+/// its `send` would fail at the node.)
 pub fn pegout_payment_outputs(
     chain_id: &str,
     side_txid: &str,
@@ -254,6 +271,10 @@ pub fn pegout_payment_outputs(
 ) -> Result<Vec<TxOut>> {
     let script = ScriptBuf::from_hex(parent_script_hex)
         .map_err(|_| Error::BadDestination(parent_script_hex.to_string()))?;
+    let data = pegout_marker_data(chain_id, side_txid)?;
+    if data.len() > PARENT_DATA_LIMIT {
+        return Err(Error::MarkerTooLong(data.len()));
+    }
     Ok(vec![
         TxOut {
             value: Amount::from_sat(value),
@@ -261,7 +282,7 @@ pub fn pegout_payment_outputs(
         },
         TxOut {
             value: Amount::ZERO,
-            script_pubkey: op_return(&pegout_marker_data(chain_id, side_txid)?)?,
+            script_pubkey: op_return(&data)?,
         },
     ])
 }
@@ -313,5 +334,42 @@ mod tests {
             Some((70_000, "d".repeat(64)))
         );
         assert!(pegout_payment_outputs("x", "zz", "5120", 1).is_err());
+    }
+
+    /// Audit F4 (2026-09-22): a parent record too long for the marker
+    /// grammar (or the parent's relay policy) is an error, never a
+    /// well-formed `OP_PUSHDATA2` output that `parse_pegout_marker` ignores.
+    #[test]
+    fn long_records_are_refused_not_emitted_unreadable() {
+        let txid = "c".repeat(64);
+        // 8 + 40 + 32 = 80: the largest record the parent relays
+        let id = format!("sidestr:{}", "x".repeat(32));
+        let outs = pegout_payment_outputs(&id, &txid, "5120", 1).unwrap();
+        assert_eq!(
+            sidestr_core::marker::op_return_data(&outs[1].script_pubkey).map(<[u8]>::len),
+            Some(PARENT_DATA_LIMIT)
+        );
+        assert_eq!(
+            parse_pegout_marker(&outs[1].script_pubkey, &id),
+            Some(txid.clone())
+        );
+        // one byte over the parent's policy
+        let over = format!("sidestr:{}", "x".repeat(33));
+        assert!(matches!(
+            pegout_payment_outputs(&over, &txid, "5120", 1),
+            Err(Error::MarkerTooLong(81))
+        ));
+        // the auditor's reproduction: a 216-byte id made a 256-byte push
+        let huge = "x".repeat(216);
+        assert!(matches!(
+            pegout_payment_outputs(&huge, &"a".repeat(64), "51", 10_000),
+            Err(Error::MarkerTooLong(256))
+        ));
+        // the push bound itself, for any caller of the helper
+        assert!(matches!(
+            op_return(&[0u8; MARKER_DATA_LIMIT + 1]),
+            Err(Error::MarkerTooLong(256))
+        ));
+        assert!(op_return(&[0u8; MARKER_DATA_LIMIT]).is_ok());
     }
 }

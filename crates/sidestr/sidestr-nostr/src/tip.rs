@@ -19,14 +19,16 @@
 //! The header format follows the parent (SPEC 3): 80 bytes beside a stock
 //! Bitcoin parent, 164 beside a Knots BLAKE2b one. The content is those
 //! headers as hex, joined, so it is a multiple of 160 or of 328 characters.
-//! Upstream's `parseTip` accepts only `% 328`, which rejects every
-//! announcement of a stock-family chain — including the live
+//! Before spec 0.0.3, upstream's `parseTip` accepted only `% 328`, which
+//! rejected every announcement of a stock-family chain — including the live
 //! `sidestr:dreamlab` one, whose single genesis header is 160 characters
-//! (`fixtures/live-33333.json`). The kernel's own reader
-//! (`schema/codec/nostr.js`, `HEADER_HEX = 160`) takes the other view. This
-//! port accepts both: [`parse_tip`] infers the family from the length and
-//! [`parse_tip_as`] takes it from the chain's parent, which is the right
-//! answer when the chain document is at hand.
+//! (`fixtures/live-33333.json`). sidestr/spec PR #7 (merged 2026-09-22)
+//! made `announce.mjs headerWidth` read the width from the content, then
+//! upstream bounded it to `TIP_HEADERS` headers of hex and refused non-hex
+//! before slicing. This port does the same: [`parse_tip`] infers the family
+//! from the length within that bound and [`parse_tip_as`] takes it from the
+//! chain's parent, which is the right answer when the chain document is at
+//! hand.
 //!
 //! # Pure
 //!
@@ -265,6 +267,15 @@ fn parse_with(ev: &Event, family: Option<Family>) -> Result<Tip> {
             return Err(Error::Family(format!(
                 "{} hex characters is not a whole number of {len}-character {family:?} headers",
                 content.len()
+            )));
+        }
+        // at most TIP_HEADERS headers, judged before any slicing: the width
+        // inference above holds only within that bound, and relay content is
+        // untrusted (announce.mjs headerWidth, spec 0.0.3)
+        if content.len() / len > TIP_HEADERS {
+            return Err(Error::Family(format!(
+                "{} headers: an announcement carries at most {TIP_HEADERS}",
+                content.len() / len
             )));
         }
         let headers: Vec<String> = content
@@ -589,17 +600,16 @@ mod tests {
         ev.content = "ab".repeat(3280);
         ev.tags.iter_mut().find(|t| t[0] == "tip").unwrap()[1] = "100".into();
         assert!(matches!(parse_tip(&ev), Err(Error::Family(m)) if m.contains("both")));
-        assert_eq!(
-            parse_tip_as(&ev, Family::Stock).unwrap().headers_hex.len(),
-            41
-        );
-        assert_eq!(
-            parse_tip_as(&ev, Family::Blake2b)
-                .unwrap()
-                .headers_hex
-                .len(),
-            20
-        );
+        // and with the family given, 41 or 20 headers still exceed TIP_HEADERS
+        // (upstream bounds the count before slicing, spec 0.0.3)
+        assert!(matches!(
+            parse_tip_as(&ev, Family::Stock),
+            Err(Error::Family(m)) if m.contains("at most")
+        ));
+        assert!(matches!(
+            parse_tip_as(&ev, Family::Blake2b),
+            Err(Error::Family(m)) if m.contains("at most")
+        ));
         // more headers than heights
         let mut low = v2();
         low.tags.iter_mut().find(|t| t[0] == "tip").unwrap()[1] = "1".into();
@@ -612,12 +622,42 @@ mod tests {
         assert!(matches!(parse_tip(&wrong), Err(Error::Kind { .. })));
     }
 
+    /// announce-test.mjs (spec 0.0.3): more than TIP_HEADERS headers, or
+    /// non-hex content, is rejected before any slicing; exactly TIP_HEADERS
+    /// parses. 13 stock headers (2080 hex) slipped under the old 12 x 328
+    /// hex-length cap upstream; the cap is on the header count.
     #[test]
-    fn stock_headers_parse_where_upstream_returns_null() {
+    fn header_count_is_bounded_before_slicing_as_upstream_bounds_it() {
+        let mut ev = sign_tip(
+            &signer(),
+            &TipTemplate::new("sidestr:t", 100, vec![h(1, 80)], vec![]).unwrap(),
+            1,
+        )
+        .unwrap();
+        let one_stock = ev.content.clone();
+        let one_v2 = "ab".repeat(164);
+        ev.content = one_stock.repeat(13);
+        assert!(matches!(parse_tip(&ev), Err(Error::Family(_))), "13 stock");
+        ev.content = one_v2.repeat(13);
+        assert!(matches!(parse_tip(&ev), Err(Error::Family(_))), "13 v2");
+        ev.content = "zz".repeat(164);
+        assert!(matches!(parse_tip(&ev), Err(Error::Hex { .. })), "non-hex");
+        ev.content = one_stock.repeat(12);
+        assert_eq!(parse_tip(&ev).unwrap().headers_hex.len(), 12);
+        ev.content = one_v2.repeat(12);
+        assert_eq!(parse_tip(&ev).unwrap().headers_hex.len(), 12);
+    }
+
+    #[test]
+    fn stock_headers_parse_where_upstream_before_0_0_3_returned_null() {
         let t = TipTemplate::new("sidestr:t", 0, vec![h(9, 80)], vec![]).unwrap();
         let ev = sign_tip(&signer(), &t, 1).unwrap();
         assert_eq!(ev.content.len(), 160);
-        assert_ne!(ev.content.len() % 328, 0, "upstream parseTip rejects this");
+        assert_ne!(
+            ev.content.len() % 328,
+            0,
+            "upstream before spec 0.0.3 rejected this"
+        );
         let p = parse_tip(&ev).unwrap();
         assert_eq!(
             (p.family, p.first_height(), p.tip),

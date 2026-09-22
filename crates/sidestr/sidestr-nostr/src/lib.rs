@@ -14,7 +14,8 @@
 //!
 //! This crate is a port of **siding**, the reference implementation by
 //! Melvin Carvalho (<https://github.com/sidestr/spec>, AGPL-3.0), ported
-//! from commit `2de40bdac4cba01be0864156a553d8287c22e279`, with the event
+//! from commit `2de40bdac4cba01be0864156a553d8287c22e279` (the tip parser
+//! follows `announce.mjs` at `e457737`, spec 0.0.3), with the event
 //! id and signature rule from the schema kernel it loads
 //! (`bitcoin-desktop/schema`, `codec/nostr.js`), and carries the same
 //! licence, AGPL-3.0-only. `SPEC.md` in that repository is the design;
@@ -114,12 +115,15 @@
 //!
 //! # Where this port departs from siding
 //!
-//! - **Both header families parse.** `parseTip` accepts only content whose
-//!   length divides by 328 (the 164-byte Knots v2 header), so it returns
+//! - **Both header families parse** (upstream matched at spec 0.0.3).
+//!   Before sidestr/spec PR #7, `parseTip` accepted only content whose
+//!   length divides by 328 (the 164-byte Knots v2 header), so it returned
 //!   `null` for every announcement of a chain beside a stock Bitcoin parent
 //!   (80-byte headers, 160 hex) — the live `sidestr:dreamlab` announcement
-//!   among them (`fixtures/live-33333.json`). The kernel's own reader uses
-//!   160. [`tip::parse_tip`] infers the family from the length and
+//!   among them (`fixtures/live-33333.json`). Since 0.0.3 `headerWidth`
+//!   reads the width from the content, bounded to `TIP_HEADERS` headers and
+//!   hex-checked before slicing; this crate applies the same bound.
+//!   [`tip::parse_tip`] infers the family from the length and
 //!   [`tip::parse_tip_as`] takes it from the chain's parent; a length that
 //!   fits both is refused, never guessed.
 //! - **Refusals are typed.** siding's parsers return `null`; here every

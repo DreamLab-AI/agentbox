@@ -193,6 +193,32 @@
 //!   where the kernel and Bitcoin Core treat the latter as a success. Within
 //!   that template the two agree case for case (`tests/consensus_oracle.rs`,
 //!   Core's interpreter behind the `consensus-oracle` feature).
+//! - **A marker's push is written canonically and read as the reference reads
+//!   it.** `overlay.mjs opReturnData` takes `6a`, an optional `4c`, one
+//!   length byte and that many bytes: the byte is a length whatever opcode it
+//!   is to Bitcoin, and an `OP_PUSHDATA1` prefix is accepted for any length.
+//!   [`marker::op_return_data`] does exactly that — it is the burn rule's
+//!   grammar, so a burn a reference wallet wrote as `6a 57 …` (`OP_7` to an
+//!   interpreter: `pegoutMarker` writes a bare length byte even above 75) is
+//!   recorded here as it is there. What this crate *writes* differs:
+//!   [`marker::pegout_marker`] and [`marker::record_script`] emit
+//!   `OP_PUSHDATA1` above 75 bytes, the one form both engines and Bitcoin's
+//!   script parser read alike (the encoder has written that since 0.2.0).
+//!   0.2.0 *recognised* only the direct-push form as a burn
+//!   (`looks_like_pegout` read the `pegout:` prefix at byte 2), so a burn to
+//!   a 35–40-byte parent script was silently unpaid and a malformed
+//!   `OP_PUSHDATA1` burn was accepted where the reference refuses the block;
+//!   0.2.1 changed recognition and the burn-loop guard, pinned against the
+//!   reference in `tests/audit_regressions.rs`.
+//! - **A marker's text is decoded as the reference decodes it** — not a
+//!   departure, but easy to get wrong: siding text-decodes with a WHATWG
+//!   `TextDecoder`, whose default drops one leading UTF-8 byte-order mark,
+//!   so `EF BB BF pegout:abcd` names `abcd` there. [`marker::parse_pegout`],
+//!   [`marker::looks_like_pegout`], [`marker::parse_claims`], the hex-form
+//!   decision of [`marker::parse_peg_marker`] and [`marker::record_text`]
+//!   drop it too; [`marker::parse_pegout_marker`] and
+//!   [`marker::parse_checkpoint`] compare bytes, as the reference does, and
+//!   do not. Pinned in `tests/audit_regressions_records.rs` (0.2.1).
 //! - **The mempool judges signatures by the block rules.** siding's `submit`
 //!   passes `unifiedSighash: true` on every family while its block rule
 //!   applies it only from the fork height, so on a stock chain the reference
@@ -206,7 +232,9 @@
 //!   passed.
 //! - **`record_text` checks the push length.** The reference's check is
 //!   commented out; [`marker::record_text`] refuses a record whose bytes do not
-//!   match its push length.
+//!   match its push length, or whose push is not minimal, where `recordText`
+//!   reads the text anyway. This is the only derived-record difference the
+//!   differential in `tests/audit_regressions_records.rs` allows.
 //! - **Zero auxiliary randomness everywhere**, not only for the genesis. Both
 //!   are valid BIP 340; only reproducibility differs.
 //! - **A document naming `assets`, `pool` or `evm` is refused** at

@@ -80,8 +80,19 @@ cites its sections, and every ported function names its original.
   reads a stock version as `i32le`.
 - A mirror's `blocks.dat` record framing (`[u32 height][u32 size]`) is held to
   `blocks.json` and to the file's length on every read (`Error::BlockFile`).
+- Markers are written with a canonical push (`OP_PUSHDATA1` above 75 bytes)
+  and read exactly as siding's `opReturnData` reads them — a bare length byte
+  or an `OP_PUSHDATA1` prefix, minimal or not — because that is the burn
+  rule's grammar and a burn a reference wallet wrote must be paid. Their
+  text is decoded as siding's `TextDecoder` decodes it, one leading UTF-8
+  byte-order mark dropped, at exactly the readers that text-decode there
+  (burns, claims, the peg-in remainder's hex-form decision, records) and
+  not at the two compared as bytes (the parent peg-out record, the
+  checkpoint) — so a BOM-led burn is recorded, or refused, alike.
+  `tests/audit_regressions_records.rs` holds every marker case and every
+  block of an audit corpus to identical derived lists in both engines.
 
-## Status — 0.2.0
+## Status — 0.2.1
 
 Level 1 (one signer), both header families, end to end: genesis from the
 document, block production, validation, the mempool policy, the block file.

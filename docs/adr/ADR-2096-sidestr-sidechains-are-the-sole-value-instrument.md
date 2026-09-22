@@ -117,9 +117,23 @@ those chains; `txbt4-fed` and `gitmark` carry rules D5 excludes and are refused 
 level 2's pure parts (federation derivation, partial signatures, witness assembly, a
 script-path verifier for the `multi_a` template, federated genesis) are in core, byte-identical
 to siding's for a 2-of-3 genesis; the parent view is behind an RPC trait with a read-only live
-test on the estate node. Not yet: the round (`sidestr-round`, in progress, wire-compatible with
-upstream's level-2 protocol; the BFT redesign of ADR-2101's consultant review is a later
-crate), the solid-pod-rs port. Ratification evidence remains: `cargo test -p sidestr-core` green with
+test on the estate node. **0.2.1 and `sidestr-round` 0.1.0 (2026-09-22 evening):** three
+more independent passes (GPT-6 Astra; `docs/proposals/sovereign-settlement-research/AUDIT-sidestr-core-0.2.1-*`,
+`AUDIT-sidestr-round-0.1-*`, `VERIFY-sidestr-0.2.1-round-0.1-receipts-*`) found and the
+producers fixed: burns whose marker needs `OP_PUSHDATA1` were validated but never recorded and
+a malformed one was accepted where the reference refuses the block (chain split); the
+reference's `TextDecoder` drops a leading byte-order mark at five text-decode sites and Rust
+kept it (a recorded burn there, nothing here); two unchecked encoder domains and a wallet
+marker bound; in the round, a torn journal tail swallowed the next vote, the never-re-sign
+option did not cover peg-out self-proposals, no TLS backend was compiled so `wss://` relays
+were unreachable, timing was second-quantised, intent was journalled after signing, the mirror
+served unindexed bytes, and finally a failed append rolled the journal back to a cached length
+(the cosign node itself held two handles on one file). Every finding is a regression test
+under `tests/audit_regressions*.rs`; ten adversarial blocks from the JS engine replay in Rust
+with identical derived lists except the documented strict record-length departure; a Rust
+signer co-signs with Melvin's JS signers live in both arrangements and both peg-out
+directions. `sidestr-round` is upstream's level-2 protocol, availability-tolerant, with the
+BFT redesign of ADR-2101's consultant review a later crate. Not yet: the solid-pod-rs port. Ratification evidence remains: `cargo test -p sidestr-core` green with
 rejecting tests per rule; `sidestr-core` validates the live upstream `sidestr:txbt4-fed` and
 `sidestr:gitmark` chains to the JS explorer's tip hash; `cargo doc --no-deps` clean on the four
 published crates; `cargo tree -p sidestr-core -p sidestr-header -p sidestr-nostr -p

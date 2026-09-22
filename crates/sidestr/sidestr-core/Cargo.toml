@@ -1,6 +1,6 @@
 [package]
 name = "sidestr-core"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
@@ -12,7 +12,7 @@ documentation = "https://docs.rs/sidestr-core"
 keywords = ["bitcoin", "sidechain", "sidestr", "signet", "consensus"]
 categories = ["cryptography::cryptocurrencies", "encoding"]
 publish = true
-include = ["src/**", "tests/**", "examples/**", "fixtures/**", "README.md", "LICENSE", "Cargo.toml"]
+include = ["src/**", "tests/**", "examples/**", "fixtures/**", "README.md", "CHANGELOG.md", "LICENSE", "Cargo.toml"]
 
 [features]
 default = ["std"]

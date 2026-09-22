@@ -1,5 +1,7 @@
 //! Probes written by the GPT-6 Astra evidence auditor, 2026-09-22 (docs/proposals/sovereign-settlement-research/AUDIT-sidestr-core-0.2-gpt6-astra.md).
 
+mod common;
+
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{Keypair, Message, SecretKey};
 use bitcoin::sighash::{Prevouts, SighashCache, TapSighashType};
@@ -12,7 +14,10 @@ use sidestr_core::block::{
     Stock,
 };
 use sidestr_core::federation::{partial_signature, Federation};
-use sidestr_core::marker::{record_script, Burn};
+use sidestr_core::marker::{
+    looks_like_pegout, op_return_data, parse_pegout, pegout_marker, record_script, record_text,
+    Burn,
+};
 use sidestr_core::parent::{checkpoint_payment, claimable, find_pegin, pegout_payment, FoundPegin};
 use sidestr_core::{resolve_parent, ChainDocument, State};
 
@@ -437,4 +442,330 @@ fn departures_execute_at_the_boundary() {
     let (_, b) = twin.produce(&k, &req, None).unwrap();
     assert_eq!(a, b);
     println!("identical state/key/next-block inputs produced identical blocks");
+}
+
+/// An `OP_RETURN` whose push prefix is exactly `prefix`, then `data`; the
+/// length is the caller's to get right or wrong.
+fn op_return_raw(prefix: &[u8], data: &[u8]) -> ScriptBuf {
+    ScriptBuf::from_bytes([&[0x6a][..], prefix, data].concat())
+}
+
+/// The reference engine over a directory, when the checkouts are named;
+/// `None` when they are not (the pure half of a test still runs).
+fn reference(
+    cmd: &str,
+    chain_file: &std::path::Path,
+    dir: &std::path::Path,
+    extra: Option<&std::path::Path>,
+) -> Option<serde_json::Value> {
+    if ["SIDESTR_SIDING", "SCHEMA", "BLAKETESTNODE"]
+        .iter()
+        .any(|v| std::env::var(v).is_err())
+    {
+        eprintln!(
+            "skipped the reference cross-check: set SIDESTR_SIDING, SCHEMA and BLAKETESTNODE"
+        );
+        return None;
+    }
+    let mut c = std::process::Command::new("node");
+    c.arg(std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/xcheck.mjs"))
+        .arg(cmd)
+        .arg(chain_file)
+        .arg(dir);
+    if let Some(e) = extra {
+        c.arg(e);
+    }
+    let out = c.output().expect("node");
+    assert!(
+        out.status.success(),
+        "reference engine failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    Some(serde_json::from_slice(&out.stdout).expect("json from the reference engine"))
+}
+
+/// Re-audit F2 (2026-09-22, found by running the reference beside sidestr-round):
+/// a burn whose marker needs `OP_PUSHDATA1` (a parent script of 35 to 40
+/// bytes: 77 to 87 bytes of payload) was **silently not recorded** by the
+/// burn rule, because `looks_like_pegout` read the `pegout:` prefix at byte 2,
+/// where a direct push's data starts, and the rule `continue`d past any
+/// output it did not recognise. The reference (`overlay.mjs`
+/// `sidestr:rule-pegouts`) decodes the push first and then looks for the
+/// prefix, so it recorded the burn — and it also *refused* a block whose
+/// `OP_PUSHDATA1` marker starts `pegout:` but does not parse, where this port
+/// accepted it. Neither engine failed loudly: the divergence surfaced as an
+/// unpaid burn. This test pins every push form the reference accepts against
+/// the reference itself, when the checkouts are named.
+#[test]
+fn pushdata1_burns_are_recorded_and_refused_exactly_as_the_reference() {
+    use common::*;
+    let key = signer("pushdata");
+    let me = challenge(&key);
+    let mut doc = doc(
+        "pushdata",
+        &key,
+        vec![("a".repeat(64), 0, 5_000_000_000, me.clone())],
+    );
+    let dir = TempDir::new("pushdata");
+    let mut chain = open(&doc, &dir, &key);
+    doc.genesis_hash = Some(chain.state().genesis_hash().to_string());
+    let chain_file = dir.0.join("chain.json");
+    std::fs::write(&chain_file, serde_json::to_string(&doc).unwrap()).unwrap();
+    produce_to(&mut chain, &key, 101);
+
+    // the five push forms a burn may arrive in
+    let s34 = format!("5120{}", "e9".repeat(32)); // 75-byte payload: direct push 0x4b
+    let s35 = "ab".repeat(35); // 77 bytes: OP_PUSHDATA1 0x4d
+    let s40 = "ef".repeat(40); // 87 bytes: OP_PUSHDATA1 0x57 (the largest burn)
+    let m34 = pegout_marker(&s34);
+    let m35 = pegout_marker(&s35);
+    let m40 = pegout_marker(&s40);
+    assert!(
+        m34.to_hex_string().starts_with("6a4b")
+            && m35.to_hex_string().starts_with("6a4c4d")
+            && m40.to_hex_string().starts_with("6a4c57")
+    );
+    // the reference's own `pegoutMarker` writes the length as a bare byte even above 75: for a
+    // 40-byte script that is `6a 57 …`, OP_7 to Bitcoin, yet its `opReturnData` reads it back
+    let bare40 = op_return_raw(&[0x57], format!("pegout:{}", "cd".repeat(40)).as_bytes());
+    // and its `opReturnData` takes a non-minimal OP_PUSHDATA1 for a short payload as well
+    let nonmin = op_return_raw(&[0x4c, 0x0b], b"pegout:abcd");
+    for m in [&m34, &m35, &m40, &bare40, &nonmin] {
+        assert!(
+            looks_like_pegout(&bitcoin::TxOut {
+                value: Amount::ZERO,
+                script_pubkey: m.clone()
+            }),
+            "{m}"
+        );
+        assert!(parse_pegout(m).is_some(), "{m}");
+    }
+    let coin = mature_coin(chain.state(), &key);
+    let burn = spend(
+        &key,
+        &coin,
+        vec![
+            pay(20_000, &m34),
+            pay(20_000, &m35),
+            pay(20_000, &m40),
+            pay(20_000, &bare40),
+            pay(20_000, &nonmin),
+            pay(coin.value - 100_000 - 2_000, &me),
+        ],
+    );
+    let txid = burn.compute_txid().to_string();
+    chain
+        .submit(&bitcoin::consensus::encode::serialize(&burn))
+        .unwrap();
+    let r = chain.produce(&key, vec![]).unwrap();
+    assert_eq!(r.txs, 2);
+    let ours = chain.state().pegouts();
+    let expect: Vec<Burn> = [
+        s34.as_str(),
+        s35.as_str(),
+        s40.as_str(),
+        &"cd".repeat(40),
+        "abcd",
+    ]
+    .iter()
+    .enumerate()
+    .map(|(vout, script)| Burn {
+        txid: txid.clone(),
+        vout: vout as u32,
+        script: script.to_string(),
+        value: 20_000,
+        height: r.height,
+    })
+    .collect();
+    println!(
+        "rust pegouts after the block: {:?}",
+        ours.iter()
+            .map(|b| (b.vout, b.script.len() / 2))
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        ours, expect,
+        "every push form the reference accepts is recorded"
+    );
+    if let Some(v) = reference("replay", &chain_file, &dir.0, None) {
+        assert_eq!(v["height"], r.height, "{v}");
+        let theirs: Vec<Burn> = v["pegouts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|b| Burn {
+                txid: b["txid"].as_str().unwrap().to_string(),
+                vout: b["vout"].as_u64().unwrap() as u32,
+                script: b["script"].as_str().unwrap().to_string(),
+                value: b["value"].as_u64().unwrap(),
+                height: b["height"].as_u64().unwrap() as u32,
+            })
+            .collect();
+        println!(
+            "js pegouts after the block: {:?}",
+            theirs
+                .iter()
+                .map(|b| (b.vout, b.script.len() / 2))
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(theirs, ours, "the reference records the same burns");
+    }
+
+    // a marker that starts `pegout:` in OP_PUSHDATA1 form but does not parse (76 bytes: odd hex)
+    // refuses the block by name in both engines
+    let coin = mature_coin(chain.state(), &key);
+    let malformed = op_return_raw(
+        &[0x4c, 0x4c],
+        format!("pegout:{}", "a".repeat(69)).as_bytes(),
+    );
+    assert_eq!(op_return_data(&malformed).map(<[u8]>::len), Some(76));
+    assert!(looks_like_pegout(&bitcoin::TxOut {
+        value: Amount::ZERO,
+        script_pubkey: malformed.clone()
+    }));
+    assert!(parse_pegout(&malformed).is_none());
+    let bad = spend(
+        &key,
+        &coin,
+        vec![pay(20_000, &malformed), pay(coin.value - 21_000, &me)],
+    );
+    let bytes = hand_block(chain.state(), &key, vec![pay(1_000, &me)], vec![bad]);
+    let verdict = chain.add_block(&bytes, None);
+    println!("rust verdict on the malformed OP_PUSHDATA1 burn: {verdict:?}");
+    assert!(
+        matches!(&verdict, Err(sidestr_core::Error::Rejected { rules, .. }) if rules.contains(&"sidestr:rule-pegouts".to_string())),
+        "a pegout: marker that does not parse refuses the block: {verdict:?}"
+    );
+    let hex_file = dir.0.join("malformed.hex");
+    std::fs::write(&hex_file, hex::encode(&bytes)).unwrap();
+    if let Some(v) = reference("add", &chain_file, &dir.0, Some(&hex_file)) {
+        println!(
+            "js verdict on the malformed OP_PUSHDATA1 burn: {}",
+            v["verdict"]
+        );
+        assert_eq!(v["verdict"]["ok"], false, "{v}");
+        assert!(
+            v["verdict"]["error"]
+                .as_str()
+                .unwrap()
+                .contains("sidestr:rule-pegouts"),
+            "{v}"
+        );
+        assert_eq!(v["height"], r.height);
+    }
+    assert_eq!(
+        chain.state().height(),
+        r.height,
+        "the refused block left no trace"
+    );
+}
+
+/// The push boundaries of the marker grammar, form by form: what the
+/// reference's `opReturnData` and `recordText` accept, and so what this port
+/// accepts — including the forms Bitcoin would not call a push (see the
+/// crate's departures).
+#[test]
+fn op_return_push_boundaries_match_the_reference() {
+    let payload = |n: usize| "x".repeat(n).into_bytes();
+    let direct = |n: usize| op_return_raw(&[n as u8], &payload(n));
+    let pushdata1 = |n: usize| op_return_raw(&[0x4c, n as u8], &payload(n));
+    // direct: the byte is a length, whatever opcode it would be to Bitcoin (0x4c is the one exception)
+    for n in [0usize, 1, 75, 77, 80, 87, 255] {
+        assert_eq!(
+            op_return_data(&direct(n)).map(<[u8]>::len),
+            Some(n),
+            "direct {n}"
+        );
+    }
+    assert_eq!(
+        op_return_data(&direct(76)),
+        None,
+        "a bare 0x4c is read as OP_PUSHDATA1, as the reference reads it"
+    );
+    // OP_PUSHDATA1: any length 0..=255, minimal or not
+    for n in [0usize, 1, 75, 76, 80, 81, 255] {
+        assert_eq!(
+            op_return_data(&pushdata1(n)).map(<[u8]>::len),
+            Some(n),
+            "pushdata1 {n}"
+        );
+    }
+    // length and data disagree; a second push; OP_PUSHDATA2; not OP_RETURN
+    assert_eq!(op_return_data(&op_return_raw(&[0x02], b"abc")), None);
+    assert_eq!(op_return_data(&op_return_raw(&[0x02], b"a")), None);
+    assert_eq!(
+        op_return_data(&ScriptBuf::from_bytes(vec![0x6a, 0x01, 0x41, 0x01, 0x42])),
+        None
+    );
+    assert_eq!(
+        op_return_data(&op_return_raw(&[0x4d, 0x01, 0x00], b"a")),
+        None
+    );
+    assert_eq!(op_return_data(&op_return_raw(&[0x4c], b"")), None);
+    assert_eq!(op_return_data(&ScriptBuf::from_bytes(vec![0x6a])), None);
+    assert_eq!(
+        op_return_data(&ScriptBuf::from_bytes(vec![0x51, 0x01, 0x41])),
+        None
+    );
+    // records (SPEC 12.1) are stricter: minimal only, at most 255
+    assert_eq!(record_text(&direct(75)).map(|t| t.len()), Some(75));
+    assert_eq!(record_text(&pushdata1(76)).map(|t| t.len()), Some(76));
+    assert_eq!(record_text(&pushdata1(255)).map(|t| t.len()), Some(255));
+    assert_eq!(
+        record_text(&direct(77)),
+        None,
+        "a bare length byte above 75 is not a record"
+    );
+    assert_eq!(
+        record_text(&pushdata1(75)),
+        None,
+        "a non-minimal OP_PUSHDATA1 is not a record"
+    );
+    // the burn grammar on top: 2..=40 bytes of lower hex, so payloads of 11..=87 bytes, odd only
+    for n in [2usize, 34, 35, 40] {
+        assert!(
+            parse_pegout(&pegout_marker(&"ab".repeat(n))).is_some(),
+            "{n} bytes"
+        );
+    }
+    for n in [0usize, 1, 41, 100] {
+        assert!(
+            parse_pegout(&pegout_marker(&"ab".repeat(n))).is_none(),
+            "{n} bytes"
+        );
+    }
+    assert!(
+        parse_pegout(&op_return_raw(
+            &[0x4c, 0x57],
+            format!("pegout:{}", "AB".repeat(40)).as_bytes()
+        ))
+        .is_none(),
+        "upper hex"
+    );
+    assert!(
+        parse_pegout(&op_return_raw(
+            &[0x4c, 0x50],
+            format!("pegout:{}", "a".repeat(73)).as_bytes()
+        ))
+        .is_none(),
+        "80 bytes, odd hex"
+    );
+    // looks-like follows the decoded payload, not byte 2
+    let out = |s: &ScriptBuf| bitcoin::TxOut {
+        value: Amount::ZERO,
+        script_pubkey: s.clone(),
+    };
+    assert!(looks_like_pegout(&out(&op_return_raw(
+        &[0x4c, 0x4c],
+        format!("pegout:{}", "a".repeat(69)).as_bytes()
+    ))));
+    assert!(looks_like_pegout(&out(&op_return_raw(
+        &[0x0a],
+        b"pegout:zzz"
+    ))));
+    assert!(
+        !looks_like_pegout(&out(&op_return_raw(&[0x4c, 0x0b], b"pegout:zzz"))),
+        "length and data disagree: not even a push"
+    );
+    assert!(!looks_like_pegout(&out(&op_return_raw(&[0x05], b"claim"))));
 }

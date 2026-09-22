@@ -3,8 +3,9 @@
 //! per event id, with the relay and the unix time it was first received).
 //! Nothing was published. Every one verifies under the schema kernel; this
 //! test asks the same of this crate, parses each, and checks the departure
-//! from upstream on the live `sidestr:dreamlab` announcement: one 80-byte
-//! stock header, which siding's `parseTip` rejects.
+//! from upstream (before spec 0.0.3) on the live `sidestr:dreamlab`
+//! announcement: one 80-byte stock header, which siding's `parseTip` rejected
+//! until sidestr/spec PR #7.
 
 use serde::Deserialize;
 use sidestr_core::parents::Family;
@@ -79,7 +80,7 @@ fn the_dreamlab_announcement_is_stock_family_and_upstream_rejects_it() {
     assert_ne!(
         ev.content.len() % 328,
         0,
-        "siding parseTip: content.length % 328 !== 0 -> null"
+        "siding parseTip before spec 0.0.3: content.length % 328 !== 0 -> null"
     );
     // explicit family from the chain's parent (tbtc4 -> stock) agrees; the wrong one is refused
     assert_eq!(
