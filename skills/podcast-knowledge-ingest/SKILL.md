@@ -5,8 +5,8 @@ description: >
   episodes into the ontology", or setting up/debugging the podcast-cron schedule.
   Weekly cron that downloads new episodes from configured YouTube podcasts,
   extracts evidence-backed assertions via the Ontology Loom (Qwen 3.8), verifies
-  them with Perplexity, and lands them on podcast-evidence ledger pages. Also
-  trigger on "promote podcast evidence", "ledger promotion", or "podcast
+  them with Perplexity, and lands them on `type: Episode` evidence ledger
+  pages under `working/pages/podcast-evidence/`. Also trigger on "promote podcast evidence", "ledger promotion", or "podcast
   candidate dossiers" — the podcast-promote binary stage that pre-filters
   accumulated ledger evidence into scored proposal dossiers. NOT for one-off
   historical backfill (use podcast-bulk-ingest), interactive on-demand transcript
@@ -43,10 +43,10 @@ crate's ledger round-trip tests.
 YouTube ──yt-dlp──► Markdown ──Loom──► Assertions ──Perplexity──► Verified
                         │                                             │
                         ▼                                             ▼
-                  ingest-status::              ontology-bridge ◄──────┘
-                   downloaded                      │
+                  ingest-status:           `vault find` / `vault tree` ◄┘
+                   downloaded                      │  (placement)
                         │                          ▼
-                        └──────► ingest-status:: processed:DATE:N
+                        └──────► ingest-status: processed:DATE:N
 ```
 
 ### Tools used
@@ -56,15 +56,77 @@ YouTube ──yt-dlp──► Markdown ──Loom──► Assertions ──Perp
 | yt-dlp | Download new episodes | Free (local) |
 | Ontology Loom (Qwen 3.8 at :8084) | Extract assertions from transcripts | Free (local LAN) |
 | Perplexity MCP | Verify assertions + resolve URLs | Per-query |
-| ontology-bridge MCP | Navigate graph, find placement | Free (local) |
-| Direct file edit | Integrate knowledge into ontology pages | Free |
+| `vault` CLI | Navigate the corpus, find placement, validate | Free (local, no network) |
+| `vault propose` | Submit a governed proposal for a human signature | Free (local) |
 
 ## Page format
 
-Every page this skill writes is a vault page: V2 YAML frontmatter, then the
-body (`project/docs/VAULT-corpus-format.md` §V2/§V5, ADR-2028 D4). No writer
-emits `key:: value` Logseq property lines. Template shapes for the new-page,
-ledger, and working-graph writers:
+Every page this skill writes is a vault page: YAML frontmatter, then the body
+(`project/docs/VAULT-corpus-format.md`, ADR-2028 D4). No writer emits
+`key:: value` Logseq property lines and none emits a `json-ld` fence. Per-bullet
+detail that has no page-level home is rendered as `**key:** value` prose
+(contract C1 migration rule C), never as an indented property line.
+
+Working-graph pages are **OKF-typed** (PRD Q9): `type: Episode | Transcript |
+Draft Concept`, `status: draft`, and
+`generated: { by: process:podcast-ingest/<version>, at: <ISO8601> }`. That last
+key is how a reader tells machine output from authored work.
+
+### Evidence ledger pages (PRD Q16)
+
+The per-episode evidence ledger — the audit trail for every machine-extracted
+assertion — is written to:
+
+```
+working/pages/podcast-evidence/<episode-slug>.md
+```
+
+A **subdirectory**, never the retired flat `podcast-evidence___<slug>.md` name:
+`a___b.md` namespace filenames are a `vault validate` rejected construct. Never
+`knowledge/pages` — nothing this skill writes reaches the curated corpus except
+through `vault propose`.
+
+Every field is a frontmatter key:
+
+```yaml
+---
+type: Episode                      # working_types, contract C1
+title: AI Daily Brief — <episode title>
+public: false                      # ALWAYS. Owner, 2026-09-22 14:00:
+                                   # podcast evidence is never published.
+                                   # Q16 publishes `public: true` from EITHER
+                                   # vault, so a `true` here would put
+                                   # unreviewed machine-extracted claims about
+                                   # someone else's episode on the open web.
+                                   # A real YAML boolean, never "false".
+                                   #
+                                   # PUBLISHING AN EPISODE IS A HUMAN ACT: a
+                                   # person reads the page and flips the flag.
+                                   # The writer never emits `true`, and a
+                                   # re-ledgered page is RESET to false —
+                                   # new claims have landed since the human
+                                   # read it, so the review that justified
+                                   # publishing no longer covers the page.
+status: draft
+source: AI Daily Brief             # the podcast, not the per-claim publisher
+episode-url: https://www.youtube.com/watch?v=…
+episode-date: '2026-09-15'
+ingest-date: '2026-09-22'
+tier: 1                            # best (lowest) tier on the page
+confidence: 0.95                   # highest assertion confidence on the page
+generated: { by: process:podcast-ingest/2.0.0, at: 2026-09-22T06:17:00Z }
+sources: [{ id: episode, resource: "https://www.youtube.com/watch?v=…" }]
+assertions: [ { fingerprint, claim, topics, tier, confidence, source,
+                claim-date, evidence } … ]    # machine-readable twin of the body
+---
+```
+
+Reject pages from the promotion stage stay `public: false` — they are not an
+audit trail, and the gate is fail-closed for them.
+
+Promotion into `knowledge/` is `vault propose` — never a hand-written
+`elevatedFrom`, never a copied page, never an edit to a curated page. Template
+shapes and the full promotion rule:
 [references/pipeline-and-operations.md](references/pipeline-and-operations.md).
 
 ## Configuration
@@ -81,7 +143,10 @@ podcasts:
     # ${VAULT_WORKING_PAGES} — the values agentbox.toml's [vault] section
     # resolves to — so relocating the vault relocates this output.
     output_dir: "${VAULT_TRANSCRIPTS}"
-    ontology_dir: "${VAULT_PAGES}"
+    # The WORKING pages root. `ontology_dir` was the pre-ADR-2107 key, pointed at
+    # curated pages, and is now REFUSED loudly rather than silently honoured.
+    # Evidence ledgers land in <working_dir>/podcast-evidence/.
+    working_dir: "${VAULT_WORKING_PAGES}"
 
 settings:
   loom_url: "${LOOM_BASE_URL}"          # canonical LAN façade (via ml hp-nat DNAT)
@@ -99,15 +164,17 @@ order; a fallback hit is logged. Both addresses serve the same façade on the co
 
 ## Ingest-status lifecycle
 
-Line 1 of each markdown file:
+A frontmatter key on the transcript page, **not** a `key::` line. The retired
+`ingest-status::` marker is still *read* so a half-migrated transcript store
+does not lose state; it is dropped the moment the file is rewritten.
 
 | Value | Meaning |
 |-------|---------|
-| `ingest-status:: downloaded` | Transcript exists, not yet processed |
-| `ingest-status:: pending` | Queued for this run |
-| `ingest-status:: processed:DATE:N` | N assertions extracted on DATE |
-| `ingest-status:: skipped` | No extractable assertions |
-| `ingest-status:: error:DATE:reason` | Processing failed |
+| `ingest-status: downloaded` | Transcript exists, not yet processed |
+| `ingest-status: pending` | Queued for this run |
+| `ingest-status: processed:DATE:N` | N assertions extracted on DATE |
+| `ingest-status: skipped` | No extractable assertions |
+| `ingest-status: error:DATE:reason` | Processing failed |
 
 ## Pipeline phases
 
@@ -176,7 +243,7 @@ drafted into a splice edit via the Loom, then pre-filtered by two instruments
 — a blind before/after quality judge (Gemini, rubric-A prose + rubric-B
 informativeness) and a lexical answer-completeness gate. Survivors land as
 scored dossiers with assertion-fingerprint provenance, shaped for the
-ontology-bridge governed proposal queue; nothing edits curated pages directly.
+`vault propose` governed queue; nothing edits curated pages directly.
 
 ```bash
 # Candidacy scan only (no network, no writes):
@@ -189,20 +256,29 @@ podcast-promote --pages-dir "$VAULT_PAGES" --proposals-dir promotions/proposals 
 
 Rejected-from-ontology is not discarded: with `--working-graph-dir`, every
 terminal reject also writes `<Topic>.md` into the working graph — the Loom-drafted
-prose section plus the attributed evidence bullets, `type: podcast-news` in the
-frontmatter, overwritten on each dossier refresh. The curated main graph is
+prose section plus the attributed evidence bullets, `type: Note` and
+`public: false` in the frontmatter (the pre-v2 `type: podcast-news` is not a
+`working_types` value and fails validation), overwritten on each dossier
+refresh. The curated main graph is
 never touched.
 
 Survivors flow onward via `node submit-proposals.mjs` (weekly cron stage 3):
-each dossier's payload is submitted as a governed AMEND proposal
-(Whelk consistency gate → ACSP human approval → PR) through
-`POST /api/ontology-agent/propose`, reusing the ontology-bridge's own request
-builder. Addressing is exact-slug-match only (`urn:ngm:class:<slug>`); target
-pages with no ontology class are reported and skipped — they need a class
-*create* proposal, which stays human-initiated. Idempotent per assertion-
-fingerprint set (`promotions/.submitted.json`). Decision surfacing follows
-ADR-056's split: this pipeline stages and reports; the signature happens on
-the existing governed approval surface, never a second bespoke one.
+each dossier's splice becomes a unified diff and is submitted as a governed
+content proposal with `vault propose --level content --diff <file>` (ADR-2107;
+contract C2). `vault` runs Whelk and the conflict detector as **blockers**, then
+posts a forum 31402 for a human 31403 signature. There is no VisionClaw
+round-trip and no MCP server in this path any more.
+
+A non-empty `blockers` array means **nothing was posted**. The submitter banks
+that outcome and never retries it: a subclass cycle or a Whelk inconsistency is
+a fact about the model, and rewording the hypothesis cannot fix it.
+
+Addressing is exact-slug-match only (`urn:ngm:class:<slug>`); target pages with
+no ontology class are reported and skipped — they need a class *create*
+proposal, which stays human-initiated. Idempotent per assertion-fingerprint set
+(`promotions/.submitted.json`). Decision surfacing follows ADR-056's split: this
+pipeline stages and reports; the signature happens on the existing governed
+approval surface, never a second bespoke one.
 
 Idempotent per assertion-fingerprint set; instrument outages defer (retry next
 run) rather than reject. Full contract, thresholds, dossier JSON shape, and the

@@ -31,7 +31,7 @@ described in "From instrument to pipeline" (`loom/docs/research/paper-v4/main.te
 > down to assertion fingerprints.
 
 Per the paper's own status register: the ledger stage `promote.py` reads
-(`podcast-evidence___*.md`, written by `ingest.py::write_assertion_ledger`) is
+(`working/pages/podcast-evidence/*.md`, written by `write_assertion_ledger`) is
 **built and running**. The two-instrument pre-filter and dossier assembly
 implemented here are **designed, with both instruments individually
 validated** elsewhere (page-judge scratchpad; the copy-ceiling matcher in
@@ -57,7 +57,7 @@ podcast-promote --pages-dir <scratch>/pages --proposals-dir <scratch>/proposals 
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--pages-dir` | required | dir containing both `podcast-evidence___*.md` ledger pages **and** the target topic pages (`<Topic>.md`) they wikilink to |
+| `--pages-dir` | required | dir containing the target topic pages (`<Topic>.md`) the ledger bullets wikilink to. Ledger pages are no longer beside them — see the follow-up under *Ledger format* |
 | `--proposals-dir` | required | output dir for survivor dossiers |
 | `--rejects-dir` | `<proposals-dir>/../rejects` | output dir for rejected dossiers |
 | `--min-assertions` | `5` | min assertions for a topic to become a candidate |
@@ -89,36 +89,62 @@ back. Only measured quality-threshold failures become terminal
 `candidate_rejected` records — a transient outage can never permanently bury
 a candidate.
 
-## Ledger format assumptions (read from `ingest.py`)
+## Ledger format (PRD Q16, V2)
 
-Ledger pages are `podcast-evidence___<episode-slug>.md`; **episode identity
-is the filename stem after that prefix** — this is exactly what
-`ingest.py::_ledger_page_path` / `episode_slug_from_ledger` use, not a
-`source::` field (page-level `source::` is always the constant `"AI Daily
-Brief"`; the per-assertion `source::` sub-property is the *speaker/publisher*
-attribution, e.g. `Host (AI Daily Brief)`, not the episode).
+Ledger pages are `working/pages/podcast-evidence/<episode-slug>.md`, typed
+`Episode`. **Episode identity is the filename stem** — a subdirectory entry, not
+the retired flat `podcast-evidence___<slug>.md` name, which `vault validate`
+rejects as an `a___b.md` namespace filename. The page-level `source` key is the
+podcast (always `"AI Daily Brief"`); the per-assertion `source` is the
+speaker/publisher attribution, e.g. `Host (AI Daily Brief)`.
 
-Each assertion bullet, mirroring `ingest.py::_build_ledger_bullet` exactly:
+All page metadata is frontmatter — `type`, `title`, `public: false` (always;
+only a human publishes an Episode), `status`,
+`source`, `episode-url`, `episode-date`, `ingest-date`, `tier`, `confidence`,
+`generated`, `sources` — plus an `assertions:` list that is the machine-readable
+twin of the body:
+
+```yaml
+assertions:
+  - fingerprint: 5ce5c6ba18662930
+    claim: Project Prometheus raised $6.2 billion in seed funding.
+    topics: [AI Investment, Prometheus]
+    tier: 1
+    confidence: 0.95
+    source: The New York Times
+    claim-date: '2026-09-15'
+    evidence: The transcript cites '$6.2 billion … in seed funding'.
+```
+
+Each assertion also appears in the body as a readable bullet:
 
 ```
-- [**[Tier label]** ]<claim text> [[Topic]] [[Topic2]] ...
-  tier:: N
-  confidence:: F
-  source:: S
-  claim-date:: D
-  [evidence:: E]
+- <claim text> [[Topic]] [[Topic2]] …
+  **tier:** 1
+  **confidence:** 0.95
+  **source:** The New York Times
+  **claim-date:** 2026-09-15
+  **evidence:** …
   <!-- assertion-fp: <hex fingerprint> -->
 ```
 
-`promote.py::parse_ledger_page` splits the page into top-level bullet blocks
-(lines starting `- `, plus following indented `  key:: value` / fingerprint
-sub-lines), extracts wikilinks as topics, strips the tier-label markdown
-bold prefix and wikilinks from the claim text, and reads the four/five
-`key:: value` sub-properties by regex. Bullets with **zero** wikilinks
-(unmatched-topic assertions, which `ingest.py` still lands in the ledger for
-audit but hands to `_propose_new_pages` separately) are excluded from
-topic-grouping — they cannot be candidates for *this* stage by construction,
-since candidacy is topic-grouped.
+`**key:** value` prose, per contract C1 migration rule C. The v1 indented
+`key:: value` sub-lines are GONE: a `key::` line anywhere in either vault is a
+validation failure, bullet-indented or not.
+
+**A parser reads `assertions:`, not the bullets.** The frontmatter list is
+authoritative, typed and YAML-parseable; the bullets are the human surface.
+Bullets with no `topics` (unmatched-topic assertions, still ledgered for audit)
+are excluded from topic grouping — candidacy is topic-grouped by construction.
+
+> **Open follow-up, out of Part B scope (owner: `services/podcast-ingest`).**
+> `promote::ledger_parse` still regexes indented `key::` sub-lines out of a
+> flat `--pages-dir`. It needs (a) a `--ledger-dir` separate from `--pages-dir`,
+> since ledgers now live in `$VAULT_WORKING_PAGES/podcast-evidence/` while
+> target topic pages live in `$VAULT_PAGES`, and (b) to read the `assertions:`
+> frontmatter list. `run-promote.sh` needs the matching argument. Until both
+> land, the promotion stage sees zero ledger pages — a clean no-op, not a
+> corruption.
 
 ## Candidacy rule
 
@@ -262,11 +288,12 @@ Written to `<proposals-dir>/<topic-slug>.json` (survivors) or
 A matching human-readable `<topic-slug>.md` is written alongside every JSON
 file (same directory) for quick review.
 
-## Intended `ontology_propose` adapter contract
+## The `vault propose` adapter contract
 
-This iteration does **not** call `mcp__ontology-bridge__ontology_propose`
-directly, per the brief — `ontology_propose_payload` on survivor dossiers is
-shaped so a later thin adapter can submit it with minimal transformation:
+`ontology_propose_payload` on a survivor dossier is the splice, shaped so the
+adapter (`submit-proposals.mjs`) can render it as a unified diff and hand it to
+`vault propose` with minimal transformation. The field keeps its historical name;
+the MCP tool it was named after is retired (ADR-2107/ADR-2108):
 
 ```jsonc
 "ontology_propose_payload": {
@@ -284,44 +311,47 @@ shaped so a later thin adapter can submit it with minimal transformation:
 }
 ```
 
-The intended adapter (not built here):
+The adapter is `submit-proposals.mjs`, and it does this:
 
 1. Reads every `proposals/*.json` with `status == "candidate_survivor"` and
    a non-null `ontology_propose_payload`.
-2. Resolves `target_page` to the live graph's page IRI/slug (the sandbox
-   uses bare filenames; the live adapter needs the ontology-bridge's own
-   page/class resolution, not a filesystem join).
-3. Calls `ontology_propose` with the edit's `content` as the proposed
-   addition, `anchor`/`mode` as placement hints, and `provenance` +
-   `scores` attached as the proposal's justification/evidence trail —
-   satisfying "survivors reach the graph's existing governed proposal
-   queue [...] as scored dossiers with provenance down to assertion
-   fingerprints" (main.tex § lifecycle).
-4. On ontology-bridge approval, batched section regeneration (already the
-   live behaviour on that side) is what actually applies the splice and
-   attaches ontology markup — `promote.py` never writes to a curated page
-   directly, matching the ledger-writer's "curated pages are never
-   modified" invariant.
+2. Resolves `target_page` to a class IRI with `vault find --type Class`,
+   demanding an **exact slug match**. A fuzzy hit must never receive someone
+   else's amendment, so an unresolved page is reported and skipped. It needs a
+   class *create* proposal, which stays human-initiated.
+3. Renders `edit.content` as the added lines of a unified diff, with
+   `edit.anchor` as diff **context** on the side `edit.mode` dictates, and calls
+   `vault propose <iri> --level content --hypothesis "…" --diff <file>`. The
+   hypothesis carries the provenance and scores. Emitting the anchor as context
+   rather than a hint is what makes the proposal fail safely: if the page moved
+   under the dossier, the diff no longer applies and `vault` refuses it.
+4. Reports the outcome without dressing it up. `blockers` non-empty means
+   nothing was posted — an automatic refusal on Whelk inconsistency, a subclass
+   cycle, a relation contradiction or a vocabulary violation — and the submitter
+   banks it so the weekly run never re-submits an impossible proposal. Otherwise
+   a 31402 is posted and the page is **still unwritten**: a human 31403
+   `Approve` is what writes it, and the proposal expires at `stale_after`.
 
-This adapter is out of scope for this iteration; only its contract is fixed
-here so the dossier shape doesn't need to change when it's built.
+`promote` never writes to a curated page directly, matching the ledger-writer's
+"curated pages are never modified" invariant. Neither does the adapter — the
+whole point of the governed door is that the pipeline cannot.
 
 ## Testing (real runs, not description)
 
 All tests ran against a `.sandbox/` tree under this skill directory — the live
-graph (`project4/mainKnowledgeGraph/pages/`) was never written to, only read
+graph (`$VAULT_PAGES`, `visionGraph/knowledge/pages`) was never written to, only read
 once to copy target-page fixtures. That fixture tree was gitignored but baked
 into image builds regardless, so it has since moved to
 [`docs/archive/podcast-ingest-ledger/sandbox-test-fixtures/`](../../../docs/archive/podcast-ingest-ledger/sandbox-test-fixtures/)
 (2026-09-09); paths below are as they were at test time.
 
 1. **Real production fixture** — the actual
-   `podcast-evidence___10-ai-projects-to-learn-gemini-3-nano-banana-and-opus-45.md`
+   `podcast-evidence/10-ai-projects-to-learn-gemini-3-nano-banana-and-opus-45.md`
    ledger page from the `ledger-e2e` scratchpad (a real prior end-to-end run)
    was copied into `.sandbox/pages/` along with the real graph pages its
    wikilinks resolve to (`Large Language Models.md`, `Reasoning.md`,
    `Model Architecture.md`, `Image Generation.md`, etc., copied read-only
-   from `project4/mainKnowledgeGraph/pages/`). At default thresholds this
+   from `$VAULT_PAGES`). At default thresholds this
    produces **0 candidates** — every topic in that fixture has assertions
    from only 1 episode, correctly failing `--min-episodes 2`. Lowering
    `--min-episodes 1 --min-assertions 3` to force candidacy on the real data
@@ -334,14 +364,14 @@ into image builds regardless, so it has since moved to
 
 2. **Synthetic fixtures purpose-built for the episode rule**, in the exact
    ledger bullet format:
-   - `podcast-evidence___synthetic-ep-a.md`: 6 assertions, all `[[Synthetic
+   - `podcast-evidence/synthetic-ep-a.md`: 6 assertions, all `[[Synthetic
      Test Topic Alpha]]`, one episode → **0 candidates** at defaults
      (verified via `--dry-run`); forcing `--min-episodes 1` does produce a
      candidate, which then correctly rejects at the dossier stage with
      `no_target_page` (no page for that topic exists in the sandbox) —
      exercising the missing-target-page fail path cleanly.
-   - `podcast-evidence___synthetic-ep-b.md` (3 assertions) +
-     `podcast-evidence___synthetic-ep-c.md` (2 assertions), both
+   - `podcast-evidence/synthetic-ep-b.md` (3 assertions) +
+     `podcast-evidence/synthetic-ep-c.md` (2 assertions), both
      `[[Synthetic Test Topic Beta]]`, two episodes, 5 assertions total →
      **1 candidate** at defaults, matching the brief's example exactly.
    - A minimal target page `Synthetic Test Topic Beta.md` was authored in

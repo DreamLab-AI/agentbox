@@ -38,8 +38,9 @@ detects this and offers to bootstrap ontology pages using OntoCast.
 
 1. **Domain probe**: After downloading the first batch of transcripts, the
    skill samples 3–5 episodes and extracts key terms using the Loom. It then
-   queries `ontology_search` for each term. If <30% of terms match existing
-   pages, the domain is flagged as "new".
+   runs `vault find --query <term> --type Class --json` for each term
+   (ADR-2107; the `ontology_search` MCP tool is retired). If <30% of terms match
+   existing pages, the domain is flagged as "new".
 
 2. **User confirmation**: The skill reports findings and asks:
    - "This podcast covers [domain]. Only N% of key terms exist in the ontology.
@@ -65,7 +66,7 @@ detects this and offers to bootstrap ontology pages using OntoCast.
    ```
 
 5. **Review prompt**: Candidate pages are written to a review directory
-   (`public:: false`, `pending-review`). The skill reports:
+   (`public: false`, `status: draft` — frontmatter, never `key:: value`). The skill reports:
    - How many candidate classes/individuals were created
    - Which existing pages they link to
    - The user reviews and promotes accepted pages to the main ontology
@@ -90,8 +91,16 @@ export LLM_MODEL_NAME=qwen3.8-27b
 ```
 
 The `ontocast_import.py` adapter lives in the knowledgeGraph repo at
-`pipeline/ontocast_import.py`. It accepts any standards-compliant Turtle
-and produces private candidate Logseq pages.
+`pipeline/ontocast_import.py`. It accepts any standards-compliant Turtle and
+produces candidate pages.
+
+Those candidates land in the WORKING vault
+(`$VAULT_WORKING_PAGES`, `visionGraph/working/pages`) as OKF-typed
+`Draft Concept` pages with `status: draft` and a `generated:` actor stamp —
+frontmatter only, no `key:: value` lines. Bootstrapping a domain does not put
+anything in `knowledge/`: promotion is `vault propose`, one page at a time,
+each needing a human signature. A bulk import is exactly the case where that
+matters, because nobody reviews 300 pages by eye.
 
 ### When NOT to use OntoCast
 

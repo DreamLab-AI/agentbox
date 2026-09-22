@@ -1,5 +1,21 @@
 # Supervised Live Ingest Run — Runbook
 
+> **ARCHIVED 2026-09-22 (ADR-2107 / ADR-2108).** Moved here from
+> `skills/podcast-knowledge-ingest/references/`. This is the supervised-run log of
+> the 2026-08-24 Python-era ingest: ~113 review waves, the W-* WATCHES register
+> and the PC-1..PC-11 proposed-change register. It is EVIDENCE, not guidance —
+> the pipeline it describes is three Rust binaries now, it names the retired
+> `ontology-bridge` tools and a Logseq corpus, and nothing in it should be
+> followed as instruction. Kept because the registers record *why* each quality
+> refinement exists, which is not recoverable from the code.
+
+> **Layout note (2026-09-22, PRD Q16).** Every `podcast-evidence___<slug>.md`
+> filename below is HISTORICAL and is left unrewritten because this file is an
+> evidence log. Ledger pages now live at
+> `working/pages/podcast-evidence/<slug>.md`, typed `Episode`, with all metadata
+> as frontmatter keys and no `key:: value` sub-lines. The flat `a___b.md` form
+> this log records is now a `vault validate` rejected construct.
+
 > **Rust port note (post-2026-09-02):** `ingest.py` and `promote.py` were
 > ported to the `podcast-ingest` and `podcast-promote` binaries in
 > [`services/podcast-ingest`](../../services/podcast-ingest) — same CLI

@@ -14,13 +14,14 @@
 # so store paths can never drift out of sync with the image again.
 
 # LIVE with assertion-ledger integration (option 4) since 2026-08-23: curated
-# pages are never edited; assertions land on podcast-evidence___* ledger pages
-# with [[Topic]] wikilinks (sandbox e2e verified: 0 curated pages modified,
-# pipeline.validate clean, idempotent). First runs capped in podcasts.yaml.
+# pages are never edited; assertions land on `type: Episode` ledger pages under
+# ${VAULT_WORKING_PAGES}/podcast-evidence/ with [[Topic]] wikilinks (PRD Q16;
+# sandbox e2e verified: 0 curated pages modified, validate clean, idempotent).
+# First runs capped in podcasts.yaml.
 17 6 * * 1 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/run-ingest.sh /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/podcasts.yaml 2>&1 | tee -a ${VAULT_TRANSCRIPTS}/.ingest-log.txt
 
 # Promotion stage 2h after ingest (Monday 08:17 UTC): survivors -> proposal
-# dossiers for the governed queue; rejects -> vault workingGraph news pages.
+# dossiers for the governed queue; rejects -> working-vault news pages.
 # Idempotent (fingerprint-banked), capped at 15/week; judge-unavailable
 # candidates defer cleanly and retry next week.
 17 8 * * 1 /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest/run-promote.sh 2>&1 | tee -a ${VAULT_TRANSCRIPTS}/.promote-log.txt

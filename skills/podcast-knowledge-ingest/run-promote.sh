@@ -20,6 +20,12 @@ if [ -z "${VAULT_ROOT:-}" ] || [ -z "${VAULT_PAGES:-}" ] || [ -z "${VAULT_WORKIN
     exit 1
 fi
 
+# --pages-dir is the TARGET topic pages. Ledger pages moved to
+# ${VAULT_WORKING_PAGES}/podcast-evidence/ (PRD Q16) and podcast-promote needs a
+# separate --ledger-dir before it can read them again; see
+# references/promotion.md "Ledger format". Until that lands this stage finds no
+# ledgers and no-ops cleanly. No value below is ever written into a page body or
+# frontmatter -- these are process arguments only.
 exec "$BIN" \
     --pages-dir "${VAULT_PAGES}" \
     --proposals-dir "${SKILL_DIR}/promotions/proposals" \

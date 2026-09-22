@@ -7,7 +7,16 @@ podcasts:
     # so relocating [vault].root in agentbox.toml relocates this skill's output
     # with no edit here.
     output_dir: "${VAULT_TRANSCRIPTS}"
-    ontology_dir: "${VAULT_PAGES}"
+    # The WORKING pages root. `ontology_dir` was the pre-ADR-2107 key, pointed at
+    # the CURATED pages, and is now refused loudly rather than honoured silently.
+    # Evidence ledgers land in <working_dir>/podcast-evidence/ as `type: Episode`
+    # pages with `public: false` — always (owner, 2026-09-22 14:00). Only a
+    # human publishes an Episode. Nothing here reaches knowledge/ except
+    # through `vault propose`.
+    #
+    # ${VAULT_*} is expanded to a PATH by the ingest binary. No value in this
+    # file is ever interpolated into a page body or frontmatter.
+    working_dir: "${VAULT_WORKING_PAGES}"
 
 settings:
   loom_url: "${LOOM_BASE_URL}"
