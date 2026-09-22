@@ -9,7 +9,9 @@ members = [
     # Both header families (stock 80-byte SHA-256d, Knots 164-byte v2 BLAKE2b), their
     # proof-of-work hashes and the BIP-325 block data; no_std, RustCrypto only (ADR-2096 D2).
     "sidestr-header",
-    # Later: sidestr-nostr (tips, transactions and rule documents as events), sidestr-wallet.
+    # The wallet: coins, the kernel's coin selection, key-path spends, peg-out burns, the
+    # parent-side peg-in shape and delivery; keys behind a signer port (ADR-2101 D3).
+    "sidestr-wallet",
 ]
 
 [workspace.package]

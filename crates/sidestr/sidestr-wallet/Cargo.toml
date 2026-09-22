@@ -1,0 +1,37 @@
+[package]
+name = "sidestr-wallet"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license = "AGPL-3.0-only"
+description = "A wallet for sidestr sidechains: the coin set for a script, the reference coin selection, taproot key-path spends and peg-out burns signed behind a signer port, the parent-side peg-in transaction shape, and delivery as a POST body or a kind-23500 event. A port of siding by Melvin Carvalho."
+readme = "README.md"
+documentation = "https://docs.rs/sidestr-wallet"
+keywords = ["bitcoin", "sidechain", "sidestr", "wallet", "taproot"]
+categories = ["cryptography::cryptocurrencies"]
+publish = true
+include = ["src/**", "tests/**", "README.md", "LICENSE", "Cargo.toml"]
+
+[features]
+default = []
+# The producer's HTTP surface (SPEC 11): `/coins`, `/tip`, `/chain.json`,
+# `POST /tx` over ureq, plain HTTP. For an https mirror enable a ureq TLS
+# feature in the consumer (`ureq = { features = ["rustls"] }`).
+client = ["dep:ureq"]
+
+[dependencies]
+sidestr-core = { path = "../sidestr-core", version = "0.1" }
+bitcoin = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }
+# ADR-2101 D3: the estate's HMAC-SHA256 domain-separated child derivation.
+hmac = "0.12"
+ureq = { version = "3", optional = true, default-features = false }
+
+[dev-dependencies]
+serde_json = { workspace = true }
