@@ -36,11 +36,10 @@
     # IS built (lib/vault.nix), because a corpus door that is not in the closure
     # is a corpus door agents cannot call.
     #
-    # Repoint to `github:DreamLab-AI/VisionClaw/<rev>?dir=crates/vault` once the
-    # crate is pushed; build from an uncommitted tree meanwhile with
-    #   --override-input vaultSrc path:/home/devuser/workspace/project/crates/vault
+    # Pin the parent VisionClaw commit so the corpus door is reproducible and
+    # cannot drift with a mutable branch.
     vaultSrc = {
-      url = "path:/home/devuser/workspace/project/crates/vault";
+      url = "github:DreamLab-AI/VisionClaw/f9720fbcb8152d6cf569300285c4d5c59bdb1700?dir=crates/vault";
       flake = false;
     };
 

@@ -193,7 +193,8 @@
         "nix2container": "nix2container",
         "nixpkgs": "nixpkgs_3",
         "rust-overlay": "rust-overlay",
-        "skills": "skills"
+        "skills": "skills",
+        "vaultSrc": "vaultSrc"
       }
     },
     "rust-overlay": {
@@ -238,6 +239,25 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "vaultSrc": {
+      "flake": false,
+      "locked": {
+        "dir": "crates/vault",
+        "lastModified": 1790097190,
+        "narHash": "sha256-/31gCXwOO7o6Qzqkq41yDzbwsUeAvnD/wS+SE2CKhUQ=",
+        "owner": "DreamLab-AI",
+        "repo": "VisionClaw",
+        "rev": "f9720fbcb8152d6cf569300285c4d5c59bdb1700",
+        "type": "github"
+      },
+      "original": {
+        "dir": "crates/vault",
+        "owner": "DreamLab-AI",
+        "repo": "VisionClaw",
+        "rev": "f9720fbcb8152d6cf569300285c4d5c59bdb1700",
         "type": "github"
       }
     }
