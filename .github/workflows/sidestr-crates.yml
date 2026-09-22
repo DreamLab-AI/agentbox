@@ -54,3 +54,7 @@ jobs:
         run: cargo doc --manifest-path crates/sidestr/Cargo.toml --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
+      - name: Docs (all features)
+        run: cargo doc --manifest-path crates/sidestr/Cargo.toml --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings

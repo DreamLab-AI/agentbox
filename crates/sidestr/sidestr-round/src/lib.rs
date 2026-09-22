@@ -108,8 +108,8 @@
 //! # TLS
 //!
 //! Under `relay`, `wss://` is rustls with the `ring` provider and the
-//! Mozilla root store; [`relay::default_connector`] names them, and
-//! [`relay::follow_with`] / [`relay::publish_one_with`] take another
+//! Mozilla root store; `relay::default_connector` names them, and
+//! `relay::follow_with` / `relay::publish_one_with` take another
 //! connector for a private root. Proven by a handshake and a
 //! REQ/EVENT/EOSE exchange against the in-process relay behind a
 //! certificate generated in the test (`tests/audit_regressions_node.rs`).
