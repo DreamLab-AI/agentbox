@@ -1,0 +1,48 @@
+[package]
+name = "sidestr-round"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license = "AGPL-3.0-only"
+description = "The level-2 co-signing round of sidestr sidechains, as a pure state machine that interoperates with the reference signer on the wire: block proposals, partial signatures and sealed blocks (kinds 23510/23511/23514) with the proposer ring and lateness entitlement, the peg-out PSBT round (23512/23513) over rust-bitcoin, a durable vote journal, and a runnable signer. A port of siding's round.mjs and pegoutround.mjs by Melvin Carvalho."
+readme = "README.md"
+documentation = "https://docs.rs/sidestr-round"
+keywords = ["bitcoin", "sidechain", "sidestr", "nostr", "federation"]
+categories = ["cryptography::cryptocurrencies", "network-programming"]
+publish = true
+include = ["src/**", "tests/**", "README.md", "LICENSE", "Cargo.toml"]
+
+[features]
+default = []
+# The NIP-01 relay I/O: a tokio + tokio-tungstenite client with reconnection
+# and the in-process relay stand-in the tests and one-box runs use.
+relay = ["dep:tokio", "dep:tokio-tungstenite", "dep:futures-util"]
+# The `cosign` binary: one signer of a federated chain, following relays,
+# driving the round every second, serving what a mirror needs over HTTP.
+bin = ["relay", "dep:clap", "dep:tiny_http", "sidestr-core/rpc"]
+
+[[bin]]
+name = "cosign"
+required-features = ["bin"]
+
+[dependencies]
+sidestr-core = { path = "../sidestr-core", version = "0.2" }
+sidestr-header = { path = "../sidestr-header", version = "0.2" }
+sidestr-nostr = { path = "../sidestr-nostr", version = "0.2" }
+bitcoin = { workspace = true, features = ["base64"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"], optional = true }
+tokio-tungstenite = { version = "0.26", optional = true }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"], optional = true }
+clap = { version = "4", features = ["derive"], optional = true }
+tiny_http = { version = "0.12", optional = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tiny_http = "0.12"
+ureq = { version = "3", default-features = false }

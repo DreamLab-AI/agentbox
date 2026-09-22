@@ -42,6 +42,13 @@ jobs:
       - name: Test
         run: cargo test --manifest-path crates/sidestr/Cargo.toml
 
+      # sidestr-round's relay client, relay stand-in and `cosign` sit behind
+      # features; build and unit-test them too. The mixed Rust/JS interop
+      # scenarios (three signers on one box) skip themselves without the
+      # reference checkouts, as the core interop test does.
+      - name: Test sidestr-round with every feature
+        run: cargo test --manifest-path crates/sidestr/Cargo.toml -p sidestr-round --all-features
+
       # AGPL crates ship full rustdoc (ADR-2106).
       - name: Docs
         run: cargo doc --manifest-path crates/sidestr/Cargo.toml --no-deps
