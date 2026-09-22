@@ -38,9 +38,19 @@ use bitcoin::{Script, ScriptBuf, Transaction, TxOut};
 
 use crate::error::{Error, Result};
 
-/// The data of an `OP_RETURN` output that is one push: `6a`, an optional
-/// `OP_PUSHDATA1`, a length byte, and exactly that many bytes
-/// (`siding/lib/overlay.mjs opReturnData`). `None` for anything else.
+/// The data of an `OP_RETURN` output that is one push, read exactly as
+/// `siding/lib/overlay.mjs opReturnData` (and `marker.mjs parsePegMarker`)
+/// reads it: `6a`, an optional `4c` (`OP_PUSHDATA1`), one length byte, and
+/// exactly that many bytes; `None` for anything else.
+///
+/// The length byte is a length whatever opcode it would be to Bitcoin — the
+/// reference's own `pegoutMarker` writes `6a 57 …` for a 40-byte parent
+/// script, which is `OP_7` to a script interpreter, and its rule reads that
+/// back — and an `OP_PUSHDATA1` prefix is accepted for any length, minimal or
+/// not. A bare `4c` is always read as the prefix, so a direct push of exactly
+/// 76 bytes is `None` in both engines. This is consensus for the burn rule
+/// and the parent-side markers, so it matches the reference byte for byte;
+/// [`record_text`] is the stricter grammar of SPEC 12.1.
 pub fn op_return_data(spk: &Script) -> Option<&[u8]> {
     let b = spk.as_bytes();
     if b.len() < 2 || b[0] != 0x6a {
@@ -277,12 +287,15 @@ pub fn parse_pegouts(tx: &Transaction, txid: &str, height: u32) -> Vec<Burn> {
         .collect()
 }
 
-/// Whether an `OP_RETURN` output *looks like* a burn: its bytes after the
-/// push prefix start with `pegout:`, whether or not they parse. The rules
-/// refuse such an output that does not parse rather than ignore it.
+/// Whether an `OP_RETURN` output *looks like* a burn: it is one push (as
+/// [`op_return_data`] reads it) whose data, decoded as UTF-8 with
+/// replacement, starts with `pegout:`, whether or not it parses as a burn.
+/// The rules refuse such an output that does not parse rather than ignore it
+/// (`siding/lib/overlay.mjs sidestr:rule-pegouts`: `opReturnData`, then a
+/// non-fatal `TextDecoder`, then `startsWith('pegout:')`).
 pub fn looks_like_pegout(o: &TxOut) -> bool {
-    let b = o.script_pubkey.as_bytes();
-    b.len() > 2 && b[0] == 0x6a && String::from_utf8_lossy(&b[2..]).starts_with("pegout:")
+    op_return_data(&o.script_pubkey)
+        .is_some_and(|d| String::from_utf8_lossy(d).starts_with("pegout:"))
 }
 
 // --- the parent-side records (SPEC 7, 11) ------------------------------------
@@ -390,13 +403,27 @@ mod tests {
             parse_pegout(&pegout_marker(&"ab".repeat(40))).map(|s| s.len()),
             Some(80)
         );
-        let bad = ScriptBuf::from_bytes([&[0x6a, 0x0a][..], b"pegout:zz"].concat());
-        assert!(
-            looks_like_pegout(&TxOut {
-                value: bitcoin::Amount::ZERO,
-                script_pubkey: bad.clone()
-            }) && parse_pegout(&bad).is_none()
+        let out = |s: &ScriptBuf| TxOut {
+            value: bitcoin::Amount::ZERO,
+            script_pubkey: s.clone(),
+        };
+        let bad = ScriptBuf::from_bytes([&[0x6a, 0x09][..], b"pegout:zz"].concat());
+        assert!(looks_like_pegout(&out(&bad)) && parse_pegout(&bad).is_none());
+        // the OP_PUSHDATA1 form is a burn too (re-audit F2): byte 2 is a length, not the text
+        let long = pegout_marker(&"ab".repeat(40));
+        assert!(long.to_hex_string().starts_with("6a4c57"));
+        assert!(looks_like_pegout(&out(&long)) && parse_pegout(&long).is_some());
+        let bad_long = ScriptBuf::from_bytes(
+            [
+                &[0x6a, 0x4c, 0x4c][..],
+                format!("pegout:{}", "a".repeat(69)).as_bytes(),
+            ]
+            .concat(),
         );
+        assert!(looks_like_pegout(&out(&bad_long)) && parse_pegout(&bad_long).is_none());
+        // a length that disagrees with the data is not a push at all
+        let not_push = ScriptBuf::from_bytes([&[0x6a, 0x4c, 0x0b][..], b"pegout:zz"].concat());
+        assert!(!looks_like_pegout(&out(&not_push)));
     }
 
     #[test]

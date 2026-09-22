@@ -193,6 +193,22 @@
 //!   where the kernel and Bitcoin Core treat the latter as a success. Within
 //!   that template the two agree case for case (`tests/consensus_oracle.rs`,
 //!   Core's interpreter behind the `consensus-oracle` feature).
+//! - **A marker's push is written canonically and read as the reference reads
+//!   it.** `overlay.mjs opReturnData` takes `6a`, an optional `4c`, one
+//!   length byte and that many bytes: the byte is a length whatever opcode it
+//!   is to Bitcoin, and an `OP_PUSHDATA1` prefix is accepted for any length.
+//!   [`marker::op_return_data`] does exactly that — it is the burn rule's
+//!   grammar, so a burn a reference wallet wrote as `6a 57 …` (`OP_7` to an
+//!   interpreter: `pegoutMarker` writes a bare length byte even above 75) is
+//!   recorded here as it is there. What this crate *writes* differs:
+//!   [`marker::pegout_marker`] and [`marker::record_script`] emit
+//!   `OP_PUSHDATA1` above 75 bytes, the one form both engines and Bitcoin's
+//!   script parser read alike. 0.2.0 recorded only the direct-push form
+//!   (`looks_like_pegout` read the `pegout:` prefix at byte 2), so a burn to
+//!   a 35–40-byte parent script was silently unpaid and a malformed
+//!   `OP_PUSHDATA1` burn was accepted where the reference refuses the block;
+//!   fixed in 0.2.1 and pinned against the reference in
+//!   `tests/audit_regressions.rs`.
 //! - **The mempool judges signatures by the block rules.** siding's `submit`
 //!   passes `unifiedSighash: true` on every family while its block rule
 //!   applies it only from the fork height, so on a stock chain the reference
