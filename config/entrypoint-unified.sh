@@ -100,7 +100,7 @@ _ab_vault_resolve() {
 
   VAULT_ROOT="$(_ab_toml_val vault root)"
   if [ -z "$VAULT_ROOT" ]; then
-    unset VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS
+    unset VAULT_ROOT VAULT_REPO VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS
     AGENTBOX_VAULT_ENABLED=0
     export AGENTBOX_VAULT_ENABLED
     echo "[vault] disabled — no [vault] in agentbox.toml"
@@ -135,8 +135,25 @@ _ab_vault_resolve() {
   VAULT_WORKING_ROOT="$(_ab_toml_val vault working)"
   VAULT_TRANSCRIPTS="$(_ab_toml_val vault transcripts)"
   if [ -n "$VAULT_WORKING_ROOT" ]; then VAULT_WORKING_PAGES="${VAULT_WORKING_ROOT%/}/pages"; else VAULT_WORKING_PAGES=""; fi
+  # VAULT_REPO: the repository root the `vault` CLI is pinned to with --repo
+  # (holds ontology/vocabulary.yaml, knowledge/, working/). Optional
+  # [vault].repo wins; else derived from root — its parent when root is the
+  # knowledge/ or working/ vault, root itself otherwise. Exported empty when the
+  # marker is absent, so management-api's resolver fails closed rather than
+  # letting the CLI guess the repo from its cwd.
+  VAULT_REPO="$(_ab_toml_val vault repo)"
+  if [ -z "$VAULT_REPO" ]; then
+    case "${VAULT_ROOT%/}" in
+      */knowledge|*/working) VAULT_REPO="$(dirname "${VAULT_ROOT%/}")" ;;
+      *) VAULT_REPO="${VAULT_ROOT%/}" ;;
+    esac
+  fi
+  if [ ! -f "$VAULT_REPO/ontology/vocabulary.yaml" ]; then
+    echo "[vault] WARNING: no ontology/vocabulary.yaml under repo $VAULT_REPO — VAULT_REPO left empty; governed vault writes will refuse"
+    VAULT_REPO=""
+  fi
   AGENTBOX_VAULT_ENABLED=1
-  export VAULT_ROOT VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS AGENTBOX_VAULT_ENABLED
+  export VAULT_ROOT VAULT_REPO VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS AGENTBOX_VAULT_ENABLED
   # Tier 1 has won: VAULT_PAGES is the manifest's, never the environment's — an
   # inherited ONTOLOGY_PAGES_DIR cannot move the vault. Tier 2 then applies:
   # with the vault ENABLED, an explicit ONTOLOGY_PAGES_DIR stays honoured (the
@@ -146,7 +163,7 @@ _ab_vault_resolve() {
     echo "[vault] note: explicit ONTOLOGY_PAGES_DIR=${ONTOLOGY_PAGES_DIR} overrides the manifest pages dir ${VAULT_PAGES} for legacy consumers (deprecated; VAULT_PAGES remains the path authority)"
   fi
   export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-$VAULT_PAGES}"
-  echo "[vault] root=$VAULT_ROOT pages=$VAULT_PAGES format=$VAULT_FORMAT tui=$VAULT_TUI working=${VAULT_WORKING_ROOT:-—} transcripts=${VAULT_TRANSCRIPTS:-—}"
+  echo "[vault] root=$VAULT_ROOT repo=${VAULT_REPO:-—} pages=$VAULT_PAGES format=$VAULT_FORMAT tui=$VAULT_TUI working=${VAULT_WORKING_ROOT:-—} transcripts=${VAULT_TRANSCRIPTS:-—}"
 }
 
 # ADR-2029 D4: until the image bakes Rune, the bind-mounted cargo bin dir is
@@ -2778,6 +2795,7 @@ $_SSO_EXPORTS
 # when the manifest carries no [vault] — consumers then fail loud, not silent.
 export AGENTBOX_VAULT_ENABLED="${AGENTBOX_VAULT_ENABLED:-0}"
 export VAULT_ROOT="${VAULT_ROOT:-}"
+export VAULT_REPO="${VAULT_REPO:-}"
 export VAULT_PAGES="${VAULT_PAGES:-}"
 export VAULT_FORMAT="${VAULT_FORMAT:-}"
 export VAULT_TUI="${VAULT_TUI:-}"

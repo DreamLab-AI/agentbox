@@ -115,7 +115,7 @@ Not supervised inside the box — external compose services on `visionclaw_netwo
 
 `[vault]` is a top-level manifest section and the **single** path authority for
 the authored knowledge corpus: `root` (absolute vault root), `pages` (relative,
-default `pages`), `format` (`obsidian` | `logseq-legacy`, read-tolerance only)
+default `pages`), `format` (`obsidian` only; the `logseq-legacy` read-tolerance value was withdrawn 2026-09-22)
 and `tui` (`rune` | `none`, ADR-2029). It is schema-validated
 (`schema/agentbox.toml.schema.json`, `root` required).
 

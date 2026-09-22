@@ -112,7 +112,7 @@
           };
         };
 
-        lib = pkgs.lib;
+        inherit (pkgs) lib;
         n2c = nix2container.packages.${system}.nix2container;
 
         agentboxConfig = builtins.fromTOML (builtins.readFile ./agentbox.toml);
@@ -128,7 +128,7 @@
         modelRouterAssets = pkgs.runCommand "agentbox-model-router-assets" {} (
           lib.concatMapStringsSep "\n" (f: ''
             mkdir -p "$out/$(dirname "${f.dest}")"
-            cp ${pkgs.fetchurl { url = f.url; sha256 = f.sha256; }} "$out/${f.dest}"
+            cp ${pkgs.fetchurl { inherit (f) url sha256; }} "$out/${f.dest}"
           '') modelRouterArtefacts.files
           + ''
             cp ${./config/model-router/artefacts.json} "$out/artefacts.json"
@@ -225,7 +225,7 @@
         securityExceptions = securityCfg.exceptions or {};
         consultantsCfg = agentboxConfig.consultants or {};
         privacyFilterCfg = agentboxConfig.privacy_filter or {};
-        relayCfg = (sovereignCfg.relay or {});
+        relayCfg = sovereignCfg.relay or {};
         adaptersCfgTop = agentboxConfig.adapters or {};
         solidPodRsCfg  = (agentboxConfig.integrations or {}).solid_pod_rs or {};
         podsImpl       = adaptersCfgTop.pods or "local-solid-rs";
@@ -250,7 +250,7 @@
         # m3 unified-GPU pass added the sidecar block ungated, which is the
         # bug this flag fixes (see commit 278dc5a4).
         providersCfg = agentboxConfig.providers or {};
-        ollamaSidecarEnabled = ((providersCfg.ollama or {}).sidecar or false);
+        ollamaSidecarEnabled = (providersCfg.ollama or {}).sidecar or false;
 
         # GPU backend dispatch — single source of truth for GPU concerns.
         gpuLib = import ./lib/gpu-backend.nix { inherit lib pkgs; };
@@ -1307,8 +1307,7 @@
         solidPodRsNativeConfig = pkgs.writeText "solid-pod-rs-config.json" (builtins.toJSON {
           server = {
             host = solidPodRsCfg.bind or "127.0.0.1";
-            port = solidPodRsCfg.port or 8484;
-            base_url = solidPodRsCfg.base_url or "http://127.0.0.1:8484";
+            inherit ({ port = 8484; base_url = "http://127.0.0.1:8484"; } // solidPodRsCfg) port base_url;
           };
           storage =
             if (solidPodRsCfg.storage or "fs") == "memory"
@@ -1362,7 +1361,7 @@
         # at boot and never fetches a context document at runtime (DDD-004 §L09).
         # ---------------------------------------------------------------------------
         linkedDataCfg     = agentboxConfig.linked_data or {};
-        linkedDataActive  = (linkedDataCfg.enabled or false) == true;
+        linkedDataActive  = let v = linkedDataCfg.enabled or false; in builtins.isBool v && v;
         linkedDataContexts = import ./lib/linked-data-contexts.nix { inherit lib pkgs; };
         linkedDataPackages = lib.optionals linkedDataActive [ linkedDataContexts ];
 
@@ -1445,7 +1444,7 @@
         # Built from source via lib/headroom-compress.nix (napi-rs .node output).
         # ---------------------------------------------------------------------------
         compressionCfg = agentboxConfig.compression or {};
-        compressionEnabled = (compressionCfg.enabled or false) == true;
+        compressionEnabled = let v = compressionCfg.enabled or false; in builtins.isBool v && v;
         headroomNapiPkg =
           if compressionEnabled
           then (import ./lib/headroom-compress.nix { inherit lib; pkgs = rustPkgs; })
@@ -1468,7 +1467,7 @@
         # Supervised block below dispatches nightly cycles to the connected node annexe.
         # ---------------------------------------------------------------------------
         dreamMachineCfg = agentboxConfig.dream_machine or {};
-        dreamEngineEnabled = (dreamMachineCfg.enabled or false) == true;
+        dreamEngineEnabled = let v = dreamMachineCfg.enabled or false; in builtins.isBool v && v;
         dreamEnginePkg =
           if dreamEngineEnabled
           then (import ./lib/dream-engine.nix { inherit lib; pkgs = rustPkgs; })
@@ -2026,7 +2025,7 @@ stderr_logfile=/var/log/ruvector-pattern-distill.error.log
 # C7 / ADR-113: the durable landing for the condensation-index staleness
 # scheduler. Nothing re-ran ontology-condense-refresh.sh on GitHubSync/elevation,
 # so the class index silently went stale. This loop re-runs the refresh when the
-# logseq corpus is newer than the last condense output, or past the max-age floor.
+# vault corpus is newer than the last condense output, or past the max-age floor.
 # Safe to autostart: it self-gates on ONTOLOGY_CONDENSE_SCHEDULE *and* _ENABLED
 # (both baked into imageEnv, inherited from PID 1), exits fast when off, is
 # flock-serialised against concurrent refreshes, and is fail-open per tick.
@@ -2817,7 +2816,7 @@ stderr_logfile_maxbytes=5MB
               "      - \"127.0.0.1:8888:8888\"\n"
           + lib.optionalString (desktopCfg.enabled or false)
               "      - \"127.0.0.1:5901:5901\"\n"
-          + lib.optionalString ((toolchainCfg.code_server or false))
+          + lib.optionalString (toolchainCfg.code_server or false)
               "      - \"127.0.0.1:8080:8080\"\n";
 
         # agentbox depends_on block — explicit-newline string (heredoc would

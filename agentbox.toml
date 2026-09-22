@@ -812,7 +812,7 @@ model = "qwen3.8-27B"
 style = "openai"                            # openai | ollama
 max_concurrency = 2                         # llama.cpp serves multiple KV slots
 # C7 / ADR-113: the condensation index has no natural trigger — nothing re-runs
-# it when GitHubSync/elevation rewrites the logseq corpus, so the class index
+# it when GitHubSync/elevation rewrites the vault corpus, so the class index
 # silently goes stale. This wires a manifest-gated staleness scheduler
 # (scripts/ontology-condense-scheduler.mjs) that re-runs ontology-condense-refresh.sh
 # when the corpus is newer than the last condense output, or on a max-age safety
@@ -833,15 +833,20 @@ schedule_max_age_hours = 24                 # rebuild even without corpus change
 # edit here relocates the corpus for every agent surface. Absent [vault] is
 # FAIL-LOUD, not fail-quiet: the boot prints "[vault] disabled" and the corpus
 # consumers switch themselves off rather than index a stale tree.
-# format: "obsidian" is the one format writers emit (YAML frontmatter, V2);
-# "logseq-legacy" is READ-tolerance only for an unconverted graph.
+# format: "obsidian" is the only format (YAML frontmatter, V2). The former
+# "logseq-legacy" read-tolerance value was withdrawn when the corpus finished
+# migrating (2026-09-22); the schema now rejects it.
 # tui: "rune" bakes the Rune markdown TUI into the image and opens tmux
 # window 9 "Notes" at the root (ADR-2029). REBUILD-class — the binary is in the
 # Nix package set only when this is "rune".
 [vault]
 root   = "/home/devuser/workspace/visionGraph/knowledge"   # Obsidian vault root = the visionGraph corpus repo (knowledge/ vault); bind-mounted
 pages  = "pages"                            # authored pages, relative to root
-format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
+# repo: the vault REPOSITORY root (ontology/vocabulary.yaml, knowledge/, working/)
+# that every `vault` call is pinned to with --repo; exported as VAULT_REPO.
+# Optional — derived as root's parent when root ends in knowledge/ or working/.
+repo   = "/home/devuser/workspace/visionGraph"
+format = "obsidian"                         # obsidian (the only accepted value)
 tui    = "rune"                             # rune | none — see ADR-2029
 # cli: bake the `vault` corpus CLI (VisionClaw crates/vault) and put it on PATH
 # at /opt/agentbox/bin/vault. ADR-2107 retired the ontology-bridge MCP server:

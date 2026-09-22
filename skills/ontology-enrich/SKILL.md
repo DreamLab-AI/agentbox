@@ -37,37 +37,35 @@ survives (ADR-2107).
 
 ## Key Workflows
 
-### 1. Validate source-domain Values
+### 1. Validate domain values
 
-**CRITICAL**: Only 6 valid prefixes exist:
-
-```bash
-# Find invalid source-domain values
-grep -rhn "source-domain::" "$VAULT_PAGES"/*.md | \
-  sed 's/.*source-domain::\s*//' | sort | uniq -c | sort -rn
-
-# Valid: ai, bc, mv, rb, tc, ngm
-# INVALID: blockchain, metaverse, telecollaboration, data, etc.
-```
-
-**Fix invalid values** — use `ontology-tools modify`, not raw `sed`: it is the
-same field-preserving, OWL2-validated, auto-backed-up path `ontology-core`
-documents for editing this exact field, so both skills route source-domain
-edits through one safe mechanism instead of two (one safe, one blind):
+Vault pages carry the domain in YAML frontmatter (`domain:`, OWL
+`vc:sourceDomain`), not as an outliner `source-domain::` line. The six
+taxonomic roots are `artificial-intelligence`, `spatial-computing`,
+`blockchain`, `infrastructure`, `distributed-collaboration` and `robotics`
+(`visionGraph/ontology/vocabulary.yaml`); the field is free text and the
+corpus also uses non-root values.
 
 ```bash
-# blockchain -> bc
-grep -rln "source-domain:: blockchain" "$VAULT_PAGES"/*.md | \
-  xargs -I {} ontology-tools modify {} --set source-domain=bc
+# Distribution of domain values across the vault
+grep -h "^domain:" "$VAULT_PAGES"/*.md | sort | uniq -c | sort -rn
 
-# metaverse -> mv
-grep -rln "source-domain:: metaverse" "$VAULT_PAGES"/*.md | \
-  xargs -I {} ontology-tools modify {} --set source-domain=mv
-
-# telecollaboration -> tc
-grep -rln "source-domain:: telecollaboration" "$VAULT_PAGES"/*.md | \
-  xargs -I {} ontology-tools modify {} --set source-domain=tc
+# Conformance, vocabulary agreement and link integrity in one pass
+vault validate
 ```
+
+**Fix a value** with the vault's guarded mutation, never raw `sed` and never
+`ontology-tools modify` (it writes the retired outliner `OntologyBlock`
+format and refuses frontmatter pages):
+
+```bash
+vault edit <page-id> --set domain=blockchain --expect docs=1 --dry-run   # inspect
+vault edit <page-id> --set domain=blockchain --expect docs=1
+```
+
+Normalising a value across many pages (for example `ai` onto
+`artificial-intelligence`) is a content decision: submit it as one grouped
+proposal with `vault propose`, not as a loop of edits.
 
 ### 2. Generate TTL — currently blocked
 

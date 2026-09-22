@@ -5,7 +5,7 @@
  * route (PRD-014 Seam D / D2).
  *
  * Relocated here from mcp/servers/ by ADR-2108. **Re-pointed at `vault propose`
- * by ADR-2106/ADR-2116**: it used to build a `POST /api/ontology-agent/propose`
+ * by ADR-2109/ADR-2116**: it used to build a `POST /api/ontology-agent/propose`
  * request descriptor, and that route now answers 410 Gone. Ontology proposals
  * are forum ActionRequests signed by a human, not authenticated HTTP writes
  * (VisionFlow `PRD-sovereign-corpus` §3.3).
@@ -49,7 +49,7 @@
  * Pure where it can be, async only where it shells out, so both halves are unit
  * testable against a stub `vault` on PATH.
  *
- * @see PRD-014 §4.4  @see ADR-2108  @see ADR-2106  @see VisionClaw ADR-2116
+ * @see PRD-014 §4.4  @see ADR-2108  @see ADR-2109  @see VisionClaw ADR-2116
  * @see contracts C1 (slug), C2 (`vault propose`), C4 (`PatchProposal`)
  */
 
@@ -238,6 +238,9 @@ function buildVaultProposeCommand(args = {}, env = process.env) {
 
   const argv = ['propose', iri, '--level', level, '--hypothesis', hypothesis];
   if (args.diff) argv.push('--diff', String(args.diff));
+  // A grouped proposal (a --diff DIRECTORY of several pages) is named by its
+  // title: vault mints its subject as urn:ngm:proposal:<slug(title)>.
+  if (args.title) argv.push('--title', String(args.title));
   if (dryRun) argv.push('--dry-run');
   argv.push('--json');
 
@@ -262,8 +265,8 @@ function buildVaultProposeCommand(args = {}, env = process.env) {
  * for a human to make, because an inconsistent ontology is not approvable. The
  * caller gets the blockers so it can say why rather than failing silently.
  *
- * @returns {Promise<{command:object, proposal:object|null, blockers:string[],
- *                    blocked:boolean, error:string|null}>}
+ * @returns {Promise<{command:object, proposal:object|null, event:object|null,
+ *                    blockers:string[], blocked:boolean, error:string|null}>}
  */
 async function runVaultPropose(args = {}, deps = {}) {
   const env = deps.env || process.env;
@@ -271,9 +274,15 @@ async function runVaultPropose(args = {}, deps = {}) {
   const command = buildVaultProposeCommand(args, env);
   try {
     const out = await runVault(command.argv);
-    const patch = out && typeof out === 'object' && !Array.isArray(out) ? out : null;
+    const doc = out && typeof out === 'object' && !Array.isArray(out) ? out : null;
+    // The real `vault propose --json` prints `{proposal: PatchProposal, event:
+    // 31402}`; a bare PatchProposal is still accepted. Reading `blockers` off
+    // the wrapper instead of the proposal would make this gate blind — every
+    // real proposal would look unblocked.
+    const patch = doc && doc.proposal && typeof doc.proposal === 'object' ? doc.proposal : doc;
+    const event = doc && doc.event && typeof doc.event === 'object' ? doc.event : null;
     const blockers = patch && Array.isArray(patch.blockers) ? patch.blockers : [];
-    return { command, proposal: patch, blockers, blocked: blockers.length > 0, error: null };
+    return { command, proposal: patch, event, blockers, blocked: blockers.length > 0, error: null };
   } catch (err) {
     // A vault that refuses is not a crash in the elevation scan: the scan's job
     // is to surface candidates, and one that cannot be proposed is reported as
@@ -281,6 +290,7 @@ async function runVaultPropose(args = {}, deps = {}) {
     return {
       command,
       proposal: null,
+      event: null,
       blockers: [],
       blocked: true,
       error: String((err && err.message) || err),

@@ -1,5 +1,5 @@
 'use strict';
-// ADR-2116 / ADR-2106 — the KG-elevation proposal path invokes `vault propose`,
+// ADR-2116 / ADR-2109 — the KG-elevation proposal path invokes `vault propose`,
 // not the retired POST /api/ontology-agent/propose.
 //
 // Run: node --test management-api/tests/ontology-propose-vault.test.js
@@ -37,6 +37,9 @@ const CANDIDATE = {
 function stubVault(t, { patch = { level: 'content', blockers: [] }, exitCode = 0 } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-propose-stub-'));
   const log = path.join(dir, 'argv.log');
+  const repo = path.join(dir, 'repo');
+  fs.mkdirSync(path.join(repo, 'ontology'), { recursive: true });
+  fs.writeFileSync(path.join(repo, 'ontology', 'vocabulary.yaml'), 'version: 1\n');
   fs.writeFileSync(path.join(dir, 'vault'), `#!/bin/sh
 { for a in "$@"; do printf '%s\\n' "$a"; done; printf -- '--\\n'; } >> ${JSON.stringify(log)}
 printf '%s' ${JSON.stringify(JSON.stringify(patch))}
@@ -45,18 +48,27 @@ exit ${exitCode}
 
   const prevPath = process.env.PATH;
   const prevBin = process.env.VAULT_BIN;
+  const prevRepo = process.env.VAULT_REPO;
   process.env.PATH = `${dir}:${prevPath}`;
+  process.env.VAULT_REPO = repo;
   delete process.env.VAULT_BIN;
   t.after(() => {
     process.env.PATH = prevPath;
     if (prevBin === undefined) delete process.env.VAULT_BIN; else process.env.VAULT_BIN = prevBin;
+    if (prevRepo === undefined) delete process.env.VAULT_REPO; else process.env.VAULT_REPO = prevRepo;
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  // Every recorded invocation must lead with `--repo <repo>`; the subcommand
+  // argv after it is what the descriptor built.
   return {
+    repo,
     calls: () => (fs.existsSync(log)
       ? fs.readFileSync(log, 'utf8').split('--\n').filter(Boolean).map(b => b.split('\n').filter(Boolean))
-      : []),
+      : []).map((argv) => {
+      assert.deepEqual(argv.slice(0, 2), ['--repo', repo], 'vault propose is pinned with --repo');
+      return argv.slice(2);
+    }),
   };
 }
 
@@ -202,4 +214,28 @@ test('the extractor descriptor carries propose_command and no propose_request', 
   assert.equal(d.emit.metadata.governed_iri, 'urn:ngm:class:photovoltaic-cell');
   assert.match(d.emit.metadata.governed_command, /^propose urn:ngm:class:photovoltaic-cell --level content/);
   assert.equal(d.emit.metadata.governed_path, undefined);
+});
+
+test('an unresolvable vault repo blocks the proposal without spawning vault', async (t) => {
+  const stub = stubVault(t);
+  const prevRoot = process.env.VAULT_ROOT;
+  delete process.env.VAULT_REPO; // stubVault's t.after restores it
+  process.env.VAULT_ROOT = path.join(os.tmpdir(), 'no-such-vault-repo', 'knowledge');
+  t.after(() => { if (prevRoot === undefined) delete process.env.VAULT_ROOT; else process.env.VAULT_ROOT = prevRoot; });
+
+  const out = await op.runVaultPropose(CANDIDATE);
+  assert.equal(out.blocked, true);
+  assert.equal(out.proposal, null);
+  assert.match(out.error, /holds no ontology\/vocabulary\.yaml/);
+  assert.deepEqual(stub.calls(), [], 'vault was never spawned');
+});
+
+test('the real vault output shape {proposal, event} is unwrapped, so its blockers still block', async (t) => {
+  const event = { kind: 31402, id: 'e1', tags: [['d', 'abc'], ['level', 'content']] };
+  stubVault(t, { patch: { proposal: { level: 'content', blockers: ['SUBCLASS_CYCLE'] }, event } });
+  const out = await op.runVaultPropose(CANDIDATE);
+  assert.equal(out.blocked, true, 'a nested blocker is not invisible');
+  assert.deepEqual(out.blockers, ['SUBCLASS_CYCLE']);
+  assert.equal(out.proposal.level, 'content');
+  assert.deepEqual(out.event, event);
 });

@@ -701,6 +701,23 @@ describe('E016: unknown manifest keys are rejected (UnknownManifestKey)', () => 
     expect(r.exitCode).toBe(0);
     expect(stderrContains(r, 'E016')).toBe(false);
   });
+
+  // The corpus finished migrating to the frontmatter vault on 2026-09-22;
+  // the transitional "logseq-legacy" read-tolerance value was withdrawn.
+  test('valid: [vault].format = "obsidian"', () => {
+    const m = baseValid();
+    m.vault = { root: '/home/devuser/workspace/visionGraph/knowledge', pages: 'pages', format: 'obsidian' };
+    const r = runValidator(m);
+    expect(stderrContains(r, 'E016')).toBe(false);
+  });
+
+  test('invalid: withdrawn [vault].format = "logseq-legacy"', () => {
+    const m = baseValid();
+    m.vault = { root: '/home/devuser/workspace/visionGraph/knowledge', pages: 'pages', format: 'logseq-legacy' };
+    const r = runValidator(m);
+    expect(r.exitCode).not.toBe(0);
+    expect(r.stderr).toMatch(/\/vault\/format/);
+  });
 });
 
 // ─── W031 ─────────────────────────────────────────────────────────────────────

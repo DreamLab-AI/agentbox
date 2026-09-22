@@ -263,7 +263,7 @@ mermaid = true
 report_builder = true
 
 [skills.ontology]
-enabled = true    # Logseq OWL2 DL tools; visionclaw_api_url set via [skills.ontology]
+enabled = true    # vault OWL2 DL ontology skills; visionclaw_api_url set via [skills.ontology]
 ```
 
 ## `[toolchains]`

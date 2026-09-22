@@ -151,6 +151,20 @@ impl OntologyModifier {
 
         let original_content = fs::read_to_string(file_path)?;
 
+        // A vault page carries its fields in YAML frontmatter; writing an
+        // OntologyBlock into it would splice outliner `key::` lines in after
+        // the opening `---` fence. Refuse before any backup or write.
+        if crate::markdown::is_vault_page(&original_content) {
+            return Ok(ModificationResult {
+                success: false,
+                changes_applied: BTreeMap::new(),
+                fields_preserved: 0,
+                validation_errors: vec![],
+                backup_path: None,
+                error: Some(crate::markdown::VAULT_PAGE_WRITE_REFUSAL.to_string()),
+            });
+        }
+
         let block = self
             .parser
             .parse_ontology_block(&original_content, Some(file_path));
@@ -369,6 +383,23 @@ mod tests {
         let path = dir.path().join("test.md");
         fs::write(&path, content).unwrap();
         (dir, path)
+    }
+
+    #[test]
+    fn refuses_to_write_outliner_block_into_vault_page() {
+        let original = "---\ntitle: Bitcoin\ntype: Concept\nsource-domain: bc\n---\n\nBody text.\n";
+        let (dir, path) = write_temp(original);
+
+        let modifier = OntologyModifier::new();
+        let mut updates = BTreeMap::new();
+        updates.insert("status".to_string(), "complete".to_string());
+
+        let result = modifier.modify_file(&path, &updates, false, true);
+        assert!(!result.success);
+        assert!(result.error.as_deref().unwrap_or("").contains("vault edit"));
+        assert!(result.backup_path.is_none());
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
+        assert!(!dir.path().join(".backups").exists());
     }
 
     #[test]

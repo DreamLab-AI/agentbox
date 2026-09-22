@@ -230,6 +230,13 @@
             "/home/devuser/workspace/vault"
           ]
         },
+        "repo": {
+          "type": "string",
+          "description": "Absolute path of the vault REPOSITORY root (holds ontology/vocabulary.yaml, knowledge/, working/). Every management-api `vault` invocation is pinned to it with --repo. Exported as VAULT_REPO. Optional: derived from root (its parent when root ends in knowledge/ or working/); left empty, and governed vault writes refuse, when the marker file is absent.",
+          "examples": [
+            "/home/devuser/workspace/visionGraph"
+          ]
+        },
         "pages": {
           "type": "string",
           "default": "pages",
@@ -241,11 +248,10 @@
         "format": {
           "type": "string",
           "enum": [
-            "obsidian",
-            "logseq-legacy"
+            "obsidian"
           ],
           "default": "obsidian",
-          "description": "On-disk corpus dialect. \"obsidian\" is the one format writers emit — YAML frontmatter pages (VAULT-corpus-format V2/V5). \"logseq-legacy\" is READ-tolerance only, for an unconverted Logseq graph during the bounded transition window; no writer ever emits key:: value lines."
+          "description": "On-disk corpus dialect. \"obsidian\" is the one format writers emit — YAML frontmatter pages (VAULT-corpus-format V2/V5). The former \"logseq-legacy\" read-tolerance value was withdrawn when the corpus migration completed (2026-09-22): no consumer ever branched on it, the vault CLI rejects key:: value lines, and an unconverted outliner graph is no longer a supported corpus."
         },
         "working": {
           "type": "string",
@@ -431,7 +437,7 @@
                 },
                 "schedule_enabled": {
                   "type": "boolean",
-                  "description": "C7 / ADR-113: run the staleness scheduler (scripts/ontology-condense-scheduler.mjs) that re-runs the condensation refresh when the logseq corpus is newer than the last condense output (the GitHubSync/elevation trigger) or past the max-age floor. Self-gates on this AND condense.enabled; safe to autostart. Vanilla default: off.",
+                  "description": "C7 / ADR-113: run the staleness scheduler (scripts/ontology-condense-scheduler.mjs) that re-runs the condensation refresh when the vault corpus is newer than the last condense output (the GitHubSync/elevation trigger) or past the max-age floor. Self-gates on this AND condense.enabled; safe to autostart. Vanilla default: off.",
                   "default": false
                 },
                 "schedule_interval_mins": {

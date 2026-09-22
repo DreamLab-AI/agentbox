@@ -693,7 +693,7 @@ model = "gemma-4-31B-it-qat"
 style = "openai"                            # openai | ollama
 max_concurrency = 2                         # llama.cpp serves multiple KV slots
 # C7 / ADR-113: the condensation index has no natural trigger — nothing re-runs
-# it when GitHubSync/elevation rewrites the logseq corpus, so the class index
+# it when GitHubSync/elevation rewrites the vault corpus, so the class index
 # silently goes stale. This wires a manifest-gated staleness scheduler
 # (scripts/ontology-condense-scheduler.mjs) that re-runs ontology-condense-refresh.sh
 # when the corpus is newer than the last condense output, or on a max-age safety
@@ -714,15 +714,16 @@ schedule_max_age_hours = 24                 # rebuild even without corpus change
 # edit here relocates the corpus for every agent surface. Absent [vault] is
 # FAIL-LOUD, not fail-quiet: the boot prints "[vault] disabled" and the corpus
 # consumers switch themselves off rather than index a stale tree.
-# format: "obsidian" is the one format writers emit (YAML frontmatter, V2);
-# "logseq-legacy" is READ-tolerance only for an unconverted graph.
+# format: "obsidian" is the only format (YAML frontmatter, V2). The former
+# "logseq-legacy" read-tolerance value was withdrawn when the corpus finished
+# migrating (2026-09-22); the schema now rejects it.
 # tui: "rune" bakes the Rune markdown TUI into the image and opens tmux
 # window 9 "Notes" at the root (ADR-2029). REBUILD-class — the binary is in the
 # Nix package set only when this is "rune".
 [vault]
 root   = "/home/devuser/workspace/vault"   # Obsidian vault root (bind-mounted)
 pages  = "pages"                            # authored pages, relative to root
-format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
+format = "obsidian"                         # obsidian (the only accepted value)
 # Vanilla ships no TUI: rune is a REBUILD-class Rust package (~80 MB) that the
 # operator opts into in their live agentbox.toml (ADR-2029). Keep the trailing
 # comment below free of double quotes — the runtime manifest-loader strips

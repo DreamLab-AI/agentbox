@@ -17,7 +17,7 @@ const { BaseAdapter } = require('../base');
 const { NotFound, SpawnError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 const uris = require('../../lib/uris');
-const { applyOntologyDecision } = require('../../lib/ontology-apply');
+const { applyOntologyDecision, proposalFromRequest } = require('../../lib/ontology-apply');
 
 class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
   /**
@@ -193,7 +193,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     const eTag   = (tags.find(t => t[0] === 'e') || [])[1] || null;
     const refId  = dTag || eTag;
 
-    // ── ADR-2106: an ontology Promote/Demote applies through `vault edit` ──
+    // ── ADR-2109: an ontology Promote/Demote applies through `vault edit` ──
     //
     // This is the ONE branch that writes to the world rather than merely
     // relaying. It runs BEFORE the agent dispatch below because the write is
@@ -211,8 +211,26 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
         event.pubkey || decidingPubkey,
       );
       const at = new Date((Number(event.created_at) || 0) * 1000).toISOString();
+      const ontologyDeps = this._ontologyDeps || {};
+      // The 31402 this decision answers (its `e` tag): needed only for a
+      // `kind: create` proposal, whose page exists nowhere but in the
+      // proposal's diff. Looked up, never trusted blind: it must be the same
+      // case (`d` tag) as the signed 31403.
+      let proposal = null;
+      if (eTag) {
+        try {
+          const fetchRequest = ontologyDeps.fetchRequest
+            || LocalProcessManagerOrchestratorAdapter._storedGovernanceRequest;
+          const request = await fetchRequest(eTag);
+          const reqD = request && ((request.tags || []).find(t => t[0] === 'd') || [])[1];
+          if (request && (reqD || request.d_tag) === dTag) proposal = proposalFromRequest(request);
+        } catch (_) {
+          // No stored request: the ordinary (existing-page) path still applies.
+        }
+      }
       try {
         ontology = await applyOntologyDecision({
+          proposal,
           outcome,
           // The subject comes from the human's own signed content. `context_url`
           // on the 31402 is the agent's claim; only this was signed by the
@@ -225,7 +243,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
           // C5: the 31402's `d` tag IS the proposal digest, and the 31403
           // carries it back so request and response correlate on one value.
           digest: dTag,
-        }, this._ontologyDeps || {});
+        }, ontologyDeps);
       } catch (err) {
         ontology = { applied: false, error: String((err && err.message) || err) };
       }
@@ -277,7 +295,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
       case_id:      caseId,
       event_id:     event.id,
       decision:     outcome,
-      // ADR-2106: what the decision actually did, so the provenance record and
+      // ADR-2109: what the decision actually did, so the provenance record and
       // the corpus can be reconciled without re-running the apply.
       applied_page: (ontology && ontology.page) || null,
       applied:      ontology ? ontology.applied === true : null,
@@ -364,6 +382,27 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
    * usable in a test environment without the dependency, at the cost of a
    * hex-form actor in the frontmatter, which is still unambiguous.
    */
+  /**
+   * The relay consumer's stored copy of a governance event
+   * (`<SOLID_POD_ROOT>/pods/<npub>/events/governance/<id>.json`), or null.
+   * Only a well-formed hex event id is looked up, so the id cannot address a
+   * path outside the governance directories.
+   */
+  static _storedGovernanceRequest(eventId) {
+    if (!/^[0-9a-f]{64}$/.test(String(eventId))) return null;
+    const pods = path.join(process.env.SOLID_POD_ROOT || '/var/lib/solid', 'pods');
+    let owners = [];
+    try { owners = fs.readdirSync(pods); } catch (_) { return null; }
+    for (const owner of owners) {
+      const file = path.join(pods, owner, 'events', 'governance', `${eventId}.json`);
+      try {
+        const rec = JSON.parse(fs.readFileSync(file, 'utf8'));
+        if (rec && rec.event_id === eventId && rec.kind === 31402) return rec;
+      } catch (_) { /* not this owner */ }
+    }
+    return null;
+  }
+
   static _hexToNpub(hex) {
     try {
       return require('nostr-tools').nip19.npubEncode(hex);

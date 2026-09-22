@@ -6,7 +6,7 @@
  *
  * The condensation refresh (scripts/ontology-condense-refresh.sh → the two libs
  * ontology-index-build.js + ontology-condense.js) had NO natural trigger:
- * nothing re-ran it when GitHubSync/elevation rewrote the logseq corpus, so the
+ * nothing re-ran it when GitHubSync/elevation rewrote the vault corpus, so the
  * PUSH Class-Summary cache (the per-turn [ONTOLOGY] breadcrumb) and the
  * ns:ontology-classes condensed store silently went stale — the "triggered
  * incrementally on sync" claim was unwired. This is that missing execution
@@ -22,7 +22,7 @@
  *     [skills.ontology.condense] in agentbox.toml). Launching it is a no-op
  *     until an operator opts in and the container reboots.
  *   • Staleness gate (the GitHubSync/elevation trigger): a tick rebuilds only
- *     when the newest logseq page mtime is later than the last condense output,
+ *     when the newest vault page mtime is later than the last condense output,
  *     or the condense output is missing, or it is older than the max-age floor.
  *     A fresh index writes NOTHING (no LLM load, no cache churn).
  *   • Idempotent + locked: the actual work is ontology-condense-refresh.sh,

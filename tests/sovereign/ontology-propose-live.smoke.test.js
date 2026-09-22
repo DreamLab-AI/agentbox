@@ -11,7 +11,7 @@
  *
  * That seam no longer exists. Ontology proposals are forum ActionRequests
  * signed by a human, raised through `vault propose` (VisionClaw ADR-2116,
- * agentbox ADR-2106, forum ADR-2013). The route is retired and answers **410
+ * agentbox ADR-2109, forum ADR-2013). The route is retired and answers **410
  * Gone** with a body naming its replacement.
  *
  * So the test is inverted rather than deleted, and it now guards two properties

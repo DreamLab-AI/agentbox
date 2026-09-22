@@ -172,7 +172,7 @@ Always run `agentbox config validate` after editing — it checks semantic rules
 enabled = false   # default — ontology-core + ontology-enrich are not loaded
 ```
 
-Set `enabled = true` to load the `ontology-core` and `ontology-enrich` skills into the agent's skill surface. These skills target Logseq OWL2 DL TBox workflows and are opt-in because they carry specific domain assumptions (Logseq graph conventions, OWL2 DL reasoner tooling). When `enabled = false` (the default) neither skill is registered and no extra tooling is pulled into the image.
+Set `enabled = true` to load the `ontology-core` and `ontology-enrich` skills into the agent's skill surface. These skills target OWL2 DL TBox workflows over the vault corpus and are opt-in because they carry specific domain assumptions (vault frontmatter conventions, OWL2 DL reasoner tooling). When `enabled = false` (the default) neither skill is registered and no extra tooling is pulled into the image.
 
 This gate is a **prepared placeholder** — the MCP server and associated tooling for ontology operations will be fleshed out in a future milestone. Enabling the flag now has no runtime effect beyond advertising the skills in the manifest; downstream agents that check the manifest before loading skills will respect it once the implementation lands.
 

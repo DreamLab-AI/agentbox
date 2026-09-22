@@ -169,6 +169,15 @@ impl EnrichmentWorkflow {
             Ok(c) => c,
             Err(e) => return self.fail(result, format!("Exception during enrichment: {e}")),
         };
+        // Refuse vault (frontmatter) pages before anything else: the write-back
+        // below emits a legacy outliner OntologyBlock. Returned directly, not
+        // via `fail`, because nothing was modified and a `git checkout`
+        // rollback would discard the operator's uncommitted edits.
+        if crate::markdown::is_vault_page(&content) {
+            result.success = false;
+            result.validation_errors = vec![crate::markdown::VAULT_PAGE_WRITE_REFUSAL.to_string()];
+            return result;
+        }
         let block = self.parser.parse_ontology_block(&content, Some(file_path));
 
         let current_content = get_str_field(&block, field_name).unwrap_or_default();
@@ -340,4 +349,25 @@ impl EnrichmentWorkflow {
 /// Build a `--set field=value` update map, used by the CLI `modify` command.
 pub fn parse_updates(pairs: &[(String, String)]) -> BTreeMap<String, String> {
     pairs.iter().cloned().collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn enrich_refuses_vault_page_without_touching_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bitcoin.md");
+        let original = "---\ntitle: Bitcoin\ndefinition: A peer-to-peer electronic cash system.\n---\n\nBody.\n";
+        std::fs::write(&path, original).unwrap();
+
+        let workflow = EnrichmentWorkflow::new("unused-key", EnrichmentConfig::default());
+        let result = workflow.enrich_field(&path, "definition", None).await;
+
+        assert!(!result.success);
+        assert!(!result.rollback_performed);
+        assert!(result.validation_errors[0].contains("vault edit"));
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+    }
 }

@@ -147,8 +147,17 @@ function normaliseEntry(entry) {
   let domain = null;
   let physicality = null;
   let role = null;
+  let isSubclassOf = [];
+  let relationships = {};
 
   if (value && typeof value === 'object') {
+    // The extracted relations travel with the candidate so the staged page
+    // (lib/elevation-stage) can carry them as frontmatter.
+    const parents = value.is_subclass_of || value['is-a'] || value.parents;
+    if (Array.isArray(parents)) isSubclassOf = parents.filter(x => typeof x === 'string' && x.trim());
+    if (value.relationships && typeof value.relationships === 'object' && !Array.isArray(value.relationships)) {
+      relationships = value.relationships;
+    }
     term = value.preferred_term || value.term || value.title || value.name || key;
     definition = value.definition || value.description || value.summary || value.text || null;
     domain = value.domain || value.namespace || null;
@@ -169,6 +178,8 @@ function normaliseEntry(entry) {
     domain: domain ? String(domain).trim() : null,
     physicality: physicality ? String(physicality).trim() : null,
     role: role ? String(role).trim() : null,
+    is_subclass_of: isSubclassOf,
+    relationships,
     raw: value,
   };
 }
@@ -262,6 +273,8 @@ function buildProposalDescriptor(norm, score, opts = {}) {
     physicality: norm.physicality || 'abstract',
     role: norm.role || 'concept',
     domain,
+    is_subclass_of: norm.is_subclass_of || [],
+    relationships: norm.relationships || {},
     alt_terms: [],
   }, env);
 

@@ -42,6 +42,25 @@ pub fn extract_block_section(content: &str) -> String {
     }
 }
 
+/// Refusal message for any write that would put a legacy `### OntologyBlock`
+/// (outliner `key:: value` lines) into a vault page.
+pub const VAULT_PAGE_WRITE_REFUSAL: &str = "refusing to write: this is a vault page \
+     (YAML frontmatter). The legacy `### OntologyBlock` writer emits outliner `key:: value` \
+     lines, which the vault format forbids and `vault validate` rejects. Edit frontmatter with \
+     `vault edit <page-id> --set key=value --expect docs=1` instead";
+
+/// True when `content` is a vault page — it opens with a YAML frontmatter
+/// fence (`---` on the first line, optionally after a UTF-8 BOM).
+///
+/// The corpus has been frontmatter-only since the 2026-09-22 migration off
+/// the Logseq outliner format; the OntologyBlock writer in this crate
+/// predates it, so every write path checks this first and refuses rather
+/// than splicing `key::` lines into (or ahead of) the frontmatter.
+pub fn is_vault_page(content: &str) -> bool {
+    let body = content.strip_prefix('\u{feff}').unwrap_or(content);
+    body.lines().next().map(str::trim_end) == Some("---")
+}
+
 /// ```` ```clojure\s*\n(.*?)\n\s*``` ```` — extract every fenced `clojure`
 /// code block's inner content (each capture may itself contain embedded
 /// newlines; it is treated as ONE axiom string, never split into lines).
@@ -105,6 +124,15 @@ Content here...
         assert!(section.contains("#### Relationships"));
         assert!(section.contains("is-subclass-of"));
         assert!(!section.contains("About Bitcoin"));
+    }
+
+    #[test]
+    fn vault_page_detection() {
+        assert!(is_vault_page("---\ntitle: X\n---\nbody"));
+        assert!(is_vault_page("\u{feff}---\r\ntitle: X\r\n---\r\n"));
+        assert!(!is_vault_page("- ### OntologyBlock\n  id:: x\n"));
+        assert!(!is_vault_page("# Heading\n---\n"));
+        assert!(!is_vault_page(""));
     }
 
     #[test]

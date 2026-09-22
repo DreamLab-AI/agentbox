@@ -43,8 +43,8 @@ const resolveChromium = require('./resolve-chromium');
       if (stored) {
         const parsed = JSON.parse(stored);
         storedSettings = {
-          edgeOpacity: parsed?.visualisation?.graphs?.logseq?.edges?.opacity,
-          nodeOpacity: parsed?.visualisation?.graphs?.logseq?.nodes?.opacity
+          edgeOpacity: parsed?.visualisation?.graphs?.knowledge?.edges?.opacity,
+          nodeOpacity: parsed?.visualisation?.graphs?.knowledge?.nodes?.opacity
         };
       }
     } catch(e) {}

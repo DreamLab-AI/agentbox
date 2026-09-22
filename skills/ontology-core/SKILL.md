@@ -32,11 +32,14 @@ format, and no writer emits them. `vault validate` is the conformance check
 
 ## Quick path
 
-1. Parse / edit blocks with the `ontology-tools` Rust binary
-   (`services/ontology-tools`, built from `agentbox.toml`'s Rust toolchain):
+1. Edit vault pages (YAML frontmatter) with the `vault` CLI:
+   `vault edit <page-id> --set key=value --expect docs=1`, checked by
+   `vault validate`. The `ontology-tools` Rust binary
+   (`services/ontology-tools`) handles the retired outliner `OntologyBlock`
+   format only; its `modify` and `enrich` refuse frontmatter pages:
    - `ontology-tools parse <file>` — read OntologyBlock structures, print as JSON
    - `ontology-tools modify <file> --set field=value` — field-preserving
-     edits with automatic backup and OWL2-validated rollback
+     edits with automatic backup and OWL2-validated rollback (non-vault files)
    - `ontology-tools validate <file>` — OWL2 functional-syntax axiom validation
    - `ontology-tools roundtrip <file>` — verify the zero-data-loss
      parse/write/parse contract for a specific file

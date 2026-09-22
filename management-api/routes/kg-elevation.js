@@ -12,7 +12,9 @@
  *     personal node to its shared-ontology target) through the canonical
  *     agentEventPublisher — picked up by /v1/agent-events/stream and pushed to
  *     the host substrate; and
- *   - runs the GOVERNED `vault propose <iri> --level content --dry-run --json`
+ *   - stages the candidate's promoted form as a page (lib/elevation-stage),
+ *     validates it on its own, and runs the GOVERNED
+ *     `vault propose <iri> --level content --diff <page> --dry-run --json`
  *     (ADR-2116; the HTTP propose route is retired and answers 410). That runs
  *     Whelk and the conflict detector as BLOCKERS and returns the
  *     `PatchProposal` (contract C4). A candidate with blockers is reported and
@@ -36,7 +38,7 @@ const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-p
 const { verifyAgentEventRequest } = require('../lib/agent-event-auth');
 const { extractProposals, ExtractError } = require('../lib/kg-proposal-extractor');
 const { buildElevationPublisher } = require('../lib/elevation-publisher');
-const { runVaultPropose } = require('../lib/ontology-propose');
+const { gateElevation } = require('../lib/elevation-stage');
 
 /** u32 string hash — identical to the agent-events surface. */
 function hashString(str) {
@@ -173,12 +175,14 @@ module.exports = async function kgElevationRoutes(fastify, options) {
     // never reaches the publisher.
     const gated = [];
     for (const p of result.proposals) {
-      const outcome = await runVaultPropose(
-        { ...p.propose_command.proposal, iri: p.propose_command.iri, level: p.propose_command.level },
-        { env: process.env },
-      );
+      // The candidate's promoted form is staged as a page, validated on its
+      // own, and passed to `vault propose --diff` (which requires it). A
+      // staged page that fails validation is not proposable, with the vault's
+      // reasons, and never reaches the gate.
+      const outcome = await gateElevation(p, { env: process.env });
       p.patch_proposal = outcome.proposal;
       p.blockers = outcome.blockers;
+      p.stage_issues = outcome.stage_issues || [];
       p.propose_error = outcome.error;
       gated.push(outcome);
       if (outcome.blocked) {
@@ -262,6 +266,7 @@ module.exports = async function kgElevationRoutes(fastify, options) {
         patch_proposal: p.patch_proposal || null,
         blockers: p.blockers || [],
         propose_error: p.propose_error || null,
+        stage_issues: p.stage_issues || [],
         event_id: emitted[i] ? emitted[i].event_id : null,
         // Nostr federation outcome for this governed proposal (false in standalone).
         nostr_published: federated[i] ? !!federated[i].published : false,

@@ -227,7 +227,7 @@ pub fn run_domain_probe(out_dir: &Path, ontology_dir: Option<&Path>) -> Value {
         println!("         --source-document 'podcast:bootstrap' \\");
         println!("         --default-parent-iri urn:ngm:class/[domain-root] \\");
         println!("         --default-parent-label '[Domain Root]'");
-        println!("    5. Review candidates, promote to mainKnowledgeGraph/pages/");
+        println!("    5. Review candidates, promote into knowledge/pages/ with `vault propose`");
         println!("    6. Re-run this ingest — weekly cron will now enrich the new pages.");
     } else if probe.coverage < 0.6 {
         println!("\n  \u{2139} PARTIAL COVERAGE — some new concepts may need ontology pages.");
