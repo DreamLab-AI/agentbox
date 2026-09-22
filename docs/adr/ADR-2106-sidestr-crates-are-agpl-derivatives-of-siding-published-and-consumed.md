@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 416a60a437f314b4a6169a61798ba6e0379d816b
+verified_commit: e1ba33a1c972e15b3b333368544f90bd06d631d9
 verified_paths: [crates/sidestr/*/Cargo.toml, crates/sidestr/*/README.md, crates/sidestr/*/LICENSE]
 owner: jjohare
 review_trigger: the first `cargo publish` of a `sidestr-*` crate; upstream sidestr relicensing or a dual grant from its author; any proposal to link a `sidestr-*` crate from a permissive crate
@@ -76,3 +76,11 @@ all four; no `Cargo.toml` under `services/` or in a permissive crate names a `si
 dependency; each `cargo publish` was run by the session under the owner's standing
 approval of 2026-09-22, with wallet and nostr first verified to build and test against
 `sidestr-core` 0.1.0 from the registry rather than the worktree.
+
+## Re-verification — 2026-09-22 at e1ba33a1c
+
+Governed paths changed since `416a60a43` only by `e0712bf71` (the inline-docs sweep: README
+status lines, CHANGELOGs added to the published `include` lists, patch version bumps). Every
+`crates/sidestr/*/Cargo.toml` still declares `license = "AGPL-3.0-only"`, and every crate's
+`LICENSE` is byte-identical to the repository root's (one sha256 across all six files). The
+decision holds.

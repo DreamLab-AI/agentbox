@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cb5d342703ad024bccfb348b285662f6c90a3124
+verified_commit: e1ba33a1c972e15b3b333368544f90bd06d631d9
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -112,3 +112,11 @@ At the commit recording this ADR:
   routing section, so cross-section near-neighbours are invisible — two that misroute anyway
   (`diagrams-as-code`↔`github-workflow-automation`, `perplexity-research`↔`web-researcher`) are
   recorded in the ledger rather than fixed, to avoid tuning descriptions to a 40-item test set.
+
+## Re-verification — 2026-09-22 at e1ba33a1c
+
+Governed paths changed since `cb5d34270` only by `f5d71b874` (the vault CLI becomes the
+governed ontology door): two lines of `skills/SKILL-DIRECTORY.md` now describe
+`ontology-augment` as Bash over `vault` and the Loom rather than the retired
+`ontology-bridge` MCP server. No `status:` value, badge rendering, lint rule or route-eval
+behaviour changed; the status contract and measured-discovery decision stand.

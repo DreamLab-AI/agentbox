@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 416a60a437f314b4a6169a61798ba6e0379d816b
+verified_commit: e1ba33a1c972e15b3b333368544f90bd06d631d9
 verified_paths: [crates/sidestr/Cargo.toml, crates/sidestr/*/Cargo.toml, .github/workflows/sidestr-crates.yml]
 owner: jjohare
 review_trigger: the first ratification review of PRD-024; an upstream sidestr spec release that changes the chain document, kinds or marker grammar; any proposal to add a second value rail
@@ -139,3 +139,12 @@ rejecting tests per rule; `sidestr-core` validates the live upstream `sidestr:tx
 published crates; `cargo tree -p sidestr-core -p sidestr-header -p sidestr-nostr -p
 sidestr-wallet | grep -c -E 'rgb|aluvm'` is zero; solid-pod-rs golden
 fixtures (`bitcoin_tx.rs:1113-1210`) byte-identical after the port.
+
+## Re-verification — 2026-09-22 at e1ba33a1c
+
+Governed paths changed since `416a60a43` by two commits, both documentation: `4ed9433b0`
+(the round crate's docs build without the `relay` feature; the workflow documents both
+feature sets) and `e0712bf71` (the inline-docs sweep: docs.rs metadata, `deny(missing_docs)`,
+changelogs, patch bumps to sidestr-core 0.2.2, -header 0.2.1, -nostr 0.2.2, -wallet 0.2.2,
+-round 0.1.1, every earlier version yanked). No dependency, licence or consensus change; the
+decision and its partial implementation status stand.
