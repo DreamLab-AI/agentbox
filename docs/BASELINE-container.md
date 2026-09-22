@@ -335,11 +335,15 @@ cold validator able to replay genesis, because `open()` rebuilds genesis determi
 
 A new Rust workspace on the colloquy precedent (ADR-2085/2086), split by what is reusable:
 
-- **Published, permissive, clean-room** (`MIT OR Apache-2.0`, `publish = true`): `sidestr-core`
-  (chain document, block and transaction validation, overlay rules, records codec),
-  `sidestr-nostr` (kinds and event codecs, its own NIP-01 structs), `sidestr-wallet` (folds, coin
-  selection, key-path spends). Written from the SPEC prose and catalogued wire formats, never from
-  the AGPL JS; each README states that. ADR-2030 applies.
+- **Published, `AGPL-3.0-only`, attributed derivatives of upstream `siding`** (`publish = true`,
+  case by case; ADR-2106, owner decision 2026-09-22, amending ADR-2096's permissive clean-room
+  posture): `sidestr-header`, `sidestr-core` (chain document, block and transaction validation,
+  overlay rules, records codec), `sidestr-nostr` (kinds and event codecs, its own NIP-01
+  structs), `sidestr-wallet` (folds, coin selection, key-path spends). Ported from the upstream
+  code and tests with attribution to Melvin Carvalho's `siding`, the ported commit named in each
+  README and crate-level rustdoc; consumed from crates.io by other estate repositories, which
+  become AGPL-3.0 in effect and say so. Under `crates/`, never `services/`, so ADR-2030's
+  permissive default is untouched; no permissive crate on a crates.io path links them.
 - **Internal** (`publish = false`): `sidestr-producer`, `sidestr-bridge`, `sidestr-mcp`.
 - **The AGPL boundary is a process boundary, not a crate feature.** The upstream JS `siding` runs
   only as the container-internal `[program:sidestr-producer]` until the Rust producer validates the

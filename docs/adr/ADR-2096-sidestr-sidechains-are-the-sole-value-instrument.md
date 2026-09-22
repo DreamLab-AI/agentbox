@@ -42,7 +42,11 @@ instrument and that external assets are bridged in (PRD-024 D0, D3).
    overlay rules, records codec), `sidestr-nostr` (kinds and event codecs, own NIP-01 structs),
    `sidestr-wallet` (folds, coin selection, key-path spends) are `MIT OR Apache-2.0`,
    `publish = true`, written from SPEC prose and the catalogued wire formats, never from the
-   AGPL JS; each README states that. `sidestr-producer`, `sidestr-bridge`, `sidestr-mcp` are
+   AGPL JS; each README states that. **Amended by ADR-2106 (owner decision 2026-09-22):
+   the four crates are `AGPL-3.0-only` derivatives of upstream `siding`, attributed and
+   ported from its code and tests, published case by case and consumed from crates.io;
+   the permissive grant and the prose-only clean-room constraint are withdrawn for them.**
+   `sidestr-producer`, `sidestr-bridge`, `sidestr-mcp` are
    internal (`publish = false`). ADR-2030 applies. The "no `bitcoin` crate" policy of the
    b2mine spec holds for headers and PoW only; D3's rust-bitcoin acceptance governs
    transactions, scripts, sighash and taproot.

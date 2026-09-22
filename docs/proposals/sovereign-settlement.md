@@ -112,7 +112,7 @@ Owner decisions of 2026-09-21, recorded verbatim in intent and made specific bel
 | D0 | Our own sidestr sidechains are the key and only value instrument; assets are bridged in | ADR-2096, ADR-2102 |
 | D1 | Testnet first; mainnet and real USDT only behind an implemented P21 owner-and-legal gate | ADR-2103 |
 | D2 | One root chain, each federated instance a k-of-n signer, ephemeral child chains per session or job that settle on close | ADR-2101 |
-| D3 | Rust clean-room validator and wallet as permissive published crates; rust-bitcoin accepted estate-wide; solid-pod-rs's hand-rolled BIP-341 ported to it; rgb-lib only inside an isolated bridge process; upstream AGPL JS `siding` as the interim producer sidecar | ADR-2096, solid-pod-rs ADR-2008, ADR-2102 |
+| D3 | Rust validator and wallet as published crates, **AGPL-3.0-only derivatives of upstream `siding` with attribution, published case by case and consumed from crates.io (amended 2026-09-22, ADR-2106; "permissive, prose-only clean-room" withdrawn)**; rust-bitcoin accepted estate-wide; solid-pod-rs's hand-rolled BIP-341 ported to it; rgb-lib only inside an isolated bridge process; upstream AGPL JS `siding` as the interim producer sidecar | ADR-2096, ADR-2106, solid-pod-rs ADR-2008, ADR-2102 |
 | D4 | The chain is truth; balances are UTXO folds; the three ledgers become derived views; pay402 gains a `sidestr` scheme | ADR-2099, ADR-2097 |
 | D5 | Lightning-first is dropped ("we have sidestr now"); NWC and L402 are not built | ADR-2097 |
 | D6 | Parent network and header profile are `agentbox.toml` configuration exposed by onboarding, default following upstream (Knots BLAKE2b testnet4); the choice is bound on-seal | ADR-2103 |
@@ -202,9 +202,9 @@ Numbered so ADRs, tests and the DDD invariants can cite them. "Must" is testable
   decoder returns `Ambiguous` rather than guessing; `sidestr-core` has no I/O dependency.
 - **S3** `sidestr-header` (both header profiles and PoW, RustCrypto only, no rust-bitcoin,
   absorbing the specced b2mine codec), `sidestr-core`, `sidestr-nostr` and `sidestr-wallet` are
-  clean-room from SPEC prose and the catalogued wire formats, `MIT OR Apache-2.0`,
-  `publish = true`, full rustdoc, `cargo doc --no-deps` clean. Nothing on a crates.io path
-  links AGPL code.
+  ported from upstream `siding` with attribution, `AGPL-3.0-only` (ADR-2106; was
+  `MIT OR Apache-2.0` clean-room from prose), `publish = true` case by case, full rustdoc,
+  `cargo doc --no-deps` clean. No permissive crate on a crates.io path links them.
 - **S3a** The estate runs three kinds of chain: the value root, the `sidestr:gitmark`
   provenance chain (our own product; `[sidechain].gitmark.mode = consume | operate`), and
   ephemeral children. Provenance anchors (`txo[]`) go to gitmark, never to the value chain.
