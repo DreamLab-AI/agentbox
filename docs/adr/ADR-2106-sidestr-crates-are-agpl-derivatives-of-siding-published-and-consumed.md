@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fc202907bc6d5285c968b5302d9e024d16af53e3
+verified_commit: 74254cc424defbf476d586e8a7f6422b7f71cd33
 verified_paths: [crates/sidestr/*/Cargo.toml, crates/sidestr/*/README.md, crates/sidestr/*/LICENSE]
 owner: jjohare
 review_trigger: the first `cargo publish` of a `sidestr-*` crate; upstream sidestr relicensing or a dual grant from its author; any proposal to link a `sidestr-*` crate from a permissive crate

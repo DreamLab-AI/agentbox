@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: fc202907bc6d5285c968b5302d9e024d16af53e3
+verified_commit: 74254cc424defbf476d586e8a7f6422b7f71cd33
 verified_paths: [crates/sidestr/Cargo.toml, crates/sidestr/*/Cargo.toml, .github/workflows/sidestr-crates.yml]
 owner: jjohare
 review_trigger: the first ratification review of PRD-024; an upstream sidestr spec release that changes the chain document, kinds or marker grammar; any proposal to add a second value rail
@@ -109,8 +109,17 @@ across the workspace with accept-and-reject tests per rule; `sidestr-core` repla
 block 1 with the reference both ways; `sidestr-wallet`'s spend and burn are mined by both
 engines; `sidestr-nostr`'s eleven oracle events are byte-identical to the reference's;
 `cargo doc --no-deps` with warnings as errors is clean; `cargo tree` over the four shows no
-`rgb` or `aluvm`. Not yet: the BLAKE2b live-chain replay (core 0.2 step 2), level 2, the
-solid-pod-rs port. Ratification evidence remains: `cargo test -p sidestr-core` green with
+`rgb` or `aluvm`. **0.2.0 (same day, `74254cc42`, audited anti-fox by GPT-6 Astra with
+five counter-examples fixed before release):** core is generic over the header family and
+`sidestr-header` implements its trait, so the BLAKE2b arm replays the live `sidestr:txbt4-siding`
+and `sidestr:melchain` chains from genesis to their announced tips with every rule on (S1 for
+those chains; `txbt4-fed` and `gitmark` carry rules D5 excludes and are refused by design);
+level 2's pure parts (federation derivation, partial signatures, witness assembly, a
+script-path verifier for the `multi_a` template, federated genesis) are in core, byte-identical
+to siding's for a 2-of-3 genesis; the parent view is behind an RPC trait with a read-only live
+test on the estate node. Not yet: the round (`sidestr-round`, in progress, wire-compatible with
+upstream's level-2 protocol; the BFT redesign of ADR-2101's consultant review is a later
+crate), the solid-pod-rs port. Ratification evidence remains: `cargo test -p sidestr-core` green with
 rejecting tests per rule; `sidestr-core` validates the live upstream `sidestr:txbt4-fed` and
 `sidestr:gitmark` chains to the JS explorer's tip hash; `cargo doc --no-deps` clean on the four
 published crates; `cargo tree -p sidestr-core -p sidestr-header -p sidestr-nostr -p

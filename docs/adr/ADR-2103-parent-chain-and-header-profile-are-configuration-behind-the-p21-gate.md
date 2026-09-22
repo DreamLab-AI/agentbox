@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: fc202907bc6d5285c968b5302d9e024d16af53e3
+verified_commit: 74254cc424defbf476d586e8a7f6422b7f71cd33
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/README.md, tests/config/sidechain-genesis.test.sh]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation
