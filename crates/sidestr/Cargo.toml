@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = [
+    # The consensus core: chain document, parents table, stock-header blocks,
+    # the sidestr overlay rules, the block file and an in-memory chain. A port
+    # of siding (github.com/sidestr/spec, AGPL-3.0). Publishable, AGPL-3.0-only
+    # (ADR-2106).
+    "sidestr-core",
+    # Both header families (stock 80-byte SHA-256d, Knots 164-byte v2 BLAKE2b), their
+    # proof-of-work hashes and the BIP-325 block data; no_std, RustCrypto only (ADR-2096 D2).
+    "sidestr-header",
+    # Later: sidestr-nostr (tips, transactions and rule documents as events), sidestr-wallet.
+]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.85"
+repository = "https://github.com/DreamLab-AI/agentbox"
+authors = ["DreamLab AI"]
+
+[workspace.dependencies]
+# Consensus serialisation, hashes, merkle roots, the taproot sighash and, via
+# its re-export, secp256k1 with BIP-340 Schnorr. Never hand-rolled (ADR-2096 D3).
+bitcoin = { version = "0.32", features = ["std"] }
+bech32 = "0.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+hex = "0.4"
+thiserror = "2"

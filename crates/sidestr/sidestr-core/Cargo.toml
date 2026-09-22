@@ -1,0 +1,33 @@
+[package]
+name = "sidestr-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+authors.workspace = true
+license = "AGPL-3.0-only"
+description = "sidestr user-activated sidechains beside a Bitcoin-family parent: the chain document, the parents table, signed stock-header blocks (BIP-325 challenge, no subsidy), the peg-in claim and peg-out burn rules, the block file and an in-memory validating chain. A port of siding by Melvin Carvalho."
+readme = "README.md"
+documentation = "https://docs.rs/sidestr-core"
+keywords = ["bitcoin", "sidechain", "sidestr", "signet", "consensus"]
+categories = ["cryptography::cryptocurrencies", "encoding"]
+publish = true
+include = ["src/**", "tests/**", "examples/**", "fixtures/**", "README.md", "LICENSE", "Cargo.toml"]
+
+[features]
+default = ["std"]
+# The pieces that touch the operating system: the block file on disk, the
+# file-backed chain and the system clock. Everything else is pure.
+std = []
+
+[dependencies]
+bitcoin = { workspace = true }
+bech32 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
