@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 6669e9f3b22af1e2b651037cf39a4a551a346d3f
+verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
 verified_paths: [config/claude-plugins/jev-compaction/hooks/jev-compaction.ts, config/claude-plugins/jev-compaction/hooks/policy.mjs, config/entrypoint-unified.sh, lib/claude-code-binary.nix, tests/config/jev-compaction-policy.test.mjs]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, or a request to fence a class other than email
@@ -181,3 +181,7 @@ still has not been loaded by a booted image.
 ### Re-verified 2026-09-21 at 6669e9f3b22af1e2b651037cf39a4a551a346d3f
 
 One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk: `git diff 1639f86ab..6669e9f3b -- config/entrypoint-unified.sh` is 6 insertions and 1 deletion, all of them `#` lines. The ShellCheck directive above the jev-compaction plugin install carried its rationale inside the directive, which SC1125 rejects and which made ShellCheck ignore the whole directive; the rationale is now a separate comment above a bare `# shellcheck disable=SC2086`. No executable line changed anywhere in the file, and the shell ignores comments, so runtime behaviour is byte-identical. The hunk IS in this decision's block, which is why it is re-verified most carefully: the executed line is still `run_as_devuser env HOME=/home/devuser timeout 120 claude plugin install jev-compaction@agentbox $_JC_ARGS`, with `$_JC_ARGS` still deliberately unquoted so each `--config KEY=VALUE` pair is a separate word, and the userConfig keys are still filtered against the plugin manifest before projection. Only the ShellCheck comment above it changed; the suppression it was written for is now actually in force, where before the directive was being discarded. Claim STILL TRUE.
+
+## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
+
+**Governed changes:** `config/entrypoint-unified.sh`: exports `VAULT_REPO` (from `[vault].repo`, else derived from `VAULT_ROOT`; empty when unresolvable so the management API fails closed) and adds it to the vault-disabled `unset` list. Nothing else in boot order, gating or service start changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.

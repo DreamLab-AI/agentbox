@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 6669e9f3b22af1e2b651037cf39a4a551a346d3f
+verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -119,3 +119,7 @@ Re-read at HEAD in a detached worktree: the projection is intact and unchanged i
 ### Re-verified 2026-09-21 at 6669e9f3b22af1e2b651037cf39a4a551a346d3f
 
 One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk: `git diff 1639f86ab..6669e9f3b -- config/entrypoint-unified.sh` is 6 insertions and 1 deletion, all of them `#` lines. The ShellCheck directive above the jev-compaction plugin install carried its rationale inside the directive, which SC1125 rejects and which made ShellCheck ignore the whole directive; the rationale is now a separate comment above a bare `# shellcheck disable=SC2086`. No executable line changed anywhere in the file, and the shell ignores comments, so runtime behaviour is byte-identical. The consultant projection block (model selection read from the manifest at boot, environment winning, dated tariffs) is untouched: the hunk is in the jev-compaction plugin phase, hundreds of lines away, and none of its lines execute. Claim STILL TRUE.
+
+## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
+
+**Governed changes:** `config/entrypoint-unified.sh`: exports `VAULT_REPO` (from `[vault].repo`, else derived from `VAULT_ROOT`; empty when unresolvable so the management API fails closed) and adds it to the vault-disabled `unset` list. Nothing else in boot order, gating or service start changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.

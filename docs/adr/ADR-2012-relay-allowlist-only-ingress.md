@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ab785f08c00b443db44b8b8a6a501b085ce4d0be
+verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -208,3 +208,7 @@ Tripped by feature blocks added to `agentbox.toml` (colloquy, jev-compaction, sk
 Tripped by `agentbox.toml` alone (`b680a7ae`, ADR-2094 Sovereign System One); `flake.nix` is unchanged since the previous anchor. `git diff b680a7ae..HEAD -- agentbox.toml flake.nix` shows one addition: a `[features.sovereign_system_one]` block with `enabled = false`. It adds no publisher, no relay mode and no ingress path — the allowlist sections this record governs are untouched. Re-read at HEAD in a detached worktree: relay ingress policy and the 64-hex allowlist are as recorded, `agent_event_auth = "nip98"` stands, and nothing auto-inserts the operator pubkey. Claim STILL TRUE.
 
 **2026-09-21 re-verified at `ab785f08c`.** Governed paths changed by the ADR-2105 kind move: agentbox.toml. This record governs `[sovereign_mesh.relay]` directly, so the diff was read in full: `ingress_policy = "allowlist"` (`agentbox.toml:151`) and `allowed_pubkeys` (`:157`) are untouched, and the only change is six kind numbers (38410-38415) appended to `allowed_kinds` with an explanatory comment. `allowed_kinds` widens *what* an already-admitted publisher may write, never *who* may write; the allowlist-only admission decision and its invariant hold unchanged. Re-verified by `git diff 1639f86ab..224afae65 -- agentbox.toml flake.nix`.
+
+## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
+
+**Governed changes:** `agentbox.toml`: `[vault]` gains the optional `repo` key (the vault repository root, exported as `VAULT_REPO`); `format` comments now state `obsidian` is the only value; one comment reworded ("logseq corpus" → "vault corpus"). `flake.nix`: statix lint only — assignment→`inherit` (with `or` defaults preserved as `inherit ({ defaults } // cfg)`), redundant parentheses dropped, `(x or false) == true` rewritten as `let v = x or false; in builtins.isBool v && v` (same result for every input), and one comment reworded ("logseq corpus" → "vault corpus"). No derivation, port, service, gate or package changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.

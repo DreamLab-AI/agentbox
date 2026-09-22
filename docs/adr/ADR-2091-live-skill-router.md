@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 6669e9f3b22af1e2b651037cf39a4a551a346d3f
+verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -128,3 +128,7 @@ Three decision points were touched and each was re-established against the code 
 ### Re-verified 2026-09-21 at 6669e9f3b22af1e2b651037cf39a4a551a346d3f
 
 One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk: `git diff 1639f86ab..6669e9f3b -- config/entrypoint-unified.sh` is 6 insertions and 1 deletion, all of them `#` lines. The ShellCheck directive above the jev-compaction plugin install carried its rationale inside the directive, which SC1125 rejects and which made ShellCheck ignore the whole directive; the rationale is now a separate comment above a bare `# shellcheck disable=SC2086`. No executable line changed anywhere in the file, and the shell ignores comments, so runtime behaviour is byte-identical. The entrypoint's role here is registering config/hooks/skill-route.cjs on UserPromptSubmit and inlining model/timeout/min-chars; none of those lines is in the hunk, and the hook, the /route script and tests/config/skill-route.test.js did not move. (Separately, the ADR-2091 gate is now correctly catalogued: 8302d8f4d moved the system-manifest entry from the section `skills.routing` to the mode string `skills.routing.router`, which does not change this decision's mechanism, only how /v1/system reports it.) Claim STILL TRUE.
+
+## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
+
+**Governed changes:** `config/entrypoint-unified.sh`: exports `VAULT_REPO` (from `[vault].repo`, else derived from `VAULT_ROOT`; empty when unresolvable so the management API fails closed) and adds it to the vault-disabled `unset` list. Nothing else in boot order, gating or service start changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.

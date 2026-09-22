@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1639f86abded1441ce148d6c47924dfaf34f96af
+verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -159,3 +159,7 @@ Existing runtime activation limits remain. Verification is renewed at
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Gate tripped by unrelated churn in `flake.nix` and `config/nip98-proxy/proxy.mjs` (`de37998a8` NIP-07 session probe + token redaction, `cae729aa7` per-route `preserve_host`); neither touches the token boundary. Re-established against committed `HEAD`: `git show HEAD:flake.nix | grep -n "aoe serve"` → `:2411 aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port 9095`; `git show HEAD:config/nip98-proxy/proxy.mjs` still fails closed with no daemon token on both paths — `503` at `:1008` (HTTP) and `:1107` (`HTTP/1.1 503` on the WS upgrade, written **before** connecting), with the read-then-stat torn-read retry at `:281-292`. `scripts/aoe-curl.sh` unchanged since the previous anchor. Claim STILL TRUE.
+
+## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
+
+**Governed changes:** `flake.nix`: statix lint only — assignment→`inherit` (with `or` defaults preserved as `inherit ({ defaults } // cfg)`), redundant parentheses dropped, `(x or false) == true` rewritten as `let v = x or false; in builtins.isBool v && v` (same result for every input), and one comment reworded ("logseq corpus" → "vault corpus"). No derivation, port, service, gate or package changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.

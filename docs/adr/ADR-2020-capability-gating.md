@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ab785f08c00b443db44b8b8a6a501b085ce4d0be
+verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -155,3 +155,7 @@ The diff adds a new capability, which makes this record the one being *tested* r
 Commands: `git diff b680a7ae..HEAD -- agentbox.toml skills/tree-search-coder/SKILL.md services/agentbox-ops/src/bin/tree-search-cap.rs`; `node scripts/agentbox-config-validate.js agentbox.toml` → `agentbox manifest valid (5 advisory warnings)`, none of them new. Claim STILL TRUE.
 
 **2026-09-21 re-verified at `ab785f08c`.** Governed paths changed by the ADR-2105 kind move: agentbox.toml. The change is a kind-number relocation (colloquy 38100-38105 to 38410-38415, settlement 38110-38115 to 38420-38425) plus six numbers appended to `[sovereign_mesh.relay].allowed_kinds` and a comment above it; it touches no section this record governs. The decision and its invariant hold unchanged. Re-verified by `git diff e57156a8f..224afae65 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
+
+**Governed changes:** `agentbox.toml`: `[vault]` gains the optional `repo` key (the vault repository root, exported as `VAULT_REPO`); `format` comments now state `obsidian` is the only value; one comment reworded ("logseq corpus" → "vault corpus"). **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.

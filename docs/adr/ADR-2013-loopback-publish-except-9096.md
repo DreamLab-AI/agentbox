@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 5763f1014682c4a69175cd2e30528c6a46f80850
+verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -223,3 +223,7 @@ Tripped by `.github/workflows/invariants.yml` (new unrelated steps), `docker-com
 ### Re-verified 2026-09-21 at 5763f1014682c4a69175cd2e30528c6a46f80850
 
 Two governed paths moved, neither touching the exposure surface. `.github/workflows/invariants.yml` gained ONE trigger path, `tests/security/**`, so that editing a gate's own unit test re-runs the job that asserts the rule: the check-ports-loopback and check-listeners steps themselves are unchanged and still run on every push and pull request. `flake.nix` changed only the supervisor restart policy of `[program:agentbox-mcp-hub]` (ADR-2104: `--wait-config-secs 120`, `autorestart=unexpected`, `startsecs=130`, `startretries=2`); its bind is still `--bind ${mcpHubBind}`, loopback, and no publish or listener was added or moved. Re-established at HEAD: `sh scripts/ci/check-ports-loopback.sh` PASSes over every compose overlay, and `node --test tests/security/check-listeners.test.mjs` is 15/15 including the restored non-loopback fixtures. Claim STILL TRUE.
+
+## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
+
+**Governed changes:** `flake.nix`: statix lint only — assignment→`inherit` (with `or` defaults preserved as `inherit ({ defaults } // cfg)`), redundant parentheses dropped, `(x or false) == true` rewritten as `let v = x or false; in builtins.isBool v && v` (same result for every input), and one comment reworded ("logseq corpus" → "vault corpus"). No derivation, port, service, gate or package changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
