@@ -130,6 +130,65 @@ nowhere. The owner chose one root chain with instances as signers and ephemeral 
 - **Hosting redundancy is not custody independence.** Five DreamLab hosts are one operator;
   the fault model and the legal model both say so.
 
+### Consultant review (GPT-6 Astra via codex, 2026-09-22) — corrections and the adopted shape
+
+Full text: `docs/proposals/sovereign-settlement-research/REVIEW-kofn-consensus-gpt6-astra.md`.
+It confirms the conflicting-certificate finding and corrects or sharpens this record:
+
+- **Two thresholds, not one.** `q` (consensus certificate) and `k` (block and peg
+  authorisation) are distinct. Safety needs `2q − n > f` **and** liveness needs `q ≤ n − f`,
+  which together require `n ≥ 3f + 1`; `2k − n > f` alone is not a smaller Byzantine model.
+  For five instances: `q = k = 4`, `f = 1`. A 3-of-5 custody threshold may sit behind 4-of-5
+  consensus only if every honest signer requires a decision certificate before signing.
+  Three instances is a **crash-only** research profile (`f = 0`).
+- **"Never signs two proposals at one height" is over-stated.** Honest replicas may vote for
+  different candidates in different views under the protocol's safe-proposal rule; what is
+  forbidden is a second value in the same `(epoch, view, phase, instance)` slot, breaking a
+  lock, or signing a conflicting *decided* block. The timeout re-signing in upstream's
+  `round.mjs` is still rejected; view change replaces it.
+- **Consensus is a separate protocol above the signature**, with `multi_a(k, n)` kept for 0.2
+  (Bitcoin Core co-signs it natively; MuSig2 is n-of-n and `musig2`/`secp256k1-zkp` are not
+  battle-tested for this; `frost-secp256k1-tr` 3.0.0 is outside the NCC audit's scope).
+  Preference: evaluate Commonware Simplex (`commonware-consensus`, BETA) behind a Nostr
+  transport; otherwise a faithful Basic HotStuff state machine (NEW_VIEW → PREPARE →
+  PRECOMMIT → COMMIT → DECIDE, no pipelining) with durable `SafetyState`; never a bespoke
+  "two votes plus a timeout". `openraft` only for a declared crash-only profile.
+- **Two decisions per block.** Because `seal_block` recomputes the merkle root and grinds a
+  nonce after the witness is inserted, the unsigned template's identity is not the sealed
+  block's hash, and different valid witness subsets give different hashes. Consensus therefore
+  decides `AUTHORISE_TEMPLATE` (signers release BIP-325 signatures only for it; any `k` valid
+  signatures seal) and then `FINALISE_BLOCK` (the exact sealed hash). External release and the
+  next height use the finalised hash. A signing subset is never chosen before signatures exist.
+- **Nostr wire profile.** Kinds 23510 to 23514 are ephemeral under NIP-01 and `chain` is not
+  an indexed tag; protocol records need regular stored kinds in the estate's own band with
+  single-letter routing tags, a canonical signed payload (protocol version, scope, epoch and
+  configuration hash, instance and height, view and phase, candidate and predecessor digests,
+  justification digest, logical signer id and incarnation), an outer transport signature and
+  an inner consensus signature, certificates persisted locally and re-published, fetch by
+  digest, and no `since` or `created_at` rule in the safety path.
+- **Finality proof** = genesis and profile, configuration chain, template decision
+  certificate, sealed header and template binding, `FINALISE_BLOCK` certificate, inclusion
+  proof. A QC is not a proof of UTXO execution; a light client still trusts the federation's
+  validity attestations. Next-coinbase embedding is archival reinforcement, not finality.
+  Peg-out is an ordered payment intent with a durable payout state machine; "one signature
+  per burn" is replaced by an exclusivity rule that survives fee replacement.
+- **A journal counter is not anti-rollback.** The safety journal and signing authority live in
+  a signer service whose state is not restored with the application host; it enforces slots,
+  locks, decision checks, payout policy and incarnation fencing itself. A generic sign-digest
+  endpoint is insufficient. Parent custody fencing ultimately means key isolation or moving
+  funds. Under an isolated view, recovery halts.
+- **Custody role.** Under the "same descriptor" convention the block challenge and the peg
+  output necessarily share keys, so federation block-and-peg authorisation is **one** custody
+  role, independent of identity and of bridge custody; distinct block and peg descriptors are
+  a later profile change. Derivation via `bitcoin::bip32` hardened paths with the full recovery
+  package (descriptor and checksum, key order, origins, NUMS derivation, tree, epochs, network,
+  scan birthday, outstanding custody state). Signer changes are ordered transitions with a
+  joint old-and-new handoff; a future-height rule document alone is insufficient.
+- **What may wait on testnet:** HSMs, independent operators, DKG, aggregation, parent
+  checkpointing, a production disaster-recovery service. **What may not:** durable votes,
+  removal of timeout re-signing, the conflicting-certificate test, and the validity-versus-
+  finality distinction.
+
 ## Consequences
 
 Every federated instance becomes a co-custodian of the root chain's value; if the federation
