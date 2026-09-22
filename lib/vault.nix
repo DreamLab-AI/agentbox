@@ -18,7 +18,7 @@
 # flake may not read a path outside its own source tree, so `src = ../../crates/vault`
 # is not an option: it evaluates to a path Nix refuses to copy into the store.
 #
-# So the source arrives as a flake INPUT (`vaultSrc`, `flake = false`), exactly
+# So the workspace source arrives as a flake INPUT (`vaultSrc`, `flake = false`), exactly
 # the mechanism `skills` already uses for the skills corpus, and the derivation
 # below takes it as an argument. That keeps three properties:
 #
@@ -28,14 +28,15 @@
 #   2. The pin is content-addressed: flake.lock records the narHash, so the
 #      image's `vault` is a specific tree, and `nix flake metadata` says which.
 #   3. Repointing is one line. When the crate is pushed, flip the input to
-#      `github:DreamLab-AI/VisionClaw/<rev>?dir=crates/vault` and nothing here
-#      changes — `src` is still just the input.
+#      `github:DreamLab-AI/VisionClaw/<rev>` and nothing here changes — `src`
+#      is still just the input. The whole workspace is required because vault
+#      uses the root Cargo.lock and its sibling vault-core crate.
 #
 # The input is declared in flake.nix. To build against an uncommitted working
 # tree instead of the pin:
 #
 #   nix build .#packages.x86_64-linux.vault \
-#     --override-input vaultSrc path:/home/devuser/workspace/project/crates/vault
+#     --override-input vaultSrc path:/home/devuser/workspace/project
 #
 # cargoLock
 # ---------
@@ -63,7 +64,7 @@ pkgs.rustPlatform.buildRustPackage {
   pname = "vault";
   inherit version;
 
-  # `src` is the flake input (crates/vault). Strip build detritus so a stray
+  # `src` is the pinned VisionClaw workspace. Strip build detritus so a stray
   # target/ in an overridden working tree cannot change the derivation hash.
   src = lib.cleanSourceWith {
     inherit src;
@@ -71,6 +72,7 @@ pkgs.rustPlatform.buildRustPackage {
   };
 
   cargoLock.lockFile = src + "/Cargo.lock";
+  buildAndTestSubdir = "crates/vault";
 
   doCheck = true;
 

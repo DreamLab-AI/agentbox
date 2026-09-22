@@ -245,7 +245,6 @@
     "vaultSrc": {
       "flake": false,
       "locked": {
-        "dir": "crates/vault",
         "lastModified": 1790097190,
         "narHash": "sha256-/31gCXwOO7o6Qzqkq41yDzbwsUeAvnD/wS+SE2CKhUQ=",
         "owner": "DreamLab-AI",
@@ -254,7 +253,6 @@
         "type": "github"
       },
       "original": {
-        "dir": "crates/vault",
         "owner": "DreamLab-AI",
         "repo": "VisionClaw",
         "rev": "f9720fbcb8152d6cf569300285c4d5c59bdb1700",
