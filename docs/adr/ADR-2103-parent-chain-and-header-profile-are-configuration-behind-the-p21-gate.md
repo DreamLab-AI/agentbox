@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: f04a496ab321282b5af5200350ab4525475ce237
+verified_commit: fc202907bc6d5285c968b5302d9e024d16af53e3
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/README.md, tests/config/sidechain-genesis.test.sh]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation
@@ -209,11 +209,13 @@ Meeting the real engine corrected three claims in this record:
   `[sidechain]` block cannot be added to `agentbox.toml` without the schema change; the
   projector's validation of `parent` (D1) and the boot-time document-versus-manifest check
   (D3) are therefore unimplemented and the sealed document is the only source of the parent.
-- **D2's `sidestr-header` crate does not exist.** None of `sidestr-header`, `sidestr-core`,
-  `sidestr-nostr` or `sidestr-wallet` is on crates.io; the "SHA-256d arm proven against the
-  reference implementation" is now possible (the reference produces stock headers since
-  0.0.2) but has no Rust side to prove. The independent check on this genesis is the raw
-  header hash, not a Rust validator.
+- **D2's `sidestr-header` crate did not exist at the seal.** None of `sidestr-header`,
+  `sidestr-core`, `sidestr-nostr` or `sidestr-wallet` was on crates.io that morning, so the
+  independent check on the genesis was the raw header hash. **Closed the same day:** all four
+  were published at 0.1.0 (ADR-2106; `crates/sidestr/`), and `sidestr-core` replays this
+  genesis to its hash, reproduces a throwaway genesis byte for byte from its key, and
+  cross-validates block 1 with the reference in both directions; `sidestr-header` hashes
+  block 0 and the live txbt4 and xbt fork headers.
 
 Implementation is therefore **partial**: the seal exists and is verifiable; D1, D3's pin and
 boot check, D4's CI receipt check (the test enforces only "mainnet alias needs

@@ -3,12 +3,12 @@ id: ADR-2096
 title: Our own sidestr sidechains are the sole value instrument, built clean-room in Rust with rust-bitcoin accepted
 date: 2026-09-21
 decision_status: proposed
-implementation_status: none
+implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: fc202907bc6d5285c968b5302d9e024d16af53e3
+verified_paths: [crates/sidestr/Cargo.toml, crates/sidestr/*/Cargo.toml, .github/workflows/sidestr-crates.yml]
 owner: jjohare
 review_trigger: the first ratification review of PRD-024; an upstream sidestr spec release that changes the chain document, kinds or marker grammar; any proposal to add a second value rail
 repo: agentbox
@@ -102,7 +102,15 @@ licence boundary is now recorded in canon (it was not before).
 
 ## Verification
 
-Proposed; nothing built. Ratification evidence will be: `cargo test -p sidestr-core` green with
+**Partial (2026-09-22):** the four crates exist under `crates/sidestr/` and are published at
+0.1.0 as AGPL-3.0-only attributed ports (ADR-2106 amends the licence): `cargo test` green
+across the workspace with accept-and-reject tests per rule; `sidestr-core` replays the sealed
+`sidestr:dreamlab` genesis, reproduces a throwaway genesis byte for byte and cross-validates
+block 1 with the reference both ways; `sidestr-wallet`'s spend and burn are mined by both
+engines; `sidestr-nostr`'s eleven oracle events are byte-identical to the reference's;
+`cargo doc --no-deps` with warnings as errors is clean; `cargo tree` over the four shows no
+`rgb` or `aluvm`. Not yet: the BLAKE2b live-chain replay (core 0.2 step 2), level 2, the
+solid-pod-rs port. Ratification evidence remains: `cargo test -p sidestr-core` green with
 rejecting tests per rule; `sidestr-core` validates the live upstream `sidestr:txbt4-fed` and
 `sidestr:gitmark` chains to the JS explorer's tip hash; `cargo doc --no-deps` clean on the four
 published crates; `cargo tree -p sidestr-core -p sidestr-header -p sidestr-nostr -p

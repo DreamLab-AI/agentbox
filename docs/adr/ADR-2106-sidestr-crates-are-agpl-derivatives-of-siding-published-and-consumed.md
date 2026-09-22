@@ -3,12 +3,12 @@ id: ADR-2106
 title: The sidestr Rust crates are AGPL-3.0-only derivatives of upstream siding, attributed, published to crates.io and consumed by the estate
 date: 2026-09-22
 decision_status: accepted
-implementation_status: none
-activation_status: inactive
+implementation_status: complete
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: fc202907bc6d5285c968b5302d9e024d16af53e3
+verified_paths: [crates/sidestr/*/Cargo.toml, crates/sidestr/*/README.md, crates/sidestr/*/LICENSE]
 owner: jjohare
 review_trigger: the first `cargo publish` of a `sidestr-*` crate; upstream sidestr relicensing or a dual grant from its author; any proposal to link a `sidestr-*` crate from a permissive crate
 repo: agentbox
@@ -68,7 +68,11 @@ dependency" is not fired by this record; a `services/` crate wanting `sidestr-co
 
 ## Verification
 
-None yet: no `sidestr-*` crate exists. Ratification evidence: `grep -h '^license'
-crates/sidestr/*/Cargo.toml` shows only `AGPL-3.0-only`; every README names the upstream
-repository, author and commit; `cargo doc --no-deps` is clean; no `Cargo.toml` under
-`services/` or in a permissive crate names a `sidestr-*` dependency.
+Complete at `fc202907b` (2026-09-22): all four crates published at 0.1.0. `grep -h '^license'
+crates/sidestr/*/Cargo.toml` shows only `AGPL-3.0-only`; each `LICENSE` is byte-identical to
+the repository root's; every README names the upstream repository, author and the ported
+commit (`sidestr/spec@2de40bd`); `RUSTDOCFLAGS=-D warnings cargo doc --no-deps` is clean on
+all four; no `Cargo.toml` under `services/` or in a permissive crate names a `sidestr-*`
+dependency; each `cargo publish` was run by the session under the owner's standing
+approval of 2026-09-22, with wallet and nostr first verified to build and test against
+`sidestr-core` 0.1.0 from the registry rather than the worktree.

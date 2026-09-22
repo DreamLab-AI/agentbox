@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e57156a8ff72a4b84145b7de1d67d8d0c79fd41d
+verified_commit: fc202907bc6d5285c968b5302d9e024d16af53e3
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -295,3 +295,7 @@ was written. Fixed in `e57156a8f`. Re-established at `e57156a8f` in a detached
 worktree (not the working tree): `check-crate-licensing.sh` → "10 services/ package
 directories carry the texts they declare", exit 0; `git ls-files 'services/*/Cargo.toml'`
 returns the same 10 manifests the gate covers. Claim STILL TRUE at this commit.
+
+Re-verified 2026-09-22 at `fc202907b` after `docs/developer/licensing.md` gained the
+`crates/sidestr/` section (ADR-2106): the `services/` rule and gate are unchanged;
+`scripts/ci/check-crate-licensing.sh` still reports the ten `services/` package directories.
