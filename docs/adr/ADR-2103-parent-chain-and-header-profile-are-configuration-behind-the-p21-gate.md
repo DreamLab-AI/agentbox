@@ -3,12 +3,12 @@ id: ADR-2103
 title: The parent network and header profile are manifest configuration exposed by onboarding, bound into the chain document at genesis, with mainnet variants behind an implemented owner-and-legal gate
 date: 2026-09-21
 decision_status: proposed
-implementation_status: none
+implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: f04a496ab321282b5af5200350ab4525475ce237
+verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/README.md, tests/config/sidechain-genesis.test.sh]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation
 repo: agentbox
@@ -180,6 +180,45 @@ the parent's family: stock headers beside `btc` or `tbtc4`, v2 BLAKE2b headers b
   `sidestr/spec@53f91f9`**, so the producer's half is upstream and the estate pins
   `sidestr/spec` at or after that commit; the explorer follow-up is still open, so the
   estate pins `jjohare/explorer@header-profile` until it lands.
+
+### The first seal (2026-09-22) and what it corrected
+
+`sidestr:dreamlab` was sealed beside `tbtc4` by the merged upstream engine: genesis
+`4db37517728bd509c0cb96ee5a2e3e2a77f9e965a092e9f67948b413d453dbc0`, signer
+`7092810a05359b29acfa1f884d0e1a8e0290309e1133198b0f059447a4c76d62`, prefix `drm`, level 1,
+depth 0, no pegs. Block 0 is 320 bytes with an 80-byte stock header, version `0x20000000`
+(bit 31 clear), `bits` at `powLimit`, `prev` zero, header time equal to `genesisTime`; the
+engine replays it cold and an engine-free check hashes the header to the document
+(`tests/config/sidechain-genesis.test.sh`). The document is `config/sidechain/dreamlab/chain.json`;
+the signer key is in the `agentbox-secrets` volume at mode 0400, never in `identity.env` and
+not derived from the identity key (ADR-2101 D3); the block file is under `$WORKSPACE/sidestr/`.
+Meeting the real engine corrected three claims in this record:
+
+- **The Context overstated what the genesis commits to.** Upstream's genesis
+  (`siding/lib/chain.mjs` `buildGenesis`) commits the chain id (as the coinbase marker), the
+  pegs, `genesisTime` and the signer's witness. It does not commit `parent`, `comment`,
+  `signers` or any containment field, so D3's "bound on-seal" is not yet true of any field
+  but those four. The document carries `depth`, `containment` and `containmentDigest`
+  (SHA-256 over the JCS form) as the estate's fields; the coinbase `pin:` record that would
+  commit the digest is unbuilt, and until it is, the binding of parent and containment is
+  the committed document plus its `genesisHash`. Building the pin is a change to genesis
+  construction and therefore an upstream proposal (a second marker push in the coinbase),
+  not a local overlay.
+- **D1's manifest block is not yet expressible.** `schema/agentbox.toml.schema.json` sets
+  `additionalProperties: false` at the top level and has no `sidechain` entry, so the
+  `[sidechain]` block cannot be added to `agentbox.toml` without the schema change; the
+  projector's validation of `parent` (D1) and the boot-time document-versus-manifest check
+  (D3) are therefore unimplemented and the sealed document is the only source of the parent.
+- **D2's `sidestr-header` crate does not exist.** None of `sidestr-header`, `sidestr-core`,
+  `sidestr-nostr` or `sidestr-wallet` is on crates.io; the "SHA-256d arm proven against the
+  reference implementation" is now possible (the reference produces stock headers since
+  0.0.2) but has no Rust side to prove. The independent check on this genesis is the raw
+  header hash, not a Rust validator.
+
+Implementation is therefore **partial**: the seal exists and is verifiable; D1, D3's pin and
+boot check, D4's CI receipt check (the test enforces only "mainnet alias needs
+`p21Receipt`") and the faucet compile-out are not built. Nothing was announced to a relay
+and no producer runs.
 
 ## Consequences
 
