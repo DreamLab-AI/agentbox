@@ -63,7 +63,7 @@ const BASELINE = [
       'sovereign_mesh.git.read_public', 'sovereign_mesh.multi_user.enabled',
       'llm_marketplace.auto_advertise', 'desktop.webgpu',
       'skills.ruvnet_brain.auto_ingest', 'skills.ruvnet_brain.grounding_hook',
-      'skills.ontology.direct_axiom_load', 'skills.ontology.local_authoring',
+      'skills.ontology.direct_axiom_load',
       'skills.ontology.condense.enabled', 'skills.ontology.condense.schedule_enabled',
       'skills.browser.playwright', 'skills.browser.qe_browser',
       // ADR-2085 Stop-hook knob under the catalogued `skills.colloquy` gate: it
