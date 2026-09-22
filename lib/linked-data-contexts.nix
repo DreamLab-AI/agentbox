@@ -214,8 +214,7 @@ let
   # Fetch a remote context document via fetchurl (FOD; sandbox-permitted
   # because outputHash is declared via sha256).
   fetchRemote = entry: pkgs.fetchurl {
-    inherit (entry) url sha256;
-    name = entry.name;
+    inherit (entry) url sha256 name;
   };
 
   # Materialise an in-tree context document (no network).
@@ -239,12 +238,7 @@ let
     generatedBy = "lib/linked-data-contexts.nix";
     pinnedAt = "2026-04-25";
     entries = map (e: {
-      iri = e.iri;
-      name = e.name;
-      vocabulary = e.vocabulary;
-      authors = e.authors;
-      status = e.status;
-      surfaces = e.surfaces;
+      inherit (e) iri name vocabulary authors status surfaces;
     }) catalogue;
   };
 

@@ -30,7 +30,7 @@ let
     config.allowUnfree = true;
     config.permittedInsecurePackages = [ "python3.12-ecdsa-0.19.1" ];
   };
-  lib        = pkgs.lib;
+  inherit (pkgs) lib;
   npmCliLib  = import ../lib/npm-cli.nix { inherit lib pkgs; };
 in
   (npmCliLib.makeNpmCli {

@@ -159,7 +159,7 @@ let
       # Lead with 13.2; promote to 13.3 once nixpkgs completes its packaging.
       cudaSetUsable = setName:
         pkgs ? ${setName}
-        && (builtins.tryEval (pkgs.${setName}.cuda_cccl.outPath)).success;
+        && (builtins.tryEval pkgs.${setName}.cuda_cccl.outPath).success;
       extendedCudaSet =
         if cudaSetUsable "cudaPackages_13_2" then pkgs.cudaPackages_13_2
         else if cudaSetUsable "cudaPackages_13_1" then pkgs.cudaPackages_13_1

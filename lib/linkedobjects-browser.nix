@@ -53,8 +53,7 @@ let
   # the Nix ''...'' string (unindented content resets the strip-level).
   buildInfoJson = builtins.toJSON {
     name     = "linkedobjects-browser";
-    version  = version;
-    rev      = rev;
+    inherit version rev;
     homepage = "https://github.com/linkedobjects/browser";
     license  = "AGPL-3.0-only";
     source   = "https://github.com/linkedobjects/browser/tree/${rev}";

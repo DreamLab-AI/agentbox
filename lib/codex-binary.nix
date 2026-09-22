@@ -55,7 +55,7 @@ in
       asset = assetFor system;
       tarball = pkgs.fetchurl {
         url    = "${baseUrl}/${asset.name}";
-        sha256 = asset.sha256;
+        inherit (asset) sha256;
       };
     in
     pkgs.stdenv.mkDerivation {

@@ -67,7 +67,7 @@ in
       asset = assetFor system;
       binary = pkgs.fetchurl {
         url    = "https://downloads.claude.ai/claude-code-releases/${claudeCodeVersion}/${platform}/claude";
-        sha256 = asset.sha256;
+        inherit (asset) sha256;
       };
     in
     pkgs.stdenv.mkDerivation {
