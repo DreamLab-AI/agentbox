@@ -24,9 +24,10 @@ pub enum Error {
         /// The human label from the table.
         label: &'static str,
     },
-    /// The parent's header family is not implemented by this crate version
-    /// (the BLAKE2b v2 header is `sidestr-header`'s job, SPEC 3).
-    #[error("header family {0:?} is not carried by sidestr-core 0.1: only the stock 80-byte header (parents btc, tbtc4)")]
+    /// The document's parent hands down a header family other than the one
+    /// this state or chain is instantiated for (SPEC 3): a `State` over
+    /// `Stock` refuses a `txbt4` document, a `StateOf<Blake2bV2>` a `tbtc4` one.
+    #[error("the document's parent hands down the {0:?} header family, not the one this validator is instantiated for (SPEC 3.2: stock for btc/tbtc4, BLAKE2b for xbt/txbt4)")]
     UnsupportedFamily(Family),
     /// The chain document is malformed or names something this validator lacks.
     #[error("chain document: {0}")]
@@ -66,6 +67,16 @@ pub enum Error {
     /// too long for one push, a key that is not the challenge's).
     #[error("{0}")]
     Block(String),
+    /// A federation that cannot be built or used: signers out of range, a
+    /// duplicate signer, too few signatures, a key that is not a signer, or
+    /// `produce()` on a chain whose blocks come from a round.
+    #[error("federation: {0}")]
+    Federation(String),
+    /// The parent view: a node that cannot be reached or answers badly, a
+    /// cookie the node refuses, a script with no parent address, a
+    /// checkpoint over the data limit.
+    #[error("parent: {0}")]
+    Parent(String),
     /// A secp256k1 failure: a bad key, a message that is not 32 bytes.
     #[error("secp256k1: {0}")]
     Secp(#[from] bitcoin::secp256k1::Error),
@@ -73,6 +84,12 @@ pub enum Error {
     #[cfg(feature = "std")]
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
+    /// The block file and its index disagree (feature `std`): an index entry
+    /// that runs past the end of `blocks.dat`, or a record whose
+    /// `[u32 height][u32 size]` prefix is not what the index entry says.
+    #[cfg(feature = "std")]
+    #[error("block file: {0}")]
+    BlockFile(String),
 }
 
 /// `Result` with this crate's [`Error`].

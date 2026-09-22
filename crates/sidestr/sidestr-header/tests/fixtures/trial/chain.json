@@ -1,0 +1,19 @@
+{
+ "id": "sidestr:trial",
+ "name": "trial",
+ "parent": "tbtc4",
+ "comment": "A sidestr chain beside Bitcoin testnet4, made 2026-09-22. Level 1: one signer. Coins with no value.",
+ "challenge": "512098b4e74305dac5ce76d5bee8e57a71549a27618a0e51b3bada3074fcba02325b",
+ "powLimit": "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+ "addressPrefix": "trl",
+ "magic": "a8f6706f",
+ "pegConfirmations": 6,
+ "refundBlocks": 10000,
+ "pegoutBlocks": 144,
+ "pegoutMin": 10000,
+ "minFeeRate": 1,
+ "genesisTime": 1790076612,
+ "pegs": [],
+ "signer": "98b4e74305dac5ce76d5bee8e57a71549a27618a0e51b3bada3074fcba02325b",
+ "genesisHash": "0bdfdb3194f067d15b7a1cfa865de391b7ac00e1970863946d143e7329784402"
+}

@@ -1,0 +1,30 @@
+{
+ "id": "sidestr:fedtest",
+ "name": "fedtest",
+ "parent": "tbtc4",
+ "comment": "A throwaway 2-of-3 federated chain (level 2) for the sidestr-core federation oracle; keys disposable.",
+ "challenge": "512082a23c18f7e12d180ed51eb895cdd49e0f6a1432cd08b791a32ed0664607fdcc",
+ "powLimit": "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+ "addressPrefix": "fed",
+ "magic": "a8f6706f",
+ "pegConfirmations": 6,
+ "refundBlocks": 10000,
+ "pegoutBlocks": 144,
+ "pegoutMin": 10000,
+ "minFeeRate": 1,
+ "genesisTime": 1790000000,
+ "pegs": [
+  {
+   "txid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "vout": 0,
+   "amount": 5000000000,
+   "script": "5120823a0785da0bb0beef8438e3e2c2712130d5a6013fb5e2ba678b8bd47da46942"
+  }
+ ],
+ "signers": [
+  "823a0785da0bb0beef8438e3e2c2712130d5a6013fb5e2ba678b8bd47da46942",
+  "5be065559f0ad67dcdb3dec4269b16182b6a6c21a052a56ddfc94a4023b19098",
+  "129f5ebe6a365acceef416fcf77d2b487bcaef6e36c737d6f5dd5fbf68af1681"
+ ],
+ "threshold": 2
+}

@@ -23,7 +23,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 /// The per-block header in the file: height and size, both `u32le`.
 pub const HEADER: u64 = 8;
@@ -125,10 +125,43 @@ pub fn truncate_from(dat: impl AsRef<Path>, index: &mut Index, height: u32) -> R
     Ok(())
 }
 
-/// The block bytes an entry points at.
+/// The block bytes an entry points at, with the record's framing held to
+/// the index: the entry's `offset + 8 + size` must lie within the file
+/// (checked arithmetic, so a corrupt offset cannot wrap), and the record's
+/// own `[u32 height][u32 size]` prefix must say what the entry says.
+/// Either disagreement is [`Error::BlockFile`], named; the reference
+/// (`blockfile.mjs readBlock`) reads through the index and never looks at
+/// the prefix.
 pub fn read_block(dat: impl AsRef<Path>, entry: &Entry) -> Result<Vec<u8>> {
     let mut f = File::open(dat)?;
-    f.seek(SeekFrom::Start(entry.offset + HEADER))?;
+    let len = f.metadata()?.len();
+    let end = entry
+        .offset
+        .checked_add(HEADER)
+        .and_then(|o| o.checked_add(u64::from(entry.size)))
+        .ok_or_else(|| {
+            Error::BlockFile(format!(
+                "index entry for height {} overflows: offset {} size {}",
+                entry.height, entry.offset, entry.size
+            ))
+        })?;
+    if end > len {
+        return Err(Error::BlockFile(format!(
+            "index entry for height {} runs past the file: offset {} + 8 + size {} = {end} > {len} bytes",
+            entry.height, entry.offset, entry.size
+        )));
+    }
+    f.seek(SeekFrom::Start(entry.offset))?;
+    let mut prefix = [0u8; HEADER as usize];
+    f.read_exact(&mut prefix)?;
+    let height = u32::from_le_bytes([prefix[0], prefix[1], prefix[2], prefix[3]]);
+    let size = u32::from_le_bytes([prefix[4], prefix[5], prefix[6], prefix[7]]);
+    if height != entry.height || size != entry.size {
+        return Err(Error::BlockFile(format!(
+            "record at offset {} is height {height} size {size}; the index entry says height {} size {}",
+            entry.offset, entry.height, entry.size
+        )));
+    }
     let mut buf = vec![0u8; entry.size as usize];
     f.read_exact(&mut buf)?;
     Ok(buf)
@@ -157,6 +190,41 @@ mod tests {
         let again = read_index(&idx).unwrap().unwrap();
         assert_eq!(again, index);
         assert_eq!(read_block(&dat, &again.blocks[1]).unwrap(), b"one");
+        // the framing is held to the index: a wrong height or size in the entry, an entry past the
+        // end of the file, and an offset that would wrap are each refused by name
+        for (name, entry) in [
+            (
+                "height",
+                Entry {
+                    height: 2,
+                    ..again.blocks[1].clone()
+                },
+            ),
+            (
+                "size",
+                Entry {
+                    size: 2,
+                    ..again.blocks[1].clone()
+                },
+            ),
+            (
+                "past the end",
+                Entry {
+                    size: 4,
+                    ..again.blocks[1].clone()
+                },
+            ),
+            (
+                "offset wraps",
+                Entry {
+                    offset: u64::MAX - 4,
+                    ..again.blocks[1].clone()
+                },
+            ),
+        ] {
+            let e = read_block(&dat, &entry).unwrap_err();
+            assert!(matches!(e, Error::BlockFile(_)), "{name}: {e}");
+        }
         truncate_from(&dat, &mut index, 1).unwrap();
         assert_eq!(
             (

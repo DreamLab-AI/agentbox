@@ -4,36 +4,62 @@
 //! and the state-machine half of `bitcoin-blake/blaketestnode`
 //! `lib/node.mjs` `ChainNode`, for level 1: one signer, no reorgs.
 //!
-//! Nothing here touches a file or a clock: [`State`] is fed blocks and told
-//! the time. The file-backed [`crate::chain::Chain`] wraps it (feature `std`).
+//! Nothing here touches a file or a clock: [`StateOf`] is fed blocks and told
+//! the time. The file-backed [`crate::chain::ChainOf`] wraps it (feature `std`).
 //!
-//! A state always holds its genesis. [`State::with_key`] builds and seals it
-//! from the document and the signer's key (SPEC 5); [`State::from_genesis`]
-//! takes a sealed block 0 and checks it against the document's `genesisHash`,
-//! which is how a validator without the key starts.
+//! The state is generic over the header family (SPEC 3.2): [`State`] is the
+//! stock instantiation, `StateOf<Blake2bV2>` (from `sidestr-header`) the
+//! BLAKE2b one; the document's parent must hand down the family the state is
+//! instantiated for, or [`StateOf::from_genesis`] refuses it.
+//!
+//! A state always holds its genesis. [`StateOf::with_key`] builds and seals it
+//! from the document and the signer's key (SPEC 5); [`StateOf::from_genesis`]
+//! takes a sealed block 0, judges it under every rule that applies at height
+//! 0 — the family's header rules, the solution against the challenge, a
+//! coinbase minting exactly the pegs — and only then holds it to the
+//! document's `genesisHash`, which is how a validator without the key starts.
+//! The reference trusts block 0 by its hash alone; this crate does not (see
+//! the crate docs, "Where this port departs").
 
 use std::collections::HashSet;
 
-use bitcoin::block::Header;
-use bitcoin::consensus::encode::deserialize;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::SecretKey;
 use bitcoin::{
-    Amount, Block, BlockHash, CompactTarget, OutPoint, Script, ScriptBuf, Transaction, TxOut, Txid,
+    Amount, BlockHash, CompactTarget, OutPoint, Script, ScriptBuf, Transaction, TxOut, Txid,
 };
 
 use crate::block::{
-    block_height, build_block, family_for, sign_block, verify_key_path_input, BlockTemplate,
-    HeaderFamily, MARKER,
+    block_data, block_height, build_block, sign_block, BlockTemplate, HeaderFamily, SidestrBlock,
+    Stock, MARKER,
 };
 use crate::document::ChainDocument;
 use crate::error::{Error, Result};
+use crate::federation::Federation;
 use crate::marker::{claim_marker, looks_like_pegout, parse_pegout, Burn};
 use crate::rules::{
     apply_block, median_time_past, validate_block_context, validate_block_structure,
     validate_header, validate_transaction, BlockRule, Candidate, Coin, HeaderContext, Overlay,
-    Params, Records, Utxo, Verdict,
+    Params, Records, RuleResult, Utxo, Verdict,
 };
+
+/// The outputs' total, `None` on overflow. Amounts in an unvalidated
+/// transaction are untrusted: nothing here assumes they are under max money.
+fn checked_output_sum(tx: &Transaction) -> Option<u64> {
+    tx.output
+        .iter()
+        .try_fold(0u64, |s, o| s.checked_add(o.value.to_sat()))
+}
+
+/// The rule [`StateOf::from_genesis`] adds to the kernel's at height 0: the
+/// block is *the document's* genesis, sealed — its signed block data
+/// (version, previous hash, time, and the coinbase stripped of its solution:
+/// the pegs, the marker, the height push, no other transaction) equals that
+/// of [`StateOf::build_genesis_for`], and its `bits` is the document's
+/// `powLimit` in compact form (SPEC 5; the difficulty rule has no previous
+/// header to hold it to at height 0).
+pub const RULE_GENESIS_DOCUMENT: &str = "sidestr:rule-genesis-document";
+use crate::sighash::verify_taproot_key_path;
 
 /// The tip: height, hash and header time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,7 +87,7 @@ pub struct Applied {
     pub claims: usize,
 }
 
-/// What [`State::submit`] reports.
+/// What [`StateOf::submit`] reports.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Submitted {
     /// The transaction's id.
@@ -74,7 +100,7 @@ pub struct Submitted {
     pub dup: bool,
 }
 
-/// A coin as [`State::coins`] lists it.
+/// A coin as [`StateOf::coins`] lists it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoinRef {
     /// The outpoint.
@@ -109,35 +135,52 @@ pub struct NextBlock {
     pub claims: Vec<ClaimRequest>,
 }
 
-/// The chain in memory.
+/// The chain in memory, for header family `F`.
 #[derive(Debug)]
-pub struct State {
+pub struct StateOf<F: HeaderFamily> {
     doc: ChainDocument,
-    family: Box<dyn HeaderFamily>,
+    family: F,
     params: Params,
     bits: CompactTarget,
     challenge: ScriptBuf,
-    headers: Vec<Header>,
+    federation: Option<Federation>,
+    headers: Vec<F::Header>,
     hashes: Vec<BlockHash>,
     utxo: Utxo,
     records: Records,
     mempool: Vec<(Txid, Transaction)>,
     mempool_spent: HashSet<OutPoint>,
-    extra_rules: Vec<Box<dyn BlockRule>>,
+    extra_rules: Vec<Box<dyn BlockRule<F>>>,
 }
 
-impl State {
+/// The chain in memory beside a stock parent: [`StateOf`] over [`Stock`].
+pub type State = StateOf<Stock>;
+
+impl<F: HeaderFamily> StateOf<F> {
+    /// The family marker, if the document's parent hands down the family this
+    /// state is instantiated for; [`Error::UnsupportedFamily`] otherwise. The
+    /// first thing every constructor checks, before a block is decoded.
+    pub fn family_of(doc: &ChainDocument) -> Result<F> {
+        let family = doc.family()?;
+        if family != F::FAMILY {
+            return Err(Error::UnsupportedFamily(family));
+        }
+        Ok(F::default())
+    }
+
     fn empty(doc: ChainDocument) -> Result<Self> {
         doc.validate()?;
-        let family = family_for(doc.family()?)?;
+        let family = Self::family_of(&doc)?;
         let bits = doc.bits()?;
         let challenge = doc.challenge_script()?;
+        let federation = Federation::for_document(&doc)?;
         Ok(Self {
             doc,
             family,
             params: Params::default(),
             bits,
             challenge,
+            federation,
             headers: Vec::new(),
             hashes: Vec::new(),
             utxo: Utxo::new(),
@@ -151,8 +194,8 @@ impl State {
     /// SPEC 5: the genesis block, unsigned, minting the document's pegs at the
     /// document's time, marker `sidestr genesis <chain id>`
     /// (`siding/lib/chain.mjs buildGenesis`). A pure function of the document.
-    pub fn build_genesis_for(doc: &ChainDocument) -> Result<Block> {
-        let family = family_for(doc.family()?)?;
+    pub fn build_genesis_for(doc: &ChainDocument) -> Result<F::Block> {
+        let family = Self::family_of(doc)?;
         let outputs = doc
             .pegs
             .iter()
@@ -166,7 +209,7 @@ impl State {
             })
             .collect::<Result<Vec<_>>>()?;
         Ok(build_block(
-            family.as_ref(),
+            &family,
             &BlockTemplate {
                 height: 0,
                 prev: BlockHash::all_zeros(),
@@ -181,10 +224,10 @@ impl State {
 
     /// The genesis sealed by the signer's key, deterministically (zero aux),
     /// so it is reproducible from document and key (`siding/lib/chain.mjs genesisBlock`).
-    pub fn genesis_block_for(doc: &ChainDocument, key: &SecretKey) -> Result<Block> {
-        let family = family_for(doc.family()?)?;
+    pub fn genesis_block_for(doc: &ChainDocument, key: &SecretKey) -> Result<F::Block> {
+        let family = Self::family_of(doc)?;
         sign_block(
-            family.as_ref(),
+            &family,
             &Self::build_genesis_for(doc)?,
             &doc.challenge_script()?,
             key,
@@ -198,16 +241,46 @@ impl State {
         Self::from_genesis(doc, &genesis, None)
     }
 
-    /// A state at a sealed genesis. The block's hash must be `expect` when
-    /// given, and the document's `genesisHash` when the document has one:
-    /// this is what a validator refuses to proceed past.
+    /// A state at a sealed genesis. Block 0 is judged first, under every rule
+    /// that applies at height 0 — the header rules with no previous header
+    /// (proof of work against `bits`, the version, the family's own:
+    /// `knots:rule-header-v2-from-fork`, `-height`, `-flags-reserved`), the
+    /// block rules (`sidestr:rule-block-signature`: the solution against the
+    /// challenge, or the federation's leaf), the block-context rules with the
+    /// pegs as the one subsidy, and [`RULE_GENESIS_DOCUMENT`]. A failure is
+    /// [`Error::Rejected`] at height 0 naming the rules. Only then is the hash
+    /// held to `expect` when given, and to the document's `genesisHash` when
+    /// the document has one ([`Error::GenesisMismatch`]).
+    ///
+    /// **Departure**: `siding/lib/chain.mjs #apply` at `h === 0` applies the
+    /// genesis on the hash alone. A hash pin says which block 0 you hold, not
+    /// that it is well-formed; here an unsigned genesis whose hash the
+    /// document happens to name is still refused. There is no trusted import.
     pub fn from_genesis(
         doc: ChainDocument,
-        genesis: &Block,
+        genesis: &F::Block,
         expect: Option<BlockHash>,
     ) -> Result<Self> {
         let mut s = Self::empty(doc)?;
-        let hash = s.family.block_hash(&genesis.header);
+        if genesis.txdata().is_empty() {
+            return Err(Error::Chain("genesis has no coinbase".into()));
+        }
+        let (mut verdict, _) = s.judge(0, genesis, None);
+        let expected = Self::build_genesis_for(&s.doc)?;
+        verdict.results.push(RuleResult::new(
+            RULE_GENESIS_DOCUMENT,
+            Some(
+                block_data(&s.family, genesis) == block_data(&s.family, &expected)
+                    && s.family.bits(genesis.header()) == s.bits,
+            ),
+        ));
+        if !verdict.ok() {
+            return Err(Error::Rejected {
+                height: 0,
+                rules: verdict.failed(),
+            });
+        }
+        let hash = s.family.block_hash(genesis.header());
         if expect.is_some_and(|e| e != hash) {
             return Err(Error::Chain("genesis hash mismatch".into()));
         }
@@ -219,17 +292,14 @@ impl State {
                 });
             }
         }
-        if genesis.txdata.is_empty() {
-            return Err(Error::Chain("genesis has no coinbase".into()));
-        }
-        apply_block(&mut s.utxo, genesis, 0);
-        s.headers.push(genesis.header);
+        apply_block(&mut s.utxo, genesis.txdata(), 0);
+        s.headers.push(genesis.header().clone());
         s.hashes.push(hash);
         Ok(s)
     }
 
     /// Add a block-context rule beyond the core (SPEC 12).
-    pub fn add_rule(&mut self, rule: Box<dyn BlockRule>) {
+    pub fn add_rule(&mut self, rule: Box<dyn BlockRule<F>>) {
         self.extra_rules.push(rule);
     }
 
@@ -238,8 +308,8 @@ impl State {
         &self.doc
     }
     /// The header family.
-    pub fn family(&self) -> &dyn HeaderFamily {
-        self.family.as_ref()
+    pub fn family(&self) -> &F {
+        &self.family
     }
     /// The network parameters.
     pub fn params(&self) -> &Params {
@@ -253,6 +323,10 @@ impl State {
     pub fn challenge(&self) -> &Script {
         &self.challenge
     }
+    /// The federation the document names (level 2), or `None` for one signer.
+    pub fn federation(&self) -> Option<&Federation> {
+        self.federation.as_ref()
+    }
     /// The genesis hash.
     pub fn genesis_hash(&self) -> BlockHash {
         self.hashes[0]
@@ -263,7 +337,7 @@ impl State {
         Tip {
             height: h as u32,
             hash: self.hashes[h],
-            time: self.headers[h].time,
+            time: self.family.time(&self.headers[h]),
         }
     }
     /// The tip's height.
@@ -275,7 +349,7 @@ impl State {
         self.hashes.get(height as usize).copied()
     }
     /// The header at a height.
-    pub fn header_at(&self, height: u32) -> Option<&Header> {
+    pub fn header_at(&self, height: u32) -> Option<&F::Header> {
         self.headers.get(height as usize)
     }
     /// The UTXO set.
@@ -324,24 +398,24 @@ impl State {
     }
     /// Whether a coin may be spent in the next block: not a coinbase, or a mature one.
     pub fn spendable(&self, coin: &Coin) -> bool {
-        !coin.coinbase || self.height() + 1 - coin.height >= self.params.coinbase_maturity
+        !coin.coinbase
+            || (u64::from(self.height()) + 1).saturating_sub(u64::from(coin.height))
+                >= u64::from(self.params.coinbase_maturity)
     }
     /// A transaction's virtual size: weight over four, rounded up.
     pub fn vsize(tx: &Transaction) -> u64 {
         tx.weight().to_wu().div_ceil(4)
     }
-    /// The fee a transaction pays, from the UTXO set; `None` if an input is not a coin.
+    /// The fee a transaction pays, from the UTXO set. `None` if an input is
+    /// not an unspent coin, if the outputs exceed the inputs, or if either
+    /// total overflows — the transaction is untrusted, so every sum is
+    /// checked and no amount is assumed to be under max money.
     pub fn fees(&self, tx: &Transaction) -> Option<u64> {
-        let ins = tx
-            .input
-            .iter()
-            .map(|i| {
-                self.utxo
-                    .get(&i.previous_output)
-                    .map(|c| c.output.value.to_sat())
-            })
-            .sum::<Option<u64>>()?;
-        let outs: u64 = tx.output.iter().map(|o| o.value.to_sat()).sum();
+        let ins = tx.input.iter().try_fold(0u64, |s, i| {
+            let c = self.utxo.get(&i.previous_output)?;
+            s.checked_add(c.output.value.to_sat())
+        })?;
+        let outs = checked_output_sum(tx)?;
         ins.checked_sub(outs)
     }
 
@@ -352,19 +426,19 @@ impl State {
     pub fn apply(
         &mut self,
         height: u32,
-        block: &Block,
+        block: &F::Block,
         expect: Option<BlockHash>,
         now: Option<u32>,
     ) -> Result<Applied> {
         let tip = self.tip();
-        if height != tip.height + 1 {
+        if u64::from(height) != u64::from(tip.height) + 1 {
             return Err(Error::Chain(format!(
                 "apply {height} at height {}",
                 tip.height
             )));
         }
-        let hash = self.family.block_hash(&block.header);
-        if block.header.prev_blockhash != tip.hash {
+        let hash = self.family.block_hash(block.header());
+        if self.family.prev(block.header()) != tip.hash {
             return Err(Error::Chain(format!(
                 "block {height} does not link to {}",
                 tip.hash
@@ -383,10 +457,10 @@ impl State {
                 expect.unwrap()
             )));
         }
-        apply_block(&mut self.utxo, block, height);
+        apply_block(&mut self.utxo, block.txdata(), height);
         self.records.claims.extend(next.claims);
         self.records.pegouts.extend(next.pegouts);
-        self.headers.push(block.header);
+        self.headers.push(block.header().clone());
         self.hashes.push(hash);
         self.mempool.retain(|(_, tx)| {
             tx.input
@@ -401,24 +475,27 @@ impl State {
         Ok(Applied {
             height,
             hash,
-            txs: block.txdata.len(),
+            txs: block.txdata().len(),
             fees: 0,
             claims: 0,
         })
     }
 
     /// Every phase's verdict on a candidate for `height`, and the records it
-    /// would leave, without applying anything.
-    pub fn judge(&self, height: u32, block: &Block, now: Option<u32>) -> (Verdict, Records) {
+    /// would leave, without applying anything. At height 0 there is no
+    /// previous header, so the rules that need one are skipped; a `height`
+    /// beyond the tip sees whatever headers exist below it.
+    pub fn judge(&self, height: u32, block: &F::Block, now: Option<u32>) -> (Verdict, Records) {
         let h = height as usize;
-        let window = &self.headers[h.saturating_sub(11)..h.min(self.headers.len())];
+        let end = h.min(self.headers.len());
+        let window = &self.headers[end.saturating_sub(11)..end];
         let mut verdict = validate_header(
-            self.family.as_ref(),
+            &self.family,
             &self.params,
-            &block.header,
+            block.header(),
             &HeaderContext {
                 height,
-                prev: self.headers.get(h - 1),
+                prev: h.checked_sub(1).and_then(|i| self.headers.get(i)),
                 mtp_window: window,
                 now: now.map(|n| n.saturating_add(7_200)),
             },
@@ -426,14 +503,19 @@ impl State {
         let overlay = Overlay {
             challenge: &self.challenge,
             pegout_min: self.doc.pegout_min,
+            genesis_subsidy: self
+                .doc
+                .pegs
+                .iter()
+                .fold(0u64, |s, p| s.saturating_add(p.amount)),
         };
         verdict.extend(validate_block_structure(
-            self.family.as_ref(),
+            &self.family,
             &self.params,
             &overlay,
             block,
         ));
-        let mtp = (!window.is_empty()).then(|| median_time_past(window));
+        let mtp = (!window.is_empty()).then(|| median_time_past(&self.family, window));
         let candidate = Candidate {
             block,
             height,
@@ -442,7 +524,8 @@ impl State {
             records: &self.records,
             extra: &self.extra_rules,
         };
-        let (ctx, _, next) = validate_block_context(&self.params, &overlay, &candidate);
+        let (ctx, _, next) =
+            validate_block_context(&self.family, &self.params, &overlay, &candidate);
         verdict.extend(ctx);
         (verdict, next)
     }
@@ -451,22 +534,22 @@ impl State {
     /// validated, applied (`siding/lib/chain.mjs addBlock`).
     pub fn add_block(
         &mut self,
-        block: &Block,
+        block: &F::Block,
         expect: Option<BlockHash>,
         now: Option<u32>,
     ) -> Result<Applied> {
-        let h = block_height(self.family.as_ref(), block)?;
+        let h = block_height(&self.family, block)?;
         self.apply(h, block, expect, now)
     }
 
-    /// [`State::add_block`] from consensus bytes.
+    /// [`StateOf::add_block`] from consensus bytes.
     pub fn add_block_bytes(
         &mut self,
         bytes: &[u8],
         expect: Option<BlockHash>,
         now: Option<u32>,
     ) -> Result<Applied> {
-        let block: Block = deserialize(bytes).map_err(|e| Error::Encoding(e.to_string()))?;
+        let block = F::Block::decode(bytes)?;
         self.add_block(&block, expect, now)
     }
 
@@ -475,7 +558,7 @@ impl State {
     /// order: the transaction rules; every input an unspent, unreserved,
     /// mature coin; outputs at most inputs; a burn well-formed and at least
     /// `pegoutMin` (SPEC 7); the fee at least `minFeeRate` sat/vB; every
-    /// input's signature.
+    /// input's signature under the sighash rules the next block is judged by.
     pub fn submit(&mut self, tx: Transaction) -> Result<Submitted> {
         let txid = tx.compute_txid();
         if self.mempool.iter().any(|(id, _)| *id == txid) {
@@ -507,7 +590,9 @@ impl State {
             prevouts.push(c.output.clone());
             in_sum = in_sum.saturating_add(c.output.value.to_sat());
         }
-        let out_sum: u64 = tx.output.iter().map(|o| o.value.to_sat()).sum();
+        let Some(out_sum) = checked_output_sum(&tx) else {
+            return refuse("outputs overflow".into());
+        };
         if out_sum > in_sum {
             return refuse("outputs exceed inputs".into());
         }
@@ -531,7 +616,7 @@ impl State {
         }
         // producer policy, published in chain.json so a wallet can compute it: at least minFeeRate sat/vB
         let vsize = Self::vsize(&tx);
-        let min_fee = vsize * self.min_fee_rate();
+        let min_fee = vsize.saturating_mul(self.min_fee_rate());
         let fee = in_sum - out_sum;
         if fee < min_fee {
             return refuse(format!(
@@ -539,8 +624,9 @@ impl State {
                 self.min_fee_rate()
             ));
         }
+        let sighash = self.family.sighash_rules(self.height().saturating_add(1));
         for i in 0..tx.input.len() {
-            if let Err(e) = verify_key_path_input(&tx, i, &prevouts) {
+            if let Err(e) = verify_taproot_key_path(&tx, i, &prevouts, sighash) {
                 return refuse(format!("input {i}: {e}"));
             }
         }
@@ -559,11 +645,18 @@ impl State {
     /// The next block, unsigned: the mempool in order, fees to the challenge,
     /// the claims (SPEC 4, 6) (`siding/lib/chain.mjs buildNext`). A claim pays
     /// the peg's amount to the script the peg-in named, followed by its marker.
-    pub fn build_next(&self, next: &NextBlock) -> Result<(Block, u64, usize)> {
+    pub fn build_next(&self, next: &NextBlock) -> Result<(F::Block, u64, usize)> {
         let tip = self.tip();
-        let time = next.time.max(tip.time + 1);
+        let height = tip
+            .height
+            .checked_add(1)
+            .ok_or_else(|| Error::Chain("the chain is at the last height".into()))?;
+        let time = next.time.max(tip.time.saturating_add(1));
         let txs: Vec<Transaction> = self.mempool.iter().map(|(_, tx)| tx.clone()).collect();
-        let fees: u64 = txs.iter().map(|tx| self.fees(tx).unwrap_or(0)).sum();
+        let fees = txs
+            .iter()
+            .try_fold(0u64, |s, tx| s.checked_add(self.fees(tx).unwrap_or(0)))
+            .ok_or_else(|| Error::Transaction("the mempool's fees overflow".into()))?;
         let mut outputs = Vec::new();
         if fees > 0 {
             outputs.push(TxOut {
@@ -588,9 +681,9 @@ impl State {
             });
         }
         let block = build_block(
-            self.family.as_ref(),
+            &self.family,
             &BlockTemplate {
-                height: tip.height + 1,
+                height,
                 prev: tip.hash,
                 time,
                 transactions: txs,
@@ -603,21 +696,22 @@ impl State {
     }
 
     /// One signer: build, sign, add (`siding/lib/chain.mjs produce`). Returns
-    /// the report and the sealed block, for the caller to write down.
+    /// the report and the sealed block, for the caller to write down. A
+    /// federated chain is refused: its blocks are sealed by `k` signatures
+    /// gathered above this crate and enter through [`StateOf::add_block`].
     pub fn produce(
         &mut self,
         key: &SecretKey,
         next: &NextBlock,
         now: Option<u32>,
-    ) -> Result<(Applied, Block)> {
+    ) -> Result<(Applied, F::Block)> {
+        if self.federation.is_some() {
+            return Err(Error::Federation(
+                "a federated chain makes blocks through the round (proposals/level-2.md), not produce()".into(),
+            ));
+        }
         let (block, fees, claims) = self.build_next(next)?;
-        let signed = sign_block(
-            self.family.as_ref(),
-            &block,
-            &self.challenge,
-            key,
-            &[0u8; 32],
-        )?;
+        let signed = sign_block(&self.family, &block, &self.challenge, key, &[0u8; 32])?;
         let mut r = self.add_block(&signed, None, now)?;
         r.fees = fees;
         r.claims = claims;

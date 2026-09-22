@@ -1,6 +1,6 @@
 [package]
 name = "sidestr-nostr"
-version = "0.1.0"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
@@ -15,7 +15,7 @@ publish = true
 include = ["src/**", "tests/**", "fixtures/**", "README.md", "LICENSE", "Cargo.toml"]
 
 [dependencies]
-sidestr-core = { path = "../sidestr-core", version = "0.1" }
+sidestr-core = { path = "../sidestr-core", version = "0.2" }
 bitcoin = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

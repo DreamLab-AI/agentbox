@@ -1,12 +1,12 @@
 [package]
 name = "sidestr-header"
-version = "0.1.0"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 authors.workspace = true
 license = "AGPL-3.0-only"
-description = "Block headers for sidestr sidechains, following the parent chain's family: the stock 80-byte SHA-256d header and Bitcoin Knots' 164-byte v2 header with the tagged-hash-plus-BLAKE2b proof of work, compact targets, powLimit checks and the BIP-325 block data. no_std, RustCrypto only. A port of bitcoin-desktop/schema and siding by Melvin Carvalho."
+description = "Block headers for sidestr sidechains, following the parent chain's family: the stock 80-byte SHA-256d header and Bitcoin Knots' 164-byte v2 header with the tagged-hash-plus-BLAKE2b proof of work, compact targets, powLimit checks and the BIP-325 block data; no_std, RustCrypto only. With the `core` feature, the sidestr-core HeaderFamily for both, so a BLAKE2b sidechain validates end to end. A port of bitcoin-desktop/schema and siding by Melvin Carvalho."
 readme = "README.md"
 documentation = "https://docs.rs/sidestr-header"
 keywords = ["bitcoin", "sidechain", "sidestr", "blake2b", "block-header"]
@@ -15,16 +15,27 @@ publish = true
 include = ["src/**", "tests/**", "README.md", "LICENSE", "Cargo.toml"]
 
 [features]
-default = ["std"]
+default = ["std", "core"]
 # `std::error::Error` for the error type and the hashers' std features.
 # Without it the crate is `#![no_std]` and needs no allocator.
 std = ["sha2/std", "blake2/std"]
+# `sidestr_core::HeaderFamily` for both header types (module `family`), so
+# `sidestr_core::StateOf<Blake2bV2>` validates a chain beside `xbt` / `txbt4`.
+# Pulls sidestr-core and the bitcoin crate; `default-features = false` for no_std.
+core = ["std", "dep:sidestr-core", "dep:bitcoin"]
 
 [dependencies]
 # Declared directly rather than through the workspace table so that
 # `default-features = false` keeps the no_std build honest.
 sha2 = { version = "0.10", default-features = false }
 blake2 = { version = "0.10", default-features = false }
+# The consensus core this crate's families plug into (feature `core`). The
+# edge points this way only: sidestr-core never depends on sidestr-header.
+sidestr-core = { path = "../sidestr-core", version = "0.2", optional = true }
+bitcoin = { workspace = true, optional = true }
 
 [dev-dependencies]
 hex = { workspace = true }
+serde_json = { workspace = true }
+# The live-mirror replay (`SIDESTR_LIVE=1`) fetches Melvin's public mirrors over https.
+ureq = { version = "3", default-features = false, features = ["rustls"] }

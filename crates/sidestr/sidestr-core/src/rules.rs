@@ -1,6 +1,7 @@
 //! The rules (SPEC 4, 6, 7): Bitcoin's block rules as the reference kernel
 //! runs them for a `btc:regtest`-derived network, with the sidestr overlay —
-//! zero subsidy, the signature challenge, the claim rule and the burn rule.
+//! zero subsidy, the signature challenge, the claim rule and the burn rule —
+//! and, beside a BLAKE2b parent, the Knots overlay's header and block rules.
 //!
 //! A port of the checks in `bitcoin-desktop/schema` `codec/blocks.js` and
 //! `codec/headers.js` (Melvin Carvalho, AGPL-3.0) that a sidestr chain
@@ -15,28 +16,31 @@
 //! this height). A phase passes when no check failed. This is the kernel's
 //! three-valued convention; the one place this crate departs from it is
 //! script verification, where an input this crate cannot verify *fails*
-//! rather than skips (see [`crate::block::verify_key_path_input`]).
+//! rather than skips (see [`crate::sighash::verify_taproot_key_path`]).
 //!
 //! # Phases
 //!
 //! | phase | function | checks |
 //! |---|---|---|
-//! | header | [`validate_header`] | prev link, proof of work, `bits` unchanged (no retarget), median time past, not too far in the future, version |
+//! | header | [`validate_header`] | prev link, proof of work, `bits` unchanged (no retarget), median time past, not too far in the future, version; then the family's own (`knots:rule-header-height`, `knots:rule-header-flags-reserved`) |
 //! | transaction | [`validate_transaction`] | inputs and outputs non-empty, weight, values, unique inputs, coinbase shape, coinbase script 2–100 bytes |
-//! | block | [`validate_block_structure`] | coinbase first and alone, merkle root, no duplicates, sigops, weight, every transaction; **`sidestr:rule-block-signature`** |
-//! | block-context | [`validate_block_context`] | BIP 34 height, finality, BIP 68, inputs available, coinbase maturity, fees, **coinbase amount ≤ fees + claims**, witness commitment, scripts; **`sidestr:rule-pegouts`**, **`sidestr:rule-claims`** |
+//! | block | [`validate_block_structure`] | coinbase first and alone, merkle root, no duplicates, sigops, weight, every transaction; **`sidestr:rule-block-signature`**; the family's own (`knots:rule-block-txcount`) |
+//! | block-context | [`validate_block_context`] | BIP 34 height, finality, BIP 68, inputs available, coinbase maturity, fees, **coinbase amount ≤ fees + claims**, witness commitment, scripts under the family's sighash rules; **`sidestr:rule-pegouts`**, **`sidestr:rule-claims`** |
 //!
 //! Extension point: [`BlockRule`] adds a block-context rule (the assets and
 //! pool rules of SPEC 12 are rules in that sense) without touching this file.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use bitcoin::block::Header;
 use bitcoin::hashes::Hash;
-use bitcoin::{Block, BlockHash, OutPoint, Script, Target, Transaction, TxOut, Txid};
+use bitcoin::{BlockHash, OutPoint, Script, Target, Transaction, TxOut, Txid};
 
-use crate::block::{verify_block_signature, verify_key_path_input, HeaderFamily};
+use crate::block::{
+    block_weight, merkle_root_of_txs, verify_block_signature, witness_root_of_txs, HeaderFamily,
+    SidestrBlock,
+};
 use crate::marker::{looks_like_pegout, op_return_data, parse_claims, parse_pegout, Burn};
+use crate::sighash::verify_taproot_key_path;
 
 /// Network parameters a sidestr chain inherits (`btc:regtest` in
 /// `schema/chain.jsonld`, as `sidestrGraph` extends it) — everything the
@@ -88,6 +92,16 @@ pub struct RuleResult {
     pub ok: Option<bool>,
 }
 
+impl RuleResult {
+    /// A result for a rule.
+    pub fn new(rule: &str, ok: Option<bool>) -> Self {
+        Self {
+            rule: rule.to_string(),
+            ok,
+        }
+    }
+}
+
 /// A phase's outcomes.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Verdict {
@@ -97,10 +111,7 @@ pub struct Verdict {
 
 impl Verdict {
     fn push(&mut self, rule: &str, ok: Option<bool>) {
-        self.results.push(RuleResult {
-            rule: rule.to_string(),
-            ok,
-        });
+        self.results.push(RuleResult::new(rule, ok));
     }
     /// No rule failed.
     pub fn ok(&self) -> bool {
@@ -167,64 +178,69 @@ pub struct Overlay<'a> {
     pub challenge: &'a Script,
     /// The least a burn may carry.
     pub pegout_min: u64,
+    /// The only subsidy a sidestr chain ever pays: the document's pegs, minted
+    /// by the genesis coinbase (SPEC 5), in sats. `btc:rule-blockctx-coinbase-amount`
+    /// allows it at height 0 and nothing at any other height (SPEC 1).
+    pub genesis_subsidy: u64,
 }
 
 // --- header phase (codec/headers.js) ------------------------------------------------
 
 /// What [`validate_header`] needs beyond the header.
 #[derive(Debug, Clone)]
-pub struct HeaderContext<'a> {
+pub struct HeaderContext<'a, F: HeaderFamily> {
     /// The header's height.
     pub height: u32,
     /// The previous header, when known.
-    pub prev: Option<&'a Header>,
+    pub prev: Option<&'a F::Header>,
     /// The headers immediately before this one, up to 11, oldest first.
-    pub mtp_window: &'a [Header],
+    pub mtp_window: &'a [F::Header],
     /// The clock, for the future-time rule; `None` skips it.
     pub now: Option<u32>,
 }
 
 /// Median of the last (up to) 11 block timestamps (`headers.js medianTimePast`).
-pub fn median_time_past(window: &[Header]) -> u32 {
+pub fn median_time_past<F: HeaderFamily>(family: &F, window: &[F::Header]) -> u32 {
     let start = window.len().saturating_sub(11);
-    let mut times: Vec<u32> = window[start..].iter().map(|h| h.time).collect();
+    let mut times: Vec<u32> = window[start..].iter().map(|h| family.time(h)).collect();
     times.sort_unstable();
     times[times.len() >> 1]
 }
 
 /// The header phase: `btc:rule-header-*` as the kernel runs them for a chain
-/// with `powNoRetargeting` and no timewarp fix.
-pub fn validate_header(
-    family: &dyn HeaderFamily,
+/// with `powNoRetargeting` and no timewarp fix, then the family's own rules.
+pub fn validate_header<F: HeaderFamily>(
+    family: &F,
     params: &Params,
-    header: &Header,
-    ctx: &HeaderContext,
+    header: &F::Header,
+    ctx: &HeaderContext<F>,
 ) -> Verdict {
     let mut v = Verdict::default();
     v.push(
         "btc:rule-header-prev-link",
         ctx.prev
-            .map(|p| header.prev_blockhash == family.block_hash(p)),
+            .map(|p| family.prev(header) == family.block_hash(p)),
     );
     v.push(
         "btc:rule-header-pow",
-        Some(Target::from_compact(header.bits).is_met_by(family.block_hash(header))),
+        Some(Target::from_compact(family.bits(header)).is_met_by(family.block_hash(header))),
     );
     // powNoRetargeting: the bits required of the block following prev are prev's
     v.push(
         "btc:rule-header-difficulty",
-        ctx.prev.map(|p| header.bits == p.bits),
+        ctx.prev.map(|p| family.bits(header) == family.bits(p)),
     );
     let need = 11.min(ctx.height as usize);
     v.push(
         "btc:rule-header-mtp",
         (ctx.mtp_window.len() >= need && !ctx.mtp_window.is_empty())
-            .then(|| header.time > median_time_past(ctx.mtp_window)),
+            .then(|| family.time(header) > median_time_past(family, ctx.mtp_window)),
     );
     v.push(
         "btc:rule-header-time-future",
         ctx.now.map(|now| {
-            u64::from(header.time) <= u64::from(now) + u64::from(params.max_future_block_time)
+            u64::from(family.time(header))
+                <= u64::from(now) + u64::from(params.max_future_block_time)
         }),
     );
     let min_version = if ctx.height >= params.bip65_height {
@@ -236,11 +252,14 @@ pub fn validate_header(
     } else {
         1
     };
+    // compared as the kernel's codec types the field: i32le on a stock header (bit 31 set is negative and
+    // fails), u32le on a Knots v2 header (bit 31 is mandatory there); see HeaderFamily::version_number
     v.push(
         "btc:rule-header-version",
-        Some(header.version.to_consensus() >= min_version),
+        Some(family.version_number(header) >= min_version),
     );
     v.push("btc:rule-header-timewarp", None); // no timewarpFix on a regtest-derived network
+    v.results.extend(family.header_rules(header, ctx.height));
     v
 }
 
@@ -311,43 +330,42 @@ pub fn validate_transaction(params: &Params, tx: &Transaction, coinbase: bool) -
 
 /// Legacy signature-operation count (Core's `GetSigOpCount` with
 /// `fAccurate=false`): `CHECKSIG(VERIFY)` counts 1, `CHECKMULTISIG(VERIFY)` 20.
-fn legacy_sigops(block: &Block) -> u64 {
-    block
-        .txdata
-        .iter()
-        .map(|tx| {
-            tx.input
-                .iter()
-                .map(|i| i.script_sig.count_sigops_legacy() as u64)
-                .sum::<u64>()
-                + tx.output
-                    .iter()
-                    .map(|o| o.script_pubkey.count_sigops_legacy() as u64)
-                    .sum::<u64>()
-        })
-        .sum()
+fn legacy_sigops(txdata: &[Transaction]) -> u64 {
+    txdata.iter().fold(0u64, |n, tx| {
+        let ins = tx.input.iter().fold(0u64, |n, i| {
+            n.saturating_add(i.script_sig.count_sigops_legacy() as u64)
+        });
+        let outs = tx.output.iter().fold(0u64, |n, o| {
+            n.saturating_add(o.script_pubkey.count_sigops_legacy() as u64)
+        });
+        n.saturating_add(ins).saturating_add(outs)
+    })
 }
 
-/// The block phase: `btc:rule-block-*`, then `sidestr:rule-block-signature`.
-pub fn validate_block_structure(
-    family: &dyn HeaderFamily,
+/// The block phase: `btc:rule-block-*`, then `sidestr:rule-block-signature`,
+/// then the family's own block rules.
+pub fn validate_block_structure<F: HeaderFamily>(
+    family: &F,
     params: &Params,
     overlay: &Overlay,
-    block: &Block,
+    block: &F::Block,
 ) -> Verdict {
+    let txdata = block.txdata();
     let mut v = Verdict::default();
-    let txids: Vec<Txid> = block.txdata.iter().map(Transaction::compute_txid).collect();
+    let txids: Vec<Txid> = txdata.iter().map(Transaction::compute_txid).collect();
     v.push(
         "btc:rule-block-coinbase-first",
-        Some(block.txdata.first().is_some_and(is_coinbase)),
+        Some(txdata.first().is_some_and(is_coinbase)),
     );
     v.push(
         "btc:rule-block-coinbase-single",
-        Some(block.txdata.iter().skip(1).all(|tx| !is_coinbase(tx))),
+        Some(txdata.iter().skip(1).all(|tx| !is_coinbase(tx))),
     );
     v.push(
         "btc:rule-block-merkle-root",
-        Some(block.compute_merkle_root() == Some(block.header.merkle_root)),
+        Some(
+            !txdata.is_empty() && merkle_root_of_txs(txdata) == family.merkle_root(block.header()),
+        ),
     );
     v.push(
         "btc:rule-block-tx-duplicates",
@@ -355,17 +373,16 @@ pub fn validate_block_structure(
     );
     v.push(
         "btc:rule-block-sigops",
-        Some(4 * legacy_sigops(block) <= params.max_block_sigops_cost),
+        Some(legacy_sigops(txdata).saturating_mul(4) <= params.max_block_sigops_cost),
     );
     v.push(
         "btc:rule-block-weight",
-        Some(block.weight().to_wu() <= params.max_block_weight),
+        Some(block_weight(family, block) <= params.max_block_weight),
     );
     v.push(
         "btc:rule-block-transactions",
         Some(
-            block
-                .txdata
+            txdata
                 .iter()
                 .enumerate()
                 .all(|(i, tx)| validate_transaction(params, tx, i == 0).ok()),
@@ -375,6 +392,8 @@ pub fn validate_block_structure(
         "sidestr:rule-block-signature",
         Some(verify_block_signature(family, block, overlay.challenge)),
     );
+    v.results
+        .extend(family.block_rules(block.header(), txdata.len()));
     v
 }
 
@@ -403,14 +422,19 @@ pub struct Spending {
 
 /// Resolve the block's inputs against `utxo` and the block's own earlier
 /// outputs, in order; does not mutate the set.
-pub fn resolve_spending(params: &Params, block: &Block, utxo: &Utxo, height: u32) -> Spending {
+pub fn resolve_spending(
+    params: &Params,
+    txdata: &[Transaction],
+    utxo: &Utxo,
+    height: u32,
+) -> Spending {
     const SEQ_DISABLE: u32 = 0x8000_0000;
     const SEQ_TYPE: u32 = 0x0040_0000;
     const SEQ_MASK: u32 = 0x0000_ffff;
     let mut s = Spending::default();
     let mut spent_here: HashSet<OutPoint> = HashSet::new();
     let mut created_here: HashMap<OutPoint, Coin> = HashMap::new();
-    for (ti, tx) in block.txdata.iter().enumerate() {
+    for (ti, tx) in txdata.iter().enumerate() {
         let txid = tx.compute_txid();
         if ti > 0 {
             let mut in_sum = 0u64;
@@ -487,9 +511,9 @@ pub fn resolve_spending(params: &Params, block: &Block, utxo: &Utxo, height: u32
 
 /// What a block-context rule sees.
 #[derive(Debug)]
-pub struct BlockContext<'a> {
+pub struct BlockContext<'a, F: HeaderFamily> {
     /// The block.
-    pub block: &'a Block,
+    pub block: &'a F::Block,
     /// Its height.
     pub height: u32,
     /// The resolved spending.
@@ -503,11 +527,11 @@ pub struct BlockContext<'a> {
 /// An additional block-context rule: the extension point for rules a chain
 /// document may name beyond the core (SPEC 12). It sees the same context
 /// the built-in rules see and answers the same three ways.
-pub trait BlockRule: core::fmt::Debug {
+pub trait BlockRule<F: HeaderFamily>: core::fmt::Debug {
     /// The rule id reported in the verdict.
     fn id(&self) -> &str;
     /// The check.
-    fn check(&self, ctx: &BlockContext) -> Option<bool>;
+    fn check(&self, ctx: &BlockContext<F>) -> Option<bool>;
 }
 
 /// The kernel's lenient BIP 34 read (`blocks.js bip34Height`): `OP_1`..`OP_16`
@@ -550,14 +574,11 @@ fn witness_commitment_in(coinbase: &Transaction) -> Option<[u8; 32]> {
 /// `dsha256(witness merkle root || witness reserved value)`: the coinbase
 /// wtxid is all zeros; the reserved value is the coinbase witness's first
 /// item (32 zero bytes when absent).
-fn witness_commitment_hash(block: &Block) -> [u8; 32] {
-    let root = block
-        .witness_root()
-        .map(|r| r.to_byte_array())
-        .unwrap_or([0u8; 32]);
+fn witness_commitment_hash(txdata: &[Transaction]) -> [u8; 32] {
+    let root = witness_root_of_txs(txdata);
     let mut cat = [0u8; 64];
     cat[..32].copy_from_slice(&root);
-    if let Some(reserved) = block.txdata[0]
+    if let Some(reserved) = txdata[0]
         .input
         .first()
         .and_then(|i| i.witness.iter().next())
@@ -570,9 +591,9 @@ fn witness_commitment_hash(block: &Block) -> [u8; 32] {
 
 /// A candidate block with the chain state it is judged against.
 #[derive(Debug)]
-pub struct Candidate<'a> {
+pub struct Candidate<'a, F: HeaderFamily> {
     /// The block.
-    pub block: &'a Block,
+    pub block: &'a F::Block,
     /// The height it claims.
     pub height: u32,
     /// The UTXO set before it.
@@ -582,16 +603,17 @@ pub struct Candidate<'a> {
     /// The overlay's records before it.
     pub records: &'a Records,
     /// Rules the document names beyond the core.
-    pub extra: &'a [Box<dyn BlockRule>],
+    pub extra: &'a [Box<dyn BlockRule<F>>],
 }
 
 /// The block-context phase for a candidate. Returns the verdict, the resolved
 /// spending, and the records the block *would* leave — claims and burns keyed
 /// by its height — which the caller commits when the block is applied.
-pub fn validate_block_context(
+pub fn validate_block_context<F: HeaderFamily>(
+    family: &F,
     params: &Params,
     overlay: &Overlay,
-    c: &Candidate,
+    c: &Candidate<F>,
 ) -> (Verdict, Spending, Records) {
     let Candidate {
         block,
@@ -601,9 +623,10 @@ pub fn validate_block_context(
         records,
         extra,
     } = *c;
-    let spending = resolve_spending(params, block, utxo, height);
+    let txdata = block.txdata();
+    let spending = resolve_spending(params, txdata, utxo, height);
     let mut v = Verdict::default();
-    let cb = &block.txdata[0];
+    let cb = &txdata[0];
     let mut next = Records::default();
 
     v.push(
@@ -613,7 +636,7 @@ pub fn validate_block_context(
     // lockTime 0 and the all-final-sequences escape need no context; a time-based lockTime needs median-time-past
     let mut unknown = false;
     let mut final_ok = true;
-    for tx in &block.txdata {
+    for tx in txdata {
         let lt = tx.lock_time.to_consensus_u32();
         if lt == 0 || tx.input.iter().all(|i| i.sequence.0 == 0xffff_ffff) {
             continue;
@@ -659,40 +682,55 @@ pub fn validate_block_context(
         Some(spending.premature.is_empty()),
     );
     v.push("btc:rule-blockctx-fees", Some(spending.deficits.is_empty()));
-    // the kernel's rule, plus the paid claims: coinbase value <= subsidy (0) + fees + claims (siding/lib/overlay.mjs)
+    // the kernel's rule, plus the paid claims: coinbase value <= subsidy + fees + claims (siding/lib/overlay.mjs).
+    // The subsidy is the pegs at height 0 (SPEC 5) and zero after (SPEC 1); the claim sum is checked, so a
+    // coinbase whose payouts overflow u64 fails rather than wraps
     let (claims, claim_errors) = parse_claims(cb);
-    let paid: u64 = claims.iter().map(|c| c.payout.value).sum();
+    let paid = claims
+        .iter()
+        .try_fold(0u64, |s, c| s.checked_add(c.payout.value));
+    let subsidy = if height == 0 {
+        overlay.genesis_subsidy
+    } else {
+        0
+    };
     v.push(
         "btc:rule-blockctx-coinbase-amount",
         Some(
             claim_errors.is_empty()
-                && sum_out(cb).is_some_and(|s| s <= spending.fees.saturating_add(paid)),
+                && paid.is_some_and(|paid| {
+                    sum_out(cb).is_some_and(|s| {
+                        s <= subsidy.saturating_add(spending.fees).saturating_add(paid)
+                    })
+                }),
         ),
     );
-    let has_witness = block
-        .txdata
+    let has_witness = txdata
         .iter()
         .any(|tx| tx.input.iter().any(|i| !i.witness.is_empty()));
     v.push(
         "btc:rule-blockctx-witness-commitment",
         (height >= params.segwit_height && has_witness)
-            .then(|| witness_commitment_in(cb) == Some(witness_commitment_hash(block))),
+            .then(|| witness_commitment_in(cb) == Some(witness_commitment_hash(txdata))),
     );
-    // real script + signature verification of every input; anything this crate cannot verify fails
+    // real script + signature verification of every input under the family's sighash rules at this
+    // height (blocks.js: unifiedSighash from the unifiedSighashParam height); anything this crate cannot
+    // verify fails
+    let sighash = family.sighash_rules(height);
     let mut scripts_ok = true;
     let mut by_tx: BTreeMap<usize, BTreeMap<usize, TxOut>> = BTreeMap::new();
     for (ti, ii, prevout) in &spending.resolved {
         by_tx.entry(*ti).or_default().insert(*ii, prevout.clone());
     }
     for (ti, resolved) in &by_tx {
-        let tx = &block.txdata[*ti];
+        let tx = &txdata[*ti];
         if resolved.len() != tx.input.len() {
             scripts_ok = false;
             continue;
         }
         let prevouts: Vec<TxOut> = (0..tx.input.len()).map(|i| resolved[&i].clone()).collect();
         for ii in 0..tx.input.len() {
-            if verify_key_path_input(tx, ii, &prevouts).is_err() {
+            if verify_taproot_key_path(tx, ii, &prevouts, sighash).is_err() {
                 scripts_ok = false;
             }
         }
@@ -709,7 +747,7 @@ pub fn validate_block_context(
         {
             return false;
         }
-        for tx in block.txdata.iter().skip(1) {
+        for tx in txdata.iter().skip(1) {
             let txid = tx.compute_txid().to_string();
             for (vout, o) in tx.output.iter().enumerate() {
                 if op_return_data(&o.script_pubkey).is_none() || !looks_like_pegout(o) {
@@ -783,10 +821,10 @@ pub fn validate_block_context(
 /// Apply a fully validated block to the UTXO set (`blocks.js applyBlock`):
 /// spend its inputs, create its non-`OP_RETURN` outputs. Returns
 /// `(created, spent)`.
-pub fn apply_block(utxo: &mut Utxo, block: &Block, height: u32) -> (usize, usize) {
+pub fn apply_block(utxo: &mut Utxo, txdata: &[Transaction], height: u32) -> (usize, usize) {
     let mut created = 0;
     let mut spent = 0;
-    for (i, tx) in block.txdata.iter().enumerate() {
+    for (i, tx) in txdata.iter().enumerate() {
         if i > 0 {
             for inp in &tx.input {
                 if utxo.remove(&inp.previous_output).is_some() {
@@ -815,9 +853,11 @@ pub fn apply_block(utxo: &mut Utxo, block: &Block, height: u32) -> (usize, usize
     (created, spent)
 }
 
-/// The genesis of a chain is applied without validation, as the reference
-/// does: its hash is checked against the document instead. Exposed so a
-/// caller can apply block 0 and be sure of the base hash.
-pub fn genesis_hash(family: &dyn HeaderFamily, block: &Block) -> BlockHash {
-    family.block_hash(&block.header)
+/// The hash of a block 0: what a document's `genesisHash` pins and a mirror's
+/// index promises. The reference applies the genesis on that hash alone
+/// (`siding/lib/chain.mjs #apply`, `h === 0`); this crate does not —
+/// [`crate::state::StateOf::from_genesis`] judges block 0 under every rule
+/// that applies at height 0 and only then compares the pin.
+pub fn genesis_hash<F: HeaderFamily>(family: &F, block: &F::Block) -> BlockHash {
+    family.block_hash(block.header())
 }

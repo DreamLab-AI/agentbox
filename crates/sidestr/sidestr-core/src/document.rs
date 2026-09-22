@@ -36,6 +36,7 @@ use bitcoin::{CompactTarget, ScriptBuf, Target};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
+use crate::federation::Federation;
 use crate::parents::{resolve_parent, Family, Parent};
 
 /// A peg output the chain starts from (SPEC 5): the genesis coinbase pays
@@ -103,7 +104,8 @@ pub struct ChainDocument {
     /// Rules the chain names beyond the core (`assets`, `pool`, `evm`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rules: Option<Vec<String>>,
-    /// Level 2: the signers' public keys.
+    /// Level 2: the signers' x-only public keys, in leaf order. With
+    /// `threshold`, they derive the challenge ([`Federation::for_document`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signers: Option<Vec<String>>,
     /// Level 2: how many signers a block needs.
@@ -165,13 +167,12 @@ impl ChainDocument {
 
     /// Check every field this validator reads. A document naming a rule or a
     /// level this crate does not carry is refused here, as `loadEngine` refuses
-    /// it, so a validator never runs a chain it would misjudge.
+    /// it, so a validator never runs a chain it would misjudge. The parent's
+    /// header family is not judged here: both families are carried, and a
+    /// state instantiated for the other one refuses the document itself.
     pub fn validate(&self) -> Result<()> {
         let bad = |m: String| Err(Error::Document(m));
-        let parent = self.parent()?;
-        if parent.family != Family::Stock {
-            return Err(Error::UnsupportedFamily(parent.family));
-        }
+        self.parent()?;
         if self.id.is_empty() || self.name.is_empty() {
             return bad("id and name are required".into());
         }
@@ -222,12 +223,11 @@ impl ChainDocument {
         }
         if let Some(rules) = &self.rules {
             if let Some(r) = rules.iter().find(|r| !r.is_empty()) {
-                return bad(format!("chain {} names rule \"{r}\", which this validator does not have (sidestr-core 0.1 carries the core rules only)", self.id));
+                return bad(format!("chain {} names rule \"{r}\", which this validator does not have (sidestr-core carries the core rules only)", self.id));
             }
         }
-        if self.signers.is_some() || self.threshold.is_some() {
-            return bad(format!("chain {} is a level 2 chain (signers/threshold); sidestr-core 0.1 validates level 1, one signer", self.id));
-        }
+        // level 2: the challenge is named only through signers and threshold (overlay.mjs checkFederation)
+        Federation::for_document(self)?;
         Ok(())
     }
 
@@ -310,15 +310,26 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(e.contains("does not have"), "{e}");
-        assert!(matches!(
-            with(&|v| v["parent"] = "txbt4".into()),
-            Err(Error::UnsupportedFamily(Family::Blake2b))
-        ));
+        // a BLAKE2b parent is a valid document; which family a validator carries is the state's concern
+        assert_eq!(
+            with(&|v| v["parent"] = "txbt4".into())
+                .unwrap()
+                .family()
+                .unwrap(),
+            Family::Blake2b
+        );
         assert!(matches!(
             with(&|v| v["parent"] = "doge".into()),
             Err(Error::UnknownParent(_))
         ));
         assert!(with(&|v| v["signers"] = serde_json::json!(["aa"])).is_err());
+        assert!(with(&|v| {
+            v["signers"] = serde_json::json!(["aa".repeat(32)]);
+            v["threshold"] = serde_json::json!(1);
+        })
+        .unwrap_err()
+        .to_string()
+        .contains("is not the one 1 signers"));
         assert!(with(&|v| v["signer"] = serde_json::json!("00".repeat(32))).is_err());
         assert!(with(&|v| v["powLimit"] = serde_json::json!("ff")).is_err());
         assert!(with(&|v| v["addressPrefix"] = serde_json::json!("TRL")).is_err());

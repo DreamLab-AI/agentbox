@@ -15,13 +15,21 @@
 //!
 //! `ltc` and `vtc` are reserved upstream and absent here. The crate is a port
 //! of the reference JavaScript — the bitcoin-desktop/schema kernel's header
-//! codec and Knots proof of work, and Melvin Carvalho's `siding` for how a
-//! sidestr block shapes its header and what its signature covers — under the
-//! same AGPL-3.0 licence (agentbox ADR-2106). It is `#![no_std]`, allocates
-//! nothing, and takes every primitive from RustCrypto ([`sha2`], [`blake2`]);
-//! it has no `bitcoin` crate dependency by design (ADR-2096 D2): the header
-//! and its proof of work are the part of consensus that the parent's
-//! serialisation library does not own.
+//! codec, Knots proof of work and Knots overlay rules, and Melvin Carvalho's
+//! `siding` for how a sidestr block shapes its header and what its signature
+//! covers — under the same AGPL-3.0 licence (agentbox ADR-2106). Without the
+//! `core` feature it is `#![no_std]`, allocates nothing, and takes every
+//! primitive from RustCrypto ([`sha2`], [`blake2`]) with no `bitcoin` crate
+//! dependency (ADR-2096 D2): the header and its proof of work are the part of
+//! consensus that the parent's serialisation library does not own.
+//!
+//! With `core` (default) the [`family`] module implements
+//! `sidestr_core::HeaderFamily` for both header types, so
+//! `sidestr_core::StateOf<Blake2bV2>` and `ChainOf<Blake2bV2>` validate and
+//! produce a chain beside `xbt` or `txbt4` end to end — the v2 header, the
+//! BLAKE2b proof of work, the Knots overlay's rules and Knots' unified sighash
+//! on every spend — proven by replaying the live `sidestr:txbt4-siding` chain.
+//! The edge points from this crate to `sidestr-core`, never back.
 //!
 //! # What it gives a validator
 //!
@@ -40,7 +48,31 @@
 //!   the layout;
 //! - the version-bit-31 rule: bit 31 selects the family, so a stock header
 //!   with it set and a v2 header without it are both refused at decode;
-//! - the fork activation constants of SPEC 3.2 ([`fork`]).
+//! - the fork activation constants of SPEC 3.2 ([`fork`]);
+//! - with `core`, the two families as `sidestr-core` sees them
+//!   ([`Blake2bV2`], [`family::Stock`]).
+//!
+//! # Where this port departs from the reference
+//!
+//! - **The genesis is judged under the family's rules.** The reference
+//!   applies block 0 on its hash; through `sidestr-core`'s
+//!   `StateOf::from_genesis` a typed v2 genesis is held to
+//!   `knots:rule-header-v2-from-fork`, `-height` and `-flags-reserved`, the
+//!   proof of work and the signature before its hash is compared to the
+//!   document, so a header the decoder would refuse cannot enter as a struct
+//!   either (`tests/audit_regressions.rs`).
+//! - **Version bit 31 is refused on every stock path.** [`StockHeader::decode`]
+//!   refuses the bytes; [`family::Stock`] reports the version as the kernel
+//!   types it (`i32le`, so bit 31 is negative) and `btc:rule-header-version`
+//!   refuses a typed header, as the kernel does on the same block.
+//! - **Compact targets Bitcoin Core rejects** (negative, overflow) are
+//!   rejected by [`Target::from_compact`] where the kernel is lenient —
+//!   unreachable on a valid sidestr chain, where `bits` is pinned to
+//!   `powLimit`.
+//! - **A mirror's record framing is checked** on replay (`sidestr-core`'s
+//!   `blockfile::read_block`): the `[u32 height][u32 size]` prefix of every
+//!   record must agree with the index entry, and the entry must lie within
+//!   the file.
 //!
 //! # The v2 header, field by field
 //!
@@ -92,10 +124,12 @@
 //! # Provenance
 //!
 //! - `codec/pow/knots-header-v2.js`, `codec/pow/blake2b.js`, `codec/hash.js`,
-//!   `codec/codec.js`, `codec/headers.js`, `schema/overlays/knots-blake2b.jsonld`
+//!   `codec/codec.js`, `codec/headers.js`, `codec/overlays/knots-blake2b.js`
+//!   (the overlay's header and block checks), `schema/overlays/knots-blake2b.jsonld`
 //!   of [bitcoin-desktop/schema](https://github.com/bitcoin-desktop/schema)
 //!   (AGPL-3.0), at commit `b8cbf6337c7450fe14ddc5bce00c7280059aab5d`.
 //! - `siding/lib/block.mjs`, `siding/lib/parents.mjs`, `siding/lib/chain.mjs`,
+//!   `siding/lib/overlay.mjs` (`blake2bHeight: 0`, `unifiedSighashParam`),
 //!   `SPEC.md` §3, §3.2, §4 of [sidestr/spec](https://github.com/sidestr/spec)
 //!   (AGPL-3.0, Melvin Carvalho), at commit
 //!   `2de40bdac4cba01be0864156a553d8287c22e279`.
@@ -103,13 +137,17 @@
 //!   captured from a Knots 29.4.1 node on 2026-09-05, both carried by the
 //!   schema kernel; siding's `blockData` on the live `sidestr:dreamlab` block 0
 //!   and on kernel-hashed v2 headers, computed with the JavaScript engine as
-//!   the oracle.
+//!   the oracle; and the live `sidestr:txbt4-siding` chain (229 blocks as of
+//!   2026-09-22) as the oracle for the whole BLAKE2b family through
+//!   `sidestr-core` (`tests/core_family.rs`).
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 mod error;
+#[cfg(feature = "core")]
+pub mod family;
 pub mod fork;
 pub mod hash;
 pub mod signet;
@@ -118,6 +156,8 @@ mod target;
 mod v2;
 
 pub use error::Error;
+#[cfg(feature = "core")]
+pub use family::Blake2bV2;
 pub use stock::StockHeader;
 pub use target::Target;
 pub use v2::{

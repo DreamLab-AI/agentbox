@@ -3,15 +3,20 @@
 //! solution's place in the coinbase, and the height a stock header does not
 //! carry. A port of `siding/lib/block.mjs`.
 //!
-//! A block here is [`bitcoin::Block`]: Bitcoin's transaction rules are the
-//! parent's, so the parent's types serve. What sidestr adds is in the
-//! coinbase: after the witness commitment output's commitment, one push of
-//! `ecc7daa2` followed by a serialised script witness that satisfies the
-//! chain's `challenge` for the block's *signet hash*, computed as BIP 325
-//! computes it over this chain's header serialisation. The header family
-//! (SPEC 3.2) is behind [`HeaderFamily`]; the stock 80-byte header is
-//! [`Stock`], and the BLAKE2b v2 header arrives as another implementation
-//! without touching the rules.
+//! A block is a header of the parent's family followed by Bitcoin
+//! transactions: Bitcoin's transaction rules are the parent's, so
+//! [`bitcoin::Transaction`] serves for every family, and what differs — the
+//! header's layout, its proof-of-work hash, whether it carries the height —
+//! is behind [`HeaderFamily`]. Beside a stock parent the block *is*
+//! [`bitcoin::Block`] ([`Stock`]); beside a BLAKE2b parent it is
+//! [`FamilyBlock`] over the 164-byte v2 header that `sidestr-header`
+//! implements. Every function here is generic over the family and never asks
+//! which one it has.
+//!
+//! What sidestr adds is in the coinbase: after the witness commitment output's
+//! commitment, one push of `ecc7daa2` followed by a serialised script witness
+//! that satisfies the chain's `challenge` for the block's *signet hash*,
+//! computed as BIP 325 computes it over this chain's header serialisation.
 //!
 //! ```
 //! use sidestr_core::block::{coinbase_height, height_push};
@@ -33,20 +38,25 @@
 use std::sync::OnceLock;
 
 use bitcoin::block::{Header, Version as HeaderVersion};
-use bitcoin::consensus::encode::serialize;
-use bitcoin::hashes::{sha256, sha256d, Hash};
+use bitcoin::consensus::encode::{deserialize, serialize};
+use bitcoin::hashes::{sha256, sha256d, Hash, HashEngine};
+use bitcoin::key::TweakedPublicKey;
 use bitcoin::secp256k1::{
     schnorr::Signature, All, Keypair, Message, Secp256k1, SecretKey, XOnlyPublicKey,
 };
 use bitcoin::sighash::{Annex, Prevouts, SighashCache, TapSighashType};
+use bitcoin::taproot::TapLeafHash;
 use bitcoin::transaction::Version as TxVersion;
 use bitcoin::{
-    absolute::LockTime, merkle_tree, Amount, Block, BlockHash, CompactTarget, OutPoint, Script,
-    ScriptBuf, Sequence, Target, Transaction, TxIn, TxMerkleNode, TxOut, Txid, Witness, Wtxid,
+    absolute::LockTime, merkle_tree, Amount, BlockHash, CompactTarget, OutPoint, Script, ScriptBuf,
+    Sequence, Target, Transaction, TxIn, TxMerkleNode, TxOut, Txid, Witness, Wtxid,
 };
 
 use crate::error::{Error, Result};
+use crate::federation::{verify_multi_a_input, MultiA, ScriptPathError};
 use crate::parents::Family;
+use crate::rules::RuleResult;
+use crate::sighash::{verify_taproot_key_path, SighashRules};
 
 /// The four bytes that open the solution push: BIP 325's signet header.
 pub const SIGNET_HEADER: [u8; 4] = [0xec, 0xc7, 0xda, 0xa2];
@@ -57,6 +67,9 @@ const COMMITMENT_PREFIX: [u8; 6] = [0x6a, 0x24, 0xaa, 0x21, 0xa9, 0xed];
 /// `OP_RETURN 0x24 aa21a9ed <32-byte commitment>`: the part of the
 /// commitment output that is not the solution.
 const COMMITMENT_LEN: usize = 38;
+/// The most witness items a solution may carry: BIP 341's control block
+/// allows 128 branches, so no honest witness comes near this.
+const MAX_WITNESS_ITEMS: usize = 256;
 
 /// One shared secp256k1 context for signing and verification.
 pub fn secp() -> &'static Secp256k1<All> {
@@ -66,37 +79,145 @@ pub fn secp() -> &'static Secp256k1<All> {
 
 // --- the header family boundary (SPEC 3, 3.2) ------------------------------------
 
-/// What differs between header families: the proof-of-work hash, the bytes
-/// the block signature commits to, whether the header carries the height,
-/// and what an unsigned header looks like. The rules take a `&dyn
-/// HeaderFamily` and never ask which one they have.
+/// What differs between header families, and nothing else: the header type
+/// and its wire codec, the proof-of-work hash, the bytes the block signature
+/// commits to, whether the header carries the height, what an unsigned
+/// header looks like, the rules the parent's fork adds, and whether Knots'
+/// unified sighash applies. The rules, the state and the chain are generic
+/// over `F: HeaderFamily` and never ask which one they have.
 ///
-/// `sidestr-core` 0.1 ships [`Stock`]. Knots' 164-byte v2 header (BLAKE2b
-/// parents `xbt`, `txbt4`) is `sidestr-header`'s: when it lands, this trait
-/// gains an associated header type so the v2 fields have somewhere to live;
-/// the rules are written against the trait and stay as they are.
-pub trait HeaderFamily: core::fmt::Debug {
+/// `sidestr-core` ships [`Stock`] (parents `btc`, `tbtc4`), whose header is
+/// [`bitcoin::block::Header`] and whose block is [`bitcoin::Block`].
+/// `sidestr-header` implements this trait for Knots' 164-byte v2 header
+/// (parents `xbt`, `txbt4`) with [`FamilyBlock`] as its block; this crate
+/// keeps no edge to it.
+pub trait HeaderFamily:
+    core::fmt::Debug + Copy + Default + PartialEq + Eq + Send + Sync + 'static
+{
+    /// The header: the parent's layout, decoded.
+    type Header: Clone + core::fmt::Debug + PartialEq + Eq + Send + Sync + 'static;
+    /// The block: this header followed by the transactions. [`bitcoin::Block`]
+    /// for the stock family; [`FamilyBlock`] otherwise.
+    type Block: SidestrBlock<Header = Self::Header>;
     /// Which family this is.
-    fn family(&self) -> Family;
-    /// The block hash: the parent's proof-of-work hash over the serialised header.
-    fn block_hash(&self, header: &Header) -> BlockHash;
+    const FAMILY: Family;
+    /// The serialised header length: 80 or 164.
+    const HEADER_LEN: usize;
+
+    /// Which family this is.
+    fn family(&self) -> Family {
+        Self::FAMILY
+    }
+    /// The serialised header length.
+    fn header_len(&self) -> usize {
+        Self::HEADER_LEN
+    }
+    /// The header's wire bytes.
+    fn encode_header(&self, header: &Self::Header) -> Vec<u8>;
+    /// A header from exactly [`Self::HEADER_LEN`] wire bytes.
+    fn decode_header(&self, bytes: &[u8]) -> Result<Self::Header>;
+    /// The block hash: the parent's proof-of-work hash over the header.
+    fn block_hash(&self, header: &Self::Header) -> BlockHash;
     /// The bytes the block signature commits to (SPEC 4): the header's first
     /// 72 bytes, version, prev, merkle root and time on wire — never the nonce,
     /// which is found after signing.
-    fn signed_prefix(&self, header: &Header) -> Vec<u8>;
+    fn signed_prefix(&self, header: &Self::Header) -> Vec<u8>;
     /// The height the header itself carries, when the family writes it there.
-    fn header_height(&self, header: &Header) -> Option<u32>;
-    /// An unsigned header on `prev` with this family's version and zero nonce.
+    fn header_height(&self, header: &Self::Header) -> Option<u32>;
+    /// An unsigned header on `prev` with this family's version and zero nonce
+    /// (`siding/lib/block.mjs buildBlock`). `height` and `tx_count` are for
+    /// the families whose header commits to them; the stock header ignores both.
     fn new_header(
         &self,
         prev: BlockHash,
         merkle_root: TxMerkleNode,
         time: u32,
         bits: CompactTarget,
-    ) -> Header;
-    /// The serialised header length.
-    fn header_len(&self) -> usize;
+        height: u32,
+        tx_count: usize,
+    ) -> Self::Header;
+    /// The raw wire version word, unsigned.
+    fn version(&self, header: &Self::Header) -> u32;
+    /// The version as the reference kernel's codec *types* it, which is what
+    /// `btc:rule-header-version` compares against the minimum: a stock header's
+    /// `version` is `i32le` (`btc:BlockHeader` in `schema/core.jsonld`), so a
+    /// word with bit 31 set is negative and fails `version >= 1`; a Knots v2
+    /// header's is `u32le` (`schema/overlays/knots-blake2b.jsonld`), so its
+    /// mandatory bit 31 does not. Every family states this itself — there is
+    /// no default — so a typed header cannot reach the rule with the wrong
+    /// sign.
+    fn version_number(&self, header: &Self::Header) -> i64;
+    /// The previous block's hash.
+    fn prev(&self, header: &Self::Header) -> BlockHash;
+    /// The merkle root.
+    fn merkle_root(&self, header: &Self::Header) -> TxMerkleNode;
+    /// The consensus time: for a v2 header, the wire time with its offset applied.
+    fn time(&self, header: &Self::Header) -> u32;
+    /// The compact target.
+    fn bits(&self, header: &Self::Header) -> CompactTarget;
+    /// The (first) nonce.
+    fn nonce(&self, header: &Self::Header) -> u32;
+    /// Replace the merkle root; [`seal_block`] does so once the solution is in.
+    fn set_merkle_root(&self, header: &mut Self::Header, root: TxMerkleNode);
+    /// Replace the nonce; [`seal_block`] grinds it.
+    fn set_nonce(&self, header: &mut Self::Header, nonce: u32);
+    /// The header rules the parent's fork adds beyond Bitcoin's (the Knots
+    /// overlay's `knots:rule-header-*`), judged for a header at `height`. None
+    /// for the stock family.
+    fn header_rules(&self, header: &Self::Header, height: u32) -> Vec<RuleResult> {
+        let _ = (header, height);
+        Vec::new()
+    }
+    /// The block rules the parent's fork adds (`knots:rule-block-txcount`),
+    /// given the header and the block's transaction count.
+    fn block_rules(&self, header: &Self::Header, tx_count: usize) -> Vec<RuleResult> {
+        let _ = (header, tx_count);
+        Vec::new()
+    }
+    /// The signature-hash rules a spend at `height` is judged by: BIP 341 on a
+    /// stock chain; Knots' unified opt-in sighash from the fork height on a
+    /// BLAKE2b chain, which for a sidestr chain is height 0
+    /// (`siding/lib/overlay.mjs`: `unifiedSighashParam: 'blake2bHeight'`,
+    /// `blake2bHeight: 0`).
+    fn sighash_rules(&self, height: u32) -> SighashRules {
+        let _ = height;
+        SighashRules::Bip341
+    }
 }
+
+/// What the rules need of a block, whatever its header: the header, the
+/// transactions and the wire codec. Implemented by [`bitcoin::Block`] for the
+/// stock family and by [`FamilyBlock`] for any other. The functions that do
+/// not touch the header — the solution, the commitment output — are generic
+/// over this trait alone, so `&bitcoin::Block` needs no annotation.
+pub trait SidestrBlock:
+    Clone + core::fmt::Debug + PartialEq + Eq + Send + Sync + Sized + 'static
+{
+    /// The header type.
+    type Header;
+    /// A block from its parts.
+    fn from_parts(header: Self::Header, txdata: Vec<Transaction>) -> Self;
+    /// The header.
+    fn header(&self) -> &Self::Header;
+    /// The header, to seal.
+    fn header_mut(&mut self) -> &mut Self::Header;
+    /// The transactions, coinbase first.
+    fn txdata(&self) -> &[Transaction];
+    /// The transactions, to build.
+    fn txdata_mut(&mut self) -> &mut Vec<Transaction>;
+    /// The consensus bytes: header, then the transaction vector.
+    fn encode(&self) -> Vec<u8>;
+    /// A block from its consensus bytes, all of them.
+    fn decode(bytes: &[u8]) -> Result<Self>;
+}
+
+/// Version bit 31: the kernel's `VERSION_HEADER_V2_FLAG`
+/// (`codec/pow/knots-header-v2.js`), set on every Knots v2 header and never
+/// on a stock one. A stock header carrying it is not a stock header:
+/// [`Stock::decode_header`] refuses it, and on the typed path
+/// `btc:rule-header-version` does, because the kernel reads a stock version
+/// as `i32le` and the word is negative.
+pub const VERSION_HEADER_V2_FLAG: u32 = 0x8000_0000;
 
 /// The stock 80-byte Bitcoin header, hashed with double SHA-256 (parents
 /// `btc` and `tbtc4`). Version `0x20000000`, bit 31 clear, so a Knots node
@@ -106,9 +227,34 @@ pub trait HeaderFamily: core::fmt::Debug {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Stock;
 
+/// [`Error::Encoding`] for a stock header whose version has bit 31 set.
+fn stock_bit31(header: &Header) -> Result<()> {
+    if header.version.to_consensus() as u32 & VERSION_HEADER_V2_FLAG != 0 {
+        return Err(Error::Encoding(format!(
+            "stock header: version {:#010x} has bit 31 set (VERSION_HEADER_V2_FLAG): not a stock header",
+            header.version.to_consensus() as u32
+        )));
+    }
+    Ok(())
+}
+
 impl HeaderFamily for Stock {
-    fn family(&self) -> Family {
-        Family::Stock
+    type Header = Header;
+    type Block = bitcoin::Block;
+    const FAMILY: Family = Family::Stock;
+    const HEADER_LEN: usize = 80;
+
+    fn encode_header(&self, header: &Header) -> Vec<u8> {
+        serialize(header)
+    }
+    /// Exactly 80 bytes with bit 31 of the version clear; a set bit 31 is
+    /// refused as the kernel's `structVariants` would select the v2 layout
+    /// for it (and as `sidestr-header`'s `StockHeader::decode` refuses it).
+    fn decode_header(&self, bytes: &[u8]) -> Result<Header> {
+        let header: Header =
+            deserialize(bytes).map_err(|e| Error::Encoding(format!("stock header: {e}")))?;
+        stock_bit31(&header)?;
+        Ok(header)
     }
     fn block_hash(&self, header: &Header) -> BlockHash {
         header.block_hash()
@@ -125,6 +271,8 @@ impl HeaderFamily for Stock {
         merkle_root: TxMerkleNode,
         time: u32,
         bits: CompactTarget,
+        _height: u32,
+        _tx_count: usize,
     ) -> Header {
         Header {
             version: HeaderVersion::from_consensus(0x2000_0000),
@@ -135,17 +283,165 @@ impl HeaderFamily for Stock {
             nonce: 0,
         }
     }
-    fn header_len(&self) -> usize {
-        80
+    fn version(&self, header: &Header) -> u32 {
+        header.version.to_consensus() as u32
+    }
+    /// `i32le`: bit 31 set reads as a negative version.
+    fn version_number(&self, header: &Header) -> i64 {
+        i64::from(header.version.to_consensus())
+    }
+    fn prev(&self, header: &Header) -> BlockHash {
+        header.prev_blockhash
+    }
+    fn merkle_root(&self, header: &Header) -> TxMerkleNode {
+        header.merkle_root
+    }
+    fn time(&self, header: &Header) -> u32 {
+        header.time
+    }
+    fn bits(&self, header: &Header) -> CompactTarget {
+        header.bits
+    }
+    fn nonce(&self, header: &Header) -> u32 {
+        header.nonce
+    }
+    fn set_merkle_root(&self, header: &mut Header, root: TxMerkleNode) {
+        header.merkle_root = root;
+    }
+    fn set_nonce(&self, header: &mut Header, nonce: u32) {
+        header.nonce = nonce;
     }
 }
 
-/// The implementation for a family, or [`Error::UnsupportedFamily`].
-pub fn family_for(family: Family) -> Result<Box<dyn HeaderFamily>> {
-    match family {
-        Family::Stock => Ok(Box::new(Stock)),
-        Family::Blake2b => Err(Error::UnsupportedFamily(family)),
+impl SidestrBlock for bitcoin::Block {
+    type Header = Header;
+    fn from_parts(header: Header, txdata: Vec<Transaction>) -> Self {
+        bitcoin::Block { header, txdata }
     }
+    fn header(&self) -> &Header {
+        &self.header
+    }
+    fn header_mut(&mut self) -> &mut Header {
+        &mut self.header
+    }
+    fn txdata(&self) -> &[Transaction] {
+        &self.txdata
+    }
+    fn txdata_mut(&mut self) -> &mut Vec<Transaction> {
+        &mut self.txdata
+    }
+    fn encode(&self) -> Vec<u8> {
+        serialize(self)
+    }
+    /// The consensus bytes of a stock block; a header with bit 31 set is
+    /// refused here as [`Stock::decode_header`] refuses it.
+    fn decode(bytes: &[u8]) -> Result<Self> {
+        let block: bitcoin::Block =
+            deserialize(bytes).map_err(|e| Error::Encoding(e.to_string()))?;
+        stock_bit31(&block.header)?;
+        Ok(block)
+    }
+}
+
+/// The stock block: [`bitcoin::Block`].
+pub type Block = <Stock as HeaderFamily>::Block;
+
+/// A block of any family: its header followed by the transactions, on the
+/// wire as `header ‖ CompactSize(n) ‖ tx…`, exactly as a Bitcoin block is
+/// laid out with the family's header in place of the 80-byte one. The block
+/// type of every family but [`Stock`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FamilyBlock<F: HeaderFamily> {
+    /// The header.
+    pub header: F::Header,
+    /// The transactions, coinbase first.
+    pub txdata: Vec<Transaction>,
+    /// The family marker, so the derives bound `F` and not only `F::Header`.
+    family: F,
+}
+
+impl<F: HeaderFamily> SidestrBlock for FamilyBlock<F> {
+    type Header = F::Header;
+    fn from_parts(header: F::Header, txdata: Vec<Transaction>) -> Self {
+        FamilyBlock {
+            header,
+            txdata,
+            family: F::default(),
+        }
+    }
+    fn header(&self) -> &F::Header {
+        &self.header
+    }
+    fn header_mut(&mut self) -> &mut F::Header {
+        &mut self.header
+    }
+    fn txdata(&self) -> &[Transaction] {
+        &self.txdata
+    }
+    fn txdata_mut(&mut self) -> &mut Vec<Transaction> {
+        &mut self.txdata
+    }
+    fn encode(&self) -> Vec<u8> {
+        let mut out = F::default().encode_header(&self.header);
+        out.extend(serialize(&self.txdata));
+        out
+    }
+    fn decode(bytes: &[u8]) -> Result<Self> {
+        if bytes.len() < F::HEADER_LEN {
+            return Err(Error::Encoding(format!(
+                "block of {} bytes is shorter than a {} header",
+                bytes.len(),
+                F::HEADER_LEN
+            )));
+        }
+        let header = F::default().decode_header(&bytes[..F::HEADER_LEN])?;
+        let txdata: Vec<Transaction> =
+            deserialize(&bytes[F::HEADER_LEN..]).map_err(|e| Error::Encoding(e.to_string()))?;
+        Ok(FamilyBlock {
+            header,
+            txdata,
+            family: F::default(),
+        })
+    }
+}
+
+/// The block's weight as the reference kernel computes it (`blocks.js
+/// blockWeight`): three times the legacy size plus the total size, the
+/// family's header length counted in both. Equals [`bitcoin::Block::weight`]
+/// for the stock family.
+pub fn block_weight<F: HeaderFamily>(family: &F, block: &F::Block) -> u64 {
+    let n = block.txdata().len();
+    let varint = match n {
+        0..=0xfc => 1,
+        0xfd..=0xffff => 3,
+        _ => 5,
+    };
+    let fixed = (family.header_len() as u64).saturating_add(varint);
+    let legacy = block
+        .txdata()
+        .iter()
+        .fold(fixed, |n, tx| n.saturating_add(tx.base_size() as u64));
+    let total = block
+        .txdata()
+        .iter()
+        .fold(fixed, |n, tx| n.saturating_add(tx.total_size() as u64));
+    legacy.saturating_mul(3).saturating_add(total)
+}
+
+/// The merkle root over these transactions' txids; all zeros for none.
+pub fn merkle_root_of_txs(txdata: &[Transaction]) -> TxMerkleNode {
+    merkle_root_of(txdata.iter().map(Transaction::compute_txid))
+}
+
+/// The witness merkle root: the coinbase's wtxid taken as all zeros, then
+/// every other transaction's wtxid. What the witness commitment hashes.
+pub fn witness_root_of_txs(txdata: &[Transaction]) -> [u8; 32] {
+    merkle_tree::calculate_root(
+        std::iter::once(Wtxid::all_zeros())
+            .chain(txdata.iter().skip(1).map(Transaction::compute_wtxid)),
+    )
+    .map(|h| h.to_byte_array())
+    .unwrap_or([0u8; 32])
 }
 
 // --- the witness carried in the solution --------------------------------------
@@ -164,21 +460,24 @@ fn compact_size(n: usize) -> Vec<u8> {
     }
 }
 
+/// A CompactSize at `i`, minimal: `0xfd` must encode at least 0xfd, `0xfe` at
+/// least 0x10000. `None` when the bytes run out, are not minimal, or use the
+/// 8-byte form no witness item needs.
 fn read_compact(b: &[u8], i: usize) -> Option<(usize, usize)> {
     let first = *b.get(i)?;
     match first {
         0..=0xfc => Some((usize::from(first), i + 1)),
-        0xfd => Some((
-            usize::from(*b.get(i + 1)?) | usize::from(*b.get(i + 2)?) << 8,
-            i + 3,
-        )),
-        0xfe => Some((
-            usize::from(*b.get(i + 1)?)
+        0xfd => {
+            let n = usize::from(*b.get(i + 1)?) | usize::from(*b.get(i + 2)?) << 8;
+            (n >= 0xfd).then_some((n, i + 3))
+        }
+        0xfe => {
+            let n = usize::from(*b.get(i + 1)?)
                 | usize::from(*b.get(i + 2)?) << 8
                 | usize::from(*b.get(i + 3)?) << 16
-                | usize::from(*b.get(i + 4)?) << 24,
-            i + 5,
-        )),
+                | usize::from(*b.get(i + 4)?) << 24;
+            (n >= 0x1_0000).then_some((n, i + 5))
+        }
         _ => None,
     }
 }
@@ -194,23 +493,34 @@ pub fn encode_witness(items: &[Vec<u8>]) -> Vec<u8> {
     out
 }
 
-/// The inverse of [`encode_witness`]; `None` when the bytes run out.
+/// The inverse of [`encode_witness`], strictly: `None` when the bytes run
+/// out, when a CompactSize is not minimal, when more than 256 items are
+/// announced, or when bytes remain after the last item. The reference
+/// decoder is lenient on all four; a solution is consensus data, so this
+/// one is not.
 pub fn decode_witness(bytes: &[u8]) -> Option<Vec<Vec<u8>>> {
     let (n, mut i) = read_compact(bytes, 0)?;
-    let mut items = Vec::with_capacity(n.min(64));
+    if n > MAX_WITNESS_ITEMS {
+        return None;
+    }
+    let mut items = Vec::with_capacity(n);
     for _ in 0..n {
         let (len, at) = read_compact(bytes, i)?;
-        items.push(bytes.get(at..at + len)?.to_vec());
-        i = at + len;
+        let end = at.checked_add(len)?;
+        items.push(bytes.get(at..end)?.to_vec());
+        i = end;
     }
-    Some(items)
+    (i == bytes.len()).then_some(items)
 }
 
 /// The coinbase output carrying the witness commitment: the last one whose
 /// script starts `OP_RETURN 0x24 aa21a9ed` and is at least 38 bytes
 /// (`siding/lib/block.mjs commitmentOutput`). The solution push follows it.
-pub fn commitment_output(block: &Block) -> Option<(usize, &Script)> {
-    let cb = block.txdata.first()?;
+pub fn commitment_output<B: SidestrBlock>(block: &B) -> Option<(usize, &Script)> {
+    commitment_output_of(block.txdata().first()?)
+}
+
+fn commitment_output_of(cb: &Transaction) -> Option<(usize, &Script)> {
     cb.output
         .iter()
         .enumerate()
@@ -235,7 +545,7 @@ pub struct Solution {
 /// well-formed one (`siding/lib/block.mjs solutionOf`). One push, direct
 /// (≤ 75 bytes), `OP_PUSHDATA1` (≤ 255) or `OP_PUSHDATA2` (≤ 65535) as the
 /// size needs (SPEC 4); it must start with the signet header.
-pub fn solution_of(block: &Block) -> Option<Solution> {
+pub fn solution_of<B: SidestrBlock>(block: &B) -> Option<Solution> {
     let (index, spk) = commitment_output(block)?;
     let rest = &spk.as_bytes()[COMMITMENT_LEN..];
     if rest.is_empty() {
@@ -262,7 +572,7 @@ pub fn solution_of(block: &Block) -> Option<Solution> {
 /// withSolution`): the commitment output's script becomes the 38-byte
 /// commitment, then one push of `ecc7daa2` and the serialised witness. The
 /// merkle root is not recomputed here; [`seal_block`] does that.
-pub fn with_solution(block: &Block, witness_items: &[Vec<u8>]) -> Result<Block> {
+pub fn with_solution<B: SidestrBlock>(block: &B, witness_items: &[Vec<u8>]) -> Result<B> {
     let (index, spk) = commitment_output(block)
         .ok_or_else(|| Error::Block("no witness commitment output to carry the solution".into()))?;
     let mut push = SIGNET_HEADER.to_vec();
@@ -278,15 +588,15 @@ pub fn with_solution(block: &Block, witness_items: &[Vec<u8>]) -> Result<Block> 
     script.extend(op);
     script.extend(push);
     let mut out = block.clone();
-    out.txdata[0].output[index].script_pubkey = ScriptBuf::from_bytes(script);
+    out.txdata_mut()[0].output[index].script_pubkey = ScriptBuf::from_bytes(script);
     Ok(out)
 }
 
 /// The coinbase with the solution stripped: the commitment output cut back
 /// to its 38 bytes. What the merkle root is computed over for signing.
-fn stripped_coinbase(block: &Block) -> Transaction {
-    let mut cb = block.txdata[0].clone();
-    if let Some((i, spk)) = commitment_output(block) {
+fn stripped_coinbase(txdata: &[Transaction]) -> Transaction {
+    let mut cb = txdata[0].clone();
+    if let Some((i, spk)) = commitment_output_of(&txdata[0]) {
         cb.output[i].script_pubkey =
             ScriptBuf::from_bytes(spk.as_bytes()[..COMMITMENT_LEN].to_vec());
     }
@@ -302,16 +612,22 @@ fn merkle_root_of(txids: impl Iterator<Item = Txid>) -> TxMerkleNode {
 /// SPEC 4: the block data is SHA-256 of the header's first 72 bytes (version,
 /// prev, merkle root, time on wire) with the merkle root recomputed over the
 /// coinbase stripped of its solution (`siding/lib/block.mjs blockData`).
-pub fn block_data(family: &dyn HeaderFamily, block: &Block) -> [u8; 32] {
-    let cb = stripped_coinbase(block);
+///
+/// This is what a block signature commits to, and so what sealing may not
+/// change: [`seal_block`] rewrites the coinbase's solution push (stripped
+/// here), the merkle root (recomputed here) and the nonce (outside the
+/// first 72 bytes). Every other header field — and on a v2 header the
+/// committed height, transaction count and the rest of the 164 bytes — is
+/// fixed before signing and only reachable through the merkle root.
+pub fn block_data<F: HeaderFamily>(family: &F, block: &F::Block) -> [u8; 32] {
+    let txdata = block.txdata();
+    let cb = stripped_coinbase(txdata);
     let root = merkle_root_of(
         std::iter::once(cb.compute_txid())
-            .chain(block.txdata.iter().skip(1).map(Transaction::compute_txid)),
+            .chain(txdata.iter().skip(1).map(Transaction::compute_txid)),
     );
-    let header = Header {
-        merkle_root: root,
-        ..block.header
-    };
+    let mut header = block.header().clone();
+    family.set_merkle_root(&mut header, root);
     sha256::Hash::hash(&family.signed_prefix(&header)).to_byte_array()
 }
 
@@ -440,12 +756,12 @@ pub fn coinbase_height(coinbase: &Transaction) -> Result<u32> {
 
 /// A block's height: the v2 header carries it; the stock header does not, so
 /// the coinbase says (`siding/lib/block.mjs blockHeight`).
-pub fn block_height(family: &dyn HeaderFamily, block: &Block) -> Result<u32> {
-    match family.header_height(&block.header) {
+pub fn block_height<F: HeaderFamily>(family: &F, block: &F::Block) -> Result<u32> {
+    match family.header_height(block.header()) {
         Some(h) => Ok(h),
         None => coinbase_height(
             block
-                .txdata
+                .txdata()
                 .first()
                 .ok_or_else(|| Error::CoinbaseHeight("block has no coinbase".into()))?,
         ),
@@ -457,7 +773,7 @@ pub fn block_height(family: &dyn HeaderFamily, block: &Block) -> Result<u32> {
 /// What [`build_block`] needs: the unsigned block's inputs.
 #[derive(Debug, Clone)]
 pub struct BlockTemplate {
-    /// The block's height; the coinbase pushes it.
+    /// The block's height; the coinbase pushes it, and a v2 header commits to it.
     pub height: u32,
     /// The previous block's hash (all zeros for the genesis).
     pub prev: BlockHash,
@@ -492,8 +808,9 @@ pub fn witness_commitment(transactions: &[Transaction]) -> [u8; 32] {
 /// buildBlock`). Outputs: the template's, then the witness commitment; the
 /// solution is appended by [`sign_block`] or [`seal_block`]. The header's
 /// shape follows the parent's family (SPEC 3.2): the stock 80-byte header,
-/// version with bit 31 clear, beside stock Bitcoin.
-pub fn build_block(family: &dyn HeaderFamily, t: &BlockTemplate) -> Block {
+/// version with bit 31 clear, beside stock Bitcoin; the 164-byte v2 header
+/// with its height and transaction count beside a BLAKE2b parent.
+pub fn build_block<F: HeaderFamily>(family: &F, t: &BlockTemplate) -> F::Block {
     let commitment = witness_commitment(&t.transactions);
     let mut commitment_spk = COMMITMENT_PREFIX.to_vec();
     commitment_spk.extend_from_slice(&commitment);
@@ -520,45 +837,144 @@ pub fn build_block(family: &dyn HeaderFamily, t: &BlockTemplate) -> Block {
     let mut txdata = Vec::with_capacity(t.transactions.len() + 1);
     txdata.push(coinbase);
     txdata.extend(t.transactions.iter().cloned());
-    let merkle_root = merkle_root_of(txdata.iter().map(Transaction::compute_txid));
-    Block {
-        header: family.new_header(t.prev, merkle_root, t.time, t.bits),
-        txdata,
-    }
+    let merkle_root = merkle_root_of_txs(&txdata);
+    let header = family.new_header(t.prev, merkle_root, t.time, t.bits, t.height, txdata.len());
+    F::Block::from_parts(header, txdata)
 }
 
 // --- signing and sealing ----------------------------------------------------------
 
+/// Which taproot path a block signature is for: the key path (level 1, one
+/// signer whose key *is* the output key) or a leaf of the challenge (level 2,
+/// the federation's `multi_a` leaf). The review of ADR-2101 asked for this to
+/// be typed rather than an optional leaf hash.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpendPath<'a> {
+    /// BIP 341 key path: no leaf, no annex.
+    KeyPath,
+    /// BIP 342 script path: the leaf being executed, the annex if any, and
+    /// the position of the last executed `OP_CODESEPARATOR` (`0xffffffff`
+    /// for none).
+    ScriptPath {
+        /// The TapLeaf hash.
+        leaf_hash: TapLeafHash,
+        /// The annex, without its `0x50` prefix stripped: the whole item.
+        annex: Option<&'a [u8]>,
+        /// The code-separator position.
+        codesep_pos: u32,
+    },
+}
+
 /// What a block signature signs (`siding/lib/block.mjs blockSigHash`): the
-/// taproot key-path sighash of the virtual transaction, `SIGHASH_DEFAULT`.
-pub fn block_sighash(
-    family: &dyn HeaderFamily,
-    block: &Block,
+/// taproot sighash of the virtual transaction, `SIGHASH_DEFAULT`, for the
+/// key path (level 1) or for a leaf of the challenge (level 2).
+pub fn block_sighash_for<F: HeaderFamily>(
+    family: &F,
+    block: &F::Block,
     challenge: &Script,
+    path: &SpendPath,
 ) -> Result<[u8; 32]> {
     let data = block_data(family, block);
     let v = virtual_txs(&data, challenge, &[]);
-    let msg = SighashCache::new(&v.to_sign)
-        .taproot_key_spend_signature_hash(0, &Prevouts::All(&[v.prevout]), TapSighashType::Default)
-        .map_err(|e| Error::Block(e.to_string()))?;
+    let mut cache = SighashCache::new(&v.to_sign);
+    let prevouts = [v.prevout];
+    let msg = match *path {
+        SpendPath::KeyPath => cache
+            .taproot_key_spend_signature_hash(0, &Prevouts::All(&prevouts), TapSighashType::Default)
+            .map_err(|e| Error::Block(e.to_string()))?,
+        SpendPath::ScriptPath {
+            leaf_hash,
+            annex,
+            codesep_pos,
+        } => {
+            let annex = annex
+                .map(Annex::new)
+                .transpose()
+                .map_err(|_| Error::Block("bad annex".into()))?;
+            cache
+                .taproot_signature_hash(
+                    0,
+                    &Prevouts::All(&prevouts),
+                    annex,
+                    Some((leaf_hash, codesep_pos)),
+                    TapSighashType::Default,
+                )
+                .map_err(|e| Error::Block(e.to_string()))?
+        }
+    };
     Ok(msg.to_byte_array())
+}
+
+/// [`block_sighash_for`] on the key path: what a level-1 signer signs.
+pub fn block_sighash<F: HeaderFamily>(
+    family: &F,
+    block: &F::Block,
+    challenge: &Script,
+) -> Result<[u8; 32]> {
+    block_sighash_for(family, block, challenge, &SpendPath::KeyPath)
+}
+
+/// The identity of a block *template* — what a federation's signers
+/// authorise — as distinct from the sealed block's hash. A tagged hash
+/// (`sidestr/template-id`) over the chain scope (id and genesis hash), the
+/// height, the previous hash and SHA-256 of the block encoded **with its
+/// solution stripped and its nonce zeroed**, so the same value comes out
+/// before and after sealing.
+///
+/// Why the two identities differ: [`seal_block`] rewrites the coinbase's
+/// solution push, recomputes the merkle root and grinds the nonce, so the
+/// sealed hash depends on *which* `k` signatures went in and on the nonce
+/// found; the same template sealed by two valid subsets has two hashes.
+/// Consensus above the signature therefore decides the template first (this
+/// id) and the exact sealed hash second (ADR-2101, review §4).
+pub fn template_id<F: HeaderFamily>(
+    family: &F,
+    block: &F::Block,
+    chain_id: &str,
+    genesis_hash: Option<BlockHash>,
+) -> Result<[u8; 32]> {
+    let mut t = block.clone();
+    if let Some((i, spk)) = commitment_output(&t).map(|(i, s)| (i, s.to_owned())) {
+        t.txdata_mut()[0].output[i].script_pubkey =
+            ScriptBuf::from_bytes(spk.as_bytes()[..COMMITMENT_LEN].to_vec());
+    }
+    let root = merkle_root_of_txs(t.txdata());
+    family.set_merkle_root(t.header_mut(), root);
+    family.set_nonce(t.header_mut(), 0);
+    let height = block_height(family, block)?;
+    let tag = sha256::Hash::hash(b"sidestr/template-id").to_byte_array();
+    let mut e = sha256::Hash::engine();
+    e.input(&tag);
+    e.input(&tag);
+    e.input(&compact_size(chain_id.len()));
+    e.input(chain_id.as_bytes());
+    e.input(
+        &genesis_hash
+            .unwrap_or_else(BlockHash::all_zeros)
+            .to_byte_array(),
+    );
+    e.input(&height.to_le_bytes());
+    e.input(&family.prev(block.header()).to_byte_array());
+    e.input(&sha256::Hash::hash(&t.encode()).to_byte_array());
+    Ok(sha256::Hash::from_engine(e).to_byte_array())
 }
 
 /// The block with its witness in place (`siding/lib/block.mjs sealBlock`):
 /// the solution appended, the merkle root recomputed, the header nonce found
 /// for the block's `bits`. Any path that produced the witness — one key, a
 /// federation's round — ends here.
-pub fn seal_block(
-    family: &dyn HeaderFamily,
-    block: &Block,
+pub fn seal_block<F: HeaderFamily>(
+    family: &F,
+    block: &F::Block,
     witness_items: &[Vec<u8>],
-) -> Result<Block> {
+) -> Result<F::Block> {
     let mut sealed = with_solution(block, witness_items)?;
-    sealed.header.merkle_root = merkle_root_of(sealed.txdata.iter().map(Transaction::compute_txid));
-    let target = Target::from_compact(sealed.header.bits);
+    let root = merkle_root_of_txs(sealed.txdata());
+    family.set_merkle_root(sealed.header_mut(), root);
+    let target = Target::from_compact(family.bits(sealed.header()));
     for nonce in 0..=u32::MAX {
-        sealed.header.nonce = nonce;
-        if target.is_met_by(family.block_hash(&sealed.header)) {
+        family.set_nonce(sealed.header_mut(), nonce);
+        if target.is_met_by(family.block_hash(sealed.header())) {
             return Ok(sealed);
         }
     }
@@ -571,13 +987,13 @@ pub fn seal_block(
 /// the genesis so it is reproducible from the document, and this crate
 /// passes zeros everywhere, so a block is a pure function of its inputs and
 /// the key. The key must be the one the challenge names.
-pub fn sign_block(
-    family: &dyn HeaderFamily,
-    block: &Block,
+pub fn sign_block<F: HeaderFamily>(
+    family: &F,
+    block: &F::Block,
     challenge: &Script,
     key: &SecretKey,
     aux: &[u8; 32],
-) -> Result<Block> {
+) -> Result<F::Block> {
     let keypair = Keypair::from_secret_key(secp(), key);
     let (xonly, _) = keypair.x_only_public_key();
     let expected = [&[0x51, 0x20][..], &xonly.serialize()].concat();
@@ -591,82 +1007,82 @@ pub fn sign_block(
     seal_block(family, block, &[sig.serialize().to_vec()])
 }
 
-/// Whether the block's solution satisfies the challenge for its block data
+/// How a block's solution satisfied the challenge.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BlockSolution {
+    /// One key-path signature: level 1.
+    KeyPath,
+    /// The federation's `multi_a` leaf, with which slots signed: level 2.
+    ScriptPath(MultiA),
+}
+
+/// Why a block's solution was refused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum SolutionError {
+    /// No well-formed solution push in the commitment output.
+    #[error("no solution")]
+    NoSolution,
+    /// One witness item: judged as a key-path spend, and refused.
+    #[error("key path: {0}")]
+    KeyPath(&'static str),
+    /// Several witness items: judged as the `multi_a` script path, and refused.
+    #[error("script path: {0}")]
+    ScriptPath(#[from] ScriptPathError),
+}
+
+/// The block's solution judged against the challenge for its block data
 /// (SPEC 4, `sidestr:rule-block-signature` in `siding/lib/overlay.mjs`): the
 /// solution is read, the virtual transaction built with it as witness, and
-/// its one input verified against the challenge as a taproot key-path spend.
-pub fn verify_block_signature(
-    family: &dyn HeaderFamily,
-    block: &Block,
+/// its one input verified as a taproot spend — the key path when the witness
+/// is one signature (plus an annex), the `multi_a` script path when it is
+/// slots, a leaf and a control block ([`crate::federation::verify_multi_a_input`]).
+/// Any other shape is refused by name; there is no general interpreter. The
+/// block signature is judged under BIP 341 on every family: the reference's
+/// rule verifies it without the unified-sighash option.
+pub fn verify_block_solution<F: HeaderFamily>(
+    family: &F,
+    block: &F::Block,
     challenge: &Script,
-) -> bool {
-    let Some(sol) = solution_of(block) else {
-        return false;
-    };
+) -> core::result::Result<BlockSolution, SolutionError> {
+    let sol = solution_of(block).ok_or(SolutionError::NoSolution)?;
     let data = block_data(family, block);
     let v = virtual_txs(&data, challenge, &sol.witness);
-    verify_key_path_input(&v.to_sign, 0, std::slice::from_ref(&v.prevout)).is_ok()
+    let prevouts = [v.prevout];
+    let items = sol.witness.len();
+    let has_annex = items >= 2 && sol.witness[items - 1].first() == Some(&0x50);
+    if items - usize::from(has_annex) <= 1 {
+        verify_key_path_input(&v.to_sign, 0, &prevouts)
+            .map(|()| BlockSolution::KeyPath)
+            .map_err(SolutionError::KeyPath)
+    } else {
+        verify_multi_a_input(&v.to_sign, 0, &prevouts)
+            .map(BlockSolution::ScriptPath)
+            .map_err(SolutionError::ScriptPath)
+    }
+}
+
+/// Whether the block's solution satisfies the challenge: [`verify_block_solution`] as a bool.
+pub fn verify_block_signature<F: HeaderFamily>(
+    family: &F,
+    block: &F::Block,
+    challenge: &Script,
+) -> bool {
+    verify_block_solution(family, block, challenge).is_ok()
 }
 
 /// Verify one input as a BIP 341 taproot key-path spend: one Schnorr
 /// signature over the taproot sighash, 64 bytes for `SIGHASH_DEFAULT` or 65
-/// with an explicit type, an annex allowed. This is the whole of the script
-/// verification `sidestr-core` 0.1 carries: the estate's chains pay `5120…`
-/// scripts and nothing else. Any other script type, and the taproot script
-/// path, is refused rather than skipped — where the reference kernel reports
-/// "unverifiable" and lets the block through, this crate fails closed.
+/// with an explicit type, an annex allowed. Any other script type, and the
+/// taproot script path, is refused rather than skipped — where the reference
+/// kernel reports "unverifiable" and lets the block through, this crate fails
+/// closed. This is the stock-chain reading; a spend on a BLAKE2b chain goes
+/// through [`verify_taproot_key_path`] with [`SighashRules::KnotsUnified`].
 pub fn verify_key_path_input(
     tx: &Transaction,
     index: usize,
     prevouts: &[TxOut],
 ) -> core::result::Result<(), &'static str> {
-    let prevout = prevouts.get(index).ok_or("no prevout for the input")?;
-    let input = tx.input.get(index).ok_or("no such input")?;
-    if !prevout.script_pubkey.is_p2tr() {
-        return Err(
-            "unsupported script type: sidestr-core 0.1 verifies taproot key-path spends only",
-        );
-    }
-    if !input.script_sig.is_empty() {
-        return Err("WITNESS_MALLEATED");
-    }
-    let mut items: Vec<&[u8]> = input.witness.iter().collect();
-    if items.is_empty() {
-        return Err("empty taproot witness");
-    }
-    let annex = if items.len() >= 2 && items.last().is_some_and(|a| a.first() == Some(&0x50)) {
-        items.pop()
-    } else {
-        None
-    };
-    if items.len() != 1 {
-        return Err("taproot script path is not supported by sidestr-core 0.1");
-    }
-    let raw = items[0];
-    let (sig, hash_type) = match raw.len() {
-        64 => (raw, TapSighashType::Default),
-        65 => {
-            if raw[64] == 0 {
-                return Err("explicit SIGHASH_DEFAULT in 65-byte signature");
-            }
-            (
-                &raw[..64],
-                TapSighashType::from_consensus_u8(raw[64])
-                    .map_err(|_| "invalid taproot sighash type")?,
-            )
-        }
-        _ => return Err("bad key-path signature size"),
-    };
-    let annex = annex.map(Annex::new).transpose().map_err(|_| "bad annex")?;
-    let msg = SighashCache::new(tx)
-        .taproot_signature_hash(index, &Prevouts::All(prevouts), annex, None, hash_type)
-        .map_err(|_| "sighash failed")?;
-    let pk = XOnlyPublicKey::from_slice(&prevout.script_pubkey.as_bytes()[2..34])
-        .map_err(|_| "bad output key")?;
-    let sig = Signature::from_slice(sig).map_err(|_| "bad signature")?;
-    secp()
-        .verify_schnorr(&sig, &Message::from_digest(msg.to_byte_array()), &pk)
-        .map_err(|_| "invalid key-path schnorr signature")
+    verify_taproot_key_path(tx, index, prevouts, SighashRules::Bip341)
 }
 
 /// The x-only public key of a secret key, as the document's `signer` field
@@ -675,9 +1091,22 @@ pub fn pubkey_of(key: &SecretKey) -> XOnlyPublicKey {
     Keypair::from_secret_key(secp(), key).x_only_public_key().0
 }
 
-/// The single-key challenge for a signer: `OP_1 <32-byte x-only key>`.
+/// The single-key challenge for a signer: `OP_1 <32-byte x-only key>`, the
+/// signer's key used **untweaked** as the output key (level 1, SPEC 4:
+/// "key path, no tweak"). This is not BIP 86: the key here is not a
+/// descriptor's internal key, and no script path exists. For a challenge
+/// whose output key is a tweaked internal key — a federation's — use
+/// [`challenge_for_output_key`] with the tweaked key, never this with the
+/// internal one.
 pub fn challenge_for(pubkey: &XOnlyPublicKey) -> ScriptBuf {
     ScriptBuf::from_bytes([&[0x51, 0x20][..], &pubkey.serialize()].concat())
+}
+
+/// The challenge for an already-tweaked output key: `OP_1 <output key>`.
+/// The type says the tweak has been applied, which is what distinguishes it
+/// from [`challenge_for`]'s raw signer key (review §9).
+pub fn challenge_for_output_key(output_key: &TweakedPublicKey) -> ScriptBuf {
+    ScriptBuf::from_bytes([&[0x51, 0x20][..], &output_key.serialize()].concat())
 }
 
 /// A secret key from the 32-byte hex a siding key file holds (`~/.sidestr/<name>.key`,
@@ -686,6 +1115,25 @@ pub fn challenge_for(pubkey: &XOnlyPublicKey) -> ScriptBuf {
 pub fn key_from_hex(text: &str) -> Result<SecretKey> {
     let bytes = hex::decode(text.trim()).map_err(|e| Error::Encoding(e.to_string()))?;
     Ok(SecretKey::from_slice(&bytes)?)
+}
+
+pub(crate) fn schnorr_verify(msg: &[u8; 32], sig: &[u8], pk: &[u8]) -> bool {
+    let (Ok(sig), Ok(pk)) = (Signature::from_slice(sig), XOnlyPublicKey::from_slice(pk)) else {
+        return false;
+    };
+    secp()
+        .verify_schnorr(&sig, &Message::from_digest(*msg), &pk)
+        .is_ok()
+}
+
+pub(crate) fn annex_of<'a>(
+    items: &mut Vec<&'a [u8]>,
+) -> core::result::Result<Option<Annex<'a>>, &'static str> {
+    if items.len() >= 2 && items.last().is_some_and(|a| a.first() == Some(&0x50)) {
+        let raw = items.pop().expect("checked");
+        return Annex::new(raw).map(Some).map_err(|_| "bad annex");
+    }
+    Ok(None)
 }
 
 #[cfg(test)]
@@ -786,7 +1234,50 @@ mod tests {
                 sealed.compute_merkle_root(),
                 Some(sealed.header.merkle_root)
             );
+            assert_eq!(block_weight(&Stock, &sealed), sealed.weight().to_wu());
         }
         assert!(with_solution(&block, &[vec![0u8; 70_000]]).is_err());
+    }
+
+    // the review's witness-decoder bounds: truncation, trailing bytes, non-minimal sizes, counts
+    #[test]
+    fn witness_decoder_is_strict() {
+        let one = encode_witness(&[vec![9u8; 3]]);
+        assert!(decode_witness(&one).is_some());
+        assert_eq!(decode_witness(&[&one[..], &[0u8][..]].concat()), None); // trailing byte
+        assert_eq!(decode_witness(&one[..one.len() - 1]), None); // truncated item
+        assert_eq!(
+            decode_witness(&[0xfd, 0x03, 0x00, 0x01, 0x09, 0x01, 0x09, 0x01, 0x09]),
+            None
+        ); // non-minimal count
+        assert_eq!(decode_witness(&[0xfd, 0xff, 0xff]), None); // 65535 items announced, none present
+        assert_eq!(decode_witness(&[0xff, 0, 0, 0, 0, 0, 0, 0, 0]), None); // 8-byte form refused
+        assert_eq!(decode_witness(&[]), None);
+        assert_eq!(decode_witness(&[0]), Some(vec![]));
+        let big = encode_witness(&[vec![0u8; 300]]);
+        assert_eq!(decode_witness(&big).unwrap()[0].len(), 300);
+    }
+
+    #[test]
+    fn a_family_block_round_trips_and_weighs_like_bitcoins() {
+        // FamilyBlock<Stock> is not Stock's block type, but the codec is the same shape
+        let b = build_block(
+            &Stock,
+            &BlockTemplate {
+                height: 1,
+                prev: BlockHash::all_zeros(),
+                time: 7,
+                transactions: vec![],
+                outputs: vec![],
+                bits: CompactTarget::from_consensus(0x207f_ffff),
+                marker: MARKER.into(),
+            },
+        );
+        let fb = FamilyBlock::<Stock>::from_parts(b.header, b.txdata.clone());
+        assert_eq!(fb.encode(), serialize(&b));
+        assert_eq!(FamilyBlock::<Stock>::decode(&serialize(&b)).unwrap(), fb);
+        assert!(FamilyBlock::<Stock>::decode(&serialize(&b)[..90]).is_err());
+        assert!(FamilyBlock::<Stock>::decode(&[serialize(&b), vec![0]].concat()).is_err());
+        assert_eq!(hex::encode(witness_root_of_txs(&b.txdata)), "00".repeat(32));
     }
 }

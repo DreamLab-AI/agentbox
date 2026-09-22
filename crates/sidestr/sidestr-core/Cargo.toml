@@ -1,12 +1,12 @@
 [package]
 name = "sidestr-core"
-version = "0.1.0"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 authors.workspace = true
 license = "AGPL-3.0-only"
-description = "sidestr user-activated sidechains beside a Bitcoin-family parent: the chain document, the parents table, signed stock-header blocks (BIP-325 challenge, no subsidy), the peg-in claim and peg-out burn rules, the block file and an in-memory validating chain. A port of siding by Melvin Carvalho."
+description = "sidestr user-activated sidechains beside a Bitcoin-family parent: the chain document, the parents table, signed blocks generic over the header family (BIP-325 challenge, no subsidy), the peg-in claim and peg-out burn rules, Knots' unified sighash, the block file and an in-memory validating chain. A port of siding by Melvin Carvalho."
 readme = "README.md"
 documentation = "https://docs.rs/sidestr-core"
 keywords = ["bitcoin", "sidechain", "sidestr", "signet", "consensus"]
@@ -19,6 +19,15 @@ default = ["std"]
 # The pieces that touch the operating system: the block file on disk, the
 # file-backed chain and the system clock. Everything else is pure.
 std = []
+# Test-only: Bitcoin Core's script interpreter (libbitcoinconsensus, Core
+# 26.0 lineage) as a differential oracle for the multi_a verifier
+# (`tests/consensus_oracle.rs`). Needs a C++ toolchain; adds nothing to the
+# library.
+consensus-oracle = ["dep:bitcoinconsensus"]
+# The parent view's one JSON-RPC client: Bitcoin Core over HTTP with a cookie
+# file, blocking (`parent::rpc::CoreRpc`). Everything the view decides is
+# pure and needs no feature.
+rpc = ["std", "dep:ureq"]
 
 [dependencies]
 bitcoin = { workspace = true }
@@ -28,6 +37,9 @@ serde_json = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
 thiserror = { workspace = true }
+bitcoinconsensus = { version = "0.106.0", optional = true }
+ureq = { version = "3", optional = true, default-features = false }
 
 [dev-dependencies]
 serde_json = { workspace = true }
+proptest = "1.11"

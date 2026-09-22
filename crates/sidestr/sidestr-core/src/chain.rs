@@ -1,7 +1,11 @@
-//! A sidestr chain on disk (feature `std`): the [`State`] replayed from the
+//! A sidestr chain on disk (feature `std`): the [`StateOf`] replayed from the
 //! block file in a directory, created with the genesis when absent, and
 //! every accepted block written down (`siding/lib/chain.mjs open`, `addBlock`,
 //! `produce`). The clock is the system's.
+//!
+//! [`Chain`] is the stock instantiation; a BLAKE2b chain is
+//! `ChainOf<Blake2bV2>` with the family from `sidestr-header`, and replays a
+//! mirror's `blocks.dat` the same way.
 //!
 //! ```no_run
 //! use sidestr_core::{chain::Chain, document::ChainDocument, block::key_from_hex};
@@ -20,22 +24,26 @@
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use bitcoin::consensus::encode::{deserialize, serialize};
+use bitcoin::consensus::encode::deserialize;
 use bitcoin::secp256k1::SecretKey;
-use bitcoin::{Block, BlockHash};
+use bitcoin::BlockHash;
 
+use crate::block::{HeaderFamily, SidestrBlock, Stock};
 use crate::blockfile::{append_block, read_block, read_index, write_index, Index};
 use crate::document::ChainDocument;
 use crate::error::{Error, Result};
-use crate::state::{Applied, ClaimRequest, NextBlock, State, Submitted};
+use crate::state::{Applied, ClaimRequest, NextBlock, StateOf, Submitted};
 
-/// The chain with its block file.
+/// The chain with its block file, for header family `F`.
 #[derive(Debug)]
-pub struct Chain {
-    state: State,
+pub struct ChainOf<F: HeaderFamily> {
+    state: StateOf<F>,
     dir: PathBuf,
     index: Index,
 }
+
+/// The chain on disk beside a stock parent: [`ChainOf`] over [`Stock`].
+pub type Chain = ChainOf<Stock>;
 
 /// Seconds since the epoch, as a header time.
 pub fn now() -> u32 {
@@ -45,7 +53,7 @@ pub fn now() -> u32 {
         .unwrap_or(0)
 }
 
-impl Chain {
+impl<F: HeaderFamily> ChainOf<F> {
     /// Replay `dir/blocks.dat`, creating it with the genesis when absent —
     /// which needs the signer's key. `open()` refuses a block file whose
     /// block 0 does not hash to the document's `genesisHash`, and any later
@@ -55,24 +63,57 @@ impl Chain {
         dir: impl AsRef<Path>,
         key: Option<&SecretKey>,
     ) -> Result<Self> {
+        doc.validate()?;
+        let federated = doc.signers.is_some();
+        Self::open_with(doc, dir, |doc| {
+            let key = key.ok_or_else(|| {
+                Error::Chain("no chain on disk and no key to make the genesis".into())
+            })?;
+            if federated {
+                return Err(Error::Federation(
+                    "a federated chain's genesis needs k signatures: open_sealed(doc, dir, seal)"
+                        .into(),
+                ));
+            }
+            StateOf::<F>::genesis_block_for(doc, key)
+        })
+    }
+
+    /// [`ChainOf::open`] for a federated chain (`siding/lib/chain.mjs open(null,
+    /// { seal })`): when no chain is on disk, `seal` receives the unsigned
+    /// genesis ([`StateOf::build_genesis_for`]) and returns it sealed by `k`
+    /// signatures — [`crate::federation::seal_federated`] with the partials
+    /// the signers made. With a chain on disk, `seal` is not called.
+    pub fn open_sealed(
+        doc: ChainDocument,
+        dir: impl AsRef<Path>,
+        seal: impl FnOnce(&F::Block) -> Result<F::Block>,
+    ) -> Result<Self> {
+        doc.validate()?;
+        Self::open_with(doc, dir, |doc| seal(&StateOf::<F>::build_genesis_for(doc)?))
+    }
+
+    fn open_with(
+        doc: ChainDocument,
+        dir: impl AsRef<Path>,
+        genesis: impl FnOnce(&ChainDocument) -> Result<F::Block>,
+    ) -> Result<Self> {
+        StateOf::<F>::family_of(&doc)?;
         let dir = dir.as_ref().to_path_buf();
         std::fs::create_dir_all(&dir)?;
         let dat = dir.join("blocks.dat");
         let idx = dir.join("blocks.json");
         let (state, index) = match read_index(&idx)? {
             None => {
-                let key = key.ok_or_else(|| {
-                    Error::Chain("no chain on disk and no key to make the genesis".into())
-                })?;
-                let genesis = State::genesis_block_for(&doc, key)?;
-                let state = State::from_genesis(doc, &genesis, None)?;
+                let genesis = genesis(&doc)?;
+                let state = StateOf::<F>::from_genesis(doc, &genesis, None)?;
                 let mut index = Index::new(&state.document().id);
                 append_block(
                     &dat,
                     &mut index,
                     0,
                     &state.genesis_hash().to_string(),
-                    &serialize(&genesis),
+                    &genesis.encode(),
                 )?;
                 write_index(&idx, &index)?;
                 (state, index)
@@ -88,9 +129,8 @@ impl Chain {
                         first.height
                     )));
                 }
-                let genesis: Block = deserialize(&read_block(&dat, first)?)
-                    .map_err(|e| Error::Encoding(e.to_string()))?;
-                let mut state = State::from_genesis(
+                let genesis = F::Block::decode(&read_block(&dat, first)?)?;
+                let mut state = StateOf::<F>::from_genesis(
                     doc,
                     &genesis,
                     Some(
@@ -105,8 +145,7 @@ impl Chain {
                         .hash
                         .parse()
                         .map_err(|_| Error::Encoding("bad hash in the index".into()))?;
-                    let block: Block = deserialize(&read_block(&dat, e)?)
-                        .map_err(|err| Error::Encoding(err.to_string()))?;
+                    let block = F::Block::decode(&read_block(&dat, e)?)?;
                     state.apply(e.height, &block, Some(expect), Some(now()))?;
                 }
                 (state, index)
@@ -116,7 +155,7 @@ impl Chain {
     }
 
     /// The chain in memory.
-    pub fn state(&self) -> &State {
+    pub fn state(&self) -> &StateOf<F> {
         &self.state
     }
     /// The block file's index.
@@ -163,7 +202,7 @@ impl Chain {
         let (r, block) = self
             .state
             .produce(key, &NextBlock { time: t, claims }, Some(t))?;
-        self.write(r.height, r.hash, &serialize(&block))?;
+        self.write(r.height, r.hash, &block.encode())?;
         Ok(r)
     }
 }
