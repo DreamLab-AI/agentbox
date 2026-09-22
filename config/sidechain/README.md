@@ -49,10 +49,23 @@ Without the engine, `tests/config/sidechain-genesis.test.sh` checks the document
 invariants and, when the block file is present, the SHA-256d of its 80-byte header against
 the document.
 
+## Interim producer and mirror (2026-09-22)
+
+Until the supervised programs exist, `run-producer.sh` runs the upstream JS producer from
+the durable checkouts under `$WORKSPACE/sidestr/upstream` (spec, schema kernel,
+blaketestnode) in tmux window `sidestr`: port `:3450` on loopback, a block every 600 s
+(10 s with transactions), the five default public relays, peg-ins scanned on the estate's
+testnet4 node from the funding height and paid from wallet `sidestr-peg`. Pass
+`--announce-mirror <https url>` to publish the kind-33333 tip after every block; the
+relays are the registry (SPEC 11): any client asking for kind 33333 tagged `t=sidestr`
+lists every chain that has announced, and `play-grounds.github.io/sidestr` is one such
+client. `mirror-sync.sh <pages checkout>` copies `chain.json`, `blocks.dat` and
+`blocks.json` into a GitHub Pages checkout and pushes on change; Pages serves them with
+open CORS and Range requests, which is all a mirror is.
+
 ## Not yet built (PRD-024 P1)
 
 `[sidechain]` in `agentbox.toml` and its schema entry, the `sidestr-node` and
 `sidestr-producer` supervised programs, the mirror on loopback `:9097` behind the nip98
-proxy at `/chain/`, the `chain` and `asset` URN kinds, the kind-38420 account binding, and
-the tip announcement. The producer is not running and nothing has been published to a
-relay.
+proxy at `/chain/`, the `chain` and `asset` URN kinds, and the kind-38420 account
+binding.
