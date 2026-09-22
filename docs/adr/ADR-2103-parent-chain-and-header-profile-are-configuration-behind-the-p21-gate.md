@@ -176,8 +176,10 @@ the parent's family: stock headers beside `btc` or `tbtc4`, v2 BLAKE2b headers b
 - Our contribution is re-scoped to the producer's half, which 0.0.2 left untouched: PR #4 now
   carries `buildBlock()` shaping the header by family, `blockHeight()` and a strict
   `coinbaseHeight()` (BIP 34), and a 17-check test; sidestr/explorer PR #2 gates the Knots
-  overlay on `resolveParent(chain.parent).family`. Until merged the estate pins the fork
-  branches by commit (`jjohare/spec@7db3d7d`, `jjohare/explorer@header-profile`).
+  overlay on `resolveParent(chain.parent).family`. **spec PR #4 merged 2026-09-22 as
+  `sidestr/spec@53f91f9`**, so the producer's half is upstream and the estate pins
+  `sidestr/spec` at or after that commit; the explorer follow-up is still open, so the
+  estate pins `jjohare/explorer@header-profile` until it lands.
 
 ## Consequences
 
