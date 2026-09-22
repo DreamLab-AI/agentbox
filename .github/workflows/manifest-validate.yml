@@ -32,6 +32,8 @@ on:
       - 'scripts/agentbox-config-validate.*'
       - 'services/agentbox-manifest/**'
       - 'tests/tui/**'
+      - 'tests/config/sidechain-genesis.test.sh'
+      - 'config/sidechain/**'
       - '.github/workflows/manifest-validate.yml'
 
 concurrency:
@@ -111,6 +113,11 @@ jobs:
 
       - name: Assert JSON Schema is well-formed
         run: python3 -c "import json; json.load(open('schema/agentbox.toml.schema.json'))"
+
+      - name: Sealed chain documents are well-formed and gated (ADR-2103)
+        # The block file is not in the repository, so the on-disk hash case skips here;
+        # the document invariants, the P21 mainnet gate and the no-key-in-git check run.
+        run: bash tests/config/sidechain-genesis.test.sh
 
       - name: Assert all W-codes are routed to warnings (advisory, not fatal)
         run: |

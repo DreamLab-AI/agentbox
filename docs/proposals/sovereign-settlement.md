@@ -328,6 +328,7 @@ only phase that touches real value and cannot start until M4 exists as code.
 |---|---|---|
 | **P0 Foundation** | ADR/PRD/DDD pack; `sidestr-core` + `sidestr-nostr` clean-room; solid-pod-rs rust-bitcoin port (S5); `headerProfile` upstream proposal; `[sidechain]` manifest block and onboarding exposure | S1 against live `txbt4-fed` and `gitmark`; S2; S5 golden fixtures; `cargo doc` clean; upstream PR filed |
 | **P1 Root chain** | Mint `sidestr:dreamlab`; `sidestr-node` + JS producer supervised; mirror :9097; nip98-proxy `/chain/`; `chain`/`asset` URN kinds; kind table; `sidestr-wallet`; version-skew resolution | Genesis validated by node and JS explorer from cold; peg-in claimed and spendable; peg-out paid on the parent; C2; agent-reconcile and lint gates; recall gate in band |
+| ↳ P1 status 2026-09-22 | **Minted.** `sidestr:dreamlab` sealed beside `tbtc4` by the merged upstream engine (spec `53f91f9`): genesis `4db37517…d453dbc0`, signer `7092810a…4c76d62`, prefix `drm`, no pegs; document at `config/sidechain/dreamlab/chain.json`, key in the secrets volume, block file under `$WORKSPACE/sidestr/dreamlab`. Replayed cold by the engine; block 0's header hashed independently to the document (`tests/config/sidechain-genesis.test.sh`). The testnet4 peg wallet holds 0.001 tBTC. | Not yet: producer, mirror, proxy route, URN kinds, 38420 binding, announcement, first peg-in. Deviation found: upstream's genesis commits id, pegs, time and signer only, so `parent` and the containment block are bound by the committed document, not the coinbase (ADR-2103 amendment). |
 | **P2 Chain is truth** | pay402 `sidestr` scheme; authority wiring; durable budget; fail-closed cost gate; ledgers to views; FsPaymentStore deleted; `AnchorConfirmer`; `txo[]` populated | L4 fixtures; agent A pays agent B 1,000 test sats through a 402 with a receipt citing the chain txid; a spend above threshold blocks on a 31403 and journals a deny; three-ledger equality on 100 random DIDs; budget survives restart |
 | **P3 Child chains and Rust producer** | Session-bound child chains; nested-parent validation; `sidestr-producer` to parity; colloquy principal collapse | C4, C5, C6; S4 parity; fifty agents under one principal count as one voice |
 | **P4 Bridge and mainnet gate** | `sidestr-bridge`; wrapped-asset in and out; M4 as code; USDT only if live | B2, B3, M4 mutation test; the ADR-124 §7 matrix restated with no cell exempted |
@@ -479,6 +480,9 @@ Answered by the owner on 2026-09-21 (second round), and applied to the records:
 9. **First seal.** `parent = tbtc4` (the estate's testnet4 node) with stock 80-byte headers:
    sidestr 0.0.2 names parents by alias and derives the header family from the parent, so the
    mixed pairing is gone and `header_profile` is derived, not configured (ADR-2103).
+   **Sealed 2026-09-22:** genesis `4db37517728bd509c0cb96ee5a2e3e2a77f9e965a092e9f67948b413d453dbc0`,
+   an 80-byte stock header with bit 31 clear at `powLimit`, made by the merged upstream engine
+   and replayed cold (P1 status row above).
 
 Still open, and each changes what gets built:
 
