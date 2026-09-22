@@ -12,6 +12,10 @@ members = [
     # The wallet: coins, the kernel's coin selection, key-path spends, peg-out burns, the
     # parent-side peg-in shape and delivery; keys behind a signer port (ADR-2101 D3).
     "sidestr-wallet",
+    # The chain's Nostr plane: own NIP-01 event and sealed signer port; tips (33333),
+    # transactions (23500/23501), rule and genesis documents, the dual-schema 33502 record,
+    # the level-2 round codecs and the estate's 38420-38425 (ADR-2098 D2, ADR-2106).
+    "sidestr-nostr",
 ]
 
 [workspace.package]
