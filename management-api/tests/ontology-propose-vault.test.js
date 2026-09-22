@@ -171,7 +171,7 @@ test('$VAULT_BIN overrides the binary', (t) => {
   const prev = process.env.VAULT_BIN;
   process.env.VAULT_BIN = '/opt/vault/bin/vault';
   t.after(() => { if (prev === undefined) delete process.env.VAULT_BIN; else process.env.VAULT_BIN = prev; });
-  assert.equal(op.buildVaultProposeCommand(CANDIDATE, process.env).bin, '/opt/vault/bin/vault');
+  assert.equal(op.buildVaultProposeCommand(CANDIDATE, { ...ENV, ...process.env }).bin, '/opt/vault/bin/vault');
 });
 
 // ── The extractor hands the route a command, not an HTTP descriptor ─────────
