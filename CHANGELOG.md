@@ -4,6 +4,36 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Removed (2026-09-22 — the corpus loses its MCP server; agents get a CLI)
+
+ADR-2107 / ADR-2108, VisionFlow PRD-sovereign-corpus Q10/Q11 (WS-G).
+
+`ontology-bridge` is deleted: `mcp/servers/ontology-bridge.js`, its entry in
+`mcp/mcp.json`, in `.mcp-hub-servers.json` and in `[resources.mcp_hub].servers`,
+the `ENABLE_ONTOLOGY`-gated registration block in `entrypoint-unified.sh`, the
+`ENABLE_ONTOLOGY` env the flake baked for it, and the `mcp.after-ontology-bridge`
+golden with the chain step that produced it (nine `.mcp.json` mutations become
+eight; six downstream fixtures had the 14-line block excised, byte parity kept).
+
+Agents reach the corpus two ways now, both from Bash: the `vault` CLI
+(VisionClaw `crates/vault`, baked by `lib/vault.nix`, gated on the new
+`[vault].cli` manifest key, liveness-probed with `vault --version` in boot Phase
+5d) and the Loom over HTTP on `192.168.2.132:8084`. `ontology-augment`,
+`podcast-knowledge-ingest` and the `ontology-curator` agent (`tools: Read, Bash`)
+are rewritten accordingly; `skills/ontology-augment/scripts/ontology-augment.sh`
+wraps the common patterns.
+
+`mcp/servers/ontology-propose.js` was never an MCP server — a pure descriptor
+builder — and moves to `management-api/lib/ontology-propose.js`, its only
+remaining caller, collapsing the dual-path require and the flake vendoring step.
+
+Measured while doing it: the Loom generation deployed on `:8084` answers `/mcp`
+with 404 (the ADR-140 plane has not shipped), so `neighbours` falls back to
+`vault tree` and `paths` refuses rather than passing a walk over asserted
+wikilinks off as a shortest path in the reasoned graph.
+
+REBUILD-class: `./agentbox.sh rebuild` from the host shell.
+
 ### Changed (2026-09-21 — Colloquy and the settlement pack move out of the reserved agent-response range)
 
 ADR-009 §4.2 and PRD-004 §4.2 reserve `38100`-`38199` for agent-response events,

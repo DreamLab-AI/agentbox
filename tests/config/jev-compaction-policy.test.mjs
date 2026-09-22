@@ -23,7 +23,7 @@ describe('taint — email never leaves', () => {
     assert.equal(taintsSession(use('Skill', { skill: 'diagrams-as-code' }), DEFAULT_TAINT_TOOLS, DEFAULT_TAINT_SKILLS), false);
   });
   test('ordinary tools and other MCP servers are clean', () => {
-    for (const t of ['Read', 'Bash', 'Edit', 'mcp__claude-flow__memory_search', 'mcp__ontology-bridge__ontology_ask', 'email']) {
+    for (const t of ['Read', 'Bash', 'Edit', 'mcp__claude-flow__memory_search', 'mcp__codebase-memory__search_graph', 'email']) {
       assert.equal(taintsSession(use(t), DEFAULT_TAINT_TOOLS, DEFAULT_TAINT_SKILLS), false, t);
     }
   });
@@ -40,8 +40,8 @@ describe('taint — email never leaves', () => {
     assert.equal(scanTaint(last).tainted, true, 'a taint in the pinned tail still taints');
   });
   test('per-project fences: extra prefixes add to the rule, they do not replace email', () => {
-    const tools = listOption('mcp__email-gateway__, mcp__ontology-bridge__', DEFAULT_TAINT_TOOLS);
-    assert.equal(taintsSession(use('mcp__ontology-bridge__kg_neighbors'), tools, DEFAULT_TAINT_SKILLS), true);
+    const tools = listOption('mcp__email-gateway__, mcp__codebase-memory__', DEFAULT_TAINT_TOOLS);
+    assert.equal(taintsSession(use('mcp__codebase-memory__search_graph'), tools, DEFAULT_TAINT_SKILLS), true);
     assert.equal(taintsSession(use('mcp__email-gateway__ask_email'), tools, DEFAULT_TAINT_SKILLS), true);
   });
   test('malformed messages never throw', () => {

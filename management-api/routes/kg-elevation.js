@@ -12,23 +12,31 @@
  *     personal node to its shared-ontology target) through the canonical
  *     agentEventPublisher — picked up by /v1/agent-events/stream and pushed to
  *     the host substrate; and
- *   - returns the GOVERNED `/api/ontology-agent/propose` descriptor (Whelk →
- *     human approval → PR). This route NEVER POSTs to the ungoverned
- *     /api/ontology/load backdoor; it only surfaces the governed request the
- *     operator (or the ontology bridge) then executes.
+ *   - runs the GOVERNED `vault propose <iri> --level content --dry-run --json`
+ *     (ADR-2116; the HTTP propose route is retired and answers 410). That runs
+ *     Whelk and the conflict detector as BLOCKERS and returns the
+ *     `PatchProposal` (contract C4). A candidate with blockers is reported and
+ *     NOT federated — an inconsistent ontology is not a decision a human should
+ *     be asked to sign. This route NEVER POSTs to the ungoverned
+ *     /api/ontology/load backdoor.
+ *
+ * `--dry-run` rather than a live post: `elevation-publisher` already raises the
+ * governed 31402 for this candidate, and letting vault raise a second would put
+ * one concept in front of the human twice.
  *
  * Gated by agentbox.toml [sovereign_mesh].kg_elevation (default off). Off → 503.
  * Adapter discipline: if the memory slot is off/placeholder the route returns
  * 503 — it does not silently fall back to a different store.
  *
  * @see lib/kg-proposal-extractor.js
- * @see mcp/servers/ontology-propose.js (the governed proposal contract)
+ * @see management-api/lib/ontology-propose.js (runVaultPropose — contracts C2/C4)
  */
 
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 const { verifyAgentEventRequest } = require('../lib/agent-event-auth');
 const { extractProposals, ExtractError } = require('../lib/kg-proposal-extractor');
 const { buildElevationPublisher } = require('../lib/elevation-publisher');
+const { runVaultPropose } = require('../lib/ontology-propose');
 
 /** u32 string hash — identical to the agent-events surface. */
 function hashString(str) {
@@ -159,6 +167,29 @@ module.exports = async function kgElevationRoutes(fastify, options) {
       throw err;
     }
 
+    // ADR-2116: run the governed gate before anything is emitted or federated.
+    // `vault propose --dry-run` is the only thing that can say whether this
+    // candidate is even proposable; doing it up front means a blocked candidate
+    // never reaches the publisher.
+    const gated = [];
+    for (const p of result.proposals) {
+      const outcome = await runVaultPropose(
+        { ...p.propose_command.proposal, iri: p.propose_command.iri, level: p.propose_command.level },
+        { env: process.env },
+      );
+      p.patch_proposal = outcome.proposal;
+      p.blockers = outcome.blockers;
+      p.propose_error = outcome.error;
+      gated.push(outcome);
+      if (outcome.blocked) {
+        logger.debug(
+          { event: 'kg-elevation.blocked', iri: p.propose_command.iri,
+            blockers: outcome.blockers, err: outcome.error },
+          'candidate is not proposable — not federated'
+        );
+      }
+    }
+
     const emitted = [];
     // Federation results, indexed alongside result.proposals. Each entry is the
     // outcome of publishing the GOVERNED elevation proposal as a signed ACSP
@@ -189,7 +220,13 @@ module.exports = async function kgElevationRoutes(fastify, options) {
         // never throws — standalone returns { published: false }, federated
         // returns { published: true, event_id }. The beam above is unaffected
         // either way.
-        federated.push(await elevationPublisher.publish(p));
+        // A blocked candidate gets its beam (the scan found it — that is true
+        // and worth seeing) but no governed 31402, per contract C4.
+        federated.push(
+          gated[result.proposals.indexOf(p)].blocked
+            ? { published: false, reason: 'blocked by vault propose' }
+            : await elevationPublisher.publish(p)
+        );
       }
     }
 
@@ -216,7 +253,15 @@ module.exports = async function kgElevationRoutes(fastify, options) {
         // The experiential lesson this candidate was distilled from (null for
         // personal-KG entries) — links code-as-harness into the governed record.
         source_lesson_urn: p.source_lesson_urn || null,
-        propose_request: p.propose_request, // governed path — execute via the ontology bridge
+        // ADR-2116: the governed command, its subject IRI, and what the gate
+        // said. `propose_request` (an HTTP descriptor for a route that now
+        // 410s) is gone rather than renamed — a caller still reading it should
+        // break loudly here, not POST into a wall.
+        propose_command: p.propose_command.argv,
+        propose_iri: p.propose_command.iri,
+        patch_proposal: p.patch_proposal || null,
+        blockers: p.blockers || [],
+        propose_error: p.propose_error || null,
         event_id: emitted[i] ? emitted[i].event_id : null,
         // Nostr federation outcome for this governed proposal (false in standalone).
         nostr_published: federated[i] ? !!federated[i].published : false,

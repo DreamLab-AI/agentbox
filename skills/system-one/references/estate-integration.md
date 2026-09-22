@@ -28,8 +28,8 @@ it would cost, what class of data it would send, and what has to be true first.
 ## Candidates
 
 ### 1. Knowledge-graph annotation and contradiction detection
-**Where** — `ontology-augment` / the `ontology-bridge` MCP surface (Oxigraph/Whelk,
-~5,975 OWL classes). Judgments: classify a relationship type, judge whether two
+**Where** — `ontology-augment` / the `vault` CLI and the Loom's reasoned closure
+(ADR-2107; no MCP surface). Judgments: classify a relationship type, judge whether two
 records contradict, score whether a proposed enrichment is supported by its evidence.
 **Replaces** — human triage of governed write-back proposals.
 **Egress** — *middle ground at best, must-not-leave in parts.* The ontology schema is

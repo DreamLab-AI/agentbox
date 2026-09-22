@@ -2,13 +2,13 @@
 id: ADR-2054
 title: Route every ontology authoring caller through the authority gate
 date: 2026-09-05
-decision_status: accepted
+decision_status: superseded
 implementation_status: partial
 activation_status: live
 supersedes: []
-superseded_by: []
+superseded_by: [ADR-2108]
 verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
-verified_paths: []
+verified_paths: []               # gate deleted by ADR-2108; paths no longer exist
 owner: jjohare
 review_trigger: a new caller of ontology-local.js axiomAdd/propose, or skills.ontology.local_authoring being declared in agentbox.toml
 repo: agentbox
@@ -17,6 +17,14 @@ lineage: ADR-2022 (governed ontology writes; named this CLI as its last remainin
 ---
 
 # ADR-2054 — Route every ontology authoring caller through the authority gate
+
+> **Superseded by ADR-2108 (2026-09-22).** The authority gate this record
+> governs is deleted along with the in-place corpus write it protected
+> (`ontology-local.js` `axiomAdd`/`propose`, `ontology-local.cjs`,
+> `ontology-authoring-authority.js`, `vault-frontmatter.js`,
+> `[skills.ontology].local_authoring`). Corpus writes now go through
+> `vault propose` for a human signature, or `vault edit --expect` to apply
+> one. Retained as the record of why an ungoverned write was unacceptable.
 
 ## Context
 

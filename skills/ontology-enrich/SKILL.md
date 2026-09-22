@@ -29,9 +29,11 @@ tags:
 Validated enrichment and TTL generation for the authored vault corpus with
 VisionClaw/WebVOWL compatibility. The shell examples below use `$VAULT_PAGES` —
 the `[vault]` path authority resolved from `agentbox.toml` (ADR-2028); export it
-or substitute your vault's `pages/` directory. `source-domain::` and friends are
-the legacy Logseq property spelling, still matched on read during the bounded
-transition window; in vault pages these are frontmatter keys (`source-domain:`).
+or substitute your vault's `pages/` directory (`visionGraph/knowledge/pages`).
+`source-domain::` and friends are the legacy `key::` spelling, matched on read
+as a migration affordance only; in vault pages these are frontmatter keys
+(`source-domain:`), and `vault validate` fails on any `key::` line that
+survives (ADR-2107).
 
 ## Key Workflows
 

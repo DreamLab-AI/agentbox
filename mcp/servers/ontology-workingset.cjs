@@ -6,7 +6,7 @@
  * ontology-class digests carried across turns (prime-agent RLM candidate 2).
  *
  * Resolves the repo lib first, then the baked /opt copy (same pattern as
- * ontology-local.cjs / continual-harness.cjs).
+ * continual-harness.cjs).
  *
  *   ontology-workingset note <iri|slug> [--session <id>]   # digest + add
  *   ontology-workingset get  <iri|slug> [--session <id>]

@@ -35,20 +35,6 @@
         "AQE_LLM_PROVIDER": "claude-code"
       }
     },
-    "ontology-bridge": {
-      "command": "node",
-      "args": [
-        "/opt/agentbox/mcp/servers/ontology-bridge.js"
-      ],
-      "type": "stdio",
-      "env": {
-        "VISIONCLAW_API_URL": "http://visionclaw-server:4000",
-        "VISIONCLAW_DEV_TOKEN": "",
-        "AGENTBOX_PUBKEY": "",
-        "AGENTBOX_ONTOLOGY_DIRECT_LOAD": "false",
-        "NODE_PATH": "/opt/agentbox/mcp/servers/node_modules"
-      }
-    },
     "precedent-bridge": {
       "command": "node",
       "args": [

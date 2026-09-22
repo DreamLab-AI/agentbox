@@ -144,11 +144,8 @@ if '1' == '1' and 'claude-code':
     env['AQE_LLM_PROVIDER'] = 'claude-code'
 else:
     env.pop('AQE_LLM_PROVIDER', None)"""),
-      ("ontology-bridge", """cfg.setdefault('mcpServers', {})['ontology-bridge'] = {
-  'command': 'node', 'args': ['/opt/agentbox/mcp/servers/ontology-bridge.js'], 'type': 'stdio',
-  'env': {'VISIONCLAW_API_URL': 'http://visionclaw-server:4000', 'VISIONCLAW_DEV_TOKEN': '',
-          'AGENTBOX_PUBKEY': '', 'AGENTBOX_ONTOLOGY_DIRECT_LOAD': 'false',
-          'NODE_PATH': '/opt/agentbox/mcp/servers/node_modules'}}"""),
+      # ontology-bridge step removed by ADR-2108 (the server is retired; agents
+      # use the `vault` CLI), so this recipe still reproduces the fixture set.
       ("precedent-bridge", """cfg.setdefault('mcpServers', {})['precedent-bridge'] = {
   'command': 'node', 'args': ['/opt/agentbox/mcp/servers/precedent-bridge.js'], 'type': 'stdio',
   'env': {'AGENTBOX_POD_ROOT': '/var/lib/agentbox', 'NODE_PATH': '/opt/agentbox/mcp/servers/node_modules'}}"""),

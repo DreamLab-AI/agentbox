@@ -2,13 +2,13 @@
 id: ADR-2022
 title: Governed ontology writes only — the ungoverned axiom-load backdoor stays disabled outside bootstrap
 date: 2026-08-31
-decision_status: accepted
+decision_status: superseded
 implementation_status: partial
 activation_status: live
 supersedes: []
-superseded_by: []
+superseded_by: [ADR-2108]
 verified_commit: ab785f08c00b443db44b8b8a6a501b085ce4d0be
-verified_paths: [agentbox.toml, mcp/servers/ontology-bridge.js, mcp/servers/ontology-propose.js, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-authoring-authority.js]
+verified_paths: []               # gate deleted by ADR-2108; paths no longer exist
 owner: jjohare
 review_trigger: any change to direct_axiom_load default, or the authority-class of ontology_axiom_load
 repo: agentbox
@@ -17,6 +17,14 @@ lineage: legacy ADR-023 (ontology bridge), ADR-054 (ontology-bridge write-path f
 ---
 
 # ADR-2022 — Governed ontology writes only — the ungoverned axiom-load backdoor stays disabled outside bootstrap
+
+> **Superseded by ADR-2108 (2026-09-22).** The authority gate this record
+> governs is deleted along with the in-place corpus write it protected
+> (`ontology-local.js` `axiomAdd`/`propose`, `ontology-local.cjs`,
+> `ontology-authoring-authority.js`, `vault-frontmatter.js`,
+> `[skills.ontology].local_authoring`). Corpus writes now go through
+> `vault propose` for a human signature, or `vault edit --expect` to apply
+> one. Retained as the record of why an ungoverned write was unacceptable.
 
 ## Context
 

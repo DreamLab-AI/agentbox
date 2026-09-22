@@ -18,7 +18,11 @@ argument: a classifier still receives the text.
 - The owner's personal email archive and anything derived from its contents
   (`email-search`, the email gateway's corpus).
 - The private context portfolio (`personal-context` namespace, the private Logseq
-  graph). Identity, team, goals, domain expertise.
+  graph `jjohare/personal-context-portfolio`). Identity, team, goals, domain
+  expertise. **This one really is Logseq and stays that way** — it is the
+  owner's personal graph, not the sovereign corpus, so a `grep -ri logseq`
+  residue sweep must not "fix" it (ADR-2107 retired Logseq as the *corpus*
+  format; it says nothing about this graph).
 - Private knowledge-graph contents and any subgraph carrying provenance that
   identifies people or private projects.
 - Credentials, key material, identity documents, `identity.env`, anything under a pod.

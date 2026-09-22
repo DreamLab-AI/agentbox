@@ -11,8 +11,10 @@ tags: [ontology, owl2, vault, obsidian, ttl, webvowl, validation]
 Foundation for vault ontology manipulation with OWL2 DL TTL export — parsing,
 validation, and Turtle generation for the authored corpus under `$VAULT_PAGES`
 (the `[vault]` path authority, ADR-2028), targeting VisionClaw/WebVOWL
-compatibility. The parser still accepts legacy Logseq property blocks on read
-during the bounded transition window (VAULT-corpus-format Invariant 6).
+compatibility. Corpus pages are frontmatter-only; the parser's tolerance for
+legacy `key:: value` property blocks on read is a migration affordance, not a
+format, and no writer emits them. `vault validate` is the conformance check
+(ADR-2107) and fails on any that remain.
 
 ## When to use
 

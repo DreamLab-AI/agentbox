@@ -6,7 +6,9 @@
   "mcpServers": {
     "aci-shell": {
       "command": "node",
-      "args": ["/opt/agentbox/mcp/aci-shell/server.js"],
+      "args": [
+        "/opt/agentbox/mcp/aci-shell/server.js"
+      ],
       "type": "stdio",
       "env": {
         "ACI_WORKSPACE_ROOT": "${ACI_WORKSPACE_ROOT:-/home/devuser/workspace/project}",
@@ -23,7 +25,10 @@
     },
     "code-interpreter": {
       "command": "python3",
-      "args": ["-u", "/opt/agentbox/mcp/code-interpreter/server.py"],
+      "args": [
+        "-u",
+        "/opt/agentbox/mcp/code-interpreter/server.py"
+      ],
       "type": "stdio",
       "env": {
         "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO}",
@@ -38,7 +43,10 @@
     },
     "claude-flow": {
       "command": "claude-flow",
-      "args": ["mcp", "start"],
+      "args": [
+        "mcp",
+        "start"
+      ],
       "type": "stdio",
       "env": {
         "HOME": "/home/devuser",
@@ -49,12 +57,18 @@
     },
     "ruv-swarm": {
       "command": "npx",
-      "args": ["ruv-swarm@latest", "mcp", "start"],
+      "args": [
+        "ruv-swarm@latest",
+        "mcp",
+        "start"
+      ],
       "type": "stdio"
     },
     "imagemagick": {
       "command": "agentbox-mcp",
-      "args": ["imagemagick"],
+      "args": [
+        "imagemagick"
+      ],
       "type": "stdio",
       "env": {
         "IMAGEMAGICK_TIMEOUT": "300"
@@ -65,7 +79,10 @@
     },
     "qgis": {
       "command": "python3",
-      "args": ["-u", "/home/devuser/.claude/skills/qgis/mcp-server/server.py"],
+      "args": [
+        "-u",
+        "/home/devuser/.claude/skills/qgis/mcp-server/server.py"
+      ],
       "type": "stdio",
       "env": {
         "QGIS_HOST": "localhost",
@@ -84,7 +101,9 @@
     },
     "web-summary": {
       "command": "agentbox-mcp",
-      "args": ["web-summary"],
+      "args": [
+        "web-summary"
+      ],
       "type": "stdio",
       "env": {
         "ZAI_URL": "http://localhost:9600/chat",
@@ -117,7 +136,9 @@
     },
     "comfyui": {
       "command": "node",
-      "args": ["/home/devuser/.claude/skills/comfyui/mcp-server/server.js"],
+      "args": [
+        "/home/devuser/.claude/skills/comfyui/mcp-server/server.js"
+      ],
       "type": "stdio",
       "env": {
         "COMFYUI_OUTPUT_DIR": "/tmp/comfyui-outputs",
@@ -130,7 +151,9 @@
     },
     "blender": {
       "command": "uvx",
-      "args": ["blender-mcp"],
+      "args": [
+        "blender-mcp"
+      ],
       "type": "stdio",
       "env": {
         "BLENDER_HOST": "localhost",
@@ -139,11 +162,20 @@
       "description": "3D modeling, scene creation, rendering, PolyHaven assets, Sketchfab, Hyper3D Rodin via Blender MCP (ahujasid/blender-mcp)",
       "protocol": "mcp-fastmcp",
       "version": "1.4.0",
-      "features": ["viewport_screenshots", "polyhaven", "sketchfab", "hyper3d_rodin", "hunyuan3d", "code_execution"]
+      "features": [
+        "viewport_screenshots",
+        "polyhaven",
+        "sketchfab",
+        "hyper3d_rodin",
+        "hunyuan3d",
+        "code_execution"
+      ]
     },
     "governance-bridge": {
       "command": "node",
-      "args": ["/opt/agentbox/mcp/servers/governance-bridge.js"],
+      "args": [
+        "/opt/agentbox/mcp/servers/governance-bridge.js"
+      ],
       "type": "stdio",
       "env": {
         "AGENTBOX_PUBKEY": "${AGENTBOX_PUBKEY:-}",
@@ -153,23 +185,11 @@
       "protocol": "stdio",
       "version": "0.1.0"
     },
-    "ontology-bridge": {
-      "command": "node",
-      "args": ["/opt/agentbox/mcp/servers/ontology-bridge.js"],
-      "type": "stdio",
-      "env": {
-        "VISIONCLAW_API_URL": "${VISIONCLAW_API_URL:-http://visionclaw-server:4000}",
-        "VISIONCLAW_DEV_TOKEN": "${VISIONCLAW_DEV_TOKEN:-}",
-        "AGENTBOX_PUBKEY": "${AGENTBOX_PUBKEY:-}",
-        "ONTOLOGY_TIMEOUT_MS": "${ONTOLOGY_TIMEOUT_MS:-10000}"
-      },
-      "description": "Pervasive ontology augmentation (PRD-020/ADR-112). Bridges every agentbox AI call to VisionClaw's Oxigraph/Whelk knowledge graph. Primary tool: ontology_ask (budget-bounded, provenance-scoped subgraph, fail-open) — the PULL-B channel that makes ontology grounding available to all agents. Plus health/search/class_get/class_list/graph_query(read-only SPARQL)/kg_neighbors/kg_pathfind and the GOVERNED ontology_propose write path. Read-pervasive, write-governed.",
-      "protocol": "stdio",
-      "version": "0.2.0"
-    },
     "decision-tools": {
       "command": "node",
-      "args": ["/opt/agentbox/mcp/servers/decision-tools.js"],
+      "args": [
+        "/opt/agentbox/mcp/servers/decision-tools.js"
+      ],
       "type": "stdio",
       "env": {
         "VISIONCLAW_API_URL": "${VISIONCLAW_API_URL:-http://visionclaw-server:4000}",
@@ -177,13 +197,15 @@
         "AGENTBOX_PUBKEY": "${AGENTBOX_PUBKEY:-}",
         "ONTOLOGY_TIMEOUT_MS": "${ONTOLOGY_TIMEOUT_MS:-10000}"
       },
-      "description": "Governed decision-record tools (PRD-022 W-B / ADR-048). Pure CJS request-builder helper (ontology-propose.js pattern) exposing record_decision / trace_decision_chain / analyze_decision_impact / find_similar_decisions / check_decision_rules. Decisions are first-class did:nostr-signed Oxigraph nodes; identity is the authenticated principal (never a client field); direct dl:caused/dl:precedentFor edges are asserted while reachability stays bounded + query-derived (never Whelk-classified). Consumed via the ontology-bridge require() dispatch; activates after image rebuild (live registration is the operator's step).",
+      "description": "Governed decision-record tools (PRD-022 W-B / ADR-048). Pure CJS request-builder helper (request-builder pattern) exposing record_decision / trace_decision_chain / analyze_decision_impact / find_similar_decisions / check_decision_rules. Decisions are first-class did:nostr-signed Oxigraph nodes; identity is the authenticated principal (never a client field); direct dl:caused/dl:precedentFor edges are asserted while reachability stays bounded + query-derived (never Whelk-classified). Registered as its own stdio server (ADR-2108 retired the ontology-bridge that used to dispatch it — decision records are not the corpus, so they keep an MCP surface); activates after image rebuild.",
       "protocol": "stdio",
       "version": "0.1.0"
     },
     "substrate-tools": {
       "command": "node",
-      "args": ["/opt/agentbox/mcp/servers/substrate-tools.js"],
+      "args": [
+        "/opt/agentbox/mcp/servers/substrate-tools.js"
+      ],
       "type": "stdio",
       "env": {
         "AGENTBOX_STATE": "${AGENTBOX_STATE:-/home/devuser/.agentbox}",
@@ -200,7 +222,10 @@
     },
     "perplexity": {
       "command": "npx",
-      "args": ["-y", "@perplexity-ai/mcp-server"],
+      "args": [
+        "-y",
+        "@perplexity-ai/mcp-server"
+      ],
       "type": "stdio",
       "env": {
         "PERPLEXITY_API_KEY": "${PERPLEXITY_API_KEY}"
@@ -212,7 +237,9 @@
     },
     "ruvnet-brain": {
       "command": "node",
-      "args": ["/opt/agentbox/mcp/ruvnet-brain/server.js"],
+      "args": [
+        "/opt/agentbox/mcp/ruvnet-brain/server.js"
+      ],
       "type": "stdio",
       "env": {
         "RUVECTOR_PG_CONNINFO": "${RUVECTOR_PG_CONNINFO}",
@@ -226,7 +253,12 @@
       "protocol": "stdio",
       "version": "0.2.0",
       "upstream": "https://github.com/stuinfla/ruvnet-brain",
-      "features": ["search_ruvnet", "ruvnet_brain_status", "namespace_scoped", "shared_embedding_space"]
+      "features": [
+        "search_ruvnet",
+        "ruvnet_brain_status",
+        "namespace_scoped",
+        "shared_embedding_space"
+      ]
     }
   },
   "external_bridge": {

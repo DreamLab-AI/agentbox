@@ -3,8 +3,8 @@
 /**
  * lib/elevation-publisher — close the WS6 elevation → Nostr federation loop.
  *
- * kg-elevation builds, per high-value candidate, a GOVERNED ontology-propose
- * descriptor (`propose_request`) and an agent_action LINK beam. Until now the
+ * kg-elevation builds, per high-value candidate, a GOVERNED `vault propose`
+ * command (`propose_command`) and an agent_action LINK beam. Until now the
  * proposal never left the box: nothing federated the governed
  * personal→shared-ontology elevation over Nostr, so the moat ("personal→shared
  * ontology elevation federated over Nostr") did not close in code.
@@ -192,8 +192,16 @@ function buildElevationPublisher(manifest, deps = {}) {
           proposal_urn: proposal.proposal_urn,
           target_urn: proposal.target_urn || null,
           proposal_foreign_urn: proposal.proposal_foreign_urn || null,
-          // The governed descriptor the operator/ontology bridge then executes.
-          propose_request: proposal.propose_request || null,
+          // ADR-2116: the governed `vault propose` argv, not an HTTP request
+          // descriptor. This field is baked into a SIGNED, durable 31402, so
+          // what it names has to still exist years later — the retired
+          // /api/ontology-agent/propose did not survive that test.
+          propose_command: (proposal.propose_command && proposal.propose_command.argv) || null,
+          propose_iri: (proposal.propose_command && proposal.propose_command.iri) || null,
+          // The machine-gated PatchProposal (contract C4), when the route ran
+          // `vault propose --dry-run` before publishing. Null in a scan that
+          // did not, so a reader can tell "not gated" from "gated, clean".
+          patch_proposal: proposal.patch_proposal || null,
         },
       });
 

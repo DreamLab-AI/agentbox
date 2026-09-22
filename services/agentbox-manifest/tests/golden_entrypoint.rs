@@ -156,9 +156,12 @@ fn toml_bool_is_fail_open_on_a_missing_manifest() {
 
 // ─── .mcp.json chain ─────────────────────────────────────────────────────────
 
-/// Apply the nine `.mcp.json` mutations in entrypoint order against one seed
+/// Apply the eight `.mcp.json` mutations in entrypoint order against one seed
 /// file, asserting byte-parity after each — the same way the boot sequence
 /// stacks them, so an ordering regression shows up at the step that caused it.
+///
+/// Was nine: ADR-2108 retired the `ontology-bridge` step, because agents reach
+/// the corpus through the `vault` CLI and no MCP server fronts it any more.
 #[test]
 fn mcp_upsert_chain_matches_python_at_every_step() {
     let s = Scratch::new("mcp");
@@ -197,12 +200,6 @@ fn mcp_upsert_chain_matches_python_at_every_step() {
         "claude-code",
     ]);
     check(&f, "mcp.after-agentic-qe.json");
-
-    set(
-        "ontology-bridge",
-        r#"{"command":"node","args":["/opt/agentbox/mcp/servers/ontology-bridge.js"],"type":"stdio","env":{"VISIONCLAW_API_URL":"http://visionclaw-server:4000","VISIONCLAW_DEV_TOKEN":"","AGENTBOX_PUBKEY":"","AGENTBOX_ONTOLOGY_DIRECT_LOAD":"false","NODE_PATH":"/opt/agentbox/mcp/servers/node_modules"}}"#,
-    );
-    check(&f, "mcp.after-ontology-bridge.json");
 
     set(
         "precedent-bridge",

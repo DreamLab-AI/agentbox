@@ -1,5 +1,22 @@
 'use strict';
-// ontology-local.js — a local, VisionClaw-free backend for the ontology-bridge.
+// ontology-local.js — a local, READ-ONLY index over the authored corpus.
+//
+// ADR-2107/ADR-2108 scope note. This was the ontology-bridge's local backend and
+// it also carried a WRITE path (axiomAdd/propose) that edited corpus markdown in
+// place. Both the bridge and the `ontology-local.cjs` CLI front-end are deleted,
+// and the write path with them: an ungoverned corpus write is exactly what the
+// sovereign-corpus work closes, and `vault propose` is its successor.
+//
+// What remains is the read index, kept because three LIVE consumers need it and
+// none of them is an agent-facing corpus door:
+//
+//   config/hooks/ontology-monitor.cjs   the per-turn monitor hook
+//   mcp/servers/lib/typed-spawn.js
+//   mcp/servers/lib/ontology-workingset.js
+//
+// It is interim. Those three should read through `vault` once the binary ships,
+// at which point this file goes too — it hand-rolls a markdown parse that the
+// shared one in crates/vault replaces (PRD Q11: one corpus, one implementation).
 //
 // Indexes the authored vault corpus (the JSON-LD `Class` block in each page)
 // straight off disk and serves the ontology-bridge read tools, plus a real WRITE
@@ -28,13 +45,11 @@
 // an empty index: "the vault is disabled" and "we are still serving a stale
 // corpus" must never be true at the same time.
 //
-// Writes emit V2 frontmatter (VAULT-corpus-format §V5) via lib/vault-frontmatter.
 //
 // Pure Node core modules only — no deps, so it loads in any agentbox context.
 
 const fs = require('fs');
 const path = require('path');
-const { ensureFrontmatter } = require('./vault-frontmatter');
 
 const VAULT_DISABLED = process.env.AGENTBOX_VAULT_ENABLED === '0';
 const LEGACY_PATHS_OPT_IN = /^(1|true|yes|on)$/i.test(process.env.AGENTBOX_VAULT_LEGACY_PATHS || '');
@@ -194,7 +209,7 @@ function createLocalOntology(corpusDir = DEFAULT_CORPUS) {
       backend: 'local-markdown',
       source: corpusDir,
       classCount: ix.list.length,
-      note: 'Served from the raw Logseq corpus on disk (VisionClaw bypassed).',
+      note: 'Served from the authored corpus on disk; asserted frontmatter only, no reasoned closure.',
     };
   }
 
@@ -342,58 +357,10 @@ function createLocalOntology(corpusDir = DEFAULT_CORPUS) {
     SomeValuesFrom: 'requires',
   };
 
-  function axiomAdd({ axiom_type, subject, object }) {
-    const subj = resolve(subject);
-    if (!subj) return { error: 'not_found', message: `subject '${subject}' not in local corpus`, backend: 'local-markdown' };
-    const objRec = resolve(object);
-    const objIri = objRec ? objRec.iri : (String(object).startsWith('urn:') ? object : `urn:ngm:class:${slugOf(object)}`);
-    const objLabel = objRec ? objRec.label : slugOf(object);
-    const rel = AXIOM_TO_REL[axiom_type];
-    if (!rel) return { error: 'unsupported_axiom_local', message: `axiom_type '${axiom_type}' not supported locally`, backend: 'local-markdown' };
+  // axiomAdd() / propose() lived here and are GONE (ADR-2107). They edited the
+  // corpus in place with no Whelk check, no conflict detection and no signature.
+  // The governed successor is `vault propose <iri> --level content|schema`.
 
-    const text = fs.readFileSync(subj.path, 'utf8');
-    const cb = classBlock(text);
-    if (!cb) return { error: 'parse_error', message: 'class block vanished', backend: 'local-markdown' };
-    const block = cb.block;
-
-    if (rel === '__parent__') {
-      const parents = Array.isArray(block.subClassOf) ? block.subClassOf : (block.subClassOf ? [block.subClassOf] : []);
-      if (parents.some((p) => p['@id'] === objIri)) return { backend: 'local-markdown', changed: false, reason: 'already a parent' };
-      parents.push({ '@id': objIri, label: objLabel });
-      block.subClassOf = parents;
-    } else {
-      block.relations = block.relations && typeof block.relations === 'object' ? block.relations : {};
-      const cur = Array.isArray(block.relations[rel]) ? block.relations[rel] : (block.relations[rel] ? [block.relations[rel]] : []);
-      if (cur.some((t) => t['@id'] === objIri)) return { backend: 'local-markdown', changed: false, reason: `already ${rel}` };
-      cur.push({ '@id': objIri, label: objLabel });
-      block.relations[rel] = cur;
-    }
-    // provenance breadcrumb for local edits
-    block.provenance = block.provenance && typeof block.provenance === 'object' ? block.provenance : {};
-    block.provenance.lastLocalEdit = { rel, target: objIri, via: 'ontology-local' };
-
-    const newRaw = JSON.stringify(block, null, 2);
-    let next = text.replace(cb.raw, newRaw + '\n');
-    // VAULT-corpus-format §V5 / Invariant 1: a writer that touches a page leaves
-    // it in vault format. The page carries a formal class, so `owl-class` is the
-    // gate (V4 clause 2) and no `public` key is invented; a legacy leading
-    // `key:: value` block is converted here, and only the LEADING block.
-    const fm = ensureFrontmatter(next, { 'owl-class': subj.iri });
-    next = fm.text;
-    fs.writeFileSync(subj.path, next, 'utf8');
-    idx = null; // force reindex
-    return {
-      backend: 'local-markdown', changed: true, subject: subj.iri, relation: rel,
-      object: objIri, file: subj.file, frontmatter_converted: fm.converted,
-    };
-  }
-
-  // propose() locally == a direct, provenance-tagged edit (write target: markdown)
-  function propose(args) {
-    const a = args || {};
-    const axiom = a.axiom_type || (a.relation === 'subClassOf' ? 'SubClassOf' : 'ObjectPropertyAssertion');
-    return axiomAdd({ axiom_type: axiom, subject: a.subject || a.subject_iri, object: a.object || a.object_iri });
-  }
 
   // ── projections ─────────────────────────────────────────────────────────────
   function brief(r) { return { iri: r.iri, slug: r.slug, label: r.label, domain: r.domain, maturity: r.maturity }; }
@@ -408,7 +375,7 @@ function createLocalOntology(corpusDir = DEFAULT_CORPUS) {
   return {
     backend: 'local-markdown', corpusDir,
     health, search, classGet, classList, nodeSearch, neighbors, pathfind,
-    graphQuery, validate, ask, axiomAdd, propose, resolve,
+    graphQuery, validate, ask, resolve,
   };
 }
 

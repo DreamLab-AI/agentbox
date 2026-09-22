@@ -97,8 +97,10 @@ jobs:
       - name: federation-fixture-check (ADR-2025 — cross-repo identifier contract, agentbox side)
         run: node scripts/ci/federation-fixture-check.mjs
 
-      - name: vault-frontmatter unit tests (VAULT-corpus-format V2/V5 writer contract)
-        run: node --test mcp/servers/lib/__tests__/*.test.js
+      # vault-frontmatter unit tests removed by ADR-2107/ADR-2108 with the writer
+      # they gated: the V2 frontmatter helper existed only for the ontology write
+      # path (axiomAdd/propose), which is deleted. `vault validate` is the
+      # successor contract check and runs against the corpus, not a helper.
 
       - name: validate-adr-ledger (frontmatter, supersession reciprocity, verified_commit staleness)
         run: node scripts/adr-index-gen.js docs/adr --check

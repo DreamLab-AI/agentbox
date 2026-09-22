@@ -31,7 +31,7 @@ fn load_strict(path: &Path) -> Result<Value, String> {
 }
 
 /// `cfg.setdefault('mcpServers', {})[name] = <spec>` — the shape shared by
-/// browser-gpu, ontology-bridge, precedent-bridge, harness-bridge,
+/// browser-gpu, precedent-bridge, harness-bridge,
 /// email-gateway, perplexity and ruvnet-brain.
 pub fn set_server(file: &Path, name: &str) -> Result<(), String> {
     let mut spec_text = String::new();
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn unrelated_server_is_kept() {
         assert!(!references_foreign_ruvector(&json!({
-            "command": "node", "args": ["/opt/agentbox/mcp/servers/ontology-bridge.js"]
+            "command": "node", "args": ["/opt/agentbox/mcp/servers/governance-bridge.js"]
         })));
     }
 

@@ -789,12 +789,13 @@ visionclaw_api_url = "http://visionclaw-server:4000"
 # admin/bootstrap. Default off = ontology_axiom_add refuses + redirects.
 direct_axiom_load = false
 
-# ADR-2054: local authoring of ontology classes into the agentbox-side store.
-# This has always been the effective default by ABSENCE — no consumer reads a
-# missing key as permissive — but a deny that exists only as an omission is not
-# reviewable. Declared explicitly so the refusal is visible in the manifest and
-# a future change to it shows up in a diff.
-local_authoring = false
+# ADR-2054's `local_authoring` key is GONE (ADR-2107/ADR-2108). It gated
+# mcp/servers/lib/ontology-authoring-authority.js, which gated the in-place
+# corpus write in ontology-local.js — and that whole path is deleted, not
+# merely denied. A manifest key whose only reader has been removed is dead
+# config, and leaving a `false` behind would imply a switch that could be
+# flipped back on. The governed successor is `vault propose`; the only
+# mutation door left is `vault edit --expect docs=N,blocks=M`.
 
 # Offline ontology condensation (PRD-020 WS-2 / ADR-113). A cheap LOCAL LLM
 # summarises every KG class into one retrieval sentence + a synonym list, which
@@ -842,6 +843,13 @@ root   = "/home/devuser/workspace/visionGraph/knowledge"   # Obsidian vault root
 pages  = "pages"                            # authored pages, relative to root
 format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
 tui    = "rune"                             # rune | none — see ADR-2029
+# cli: bake the `vault` corpus CLI (VisionClaw crates/vault) and put it on PATH
+# at /opt/agentbox/bin/vault. ADR-2107 retired the ontology-bridge MCP server:
+# agents now reach the corpus through this binary (Bash) and the Loom over HTTP,
+# so this is the ONE door, and turning it off leaves agents with none. Defaults
+# to true; REBUILD-class like `tui`, and the boot runs `vault --version` in
+# Phase 5d as the liveness half of the gate (ADR-2107 / ADR-2108).
+cli    = true                               # true | false — see ADR-2107/ADR-2108
 # Second vault root (the working graph): pages at <working>/pages. Exported as
 # VAULT_WORKING_ROOT / VAULT_WORKING_PAGES. A layout with more than one vault
 # root cannot be expressed by `root` alone (ADR-2028 amendment, 2026-09-02).
@@ -1176,7 +1184,7 @@ bind    = "127.0.0.1:9720"                      # loopback only; the binary refu
 url     = "http://127.0.0.1:9720"
 servers = [
   "consultant-codex", "consultant-perplexity", "consultant-deepseek", "consultant-antigravity",
-  "web-researcher", "ontology-bridge", "ruvnet-brain", "harness-bridge", "perplexity",
+  "web-researcher", "ruvnet-brain", "harness-bridge", "perplexity",
 ]
 # Stays per-session (stateful): claude-flow (memory mandate), code-interpreter
 # (kernel per session), aci-shell (per-agent DID), codebase-memory (already a

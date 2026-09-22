@@ -37,7 +37,8 @@ function makeProposal() {
     proposal_urn,
     proposal_foreign_urn: 'urn:visionclaw:kg:' + PUBKEY + ':sha256-12-deadbeef0001',
     target_urn: 'urn:visionclaw:concept:renewables:photovoltaic-cell',
-    propose_request: { path: '/api/ontology-agent/propose', method: 'POST', body: { action: 'create' } },
+    propose_command: { argv: ['propose', 'urn:ngm:class:photovoltaic-cell', '--level', 'content', '--dry-run', '--json'], iri: 'urn:ngm:class:photovoltaic-cell' },
+    patch_proposal: { iri: 'urn:ngm:class:photovoltaic-cell', blockers: [] },
     candidate: {
       term: 'Photovoltaic Cell',
       domain: 'renewables',
@@ -110,7 +111,12 @@ describe('elevation-publisher — federated path', () => {
     const content = JSON.parse(ev.content);
     expect(content.fields.proposal_urn).toBe(proposal.proposal_urn);
     expect(content.fields.target_urn).toBe(proposal.target_urn);
-    expect(content.fields.propose_request).toEqual(proposal.propose_request);
+    // ADR-2116: the SIGNED, durable 31402 carries the governed command, not a
+    // URL for a route that now 410s.
+    expect(content.fields.propose_command).toEqual(proposal.propose_command.argv);
+    expect(content.fields.propose_iri).toBe(proposal.propose_command.iri);
+    expect(content.fields.patch_proposal).toEqual(proposal.patch_proposal);
+    expect(content.fields.propose_request).toBeUndefined();
     expect(content.fields.term).toBe('Photovoltaic Cell');
   });
 

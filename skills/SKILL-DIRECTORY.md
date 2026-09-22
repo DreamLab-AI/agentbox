@@ -256,7 +256,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 |-------|-----|----------------|----------------|
 | `ontology-core` | No | Vault ontology parsing, OWL2 DL TTL export, WebVOWL compatibility | Creating new ontology schemas from the vault corpus |
 | `ontology-enrich` | No | Validation, enrichment, TTL generation for existing ontology data | Enriching or validating existing ontology datasets |
-| `ontology-augment` | Yes (`ontology-bridge`) | **Consume** the formal KG at inference time — budget-bounded provenance-scoped subgraphs (`ontology_ask`), read-only SPARQL, neighbours/pathfind, governed writeback (PRD-020/ADR-112) | Grounding reasoning/claims in the ontology; "what does our KG say about X"; proposing a governed enrichment |
+| `ontology-augment` | No (Bash: `vault` + Loom HTTP) | **Consume** the sovereign corpus at inference time — budget-bounded subgraphs (`vault retrieve`), read-only SPARQL over the Loom's reasoned closure, neighbours, OKF validation, governed writeback via `vault propose` (ADR-2107/ADR-2108) | Grounding reasoning/claims in the corpus; "what does our KG say about X"; proposing a governed enrichment |
 
 ### Platform Management
 
@@ -776,7 +776,7 @@ Q3: Which domain?
     |   --> ontology-enrich
     |
     +-- Ground reasoning in the formal KG / "what does our ontology say about X" / governed writeback
-    |   --> ontology-augment  (ontology_ask, read-only SPARQL, neighbours/pathfind; PRD-020)
+    |   --> ontology-augment  (vault retrieve/find, Loom SPARQL, neighbours; ADR-2107)
     |
     +-- Full game development project (Godot/Unity/Unreal, with art/audio/QA teams)
     |   --> game-dev  (48-agent studio)

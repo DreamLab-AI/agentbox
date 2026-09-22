@@ -27,6 +27,23 @@
       flake = false;
     };
 
+    # crates/vault — the sovereign corpus CLI (PRD-sovereign-corpus Q10/Q11,
+    # ADR-2107/ADR-2108). The crate lives in the PARENT VisionClaw workspace so
+    # it can share the OntologyBlock parser and Whelk-rs with VisionClaw's
+    # ingest; a flake cannot read a path outside its own tree, so the source
+    # arrives as an input rather than as `src = ../../crates/vault`. Same
+    # mechanism as `skills` above, files-only like `codexPlugin` below — but it
+    # IS built (lib/vault.nix), because a corpus door that is not in the closure
+    # is a corpus door agents cannot call.
+    #
+    # Repoint to `github:DreamLab-AI/VisionClaw/<rev>?dir=crates/vault` once the
+    # crate is pushed; build from an uncommitted tree meanwhile with
+    #   --override-input vaultSrc path:/home/devuser/workspace/project/crates/vault
+    vaultSrc = {
+      url = "path:/home/devuser/workspace/project/crates/vault";
+      flake = false;
+    };
+
     # OpenAI Codex plugin for Claude Code (codex-plugin-cc) — pinned + baked so
     # build-with-quality's EDD adversarial-review stage routes to Codex/GPT via
     # /codex:adversarial-review (a different model family from the Claude
@@ -39,7 +56,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills, aoe, codexPlugin }:
+  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills, aoe, codexPlugin, vaultSrc }:
     flake-utils.lib.eachSystem [
       "x86_64-linux"
       "aarch64-linux"
@@ -156,7 +173,7 @@
         mcpHubUrl         = resHubCfg.url or "http://127.0.0.1:9720";
         mcpHubServers     = resHubCfg.servers or [
           "consultant-codex" "consultant-perplexity" "consultant-deepseek" "consultant-antigravity"
-          "web-researcher" "ontology-bridge" "ruvnet-brain" "precedent-bridge" "harness-bridge" "perplexity"
+          "web-researcher" "ruvnet-brain" "precedent-bridge" "harness-bridge" "perplexity"
         ];
         hookShimEnabled   = resHooksCfg.shim or true;
         hookDrainInterval = toString (resHooksCfg.drain_interval_secs or 30);
@@ -558,7 +575,9 @@
           # require('../mcp/servers/nostr-bridge') escapes the packaged
           # node_modules/agentbox-management-api boundary at runtime.
           # Vendor first-party mcp/servers modules that management-api reaches
-          # via a bare `require('../../mcp/servers/<x>')`. Those relative paths
+          # via a bare `require('../../mcp/servers/<x>')`. (ontology-propose used
+          # to be vendored here too; ADR-2108 moved the file into
+          # management-api/lib/ outright, so it needs no copy step.) Those paths
           # escape the packaged node_modules/agentic-flow-management-api boundary
           # at runtime (the built closure only contains ./management-api), so
           # each such dependency must be copied INTO the package and required as
@@ -567,7 +586,6 @@
           buildPhaseExtra = ''
             mkdir -p lib
             cp ${./mcp/servers/nostr-bridge.js} lib/nostr-bridge.js
-            cp ${./mcp/servers/ontology-propose.js} lib/ontology-propose.js
             # PRD-010 F16 pod-bridge relay consumer: server.js require('./lib/relay-consumer')
             # + require('./lib/default-intent-spec'). relay-consumer in turn requires its
             # vendored sibling ./nostr-bridge (above). default-intent-spec is dependency-free.
@@ -680,6 +698,33 @@
         runeActive = vaultTui == "rune";
         runePkg = import ./lib/rune.nix { inherit lib; pkgs = rustPkgs; };
         runePackages = lib.optionals runeActive [ runePkg ];
+
+        # ---------------------------------------------------------------------------
+        # vault — the sovereign corpus CLI (ADR-2107 / ADR-2108). The ONE door
+        # agents have onto the corpus now that `ontology-bridge` is retired, so
+        # it is baked whenever the manifest declares a corpus at all: a `[vault]`
+        # with a root and `cli` not explicitly false.
+        #
+        # Gating on the SAME section rune gates on is deliberate. `[vault].root`
+        # is the single path authority (ADR-2028); a corpus that exists has a
+        # door, and a manifest with no `[vault]` has nothing for the binary to
+        # open. `cli = false` is the escape hatch for an image that deliberately
+        # ships no corpus tooling — it is not a migration step, because the
+        # default is on.
+        #
+        # REBUILD-class, like rune: the binary enters the closure at image
+        # composition. The boot-time half of the gate lives in
+        # config/entrypoint-unified.sh (Phase 5d), which runs `vault --version`
+        # and prints a rebuild notice rather than killing the boot — fail-loud,
+        # not fail-fatal, the same contract [vault] itself keeps.
+        # ---------------------------------------------------------------------------
+        vaultCliActive = (vaultCfg.root or "") != "" && (vaultCfg.cli or true);
+        vaultPkg = import ./lib/vault.nix {
+          inherit lib;
+          pkgs = rustPkgs;
+          src = vaultSrc;
+        };
+        vaultPackages = lib.optionals vaultCliActive [ vaultPkg ];
 
         # Supercronic drives the podcast ingestion schedule.  Keep it in the
         # immutable Nix closure: ~/.local is intentionally a noexec tmpfs, so a
@@ -1083,15 +1128,15 @@
           npmDepsHash   = "sha256-kKxKUQMsO6BVKwNaEkOPayyTXv1ssvz6i1vSdu8O8zg=";
         };
 
-        # MCP bridge servers (ontology-bridge, precedent-bridge, governance-bridge,
-        # harness-bridge). These ESM modules import @modelcontextprotocol/sdk; the
+        # MCP bridge servers (precedent-bridge, governance-bridge, harness-bridge,
+        # decision-tools). These ESM modules import @modelcontextprotocol/sdk; the
         # Nix closure bakes node_modules so they resolve at /opt/agentbox/mcp/servers/.
         # The entrypoint sets NODE_PATH to this closure's node_modules.
         # Refresh hash: nix run nixpkgs#prefetch-npm-deps -- mcp/servers/package-lock.json
         mcpServersPkg = npmServicesLib.makeNpmService {
           name          = "agentbox-mcp-servers";
           src           = ./mcp/servers;
-          entry         = "ontology-bridge.js";
+          entry         = "governance-bridge.js";
           skipLoadCheck = true;
           npmDepsHash   = "sha256-h0P+TmD/0sXsxJYB4JloPQpNthXIbwDT/JdnzQ+6HXw=";
         };
@@ -1653,6 +1698,8 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
           ++ runePackages
+          # vault corpus CLI — gated on [vault].root + [vault].cli (ADR-2107/2108)
+          ++ vaultPackages
           ++ desktopPackages
           ++ antigravityCliPackages
           ++ codexPackages
@@ -1709,6 +1756,11 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # config instead; the image re-points it at each rebuild.
           mkdir -p $out/opt/agentbox/bin
           ln -s ${colloquyPkg}/bin/colloquy-mcp $out/opt/agentbox/bin/colloquy-mcp
+          ${lib.optionalString vaultCliActive ''
+          # Same reasoning for `vault`: skills, agent prose and the boot gate all
+          # name a path, and a /nix/store path in prose rots at the next rebuild.
+          ln -s ${vaultPkg}/bin/vault $out/opt/agentbox/bin/vault
+          ''}
 
           ${lib.optionalString (toolchainCfg.codex or false) ''
           # Codex-native progressive-disclosure projection. Codex scans the
@@ -1797,7 +1849,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ''}
 
           # MCP bridge servers: bake @modelcontextprotocol/sdk so
-          # ontology-bridge, precedent-bridge, governance-bridge, harness-bridge
+          # precedent-bridge, governance-bridge, harness-bridge and decision-tools
           # resolve the SDK without relying on workspace node_modules.
           cp -rL ${mcpServersPkg}/package/node_modules $out/opt/agentbox/mcp/servers/node_modules
 
@@ -3565,7 +3617,6 @@ ${ragflowNetworkDecl}
           # Default to workspace-backed scratch, not bounded cache/read-only rootfs.
           "RUVNET_BRAIN_STAGING=${ruvnetBrainCfg.staging_path or "/home/devuser/workspace/.tmp/ruvnet-brain-staging"}"
           "RUVNET_BRAIN_EMBED_BATCH=${toString (ruvnetBrainCfg.embed_batch or 32)}"
-          "ENABLE_ONTOLOGY=${boolEnv ((skillsCfg.ontology or {}).enabled or false)}"
           "VISIONCLAW_API_URL=${(skillsCfg.ontology or {}).visionclaw_api_url or "http://visionclaw-server:4000"}"
           # Private Email Search MCP gateway (DreamLab-AI/email-mcp-gateway). The
           # bearer token is NOT emitted here — it arrives at runtime via

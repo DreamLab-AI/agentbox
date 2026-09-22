@@ -6,7 +6,7 @@
  * the mutable harness layer (prime-agent Continual Harness, bound to our substrate).
  *
  * Resolves the repo lib first, then the baked /opt copy, so it works both in the
- * dev tree and inside the provisioned image (same pattern as ontology-local.cjs).
+ * dev tree and inside the provisioned image (same pattern as ontology-workingset.cjs).
  *
  *   continual-harness refine <layer> <key> --value <text> --evidence <span> [--reason r]
  *   continual-harness validate [ref]           # guard: touches only the mutable layer?

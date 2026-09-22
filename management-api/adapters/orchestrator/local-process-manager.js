@@ -17,6 +17,7 @@ const { BaseAdapter } = require('../base');
 const { NotFound, SpawnError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 const uris = require('../../lib/uris');
+const { applyOntologyDecision } = require('../../lib/ontology-apply');
 
 class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
   /**
@@ -141,8 +142,12 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     }
 
     const caseId   = parsed.case_id || null;
-    const outcome  = parsed.outcome || null;
-    const reason   = parsed.reason || null;
+    // The forum's signed 31403 content IS the `DecisionOutcome` JSON, which is
+    // internally tagged `action` (nostr-bbs-core governance.rs). Earlier
+    // agentbox publishers wrote `outcome`. Read both, `action` first, so a
+    // real forum decision is understood without breaking the older shape.
+    const outcome  = parsed.action || parsed.outcome || null;
+    const reason   = parsed.reason || parsed.reasoning || null;
     const decidedAt = new Date().toISOString();
     const decidingPubkey = event.pubkey
       || process.env.AGENTBOX_X_ONLY_PUBKEY_HEX
@@ -188,6 +193,44 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     const eTag   = (tags.find(t => t[0] === 'e') || [])[1] || null;
     const refId  = dTag || eTag;
 
+    // ── ADR-2106: an ontology Promote/Demote applies through `vault edit` ──
+    //
+    // This is the ONE branch that writes to the world rather than merely
+    // relaying. It runs BEFORE the agent dispatch below because the write is
+    // the decision's effect and the dispatch is a notification about it: an
+    // agent told "promoted" before the page changed would read a stale page.
+    //
+    // A failure here is recorded and NOT thrown. The 31403 is signed and
+    // durable whatever agentbox manages to do with it; swallowing the event
+    // because the write failed would lose a human decision, while recording
+    // the failure leaves the receipt ladder honestly at `not-applied` for the
+    // reconciliation path to retry.
+    let ontology = null;
+    if (outcome === 'promote' || outcome === 'demote') {
+      const signerNpub = LocalProcessManagerOrchestratorAdapter._hexToNpub(
+        event.pubkey || decidingPubkey,
+      );
+      const at = new Date((Number(event.created_at) || 0) * 1000).toISOString();
+      try {
+        ontology = await applyOntologyDecision({
+          outcome,
+          // The subject comes from the human's own signed content. `context_url`
+          // on the 31402 is the agent's claim; only this was signed by the
+          // party whose authority the corpus write rests on.
+          iri: parsed.iri || null,
+          page: parsed.page || null,
+          signerNpub,
+          at,
+          caseId: caseId || dTag,
+          // C5: the 31402's `d` tag IS the proposal digest, and the 31403
+          // carries it back so request and response correlate on one value.
+          digest: dTag,
+        }, this._ontologyDeps || {});
+      } catch (err) {
+        ontology = { applied: false, error: String((err && err.message) || err) };
+      }
+    }
+
     // Search running agents for a match on the reference id.
     let matchedEntry = null;
     if (refId) {
@@ -213,6 +256,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
       decided_at:   event.created_at,
       activity_urn: activityUrn,
       receipt_urn:  receiptUrn,
+      ontology,
     };
 
     if (matchedEntry && matchedEntry.proc && matchedEntry.proc.stdin) {
@@ -233,6 +277,10 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
       case_id:      caseId,
       event_id:     event.id,
       decision:     outcome,
+      // ADR-2106: what the decision actually did, so the provenance record and
+      // the corpus can be reconciled without re-running the apply.
+      applied_page: (ontology && ontology.page) || null,
+      applied:      ontology ? ontology.applied === true : null,
       decided_by:   event.pubkey || 'unknown',
       decided_at:   decidedAt,
       agent_did:    `did:nostr:${decidingPubkey}`,
@@ -269,7 +317,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
           });
         } catch (_) {}
       }
-      return { dispatched: true, target: matchedEntry.agentId, event_id: event.id, activity_urn: activityUrn, receipt_urn: receiptUrn };
+      return { dispatched: true, target: matchedEntry.agentId, event_id: event.id, activity_urn: activityUrn, receipt_urn: receiptUrn, ontology };
     }
 
     // No matching running agent — persist to the governance decisions directory.
@@ -292,7 +340,7 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
       // Best-effort persistence; the relay-consumer already wrote the raw event.
     }
 
-    return { dispatched: true, target: 'file', event_id: event.id, activity_urn: activityUrn, receipt_urn: receiptUrn };
+    return { dispatched: true, target: 'file', event_id: event.id, activity_urn: activityUrn, receipt_urn: receiptUrn, ontology };
   }
 
   /**
@@ -307,6 +355,21 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     try { entry.proc.kill('SIGTERM'); } catch (_) {}
     entry.status = 'terminated';
     return { agentId, status: 'terminated' };
+  }
+
+  /**
+   * Bech32 npub for an OKF `human:<actor>` stamp. Defers to nostr-tools when
+   * available and falls back to the hex, matching `relay-consumer.js:519` and
+   * `mcp/servers/governance-bridge.js:77` — the fallback keeps the adapter
+   * usable in a test environment without the dependency, at the cost of a
+   * hex-form actor in the frontmatter, which is still unambiguous.
+   */
+  static _hexToNpub(hex) {
+    try {
+      return require('nostr-tools').nip19.npubEncode(hex);
+    } catch {
+      return hex;
+    }
   }
 
   static _safeEnv() {

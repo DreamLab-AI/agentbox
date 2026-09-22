@@ -1,25 +1,27 @@
 'use strict';
 
 /**
- * WS6 (PRD-014 Seam D / D2): personal-KG concepts reach the shared ontology
- * only through VisionClaw's GOVERNED path (`/api/ontology-agent/propose` → Whelk
- * consistency → human approval → PR). The ungoverned `/api/ontology/load`
- * backdoor in `ontology_axiom_add` is disabled by default and must be opted
- * into explicitly. The propose request body mirrors VisionClaw's ProposeRequest
- * DTO (camelCase outer keys, snake_case inner fields).
+ * WS6 (PRD-014 Seam D / D2), as amended by ADR-2116: personal-KG concepts reach
+ * the shared ontology only through the GOVERNED path — which is no longer an
+ * HTTP POST. `vault propose <iri> --level content` runs Whelk and the conflict
+ * detector as BLOCKERS and raises a forum kind-31402; a human's signed
+ * kind-31403 applies it. `/api/ontology-agent/propose` now answers 410 Gone.
+ *
+ * The ungoverned `/api/ontology/load` backdoor in `ontology_axiom_add` is
+ * unchanged: disabled by default, opted into explicitly.
  */
 
 const {
   ProposeError,
   DIRECT_LOAD_ENV,
-  PROPOSE_PATH,
+  IRI_NAMESPACE,
   LOAD_PATH,
   directLoadEnabled,
   buildAgentContext,
-  buildProposeRequest,
+  buildVaultProposeCommand,
   axiomAddDescriptor,
   ONTOLOGY_PROPOSE_TOOL,
-} = require('../../mcp/servers/ontology-propose');
+} = require('../../management-api/lib/ontology-propose');
 
 const DID = `did:nostr:${'a'.repeat(64)}`;
 
@@ -68,7 +70,7 @@ describe('buildAgentContext', () => {
   });
 });
 
-describe('buildProposeRequest (create)', () => {
+describe('buildVaultProposeCommand (create)', () => {
   const env = { AGENTBOX_DID: DID };
   const valid = {
     preferred_term: 'Photovoltaic Cell',
@@ -79,56 +81,75 @@ describe('buildProposeRequest (create)', () => {
     domain: 'renewables',
   };
 
-  it('builds the governed descriptor with camelCase outer + snake_case inner', () => {
-    const r = buildProposeRequest(valid, env);
-    expect(r.path).toBe(PROPOSE_PATH);
-    expect(r.method).toBe('POST');
-    expect(r.body.proposal.action).toBe('create');
-    expect(r.body.proposal.preferred_term).toBe('Photovoltaic Cell');
-    expect(r.body.proposal.is_subclass_of).toEqual([]);
-    expect(r.body.proposal.relationships).toEqual({});
-    expect(r.body.agentContext.agent_id).toBe(DID);
+  it('builds the C2 vault propose argv, dry-run by default', () => {
+    const c = buildVaultProposeCommand(valid, env);
+    expect(c.bin).toBe('vault');
+    expect(c.iri).toBe(`${IRI_NAMESPACE}photovoltaic-cell`);
+    expect(c.level).toBe('content');
+    expect(c.dryRun).toBe(true);
+    expect(c.argv).toEqual([
+      'propose', `${IRI_NAMESPACE}photovoltaic-cell`,
+      '--level', 'content',
+      '--hypothesis', c.hypothesis,
+      '--dry-run', '--json',
+    ]);
+    // The validated proposal and the attribution survive for the caller.
+    expect(c.proposal.action).toBe('create');
+    expect(c.proposal.preferred_term).toBe('Photovoltaic Cell');
+    expect(c.proposal.is_subclass_of).toEqual([]);
+    expect(c.proposal.relationships).toEqual({});
+    expect(c.agentContext.agent_id).toBe(DID);
+  });
+
+  it('never targets the retired HTTP route', () => {
+    const c = buildVaultProposeCommand(valid, env);
+    expect(c.argv.join(' ')).not.toMatch(/ontology-agent/);
+    expect(c).not.toHaveProperty('path');
+    expect(c).not.toHaveProperty('method');
   });
 
   it('defaults action to create when no target_iri is present', () => {
-    expect(buildProposeRequest(valid, env).body.proposal.action).toBe('create');
+    expect(buildVaultProposeCommand(valid, env).proposal.action).toBe('create');
   });
 
   it('rejects a create proposal missing a required field', () => {
     const { definition, ...missing } = valid;
-    expect(() => buildProposeRequest(missing, env)).toThrow(/'definition' is required/);
+    expect(() => buildVaultProposeCommand(missing, env)).toThrow(/'definition' is required/);
   });
 
   it('honours an explicit proposal envelope', () => {
-    const r = buildProposeRequest({ action: 'create', proposal: valid }, env);
-    expect(r.body.proposal.owl_class).toBe('PhotovoltaicCell');
+    const c = buildVaultProposeCommand({ action: 'create', proposal: valid }, env);
+    expect(c.proposal.owl_class).toBe('PhotovoltaicCell');
   });
 });
 
-describe('buildProposeRequest (amend)', () => {
+describe('buildVaultProposeCommand (amend)', () => {
   const env = { AGENTBOX_DID: DID };
 
   it('infers amend from a target_iri and shapes the amendment payload', () => {
-    const r = buildProposeRequest({
-      target_iri: 'vc:onto/PhotovoltaicCell',
+    const c = buildVaultProposeCommand({
+      target_iri: 'urn:ngm:class:photovoltaic-cell',
       amendment: { update_definition: 'Refined definition', add_alt_terms: ['solar cell'] },
     }, env);
-    expect(r.body.proposal.action).toBe('amend');
-    expect(r.body.proposal.target_iri).toBe('vc:onto/PhotovoltaicCell');
-    expect(r.body.proposal.amendment.update_definition).toBe('Refined definition');
-    expect(r.body.proposal.amendment.add_alt_terms).toEqual(['solar cell']);
-    expect(r.body.proposal.amendment.add_relationships).toEqual({});
-    expect(r.body.proposal.amendment.update_quality_score).toBeNull();
+    expect(c.proposal.action).toBe('amend');
+    expect(c.proposal.target_iri).toBe('urn:ngm:class:photovoltaic-cell');
+    expect(c.proposal.amendment.update_definition).toBe('Refined definition');
+    expect(c.proposal.amendment.add_alt_terms).toEqual(['solar cell']);
+    expect(c.proposal.amendment.add_relationships).toEqual({});
+    expect(c.proposal.amendment.update_quality_score).toBeNull();
+    // An amend names its subject; nothing is minted for it.
+    expect(c.iri).toBe('urn:ngm:class:photovoltaic-cell');
+    expect(c.argv[1]).toBe('urn:ngm:class:photovoltaic-cell');
   });
 
   it('rejects an amend proposal with no target_iri', () => {
-    expect(() => buildProposeRequest({ action: 'amend' }, env)).toThrow(/'target_iri' is required/);
+    expect(() => buildVaultProposeCommand({ action: 'amend' }, env)).toThrow(/'target_iri' is required/);
   });
 });
 
-describe('buildProposeRequest (errors)', () => {
+describe('buildVaultProposeCommand (errors)', () => {
   it('rejects an unknown action', () => {
-    expect(() => buildProposeRequest({ action: 'destroy' }, { AGENTBOX_DID: DID }))
+    expect(() => buildVaultProposeCommand({ action: 'destroy' }, { AGENTBOX_DID: DID }))
       .toThrow(/unknown proposal action/);
   });
 });
@@ -140,7 +161,8 @@ describe('axiomAddDescriptor', () => {
     const d = axiomAddDescriptor(axiom, {});
     expect(d.guarded).toBe(true);
     expect(d.error).toBe('ontology_governance_required');
-    expect(d.message).toMatch(/ontology_propose/);
+    expect(d.message).toMatch(/vault propose/);
+    expect(d.message).toMatch(/human-signed 31403/);
     expect(d.message).toContain(DIRECT_LOAD_ENV);
   });
 

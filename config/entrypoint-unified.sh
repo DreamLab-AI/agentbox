@@ -769,6 +769,48 @@ elif [ -d "$ONTO_PAGES" ] && [ -f "$ONTO_BUILDER" ]; then
     || echo "[5c/8] ontology PUSH cache refresh skipped (non-fatal)"
 fi
 
+# Phase 5d(ii) — `vault` liveness gate (ADR-2107 / ADR-2108).
+#
+# The corpus has exactly one programmatic door now: the `vault` CLI. There is no
+# `ontology-bridge` MCP server to fall back on, so a missing or broken binary is
+# not a degraded feature — it is every corpus-touching skill and the
+# ontology-curator agent with nothing to call. Say so at boot, loudly, once.
+#
+# Two halves, like every REBUILD-class gate here:
+#   - selection, in flake.nix: the package enters the closure only when
+#     [vault].root is set and [vault].cli is not false;
+#   - liveness, HERE: the baked binary actually runs.
+# A binary can exist while the manifest says no, and the manifest can say yes
+# while the image predates the key — hence two independent checks.
+#
+# Prefer the STABLE /opt/agentbox/bin/vault symlink over `command -v` for the
+# reason the colloquy block spells out: `command -v` resolves to a /nix/store
+# path that changes on every rebuild, and anything that records it (skill prose,
+# a script, .mcp.json) dangles after the next GC. The symlink is re-pointed at
+# each rebuild; `command -v` stays the dev-shell fallback.
+#
+# Fail-LOUD, not fail-fatal: the same contract [vault] itself keeps. A corpus
+# the agents cannot open must never be silent, but it must also not stop a
+# container whose other twenty subsystems are fine.
+if [ "${AGENTBOX_VAULT_ENABLED:-0}" = "1" ]; then
+  _VAULT_BIN="/opt/agentbox/bin/vault"
+  [ -x "$_VAULT_BIN" ] || _VAULT_BIN="$(command -v vault 2>/dev/null || echo /opt/agentbox/bin/vault)"
+  if [ -x "$_VAULT_BIN" ] && _VAULT_VER="$("$_VAULT_BIN" --version 2>/dev/null)"; then
+    echo "[5d/8] vault OK — ${_VAULT_VER} ($_VAULT_BIN)"
+  elif [ -x "$_VAULT_BIN" ]; then
+    echo "[5d/8] vault FAILED its liveness probe: $_VAULT_BIN --version did not succeed."
+    echo "       The corpus CLI is the ONLY agent door onto the corpus (ADR-2107)."
+    echo "       Rebuild the image: ./agentbox.sh rebuild"
+  else
+    echo "[5d/8] vault MISSING — [vault].cli is on but no binary is baked."
+    echo "       REBUILD-class: the package set is resolved at image composition."
+    echo "       Rebuild the image: ./agentbox.sh rebuild"
+  fi
+  unset _VAULT_BIN _VAULT_VER
+else
+  echo "[5d/8] vault gate skipped ([vault] disabled — no corpus to open)"
+fi
+
 # Phase 5e — tab0-bridge shared bearer (security audit Finding 2, belt-and-braces).
 # The supported path is `agentbox.sh up`, which mints BRIDGE_TOKEN into .env
 # BEFORE the container reads it (compose env_file -> PID 1 -> supervisord ->
@@ -1720,28 +1762,11 @@ fi
 # ── MCP bridge servers: NODE_PATH for baked @modelcontextprotocol/sdk ──
 _MCP_SERVERS_NODE_PATH="/opt/agentbox/mcp/servers/node_modules"
 
-# ── Ontology bridge MCP: upsert when [skills.ontology] enabled ──
-# Always overwrite (no grep guard) so env-var changes (auth tokens, pubkey)
-# propagate on every boot instead of being frozen at first registration.
-_ONTOLOGY_BRIDGE="/opt/agentbox/mcp/servers/ontology-bridge.js"
-if [ "${ENABLE_ONTOLOGY:-false}" = "true" ] && [ -f "$_ONTOLOGY_BRIDGE" ] && [ -f "$_MCP_JSON" ]; then
-    agentbox-manifest mcp-set-server --file "$_MCP_JSON" --name ontology-bridge <<JSON 2>/dev/null && echo "  [mcp] Upserted ontology-bridge → ${VISIONCLAW_API_URL:-http://visionclaw-server:4000}" || true
-{
-  "command": "node",
-  "args": ["$_ONTOLOGY_BRIDGE"],
-  "type": "stdio",
-  "env": {
-    "VISIONCLAW_API_URL": "${VISIONCLAW_API_URL:-http://visionclaw-server:4000}",
-    "VISIONCLAW_DEV_TOKEN": "\${VISIONCLAW_DEV_TOKEN}",
-    "AGENTBOX_PUBKEY": "${AGENTBOX_PUBKEY:-}",
-    "AGENTBOX_ONTOLOGY_DIRECT_LOAD": "${AGENTBOX_ONTOLOGY_DIRECT_LOAD:-false}",
-    "NODE_PATH": "$_MCP_SERVERS_NODE_PATH"
-  }
-}
-JSON
-    chown 1000:1000 "$_MCP_JSON" 2>/dev/null || true
-    chmod 600 "$_MCP_JSON" 2>/dev/null || true   # MCP-3: baked API key / bearer token — owner-only on shared volume
-fi
+# ── Corpus access: no MCP server (ADR-2107 / ADR-2108) ──
+# The `ontology-bridge` registration used to sit here, gated on
+# ENABLE_ONTOLOGY. It is gone: agents reach the corpus through the `vault`
+# CLI (Bash) and the Loom over HTTP, so there is nothing to register. The
+# liveness gate for that binary is the [vault] block in Phase 5d.
 
 # ── Colloquy MCP: cq shared-agent-learning knowledge units ──
 # ADR-2085. Registration is gated on [skills.colloquy].enabled and follows the
@@ -1852,7 +1877,7 @@ fi
 # its hardcoded default. Project it into the server's env block. Empty/absent
 # manifest value ⇒ emit the server's own default verbatim, so the key being
 # unset is not a behaviour change.
-# No grep guard (mirrors the ontology-bridge block above): the entry is
+# No grep guard (mirrors the colloquy block above): the entry is
 # upserted every boot so a template_dir change propagates instead of being
 # frozen at first registration — a key that only applies to workspaces which
 # have never booted is barely less inert than no key at all.

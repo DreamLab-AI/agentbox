@@ -180,7 +180,7 @@ const ENRICHMENT_TEMPLATE = {
     {
       id: 's-ontology-health',
       type: 'computational',
-      source: 'ontology-bridge.js',
+      source: 'governance-bridge.js',
       applies_to: ['visionclaw'],
       frequency: 'continuous',
       description: 'Oxigraph availability and ontology consistency',

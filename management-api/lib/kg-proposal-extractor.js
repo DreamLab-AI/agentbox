@@ -8,7 +8,7 @@
  * configured `memory` adapter slot — never a hardcoded backend), scores each
  * for elevation candidacy, and for every high-value candidate produces:
  *
- *   1. a GOVERNED propose descriptor — built with mcp/servers/ontology-propose
+ *   1. a GOVERNED `vault propose` command — built with management-api/lib/ontology-propose
  *      `buildProposeRequest`, the ONLY sanctioned route into the shared
  *      ontology (Whelk consistency → human approval → PR). This module does
  *      NOT touch the ungoverned /api/ontology/load backdoor.
@@ -34,22 +34,20 @@
  * Pure + synchronous: returns descriptors. The route performs the adapter read,
  * the publish, and (optionally) the governed POST.
  *
- * @see mcp/servers/ontology-propose.js (buildProposeRequest — the governed path)
+ * @see management-api/lib/ontology-propose.js (buildVaultProposeCommand — the governed path)
  * @see lib/bc20-provenance-bridge.js (toVisionclaw — the only cross-namespace minter)
  * @see lib/uris.js (mint — the only agentbox URN minter)
  */
 
 const uris = require('./uris');
 const bc20 = require('./bc20-provenance-bridge');
-// ontology-propose resolution mirrors the nostr-bridge dual-path in server.js:
-// the Nix build (flake.nix managementApiPkg.buildPhaseExtra) vendors a copy to
-// this package's lib/, because a bare require('../../mcp/servers/...') escapes
-// the packaged node_modules/agentic-flow-management-api boundary at runtime and
-// throws "Cannot find module", unmounting the KG-elevation route. In the source
-// tree (dev/test) that vendored copy is absent, so fall back to the repo path.
-let buildProposeRequest;
-try { ({ buildProposeRequest } = require('./ontology-propose')); }
-catch { ({ buildProposeRequest } = require('../../mcp/servers/ontology-propose')); }
+// ADR-2108: ontology-propose is a package-local module now. It was never an MCP
+// server -- a pure, synchronous request-descriptor builder that happened to live
+// under mcp/servers/ because the retired ontology-bridge was its first caller.
+// When that bridge was deleted the builder moved here, to its one remaining
+// consumer, so there is no dual-path require and no buildPhaseExtra vendoring
+// step: the file ships inside this package's own boundary in source and in Nix.
+const { buildVaultProposeCommand } = require('./ontology-propose');
 const { AgentActionType } = require('../utils/agent-event-publisher');
 
 class ExtractError extends Error {
@@ -211,7 +209,7 @@ function scoreCandidate(norm) {
  *     candidate,                // the normalised entry + score
  *     proposal_urn,             // urn:agentbox:thing:<pubkey>:proposal-<sha256-12>
  *     target_urn,               // FOREIGN urn:visionclaw:concept:<domain>:<slug> (the elevation target)
- *     propose_request,          // GOVERNED { path, method, body } for /api/ontology-agent/propose
+ *     propose_command,          // GOVERNED `vault propose` argv (contract C2); the route runs it
  *     emit,                     // agent-action LINK emit payload
  *   }
  *
@@ -252,9 +250,11 @@ function buildProposalDescriptor(norm, score, opts = {}) {
   const conceptCross = bc20.toVisionclaw(conceptUrn, { domain, slug });
   const target_urn = conceptCross ? conceptCross.visionclaw_id : null;
 
-  // 4. Build the GOVERNED propose request (create). Ontology fields fall back to
-  //    honest defaults; the governance gate (Whelk + human approval) refines.
-  const propose_request = buildProposeRequest({
+  // 4. Build the GOVERNED `vault propose` invocation (create). ADR-2116 retired
+  //    the HTTP propose route; the command is built here and RUN by the route,
+  //    which is async. Ontology fields fall back to honest defaults; the
+  //    blockers (Whelk + conflicts) and then the human signer refine them.
+  const propose_command = buildVaultProposeCommand({
     action: 'create',
     preferred_term: norm.term,
     definition: norm.definition || `Personal-KG concept '${norm.term}' proposed for elevation.`,
@@ -283,7 +283,8 @@ function buildProposalDescriptor(norm, score, opts = {}) {
       domain,
       score: score.score,
       reasons: score.reasons,
-      governed_path: propose_request.path,
+      governed_command: propose_command.argv.join(' '),
+      governed_iri: propose_command.iri,
       // The originating experiential lesson URN (already minted by expel-distil
       // through the memory kind), preserving the experiential→governed link.
       ...(norm.lesson_urn ? { source_lesson_urn: norm.lesson_urn } : {}),
@@ -297,7 +298,7 @@ function buildProposalDescriptor(norm, score, opts = {}) {
     proposal_urn,
     proposal_foreign_urn,
     target_urn,
-    propose_request,
+    propose_command,
     emit,
     // Provenance: the experiential lesson this proposal was distilled from
     // (null for personal-KG candidates). Links the code-as-harness 5th identity

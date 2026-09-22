@@ -88,11 +88,15 @@ describe('buildProposalDescriptor — sanctioned URN minting only', () => {
     expect(d.target_urn).toBe('urn:visionclaw:concept:renewables:photovoltaic-cell');
   });
 
-  it('routes through the GOVERNED /api/ontology-agent/propose path (never /api/ontology/load)', () => {
-    expect(d.propose_request.path).toBe('/api/ontology-agent/propose');
-    expect(d.propose_request.method).toBe('POST');
-    expect(d.propose_request.body.proposal.action).toBe('create');
-    expect(d.propose_request.body.proposal.preferred_term).toBe('Photovoltaic Cell');
+  it('routes through the GOVERNED `vault propose` (never /api/ontology/load, never the retired HTTP route)', () => {
+    // ADR-2116: the governed path is a command, not a URL.
+    expect(d.propose_request).toBeUndefined();
+    expect(d.propose_command.argv[0]).toBe('propose');
+    expect(d.propose_command.iri).toBe('urn:ngm:class:photovoltaic-cell');
+    expect(d.propose_command.level).toBe('content');
+    expect(d.propose_command.proposal.action).toBe('create');
+    expect(d.propose_command.proposal.preferred_term).toBe('Photovoltaic Cell');
+    expect(d.propose_command.argv.join(' ')).not.toMatch(/ontology-agent|ontology\/load/);
   });
 
   it('emits a LINK action carrying the foreign target_urn', () => {
@@ -134,7 +138,10 @@ describe('extractProposals + wire envelope', () => {
     expect(n.params.message_type).toBe(0x23);
     expect(n.params.protocol_version).toBe(2);
     expect(n.params.event.metadata.origin).toBe('kg-elevation');
-    expect(n.params.event.metadata.governed_path).toBe('/api/ontology-agent/propose');
+    // ADR-2116: the beam carries the governed COMMAND and its subject IRI.
+    expect(n.params.event.metadata.governed_path).toBeUndefined();
+    expect(n.params.event.metadata.governed_iri).toMatch(/^urn:ngm:class:/);
+    expect(n.params.event.metadata.governed_command).toMatch(/^propose urn:ngm:class:/);
   });
 
   it('throws on a non-array input', () => {
@@ -194,7 +201,7 @@ describe('code-as-harness lessons feed the governed pipeline', () => {
     const p = proposals[0];
 
     // Same sanctioned governed path as the personal-KG candidates.
-    expect(p.propose_request.path).toBe('/api/ontology-agent/propose');
+    expect(p.propose_command.iri.startsWith('urn:ngm:class:')).toBe(true);
     expect(uris.isCanonical(p.proposal_urn)).toBe(true);
 
     // The experiential→governed link: the lesson URN survives onto the

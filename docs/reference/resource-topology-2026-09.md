@@ -97,7 +97,7 @@ server in `.mcp.json`. With 27 sessions holding the full set:
 |---|---|---|---|
 | agentic-qe (`aqe mcp`) | 24 | 142 MB | 3.4 GB |
 | perplexity | 24 | 81 MB | 1.9 GB |
-| ontology-bridge | 24 | 80 MB | 1.9 GB |
+| ontology-bridge ‡ | 24 | 80 MB | 1.9 GB |
 | consultant-antigravity | 24 | 76 MB | 1.8 GB |
 | precedent-bridge | 24 | 74 MB | 1.8 GB |
 | ruvnet-brain | 24 | 74 MB | 1.8 GB |
@@ -193,9 +193,12 @@ for the envelope; `flake.nix` `composeText` projects it into the generated
   `http://127.0.0.1:9720/<name>/mcp`, multiplexing clients on
   `Mcp-Session-Id`. Loopback-only, consistent with the ADR-2013 publish
   policy and the `aoe serve` loopback posture.
-- Hubbed set (10, `[resources.mcp_hub].servers`): ontology-bridge,
-  ruvnet-brain, precedent-bridge, harness-bridge, perplexity, web-researcher,
-  and the four consultants. These are stateless bridges; their only per-session
+- Hubbed set (9, `[resources.mcp_hub].servers`): ruvnet-brain,
+  precedent-bridge, harness-bridge, perplexity, web-researcher, and the four
+  consultants. ‡ `ontology-bridge` was the tenth when these figures were taken
+  and is RETIRED (ADR-2107/ADR-2108) — the 1.9 GB in the table above is real
+  and is now simply reclaimed. The measurement is left intact because editing a
+  measurement to match a later decision is how a reference stops being one. These are stateless bridges; their only per-session
   input is the env block, which is identical across sessions.
 - Stays stdio (5): claude-flow (the memory mandate, ADR-2014 fail-closed
   semantics — kept per session deliberately), code-interpreter, aci-shell,

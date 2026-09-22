@@ -79,11 +79,11 @@ generate_topics({"text": "Your text content here...", "max_topics": 10, "format"
 `obsidian` is the **default** (ADR-2028 D4) and emits `- [[Topic]]` wiki-links
 ready to paste into a vault page; `plain` emits `- Topic`.
 
-`logseq` is **legacy**: it is still selectable and emits the identical
-`- [[Topic]]` wiki-link syntax, but it is retained only for callers pinned to
-the old name and should not be used in new work. Pages this skill's output
-lands in carry V2 YAML frontmatter — see `project/docs/VAULT-corpus-format.md`
-§V2.
+`logseq` is a **retired alias**: it emits the identical `- [[Topic]]` wiki-link
+syntax and exists only so a caller pinned to the old name does not break. Do not
+use it in new work — it names a corpus format this estate no longer has. Pages
+this skill's output lands in carry YAML frontmatter; see
+`project/docs/VAULT-corpus-format.md`.
 
 ## Deeper reference
 

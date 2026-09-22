@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_98 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_101 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -84,7 +84,7 @@ _98 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2019](ADR-2019-model-lifecycle-384-dim-freeze.md) | Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off | LEARNING-memory | 2026-08-31 | accepted | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2020](ADR-2020-capability-gating.md) | Optional capabilities are manifest-gated and byte-identical-when-off; execution-gated tools are spend-capped and never auto-routed | GOVERNANCE-capabilities | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2021](ADR-2021-skills-jit-context-lint.md) | Skills are JIT context — no monolith SKILL.md, depth relocated to references/, enforced by lint before rebuild | GOVERNANCE-capabilities | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
-| [ADR-2022](ADR-2022-governed-ontology-writes.md) | Governed ontology writes only — the ungoverned axiom-load backdoor stays disabled outside bootstrap | GOVERNANCE-capabilities | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
+| [ADR-2022](ADR-2022-governed-ontology-writes.md) | Governed ontology writes only — the ungoverned axiom-load backdoor stays disabled outside bootstrap | GOVERNANCE-capabilities | 2026-08-31 | superseded | partial | live | — | ADR-2108 | jjohare | agentbox |
 | [ADR-2023](ADR-2023-loom-facade.md) | The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it | GOVERNANCE-capabilities | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2024](ADR-2024-dream-cycle-gating.md) | Dream cycles are evidence-gated and human-merge-gated, and darwin evaluators must emit surface-dependent output | GOVERNANCE-capabilities | 2026-08-31 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2025](ADR-2025-cross-repo-federation-contract.md) | Cross-repo federation contract: sha12 content address, urn:agentbox grammar, closed inbound kind-map | PROTOCOL-registry | 2026-08-31 | proposed | partial | inactive | — | — | jjohare | agentbox |
@@ -110,7 +110,7 @@ _98 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2051](ADR-2051-learning-invariants-match-enforcement.md) | State the LEARNING-memory invariants as the enforcement the code actually provides | LEARNING-memory | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2052](ADR-2052-cite-manifest-by-key-not-line.md) | Cite agentbox.toml by section and key, never by line number | LEARNING-memory | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2053](ADR-2053-dream-default-provider-is-zai.md) | Record that the dream engine's default reasoning provider is Z.AI and name the egress posture | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
-| [ADR-2054](ADR-2054-every-ontology-authoring-caller-crosses-the-gate.md) | Route every ontology authoring caller through the authority gate | GOVERNANCE-capabilities | 2026-09-05 | accepted | partial | live | — | — | jjohare | agentbox |
+| [ADR-2054](ADR-2054-every-ontology-authoring-caller-crosses-the-gate.md) | Route every ontology authoring caller through the authority gate | GOVERNANCE-capabilities | 2026-09-05 | superseded | partial | live | — | ADR-2108 | jjohare | agentbox |
 | [ADR-2055](ADR-2055-baseline-must-not-conflate-privacy-filter-with-loom.md) | Describe opf-router as the privacy-filter sidecar on its own port, never as a facade on the Loom's | GOVERNANCE-capabilities | 2026-09-05 | accepted | partial | live | — | — | jjohare | agentbox |
 | [ADR-2056](ADR-2056-skill-directory-facts-and-router-fixture.md) | Make the skills directory facts checkable and give the router fixture a consumer | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2057](ADR-2057-close-the-capability-gate-gaps.md) | Close the capability-gate gaps for podcast-cron, harness and precedent | GOVERNANCE-capabilities | 2026-09-05 | accepted | complete | staged | — | — | jjohare | agentbox |
@@ -161,3 +161,6 @@ _98 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2103](ADR-2103-parent-chain-and-header-profile-are-configuration-behind-the-p21-gate.md) | The parent network and header profile are manifest configuration exposed by onboarding, bound into the chain document at genesis, with mainnet variants behind an implemented owner-and-legal gate | BASELINE-container | 2026-09-21 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2104](ADR-2104-direct-control-over-mcp.md) | A crate is the control surface; an MCP server is a disposable adapter over it | BASELINE-container | 2026-09-21 | proposed | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2105](ADR-2105-agentbox-kind-bands-and-the-colloquy-move.md) | The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499 | — | 2026-09-21 | proposed | partial | inactive | — | — | jjohare | agentbox |
+| [ADR-2106](ADR-2106-governance-decisions-apply-through-vault-edit.md) | Ontology proposals and decisions both go through vault — propose raises them, a guarded vault edit applies them | — | 2026-09-22 | accepted | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2107](ADR-2107-no-mcp-for-the-corpus-agents-use-the-vault-cli.md) | No MCP inside the estate for the corpus; agents use the vault CLI | BASELINE-container | 2026-09-22 | accepted | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2108](ADR-2108-ontology-bridge-retired-vault-baked-by-nix.md) | ontology-bridge is retired; the vault binary is baked by Nix | BASELINE-container | 2026-09-22 | accepted | partial | staged | ADR-2022, ADR-2054 | — | jjohare | agentbox |
