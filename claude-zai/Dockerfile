@@ -17,8 +17,8 @@ RUN useradd -m -s /bin/bash claude && \
 # SECURITY: @anthropic-ai/claude-code is pinned to a verified version.
 # If upstream ships a malicious release, this pin blocks auto-upgrade.
 # Rotate via a PR only; do not auto-update.
-# Bumped to 2.1.257 for Claude Fable 5.1 support (2026-09-01).
-RUN npm install -g @anthropic-ai/claude-code@2.1.257
+# 2.1.280 is the current stable Claude Code release (2026-09-22).
+RUN npm install -g @anthropic-ai/claude-code@2.1.280
 
 # Create app directory
 WORKDIR /app

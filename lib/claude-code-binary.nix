@@ -21,10 +21,11 @@
 { lib, pkgs }:
 
 let
-  # 2.1.276 (2026-09-18): first pin with the function-hook surface
+  # 2.1.280 (2026-09-22): current stable Claude Code release. Retains the
+  # function-hook surface introduced in 2.1.276
   # (`session.compact`, `command.register`, `$.http.fetch`) that the
   # jev-compaction plugin needs (ADR-2093). 2.1.257 had none of it.
-  claudeCodeVersion = "2.1.276";
+  claudeCodeVersion = "2.1.280";
 
   # Map agentbox's system string to the upstream download platform slug.
   platforms = {
@@ -45,10 +46,10 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = "sha256-ilbIoUvTyyRuK9t+YK7+D2Cb/3jIu8xeprGBfBEcYUU=";
+      sha256 = "sha256-HghQPb3zwssNcG0y80CCdziNHHbvEIZz6P5CwbMikls=";
     };
     "aarch64-linux" = {
-      sha256 = "sha256-6aw9+VYINkVXijgq1k7DBEaGZuNiwzv979gDzW/1lrA=";
+      sha256 = "sha256-kvK0/QXQvc97mg1ODs70oeSzaLKQzY/QfP+aUAE/RaI=";
     };
   };
 

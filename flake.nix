@@ -281,10 +281,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.25.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.3.0";
-          packageLock = ./config/npm-locks/ruvector-0.3.0.package-lock.json;
-          sha256          = "sha256-WJY5s7nvQaZBQJaJbSI8PVZh4PfYriGlTUME2mOcQEc=";
-          nodeModulesHash = "sha256-TZrJFgDTWW5MFWciq48Yvr5NQjtD+uhi08KEZAGM280=";
+          version         = "0.3.2";
+          packageLock = ./config/npm-locks/ruvector-0.3.2.package-lock.json;
+          sha256          = "sha256-IgxvnZaWD49fmhsOxsmGGHnKMc9wKcSGE3YvFKqLJ1E=";
+          nodeModulesHash = "sha256-KE5ArL+hf/vxAkOc5IUcx3MsSU1uSEBwoHJ1F94DjnM=";
           bin             = "ruvector";
         };
 
@@ -309,10 +309,10 @@
         #    lifecycle support plus the corresponding MCP tool surface.
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.41.0";
-          packageLock = ./config/npm-locks/ruflo-3.41.0.package-lock.json;
-          sha256          = "sha256-N1K0Z237jU40Tpf2Bu2y7f7KTaXKwJQb9v9ojnYuKsM=";
-          nodeModulesHash = "sha256-flBLN/e/PV7ZeDPHmXBSGCzAJV25+kgyZ69v6WmPTqw=";
+          version         = "3.42.5";
+          packageLock = ./config/npm-locks/ruflo-3.42.5.package-lock.json;
+          sha256          = "sha256-snSnkKkIsOP/gLeoqROEk5zwwdHlj51pVqdOjJKUHAc=";
+          nodeModulesHash = "sha256-j6iEgjVF1WtOUFDvJhyC033+CbejP05xcmRjV/e1Lbk=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -369,10 +369,10 @@
         #    nodeModulesHash resolved 2026-07-24 during the ADR-041 rebuild.
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.14.1";
-          packageLock = ./config/npm-locks/agentic-qe-3.14.1.package-lock.json;
-          sha256          = "sha256-EGZGAFijEllObRh6SEswMWJyepebUm8UjdtAUPBdEh8=";
-          nodeModulesHash = "sha256-9B9cg0vlqY+5QXiDY1N5IhUooZ2ONqpQVl6Hk+7cCzk=";
+          version         = "3.14.2";
+          packageLock = ./config/npm-locks/agentic-qe-3.14.2.package-lock.json;
+          sha256          = "sha256-7nOpWeZvzZTnXtk2bzPahd7eDoOMAF+p6YC82wYyMJM=";
+          nodeModulesHash = "sha256-4mfbOcUFYVrxRrUeAIYDE4Oao6T1V6VDDNelE7E7vuw=";
           bin             = "aqe";
         };
 
@@ -395,10 +395,10 @@
         #    Bump: update version + both digests together.
         codebaseMemoryBinary =
           let
-            version = "0.10.8";
+            version = "0.11.0";
             assets = {
-              "x86_64-linux"  = { arch = "amd64"; sha256 = "6eef49652bc0c7820f43114125044d40bf7f4d97c11b2592f6b0f6a307702325"; };
-              "aarch64-linux" = { arch = "arm64"; sha256 = "5697d986d9716c913163b4bff7b3a294287f3b843e993bc1ff71e78dcdc21781"; };
+              "x86_64-linux"  = { arch = "amd64"; sha256 = "1f9e8293eb2bc5c05cfa27a7e8fc033da6d729ffad525ccfcdaa3fd606306683"; };
+              "aarch64-linux" = { arch = "arm64"; sha256 = "d62eeb224d5ee3eba3070938ec62cf1033f10b041ec1c4b2fb67f7aef390cc7b"; };
             };
             asset = assets.${system} or (throw ''
               codebase-memory-mcp: no portable release asset for system "${system}".
@@ -415,10 +415,10 @@
           '';
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
-          version         = "0.10.8";
-          packageLock = ./config/npm-locks/codebase-memory-mcp-0.10.8.package-lock.json;
-          sha256          = "sha256-C68m1vT9SrZuIoL1t/K7oi1+CMV7tUhMNuESIoRFOZA=";
-          nodeModulesHash = "sha256-1seDTzkcR6n0VQ/B7w29iSKMbtFz1s5a9kkoePWHYy4=";
+          version         = "0.11.0";
+          packageLock = ./config/npm-locks/codebase-memory-mcp-0.11.0.package-lock.json;
+          sha256          = "sha256-O1AJNx9GqEjgQDROBK8p1jJb2x8knMVChq1l6feI+ww=";
+          nodeModulesHash = "sha256-u3L/Jne/cV2Tb2n9FzfExM8gHl2nUvD55xuQfHG6BL4=";
           bin             = "codebase-memory-mcp";
           extraFiles      = { "bin/codebase-memory-mcp" = "${codebaseMemoryBinary}/bin/codebase-memory-mcp"; };
         };
