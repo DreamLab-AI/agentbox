@@ -16,17 +16,37 @@
 //! # No I/O, no clock
 //!
 //! [`Round::tick`] and [`Round::on_event`] take the time as an argument
-//! (unix seconds) and return a list of [`Action`]s — events to publish,
+//! (unix **milliseconds**, as `Date.now()` is) and return a list of [`Action`]s — events to publish,
 //! blocks that entered the chain, lines to log — for the caller to act on.
 //! The chain is a port ([`ChainView`]): the in-memory state in a test, the
 //! file-backed chain in a signer. Nothing here opens a socket or reads a
 //! clock, so every branch of the protocol is testable with a fixed `now`.
 //!
+//! # Timing, to the millisecond
+//!
+//! `round.mjs` measures in `Date.now()` milliseconds and the same
+//! comparisons hold here, with `propose_after` = `P` seconds and `n`
+//! signers:
+//!
+//! | rule | reference | here |
+//! |---|---|---|
+//! | one signature per height relaxes (`mayReSign`) | `now − signed.at > P·1000` | strictly more than `P` s after the signature's intent: at 30 001 ms for `P = 30`, not at 30 000 |
+//! | my proposal is dropped | `now − pending.at > P·1000·n` | at 90 001 ms for `P = 30, n = 3` |
+//! | a replayed proposal is ignored | `now/1000 − created_at > P·n` | `now − created_at·1000 > P·n·1000`: the same instant, 90 001 ms after the event's second |
+//! | lateness (`entitled`) | `⌊(at − base) / 1000 / P⌋` | `(at − base) / (P·1000)`, integer; `base` = when the block became due, else the event's `created_at·1000` |
+//! | the "signed … s ago" log | `Math.round(ms / 1000)` | rounded, the same |
+//!
+//! Events carry `created_at` in whole seconds (`now / 1000`), as NIP-01
+//! requires; nothing on the wire changes.
+//!
 //! # Hardening, all behind options with upstream's behaviour as default
 //!
-//! - **The vote journal** ([`VoteJournal`]): a signature is journalled,
-//!   durably, before the `Publish` action is returned; on restart the
-//!   journal is loaded and the one-signature rule is applied against it.
+//! - **The vote journal** ([`VoteJournal`]): the intent is journalled,
+//!   durably, before the custody signer is asked, and the signature after
+//!   it answers, before the `Publish` action is returned; a failed intent
+//!   write means the signer is not called, a failed signature write means
+//!   nothing is published. On restart the journal is loaded and the
+//!   one-signature rule is applied against every entry.
 //! - **`resign_after`** ([`RoundConfig::resign_after`]): upstream's
 //!   relaxation (`Some(propose_after)`) by default, for interop; `None`
 //!   never re-signs a height (ADR-2101). With `None`, a height whose
@@ -68,7 +88,7 @@ use sidestr_nostr::tags::{first, height_tag, TAG_E, TAG_H};
 
 use crate::chain::ChainView;
 use crate::error::{Error, Result};
-use crate::journal::{VoteEntry, VoteJournal, VoteRole, VoteScope};
+use crate::journal::{VoteEntry, VoteJournal, VoteRole, VoteScope, VoteStage};
 use crate::signer::{PartialRequest, RoundSigner};
 
 /// The rules that cannot hold for an unsealed template and are therefore
@@ -84,8 +104,9 @@ pub struct RoundConfig {
     /// propose (`--propose-after`, upstream default 30).
     pub propose_after: u64,
     /// After how many seconds a signed-but-unsealed height may be signed
-    /// again for another proposal. `Some(propose_after)` is upstream's
-    /// rule; `None` never re-signs.
+    /// again for another proposal (strictly more than this many, to the
+    /// millisecond). `Some(propose_after)` is upstream's rule; `None` never
+    /// re-signs.
     pub resign_after: Option<u64>,
 }
 
@@ -153,7 +174,7 @@ pub struct Pending<B> {
     pub block: B,
     /// Signatures gathered so far, mine included.
     pub sigs: BTreeMap<XOnlyPublicKey, Signature>,
-    /// When it was proposed.
+    /// When it was proposed, unix milliseconds.
     pub at: u64,
     /// The fees it collects.
     pub fees: u64,
@@ -285,7 +306,8 @@ impl<F: HeaderFamily> Round<F> {
         self.pending.as_ref()
     }
     /// The heights I have signed a proposal for, with the proposal id and
-    /// when — the journal's view after this run's additions.
+    /// when (unix milliseconds) — the journal's view after this run's
+    /// additions.
     pub fn signed(&self) -> impl Iterator<Item = (u32, &str, u64)> {
         self.signed.iter().map(|(h, s)| (*h, s.id.as_str(), s.at))
     }
@@ -301,32 +323,48 @@ impl<F: HeaderFamily> Round<F> {
     }
 
     /// `round.mjs mayReSign`: no signature at this height, or the one there
-    /// is has had its window to seal.
-    fn may_resign(&self, height: u32, now: u64) -> bool {
+    /// is has had its window to seal — strictly more than `resign_after`
+    /// seconds, measured in milliseconds.
+    fn may_resign(&self, height: u32, now_ms: u64) -> bool {
         match (self.signed.get(&height), self.cfg.resign_after) {
             (None, _) => true,
             (Some(_), None) => false,
-            (Some(prev), Some(after)) => now.saturating_sub(prev.at) > after,
+            (Some(prev), Some(after)) => now_ms.saturating_sub(prev.at) > after * 1000,
         }
+    }
+
+    /// `propose_after × n`, in milliseconds: the proposal's life.
+    fn ring_ms(&self) -> u64 {
+        self.cfg.propose_after * 1000 * self.n()
     }
 
     /// `round.mjs entitled`: the proposer for a height is `height mod n`;
     /// every `propose_after` seconds of lateness lets the next signer in
     /// the ring propose too. Lateness counts from when the block became
     /// due (`due_since`), not from the last block. Never negative: another
-    /// signer's clock may run a little ahead of mine.
-    fn entitled(&self, signer: &XOnlyPublicKey, height: u32, at: u64) -> bool {
+    /// signer's clock may run a little ahead of mine. `at_ms` and
+    /// `due_since` are milliseconds, as upstream's.
+    fn entitled(&self, signer: &XOnlyPublicKey, height: u32, at_ms: u64) -> bool {
         let Some(slot) = self.fed.signers.iter().position(|k| k == signer) else {
             return false;
         };
         let n = self.n();
         let turn = u64::from(height) % n;
-        let base = self.due_since.unwrap_or(at);
-        let late = at.saturating_sub(base) / self.cfg.propose_after.max(1);
+        let base = self.due_since.unwrap_or(at_ms);
+        let late = at_ms.saturating_sub(base) / (self.cfg.propose_after.max(1) * 1000);
         (slot as u64 + n - turn) % n <= late
     }
 
-    fn partial(&self, block: &F::Block, height: u32) -> Result<Signature> {
+    fn template_id(&self, block: &F::Block) -> Result<[u8; 32]> {
+        Ok(template_id(
+            &self.family,
+            block,
+            &self.chain_id,
+            Some(self.genesis_hash),
+        )?)
+    }
+
+    fn partial(&self, block: &F::Block, height: u32, tid: [u8; 32]) -> Result<Signature> {
         let digest = block_sighash_for(
             &self.family,
             block,
@@ -337,39 +375,77 @@ impl<F: HeaderFamily> Round<F> {
                 codesep_pos: 0xffff_ffff,
             },
         )?;
-        let tid = template_id(&self.family, block, &self.chain_id, Some(self.genesis_hash))?;
         self.signer
             .sign_partial(&PartialRequest::new(&self.chain_id, height, tid, digest))
     }
 
+    /// One journal record. The intent goes in before the custody signer is
+    /// asked, the signature after it answers.
     fn journal(
         &mut self,
-        block: &F::Block,
+        tid: [u8; 32],
         height: u32,
         role: VoteRole,
         subject: &str,
-        at: u64,
+        at_ms: u64,
+        signature: Option<&Signature>,
     ) -> Result<()> {
-        let tid = template_id(&self.family, block, &self.chain_id, Some(self.genesis_hash))?;
         self.journal.record(&VoteEntry {
             scope: VoteScope::Height(height),
             role,
             subject: subject.to_string(),
             digest: hex::encode(tid),
-            at,
+            at: at_ms,
+            stage: if signature.is_some() {
+                VoteStage::Signed
+            } else {
+                VoteStage::Intent
+            },
+            signature: signature.map(|s| hex::encode(s.as_ref())),
         })
+    }
+
+    /// Intent, then the custody signer, then the signature: the order the
+    /// journal guarantees. `Err` before the signer was asked means no
+    /// signature exists; `Err` after means one exists, is journalled, and
+    /// is not published.
+    fn authorise(
+        &mut self,
+        block: &F::Block,
+        height: u32,
+        role: VoteRole,
+        subject: &str,
+        now_ms: u64,
+    ) -> core::result::Result<Signature, (bool, Error)> {
+        let tid = self.template_id(block).map_err(|e| (false, e))?;
+        self.journal(tid, height, role, subject, now_ms, None)
+            .map_err(|e| (false, e))?;
+        // journalled: from here the height counts as signed whatever happens next
+        self.signed.insert(
+            height,
+            SignedAt {
+                id: subject.to_string(),
+                at: now_ms,
+            },
+        );
+        let sig = self.partial(block, height, tid).map_err(|e| (true, e))?;
+        self.journal(tid, height, role, subject, now_ms, Some(&sig))
+            .map_err(|e| (true, e))?;
+        Ok(sig)
     }
 
     /// Called every second by the producer (`round.tick({ due })`): drop a
     /// proposal nobody sealed, and propose when a block is due and it is my
-    /// turn. `due` is the producer's block timer, as upstream computes it.
-    pub fn tick(&mut self, now: u64, chain: &mut dyn ChainView<F>, due: bool) -> Vec<Action> {
+    /// turn. `now_ms` is unix milliseconds; `due` is the producer's block
+    /// timer, as upstream computes it.
+    pub fn tick(&mut self, now_ms: u64, chain: &mut dyn ChainView<F>, due: bool) -> Vec<Action> {
+        let now = now_ms;
         let mut out = Vec::new();
         if let Some(p) = &self.pending {
             if p.height <= chain.state().height() {
                 // the height moved under my proposal: a sealed block from elsewhere took it
                 self.pending = None;
-            } else if now.saturating_sub(p.at) > self.cfg.propose_after * self.n() {
+            } else if now.saturating_sub(p.at) > self.ring_ms() {
                 out.push(Action::Log(format!(
                     "round: my proposal h{} got {} signature(s); dropping it",
                     p.height,
@@ -401,13 +477,14 @@ impl<F: HeaderFamily> Round<F> {
         out
     }
 
-    /// `round.mjs propose`.
+    /// `round.mjs propose`. `now` is milliseconds.
     fn propose(
         &mut self,
         now: u64,
         chain: &mut dyn ChainView<F>,
         out: &mut Vec<Action>,
     ) -> Result<()> {
+        let secs = now / 1000;
         let state = chain.state();
         // never propose a claim the chain already has
         let wanted: Vec<ClaimRequest> = self
@@ -417,7 +494,7 @@ impl<F: HeaderFamily> Round<F> {
             .cloned()
             .collect();
         let (block, fees, claims) = state.build_next(&NextBlock {
-            time: u32::try_from(now).unwrap_or(u32::MAX),
+            time: u32::try_from(secs).unwrap_or(u32::MAX),
             claims: wanted,
         })?;
         let height = block_height(&self.family, &block)?;
@@ -428,11 +505,12 @@ impl<F: HeaderFamily> Round<F> {
                 height,
                 block_hex: hex::encode(block.encode()),
             },
-            now,
+            secs,
         )?;
-        let sig = self.partial(&block, height)?;
-        // journalled before anything is handed out
-        self.journal(&block, height, VoteRole::Proposed, &ev.id, now)?;
+        // the intent is journalled before the key is asked, the signature before anything is handed out
+        let sig = self
+            .authorise(&block, height, VoteRole::Proposed, &ev.id, now)
+            .map_err(|(_, e)| e)?;
         let mut sigs = BTreeMap::new();
         sigs.insert(self.me, sig);
         self.pending = Some(Pending {
@@ -444,13 +522,6 @@ impl<F: HeaderFamily> Round<F> {
             fees,
             claims,
         });
-        self.signed.insert(
-            height,
-            SignedAt {
-                id: ev.id.clone(),
-                at: now,
-            },
-        );
         out.push(Action::Log(format!(
             "round: proposing h{height} {}… ({} txs, {claims} claim(s))",
             short(&ev.id, 12),
@@ -464,8 +535,15 @@ impl<F: HeaderFamily> Round<F> {
     /// An event from a relay (`relay.mjs subscribe` → `onProposal`,
     /// `onPartial`, `onSealed`). The on-receipt checks — kind, unseen,
     /// tagged for this chain, signature — are applied here, so the caller
-    /// may hand over everything the relay sends.
-    pub fn on_event(&mut self, now: u64, chain: &mut dyn ChainView<F>, ev: &Event) -> Vec<Action> {
+    /// may hand over everything the relay sends. `now_ms` is unix
+    /// milliseconds.
+    pub fn on_event(
+        &mut self,
+        now_ms: u64,
+        chain: &mut dyn ChainView<F>,
+        ev: &Event,
+    ) -> Vec<Action> {
+        let now = now_ms;
         let mut out = Vec::new();
         match ev.kind {
             KIND_BLOCK_PROPOSAL => {
@@ -502,9 +580,10 @@ impl<F: HeaderFamily> Round<F> {
             return;
         }
         // a relay replaying an old proposal: its proposer has moved on
-        if now.saturating_sub(ev.created_at) > self.cfg.propose_after * self.n() {
+        if now.saturating_sub(ev.created_at.saturating_mul(1000)) > self.ring_ms() {
             return;
         }
+        let secs = now / 1000;
         let log = |s: String| Action::Log(s);
         let my = chain.state().height();
         if u64::from(height) != u64::from(my) + 1 {
@@ -515,7 +594,7 @@ impl<F: HeaderFamily> Round<F> {
             return;
         }
         let proposer = pubkey_from_hex(&ev.pubkey).ok();
-        if !proposer.is_some_and(|p| self.entitled(&p, height, ev.created_at)) {
+        if !proposer.is_some_and(|p| self.entitled(&p, height, ev.created_at.saturating_mul(1000))) {
             out.push(log(format!(
                 "round: proposal h{height} from {}… refused: not its turn",
                 short(&ev.pubkey, 8)
@@ -531,7 +610,7 @@ impl<F: HeaderFamily> Round<F> {
                 "round: proposal h{height} from {}… refused: I signed {}… for this height {} s ago",
                 short(&ev.pubkey, 8),
                 short(&prev.id, 8),
-                now.saturating_sub(prev.at)
+                (now.saturating_sub(prev.at) + 500) / 1000
             )));
             return;
         }
@@ -558,7 +637,7 @@ impl<F: HeaderFamily> Round<F> {
         let (verdict, _) =
             chain
                 .state()
-                .judge(height, &block, Some(u32::try_from(now).unwrap_or(u32::MAX)));
+                .judge(height, &block, Some(u32::try_from(secs).unwrap_or(u32::MAX)));
         let failed: Vec<String> = verdict
             .failed()
             .into_iter()
@@ -589,24 +668,19 @@ impl<F: HeaderFamily> Round<F> {
             out.push(log(format!("round: proposal h{height} refused: {why}")));
             return;
         }
-        let sig = match self.partial(&block, height) {
+        let sig = match self.authorise(&block, height, VoteRole::Signed, &ev.id, now) {
             Ok(s) => s,
-            Err(e) => {
+            Err((false, e)) => {
                 out.push(log(format!("round: proposal h{height} not signed: {e}")));
                 return;
             }
+            Err((true, e)) => {
+                out.push(log(format!(
+                    "round: proposal h{height} signed but not published: {e}"
+                )));
+                return;
+            }
         };
-        if let Err(e) = self.journal(&block, height, VoteRole::Signed, &ev.id, now) {
-            out.push(log(format!("round: proposal h{height} not signed: {e}")));
-            return;
-        }
-        self.signed.insert(
-            height,
-            SignedAt {
-                id: ev.id.clone(),
-                at: now,
-            },
-        );
         let pev = match sign_partial(
             self.signer.as_ref(),
             &Partial {
@@ -615,7 +689,7 @@ impl<F: HeaderFamily> Round<F> {
                 proposal: ev.id.clone(),
                 signature_hex: hex::encode(sig.as_ref()),
             },
-            now,
+            secs,
         ) {
             Ok(p) => p,
             Err(e) => {
@@ -692,7 +766,8 @@ impl<F: HeaderFamily> Round<F> {
                 return;
             }
         };
-        match chain.add_block(&sealed, now) {
+        let secs = now / 1000;
+        match chain.add_block(&sealed, secs) {
             Ok(r) => {
                 self.claims_wanted.clear();
                 self.due_since = None;
@@ -717,7 +792,7 @@ impl<F: HeaderFamily> Round<F> {
                         height: r.height,
                         block_hex: hex::encode(sealed.encode()),
                     },
-                    now,
+                    secs,
                 ) {
                     Ok(ev) => out.push(Action::Publish(ev)),
                     Err(e) => out.push(Action::Log(format!("round: {e}"))),
@@ -772,7 +847,7 @@ impl<F: HeaderFamily> Round<F> {
                 return;
             }
         };
-        match chain.add_block(&block, now) {
+        match chain.add_block(&block, now / 1000) {
             Ok(r) => {
                 self.due_since = None;
                 if self.pending.as_ref().is_some_and(|p| p.height <= r.height) {

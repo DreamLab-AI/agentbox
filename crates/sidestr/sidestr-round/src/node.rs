@@ -15,6 +15,7 @@ use std::time::Duration;
 use bitcoin::{OutPoint, Txid};
 use serde::{Deserialize, Serialize};
 use sidestr_core::block::{HeaderFamily, SidestrBlock};
+use sidestr_core::blockfile::HEADER;
 use sidestr_core::chain::ChainOf;
 use sidestr_core::document::ChainDocument;
 use sidestr_core::marker::{parse_claims, parse_peg_marker};
@@ -37,7 +38,7 @@ use crate::journal::{FileJournal, VoteJournal};
 use crate::pegout::{
     burn_key, PaidPegout, PegCoin, PegoutAction, PegoutConfig, PegoutLedger, PegoutRound,
 };
-use crate::relay::{follow, ok_count, publish_all, unix_now};
+use crate::relay::{follow, ok_count, publish_all, unix_now, unix_now_ms};
 use crate::round::{Action, ClaimChecker, Round, RoundConfig};
 use crate::signer::LocalKey;
 
@@ -51,7 +52,8 @@ pub struct Settings {
     pub dir: PathBuf,
     /// The key file (32-byte hex). Never a command-line value.
     pub key_file: PathBuf,
-    /// The HTTP port on 127.0.0.1.
+    /// The HTTP port on 127.0.0.1. `/blocks.dat` serves only what the
+    /// accepted index covers; `POST /tx` over [`MAX_TX_BODY`] bytes is 413.
     pub port: u16,
     /// Seconds between blocks when the mempool is empty.
     pub interval: u64,
@@ -201,9 +203,24 @@ impl<F: HeaderFamily> ClaimChecker<F> for ParentClaims {
     }
 }
 
+/// The most a `POST /tx` body may be, bytes; more is 413.
+pub const MAX_TX_BODY: usize = 262_144;
+
+/// `/blocks.dat` as the loop answers it: only the bytes the accepted index
+/// covers, and a `Range` bounded to them.
+struct DatReply {
+    code: u16,
+    body: Vec<u8>,
+    /// `Content-Range`, when there is one.
+    content_range: Option<String>,
+}
+
 /// What the HTTP thread asks the loop.
 enum Query {
     Status(oneshot::Sender<serde_json::Value>),
+    /// The block file, bounded to the accepted index; the `Range` header
+    /// if there was one.
+    Dat(Option<String>, oneshot::Sender<DatReply>),
     Tip(oneshot::Sender<serde_json::Value>),
     Chain(oneshot::Sender<serde_json::Value>),
     Blocks(oneshot::Sender<serde_json::Value>),
@@ -280,6 +297,62 @@ impl<F: HeaderFamily> Node<F> {
         serde_json::json!({"height": t.height, "hash": t.hash.to_string(), "time": t.time})
     }
 
+    /// The bytes of the block file the accepted index covers: from its
+    /// first entry to the end of its last. A tail the index does not name
+    /// — a block appended but not (yet) accepted — is not served, so what a
+    /// mirror reads and what `/tip` says are the same chain. Read on the
+    /// loop's thread, where nothing can accept a block meanwhile.
+    fn committed_dat(&self, range: Option<&str>) -> DatReply {
+        let end = self
+            .chain
+            .index()
+            .blocks
+            .last()
+            .map(|e| e.offset + HEADER + u64::from(e.size))
+            .unwrap_or(0);
+        let bytes = match std::fs::read(self.chain.dat_path()) {
+            Ok(b) => b,
+            Err(e) => {
+                return DatReply {
+                    code: 500,
+                    body: serde_json::json!({"error": e.to_string()})
+                        .to_string()
+                        .into_bytes(),
+                    content_range: None,
+                }
+            }
+        };
+        if (bytes.len() as u64) < end {
+            return DatReply {
+                code: 500,
+                body: serde_json::json!({"error": "the block file is shorter than its index"})
+                    .to_string()
+                    .into_bytes(),
+                content_range: None,
+            };
+        }
+        let committed = &bytes[..end as usize];
+        match range {
+            None => DatReply {
+                code: 200,
+                body: committed.to_vec(),
+                content_range: None,
+            },
+            Some(h) => match parse_range(h, end) {
+                Some((s, e)) => DatReply {
+                    code: 206,
+                    body: committed[s as usize..=e as usize].to_vec(),
+                    content_range: Some(format!("bytes {s}-{e}/{end}")),
+                },
+                None => DatReply {
+                    code: 416,
+                    body: Vec::new(),
+                    content_range: Some(format!("bytes */{end}")),
+                },
+            },
+        }
+    }
+
     fn answer(&mut self, q: Query) {
         match q {
             Query::Status(r) => {
@@ -287,6 +360,9 @@ impl<F: HeaderFamily> Node<F> {
             }
             Query::Tip(r) => {
                 let _ = r.send(self.tip_json());
+            }
+            Query::Dat(range, r) => {
+                let _ = r.send(self.committed_dat(range.as_deref()));
             }
             Query::Chain(r) => {
                 let mut d = self.doc.clone();
@@ -515,7 +591,7 @@ fn parse_range(h: &str, size: u64) -> Option<(u64, u64)> {
     (start <= end && end < size).then_some((start, end))
 }
 
-fn serve_http(port: u16, dat: PathBuf, to_loop: mpsc::UnboundedSender<Query>) -> Result<()> {
+fn serve_http(port: u16, to_loop: mpsc::UnboundedSender<Query>) -> Result<()> {
     let server = tiny_http::Server::http(("127.0.0.1", port))
         .map_err(|e| Error::Io(std::io::Error::other(e.to_string())))?;
     std::thread::spawn(move || {
@@ -573,55 +649,68 @@ fn serve_http(port: u16, dat: PathBuf, to_loop: mpsc::UnboundedSender<Query>) ->
                     let (tx, rx) = oneshot::channel();
                     json(200, &ask(Query::Pegouts(tx), rx))
                 }
-                ("GET", "/blocks.dat") => match std::fs::read(&dat) {
-                    Ok(bytes) => {
-                        let size = bytes.len() as u64;
-                        let range = req
-                            .headers()
-                            .iter()
-                            .find(|h| h.field.equiv("range"))
-                            .and_then(|h| parse_range(h.value.as_str(), size));
-                        let (code, body, extra) = match range {
-                            Some((s, e)) => (
-                                206,
-                                bytes[s as usize..=e as usize].to_vec(),
-                                Some(format!("bytes {s}-{e}/{size}")),
-                            ),
-                            None => (200, bytes, None),
-                        };
-                        let mut r =
-                            with_cors(tiny_http::Response::from_data(body).with_status_code(code))
-                                .with_header(
-                                    tiny_http::Header::from_bytes(
-                                        "content-type",
-                                        "application/octet-stream",
-                                    )
-                                    .expect("static header"),
+                ("GET", "/blocks.dat") => {
+                    let range = req
+                        .headers()
+                        .iter()
+                        .find(|h| h.field.equiv("range"))
+                        .map(|h| h.value.as_str().to_string());
+                    let (tx, rx) = oneshot::channel();
+                    let _ = to_loop.send(Query::Dat(range, tx));
+                    match rx.blocking_recv() {
+                        Ok(d) if d.code == 500 => {
+                            let v: serde_json::Value =
+                                serde_json::from_slice(&d.body).unwrap_or_default();
+                            json(500, &v)
+                        }
+                        Ok(d) => {
+                            let mut r = with_cors(
+                                tiny_http::Response::from_data(d.body).with_status_code(d.code),
+                            )
+                            .with_header(
+                                tiny_http::Header::from_bytes(
+                                    "content-type",
+                                    "application/octet-stream",
                                 )
-                                .with_header(
-                                    tiny_http::Header::from_bytes("accept-ranges", "bytes")
-                                        .expect("static header"),
-                                );
-                        if let Some(cr) = extra {
-                            r = r.with_header(
-                                tiny_http::Header::from_bytes("content-range", cr.as_str())
+                                .expect("static header"),
+                            )
+                            .with_header(
+                                tiny_http::Header::from_bytes("accept-ranges", "bytes")
                                     .expect("static header"),
                             );
+                            if let Some(cr) = d.content_range {
+                                r = r.with_header(
+                                    tiny_http::Header::from_bytes("content-range", cr.as_str())
+                                        .expect("static header"),
+                                );
+                            }
+                            r
                         }
-                        r
+                        Err(_) => json(500, &serde_json::json!({"error": "the signer is gone"})),
                     }
-                    Err(e) => json(500, &serde_json::json!({"error": e.to_string()})),
-                },
+                }
                 ("GET", p) if p.starts_with("/coins/") => {
                     let (tx, rx) = oneshot::channel();
                     json(200, &ask(Query::Coins(p[7..].to_ascii_lowercase(), tx), rx))
                 }
                 ("POST", "/tx") => {
+                    let too_large = json(
+                        413,
+                        &serde_json::json!({"error": format!("the body is over {MAX_TX_BODY} bytes")}),
+                    );
+                    if req.body_length().is_some_and(|n| n > MAX_TX_BODY) {
+                        let _ = req.respond(too_large);
+                        continue;
+                    }
                     let mut body = String::new();
-                    let _ = std::io::Read::read_to_string(
-                        &mut std::io::Read::take(req.as_reader(), 262_144),
+                    let read = std::io::Read::read_to_string(
+                        &mut std::io::Read::take(req.as_reader(), MAX_TX_BODY as u64 + 1),
                         &mut body,
                     );
+                    if read.is_err() || body.len() > MAX_TX_BODY {
+                        let _ = req.respond(too_large);
+                        continue;
+                    }
                     let (tx, rx) = oneshot::channel();
                     let _ = to_loop.send(Query::Tx(body, tx));
                     match rx.blocking_recv() {
@@ -745,7 +834,7 @@ pub async fn run_as<F: HeaderFamily>(doc: ChainDocument, settings: Settings) -> 
     }
 
     let (to_loop, mut queries) = mpsc::unbounded_channel::<Query>();
-    serve_http(settings.port, node.chain.dat_path(), to_loop)?;
+    serve_http(settings.port, to_loop)?;
     log(format!(
         "producer on http://127.0.0.1:{}/ every {} s ({} s with transactions)",
         settings.port, settings.interval, settings.tx_interval
@@ -847,13 +936,13 @@ pub async fn run_as<F: HeaderFamily>(doc: ChainDocument, settings: Settings) -> 
                 let now = unix_now();
                 let wait = if node.chain.state().mempool().count() > 0 { settings.tx_interval } else { settings.interval };
                 let due = now.saturating_sub(node.last_block) >= wait;
-                let actions = node.round.tick(now, &mut node.chain, due);
+                let actions = node.round.tick(unix_now_ms(), &mut node.chain, due);
                 handle(&mut node, actions);
                 while let Ok(q) = queries.try_recv() { node.answer(q); }
             }
             Some(q) = queries.recv() => { node.answer(q); }
             Some((_, ev)) = events.recv() => {
-                let now = unix_now();
+                let now = unix_now_ms();
                 match ev.kind {
                     KIND_TRANSACTION => {
                         if node.txs.accept(&ev).is_some() {
@@ -885,7 +974,7 @@ pub async fn run_as<F: HeaderFamily>(doc: ChainDocument, settings: Settings) -> 
                     let coins = node.peg_coins();
                     let burns = node.chain.state().pegouts();
                     if let Some(p) = node.pegout.as_mut() {
-                        let actions = p.tick(unix_now(), &burns, &coins);
+                        let actions = p.tick(unix_now_ms(), &burns, &coins);
                         handle_pegout(&mut node, actions);
                     }
                 }

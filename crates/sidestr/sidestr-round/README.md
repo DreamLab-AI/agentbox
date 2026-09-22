@@ -44,16 +44,16 @@ let mut chains: Vec<State> = (0..3).map(|_| State::from_genesis(doc.clone(), &ge
 let mut rounds: Vec<Round<sidestr_core::block::Stock>> = (0..3)
     .map(|i| Round::new(&chains[i], Box::new(LocalKey::new(keys[i])), Box::new(MemoryJournal::new()), RoundConfig::upstream(30)).unwrap())
     .collect();
-let now = 1_790_000_100;
+let now = 1_790_000_100_000; // the round's clock is unix milliseconds, as Date.now()
 // height 1 is slot 1's turn: a block is due, so it proposes
 let actions = rounds[1].tick(now, &mut chains[1], true);
 let proposal = actions.iter().find_map(|a| match a { Action::Publish(e) => Some(e.clone()), _ => None }).unwrap();
 assert_eq!(proposal.kind, 23510);
 // slot 0 checks it against its own chain and answers with a partial
-let partial = rounds[0].on_event(now + 1, &mut chains[0], &proposal).into_iter().find_map(|a| match a { Action::Publish(e) => Some(e), _ => None }).unwrap();
+let partial = rounds[0].on_event(now + 1_000, &mut chains[0], &proposal).into_iter().find_map(|a| match a { Action::Publish(e) => Some(e), _ => None }).unwrap();
 assert_eq!(partial.kind, 23511);
 // with k the proposer seals, adds the block through its validator, and publishes it
-let sealed = rounds[1].on_event(now + 2, &mut chains[1], &partial);
+let sealed = rounds[1].on_event(now + 2_000, &mut chains[1], &partial);
 assert!(sealed.iter().any(|a| matches!(a, Action::Sealed(s) if s.height == 1)));
 assert_eq!(chains[1].height(), 1);
 ```

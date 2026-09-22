@@ -17,8 +17,16 @@ include = ["src/**", "tests/**", "README.md", "LICENSE", "Cargo.toml"]
 [features]
 default = []
 # The NIP-01 relay I/O: a tokio + tokio-tungstenite client with reconnection
+# (wss:// through rustls with the ring provider and the Mozilla root store)
 # and the in-process relay stand-in the tests and one-box runs use.
-relay = ["dep:tokio", "dep:tokio-tungstenite", "dep:futures-util"]
+relay = [
+    "dep:tokio",
+    "dep:tokio-tungstenite",
+    "dep:futures-util",
+    "dep:rustls",
+    "dep:tokio-rustls",
+    "dep:webpki-roots",
+]
 # The `cosign` binary: one signer of a federated chain, following relays,
 # driving the round every second, serving what a mirror needs over HTTP.
 bin = ["relay", "dep:clap", "dep:tiny_http", "sidestr-core/rpc"]
@@ -37,7 +45,11 @@ serde_json = { workspace = true }
 hex = { workspace = true }
 thiserror = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "io-util"], optional = true }
-tokio-tungstenite = { version = "0.26", optional = true }
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"], optional = true }
+# The TLS backend, named: rustls with ring (never a hand-rolled or ambiguous provider).
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"], optional = true }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"], optional = true }
+webpki-roots = { version = "0.26", optional = true }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"], optional = true }
 clap = { version = "4", features = ["derive"], optional = true }
 tiny_http = { version = "0.12", optional = true }
@@ -46,3 +58,5 @@ tiny_http = { version = "0.12", optional = true }
 serde_json = { workspace = true }
 tiny_http = "0.12"
 ureq = { version = "3", default-features = false }
+# A self-signed certificate for the in-process TLS relay test (ring-backed).
+rcgen = { version = "0.13", default-features = false, features = ["ring", "crypto"] }

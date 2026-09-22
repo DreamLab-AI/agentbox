@@ -20,7 +20,12 @@
 //! document. Broadcasting is the caller's: [`PegoutAction::Broadcast`].
 //!
 //! The rule of one signature per burn per signer is journalled like a
-//! block signature ([`crate::journal`]), and two checks the reference does
+//! block signature ([`crate::journal`]) — **one durable guard for both
+//! ways of authorising a burn**, co-signing another's PSBT and proposing
+//! my own, keyed by the burn outpoint, written before the custody signer
+//! is asked and honouring [`PegoutConfig::resign_after`] on both paths (the
+//! reference gates its own proposals only on the `proposeAfter × n` retry
+//! throttle, which stays as a throttle here). Two checks the reference does
 //! not make are added without touching the wire: the fee is capped
 //! ([`PegoutConfig::max_fee`]; a payer could otherwise propose a PSBT that
 //! pays the burn and gives the rest of the peg to miners), and a co-signer's
@@ -76,7 +81,7 @@ use sidestr_nostr::round::{
 use sidestr_nostr::tags::Outpoint;
 
 use crate::error::{Error, Result};
-use crate::journal::{VoteEntry, VoteJournal, VoteRole, VoteScope};
+use crate::journal::{VoteEntry, VoteJournal, VoteRole, VoteScope, VoteStage};
 use crate::signer::{BlockSigner, PegoutSignRequest, RoundSigner};
 
 /// A coin on the parent paying the federation's challenge: what the peg
@@ -502,9 +507,11 @@ pub struct PegoutConfig {
     /// Seconds before the next signer in the ring may pay a burn instead
     /// (`--propose-after`, upstream default 30).
     pub propose_after: u64,
-    /// After how many seconds a burn I signed a payment for may be signed
-    /// again for another proposal. `Some(propose_after)` is upstream's
-    /// rule; `None` never re-signs.
+    /// After how many seconds a burn I authorised a payment for — by
+    /// co-signing or by proposing — may be signed again for another
+    /// proposal (this many or more, to the millisecond, as
+    /// `pegoutround.mjs onProposal`). `Some(propose_after)` is upstream's
+    /// rule; `None` never re-signs a burn, on either path.
     pub resign_after: Option<u64>,
     /// Sat/vB for a payment I propose (upstream: 2).
     pub fee_rate: u64,
@@ -600,7 +607,7 @@ pub struct PendingPegout {
     pub psbt: Psbt,
     /// Co-signed PSBTs by signer, mine included.
     pub sigs: BTreeMap<String, Psbt>,
-    /// When it was proposed.
+    /// When it was proposed, unix milliseconds.
     pub at: u64,
     /// The burn.
     pub burn: Burn,
@@ -616,7 +623,14 @@ pub struct PegoutRound {
     signer: Box<dyn RoundSigner>,
     journal: Box<dyn VoteJournal>,
     pending: BTreeMap<String, PendingPegout>,
-    proposed: BTreeMap<String, u64>,
+    /// The burn-authorisation guard: burn → when I last authorised a
+    /// payment for it (milliseconds), loaded from the journal, shared by
+    /// the co-signer and the proposer paths.
+    authorised: BTreeMap<String, u64>,
+    /// Burns whose last proposal of mine failed before anything was
+    /// signed (no coins, say): the `propose_after × n` retry throttle
+    /// upstream applies, in memory as upstream keeps it.
+    backoff: BTreeMap<String, u64>,
     seen: BTreeMap<u32, u64>,
     ledger: PegoutLedger,
     psbts: Follower,
@@ -649,10 +663,12 @@ impl PegoutRound {
         if !fed.signers.contains(&me) {
             return Err(Error::Key("this key is not one of the signers".into()));
         }
-        let mut proposed = BTreeMap::new();
+        let mut authorised = BTreeMap::new();
         for e in journal.entries()? {
             if let VoteScope::Burn(b) = e.scope {
-                proposed.insert(b, e.at);
+                // an intent without its signature counts: the signature may exist
+                let at = authorised.entry(b).or_insert(e.at);
+                *at = (*at).max(e.at);
             }
         }
         Ok(Self {
@@ -664,7 +680,8 @@ impl PegoutRound {
             signer,
             journal,
             pending: BTreeMap::new(),
-            proposed,
+            authorised,
+            backoff: BTreeMap::new(),
             seen: BTreeMap::new(),
             ledger,
             psbts: Follower::new(KIND_PEGOUT_PSBT, chain_id),
@@ -680,6 +697,11 @@ impl PegoutRound {
     pub fn pending(&self) -> &BTreeMap<String, PendingPegout> {
         &self.pending
     }
+    /// The burns I have authorised a payment for, with when (unix
+    /// milliseconds) — the journal's view after this run's additions.
+    pub fn authorised(&self) -> impl Iterator<Item = (&str, u64)> {
+        self.authorised.iter().map(|(k, at)| (k.as_str(), *at))
+    }
     /// The parent took the transaction: record it (`outState.paid[key_] = …`).
     pub fn mark_paid(&mut self, burn: &str, record: PaidPegout) {
         self.ledger.paid.insert(burn.to_string(), record);
@@ -689,39 +711,99 @@ impl PegoutRound {
         self.fed.signers.len() as u64
     }
 
-    fn first_seen(&mut self, height: u32, now: u64) -> u64 {
-        *self.seen.entry(height).or_insert(now)
+    fn first_seen(&mut self, height: u32, now_ms: u64) -> u64 {
+        *self.seen.entry(height).or_insert(now_ms)
+    }
+
+    /// `propose_after × n`, in milliseconds.
+    fn ring_ms(&self) -> u64 {
+        self.cfg.propose_after * 1000 * self.n()
     }
 
     /// `pegoutround.mjs entitled`: the payer is `height mod n`; every
     /// `propose_after` seconds since I first saw the burn lets the next
     /// signer pay instead. Never negative (upstream's block round says why;
-    /// its peg-out round forgot to).
-    fn entitled(&mut self, signer: &XOnlyPublicKey, height: u32, at: u64, now: u64) -> bool {
+    /// its peg-out round forgot to). Milliseconds throughout.
+    fn entitled(&mut self, signer: &XOnlyPublicKey, height: u32, at_ms: u64, now_ms: u64) -> bool {
         let Some(slot) = self.fed.signers.iter().position(|k| k == signer) else {
             return false;
         };
         let n = self.n();
-        let base = self.first_seen(height, now);
-        let late = at.saturating_sub(base) / self.cfg.propose_after.max(1);
+        let base = self.first_seen(height, now_ms);
+        let late = at_ms.saturating_sub(base) / (self.cfg.propose_after.max(1) * 1000);
         (slot as u64 + n - u64::from(height) % n) % n <= late
     }
 
+    /// The one guard both paths consult: no payment authorised for this
+    /// burn, or the one there is has had its window (`resign_after`
+    /// seconds or more, as `pegoutround.mjs onProposal` compares) and the
+    /// policy allows another.
+    fn may_sign_burn(&self, key: &str, now_ms: u64) -> bool {
+        match (self.authorised.get(key), self.cfg.resign_after) {
+            (None, _) => true,
+            (Some(_), None) => false,
+            (Some(at), Some(w)) => now_ms.saturating_sub(*at) >= w * 1000,
+        }
+    }
+
+    /// One journal record: the intent before the custody signer, the
+    /// signatures after.
     fn journal(
         &mut self,
         key: &str,
         role: VoteRole,
         subject: &str,
         psbt: &Psbt,
-        at: u64,
+        at_ms: u64,
+        signatures: Option<String>,
     ) -> Result<()> {
         self.journal.record(&VoteEntry {
             scope: VoteScope::Burn(key.to_string()),
             role,
             subject: subject.to_string(),
             digest: psbt.unsigned_tx.compute_txid().to_string(),
-            at,
+            at: at_ms,
+            stage: if signatures.is_some() {
+                VoteStage::Signed
+            } else {
+                VoteStage::Intent
+            },
+            signature: signatures,
         })
+    }
+
+    /// My signatures in `psbt`, one per input, comma-separated hex.
+    fn my_signatures(&self, psbt: &Psbt) -> String {
+        psbt.inputs
+            .iter()
+            .filter_map(|i| i.tap_script_sigs.get(&(self.me, self.fed.leaf_hash)))
+            .map(|s| hex::encode(s.to_vec()))
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+
+    /// Intent, then the custody signer over every input, then the
+    /// signatures: the order the journal guarantees. `Err(false, _)` means
+    /// the signer was never asked; `Err(true, _)` that signatures exist,
+    /// are journalled, and are not to be published.
+    fn authorise(
+        &mut self,
+        key: &str,
+        role: VoteRole,
+        subject: &str,
+        psbt: &mut Psbt,
+        now_ms: u64,
+    ) -> core::result::Result<(), (bool, Error)> {
+        self.journal(key, role, subject, psbt, now_ms, None)
+            .map_err(|e| (false, e))?;
+        // journalled: from here the burn counts as authorised whatever happens next
+        self.authorised.insert(key.to_string(), now_ms);
+        sign_pegout_psbt(psbt, &self.fed, &self.chain_id, key, self.signer.as_ref())
+            .map_err(|e| (true, e))?;
+        let sigs = self.my_signatures(psbt);
+        self.journal(key, role, subject, psbt, now_ms, Some(sigs))
+            .map_err(|e| (true, e))?;
+        Ok(())
     }
 
     fn address_of(&self, script_hex: &str) -> Option<String> {
@@ -731,34 +813,42 @@ impl PegoutRound {
     }
 
     /// The producer's poll (`pegoutRound.tick`): for every burn nobody has
-    /// paid, propose when I am the payer (or late enough to stand in),
-    /// funding from `coins`; drop proposals nobody co-signed in time.
-    pub fn tick(&mut self, now: u64, burns: &[Burn], coins: &[PegCoin]) -> Vec<PegoutAction> {
+    /// paid, propose when I am the payer (or late enough to stand in) and
+    /// the burn guard allows it, funding from `coins`; drop proposals
+    /// nobody co-signed in time. `now_ms` is unix milliseconds.
+    pub fn tick(&mut self, now_ms: u64, burns: &[Burn], coins: &[PegCoin]) -> Vec<PegoutAction> {
+        let now = now_ms;
         let mut out = Vec::new();
         for b in burns {
             let key = burn_key(b);
             if self.ledger.paid.contains_key(&key) || self.pending.contains_key(&key) {
                 continue;
             }
-            if self
-                .proposed
+            // the guard first: what I authorised, on either path, under the policy
+            if !self.may_sign_burn(&key, now) {
+                continue;
+            }
+            // then upstream's retry throttle: not within propose_after × n of my last attempt
+            let last = self
+                .authorised
                 .get(&key)
-                .is_some_and(|at| now.saturating_sub(*at) < self.cfg.propose_after * self.n())
-            {
+                .copied()
+                .max(self.backoff.get(&key).copied());
+            if last.is_some_and(|at| now.saturating_sub(at) < self.ring_ms()) {
                 continue;
             }
             let me = self.me;
             if self.entitled(&me, b.height, now, now) {
                 if let Err(e) = self.propose(now, b, coins, &mut out) {
                     out.push(PegoutAction::Log(format!("peg-out round: {e}")));
-                    self.proposed.insert(key, now);
+                    self.backoff.insert(key, now);
                 }
             }
         }
         let stale: Vec<String> = self
             .pending
             .iter()
-            .filter(|(_, p)| now.saturating_sub(p.at) > self.cfg.propose_after * self.n())
+            .filter(|(_, p)| now.saturating_sub(p.at) > self.ring_ms())
             .map(|(k, _)| k.clone())
             .collect();
         for k in stale {
@@ -772,7 +862,10 @@ impl PegoutRound {
         out
     }
 
-    /// `pegoutround.mjs propose`.
+    /// `pegoutround.mjs propose`. `now` is milliseconds. The intent is
+    /// journalled before the key is asked; its `subject` is empty because
+    /// the 23512's id exists only once the signed PSBT is its content —
+    /// the signature record that follows carries the id.
     fn propose(
         &mut self,
         now: u64,
@@ -782,13 +875,8 @@ impl PegoutRound {
     ) -> Result<()> {
         let key = burn_key(b);
         let mut psbt = build_pegout_psbt(&self.fed, &self.chain_id, b, coins, self.cfg.fee_rate)?;
-        sign_pegout_psbt(
-            &mut psbt,
-            &self.fed,
-            &self.chain_id,
-            &key,
-            self.signer.as_ref(),
-        )?;
+        self.authorise(&key, VoteRole::Proposed, "", &mut psbt, now)
+            .map_err(|(_, e)| e)?;
         let ev = sign_psbt_event(
             self.signer.as_ref(),
             &PegoutPsbt {
@@ -800,9 +888,11 @@ impl PegoutRound {
                 height: b.height,
                 psbt: psbt.to_string(),
             },
-            now,
+            now / 1000,
         )?;
-        self.journal(&key, VoteRole::Proposed, &ev.id, &psbt, now)?;
+        // the id, now that there is one
+        let sigs_hex = self.my_signatures(&psbt);
+        self.journal(&key, VoteRole::Proposed, &ev.id, &psbt, now, Some(sigs_hex))?;
         let mut sigs = BTreeMap::new();
         sigs.insert(self.me_hex.clone(), psbt.clone());
         self.pending.insert(
@@ -815,7 +905,6 @@ impl PegoutRound {
                 burn: b.clone(),
             },
         );
-        self.proposed.insert(key.clone(), now);
         out.push(PegoutAction::Publish(ev));
         out.push(PegoutAction::Log(format!(
             "peg-out round: proposed payment of {}… ({} sats)",
@@ -828,7 +917,9 @@ impl PegoutRound {
 
     /// An event from a relay: a 23512 to check and co-sign, or a 23513 for
     /// one of my proposals. The on-receipt checks are applied here.
-    pub fn on_event(&mut self, now: u64, ev: &Event, burns: &[Burn]) -> Vec<PegoutAction> {
+    /// `now_ms` is unix milliseconds.
+    pub fn on_event(&mut self, now_ms: u64, ev: &Event, burns: &[Burn]) -> Vec<PegoutAction> {
+        let now = now_ms;
         let mut out = Vec::new();
         match ev.kind {
             KIND_PEGOUT_PSBT => {
@@ -867,16 +958,10 @@ impl PegoutRound {
         if self.ledger.paid.contains_key(&key) {
             return;
         }
-        if let Some(at) = self.proposed.get(&key) {
-            let again = match self.cfg.resign_after {
-                None => false,
-                Some(w) => now.saturating_sub(*at) >= w,
-            };
-            if !again {
-                return;
-            }
+        if !self.may_sign_burn(&key, now) {
+            return;
         }
-        if !self.entitled(&from, b.height, ev.created_at, now) {
+        if !self.entitled(&from, b.height, ev.created_at.saturating_mul(1000), now) {
             out.push(log(format!(
                 "peg-out round: {}… is not the payer for {}… yet",
                 short(&ev.pubkey, 8),
@@ -899,24 +984,23 @@ impl PegoutRound {
             )));
             return;
         }
-        if let Err(e) = sign_pegout_psbt(
-            &mut psbt,
-            &self.fed,
-            &self.chain_id,
-            &key,
-            self.signer.as_ref(),
-        ) {
-            out.push(log(format!("peg-out round: {e}")));
-            return;
+        match self.authorise(&key, VoteRole::Signed, &ev.id, &mut psbt, now) {
+            Ok(()) => {}
+            Err((false, e)) => {
+                out.push(log(format!(
+                    "peg-out round: proposal for {}… not signed: {e}",
+                    short(&key, 16)
+                )));
+                return;
+            }
+            Err((true, e)) => {
+                out.push(log(format!(
+                    "peg-out round: proposal for {}… signed but not published: {e}",
+                    short(&key, 16)
+                )));
+                return;
+            }
         }
-        if let Err(e) = self.journal(&key, VoteRole::Signed, &ev.id, &psbt, now) {
-            out.push(log(format!(
-                "peg-out round: proposal for {}… not signed: {e}",
-                short(&key, 16)
-            )));
-            return;
-        }
-        self.proposed.insert(key.clone(), now);
         match sign_pegout_signed(
             self.signer.as_ref(),
             &PegoutSigned {
@@ -925,7 +1009,7 @@ impl PegoutRound {
                 request: ev.id.clone(),
                 psbt: psbt.to_string(),
             },
-            now,
+            now / 1000,
         ) {
             Ok(pev) => out.push(PegoutAction::Publish(pev)),
             Err(e) => {
@@ -999,7 +1083,8 @@ impl PegoutRound {
     }
 
     /// `pegoutround.mjs maybeFinish`: with `k`, combine, finalise, hand the
-    /// transaction to the caller for the parent.
+    /// transaction to the caller for the parent. `now` is milliseconds; the
+    /// record keeps seconds, as `pegouts.json` does.
     fn maybe_finish(&mut self, now: u64, key: &str, out: &mut Vec<PegoutAction>) {
         let Some(p) = self.pending.get(key) else {
             return;
@@ -1034,7 +1119,7 @@ impl PegoutRound {
             value: b.value,
             script: b.script.clone(),
             height: b.height,
-            at: now,
+            at: now / 1000,
             signers: p.sigs.keys().cloned().collect(),
             reconciled: None,
         };

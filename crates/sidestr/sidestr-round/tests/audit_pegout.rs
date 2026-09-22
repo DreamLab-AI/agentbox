@@ -13,17 +13,12 @@ use sidestr_core::federation::Federation;
 use sidestr_core::marker::Burn;
 use sidestr_nostr::round::{sign_pegout_psbt, sign_pegout_signed, PegoutPsbt, PegoutSigned};
 use sidestr_nostr::tags::Outpoint;
-use sidestr_round::journal::{MemoryJournal, VoteJournal, VoteRole, VoteScope, VoteStage};
+use sidestr_round::journal::{MemoryJournal, VoteJournal, VoteRole, VoteScope};
 use sidestr_round::pegout::*;
 use sidestr_round::signer::LocalKey;
 use support::*;
 
 const T0: u64 = 1_790_000_100;
-
-/// The round's clock is milliseconds; events and fixtures are seconds.
-fn ms(secs: u64) -> u64 {
-    secs * 1000
-}
 const CHAIN: &str = "sidestr:pegout";
 
 fn fed() -> Federation {
@@ -73,7 +68,10 @@ fn cfg() -> PegoutConfig {
 fn logs(a: &[PegoutAction]) -> Vec<String> {
     a.iter()
         .filter_map(|x| match x {
-            PegoutAction::Log(s) => Some(s.clone()),
+            PegoutAction::Log(s) => {
+                println!("AUDIT LOG {s}");
+                Some(s.clone())
+            }
             _ => None,
         })
         .collect()
@@ -101,8 +99,8 @@ fn the_payer_proposes_a_cosigner_checks_and_signs_and_k_finalises() {
     let mut r0 = round(0, cfg(), Box::new(MemoryJournal::new()));
     let mut r1 = round(1, cfg(), Box::new(MemoryJournal::new()));
     let mut r2 = round(2, cfg(), Box::new(MemoryJournal::new()));
-    assert!(r0.tick(ms(T0), std::slice::from_ref(&b), &coins()).is_empty());
-    let a = r1.tick(ms(T0), std::slice::from_ref(&b), &coins());
+    assert!(r0.tick(T0, std::slice::from_ref(&b), &coins()).is_empty());
+    let a = r1.tick(T0, std::slice::from_ref(&b), &coins());
     let p = published(&a)[0].clone();
     assert_eq!(p.kind, 23512);
     assert_eq!(
@@ -137,7 +135,7 @@ fn the_payer_proposes_a_cosigner_checks_and_signs_and_k_finalises() {
         "the payer's own signature"
     );
     // slot 0 co-signs; slot 2 too
-    let a0 = r0.on_event(ms(T0 + 1), &p, std::slice::from_ref(&b));
+    let a0 = r0.on_event(T0 + 1, &p, std::slice::from_ref(&b));
     let s0 = published(&a0)[0].clone();
     assert_eq!(
         (s0.kind, s0.tags[2].clone()),
@@ -151,10 +149,10 @@ fn the_payer_proposes_a_cosigner_checks_and_signs_and_k_finalises() {
             &p.pubkey[..8]
         )]
     );
-    let a2 = r2.on_event(ms(T0 + 1), &p, std::slice::from_ref(&b));
+    let a2 = r2.on_event(T0 + 1, &p, std::slice::from_ref(&b));
     assert_eq!(published(&a2).len(), 1);
     // with k the payer finalises and hands the transaction over
-    let a = r1.on_event(ms(T0 + 2), &s0, std::slice::from_ref(&b));
+    let a = r1.on_event(T0 + 2, &s0, std::slice::from_ref(&b));
     assert_eq!(
         logs(&a)[0],
         format!("peg-out round: 2/2 signatures for {}…", &burn_key(&b)[..16])
@@ -181,11 +179,11 @@ fn the_payer_proposes_a_cosigner_checks_and_signs_and_k_finalises() {
     assert_eq!(f.tx.output[0].value.to_sat(), 20_000);
     // the third signature is now nothing; the record is kept on the caller's word
     assert!(r1
-        .on_event(ms(T0 + 3), &published(&a2)[0], std::slice::from_ref(&b))
+        .on_event(T0 + 3, &published(&a2)[0], std::slice::from_ref(&b))
         .is_empty());
     r1.mark_paid(&burn_key(&b), f.record.clone());
     assert!(r1
-        .tick(ms(T0 + 4), std::slice::from_ref(&b), &coins())
+        .tick(T0 + 4, std::slice::from_ref(&b), &coins())
         .is_empty());
     assert!(r1.ledger().paid.contains_key(&burn_key(&b)));
     let json = serde_json::to_string(r1.ledger()).unwrap();
@@ -196,16 +194,16 @@ fn the_payer_proposes_a_cosigner_checks_and_signs_and_k_finalises() {
 fn lateness_moves_the_payer_ring_and_a_stale_proposal_is_dropped() {
     let b = burn(7, 20_000);
     let mut r2 = round(2, cfg(), Box::new(MemoryJournal::new()));
-    assert!(r2.tick(ms(T0), std::slice::from_ref(&b), &coins()).is_empty());
+    assert!(r2.tick(T0, std::slice::from_ref(&b), &coins()).is_empty());
     assert!(r2
-        .tick(ms(T0 + 29), std::slice::from_ref(&b), &coins())
+        .tick(T0 + 29, std::slice::from_ref(&b), &coins())
         .is_empty());
-    let a = r2.tick(ms(T0 + 30), std::slice::from_ref(&b), &coins());
+    let a = r2.tick(T0 + 30, std::slice::from_ref(&b), &coins());
     assert_eq!(published(&a)[0].kind, 23512);
     assert!(r2
-        .tick(ms(T0 + 89), std::slice::from_ref(&b), &coins())
+        .tick(T0 + 89, std::slice::from_ref(&b), &coins())
         .is_empty());
-    let a = r2.tick(ms(T0 + 121), std::slice::from_ref(&b), &coins());
+    let a = r2.tick(T0 + 121, std::slice::from_ref(&b), &coins());
     assert_eq!(
         logs(&a),
         vec![format!(
@@ -215,16 +213,16 @@ fn lateness_moves_the_payer_ring_and_a_stale_proposal_is_dropped() {
     );
     assert!(r2.pending().is_empty());
     // nothing to fund it with: the failure is logged and the burn waits a full ring
-    let a = r2.tick(ms(T0 + 122), std::slice::from_ref(&b), &[]);
+    let a = r2.tick(T0 + 122, std::slice::from_ref(&b), &[]);
     assert!(
         logs(&a)[0].starts_with("peg-out round: peg-out: insufficient peg coins"),
         "{a:?}"
     );
     assert!(r2
-        .tick(ms(T0 + 200), std::slice::from_ref(&b), &coins())
+        .tick(T0 + 200, std::slice::from_ref(&b), &coins())
         .is_empty());
     assert_eq!(
-        published(&r2.tick(ms(T0 + 213), std::slice::from_ref(&b), &coins())).len(),
+        published(&r2.tick(T0 + 213, std::slice::from_ref(&b), &coins())).len(),
         1
     );
 }
@@ -254,7 +252,7 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
         .unwrap()
     };
     // not a burn I know
-    let a = r0.on_event(ms(T0), &ev(&good.to_string(), &payer, T0), &[]);
+    let a = r0.on_event(T0, &ev(&good.to_string(), &payer, T0), &[]);
     assert_eq!(
         logs(&a),
         vec![format!(
@@ -264,7 +262,7 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
     );
     // not the payer yet (slot 2 at t0)
     let a = r0.on_event(
-        ms(T0),
+        T0,
         &ev(&good.to_string(), &LocalKey::new(ks[2]), T0),
         std::slice::from_ref(&b),
     );
@@ -279,14 +277,14 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
     // a stranger is silent
     assert!(r0
         .on_event(
-            ms(T0),
+            T0,
             &ev(&good.to_string(), &LocalKey::new(key_("stranger")), T0),
             std::slice::from_ref(&b)
         )
         .is_empty());
     // not a PSBT
     let a = r0.on_event(
-        ms(T0),
+        T0,
         &ev("cHNidP8BAA==", &payer, T0 + 1),
         std::slice::from_ref(&b),
     );
@@ -298,7 +296,7 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
     let mut wrong = good.clone();
     wrong.unsigned_tx.output[0].value = bitcoin::Amount::from_sat(19_999);
     let a = r0.on_event(
-        ms(T0),
+        T0,
         &ev(&wrong.to_string(), &payer, T0 + 2),
         std::slice::from_ref(&b),
     );
@@ -312,7 +310,7 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
     let mut extra = good.clone();
     extra.unsigned_tx.output[2].script_pubkey = wallet_script();
     let a = r0.on_event(
-        ms(T0),
+        T0,
         &ev(&extra.to_string(), &payer, T0 + 3),
         std::slice::from_ref(&b),
     );
@@ -320,7 +318,7 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
     let mut greedy = good.clone();
     greedy.unsigned_tx.output[2].value = bitcoin::Amount::from_sat(1_000);
     let a = r0.on_event(
-        ms(T0),
+        T0,
         &ev(&greedy.to_string(), &payer, T0 + 4),
         std::slice::from_ref(&b),
     );
@@ -335,7 +333,7 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
         .unwrap()
         .script_pubkey = wallet_script();
     let a = r0.on_event(
-        ms(T0),
+        T0,
         &ev(&foreign.to_string(), &payer, T0 + 5),
         std::slice::from_ref(&b),
     );
@@ -348,15 +346,15 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
     );
     // the good one is signed; the same burn again within the window is silent; after it, signed again (upstream)
     let g = ev(&good.to_string(), &payer, T0 + 6);
-    let a = r0.on_event(ms(T0 + 6), &g, std::slice::from_ref(&b));
+    let a = r0.on_event(T0 + 6, &g, std::slice::from_ref(&b));
     assert_eq!(published(&a).len(), 1);
     let g2 = ev(&good.to_string(), &payer, T0 + 7);
     assert!(r0
-        .on_event(ms(T0 + 20), &g2, std::slice::from_ref(&b))
+        .on_event(T0 + 20, &g2, std::slice::from_ref(&b))
         .is_empty());
     let g3 = ev(&good.to_string(), &payer, T0 + 8);
     assert_eq!(
-        published(&r0.on_event(ms(T0 + 36), &g3, std::slice::from_ref(&b))).len(),
+        published(&r0.on_event(T0 + 36, &g3, std::slice::from_ref(&b))).len(),
         1
     );
     // with resign_after = None, never
@@ -369,16 +367,16 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
         Box::new(MemoryJournal::new()),
     );
     assert_eq!(
-        published(&never.on_event(ms(T0), &g, std::slice::from_ref(&b))).len(),
+        published(&never.on_event(T0, &g, std::slice::from_ref(&b))).len(),
         1
     );
     assert!(never
-        .on_event(ms(T0 + 1_000_000), &g3, std::slice::from_ref(&b))
+        .on_event(T0 + 1_000_000, &g3, std::slice::from_ref(&b))
         .is_empty());
 
     // the payer refuses a 23513 that is not a signature over its proposal
     let mut r1 = round(1, cfg(), Box::new(MemoryJournal::new()));
-    let p = published(&r1.tick(ms(T0), std::slice::from_ref(&b), &coins()))[0].clone();
+    let p = published(&r1.tick(T0, std::slice::from_ref(&b), &coins()))[0].clone();
     let mine = psbt_from_base64(&p.content).unwrap();
     let co = LocalKey::new(ks[0]);
     let signed = |psbt: &bitcoin::psbt::Psbt| {
@@ -398,7 +396,7 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
         .unwrap()
     };
     // unsigned: no signature by its author
-    let a = r1.on_event(ms(T0 + 1), &signed(&mine), std::slice::from_ref(&b));
+    let a = r1.on_event(T0 + 1, &signed(&mine), std::slice::from_ref(&b));
     assert!(logs(&a)[0].ends_with("no signature by its author"), "{a:?}");
     // signed by the wrong key for the claimed author
     let mut forged = mine.clone();
@@ -411,17 +409,17 @@ fn refusals_are_logged_as_pegoutround_mjs_logs_them() {
     relabelled.inputs[0]
         .tap_script_sigs
         .insert((pubkey_of(&ks[0]), fed().leaf_hash), sig);
-    let a = r1.on_event(ms(T0 + 1), &signed(&relabelled), std::slice::from_ref(&b));
+    let a = r1.on_event(T0 + 1, &signed(&relabelled), std::slice::from_ref(&b));
     assert!(logs(&a)[0].contains("does not verify"), "{a:?}");
     // a different transaction
     let mut other = mine.clone();
     other.unsigned_tx.lock_time = bitcoin::absolute::LockTime::from_height(1).unwrap();
-    let a = r1.on_event(ms(T0 + 1), &signed(&other), std::slice::from_ref(&b));
+    let a = r1.on_event(T0 + 1, &signed(&other), std::slice::from_ref(&b));
     assert!(logs(&a)[0].ends_with("a different transaction"), "{a:?}");
     // the honest one finalises
     let mut ok = mine.clone();
     sign_pegout_psbt_fn(&mut ok, &co);
-    let a = r1.on_event(ms(T0 + 2), &signed(&ok), std::slice::from_ref(&b));
+    let a = r1.on_event(T0 + 2, &signed(&ok), std::slice::from_ref(&b));
     assert_eq!(broadcast(&a).len(), 1);
     let _ = BTreeMap::<u8, u8>::new();
 }
@@ -460,7 +458,7 @@ fn one_signature_per_burn_is_journalled_before_publish_and_survives_a_restart() 
     let mut journal = MemoryJournal::new();
     let mut r0 = round(0, cfg(), Box::new(MemoryJournal::new()));
     assert_eq!(
-        published(&r0.on_event(ms(T0), &p, std::slice::from_ref(&b))).len(),
+        published(&r0.on_event(T0, &p, std::slice::from_ref(&b))).len(),
         1
     );
     journal
@@ -469,9 +467,7 @@ fn one_signature_per_burn_is_journalled_before_publish_and_survives_a_restart() 
             role: VoteRole::Signed,
             subject: p.id.clone(),
             digest: good.unsigned_tx.compute_txid().to_string(),
-            at: ms(T0),
-            stage: VoteStage::Signed,
-            signature: None,
+            at: T0,
         })
         .unwrap();
     let mut again = round(
@@ -495,13 +491,13 @@ fn one_signature_per_burn_is_journalled_before_publish_and_survives_a_restart() 
     .unwrap();
     assert!(
         again
-            .on_event(ms(T0 + 10), &p2, std::slice::from_ref(&b))
+            .on_event(T0 + 10, &p2, std::slice::from_ref(&b))
             .is_empty(),
         "within the window after a restart: silent, as upstream"
     );
     assert!(
         again
-            .on_event(ms(T0 + 31), &p2, std::slice::from_ref(&b))
+            .on_event(T0 + 31, &p2, std::slice::from_ref(&b))
             .is_empty(),
         "the same event again is seen, whatever the time"
     );
@@ -520,7 +516,7 @@ fn one_signature_per_burn_is_journalled_before_publish_and_survives_a_restart() 
     )
     .unwrap();
     assert_eq!(
-        published(&again.on_event(ms(T0 + 31), &p3, std::slice::from_ref(&b))).len(),
+        published(&again.on_event(T0 + 31, &p3, std::slice::from_ref(&b))).len(),
         1,
         "after the window: upstream's relaxation"
     );
@@ -535,7 +531,7 @@ fn one_signature_per_burn_is_journalled_before_publish_and_survives_a_restart() 
         }
     }
     let mut broken = round(0, cfg(), Box::new(Broken));
-    let a = broken.on_event(ms(T0), &p, std::slice::from_ref(&b));
+    let a = broken.on_event(T0, &p, std::slice::from_ref(&b));
     assert_eq!(published(&a).len(), 0);
     assert_eq!(
         logs(&a),
@@ -545,7 +541,7 @@ fn one_signature_per_burn_is_journalled_before_publish_and_survives_a_restart() 
         )]
     );
     let mut broken_payer = round(1, cfg(), Box::new(Broken));
-    let a = broken_payer.tick(ms(T0), std::slice::from_ref(&b), &coins());
+    let a = broken_payer.tick(T0, std::slice::from_ref(&b), &coins());
     assert_eq!(published(&a).len(), 0);
     assert!(broken_payer.pending().is_empty());
 }
@@ -565,4 +561,88 @@ fn a_burn_larger_than_one_coin_takes_two_and_change_under_dust_goes_to_the_fee()
     );
     assert!(check_pegout_psbt(&psbt, &fed(), CHAIN, &tiny, 100_000).is_none());
     assert!(build_pegout_psbt(&fed(), CHAIN, &burn(4, 2_000_000), &coins(), 2).is_err());
+}
+
+#[test]
+fn audit_never_resign_restart_self_proposal() {
+    use sidestr_round::journal::FileJournal;
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../probes/peg-restart.jsonl");
+    std::fs::write(&path, b"").unwrap();
+    let config = PegoutConfig {
+        resign_after: None,
+        ..cfg()
+    };
+    let b = burn(7, 20_000);
+    let mut r = round(
+        1,
+        config.clone(),
+        Box::new(FileJournal::open(&path).unwrap()),
+    );
+    let p1 = published(&r.tick(T0, std::slice::from_ref(&b), &coins()))[0].clone();
+    drop(r);
+    let mut r = round(1, config, Box::new(FileJournal::open(&path).unwrap()));
+    let mut other = coins();
+    for c in &mut other {
+        c.outpoint.txid = "cc".repeat(32).parse().unwrap();
+    }
+    let a = r.tick(T0 + 90, std::slice::from_ref(&b), &other);
+    let p2 = published(&a)[0].clone();
+    let first = psbt_from_base64(&p1.content).unwrap();
+    let second = psbt_from_base64(&p2.content).unwrap();
+    assert_ne!(
+        first.unsigned_tx.compute_txid(),
+        second.unsigned_tx.compute_txid()
+    );
+    assert!(first.unsigned_tx.input.iter().all(|i| second
+        .unsigned_tx
+        .input
+        .iter()
+        .all(|j| i.previous_output != j.previous_output)));
+    let verified = verify_pegout_signatures(&second, &fed()).unwrap();
+    assert!(verified.iter().all(|v| v.contains(&pubkey_of(&keys(3)[1]))));
+    println!("AUDIT COUNTEREXAMPLE resign_after=None restart same_burn={} first_txid={} second_txid={} disjoint_inputs=true valid_second_signature=true",burn_key(&b),first.unsigned_tx.compute_txid(),second.unsigned_tx.compute_txid());
+}
+
+#[test]
+fn audit_missing_marker_extra_output() {
+    let b = burn(7, 20_000);
+    let good = build_pegout_psbt(&fed(), CHAIN, &b, &coins(), 2).unwrap();
+    for mode in ["missing_marker", "extra_foreign_output", "extra_peg_change"] {
+        let mut psbt = good.clone();
+        if mode == "missing_marker" {
+            psbt.unsigned_tx.output.remove(1);
+            psbt.outputs.remove(1);
+        } else {
+            psbt.unsigned_tx.output.push(bitcoin::TxOut {
+                value: bitcoin::Amount::from_sat(1),
+                script_pubkey: if mode == "extra_peg_change" {
+                    fed().challenge()
+                } else {
+                    wallet_script()
+                },
+            });
+            psbt.outputs.push(Default::default());
+        }
+        let reason = check_pegout_psbt(&psbt, &fed(), CHAIN, &b, 100_000);
+        println!("AUDIT pegout mutation={mode} refusal={reason:?}");
+        assert_eq!(reason.is_none(), mode == "extra_peg_change");
+    }
+}
+
+#[test]
+fn audit_export_peg_wire() {
+    let b = burn(7, 20_000);
+    let mut payer = round(1, cfg(), Box::new(MemoryJournal::new()));
+    let mut co = round(0, cfg(), Box::new(MemoryJournal::new()));
+    let p = published(&payer.tick(T0, std::slice::from_ref(&b), &coins()))[0].clone();
+    let part = published(&co.on_event(T0, &p, std::slice::from_ref(&b)))[0].clone();
+    let psbt = psbt_from_base64(&p.content).unwrap();
+    let fixture = serde_json::json!({"chain":CHAIN,"burn":{"txid":b.txid,"vout":b.vout,"script":b.script,"value":b.value,"height":b.height},"events":[p,part],"outputs":psbt.unsigned_tx.output.iter().map(|o|serde_json::json!({"value":o.value.to_sat() as f64/1e8,"scriptPubKey":{"hex":o.script_pubkey.to_hex_string()}})).collect::<Vec<_>>(),"inputs":psbt.inputs.iter().map(|i|serde_json::json!({"witness_utxo":{"scriptPubKey":{"hex":i.witness_utxo.as_ref().unwrap().script_pubkey.to_hex_string()}}})).collect::<Vec<_>>()});
+    std::fs::write(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../probes/wire-peg.json"),
+        serde_json::to_vec_pretty(&fixture).unwrap(),
+    )
+    .unwrap();
+    println!("AUDIT exported 2 Rust pegout events on identical PSBT fixtures");
 }
