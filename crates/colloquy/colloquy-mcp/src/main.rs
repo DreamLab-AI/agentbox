@@ -65,7 +65,11 @@ fn identity() -> Result<Identity, String> {
     let class = match std::env::var("COLLOQUY_CLASS").as_deref() {
         Ok("human") => MemberClass::Human,
         Ok("agent") | Err(_) => MemberClass::Agent,
-        Ok(other) => return Err(format!("COLLOQUY_CLASS must be `agent` or `human`, not `{other}`")),
+        Ok(other) => {
+            return Err(format!(
+                "COLLOQUY_CLASS must be `agent` or `human`, not `{other}`"
+            ))
+        }
     };
     let wot = std::env::var("COLLOQUY_WOT")
         .ok()
@@ -139,10 +143,13 @@ async fn build_store() -> Result<(Box<dyn KnowledgeStore>, String), String> {
         "shared" => {
             let server = std::env::var("COLLOQUY_RUVECTOR_SERVER")
                 .unwrap_or_else(|_| colloquy_backends::ruvector::DEFAULT_SERVER.to_string());
-            let namespace = std::env::var("COLLOQUY_NAMESPACE").unwrap_or_else(|_| "colloquy".into());
+            let namespace =
+                std::env::var("COLLOQUY_NAMESPACE").unwrap_or_else(|_| "colloquy".into());
             let backend = RuvectorBackend::spawn(&server, &RuvectorBackend::env_from_process())
                 .await
-                .map_err(|e| format!("could not start the governed memory server `{server}`: {e}"))?;
+                .map_err(|e| {
+                    format!("could not start the governed memory server `{server}`: {e}")
+                })?;
             Ok((
                 Box::new(SharedStore::new(backend, namespace.clone())),
                 format!("shared (RuVector namespace `{namespace}`)"),
@@ -214,7 +221,10 @@ mod tests {
         use colloquy_nostr::ledger::PrincipalResolver;
         assert_eq!(reg.resolve("aa").unwrap().principal.as_str(), "op-1");
         assert_eq!(reg.resolve("bb").unwrap().principal.as_str(), "op-2");
-        assert!(reg.resolve("cc").is_none(), "an absent pubkey must not resolve");
+        assert!(
+            reg.resolve("cc").is_none(),
+            "an absent pubkey must not resolve"
+        );
     }
 
     #[test]
@@ -228,7 +238,8 @@ mod tests {
 
     #[test]
     fn a_row_with_no_registrar_is_a_person_and_their_own_principal() {
-        let reg = registry_from_json(r#"[{"pubkey":"alice","name":"alice","registered_by":""}]"#).unwrap();
+        let reg = registry_from_json(r#"[{"pubkey":"alice","name":"alice","registered_by":""}]"#)
+            .unwrap();
         use colloquy_nostr::ledger::PrincipalResolver;
         let m = reg.resolve("alice").unwrap();
         assert_eq!(m.principal.as_str(), "alice");

@@ -38,16 +38,19 @@
 //! ```
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs, missing_debug_implementations, rustdoc::broken_intra_doc_links)]
+#![deny(
+    missing_docs,
+    missing_debug_implementations,
+    rustdoc::broken_intra_doc_links
+)]
 
 pub mod decode;
-pub mod event;
 pub mod encode;
+pub mod event;
 pub mod kinds;
 pub mod ledger;
 pub mod tags;
 
-pub use event::{NostrEvent, UnsignedEvent};
 pub use decode::{
     attestation_from_event, graduation_from_event, supersession_from_event, unit_from_event,
     AttestationRef, DecodeError, GraduationRef, SupersessionRef,
@@ -56,6 +59,7 @@ pub use encode::{
     confirmation_event, flag_event, gap_signal_event, graduation_event, supersession_event,
     unit_address, unit_event,
 };
+pub use event::{NostrEvent, UnsignedEvent};
 pub use kinds::{is_colloquy_kind, ALL_KINDS, COLLOQUY_KIND_RANGE};
 pub use ledger::{reconstruct, PrincipalResolver, Reconstruction, ResolvedMember, StaticRegistry};
 

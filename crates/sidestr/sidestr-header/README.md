@@ -43,7 +43,7 @@ the parent's header, and the parent table (SPEC 3.2) has two of them.
 
 ## Status
 
-0.2.0 — both families decode, encode, hash and check proof of work against
+0.2.1 — both families decode, encode, hash and check proof of work against
 the reference to the byte; the BIP-325 block data matches siding's
 `blockData` on the live `sidestr:dreamlab` block 0. With `core`, the
 `Blake2bV2` family runs `sidestr-core`'s rules, state and chain: Melvin

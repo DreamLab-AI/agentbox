@@ -1,6 +1,6 @@
 [package]
 name = "sidestr-nostr"
-version = "0.2.1"
+version = "0.2.2"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
@@ -12,7 +12,7 @@ documentation = "https://docs.rs/sidestr-nostr"
 keywords = ["bitcoin", "sidechain", "sidestr", "nostr", "nip-333"]
 categories = ["cryptography::cryptocurrencies", "encoding", "network-programming"]
 publish = true
-include = ["src/**", "tests/**", "fixtures/**", "README.md", "LICENSE", "Cargo.toml"]
+include = ["src/**", "tests/**", "fixtures/**", "README.md", "CHANGELOG.md", "LICENSE", "Cargo.toml"]
 
 [dependencies]
 sidestr-core = { path = "../sidestr-core", version = "0.2" }

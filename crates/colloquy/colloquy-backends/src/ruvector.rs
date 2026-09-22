@@ -38,13 +38,8 @@ impl RuvectorBackend {
     /// environment, so a supervised process that already has them can pass an
     /// empty slice.
     pub async fn spawn(server_js: &str, env: &[(String, String)]) -> Result<Self, McpError> {
-        let client = McpStdioClient::spawn(
-            "ruvector-mcp",
-            "node",
-            &[server_js.to_string()],
-            env,
-        )
-        .await?;
+        let client =
+            McpStdioClient::spawn("ruvector-mcp", "node", &[server_js.to_string()], env).await?;
         Ok(Self { client })
     }
 
@@ -104,7 +99,13 @@ fn value_as_string(v: &Value) -> Option<String> {
 
 #[async_trait]
 impl VectorBackend for RuvectorBackend {
-    async fn upsert(&self, namespace: &str, key: &str, text: &str, payload: &str) -> Result<(), String> {
+    async fn upsert(
+        &self,
+        namespace: &str,
+        key: &str,
+        text: &str,
+        payload: &str,
+    ) -> Result<(), String> {
         // `memory_store` embeds `value`. The payload is the whole StoredUnit and
         // would blow past the model's window, so the *searchable* text is stored
         // under the unit's key and the payload under a sibling key. Retrieval by

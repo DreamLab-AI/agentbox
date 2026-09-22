@@ -69,6 +69,11 @@ Serving them into retrieval is how a store starts answering "how do I do X" with
 
 ## Changelog
 
+### 0.2.1 (2026-09-22)
+
+Documentation only: `missing_docs` is denied. The full history is in
+`CHANGELOG.md`.
+
 ### 0.2.0 (2026-09-21) — breaking, wire
 
 Follows `colloquy-nostr` 0.2: the relay store's kinds moved from `38100`-`38105`

@@ -79,6 +79,11 @@ assert!(registry.resolve(&"bb".repeat(32)).is_none());
 
 ## Changelog
 
+### 0.2.1 (2026-09-22)
+
+Documentation only: `missing_docs` is denied. The full history is in
+`CHANGELOG.md`.
+
 ### 0.2.0 (2026-09-21) — breaking, wire
 
 The six kinds moved from `38100`-`38105` to `38410`-`38415`. The original block

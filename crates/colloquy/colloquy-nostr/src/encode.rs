@@ -18,11 +18,11 @@
 //! assert_eq!(tags::all(&ev.tags, tags::TAG_T), vec!["http", "retry"]);
 //! ```
 
+use crate::event::UnsignedEvent;
 use colloquy_core::cluster::GapCandidate;
 use colloquy_core::time::Timestamp;
 use colloquy_core::unit::{KnowledgeUnit, Tier};
 use colloquy_core::UnitId;
-use crate::event::UnsignedEvent;
 
 use crate::kinds::*;
 use crate::tags::{self, *};
@@ -51,8 +51,14 @@ pub fn unit_event(unit: &KnowledgeUnit, pubkey: &str, created_at: Timestamp) -> 
     for d in &unit.domain {
         tags.push(vec![TAG_T.to_string(), d.clone()]);
     }
-    tags.push(vec![TAG_LADDER.to_string(), unit.lifecycle.kind.to_string()]);
-    tags.push(vec![TAG_TIER.to_string(), tier_token(unit.tier()).to_string()]);
+    tags.push(vec![
+        TAG_LADDER.to_string(),
+        unit.lifecycle.kind.to_string(),
+    ]);
+    tags.push(vec![
+        TAG_TIER.to_string(),
+        tier_token(unit.tier()).to_string(),
+    ]);
     tags.push(vec![TAG_VERSION.to_string(), unit.version.clone()]);
 
     UnsignedEvent {
@@ -269,14 +275,31 @@ mod tests {
         let ev = unit_event(&unit(), &pk("ab"), Timestamp::from_secs(0));
         let t: Vec<&Vec<String>> = ev.tags.iter().filter(|t| t[0] == "t").collect();
         assert_eq!(t.len(), 2);
-        assert!(t.iter().all(|t| t[0].len() == 1), "t must stay single-letter");
+        assert!(
+            t.iter().all(|t| t[0].len() == 1),
+            "t must stay single-letter"
+        );
     }
 
     #[test]
     fn a_flag_and_a_confirmation_thread_identically() {
         let u = unit();
-        let c = confirmation_event("ev1", &pk("ab"), &u.id, &pk("cd"), Timestamp::from_secs(1), "");
-        let f = flag_event("ev1", &pk("ab"), &u.id, &pk("cd"), Timestamp::from_secs(1), "wrong");
+        let c = confirmation_event(
+            "ev1",
+            &pk("ab"),
+            &u.id,
+            &pk("cd"),
+            Timestamp::from_secs(1),
+            "",
+        );
+        let f = flag_event(
+            "ev1",
+            &pk("ab"),
+            &u.id,
+            &pk("cd"),
+            Timestamp::from_secs(1),
+            "wrong",
+        );
         assert_eq!(c.tags, f.tags, "same references, different kind");
         assert_ne!(c.kind, f.kind);
         assert_eq!(f.content, "wrong");
@@ -286,12 +309,26 @@ mod tests {
     fn a_graduation_without_a_signed_decision_omits_the_tag() {
         let u = unit();
         let signed = graduation_event(
-            "ev1", &pk("ab"), &u.id, Tier::Local, Tier::Shared, &pk("cd"),
-            Some("decision-id"), &pk("ef"), Timestamp::from_secs(0),
+            "ev1",
+            &pk("ab"),
+            &u.id,
+            Tier::Local,
+            Tier::Shared,
+            &pk("cd"),
+            Some("decision-id"),
+            &pk("ef"),
+            Timestamp::from_secs(0),
         );
         let unsigned = graduation_event(
-            "ev1", &pk("ab"), &u.id, Tier::Local, Tier::Shared, &pk("cd"),
-            None, &pk("ef"), Timestamp::from_secs(0),
+            "ev1",
+            &pk("ab"),
+            &u.id,
+            Tier::Local,
+            Tier::Shared,
+            &pk("cd"),
+            None,
+            &pk("ef"),
+            Timestamp::from_secs(0),
         );
         assert_eq!(tags::first(&signed.tags, TAG_DECISION), Some("decision-id"));
         assert_eq!(tags::first(&unsigned.tags, TAG_DECISION), None);
@@ -302,10 +339,23 @@ mod tests {
     fn a_supersession_marks_which_way_round_it_goes() {
         let u = unit();
         let ev = supersession_event(
-            "old", &pk("ab"), &u.id, "new", &pk("ab"), &u.id, &pk("ab"),
-            Timestamp::from_secs(0), "tooling landed",
+            "old",
+            &pk("ab"),
+            &u.id,
+            "new",
+            &pk("ab"),
+            &u.id,
+            &pk("ab"),
+            Timestamp::from_secs(0),
+            "tooling landed",
         );
-        assert_eq!(tags::e_with_marker(&ev.tags, MARKER_SUPERSEDED), Some("old"));
-        assert_eq!(tags::e_with_marker(&ev.tags, MARKER_SUPERSEDES), Some("new"));
+        assert_eq!(
+            tags::e_with_marker(&ev.tags, MARKER_SUPERSEDED),
+            Some("old")
+        );
+        assert_eq!(
+            tags::e_with_marker(&ev.tags, MARKER_SUPERSEDES),
+            Some("new")
+        );
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "sidestr-header"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
@@ -12,7 +12,11 @@ documentation = "https://docs.rs/sidestr-header"
 keywords = ["bitcoin", "sidechain", "sidestr", "blake2b", "block-header"]
 categories = ["cryptography::cryptocurrencies", "encoding", "no-std"]
 publish = true
-include = ["src/**", "tests/**", "README.md", "LICENSE", "Cargo.toml"]
+include = ["src/**", "tests/**", "README.md", "CHANGELOG.md", "LICENSE", "Cargo.toml"]
+
+[package.metadata.docs.rs]
+# docs.rs documents `family` (feature `core`) as well as the no_std surface.
+all-features = true
 
 [features]
 default = ["std", "core"]

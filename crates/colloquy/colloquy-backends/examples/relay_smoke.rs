@@ -64,11 +64,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .await
     {
-        Ok(evs) => println!("fetch   : REQ/EOSE round trip OK, {} unit event(s) on the relay", evs.len()),
+        Ok(evs) => println!(
+            "fetch   : REQ/EOSE round trip OK, {} unit event(s) on the relay",
+            evs.len()
+        ),
         Err(e) => println!("fetch   : FAILED — {e}"),
     }
 
-    match backend.publish(unit_event(&unit, backend.pubkey(), now)).await {
+    match backend
+        .publish(unit_event(&unit, backend.pubkey(), now))
+        .await
+    {
         Ok(id) => {
             println!("publish : ACCEPTED, event {id}");
             let found = backend
@@ -81,15 +87,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await?;
             println!("fetch   : {} event(s) returned", found.len());
             for ev in &found {
-                println!("          {} kind {} by {}", ev.id, ev.kind, &ev.pubkey[..16]);
+                println!(
+                    "          {} kind {} by {}",
+                    ev.id,
+                    ev.kind,
+                    &ev.pubkey[..16]
+                );
             }
             if found.is_empty() {
-                println!("note    : accepted but not returned — the relay stored nothing queryable.");
+                println!(
+                    "note    : accepted but not returned — the relay stored nothing queryable."
+                );
             }
             Ok(())
         }
         Err(e) => {
-            let policy = e.contains("rejected") || e.contains("blocked") || e.contains("restricted");
+            let policy =
+                e.contains("rejected") || e.contains("blocked") || e.contains("restricted");
             if policy {
                 println!("publish : REFUSED by policy — {e}");
                 println!("note    : the allowlist working. Socket, framing, signature and gate are all live.");

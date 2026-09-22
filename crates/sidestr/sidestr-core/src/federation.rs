@@ -8,11 +8,12 @@
 //!
 //! What is **not** here, on purpose: the co-signing round (`round.mjs`). The
 //! independent review of ADR-2101 found its timeout re-signing produces
-//! conflicting authorisations at one height; consensus is a separate protocol
-//! above the signature, in a separate crate. This module gives that crate
-//! what it needs and nothing that decides: derive the federation from the
-//! document, sign a template partially, check a partial, assemble `k`
-//! signatures into a witness, seal, and verify a sealed block.
+//! conflicting authorisations at one height; the round is a protocol above
+//! the signature and lives in its own crate, `sidestr-round`, where that
+//! re-signing is an option. This module gives that crate what it needs and
+//! nothing that decides: derive the federation from the document, sign a
+//! template partially, check a partial, assemble `k` signatures into a
+//! witness, seal, and verify a sealed block.
 //!
 //! # Template versus sealed block
 //!

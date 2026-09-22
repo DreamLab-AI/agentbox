@@ -111,7 +111,8 @@ mod tests {
     #[test]
     fn a_notification_is_a_request_without_an_id() {
         let n: Request =
-            serde_json::from_str(r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#).unwrap();
+            serde_json::from_str(r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#)
+                .unwrap();
         assert!(n.is_notification());
         let r: Request =
             serde_json::from_str(r#"{"jsonrpc":"2.0","id":1,"method":"tools/list"}"#).unwrap();
@@ -126,7 +127,8 @@ mod tests {
 
     #[test]
     fn responses_omit_the_half_they_do_not_carry() {
-        let ok = serde_json::to_string(&Response::ok(1.into(), serde_json::json!({"a":1}))).unwrap();
+        let ok =
+            serde_json::to_string(&Response::ok(1.into(), serde_json::json!({"a":1}))).unwrap();
         assert!(!ok.contains("error"), "{ok}");
         let err = serde_json::to_string(&Response::err(1.into(), INVALID_PARAMS, "bad")).unwrap();
         assert!(!err.contains("result"), "{err}");

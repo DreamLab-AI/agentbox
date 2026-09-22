@@ -29,7 +29,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::decay::StalenessPolicy;
 use crate::kind::UnitKind;
-use crate::principal::{collapse, Attestation, CollapsedPrincipal, ConfirmationPolicy, MemberClass};
+use crate::principal::{
+    collapse, Attestation, CollapsedPrincipal, ConfirmationPolicy, MemberClass,
+};
 use crate::time::Timestamp;
 use crate::unit::{KnowledgeUnit, UnitStatus};
 
@@ -190,13 +192,23 @@ mod tests {
     fn ledger_of(principals: &[&str], at: Timestamp) -> Ledger {
         let mut l = Ledger::default();
         for (i, p) in principals.iter().enumerate() {
-            l.confirm(Attestation::agent(format!("m{i}"), format!("did:nostr:{p}"), at));
+            l.confirm(Attestation::agent(
+                format!("m{i}"),
+                format!("did:nostr:{p}"),
+                at,
+            ));
         }
         l
     }
 
     fn unit(kind: UnitKind) -> KnowledgeUnit {
-        KnowledgeUnit::propose("did:nostr:proposer", kind, ["api"], Insight::new("s", "d", "a"), t(0))
+        KnowledgeUnit::propose(
+            "did:nostr:proposer",
+            kind,
+            ["api"],
+            Insight::new("s", "d", "a"),
+            t(0),
+        )
     }
 
     #[test]
@@ -207,7 +219,11 @@ mod tests {
         let mut concentrated = Ledger::default();
         for i in 0..800 {
             let who = if i % 2 == 0 { "a" } else { "b" };
-            concentrated.confirm(Attestation::agent(format!("m{i}"), format!("did:nostr:{who}"), t(0)));
+            concentrated.confirm(Attestation::agent(
+                format!("m{i}"),
+                format!("did:nostr:{who}"),
+                t(0),
+            ));
         }
         let diverse = ledger_of(&["x", "y", "z"], t(0));
 
@@ -216,7 +232,12 @@ mod tests {
 
         assert_eq!((c.confirmations, c.distinct_principals), (800, 2));
         assert_eq!((d.confirmations, d.distinct_principals), (3, 3));
-        assert!(d.confidence > c.confidence, "{} vs {}", d.confidence, c.confidence);
+        assert!(
+            d.confidence > c.confidence,
+            "{} vs {}",
+            d.confidence,
+            c.confidence
+        );
     }
 
     #[test]
@@ -231,7 +252,11 @@ mod tests {
                 .confidence
         };
         assert!((read(1) - 0.37).abs() < 0.01, "one principal: {}", read(1));
-        assert!((read(3) - 0.75).abs() < 0.01, "three principals: {}", read(3));
+        assert!(
+            (read(3) - 0.75).abs() < 0.01,
+            "three principals: {}",
+            read(3)
+        );
         assert!((read(6) - 0.94).abs() < 0.01, "six principals: {}", read(6));
     }
 
@@ -255,7 +280,11 @@ mod tests {
         let s = StalenessPolicy::default();
         let mut l = ledger_of(&["x"], t(0));
         for i in 0..20 {
-            l.flag(Attestation::agent(format!("c{i}"), format!("did:nostr:c{i}"), t(0)));
+            l.flag(Attestation::agent(
+                format!("c{i}"),
+                format!("did:nostr:c{i}"),
+                t(0),
+            ));
         }
         let a = l.assess(UnitKind::Pitfall, &p, &s, t(0));
         assert_eq!(a.weight, 0.0);
@@ -302,7 +331,10 @@ mod tests {
         }
         l.apply(&mut u, &p, &s, t(0));
         assert_eq!(u.evidence.confirmations, 40);
-        assert_eq!(u.evidence.contributing_orgs, 1, "a swarm is one contributor");
+        assert_eq!(
+            u.evidence.contributing_orgs, 1,
+            "a swarm is one contributor"
+        );
         assert_eq!(u.lifecycle.status, UnitStatus::Active);
     }
 

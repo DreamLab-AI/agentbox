@@ -198,7 +198,10 @@ mod tests {
     #[test]
     fn domain_filtering_is_any_of_not_all_of() {
         let q = Query::default().in_domain(["payments", "absent"]);
-        assert!(q.admits(&unit(UnitKind::Pitfall, &["api", "payments"]), &assessment(1.0)));
+        assert!(q.admits(
+            &unit(UnitKind::Pitfall, &["api", "payments"]),
+            &assessment(1.0)
+        ));
         assert!(!q.admits(&unit(UnitKind::Pitfall, &["api"]), &assessment(1.0)));
     }
 

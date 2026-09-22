@@ -1,6 +1,6 @@
 [package]
 name = "sidestr-core"
-version = "0.2.1"
+version = "0.2.2"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
@@ -13,6 +13,12 @@ keywords = ["bitcoin", "sidechain", "sidestr", "signet", "consensus"]
 categories = ["cryptography::cryptocurrencies", "encoding"]
 publish = true
 include = ["src/**", "tests/**", "examples/**", "fixtures/**", "README.md", "CHANGELOG.md", "LICENSE", "Cargo.toml"]
+
+[package.metadata.docs.rs]
+# docs.rs documents the `rpc` client (`parent::rpc`) as well as the default
+# `std` modules. `consensus-oracle` gates no public item — it is a test-only
+# C++ oracle — so it is left out rather than asking docs.rs for a C++ build.
+features = ["std", "rpc"]
 
 [features]
 default = ["std"]

@@ -100,7 +100,12 @@ impl StalenessPolicy {
     ///
     /// A period of zero days means "never decays", which is how a deployment
     /// switches decay off for a kind without a second flag.
-    pub const fn is_stale(&self, kind: UnitKind, last_confirmed: Timestamp, now: Timestamp) -> bool {
+    pub const fn is_stale(
+        &self,
+        kind: UnitKind,
+        last_confirmed: Timestamp,
+        now: Timestamp,
+    ) -> bool {
         let days = self.days_for(kind);
         if days == 0 {
             return false;
@@ -150,7 +155,10 @@ mod tests {
     fn staleness_flips_exactly_after_the_period() {
         let p = StalenessPolicy::default();
         let c = at(0);
-        assert!(!p.is_stale(UnitKind::Workaround, c, at(60)), "not yet at the boundary");
+        assert!(
+            !p.is_stale(UnitKind::Workaround, c, at(60)),
+            "not yet at the boundary"
+        );
         assert!(p.is_stale(UnitKind::Workaround, c, at(61)));
         assert!(!p.is_stale(UnitKind::Pitfall, c, at(61)));
     }

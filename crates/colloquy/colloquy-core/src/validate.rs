@@ -139,7 +139,9 @@ impl Eq for Invalid {}
 /// Zero when the insight fits. Useful for a composer that wants to warn before
 /// the author has finished writing rather than refuse afterwards.
 pub fn overflow_chars(insight: &Insight, limits: &Limits) -> usize {
-    insight.embedded_len().saturating_sub(limits.embed_char_budget)
+    insight
+        .embedded_len()
+        .saturating_sub(limits.embed_char_budget)
 }
 
 /// Check a unit, collecting every problem rather than stopping at the first.
@@ -262,8 +264,12 @@ mod tests {
         let errs = validate(&u, &Limits::default()).unwrap_err();
         assert!(errs.contains(&Invalid::EmptySummary));
         assert!(errs.contains(&Invalid::EmptyAction));
-        assert!(errs.iter().any(|e| matches!(e, Invalid::NotEnoughDomainTags { .. })));
-        assert!(errs.iter().any(|e| matches!(e, Invalid::UnsupportedVersion { .. })));
+        assert!(errs
+            .iter()
+            .any(|e| matches!(e, Invalid::NotEnoughDomainTags { .. })));
+        assert!(errs
+            .iter()
+            .any(|e| matches!(e, Invalid::UnsupportedVersion { .. })));
         assert!(errs.contains(&Invalid::ConfidenceOutOfRange(2.0)));
     }
 

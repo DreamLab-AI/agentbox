@@ -31,7 +31,7 @@ use colloquy_core::{Timestamp, UnitId};
 
 use crate::query::{Hit, Query, Stats};
 use crate::store::{
-    searchable_text, summarise, KnowledgeStore, StoreError, StoredUnit, StorePolicies,
+    searchable_text, summarise, KnowledgeStore, StoreError, StorePolicies, StoredUnit,
 };
 
 /// The vector-memory operations the shared tier needs.
@@ -42,7 +42,13 @@ use crate::store::{
 #[async_trait]
 pub trait VectorBackend: Send + Sync {
     /// Write `payload` under `key`, embedding `text` for semantic search.
-    async fn upsert(&self, namespace: &str, key: &str, text: &str, payload: &str) -> Result<(), String>;
+    async fn upsert(
+        &self,
+        namespace: &str,
+        key: &str,
+        text: &str,
+        payload: &str,
+    ) -> Result<(), String>;
 
     /// Fetch a payload by key. Returns the whole value, not an embedded prefix.
     async fn get(&self, namespace: &str, key: &str) -> Result<Option<String>, String>;
@@ -127,7 +133,11 @@ impl<B: VectorBackend> SharedStore<B> {
     /// index needs a serial, non-concurrent rebuild** — a bulk write is exactly
     /// the churn that degrades recall, and the rebuild is not something this
     /// crate can do on the caller's behalf.
-    pub async fn bulk_put(&self, units: &[KnowledgeUnit], now: Timestamp) -> Result<usize, StoreError> {
+    pub async fn bulk_put(
+        &self,
+        units: &[KnowledgeUnit],
+        now: Timestamp,
+    ) -> Result<usize, StoreError> {
         let mut n = 0;
         for u in units {
             self.put(u, now).await?;
@@ -174,7 +184,11 @@ impl<B: VectorBackend> KnowledgeStore for SharedStore<B> {
             )
         })?;
         // Preserve any existing ledger, exactly as the local tier does.
-        let ledger = self.read(&unit.id).await?.map(|s| s.ledger).unwrap_or_default();
+        let ledger = self
+            .read(&unit.id)
+            .await?
+            .map(|s| s.ledger)
+            .unwrap_or_default();
         let mut su = StoredUnit {
             unit: unit.clone(),
             ledger,
@@ -229,7 +243,12 @@ impl<B: VectorBackend> KnowledgeStore for SharedStore<B> {
         self.attest(id, who, None).await
     }
 
-    async fn flag(&self, id: &UnitId, who: Attestation, reason: &str) -> Result<Assessment, StoreError> {
+    async fn flag(
+        &self,
+        id: &UnitId,
+        who: Attestation,
+        reason: &str,
+    ) -> Result<Assessment, StoreError> {
         self.attest(id, who, Some(reason)).await
     }
 
@@ -267,7 +286,13 @@ mod tests {
 
     #[async_trait]
     impl VectorBackend for FakeVectors {
-        async fn upsert(&self, _ns: &str, key: &str, text: &str, payload: &str) -> Result<(), String> {
+        async fn upsert(
+            &self,
+            _ns: &str,
+            key: &str,
+            text: &str,
+            payload: &str,
+        ) -> Result<(), String> {
             self.rows
                 .lock()
                 .unwrap()
@@ -287,7 +312,11 @@ mod tests {
         ) -> Result<Vec<(String, String, f64)>, String> {
             // Crude stand-in for cosine similarity: word overlap. Enough to
             // exercise the mapping, and honest about being a fake.
-            let want: Vec<String> = text.to_lowercase().split_whitespace().map(str::to_string).collect();
+            let want: Vec<String> = text
+                .to_lowercase()
+                .split_whitespace()
+                .map(str::to_string)
+                .collect();
             let mut out: Vec<(String, String, f64)> = self
                 .rows
                 .lock()
@@ -343,7 +372,11 @@ mod tests {
 
         let rows = s.backend.rows.lock().unwrap().clone();
         let (embedded, payload) = rows.get(u.id.as_str()).unwrap();
-        assert_eq!(*embedded, searchable_text(&u), "embedded text must be the bounded one");
+        assert_eq!(
+            *embedded,
+            searchable_text(&u),
+            "embedded text must be the bounded one"
+        );
         let su: StoredUnit = serde_json::from_str(payload).unwrap();
         assert_eq!(su.unit, u, "payload must carry the whole unit");
         assert!(payload.contains("ledger"), "and its ledger");
@@ -362,9 +395,12 @@ mod tests {
         s.put(&weak, t(0)).await.unwrap();
         s.put(&strong, t(0)).await.unwrap();
         for p in ["x", "y", "z"] {
-            s.confirm(&strong.id, Attestation::agent(p, format!("did:nostr:{p}"), t(1)))
-                .await
-                .unwrap();
+            s.confirm(
+                &strong.id,
+                Attestation::agent(p, format!("did:nostr:{p}"), t(1)),
+            )
+            .await
+            .unwrap();
         }
 
         let hits = s.query(&Query::text("idempotency"), t(1)).await.unwrap();
@@ -392,7 +428,13 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(a.status, UnitStatus::Disputed);
-        assert_eq!(s.query(&Query::text("contested"), t(2)).await.unwrap().len(), 1);
+        assert_eq!(
+            s.query(&Query::text("contested"), t(2))
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[tokio::test]
@@ -420,11 +462,10 @@ mod tests {
     #[tokio::test]
     async fn a_corrupt_payload_is_reported_not_skipped() {
         let s = store();
-        s.backend
-            .rows
-            .lock()
-            .unwrap()
-            .insert("ku_000000000000".into(), ("text".into(), "{not json".into()));
+        s.backend.rows.lock().unwrap().insert(
+            "ku_000000000000".into(),
+            ("text".into(), "{not json".into()),
+        );
         assert!(matches!(s.stats(t(0)).await, Err(StoreError::Corrupt(_))));
     }
 }

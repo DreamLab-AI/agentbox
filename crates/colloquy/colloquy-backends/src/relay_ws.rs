@@ -23,8 +23,8 @@ use k256::schnorr::SigningKey;
 use serde_json::{json, Value};
 use tokio_tungstenite::tungstenite::Message;
 
-use colloquy_store::relay::{Filter, RelayBackend};
 use colloquy_nostr::event::{NostrEvent, UnsignedEvent};
+use colloquy_store::relay::{Filter, RelayBackend};
 use nostr_bbs_core::event::sign_event;
 
 use crate::compat::{from_bbs_event, to_bbs_event, to_bbs_unsigned};
@@ -118,12 +118,17 @@ impl WsRelayBackend {
 
     async fn connect(
         &self,
-    ) -> Result<tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>, RelayWsError>
-    {
-        let (ws, _) = tokio::time::timeout(self.deadline, tokio_tungstenite::connect_async(&self.url))
-            .await
-            .map_err(|_| RelayWsError::Timeout(self.deadline))?
-            .map_err(|e| RelayWsError::Transport(e.to_string()))?;
+    ) -> Result<
+        tokio_tungstenite::WebSocketStream<
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+        >,
+        RelayWsError,
+    > {
+        let (ws, _) =
+            tokio::time::timeout(self.deadline, tokio_tungstenite::connect_async(&self.url))
+                .await
+                .map_err(|_| RelayWsError::Timeout(self.deadline))?
+                .map_err(|e| RelayWsError::Transport(e.to_string()))?;
         Ok(ws)
     }
 }
@@ -177,8 +182,12 @@ impl RelayBackend for WsRelayBackend {
         let deadline = self.deadline;
         let wait = async {
             while let Some(frame) = ws.next().await {
-                let Ok(Message::Text(text)) = frame else { continue };
-                let Ok(v) = serde_json::from_str::<Value>(&text) else { continue };
+                let Ok(Message::Text(text)) = frame else {
+                    continue;
+                };
+                let Ok(v) = serde_json::from_str::<Value>(&text) else {
+                    continue;
+                };
                 if v.get(0).and_then(Value::as_str) != Some("OK") {
                     continue;
                 }
@@ -190,7 +199,11 @@ impl RelayBackend for WsRelayBackend {
                 } else {
                     Err(RelayWsError::Rejected {
                         id: id.clone(),
-                        reason: v.get(3).and_then(Value::as_str).unwrap_or("no reason").to_string(),
+                        reason: v
+                            .get(3)
+                            .and_then(Value::as_str)
+                            .unwrap_or("no reason")
+                            .to_string(),
                     })
                 };
             }
@@ -216,8 +229,12 @@ impl RelayBackend for WsRelayBackend {
         let collect = async {
             let mut out = Vec::new();
             while let Some(frame) = ws.next().await {
-                let Ok(Message::Text(text)) = frame else { continue };
-                let Ok(v) = serde_json::from_str::<Value>(&text) else { continue };
+                let Ok(Message::Text(text)) = frame else {
+                    continue;
+                };
+                let Ok(v) = serde_json::from_str::<Value>(&text) else {
+                    continue;
+                };
                 match v.get(0).and_then(Value::as_str) {
                     Some("EVENT") if v.get(1).and_then(Value::as_str) == Some(sub) => {
                         if let Some(ev) = v.get(2).cloned() {
@@ -240,10 +257,11 @@ impl RelayBackend for WsRelayBackend {
                     _ => {}
                 }
             }
-            let _ = ws.send(Message::Text(
-                serde_json::to_string(&json!(["CLOSE", sub])).unwrap_or_default(),
-            ))
-            .await;
+            let _ = ws
+                .send(Message::Text(
+                    serde_json::to_string(&json!(["CLOSE", sub])).unwrap_or_default(),
+                ))
+                .await;
             out
         };
 
@@ -274,7 +292,8 @@ mod tests {
         let b = WsRelayBackend::new("ws://127.0.0.1:7777", &key()).unwrap();
         assert_eq!(b.pubkey().len(), 64);
         assert!(b.pubkey().chars().all(|c| c.is_ascii_hexdigit()));
-        let from_hex = WsRelayBackend::from_hex("ws://127.0.0.1:7777", &hex::encode(key())).unwrap();
+        let from_hex =
+            WsRelayBackend::from_hex("ws://127.0.0.1:7777", &hex::encode(key())).unwrap();
         assert_eq!(b.pubkey(), from_hex.pubkey());
     }
 
@@ -282,7 +301,10 @@ mod tests {
     fn a_bad_key_fails_at_construction_not_at_publish_time() {
         assert!(WsRelayBackend::from_hex("ws://x", "not hex").is_err());
         assert!(WsRelayBackend::from_hex("ws://x", "aabb").is_err());
-        assert!(WsRelayBackend::new("ws://x", &[0u8; 32]).is_err(), "zero is not a valid scalar");
+        assert!(
+            WsRelayBackend::new("ws://x", &[0u8; 32]).is_err(),
+            "zero is not a valid scalar"
+        );
     }
 
     #[test]

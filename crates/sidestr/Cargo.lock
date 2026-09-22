@@ -894,7 +894,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "sidestr-core"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bech32",
  "bitcoin",
@@ -910,7 +910,7 @@ dependencies = [
 
 [[package]]
 name = "sidestr-header"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bitcoin",
  "blake2",
@@ -923,7 +923,7 @@ dependencies = [
 
 [[package]]
 name = "sidestr-nostr"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bitcoin",
  "hex",
@@ -936,7 +936,7 @@ dependencies = [
 
 [[package]]
 name = "sidestr-round"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bitcoin",
  "clap",
@@ -961,7 +961,7 @@ dependencies = [
 
 [[package]]
 name = "sidestr-wallet"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bitcoin",
  "hex",

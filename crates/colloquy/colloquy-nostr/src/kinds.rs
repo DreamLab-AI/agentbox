@@ -95,14 +95,26 @@ mod tests {
                 (38_400..=38_499).contains(&k),
                 "{k} must sit in the agentbox 38400-38499 band"
             );
-            assert!(!(38_000..=38_099).contains(&k), "{k} collides with agent intent");
+            assert!(
+                !(38_000..=38_099).contains(&k),
+                "{k} collides with agent intent"
+            );
             assert!(
                 !(38_100..=38_199).contains(&k),
                 "{k} collides with the ADR-009 agent-response reservation"
             );
-            assert!(!(38_200..=38_299).contains(&k), "{k} collides with the payment band");
-            assert!(!(38_300..=38_399).contains(&k), "{k} collides with the marketplace band");
-            assert!(!(31_400..=31_405).contains(&k), "{k} collides with governance");
+            assert!(
+                !(38_200..=38_299).contains(&k),
+                "{k} collides with the payment band"
+            );
+            assert!(
+                !(38_300..=38_399).contains(&k),
+                "{k} collides with the marketplace band"
+            );
+            assert!(
+                !(31_400..=31_405).contains(&k),
+                "{k} collides with governance"
+            );
         }
     }
 
@@ -123,7 +135,10 @@ mod tests {
 
     #[test]
     fn only_the_two_replaceable_kinds_are_addressable() {
-        let addressable: Vec<u64> = ALL_KINDS.into_iter().filter(|k| is_addressable(*k)).collect();
+        let addressable: Vec<u64> = ALL_KINDS
+            .into_iter()
+            .filter(|k| is_addressable(*k))
+            .collect();
         assert_eq!(addressable, vec![KIND_KNOWLEDGE_UNIT, KIND_TOOL_GAP_SIGNAL]);
     }
 

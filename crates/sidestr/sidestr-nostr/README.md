@@ -17,7 +17,7 @@ behind, never ahead. A chain id is a name, not a proof.
 
 ```toml
 [dependencies]
-sidestr-nostr = "0.1"
+sidestr-nostr = "0.2"
 ```
 
 ```rust
@@ -82,7 +82,7 @@ not upstream's.
   the two subscriptions and the on-receipt checks are pure, and I/O is a
   `RelayClient` port the caller implements.
 
-## Status — 0.1.0
+## Status — 0.2.2
 
 Every codec has encode → decode round-trip tests and rejecting tests. Proven
 against the reference:
@@ -96,12 +96,17 @@ against the reference:
 - sixteen live kind-33333 announcements from nine chains, fetched read-only
   from public relays, verify and parse (`tests/live.rs`,
   `fixtures/live-33333.json`, each with the relay and time it was received).
-  Nothing was published to any relay.
+  Nothing was published to any relay;
+- the level-2 envelopes (23510–23514) carry a co-signing round between a
+  Rust signer and the reference's JS signers on one chain, in both
+  directions (`sidestr-round`'s `tests/interop_round.rs` and
+  `tests/interop_pegout.rs`).
 
-Not yet: relay I/O behind a feature (`tokio-tungstenite`), the round logic
-itself (entitlement, one signature per height, the seal — `sidestr-core`'s and
-the producer's), pledge verification against a parent view, NIP-333's bulk
-`u`-tag channels, the assets and pool records.
+Elsewhere in the stack: relay I/O (a tokio websocket client behind
+`sidestr-round`'s `relay` feature) and the round logic itself — entitlement,
+one signature per height, the seal — are `sidestr-round`'s. Not yet: pledge
+verification against a parent view, NIP-333's bulk `u`-tag channels, the
+assets and pool records.
 
 ## Running the checks
 

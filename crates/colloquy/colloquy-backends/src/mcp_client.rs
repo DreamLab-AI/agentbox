@@ -77,7 +77,9 @@ pub struct McpStdioClient {
 
 impl std::fmt::Debug for Pipe {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Pipe").field("next_id", &self.next_id).finish()
+        f.debug_struct("Pipe")
+            .field("next_id", &self.next_id)
+            .finish()
     }
 }
 
@@ -136,7 +138,9 @@ impl McpStdioClient {
                 }),
             )
             .await?;
-        client.notify("notifications/initialized", json!({})).await?;
+        client
+            .notify("notifications/initialized", json!({}))
+            .await?;
         Ok(client)
     }
 
@@ -275,13 +279,7 @@ mod tests {
     /// drive the same code path production does, over a real pipe to a real
     /// child process.
     async fn echo_server(script: &str) -> Result<McpStdioClient, McpError> {
-        McpStdioClient::spawn(
-            "test",
-            "sh",
-            &["-c".to_string(), script.to_string()],
-            &[],
-        )
-        .await
+        McpStdioClient::spawn("test", "sh", &["-c".to_string(), script.to_string()], &[]).await
     }
 
     /// Answers `initialize`, then every `tools/call`, with a fixed body.
@@ -340,13 +338,19 @@ done
     #[tokio::test]
     async fn a_server_that_dies_is_reported_not_hung() {
         let c = McpStdioClient::spawn("dead", "sh", &["-c".into(), "exit 0".into()], &[]).await;
-        assert!(matches!(c, Err(McpError::Process(_))), "expected a spawn-time failure");
+        assert!(
+            matches!(c, Err(McpError::Process(_))),
+            "expected a spawn-time failure"
+        );
     }
 
     #[tokio::test]
     async fn stray_stdout_noise_does_not_desynchronise_the_stream() {
         let noisy = format!("echo 'a log line that is not json'\n{SCRIPT}");
         let c = echo_server(&noisy).await.unwrap();
-        assert_eq!(c.call_tool("x", json!({})).await.unwrap()["value"], json!(42));
+        assert_eq!(
+            c.call_tool("x", json!({})).await.unwrap()["value"],
+            json!(42)
+        );
     }
 }

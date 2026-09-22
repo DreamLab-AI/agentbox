@@ -64,9 +64,10 @@ cites its sections, and every ported function names its original.
   randomness is zero for every block, as siding sets it for the genesis.
 - A document naming the `assets`, `pool` or `evm` rules is refused, because
   this version does not carry them.
-- Level 2 carries the pure parts of `federation.mjs` and not the round: the
-  script path is verified for exactly the `multi_a(k, …)` leaf, an unknown
-  leaf version is refused rather than skipped, and `template_id` names what
+- Level 2 carries the pure parts of `federation.mjs` and not the round (that
+  is [`sidestr-round`](https://crates.io/crates/sidestr-round)): the script
+  path is verified for exactly the `multi_a(k, …)` leaf, an unknown leaf
+  version is refused rather than skipped, and `template_id` names what
   signers authorise separately from the sealed hash (ADR-2101 review).
 - No I/O in the rules: the filesystem and the clock are behind the `std`
   feature (`blockfile`, `chain`).
@@ -92,7 +93,7 @@ cites its sections, and every ported function names its original.
   `tests/audit_regressions_records.rs` holds every marker case and every
   block of an audit corpus to identical derived lists in both engines.
 
-## Status — 0.2.1
+## Status — 0.2.2
 
 Level 1 (one signer), both header families, end to end: genesis from the
 document, block production, validation, the mempool policy, the block file.
@@ -133,9 +134,11 @@ implementation behind the `rpc` feature; `tests/parent_live.rs` (ignored,
 `SIDESTR_PARENT_RPC`) finds the estate's peg-wallet funding on a testnet4
 node without sending anything.
 
-Not yet: the level-2 consensus round (a separate crate, per the ADR-2101
-review), the assets and pool rules, tips and transactions over Nostr
-(`sidestr-nostr`), a full script interpreter.
+Elsewhere in the stack: the level-2 co-signing round is `sidestr-round`,
+tips and transactions over Nostr are `sidestr-nostr`, spending is
+`sidestr-wallet`. Not yet: the assets and pool rules, a full script
+interpreter, and the Byzantine-tolerant consensus protocol above the
+signature (ADR-2101 review), which is a later crate.
 
 ## Running the checks
 

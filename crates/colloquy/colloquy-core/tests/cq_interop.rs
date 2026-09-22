@@ -78,8 +78,14 @@ fn the_cq_example_parses_into_our_types() {
     assert_eq!(u.evidence.severity, Severity::High);
     assert_eq!(u.evidence.confirmations, 847);
     assert_eq!(u.evidence.contributing_orgs, 312);
-    assert_eq!(u.evidence.first_observed.to_rfc3339(), "2025-01-15T09:32:00Z");
-    assert_eq!(u.evidence.last_confirmed.to_rfc3339(), "2026-02-28T14:17:00Z");
+    assert_eq!(
+        u.evidence.first_observed.to_rfc3339(),
+        "2025-01-15T09:32:00Z"
+    );
+    assert_eq!(
+        u.evidence.last_confirmed.to_rfc3339(),
+        "2026-02-28T14:17:00Z"
+    );
     assert!(u.evidence.last_queried_at.is_some());
 
     assert!(u.provenance.proposer_did.starts_with("did:keri:"));

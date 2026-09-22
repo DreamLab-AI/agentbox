@@ -1,6 +1,6 @@
 [package]
 name = "sidestr-round"
-version = "0.1.0"
+version = "0.1.1"
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
@@ -12,7 +12,11 @@ documentation = "https://docs.rs/sidestr-round"
 keywords = ["bitcoin", "sidechain", "sidestr", "nostr", "federation"]
 categories = ["cryptography::cryptocurrencies", "network-programming"]
 publish = true
-include = ["src/**", "tests/**", "README.md", "LICENSE", "Cargo.toml"]
+include = ["src/**", "tests/**", "README.md", "CHANGELOG.md", "LICENSE", "Cargo.toml"]
+
+[package.metadata.docs.rs]
+# docs.rs documents `relay` and `node` (features `relay`, `bin`) as well as the pure round.
+all-features = true
 
 [features]
 default = []

@@ -128,9 +128,12 @@
 //!   ([`federation::Federation`]); any `k` partial signatures seal a block
 //!   ([`federation::seal_federated`]), and [`block::template_id`] is the
 //!   identity they authorise, which sealing does not change — the sealed
-//!   hash does. The co-signing round (`round.mjs`) is **not** ported: the
-//!   ADR-2101 review found its timeout re-signing unsafe, and a consensus
-//!   protocol above the signature is a separate crate.
+//!   hash does. The co-signing round itself (`round.mjs`, `pegoutround.mjs`)
+//!   is not here: it is `sidestr-round`, a pure state machine over this
+//!   crate's federation and `sidestr-nostr`'s envelopes, with upstream's
+//!   timeout re-signing as an option that defaults on and can be switched
+//!   off (the ADR-2101 review found it unsafe); the Byzantine-tolerant
+//!   protocol above the signature is a later crate still.
 //! - **Nothing in the rules does I/O.** [`document`], [`block`], [`marker`],
 //!   [`rules`], [`state`] and [`address`] take bytes and return verdicts; the
 //!   filesystem and the clock are behind feature `std` in [`blockfile`] and
@@ -245,11 +248,15 @@
 //!   either: on a sidestr chain `rdtsExpiryTime` is 0, so it is never active.
 
 #![forbid(unsafe_code)]
-#![warn(
+#![deny(
     missing_docs,
     missing_debug_implementations,
     rustdoc::broken_intra_doc_links
 )]
+// The crate docs link `blockfile` and `chain`, which exist only with `std`;
+// without it those links have nowhere to point and are not an error. After
+// the `deny` above so that it takes precedence.
+#![cfg_attr(not(feature = "std"), allow(rustdoc::broken_intra_doc_links))]
 
 pub mod address;
 pub mod block;

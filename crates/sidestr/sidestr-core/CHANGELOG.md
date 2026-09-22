@@ -2,6 +2,18 @@
 
 All notable changes to `sidestr-core`. The crate follows semantic versioning.
 
+## 0.2.2 — 2026-09-22
+
+Documentation only; no code change.
+
+- docs.rs builds with `std` and `rpc`, so `parent::rpc` is documented.
+  `consensus-oracle` gates no public item and is left out of the docs build.
+- The crate builds its documentation without default features: the links to
+  `blockfile` and `chain` are allowed to dangle when `std` is off.
+- `missing_docs` is denied, not warned.
+- The crate docs, `federation` and the README no longer say the co-signing
+  round is unported: it is `sidestr-round`.
+
 ## 0.2.1 — 2026-09-22
 
 ### Fixed

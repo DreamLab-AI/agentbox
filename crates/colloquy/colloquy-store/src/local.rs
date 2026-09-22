@@ -25,7 +25,7 @@ use colloquy_core::{Timestamp, UnitId};
 
 use crate::query::{Hit, Query, Stats};
 use crate::store::{
-    keyword_relevance, summarise, KnowledgeStore, StoreError, StoredUnit, StorePolicies,
+    keyword_relevance, summarise, KnowledgeStore, StoreError, StorePolicies, StoredUnit,
 };
 
 /// One line of the append log.
@@ -174,7 +174,13 @@ fn apply(state: &mut BTreeMap<UnitId, StoredUnit>, rec: Record) {
                 .get(&unit.id)
                 .map(|s| s.ledger.clone())
                 .unwrap_or_default();
-            state.insert(unit.id.clone(), StoredUnit { unit: *unit, ledger });
+            state.insert(
+                unit.id.clone(),
+                StoredUnit {
+                    unit: *unit,
+                    ledger,
+                },
+            );
         }
         Record::Confirm { id, who } => {
             if let Some(s) = state.get_mut(&id) {
@@ -234,7 +240,11 @@ impl KnowledgeStore for LocalStore {
                 // Hand back a unit whose evidence block reflects the ledger,
                 // rather than the draft numbers it was written with.
                 let mut materialised = su.clone();
-                materialised.materialise(&self.policies.confirmation, &self.policies.staleness, now);
+                materialised.materialise(
+                    &self.policies.confirmation,
+                    &self.policies.staleness,
+                    now,
+                );
                 Some(Hit::new(materialised.unit, a, relevance))
             })
             .collect();
@@ -253,7 +263,12 @@ impl KnowledgeStore for LocalStore {
         self.attest(id, who, None).await
     }
 
-    async fn flag(&self, id: &UnitId, who: Attestation, reason: &str) -> Result<Assessment, StoreError> {
+    async fn flag(
+        &self,
+        id: &UnitId,
+        who: Attestation,
+        reason: &str,
+    ) -> Result<Assessment, StoreError> {
         self.attest(id, who, Some(reason)).await
     }
 
@@ -286,7 +301,11 @@ mod tests {
     #[tokio::test]
     async fn a_unit_round_trips_and_is_found_by_keyword() {
         let s = LocalStore::in_memory();
-        let u = unit("did:nostr:a", "idempotency key regenerated on retry", &["payments"]);
+        let u = unit(
+            "did:nostr:a",
+            "idempotency key regenerated on retry",
+            &["payments"],
+        );
         s.put(&u, t(0)).await.unwrap();
 
         assert_eq!(s.get(&u.id).await.unwrap().unwrap().unit, u);
@@ -294,7 +313,11 @@ mod tests {
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].unit.id, u.id);
 
-        assert!(s.query(&Query::text("unrelated"), t(0)).await.unwrap().is_empty());
+        assert!(s
+            .query(&Query::text("unrelated"), t(0))
+            .await
+            .unwrap()
+            .is_empty());
     }
 
     #[tokio::test]
@@ -319,10 +342,17 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(a.status, UnitStatus::Active);
-        assert_eq!(s.get(&u.id).await.unwrap().unwrap().unit.lifecycle.status, UnitStatus::Active);
+        assert_eq!(
+            s.get(&u.id).await.unwrap().unwrap().unit.lifecycle.status,
+            UnitStatus::Active
+        );
 
         let a = s
-            .flag(&u.id, Attestation::agent("c", "did:nostr:two", t(2)), "stale")
+            .flag(
+                &u.id,
+                Attestation::agent("c", "did:nostr:two", t(2)),
+                "stale",
+            )
             .await
             .unwrap();
         assert_eq!(a.status, UnitStatus::Disputed);
@@ -335,7 +365,9 @@ mod tests {
     async fn attesting_to_an_absent_unit_says_so() {
         let s = LocalStore::in_memory();
         let id = unit("did:nostr:a", "x", &["api"]).id;
-        let err = s.confirm(&id, Attestation::agent("m", "did:nostr:p", t(0))).await;
+        let err = s
+            .confirm(&id, Attestation::agent("m", "did:nostr:p", t(0)))
+            .await;
         assert!(matches!(err, Err(StoreError::NotFound(_))));
     }
 
@@ -366,9 +398,12 @@ mod tests {
         s.put(&weak, t(0)).await.unwrap();
         s.put(&strong, t(0)).await.unwrap();
         for p in ["x", "y", "z"] {
-            s.confirm(&strong.id, Attestation::agent(p, format!("did:nostr:{p}"), t(1)))
-                .await
-                .unwrap();
+            s.confirm(
+                &strong.id,
+                Attestation::agent(p, format!("did:nostr:{p}"), t(1)),
+            )
+            .await
+            .unwrap();
         }
         s.confirm(&weak.id, Attestation::agent("w", "did:nostr:w", t(1)))
             .await

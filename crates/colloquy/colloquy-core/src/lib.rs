@@ -99,7 +99,11 @@
 //! licence.
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs, missing_debug_implementations, rustdoc::broken_intra_doc_links)]
+#![deny(
+    missing_docs,
+    missing_debug_implementations,
+    rustdoc::broken_intra_doc_links
+)]
 
 pub mod cluster;
 pub mod confidence;

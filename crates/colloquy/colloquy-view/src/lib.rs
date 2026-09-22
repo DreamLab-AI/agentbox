@@ -41,7 +41,11 @@
 //! ```
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs, missing_debug_implementations, rustdoc::broken_intra_doc_links)]
+#![deny(
+    missing_docs,
+    missing_debug_implementations,
+    rustdoc::broken_intra_doc_links
+)]
 
 use serde::Serialize;
 
@@ -178,7 +182,11 @@ impl Evidence {
             (p, 0) => format!(
                 "Confirmed by {p} independent {}{}.",
                 plural(p, "principal", "principals"),
-                if has_human { ", including a person" } else { "" }
+                if has_human {
+                    ", including a person"
+                } else {
+                    ""
+                }
             ),
             (p, f) => format!(
                 "Confirmed by {p} independent {}, disputed by {f}.",
@@ -461,10 +469,18 @@ impl GapRow {
             headline: format!(
                 "{} independent {} keep working around `{}` — {} open {}.",
                 gap.distinct_principals,
-                if gap.distinct_principals == 1 { "principal" } else { "principals" },
+                if gap.distinct_principals == 1 {
+                    "principal"
+                } else {
+                    "principals"
+                },
                 gap.tag,
                 gap.units.len(),
-                if gap.units.len() == 1 { "workaround" } else { "workarounds" }
+                if gap.units.len() == 1 {
+                    "workaround"
+                } else {
+                    "workarounds"
+                }
             ),
             units: gap.units.iter().map(ToString::to_string).collect(),
         }
@@ -506,13 +522,19 @@ mod tests {
         let mut l = Ledger::default();
         for i in 0..847 {
             let who = if i % 2 == 0 { "a" } else { "b" };
-            l.confirm(Attestation::agent(format!("m{i}"), format!("did:nostr:{who}"), t(0)));
+            l.confirm(Attestation::agent(
+                format!("m{i}"),
+                format!("did:nostr:{who}"),
+                t(0),
+            ));
         }
         let v = view(&l, t(0));
         assert_eq!(v.evidence.principals, 2);
         assert_eq!(v.evidence.attestations, 847);
         assert!(
-            v.evidence.headline.starts_with("Confirmed by 2 independent principals"),
+            v.evidence
+                .headline
+                .starts_with("Confirmed by 2 independent principals"),
             "{}",
             v.evidence.headline
         );
@@ -540,13 +562,20 @@ mod tests {
         l.confirm(Attestation::human("did:nostr:alice", 0.9, t(1)));
         let v = view(&l, t(1));
         assert!(v.evidence.has_human);
-        assert!(v.evidence.headline.contains("including a person"), "{}", v.evidence.headline);
+        assert!(
+            v.evidence.headline.contains("including a person"),
+            "{}",
+            v.evidence.headline
+        );
     }
 
     #[test]
     fn an_unconfirmed_unit_says_so_plainly() {
         let v = view(&Ledger::default(), t(0));
-        assert_eq!(v.evidence.headline, "Nobody independent has confirmed this yet.");
+        assert_eq!(
+            v.evidence.headline,
+            "Nobody independent has confirmed this yet."
+        );
         assert_eq!(v.status.label, "Unconfirmed");
         assert!(v.status.cautionary);
     }
@@ -584,7 +613,10 @@ mod tests {
         l.confirm(Attestation::agent("c", "did:nostr:c", t(20)));
         let v = view(&l, t(20));
         assert_eq!(
-            v.replies.iter().map(|r| (r.at.as_secs(), r.is_flag)).collect::<Vec<_>>(),
+            v.replies
+                .iter()
+                .map(|r| (r.at.as_secs(), r.is_flag))
+                .collect::<Vec<_>>(),
             vec![(5, true), (10, false), (20, false)]
         );
     }
@@ -594,7 +626,10 @@ mod tests {
         let u = unit(UnitKind::Pitfall);
         let a = Affordances::for_viewer(&u, &Ledger::default(), Some("did:nostr:proposer"), true);
         assert!(!a.can_confirm);
-        assert!(a.confirm_blocked_because.unwrap().contains("first confirmation"));
+        assert!(a
+            .confirm_blocked_because
+            .unwrap()
+            .contains("first confirmation"));
         assert!(a.can_flag, "a proposer may still flag their own unit");
     }
 
@@ -605,7 +640,10 @@ mod tests {
         l.confirm(Attestation::agent("sibling", "did:nostr:mine", t(0)));
         let a = Affordances::for_viewer(&u, &l, Some("did:nostr:mine"), false);
         assert!(!a.can_confirm);
-        assert!(a.confirm_blocked_because.unwrap().contains("already confirmed"));
+        assert!(a
+            .confirm_blocked_because
+            .unwrap()
+            .contains("already confirmed"));
     }
 
     #[test]
@@ -656,7 +694,8 @@ mod tests {
     fn reply_text_is_attached_by_member_and_time() {
         let mut l = Ledger::default();
         l.flag(Attestation::agent("critic", "did:nostr:c", t(3)));
-        let v = view(&l, t(3)).with_texts(&[("critic".into(), t(3), "the provider fixed this".into())]);
+        let v =
+            view(&l, t(3)).with_texts(&[("critic".into(), t(3), "the provider fixed this".into())]);
         assert_eq!(v.replies[0].text, "the provider fixed this");
     }
 
@@ -682,7 +721,11 @@ mod tests {
         let mut l = Ledger::default();
         l.confirm(Attestation::agent("x", "did:nostr:x", t(0)));
         let v = view(&l, t(0));
-        assert!(v.evidence.headline.contains("1 independent principal."), "{}", v.evidence.headline);
+        assert!(
+            v.evidence.headline.contains("1 independent principal."),
+            "{}",
+            v.evidence.headline
+        );
     }
 }
 

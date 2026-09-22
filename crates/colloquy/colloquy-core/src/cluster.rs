@@ -96,8 +96,14 @@ impl GapCandidate {
 /// The accumulator [`detect_gaps`] builds: one entry per domain tag, holding
 /// the units carrying it, the principals behind them, and the running
 /// intersection of their domains (`None` until the first unit lands).
-type TagAccumulator<'a> =
-    BTreeMap<&'a str, (BTreeSet<UnitId>, BTreeSet<PrincipalId>, Option<BTreeSet<String>>)>;
+type TagAccumulator<'a> = BTreeMap<
+    &'a str,
+    (
+        BTreeSet<UnitId>,
+        BTreeSet<PrincipalId>,
+        Option<BTreeSet<String>>,
+    ),
+>;
 
 /// Find tooling gaps among a set of units.
 ///
@@ -125,7 +131,9 @@ pub fn detect_gaps(
         }
         let domain: BTreeSet<String> = unit.domain.iter().cloned().collect();
         for tag in &unit.domain {
-            let e = by_tag.entry(tag.as_str()).or_insert_with(|| (BTreeSet::new(), BTreeSet::new(), None));
+            let e = by_tag
+                .entry(tag.as_str())
+                .or_insert_with(|| (BTreeSet::new(), BTreeSet::new(), None));
             e.0.insert(unit.id.clone());
             e.1.insert(PrincipalId(principal.as_ref().to_string()));
             e.2 = Some(match e.2.take() {

@@ -297,7 +297,9 @@ mod tests {
         let errs = check(&unit(), &l, Tier::Shared).unwrap_err();
         assert!(errs.contains(&Ineligible::NoHumanConfirmation));
         assert!(
-            !errs.iter().any(|e| matches!(e, Ineligible::NotEnoughPrincipals { .. })),
+            !errs
+                .iter()
+                .any(|e| matches!(e, Ineligible::NotEnoughPrincipals { .. })),
             "five principals is plenty; it is the human gate that refuses"
         );
     }
@@ -384,7 +386,9 @@ mod tests {
             authorising_event: None,
         });
         let errs = check(&u, &l, Tier::Shared).unwrap_err();
-        assert!(errs.iter().any(|e| matches!(e, Ineligible::NotAPromotion { .. })));
+        assert!(errs
+            .iter()
+            .any(|e| matches!(e, Ineligible::NotAPromotion { .. })));
     }
 
     #[test]
@@ -394,6 +398,8 @@ mod tests {
         l.confirm(Attestation::agent("b", "did:nostr:bob", t(0)));
         let mut u = unit();
         u.lifecycle.status = UnitStatus::Retired;
-        assert!(check(&u, &l, Tier::Shared).unwrap_err().contains(&Ineligible::NotServable));
+        assert!(check(&u, &l, Tier::Shared)
+            .unwrap_err()
+            .contains(&Ineligible::NotServable));
     }
 }

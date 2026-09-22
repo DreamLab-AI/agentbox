@@ -23,7 +23,11 @@
 //! new kind of durable state, and the adapter contract is not negotiable.
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs, missing_debug_implementations, rustdoc::broken_intra_doc_links)]
+#![deny(
+    missing_docs,
+    missing_debug_implementations,
+    rustdoc::broken_intra_doc_links
+)]
 
 pub mod local;
 pub mod query;

@@ -212,7 +212,11 @@ mod tests {
     fn elapsed_saturates_rather_than_going_negative() {
         let a = Timestamp::from_secs(1000);
         let b = Timestamp::from_secs(400);
-        assert_eq!(a.elapsed_to(b), 0, "clock skew must not read as negative age");
+        assert_eq!(
+            a.elapsed_to(b),
+            0,
+            "clock skew must not read as negative age"
+        );
         assert_eq!(b.elapsed_to(a), 600);
     }
 }

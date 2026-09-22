@@ -244,7 +244,10 @@ mod tests {
 
     #[tokio::test]
     async fn initialize_declares_tools_and_a_protocol_version() {
-        let r = server().handle(req(1, "initialize", json!({})), t(0)).await.unwrap();
+        let r = server()
+            .handle(req(1, "initialize", json!({})), t(0))
+            .await
+            .unwrap();
         let v = r.result.unwrap();
         assert_eq!(v["protocolVersion"], json!(PROTOCOL_VERSION));
         assert_eq!(v["serverInfo"]["name"], json!("colloquy"));
@@ -253,10 +256,16 @@ mod tests {
 
     #[tokio::test]
     async fn all_six_verbs_are_declared_with_schemas() {
-        let r = server().handle(req(1, "tools/list", json!({})), t(0)).await.unwrap();
+        let r = server()
+            .handle(req(1, "tools/list", json!({})), t(0))
+            .await
+            .unwrap();
         let tools = r.result.unwrap()["tools"].as_array().unwrap().clone();
         let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
-        assert_eq!(names, vec!["query", "propose", "confirm", "flag", "reflect", "status"]);
+        assert_eq!(
+            names,
+            vec!["query", "propose", "confirm", "flag", "reflect", "status"]
+        );
         for t in &tools {
             assert_eq!(t["inputSchema"]["type"], json!("object"), "{}", t["name"]);
             assert!(
@@ -277,7 +286,10 @@ mod tests {
 
     #[tokio::test]
     async fn an_unknown_method_is_a_transport_error() {
-        let r = server().handle(req(1, "nope", json!({})), t(0)).await.unwrap();
+        let r = server()
+            .handle(req(1, "nope", json!({})), t(0))
+            .await
+            .unwrap();
         assert_eq!(r.error.unwrap().code, METHOD_NOT_FOUND);
     }
 
@@ -287,16 +299,20 @@ mod tests {
 
         let r = s
             .handle(
-                req(1, "tools/call", json!({
-                    "name": "propose",
-                    "arguments": {
-                        "kind": "pitfall",
-                        "domain": ["wire-format"],
-                        "summary": "The 52-byte record width is frozen at compile time",
-                        "detail": "A const assertion fails the build if it changes.",
-                        "action": "Add a sibling frame instead of widening the record."
-                    }
-                })),
+                req(
+                    1,
+                    "tools/call",
+                    json!({
+                        "name": "propose",
+                        "arguments": {
+                            "kind": "pitfall",
+                            "domain": ["wire-format"],
+                            "summary": "The 52-byte record width is frozen at compile time",
+                            "detail": "A const assertion fails the build if it changes.",
+                            "action": "Add a sibling frame instead of widening the record."
+                        }
+                    }),
+                ),
                 t(0),
             )
             .await
@@ -304,14 +320,25 @@ mod tests {
         let id = payload(&r)["id"].as_str().unwrap().to_string();
 
         let r = s
-            .handle(req(2, "tools/call", json!({ "name": "confirm", "arguments": { "id": &id } })), t(1))
+            .handle(
+                req(
+                    2,
+                    "tools/call",
+                    json!({ "name": "confirm", "arguments": { "id": &id } }),
+                ),
+                t(1),
+            )
             .await
             .unwrap();
         assert_eq!(payload(&r)["status"], json!("active"));
 
         let r = s
             .handle(
-                req(3, "tools/call", json!({ "name": "query", "arguments": { "text": "52-byte record" } })),
+                req(
+                    3,
+                    "tools/call",
+                    json!({ "name": "query", "arguments": { "text": "52-byte record" } }),
+                ),
                 t(1),
             )
             .await
@@ -325,7 +352,11 @@ mod tests {
     async fn a_tool_failure_comes_back_as_content_the_model_can_read() {
         let r = server()
             .handle(
-                req(1, "tools/call", json!({ "name": "confirm", "arguments": { "id": "ku_000000000000" } })),
+                req(
+                    1,
+                    "tools/call",
+                    json!({ "name": "confirm", "arguments": { "id": "ku_000000000000" } }),
+                ),
                 t(0),
             )
             .await
@@ -333,13 +364,19 @@ mod tests {
         let v = r.result.unwrap();
         assert_eq!(v["isError"], json!(true));
         assert!(r.error.is_none(), "must not tear the call down");
-        assert!(v["content"][0]["text"].as_str().unwrap().contains("no unit"));
+        assert!(v["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("no unit"));
     }
 
     #[tokio::test]
     async fn an_unknown_tool_is_refused_by_name() {
         let r = server()
-            .handle(req(1, "tools/call", json!({ "name": "delete_everything" })), t(0))
+            .handle(
+                req(1, "tools/call", json!({ "name": "delete_everything" })),
+                t(0),
+            )
             .await
             .unwrap();
         assert!(r.error.unwrap().message.contains("delete_everything"));

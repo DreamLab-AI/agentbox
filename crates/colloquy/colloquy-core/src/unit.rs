@@ -88,7 +88,11 @@ pub struct Insight {
 
 impl Insight {
     /// Assemble an insight, trimming surrounding whitespace on each part.
-    pub fn new(summary: impl Into<String>, detail: impl Into<String>, action: impl Into<String>) -> Self {
+    pub fn new(
+        summary: impl Into<String>,
+        detail: impl Into<String>,
+        action: impl Into<String>,
+    ) -> Self {
         Self {
             summary: summary.into().trim().to_string(),
             detail: detail.into().trim().to_string(),
@@ -330,7 +334,14 @@ impl KnowledgeUnit {
         insight: Insight,
         now: Timestamp,
     ) -> Self {
-        Self::propose_with_policy(proposer_did, kind, domain, insight, now, &StalenessPolicy::default())
+        Self::propose_with_policy(
+            proposer_did,
+            kind,
+            domain,
+            insight,
+            now,
+            &StalenessPolicy::default(),
+        )
     }
 
     /// As [`KnowledgeUnit::propose`], with an explicit staleness policy to

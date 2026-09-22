@@ -29,9 +29,9 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use crate::event::NostrEvent;
 use colloquy_core::confidence::Ledger;
 use colloquy_core::principal::{Attestation, MemberClass, PrincipalId};
-use crate::event::NostrEvent;
 
 use crate::decode::{attestation_from_event, unit_from_event};
 use crate::kinds::*;
@@ -215,17 +215,34 @@ mod tests {
     fn scenario() -> (Vec<NostrEvent>, KnowledgeUnit) {
         let u = unit();
         let author = pk("author");
-        let mut evs = vec![signed(unit_event(&u, &author, Timestamp::from_secs(0)), "unit-1")];
+        let mut evs = vec![signed(
+            unit_event(&u, &author, Timestamp::from_secs(0)),
+            "unit-1",
+        )];
         // One operator's three agents.
         for (i, a) in ["swarm1", "swarm2", "swarm3"].iter().enumerate() {
             evs.push(signed(
-                confirmation_event("unit-1", &author, &u.id, &pk(a), Timestamp::from_secs(i as i64), ""),
+                confirmation_event(
+                    "unit-1",
+                    &author,
+                    &u.id,
+                    &pk(a),
+                    Timestamp::from_secs(i as i64),
+                    "",
+                ),
                 &format!("c{i}"),
             ));
         }
         // One independent person.
         evs.push(signed(
-            confirmation_event("unit-1", &author, &u.id, &pk("alice"), Timestamp::from_secs(9), ""),
+            confirmation_event(
+                "unit-1",
+                &author,
+                &u.id,
+                &pk("alice"),
+                Timestamp::from_secs(9),
+                "",
+            ),
             "c9",
         ));
         (evs, u)
@@ -245,9 +262,17 @@ mod tests {
         let (evs, u) = scenario();
         let rec = reconstruct(&evs, &registry());
         let ledger = &rec.ledgers["unit-1"];
-        let a = ledger.assess(u.lifecycle.kind, &Default::default(), &Default::default(), Timestamp::from_secs(9));
+        let a = ledger.assess(
+            u.lifecycle.kind,
+            &Default::default(),
+            &Default::default(),
+            Timestamp::from_secs(9),
+        );
         assert_eq!(a.confirmations, 4);
-        assert_eq!(a.distinct_principals, 2, "three agents of one operator collapse");
+        assert_eq!(
+            a.distinct_principals, 2,
+            "three agents of one operator collapse"
+        );
         assert!(ledger.has_human_confirmation());
         assert_eq!(rec.units.len(), 1);
         assert!(rec.unresolved.is_empty());
@@ -260,18 +285,29 @@ mod tests {
         for i in 0..50 {
             evs.push(signed(
                 confirmation_event(
-                    "unit-1", &pk("author"), &u.id, &pk(&format!("sybil{i}")),
-                    Timestamp::from_secs(20), "",
+                    "unit-1",
+                    &pk("author"),
+                    &u.id,
+                    &pk(&format!("sybil{i}")),
+                    Timestamp::from_secs(20),
+                    "",
                 ),
                 &format!("s{i}"),
             ));
         }
         let rec = reconstruct(&evs, &registry());
         let a = rec.ledgers["unit-1"].assess(
-            u.lifecycle.kind, &Default::default(), &Default::default(), Timestamp::from_secs(20),
+            u.lifecycle.kind,
+            &Default::default(),
+            &Default::default(),
+            Timestamp::from_secs(20),
         );
         assert_eq!(a.distinct_principals, 2, "sybils must not buy principals");
-        assert_eq!(rec.unresolved.len(), 50, "and must be visible to an operator");
+        assert_eq!(
+            rec.unresolved.len(),
+            50,
+            "and must be visible to an operator"
+        );
     }
 
     #[test]
@@ -284,7 +320,12 @@ mod tests {
         assert!(!ledger.has_human_confirmation());
         assert_eq!(
             ledger
-                .assess(u.lifecycle.kind, &Default::default(), &Default::default(), Timestamp::from_secs(9))
+                .assess(
+                    u.lifecycle.kind,
+                    &Default::default(),
+                    &Default::default(),
+                    Timestamp::from_secs(9)
+                )
                 .distinct_principals,
             1
         );
@@ -296,12 +337,22 @@ mod tests {
         let mut reg = registry();
         reg.register_agent(pk("critic"), "did:nostr:other-operator");
         evs.push(signed(
-            flag_event("unit-1", &pk("author"), &u.id, &pk("critic"), Timestamp::from_secs(30), "stale"),
+            flag_event(
+                "unit-1",
+                &pk("author"),
+                &u.id,
+                &pk("critic"),
+                Timestamp::from_secs(30),
+                "stale",
+            ),
             "f1",
         ));
         let rec = reconstruct(&evs, &reg);
         let a = rec.ledgers["unit-1"].assess(
-            u.lifecycle.kind, &ConfirmationPolicy::default(), &Default::default(), Timestamp::from_secs(30),
+            u.lifecycle.kind,
+            &ConfirmationPolicy::default(),
+            &Default::default(),
+            Timestamp::from_secs(30),
         );
         assert_eq!(a.flagging_principals, 1);
         assert_eq!(a.status, colloquy_core::unit::UnitStatus::Disputed);

@@ -24,14 +24,14 @@ use colloquy_core::principal::Attestation;
 use colloquy_core::unit::{KnowledgeUnit, Tier};
 use colloquy_core::validate::{validate, Limits};
 use colloquy_core::{Timestamp, UnitId};
+use colloquy_nostr::event::{NostrEvent, UnsignedEvent};
 use colloquy_nostr::kinds::{KIND_CONFIRMATION, KIND_FLAG, KIND_KNOWLEDGE_UNIT};
 use colloquy_nostr::ledger::{reconstruct, PrincipalResolver};
 use colloquy_nostr::{confirmation_event, flag_event, unit_event};
-use colloquy_nostr::event::{NostrEvent, UnsignedEvent};
 
 use crate::query::{Hit, Query, Stats};
 use crate::store::{
-    keyword_relevance, summarise, KnowledgeStore, StoreError, StoredUnit, StorePolicies,
+    keyword_relevance, summarise, KnowledgeStore, StoreError, StorePolicies, StoredUnit,
 };
 
 /// A relay subscription filter, in the subset this tier needs.
@@ -172,13 +172,20 @@ impl<B: RelayBackend, R: PrincipalResolver + Send + Sync> RelayStore<B, R> {
             None => confirmation_event(&event_id, &unit_author, id, &who.member, who.at, ""),
             Some(reason) => flag_event(&event_id, &unit_author, id, &who.member, who.at, reason),
         };
-        self.backend.publish(ev).await.map_err(StoreError::Backend)?;
+        self.backend
+            .publish(ev)
+            .await
+            .map_err(StoreError::Backend)?;
 
         let su = self
             .project(id)
             .await?
             .ok_or_else(|| StoreError::NotFound(id.to_string()))?;
-        Ok(su.assess(&self.policies.confirmation, &self.policies.staleness, who.at))
+        Ok(su.assess(
+            &self.policies.confirmation,
+            &self.policies.staleness,
+            who.at,
+        ))
     }
 }
 
@@ -266,7 +273,12 @@ impl<B: RelayBackend, R: PrincipalResolver + Send + Sync> KnowledgeStore for Rel
         self.attest(id, who, None).await
     }
 
-    async fn flag(&self, id: &UnitId, who: Attestation, reason: &str) -> Result<Assessment, StoreError> {
+    async fn flag(
+        &self,
+        id: &UnitId,
+        who: Attestation,
+        reason: &str,
+    ) -> Result<Assessment, StoreError> {
         self.attest(id, who, Some(reason)).await
     }
 
@@ -419,9 +431,12 @@ mod tests {
         let u = unit("did:nostr:a", "idempotency advice");
         s.put(&u, t(0)).await.unwrap();
         for a in ["one", "two"] {
-            s.confirm(&u.id, Attestation::agent(pk(a), format!("did:nostr:{a}"), t(1)))
-                .await
-                .unwrap();
+            s.confirm(
+                &u.id,
+                Attestation::agent(pk(a), format!("did:nostr:{a}"), t(1)),
+            )
+            .await
+            .unwrap();
         }
         let su = s.get(&u.id).await.unwrap().unwrap();
         let a = su.assess(&Default::default(), &Default::default(), t(1));
@@ -435,16 +450,18 @@ mod tests {
         let u = unit("did:nostr:a", "idempotency advice");
         s.put(&u, t(0)).await.unwrap();
         for a in ["s1", "s2", "s3"] {
-            s.confirm(&u.id, Attestation::agent(pk(a), "did:nostr:single-operator", t(1)))
-                .await
-                .unwrap();
-        }
-        let a = s
-            .get(&u.id)
+            s.confirm(
+                &u.id,
+                Attestation::agent(pk(a), "did:nostr:single-operator", t(1)),
+            )
             .await
-            .unwrap()
-            .unwrap()
-            .assess(&Default::default(), &Default::default(), t(1));
+            .unwrap();
+        }
+        let a = s.get(&u.id).await.unwrap().unwrap().assess(
+            &Default::default(),
+            &Default::default(),
+            t(1),
+        );
         assert_eq!(a.confirmations, 3);
         assert_eq!(a.distinct_principals, 1);
     }
@@ -455,17 +472,22 @@ mod tests {
         let u = unit("did:nostr:a", "idempotency advice");
         s.put(&u, t(0)).await.unwrap();
         for i in 0..30 {
-            s.confirm(&u.id, Attestation::agent(pk(&format!("x{i}")), "did:nostr:self", t(1)))
-                .await
-                .unwrap();
-        }
-        let a = s
-            .get(&u.id)
+            s.confirm(
+                &u.id,
+                Attestation::agent(pk(&format!("x{i}")), "did:nostr:self", t(1)),
+            )
             .await
-            .unwrap()
-            .unwrap()
-            .assess(&Default::default(), &Default::default(), t(1));
-        assert_eq!(a.distinct_principals, 0, "publishing is free; being counted is not");
+            .unwrap();
+        }
+        let a = s.get(&u.id).await.unwrap().unwrap().assess(
+            &Default::default(),
+            &Default::default(),
+            t(1),
+        );
+        assert_eq!(
+            a.distinct_principals, 0,
+            "publishing is free; being counted is not"
+        );
     }
 
     #[tokio::test]
@@ -485,7 +507,13 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(a.status, UnitStatus::Disputed);
-        assert_eq!(s.query(&Query::text("contested"), t(2)).await.unwrap().len(), 1);
+        assert_eq!(
+            s.query(&Query::text("contested"), t(2))
+                .await
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[tokio::test]
@@ -494,7 +522,8 @@ mod tests {
         let id = unit("did:nostr:a", "never published").id;
         assert!(s.get(&id).await.unwrap().is_none());
         assert!(matches!(
-            s.confirm(&id, Attestation::agent(pk("one"), "did:nostr:one", t(0))).await,
+            s.confirm(&id, Attestation::agent(pk("one"), "did:nostr:one", t(0)))
+                .await,
             Err(StoreError::NotFound(_))
         ));
     }
@@ -502,13 +531,21 @@ mod tests {
     #[tokio::test]
     async fn domain_filtering_uses_the_relay_indexed_t_tag() {
         let s = store();
-        s.put(&unit("did:nostr:a", "payments advice"), t(0)).await.unwrap();
+        s.put(&unit("did:nostr:a", "payments advice"), t(0))
+            .await
+            .unwrap();
         assert_eq!(
-            s.query(&Query::default().in_domain(["payments"]), t(0)).await.unwrap().len(),
+            s.query(&Query::default().in_domain(["payments"]), t(0))
+                .await
+                .unwrap()
+                .len(),
             1
         );
         assert_eq!(
-            s.query(&Query::default().in_domain(["telemetry"]), t(0)).await.unwrap().len(),
+            s.query(&Query::default().in_domain(["telemetry"]), t(0))
+                .await
+                .unwrap()
+                .len(),
             0
         );
     }

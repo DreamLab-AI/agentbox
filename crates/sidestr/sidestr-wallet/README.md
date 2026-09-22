@@ -14,8 +14,8 @@ authorises itself; a producer includes what validates.
 
 ```toml
 [dependencies]
-sidestr-wallet = "0.1"
-sidestr-core = "0.1"
+sidestr-wallet = "0.2"
+sidestr-core = "0.2"
 ```
 
 ```rust
@@ -86,7 +86,7 @@ document come from `sidestr-core` and are not duplicated.
   rule), assets (SPEC 12, reserved), the faucet's relay loop and rate state
   (its payment is `build_spend`; the request template is `deliver::faucet_request`).
 
-## Status — 0.2.1
+## Status — 0.2.2
 
 Spend, burn, peg-in shape, delivery data, coin listing and selection, the
 signer and policy ports. Proven:
@@ -102,10 +102,10 @@ signer and policy ports. Proven:
   `pegoutMin`, wrong parent network, fee below `minFeeRate`, policy refusal
   (`tests/builders.rs`).
 
-Not yet: a PSBT for the parent-side peg-in, the peg holders' descriptor
-(`and_v(v:pk(refund), older(refundBlocks))`) and refund sweep, script-path
-spends, hardened BIP-32 custody roles (ADR-2101), a relay client, the
-level-2 view.
+Elsewhere in the stack: the relay client and the level-2 peg-out PSBT round
+are `sidestr-round`'s. Not yet: a PSBT for the parent-side peg-in, the peg
+holders' descriptor (`and_v(v:pk(refund), older(refundBlocks))`) and refund
+sweep, script-path spends, hardened BIP-32 custody roles (ADR-2101).
 
 ## Running the checks
 

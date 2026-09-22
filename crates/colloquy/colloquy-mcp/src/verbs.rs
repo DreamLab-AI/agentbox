@@ -56,7 +56,9 @@ impl Identity {
     pub fn attest(&self, at: Timestamp) -> Attestation {
         match self.class {
             MemberClass::Human => Attestation::human(self.member.clone(), self.wot, at),
-            MemberClass::Agent => Attestation::agent(self.member.clone(), self.principal.clone(), at),
+            MemberClass::Agent => {
+                Attestation::agent(self.member.clone(), self.principal.clone(), at)
+            }
         }
     }
 
@@ -177,9 +179,11 @@ pub async fn propose(
 ) -> Result<Value, StoreError> {
     let a: ProposeArgs = serde_json::from_value(args)
         .map_err(|e| StoreError::Invalid(format!("bad propose arguments: {e}")))?;
-    let unit = build_unit(identity, a.kind, a.domain, a.summary, a.detail, a.action, now)
-        .with_context(a.context)
-        .with_severity(a.severity);
+    let unit = build_unit(
+        identity, a.kind, a.domain, a.summary, a.detail, a.action, now,
+    )
+    .with_context(a.context)
+    .with_severity(a.severity);
     store.put(&unit, now).await?;
     Ok(serde_json::json!({
         "id": unit.id.as_str(),
@@ -219,7 +223,10 @@ pub async fn attest(
         .and_then(Value::as_str)
         .ok_or_else(|| StoreError::Invalid("`id` is required".into()))?;
     let id = UnitId::parse(id).map_err(|e| StoreError::Invalid(e.to_string()))?;
-    let text = args.get("reason").or_else(|| args.get("note")).and_then(Value::as_str);
+    let text = args
+        .get("reason")
+        .or_else(|| args.get("note"))
+        .and_then(Value::as_str);
 
     let a = if is_flag {
         let reason = text.filter(|r| !r.trim().is_empty()).ok_or_else(|| {
@@ -252,7 +259,9 @@ pub async fn reflect(
     now: Timestamp,
 ) -> Result<Value, StoreError> {
     let candidates: Vec<Candidate> = serde_json::from_value(
-        args.get("candidates").cloned().unwrap_or(Value::Array(vec![])),
+        args.get("candidates")
+            .cloned()
+            .unwrap_or(Value::Array(vec![])),
     )
     .map_err(|e| StoreError::Invalid(format!("bad candidates: {e}")))?;
 
@@ -366,9 +375,17 @@ mod tests {
         let (store, id) = seeded().await;
         let s = status(&store, t(0)).await.unwrap();
         assert_eq!(s["units"], json!(1));
-        assert_eq!(s["distinct_principals"], json!(0), "proposing is not confirming");
+        assert_eq!(
+            s["distinct_principals"],
+            json!(0),
+            "proposing is not confirming"
+        );
 
-        let stored = store.get(&UnitId::parse(&id).unwrap()).await.unwrap().unwrap();
+        let stored = store
+            .get(&UnitId::parse(&id).unwrap())
+            .await
+            .unwrap()
+            .unwrap();
         assert_eq!(stored.unit.evidence.severity, Severity::High);
         assert_eq!(stored.unit.domain, vec!["http", "payments"]);
     }
@@ -380,7 +397,9 @@ mod tests {
             .await
             .unwrap();
 
-        let r = query(&store, json!({ "text": "idempotency" }), t(1)).await.unwrap();
+        let r = query(&store, json!({ "text": "idempotency" }), t(1))
+            .await
+            .unwrap();
         let hit = &r["hits"][0];
         assert_eq!(hit["id"], json!(id));
         assert_eq!(hit["distinct_principals"], json!(1));
@@ -446,7 +465,11 @@ mod tests {
         .unwrap();
 
         assert_eq!(r["considered"], json!(2));
-        assert_eq!(r["proposed"], json!(1), "the duplicate must not be filed again");
+        assert_eq!(
+            r["proposed"],
+            json!(1),
+            "the duplicate must not be filed again"
+        );
         assert_eq!(r["results"][0]["outcome"], json!("already_known"));
         assert_eq!(r["results"][1]["outcome"], json!("proposed"));
     }
@@ -470,7 +493,10 @@ mod tests {
         .unwrap();
         assert_eq!(r["proposed"], json!(0));
         assert_eq!(r["results"][0]["outcome"], json!("refused"));
-        assert!(r["results"][0]["reason"].as_str().unwrap().contains("embedding"));
+        assert!(r["results"][0]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("embedding"));
     }
 
     #[tokio::test]

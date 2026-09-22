@@ -98,7 +98,12 @@ pub trait KnowledgeStore: Send + Sync {
     async fn confirm(&self, id: &UnitId, who: Attestation) -> Result<Assessment, StoreError>;
 
     /// Record a flag.
-    async fn flag(&self, id: &UnitId, who: Attestation, reason: &str) -> Result<Assessment, StoreError>;
+    async fn flag(
+        &self,
+        id: &UnitId,
+        who: Attestation,
+        reason: &str,
+    ) -> Result<Assessment, StoreError>;
 
     /// Report what is held.
     async fn stats(&self, now: Timestamp) -> Result<Stats, StoreError>;
@@ -132,7 +137,12 @@ impl KnowledgeStore for Box<dyn KnowledgeStore> {
         (**self).confirm(id, who).await
     }
 
-    async fn flag(&self, id: &UnitId, who: Attestation, reason: &str) -> Result<Assessment, StoreError> {
+    async fn flag(
+        &self,
+        id: &UnitId,
+        who: Attestation,
+        reason: &str,
+    ) -> Result<Assessment, StoreError> {
         (**self).flag(id, who, reason).await
     }
 
@@ -256,7 +266,11 @@ mod tests {
     #[test]
     fn an_empty_query_matches_everything_rather_than_nothing() {
         assert_eq!(keyword_relevance("", &unit()), 1.0);
-        assert_eq!(keyword_relevance("a an of", &unit()), 1.0, "stopword-length noise only");
+        assert_eq!(
+            keyword_relevance("a an of", &unit()),
+            1.0,
+            "stopword-length noise only"
+        );
     }
 
     #[test]

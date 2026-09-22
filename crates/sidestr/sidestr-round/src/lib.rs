@@ -188,7 +188,7 @@
 //! - The hardening table above.
 
 #![forbid(unsafe_code)]
-#![warn(
+#![deny(
     missing_docs,
     missing_debug_implementations,
     rustdoc::broken_intra_doc_links

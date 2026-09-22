@@ -106,7 +106,11 @@ pub struct Attestation {
 
 impl Attestation {
     /// An agent's attestation under an authorising principal.
-    pub fn agent(member: impl Into<String>, principal: impl Into<PrincipalId>, at: Timestamp) -> Self {
+    pub fn agent(
+        member: impl Into<String>,
+        principal: impl Into<PrincipalId>,
+        at: Timestamp,
+    ) -> Self {
         Self {
             member: member.into(),
             principal: principal.into(),
@@ -295,7 +299,11 @@ mod tests {
 
         let mut concentrated = Vec::new();
         for i in 0..800 {
-            let p = if i % 2 == 0 { "did:nostr:a" } else { "did:nostr:b" };
+            let p = if i % 2 == 0 {
+                "did:nostr:a"
+            } else {
+                "did:nostr:b"
+            };
             concentrated.push(Attestation::agent(format!("agent-{i}"), p, t(i)));
         }
         let diverse: Vec<_> = ["x", "y", "z"]
@@ -320,7 +328,10 @@ mod tests {
             .map(|i| Attestation::agent("a", "did:nostr:p", t(i)))
             .collect();
         let policy = ConfirmationPolicy::default();
-        assert_eq!(policy.weigh(&collapse(&once)), policy.weigh(&collapse(&many)));
+        assert_eq!(
+            policy.weigh(&collapse(&once)),
+            policy.weigh(&collapse(&many))
+        );
         assert_eq!(collapse(&many)[0].members, 1);
     }
 

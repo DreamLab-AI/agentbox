@@ -96,7 +96,10 @@ mod tests {
             pubkey: "b".repeat(64),
             created_at: 1_767_225_600,
             kind: 38_410,
-            tags: vec![vec!["d".into(), "abc".into()], vec!["t".into(), "http".into()]],
+            tags: vec![
+                vec!["d".into(), "abc".into()],
+                vec!["t".into(), "http".into()],
+            ],
             content: "{}".into(),
             sig: "c".repeat(128),
         }
@@ -109,7 +112,15 @@ mod tests {
         keys.sort_unstable();
         assert_eq!(
             keys,
-            vec!["content", "created_at", "id", "kind", "pubkey", "sig", "tags"]
+            vec![
+                "content",
+                "created_at",
+                "id",
+                "kind",
+                "pubkey",
+                "sig",
+                "tags"
+            ]
         );
     }
 

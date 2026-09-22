@@ -7,10 +7,10 @@
 //! tampering or of two writers racing, both of which a consumer should hear
 //! about rather than silently resolve.
 
+use crate::event::NostrEvent;
 use colloquy_core::time::Timestamp;
 use colloquy_core::unit::{KnowledgeUnit, Tier};
 use colloquy_core::UnitId;
-use crate::event::NostrEvent;
 
 use crate::kinds::*;
 use crate::tags::{self, *};
@@ -179,7 +179,9 @@ pub fn graduation_from_event(ev: &NostrEvent) -> Result<GraduationRef, DecodeErr
         unit_event_id: tags::first(&ev.tags, TAG_E)
             .ok_or(DecodeError::MissingTag(TAG_E))?
             .to_string(),
-        from: tier_from_token(tags::first(&ev.tags, TAG_FROM).ok_or(DecodeError::MissingTag(TAG_FROM))?)?,
+        from: tier_from_token(
+            tags::first(&ev.tags, TAG_FROM).ok_or(DecodeError::MissingTag(TAG_FROM))?,
+        )?,
         to: tier_from_token(tags::first(&ev.tags, TAG_TO).ok_or(DecodeError::MissingTag(TAG_TO))?)?,
         approver: tags::first(&ev.tags, TAG_P)
             .ok_or(DecodeError::MissingTag(TAG_P))?
@@ -294,18 +296,35 @@ mod tests {
         let u = unit();
         let mut ev = signed(unit_event(&u, &pk("ab"), Timestamp::from_secs(5)), "e1");
         ev.kind = KIND_FLAG;
-        assert!(matches!(unit_from_event(&ev), Err(DecodeError::WrongKind { .. })));
+        assert!(matches!(
+            unit_from_event(&ev),
+            Err(DecodeError::WrongKind { .. })
+        ));
     }
 
     #[test]
     fn attestations_round_trip_with_their_polarity() {
         let u = unit();
         let c = signed(
-            confirmation_event("e1", &pk("ab"), &u.id, &pk("cd"), Timestamp::from_secs(7), "held"),
+            confirmation_event(
+                "e1",
+                &pk("ab"),
+                &u.id,
+                &pk("cd"),
+                Timestamp::from_secs(7),
+                "held",
+            ),
             "c1",
         );
         let f = signed(
-            flag_event("e1", &pk("ab"), &u.id, &pk("ef"), Timestamp::from_secs(8), "stale"),
+            flag_event(
+                "e1",
+                &pk("ab"),
+                &u.id,
+                &pk("ef"),
+                Timestamp::from_secs(8),
+                "stale",
+            ),
             "f1",
         );
         let c = attestation_from_event(&c).unwrap();
@@ -323,15 +342,29 @@ mod tests {
         let u = unit();
         let with = signed(
             graduation_event(
-                "e1", &pk("ab"), &u.id, Tier::Local, Tier::Shared, &pk("cd"),
-                Some("d1"), &pk("ef"), Timestamp::from_secs(9),
+                "e1",
+                &pk("ab"),
+                &u.id,
+                Tier::Local,
+                Tier::Shared,
+                &pk("cd"),
+                Some("d1"),
+                &pk("ef"),
+                Timestamp::from_secs(9),
             ),
             "g1",
         );
         let without = signed(
             graduation_event(
-                "e1", &pk("ab"), &u.id, Tier::Shared, Tier::Public, &pk("cd"),
-                None, &pk("ef"), Timestamp::from_secs(9),
+                "e1",
+                &pk("ab"),
+                &u.id,
+                Tier::Shared,
+                Tier::Public,
+                &pk("cd"),
+                None,
+                &pk("ef"),
+                Timestamp::from_secs(9),
             ),
             "g2",
         );
@@ -348,8 +381,15 @@ mod tests {
         let u = unit();
         let mut ev = signed(
             graduation_event(
-                "e1", &pk("ab"), &u.id, Tier::Local, Tier::Shared, &pk("cd"),
-                None, &pk("ef"), Timestamp::from_secs(0),
+                "e1",
+                &pk("ab"),
+                &u.id,
+                Tier::Local,
+                Tier::Shared,
+                &pk("cd"),
+                None,
+                &pk("ef"),
+                Timestamp::from_secs(0),
             ),
             "g1",
         );
@@ -369,13 +409,23 @@ mod tests {
         let u = unit();
         let ev = signed(
             supersession_event(
-                "old", &pk("ab"), &u.id, "new", &pk("ab"), &u.id, &pk("ab"),
-                Timestamp::from_secs(3), "tooling landed",
+                "old",
+                &pk("ab"),
+                &u.id,
+                "new",
+                &pk("ab"),
+                &u.id,
+                &pk("ab"),
+                Timestamp::from_secs(3),
+                "tooling landed",
             ),
             "s1",
         );
         let s = supersession_from_event(&ev).unwrap();
-        assert_eq!((s.superseded.as_str(), s.supersedes.as_str()), ("old", "new"));
+        assert_eq!(
+            (s.superseded.as_str(), s.supersedes.as_str()),
+            ("old", "new")
+        );
         assert_eq!(s.rationale, "tooling landed");
     }
 }

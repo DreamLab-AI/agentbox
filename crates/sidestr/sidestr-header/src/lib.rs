@@ -143,7 +143,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
-#![warn(missing_docs)]
+// The crate docs link `family`, `Blake2bV2` and `family::Stock`, which exist
+// only with `core`; without it those links have nowhere to point and are not
+// an error.
+#![cfg_attr(not(feature = "core"), allow(rustdoc::broken_intra_doc_links))]
+#![deny(missing_docs)]
 
 mod error;
 #[cfg(feature = "core")]
