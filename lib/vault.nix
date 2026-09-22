@@ -71,8 +71,16 @@ pkgs.rustPlatform.buildRustPackage {
     filter = path: _type: baseNameOf (toString path) != "target";
   };
 
-  cargoLock.lockFile = src + "/Cargo.lock";
+  cargoLock = {
+    lockFile = src + "/Cargo.lock";
+    outputHashes = {
+      "whelk-0.1.0" = "sha256-LIKQuadhyEaM0MNIpZb3M3B+joiY18jkE6GtnQTqm8Q=";
+    };
+  };
   buildAndTestSubdir = "crates/vault";
+
+  nativeBuildInputs = [ pkgs.pkg-config ];
+  buildInputs = [ pkgs.openssl ];
 
   doCheck = true;
 

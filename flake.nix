@@ -39,7 +39,7 @@
     # Pin the parent VisionClaw commit so the corpus door is reproducible and
     # cannot drift with a mutable branch.
     vaultSrc = {
-      url = "github:DreamLab-AI/VisionClaw/f9720fbcb8152d6cf569300285c4d5c59bdb1700";
+      url = "github:DreamLab-AI/VisionClaw/0c195f7605f396ef99689570dcf6e1053da82f6e";
       flake = false;
     };
 
@@ -567,7 +567,7 @@
           # the lockfile root name participates in the FOD hash even though
           # the dependency set is unchanged).
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-fdiCjWe8csuJPvHUxWqAxwh2yW70fuTylMIoY0fQ9rI=";
+          npmDepsHash = "sha256-JWA3qka5b0ZXYfsGFDUOr1NjOm3ubfVHG0wEDgpnni4=";
           # Vendor the canonical NostrBridge into lib/ so the in-process
           # JunkieJarvis agent (server.js) can require('./lib/nostr-bridge') and
           # resolve nostr-tools + ws from THIS package's node_modules. A bare
@@ -601,7 +601,7 @@
           # Prefetched 2026-04-24 after regenerating mcp/package-lock.json
           # (the shipped lockfile predated the nostr-tools dep addition).
           # Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/package-lock.json
-          npmDepsHash = "sha256-/+arrMvbSbUKlX6EFdoXQv5oh5p3UDgns3eGX+UG0nM=";
+          npmDepsHash = "sha256-Y3ncZiGBJf8Ul8WSzIuGinFPK3riTGQQoBX2iJXfl/g=";
         };
 
         # 3. skills/openai-codex/mcp-server — gated by toolchains.codex
