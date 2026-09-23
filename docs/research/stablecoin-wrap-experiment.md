@@ -1,10 +1,12 @@
-# Wrapping USD₮ or USDC into sidestr as an experiment
+# A private USD unit for the owner's agents: wrapping through RGB into sidestr
 
-Slug: `stablecoin-wrap-experiment` · Date: 2026-09-23 · Tier: deep (five researchers plus lead verification, one round) · Decision record: `ADR-2113` (proposed)
+Slug: `stablecoin-wrap-experiment` · Date: 2026-09-23 · Tier: deep (five researchers plus lead verification, one round) · Decision record: `ADR-2117` (proposed)
 
 ## Bottom line
 
-No issuer-backed USD₮ or USDC exists on any Bitcoin test network the estate could use, and USD₮ on RGB is not yet live on Bitcoin mainnet: UTEXO's own documentation says the only tested route runs from Arbitrum mainnet into UTEXO's private signet [4], and Tether's supported-protocols page lists no RGB entry [2]. The experiment should therefore wrap a clearly labelled, valueless test dollar-unit that the estate issues itself, first as a mock asset on a new sidestr chain using the upstream `assets` rule (days) [321]. The second step is our own RGB20 asset on testnet4, bridged through an isolated rgb-lib process into a chain carrying a new `bridge` rule (weeks) [312]. Real USD₮ on RGB and Liquid USDt stay watch items with explicit revisit triggers; nothing in this plan locks a real stablecoin.
+No issuer-backed USD₮ or USDC exists on any Bitcoin test network the estate could use, and USD₮ on RGB is not yet live on Bitcoin mainnet: UTEXO's own documentation says the only tested route runs from Arbitrum mainnet into UTEXO's private signet [4], and Tether's supported-protocols page lists no RGB entry [2]. The experiment should therefore wrap a private USD unit of account that the owner issues and holds only inside his own estate, clearly labelled and valueless. The first step is a mock asset on a new sidestr chain using the upstream `assets` rule (days) [321]. The second step is our own RGB20 asset on testnet4, bridged through an isolated rgb-lib process into a chain carrying a new `bridge` rule (weeks) [312]. Real USD₮ on RGB and Liquid USDt stay watch items with explicit revisit triggers; nothing in this plan locks a real stablecoin.
+
+**Scope (owner decision, binding).** The asset is the owner's own USD unit of account for his agents: issued by the owner, held only by his instances and his did:nostr agents, on his chain. It is not a stablecoin product. There is no public offer, no third-party holder and no redemption for anyone outside the estate. External or user-facing use is out of scope and needs a new decision record. A generic "USD" description is allowed; Tether and Circle marks are not (section 5).
 
 ## 1. What exists today, and what changed since 21 September
 
@@ -64,22 +66,31 @@ Routes A and B are the ones that fit the owner's constraints: own sidestr chains
 2. **A declared confirmation depth.** Liquid waits 102 Bitcoin confirmations before a peg-in claim [111][218], Rootstock 100 [220], WBTC 6 [223]. A `bridgeConfirmations` parameter in the chain document plays that role for the RGB anchoring transaction.
 3. **Mint authority as a coin.** Liquid gates reissuance on a reissuance token that can itself be multisig [219][113]; Taproot Assets orders supply commitments by spending each prior output [226]. An authority coin whose key is the k-of-n attestation key makes every mint, halt and rejection spend and recreate it, so script validation checks the threshold, mints are totally ordered and replay needs a double-spend. Wormhole minted 120,000 wETH after its verifier accepted a forged input [208], which is why the rule must check the signature itself against a key pinned in the chain document.
 4. **Burn, pending, release or reject.** WBTC burns, waits for finality and then releases [224]; sBTC keeps a non-transferable pending placeholder and has an explicit reject path that returns the funds [221]. `bburn` moves units to pending; `brelease` closes the redemption only after `ADR-2101`'s `FINALISE_BLOCK` certificate [207]; `breject` re-credits the burner; validators publish any burn not settled within a declared window, as upstream does for peg-outs [203].
-5. **A halt switch.** A signed `bhalt` stops new mints and releases for an asset while leaving wrapped units transferable and visibly impaired. Multichain showed that an issuer freeze protects the issuer's token, not the wrapper's holders [232][233].
+5. **A halt switch, and no per-holder freeze.** A signed `bhalt` stops new mints and releases for an asset while leaving wrapped units transferable and visibly impaired. Multichain showed that an issuer freeze protects the issuer's token, not the wrapper's holders [232][233]. Every holder here is the owner's own key, so a per-holder freeze has nothing to protect against and is left out (inference).
 6. **Supply identity checked by every validator.** Circulating plus pending equals minted minus released, checked at every block, fail-closed. A validator without an origin view can still check this bookkeeping; only a level-2 validator can check depth and unspentness of reserve outpoints, and none can check RGB amounts without client-side validation, because an RGB transfer shows no token, amount or recipient on chain [234].
-7. **Independent attesters, not one bridge key.** Ronin fell when five of nine validator keys were taken, and nobody noticed for six days [211][213]; 65.8% of stolen bridge value came from permissioned networks with unsecured key operations [213]. Attestation should be k-of-n over independently operated attesters, each running its own rgb-lib validation, with periodic reserve snapshots proved by an unspendable PSBT in the style of Blockstream's proof-of-reserves tool [219][235].
+7. **Attesters are owner instances.** Ronin fell when five of nine validator keys were taken, and nobody noticed for six days [211][213]; 65.8% of stolen bridge value came from permissioned networks with unsecured key operations [213]. The bridge-design research recommends k-of-n over independently operated attesters for a bridge that serves others. For a private, single-owner unit there are no other operators to be independent of, so the issuer is the owner and the attester is one owner instance now (1-of-1, matching the research-stage topology of `ADR-2101`), moving to k-of-n owner instances later, each running its own rgb-lib validation in its own process (inference from [207]). Periodic reserve snapshots can still be proved by an unspendable PSBT in the style of Blockstream's proof-of-reserves tool [219][235].
 8. **The Liquid lesson.** No Liquid key was compromised; unbacked supply was minted by a validation bug and then paid out through the legitimate peg-out path [600][601]. Key security is therefore not enough: an independent reserve-versus-supply check has to pass before any payout (inference).
 
 ## 5. Naming, disclaimers, regulation and licences
 
-**Naming.** Tether's terms forbid use of its marks without prior written permission, "in meta data or code, or in any other manner" [410]. Circle's terms forbid use of its marks without prior written consent [411]. Circle's documentation labels a non-Circle bridged token with a different ticker, `USDC.e` [412]. The test asset's ticker and contract metadata should contain none of USDT, USD₮, Tether or USDC (inference from [410][411][412]).
+**Naming.** Tether's terms forbid use of its marks without prior written permission, "in meta data or code, or in any other manner" [410]. Circle's terms forbid use of its marks without prior written consent [411]. Circle's documentation labels a non-Circle bridged token with a different ticker, `USDC.e` [412]. The asset's name, ticker, contract metadata and code should contain none of USDT, USD₮, Tether or USDC, even though it is private (inference from [410][411][412]). A generic description such as "private USD unit of account" uses no issuer mark.
 
-**Disclaimer model.** Circle's testnet wording is: "Testnet tokens have no financial value." [412]. A disclaimer on the same pattern belongs in the README, the chain document comment and the wallet UI: testnet only, no value, not redeemable, not USD₮ or USDC, not issued, backed or endorsed by Tether or Circle, do not send mainnet assets (drafted by researcher E, inference).
+**Disclaimer model.** Circle's testnet wording is: "Testnet tokens have no financial value." [412]. A disclaimer on the same pattern belongs in the README, the chain document comment and the wallet UI: a private unit of the owner's estate, testnet only, no value, not redeemable, not offered to anyone, not USD₮ or USDC, not issued, backed or endorsed by Tether or Circle, do not send mainnet assets (adapted from researcher E's draft, inference).
 
 **Issuer terms already disclaim wrappers.** Tether says wrapped or bridged tokens "are not Tether Tokens" and cannot be redeemed with Tether [410]. Circle says "Bridged USDC is not USDC" and that Circle does not issue or redeem it [413].
 
-**UK regime.** The FCA regime starts on 25 October 2027 and its application window runs from 30 September 2026 to 28 February 2027 [400]. The regulations were passed by Parliament on 4 February 2026, and PS26/10 covers stablecoin issuance [401]. A cryptoasset is a cryptographically secured digital representation of value or contractual rights [404], and a qualifying stablecoin involves holding backing assets to maintain its value [403]. PERG 18 gives no guidance on test tokens [403]. A token that is unbacked, unredeemable, unpriced and held inside the estate arguably represents no value and cannot be a qualifying stablecoin; locking even a nominal amount of real USD₮ or USDC changes that analysis (inference from [403][404][406], for counsel). The financial-promotion restriction reaches communications that are capable of having an effect in the UK, and a breach is a criminal offence [407]. The FCA sandbox is not regulatory exempt and is closed to new crypto applications [409].
+**UK regime.** The FCA regime starts on 25 October 2027 and its application window runs from 30 September 2026 to 28 February 2027 [400]. The regulations were passed by Parliament on 4 February 2026, and PS26/10 covers stablecoin issuance [401]. The FCA sandbox is not regulatory exempt and is closed to new crypto applications [409].
 
-**EU.** MiCA Art. 48 lets only the issuer, or others with its written consent, offer an e-money token to the public [415]; USDC is issued as an EMT by Circle France [416]. Publishing code is not an offer to the public (inference from [415], for counsel).
+**The closed, single-owner case: what the evidence says.** The scoping facts are that the owner issues the unit, only his own keys hold it, nothing is offered to anyone and nothing is redeemable outside the estate. The evidence bears on that in four places.
+
+- **Definition.** A cryptoasset is a cryptographically secured digital representation of value or contractual rights [404]. A qualifying cryptoasset is excluded where it is "solely a record of value or contractual rights" and does not function in practice as an asset in its own right [403]. A qualifying stablecoin involves holding backing assets to maintain its value [403]. Freshfields summarises the FCA's proposed factors for a mere record as no observable price and no expectation among holders that it can generate value [406].
+- **Business test.** The MLR custodian definition covers a firm that "by way of business provides services to safeguard" cryptoassets on behalf of customers [404], and the FCA's AML page speaks of business carried on in the UK [405]. A single owner holding his own units has no customer (inference).
+- **Promotion.** The financial-promotion restriction reaches communications capable of having an effect in the UK, and a breach is a criminal offence [407]. A closed system that invites no one to acquire anything makes no inducement, but public material about it, including announcements on public relays, is still a communication (inference, and a reason for owner decision f).
+- **EU.** MiCA Art. 48 governs making an offer to the public of an e-money token or seeking its admission to trading [415]; USDC is issued as an EMT by Circle France [416]. A unit never offered to anyone and never admitted to trading makes neither (inference from [415]).
+
+**What the evidence does not say.** PERG 18 gives no guidance on test tokens or tokens of no value [403]. None of the evidence gathered addresses a token issued and held by one person for his own software agents, and MiCA's own definition of an offer to the public was not in the material read. So the conclusion that a closed, unbacked, unpriced, owner-only unit sits outside the UK cryptoasset and stablecoin regimes and outside MiCA is an inference for counsel, not a finding. It stops holding the moment real USD₮ or USDC value backs the unit, even inside the closed system, because the unit would then represent a claim on a held asset [403][404].
+
+**Issuer terms still bind a private unit.** Tether's marks clause is not limited to public use [410], and Circle's consent requirement is not either [411].
 
 **Licences.** rgb-lib is MIT and the RGB protocol crates are Apache-2.0 [419][420], but `base85` 2.0.0 in rgb-lib's graph is declared `MPL-2.0-no-copyleft-exception` on crates.io [421]. Exhibit B of the MPL removes the route that lets MPL code join a GPL-family larger work [422][423], and the sidestr crates are AGPL-3.0-only, whose section 13 source offer covers network users of a modified version [425]. `ADR-2102` already keeps rgb-lib in its own process [312]; that boundary now has a licence reason as well as an engineering one (inference).
 
@@ -87,9 +98,9 @@ Routes A and B are the ones that fit the owner's constraints: own sidestr chains
 
 ## 6. Recommended phased experiment
 
-**Phase 0: mock asset on route A (2 to 4 days).** Create a new chain rather than editing the sealed `sidestr:dreamlab` [325]. Give it `rules: ["assets"]` and a comment stating the asset is unbacked and not USD₮ or USDC [319]. Issue a test dollar-unit with a neutral ticker such as `TDLUSD`, transfer it between two did:nostr-held keys, show an over-assignment refused and a burn by omission, and reopen from the block file (the shape of the upstream test [321]). This exercises wallets, agents, the asset URN and Nostr announcements without any bridge. Rust followers refuse such a chain today [326]. The port is a `BlockRule` implementation [329].
+**Phase 0: mock asset on route A (2 to 4 days).** Create a new chain rather than editing the sealed `sidestr:dreamlab` [325]. Give it `rules: ["assets"]` and a comment stating the asset is unbacked and not USD₮ or USDC [319]. Issue the owner's private USD unit with a neutral ticker such as `TDLUSD`, transfer it between two of the owner's did:nostr-held agent keys, show an over-assignment refused and a burn by omission, and reopen from the block file (the shape of the upstream test [321]). This exercises wallets, agents, the asset URN and Nostr announcements without any bridge. Today's `sidestr:dreamlab` producer announces on the five default public relays and can publish a GitHub Pages mirror [606]; for a private unit, the experiment chain should default to private relays and a private mirror unless the owner decides otherwise (owner decision f, inference). Rust followers refuse such a chain today [326]. The port is a `BlockRule` implementation [329].
 
-**Phase 1: real RGB wrap on route B (2 to 3 weeks).** Build an unpublished `sidestr-bridge` binary on rgb-lib against testnet4, and issue our own NIA asset from an issuer wallet [308]. Send it to a bridge wallet with out-of-band consignment [307]. Have attesters validate and sign, mint the wrapped unit on a chain carrying the `bridge` rule of section 4, and transfer it. Then burn, wait for the `FINALISE_BLOCK` certificate [207], and send the RGB asset back for the issuer wallet to validate. This is `ADR-2102`'s ratification evidence [312]. It needs an indexer, and a public testnet4 Electrum server is enough to start [305]. A local electrs can follow if the owner approves a new process beside the testnet4 node [311].
+**Phase 1: real RGB wrap on route B (2 to 3 weeks).** Build an unpublished `sidestr-bridge` binary on rgb-lib against testnet4, and issue our own NIA asset from an issuer wallet [308]. Send it to a bridge wallet with out-of-band consignment [307]. Have the owner's attester instance validate and sign, mint the wrapped unit on a chain carrying the `bridge` rule of section 4, and transfer it. Then burn, wait for the `FINALISE_BLOCK` certificate [207], and send the RGB asset back for the issuer wallet to validate. This is `ADR-2102`'s ratification evidence [312]. It needs an indexer, and a public testnet4 Electrum server is enough to start [305]. A local electrs can follow if the owner approves a new process beside the testnet4 node [311].
 
 **Watch items, with revisit triggers.**
 
@@ -104,10 +115,11 @@ Routes A and B are the ones that fit the owner's constraints: own sidestr chains
 ## 7. Risks
 
 - **A bridge that mints without backing.** Wormhole and Nomad both minted against inputs the verifier should have refused [208][210], and Liquid's exploit was a validation bug, not a key theft [600]. The supply identity and the authority-coin signature check are the controls (inference).
-- **Operator concentration.** Ronin's threshold was met by keys largely under one company's control [211][213]; with one estate operating every attester, k-of-n buys process isolation, not independence (inference).
+- **Operator concentration.** Ronin's threshold was met by keys largely under one company's control [211][213]. With the owner operating every attester, k-of-n buys process isolation, not independence; that is acceptable only while no one outside the estate relies on the unit (inference).
 - **Pre-release dependencies.** rgb-lib's 0.3.0 line is pre-release and pins a release-candidate consensus crate [9][303]; the other RGB camp warns against v0.11.1 for real value [19].
 - **Label leakage.** On-chain metadata is permanent and indexers copy it; a ticker that mimics USDT cannot be withdrawn later (inference from [410]).
-- **Scope creep into custody.** Accepting a real deposit, from anyone, moves the activity towards safeguarding and possibly issuance [404][403] (inference, for counsel).
+- **Scope creep out of the closed system.** Letting anyone outside the estate hold, receive or redeem the unit, or backing it with real value, moves the activity towards safeguarding and possibly issuance [404][403] (inference, for counsel). Both are out of scope and need a new decision record.
+- **Accidental publicity.** Public relay announcements and a public mirror make the private unit visible to anyone [606] (inference).
 - **Testnet reorgs.** A reorg after mint on a test parent is a declared failure mode, handled by `bhalt` and the visible shortfall (inference from [202][218]).
 
 ## 8. What is not known
@@ -122,16 +134,16 @@ Routes A and B are the ones that fit the owner's constraints: own sidestr chains
 
 ## 9. Questions for counsel
 
-From researcher E's legal pass [410][411][403][404][407][415][421][425]:
+From researcher E's legal pass, re-read for the closed, single-owner case [410][411][403][404][407][415][421][425]:
 
-1. Is a token that is unbacked, unredeemable and testnet-anchored, issued by DreamLab only to itself or to invited testers, a cryptoasset under FSMA s.417 or MLR reg. 14A? Does inviting external testers change the answer [404]?
-2. At what point does backing with real mainnet USD₮ or USDC, even a nominal amount, make DreamLab a custodian wallet provider now, or a person safeguarding or issuing a qualifying stablecoin [403]? Should DreamLab file in the window that opens on 30 September 2026 as a precaution [400]?
-3. Would public README, blog or Nostr material describing the experiment be a financial promotion, and what wording keeps it outside [407]?
-4. Can USDT, USD₮, Tether or USDC appear in tickers, metadata or documentation, including nominatively, and should written consent be sought [410][411]?
+1. Is a unit that is unbacked, unredeemable and testnet-anchored, issued by the owner and held only by his own instances and agents, with no offer to anyone and no third-party holder, a cryptoasset under FSMA s.417 or MLR reg. 14A, and if so is it a qualifying cryptoasset or solely a record [403][404]?
+2. If the unit is ever backed by real USD₮ or USDC value, even a nominal amount and even inside the closed system, does the owner become a custodian wallet provider now, or a person safeguarding or issuing a qualifying stablecoin [403]? Should he file in the window that opens on 30 September 2026 as a precaution [400]?
+3. Is public description of the private experiment (a README, or announcements on public relays and a public mirror) a financial promotion, and what wording keeps it outside [407]?
+4. Can USDT, USD₮, Tether or USDC appear in tickers, metadata, code or documentation of a private unit, including nominatively, and should written consent be sought [410][411]?
 5. Is Tether's automatic-assignment clause for "Prohibited Assets" enforceable under English law against a UK entity [410]?
-6. Does DreamLab bear MiCA exposure if EU parties run its open-source bridge [415]?
+6. Does the owner bear MiCA exposure if EU parties run the open-source bridge code for their own purposes [415]?
 7. Is the `base85` declaration effective without per-file notices, and is process separation between rgb-lib and the AGPL crates a sufficient boundary [421][422]?
-8. Under AGPL section 13, which users interact with a federation bridge remotely, and what source offer is adequate for a containerised deployment [425]?
+8. Under AGPL section 13, does a bridge used only by the owner's own instances have any remote users to whom a source offer is owed [425]?
 
 ## Appendix A: integrity gates
 
@@ -142,6 +154,7 @@ Command: `node skills/deep-research/scripts/research-gates.mjs --slug stablecoin
 | First draft | `19 fail, 0 warn` (strict). All `R030`: sentences whose citations all sat on one registrable domain, mostly github.com, where rgb-lib, sidestr and agentbox all live. No `R010`, `R011`, `R020`, `R021`, `R040` or `R050` finding. |
 | After surgical splits | `7 fail`: four `R022` (listed sources left uncited after the splits) and three `R030`. |
 | Final | `PASS, 0 fail, 0 warn` (strict), `104 sources, 7 notes, 164 per-source excerpts`. |
+| Owner-scope revision | After the owner's private-unit scope and the renumbering to `ADR-2117`: one `R020` (a newly cited source missing from the list), fixed; then `PASS, 0 fail, 0 warn` (strict), `106 sources, 7 notes, 165 per-source excerpts`. |
 
 The `R030` fixes split compound citations so that each sentence cites the one source for its fact; no source was added to manufacture corroboration. The routes table carries no citations; the sentences below it cite each cell's claim.
 
@@ -243,6 +256,7 @@ Retraction check: no cited source is a journal article with a DOI except the SoK
 [401] FCA, Overview of our cryptoassets regime policy statements. https://www.fca.org.uk/publications/policy-statements/cryptoasset-regime
 [403] FCA Handbook, PERG 18.4 New specified investments. https://handbook.fca.org.uk/handbook/perg18/perg18s4
 [404] legislation.gov.uk, MLR 2017 reg. 14A. https://www.legislation.gov.uk/uksi/2017/692/regulation/14A
+[405] FCA, Cryptoassets: AML/CTF regime. https://www.fca.org.uk/firms/financial-crime/money-laundering-terrorist-financing/cryptoassets-aml-ctf-regime
 [406] Freshfields, Drawing the Line: Navigating the FCA's New Cryptoasset Perimeter Guidance (secondary). https://www.freshfields.com/en/our-thinking/blogs/risk-and-compliance/drawing-the-line-navigating-the-fcas-new-cryptoasset-perimeter-guidance-102mv4u
 [407] FCA, Cryptoasset financial promotions. https://www.fca.org.uk/firms/cryptoasset-financial-promotions-and-fiat-crypto-ramp-services
 [409] FCA, Regulatory Sandbox. https://www.fca.org.uk/firms/innovation/regulatory-sandbox
@@ -268,3 +282,4 @@ Retraction check: no cited source is a journal article with a DOI except the SoK
 [603] agentbox, PRD-024 research pack fact base. https://github.com/DreamLab-AI/agentbox/blob/bfda4d4e4/docs/proposals/sovereign-settlement-research/BRIEF-fact-base.md
 [604] agentbox, PRD-024 Sovereign settlement. https://github.com/DreamLab-AI/agentbox/blob/bfda4d4e4/docs/proposals/sovereign-settlement.md
 [605] agentbox, ADR-2112. https://github.com/DreamLab-AI/agentbox/blob/bfda4d4e4/docs/adr/ADR-2112-sidestr-crates-live-in-sidestr-rs.md
+[606] agentbox, config/sidechain/README.md, interim producer and mirror. https://github.com/DreamLab-AI/agentbox/blob/a2fd86cb4/config/sidechain/README.md

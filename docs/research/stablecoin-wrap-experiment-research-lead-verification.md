@@ -82,3 +82,15 @@ Found via: local
 > The planned internal crates (`sidestr-producer`, `-bridge`, `-mcp`) are
 > not written yet; this record does not decide where they go.
 </untrusted-source>
+
+### [606] agentbox — config/sidechain/README.md, Interim producer and mirror
+URL: https://github.com/DreamLab-AI/agentbox/blob/a2fd86cb4/config/sidechain/README.md
+Retrieved: 2026-09-23
+Status: verified
+Found via: local
+
+<untrusted-source url="https://github.com/DreamLab-AI/agentbox/blob/a2fd86cb4/config/sidechain/README.md" retrieved="2026-09-23">
+> (10 s with transactions), the five default public relays, peg-ins scanned on the estate's
+> `--announce-mirror <https url>` to publish the kind-33333 tip after every block; the
+> `blocks.json` into a GitHub Pages checkout and pushes on change; Pages serves them with
+</untrusted-source>

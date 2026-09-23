@@ -11,14 +11,14 @@
     "docs/research/stablecoin-wrap-experiment-research-rgb-usdt.md"
   ],
   "strict": true,
-  "generated": "2026-09-23T19:25:43.623Z",
+  "generated": "2026-09-23T19:30:54.862Z",
   "findings": [],
   "counts": {
     "total": 0,
     "fail": 0,
     "warn": 0,
-    "sources": 104,
-    "excerpts": 164,
+    "sources": 106,
+    "excerpts": 165,
     "notes": 7
   },
   "ok": true
