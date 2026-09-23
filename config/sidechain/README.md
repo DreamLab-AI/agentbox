@@ -61,7 +61,7 @@ relays are the registry (SPEC 11): any client asking for kind 33333 tagged `t=si
 lists every chain that has announced, and `play-grounds.github.io/sidestr` is one such
 client. `mirror-sync.sh <pages checkout>` copies `chain.json`, `blocks.dat` and
 `blocks.json` into a GitHub Pages checkout and pushes on change; Pages serves them with
-open CORS and Range requests, which is all a mirror is.
+open CORS and Range requests, which is all a mirror is. It refuses to start unless each checkout is at the commit recorded in `upstream-pins`, so the upstream code the chain runs is a fact of this repository, not of the host; `SIDESTR_ALLOW_UNPINNED=1` overrides it for an upgrade test.
 
 ## Not yet built (PRD-024 P1)
 
