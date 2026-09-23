@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e1ba33a1c972e15b3b333368544f90bd06d631d9
-verified_paths: [crates/sidestr/*/Cargo.toml, crates/sidestr/*/README.md, crates/sidestr/*/LICENSE]
+verified_commit: 4293e7ed91b84e70915891c1a140558fe54f2580
+verified_paths: [crates/sidestr]
 owner: jjohare
 review_trigger: the first `cargo publish` of a `sidestr-*` crate; upstream sidestr relicensing or a dual grant from its author; any proposal to link a `sidestr-*` crate from a permissive crate
 repo: agentbox
@@ -35,6 +35,8 @@ the original code, decided case by case; for sidestr, stick with AGPL-3.0 and co
 
 1. **Every `sidestr-*` crate is `AGPL-3.0-only`**, `publish = true`, and may be ported from
    the upstream code as a derivative work. `crates/sidestr/` follows the colloquy layout.
+   *(Amended by ADR-2112: the crates live in `DreamLab-AI/sidestr-rs`; agentbox keeps only a
+   pointer at `crates/sidestr/README.md`, and D3's crates.io-only rule now binds agentbox too.)*
    Each crate's manifest, README and crate-level rustdoc state the licence, that it is a
    port of `siding` by Melvin Carvalho (`github.com/sidestr/spec`, AGPL-3.0), the upstream
    commit it was ported from, and what was changed. Upstream test vectors and fixtures may
@@ -84,3 +86,13 @@ status lines, CHANGELOGs added to the published `include` lists, patch version b
 `crates/sidestr/*/Cargo.toml` still declares `license = "AGPL-3.0-only"`, and every crate's
 `LICENSE` is byte-identical to the repository root's (one sha256 across all six files). The
 decision holds.
+
+## Re-verification — 2026-09-23 at 4293e7ed9 (ADR-2112)
+
+The manifests, READMEs and LICENSE files this record watched left the repository with the
+crates (ADR-2112): `git ls-files crates/sidestr` returns only the pointer README, which states
+`AGPL-3.0-only`, the upstream attribution and the crates.io names. The licence facts verified
+above are carried unchanged in `github.com/DreamLab-AI/sidestr-rs` (every `Cargo.toml` there
+declares `license = "AGPL-3.0-only"`); `grep -rln sidestr services/*/Cargo.toml` is empty, so
+no agentbox crate, permissive or not, links one. `verified_paths` now watches the pointer
+directory. Decision holds.

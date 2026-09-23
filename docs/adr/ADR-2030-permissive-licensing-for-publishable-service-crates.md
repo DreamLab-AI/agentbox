@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fc202907bc6d5285c968b5302d9e024d16af53e3
+verified_commit: 4293e7ed91b84e70915891c1a140558fe54f2580
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -299,3 +299,9 @@ returns the same 10 manifests the gate covers. Claim STILL TRUE at this commit.
 Re-verified 2026-09-22 at `fc202907b` after `docs/developer/licensing.md` gained the
 `crates/sidestr/` section (ADR-2106): the `services/` rule and gate are unchanged;
 `scripts/ci/check-crate-licensing.sh` still reports the ten `services/` package directories.
+
+Re-verified 2026-09-23 at `4293e7ed9` after `docs/developer/licensing.md`'s sidestr
+section was rewritten for ADR-2112 (the crates moved to `DreamLab-AI/sidestr-rs`): only that
+section changed; the `services/` rule, `services/LICENSING-NOTICE.md` and
+`scripts/ci/check-crate-licensing.sh` are untouched, and the gate still reports the ten
+`services/` package directories.
