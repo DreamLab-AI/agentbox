@@ -66,14 +66,14 @@ If a run exceeds its declared tier, tell the user rather than spending silently.
 Launch parallel agents via the Agent tool. Each gets a structured brief:
 - **Objective**: what to find
 - **Output format**: numbered sources, evidence table, inline references
-- **Tool guidance**: which search tools to use (WebSearch, WebFetch, Grep for local code)
+- **Tool guidance**: the backend fan-out from [`search-backends.md`](search-backends.md) — `ceramic-search` (2-3 keyword variants), `perplexity_search` (`perplexity_research` in the `deep` tier) and `web-researcher` `search_and_scrape` or the domain search that fits, with a named lens, all in one parallel tool round; native `WebSearch`/`WebFetch` only as a declared fallback; `Grep` for local code
 - **Task boundaries**: what NOT to cover (another researcher handles that)
 - **Output file**: `docs/research/<slug>-research-[dimension].md`
 
 ```
 Agent({
   description: "Research [dimension]",
-  subagent_type: "researcher",
+  subagent_type: "general-purpose",
   name: "researcher-[N]",
   run_in_background: true,
   prompt: "[structured brief with objective, boundaries, output path]"
@@ -90,11 +90,16 @@ quote against *the source cited for it* only when these exist:
 URL: https://www.ofgem.gov.uk/...
 Retrieved: 2026-09-15
 Status: verified
+Found via: web-researcher/brave, lens government
 
 <untrusted-source url="https://www.ofgem.gov.uk/..." retrieved="2026-09-15">
 > the connection queue has more than doubled since 2023
 </untrusted-source>
 ```
+
+Each research file also opens with one line naming the backends that actually answered,
+e.g. `Backends: ceramic, perplexity, web-researcher/brave (websearch fallback: none)`, so a
+narrower fan-out than planned is visible rather than silent.
 
 Numbering is global to the run: the Lead Researcher allocates a disjoint number range to
 each researcher in its brief, so two researchers never mint the same `[n]`.
@@ -105,6 +110,9 @@ each researcher in its brief, so two researchers never mint the same `[n]`.
 3. Never extrapolate details from titles alone — read before summarizing
 4. URL or it didn't happen — no URL = not included
 5. Mark status honestly: `verified` / `inferred` / `unresolved`
+6. A search engine's answer (Perplexity prose, a snippet, a Ceramic extract without the quoted
+   text) is a lead: open the page, quote it, cite the page's URL — never the engine's
+7. Three engines returning one page is one witness; record `Found via:` so the lead can tell
 
 ## 4. Evaluate and Loop
 
@@ -166,8 +174,8 @@ Spawn a verifier agent to add inline citations and verify URLs:
 ```
 Agent({
   description: "Verify citations",
-  subagent_type: "reviewer",
-  prompt: "Add inline citations to docs/research/.drafts/<slug>-draft.md using the research files. Verify every URL resolves. Remove unsourced claims. Output: docs/research/<slug>.md"
+  subagent_type: "general-purpose",
+  prompt: "Add inline citations to docs/research/.drafts/<slug>-draft.md using the research files. For every critical citation run web-researcher verify_citation (the URL resolves and the quoted text is on the page); run audit_bibliography on the source list; archive_source every source a decision rests on and record the archive URL beside the live one. Remove unsourced claims and any citation that points at a search engine rather than the page. Output: docs/research/<slug>.md"
 })
 ```
 
