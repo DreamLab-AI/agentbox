@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 74254cc424defbf476d586e8a7f6422b7f71cd33
+verified_commit: 9c24aad52321355ba871e614c74c773cb0cbd2e9
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/README.md, tests/config/sidechain-genesis.test.sh]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation
@@ -238,3 +238,12 @@ Proposed. Ratification evidence: the projector rejects an out-of-set `parent` or
 minted `sha256d` chain to their tip hashes; mutating `p21Receipt` after genesis makes `open()`
 refuse the chain; the CI check fails on a fixture mainnet chain document with no receipt;
 `grep -n faucet` shows the 23501 path compiled out under a mainnet feature.
+
+## Re-verification — 2026-09-23 at 9c24aad52
+
+Governed paths changed since `74254cc42` only by `9c24aad52`: one sentence of
+`config/sidechain/README.md` says the interim producer now refuses any upstream checkout
+other than the commits in `config/sidechain/upstream-pins` (spec `722ad42`, SPEC 0.0.3,
+which fixed sidestr/spec issues 9 and 10). The chain document, its `tbtc4` parent, the
+stock header family and the genesis test are unchanged, and the P21 gate on mainnet parents
+stands. Upstream PR #4 has merged; explorer PR #2 is still open, so the review trigger holds.

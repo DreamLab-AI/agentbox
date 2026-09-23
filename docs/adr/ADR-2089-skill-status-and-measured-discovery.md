@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e1ba33a1c972e15b3b333368544f90bd06d631d9
+verified_commit: 9c24aad52321355ba871e614c74c773cb0cbd2e9
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -120,3 +120,12 @@ governed ontology door): two lines of `skills/SKILL-DIRECTORY.md` now describe
 `ontology-augment` as Bash over `vault` and the Loom rather than the retired
 `ontology-bridge` MCP server. No `status:` value, badge rendering, lint rule or route-eval
 behaviour changed; the status contract and measured-discovery decision stand.
+
+## Re-verification — 2026-09-23 at 9c24aad52
+
+Governed paths changed since `e1ba33a1c` only by `d5f5ebccf` (deep-research fans out to
+ceramic-search, Perplexity and web-researcher): two lines of `skills/SKILL-DIRECTORY.md`
+now describe `deep-research`'s search backends. The row's `No` (not always-loaded) is
+unchanged, no `status:` value, badge, lint rule or route-eval behaviour changed, and the
+skill stays unregistered in both manifests; the status contract and measured-discovery
+decision stand.
