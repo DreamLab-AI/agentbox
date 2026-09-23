@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: a2fd86cb4110b8dcfcdfd79785b048a246d8c136
 verified_paths: ["config/sidechain/*/chain.json"]
 owner: jjohare
-review_trigger: Tether lists RGB among its supported protocols or publishes a canonical USD₮-on-RGB contract ID; a Tether or UTEXO test asset appears on testnet4 or signet; an rgb-lib release pins final rgb-protocol 0.11.1 or moves to the v0.12 line; Liquid peg-outs restored with a post-mortem; Circle lists a Bitcoin layer as a native USDC chain; any proposal to back the unit with real value, let anyone outside the owner's estate hold or redeem it, or add a chain document under config/sidechain/
+review_trigger: the owner gives the live go for the Liquid USDt proof (amendment 2026-09-23); Tether lists RGB among its supported protocols or publishes a canonical USD₮-on-RGB contract ID; a Tether or UTEXO test asset appears on testnet4 or signet; an rgb-lib release pins final rgb-protocol 0.11.1 or moves to the v0.12 line; Liquid peg-outs restored with a post-mortem; Circle lists a Bitcoin layer as a native USDC chain; any proposal to back the unit with real value, let anyone outside the owner's estate hold or redeem it, or add a chain document under config/sidechain/
 repo: agentbox
 domain: BASELINE-container
 lineage: "Research brief docs/research/stablecoin-wrap-experiment.md (2026-09-23, deep tier, strict gate PASS). Amends ADR-2102 (fills its parked attestation format, signer and validator checks for this private experiment only); relates ADR-2096, ADR-2101, ADR-2103, ADR-2112, PRD-024."
@@ -138,6 +138,71 @@ independence, which is acceptable only while no one outside the estate relies on
 - (f) Whether the experiment chain announces on public relays with a public mirror, as
   `sidestr:dreamlab` does today, or runs on private relays and a private mirror. Recommended:
   private by default for a private unit.
+
+## Amendment 2026-09-23: real-asset proof of principle on the light Liquid option
+
+The owner then asked for a proof of principle against a real asset, still inside the closed,
+single-owner scope, and chose the light Liquid option. This amendment changes decisions 1 and 3
+for that proof only. It is recorded before anything is live; the live step needs the owner's
+explicit go.
+
+**What changes.**
+
+- **Decision 1, amended.** A small reserve of real, Tether-issued **Liquid USDt** (the owner's
+  own funds, of the order of 10 to 50 USD) may back the private unit. Everything else in
+  decision 1 stands: the owner is the only issuer and holder, there is no public offer, no
+  third-party holder and no redemption outside the estate, and no Tether or Circle mark appears
+  in the unit's name, ticker, metadata or code. Counsel question Q2 in the brief (real-value
+  backing inside a closed system) is now live, not hypothetical.
+- **Decision 3, amended.** Phase 1's origin becomes Liquid USDt instead of an RGB20 test asset.
+  The bridge process uses Blockstream's Liquid Wallet Kit (LWK, MIT, crates `lwk_wollet`,
+  `lwk_signer`, `lwk_common` 0.19.x) in place of rgb-lib. LWK is MIT, so the process-isolation
+  reason that rgb-lib's MPL-2.0 dependency created does not apply to it; the bridge stays a
+  separate process anyway, because it holds reserve keys. The owner holds the reserve wallet's
+  blinding key, so the attester can check the asset and the amount itself, which RGB could not
+  give inside consensus. RGB USD₮ moves to the watch list with its existing revisit trigger.
+- **Light option.** The reserve wallet syncs from Blockstream's public Liquid servers; no Liquid
+  node is run. The attestation's trust basis is therefore that server's view: it cannot forge
+  the owner's transactions but could omit or delay one. Privacy cost: the server learns the
+  reserve addresses and query times. Upgrade trigger to an own `elementsd` (at least 23.3.4, the
+  release that fixed the 6 September range-proof caching bug), on its own VM and not beside the
+  mainnet Lightning node: before releases are automated, before the reserve exceeds pocket money,
+  or before anyone outside the estate depends on the unit.
+- **Parent network.** The experiment chain may take parent `btc` (Bitcoin mainnet, stock headers)
+  instead of `tbtc4`, as the owner proposed. It carries **no BTC pegs** (`pegs: []`), so block
+  production touches no mainnet funds; the only mainnet spend is an optional checkpoint, one
+  ordinary fee each. This opens ADR-2096 D1's mainnet gate for this experiment chain only, and
+  only on the owner's explicit go at live time. `sidestr:dreamlab` stays on testnet4.
+
+**Wiring survey of the Dell VM (read-only, 2026-09-23).** Host `tab5`, 192.168.2.27: 8 cores,
+7 GB RAM, 499 GB free on `/mnt/staging`. Mainnet `bitcoind` 30.3.0 at height 968,315, synced,
+pruned (blocks kept from 954,723; `prune=75000`), Tor-only with 15 peers, one existing wallet
+(`cormorant`, not ours, untouched). Its RPC already binds to `192.168.2.27` with the LAN in
+`rpcallowip`, and port 8332 is reachable from the agentbox container; the estate holds no
+mainnet RPC credential. The mainnet Lightning node (`/var/lib/lightning`, localhost:9735, live
+channel) has run since 18 September and was not touched. The testnet4 Lightning service
+(`lightningd-testnet4`) has been failed since 21 September after a port clash on 9736; a restart
+attempt failed again and it was left down, since this experiment does not need it.
+
+**Further decisions for the owner.**
+
+- (g) How the producer reaches mainnet RPC. Either add an `rpcauth` user for it, which edits the
+  mainnet config and restarts `bitcoind` and so briefly interrupts the Lightning node with a live
+  channel; or run the experiment's producer on the Dell itself against the local cookie, which
+  needs no restart. Recommended: the second.
+- (h) Checkpoints: none for the proof, or a separate small mainnet wallet (never `cormorant`,
+  never Lightning's) that pays checkpoint fees.
+- (i) Funding: the owner acquires the Liquid USDt reserve himself (for example through SideSwap
+  or an exchange that withdraws to Liquid) and sends it to the reserve address only when he gives
+  the live go.
+- (j) Whether to diagnose and restore `lightningd-testnet4` (its data and config are ours; the
+  box is shared with real funds).
+
+**Wiring status.** In progress on a sidestr-rs branch (`sidestr-bridge-liquid`, unpublished):
+reserve wallet from a mnemonic held outside every repository, sync against the public Liquid
+server, USDt identified by an asset id verified from primary sources, and a deterministic signed
+reserve attestation that the `bridge` rule will check. Nothing is funded, sealed, announced or
+published.
 
 ## Verification
 
