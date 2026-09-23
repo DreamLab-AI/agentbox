@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_103 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_104 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -166,3 +166,4 @@ _103 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2108](ADR-2108-ontology-bridge-retired-vault-baked-by-nix.md) | ontology-bridge is retired; the vault binary is baked by Nix | BASELINE-container | 2026-09-22 | accepted | partial | staged | ADR-2022, ADR-2054 | — | jjohare | agentbox |
 | [ADR-2109](ADR-2109-governance-decisions-apply-through-vault-edit.md) | Ontology proposals and decisions both go through vault — propose raises them, a guarded vault edit applies them | — | 2026-09-22 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2112](ADR-2112-sidestr-crates-live-in-sidestr-rs.md) | The sidestr crates live in DreamLab-AI/sidestr-rs; agentbox hosts the chain instance, not the crates | BASELINE-container | 2026-09-23 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2113](ADR-2113-wrapped-stablecoin-experiment-labelled-test-asset-through-rgb.md) | Wrapped stablecoin experiment: a labelled test asset bridged through RGB into a dedicated sidestr chain | BASELINE-container | 2026-09-23 | proposed | none | inactive | — | — | jjohare | agentbox |

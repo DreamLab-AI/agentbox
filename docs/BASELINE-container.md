@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.4.1
+version: 0.4.2
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.4.2 (2026-09-23): ADR-2113 (proposed): the wrapped-stablecoin experiment runs on new testnet chains only, wraps an estate-issued labelled test asset (never a real stablecoin), and fills ADR-2102's parked bridge-rule checks for that experiment. Proposed section only; the Invariants compliance surface is unchanged."
   - "0.4.1 (2026-09-23) — ADR-2112: the five sidestr-* crates moved with history to github.com/DreamLab-AI/sidestr-rs (AGPL-3.0-only, on crates.io) and their CI with them; crates/sidestr/ is a pointer README. The settlement section now says agentbox hosts the chain instance (config/sidechain/), not the crates. Proposed section only; the Invariants compliance surface is unchanged."
   - "0.4.0 (2026-09-21): PROPOSED, not ratified. ADR-2096/2098/2099/2102/2103 (PRD-024 sovereign settlement): the [sidechain] manifest block and its validated parent/header_profile enums, the sidestr-node and sidestr-producer supervised programs plus the isolated sidestr-bridge, loopback :9097 behind the nip98-proxy /chain/ upstream, the crates/sidestr workspace and its licensing posture, rust-bitcoin accepted estate-wide and the k256-only posture retired, and three proposed invariants (chain is truth, no sixth adapter slot, byte-identical-when-off). Recorded in a clearly marked proposed section; the Invariants compliance surface above is unchanged."
   - "0.3.2 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
@@ -302,6 +303,13 @@ program environments and the rail config so no consumer re-derives them. The sam
 by all four onboarding surfaces (projector `sidechain show`, TUI pick-lists rather than free text,
 stack provisioning with no per-profile override, first-run question with mainnet options shown but
 disabled and the gate named).
+
+**Wrapped stablecoin experiment (ADR-2113, proposed).** `[sidechain.bridge]` stays off on the
+root chain. The experiment runs on new testnet chains (never `sidestr:dreamlab`, which is sealed
+without `rules`), wraps only an estate-issued, labelled, valueless test asset, and never locks a
+real USD₮ or USDC; its `bridge` rule invariants (replay-keyed records, authority-coin mints,
+`circulating + pending = minted − released` on every block, release after `FINALISE_BLOCK`) are in
+the record.
 
 **Honest apply classes** for the `system-manifest.js` catalogue, following the `payments` rows and
 the ADR-039 honesty rule:

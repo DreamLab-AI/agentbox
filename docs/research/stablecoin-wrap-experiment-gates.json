@@ -1,0 +1,25 @@
+{
+  "slug": "stablecoin-wrap-experiment",
+  "brief": "docs/research/stablecoin-wrap-experiment.md",
+  "notes": [
+    "docs/research/stablecoin-wrap-experiment-research-alt-routes.md",
+    "docs/research/stablecoin-wrap-experiment-research-bridge-design.md",
+    "docs/research/stablecoin-wrap-experiment-research-feasibility.md",
+    "docs/research/stablecoin-wrap-experiment-research-lead-verification.md",
+    "docs/research/stablecoin-wrap-experiment-research-legal-terms.md",
+    "docs/research/stablecoin-wrap-experiment-research-loom.md",
+    "docs/research/stablecoin-wrap-experiment-research-rgb-usdt.md"
+  ],
+  "strict": true,
+  "generated": "2026-09-23T19:25:43.623Z",
+  "findings": [],
+  "counts": {
+    "total": 0,
+    "fail": 0,
+    "warn": 0,
+    "sources": 104,
+    "excerpts": 164,
+    "notes": 7
+  },
+  "ok": true
+}
