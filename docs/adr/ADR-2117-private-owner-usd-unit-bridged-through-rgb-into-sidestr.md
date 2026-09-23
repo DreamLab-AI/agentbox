@@ -198,11 +198,33 @@ attempt failed again and it was left down, since this experiment does not need i
 - (j) Whether to diagnose and restore `lightningd-testnet4` (its data and config are ours; the
   box is shared with real funds).
 
-**Wiring status.** In progress on a sidestr-rs branch (`sidestr-bridge-liquid`, unpublished):
-reserve wallet from a mnemonic held outside every repository, sync against the public Liquid
-server, USDt identified by an asset id verified from primary sources, and a deterministic signed
-reserve attestation that the `bridge` rule will check. Nothing is funded, sealed, announced or
-published.
+**Wiring status (2026-09-23, not live).** Built on sidestr-rs branch `liquid-bridge-wiring`,
+draft PR DreamLab-AI/sidestr-rs#1 at `2494151b`: crate `sidestr-bridge-liquid` (AGPL-3.0-only,
+`publish = false`) with the `usd-reserve` binary, on LWK 0.19.0 (`lwk_wollet`, `lwk_signer`,
+`lwk_common`, each `MIT OR BSD-2-Clause` per `cargo metadata`; no MPL anywhere in the tree).
+
+- **Reserve asset, verified three ways.** `RESERVE_ASSET_ID` =
+  `ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2`. Blockstream's asset
+  registry lists it as ticker USDt, name "Tether USD", precision 8, issuer domain tether.to
+  (https://assets.blockstream.info/ce091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2).
+  Tether's own supported-protocols page (https://tether.to/en/supported-protocols) points
+  Liquid integrators at the same asset. The id also recomputes from the registry's issuance
+  prevout and contract hash through LWK's issuance-entropy function, so the issuance contract
+  itself commits to that ticker and domain. Code identifiers carry no Tether mark.
+- **Live read-only check.** A fresh empty wallet synced against
+  `https://blockstream.info/liquid/api` at Liquid height 4,070,405 (block hash cross-checked
+  separately), balance empty, attestation amount 0 with no outpoints.
+- **Reserve key.** Generated from a BIP-39 mnemonic at `~/workspace/sidestr/liquid-reserve/`
+  (directory 0700, mnemonic 0400), outside every repository; its first receive address sits in a
+  local `ADDRESS.md` (0600) marked "fund only on the owner's explicit go". Neither the address
+  nor the xpub is in any commit. No funds.
+- **Attestation.** Deterministic canonical JSON with a SHA-256 digest and a BIP-340 signing hook
+  (test key only), refusing any asset other than the reserve asset, duplicated outpoints and
+  overflowing totals. This is the input the `bridge` rule will check; the rule itself is not
+  built.
+
+**Not yet built:** the sidestr `bridge` rule (JS and Rust), the experiment chain document, the
+attester-to-producer path, and the producer on the Dell under decision (g).
 
 ## Verification
 
