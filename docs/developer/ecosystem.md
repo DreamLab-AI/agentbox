@@ -32,6 +32,21 @@ change and nothing else.
 | [prose-sanitiser](https://github.com/DreamLab-AI/prose-sanitiser) | Deterministic AI-provenance sanitiser and prose linter: invisible-Unicode surgery, container metadata stripping, sense-aware UK English, versioned slop tables; `sanitise` umbrella binary reports in SARIF | `lib/prose-sanitiser.nix`; the `prose-sanitiser` and `open-design` skills |
 | [diagram-ir](https://github.com/DreamLab-AI/diagram-ir) | draw.io and Mermaid extraction to a normalised IR under a trust boundary that never evaluates, renders, fetches or executes input | `lib/diagram-ir.nix`; the `diagram-design` and `mermaid-diagrams` skills |
 
+## sidestr-rs: the sidechain crates live in their own repository
+
+[sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs) — Rust port of Melvin Carvalho's sidestr sidechains, AGPL-3.0-only: the economic engine for did:nostr agents. A did:nostr key is a sidechain wallet.
+
+Unlike the two crates above it is **not** permissive and was never under `services/`: the five
+`sidestr-*` crates (`header`, `core`, `nostr`, `wallet`, `round`) are `AGPL-3.0-only` attributed
+ports of upstream `siding` (ADR-2106), audited before every publish. They were developed under
+agentbox `crates/sidestr/` and split out with history on 2026-09-23 (ADR-2112); source, CI and
+releases are in sidestr-rs, and `crates/sidestr/README.md` is only a pointer. Agentbox hosts
+the estate's **chain instance**, not the crates: the sealed `sidestr:dreamlab` document, the
+interim producer runner and the mirror sync in `config/sidechain/`. No agentbox build links a
+`sidestr-*` crate today (the interim producer is the upstream JS engine); a future
+`sidestr-node` takes them from crates.io and is AGPL-3.0 in effect. Testnet only; no real
+funds anywhere.
+
 ## Semantic integrity & decision intelligence (BC23)
 
 The governed graph-write surface is a **three-gate door** — integrity (pre-merge conflict/entity-resolution), Whelk EL consistency, then ACSP human governance — with every runtime write `did:nostr`-attributed and every agent **decision** a first-class, signed graph node (`urn:agentbox:decision:*`) carrying causal links. Decisions elevate *back into the corpus* (the inverse of the class-elevation loop), so they survive a corpus rebuild like any other class; bi-temporal `state_at(t)` makes the reasoned graph time-travellable. Adds one URN kind (`decision`) and one bounded context (BC23) — no new adapter slot or port. Design: [PRD-022 · ADR-047–050 · DDD-020](../reference/).

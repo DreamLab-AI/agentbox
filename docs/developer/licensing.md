@@ -33,15 +33,19 @@ is a crate that links an AGPL library: `nostr-pod-bridge` links
 aggregate hosted service remains AGPL-3.0; the permissive grant applies to each
 crate on its own.
 
-## The `crates/sidestr/` workspace is AGPL-3.0-only and published (ADR-2106)
+## The `sidestr-*` crates are AGPL-3.0-only, published, and live in sidestr-rs (ADR-2106, ADR-2112)
 
-The `sidestr-*` crates are derivatives of Melvin Carvalho's `siding`
+The `sidestr-*` crates are no longer in this repository: they moved with their
+history to [DreamLab-AI/sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs)
+on 2026-09-23 (ADR-2112), and `crates/sidestr/README.md` is only a pointer. The
+licensing rule is unchanged. The crates are derivatives of Melvin Carvalho's `siding`
 (`github.com/sidestr/spec`, AGPL-3.0) and are therefore `AGPL-3.0-only`, with
 `publish = true`: they are published to crates.io case by case and consumed by
 other estate repositories, which become AGPL-3.0 in effect and declare it. Each
 crate names the upstream repository, author and ported commit in its README and
-crate-level rustdoc. They live under `crates/`, so the `services/` rule above
-does not apply to them, and no permissive crate may depend on them.
+crate-level rustdoc. They were never under `services/`, so the `services/`
+rule above does not apply to them, and no permissive crate may depend on them;
+an agentbox component that links one (none does today) declares AGPL-3.0.
 
 `scripts/ci/check-crate-licensing.sh` enforces this on every push and pull
 request (a step in `.github/workflows/invariants.yml`): a `services/` package
