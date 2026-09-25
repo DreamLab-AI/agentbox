@@ -26,10 +26,12 @@ The Rust crates under `services/` are first-party but licensed
 `MIT OR Apache-2.0` by their own manifests, and each package directory carries
 the `LICENSE-MIT` and `LICENSE-APACHE` texts plus a `README.md` stating the dual
 grant (`services/LICENSING-NOTICE.md` has the per-directory table), so they can
-be published to crates.io and reused outside the AGPL service. The one exception
-is a crate that links an AGPL library: `nostr-pod-bridge` links
-`solid-pod-rs-nostr`, declares `AGPL-3.0-only`, ships the full AGPL text as
-`LICENSE`, and says in its README that it is **not** dual-licensed. The
+be published to crates.io and reused outside the AGPL service. The exceptions
+are crates that link an AGPL library: `nostr-pod-bridge` links
+`solid-pod-rs-nostr`, and `dream-engine` links `nostr-bbs-core` (operator
+decision 2026-09-25, ADR-2115). Each declares `AGPL-3.0-only`, ships the full
+AGPL text as `LICENSE`, and says in its README that it is **not** dual-licensed
+(`secret-backup` is AGPL by choice; see the notice). The
 aggregate hosted service remains AGPL-3.0; the permissive grant applies to each
 crate on its own.
 

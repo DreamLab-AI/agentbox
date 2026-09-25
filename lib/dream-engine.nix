@@ -22,8 +22,8 @@
 # The checked-in Cargo.lock pins the whole closure; tests are hermetic (no
 # network, no DB), so doCheck = true runs them in the sandbox.
 #
-# Licence: MIT OR Apache-2.0 (the crate and its whole dependency closure are
-# permissive — no copyleft aggregation, unlike the pod bridge).
+# Licence: AGPL-3.0-only since 2026-09-25 — the crate links nostr-bbs-core
+# (AGPL-3.0-only) for Nostr signing and the forum governance types (ADR-2115).
 
 { lib, pkgs }:
 
@@ -59,7 +59,7 @@ pkgs.rustPlatform.buildRustPackage {
   meta = with lib; {
     description = "Nightly evidence-gated repository evolution engine for agentbox (the connected node annexe, ADR-052) — compiles config into deterministic prompts, dispatches to the connected node, calls an LLM, parses verdicts, persists ledger + witness + RuVector";
     homepage    = "https://github.com/DreamLab-AI/agentbox";
-    license     = with licenses; [ mit asl20 ];
+    license     = licenses.agpl3Only;
     mainProgram = "dream-engine";
     platforms   = platforms.linux;
   };

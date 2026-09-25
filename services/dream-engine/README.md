@@ -99,29 +99,26 @@ and is recorded but cannot veto; an empty `deeps` means every deep.
 dream-engine --help
 ```
 
-## Licence
+## Licence — AGPL-3.0-only, NOT dual-licensed
 
-Licensed under either of
+**This crate is licensed under the GNU Affero General Public License, version 3
+only (AGPL-3.0-only). It is _not_ dual-licensed under MIT OR Apache-2.0.**
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
-  <http://www.apache.org/licenses/LICENSE-2.0>)
-- MIT licence ([LICENSE-MIT](LICENSE-MIT) or
-  <http://opensource.org/licenses/MIT>)
+Most of the `services/` subtree is permissive (MIT OR Apache-2.0). This crate is
+a documented exception: it links `nostr-bbs-core` (AGPL-3.0-only) for Nostr
+signing, verification and the forum governance wire types (ADR-2115), so it
+cannot grant permissive terms and does not attempt to. The operator chose this on
+2026-09-25 over mirroring the forum's wire types in a permissive crate. Do not
+copy the sibling crates' licensing boilerplate into this directory, and do not
+publish this crate under the permissive assumption.
 
-at your option.
-
-This crate lives inside the [agentbox](https://github.com/DreamLab-AI/agentbox) repository, which as a whole is
-AGPL-3.0-only. The permissive grant is per crate and travels with the crate:
-`services/` is a deliberately permissive subtree so these modules can be reused
-and published outside the hosted service. See
+The full licence text is in [LICENSE](LICENSE). See
 [ADR-2030](https://github.com/DreamLab-AI/agentbox/blob/main/docs/adr/ADR-2030-permissive-licensing-for-publishable-service-crates.md)
 and [services/LICENSING-NOTICE.md](https://github.com/DreamLab-AI/agentbox/blob/main/services/LICENSING-NOTICE.md).
 
 ### Contribution
 
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you, as defined in the Apache-2.0 licence, shall be
-dual licensed as above, without any additional terms or conditions.
+Contributions to this crate are accepted under AGPL-3.0-only.
 
 ## Repository
 

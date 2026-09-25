@@ -47,7 +47,7 @@ The dream engine queues human decisions (report "Human action recommended" items
 ## Verification
 
 At `verified_commit`, `cargo test` in `services/dream-engine` passes 192 tests, including:
-- panel/case round-trips through the core `PanelDefinition`/`ActionRequest` parsers;
+- panel/case round-trips through core `PanelDefinition`/`ActionRequest`/`PanelPolicy`/`TaskProperties`, with tag and content declarations agreeing;
 - the decision mapping;
 - rejection of self-signed, forged and stale-bound decisions;
 - the scope of the panel acknowledgement;
@@ -55,7 +55,7 @@ At `verified_commit`, `cargo test` in `services/dream-engine` passes 192 tests, 
 
 `cargo clippy --all-targets -- -D warnings` is clean.
 
-Licensing: `nostr-bbs-core` is `AGPL-3.0-only` and `dream-engine` is `MIT OR Apache-2.0` (ADR-2030), so the crate signs and verifies with `nostr` (MIT) and mirrors the ACSP wire types locally. `nostr-bbs-core` is a dev-dependency only, and the tests parse every emitted panel, case, decision and signature with its real types. The shipped dependency closure has no copyleft-only licence.
+Licensing: `dream-engine` is `AGPL-3.0-only` (operator decision 2026-09-25, recorded in ADR-2030) and links `nostr-bbs-core` directly. Event types, signing (`sign_event`), strict verification (`verify_event_strict`), key parsing and every governance wire type (`PanelDefinition`, `ActionRequest`, `DecisionOutcome`, `TaskProperties`, `PanelPolicy`, `RiskTier`, `KIND_*`) are the forum's own, so the engine cannot drift from the relay and client parsers; the tests are direct round-trips through those types. (An earlier cut of this change kept the crate permissive by mirroring the wire types over the MIT `nostr` crate; the operator chose linking core instead.)
 
 `dream-engine governance publish --dry-run` against a copy of the live inbox emitted the expected 31400/31402 wire format. `dream-engine digest --dry-run` rendered the 2026-09-25 zero-eligible night.
 

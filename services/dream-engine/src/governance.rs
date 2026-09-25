@@ -27,146 +27,25 @@
 //! Everything is fail-open: an unreachable relay or a missing key is logged
 //! and the night carries on.
 //!
-//! The wire types below mirror `nostr-bbs-core::governance` field for field.
-//! They are re-declared rather than imported because that crate is
-//! AGPL-3.0-only and this one is `MIT OR Apache-2.0` (ADR-2030); the tests
-//! parse every event this module emits with the real `nostr-bbs-core` types,
-//! so drift from the forum's wire format fails the build.
+//! All wire types, kinds and tag names are `nostr-bbs-core::governance`'s — the
+//! same code the relay and the forum client run — so the engine cannot drift
+//! from the forum's wire format.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
+use nostr_bbs_core::governance::{
+    broker::DecisionOutcome, ActionDef, ActionPriority, ActionRequest, ActionStyle, FieldDef,
+    FieldType, LayoutHint, PanelCapability, PanelDefinition, PanelPolicy, PanelSchema,
+    Reversibility, RiskTier, Stakes, TaskProperties, Verifiability, KIND_ACTION_REQUEST,
+    KIND_ACTION_RESPONSE, KIND_PANEL_DEFINITION,
+};
 use serde_json::json;
 use tracing::{info, warn};
 
 use crate::inbox::{self, InboxItem};
 use crate::relay::{self, NostrEvent, RelaySession, SigningKey, UnsignedEvent};
-
-// ── Wire types (mirror nostr-bbs-core::governance) ──────────────────────────
-
-/// Kind 31400: panel definition.
-pub const KIND_PANEL_DEFINITION: u64 = 31400;
-/// Kind 31402: action request (a case).
-pub const KIND_ACTION_REQUEST: u64 = 31402;
-/// Kind 31403: human decision on a case.
-pub const KIND_ACTION_RESPONSE: u64 = 31403;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum PanelSchema {
-    ActionInbox,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum FieldType {
-    String,
-    Enum,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FieldDef {
-    pub name: String,
-    pub field_type: FieldType,
-    pub label: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ActionStyle {
-    Primary,
-    Secondary,
-    Destructive,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ActionDef {
-    pub id: String,
-    pub label: String,
-    pub style: ActionStyle,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum LayoutHint {
-    InboxTable,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum PanelCapability {
-    Filter,
-    Sort,
-}
-
-/// ADR-2011 task-property triple, in its loosest form: inspectable,
-/// reversible, bounded.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TaskProperties {
-    pub verifiability: String,
-    pub reversibility: String,
-    pub stakes: String,
-}
-
-impl TaskProperties {
-    /// The `tp-*` tags a publisher stamps to declare the triple.
-    pub fn to_tags(&self) -> Vec<Vec<String>> {
-        vec![
-            vec!["tp-verifiability".into(), self.verifiability.clone()],
-            vec!["tp-reversibility".into(), self.reversibility.clone()],
-            vec!["tp-stakes".into(), self.stakes.clone()],
-        ]
-    }
-}
-
-/// Content of a kind-31400.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct PanelDefinition {
-    pub title: String,
-    pub description: String,
-    pub version: String,
-    pub schema: PanelSchema,
-    pub fields: Vec<FieldDef>,
-    pub actions: Vec<ActionDef>,
-    pub layout: LayoutHint,
-    pub capabilities: Vec<PanelCapability>,
-    pub refresh_secs: u32,
-    pub task_properties: Option<TaskProperties>,
-    pub calibration_sample_rate: Option<f32>,
-    pub max_pending_hours: Option<u32>,
-    pub probe_agent: Option<String>,
-}
-
-/// Agent-declared risk tier of a case.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum RiskTier {
-    Low,
-    Medium,
-}
-
-impl RiskTier {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            RiskTier::Low => "low",
-            RiskTier::Medium => "medium",
-        }
-    }
-}
-
-/// Content of a kind-31402.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ActionRequest {
-    pub fields: serde_json::Value,
-    pub reasoning: Option<String>,
-    pub context_url: Option<String>,
-    pub risk_tier: Option<RiskTier>,
-    pub confidence: Option<f32>,
-    pub task_properties: Option<TaskProperties>,
-    pub probe: Option<String>,
-}
 
 /// `d` tag of the dream-machine panel.
 pub const PANEL_D: &str = "dream-machine";
@@ -205,11 +84,11 @@ pub fn item_id_of(d: &str) -> Option<&str> {
 fn task_properties() -> TaskProperties {
     // Answers only steer the next night's hypothesis; nothing is applied
     // automatically, so every case is inspectable, reversible and bounded.
-    TaskProperties {
-        verifiability: "inspectable".into(),
-        reversibility: "reversible".into(),
-        stakes: "bounded".into(),
-    }
+    TaskProperties::new(
+        Verifiability::Inspectable,
+        Reversibility::Reversible,
+        Stakes::Bounded,
+    )
 }
 
 /// The panel definition (content of the 31400).
@@ -257,11 +136,13 @@ pub fn panel_event(pubkey: &str, created_at: u64) -> UnsignedEvent {
     let def = panel_definition();
     let mut tags = vec![vec!["d".to_string(), PANEL_D.to_string()]];
     tags.extend(task_properties().to_tags());
-    tags.push(vec!["calibration-sample-rate".into(), "0.1".into()]);
-    tags.push(vec![
-        "max-pending-hours".into(),
-        MAX_PENDING_HOURS.to_string(),
-    ]);
+    tags.extend(
+        PanelPolicy {
+            max_pending_hours: MAX_PENDING_HOURS,
+            ..PanelPolicy::default()
+        }
+        .to_tags(),
+    );
     tags.push(vec!["t".into(), "dream-cycle".into()]);
     UnsignedEvent {
         pubkey: pubkey.to_string(),
@@ -317,10 +198,10 @@ fn title_for(item: &InboxItem) -> String {
 /// Unsigned 31402 for one inbox item.
 pub fn request_event(pubkey: &str, item: &InboxItem, created_at: u64) -> UnsignedEvent {
     let is_alert = item.kind == "alert";
-    let tier = if is_alert {
-        RiskTier::Low
+    let (tier, priority) = if is_alert {
+        (RiskTier::Low, ActionPriority::Low)
     } else {
-        RiskTier::Medium
+        (RiskTier::Medium, ActionPriority::Medium)
     };
     let evidence = evidence_for(item);
     let reasoning = if is_alert {
@@ -352,7 +233,10 @@ pub fn request_event(pubkey: &str, item: &InboxItem, created_at: u64) -> Unsigne
         task_properties: None,
         probe: None,
     };
-    let priority_label = tier.as_str().to_string();
+    let priority_label = serde_json::to_value(&priority)
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_string))
+        .unwrap_or_else(|| "medium".into());
     UnsignedEvent {
         pubkey: pubkey.to_string(),
         created_at,
@@ -415,26 +299,25 @@ fn with_reason(verb: &str, reason: &str) -> String {
 /// | amend    | answered `amend: <text> — <why>` | same                            |
 /// | delegate / other | stays open             | stays open                        |
 ///
-/// The content is the forum's internally tagged `DecisionOutcome` JSON
-/// (`{"action": "approve" | "reject" | "amend", "diff"?, "reasoning"}`).
+/// The content is the forum's internally tagged `DecisionOutcome` JSON plus
+/// `reasoning`, parsed with core's own `DecisionOutcome`.
 pub fn resolution_for(item_kind: &str, content: &str) -> Option<Resolution> {
-    let value: serde_json::Value = serde_json::from_str(content).ok()?;
     let reason = reasoning_of(content);
-    match value.get("action")?.as_str()? {
-        "approve" if item_kind == "alert" => Some(Resolution {
+    match DecisionOutcome::from_response_content(content)? {
+        DecisionOutcome::Approve if item_kind == "alert" => Some(Resolution {
             status: "dismissed",
             answer: with_reason("acknowledged", &reason),
         }),
-        "approve" => Some(Resolution {
+        DecisionOutcome::Approve => Some(Resolution {
             status: "answered",
             answer: with_reason("approve", &reason),
         }),
-        "reject" => Some(Resolution {
+        DecisionOutcome::Reject => Some(Resolution {
             status: "answered",
             answer: with_reason("reject", &reason),
         }),
-        "amend" => {
-            let diff = value.get("diff")?.as_str()?.trim();
+        DecisionOutcome::Amend { diff } => {
+            let diff = diff.trim();
             if diff.is_empty() {
                 return None; // the forum refuses an empty amendment too
             }
@@ -767,14 +650,9 @@ mod tests {
     const AGENT_SK: &str = "b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef";
     const ADMIN_SK: &str = "c90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b14e5c9";
 
-    use nostr_bbs_core::governance as core;
-
     fn key(hex_sk: &str) -> SigningKey {
-        nostr::Keys::parse(hex_sk).unwrap()
-    }
-
-    fn core_event(ev: &NostrEvent) -> nostr_bbs_core::NostrEvent {
-        serde_json::from_value(serde_json::to_value(ev).unwrap()).unwrap()
+        let bytes: [u8; 32] = hex::decode(hex_sk).unwrap().try_into().unwrap();
+        nostr_bbs_core::keys::signing_key_from_bytes(&bytes).unwrap()
     }
 
     fn item(id: &str, kind: &str, text: &str) -> InboxItem {
@@ -827,23 +705,17 @@ mod tests {
         let ev = panel_event("ab", 10);
         assert_eq!(ev.kind, 31400);
         assert_eq!(tag(&ev.tags, "d"), Some(PANEL_D));
+        // Round-trip through the forum's own type, as the relay reads it.
         let def: PanelDefinition = serde_json::from_str(&ev.content).unwrap();
         assert_eq!(def, panel_definition());
-        // Conformance: the forum's own types parse it to the same JSON.
-        let theirs: core::PanelDefinition = serde_json::from_str(&ev.content).unwrap();
+        assert_eq!(def.policy().max_pending_hours, MAX_PENDING_HOURS);
+        // The tag-declared policy and task properties agree with the content,
+        // so the relay's tag-based boundary equals the panel's declaration.
         assert_eq!(
-            serde_json::to_value(&theirs).unwrap(),
-            serde_json::from_str::<serde_json::Value>(&ev.content).unwrap()
-        );
-        assert_eq!(
-            core::PanelPolicy::from_tags(&ev.tags).max_pending_hours,
+            PanelPolicy::from_tags(&ev.tags).max_pending_hours,
             MAX_PENDING_HOURS
         );
-        assert_eq!(
-            core::TaskProperties::from_tags(&ev.tags),
-            Some(core::TaskProperties::default())
-        );
-        assert_eq!(theirs.policy().max_pending_hours, MAX_PENDING_HOURS);
+        assert_eq!(TaskProperties::from_tags(&ev.tags), def.task_properties);
         // Wire enums are kebab-case, as the forum and relay parse them.
         let raw: serde_json::Value = serde_json::from_str(&ev.content).unwrap();
         assert_eq!(raw["schema"], "action-inbox");
@@ -878,16 +750,15 @@ mod tests {
             req.context_url.as_deref(),
             Some("https://github.com/x/y/pull/3")
         );
-        // Conformance: the forum parses the case with its own types.
-        let theirs: core::ActionRequest = serde_json::from_str(&ev.content).unwrap();
-        assert_eq!(theirs.risk_tier, Some(core::RiskTier::Medium));
+        // The declared tier tag and content agree (the relay reads the tag
+        // when content omits it; the forum reads content first).
         assert_eq!(
-            serde_json::to_value(&theirs).unwrap(),
-            serde_json::from_str::<serde_json::Value>(&ev.content).unwrap()
+            RiskTier::parse(tag(&ev.tags, "risk-tier").unwrap()),
+            req.risk_tier.unwrap()
         );
         let signed = sign(ev, &key(AGENT_SK)).unwrap();
         assert!(relay::verify(&signed));
-        assert!(nostr_bbs_core::verify_event(&core_event(&signed)));
+        assert!(nostr_bbs_core::verify_event(&signed));
     }
 
     #[test]
@@ -918,18 +789,18 @@ mod tests {
     fn decisions_serialised_by_the_forum_resolve() {
         // Exactly what the forum's decision card publishes
         // (governance_view::decision_content): the core outcome plus reasoning.
-        let with_reasoning = |o: core::broker::DecisionOutcome, r: &str| {
+        let with_reasoning = |o: DecisionOutcome, r: &str| {
             let mut v = serde_json::to_value(&o).unwrap();
             v["reasoning"] = serde_json::Value::String(r.into());
             v.to_string()
         };
-        let approve = with_reasoning(core::broker::DecisionOutcome::Approve, "fine");
+        let approve = with_reasoning(DecisionOutcome::Approve, "fine");
         assert_eq!(
             resolution_for("question", &approve).unwrap().answer,
             "approve: fine"
         );
         let amend = with_reasoning(
-            core::broker::DecisionOutcome::Amend {
+            DecisionOutcome::Amend {
                 diff: "use path B".into(),
             },
             "",
@@ -938,7 +809,7 @@ mod tests {
             resolution_for("question", &amend).unwrap().answer,
             "amend: use path B"
         );
-        let reject = with_reasoning(core::broker::DecisionOutcome::Reject, "stale");
+        let reject = with_reasoning(DecisionOutcome::Reject, "stale");
         assert_eq!(resolution_for("alert", &reject).unwrap().status, "answered");
     }
 

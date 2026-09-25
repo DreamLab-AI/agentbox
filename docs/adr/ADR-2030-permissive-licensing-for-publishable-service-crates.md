@@ -309,3 +309,18 @@ section changed; the `services/` rule, `services/LICENSING-NOTICE.md` and
 ## Re-verification — 2026-09-25 (`5a7226b797c5949771e8b8ddcd69cfddd3c7f533`)
 
 Tripped by `services/dream-engine/Cargo.toml` gaining dependencies for forum I/O (ADR-2115). This is the case the Consequences section warns about — "adding an AGPL dependency to a permissive crate is a licence change" — so it was checked, not bumped blind. The first draft of that change linked `nostr-bbs-core`, which is `AGPL-3.0-only` and pulls `solid-pod-rs` (`AGPL-3.0-only`); that would have made `dream-engine` AGPL in effect while it declares `MIT OR Apache-2.0`. It was reworked before commit: signing and verification use `nostr` (rust-nostr, MIT), the governance wire types are mirrored locally, and `nostr-bbs-core` is a **dev-dependency only** (conformance tests), so it is not linked into the shipped binary. At `5a7226b79`: the normal+build dependency closure of `dream-engine` (`cargo metadata` resolve, dev edges excluded) is 312 packages with no copyleft-only licence (`r-efi` is `MIT OR Apache-2.0 OR LGPL-2.1-or-later`); `grep -h '^license' services/*/Cargo.toml | sort | uniq -c` → 8 `MIT OR Apache-2.0`, 2 `AGPL-3.0-only`; `sh scripts/ci/check-crate-licensing.sh` → `OK … 10 services/ package directories carry the texts they declare`. Still true. Note for the release process: the nix derivation runs `doCheck = true`, so the check phase compiles the AGPL dev-dependency; that is a build-time test input, not part of the distributed artefact.
+
+## Operator decision — 2026-09-25: `dream-engine` becomes AGPL-3.0-only and links `nostr-bbs-core`
+
+Supersedes the outcome of the 2026-09-25 re-verification above (which kept `dream-engine` permissive by mirroring the forum's governance wire types over the MIT `nostr` crate, with `nostr-bbs-core` as a dev-dependency only). That history stands; this is the new state.
+
+The operator decided that `dream-engine` should link `nostr-bbs-core` directly, so its forum I/O (ADR-2115) uses the forum's own event, signing, verification and governance types rather than a local mirror that could drift. Per this record's Decision, a crate that links an AGPL library "is not permissive in effect and must declare `AGPL-3.0-only`". So `services/dream-engine` now:
+- declares `license = "AGPL-3.0-only"`;
+- ships the full AGPL-3.0 text as `LICENSE` (copied from `services/nostr-pod-bridge/LICENSE`) in place of `LICENSE-MIT`/`LICENSE-APACHE`;
+- states in its README that it is **not** dual-licensed and accepts contributions under AGPL-3.0-only;
+- sets `meta.license = licenses.agpl3Only` in `lib/dream-engine.nix`.
+
+It joins `nostr-pod-bridge` as the second linked-AGPL exception; `secret-backup` remains AGPL by choice. `services/LICENSING-NOTICE.md` and `docs/developer/licensing.md` are updated. The notice's per-directory table also gained the missing `explainer-tools` row, and its count is now ten manifests: seven permissive, three AGPL.
+
+The gate needed no change: `scripts/ci/check-crate-licensing.sh` keys on each manifest's declared licence (rule 3: an AGPL crate must ship the AGPL `LICENSE`, a README saying AGPL-3.0-only and "not dual-licensed", and no permissive texts), not on a fixed crate list. Result: `grep -h '^license' services/*/Cargo.toml | sort | uniq -c` → 3 `AGPL-3.0-only`, 7 `MIT OR Apache-2.0`; `sh scripts/ci/check-crate-licensing.sh` → `OK (check-crate-licensing): 10 services/ package directories carry the texts they declare.`
+

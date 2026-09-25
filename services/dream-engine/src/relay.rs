@@ -7,22 +7,17 @@
 //! callers treat any error as "the forum is unreachable tonight" and carry on
 //! (fail-open — forum I/O never taints a night).
 //!
-//! Event ids, BIP-340 signing and verification come from the `nostr` crate
-//! (rust-nostr, MIT — the same library `nostr-bbs-core` builds on). The
-//! engine's own wire types ([`NostrEvent`], [`UnsignedEvent`]) are plain NIP-01
-//! JSON; they convert through `nostr` for every cryptographic operation.
-//!
-//! `nostr-bbs-core` is deliberately **not** a runtime dependency: it is
-//! AGPL-3.0-only, and this crate is `MIT OR Apache-2.0` (ADR-2030). It is a
-//! dev-dependency so tests prove conformance against the canonical forum
-//! parsers without linking it into the shipped binary.
+//! Event types, ids, BIP-340 signing and verification are `nostr-bbs-core`'s
+//! (the forum's own crate, k256 Schnorr underneath). Linking it is why this
+//! crate is AGPL-3.0-only (operator decision 2026-09-25, ADR-2030/ADR-2115).
+//! Nothing here touches key material beyond handing the [`SigningKey`] to
+//! `sign_event`; the secret is never printed or logged.
 
 use std::path::Path;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use nostr::JsonUtil;
-use serde::{Deserialize, Serialize};
+pub use nostr_bbs_core::{NostrEvent, UnsignedEvent};
 use serde_json::{json, Value};
 use thiserror::Error;
 use tokio::net::TcpStream;
@@ -30,30 +25,8 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 use tracing::{debug, warn};
 
-/// A secp256k1 keypair (rust-nostr).
-pub type SigningKey = nostr::Keys;
-
-/// A signed NIP-01 event.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NostrEvent {
-    pub id: String,
-    pub pubkey: String,
-    pub created_at: u64,
-    pub kind: u64,
-    pub tags: Vec<Vec<String>>,
-    pub content: String,
-    pub sig: String,
-}
-
-/// An event before signing.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UnsignedEvent {
-    pub pubkey: String,
-    pub created_at: u64,
-    pub kind: u64,
-    pub tags: Vec<Vec<String>>,
-    pub content: String,
-}
+/// secp256k1 Schnorr signing key, as `nostr_bbs_core::sign_event` takes it.
+pub type SigningKey = k256::schnorr::SigningKey;
 
 /// The live forum relay (DreamLab Cloudflare worker).
 pub const DEFAULT_RELAY: &str = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev";
@@ -102,50 +75,28 @@ pub fn load_signing_key(var: &str, env_file: &Path) -> Result<SigningKey, RelayE
                 })?
         }
     };
-    if hex_value.len() != 64 || !hex_value.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return Err(RelayError::Key(format!("{var} is not 64 hex characters")));
-    }
-    nostr::Keys::parse(&hex_value).map_err(|e| RelayError::Key(e.to_string()))
+    let bytes: [u8; 32] = hex::decode(&hex_value)
+        .ok()
+        .and_then(|b| b.try_into().ok())
+        .ok_or_else(|| RelayError::Key(format!("{var} is not 64 hex characters")))?;
+    nostr_bbs_core::keys::signing_key_from_bytes(&bytes).map_err(|e| RelayError::Key(e.to_string()))
 }
 
 /// Lower-case hex x-only public key of `key`.
 pub fn pubkey_hex(key: &SigningKey) -> String {
-    key.public_key().to_hex()
+    hex::encode(key.verifying_key().to_bytes())
 }
 
-/// Sign `unsigned` with `key`. The event's `pubkey` must be the key's.
+/// Sign `unsigned` with `key`. The event's `pubkey` must be the key's
+/// (core refuses a mismatch rather than produce a self-invalid event).
 pub fn sign(unsigned: UnsignedEvent, key: &SigningKey) -> Result<NostrEvent, RelayError> {
-    if unsigned.pubkey != pubkey_hex(key) {
-        return Err(RelayError::Sign(
-            "event pubkey does not match the signing key".into(),
-        ));
-    }
-    let kind = u16::try_from(unsigned.kind)
-        .map_err(|_| RelayError::Sign(format!("kind {} out of range", unsigned.kind)))?;
-    let tags = unsigned
-        .tags
-        .iter()
-        .map(nostr::Tag::parse)
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| RelayError::Sign(format!("tag: {e}")))?;
-    let event = nostr::UnsignedEvent::new(
-        key.public_key(),
-        nostr::Timestamp::from(unsigned.created_at),
-        nostr::Kind::from(kind),
-        tags,
-        unsigned.content,
-    )
-    .sign_with_keys(key)
-    .map_err(|e| RelayError::Sign(e.to_string()))?;
-    serde_json::from_str(&event.as_json()).map_err(|e| RelayError::Sign(e.to_string()))
+    nostr_bbs_core::sign_event(unsigned, key).map_err(|e| RelayError::Sign(e.to_string()))
 }
 
-/// Whether `event`'s id and BIP-340 signature are valid.
+/// Whether `event`'s id and BIP-340 signature are valid (strict: the id must
+/// be the canonical NIP-01 hash of the content).
 pub fn verify(event: &NostrEvent) -> bool {
-    serde_json::to_string(event)
-        .ok()
-        .and_then(|j| nostr::Event::from_json(j).ok())
-        .is_some_and(|e| e.verify().is_ok())
+    nostr_bbs_core::verify_event_strict(event).is_ok()
 }
 
 /// Current unix time in seconds.
@@ -354,10 +305,9 @@ mod tests {
         )
         .unwrap();
         assert!(verify(&ev));
-        // Cross-implementation: the forum's own verifier accepts it.
-        let core_ev: nostr_bbs_core::NostrEvent =
-            serde_json::from_value(serde_json::to_value(&ev).unwrap()).unwrap();
-        assert!(nostr_bbs_core::verify_event(&core_ev));
+        // Wire round-trip: the JSON the relay receives verifies after parsing.
+        let wire: NostrEvent = serde_json::from_str(&serde_json::to_string(&ev).unwrap()).unwrap();
+        assert!(verify(&wire));
         let mut tampered = ev.clone();
         tampered.content = "y".into();
         assert!(!verify(&tampered));
@@ -365,7 +315,7 @@ mod tests {
 
     #[test]
     fn signing_refuses_a_mismatched_pubkey() {
-        let key = nostr::Keys::generate();
+        let key = nostr_bbs_core::keys::signing_key_from_bytes(&[7u8; 32]).unwrap();
         let res = sign(
             UnsignedEvent {
                 pubkey: "00".repeat(32),

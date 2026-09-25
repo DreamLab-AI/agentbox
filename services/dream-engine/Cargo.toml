@@ -5,7 +5,7 @@ name = "dream-engine"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
-license = "MIT OR Apache-2.0"
+license = "AGPL-3.0-only"
 description = "Nightly evidence-gated repository evolution engine for agentbox. Compiles config into deterministic prompts, dispatches to the connected node annexe, calls LLM, parses verdicts, persists to ledger + RuVector."
 repository = "https://github.com/DreamLab-AI/agentbox"
 readme = "README.md"
@@ -35,8 +35,8 @@ hex = "0.4"
 toml = "0.8"
 tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
-nostr = "0.44"
+nostr-bbs-core = "=1.0.0-beta.11"
+k256 = { version = "0.13.4", default-features = false, features = ["schnorr"] }
 
 [dev-dependencies]
-nostr-bbs-core = "=1.0.0-beta.11"
 tempfile = "3"
