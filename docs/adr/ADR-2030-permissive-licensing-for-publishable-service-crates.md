@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3bb96e5264e8e912b4aebb00de10cb45648e1eb5
+verified_commit: 7f1cdaaad68fac7681cec1e510765f979037aee1
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -324,3 +324,4 @@ It joins `nostr-pod-bridge` as the second linked-AGPL exception; `secret-backup`
 
 The gate needed no change: `scripts/ci/check-crate-licensing.sh` keys on each manifest's declared licence (rule 3: an AGPL crate must ship the AGPL `LICENSE`, a README saying AGPL-3.0-only and "not dual-licensed", and no permissive texts), not on a fixed crate list. Result: `grep -h '^license' services/*/Cargo.toml | sort | uniq -c` → 3 `AGPL-3.0-only`, 7 `MIT OR Apache-2.0`; `sh scripts/ci/check-crate-licensing.sh` → `OK (check-crate-licensing): 10 services/ package directories carry the texts they declare.`
 
+Verified at `7f1cdaaad68fac7681cec1e510765f979037aee1` (`verified_commit`): gate and licence counts as above; `cargo test` in `services/dream-engine` passes 212 and `cargo clippy --all-targets -- -D warnings` is clean with `nostr-bbs-core` as a normal dependency.

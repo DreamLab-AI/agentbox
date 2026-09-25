@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3bb96e5264e8e912b4aebb00de10cb45648e1eb5
+verified_commit: 7f1cdaaad68fac7681cec1e510765f979037aee1
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -46,7 +46,7 @@ The dream engine queues human decisions (report "Human action recommended" items
 
 ## Verification
 
-At `verified_commit`, `cargo test` in `services/dream-engine` passes 192 tests, including:
+At `verified_commit`, `cargo test` in `services/dream-engine` passes 212 tests (this branch also carries ADR-2114), including:
 - panel/case round-trips through core `PanelDefinition`/`ActionRequest`/`PanelPolicy`/`TaskProperties`, with tag and content declarations agreeing;
 - the decision mapping;
 - rejection of self-signed, forged and stale-bound decisions;
