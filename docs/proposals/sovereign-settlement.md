@@ -205,6 +205,9 @@ Numbered so ADRs, tests and the DDD invariants can cite them. "Must" is testable
   ported from upstream `siding` with attribution, `AGPL-3.0-only` (ADR-2106; was
   `MIT OR Apache-2.0` clean-room from prose), `publish = true` case by case, full rustdoc,
   `cargo doc --no-deps` clean. No permissive crate on a crates.io path links them.
+  **Location (2026-09-23, ADR-2112):** these crates and `sidestr-round` live in
+  [DreamLab-AI/sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs), not in agentbox;
+  agentbox hosts the chain instance (`config/sidechain/`) and consumes the crates from crates.io.
 - **S3a** The estate runs three kinds of chain: the value root, the `sidestr:gitmark`
   provenance chain (our own product; `[sidechain].gitmark.mode = consume | operate`), and
   ephemeral children. Provenance anchors (`txo[]`) go to gitmark, never to the value chain.
@@ -526,6 +529,8 @@ Still open, and each changes what gets built:
 - Estate: `docs/developer/economy-loop.md`; `docs/archive/prd/PRD-015`; `docs/archive/adr/ADR-032`,
   `ADR-033`; host `docs/archive/adr/ADR-124`, `ADR-128`; solid-pod-rs
   `crates/solid-pod-rs/docs/explanation/payments-and-web-ledger.md`; `crates/colloquy/`.
+- Crates: github.com/DreamLab-AI/sidestr-rs (`sidestr-header`, `-core`, `-nostr`, `-wallet`,
+  `-round`; ADR-2106, ADR-2112).
 - Ontology: `urn:ngm:class:sidechain`, `two-way-peg`, `peg-mechanism`, `rgb-protocol`,
   `rgb-and-client-side-validation`, `stablecoins-on-bitcoin`, `stablecoin-regulation`,
   `single-use-seals`, `client-side-validation`, `uk-mlr-2017`, `licensing-requirements`.

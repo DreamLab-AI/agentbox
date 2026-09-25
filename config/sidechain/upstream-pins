@@ -1,0 +1,8 @@
+# The upstream commits the interim producer (run-producer.sh) is proven against.
+# One line per checkout under $SIDESTR_UPSTREAM: <directory> <full commit>.
+# Bump a line only after the chain has been restarted and a block produced on that commit;
+# the runner refuses any other checkout (override for a deliberate upgrade test:
+# SIDESTR_ALLOW_UNPINNED=1). sidestr-rs pins the same spec commit in its CI oracle job.
+spec          722ad42d3271efccfdfaf57c3c6943f58fc168f8  # sidestr/spec: SPEC 0.0.3, @sidestr/spec 0.0.4
+schema        b8cbf6337c7450fe14ddc5bce00c7280059aab5d  # bitcoin-desktop/schema v0.0.27
+blaketestnode d2764d21fe1f8c29b1979e49eb8287a72dd2347e  # bitcoin-blake/blaketestnode

@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e1ba33a1c972e15b3b333368544f90bd06d631d9
-verified_paths: [crates/sidestr/Cargo.toml, crates/sidestr/*/Cargo.toml, .github/workflows/sidestr-crates.yml]
+verified_commit: 4293e7ed91b84e70915891c1a140558fe54f2580
+verified_paths: [crates/sidestr, .github/workflows/sidestr-crates.yml]
 owner: jjohare
 review_trigger: the first ratification review of PRD-024; an upstream sidestr spec release that changes the chain document, kinds or marker grammar; any proposal to add a second value rail
 repo: agentbox
@@ -46,6 +46,9 @@ instrument and that external assets are bridged in (PRD-024 D0, D3).
    the four crates are `AGPL-3.0-only` derivatives of upstream `siding`, attributed and
    ported from its code and tests, published case by case and consumed from crates.io;
    the permissive grant and the prose-only clean-room constraint are withdrawn for them.**
+   **Amended by ADR-2112 (2026-09-23): the workspace lives in `DreamLab-AI/sidestr-rs`, not
+   in agentbox `crates/sidestr/`; agentbox hosts the chain instance and consumes the crates
+   from crates.io.**
    `sidestr-producer`, `sidestr-bridge`, `sidestr-mcp` are
    internal (`publish = false`). ADR-2030 applies. The "no `bitcoin` crate" policy of the
    b2mine spec holds for headers and PoW only; D3's rust-bitcoin acceptance governs
@@ -148,3 +151,15 @@ feature sets) and `e0712bf71` (the inline-docs sweep: docs.rs metadata, `deny(mi
 changelogs, patch bumps to sidestr-core 0.2.2, -header 0.2.1, -nostr 0.2.2, -wallet 0.2.2,
 -round 0.1.1, every earlier version yanked). No dependency, licence or consensus change; the
 decision and its partial implementation status stand.
+
+## Re-verification — 2026-09-23 at 4293e7ed9 (ADR-2112)
+
+The governed paths changed because the crates and their workflow left this repository:
+`crates/sidestr/` now holds only a pointer README and `.github/workflows/sidestr-crates.yml`
+is deleted; the five crates, their tests and their CI history continue in
+`github.com/DreamLab-AI/sidestr-rs` at the same versions (core 0.2.2, header 0.2.1, nostr 0.2.2,
+wallet 0.2.2, round 0.1.1). The Verification evidence above was established in-tree and still
+describes those crates; re-running it is done in sidestr-rs. `verified_paths` now watches the
+pointer directory and the retired workflow, so a crate or workflow reappearing here re-opens
+this record. Decision unchanged; implementation stays partial (the solid-pod-rs port is still
+outstanding).

@@ -269,8 +269,11 @@ The consequence for this loop is [ADR-2099](../adr/ADR-2099-the-chain-is-the-led
 Everything that moves value passes the existing governance machinery under the
 `payment_settlement` authority class, which is declared today and currently gates nothing: see
 [GOVERNANCE-capabilities.md](../GOVERNANCE-capabilities.md#settlement-authority--proposed-2026-09-21).
-The substrate (manifest block, supervised programs, port `:9097`, crate workspace) is in
-[BASELINE-container.md](../BASELINE-container.md#sovereign-settlement--proposed-2026-09-21), and
+The substrate (manifest block, supervised programs, port `:9097`) is in
+[BASELINE-container.md](../BASELINE-container.md#sovereign-settlement--proposed-2026-09-21); the
+Rust validator, wallet and round crates are not in this repository but in
+[sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs) (`AGPL-3.0-only`, on crates.io; ADR-2106,
+ADR-2112), and the estate's testnet chain instance is `config/sidechain/`; and
 the kinds and URN grammar are in
 [PROTOCOL-registry.md](../PROTOCOL-registry.md#sidestr-chain-plane--nostr-kinds-and-two-urn-kinds-proposed-2026-09-21).
 

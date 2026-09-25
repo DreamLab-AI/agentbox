@@ -139,7 +139,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `deep-research` | No | Multi-source cited investigation with parallel researcher agents, provenance tracking, and executable integrity gates (fabricated-quote, citation-binding, source-independence) | Thorough research briefs, multi-source investigations, cited reports that must survive scrutiny |
+| `deep-research` | No | Multi-source cited investigation: parallel researcher agents fan each question out to ceramic-search, Perplexity and web-researcher (native search as fallback), with provenance tracking, web-researcher citation verification and archiving, and executable integrity gates (fabricated-quote, citation-binding, source-independence) | Thorough research briefs, multi-source investigations, cited reports that must survive scrutiny |
 | `autoresearch` | No | Autonomous experiment loop: try ideas, measure results, keep what works, discard what doesn't | GPU kernel optimization, benchmark sweeps, performance tuning, iterative improvement |
 | `provenance-tracking` | No | Source chain verification with .provenance.md sidecar, URL checking, confidence scoring | Adding citations and verification to any research output |
 
@@ -460,7 +460,7 @@ Q3: What do you need?
     |   --> web-researcher  (v1.43.0; you pick the engine + sources)
     |
     +-- Multi-agent deep report: fan-out + adversarial verification + cited synthesis
-    |   --> deep-research  (orchestrates perplexity-research / web-researcher as backends)
+    |   --> deep-research  (fans out to ceramic-search + perplexity-research + web-researcher; native search fallback)
     |
     +-- Analyse/summarise specific URLs (up to 20)
     |   --> gemini-url-context

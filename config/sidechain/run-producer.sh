@@ -11,6 +11,7 @@
 #   SIDESTR_STATE      the chain's block file directory
 #   SIDESTR_DOC        the sealed chain document
 #   SIDESTR_PARENT_RPC the parent node's RPC URL (LAN, testnet4)
+#   SIDESTR_ALLOW_UNPINNED=1  run an upstream checkout other than upstream-pins (upgrade tests only)
 set -euo pipefail
 
 WORKSPACE="${WORKSPACE:-$HOME/workspace}"
@@ -28,6 +29,19 @@ RELAYS="${SIDESTR_RELAYS:-wss://nos.lol,wss://relay.damus.io,wss://relay.primal.
 for f in "$KEY" "$COOKIE" "$DOC" "$UP/spec/siding/bin/siding.mjs" "$UP/schema/codec/kernel.js" "$UP/blaketestnode/lib/node.mjs"; do
   [ -r "$f" ] || { echo "run-producer: missing $f" >&2; exit 1; }
 done
+# The upstream code is consensus for this chain: run only the commits recorded in upstream-pins.
+PINS="$(cd "$(dirname "$0")" && pwd)/upstream-pins"
+while read -r dir want _; do
+  case "$dir" in ''|'#'*) continue ;; esac
+  have=$(git -C "$UP/$dir" rev-parse HEAD 2>/dev/null || echo none)
+  if [ "$have" != "$want" ]; then
+    if [ "${SIDESTR_ALLOW_UNPINNED:-0}" = 1 ]; then
+      echo "run-producer: WARNING $dir is at $have, pinned $want (SIDESTR_ALLOW_UNPINNED=1)" >&2
+    else
+      echo "run-producer: $UP/$dir is at $have but upstream-pins says $want; check it out or bump the pin" >&2; exit 1
+    fi
+  fi
+done < "$PINS"
 mkdir -p "$STATE"
 
 exec env SCHEMA="$UP/schema" BLAKETESTNODE="$UP/blaketestnode" \

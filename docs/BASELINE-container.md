@@ -1,10 +1,12 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.4.0
+version: 0.4.2
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.4.2 (2026-09-23): ADR-2117 (proposed): the owner's private USD unit of account for his agents runs on new testnet chains only, is issued and held only inside his estate (never a real stablecoin, never user-facing), and fills ADR-2102's parked bridge-rule checks for that experiment. Proposed section only; the Invariants compliance surface is unchanged."
+  - "0.4.1 (2026-09-23) — ADR-2112: the five sidestr-* crates moved with history to github.com/DreamLab-AI/sidestr-rs (AGPL-3.0-only, on crates.io) and their CI with them; crates/sidestr/ is a pointer README. The settlement section now says agentbox hosts the chain instance (config/sidechain/), not the crates. Proposed section only; the Invariants compliance surface is unchanged."
   - "0.4.0 (2026-09-21): PROPOSED, not ratified. ADR-2096/2098/2099/2102/2103 (PRD-024 sovereign settlement): the [sidechain] manifest block and its validated parent/header_profile enums, the sidestr-node and sidestr-producer supervised programs plus the isolated sidestr-bridge, loopback :9097 behind the nip98-proxy /chain/ upstream, the crates/sidestr workspace and its licensing posture, rust-bitcoin accepted estate-wide and the k256-only posture retired, and three proposed invariants (chain is truth, no sixth adapter slot, byte-identical-when-off). Recorded in a clearly marked proposed section; the Invariants compliance surface above is unchanged."
   - "0.3.2 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.3.1 (2026-09-05) — ADR-2063: agentbox-mcp hub waits for /run/agentbox/mcp-hub.json (no FATAL on the priority race) and the entrypoint nudges it after projection; aoe-profiles volume persists AoE session records across restarts; the seeder carries the seed model on native-agent overrides and reaps only its own clean, unreferenced, commit-free orphan worktrees (fail-closed on a pathless session)."
@@ -189,7 +191,7 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - **Resolved — ADR-2040 (2026-09-05).** `code-server` bound `0.0.0.0:8080` with `--auth none`, and `jupyter-lab` bound `0.0.0.0:8888` with an empty `--IdentityProvider.token=`. A loopback *publish* only constrains host→container, so both were reachable unauthenticated by every peer on `visionclaw_network`. Both now authenticate with a credential minted at boot; the listener-side CI gate remains open work.
 - **GPU wrapper is CUDA-only by design** — no Nix-binary Vulkan/GLX presentation path; interactive 3D depends on the FHS gui-tools sidecar. Not a bug, but a hard capability boundary.
 - **Legacy ADR-005 conflates the four validation stages** into "contract tests"; this document separates them because they live in different files and fire at different lifecycle points (see Current State). ADR-2005's dispatch-ordering claim is superseded by ADR-2036.
-- **Sovereign settlement is PROPOSED, not built (PRD-024, ADR-2096/2098/2099/2102/2103).** No `[sidechain]` gate, no `sidestr-node` / `sidestr-producer` / `sidestr-bridge` program, no `crates/sidestr/` workspace and no `:9097` bind exists today. The manifest block, the supervised set, the port, the crate licensing posture and three candidate invariants are recorded in [Sovereign settlement (PROPOSED)](#sovereign-settlement--proposed-2026-09-21) below; none of them is part of the compliance surface until PRD-024 is ratified.
+- **Sovereign settlement is PROPOSED, not built (PRD-024, ADR-2096/2098/2099/2102/2103).** No `[sidechain]` gate, no `sidestr-node` / `sidestr-producer` / `sidestr-bridge` program and no `:9097` bind exists today. The Rust crates exist but not here: they are published from [sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs) (ADR-2112), and nothing in the image links them yet. What this repository does hold is the estate's testnet chain instance, `config/sidechain/` (sealed `sidestr:dreamlab` document, interim JS producer runner, mirror sync; ADR-2103). The manifest block, the supervised set, the port, the crate licensing posture and three candidate invariants are recorded in [Sovereign settlement (PROPOSED)](#sovereign-settlement--proposed-2026-09-21) below; none of them is part of the compliance surface until PRD-024 is ratified.
 - Setup wizard exits after saving (`system-manifest.js:47`); operations moved to the AoE cockpit — legacy docs describing pseudo-user isolation (`gemini-user` etc.) are dead paths.
 
 ## Invariants (must not silently change)
@@ -302,6 +304,14 @@ by all four onboarding surfaces (projector `sidechain show`, TUI pick-lists rath
 stack provisioning with no per-profile override, first-run question with mainnet options shown but
 disabled and the gate named).
 
+**Private owner USD unit (ADR-2117, proposed).** `[sidechain.bridge]` stays off on the root
+chain. The experiment runs on new testnet chains (never `sidestr:dreamlab`, which is sealed
+without `rules`), private relays and a private mirror by default, and wraps only an owner-issued,
+labelled, valueless USD unit held by the owner's own keys; it never locks a real USD₮ or USDC and
+external or user-facing use needs a new ADR. Its `bridge` rule invariants (replay-keyed records,
+authority-coin mints, `circulating + pending = minted − released` on every block, release after
+`FINALISE_BLOCK`) are in the record.
+
 **Honest apply classes** for the `system-manifest.js` catalogue, following the `payments` rows and
 the ADR-039 honesty rule:
 
@@ -331,20 +341,28 @@ A mirror that serves `pegs: []` (the shape every `chain.json` bundled upstream c
 cold validator able to replay genesis, because `open()` rebuilds genesis deterministically from
 `chain.pegs`. Serving populated `pegs` is a correctness requirement on whoever writes the mirror.
 
-### `crates/sidestr/` and the licensing posture (ADR-2096)
+### The sidestr crates and the licensing posture (ADR-2096, ADR-2112)
 
-A new Rust workspace on the colloquy precedent (ADR-2085/2086), split by what is reusable:
+sidestr-rs — Rust port of Melvin Carvalho's sidestr sidechains, AGPL-3.0-only: the economic engine for did:nostr agents. A did:nostr key is a sidechain wallet.
+
+The crates were built in this repository under `crates/sidestr/` and on 2026-09-23 moved with
+their history to [DreamLab-AI/sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs), which now
+carries their source, CI and releases (ADR-2112); `crates/sidestr/README.md` is a pointer.
+Agentbox hosts the **chain instance**, not the crates. The split by what is reusable is:
 
 - **Published, `AGPL-3.0-only`, attributed derivatives of upstream `siding`** (`publish = true`,
   case by case; ADR-2106, owner decision 2026-09-22, amending ADR-2096's permissive clean-room
   posture): `sidestr-header`, `sidestr-core` (chain document, block and transaction validation,
   overlay rules, records codec), `sidestr-nostr` (kinds and event codecs, its own NIP-01
-  structs), `sidestr-wallet` (folds, coin selection, key-path spends). Ported from the upstream
+  structs), `sidestr-wallet` (folds, coin selection, key-path spends), and `sidestr-round`
+  (the level-2 consensus round and its `cosign` binary). Ported from the upstream
   code and tests with attribution to Melvin Carvalho's `siding`, the ported commit named in each
   README and crate-level rustdoc; consumed from crates.io by other estate repositories, which
-  become AGPL-3.0 in effect and say so. Under `crates/`, never `services/`, so ADR-2030's
-  permissive default is untouched; no permissive crate on a crates.io path links them.
-- **Internal** (`publish = false`): `sidestr-producer`, `sidestr-bridge`, `sidestr-mcp`.
+  become AGPL-3.0 in effect and say so; the future `sidestr-node` here takes them the same way.
+  Never under `services/`, so ADR-2030's permissive default is untouched; no permissive crate
+  on a crates.io path links them.
+- **Internal** (`publish = false`; planned, not yet written): `sidestr-producer`, `sidestr-bridge`,
+  `sidestr-mcp`.
 - **The AGPL boundary is a process boundary, not a crate feature.** The upstream JS `siding` runs
   only as the container-internal `[program:sidestr-producer]` until the Rust producer validates the
   same 1,000-block range to the same tip hash, and is never linked by a published crate. The same
@@ -384,7 +402,8 @@ then they are candidates, and no gate, test or review may cite them as binding.
 
 Until `AnchorConfirmer` is green against `sidestr-node`, the words for this construction are
 **anchor**, **peg**, **claim** and **marker**. "Single-use seal" is not used in code, documents or
-interfaces, and a vocabulary lint enforces it over `docs/` and `crates/sidestr/` (ADR-2099 D6,
+interfaces, and a vocabulary lint enforces it over `docs/` here and over the crates in
+sidestr-rs (ADR-2099 D6,
 host ADR-124 §2.3).
 
 ### Recorded divergence between the records and the plan

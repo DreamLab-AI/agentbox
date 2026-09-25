@@ -81,7 +81,7 @@ graph TB
   end
 
   subgraph AGENTBOX["agentbox container · OWNER: agentbox"]
-    SN["program sidestr-node<br/>validator + mirror :9097 loopback<br/>crates/sidestr"]
+    SN["program sidestr-node<br/>validator + mirror :9097 loopback<br/>sidestr-rs crates from crates.io"]
     SP["program sidestr-producer<br/>P0-P2: upstream AGPL JS 'siding' sidecar<br/>P3+: sidestr-producer (Rust)"]
     MA["management-api<br/>/v1/wallet, /v1/pay, /v1/chain<br/>authority.js payment_settlement gate"]
     SB["routes/sessions-boundary.js:212-296<br/>phase=create → mint did + URN + epic + ns<br/>+ OPEN CHILD CHAIN (new)"]
@@ -143,9 +143,9 @@ graph TB
 | `[sidechain]` manifest block + projector validation | agentbox (`agentbox.toml`, `services/agentbox-manifest`) | new (D6) |
 | `sidestr:dreamlab` chain document | agentbox (`config/sidestr/dreamlab.chain.json`), parent + header projected | new |
 | `sidestr:gitmark` | ours (D6); upstream-operated at P1, `[sidechain].gitmark.mode` | existing chain, newly consumed |
-| `crates/sidestr/sidestr-header` (both header families) | agentbox | new (D6) |
+| `sidestr-header` (both header families) | sidestr-rs (was agentbox `crates/sidestr/`, ADR-2112) | new (D6) |
 | child chain documents | agentbox, minted at `routes/sessions-boundary.js` | new |
-| `crates/sidestr/*` (core, nostr, wallet, producer, bridge, mcp) | agentbox | new |
+| `sidestr-*` (core, nostr, wallet, round published; producer, bridge, mcp planned) | sidestr-rs for the published crates (ADR-2112) | new |
 | `[program:sidestr-node]`, `[program:sidestr-producer]` | agentbox `flake.nix` + supervisor | new |
 | mirror HTTP surface | agentbox, loopback `:9097`, LAN via nip98-proxy `/chain/` | new |
 | `/v1/wallet/*`, `/v1/chain/*` | agentbox management-api | new |
@@ -156,7 +156,7 @@ graph TB
 | WebLedger as derived view | solid-pod-rs `payments.rs` | existing, semantics changed |
 | `AnchorConfirmer` production impl | VisionFlow host `src/web_contract/ritual.rs:144-151` | trait exists, impl new |
 | D1 ledger as derived view | nostr-rust-forum `pod-worker/src/payments.rs` | existing, semantics changed |
-| RGB consignment handling | agentbox `crates/sidestr/sidestr-bridge` (isolated process) | new |
+| RGB consignment handling | `sidestr-bridge` (isolated process; planned, was `crates/sidestr/` before ADR-2112) | new |
 
 ### 1.3 Root chain - `sidestr:dreamlab`
 
@@ -393,7 +393,9 @@ daily budget (`spend-policy.js:36-39`) must become durable (§5, GAP R2-6).
 
 Placement follows the colloquy precedent exactly (`crates/colloquy/` - six crates, some
 published, some internal, one of them the only crate bound to this estate's transports).
-New workspace: **`agentbox/crates/sidestr/`**. D6 adds a seventh crate, `sidestr-header`
+New workspace: **`agentbox/crates/sidestr/`**. *(2026-09-23, ADR-2112: the workspace was
+built here and then moved with history to `github.com/DreamLab-AI/sidestr-rs`; agentbox keeps
+only the chain instance in `config/sidechain/`. The plan text below is kept as written.)* D6 adds a seventh crate, `sidestr-header`
 (§3.1b), which is the one place the two header families live and the one crate that must not
 depend on `rust-bitcoin`.
 
