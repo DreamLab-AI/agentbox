@@ -96,6 +96,16 @@
                   # build env via checkInputs — clearing doCheck must clear it too.
                   pandas-stubs = pyPrev.pandas-stubs.overridePythonAttrs
                     (_: { doCheck = false; pythonImportsCheck = [ ]; });
+                  # jupyter-server 2.21.0: these kernel disconnect tests are
+                  # timing-sensitive in the Nix build sandbox and repeatedly
+                  # report the same orphaned-future FD leak/timeout. Keep the
+                  # other 949 tests enabled.
+                  jupyter-server = pyPrev.jupyter-server.overridePythonAttrs (old: {
+                    disabledTests = (old.disabledTests or [ ]) ++ [
+                      "test_no_fd_leak_on_disconnect_with_orphaned_kernel_info_channel"
+                      "test_disconnect_resolves_orphaned_kernel_info_future"
+                    ];
+                  });
                 })
               ];
             })
