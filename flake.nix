@@ -300,7 +300,7 @@
           version         = "0.3.2";
           packageLock = ./config/npm-locks/ruvector-0.3.2.package-lock.json;
           sha256          = "sha256-IgxvnZaWD49fmhsOxsmGGHnKMc9wKcSGE3YvFKqLJ1E=";
-          nodeModulesHash = "sha256-KE5ArL+hf/vxAkOc5IUcx3MsSU1uSEBwoHJ1F94DjnM=";
+          nodeModulesHash = "sha256-clocSGkQdlmXBQumwQH2s5JKnVga61RiBGqPm0MKloE=";
           bin             = "ruvector";
         };
 
