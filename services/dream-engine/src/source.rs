@@ -586,6 +586,41 @@ pub struct FetchedFile {
 }
 
 /// Render `## Source (from <commit>)`. Pure: the caller supplies file text.
+/// Whether `text` carries key material that must never reach a provider.
+///
+/// Name-based denial ([`is_denied`]) cannot see a secret sitting in an
+/// ordinary-looking file (a test fixture, a doc example, a pasted config), and
+/// the engine's `redact` only rewrites home paths. So a file holding a PEM
+/// private key, a bech32 Nostr secret key (`nsec1` + 58 data characters) or a
+/// hex secret assigned to a key-looking name is withheld whole — never
+/// partially redacted, since a clipped key is still a key.
+pub fn has_secret_content(text: &str) -> bool {
+    if text.contains("PRIVATE KEY-----") {
+        return true;
+    }
+    let bech32_run = |rest: &str| {
+        rest.chars()
+            .take_while(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+            .count()
+    };
+    if text
+        .match_indices("nsec1")
+        .any(|(i, _)| bech32_run(&text[i + 5..]) >= 58)
+    {
+        return true;
+    }
+    text.lines().any(|line| {
+        let lower = line.to_ascii_lowercase();
+        let keyish = ["privkey", "private_key", "secret", "seckey", "nsec"]
+            .iter()
+            .any(|k| lower.contains(k));
+        keyish
+            && line
+                .split(|c: char| !c.is_ascii_hexdigit())
+                .any(|run| run.len() == 64)
+    })
+}
+
 pub fn render_section(
     commit: &str,
     files: &[FetchedFile],
@@ -611,6 +646,16 @@ pub fn render_section(
             });
             continue;
         };
+        if has_secret_content(text) {
+            records.push(FileRecord {
+                path: f.path.clone(),
+                bytes: 0,
+                clipped: false,
+                lines: f.lines,
+                status: "withheld-key-material".into(),
+            });
+            continue;
+        }
         if spent >= cfg.budget_bytes {
             records.push(FileRecord {
                 path: f.path.clone(),
@@ -894,6 +939,49 @@ pub async fn repair(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn key_material_is_detected() {
+        let nsec = format!("nsec1{}", "q".repeat(58));
+        assert!(has_secret_content(&format!("fixture = \"{nsec}\"")));
+        assert!(!has_secret_content("the nsec1 prefix marks a secret key"));
+        assert!(has_secret_content("-----BEGIN EC PRIVATE KEY-----\nabc"));
+        assert!(has_secret_content(&format!(
+            "AGENTBOX_PRIVKEY_HEX={}",
+            "ab".repeat(32)
+        )));
+        // A 64-hex event id or pubkey on a line with no key-looking name is fine.
+        assert!(!has_secret_content(&format!(
+            "event id {}",
+            "ab".repeat(32)
+        )));
+        assert!(!has_secret_content("fn secret_path() -> &str { \"x\" }"));
+    }
+
+    #[test]
+    fn key_material_files_are_withheld_whole() {
+        let nsec = format!("nsec1{}", "z".repeat(58));
+        let files = vec![
+            FetchedFile {
+                path: "a.rs".into(),
+                lines: None,
+                text: Some("fn a() {}".into()),
+            },
+            FetchedFile {
+                path: "fixture.rs".into(),
+                lines: None,
+                text: Some(format!("const K: &str = \"{nsec}\";")),
+            },
+        ];
+        let (section, records) =
+            render_section("abc", &files, &SourceConfig::default(), &|s: &str| {
+                s.to_string()
+            });
+        assert!(!section.contains(&nsec));
+        assert!(!section.contains("fixture.rs"));
+        assert_eq!(records[1].status, "withheld-key-material");
+        assert_eq!(records[0].status, "inlined");
+    }
 
     fn tracked<'a>(paths: &'a [&'a str]) -> HashSet<&'a str> {
         paths.iter().copied().collect()

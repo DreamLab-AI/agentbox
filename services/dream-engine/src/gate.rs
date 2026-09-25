@@ -175,6 +175,9 @@ pub enum CandidateState {
     NoPatch,
     /// A patch was emitted but would not apply to the baseline tree.
     DidNotApply { detail: String },
+    /// A patch was emitted but the engine refused it before applying (for
+    /// example it deletes a binary file). A model fault, not a harness one.
+    Refused { detail: String },
     /// The model did not claim ACCEPT, so no candidate was built. The gate
     /// still records the required outcomes, but there is nothing to veto.
     NotAttempted,
@@ -221,6 +224,10 @@ pub fn decide(
                 "candidate",
                 "report declared ACCEPT but emitted no ```dream-patch block, \
                  so no candidate tree could be built or re-evaluated",
+            )),
+            CandidateState::Refused { detail } => vetoes.push(Veto::unproven(
+                "candidate",
+                format!("candidate patch refused by the engine: {detail}"),
             )),
             CandidateState::DidNotApply { detail } => vetoes.push(Veto::harness(
                 "candidate",

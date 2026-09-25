@@ -20,9 +20,12 @@ function check(name, cond, detail) {
   else { failures.push(`${name}${detail ? `: ${detail}` : ''}`); console.log(`  FAIL ${name}${detail ? `: ${detail}` : ''}`); }
 }
 
-function run(inbox) {
+// The context Claude Code actually reads: hookSpecificOutput.additionalContext.
+const ctxOf = (out) => out && out.hookSpecificOutput && out.hookSpecificOutput.additionalContext;
+
+function run(inbox, prompt = 'hello') {
   const r = spawnSync('node', [HOOK], {
-    input: '{}',
+    input: JSON.stringify({ prompt }),
     env: { ...process.env, DREAM_INBOX_PATH: inbox, DREAM_GOVERNANCE_URL: 'https://example.test/gov' },
     encoding: 'utf8',
   });
@@ -39,23 +42,30 @@ const items = [
 fs.writeFileSync(inbox, JSON.stringify(items));
 const before = fs.readFileSync(inbox, 'utf8');
 
+const machine = run(inbox, '<task-notification>\n<task-id>x</task-id>');
+check('harness-generated turn gets no pointer', ctxOf(machine) === undefined);
+check('skipping a machine turn does not burn the window', !fs.existsSync(`${inbox}.surfaced`));
+
 const first = run(inbox);
-check('first turn injects a pointer', typeof first.additionalContext === 'string');
-check('pointer counts open items only', /\b2 dream-machine decisions await you\b/.test(first.additionalContext || ''), first.additionalContext);
-check('pointer names the panel URL', (first.additionalContext || '').includes('https://example.test/gov'));
-check('no item body is relayed', !(first.additionalContext || '').includes('SECRET BODY TEXT'));
+check('pointer uses the hookSpecificOutput shape',
+  first.hookSpecificOutput && first.hookSpecificOutput.hookEventName === 'UserPromptSubmit');
+check('no top-level additionalContext (Claude Code ignores it)', first.additionalContext === undefined);
+check('first turn injects a pointer', typeof ctxOf(first) === 'string');
+check('pointer counts open items only', /\b2 dream-machine decisions await you\b/.test(ctxOf(first) || ''), ctxOf(first));
+check('pointer names the panel URL', (ctxOf(first) || '').includes('https://example.test/gov'));
+check('no item body is relayed', !(ctxOf(first) || '').includes('SECRET BODY TEXT'));
 check('inbox file is not modified', fs.readFileSync(inbox, 'utf8') === before);
 
 const second = run(inbox);
-check('rate-limited within the window', second.additionalContext === undefined && second.result === 'continue');
+check('rate-limited within the window', ctxOf(second) === undefined);
 
 fs.writeFileSync(`${inbox}.surfaced`, '0');
 fs.writeFileSync(inbox, JSON.stringify(items.map((i) => ({ ...i, status: 'answered' }))));
 const none = run(inbox);
-check('nothing open → no injection', none.additionalContext === undefined);
+check('nothing open → no injection', ctxOf(none) === undefined);
 
 fs.writeFileSync(inbox, 'not json');
-check('corrupt inbox fails open', run(inbox).result === 'continue');
+check('corrupt inbox fails open', ctxOf(run(inbox)) === undefined);
 
 fs.rmSync(dir, { recursive: true, force: true });
 console.log(`\n${passed} passed, ${failures.length} failed`);

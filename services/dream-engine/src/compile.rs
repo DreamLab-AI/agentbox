@@ -146,7 +146,7 @@ Never claim to have run, built, tested, published, pushed or merged anything. Re
     ```dream-patch
     <the full diff>
     ```
-    Emit exactly one such block. An ACCEPT without it is vetoed by the engine: a finding with no code change is a REJECT or INCONCLUSIVE, stated plainly.
+    Emit exactly one such block. An ACCEPT without it is vetoed by the engine: a finding with no code change is a REJECT or INCONCLUSIVE, stated plainly. The diff must not delete a binary file; the engine refuses such a patch before applying it.
 12. Include ONE proposed ledger row in the report, in exactly this shape, so the engine can take your finding cell (the engine fills the issue, PR, witness, prior-night-fate and reviewer columns from its own records — leave them as shown):
     `| {date_iso} | {deep} | <finding> | NONE | NONE | yes | <VERDICT> | <effect> |  |  |  |  |`
     The **finding** MUST be a concrete, self-contained ≤80-char statement of what tonight established — NEVER `INCONCLUSIVE — see report`, `see gist`, or any bare pointer. The ledger is the only cross-night memory; a row that points elsewhere is a lost night. For an INCONCLUSIVE night, name the blocker itself (e.g. `annexe cannot resolve sibling path-deps`, `perf deep has no evaluator`, `source for src/x.rs:200-400 not provided`) so the dry-streak and duplicate-direction signals can read it and stop retrying a dead end.

@@ -884,6 +884,12 @@ impl Engine {
                     info!("report claims ACCEPT but carries no candidate patch — nothing to verify");
                     candidate_state = gate::CandidateState::NoPatch;
                 }
+                Some(patch) if persist::deletes_binary(&patch) => {
+                    warn!("candidate patch deletes a binary file — refused before applying");
+                    candidate_state = gate::CandidateState::Refused {
+                        detail: "the patch deletes a binary file".into(),
+                    };
+                }
                 Some(patch) => {
                     // A stale branch from an interrupted attempt would block the
                     // worktree; drop it first — the run id, not the branch,
@@ -946,7 +952,8 @@ impl Engine {
                                     branch: c.branch.clone(),
                                     applied: matches!(candidate_state, gate::CandidateState::Applied { .. }),
                                     apply_error: match &candidate_state {
-                                        gate::CandidateState::DidNotApply { detail } => Some(detail.clone()),
+                                        gate::CandidateState::DidNotApply { detail }
+                                        | gate::CandidateState::Refused { detail } => Some(detail.clone()),
                                         _ => None,
                                     },
                                     created_at: chrono::Utc::now().to_rfc3339(),

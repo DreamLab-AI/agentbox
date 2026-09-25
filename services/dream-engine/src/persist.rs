@@ -35,6 +35,16 @@ pub struct PrOutcome {
     pub pushed: bool,
 }
 
+/// Whether a unified diff deletes a binary file. Candidates may not: a
+/// deleted binary cannot be reviewed from the diff, and git records only
+/// "Binary files … differ" for it, so the loss is invisible in review.
+pub fn deletes_binary(patch: &str) -> bool {
+    patch.split("diff --git ").skip(1).any(|file| {
+        file.contains("deleted file mode")
+            && (file.contains("Binary files") || file.contains("GIT binary patch"))
+    })
+}
+
 /// Pull the candidate patch out of the first ```dream-patch fenced block.
 /// Returns None when absent or empty (a finding with no code change).
 pub fn extract_patch(report: &str) -> Option<String> {
@@ -245,6 +255,18 @@ pub fn push_and_open_pr(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn binary_deletion_is_detected_per_file() {
+        let del_bin = "diff --git a/x.png b/x.png\ndeleted file mode 100644\nindex 1..0\nBinary files a/x.png and /dev/null differ\n";
+        let del_text = "diff --git a/x.txt b/x.txt\ndeleted file mode 100644\n--- a/x.txt\n+++ /dev/null\n@@ -1 +0,0 @@\n-x\n";
+        let mod_bin = "diff --git a/y.png b/y.png\nindex 1..2 100644\nBinary files a/y.png and b/y.png differ\n";
+        assert!(deletes_binary(del_bin));
+        assert!(!deletes_binary(del_text));
+        assert!(!deletes_binary(mod_bin));
+        assert!(deletes_binary(&format!("{del_text}{del_bin}")));
+        assert!(!deletes_binary(&format!("{del_text}{mod_bin}")));
+    }
 
     #[test]
     fn extract_patch_pulls_the_fenced_diff() {
