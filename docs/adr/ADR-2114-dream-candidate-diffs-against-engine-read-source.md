@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 4f7da4acefe2776c1df4c7e94697ebbc30c71668
+verified_commit: 3bb96e5264e8e912b4aebb00de10cb45648e1eb5
 verified_paths: [services/dream-engine/src/source.rs, services/dream-engine/src/compile.rs, services/dream-engine/src/persist.rs, services/dream-engine/src/candidate.rs, services/dream-engine/src/engine.rs]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches

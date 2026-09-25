@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_104 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_106 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -166,4 +166,6 @@ _104 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2108](ADR-2108-ontology-bridge-retired-vault-baked-by-nix.md) | ontology-bridge is retired; the vault binary is baked by Nix | BASELINE-container | 2026-09-22 | accepted | partial | staged | ADR-2022, ADR-2054 | — | jjohare | agentbox |
 | [ADR-2109](ADR-2109-governance-decisions-apply-through-vault-edit.md) | Ontology proposals and decisions both go through vault — propose raises them, a guarded vault edit applies them | — | 2026-09-22 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2112](ADR-2112-sidestr-crates-live-in-sidestr-rs.md) | The sidestr crates live in DreamLab-AI/sidestr-rs; agentbox hosts the chain instance, not the crates | BASELINE-container | 2026-09-23 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2114](ADR-2114-dream-candidate-diffs-against-engine-read-source.md) | Dream candidate diffs are written against source the engine reads from the dispatched commit | GOVERNANCE-capabilities | 2026-09-25 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2115](ADR-2115-dream-decisions-surface-on-the-forum-governance-panel.md) | Dream-machine decisions surface on the forum governance panel, and the nightly digest reports every outcome | — | 2026-09-25 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2117](ADR-2117-private-owner-usd-unit-bridged-through-rgb-into-sidestr.md) | Private owner-issued USD unit of account: a labelled test asset bridged through RGB into a dedicated sidestr chain | BASELINE-container | 2026-09-23 | proposed | none | inactive | — | — | jjohare | agentbox |
