@@ -50,3 +50,10 @@ At `verified_commit`, `cargo test` in `services/dream-engine` passes 189 tests, 
 - `compile::tests` (no agent-only steps, and a proposed ledger row that parses as a ledger row).
 
 `cargo clippy --all-targets -- -D warnings` is clean. No live night has run yet; activation stays `staged` until one has.
+
+## Amendment — 2026-09-25 (`ef7a8c09d`)
+
+Two guards added before landing, from the agentbox-3d session's parallel excerpts work:
+
+- **Key material is withheld, not redacted.** `source::has_secret_content` drops a whole file from the source section when it holds a PEM private key, an `nsec1` bech32 secret (58+ data chars) or a 64-hex run on a key-named line; the receipt records `withheld-key-material`. Name-based denial cannot see a secret inside an ordinary-looking fixture or doc, and the engine's `redact` only rewrites home paths.
+- **Binary deletions are refused.** `persist::deletes_binary` rejects a candidate that deletes a binary file before it is applied; the gate records the new `CandidateState::Refused` as an *unproven* veto (a model fault), never as a harness fault, so it cannot masquerade as BLOCKED-ENV. The prompt states the rule.

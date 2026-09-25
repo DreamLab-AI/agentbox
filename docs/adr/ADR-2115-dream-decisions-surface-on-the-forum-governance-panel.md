@@ -60,3 +60,7 @@ Licensing: `dream-engine` is `AGPL-3.0-only` (operator decision 2026-09-25, reco
 `dream-engine governance publish --dry-run` against a copy of the live inbox emitted the expected 31400/31402 wire format. `dream-engine digest --dry-run` rendered the 2026-09-25 zero-eligible night.
 
 `node tests/config/dream-inbox-surface.test.mjs` passes 8 checks: pointer only, no item bodies, the inbox is not written, rate-limited, and fail-open.
+
+## Amendment — 2026-09-25 (`ef7a8c09d`)
+
+The pointer hook emits `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":…}}`. Claude Code reads UserPromptSubmit context only from that shape; the previous top-level `additionalContext` was silently dropped, so the earlier inbox hook never reached a model (found by the agentbox-3d session from transcripts). The hook also skips harness-generated turns (`<task-notification>`, `<agent-message>`, `<system-reminder>`) and writes its rate-limit stamp only after the pointer is flushed.
