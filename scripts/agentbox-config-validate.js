@@ -1309,6 +1309,63 @@ if (ldEnabled) {
   }
 }
 
+// ─── E076 / W074: the local routing cascade and the judge's latency budget ───
+// (ADR-2095 addendum 2026-09-23)
+//
+// E076 — [skills.routing].cascade must be a boolean and cascade_cutoff a number
+//         in [0, 1]: it is a relative margin (s1-s2)/s1. Anything else would
+//         silently fall back to the default cutoff and misreport the gate.
+// W074 — the sovereign façade on the openjev engine with timeout_ms < 6000:
+//         openjev's measured p50 is 4.9 s, so nearly every judge call from the
+//         hook times out and fails open to no injection. The cascade answers
+//         about half the turns locally, but the other half still need the budget.
+{
+  const rt = (manifest.skills || {}).routing || {};
+  if (rt.cascade !== undefined && typeof rt.cascade !== 'boolean') {
+    errors.push({
+      code: 'E076',
+      message: `E076: [skills.routing].cascade must be true or false (got ${JSON.stringify(rt.cascade)}) — ADR-2095`,
+    });
+  }
+  if (rt.cascade_cutoff !== undefined
+      && !(typeof rt.cascade_cutoff === 'number' && rt.cascade_cutoff >= 0 && rt.cascade_cutoff <= 1)) {
+    errors.push({
+      code: 'E076',
+      message: `E076: [skills.routing].cascade_cutoff must be a number in [0, 1] (got ${JSON.stringify(rt.cascade_cutoff)}) — it is a relative margin (s1-s2)/s1 (ADR-2095)`,
+    });
+  }
+  const sso = (manifest.features || {}).sovereign_system_one || {};
+  const timeout = typeof rt.timeout_ms === 'number' ? rt.timeout_ms : 4000;
+  if (rt.router === 'jev' && sso.enabled && sso.engine === 'openjev' && timeout < 6000) {
+    warnings.push({
+      code: 'W074',
+      message: `W074: [skills.routing].timeout_ms=${timeout} but the routing judge is the local openjev engine (measured p50 4.9 s) — most hook calls will time out and inject nothing; raise timeout_ms to >= 6000${rt.cascade ? '' : ' and consider cascade = true'} (ADR-2095)`,
+    });
+  }
+}
+
+// ─── E077: routing teacher labels (ADR-2110, proposed) ───────────────────────
+//
+// E077 — [skills.routing].label_log must be a boolean, and label_embeddings_url must
+//         resolve to a LAN or loopback host: the recorder embeds the user's prompt,
+//         so a public embeddings endpoint would be egress of every prompt — exactly
+//         what the label store exists to avoid. The hook refuses such a URL too.
+{
+  const rt = (manifest.skills || {}).routing || {};
+  if (rt.label_log !== undefined && typeof rt.label_log !== 'boolean') {
+    errors.push({
+      code: 'E077',
+      message: `E077: [skills.routing].label_log must be true or false (got ${JSON.stringify(rt.label_log)}) — ADR-2110`,
+    });
+  }
+  if (rt.label_embeddings_url !== undefined && !isLocalEndpoint(String(rt.label_embeddings_url))) {
+    errors.push({
+      code: 'E077',
+      message: `E077: [skills.routing].label_embeddings_url must be a LAN or loopback endpoint (got "${rt.label_embeddings_url}") — embedding a prompt off-LAN is prompt egress (ADR-2110)`,
+    });
+  }
+}
+
 // ─── E074 / W072: Jev verbatim compaction (ADR-2093) ─────────────────────────
 //
 // E074 — [features.jev_compaction].taint_tools must keep the email gateway

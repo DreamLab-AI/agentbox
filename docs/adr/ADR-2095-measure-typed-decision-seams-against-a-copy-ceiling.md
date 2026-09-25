@@ -89,6 +89,83 @@ regression tests in `crates/system-one/system-one-eval/src/copy.rs` that constru
 failure. `verified_paths` is left empty deliberately: this record asserts a practice and a
 set of measurements, not a state of the code that a path diff can check.
 
+## Addendum 2026-09-23 — the escalation cascade, measured
+
+The cascade named under Consequences is now measured by `system-one-eval cascade`, an offline
+replay: a judge-free ranker answers a turn locally when the margin between its top two options
+reaches a cutoff, and the turn escalates to the judge's recorded answer otherwise. The cutoff is
+reported two ways. First in-sample, over every breakpoint, which is optimistic. Then
+leave-one-out, where each turn's cutoff is chosen on the other 85 as the fewest escalations that
+keep accuracy at or above the judge's own there, which is the number a deployed cutoff would
+earn. The margin signal is fixed per ranker, not searched: relative for BM25, absolute for
+cosine and for reciprocal-rank fusion.
+
+Both judges were re-run on 2026-09-23 against the 116-option tree with per-item `--json`. This
+closes the gap `loom/uplift-results/routing/README.md` records for the cloud row: Jev 93.0%
+(80/86, p50 419 ms, $0.00062/route), openjev 88.4% (76/86, p50 4,937 ms). The judges are not
+separable (8 v 4 discordant, exact McNemar p=0.388).
+
+| Front ranker → judge | Held-out top-1 | Escalated | vs judge alone |
+|---|---|---|---|
+| BM25 → Jev (cloud) | 93.0% | 81.4% | −0 +0, p=1.000 |
+| BM25 → Jev, 5 pt tolerance | 84.9% | 40.7% | −7 +0, **p=0.016** |
+| BM25 → openjev (local) | 86.0% | 50.0% | −4 +2, p=0.688 |
+| bge-small → openjev | 87.2% | 69.8% | −1 +0, p=1.000 |
+| RRF(BM25+bge) → openjev | 87.2% | 80.2% | −3 +2, p=1.000 |
+
+Three findings follow.
+
+1. **In front of the cloud judge the cascade is not worth building.** At parity it saves about
+   one call in five. Halving egress costs a significant 8 points, because BM25's high-margin
+   errors are spread across the corpus rather than concentrated where a cutoff can catch them.
+2. **In front of the local judge it halves latency at no detectable cost.** Half the turns are
+   answered in microseconds, which takes mean latency from 4.8 s to 2.4 s. The two judges'
+   errors are partly complementary: at 59% escalation the in-sample frontier (89.5%) sits above
+   openjev alone. This is the fully local route with zero prompt egress. It is 7 points below
+   Jev on this corpus, a difference 86 items cannot resolve.
+3. **The sovereign path cannot run as the per-turn hook today.** `[skills.routing].timeout_ms`
+   is 4000 and openjev's p50 is 4,937 ms, so with `[features.sovereign_system_one]` enabled on
+   openjev nearly every hook call would time out and fail open to no injection. A local cascade
+   in the hook would route half the turns within budget. The other half still needs the budget
+   raised, and the hook is registered at 8000 ms.
+
+Per-item evidence: `loom/uplift-results/routing/runs/{jev-cloud,openjev}-2026-09-23.json` and
+`cascade-2026-09-23.json`.
+
+**Implemented, gated off.** `[skills.routing].cascade = false`, `cascade_cutoff = 0.3718` (the
+openjev parity point). The hook library carries a port of the rig's BM25 ranker, held to it
+turn by turn by `tests/system-one/cascade-parity.test.mjs`. W074 flags the openjev latency
+budget. Turning it on is a boot-class flip. With `[features.sovereign_system_one]` on the
+openjev engine, it is the zero-egress routing path measured above.
+
+## Addendum 2026-09-23 — a fourth engine: `@ruvector/typesafe` 0.1.0
+
+Proposed as a local, fee-free Jev replacement. Measured zero-shot on the same corpus and tree,
+served by its own `typesafe serve` on loopback.
+
+- **Not a drop-in for this estate's callers.** Both consumers send `state` as an object
+  (`{"user_request": …}`), which Jev accepts. typesafe 0.1.0 accepts only a string and answers
+  HTTP 400 to all 86 cases. The run below goes through a loopback shim that flattens the state
+  (`loom/uplift-results/routing/runs/ruvector-typesafe-state-shim-2026-09-23.mjs`).
+- **The default embedder is a test double.** `hash` (bag-of-words, the default for `decide`
+  and `serve`) scored 26.7%. Real accuracy needs `--embedder onnx` with fetched weights, which
+  `serve --help` does not list.
+- **With bge-small ONNX: 62.8% (54/86)**, soft 73.3%, p50 60 ms. That is the embedding copy
+  ceiling this record already measured (61.6% bare), and below BM25 alone (66.3%). Against Jev,
+  30 v 4 discordant, exact McNemar p=6.2e-06. Against openjev, 29 v 7, p=0.00031.
+- **Abstention did not fire on this corpus**: `none` recall 6.2% (1 of 16).
+- **Its embedder is the one the estate already serves.** bge-small-en-v1.5 is what the RuVector
+  sidecar embeds with (Xinference). Zero-shot, the package adds a decision head, not a new
+  signal.
+
+The package's own ADR-003 and README agree: zero-shot cosine sits well below Jev, and parity
+needs a linear probe with at least 4 labelled examples per option. It reached 83% against
+Jev's 85% on an 8-option fixture with about 17 examples per option. For 116 skills that is
+464 to 1,856 labelled prompts, and this estate has none. The 86 corpus turns are the test set,
+and the router log deliberately stores no prompts (ADR-2090), so none can be harvested.
+**Decision: not adopted for routing.** The zero-egress path remains the gated BM25 → openjev
+cascade. Revisit if a labelled routing set of that size is built.
+
 ## See also
 
 The research write-up of this measurement, the operational harness notes, the corpus, per-run reports and analysis scripts all live in the loom repository: `loom/docs/research/companion-routing/` (write-up, `HARNESS-NOTES.md`, drafts), `loom/uplift-results/routing/` (evidence), `loom/tools/routing-eval/` (rig snapshot). Split from the loom paper on 2026-09-21 after external review; nothing paper-facing is kept in this repository.

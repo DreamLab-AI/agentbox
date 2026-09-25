@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+use system_one_eval::cascade::{self, Signal};
 use system_one_eval::client::Backend;
 use system_one_eval::copy::{self, CeilingMode, CopyCeiling, Exposure, Ranker, SequentialEmbedder};
 use system_one_eval::metrics::{self, Report};
@@ -47,6 +48,8 @@ enum Command {
     Sweep(SweepArgs),
     /// Report the input-exposure control: the copy ceiling and gain over copy.
     CopyCeiling(CopyCeilingArgs),
+    /// Measure a rank-then-escalate cascade in front of one or more saved judge runs.
+    Cascade(CascadeArgs),
     /// Report what the corpus and the skills tree contain, without calling out.
     Inspect(SharedArgs),
 }
@@ -192,6 +195,28 @@ struct CopyCeilingArgs {
 }
 
 #[derive(Args, Debug, Clone)]
+struct CascadeArgs {
+    #[command(flatten)]
+    shared: SharedArgs,
+    /// A judge run written by `run --json`; repeat to compare judges. The
+    /// cascade is an offline replay: no backend is called.
+    #[arg(long = "from-report", required = true)]
+    from_reports: Vec<PathBuf>,
+    /// Accuracy the cutoff rule may give up against the judge, in points.
+    #[arg(long, default_value_t = 0.0)]
+    tolerance_points: f64,
+    /// Which judge-free rankers to put in front. `both` adds bge-small and the
+    /// BM25+bge rank fusion, and needs the embeddings endpoint.
+    #[arg(long, value_enum, default_value_t = Ceilings::Both)]
+    ceilings: Ceilings,
+    /// Also write the BM25 ranker's per-case pick and relative margin, with the
+    /// candidate map and prompts it saw, as the golden the hook's JS port of the
+    /// ranker is held to (`tests/system-one/cascade-bm25-parity.json`).
+    #[arg(long)]
+    emit_parity_fixture: Option<PathBuf>,
+}
+
+#[derive(Args, Debug, Clone)]
 struct SweepArgs {
     #[command(flatten)]
     run: RunArgs,
@@ -333,6 +358,7 @@ async fn main() -> ExitCode {
         Command::Parity(args) => parity(args).await,
         Command::Sweep(args) => sweep(args).await,
         Command::CopyCeiling(args) => copy_ceiling(args).await,
+        Command::Cascade(args) => cascade(args).await,
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -442,41 +468,46 @@ async fn build_rankers(
 }
 
 /// The judge half of the control: either a live run, or a saved report.
-async fn judge_report(args: &CopyCeilingArgs, loaded: &Loaded) -> Result<Report, String> {
-    if let Some(path) = &args.from_report {
-        let text = std::fs::read_to_string(path)
-            .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
-        let report: Report = serde_json::from_str(&text)
-            .map_err(|e| format!("{} is not a run report: {e}", path.display()))?;
-        // A control whose judge rows belong to a different corpus would be
-        // comparing two different experiments and reporting the difference as
-        // a gain, so the alignment is checked rather than assumed.
-        if report.cases.len() != loaded.corpus.cases.len() {
+/// Read a saved `run --json` report and check it is a run over THIS corpus.
+fn read_report(path: &std::path::Path, loaded: &Loaded) -> Result<Report, String> {
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let report: Report = serde_json::from_str(&text)
+        .map_err(|e| format!("{} is not a run report: {e}", path.display()))?;
+    // A control whose judge rows belong to a different corpus would be
+    // comparing two different experiments and reporting the difference as
+    // a gain, so the alignment is checked rather than assumed.
+    if report.cases.len() != loaded.corpus.cases.len() {
+        return Err(format!(
+            "{} has {} cases but the corpus has {} — they are not the same run",
+            path.display(),
+            report.cases.len(),
+            loaded.corpus.cases.len()
+        ));
+    }
+    for (scored, case) in report.cases.iter().zip(&loaded.corpus.cases) {
+        if scored.expected != case.expected_skill {
             return Err(format!(
-                "{} has {} cases but the corpus has {} — they are not the same run",
+                "{} disagrees with the corpus at case #{}: report expects `{}`, corpus \
+                 expects `{}`",
                 path.display(),
-                report.cases.len(),
-                loaded.corpus.cases.len()
+                scored.index,
+                scored.expected,
+                case.expected_skill
             ));
         }
-        for (scored, case) in report.cases.iter().zip(&loaded.corpus.cases) {
-            if scored.expected != case.expected_skill {
-                return Err(format!(
-                    "{} disagrees with the corpus at case #{}: report expects `{}`, corpus \
-                     expects `{}`",
-                    path.display(),
-                    scored.index,
-                    scored.expected,
-                    case.expected_skill
-                ));
-            }
-        }
-        eprintln!(
-            "judge answers read from {} ({} cases, no backend called)",
-            path.display(),
-            report.cases.len()
-        );
-        return Ok(report);
+    }
+    eprintln!(
+        "judge answers read from {} ({} cases, no backend called)",
+        path.display(),
+        report.cases.len()
+    );
+    Ok(report)
+}
+
+async fn judge_report(args: &CopyCeilingArgs, loaded: &Loaded) -> Result<Report, String> {
+    if let Some(path) = &args.from_report {
+        return read_report(path, loaded);
     }
 
     let url = args
@@ -553,6 +584,59 @@ async fn copy_ceiling(args: CopyCeilingArgs) -> Result<(), String> {
     });
 
     write_json(&args.shared.json, &CopyCeilingOutput { fair, naive })
+}
+
+async fn cascade(args: CascadeArgs) -> Result<(), String> {
+    if args.ceilings == Ceilings::Off {
+        return Err(
+            "`cascade --ceilings off` leaves no ranker to put in front of the judge".into(),
+        );
+    }
+    let loaded = load(&args.shared)?;
+    let reports = args
+        .from_reports
+        .iter()
+        .map(|p| read_report(p, &loaded))
+        .collect::<Result<Vec<_>, _>>()?;
+    let rankers = build_rankers(&loaded, args.ceilings, &args.shared).await?;
+    let names: Vec<String> = loaded.candidates.keys().cloned().collect();
+    if let Some(path) = &args.emit_parity_fixture {
+        let picks: Vec<serde_json::Value> = rankers[0]
+            .picks
+            .iter()
+            .zip(&rankers[0].scores)
+            .map(|(p, s)| {
+                serde_json::json!({
+                    "choice": p.top.first(),
+                    "margin": cascade::margin(s, Signal::RelativeMargin),
+                })
+            })
+            .collect();
+        let fixture = serde_json::json!({
+            "_role": "golden: system-one-eval's BM25 ranker, which the skill-route.cjs cascade must reproduce",
+            "_regenerate": "system-one-eval cascade --from-report <run.json> --ceilings lexical --emit-parity-fixture <this file>",
+            "candidates": loaded.candidates,
+            "prompts": loaded.corpus.cases.iter().map(|c| c.prompt.as_str()).collect::<Vec<_>>(),
+            "picks": picks,
+        });
+        write_json(&Some(path.clone()), &fixture)?;
+    }
+    let fused = (rankers.len() > 1)
+        .then(|| cascade::rrf(&rankers.iter().collect::<Vec<_>>(), &names, cascade::RRF_K));
+    // The signal is fixed per ranker, not searched: see the module docs.
+    let mut front: Vec<(&Ranker, Signal)> = vec![(&rankers[0], Signal::RelativeMargin)];
+    front.extend(rankers.iter().skip(1).map(|r| (r, Signal::AbsoluteMargin)));
+    if let Some(f) = &fused {
+        front.push((f, Signal::AbsoluteMargin));
+    }
+    let out: Vec<cascade::Cascade> = reports
+        .iter()
+        .map(|report| cascade::build(report, &front, args.tolerance_points / 100.0))
+        .collect();
+    for c in &out {
+        println!("{}", cascade::render(c));
+    }
+    write_json(&args.shared.json, &out)
 }
 
 /// Build a backend from the shared run arguments.

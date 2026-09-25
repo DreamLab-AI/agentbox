@@ -73,9 +73,9 @@ pub const BM25_B: f64 = 0.75;
 
 /// Retired: the oracle sweep no longer uses a fixed-width grid, because one
 /// cannot be guaranteed to contain the maximising threshold. See
-/// [`Ranked::grid`]. Kept only so a downstream reader of this constant fails
+/// [`Ranker::grid`]. Kept only so a downstream reader of this constant fails
 /// loudly rather than silently sweeping the wrong thing.
-#[deprecated(note = "the threshold sweep is exhaustive over breakpoints; see Ranked::grid")]
+#[deprecated(note = "the threshold sweep is exhaustive over breakpoints; see Ranker::grid")]
 pub const SWEEP_POINTS: usize = 41;
 
 /// Characters of a text sent to the embeddings endpoint.
@@ -352,11 +352,7 @@ pub const EXCLUSION_MARKERS: &[&str] = &[
 /// has to survive its own test first.
 fn strip_exclusion_clause(rubric: &str) -> &str {
     let lower = rubric.to_lowercase();
-    match EXCLUSION_MARKERS
-        .iter()
-        .filter_map(|m| lower.find(m))
-        .min()
-    {
+    match EXCLUSION_MARKERS.iter().filter_map(|m| lower.find(m)).min() {
         Some(cut) => rubric[..cut].trim_end(),
         None => rubric,
     }
@@ -366,7 +362,7 @@ impl Exposure {
     /// Build the exposure from the rig's candidate map.
     ///
     /// Each option is rendered `"<key>: <rubric>"` with its exclusion clause
-    /// removed (see [`strip_exclusion_clause`]). The key is kept because the
+    /// removed (see `strip_exclusion_clause`). The key is kept because the
     /// judge sees it too.
     pub fn new(candidates: &indexmap::IndexMap<String, String>) -> Self {
         let names: Vec<String> = candidates.keys().cloned().collect();
@@ -442,22 +438,21 @@ pub struct Ranker {
     pub label: String,
     /// One pick per corpus case, in corpus order.
     pub picks: Vec<Pick>,
+    /// Every option's score per case, in candidate-map order. Kept in memory for
+    /// the cascade (margins, rank fusion) and never serialised: 116 floats per
+    /// case would swamp a report that only needs the picks.
+    #[serde(skip, default)]
+    pub scores: Vec<Vec<f64>>,
 }
 
 impl Ranker {
     /// The lexical ceiling: BM25 over the exposed rubrics. No model, no network.
     pub fn bm25(exposure: &Exposure, prompts: &[String]) -> Self {
-        let picks = prompts
+        let scores: Vec<Vec<f64>> = prompts
             .iter()
-            .map(|prompt| {
-                let scores = bm25(&tokenise(prompt), &exposure.doc_tokens, BM25_K1, BM25_B);
-                pick_from(&scores, &exposure.names)
-            })
+            .map(|prompt| bm25(&tokenise(prompt), &exposure.doc_tokens, BM25_K1, BM25_B))
             .collect();
-        Self {
-            label: "lexical (BM25)".into(),
-            picks,
-        }
+        Self::from_scores("lexical (BM25)", scores, &exposure.names)
     }
 
     /// The embedding ceiling: bge-small cosine, the façade's own shortlist rank.
@@ -468,17 +463,24 @@ impl Ranker {
     ) -> Result<Self, String> {
         let rubric_vectors = embedder.embed_all(&exposure.rubrics, "rubrics").await?;
         let prompt_vectors = embedder.embed_all(prompts, "prompts").await?;
-        let picks = prompt_vectors
+        let scores: Vec<Vec<f64>> = prompt_vectors
             .iter()
-            .map(|prompt| {
-                let scores: Vec<f64> = rubric_vectors.iter().map(|r| cosine(prompt, r)).collect();
-                pick_from(&scores, &exposure.names)
-            })
+            .map(|prompt| rubric_vectors.iter().map(|r| cosine(prompt, r)).collect())
             .collect();
-        Ok(Self {
-            label: "embedding (bge-small)".into(),
-            picks,
-        })
+        Ok(Self::from_scores(
+            "embedding (bge-small)",
+            scores,
+            &exposure.names,
+        ))
+    }
+
+    /// A ranker from a full per-case score table, in candidate-map order.
+    pub fn from_scores(label: &str, scores: Vec<Vec<f64>>, names: &[String]) -> Self {
+        Self {
+            label: label.into(),
+            picks: scores.iter().map(|s| pick_from(s, names)).collect(),
+            scores,
+        }
     }
 
     /// Per-item top-1 and top-3 correctness at one decline threshold.
@@ -1169,6 +1171,7 @@ mod tests {
                     degenerate: false,
                 },
             ],
+            scores: Vec::new(),
         }
     }
 
@@ -1244,6 +1247,7 @@ mod tests {
         let ranked = Ranker {
             label: "t".into(),
             picks,
+            scores: Vec::new(),
         };
         let grid = ranked.grid();
         // Exhaustive: a threshold strictly inside the narrow gap exists.

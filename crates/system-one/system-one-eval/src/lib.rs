@@ -29,7 +29,12 @@
 //! the signed gain over it beside its accuracy, as the method's source paper
 //! recommends; the `copy-ceiling` subcommand adds the embedding ceiling, the
 //! per-item interval, the power projection and the subgroup breakdown.
+//!
+//! [`cascade`] replays a saved judge run behind a judge-free ranker that answers
+//! when its top-two margin is wide and escalates otherwise, reporting the
+//! accuracy kept against the judge calls — and so egress and spend — saved.
 
+pub mod cascade;
 pub mod client;
 pub mod copy;
 pub mod corpus;
