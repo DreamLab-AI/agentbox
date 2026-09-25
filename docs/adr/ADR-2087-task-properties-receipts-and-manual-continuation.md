@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 5a7226b797c5949771e8b8ddcd69cfddd3c7f533
+verified_commit: 4f7da4acefe2776c1df4c7e94697ebbc30c71668
 verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, mcp/servers/governance-bridge.js, services/dream-engine/src/ledger.rs]
 owner: jjohare
 review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape
