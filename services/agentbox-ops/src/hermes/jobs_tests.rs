@@ -362,3 +362,101 @@ fn unknown_fields_survive_a_load_save_cycle() {
         Some(&serde_json::json!(42))
     );
 }
+
+#[test]
+fn a_job_without_overrides_runs_on_the_default_model_and_effort_with_full_mcp() {
+    let job = interval_job(30);
+    assert_eq!(
+        job.claude_args(),
+        vec![
+            "--print",
+            "--model",
+            DEFAULT_MODEL,
+            "--effort",
+            DEFAULT_EFFORT,
+            "--",
+            &job.prompt
+        ]
+    );
+    assert_eq!((DEFAULT_MODEL, DEFAULT_EFFORT), ("sonnet", "medium"));
+}
+
+#[test]
+fn per_job_overrides_reach_the_argv_and_an_mcp_override_is_strict() {
+    let mut job = interval_job(30);
+    job.model = Some("opus".into());
+    job.effort = Some("high".into());
+    job.mcp_config = Some(r#"{"mcpServers":{}}"#.into());
+    assert_eq!(
+        job.claude_args(),
+        vec![
+            "--print",
+            "--model",
+            "opus",
+            "--effort",
+            "high",
+            "--strict-mcp-config",
+            "--mcp-config",
+            r#"{"mcpServers":{}}"#,
+            "--",
+            &job.prompt,
+        ]
+    );
+}
+
+#[test]
+fn blank_overrides_fall_back_to_the_defaults() {
+    let mut job = interval_job(30);
+    job.model = Some("  ".into());
+    job.effort = Some(String::new());
+    job.mcp_config = Some(String::new());
+    assert_eq!(job.claude_args(), interval_job(30).claude_args());
+}
+
+#[test]
+fn a_jobs_file_without_the_run_fields_loads_and_saves_without_inventing_them() {
+    let tmp = tempfile::tempdir().unwrap();
+    let store = Store::new(tmp.path());
+    store.ensure_dirs().unwrap();
+    fs::write(
+        store.jobs_file(),
+        r#"{"jobs": [{"id": "abc123def456", "name": "n", "prompt": "p",
+          "schedule": {"kind": "interval", "minutes": 60, "display": "every 60m"},
+          "schedule_display": "every 60m", "repeat": {"times": null, "completed": 0},
+          "enabled": true, "state": "scheduled", "workdir": null,
+          "created_at": "t", "next_run_at": null, "last_run_at": null,
+          "last_status": null, "last_error": null}]}"#,
+    )
+    .unwrap();
+    let jobs = store.load();
+    assert_eq!(jobs[0].model, None);
+    assert_eq!(jobs[0].effective_model(), DEFAULT_MODEL);
+    store.save(&jobs, now()).unwrap();
+    let text = fs::read_to_string(store.jobs_file()).unwrap();
+    assert!(
+        !text.contains("\"model\"") && !text.contains("\"effort\"") && !text.contains("mcp_config")
+    );
+}
+
+#[test]
+fn run_fields_in_the_jobs_file_are_typed_not_left_in_extra() {
+    let tmp = tempfile::tempdir().unwrap();
+    let store = Store::new(tmp.path());
+    store.ensure_dirs().unwrap();
+    fs::write(
+        store.jobs_file(),
+        r#"{"jobs": [{"id": "abc123def456", "name": "n", "prompt": "p",
+          "schedule": {"kind": "interval", "minutes": 60, "display": "every 60m"},
+          "schedule_display": "every 60m", "repeat": {"times": null, "completed": 0},
+          "enabled": true, "state": "scheduled", "workdir": null,
+          "created_at": "t", "next_run_at": null, "last_run_at": null,
+          "last_status": null, "last_error": null,
+          "model": "opus", "effort": "high", "mcp_config": "/tmp/mcp.json"}]}"#,
+    )
+    .unwrap();
+    let job = &store.load()[0];
+    assert_eq!(job.effective_model(), "opus");
+    assert_eq!(job.effective_effort(), "high");
+    assert_eq!(job.mcp_config.as_deref(), Some("/tmp/mcp.json"));
+    assert!(job.extra.is_empty());
+}

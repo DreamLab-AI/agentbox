@@ -132,11 +132,33 @@ export CLAUDE_CONFIG_DIR="$CLAUDE_DIR"
 export ANTHROPIC_BASE_URL="$BASE_URL"
 export ANTHROPIC_AUTH_TOKEN="$AUTH_TOKEN"
 export ANTHROPIC_API_KEY=""
+# Model pin. The reconciler writes `model` into settings.local.json, but that
+# file is not read from CLAUDE_CONFIG_DIR (it is a project-level file), so the
+# profile silently ran — and OpenRouter billed — claude-opus-5-5 instead of the
+# configured model (measured 2026-09-25). Export it, and point every tier alias
+# and subagents at it too, so `model: sonnet`/`haiku` agents and background
+# calls cannot reach Anthropic-priced models through this redirect. Caller wins.
+OR_PINNED_MODEL="$(
+  if command -v jq >/dev/null 2>&1; then jq -r '.model // empty' "$SETTINGS" 2>/dev/null
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys; v=json.load(open(sys.argv[1])).get("model",""); sys.stdout.write(v if isinstance(v,str) else "")' "$SETTINGS" 2>/dev/null
+  fi || true)"
+if [ -n "$OR_PINNED_MODEL" ]; then
+  for v in ANTHROPIC_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL \
+           ANTHROPIC_DEFAULT_HAIKU_MODEL CLAUDE_CODE_SUBAGENT_MODEL; do
+    [ -n "${!v:-}" ] || export "$v=$OR_PINNED_MODEL"
+  done
+fi
+# Token auth reads as an API-key session, so Claude Code's automatic TTL is the
+# 5-minute prompt cache (1 h is automatic only on a Claude subscription). Pin
+# 1 h for the main conversation: verified on 2.1.280 through OpenRouter — the
+# write lands in ephemeral_1h_input_tokens. An explicit caller value wins.
+export CLAUDE_CODE_PROMPT_CACHE_TTL="${CLAUDE_CODE_PROMPT_CACHE_TTL:-1h}"
 # Per-session identity binding (ADR-043 D4.1): a distinct AGENTBOX_PROFILE
 # yields a distinct persisted did:nostr for this session.
 export AGENTBOX_PROFILE="${AGENTBOX_PROFILE:-$SLUG}"
 
 # Effective settings, verified and credential-free: scheme, host and port only.
 # The auth token is NEVER printed (not even a prefix or a length).
-echo "[harness-wrapper] ${PROVIDER} → ${PROVIDER_URL_SCHEME}://${PROVIDER_URL_HOST}:${PROVIDER_URL_PORT} (port ${PROVIDER_URL_PORT_SOURCE}, auth=present, profile ${SLUG}, isolated HOME=${PROFILE})"
+echo "[harness-wrapper] ${PROVIDER} → ${PROVIDER_URL_SCHEME}://${PROVIDER_URL_HOST}:${PROVIDER_URL_PORT} (port ${PROVIDER_URL_PORT_SOURCE}, auth=present, model=${ANTHROPIC_MODEL:-unpinned}, profile ${SLUG}, isolated HOME=${PROFILE})"
 exec claude "$@"

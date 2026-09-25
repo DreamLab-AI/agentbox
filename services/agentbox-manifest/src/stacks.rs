@@ -25,6 +25,12 @@ const STACKS_JSON: &str = include_str!("stacks.json");
 /// the mandated ruvector-postgres backend (ADR-015). `|| true` keeps a missing
 /// binary from ever breaking a session, and `session-end` binds to `SessionEnd`
 /// only (never `Stop`) so per-session consolidation does not fire every turn.
+///
+/// Timeouts are in **seconds** — the unit Claude Code reads. They used to be
+/// written in milliseconds (`10000` = 2.8 h). There is deliberately no
+/// `UserPromptSubmit` → `route` hook: it cost ~4.5 s of CLI boot on every turn
+/// to inject a regex agent-recommendation box, and the live skill router
+/// (ADR-2091) owns per-turn routing.
 fn learning_hooks(env: &Env, gates: &Gates) -> Value {
     let cmd = |action: &str, timeout: i64| {
         serde_json::json!({
@@ -34,33 +40,41 @@ fn learning_hooks(env: &Env, gates: &Gates) -> Value {
         })
     };
 
-    let mut session_end = vec![serde_json::json!({ "hooks": [cmd("session-end", 10000)] })];
+    let mut session_end = vec![serde_json::json!({ "hooks": [cmd("session-end", 10)] })];
     if gates.mobile_bridge {
+        // Detached, like ontology-monitor: the digest may call a model, and a
+        // SessionEnd hook holds every exit and /clear until it returns. The
+        // payload is stashed to a temp file so the setsid child can read it
+        // after this shell has exited; the child deletes it when done.
         session_end.push(serde_json::json!({ "hooks": [{
             "type": "command",
-            "command": format!("{} || true", env.nostr_summary_hook),
-            "timeout": 200000,
+            "command": format!(
+                r#"sh -c 'p=$(mktemp) || exit 0; cat >"$p"; setsid sh -c "{} <\"\$0\"; rm -f \"\$0\"" "$p" >/dev/null 2>&1 </dev/null & exit 0'"#,
+                env.nostr_summary_hook
+            ),
+            "timeout": 10,
         }] }));
     }
     if gates.ontology_monitor {
         session_end.push(serde_json::json!({ "hooks": [{
             "type": "command",
+            // The hook detaches its 180 s review and returns at once, so a
+            // SessionEnd (exit, /clear) never waits on the GLM call.
             "command": format!("node {} || true", env.ontology_monitor_hook),
-            "timeout": 200000,
+            "timeout": 10,
         }] }));
     }
 
     serde_json::json!({
         "PreToolUse": [
-            {"matcher": "Bash", "hooks": [cmd("pre-command", 5000)]},
-            {"matcher": "Write|Edit|MultiEdit", "hooks": [cmd("pre-edit", 5000)]},
+            {"matcher": "Bash", "hooks": [cmd("pre-command", 5)]},
+            {"matcher": "Write|Edit|MultiEdit", "hooks": [cmd("pre-edit", 5)]},
         ],
         "PostToolUse": [
-            {"matcher": "Write|Edit|MultiEdit", "hooks": [cmd("post-edit", 10000)]},
-            {"matcher": "Bash", "hooks": [cmd("post-command", 5000)]},
+            {"matcher": "Write|Edit|MultiEdit", "hooks": [cmd("post-edit", 10)]},
+            {"matcher": "Bash", "hooks": [cmd("post-command", 5)]},
         ],
-        "UserPromptSubmit": [{"hooks": [cmd("route", 12000)]}],
-        "SessionStart": [{"hooks": [cmd("session-restore", 15000)]}],
+        "SessionStart": [{"hooks": [cmd("session-restore", 15)]}],
         "SessionEnd": session_end,
     })
 }
@@ -344,10 +358,40 @@ mod tests {
             .as_str()
             .unwrap()
             .contains("nostr-pod-bridge session-summary"));
+        // Detached so exit and /clear never wait on the digest.
+        assert!(se[1]["hooks"][0]["command"].as_str().unwrap().contains("setsid"));
+        assert_eq!(se[1]["hooks"][0]["timeout"], 10);
         assert!(se[2]["hooks"][0]["command"]
             .as_str()
             .unwrap()
             .contains("ontology-monitor.cjs"));
+    }
+
+    #[test]
+    fn every_profile_hook_timeout_is_seconds_and_route_is_gone() {
+        let tmp = std::env::temp_dir();
+        let gates = Gates {
+            mobile_bridge: true,
+            summary_model: "glm-5.3".into(),
+            zai_reasoning_effort: String::new(),
+            ontology_monitor: true,
+            ontology_monitor_mode: "dryrun".into(),
+        };
+        let h = learning_hooks(&test_env(&tmp), &gates);
+        let all = crate::hooks::all_timeouts(&h);
+        assert!(all.len() >= 8);
+        for (event, cmd, t) in all {
+            assert!(
+                t >= 1.0 && t <= crate::hooks::MAX_TIMEOUT_S as f64,
+                "{event} `{cmd}` timeout {t} is not seconds"
+            );
+        }
+        assert!(
+            h.get("UserPromptSubmit").is_none(),
+            "per-turn route hook is retired"
+        );
+        // The ontology review detaches, so its registration must not budget 180 s.
+        assert_eq!(h["SessionEnd"][2]["hooks"][0]["timeout"], 10);
     }
 
     #[test]

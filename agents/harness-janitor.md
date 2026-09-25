@@ -5,7 +5,8 @@ description: >
   template-vs-schema fixture parity, maturity status. Use for "harness audit",
   "pairing ratio", "fixture drift" or a scheduled harness health check.
 tools: Read, Grep, Glob, Bash, mcp__harness-bridge__harness_audit, mcp__harness-bridge__harness_inspect, mcp__harness-bridge__harness_list, mcp__harness-bridge__harness_validate
-model: inherit
+model: sonnet
+effort: low
 ---
 
 # harness-janitor

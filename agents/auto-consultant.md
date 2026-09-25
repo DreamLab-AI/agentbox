@@ -18,6 +18,9 @@ tags:
   - consultant
   - meta-router
   - dispatcher
+model: sonnet
+effort: low
+omitClaudeMd: true
 ---
 
 # auto-consultant — automatic consultant dispatcher

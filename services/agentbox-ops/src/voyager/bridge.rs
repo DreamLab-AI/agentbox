@@ -65,7 +65,12 @@ pub fn memory_search(namespace: &str, query: &str, limit: u32, dry_run: bool) ->
     if dry_run {
         return Vec::new();
     }
-    let payload = pyjson::dumps(&json!({"namespace": namespace, "query": query, "limit": limit}));
+    // Callers parse the JSON tail of each stored value (`inner_record`), so they
+    // need whole values (`full`) and every ranked hit, not the model-facing
+    // snippet + cosine-floor defaults.
+    let payload = pyjson::dumps(&json!({
+        "namespace": namespace, "query": query, "limit": limit, "full": true, "min_score": 0.0
+    }));
     let Ok(out) = mcp_call("mcp__ruvector__memory_search", &payload, 30) else {
         return Vec::new();
     };

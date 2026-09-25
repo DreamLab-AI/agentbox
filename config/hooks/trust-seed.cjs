@@ -14,8 +14,12 @@
 // It never removes or overwrites other per-project state. Fail-open: any
 // error prints one line to stderr and exits 0 so hooks and boot never stall.
 //
-// Runs from: the SessionStart hook in workspace .claude/settings.json and the
-// agentbox entrypoint (boot). Safe to run at any time; idempotent.
+// Runs from: the agentbox entrypoint (boot), and by hand for a worktree made
+// after boot (`node trust-seed.cjs <path>`). It is NOT a SessionStart hook: it
+// walks ~1,170 paths (avg 3.2 s) and would race Claude Code's own writes to
+// ~/.claude.json; config/registered-hooks.txt prunes any old registration.
+// Progress goes to stderr only — a hook's stdout is injected into model context.
+// Safe to run at any time; idempotent.
 //
 //   node trust-seed.cjs [--depth N] [--dry-run] [extra-path ...]
 
@@ -84,7 +88,7 @@ function main() {
     added += 1;
   }
   if (args.dryRun || added === 0) {
-    process.stdout.write(`[trust-seed] ${targets.size} path(s) checked, ${added} newly trusted${args.dryRun ? ' (dry run)' : ''}\n`);
+    process.stderr.write(`[trust-seed] ${targets.size} path(s) checked, ${added} newly trusted${args.dryRun ? ' (dry run)' : ''}\n`);
     return;
   }
   // ~/.claude.json is a bind-mounted file inside a read-only $HOME, so a
@@ -96,7 +100,7 @@ function main() {
     fs.copyFileSync(CONFIG, bak);
   } catch { /* best effort */ }
   fs.writeFileSync(CONFIG, JSON.stringify(cfg, null, 2) + '\n');
-  process.stdout.write(`[trust-seed] ${targets.size} path(s) checked, ${added} newly trusted\n`);
+  process.stderr.write(`[trust-seed] ${targets.size} path(s) checked, ${added} newly trusted\n`);
 }
 
 try { main(); } catch (err) { process.stderr.write(`[trust-seed] failed open: ${err.message}\n`); }

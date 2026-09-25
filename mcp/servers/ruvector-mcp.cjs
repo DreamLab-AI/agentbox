@@ -19,7 +19,7 @@
  */
 
 const readline = require('readline');
-const { createMemoryTools } = require('./lib/memory-tools');
+const { createMemoryTools, shapeSearchResponse, resolveSearchLimit, DEFAULT_SNIPPET_CHARS, DEFAULT_MIN_SCORE, DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT } = require('./lib/memory-tools');
 const { verifyEmbeddingIdentity } = require('./lib/embedding-identity');
 // Last computed effective-embedding-model verdict (ADR-2019); surfaced by
 // memory_health so an operator can read the deployed identity without a probe.
@@ -235,6 +235,17 @@ const { memHybridSearch, memOrient } = createHybridTools({
 });
 const { memHealth } = createHealthTools({ pool, getPgOk: () => pgOk, log });
 
+// Model-facing search: memSearch ranks, shapeSearchResponse bounds the output
+// (limit, min_score floor, snippets). Internal callers (hybrid fallback, orient)
+// keep calling memSearch directly and get whole values.
+async function shapedSearch(query, namespace, sourceType, args = {}) {
+  const limit = resolveSearchLimit(args.limit);
+  const minScore = args.min_score === undefined || args.min_score === null ? undefined : Number(args.min_score);
+  const snippetChars = args.snippet_chars === undefined ? undefined : Number(args.snippet_chars);
+  const res = await memSearch(query, namespace, limit, sourceType);
+  return shapeSearchResponse(res, { full: args.full === true, minScore, snippetChars, limit });
+}
+
 // ── Tool schemas (claude-flow compatible) ─────────────────────────────────────
 
 const TOOLS = [
@@ -254,7 +265,7 @@ const TOOLS = [
   },
   {
     name: 'memory_retrieve',
-    description: 'Retrieve a memory entry by key from ruvector-postgres',
+    description: 'Retrieve one memory entry by key from ruvector-postgres. Always returns the whole value — use it to expand a memory_search snippet.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -277,13 +288,16 @@ const TOOLS = [
   },
   {
     name: 'memory_search',
-    description: 'Semantic vector search over 2M+ memory entries via HNSW index in ruvector-postgres',
+    description: `Semantic vector search (bge-small cosine) over ruvector-postgres memory, best match first. Returns up to ${DEFAULT_SEARCH_LIMIT} results by default, drops results scoring below min_score (default ${DEFAULT_MIN_SCORE}), and trims each value to a ~${DEFAULT_SNIPPET_CHARS}-char snippet (truncated:true, chars = full length) — fetch the whole value with memory_retrieve {key, namespace}, or pass full:true. namespace "*" searches every namespace except the protected reference corpora (e.g. ruvnet-kb, governance-precedents); name one explicitly to search it.`,
     inputSchema: {
       type: 'object',
       properties: {
         query:       { type: 'string' },
-        namespace:   { type: 'string', default: 'default' },
-        limit:       { type: 'number', default: 10 },
+        namespace:   { type: 'string', default: 'default', description: 'Namespace to search. "*" = all non-protected namespaces.' },
+        limit:       { type: 'number', default: DEFAULT_SEARCH_LIMIT, description: `Maximum results (1..${MAX_SEARCH_LIMIT}).` },
+        min_score:   { type: 'number', default: DEFAULT_MIN_SCORE, description: 'Cosine floor; weaker results are dropped and counted in below_min_score. 0 keeps everything.' },
+        full:        { type: 'boolean', default: false, description: 'Return whole values instead of snippets.' },
+        snippet_chars: { type: 'number', default: DEFAULT_SNIPPET_CHARS, description: 'Snippet length per value when full is false.' },
         source_type: { type: 'string', description: 'Filter by source_type. Omit or use "*" for all sources.' },
       },
       required: ['query'],
@@ -604,7 +618,7 @@ async function executeTool(name, args = {}) {
         return await memList(args.namespace || 'default', args.limit || 100);
 
       case 'memory_search':
-        return await memSearch(args.query, args.namespace || 'default', args.limit || 10, args.source_type || null);
+        return await shapedSearch(args.query, args.namespace || 'default', args.source_type || null, args);
 
       case 'memory_usage': {
         const ns = args.namespace || 'default';
@@ -617,7 +631,7 @@ async function executeTool(name, args = {}) {
           });
           case 'retrieve': return await memRetrieve(args.key, ns);
           case 'list':     return await memList(ns, 100);
-          case 'search':   return await memSearch(args.value || args.key || '', ns, 50);
+          case 'search':   return await shapedSearch(args.value || args.key || '', ns, null, args);
           case 'delete':
             // Implemented only under RUVECTOR_EPISODIC_TTL_SWEEP; gate off keeps
             // the historic "not implemented" response byte-identical.
@@ -680,7 +694,8 @@ async function handleMessage(msg) {
       const result = await executeTool(name, args || {});
       return {
         jsonrpc: '2.0', id,
-        result: { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] },
+        // Compact JSON: indentation is pure token cost for a model reader.
+        result: { content: [{ type: 'text', text: JSON.stringify(result) }] },
       };
     }
 

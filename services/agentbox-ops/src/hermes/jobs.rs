@@ -24,6 +24,12 @@ pub struct Repeat {
     pub completed: u64,
 }
 
+/// Model a job runs on when it names none. Scheduled sweeps are routine
+/// headless work; a job that needs more sets `"model"` in `jobs.json`.
+pub const DEFAULT_MODEL: &str = "sonnet";
+/// Effort level a job runs at when it names none.
+pub const DEFAULT_EFFORT: &str = "medium";
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Job {
     pub id: String,
@@ -43,6 +49,18 @@ pub struct Job {
     pub last_error: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub paused_at: Option<String>,
+    /// `--model` for the run (alias or full id); absent means [`DEFAULT_MODEL`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// `--effort` for the run (`low` … `max`); absent means [`DEFAULT_EFFORT`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
+    /// `--mcp-config` for the run (a file path or inline JSON). When present the
+    /// run also passes `--strict-mcp-config`, so ONLY these servers load; absent
+    /// means the full user/project MCP configuration, which the TA sweeps need
+    /// (email gateway, browser). `{"mcpServers":{}}` runs with no servers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mcp_config: Option<String>,
     /// Any field written by a future version is preserved on rewrite.
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
@@ -63,6 +81,46 @@ struct JobsFile {
 /// The scheduler's state directory.
 pub struct Store {
     pub root: PathBuf,
+}
+
+impl Job {
+    /// The model this job runs on.
+    pub fn effective_model(&self) -> &str {
+        self.model
+            .as_deref()
+            .filter(|m| !m.trim().is_empty())
+            .unwrap_or(DEFAULT_MODEL)
+    }
+
+    /// The effort level this job runs at.
+    pub fn effective_effort(&self) -> &str {
+        self.effort
+            .as_deref()
+            .filter(|e| !e.trim().is_empty())
+            .unwrap_or(DEFAULT_EFFORT)
+    }
+
+    /// The `claude` argv for one run of this job, prompt last.
+    ///
+    /// `--mcp-config` is variadic, so `--` fences the prompt off: without it a
+    /// job with an MCP override would have its prompt read as a second config.
+    pub fn claude_args(&self) -> Vec<String> {
+        let mut args = vec![
+            "--print".to_string(),
+            "--model".to_string(),
+            self.effective_model().to_string(),
+            "--effort".to_string(),
+            self.effective_effort().to_string(),
+        ];
+        if let Some(cfg) = self.mcp_config.as_deref().filter(|c| !c.trim().is_empty()) {
+            args.push("--strict-mcp-config".to_string());
+            args.push("--mcp-config".to_string());
+            args.push(cfg.to_string());
+        }
+        args.push("--".to_string());
+        args.push(self.prompt.clone());
+        args
+    }
 }
 
 impl Store {
@@ -254,6 +312,9 @@ pub fn new_job(
         last_status: None,
         last_error: None,
         paused_at: None,
+        model: None,
+        effort: None,
+        mcp_config: None,
         extra: BTreeMap::new(),
     }
 }

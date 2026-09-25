@@ -65,6 +65,9 @@ pkgs.rustPlatform.buildRustPackage {
     mkdir -p tests/tui/fixtures
     cp -R ${tuiFixturesSrc}/. tests/tui/fixtures/
     cp ${../config/entrypoint-unified.sh} tests/entrypoint-unified.sh
+    cp ${../config/registered-hooks.txt} registered-hooks.txt
+    substituteInPlace src/hooks.rs \
+      --replace-fail '../../../config/registered-hooks.txt' '../registered-hooks.txt'
     substituteInPlace tests/consultant_model.rs \
       --replace-fail '../../../config/entrypoint-unified.sh' 'entrypoint-unified.sh'
     substituteInPlace tests/golden.rs \

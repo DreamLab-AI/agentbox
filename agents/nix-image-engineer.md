@@ -5,7 +5,7 @@ description: >
   phases, manifest gates, MCP registration and skill/agent baking. Use when
   changing what ships in the container or what happens at boot.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
+model: sonnet
 ---
 
 # nix-image-engineer

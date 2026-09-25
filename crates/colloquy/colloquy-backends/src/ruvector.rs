@@ -148,11 +148,15 @@ impl VectorBackend for RuvectorBackend {
         text: &str,
         limit: usize,
     ) -> Result<Vec<(String, String, f64)>, String> {
+        // `min_score: 0` keeps every ranked hit: the server's default cosine
+        // floor is tuned for a model reader, while colloquy applies its own
+        // confidence arithmetic to the raw scores. Snippet values are fine here
+        // because each hit's payload is fetched whole by key below.
         let v = self
             .client
             .call_tool(
                 "memory_search",
-                json!({ "query": text, "namespace": namespace, "limit": limit }),
+                json!({ "query": text, "namespace": namespace, "limit": limit, "min_score": 0.0 }),
             )
             .await
             .map_err(|e| e.to_string())?;

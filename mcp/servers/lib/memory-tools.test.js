@@ -9,7 +9,7 @@
  */
 
 const assert = require('assert');
-const { createMemoryTools } = require('./memory-tools');
+const { createMemoryTools, shapeSearchResponse, resolveSearchLimit, wildcardExcludedNamespaces, DEFAULT_MIN_SCORE, DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT } = require('./memory-tools');
 
 let passed = 0;
 async function test(name, fn) {
@@ -340,6 +340,141 @@ function mockPgDeps(overrides = {}) {
 
     await t.memSearch('q', 'ns', 50);
     assert.deepStrictEqual(calls[3], ['search', 'q', { namespace: 'ns', limit: 50 }]);
+  });
+
+  // ── ranked-search output shaping (no crush, snippets, min_score, wildcard) ──
+  const ranked = (n, value = 'v') => Array.from({ length: n }, (_, i) => ({
+    key: `k${i}`, value: typeof value === 'function' ? value(i) : value,
+    namespace: 'ns', source_type: 'agentbox', score: 0.9 - i * 0.01,
+  }));
+
+  await test('memSearch returns every ranked row — no headroom crush, no <<ccr>> markers', async () => {
+    const rows = ranked(8, (i) => `fact ${i} error fail exception`); // crush trigger words
+    const m = mockPgDeps({ queryResult: () => ({ rows }) });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memSearch('q', 'ns', 8);
+    assert.strictEqual(r.results.length, 8);
+    assert.deepStrictEqual(r.results.map((x) => x.key), rows.map((x) => x.key));
+    assert.ok(!JSON.stringify(r).includes('ccr'), 'no compression marker');
+    const src = require('fs').readFileSync(require.resolve('./memory-tools'), 'utf8');
+    assert.ok(!/smartCrush\(/.test(src), 'smartCrush no longer called on search results');
+  });
+
+  await test('shapeSearchResponse: snippet mode trims long values, keeps short ones and reports chars', async () => {
+    const long = 'A'.repeat(1000);
+    const res = { success: true, action: 'search', results: [
+      { key: 'a', value: long, namespace: 'ns', score: 0.8 },
+      { key: 'b', value: 'short fact', namespace: 'ns', score: 0.7 },
+    ] };
+    const out = shapeSearchResponse(res, { snippetChars: 300 });
+    assert.strictEqual(out.results[0].value.length, 301); // 300 + ellipsis
+    assert.strictEqual(out.results[0].truncated, true);
+    assert.strictEqual(out.results[0].chars, 1000);
+    assert.deepStrictEqual(out.results[1], res.results[1], 'short row untouched');
+    assert.strictEqual(out.snippet_chars, 300);
+    assert.ok(/memory_retrieve/.test(out.hint));
+    assert.strictEqual(res.results[0].value, long, 'input not mutated');
+  });
+
+  await test('shapeSearchResponse: {repo,path,text} chunks snippet as "repo:path: text"; objects compact', async () => {
+    const res = { success: true, results: [
+      { key: 'c', value: { repo: 'ruflo', path: 'src/a.ts', text: 'x'.repeat(500) }, score: 0.9 },
+      { key: 'd', value: { a: 1, nested: { b: 'y'.repeat(400) } }, score: 0.8 },
+    ] };
+    const out = shapeSearchResponse(res, { snippetChars: 50 });
+    assert.ok(out.results[0].value.startsWith('ruflo:src/a.ts: xxx'));
+    assert.ok(out.results[1].value.startsWith('{"a":1,"nested":{"b":"yyy'), 'compact JSON, no indentation');
+    assert.strictEqual(out.results[1].chars, JSON.stringify(res.results[1].value).length);
+  });
+
+  await test('shapeSearchResponse: full:true returns whole values', async () => {
+    const long = 'B'.repeat(2000);
+    const out = shapeSearchResponse({ success: true, results: [{ key: 'a', value: long, score: 0.9 }] }, { full: true });
+    assert.strictEqual(out.results[0].value, long);
+    assert.strictEqual(out.results[0].truncated, undefined);
+    assert.strictEqual(out.snippet_chars, undefined);
+  });
+
+  await test('shapeSearchResponse: min_score drops weak rows (default floor), sorts best-first, counts drops', async () => {
+    const res = { success: true, results: [
+      { key: 'lo', value: 'x', score: 0.50 },
+      { key: 'hi', value: 'x', score: 0.80 },
+      { key: 'mid', value: 'x', score: 0.60 },
+    ] };
+    const out = shapeSearchResponse(res, {});
+    assert.strictEqual(DEFAULT_MIN_SCORE, 0.55);
+    assert.deepStrictEqual(out.results.map((r) => r.key), ['hi', 'mid']);
+    assert.strictEqual(out.below_min_score, 1);
+    assert.strictEqual(out.count, 2);
+    const all = shapeSearchResponse(res, { minScore: 0 });
+    assert.strictEqual(all.results.length, 3);
+    const none = shapeSearchResponse(res, { minScore: 0.95 });
+    assert.strictEqual(none.results.length, 0);
+    assert.ok(/lower min_score/.test(none.hint));
+  });
+
+  await test('shapeSearchResponse: degraded ILIKE fallback is exempt from min_score; attention order kept', async () => {
+    const deg = shapeSearchResponse({ success: true, degraded: true, results: [{ key: 'a', value: 'x', score: 0.5 }] }, {});
+    assert.strictEqual(deg.results.length, 1);
+    const att = shapeSearchResponse({ success: true, _attention: {}, results: [
+      { key: 'B', value: 'x', score: 0.6 }, { key: 'A', value: 'x', score: 0.9 }] }, {});
+    assert.deepStrictEqual(att.results.map((r) => r.key), ['B', 'A']);
+  });
+
+  await test('shapeSearchResponse: limit caps rows; failures pass through untouched', async () => {
+    const out = shapeSearchResponse({ success: true, results: ranked(12) }, { limit: 5 });
+    assert.strictEqual(out.results.length, 5);
+    const fail = { success: false, error: 'pg unavailable' };
+    assert.strictEqual(shapeSearchResponse(fail, {}), fail);
+  });
+
+  await test('resolveSearchLimit: default 5, explicit honoured, clamped to max', async () => {
+    assert.strictEqual(DEFAULT_SEARCH_LIMIT, 5);
+    assert.strictEqual(resolveSearchLimit(undefined), 5);
+    assert.strictEqual(resolveSearchLimit(0), 5);
+    assert.strictEqual(resolveSearchLimit('abc'), 5);
+    assert.strictEqual(resolveSearchLimit(20), 20);
+    assert.strictEqual(resolveSearchLimit(10000), MAX_SEARCH_LIMIT);
+  });
+
+  await test('memSearch("*") excludes protected namespaces via the exact MATERIALIZED branch', async () => {
+    const m = mockPgDeps({ queryResult: () => ({ rows: [] }) });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memSearch('q', '*', 5);
+    const q = m.queries.find((x) => /embedding <=>/.test(x.sql));
+    assert.ok(/MATERIALIZED/.test(q.sql));
+    assert.ok(/NOT \(namespace = ANY\(\$3\)\)/.test(q.sql));
+    assert.deepStrictEqual(q.params[2], wildcardExcludedNamespaces());
+    assert.ok(wildcardExcludedNamespaces().includes('governance-precedents'));
+    assert.deepStrictEqual(r.excluded_namespaces, wildcardExcludedNamespaces());
+  });
+
+  await test('memSearch names a protected namespace explicitly → it is searched, nothing excluded', async () => {
+    const m = mockPgDeps({ queryResult: () => ({ rows: [] }) });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    const r = await t.memSearch('q', 'governance-precedents', 5);
+    const q = m.queries.find((x) => /embedding <=>/.test(x.sql));
+    assert.ok(!/NOT \(namespace = ANY/.test(q.sql));
+    assert.strictEqual(q.params[2], 'governance-precedents');
+    assert.strictEqual(r.excluded_namespaces, undefined);
+  });
+
+  await test('memSearch("*", includeProtected) keeps the unfiltered HNSW path', async () => {
+    const m = mockPgDeps({ queryResult: () => ({ rows: [] }) });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    await t.memSearch('q', '*', 5, null, { includeProtected: true });
+    const q = m.queries.find((x) => /embedding <=>/.test(x.sql));
+    assert.ok(!/MATERIALIZED/.test(q.sql));
+    assert.strictEqual(q.params.length, 2);
+  });
+
+  await test('ILIKE fallback on "*" also excludes protected namespaces', async () => {
+    const m = mockPgDeps({ xinfEnsure: async () => false, queryResult: () => ({ rows: [] }) });
+    const t = createMemoryTools({ backend: 'external-pg', deps: m.deps });
+    await t.memSearch('q', '*', 5);
+    const q = m.queries[m.queries.length - 1];
+    assert.ok(/NOT \(namespace = ANY\(\$5::text\[\]\)\)/.test(q.sql));
+    assert.deepStrictEqual(q.params[4], wildcardExcludedNamespaces());
   });
 
   await test('factory rejects unknown backend', async () => {

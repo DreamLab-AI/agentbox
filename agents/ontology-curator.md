@@ -6,7 +6,9 @@ description: >
   path lookups, read-only SPARQL over the reasoned closure, OKF validation, or
   proposing a governed enrichment. Read is pervasive; writes are governed.
 tools: Read, Bash
-model: inherit
+model: sonnet
+effort: low
+omitClaudeMd: true
 ---
 
 # ontology-curator

@@ -19,9 +19,12 @@
 //! * Fail-open sites (`model-routing-project`, `toml-bool`, `toml-string`) exit 0.
 //! * Secrets travel on stdin, never argv, so they stay off the process list.
 
+mod agents_md;
+mod hooks;
 mod jsonio;
 mod mcp;
 mod mcp_hub;
+mod permissions;
 mod plugins;
 mod proxy;
 mod routing;
@@ -144,6 +147,42 @@ enum Command {
     },
     /// Provision the per-stack profile tree under `$WORKSPACE/profiles`.
     ProvisionStacks,
+    /// Reconcile a Claude Code settings file's `hooks` block against the
+    /// governed registry (`config/registered-hooks.txt`): prune vendor
+    /// scaffolding, fix owned hooks' timeouts to seconds, report unknowns.
+    /// Never adds a hook; a missing or corrupt settings file is a no-op.
+    HooksReconcile {
+        #[arg(long)]
+        settings: PathBuf,
+        #[arg(long, default_value = "/opt/agentbox/config/registered-hooks.txt")]
+        registry: PathBuf,
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Copy a tier's canonical `AGENTS.md` into the generated block of its
+    /// `CLAUDE.md` (ADR-2111) — for tiers above a project root, where Claude
+    /// Code would skip an `@AGENTS.md` import as an unapproved external
+    /// include. Missing files are a no-op; unchanged text is not rewritten.
+    AgentsMdEmbed {
+        #[arg(long)]
+        source: PathBuf,
+        #[arg(long)]
+        target: PathBuf,
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Project `[claude_code]` (permission mode + deny rules) into Claude Code
+    /// settings files (ADR-2116). Reconciled every boot; hand-added deny rules
+    /// are preserved. Fail-open.
+    PermissionsProject {
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Settings files to reconcile (repeatable); missing files are skipped.
+        #[arg(long = "settings", required = true)]
+        settings: Vec<PathBuf>,
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// `agentbox.toml` → flat TUI state JSON.
     TuiRead { config: PathBuf, state: PathBuf },
     /// Flat TUI state JSON → canonical `agentbox.toml`.
@@ -297,6 +336,21 @@ fn run(cmd: Command) -> Result<(), String> {
             Ok(())
         }
         Command::ProvisionStacks => stacks::provision(),
+        Command::HooksReconcile {
+            settings,
+            registry,
+            dry_run,
+        } => hooks::run(&settings, &registry, dry_run),
+        Command::PermissionsProject {
+            manifest,
+            settings,
+            dry_run,
+        } => permissions::run(&manifest, &settings, dry_run),
+        Command::AgentsMdEmbed {
+            source,
+            target,
+            dry_run,
+        } => agents_md::run(&source, &target, dry_run),
 
         Command::TuiRead { config, state } => tui_read::run(&config, &state),
         Command::TuiWrite {

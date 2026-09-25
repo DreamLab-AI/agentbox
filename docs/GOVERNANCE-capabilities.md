@@ -139,9 +139,14 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   Code function-hook plugin `config/claude-plugins/jev-compaction` (needs Claude Code ≥
   2.1.274; image pins 2.1.276). At compaction Jev scores every non-pinned tool call twice
   (keep the call? keep its result verbatim?) and only what it lets go is dropped or
-  truncated; text is never rewritten. Invariants: **email never leaves** — a transcript with
-  any `mcp__email-gateway__*`/Gmail call or `email-search` load gets the built-in summary
-  (validator E074 refuses a manifest without that prefix in `taint_tools`); the built-in
+  truncated; text is never rewritten. Invariants: **email never leaves** — a session that has
+  *ever* made an `mcp__email-gateway__*`/Gmail call or loaded `email-search` gets the built-in
+  summary for the rest of its life (the taint is sticky per session id in the plugin store,
+  so a summary that absorbed email is never sent later; amendment 2026-09-25; validator
+  E074 refuses a manifest without that prefix in `taint_tools`); the plugin triggers at
+  `min(compact_at_percent of the window, compact_at_tokens)` and re-triggers only after
+  `rearm_tokens` of growth past the post-compaction size, and compacts an idle session above
+  `cache_warm_floor_tokens` shortly before its prompt cache expires (`cache_warm`); the built-in
   compaction is the **fail-open** path on any error, missing key or reduction under
   `min_reduction_ratio`; `/jev-compact on|off|status` is the operator switch. Egress
   widened from ADR-2090 by operator decision. Contract tests:
@@ -304,6 +309,12 @@ above, enabled but explicitly-invoke-only.
 
 ## Invariants (must not silently change)
 
+- **The permission posture comes from the manifest** (ADR-2116) — `[claude_code]` is reconciled into the root and every profile's settings each boot; deny rules added there are enforced in every mode, bypass included, and a hand-added deny rule is never removed by the projector.
+- **The session prefix is governed** (ADR-2111) — retired agents/commands live outside every
+  root Claude Code scans; hook registrations are reconciled against `config/registered-hooks.txt`
+  every boot (unknown entries preserved and reported, never added); hook `timeout` is seconds;
+  hook context uses `hookSpecificOutput.additionalContext` only, and nothing else a
+  `SessionStart`/`UserPromptSubmit` hook prints reaches stdout.
 - **Byte-identical-when-off** — a disabled `[skills.*]` / `[dream_machine]` gate leaves no
   runtime trace.
 - **Tree-search-coder is never auto-routed** and always carries a `spend_cap_usd`.

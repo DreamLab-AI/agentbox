@@ -185,3 +185,69 @@ One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk:
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `config/entrypoint-unified.sh`: exports `VAULT_REPO` (from `[vault].repo`, else derived from `VAULT_ROOT`; empty when unresolvable so the management API fails closed) and adds it to the vault-disabled `unset` list. Nothing else in boot order, gating or service start changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Amendment — 2026-09-25: sticky taint, token trigger, hysteresis, cache-warm compaction
+
+An audit found one data-boundary leak and three cost defects. Points 3 and 5 above are
+amended; the rest stand.
+
+**a. The taint is sticky per session (amends point 3).** "Decided per compaction from the
+messages being compacted, so it is stateless" was the leak: a built-in summary absorbs email
+content as text and drops the tool calls, so the *next* compaction scanned a transcript with
+no email call in it and sent that summary to Jev. The plugin now records a taint in its own
+store under `taint:<session id>` the first time it sees one — at the `tool.call` of any
+`taintTools` prefix, at a `skill.prompt` expansion of a `taintSkills` skill (which also
+catches `/email-search` typed as a command, where no `Skill` tool call exists), at every
+main-loop `turn.complete` scan of `$.session.messages()`, and at every `session.compact`
+scan. Once recorded, `mergeTaint` reports the session tainted for every later decision,
+whatever the transcript then holds; `decide` is unchanged, so `ok-local` (the 2026-09-21
+amendment) still applies to a declared-local backend. The taint is per session id and
+therefore per transcript: `/clear` starts a new id with an empty transcript, which is correct.
+Entries untouched for 30 days are pruned at `session.start`. **Residual:** a session resumed
+under a *new* id whose history already holds an email-bearing summary, with no email call
+left in it, is not recognised; the tool-call and skill hooks make that window narrow, and
+the operator's rule of not resuming email sessions into Jev-compacted work closes it.
+
+**b. Token trigger.** `compact_at_percent = 60` on a 1M-token window waited for ~600k tokens
+of cache reads per turn. The trigger is now `min(compact_at_percent × window,
+compact_at_tokens)`, with `compact_at_tokens = 180000` by default; the percentage is the
+ceiling for small windows (120k on a 200k window).
+
+**c. Hysteresis.** A compaction that leaves context above the trigger used to re-run every
+turn (a Jev call plus a full prompt-cache rewrite each time). Every standing compaction of
+the main conversation — the plugin's, `/compact`, the engine's own — now marks
+`baseline:<session id>` pending; the next `turn.complete` records the real context size as
+the baseline, and the plugin re-triggers only at `max(trigger, baseline + rearm_tokens)`
+(`rearm_tokens = 40000`; 0 means a quarter of the trigger). The engine's own
+near-full auto-compaction is untouched and remains the backstop.
+
+**d. Cache-warm compaction.** After the prompt cache's TTL the whole history is re-prefilled
+at full price, so compacting just before an idle break is cheap and compacting just after
+it is not. At each main-loop `turn.complete` with context ≥ `cache_warm_floor_tokens`
+(100000) and past the hysteresis gap, the plugin arms one `$.clock.after` timer for
+`TTL − cache_ttl_margin_seconds` (half the TTL when the margin would exceed half of it); any
+`turn.start` cancels it. On firing, `cache_warm = "compact"` (default) runs
+`$.session.compact()` through the same Jev-or-built-in decision, taint gate included;
+`"notify"` shows a toast suggesting `/compact`; `"off"` disables it. The TTL is
+`cache_ttl_seconds` when set, else detected: a session whose usage reports subscription
+rate-limit windows is 1 h, one without them holding `ANTHROPIC_API_KEY` is 5 min, anything
+else is assumed 1 h. `$.session.compact` runs between turns and rejects while one runs; a
+rejection is logged and nothing else happens.
+
+**Configuration.** Six new `[features.jev_compaction]` keys (`compact_at_tokens`,
+`rearm_tokens`, `cache_warm`, `cache_warm_floor_tokens`, `cache_ttl_seconds`,
+`cache_ttl_margin_seconds`) in the manifest, schema and catalogue, mirrored as plugin
+`userConfig` (`compactAtTokens`, `rearmTokens`, `cacheWarm`, `cacheWarmFloorTokens`,
+`cacheTtlSeconds`, `cacheTtlMarginSeconds`) whose defaults equal the manifest's, so the
+plugin behaves as specified even before the entrypoint projects the new keys.
+
+**Verification.** `node --test tests/config/jev-compaction-policy.test.mjs` → 36 passed
+(22 before; 14 added for the pure decisions). `claude plugin test
+config/claude-plugins/jev-compaction` (Claude Code 2.1.280) → 8 passed: engine-level tests in
+`config/claude-plugins/jev-compaction/tests/jev-compaction.test.ts` prove a summary that
+absorbed email is not sent at the next compaction, that the taint is recorded at the tool
+call and at the skill expansion, that a clean session still reaches Jev, that the token
+trigger fires once and holds under hysteresis until re-armed, and that the cache-warm timer
+compacts at exactly `TTL − margin`, is cancelled by a new turn and is not armed below the
+floor. Disabling the sticky merge fails the three taint tests (mutation-checked).
+`claude plugin validate` passes.

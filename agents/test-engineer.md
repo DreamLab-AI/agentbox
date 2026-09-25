@@ -6,7 +6,7 @@ description: >
   reproducing test before it is fixed. Writes the failing test first, then the
   fix.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
+model: sonnet
 ---
 
 # test-engineer

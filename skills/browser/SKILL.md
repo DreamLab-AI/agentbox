@@ -1,14 +1,12 @@
 ---
 name: browser
 description: >-
-  Reached VIA `browser-automation`, the preferred entry point for all browser work —
-  for a browser TASK choose `browser-automation`, not this. Choose this only when the
-  sidecar connection details themselves are the subject. Drive a real Chrome via the
-  browsercontainer sidecar over MCP SSE. Use when a task needs a live browser —
-  navigate, click, fill forms, screenshot, read the accessibility tree, run JavaScript
-  in-page, or validate WebGPU/WebGL rendering. Canonical owner of the sidecar
-  connection details the chrome-cdp / playwright / browser-automation skills
-  reference.
+  The entry point for all browser work in this estate. Drive a real Chrome via the
+  browsercontainer sidecar over MCP SSE (`browser-gpu`). Use when a task needs a live
+  browser — navigate, click, fill forms, screenshot, read the accessibility tree, run
+  JavaScript in-page, or validate WebGPU/WebGL rendering. Canonical owner of the
+  sidecar connection details. Not for raw CDP scripting (use chrome-cdp); when unsure
+  which browser tool fits, `/route` reaches the unregistered browser-automation router.
 version: 2.0.0
 triggers:
   - /browser

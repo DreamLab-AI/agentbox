@@ -147,13 +147,23 @@ describe('W-C consumers :: attention_rerank ON activates the overfetch/blend pat
     expect(queries.filter((q) => isBaseline(q.sql))).toHaveLength(0);
   });
 
-  it('unfiltered branch (namespace "*") uses the fast HNSW cand CTE, no MATERIALIZED', async () => {
+  it('unfiltered branch (namespace "*", includeProtected) uses the fast HNSW cand CTE, no MATERIALIZED', async () => {
+    process.env.RUVECTOR_ATTENTION_RERANK = '1';
+    const { backend, queries } = makeBackend(handler);
+    await backend.memSearch('q', '*', 10, null, { includeProtected: true });
+    const attQ = queries.find((q) => isAttention(q.sql));
+    expect(attQ.sql).toMatch(/LIMIT \$2 \* 4/);
+    expect(attQ.sql).not.toMatch(/MATERIALIZED/);
+  });
+
+  it('wildcard (namespace "*") excludes protected namespaces on the exact MATERIALIZED branch', async () => {
     process.env.RUVECTOR_ATTENTION_RERANK = '1';
     const { backend, queries } = makeBackend(handler);
     await backend.memSearch('q', '*', 10, null);
     const attQ = queries.find((q) => isAttention(q.sql));
-    expect(attQ.sql).toMatch(/LIMIT \$2 \* 4/);
-    expect(attQ.sql).not.toMatch(/MATERIALIZED/);
+    expect(attQ.sql).toMatch(/WITH ns AS MATERIALIZED/);
+    expect(attQ.sql).toMatch(/NOT \(namespace = ANY\(\$3\)\)/);
+    expect(attQ.params[2]).toContain('governance-precedents');
   });
 
   it('blend reorders by the rescaled attention term; item shape stays byte-identical with score = cosine', async () => {
@@ -194,13 +204,12 @@ describe('W-C consumers :: attention_rerank ON activates the overfetch/blend pat
     ];
     const { backend } = makeBackend((sql) => (isAttention(sql) ? { rows: mono } : { rows: BASELINE_ROWS }));
     const res = await backend.memSearch('q', 'default', 10, null);
-    // Assert on the pre-compression ordering channel: `results` is passed through
-    // the same headroom `_compressResults` step as the baseline path (which may
-    // drop rows on 3+ sets), so `_attention.reranked_top` is the authoritative
-    // order record for A/B attribution.
+    // `_attention.reranked_top` is the authoritative order record for A/B
+    // attribution; `results` is no longer crushed, so it must agree.
     expect(res._attention.reranked_top).toEqual(['A', 'B', 'C']); // cosine order preserved
     expect(res._attention.baseline_top).toEqual(['A', 'B', 'C']);
     expect(res._attention.reordered).toBe(0);
+    expect(res.results.map((r) => r.key)).toEqual(['A', 'B', 'C']); // no row dropped by compression
   });
 });
 

@@ -5,7 +5,11 @@
 # reconciler against them, and asserts the resulting tree. The properties under
 # test are the ones that make it safe to run unattended on every boot:
 #   - the registered set is linked from the baked tree,
-#   - vendor dumps are retired to a RECOVERABLE sidecar, never deleted,
+#   - vendor dumps are retired to a RECOVERABLE sidecar, never deleted, and that
+#     sidecar sits OUTSIDE every agent/command root (Claude Code scans the roots
+#     recursively, dot-directories included, so an in-root `.superseded/` kept
+#     every retired file loaded),
+#   - a legacy in-root `.superseded/` is migrated out, merging without clobbering,
 #   - a vendor copy sharing a registered basename cannot survive to shadow it,
 #   - hand-written agents are left alone,
 #   - secondary roots are collapsed,
@@ -37,14 +41,42 @@ run_agents() {
   CLAUDE_AGENTS_DIR="$1" \
   AGENT_ROOT_TARGETS="${2:-}" \
   REGISTERED_AGENTS_MANIFEST="$AGENT_MANIFEST" \
+  AGENTBOX_SUPERSEDED_DIR="$SUP" \
     bash "$AGENT_SH" ${3:-} 2>&1
+}
+
+run_cmds() {
+  COMMAND_ROOT_TARGETS="$1" \
+  REGISTERED_COMMANDS_MANIFEST="$CMD_MANIFEST" \
+  AGENTBOX_SUPERSEDED_DIR="$SUP" \
+    bash "$CMD_SH" ${2:-} 2>&1
+}
+
+# the reconcilers' root-key slug: path minus the trailing /<kind>, slashes -> '-'
+root_key() { local r="${1%/}"; r="${r%/"$2"}"; r="${r#/}"; printf '%s' "${r//\//-}"; }
+
+# assert_no_legacy <label> <dir>... — no in-root .superseded/ may remain anywhere
+assert_no_legacy() {
+  local label="$1"; shift
+  local hits; hits="$(find "$@" -name .superseded 2>/dev/null)"
+  [ -z "$hits" ] && ok "$label" || bad "$label" "$hits"
+}
+
+# assert_outside <label> <path> <root>... — path is not inside any root
+assert_outside() {
+  local label="$1" p="$2" r; shift 2
+  for r in "$@"; do
+    case "$p/" in "${r%/}/"*) bad "$label" "$p is inside $r"; return ;; esac
+  done
+  ok "$label"
 }
 
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
+SUP="$T/sidecar"
 
 # ── fixture ────────────────────────────────────────────────────────────────
-PRIMARY="$T/primary"; SECOND="$T/second"
+PRIMARY="$T/home/.claude/agents"; SECOND="$T/ws/.claude/agents"
 mkdir -p "$PRIMARY/core" "$PRIMARY/v3" "$SECOND/core"
 # a vendor agent in a category dir, carrying a vendor marker
 printf -- '---\nname: coder\ndescription: d\n---\nhooks:\n  echo "🐝 swarm"\nnpx claude-flow hooks pre-task\n' > "$PRIMARY/core/coder.md"
@@ -55,43 +87,90 @@ printf -- '---\nname: my-own\ndescription: mine\n---\nbody\n' > "$PRIMARY/my-own
 # the secondary root is collapsed wholesale
 printf -- '---\nname: tester\ndescription: d\n---\nbody\n' > "$SECOND/core/tester.md"
 
+SP="$SUP/agents/$(root_key "$PRIMARY" agents)"
+SS="$SUP/agents/$(root_key "$SECOND" agents)"
+
 out="$(run_agents "$PRIMARY" "$SECOND")"
 
 echo "agents:"
+case "$SP" in *-home-.claude) ok "root key is a readable slug minus /agents" ;;
+  *) bad "root key is a readable slug minus /agents" "$SP" ;; esac
 assert_file  "registered agent is linked"            "$PRIMARY/code-reviewer.md"
 [ -L "$PRIMARY/code-reviewer.md" ] && ok "linked as a symlink into the baked tree" \
   || bad "linked as a symlink into the baked tree" "not a symlink"
 refute_file  "vendor agent retired from category dir" "$PRIMARY/core/coder.md"
-assert_file  "…and is recoverable"                    "$PRIMARY/.superseded/core/coder.md"
+assert_file  "…and is recoverable from the sidecar"   "$SP/core/coder.md"
 refute_file  "shadowing vendor copy retired"          "$PRIMARY/v3/adr-architect.md"
-assert_file  "…and is recoverable"                    "$PRIMARY/.superseded/v3/adr-architect.md"
+assert_file  "…and is recoverable from the sidecar"   "$SP/v3/adr-architect.md"
 assert_file  "registered agent still linked after that" "$PRIMARY/adr-architect.md"
 assert_file  "hand-written agent preserved"           "$PRIMARY/my-own.md"
 [ ! -L "$PRIMARY/my-own.md" ] && ok "hand-written agent untouched (still a real file)" \
   || bad "hand-written agent untouched" "was replaced by a link"
 refute_file  "secondary root collapsed"               "$SECOND/core/tester.md"
-assert_file  "…and is recoverable"                    "$SECOND/.superseded/core/tester.md"
+assert_file  "…and is recoverable from the sidecar"   "$SS/core/tester.md"
 refute_file  "emptied category dir removed"           "$PRIMARY/core"
-assert_file  "sidecar survives dir pruning"           "$PRIMARY/.superseded"
+assert_outside "sidecar sits outside every agent root" "$SUP" "$PRIMARY" "$SECOND"
+assert_no_legacy "no .superseded/ inside any agent root" "$PRIMARY" "$SECOND"
 
-# no .md may remain in a subdirectory of the live root — that is the shadowing class
-leftover="$(find "$PRIMARY" -mindepth 2 -name '*.md' -not -path "$PRIMARY/.superseded/*" 2>/dev/null)"
-[ -z "$leftover" ] && ok "no nested agent left to shadow a registered name" \
-  || bad "no nested agent left to shadow a registered name" "$leftover"
+# no .md may remain in a subdirectory of the live root — that is the shadowing
+# class, and with the sidecar outside the root there is nothing to exempt
+leftover="$(find "$PRIMARY" "$SECOND" -mindepth 2 -name '*.md' 2>/dev/null)"
+[ -z "$leftover" ] && ok "no nested agent left under any root" \
+  || bad "no nested agent left under any root" "$leftover"
 
 # ── idempotency ────────────────────────────────────────────────────────────
-before="$(find "$PRIMARY" "$SECOND" | sort | md5sum)"
+before="$(find "$PRIMARY" "$SECOND" "$SUP" | sort | md5sum)"
 run_agents "$PRIMARY" "$SECOND" >/dev/null
-after="$(find "$PRIMARY" "$SECOND" | sort | md5sum)"
+after="$(find "$PRIMARY" "$SECOND" "$SUP" | sort | md5sum)"
 [ "$before" = "$after" ] && ok "second run is a no-op" || bad "second run is a no-op" "tree changed"
 
+# ── legacy in-root sidecar is migrated out (the self-healing path) ─────────
+L="$T/legacy/.claude/agents"; LS="$SUP/agents/$(root_key "$L" agents)"
+mkdir -p "$L/.superseded/core" "$L/.superseded/v3" "$LS/v3"
+printf 'old\n'  > "$L/.superseded/core/old.md"
+printf 'same\n' > "$L/.superseded/v3/dup.md";  printf 'same\n'  > "$LS/v3/dup.md"
+printf 'mine\n' > "$L/.superseded/v3/diff.md"; printf 'theirs\n' > "$LS/v3/diff.md"
+printf 'x: 1\n' > "$L/.superseded/v3/notes.yaml"
+run_agents "$L" "" >/dev/null
+assert_no_legacy "legacy agent sidecar removed from the root" "$L"
+assert_file  "legacy file migrated to the new sidecar"   "$LS/core/old.md"
+assert_file  "non-.md legacy file migrated too"          "$LS/v3/notes.yaml"
+[ "$(cat "$LS/v3/dup.md")" = "same" ] && [ ! -e "$LS/v3/dup.md.migrated-1" ] \
+  && ok "identical legacy duplicate merged, not doubled" \
+  || bad "identical legacy duplicate merged, not doubled" "$(ls "$LS/v3")"
+[ "$(cat "$LS/v3/diff.md")" = "theirs" ] && [ "$(cat "$LS/v3/diff.md.migrated-1" 2>/dev/null)" = "mine" ] \
+  && ok "differing legacy file kept beside, never overwrites" \
+  || bad "differing legacy file kept beside, never overwrites" "$(ls "$LS/v3")"
+lb="$(find "$L" "$SUP" | sort | md5sum)"
+run_agents "$L" "" >/dev/null
+la="$(find "$L" "$SUP" | sort | md5sum)"
+[ "$lb" = "$la" ] && ok "migration is idempotent" || bad "migration is idempotent" "tree changed"
+
+# a legacy sidecar in a SECONDARY root is migrated as well
+L2="$T/legacy2/.claude/agents"; mkdir -p "$L2/.superseded/core"
+printf 'old\n' > "$L2/.superseded/core/old2.md"
+run_agents "$T/p2/.claude/agents" "$L2" >/dev/null
+assert_no_legacy "legacy sidecar in a secondary root migrated" "$L2"
+assert_file "…into that root's own sidecar key" "$SUP/agents/$(root_key "$L2" agents)/core/old2.md"
+
+# ── default base: beside the root's parent .claude, never under $HOME ───────
+DF="$T/dflt/.claude/agents"; mkdir -p "$DF/core"
+printf -- '---\nname: coder\n---\nruv-swarm\n' > "$DF/core/coder.md"
+AGENTS_TREE="$AGENTS_TREE_SRC" CLAUDE_AGENTS_DIR="$DF" AGENT_ROOT_TARGETS="" \
+  REGISTERED_AGENTS_MANIFEST="$AGENT_MANIFEST" HOME="$T/nohome" \
+  bash "$AGENT_SH" >/dev/null 2>&1
+assert_file "default sidecar is <.claude>/agentbox-superseded" \
+  "$T/dflt/.claude/agentbox-superseded/agents/$(root_key "$DF" agents)/core/coder.md"
+refute_file "…and does not depend on \$HOME" "$T/nohome"
+
 # ── dry-run ────────────────────────────────────────────────────────────────
-D="$T/dry"; mkdir -p "$D/core"
+D="$T/dry/.claude/agents"; mkdir -p "$D/core" "$D/.superseded/core"
 printf -- '---\nname: coder\ndescription: d\n---\nruv-swarm\n' > "$D/core/coder.md"
-b="$(find "$D" | sort | md5sum)"
+printf 'old\n' > "$D/.superseded/core/old.md"
+b="$(find "$T/dry" "$SUP" | sort | md5sum)"
 run_agents "$D" "" --dry-run >/dev/null
-a="$(find "$D" | sort | md5sum)"
-[ "$b" = "$a" ] && ok "--dry-run changes nothing" || bad "--dry-run changes nothing" "tree changed"
+a="$(find "$T/dry" "$SUP" | sort | md5sum)"
+[ "$b" = "$a" ] && ok "--dry-run changes nothing (retire or migrate)" || bad "--dry-run changes nothing" "tree changed"
 
 # ── missing manifest is a no-op, not a failure (fail-open) ─────────────────
 AGENTS_TREE="$AGENTS_TREE_SRC" CLAUDE_AGENTS_DIR="$D" REGISTERED_AGENTS_MANIFEST="$T/nope.txt" \
@@ -100,19 +179,38 @@ AGENTS_TREE="$AGENTS_TREE_SRC" CLAUDE_AGENTS_DIR="$D" REGISTERED_AGENTS_MANIFEST
 
 # ── commands ───────────────────────────────────────────────────────────────
 echo "commands:"
-C="$T/cmds"; mkdir -p "$C/sparc"
-printf -- 'kept\n'  > "$C/dream.md"
+C="$T/home/.claude/commands"; C2="$T/ws/.claude/commands"
+mkdir -p "$C/sparc" "$C2/github" "$C2/.superseded/hooks"
+printf -- 'kept\n'   > "$C/dream.md"
 printf -- 'vendor\n' > "$C/sparc/tdd.md"
-COMMAND_ROOT_TARGETS="$C" REGISTERED_COMMANDS_MANIFEST="$CMD_MANIFEST" bash "$CMD_SH" >/dev/null 2>&1
-assert_file "registered command kept"      "$C/dream.md"
-refute_file "vendor command retired"       "$C/sparc/tdd.md"
-assert_file "…and is recoverable"          "$C/.superseded/sparc/tdd.md"
-refute_file "emptied command dir removed"  "$C/sparc"
+printf -- 'vendor\n' > "$C2/github/pr.md"
+printf -- 'legacy\n' > "$C2/.superseded/hooks/pre-edit.md"
+CS="$SUP/commands/$(root_key "$C" commands)"; CS2="$SUP/commands/$(root_key "$C2" commands)"
+run_cmds "$C:$C2" >/dev/null
+assert_file "registered command kept"          "$C/dream.md"
+refute_file "vendor command retired"           "$C/sparc/tdd.md"
+assert_file "…and is recoverable from the sidecar" "$CS/sparc/tdd.md"
+refute_file "second-root command retired"      "$C2/github/pr.md"
+assert_file "…into that root's own sidecar key" "$CS2/github/pr.md"
+refute_file "emptied command dir removed"      "$C/sparc"
+assert_file "legacy command sidecar migrated"  "$CS2/hooks/pre-edit.md"
+assert_outside "command sidecar sits outside every command root" "$SUP" "$C" "$C2"
+assert_no_legacy "no .superseded/ inside any command root" "$C" "$C2"
+left="$(find "$C" "$C2" -type f ! -path "$C/dream.md" 2>/dev/null)"
+[ -z "$left" ] && ok "nothing but the registered command left to load" \
+  || bad "nothing but the registered command left to load" "$left"
 
-cb="$(find "$C" | sort | md5sum)"
-COMMAND_ROOT_TARGETS="$C" REGISTERED_COMMANDS_MANIFEST="$CMD_MANIFEST" bash "$CMD_SH" >/dev/null 2>&1
-ca="$(find "$C" | sort | md5sum)"
+cb="$(find "$C" "$C2" "$SUP" | sort | md5sum)"
+run_cmds "$C:$C2" >/dev/null
+ca="$(find "$C" "$C2" "$SUP" | sort | md5sum)"
 [ "$cb" = "$ca" ] && ok "second run is a no-op" || bad "second run is a no-op" "tree changed"
+
+CD="$T/cdry/.claude/commands"; mkdir -p "$CD/sparc" "$CD/.superseded/x"
+printf 'v\n' > "$CD/sparc/a.md"; printf 'v\n' > "$CD/.superseded/x/b.md"
+cb="$(find "$T/cdry" "$SUP" | sort | md5sum)"
+run_cmds "$CD" --dry-run >/dev/null
+ca="$(find "$T/cdry" "$SUP" | sort | md5sum)"
+[ "$cb" = "$ca" ] && ok "commands --dry-run changes nothing" || bad "commands --dry-run changes nothing" "tree changed"
 
 # ── ancestor skill roots honour registered-skills.txt (the manifest leak) ──
 echo "skill roots:"

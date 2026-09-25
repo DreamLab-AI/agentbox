@@ -18,6 +18,107 @@ window's recovery store. `tests/tui/notes-launcher.test.sh`: 16 cases (5 new),
 and its `_said` helper no longer lets a pattern beginning `--` pass as a grep
 error.
 
+### Changed (2026-09-25 — Claude Code permission posture from the manifest; ADR-2116 ACCEPTED, staged)
+
+`[claude_code].permission_mode` (default **bypassPermissions**) and `permission_deny` (default
+`docker run`, `docker compose`, `ssh`) are projected by the new `agentbox-manifest permissions-project`
+into `~/.claude/settings.json` and every stack profile's settings on every boot, replacing the
+seed-if-unset auto mode (profiles previously had no mode and prompted). Deny rules are enforced in
+bypass (probed) but are prefix matches. `dsp` now follows the manifest; `dspa`/`dspb` force auto/bypass.
+
+### Fixed (2026-09-25 — session prefix and per-turn context; ADR-2111 ACCEPTED, staged)
+
+Audit against Anthropic's session-value guidance, measured on Claude Code 2.1.280.
+- **Retired agents/commands still loaded.** ADR-2092's `.superseded/` sidecar sat inside the
+  roots Claude Code scans recursively (93 agents, 139 `.superseded:*` commands, ~9k tokens per
+  session). It now lives in `~/.claude/agentbox-superseded/`; legacy sidecars migrate on boot
+  (665 files moved live). The test asserted the bug and now asserts the fix (45 checks).
+- **Three `UserPromptSubmit` hooks never reached the model.** skill-route, ruvnet-brain-ground
+  and dream-inbox-surface emitted top-level `additionalContext`, which is ignored. They now use
+  `hookSpecificOutput` via `config/hooks/lib/hook-output.cjs`. The router scores registered
+  skills only (judge input ~16k → 3.2k tokens). Brain-ground triggers are tightened and capped at
+  1,200 chars. Dream-inbox marks items surfaced only after delivery and skips harness-generated turns.
+- **Hook timeouts were milliseconds** (Claude Code reads seconds; `8000` = 2.2 h). Corrected in
+  the entrypoint and `stacks.rs`. ontology-monitor and `nostr-pod-bridge session-summary` now
+  detach on SessionEnd so exit and `/clear` never wait on a model call.
+- **Governed hook registry.** `config/registered-hooks.txt` + `agentbox-manifest hooks-reconcile`
+  prune ruflo helper scaffolding (the regex "Agent: coder 80%" box on every turn, no-op verbs,
+  PreCompact `session-end` ×2), auto-memory-hook (no-op, noisy, would rewrite `MEMORY.md`) and
+  trust-seed as a SessionStart hook (avg 3.2 s). nostr-live-mirror exits before any work when no
+  recipient is set.
+- **`memory_search` lost relevant rows.** The headroom crusher kept the lowest-scoring row and
+  "error"-containing rows and replaced the rest with irrecoverable `<<ccr:…>>` markers. Removed.
+  Results are now ranked, floored (`min_score` 0.55), snippeted (300 chars, `full:true` to opt
+  out), default limit 5, with protected namespaces excluded from `"*"` (28 KB → 2.8 KB on a probe).
+  The host class-index canary passes `min_score: 0`.
+- **Model and cache hygiene.** memory-curator → haiku/low; curators, janitor and auto-consultant
+  → sonnet/low; code-reviewer, test-engineer, nix-image-engineer → sonnet. Headless `claude -p` paths
+  (tab0-bridge, nostr-gateway) run with no MCP servers, no hooks, `--effort low`,
+  `MAX_THINKING_TOKENS=0` (prefix 38–60k → 7–10k tokens). Hermes jobs take `model`/`effort`/
+  `mcp_config` (default sonnet/medium). Seeded `subagentPromptCacheTtl: "1h"`,
+  `autoMemoryEnabled: false`, `switchModelsOnFlag: false`. The OpenRouter wrapper pins a 1 h cache
+  and exports the profile model to every tier; before this it billed claude-opus-5-5.
+- **Jev compaction (ADR-2093 amended).** Absolute `compact_at_tokens` (180k), re-arm hysteresis,
+  sticky per-session email taint (closes a leak via summaries), cache-warm compaction of idle sessions.
+- **Always-loaded instructions trimmed.** CLAUDE.md tiers 40.4 KB → 19 KB; depth relocated to
+  `docs/reference/claude-context/` and lazily loaded `crates/colloquy/AGENTS.md` (via a `CLAUDE.md` import), `config/hooks/CLAUDE.md`;
+  stale facts corrected. `agentic_qe = false` (0 calls in 14 days; rebuild-class). The orchestration
+  proxy forwards `swarm,agent` only. The skills linter warns on descriptions over 600 chars.
+- **AGENTS.md is the canonical instruction file per tier.** agentbox, the host project and the
+  colloquy crates keep tool-neutral rules in `AGENTS.md`; each `CLAUDE.md` is `@AGENTS.md` plus
+  Claude-only notes. The host project's stale Feb-2026 `AGENTS.md` (dead `multi-agent-docker/` paths)
+  is rewritten and merged with its `CLAUDE.md`. The workspace tier is embedded at boot by the new
+  `agentbox-manifest agents-md-embed` (an import there is skipped as an external include).
+  `~/.codex/AGENTS.md` now also carries the operator's working style and the workspace facts.
+  `scripts/skill-count-check.js` reads the baked-count claim from `AGENTS.md`.
+
+### Added (2026-09-23 — routing teacher labels, gated off; ADR-2110 PROPOSED)
+
+`[skills.routing].label_log` (default **false**) and `label_embeddings_url`. When on,
+`config/hooks/routing-label-recorder.cjs` runs at Stop. For each real user turn it writes one
+row to `routing_labels` in the RuVector sidecar: the prompt's LAN bge-small embedding (never
+the text), the skills the main model used (Skill tool or Read of a SKILL.md; shell reads are
+kept as inspection, never the label), and the router's pick. The pick is joined through a
+hashed session tag that the router adds to its log only when this is on. Email-gateway turns
+are never embedded. Off-LAN embeddings endpoints are refused by the hook and by the new
+validator rule **E077**. The watermark advances only after a durable write. Boot
+registration is byte-identical when off. Tests: `tests/config/routing-labels.test.js`.
+
+### Added (2026-09-23 — the skill router's local cascade, gated off)
+
+ADR-2095 addendum. `[skills.routing].cascade` (default **false**) and `cascade_cutoff`
+(default 0.3718). When on, `config/hooks/lib/skill-route.cjs` ranks the candidate map with
+a BM25 ranker ported from `system-one-eval`. A turn whose relative top-two margin reaches the
+cutoff is answered in-process: no judge call, no egress, `model: "local-bm25"` in the log.
+The rest escalate to the judge as before, and log lines gain `cascade` and `margin` only
+when the gate is on. Boot inlines the two variables into the hook command and
+`runtime-env.sh` only when on, so the off state is byte-identical to before.
+`tests/system-one/cascade-parity.test.mjs` holds the JS ranker to the Rust instrument's
+pick and margin on all 86 corpus turns (golden: `tests/system-one/cascade-bm25-parity.json`,
+regenerated by `system-one-eval cascade --emit-parity-fixture`). Validator: **E076**
+(invalid cascade/cutoff) and **W074** (sovereign façade on openjev with `timeout_ms` < 6000,
+openjev p50 being 4.9 s). Schema updated.
+
+### Added (2026-09-23 — `system-one-eval cascade`: rank locally, escalate to the judge only when unsure)
+
+ADR-2095 addendum. An offline replay of saved judge runs behind BM25, bge-small and their
+reciprocal-rank fusion. It reports an in-sample frontier and a leave-one-out cutoff with an
+exact McNemar test against the judge alone. Measured: in front of cloud Jev, parity needs 81%
+escalated; in front of the local openjev, 50% escalated keeps 86.0% against 88.4% (p=0.69) and
+halves mean latency to 2.4 s. `Ranker` now keeps its full score table in memory
+(`#[serde(skip)]`). `read_report` is factored out of `copy-ceiling`.
+
+### Fixed (2026-09-23 — a routed skill the Skill tool cannot invoke now says where to read it)
+
+ADR-2091. The judge ranks all ~115 skills in `/opt/agentbox/skills`; only the
+`registered-skills.txt` set is projected into `~/.claude/skills`. A pick outside that
+set (e.g. `deep-research`) was named in the `[route]` line with no way to load it.
+`formatContext(r, cfg)` now appends `Not in the Skill tool; Read its SKILL.md instead:
+<name> → <path>` for each such shown pick, and `/route`'s `dispatch:` line carries the
+same path. Registered picks, and hosts with no readable registered dir, get the line
+byte-for-byte as before. New config key `registeredDir`
+(`AGENTBOX_SKILL_ROUTE_REGISTERED_DIR` › `CLAUDE_SKILLS_DIR` › `~/.claude/skills`).
+
 ### Removed (2026-09-22 — the corpus loses its MCP server; agents get a CLI)
 
 ADR-2107 / ADR-2108, VisionFlow PRD-sovereign-corpus Q10/Q11 (WS-G).

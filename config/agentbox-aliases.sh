@@ -3,11 +3,12 @@
 # Source this file or add to your shell profile: source agentbox-aliases.sh
 
 # === CLAUDE CODE ===
-# dsp = Claude Code in auto mode (classifier decides per action; the blanket
-# bypass flag stopped honouring .git/ and .claude/ writes in 2.1.78 and is
-# legacy). dspb = the old blanket bypass for isolated, throwaway containers only.
-alias claude-hierarchical="claude --permission-mode auto"
-alias dsp="claude --permission-mode auto"
+# dsp = Claude Code in the manifest's mode: [claude_code].permission_mode
+# (ADR-2116; default bypassPermissions, deny rules for docker run/compose + ssh),
+# projected into settings.json every boot. dspa / dspb force auto / bypass.
+alias claude-hierarchical="claude"
+alias dsp="claude"
+alias dspa="claude --permission-mode auto"
 alias dspb="claude --permission-mode bypassPermissions"
 
 # === CLAUDE FLOW (orchestration — Nix-packaged binary, no npx) ===

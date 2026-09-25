@@ -1269,7 +1269,8 @@ for (const evt of ['SessionStart', 'UserPromptSubmit', 'Stop', 'SessionEnd']) {
   s.hooks[evt] = s.hooks[evt] || [];
   const has = s.hooks[evt].some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('nostr-live-mirror.cjs')));
   // The hook reads the event name from argv[2]; pass it per event.
-  if (!has) { s.hooks[evt].push({ hooks: [{ type: 'command', command: `${cmd} ${evt} || true`, timeout: 8000 }] }); changed = true; }
+  // Timeouts are SECONDS (Claude Code's unit); config/registered-hooks.txt is canonical.
+  if (!has) { s.hooks[evt].push({ hooks: [{ type: 'command', command: `${cmd} ${evt} || true`, timeout: 8 }] }); changed = true; }
 }
 if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [mirror] registered nostr-live-mirror hooks in settings.json'); }
 else { console.log('  [mirror] nostr-live-mirror hooks already registered'); }
@@ -1289,7 +1290,7 @@ let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
 s.hooks = s.hooks || {};
 s.hooks.SessionStart = s.hooks.SessionStart || [];
 const has = s.hooks.SessionStart.some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('fleet-session-start.sh')));
-if (!has) { s.hooks.SessionStart.push({ hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 8000 }] }); fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [fleet] registered fleet-session-start hook in settings.json'); }
+if (!has) { s.hooks.SessionStart.push({ hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 8 }] }); fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [fleet] registered fleet-session-start hook in settings.json'); }
 else { console.log('  [fleet] fleet-session-start hook already registered'); }
 FLEETJS
 fi
@@ -1323,12 +1324,13 @@ const on = /^(1|true|yes)$/i.test(process.env.ONTOLOGY_ON || '');
 let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { /* first boot */ }
 const before = JSON.stringify(s);
 if (on) {
-  // Timeout matches the profile wiring (stacks.rs) and the hook's own 180s budget.
+  // The hook detaches its 180 s review into a background process and returns at
+  // once, so SessionEnd (exit, /clear) never waits on the GLM call; 10 s is ample.
   s.hooks = s.hooks || {};
   s.hooks.SessionEnd = s.hooks.SessionEnd || [];
   const has = s.hooks.SessionEnd.some((g) => (g.hooks || []).some((h) => String(h.command || '').includes(MARKER)));
   if (!has) {
-    s.hooks.SessionEnd.push({ hooks: [{ type: 'command', command: `node ${process.env.ONTOLOGY_HOOK} || true`, timeout: 200000 }] });
+    s.hooks.SessionEnd.push({ hooks: [{ type: 'command', command: `node ${process.env.ONTOLOGY_HOOK} || true`, timeout: 10 }] });
   }
   // The hook fails open unless its master switch is set; the profile settings seed it the
   // same way (stacks.rs), so the root session must too or the hook is a registered no-op.
@@ -1365,21 +1367,14 @@ fi
 # in a checkout that has not been trusted yet (2026-09-02: ten worker panes
 # sat dead for an hour). config/hooks/trust-seed.cjs marks the workspace root
 # and every git checkout/worktree under it as trusted in ~/.claude.json. Runs
-# once here at boot and again on every SessionStart so new worktrees are
-# covered. Idempotent, fail-open. Off: AGENTBOX_TRUST_SEED=0.
+# ONCE here at boot. It is deliberately NOT a SessionStart hook any more: it
+# walked ~1,170 paths per session start (avg 3.2 s) and raced Claude Code's own
+# writes to ~/.claude.json; hooks-reconcile below prunes any old registration.
+# A worktree created after boot: `node /opt/agentbox/config/hooks/trust-seed.cjs <path>`.
+# Idempotent, fail-open. Off: AGENTBOX_TRUST_SEED=0.
 _TRUST_HOOK="/opt/agentbox/config/hooks/trust-seed.cjs"
 if [ "${AGENTBOX_TRUST_SEED:-1}" != "0" ] && [ -f "$_TRUST_HOOK" ] && command -v node >/dev/null 2>&1; then
   node "$_TRUST_HOOK" 2>&1 | sed 's/^/  /' || true
-  TRUST_HOOK="$_TRUST_HOOK" SETTINGS="$_CLAUDE_SETTINGS" node <<'TRUSTJS' || true
-const fs = require('fs');
-const f = process.env.SETTINGS, cmd = `node ${process.env.TRUST_HOOK}`;
-let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
-s.hooks = s.hooks || {};
-s.hooks.SessionStart = s.hooks.SessionStart || [];
-const has = s.hooks.SessionStart.some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('trust-seed.cjs')));
-if (!has) { s.hooks.SessionStart.push({ hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 8000, continueOnError: true }] }); fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [trust] registered trust-seed SessionStart hook in settings.json'); }
-else { console.log('  [trust] trust-seed hook already registered'); }
-TRUSTJS
 fi
 
 # ── Hook shim reconcile (ADR-2034 §1) ──
@@ -1396,13 +1391,32 @@ if [ "${AGENTBOX_HOOK_SHIM:-true}" != "false" ] && command -v agentbox-hook >/de
   agentbox-hook reconcile --root "$WORKSPACE" --depth 2 2>&1 | sed 's/^/  /' || true
 fi
 
-# ── Permission mode: auto by default, opt-in dialog pre-accepted ──
-# Claude Code 2.1.78+ stopped honouring blanket bypass for .git/ and .claude/
-# writes and 2.1.8x replaced it with a classifier-based auto mode; the one-time
-# auto-mode opt-in dialog is another prompt that blocks unattended panes. Seed
-# permissions.defaultMode = "auto" (only if the operator has not set one) and
-# accept the opt-in dialog in the user settings. Off: AGENTBOX_AUTO_MODE=0.
-if [ "${AGENTBOX_AUTO_MODE:-1}" != "0" ] && command -v node >/dev/null 2>&1; then
+# ── Permission posture (ADR-2116): [claude_code] → every Claude Code settings file ──
+# The manifest is the authority: permission_mode (default bypassPermissions) and
+# permission_deny are reconciled EVERY boot into the root settings and each stack
+# profile's settings (profile sessions run with CLAUDE_CONFIG_DIR there and never
+# read the root file). Not seed-if-unset: Claude Code rewrites settings.json from
+# memory, so a hand edit does not persist anyway. Hand-added deny rules survive.
+# Off: AGENTBOX_PERMISSIONS_PROJECT=0. An image without the subcommand falls back
+# to the legacy auto-mode seed below.
+_PERM_DONE=0
+if [ "${AGENTBOX_PERMISSIONS_PROJECT:-1}" != "0" ] && command -v agentbox-manifest >/dev/null 2>&1 \
+   && agentbox-manifest permissions-project --help >/dev/null 2>&1; then
+  _perm_args=(--manifest "$AGENTBOX_CONFIG" --settings "$_CLAUDE_SETTINGS")
+  for _p in "${WORKSPACE:-/home/devuser/workspace}"/profiles/*/.claude/settings.json; do
+    [ -f "$_p" ] && _perm_args+=(--settings "$_p")
+  done
+  agentbox-manifest permissions-project "${_perm_args[@]}" 2>&1 || true
+  for _p in "$_CLAUDE_SETTINGS" "${WORKSPACE:-/home/devuser/workspace}"/profiles/*/.claude/settings.json; do
+    [ -f "$_p" ] && chown 1000:1000 "$_p" 2>/dev/null
+  done
+  _PERM_DONE=1
+  unset _perm_args _p
+fi
+
+# Legacy fallback (pre-ADR-2116 images): auto mode seeded only if unset, and the
+# one-time auto-mode opt-in dialog pre-accepted. Off: AGENTBOX_AUTO_MODE=0.
+if [ "$_PERM_DONE" = "0" ] && [ "${AGENTBOX_AUTO_MODE:-1}" != "0" ] && command -v node >/dev/null 2>&1; then
   SETTINGS="$_CLAUDE_SETTINGS" node <<'AUTOJS' || true
 const fs = require('fs');
 const f = process.env.SETTINGS;
@@ -1414,6 +1428,32 @@ if (s.skipAutoPermissionPrompt !== true) { s.skipAutoPermissionPrompt = true; ch
 if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log(`  [permissions] defaultMode=${s.permissions.defaultMode}, auto-mode opt-in pre-accepted`); }
 else { console.log(`  [permissions] defaultMode=${s.permissions.defaultMode} (unchanged)`); }
 AUTOJS
+fi
+
+# ── Session defaults: memory policy, subagent cache TTL, no mid-session model switch ──
+# Seeded only when UNSET, so an operator's explicit choice always wins. Key names
+# verified against the Claude Code 2.1.280 settings schema.
+#   autoMemoryEnabled=false    durable memory goes to RuVector (MCP memory_*), never
+#                              the harness's file-based ~/.claude/projects/*/memory.
+#   subagentPromptCacheTtl=1h  subagents, workflows and helper requests otherwise use
+#                              the 5-minute cache even on a Max subscription.
+#   switchModelsOnFlag=false   a safeguards flag would otherwise swap the model
+#                              mid-session and throw away the prompt cache; pause instead.
+if command -v node >/dev/null 2>&1; then
+  SETTINGS="$_CLAUDE_SETTINGS" node <<'SEEDJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS;
+// A corrupt file is left for the operator, never replaced by defaults.
+let s = {}; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') process.exit(0); }
+const defaults = { autoMemoryEnabled: false, subagentPromptCacheTtl: '1h', switchModelsOnFlag: false };
+const seeded = [];
+for (const [k, v] of Object.entries(defaults)) {
+  if (!(k in s)) { s[k] = v; seeded.push(`${k}=${v}`); }
+}
+if (seeded.length) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log(`  [settings] seeded ${seeded.join(', ')}`); }
+else { console.log('  [settings] session defaults already set (operator values kept)'); }
+SEEDJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
 fi
 
 # ── Voice plane: register the tab0-bridge turn-sink hooks ──
@@ -1433,7 +1473,7 @@ let changed = false;
 for (const evt of ['UserPromptSubmit', 'Stop']) {
   s.hooks[evt] = s.hooks[evt] || [];
   const has = s.hooks[evt].some((g) => (g.hooks || []).some((h) => String(h.command || '').includes('turn-sink.cjs')));
-  if (!has) { s.hooks[evt].push({ hooks: [{ type: 'command', command: `${cmd} ${evt} || true`, timeout: 8000 }] }); changed = true; }
+  if (!has) { s.hooks[evt].push({ hooks: [{ type: 'command', command: `${cmd} ${evt} || true`, timeout: 5 }] }); changed = true; }
 }
 if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [voice] registered tab0-bridge turn-sink hooks in settings.json'); }
 else { console.log('  [voice] turn-sink hooks already registered'); }
@@ -1502,7 +1542,7 @@ for (const evt of ['Stop', 'SubagentStop']) {
 }
 for (const evt of ['Stop', 'SubagentStop']) {
   s.hooks[evt] = s.hooks[evt] || [];
-  s.hooks[evt].push({ hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10000 }] });
+  s.hooks[evt].push({ hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10 }] });
 }
 const nextText = JSON.stringify(s, null, 2);
 if (nextText !== origText) { fs.writeFileSync(f, nextText); console.log('  [colloquy] registered reflect-candidate hooks (Stop/SubagentStop)'); }
@@ -1570,7 +1610,7 @@ for (const evt of ['PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop']) {
 }
 for (const [evt, matcher] of specs) {
   s.hooks[evt] = s.hooks[evt] || [];
-  const grp = { hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10000 }] };
+  const grp = { hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10 }] };
   if (matcher) grp.matcher = matcher;
   s.hooks[evt].push(grp);
 }
@@ -1620,7 +1660,7 @@ const has = s.hooks.UserPromptSubmit.some((g) =>
   (g.hooks || []).some((h) => String(h.command || '').includes('dream-inbox-surface.cjs')));
 if (!has) {
   s.hooks.UserPromptSubmit.push({
-    hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 5000 }]
+    hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 5 }]
   });
   fs.writeFileSync(f, JSON.stringify(s, null, 2));
   console.log('  [dream] registered dream-inbox surfacing hook on UserPromptSubmit');
@@ -1631,55 +1671,11 @@ DINBOXJS
   chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
 fi
 
-# ── Self-heal: normalise auto-memory-hook commands to a fail-open form ──
-# ruflo / claude-flow init scaffolds settings.json across projects with hooks
-# like `node "$CLAUDE_PROJECT_DIR/.claude/helpers/auto-memory-hook.mjs" sync`
-# — no existence guard, no `|| true`. In a sub-project that lacks the helper
-# (e.g. a sibling repo), the Stop/SessionStart hook throws MODULE_NOT_FOUND and
-# surfaces a noisy hook error. Rewrite every such command to a guarded form
-# that prefers the project helper, falls back to the home helper, and never
-# exits non-zero. Idempotent. Scans the home config dir plus every
-# workspace `.claude/settings*.json`.
-if command -v node >/dev/null 2>&1; then
-  node <<'AMHEAL' || true
-const fs = require('fs'), path = require('path'), cp = require('child_process');
-function find() {
-  const out = new Set();
-  for (const p of ['/home/devuser/.claude/settings.json',
-                   '/home/devuser/.claude/settings.local.json']) out.add(p);
-  try {
-    const r = cp.execSync(
-      "find /home/devuser/workspace -maxdepth 4 -name 'settings*.json' -path '*/.claude/*' -not -path '*/node_modules/*' 2>/dev/null || true",
-      { encoding: 'utf8' });
-    r.split('\n').filter(Boolean).forEach((x) => out.add(x));
-  } catch {}
-  return [...out];
-}
-function guarded(arg) {
-  return `sh -c 'f="\${CLAUDE_PROJECT_DIR:-$PWD}/.claude/helpers/auto-memory-hook.mjs"; [ -f "$f" ] || f=/home/devuser/.claude/helpers/auto-memory-hook.mjs; [ -f "$f" ] && node "$f" ${arg}; true'`;
-}
-let files = 0, fixed = 0;
-for (const f of find()) {
-  let s; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { continue; }
-  if (!s || typeof s !== 'object' || !s.hooks) continue;
-  let changed = false;
-  for (const evt of Object.keys(s.hooks)) {
-    for (const grp of (s.hooks[evt] || [])) {
-      for (const h of (grp.hooks || [])) {
-        const c = String(h.command || '');
-        if (!c.includes('auto-memory-hook.mjs')) continue;
-        if (c.startsWith('sh -c') && c.includes('[ -f "$f" ]')) continue; // already guarded
-        const arg = /\bsync\b/.test(c) ? 'sync' : 'import';
-        h.command = guarded(arg); changed = true;
-      }
-    }
-  }
-  if (changed) { try { fs.writeFileSync(f, JSON.stringify(s, null, 2)); fixed++; } catch {} }
-  files++;
-}
-console.log(`  [auto-memory] scanned ${files} settings file(s), normalised ${fixed}`);
-AMHEAL
-fi
+# (The auto-memory-hook self-heal that lived here is gone: auto-memory-hook.mjs
+# is on the prune list of config/registered-hooks.txt, so hooks-reconcile below
+# removes it rather than keeping a no-op alive. It printed an npm warning into
+# every session and, had @claude-flow/memory ever resolved, would have rewritten
+# MEMORY.md — file memory the RuVector policy rules out.)
 
 # ── Browser sidecar MCP: register browsercontainer if reachable ──
 # The browsercontainer runs Chrome Beta 149+ with chrome-devtools-mcp over SSE.
@@ -1726,6 +1722,18 @@ if [ "${ENABLE_AGENTIC_QE:-false}" = "true" ] && command -v aqe >/dev/null 2>&1 
         --manifest "$AGENTBOX_CONFIG" --workspace "$WORKSPACE" 2>&1 \
       | sed 's/^/  /' || true
   fi
+elif [ "${ENABLE_AGENTIC_QE:-false}" != "true" ] && [ -f "$_MCP_JSON" ]; then
+  # Gate off ⇒ the entry goes too (ADR-2111). .mcp.json is a host mount that
+  # outlives the toolchain, so without this a disabled fleet stays registered:
+  # ~90 tool names in every session's prefix and a server that fails to spawn.
+  node -e '
+    const fs = require("fs"); const f = process.argv[1];
+    const j = JSON.parse(fs.readFileSync(f, "utf8"));
+    if (j.mcpServers && j.mcpServers["agentic-qe"]) {
+      delete j.mcpServers["agentic-qe"];
+      fs.writeFileSync(f, JSON.stringify(j, null, 2) + "\n");
+      console.log("  [mcp] Removed agentic-qe (toolchains.agentic_qe = false)");
+    }' "$_MCP_JSON" 2>/dev/null || true
 fi
 
 # ── ADR-2080: metaharness cost-optimal router console (AoE `router` seed) ──
@@ -2065,7 +2073,7 @@ const has = s.hooks.UserPromptSubmit.some((g) =>
   (g.hooks || []).some((h) => String(h.command || '').includes('ruvnet-brain-ground.cjs')));
 if (!has) {
   s.hooks.UserPromptSubmit.push({
-    hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 5000 }]
+    hooks: [{ type: 'command', command: `${cmd} || true`, timeout: 5 }]
   });
   fs.writeFileSync(f, JSON.stringify(s, null, 2));
   console.log('  [ruvnet-brain] registered grounding hook on UserPromptSubmit');
@@ -2122,6 +2130,20 @@ _SR_HOOK="$(_ab_toml_bool skills.routing hook)"
 _SR_MODEL="$(_ab_toml_val skills.routing model)"; _SR_MODEL="${_SR_MODEL:-jev-latest}"
 _SR_TIMEOUT="$(_ab_toml_int skills.routing timeout_ms 4000)"
 _SR_MIN_CHARS="$(_ab_toml_int skills.routing min_prompt_chars 24)"
+# ADR-2095 addendum: the local BM25 cascade. Inlined into the hook command and
+# runtime-env.sh ONLY when on, so the off state is byte-identical to before.
+_SR_CASCADE="$(_ab_toml_bool skills.routing cascade)"
+_SR_CASCADE_CUTOFF="$(_ab_toml_val skills.routing cascade_cutoff)"; _SR_CASCADE_CUTOFF="${_SR_CASCADE_CUTOFF:-0.3718}"
+# ADR-2110 (proposed): routing teacher labels. Tags router log lines with a hashed
+# session id (only when on) and registers routing-label-recorder.cjs on Stop below.
+_SR_LABEL_LOG="$(_ab_toml_bool skills.routing label_log)"
+_SR_LABEL_EMBED_URL="$(_ab_toml_val skills.routing label_embeddings_url)"
+_SR_LABEL_EMBED_URL="${_SR_LABEL_EMBED_URL:-http://192.168.2.132:9997/v1/embeddings}"
+_SR_CASCADE_EXPORTS=""
+if [ "$_SR_CASCADE" = "1" ]; then
+  _SR_CASCADE_EXPORTS="export AGENTBOX_SKILL_ROUTE_CASCADE=1
+export AGENTBOX_SKILL_ROUTE_CASCADE_CUTOFF=$_SR_CASCADE_CUTOFF"
+fi
 _SR_HOOK_FILE="/opt/agentbox/config/hooks/skill-route.cjs"
 if [ "$_SR_ROUTER" = "jev" ] && [ "$_SR_HOOK" = "1" ] \
    && [ -f "$_SR_HOOK_FILE" ] && command -v node >/dev/null 2>&1; then
@@ -2135,7 +2157,9 @@ if [ "$_SR_ROUTER" = "jev" ] && [ "$_SR_HOOK" = "1" ] \
   mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
   SR_HOOK="$_SR_HOOK_FILE" SETTINGS="$_CLAUDE_SETTINGS" SR_MODEL="$_SR_MODEL" \
   SR_API="$_SSO_API" \
-  SR_TIMEOUT="$_SR_TIMEOUT" SR_MIN_CHARS="$_SR_MIN_CHARS" node <<'SRJS' || true
+  SR_TIMEOUT="$_SR_TIMEOUT" SR_MIN_CHARS="$_SR_MIN_CHARS" \
+  SR_CASCADE="$_SR_CASCADE" SR_CASCADE_CUTOFF="$_SR_CASCADE_CUTOFF" \
+  SR_LABEL_LOG="$_SR_LABEL_LOG" node <<'SRJS' || true
 const fs = require('fs');
 const f = process.env.SETTINGS, hook = process.env.SR_HOOK;
 // ADR-2094: SR_API is the sovereign façade endpoint, empty unless
@@ -2144,15 +2168,22 @@ const f = process.env.SETTINGS, hook = process.env.SR_HOOK;
 const api = String(process.env.SR_API || '');
 const pfx = `AGENTBOX_SKILL_ROUTER=jev AGENTBOX_SKILL_ROUTE_MODEL=${process.env.SR_MODEL} ` +
   (api ? `AGENTBOX_SKILL_ROUTE_API=${api} ` : '') +
-  `AGENTBOX_SKILL_ROUTE_TIMEOUT_MS=${process.env.SR_TIMEOUT} AGENTBOX_SKILL_ROUTE_MIN_CHARS=${process.env.SR_MIN_CHARS}`;
+  `AGENTBOX_SKILL_ROUTE_TIMEOUT_MS=${process.env.SR_TIMEOUT} AGENTBOX_SKILL_ROUTE_MIN_CHARS=${process.env.SR_MIN_CHARS}` +
+  // ADR-2095 addendum: absent when off, so the registered command is unchanged.
+  (process.env.SR_CASCADE === '1'
+    ? ` AGENTBOX_SKILL_ROUTE_CASCADE=1 AGENTBOX_SKILL_ROUTE_CASCADE_CUTOFF=${Number(process.env.SR_CASCADE_CUTOFF) || 0.3718}`
+    : '') +
+  // ADR-2110 (proposed): hashed session tag on log lines, for the label join. Absent when off.
+  (process.env.SR_LABEL_LOG === '1' ? ' AGENTBOX_SKILL_ROUTE_LABEL_LOG=1' : '');
 let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
 s.hooks = s.hooks || {};
 s.hooks.UserPromptSubmit = (s.hooks.UserPromptSubmit || []).filter((g) =>
   !(g.hooks || []).some((h) => String(h.command || '').includes('skill-route.cjs')));
 // Registered at twice the judge timeout: the hook must return before Claude Code
 // gives up on it, and a timed-out hook is indistinguishable from a broken one.
+// SR_TIMEOUT is the judge's budget in MILLISECONDS; a hook `timeout` is SECONDS.
 s.hooks.UserPromptSubmit.push({ hooks: [{ type: 'command', command: `${pfx} node ${hook} || true`,
-  timeout: Math.max(8000, 2 * Number(process.env.SR_TIMEOUT)) }] });
+  timeout: Math.max(8, Math.ceil((2 * (Number(process.env.SR_TIMEOUT) || 4000)) / 1000)) }] });
 const nextText = JSON.stringify(s, null, 2);
 if (nextText !== origText) { fs.writeFileSync(f, nextText); console.log('  [skill-route] registered Jev routing hook on UserPromptSubmit'); }
 else { console.log('  [skill-route] routing hook already registered'); }
@@ -2172,6 +2203,83 @@ if (s.hooks.UserPromptSubmit.length !== before) {
   console.log('  [skill-route] de-registered routing hook (router=table or hook=false)');
 }
 SRUNJS
+fi
+
+# ── ADR-2110 (proposed): routing teacher labels — register/de-register on Stop ──
+# [skills.routing].label_log = true registers config/hooks/routing-label-recorder.cjs
+# on Stop: per user turn it stores the prompt's LAN bge-small embedding (never the
+# text), the skills the main model used, and the router's pick, in routing_labels.
+# Off (default) strips any prior registration so the settings file is byte-identical.
+_RL_HOOK="/opt/agentbox/config/hooks/routing-label-recorder.cjs"
+if [ "$_SR_LABEL_LOG" = "1" ] && [ -f "$_RL_HOOK" ] && command -v node >/dev/null 2>&1; then
+  mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
+  RL_HOOK="$_RL_HOOK" SETTINGS="$_CLAUDE_SETTINGS" RL_EMBED_URL="$_SR_LABEL_EMBED_URL" \
+  RL_CONNINFO="${RUVECTOR_PG_CONNINFO:-host=ruvector-postgres port=5432 dbname=ruvector user=ruvector password=${RUVECTOR_PG_PASSWORD:-ruvector}}" \
+  RL_MIN_CHARS="$_SR_MIN_CHARS" node <<'RLJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, hook = process.env.RL_HOOK;
+const pfx = `AGENTBOX_ROUTING_LABELS=1 AGENTBOX_ROUTING_LABELS_EMBED_URL=${JSON.stringify(process.env.RL_EMBED_URL)} ` +
+  `RUVECTOR_PG_CONNINFO=${JSON.stringify(process.env.RL_CONNINFO)} AGENTBOX_SKILL_ROUTE_MIN_CHARS=${process.env.RL_MIN_CHARS}`;
+let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
+s.hooks = s.hooks || {};
+s.hooks.Stop = (s.hooks.Stop || []).filter((g) =>
+  !(g.hooks || []).some((h) => String(h.command || '').includes('routing-label-recorder.cjs')));
+s.hooks.Stop.push({ hooks: [{ type: 'command', command: `${pfx} node ${hook} || true`, timeout: 15 }] });
+const nextText = JSON.stringify(s, null, 2);
+if (nextText !== origText) { fs.writeFileSync(f, nextText); console.log('  [routing-labels] registered teacher-label recorder on Stop'); }
+else { console.log('  [routing-labels] teacher-label recorder already registered'); }
+RLJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+elif [ -f "$_CLAUDE_SETTINGS" ] && command -v node >/dev/null 2>&1; then
+  SETTINGS="$_CLAUDE_SETTINGS" node <<'RLUNJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS;
+let s; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { process.exit(0); }
+if (!s.hooks || !Array.isArray(s.hooks.Stop)) process.exit(0);
+const kept = s.hooks.Stop.filter((g) => !(g.hooks || []).some((h) => String(h.command || '').includes('routing-label-recorder.cjs')));
+if (kept.length !== s.hooks.Stop.length) {
+  s.hooks.Stop = kept; fs.writeFileSync(f, JSON.stringify(s, null, 2));
+  console.log('  [routing-labels] de-registered teacher-label recorder (label_log=false)');
+}
+RLUNJS
+fi
+
+# ── Governed hook registry: reconcile settings hooks (ADR-2092 model) ──
+# Runs AFTER every hook registration block above. config/registered-hooks.txt
+# names agentbox's own hooks (canonical events + timeout in SECONDS), the
+# third-party ones to keep (AoE) and the vendor scaffolding to prune (the ruflo /
+# claude-flow helpers' hook-handler.cjs verbs, auto-memory-hook.mjs, the retired
+# trust-seed SessionStart). Unknown entries are preserved and reported. Never
+# adds a hook — gating stays with the blocks above. Covers the user settings and
+# the workspace-root settings (where the ruflo scaffold also registered
+# auto-memory-hook and trust-seed). A host project's own .claude/settings.json is
+# left to that project and to `agentbox-hook reconcile` (ADR-2034). Each file
+# changed keeps a `.pre-hooks-reconcile` copy beside it. Idempotent, fail-open
+# (older binaries without the subcommand are skipped).
+_HOOK_REGISTRY="/opt/agentbox/config/registered-hooks.txt"
+if [ -f "$_HOOK_REGISTRY" ] && command -v agentbox-manifest >/dev/null 2>&1 \
+   && agentbox-manifest hooks-reconcile --help >/dev/null 2>&1; then
+  for _hook_settings in "$_CLAUDE_SETTINGS" \
+      "${WORKSPACE:-/home/devuser/workspace}/.claude/settings.json"; do
+    [ -f "$_hook_settings" ] || continue
+    echo "  [hooks] reconciling $_hook_settings"
+    agentbox-manifest hooks-reconcile --settings "$_hook_settings" \
+      --registry "$_HOOK_REGISTRY" 2>&1 || true
+    chown 1000:1000 "$_hook_settings" "${_hook_settings%.json}.json.pre-hooks-reconcile" 2>/dev/null || true
+  done
+fi
+
+# ── ADR-2111: workspace AGENTS.md → CLAUDE.md generated block ──
+# ~/workspace sits above every project root, so an `@AGENTS.md` import there is
+# an external include Claude Code skips unless each project approves external
+# includes (a wider grant than we want). Copy the canonical file in instead;
+# AGENTS.md stays the only thing anyone edits. Fail-open, no-op when unchanged.
+if command -v agentbox-manifest >/dev/null 2>&1 \
+   && agentbox-manifest agents-md-embed --help >/dev/null 2>&1; then
+  _WSR="${WORKSPACE:-/home/devuser/workspace}"
+  agentbox-manifest agents-md-embed --source "$_WSR/AGENTS.md" --target "$_WSR/CLAUDE.md" 2>&1 || true
+  chown 1000:1000 "$_WSR/CLAUDE.md" 2>/dev/null || true
+  unset _WSR
 fi
 
 # ── ADR-2093: Jev verbatim compaction — install/uninstall the function-hook plugin ──
@@ -2223,6 +2331,12 @@ if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && command -v claude >/dev/null 2
     for kv in "taintTools=$(_ab_toml_val features.jev_compaction taint_tools)" \
               "taintSkills=$(_ab_toml_val features.jev_compaction taint_skills)" \
               "compactAtPercent=$(_ab_toml_int features.jev_compaction compact_at_percent 60)" \
+              "compactAtTokens=$(_ab_toml_val features.jev_compaction compact_at_tokens)" \
+              "rearmTokens=$(_ab_toml_val features.jev_compaction rearm_tokens)" \
+              "cacheWarm=$(_ab_toml_val features.jev_compaction cache_warm)" \
+              "cacheWarmFloorTokens=$(_ab_toml_val features.jev_compaction cache_warm_floor_tokens)" \
+              "cacheTtlSeconds=$(_ab_toml_val features.jev_compaction cache_ttl_seconds)" \
+              "cacheTtlMarginSeconds=$(_ab_toml_val features.jev_compaction cache_ttl_margin_seconds)" \
               "keepThreshold=$(_ab_toml_val features.jev_compaction keep_threshold)" \
               "minReductionRatio=$(_ab_toml_val features.jev_compaction min_reduction_ratio)" \
               "model=$(_ab_toml_val features.jev_compaction model)"; do
@@ -2513,6 +2627,13 @@ After a verified result, call `memory_store`. Preserve the tool's exact schema:
 `source_type`. Standard namespaces include `patterns`, `project-state`, `tasks`,
 and `default`. Never write to protected namespace `ruvnet-kb`.
 
+`memory_search` returns compact results by default: at most 5 hits (`limit`),
+only those scoring at least 0.55 (`min_score`; 0 keeps everything), each value
+trimmed to a ~300-char snippet (`truncated: true`, `chars` = full length).
+Namespace `"*"` searches every namespace except the protected reference corpora
+(e.g. `ruvnet-kb`); name one explicitly to search it. To read a whole value,
+call `memory_retrieve` with its `key` and `namespace`, or pass `full: true`.
+
 ## Skills
 
 A curated subset of the agentbox skills estate is registered in `~/.codex/skills`
@@ -2524,6 +2645,23 @@ inventory and decision tree) or `/opt/agentbox/skills/skill-router/references/ro
 (`SKILL.md` + `references/` + `scripts/`). A line beginning "Claude Code only:" marks an
 affordance this harness lacks; use the fallback that follows it.
 AGENTSEOF
+  # ADR-2111: one source per tier. Codex reads AGENTS.md only from its git root
+  # down to its cwd, and ~/workspace is not a repo, so the tool-neutral
+  # environment facts and the operator's working style would otherwise never
+  # reach it. Append them from their single sources (Claude reads the same
+  # files through its CLAUDE.md imports). Fail-open; kept well under Codex's
+  # 32 KiB project-doc cap.
+  _WS_AGENTS="${WORKSPACE:-/home/devuser/workspace}/AGENTS.md"
+  _CLAUDE_GLOBAL="/home/devuser/.claude/CLAUDE.md"
+  if [ -f "$_CLAUDE_GLOBAL" ] && grep -q '^## Working style' "$_CLAUDE_GLOBAL" 2>/dev/null; then
+    { printf '\n# Operator working style (from ~/.claude/CLAUDE.md)\n\n'
+      awk '/^## Working style/{on=1} on && /^## / && !/^## Working style/{exit} on' "$_CLAUDE_GLOBAL"
+    } >> "$_CODEX_AGENTS" 2>/dev/null || true
+  fi
+  if [ -f "$_WS_AGENTS" ] && [ "$(wc -c < "$_WS_AGENTS")" -lt 24000 ]; then
+    { printf '\n'; cat "$_WS_AGENTS"; } >> "$_CODEX_AGENTS" 2>/dev/null || true
+  fi
+  unset _WS_AGENTS _CLAUDE_GLOBAL
   chown 1000:1000 "$_CODEX_AGENTS" 2>/dev/null || true
 fi
 
@@ -2789,6 +2927,8 @@ export AGENTBOX_SKILL_ROUTE_MIN_CHARS="${_SR_MIN_CHARS:-24}"
 # the two lines above keep their pre-2094 values; when on, these come LAST and
 # win, and every shell, tmux window and MCP server agrees with the hook.
 $_SSO_EXPORTS
+# ADR-2095 addendum: the local routing cascade, only when [skills.routing].cascade.
+$_SR_CASCADE_EXPORTS
 # ADR-2028: the vault path authority. Sourced by every tmux window and
 # interactive shell (bash via /etc/profile.d, fish via conf.d) so the Notes
 # window, the skills and the MCP servers all agree on one corpus root. Empty

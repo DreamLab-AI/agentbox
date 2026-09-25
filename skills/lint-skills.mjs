@@ -71,6 +71,9 @@ const NAME_MAX = 64;
 /** `description` bounds: agentskills.io cap, and a floor that catches vague one-liners. */
 const DESC_MAX = 1024;
 const DESC_MIN = 40;
+/** Soft budget: a registered description is always in context, so past this it costs every
+ *  session tokens. Warning only — the hard cap stays DESC_MAX. */
+const DESC_WARN = 600;
 /** `status` vocabulary (ADR pending): availability, not maturity. Omitted == `live`.
  *  A skill that is NOT the live path must say so in its own frontmatter — before this,
  *  that fact lived only in registered-skills.txt comments and SKILL-DIRECTORY markers,
@@ -442,6 +445,7 @@ function checkSkill(skill) {
     if (descE && descE.kind === 'scalar') {
       const len = descE.value.length;
       if (len > DESC_MAX) fail('DESCLEN', r, descE.line, `${r}:${descE.line}: description is ${len} chars (max ${DESC_MAX})`);
+      else if (len > DESC_WARN) warn('DESCLEN', r, descE.line, `${r}:${descE.line}: description is ${len} chars (> ${DESC_WARN} soft budget; move depth to the body or references/)`);
       else if (len < DESC_MIN) warn('DESCLEN', r, descE.line, `${r}:${descE.line}: description is ${len} chars (< ${DESC_MIN}; say what + when)`);
       if (/^\s*DEPRECATED\b/i.test(descE.value)) {
         const dep = fm.keys.get('deprecated');

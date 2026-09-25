@@ -381,6 +381,19 @@ async function main() {
   // ADR-2026: the policy decides, not an ad-hoc switch read. This covers the
   // GLOBAL AGENTBOX_EGRESS off switch (which the Rust digest path also obeys),
   // the per-path switch, and the refusal to run with redaction disabled.
+  //
+  // Fast exit first: the switches and the recipient allowlist are pure env reads.
+  // Without an allowlist every event ends `recipient-allowlist-missing-or-invalid`
+  // anyway, so decide that BEFORE deriving keys, loading nostr-tools or reading
+  // stdin — the hook fires on four events per turn and was spending ~170 ms each
+  // to reach the same skip.
+  const early = egress.egressDecision('live-mirror', {});
+  if (!early.allowed) { log(`egress ${early.outcome}: ${early.reason}`); return 0; }
+  const allow = egress.recipientAllowlist();
+  if (!allow || [...allow].some((k) => !egress.isHexPubkey(k))) {
+    log(`egress ${egress.OUTCOME.SKIPPED}: recipient-allowlist-missing-or-invalid`);
+    return 0;
+  }
   const childSk = deriveChildKey();
   const explicitRecipient = recipientPubkey();
   const pre = egress.egressDecision('live-mirror', {

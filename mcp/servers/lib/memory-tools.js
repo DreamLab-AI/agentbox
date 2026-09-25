@@ -84,29 +84,115 @@ const ATT_OVERFETCH = 4;
 const ATT_ALPHA = 0.5;
 const ATT_SQRT_DIM = Math.sqrt(EMBED_DIM);
 
-// ── headroom compression (PRD-016 / ADR-034) ───────────────────────────────
-// Compress search results before returning to agents. Fail-open: if the addon
-// is absent or init fails, results pass through uncompressed.
-let _headroom = null;
-function _getHeadroom() {
-  if (_headroom !== null) return _headroom;
-  try {
-    const h = require('/opt/agentbox/lib/headroom/headroom_napi.node');
-    h.initCompression({ backend: 'memory', ttlMinutes: 30, maxEntries: 1000, targetRatio: 0.15 });
-    _headroom = h;
-  } catch { _headroom = false; }
-  return _headroom;
+// ── ranked-search output shaping ───────────────────────────────────────────
+// memory_search used to hand every ranked result set of 3+ rows to headroom's
+// smartCrush (PRD-016 / ADR-034). That is lossy in exactly the wrong way for a
+// RANKED list: smart_crusher always keeps the first and LAST (lowest-score)
+// rows, force-keeps any row mentioning error/fail/exception/panic/fatal (which
+// favours code chunks over facts), samples the middle by stride rather than
+// score, and replaces the dropped rows with `<<ccr:hash N rows>>` markers that
+// nothing can expand (the CCR store is in-process and no retrieve tool is
+// registered). Relevant hits were silently lost on 64/66 audited searches.
+// Ranked results are therefore never crushed. Size is controlled instead by
+// shapeSearchResponse(): a score floor, a small default limit, and per-row
+// snippets whose full value stays one memory_retrieve away.
+function envNumber(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
 }
-function _compressResults(results) {
-  if (!results || results.length < 3) return results;
-  const h = _getHeadroom();
-  if (!h) return results;
-  try {
-    const raw = JSON.stringify(results);
-    const cr = h.smartCrush(raw, { targetRatio: 0.3 });
-    if (cr && cr.ratio < 1.0) return JSON.parse(cr.compressed);
-  } catch { /* fail-open */ }
-  return results;
+// Characters of each value returned in snippet mode. ~300 chars carries the
+// front-loaded fact of a well-formed memory (values are meant to lead with the
+// searchable fact, see embed-cap) while keeping 5 rows under ~2.5 KB.
+const DEFAULT_SNIPPET_CHARS = envNumber('RUVECTOR_SEARCH_SNIPPET_CHARS', 300);
+// Cosine floor. Measured 2026-09-25 on the live corpus with bge-small-en-v1.5:
+// across ten representative queries the exact top-20 over the non-protected
+// namespaces sat at p10 0.63 / p50 0.70 / p90 0.76, while the off-topic rows the
+// unfiltered HNSW scan let through clustered at 0.47-0.57. bge-small's cosine
+// band is compressed (unrelated pairs rarely drop below ~0.45), so 0.55 cuts
+// that noise band without touching any row in the relevant top-20.
+const DEFAULT_MIN_SCORE = envNumber('RUVECTOR_SEARCH_MIN_SCORE', 0.55);
+const DEFAULT_SEARCH_LIMIT = envNumber('RUVECTOR_SEARCH_DEFAULT_LIMIT', 5);
+const MAX_SEARCH_LIMIT = 200;
+
+/** Resolve the caller's limit: absent/invalid → the default, else clamped to 1..MAX. */
+function resolveSearchLimit(limit) {
+  const n = Number(limit);
+  if (limit === undefined || limit === null || !Number.isFinite(n) || n <= 0) return DEFAULT_SEARCH_LIMIT;
+  return Math.min(MAX_SEARCH_LIMIT, Math.floor(n));
+}
+
+/** Text a snippet is cut from: strings as-is, {path,text} chunks as "path: text", other JSON compact. */
+function snippetSource(value) {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'object' && !Array.isArray(value) && typeof value.text === 'string') {
+    const where = [value.repo, value.path || value.file].filter((x) => typeof x === 'string' && x).join(':');
+    return where ? `${where}: ${value.text}` : value.text;
+  }
+  try { return JSON.stringify(value); } catch { return String(value); }
+}
+
+function cutSnippet(text, max) {
+  let out = text.slice(0, max);
+  const last = out.charCodeAt(out.length - 1);
+  if (last >= 0xd800 && last <= 0xdbff) out = out.slice(0, -1); // never split a surrogate pair
+  return out + '…';
+}
+
+/**
+ * Shape a memSearch response for a model-facing tool result. Pure: never
+ * touches the database. Non-search / failed responses pass through untouched.
+ *
+ *   full        true → values returned whole (no snippets)
+ *   snippetChars characters kept per value in snippet mode
+ *   minScore    rows scoring below are dropped (not applied to the degraded
+ *               ILIKE fallback, whose flat 0.5 is not a similarity)
+ *   limit       final row cap
+ */
+function shapeSearchResponse(res, opts = {}) {
+  if (!res || res.success !== true || !Array.isArray(res.results)) return res;
+  const full = opts.full === true;
+  const snippetChars = Number.isFinite(opts.snippetChars) && opts.snippetChars > 0
+    ? Math.floor(opts.snippetChars) : DEFAULT_SNIPPET_CHARS;
+  const minScore = Number.isFinite(opts.minScore) ? opts.minScore : DEFAULT_MIN_SCORE;
+  const limit = Number.isFinite(opts.limit) && opts.limit > 0 ? Math.floor(opts.limit) : res.results.length;
+
+  let rows = res.results.slice();
+  // The unfiltered HNSW scan emits rows in graph order, not score order; sort
+  // so the list reads best-first. An attention re-rank is a deliberate order
+  // (score stays the cosine), so it is left alone.
+  if (!res._attention) rows.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+
+  let belowMin = 0;
+  if (!res.degraded) {
+    const kept = rows.filter((r) => Number(r.score) >= minScore);
+    belowMin = rows.length - kept.length;
+    rows = kept;
+  }
+  rows = rows.slice(0, limit);
+
+  let truncated = 0;
+  if (!full) {
+    rows = rows.map((r) => {
+      const text = snippetSource(r.value);
+      if (text.length <= snippetChars) return r;
+      truncated++;
+      return { ...r, value: cutSnippet(text, snippetChars), truncated: true, chars: text.length };
+    });
+  }
+
+  const out = { ...res, results: rows, count: rows.length, min_score: minScore };
+  if (belowMin) out.below_min_score = belowMin;
+  if (!full) out.snippet_chars = snippetChars;
+  if (truncated) {
+    out.hint = `${truncated} value(s) truncated to ${snippetChars} chars; memory_retrieve {key, namespace} returns the whole value (or search again with full:true).`;
+  }
+  if (!rows.length && belowMin) {
+    out.hint = `no result scored >= ${minScore}; ${belowMin} weaker match(es) dropped — lower min_score to see them.`;
+  }
+  return out;
 }
 
 // ── protected namespaces ────────────────────────────────────────────────────
@@ -117,6 +203,13 @@ const PROTECTED_NAMESPACES = new Set(
   (process.env.RUVECTOR_PROTECTED_NAMESPACES || 'governance-precedents').split(',').map(s => s.trim()).filter(Boolean)
 );
 const ADMIN_WRITE_ENABLED = process.env.RUVECTOR_ADMIN_WRITE === 'true';
+
+// A wildcard search ("*") skips the protected namespaces: they are reference
+// corpora (ruvnet-kb, ~144k source chunks averaging 3.8 KB) and governance
+// stores, and on the live corpus they supplied 68% of wildcard hits — code
+// chunks crowding out the operator's own memory. Naming one explicitly as the
+// namespace still searches it.
+function wildcardExcludedNamespaces() { return Array.from(PROTECTED_NAMESPACES); }
 
 function checkProtectedNamespace(namespace) {
   if (ADMIN_WRITE_ENABLED) return null;
@@ -377,9 +470,14 @@ function createExternalPgBackend(deps) {
     return { success: true, action: 'list', namespace, entries, count: entries.length, storage: 'ruvector-postgres' };
   }
 
-  async function memSearch(query, namespace = 'default', limit = 10, sourceType = null) {
+  // opts.includeProtected — a wildcard search normally excludes the protected
+  // namespaces (see wildcardExcludedNamespaces); true restores the raw
+  // all-namespace scan. A named namespace is never affected.
+  async function memSearch(query, namespace = 'default', limit = 10, sourceType = null, opts = {}) {
     if (!getPgOk() || !pool) return { success: false, error: 'pg unavailable' };
     const st = sourceType && sourceType !== '*' ? sourceType : null;
+    const excluded = namespace === '*' && !(opts && opts.includeProtected) ? wildcardExcludedNamespaces() : [];
+    const exclusion = excluded.length ? { excluded_namespaces: excluded } : {};
 
     // Try HNSW vector search via xinference embedding
     if (await xinfEnsure()) {
@@ -410,6 +508,12 @@ function createExternalPgBackend(deps) {
         let nsFilter = '';
         let stFilter = '';
         if (namespace !== '*') { nsFilter = `AND namespace = $${paramIdx++}`; params.push(namespace); }
+        // The exclusion rides the MATERIALIZED exact-rank branch: a WHERE on the
+        // unfiltered HNSW scan post-filters a candidate set that the protected
+        // corpus dominates, so it would return almost nothing (measured: 0 of
+        // 120 unfiltered candidates survived for several ordinary queries). The
+        // exact scan over the remaining ~50k rows costs ~0.5 s and ranks truly.
+        else if (excluded.length) { nsFilter = `AND NOT (namespace = ANY($${paramIdx++}))`; params.push(excluded); }
         if (st) { stFilter = `AND source_type = $${paramIdx++}`; params.push(st); }
 
         // ruvector 0.3.0's HNSW scan post-filters its candidate set without
@@ -518,8 +622,8 @@ function createExternalPgBackend(deps) {
             notifyMemoryFlashBatch(results.slice(0, 5).map(r => ({ key: r.key, namespace: r.namespace || namespace, action: 'search' })));
             return {
               success: true, action: 'search', query, namespace,
-              results: _compressResults(results), count: results.length,
-              method: 'hnsw-xinference', storage: 'ruvector-postgres',
+              results, count: results.length,
+              method: 'hnsw-xinference', storage: 'ruvector-postgres', ...exclusion,
               _attention: {
                 alpha: ATT_ALPHA, overfetch: ATT_OVERFETCH,
                 candidates: cands.length, returned: results.length,
@@ -539,7 +643,7 @@ function createExternalPgBackend(deps) {
           source_type: r.source_type, score: parseFloat(r.score),
         }));
         notifyMemoryFlashBatch(results.slice(0, 5).map(r => ({ key: r.key, namespace: r.namespace || namespace, action: 'search' })));
-        return { success: true, action: 'search', query, namespace, results: _compressResults(results), count: results.length, method: 'hnsw-xinference', storage: 'ruvector-postgres' };
+        return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'hnsw-xinference', storage: 'ruvector-postgres', ...exclusion };
       } catch (vecErr) {
         log('WARN', `HNSW search failed: ${vecErr.message}`);
       }
@@ -551,18 +655,19 @@ function createExternalPgBackend(deps) {
       `SELECT key, value, namespace, source_type, 0.5 AS score
        FROM memory_entries
        WHERE (namespace = $1 OR $1 = '*')
+         AND NOT (namespace = ANY($5::text[]))
          AND ${NOT_EXPIRED}
          AND ($3::text IS NULL OR source_type = $3)
          AND (key ILIKE $2 OR value::text ILIKE $2)
        ORDER BY created_at DESC LIMIT $4`,
-      [namespace, `%${query}%`, st, limit],
+      [namespace, `%${query}%`, st, limit, excluded],
     );
     const results = fallback.rows.map(r => ({
       key: r.key, value: parseVal(r.value), namespace: r.namespace,
       source_type: r.source_type, score: 0.5,
     }));
     notifyMemoryFlashBatch(results.slice(0, 5).map(r => ({ key: r.key, namespace: r.namespace || namespace, action: 'search' })));
-    return { success: true, action: 'search', query, namespace, results: _compressResults(results), count: results.length, method: 'ilike-fallback', degraded: true, warning: 'Semantic search unavailable — using text substring match. Check xinference service.', storage: 'ruvector-postgres' };
+    return { success: true, action: 'search', query, namespace, results, count: results.length, method: 'ilike-fallback', degraded: true, warning: 'Semantic search unavailable — using text substring match. Check xinference service.', storage: 'ruvector-postgres', ...exclusion };
   }
 
   // ── delete + episodic TTL sweep (PRD-018 D3, gate RUVECTOR_EPISODIC_TTL_SWEEP)
@@ -733,4 +838,8 @@ function createMemoryTools({ backend, deps }) {
   }
 }
 
-module.exports = { createMemoryTools, createExternalPgBackend, createDelegatingBackend };
+module.exports = {
+  createMemoryTools, createExternalPgBackend, createDelegatingBackend,
+  shapeSearchResponse, resolveSearchLimit, wildcardExcludedNamespaces,
+  DEFAULT_SNIPPET_CHARS, DEFAULT_MIN_SCORE, DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT,
+};

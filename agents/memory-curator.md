@@ -6,7 +6,9 @@ description: >
   bulk ingest or delete that requires an index rebuild. Knows the estate's
   embedding and index constraints.
 tools: Read, Bash, mcp__claude-flow__memory_store, mcp__claude-flow__memory_search, mcp__claude-flow__memory_list, mcp__claude-flow__memory_retrieve, mcp__claude-flow__memory_health, mcp__claude-flow__memory_orient
-model: inherit
+model: haiku
+effort: low
+omitClaudeMd: true
 ---
 
 # memory-curator

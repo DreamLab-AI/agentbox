@@ -21,12 +21,19 @@
  *       publish → signed 31402 published live to the forum broker gate
  *
  * Never throws, never blocks the session: a hard wall-clock budget aborts cleanly.
+ *
+ * DETACHED: SessionEnd fires on exit and on /clear, and Claude Code waits for the
+ * hook. The review takes up to BUDGET_MS (180 s), so the hook process only checks
+ * the gates, hands the stdin payload to a detached child of itself (own session,
+ * unref'd, stderr → $AGENTBOX_STATE/ontology-monitor.log) and exits at once. The
+ * child does the work. AGENTBOX_ONTOLOGY_MONITOR_FOREGROUND=1 runs it inline
+ * (tests, manual runs).
  */
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 
 const BUDGET_MS = parseInt(process.env.AGENTBOX_ONTOLOGY_MONITOR_BUDGET_MS || '180000', 10);
 const MAX_CONCEPTS = 8;
@@ -228,11 +235,41 @@ async function publishProposals(proposals, sessionId) {
   return sent;
 }
 
+// ── detach: the hook returns at once, a background child does the review ────────
+const CHILD_ENV = 'AGENTBOX_ONTOLOGY_MONITOR_CHILD_PAYLOAD';
+function runInForeground() {
+  return Object.prototype.hasOwnProperty.call(process.env, CHILD_ENV)
+    || /^(1|true|yes)$/i.test(process.env.AGENTBOX_ONTOLOGY_MONITOR_FOREGROUND || '');
+}
+function detach(raw) {
+  let errFd = 'ignore';
+  try {
+    fs.mkdirSync(stateDir(), { recursive: true });
+    errFd = fs.openSync(path.join(stateDir(), 'ontology-monitor.log'), 'a');
+  } catch { /* log is best effort */ }
+  try {
+    // The SessionEnd payload is a few hundred bytes (session_id, transcript_path,
+    // cwd, reason); the environment carries it so no pipe outlives this process.
+    const child = spawn(process.execPath, [__filename], {
+      detached: true,
+      stdio: ['ignore', 'ignore', errFd],
+      env: { ...process.env, [CHILD_ENV]: String(raw || '').slice(0, 65536) },
+    });
+    child.on('error', () => { /* fail open */ });
+    child.unref();
+  } catch (e) {
+    log('detach failed (fail-open, review skipped): ' + (e && e.message));
+  }
+}
+
 // ── main ───────────────────────────────────────────────────────────────────────
 (async () => {
   const off = gatedOff();
   if (off) { log('no-op: ' + off); process.exit(0); }
-  const payload = parsePayload(readStdin());
+  if (!runInForeground()) { detach(readStdin()); process.exit(0); }
+  const raw = Object.prototype.hasOwnProperty.call(process.env, CHILD_ENV)
+    ? process.env[CHILD_ENV] : readStdin();
+  const payload = parsePayload(raw);
   try {
     const work = gatherWork(payload);
     if (!work.transcript && !work.changed.length) { log('no work to review'); process.exit(0); }

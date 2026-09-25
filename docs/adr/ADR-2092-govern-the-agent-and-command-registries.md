@@ -74,7 +74,11 @@ skill side.
 - **`agents/`** is the canonical subagent tree, baked to `/opt/agentbox/agents`.
   **`agents/registered-agents.txt`** is the single source of truth for registration.
 - **`scripts/reconcile-agents.sh`** runs at boot: links the registered set into
-  `~/.claude/agents`, retires vendor dumps to a recoverable `.superseded/` sidecar, and
+  `~/.claude/agents`, retires vendor dumps to a recoverable sidecar outside every scanned
+  root (`~/.claude/agentbox-superseded/{agents,commands}/<root-key>/`, override
+  `AGENTBOX_SUPERSEDED_DIR`; amended 2026-09-25 — the original in-root `.superseded/` was
+  still loaded, because Claude Code scans agent and command roots recursively, dot-dirs
+  included; a legacy in-root sidecar is migrated out on every run), and
   collapses the secondary roots so the visible set no longer depends on launch directory.
 - **`config/registered-commands.txt`** + **`scripts/reconcile-commands.sh`** do the same
   for slash-commands, prune-only (commands are installed by their owning subsystem, so
@@ -94,7 +98,8 @@ index law; the never-hand-roll-crypto rule; the do-not-build-from-inside-the-con
 rule).
 
 Everything retired stays reachable: baked-but-unregistered skills through the router and
-`SKILL-DIRECTORY.md`, and every retired file under `.superseded/`.
+`SKILL-DIRECTORY.md`, and every retired agent or command under
+`~/.claude/agentbox-superseded/`.
 
 ## Consequences
 
@@ -113,9 +118,10 @@ flat in the root with no vendor marker are still preserved and reported, so the 
 hatch survives for experiments.
 
 **Risk accepted.** The reconcilers delete nothing — every retirement is a move into
-`.superseded/`. Pruning is disabled outright when a manifest cannot be read, so a
+the out-of-root sidecar. Pruning is disabled outright when a manifest cannot be read, so a
 transient read error cannot empty a root. Both scripts are idempotent, fail-open, and
-covered by `tests/config/agent-reconcile.test.sh` (26 assertions).
+covered by `tests/config/agent-reconcile.test.sh` (45 assertions, including sidecar
+outside every root and legacy-sidecar migration).
 
 **Revisit when** a subagent earns always-loaded status, or if measurement shows the router
 surfaces a demoted skill too slowly to be worth the saving.
@@ -125,7 +131,7 @@ surfaces a demoted skill too slowly to be worth the saving.
 **Keep the inherited set and trim descriptions.** Addresses the token cost and none of the
 correctness problem; the divergent duplicates and the shadowing would remain.
 
-**Delete the vendor dumps outright.** Simpler, and unrecoverable. `.superseded/` costs
+**Delete the vendor dumps outright.** Simpler, and unrecoverable. The sidecar costs
 disk that this estate has and buys a way back from a bad cull.
 
 **Enumerate the overlay into the baked canonical set.** Rejected in the original SK-2 work

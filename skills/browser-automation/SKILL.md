@@ -1,8 +1,8 @@
 ---
 name: browser-automation
 description: >-
-  THE ENTRY POINT FOR ALL BROWSER WORK in this estate — choose this for any task
-  needing a browser; it dispatches onward. Router for browser-automation tasks — picks
+  Router reached via `/route` (not registered in the harness); the registered `browser`
+  skill is the entry point for browser work. Router for browser-automation tasks — picks
   the right tool and points to the canonical sidecar setup. Use when driving a real
   browser: navigating pages, clicking, filling forms, taking screenshots, reading
   console or network traffic, debugging a web UI, or validating WebGPU/WebGL/GPU

@@ -1,7 +1,7 @@
 {
   "name": "jev-compaction",
   "version": "0.1.0",
-  "description": "Verbatim Jev-guided compaction with an email taint gate and a /jev-compact switch (agentbox ADR-2093; library from tamaratran/fast-jev-compaction, MIT).",
+  "description": "Verbatim Jev-guided compaction with a sticky email taint gate, a token trigger with hysteresis, a cache-warm idle compaction and a /jev-compact switch (agentbox ADR-2093; library from tamaratran/fast-jev-compaction, MIT).",
   "license": "MIT",
   "author": {
     "name": "DreamLab AI",
@@ -47,8 +47,49 @@
     "compactAtPercent": {
       "type": "number",
       "title": "Compaction percentage",
-      "description": "Context percentage at which turn.complete requests compaction.",
+      "description": "Ceiling: context percentage of the window at which turn.complete requests compaction. The effective trigger is the smaller of this and compactAtTokens.",
       "default": 60
+    },
+    "compactAtTokens": {
+      "type": "number",
+      "title": "Compaction tokens",
+      "description": "Absolute trigger in tokens; the effective trigger is min(compactAtPercent of the window, this). Keeps a 1M-token window from waiting until 600k tokens of cache reads per turn.",
+      "default": 180000
+    },
+    "rearmTokens": {
+      "type": "number",
+      "title": "Re-arm growth",
+      "description": "After any compaction, the plugin re-triggers only once context has grown this many tokens past the post-compaction size, so a compaction that cannot get under the trigger does not repeat every turn. 0 means a quarter of the trigger.",
+      "default": 40000
+    },
+    "cacheWarm": {
+      "type": "string",
+      "title": "Cache-warm action",
+      "description": "When a session above cacheWarmFloorTokens sits idle until just before its prompt cache expires: compact (run the compaction while the cache is warm), notify (a toast suggesting /compact), or off.",
+      "options": [
+        "compact",
+        "notify",
+        "off"
+      ],
+      "default": "compact"
+    },
+    "cacheWarmFloorTokens": {
+      "type": "number",
+      "title": "Cache-warm floor",
+      "description": "Context size in tokens below which the idle nudge is never armed; a small context re-prefills cheaply.",
+      "default": 100000
+    },
+    "cacheTtlSeconds": {
+      "type": "number",
+      "title": "Prompt-cache TTL (s)",
+      "description": "Prompt-cache lifetime the idle nudge races. 0 means detect: a session reporting subscription rate limits is 3600, one with ANTHROPIC_API_KEY and no rate limits is 300, anything else 3600.",
+      "default": 0
+    },
+    "cacheTtlMarginSeconds": {
+      "type": "number",
+      "title": "Prompt-cache margin (s)",
+      "description": "How long before expiry the nudge fires (TTL minus this; half the TTL when the margin would exceed half of it).",
+      "default": 300
     },
     "minReductionRatio": {
       "type": "number",

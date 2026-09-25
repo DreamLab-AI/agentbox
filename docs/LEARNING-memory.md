@@ -302,6 +302,12 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
    the frozen recall band is measured against. Bulk ingest into it inherits
    invariant 8: serial, non-concurrent HNSW rebuild afterwards.
 
+12. **Search results are ranked, floored and snippeted, never crushed (ADR-2111).**
+   `memory_search` returns rows best-first above `min_score` (default 0.55), as ~300-char
+   snippets with `truncated`/`chars`, default limit 5; `"*"` excludes
+   `RUVECTOR_PROTECTED_NAMESPACES` unless named. Whole values come from `full:true` or
+   `memory_retrieve`. No lossy compressor may drop or reorder ranked rows.
+
 ## Change process
 
 This is a living document. On any change to the loop: read the code, update the

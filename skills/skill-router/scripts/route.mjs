@@ -98,6 +98,16 @@ if (r.outcome !== 'routed') {
 }
 const top = r.ranked.filter(([k]) => k !== lib.NONE).slice(0, 5);
 console.log(`router: jev (${r.model}) · ${r.ms} ms · ${r.usage.input_tokens} input tokens (${fmtUsd(r.usd)}) · ${r.candidates} candidates`);
-top.forEach(([k, v], i) => console.log(`  ${i + 1}. ${k.padEnd(34)} ${v.toFixed(2)}`));
+// /route is an explicit dispatcher, so it ranks the whole baked tree (the hook ranks only the
+// registered set); a pick outside skills/registered-skills.txt is marked rather than hidden.
+// Guarded: an older baked library predates the export, and no readable manifest marks nothing.
+const registered = typeof lib.readRegisteredManifest === 'function' ? lib.readRegisteredManifest(cfg.registeredManifests) : null;
+const mark = (k) => (registered && !registered.has(k) ? '  (unregistered)' : '');
+top.forEach(([k, v], i) => console.log(`  ${i + 1}. ${k.padEnd(34)} ${v.toFixed(2)}${mark(k)}`));
 if (r.none) console.log(`dispatch: none (p=${(r.ranked.find(([k]) => k === lib.NONE) || [0, 0])[1].toFixed(2)}) — answer directly, or read the routing table if that seems wrong`);
-else console.log(`dispatch: ${r.choice}`);
+else {
+  // A pick outside ~/.claude/skills cannot go through the Skill tool; say where to read it.
+  // Guarded: an older baked library (found first on LIB_CANDIDATES) predates the export.
+  const [where] = typeof lib.unregisteredPaths === 'function' ? lib.unregisteredPaths([r.choice], cfg) : [];
+  console.log(`dispatch: ${r.choice}${where ? ` (not in the Skill tool; Read ${where.split(' → ')[1]})` : ''}`);
+}

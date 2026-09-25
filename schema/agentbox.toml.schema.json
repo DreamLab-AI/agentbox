@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/DreamLab-AI/agentbox/schema/agentbox.toml.schema.json",
   "title": "agentbox manifest",
-  "description": "JSON Schema for agentbox.toml — the manifest-driven configuration for the agentbox container.",
+  "description": "JSON Schema for agentbox.toml \u2014 the manifest-driven configuration for the agentbox container.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -67,7 +67,7 @@
             "external",
             "off"
           ],
-          "description": "Durable linked-data storage adapter. local-solid-rs is the first-class first-party implementation (ADR-010); external federates with a host-provided Solid server; off returns AdapterDisabled. The legacy local-jss Python stub was removed in 2026-04-25 — operators with old manifests must flip to local-solid-rs and add the [security.exceptions.solid-pod-rs] writable-volume block."
+          "description": "Durable linked-data storage adapter. local-solid-rs is the first-class first-party implementation (ADR-010); external federates with a host-provided Solid server; off returns AdapterDisabled. The legacy local-jss Python stub was removed in 2026-04-25 \u2014 operators with old manifests must flip to local-solid-rs and add the [security.exceptions.solid-pod-rs] writable-volume block."
         },
         "memory": {
           "type": "string",
@@ -174,7 +174,7 @@
     },
     "providers": {
       "type": "object",
-      "description": "API-provider credential gates. Each key is a provider name. Known provider keys include: anthropic, openai, gemini, zai, perplexity, deepseek, ollama, xinference. ollama does not require an API key — set enabled=true and sidecar=true; env_var may be omitted (W040). xinference is similar: set sidecar=true and supply an optional_env_vars base-URL override.",
+      "description": "API-provider credential gates. Each key is a provider name. Known provider keys include: anthropic, openai, gemini, zai, perplexity, deepseek, ollama, xinference. ollama does not require an API key \u2014 set enabled=true and sidecar=true; env_var may be omitted (W040). xinference is similar: set sidecar=true and supply an optional_env_vars base-URL override.",
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
@@ -251,7 +251,7 @@
             "obsidian"
           ],
           "default": "obsidian",
-          "description": "On-disk corpus dialect. \"obsidian\" is the one format writers emit — YAML frontmatter pages (VAULT-corpus-format V2/V5). The former \"logseq-legacy\" read-tolerance value was withdrawn when the corpus migration completed (2026-09-22): no consumer ever branched on it, the vault CLI rejects key:: value lines, and an unconverted outliner graph is no longer a supported corpus."
+          "description": "On-disk corpus dialect. \"obsidian\" is the one format writers emit \u2014 YAML frontmatter pages (VAULT-corpus-format V2/V5). The former \"logseq-legacy\" read-tolerance value was withdrawn when the corpus migration completed (2026-09-22): no consumer ever branched on it, the vault CLI rejects key:: value lines, and an unconverted outliner graph is no longer a supported corpus."
         },
         "working": {
           "type": "string",
@@ -274,12 +274,12 @@
             "none"
           ],
           "default": "none",
-          "description": "ADR-2029: terminal surface for the vault. \"rune\" puts the Rune markdown TUI (aka-rider/rune, MIT, Rust/ratatui) in the Nix package set and opens tmux window 9 \"Notes\" at the vault root; \"none\" ships neither. REBUILD-class — the package set is resolved at image composition, so a change only takes effect after ./agentbox.sh rebuild (ADR-039)."
+          "description": "ADR-2029: terminal surface for the vault. \"rune\" puts the Rune markdown TUI (aka-rider/rune, MIT, Rust/ratatui) in the Nix package set and opens tmux window 9 \"Notes\" at the vault root; \"none\" ships neither. REBUILD-class \u2014 the package set is resolved at image composition, so a change only takes effect after ./agentbox.sh rebuild (ADR-039)."
         },
         "cli": {
           "type": "boolean",
           "default": true,
-          "description": "ADR-2107/ADR-2108: bake the `vault` corpus CLI (VisionClaw crates/vault) into the image and put it on PATH at /opt/agentbox/bin/vault. This is the ONE door agents have onto the corpus — the `ontology-bridge` MCP server that used to front it is retired, so with this false an agent has no programmatic corpus access at all. Defaults to true whenever [vault].root is set; false is for an image that deliberately ships no corpus tooling, never a migration step. REBUILD-class — the package set is resolved at image composition (ADR-039). The boot half of the gate runs `vault --version` in Phase 5d and prints a rebuild notice on failure rather than killing the boot."
+          "description": "ADR-2107/ADR-2108: bake the `vault` corpus CLI (VisionClaw crates/vault) into the image and put it on PATH at /opt/agentbox/bin/vault. This is the ONE door agents have onto the corpus \u2014 the `ontology-bridge` MCP server that used to front it is retired, so with this false an agent has no programmatic corpus access at all. Defaults to true whenever [vault].root is set; false is for an image that deliberately ships no corpus tooling, never a migration step. REBUILD-class \u2014 the package set is resolved at image composition (ADR-039). The boot half of the gate runs `vault --version` in Phase 5d and prints a rebuild notice on failure rather than killing the boot."
         }
       }
     },
@@ -380,7 +380,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "VisionClaw ontology bridge — OWL2 DL class lookup, knowledge graph query, SPARQL (ADR-023)."
+              "description": "VisionClaw ontology bridge \u2014 OWL2 DL class lookup, knowledge graph query, SPARQL (ADR-023)."
             },
             "visionclaw_api_url": {
               "type": "string",
@@ -395,7 +395,7 @@
             "condense": {
               "type": "object",
               "additionalProperties": false,
-              "description": "Offline ontology condensation (PRD-020 WS-2). A cheap LOCAL LLM summarises every knowledge-graph class into one retrieval sentence + synonyms, enriching the search-optimisation cache. OPERATOR INFRASTRUCTURE — leave disabled unless you run your own model endpoint. The endpoint is never baked with secrets; it is a plain LAN URL.",
+              "description": "Offline ontology condensation (PRD-020 WS-2). A cheap LOCAL LLM summarises every knowledge-graph class into one retrieval sentence + synonyms, enriching the search-optimisation cache. OPERATOR INFRASTRUCTURE \u2014 leave disabled unless you run your own model endpoint. The endpoint is never baked with secrets; it is a plain LAN URL.",
               "properties": {
                 "enabled": {
                   "type": "boolean",
@@ -404,7 +404,7 @@
                 },
                 "endpoint": {
                   "type": "string",
-                  "description": "Base URL of your OpenAI-compatible or ollama LLM endpoint, e.g. ${LOOM_BASE_URL} (Ontology Loom façade) or http://ollama:11434. Leave blank when disabled.",
+                  "description": "Base URL of your OpenAI-compatible or ollama LLM endpoint, e.g. ${LOOM_BASE_URL} (Ontology Loom fa\u00e7ade) or http://ollama:11434. Leave blank when disabled.",
                   "default": ""
                 },
                 "model": {
@@ -444,7 +444,7 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 1440,
-                  "description": "Scheduler tick cadence in minutes (jittered ±20% to avoid thundering-herd rebuilds). Each tick only rebuilds when the index is stale, so a short cadence is cheap.",
+                  "description": "Scheduler tick cadence in minutes (jittered \u00b120% to avoid thundering-herd rebuilds). Each tick only rebuilds when the index is stale, so a short cadence is cheap.",
                   "default": 60
                 },
                 "schedule_max_age_hours": {
@@ -471,7 +471,7 @@
         "codeact": {
           "type": "object",
           "additionalProperties": true,
-          "description": "CodeAct skill — plan-execute-reflect loops (PRD-008)."
+          "description": "CodeAct skill \u2014 plan-execute-reflect loops (PRD-008)."
         },
         "voyager_skill_library": {
           "type": "object",
@@ -506,7 +506,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "false ⇒ flake.nix emits no [program:podcast-cron] supervisor block."
+              "description": "false \u21d2 flake.nix emits no [program:podcast-cron] supervisor block."
             }
           }
         },
@@ -517,7 +517,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "Register the colloquy MCP server in .mcp.json. Skipped with a warning when no principal (AGENTBOX_PUBKEY / COLLOQUY_PRINCIPAL) is available — an unidentified member must not attest."
+              "description": "Register the colloquy MCP server in .mcp.json. Skipped with a warning when no principal (AGENTBOX_PUBKEY / COLLOQUY_PRINCIPAL) is available \u2014 an unidentified member must not attest."
             },
             "tier": {
               "type": "string",
@@ -538,7 +538,7 @@
             },
             "principal": {
               "type": "string",
-              "description": "Explicit authorising principal pubkey; empty ⇒ the sovereign identity (AGENTBOX_PUBKEY)."
+              "description": "Explicit authorising principal pubkey; empty \u21d2 the sovereign identity (AGENTBOX_PUBKEY)."
             },
             "reflect_candidates": {
               "type": "boolean",
@@ -576,6 +576,28 @@
               "type": "integer",
               "minimum": 1,
               "description": "Turns shorter than this are never sent to the judge."
+            },
+            "cascade": {
+              "type": "boolean",
+              "default": false,
+              "description": "ADR-2095 addendum: answer turns whose local BM25 relative margin reaches cascade_cutoff in-process, and send only the rest to the judge. Off by default."
+            },
+            "cascade_cutoff": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.3718,
+              "description": "Relative top-two margin (s1-s2)/s1 at or above which the local ranker answers. 0.3718 is the measured parity point in front of the local openjev judge; 0.6786 in front of cloud Jev."
+            },
+            "label_log": {
+              "type": "boolean",
+              "default": false,
+              "description": "ADR-2110 (proposed): record per-turn teacher labels (prompt embedding, skills the main model used, router pick) into routing_labels in the RuVector sidecar at each Stop. Never the prompt text."
+            },
+            "label_embeddings_url": {
+              "type": "string",
+              "default": "http://192.168.2.132:9997/v1/embeddings",
+              "description": "OpenAI-shaped embeddings endpoint for label_log. Must be LAN/loopback (E077): embedding a prompt off-LAN is egress of the prompt."
             }
           }
         },
@@ -586,7 +608,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "ADR-2057 gap 2: honoured at MCP registration — false ⇒ the entrypoint does not add harness-bridge to .mcp.json. BOOT-class."
+              "description": "ADR-2057 gap 2: honoured at MCP registration \u2014 false \u21d2 the entrypoint does not add harness-bridge to .mcp.json. BOOT-class."
             },
             "template_dir": {
               "type": "string",
@@ -601,7 +623,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "ADR-2057 gap 2: honoured at MCP registration — false ⇒ the entrypoint does not add precedent-bridge to .mcp.json. BOOT-class."
+              "description": "ADR-2057 gap 2: honoured at MCP registration \u2014 false \u21d2 the entrypoint does not add precedent-bridge to .mcp.json. BOOT-class."
             },
             "namespace": {
               "type": "string",
@@ -702,11 +724,11 @@
                 "escalation"
               ],
               "default": "escalation",
-              "description": "Disposition for an action class absent from the classes table. Only 'escalation' is honoured — an unclassified action is escalation-required (blocks pending review), never permissive (ADR-037 D2)."
+              "description": "Disposition for an action class absent from the classes table. Only 'escalation' is honoured \u2014 an unclassified action is escalation-required (blocks pending review), never permissive (ADR-037 D2)."
             },
             "classes": {
               "type": "object",
-              "description": "The classification table: action-class key → authority_class. recoverable actions proceed without a blocking wait; zero-tolerance actions block on a signed 31402 response. An action class not listed here is escalation-required by default.",
+              "description": "The classification table: action-class key \u2192 authority_class. recoverable actions proceed without a blocking wait; zero-tolerance actions block on a signed 31402 response. An action class not listed here is escalation-required by default.",
               "additionalProperties": {
                 "type": "string",
                 "enum": [
@@ -858,11 +880,11 @@
             },
             "hybrid_search": {
               "type": "boolean",
-              "description": "PRD-018/ADR-036 D6: enable memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS). Default false ⇒ pure-vector search only. Injected as RUVECTOR_HYBRID_SEARCH."
+              "description": "PRD-018/ADR-036 D6: enable memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS). Default false \u21d2 pure-vector search only. Injected as RUVECTOR_HYBRID_SEARCH."
             },
             "typed_metadata": {
               "type": "boolean",
-              "description": "PRD-018/ADR-036 D6: write structured metadata (importance/tags/memory_type/ttl_seconds) on memory_store. Default false ⇒ metadata stays {}. Injected as RUVECTOR_TYPED_METADATA."
+              "description": "PRD-018/ADR-036 D6: write structured metadata (importance/tags/memory_type/ttl_seconds) on memory_store. Default false \u21d2 metadata stays {}. Injected as RUVECTOR_TYPED_METADATA."
             },
             "metadata_gin": {
               "type": "boolean",
@@ -904,7 +926,7 @@
             },
             "graph_backbone": {
               "type": "boolean",
-              "description": "PRD-020/ADR-040 D9: reserved ADOPT-LATER — ontology-backbone property graph over _ruvector_ tables. Default false; harness-gated (I14)."
+              "description": "PRD-020/ADR-040 D9: reserved ADOPT-LATER \u2014 ontology-backbone property graph over _ruvector_ tables. Default false; harness-gated (I14)."
             }
           }
         },
@@ -965,7 +987,7 @@
             },
             "enable_did_nostr": {
               "type": "boolean",
-              "description": "did:nostr resolver — maps did:nostr:<pubkey> (BIP-340 x-only hex) to Solid WebIDs with alsoKnownAs cross-verification (Sprint 6 upstream)."
+              "description": "did:nostr resolver \u2014 maps did:nostr:<pubkey> (BIP-340 x-only hex) to Solid WebIDs with alsoKnownAs cross-verification (Sprint 6 upstream)."
             },
             "enable_webhook_signing": {
               "type": "boolean",
@@ -1316,7 +1338,7 @@
         "routes": {
           "type": "object",
           "additionalProperties": false,
-          "description": "activity → \"host:model\" (+ optional \" -> host:model\" escalation). Defaults grounded in upstream @claude-flow/codex CollaborationTemplates; packaging/release are kit-originated gap-fills. Models are soft defaults.",
+          "description": "activity \u2192 \"host:model\" (+ optional \" -> host:model\" escalation). Defaults grounded in upstream @claude-flow/codex CollaborationTemplates; packaging/release are kit-originated gap-fills. Models are soft defaults.",
           "properties": {
             "specification": {
               "type": "string",
@@ -1418,7 +1440,7 @@
                 "public"
               ],
               "default": "public",
-              "description": "Only `public` is accepted — the console dispatches to an external provider (ADR-2079 §4)."
+              "description": "Only `public` is accepted \u2014 the console dispatches to an external provider (ADR-2079 \u00a74)."
             },
             "trajectory": {
               "type": "boolean",
@@ -1653,7 +1675,7 @@
     "sovereign_mesh": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Sovereign-mesh subsystem (boundary: ADR-030) — Nostr identity, NIP-98 auth, inter-agent messaging, and the mobile agent bridge, gated as one subsystem (default off; env var remains the runtime override per the R7 fix). The phone↔agent path is pure Nostr (an Android Amethyst+Amber client talks to the embedded relay below); the device holds its own key plus a NIP-26 delegation from [operator], so no private key ships to the phone. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by services/nostr-pod-bridge and persisted to the pod inbox; the durable conversation record is a kind-30840 session-summary dual-written to the relay and the pod. The whole mesh makes exactly one external data hop — the mobile_bridge Z.AI summarisation (ADR-030 D3); the per-turn live mirror (ADR-029) has none. This replaced the retired Telegram/CTM mirror.",
+      "description": "Sovereign-mesh subsystem (boundary: ADR-030) \u2014 Nostr identity, NIP-98 auth, inter-agent messaging, and the mobile agent bridge, gated as one subsystem (default off; env var remains the runtime override per the R7 fix). The phone\u2194agent path is pure Nostr (an Android Amethyst+Amber client talks to the embedded relay below); the device holds its own key plus a NIP-26 delegation from [operator], so no private key ships to the phone. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by services/nostr-pod-bridge and persisted to the pod inbox; the durable conversation record is a kind-30840 session-summary dual-written to the relay and the pod. The whole mesh makes exactly one external data hop \u2014 the mobile_bridge Z.AI summarisation (ADR-030 D3); the per-turn live mirror (ADR-029) has none. This replaced the retired Telegram/CTM mirror.",
       "properties": {
         "enabled": {
           "type": "boolean"
@@ -1672,33 +1694,33 @@
         },
         "voice_intent": {
           "type": "boolean",
-          "description": "WS7 (PRD-014 Seam B): bind a voice transcript to an agent intent and emit the canonical agent_action notification at POST /v1/voice-intent. Off → 503. Default false."
+          "description": "WS7 (PRD-014 Seam B): bind a voice transcript to an agent intent and emit the canonical agent_action notification at POST /v1/voice-intent. Off \u2192 503. Default false."
         },
         "kg_elevation": {
           "type": "boolean",
-          "description": "WS6 (PRD-014 Seam D): scan the personal KG for elevation candidates and return GOVERNED ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503. Default false."
+          "description": "WS6 (PRD-014 Seam D): scan the personal KG for elevation candidates and return GOVERNED ontology-propose descriptors at POST /v1/kg-elevation/scan. Off \u2192 503. Default false."
         },
         "junkiejarvis": {
           "type": "boolean",
-          "description": "JunkieJarvis forum agent — rides the management-api process and answers forum mentions over Nostr. Requires BOTH this gate AND the JUNKIEJARVIS_ENABLED=true env var; the env var remains the runtime override, so deployments without a manifest keep working. Default false."
+          "description": "JunkieJarvis forum agent \u2014 rides the management-api process and answers forum mentions over Nostr. Requires BOTH this gate AND the JUNKIEJARVIS_ENABLED=true env var; the env var remains the runtime override, so deployments without a manifest keep working. Default false."
         },
         "junkiejarvis_clarify_before_acting": {
           "type": "boolean",
-          "description": "Clarify-before-acting gate (ADR-2088). When true, JunkieJarvis never triages or queues a forum issue/suggestion whose actionable detail is unclear — missing reproduction steps, missing surface, an ambiguous target, or below the specificity floor. It gift-wrap DMs the author 1–3 clarifying questions, records the item as awaiting-clarification with the question set and the DM event id, and resumes only when that author replies, re-running the same check with the reply appended. One DM per item; 7 days of silence expires the item to stale. Default TRUE (grilling first is the safe behaviour); JUNKIEJARVIS_CLARIFY_BEFORE_ACTING is the runtime override."
+          "description": "Clarify-before-acting gate (ADR-2088). When true, JunkieJarvis never triages or queues a forum issue/suggestion whose actionable detail is unclear \u2014 missing reproduction steps, missing surface, an ambiguous target, or below the specificity floor. It gift-wrap DMs the author 1\u20133 clarifying questions, records the item as awaiting-clarification with the question set and the DM event id, and resumes only when that author replies, re-running the same check with the reply appended. One DM per item; 7 days of silence expires the item to stale. Default TRUE (grilling first is the safe behaviour); JUNKIEJARVIS_CLARIFY_BEFORE_ACTING is the runtime override."
         },
         "per_user_agents": {
           "type": "boolean",
-          "description": "Per-user agent sessions (per-user-agent.js + run-per-user-agent.cjs): one Claude session per pod user, spawned on inbound relay messages. Canonical gate for ADR-028 (Per-User Agent Fabric, Accepted) — this key, [sovereign_mesh].per_user_agents, is the gate, NOT a top-level [per_user_agents] table (see ADR-028 gate-key alignment + ADR-030). Default false."
+          "description": "Per-user agent sessions (per-user-agent.js + run-per-user-agent.cjs): one Claude session per pod user, spawned on inbound relay messages. Canonical gate for ADR-028 (Per-User Agent Fabric, Accepted) \u2014 this key, [sovereign_mesh].per_user_agents, is the gate, NOT a top-level [per_user_agents] table (see ADR-028 gate-key alignment + ADR-030). Default false."
         },
         "operator": {
           "type": "object",
           "additionalProperties": true,
-          "description": "Operator (human owner) Nostr identity. Its pubkey is added to the relay allowlist, granted NIP-98 operator access, used as the WebID owner in pod ACLs, and — for the mobile bridge — tagged as the NIP-26 delegator: the phone signs with its own key under a delegation from this pubkey, so no operator private key ever ships to the device. Private key is never stored here; pass it via OPERATOR_NOSTR_PRIVKEY or NIP-07/NIP-46 remote signing."
+          "description": "Operator (human owner) Nostr identity. Its pubkey is added to the relay allowlist, granted NIP-98 operator access, used as the WebID owner in pod ACLs, and \u2014 for the mobile bridge \u2014 tagged as the NIP-26 delegator: the phone signs with its own key under a delegation from this pubkey, so no operator private key ever ships to the device. Private key is never stored here; pass it via OPERATOR_NOSTR_PRIVKEY or NIP-07/NIP-46 remote signing."
         },
         "relay": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Embedded Nostr relay — the ingress point for the mobile agent bridge. An Android Amethyst+Amber client connects here over NIP-01; signature-verified events addressed to a local npub are unwrapped (NIP-59 gift wraps) by services/nostr-pod-bridge and written to the pod inbox. See ADR-009 and PRD-004.",
+          "description": "Embedded Nostr relay \u2014 the ingress point for the mobile agent bridge. An Android Amethyst+Amber client connects here over NIP-01; signature-verified events addressed to a local npub are unwrapped (NIP-59 gift wraps) by services/nostr-pod-bridge and written to the pod inbox. See ADR-009 and PRD-004.",
           "properties": {
             "enabled": {
               "type": "boolean",
@@ -1751,11 +1773,11 @@
                 "type": "integer",
                 "minimum": 0
               },
-              "description": "Event kinds the relay accepts. Mobile bridge essentials: 1059 (NIP-59 gift wrap, the encrypted phone→agent envelope) and 30840 (the addressable session-summary that is the durable conversation record dual-written to relay + pod)."
+              "description": "Event kinds the relay accepts. Mobile bridge essentials: 1059 (NIP-59 gift wrap, the encrypted phone\u2192agent envelope) and 30840 (the addressable session-summary that is the durable conversation record dual-written to relay + pod)."
             },
             "pod_bridge": {
               "type": "boolean",
-              "description": "When true, every verified event targeting a local npub is persisted to pods/<npub>/events/inbox/<id>.json — the durable mailbox the agent reads. This is what makes the mobile bridge survive a relay restart."
+              "description": "When true, every verified event targeting a local npub is persisted to pods/<npub>/events/inbox/<id>.json \u2014 the durable mailbox the agent reads. This is what makes the mobile bridge survive a relay restart."
             },
             "external_fanout": {
               "type": "string",
@@ -1795,7 +1817,7 @@
             },
             "intent_command": {
               "type": "string",
-              "description": "PRD-014 Seam B/B3: deterministic responder command spawned per voice-origin agent-intent event (kinds 38000-38099). Empty (default) → marker-only path, byte-identical to prior behaviour."
+              "description": "PRD-014 Seam B/B3: deterministic responder command spawned per voice-origin agent-intent event (kinds 38000-38099). Empty (default) \u2192 marker-only path, byte-identical to prior behaviour."
             },
             "intent_args": {
               "type": "string",
@@ -1822,7 +1844,7 @@
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "Register the nostr-session-summary SessionEnd hook. Still no-ops at runtime unless the bridge secrets (AGENTBOX_BRIDGE_SK / AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_POD_ROOT / AGENTBOX_ADMIN_PUBKEY) and a Z.AI key are present. Default false. Privacy note: when true, the transcript is sent to the Z.AI endpoint for summarisation — the one external hop on this path."
+              "description": "Register the nostr-session-summary SessionEnd hook. Still no-ops at runtime unless the bridge secrets (AGENTBOX_BRIDGE_SK / AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_POD_ROOT / AGENTBOX_ADMIN_PUBKEY) and a Z.AI key are present. Default false. Privacy note: when true, the transcript is sent to the Z.AI endpoint for summarisation \u2014 the one external hop on this path."
             },
             "summary_model": {
               "type": "string",
@@ -1936,7 +1958,7 @@
         "deepsec": {
           "type": "object",
           "additionalProperties": false,
-          "description": "ADR-2033: runtime policy for the deepsec AI vulnerability-review gate (skills/build-with-quality/scripts/deepsec-gate.sh). The binary is baked by [toolchains].deepsec. Credentials are NEVER stored here — only env-var NAMES.",
+          "description": "ADR-2033: runtime policy for the deepsec AI vulnerability-review gate (skills/build-with-quality/scripts/deepsec-gate.sh). The binary is baked by [toolchains].deepsec. Credentials are NEVER stored here \u2014 only env-var NAMES.",
           "properties": {
             "enabled": {
               "type": "boolean"
@@ -2005,7 +2027,7 @@
             },
             "ai_api_key_env": {
               "type": "string",
-              "description": "NAME of the env var holding the key — never the key itself."
+              "description": "NAME of the env var holding the key \u2014 never the key itself."
             },
             "ai_base_url": {
               "type": "string",
@@ -2414,11 +2436,11 @@
     "memory_learning": {
       "type": "object",
       "additionalProperties": false,
-      "description": "RuVector-native learning loop (PRD-018 / ADR-036 D6, DDD-016). The agentbox-owned hook records real (state, action, outcome, duration) trajectory tuples and aggregates per-action effectiveness (Wilson lower-bound + recency decay) onto the memory slot — no new adapter slot, no new table. Every flag is default-off: a manifest with enabled=false is byte-identical to the pre-PRD-018 product (PRD-018 metric 1). The entrypoint injects each key into the RUVECTOR_* gate env of the governed ruvector-mcp server and registers config/hooks/trajectory-recorder.cjs only when enabled AND record_trajectories are both true.",
+      "description": "RuVector-native learning loop (PRD-018 / ADR-036 D6, DDD-016). The agentbox-owned hook records real (state, action, outcome, duration) trajectory tuples and aggregates per-action effectiveness (Wilson lower-bound + recency decay) onto the memory slot \u2014 no new adapter slot, no new table. Every flag is default-off: a manifest with enabled=false is byte-identical to the pre-PRD-018 product (PRD-018 metric 1). The entrypoint injects each key into the RUVECTOR_* gate env of the governed ruvector-mcp server and registers config/hooks/trajectory-recorder.cjs only when enabled AND record_trajectories are both true.",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Master gate for the learning loop. Off ⇒ no hook registered, no aggregation, no consumers. Injected as RUVECTOR_MEMORY_LEARNING_ENABLED."
+          "description": "Master gate for the learning loop. Off \u21d2 no hook registered, no aggregation, no consumers. Injected as RUVECTOR_MEMORY_LEARNING_ENABLED."
         },
         "record_trajectories": {
           "type": "boolean",
@@ -2438,11 +2460,11 @@
         },
         "feed_retrieval": {
           "type": "boolean",
-          "description": "Effectiveness aggregates re-rank memory_search. Consumer of record_trajectories — enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_RETRIEVAL."
+          "description": "Effectiveness aggregates re-rank memory_search. Consumer of record_trajectories \u2014 enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_RETRIEVAL."
         },
         "feed_routing": {
           "type": "boolean",
-          "description": "Aggregates surface as advisory [INTELLIGENCE] hints, never a hard gate. Consumer of record_trajectories — enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_ROUTING."
+          "description": "Aggregates surface as advisory [INTELLIGENCE] hints, never a hard gate. Consumer of record_trajectories \u2014 enabling this ahead of the producer is flagged W066. Injected as RUVECTOR_FEED_ROUTING."
         },
         "sona_enabled": {
           "type": "boolean",
@@ -2450,7 +2472,7 @@
         },
         "relevance_feedback": {
           "type": "boolean",
-          "description": "SUPERSEDED by ADR-040 D5 (renamed param_tuning_enabled — the module is an HNSW ef_search auto-tuner, not content relevance). Kept for manifest compatibility; default false."
+          "description": "SUPERSEDED by ADR-040 D5 (renamed param_tuning_enabled \u2014 the module is an HNSW ef_search auto-tuner, not content relevance). Kept for manifest compatibility; default false."
         },
         "aggregate_sweep": {
           "type": "boolean",
@@ -2518,11 +2540,11 @@
     "project_tracking": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Sovereign project tracking (PRD-017 / ADR-035 / DDD-015). Helm-grade status grid, commit activity, primers/synopses and GitHub/local repo sync re-expressed on the existing sovereign substrates — no new URN kind, no new port, no new adapter slot. Disabled by default: when enabled=false the /v1/projects route returns 503 and no scan, metric, or nostr publish runs.",
+      "description": "Sovereign project tracking (PRD-017 / ADR-035 / DDD-015). Helm-grade status grid, commit activity, primers/synopses and GitHub/local repo sync re-expressed on the existing sovereign substrates \u2014 no new URN kind, no new port, no new adapter slot. Disabled by default: when enabled=false the /v1/projects route returns 503 and no scan, metric, or nostr publish runs.",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Master gate; /v1/projects → 503 when off."
+          "description": "Master gate; /v1/projects \u2192 503 when off."
         },
         "scan_dirs": {
           "type": "array",
@@ -2638,11 +2660,11 @@
     "interaction_plane": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Agent of Empires interaction plane (PRD-021 / ADR-042/043/044). AoE serve daemon (rebuild-class binary via flake input, boot-class daemon + config), a NIP-98 reverse proxy as sole ingress, and declarative session seeds replacing the MAD tmux harness. enabled=false ⇒ no daemon, no seeds.",
+      "description": "Agent of Empires interaction plane (PRD-021 / ADR-042/043/044). AoE serve daemon (rebuild-class binary via flake input, boot-class daemon + config), a NIP-98 reverse proxy as sole ingress, and declarative session seeds replacing the MAD tmux harness. enabled=false \u21d2 no daemon, no seeds.",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Master gate; false ⇒ aoe serve never starts and no session seeds are provisioned (apply-class boot)."
+          "description": "Master gate; false \u21d2 aoe serve never starts and no session seeds are provisioned (apply-class boot)."
         },
         "port": {
           "type": "integer",
@@ -2664,13 +2686,13 @@
             "nip98",
             "none"
           ],
-          "description": "Sole-ingress reverse-proxy auth mode; nip98 verifies a kind-27235 header → session pubkey (ADR-043 D4.6)."
+          "description": "Sole-ingress reverse-proxy auth mode; nip98 verifies a kind-27235 header \u2192 session pubkey (ADR-043 D4.6)."
         },
         "proxy_port": {
           "type": "integer",
           "minimum": 1,
           "maximum": 65535,
-          "description": "nip98-proxy listen port — the only ingress to the aoe serve port (N-05 invariant)."
+          "description": "nip98-proxy listen port \u2014 the only ingress to the aoe serve port (N-05 invariant)."
         },
         "proxy": {
           "type": "object",
@@ -2737,7 +2759,7 @@
             "properties": {
               "slug": {
                 "type": "string",
-                "description": "Session slug → AGENTBOX_PROFILE (per-session did:nostr derivation, ADR-043 D4.1)."
+                "description": "Session slug \u2192 AGENTBOX_PROFILE (per-session did:nostr derivation, ADR-043 D4.1)."
               },
               "tool": {
                 "type": "string",
@@ -2756,7 +2778,7 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Env vars forwarded into the session (load-bearing for ANTHROPIC_BASE_URL redirect on OpenRouter/Z.AI — F2-4, N-01)."
+                "description": "Env vars forwarded into the session (load-bearing for ANTHROPIC_BASE_URL redirect on OpenRouter/Z.AI \u2014 F2-4, N-01)."
               },
               "detect_as": {
                 "type": "string",
@@ -2776,11 +2798,11 @@
             "slug",
             "tool"
           ],
-          "description": "The tab-0 coordinator: named, special, terminal view (ACP has no pane → 400 acp_mode_unsupported; terminal view is required for the voice /send path, F5-3 / ADR-044).",
+          "description": "The tab-0 coordinator: named, special, terminal view (ACP has no pane \u2192 400 acp_mode_unsupported; terminal view is required for the voice /send path, F5-3 / ADR-044).",
           "properties": {
             "slug": {
               "type": "string",
-              "description": "Coordinator session slug → AGENTBOX_PROFILE."
+              "description": "Coordinator session slug \u2192 AGENTBOX_PROFILE."
             },
             "tool": {
               "type": "string",
@@ -2846,7 +2868,7 @@
             "endpoint": {
               "type": "string",
               "format": "uri",
-              "description": "Facade ingress speaking the Jev wire format. MUST be LAN/loopback — the facade has no cloud fallback."
+              "description": "Facade ingress speaking the Jev wire format. MUST be LAN/loopback \u2014 the facade has no cloud fallback."
             },
             "model": {
               "type": "string",
@@ -2879,7 +2901,7 @@
                 "laya",
                 "openjev"
               ],
-              "description": "Which engine answers behind the facade (SSO contract §11). Both speak one /predict + /v1/models + /health contract, so this is the only key that changes which one runs: laya = ModernBERT encoder with ONE shared head budget for all options; openjev = Qwen3.5-4B NLI cross-encoder scoring each option in its own sequence, which turns `none` into a threshold instead of a competitor for probability mass. The facade learns capabilities from /v1/models and must never branch on this name."
+              "description": "Which engine answers behind the facade (SSO contract \u00a711). Both speak one /predict + /v1/models + /health contract, so this is the only key that changes which one runs: laya = ModernBERT encoder with ONE shared head budget for all options; openjev = Qwen3.5-4B NLI cross-encoder scoring each option in its own sequence, which turns `none` into a threshold instead of a competitor for probability mass. The facade learns capabilities from /v1/models and must never branch on this name."
             },
             "openjev_revision": {
               "type": "string",
@@ -2898,7 +2920,7 @@
                 "entailment",
                 "ent_vs_contra"
               ],
-              "description": "How a noul reads off the three NLI classes: P(ent), or P(ent)/(P(ent)+P(con)) excluding neutral mass. Both values appear in every noul answer regardless; this only picks which is called `noul`, because which is better is a measurement (SSO §11.2)."
+              "description": "How a noul reads off the three NLI classes: P(ent), or P(ent)/(P(ent)+P(con)) excluding neutral mass. Both values appear in every noul answer regardless; this only picks which is called `noul`, because which is better is a measurement (SSO \u00a711.2)."
             }
           }
         },
@@ -2927,7 +2949,41 @@
               "type": "integer",
               "minimum": 10,
               "maximum": 95,
-              "description": "Context fill at which the plugin requests compaction."
+              "description": "Ceiling: context fill (percent of the model window) at which the plugin requests compaction. The effective trigger is min(this, compact_at_tokens)."
+            },
+            "compact_at_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Absolute compaction trigger in tokens (default 180000); the effective trigger is min(compact_at_percent of the window, this). 0 disables the absolute cap."
+            },
+            "rearm_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Hysteresis: after any compaction the plugin re-triggers only once context has grown this many tokens past the post-compaction size (default 40000; 0 = a quarter of the trigger)."
+            },
+            "cache_warm": {
+              "type": "string",
+              "enum": [
+                "compact",
+                "notify",
+                "off"
+              ],
+              "description": "What an idle session above cache_warm_floor_tokens does shortly before its prompt cache expires: compact while the cache is warm (default), toast a /compact suggestion, or nothing."
+            },
+            "cache_warm_floor_tokens": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Context size below which the cache-warm nudge is never armed (default 100000)."
+            },
+            "cache_ttl_seconds": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Prompt-cache TTL the nudge races; 0 (default) detects it: subscription rate limits reported = 3600, ANTHROPIC_API_KEY without them = 300, otherwise 3600."
+            },
+            "cache_ttl_margin_seconds": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "How long before expiry the nudge fires (default 300); half the TTL when the margin would exceed half of it."
             },
             "keep_threshold": {
               "type": "number",
@@ -3084,7 +3140,7 @@
             "approval_threshold_sats": {
               "type": "integer",
               "minimum": 0,
-              "description": "Calls whose cost exceeds this threshold have request.requiresApproval=true set. The call is NOT denied — downstream handlers may choose to gate or log it."
+              "description": "Calls whose cost exceeds this threshold have request.requiresApproval=true set. The call is NOT denied \u2014 downstream handlers may choose to gate or log it."
             },
             "allow_origins": {
               "type": "array",
@@ -3116,7 +3172,7 @@
         "broadcast": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Payment broadcast configuration — controls whether this agentbox advertises payment capabilities on the mesh.",
+          "description": "Payment broadcast configuration \u2014 controls whether this agentbox advertises payment capabilities on the mesh.",
           "properties": {
             "enabled": {
               "type": "boolean",
@@ -3231,7 +3287,7 @@
     "linked_data": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Linked-Data interchange surfaces (PRD-006 / ADR-012 / DDD-004). When [linked_data].enabled = false (default), no surface emits or consumes JSON-LD and zero behaviour changes vs. the pre-PRD-006 product. Each per-surface gate accepts on | emit | off. Validation rules: E040–E049.",
+      "description": "Linked-Data interchange surfaces (PRD-006 / ADR-012 / DDD-004). When [linked_data].enabled = false (default), no surface emits or consumes JSON-LD and zero behaviour changes vs. the pre-PRD-006 product. Each per-surface gate accepts on | emit | off. Validation rules: E040\u2013E049.",
       "properties": {
         "enabled": {
           "type": "boolean",
@@ -3244,7 +3300,7 @@
             "emit",
             "off"
           ],
-          "description": "S1 — Solid pod resource representations. Requires adapters.pods ∈ {local-solid-rs, external} (E041)."
+          "description": "S1 \u2014 Solid pod resource representations. Requires adapters.pods \u2208 {local-solid-rs, external} (E041)."
         },
         "events": {
           "type": "string",
@@ -3253,7 +3309,7 @@
             "emit",
             "off"
           ],
-          "description": "S2 — Nostr envelope payloads. Requires [sovereign_mesh.relay].enabled = true (E042)."
+          "description": "S2 \u2014 Nostr envelope payloads. Requires [sovereign_mesh.relay].enabled = true (E042)."
         },
         "credentials": {
           "type": "string",
@@ -3261,7 +3317,7 @@
             "emit",
             "off"
           ],
-          "description": "S3 — W3C Verifiable Credentials. JCS canonicalisation required (E043)."
+          "description": "S3 \u2014 W3C Verifiable Credentials. JCS canonicalisation required (E043)."
         },
         "did_documents": {
           "type": "string",
@@ -3269,7 +3325,7 @@
             "emit",
             "off"
           ],
-          "description": "S4 — DID Documents at /.well-known/did.json. Requires sovereign_mesh.solid_pod = true (E044)."
+          "description": "S4 \u2014 DID Documents at /.well-known/did.json. Requires sovereign_mesh.solid_pod = true (E044)."
         },
         "provenance": {
           "type": "string",
@@ -3277,7 +3333,7 @@
             "emit",
             "off"
           ],
-          "description": "S5 — PROV-O receipts emitted parallel to the events adapter."
+          "description": "S5 \u2014 PROV-O receipts emitted parallel to the events adapter."
         },
         "capability_descriptors": {
           "type": "string",
@@ -3285,7 +3341,7 @@
             "emit",
             "off"
           ],
-          "description": "S6 — W3C WoT Thing Descriptions for MCP servers."
+          "description": "S6 \u2014 W3C WoT Thing Descriptions for MCP servers."
         },
         "skill_metadata": {
           "type": "string",
@@ -3293,7 +3349,7 @@
             "emit",
             "off"
           ],
-          "description": "S7 — Schema.org HowTo encoding for skills (build-time only)."
+          "description": "S7 \u2014 Schema.org HowTo encoding for skills (build-time only)."
         },
         "payments": {
           "type": "string",
@@ -3302,7 +3358,7 @@
             "emit",
             "off"
           ],
-          "description": "S8 — agentic-payment mandates and receipts (VC + ODRL). JCS canonicalisation required (E043)."
+          "description": "S8 \u2014 agentic-payment mandates and receipts (VC + ODRL). JCS canonicalisation required (E043)."
         },
         "memory_catalogue": {
           "type": "string",
@@ -3310,7 +3366,7 @@
             "emit",
             "off"
           ],
-          "description": "S9 — DCAT-3 memory namespace catalogue at /v1/memory/catalogue."
+          "description": "S9 \u2014 DCAT-3 memory namespace catalogue at /v1/memory/catalogue."
         },
         "architecture_docs": {
           "type": "string",
@@ -3318,7 +3374,7 @@
             "emit",
             "off"
           ],
-          "description": "S10 — ADR/PRD/DDD frame frontmatter (build-time only)."
+          "description": "S10 \u2014 ADR/PRD/DDD frame frontmatter (build-time only)."
         },
         "http_meta": {
           "type": "string",
@@ -3326,7 +3382,7 @@
             "emit",
             "off"
           ],
-          "description": "S11 — Content-negotiated JSON-LD on /v1/meta and /v1/agent-events."
+          "description": "S11 \u2014 Content-negotiated JSON-LD on /v1/meta and /v1/agent-events."
         },
         "default_form": {
           "type": "string",
@@ -3412,7 +3468,7 @@
         "privacy_handoff": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Privacy filter handoff (documentation only — the order is fixed in code).",
+          "description": "Privacy filter handoff (documentation only \u2014 the order is fixed in code).",
           "properties": {
             "order": {
               "type": "string",
@@ -3426,7 +3482,7 @@
         "viewer": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Linked-Object Viewer slot (S12, PRD-006 §15). Mounts a JSON-LD-aware browser at /lo/* that renders every PRD-006 surface. Pane manifest at /lo/manifest.json. Default off. Validation rules: E050–E054, W053.",
+          "description": "Linked-Object Viewer slot (S12, PRD-006 \u00a715). Mounts a JSON-LD-aware browser at /lo/* that renders every PRD-006 surface. Pane manifest at /lo/manifest.json. Default off. Validation rules: E050\u2013E054, W053.",
           "properties": {
             "mode": {
               "type": "string",
@@ -3471,7 +3527,7 @@
             },
             "source_code_header": {
               "type": "string",
-              "description": "Override for the Source-Code response header. Default = upstream repo URL (AGPL §13 compliance)."
+              "description": "Override for the Source-Code response header. Default = upstream repo URL (AGPL \u00a713 compliance)."
             }
           }
         }
@@ -3501,7 +3557,7 @@
     "resources": {
       "type": "object",
       "additionalProperties": false,
-      "description": "ADR-2034 resource topology: the container envelope projected into the generated docker-compose.yml (apply class boot) and the resident overhead paths — shared MCP hub, hook shim, teammate reaper, background nice (apply class rebuild).",
+      "description": "ADR-2034 resource topology: the container envelope projected into the generated docker-compose.yml (apply class boot) and the resident overhead paths \u2014 shared MCP hub, hook shim, teammate reaper, background nice (apply class rebuild).",
       "properties": {
         "envelope": {
           "type": "boolean",
@@ -3629,6 +3685,32 @@
               "maximum": 19
             }
           }
+        }
+      }
+    },
+    "claude_code": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ADR-2116: Claude Code permission posture, projected into every settings file at boot.",
+      "properties": {
+        "permission_mode": {
+          "type": "string",
+          "enum": [
+            "default",
+            "acceptEdits",
+            "plan",
+            "auto",
+            "dontAsk",
+            "bypassPermissions"
+          ],
+          "description": "permissions.defaultMode for the root session and every stack profile."
+        },
+        "permission_deny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Permission deny rules enforced in every mode, bypass included."
         }
       }
     }

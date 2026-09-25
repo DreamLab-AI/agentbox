@@ -52,6 +52,16 @@ enum Cmd {
         /// Working directory (default ~/workspace).
         #[arg(long)]
         workdir: Option<String>,
+        /// Model alias or id (default: sonnet).
+        #[arg(long)]
+        model: Option<String>,
+        /// Effort level: low, medium, high, xhigh, max (default: medium).
+        #[arg(long)]
+        effort: Option<String>,
+        /// MCP config (file path or inline JSON) loaded strictly in place of
+        /// the full configuration; omit to keep every configured server.
+        #[arg(long)]
+        mcp_config: Option<String>,
     },
     /// List all jobs.
     List,
@@ -117,6 +127,9 @@ fn main() {
             name,
             repeat,
             workdir,
+            model,
+            effort,
+            mcp_config,
         } => {
             let parsed = match parse_schedule(&schedule, now) {
                 Ok(s) => s,
@@ -125,7 +138,7 @@ fn main() {
                     std::process::exit(2);
                 }
             };
-            let job = jobs::new_job(
+            let mut job = jobs::new_job(
                 &prompt,
                 parsed,
                 name.as_deref(),
@@ -133,6 +146,9 @@ fn main() {
                 workdir.as_deref(),
                 now,
             );
+            job.model = model;
+            job.effort = effort;
+            job.mcp_config = mcp_config;
             let mut all = store.load();
             all.push(job.clone());
             if let Err(e) = store.save(&all, now) {

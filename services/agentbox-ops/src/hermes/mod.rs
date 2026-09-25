@@ -2,7 +2,9 @@
 //!
 //! Ported from `skills/hermes-scheduler/scripts/scheduler.py`. Jobs live in
 //! `~/.claude/scheduler/jobs.json`, output under `~/.claude/scheduler/output/`,
-//! and each due job is dispatched as `claude --print "<prompt>"`.
+//! and each due job is dispatched as `claude --print --model <m> --effort <e>
+//! [--strict-mcp-config --mcp-config <cfg>] -- "<prompt>"` — see
+//! [`jobs::Job::claude_args`] for the per-job defaults and overrides.
 //!
 //! The daemon records its `(pid, argv, starttime)` identity at launch
 //! (`scheduler.identity.json`, next to `scheduler.pid`). Every path that
@@ -35,19 +37,22 @@ pub struct RunOutcome {
 }
 
 /// Runs a job through the `claude` CLI, returning its combined output.
-pub fn run_job(prompt: &str, workdir: Option<&str>) -> RunOutcome {
-    run_job_with_cli(prompt, workdir, Path::new("claude"))
+pub fn run_job(job: &jobs::Job) -> RunOutcome {
+    run_job_with_cli(
+        &job.claude_args(),
+        job.workdir.as_deref(),
+        Path::new("claude"),
+    )
 }
 
-fn run_job_with_cli(prompt: &str, workdir: Option<&str>, cli: &Path) -> RunOutcome {
+fn run_job_with_cli(args: &[String], workdir: Option<&str>, cli: &Path) -> RunOutcome {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/home/devuser".into());
     let cwd = workdir
         .map(str::to_string)
         .unwrap_or_else(|| Path::new(&home).join("workspace").display().to_string());
 
     let child = Command::new(cli)
-        .arg("--print")
-        .arg(prompt)
+        .args(args)
         .current_dir(&cwd)
         .env("CLAUDE_NO_TELEMETRY", "1")
         .stdin(Stdio::null())
@@ -193,7 +198,7 @@ pub fn tick(store: &Store, verbose: bool) -> usize {
             let _ = store.save(&current, now);
         }
 
-        let outcome = run_job(&job.prompt, job.workdir.as_deref());
+        let outcome = run_job(&job);
         let saved = store.save_output(&job.id, &outcome.output, Local::now());
         log(&format!(
             "Job '{}' {}. Output: {}",
@@ -729,7 +734,11 @@ mod tests {
     fn a_missing_claude_binary_is_reported_not_panicked_on() {
         // Never invoke an installed provider or mutate process-global PATH.
         let tmp = tempfile::tempdir().unwrap();
-        let outcome = run_job_with_cli("noop", Some("/"), &tmp.path().join("missing-claude"));
+        let outcome = run_job_with_cli(
+            &["noop".to_string()],
+            Some("/"),
+            &tmp.path().join("missing-claude"),
+        );
         assert!(!outcome.success);
         assert_eq!(
             outcome.error.as_deref(),

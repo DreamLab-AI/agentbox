@@ -124,6 +124,13 @@ let aoeSessionId = null;
 // slot and breaks OAuth resolution — truly unset it for child processes.
 const CHILD_ENV = { ...process.env };
 delete CHILD_ENV.ANTHROPIC_API_KEY;
+// Headless turns are routine summarise/route work: no extended thinking, and no
+// CLAUDE.md tier (the meta-controller carries its own system prompt). Measured
+// on 2.1.280 with haiku: 38.4k-token prefix / 9.3 s → 6.8k (no tools) or 10.4k
+// (Bash only) / 2.7 s once MCP, hooks, skills and CLAUDE.md are stripped too.
+CHILD_ENV.MAX_THINKING_TOKENS = '0';
+CHILD_ENV.CLAUDE_CODE_DISABLE_CLAUDE_MDS = '1';
+const EFFORT = process.env.BRIDGE_EFFORT || 'low';
 
 const HOME = process.env.HOME || '/home/devuser';
 const NOSTR_INBOX = path.join(HOME, '.claude', 'nostr-inbox');
@@ -290,7 +297,18 @@ async function sendToTab0(text, source = 'voice') {
  */
 function claudeTurn({ prompt, systemAppend, allowedTools, model = MODEL, onDelta }) {
   return new Promise((resolve, reject) => {
-    const args = ['-p', '--model', model];
+    // Lean headless surface: no MCP servers (the bridge only ever uses Bash),
+    // no settings/plugin hooks (`disableAllHooks` keeps subscription OAuth,
+    // unlike --bare; `{"hooks":{}}` merges and suppresses nothing), no skills,
+    // and only the built-in tools the turn is allowed to call. --tools and
+    // --mcp-config are variadic: the prompt goes over stdin, never positional.
+    const args = [
+      '-p', '--model', model, '--effort', EFFORT,
+      '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
+      '--settings', '{"disableAllHooks":true}',
+      '--disable-slash-commands',
+      '--tools', allowedTools ? 'Bash' : '',
+    ];
     if (systemAppend) args.push('--append-system-prompt', systemAppend);
     if (allowedTools) args.push('--allowedTools', allowedTools);
     if (onDelta) args.push('--output-format', 'stream-json', '--include-partial-messages', '--verbose');

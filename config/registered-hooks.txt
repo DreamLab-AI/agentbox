@@ -1,0 +1,74 @@
+# registered-hooks.txt — the governed hook registry for Claude Code settings.
+#
+# `agentbox-manifest hooks-reconcile` (called from config/entrypoint-unified.sh
+# after every hook registration block) reconciles the `hooks` block of
+# ~/.claude/settings.json and $WORKSPACE/.claude/settings.json against this list
+# every boot. Same model as agents/registered-agents.txt
+# (ADR-2092): the settings file is a host mount that outlives every rebuild, and
+# before this list nothing governed it, so `ruflo init` / the claude-flow helper
+# scaffolding accreted per-turn hooks that nothing ever took away.
+#
+# Columns are whitespace-separated; `#` starts a comment. A row matches a hook
+# entry when <marker> is a substring of its `command`.
+#
+#   own   <marker> <Event,Event,...> <timeout_s|->
+#         agentbox's own hook. Removed from any event not listed and
+#         de-duplicated; `timeout` rewritten to <timeout_s> — SECONDS, which is
+#         what Claude Code reads (the registration sites used to write
+#         milliseconds: `8000` was a 2.2-hour timeout). `-` leaves the value to
+#         the registering block and only corrects a millisecond value.
+#         Registration and gating stay in the entrypoint block that owns the
+#         hook; the reconciler never ADDS an entry.
+#   keep  <marker>
+#         third-party, preserved byte-for-byte.
+#   prune <marker>
+#         removed wherever registered (vendor scaffolding, retired entries).
+#
+# Anything no row matches is PRESERVED and reported in the boot log, so a
+# hand-added experiment keeps working and stays visible. Its timeout is only
+# corrected when above 600 s (always the millisecond mistake).
+#
+# To add a hook: register it in its entrypoint block (or stacks.rs for
+# profiles), add an `own` row here, and a row in config/hooks/README.md.
+
+# ── agentbox-owned (config/hooks/, registered by config/entrypoint-unified.sh) ──
+own   nostr-live-mirror.cjs            SessionStart,UserPromptSubmit,Stop,SessionEnd  8
+own   fleet-session-start.sh           SessionStart                                   8
+own   ontology-monitor.cjs             SessionEnd                                     10
+own   turn-sink.cjs                    UserPromptSubmit,Stop                          5
+own   colloquy-reflect-candidates.cjs  Stop,SubagentStop                              10
+own   trajectory-recorder.cjs          Stop,SubagentStop                              10
+own   dream-inbox-surface.cjs          UserPromptSubmit                               5
+own   ruvnet-brain-ground.cjs          UserPromptSubmit                               5
+# skill-route's timeout tracks [skills.routing].timeout_ms (2x, min 8 s).
+own   skill-route.cjs                  UserPromptSubmit                               -
+own   routing-label-recorder.cjs       Stop                                           15
+
+# ── third-party ──
+# Agent of Empires writes its own status/session hooks, each tagged `# aoe-hooks`.
+keep  aoe-hooks
+# The resident hook shim (ADR-2034 §1) in workspace project settings; owned and
+# reconciled by `agentbox-hook reconcile`, not by this list.
+keep  agentbox-hook
+# The Hermes scheduler (services/agentbox-ops) is not supervised, and no boot
+# block registers it: this hand-added SessionStart hook is what starts its
+# daemon (idempotent, quiet). Kept, not owned, until a gate registers it.
+keep  hermes-scheduler
+
+# ── pruned ──
+# ruflo / claude-flow helper scaffolding (~/.claude/helpers/hook-handler.cjs):
+# `route` injected a regex "Agent: coder 80%" box into every prompt (~110 tok);
+# pre-bash/post-bash/pre-edit/post-edit/status/notify/compact-*/post-task only
+# echo `[OK] ...`; session-restore/session-end build a file-based PageRank graph
+# under .claude-flow/data whose only reader was `route` — file memory the
+# RuVector policy rules out. PreCompact also called session-end twice.
+prune helpers/hook-handler.cjs
+# auto-memory-hook import/sync: @claude-flow/memory is absent, so it is a no-op
+# that prints an npm warning into every session; if it ever resolved it would
+# rewrite MEMORY.md, which the memory policy forbids.
+prune auto-memory-hook.mjs
+# The per-profile claude-flow CLI adapter, if it ever lands in a root settings file.
+prune claude-flow-hook-adapter.cjs
+# trust-seed runs at boot only: as a SessionStart hook it walked ~1,170 paths
+# (avg 3.2 s) and raced Claude Code's own writes to ~/.claude.json.
+prune trust-seed.cjs

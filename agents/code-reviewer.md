@@ -6,7 +6,7 @@ description: >
   before merge, or audit a change for defects. Reports findings ranked by
   severity with file:line anchors; does not edit.
 tools: Read, Grep, Glob, Bash, mcp__codebase-memory__search_graph, mcp__codebase-memory__trace_path, mcp__codebase-memory__get_code_snippet
-model: inherit
+model: sonnet
 ---
 
 # code-reviewer

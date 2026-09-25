@@ -49,7 +49,7 @@
  * Lifecycle model: the C2 owns the whole session lifecycle, not just routing.
  * It can SPAWN a new agent tab anywhere under ~/workspace (tmux new-window at
  * that cwd, then a launcher typed into the fish shell: `dsp` → claude
- * --permission-mode auto (default), or `codex` / `zai`, optionally
+ * the manifest's permission mode (ADR-2116), or `codex` / `zai`, optionally
  * sending a first instruction once the prompt is up) and EXIT a tab's session
  * (types its exit verb — /exit, /quit for codex — at the prompt; the window
  * and shell stay for reuse). Spawn targets are confined to the ~/workspace
@@ -99,6 +99,19 @@ const EXEC_FILE = path.join(INBOX, 'executed.json'); // durable wrap-id store of
 const MODEL_RAW = process.env.NOSTR_GATEWAY_MODEL || 'claude-sonnet-5';
 const MODEL = /haiku/i.test(MODEL_RAW) ? 'claude-sonnet-5' : MODEL_RAW;
 const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
+// Routing and reporting are single-shot text-in/text-out turns: no tools, no
+// MCP servers, no hooks (disableAllHooks keeps subscription OAuth; --bare does
+// not), no skills, no CLAUDE.md, no extended thinking. Measured on 2.1.280 with
+// claude-sonnet-5: 59.7k-token prefix / 6.9 s → 9.6k / 3.1 s. --tools and
+// --mcp-config are variadic, so `--model` stays last and `--` fences the prompt.
+const EFFORT = process.env.NOSTR_GATEWAY_EFFORT || 'low';
+function claudeArgs(prompt) {
+  return ['-p', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
+    '--settings', '{"disableAllHooks":true}', '--disable-slash-commands',
+    '--effort', EFFORT, '--model', MODEL, '--', prompt];
+}
+const CLAUDE_ENV = { ...process.env, AGENTBOX_LIVE_MIRROR: '0', AGENTBOX_NOSTR_GATEWAY: '0',
+  MAX_THINKING_TOKENS: '0', CLAUDE_CODE_DISABLE_CLAUDE_MDS: '1' };
 // The tab-0 bridge is the common ingress/feed for voice, browser text, and
 // Nostr.  Keeping it local means Nostr adds no exposed HTTP surface.
 const TAB0_BRIDGE_URL = (process.env.AGENTBOX_TAB0_BRIDGE_URL || 'http://127.0.0.1:8971').replace(/\/$/, '');
@@ -414,7 +427,8 @@ function watchTab(idx) {
 
 // ── lifecycle: spawn / exit agent sessions ──────────────────────────────────
 // Launchers the C2 may start in a fresh tab. 'dsp' is the fish alias for
-// claude --permission-mode auto; codex and zai are their own CLIs.
+// `claude` in the manifest's permission mode ([claude_code], ADR-2116); codex
+// and zai are their own CLIs.
 // exit is what to type at the agent's prompt to end its session; match tells
 // us (via pane_current_command) which exit verb a running tab needs.
 // aoeTool maps the launcher onto AoE's tool enum for POST /api/sessions: dsp/zai
@@ -589,8 +603,8 @@ function routeInstruction(ws, instr) {
     '\nFLEET (one block per agent tab: index, name, live state badge, recent scrollback):\n' + blocks,
   ].filter(Boolean).join('\n');
   reply(ws, '⏳ routing…');
-  execFile(CLAUDE_BIN, ['-p', '--model', MODEL, prompt],
-    { timeout: 90000, maxBuffer: 1 << 20, env: { ...process.env, AGENTBOX_LIVE_MIRROR: '0', AGENTBOX_NOSTR_GATEWAY: '0' } },
+  execFile(CLAUDE_BIN, claudeArgs(prompt),
+    { timeout: 90000, maxBuffer: 1 << 20, env: CLAUDE_ENV },
     (err, stdout) => {
       if (err) { log('route err', err.message); return reply(ws, '⚠ routing failed: ' + err.message.slice(0, 120)); }
       const d = parseDecision(stdout);
@@ -650,8 +664,8 @@ function doReport(ws, arg, auto) {
         + 'deterministic hint — trust the scrollback over it if they disagree. No preamble, no markdown, max 16 words per line.\n\n' + blocks;
   }
   if (!auto) reply(ws, single ? `⏳ compiling deep report on tab ${single}…` : question ? '⏳ checking the fleet…' : '⏳ compiling fleet report…');
-  execFile(CLAUDE_BIN, ['-p', '--model', MODEL, prompt],
-    { timeout: 90000, maxBuffer: 1 << 20, env: { ...process.env, AGENTBOX_LIVE_MIRROR: '0', AGENTBOX_NOSTR_GATEWAY: '0' } },
+  execFile(CLAUDE_BIN, claudeArgs(prompt),
+    { timeout: 90000, maxBuffer: 1 << 20, env: CLAUDE_ENV },
     (err, stdout) => {
       if (err) { log('report err', err.message); return reply(ws, '⚠ report failed: ' + err.message.slice(0, 120)); }
       const head = auto ? `🔔 tab ${single} ${auto} — auto-report` : `📋 report${single ? ' · tab ' + single : ''}`;

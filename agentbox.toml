@@ -428,7 +428,7 @@ memory_orient      = true    # memory_orient OODA cold-start bundle (semantic + 
 # Apply class BOOT (env is projected into .mcp.json; a new Claude session picks
 # it up). Adding categories widens the per-session schema cost (~185 tok/tool).
 orchestration_proxy = true
-orchestration_tools = "swarm,agent,task,coordination"   # ruflo categories or exact tool names (#2726 syntax)
+orchestration_tools = "swarm,agent"   # ruflo categories or exact tool names (#2726 syntax); task,coordination dropped 2026-09-25 (unused, ~185 tok/tool)
 # ── PRD-020 / ADR-040 D10: v2 model-lifecycle & graph gates (all default-off, W-B-gated) ──
 # Retrieval-geometry keys extend this existing sidecar section. Every one defaults to
 # today's post-PRD-018 behaviour, so a manifest with all v2 keys at default is byte-
@@ -621,6 +621,19 @@ confidence_floor = 0.3         # below this, lesson is auto-archived (ADR-019 §
 archive_after_days = 30        # lessons below floor demoted to *-archive after this many days
 contradiction_sample_rate = 0.1  # 1/10 retrievals sampled for LLM-judge contradiction check
 
+[claude_code]
+# ADR-2116 — permission posture for EVERY Claude Code session in the container
+# (root ~/.claude and each stack profile). Reconciled every boot by
+# `agentbox-manifest permissions-project`: this is the authority; a hand edit to
+# settings.json does not persist. bypassPermissions = no prompts and no auto-mode
+# classifier (2.1.280 bypass also allows .git/ and .claude/ writes).
+permission_mode = "bypassPermissions"   # auto | bypassPermissions | acceptEdits | default | plan | dontAsk
+# Enforced in every mode, bypass included (probed 2026-09-25). The host Docker
+# socket is mounted here, so `docker run`/`compose` is host root; ssh reaches the
+# LAN. Prefix rules: they stop accidents and plain injected commands, not a
+# determined `sh -c` wrapper. `docker ps/exec/logs` stay allowed for monitoring.
+permission_deny = ["Bash(docker run:*)", "Bash(docker compose:*)", "Bash(ssh:*)"]
+
 [features.jev_compaction]
 # ADR-2093 — verbatim context compaction judged by Jev. At compaction every
 # non-pinned tool call is scored twice by TypeSafe System One (keep the call?
@@ -648,7 +661,13 @@ enabled = true
 enabled_by_default = true
 taint_tools = "mcp__email-gateway__,mcp__claude_ai_Gmail__"   # tool-name prefixes that fence a session
 taint_skills = "email-search"                                 # Skill loads that fence a session
-compact_at_percent = 60
+compact_at_percent = 60          # CEILING: percent of the model window
+compact_at_tokens = 180000       # absolute trigger; effective = min(percent of window, this) (2026-09-25)
+rearm_tokens = 40000             # after any compaction, re-trigger only once context grows this far past the post-compaction size (0 = 25% of trigger)
+cache_warm = "compact"           # idle session near prompt-cache expiry: "compact" | "notify" | "off"
+cache_warm_floor_tokens = 100000 # never arm the idle nudge below this context size
+cache_ttl_seconds = 0            # 0 = detect (subscription 3600, API key 300); else explicit
+cache_ttl_margin_seconds = 300   # fire this long before expiry (half the TTL when the margin would exceed it)
 keep_threshold = 0.5
 min_reduction_ratio = 0.25
 model = "jev-latest"
@@ -906,12 +925,35 @@ template_dir = "/home/devuser/workspace/VisionFlow/docs/engineering/templates"
 #                    The hook is de-registered (byte-identical-when-off).
 # BOOT-class: the entrypoint inlines these values into the registered hook
 # command and runtime-env.sh; a flip applies on restart, never a rebuild.
-# Validator: E073 (router enum), W071 (jev without TYPESAFE_API_KEY at boot).
+# Validator: E073 (router enum), W071 (jev without TYPESAFE_API_KEY at boot),
+# W074 (openjev judge with timeout_ms below its measured p50).
 router = "jev"
 hook = true                     # register the UserPromptSubmit hook (router = "jev" only)
 model = "jev-latest"            # resolved server-side; pin (e.g. "jev-1.13.0") to freeze behaviour
 timeout_ms = 4000               # hook budget per call; the hook itself is registered at 8000
 min_prompt_chars = 24           # shorter turns are never sent (and never routed)
+# Local cascade (ADR-2095 addendum 2026-09-23). A BM25 ranker over the same skill
+# rubrics answers a turn in-process when its relative top-two margin reaches
+# cascade_cutoff; only the rest go to the judge. Measured on the 86-turn corpus:
+#   in front of the LOCAL openjev judge ([features.sovereign_system_one], engine
+#   "openjev"): 86.0% vs 88.4% alone (p=0.69, leave-one-out), half the turns
+#   answered locally, mean latency 4.8 s → 2.4 s, zero prompt egress;
+#   in front of CLOUD Jev: parity needs cutoff 0.6786 and saves ~19% of calls.
+# Off by default. With openjev as the judge also raise timeout_ms to >= 6000:
+# its p50 is 4.9 s, so escalations would time out at 4000 (validator W074).
+# The JS ranker is held to system-one-eval's by tests/system-one/cascade-parity.
+# Validator: E076 (cascade not a boolean / cutoff outside [0, 1]), E077 (label_log).
+cascade = false
+cascade_cutoff = 0.3718         # relative margin (s1-s2)/s1; 0.3718 = openjev parity point
+# Teacher labels for the router (ADR-2110, PROPOSED). At each Stop a hook records,
+# per user turn, the turn's bge-small embedding (never its text), the skills the main
+# model actually USED (Skill tool or Read of a SKILL.md; shell reads are kept as
+# inspection, never the label) and the router's pick for that turn, into
+# `routing_labels` in the RuVector sidecar. Email-gateway turns are never embedded;
+# the embeddings endpoint must be on the LAN (validator E077). Off until the ADR is
+# accepted: storing prompt embeddings changes the ADR-2090 retention contract.
+label_log = false
+label_embeddings_url = "http://192.168.2.132:9997/v1/embeddings"   # bge-small via Xinference (LAN)
 
 [skills.colloquy]
 # Colloquy — cq shared-agent-learning knowledge units (ADR-2085, ADR-2086).
@@ -1703,7 +1745,7 @@ claude = true
 claude_code = true
 ruflo = true
 claude_flow = true  # legacy alias gate: claude-flow IS ruflo (upstream rename, github.com/ruvnet/ruflo) — either gate bakes the ONE consolidated closure, which ships `ruflo` + `claude-flow` + `claude-flow-mcp` bins
-agentic_qe = true
+agentic_qe = false  # 2026-09-25: 0 MCP calls in 14 days; build-with-quality supersedes the aqe fleet. Rebuild-class (drops the aqe CLI + root-session agentic-qe MCP)
 metaharness = true  # ADR-064: bakes metaharness@0.3.2 + @metaharness/darwin@0.8.3 CLIs (the versions the ruflo-metaharness plugin pins); pin discipline per ADR-067
 nagual_qe = false  # disabled: upstream sqlx 0.9 SqlSafeStr compilation error
 deepsec = true  # ADR-2033: vercel-labs/deepsec@2.3.9 CLI (npm, Apache-2.0) — the build-with-quality Security gate; policy in [security.deepsec]. First rebuild after enabling resolves nodeModulesHash (see flake.nix deepsecPkg)

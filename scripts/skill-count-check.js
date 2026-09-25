@@ -36,13 +36,15 @@ const path = require('path');
 const REPO_ROOT = path.resolve(__dirname, '..');
 
 // Docs that carry a headline skill-count claim, relative to the repo root.
-const CLAIM_DOCS = ['README.md', 'skills/SKILL-DIRECTORY.md', 'CLAUDE.md'];
+// AGENTS.md is the canonical agent-instruction file (ADR-2111); CLAUDE.md only
+// imports it, so the baked-count claim lives in AGENTS.md.
+const CLAIM_DOCS = ['README.md', 'skills/SKILL-DIRECTORY.md', 'AGENTS.md'];
 
 const CLAIM_PATTERNS = [
   { kind: 'floor', re: /(\d+)\+\s+skills/gi },
   { kind: 'active', re: /(\d+)\s+active\s+skills/gi },
   { kind: 'router', re: /for\s+(?:all\s+)?(\d+)\s+skills/gi },
-  // ADR-2056: CLAUDE.md states the baked count as "bakes `/opt/agentbox/skills`
+  // ADR-2056: AGENTS.md (formerly CLAUDE.md) states the baked count as "bakes `/opt/agentbox/skills`
   // (<n> skills)". It drifted to 118 against a filesystem count of 126 because no
   // gate covered this file. Anchored on the baked path so it cannot match the
   // "(5 skills)" family sizes SKILL-DIRECTORY.md uses in prose.

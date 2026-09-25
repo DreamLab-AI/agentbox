@@ -11,7 +11,9 @@ What agentbox adds, in `hooks/`:
 
 | | |
 |---|---|
-| **Taint gate** | A transcript containing any tool whose name starts with a `taintTools` prefix (default: the private email gateway, Gmail) or a `Skill` load of a `taintSkills` skill (default: `email-search`) is **never sent to Jev**; the built-in summary runs and a toast says why. Decided from the messages being compacted, per compaction, so it cannot be stale. `hooks/policy.mjs` is the whole rule, tested in `tests/config/jev-compaction-policy.test.mjs`. |
+| **Taint gate** | A transcript containing any tool whose name starts with a `taintTools` prefix (default: the private email gateway, Gmail) or a `Skill` load of a `taintSkills` skill (default: `email-search`) is **never sent to Jev**; the built-in summary runs and a toast says why. **Sticky per session** (ADR-2093 amendment 2026-09-25): recorded in the plugin store under `taint:<session id>` at the tool call, the skill expansion, every turn and every compaction, so a built-in summary that absorbed email is never sent later. `hooks/policy.mjs` is the whole rule, tested in `tests/config/jev-compaction-policy.test.mjs`. |
+| **Trigger** | `min(compactAtPercent × window, compactAtTokens)` (default 180k), re-armed only after `rearmTokens` (40k) of growth past the post-compaction size, so a compaction that cannot get under the trigger does not repeat every turn. |
+| **Cache-warm** | An idle main session above `cacheWarmFloorTokens` (100k) compacts (`cacheWarm: compact`), or is told to (`notify`), `cacheTtlMarginSeconds` before its prompt cache expires; TTL detected (subscription 1 h, API key 5 min) or `cacheTtlSeconds`. Any new turn cancels it. |
 | **Switch** | `/jev-compact on` · `/jev-compact off` · `/jev-compact status`. Persisted in the plugin store across sessions. Starting position is `enabledByDefault`, projected by the entrypoint from `[features.jev_compaction].enabled_by_default`. |
 | **Fail-open** | Any throw, missing `TYPESAFE_API_KEY`, reduction under `minReductionRatio`, or a tainted session ⇒ the built-in compaction, with one `jev-compaction:` log line naming the reason. |
 
@@ -41,7 +43,8 @@ cost — ≈ $14–18 per busy agent-hour in cache reads against the built-in su
 ## Development
 
 ```sh
-node --test tests/config/jev-compaction-policy.test.mjs         # the gate and the switch
+node --test tests/config/jev-compaction-policy.test.mjs         # the pure decisions
+claude plugin test config/claude-plugins/jev-compaction         # the hooks under the engine
 claude plugin validate config/claude-plugins/jev-compaction/.claude-plugin/plugin.json
 CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude --plugin-dir config/claude-plugins/jev-compaction
 ```
