@@ -82,6 +82,7 @@ impl LedgerRow {
     ///
     /// Callers that later learn the merge event fill [`LedgerRow::reviewer`] and
     /// [`LedgerRow::review_minutes`] with [`review_from_merge`].
+    #[allow(clippy::too_many_arguments)]
     pub fn unreviewed(
         date: String,
         deep: String,

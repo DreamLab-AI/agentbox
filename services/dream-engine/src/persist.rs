@@ -20,8 +20,10 @@ pub enum PersistError {
     Io(#[from] std::io::Error),
     #[error("git {0} failed: {1}")]
     Git(String, String),
-    #[error("patch did not apply")]
-    PatchDidNotApply,
+    /// Every apply strategy in [`apply_attempts`] failed; carries the last
+    /// attempt's stderr so the gate's `DidNotApply` detail says why.
+    #[error("patch did not apply: {0}")]
+    PatchDidNotApply(String),
     #[error("no candidate patch in report")]
     NoPatch,
 }
@@ -73,6 +75,37 @@ fn git(dir: &Path, args: &[&str]) -> Result<String, PersistError> {
     }
 }
 
+/// The ordered `git apply` strategies tried against the candidate worktree.
+///
+/// Model-written diffs fail in predictable ways: wrong hunk line counts
+/// (`--recount` recomputes them from the hunk body), whitespace drift in
+/// context lines (`--ignore-whitespace`), and occasionally a stale base that a
+/// three-way merge can still land. `git apply` is atomic without `--reject`,
+/// so a failed strategy leaves the tree untouched for the next one. `--3way`
+/// only helps when the diff names real blob ids (`index <a>..<b>` lines) that
+/// the repo holds, so it is tried last and only then.
+pub fn apply_attempts(patch: &str) -> Vec<Vec<&'static str>> {
+    let mut v = vec![
+        vec!["apply"],
+        vec!["apply", "--recount"],
+        vec!["apply", "--recount", "--ignore-whitespace"],
+    ];
+    let names_blobs = patch.lines().any(|l| {
+        l.strip_prefix("index ")
+            .and_then(|r| r.split_whitespace().next())
+            .and_then(|range| range.split_once(".."))
+            .is_some_and(|(a, b)| {
+                a.len() >= 7
+                    && b.len() >= 7
+                    && a.bytes().chain(b.bytes()).all(|c| c.is_ascii_hexdigit())
+            })
+    });
+    if names_blobs {
+        v.push(vec!["apply", "--3way"]);
+    }
+    v
+}
+
 /// Create the branch + commit in an isolated worktree at HEAD, apply the patch.
 /// Returns the worktree path (caller must `remove_worktree`) or an error after
 /// cleaning up. Does NOT push — that is a separate, network-touching step so the
@@ -83,11 +116,25 @@ pub fn build_branch_worktree(
     patch: &str,
     commit_msg: &str,
 ) -> Result<std::path::PathBuf, PersistError> {
+    build_branch_worktree_at(repo, branch, patch, commit_msg, "HEAD")
+}
+
+/// [`build_branch_worktree`] at an explicit base revision. The nightly
+/// candidate path passes the dispatched commit, so the diff lands on exactly
+/// the tree the model was shown (tree-read, ADR-2112) even if the operator
+/// committed while the night ran.
+pub fn build_branch_worktree_at(
+    repo: &Path,
+    branch: &str,
+    patch: &str,
+    commit_msg: &str,
+    base: &str,
+) -> Result<std::path::PathBuf, PersistError> {
     let wt = std::env::temp_dir().join(format!("dream-wt-{}", branch.replace('/', "_")));
     let _ = std::fs::remove_dir_all(&wt); // stale worktree dir, if any
-    // Isolated checkout at HEAD on a fresh branch — the operator's working tree
+    // Isolated checkout on a fresh branch — the operator's working tree
     // (uncommitted ledger/report edits) is never touched.
-    git(repo, &["worktree", "add", "-b", branch, &wt.display().to_string(), "HEAD"])?;
+    git(repo, &["worktree", "add", "-b", branch, &wt.display().to_string(), base])?;
 
     let cleanup = |repo: &Path, wt: &Path| {
         let _ = git(repo, &["worktree", "remove", "--force", &wt.display().to_string()]);
@@ -99,13 +146,31 @@ pub fn build_branch_worktree(
         cleanup(repo, &wt);
         return Err(e.into());
     }
-    // Apply against the worktree. `--3way` recovers when context has drifted.
-    if git(&wt, &["apply", "--3way", &patch_file.display().to_string()]).is_err() {
-        let _ = std::fs::remove_file(&patch_file);
-        cleanup(repo, &wt);
-        return Err(PersistError::PatchDidNotApply);
+    // Apply against the worktree, strategy by strategy (see apply_attempts).
+    let patch_arg = patch_file.display().to_string();
+    let mut last_err = String::new();
+    let mut applied = false;
+    for attempt in apply_attempts(patch) {
+        let mut args: Vec<&str> = attempt.clone();
+        args.push(patch_arg.as_str());
+        match git(&wt, &args) {
+            Ok(_) => {
+                applied = true;
+                break;
+            }
+            Err(e) => {
+                last_err = format!("{}: {}", attempt.join(" "), e);
+                // A failed --3way can leave conflict state; reset before any
+                // further attempt or cleanup.
+                let _ = git(&wt, &["reset", "--hard", "-q"]);
+            }
+        }
     }
     let _ = std::fs::remove_file(&patch_file);
+    if !applied {
+        cleanup(repo, &wt);
+        return Err(PersistError::PatchDidNotApply(last_err.trim().to_string()));
+    }
 
     if let Err(e) = git(&wt, &["add", "-A"]).and_then(|_| git(&wt, &["commit", "-m", commit_msg])) {
         cleanup(repo, &wt);
@@ -229,6 +294,92 @@ mod tests {
         // ...and the operator's uncommitted file in the MAIN tree is untouched.
         assert_eq!(std::fs::read_to_string(dir.join("dirty.txt")).unwrap(), "operator wip\n");
 
+        remove_worktree(&dir, &wt);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn apply_attempts_order_and_three_way_gate() {
+        let plain = "--- a/f\n+++ b/f\n@@ -1 +1 @@\n-a\n+b\n";
+        assert_eq!(
+            apply_attempts(plain),
+            vec![
+                vec!["apply"],
+                vec!["apply", "--recount"],
+                vec!["apply", "--recount", "--ignore-whitespace"],
+            ]
+        );
+        let with_blobs = "diff --git a/f b/f\nindex 1234abc..5678def 100644\n--- a/f\n+++ b/f\n";
+        assert_eq!(apply_attempts(with_blobs).last().unwrap(), &vec!["apply", "--3way"]);
+        let bogus_index = "index xyz..abc\n";
+        assert_eq!(apply_attempts(bogus_index).len(), 3);
+    }
+
+    /// Scratch repo with one committed file.
+    fn scratch(name: &str, content: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("dream-persist-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let run = |a: &[&str]| Command::new("git").arg("-C").arg(&dir).args(a).output().unwrap();
+        run(&["init", "-q"]);
+        run(&["config", "user.email", "t@t"]);
+        run(&["config", "user.name", "t"]);
+        std::fs::write(dir.join("f.txt"), content).unwrap();
+        run(&["add", "-A"]);
+        run(&["commit", "-qm", "init"]);
+        dir
+    }
+
+    #[test]
+    fn miscounted_hunk_lands_via_recount() {
+        // The header claims +1,5 but the body adds one line: plain `git apply`
+        // rejects it as corrupt; `--recount` fixes the counts and lands it.
+        let dir = scratch("recount", "one\n");
+        let patch = "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1,5 @@\n one\n+two\n";
+        let wt = build_branch_worktree(&dir, "dream/recount-2026-09-25", patch, "dream: recount").unwrap();
+        let show = Command::new("git").arg("-C").arg(&wt).args(["show", "HEAD:f.txt"]).output().unwrap();
+        assert_eq!(String::from_utf8_lossy(&show.stdout), "one\ntwo\n");
+        remove_worktree(&dir, &wt);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unappliable_patch_reports_last_strategy_detail() {
+        let dir = scratch("noapply", "one\n");
+        let patch = "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1 @@\n-absent\n+x\n";
+        let err = build_branch_worktree(&dir, "dream/noapply-2026-09-25", patch, "m").unwrap_err();
+        match err {
+            PersistError::PatchDidNotApply(detail) => {
+                assert!(detail.starts_with("apply --recount --ignore-whitespace"), "{detail}");
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+        // Cleanup ran: the branch does not survive a failed apply.
+        let br = Command::new("git")
+            .arg("-C")
+            .arg(&dir)
+            .args(["branch", "--list", "dream/noapply-2026-09-25"])
+            .output()
+            .unwrap();
+        assert!(String::from_utf8_lossy(&br.stdout).trim().is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn worktree_can_be_pinned_to_an_older_base() {
+        let dir = scratch("base", "one\n");
+        let base = String::from_utf8(
+            Command::new("git").arg("-C").arg(&dir).args(["rev-parse", "HEAD"]).output().unwrap().stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string();
+        // HEAD moves on after the night's commit was dispatched.
+        std::fs::write(dir.join("f.txt"), "moved\n").unwrap();
+        Command::new("git").arg("-C").arg(&dir).args(["commit", "-qam", "later"]).output().unwrap();
+        let patch = "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1,2 @@\n one\n+two\n";
+        let wt = build_branch_worktree_at(&dir, "dream/base-2026-09-25", patch, "m", &base).unwrap();
+        assert_eq!(std::fs::read_to_string(wt.join("f.txt")).unwrap(), "one\ntwo\n");
         remove_worktree(&dir, &wt);
         let _ = std::fs::remove_dir_all(&dir);
     }
