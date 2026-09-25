@@ -267,9 +267,13 @@ impl Engine {
         // Surface every open decision on the forum governance panel
         // (ADR-2113), then post the nightly digest (JunkieJarvis → dreamlab
         // zone, "chat with agents") — visibility only, pointing at the panel.
-        // Both fail-open: forum trouble never taints the night.
+        // Separate switches (DREAM_GOVERNANCE / DREAM_DIGEST): pausing panel
+        // publishing must never silence the night report. Both fail-open:
+        // forum trouble never taints the night.
         if governance::enabled() {
             governance::publish(&inbox::inbox_path(), false).await;
+        }
+        if std::env::var("DREAM_DIGEST").as_deref() != Ok("0") {
             let status = digest::run(&self.workspace, date, false).await;
             info!(result = %status, "night digest");
         }
