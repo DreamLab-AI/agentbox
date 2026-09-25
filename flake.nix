@@ -512,7 +512,7 @@
           version         = "2.3.9";
           packageLock = ./config/npm-locks/deepsec-2.3.9.package-lock.json;
           sha256          = "sha256-5DHqDxepgjVhBmbjU5/b8U3VX+K9rsxSENt2o/BumHs=";
-          nodeModulesHash = "sha256-svwTvpVDYWCKfTnO4YL70f1qcDDiEQ0JLFpZfK36qIk=";
+          nodeModulesHash = "sha256-Ko78yJan9PA0NZLE6wABwpjUkHNNN5qqBK4vKnr5PBw=";
           bin             = "deepsec";
           extraEnv        = { CLAUDE_CODE_EXECUTABLE = "claude"; };
           # deepsec's published tarball keeps its own monorepo build-only
