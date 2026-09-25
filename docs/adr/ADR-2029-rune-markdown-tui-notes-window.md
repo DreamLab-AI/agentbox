@@ -143,3 +143,24 @@ CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. The curren
   and window decisions now covered, with the live-editor evidence still open.
 - **Governed paths changed** — `config/tmux-autostart.sh`,
   `tests/tui/notes-launcher.test.sh` (new).
+
+## Amendment 2026-09-25 — DreamLab fork; window 9 opens the working vault
+
+- **Source** — `lib/rune.nix` now builds `jjohare/rune` tag `v1.5.0-dreamlab.1`
+  (`2698873b`), a fork cut from upstream `v1.5.0` adding Obsidian callouts,
+  `==highlights==` and `#tags`; a backlinks panel (F3) with vault-wide
+  shortest-path wikilink resolution; and daily notes (F4, `--today`,
+  `--daily-dir`, `--daily-format`, `--daily-template`, Templater
+  `tp.date.now` tokens). Fork gates at the tag: `make test` 3,801 passed,
+  `make lint` clean, `make test-fuzz` and `make perf-guard` green. Upstream is
+  MIT; nothing has been offered upstream yet.
+- **Hashes** — the `src` hash was computed without Nix by a NAR serialiser that
+  reproduces the v1.4.0 pin byte-for-byte; the cargo vendor now comes from the
+  pinned `Cargo.lock` (no `git+` sources), replacing `cargoHash`. Both are
+  confirmed only when the image is rebuilt.
+- **Window** — window 9 opens `[vault].working` (override
+  `AGENTBOX_NOTES_ROOT`), on today's journal when the binary offers `--today`;
+  see the 2026-09-25 CHANGELOG entry. The `review_trigger` now also covers a
+  divergence between the fork and upstream that makes rebasing impractical.
+- **Governed paths changed** — `lib/rune.nix`, `config/tmux-autostart.sh`,
+  `config/config.fish`, `tests/tui/notes-launcher.test.sh`.
