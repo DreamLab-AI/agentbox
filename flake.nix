@@ -328,7 +328,7 @@
           version         = "3.42.5";
           packageLock = ./config/npm-locks/ruflo-3.42.5.package-lock.json;
           sha256          = "sha256-snSnkKkIsOP/gLeoqROEk5zwwdHlj51pVqdOjJKUHAc=";
-          nodeModulesHash = "sha256-j6iEgjVF1WtOUFDvJhyC033+CbejP05xcmRjV/e1Lbk=";
+          nodeModulesHash = "sha256-0e6ULIgAyUDR8pnsizr8VduI9sNx64+vVSd7vFoHEKM=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
