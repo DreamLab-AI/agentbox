@@ -134,7 +134,7 @@ services:
       # Sizes follow [resources.tmpfs] in agentbox.toml (ADR-2034): the committed
       # file had drifted to 1G/64M/1G/256M while the flake emitted 2G/256M/4G/1G,
       # and the live ~/.npm (256M) sat at 100 % -> npx ENOSPC on 2026-09-05.
-      - /tmp:mode=1777,size=2G
+      - /tmp:mode=1777,size=8G
       - /run:mode=755,size=256M,uid=1000,gid=1000
       - /var/run:mode=755,size=16M,uid=1000,gid=1000
       - /var/log:mode=755,size=128M,uid=1000,gid=1000
@@ -145,7 +145,7 @@ services:
       - /home/devuser/.cache:mode=755,size=4G,uid=1000,gid=1000
       # Legacy native npm installers (notably sharp) still hard-code ~/.npm
       # even when NPM_CONFIG_CACHE points at the writable workspace.
-      - /home/devuser/.npm:mode=755,size=1G,uid=1000,gid=1000
+      - /home/devuser/.npm:mode=755,size=4G,uid=1000,gid=1000
       - /home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000
       - /home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000
       - /home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000

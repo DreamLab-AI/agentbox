@@ -1179,8 +1179,8 @@ gpu_reservation = true                          # nvidia device reservation ride
 
 [resources.tmpfs]
 run   = "256M"                                  # hook spools + hub config + reaper state live here
-tmp   = "2G"
-npm   = "1G"                                    # was 256M and 100 % full → npx ENOSPC
+tmp   = "8G"                                    # was 2G; 2G sat at 77 % and TMPDIR builds hit ENOSPC (2026-09-25)
+npm   = "4G"                                    # was 256M, then 1G — both hit 100 % → npm ENOSPC (2026-09-05, 2026-09-25)
 cache = "4G"                                    # was 1G at 85 %
 
 [resources.mcp_hub]                             # ADR-2034 §2 — one process per stateless MCP server

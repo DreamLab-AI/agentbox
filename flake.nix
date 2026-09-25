@@ -164,8 +164,8 @@
         resShm            = resourcesCfg.shm or "32G";
         resGpuReservation = resourcesCfg.gpu_reservation or true;
         resTmpfsRun       = resTmpfsCfg.run or "256M";
-        resTmpfsTmp       = resTmpfsCfg.tmp or "2G";
-        resTmpfsNpm       = resTmpfsCfg.npm or "1G";
+        resTmpfsTmp       = resTmpfsCfg.tmp or "8G";
+        resTmpfsNpm       = resTmpfsCfg.npm or "4G";
         resTmpfsCache     = resTmpfsCfg.cache or "4G";
         mcpHubEnabled     = resHubCfg.enabled or true;
         mcpHubBind        = resHubCfg.bind or "127.0.0.1:9720";
