@@ -7,7 +7,7 @@
 //! (gate `CandidateState::NoPatch` → INCONCLUSIVE) or by guessing file
 //! contents (`DidNotApply`). Between 2026-09-07 and 2026-09-21 twelve nights
 //! ended in the first way and two in the second, and the resulting
-//! INCONCLUSIVE streaks parked every repo on standby (ADR-2112).
+//! INCONCLUSIVE streaks parked every repo on standby (ADR-2114).
 //!
 //! The fix keeps the single-completion design and closes the information gap:
 //!

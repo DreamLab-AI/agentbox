@@ -121,7 +121,7 @@ pub fn build_branch_worktree(
 
 /// [`build_branch_worktree`] at an explicit base revision. The nightly
 /// candidate path passes the dispatched commit, so the diff lands on exactly
-/// the tree the model was shown (tree-read, ADR-2112) even if the operator
+/// the tree the model was shown (tree-read, ADR-2114) even if the operator
 /// committed while the night ran.
 pub fn build_branch_worktree_at(
     repo: &Path,

@@ -1,4 +1,4 @@
-//! Dream-machine decisions on the forum governance panel (ADR-2113).
+//! Dream-machine decisions on the forum governance panel (ADR-2115).
 //!
 //! The engine's human decisions used to live only in a local JSON inbox and a
 //! session hook; nobody saw them. They now surface through the forum's Agent

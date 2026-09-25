@@ -63,7 +63,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
-    /// Dream-machine decisions on the forum governance panel (ADR-2113).
+    /// Dream-machine decisions on the forum governance panel (ADR-2115).
     Governance {
         #[command(subcommand)]
         action: GovernanceAction,

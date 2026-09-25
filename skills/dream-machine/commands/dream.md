@@ -16,7 +16,7 @@ Report, concisely:
 
 ## `/dream questions` · `/dream answer <id> <text>` · `/dream dismiss <id>`
 
-The operator decides on the **forum governance panel** (ADR-2113): every open item is a case there — Approve, Reject (say why) or Amend (write your own instruction); "Acknowledge all alerts" on the panel clears the alert backlog. The engine ingests those signed decisions at the start of each night. Point the user there first. The `dream-inbox-surface.cjs` hook only reminds sessions how many cases are waiting.
+The operator decides on the **forum governance panel** (ADR-2115): every open item is a case there — Approve, Reject (say why) or Amend (write your own instruction); "Acknowledge all alerts" on the panel clears the alert backlog. The engine ingests those signed decisions at the start of each night. Point the user there first. The `dream-inbox-surface.cjs` hook only reminds sessions how many cases are waiting.
 
 The local file (`workspace/.agentbox/dream-inbox.json`) is the engine's working copy; the CLI below is a break-glass path for when the forum is unavailable:
 

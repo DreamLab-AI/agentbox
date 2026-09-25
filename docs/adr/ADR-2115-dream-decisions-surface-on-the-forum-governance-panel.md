@@ -1,5 +1,5 @@
 ---
-id: ADR-2113
+id: ADR-2115
 title: Dream-machine decisions surface on the forum governance panel, and the nightly digest reports every outcome
 date: 2026-09-25
 decision_status: accepted
@@ -14,7 +14,7 @@ review_trigger: JunkieJarvis registered in the relay agent_registry and the firs
 repo: agentbox
 ---
 
-# ADR-2113 — Dream-machine decisions surface on the forum governance panel
+# ADR-2115 — Dream-machine decisions surface on the forum governance panel
 
 ## Context
 

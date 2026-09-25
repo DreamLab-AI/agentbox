@@ -2,7 +2,7 @@
 // Dream-decision reminder hook (UserPromptSubmit).
 //
 // The nightly dream-engine publishes every open question and alert as a case
-// on the forum governance panel (ADR-2113) — that panel is where the operator
+// on the forum governance panel (ADR-2115) — that panel is where the operator
 // decides, and the engine reads the signed decisions back each night. This
 // hook no longer relays item bodies into sessions: it adds one short pointer
 // line saying how many decisions are waiting and where, so the reminder

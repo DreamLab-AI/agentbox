@@ -1,5 +1,5 @@
 ---
-id: ADR-2112
+id: ADR-2114
 title: Dream candidate diffs are written against source the engine reads from the dispatched commit
 date: 2026-09-25
 decision_status: accepted
@@ -16,7 +16,7 @@ domain: GOVERNANCE-capabilities
 lineage: amends legacy ADR-061 (dream ACCEPT persisted as a draft PR — the typed ```dream-patch contract); builds on ADR-2024 (evidence-gated acceptance) and ADR-070 (self-GC evidence governance)
 ---
 
-# ADR-2112 — Dream candidate diffs are written against source the engine reads from the dispatched commit
+# ADR-2114 — Dream candidate diffs are written against source the engine reads from the dispatched commit
 
 ## Context
 ADR-061 made an ACCEPT night emit its change as a ```dream-patch unified diff, which ADR-2024's gate applies and re-evaluates.

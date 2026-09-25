@@ -10,7 +10,7 @@
 //! isolation and re-runs the required evaluators → [`gate`] decides, from the
 //! receipts alone, whether ACCEPT survives. [`source`] reads the files a
 //! hypothesis touches from the dispatched commit so the model's diff is written
-//! against real text (ADR-2112). [`runstate`] keeps the run
+//! against real text (ADR-2114). [`runstate`] keeps the run
 //! restart-safe and [`roster`] keeps the nightly schedule fair.
 
 pub mod candidate;

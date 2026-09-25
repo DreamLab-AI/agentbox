@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// dream-inbox-surface.test.mjs — ADR-2113: the hook points at the governance
+// dream-inbox-surface.test.mjs — ADR-2115: the hook points at the governance
 // panel with a count; it never relays item bodies and never writes the inbox.
 //
 // Run: node tests/config/dream-inbox-surface.test.mjs

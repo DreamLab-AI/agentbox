@@ -3,7 +3,7 @@
 //! Nights that need a human decision (a "Human action recommended" item in a
 //! report, an environment fault, a health anomaly) append an item here. The
 //! **forum governance panel is the canonical decision surface**
-//! ([`crate::governance`], ADR-2113): each open item is published as a kind-31402
+//! ([`crate::governance`], ADR-2115): each open item is published as a kind-31402
 //! ActionRequest on JunkieJarvis's `dream-machine` panel, and the admin's signed
 //! kind-31403 decision is ingested back into this file at the start of the next
 //! night, where carry-over reads it. The `dream-inbox-surface.cjs` hook only

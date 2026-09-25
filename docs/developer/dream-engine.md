@@ -66,7 +66,7 @@ One cycle (`run_cycle`) is a fixed sequence:
 3. **Load + compile** — read `dream.config.json`, pick tonight's slot + bonus dives, compile the deterministic prompt.
 4. **Dispatch** — `git archive HEAD` → SCP to the annexe → extract → run `buildStep` then each evaluator; capture stdout.
 5. **Evidence** — append the build-output tail and each evaluator's output tail to the prompt, so the model reasons over receipts, not imagination.
-5c. **Tree-read** (ADR-2112) — a bounded side-channel call names the source files tonight's hypothesis needs; the engine validates each path and reads it from the **dispatched commit** (`git show <commit>:<path>`), then appends a `## Source (from <commit>)` section. The model has no shell: without this it was asked for a diff against code it had never seen.
+5c. **Tree-read** (ADR-2114) — a bounded side-channel call names the source files tonight's hypothesis needs; the engine validates each path and reads it from the **dispatched commit** (`git show <commit>:<path>`), then appends a `## Source (from <commit>)` section. The model has no shell: without this it was asked for a diff against code it had never seen.
 6. **LLM call** — Z.AI GLM by default, Loom fallback. A failed call degrades to an `INCONCLUSIVE` night rather than aborting. If the report declares ACCEPT with no ```dream-patch block, one **repair pass** asks for the diff alone (or `NO-PATCH: <reason>`); its outcome is receipted in `<night>/repair.json`.
 7. **Verdict + finding** — parse the verdict, sanitise a one-line finding for the ledger cell.
 8. **Witness** — bind the report to the repo's current commit.
@@ -104,7 +104,7 @@ Splitting "untestable (environment)" out of INCONCLUSIVE is load-bearing: enviro
 - **Pre-flight probe** — after `clone_to_hp`, the checkout must exist and be non-empty; one re-provision retry, then `BLOCKED-ENV`.
 - **Unique annexe dirs** — remote night dirs carry a `-r<run_id>` suffix. The run id is deterministic, so two attempts at the same experiment share one workspace while two different experiments never collide — and the name survives a restart, which a pid could not.
 - **Carry-over** — the previous night's `Next steps` / `Biggest uncertainty` / `Main lesson` lines and any answered operator questions are appended to the next compiled prompt, so nights compound.
-- **Decisions (governance panel, ADR-2113)** — report "Human action recommended" items and night-health anomalies queue in `workspace/.agentbox/dream-inbox.json` (the engine's working copy) and are published as kind-31402 cases on JunkieJarvis's `dream-machine` panel at the end of each night. The operator decides on the forum governance page (Approve / Reject / Amend per case, "Acknowledge all alerts" for the panel); the engine ingests the admin-signed kind-31403 decisions at the start of the next night and carry-over reads them. The `dream-inbox-surface.cjs` hook only reminds sessions how many cases wait; `scripts/dream-inbox.mjs answer` is break-glass.
+- **Decisions (governance panel, ADR-2115)** — report "Human action recommended" items and night-health anomalies queue in `workspace/.agentbox/dream-inbox.json` (the engine's working copy) and are published as kind-31402 cases on JunkieJarvis's `dream-machine` panel at the end of each night. The operator decides on the forum governance page (Approve / Reject / Amend per case, "Acknowledge all alerts" for the panel); the engine ingests the admin-signed kind-31403 decisions at the start of the next night and carry-over reads them. The `dream-inbox-surface.cjs` hook only reminds sessions how many cases wait; `scripts/dream-inbox.mjs answer` is break-glass.
 - **Night health** — `workspace/.agentbox/dream-last-night.json` records one outcome per scheduled repo plus the nominated, standby (manual marker or dry-streak parked) and cap-deferred roster; zero-eligible nights and FAILED/BLOCKED-ENV outcomes raise alerts.
 - **Harvest** — `scripts/dream-harvest.mjs` (weekly): verdict counts, streaks, pending-ACCEPT review list, env-fault rate.
 
@@ -125,7 +125,7 @@ Evaluation used to run entirely *before* the model wrote its patch, so the diff 
 | evidence | required evaluator exited non-zero, or declared `FAIL` | `REJECT` |
 | unproven | `ACCEPT` with no candidate patch; unreadable verdict line | `INCONCLUSIVE` |
 
-### Tree-read and the single-completion contract (ADR-2112, 2026-09-25)
+### Tree-read and the single-completion contract (ADR-2114, 2026-09-25)
 
 The nightly model is one chat completion with no tools. The prompt used to be written for an agent — run the evaluators, build the candidate, publish a gist, append the ledger — while the model saw receipts and no source. Between 2026-09-07 and 2026-09-21 twelve nights ended with an ACCEPT carrying no ```dream-patch block and two with a patch that would not apply; the INCONCLUSIVE streaks then parked every repo on standby (zero-eligible nights from 2026-09-22). Three changes close it:
 
@@ -274,7 +274,7 @@ Verify state before and after: `nvidia-smi --query-gpu=memory.used,memory.total 
 ## Related
 
 * [ADR-052 — the connected node annexe execution plane](../archive/adr/ADR-052-dream-machine-hp-annexe.md)
-* [ADR-2112 — candidate diffs are written against engine-read source](../adr/ADR-2112-dream-candidate-diffs-against-engine-read-source.md)
+* [ADR-2114 — candidate diffs are written against engine-read source](../adr/ADR-2114-dream-candidate-diffs-against-engine-read-source.md)
 * [Architecture overview](architecture.md) — manifest → flake → image → runtime
 * `lib/dream-engine.nix` — the buildRustPackage derivation
 * `services/dream-engine/` — the crate (57 hermetic tests)

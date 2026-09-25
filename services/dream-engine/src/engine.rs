@@ -265,7 +265,7 @@ impl Engine {
         }
 
         // Surface every open decision on the forum governance panel
-        // (ADR-2113), then post the nightly digest (JunkieJarvis → dreamlab
+        // (ADR-2115), then post the nightly digest (JunkieJarvis → dreamlab
         // zone, "chat with agents") — visibility only, pointing at the panel.
         // Separate switches (DREAM_GOVERNANCE / DREAM_DIGEST): pausing panel
         // publishing must never silence the night report. Both fail-open:
@@ -764,7 +764,7 @@ impl Engine {
             }
         }
 
-        // 5c. Tree-read (ADR-2112): the model has no shell, so the source its
+        // 5c. Tree-read (ADR-2114): the model has no shell, so the source its
         //     diff must apply to is read here — from the dispatched commit, the
         //     same bytes the annexe built — and inlined. Fail-open: no section,
         //     same night as before.
@@ -853,7 +853,7 @@ impl Engine {
         let mut candidate_receipts: Vec<receipts::EvaluatorReceipt> = Vec::new();
         let mut prepared: Option<candidate::PreparedCandidate> = None;
 
-        // 8a. Repair pass (ADR-2112): an ACCEPT with no diff gets exactly one
+        // 8a. Repair pass (ADR-2114): an ACCEPT with no diff gets exactly one
         //     follow-up call asking for the diff alone. The report itself is
         //     not rewritten — its witness and VERDICT line stay as emitted;
         //     the outcome is receipted in repair.json.

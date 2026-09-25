@@ -3,7 +3,7 @@ use crate::config::{DreamConfig, Slot};
 /// Compile a deterministic nightly prompt from config + tonight's slot.
 ///
 /// This replaces the TypeScript `@dream-machine/compile` package.
-/// The prompt encodes the methodology for a **single completion** (ADR-2112):
+/// The prompt encodes the methodology for a **single completion** (ADR-2114):
 /// what the engine has already done and will do after the reply, the
 /// hypothesis → candidate-diff method, evidence grading, the proposed ledger
 /// row, and the frozen hypothesis discipline. It never asks the model to run,
@@ -303,7 +303,7 @@ mod tests {
         let cfg = test_config();
         let slot = &cfg.slots[0];
         let prompt = compile(&cfg, slot, 20260815, &[]);
-        // ADR-2112: the model is one completion with no tools. The prompt must
+        // ADR-2114: the model is one completion with no tools. The prompt must
         // say so and must not ask it to run, publish or persist anything —
         // the old agent-shaped steps produced narrated ACCEPTs with no diff.
         assert!(prompt.contains("single model call"));
@@ -366,7 +366,7 @@ mod tests {
         let cfg = test_config();
         let slot = &cfg.slots[0];
         let prompt = compile(&cfg, slot, 20260815, &[]);
-        // ADR-061 (amended by ADR-2112): ACCEPT must emit the candidate as a
+        // ADR-061 (amended by ADR-2114): ACCEPT must emit the candidate as a
         // ```dream-patch block the engine applies, re-evaluates and — only if
         // the gate upholds it — opens as a draft PR.
         assert!(prompt.contains("```dream-patch"));
