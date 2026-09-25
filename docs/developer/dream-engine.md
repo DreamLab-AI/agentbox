@@ -66,7 +66,8 @@ One cycle (`run_cycle`) is a fixed sequence:
 3. **Load + compile** — read `dream.config.json`, pick tonight's slot + bonus dives, compile the deterministic prompt.
 4. **Dispatch** — `git archive HEAD` → SCP to the annexe → extract → run `buildStep` then each evaluator; capture stdout.
 5. **Evidence** — append the build-output tail and each evaluator's output tail to the prompt, so the model reasons over receipts, not imagination.
-6. **LLM call** — Z.AI GLM by default, Loom fallback. A failed call degrades to an `INCONCLUSIVE` night rather than aborting.
+5c. **Tree-read** (ADR-2112) — a bounded side-channel call names the source files tonight's hypothesis needs; the engine validates each path and reads it from the **dispatched commit** (`git show <commit>:<path>`), then appends a `## Source (from <commit>)` section. The model has no shell: without this it was asked for a diff against code it had never seen.
+6. **LLM call** — Z.AI GLM by default, Loom fallback. A failed call degrades to an `INCONCLUSIVE` night rather than aborting. If the report declares ACCEPT with no ```dream-patch block, one **repair pass** asks for the diff alone (or `NO-PATCH: <reason>`); its outcome is receipted in `<night>/repair.json`.
 7. **Verdict + finding** — parse the verdict, sanitise a one-line finding for the ledger cell.
 8. **Witness** — bind the report to the repo's current commit.
 9. **Persist report** locally under the artefact dir.
@@ -115,7 +116,7 @@ Evaluation used to run entirely *before* the model wrote its patch, so the diff 
 2. **Frozen experiment manifest** (`manifest.rs`) — written atomically to `<night>/manifest.json` **before any model call**: baseline revision *and* tree hash, evaluator identities with `sha256(command)`, the `dream.config.json` digest, the intended model identity, and the `run_id`. The run id is a pure function of those inputs, so a restart recomputes it; a moved baseline archives the superseded manifest rather than overwriting it.
 3. **Durable run journal** (`runstate.rs`) — `<night>/run-state.json` records the phase after every transition. A completed night is skipped rather than repeated, an interrupted one resumes from its recorded phase with the attempt counted, and an exhausted one is abandoned with an operator alert instead of looping.
 4. **Typed receipts** (`runner.rs`, `receipts.rs`) — every evaluator run yields exit code, both streams verbatim, duration and a classified outcome (`Passed`, `Failed`, `ExplicitFail`, `Blocked`, `TimedOut`, `Silent`, `Missing`), persisted raw under `<night>/receipts/{baseline,candidate}/`. Execution goes through an `EvaluatorRunner` seam, so the whole path is exercisable offline.
-5. **Candidate rerun** (`candidate.rs`) — on a strict `ACCEPT`, the emitted `dream-patch` is applied on an isolated git worktree at HEAD, its tree hash recorded in `<night>/candidate.json`, and the required evaluators re-run **against that tree**. The operator's working tree is never touched.
+5. **Candidate rerun** (`candidate.rs`) — on a strict `ACCEPT`, the emitted `dream-patch` (or the repair pass's) is applied on an isolated git worktree **at the dispatched commit**, its tree hash recorded in `<night>/candidate.json`, and the required evaluators re-run **against that tree**. `git apply` is tried plain, then `--recount`, then `--recount --ignore-whitespace`, then `--3way` when the diff names real blob ids; a final failure carries the last strategy's stderr into the `DidNotApply` detail. The operator's working tree is never touched.
 6. **The deterministic gate** (`gate.rs`) — a pure function of manifest, strict verdict, candidate state and candidate receipts, recorded in `<night>/gate.json`. A required evaluator that is missing, silent, blocked, timed out, non-zero or explicitly failing vetoes `ACCEPT` regardless of report text.
 
 | Veto class | Cause | Verdict |
@@ -123,6 +124,22 @@ Evaluation used to run entirely *before* the model wrote its patch, so the diff 
 | harness | required evaluator missing / silent / blocked / timed out; patch would not apply | `BLOCKED-ENV` |
 | evidence | required evaluator exited non-zero, or declared `FAIL` | `REJECT` |
 | unproven | `ACCEPT` with no candidate patch; unreadable verdict line | `INCONCLUSIVE` |
+
+### Tree-read and the single-completion contract (ADR-2112, 2026-09-25)
+
+The nightly model is one chat completion with no tools. The prompt used to be written for an agent — run the evaluators, build the candidate, publish a gist, append the ledger — while the model saw receipts and no source. Between 2026-09-07 and 2026-09-21 twelve nights ended with an ACCEPT carrying no ```dream-patch block and two with a patch that would not apply; the INCONCLUSIVE streaks then parked every repo on standby (zero-eligible nights from 2026-09-22). Three changes close it:
+
+1. **Source section** (`source.rs`): planner-named files plus paths the evidence itself mentions, validated (relative, no `..`, tracked at the commit, outside the secret denylist — `.env*`, `*secret*`, `*credential*`, key and keystore files), read at the dispatched commit, clipped head+tail with an explicit elision marker, and receipted in `<night>/source.json`.
+2. **Honest prompt** (`compile.rs`): the model is told what the engine has done and will do; it analyses, freezes a hypothesis, writes the diff and proposes a ledger row. It is never asked to run, publish or persist anything, and an ACCEPT without a diff is stated to be vetoed.
+3. **Repair pass**: one follow-up completion for an ACCEPT that still omits the diff.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `DREAM_SOURCE_READ` | on | `0` disables tree-read (the night runs as before) |
+| `DREAM_SOURCE_MAX_FILES` | 12 | files inlined per night |
+| `DREAM_SOURCE_BUDGET` | 60000 | total bytes of source text |
+| `DREAM_SOURCE_FILE_CAP` | 16000 | bytes per file before head+tail clipping |
+| `DREAM_SOURCE_INDEX_CAP` | 24000 | chars of tracked-path index shown to the source planner |
 
 A draft PR is opened **only** when the gate upholds the ACCEPT; a vetoed candidate's branch is deleted, so no unverified diff is left looking promotable. The human merge is unchanged — the gate can only refuse an acceptance, never grant a merge.
 
@@ -206,6 +223,7 @@ The binary reads the `[dream_machine]` table (window, the connected node host, a
 | `RUVECTOR_PG_URL` / `RUVECTOR_PG_CONNINFO` | Memory Postgres DSN (URL form, or libpq conninfo which is converted). **Secret-bearing.** | Container env. |
 | `XINFERENCE_URL` | Embedding endpoint (default `http://${EMBEDDINGS_HOST}`). | Container env. |
 | `RUST_LOG` | Log filter (default `info`). | Supervisor block / shell. |
+| `DREAM_SOURCE_*` | Tree-read knobs — see [Tree-read](#tree-read-and-the-single-completion-contract-adr-2112-2026-09-25). | Supervisor block / shell. |
 
 ## Roster & standby pruning
 
@@ -256,6 +274,7 @@ Verify state before and after: `nvidia-smi --query-gpu=memory.used,memory.total 
 ## Related
 
 * [ADR-052 — the connected node annexe execution plane](../archive/adr/ADR-052-dream-machine-hp-annexe.md)
+* [ADR-2112 — candidate diffs are written against engine-read source](../adr/ADR-2112-dream-candidate-diffs-against-engine-read-source.md)
 * [Architecture overview](architecture.md) — manifest → flake → image → runtime
 * `lib/dream-engine.nix` — the buildRustPackage derivation
 * `services/dream-engine/` — the crate (57 hermetic tests)

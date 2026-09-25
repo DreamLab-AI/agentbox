@@ -22,6 +22,7 @@ use crate::receipts;
 use crate::roster;
 use crate::runner::EvaluatorRunner;
 use crate::runstate;
+use crate::source;
 use crate::ruvector::{self, DreamFinding, RuVectorConfig};
 use crate::verdict::{self, Verdict};
 use crate::witness;
@@ -681,6 +682,7 @@ impl Engine {
         //    commit — must be in this pack. the connected node paths are redacted before they
         //    reach an external provider.
         let commit = baseline_rev.clone();
+        let evidence_start = prompt.len();
         prompt.push_str("\n\n---\n\n# TONIGHT'S EVIDENCE (receipts from the connected node annexe)\n\n");
         prompt.push_str(&format!(
             "## Session commit\n`{}` (tree `{}`, run `{}`)\n\n",
@@ -758,6 +760,41 @@ impl Engine {
             }
         }
 
+        // 5c. Tree-read (ADR-2112): the model has no shell, so the source its
+        //     diff must apply to is read here — from the dispatched commit, the
+        //     same bytes the annexe built — and inlined. Fail-open: no section,
+        //     same night as before.
+        let required_cmds: Vec<String> = frozen
+            .required()
+            .iter()
+            .map(|id| id.command.clone())
+            .chain(cfg.build_step.as_ref().map(|b| b.cmd.clone()))
+            .collect();
+        let source_section = match source::gather(
+            &self.llm,
+            self.llm_fallback.as_ref(),
+            &repo_path,
+            &baseline_rev,
+            &slot.deep,
+            &slot.scan.join(", "),
+            &required_cmds,
+            &prompt[evidence_start..],
+            &source::SourceConfig::from_env(),
+            &redact,
+        )
+        .await
+        {
+            Some((section, record)) => {
+                let _ = manifest::write_atomic(
+                    &night_dir.join("source.json"),
+                    &serde_json::to_vec_pretty(&record).unwrap_or_default(),
+                );
+                prompt.push_str(&section);
+                Some(section)
+            }
+            None => None,
+        };
+
         // 6. LLM call: primary (with its internal retry), then the fallback
         //    provider, and only then a degraded night.
         info!(provider = ?self.llm.provider, model = %self.llm.model, "calling LLM");
@@ -812,8 +849,33 @@ impl Engine {
         let mut candidate_receipts: Vec<receipts::EvaluatorReceipt> = Vec::new();
         let mut prepared: Option<candidate::PreparedCandidate> = None;
 
-        if matches!(strict, Ok(Verdict::Accept)) {
-            match persist::extract_patch(&report) {
+        // 8a. Repair pass (ADR-2112): an ACCEPT with no diff gets exactly one
+        //     follow-up call asking for the diff alone. The report itself is
+        //     not rewritten — its witness and VERDICT line stay as emitted;
+        //     the outcome is receipted in repair.json.
+        let claimed_accept = matches!(strict, Ok(Verdict::Accept));
+        let mut patch = persist::extract_patch(&report);
+        if source::needs_repair(claimed_accept, patch.is_some()) {
+            info!("ACCEPT without a dream-patch block — running the one-shot repair pass");
+            let record = source::repair(
+                &self.llm,
+                self.llm_fallback.as_ref(),
+                &report,
+                source_section.as_deref(),
+            )
+            .await;
+            info!(outcome = ?record.outcome, "repair pass finished");
+            let _ = manifest::write_atomic(
+                &night_dir.join("repair.json"),
+                &serde_json::to_vec_pretty(&record).unwrap_or_default(),
+            );
+            if let source::RepairOutcome::Patch(p) = record.outcome {
+                patch = Some(p);
+            }
+        }
+
+        if claimed_accept {
+            match patch {
                 None => {
                     info!("report claims ACCEPT but carries no candidate patch — nothing to verify");
                     candidate_state = gate::CandidateState::NoPatch;
@@ -828,6 +890,7 @@ impl Engine {
                         &branch,
                         &patch,
                         &format!("dream({}): candidate for {}", slot.deep, night_id),
+                        &baseline_rev,
                     ) {
                         Err(e) => {
                             warn!(error = %e, "candidate patch did not apply — acceptance cannot be verified");

@@ -3,8 +3,11 @@ use crate::config::{DreamConfig, Slot};
 /// Compile a deterministic nightly prompt from config + tonight's slot.
 ///
 /// This replaces the TypeScript `@dream-machine/compile` package.
-/// The prompt encodes the full methodology: 26-step pipeline, stop conditions,
-/// evidence grading, ledger format, and the frozen hypothesis discipline.
+/// The prompt encodes the methodology for a **single completion** (ADR-2112):
+/// what the engine has already done and will do after the reply, the
+/// hypothesis → candidate-diff method, evidence grading, the proposed ledger
+/// row, and the frozen hypothesis discipline. It never asks the model to run,
+/// publish or persist anything — the engine owns every side effect.
 pub fn compile(cfg: &DreamConfig, slot: &Slot, day_int: u32, bonus_dives: &[String]) -> String {
     let slot_idx = (day_int as usize) % cfg.slots.len();
     let scans = slot.scan.join(", ");
@@ -48,7 +51,7 @@ pub fn compile(cfg: &DreamConfig, slot: &Slot, day_int: u32, bonus_dives: &[Stri
             })
             .collect();
         format!(
-            "\n## Evaluator entrypoints (run these — do not invent others)\n{}\n\
+            "\n## Evaluator entrypoints (the engine runs these on the baseline and on your candidate — you cannot)\n{}\n\
              A REQUIRED evaluator that is missing, silent, blocked, timed out or failing \
              vetoes ACCEPT deterministically, whatever this report says (ADR-2024).\n",
             lines.join("\n")
@@ -99,7 +102,7 @@ Tonight's deep dive: **{deep}**. Surface scans: **{scans}**.
 
 1. **{merge_policy}**
 2. One falsifiable hypothesis per night, frozen BEFORE evaluation.
-3. Grade evidence: A = official evaluator in-session, B = reproduced in controlled env, C = inferred from logs/docs.
+3. Grade evidence: A = evaluator receipt in this prompt, B = source shown in this prompt, C = inference.
 4. ADR convention: {adr_example} (sequential).
 5. Branch prefix: `{branch_prefix}`.
 6. Labels: {labels}.
@@ -107,63 +110,52 @@ Tonight's deep dive: **{deep}**. Surface scans: **{scans}**.
 ## Disciplines
 {discipline_list}
 {build_section}{evaluators_section}
-## 26-step pipeline
+## What you are, and what the engine does
 
-### Phase 1 — Orientation (steps 0–2)
-0. Read the ledger at `{ledger_path}`. Note prior-night fates, streaks, repeated directions. For each PR opened on a prior night that is not yet at a terminal fate, check its current GitHub state and carry it forward into this night's row as a `#<PR>:<FATE>` token (see step 19) — this is how merges are recorded and read.
-0.5. **Capability probe**: for each tool/evaluator/credential, record Available|Blocked|Degraded with evidence. If a capability is blocked, record FALLBACK and adjust scope.
-0.6. **Budget check**: research ≤ ½ token budget, evaluation ≤ ¼.
-1. Summarise the last 5 ledger rows. Identify momentum and stalls.
-2. Scan surfaces: {scans}. Collect raw observations (code, config, test output).
+You are a **single model call**. You cannot run commands, read anything beyond this prompt, open branches or PRs, publish gists or issues, or write the ledger. Before calling you the engine has already: dispatched commit `(see Session commit below)` to the annexe, run the build step and every evaluator listed above (their receipts are under TONIGHT'S EVIDENCE), and read the source files most relevant to tonight's deep from that same commit (the `## Source` section, when present).
 
-### Phase 2 — Hypothesis (steps 3–4)
-3. Rank ≤ 5 candidate findings by (fitness-to-deep, novelty, testability, measurability, prod-impact, reviewability). Pick the highest-scoring.
-4. **Freeze hypothesis** in the exact template:
+After you reply, the **engine** extracts your ```dream-patch block, applies it to that commit in isolation, re-runs every REQUIRED evaluator against the candidate, and decides the verdict from those receipts — an ACCEPT whose candidate does not pass is vetoed whatever this report says. The engine then writes the ledger row at `{ledger_path}` and, only on an upheld ACCEPT, opens a **draft** PR on a `{branch_prefix}<deep>-<date>` branch for a human to merge.
+
+Never claim to have run, built, tested, published, pushed or merged anything. Report what the receipts and source show, and what you predict the candidate will do.
+
+## Method
+
+### 1 — Orientation
+1. Read the recent ledger rows in the evidence. Note streaks, repeated directions and the blockers prior nights named; do not retry a direction a prior night showed is blocked.
+2. Read tonight's receipts and source for the scans **{scans}**. Collect raw observations, citing receipt names and `path:line`.
+
+### 2 — Hypothesis
+3. Rank ≤ 5 candidate findings by (fitness-to-deep, novelty, testability against the REQUIRED evaluators, reviewability, smallness of the diff). Pick the highest-scoring one whose change you can write against the source shown.
+4. **Freeze the hypothesis** in the exact template:
    > Given <precondition>, when <action>, then <expected>.
-   Do NOT modify this after evaluation begins.
+   Do NOT modify it afterwards.
 
-### Phase 3 — Evaluation (steps 5–14)
-5. Evaluate the PARENT (baseline) FIRST. Record the receipt.
-6. Build the candidate change (smallest patch that tests the hypothesis).
-7. Run every evaluator entrypoint listed above. Do not invent new ones.
-8. Compare candidate vs parent. Record deltas.
-9. Run independent critic: assume the candidate is subtly wrong; find the flaw.
-10. Check Darwin bounds if evolution was run: ≤ 3 generations, ≤ 4 candidates/gen, ≤ 1 promoted lineage.
-11. Failed lineages: keep artefacts for post-mortem. Do not delete.
-12. Reward-hack check: did benchmarks weaken? Did gold answers change? Did thresholds drift?
-13. Evidence-classify every claim (A/B/C). Unverifiable claims must be labeled.
-14. If any evaluator is blocked, record FALLBACK — do not fabricate results.
+### 3 — Candidate
+5. Write the smallest change that tests the hypothesis as a unified diff against the source shown. Copy context lines verbatim from it. Never write a hunk inside an elided region or against a file that is not shown (creating a new file is fine). If the source you need was not provided, name the file and line range and give INCONCLUSIVE with that as the blocker.
+6. For each REQUIRED evaluator, predict what it will report on the candidate and why, citing receipt lines.
+7. Critic: assume the candidate is subtly wrong and find the flaw. Reward-hack check: a change that weakens a test, benchmark, threshold or gold answer is not a candidate.
+8. Evidence-grade every claim: **A** = a receipt shown in this prompt, **B** = a direct reading of source shown, **C** = inference. Label anything unverifiable.
+9. Security: no credentials, PII or destructive operations in the diff or the report.
 
-### Phase 4 — Verdict & Persist (steps 15–26)
-15. Security review: audit findings, credential exposure, supply-chain risk.
-16. Compute verdict:
-    - **ACCEPT**: hypothesis confirmed, tests green, no regressions, no reward-hack.
-    - **REJECT**: hypothesis falsified OR regressions detected.
-    - **INCONCLUSIVE**: evaluation blocked, insufficient evidence, or ambiguous results.
-17. Compute witness: `sha256(sha256(report) + commit)`. If commit unavailable, record as BLOCKED.
-18. Write the report (this document).
-19. Append one ledger row to `{ledger_path}`:
-    `| date | deep | finding (≤80 chars) | issue | PR | evaluated? | verdict | effect | witness | prior-night fates | reviewer | review-minutes |`
-    The **finding** column MUST be a concrete, self-contained ≤80-char statement of what tonight established — NEVER `INCONCLUSIVE — see report`, `see gist`, or any bare pointer. The ledger is the only cross-night memory; a row that points elsewhere is a lost night. For an INCONCLUSIVE night, name the blocker itself (e.g. `annexe cannot resolve sibling path-deps`, `perf deep has no evaluator`, `Loom timeout`) so the dry-streak and duplicate-direction signals can read it and stop retrying a dead end.
-    The **prior-night fates** column MUST use space-separated `#<PR>:<FATE>` tokens, FATE ∈ `MERGED|CLOSED|OPEN|STALE` (e.g. `#7:MERGED #6:CLOSED`) — the token form ONLY, never prose. This column is machine-read: `ledger signals` derives `zeroMergeStreak` from it, and the operator cockpit's pending-merge queue (ADR-056) treats a `#N:MERGED` token as the merge record. Free prose here is silently ignored, so a merge written as prose is invisible to both.
-    The **reviewer** and **review-minutes** columns record the HUMAN side of the night (PRD-augmentation-conditions FR6.6): when step 0 finds that a prior night's PR has reached `MERGED`, read that PR's merge event and write the merging identity (GitHub login, or `did:nostr:<hex>` where known) into **reviewer**, and the whole minutes between the PR's `created_at` and its `merged_at` into **review-minutes**. Both columns MUST be left EMPTY when tonight merged nothing, when the merge event is unavailable, or when either timestamp is missing — write nothing, never `0`, never `unknown`, never a guess. A fabricated `0` reads downstream as "reviewed instantly" and corrupts the only measurement the estate has of its own reviewers.
-20. If ACCEPT: emit the candidate change as **one git-apply-able unified diff** (paths relative to the repo root, standard `a/`…`b/…` prefixes) inside a fenced block delimited exactly:
+### 4 — Verdict
+10. Choose the verdict:
+    - **ACCEPT**: you emit a candidate diff you expect to pass every REQUIRED evaluator with no regression and no reward-hack. The engine's re-run decides whether it stands.
+    - **REJECT**: the evidence falsifies the hypothesis, or the only available change would regress.
+    - **INCONCLUSIVE**: the evidence or source is insufficient to write or judge a candidate. Name the blocker.
+11. If ACCEPT: emit the candidate change as **one git-apply-able unified diff** (paths relative to the repo root, standard `a/`…`b/…` prefixes) inside a fenced block delimited exactly:
     ```dream-patch
     <the full diff>
     ```
-    The engine extracts this block and pushes it as a `{branch_prefix}<deep>-<date>` **draft** PR for a human to merge — do NOT run git or gh yourself, and do NOT merge. Emit exactly one such block; omit it only when the finding genuinely has no code change (a pure measurement).
-21. If REJECT or INCONCLUSIVE: no branch, no PR. Record locally.
-22. Publish gist with full report. Create issue summarising the finding.
-23. If an ADR is warranted (architectural decision), create `{adr_example}` following convention.
-24. Self-review: re-check every quantitative claim against its evidence grade.
-25. Final security scan: no credentials in report, no PII, no destructive actions taken.
-26. Output: `Done. Issue #N, Gist URL, PR #N (evaluated=<bool>, verdict=<V>), ADR <id|none>.`
+    Emit exactly one such block. An ACCEPT without it is vetoed by the engine: a finding with no code change is a REJECT or INCONCLUSIVE, stated plainly.
+12. Include ONE proposed ledger row in the report, in exactly this shape, so the engine can take your finding cell (the engine fills the issue, PR, witness, prior-night-fate and reviewer columns from its own records — leave them as shown):
+    `| {date_iso} | {deep} | <finding> | NONE | NONE | yes | <VERDICT> | <effect> |  |  |  |  |`
+    The **finding** MUST be a concrete, self-contained ≤80-char statement of what tonight established — NEVER `INCONCLUSIVE — see report`, `see gist`, or any bare pointer. The ledger is the only cross-night memory; a row that points elsewhere is a lost night. For an INCONCLUSIVE night, name the blocker itself (e.g. `annexe cannot resolve sibling path-deps`, `perf deep has no evaluator`, `source for src/x.rs:200-400 not provided`) so the dry-streak and duplicate-direction signals can read it and stop retrying a dead end.
+13. If an ADR is warranted, propose it ({adr_example} convention) under **Human action recommended** — you cannot file it.
 
 ## Stop conditions
-- `HALT: budget` — token budget exceeded. Write partial report, verdict INCONCLUSIVE.
-- `HALT: blocked` — all evaluators blocked. Verdict INCONCLUSIVE.
-- `HALT: safety` — safety score < 1.00 on any candidate. Discard, verdict REJECT.
-- Never fabricate a witness. Never fabricate GitHub state.
+- Every REQUIRED evaluator blocked or silent in the receipts → INCONCLUSIVE, naming the blocker.
+- A candidate that fails the security step → REJECT.
+- Never fabricate a receipt, a command result, a witness, or GitHub state.
 
 ## VERDICT (final line of report)
 The very last line of your report MUST be exactly one of:
@@ -175,10 +167,9 @@ VERDICT: INCONCLUSIVE
 
 ## FINAL REPORT
 End with a structured summary block containing at minimum:
-- Date, deep, scans, commit, branch
-- Finding, hypothesis, verdict, effect
-- Build status, tests, evaluator results
-- Witness, baseline vs candidate scores
+- Date, deep, scans, commit
+- Finding, hypothesis, verdict, predicted effect
+- Receipts and source files cited; files the candidate changes
 - Main lesson, biggest uncertainty, next steps
 - Human action recommended
 "#,
@@ -204,8 +195,20 @@ End with a structured summary block containing at minimum:
         build_section = build_section,
         evaluators_section = evaluators_section,
         ledger_path = cfg.ledger_path,
+        date_iso = date_iso(day_int),
         adr_example = adr_example,
     )
+}
+
+/// `20260815` → `2026-08-15`; anything else is passed through unchanged so the
+/// row stays well-formed text even for a synthetic day integer.
+fn date_iso(day_int: u32) -> String {
+    let s = day_int.to_string();
+    if s.len() == 8 {
+        format!("{}-{}-{}", &s[..4], &s[4..6], &s[6..])
+    } else {
+        s
+    }
 }
 
 #[cfg(test)]
@@ -296,15 +299,54 @@ mod tests {
     }
 
     #[test]
-    fn prompt_specifies_fate_token_format() {
+    fn prompt_assigns_side_effects_to_the_engine() {
         let cfg = test_config();
         let slot = &cfg.slots[0];
         let prompt = compile(&cfg, slot, 20260815, &[]);
-        // The prior-night fates column must be instructed in token form so
-        // `ledger signals` (zeroMergeStreak) and the cockpit pending queue
-        // (ADR-056) can machine-read merges. Prose is silently ignored.
-        assert!(prompt.contains("#<PR>:<FATE>"));
-        assert!(prompt.contains("MERGED|CLOSED|OPEN|STALE"));
+        // ADR-2112: the model is one completion with no tools. The prompt must
+        // say so and must not ask it to run, publish or persist anything —
+        // the old agent-shaped steps produced narrated ACCEPTs with no diff.
+        assert!(prompt.contains("single model call"));
+        assert!(prompt.contains("Never claim to have run"));
+        for banned in [
+            "Publish gist",
+            "Create issue",
+            "Append one ledger row",
+            "check its current GitHub state",
+            "Run every evaluator entrypoint",
+        ] {
+            assert!(!prompt.contains(banned), "prompt still asks the model to: {banned}");
+        }
+        // Prior-night fates and reviewer columns are engine-filled now.
+        assert!(prompt.contains(
+            "engine fills the issue, PR, witness, prior-night-fate and reviewer columns"
+        ));
+    }
+
+    #[test]
+    fn proposed_ledger_row_parses_as_a_ledger_row() {
+        let cfg = test_config();
+        let slot = &cfg.slots[0];
+        let prompt = compile(&cfg, slot, 20260815, &[]);
+        let row = prompt
+            .lines()
+            .map(str::trim)
+            .find(|l| l.starts_with("`| 2026-08-15 | compiler-parity |"))
+            .expect("row template present")
+            .trim_matches('`');
+        // verdict::report_ledger_row_finding needs ≥12 `|` cells, ISO date first.
+        assert!(row.split('|').count() >= 12, "{row}");
+        assert_eq!(date_iso(20260815), "2026-08-15");
+        assert_eq!(date_iso(7), "7");
+    }
+
+    #[test]
+    fn prompt_forbids_accept_without_patch() {
+        let cfg = test_config();
+        let slot = &cfg.slots[0];
+        let prompt = compile(&cfg, slot, 20260815, &[]);
+        assert!(prompt.contains("An ACCEPT without it is vetoed by the engine"));
+        assert!(prompt.contains("Never write a hunk inside an elided region"));
     }
 
     #[test]
@@ -324,8 +366,9 @@ mod tests {
         let cfg = test_config();
         let slot = &cfg.slots[0];
         let prompt = compile(&cfg, slot, 20260815, &[]);
-        // ADR-061: ACCEPT must emit the candidate as a ```dream-patch block the
-        // engine turns into a draft PR — the model must not run git/gh itself.
+        // ADR-061 (amended by ADR-2112): ACCEPT must emit the candidate as a
+        // ```dream-patch block the engine applies, re-evaluates and — only if
+        // the gate upholds it — opens as a draft PR.
         assert!(prompt.contains("```dream-patch"));
         assert!(prompt.contains("draft"));
     }
