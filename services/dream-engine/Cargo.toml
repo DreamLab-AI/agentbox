@@ -33,6 +33,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 thiserror = "2"
 hex = "0.4"
 toml = "0.8"
+tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-webpki-roots"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
+nostr = "0.44"
 
 [dev-dependencies]
+nostr-bbs-core = "=1.0.0-beta.11"
 tempfile = "3"

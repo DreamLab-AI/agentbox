@@ -8,8 +8,10 @@ use crate::candidate;
 use crate::compile;
 use crate::config::{self, DreamConfig, RuntimeConfig};
 use crate::context;
+use crate::digest;
 use crate::dispatch;
 use crate::gate;
+use crate::governance;
 use crate::inbox;
 use crate::ledger::{self, LedgerRow};
 use crate::llm::{self, LlmConfig, Provider};
@@ -116,6 +118,13 @@ impl Engine {
             return None;
         }
 
+        // Decisions the operator made on the forum governance panel since the
+        // last night resolve their inbox items first, so tonight's carry-over
+        // sees them. Fail-open.
+        if governance::enabled() {
+            governance::ingest(&inbox::inbox_path(), false).await;
+        }
+
         let repos = match self.discover() {
             Ok(r) => r,
             Err(e) => {
@@ -125,9 +134,15 @@ impl Engine {
         };
 
         let mut eligible = Vec::new();
+        let mut standby: Vec<digest::Standby> = Vec::new();
         for (name, path) in &repos {
             if path.join(".dream-standby").exists() {
                 info!(repo = %name, "standby — manual .dream-standby marker; skipped (/dream revive removes it)");
+                standby.push(digest::Standby {
+                    repo: name.clone(),
+                    reason: "marker".into(),
+                    streak: 0,
+                });
                 continue;
             }
             match self.repo_dry_streak(path) {
@@ -138,6 +153,11 @@ impl Engine {
                         limit = self.runtime.prune_dry_streak,
                         "standby — INCONCLUSIVE dry streak; skipped (revive via --target or a harness fix)"
                     );
+                    standby.push(digest::Standby {
+                        repo: name.clone(),
+                        reason: "dry-streak".into(),
+                        streak: s,
+                    });
                 }
                 _ => eligible.push((name.clone(), path.clone())),
             }
@@ -152,6 +172,11 @@ impl Engine {
         roster.prune(&repos.iter().map(|(n, _)| n.clone()).collect::<Vec<_>>());
         let eligible_names: Vec<String> = eligible.iter().map(|(n, _)| n.clone()).collect();
         let selected = roster.select(&eligible_names, self.runtime.max_repos_per_night);
+        let deferred: Vec<String> = eligible_names
+            .iter()
+            .filter(|n| !selected.contains(n))
+            .cloned()
+            .collect();
         for name in &eligible_names {
             if !selected.contains(name) {
                 info!(
@@ -200,10 +225,19 @@ impl Engine {
         // raise an operator alert on anomalies (hard failures, or a night
         // with nothing eligible — a silently shrunken roster is itself a
         // fault). This is the invariant "one honest row per eligible repo".
-        let health = serde_json::json!({
-            "date": date,
-            "outcomes": outcomes.iter().map(|(n, v)| serde_json::json!({"repo": n, "verdict": v})).collect::<Vec<_>>(),
-        });
+        let health = digest::NightHealth {
+            date: date.to_string(),
+            outcomes: outcomes
+                .iter()
+                .map(|(n, v)| digest::Outcome {
+                    repo: n.clone(),
+                    verdict: v.clone(),
+                })
+                .collect(),
+            nominated: repos.iter().map(|(n, _)| n.clone()).collect(),
+            standby,
+            deferred,
+        };
         let _ = std::fs::create_dir_all("/home/devuser/workspace/.agentbox");
         if let Err(e) = std::fs::write(
             "/home/devuser/workspace/.agentbox/dream-last-night.json",
@@ -229,23 +263,14 @@ impl Engine {
             }
         }
 
-        // Post the nightly digest to the forum (JunkieJarvis → dreamlab zone,
-        // "chat with agents"). Visibility only — never an approval object.
-        // Fail-open: a digest failure never taints the night.
-        let digest_script = std::env::var("DREAM_DIGEST_SCRIPT").unwrap_or_else(|_| {
-            "/home/devuser/workspace/project/agentbox/scripts/dream-night-digest.mjs".into()
-        });
-        if Path::new(&digest_script).exists() {
-            match Command::new("node")
-                .args([&digest_script, "--date", date])
-                .output()
-            {
-                Ok(out) => {
-                    let tail = String::from_utf8_lossy(&out.stdout);
-                    info!(result = %tail.lines().last().unwrap_or(""), "night digest");
-                }
-                Err(e) => warn!(error = %e, "night digest failed (fail-open)"),
-            }
+        // Surface every open decision on the forum governance panel
+        // (ADR-2113), then post the nightly digest (JunkieJarvis → dreamlab
+        // zone, "chat with agents") — visibility only, pointing at the panel.
+        // Both fail-open: forum trouble never taints the night.
+        if governance::enabled() {
+            governance::publish(&inbox::inbox_path(), false).await;
+            let status = digest::run(&self.workspace, date, false).await;
+            info!(result = %status, "night digest");
         }
 
         // Forum-suggestions tenant: mine the community feature-suggestions

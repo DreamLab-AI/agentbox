@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{error, info};
@@ -6,6 +6,7 @@ use tracing_subscriber::EnvFilter;
 
 use dream_engine::config::RuntimeConfig;
 use dream_engine::engine::{fallback_llm_config, llm_config, ruvector_config, Engine};
+use dream_engine::{digest, governance, inbox};
 use dream_engine::roster;
 use dream_engine::runner::{EvaluatorRunner, SshRunner};
 
@@ -54,6 +55,69 @@ struct Cli {
     /// cap rotates through the whole roster instead of pinning its head.
     #[arg(long, default_value_os_t = roster::default_path())]
     roster_path: PathBuf,
+
+    /// One-shot operator commands (forum I/O only; no annexe, no LLM).
+    #[command(subcommand)]
+    command: Option<Cmd>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Cmd {
+    /// Dream-machine decisions on the forum governance panel (ADR-2113).
+    Governance {
+        #[command(subcommand)]
+        action: GovernanceAction,
+    },
+    /// Compose tonight's plain-English digest and post it to the forum.
+    Digest {
+        /// Night to report (YYYY-MM-DD, default today UTC).
+        #[arg(long)]
+        date: Option<String>,
+        /// Print the digest; post nothing.
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum GovernanceAction {
+    /// Publish the panel and every open, unpublished inbox item as a case.
+    Publish {
+        /// Print the unsigned events; send nothing.
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Read admin decisions for published cases and resolve inbox items.
+    Ingest {
+        /// Print the resolutions; write nothing.
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
+/// Run a one-shot subcommand. These touch only the forum and the inbox file,
+/// so they run alongside the supervised loop without its singleton lock.
+async fn run_command(cmd: &Cmd, workspace: &std::path::Path) {
+    match cmd {
+        Cmd::Governance { action } => {
+            let report = match action {
+                GovernanceAction::Publish { dry_run } => {
+                    governance::publish(&inbox::inbox_path(), *dry_run).await
+                }
+                GovernanceAction::Ingest { dry_run } => {
+                    governance::ingest(&inbox::inbox_path(), *dry_run).await
+                }
+            };
+            println!(
+                "published={} rejected={} resolved={} dry-run-listed={}",
+                report.published, report.rejected, report.resolved, report.skipped
+            );
+        }
+        Cmd::Digest { date, dry_run } => {
+            let date = date.clone().unwrap_or_else(|| day_int_and_date().1);
+            println!("{}", digest::run(workspace, &date, *dry_run).await);
+        }
+    }
 }
 
 fn load_runtime(cli: &Cli) -> RuntimeConfig {
@@ -92,8 +156,12 @@ async fn main() {
         .init();
 
     let cli = Cli::parse();
+    if let Some(cmd) = &cli.command {
+        run_command(cmd, &cli.workspace).await;
+        return;
+    }
     if !cli.once && !cli.loop_mode && !cli.dry_run {
-        eprintln!("usage: dream-engine --once | --loop | --dry-run [--target <repo>]");
+        eprintln!("usage: dream-engine --once | --loop | --dry-run [--target <repo>] | governance publish|ingest [--dry-run] | digest [--date D] [--dry-run]");
         std::process::exit(2);
     }
 

@@ -1,14 +1,17 @@
-//! Dream inbox — the loop's channel for asking the human questions.
+//! Dream inbox — the engine's working copy of the questions it asks the human.
 //!
-//! The engine has no session with the operator; hooks do. Nights that need a
-//! human decision (a "Human action recommended" item in a report, an
-//! environment fault, a health anomaly) append an item here; the
-//! `dream-inbox-surface.cjs` UserPromptSubmit hook injects open items into
-//! whatever Claude session the operator is in next, and `/dream answer`
-//! resolves them (recording the answer for the next night's carry-over).
+//! Nights that need a human decision (a "Human action recommended" item in a
+//! report, an environment fault, a health anomaly) append an item here. The
+//! **forum governance panel is the canonical decision surface**
+//! ([`crate::governance`], ADR-2113): each open item is published as a kind-31402
+//! ActionRequest on JunkieJarvis's `dream-machine` panel, and the admin's signed
+//! kind-31403 decision is ingested back into this file at the start of the next
+//! night, where carry-over reads it. The `dream-inbox-surface.cjs` hook only
+//! points the operator at the panel; `scripts/dream-inbox.mjs answer` remains a
+//! local break-glass path.
 //!
-//! The file is control-plane truth (`~/workspace/.agentbox/dream-inbox.json`); RuVector
-//! gets the *answers* (via the in-session resolve path), not the queue.
+//! The file (`~/workspace/.agentbox/dream-inbox.json`) is the engine's state,
+//! not the operator's inbox. RuVector gets the *answers*, not the queue.
 //! Everything here is fail-open: an inbox failure never taints a night.
 
 use serde::{Deserialize, Serialize};
@@ -33,10 +36,22 @@ pub struct InboxItem {
     /// Set by the surfacing hook (epoch seconds) for rate-limiting.
     #[serde(default)]
     pub last_surfaced: u64,
+    /// Event id of the kind-31402 ActionRequest this item was published as,
+    /// once the relay accepted it. Empty = not yet on the governance panel.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub published_event_id: String,
+    /// Event id of the kind-31403 decision that resolved this item, when it
+    /// was resolved from the forum rather than locally.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub decision_event_id: String,
 }
 
+/// The live inbox file; `DREAM_INBOX_PATH` overrides it (tests, dry runs
+/// against a copy).
 pub fn inbox_path() -> PathBuf {
-    PathBuf::from("/home/devuser/workspace/.agentbox/dream-inbox.json")
+    std::env::var("DREAM_INBOX_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/home/devuser/workspace/.agentbox/dream-inbox.json"))
 }
 
 fn short_hash(s: &str) -> String {
@@ -51,14 +66,33 @@ fn short_hash(s: &str) -> String {
 }
 
 fn load() -> Vec<InboxItem> {
-    std::fs::read_to_string(inbox_path())
+    load_from(&inbox_path())
+}
+
+fn save(items: &[InboxItem]) -> std::io::Result<()> {
+    save_to(&inbox_path(), items)
+}
+
+/// Read every item from an inbox file (empty on any error — fail-open).
+pub fn load_from(path: &std::path::Path) -> Vec<InboxItem> {
+    std::fs::read_to_string(path)
         .ok()
         .and_then(|t| serde_json::from_str(&t).ok())
         .unwrap_or_default()
 }
 
-fn save(items: &[InboxItem]) -> std::io::Result<()> {
-    let path = inbox_path();
+/// Every item in the live inbox.
+pub fn load_items() -> Vec<InboxItem> {
+    load()
+}
+
+/// Open items in the live inbox.
+pub fn open_items() -> Vec<InboxItem> {
+    load().into_iter().filter(|i| i.status == "open").collect()
+}
+
+/// Atomically write `items` to `path` (temp file + rename).
+pub fn save_to(path: &std::path::Path, items: &[InboxItem]) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir)?;
     }
@@ -68,6 +102,49 @@ fn save(items: &[InboxItem]) -> std::io::Result<()> {
         serde_json::to_string_pretty(items).unwrap_or_default(),
     )?;
     std::fs::rename(&tmp, path)
+}
+
+/// Record that item `id` is now on the governance panel as request `event_id`.
+/// Returns whether anything changed.
+pub fn mark_published_in(
+    path: &std::path::Path,
+    id: &str,
+    event_id: &str,
+) -> std::io::Result<bool> {
+    let mut items = load_from(path);
+    let Some(item) = items.iter_mut().find(|i| i.id == id) else {
+        return Ok(false);
+    };
+    if item.published_event_id == event_id {
+        return Ok(false);
+    }
+    item.published_event_id = event_id.to_string();
+    save_to(path, &items)?;
+    Ok(true)
+}
+
+/// Resolve an OPEN item from a forum decision. `status` is `answered` or
+/// `dismissed`. Items already resolved (locally or by an earlier decision)
+/// are left alone, so re-ingesting the same decisions is a no-op.
+pub fn resolve_in(
+    path: &std::path::Path,
+    id: &str,
+    status: &str,
+    answer: &str,
+    decision_event_id: &str,
+) -> std::io::Result<bool> {
+    let mut items = load_from(path);
+    let Some(item) = items
+        .iter_mut()
+        .find(|i| i.id == id && i.status == "open")
+    else {
+        return Ok(false);
+    };
+    item.status = status.to_string();
+    item.answer = answer.to_string();
+    item.decision_event_id = decision_event_id.to_string();
+    save_to(path, &items)?;
+    Ok(true)
 }
 
 /// Append an item unless an open item with the same id already exists.
@@ -94,6 +171,8 @@ pub fn add(
         status: "open".into(),
         answer: String::new(),
         last_surfaced: 0,
+        published_event_id: String::new(),
+        decision_event_id: String::new(),
     });
     // Keep the file bounded: drop resolved items older than the newest 200.
     if items.len() > 200 {
@@ -191,6 +270,62 @@ Other text.
     #[test]
     fn no_marker_no_questions() {
         assert!(extract_questions("just a report with no asks").is_empty());
+    }
+
+    fn item(id: &str, status: &str) -> InboxItem {
+        InboxItem {
+            id: id.into(),
+            kind: "question".into(),
+            repo: "r".into(),
+            night_id: "n".into(),
+            date: "2026-09-25".into(),
+            text: "decide something".into(),
+            status: status.into(),
+            answer: String::new(),
+            last_surfaced: 0,
+            published_event_id: String::new(),
+            decision_event_id: String::new(),
+        }
+    }
+
+    #[test]
+    fn mark_published_is_idempotent() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("inbox.json");
+        save_to(&path, &[item("a", "open")]).unwrap();
+        assert!(mark_published_in(&path, "a", "ev1").unwrap());
+        assert!(!mark_published_in(&path, "a", "ev1").unwrap());
+        assert!(!mark_published_in(&path, "missing", "ev1").unwrap());
+        assert_eq!(load_from(&path)[0].published_event_id, "ev1");
+    }
+
+    #[test]
+    fn resolve_only_touches_open_items() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("inbox.json");
+        save_to(&path, &[item("a", "open"), item("b", "answered")]).unwrap();
+        assert!(resolve_in(&path, "a", "answered", "approve: ok", "dec1").unwrap());
+        assert!(!resolve_in(&path, "a", "dismissed", "x", "dec2").unwrap());
+        assert!(!resolve_in(&path, "b", "dismissed", "x", "dec3").unwrap());
+        let items = load_from(&path);
+        assert_eq!(items[0].status, "answered");
+        assert_eq!(items[0].answer, "approve: ok");
+        assert_eq!(items[0].decision_event_id, "dec1");
+        assert_eq!(items[1].status, "answered");
+    }
+
+    #[test]
+    fn legacy_items_without_new_fields_still_load() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("inbox.json");
+        std::fs::write(
+            &path,
+            r#"[{"id":"x","kind":"alert","repo":"r","night_id":"n","date":"d","text":"t","status":"open","answer":"","last_surfaced":0}]"#,
+        )
+        .unwrap();
+        let items = load_from(&path);
+        assert_eq!(items.len(), 1);
+        assert!(items[0].published_event_id.is_empty());
     }
 
     #[test]
