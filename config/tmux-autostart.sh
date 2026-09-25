@@ -20,8 +20,14 @@ WORKSPACE="${WORKSPACE:-/home/devuser/workspace}"
 PROJECT="${WORKSPACE}/project"
 [ -d "$PROJECT" ] || PROJECT="${WORKSPACE}"
 WORKSPACE_DIR="${WORKSPACE}"
-# Obsidian vault root — the Notes window's working directory (ADR-2029).
+# Obsidian vault root (ADR-2029).
 VAULT_ROOT="${VAULT_ROOT:-${WORKSPACE}/vault}"
+# The vault the Notes window opens. The working vault ([vault].working:
+# journals, decks, templates) is the operator's daily driver; the governed
+# knowledge vault ([vault].root) is what agents reach through `vault`. Opening
+# the working vault by default is what makes window 9 a notebook rather than a
+# corpus browser. AGENTBOX_NOTES_ROOT overrides both.
+NOTES_ROOT="${AGENTBOX_NOTES_ROOT:-${VAULT_WORKING_ROOT:-${VAULT_ROOT}}}"
 FISH="$(which fish 2>/dev/null || echo fish)"
 
 # ============================================================================
@@ -76,6 +82,23 @@ FISH="$(which fish 2>/dev/null || echo fish)"
 # ============================================================================
 _notes_say() { tmux send-keys -t "${SESSION}:9" "echo '$1'" C-m; }
 
+# The daily-note arguments, when this Rune has them. `--today` exists only in
+# the DreamLab Rune build (a 1.5.0 fork: daily note, backlinks, callouts); a
+# stock binary gets no extra arguments rather than an unknown-flag error. The
+# note opens from <root>/<dir>, created from <root>/<template> when that file
+# exists. NOTES_DAILY_DIR / NOTES_DAILY_TEMPLATE override the Obsidian defaults
+# the working vault uses (.obsidian/daily-notes.json).
+_notes_daily_args() { # _notes_daily_args <rune_bin> <root> <rune_home>
+  local rune_bin="$1" root="$2" rune_home="$3"
+  local dir="${NOTES_DAILY_DIR:-journals}" tpl="${NOTES_DAILY_TEMPLATE:-templates/Journal.md}"
+  env HOME="$rune_home" "$rune_bin" --help 2>&1 | grep -q -- '--today' || return 0
+  [ -d "${root}/${dir}" ] || return 0
+  printf " --today --daily-dir '%s'" "$dir"
+  if [ -f "${root}/${tpl}" ]; then
+    printf " --daily-template '%s'" "$tpl"
+  fi
+}
+
 _notes_window() {
   local cargo_bin="${WORKSPACE}/.cargo/bin"
   local tui="${VAULT_TUI:-none}"
@@ -85,7 +108,7 @@ _notes_window() {
   # tmux refuses -c on a missing directory. The vault may not be materialised
   # yet on a fresh checkout, so fall back to the workspace root instead of
   # losing the window entirely, and say so.
-  local cwd="$VAULT_ROOT" vault_missing=""
+  local cwd="$NOTES_ROOT" vault_missing=""
   if [ ! -d "$cwd" ]; then
     cwd="$WORKSPACE_DIR"
     vault_missing="1"
@@ -127,7 +150,7 @@ _notes_window() {
   fi
 
   if [ -n "$vault_missing" ]; then
-    _notes_say "  Vault ${VAULT_ROOT} does not exist yet — opening ${cwd} instead."
+    _notes_say "  Vault ${NOTES_ROOT} does not exist yet — opening ${cwd} instead."
   fi
 
   # --- binary discovery ----------------------------------------------------
@@ -183,8 +206,10 @@ _notes_window() {
     return 0
   fi
 
+  local daily=""
+  [ -z "$vault_missing" ] && daily="$(_notes_daily_args "$rune_bin" "$cwd" "$rune_home")"
   _notes_say "  Notes — Rune markdown TUI over ${cwd} (ADR-2029; ^C quits, F1 help)"
-  tmux send-keys -t "${SESSION}:9" "env HOME='${rune_home}' ${rune_bin} -w '${cwd}'" C-m
+  tmux send-keys -t "${SESSION}:9" "env HOME='${rune_home}' ${rune_bin} -w '${cwd}'${daily}" C-m
   return 0
 }
 

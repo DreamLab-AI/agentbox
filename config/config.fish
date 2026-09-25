@@ -96,6 +96,66 @@ set -q CLAUDE_CONFIG_DIR; or set -gx CLAUDE_CONFIG_DIR /home/devuser/.claude
 alias dsp="claude --permission-mode auto"       # auto mode; dspb = legacy blanket bypass
 alias dspb="claude --permission-mode bypassPermissions"
 
+# ── notes: the working vault in Rune, from any window (ADR-2029) ──
+# notes              today's journal (or the vault, on a Rune without --today)
+# notes yesterday    yesterday's journal
+# notes <page>       the page whose file name matches, anywhere in the vault
+# notes --kg [page]  the same against the governed knowledge vault
+# Shares window 9's recovery store ($WORKSPACE/.rune-home), so two panes on one
+# page are reconciled by Rune's conflict guard rather than overwriting.
+function notes --description 'Open the vault in Rune: notes [--kg] [yesterday|<page>]'
+    set -l root $AGENTBOX_NOTES_ROOT
+    test -n "$root"; or set root $VAULT_WORKING_ROOT
+    test -n "$root"; or set root $VAULT_ROOT
+    if test (count $argv) -gt 0; and test "$argv[1]" = --kg
+        set root $VAULT_ROOT
+        set -e argv[1]
+    end
+    if test -z "$root"; or not test -d "$root"
+        echo "notes: no vault ([vault].working / [vault].root unset or missing)" >&2
+        return 1
+    end
+    set -l ws $WORKSPACE
+    test -n "$ws"; or set ws /home/devuser/workspace
+    set -l home $ws/.rune-home
+    mkdir -p $home; or return 1
+    set -l daily_dir journals
+    set -q NOTES_DAILY_DIR; and set daily_dir $NOTES_DAILY_DIR
+    set -l template templates/Journal.md
+    set -q NOTES_DAILY_TEMPLATE; and set template $NOTES_DAILY_TEMPLATE
+
+    if test (count $argv) -eq 0
+        if env HOME=$home rune --help 2>&1 | string match -q -- '*--today*'; and test -d $root/$daily_dir
+            set -l extra --today --daily-dir $daily_dir
+            test -f $root/$template; and set extra $extra --daily-template $template
+            env HOME=$home rune -w $root $extra
+        else
+            env HOME=$home rune -w $root
+        end
+        return
+    end
+
+    if test "$argv[1]" = yesterday
+        set -l file $root/$daily_dir/(date -d yesterday +%Y-%m-%d).md
+        if not test -f $file
+            echo "notes: no journal for yesterday ($file)" >&2
+            return 1
+        end
+        env HOME=$home rune -w $root $file
+        return
+    end
+
+    # A page by name: exact file name first, then a case-insensitive match.
+    set -l name (string join ' ' -- $argv)
+    set -l hit (find $root -type f -name "$name.md" -not -path '*/.*' 2>/dev/null | head -n 1)
+    test -n "$hit"; or set hit (fd --type f --ignore-case --glob "*$name*.md" $root 2>/dev/null | head -n 1)
+    if test -z "$hit"
+        echo "notes: no page matching '$name' under $root" >&2
+        return 1
+    end
+    env HOME=$home rune -w $root $hit
+end
+
 # ── User customizations from the persistent workspace volume ──
 # The rootfs is read-only and ~/.config is tmpfs, so ad-hoc shell tweaks
 # (aliases, ssh shortcuts) die on restart unless they live on the workspace

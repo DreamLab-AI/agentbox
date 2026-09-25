@@ -78,7 +78,7 @@ _scenario() {
 # NB: no space is required before `rune` — the recorded command carries an
 # absolute path (…/bin/rune), so the pattern must tolerate a leading slash.
 _launched() { grep -q 'send-keys .*rune -w ' "$LOG"; }
-_said()     { grep -qF "$1" "$LOG"; }
+_said()     { grep -qF -- "$1" "$LOG"; }
 
 # --- workspace fixtures -----------------------------------------------------
 # ws_full : vault present, rune present in the cargo-bin fallback, writable home
@@ -138,6 +138,55 @@ if [ -d "${WS_FULL}/.rune-home" ]; then
   _ok "launch → recovery home created at \$WORKSPACE/.rune-home"
 else
   _bad "launch must create the recovery home" "missing ${WS_FULL}/.rune-home"
+fi
+
+# 2c — a working vault is the daily driver: the window opens it, not the root.
+mkdir -p "${WS_FULL}/working"
+_scenario working "$WS_FULL" VAULT_ROOT="${WS_FULL}/vault" VAULT_WORKING_ROOT="${WS_FULL}/working" VAULT_TUI=rune AGENTBOX_VAULT_ENABLED=1
+if _launched && _said "rune -w '${WS_FULL}/working'"; then
+  _ok "VAULT_WORKING_ROOT set → launched on the working vault"
+else
+  _bad "the working vault must be preferred over the knowledge root" "rc=${RC} log:$(tr '\n' '|' <"$LOG")"
+fi
+
+# 2d — AGENTBOX_NOTES_ROOT overrides both.
+_scenario notes-root "$WS_FULL" VAULT_ROOT="${WS_FULL}/vault" VAULT_WORKING_ROOT="${WS_FULL}/working" AGENTBOX_NOTES_ROOT="${WS_FULL}/vault" VAULT_TUI=rune AGENTBOX_VAULT_ENABLED=1
+if _launched && _said "rune -w '${WS_FULL}/vault'"; then
+  _ok "AGENTBOX_NOTES_ROOT → overrides the working vault"
+else
+  _bad "AGENTBOX_NOTES_ROOT must win" "rc=${RC} log:$(tr '\n' '|' <"$LOG")"
+fi
+
+# 2e — a stock Rune (no --today in its help) gets no daily-note arguments.
+if ! grep -q -- '--today' "${TMP}/log-working"; then
+  _ok "stock rune → no --today argument"
+else
+  _bad "a rune without --today must not be passed it" "$(cat "${TMP}/log-working")"
+fi
+
+# 2f — a Rune that offers --today opens today's note from the vault's template.
+WS_DAILY="$(mk_ws ws-daily 1)"
+cat >"${WS_DAILY}/.cargo/bin/rune" <<'RUNE'
+#!/bin/sh
+[ "$1" = "--help" ] && echo "usage: rune [-w <dir>] [--today] [--daily-dir <dir>] [--daily-template <path>]"
+exit 0
+RUNE
+mkdir -p "${WS_DAILY}/working/journals" "${WS_DAILY}/working/templates"
+: >"${WS_DAILY}/working/templates/Journal.md"
+_scenario daily "$WS_DAILY" VAULT_ROOT="${WS_DAILY}/vault" VAULT_WORKING_ROOT="${WS_DAILY}/working" VAULT_TUI=rune AGENTBOX_VAULT_ENABLED=1
+if _launched && _said "--today --daily-dir 'journals' --daily-template 'templates/Journal.md'"; then
+  _ok "rune with --today + journals/ + template → opens today's note from the template"
+else
+  _bad "a daily-capable rune must be launched onto today's note" "rc=${RC} log:$(tr '\n' '|' <"$LOG")"
+fi
+
+# 2g — no journals folder: no daily-note arguments even on a capable Rune.
+rm -rf "${WS_DAILY}/working/journals"
+_scenario daily-nodir "$WS_DAILY" VAULT_ROOT="${WS_DAILY}/vault" VAULT_WORKING_ROOT="${WS_DAILY}/working" VAULT_TUI=rune AGENTBOX_VAULT_ENABLED=1
+if _launched && ! _said "--today"; then
+  _ok "no journals/ folder → launched without --today"
+else
+  _bad "without a journals folder the daily note must not be forced" "rc=${RC} log:$(tr '\n' '|' <"$LOG")"
 fi
 
 # 3 — tui=rune, binary present, vault MISSING: workspace fallback + warning.

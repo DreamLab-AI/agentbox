@@ -4,6 +4,20 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-09-25 — the Notes window becomes a daily driver)
+
+ADR-2029 follow-up. Window 9 now opens the **working** vault (`[vault].working`:
+journals, decks, templates) instead of the governed knowledge root, so it is the
+operator's notebook rather than a corpus browser; `AGENTBOX_NOTES_ROOT`
+overrides. When the Rune binary advertises `--today` (the DreamLab Rune build)
+and the vault has a `journals/` folder, the window opens today's journal,
+created from `templates/Journal.md` when that exists; a stock Rune gets no
+extra arguments. A `notes` fish function opens the same from any window
+(`notes`, `notes yesterday`, `notes <page>`, `notes --kg <page>`), sharing the
+window's recovery store. `tests/tui/notes-launcher.test.sh`: 16 cases (5 new),
+and its `_said` helper no longer lets a pattern beginning `--` pass as a grep
+error.
+
 ### Removed (2026-09-22 — the corpus loses its MCP server; agents get a CLI)
 
 ADR-2107 / ADR-2108, VisionFlow PRD-sovereign-corpus Q10/Q11 (WS-G).
