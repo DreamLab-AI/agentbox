@@ -350,7 +350,7 @@
           version         = "0.4.16";
           packageLock = ./config/npm-locks/metaharness-0.4.16.package-lock.json;
           sha256          = "sha256-nQ4CFlayNt0gyBuPPK8ylHIUSm7A2Iio0qw8zCqIqxI=";
-          nodeModulesHash = "sha256-e9SD6MeRWJV5pll5Y5LwwQ5veU9bBUd9okk9O5uTq4U=";
+          nodeModulesHash = "sha256-Pqq5MEuNuVY96Uc3eArgfRjcWIJ8wDujHScNKxbsA7I=";
           bin             = "metaharness";
           extraBins = {
             # own-package bin — path is package-root-relative (dependency bins
@@ -364,7 +364,7 @@
           version         = "0.10.2";
           packageLock = ./config/npm-locks/metaharness-darwin-0.10.2.package-lock.json;
           sha256          = "sha256-rnXeVyFetVQQr/WTHg2IDFqsjEV48s/ctD0esEcLXhU=";
-          nodeModulesHash = "sha256-2aRNYsfxUqzRYjxoJMqeYq5B+LETNlNtCIZgNXYjIik=";
+          nodeModulesHash = "sha256-Bz0mCzZbDBp4J3P623UKJYuq4ybMV15PJ+WXeTBtMRI=";
           bin             = "metaharness-darwin";
         };
 
