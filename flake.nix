@@ -459,7 +459,7 @@
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.17.0";
           sha256          = "sha256-I/LCciJi2YNHz5edptiLyGk+7yzYeYo4rDk6fwBpOKA=";
-          nodeModulesHash = "sha256-8BnljHfU/gxIU5bf1E8b6+x+r0JXAfEjDQxgyWY8mSg=";
+          nodeModulesHash = "sha256-se3giy30x2q2+zftQE1BvsfPhuQed760A2LYcKpevII=";
           bin             = "mmdc";
           legacyPeerDeps  = false;
           runtimeDependencies.puppeteer = "25.10.0";
