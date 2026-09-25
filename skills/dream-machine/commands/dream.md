@@ -12,11 +12,13 @@ Report, concisely:
 3. **Tonight**: window is 01:00–05:00 UTC; eligible repos (not paused, not standby, streak < 5) dream serially, capped at 5 and ordered least-recently-dreamed first.
 4. **Last night's health**: `/home/devuser/workspace/.agentbox/dream-last-night.json` (one honest verdict per eligible repo; FAILED/BLOCKED-ENV entries mean the harness, not the repos, needs fixing; HANDOFF means a repo's `evaluatorEntrypoints` cannot decide that deep).
 5. **Gate**: for any night of interest, `<artefact_dir>/<date>-<repo>/` holds `manifest.json` (what was frozen before the model call), `run-state.json` (restart-safe phase journal), `receipts/{baseline,candidate}/` (raw stdout/stderr, exit codes, durations), `candidate.json` and `gate.json`. A `gate.json` with a non-empty `vetoes` array is the interesting case: the model claimed something the required evaluators refused (ADR-2024).
-6. **Inbox**: `node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs list` — open items are questions the loop is waiting on.
+6. **Decisions**: open questions and alerts are cases on the forum governance panel (https://dreamlab-ai.com/community/governance, "Dream machine decisions", published by JunkieJarvis). `node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs list` shows the engine's working copy.
 
 ## `/dream questions` · `/dream answer <id> <text>` · `/dream dismiss <id>`
 
-The loop's channel to the operator (`workspace/.agentbox/dream-inbox.json`, surfaced automatically into sessions by the `dream-inbox-surface.cjs` hook):
+The operator decides on the **forum governance panel** (ADR-2113): every open item is a case there — Approve, Reject (say why) or Amend (write your own instruction); "Acknowledge all alerts" on the panel clears the alert backlog. The engine ingests those signed decisions at the start of each night. Point the user there first. The `dream-inbox-surface.cjs` hook only reminds sessions how many cases are waiting.
+
+The local file (`workspace/.agentbox/dream-inbox.json`) is the engine's working copy; the CLI below is a break-glass path for when the forum is unavailable:
 
 ```bash
 node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs list [--all]
@@ -24,7 +26,7 @@ node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs answer <id
 node /home/devuser/workspace/project/agentbox/scripts/dream-inbox.mjs dismiss <id>
 ```
 
-Answered items feed the repo's next night as hypothesis carry-over. For decisions with cross-agent value, additionally `memory_store` the decision to namespace `project-state`.
+To push open items to the panel or pull decisions now (instead of waiting for the night): `dream-engine governance publish|ingest [--dry-run]`. Answered items feed the repo's next night as hypothesis carry-over. For decisions with cross-agent value, additionally `memory_store` the decision to namespace `project-state`.
 
 ## `/dream harvest [--days N]`
 
@@ -63,9 +65,9 @@ Without a repo: dreams every eligible repo serially (a full night, 10–40 min �
 
 (Re-)issue the nightly forum digest (JunkieJarvis → dreamlab zone → chat with agents):
 ```bash
-node /home/devuser/workspace/project/agentbox/scripts/dream-night-digest.mjs [--date YYYY-MM-DD] [--dry-run]
+dream-engine digest [--date YYYY-MM-DD] [--dry-run]
 ```
-Default style is plain English (`DREAM_DIGEST_STYLE=terse` for the compact form). The script verifies its own event is readable back from the relay and says so — report `published+verified`/`NOT VERIFIED` to the user verbatim. To replace an existing digest, first send a kind-5 deletion for the old event id (as JunkieJarvis), then re-run.
+Plain English, composed from the engine's night-health record: every scheduled repo's outcome (including BLOCKED-ENV, HANDOFF and FAILED), the standby/parked roster on a night where nothing was eligible, and how many decisions wait on the governance panel. The engine verifies its own event is readable back from the relay and says so — report `published+verified`/`NOT VERIFIED` to the user verbatim. To replace an existing digest, first send a kind-5 deletion for the old event id (as JunkieJarvis), then re-run.
 
 ## `/dream nominate <repo>`
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 37a1a1988f047056bf871079097f0922ab164435
+verified_commit: 5a7226b797c5949771e8b8ddcd69cfddd3c7f533
 verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, mcp/servers/governance-bridge.js, services/dream-engine/src/ledger.rs]
 owner: jjohare
 review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape
@@ -138,3 +138,7 @@ Executed evidence, with commands and raw output, is in
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 The staleness checker could not use this record at all: `verified_commit` was the abbreviated `37a1a1988`. Expanded to the full 40-char SHA `37a1a1988f047056bf871079097f0922ab164435` (`git rev-parse 37a1a1988^{commit}`; subject: "fix(authority): frontmatter may only tighten the operator's authority class"). **No re-verification was performed and none was needed:** with the full SHA the gate can now run, and `git diff --name-only 37a1a1988..HEAD -- <all ten verified_paths>` is **empty** — not one governed file has moved since the original verification, so the original anchor stands unamended. This is a mechanical repair of the field, not a new verification claim.
+
+## Re-verification — 2026-09-25 (`5a7226b797c5949771e8b8ddcd69cfddd3c7f533`)
+
+Tripped by one line in `services/dream-engine/src/ledger.rs`: an `#[allow(clippy::too_many_arguments)]` on `LedgerRow::unreviewed` so the crate passes `cargo clippy --all-targets -- -D warnings` on the current toolchain (ADR-2113 change). No behaviour moved: `git diff de84739ee..5a7226b79 -- services/dream-engine/src/ledger.rs` is that single added line; `cargo test ledger::` passes 10 at `5a7226b79`, and the reviewer/review-minutes columns and `review_from_merge` are unchanged. The other nine governed paths have no diff. Still true.

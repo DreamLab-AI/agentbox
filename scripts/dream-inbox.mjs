@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Dream-inbox CLI — list / answer / dismiss operator items queued by the
-// nightly dream-engine. The surfacing hook (dream-inbox-surface.cjs) injects
-// open items into sessions; this is the write path back.
+// nightly dream-engine. BREAK-GLASS ONLY: the canonical place to decide is the
+// forum governance panel ("Dream machine decisions", ADR-2113), whose signed
+// decisions the engine ingests each night. Use this when the forum is down.
 //
 //   node dream-inbox.mjs list [--all]
 //   node dream-inbox.mjs answer <id> "<answer text>"

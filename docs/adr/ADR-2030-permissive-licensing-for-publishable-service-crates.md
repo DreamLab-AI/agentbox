@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fc202907bc6d5285c968b5302d9e024d16af53e3
+verified_commit: 5a7226b797c5949771e8b8ddcd69cfddd3c7f533
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -299,3 +299,7 @@ returns the same 10 manifests the gate covers. Claim STILL TRUE at this commit.
 Re-verified 2026-09-22 at `fc202907b` after `docs/developer/licensing.md` gained the
 `crates/sidestr/` section (ADR-2106): the `services/` rule and gate are unchanged;
 `scripts/ci/check-crate-licensing.sh` still reports the ten `services/` package directories.
+
+## Re-verification — 2026-09-25 (`5a7226b797c5949771e8b8ddcd69cfddd3c7f533`)
+
+Tripped by `services/dream-engine/Cargo.toml` gaining dependencies for forum I/O (ADR-2113). This is the case the Consequences section warns about — "adding an AGPL dependency to a permissive crate is a licence change" — so it was checked, not bumped blind. The first draft of that change linked `nostr-bbs-core`, which is `AGPL-3.0-only` and pulls `solid-pod-rs` (`AGPL-3.0-only`); that would have made `dream-engine` AGPL in effect while it declares `MIT OR Apache-2.0`. It was reworked before commit: signing and verification use `nostr` (rust-nostr, MIT), the governance wire types are mirrored locally, and `nostr-bbs-core` is a **dev-dependency only** (conformance tests), so it is not linked into the shipped binary. At `5a7226b79`: the normal+build dependency closure of `dream-engine` (`cargo metadata` resolve, dev edges excluded) is 312 packages with no copyleft-only licence (`r-efi` is `MIT OR Apache-2.0 OR LGPL-2.1-or-later`); `grep -h '^license' services/*/Cargo.toml | sort | uniq -c` → 8 `MIT OR Apache-2.0`, 2 `AGPL-3.0-only`; `sh scripts/ci/check-crate-licensing.sh` → `OK … 10 services/ package directories carry the texts they declare`. Still true. Note for the release process: the nix derivation runs `doCheck = true`, so the check phase compiles the AGPL dev-dependency; that is a build-time test input, not part of the distributed artefact.

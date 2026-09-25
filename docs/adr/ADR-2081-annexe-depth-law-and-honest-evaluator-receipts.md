@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: 5a7226b797c5949771e8b8ddcd69cfddd3c7f533
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/gate.rs, services/dream-engine/src/verdict.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
@@ -57,3 +57,7 @@ Retain **accepted / complete / staged** for this source-and-local-test scope. Th
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `services/dream-engine/src/{engine,runner}.rs` via `2899b3b7e` (address generalisation), `fb80b1be7` (Loom placeholder resolution) and `bc4a9b259` (ADR-2087 task properties); `gate.rs` and `verdict.rs` are unchanged. All four decision points re-established at `HEAD`: `pub fn annexe_subpath(repo_path, workspace_root)` with its symlink-resolving depth test (`engine.rs:1471`, test `:1574`); both runners still build `bash -o pipefail -c` with the load-bearing comment and the propagation test (`runner.rs:65`, `:99`, `:225`); a no-patch ACCEPT is still `Veto::unproven` → `INCONCLUSIVE` (`gate.rs:62`, `:220`, `:229`, test `accept_without_a_candidate_patch_is_unproven_not_a_harness_fault` at `:483`); `sanitise_finding` / `sanitise_finding_full` both present (`verdict.rs:347`, `:417`). Claim STILL TRUE. `activation_status: staged` is unchanged — activation is still a supervised-loop receipt from a rebuilt image, which reading cannot supply.
+
+## Re-verification — 2026-09-25 (`5a7226b797c5949771e8b8ddcd69cfddd3c7f533`)
+
+Tripped by the governance-surfacing change (ADR-2113), which edits `run_night` in `engine.rs` (decision ingest at night start, a richer night-health record, governance publish and a Rust digest in place of the `dream-night-digest.mjs` subprocess). None of this record's four decisions is touched: `annexe_subpath` and `sanitise_finding` are unchanged (`git diff de84739ee..5a7226b79 -- services/dream-engine/src/engine.rs` adds no line mentioning either), and `runner.rs`, `gate.rs` and `verdict.rs` have no diff at all. All six tests this record names pass at `5a7226b79` (`cargo test -- --exact <name>` in `services/dream-engine`, each `1 passed`); `runner.rs:57-61` still documents and applies `-o pipefail`. Still true.

@@ -22,7 +22,8 @@ Quick orientation:
   `dream-engine` session is drift.
 - Nightly window 01:00–05:00 UTC; eligible repos are those under `~/workspace/` with a
   `dream.config.json`, not paused/standby, dry streak < 5, cap 5 per night.
-- Health: `~/workspace/.agentbox/dream-last-night.json`; open questions:
+- Health: `~/workspace/.agentbox/dream-last-night.json`; open decisions are cases on the
+  forum governance panel (https://dreamlab-ai.com/community/governance), mirrored locally by
   `node scripts/dream-inbox.mjs list` (agentbox repo).
 
 For any `/dream <arg>` invocation, follow [commands/dream.md](commands/dream.md) exactly.

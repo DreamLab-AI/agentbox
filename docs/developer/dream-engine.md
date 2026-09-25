@@ -103,8 +103,8 @@ Splitting "untestable (environment)" out of INCONCLUSIVE is load-bearing: enviro
 - **Pre-flight probe** — after `clone_to_hp`, the checkout must exist and be non-empty; one re-provision retry, then `BLOCKED-ENV`.
 - **Unique annexe dirs** — remote night dirs carry a `-r<run_id>` suffix. The run id is deterministic, so two attempts at the same experiment share one workspace while two different experiments never collide — and the name survives a restart, which a pid could not.
 - **Carry-over** — the previous night's `Next steps` / `Biggest uncertainty` / `Main lesson` lines and any answered operator questions are appended to the next compiled prompt, so nights compound.
-- **Dream inbox** — `workspace/.agentbox/dream-inbox.json`: report "Human action recommended" items and night-health anomalies queue here; the `dream-inbox-surface.cjs` UserPromptSubmit hook surfaces open items into any Claude session; `scripts/dream-inbox.mjs answer` records decisions that feed carry-over.
-- **Night health** — `workspace/.agentbox/dream-last-night.json` records one verdict per eligible repo; zero-eligible nights and FAILED/BLOCKED-ENV outcomes raise inbox alerts.
+- **Decisions (governance panel, ADR-2113)** — report "Human action recommended" items and night-health anomalies queue in `workspace/.agentbox/dream-inbox.json` (the engine's working copy) and are published as kind-31402 cases on JunkieJarvis's `dream-machine` panel at the end of each night. The operator decides on the forum governance page (Approve / Reject / Amend per case, "Acknowledge all alerts" for the panel); the engine ingests the admin-signed kind-31403 decisions at the start of the next night and carry-over reads them. The `dream-inbox-surface.cjs` hook only reminds sessions how many cases wait; `scripts/dream-inbox.mjs answer` is break-glass.
+- **Night health** — `workspace/.agentbox/dream-last-night.json` records one outcome per scheduled repo plus the nominated, standby (manual marker or dry-streak parked) and cap-deferred roster; zero-eligible nights and FAILED/BLOCKED-ENV outcomes raise alerts.
 - **Harvest** — `scripts/dream-harvest.mjs` (weekly): verdict counts, streaks, pending-ACCEPT review list, env-fault rate.
 
 ## The acceptance path (ADR-2024, 2026-09-05)
@@ -215,16 +215,19 @@ Every **eligible** nominated repo dreams **every night**, serially, capped at `m
 - **Standby is reversible, never destructive.** The nomination file and ledger stay untouched. A forced `dream-engine --once --target <repo>` still runs it; any decisive verdict revives it automatically. Fixing the harness gap that caused the streak is the usual revival path.
 - Repos beyond the cap are skipped with a warning (alphabetical order); trim the roster rather than living with a permanent skip.
 
-## Nightly digest — the decision inbox
+## Nightly digest and the governance panel
 
-After each `run_night` the engine invokes `scripts/dream-night-digest.mjs` (fail-open; `DREAM_DIGEST_SCRIPT` overrides the path). The script reads every nominated repo's ledger for the night, composes one summary, signs it as **JunkieJarvis** (`JUNKIEJARVIS_PRIVKEY_HEX` from agentbox `.env`) and posts it as a kind-42 topic root to the dreamlab zone's **chat with agents** section on the live forum relay (NIP-42 authed).
+After each `run_night` the engine (`src/governance.rs`, `src/digest.rs`; fail-open, `DREAM_GOVERNANCE=0` opts out) does two things as **JunkieJarvis** (`JUNKIEJARVIS_PRIVKEY_HEX` from agentbox `.env`), NIP-42 authenticated on the live forum relay:
+
+1. **Publishes decisions** to the governance panel: one kind-31400 panel (`d` = `dream-machine`) and one kind-31402 case per open inbox item (`d` = `dream-<item id>`, `a` = `31400:<jarvis>:dream-machine`). The relay admits these only from keys in its `agent_registry`, so JunkieJarvis must be registered there. At the start of the next night the engine reads the admin-signed kind-31403 decisions back and resolves the items (approve → answered; for an alert, acknowledged; reject → answered with the reason; amend → answered with the operator's text; delegate → stays open).
+2. **Posts the digest** as a kind-42 topic root in the dreamlab zone's **chat with agents** section, composed from the night-health record rather than ledger verdicts alone. Every outcome is stated — ACCEPT/REJECT, INCONCLUSIVE, BLOCKED-ENV, HANDOFF, FAILED — and a night with nothing eligible lists the parked roster. (The retired `scripts/dream-night-digest.mjs` counted only ACCEPT/REJECT/INCONCLUSIVE rows and reported "No dream cycles ran tonight" from 14 to 25 September 2026 while repos were failing dispatch or all parked.) It ends with the number of decisions waiting and a link to the panel.
 
 Governance shape (operator decision, 2026-08-15): **the digest is visibility, not approval**. Authority stays native — git gates code changes (a dream ACCEPT stages a branch/PR; a human merges), and the 31402/31403 forum broker gate governs boundary-crossing proposals (ontology, shared infra). ACCEPT deliberately triggers no automation: it is an evidence verdict, and keying permissions off it would create a verdict-inflation incentive.
 
-- **Style**: `DREAM_DIGEST_STYLE=plain` (default) renders narrative English — one paragraph per repo, firm conclusions first, open questions second, a reliability note, and the standing "nothing merges without a human" footer. `terse` renders the compact icon form. Plain is the default while the operator calibrates trust in the system's outputs.
-- **Delivery is verified, not assumed**: the CF worker relay has been observed OK'ing an event and never persisting it. The script reads its own event back by id and republishes once; it reports `published+verified` or `NOT VERIFIED` honestly.
-- Routing overrides: `DREAM_DIGEST_RELAY`, `DREAM_DIGEST_CHANNEL`, `DREAM_DIGEST_SECTION`.
-- Manual (re-)issue: `node scripts/dream-night-digest.mjs [--date YYYY-MM-DD] [--dry-run]` or `/dream digest`.
+- **Style**: plain English — firm conclusions first, then inconclusive nights, then repos the harness could not evaluate, a reliability note, cap-deferred repos, the decisions line and the standing "nothing merges without a human" footer.
+- **Delivery is verified, not assumed**: the CF worker relay has been observed OK'ing an event and never persisting it. The engine reads its own event back by id and republishes once; it reports `published+verified` or `NOT VERIFIED` honestly.
+- Routing overrides: `DREAM_RELAY` (legacy `DREAM_DIGEST_RELAY`), `DREAM_DIGEST_CHANNEL`, `DREAM_DIGEST_SECTION`, `DREAM_GOVERNANCE_URL`; key file `AGENTBOX_ENV_FILE`; inbox file `DREAM_INBOX_PATH`.
+- Manual: `dream-engine digest [--date YYYY-MM-DD] [--dry-run]`, `dream-engine governance publish|ingest [--dry-run]`, or `/dream digest`.
 
 ## the connected node hygiene & VRAM runbook
 
