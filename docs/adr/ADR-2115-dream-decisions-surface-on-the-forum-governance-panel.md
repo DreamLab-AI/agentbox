@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 7f1cdaaad68fac7681cec1e510765f979037aee1
+verified_commit: 7d379e016e1ad82f0ae27efb2326e4e8e2b4b6ca
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
