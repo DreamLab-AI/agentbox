@@ -286,8 +286,8 @@ statement whichever network holds the reserve, so the rule is written once:
 - **Using the experiment chain's own EVM as its reserve origin**: the chain would be attesting
   to itself, so the bound checks nothing.
 
-**Wiring status (2026-09-26, not live).** sidestr-rs branch `reserve-neutral` at `276d4bc5`,
-on top of `liquid-bridge-wiring`:
+**Wiring status (2026-09-26, not live).** sidestr-rs `main` at `5845fd84`, with the Liquid wiring
+of 2026-09-23 landed beneath it as `f987e5d6` (draft PR #1 closed in favour of `main`):
 
 - `sidestr-reserve` 0.1.0 (17 tests: golden bytes with a digest computed independently by
   `sha256sum`, BIP-340 vectors 0 and 1, field and tamper checks, origin separation);
@@ -295,7 +295,7 @@ on top of `liquid-bridge-wiring`:
 - the read-only live test attests Liquid tip 4,074,382 in the new format;
 - one `secp256k1` (0.29.1) in the tree.
 
-The `evm` rule port is on branch `evm-rule` at `f2765ac1` (see ADR-2096's amendment). Nothing is funded,
+The `evm` rule port is `f2765ac1` on the same `main` (see ADR-2096's amendment). Nothing is funded,
 sealed or published.
 
 ## Verification

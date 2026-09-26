@@ -135,7 +135,7 @@ ethereumjs 10.1.3, the version siding pins, root for root before any `evm` chain
 dependency and keeps its build without `std`. Until the Rust rule matches the reference, the
 supervised JS producer (decision 4) is the only validator of an `evm` chain we run.
 
-**Port status (2026-09-26, not live).** sidestr-rs branch `evm-rule` at `f2765ac1`:
+**Port status (2026-09-26, not live).** sidestr-rs `main` at `f2765ac1`:
 `sidestr-evm` (revm 43, alloy-trie 0.9; no C libraries, k256 for signature recovery;
 `fastrlp` MPL-2.0 is the one non-MIT/Apache dependency, AGPL-compatible) and `sidestr-core`
 0.3.4 (unreleased: `validate_with`, rule-taking constructors, a coinbase allowance on
