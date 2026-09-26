@@ -232,9 +232,70 @@ pub fn run_on_hp(
     Ok((build_output, eval_outputs))
 }
 
+/// Free space the annexe must have before a run is attempted. A Rust clone
+/// plus its `target/` tree runs to several GiB; below this the build fails
+/// mid-night and burns an attempt on a fault that was visible up front.
+pub const ANNEXE_MIN_FREE_GIB: u64 = 10;
+
+/// Remote command behind [`annexe_health`]: create the annexe, write and
+/// delete a probe file in it, then report free space in KiB.
+///
+/// The write is the real test. On a fully allocated btrfs volume `df` still
+/// reports tens of GiB free while every file creation fails with ENOSPC
+/// (metadata chunks exhausted, 2026-09-26), so free space alone would pass.
+pub(crate) fn annexe_probe_cmd(annexe_dir: &str) -> String {
+    let d = shell_quote(annexe_dir);
+    format!(
+        "mkdir -p {d} && p={d}/.dream-probe-$$ && printf ok > \"$p\" && rm -f \"$p\" \
+         && echo \"AVAIL-KB=$(df -Pk {d} | awk 'NR==2{{print $4}}')\""
+    )
+}
+
+/// Parse the `AVAIL-KB=<n>` line printed by [`annexe_probe_cmd`].
+pub(crate) fn parse_avail_kb(out: &str) -> Option<u64> {
+    out.lines()
+        .find_map(|l| l.trim().strip_prefix("AVAIL-KB="))
+        .and_then(|v| v.trim().parse().ok())
+}
+
+/// Check the connected node can take a run: reachable, annexe writable, and
+/// at least `min_free_gib` free. Returns the free GiB, or the reason it can't.
+///
+/// Runs before the run journal counts an attempt, so an unhealthy node costs
+/// the night but never the experiment's retry budget.
+pub fn annexe_health(hp_host: &str, annexe_dir: &str, min_free_gib: u64) -> Result<u64, String> {
+    let out = ssh(hp_host, &annexe_probe_cmd(annexe_dir)).map_err(|e| e.to_string())?;
+    let kb = parse_avail_kb(&out)
+        .ok_or_else(|| format!("annexe probe printed no free-space figure: {}", out.trim()))?;
+    let gib = kb / (1024 * 1024);
+    if gib < min_free_gib {
+        return Err(format!(
+            "annexe {annexe_dir} has {gib} GiB free, below the {min_free_gib} GiB floor"
+        ));
+    }
+    Ok(gib)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::shell_quote;
+    use super::{annexe_probe_cmd, parse_avail_kb, shell_quote};
+
+    #[test]
+    fn annexe_probe_writes_before_it_measures() {
+        let cmd = annexe_probe_cmd("/home/j o/dream-annexe");
+        assert!(cmd.starts_with("mkdir -p '/home/j o/dream-annexe' && "));
+        let write = cmd.find("printf ok").unwrap();
+        let measure = cmd.find("df -Pk").unwrap();
+        assert!(write < measure, "the write must gate the free-space report");
+        assert!(cmd.contains("awk 'NR==2{print $4}'"));
+    }
+
+    #[test]
+    fn parse_avail_kb_reads_the_marker_line_only() {
+        assert_eq!(parse_avail_kb("motd noise\nAVAIL-KB=236978176\n"), Some(236_978_176));
+        assert_eq!(parse_avail_kb("AVAIL-KB=\n"), None);
+        assert_eq!(parse_avail_kb("no marker"), None);
+    }
 
     #[test]
     fn shell_quote_handles_spaces_and_single_quotes() {

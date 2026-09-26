@@ -91,7 +91,7 @@ Five outcomes:
 | `ACCEPT` | The experiment is justified by the evidence. | Ledger row **and** RuVector (importance 0.9). | resets |
 | `REJECT` | The experiment is refuted by the evidence. | Ledger row **and** RuVector (0.7) — a refutation is as valuable as an acceptance. | resets |
 | `INCONCLUSIVE` | Hypothesis tested, evidence insufficient (or a degraded LLM night). | Ledger row **and** RuVector (0.4) — the operational lessons (evaluator traps, false positives) are worth recalling. | counts |
-| `BLOCKED-ENV` | Hypothesis **untested** — the pre-flight probe found the annexe checkout missing/empty twice, a required evaluator could not run, or a candidate patch would not apply. No LLM call in the pre-flight case. | Ledger row + operator inbox alert only — a broken harness is state, not knowledge. | neither counts nor resets |
+| `BLOCKED-ENV` | Hypothesis **untested** — the connected node was unreachable, full or unwritable, the pre-flight probe found the annexe checkout missing/empty twice, a required evaluator could not run, or a candidate patch would not apply. No LLM call in the pre-flight case. | Ledger row + operator inbox alert only — a broken harness is state, not knowledge. | neither counts nor resets |
 | `HANDOFF` | Nomination **refused before scheduling** — tonight's deep has no usable evaluator (empty map, no evaluator covering the deep, an all-advisory roster, a non-probative or empty command, a script absent from the tree, a darwin entrypoint without `--sandbox mock\|agent`). No clone, no build, no evaluator, no LLM call. | Ledger row + an operator *question* in the dream inbox: which evaluator should decide this deep? | neither counts nor resets |
 
 **Operator rows.** When a human appends a row by hand (deep `operator-handoff`, witness `operator`), use verdict `OPERATOR` and evaluated `n/a`. The dry-streak counter only reacts to `INCONCLUSIVE` (counts), `ACCEPT`/`REJECT` (reset) — any other token is neutral, so operator bookkeeping never parks or revives a repo by accident. On 2026-09-07 an operator row written as `INCONCLUSIVE` took the host project's streak from 2 to 4 before it was caught; the dream-engine repo's row contract (`packages/ledger/src/rowContract.ts`) accepts `OPERATOR`, `BLOCKED-ENV` and `HANDOFF` for the same reason.
@@ -101,6 +101,7 @@ Splitting "untestable (environment)" out of INCONCLUSIVE is load-bearing: enviro
 ### Self-healing & operator loop (2026-08-21)
 
 - **Singleton lock** — the engine binds `127.0.0.1:49172`; a second instance exits instead of racing the shared the connected node annexe (the 2026-08-20/21 double-loop corruption class). One-shots require stopping the loop first.
+- **Node-health gate** — before the run journal counts an attempt, the annexe must take a probe write and have at least 10 GiB free (`dispatch::annexe_health`). An unreachable or full node is `BLOCKED-ENV` for the night with an inbox alert, and the experiment keeps its retry budget. The write is the real test: on 2026-09-26 HP's fully allocated btrfs volume showed 31 GB free in `df` while every file creation failed with ENOSPC, and loom's run was abandoned after two attempts that never reached the model.
 - **Pre-flight probe** — after `clone_to_hp`, the checkout must exist and be non-empty; one re-provision retry, then `BLOCKED-ENV`.
 - **Unique annexe dirs** — remote night dirs carry a `-r<run_id>` suffix. The run id is deterministic, so two attempts at the same experiment share one workspace while two different experiments never collide — and the name survives a restart, which a pid could not.
 - **Carry-over** — the previous night's `Next steps` / `Biggest uncertainty` / `Main lesson` lines and any answered operator questions are appended to the next compiled prompt, so nights compound.
@@ -251,7 +252,7 @@ Governance shape (operator decision, 2026-08-15): **the digest is visibility, no
 
 ## the connected node hygiene & VRAM runbook
 
-**Annexe cleanup is automatic.** Each successful cycle removes its own night dir on the connected node (`rm -rf <annexe>/<date>-<repo>`) once the report, ledger row, witness, and memory write are all control-plane side; failed cycles keep the dir for debugging. A retention sweep at dispatch time removes any night dir older than 3 days, so debug leftovers cannot accumulate either. Nothing on the connected node is a source of truth — every dir under the annexe is disposable at any time.
+**Annexe cleanup is automatic.** Each successful cycle removes its own night dir on the connected node (`rm -rf <annexe>/<date>-<repo>`) once the report, ledger row, witness, and memory write are all control-plane side; failed cycles keep the dir for debugging. A retention sweep before the node-health gate removes any night dir older than 3 days, so debug leftovers cannot accumulate either. Nothing on the connected node is a source of truth — every dir under the annexe is disposable at any time.
 
 **Freeing VRAM for GPU work on the connected node.** The `loom-model` container (qwen3.8-27B) holds ~45 GB across both Quadro RTX 6000s while running. To run GPU code on the connected node:
 

@@ -479,6 +479,50 @@ impl Engine {
             }
         }
 
+        // 1b. Node health, before the journal counts an attempt. Hygiene first:
+        //     sweep night dirs older than 3 days so the annexe never accumulates
+        //     stale clones/build trees (fail-open). Then prove the annexe takes
+        //     a write and has room: a full or unreachable node is BLOCKED-ENV
+        //     for tonight but leaves the experiment's retry budget intact
+        //     (2026-09-26: a full HP disk abandoned loom's run on two
+        //     attempts that never reached the model).
+        if let Err(e) = dispatch::ssh(
+            &self.runtime.hp_host,
+            &format!(
+                "find {} -maxdepth 1 -type d -name '20*' -mtime +3 -exec rm -rf {{}} + 2>/dev/null; true",
+                dispatch::shell_quote(&self.runtime.hp_annexe_dir)
+            ),
+        ) {
+            warn!(error = %e, "annexe retention sweep failed (fail-open)");
+        }
+        match dispatch::annexe_health(
+            &self.runtime.hp_host,
+            &self.runtime.hp_annexe_dir,
+            dispatch::ANNEXE_MIN_FREE_GIB,
+        ) {
+            Ok(gib) => info!(free_gib = gib, "connected node annexe healthy"),
+            Err(reason) => {
+                warn!(%reason, "connected node annexe unhealthy — BLOCKED-ENV, no attempt counted");
+                let _ = inbox::add(
+                    "alert",
+                    &repo_name,
+                    &night_id,
+                    date,
+                    &format!(
+                        "Dream run {} for {} did not start: the connected node annexe is unhealthy ({}). \
+                         No attempt was counted; it runs once the node is fixed.",
+                        frozen.run_id, repo_name, reason
+                    ),
+                );
+                return self
+                    .persist_blocked_env(
+                        &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
+                        &format!("connected node annexe unhealthy: {reason}"),
+                    )
+                    .await;
+            }
+        }
+
         // 2. Open the durable run journal. A finished night is never repeated;
         //    an interrupted one resumes with its attempt counted.
         let mut run = match runstate::begin(
@@ -552,21 +596,10 @@ impl Engine {
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::ManifestFrozen);
 
         // 3. Dispatch to the connected node annexe: clone, build, run evaluators.
-        //    Hygiene first: sweep night dirs older than 3 days so the annexe
-        //    never accumulates stale clones/build trees (fail-open).
         //    The remote dir carries the RUN ID, not the pid: two attempts at the
         //    same experiment reuse one workspace, two different experiments
         //    never collide, and the name survives a restart.
         let remote_dir = format!("{}/{}-r{}", self.runtime.hp_annexe_dir, night_id, frozen.run_id);
-        if let Err(e) = dispatch::ssh(
-            &self.runtime.hp_host,
-            &format!(
-                "find {} -maxdepth 1 -type d -name '20*' -mtime +3 -exec rm -rf {{}} + 2>/dev/null; true",
-                dispatch::shell_quote(&self.runtime.hp_annexe_dir)
-            ),
-        ) {
-            warn!(error = %e, "annexe retention sweep failed (fail-open)");
-        }
         info!(remote = %remote_dir, "dispatching to the connected node");
         // Mirror the repo's real depth under the workspace so sibling
         // path-deps resolve on the annexe (see `clone_repo_and_siblings`).
