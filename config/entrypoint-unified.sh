@@ -2322,44 +2322,51 @@ if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && command -v claude >/dev/null 2
   _JC_BAKED="$(_jc_digest "$_JC_PLUGIN")"; _JC_HAVE="$(_jc_digest "$_JC_CACHE")"
   run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace add "$_JC_MARKET" >/dev/null 2>&1 \
     || echo "  [jev-compaction] marketplace add failed (continuing; a stale registration may remain)"
-  if [ -d "$_JC_CACHE" ] && [ "$_JC_BAKED" = "$_JC_HAVE" ]; then
-    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin enable jev-compaction@agentbox >/dev/null 2>&1 || true
-    echo "  [jev-compaction] plugin $_JC_VER already installed and current (${_JC_BAKED})"
-  else
-    [ -d "$_JC_CACHE" ] && run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall jev-compaction@agentbox >/dev/null 2>&1 || true
-    _JC_ARGS="--config enabledByDefault=$(_ab_toml_bool features.jev_compaction enabled_by_default | sed 's/1/true/;s/0/false/')"
-    for kv in "taintTools=$(_ab_toml_val features.jev_compaction taint_tools)" \
-              "taintSkills=$(_ab_toml_val features.jev_compaction taint_skills)" \
-              "compactAtPercent=$(_ab_toml_int features.jev_compaction compact_at_percent 60)" \
-              "compactAtTokens=$(_ab_toml_val features.jev_compaction compact_at_tokens)" \
-              "rearmTokens=$(_ab_toml_val features.jev_compaction rearm_tokens)" \
-              "cacheWarm=$(_ab_toml_val features.jev_compaction cache_warm)" \
-              "cacheWarmFloorTokens=$(_ab_toml_val features.jev_compaction cache_warm_floor_tokens)" \
-              "cacheTtlSeconds=$(_ab_toml_val features.jev_compaction cache_ttl_seconds)" \
-              "cacheTtlMarginSeconds=$(_ab_toml_val features.jev_compaction cache_ttl_margin_seconds)" \
-              "keepThreshold=$(_ab_toml_val features.jev_compaction keep_threshold)" \
-              "minReductionRatio=$(_ab_toml_val features.jev_compaction min_reduction_ratio)" \
-              "model=$(_ab_toml_val features.jev_compaction model)"; do
-      case "$kv" in *=) ;; *) _JC_ARGS="$_JC_ARGS --config $kv" ;; esac
-    done
-    # ADR-2094: repoint the plugin at the local façade and tell it, explicitly,
-    # that the backend is local — the taint fence keys off THIS boolean, never
-    # off the URL (ADR-2094 §5). A pair whose userConfig key the baked plugin
-    # does not declare is skipped rather than passed: an unknown --config key
-    # would fail the whole install and take compaction down with it.
-    if [ -n "$_SSO_PLUGIN_CONFIG" ]; then
-      while IFS= read -r kv; do
-        [ -n "$kv" ] || continue
-        _JC_KEY="${kv%%=*}"
-        if grep -q "\"$_JC_KEY\"" "$_JC_PLUGIN/.claude-plugin/plugin.json" 2>/dev/null; then
-          _JC_ARGS="$_JC_ARGS --config $kv"
-        else
-          echo "  [jev-compaction] plugin declares no userConfig key '$_JC_KEY' — not projecting it (ADR-2094)"
-        fi
-      done <<SSOCFG
+  _JC_ARGS="--config enabledByDefault=$(_ab_toml_bool features.jev_compaction enabled_by_default | sed 's/1/true/;s/0/false/')"
+  for kv in "taintTools=$(_ab_toml_val features.jev_compaction taint_tools)" \
+            "taintSkills=$(_ab_toml_val features.jev_compaction taint_skills)" \
+            "compactAtPercent=$(_ab_toml_int features.jev_compaction compact_at_percent 60)" \
+            "compactAtTokens=$(_ab_toml_val features.jev_compaction compact_at_tokens)" \
+            "rearmTokens=$(_ab_toml_val features.jev_compaction rearm_tokens)" \
+            "cacheWarm=$(_ab_toml_val features.jev_compaction cache_warm)" \
+            "cacheWarmFloorTokens=$(_ab_toml_val features.jev_compaction cache_warm_floor_tokens)" \
+            "cacheTtlSeconds=$(_ab_toml_val features.jev_compaction cache_ttl_seconds)" \
+            "cacheTtlMarginSeconds=$(_ab_toml_val features.jev_compaction cache_ttl_margin_seconds)" \
+            "keepThreshold=$(_ab_toml_val features.jev_compaction keep_threshold)" \
+            "minReductionRatio=$(_ab_toml_val features.jev_compaction min_reduction_ratio)" \
+            "model=$(_ab_toml_val features.jev_compaction model)"; do
+    case "$kv" in *=) ;; *) _JC_ARGS="$_JC_ARGS --config $kv" ;; esac
+  done
+  # ADR-2094: repoint the plugin at the local façade and tell it, explicitly,
+  # that the backend is local — the taint fence keys off THIS boolean, never
+  # off the URL (ADR-2094 §5). A pair whose userConfig key the baked plugin
+  # does not declare is skipped rather than passed: an unknown --config key
+  # would fail the whole install and take compaction down with it.
+  if [ -n "$_SSO_PLUGIN_CONFIG" ]; then
+    while IFS= read -r kv; do
+      [ -n "$kv" ] || continue
+      _JC_KEY="${kv%%=*}"
+      if grep -q "\"$_JC_KEY\"" "$_JC_PLUGIN/.claude-plugin/plugin.json" 2>/dev/null; then
+        _JC_ARGS="$_JC_ARGS --config $kv"
+      else
+        echo "  [jev-compaction] plugin declares no userConfig key '$_JC_KEY' — not projecting it (ADR-2094)"
+      fi
+    done <<SSOCFG
 $_SSO_PLUGIN_CONFIG
 SSOCFG
-    fi
+  fi
+  # The manifest's userConfig is part of "current": claude plugin install is the
+  # only way options reach the plugin, so a changed [features.jev_compaction]
+  # value with unchanged plugin code must still reinstall (2026-09-26: six new
+  # keys never landed because the code digest alone matched).
+  _JC_CFG_STAMP=/home/devuser/.claude/plugins/.jev-compaction-config.sha
+  _JC_CFG_WANT="$(printf '%s' "$_JC_ARGS" | sha256sum | cut -c1-16)"
+  _JC_CFG_HAVE="$(cat "$_JC_CFG_STAMP" 2>/dev/null)"
+  if [ -d "$_JC_CACHE" ] && [ "$_JC_BAKED" = "$_JC_HAVE" ] && [ "$_JC_CFG_WANT" = "$_JC_CFG_HAVE" ]; then
+    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin enable jev-compaction@agentbox >/dev/null 2>&1 || true
+    echo "  [jev-compaction] plugin $_JC_VER already installed and current (code ${_JC_BAKED}, config ${_JC_CFG_WANT})"
+  else
+    [ -d "$_JC_CACHE" ] && run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall jev-compaction@agentbox >/dev/null 2>&1 || true
     # A ShellCheck directive takes key=value pairs only: prose appended directly
     # after the code is parsed as another pair (SC1125) and the WHOLE directive is
     # ignored, so SC2086 was never actually suppressed here. The rationale has to
@@ -2367,7 +2374,8 @@ SSOCFG
     # pairs, so it must stay unquoted.
     # shellcheck disable=SC2086
     if run_as_devuser env HOME=/home/devuser timeout 120 claude plugin install jev-compaction@agentbox $_JC_ARGS >/dev/null 2>&1; then
-      echo "  [jev-compaction] installed plugin $_JC_VER (${_JC_BAKED}) with manifest userConfig"
+      echo "  [jev-compaction] installed plugin $_JC_VER (${_JC_BAKED}) with manifest userConfig (${_JC_CFG_WANT})"
+      printf '%s' "$_JC_CFG_WANT" > "$_JC_CFG_STAMP" 2>/dev/null && chown 1000:1000 "$_JC_CFG_STAMP" 2>/dev/null || true
     else
       echo "  [jev-compaction] plugin install FAILED — compaction stays built-in (check: claude plugin install jev-compaction@agentbox)"
     fi
