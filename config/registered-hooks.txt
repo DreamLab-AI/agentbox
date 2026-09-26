@@ -72,3 +72,13 @@ prune claude-flow-hook-adapter.cjs
 # trust-seed runs at boot only: as a SessionStart hook it walked ~1,170 paths
 # (avg 3.2 s) and raced Claude Code's own writes to ~/.claude.json.
 prune trust-seed.cjs
+# ruflo `init` scaffolding in the workspace-root settings: session-end ran the
+# ruflo CLI on EVERY Stop (summary/state/metrics export into .claude-flow/, file
+# memory the RuVector policy rules out), and two PreCompact bash banners only
+# echo guidance text. Found still registered after the 2026-09-26 rebuild.
+# Markers are single tokens (the parser splits on whitespace): each is unique to
+# its ruflo scaffold — `ruflo hooks session-end --generate-summary …` and the two
+# PreCompact banners.
+prune --generate-summary
+prune Auto-Compact
+prune custom_instructions

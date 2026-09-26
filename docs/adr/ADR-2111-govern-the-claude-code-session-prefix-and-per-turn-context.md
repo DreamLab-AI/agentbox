@@ -4,7 +4,7 @@ title: Govern the Claude Code session prefix and per-turn context
 date: 2026-09-25
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: de84739eea73bdbeffa595f57c1a5d71fd77f630
@@ -79,3 +79,9 @@ hook-registration 12, skill-route, routing-labels) green apart from the pre-exis
 jev-compaction policy 36/36 + engine 8/8; `skills/lint-skills.sh` clean; live: Agent-tool listing
 dropped to the registered set, dream-inbox context observed in a live turn. Activation is `staged`
 until `./agentbox.sh rebuild` bakes `/opt/agentbox` (brain-ground lib, nostr-gateway, Hermes, memory server).
+
+**Post-rebuild (2026-09-26):** measured prefix 59,921 → 39,876 tokens in `agentbox/` (−33%) and 47,792 →
+33,813 in a scratch cwd (`claude -p` usage, input + cache). Boot log confirms the permission, hook,
+agent/command-sidecar and agentic-qe projections; memory_search returns ranked snippets. Three ruflo
+scaffold hooks in the workspace-root settings (Stop `ruflo hooks session-end`, two PreCompact banners)
+were added to the prune list.

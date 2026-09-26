@@ -4,7 +4,7 @@ title: Project the Claude Code permission posture from the manifest, bypass by d
 date: 2026-09-25
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: de84739eea73bdbeffa595f57c1a5d71fd77f630
@@ -51,3 +51,6 @@ succeed; with the deny list, `ssh -V` and `docker run --help` are refused, `dock
 `sh -c 'ssh -V'` runs. `cargo test` in `services/agentbox-manifest` (93 unit incl. 4 permissions
 tests, + integration) and clippy clean; manifest validator passes. Applied live to the root settings
 and all 8 stack profiles. `staged` until the rebuild bakes the subcommand into the image.
+
+**Post-rebuild (2026-09-26):** boot projected bypassPermissions + the deny floor into all 8 stack
+profiles; the root settings were already current.
