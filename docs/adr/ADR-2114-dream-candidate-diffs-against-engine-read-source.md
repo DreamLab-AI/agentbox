@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 4f9450ac86477bc3832933953454ea577bd3d531
+verified_commit: 84ce199877792a2eee45c4133c0a6c05096a43b8
 verified_paths: [services/dream-engine/src/source.rs, services/dream-engine/src/compile.rs, services/dream-engine/src/persist.rs, services/dream-engine/src/candidate.rs, services/dream-engine/src/engine.rs]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches
@@ -61,3 +61,7 @@ Two guards added before landing, from the agentbox-3d session's parallel excerpt
 ## Re-verification — 2026-09-26 (`4f9450ac86477bc3832933953454ea577bd3d531`)
 
 Tripped by `engine.rs` gaining `record_digest_status` after the night digest (encrypted forum zones, forum ADR-2016). The tree-read source section, repair pass and candidate construction are untouched. Decision unaffected; `cargo test` 224 pass.
+
+## Re-verification — 2026-09-26 (`84ce199877792a2eee45c4133c0a6c05096a43b8`)
+
+Tripped by `engine.rs` gaining a connected-node health gate (`dispatch::annexe_health`) ahead of `runstate::begin`, with the annexe retention sweep moved in front of it. The gate only decides whether a night is BLOCKED-ENV before an attempt counts; nothing this record decides is on that path. Decision holds; `cargo test` 226 pass.
