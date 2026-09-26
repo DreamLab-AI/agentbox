@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.0
+version: 0.2.1
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.1 (2026-09-26): item 10 — JunkieJarvis in end-to-end encrypted forum zones (forum ADR-2016): zone-key grants are stored in a 0600 key file and never read as messages; zk-tagged messages are decrypted before reading and undecryptable ones never reach the LLM; replies into an encrypted zone are encrypted or withheld."
   - "0.2.0 (2026-09-21): PROPOSED, not ratified. ADR-2098/2101 (PRD-024 sovereign settlement): three domain-separated keys where the identity key k_id never spends and never seals blocks, kind 38420 sidestr-account-binding, a second Multikey in the DID document that amends ADR-033 D2'/D3' with I1 intact, ADR-2012's scope narrowed to identity ingress with chain ingress authenticated by consensus, and NIP-98 selecting the spend key on /v1/wallet/*. Recorded in a clearly marked proposed section plus a proposed scope note on Invariant 6; the live compliance surface is unchanged."
   - "0.1.3 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.1.2 (2026-09-05, ADR-2047): refresh the drifted `verifyIdentity` citations (proxy.mjs:527, not 410-450); restate the door inventory as ten CI-sanctioned publishes; mark the two now-answered divergence bullets Resolved; supersede the compose-exposure qualification (the line-walker bypass is fixed by a parsing gate); correct the :8444 cockpit routing to reflect ADR-069 credential exchange via :9096. Adds the Remediation — 2026-09-05 section."
@@ -299,6 +300,21 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    their own `nip59` call sites — `management-api/lib/per-user-agent.js`,
    `config/hooks/nostr-live-mirror.cjs`, `config/nostr-gateway/{gateway,nostr-send}.cjs`.
    Consolidating those is unresolved work, not something ADR-2088 did.
+10. **Encrypted forum zones (forum kit ADR-2016).** A gift wrap to an agent can carry a
+   zone-key grant (rumor kind 21453) — key material, never a message. Every DM unwrap
+   site on the agent surfaces admits kind-14 rumors only (`unwrapDmRumor`,
+   `JunkieJarvisAgent._handleDm`, `per-user-agent.js`; `config/nostr-gateway/gateway.cjs`
+   drops kind 21453), so a grant cannot reach an LLM or be forwarded. JunkieJarvis stores
+   a grant only when `management-api/lib/zone-keys.js` `unwrapAny` authenticates the seal
+   author (id + signature, rumor author = seal author), the relay's `check-whitelist` says
+   that author is an admin, and the secret derives to the stated pubkey; the key lands in
+   `$WORKSPACE/.agentbox/zone-keys.json` (0600, owner-bound, never in git). A `zk`-tagged
+   kind-42 is decrypted before it is read; one it cannot decrypt is skipped, so ciphertext
+   never reaches the LLM. A reply into an encrypted zone is NIP-44 encrypted to the zone
+   key, and without a key JunkieJarvis stays silent rather than post plaintext. Gate:
+   `ENCRYPTION_ENABLED` exactly `true` plus the zone's `ZONE_CONFIG` `encrypted` flag
+   (env, else agentbox `.env`); off, behaviour is unchanged. No primitive is implemented
+   here — `nostr-tools` `nip44`/`verifyEvent` (JS), `nostr-bbs-core` `nip44` (Rust digest).
 
 ## Change process
 
