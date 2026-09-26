@@ -2376,7 +2376,8 @@ SSOCFG
   # keys never landed because the code digest alone matched).
   _JC_CFG_STAMP=/home/devuser/.claude/plugins/.jev-compaction-config.sha
   _JC_CFG_WANT="$(printf '%s' "$_JC_ARGS" | sha256sum | cut -c1-16)"
-  _JC_CFG_HAVE="$(cat "$_JC_CFG_STAMP" 2>/dev/null)"
+  # A first boot has no stamp: treat it as stale, not a fatal set -e error.
+  _JC_CFG_HAVE="$(cat "$_JC_CFG_STAMP" 2>/dev/null || true)"
   if [ -d "$_JC_CACHE" ] && [ "$_JC_BAKED" = "$_JC_HAVE" ] && [ "$_JC_CFG_WANT" = "$_JC_CFG_HAVE" ]; then
     run_as_devuser env HOME=/home/devuser timeout 60 claude plugin enable jev-compaction@agentbox >/dev/null 2>&1 || true
     echo "  [jev-compaction] plugin $_JC_VER already installed and current (code ${_JC_BAKED}, config ${_JC_CFG_WANT})"
