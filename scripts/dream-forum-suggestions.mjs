@@ -239,6 +239,7 @@ async function main() {
         const res = await zoneKeys.acceptGrant(opened, { store: zc.store, isAdmin: zc.isAdmin });
         if (res.status === 'granted') { granted += 1; log('INFO', `stored zone key ${res.key.zone}:${res.key.epoch}`); }
         if (res.status === 'rejected') log('WARN', `refused a zone-key grant: ${res.error}`);
+        if (res.status === 'retry') log('WARN', `could not verify a zone-key grant sender (next run retries): ${res.error}`);
       }
       log('INFO', `encrypted zones on; ${zc.store.keys().length} zone key(s) held (${granted} new)`);
     }

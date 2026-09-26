@@ -197,6 +197,46 @@ describe('zone-key grants', () => {
     assert.equal(store.keys().length, 0);
   });
 
+  test('admin check: only definite answers are cached; failures throw, never "not admin"', async () => {
+    const admin = pk(ADMIN_SK);
+    let calls = 0;
+    let mode = 'down';
+    const fetchImpl = async () => {
+      calls += 1;
+      if (mode === 'down') throw new Error('ECONNRESET');
+      if (mode === 'http500') return { ok: false, status: 500, json: async () => ({}) };
+      return { ok: true, status: 200, json: async () => ({ isAdmin: true }) };
+    };
+    const isAdmin = zk.makeAdminCheck({ fetchImpl, baseUrl: 'http://relay.test' });
+    await assert.rejects(isAdmin(admin), zk.AdminCheckUnavailable);
+    mode = 'http500';
+    await assert.rejects(isAdmin(admin), zk.AdminCheckUnavailable);
+    mode = 'up';
+    assert.equal(await isAdmin(admin), true);
+    assert.equal(await isAdmin(admin), true);
+    assert.equal(calls, 3, 'failures are not cached; the definite answer is');
+  });
+
+  test('admin check has no default relay', () => {
+    assert.equal(zk.relayHttpBase({}), null);
+    assert.equal(zk.relayHttpBase({ FORUM_RELAY_URL: 'wss://r.test/' }), 'https://r.test');
+    assert.throws(() => zk.makeAdminCheck({ baseUrl: null }), /FORUM_RELAY_URL/);
+  });
+
+  test('an unverifiable sender yields retry, not rejection, and stores nothing', async () => {
+    const wrap = grantWrap({ sealerSk: ADMIN_SK, recipientPk: member, payload: grantPayload() });
+    const opened = zk.unwrapAny(wrap, bytes(MEMBER_SK));
+    const store = tmpStore(member);
+    const res = await zk.acceptGrant(opened, {
+      store,
+      isAdmin: async () => { throw new zk.AdminCheckUnavailable('relay down'); },
+    });
+    assert.equal(res.status, 'retry');
+    assert.equal(store.keys().length, 0);
+    const ok = await zk.acceptGrant(opened, { store, isAdmin: async () => true });
+    assert.equal(ok.status, 'granted');
+  });
+
   test('secret that does not derive to the stated pubkey is refused', async () => {
     const payload = grantPayload(GRANT_ZONE_SK, { pubkey: pk(hexKey(6)) });
     const opened = zk.unwrapAny(grantWrap({ sealerSk: ADMIN_SK, recipientPk: member, payload }), bytes(MEMBER_SK));
@@ -340,6 +380,27 @@ describe('JunkieJarvis in encrypted zones', () => {
     assert.equal(store.get('zone4', 1).pubkey, pk(GRANT_ZONE_SK));
     assert.equal(llmSeen.length, 0);
     assert.equal(bridge.published.length, 0);
+  });
+
+  test('a grant whose sender cannot be verified is retried and then stored', async () => {
+    const { agent, store } = agentWith({ keys: [] });
+    let up = false;
+    agent.zoneCrypto.isAdmin = async (p) => {
+      if (!up) throw new zk.AdminCheckUnavailable('relay down');
+      return p === pk(ADMIN_SK);
+    };
+    const saved = JunkieJarvisAgent.GRANT_RETRY_DELAYS_MS;
+    JunkieJarvisAgent.GRANT_RETRY_DELAYS_MS = [20];
+    try {
+      const wrap = grantWrap({ sealerSk: ADMIN_SK, recipientPk: jjSigner.pubkey, payload: grantPayload() });
+      await agent._handleDm(wrap);
+      assert.equal(store.keys().length, 0);
+      up = true;
+      await new Promise((r) => setTimeout(r, 80));
+      assert.equal(store.get('zone4', 1).pubkey, pk(GRANT_ZONE_SK));
+    } finally {
+      JunkieJarvisAgent.GRANT_RETRY_DELAYS_MS = saved;
+    }
   });
 
   test('a grant from a non-admin is not stored', async () => {

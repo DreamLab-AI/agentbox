@@ -893,6 +893,15 @@ class JunkieJarvisAgent {
       this._logErr('grant-unwrap', err);
       return;
     }
+    await this._acceptGrantWithRetry(opened, 0);
+  }
+
+  /**
+   * Accept an opened grant. When the sender's admin status cannot be
+   * established (relay unreachable), retry with backoff instead of refusing:
+   * a refused grant is a lost key until an admin re-sends it.
+   */
+  async _acceptGrantWithRetry(opened, attempt) {
     const res = await zoneKeys.acceptGrant(opened, {
       store: this.zoneCrypto.store,
       isAdmin: this.zoneCrypto.isAdmin,
@@ -901,6 +910,17 @@ class JunkieJarvisAgent {
       this.logger.info({ zone: res.key.zone, epoch: res.key.epoch }, 'junkiejarvis stored a zone key');
     } else if (res.status === 'rejected') {
       this.logger.warn({ reason: res.error }, 'junkiejarvis refused a zone-key grant');
+    } else if (res.status === 'retry') {
+      const delays = JunkieJarvisAgent.GRANT_RETRY_DELAYS_MS;
+      if (attempt >= delays.length) {
+        this.logger.warn({ reason: res.error, attempts: attempt + 1 }, 'junkiejarvis could not verify a zone-key grant sender — giving up until restart');
+        return;
+      }
+      this.logger.warn({ reason: res.error, retryInMs: delays[attempt] }, 'junkiejarvis could not verify a zone-key grant sender — will retry');
+      const t = setTimeout(() => {
+        this._acceptGrantWithRetry(opened, attempt + 1).catch((err) => this._logErr('grant-retry', err));
+      }, delays[attempt]);
+      if (t && typeof t.unref === 'function') t.unref();
     }
   }
 
@@ -1124,6 +1144,10 @@ function buildZoneCrypto({ bridge, owner, fetchImpl, logger, env = process.env }
     const gate = zoneKeys.gateEnabled(env);
     const zones = zoneKeys.loadZones(env);
     const store = new zoneKeys.ZoneKeyStore({ owner, file: zoneKeys.keyFilePath(env) });
+    if (!zoneKeys.relayHttpBase(env)) {
+      logger.warn('junkiejarvis: FORUM_RELAY_URL is not set — encrypted zones disabled (set it to the forum relay)');
+      return null;
+    }
     const isAdmin = zoneKeys.makeAdminCheck({
       fetchImpl: fetchImpl || globalThis.fetch,
       baseUrl: zoneKeys.relayHttpBase(env),
@@ -1208,6 +1232,9 @@ function startJunkieJarvis(deps = {}) {
     return null;
   }
 }
+
+/** Backoff for grants whose sender could not be verified (30 s, 2 min, 10 min, 30 min). */
+JunkieJarvisAgent.GRANT_RETRY_DELAYS_MS = [30_000, 120_000, 600_000, 1_800_000];
 
 module.exports = {
   JunkieJarvisAgent,

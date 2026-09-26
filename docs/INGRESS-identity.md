@@ -307,7 +307,11 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    drops kind 21453), so a grant cannot reach an LLM or be forwarded. JunkieJarvis stores
    a grant only when `management-api/lib/zone-keys.js` `unwrapAny` authenticates the seal
    author (id + signature, rumor author = seal author), the relay's `check-whitelist` says
-   that author is an admin, and the secret derives to the stated pubkey; the key lands in
+   that author is an admin, and the secret derives to the stated pubkey. The admin check
+   queries the relay named by `FORUM_RELAY_URL` (required; no default host) and caches only
+   definite answers: when the relay cannot be reached the grant is retried with backoff
+   (30 s, 2 min, 10 min, 30 min) rather than refused, so a network blip cannot lose a key.
+   The key lands in
    `$WORKSPACE/.agentbox/zone-keys.json` (0600, owner-bound, never in git). A `zk`-tagged
    kind-42 is decrypted before it is read; one it cannot decrypt is skipped, so ciphertext
    never reaches the LLM. A reply into an encrypted zone is NIP-44 encrypted to the zone

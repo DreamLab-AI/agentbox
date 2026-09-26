@@ -51,7 +51,6 @@ const ZK_TAG = 'zk';
 const KEY_FILE_VERSION = 1;
 
 const DEFAULT_WORKSPACE = '/home/devuser/workspace';
-const DEFAULT_FORUM_RELAY = 'wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev';
 const ADMIN_CACHE_MS = 10 * 60 * 1000;
 
 // ─── Settings (env first, then the agentbox .env file) ──────────────────────
@@ -284,32 +283,56 @@ function unwrapAny(wrap, skBytes) {
 }
 
 function relayHttpBase(env = process.env) {
-  return String(env.FORUM_RELAY_URL || DEFAULT_FORUM_RELAY).replace(/^ws(s?):\/\//, 'http$1://').replace(/\/+$/, '');
+  const url = String(env.FORUM_RELAY_URL || '').trim();
+  if (!url) return null;
+  return url.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/+$/, '');
+}
+
+/** The admin check could not reach a verdict (network, HTTP or parse failure). */
+class AdminCheckUnavailable extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AdminCheckUnavailable';
+  }
 }
 
 /**
  * `(pubkey) => Promise<boolean>` backed by the relay's public
- * `GET /api/check-whitelist`, cached per pubkey. Fails closed (false).
+ * `GET /api/check-whitelist`, cached per pubkey.
+ *
+ * Only a definite answer (HTTP 2xx with a boolean `isAdmin`) is returned or
+ * cached. A transient failure throws `AdminCheckUnavailable` and caches
+ * nothing, so a grant is retried later instead of being refused for the TTL.
+ * There is no default relay: `baseUrl` must name the forum relay the grant
+ * came from (FORUM_RELAY_URL), never a guessed production host.
  */
 function makeAdminCheck({ fetchImpl = globalThis.fetch, baseUrl = relayHttpBase(), ttlMs = ADMIN_CACHE_MS } = {}) {
+  if (!baseUrl) throw new Error('FORUM_RELAY_URL is not set — cannot verify zone-key grant senders');
   const cache = new Map();
   return async function isAdmin(pubkey) {
     if (!isHex64(pubkey)) return false;
     const hit = cache.get(pubkey);
     if (hit && Date.now() - hit.at < ttlMs) return hit.admin;
-    let admin = false;
+    let res;
     try {
-      const res = await fetchImpl(`${baseUrl}/api/check-whitelist?pubkey=${pubkey}`);
-      if (res && res.ok) admin = (await res.json()).isAdmin === true;
-    } catch { admin = false; }
-    cache.set(pubkey, { admin, at: Date.now() });
-    return admin;
+      res = await fetchImpl(`${baseUrl}/api/check-whitelist?pubkey=${pubkey}`);
+    } catch (err) {
+      throw new AdminCheckUnavailable(`check-whitelist unreachable: ${err && err.message}`);
+    }
+    if (!res || !res.ok) throw new AdminCheckUnavailable(`check-whitelist HTTP ${res ? res.status : 'no response'}`);
+    let body;
+    try { body = await res.json(); } catch { throw new AdminCheckUnavailable('check-whitelist returned non-JSON'); }
+    if (!body || typeof body.isAdmin !== 'boolean') throw new AdminCheckUnavailable('check-whitelist response has no isAdmin');
+    cache.set(pubkey, { admin: body.isAdmin, at: Date.now() });
+    return body.isAdmin;
   };
 }
 
 /**
  * Handle an already-opened gift wrap: store it when it is a valid grant.
- * Returns { status: 'not-grant' | 'known' | 'granted' | 'rejected', key?, error? }.
+ * Returns { status: 'not-grant' | 'known' | 'granted' | 'rejected' | 'retry', key?, error? }.
+ * 'retry' means the sender's admin status could not be established right now;
+ * the caller should try the same wrap again later.
  */
 async function acceptGrant({ sealer, rumor }, { store, isAdmin, now = Math.floor(Date.now() / 1000) }) {
   if (!rumor || rumor.kind !== KIND_ZONE_KEY_GRANT) return { status: 'not-grant' };
@@ -319,7 +342,14 @@ async function acceptGrant({ sealer, rumor }, { store, isAdmin, now = Math.floor
   if (held && payload && typeof payload.pubkey === 'string' && held.pubkey === payload.pubkey.toLowerCase()) {
     return { status: 'known', key: held };
   }
-  const v = validateGrant(rumor, sealer, await isAdmin(sealer), now);
+  let admin;
+  try {
+    admin = await isAdmin(sealer);
+  } catch (err) {
+    if (err instanceof AdminCheckUnavailable) return { status: 'retry', error: err.message };
+    throw err;
+  }
+  const v = validateGrant(rumor, sealer, admin, now);
   if (!v.ok) return { status: 'rejected', error: v.error };
   store.upsert(v.key);
   return { status: 'granted', key: v.key };
@@ -440,6 +470,7 @@ module.exports = {
   unwrapAny,
   relayHttpBase,
   makeAdminCheck,
+  AdminCheckUnavailable,
   acceptGrant,
   decryptWith,
   readOutcome,
