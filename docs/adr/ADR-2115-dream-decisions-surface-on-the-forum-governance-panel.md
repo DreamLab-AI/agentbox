@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 7d379e016e1ad82f0ae27efb2326e4e8e2b4b6ca
+verified_commit: 4f9450ac86477bc3832933953454ea577bd3d531
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -64,3 +64,7 @@ Licensing: `dream-engine` is `AGPL-3.0-only` (operator decision 2026-09-25, reco
 ## Amendment — 2026-09-25 (`ef7a8c09d`)
 
 The pointer hook emits `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":…}}`. Claude Code reads UserPromptSubmit context only from that shape; the previous top-level `additionalContext` was silently dropped, so the earlier inbox hook never reached a model (found by the agentbox-3d session from transcripts). The hook also skips harness-generated turns (`<task-notification>`, `<agent-message>`, `<system-reminder>`) and writes its rate-limit stamp only after the pointer is flushed.
+
+## Re-verification — 2026-09-26 (`4f9450ac86477bc3832933953454ea577bd3d531`)
+
+Tripped by the encrypted-zone digest (forum ADR-2016, `src/zone_crypto.rs`). `digest.rs` `publish` now encrypts the digest to the latest dreamlab zone-key epoch when `ENCRYPTION_ENABLED` is `true` and the zone is flagged encrypted, and withholds it (status `digest: skipped — no zone key …`) without a key — never plaintext; `NightHealth` gains an optional `digest` field and `engine.rs` records it plus an inbox alert, which this record's own panel then surfaces. Composition, delivery verification and the panel/decision flow are unchanged; with the gate off the digest is byte-for-byte the previous plaintext post. Decision holds.

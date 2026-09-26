@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 7d379e016e1ad82f0ae27efb2326e4e8e2b4b6ca
+verified_commit: 4f9450ac86477bc3832933953454ea577bd3d531
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/gate.rs, services/dream-engine/src/verdict.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
@@ -61,3 +61,7 @@ Tripped by `services/dream-engine/src/{engine,runner}.rs` via `2899b3b7e` (addre
 ## Re-verification — 2026-09-25 (`5a7226b797c5949771e8b8ddcd69cfddd3c7f533`)
 
 Tripped by the governance-surfacing change (ADR-2115), which edits `run_night` in `engine.rs` (decision ingest at night start, a richer night-health record, governance publish and a Rust digest in place of the `dream-night-digest.mjs` subprocess). None of this record's four decisions is touched: `annexe_subpath` and `sanitise_finding` are unchanged (`git diff de84739ee..5a7226b79 -- services/dream-engine/src/engine.rs` adds no line mentioning either), and `runner.rs`, `gate.rs` and `verdict.rs` have no diff at all. All six tests this record names pass at `5a7226b79` (`cargo test -- --exact <name>` in `services/dream-engine`, each `1 passed`); `runner.rs:57-61` still documents and applies `-o pipefail`. Still true.
+
+## Re-verification — 2026-09-26 (`4f9450ac86477bc3832933953454ea577bd3d531`)
+
+Tripped by `engine.rs` gaining `record_digest_status` after the night digest (writes the digest outcome into `dream-last-night.json` and raises an inbox alert when the digest was withheld for want of a zone key — forum ADR-2016). `annexe_subpath`, `sanitise_finding` and evaluator-receipt handling are untouched. Decision unaffected; `cargo test` 224 pass, clippy `-D warnings` clean.

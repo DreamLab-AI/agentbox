@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 7d379e016e1ad82f0ae27efb2326e4e8e2b4b6ca
+verified_commit: 4f9450ac86477bc3832933953454ea577bd3d531
 verified_paths: [services/dream-engine/src/source.rs, services/dream-engine/src/compile.rs, services/dream-engine/src/persist.rs, services/dream-engine/src/candidate.rs, services/dream-engine/src/engine.rs]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches
@@ -57,3 +57,7 @@ Two guards added before landing, from the agentbox-3d session's parallel excerpt
 
 - **Key material is withheld, not redacted.** `source::has_secret_content` drops a whole file from the source section when it holds a PEM private key, an `nsec1` bech32 secret (58+ data chars) or a 64-hex run on a key-named line; the receipt records `withheld-key-material`. Name-based denial cannot see a secret inside an ordinary-looking fixture or doc, and the engine's `redact` only rewrites home paths.
 - **Binary deletions are refused.** `persist::deletes_binary` rejects a candidate that deletes a binary file before it is applied; the gate records the new `CandidateState::Refused` as an *unproven* veto (a model fault), never as a harness fault, so it cannot masquerade as BLOCKED-ENV. The prompt states the rule.
+
+## Re-verification — 2026-09-26 (`4f9450ac86477bc3832933953454ea577bd3d531`)
+
+Tripped by `engine.rs` gaining `record_digest_status` after the night digest (encrypted forum zones, forum ADR-2016). The tree-read source section, repair pass and candidate construction are untouched. Decision unaffected; `cargo test` 224 pass.

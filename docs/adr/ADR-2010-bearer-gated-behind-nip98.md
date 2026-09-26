@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ab785f08c00b443db44b8b8a6a501b085ce4d0be
+verified_commit: 4f9450ac86477bc3832933953454ea577bd3d531
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
@@ -123,3 +123,7 @@ Tripped by `cae729aa7` (`preserve_host`) and `de37998a8` (session probe) on `pro
 Governed paths changed in the PRD-024 governing-doc commit: docs/INGRESS-identity.md only, and only additively: the frontmatter version bump to 0.2.0 with its changelog line, a scope note appended to Invariant 6 (the relay allowlist, ADR-2012's concern, marked "not in force until PRD-024 is ratified") and a new section "Settlement identity and key separation, PROPOSED". The nip98-proxy identity boundary, the bearer gating and their citations into `config/nip98-proxy/proxy.mjs` are untouched (`git diff b680a7ae..fa93fcaaa -- config/nip98-proxy/proxy.mjs` is empty). Decision unaffected; `verified_commit` moved to the landing commit.
 
 **2026-09-21 re-verified at `ab785f08c`.** Governed paths changed by the ADR-2105 kind move: docs/INGRESS-identity.md. The change is a kind-number relocation (colloquy 38100-38105 to 38410-38415, settlement 38110-38115 to 38420-38425) plus six numbers appended to `[sovereign_mesh.relay].allowed_kinds` and a comment above it; it touches no section this record governs. The decision and its invariant hold unchanged. Re-verified by `git diff fa93fcaaa..224afae65 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-09-26 (`4f9450ac86477bc3832933953454ea577bd3d531`)
+
+Tripped by `docs/INGRESS-identity.md` gaining item 10 (encrypted forum zones, forum ADR-2016). Bearer-behind-NIP-98 gating is not mentioned or changed by the addition. Decision unaffected.

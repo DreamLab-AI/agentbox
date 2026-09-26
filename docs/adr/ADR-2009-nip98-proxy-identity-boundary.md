@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
+verified_commit: 4f9450ac86477bc3832933953454ea577bd3d531
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -162,3 +162,7 @@ Governed paths changed in the PRD-024 governing-doc commit: docs/INGRESS-identit
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `flake.nix`: statix lint only — assignment→`inherit` (with `or` defaults preserved as `inherit ({ defaults } // cfg)`), redundant parentheses dropped, `(x or false) == true` rewritten as `let v = x or false; in builtins.isBool v && v` (same result for every input), and one comment reworded ("logseq corpus" → "vault corpus"). No derivation, port, service, gate or package changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Re-verification — 2026-09-26 (`4f9450ac86477bc3832933953454ea577bd3d531`)
+
+Tripped by `docs/INGRESS-identity.md` gaining item 10 (JunkieJarvis in end-to-end encrypted forum zones, forum ADR-2016) and changelog 0.2.1. The addition describes zone-key grant handling and zk-message decryption on the agent surfaces; it does not touch the NIP-98 proxy identity boundary, the door inventory or any authentication path this record decides. Decision unaffected.
