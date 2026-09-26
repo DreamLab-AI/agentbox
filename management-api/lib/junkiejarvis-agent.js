@@ -19,6 +19,14 @@
  *       mention "@junkiejarvis" in their content — reply kind-42 in the same
  *       channel (e-tag root preserved, p-tag the asker).
  *
+ * End-to-end encrypted zones (forum kit ADR-2016, lib/zone-keys.js): zone-key
+ * grants (rumor kind 21453) arrive on the same gift-wrap subscription as DMs
+ * and are stored, never treated as a message. A `zk`-tagged channel message
+ * is decrypted before it is read; one that cannot be decrypted is skipped —
+ * ciphertext never reaches the LLM. A reply into an encrypted zone is
+ * encrypted to the zone key, and without a key the agent stays silent rather
+ * than post plaintext.
+ *
  * Invariants (mirrors memory-flash-notifier.js):
  *   - Disabled by default: nothing runs unless JUNKIEJARVIS_ENABLED=true.
  *   - Fail-open everywhere: a missing key, an LLM outage, a malformed event, or
@@ -33,6 +41,7 @@
  */
 
 const crypto = require('crypto');
+const zoneKeys = require('./zone-keys');
 
 let nostrTools = null;
 function getNostrTools() {
@@ -657,7 +666,7 @@ async function sendGiftWrappedDm({ bridge, signer, recipientPubkey, text, create
  * Unwrap a NIP-59 gift wrap into its NIP-17 DM rumor. The mirror of
  * `sendGiftWrappedDm`, exported for the same reason: the nightly
  * forum-suggestions tenant reads clarification replies without opening a second
- * unwrap site. Returns null on anything that is not a wrap for this key.
+ * unwrap site. Returns null on anything that is not a kind-14 DM for this key.
  *
  * @param {object} wrap  a kind-1059 event
  * @param {Uint8Array} skBytes  recipient secret key (signer.skBytes)
@@ -668,7 +677,9 @@ function unwrapDmRumor(wrap, skBytes) {
     if (!wrap || typeof wrap !== 'object' || !skBytes) return null;
     const { nip59 } = getNostrTools();
     const rumor = nip59.unwrapEvent(wrap, skBytes);
-    return rumor && typeof rumor === 'object' ? rumor : null;
+    // DMs only: a gift wrap can also carry a zone-key grant (kind 21453),
+    // whose content is a secret that must never be read as a message.
+    return rumor && typeof rumor === 'object' && rumor.kind === KIND_DM_RUMOR ? rumor : null;
   } catch (_err) {
     return null;
   }
@@ -690,6 +701,9 @@ class JunkieJarvisAgent {
    * @param {number} [deps.maxReply]  - reply char cap (default JUNKIEJARVIS_MAX_REPLY or 280).
    * @param {string[]} [deps.ignorePubkeys] - pubkeys to never answer.
    * @param {number} [deps.dedupCap]
+   * @param {object} [deps.zoneCrypto] - encrypted-zone context
+   *   { gate, zones, store: ZoneKeyStore, isAdmin(pubkey), query(filter) }.
+   *   Absent: zone-encrypted messages are skipped and replies are plaintext.
    */
   constructor(deps = {}) {
     this.bridge = deps.bridge;
@@ -715,6 +729,8 @@ class JunkieJarvisAgent {
     this._seenOrder = [];
     this._dedupCap = deps.dedupCap || DEFAULT_DEDUP_CAP;
     this._subIds = [];
+    this.zoneCrypto = deps.zoneCrypto || null;
+    this._channelZones = new Map();
   }
 
   /** Has this event id already been handled? Records it if not (capped). */
@@ -832,6 +848,10 @@ class JunkieJarvisAgent {
       return;
     }
     if (!rumor || typeof rumor !== 'object') return;
+    // A zone-key grant is key material, not a message: store it (no backlog
+    // floor — a grant sent while the agent was down is still valid).
+    if (rumor.kind === zoneKeys.KIND_ZONE_KEY_GRANT) return this._handleGrant(wrap);
+    if (rumor.kind !== KIND_DM_RUMOR) return;
     const asker = rumor.pubkey;
     if (this._shouldIgnore(asker)) return;
     // Dedup on the inner rumor id too (the wrap id is random per relay).
@@ -856,6 +876,65 @@ class JunkieJarvisAgent {
   }
 
   /**
+   * Store a zone-key grant. The wrap is re-opened with `zoneKeys.unwrapAny`,
+   * which authenticates the seal author (nip59.unwrapEvent does not); the
+   * grant is accepted only from an admin and only when its secret derives to
+   * its pubkey. Only zone/epoch are logged, never the secret.
+   */
+  async _handleGrant(wrap) {
+    if (!this.zoneCrypto) {
+      this.logger.warn('junkiejarvis received a zone-key grant but encrypted zones are not configured — ignored');
+      return;
+    }
+    let opened;
+    try {
+      opened = zoneKeys.unwrapAny(wrap, this.signer.skBytes);
+    } catch (err) {
+      this._logErr('grant-unwrap', err);
+      return;
+    }
+    const res = await zoneKeys.acceptGrant(opened, {
+      store: this.zoneCrypto.store,
+      isAdmin: this.zoneCrypto.isAdmin,
+    });
+    if (res.status === 'granted') {
+      this.logger.info({ zone: res.key.zone, epoch: res.key.epoch }, 'junkiejarvis stored a zone key');
+    } else if (res.status === 'rejected') {
+      this.logger.warn({ reason: res.error }, 'junkiejarvis refused a zone-key grant');
+    }
+  }
+
+  /** Held key for (zone, epoch), if any. */
+  _lookupZoneKey(zone, epoch) {
+    return this.zoneCrypto ? this.zoneCrypto.store.get(zone, epoch) : null;
+  }
+
+  /**
+   * The zone a reply into `channelId` lands in, for the write plan. A reply to
+   * an encrypted message is in that message's zone; otherwise the channel's
+   * kind-40 section decides (cached). Only looked up when some zone is
+   * encrypted — with the gate off every reply is plaintext, as before.
+   * @returns {Promise<{ zone: string|null, known: boolean }>}
+   */
+  async _replyZone(srcEvent, channelId) {
+    const zc = this.zoneCrypto;
+    if (!zc || !zoneKeys.anyZoneEncrypted(zc)) return { zone: null, known: true };
+    const zk = zoneKeys.parseZk(srcEvent.tags);
+    if (zk) return { zone: zk.zone, known: true };
+    if (!channelId) return { zone: null, known: false };
+    if (this._channelZones.has(channelId)) return { zone: this._channelZones.get(channelId), known: true };
+    let zone = null;
+    try {
+      zone = await zoneKeys.resolveChannelZone(channelId, { query: zc.query, zones: zc.zones });
+    } catch (err) {
+      this._logErr('channel-zone', err);
+    }
+    if (zone == null) return { zone: null, known: false };
+    this._channelZones.set(channelId, zone);
+    return { zone, known: true };
+  }
+
+  /**
    * Delegates to the shared `sendGiftWrappedDm` envelope — one gift-wrap site
    * for the agent and the nightly forum tenant alike (ADR-2088).
    */
@@ -872,12 +951,28 @@ class JunkieJarvisAgent {
 
   // ── Channel path (kind-42 mention) ──
 
-  async _handleChannel(event) {
+  async _handleChannel(rawEvent) {
+    if (!rawEvent || rawEvent.kind !== KIND_CHANNEL_MESSAGE) return;
+    // Cheap checks first (author + backlog floor need no content), so a
+    // replayed encrypted backlog is not decrypted, or warned about, per restart.
+    if (this._shouldIgnore(rawEvent.pubkey)) return;
+    if ((rawEvent.created_at || 0) < this._startedAt) return; // backlog replay — already answered (or stale)
+    let event = rawEvent;
+    if (zoneKeys.hasZkTag(rawEvent.tags)) {
+      const out = zoneKeys.readOutcome(rawEvent, (z, e) => this._lookupZoneKey(z, e));
+      if (out.type !== 'decrypted') {
+        // Never hand ciphertext (or a placeholder) to the LLM.
+        const zk = zoneKeys.parseZk(rawEvent.tags);
+        this.logger.warn(
+          { zone: zk && zk.zone, epoch: zk && zk.epoch, outcome: out.type },
+          'junkiejarvis cannot read an encrypted channel message — skipped'
+        );
+        return;
+      }
+      event = { ...rawEvent, content: out.text };
+    }
     if (!isChannelMention(event, this.pubkey)) return;
     const asker = event.pubkey;
-    if (this._shouldIgnore(asker)) return;
-
-    if ((event.created_at || 0) < this._startedAt) return; // backlog replay — already answered (or stale)
 
     const userText = typeof event.content === 'string' ? event.content.replace(/@junkiejarvis\b/gi, '').trim() : '';
     if (!userText) return;
@@ -911,12 +1006,25 @@ class JunkieJarvisAgent {
       tags.push(['p', askerPubkey]);
       if (zone) tags.push(['section', zone]);
 
-      const unsigned = {
+      let unsigned = {
         kind: KIND_CHANNEL_MESSAGE,
         content: replyText,
         tags,
         created_at: Math.floor(Date.now() / 1000),
       };
+      if (this.zoneCrypto) {
+        const target = await this._replyZone(srcEvent, root ? root.id : srcEvent.id);
+        if (!target.known) {
+          this.logger.warn('junkiejarvis could not resolve the reply channel\'s zone while encryption is on — not replying');
+          return;
+        }
+        const plan = zoneKeys.writePlan(target.zone, this.zoneCrypto);
+        if (plan.type === 'refuse') {
+          this.logger.warn({ zone: target.zone }, `junkiejarvis not replying: ${plan.reason}`);
+          return;
+        }
+        unsigned = zoneKeys.applyWritePlan(unsigned, plan, this.signer.skBytes);
+      }
       await this.bridge.publish(unsigned, this.signer);
     } catch (err) {
       this._logErr('channel-send', err);
@@ -1006,6 +1114,34 @@ class JunkieJarvisAgent {
 // ─── Startup wiring (env-gated, fail-open) ──────────────────────────────────
 
 /**
+ * The encrypted-zone context for a live agent: gate + ZONE_CONFIG (env, else
+ * agentbox/.env), the 0600 key file owned by `owner`, the relay's admin check,
+ * and a one-shot query over `bridge`. Returns null on any failure (fail-open:
+ * the agent then skips encrypted messages and replies in plaintext zones only).
+ */
+function buildZoneCrypto({ bridge, owner, fetchImpl, logger, env = process.env }) {
+  try {
+    const gate = zoneKeys.gateEnabled(env);
+    const zones = zoneKeys.loadZones(env);
+    const store = new zoneKeys.ZoneKeyStore({ owner, file: zoneKeys.keyFilePath(env) });
+    const isAdmin = zoneKeys.makeAdminCheck({
+      fetchImpl: fetchImpl || globalThis.fetch,
+      baseUrl: zoneKeys.relayHttpBase(env),
+    });
+    const query = (filter) => zoneKeys.queryOnce(bridge, filter);
+    const encrypted = zones.filter((z) => zoneKeys.zoneIsEncrypted(z.id, { gate, zones })).map((z) => z.id);
+    logger.info(
+      { gate, encryptedZones: encrypted, keysHeld: store.keys().map((k) => `${k.zone}:${k.epoch}`) },
+      'junkiejarvis encrypted-zone context'
+    );
+    return { gate, zones, store, isAdmin, query };
+  } catch (err) {
+    try { logger.warn({ err: err && err.message }, 'junkiejarvis: encrypted-zone context unavailable (fail-open)'); } catch { /* ignore */ }
+    return null;
+  }
+}
+
+/**
  * Start JunkieJarvis if JUNKIEJARVIS_ENABLED=true and a private key is present.
  * Reuses the supplied (already-connected) NostrBridge. Returns the running
  * JunkieJarvisAgent, or null when disabled/misconfigured. NEVER throws.
@@ -1052,11 +1188,15 @@ function startJunkieJarvis(deps = {}) {
     if (typeof deps.bridge.setAuthSigner === 'function') {
       deps.bridge.setAuthSigner(signer);
     }
+    const zoneCrypto = deps.zoneCrypto !== undefined
+      ? deps.zoneCrypto
+      : buildZoneCrypto({ bridge: deps.bridge, owner: signer.pubkey, fetchImpl: deps.fetchImpl, logger });
     const agent = new JunkieJarvisAgent({
       bridge: deps.bridge,
       signer,
       logger,
       fetchImpl: deps.fetchImpl,
+      zoneCrypto,
     });
     agent.start();
     const provider = process.env.ANTHROPIC_API_KEY ? 'anthropic'
@@ -1072,6 +1212,7 @@ function startJunkieJarvis(deps = {}) {
 module.exports = {
   JunkieJarvisAgent,
   startJunkieJarvis,
+  buildZoneCrypto,
   signerFromHex,
   sendGiftWrappedDm,
   unwrapDmRumor,

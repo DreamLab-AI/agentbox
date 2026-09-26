@@ -718,6 +718,7 @@ function handleWrap(ws, wrap) {
   if (!markSeen(wrap.id)) return;                                     // already handled
   let rumor; try { rumor = tools.nip59.unwrapEvent(wrap, sk); } catch { return; } // not ours to decrypt — silent
   if (!rumor) return;
+  if (rumor.kind === 21453) return; // zone-key grant (forum ADR-2016): key material, never a command or a forwarded message
   if (notifyEnquiry(ws, wrap, rumor)) return;                          // website form → phone, never a command
   if (String(rumor.pubkey || '').toLowerCase() !== commanderPub) return; // only the operator may command
   if (Array.isArray(rumor.tags) && rumor.tags.some((tag) => tag[0] === 'client' && /^agentbox-/.test(String(tag[1] || '')))) return;

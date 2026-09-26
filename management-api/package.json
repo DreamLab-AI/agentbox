@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "test": "jest && npm run test:node",
-    "test:node": "node --test ../tests/contract/harness-bridge.contract.spec.js ../tests/contract/upstream_vectors/all_fixtures.test.js"
+    "test:node": "node --test ../tests/contract/harness-bridge.contract.spec.js ../tests/contract/upstream_vectors/all_fixtures.test.js ../tests/sovereign/zone-keys.node-test.js"
   },
   "jest": {
     "roots": [

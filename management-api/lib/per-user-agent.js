@@ -525,6 +525,9 @@ class PerUserAgent {
         return;
       }
       if (!rumor || typeof rumor !== 'object') return;
+      // DMs only: a zone-key grant (rumor kind 21453) carries a secret and must
+      // never be read as a message or reach the LLM.
+      if (rumor.kind !== KIND_DM_RUMOR) return;
       const asker = rumor.pubkey;
       if (!asker || asker === this.agentPubkey) return;
       if (this._dedup(rumor.id)) return;

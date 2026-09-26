@@ -20,6 +20,13 @@
 // replies — re-running the same clarity check with the reply appended. One DM
 // per item, ever; 7 days without a reply expires the item to `stale`.
 //
+// End-to-end encrypted zones (forum kit ADR-2016): via the shared
+// management-api/lib/zone-keys.js, zone-key grants addressed to JunkieJarvis
+// are stored, `zk`-tagged thread posts are decrypted before triage (a post that
+// cannot be decrypted is never triaged — ciphertext never reaches the LLM),
+// and the inline reply is encrypted when the thread's zone is encrypted. With
+// no key for an encrypted zone the reply is withheld, never sent in plaintext.
+//
 // State: $WORKSPACE/.agentbox/dream-forum-suggestions.json
 //   { rootId, repliedEventIds: [], lastRunAt, clarify: { pending: {...} } }
 // Fail-open everywhere: any error logs and exits 0 so the nightly cycle is
@@ -186,6 +193,7 @@ async function main() {
   const { signerFromHex, sendGiftWrappedDm, unwrapDmRumor } =
     require(join(AGENTBOX_DIR, 'management-api/lib/junkiejarvis-agent.js'));
   const clarify = require(join(AGENTBOX_DIR, 'management-api/lib/junkiejarvis-clarify.js'));
+  const zoneKeys = require(join(AGENTBOX_DIR, 'management-api/lib/zone-keys.js'));
   const signer = signerFromHex(privHex);
   if (signer.pubkey !== JJ_PUBKEY) log('WARN', `signer pubkey ${signer.pubkey.slice(0, 8)}… is not the canonical JunkieJarvis key`);
 
@@ -209,7 +217,32 @@ async function main() {
   if (typeof bridge.setAuthSigner === 'function') bridge.setAuthSigner(signer);
   await bridge.connect();
 
+  // Encrypted-zone context (same gate/ZONE_CONFIG/key file as the live agent).
+  const zc = {
+    gate: zoneKeys.gateEnabled(),
+    zones: zoneKeys.loadZones(),
+    store: new zoneKeys.ZoneKeyStore({ owner: signer.pubkey }),
+    isAdmin: zoneKeys.makeAdminCheck({ baseUrl: zoneKeys.relayHttpBase({ FORUM_RELAY_URL: RELAY_URL }) }),
+    query: (filter) => collect(bridge, filter, { quietMs: 1500, maxMs: 8000 }),
+  };
+  const encryptionOn = zoneKeys.anyZoneEncrypted(zc);
+
   try {
+    // 0. Zone-key grants: pick up any the live agent has not stored yet (it
+    //    may be disabled), so tonight's thread can be read and answered.
+    if (encryptionOn) {
+      const wraps = await collect(bridge, { kinds: [1059], '#p': [signer.pubkey], limit: 500 });
+      let granted = 0;
+      for (const wrap of wraps) {
+        let opened;
+        try { opened = zoneKeys.unwrapAny(wrap, signer.skBytes); } catch { continue; }
+        const res = await zoneKeys.acceptGrant(opened, { store: zc.store, isAdmin: zc.isAdmin });
+        if (res.status === 'granted') { granted += 1; log('INFO', `stored zone key ${res.key.zone}:${res.key.epoch}`); }
+        if (res.status === 'rejected') log('WARN', `refused a zone-key grant: ${res.error}`);
+      }
+      log('INFO', `encrypted zones on; ${zc.store.keys().length} zone key(s) held (${granted} new)`);
+    }
+
     // 1. Resolve the thread root (prefix → full id), cached across nights.
     if (!state.rootId) {
       const recent = await collect(bridge, { kinds: [42], limit: 1000 }, { maxMs: 20000 });
@@ -223,8 +256,32 @@ async function main() {
     // 2. Pull the thread.
     const replies = await collect(bridge, { kinds: [42], '#e': [state.rootId], limit: 500 });
     const roots = await collect(bridge, { kinds: [42], ids: [state.rootId] }, { maxMs: 8000 });
-    const thread = [...roots, ...replies].sort((a, b) => a.created_at - b.created_at);
-    log('INFO', `thread has ${thread.length} event(s)`);
+    const rawThread = [...roots, ...replies].sort((a, b) => a.created_at - b.created_at);
+    // Decrypt zk-tagged posts; drop any this identity cannot read.
+    const thread = [];
+    let unreadable = 0;
+    for (const ev of rawThread) {
+      const out = zoneKeys.readOutcome(ev, (z, e) => zc.store.get(z, e));
+      if (out.type === 'plain') thread.push(ev);
+      else if (out.type === 'decrypted') thread.push({ ...ev, content: out.text });
+      else if (ev.id !== state.rootId) unreadable += 1;
+    }
+    log('INFO', `thread has ${thread.length} event(s)${unreadable ? ` (${unreadable} encrypted post(s) skipped: no key)` : ''}`);
+
+    // Where replies land: the thread root's zone (its zk tag, else its
+    // channel's kind-40 section). Only resolved when a zone is encrypted.
+    let replyPlan = { type: 'plain' };
+    if (encryptionOn) {
+      const rootEv = rawThread.find((e) => e.id === state.rootId);
+      const rootZk = rootEv && zoneKeys.parseZk(rootEv.tags);
+      const zone = rootZk
+        ? rootZk.zone
+        : rootEv && await zoneKeys.resolveChannelZone(zoneKeys.channelOf(rootEv), { query: zc.query, zones: zc.zones });
+      replyPlan = zone == null
+        ? { type: 'refuse', reason: 'the thread\'s zone could not be resolved while encryption is on' }
+        : zoneKeys.writePlan(zone, zc);
+      if (replyPlan.type === 'refuse') log('WARN', `replies withheld tonight: ${replyPlan.reason}`);
+    }
 
     // 2b. Clarification lifecycle: expire the 7-day stragglers, then pull any
     //     gift-wrapped DMs addressed to JunkieJarvis and attach each one to the
@@ -327,6 +384,13 @@ async function main() {
         }
       }
 
+      // No readable reply can be posted into this zone tonight: do not triage
+      // (and do not mark replied) — the post is picked up once a key arrives.
+      if (replyPlan.type === 'refuse') {
+        log('INFO', `${post.id.slice(0, 12)} not triaged: reply would be withheld (${replyPlan.reason})`);
+        continue;
+      }
+
       let verdict;
       try {
         verdict = await triage(post);
@@ -345,7 +409,7 @@ async function main() {
 
       // Inline reply, same NIP-28/NIP-10 shape as junkiejarvis-agent
       // _sendChannelReply: thread root as 'root', the suggestion as 'reply'.
-      const unsigned = {
+      const plain = {
         kind: 42,
         content: verdict.reply,
         tags: [
@@ -356,6 +420,7 @@ async function main() {
         created_at: Math.floor(Date.now() / 1000),
       };
       try {
+        const unsigned = zoneKeys.applyWritePlan(plain, replyPlan, signer.skBytes);
         await bridge.publish(unsigned, signer);
         replied.add(post.id);
         log('INFO', `replied to ${post.id.slice(0, 12)} (${verdict.reply.length} chars)`);
