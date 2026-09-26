@@ -8,7 +8,12 @@
 //! The digest is composed from the engine's own night-health record
 //! (`~/workspace/.agentbox/dream-last-night.json`) — one outcome per repo the
 //! engine actually scheduled, plus the nominated/standby/deferred roster — and
-//! each repo's ledger rows for the date. Composing from ledger verdicts alone
+//! each repo's ledger rows for the date.
+//!
+//! When the dreamlab zone is end-to-end encrypted ([`crate::zone_crypto`],
+//! forum ADR-2016) the digest is encrypted to the zone key; without a key it
+//! is not posted, and the status says so (the night record and an inbox alert
+//! carry it to the operator). Composing from ledger verdicts alone
 //! (the retired `dream-night-digest.mjs`) reported "No dream cycles ran
 //! tonight" for twelve nights running while repos were failing dispatch,
 //! being refused for want of an evaluator, or were all parked: those outcomes
@@ -26,6 +31,7 @@ use crate::config::{self, DreamConfig};
 use crate::governance;
 use crate::inbox;
 use crate::relay::{self, RelaySession, UnsignedEvent};
+use crate::zone_crypto::{self, WritePlan};
 
 /// "chat with agents" channel (kind-40 id) in the dreamlab zone.
 pub const DEFAULT_CHANNEL: &str =
@@ -71,7 +77,13 @@ pub struct NightHealth {
     pub standby: Vec<Standby>,
     #[serde(default)]
     pub deferred: Vec<String>,
+    /// How tonight's digest post went (set after it runs).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub digest: Option<String>,
 }
+
+/// Status prefix when the digest was withheld for want of a zone key.
+pub const SKIPPED_NO_ZONE_KEY: &str = "digest: skipped — no zone key";
 
 /// One ledger row, as far as the digest needs it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -385,16 +397,36 @@ async fn publish(content: String) -> String {
     let url = relay::relay_url();
     let channel = std::env::var("DREAM_DIGEST_CHANNEL").unwrap_or_else(|_| DEFAULT_CHANNEL.into());
     let section = std::env::var("DREAM_DIGEST_SECTION").unwrap_or_else(|_| DEFAULT_SECTION.into());
+    let tags = vec![
+        vec!["e".into(), channel, url.clone(), "root".into()],
+        vec!["section".into(), section.clone()],
+        vec!["t".into(), "dream-cycle".into()],
+    ];
+    // Encrypted zone (ADR-2016): encrypt to the zone key, or do not post.
+    let env_file = governance::env_file();
+    let gate = zone_crypto::gate_value_enabled(
+        zone_crypto::read_setting("ENCRYPTION_ENABLED", &env_file).as_deref(),
+    );
+    let zones =
+        zone_crypto::parse_zones(zone_crypto::read_setting("ZONE_CONFIG", &env_file).as_deref());
+    let zone = zone_crypto::section_to_zone(&section, &zones).unwrap_or_default();
+    let author = relay::pubkey_hex(&key);
+    let keys = zone_crypto::load_keys(&zone_crypto::key_file_path(), &author);
+    let plan = zone_crypto::write_plan(&zone, gate, &zones, &keys);
+    if let WritePlan::Refuse(reason) = &plan {
+        return format!("{SKIPPED_NO_ZONE_KEY} ({reason}; not posted in plaintext)");
+    }
+    let author_sk: [u8; 32] = key.to_bytes().into();
+    let (content, tags) = match zone_crypto::apply(&plan, &author_sk, content, tags) {
+        Ok(v) => v,
+        Err(e) => return format!("digest: encryption failed ({e}) — skipped"),
+    };
     let event = match relay::sign(
         UnsignedEvent {
-            pubkey: relay::pubkey_hex(&key),
+            pubkey: author,
             created_at: relay::now_secs(),
             kind: 42,
-            tags: vec![
-                vec!["e".into(), channel, url.clone(), "root".into()],
-                vec!["section".into(), section],
-                vec!["t".into(), "dream-cycle".into()],
-            ],
+            tags,
             content,
         },
         &key,

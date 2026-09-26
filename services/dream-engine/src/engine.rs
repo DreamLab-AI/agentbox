@@ -238,6 +238,7 @@ impl Engine {
             nominated: repos.iter().map(|(n, _)| n.clone()).collect(),
             standby,
             deferred,
+            digest: None,
         };
         let _ = std::fs::create_dir_all("/home/devuser/workspace/.agentbox");
         if let Err(e) = std::fs::write(
@@ -276,6 +277,7 @@ impl Engine {
         if std::env::var("DREAM_DIGEST").as_deref() != Ok("0") {
             let status = digest::run(&self.workspace, date, false).await;
             info!(result = %status, "night digest");
+            record_digest_status(date, &status);
         }
 
         // Forum-suggestions tenant: mine the community feature-suggestions
@@ -1616,6 +1618,39 @@ fn render_receipt(r: &receipts::EvaluatorReceipt) -> String {
         }
     }
     out
+}
+
+/// Record tonight's digest outcome in the night-health file, and raise an
+/// operator alert when the digest was withheld for want of a zone key (an
+/// encrypted dreamlab zone with no key granted to JunkieJarvis). Fail-open.
+fn record_digest_status(date: &str, status: &str) {
+    let path = digest::health_path();
+    if let Some(mut health) = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|t| serde_json::from_str::<digest::NightHealth>(&t).ok())
+    {
+        health.digest = Some(status.to_string());
+        if let Err(e) = std::fs::write(
+            &path,
+            serde_json::to_string_pretty(&health).unwrap_or_default(),
+        ) {
+            warn!(error = %e, "night health digest status write failed (fail-open)");
+        }
+    }
+    if status.starts_with(digest::SKIPPED_NO_ZONE_KEY) {
+        let text = format!(
+            "Tonight's forum digest was not posted: the dreamlab zone is end-to-end encrypted and JunkieJarvis holds no zone key. Grant it the key in the forum admin Encryption tab. ({status})"
+        );
+        if let Err(e) = inbox::add(
+            "alert",
+            "dream-machine",
+            &format!("{date}-digest-zone-key"),
+            date,
+            &text,
+        ) {
+            warn!(error = %e, "dream inbox write failed (fail-open)");
+        }
+    }
 }
 
 /// Count the trailing run of INCONCLUSIVE verdicts in a ledger. Any decisive

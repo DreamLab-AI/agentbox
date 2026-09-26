@@ -37,3 +37,4 @@ pub mod ruvector;
 pub mod source;
 pub mod verdict;
 pub mod witness;
+pub mod zone_crypto;

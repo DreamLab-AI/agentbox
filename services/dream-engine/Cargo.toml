@@ -39,4 +39,5 @@ nostr-bbs-core = "=1.0.0-beta.11"
 k256 = { version = "0.13.4", default-features = false, features = ["schnorr"] }
 
 [dev-dependencies]
+base64 = "0.22"
 tempfile = "3"
