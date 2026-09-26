@@ -135,19 +135,26 @@ ethereumjs 10.1.3, the version siding pins, root for root before any `evm` chain
 dependency and keeps its build without `std`. Until the Rust rule matches the reference, the
 supervised JS producer (decision 4) is the only validator of an `evm` chain we run.
 
-**Port status (2026-09-26, not live).** sidestr-rs `main` at `f2765ac1`:
+**Port status (2026-09-26, not live).** sidestr-rs `main` at `d68880bf`, CI green:
 `sidestr-evm` (revm 43, alloy-trie 0.9; no C libraries, k256 for signature recovery;
-`fastrlp` MPL-2.0 is the one non-MIT/Apache dependency, AGPL-compatible) and `sidestr-core`
-0.3.4 (unreleased: `validate_with`, rule-taking constructors, a coinbase allowance on
-`BlockRule`, and `assets::AssetsRule`, because upstream installs the assets rule on any
-rule-bearing chain). The fixtures come from an ethereumjs 10.1.3 oracle that cross-runs the
-pinned `evm.mjs`: all 20 accepted blocks match root for root, with their withdrawals, hashes
-and receipts, and 13 of 15 refused blocks do. The two exceptions call precompile `0x0a`,
-where ethereumjs leaves a partial root on a block that is refused either way. Findings to
-raise upstream: a single coinbase output satisfies two identical withdrawals while the
-allowance counts both, and any call reaching `0x0a` invalidates the block. Not yet: CI
-regeneration of the fixtures, a deposit builder in `sidestr-wallet`, and the JSON-RPC
-(`evmrpc.mjs`).
+`fastrlp` MPL-2.0 is the one non-MIT/Apache dependency, AGPL-compatible) with the rule
+(`f2765ac1`) and siding's Ethereum JSON-RPC as `sidestr_evm::rpc` (`d6b7a903`), and
+`sidestr-core` 0.3.4 (unreleased: `validate_with`, rule-taking constructors, a coinbase
+allowance on `BlockRule`, and `assets::AssetsRule`, because upstream installs the assets rule
+on any rule-bearing chain). The rule's fixtures come from an ethereumjs 10.1.3 oracle that
+cross-runs the pinned `evm.mjs`: all 20 accepted blocks match root for root, with their
+withdrawals, hashes and receipts, and 13 of 15 refused blocks do (the two exceptions call
+precompile `0x0a`, where ethereumjs leaves a partial root on a block refused either way). The
+JSON-RPC's fixtures come from the pinned `evmrpc.mjs` itself: 223 requests and 10 HTTP bodies,
+215 answers byte for byte and 8 up to ethereumjs's own reason text. CI's oracle job
+regenerates both fixture sets and fails on drift (`3a0c995c`, `15ba7af7`). EVM deposits are
+built by `sidestr-wallet` 0.4.3 byte for byte with siding's `buildSpend`, and sent by
+`sidestr-agent` 0.3.2 (`send --evm`); both unreleased. An independent review of the rule found
+no divergence. Upstream findings, each reproduced against siding at `fa86dac`:
+sidestr/spec#20 (one coinbase output satisfies identical withdrawals; mirrored, since it is
+consensus), #21 (a transaction dropped at sequencing leaves its deposit in the producer's root)
+and #22 (a read-only call that throws inside ethereumjs makes the producer refuse its next
+block); the Rust producer and RPC show neither #21 nor #22.
 
 **What it does not change.** Custody (decision 6), the authority gate on every settlement
 (ADR-2100), testnet-only chains (ADR-2103's P21 gate) and ADR-2117's closed scope all stand. An
