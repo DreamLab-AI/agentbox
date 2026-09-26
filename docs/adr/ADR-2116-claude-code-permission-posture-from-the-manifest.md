@@ -29,8 +29,11 @@ is host root, and sessions read untrusted text (email, web, forum/Nostr, scanned
 
 ## Decision
 1. `[claude_code]` in `agentbox.toml` is the single authority: `permission_mode` (default
-   `bypassPermissions`) and `permission_deny` (default `Bash(docker run:*)`, `Bash(docker compose:*)`,
-   `Bash(ssh:*)`).
+   `bypassPermissions`) and `permission_deny` (default `Bash(docker run:*)`, `Bash(docker compose:*)`, and ssh
+   towards the machinelearn host only — `Bash(ssh *<addr>*)` for its docker gateways and LAN
+   addresses; amended 2026-09-26 from a blanket `Bash(ssh:*)` so the HP connected node is reachable.
+   Deny beats allow, so an allow rule cannot carve an exception out of a blanket deny; mid-pattern
+   `*` wildcards were probed to match `ssh -o … host`).
 2. `agentbox-manifest permissions-project` reconciles it EVERY boot into `~/.claude/settings.json`
    and every `profiles/*/.claude/settings.json`: sets `defaultMode`, pre-accepts the mode's one-time
    dialog, adds the deny rules, retracts deny rules it added earlier (`agentboxManagedDeny`) and never

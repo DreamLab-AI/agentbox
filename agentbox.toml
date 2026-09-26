@@ -629,10 +629,18 @@ contradiction_sample_rate = 0.1  # 1/10 retrievals sampled for LLM-judge contrad
 # classifier (2.1.280 bypass also allows .git/ and .claude/ writes).
 permission_mode = "bypassPermissions"   # auto | bypassPermissions | acceptEdits | default | plan | dontAsk
 # Enforced in every mode, bypass included (probed 2026-09-25). The host Docker
-# socket is mounted here, so `docker run`/`compose` is host root; ssh reaches the
-# LAN. Prefix rules: they stop accidents and plain injected commands, not a
-# determined `sh -c` wrapper. `docker ps/exec/logs` stay allowed for monitoring.
-permission_deny = ["Bash(docker run:*)", "Bash(docker compose:*)", "Bash(ssh:*)"]
+# socket is mounted here, so `docker run`/`compose` is host root. ssh is denied
+# only towards the machinelearn host (its docker gateways and LAN addresses as
+# seen from this container) — "never SSH to the host"; ssh to the HP connected
+# node (john@10.10.10.1) and the rest of the LAN is allowed. Deny beats allow, so
+# an allow rule cannot carve HP out of a blanket ssh deny; mid-pattern `*`
+# wildcards also catch `ssh -o … host`. These stop accidents and plain injected
+# commands, not a determined `sh -c` wrapper. `docker ps/exec/logs` stay allowed.
+permission_deny = [
+  "Bash(docker run:*)", "Bash(docker compose:*)",
+  "Bash(ssh *172.18.0.1*)", "Bash(ssh *172.20.0.1*)",
+  "Bash(ssh *192.168.2.132*)", "Bash(ssh *192.168.2.160*)", "Bash(ssh *machinelearn*)",
+]
 
 [features.jev_compaction]
 # ADR-2093 — verbatim context compaction judged by Jev. At compaction every
