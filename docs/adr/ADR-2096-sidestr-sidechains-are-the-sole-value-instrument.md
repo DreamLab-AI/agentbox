@@ -135,6 +135,20 @@ ethereumjs 10.1.3, the version siding pins, root for root before any `evm` chain
 dependency and keeps its build without `std`. Until the Rust rule matches the reference, the
 supervised JS producer (decision 4) is the only validator of an `evm` chain we run.
 
+**Port status (2026-09-26, not live).** sidestr-rs branch `evm-rule` at `f2765ac1`:
+`sidestr-evm` (revm 43, alloy-trie 0.9; no C libraries, k256 for signature recovery;
+`fastrlp` MPL-2.0 is the one non-MIT/Apache dependency, AGPL-compatible) and `sidestr-core`
+0.3.4 (unreleased: `validate_with`, rule-taking constructors, a coinbase allowance on
+`BlockRule`, and `assets::AssetsRule`, because upstream installs the assets rule on any
+rule-bearing chain). The fixtures come from an ethereumjs 10.1.3 oracle that cross-runs the
+pinned `evm.mjs`: all 20 accepted blocks match root for root, with their withdrawals, hashes
+and receipts, and 13 of 15 refused blocks do. The two exceptions call precompile `0x0a`,
+where ethereumjs leaves a partial root on a block that is refused either way. Findings to
+raise upstream: a single coinbase output satisfies two identical withdrawals while the
+allowance counts both, and any call reaching `0x0a` invalidates the block. Not yet: CI
+regeneration of the fixtures, a deposit builder in `sidestr-wallet`, and the JSON-RPC
+(`evmrpc.mjs`).
+
 **What it does not change.** Custody (decision 6), the authority gate on every settlement
 (ADR-2100), testnet-only chains (ADR-2103's P21 gate) and ADR-2117's closed scope all stand. An
 `evm` chain is still custodial to its signers: a contract on it is only as trustworthy as the

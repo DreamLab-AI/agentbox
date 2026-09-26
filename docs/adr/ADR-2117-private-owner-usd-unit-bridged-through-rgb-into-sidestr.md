@@ -295,7 +295,7 @@ on top of `liquid-bridge-wiring`:
 - the read-only live test attests Liquid tip 4,074,382 in the new format;
 - one `secp256k1` (0.29.1) in the tree.
 
-The `evm` rule port is on branch `evm-rule` (see ADR-2096's amendment). Nothing is funded,
+The `evm` rule port is on branch `evm-rule` at `f2765ac1` (see ADR-2096's amendment). Nothing is funded,
 sealed or published.
 
 ## Verification
