@@ -282,8 +282,10 @@ function unwrapAny(wrap, skBytes) {
   return { sealer: seal.pubkey, rumor };
 }
 
-function relayHttpBase(env = process.env) {
-  const url = String(env.FORUM_RELAY_URL || '').trim();
+function relayHttpBase(env = process.env, fsImpl = fs) {
+  // Same lookup as the gate and ZONE_CONFIG (env, else agentbox/.env): the
+  // compose environment does not forward FORUM_RELAY_URL.
+  const url = String(readSetting('FORUM_RELAY_URL', env, fsImpl) || '').trim();
   if (!url) return null;
   return url.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/+$/, '');
 }

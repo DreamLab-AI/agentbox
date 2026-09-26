@@ -218,8 +218,13 @@ describe('zone-key grants', () => {
   });
 
   test('admin check has no default relay', () => {
-    assert.equal(zk.relayHttpBase({}), null);
-    assert.equal(zk.relayHttpBase({ FORUM_RELAY_URL: 'wss://r.test/' }), 'https://r.test');
+    const noFile = { readFileSync() { throw new Error('ENOENT'); } };
+    assert.equal(zk.relayHttpBase({}, noFile), null);
+    assert.equal(zk.relayHttpBase({ FORUM_RELAY_URL: 'wss://r.test/' }, noFile), 'https://r.test');
+    // Falls back to the agentbox .env file, like the gate and ZONE_CONFIG.
+    const envFile = { readFileSync() { return "ENCRYPTION_ENABLED=true\nFORUM_RELAY_URL='wss://f.test'\n"; } };
+    assert.equal(zk.relayHttpBase({}, envFile), 'https://f.test');
+    assert.equal(zk.relayHttpBase({ FORUM_RELAY_URL: 'wss://e.test' }, envFile), 'https://e.test');
     assert.throws(() => zk.makeAdminCheck({ baseUrl: null }), /FORUM_RELAY_URL/);
   });
 
