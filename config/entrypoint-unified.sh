@@ -465,13 +465,28 @@ if [ -d /home/devuser/.claude ] && [ ! -e "$WORKSPACE/.claude" ]; then
   ln -sf /home/devuser/.claude "$WORKSPACE/.claude"
 fi
 
-# /dream slash command — install-if-missing from the canonical repo copy
-# (skills/dream-machine/commands/dream.md). ~/.claude is a host mount, so an
-# existing (possibly user-tuned) copy is never overwritten.
+# /dream slash command — installed from the canonical repo copy
+# (skills/dream-machine/commands/dream.md). ~/.claude is a host mount, so a
+# user-tuned copy must survive; but install-if-missing alone froze an untouched
+# copy forever (the live one ran a stale binary path for six weeks). So the
+# digest of what boot last installed is recorded: a live copy still matching it
+# is untouched and is refreshed; one that differs was edited and is kept.
 DREAM_CMD_SRC="$WORKSPACE/project/agentbox/skills/dream-machine/commands/dream.md"
-if [ -f "$DREAM_CMD_SRC" ] && [ ! -f /home/devuser/.claude/commands/dream.md ]; then
+DREAM_CMD_DST=/home/devuser/.claude/commands/dream.md
+DREAM_CMD_SHA=/home/devuser/.claude/commands/.dream.md.installed-sha256
+if [ -f "$DREAM_CMD_SRC" ]; then
   mkdir -p /home/devuser/.claude/commands
-  cp "$DREAM_CMD_SRC" /home/devuser/.claude/commands/dream.md
+  _dream_src_sha=$(sha256sum < "$DREAM_CMD_SRC" | cut -d' ' -f1)
+  _dream_dst_sha=$([ -f "$DREAM_CMD_DST" ] && sha256sum < "$DREAM_CMD_DST" | cut -d' ' -f1)
+  _dream_rec_sha=$(cat "$DREAM_CMD_SHA" 2>/dev/null || true)
+  if [ ! -f "$DREAM_CMD_DST" ] || { [ "$_dream_dst_sha" != "$_dream_src_sha" ] && [ "$_dream_dst_sha" = "$_dream_rec_sha" ]; }; then
+    cp "$DREAM_CMD_SRC" "$DREAM_CMD_DST" && echo "$_dream_src_sha" > "$DREAM_CMD_SHA"
+  elif [ "$_dream_dst_sha" = "$_dream_src_sha" ]; then
+    echo "$_dream_src_sha" > "$DREAM_CMD_SHA"
+  elif [ -n "$_dream_rec_sha" ]; then
+    echo "  [dream] ~/.claude/commands/dream.md was edited by hand — kept (repo copy differs)" >&2
+  fi
+  chown devuser:devuser "$DREAM_CMD_DST" "$DREAM_CMD_SHA" 2>/dev/null || true
 fi
 
 # Pre-install the Anthropic skill-creator plugin so /skill-creator works on

@@ -47,12 +47,14 @@ Present the "ACCEPT nights awaiting human review" list and ask the user which to
 
 One-shot cycle now, ignoring the window. The engine holds a singleton lock
 (127.0.0.1:49172) so a one-shot cannot race the nightly loop — stop the loop
-first, run, restart:
+first, run, restart. Use the baked `dream-engine` on PATH (the one supervisord runs) —
+`services/dream-engine/target/release` is a stale dev build — with the loop's environment:
 ```bash
+P=$(pgrep -f 'bin/dream-engine' | head -1); mapfile -d '' E < /proc/$P/environ   # the loop's env (SSH target, Z.AI key)
 supervisorctl stop dream-engine
-cd /home/devuser/workspace/project/agentbox/services/dream-engine && \
-RUST_LOG=info ./target/release/dream-engine --once [--target <repo>] --agentbox-toml /etc/agentbox.toml 2>&1 | tail -20
-supervisorctl start dream-engine
+cd /home/devuser/workspace && env -i "${E[@]}" RUST_LOG=info dream-engine --once [--target <repo>] \
+  --agentbox-toml /etc/agentbox.toml 2>&1 | tail -20
+supervisorctl start dream-engine    # always restart, whatever the cycle's exit
 ```
 Without a repo: dreams every eligible repo serially (a full night, 10–40 min — warn the user before starting). With a repo: single cycle (2–8 min), works even on standby repos. Report verdict, witness, and whether RuVector stored it. Note the engine archives the repo's **HEAD** — uncommitted changes are invisible to the night by design (witness = evaluated tree).
 
