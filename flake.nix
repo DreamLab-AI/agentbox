@@ -1615,30 +1615,15 @@ default_days = ${toString (relayCfg.retention_days or 30)}
 '';
 
         privacyFilterEnabled = privacyFilterCfg.enabled or false;
-        # openai/privacy-filter (ADR-008) ships model_type `openai_privacy_filter`,
-        # a built-in architecture ADDED IN Transformers 5.6.0 (its config.json
-        # stamps transformers_version 5.6.0.dev0). nixpkgs' pinned transformers is
-        # 5.5.4, where the arch is absent from CONFIG_MAPPING_NAMES → the sidecar
-        # died at load with "Transformers does not recognize this architecture"
-        # (trust_remote_code is a no-op: the repo has no auto_map / modeling code).
-        # Pin the released 5.6.2 sdist. All 5.6.2 runtime deps are already
-        # satisfied by the pinned closure (verified against requires_dist:
-        # huggingface-hub 1.10.2, tokenizers 0.22.2, safetensors 0.8.0, typer
-        # 0.25.1, regex 2026.4.4, numpy 2.5.0). tiktoken is added for the model's
-        # o200k-family tokenizer (vocab_size 200064). patches=[] because the 5.5.4
-        # patch set will not apply to 5.6.2; doCheck=false because the upstream
-        # test suite needs network + extras (importability is still validated by
-        # nixpkgs' pythonImportsCheck at build). To bump: change version + hash
-        # (sha256 from https://pypi.org/pypi/transformers/<v>/json, SRI-encoded).
+        # openai/privacy-filter (ADR-008) requires the architecture introduced
+        # in Transformers 5.6.0. The locked nixpkgs now supplies 5.17.0, so use
+        # its coherent dependency set instead of the obsolete 5.6.2 override
+        # (which rejects the locked Tokenizers 0.23.2). Keep an explicit
+        # architecture import gate; tiktoken below supports its o200k tokenizer.
         privacyFilterTransformers = pkgs.python312Packages.transformers.overridePythonAttrs (old: {
-          version = "5.6.2";
-          src = pkgs.python312Packages.fetchPypi {
-            pname = "transformers";
-            version = "5.6.2";
-            hash = "sha256-5lcTTD5aa8AKPDX04mdLtRrfzYmJhJW3iKGFUrrCuRo=";
-          };
-          patches = [ ];
-          doCheck = false;
+          pythonImportsCheck = (old.pythonImportsCheck or [ ]) ++ [
+            "transformers.models.openai_privacy_filter"
+          ];
         });
         privacyFilterPythonEnv = pkgs.python312.withPackages (ps: [
           privacyFilterTransformers

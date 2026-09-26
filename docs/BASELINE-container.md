@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.4.2
+version: 0.4.3
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.4.3 (2026-09-26): Privacy-filter Python environment uses the flake-locked nixpkgs Transformers 5.17.0 with Tokenizers 0.23.2. Retired the incompatible Transformers 5.6.2 override; added an import gate for transformers.models.openai_privacy_filter. No runtime architecture or invariant changes."
   - "0.4.2 (2026-09-23): ADR-2117 (proposed): the owner's private USD unit of account for his agents runs on new testnet chains only, is issued and held only inside his estate (never a real stablecoin, never user-facing), and fills ADR-2102's parked bridge-rule checks for that experiment. Proposed section only; the Invariants compliance surface is unchanged."
   - "0.4.1 (2026-09-23) — ADR-2112: the five sidestr-* crates moved with history to github.com/DreamLab-AI/sidestr-rs (AGPL-3.0-only, on crates.io) and their CI with them; crates/sidestr/ is a pointer README. The settlement section now says agentbox hosts the chain instance (config/sidechain/), not the crates. Proposed section only; the Invariants compliance surface is unchanged."
   - "0.4.0 (2026-09-21): PROPOSED, not ratified. ADR-2096/2098/2099/2102/2103 (PRD-024 sovereign settlement): the [sidechain] manifest block and its validated parent/header_profile enums, the sidestr-node and sidestr-producer supervised programs plus the isolated sidestr-bridge, loopback :9097 behind the nip98-proxy /chain/ upstream, the crates/sidestr workspace and its licensing posture, rust-bitcoin accepted estate-wide and the k256-only posture retired, and three proposed invariants (chain is truth, no sixth adapter slot, byte-identical-when-off). Recorded in a clearly marked proposed section; the Invariants compliance surface above is unchanged."
