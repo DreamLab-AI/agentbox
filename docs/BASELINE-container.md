@@ -375,8 +375,11 @@ Agentbox hosts the **chain instance**, not the crates. The split by what is reus
   to `rust-bitcoin` with golden fixtures byte-identical. This is the house crypto rule finally
   applied to the one place that hand-rolled a sighash.
 
-`sidestr-core` deliberately does **not** implement the `evm`, `pool` or `desk` overlays, and RGB
-never enters as an in-chain VM.
+`sidestr-core` deliberately does **not** implement the `pool` or `desk` overlays, and RGB never
+enters as an in-chain VM. The `evm` overlay is admitted since the ADR-2096 amendment of
+2026-09-26: it executes inside a sidestr chain on that chain's sats, so it is not a second rail.
+It lives in its own crate (`sidestr-evm`, on `revm`), and `sidestr-core` only gains the hooks
+that let a follower register it.
 
 ### Proposed invariants (NOT yet part of the compliance surface)
 

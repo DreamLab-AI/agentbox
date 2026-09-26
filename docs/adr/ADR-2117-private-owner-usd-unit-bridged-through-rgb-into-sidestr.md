@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: a2fd86cb4110b8dcfcdfd79785b048a246d8c136
 verified_paths: ["config/sidechain/*/chain.json"]
 owner: jjohare
-review_trigger: the owner gives the live go for the Liquid USDt proof (amendment 2026-09-23); Tether lists RGB among its supported protocols or publishes a canonical USD₮-on-RGB contract ID; a Tether or UTEXO test asset appears on testnet4 or signet; an rgb-lib release pins final rgb-protocol 0.11.1 or moves to the v0.12 line; Liquid peg-outs restored with a post-mortem; Circle lists a Bitcoin layer as a native USDC chain; any proposal to back the unit with real value, let anyone outside the owner's estate hold or redeem it, or add a chain document under config/sidechain/
+review_trigger: the owner gives the live go for the Liquid USDt proof (amendment 2026-09-23); a second reserve origin (TRON or an EVM network) is proposed for building (amendment 2026-09-26); Tether lists RGB among its supported protocols or publishes a canonical USD₮-on-RGB contract ID; a Tether or UTEXO test asset appears on testnet4 or signet; an rgb-lib release pins final rgb-protocol 0.11.1 or moves to the v0.12 line; Liquid peg-outs restored with a post-mortem; Circle lists a Bitcoin layer as a native USDC chain; any proposal to back the unit with real value, let anyone outside the owner's estate hold or redeem it, or add a chain document under config/sidechain/
 repo: agentbox
 domain: BASELINE-container
 lineage: "Research brief docs/research/stablecoin-wrap-experiment.md (2026-09-23, deep tier, strict gate PASS). Amends ADR-2102 (fills its parked attestation format, signer and validator checks for this private experiment only); relates ADR-2096, ADR-2101, ADR-2103, ADR-2112, PRD-024."
@@ -51,7 +51,9 @@ ADR-2102 fixes the shape and parks the attestation format, signer and validator 
    evidence.
 4. **The `bridge` rule's invariants** (for this experiment; upstream or fork per owner decision b):
    - records `bmint`, `bburn`, `brelease`, `breject`, `bhalt`, each keyed by origin network plus
-     reserve outpoint; a reused key is invalid (replay guard);
+     reserve outpoint; a reused key is invalid (replay guard); **amended 2026-09-26: keyed by
+     origin network plus credit id**, the outpoint on a UTXO origin and `txid:log_index` on an
+     account origin;
    - a `bridgeConfirmations` depth in the chain document before any attestation may be signed;
    - mint authority is an authority coin whose key is the attestation key, distinct from
      block-signing keys; every mint, halt and rejection spends and recreates it, and the rule
@@ -225,6 +227,76 @@ draft PR DreamLab-AI/sidestr-rs#1 at `2494151b`: crate `sidestr-bridge-liquid` (
 
 **Not yet built:** the sidestr `bridge` rule (JS and Rust), the experiment chain document, the
 attester-to-producer path, and the producer on the Dell under decision (g).
+
+## Amendment 2026-09-26: a reserve-neutral attestation, and EVM options
+
+The owner asked for the design to be reserve-neutral and for EVM options to be open under
+upstream's `evm` rule, which ADR-2096's amendment of the same day admits. This amendment
+changes how the reserve is stated, not what the unit is. Decision 1's closed, single-owner scope
+and the not-live status stand.
+
+**The attestation is independent of the reserve's network.** The `bridge` rule checks one
+statement whichever network holds the reserve, so the rule is written once:
+
+- **The statement** is the new crate `sidestr-reserve` (`AGPL-3.0-only`, `publish = false`). It
+  carries the origin (`network`, `asset`, `decimals`), the `amount` in base units (a decimal
+  string, `u128`), `credits` (sorted replay ids), the final origin tip (`tip_height`,
+  `tip_hash`), `time` and `source`. The type is `sidestr-reserve/attestation/v1`. The canonical
+  form is sorted-key JSON of escape-free ASCII with numbers below 2⁵³, so a JS validator
+  reproduces the bytes. It is signed with BIP-340 over the SHA-256 digest. This fills the
+  *format* half of decision (c); how the signed statement travels (a Nostr event, or the
+  digest in the authority-coin witness) stays open.
+- **Origin adapters** read their own network and produce the statement. Each supplies: holdings
+  of the reserve asset that are final at the tip; credit ids that stay the same across readings
+  and reorgs; a named source; and its own release path behind ADR-2100.
+  `sidestr-bridge-liquid` 0.2.0 is the Liquid adapter: confirmed outputs of the pinned asset,
+  keyed by outpoint, under origin `liquid` at 8 decimals.
+- The chain document pins each admitted origin (network plus asset) and the attestation key.
+  One key may sign for several origins, because the origin is inside the digest.
+- Nothing had been signed or published under the Liquid-specific format
+  (`sidestr-bridge-liquid/reserve-attestation/v1`), so this is its one breaking change, made
+  before the rule exists.
+
+**EVM options.**
+
+- **The experiment chain may name `evm`** beside `bridge` and `assets`. The owner's agents then
+  get contracts over the chain's own sats, and a JSON-RPC endpoint that ethers, viem and MetaMask
+  can talk to. The EVM executes over sats only. Upstream defines no representation of a
+  `bridge`- or `assets`-carried unit inside the EVM, so the unit does not enter contracts under
+  this amendment. That needs an upstream proposal or an owner decision to fork (decision b).
+- **An EVM network may be a reserve origin**, under the same invariants as Liquid:
+  - the origin is the network plus the token contract, pinned in the chain document;
+  - a credit is a `Transfer` log to the reserve address, keyed `txid:log_index`;
+  - finality is the network's finalised block;
+  - the issuer's blacklist check on the reserve address feeds `bhalt`;
+  - releases come from a plain externally owned account, behind ADR-2100.
+
+  TRON is admitted the same way (TRC-20, the solidified block). Code may be ported directly from
+  Tether's Apache-2.0 WDK (`wdk-wallet-evm`, `wdk-wallet-tron`), attributed with a NOTICE. Such
+  an adapter is **not built**. It is due on this record's review trigger, and a real-value
+  origin still needs the owner's live go and counsel (decision e).
+
+**Rejected.**
+
+- **A reserve held behind a relayer or paymaster** (TRON GasFree, ERC-4337 paymasters, permit
+  relays): the funds sit at a provider-managed contract and move only through the provider's
+  API, which puts a third party on the reserve's path.
+- **Bridging USD₮0 between EVM networks as part of the unit**: that value never touches a
+  sidestr chain.
+- **Using the experiment chain's own EVM as its reserve origin**: the chain would be attesting
+  to itself, so the bound checks nothing.
+
+**Wiring status (2026-09-26, not live).** sidestr-rs branch `reserve-neutral` at `276d4bc5`,
+on top of `liquid-bridge-wiring`:
+
+- `sidestr-reserve` 0.1.0 (17 tests: golden bytes with a digest computed independently by
+  `sha256sum`, BIP-340 vectors 0 and 1, field and tamper checks, origin separation);
+- `sidestr-bridge-liquid` 0.2.0 (22 offline tests);
+- the read-only live test attests Liquid tip 4,074,382 in the new format;
+- one `secp256k1` (0.29.1) in the tree.
+
+The `evm` rule port is on branch `evm-rule` (see ADR-2096's amendment). Nothing is funded,
+sealed or published.
 
 ## Verification
 

@@ -64,6 +64,9 @@ instrument and that external assets are bridged in (PRD-024 D0, D3).
 5. **Excluded from every chain document we seal:** the `evm` rule (PRD-015 C11 stands), the
    `pool` rule (solid-pod-rs's live AMM remains the exchange surface), the `desk` rule (paused
    upstream). `sidestr-core` does not implement those overlays.
+   **Amended 2026-09-26 (owner decision): the `evm` rule is no longer excluded.** A chain we
+   seal may name it, as upstream defines it (see the amendment below). `pool` and `desk` stay
+   excluded.
 6. **Custody is stated honestly per chain.** The root is a level-2 k-of-n federation of our own
    instances and is custodial; children are level 1, custodied by the root signers. The chain
    document's `comment` says so. Level 3 (rotation, recovery) is declared future work.
@@ -102,6 +105,42 @@ licence boundary is now recorded in canon (it was not before).
 - **"Validate 1,000 blocks to the same tip" is a parity check, not readiness.** Production
   readiness additionally requires invalid-block rejection vectors, adversarial scheduling,
   safe-signing and recovery tests (ADR-2101).
+
+### Amendment 2026-09-26: the `evm` rule is admitted (owner decision)
+
+The owner judged decision 5's exclusion of the `evm` rule unnecessary and lifted it. A chain
+document we seal may now name `evm`, with upstream's semantics (sidestr/spec `proposals/evm.md`,
+`siding/lib/overlays/evm.mjs` at the pinned reference `fa86dac`, Melvin Carvalho). `pool` and
+`desk` stay excluded for their original reasons.
+
+**Why this is consistent with decision 1.** The `evm` rule is not a second value rail. It runs
+*inside* a sidestr chain, on that chain's sats:
+
+- deposits pay the chain's own reserve script (by default its challenge) and credit an EVM
+  account at 1 sat = 1 gwei;
+- withdrawals burn EVM value and must be paid in sats by the same chain's coinbase;
+- the coinbase commits the EVM state root, and every validator re-executes to check it.
+
+The instrument is still a UTXO on a chain DreamLab signs. PRD-015 C11 rejected a *native EVM
+rail*: settling on Ethereum or an EVM network in place of our chains. It is not reopened, and it
+never covered an execution overlay on our own chain. Decision 1's review trigger ("any proposal
+to add a second value rail") is therefore not tripped.
+
+**What it takes.** Rust followers refused every rule-bearing chain until now.
+`sidestr-core` gains two hooks: a document naming `evm` is accepted only when the caller has
+registered the rule, and a coinbase-amount allowance for withdrawals. The rule itself is a
+separate crate, `sidestr-evm` (`AGPL-3.0-only`, `publish = false`; `revm` for execution, a
+standard Merkle-Patricia state root). It is an attributed port of `evm.mjs` and must match
+ethereumjs 10.1.3, the version siding pins, root for root before any `evm` chain relies on it. `sidestr-core` takes no EVM
+dependency and keeps its build without `std`. Until the Rust rule matches the reference, the
+supervised JS producer (decision 4) is the only validator of an `evm` chain we run.
+
+**What it does not change.** Custody (decision 6), the authority gate on every settlement
+(ADR-2100), testnet-only chains (ADR-2103's P21 gate) and ADR-2117's closed scope all stand. An
+`evm` chain is still custodial to its signers: a contract on it is only as trustworthy as the
+federation that orders its blocks. The one-key property (a sidestr key is also an Ethereum key)
+is upstream's and applies inside such a chain. Keys used on external EVM networks stay
+domain-separated (ADR-2101).
 
 ## Verification
 

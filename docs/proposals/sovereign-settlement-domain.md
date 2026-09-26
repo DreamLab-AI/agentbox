@@ -253,7 +253,7 @@ one.
 | `challenge` | script hex plus derivation | L1: `5120<signer pubkey>`. L2: `5120<tweaked output key>` over a NUMS internal key tweaked by the chain id, with a `multi_a(k, ...)` leaf over derived signer keys. |
 | `signers` / `threshold` | `[x-only pubkey]`, `k` | One derived signer key per federated instance for the root chain. |
 | `pegConfirmations`, `refundBlocks`, `pegoutBlocks`, `pegoutMin`, `minFeeRate` | ints | Peg policy. |
-| `rules[]` | names | Opt-in rules. `evm`, `pool` and `desk` are prohibited (I10). |
+| `rules[]` | names | Opt-in rules. `pool` and `desk` are prohibited (I10); `evm` is admitted (ADR-2096 amendment 2026-09-26). |
 | `genesisHash` | hash | The genesis block the document commits to. |
 | **`trustLevel`** | `L1 \| L2 \| L3` | **Ours.** Declared, not inferred (I09). |
 | **`currencyPin`** | `tbtc4 \| btc` | **Ours.** On-seal immutable (I13). |
@@ -691,8 +691,10 @@ Domain law. Each is stated so it can be failed by a test.
 - **I09 Trust level is declared, never inferred.** Every chain document carries an explicit
   `trustLevel`, every surface that shows a balance shows it, and it may not be re-declared
   downward. A chain carrying value belonging to more than one principal may not be L1.
-- **I10 No `evm`, `pool` or `desk` rule.** None may appear in any chain document we seal
-  (ADR-2096). PRD-015 C11's rejection of a native EVM rail stands; the pool rule is a bare
+- **I10 No `pool` or `desk` rule.** Neither may appear in any chain document we seal
+  (ADR-2096). The `evm` rule was in this list until the ADR-2096 amendment of 2026-09-26: it
+  executes inside our own chain on its sats, so it is not the native EVM rail that PRD-015
+  C11 rejects, and that rejection stands. The pool rule is a bare
   centralised-sequencer AMM whose front-running the signer cannot mitigate and we will not
   be that signer; the desk rule depends on an unmerged parent change and is paused even
   upstream. Enforced at seal time.
@@ -912,9 +914,11 @@ mechanism, and it is what allows I16 to be reached without a flag day.
 
 ## What this domain explicitly does not model
 
-- **EVM.** No chain we seal names the `evm` rule (I10). One private key producing an Ethereum
-  address is a property of the upstream wallet, not a capability we expose. PRD-015 C11
-  stands.
+- **A native EVM rail.** Settling on Ethereum or an EVM network in place of our chains stays
+  out (PRD-015 C11). The `evm` *rule*, an EVM executing inside a sidestr chain on its sats, is
+  admitted since the ADR-2096 amendment of 2026-09-26. Inside such a chain a sidestr key is
+  also an Ethereum key (upstream's design); keys on external EVM networks stay
+  domain-separated (ADR-2101).
 - **The pool and desk rules.** The pool rule's front-running is acknowledged and unmitigated
   upstream, and running it makes us the sequencer who could front-run, which is a
   legal-product-class question as much as a technical one. The desk rule depends on an

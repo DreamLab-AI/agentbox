@@ -118,7 +118,9 @@ Owner decisions of 2026-09-21, recorded verbatim in intent and made specific bel
 | D6 | Parent network and header profile are `agentbox.toml` configuration exposed by onboarding, default following upstream (Knots BLAKE2b testnet4); the choice is bound on-seal | ADR-2103 |
 | D7 | Everything stacks over Nostr: chain traffic, tips, rule documents, account binding, spend approval | ADR-2098, ADR-2100 |
 
-Standing exclusions: the `evm` rule (PRD-015 C11 stands), the `pool` rule (solid-pod-rs's
+Standing exclusions: a native EVM rail (PRD-015 C11 stands; the `evm` *rule*, which executes
+inside our own chain on its sats, is admitted by the ADR-2096 amendment of 2026-09-26), the
+`pool` rule (solid-pod-rs's
 live AMM remains the exchange surface), the `desk` rule (paused upstream), custodial routers
 (PRD-015 C9 stays default-off and unrelated), RGB as an in-chain VM (ADR-124 L3 stays
 deferred and hard-refused).
