@@ -2803,6 +2803,9 @@ if [ -f "$_RECONCILE_SKILLS" ]; then
   # loaded skill index at 2 % of context / 8,000 chars). Idempotent, fail-open.
   if [ -f "${SKILLS_TREE:-/opt/agentbox/skills}/codex-registered-skills.txt" ]; then
     mkdir -p /home/devuser/.codex/skills 2>/dev/null || true
+    # Codex installs its own .system skills here as devuser. Boot runs as root;
+    # owning only the registered symlinks leaves the parent unwritable.
+    chown 1000:1000 /home/devuser/.codex/skills 2>/dev/null || true
     CLAUDE_SKILLS_DIR="/home/devuser/.codex/skills" \
     SKILLS_TREE="${SKILLS_TREE:-/opt/agentbox/skills}" \
     REGISTERED_SKILLS_MANIFEST="${SKILLS_TREE:-/opt/agentbox/skills}/codex-registered-skills.txt" \
