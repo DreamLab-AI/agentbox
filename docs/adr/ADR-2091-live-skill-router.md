@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -132,3 +132,15 @@ One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk:
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `config/entrypoint-unified.sh`: exports `VAULT_REPO` (from `[vault].repo`, else derived from `VAULT_ROOT`; empty when unresolvable so the management API fails closed) and adds it to the vault-disabled `unset` list. Nothing else in boot order, gating or service start changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Amended by ADR-2111 D2; this record's Decision text is left as written.** Governed changes: `config/hooks/lib/skill-route.cjs`, `config/hooks/skill-route.cjs`, `route.mjs` and the test (`4794ab229`, `b25903ec8`); `config/entrypoint-unified.sh`. Checked against the code, point by point:
+
+- **Point 3 no longer describes the hook.** The hook calls `route(…, { registeredOnly: true })`, and `restrictToRegistered` narrows the candidates to `skills/registered-skills.txt`. If the manifest is unreadable or shares no name with the tree, it fails open to the whole baked tree and logs `scope_reason` `manifest-unreadable` / `manifest-disjoint`. Why: on 143 live picks, 70% named a skill the Skill tool could not load. "Every routable skill" now holds for `/route` only. `/route` still ranks the whole tree and marks `(unregistered)` picks. Live probe: 19 candidates (20 registered, less `router-only` `skill-router`). The Consequences' "all routable skills on every turn" and the 115-candidate runtime measurement describe the pre-ADR-2111 hook. They have not been re-measured over the registered set.
+- **Before `b25903ec8` the pick never reached the model.** The hook wrote a top-level `{"result":"continue","additionalContext":…}`, and Claude Code ignores that shape. The Verification's "Live" line checked stdout, not delivery. The hook now emits `{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":…}}` via `config/hooks/lib/hook-output.cjs`. Nothing to inject means no stdout. Point 4's fail-open is unchanged in effect: "`{result:"continue"}` with no injection" now reads "empty stdout, exit 0". Point 5's line is still one advisory ranking with no threshold rule. It is capped at 300 chars (`MAX_CONTEXT_CHARS`), and a shown pick outside `~/.claude/skills` gets its `SKILL.md` path appended within that cap. The ~33 tokens per routed turn are now actually paid.
+- **Point 4, under an off-by-default gate:** with `[skills.routing].cascade = true` (ADR-2095 addendum), a missing `TYPESAFE_API_KEY` no longer skips a turn whose local BM25 margin clears the cutoff. Only escalations need the key. With the shipped `cascade = false` the clause holds as written.
+- **Point 6:** the registered timeout is now seconds, `max(8, ceil(2·timeout_ms/1000))`. The old `max(8000, …)` was read as seconds. Accompaniments now also include E076, E077 and W074 alongside E073/W071.
+- **Point 7:** the log gains `cascade`/`margin`, `scope`/`scope_reason`, and (only with `label_log`) a 12-hex `session` digest. It still never holds the prompt, confirmed in the probe's log line.
+
+Gates at this commit: `jest tests/config/skill-route.test.js tests/config/routing-labels.test.js` → 57 passed. Hook probes: gate off → no stdout; `jev` without key → no stdout, `no-key` logged; cascade forced local → honoured-shape `diagrams-as-code` line, `scope: registered`. Validator valid; `bash -n` clean. `activation_status` is left `staged`: ADR-2111 records the rebuild live, but this pass did not inspect the loaded container. Claim STILL TRUE as amended by ADR-2111 D2.

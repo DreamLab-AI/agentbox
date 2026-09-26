@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -123,3 +123,7 @@ One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk:
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `config/entrypoint-unified.sh`: exports `VAULT_REPO` (from `[vault].repo`, else derived from `VAULT_ROOT`; empty when unresolvable so the management API fails closed) and adds it to the vault-disabled `unset` list. Nothing else in boot order, gating or service start changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Governed changes:** `config/entrypoint-unified.sh` only (`b25903ec8`, `2bf05d775`, `6ea592ee0`): permission-posture projection, session-default seeding, hook-timeout units, hook registry reconcile, AGENTS.md embed, Codex AGENTS.md/skills ownership, jev-compaction config fingerprint. None touches the consultant surface. The projection is intact: `if [ -z "${AGENTBOX_ANTIGRAVITY_MODEL:-}" ]` guarding `export AGENTBOX_ANTIGRAVITY_MODEL="$(agentbox-manifest toml-string …)"`, so pre-set env still wins, then the manifest, then the registry default. **Citation drift, not corrected in the Decision:** that block is now at `config/entrypoint-unified.sh:2411-2412`, not `:2223`; per the finding above, grep for `AGENTBOX_ANTIGRAVITY_MODEL`. `tui_write.rs`, `antigravity/server.js` and `skills/mcp.json` did not move. `bash -n` → clean. Claim STILL TRUE.

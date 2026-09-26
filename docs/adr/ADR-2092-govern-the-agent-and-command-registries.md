@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -154,3 +154,7 @@ One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk:
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `config/entrypoint-unified.sh`: exports `VAULT_REPO` (from `[vault].repo`, else derived from `VAULT_ROOT`; empty when unresolvable so the management API fails closed) and adds it to the vault-disabled `unset` list. Nothing else in boot order, gating or service start changed. `flake.nix`: statix lint only — assignment→`inherit` (with `or` defaults preserved as `inherit ({ defaults } // cfg)`), redundant parentheses dropped, `(x or false) == true` rewritten as `let v = x or false; in builtins.isBool v && v` (same result for every input), and one comment reworded ("logseq corpus" → "vault corpus"). No derivation, port, service, gate or package changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Confirms the in-place amendment of 2026-09-25.** The Decision bullet on `reconcile-agents.sh` was edited in place (see its bracketed "amended 2026-09-25"), not superseded. The authority is ADR-2111 D1, and the change is recorded there. The code matches the amended text. `SUPERSEDED_BASE="${AGENTBOX_SUPERSEDED_DIR:-…/agentbox-superseded}"` is at `scripts/reconcile-agents.sh:52` and `scripts/reconcile-commands.sh:33`. Retired files land under `<base>/{agents,commands}/<root-key>/`. A legacy in-root `.superseded/` is migrated out on every run (`reconcile-agents.sh:109`, `reconcile-commands.sh:69-107`): identical copies are dropped, a differing copy is kept as `.migrated-N`, and a copy that cannot be migrated is pruned from the scan. The registered agent set is still 12. Other governed changes are orthogonal: `flake.nix` (tmpfs, closure rehashes, Transformers, jupyter tests), and the `config/entrypoint-unified.sh` blocks for other records. One of those extends this record's registry model to hooks: `config/registered-hooks.txt` + `agentbox-manifest hooks-reconcile` (ADR-2111 D3), which runs after every hook registration. `bash tests/config/agent-reconcile.test.sh` → 45 passed, 0 failed. Claim STILL TRUE as amended.

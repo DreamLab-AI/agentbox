@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: de84739eea73bdbeffa595f57c1a5d71fd77f630
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [config/hooks/routing-label-recorder.cjs, config/hooks/lib/routing-labels.cjs, tests/config/routing-labels.test.js]
 owner: jjohare
 review_trigger: acceptance or rejection of this proposal; the first 30 days of recorded labels; a learned router measured against the frozen corpus; any change to what the label row stores
@@ -130,3 +130,7 @@ domain: LEARNING-memory
 The live self-test used `AGENTBOX_ROUTING_LABELS_TABLE=routing_labels_selftest` on a real
 session transcript, and the table was dropped afterwards. The manifest validates with the gate
 off.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Anchor artefact, no drift.** This record and its three governed paths landed together in `4794ab229`. Its `verified_commit` was set to `de84739ee`, an earlier ancestor at which none of the paths existed yet, so the gate flagged the record's own creation. `git log 4794ab229..HEAD` over the three paths is empty. Around them, `b25903ec8` switched the router hook to the honoured `hookSpecificOutput` shape and to the registered-skill scope (ADR-2091 note of this date). The recorder's join key is unaffected: the hashed `session` tag is still written only with `label_log`, and log lines now also carry `scope`. The entrypoint's Stop registration/de-registration (`_RL_HOOK`, timeout 15 s) is as described. The gate is still `label_log = false`. Tests: `jest tests/config/routing-labels.test.js tests/config/skill-route.test.js` → 57 passed (49 at landing; the router suite grew). Status fields unchanged (proposed / partial / inactive). Claim STILL TRUE.

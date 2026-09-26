@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9c24aad52321355ba871e614c74c773cb0cbd2e9
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -129,3 +129,7 @@ now describe `deep-research`'s search backends. The row's `No` (not always-loade
 unchanged, no `status:` value, badge, lint rule or route-eval behaviour changed, and the
 skill stays unregistered in both manifests; the status contract and measured-discovery
 decision stand.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Governed change:** `skills/lint-skills.mjs` only (`b25903ec8`, ADR-2111). A new `DESC_WARN = 600` soft budget warns, never fails, on a frontmatter `description` longer than 600 chars, because a registered description is paid for in every session's prefix; the hard `DESC_MAX = 1024` fail is unchanged. This is a lint-side budget, distinct from Decision point 4's `DESC_MAX = 640` in the generated routing table (`gen-routing-table.mjs`, unchanged). No `status:` value, badge, gate or route-eval behaviour changed. `bash skills/lint-skills.sh` → OK, 127 skills, 30 warnings, all 30 of them the new `> 600 soft budget` DESCLEN. Claim STILL TRUE.

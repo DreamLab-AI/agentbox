@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -159,3 +159,7 @@ Commands: `git diff b680a7ae..HEAD -- agentbox.toml skills/tree-search-coder/SKI
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `agentbox.toml`: `[vault]` gains the optional `repo` key (the vault repository root, exported as `VAULT_REPO`); `format` comments now state `obsidian` is the only value; one comment reworded ("logseq corpus" → "vault corpus"). **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Review trigger fired** ("any new optional skill/feature block added to agentbox.toml"). New since `d6b976271`: `[skills.routing].cascade`/`cascade_cutoff` (ADR-2095 addendum) and `label_log`/`label_embeddings_url` (ADR-2110), both `false`; `[claude_code]` (ADR-2116, a posture projection rather than an optional package); six `[features.jev_compaction]` keys (ADR-2093 amendment); `[toolchains].agentic_qe` flipped to `false`; `[resources.tmpfs]` sizes. Each new gate carries a catalogue entry with an honest apply class (`skill-router-cascade`, `routing-teacher-labels`, `claude-code-permissions`, all `boot`; `agentic_qe` stays `rebuild`), and `node scripts/ci/check-manifest-catalogue.js` → PASS, 69 gate paths. Off-state: cascade and label-log inline nothing into the hook command when off, and `label_log=false` strips any prior Stop registration (`config/entrypoint-unified.sh`, `_SR_CASCADE` / `_RL_HOOK` blocks). The `agentic_qe=false` flip drops `agenticQePkg` from the package set (`flake.nix:550`) and the entrypoint now also removes the `agentic-qe` entry from the host-mounted `.mcp.json` (`ENABLE_AGENTIC_QE` else-branch), which closes a residue the "gate omits its process" claim did not cover before. `tree-search-coder` files did not move. Claim STILL TRUE.

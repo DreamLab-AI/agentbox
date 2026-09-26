@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -177,3 +177,7 @@ Two governed paths moved for reasons outside this claim. `management-api/lib/sys
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `agentbox.toml`: `[vault]` gains the optional `repo` key (the vault repository root, exported as `VAULT_REPO`); `format` comments now state `obsidian` is the only value; one comment reworded ("logseq corpus" → "vault corpus"). `flake.nix`: statix lint only — assignment→`inherit` (with `or` defaults preserved as `inherit ({ defaults } // cfg)`), redundant parentheses dropped, `(x or false) == true` rewritten as `let v = x or false; in builtins.isBool v && v` (same result for every input), and one comment reworded ("logseq corpus" → "vault corpus"). No derivation, port, service, gate or package changed. `schema/agentbox.toml.schema.json`: `vault.repo` declared (string, optional); `vault.format` enum narrowed to `obsidian` ("logseq-legacy" was read by nothing); one description reworded. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Governed changes, none to the decision:** `flake.nix` rehashed the deepsec `nodeModulesHash` (`7f5a224e4`) with the exact pin `2.3.9`, `packageLock` and tarball `sha256` unchanged; the other flake, `agentbox.toml`, schema, validator and catalogue hunks belong to other records (tmpfs, Transformers, jupyter tests, `[claude_code]`, jev-compaction keys, routing cascade/labels: schema blocks, E076, E077, W074, three catalogue entries; plus a `—` re-escaping of existing schema descriptions, including `[security.deepsec]`'s, with identical decoded text). E070/E071/E072/W070 remain in `scripts/agentbox-config-validate.js`; `node scripts/agentbox-config-validate.js agentbox.toml` → valid (5 unrelated advisories); `check-manifest-catalogue.js` → PASS (69). `deepsec-gate.sh`, its reference and the workflow did not move. Claim STILL TRUE.

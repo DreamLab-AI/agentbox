@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -166,3 +166,7 @@ No recipient set was inferred from private runtime state and no message sent.
 The source change does not certify external retention or per-process key custody.
 
 The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe512dd557bcbb6e`; it does not identify the loaded container.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Governed change:** `config/hooks/nostr-live-mirror.cjs` only (`b25903ec8`). `main()` now evaluates `egress.egressDecision('live-mirror', {})` and `egress.recipientAllowlist()` *first* and returns 0 on a refusal or a missing/malformed allowlist, before deriving the child key, loading nostr-tools or reading stdin (the hook fires four times a turn and spent ~170 ms reaching the same skip). This strengthens clause (c): absence of configuration now does less work and still sends nothing, logged with the same `recipient-allowlist-missing-or-invalid` outcome. The full per-recipient check after key derivation (G-4) is still in place for a configured allowlist; `egress-policy.cjs` and `egress-policy.json` did not move. Test: `jest --roots=tests/sovereign --testPathPattern egress-boundary` → 25 passed (the G-4 count). Status fields unchanged. Claim STILL TRUE.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a ruflo major bump that renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -103,3 +103,9 @@ One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk:
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `config/entrypoint-unified.sh`: exports `VAULT_REPO` (from `[vault].repo`, else derived from `VAULT_ROOT`; empty when unresolvable so the management API fails closed) and adds it to the vault-disabled `unset` list. Nothing else in boot order, gating or service start changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Governed changes:** `ruvector-mcp.cjs` (`b25903ec8`, ADR-2111 D4) now shapes `memory_search` output (limit 5, `min_score` 0.55, 300-char snippets, protected namespaces excluded from `"*"`) and emits compact JSON; `config/entrypoint-unified.sh` moved for other records. `orchestration-proxy.js` and `ruvector-gates.js` did not move, so `DENIED_PREFIXES`, the alias table and fail-open-for-orchestration-only are untouched; the memory tools stay the governed ones. The projection still reads the gate/filter (`entrypoint-unified.sh:1054`, `_RV_ORCH_TOOLS`) into the `claude-flow` env block (`:1189-1190`).
+
+**Deployment narrowed, Decision unchanged.** The running manifest sets `orchestration_tools = "swarm,agent"` (2026-09-25, ~185 tok/tool; `task`/`coordination` unused). The code default this record names is still `swarm,agent,task,coordination` (`orchestration-proxy.js:46`, `setup/agentbox.default.toml`, schema). Under the narrowed filter the Decision's own rule applies: `task_orchestrate` and `load_balance` (targets in `coordination`) are honest stubs in this deployment, so the first Consequence ("templates … `task_orchestrate` get real ruflo implementations") holds only for `swarm_*`/`agent_*` until an operator widens the filter. The catalogue summary (`management-api/lib/system-manifest.js:208`) still says it forwards `task_*`/`coordination_*`; that is the default, not this deployment. `node mcp/servers/lib/orchestration-proxy.test.js` → 11 passed. Claim STILL TRUE.

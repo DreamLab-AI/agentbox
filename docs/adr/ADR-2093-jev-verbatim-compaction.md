@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d6b976271a678f10d1788f4f76d526aef693015d
+verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
 verified_paths: [config/claude-plugins/jev-compaction/hooks/jev-compaction.ts, config/claude-plugins/jev-compaction/hooks/policy.mjs, config/entrypoint-unified.sh, lib/claude-code-binary.nix, tests/config/jev-compaction-policy.test.mjs]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, or a request to fence a class other than email
@@ -251,3 +251,13 @@ trigger fires once and holds under hysteresis until re-armed, and that the cache
 compacts at exactly `TTL − margin`, is cancelled by a new turn and is not armed below the
 floor. Disabling the sticky merge fails the three taint tests (mutation-checked).
 `claude plugin validate` passes.
+
+## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
+
+**Confirms the 2026-09-25 amendment against the code, and records one fix and one stale literal.**
+
+- **Amendment a–d holds.** `policy.mjs` exports `skillTaints`, `mergeTaint`, `taintRecord`, `triggerTokens`, `rearmGap`, `shouldCompact`, `cacheTtlSeconds`, `nudgeDelayMs`, `cacheWarmMode` and `shouldArmNudge`. `jev-compaction.ts` reads and writes `taint:<session>` through `mergeTaint`, arms `$.clock.after` and calls `$.session.compact()`. `plugin.json` `userConfig` defaults equal the manifest: `compactAtTokens` 180000, `rearmTokens` 40000, `cacheWarm` "compact", `cacheWarmFloorTokens` 100000, `cacheTtlSeconds` 0, `cacheTtlMarginSeconds` 300. `node --test tests/config/jev-compaction-policy.test.mjs` → 36 passed.
+- **Point 6 fix (`6ea592ee0`).** "Reinstalled on any difference" compared only the plugin *code* digest. `claude plugin install --config …` is the only way options reach the plugin, so a change to `[features.jev_compaction]` alone never landed. After the 2026-09-26 rebuild, the six amendment keys were missing from the installed `userConfig`. Behaviour was right only because the plugin defaults above equal the manifest. The entrypoint now builds the projected `--config` list first and fingerprints it into `~/.claude/plugins/.jev-compaction-config.sha`. "Current" requires both the code and the config digest to match, and a successful install writes the stamp. Point 6 now holds as stated for options as well as code.
+- **Point 1's literal is stale.** The pin is `2.1.280` (`lib/claude-code-binary.nix:28`, bumped in `fbcfa3f27` on 2026-09-22, before the previous anchor and missed by it), not `2.1.276`. 2.1.280 keeps the function-hook surface, so the substance of point 1 (a pin with `session.compact`, `command.register`, `$.http.fetch`) holds. Read the version as advisory.
+
+Other entrypoint changes (hook timeouts in seconds, the hook registry, permission projection) do not touch the plugin install/uninstall or byte-identical-when-off path. `bash -n` clean. Claim STILL TRUE.
