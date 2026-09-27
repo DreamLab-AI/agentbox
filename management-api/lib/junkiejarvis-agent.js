@@ -989,7 +989,16 @@ class JunkieJarvisAgent {
         );
         return;
       }
-      event = { ...rawEvent, content: out.text };
+      // A sealed original (kit ADR-2017) is the ORIGINAL author's signed event
+      // re-published by an admin migrator: attribute it, and thread any reply,
+      // to the verified inner event — its author, id, created_at and tags —
+      // never to the migrator's envelope.
+      if (out.sealed) {
+        if (this._shouldIgnore(out.sealed.pubkey)) return;
+        event = out.sealed;
+      } else {
+        event = { ...rawEvent, content: out.text };
+      }
     }
     if (!isChannelMention(event, this.pubkey)) return;
     const asker = event.pubkey;

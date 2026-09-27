@@ -259,13 +259,24 @@ async function main() {
     const roots = await collect(bridge, { kinds: [42], ids: [state.rootId] }, { maxMs: 8000 });
     const rawThread = [...roots, ...replies].sort((a, b) => a.created_at - b.created_at);
     // Decrypt zk-tagged posts; drop any this identity cannot read.
+    // A sealed original (kit ADR-2017) stands in as its verified inner event
+    // (`out.sealed`): the real author, id, created_at and reply tags, so the
+    // replied-to ledger, JJ-author filter and reply threading see the original
+    // post, not the admin migrator's envelope. Deduped by that id, because a
+    // plaintext original and its sealed copy coexist until the purge.
     const thread = [];
+    const seen = new Set();
     let unreadable = 0;
     for (const ev of rawThread) {
       const out = zoneKeys.readOutcome(ev, (z, e) => zc.store.get(z, e));
-      if (out.type === 'plain') thread.push(ev);
-      else if (out.type === 'decrypted') thread.push({ ...ev, content: out.text });
+      let readable = null;
+      if (out.type === 'plain') readable = ev;
+      else if (out.type === 'decrypted') readable = out.sealed || { ...ev, content: out.text };
       else if (ev.id !== state.rootId) unreadable += 1;
+      if (readable && !seen.has(readable.id)) {
+        seen.add(readable.id);
+        thread.push(readable);
+      }
     }
     log('INFO', `thread has ${thread.length} event(s)${unreadable ? ` (${unreadable} encrypted post(s) skipped: no key)` : ''}`);
 
@@ -273,7 +284,9 @@ async function main() {
     // channel's kind-40 section). Only resolved when a zone is encrypted.
     let replyPlan = { type: 'plain' };
     if (encryptionOn) {
-      const rootEv = rawThread.find((e) => e.id === state.rootId);
+      // `thread` first: a sealed root appears there as its inner event (no zk
+      // tag, so its channel's section decides), under the original id.
+      const rootEv = thread.find((e) => e.id === state.rootId) || rawThread.find((e) => e.id === state.rootId);
       const rootZk = rootEv && zoneKeys.parseZk(rootEv.tags);
       const zone = rootZk
         ? rootZk.zone

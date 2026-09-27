@@ -23,6 +23,14 @@
  *     rumor kind 21453 with content {"zone","epoch","secret","pubkey","created_at"}.
  *     Accepted only when the verified seal author is an admin and the secret
  *     derives to the stated pubkey.
+ *   - Sealed original (kit ADR-2017, `nostr_bbs_core::sealed`, version 1): a
+ *     pre-encryption plaintext kind-42 re-published by an admin migrator as a
+ *     zone message whose decrypted text is the ORIGINAL signed event's JSON
+ *     (exactly id/pubkey/created_at/kind/tags/content/sig), marked
+ *     `["sealed", <inner id>, "1"]`, with outer `created_at` == inner's and
+ *     only the channel root e-tag exposed. `readOutcome` opens it and returns
+ *     the verified inner event as `sealed`, so readers attribute the text to
+ *     its real author, id, timestamp and reply tags — never to the migrator.
  *
  * Key file (shared with the Rust digest; format owned here and in
  * docs/developer/dream-engine.md): `$WORKSPACE/.agentbox/zone-keys.json`
@@ -48,6 +56,11 @@ const KIND_SEAL = 13;
 const KIND_GIFT_WRAP = 1059;
 const KIND_CHANNEL_CREATE = 40;
 const ZK_TAG = 'zk';
+const SEALED_TAG = 'sealed';
+const SEALED_VERSION = 1;
+const KIND_CHANNEL_MESSAGE = 42;
+/** The seven NIP-01 fields a sealed original's inner JSON carries — no more, no fewer. */
+const SEALED_INNER_FIELDS = ['content', 'created_at', 'id', 'kind', 'pubkey', 'sig', 'tags'];
 const KEY_FILE_VERSION = 1;
 
 const DEFAULT_WORKSPACE = '/home/devuser/workspace';
@@ -153,6 +166,28 @@ function parseZk(tags) {
 
 function hasZkTag(tags) {
   return (Array.isArray(tags) ? tags : []).some((t) => Array.isArray(t) && t[0] === ZK_TAG);
+}
+
+/** Whether any tag is a `sealed` marker (well-formed or not). */
+function hasSealedTag(tags) {
+  return (Array.isArray(tags) ? tags : []).some((t) => Array.isArray(t) && t[0] === SEALED_TAG);
+}
+
+/**
+ * First well-formed `["sealed", <inner id hex>, "<version>"]` tag as
+ * `{ innerId (lowercase), version }`, or null. The mirror of
+ * `nostr_bbs_core::sealed::parse_sealed`. A reader must additionally require
+ * `version === SEALED_VERSION`; any other version is not understood.
+ */
+function parseSealed(tags) {
+  for (const t of Array.isArray(tags) ? tags : []) {
+    if (!Array.isArray(t) || t.length < 3 || t[0] !== SEALED_TAG) continue;
+    if (!isHex64(t[1]) || !/^[0-9]+$/.test(String(t[2]))) continue;
+    const version = Number(t[2]);
+    if (!Number.isSafeInteger(version) || version > 0xffffffff) continue;
+    return { innerId: t[1].toLowerCase(), version };
+  }
+  return null;
 }
 
 // ─── Key file / store ───────────────────────────────────────────────────────
@@ -365,21 +400,83 @@ function decryptWith(ev, key) {
 }
 
 /**
+ * Open the decrypted text of a sealed-original envelope `outer` and return the
+ * verified inner event, or null when any check fails. Mirrors
+ * `nostr_bbs_core::sealed::open_sealed`; the six checks are:
+ *   1. inner.kind === 42;
+ *   2. `verifyEvent(inner)` — id recomputed and BIP-340 signature valid;
+ *   3. inner.id === the `sealed` tag's inner id;
+ *   4. inner has no `zk` tag (a sealed original wraps plaintext only);
+ *   5. inner's channel (root-marked e-tag, else first e-tag) === outer's;
+ *   6. inner.created_at === outer.created_at.
+ * Before them the JSON must be an object with exactly the seven NIP-01 fields
+ * of well-formed types. Never partially trusted: one failure rejects it all.
+ */
+function openSealedInner(outer, text, ref) {
+  let inner;
+  try { inner = JSON.parse(text); } catch { return null; }
+  if (!inner || typeof inner !== 'object' || Array.isArray(inner)) return null;
+  const fields = Object.keys(inner).sort();
+  if (fields.length !== SEALED_INNER_FIELDS.length || fields.some((f, i) => f !== SEALED_INNER_FIELDS[i])) return null;
+  if (typeof inner.id !== 'string' || typeof inner.pubkey !== 'string' || typeof inner.sig !== 'string'
+      || typeof inner.content !== 'string' || !Number.isSafeInteger(inner.created_at)
+      || !Number.isSafeInteger(inner.kind) || !Array.isArray(inner.tags)
+      || !inner.tags.every((t) => Array.isArray(t) && t.every((x) => typeof x === 'string'))) {
+    return null;
+  }
+  if (inner.kind !== KIND_CHANNEL_MESSAGE) return null; // 1
+  let valid = false;
+  try { valid = getNostrTools().verifyEvent(inner) === true; } catch { valid = false; }
+  if (!valid) return null; // 2
+  if (inner.id.toLowerCase() !== ref.innerId) return null; // 3
+  if (hasZkTag(inner.tags)) return null; // 4
+  const innerChannel = channelOf(inner);
+  const outerChannel = channelOf(outer);
+  if (!innerChannel || !outerChannel || innerChannel.toLowerCase() !== outerChannel.toLowerCase()) return null; // 5
+  if (inner.created_at !== outer.created_at) return null; // 6
+  // A fresh object without nostr-tools' verification cache symbol.
+  return {
+    id: inner.id,
+    pubkey: inner.pubkey,
+    created_at: inner.created_at,
+    kind: inner.kind,
+    tags: inner.tags,
+    content: inner.content,
+    sig: inner.sig,
+  };
+}
+
+/**
  * Classify a kind-42 for reading. `lookup(zone, epoch)` returns a held key.
- * @returns {{ type: 'plain'|'decrypted'|'missing-key'|'failed', text: string|null }}
+ *
+ * A sealed original (outer carries a `sealed` tag) decrypts to its inner
+ * event: on success the result has `sealed: <inner event>` and `text` is the
+ * inner content; callers MUST then use `out.sealed || ev` for author, id,
+ * created_at and reply/thread tags. A malformed or unsupported `sealed` tag,
+ * or any failed check, is `failed`. For every other outcome the `sealed`
+ * property is absent (never null), so `out.sealed` is falsy.
+ *
+ * @returns {{ type: 'plain'|'decrypted'|'missing-key'|'failed', text: string|null, sealed?: object }}
  */
 function readOutcome(ev, lookup) {
   if (!ev || !hasZkTag(ev.tags)) return { type: 'plain', text: ev && typeof ev.content === 'string' ? ev.content : '' };
   const zk = parseZk(ev.tags);
   if (!zk) return { type: 'failed', text: null };
+  const sealedRef = hasSealedTag(ev.tags) ? parseSealed(ev.tags) : null;
+  if (hasSealedTag(ev.tags) && (!sealedRef || sealedRef.version !== SEALED_VERSION)) return { type: 'failed', text: null };
   const key = lookup(zk.zone, zk.epoch);
   if (!key) return { type: 'missing-key', text: null };
   if (key.pubkey.toLowerCase() !== zk.pubkey) return { type: 'failed', text: null };
+  let text;
   try {
-    return { type: 'decrypted', text: decryptWith(ev, key) };
+    text = decryptWith(ev, key);
   } catch {
     return { type: 'failed', text: null };
   }
+  if (!sealedRef) return { type: 'decrypted', text };
+  const inner = openSealedInner(ev, text, sealedRef);
+  if (!inner) return { type: 'failed', text: null };
+  return { type: 'decrypted', text: inner.content, sealed: inner };
 }
 
 /**
@@ -454,6 +551,8 @@ module.exports = {
   KIND_SEAL,
   KIND_GIFT_WRAP,
   ZK_TAG,
+  SEALED_TAG,
+  SEALED_VERSION,
   KEY_FILE_VERSION,
   readSetting,
   gateEnabled,
@@ -464,6 +563,8 @@ module.exports = {
   zkTag,
   parseZk,
   hasZkTag,
+  hasSealedTag,
+  parseSealed,
   keyFilePath,
   loadKeyFile,
   saveKeyFile,

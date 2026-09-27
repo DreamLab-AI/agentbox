@@ -314,7 +314,11 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    The key lands in
    `$WORKSPACE/.agentbox/zone-keys.json` (0600, owner-bound, never in git). A `zk`-tagged
    kind-42 is decrypted before it is read; one it cannot decrypt is skipped, so ciphertext
-   never reaches the LLM. A reply into an encrypted zone is NIP-44 encrypted to the zone
+   never reaches the LLM. A sealed original (forum ADR-2017: an admin-signed envelope
+   carrying a pre-encryption post's full signed event) is read as that inner event only after
+   `readOutcome` verifies it (kind 42, `verifyEvent`, id matches the `sealed` tag, no `zk`,
+   same channel and `created_at`); the reply is then attributed and threaded to the original
+   author, never the migrator. A reply into an encrypted zone is NIP-44 encrypted to the zone
    key, and without a key JunkieJarvis stays silent rather than post plaintext. Gate:
    `ENCRYPTION_ENABLED` exactly `true` plus the zone's `ZONE_CONFIG` `encrypted` flag
    (env, else agentbox `.env`); off, behaviour is unchanged. No primitive is implemented

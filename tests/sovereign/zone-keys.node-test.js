@@ -167,6 +167,146 @@ describe('zone messages', () => {
   });
 });
 
+// ── sealed originals (kit ADR-2017, nostr_bbs_core::sealed v1) ──────────────
+
+const SEAL_CHANNEL = 'c'.repeat(64);
+const MIGRATOR_SK = ADMIN_SK;
+
+/** An original, signed plaintext kind-42 in SEAL_CHANNEL (overrides applied before signing). */
+function originalPost(over = {}, skHex = AUTHOR_SK) {
+  return finalizeEvent({
+    kind: 42,
+    created_at: 1_780_000_000,
+    tags: [['e', SEAL_CHANNEL, '', 'root'], ['e', 'd'.repeat(64), '', 'reply'], ['p', pk(hexKey(11))]],
+    content: 'the original words',
+    ...over,
+  }, bytes(skHex));
+}
+
+/**
+ * The spec's envelope: kind 42, created_at == inner's, tags [channel root e,
+ * zk, sealed], content nip44(migrator_sk, zone_pk, inner_json), signed by the
+ * migrator. `innerJson` / `over` let a test break exactly one property.
+ */
+function sealEnvelope(original, key, { innerJson, sealedTag, channel = SEAL_CHANNEL, over = {} } = {}) {
+  const text = innerJson !== undefined ? innerJson : JSON.stringify(original);
+  return finalizeEvent({
+    kind: 42,
+    created_at: original.created_at,
+    tags: [['e', channel, '', 'root'], zk.zkTag(key), sealedTag || ['sealed', original.id, '1']],
+    content: nip44.encrypt(text, nip44.getConversationKey(bytes(MIGRATOR_SK), key.pubkey)),
+    ...over,
+  }, bytes(MIGRATOR_SK));
+}
+
+const seven = (ev) => ({
+  id: ev.id, pubkey: ev.pubkey, created_at: ev.created_at, kind: ev.kind, tags: ev.tags, content: ev.content, sig: ev.sig,
+});
+
+describe('sealed originals', () => {
+  const key = zoneKey(1);
+  const lookup = () => key;
+
+  test('round trip: the verified inner event is returned, attributed to its author', () => {
+    const original = originalPost();
+    const outer = sealEnvelope(original, key);
+    assert.equal(outer.pubkey, pk(MIGRATOR_SK));
+    const out = zk.readOutcome(outer, lookup);
+    assert.equal(out.type, 'decrypted');
+    assert.equal(out.text, 'the original words');
+    assert.deepEqual(out.sealed, seven(original));
+    assert.equal(out.sealed.pubkey, pk(AUTHOR_SK));
+    assert.equal(zk.readOutcome(outer, () => null).type, 'missing-key');
+    assert.equal(zk.readOutcome(outer, () => zoneKey(1, hexKey(9))).type, 'failed');
+  });
+
+  test('non-sealed outcomes carry no sealed property', () => {
+    const msg = zk.applyWritePlan({ kind: 42, content: 'hi', tags: [['e', SEAL_CHANNEL, '', 'root']] },
+      { type: 'encrypt', key }, bytes(AUTHOR_SK));
+    const out = zk.readOutcome({ ...msg, pubkey: pk(AUTHOR_SK) }, lookup);
+    assert.equal(out.type, 'decrypted');
+    assert.equal('sealed' in out, false);
+    assert.equal('sealed' in zk.readOutcome({ kind: 42, content: 'x', tags: [] }, lookup), false);
+  });
+
+  test('the sealed tag is the discriminator: a normal message whose text is event JSON stays text', () => {
+    const json = JSON.stringify(originalPost());
+    const msg = zk.applyWritePlan({ kind: 42, content: json, tags: [['e', SEAL_CHANNEL, '', 'root']] },
+      { type: 'encrypt', key }, bytes(AUTHOR_SK));
+    const out = zk.readOutcome({ ...msg, pubkey: pk(AUTHOR_SK) }, lookup);
+    assert.deepEqual(out, { type: 'decrypted', text: json });
+  });
+
+  test('parseSealed accepts only well-formed tags', () => {
+    const id = 'a'.repeat(64);
+    assert.deepEqual(zk.parseSealed([['e', 'x'], ['sealed', id.toUpperCase(), '1']]), { innerId: id, version: 1 });
+    assert.equal(zk.parseSealed([['sealed', 'abc', '1']]), null);
+    assert.equal(zk.parseSealed([['sealed', id]]), null);
+    assert.equal(zk.parseSealed([['sealed', id, 'v1']]), null);
+    assert.equal(zk.parseSealed([]), null);
+    assert.equal(zk.SEALED_TAG, 'sealed');
+    assert.equal(zk.SEALED_VERSION, 1);
+  });
+
+  test('a malformed or unsupported sealed tag fails, never falls back to plain decryption', () => {
+    const original = originalPost();
+    for (const tag of [['sealed', original.id, '2'], ['sealed', 'nothex', '1'], ['sealed', original.id]]) {
+      assert.deepEqual(zk.readOutcome(sealEnvelope(original, key, { sealedTag: tag }), lookup),
+        { type: 'failed', text: null });
+    }
+  });
+
+  test('check 1: the inner event must be kind 42', () => {
+    const original = originalPost({ kind: 1 });
+    assert.equal(zk.readOutcome(sealEnvelope(original, key), lookup).type, 'failed');
+  });
+
+  test('check 2: the inner id and signature must verify', () => {
+    const original = originalPost();
+    const tampered = JSON.stringify({ ...seven(original), content: 'words the author never wrote' });
+    assert.equal(zk.readOutcome(sealEnvelope(original, key, { innerJson: tampered }), lookup).type, 'failed');
+    const other = originalPost({ content: 'different' });
+    const badSig = JSON.stringify({ ...seven(original), sig: other.sig });
+    assert.equal(zk.readOutcome(sealEnvelope(original, key, { innerJson: badSig }), lookup).type, 'failed');
+  });
+
+  test('check 3: the inner id must match the sealed tag', () => {
+    const original = originalPost();
+    const other = originalPost({ content: 'another post' });
+    const outer = sealEnvelope(original, key, { sealedTag: ['sealed', other.id, '1'] });
+    assert.equal(zk.readOutcome(outer, lookup).type, 'failed');
+  });
+
+  test('check 4: the inner event must not itself be zone-encrypted (no nesting)', () => {
+    const original = originalPost({ tags: [['e', SEAL_CHANNEL, '', 'root'], zk.zkTag(key)] });
+    assert.equal(zk.readOutcome(sealEnvelope(original, key), lookup).type, 'failed');
+  });
+
+  test('check 5: the inner channel must be the outer channel', () => {
+    const original = originalPost({ tags: [['e', 'b'.repeat(64), '', 'root']] });
+    assert.equal(zk.readOutcome(sealEnvelope(original, key), lookup).type, 'failed');
+    const noChannel = originalPost({ tags: [] });
+    assert.equal(zk.readOutcome(sealEnvelope(noChannel, key), lookup).type, 'failed');
+  });
+
+  test('check 6: the outer created_at must equal the inner created_at', () => {
+    const original = originalPost();
+    const outer = sealEnvelope(original, key, { over: { created_at: original.created_at + 1 } });
+    assert.equal(zk.readOutcome(outer, lookup).type, 'failed');
+  });
+
+  test('inner JSON must carry exactly the seven NIP-01 fields', () => {
+    const original = originalPost();
+    const extra = JSON.stringify({ ...seven(original), relay: 'wss://x' });
+    assert.equal(zk.readOutcome(sealEnvelope(original, key, { innerJson: extra }), lookup).type, 'failed');
+    const { sig, ...missing } = seven(original);
+    assert.ok(sig);
+    assert.equal(zk.readOutcome(sealEnvelope(original, key, { innerJson: JSON.stringify(missing) }), lookup).type, 'failed');
+    assert.equal(zk.readOutcome(sealEnvelope(original, key, { innerJson: 'not json' }), lookup).type, 'failed');
+    assert.equal(zk.readOutcome(sealEnvelope(original, key, { innerJson: '[1,2]' }), lookup).type, 'failed');
+  });
+});
+
 // ── grants ──────────────────────────────────────────────────────────────────
 
 describe('zone-key grants', () => {
@@ -376,6 +516,54 @@ describe('JunkieJarvis in encrypted zones', () => {
     const { agent, bridge } = agentWith({ keys: [zoneKey(1)], section: 'zone2-rants' });
     await agent._handleChannel(mention('@junkiejarvis hello'));
     assert.equal(bridge.published[0].content, 'sure thing');
+  });
+
+  test('a sealed original is attributed and threaded to its real author, not the migrator', async () => {
+    const key = zoneKey(1);
+    const { agent, bridge, llmSeen } = agentWith({ keys: [key] });
+    const original = finalizeEvent({
+      kind: 42,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [['e', channelId, '', 'root'], ['p', jjSigner.pubkey]],
+      content: '@junkiejarvis restored question',
+    }, bytes(askerSk));
+    await agent._handleChannel(sealEnvelope(original, key));
+    assert.deepEqual(llmSeen, ['restored question']);
+    assert.equal(bridge.published.length, 1);
+    const reply = bridge.published[0];
+    assert.ok(reply.tags.some((t) => t[0] === 'e' && t[1] === original.id && t[3] === 'reply'));
+    assert.ok(reply.tags.some((t) => t[0] === 'p' && t[1] === pk(askerSk)));
+    assert.ok(!reply.tags.some((t) => t[1] === pk(MIGRATOR_SK)));
+    assert.equal(zk.decryptWith(reply, key), 'sure thing');
+  });
+
+  test('a sealed original authored by the agent itself is ignored', async () => {
+    const key = zoneKey(1);
+    const { agent, bridge, llmSeen } = agentWith({ keys: [key] });
+    const own = finalizeEvent({
+      kind: 42,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [['e', channelId, '', 'root'], ['p', jjSigner.pubkey]],
+      content: '@junkiejarvis talking to myself',
+    }, bytes(MEMBER_SK));
+    await agent._handleChannel(sealEnvelope(own, key));
+    assert.equal(llmSeen.length, 0);
+    assert.equal(bridge.published.length, 0);
+  });
+
+  test('a tampered sealed original never reaches the LLM', async () => {
+    const key = zoneKey(1);
+    const { agent, bridge, llmSeen } = agentWith({ keys: [key] });
+    const original = finalizeEvent({
+      kind: 42,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [['e', channelId, '', 'root'], ['p', jjSigner.pubkey]],
+      content: '@junkiejarvis real words',
+    }, bytes(askerSk));
+    const forged = JSON.stringify({ ...seven(original), content: '@junkiejarvis forged words' });
+    await agent._handleChannel(sealEnvelope(original, key, { innerJson: forged }));
+    assert.equal(llmSeen.length, 0);
+    assert.equal(bridge.published.length, 0);
   });
 
   test('a grant arriving as a gift wrap is stored and never answered', async () => {
