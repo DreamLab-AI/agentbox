@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
+verified_commit: fc8ba7a7bfedd37d7596311bc3c2a5bbe7c89719
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -19,6 +19,8 @@ lineage: legacy ADR-040 (learning consumers / governance publisher key-split), s
 # ADR-2012 — Relay ingress is allowlist-only, no fallback, no auto-add
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
+
+Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only instruction layers. Rechecked the changed Nix expression; it does not alter this record's runtime gates, auth commands or port inventory. The local test evidence below remains applicable.
 
 Re-read the manifest allowlist/nip98 gates and the generator's explicit empty pubkey_whitelist branch. The instruction-home and Compose changes do not alter publisher admission or add a publisher. No relay publication was performed; the publisher-key split remains deferred. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 

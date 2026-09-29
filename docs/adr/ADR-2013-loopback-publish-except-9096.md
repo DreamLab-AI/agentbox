@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
+verified_commit: fc8ba7a7bfedd37d7596311bc3c2a5bbe7c89719
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -19,6 +19,8 @@ lineage: legacy ADR-045 (sovereign ingress front door), R-003 (loopback publish 
 # ADR-2013 — Loopback-only compose publishes except the sanctioned-exposure list
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
+
+Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only instruction layers. Rechecked the changed Nix expression; it does not alter this record's runtime gates, auth commands or port inventory. The local test evidence below remains applicable.
 
 Regenerated Compose now validates with Docker, preserving existing persistent stores and environment fallbacks; resource PID settings agree. scripts/ci/check-ports-loopback.sh passes across 14 Compose files and 11 port blocks, and its listener check reports only existing sanctioned non-loopback listeners. The 9096 exception and unpublished 9095 remain unchanged. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
