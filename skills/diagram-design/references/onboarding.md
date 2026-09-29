@@ -54,9 +54,9 @@ Gate-only choices use the same finish:
 Use the browsercontainer sidecar MCP (preferred) or a plain `fetch`. If the site has multiple pages worth sampling (landing + blog + product), fetch 2–3 and merge the palette signals.
 
 ```javascript
-browser_navigate({ url: "https://example.com" })
-browser_take_screenshot({ filename: "out.png", fullPage: true })
-browser_snapshot()
+navigate_page({ type: "url", url: "https://example.com" })
+take_screenshot({ filePath: "out.png", fullPage: true })
+take_snapshot()
 ```
 
 ---

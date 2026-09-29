@@ -11,10 +11,6 @@ worth having if the reader can actually use it afterwards and every claim in it
 is grounded. This skill is the family hub for three deliveries that share one
 contract and diverge only in output shape.
 
-The first two pilots — one docs bundle, one instructional microsite — were run
-against the same private repository in September 2026; their evals live in
-`evals/`.
-
 ## The seven questions (the acceptance bar)
 
 Whatever the delivery, a reader who finishes it must be able to answer, unaided:
@@ -176,14 +172,12 @@ user. An identical retry is not an attempt, and a run that ends with blocked cha
 has ended correctly. `references/handup.md` has the tiers, triggers, packet and reply
 shapes, and what the skill-improvement loop reads from them.
 
-## Addendum 2026-09-09: the microsite pilot's verdict, and what changed
+## Microsite: explain the system, not the making of it
 
-The first microsite (the target repository, 20 pages, 180 commits over two days) was grounded,
-linked and rejected by its owner: it explained the process of making itself rather than the
-code. Its pages described evidence classes, drills, fixtures, receipts, the bugs found while
-learning the product's UI, and the narration of its own videos; the reader wanted the system.
-Read `references/microsite/reader-voice.md` first on any microsite; it holds the failed
-sentences, the corrected chapter shape and the gate. Four things changed:
+A microsite whose pages describe its own evidence classes, drills, fixtures, receipts, the bugs
+found while learning the product's UI or the narration of its own videos explains its process
+rather than the code; the reader wants the system. Read `references/microsite/reader-voice.md`
+first on any microsite; it holds the failing sentences, the chapter shape and the gate. Four rules:
 
 1. **Two registers.** The claims ledger, evidence classes and completion audit are the
    authors' notebook and never enter the reader text. `scripts/voice-lint.sh` fails a chapter
@@ -197,16 +191,16 @@ sentences, the corrected chapter shape and the gate. Four things changed:
    by a dependency-free build in the target into the reading shell; `src:path#L10-L20` links
    open the file in the source pane and the build fails on a missing path or a range outside
    the file. Content and shell stay separate; media is added later without touching prose.
-4. **The model path.** The Loom façade in verbatim mode answered a codebase packet with an
-   ontology class instead of calling the model. The fix went into the Loom (ADR-139):
-   `loom_options.scaffold=false` makes the façade a plain proxy for that request.
+4. **The model path.** Every drafting call sets `loom_options.scaffold=false`, which makes the
+   Loom façade a plain proxy for that request (ADR-139); without it the façade can answer a
+   codebase packet with an ontology class instead of calling the model.
    `explainer-loom-draft` (a baked binary — no `node`, no install) sends it on every call and
    drives the connected node model through the façade
    (`${LOOM_BASE_URL}`, about 13–20 s for a 400–900-token section) as a
    sequential, resumable background batch; the session model orients, checks ranges and
    decides. See the model-path section in `references/delivery-microsite.md`.
 
-The pipeline that replaced the pilot: per chapter, a researcher writes a fact sheet (files,
+The pipeline, per chapter: a researcher writes a fact sheet (files,
 exact ranges, ADR sections, pinning tests, measured commands); a writer produces the chapter
 from the sheet and the open files; an independent checker opens every linked range, greps
 every named identifier, runs the lint and the build, and returns pass or a precise issue list;

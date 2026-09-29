@@ -41,7 +41,7 @@ narrow to **the sources you trust** (lenses), read the **full source** (not snip
 and get citations you can **verify** — never fabricated, never a closed pre-synthesized
 garden. Runs locally/private; never invokes a browser from inside this skill.
 
-## Which web-search skill? (read this first — avoids the common mix-up)
+## Which web-search skill?
 
 ```
 Search priority: 1. ceramic → 2. perplexity → 3. Claude WebSearch
@@ -58,8 +58,6 @@ Verifiable citations needed? → web-researcher (this)
 | **Multi-agent deep report** — fan-out + adversarial verification + cited synthesis (orchestrates searchers; can use any of the above as a backend) | **`deep-research`** |
 | Expand a single known URL | **`scrape_page`** (this skill, full text/PDF/YouTube) ; JS-rendered → **`browser`** sidecar |
 | Interactive browser (login/click/JS render) | **`browser`** / **`playwright`** |
-
-One-liner: **ceramic = primary keyword search with dense extracts; perplexity = secondary, synthesized + authoritative; web-researcher = verifiable citations + lenses; deep-research = the harness over all.**
 
 ## When To Use
 
@@ -154,7 +152,7 @@ Live status/diagnostics the agent can read: `stats://tools`, `stats://sessions`,
 `diagnostics://errors/recent`, `diagnostics://health`, and a large-payload artifact
 store `research://artifact/{id}`. Ready-made research prompt templates appear as `/` commands.
 
-## Browser Delegation (Critical)
+## Browser Delegation
 
 `web-researcher-mcp`'s tier-4 scrape (`go-rod` + stealth) would auto-download its own
 Chromium per pod. In agentbox this is **disabled** — a second Chromium duplicates the
@@ -170,8 +168,8 @@ JS-rendered page (`NEEDS_BROWSER`), switch to the `browser` skill — do **not**
 
 ```
 1. scrape_page(url)  -> tiers 1-3 ok => done ; all fail => NEEDS_BROWSER
-2. browser_navigate({url}) on browser-gpu
-3. browser_snapshot() / browser_evaluate(...)
+2. navigate_page({type: "url", url}) on browser-gpu
+3. take_snapshot() / evaluate_script(...)
 ```
 
 One Chrome surface, one GPU allocation, one audit trail.

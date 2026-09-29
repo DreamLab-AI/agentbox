@@ -115,8 +115,8 @@ latexmk -xelatex -biber -interaction=nonstopmode main.tex
 
 # Visual verification via browser sidecar
 # Navigate to output PDF, screenshot pages for review
-browser_navigate({ url: "file:///path/to/main.pdf" })
-browser_take_screenshot({ filename: "page_verify.png", fullPage: false })
+navigate_page({ type: "url", url: "file:///path/to/main.pdf" })
+take_screenshot({ filePath: "page_verify.png", fullPage: false })
 ```
 
 ## Swarm Topology (claude-flow)

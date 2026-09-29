@@ -62,30 +62,32 @@ claude mcp add browser-gpu --transport sse http://browsercontainer:8931/sse
 
 ## Key Tools
 
-### `browser_snapshot` (preferred for LLM interaction)
-Returns an accessibility tree -- structured, deterministic, no vision model needed.
+Tool names below are the `browser-gpu` server's (`mcp__browser-gpu__<name>`).
 
-### `browser_take_screenshot`
-Capture viewport or full-page screenshot as PNG/JPEG.
+### `take_snapshot` (preferred for LLM interaction)
+Returns an accessibility tree -- structured, deterministic, no vision model needed. Element `uid`s from it feed `click`, `fill`, `hover`.
 
-### `browser_navigate`
-Navigate to a URL.
+### `take_screenshot`
+Capture viewport, full page (`fullPage: true`) or one element (`uid`); `filePath` saves instead of attaching.
 
-### `browser_click` / `browser_type` / `browser_fill_form`
+### `navigate_page`
+Go to a URL (`type: "url"`), or back/forward/reload. `new_page` / `select_page` / `list_pages` manage tabs.
+
+### `click` / `type_text` / `fill` / `fill_form`
 Interact with page elements.
 
-### `browser_evaluate`
+### `evaluate_script`
 Execute JavaScript in the page context.
 
-### `browser_console_messages`
+### `list_console_messages`
 Read browser console output.
 
 ## Quick Start
 
 ```javascript
-browser_navigate({ url: "https://example.com" })
-browser_snapshot()
-browser_take_screenshot({ filename: "page.png", fullPage: true })
+navigate_page({ type: "url", url: "https://example.com" })
+take_snapshot()
+take_screenshot({ filePath: "page.png", fullPage: true })
 ```
 
 ## Sidecar Management

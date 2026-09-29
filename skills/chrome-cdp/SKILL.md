@@ -15,7 +15,7 @@ Chrome sessions — no Puppeteer, instant connection to existing tabs. Reach for
 over the `browser`/`playwright` skills only when you need raw CDP domain calls or the
 `cdp.mjs` command surface; for ordinary automation those MCP-backed skills are simpler.
 
-## Two Chrome Targets
+## Chrome target
 
 | Target | Address (from agentbox) | Address (from host) | Use Case |
 |--------|------------------------|---------------------|----------|
@@ -38,7 +38,7 @@ agentbox.sh browsercontainer health
 scripts/cdp-sidecar.sh list
 
 # Open your WebGPU app
-scripts/cdp-sidecar.sh open http://the model host:3001
+scripts/cdp-sidecar.sh open http://<app-host>:3001
 
 # Screenshot / accessibility snapshot
 scripts/cdp-sidecar.sh shot <target>
@@ -54,13 +54,9 @@ scripts/cdp-sidecar.sh eval <target> \
 
 `<target>` is a unique prefix of the targetId from `list` (min 8 chars).
 
-## Quick Start — Local / Remote
+## Quick Start — Remote
 
 ```bash
-# Local Chrome
-DISPLAY=:1 chromium --remote-debugging-port=9222 --no-sandbox &
-scripts/cdp-connect.sh 9222 list
-
 # Any remote host (or via env vars). Canonical GPU target is the sidecar:
 # browsercontainer:9223 (raw CDP via socat) — see the browser skill.
 scripts/cdp-connect.sh remote-host.example:9222 list

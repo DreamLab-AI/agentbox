@@ -38,9 +38,8 @@ time and will abort the boot. Keep such references outside the heredoc.
 
 **Do not build from inside the container.** The host Docker socket makes DinD
 look like it works, but bind paths resolve against the *host* filesystem, so a
-build launched here bakes stale code. Edit here; build on the host via tmux
-tab 6 (`./scripts/launch.sh up dev`, or `rebuild dev` for Dockerfile/dep
-changes).
+build launched here bakes stale code. Edit here; the image is built on the
+host with `./agentbox.sh rebuild` (`--no-cleanup` keeps recovery images).
 
 ## Before reporting done
 

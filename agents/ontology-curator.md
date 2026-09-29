@@ -58,10 +58,9 @@ of pages and naming is rarely what you would guess; an absent *search hit* is no
 an absent *concept*.
 
 Neighbours and shortest paths live on the Loom's `/mcp` JSON-RPC plane
-(`loom.neighbours`, `loom.paths`). **The deployed generation answers `/mcp` with
-404 as of 2026-09-22** — the plane is ADR-140 work that has not shipped. Until it
-does, use `vault tree` for neighbours and state plainly that a shortest path is
-unavailable. Do not walk asserted wikilinks and call the result a path.
+(`loom.neighbours`, `loom.paths`; ADR-140). If `/mcp` answers 404 the plane is not
+deployed: use `vault tree` for neighbours and state plainly that a shortest path
+is unavailable. Do not walk asserted wikilinks and call the result a path.
 
 The binding is fail-open: a Loom that is down yields a `"degraded": true` body and
 exit 0. Say grounding was unavailable and continue the turn. Never read a degraded

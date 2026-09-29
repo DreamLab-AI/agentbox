@@ -114,10 +114,9 @@ skill's frontmatter `description` (and `deprecated`/`replacement`) and the secti
 skill from `references/section-map.json`, and rewrites the table. `bash skills/lint-skills.sh`
 fails when the table is stale (`--check`) or a skill directory is missing from the section map.
 Never hand-edit a row: fix the owning skill's description, add the skill to the section map if
-it is new, and regenerate. (Until 2026-09-09 the table claimed to be generated but was
-hand-maintained and 38 skills behind the tree.)
+it is new, and regenerate.
 
 ## Cross-harness note
-`/route` is a Claude Code slash command. On Codex (GPT-6 Astra) run `scripts/route.mjs`
+`/route` is a Claude Code slash command. On Codex run `scripts/route.mjs`
 the same way (it is plain Node, no harness affordance) or read
 `references/routing-table.md` directly; the same rows, the same descriptions.

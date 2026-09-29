@@ -206,7 +206,6 @@ supervisorctl status qgis-mcp
 python3 -c "import socket; s=socket.socket(); s.connect(('localhost',9877)); print('OK'); s.close()"
 ```
 
-**Protocol mismatch (old plugin vs new):**
-The new plugin uses length-prefixed framing (4-byte header), not newline-delimited JSON.
-Always use the FastMCP server (`src/qgis_mcp/server.py`) which handles framing automatically.
-Do NOT send raw newline-delimited JSON to port 9877 -- it will fail with the new plugin.
+**Protocol mismatch:**
+Port 9877 expects length-prefixed framing (4-byte header), so raw newline-delimited JSON fails.
+Go through the FastMCP server (`src/qgis_mcp/server.py`), which handles the framing.

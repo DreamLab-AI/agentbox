@@ -57,7 +57,7 @@ time; do not hardcode the literal hex into committed skill source.
 
 ## Connection
 **Streamable-HTTP** MCP server with bearer auth on the host that holds the mail/index.
-It now runs as the **`email-mcp-gateway`** container on the shared `visionclaw_network`,
+It runs as the **`email-mcp-gateway`** container on the shared `visionclaw_network`,
 so the canonical endpoint is `http://email-mcp-gateway:8765` — reached by docker service
 name (survives IP reassignment), not a fixed LAN IP. Plain HTTP + bearer over the trusted
 network (`http://`, not `https://`). Auto-registered in agentbox by the entrypoint when
@@ -71,31 +71,30 @@ claude mcp add --transport http email-gateway http://email-mcp-gateway:8765/mcp 
 
 First query may be slow (models lazy-load); subsequent queries are fast until idle TTL.
 
-### Backend model endpoint — the Ontology Loom façade (load-bearing, Aug 2026)
-The gateway reasons **locally**, and as of Aug 2026 it reasons **through the Ontology Loom**, not a
+### Backend model endpoint — the Ontology Loom façade (load-bearing)
+The gateway reasons **locally**, **through the Ontology Loom**, not a
 raw model port. The Loom (VisionClaw PRD-025 / ADR-135; agentbox ADR-051) is a portable node with a
 stable, **model-swappable façade** that adds ontology grounding and keeps email content on the LAN.
 
 - **`REASONER_BASE_URL` = `${LOOM_BASE_URL}`** — the Loom façade, **colocated with
   the model on the connected node** (Deployment A: `~/githubs/loom` docker container on `:8084`,
-  delegating to the `loom-model` container on `:8085`). Reached over the LAN via the existing ml DNAT — the
-  SAME endpoint value the gateway historically used, but `:8084` is now the **Loom façade**, not a
-  raw model port. It scaffold-injects ontology context, then delegates to the local model. (A
+  delegating to the `loom-model` container on `:8085`). Reached over the LAN via the ml DNAT;
+  `:8084` is the **Loom façade**, not a raw model port. It scaffold-injects ontology context, then
+  delegates to the local model. (A
   Deployment-B sidecar — `http://loom:8080` on `visionclaw_network`, compose profile `loom` — is
   the alternative topology when you want the Loom colocated with consumers instead of the model.)
 - **Why the façade, not the model port** — the deployed model changes based on benchmark results and
   plans (Muse ↔ Gemma ↔ next), and swapping it must be **invisible to email**. The Loom is that
   indirection: consumers hold a stable endpoint; the model is a URL behind it. This is the
   "no technical debt on upgrade" guarantee — the same reason a stale raw-model URL used to hang the
-  gateway (see the Aug-2026 bullet in [Failure handling](#failure-handling)).
+  gateway (see the gateway-hangs bullet in [Failure handling](#failure-handling)).
 - **Privacy + grounding as one subunit** — routing through the Loom means email prompts are
   ontology-grounded (benchmark: static scaffold lifts grounded recall ~3.5×, and ~3–6× faster than
   cold parametric reasoning) AND never leave the LAN: the Loom delegates only to the LAN/local model
   behind `DISTILL_BACKEND_URL`, never to a cloud endpoint. The Loom is the email privacy system.
-- **Current model behind the Loom** — **Qwen3.8-27B** (cutover 2026-08-14; runs inside the Loom
+- **Current model behind the Loom** — **Qwen3.8-27B** (runs inside the Loom
   stack as the `loom-model` container on `:8085`). This is a **swappable** choice behind the Loom
-  façade — earlier deployments (Muse, Gemma) sat here before it, and the next will sit here after,
-  with **zero change to the gateway**. Reached by the Loom over the LAN rail; the connected node is downstream of
+  façade; swapping it needs **zero change to the gateway**. Reached by the Loom over the LAN rail; the connected node is downstream of
   the gateway host with **no LAN IP** (`the gateway's NAT service` DNAT over the 25 G rail; old `a retired address` is <!-- lint-ok -->
   **dead**). To change the model, change the Loom's backend — **the gateway config does not change.**
   - **Backend-swap runbook** (verified 2026-08-25, Gemma↔Qwen). The serving model is a host-network
@@ -159,7 +158,7 @@ joined text). Authorised response: `{"authorized":true,"found":true,"ref_id":"�
 ### `refresh_inbox(nostr_pubkey, full?)` — pull new mail NOW
 On-demand IMAP pull from Proton Bridge instead of waiting for the ~4h scheduled crawl. Use when the
 mail you need **just arrived** and is time-sensitive: **password resets, one-time codes, verification
-links, expected replies from Simplilearn**. `full=false` (default) fetches only new mail from the saved
+links, expected replies**. `full=false` (default) fetches only new mail from the saved
 watermark (seconds); `full=true` re-crawls everything (minutes — avoid). Runs server-side; nothing is
 written to any repo. Returns `{status, mode, new_chunks, indexed_chunks, newest_date_iso,
 newest:[{ref_id,sender,sender_domain,date_iso,folder,subject}...]}`.
@@ -195,10 +194,7 @@ remains is **where the output goes**:
   that project only*; it does not relax the default elsewhere. Keep the repo private.
 
 ## Don'ts
-❌ Don't expect raw bodies from `ask_email` — it always sanitizes; use the raw tools.
-❌ Don't pass an `npub` to the raw tools — hex only.
 ❌ Don't bake the literal pubkey or bearer token into committed source.
-❌ Don't use this for work mailboxes, calendar, or sending mail.
 ❌ **Don't run `protonctl info` / `protonctl login` (or any `proton-bridge --cli`) while the gateway
 is serving.** They are not read-only: each starts a *second* Bridge, and Proton's launcher kills the
 running core instead of attaching (verified 2026-09-04 — listener on 1143 vanished, both accounts
@@ -211,12 +207,10 @@ the Bridge stays logged in, so no password/2FA is needed and the listener return
 ## Failure handling
 - Tool missing → enable `[skills.email_search]` + set token env, or register manually; confirm
   LAN routing to the gateway.
-- **Gateway hangs / `refresh_inbox` 180 s timeouts / whole-session unreachability *after the Aug
-  2026 network rework*** → the **reasoning-LLM route moved**, not the gateway. **Confirmed + fixed
-  10 Aug 2026:** the gateway's **`REASONER_BASE_URL`** was still `http://a retired address:8084/v1` — <!-- lint-ok -->
-  the connected node's dead old LAN IP — so every synthesis black-holed while `GET /health` still answered (container
-  healthy on `visionclaw_network`, safeguard + embedder ready). Symptom fingerprint is exactly that
-  split: health green, all reasoning calls stall to timeout. **Fix:** set
+- **Gateway hangs / `refresh_inbox` 180 s timeouts / whole-session unreachability while
+  `GET /health` stays green** (container healthy, safeguard + embedder ready) → the gateway's
+  **`REASONER_BASE_URL`** points at a dead route, typically the connected node's retired LAN IP
+  (`http://a retired address:8084/v1`), so every synthesis black-holes. **Fix:** set <!-- lint-ok -->
   `REASONER_BASE_URL=${LOOM_BASE_URL}` (ml DNATs to the Loom façade on the connected node, which
   delegates to the current `loom-model` container on `:8085` over the rail) and recreate the
   container. **Verify** from the gateway host / `visionclaw_network`:
@@ -233,7 +227,7 @@ the Bridge stays logged in, so no password/2FA is needed and the listener return
   disables an HTTP/SSE server for the entire session if its startup `initialize` handshake exceeds
   `MCP_TIMEOUT`, and it does **not** retry HTTP servers after boot. The gateway reasons with a local
   LLM (30s+ per call) and holds SSE streams open, so a cold backend at session start trips this.
-  Durable fix (in the build, applied on next nix buildout): container env `MCP_TIMEOUT=60000` +
+  Durable fix (in the build): container env `MCP_TIMEOUT=60000` +
   `MCP_TOOL_TIMEOUT=180000` (set in `flake.nix`, tunable via `[skills.email_search]
   .mcp_startup_timeout_ms / .mcp_tool_timeout_ms`), plus a detached boot warm-up in
   `config/entrypoint-unified.sh` that primes the backend so the first session's handshake is fast.
@@ -241,5 +235,4 @@ the Bridge stays logged in, so no password/2FA is needed and the listener return
   gateway directly over JSON-RPC. It is a streamable-HTTP MCP server — POST to `$AGENTBOX_EMAIL_GATEWAY_URL/mcp`
   with `Authorization: Bearer $AGENTBOX_EMAIL_GATEWAY_TOKEN`, `Accept: application/json, text/event-stream`,
   do `initialize` → capture the `Mcp-Session-Id` response header → `notifications/initialized` →
-  `tools/call`. Verified working when the harness tools were disconnected (2026-07-06). The container
-  itself never went down; only the harness client link did.
+  `tools/call`. This works because only the harness client link is down, not the container.

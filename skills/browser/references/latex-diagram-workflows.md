@@ -26,18 +26,18 @@ pathlib.Path(html_path).write_text(html)
 Then in the browser sidecar:
 
 ```javascript
-browser_navigate({ url: `file://${html_path}` })
+navigate_page({ type: "url", url: `file://${html_path}` })
 // Wait for Mermaid to render (evaluate or snapshot to verify)
-browser_evaluate({ expression: "document.querySelector('.mermaid svg') !== null" })
-browser_take_screenshot({ filename: "/tmp/wardley_map.png" })
+evaluate_script({ function: "() => document.querySelector('.mermaid svg') !== null" })
+take_screenshot({ filePath: "/tmp/wardley_map.png" })
 // For high-DPI: use viewport scaling or take at larger viewport width
 ```
 
 For 2x resolution, set a wider viewport before screenshotting:
 
 ```javascript
-browser_evaluate({ expression: "document.body.style.zoom='200%'" })
-browser_take_screenshot({ filename: "/tmp/wardley_map_2x.png" })
+evaluate_script({ function: "() => document.body.style.zoom='200%'" })
+take_screenshot({ filePath: "/tmp/wardley_map_2x.png" })
 ```
 
 ## PDF Preview During LaTeX Builds
@@ -46,14 +46,14 @@ Use the sidecar to visually verify LaTeX output during iterative builds:
 
 ```javascript
 // Open the compiled PDF
-browser_navigate({ url: "file:///path/to/book/main.pdf" })
+navigate_page({ type: "url", url: "file:///path/to/book/main.pdf" })
 
 // Screenshot specific pages for spot-checking
-browser_take_screenshot({ filename: "/tmp/page_check.png" })
+take_screenshot({ filePath: "/tmp/page_check.png" })
 
-// Use browser_evaluate to jump to a specific page (PDF.js viewer)
-browser_evaluate({ expression: "PDFViewerApplication.page = 42" })
-browser_take_screenshot({ filename: "/tmp/page_42.png" })
+// Use evaluate_script to jump to a specific page (PDF.js viewer)
+evaluate_script({ function: "() => PDFViewerApplication.page = 42" })
+take_screenshot({ filePath: "/tmp/page_42.png" })
 ```
 
 This is the correct approach for arXiv/book builds — no local PDF viewer required.

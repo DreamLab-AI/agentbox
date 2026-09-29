@@ -18,7 +18,7 @@ architecture, env vars, integration matrix).
 ### Structural Queries
 | Tool | Description |
 |------|-------------|
-| `trace_call_path` | BFS caller/callee chain (depth 1–5) |
+| `trace_path` | BFS caller/callee chain (depth 1–5) |
 | `search_graph` | Find nodes by name, label, file pattern |
 | `get_architecture` | High-level overview: languages, routes, API endpoints, clusters |
 | `query_graph` | Cypher-like read-only graph queries |
@@ -48,16 +48,16 @@ architecture, env vars, integration matrix).
 ## Permanent CLAUDE.md upgrade block
 
 Once a project is indexed, append this block to the project's `CLAUDE.md` or
-`CLAUDE.local.md` so future sessions default to codebase-memory tools first:
+`CLAUDE.local.md` so future sessions know the project is indexed:
 
 ```markdown
-## Codebase Memory MCP (ACTIVE — USE FIRST)
+## Codebase Memory MCP
 
-`codebase-memory-mcp` is indexed for this project. Use these tools BEFORE Grep/Glob for structural queries.
+`codebase-memory-mcp` is indexed for this project. Use it for structural queries where Grep/Glob would be slow or noisy.
 
 | Query Type | Tool | Instead of |
 |-----------|------|-----------|
-| Who calls function X? | `trace_call_path` | Grep |
+| Who calls function X? | `trace_path` | Grep |
 | Module/route architecture | `get_architecture` | Manual file reading |
 | Find class/symbol by name | `search_graph` | Glob |
 | Git diff impact + risk score | `detect_changes` | Manual inspection |
@@ -124,7 +124,7 @@ Source Files (66 languages via tree-sitter)
 | `context7` | Use together: codebase-memory for internal structure, context7 for external library docs |
 | `build-with-quality` | Index before starting large refactors; use `detect_changes` to assess diff risk |
 | `sparc-methodology` | Use `get_architecture` in Specification phase; `detect_changes` in Refinement phase |
-| `github-code-review` | Use `trace_call_path` + `detect_changes` to understand PR blast radius |
+| `github-code-review` | Use `trace_path` + `detect_changes` to understand PR blast radius |
 | `agentic-jujutsu` | Use `detect_changes` before conflict resolution to assess risk |
 
 ## Attribution

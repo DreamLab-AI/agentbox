@@ -32,7 +32,7 @@ system in place of several specialized skills.
 - **Architecture:** [references/architecture.md](./references/architecture.md) — learning system, memory, model routing, consensus, MCP/CLI execution, config.
 - **BHIL traceability:** [references/bhil-traceability.md](./references/bhil-traceability.md) — PRD→SPEC→ADR→TASK artifact chain, AI-native ADR types, eval/guardrail specs.
 - **Migration:** [references/migration.md](./references/migration.md) — moving off agentic-qe / reasoningbank-* / pair-programming.
-- **Empirical tuning:** to optimize any part of this skill against a measurable reward rather than by intuition, use the `skill-tuning` skill (SkillOpt loop + held-out A/B). The Static-Oracle Mode section was produced by that loop.
+- **Empirical tuning:** to optimize any part of this skill against a measurable reward rather than by intuition, use the `skill-tuning` skill (SkillOpt loop + held-out A/B).
 
 ## When to use
 
@@ -80,12 +80,12 @@ mcp__claude-flow__agent_spawn { agentType: "test-strategist" }
 mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
 ```
 
-**Option 4 — Task tool (Claude Code).** TinyDancer routes the model optimally:
+**Option 4 — Agent tool (Claude Code).** Delegate to registered subagents:
 ```javascript
-Task({ prompt: "Implement user authentication with JWT, following TDD", subagent_type: "coder", model: "sonnet" })
-Task({ prompt: "Generate tests for auth module with 95% coverage", subagent_type: "tester", model: "haiku" })
+Agent({ description: "Implement JWT auth", prompt: "Implement user authentication with JWT, following TDD", subagent_type: "rust-engineer" })
+Agent({ description: "Auth module tests", prompt: "Write tests for the auth module to the coverage gate", subagent_type: "test-engineer" })
 ```
-Claude Code only: Option 4 uses the Task tool. On Codex / GPT-6 Astra: use Option 2
+Claude Code only: Option 4 uses the Agent tool. On Codex: use Option 2
 (CLI) or Option 3 (MCP, if the ruflo MCP proxy is reachable from Codex).
 
 MCP is preferred when `mcp__claude-flow__*` tools are available; otherwise fall back

@@ -35,9 +35,8 @@ Route to this skill when the user asks for UI mockups, visual documentation, des
 
 ### Phase 1 — Structured Intake
 
-Ground the work in these five dimensions before generating. They are the highest-leverage
-step — a weak intake is the usual root cause of generic output — so resist the urge to skip
-straight to HTML.
+Ground the work in these five dimensions before generating; a weak intake is the usual root
+cause of generic output.
 
 | Dimension | Question | Why |
 |-----------|----------|-----|
@@ -166,10 +165,9 @@ cramped-padding, flat-type-hierarchy, monotonous-spacing) render with the
 `browser` sidecar and measure — these can't be seen statically.
 
 **6c. Judgment layer.** Apply the LLM-only rows of the catalogue. If the output
-resembles generic AI startup pages:
-1. Replace one feature cell with product-specific content (screenshot, concrete example, actual output)
-2. Remove one accent color use
-3. Check: would a designer be embarrassed to claim this? If yes, redo Phase 3.
+resembles a generic AI startup page, name the defaults it fell back on (the blacklist
+below and the catalogue list them) and replace each with a product-specific choice; if a
+designer would be embarrassed to claim the result, redo Phase 3.
 
 **Explicit slop blacklist:**
 - Inter/Roboto/Space Grotesk as display font on a marketing page
@@ -180,16 +178,9 @@ resembles generic AI startup pages:
 
 ### Phase 7 — Emit
 
-```
-<artifact identifier="kebab-case-slug" type="text/html" title="Human Title">
-<!doctype html>
-<html>...</html>
-</artifact>
-```
-
-One sentence before the artifact describing what's delivered. Nothing after.
-
-Claude Code only: the `<artifact>` tag is a Claude/Claude-Code affordance. On Codex / GPT-6 Astra: write the HTML to a file and report its path instead of emitting an `<artifact>` block.
+Write the artifact as one self-contained HTML file and report its path. Where the harness has an
+Artifact publishing tool (Claude Code), publish the file through it and give the link. Say in one
+line what was delivered, and name any critique dimension shipped below the bar (Phase 4).
 
 ---
 
@@ -280,12 +271,11 @@ This skill composes with the existing design skill suite:
 
 ## Memory (not flat config files)
 
-Impeccable records project context in flat `PRODUCT.md`/`DESIGN.md` files and
-slop exceptions in `.impeccable/config.json`. We keep `DESIGN.md` (it is the
-brand spec), but persist *decisions* and *exceptions* to RuVector instead:
+`DESIGN.md` is the brand spec. Persist design *decisions* and confirmed slop
+*exceptions* to RuVector, not to flat config files:
 
 ```javascript
-// Confirmed-intentional slop exception (impeccable's ignoreValues equivalent)
+// Confirmed-intentional slop exception
 mcp__claude-flow__memory_store({namespace: "project-state", key: "design-slop-exceptions",
   value: "<rule> intentional in <file>: <reason>"})
 // Recall before re-scanning so prior exceptions aren't re-flagged as new

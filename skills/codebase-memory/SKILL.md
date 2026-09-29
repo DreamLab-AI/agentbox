@@ -42,7 +42,6 @@ Deploy for large codebases (500+ files) when:
 ### When NOT to
 - Small projects (< 100 files) — direct Read/Grep is sufficient.
 - One-off fixes — the indexing overhead (30s–5min) isn't worth it.
-- Already indexed — check `index_status` before re-indexing.
 
 ## Quick Path
 
@@ -51,27 +50,23 @@ Deploy for large codebases (500+ files) when:
 index_repository(repo_path="/home/devuser/workspace/project")
 
 # 2. Query the graph instead of Grep/Glob
-trace_call_path(...)   # who calls / is called by X (depth 1–5)
+trace_path(...)        # who calls / is called by X (depth 1–5)
 get_architecture(...)  # languages, routes, endpoints, clusters
 detect_changes(...)    # git diff → affected symbols + risk score
 search_graph(...)      # find a class/symbol by name
 get_code_snippet(...)  # fetch source by qualified name
 
-# 3. Verify freshness at session start
-index_status(...)      # if stale (last sync > latest commit) → index_repository
+# 3. Indexes auto-refresh; index_status shows coverage if results look stale
 ```
 
-Full tool catalog (14 tools), parameters, and the token-efficiency figures are in
+Full tool catalog, parameters, and the token-efficiency figures are in
 [`references/reference.md`](references/reference.md).
 
 ## Permanent Project Upgrade (one-time setup, lasting benefit)
 
-Once a project is indexed, append a "Codebase Memory MCP (ACTIVE — USE FIRST)"
-block to its `CLAUDE.md` / `CLAUDE.local.md` so future sessions default to these
-tools before Grep/Glob. Consider this when starting exploratory work on an
-unfamiliar large repo, before a refactor that needs blast-radius awareness, or
-when "what calls X?" questions recur. The ready-to-paste block, its tool-routing
-table, and the trigger checklist are in
+Once a project is indexed, a short note in its `CLAUDE.md` naming the indexed
+project lets future sessions use these tools for structural queries (callers,
+architecture, diff impact) where Grep/Glob would be slow or noisy. A template is in
 [`references/reference.md`](references/reference.md#permanent-claudemd-upgrade-block).
 
 ## More

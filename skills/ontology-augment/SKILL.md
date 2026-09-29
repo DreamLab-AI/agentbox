@@ -54,7 +54,6 @@ ONTOLOGY_TIMEOUT_SECS=10                                   # per-Loom-call timeo
 ```
 
 No token, no bearer, no pubkey: reads are local file access plus a LAN HTTP call.
-The VisionClaw round-trip the old bridge made is gone entirely.
 
 **Fail-open.** If the Loom is unreachable, every call that needs it returns a
 marked-degraded empty result and exits 0. Grounding is an augmentation, never a
@@ -110,17 +109,16 @@ have no REST route of their own, so calling them means POSTing JSON-RPC to it
 with curl. That is not "MCP inside the estate": no client, no server
 registration, no tool grant — just a JSON body on a LAN URL.
 
-**As of 2026-09-22 the generation deployed on `:8084` answers `/mcp` with 404.**
-The plane is ADR-140 work that has not shipped. The wrapper checks the status and
+**Until ADR-140 ships, the generation on `:8084` answers `/mcp` with 404.**
+The wrapper checks the status and
 degrades: `neighbours` falls back to `vault tree` (asserted edges only, announced
 on stderr), and `paths` refuses outright rather than passing a walk over asserted
 wikilinks off as a shortest path in the reasoned graph. Those are different
 answers and only one of them was asked for.
 
-## Budget and fail-open (ADR-112, unchanged)
+## Budget and fail-open (ADR-112)
 
-The philosophy survives the transport change intact; only where it lives moved.
-The budget is now in the **arguments**, not in a server's tier table:
+The budget is in the **arguments**:
 
 - `--max-documents N` is a hard cap on what comes back. Default 12.
 - `--expand <edge>=<depth>` bounds expansion per edge type, so a dense hub cannot
