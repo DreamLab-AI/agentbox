@@ -4,11 +4,11 @@ title: Own the instruction tiers and the Claude home in the repo
 date: 2026-09-29
 decision_status: accepted
 implementation_status: partial
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
-verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, docker-compose.override.yml, docker-compose.hp.yml]
+verified_commit: 31f3c29867955f20182aa28f1140c9a1e904fd61
+verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, docker-compose.hp.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
 repo: agentbox
@@ -43,4 +43,15 @@ ADR-2111 made `AGENTS.md` the one canonical file per tier and built the projecti
 - The live loop was exercised with fake credentials: a rename-style rotation reached the other side within one 1 s tick. No real token was refreshed.
 - A dry projection into scratch paths diffed against the live files: every difference is an intended edit (headers, estate facts moved to `local/`, dated lines removed). `--check` is clean afterwards.
 - `bash tests/config/instructions-layers.test.sh` gives 9/9, and a negative control finds 7 estate hits in the `local/` files. `bash tests/config/boot-projection-contract.test.sh` gives 13/13. `bash -n` passes on the entrypoint and `agentbox.sh`.
-- Not yet verified, which is why the status is `partial`/`staged`: `migrate-claude-home` against the real host (it needs host Docker), the regenerated compose from `nix build .#compose` (no Nix in the container; `docker-compose.yml` was edited to match the flake line by hand), and a boot on the new layout.
+- Gateway activation verified on 2026-09-29; implementation remains `partial` because the connected node and the other explicitly deferred migrations are unchanged. The gateway's regenerated Compose was validated with Docker and deployed on the new layout.
+
+## Gateway deployment receipt — 2026-09-29
+
+- Deployed image: `sha256:5b0d0ebf8e395aa467caced189008c160d9face4304a83524201b6a638122407`, built from the source verification anchor above. The embedded and deployed Compose files are byte-identical.
+- Migration copied about 2.8 GB into `agentbox-claude-home`; previous global/workspace instructions and the private layers were backed up privately. The host global instruction file remained byte-identical before migration and after both boots. No host state was deleted.
+- Host checks found and repaired generated-Compose drift (network indentation, omitted volume declarations, environment fallbacks and PID parity). A subsequent startup exposed double-prefixing of the secrets/events volume names; the container was stopped, original volume identities restored, and a regression gate added before the final image rebuild. The two mistakenly created volumes were left unused and intact, not substituted for the original data.
+- All 17 live named-volume mappings match the resolved Compose model. The Claude home is the new volume, instruction layers are a read-only bind, and the old whole-home mirror and top-level `.claude.json` binds are absent. Instruction layers are absent from the baked config tree.
+- `instructions-project --check` passes as devuser. Codex's generated instructions include both complete composed tiers. Credential copies compare equal without printing them, the container credential file is mode 0600, and `claude-cred-sync` is supervised and running. A synthetic live-loop test covers in-place writes, rename rotation, both directions and preservation of independent MCP logins; no real token refresh was forced.
+- Readiness reports all five adapters healthy with zero degraded components. RuVector smoke tests and the voice console/backend/ASR/TTS health checks pass.
+- Sync remains eventual, not a lock shared with Claude Code: concurrent refreshes are not serialized, and a one-sided logout is reseeded. Stop sync and clear both sides for intentional shared logout. This deployment does not certify overlapping real OAuth refreshes.
+- Email, the connected node, `~/.config/claude`, Q43 and stack-profile migration were not changed. The wider prompt-audit report is not part of this deployment receipt.
