@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fc8ba7a7bfedd37d7596311bc3c2a5bbe7c89719
+verified_commit: efdb79475526e2f024bce01e9a65d0ec098b0630
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -19,6 +19,8 @@ lineage: legacy ADR-040 (learning consumers / governance publisher key-split), s
 # ADR-2012 — Relay ingress is allowlist-only, no fallback, no auto-add
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
+
+Volume-identity correction at `efdb79475`: already-prefixed names are retained by the generator. The new resolved-Compose test passes for 15 persistent volume identities, the external Claude home, read-only instructions and PID parity. This changes no service authorization or published ports.
 
 Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only instruction layers. Rechecked the changed Nix expression; it does not alter this record's runtime gates, auth commands or port inventory. The local test evidence below remains applicable.
 

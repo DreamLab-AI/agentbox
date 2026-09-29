@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fc8ba7a7bfedd37d7596311bc3c2a5bbe7c89719
+verified_commit: efdb79475526e2f024bce01e9a65d0ec098b0630
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -19,6 +19,8 @@ lineage: legacy ADR-042 (AoE interaction plane), ADR-043 (session identity bindi
 # ADR-2009 — The nip98-proxy is the fail-closed AoE identity boundary
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
+
+Volume-identity correction at `efdb79475`: already-prefixed names are retained by the generator. The new resolved-Compose test passes for 15 persistent volume identities, the external Claude home, read-only instructions and PID parity. This changes no service authorization or published ports.
 
 Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only instruction layers. Rechecked the changed Nix expression; it does not alter this record's runtime gates, auth commands or port inventory. The local test evidence below remains applicable.
 
