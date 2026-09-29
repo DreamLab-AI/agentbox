@@ -126,7 +126,7 @@ sequenceDiagram
             NT-->>JJ: rumor { pubkey, content }
             JJ->>JJ: _shouldIgnore(asker)?<br/>self + JUNKIEJARVIS_IGNORE_PUBKEYS<br/>or CONCIERGE_IGNORE_PUBKEYS (line 448)
 
-            JJ->>LLM: callLlm(userText)<br/>Provider selection (line 294):<br/>1. ANTHROPIC_API_KEY → Anthropic messages API<br/>   model: JUNKIEJARVIS_MODEL or claude-haiku-4-5-20251001<br/>2. JUNKIEJARVIS_LLM_KEY or ZAI_API_KEY → OpenAI-compat<br/>   base: JUNKIEJARVIS_LLM_BASE or z.ai paas/v4<br/>   model glm-4.5-flash, thinking disabled<br/>3. OLLAMA_BASE_URL → Ollama /api/chat<br/>date-context injected: ISO UTC + Europe/London + epoch<br/>timeout: 25000ms (line 265)<br/>max_tokens: 300
+            JJ->>LLM: callLlm(userText)<br/>Provider selection (line 294):<br/>1. ANTHROPIC_API_KEY → Anthropic messages API<br/>   model: JUNKIEJARVIS_MODEL or claude-haiku-4-5<br/>2. JUNKIEJARVIS_LLM_KEY or ZAI_API_KEY → OpenAI-compat<br/>   base: JUNKIEJARVIS_LLM_BASE or z.ai paas/v4<br/>   model glm-4.5-flash, thinking disabled<br/>3. OLLAMA_BASE_URL → Ollama /api/chat<br/>date-context injected: ISO UTC + Europe/London + epoch<br/>timeout: 25000ms (line 265)<br/>max_tokens: 300
 
             LLM-->>JJ: llmText (or CANNED_APOLOGY)
 

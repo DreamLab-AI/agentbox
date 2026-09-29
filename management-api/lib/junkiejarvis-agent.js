@@ -418,9 +418,9 @@ const APOLOGY_COOLDOWN_MS = 30 * 60 * 1000;
 
 /**
  * Call the configured LLM provider. Provider-flexible:
- *   - ANTHROPIC_API_KEY → Anthropic messages API (default model claude-haiku-4-5-20251001).
+ *   - ANTHROPIC_API_KEY → Anthropic messages API (default model claude-haiku-4-5).
  *   - else OLLAMA_BASE_URL → its /api/chat.
- * 15s timeout, fail-open: returns null on any failure (no fake reply text).
+ * LLM_TIMEOUT_MS timeout, fail-open: returns null on any failure (no fake reply text).
  *
  * @param {string} userText
  * @param {object} [opts]  { model, fetchImpl, system }
@@ -455,7 +455,7 @@ async function callLlm(userText, opts = {}) {
   const useAnthropic = !!process.env.ANTHROPIC_API_KEY && !hasExplicitOaiBrain;
   const model = opts.model
     || process.env.JUNKIEJARVIS_MODEL
-    || (useAnthropic ? 'claude-haiku-4-5-20251001' : undefined);
+    || (useAnthropic ? 'claude-haiku-4-5' : undefined);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
@@ -469,7 +469,7 @@ async function callLlm(userText, opts = {}) {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: model || 'claude-haiku-4-5-20251001',
+          model,
           max_tokens: LLM_MAX_TOKENS,
           system,
           messages: [{ role: 'user', content: String(userText || '').slice(0, 4000) }],

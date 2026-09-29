@@ -51,7 +51,8 @@ class LLMConfig:
     push_interval: float = float(os.getenv("ECHOLOOP_PUSH_INTERVAL", "35"))
     # Silence duration (seconds) that triggers an early push
     silence_trigger: float = float(os.getenv("ECHOLOOP_SILENCE_TRIGGER", "4.0"))
-    # LLM temperature (lower = more deterministic)
+    # LLM temperature for the OpenAI provider (lower = more deterministic);
+    # not sent to Claude, whose current models reject non-default sampling.
     temperature: float = float(os.getenv("ECHOLOOP_LLM_TEMPERATURE", "0.4"))
     # Max transcript tokens to keep in the rolling window
     max_transcript_chars: int = 6000

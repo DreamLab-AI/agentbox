@@ -64,14 +64,18 @@ class _LLMClient:
     async def get_advice(self, transcript: str) -> str:
         """Send the rolling transcript and get back punchy bullet points."""
         if self.cfg.provider == "anthropic":
+            # Current Claude models reject non-default sampling parameters and
+            # run adaptive thinking when `thinking` is omitted; this is a
+            # latency-bound live route with a small reply, so thinking is off
+            # and the temperature setting applies to the OpenAI path only.
             resp = await self._client.messages.create(
                 model=self.cfg.anthropic_model,
-                max_tokens=200,
-                temperature=self.cfg.temperature,
+                max_tokens=300,
+                thinking={"type": "disabled"},
                 system=self._system_prompt,
                 messages=[{"role": "user", "content": transcript}],
             )
-            return resp.content[0].text
+            return "".join(b.text for b in resp.content if b.type == "text")
         else:
             resp = await self._client.chat.completions.create(
                 model=self.cfg.openai_model,
