@@ -1779,7 +1779,12 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -r ${codexPlugin} $out/opt/agentbox/plugins/codex-plugin-cc
           ''}
           cp -r ${./scripts} $out/opt/agentbox/scripts
-          cp -r ${./config} $out/opt/agentbox/config
+          # ADR-2118: instruction layers are mount-only, including the public
+          # tier. Filter before copying into the store/image, not at boot.
+          cp -r ${lib.cleanSourceWith {
+            src = ./config;
+            filter = path: type: builtins.baseNameOf path != "instructions";
+          }} $out/opt/agentbox/config
           cp -r ${./https-bridge} $out/opt/agentbox/https-bridge
           cp -r ${./docs} $out/opt/agentbox/docs
           cp -r ${./aisp} $out/opt/agentbox/aisp
