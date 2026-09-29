@@ -43,13 +43,6 @@ services:
       retries: 5
       start_period: 60s
 
-    # R-003: host exposure is loopback-only (SSH-tunnel model) — reached via
-    # tunnel; sibling-container access on the docker network is gated by
-    # per-service auth, not by host port binding.
-    # Exception (ADR-045 D2): 9096 is the NIP-98 sovereign ingress — the ONE
-    # identity-gated LAN door to the interaction plane (and, via its routing
-    # table, /mgmt/ → management-api). 9095 (aoe serve) is NEVER published:
-    # it binds container-loopback with --auth none behind this proxy (N-05).
     ports:
       - "9096:9096"
       - "127.0.0.1:9090:9090"
@@ -67,26 +60,13 @@ services:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama:11434/v1}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma-4-31B-it-qat}
-      # The Loom facade, as one name the whole container agrees on. The image
-      # bakes no estate address (this repository is public), so the value has
-      # to arrive here: LOOM_BASE_URL from .env if the operator sets it, else
-      # derived from LOOM_FACADE_URL, else the in-network loom sidecar. The
-      # /v1 lives inside the default so a LOOM_BASE_URL that already carries
-      # one is not given a second.
       - LOOM_BASE_URL=${LOOM_BASE_URL:-${LOOM_FACADE_URL:-http://loom:8080}/v1}
-      # The dream engine's ssh target for the annexe host. Referenced by
-      # [dream_machine].hp_host; empty is fine and means "no annexe", which
-      # the engine reports rather than shelling out to nowhere.
       - CONNECTED_NODE_SSH=${CONNECTED_NODE_SSH:-}
-      # Home of the annexe user on that node. Referenced by
-      # [dream_machine].hp_annexe_dir ("${CONNECTED_NODE_HOME}/dream-annexe");
-      # empty falls back to the engine's default annexe dir.
       - CONNECTED_NODE_HOME=${CONNECTED_NODE_HOME:-}
-      - GEMMA_BASE_URL=${GEMMA_BASE_URL:-${LOOM_BASE_URL:-${LOOM_FACADE_URL:-http://loom:8080}/v1}}
-      # Ontology condensation posts to {endpoint}/chat/completions, so this is
-      # a /v1 base. Empty is a working state: the server reports the missing
-      # variable and stops, rather than fetching a hostname that cannot resolve.
       - ONTOLOGY_CONDENSE_ENDPOINT=${ONTOLOGY_CONDENSE_ENDPOINT:-${LOOM_BASE_URL:-${LOOM_FACADE_URL:-http://loom:8080}/v1}}
+      - LOOM_RAW_BASE_URL=${LOOM_RAW_BASE_URL:-http://loom-raw:8080/v1}
+      - LOOM_MODEL=${LOOM_MODEL:-qwen3.8-27B}
+      - GEMMA_BASE_URL=${GEMMA_BASE_URL:-${LOOM_BASE_URL:-${LOOM_FACADE_URL:-http://loom:8080}/v1}}
       - GEMMA_MODEL=${GEMMA_MODEL:-gemma-4-31B-it-qat}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
@@ -95,8 +75,6 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - MANAGEMENT_API_KEY=${MANAGEMENT_API_KEY:-}
       - MANAGEMENT_API_AUTH_MODE=${MANAGEMENT_API_AUTH_MODE:-hybrid}
-      # Shared service key for VisionClaw mutating endpoints (broker write-back);
-      # must match VISIONCLAW_AGENT_KEY on the VisionClaw container.
       - VISIONCLAW_AGENT_KEY=${VISIONCLAW_AGENT_KEY:-}
       - NOSTR_RELAYS=${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
       - AGENTBOX_AGENT_ID=${AGENTBOX_AGENT_ID:-agentbox-core}
@@ -110,12 +88,8 @@ services:
     # Baseline: supervisord runs as PID 1 root, with per-program `user=devuser`
     # drops on every long-running service. Root is required at boot for
     # tmpfs subdir creation, cert generation, and chowning runtime dirs to
-    # uid 1000. R-005/SEC-001: no runtime sudo — root-at-boot via supervisord
-    # (PID 1) is the only elevation.
-    # SETUID/SETGID are REQUIRED: supervisord calls setgroups()/setuid() to
-    # demote children to devuser, and that needs CAP_SETGID/CAP_SETUID even
-    # for privilege *dropping*. no-new-privileges:true neuters setuid file
-    # bits at execve (privilege *gaining*) but does not replace these caps.
+    # uid 1000. SETUID/SETGID stay in cap_add for the supervisord
+    # privilege-drop path; no-new-privileges:true blocks privilege gaining.
     # Per ADR-007 §4a hardening posture; see PRD-003 §5.4 and ADR-027 §amendment.
     read_only: true
     cap_drop:
@@ -126,25 +100,18 @@ services:
       - DAC_OVERRIDE
       - AUDIT_WRITE
       - KILL
-      - NET_ADMIN
       - SETUID
       - SETGID
+      - NET_ADMIN
 
     tmpfs:
-      # Sizes follow [resources.tmpfs] in agentbox.toml (ADR-2034): the committed
-      # file had drifted to 1G/64M/1G/256M while the flake emitted 2G/256M/4G/1G,
-      # and the live ~/.npm (256M) sat at 100 % -> npx ENOSPC on 2026-09-05.
       - /tmp:mode=1777,size=8G
       - /run:mode=755,size=256M,uid=1000,gid=1000
       - /var/run:mode=755,size=16M,uid=1000,gid=1000
       - /var/log:mode=755,size=128M,uid=1000,gid=1000
       - /var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000
       - /var/lib/https-bridge:mode=755,size=8M,uid=1000,gid=1000
-      # General ephemeral XDG cache. The ~2.8G privacy model has its own
-      # persistent child volume at .cache/huggingface below.
       - /home/devuser/.cache:mode=755,size=4G,uid=1000,gid=1000
-      # Legacy native npm installers (notably sharp) still hard-code ~/.npm
-      # even when NPM_CONFIG_CACHE points at the writable workspace.
       - /home/devuser/.npm:mode=755,size=4G,uid=1000,gid=1000
       - /home/devuser/.local:mode=755,size=128M,uid=1000,gid=1000
       - /home/devuser/.config:mode=755,size=64M,uid=1000,gid=1000
@@ -162,6 +129,7 @@ services:
       - seccomp=./config/seccomp-agentbox.json
     volumes:
       - ./agentbox.toml:/etc/agentbox.toml:ro
+      - ./config/instructions:/etc/agentbox/instructions:ro
       - ./workspace:/home/devuser/workspace
       - ./projects:/projects
       - ruvector-data:/var/lib/ruvector
@@ -170,22 +138,36 @@ services:
       - agentbox-secrets:/var/lib/agentbox/secrets
       - code-harness-data:/var/lib/agentbox/code-harness
       - agentbox-events:/var/lib/agentbox/events
-      - hf-cache:/home/devuser/.cache/huggingface
-      - codeserver-config:/home/devuser/.local/share/code-server
-      # OpenCode's session store. ~/.local is a 128 MB tmpfs shared with every
-      # XDG-aware CLI; a day of agent runs filled it and the next session died on a
-      # database checkpoint reporting a full disk (2026-09-11). Layered like
-      # code-server's: the tmpfs mounts first, this volume on top.
-      - opencode-store:/home/devuser/.local/share/opencode
-      - aoe-profiles:/home/devuser/.config/agent-of-empires/profiles
       - consultations-data:/var/lib/agentbox/consultations
       - telemetry-data:/var/lib/agentbox/telemetry
+      - aoe-profiles:/home/devuser/.config/agent-of-empires/profiles
+      - hf-cache:/home/devuser/.cache/huggingface
+      - opencode-store:/home/devuser/.local/share/opencode
+      - codeserver-config:/home/devuser/.local/share/code-server
       - nostr-relay-data:/var/lib/nostr-relay
       - tailscale-state:/var/lib/tailscale
 
     networks:
       - default
       - visionclaw
+
+    deploy:
+      resources:
+        limits:
+          cpus: '56'
+          memory: 256G
+          pids: 32768
+        reservations:
+          cpus: '16'
+          memory: 96G
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, compute, utility, graphics]
+    cpuset: "0-13,36-49,18-31,54-67"
+    cpu_shares: 1024
+    pids_limit: 32768
+    shm_size: '32G'
 
 volumes:
   ruvector-pg-data:
@@ -197,23 +179,23 @@ volumes:
   sovereign-identities:
     name: agentbox-sovereign-identities
   agentbox-secrets:
-    name: agentbox-secrets
+    name: agentbox-agentbox-secrets
   code-harness-data:
     name: agentbox-code-harness-data
   agentbox-events:
-    name: agentbox-events
-  hf-cache:
-    name: agentbox-hf-cache
-  codeserver-config:
-    name: agentbox-codeserver-config
-  opencode-store:
-    name: agentbox-opencode-store
-  aoe-profiles:
-    name: agentbox-aoe-profiles
+    name: agentbox-agentbox-events
   consultations-data:
     name: agentbox-consultations-data
   telemetry-data:
     name: agentbox-telemetry-data
+  aoe-profiles:
+    name: agentbox-aoe-profiles
+  hf-cache:
+    name: agentbox-hf-cache
+  opencode-store:
+    name: agentbox-opencode-store
+  codeserver-config:
+    name: agentbox-codeserver-config
   nostr-relay-data:
     name: agentbox-nostr-relay-data
   tailscale-state:

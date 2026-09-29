@@ -4,6 +4,19 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-09-29 — instruction tiers and ~/.claude owned by the repo, ADR-2118)
+
+The global and workspace instruction tiers now come from `config/instructions/`:
+a tracked, public layer plus a gitignored `local/` estate layer, mounted
+read-only and composed every boot by `agentbox-manifest instructions-project`
+(`--check` reports drift). `~/.claude` is the container-owned
+`agentbox-claude-home` volume. The host's `~/.claude` is bound only so the new
+supervised `claude-cred-sync` can keep OAuth credentials converged. Seed the
+volume once with `./agentbox.sh migrate-claude-home`; preflight fails with that
+hint until it exists. Removed: the dead `~/.claude.json` bind, the
+`HOST_CLAUDE_PATH` mirror mount and `agentbox-manifest agents-md-embed`, whose
+embed now lives inside `instructions-project`.
+
 ### Changed (2026-09-25 — the Notes window becomes a daily driver)
 
 ADR-2029 follow-up. Window 9 now opens the **working** vault (`[vault].working`:

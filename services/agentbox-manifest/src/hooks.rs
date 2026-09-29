@@ -1,6 +1,6 @@
 //! Governed hook registry — `hooks-reconcile` (the ADR-2092 model applied to hooks).
 //!
-//! `~/.claude/settings.json` is a host mount that outlives every rebuild, and
+//! `~/.claude/settings.json` sits on a persistent volume that outlives every rebuild, and
 //! nothing governed its `hooks` block: the entrypoint seeds agentbox's own hooks
 //! there, `ruflo init` / the claude-flow helpers scaffold a dozen more, and AoE
 //! adds its own. The scaffolding accreted per-turn cost (a regex "Agent: coder

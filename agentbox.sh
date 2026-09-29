@@ -50,6 +50,7 @@ Local lifecycle commands:
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
   ${GREEN}migrate-workspace${NC} One-shot rsync from legacy multi-agent-docker_workspace into agentbox-workspace, then patch override
+  ${GREEN}migrate-claude-home${NC} Seed the container-owned agentbox-claude-home volume from the host ~/.claude (ADR-2118)
   ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
@@ -1738,6 +1739,108 @@ SETUP_EOF
 }
 
 # ---------------------------------------------------------------------------
+# cmd_migrate_claude_home — ADR-2118 container-owned ~/.claude
+# ---------------------------------------------------------------------------
+cmd_migrate_claude_home() {
+    local force=0
+    local target_volume="agentbox-claude-home"
+    local source_dir="${HOME}/.claude"
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --force)  force=1; shift ;;
+            --source) source_dir="$2"; shift 2 ;;
+            -h|--help)
+                cat <<'HELP_EOF'
+Usage: agentbox.sh migrate-claude-home [--source DIR] [--force]
+
+Seed the container-owned agentbox-claude-home volume from the host's
+~/.claude (ADR-2118). The host directory is only read; it stays intact for
+host-side Claude Code and remains bound (for credentials only) at
+/var/lib/agentbox/host-claude. Safe to re-run: existing files that are newer
+in the volume are kept.
+
+Steps performed:
+  1. Stop the agentbox container if running (so nothing is mid-write).
+  2. Create the volume (skipped if present).
+  3. Rsync live state across, excluding what the container now owns or
+     receives elsewhere: CLAUDE.md (projected from config/instructions/),
+     .credentials.json (claude-cred-sync seeds it at boot), and debris
+     (settings/.claude.json backups, agentbox-superseded/, archive/).
+  4. Tar the debris to ~/.claude-migrate-debris-<date>.tar.gz as a record.
+  5. Rewrite host paths in plugins/*.json to /home/devuser/.claude, which is
+     what made the old HOST_CLAUDE_PATH mirror mount necessary.
+
+Use --force to skip the confirmation.
+HELP_EOF
+                return 0 ;;
+            *) echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
+        esac
+    done
+
+    if [[ ! -d "$source_dir" ]]; then
+        echo -e "${RED}ERROR: $source_dir does not exist — nothing to migrate.${NC}"
+        echo "Create the volume empty with: docker volume create $target_volume"
+        exit 1
+    fi
+    local stamp debris
+    stamp="$(date +%Y%m%d-%H%M%S)"
+    debris="${HOME}/.claude-migrate-debris-${stamp}.tar.gz"
+
+    echo -e "${CYAN}Source:${NC} $source_dir (read-only)"
+    echo -e "${CYAN}Target volume:${NC} $target_volume"
+    if [[ "$force" -ne 1 ]]; then
+        echo -e "${YELLOW}This will stop the agentbox container, seed $target_volume and write $debris.${NC}"
+        read -p "Proceed? [y/N] " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && { echo "Aborted."; exit 0; }
+    fi
+
+    if docker ps --format '{{.Names}}' | grep -qx agentbox; then
+        echo -e "${CYAN}Stopping agentbox container...${NC}"
+        docker compose "${COMPOSE_ARGS[@]}" stop agentbox || return 1
+    fi
+    docker volume create "$target_volume" >/dev/null || return 1
+
+    # Debris: patterns kept out of the volume. Anchored to the top level.
+    local -a debris_globs=(
+        'settings.json.bak*' 'settings.json.pre-*' '.claude.json.bak*'
+        '.claude.json.backup' '.claude.json.pre-*' 'agentbox-superseded' 'archive'
+    )
+    local -a excludes=(--exclude=/CLAUDE.md --exclude=/.credentials.json)
+    local g
+    for g in "${debris_globs[@]}"; do excludes+=("--exclude=/$g"); done
+
+    echo -e "${CYAN}Recording debris in $debris...${NC}"
+    ( umask 077; cd "$source_dir" || exit 1
+      shopt -s nullglob dotglob
+      local -a debris_paths=()
+      local candidate
+      for g in "${debris_globs[@]}"; do
+          for candidate in $g; do
+              [[ -e "$candidate" || -L "$candidate" ]] && debris_paths+=("$candidate")
+          done
+      done
+      if [[ ${#debris_paths[@]} -gt 0 ]]; then
+          tar -czf "$debris" -- "${debris_paths[@]}"
+      else echo "  (no debris)"; fi ) || return 1
+
+    echo -e "${CYAN}Rsyncing live state into $target_volume...${NC}"
+    docker run --rm \
+        -v "$source_dir":/src:ro \
+        -v "$target_volume":/dst \
+        -e HOST_CLAUDE="$source_dir" \
+        instrumentisto/rsync-ssh:alpine \
+        sh -ec 'rsync -aH --update --info=stats1 "$@" /src/ /dst/
+               for f in /dst/plugins/installed_plugins.json /dst/plugins/known_marketplaces.json; do
+                 if [ -f "$f" ]; then sed -i "s#$HOST_CLAUDE#/home/devuser/.claude#g" "$f"; fi
+               done; chown -R 1000:1000 /dst' sh "${excludes[@]}" || return 1
+
+    echo -e "${GREEN}✓ $target_volume seeded.${NC}"
+    echo "Next: ./agentbox.sh preflight, then ./agentbox.sh up (or rebuild if the image predates ADR-2118)."
+    echo "The host's ~/.claude is untouched; its CLAUDE.md now serves host-side sessions only."
+}
+
+# ---------------------------------------------------------------------------
 # cmd_migrate_workspace — Q43 MAD volume migration
 #
 # Rsyncs the legacy multi-agent-docker_workspace external volume into a
@@ -1875,7 +1978,7 @@ cmd_preflight() {
     fi
 
     echo -e "${CYAN}Preflight: checking host bind targets...${NC}"
-    for hostpath in "${HOME}/.claude" "${HOME}/.config/claude" "${HOME}/.codex/auth.json" "/mnt/mldata/githubs/AR-AI-Knowledge-Graph"; do
+    for hostpath in "${HOME}/.claude/.credentials.json" "${HOME}/.config/claude" "${HOME}/.codex/auth.json" "/mnt/mldata/githubs/AR-AI-Knowledge-Graph"; do
         if [[ ! -e "$hostpath" ]]; then
             echo -e "${YELLOW}  ! $hostpath does not exist — bind will create it root-owned${NC}"
         else
@@ -1889,6 +1992,13 @@ cmd_preflight() {
             echo -e "${GREEN}  ✓ $vol exists${NC}"
         fi
     done
+    # ADR-2118: the override declares agentbox-claude-home external, so compose
+    # cannot start without it. Say how to create it rather than failing late.
+    if grep -q 'name: agentbox-claude-home' "$OVERRIDE_FILE" 2>/dev/null \
+       && ! docker volume inspect agentbox-claude-home >/dev/null 2>&1; then
+        echo -e "${RED}  ✗ agentbox-claude-home missing — run ./agentbox.sh migrate-claude-home${NC}"
+        errors=$((errors+1))
+    fi
 
     if [[ "$errors" -gt 0 ]]; then
         echo -e "${RED}Preflight failed with $errors error(s).${NC}"
@@ -1908,7 +2018,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight)
             CMD="$1"
             shift
             break
@@ -2466,6 +2576,7 @@ case "${CMD:-}" in
     android)           cmd_android "$@" ;;
     concat)            cmd_concat "$@" ;;
     migrate-workspace) cmd_migrate_workspace "$@" ;;
+    migrate-claude-home) cmd_migrate_claude_home "$@" ;;
     preflight)         cmd_preflight "$@" ;;
     *)                 usage ;;
 esac

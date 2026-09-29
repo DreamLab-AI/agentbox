@@ -21,8 +21,13 @@ services:
       - AGENTBOX_PRIVKEY_HEX=${AGENTBOX_PRIVKEY_HEX:-}
       - COMFYUI_OUTPUTS=/run/comfyui/output
     volumes:
+      # Legacy whole-directory bind: this node has not yet run
+      # `./agentbox.sh migrate-claude-home` (ADR-2118). Until it does, the
+      # entrypoint leaves the host's global CLAUDE.md alone (--no-global); to
+      # migrate, swap this line for the agentbox-claude-home volume plus the
+      # ${HOME}/.claude:/var/lib/agentbox/host-claude:rw credential bind, as in
+      # docker-compose.override.yml.
       - ${HOME}/.claude:/home/devuser/.claude:rw
-      - ${HOME}/.claude.json:/home/devuser/.claude.json:rw
       - ${HOME}/.config/claude:/home/devuser/.config/claude:rw
     shm_size: '16gb'
     deploy:

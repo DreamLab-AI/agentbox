@@ -8,6 +8,8 @@ Four independent research lines — Program of Thoughts (+12 pp on maths benchma
 
 ## Quick Start
 
+Shared harness instructions are projected at boot from `config/instructions/` (ADR-2118). Edit those tracked or private `local/` layers, not `~/.claude/CLAUDE.md` or workspace instruction outputs. Codex receives the composed global and workspace tiers.
+
 ```bash
 # Phase 1 surfaces in agentbox.toml (enabled):
 [skills.code_interpreter]

@@ -171,3 +171,6 @@ skills/podcast-knowledge-ingest/promotions/
 # build-with-quality deepsec security gate workspace (ADR-2033): generated config + data/reports
 .deepsec-gate/
 .video-sprint/
+
+# ADR-2118: operator/estate instruction layer — private, never pushed.
+config/instructions/local/

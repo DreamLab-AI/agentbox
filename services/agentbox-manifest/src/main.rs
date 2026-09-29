@@ -20,7 +20,9 @@
 //! * Secrets travel on stdin, never argv, so they stay off the process list.
 
 mod agents_md;
+mod cred_sync;
 mod hooks;
+mod instructions;
 mod jsonio;
 mod mcp;
 mod mcp_hub;
@@ -159,17 +161,40 @@ enum Command {
         #[arg(long)]
         dry_run: bool,
     },
-    /// Copy a tier's canonical `AGENTS.md` into the generated block of its
-    /// `CLAUDE.md` (ADR-2111) — for tiers above a project root, where Claude
-    /// Code would skip an `@AGENTS.md` import as an unapproved external
-    /// include. Missing files are a no-op; unchanged text is not rewritten.
-    AgentsMdEmbed {
+    /// Compose the global, workspace and workspace-Claude instruction tiers
+    /// from the repo's tracked + gitignored-local layers and write them
+    /// (ADR-2118; the workspace tier is embedded into the Claude notes per
+    /// ADR-2111). The repo is authoritative: live edits are overwritten.
+    /// `--check` reports drift and exits non-zero without writing. A tier with
+    /// no layers is left alone.
+    InstructionsProject {
+        #[arg(long, default_value = "/etc/agentbox/instructions")]
+        layers: PathBuf,
+        #[arg(long, default_value = "/home/devuser/.claude/CLAUDE.md")]
+        global_out: PathBuf,
+        /// Leave the global tier alone (`~/.claude` is still the host's own
+        /// directory, so its CLAUDE.md belongs to the host).
         #[arg(long)]
-        source: PathBuf,
+        no_global: bool,
+        #[arg(long, default_value = "/home/devuser/workspace/AGENTS.md")]
+        workspace_out: PathBuf,
+        #[arg(long, default_value = "/home/devuser/workspace/CLAUDE.md")]
+        workspace_claude_out: PathBuf,
         #[arg(long)]
-        target: PathBuf,
+        check: bool,
+    },
+    /// Keep Claude Code OAuth credentials converged between the container's
+    /// volume and the host bind (ADR-2118): per-token merge, later `expiresAt`
+    /// wins. Polls every `--interval-secs`; `--once` reconciles and exits.
+    CredSync {
+        #[arg(long, default_value = "/home/devuser/.claude/.credentials.json")]
+        container: PathBuf,
+        #[arg(long, default_value = "/var/lib/agentbox/host-claude/.credentials.json")]
+        host: PathBuf,
+        #[arg(long, default_value_t = 2)]
+        interval_secs: u64,
         #[arg(long)]
-        dry_run: bool,
+        once: bool,
     },
     /// Project `[claude_code]` (permission mode + deny rules) into Claude Code
     /// settings files (ADR-2116). Reconciled every boot; hand-added deny rules
@@ -346,11 +371,32 @@ fn run(cmd: Command) -> Result<(), String> {
             settings,
             dry_run,
         } => permissions::run(&manifest, &settings, dry_run),
-        Command::AgentsMdEmbed {
-            source,
-            target,
-            dry_run,
-        } => agents_md::run(&source, &target, dry_run),
+        Command::InstructionsProject {
+            layers,
+            global_out,
+            no_global,
+            workspace_out,
+            workspace_claude_out,
+            check,
+        } => instructions::run(
+            &layers,
+            (!no_global).then_some(global_out.as_path()),
+            &workspace_out,
+            &workspace_claude_out,
+            check,
+        ),
+
+        Command::CredSync {
+            container,
+            host,
+            interval_secs,
+            once,
+        } => cred_sync::run(
+            &container,
+            &host,
+            std::time::Duration::from_secs(interval_secs.max(1)),
+            once,
+        ),
 
         Command::TuiRead { config, state } => tui_read::run(&config, &state),
         Command::TuiWrite {

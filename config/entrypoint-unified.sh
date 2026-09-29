@@ -466,7 +466,7 @@ if [ -d /home/devuser/.claude ] && [ ! -e "$WORKSPACE/.claude" ]; then
 fi
 
 # /dream slash command — installed from the canonical repo copy
-# (skills/dream-machine/commands/dream.md). ~/.claude is a host mount, so a
+# (skills/dream-machine/commands/dream.md). ~/.claude is a persistent volume, so a
 # user-tuned copy must survive; but install-if-missing alone froze an untouched
 # copy forever (the live one ran a stale binary path for six weeks). So the
 # digest of what boot last installed is recorded: a live copy still matching it
@@ -2284,18 +2284,31 @@ if [ -f "$_HOOK_REGISTRY" ] && command -v agentbox-manifest >/dev/null 2>&1 \
   done
 fi
 
-# ── ADR-2111: workspace AGENTS.md → CLAUDE.md generated block ──
-# ~/workspace sits above every project root, so an `@AGENTS.md` import there is
-# an external include Claude Code skips unless each project approves external
-# includes (a wider grant than we want). Copy the canonical file in instead;
-# AGENTS.md stays the only thing anyone edits. Fail-open, no-op when unchanged.
-if command -v agentbox-manifest >/dev/null 2>&1 \
-   && agentbox-manifest agents-md-embed --help >/dev/null 2>&1; then
+# ── ADR-2118: instruction tiers projected from the agentbox repo ──
+# The global (~/.claude/CLAUDE.md) and workspace (~/workspace/AGENTS.md,
+# ~/workspace/CLAUDE.md) tiers sit above every repository, so their source is
+# the agentbox repo's config/instructions/ (tracked public layer + gitignored
+# local/ estate layer), bind-mounted read-only at /etc/agentbox/instructions.
+# The repo is authoritative: outputs are rewritten every boot and live edits do
+# not survive. The workspace tier is embedded into the Claude notes at their
+# `@AGENTS.md` line (ADR-2111: an import above the project root is skipped as an
+# external include). Fail-open; a tier with no layers is left untouched.
+_INSTR_LAYERS="/etc/agentbox/instructions"
+if [ -d "$_INSTR_LAYERS" ] && command -v agentbox-manifest >/dev/null 2>&1 \
+   && agentbox-manifest instructions-project --help >/dev/null 2>&1; then
   _WSR="${WORKSPACE:-/home/devuser/workspace}"
-  agentbox-manifest agents-md-embed --source "$_WSR/AGENTS.md" --target "$_WSR/CLAUDE.md" 2>&1 || true
-  chown 1000:1000 "$_WSR/CLAUDE.md" 2>/dev/null || true
-  unset _WSR
+  # The global tier is agentbox's only when ~/.claude is the container-owned
+  # volume, whose sign is the separate host credential bind. A deployment that
+  # still binds the host's whole ~/.claude keeps the host's own CLAUDE.md.
+  _INSTR_GLOBAL=()
+  [ -d /var/lib/agentbox/host-claude ] || _INSTR_GLOBAL=(--no-global)
+  agentbox-manifest instructions-project --layers "$_INSTR_LAYERS" "${_INSTR_GLOBAL[@]}" \
+    --global-out "${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/CLAUDE.md" \
+    --workspace-out "$_WSR/AGENTS.md" --workspace-claude-out "$_WSR/CLAUDE.md" 2>&1 || true
+  chown 1000:1000 "${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/CLAUDE.md" "$_WSR/AGENTS.md" "$_WSR/CLAUDE.md" 2>/dev/null || true
+  unset _WSR _INSTR_GLOBAL
 fi
+unset _INSTR_LAYERS
 
 # ── ADR-2093: Jev verbatim compaction — install/uninstall the function-hook plugin ──
 # [features.jev_compaction].enabled = true ⇒ three things in the root session:
@@ -2303,7 +2316,7 @@ fi
 # surface the plugin needs), the baked directory marketplace `agentbox`
 # registered, and jev-compaction@agentbox installed with the manifest's values
 # as its userConfig. `claude plugin install` copies the plugin into
-# ~/.claude/plugins/cache/<marketplace>/<name>/<version>/ — a host mount that
+# ~/.claude/plugins/cache/<marketplace>/<name>/<version>/ — a persistent volume that
 # outlives rebuilds — so a rebuilt plugin at the same version would be served
 # stale; the cache is compared to the baked tree by content and reinstalled on
 # any difference. Off ⇒ uninstall, drop the marketplace, delete the env key:
@@ -2669,22 +2682,19 @@ inventory and decision tree) or `/opt/agentbox/skills/skill-router/references/ro
 (`SKILL.md` + `references/` + `scripts/`). A line beginning "Claude Code only:" marks an
 affordance this harness lacks; use the fallback that follows it.
 AGENTSEOF
-  # ADR-2111: one source per tier. Codex reads AGENTS.md only from its git root
-  # down to its cwd, and ~/workspace is not a repo, so the tool-neutral
-  # environment facts and the operator's working style would otherwise never
-  # reach it. Append them from their single sources (Claude reads the same
-  # files through its CLAUDE.md imports). Fail-open; kept well under Codex's
-  # 32 KiB project-doc cap.
+  # ADR-2111/2118: one source per tier. Codex reads AGENTS.md only from its git
+  # root down to its cwd, and ~/workspace is not a repo, so the global and
+  # workspace tiers would otherwise never reach it. Append both as projected
+  # above from config/instructions/ (the global tier is tool-neutral, so it goes
+  # whole). Fail-open; kept well under Codex's 32 KiB project-doc cap.
   _WS_AGENTS="${WORKSPACE:-/home/devuser/workspace}/AGENTS.md"
-  _CLAUDE_GLOBAL="/home/devuser/.claude/CLAUDE.md"
-  if [ -f "$_CLAUDE_GLOBAL" ] && grep -q '^## Working style' "$_CLAUDE_GLOBAL" 2>/dev/null; then
-    { printf '\n# Operator working style (from ~/.claude/CLAUDE.md)\n\n'
-      awk '/^## Working style/{on=1} on && /^## / && !/^## Working style/{exit} on' "$_CLAUDE_GLOBAL"
-    } >> "$_CODEX_AGENTS" 2>/dev/null || true
-  fi
-  if [ -f "$_WS_AGENTS" ] && [ "$(wc -c < "$_WS_AGENTS")" -lt 24000 ]; then
-    { printf '\n'; cat "$_WS_AGENTS"; } >> "$_CODEX_AGENTS" 2>/dev/null || true
-  fi
+  _CLAUDE_GLOBAL="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/CLAUDE.md"
+  for _tier in "$_CLAUDE_GLOBAL" "$_WS_AGENTS"; do
+    if [ -f "$_tier" ] && [ "$(wc -c < "$_tier")" -lt 12000 ]; then
+      { printf '\n'; cat "$_tier"; } >> "$_CODEX_AGENTS" 2>/dev/null || true
+    fi
+  done
+  unset _tier
   unset _WS_AGENTS _CLAUDE_GLOBAL
   chown 1000:1000 "$_CODEX_AGENTS" 2>/dev/null || true
 fi

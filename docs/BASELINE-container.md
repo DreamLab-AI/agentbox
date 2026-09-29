@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.4.3
+version: 0.5.0
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.0 (2026-09-29): ADR-2118. Two new invariants: the global and workspace instruction tiers are generated every boot from config/instructions/ (tracked public layer + gitignored local/ estate layer, mounted read-only, never baked), and ~/.claude is a container-owned volume sharing only .credentials.json with the host via [program:claude-cred-sync]. New open item for the partial rollout (connected node, ~/.config/claude, Q43, profiles). CATALOGUE count corrected to 78 (was stale at 60)."
   - "0.4.3 (2026-09-26): Privacy-filter Python environment uses the flake-locked nixpkgs Transformers 5.17.0 with Tokenizers 0.23.2. Retired the incompatible Transformers 5.6.2 override; added an import gate for transformers.models.openai_privacy_filter. No runtime architecture or invariant changes."
   - "0.4.2 (2026-09-23): ADR-2117 (proposed): the owner's private USD unit of account for his agents runs on new testnet chains only, is issued and held only inside his estate (never a real stablecoin, never user-facing), and fills ADR-2102's parked bridge-rule checks for that experiment. Proposed section only; the Invariants compliance surface is unchanged."
   - "0.4.1 (2026-09-23) — ADR-2112: the five sidestr-* crates moved with history to github.com/DreamLab-AI/sidestr-rs (AGPL-3.0-only, on crates.io) and their CI with them; crates/sidestr/ is a pointer README. The settlement section now says agentbox hosts the chain instance (config/sidechain/), not the crates. Proposed section only; the Invariants compliance surface is unchanged."
@@ -112,7 +113,7 @@ Not supervised inside the box — external compose services on `visionclaw_netwo
 
 ### Manifest gates + system-manifest catalogue
 
-`GET /v1/system` (ADR-039) serves the live view. `management-api/lib/system-manifest.js` holds a hand-authored `CATALOGUE` of 60 entries — 13 surfaces + 47 modules (ADR-2039); the *catalogue* is documentation-as-data but the *state* of each entry is introspected from the parsed `agentbox.toml` at request time (`stateOf`, `:232`), so state can never drift from the manifest even if the catalogue does. Each entry carries a `gate` (dotted toml path, section gates resolve via `.enabled`), a `service` (supervisor program / sidecar), and an honest `apply_class`. The five adapter slots are emitted as `core` layer with their resolved `impl` + `contract_version` (`:267`).
+`GET /v1/system` (ADR-039) serves the live view. `management-api/lib/system-manifest.js` holds a hand-authored `CATALOGUE` of 78 entries — 13 surfaces + 65 modules (ADR-2039; recounted 2026-09-29); the *catalogue* is documentation-as-data but the *state* of each entry is introspected from the parsed `agentbox.toml` at request time (`stateOf`, `:232`), so state can never drift from the manifest even if the catalogue does. Each entry carries a `gate` (dotted toml path, section gates resolve via `.enabled`), a `service` (supervisor program / sidecar), and an honest `apply_class`. The five adapter slots are emitted as `core` layer with their resolved `impl` + `contract_version` (`:267`).
 
 #### `[vault]` — the authored-corpus path authority (ADR-2028)
 
@@ -193,6 +194,7 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - **GPU wrapper is CUDA-only by design** — no Nix-binary Vulkan/GLX presentation path; interactive 3D depends on the FHS gui-tools sidecar. Not a bug, but a hard capability boundary.
 - **Legacy ADR-005 conflates the four validation stages** into "contract tests"; this document separates them because they live in different files and fire at different lifecycle points (see Current State). ADR-2005's dispatch-ordering claim is superseded by ADR-2036.
 - **Sovereign settlement is PROPOSED, not built (PRD-024, ADR-2096/2098/2099/2102/2103).** No `[sidechain]` gate, no `sidestr-node` / `sidestr-producer` / `sidestr-bridge` program and no `:9097` bind exists today. The Rust crates exist but not here: they are published from [sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs) (ADR-2112), and nothing in the image links them yet. What this repository does hold is the estate's testnet chain instance, `config/sidechain/` (sealed `sidestr:dreamlab` document, interim JS producer runner, mirror sync; ADR-2103). The manifest block, the supervised set, the port, the crate licensing posture and three candidate invariants are recorded in [Sovereign settlement (PROPOSED)](#sovereign-settlement--proposed-2026-09-21) below; none of them is part of the compliance surface until PRD-024 is ratified.
+- **`~/.claude` ownership (ADR-2118) — partially rolled out.** The gateway override mounts the container-owned `agentbox-claude-home` volume plus a credential-only host bind; the connected-node overlay (`docker-compose.hp.yml`) still binds the host's whole `~/.claude` until `migrate-claude-home` runs there, and the entrypoint therefore passes `--no-global` on that node. The credential bind remains writable (Q20 residual: a compromised in-container tool can still edit the host's `.claude`). `~/.config/claude` is still a host bind and the workspace still rides the legacy external MAD volume (Q43). Stack profiles (`$WORKSPACE/profiles/*/.claude`) receive neither the global tier nor credentials. Open.
 - Setup wizard exits after saving (`system-manifest.js:47`); operations moved to the AoE cockpit — legacy docs describing pseudo-user isolation (`gemini-user` etc.) are dead paths.
 
 ## Invariants (must not silently change)
@@ -212,6 +214,8 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - Resource limits live only in `agentbox.toml [resources]` and the generated compose; `docker-compose.override.yml` never carries `deploy` limits or `shm_size` (ADR-2034).
 - The MCP hub binds loopback only (`services/agentbox-mcp/src/hub/config.rs` `is_loopback_bind`, refused otherwise) and is never published; `[resources.mcp_hub].servers` never lists a server with per-session state (claude-flow, code-interpreter, aci-shell, codebase-memory, agentic-qe) (ADR-2034).
 - No project settings file invokes a CLI (`ruflo`, `claude-flow`, `aqe`, `agentic-qe`, `npx …`) on a per-tool-call hook; the boot `agentbox-hook reconcile` rewrites any that appear (ADR-2034).
+- The global and workspace instruction tiers (`~/.claude/CLAUDE.md`, `~/workspace/AGENTS.md`, `~/workspace/CLAUDE.md`) are generated every boot from `config/instructions/` — a tracked public layer plus a gitignored `local/` estate layer, mounted read-only and never baked into the image — and live edits do not survive. Tracked layers carry no estate specifics (`tests/config/instructions-layers.test.sh`), and the global tier is written only when `~/.claude` is the container-owned volume, never into a host's own directory (ADR-2118, `services/agentbox-manifest/src/instructions.rs`).
+- `~/.claude` is container-owned; the only state shared with the host is `.credentials.json`, converged both ways by `[program:claude-cred-sync]` with a per-token merge that keeps the later `expiresAt` (ADR-2118, `services/agentbox-manifest/src/cred_sync.rs`).
 - `[vault].root` is the only default corpus path; no consumer hard-codes one, and an absent `[vault]` disables consumers loudly rather than falling back to a literal (ADR-2028, `project/docs/VAULT-corpus-format.md` Invariant 3, gated by `scripts/ci/check-no-logseq-paths.sh`).
 
 ## Change process

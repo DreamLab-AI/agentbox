@@ -791,9 +791,10 @@ Validates the local environment before `up`. Catches W021 gate failures, missing
 Checks performed:
 - `docker compose config` succeeds (compose merges cleanly).
 - `nix build .#compose --no-link` succeeds (W021 audit gate satisfied).
-- Host bind target paths exist (`~/.claude`, `~/.config/claude`,
+- Host bind target paths exist (`~/.claude/.credentials.json`, `~/.config/claude`,
   `~/.codex/auth.json`, configured project path).
-- External volumes are present on the Docker daemon.
+- External volumes are present on the Docker daemon; a missing
+  `agentbox-claude-home` fails preflight with the command that creates it.
 
 Run `preflight` before `up` whenever you change `agentbox.toml`, the override file, or `.env`.
 
@@ -869,7 +870,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - COMFYUI_API_ENDPOINT=http://comfyui:8188
     volumes:
-      - ${HOME}/.claude:/home/devuser/.claude:rw
+      - agentbox-claude-home:/home/devuser/.claude
+      - ${HOME}/.claude:/var/lib/agentbox/host-claude:rw
       - ${HOME}/.codex/auth.json:/home/devuser/.codex/auth.json:rw
     deploy:
       resources:
@@ -880,20 +882,13 @@ services:
       - visionclaw_network
 ```
 
-### `${HOME}/.claude` bind mount — known attack surface
+### `~/.claude` — container-owned volume, credential-only host bind (ADR-2118)
 
-`docker-compose.override.yml` mounts the host `~/.claude` directory as `:rw` so Claude Code can update plugin state, OAuth tokens, and settings from inside the container. This means any compromised tool executing in the container can persist to the host `.claude` and re-enter the host on the next operator invocation.
+`~/.claude` inside the container is the `agentbox-claude-home` named volume: history, sessions, plugins and the settings the entrypoint projects. Nothing in it is read from the host. Create and seed it once with `./agentbox.sh migrate-claude-home`, which copies live state from the host's `~/.claude`, leaves out what the container now owns (`CLAUDE.md`, projected from `config/instructions/`) and debris (settings and `.claude.json` backups), rewrites host paths in the plugin registry, and never modifies the host directory. Host-side Claude Code keeps its own `~/.claude`, including its own `CLAUDE.md`.
 
-The `:rw` is functionally required for Claude Code's in-container operation. The recommended alternative (not yet implemented) is directory-scoped mounts:
+The host's `~/.claude` is still bound, at `/var/lib/agentbox/host-claude`, for one reason: Claude Code's OAuth refresh tokens rotate, so a refresh on one side invalidates the other's token unless both copies converge. The supervised `claude-cred-sync` program (`agentbox-manifest cred-sync`) polls both `.credentials.json` files and merges them per token record, keeping the later `expiresAt`, so a Claude refresh on one side and an MCP login on the other both survive. It exits and stays stopped when the bind is absent.
 
-```yaml
-volumes:
-  - ${HOME}/.claude/settings.json:/home/devuser/.claude/settings.json:ro
-  - ${HOME}/.claude/plugins:/home/devuser/.claude/plugins:rw
-  - ${HOME}/.claude/oauth-tokens:/home/devuser/.claude/oauth-tokens:rw
-```
-
-The plugin registry absolute-path problem (host paths baked into plugin metadata) makes the full scoped approach complex. The current `:rw` flat mount is the pragmatic default; treat it as a known surface and ensure your host `.claude` does not contain long-lived secrets that should not reach the container.
+Residual attack surface: the bind is writable, so a compromised in-container tool could still modify the host's `.claude` (for example its hooks) and re-enter the host on the next host-side session. What changed is that the container no longer depends on anything in that tree except the credential file, so the bind could be narrowed further (a dedicated host credential directory) without breaking agentbox.
 
 ### `${HOME}/.codex/auth.json` bind mount
 

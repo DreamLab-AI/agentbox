@@ -1,0 +1,34 @@
+# Agentbox workspace — container environment facts
+
+Tool-neutral facts about this container for every coding agent. Behaviour and style belong to the global tier; project rules to each project's `AGENTS.md`.
+
+## Discovery
+
+`claude-flow doctor` (diagnostics) · `supervisorctl status` (services) · `AGENTS.md` in the agentbox checkout is the authoritative container/runtime reference.
+
+## RuVector memory (single home for the environment rules)
+
+```
+conn       = ruvector-postgres:5432, db ruvector, $RUVECTOR_PG_CONNINFO
+access     = memory MCP tools only (Claude: mcp__claude-flow__memory_*; Codex: agentbox-memory) — CLI and raw SQL INSERT bypass the embedding pipeline
+             (bge-small-en-v1.5 via Xinference, 384-dim, client-side) → rows invisible to HNSW search
+search     = plain memory_search (~100ms); namespace "*" = global cross-namespace
+avoid      = memory_hybrid_search on large namespaces (materialises the namespace; ~72s on ruvnet-kb)
+low-recall = ruvnet-kb / knowledge-* namespaces (scoped R@10 ~9-11%)
+index-law  = after bulk ingest/delete: non-concurrent AND serial HNSW rebuild (m=16, ef_construction=128,
+             max_parallel_maintenance_workers=0, ~8 min); parallel builds leave ~20% of rows unreachable.
+             NEVER CREATE INDEX CONCURRENTLY on the ruvector HNSW AM (double-insertion)
+embed-cap  = only the first ~2,500 chars of a value are embedded: keep values <~2,000 chars, front-load facts,
+             split long detail into linked entries (retrieve-by-key still returns the whole value)
+reference  = ~/workspace/docs/ruvector-system-reference.md
+```
+
+Namespaces: `personal-context` (index key `personal-context-portfolio-index`), `project-state` (index key `project-state-current-focus`).
+
+## Host access & Docker builds
+
+The host Docker socket makes builds launched in here *look* like they work, but bind paths resolve against the **host** filesystem, so they silently bake stale code. Edit sources here; launch the host project's builds from the host shell (its tmux tab), and monitor from here with `tmux capture-pane` and `docker exec`. Do not SSH to the host.
+
+## Claude Cowork
+
+`cowork start|stop|status|restart|logs` — Claude Desktop Cowork on VNC :1. `claude-desktop --devtools|--doctor`.

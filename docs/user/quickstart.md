@@ -4,6 +4,8 @@ New to headless agent runtimes? Start with the [glossary](glossary.md) first.
 
 This guide reflects the current Agentbox runtime.
 
+With the standard override, first run `./agentbox.sh migrate-claude-home` and `./agentbox.sh preflight` before starting or rebuilding. This seeds the required external Claude-home volume without deleting host state. Edit instruction sources in `config/instructions/`, not generated runtime files; see [configuration](configuration.md) (ADR-2118).
+
 ## Why this exists
 
 Agentbox is a self-contained Linux container that runs coding agents (Claude Code, Ruflo, Antigravity, Codex and friends) behind a single management API. Think of it as a shared workstation for agents: one image carries the CLIs, skills, MCP servers and durable-state adapters, and you drive it from your laptop, a remote VM, or a cloud provider. Compared to running agents directly on your machine, Agentbox keeps keys, state, skill trees and model endpoints behind one switchable configuration file.

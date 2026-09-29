@@ -1741,7 +1741,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
 
           # Stable paths for baked binaries that get written into PERSISTENT
           # config. /nix/store paths are content-addressed and change on every
-          # rebuild, but .mcp.json and ~/.claude are host mounts that survive it —
+          # rebuild, but .mcp.json and ~/.claude are persistent mounts that survive it —
           # so a store path recorded there dangles the moment the derivation
           # rehashes and the old path is garbage-collected. That is exactly how
           # the colloquy MCP server came to fail ENOENT against a
@@ -2567,6 +2567,27 @@ stdout_logfile=/var/log/forum-backup-cron.log
 stderr_logfile=/var/log/forum-backup-cron.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
+${lib.optionalString (toolchainCfg.claude_code or false) ''
+
+; ADR-2118: Claude Code OAuth credential sync. ~/.claude is a container-owned
+; volume; the host's ~/.claude is bound at /var/lib/agentbox/host-claude only so
+; the rotating OAuth tokens stay converged between host and container (per-token
+; merge, later expiresAt wins). Exits 0 when that bind is absent, so
+; autorestart=unexpected leaves it stopped on deployments that do not share auth.
+[program:claude-cred-sync]
+command=${agentboxManifestPkg}/bin/agentbox-manifest cred-sync --container /home/devuser/.claude/.credentials.json --host /var/lib/agentbox/host-claude/.credentials.json --interval-secs 2
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=unexpected
+exitcodes=0
+startsecs=0
+priority=30
+stdout_logfile=/var/log/claude-cred-sync.log
+stderr_logfile=/var/log/claude-cred-sync.error.log
+stdout_logfile_maxbytes=1MB
+stderr_logfile_maxbytes=1MB
+''}
 ${lib.optionalString mcpHubEnabled ''
 
 ; ADR-2034 §2: shared loopback MCP hub. One process per stateless MCP server
@@ -2832,17 +2853,10 @@ stderr_logfile_maxbytes=5MB
         # External network declaration — always enabled so the agentbox
         # container can reach the browsercontainer sidecar (and ragflow
         # when enabled) via Docker DNS on visionclaw_network.
-        ragflowNetworkDecl = ''
-  default:
-  visionclaw:
-    name: visionclaw_network
-    external: true'';
+        ragflowNetworkDecl = "  default:\n  visionclaw:\n    name: visionclaw_network\n    external: true";
 
         # agentbox network attachment block — unconditional.
-        agentboxNetworks = ''
-    networks:
-      - default
-      - visionclaw'';
+        agentboxNetworks = "    networks:\n      - default\n      - visionclaw\n";
 
         # [resources] → compose envelope (ADR-2034 §3). Emitted here so the
         # limits are versioned with the manifest; docker-compose.override.yml
@@ -2854,6 +2868,7 @@ stderr_logfile_maxbytes=5MB
           + "        limits:\n"
           + "          cpus: '${resCpus}'\n"
           + "          memory: ${resMemory}\n"
+          + "          pids: ${resPidsLimit}\n"
           + "        reservations:\n"
           + "          cpus: '${resCpusReserve}'\n"
           + "          memory: ${resMemoryReserve}\n"
@@ -3113,6 +3128,9 @@ stderr_logfile_maxbytes=5MB
         # without leaking it into the shared workspace volume (Q5).
         agentboxBaselineMounts = [
           "./agentbox.toml:/etc/agentbox.toml:ro"
+          # ADR-2118: instruction-tier layers (tracked + gitignored local/),
+          # projected every boot; mounted, never baked, so local/ stays private.
+          "./config/instructions:/etc/agentbox/instructions:ro"
           "./workspace:/home/devuser/workspace"
           "./projects:/projects"
           "ruvector-data:/var/lib/ruvector"
@@ -3132,6 +3150,7 @@ stderr_logfile_maxbytes=5MB
           # The privacy model is ~2.8 GiB. Keep it out of the deliberately
           # bounded XDG cache tmpfs and retain it across rolling rebuilds.
           "hf-cache:/home/devuser/.cache/huggingface"
+          "opencode-store:/home/devuser/.local/share/opencode"
         ];
         # NOTE: no ruvnet-brain-data volume. The corpus persists in
         # ruvector-postgres; the ingest only needs transient, writable staging,
@@ -3161,7 +3180,7 @@ stderr_logfile_maxbytes=5MB
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" "opencode-store" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );
@@ -3171,11 +3190,9 @@ stderr_logfile_maxbytes=5MB
           lib.optionalString (gpuEnabled && ollamaSidecarEnabled) "  ollama:\n    name: ollama\n"
           + lib.optionalString ruvectorSidecarEnabled
               "  ruvector-pg-data:\n    name: ${ruvectorPgVolume}\n"
-          + "  ruvector-data:\n    name: agentbox-ruvector-data\n"
-          + "  solid-data:\n    name: agentbox-solid-data\n"
-          + "  sovereign-identities:\n    name: agentbox-sovereign-identities\n"
-          + "  agentbox-secrets:\n    name: agentbox-secrets\n"
-          + "  hf-cache:\n    name: agentbox-hf-cache\n"
+          + lib.concatMapStrings
+              (n: "  ${n}:\n    name: agentbox-${n}\n")
+              baselineTopLevelVolumeNames
           + lib.concatMapStrings
               (n: "  ${n}:\n    name: agentbox-${n}\n")
               extraTopLevelVolumeNames;
@@ -3213,12 +3230,15 @@ ${agentboxPorts}
       - OPENAI_API_KEY=''${OPENAI_API_KEY:-ollama}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
-      - OLLAMA_MODEL=''${OLLAMA_MODEL:-qwen3.8-27B}
-      - LOOM_BASE_URL=''${LOOM_BASE_URL:-http://loom:8080/v1}
+      - OLLAMA_MODEL=''${OLLAMA_MODEL:-gemma-4-31B-it-qat}
+      - LOOM_BASE_URL=''${LOOM_BASE_URL:-''${LOOM_FACADE_URL:-http://loom:8080}/v1}
+      - CONNECTED_NODE_SSH=''${CONNECTED_NODE_SSH:-}
+      - CONNECTED_NODE_HOME=''${CONNECTED_NODE_HOME:-}
+      - ONTOLOGY_CONDENSE_ENDPOINT=''${ONTOLOGY_CONDENSE_ENDPOINT:-''${LOOM_BASE_URL:-''${LOOM_FACADE_URL:-http://loom:8080}/v1}}
       - LOOM_RAW_BASE_URL=''${LOOM_RAW_BASE_URL:-http://loom-raw:8080/v1}
       - LOOM_MODEL=''${LOOM_MODEL:-qwen3.8-27B}
-      - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-}
-      - GEMMA_MODEL=''${GEMMA_MODEL:-}
+      - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-''${LOOM_BASE_URL:-''${LOOM_FACADE_URL:-http://loom:8080}/v1}}
+      - GEMMA_MODEL=''${GEMMA_MODEL:-gemma-4-31B-it-qat}
       - DEEPSEEK_API_KEY=''${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_BASE_URL=''${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - GOOGLE_API_KEY=''${GOOGLE_API_KEY:-}
@@ -3226,6 +3246,7 @@ ${agentboxPorts}
       - GEMINI_API_KEY=''${GEMINI_API_KEY:-}
       - MANAGEMENT_API_KEY=''${MANAGEMENT_API_KEY:-}
       - MANAGEMENT_API_AUTH_MODE=''${MANAGEMENT_API_AUTH_MODE:-hybrid}
+      - VISIONCLAW_AGENT_KEY=''${VISIONCLAW_AGENT_KEY:-}
       - NOSTR_RELAYS=''${NOSTR_RELAYS:-wss://relay.damus.io,wss://relay.primal.net}
       - AGENTBOX_AGENT_ID=''${AGENTBOX_AGENT_ID:-agentbox-core}
       - AGENTBOX_IMAGE_HASH=''${AGENTBOX_IMAGE_HASH:-}

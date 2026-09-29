@@ -6,7 +6,7 @@
 # The agent equivalent of reconcile-skills.sh, and written for the same reason.
 # ~/.claude/agents and $WORKSPACE/.claude/agents were never governed by anything:
 # `ruflo init` (@claude-flow/cli) and `aqe init --auto` each dump their template
-# sets there, ~/.claude is a host mount so the dumps survive every rebuild, and
+# sets there, ~/.claude is a persistent volume so the dumps survive every rebuild, and
 # nothing removed or refreshed them. The result audited 2026-09-16 was 97 unique
 # agents across two scopes (~6,540 prompt tokens every turn), 74 of them present
 # in BOTH scopes with 37 byte-divergent — and because the project scope shadows

@@ -209,6 +209,8 @@ cd agentbox
 
 Next steps: [Configuration](docs/user/configuration.md) · [Providers and API keys](docs/user/providers.md) · [Desktop mode and VNC](docs/user/running.md)
 
+Instruction tiers now come from [`config/instructions/`](config/instructions/README.md), not hand-edited runtime files. Before starting with the container-owned Claude home, run `./agentbox.sh migrate-claude-home`, then `./agentbox.sh preflight` (ADR-2118).
+
 ---
 
 ## Included Capabilities

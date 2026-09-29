@@ -4,6 +4,8 @@ Agentbox is one of six repositories in the DreamLab open-source ecosystem — fi
 
 ## Six-repository landscape
 
+Host and container Claude configuration are separate (ADR-2118): only credentials converge through the supervised sync. Public instruction layers live in `config/instructions/`; deployment-specific facts belong in its gitignored `local/` layer. The connected-node migration remains a separate operator action.
+
 | Repository | Role | Relationship to agentbox |
 |---|---|---|
 | [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Umbrella coordination canon | Documentation/positioning only; names the ecosystem flows. Pure canon — it does **not** sign on the relay, so it is not a did:nostr identity-mesh participant |
