@@ -30,7 +30,8 @@
  * Gating: silent no-op (exit 0) unless an operator recipient pubkey is present
  * (AGENTBOX_PUBKEY / AGENTBOX_BRIDGE_RECIPIENT_PUBKEY / AGENTBOX_ADMIN_PUBKEY /
  * AGENTBOX_MIRROR_RECIPIENT_PUBKEY). Toggle off explicitly with
- * AGENTBOX_LIVE_MIRROR=0.
+ * AGENTBOX_LIVE_MIRROR=0. Only `Stop` turns are mirrored by default;
+ * AGENTBOX_LIVE_MIRROR_EVENTS widens that (see `mirroredEvents`).
  *
  * Discipline (Claude Code hook contract): reads the hook JSON on STDIN, exits 0
  * FAST, never blocks the session. A hard deadline aborts the publish and every
@@ -265,11 +266,28 @@ function lastAssistantText(transcriptPath) {
 }
 
 /**
+ * Which hook events are mirrored. Default: `Stop` only — the assistant's reply
+ * is the one line worth a gift wrap. Every mirrored turn is a kind-1059 row on
+ * the cloud relay that the gateway's lookback query then re-reads, so the four
+ * events per turn the hooks fire (SessionStart, UserPromptSubmit, Stop,
+ * SessionEnd) quadrupled the D1 cost of the mirror for little signal. Set
+ * `AGENTBOX_LIVE_MIRROR_EVENTS=SessionStart,UserPromptSubmit,Stop,SessionEnd`
+ * (any subset, comma-separated) to widen it again.
+ */
+const DEFAULT_MIRROR_EVENTS = ['Stop'];
+function mirroredEvents() {
+  const raw = (process.env.AGENTBOX_LIVE_MIRROR_EVENTS || '').trim();
+  if (!raw) return new Set(DEFAULT_MIRROR_EVENTS);
+  return new Set(raw.split(',').map((s) => s.trim()).filter(Boolean));
+}
+
+/**
  * Map a hook event to the mirror line (a single { body } or null to skip).
  * @param {string} event  Claude Code hook event name
  * @param {object} payload  parsed STDIN JSON
  */
 function bodyForEvent(event, payload) {
+  if (!mirroredEvents().has(event)) return null;
   const shortId = String((payload && payload.session_id) || 'unknown').slice(0, 8);
   switch (event) {
     case 'SessionStart': {

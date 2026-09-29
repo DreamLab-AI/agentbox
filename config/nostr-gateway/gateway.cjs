@@ -766,11 +766,19 @@ function connect() {
   ws.on('close', () => { log('closed; reconnect in 5s'); setTimeout(connect, 5000); });
   ws.on('error', (e) => { log('ws error', e.message); try { ws.close(); } catch { /* noop */ } });
 }
-// Keep the Cloudflare Durable Object warm. DOs hibernate on idle and can drop
-// the in-memory subscription, so a live-pushed 1059 would never reach us
-// (the relay serves no stored gift wraps on a later REQ). A periodic re-REQ is
-// a Nostr-level message that both wakes the DO's message handler and re-arms the
-// filter — unlike ws.ping(), a control frame the Hibernation API may swallow.
-setInterval(() => { try { if (ws && ws.readyState === 1) { subscribe(ws, true); ws.ping(); } } catch { /* noop */ } }, 15000);
+// Keep-alive vs keep-warm (D1 budget, 2026-09-29). The relay persists every
+// session's subscriptions to Durable Object storage and restores them when the
+// DO wakes from hibernation (relay_do/session.rs `recover_session`), so a
+// hibernated DO does NOT lose this filter and a live-pushed 1059 still reaches
+// us. The previous 15s re-REQ was therefore pure cost: each one re-ran the
+// 50h gift-wrap query plus the viewer lookups and trust-ledger writes — ~240
+// REQs an hour, the single largest steady consumer of the free-tier D1
+// row-read budget. A WebSocket ping every 15s keeps the TCP path and any
+// middlebox alive without touching D1; the re-REQ survives only as a
+// belt-and-braces re-arm every REARM_MS in case a relay deploy ever drops the
+// stored subscription without closing the socket (a close reconnects anyway).
+const REARM_MS = Math.max(60_000, Number(process.env.AGENTBOX_GATEWAY_REARM_MS) || 600_000);
+setInterval(() => { try { if (ws && ws.readyState === 1) ws.ping(); } catch { /* noop */ } }, 15000);
+setInterval(() => { try { if (ws && ws.readyState === 1) subscribe(ws, true); } catch { /* noop */ } }, REARM_MS);
 connect();
 log(`gateway up · recv ${pub.slice(0, 12)}… · commander ${commanderPub.slice(0, 12)}… · reply→ ${replyTo.slice(0, 12)}… · relay ${relayUrl}`);
