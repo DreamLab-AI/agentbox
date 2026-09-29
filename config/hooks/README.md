@@ -32,7 +32,7 @@ on a volume.
 
 | File | Event(s) | Timeout | Gate |
 |---|---|---|---|
-| `nostr-live-mirror.cjs` | `SessionStart`, `UserPromptSubmit`, `Stop`, `SessionEnd` | 8 s | always registered; exits before touching keys, `nostr-tools` or stdin unless `AGENTBOX_MIRROR_RECIPIENTS` holds a valid allowlist (≈ bare `node` start-up otherwise). Off: `AGENTBOX_LIVE_MIRROR=0` |
+| `nostr-live-mirror.cjs` | `SessionStart`, `UserPromptSubmit`, `Stop`, `SessionEnd` | 8 s | always registered; mirrors `Stop` only by default (`AGENTBOX_LIVE_MIRROR_EVENTS` selects a comma-separated subset). Exits before touching keys, `nostr-tools` or stdin unless `AGENTBOX_MIRROR_RECIPIENTS` holds a valid allowlist (≈ bare `node` start-up otherwise). Off: `AGENTBOX_LIVE_MIRROR=0` |
 | `fleet-session-start.sh` | `SessionStart` | 8 s | always registered. Off: `AGENTBOX_NOSTR_GATEWAY=0` |
 | `turn-sink.cjs` (deployed to `$WORKSPACE/tab0-bridge/`) | `UserPromptSubmit`, `Stop` | 5 s | always registered; no-ops fast when the bridge is down |
 | `colloquy-reflect-candidates.cjs` | `Stop`, `SubagentStop` | 10 s | `[skills.colloquy].reflect_candidates` (and `.enabled`) — de-registers itself when either gate is off |

@@ -14,6 +14,47 @@
 
 const mirror = require('../../config/hooks/nostr-live-mirror.cjs');
 const uris = require('../../management-api/lib/uris.js');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+describe('nostr-live-mirror event selection', () => {
+  let previous;
+  let dir;
+  let payload;
+  beforeEach(() => {
+    previous = process.env.AGENTBOX_LIVE_MIRROR_EVENTS;
+    delete process.env.AGENTBOX_LIVE_MIRROR_EVENTS;
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mirror-events-'));
+    const transcript = path.join(dir, 'transcript.jsonl');
+    fs.writeFileSync(transcript, JSON.stringify({ message: { role: 'assistant', content: 'Synthetic reply' } }) + '\n');
+    payload = { session_id: 'test-session', prompt: 'Synthetic prompt', transcript_path: transcript };
+  });
+  afterEach(() => {
+    if (previous === undefined) delete process.env.AGENTBOX_LIVE_MIRROR_EVENTS;
+    else process.env.AGENTBOX_LIVE_MIRROR_EVENTS = previous;
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  test('defaults to Stop only', () => {
+    expect(mirror.bodyForEvent('Stop', payload)).toContain('Synthetic reply');
+    for (const event of ['SessionStart', 'UserPromptSubmit', 'SessionEnd']) {
+      expect(mirror.bodyForEvent(event, payload)).toBeNull();
+    }
+  });
+  test('explicit events restore the broader mirror', () => {
+    process.env.AGENTBOX_LIVE_MIRROR_EVENTS = 'SessionStart,UserPromptSubmit,Stop,SessionEnd';
+    for (const event of process.env.AGENTBOX_LIVE_MIRROR_EVENTS.split(',')) {
+      expect(mirror.bodyForEvent(event, payload)).not.toBeNull();
+    }
+  });
+  test('a trimmed subset excludes other events', () => {
+    process.env.AGENTBOX_LIVE_MIRROR_EVENTS = ' UserPromptSubmit , SessionEnd ';
+    expect(mirror.bodyForEvent('UserPromptSubmit', payload)).toContain('Synthetic prompt');
+    expect(mirror.bodyForEvent('SessionEnd', payload)).not.toBeNull();
+    expect(mirror.bodyForEvent('Stop', payload)).toBeNull();
+    expect(mirror.bodyForEvent('SessionStart', payload)).toBeNull();
+  });
+});
 
 describe('nostr-live-mirror.composeBody — REC-9 reference within the cap', () => {
   const urn = 'urn:agentbox:activity:' + '0'.repeat(64) + ':sha256-12-deadbeef1234';

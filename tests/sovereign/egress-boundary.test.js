@@ -42,6 +42,8 @@ function runHook(event, env, payload) {
     PATH: process.env.PATH,
     HOME: process.env.HOME,
     NODE_PATH: process.env.NODE_PATH || '',
+    // Exercise the egress policy independently of the Stop-only event default.
+    AGENTBOX_LIVE_MIRROR_EVENTS: 'SessionStart,UserPromptSubmit,Stop,SessionEnd',
     // Never let a test inherit a real mirror configuration.
     AGENTBOX_PRIVKEY_HEX: '',
     AGENTBOX_BRIDGE_SK: '',
