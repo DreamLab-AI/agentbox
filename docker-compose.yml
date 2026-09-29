@@ -179,11 +179,11 @@ volumes:
   sovereign-identities:
     name: agentbox-sovereign-identities
   agentbox-secrets:
-    name: agentbox-agentbox-secrets
+    name: agentbox-secrets
   code-harness-data:
     name: agentbox-code-harness-data
   agentbox-events:
-    name: agentbox-agentbox-events
+    name: agentbox-events
   consultations-data:
     name: agentbox-consultations-data
   telemetry-data:

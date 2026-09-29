@@ -3196,7 +3196,7 @@ stderr_logfile_maxbytes=5MB
           + lib.optionalString ruvectorSidecarEnabled
               "  ruvector-pg-data:\n    name: ${ruvectorPgVolume}\n"
           + lib.concatMapStrings
-              (n: "  ${n}:\n    name: agentbox-${n}\n")
+              (n: "  ${n}:\n    name: ${if lib.hasPrefix "agentbox-" n then n else "agentbox-${n}"}\n")
               baselineTopLevelVolumeNames
           + lib.concatMapStrings
               (n: "  ${n}:\n    name: agentbox-${n}\n")
