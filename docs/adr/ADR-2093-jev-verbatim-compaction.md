@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f1d2b3699269b3a5b985dce18d160b3af03af5f1
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [config/claude-plugins/jev-compaction/hooks/jev-compaction.ts, config/claude-plugins/jev-compaction/hooks/policy.mjs, config/entrypoint-unified.sh, lib/claude-code-binary.nix, tests/config/jev-compaction-policy.test.mjs]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, or a request to fence a class other than email
@@ -15,6 +15,10 @@ repo: agentbox
 ---
 
 # ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+The plugin digest/config reconciliation, disabled path and stable /opt paths remain intact; the changed cache comment now correctly describes persistent container-owned state. The Jev policy fixtures pass, including sticky email taint, local-backend handling and cache-warm behavior. No live transcript was compacted. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 

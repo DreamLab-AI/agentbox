@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -15,6 +15,10 @@ repo: agentbox
 ---
 
 # ADR-2002 — AoE interaction plane requires token auth — loopback is not a boundary
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+AoE still starts with --auth token on loopback; readAoeToken and the proxy's missing-token refusal are unchanged. The real proxy selftest passes with zero failures/skips, including HTTP/WS missing-token denial. Generated Compose does not publish 9095. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: a5d9ff5a93fa63862fb63a0424adaa4598fb4e41
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -16,6 +16,10 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+Re-read the deepsecPkg/toolchain gate and catalogue entry: the new instruction and credential entries do not alter the names-only policy or execution gate. All ten fake-CLI deepsec-gate tests pass; no paid security scan was run. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 

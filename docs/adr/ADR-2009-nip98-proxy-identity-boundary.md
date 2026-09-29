@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f1d2b3699269b3a5b985dce18d160b3af03af5f1
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -17,6 +17,10 @@ lineage: legacy ADR-042 (AoE interaction plane), ADR-043 (session identity bindi
 ---
 
 # ADR-2009 — The nip98-proxy is the fail-closed AoE identity boundary
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+The changed ingress prose adds sealed-original attribution, not a new identity route. HTTP/WS still strip supplied identity headers and inject verified identity; the proxy selftest passes with zero failures/skips, including absent-verifier and allowlist-removal denial. The Compose regeneration preserves the 9096 ingress. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 Requests must become a verified BIP-340 pubkey before any routing decision.

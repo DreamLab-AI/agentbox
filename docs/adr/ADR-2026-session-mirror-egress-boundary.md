@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -16,6 +16,10 @@ domain: SECURITY-profiles
 ---
 
 # ADR-2026 — Session-mirror cloud egress boundary
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+Stop-only mirroring narrows the default event set; explicit event overrides still pass through the existing off-switch, recipient and redaction checks. The isolated egress and mirror-provenance suites pass alongside the adapter contracts (613 tests, 31 suites). No real transcript or relay send was exercised; existing activation/status limitations remain. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 The live hook mirrors selected lifecycle, prompt and last-assistant text through

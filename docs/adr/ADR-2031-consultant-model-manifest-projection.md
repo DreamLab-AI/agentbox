@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f1d2b3699269b3a5b985dce18d160b3af03af5f1
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -15,6 +15,10 @@ repo: agentbox
 ---
 
 # ADR-2031 — Consultant model selection is projected from the manifest at boot; environment wins, TUI preserves the operator's choice, and tariffs are dated
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+The env-first AGENTBOX_ANTIGRAVITY_MODEL projection remains unchanged. Manifest tests including consultant/TUI precedence pass, as do the two consultant CLI/tariff fixtures. This rechecks source and local fixtures, not provider availability or live tariffs. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 `[consultants.antigravity].model` in `agentbox.toml` was declarative only: the

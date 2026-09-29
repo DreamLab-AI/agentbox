@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f1d2b3699269b3a5b985dce18d160b3af03af5f1
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
@@ -17,6 +17,10 @@ lineage: legacy ADR-069 (unified operator auth / DreamLab adoption)
 ---
 
 # ADR-2010 — Bearer credential exchange is gated beneath the NIP-98 identity
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+The ingress-doc amendment concerns sealed-original attribution. Both named-route branches still require auth.mode !== 'nip98' before bearer substitution. The proxy selftest passes with zero failures/skips; downstream governance acceptance is not newly claimed. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 Named non-AoE upstreams (management API, governance services) authenticate with

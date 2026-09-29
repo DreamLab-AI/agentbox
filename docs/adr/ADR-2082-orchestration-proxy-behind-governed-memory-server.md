@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f1d2b3699269b3a5b985dce18d160b3af03af5f1
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a ruflo major bump that renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -16,6 +16,10 @@ domain: LEARNING-memory
 ---
 
 # ADR-2082 — The governed claude-flow server forwards orchestration tools to a filtered ruflo child; memory never crosses
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+The RV_ORCH_PROXY/RV_ORCH_TOOLS projection still configures the single governed claude-flow server. All 11 orchestration-proxy assertions pass with a fake child, including memory denial, missing-binary fallback and respawn. No second ruflo MCP registration was introduced. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 `ruvector-mcp.cjs` replaced `claude-flow mcp start` as the `claude-flow` MCP server so

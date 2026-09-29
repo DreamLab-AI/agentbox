@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: a5d9ff5a93fa63862fb63a0424adaa4598fb4e41
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -17,6 +17,10 @@ lineage: legacy ADR-040 (learning consumers / governance publisher key-split), s
 ---
 
 # ADR-2012 — Relay ingress is allowlist-only, no fallback, no auto-add
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+Re-read the manifest allowlist/nip98 gates and the generator's explicit empty pubkey_whitelist branch. The instruction-home and Compose changes do not alter publisher admission or add a publisher. No relay publication was performed; the publisher-key split remains deferred. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 The embedded nostr-rs-relay accepts inbound events from the mesh. An open or

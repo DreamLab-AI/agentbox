@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cecb5b7369b775f08d0a1c4c78c3fd909fadf7de
+verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, docker-compose.override.yml, docker-compose.hp.yml]
 owner: jjohare
 review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -16,6 +16,10 @@ domain: BASELINE-container
 ---
 
 # ADR-2118 — Own the instruction tiers and the Claude home in the repo
+
+## Re-verification — 2026-09-29 (instruction-home migration)
+
+Host migration completed after adding explicit failure propagation and restrictive backup permissions. The generated Compose merge passes Docker validation after repairing generator drift. All 149 manifest tests and clippy pass; layer privacy 9/9, boot projection 13/13 and agent reconciliation 45/45 pass. Credential I/O failures retry on each poll, and --once reports write errors. Backups preserve the previous instruction files; host CLAUDE.md is byte-identical after migration. Rebuilt-image activation is still pending. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
 ADR-2111 made `AGENTS.md` the one canonical file per tier and built the projection, but two tiers had no versioned source. `~/.claude/CLAUDE.md` (global) lived on a whole-directory `rw` bind of the host's `~/.claude`, and `~/workspace/AGENTS.md` and `~/workspace/CLAUDE.md` lived on the legacy MAD volume. All three were hand-edited, had no history and mixed product rules with estate specifics (LAN addresses, private repository names, relay URLs). The repository is public. The same bind carried four jobs: auth, state, config and instructions. That forced the `HOST_CLAUDE_PATH` mirror mount (plugin JSON stores host paths) and left the Q20 surface fully open. A separate `~/.claude.json` bind was dead: `CLAUDE_CONFIG_DIR=~/.claude` puts the live file inside `~/.claude`. A stale, gitignored `workspace/AGENTS.md` in the checkout looked like the source. Probed on Claude Code 2.1.280, a directory holding only `AGENTS.md` loads nothing, so the `@AGENTS.md` wrappers remain necessary.
