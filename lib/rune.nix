@@ -14,6 +14,13 @@
 # fork's own `make test` gates each tag); upstream's flake does the same.
 # Cargo.lock has no `git+` sources, so vendoring straight from the pinned
 # lockfile needs no outputHashes.
+#
+# The lock is a vendored copy (lib/rune-Cargo.lock, byte-identical to the tag's
+# Cargo.lock), as lib/systemscape.nix keeps one: reading "${src}/Cargo.lock"
+# from a fetchFromGitHub source is import-from-derivation, which
+# `nix flake check --no-build` cannot realise ("path ...-source.drv is not
+# valid"), and that failed the weekly nix-flake-update run. Re-copy it
+# whenever `rev` moves.
 { lib, pkgs }:
 
 pkgs.rustPlatform.buildRustPackage rec {
@@ -28,7 +35,7 @@ pkgs.rustPlatform.buildRustPackage rec {
     hash = "sha256-RDj8TCdJdicGGZNejndtaoQehveP+Gif1NH/bDTwDis=";
   };
 
-  cargoLock.lockFile = "${src}/Cargo.lock";
+  cargoLock.lockFile = ./rune-Cargo.lock;
   cargoBuildFlags = [ "-p" "rune-cli" ];
   doCheck = false;
 
