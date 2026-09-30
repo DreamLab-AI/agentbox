@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
+verified_commit: 6f5d9d79482cf198aae17d914687df11652a03a2
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
