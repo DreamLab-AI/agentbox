@@ -252,6 +252,29 @@ file isolation). Runtime activation is checked after deployment, not inferred fr
 
 ## Consequences
 
+### Interim deployment receipt — 2026-09-30
+
+- Source: `0a407fc61`; image: `sha256:4bdd3d7b9f8166ec9f7fc8868bfc2e06eb1cd35db829ae7b19bf27108ece5ca3`.
+- `sidestr-producer`, `sidestr-mirror` and `sidestr-faucet` are supervised and running as
+  devuser. The producer serves tip 593 on loopback and announced it to 5/5 relays; the
+  faucet subscribed to kind 23501 on all five relays using the baked 0.3.2 binary.
+- The existing mirror checkout is clean and its authenticated push dry-run succeeds.
+  Failed-push retry is covered by the isolated regression fixture. No synthetic live
+  payout was requested, and this receipt does not claim a newly produced block.
+- Genesis verification inside the rebuilt container passes 3/3, including stored block
+  zero. Readiness is true; all five durable-state adapters are healthy with zero degraded
+  components. RuVector write/search/rollback smoke checks and voice health pass.
+- All 17 persistent volume identities match resolved Compose. Instruction projection,
+  complete Codex tiers, credential parity/mode and unchanged host instructions pass;
+  baked/deployed Compose matches. Direct AoE and proxy tokenless requests both return 401.
+- The canonical rebuild produced and imported the image; its redundant speech-build
+  phase was stopped and startup completed with the existing healthy speech images
+  (`--no-build`) and the normal base plus override Compose files. Recovery image retained
+  as `agentbox:recovery-20260930`. Email and the connected node were not changed.
+
+The broader proposed settlement decision remains partial; this receipt activates only
+the explicitly approved interim testnet services.
+
 The estate is not bound to either hash family: the owner's pivot preference is honoured by the
 default, and the SHA-256d path stays open by configuration. The Rust codec carries both arms,
 roughly doubling the consensus-critical header surface; the BLAKE2b arm is what upstream
