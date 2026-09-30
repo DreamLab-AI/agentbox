@@ -1,4 +1,6 @@
-# Standalone local GPU sidecar; shares the network used by agentbox.
+# Standalone local GPU sidecar; shares the network used by agentbox, and joins
+# visionclaw_network so the VisionClaw server reaches it as http://comfyui:8188
+# (its image-gen handler default).
 services:
   comfyui:
     build:
@@ -20,7 +22,7 @@ services:
       - comfyui-output:/opt/ComfyUI/output
       - comfyui-input:/opt/ComfyUI/input
       - comfyui-user:/opt/ComfyUI/user
-    networks: [agentbox]
+    networks: [agentbox, visionclaw]
     ports: ['127.0.0.1:8188:8188']
     shm_size: 8gb
     healthcheck:
@@ -33,6 +35,9 @@ networks:
   agentbox:
     external: true
     name: ${COMFYUI_NETWORK:-agentbox_default}
+  visionclaw:
+    external: true
+    name: ${VISIONCLAW_NETWORK:-visionclaw_network}
 volumes:
   comfyui-models:
   comfyui-output:
