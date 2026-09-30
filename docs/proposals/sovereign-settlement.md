@@ -524,6 +524,10 @@ Still open, and each changes what gets built:
     testnet-only in practice regardless of what the enum permits?
 12. **Child-chain header profile.** May a child differ from its root's header profile, or only
     inherit it? Allowing it means running several codecs at once.
+19. **The next chain's parent.** Proposed 2026-09-30 (ADR-2103 amendment): seal the next chain
+    beside `txbt4`, where every upstream chain sits, and keep `sidestr:dreamlab` on `tbtc4`.
+    Blocked on a Knots BLAKE2b testnet4 node on the Dell VM (the operator installs it; the VM is
+    root-only). Owner to confirm the node, then the chain's name and purpose.
 
 ## 11. References
 

@@ -301,6 +301,10 @@ chain document's `genesisHash` and therefore bound on-seal:
 | `[sidechain.signer]` | `enabled`, `threshold` (k), `signers` (x-only hex) | only on federated instances holding a key |
 | `[sidechain.bridge]` | `enabled` (default `false`), `assets` | the `rgb-lib` process boundary (ADR-2102) |
 
+The first seal took `tbtc4` (ADR-2103, first-seal subsection). The amendment of 2026-09-30 proposes
+the estate's next chain beside `txbt4`, following upstream, once a Knots BLAKE2b testnet4 node runs
+beside the stock testnet4 node; `sidestr:dreamlab` and DREAM stay on `tbtc4`.
+
 `services/agentbox-manifest` validates both enums **by name at boot and hard-fails an unknown
 value**, never soft-defaults (the failure mode to avoid is solid-pod-rs `mrc20.rs:474-487`, where
 any non-`"mainnet"` string including a typo silently yields a testnet address). It also refuses to

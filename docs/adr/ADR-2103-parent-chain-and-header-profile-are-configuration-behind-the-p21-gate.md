@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/README.md, tests/config/sidechain-genesis.test.sh]
 owner: jjohare
-review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation
+review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
 repo: agentbox
 domain: BASELINE-container
 ---
@@ -249,6 +249,41 @@ the three public chain files; unrelated staged files remain untouched.
 Verification: Nix runtime build (including sidestr-agent package tests), the live on-disk
 genesis test (3/3), and `tests/config/sidechain-mirror.test.cjs` (failed-push retry and staged
 file isolation). Runtime activation is checked after deployment, not inferred from a build.
+
+### The next chain sits beside `txbt4` (proposed 2026-09-30)
+
+The owner asked for a BLAKE testnet token in members' wallets. Upstream points one way: all seven
+chain documents in sidestr/spec 0.0.6 (`chains/`) sit beside `txbt4`, `siding new` offers it as the
+default parent, the desk (`proposals/desk.md`) only works on a BLAKE2b parent, and sidestr/wallet
+takes the chain as a parameter (`?chain=<id>`). `sidestr:dreamlab` is the only chain in the family on
+`tbtc4`. This amendment is proposed and nothing in it is built.
+
+- **`sidestr:dreamlab` stays where it is.** Its parent is sealed; moving it is a new genesis, and
+  DREAM, 594 blocks and every member balance would have to move with it. Assets between sidestr chains
+  are reserved upstream for level 2 (`proposals/assets-and-pools.md` section 4) and this chain is
+  level 1, so DREAM stays on `sidestr:dreamlab` until upstream builds that section.
+- **The estate's next chain is sealed beside `txbt4`**, through D1's manifest path. It would be the
+  first chain whose parent comes from `[sidechain]` rather than from the committed document alone, so
+  D1's projector validation and D3's boot check are prerequisites, not follow-ups.
+- **It needs a BLAKE2b testnet4 node the estate does not have.** The Dell VM node on
+  `192.168.2.27:48332` is Bitcoin Core 30.3.0 on stock testnet4: `getblockhash 150308` returns
+  `0000000000cf9d15…`, not the fork hash `000000000000b9d1…`, so it follows the SHA-256d branch
+  (checked 2026-09-30, height 154,530, `txindex` synced, 13.6 GB). The node wanted is a second
+  instance on that VM: Bitcoin Knots 29.4.1 or later (the unified-sighash release) on the BLAKE2b
+  testnet4 fork, its own data directory, RPC port and rpcauth user, and a cookie file in the secrets
+  volume beside `sidestr-tbtc4.cookie`. D3a still applies: post-fork peg keys, and a boot assertion of
+  the fork hash at height 150,308. Its disk is roughly the stock node's again (the chains share
+  everything below the fork but not a data directory). The VM is root-only, so the operator installs
+  it; nothing in this container can.
+- **The same node serves the forum's read-only view.** electrs (jasonsopko, `blake2b` branch) and the
+  blaketest shim over this node are one of the two backends nostr-rust-forum ADR-2019 accepts; the
+  other, preferred, is blaketestnode's own address index (`run --address-index`, proposed as
+  bitcoin-blake/blaketestnode PR #1), whose `--pair-api` also reports each address on the stock
+  branch, so one member key is read on both testnet4 chains. Nothing BLAKE is deployed.
+- **Supervision generalises only when the second chain exists.** Today's interim `[sidechain]` block
+  names one producer, one mirror and one faucet. A second chain turns it into a list of chains, each
+  with its own port, mirror checkout, signer key and gates. That is a schema change and rebuild class,
+  so it lands with the seal, not before it.
 
 ## Consequences
 
