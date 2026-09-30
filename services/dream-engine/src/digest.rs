@@ -80,6 +80,13 @@ pub struct NightHealth {
     /// How tonight's digest post went (set after it runs).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub digest: Option<String>,
+    /// ADR-2071: one entry per journal session tonight (each repo's cycle and
+    /// the night-level work), so an unjournalled night is visible, not silent.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub journal: Vec<crate::journal::JournalStats>,
+    /// The seven-day `dream/*` branch sweep: every branch it acted on.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sweep: Vec<crate::sweep::SweepRecord>,
 }
 
 /// Status prefix when the digest was withheld for want of a zone key.
