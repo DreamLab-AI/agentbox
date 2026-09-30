@@ -52,6 +52,11 @@ graph TB
 
 ## Recommended Path
 
+Optional testnet sidechain supervision is disabled in setup defaults. Enabling
+`[sidechain].enabled` (and its `mirror`/`faucet` child gates) requires a rebuild and existing
+keys, upstream checkouts and persistent chain state; follow the
+[sidechain prerequisites](../../config/sidechain/README.md) before enabling it.
+
 Use the interactive launcher unless you specifically want to edit files by hand:
 
 ```bash

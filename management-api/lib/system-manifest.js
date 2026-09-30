@@ -254,6 +254,9 @@ const CATALOGUE = [
   { id: 'podcast-ingest', name: 'Podcast ingestion schedule', layer: 'module',
     gate: 'skills.podcast_ingest', service: 'podcast-cron', apply_class: 'rebuild',
     summary: 'ADR-2057 gap 1: [program:podcast-cron] (supercronic over skills/podcast-knowledge-ingest/crontab) was the last unconditionally supervised program. Default true = the behaviour it shipped with, so enabling is never a migration step. REBUILD-class — flake.nix bakes the supervisor text, so false only removes the program after ./agentbox.sh rebuild. Gates the SCHEDULE only: the podcast-ingest binary and supercronic stay in the closure, both shared with always-baked surfaces (the podcast-{knowledge,bulk}-ingest skills and forum-backup-cron).' },
+  { id: 'sidechain', name: 'sidestr sidechain producer, mirror and faucet', layer: 'module',
+    gate: 'sidechain.enabled', gates: ['sidechain.enabled', 'sidechain.mirror', 'sidechain.faucet'], service: 'sidestr-producer', apply_class: 'rebuild',
+    summary: 'PRD-024 P1: [program:sidestr-producer] (config/sidechain/run-producer.sh, the upstream JS engine at the commits in upstream-pins) makes the blocks the forum member wallets read; mirror adds [program:sidestr-mirror] (block files to a GitHub Pages checkout), faucet adds [program:sidestr-faucet] (sidestr-agent, baked from lib/sidestr-agent.nix). mirror and faucet take effect only with enabled. REBUILD-class: flake.nix bakes all three supervisor blocks. Needs the chain signer key and parent cookie under /var/lib/agentbox/secrets.' },
   // ADR-2020 review_trigger (a new optional block in agentbox.toml) — the
   // [vault] section is split across TWO catalogue entries because its keys have
   // genuinely different apply classes (ADR-039 honesty rule): root/pages/format
@@ -312,6 +315,8 @@ function resolveGate(manifest, gatePath) {
 
 /** Map a gate value to a docBox-style module state word. */
 function stateOf(manifest, entry) {
+  // A parent gate dominates optional child gates (e.g. sidechain supervision).
+  if (entry.gate && resolveGate(manifest, entry.gate) === false) return 'off';
   // Multi-gate entries (e.g. memory_hygiene's three op gates): any-true = on,
   // all-false = off, none present = available.
   if (Array.isArray(entry.gates)) {

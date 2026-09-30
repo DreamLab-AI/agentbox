@@ -231,6 +231,18 @@
         # required migration step). Same defaulting shape as mcpHubEnabled /
         # hookShimEnabled / teammateGcEnabled above.
         podcastIngestEnabled = (skillsCfg.podcast_ingest or {}).enabled or true;
+        # [sidechain]: the sidestr chain this deployment produces (PRD-024 P1).
+        # Default off — only the operator of a sealed chain has its signer key.
+        # enabled ⇒ [program:sidestr-producer]; mirror / faucet add
+        # [program:sidestr-mirror] / [program:sidestr-faucet] beside it.
+        # REBUILD-class: every block below is baked supervisor text.
+        sidechainCfg = agentboxConfig.sidechain or {};
+        sidechainEnabled = sidechainCfg.enabled or false;
+        sidechainMirror = sidechainEnabled && (sidechainCfg.mirror or false);
+        sidechainFaucet = sidechainEnabled && (sidechainCfg.faucet or false);
+        sidechainAnnounce = unplaceheld (sidechainCfg.announce_mirror or "");
+        sidechainMirrorCheckout = unplaceheld (sidechainCfg.mirror_checkout or "/home/devuser/workspace/sidestr/mirror");
+        sidechainFaucetKey = unplaceheld (sidechainCfg.faucet_key_file or "");
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         consultantsCfg = agentboxConfig.consultants or {};
@@ -1540,6 +1552,11 @@
         diagramIrPkg = import ./lib/diagram-ir.nix { inherit lib; pkgs = rustPkgs; };
         proseSanitiserPkg = import ./lib/prose-sanitiser.nix { inherit lib; pkgs = rustPkgs; };
         skillToolPackages = [ diagramIrPkg proseSanitiserPkg ];
+        # sidestr-agent — the sidechain faucet's engine ([sidechain].faucet).
+        # Baked because a workspace cargo build stops executing after every image
+        # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.
+        sidestrAgentPkg = import ./lib/sidestr-agent.nix { inherit lib; pkgs = rustPkgs; };
+        sidechainPackages = lib.optionals sidechainFaucet [ sidestrAgentPkg ];
 
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
@@ -1688,6 +1705,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ agentboxOpsPackages
           ++ knowledgeToolPackages
           ++ skillToolPackages
+          ++ sidechainPackages
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
           ++ runePackages
@@ -2572,6 +2590,64 @@ stdout_logfile=/var/log/forum-backup-cron.log
 stderr_logfile=/var/log/forum-backup-cron.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
+${lib.optionalString sidechainEnabled ''
+
+; [sidechain] (PRD-024 P1): the sidestr chain producer, which the forum's
+; member wallets read (dreamlab-ai-website, forum ADR-2015). It ran in a tmux
+; window until 2026-09-25, when a container restart stopped the chain for four
+; days with nothing to bring it back. run-producer.sh refuses to start unless
+; the upstream checkouts match config/sidechain/upstream-pins, so a failed
+; start means a pin to fix, not a restart loop: startretries caps it at FATAL.
+; The runner and the sealed chain document are baked; the block file is the
+; workspace's (SIDESTR_STATE).
+[program:sidestr-producer]
+command=/opt/agentbox/config/sidechain/run-producer.sh${lib.optionalString (sidechainAnnounce != "") " --announce-mirror ${sidechainAnnounce}"}
+user=devuser
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pkgs.nodejs_22 pkgs.git pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"
+autostart=true
+autorestart=true
+startsecs=30
+startretries=5
+priority=260
+stdout_logfile=/var/log/sidestr-producer.log
+stderr_logfile=/var/log/sidestr-producer.error.log
+stdout_logfile_maxbytes=10MB
+stderr_logfile_maxbytes=5MB
+''}
+${lib.optionalString sidechainMirror ''
+
+; [sidechain].mirror: push the producer's block files to the GitHub Pages
+; checkout the wallets read. gh is on PATH for git's credential helper.
+[program:sidestr-mirror]
+command=/opt/agentbox/config/sidechain/mirror-sync.sh ${sidechainMirrorCheckout} 120
+user=devuser
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pkgs.git pkgs.gh pkgs.curl pkgs.jq pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"
+autostart=true
+autorestart=true
+startsecs=10
+priority=261
+stdout_logfile=/var/log/sidestr-mirror.log
+stderr_logfile=/var/log/sidestr-mirror.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+${lib.optionalString sidechainFaucet ''
+
+; [sidechain].faucet: DREAM and sats for new member wallets, paid from the
+; treasury key through the local producer (run-faucet.sh waits for it).
+[program:sidestr-faucet]
+command=/opt/agentbox/config/sidechain/run-faucet.sh
+user=devuser
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ sidestrAgentPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"${lib.optionalString (sidechainFaucetKey != "") ",SIDESTR_FAUCET_KEY=\"${sidechainFaucetKey}\""}
+autostart=true
+autorestart=true
+startsecs=10
+priority=262
+stdout_logfile=/var/log/sidestr-faucet.log
+stderr_logfile=/var/log/sidestr-faucet.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
 ${lib.optionalString (toolchainCfg.claude_code or false) ''
 
 ; ADR-2118: Claude Code OAuth credential sync. ~/.claude is a container-owned

@@ -49,23 +49,33 @@ Without the engine, `tests/config/sidechain-genesis.test.sh` checks the document
 invariants and, when the block file is present, the SHA-256d of its 80-byte header against
 the document.
 
-## Interim producer and mirror (2026-09-22)
+## Supervised producer, mirror and faucet
 
-Until the supervised programs exist, `run-producer.sh` runs the upstream JS producer from
-the durable checkouts under `$WORKSPACE/sidestr/upstream` (spec, schema kernel,
-blaketestnode) in tmux window `sidestr`: port `:3450` on loopback, a block every 600 s
-(10 s with transactions), the five default public relays, peg-ins scanned on the estate's
-testnet4 node from the funding height and paid from wallet `sidestr-peg`. Pass
-`--announce-mirror <https url>` to publish the kind-33333 tip after every block; the
-relays are the registry (SPEC 11): any client asking for kind 33333 tagged `t=sidestr`
-lists every chain that has announced, and `play-grounds.github.io/sidestr` is one such
-client. `mirror-sync.sh <pages checkout>` copies `chain.json`, `blocks.dat` and
-`blocks.json` into a GitHub Pages checkout and pushes on change; Pages serves them with
-open CORS and Range requests, which is all a mirror is. It refuses to start unless each checkout is at the commit recorded in `upstream-pins`, so the upstream code the chain runs is a fact of this repository, not of the host; `SIDESTR_ALLOW_UNPINNED=1` overrides it for an upgrade test.
+`[sidechain]` in `agentbox.toml` bakes three supervised programs (REBUILD-class). They ran
+in a tmux window from 2026-09-22 until a container restart on 2026-09-25 stopped the chain
+for four days with nothing to bring it back.
+
+| program | gate | runs | does |
+|---|---|---|---|
+| `sidestr-producer` | `enabled` | `run-producer.sh --announce-mirror <announce_mirror>` | the upstream JS engine from the durable checkouts under `$WORKSPACE/sidestr/upstream`: port `:3450` on loopback, a block every 600 s (10 s with transactions), the five default public relays, peg-ins scanned on the estate's testnet4 node from the funding height and paid from wallet `sidestr-peg` |
+| `sidestr-mirror` | `mirror` | `mirror-sync.sh <mirror_checkout> 120` | copies `chain.json`, `blocks.dat` and `blocks.json` into a GitHub Pages checkout and pushes on change |
+| `sidestr-faucet` | `faucet` | `run-faucet.sh` | `sidestr-agent faucet` (baked, `lib/sidestr-agent.nix`): 100 DREAM and 1,000 sats per script per 24 h, 20 grants an hour, paid from `faucet_key_file` |
+
+`mirror` and `faucet` apply only with `enabled`. Logs are `/var/log/sidestr-*.log`.
+
+`--announce-mirror` publishes the kind-33333 tip after every block; the relays are the
+registry (SPEC 11): any client asking for kind 33333 tagged `t=sidestr` lists every chain
+that has announced, and `play-grounds.github.io/sidestr` is one such client. Without it the
+producer makes blocks that no wallet can find. GitHub Pages serves the mirror with open
+CORS and Range requests, which is all a mirror is.
+
+The producer refuses to start unless each checkout is at the commit recorded in
+`upstream-pins`, so the upstream code the chain runs is a fact of this repository, not of
+the host; supervisord gives up after five attempts (FATAL), because the fix is a pin, not
+a retry. `SIDESTR_ALLOW_UNPINNED=1` overrides the check for an upgrade test.
 
 ## Not yet built (PRD-024 P1)
 
-`[sidechain]` in `agentbox.toml` and its schema entry, the `sidestr-node` and
-`sidestr-producer` supervised programs, the mirror on loopback `:9097` behind the nip98
-proxy at `/chain/`, the `chain` and `asset` URN kinds, and the kind-38420 account
-binding.
+A native `sidestr-node` (the producer is still upstream's JS engine), the mirror on
+loopback `:9097` behind the nip98 proxy at `/chain/`, the `chain` and `asset` URN kinds,
+and the kind-38420 account binding.

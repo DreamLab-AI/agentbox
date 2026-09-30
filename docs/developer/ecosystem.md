@@ -44,8 +44,10 @@ ports of upstream `siding` (ADR-2106), audited before every publish. They were d
 agentbox `crates/sidestr/` and split out with history on 2026-09-23 (ADR-2112); source, CI and
 releases are in sidestr-rs, and `crates/sidestr/README.md` is only a pointer. Agentbox hosts
 the estate's **chain instance**, not the crates: the sealed `sidestr:dreamlab` document, the
-interim producer runner and the mirror sync in `config/sidechain/`. No agentbox build links a
-`sidestr-*` crate today (the interim producer is the upstream JS engine); a future
+interim producer runner, mirror sync and faucet runner in `config/sidechain/`. The optional
+supervised faucet bakes the standalone AGPL `sidestr-agent` binary from a pinned upstream
+Git revision and lockfile (`lib/sidestr-agent.nix`), not into any permissive crate.
+The interim producer remains the upstream JS engine; a future
 `sidestr-node` takes them from crates.io and is AGPL-3.0 in effect. Testnet only; no real
 funds anywhere.
 

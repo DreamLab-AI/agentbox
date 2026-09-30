@@ -3202,6 +3202,37 @@
         }
       }
     },
+    "sidechain": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PRD-024 P1: the sidestr chain this deployment produces. REBUILD-class: flake.nix bakes [program:sidestr-producer], [program:sidestr-mirror] and [program:sidestr-faucet] from these keys. Needs the chain's signer key and parent cookie under /var/lib/agentbox/secrets (config/sidechain/README.md).",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "true \u21d2 [program:sidestr-producer] runs config/sidechain/run-producer.sh. false \u21d2 no sidechain program at all, whatever mirror/faucet say."
+        },
+        "announce_mirror": {
+          "type": "string",
+          "description": "https URL of the chain's public mirror, passed as --announce-mirror so every block publishes a kind-33333 tip naming it. Empty \u21d2 blocks are made but not announced, and wallets cannot find the chain."
+        },
+        "mirror": {
+          "type": "boolean",
+          "description": "true (with enabled) \u21d2 [program:sidestr-mirror] runs config/sidechain/mirror-sync.sh against mirror_checkout every 120 s."
+        },
+        "mirror_checkout": {
+          "type": "string",
+          "description": "A GitHub Pages checkout the mirror copies chain.json, blocks.dat and blocks.json into and pushes."
+        },
+        "faucet": {
+          "type": "boolean",
+          "description": "true (with enabled) \u21d2 [program:sidestr-faucet] runs config/sidechain/run-faucet.sh and bakes sidestr-agent (lib/sidestr-agent.nix)."
+        },
+        "faucet_key_file": {
+          "type": "string",
+          "description": "The faucet's treasury key file (64 hex or nsec1\u2026). Empty \u21d2 $WORKSPACE/sidestr/agents/treasury.key."
+        }
+      }
+    },
     "plugins": {
       "type": "object",
       "additionalProperties": true,

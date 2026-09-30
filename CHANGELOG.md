@@ -4,6 +4,17 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-09-30 — the sidestr:dreamlab chain is supervised, PRD-024 P1)
+
+`[sidechain]` bakes `sidestr-producer`, `sidestr-mirror` and `sidestr-faucet`
+(REBUILD-class, default off). The three ran in a tmux window, so a container
+restart on 2026-09-25 stopped the chain the forum's member wallets read for
+four days. `sidestr-agent` is now baked (`lib/sidestr-agent.nix`, sidestr-rs
+at d68880bf) because a workspace build stops executing after every rebuild.
+`upstream-pins` moves spec to fa86dac, the commit blocks up to 593 were made on;
+the stale 722ad42 pin would have kept the supervised producer from starting.
+`mirror-sync.sh` reads the tip with jq instead of python3.
+
 ### Changed (2026-09-29 — instruction tiers and ~/.claude owned by the repo, ADR-2118)
 
 The global and workspace instruction tiers now come from `config/instructions/`:

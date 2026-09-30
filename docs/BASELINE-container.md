@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.0
+version: 0.5.1
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.1 (2026-09-30): Supervised interim testnet producer, Pages mirror and standalone sidestr-agent faucet under rebuild-class sidechain gates; catalogue now 79 entries. Native node, bridge and proposed settlement invariants remain deferred."
   - "0.5.0 (2026-09-29): ADR-2118. Two new invariants: the global and workspace instruction tiers are generated every boot from config/instructions/ (tracked public layer + gitignored local/ estate layer, mounted read-only, never baked), and ~/.claude is a container-owned volume sharing only .credentials.json with the host via [program:claude-cred-sync]. New open item for the partial rollout (connected node, ~/.config/claude, Q43, profiles). CATALOGUE count corrected to 78 (was stale at 60)."
   - "0.4.3 (2026-09-26): Privacy-filter Python environment uses the flake-locked nixpkgs Transformers 5.17.0 with Tokenizers 0.23.2. Retired the incompatible Transformers 5.6.2 override; added an import gate for transformers.models.openai_privacy_filter. No runtime architecture or invariant changes."
   - "0.4.2 (2026-09-23): ADR-2117 (proposed): the owner's private USD unit of account for his agents runs on new testnet chains only, is issued and held only inside his estate (never a real stablecoin, never user-facing), and fills ADR-2102's parked bridge-rule checks for that experiment. Proposed section only; the Invariants compliance surface is unchanged."
@@ -77,6 +78,7 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 | `xvnc` / `x11vnc` / `wayvnc` / `xorg-nvidia` / `hyprland` / `i3wm` / `xwayland-session` | desktop stack (gated `desktop.enabled`) | `127.0.0.1:5901` |
 | `tailscaled` / `tailscale-up` | mesh networking (gated) | — |
 | `podcast-cron` / `forum-backup-cron` | scheduled jobs | — |
+| `sidestr-producer` / `sidestr-mirror` / `sidestr-faucet` | sidestr:dreamlab chain, Pages mirror, DREAM faucet (gated `[sidechain]`, rebuild-class) | `127.0.0.1:3450` |
 
 Readiness (`server.js:508`) requires `bootstrap.done`, `adapters:healthy`, and `paths:accessible`; `bootstrap-seal` is a one-shot at `priority=99` — if it times out `/ready` stays 503.
 
@@ -113,7 +115,7 @@ Not supervised inside the box — external compose services on `visionclaw_netwo
 
 ### Manifest gates + system-manifest catalogue
 
-`GET /v1/system` (ADR-039) serves the live view. `management-api/lib/system-manifest.js` holds a hand-authored `CATALOGUE` of 78 entries — 13 surfaces + 65 modules (ADR-2039; recounted 2026-09-29); the *catalogue* is documentation-as-data but the *state* of each entry is introspected from the parsed `agentbox.toml` at request time (`stateOf`, `:232`), so state can never drift from the manifest even if the catalogue does. Each entry carries a `gate` (dotted toml path, section gates resolve via `.enabled`), a `service` (supervisor program / sidecar), and an honest `apply_class`. The five adapter slots are emitted as `core` layer with their resolved `impl` + `contract_version` (`:267`).
+`GET /v1/system` (ADR-039) serves the live view. `management-api/lib/system-manifest.js` holds a hand-authored `CATALOGUE` of 79 entries — 13 surfaces + 66 modules (ADR-2039; recounted 2026-09-30); the *catalogue* is documentation-as-data but the *state* of each entry is introspected from the parsed `agentbox.toml` at request time (`stateOf`, `:232`), so state can never drift from the manifest even if the catalogue does. Each entry carries a `gate` (dotted toml path, section gates resolve via `.enabled`), a `service` (supervisor program / sidecar), and an honest `apply_class`. The five adapter slots are emitted as `core` layer with their resolved `impl` + `contract_version` (`:267`).
 
 #### `[vault]` — the authored-corpus path authority (ADR-2028)
 
@@ -193,7 +195,7 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - **Resolved — ADR-2040 (2026-09-05).** `code-server` bound `0.0.0.0:8080` with `--auth none`, and `jupyter-lab` bound `0.0.0.0:8888` with an empty `--IdentityProvider.token=`. A loopback *publish* only constrains host→container, so both were reachable unauthenticated by every peer on `visionclaw_network`. Both now authenticate with a credential minted at boot; the listener-side CI gate remains open work.
 - **GPU wrapper is CUDA-only by design** — no Nix-binary Vulkan/GLX presentation path; interactive 3D depends on the FHS gui-tools sidecar. Not a bug, but a hard capability boundary.
 - **Legacy ADR-005 conflates the four validation stages** into "contract tests"; this document separates them because they live in different files and fire at different lifecycle points (see Current State). ADR-2005's dispatch-ordering claim is superseded by ADR-2036.
-- **Sovereign settlement is PROPOSED, not built (PRD-024, ADR-2096/2098/2099/2102/2103).** No `[sidechain]` gate, no `sidestr-node` / `sidestr-producer` / `sidestr-bridge` program and no `:9097` bind exists today. The Rust crates exist but not here: they are published from [sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs) (ADR-2112), and nothing in the image links them yet. What this repository does hold is the estate's testnet chain instance, `config/sidechain/` (sealed `sidestr:dreamlab` document, interim JS producer runner, mirror sync; ADR-2103). The manifest block, the supervised set, the port, the crate licensing posture and three candidate invariants are recorded in [Sovereign settlement (PROPOSED)](#sovereign-settlement--proposed-2026-09-21) below; none of them is part of the compliance surface until PRD-024 is ratified.
+- **Sovereign settlement remains partial (PRD-024, ADR-2096/2098/2099/2102/2103).** `[sidechain].enabled` now gates the interim JS `sidestr-producer`; child gates `mirror` and `faucet` enable `sidestr-mirror` and `sidestr-faucet`. The faucet bakes the standalone AGPL `sidestr-agent` from a pinned upstream revision, never into a permissive crate (ADR-2112). This operates the existing sealed testnet chain in `config/sidechain/`. No `sidestr-node`, `sidestr-bridge` or `:9097` bind is implemented. The broader design and three candidate invariants in [Sovereign settlement (PROPOSED)](#sovereign-settlement--proposed-2026-09-21) remain outside the compliance surface pending ratification.
 - **`~/.claude` ownership (ADR-2118) — partially rolled out.** The gateway override mounts the container-owned `agentbox-claude-home` volume plus a credential-only host bind; the connected-node overlay (`docker-compose.hp.yml`) still binds the host's whole `~/.claude` until `migrate-claude-home` runs there, and the entrypoint therefore passes `--no-global` on that node. The credential bind remains writable (Q20 residual: a compromised in-container tool can still edit the host's `.claude`). `~/.config/claude` is still a host bind and the workspace still rides the legacy external MAD volume (Q43). Stack profiles (`$WORKSPACE/profiles/*/.claude`) receive neither the global tier nor credentials. Open.
 - Setup wizard exits after saving (`system-manifest.js:47`); operations moved to the AoE cockpit — legacy docs describing pseudo-user isolation (`gemini-user` etc.) are dead paths.
 

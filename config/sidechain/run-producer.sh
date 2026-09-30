@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Interim runner for the sidestr:dreamlab producer (PRD-024 P1) until the supervised
-# [program:sidestr-producer] exists (ADR-2098 D3). Runs the upstream JS reference engine
-# from durable checkouts under $WORKSPACE/sidestr/upstream against the estate's testnet4
-# node. Keys and RPC credentials are files under /var/lib/agentbox/secrets, never arguments.
+# Runner for the sidestr:dreamlab producer (PRD-024 P1), [program:sidestr-producer] (gate
+# [sidechain].enabled; flake.nix passes --announce-mirror from [sidechain].announce_mirror).
+# Runs the upstream JS reference engine from durable checkouts under $WORKSPACE/sidestr/upstream
+# against the estate's testnet4 node. Keys and RPC credentials are files under
+# /var/lib/agentbox/secrets, never arguments.
 #
 #   run-producer.sh [--announce-mirror https://host/path]
 #

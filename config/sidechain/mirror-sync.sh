@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Interim mirror for sidestr:dreamlab (SPEC 11): copies the producer's chain.json, blocks.dat
-# and blocks.json into a GitHub Pages checkout and pushes when they changed. GitHub Pages
-# serves them with open CORS and Range support, which is all a mirror is. Replace with the
-# supervised mirror on :9097 behind the nip98 proxy (ADR-2098 D3) when that exists.
+# Mirror for sidestr:dreamlab (SPEC 11), [program:sidestr-mirror] (gate [sidechain].mirror): copies
+# the producer's chain.json, blocks.dat and blocks.json into a GitHub Pages checkout and pushes
+# when they changed. GitHub Pages serves them with open CORS and Range support, which is all a
+# mirror is, and it is where the forum wallet reads the chain. The loopback mirror on :9097 behind
+# the nip98 proxy (ADR-2098 D3) is still unbuilt.
 #
 #   mirror-sync.sh <pages checkout> [interval seconds, default 120]
 set -euo pipefail
@@ -17,11 +18,16 @@ while :; do
     mv "$PAGES/chain.json.tmp" "$PAGES/chain.json"
   fi
   cp -f "$STATE/blocks.dat" "$PAGES/blocks.dat"; cp -f "$STATE/blocks.json" "$PAGES/blocks.json"
-  if ! git -C "$PAGES" diff --quiet -- chain.json blocks.dat blocks.json || [ -n "$(git -C "$PAGES" ls-files --others --exclude-standard)" ]; then
-    tip="$(python3 -c 'import json,sys; i=json.load(open(sys.argv[1])); print(i.get("to"))' "$PAGES/blocks.json")"
+  if ! git -C "$PAGES" diff --quiet -- chain.json blocks.dat blocks.json || [ -n "$(git -C "$PAGES" ls-files --others --exclude-standard -- chain.json blocks.dat blocks.json)" ]; then
+    tip="$(jq -r '.to' "$PAGES/blocks.json")"
     git -C "$PAGES" add chain.json blocks.dat blocks.json
-    git -C "$PAGES" commit -q -m "mirror: tip $tip" && git -C "$PAGES" push -q origin HEAD 2>/dev/null \
-      && echo "$(date -u +%H:%M:%S) pushed tip $tip" || echo "$(date -u +%H:%M:%S) push failed; will retry"
+    git -C "$PAGES" commit -q -m "mirror: tip $tip" --only -- chain.json blocks.dat blocks.json
+  fi
+  # A successful commit followed by a failed push leaves a clean tree. Retry
+  # that outstanding commit even when the producer has not made another block.
+  if [ -n "$(git -C "$PAGES" log --format=%H '@{upstream}..HEAD')" ]; then
+    git -C "$PAGES" push -q origin HEAD 2>/dev/null \
+      && echo "$(date -u +%H:%M:%S) mirror synchronized" || echo "$(date -u +%H:%M:%S) push failed; will retry"
   fi
   sleep "$EVERY"
 done

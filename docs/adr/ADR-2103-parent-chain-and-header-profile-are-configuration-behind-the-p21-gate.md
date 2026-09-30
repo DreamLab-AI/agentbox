@@ -222,6 +222,26 @@ boot check, D4's CI receipt check (the test enforces only "mainnet alias needs
 `p21Receipt`") and the faucet compile-out are not built. Nothing was announced to a relay
 and no producer runs.
 
+### Interim supervision approved 2026-09-30
+
+The owner approved committing and deploying the existing testnet producer, public Pages
+mirror and DREAM/testnet-sat faucet under supervisord. `[sidechain].enabled` gates the
+producer; `mirror` and `faucet` are subordinate rebuild-class gates, off in setup defaults.
+All run as devuser. The producer still verifies the upstream JS checkout pins; the faucet
+uses a standalone AGPL `sidestr-agent` binary built from a pinned Git revision and lockfile,
+not a workspace-built executable or a dependency of a permissive crate. Existing signer,
+parent cookie, treasury key and grant ledger remain in persistent storage.
+
+This supersedes the first-seal snapshot's statement that no producer runs, not the proposed
+parent-selection, containment, native-node or bridge design. The sealed `tbtc4` document
+and genesis are unchanged. No mainnet, real-value redemption or new chain is authorized.
+The mirror retries outstanding pushes without requiring another block and commits only
+the three public chain files; unrelated staged files remain untouched.
+
+Verification: Nix runtime build (including sidestr-agent package tests), the live on-disk
+genesis test (3/3), and `tests/config/sidechain-mirror.test.cjs` (failed-push retry and staged
+file isolation). Runtime activation is checked after deployment, not inferred from a build.
+
 ## Consequences
 
 The estate is not bound to either hash family: the owner's pivot preference is honoured by the

@@ -1183,6 +1183,20 @@ accepts_block = true                     # emit accepts[] in 402 challenges (B2)
 health_signals = false
 index_submit  = "off"
 
+# ── Sidechain (PRD-024 P1) ────────────────────────────────────────────────────
+# The sidestr chain this deployment produces. Needs the chain's signer key and
+# parent cookie in /var/lib/agentbox/secrets (config/sidechain/README.md), so it
+# is only for the operator of a sealed chain.
+# REBUILD-class: flake.nix bakes the supervisor blocks; a change needs
+# `./agentbox.sh rebuild`.
+[sidechain]
+enabled         = false   # [program:sidestr-producer], run-producer.sh
+announce_mirror = ""      # https URL of the chain's public mirror; empty = no tip announcement
+mirror          = false   # [program:sidestr-mirror]: push block files to a GitHub Pages checkout
+mirror_checkout = "/home/devuser/workspace/sidestr/mirror"
+faucet          = false   # [program:sidestr-faucet]: sidestr-agent faucet paid from faucet_key_file
+faucet_key_file = ""      # empty = $WORKSPACE/sidestr/agents/treasury.key
+
 [skills.payment_router]
 enabled = false                          # C5 — enable with [payments.consumer].enabled = true
 

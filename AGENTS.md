@@ -48,7 +48,7 @@ Narrative, Jev compaction (ADR-2093) and live skill routing (ADR-2091): [runtime
 | [`config/hooks/`](config/hooks/) | hooks and non-hook helpers — read its `CLAUDE.md` first |
 | [`config/model-router/`](config/model-router/) | ADR-2080 router console; `AGENTBOX_MODEL_ROUTER_*` only |
 | [`crates/colloquy/`](crates/colloquy/) | cq learning model — has its own `AGENTS.md` |
-| [`DreamLab-AI/sidestr-rs`](https://github.com/DreamLab-AI/sidestr-rs) | sidestr crates, **not in this repo** (ADR-2112); `AGPL-3.0-only`, consumed from crates.io and never a dependency of a permissive crate. This repo hosts only the chain instance: [`config/sidechain/`](config/sidechain/) |
+| [`DreamLab-AI/sidestr-rs`](https://github.com/DreamLab-AI/sidestr-rs) | sidestr crates, **not in this repo** (ADR-2112); `AGPL-3.0-only`, never a dependency of a permissive crate. The optional supervised faucet bakes the standalone `sidestr-agent` binary from a pinned upstream Git revision (`lib/sidestr-agent.nix`); this repo hosts the chain instance: [`config/sidechain/`](config/sidechain/) |
 
 Everything else (tab0-bridge, voice, harness-wrappers, AoE seeder, explainer-tools): [runtime-files.md](docs/reference/claude-context/runtime-files.md).
 

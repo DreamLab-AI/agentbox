@@ -145,7 +145,7 @@ const BASELINE = [
       'integrations.comfyui_external.enabled', 'features.expel_lesson_extraction.enabled',
       'memory_hygiene.allow_embedding_m3_backfill', 'memory_hygiene.allow_legacy_mining_import',
       'memory_hygiene.allow_pattern_graduation',
-      'toolchains.claude', 'toolchains.claude_code',
+      'toolchains.claude',
       'plugins.memory.enabled', 'plugins.memory.enable_hnsw',
     ],
   },
