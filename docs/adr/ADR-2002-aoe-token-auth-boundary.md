@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: efdb79475526e2f024bce01e9a65d0ec098b0630
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -25,6 +25,14 @@ Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only i
 AoE still starts with --auth token on loopback; readAoeToken and the proxy's missing-token refusal are unchanged. The real proxy selftest passes with zero failures/skips, including HTTP/WS missing-token denial. Generated Compose does not publish 9095. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+The sidechain-only Nix additions leave AoE token authentication and its proxy consumers unchanged. The NIP-98 proxy selftest passes with zero failures/skips; generated Compose is unchanged.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 
 `aoe serve` ran `--auth none --behind-proxy` on loopback `:9095`, with the
 loopback bind treated as the N-05 security boundary. Any co-resident process

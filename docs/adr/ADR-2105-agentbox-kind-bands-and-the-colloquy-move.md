@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: a5d9ff5a93fa63862fb63a0424adaa4598fb4e41
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -17,6 +17,14 @@ repo: agentbox
 # ADR-2105 — The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+The manifest adds only sidechain supervision; the embedded relay kind list, protocol registry and colloquy kind constants are unchanged. The existing proposed settlement allocations are neither reassigned nor activated by this deployment.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 
 Three records allocate Nostr kinds in the agentbox `38xxx` space and two of them
 collide with the first.

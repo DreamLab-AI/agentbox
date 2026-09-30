@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 9c24aad52321355ba871e614c74c773cb0cbd2e9
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/README.md, tests/config/sidechain-genesis.test.sh]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation
@@ -18,6 +18,14 @@ domain: BASELINE-container
 # ADR-2103 — The parent network and header profile are manifest configuration exposed by onboarding, bound into the chain document at genesis, with mainnet variants behind an implemented owner-and-legal gate
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+Reviewed the interim supervision amendment and unchanged sealed tbtc4 document. Genesis checks inside the running container pass 3/3 including the stored block-zero hash. Mirror retry/isolation and catalogue parent-gate tests pass 2/2; sidestr-agent and runtime Nix builds pass. The broader proposed decision remains partial.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 
 Every live sidestr chain pegs to `btc:testnet4-blake2b`, the Bitcoin Knots BLAKE2b hard fork's
 testnet4 (fork at height 150,308, 2026-08-30), and the sidechain's own headers are

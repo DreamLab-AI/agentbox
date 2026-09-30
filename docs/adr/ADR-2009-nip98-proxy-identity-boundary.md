@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: efdb79475526e2f024bce01e9a65d0ec098b0630
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -27,6 +27,14 @@ Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only i
 The changed ingress prose adds sealed-original attribution, not a new identity route. HTTP/WS still strip supplied identity headers and inject verified identity; the proxy selftest passes with zero failures/skips, including absent-verifier and allowlist-removal denial. The Compose regeneration preserves the 9096 ingress. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+No identity route, verifier or proxy authorization changed. The real proxy selftest passes with zero failures/skips, including spoofed headers, missing verifier and removed allowlist entries.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 Requests must become a verified BIP-340 pubkey before any routing decision.
 The AoE interaction plane (`aoe serve`) has its own shared-secret token but no
 identity. Loopback binding alone stopped being a trust boundary (N-05): the

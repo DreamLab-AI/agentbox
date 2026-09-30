@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: a5d9ff5a93fa63862fb63a0424adaa4598fb4e41
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -19,6 +19,14 @@ lineage: "legacy PRD-020 / ADR-040 (model lifecycle), DDD-018 (I22)."
 # ADR-2019 — Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+The manifest diff adds only sidechain configuration. Embedding model/dimension, SONA and attention flags are unchanged; no retrieval geometry migration or recall claim is made.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 The active embedding column is bge-small-en-v1.5 at 384-dim. Two learning
 enhancements were built or trialled and both are inert at 384-dim: the prebuilt
 `@ruvector/sona@0.1.5` NAPI binary hardcodes `embedding_dim=256` and accumulates

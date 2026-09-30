@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 31f3c29867955f20182aa28f1140c9a1e904fd61
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, docker-compose.hp.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -22,6 +22,14 @@ domain: BASELINE-container
 Host migration completed after adding explicit failure propagation and restrictive backup permissions. The generated Compose merge passes Docker validation after repairing generator drift. All 149 manifest tests and clippy pass; layer privacy 9/9, boot projection 13/13 and agent reconciliation 45/45 pass. Credential I/O failures retry on each poll, and --once reports write errors. Backups preserve the previous instruction files; host CLAUDE.md is byte-identical after migration. Rebuilt-image activation is still pending. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+The Nix additions leave credential sync, instruction projection and volume declarations unchanged. Generated Compose is byte-identical; persistence tests pass, instruction-layer tests pass 9/9 and boot-projection tests pass 13/13. No repeat migration or connected-node rollout is performed.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 ADR-2111 made `AGENTS.md` the one canonical file per tier and built the projection, but two tiers had no versioned source. `~/.claude/CLAUDE.md` (global) lived on a whole-directory `rw` bind of the host's `~/.claude`, and `~/workspace/AGENTS.md` and `~/workspace/CLAUDE.md` lived on the legacy MAD volume. All three were hand-edited, had no history and mixed product rules with estate specifics (LAN addresses, private repository names, relay URLs). The repository is public. The same bind carried four jobs: auth, state, config and instructions. That forced the `HOST_CLAUDE_PATH` mirror mount (plugin JSON stores host paths) and left the Q20 surface fully open. A separate `~/.claude.json` bind was dead: `CLAUDE_CONFIG_DIR=~/.claude` puts the live file inside `~/.claude`. A stale, gitignored `workspace/AGENTS.md` in the checkout looked like the source. Probed on Claude Code 2.1.280, a directory holding only `AGENTS.md` loads nothing, so the `@AGENTS.md` wrappers remain necessary.
 
 ## Decision

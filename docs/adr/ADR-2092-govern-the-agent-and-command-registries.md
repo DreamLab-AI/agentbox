@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: efdb79475526e2f024bce01e9a65d0ec098b0630
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -25,6 +25,14 @@ Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only i
 The manifest-driven root reconciliation still uses registered-agents.txt and the baked scripts. All 45 agent/command/root reconciliation assertions pass, and instruction-layer privacy checks pass 9/9. State now persists in the container-owned Claude-home volume; the registry policy is unchanged. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+The Nix additions introduce only sidechain packaging/supervision, not agent or command registration changes. Reconciliation tests pass 45/45 and skill lint passes.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 
 ADR-2083 and the SK-1/SK-2 work gave *skills* a governed pipeline: one canonical baked
 tree (`/opt/agentbox/skills`), a curated manifest (`registered-skills.txt`), a boot

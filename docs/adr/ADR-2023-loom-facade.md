@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: a5d9ff5a93fa63862fb63a0424adaa4598fb4e41
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -19,6 +19,14 @@ lineage: legacy ADR-051 (Loom client + deferred distillation, status 'proposed')
 # ADR-2023 — The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+The manifest diff adds only sidechain configuration; Loom facade routing and consumers are unchanged. No new raw-model endpoint or facade bypass is introduced.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 
 The self-hosted reasoning model must be swappable without touching every
 consumer. The old `a retired address` model host is dead; naming a raw model port in

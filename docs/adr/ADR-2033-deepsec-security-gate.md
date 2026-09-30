@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: efdb79475526e2f024bce01e9a65d0ec098b0630
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -26,6 +26,14 @@ Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only i
 Re-read the deepsecPkg/toolchain gate and catalogue entry: the new instruction and credential entries do not alter the names-only policy or execution gate. All ten fake-CLI deepsec-gate tests pass; no paid security scan was run. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+The Nix, manifest and schema changes are sidechain-only. Deepsec policy and package pin are unchanged; all 10 deepsec-gate tests pass. Catalogue parent-gate handling preserves existing entries.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 
 The build-with-quality skill declared a Security gate ("SAST/DAST scanning, zero
 critical/high vulnerabilities") with no executor behind it, so the gate was a

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: a5d9ff5a93fa63862fb63a0424adaa4598fb4e41
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -19,6 +19,14 @@ lineage: legacy ADR-039 (system-manifest apply-class catalogue), ADR-020 (ACI MC
 # ADR-2020 — Optional capabilities are manifest-gated and byte-identical-when-off; execution-gated tools are spend-capped and never auto-routed
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+Reviewed the new sidechain gate: enabled dominates mirror/faucet; faucet gates both its standalone Nix package and supervisor block. Setup defaults are off. Catalogue regression tests prove parent-off wins; manifest validation and Nix build pass. Shared JS/runtime dependencies remain shared, not a zero-footprint claim.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 
 The box ships a growing set of optional capabilities (`code_interpreter`,
 `codeact`, `aci_shell`, `tree_search_coder`, `dream_machine`, …). Two forces:

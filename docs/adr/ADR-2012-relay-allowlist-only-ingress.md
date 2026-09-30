@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: efdb79475526e2f024bce01e9a65d0ec098b0630
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -27,6 +27,14 @@ Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only i
 Re-read the manifest allowlist/nip98 gates and the generator's explicit empty pubkey_whitelist branch. The instruction-home and Compose changes do not alter publisher admission or add a publisher. No relay publication was performed; the publisher-key split remains deferred. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+The manifest adds only the sidechain block; relay admission, baked allowlist and per-agent NIP-98 policy are unchanged. Public sidechain relay traffic does not widen the embedded relay allowlist.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 The embedded nostr-rs-relay accepts inbound events from the mesh. An open or
 signed-only relay would admit any well-formed event; the sovereign posture
 requires that only known keys can write. Earlier designs auto-added the operator

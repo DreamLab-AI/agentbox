@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: efdb79475526e2f024bce01e9a65d0ec098b0630
+verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -27,6 +27,14 @@ Packaging follow-up at `fc8ba7a7b`: the config copy now filters out mount-only i
 Regenerated Compose now validates with Docker, preserving existing persistent stores and environment fallbacks; resource PID settings agree. scripts/ci/check-ports-loopback.sh passes across 14 Compose files and 11 port blocks, and its listener check reports only existing sanctioned non-loopback listeners. The 9096 exception and unpublished 9095 remain unchanged. Verification anchor: `526b97dc6`. Status axes are unchanged by this source check.
 
 ## Context
+
+## Re-verification — 2026-09-30 (interim sidechain supervision)
+
+Generated Compose is byte-identical; no sidechain port is published. The port gate passes across 14 Compose files and 11 ports blocks. Listener source/runtime checks remain distinct from host publishing.
+Source anchor: `d0fa1b80b`. Existing status axes and deferred work are unchanged;
+this scoped source/test receipt does not assert a new running-image activation.
+
+### Original context
 The identity boundary (ADR-2009) is only as strong as the exposure surface
 around it. If any container service publishes on a routable interface, it
 becomes a second door around the nip98-proxy. The gate originally parsed only
