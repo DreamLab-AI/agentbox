@@ -213,6 +213,85 @@ pub fn append_row(ledger_path: &Path, row: &LedgerRow) -> Result<(), LedgerError
     Ok(())
 }
 
+/// What happened when the engine tried to commit its own ledger row.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(tag = "outcome", content = "detail", rename_all = "kebab-case")]
+pub enum LedgerCommit {
+    /// Committed; carries the short commit id.
+    Committed(String),
+    /// HEAD is not the default branch (carries HEAD's name): the operator is
+    /// working on something, so the row is left for them rather than committed
+    /// onto their branch.
+    NotDefaultBranch(String),
+    /// The ledger file has no uncommitted change.
+    NothingToCommit,
+    /// git refused; carries its stderr.
+    Failed(String),
+}
+
+/// Commit the ledger file, and only the ledger file, on the repo's default
+/// branch (ADR-2071 Phase 1).
+///
+/// Before this the row was written to the working tree and left there, so a
+/// night that ran was invisible to anyone reading git (27 to 30 September
+/// 2026: four VisionFlow rows sat uncommitted and the estate census reported
+/// no ledger activity since the 10th). `git commit --only -- <ledger>`
+/// commits the file's current content without touching anything else the
+/// operator has staged. Local commit only: pushing stays with the operator.
+pub fn commit_ledger(repo: &Path, ledger_path: &Path, message: &str) -> LedgerCommit {
+    let run = |args: &[&str]| std::process::Command::new("git").arg("-C").arg(repo).args(args).output();
+    let text = |o: &std::process::Output| String::from_utf8_lossy(&o.stdout).trim().to_string();
+
+    let head = match run(&["symbolic-ref", "--quiet", "--short", "HEAD"]) {
+        Ok(o) if o.status.success() => text(&o),
+        Ok(_) => return LedgerCommit::NotDefaultBranch("(detached)".into()),
+        Err(e) => return LedgerCommit::Failed(e.to_string()),
+    };
+    let default = run(&["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| text(&o).trim_start_matches("origin/").to_string())
+        .unwrap_or_else(|| {
+            let has = |b: &str| {
+                run(&["show-ref", "--verify", "--quiet", &format!("refs/heads/{b}")])
+                    .map(|o| o.status.success())
+                    .unwrap_or(false)
+            };
+            if !has("main") && has("master") { "master".into() } else { "main".into() }
+        });
+    if head != default {
+        return LedgerCommit::NotDefaultBranch(head);
+    }
+
+    let path = ledger_path.to_string_lossy();
+    match run(&["status", "--porcelain", "--", &path]) {
+        Ok(o) if o.status.success() && text(&o).is_empty() => return LedgerCommit::NothingToCommit,
+        Ok(o) if !o.status.success() => {
+            return LedgerCommit::Failed(String::from_utf8_lossy(&o.stderr).trim().to_string())
+        }
+        Err(e) => return LedgerCommit::Failed(e.to_string()),
+        _ => {}
+    }
+    // A freshly bootstrapped ledger is untracked, and `commit --only` refuses a
+    // pathspec git does not know; add that one path first.
+    let tracked = run(&["ls-files", "--error-unmatch", "--", &path]).map(|o| o.status.success()).unwrap_or(false);
+    if !tracked {
+        match run(&["add", "--", &path]) {
+            Ok(o) if o.status.success() => {}
+            Ok(o) => return LedgerCommit::Failed(String::from_utf8_lossy(&o.stderr).trim().to_string()),
+            Err(e) => return LedgerCommit::Failed(e.to_string()),
+        }
+    }
+    match run(&["commit", "--quiet", "--only", "-m", message, "--", &path]) {
+        Ok(o) if o.status.success() => {
+            let id = run(&["rev-parse", "--short", "HEAD"]).map(|o| text(&o)).unwrap_or_default();
+            LedgerCommit::Committed(id)
+        }
+        Ok(o) => LedgerCommit::Failed(String::from_utf8_lossy(&o.stderr).trim().to_string()),
+        Err(e) => LedgerCommit::Failed(e.to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -436,5 +515,68 @@ mod tests {
         }
         cells.push(current.trim().to_string());
         cells
+    }
+
+    fn git(dir: &Path, args: &[&str]) -> String {
+        let o = std::process::Command::new("git")
+            .arg("-C")
+            .arg(dir)
+            .args(["-c", "user.name=t", "-c", "user.email=t@t"])
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(o.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&o.stderr));
+        String::from_utf8_lossy(&o.stdout).trim().to_string()
+    }
+
+    fn scratch_repo() -> tempfile::TempDir {
+        let dir = tempdir().unwrap();
+        git(dir.path(), &["init", "-q", "-b", "main"]);
+        fs::write(dir.path().join("README.md"), "x\n").unwrap();
+        git(dir.path(), &["add", "README.md"]);
+        git(dir.path(), &["commit", "-q", "-m", "init"]);
+        dir
+    }
+
+    #[test]
+    fn commit_ledger_commits_only_the_ledger_on_the_default_branch() {
+        let dir = scratch_repo();
+        let repo = dir.path();
+        // Operator work in progress: a staged file that must stay staged.
+        fs::write(repo.join("wip.txt"), "wip\n").unwrap();
+        git(repo, &["add", "wip.txt"]);
+        let ledger = repo.join("docs/dream-cycle/LEDGER.md");
+        append_row(&ledger, &sample_row()).unwrap();
+
+        std::env::set_var("GIT_AUTHOR_NAME", "t");
+        std::env::set_var("GIT_AUTHOR_EMAIL", "t@t");
+        std::env::set_var("GIT_COMMITTER_NAME", "t");
+        std::env::set_var("GIT_COMMITTER_EMAIL", "t@t");
+        let out = commit_ledger(repo, &ledger, "dream-cycle: ledger row");
+        assert!(matches!(out, LedgerCommit::Committed(_)), "{out:?}");
+        let files = git(repo, &["show", "--name-only", "--format=", "HEAD"]);
+        assert_eq!(files, "docs/dream-cycle/LEDGER.md");
+        assert_eq!(git(repo, &["diff", "--cached", "--name-only"]), "wip.txt");
+
+        assert_eq!(commit_ledger(repo, &ledger, "again"), LedgerCommit::NothingToCommit);
+
+        // Second night: the ledger is now tracked.
+        append_row(&ledger, &sample_row()).unwrap();
+        assert!(matches!(commit_ledger(repo, &ledger, "night 2"), LedgerCommit::Committed(_)));
+        assert_eq!(git(repo, &["diff", "--cached", "--name-only"]), "wip.txt");
+    }
+
+    #[test]
+    fn commit_ledger_leaves_a_feature_branch_alone() {
+        let dir = scratch_repo();
+        let repo = dir.path();
+        git(repo, &["switch", "-q", "-c", "feature/x"]);
+        let ledger = repo.join("LEDGER.md");
+        append_row(&ledger, &sample_row()).unwrap();
+        assert_eq!(
+            commit_ledger(repo, &ledger, "m"),
+            LedgerCommit::NotDefaultBranch("feature/x".into())
+        );
+        assert!(!git(repo, &["status", "--porcelain"]).is_empty());
     }
 }

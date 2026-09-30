@@ -421,6 +421,11 @@ app.register(require('./routes/llm-marketplace'), { prefix: '', logger });
 // per-repo ledgers. Operator-gated (absent from the auth-skip allowlist above).
 app.register(require('./routes/dream'), { prefix: '', logger });
 
+// Execution-journal record (ADR-2071 Phase 1) — POST /v1/exec/record lets the
+// out-of-process dream engine journal its side effects through this process,
+// the single chain-safe writer. Operator-gated; records only, never polices.
+app.register(require('./routes/exec-record'), { prefix: '', logger });
+
 // Liveness probe — registered early, no sentinel check, event-loop-alive only.
 // Must respond in <100 ms unconditionally.
 app.get('/livez', {

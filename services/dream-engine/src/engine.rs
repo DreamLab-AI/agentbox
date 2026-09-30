@@ -13,6 +13,7 @@ use crate::dispatch;
 use crate::gate;
 use crate::governance;
 use crate::inbox;
+use crate::journal::{self, Journal, JournalStats};
 use crate::ledger::{self, LedgerRow};
 use crate::llm::{self, LlmConfig, Provider};
 use crate::manifest;
@@ -23,9 +24,11 @@ use crate::roster;
 use crate::runner::EvaluatorRunner;
 use crate::runstate;
 use crate::source;
+use crate::sweep;
 use crate::ruvector::{self, DreamFinding, RuVectorConfig};
 use crate::verdict::{self, Verdict};
 use crate::witness;
+use serde_json::json;
 
 /// Wall-clock budget for a repo's build step. Generous: a cold release build of
 /// a Rust workspace on the annexe is minutes, not seconds, and a build that
@@ -119,19 +122,40 @@ impl Engine {
             return None;
         }
 
+        // ADR-2071: the night-level work (forum governance, branch sweep,
+        // digest, forum suggestions) is its own journal session; each repo's
+        // cycle opens another. Fail-open throughout.
+        let nj = Journal::from_env(&journal::session_for(
+            &format!("night-{date}"),
+            chrono::Utc::now().timestamp(),
+        ));
+        nj.turn_started(json!({ "date": date, "day": day_int })).await;
+
         // Decisions the operator made on the forum governance panel since the
         // last night resolve their inbox items first, so tonight's carry-over
         // sees them. Fail-open.
         if governance::enabled() {
-            governance::ingest(&inbox::inbox_path(), false).await;
+            let c = nj.called("forum.governance", json!({ "op": "ingest" })).await;
+            let r = governance::ingest(&inbox::inbox_path(), false).await;
+            nj.completed(c, true, json!({ "resolved": r.resolved, "rejected": r.rejected, "skipped": r.skipped }))
+                .await;
         }
 
         let repos = match self.discover() {
             Ok(r) => r,
             Err(e) => {
                 warn!(error = %e, "night aborted — no nominated repos");
+                nj.turn_completed(json!({ "aborted": "no nominated repos" })).await;
                 return Some(vec![]);
             }
+        };
+
+        // The seven-day rule for dream/* branches, before tonight adds any.
+        // Opt out with DREAM_SWEEP=0.
+        let swept = if std::env::var("DREAM_SWEEP").as_deref() == Ok("0") {
+            Vec::new()
+        } else {
+            self.sweep_branches(&repos, &nj).await
         };
 
         let mut eligible = Vec::new();
@@ -201,8 +225,11 @@ impl Engine {
         );
 
         let mut outcomes = Vec::new();
+        let mut journal_stats: Vec<JournalStats> = Vec::new();
         for (name, path) in eligible {
-            let verdict_label = match self.cycle_repo(&name, &path, day_int, date, false).await {
+            let (result, stats) = self.cycle_repo_recorded(&name, &path, day_int, date, false).await;
+            journal_stats.push(stats);
+            let verdict_label = match result {
                 Ok(res) => res.verdict.as_str().to_string(),
                 Err(e) => {
                     warn!(repo = %name, error = %e, "cycle failed — continuing with next repo");
@@ -239,6 +266,8 @@ impl Engine {
             standby,
             deferred,
             digest: None,
+            journal: journal_stats,
+            sweep: swept,
         };
         let _ = std::fs::create_dir_all("/home/devuser/workspace/.agentbox");
         if let Err(e) = std::fs::write(
@@ -260,7 +289,10 @@ impl Engine {
                     failures.iter().map(|(n, v)| format!("{}={}", n, v)).collect::<Vec<_>>().join(", ")
                 )
             };
-            if let Err(e) = inbox::add("alert", "roster", &format!("{}-night", date), date, &text) {
+            let c = nj.called("inbox.write", json!({ "kind": "alert", "repo": "roster" })).await;
+            let r = inbox::add("alert", "roster", &format!("{}-night", date), date, &text);
+            nj.completed(c, r.is_ok(), json!({})).await;
+            if let Err(e) = r {
                 warn!(error = %e, "dream inbox write failed (fail-open)");
             }
         }
@@ -272,10 +304,15 @@ impl Engine {
         // publishing must never silence the night report. Both fail-open:
         // forum trouble never taints the night.
         if governance::enabled() {
-            governance::publish(&inbox::inbox_path(), false).await;
+            let c = nj.called("forum.governance", json!({ "op": "publish" })).await;
+            let r = governance::publish(&inbox::inbox_path(), false).await;
+            nj.completed(c, r.rejected == 0, json!({ "published": r.published, "rejected": r.rejected }))
+                .await;
         }
         if std::env::var("DREAM_DIGEST").as_deref() != Ok("0") {
+            let c = nj.called("forum.post", json!({ "op": "digest" })).await;
             let status = digest::run(&self.workspace, date, false).await;
+            nj.completed(c, !status.contains("failed"), json!({ "status": status })).await;
             info!(result = %status, "night digest");
             record_digest_status(date, &status);
         }
@@ -291,16 +328,25 @@ impl Engine {
                 "/home/devuser/workspace/project/agentbox/scripts/dream-forum-suggestions.mjs".into()
             });
             if Path::new(&forum_script).exists() {
+                let c = nj.called("forum.suggestions", json!({ "script": forum_script })).await;
                 match Command::new("node").arg(&forum_script).output() {
                     Ok(out) => {
                         let tail = String::from_utf8_lossy(&out.stdout);
-                        info!(result = %tail.lines().last().unwrap_or(""), "forum suggestions");
+                        let last = tail.lines().last().unwrap_or("").to_string();
+                        nj.completed(c, out.status.success(), json!({ "exit": out.status.code(), "tail": last }))
+                            .await;
+                        info!(result = %last, "forum suggestions");
                     }
-                    Err(e) => warn!(error = %e, "forum suggestions failed (fail-open)"),
+                    Err(e) => {
+                        nj.completed(c, false, json!({ "error": e.to_string() })).await;
+                        warn!(error = %e, "forum suggestions failed (fail-open)")
+                    }
                 }
             }
         }
 
+        nj.turn_completed(json!({ "outcomes": outcomes.len() })).await;
+        record_night_journal(&nj.stats());
         Some(outcomes)
     }
 
@@ -337,6 +383,48 @@ impl Engine {
         day_int: u32,
         date: &str,
         dry_run: bool,
+    ) -> Result<CycleResult, EngineError> {
+        self.cycle_repo_recorded(repo_name, repo_path, day_int, date, dry_run).await.0
+    }
+
+    /// One repo's cycle as one journal session (ADR-2071): `turn.started`,
+    /// a `tool.called`/`tool.completed` pair per side effect, `turn.completed`
+    /// carrying the verdict or the error. Every early return is covered
+    /// because the session is closed here, outside the cycle body. A dry run
+    /// has no side effects and is not journalled.
+    async fn cycle_repo_recorded(
+        &self,
+        repo_name: &str,
+        repo_path: &Path,
+        day_int: u32,
+        date: &str,
+        dry_run: bool,
+    ) -> (Result<CycleResult, EngineError>, JournalStats) {
+        let night_id = format!("{}-{}", date, repo_name);
+        let j = if dry_run {
+            Journal::disabled(&night_id)
+        } else {
+            Journal::from_env(&journal::session_for(&night_id, chrono::Utc::now().timestamp()))
+        };
+        j.turn_started(json!({ "repo": repo_name, "date": date, "night_id": night_id })).await;
+        let result = self.cycle_repo_body(repo_name, repo_path, day_int, date, dry_run, &j).await;
+        let outcome = match &result {
+            Ok(r) => json!({ "verdict": r.verdict.as_str(), "finding": r.finding }),
+            Err(e) => json!({ "error": e.to_string() }),
+        };
+        j.turn_completed(outcome).await;
+        let stats = j.stats();
+        (result, stats)
+    }
+
+    async fn cycle_repo_body(
+        &self,
+        repo_name: &str,
+        repo_path: &Path,
+        day_int: u32,
+        date: &str,
+        dry_run: bool,
+        j: &Journal,
     ) -> Result<CycleResult, EngineError> {
         info!(repo = %repo_name, "cycle start");
         let repo_name = repo_name.to_string();
@@ -375,7 +463,7 @@ impl Engine {
                 });
             }
             return self
-                .persist_handoff(&cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, &admission)
+                .persist_handoff(&cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, &admission, j)
                 .await;
         }
         info!(
@@ -430,6 +518,7 @@ impl Engine {
                         date,
                         "",
                         &format!("baseline revision unresolvable: {e}"),
+                        j,
                     )
                     .await;
             }
@@ -474,6 +563,7 @@ impl Engine {
                     .persist_blocked_env(
                         &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
                         &format!("experiment manifest could not be frozen: {e}"),
+                        j,
                     )
                     .await;
             }
@@ -486,20 +576,27 @@ impl Engine {
         //     for tonight but leaves the experiment's retry budget intact
         //     (2026-09-26: a full HP disk abandoned loom's run on two
         //     attempts that never reached the model).
-        if let Err(e) = dispatch::ssh(
+        let c = j.called("annexe.ssh", json!({ "op": "retention-sweep", "run_id": frozen.run_id })).await;
+        let swept = dispatch::ssh(
             &self.runtime.hp_host,
             &format!(
                 "find {} -maxdepth 1 -type d -name '20*' -mtime +3 -exec rm -rf {{}} + 2>/dev/null; true",
                 dispatch::shell_quote(&self.runtime.hp_annexe_dir)
             ),
-        ) {
+        );
+        j.completed(c, swept.is_ok(), json!({ "error": swept.as_ref().err().map(|e| e.to_string()) })).await;
+        if let Err(e) = swept {
             warn!(error = %e, "annexe retention sweep failed (fail-open)");
         }
-        match dispatch::annexe_health(
+        let c = j.called("annexe.ssh", json!({ "op": "health" })).await;
+        let health = dispatch::annexe_health(
             &self.runtime.hp_host,
             &self.runtime.hp_annexe_dir,
             dispatch::ANNEXE_MIN_FREE_GIB,
-        ) {
+        );
+        j.completed(c, health.is_ok(), json!({ "free_gib": health.as_ref().ok(), "error": health.as_ref().err() }))
+            .await;
+        match health {
             Ok(gib) => info!(free_gib = gib, "connected node annexe healthy"),
             Err(reason) => {
                 warn!(%reason, "connected node annexe unhealthy — BLOCKED-ENV, no attempt counted");
@@ -518,6 +615,7 @@ impl Engine {
                     .persist_blocked_env(
                         &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
                         &format!("connected node annexe unhealthy: {reason}"),
+                        j,
                     )
                     .await;
             }
@@ -570,6 +668,7 @@ impl Engine {
                     .persist_blocked_env(
                         &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
                         &format!("run abandoned after {} attempts", prior.attempts),
+                        j,
                     )
                     .await;
             }
@@ -589,6 +688,7 @@ impl Engine {
                     .persist_blocked_env(
                         &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
                         &format!("run journal unwritable: {e}"),
+                        j,
                     )
                     .await;
             }
@@ -604,14 +704,17 @@ impl Engine {
         // Mirror the repo's real depth under the workspace so sibling
         // path-deps resolve on the annexe (see `clone_repo_and_siblings`).
         let repo_subpath = annexe_subpath(&repo_path, &self.workspace);
-        clone_repo_and_siblings(
+        let c = j.called("annexe.clone", json!({ "remote": remote_dir, "include": cfg.annexe_include })).await;
+        let cloned = clone_repo_and_siblings(
             &self.runtime.hp_host,
             &repo_path,
             &remote_dir,
             &repo_subpath,
             &cfg.annexe_include,
             &self.workspace,
-        )?;
+        );
+        j.completed(c, cloned.is_ok(), json!({ "error": cloned.as_ref().err().map(|e| e.to_string()) })).await;
+        cloned?;
 
         // Pre-flight probe: the checkout must exist and be non-empty on the connected node
         // before any evaluator runs. A broken environment (vanished cwd,
@@ -628,24 +731,34 @@ impl Engine {
                 ),
             )
         };
-        let preflight_ok = match probe(&work_dir) {
-            Ok(out) if out.contains("PREFLIGHT-OK") => true,
-            first => {
-                warn!(result = ?first.err().map(|e| e.to_string()), "pre-flight failed — re-provisioning annexe checkout once");
-                let _ = dispatch::ssh(
-                    &self.runtime.hp_host,
-                    &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
-                );
-                clone_repo_and_siblings(
-                    &self.runtime.hp_host,
-                    &repo_path,
-                    &remote_dir,
-                    &repo_subpath,
-                    &cfg.annexe_include,
-                    &self.workspace,
-                )?;
-                matches!(probe(&work_dir), Ok(out) if out.contains("PREFLIGHT-OK"))
-            }
+        let c = j.called("annexe.ssh", json!({ "op": "preflight" })).await;
+        let first = probe(&work_dir);
+        let first_ok = matches!(&first, Ok(out) if out.contains("PREFLIGHT-OK"));
+        j.completed(c, first_ok, json!({})).await;
+        let preflight_ok = if first_ok {
+            true
+        } else {
+            warn!(result = ?first.err().map(|e| e.to_string()), "pre-flight failed — re-provisioning annexe checkout once");
+            let c = j.called("annexe.clone", json!({ "remote": remote_dir, "op": "reprovision" })).await;
+            let _ = dispatch::ssh(
+                &self.runtime.hp_host,
+                &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
+            );
+            let recloned = clone_repo_and_siblings(
+                &self.runtime.hp_host,
+                &repo_path,
+                &remote_dir,
+                &repo_subpath,
+                &cfg.annexe_include,
+                &self.workspace,
+            );
+            j.completed(c, recloned.is_ok(), json!({ "error": recloned.as_ref().err().map(|e| e.to_string()) }))
+                .await;
+            recloned?;
+            let c = j.called("annexe.ssh", json!({ "op": "preflight", "retry": true })).await;
+            let ok = matches!(probe(&work_dir), Ok(out) if out.contains("PREFLIGHT-OK"));
+            j.completed(c, ok, json!({})).await;
+            ok
         };
         if !preflight_ok {
             warn!(repo = %repo_name, "pre-flight failed twice — recording BLOCKED-ENV night (no LLM call)");
@@ -663,7 +776,8 @@ impl Engine {
                         "annexe checkout {}/{} missing or empty after two provisioning attempts",
                         remote_dir, repo_subpath
                     ),
-                )
+                        j,
+                    )
                 .await;
         }
 
@@ -672,7 +786,9 @@ impl Engine {
         //    than an untyped blob of stdout.
         let build_out = match cfg.build_step.as_ref() {
             Some(bs) => {
+                let c = j.called("annexe.exec", json!({ "op": "build", "cmd": bs.cmd })).await;
                 let exec = self.runner.run(&work_dir, &bs.cmd, DEFAULT_BUILD_TIMEOUT_SECS);
+                j.completed(c, exec.exit_code == Some(0), json!({ "exit": exec.exit_code })).await;
                 match exec.exit_code {
                     Some(0) => exec.stdout,
                     other => {
@@ -684,7 +800,12 @@ impl Engine {
             None => "(no build step)".into(),
         };
         let applicable = frozen.applicable();
+        let c = j
+            .called("annexe.exec", json!({ "op": "evaluate", "phase": "baseline",
+                "evaluators": applicable.iter().map(|e| e.name.clone()).collect::<Vec<_>>() }))
+            .await;
         let baseline_receipts = self.run_evaluators(&work_dir, &applicable, receipts::Phase::Baseline);
+        j.completed(c, true, json!({ "outcomes": receipt_outcomes(&baseline_receipts) })).await;
         for r in &baseline_receipts {
             info!(receipt = %r.summary(), "baseline evaluator");
         }
@@ -709,7 +830,8 @@ impl Engine {
             let res = self
                 .persist_blocked_env(
                     &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, &remote_dir, &detail,
-                )
+                        j,
+                    )
                 .await?;
             let _ = runstate::complete(&night_dir, &mut run, res.verdict.as_str());
             return Ok(res);
@@ -769,6 +891,7 @@ impl Engine {
                         &repo_name,
                         date,
                     ));
+                    let c = j.called("llm.call", json!({ "purpose": "context-govern", "model": self.llm.model })).await;
                     governed_pack = context::govern(
                         &self.llm,
                         self.llm_fallback.as_ref(),
@@ -778,6 +901,7 @@ impl Engine {
                         redact,
                     )
                     .await;
+                    j.completed(c, governed_pack.is_some(), json!({})).await;
                 }
             }
             Err(e) => warn!(error = %e, "receipt sidecar persist failed (fail-open)"),
@@ -809,7 +933,8 @@ impl Engine {
             .map(|id| id.command.clone())
             .chain(cfg.build_step.as_ref().map(|b| b.cmd.clone()))
             .collect();
-        let source_section = match source::gather(
+        let c = j.called("llm.call", json!({ "purpose": "source-gather", "model": self.llm.model })).await;
+        let gathered = source::gather(
             &self.llm,
             self.llm_fallback.as_ref(),
             &repo_path,
@@ -821,8 +946,9 @@ impl Engine {
             &source::SourceConfig::from_env(),
             &redact,
         )
-        .await
-        {
+        .await;
+        j.completed(c, gathered.is_some(), json!({})).await;
+        let source_section = match gathered {
             Some((section, record)) => {
                 let _ = manifest::write_atomic(
                     &night_dir.join("source.json"),
@@ -838,7 +964,13 @@ impl Engine {
         //    provider, and only then a degraded night.
         info!(provider = ?self.llm.provider, model = %self.llm.model, "calling LLM");
         let mut model_used = self.llm.model.clone();
-        let report = match llm::call(&self.llm, &prompt).await {
+        let c = j
+            .called("llm.call", json!({ "purpose": "verdict", "provider": format!("{:?}", self.llm.provider),
+                "model": self.llm.model, "prompt_chars": prompt.len() }))
+            .await;
+        let primary = llm::call(&self.llm, &prompt).await;
+        j.completed(c, primary.is_ok(), json!({ "error": primary.as_ref().err().map(|e| e.to_string()) })).await;
+        let report = match primary {
             Ok(r) => r,
             Err(primary_err) => match &self.llm_fallback {
                 Some(fb) => {
@@ -848,7 +980,14 @@ impl Engine {
                         fallback_model = %fb.model,
                         "primary LLM failed — trying fallback provider"
                     );
-                    match llm::call(fb, &prompt).await {
+                    let c = j
+                        .called("llm.call", json!({ "purpose": "verdict-fallback",
+                            "provider": format!("{:?}", fb.provider), "model": fb.model }))
+                        .await;
+                    let fallback = llm::call(fb, &prompt).await;
+                    j.completed(c, fallback.is_ok(), json!({ "error": fallback.as_ref().err().map(|e| e.to_string()) }))
+                        .await;
+                    match fallback {
                         Ok(r) => {
                             model_used = fb.model.clone();
                             r
@@ -896,6 +1035,7 @@ impl Engine {
         let mut patch = persist::extract_patch(&report);
         if source::needs_repair(claimed_accept, patch.is_some()) {
             info!("ACCEPT without a dream-patch block — running the one-shot repair pass");
+            let c = j.called("llm.call", json!({ "purpose": "repair", "model": self.llm.model })).await;
             let record = source::repair(
                 &self.llm,
                 self.llm_fallback.as_ref(),
@@ -903,6 +1043,7 @@ impl Engine {
                 source_section.as_deref(),
             )
             .await;
+            j.completed(c, matches!(record.outcome, source::RepairOutcome::Patch(_)), json!({})).await;
             info!(outcome = ?record.outcome, "repair pass finished");
             let _ = manifest::write_atomic(
                 &night_dir.join("repair.json"),
@@ -930,13 +1071,20 @@ impl Engine {
                     // worktree; drop it first — the run id, not the branch,
                     // is the identity.
                     persist::delete_branch(&repo_path, &branch);
-                    match candidate::prepare(
+                    let c = j.called("git.worktree", json!({ "op": "apply-candidate", "branch": branch })).await;
+                    let prepared_res = candidate::prepare(
                         &repo_path,
                         &branch,
                         &patch,
                         &format!("dream({}): candidate for {}", slot.deep, night_id),
                         &baseline_rev,
-                    ) {
+                    );
+                    j.completed(c, prepared_res.is_ok(), json!({
+                        "error": prepared_res.as_ref().err().map(|e| e.to_string()),
+                        "tree": prepared_res.as_ref().ok().map(|c| c.tree_hash.clone()),
+                    }))
+                    .await;
+                    match prepared_res {
                         Err(e) => {
                             warn!(error = %e, "candidate patch did not apply — acceptance cannot be verified");
                             candidate_state = gate::CandidateState::DidNotApply { detail: e.to_string() };
@@ -947,21 +1095,32 @@ impl Engine {
                             // The worktree lives in a temp dir, so reuse the
                             // subpath derived from the real checkout.
                             let cand_work = format!("{}/{}", cand_remote, repo_subpath);
-                            match clone_repo_and_siblings(
+                            let jc = j.called("annexe.clone", json!({ "remote": cand_remote, "op": "candidate" })).await;
+                            let shipped = clone_repo_and_siblings(
                                 &self.runtime.hp_host,
                                 &c.worktree,
                                 &cand_remote,
                                 &repo_subpath,
                                 &cfg.annexe_include,
                                 &self.workspace,
-                            ) {
+                            );
+                            j.completed(jc, shipped.is_ok(), json!({ "error": shipped.as_ref().err().map(|e| e.to_string()) }))
+                                .await;
+                            match shipped {
                                 Ok(()) => {
                                     if let Some(bs) = cfg.build_step.as_ref() {
+                                        let jc = j.called("annexe.exec", json!({ "op": "build", "phase": "candidate", "cmd": bs.cmd })).await;
                                         let b = self.runner.run(&cand_work, &bs.cmd, DEFAULT_BUILD_TIMEOUT_SECS);
+                                        j.completed(jc, b.exit_code == Some(0), json!({ "exit": b.exit_code })).await;
                                         info!(exit = ?b.exit_code, "candidate build");
                                     }
+                                    let jc = j
+                                        .called("annexe.exec", json!({ "op": "evaluate", "phase": "candidate",
+                                            "evaluators": required.iter().map(|e| e.name.clone()).collect::<Vec<_>>() }))
+                                        .await;
                                     candidate_receipts =
                                         candidate::evaluate(self.runner.as_ref(), &cand_work, &required);
+                                    j.completed(jc, true, json!({ "outcomes": receipt_outcomes(&candidate_receipts) })).await;
                                     for r in &candidate_receipts {
                                         info!(receipt = %r.summary(), "candidate evaluator");
                                     }
@@ -1057,14 +1216,18 @@ impl Engine {
         //      the inbox hook surfaces them in the next Claude session,
         //      whatever its context. Fail-open.
         for q in inbox::extract_questions(&report) {
-            match inbox::add("question", &repo_name, &night_id, date, &q) {
+            let c = j.called("inbox.write", json!({ "kind": "question" })).await;
+            let added = inbox::add("question", &repo_name, &night_id, date, &q);
+            j.completed(c, added.is_ok(), json!({})).await;
+            match added {
                 Ok(id) => info!(id = %id, "operator question queued to dream inbox"),
                 Err(e) => warn!(error = %e, "dream inbox write failed (fail-open)"),
             }
         }
         // A vetoed ACCEPT is exactly the kind of thing a human should see.
         if !decision.vetoes.is_empty() {
-            let _ = inbox::add(
+            let c = j.called("inbox.write", json!({ "kind": "alert", "why": "veto" })).await;
+            let added = inbox::add(
                 "alert",
                 &repo_name,
                 &night_id,
@@ -1074,6 +1237,7 @@ impl Engine {
                     night_id, decision.model_verdict, decision.verdict, decision.summary
                 ),
             );
+            j.completed(c, added.is_ok(), json!({})).await;
         }
 
         // 11c. Persist the candidate as a DRAFT PR (ADR-061) — only when the
@@ -1100,7 +1264,9 @@ impl Engine {
                         .collect::<Vec<_>>()
                         .join(", "),
                 );
+                let jc = j.called("git.push", json!({ "branch": c.branch, "repo": cfg.repo, "then": "gh pr create --draft" })).await;
                 let out = persist::push_and_open_pr(&repo_path, &cfg.repo, &c.branch, &title, &body);
+                j.completed(jc, out.pushed && out.pr_url.is_some(), json!({ "pushed": out.pushed, "pr": out.pr_url })).await;
                 info!(branch = %out.branch, pushed = out.pushed, pr = ?out.pr_url, "verified candidate persisted as draft PR");
                 pr_ref = out.pr_url.clone().unwrap_or_else(|| {
                     if out.pushed { format!("branch:{}", out.branch) } else { "PERSIST-LOCAL".into() }
@@ -1113,7 +1279,9 @@ impl Engine {
             }
             (Some(c), false) => {
                 warn!(branch = %c.branch, "candidate vetoed — discarding branch and worktree");
+                let jc = j.called("git.branch-delete", json!({ "branch": c.branch, "why": "vetoed" })).await;
                 candidate::discard(&repo_path, c);
+                j.completed(jc, true, json!({})).await;
                 pr_ref = "VETOED".into();
             }
             (None, _) => {}
@@ -1139,7 +1307,7 @@ impl Engine {
             reviewer: String::new(),
             review_minutes: String::new(),
         };
-        ledger::append_row(&ledger_path, &row)?;
+        self.append_and_commit_ledger(&repo_path, &ledger_path, &row, &night_id, j).await?;
         info!(path = %ledger_path.display(), "ledger row appended");
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::Persisted);
 
@@ -1158,7 +1326,10 @@ impl Engine {
             },
             source: format!("hp-annexe-{}", model_used),
         };
-        let stored = match ruvector::store_finding(&self.ruvector, &df).await {
+        let c = j.called("ruvector.store", json!({ "namespace": self.ruvector.namespace, "key": df.night_id })).await;
+        let store = ruvector::store_finding(&self.ruvector, &df).await;
+        j.completed(c, matches!(store, Ok(true)), json!({ "error": store.as_ref().err().map(|e| e.to_string()) })).await;
+        let stored = match store {
             Ok(s) => s,
             Err(e) => {
                 warn!(error = %e, "RuVector store failed (fail-open)");
@@ -1169,10 +1340,13 @@ impl Engine {
         // 14. Clean this night's remote dir — everything worth keeping (report,
         //     verdict, receipts, ledger row, witness, memory) is already
         //     control-plane side. Kept on failure paths for debugging.
-        match dispatch::ssh(
+        let c = j.called("annexe.ssh", json!({ "op": "cleanup", "remote": remote_dir })).await;
+        let cleaned = dispatch::ssh(
             &self.runtime.hp_host,
             &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
-        ) {
+        );
+        j.completed(c, cleaned.is_ok(), json!({})).await;
+        match cleaned {
             Ok(_) => info!(remote = %remote_dir, "the connected node annexe night dir cleaned"),
             Err(e) => warn!(error = %e, "the connected node annexe cleanup failed (fail-open)"),
         }
@@ -1196,6 +1370,64 @@ impl Engine {
             ledger_path,
             stored_to_ruvector: stored,
         })
+    }
+
+    /// Append the night's ledger row, then commit it on the default branch so
+    /// the night is visible in git (ADR-2071 Phase 1). Both are journalled.
+    /// The append is fatal as before; the commit is fail-open.
+    async fn append_and_commit_ledger(
+        &self,
+        repo_path: &Path,
+        ledger_path: &Path,
+        row: &LedgerRow,
+        night_id: &str,
+        j: &Journal,
+    ) -> Result<(), EngineError> {
+        let c = j.called("ledger.append", json!({ "verdict": row.verdict, "deep": row.deep })).await;
+        let appended = ledger::append_row(ledger_path, row);
+        j.completed(c, appended.is_ok(), json!({})).await;
+        appended?;
+
+        if std::env::var("DREAM_LEDGER_COMMIT").as_deref() == Ok("0") {
+            return Ok(());
+        }
+        let c = j.called("git.commit", json!({ "path": ledger_path.display().to_string() })).await;
+        let outcome = ledger::commit_ledger(
+            repo_path,
+            ledger_path,
+            &format!("dream-cycle: {} ledger row ({})", night_id, row.verdict),
+        );
+        let ok = matches!(outcome, ledger::LedgerCommit::Committed(_) | ledger::LedgerCommit::NothingToCommit);
+        j.completed(c, ok, serde_json::to_value(&outcome).unwrap_or_default()).await;
+        match &outcome {
+            ledger::LedgerCommit::Committed(id) => info!(commit = %id, "ledger row committed"),
+            ledger::LedgerCommit::Failed(e) => warn!(error = %e, "ledger commit failed (fail-open — row stays in the working tree)"),
+            other => info!(outcome = ?other, "ledger row not committed"),
+        }
+        Ok(())
+    }
+
+    /// Apply the seven-day rule to every nominated repo's `dream/*` branches,
+    /// journalling each deletion or PR closure. Fail-open per branch.
+    async fn sweep_branches(&self, repos: &[(String, PathBuf)], nj: &Journal) -> Vec<sweep::SweepRecord> {
+        let now = chrono::Utc::now().timestamp();
+        let mut records = Vec::new();
+        for (name, path) in repos {
+            let slug = DreamConfig::load(&path.join("dream.config.json"))
+                .map(|c| c.repo.clone())
+                .unwrap_or_default();
+            for p in sweep::plan(name, path, &slug, now) {
+                if p.action == sweep::SweepAction::Keep {
+                    continue;
+                }
+                let c = nj.called("git.branch-sweep", serde_json::to_value(&p).unwrap_or_default()).await;
+                let ok = sweep::apply(path, &slug, &p);
+                nj.completed(c, ok, json!({})).await;
+                info!(repo = %name, branch = %p.branch, action = ?p.action, ok, "branch sweep");
+                records.push(p.record(ok));
+            }
+        }
+        records
     }
 
     /// Run a set of evaluators in `work_dir` through the configured runner,
@@ -1287,6 +1519,7 @@ impl Engine {
         date: &str,
         remote_dir: &str,
         detail: &str,
+        j: &Journal,
     ) -> Result<CycleResult, EngineError> {
         let finding: String = format!("Environment fault, hypothesis untested: {}", detail)
             .chars()
@@ -1303,25 +1536,24 @@ impl Engine {
         std::fs::write(&report_path, &report)?;
 
         let ledger_path = repo_path.join(&cfg.ledger_path);
-        ledger::append_row(
-            &ledger_path,
-            &LedgerRow {
-                date: date.into(),
-                deep: deep.into(),
-                finding: finding.chars().take(80).collect(),
-                issue: "NONE".into(),
-                pr: "NONE".into(),
-                evaluated: "blocked".into(),
-                verdict: Verdict::BlockedEnv.as_str().into(),
-                effect: String::new(),
-                witness: "BLOCKED".into(),
-                prior_fates: String::new(),
-                reviewer: String::new(),
-                review_minutes: String::new(),
-            },
-        )?;
+        let row = LedgerRow {
+            date: date.into(),
+            deep: deep.into(),
+            finding: finding.chars().take(80).collect(),
+            issue: "NONE".into(),
+            pr: "NONE".into(),
+            evaluated: "blocked".into(),
+            verdict: Verdict::BlockedEnv.as_str().into(),
+            effect: String::new(),
+            witness: "BLOCKED".into(),
+            prior_fates: String::new(),
+            reviewer: String::new(),
+            review_minutes: String::new(),
+        };
+        self.append_and_commit_ledger(repo_path, &ledger_path, &row, night_id, j).await?;
 
-        if let Err(e) = inbox::add(
+        let c = j.called("inbox.write", json!({ "kind": "alert", "why": "blocked-env" })).await;
+        let added = inbox::add(
             "alert",
             repo_name,
             night_id,
@@ -1330,15 +1562,19 @@ impl Engine {
                 "Dream night for {} was BLOCKED-ENV: {}. Check the harness before the next window.",
                 repo_name, detail
             ),
-        ) {
+        );
+        j.completed(c, added.is_ok(), json!({})).await;
+        if let Err(e) = added {
             warn!(error = %e, "dream inbox write failed (fail-open)");
         }
 
         if !remote_dir.is_empty() {
-            let _ = dispatch::ssh(
+            let c = j.called("annexe.ssh", json!({ "op": "cleanup", "remote": remote_dir })).await;
+            let cleaned = dispatch::ssh(
                 &self.runtime.hp_host,
                 &format!("rm -rf {}", dispatch::shell_quote(remote_dir)),
             );
+            j.completed(c, cleaned.is_ok(), json!({})).await;
         }
 
         Ok(CycleResult {
@@ -1370,6 +1606,7 @@ impl Engine {
         night_id: &str,
         date: &str,
         admission: &readiness::ReadinessReport,
+        j: &Journal,
     ) -> Result<CycleResult, EngineError> {
         let refusal = admission.refusal();
         let finding: String = format!("HANDOFF — evaluator not ready: {}", refusal)
@@ -1399,25 +1636,24 @@ impl Engine {
         );
 
         let ledger_path = repo_path.join(&cfg.ledger_path);
-        ledger::append_row(
-            &ledger_path,
-            &LedgerRow {
-                date: date.into(),
-                deep: deep.into(),
-                finding: finding.chars().take(80).collect(),
-                issue: "NONE".into(),
-                pr: "NONE".into(),
-                evaluated: "no".into(),
-                verdict: Verdict::Handoff.as_str().into(),
-                effect: String::new(),
-                witness: "NONE".into(),
-                prior_fates: String::new(),
-                reviewer: String::new(),
-                review_minutes: String::new(),
-            },
-        )?;
+        let row = LedgerRow {
+            date: date.into(),
+            deep: deep.into(),
+            finding: finding.chars().take(80).collect(),
+            issue: "NONE".into(),
+            pr: "NONE".into(),
+            evaluated: "no".into(),
+            verdict: Verdict::Handoff.as_str().into(),
+            effect: String::new(),
+            witness: "NONE".into(),
+            prior_fates: String::new(),
+            reviewer: String::new(),
+            review_minutes: String::new(),
+        };
+        self.append_and_commit_ledger(repo_path, &ledger_path, &row, night_id, j).await?;
 
-        if let Err(e) = inbox::add(
+        let c = j.called("inbox.write", json!({ "kind": "question", "why": "handoff" })).await;
+        let added = inbox::add(
             "question",
             repo_name,
             night_id,
@@ -1427,7 +1663,9 @@ impl Engine {
                  Which evaluator should decide this deep?",
                 repo_name, deep, refusal
             ),
-        ) {
+        );
+        j.completed(c, added.is_ok(), json!({})).await;
+        if let Err(e) = added {
             warn!(error = %e, "dream inbox write failed (fail-open)");
         }
 
@@ -1651,6 +1889,27 @@ fn render_receipt(r: &receipts::EvaluatorReceipt) -> String {
         }
     }
     out
+}
+
+/// `name=outcome` for each receipt, for a journal `tool.completed` payload.
+fn receipt_outcomes(receipts: &[receipts::EvaluatorReceipt]) -> Vec<String> {
+    receipts.iter().map(|r| format!("{}={}", r.name, r.outcome.label())).collect()
+}
+
+/// Add the night-level journal session's counters to the night-health file
+/// (written earlier in the night, before the digest and forum work ran).
+/// Fail-open.
+fn record_night_journal(stats: &JournalStats) {
+    let path = digest::health_path();
+    if let Some(mut health) = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|t| serde_json::from_str::<digest::NightHealth>(&t).ok())
+    {
+        health.journal.push(stats.clone());
+        if let Err(e) = std::fs::write(&path, serde_json::to_string_pretty(&health).unwrap_or_default()) {
+            warn!(error = %e, "night health journal write failed (fail-open)");
+        }
+    }
 }
 
 /// Record tonight's digest outcome in the night-health file, and raise an
