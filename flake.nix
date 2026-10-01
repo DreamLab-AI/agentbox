@@ -2451,7 +2451,7 @@ ${lib.optionalString dreamEngineEnabled ''
 command=${bgNice}${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
 directory=/home/devuser/workspace
 user=devuser
-environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}"${dreamLoomEnv},LOOM_MODEL="${dreamMachineCfg.loom_model or "qwen3.8-27B"}"
+environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}"${dreamLoomEnv},LOOM_MODEL="${dreamMachineCfg.loom_model or ""}"
 autostart=true
 autorestart=true
 priority=230
@@ -3311,15 +3311,15 @@ ${agentboxPorts}
       - OPENAI_API_KEY=''${OPENAI_API_KEY:-ollama}
       - OPENAI_BASE_URL=''${OPENAI_BASE_URL:-${defaultLlmBaseUrl}/v1}
       - OLLAMA_BASE_URL=''${OLLAMA_BASE_URL:-${defaultLlmBaseUrl}}
-      - OLLAMA_MODEL=''${OLLAMA_MODEL:-gemma-4-31B-it-qat}
+      - OLLAMA_MODEL=''${OLLAMA_MODEL:-}
       - LOOM_BASE_URL=''${LOOM_BASE_URL:-''${LOOM_FACADE_URL:-http://loom:8080}/v1}
       - CONNECTED_NODE_SSH=''${CONNECTED_NODE_SSH:-}
       - CONNECTED_NODE_HOME=''${CONNECTED_NODE_HOME:-}
       - ONTOLOGY_CONDENSE_ENDPOINT=''${ONTOLOGY_CONDENSE_ENDPOINT:-''${LOOM_BASE_URL:-''${LOOM_FACADE_URL:-http://loom:8080}/v1}}
       - LOOM_RAW_BASE_URL=''${LOOM_RAW_BASE_URL:-http://loom-raw:8080/v1}
-      - LOOM_MODEL=''${LOOM_MODEL:-qwen3.8-27B}
+      - LOOM_MODEL=''${LOOM_MODEL:-}
       - GEMMA_BASE_URL=''${GEMMA_BASE_URL:-''${LOOM_BASE_URL:-''${LOOM_FACADE_URL:-http://loom:8080}/v1}}
-      - GEMMA_MODEL=''${GEMMA_MODEL:-gemma-4-31B-it-qat}
+      - GEMMA_MODEL=''${GEMMA_MODEL:-}
       - DEEPSEEK_API_KEY=''${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_BASE_URL=''${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - GOOGLE_API_KEY=''${GOOGLE_API_KEY:-}

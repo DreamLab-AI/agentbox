@@ -2081,9 +2081,9 @@ enabled                = true
 hp_host                = "${CONNECTED_NODE_SSH}"
 hp_annexe_dir          = "${CONNECTED_NODE_HOME}/dream-annexe"
 loom_url               = "${LOOM_BASE_URL}"
-# Wire alias only. Documented weight variant: Heretic abliterated Qwen3.8-27B Q8_0;
-# this alias is not an attestation of the running GGUF (see Loom QWEN3.8-CONNECTION.md).
-loom_model             = "qwen3.8-27B"
+# Empty = use the single model the Loom advertises at /models (survives model swaps).
+# Set only to pin one of several advertised models; LOOM_MODEL overrides at runtime.
+loom_model             = ""
 # Token budgets must cover reasoning + content: glm-5.3 burned ~16k tokens of
 # thinking on hard nights (2026-09-01) and hit the old 16384 cap with empty
 # content twice. Env overrides: ZAI_MAX_TOKENS / LOOM_MAX_TOKENS.

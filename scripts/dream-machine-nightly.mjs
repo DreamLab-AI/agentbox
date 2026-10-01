@@ -30,7 +30,8 @@ const HP_HOST = process.env.CONNECTED_NODE_SSH || process.env.HP_HOST || '';
 const HP_ANNEXE_DIR = process.env.HP_ANNEXE_DIR || '/srv/dream-annexe';
 const LLM_PROVIDER = process.env.DREAM_LLM_PROVIDER || 'zai';
 const LOOM_URL = process.env.LOOM_URL || process.env.LOOM_BASE_URL || 'http://loom:8080/v1';
-const LOOM_MODEL = process.env.LOOM_MODEL || 'qwen3.8-27B';
+// Empty LOOM_MODEL = ask the Loom which model it serves, so a model swap needs no config change.
+let LOOM_MODEL = process.env.LOOM_MODEL || '';
 const LOOM_MAX_TOKENS = parseInt(process.env.LOOM_MAX_TOKENS || '16384', 10);
 // Coding Plan subscription endpoint, Anthropic Messages protocol (callZai posts
 // to /v1/messages with x-api-key). NOT api.z.ai/api/paas/v4 — that is the
@@ -225,7 +226,21 @@ function dispatchToHP(nominated, prompt, nightId) {
 // LLM call (provider-aware: loom = OpenAI format, zai = Anthropic Messages)
 // ---------------------------------------------------------------------------
 
-function activeModel() { return LLM_PROVIDER === 'zai' ? ZAI_MODEL : LOOM_MODEL; }
+function loomModel() {
+  if (LOOM_MODEL) return LOOM_MODEL;
+  try {
+    const listing = JSON.parse(execSync(`curl -sS --max-time 10 "${LOOM_URL}/models"`, { encoding: 'utf8', timeout: 15_000 }));
+    const ids = [...new Set((listing.data || []).map(m => m.id).filter(Boolean))];
+    if (ids.length === 1) LOOM_MODEL = ids[0];
+    else log('WARN', `Loom advertises ${ids.length} models; set LOOM_MODEL to choose one`);
+  } catch (e) {
+    log('WARN', `Loom model discovery failed: ${e.message}`);
+  }
+  // A single-model Loom serves whatever name it is sent; this label keeps the run going.
+  return LOOM_MODEL || 'loom-default';
+}
+
+function activeModel() { return LLM_PROVIDER === 'zai' ? ZAI_MODEL : loomModel(); }
 
 function callLLM(prompt) {
   if (LLM_PROVIDER === 'zai') return callZai(prompt);
@@ -234,7 +249,7 @@ function callLLM(prompt) {
 
 function callLoom(prompt) {
   const body = JSON.stringify({
-    model: LOOM_MODEL,
+    model: loomModel(),
     messages: [{ role: 'user', content: prompt }],
     max_tokens: LOOM_MAX_TOKENS,
     temperature: 1.0,
