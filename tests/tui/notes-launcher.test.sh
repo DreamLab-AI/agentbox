@@ -189,6 +189,18 @@ else
   _bad "without a journals folder the daily note must not be forced" "rc=${RC} log:$(tr '\n' '|' <"$LOG")"
 fi
 
+# 2h — a stale rune AHEAD on PATH (its loader collected by a rebuild) must not
+# win: the launcher skips it, says so, and launches the next one that runs.
+STALE_BIN="${TMP}/stale-bin"; mkdir -p "$STALE_BIN"
+printf '#!/nix/store/collected-glibc/lib/ld-linux-x86-64.so.2\n' >"${STALE_BIN}/rune"
+chmod 0755 "${STALE_BIN}/rune"
+_scenario stale "$WS_FULL" PATH="${STUB_BIN}:${STALE_BIN}:${SAFE_PATH}" VAULT_ROOT="${WS_FULL}/vault" VAULT_TUI=rune AGENTBOX_VAULT_ENABLED=1
+if _launched && _said "${WS_FULL}/.cargo/bin/rune -w" && _said "${STALE_BIN}/rune" && ! _said "send-keys ${STALE_BIN}"; then
+  _ok "stale rune first on PATH → skipped with a note; the runnable one is launched"
+else
+  _bad "a rune that cannot execute must not shadow a working one" "rc=${RC} log:$(tr '\n' '|' <"$LOG")"
+fi
+
 # 3 — tui=rune, binary present, vault MISSING: workspace fallback + warning.
 _scenario vault-missing "$WS_NOVAULT" VAULT_ROOT="${WS_NOVAULT}/vault" VAULT_TUI=rune AGENTBOX_VAULT_ENABLED=1
 if _launched && _said "does not exist yet" && _said "rune -w '${WS_NOVAULT}'"; then

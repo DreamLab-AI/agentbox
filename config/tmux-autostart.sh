@@ -156,10 +156,20 @@ _notes_window() {
   # --- binary discovery ----------------------------------------------------
   # Resolved in this (bash) script rather than the pane's shell: panes run fish,
   # whose PATH syntax differs, and send-keys would race the shell startup.
-  local rune_bin
-  rune_bin="$(command -v rune 2>/dev/null || true)"
-  if [ -z "$rune_bin" ] && [ -x "${cargo_bin}/rune" ]; then
-    rune_bin="${cargo_bin}/rune"
+  # The first candidate that actually EXECUTES wins, not the first on PATH: a
+  # cargo-installed interim in ${cargo_bin} is linked against the glibc of the
+  # image it was built in, and once a rebuild collects that store path it fails
+  # with "No such file or directory" while still shadowing the baked rune.
+  local rune_bin="" cand stale=""
+  while IFS= read -r cand; do
+    [ -n "$cand" ] && [ -x "$cand" ] || continue
+    if "$cand" --version >/dev/null 2>&1; then rune_bin="$cand"; break; fi
+    stale="${stale:+${stale}, }${cand}"
+  done < <({ type -ap rune 2>/dev/null; printf '%s\n' "${cargo_bin}/rune"; } | awk '!seen[$0]++')
+
+  if [ -n "$stale" ]; then
+    _notes_say "  Skipped rune binaries that no longer run (stale loader after a rebuild):"
+    _notes_say "    ${stale}"
   fi
 
   if [ -z "$rune_bin" ]; then

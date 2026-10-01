@@ -2989,6 +2989,32 @@ fi
 EOF
 mkdir -p "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
 chown devuser:devuser "/home/devuser/workspace/.cargo" "/home/devuser/workspace/.tmp" 2>/dev/null || true
+# ADR-2029 D4 follow-up: workspace/.cargo/bin sits AHEAD of the image on PATH and
+# outlives rebuilds, but a cargo-installed binary is linked against the image's
+# /nix/store glibc loader. Once a rebuild collects that loader the binary fails
+# with ENOENT while still shadowing the baked tool of the same name (rune,
+# agentbox-hook). Move such binaries to .cargo/bin/.stale-loader/ — reversible,
+# never deleted — so PATH falls through to the image. The loader path is read
+# from the file bytes; nothing in the directory is executed here.
+_ab_quarantine_stale_cargo_bins() {
+  local bin_dir="${1:-/home/devuser/workspace/.cargo/bin}" f interp moved=""
+  [ -d "$bin_dir" ] || return 0
+  for f in "$bin_dir"/*; do
+    [ -f "$f" ] && [ ! -L "$f" ] && [ -x "$f" ] || continue
+    [ "$(head -c 4 "$f" 2>/dev/null | tr -d '\0' | tail -c 3)" = "ELF" ] || continue
+    interp="$(head -c 4096 "$f" 2>/dev/null | tr -c '[:print:]' '\n' \
+      | grep -m1 -E '^/nix/store/[^/]+/lib/ld-linux[^/]*\.so\.[0-9]+$' || true)"
+    [ -n "$interp" ] && [ ! -e "$interp" ] || continue
+    mkdir -p "$bin_dir/.stale-loader" && mv --backup=numbered "$f" "$bin_dir/.stale-loader/" \
+      && moved="${moved} ${f##*/}"
+  done
+  if [ -n "$moved" ]; then
+    chown -R devuser:devuser "$bin_dir/.stale-loader" 2>/dev/null || true
+    echo "[boot] quarantined cargo binaries with a collected loader to $bin_dir/.stale-loader:${moved} (reinstall with cargo install if still wanted)"
+  fi
+  return 0
+}
+_ab_quarantine_stale_cargo_bins
 # Cargo registry credentials — write credentials.toml if CRATES_TOKEN is set.
 if [ -n "${CRATES_TOKEN:-}" ]; then
   cat > "/home/devuser/workspace/.cargo/credentials.toml" <<CRATESEOF

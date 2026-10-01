@@ -122,18 +122,31 @@ function notes --description 'Open the vault in Rune: notes [--kg] [yesterday|<p
     test -n "$ws"; or set ws /home/devuser/workspace
     set -l home $ws/.rune-home
     mkdir -p $home; or return 1
+    # First rune that executes, not the first on PATH: a stale cargo interim
+    # (its glibc collected by a rebuild) still shadows the baked one.
+    set -l rune
+    for cand in (command --all --search rune)
+        if $cand --version >/dev/null 2>&1
+            set rune $cand
+            break
+        end
+    end
+    if test -z "$rune"
+        echo "notes: no runnable rune binary on PATH (rebuild bakes it when [vault].tui = \"rune\")" >&2
+        return 1
+    end
     set -l daily_dir journals
     set -q NOTES_DAILY_DIR; and set daily_dir $NOTES_DAILY_DIR
     set -l template templates/Journal.md
     set -q NOTES_DAILY_TEMPLATE; and set template $NOTES_DAILY_TEMPLATE
 
     if test (count $argv) -eq 0
-        if env HOME=$home rune --help 2>&1 | string match -q -- '*--today*'; and test -d $root/$daily_dir
+        if env HOME=$home $rune --help 2>&1 | string match -q -- '*--today*'; and test -d $root/$daily_dir
             set -l extra --today --daily-dir $daily_dir
             test -f $root/$template; and set extra $extra --daily-template $template
-            env HOME=$home rune -w $root $extra
+            env HOME=$home $rune -w $root $extra
         else
-            env HOME=$home rune -w $root
+            env HOME=$home $rune -w $root
         end
         return
     end
@@ -144,7 +157,7 @@ function notes --description 'Open the vault in Rune: notes [--kg] [yesterday|<p
             echo "notes: no journal for yesterday ($file)" >&2
             return 1
         end
-        env HOME=$home rune -w $root $file
+        env HOME=$home $rune -w $root $file
         return
     end
 
@@ -156,7 +169,7 @@ function notes --description 'Open the vault in Rune: notes [--kg] [yesterday|<p
         echo "notes: no page matching '$name' under $root" >&2
         return 1
     end
-    env HOME=$home rune -w $root $hit
+    env HOME=$home $rune -w $root $hit
 end
 
 # ── User customizations from the persistent workspace volume ──
