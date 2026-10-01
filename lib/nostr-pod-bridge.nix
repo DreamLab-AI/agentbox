@@ -88,6 +88,9 @@ let
     cp -r ${bridgeCrateSrc} $out/project/agentbox/services/nostr-pod-bridge
     cp -r ${forumSrc}       $out/nostr-rust-forum
     cp -r ${solidSrc}       $out/solid-pod-rs
+    mkdir -p $out/project/agentbox/tests/fixtures
+    cp ${../tests/fixtures/egress-redaction.v1.json} \
+      $out/project/agentbox/tests/fixtures/egress-redaction.v1.json
     chmod -R u+w $out
   '';
 
@@ -115,17 +118,17 @@ pkgs.rustPlatform.buildRustPackage {
   '';
 
   nativeBuildInputs = [ pkgs.pkg-config ];
+  nativeCheckInputs = [ pkgs.git ];
   buildInputs = [ pkgs.openssl ];
 
-  # Lib tests (NIP-59 unwrap, pod-write) need fixture FS state; they run in CI,
-  # not in the sandbox. The agentbox-level contract is covered by the relay
-  # ingress tests.
-  doCheck = false;
+  # The cross-language redaction fixture is included in the source layout
+  # above. Other filesystem and relay tests use temporary state/loopback.
+  doCheck = true;
 
   meta = with lib; {
     description = "Embedded Nostr relay + Solid-pod ingress bridge for agentbox (NIP-44/26/59 via nostr-bbs-core, NIP-01/11/16 via solid-pod-rs-nostr)";
     homepage    = "https://github.com/DreamLab-AI/agentbox";
-    license     = with licenses; [ mit asl20 ];
+    license     = licenses.agpl3Only;
     mainProgram = "nostr-pod-bridge";
     platforms   = platforms.linux;
   };
