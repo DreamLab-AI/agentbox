@@ -129,6 +129,13 @@ keys (`id`, `order`, `title`, `question`) and ignores the rest, so the instructi
 cost every chapter a field nothing checks. Anything a brief asks a chapter to carry has to be
 something the build or a gate reads. If nothing reads it, it belongs in `PLAN.md` instead.
 
+**A generator edit is not a fix until its output is regenerated.** On the same refresh a writer
+corrected three diagram labels in the pack's `tools/diagrams.py` and the build still passed,
+but the `.svg` and `.mmd` files readers see kept the old, wrong labels: `build.py` embeds the
+rendered files and never redraws them. The re-check caught it by grepping the rendered files,
+not the generator. Any edit to a generator (diagrams, manifests, indexes) is followed by running
+that generator, then grepping its output for the old text, before the pack counts as fixed.
+
 ## Shipping the corpus
 
 Mining a corpus for a chapter is one use of it. The other is publishing it whole, because a
