@@ -67,7 +67,10 @@ is the switch, and any failure falls open to the built-in compaction.
 
 Routing is live by default (ADR-2091): `[skills.routing].router = "jev"` registers
 `config/hooks/skill-route.cjs` on `UserPromptSubmit`, one System One Choice over every
-routable description per turn injected as advisory context, and `/route` shares its
+routable description per turn injected as advisory context. The candidates are what the
+Skill tool can load: `registered-skills.txt` from the baked tree, plus claude.ai account
+skills synced to `~/.claude/skills/synced` (`anthropic-skills:<name>`) and enabled plugin
+skills (`<plugin>:<skill>`); `AGENTBOX_SKILL_ROUTE_CLAUDE_DIR=0` drops the latter two. `/route` shares its
 library; it fails open to `"table"` (the always-loaded descriptions + `routing-table.md`,
 the pre-2091 path) on any failure — never treat the pick's probability as a gate
 (ADR-2090).

@@ -206,14 +206,9 @@ function loadCandidates(skillsDir) {
     const p = path.join(skillsDir, d.name, 'SKILL.md');
     let md;
     try { md = fs.readFileSync(p, 'utf8'); } catch { continue; }
-    let desc = description(md);
-    if (!desc) continue;
-    const status = frontmatterField(md, 'status') || 'live';
-    if (EXCLUDED_STATUS.has(status)) continue;
-    // Legacy stub marker from before the status contract; still honoured.
-    if (/^deprecated:\s*true/m.test(md)) continue;
-    if (STATUS_NOTE[status]) desc = `${STATUS_NOTE[status]} ${desc}`;
-    out[d.name] = desc;
+    // rubricOf also honours the legacy `deprecated: true` stub marker.
+    const rubric = rubricOf(md);
+    if (rubric) out[d.name] = rubric;
   }
   return out;
 }
@@ -251,6 +246,72 @@ function restrictToRegistered(criteria, cfg) {
   for (const [k, v] of Object.entries(criteria)) if (registered.has(k)) kept[k] = v;
   if (!Object.keys(kept).length) return { criteria, scope: 'all', scopeReason: 'manifest-disjoint' };
   return { criteria: kept, scope: 'registered' };
+}
+
+/** The namespace Claude Code gives skills synced from the claude.ai account. */
+const SYNCED_NAMESPACE = 'anthropic-skills';
+
+function readJson(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+}
+
+/** One SKILL.md as a rubric, or null when it has no description or a non-routable status. */
+function rubricOf(md) {
+  const desc = description(md);
+  if (!desc) return null;
+  const status = frontmatterField(md, 'status') || 'live';
+  if (EXCLUDED_STATUS.has(status) || /^deprecated:\s*true/m.test(md)) return null;
+  return STATUS_NOTE[status] ? `${STATUS_NOTE[status]} ${desc}` : desc;
+}
+
+/**
+ * Skills the Skill tool loads from outside the baked tree, under the qualified names it
+ * lists them by: account skills synced from claude.ai (`anthropic-skills:<name>`, from
+ * `<claudeDir>/skills/synced/<id>/manifest.json`) and the skills of every plugin enabled in
+ * `<claudeDir>/settings.json` (`<plugin>:<skill>`, from the install path recorded in
+ * `plugins/installed_plugins.json`). The registration manifest says nothing about either,
+ * so without this the hook never offers them. Each source is read best-effort: an
+ * unreadable file contributes nothing and never fails the turn.
+ */
+function loadLoadableExtras(claudeDir) {
+  const out = {};
+  if (!claudeDir) return out;
+  const syncedRoot = path.join(claudeDir, 'skills', 'synced');
+  let syncs = [];
+  try { syncs = fs.readdirSync(syncedRoot, { withFileTypes: true }).filter((d) => d.isDirectory()); } catch {}
+  for (const s of syncs) {
+    const dir = path.join(syncedRoot, s.name);
+    const manifest = readJson(path.join(dir, 'manifest.json'));
+    const skills = manifest && Array.isArray(manifest.skills) ? manifest.skills : [];
+    for (const sk of skills) {
+      const name = sk && (sk.name || sk.skillId);
+      if (!name || typeof name !== 'string') continue;
+      let md;
+      try { md = fs.readFileSync(path.join(dir, name, 'SKILL.md'), 'utf8'); } catch { continue; }
+      const rubric = rubricOf(md) || (typeof sk.description === 'string' && sk.description.trim()) || null;
+      if (rubric) out[`${SYNCED_NAMESPACE}:${name}`] = rubric;
+    }
+  }
+  const settings = readJson(path.join(claudeDir, 'settings.json'));
+  const installed = readJson(path.join(claudeDir, 'plugins', 'installed_plugins.json'));
+  const enabled = settings && settings.enabledPlugins && typeof settings.enabledPlugins === 'object'
+    ? Object.keys(settings.enabledPlugins).filter((k) => settings.enabledPlugins[k] === true) : [];
+  for (const key of enabled) {
+    const entries = installed && installed.plugins && installed.plugins[key];
+    const install = Array.isArray(entries) && entries[0] && entries[0].installPath;
+    if (!install) continue;
+    const plugin = key.split('@')[0];
+    let dirs = [];
+    try { dirs = fs.readdirSync(path.join(install, 'skills'), { withFileTypes: true }); } catch { continue; }
+    for (const d of dirs) {
+      if (!d.isDirectory()) continue;
+      let md;
+      try { md = fs.readFileSync(path.join(install, 'skills', d.name, 'SKILL.md'), 'utf8'); } catch { continue; }
+      const rubric = rubricOf(md);
+      if (rubric) out[`${plugin}:${frontmatterField(md, 'name') || d.name}`] = rubric;
+    }
+  }
+  return out;
 }
 
 /** Minimal `[section]` reader for the CLI's unbooted-shell fallback (mirrors _ab_toml_val). */
@@ -331,6 +392,9 @@ function config(env = process.env, opts = {}) {
     registeredManifests: env.AGENTBOX_SKILL_ROUTE_REGISTERED_MANIFEST === '0' ? [] :
       env.AGENTBOX_SKILL_ROUTE_REGISTERED_MANIFEST ? [env.AGENTBOX_SKILL_ROUTE_REGISTERED_MANIFEST] :
       REGISTERED_MANIFEST_CANDIDATES,
+    // Where synced account skills and enabled plugins are read from; '0' turns that off.
+    claudeDir: env.AGENTBOX_SKILL_ROUTE_CLAUDE_DIR === '0' ? '' :
+      (env.AGENTBOX_SKILL_ROUTE_CLAUDE_DIR || env.CLAUDE_CONFIG_DIR || path.join(env.HOME || os.homedir(), '.claude')),
     key: env.TYPESAFE_API_KEY || '',
     // Declared alongside the endpoint by whoever selects one; undeclared means the
     // metered default, so a misconfiguration over-states cost rather than hiding it.
@@ -371,6 +435,14 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
     const r = restrictToRegistered(criteria, cfg);
     criteria = r.criteria;
     scoped = r.scopeReason ? { scope: r.scope, scopeReason: r.scopeReason } : { scope: r.scope };
+  }
+  // Synced account skills and enabled plugin skills are loadable whatever the manifest says;
+  // an explicit candidate map (the eval rig) is left exactly as given.
+  if (!candidates) {
+    const extras = loadLoadableExtras(cfg.claudeDir);
+    const added = Object.keys(extras).filter((k) => !(k in criteria));
+    for (const k of added) criteria = { ...criteria, [k]: extras[k] };
+    if (added.length) scoped = { ...scoped, extras: added.length };
   }
   const n = Object.keys(criteria).length;
   if (!n) return skip('no-candidates', { skillsDir: cfg.skillsDir });
@@ -505,7 +577,7 @@ function unregisteredPaths(names, cfg) {
 function appendLog(cfg, record) {
   if (!cfg.logPath) return;
   const { candidates, chars, truncated, ms, outcome, reason, choice, confidence, usage, usd, usdPerMTokIn,
-    model, consumer, cascade, margin, session, scope, scopeReason } = record;
+    model, consumer, cascade, margin, session, scope, scopeReason, extras } = record;
   const line = JSON.stringify({ ts: new Date().toISOString(), consumer, outcome, reason, model, choice, confidence,
     candidates, chars, truncated, ms, input_tokens: usage && usage.input_tokens,
     // `usd` is only meaningful against the price it was costed at; carry both so a log
@@ -516,7 +588,9 @@ function appendLog(cfg, record) {
     // Present only with label logging on: a 12-hex digest, never the raw session id.
     ...(session ? { session } : {}),
     // Present only when the caller narrowed the candidates (the hook): which set was ranked.
-    ...(scope ? { scope } : {}), ...(scopeReason ? { scope_reason: scopeReason } : {}) });
+    ...(scope ? { scope } : {}), ...(scopeReason ? { scope_reason: scopeReason } : {}),
+    // Present only when synced account or plugin skills joined the candidates.
+    ...(extras ? { extras } : {}) });
   try {
     fs.mkdirSync(path.dirname(cfg.logPath), { recursive: true });
     fs.appendFileSync(cfg.logPath, line + '\n');
@@ -528,4 +602,5 @@ module.exports = {
   description, loadCandidates, readTomlSection, config, clampPrompt, route, formatContext, unregisteredPaths, appendLog,
   tokenise, stripExclusion, bm25, localRank, DEFAULT_CASCADE_CUTOFF,
   readRegisteredManifest, restrictToRegistered, REGISTERED_MANIFEST_CANDIDATES, MAX_CONTEXT_CHARS,
+  loadLoadableExtras, SYNCED_NAMESPACE,
 };

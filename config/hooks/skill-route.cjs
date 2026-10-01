@@ -8,7 +8,9 @@
 //
 // Puts the user's turn to System One as ONE Choice over every routable skill
 // registered for Claude Code (skills/registered-skills.txt; the whole baked tree
-// only if that manifest is unreadable) and injects the pick as context. The
+// only if that manifest is unreadable), plus the claude.ai account skills synced
+// to ~/.claude/skills/synced and the skills of enabled plugins, under the
+// qualified names the Skill tool lists them by, and injects the pick as context. The
 // model then loads the skill (or not) — this hook recommends, it never dispatches.
 //
 // Protocol: reads hook JSON from stdin. A pick is written to stdout in the only

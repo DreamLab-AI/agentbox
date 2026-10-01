@@ -324,6 +324,59 @@ describe('hook — registered candidate set (skills/registered-skills.txt)', () 
   });
 });
 
+describe('hook — synced account and enabled plugin skills', () => {
+  const criteriaSent = () => Object.keys(seen[0].body.questions.skill.criteria).sort();
+  let claudeDir;
+
+  beforeAll(() => {
+    claudeDir = path.join(tmp, 'claude-home');
+    const sync = path.join(claudeDir, 'skills', 'synced', 'acct_1');
+    const put = (dir, fm) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'SKILL.md'), `---\n${fm}\n---\n# x\n`); };
+    put(path.join(sync, 'pdf'), 'name: pdf\ndescription: "Read and write PDF files."');
+    put(path.join(sync, 'gone-stale'), 'name: gone-stale\nstatus: deprecated\ndescription: "Old."');
+    fs.writeFileSync(path.join(sync, 'manifest.json'), JSON.stringify({ skills: [
+      { name: 'pdf', description: 'manifest copy' }, { name: 'gone-stale' }, { name: 'not-on-disk', description: 'x' },
+    ] }));
+    const on = path.join(tmp, 'plugins', 'maker');
+    const off = path.join(tmp, 'plugins', 'dormant');
+    put(path.join(on, 'skills', 'maker'), 'name: maker\ndescription: "Make new skills."');
+    put(path.join(off, 'skills', 'sleepy'), 'name: sleepy\ndescription: "Never offered."');
+    fs.mkdirSync(path.join(claudeDir, 'plugins'), { recursive: true });
+    fs.writeFileSync(path.join(claudeDir, 'plugins', 'installed_plugins.json'), JSON.stringify({ version: 2, plugins: {
+      'maker@market': [{ installPath: on }], 'dormant@market': [{ installPath: off }],
+    } }));
+    fs.writeFileSync(path.join(claudeDir, 'settings.json'), JSON.stringify({
+      enabledPlugins: { 'maker@market': true, 'dormant@market': false } }));
+  });
+
+  test('the hook adds them under the Skill tool\'s qualified names and logs the count', async () => {
+    const m = path.join(tmp, 'extras-narrow.txt');
+    fs.writeFileSync(m, 'alpha-diagrams\n');
+    await runHook(PROMPT, baseEnv({ AGENTBOX_SKILL_ROUTE_REGISTERED_MANIFEST: m, AGENTBOX_SKILL_ROUTE_CLAUDE_DIR: claudeDir }));
+    expect(criteriaSent()).toEqual(['alpha-diagrams', 'anthropic-skills:pdf', 'maker:maker', 'none']);
+    expect(seen[0].body.questions.skill.criteria['anthropic-skills:pdf']).toBe('Read and write PDF files.');
+    expect(logLines()[0]).toMatchObject({ candidates: 3, scope: 'registered', extras: 2 });
+  });
+
+  test('disabled with 0, nothing is added and the log line is unchanged', async () => {
+    const m = path.join(tmp, 'extras-off.txt');
+    fs.writeFileSync(m, 'alpha-diagrams\n');
+    await runHook(PROMPT, baseEnv({ AGENTBOX_SKILL_ROUTE_REGISTERED_MANIFEST: m, AGENTBOX_SKILL_ROUTE_CLAUDE_DIR: '0' }));
+    expect(criteriaSent()).toEqual(['alpha-diagrams', 'none']);
+    expect(logLines()[0].extras).toBeUndefined();
+  });
+
+  test('an explicit candidate map is left exactly as given', async () => {
+    const cfg = lib.config({ ...baseEnv({ AGENTBOX_SKILL_ROUTE_CLAUDE_DIR: claudeDir }) });
+    await lib.route(PROMPT, cfg, { candidates: { 'alpha-diagrams': 'a', 'beta-harden': 'b' } });
+    expect(criteriaSent()).toEqual(['alpha-diagrams', 'beta-harden', 'none']);
+  });
+
+  test('a missing claude dir contributes nothing', () => {
+    expect(lib.loadLoadableExtras(path.join(tmp, 'nowhere'))).toEqual({});
+  });
+});
+
 describe('hook — local cascade (ADR-2095 addendum; gated off by default)', () => {
   // Matches no rubric token at all: every BM25 score is 0, margin 0, so it must escalate.
   const VAGUE = 'please could you look into the thing we talked about yesterday afternoon';
