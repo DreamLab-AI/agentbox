@@ -84,6 +84,12 @@ absence of evidence.
 | `bare citation on a message whose participant is declared without a path` | the sequence participant has no file bound | bind it: `participant X as fn<br/>file.ts:NN` |
 | `is labelled 'fn' but that symbol spans :A-B` | the label and the line disagree | fix whichever is wrong |
 | `could not be read` | the file is absent at the declared revision | check the sha, or the repo key in the map |
+| `is a backwards range` | the range end is below its start | re-derive both ends from the symbol |
+| `is not present at verified_commit <sha>; its citations are not checked` | the file did not exist at that sha (or is a `docs/` record, which is read from the working tree instead) | re-stamp the topic, or drop the citation |
+| `verified_commit <sha> is not in this clone (a shallow checkout? fetch the full history); no citation in this topic is line-checked` | the clone lacks the stamped commit, so nothing in the topic was verified | `git fetch --unshallow`; CI needs `fetch-depth: 0` |
+| `bare citation has no path before it in its paragraph (qualify it)` | a prose `` `:NNN` `` whose paragraph, table row or list item named no path | write the path, or cite the lead-in path in that item |
+
+Prose citations are checked with the same rules: a `` `P:a`-`b` `` or `` `P:a` to `P:b` `` pair is one range (the end is held to EOF and backwards only), and a bare `` `:N` `` takes its path from the same paragraph, table row or list item.
 
 The unresolvable class is the dangerous one. A corpus can show "0 errors" while a
 third of its citations were never checked, because the files were not listed.

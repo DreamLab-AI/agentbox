@@ -16,13 +16,26 @@
  *
  *   --check              validate only; do not write README.md / COVERAGE.md /
  *                        REGISTER.md (still exits 1 on error).
- *   --cite-check         resolve every `path:line` citation inside a diagram
- *                        against that topic's own `sources:` list and assert the
- *                        line exists and is not blank / punctuation. Reads the
+ *   --cite-check         resolve every `path:line` / `path:a-b` citation in a
+ *                        topic — inside the diagrams, in the narratives, in the
+ *                        paragraphs under each diagram and in the register
+ *                        markers — against that topic's own `sources:` list and
+ *                        assert the line exists and is not blank / punctuation.
+ *                        A bare `:N` resolves to the last path before it (in a
+ *                        diagram: its line or participant; in prose: its
+ *                        paragraph, restarted at each table row and list item).
+ *                        A range written across two code spans (`P:a`-`b`,
+ *                        `P:a` to `P:b`, also wrapping a line) is one range. A
+ *                        backwards range is flagged; a range end is checked for
+ *                        EOF only. Reads the
  *                        file at the topic's declared `verified_commit`
  *                        (`git show`), or the working tree when the topic
- *                        declares `worktree:`. Warns, never fails, unless
- *                        --strict-citations.
+ *                        declares `worktree:`. A revision the clone lacks is
+ *                        flagged once per topic (fetch full history). A file
+ *                        absent at that revision is
+ *                        flagged once per topic and not line-checked, except a
+ *                        `docs/` record, which is then read from the working
+ *                        tree. Warns, never fails, unless --strict-citations.
  *   --strict-citations   fail on any citation diagnostic.
  *   --worktree-citations read working-tree bytes for every topic, ignoring shas.
  *   --no-source-paths    skip the `sources:`/`governing:` existence checks (a
@@ -114,6 +127,8 @@ const MAX_WIDTH = 4500; // px — wider renders are illegible at any zoom
 const REQUIRED = ['id', 'title', 'area', 'governing', 'adrs', 'sources', 'verified_commit'];
 const NARRATIVE_H2 = ['For developers', 'For the business'];
 const REGISTER_KINDS = ['Tension', 'Debt', 'Drift', 'Open', 'Invariant'];
+// Register row-id prefix per kind. Not the kind's initial: Debt and Drift share one.
+const REGISTER_ID_PREFIX = { Tension: 'T', Debt: 'DB', Drift: 'DR', Open: 'O', Invariant: 'I' };
 // Extensions that count as a source file for the "uncovered sources" report.
 const COVERAGE_EXT = /\.(ts|tsx|mjs|cjs|js|jsx|rs|py|go|sh|yaml|yml|toml|json|Caddyfile)$|(^|\/)(Dockerfile[^/]*|Caddyfile|Makefile)$/;
 const COVERAGE_SKIP = /(^|\/)(node_modules|dist|target|build|coverage|\.claude-flow|\.agentic-qe|\.secrets|media|__pycache__)(\/|$)|\.test\.|\.spec\.|\.d\.ts$|pending-insights|\.gitkeep|package-lock|pnpm-lock|Cargo\.lock|\.vscodeignore|\.dockerignore|\.gitignore|\.env\.example|\.svg$|\.css$/;
@@ -349,11 +364,28 @@ function parseTopic(file, errors) {
   if (inFence) errors.push(`${rel}: unterminated code fence`);
   if (diagrams.length === 0) errors.push(`${rel}: no mermaid diagrams`);
   for (const need of NARRATIVE_H2) if (!h2s.some((h) => h.toLowerCase() === need.toLowerCase())) errors.push(`${rel}: missing narrative section '## ${need}'`);
-  return { file, rel, fm, diagrams, register, citeChecked: 0, citeWarnings: [] };
+  // Every line outside a fence, with its line in the file and the H2 it sits under, for
+  // --cite-check: the narratives, the paragraphs under each diagram and the register
+  // markers cite code as often as the diagrams do.
+  const prose = [];
+  {
+    const firstBodyLine = text.slice(0, text.length - body.length).split('\n').length;
+    let fenced = false, section = null;
+    lines.forEach((ln, i) => {
+      if (ln.startsWith('```')) { fenced = !fenced; return; }
+      if (fenced) return;
+      const h = ln.match(/^##\s+(\S+)/);
+      if (h) section = h[1];
+      prose.push({ text: ln, line: firstBodyLine + i, section });
+    });
+  }
+  return { file, rel, fm, diagrams, register, prose, citeChecked: 0, citeWarnings: [] };
 }
 
 // ---------------------------------------------------------------- citation check
-const CITE_RE = /([A-Za-z0-9_./-]*[A-Za-z0-9_-]\.[A-Za-z0-9]{1,12}|(?:^|[\s"(\[<>/])(?:Dockerfile(?:\.[A-Za-z0-9_-]+)?|Caddyfile)):(\d+)(?:\s*-\s*(\d+))?/g;
+// A cited path is `dir/name.ext`, a bare `Dockerfile[.x]` / `Caddyfile`, or a single-dot
+// root file (`.gitignore`, `.dockerignore`), the last two after a boundary character.
+const CITE_RE = /([A-Za-z0-9_./-]*[A-Za-z0-9_-]\.[A-Za-z0-9]{1,12}|(?:^|[\s"(\[<>/`])(?:Dockerfile(?:\.[A-Za-z0-9_-]+)?|Caddyfile|\.[A-Za-z][A-Za-z0-9_-]*)):(\d+)(?:\s*-\s*(\d+))?/g;
 
 /* Which repository owns a cited path, and under which key a {repo: sha} map
  * addresses it. A `../`-relative path is resolved and attributed to the git
@@ -391,63 +423,167 @@ function shaFor(t, repoKey) {
   }
   return repoKey === DEFAULT_REPO_KEY && /^[0-9a-f]{7,40}$/.test(String(v)) ? String(v) : null;
 }
+/* The cited file's lines at the topic's revision: `{ lines, absent }`. A file the
+ * revision does not hold is `absent` (the caller warns) and is not read from the
+ * working tree, because a line checked against bytes the stamp never saw proves
+ * nothing — except a `docs/` record, whose later edits do not move the code a topic
+ * describes, which is still read from the working tree after the warning. A revision
+ * the clone does not hold at all (a shallow checkout) is `noCommit`: nothing is read,
+ * and the caller says so once per topic rather than blaming every cited file. */
 const revCache = new Map();
+const commitCache = new Map();
+function commitPresent(dir, sha) {
+  const key = `${dir}@${sha}`;
+  if (!commitCache.has(key)) {
+    let ok = true;
+    try { execFileSync('git', ['-C', dir, 'cat-file', '-e', `${sha}^{commit}`], { stdio: 'ignore' }); } catch { ok = false; }
+    commitCache.set(key, ok);
+  }
+  return commitCache.get(key);
+}
 function revisionLines(t, p) {
   const r = repoOf(p);
   const useWT = flags.worktreeCitations || ('worktree' in t.fm);
   const sha = !useWT && r ? shaFor(t, r.key) : null;
+  if (sha && !commitPresent(r.abs, sha)) return { lines: null, absent: null, noCommit: sha };
   const key = `${sha || 'WT'}:${p}`;
   if (revCache.has(key)) return revCache.get(key);
-  let lines = null;
+  let lines = null, absent = null;
   if (sha) {
     try {
       const out = execFileSync('git', ['-C', r.abs, 'show', `${sha}:${r.rel}`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024 });
       lines = out.split('\n');
     } catch { lines = null; }
+    if (!lines) absent = { sha, record: r.rel.startsWith('docs/') };
   }
-  if (!lines) { try { lines = fs.readFileSync(path.join(repoRoot, p), 'utf8').split('\n'); } catch { lines = null; } }
-  revCache.set(key, lines);
-  return lines;
+  if (!lines && (!absent || absent.record)) { try { lines = fs.readFileSync(path.join(repoRoot, p), 'utf8').split('\n'); } catch { lines = null; } }
+  const res = { lines, absent };
+  revCache.set(key, res);
+  return res;
 }
 
-/* Citation diagnostics are structured — {topic, diagram, citation, message} —
- * so the console line and the JSON report render from one shape. */
+/* Citation diagnostics are structured — {topic, diagram, line, citation, message} —
+ * so the console line and the JSON report render from one shape. `line` is the
+ * topic-file line of a prose citation; a diagram citation carries none. */
 function citeText(w) {
-  return `${w.topic}${w.diagram ? ':' + w.diagram : ''} - ${w.citation ? w.citation + ' ' : ''}${w.message}`;
+  return `${w.topic}${w.diagram ? ':' + w.diagram : ''}${w.line ? ` (line ${w.line})` : ''} - ${w.citation ? w.citation + ' ' : ''}${w.message}`;
 }
 
 function citeCheck(topics) {
   const warnings = [];
   const BARE_RE = /(^|[^A-Za-z0-9_./:-]):(\d+)(?:\s*-\s*(\d+))?(?![\d.])/g;
+  // In prose a bare line reference is written in its own code span: `:1151`, `:82-93`.
+  const PROSE_BARE_RE = /`:(\d+)(?:\s*-\s*(\d+))?`/g;
+  // A repo path named in a code span without a line is not a citation, but it is what a
+  // reader resolves a later bare `:N` in the same paragraph against.
+  const PROSE_PATH_RE = /`((?:\.\.\/)*[\w.-]+(?:\/[\w.-]+)*\/(?:[\w.-]+\.\w{1,12}|Dockerfile(?:\.[\w-]+)?|Caddyfile))`/g;
+  // A range written across two code spans: `path:128`-`131`, `:128`-`131`, `:352`-`:353`,
+  // and the worded `path:478` to `path:493`.
+  const PROSE_SPLIT_RANGE_RE = /`([^`\s]*):(\d+)`\s*-\s*`:?(\d+)`/g;
+  const PROSE_WORDED_RANGE_RE = /`([^`\s]+):(\d+)` to `([^`\s]+):(\d+)`/g;
+  const PROSE_WRAP_START_RE = /`([^`\s]+):(\d+)`(\s+to)?\s*$/;
+  const PROSE_WRAP_END_RE = /^(\s*(to\s+)?)`([^`\s]+):(\d+)`/;
+  // A table row or a list item (bullet or numbered) opens a new citation context.
+  const PROSE_ITEM_RE = /^\s*(?:\||[-*+]\s|\d+[.)]\s)/;
   for (const t of topics) {
     const linesOf = (p) => revisionLines(t, p);
-    const emit = (d, citation, message) => {
-      t.citeWarnings.push({ diagram: d ? d.id : null, citation, message });
-      warnings.push({ topic: t.rel, diagram: d ? d.id : null, citation, message });
+    const absentNoted = new Set();
+    const emit = (d, citation, message, line) => {
+      const at = line ? { line } : {};
+      t.citeWarnings.push({ diagram: d ? d.id : null, ...at, citation, message });
+      warnings.push({ topic: t.rel, diagram: d ? d.id : null, ...at, citation, message });
     };
+    // `endOnly`: the end of a range whose start was checked on an earlier line, so only
+    // the end is read (EOF, backwards) and nothing already reported is reported again.
+    const check = (d, cited, a, b, line, endOnly = false) => {
+      cited = cited.trim().replace(/^[\s"(\[<>/`]/, '');
+      if (/^\d+(\.\d+)+$/.test(cited)) return; // host:port
+      if (!endOnly) t.citeChecked++;
+      const srcPaths = (t.fm.sources || []).map((s) => s.split(':')[0]);
+      const exact = srcPaths.filter((sp) => sp === cited || sp === './' + cited);
+      const hits = exact.length ? exact : srcPaths.filter((sp) => sp.endsWith('/' + cited));
+      if (endOnly && hits.length !== 1) return;
+      if (hits.length === 0) { emit(d, `${cited}:${a}`, "cites a file that is not in this topic's sources: (unresolvable, never checked)", line); return; }
+      if (hits.length > 1) { emit(d, `${cited}:${a}`, `is ambiguous: matches ${hits.length} sources: entries`, line); return; }
+      const src = hits[0];
+      if (b && Number(b) < Number(a)) emit(d, `${src}:${a}-${b}`, 'is a backwards range', line);
+      const { lines, absent, noCommit } = linesOf(src);
+      if (noCommit) {
+        if (!absentNoted.has(`@${noCommit}`)) {
+          absentNoted.add(`@${noCommit}`);
+          emit(null, `verified_commit ${noCommit}`, 'is not in this clone (a shallow checkout? fetch the full history); no citation in this topic is line-checked');
+        }
+        return;
+      }
+      if (absent && !absentNoted.has(src)) {
+        absentNoted.add(src);
+        emit(d, src, `is not present at verified_commit ${absent.sha.slice(0, 7)}; ${absent.record ? 'read from the working tree instead (a docs/ record)' : 'its citations are not checked'}`, line);
+      }
+      if (!lines) { if (!absent) emit(d, src, 'could not be read', line); return; }
+      for (const n of (endOnly ? [b] : [a, b]).filter(Boolean).map(Number)) {
+        if (n > lines.length) emit(d, `${src}:${n}`, `past EOF (file has ${lines.length} lines)`, line);
+      }
+      const n = Number(a);
+      if (!endOnly && n <= lines.length) {
+        const txt = (lines[n - 1] || '').trim();
+        if (!txt) emit(d, `${src}:${n}`, 'is blank', line);
+        else if (/^[)\]}>;,]+$/.test(txt)) emit(d, `${src}:${n}`, `is punctuation only ('${txt}')`, line);
+      }
+    };
+
+    // Prose: a paragraph (reset at a blank line or a heading) carries its last path,
+    // so a bare `:N` later in it resolves the way a reader resolves it. A table row or a
+    // list item starts again from the path the block's lead-in named (if any), so row 5
+    // never resolves against a path from row 2; a continuation line keeps its item's path.
+    let lastProsePath = null, blockPath = null, inBlock = false, wrap = null;
+    for (const p of t.prose) {
+      if (!p.text.trim() || /^#{1,6}\s/.test(p.text)) { lastProsePath = null; blockPath = null; inBlock = false; }
+      else if (PROSE_ITEM_RE.test(p.text)) {
+        if (!inBlock) { blockPath = lastProsePath; inBlock = true; }
+        lastProsePath = blockPath;
+      }
+      const d = p.section && /\.\d+$/.test(p.section) ? { id: p.section } : null;
+      // A worded range that wraps a line: its start ended the previous line, and this
+      // line opens with its end (`P:a` to⏎`P:b`, or `P:a`⏎to `P:b`).
+      let lead = p.text;
+      const paths = [];
+      const w0 = wrap && PROSE_WRAP_END_RE.exec(p.text);
+      if (w0 && w0[3] === wrap.cited && (wrap.to || w0[2])) {
+        paths.push({ cited: w0[3], off: w0[1].length });
+        check(d, w0[3], wrap.a, w0[4], p.line, true);
+        lead = ' '.repeat(w0[0].length) + p.text.slice(w0[0].length);
+      }
+      const ws = PROSE_WRAP_START_RE.exec(p.text);
+      wrap = ws ? { cited: ws[1], a: ws[2], to: Boolean(ws[3]) } : null;
+      // A range split over two code spans is one range, rewritten in place (padded, so
+      // offsets hold) to the one-span form the rules below already check: `P:a`-`b`,
+      // `:a`-`:b` and `P:a` to `P:b` (same path) all become `P:a-b`. Its end is then
+      // EOF- and backwards-checked, and is not held to the punctuation rule.
+      const pad = (m0, s) => s + ' '.repeat(m0.length - s.length);
+      const text = lead
+        .replace(PROSE_SPLIT_RANGE_RE, (m0, cited, a, b) => pad(m0, `\`${cited}:${a}-${b}\``))
+        .replace(PROSE_WORDED_RANGE_RE, (m0, c1, a, c2, b) => (c1 === c2 ? pad(m0, `\`${c1}:${a}-${b}\``) : m0));
+      const stripped = text.replace(CITE_RE, (m0, cited, a, b, off) => {
+        paths.push({ cited, off });
+        check(d, cited, a, b, p.line);
+        return ' '.repeat(m0.length);
+      });
+      // Only a path the topic cites from: one named as data (a tenant path a rule grants)
+      // is not what a later `:N` in the sentence refers to.
+      for (const pm of stripped.matchAll(PROSE_PATH_RE)) {
+        if ((t.fm.sources || []).some((s) => { const sp = s.split(':')[0]; return sp === pm[1] || sp.endsWith('/' + pm[1]); })) paths.push({ cited: pm[1], off: pm.index });
+      }
+      paths.sort((x, y) => x.off - y.off);
+      for (const bm of stripped.matchAll(PROSE_BARE_RE)) {
+        const before = paths.filter((x) => x.off < bm.index);
+        const ctx = before.length ? before[before.length - 1].cited : lastProsePath;
+        if (!ctx) { emit(d, `:${bm[1]}`, 'bare citation has no path before it in its paragraph (qualify it)', p.line); continue; }
+        check(d, ctx, bm[1], bm[2], p.line);
+      }
+      if (paths.length) lastProsePath = paths[paths.length - 1].cited;
+    }
+
     for (const d of t.diagrams) {
-      const check = (cited, a, b) => {
-        cited = cited.trim().replace(/^[\s"(\[<>/]/, '');
-        if (/^\d+(\.\d+)+$/.test(cited)) return; // host:port
-        t.citeChecked++;
-        const srcPaths = (t.fm.sources || []).map((s) => s.split(':')[0]);
-        const exact = srcPaths.filter((sp) => sp === cited || sp === './' + cited);
-        const hits = exact.length ? exact : srcPaths.filter((sp) => sp.endsWith('/' + cited));
-        if (hits.length === 0) { emit(d, `${cited}:${a}`, "cites a file that is not in this topic's sources: (unresolvable, never checked)"); return; }
-        if (hits.length > 1) { emit(d, `${cited}:${a}`, `is ambiguous: matches ${hits.length} sources: entries`); return; }
-        const src = hits[0];
-        const lines = linesOf(src);
-        if (!lines) { emit(d, src, 'could not be read'); return; }
-        for (const n of [a, b].filter(Boolean).map(Number)) {
-          if (n > lines.length) emit(d, `${src}:${n}`, `past EOF (file has ${lines.length} lines)`);
-        }
-        const n = Number(a);
-        if (n <= lines.length) {
-          const txt = (lines[n - 1] || '').trim();
-          if (!txt) emit(d, `${src}:${n}`, 'is blank');
-          else if (/^[)\]}>;,]+$/.test(txt)) emit(d, `${src}:${n}`, `is punctuation only ('${txt}')`);
-        }
-      };
       const text = d.src.replace(/\\n/g, '\n');
       const partFile = new Map();
       for (const pm of text.matchAll(/^[ \t]*(?:participant|actor)\s+(\w+)(?:\s+as\s+(.+))?$/gm)) {
@@ -469,7 +605,7 @@ function citeCheck(topics) {
         const stripped = line.replace(CITE_RE, (m0, cited, a, b, off) => {
           paths.push({ cited, off });
           lastPath = cited;
-          check(cited, a, b);
+          check(d, cited, a, b);
           return ' '.repeat(m0.length);
         });
         for (const bm of stripped.matchAll(BARE_RE)) {
@@ -479,7 +615,7 @@ function citeCheck(topics) {
           if (lc === 'UNBOUND') { emit(d, `:${bm[2]}`, 'bare citation on a message whose participant is declared without a path'); continue; }
           const ctx = before.length ? before[before.length - 1].cited : (lc || lastPath);
           if (!ctx) { emit(d, `:${bm[2]}`, "bare citation has no path anywhere before it (qualify it, or write 'port NNNN')"); continue; }
-          check(ctx, bm[2], bm[3]);
+          check(d, ctx, bm[2], bm[3]);
         }
       }
     }
@@ -502,7 +638,7 @@ function symbolCheck(topics) {
       const [, citedRaw, a, b] = c, cited = citedRaw.trim(), ln = +a, end = b ? +b : ln;
       const hits = (t.fm.sources || []).filter((s) => { const sp = s.split(':')[0]; return sp === cited || sp.endsWith('/' + cited); });
       if (hits.length !== 1) continue;
-      const src = hits[0].split(':')[0], lines = linesOf(src);
+      const src = hits[0].split(':')[0], { lines } = linesOf(src);
       if (!lines || ln > lines.length) continue;
       const near = lines.slice(Math.max(0, ln - 4), ln + 3).join('\n');
       const names = [...new Set([...label.slice(0, c.index).replace(/<br\s*\/?>/g, ' ').matchAll(FN_RE)].map((x) => x[1]))].filter((n) => !/^(participant|actor|the|and|for|with|from|into|over)$/i.test(n));
@@ -717,7 +853,7 @@ function writeIndexes(topics) {
         if (!href.includes('/')) return `](${dir === '.' ? '' : dir + '/'}${href})`; // sibling in the same area
         return m0;                                                        // already corpus-relative
       });
-      reg.push(`| ${kind[0]}-${String(i + 1).padStart(2, '0')} | ${where}${scope} | ${hoisted.replace(/\|/g, '\\|')} |`);
+      reg.push(`| ${REGISTER_ID_PREFIX[kind]}-${String(i + 1).padStart(2, '0')} | ${where}${scope} | ${hoisted.replace(/\|/g, '\\|')} |`);
     });
     reg.push('');
   }
