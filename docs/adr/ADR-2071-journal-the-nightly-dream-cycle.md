@@ -3,12 +3,12 @@ id: ADR-2071
 title: Journal the nightly dream cycle before policing it, and fix the deny-path typo first
 date: 2026-09-05
 decision_status: proposed
-implementation_status: none
+implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e070514d808b218574403377fb75e0e1a0a256b3
-verified_paths: []
+verified_commit: 3c5213360f429d521a65317a22a23f8625dd2916
+verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/sweep.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/ledger.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
 repo: agentbox
@@ -108,3 +108,53 @@ contains a matched `exec.tool.started`/`exec.tool.completed` pair per side effec
 each carrying the night's `session_urn`, and (c) with the management API stopped,
 the cycle still completes and its ledger row is still written, proving the
 documented fail-open posture rather than an accidental one.
+
+## Implementation status (2026-09-30)
+
+Phase 1 landed at `3c5213360`; the decision stays `proposed` until the acceptance
+test above passes on a deployed image. The planning cycle of 2026-09-21 made this the
+cycle's single focus on 30 September (day-five abort call).
+
+- **Route.** `POST /v1/exec/record` (`management-api/routes/exec-record.js`) appends
+  through the same `getActionPlane()` journal singleton as `POST /v1/tasks`, so the
+  management API stays the only writer. It accepts `turn.*`, `step.*`,
+  `tool.called` and `tool.completed` only; the model-visibility types keep their D2
+  semantics internal. A caller key makes a retry idempotent. No live events adapter
+  answers 503. Operator-gated like every `/v1` route.
+- **Engine.** `src/journal.rs` opens one session per repo cycle
+  (`<night_id>-<unix seconds>`) and one for the night-level work, and posts a
+  `tool.called` / `tool.completed` pair, linked by `causation`, around every side
+  effect: annexe ssh, clone and exec; each LLM call (context, source, verdict,
+  fallback, repair); candidate worktree; push and draft PR; branch discard; ledger
+  append and commit; RuVector store; inbox writes; forum governance, digest and
+  suggestions. Fail-open with a three-strike breaker, so a down API costs seconds;
+  per-session counters (`recorded`, `failed`, `skipped`, `unpaired`) land in
+  `dream-last-night.json`. The vocabulary is ADR-057's `tool.called`, not the
+  `exec.tool.started` this record first named.
+- **Two additions from the planning cycle's stopping rule.** The engine commits its
+  own ledger row on the default branch (`git commit --only`, local, never pushed,
+  skipped on a feature branch), because rows left in the working tree made the
+  27 to 30 September nights invisible to git. And a seven-day sweep deletes a
+  `dream/*` branch whose PR merged or closed, closes an unreviewed PR older than
+  seven days, and deletes a PR-less branch older than seven days, keyed on PR state
+  because squash merges never make a dream branch an ancestor.
+  `DREAM_JOURNAL=0`, `DREAM_LEDGER_COMMIT=0` and `DREAM_SWEEP=0` opt out.
+- **Corrections to the context above.** The `'deny'`/`'denied'` precondition was
+  already fixed (`action-plane.js:277-281`). Auth needed no `flake.nix` edit: the
+  supervised dream engine already inherits `MANAGEMENT_API_KEY`,
+  `MANAGEMENT_API_PORT` and `MANAGEMENT_API_AUTH_MODE=hybrid` from supervisord
+  (checked on the live process). The fragility stands: if the mode is unset and the
+  mesh auto-elevates to `strict-nip98`, posts fail, the night still runs, and the
+  failure count shows it.
+- **Known limit.** The journal's per-session sequence lives in the management-api
+  process and is not hydrated after a restart, so an API restart in the middle of a
+  cycle restarts that session at seq 0. Fresh sessions per attempt keep engine
+  restarts clean; an API restart mid-night is visible as a sequence reset.
+
+Tested: `tests/integration/exec-record.test.js` (six cases, including acceptance
+clause (a) on a real on-disk events log verified with `audit-chain.verifyFiles`);
+`journal.rs` tests (pairing and causation against a stub API, clause (c)'s
+fail-open against a closed port, the breaker, a 401); `sweep.rs` and `ledger.rs`
+tests against scratch git repos. Clauses (a) to (c) end to end need one
+`dream-engine --target <repo>` run on an image built from this commit.
+

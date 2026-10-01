@@ -11,7 +11,9 @@
 //! receipts alone, whether ACCEPT survives. [`source`] reads the files a
 //! hypothesis touches from the dispatched commit so the model's diff is written
 //! against real text (ADR-2114). [`runstate`] keeps the run
-//! restart-safe and [`roster`] keeps the nightly schedule fair.
+//! restart-safe and [`roster`] keeps the nightly schedule fair. [`journal`]
+//! records every side effect through the management API (ADR-2071), and
+//! [`sweep`] applies the seven-day rule to `dream/*` branches.
 
 pub mod candidate;
 pub mod compile;
@@ -23,6 +25,7 @@ pub mod engine;
 pub mod gate;
 pub mod governance;
 pub mod inbox;
+pub mod journal;
 pub mod ledger;
 pub mod llm;
 pub mod manifest;
@@ -35,6 +38,7 @@ pub mod runner;
 pub mod runstate;
 pub mod ruvector;
 pub mod source;
+pub mod sweep;
 pub mod verdict;
 pub mod witness;
 pub mod zone_crypto;
