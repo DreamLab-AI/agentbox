@@ -677,7 +677,12 @@ cache_warm_floor_tokens = 100000 # never arm the idle nudge below this context s
 cache_ttl_seconds = 0            # 0 = detect (subscription 3600, API key 300); else explicit
 cache_ttl_margin_seconds = 300   # fire this long before expiry (half the TTL when the margin would exceed it)
 keep_threshold = 0.5
-min_reduction_ratio = 0.25
+# 0.55, not 0.25 (2026-10-01): 42 Jev compactions since the 180k trigger landed at a
+# median 84k after (built-in summary: ~60-75k), but the ones Jev estimated under
+# 55% left 100-196k, re-arming within one or two 40k steps. Those now take the
+# summary; the plugin's estimate ignores the fixed system/tool prefix, so the real
+# cut is smaller than the ratio it reports.
+min_reduction_ratio = 0.55
 model = "jev-latest"
 
 [features.sovereign_system_one]
