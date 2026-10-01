@@ -3,24 +3,25 @@
  * Reads endpoint from AGENTBOX_OTLP_ENDPOINT; if unset, uses no-op tracer
  */
 
+const { trace } = require('@opentelemetry/api');
 const { NodeSDK } = require('@opentelemetry/sdk-node');
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
 const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
 
 let sdk = null;
-let tracerProvider = null;
+let tracer = null;
 
 /**
  * Initialize OpenTelemetry tracing
  * If AGENTBOX_OTLP_ENDPOINT is set, exports to that endpoint
- * Otherwise uses a no-op tracer (null provider — startSpan returns no-op)
+ * Otherwise uses a no-op tracer (null tracer — startSpan returns no-op)
  */
 function initTracing() {
   const endpoint = process.env.AGENTBOX_OTLP_ENDPOINT;
 
   if (!endpoint) {
     console.log('[tracing] AGENTBOX_OTLP_ENDPOINT not set, using no-op tracer');
-    tracerProvider = null;
+    tracer = null;
     return;
   }
 
@@ -35,11 +36,13 @@ function initTracing() {
     });
 
     sdk.start();
-    tracerProvider = sdk.getNodeTracerProvider();
+    // NodeSDK registers its provider globally on start(); it exposes no
+    // provider getter, so manual spans go through the global API.
+    tracer = trace.getTracer('agentbox');
     console.log(`[tracing] Started OpenTelemetry SDK, exporting to ${endpoint}`);
   } catch (error) {
     console.error('[tracing] Failed to initialize OpenTelemetry:', error.message);
-    tracerProvider = null;
+    tracer = null;
   }
 }
 
@@ -50,12 +53,11 @@ function initTracing() {
  * @returns {Function} A function that ends the span
  */
 function startSpan(name, attributes = {}) {
-  if (!tracerProvider) {
+  if (!tracer) {
     return () => {}; // No-op
   }
 
   try {
-    const tracer = tracerProvider.getTracer('agentbox');
     const span = tracer.startSpan(name);
 
     Object.entries(attributes).forEach(([key, value]) => {

@@ -22,6 +22,20 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 
+// Keep the real action pipeline and journal, but supply an isolated events
+// adapter. These route-contract fixtures must not depend on a host manifest
+// or try to write the container's /var/lib/agentbox state.
+jest.mock('../../management-api/adapters/manifest-loader', () => ({
+  ...jest.requireActual('../../management-api/adapters/manifest-loader'),
+  loadManifest: () => ({}),
+}));
+jest.mock('../../management-api/adapters/index', () => ({
+  resolveAdapters: () => {
+    const { LocalJsonlEventsAdapter } = require('../../management-api/adapters/events/local-jsonl');
+    return { events: new LocalJsonlEventsAdapter({ appendFn: () => {} }) };
+  },
+}));
+
 const Fastify = require('../../management-api/node_modules/fastify');
 const tasksRoutes = require('../../management-api/routes/tasks');
 const ProcessManager = require('../../management-api/utils/process-manager');

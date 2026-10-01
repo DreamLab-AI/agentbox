@@ -256,20 +256,20 @@ async function linkedObjectsRoutes(fastify, options) {
   // ---- External viewer redirect -------------------------------------------
   if (viewer.impl === 'external') {
     fastify.get(`${viewer.mountPath}`, async (req, reply) => {
-      reply.redirect(307, viewer.externalUrl);
+      reply.redirect(viewer.externalUrl, 307);
     });
     fastify.get(`${viewer.mountPath}/*`, async (req, reply) => {
       const tail = req.url.slice((viewer.mountPath || '/lo').length);
       // panes/<file> already handled above; fall through to the manifest
       // for everything else by redirecting.
-      reply.redirect(307, viewer.externalUrl + tail);
+      reply.redirect(viewer.externalUrl + tail, 307);
     });
     return;
   }
 
   // ---- Local bundle pass-through -------------------------------------------
   fastify.get(`${viewer.mountPath}`, async (req, reply) => {
-    reply.redirect(302, `${viewer.mountPath}/index.html`);
+    reply.redirect(`${viewer.mountPath}/index.html`, 302);
   });
 
   fastify.get(`${viewer.mountPath}/*`, async (req, reply) => {

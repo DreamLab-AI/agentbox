@@ -80,16 +80,19 @@ _sentinelTimer = setInterval(_checkSentinel, 2000);
 
 // Initialize Fastify with logger
 const app = fastify({
-  logger,
-  requestIdLogLabel: 'reqId',
-  disableRequestLogging: false,
+  // Fastify 5: a pre-built pino instance goes in `loggerInstance`;
+  // `logger` now only accepts a boolean or pino options object.
+  loggerInstance: logger,
+  // Request-id label stays the default `reqId`; request logging stays on.
   trustProxy: true,
-  // Canonical agentbox URNs carried as path params (/v1/uri/:urn,
-  // /v1/beads/:id, …) are scope-bearing and content-addressed — e.g.
-  // `urn:agentbox:bead:<64-hex>:sha256-12-<12>` is ~105 chars, over
-  // find-my-way's 100-char default, which would 404 a valid id. Raise the
-  // param ceiling so every ADR-013 identifier round-trips as a path segment.
-  maxParamLength: 512
+  routerOptions: {
+    // Canonical agentbox URNs carried as path params (/v1/uri/:urn,
+    // /v1/beads/:id, …) are scope-bearing and content-addressed — e.g.
+    // `urn:agentbox:bead:<64-hex>:sha256-12-<12>` is ~105 chars, over
+    // find-my-way's 100-char default, which would 404 a valid id. Raise the
+    // param ceiling so every ADR-013 identifier round-trips as a path segment.
+    maxParamLength: 512
+  }
 });
 
 // Finding 1 (NIP-98 body binding): register a content-type parser that
@@ -183,7 +186,11 @@ async function probePodHealth() {
 const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:8080,http://localhost:5901').split(',').map(s => s.trim());
 app.register(cors, {
   origin: allowedOrigins,
-  credentials: true
+  credentials: true,
+  // @fastify/cors 11 narrowed the default to the CORS-safelisted methods
+  // (GET, HEAD, POST); keep the pre-11 default so PUT/PATCH/DELETE preflights
+  // from the allowed origins still succeed.
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"]
 });
 
 // Middleware: WebSocket support
@@ -199,16 +206,14 @@ app.register(rateLimit, {
   skipOnError: false
 });
 
-// Metrics tracking middleware
-app.addHook('onRequest', async (request, reply) => {
-  request.startTime = Date.now();
-});
-
+// Metrics tracking middleware. reply.elapsedTime is Fastify's own timer from
+// request start, so it is defined even when a plugin's onRequest hook (e.g.
+// @fastify/cors answering a preflight) replies before any later hook runs.
 app.addHook('onResponse', async (request, reply) => {
-  const duration = (Date.now() - request.startTime) / 1000;
+  const duration = reply.elapsedTime / 1000;
   metrics.recordHttpRequest(
     request.method,
-    request.routerPath || request.url,
+    request.routeOptions.url || request.url,
     reply.statusCode,
     duration
   );
@@ -759,7 +764,7 @@ app.setErrorHandler((error, request, reply) => {
   // Record error in metrics
   metrics.recordError(
     error.name || 'UnknownError',
-    request.routerPath || request.url
+    request.routeOptions.url || request.url
   );
 
   if (statusCode >= 500) {

@@ -316,26 +316,27 @@ async function comfyuiRoutes(fastify, options) {
   /**
    * WebSocket for real-time updates
    */
-  fastify.get('/v1/comfyui/stream', { websocket: true }, (connection, request) => {
+  fastify.get('/v1/comfyui/stream', { websocket: true }, (socket, request) => {
+    // @fastify/websocket >=10 passes the WebSocket itself (no .socket wrapper).
     const clientId = Date.now().toString();
     logger.info({ clientId }, 'WebSocket client connected');
 
     // Subscribe to workflow events
     const unsubscribe = comfyuiManager.subscribe((event) => {
       try {
-        connection.socket.send(JSON.stringify(event));
+        socket.send(JSON.stringify(event));
       } catch (error) {
         logger.error({ error: error.message }, 'Failed to send WebSocket message');
       }
     });
 
-    connection.socket.on('message', (message) => {
+    socket.on('message', (message) => {
       try {
         const data = JSON.parse(message.toString());
 
         // Handle ping/pong
         if (data.type === 'ping') {
-          connection.socket.send(JSON.stringify({ type: 'pong' }));
+          socket.send(JSON.stringify({ type: 'pong' }));
         }
 
         // Handle workflow subscription
@@ -351,7 +352,7 @@ async function comfyuiRoutes(fastify, options) {
       }
     });
 
-    connection.socket.on('close', () => {
+    socket.on('close', () => {
       logger.info({ clientId }, 'WebSocket client disconnected');
       unsubscribe();
     });

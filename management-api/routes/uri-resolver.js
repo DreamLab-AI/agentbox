@@ -72,7 +72,7 @@ async function uriResolverRoutes(fastify, options) {
         });
         return;
       }
-      reply.redirect(307, `${podBase}/.well-known/did.json`);
+      reply.redirect(`${podBase}/.well-known/did.json`, 307);
       return;
     }
 
@@ -97,7 +97,7 @@ async function uriResolverRoutes(fastify, options) {
           // solid-pod-rs's did-nostr feature (ADR-010) accepts both hex
           // pubkey and bech32 npub at /agents/* — agentbox URIs always
           // carry pubkey hex; the pod resolves the equivalence.
-          reply.redirect(307, `${podBase}/agents/${parsed.pubkey}/${kind}/${parsed.local}`);
+          reply.redirect(`${podBase}/agents/${parsed.pubkey}/${kind}/${parsed.local}`, 307);
         } else {
           reply.code(404).send({ error: 'not-resolvable', reason: 'kind requires owner scope', urn });
         }
@@ -105,12 +105,12 @@ async function uriResolverRoutes(fastify, options) {
 
       case 'activity':
       case 'event':
-        reply.redirect(307, `/v1/agent-events?id=${encodeURIComponent(urn)}`);
+        reply.redirect(`/v1/agent-events?id=${encodeURIComponent(urn)}`, 307);
         return;
 
       case 'mcp':
       case 'thing':
-        reply.redirect(307, `/v1/things/${parsed.local}`);
+        reply.redirect(`/v1/things/${parsed.local}`, 307);
         return;
 
       case 'memory':
@@ -121,29 +121,29 @@ async function uriResolverRoutes(fastify, options) {
         if (dot !== -1) {
           const ns  = local.slice(0, dot);
           const key = local.slice(dot + 1);
-          reply.redirect(307, `/v1/memory/${encodeURIComponent(key)}?namespace=${encodeURIComponent(ns)}`);
+          reply.redirect(`/v1/memory/${encodeURIComponent(key)}?namespace=${encodeURIComponent(ns)}`, 307);
         } else {
-          reply.redirect(307, `/v1/memory/${encodeURIComponent(local)}`);
+          reply.redirect(`/v1/memory/${encodeURIComponent(local)}`, 307);
         }
         return;
       }
 
       case 'skill':
-        reply.redirect(307, `/v1/skills/${parsed.local}`);
+        reply.redirect(`/v1/skills/${parsed.local}`, 307);
         return;
 
       case 'adr':
       case 'prd':
       case 'ddd':
-        reply.redirect(307, `/docs/reference/${kind}/${parsed.local}.md`);
+        reply.redirect(`/docs/reference/${kind}/${parsed.local}.md`, 307);
         return;
 
       case 'meta':
-        reply.redirect(307, `/v1/meta`);
+        reply.redirect(`/v1/meta`, 307);
         return;
 
       case 'bead':
-        reply.redirect(307, `/v1/beads/${parsed.local || parsed.pubkey}`);
+        reply.redirect(`/v1/beads/${parsed.local || parsed.pubkey}`, 307);
         return;
 
       default:

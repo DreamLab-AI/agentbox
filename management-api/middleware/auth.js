@@ -69,7 +69,7 @@ function verifyNip98Header(header, request) {
     return null;
   }
 
-  const requestUrl = `${request.protocol || 'http'}://${request.hostname}${request.url}`;
+  const requestUrl = `${request.protocol || 'http'}://${request.host}${request.url}`;
 
   // Full path: delegate to NostrBridge for Schnorr signature verification.
   if (nostrBridge) {
