@@ -110,6 +110,14 @@ product's rule, because the walk that produced the screenshot ran on the default
 When a capture or a corpus sentence says a component is mocked, the chapter says so and limits
 the claim to what the mock does; what the real component does is a question, not an inference.
 
+**Executing code outranks the corpus, and the code's own comments.** On the same refresh the
+corpus and two code comments disagreed about the deploy grant and the *auto* dial. The comments
+said "an admin-only, audited act" and "records the signal"; the code reads the grant from an
+environment variable on each request and writes an audit event only for escalated signals,
+which is what the corpus said. The order of authority is: what executes, then the corpus, then
+comments and docs. A disagreement is settled by reading the branch that runs, and the losing
+side is filed as drift, never quoted to a reader.
+
 **Read the build before writing the brief.** The first refresh brief asked every chapter to
 keep a `covers:` list of topic ids in its front matter. The pack's build reads exactly four
 keys (`id`, `order`, `title`, `question`) and ignores the rest, so the instruction would have
