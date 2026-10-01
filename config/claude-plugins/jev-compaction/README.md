@@ -15,7 +15,10 @@ What agentbox adds, in `hooks/`:
 | **Trigger** | `min(compactAtPercent × window, compactAtTokens)` (default 180k), re-armed only after `rearmTokens` (40k) of growth past the post-compaction size, so a compaction that cannot get under the trigger does not repeat every turn. |
 | **Cache-warm** | An idle main session above `cacheWarmFloorTokens` (100k) compacts (`cacheWarm: compact`), or is told to (`notify`), `cacheTtlMarginSeconds` before its prompt cache expires; TTL detected (subscription 1 h, API key 5 min) or `cacheTtlSeconds`. Any new turn cancels it. |
 | **Switch** | `/jev-compact on` · `/jev-compact off` · `/jev-compact status`. Persisted in the plugin store across sessions. Starting position is `enabledByDefault`, projected by the entrypoint from `[features.jev_compaction].enabled_by_default`. |
-| **Fail-open** | Any throw, missing `TYPESAFE_API_KEY`, reduction under `minReductionRatio`, or a tainted session ⇒ the built-in compaction, with one `jev-compaction:` log line naming the reason. |
+| **Scope** | Only the main conversation's real compactions reach Jev. A `precompute` dispatch answers `{ skip }` (it installs nothing, so sending the history would be egress for no compaction); a subagent's or fork's own transcript (`agentId`) goes to the built-in compaction, still taint-scanned. Only a main-loop `turn.complete` with `reason: answer` can trigger, and its guard is claimed before the first `await`. |
+| **Deadline** | The whole Jev round, every batch included, races `$.clock.sleep(compactionTimeoutMs)` (15 s). Past it the built-in summary runs; a late answer is discarded. |
+| **Redaction** | The Jev request body (state and questions, never the transcript) passes through `hooks/redact.mjs`: the plugin's own key exactly, plus Anthropic/OpenAI/GitHub/AWS/Slack/Google/Stripe/npm/HF/GitLab tokens, JWTs, `nsec1…`, PEM private keys (truncated ones too), `Bearer`/`Basic` credentials, `scheme://user:pass@`, and the value of a named credential slot (`*_API_KEY=`, `"password":`, `--token`). No entropy guessing — it would eat tool ids and hashes Jev needs. Tested in `tests/config/jev-compaction-redact.test.mjs`. |
+| **Fail-open** | Any throw, missing `TYPESAFE_API_KEY`, reduction under `minReductionRatio`, a missed deadline, or a tainted session ⇒ the built-in compaction, with one `jev-compaction:` log line naming the reason. |
 
 ## Gate and registration
 
@@ -28,7 +31,7 @@ when `false` it retracts all three (byte-identical-when-off). BOOT-class. Needs 
 ## Egress
 
 Every compaction sends the conversation — user and assistant text, tool inputs (≤1,000
-chars each), tool-result *sizes* (never their contents) — to TypeSafe. That is an operator
+chars each), tool-result *sizes* (never their contents), credential shapes redacted — to TypeSafe. That is an operator
 decision recorded in ADR-2093 with the email carve-out above; it widens ADR-2090, which
 covered the routing prompt alone. To fence another must-not-leave class per project, add its
 tool prefix to `taintTools` (plugin option) — no code change.
@@ -44,7 +47,19 @@ cost — ≈ $14–18 per busy agent-hour in cache reads against the built-in su
 
 ```sh
 node --test tests/config/jev-compaction-policy.test.mjs         # the pure decisions
+node --test tests/config/jev-compaction-redact.test.mjs         # the request-body redactor
 claude plugin test config/claude-plugins/jev-compaction         # the hooks under the engine
 claude plugin validate config/claude-plugins/jev-compaction/.claude-plugin/plugin.json
 CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude --plugin-dir config/claude-plugins/jev-compaction
 ```
+
+## Changes
+
+- **0.2.0** (2026-10-01) — ports three open upstream PRs, adapted: #112/#107 (precompute and
+  subagent/fork compactions never reach Jev; only completed main-loop answers trigger; guard
+  claimed before the first await), #117 (`compactionTimeoutMs` deadline, falling open to the
+  built-in summary rather than upstream's `{ skip }`), #98 (request-body redaction, rewritten
+  narrower — see ADR-2093 amendment 2026-10-01). Not ported from #98: the handle-stripping
+  `--resume` workaround.
+- **0.1.0** — initial vendoring at upstream `e3f262a` with the taint gate, token trigger,
+  hysteresis, cache-warm compaction and switch.

@@ -259,3 +259,66 @@ export function expiredSessionKeys(entries, now, ttlMs = SESSION_STATE_TTL_MS) {
   }
   return out;
 }
+
+/**
+ * Which session.compact dispatches may reach Jev (ADR-2093 amendment 2026-10-01, from
+ * upstream PR #112 / issue #107). Only the main conversation's real compactions:
+ *   • `precompute` installs nothing — sending the history ahead of time is egress for no
+ *     compaction, so the hook answers `{ skip }` and the real one comes through later;
+ *   • an `agentId` names a subagent's or fork's own transcript (a fork carries the
+ *     parent's history again), left to the built-in compaction.
+ * @param {{ trigger?: string, agentId?: string }} event
+ * @returns {'main' | 'precompute' | 'subagent'}
+ */
+export function compactScope({ trigger, agentId }) {
+  if (agentId) return 'subagent';
+  if (trigger === 'precompute') return 'precompute';
+  return 'main';
+}
+
+/**
+ * Only a completed answer from the main loop may trigger an automatic compaction.
+ * @param {{ agentId?: string, reason?: string }} event
+ */
+export function turnMayTrigger({ agentId, reason }) {
+  return !agentId && reason === 'answer';
+}
+
+/** Deadline on the whole Jev round (all batches), from upstream PR #117. */
+export const DEFAULT_COMPACTION_TIMEOUT_MS = 15_000;
+
+/** A positive finite option, else the default (0, negatives, NaN and strings all mean default). */
+export function compactionTimeoutMs(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : DEFAULT_COMPACTION_TIMEOUT_MS;
+}
+
+/** Thrown by withDeadline when the Jev round outlives its deadline. */
+export class DeadlineError extends Error {
+  constructor(ms) {
+    super(`Jev did not answer within ${ms} ms`);
+    this.name = 'DeadlineError';
+  }
+}
+
+/**
+ * Race `work()` against `sleep(ms, { signal })` (the engine's `$.clock.sleep`, so tests drive a
+ * virtual clock). The sleep is aborted once the race settles; a late result or rejection of
+ * `work` is observed by the race and discarded, so it can never install a compaction.
+ * @template T
+ * @param {() => Promise<T>} work
+ * @param {number} ms
+ * @param {(ms: number, options: { signal: AbortSignal }) => Promise<void>} sleep
+ * @returns {Promise<T>}
+ */
+export async function withDeadline(work, ms, sleep) {
+  const timer = new AbortController();
+  const deadline = sleep(ms, { signal: timer.signal }).then(
+    () => { throw new DeadlineError(ms); },
+    () => new Promise(() => {}), // aborted after the work settled: never wins the race
+  );
+  try {
+    return await Promise.race([Promise.resolve().then(work), deadline]);
+  } finally {
+    timer.abort();
+  }
+}

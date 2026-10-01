@@ -15,8 +15,13 @@
 //   • a SWITCH: `/jev-compact on|off|status`, persisted in the plugin store
 //     across sessions; `enabledByDefault` comes from the manifest;
 //   • FAIL-OPEN everywhere: any throw, a missing key, a below-threshold
-//     reduction, a tainted session ⇒ `next(event)`, the built-in compaction,
-//     with one log line saying which.
+//     reduction, a tainted session, a Jev round past its deadline ⇒
+//     `next(event)`, the built-in compaction, with one log line saying which;
+//   • SCOPE and EGRESS hygiene (amendment 2026-10-01, ported from upstream
+//     PRs #112/#117/#98): precompute and subagent/fork compactions never reach
+//     Jev; the Jev round has a deadline (`compactionTimeoutMs`, 15 s); and
+//     credential-shaped values are redacted from the request body only
+//     (hooks/redact.mjs) — the transcript itself is never rewritten.
 // Nothing else is changed: the judgement, batching, fitting and rebuild are
 // upstream's, under lib/ (MIT, tamaratran/fast-jev-compaction e3f262a).
 
@@ -30,6 +35,8 @@ import {
   DEFAULT_TAINT_TOOLS,
   baselineKey,
   cacheTtlSeconds,
+  compactionTimeoutMs,
+  compactScope,
   cacheWarmMode,
   decide,
   expiredSessionKeys,
@@ -47,7 +54,10 @@ import {
   taintRecord,
   taintsSession,
   triggerTokens,
+  turnMayTrigger,
+  withDeadline,
 } from './policy.mjs';
+import { redactDeep } from './redact.mjs';
 
 const STORE_ENABLED = 'enabled';
 const STORE_LAST = 'last';
@@ -76,6 +86,8 @@ type Config = CompactOptions & {
   cacheTtlSeconds: number;
   cacheTtlMarginSeconds: number;
   minReductionRatio: number;
+  /** Deadline on the whole Jev round; past it the built-in summary runs. */
+  compactionTimeoutMs: number;
   model: string;
   enabledByDefault: unknown;
   taintTools: string[];
@@ -107,6 +119,7 @@ export function resolveConfig(options: PluginOptions): Config {
     cacheTtlSeconds: num(options, 'cacheTtlSeconds', 0),
     cacheTtlMarginSeconds: num(options, 'cacheTtlMarginSeconds', 300),
     minReductionRatio: num(options, 'minReductionRatio', 0.25),
+    compactionTimeoutMs: compactionTimeoutMs(options['compactionTimeoutMs']),
     model: str(options, 'model') ?? DEFAULT_MODEL,
     enabledByDefault: options['enabledByDefault'],
     // `true` only from a real boolean, or the exact string a shell-projected config
@@ -126,10 +139,17 @@ export function resolveConfig(options: PluginOptions): Config {
 type Fetch = (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) =>
   Promise<{ status: number; ok: boolean; text: string }>;
 
-function asker(fetchFn: Fetch, apiKey: string, model: string, baseUrl?: string): JevAsker {
+/**
+ * A JevAsker over the engine's fetch. State and questions are redacted on their way out
+ * (the plugin's own key exactly, plus credential shapes); `onRedact` receives each count.
+ */
+export function asker(fetchFn: Fetch, apiKey: string, model: string, baseUrl?: string, onRedact: (count: number) => void = () => {}): JevAsker {
   return {
     async ask(state, questions) {
-      const r = buildJevRequest({ apiKey, model, baseUrl }, state, questions);
+      const safeState = redactDeep(state, [apiKey]);
+      const safeQuestions = redactDeep(questions, [apiKey]);
+      onRedact(safeState.count + safeQuestions.count);
+      const r = buildJevRequest({ apiKey, model, baseUrl }, safeState.value, safeQuestions.value);
       const res = await fetchFn(r.url, { method: r.method, headers: r.headers, body: r.body });
       return parseJevResponse(res.status, res.ok, res.text);
     },
@@ -225,7 +245,9 @@ function readBaseline(v: unknown): Baseline | undefined {
 
 export const register: Register = (on: On, options: PluginOptions) => {
   const cfg = resolveConfig(options);
-  const state = { compacting: false };
+  // `compacting`: a compaction this plugin started is in flight. `evaluating`: one
+  // turn.complete is deciding whether to start one (claimed synchronously).
+  const state = { compacting: false, evaluating: false };
   // Cache-warm nudge: one pending timer, cancelled by any turn starting. `generation`
   // makes a timer that fires after a newer turn began a no-op even if cancel raced it.
   let nudge: Timer | undefined;
@@ -299,11 +321,21 @@ export const register: Register = (on: On, options: PluginOptions) => {
   });
 
   on('session.compact', async ($, event, next) => {
+    const scope = compactScope(event);
     const sessionId = await $.session.id();
+    if (scope !== 'main') {
+      // Neither a precompute nor a subagent's/fork's own transcript reaches Jev. The taint
+      // scan still runs (local, no egress): a subagent that read email taints the session.
+      try { await sessionTaint($, sessionId, scanTaint(event.messages, cfg.taintTools, cfg.taintSkills)); } catch { /* backstop only */ }
+      // A precompute installs nothing; skipping it keeps core from pre-building a summary the
+      // coming compaction would install in Jev's place. A subagent's is core's alone.
+      if (scope === 'precompute') return { skip: 'jev-compaction: no precompute; the compaction itself decides' };
+      return next(event);
+    }
     // Any compaction that stands on the main conversation (ours, /compact, the engine's own)
     // resets the hysteresis baseline; its true size is read at the next turn.complete.
     const settle = async <T>(result: T): Promise<T> => {
-      if (event.trigger !== 'precompute' && !event.agentId && sessionId && result && !(result as { skip?: unknown }).skip) {
+      if (sessionId && result && !(result as { skip?: unknown }).skip) {
         await $.store.set(baselineKey(sessionId), { pending: true, at: await $.clock.now() });
       }
       return result;
@@ -319,15 +351,21 @@ export const register: Register = (on: On, options: PluginOptions) => {
       await $.store.set(STORE_LAST, note);
       return settle(await next(event));
     }
+    let redacted = 0;
     try {
-      const result = await compact(
-        event.messages,
-        asker(async (url, init) => {
-          const r = await $.http.fetch(url, init);
-          return { status: r.status, ok: r.ok, text: r.text };
-        }, key as string, cfg.model, cfg.baseUrl),
-        cfg,
+      const result = await withDeadline(
+        () => compact(
+          event.messages,
+          asker(async (url, init) => {
+            const r = await $.http.fetch(url, init);
+            return { status: r.status, ok: r.ok, text: r.text };
+          }, key as string, cfg.model, cfg.baseUrl, (n) => { redacted += n; }),
+          cfg,
+        ),
+        cfg.compactionTimeoutMs,
+        (ms, opts) => $.clock.sleep(ms, opts),
       );
+      if (redacted > 0) $.ui.log(`jev-compaction: redacted ${redacted} credential-shaped value(s) from the Jev request`);
       const summary = summarise(result);
       if (reductionRatio(result) < cfg.minReductionRatio) {
         const note = `jev-compaction: built-in summary (below ${pct(cfg.minReductionRatio)}: ${summary})`;
@@ -355,7 +393,16 @@ export const register: Register = (on: On, options: PluginOptions) => {
     if (event.agentId) return next(event);
     turnRunning = false;
     cancelNudge();
-    if (state.compacting) return next(event);
+    // Only a completed answer may trigger; an aborted, errored or refused turn is no moment
+    // to compact. The guard is claimed BEFORE the first await, so two overlapping dispatches
+    // cannot both get past it (upstream #112/#107), and released only by its claimant.
+    if (!turnMayTrigger(event)) {
+      // No trigger, but the sticky-taint scan still runs: an interrupted turn can have read email.
+      try { await sessionTaint($, await $.session.id(), scanTaint(await $.session.messages(), cfg.taintTools, cfg.taintSkills)); } catch { /* backstop only */ }
+      return next(event);
+    }
+    if (state.compacting || state.evaluating) return next(event);
+    state.evaluating = true;
     try {
       const sessionId = await $.session.id();
       // Sticky taint: scan what the main conversation holds now, every turn, so a taint
@@ -407,6 +454,8 @@ export const register: Register = (on: On, options: PluginOptions) => {
       }
     } catch (error) {
       $.ui.log(`jev-compaction: auto-compact skipped (${error instanceof Error ? error.message : String(error)})`);
+    } finally {
+      state.evaluating = false;
     }
     return next(event);
   });

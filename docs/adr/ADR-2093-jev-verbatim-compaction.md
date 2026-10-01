@@ -256,6 +256,22 @@ compacts at exactly `TTL − margin`, is cancelled by a new turn and is not arme
 floor. Disabling the sticky merge fails the three taint tests (mutation-checked).
 `claude plugin validate` passes.
 
+## Amendment — 2026-10-01: scope, deadline and request redaction (plugin 0.2.0)
+
+Ported, adapted, from open upstream PRs #112 (issue #107), #117 and #98; no network
+destination, telemetry, `eval` or dependency entered with them. **(e) Scope:** `precompute`
+answers `{ skip }` and an `agentId` compaction goes to core, both before any Jev call (the
+taint scan still runs); only a main-loop `turn.complete` with `reason: answer` triggers, under
+a guard claimed before the first `await`. **(f) Deadline:** the Jev round races
+`$.clock.sleep(compactionTimeoutMs = 15000)`; past it the built-in summary runs (upstream
+skips a plugin-triggered compaction instead — rejected, because point 5 says any failure
+falls open). **(g) Redaction:** state and questions are passed through `hooks/redact.mjs`
+before `buildJevRequest`; the transcript is never touched, so "never rewrite text" holds.
+Upstream's redactor was not adopted: its entropy rules (any 32+ char mixed string, any
+slash-bearing base64) match tool ids and digests in the state, and it misses `nsec1`; ours
+is shape- and slot-based only. Verification: `node --test` policy + redact → 70 passed;
+`claude plugin test` → 15 passed, each new test mutation-checked.
+
 ## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
 
 **Confirms the 2026-09-25 amendment against the code, and records one fix and one stale literal.**

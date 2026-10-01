@@ -1,6 +1,6 @@
 {
   "name": "jev-compaction",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Verbatim Jev-guided compaction with a sticky email taint gate, a token trigger with hysteresis, a cache-warm idle compaction and a /jev-compact switch (agentbox ADR-2093; library from tamaratran/fast-jev-compaction, MIT).",
   "license": "MIT",
   "author": {
@@ -96,6 +96,12 @@
       "title": "Minimum reduction ratio",
       "description": "Below this estimated reduction the built-in summary runs instead.",
       "default": 0.25
+    },
+    "compactionTimeoutMs": {
+      "type": "number",
+      "title": "Jev deadline (ms)",
+      "description": "Longest wait for the whole Jev round, all batches included. Past it the built-in summary runs and a late answer is discarded. 0 or a negative value means the default.",
+      "default": 15000
     },
     "maxStateTokens": {
       "type": "number",

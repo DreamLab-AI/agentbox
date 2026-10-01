@@ -8,6 +8,7 @@ import {
   DEFAULT_TAINT_SKILLS, DEFAULT_TAINT_TOOLS, decide, listOption, parseSwitchArgs, resolveEnabled, scanTaint, taintsSession,
   skillTaints, mergeTaint, taintRecord, triggerTokens, rearmGap, shouldCompact, cacheTtlSeconds, nudgeDelayMs, cacheWarmMode,
   shouldArmNudge, expiredSessionKeys, SESSION_STATE_TTL_MS,
+  compactScope, turnMayTrigger, compactionTimeoutMs, DEFAULT_COMPACTION_TIMEOUT_MS, withDeadline, DeadlineError,
 } from '../../config/claude-plugins/jev-compaction/hooks/policy.mjs';
 
 const use = (tool, input = {}) => ({ tool_use_id: 'x', tool, input });
@@ -260,5 +261,59 @@ describe('cache-warm nudge', () => {
       ['enabled', true], ['last', 'note'],
     ], now);
     assert.deepEqual(keys, ['taint:old', 'baseline:junk']);
+  });
+});
+
+describe('scope — what may reach Jev (amendment 2026-10-01, upstream #112/#107)', () => {
+  test('only the main conversation\'s real compactions are in scope', () => {
+    for (const trigger of ['manual', 'auto', 'plugin']) assert.equal(compactScope({ trigger }), 'main', trigger);
+    assert.equal(compactScope({ trigger: 'precompute' }), 'precompute');
+    assert.equal(compactScope({ trigger: 'manual', agentId: 'a1' }), 'subagent');
+    assert.equal(compactScope({ trigger: 'precompute', agentId: 'a1' }), 'subagent', 'a fork\'s precompute is still the fork\'s');
+  });
+  test('only a completed main-loop answer may trigger an automatic compaction', () => {
+    assert.equal(turnMayTrigger({ reason: 'answer' }), true);
+    for (const reason of ['aborted', 'error', 'refusal', undefined]) assert.equal(turnMayTrigger({ reason }), false, String(reason));
+    assert.equal(turnMayTrigger({ reason: 'answer', agentId: 'a1' }), false);
+  });
+});
+
+describe('deadline — a slow Jev falls open (upstream #117)', () => {
+  /** A sleep driven by hand: resolve() fires it; an abort rejects it, as $.clock.sleep does. */
+  function manualSleep() {
+    const s = { calls: [], fire: () => {} };
+    s.sleep = (ms, { signal }) => new Promise((resolve, reject) => {
+      s.calls.push({ ms, signal });
+      s.fire = resolve;
+      signal.addEventListener('abort', () => reject(new Error('aborted')));
+    });
+    return s;
+  }
+  test('the option defaults to 15 s; 0, negatives, NaN and strings mean default', () => {
+    assert.equal(DEFAULT_COMPACTION_TIMEOUT_MS, 15_000);
+    for (const v of [undefined, 0, -5, Number.NaN, Infinity, '9000']) assert.equal(compactionTimeoutMs(v), 15_000, String(v));
+    assert.equal(compactionTimeoutMs(2500), 2500);
+  });
+  test('work that finishes first wins and the timer is cancelled', async () => {
+    const s = manualSleep();
+    assert.equal(await withDeadline(async () => 'done', 15_000, s.sleep), 'done');
+    assert.equal(s.calls[0].ms, 15_000);
+    assert.equal(s.calls[0].signal.aborted, true);
+  });
+  test('work that fails first propagates its own error and cancels the timer', async () => {
+    const s = manualSleep();
+    await assert.rejects(withDeadline(async () => { throw new Error('Jev 500'); }, 10, s.sleep), /Jev 500/);
+    assert.equal(s.calls[0].signal.aborted, true);
+  });
+  test('past the deadline the race rejects with DeadlineError; a late answer or rejection is discarded', async () => {
+    const s = manualSleep();
+    let settle;
+    const work = new Promise((resolve, reject) => { settle = { resolve, reject }; });
+    const raced = withDeadline(() => work, 15_000, s.sleep);
+    await new Promise((r) => setImmediate(r));
+    s.fire();
+    await assert.rejects(raced, (e) => e instanceof DeadlineError && /15000 ms/.test(e.message));
+    settle.reject(new Error('late')); // observed by the race: no unhandled rejection
+    await new Promise((r) => setImmediate(r));
   });
 });
