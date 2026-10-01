@@ -3134,8 +3134,8 @@ stderr_logfile_maxbytes=5MB
           # (entrypoint) and readable by devuser (uid 1000). Content is
           # regenerated at each boot so tmpfs is sufficient.
           "/home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000"
-          # OpenAI Codex CLI home. Plugin git pack + sqlite logs + session
-          # history grow quickly; 512M gives plenty of headroom.
+          # Codex configuration/session state remains on bounded noexec tmpfs.
+          # Executable daemon packages get a separate disk-backed volume below.
           "/home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000"
           # Antigravity CLI home. Model cache + session state; 256M is generous.
           "/home/devuser/.antigravity:mode=755,size=256M,uid=1000,gid=1000"
@@ -3249,6 +3249,9 @@ stderr_logfile_maxbytes=5MB
           # bounded XDG cache tmpfs and retain it across rolling rebuilds.
           "hf-cache:/home/devuser/.cache/huggingface"
           "opencode-store:/home/devuser/.local/share/opencode"
+          # ADR-2120: Codex auto-start copies its executable daemon package
+          # here. The parent .codex tmpfs is noexec and too small for updates.
+          "codex-packages:/home/devuser/.codex/packages"
         ];
         # NOTE: no ruvnet-brain-data volume. The corpus persists in
         # ruvector-postgres; the ingest only needs transient, writable staging,
@@ -3278,7 +3281,7 @@ stderr_logfile_maxbytes=5MB
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" "opencode-store" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" "opencode-store" "codex-packages" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );

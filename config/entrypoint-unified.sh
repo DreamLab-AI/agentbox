@@ -338,6 +338,7 @@ for _vol_root in \
     /home/devuser/.npm \
     /home/devuser/.claude-flow \
     /home/devuser/.codex \
+    /home/devuser/.codex/packages \
     /home/devuser/.gemini \
     /var/cache \
     /var/cache/ruflo-plugins; do

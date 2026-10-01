@@ -18,6 +18,7 @@ const expected = {
   '/home/devuser/.cache/huggingface': 'agentbox-hf-cache',
   '/home/devuser/.local/share/code-server': 'agentbox-codeserver-config',
   '/home/devuser/.local/share/opencode': 'agentbox-opencode-store',
+  '/home/devuser/.codex/packages': 'agentbox-codex-packages',
   '/var/lib/nostr-relay': 'agentbox-nostr-relay-data',
   '/var/lib/tailscale': 'agentbox-tailscale-state',
   '/home/devuser/.claude': 'agentbox-claude-home',

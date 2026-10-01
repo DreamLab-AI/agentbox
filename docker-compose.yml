@@ -143,6 +143,7 @@ services:
       - aoe-profiles:/home/devuser/.config/agent-of-empires/profiles
       - hf-cache:/home/devuser/.cache/huggingface
       - opencode-store:/home/devuser/.local/share/opencode
+      - codex-packages:/home/devuser/.codex/packages
       - codeserver-config:/home/devuser/.local/share/code-server
       - nostr-relay-data:/var/lib/nostr-relay
       - tailscale-state:/var/lib/tailscale
@@ -194,6 +195,8 @@ volumes:
     name: agentbox-hf-cache
   opencode-store:
     name: agentbox-opencode-store
+  codex-packages:
+    name: agentbox-codex-packages
   codeserver-config:
     name: agentbox-codeserver-config
   nostr-relay-data:

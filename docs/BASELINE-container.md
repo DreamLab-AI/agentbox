@@ -436,3 +436,11 @@ top-level **`[sidechain]`** block, on the argument that the chain is the substra
 provenance anchoring and session budgets rather than a payment rail. The ADR ledger is the
 ratifying artefact, so the records win here; the ratification review of PRD-024 should settle the
 name once, because it changes every gate path, catalogue row and projector citation above.
+
+### Codex daemon packages (ADR-2120)
+
+Codex's copied daemon executables live on the disk-backed
+`agentbox-codex-packages` volume at `/home/devuser/.codex/packages`, owned by
+UID/GID 1000. The parent configuration tmpfs remains bounded and `noexec`.
+Local image builds refresh and validate generated Compose before building, so
+`./agentbox.sh rebuild` applies changes to mounts as well as image contents.
