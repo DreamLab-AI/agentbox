@@ -151,6 +151,23 @@ product in the browser yourself, from the address you are about to write down, a
 comes back. That also answers the second question the item cannot answer for itself — whether
 the product is currently in a state worth photographing at all.
 
+## Use the profile; do not write a provider of your own
+
+The estate seeds an OpenCode provider, `loom-agent/current`, from what the Loom actually
+advertises. When it is missing, the tempting fix is a hand-written `opencode.json` that points
+at the Loom door with `scaffold:false`. That works, which is the trouble. One written on
+2026-10-01 ran a smoke test cleanly and lacked `chat_template_kwargs.enable_thinking=false`,
+which the seeded profile sets for Qwen. Every turn of a several-hour run would have spent its
+output budget reasoning before it wrote anything.
+
+The profile was missing because the seeder had refused: `LOOM_MODEL` in the environment still
+named the old alias `qwen3.8-27B`, the door now advertises `qwen3.8-27b-heretic-q8_0`, and an
+explicit unknown id is a refusal by design. The seeder said so in one line that nobody read,
+because seeding runs at boot. Check `~/.config/opencode/opencode.json` for a `loom-agent`
+provider before a run. If it is absent, run
+`env -u LOOM_MODEL node <agentbox>/scripts/aoe-seed-sessions.mjs --providers-only` and fix
+the stale variable where it is set. Do not work around it.
+
 ## Hand the session an inventory, not a search
 
 The failure above was not really about delegation. It was asked to derive a curriculum by

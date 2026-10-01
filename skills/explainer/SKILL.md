@@ -86,6 +86,12 @@ has. Verify it first with the `diagrams-as-code` skill's generator —
 and publish what it found, including what it found wrong. The register is the one part that
 waits for its owner's agreement (`--no-register`).
 
+If a pack already exists and the corpus has since been rewritten, the job is a refresh. A
+corpus at HEAD has already resolved every span, so `scripts/corpus-sheet.mjs` turns the topics
+a chapter needs into a fact sheet of checked `src:` links, and the drafting session copies
+them rather than searching for them. `references/diagram-corpus.md` has the plan, write and
+gate steps.
+
 If the pack is for the people who use the product, run
 `scripts/surface-inventory.mjs --repo <app dir> --out <file>` next. It writes every route a
 person can reach and, under each, the headings, buttons, table columns, field labels and
@@ -281,6 +287,29 @@ tool: write the three documents sequentially in one session instead, re-reading
 the orientation notes before each one so the registers stay distinct. See
 `references/delivery-docs.md` step 2 for the full fallback.
 
+## Improving this skill
+
+Every production run is also a test of this skill, and the lessons come from running it, not
+from rereading it. Three rules keep that honest:
+
+1. **Run through the skill, not around it.** Drive the work with `evals/run-chaptered.sh
+   --skills-root <agentbox checkout>/skills`, so the run loads the working copy and an edit
+   made mid-run reaches the next item. A brief and config written beside the skill teach it
+   nothing. The first walkthrough refresh was set up that way, and it missed the seeded
+   provider, the chaptered runner and the corpus all at once.
+2. **The controller promotes; the run never edits.** Candidate lessons go to
+   `<record>/lessons.md` as they appear, each with what happened, the measurement and the
+   decision it would change. The controller moves one into the skill only when it changes a
+   future decision, and puts it where that decision is made. Write it in the house form: the
+   failure as it was measured, with its date, then the rule.
+3. **Mechanical lessons become scripts.** A lesson that a session keeps relearning, such as
+   finding line numbers or listing routes, becomes a script that computes the answer once.
+   `corpus-sheet.mjs` and `surface-inventory.mjs` both started that way. A behavioural
+   change is confirmed with the A/B in `evals/README.md` before it is relied on.
+
+Commit skill changes to the agentbox repository by path, one lesson per commit, so a lesson
+that turns out wrong can be reverted alone.
+
 ## Record
 
 Store the deliverable's location, gate status and the decisions it surfaced in
@@ -298,6 +327,7 @@ mesh find it. Each delivery reference repeats this as its final step.
 - `references/gates.md` — the five gates, bars and ledger format in full.
 - `references/handup.md` — escalating a red gate to a stronger tier by packet, not by session; `scripts/handup.mjs`.
 - `references/diagram-corpus.md` — mining the repository's own diagrams-as-code tree, and shipping it as a pack; `scripts/diagram-corpus.mjs`, `scripts/diagrams-pack.mjs`.
+- `scripts/corpus-sheet.mjs` — topic list for planning, and per-chapter fact sheets whose citations are already checked `src:` links; the refresh path in `references/diagram-corpus.md`.
 - `scripts/lib/markdown.mjs` — the dependency-free Markdown renderer the diagrams pack builds on: GitHub heading slugs, GFM tables, and fenced blocks handed to the caller so a mermaid block can become a picture.
 - `references/local-harness.md` — running where the specialists are not tools: skill, then documented service, then hand up.
 - `evals/evals.json` — the pilot eval prompts for this skill.

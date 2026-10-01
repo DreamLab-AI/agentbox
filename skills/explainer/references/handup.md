@@ -110,6 +110,26 @@ between chapters, and after the configured wait marks the chapter blocked and ca
 on. T1 fixes the minimum and hands back; a controller that rewrites a chapter wholesale
 has taken the run over, which is the token waste the design exists to avoid.
 
+## A review is not a hand-up
+
+Posture 3 has a second shape that the user may ask for by name: a hosted model reads each
+finished unit once, as a check, rather than answering packets. The unit is a committed pack.
+The reviewer gets the diff and the brief and nothing else, cannot edit, and writes a verdict
+outside the target: ship as is, ship after the listed fixes, or redo. This suits a local run
+because a small model fails by inventing mechanisms, labels and spans in fluent prose, and a
+cold reader with the code open catches that cheaply. One pass over one diff is a fraction of
+what drafting the same chapters on the hosted model would cost.
+
+Keep the reviewer's instructions as commands, not judgements. "Check the citations" lets it
+read the chapter and nod. "Open every `src:` range with `sed -n` and say whether it shows
+what the sentence claims" does not. It runs read-only: `claude -p --model sonnet --effort medium
+--permission-mode default`, an allow-list of `Read`, `Grep`, `Glob` and the read-only shell
+commands the checks need, `--disallowedTools Edit Write NotebookEdit`, and a dollar cap. A
+watcher polls the branch and reviews each pack commit once as it lands, so the first verdict
+arrives while three packs are still to be written, and a pattern of invention in the first
+pack can stop the run before it is repeated. The provenance sentence names the reviewer as a
+hosted model.
+
 ## What the A/B loop reads from this
 
 `handup.mjs stats` reports hand-ups per chapter, the reason mix, the tier mix and tokens

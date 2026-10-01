@@ -51,6 +51,53 @@ claim about the commit it names, and check three things before a chapter leans o
    read, not of what the code does now. The claims ledger cites the source file and line,
    never the corpus topic.
 
+## Refreshing a pack from the corpus
+
+The common job after the first one is not a new pack but an old pack whose system has moved:
+the code changed, the corpus was rewritten to match, and the chapters still describe last
+month. A corpus at HEAD has already done the hard part of that job. Every span it cites has
+been resolved and machine-checked at its declared commit, so a drafting session that is sent
+back to `grep -n` for line numbers is being asked to repeat finished work, more slowly and
+less reliably. A local model under pressure guesses the number instead.
+
+`scripts/corpus-sheet.mjs` hands the work over instead:
+
+```
+node scripts/corpus-sheet.mjs --repo <target> --list                       # planning: id, area, title, sections, revision
+node scripts/corpus-sheet.mjs --repo <target> --topics CP-01,BL-03 \
+     --half business --out <record>/sheets/<chapter>.md                  # one chapter's fact sheet
+```
+
+The sheet gives, per topic, the narrative half that matches the audience (`business` for user
+and executive packs, `developer` for the developer pack), then each diagram section with its
+rendered file, its "What it shows" paragraph and every citation rewritten as a chapter link,
+`src:path#La-Lb`, beside the sentence it supports. Each span is re-checked against the working
+tree on the way out and a failure is marked `✗`, never dropped; the script exits 1 if any is.
+On the rewritten campaignbuilder corpus (declared at `ccbb457`, 2026-10-01) that was 45 topics and 4,586 distinct spans with
+none failing, in a fifth of a second. Before it existed, a single-session brief told the local
+model to resolve about a thousand citations by hand.
+
+So a refresh has three kinds of step, each its own item in `evals/run-chaptered.sh`:
+
+1. **Plan, per pack.** Read the teaching contract and the current chapter list, read
+   `--list`, and write a table to the pack's `PLAN.md`: each chapter kept, merged or dropped,
+   and the topic ids it draws on. A chapter whose question the rewritten corpus no longer
+   supports is dropped or merged, and the table says why.
+2. **Write, per chapter.** Generate the sheet for that chapter's topics, then rewrite the
+   chapter from the sheet. Citations are copied as written; a claim with no span in the sheet
+   is either cut or written to the pack's `QUESTIONS.md`, not grounded by a fresh search.
+3. **Gate and commit, per pack.** The pack's own build, the lint, and one commit.
+
+The rules above still bind the output. The claims ledger cites the source span, which is what
+the sheet carries, not the topic. Topic ids live in `PLAN.md` and the production record, never
+in reader text. A pack's diagrams are the rendered files the sheet names, read before reuse.
+
+**Read the build before writing the brief.** The first refresh brief asked every chapter to
+keep a `covers:` list of topic ids in its front matter. The pack's build reads exactly four
+keys (`id`, `order`, `title`, `question`) and ignores the rest, so the instruction would have
+cost every chapter a field nothing checks. Anything a brief asks a chapter to carry has to be
+something the build or a gate reads. If nothing reads it, it belongs in `PLAN.md` instead.
+
 ## Shipping the corpus
 
 Mining a corpus for a chapter is one use of it. The other is publishing it whole, because a
