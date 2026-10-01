@@ -71,7 +71,10 @@ node scripts/corpus-sheet.mjs --repo <target> --topics CP-01,BL-03 \
 The sheet gives, per topic, the narrative half that matches the audience (`business` for user
 and executive packs, `developer` for the developer pack), then each diagram section with its
 rendered file, its "What it shows" paragraph and every citation rewritten as a chapter link,
-`src:path#La-Lb`, beside the sentence it supports. Each span is re-checked against the working
+`src:path#La-Lb`, beside the sentence it supports. Every narrative paragraph, and each "What
+it shows" paragraph, is prefixed with its own range in the topic file
+(`cite: src:docs/diagrams/<area>/<topic>.md#La-Lb`), so a chapter that cites the corpus's prose
+copies that range as well. Each span is re-checked against the working
 tree on the way out and a failure is marked `✗`, never dropped; the script exits 1 if any is.
 On the rewritten campaignbuilder corpus (declared at `ccbb457`, 2026-10-01) that was 45 topics and 4,586 distinct spans with
 none failing, in a fifth of a second. Before it existed, a single-session brief told the local
@@ -91,6 +94,21 @@ So a refresh has three kinds of step, each its own item in `evals/run-chaptered.
 The rules above still bind the output. The claims ledger cites the source span, which is what
 the sheet carries, not the topic. Topic ids live in `PLAN.md` and the production record, never
 in reader text. A pack's diagrams are the rendered files the sheet names, read before reuse.
+
+**Every citation a chapter may write must be in the sheet, prose ranges included.** The
+first sheets carried code spans only. On the first campaignbuilder refresh (2026-10-01) the
+local model still needed corpus-prose citations, so it computed them: in one chapter all ten
+landed on the right paragraph, in another both were the sheet's own line numbers passed off as
+the topic file's, and the Sonnet review caught them. The sheet now emits a checked range per
+paragraph (643 on that corpus, every one landing on its paragraph). The rule for a brief
+follows: if a chapter is allowed to cite it, the sheet has already resolved it; anything else is
+a question for `QUESTIONS.md`.
+
+**A screen the product labels "mock" shows the mock, not the product.** The same review found a
+chapter presenting the mock engine's request parsing (one regex, a default page id) as the
+product's rule, because the walk that produced the screenshot ran on the default mock engine.
+When a capture or a corpus sentence says a component is mocked, the chapter says so and limits
+the claim to what the mock does; what the real component does is a question, not an inference.
 
 **Read the build before writing the brief.** The first refresh brief asked every chapter to
 keep a `covers:` list of topic ids in its front matter. The pack's build reads exactly four

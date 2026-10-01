@@ -10,7 +10,9 @@
 // planning step that maps chapters to topics.
 // --topics prints a sheet per topic: the chosen half of the narrative, then each diagram section
 // with its rendered file, its "What it shows" paragraph and every citation in it rewritten as a
-// chapter link, src:path#La-Lb, with the sentence it supports.
+// chapter link, src:path#La-Lb, with the sentence it supports. Every narrative paragraph is
+// prefixed with its own range in the topic file (cite: src:docs/diagrams/...#La-Lb), so a chapter
+// that cites the corpus prose copies that range too instead of counting lines.
 //
 // Why: a local model told to "grep -n and copy the line numbers" spends its budget searching and
 // still guesses under pressure. The corpus has already resolved and machine-checked those spans at
@@ -57,20 +59,35 @@ function parse(file) {
   const meta = Object.fromEntries([...m[1].matchAll(/^([a-z_]+):\s*(.*)$/gm)].map((x) => [x[1], x[2].trim()]));
   if (!meta.id) return null;
   const body = m[2];
+  // Line number (1-based) of the body's first line in the file, so paragraphs can carry ranges.
+  let line = m[1].split('\n').length + 3;
   // Split on level-2 headings; a diagram section is headed by the topic id and a number.
-  const parts = body.split(/^(?=## )/m);
+  const parts = body.split(/^(?=## )/m).map((t) => { const at = line; line += t.split('\n').length - 1; return { t, at }; });
   const halves = {}; const sections = [];
   const secRe = new RegExp(`^## (${meta.id.replace(/[-]/g, '\\-')}\\.\\d+)\\s+(.*)$`, 'm');
-  for (const p of parts) {
+  for (const { t: p, at } of parts) {
     const h = p.match(/^## (.*)$/m)?.[1] || '';
-    if (/^For developers/i.test(h)) halves.developer = p.replace(/^## .*\n/, '').trim();
-    else if (/^For the business/i.test(h)) halves.business = p.replace(/^## .*\n/, '').trim();
+    if (/^For developers/i.test(h)) halves.developer = paragraphs(p, at);
+    else if (/^For the business/i.test(h)) halves.business = paragraphs(p, at);
     else {
       const s = p.match(secRe);
-      if (s) sections.push({ id: s[1], title: s[2].trim(), text: p.replace(/^## .*\n/, '') });
+      if (s) sections.push({ id: s[1], title: s[2].trim(), text: p.replace(/^## .*\n/, ''), paras: paragraphs(p, at) });
     }
   }
   return { file, meta, halves, sections };
+}
+
+// Blank-line separated blocks of a part (its heading and fenced code excluded), each with the
+// file lines it occupies. `at` is the file line of the part's first line.
+function paragraphs(part, at) {
+  const out = []; let cur = null; let fence = false;
+  part.split('\n').forEach((l, i) => {
+    const n = at + i;
+    if (/^```/.test(l)) { fence = !fence; cur = null; return; }
+    if (fence || i === 0 && /^## /.test(l) || !l.trim()) { cur = null; return; }
+    if (!cur) out.push(cur = { from: n, to: n, text: l }); else { cur.to = n; cur.text += '\n' + l; }
+  });
+  return out;
 }
 
 const lineCount = new Map();
@@ -125,8 +142,12 @@ for (const id of want) {
   const v = t.meta.verified_commit || 'none declared';
   out.push(`## ${id} ${t.meta.title || ''}\n`);
   out.push(`Source: ${relative(repo, t.file)} · verified at ${v.slice(0, 12)}${head && !head.startsWith(v) ? ` · HEAD is ${head.slice(0, 12)}: re-open each span before relying on it` : ' · this is HEAD'}\n`);
+  const doc = relative(repo, t.file);
+  const cite = (p) => `src:${doc}#L${p.from}-L${p.to}`;
   for (const h of half === 'both' ? ['business', 'developer'] : [half]) {
-    if (t.halves[h]) out.push(`### For ${h === 'business' ? 'the business' : 'developers'}\n\n${t.halves[h]}\n`);
+    if (!t.halves[h]) continue;
+    out.push(`### For ${h === 'business' ? 'the business' : 'developers'}\n`);
+    for (const p of t.halves[h]) out.push(`(cite: ${cite(p)})\n${p.text}\n`);
   }
   for (const s of t.sections) {
     out.push(`### ${s.id} ${s.title}\n`);
@@ -134,8 +155,8 @@ for (const id of want) {
     const stem = t.file.split('/').pop().replace(/\.md$/, '');
     const svg = join(root, 'rendered', area, stem, `${s.id}.svg`);
     out.push(existsSync(svg) ? `Rendered: ${relative(repo, svg)}\n` : `Rendered: none (the diagram is inline mermaid only)\n`);
-    const shows = s.text.match(/\*\*What it shows\.\*\*\s*([\s\S]*?)(?:\n\n|$)/)?.[1];
-    if (shows) out.push(`What it shows: ${shows.replace(/\s*\n\s*/g, ' ').trim()}\n`);
+    const shows = s.paras.find((p) => /^\*\*What it shows\.\*\*/.test(p.text));
+    if (shows) out.push(`What it shows (cite: ${cite(shows)}): ${shows.text.replace(/^\*\*What it shows\.\*\*\s*/, '').replace(/\s*\n\s*/g, ' ').trim()}\n`);
     const cs = citations(s.text);
     if (cs.length) {
       out.push(`Citations, copy as written:\n`);
