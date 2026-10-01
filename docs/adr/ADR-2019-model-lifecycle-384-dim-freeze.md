@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -17,6 +17,12 @@ lineage: "legacy PRD-020 / ADR-040 (model lifecycle), DDD-018 (I22)."
 ---
 
 # ADR-2019 — Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+RuVector CLI moves to 0.3.3; the mandatory Postgres sidecar and 384-dimensional embedding geometry do not change. SONA/attention flags are unchanged. Pre-deploy memory smoke passes at extension 0.3.0 with ANN index use and write/search/rollback. No geometry migration is claimed.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Context
 

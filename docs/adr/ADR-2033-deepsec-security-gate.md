@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -16,6 +16,12 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+The pinned CLI moves to 2.3.10 with reviewed lock and resolved hashes. Runtime policy, names-only credentials and the sole gate entry point are unchanged. All 10 deepsec-gate fixture tests pass; this does not assert a paid provider scan.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 
@@ -48,7 +54,7 @@ posture (ADR-2027).
 ## Decision
 
 1. deepsec is baked as a global npm CLI via `lib/npm-cli.nix` (`deepsecPkg`,
-   exact pin 2.3.9) gated by `[toolchains].deepsec`; `ENABLE_DEEPSEC` is projected
+   exact pin 2.3.10) gated by `[toolchains].deepsec`; `ENABLE_DEEPSEC` is projected
    at boot and the catalogue entry `deepsec` (ADR-039) reports both gates.
 2. Runtime policy lives in `[security.deepsec]` (agent, model route, thinking
    level, `fail_on` severity, `max_duration`, batching, provider names). The

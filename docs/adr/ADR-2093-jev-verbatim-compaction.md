@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [config/claude-plugins/jev-compaction/hooks/jev-compaction.ts, config/claude-plugins/jev-compaction/hooks/policy.mjs, config/entrypoint-unified.sh, lib/claude-code-binary.nix, tests/config/jev-compaction-policy.test.mjs]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, or a request to fence a class other than email
@@ -15,6 +15,12 @@ repo: agentbox
 ---
 
 # ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+Plugin 0.2.0 adds main-loop scope, a bounded deadline and request redaction; minimum estimated reduction is now 0.55. Claude 2.1.285 validates the manifest/hooks and passes all 15 engine tests. Pure policy/redaction tests also pass. Sticky email taint remains enforced; no real compaction or secret-bearing request was sent.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 
@@ -34,7 +40,7 @@ egress. The operator's decision: proceed, with email always fenced out and a swi
 
 ## Decision
 
-1. **Claude Code is pinned at 2.1.276** (`lib/claude-code-binary.nix`), the first pin with
+1. **Claude Code is pinned at 2.1.285** (`lib/claude-code-binary.nix`), retaining
    the function-hook surface (`session.compact`, `command.register`, `$.http.fetch`).
 2. **The plugin is ours, the library is theirs.** `config/claude-plugins/jev-compaction`
    vendors upstream `src/` at `e3f262a` under `lib/` (MIT, licence kept); `hooks/` is the
@@ -59,7 +65,7 @@ egress. The operator's decision: proceed, with email always fenced out and a swi
    `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` in `settings.json` `env`, registers
    `/opt/agentbox/config/claude-plugins` as the `agentbox` directory marketplace and
    installs `jev-compaction@agentbox` with the manifest's values as `--config`; the
-   plugin cache under the host-mounted `~/.claude` is content-compared to the baked tree and
+   plugin cache under the container-owned `~/.claude` (ADR-2118) is content-compared to the baked tree and
    reinstalled on any difference (the cache is keyed by version, and a rebuild does not bump
    it). Off ⇒ uninstall, marketplace remove, env key deleted. No `/nix/store` path is written.
 7. **Egress is widened, explicitly.** ADR-2090 covered the routing prompt; this covers the

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -17,6 +17,12 @@ lineage: legacy ADR-051 (Loom client + deferred distillation, status 'proposed')
 ---
 
 # ADR-2023 — The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+Removed stale Loom model-name defaults: an empty selection discovers the facade's single advertised model. Explicit LOOM_MODEL remains the operator override. The request still goes through the existing facade, not a new raw-model route; multi-model selection remains operator configuration.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Context
 

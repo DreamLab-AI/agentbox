@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -15,6 +15,12 @@ repo: agentbox
 ---
 
 # ADR-2091 — Route each turn to a skill with one typed judgement, failing open to the table
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+Reviewed the local skill-router change: synced account and enabled-plugin skills are offered under their qualified Skill-tool names, best-effort from the selected Claude directory; explicit evaluation candidates remain untouched. All 46 routing tests pass. Failure still continues the turn.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 

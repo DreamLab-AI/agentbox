@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 08e817f394a908264c378745193bf7a0bbf6ec0e
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [services/agentbox-ops/src/procs.rs, services/agentbox-ops/src/bin/ruflo-daemon-gc.rs]
 owner: jjohare
 review_trigger: a new daemon launcher shape (new package path, wrapper script or runtime flags), any new binary that signals processes, or adoption of pidfd-based identity
@@ -15,6 +15,12 @@ repo: agentbox
 ---
 
 # ADR-2032 — Daemon reapers identify processes by argv boundaries against a launcher allowlist and fail closed on anything else
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+The reaper changes only rustix's renamed Signal::TERM variant, not argv matching, PID bounds or explicit kill policy. The operations crate's sandboxed tests pass. No live process-reaping test was used to establish this source invariant.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Context
 `ruflo-daemon-gc` and `token-audit` share one process helper that flattened

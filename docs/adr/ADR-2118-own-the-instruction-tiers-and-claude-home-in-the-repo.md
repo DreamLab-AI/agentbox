@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, docker-compose.hp.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -16,6 +16,12 @@ domain: BASELINE-container
 ---
 
 # ADR-2118 — Own the instruction tiers and the Claude home in the repo
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+Compose persistence tests still cover 15 declared identities, external Claude home, read-only instructions and PID parity. Instruction layers pass 9/9, projection contract 13/13 and pre-deploy live drift check is clean. The new cargo quarantine does not change credential/instruction volume ownership or migrate another node.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 

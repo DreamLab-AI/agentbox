@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -15,6 +15,12 @@ repo: agentbox
 ---
 
 # ADR-2092 — Agents and slash-commands get the same manifest governance skills already have
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+No registered agent or command set changes. Stale cargo executables are moved to a recoverable directory rather than shadowing baked tools; numbered backups preserve earlier quarantines. Agent reconciliation passes 45/45 and skill lint passes.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 

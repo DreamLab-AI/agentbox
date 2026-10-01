@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4f9450ac86477bc3832933953454ea577bd3d531
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -15,6 +15,12 @@ repo: agentbox
 ---
 
 # ADR-2030 — Publishable service crates are MIT OR Apache-2.0 inside the AGPL-3.0 repository
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+Cargo manifest diffs update dependency versions without changing crate licensing declarations. nostr-pod-bridge remains AGPL-3.0-only; corrected its Nix metadata from a permissive label to match that declaration. No new sidestr library dependency enters a permissive crate.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Context
 ADR-016 (archive) made the repository AGPL-3.0-only end to end because every

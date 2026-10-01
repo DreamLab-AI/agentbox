@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.1
+version: 0.5.2
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.2 (2026-10-01): CLI, JavaScript and Rust dependency refresh. Fastify 5 compatibility preserves NIP-98 host ports, redirects, WebSocket callbacks, CORS methods and metrics. Stale cargo binaries are quarantined with numbered recovery copies. No data-volume or memory-geometry migration."
   - "0.5.1 (2026-09-30): Supervised interim testnet producer, Pages mirror and standalone sidestr-agent faucet under rebuild-class sidechain gates; catalogue now 79 entries. Native node, bridge and proposed settlement invariants remain deferred."
   - "0.5.0 (2026-09-29): ADR-2118. Two new invariants: the global and workspace instruction tiers are generated every boot from config/instructions/ (tracked public layer + gitignored local/ estate layer, mounted read-only, never baked), and ~/.claude is a container-owned volume sharing only .credentials.json with the host via [program:claude-cred-sync]. New open item for the partial rollout (connected node, ~/.config/claude, Q43, profiles). CATALOGUE count corrected to 78 (was stale at 60)."
   - "0.4.3 (2026-09-26): Privacy-filter Python environment uses the flake-locked nixpkgs Transformers 5.17.0 with Tokenizers 0.23.2. Retired the incompatible Transformers 5.6.2 override; added an import gate for transformers.models.openai_privacy_filter. No runtime architecture or invariant changes."

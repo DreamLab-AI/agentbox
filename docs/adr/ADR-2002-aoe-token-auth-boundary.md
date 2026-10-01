@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -15,6 +15,12 @@ repo: agentbox
 ---
 
 # ADR-2002 — AoE interaction plane requires token auth — loopback is not a boundary
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+Reviewed the upgraded composition and Fastify migration: AoE still requires its token and is loopback-bound. The proxy selftest passes with zero failures/skips; the port inventory passes. Runtime tokenless-denial checks remain a deployment check.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 

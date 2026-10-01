@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -17,6 +17,12 @@ lineage: legacy ADR-040 (learning consumers / governance publisher key-split), s
 ---
 
 # ADR-2012 — Relay ingress is allowlist-only, no fallback, no auto-add
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+Manifest changes affect Jev reduction and Loom model discovery, not relay admission or allowed keys/kinds. The upgraded Rust bridge now runs its complete 134-test suite in Nix, including relay admission, with its paired fixture and Git test dependency present.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 

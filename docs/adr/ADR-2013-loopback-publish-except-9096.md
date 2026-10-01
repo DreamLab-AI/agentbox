@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 6f5d9d79482cf198aae17d914687df11652a03a2
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -17,6 +17,12 @@ lineage: legacy ADR-045 (sovereign ingress front door), R-003 (loopback publish 
 ---
 
 # ADR-2013 — Loopback-only compose publishes except the sanctioned-exposure list
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+Regenerated Compose is byte-identical to the deployed source. Loom defaults changed, not host publishing; the upstream ComfyUI fix joins the shared network without adding a published port. All 14 Compose files/11 port blocks pass the sanctioned-exposure check.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
+verified_commit: bce90619924eed79941eda6837f64465440476b9
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -17,6 +17,12 @@ lineage: legacy ADR-042 (AoE interaction plane), ADR-043 (session identity bindi
 ---
 
 # ADR-2009 — The nip98-proxy is the fail-closed AoE identity boundary
+
+## Re-verification — 2026-10-01 (dependency refresh)
+
+The proxy remains the sole AoE identity door. Fastify 5's management-API URL reconstruction now uses request.host to retain the signed port; synthetic signed requests prove correct-port acceptance and mismatched-port rejection. Proxy selftests pass without skips.
+Source anchor: `bce906199`. Existing status axes and deferred
+work remain unchanged; this source/test receipt is not a new activation claim.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 
