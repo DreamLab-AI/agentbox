@@ -74,16 +74,16 @@ path = "src/bin/teammate-gc.rs"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-toml = "0.8"
+toml = "1"
 reqwest = { version = "0.12", features = ["json", "blocking", "rustls-tls"], default-features = false }
 chrono = { version = "0.4", features = ["serde", "clock"] }
-croner = "2"
-sysinfo = "0.33"
-sha2 = "0.10"
+croner = "4"
+sysinfo = "0.39"
+sha2 = "0.11"
 hex = "0.4"
 regex = "1"
 uuid = { version = "1", features = ["v4"] }
-rustix = { version = "0.38", features = ["fs", "process"] }
+rustix = { version = "1", features = ["fs", "process"] }
 glob = "0.3"
 urlencoding = "2"
 

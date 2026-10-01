@@ -25,7 +25,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync",
 # WS client for the egress path: publish kind-30840 summaries to the running
 # relay for the live phone mirror. Version-matched to solid-pod-rs-nostr's own
 # tokio-tungstenite so the lock graph stays single-source.
-tokio-tungstenite = "0.24"
+tokio-tungstenite = "0.30"
 futures-util = "0.3"
 serde = { version = "1", features = ["derive"] }
 # `preserve_order` keeps JSON object key order on the Value path, which the
@@ -41,11 +41,11 @@ sha2 = "0.10"
 # every NIP-19 encoding still go through nostr-bbs-core; this is encoding only.
 k256 = "0.13"
 # /etc/agentbox.toml — the `[sovereign_mesh] enabled` gate for `bootstrap`.
-toml = "0.8"
+toml = "1"
 # Z.AI / GLM digest call on the `session-summary` path. Already in the lock graph
 # via solid-pod-rs; rustls so the binary carries no OpenSSL runtime dependency.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
-thiserror = "1"
+thiserror = "2"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -55,7 +55,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "test-util"] }
 tempfile = "3"
 # Only to synthesise a pre-fix identity file (npub over the 64-byte SEC1 pubkey)
 # for the migration tests. Production encoding goes through nostr-bbs-core.
-bech32 = "0.11"
+bech32 = "0.12"
 
 # Unify solid-pod-rs to the single local source. nostr-bbs-core pulls it from
 # crates.io (0.4.0-alpha.15); solid-pod-rs-nostr path-deps the local copy. The

@@ -16,8 +16,7 @@ path = "src/main.rs"
 # The established encryption format. `age` is the reference Rust implementation
 # of the age spec (X25519 / scrypt, ChaCha20-Poly1305 under STREAM). ADR-2027
 # forbids a bespoke envelope, and this is the crate that makes that unnecessary.
-age = { version = "0.11", features = ["armor"] }
-secrecy = "0.8"
+age = { version = "0.12", features = ["armor"] }
 tar = "0.4"
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }

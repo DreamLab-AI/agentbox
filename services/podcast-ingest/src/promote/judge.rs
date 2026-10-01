@@ -5,7 +5,7 @@
 use super::gemini::{rubric_a_prompt, rubric_b_prompt, run_gemini_judge};
 use super::splice::extract_splice_json;
 use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{RngExt, SeedableRng};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
@@ -105,7 +105,7 @@ pub async fn judge_before_after(topic: &str, before: &str, after: &str, seed: i6
     for rubric_name in ["a", "b"] {
         let seed_val = item_seed(seed, topic, rubric_name);
         let mut rng = StdRng::seed_from_u64(seed_val as u64);
-        let swap = rng.gen::<f64>() < 0.5;
+        let swap = rng.random::<f64>() < 0.5;
 
         let (version_a, version_b, version_b_is_after) = if swap {
             (after_w.as_str(), before_w.as_str(), false)

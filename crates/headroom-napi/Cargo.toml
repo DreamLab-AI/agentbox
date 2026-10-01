@@ -18,7 +18,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
 blake3 = "1"
 dashmap = "6"
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 flate2 = "1"
 regex = "1"
 rayon = "1"

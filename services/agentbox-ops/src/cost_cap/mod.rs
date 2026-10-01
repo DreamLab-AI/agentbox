@@ -113,7 +113,7 @@ impl CapConfig {
     /// block, so a second execution-gated skill can reuse the limiter.
     pub fn from_manifest_toml_at(text: &str, skill_key: &str) -> Self {
         let mut cfg = Self::default();
-        let Ok(root) = text.parse::<toml::Value>() else {
+        let Ok(root) = text.parse::<toml::Table>() else {
             return cfg;
         };
         let Some(block) = root

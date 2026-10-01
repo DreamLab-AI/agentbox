@@ -80,7 +80,7 @@ fn pass(args: &Args) -> ExitCode {
                 continue;
             }
             let Some(raw) = rustix::process::Pid::from_raw(a.pid as i32) else { continue };
-            match rustix::process::kill_process(raw, rustix::process::Signal::Term) {
+            match rustix::process::kill_process(raw, rustix::process::Signal::TERM) {
                 Ok(()) => killed.push(a.pid),
                 Err(e) => eprintln!("[teammate-gc] pid={} kill failed ({e})", a.pid),
             }

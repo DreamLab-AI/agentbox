@@ -10,6 +10,7 @@
 //! so cron support is always available.
 
 use chrono::{DateTime, Datelike, Duration, Local, NaiveDateTime, TimeZone};
+use croner::parser::{CronParser, Seconds, Year};
 use croner::Cron;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -74,10 +75,18 @@ impl Schedule {
 
 /// Compiles a cron expression.
 ///
-/// `croner`'s `FromStr` builds the pattern lazily and never reports a syntax
-/// error, so validation must go through `Cron::new(..).parse()`.
+/// The parser is pinned to classic five-field cron, as the Python `croniter`
+/// original accepted: no seconds or year field (croner 4 would otherwise accept
+/// both as optional), and the lenient `5/5` step shorthand that croniter takes
+/// and croner 4 rejects by default, so schedules already stored in
+/// `jobs.json` keep loading.
 pub fn parse_cron(expr: &str) -> Result<Cron, croner::errors::CronError> {
-    Cron::new(expr).parse()
+    CronParser::builder()
+        .seconds(Seconds::Disallowed)
+        .year(Year::Disallowed)
+        .sloppy_ranges(true)
+        .build()
+        .parse(expr)
 }
 
 fn duration_re() -> &'static Regex {

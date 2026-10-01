@@ -522,7 +522,7 @@ fn sigterm(pid: u32) -> Result<(), String> {
         .ok()
         .and_then(rustix::process::Pid::from_raw)
         .ok_or_else(|| format!("PID {pid} is outside the signallable range"))?;
-    rustix::process::kill_process(raw, rustix::process::Signal::Term).map_err(|e| e.to_string())
+    rustix::process::kill_process(raw, rustix::process::Signal::TERM).map_err(|e| e.to_string())
 }
 
 /// Signals the daemon to stop, and reports what actually happened.

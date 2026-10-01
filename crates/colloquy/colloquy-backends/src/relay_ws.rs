@@ -175,7 +175,7 @@ impl RelayBackend for WsRelayBackend {
 
         let mut ws = self.connect().await.map_err(|e| e.to_string())?;
         let msg = serde_json::to_string(&json!(["EVENT", signed])).map_err(|e| e.to_string())?;
-        ws.send(Message::Text(msg))
+        ws.send(Message::Text(msg.into()))
             .await
             .map_err(|e| RelayWsError::Transport(e.to_string()).to_string())?;
 
@@ -221,7 +221,7 @@ impl RelayBackend for WsRelayBackend {
         let sub = "colloquy";
         let req = serde_json::to_string(&json!(["REQ", sub, filter_to_json(filter)]))
             .map_err(|e| e.to_string())?;
-        ws.send(Message::Text(req))
+        ws.send(Message::Text(req.into()))
             .await
             .map_err(|e| RelayWsError::Transport(e.to_string()).to_string())?;
 
@@ -259,7 +259,9 @@ impl RelayBackend for WsRelayBackend {
             }
             let _ = ws
                 .send(Message::Text(
-                    serde_json::to_string(&json!(["CLOSE", sub])).unwrap_or_default(),
+                    serde_json::to_string(&json!(["CLOSE", sub]))
+                        .unwrap_or_default()
+                        .into(),
                 ))
                 .await;
             out

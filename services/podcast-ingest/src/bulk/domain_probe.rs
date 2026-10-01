@@ -2,7 +2,7 @@
 //! of `extract_key_terms`, `probe_ontology_coverage`, `run_domain_probe`,
 //! and `generate_ontocast_sample` from `bulk_ingest.py`.
 
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -67,9 +67,9 @@ pub fn extract_key_terms(out_dir: &Path, sample_count: usize) -> Vec<String> {
         return Vec::new();
     }
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let n = sample_count.min(md_files.len());
-    let sample: Vec<&PathBuf> = md_files.choose_multiple(&mut rng, n).collect();
+    let sample: Vec<&PathBuf> = md_files.sample(&mut rng, n).collect();
 
     let mut excerpts: Vec<String> = Vec::new();
     for f in &sample {
@@ -258,9 +258,9 @@ pub fn generate_ontocast_sample(out_dir: &Path, sample_count: usize) -> Option<P
         return None;
     }
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let n = sample_count.min(md_files.len());
-    let sample: Vec<&PathBuf> = md_files.choose_multiple(&mut rng, n).collect();
+    let sample: Vec<&PathBuf> = md_files.sample(&mut rng, n).collect();
 
     let sample_path = out_dir.join(".ontocast-sample.txt");
     let mut parts: Vec<String> = Vec::new();

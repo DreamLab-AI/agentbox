@@ -738,7 +738,7 @@ async fn publish_to_relay(bind_addr: &str, signed: &NostrEvent) -> anyhow::Resul
     let url = format!("ws://{bind_addr}/");
     let (mut ws, _) = tokio_tungstenite::connect_async(&url).await?;
     let frame = serde_json::to_string(&json!(["EVENT", signed]))?;
-    ws.send(Message::Text(frame)).await?;
+    ws.send(Message::Text(frame.into())).await?;
     let _ = tokio::time::timeout(std::time::Duration::from_secs(2), ws.next()).await;
     ws.close(None).await.ok();
     Ok(())
@@ -846,11 +846,9 @@ async fn serve_admitting_ws(
     stream: TcpStream,
 ) {
     let limits = RelayLimits::default();
-    let config = WebSocketConfig {
-        max_message_size: Some(limits.max_text_frame_bytes),
-        max_frame_size: Some(limits.max_text_frame_bytes),
-        ..WebSocketConfig::default()
-    };
+    let config = WebSocketConfig::default()
+        .max_message_size(Some(limits.max_text_frame_bytes))
+        .max_frame_size(Some(limits.max_text_frame_bytes));
     let mut ws = match tokio_tungstenite::accept_async_with_config(stream, Some(config)).await {
         Ok(ws) => ws,
         Err(e) => {
@@ -875,12 +873,12 @@ async fn serve_admitting_ws(
                             ),
                         };
                         for out in responses {
-                            if ws.send(Message::Text(out)).await.is_err() { return; }
+                            if ws.send(Message::Text(out.into())).await.is_err() { return; }
                         }
                     }
                     Some(Ok(Message::Binary(_))) => {
                         let frame = json!(["NOTICE", "binary frames not accepted"]).to_string();
-                        if ws.send(Message::Text(frame)).await.is_err() { return; }
+                        if ws.send(Message::Text(frame.into())).await.is_err() { return; }
                     }
                     Some(Ok(Message::Ping(p))) => {
                         if ws.send(Message::Pong(p)).await.is_err() { return; }
@@ -898,7 +896,7 @@ async fn serve_admitting_ws(
                             sub_id,
                             serde_json::to_value(&event).unwrap_or(Value::Null),
                         ]).to_string();
-                        if ws.send(Message::Text(frame)).await.is_err() { return; }
+                        if ws.send(Message::Text(frame.into())).await.is_err() { return; }
                     }
                 }
             }

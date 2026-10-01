@@ -103,7 +103,7 @@ fn read_manifest(toml_path: &Path, json_path: &Path) -> Value {
 
 fn parse_toml(path: &Path) -> Value {
     let text = std::fs::read_to_string(path).unwrap();
-    let v: toml::Value = text.parse().expect("written TOML parses");
+    let v: toml::Table = text.parse().expect("written TOML parses");
     serde_json::to_value(v).unwrap()
 }
 

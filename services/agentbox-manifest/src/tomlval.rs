@@ -15,7 +15,7 @@ use serde_json::{Map, Value};
 
 /// Parse TOML text into the JSON value model, preserving key order.
 pub fn parse(text: &str) -> Result<Value, toml::de::Error> {
-    Ok(toml_to_json(text.parse::<toml::Value>()?))
+    Ok(toml_to_json(toml::Value::Table(text.parse::<toml::Table>()?)))
 }
 
 /// Read and parse a TOML file, yielding an empty table when it is missing or

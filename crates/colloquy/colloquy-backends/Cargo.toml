@@ -20,7 +20,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "sync", "time", "net", "fs"] }
 # Version-matched to nostr-pod-bridge so the lock graph stays single-source.
-tokio-tungstenite = "0.24"
+tokio-tungstenite = "0.30"
 futures-util = "0.3"
 k256 = { version = "0.13", features = ["schnorr"] }
 hex = { workspace = true }

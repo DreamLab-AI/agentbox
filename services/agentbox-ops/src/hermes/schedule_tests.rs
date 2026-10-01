@@ -297,3 +297,26 @@ fn iso_round_trips_through_the_parser() {
     let back = parse_iso(&text, now).unwrap();
     assert_eq!(back.timestamp_micros(), now.timestamp_micros());
 }
+
+/// Parse results and next occurrences recorded from croner 2.2.0 (the version
+/// this module was written against), so a croner upgrade cannot silently
+/// change which stored schedules load or when they fire.
+#[test]
+fn cron_parsing_matches_croner_2_semantics() {
+    let from = chrono::DateTime::parse_from_rfc3339("2026-10-01T08:58:00+00:00").unwrap();
+    let cases: [(&str, Option<&str>); 7] = [
+        ("0 9 * * *", Some("2026-10-01T09:00:00+00:00")),
+        ("5/5 * * * *", Some("2026-10-01T09:05:00+00:00")),
+        ("0 9 * * MON", Some("2026-10-05T09:00:00+00:00")),
+        ("0 9 1 * MON", Some("2026-10-01T09:00:00+00:00")),
+        ("0 0 9 * * *", None),
+        ("0 9 * * * 2030", None),
+        ("99 99 99 99 99", None),
+    ];
+    for (expr, want) in cases {
+        let got = parse_cron(expr)
+            .ok()
+            .map(|c| c.find_next_occurrence(&from, false).unwrap().to_rfc3339());
+        assert_eq!(got.as_deref(), want, "{expr}");
+    }
+}

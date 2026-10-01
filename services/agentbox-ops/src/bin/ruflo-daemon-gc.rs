@@ -168,7 +168,7 @@ fn main() {
             let Some(raw) = rustix::process::Pid::from_raw(*pid as i32) else {
                 continue;
             };
-            match rustix::process::kill_process(raw, rustix::process::Signal::Term) {
+            match rustix::process::kill_process(raw, rustix::process::Signal::TERM) {
                 Ok(()) => killed.push(*pid),
                 Err(e) => eprintln!("  pid={pid}: kill failed ({e})"),
             }

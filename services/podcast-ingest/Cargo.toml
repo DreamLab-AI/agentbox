@@ -34,12 +34,12 @@ serde_json = { version = "1", features = ["preserve_order"] }
 serde_yaml = "0.9"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "fs", "time", "signal"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-sha2 = "0.10"
+sha2 = "0.11"
 hex = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
 thiserror = "2"
-rand = "0.8"
+rand = "0.10"
 indexmap = { version = "2", features = ["serde"] }
 percent-encoding = "2"
 anyhow = "1"

@@ -65,7 +65,7 @@ fn tui_model_precedence_is_state_then_existing_then_default() {
             out.to_str().unwrap(),
             existing.to_str().unwrap(),
         ]);
-        let result: toml::Value = std::fs::read_to_string(&out).unwrap().parse().unwrap();
+        let result: toml::Table = std::fs::read_to_string(&out).unwrap().parse().unwrap();
         assert_eq!(
             result["consultants"]["antigravity"]["model"].as_str(),
             Some(expected)
