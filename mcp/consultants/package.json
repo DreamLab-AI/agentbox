@@ -23,6 +23,6 @@
     "test": "node -e \"['codex','antigravity','zai','perplexity','deepseek','shared/consultant-base','shared/memory-logger','shared/spawn-cli'].forEach(f => { try { require('./' + (f.includes('/') ? f : f + '/server')); } catch(e) { console.error(f, 'load failed:', e.message); process.exit(1); } }); console.log('all consultants load cleanly');\""
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.30.1"
   }
 }

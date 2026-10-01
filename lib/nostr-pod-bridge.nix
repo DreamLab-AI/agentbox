@@ -44,9 +44,10 @@ let
   # nostr-rust-forum → crates/nostr-bbs-core (NIP-44/59 crypto, NIP-98).
   # Upstream commit 5bfd9815 (2026-06-11) removed NIP-26 delegation in favour
   # of the ADR-099 device-key registry. The bridge tracked that removal — its
-  # authorize() is now allowlist-only.
-  forumRev  = "c4a94d17d85fa458f28c663739b28efb1b77c9d6";
-  forumHash = "sha256-+y77RdQBaQ3glm2KWPiV4ar7oJvphEUlP/bCRgnkAhs="; # refresh via the prefetch procedure above
+  # authorize() is now allowlist-only. Same rev as lib/colloquy.nix (forum
+  # HEAD fe36bf36, 2026-09-30); the two pins move together.
+  forumRev  = "fe36bf365b7027337dde03368f8a52e1218c2f6c";
+  forumHash = "sha256-9HooIa4vyu0Iw47VPr7RkMDyKrEazcElR2xPIe0njvE=";
 
   # solid-pod-rs → crates/solid-pod-rs-nostr (relay substrate) + crates/solid-pod-rs
   # (the [patch.crates-io] target). Pinned to the v0.5.0-alpha.9 tag
@@ -105,26 +106,11 @@ pkgs.rustPlatform.buildRustPackage {
   # cargoSetupPostPatchHook validates a Cargo.lock at the unpacked source root,
   # but the reassembled workspace keeps the crate's lockfile under
   # buildAndTestSubdir. Copy it to the root so the consistency check resolves
-  # (same pattern as lib/solid-pod-rs.nix). The pinned forum revision predates
-  # three error variants added by nostr 0.44.8, so extend its adapter mappings
-  # in the sandbox copy. The build still runs in the subdir.
+  # (same pattern as lib/solid-pod-rs.nix). The build still runs in the subdir.
+  # (The forum rev now carries the nostr 0.44.8 error-variant mappings upstream,
+  # so the old substituteInPlace shim is gone — re-adding it would only inject
+  # duplicate, unreachable match arms.)
   postPatch = ''
-    substituteInPlace nostr-rust-forum/crates/nostr-bbs-core/src/nip04.rs \
-      --replace-fail \
-        '        UpstreamError::WrongBlockMode => Nip04Error::DecryptionFailed,' \
-        '        UpstreamError::WrongBlockMode => Nip04Error::DecryptionFailed,
-        UpstreamError::InvalidIVLen => Nip04Error::UpstreamCryptoError("invalid IV length".into()),'
-
-    substituteInPlace nostr-rust-forum/crates/nostr-bbs-core/src/nip44.rs \
-      --replace-fail \
-        '        UpstreamError::VersionNotFound => Nip44Error::InvalidPayload("missing version byte"),' \
-        '        UpstreamError::VersionNotFound => Nip44Error::InvalidPayload("missing version byte"),
-        UpstreamError::MessageTooLong => Nip44Error::PlaintextTooLong,' \
-      --replace-fail \
-        '                ErrorV2::HkdfLength(_) => Nip44Error::DecryptionFailed,' \
-        '                ErrorV2::HkdfLength(_) => Nip44Error::DecryptionFailed,
-                ErrorV2::PayloadTooShort => Nip44Error::InvalidPayload("payload too short"),'
-
     cp ${../services/nostr-pod-bridge/Cargo.lock} Cargo.lock
   '';
 

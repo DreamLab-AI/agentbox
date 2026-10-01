@@ -12,6 +12,6 @@
   "keywords": ["mcp", "https", "proxy", "debug", "cors", "docker", "host"],
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.30.1"
   }
 }

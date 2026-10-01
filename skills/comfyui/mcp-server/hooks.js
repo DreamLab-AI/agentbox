@@ -9,7 +9,7 @@
  *   npx claude-flow@alpha hooks post-task --task-id "workflow-123"
  */
 
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID: uuidv4 } = require('crypto');
 const path = require('path');
 const fs = require('fs').promises;
 

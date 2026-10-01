@@ -4,7 +4,7 @@
   "description": "Secure MCP server scripts with authentication and rate limiting",
   "dependencies": {
     "nostr-tools": "2.25.2",
-    "ws": "^8.18.3"
+    "ws": "^8.22.0"
   },
   "scripts": {
     "ws-server": "node mcp-ws-relay.js",

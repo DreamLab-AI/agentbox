@@ -37,9 +37,14 @@
 { lib, pkgs }:
 
 let
-  version = "0.1.0+rev-8260dc5";
-  rev     = "8260dc5e5a1212de123233da116b4e14d58e606e";
-  srcHash = "sha256-yRx453b0AfrM4SOPqih5lAcCrcJtbHuktDXeLLxWO3k=";
+  # Bumped 2026-10-01: gh-pages HEAD moved from 8260dc5 (2026-04-24) to
+  # 6b055ab (2026-05-27, "add audio pane for single audio files") — the
+  # newest commit on the branch, well past the 3-day review floor. No tags
+  # or releases on this repo; linkedobjects/browser ships straight off
+  # gh-pages HEAD. The source hash below is resolved and build-verified.
+  version = "0.1.0+rev-6b055ab";
+  rev     = "6b055ab8074a9b27043474ad605ea0ab4315d864";
+  srcHash = "sha256-pXZ7YYgvvdKFC7AOFRgFLU9B7L9OrOO+UGK85ALEk+E=";
 
   src = pkgs.fetchFromGitHub {
     owner = "linkedobjects";

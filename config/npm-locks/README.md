@@ -22,3 +22,10 @@ changes and materialise the Nix derivation before updating its recursive hash.
 Do not replace a failed hash merely with the resolver's latest output. A lock
 is source reproducibility evidence, not a deployment or package-vulnerability
 attestation. External browser/model runtime downloads remain separately governed.
+
+Refresh method (2026-10-01 bump): unpack the pinned registry tarball, apply the
+same manifest edits `makeNpmCli` makes (`stripDevDeps`, `runtimeDependencies`),
+then `npm install --package-lock-only --ignore-scripts --before=<now-72h>`
+(plus `--legacy-peer-deps` where the flake keeps `legacyPeerDeps = true`).
+`--before` holds transitive dependencies to the same 72-hour freshness rule as
+the root pin. Prove the lock with the FOD's own `npm ci` flags before landing it.

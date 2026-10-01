@@ -14,8 +14,8 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "pg": "^8.13.0"
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "pg": "^8.23.0"
   },
   "license": "MIT",
   "keywords": ["mcp", "ruvnet", "knowledge-base", "ruvector", "agentbox", "ruflo"]

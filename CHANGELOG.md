@@ -4,6 +4,28 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-10-01 — dependency refresh and rebuild compatibility)
+
+- Refresh the pinned CLI/runtime estate: Codex 0.158.0, Claude Code 2.1.285,
+  ruflo 3.47.0, RuVector CLI 0.3.3, agentic-qe 3.14.4, deepsec 2.3.10,
+  metaharness 0.4.17 / Darwin 0.10.3, Wrangler 4.142.0, supercronic 0.2.49
+  and web-researcher-mcp 1.49.3. Checked-in npm closures and Nix hashes are
+  refreshed together. Claude's stable-channel exception to the usual 72-hour
+  delay is documented in its derivation; Mermaid 12 remains held.
+- Migrate management-api to Fastify 5 and current plugins: preserve signed
+  Host ports, redirect status/location, WebSocket callbacks, CORS methods and
+  request metrics; use the public OpenTelemetry tracer API. Regression tests
+  cover these compatibility boundaries, including live synthetic NIP-98 signatures.
+- Refresh Rust dependencies and adapt TOML, WebSocket, MCP, random-number and
+  process-signal APIs. Preserve existing five-field cron schedule semantics.
+- Quarantine stale cargo-installed ELF binaries with missing Nix loaders,
+  retaining numbered recovery copies; Notes selects the first runnable Rune.
+  Raise Jev's minimum estimated reduction to 0.55 to avoid ineffective compactions.
+- Reconcile upstream main's nightly execution journal, ADR ratchet, vendored
+  Rune lockfile and ComfyUI network fix without discarding local work.
+
+No memory dimension, database volume or data migration is part of this refresh.
+
 ### Added (2026-09-30 — the sidestr:dreamlab chain is supervised, PRD-024 P1)
 
 `[sidechain]` bakes `sidestr-producer`, `sidestr-mirror` and `sidestr-faucet`

@@ -316,13 +316,13 @@
         mkNpmCli  = npmCliLib.makeNpmCli;
 
         # 1. ruvector — always enabled; replaces npx in [program:ruvector] supervisor block.
-        #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.2.25.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/ruvector/-/ruvector-0.3.3.tgz
         ruvectorPkg = mkNpmCli {
           pkgName         = "ruvector";
-          version         = "0.3.2";
-          packageLock = ./config/npm-locks/ruvector-0.3.2.package-lock.json;
-          sha256          = "sha256-IgxvnZaWD49fmhsOxsmGGHnKMc9wKcSGE3YvFKqLJ1E=";
-          nodeModulesHash = "sha256-clocSGkQdlmXBQumwQH2s5JKnVga61RiBGqPm0MKloE=";
+          version         = "0.3.3";
+          packageLock = ./config/npm-locks/ruvector-0.3.3.package-lock.json;
+          sha256          = "sha256-dR/OqeNlvF2Q57Oumepn3ljG096o2YKKWeSr+3sivvA=";
+          nodeModulesHash = "sha256-ekqSne1s5NKbVdzk/ujm+DtY2F7lwaG5BaKp3tmsDLU=";
           bin             = "ruvector";
         };
 
@@ -342,15 +342,18 @@
         #    the scoped tarball basename is `cli-<ver>.tgz`, and the unscoped
         #    `claude-flow` npm package is a third artefact of the same code.
         #
-        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.41.0.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.47.0.tgz
         #    3.41.0 (2026-09-10): federation topology, trust, routing, and
         #    lifecycle support plus the corresponding MCP tool surface.
+        #    3.47.0 (2026-09-27; locks @claude-flow/cli 3.47.0): newest release
+        #    outside the 72-hour freshness window on 2026-10-01 (3.47.1–3.49.0
+        #    are inside it). Lock resolved with --before so transitives obey it.
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.42.5";
-          packageLock = ./config/npm-locks/ruflo-3.42.5.package-lock.json;
-          sha256          = "sha256-snSnkKkIsOP/gLeoqROEk5zwwdHlj51pVqdOjJKUHAc=";
-          nodeModulesHash = "sha256-0e6ULIgAyUDR8pnsizr8VduI9sNx64+vVSd7vFoHEKM=";
+          version         = "3.47.0";
+          packageLock = ./config/npm-locks/ruflo-3.47.0.package-lock.json;
+          sha256          = "sha256-3uiMaPAmDPypDYSLjmuLpRerQVqZWAWcgjF3yczjZxM=";
+          nodeModulesHash = "sha256-Wd//CPe78tLakvglOGGkC3u+uS2Y2olsRieAdlKfYEg=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -366,13 +369,13 @@
         #    ({degraded:true}) on this offline container. NEVER @latest
         #    (ADR-067); darwin invocations must pass --sandbox mock|agent
         #    (ADR-065; agentbox.toml [dream_machine] note).
-        #    nix-prefetch-url https://registry.npmjs.org/metaharness/-/metaharness-0.4.16.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/metaharness/-/metaharness-0.4.17.tgz
         metaharnessPkg = mkNpmCli {
           pkgName         = "metaharness";
-          version         = "0.4.16";
-          packageLock = ./config/npm-locks/metaharness-0.4.16.package-lock.json;
-          sha256          = "sha256-nQ4CFlayNt0gyBuPPK8ylHIUSm7A2Iio0qw8zCqIqxI=";
-          nodeModulesHash = "sha256-Pqq5MEuNuVY96Uc3eArgfRjcWIJ8wDujHScNKxbsA7I=";
+          version         = "0.4.17";
+          packageLock = ./config/npm-locks/metaharness-0.4.17.package-lock.json;
+          sha256          = "sha256-fGWihB4ViFAmVNCzs31KTOAVLmR2jDcwTjbBN8LWkDo=";
+          nodeModulesHash = "sha256-CgD8ddZnJVpohVL5dJmy3yHqjuieVtW9eMC8MPd6a7E=";
           bin             = "metaharness";
           extraBins = {
             # own-package bin — path is package-root-relative (dependency bins
@@ -380,13 +383,13 @@
             "harness" = "dist/harness-bin.js";
           };
         };
-        #    nix-prefetch-url https://registry.npmjs.org/%40metaharness/darwin/-/darwin-0.10.2.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/%40metaharness/darwin/-/darwin-0.10.3.tgz
         metaharnessDarwinPkg = mkNpmCli {
           pkgName         = "@metaharness/darwin";
-          version         = "0.10.2";
-          packageLock = ./config/npm-locks/metaharness-darwin-0.10.2.package-lock.json;
-          sha256          = "sha256-rnXeVyFetVQQr/WTHg2IDFqsjEV48s/ctD0esEcLXhU=";
-          nodeModulesHash = "sha256-Bz0mCzZbDBp4J3P623UKJYuq4ybMV15PJ+WXeTBtMRI=";
+          version         = "0.10.3";
+          packageLock = ./config/npm-locks/metaharness-darwin-0.10.3.package-lock.json;
+          sha256          = "sha256-BucSro386tjGp3GrIyeYBgVnZNd/U3dQuXkhfJ/Oi2Q=";
+          nodeModulesHash = "sha256-S9THIgBL26hmTt1nZ68UC4CIaklzB/cfRYbUq7qSqqg=";
           bin             = "metaharness-darwin";
         };
 
@@ -395,7 +398,7 @@
         #    templates to $HOME/.claude/agents/ — it must run as the runtime user
         #    after container start, NOT at Nix build time. Add to agentbox.sh init:
         #      [[ "${ENABLE_AGENTIC_QE:-false}" == "true" ]] && aqe init --auto || true
-        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.13.1.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.14.4.tgz
         #    3.13.0 (2026-07-18): QE-Court multi-vendor adversarial review
         #    (Codex/GPT + Cognitum + Claude), Codex CLI provider via `codex
         #    exec`, @huggingface/transformers demoted to optional peer (4 HIGH
@@ -407,10 +410,12 @@
         #    nodeModulesHash resolved 2026-07-24 during the ADR-041 rebuild.
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          version         = "3.14.2";
-          packageLock = ./config/npm-locks/agentic-qe-3.14.2.package-lock.json;
-          sha256          = "sha256-7nOpWeZvzZTnXtk2bzPahd7eDoOMAF+p6YC82wYyMJM=";
-          nodeModulesHash = "sha256-4mfbOcUFYVrxRrUeAIYDE4Oao6T1V6VDDNelE7E7vuw=";
+          # 3.14.4 (2026-09-27): newest outside the 72-hour freshness window
+          # on 2026-10-01; 3.14.5 and 3.14.6 are inside it.
+          version         = "3.14.4";
+          packageLock = ./config/npm-locks/agentic-qe-3.14.4.package-lock.json;
+          sha256          = "sha256-9lwDo+qpSiIxVtg9r/Kee9TdZru9fVBXSp5/Vpy9x6c=";
+          nodeModulesHash = "sha256-Vvg/qJpAvOU9s2afX/JZLv1C6YJfHCVHo2R9T3BYuwA=";
           bin             = "aqe";
         };
 
@@ -421,7 +426,7 @@
         #    Rust-build pattern).
 
         # 6. codebase-memory-mcp — gated by toolchains.codebase_memory.
-        #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.10.8.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/codebase-memory-mcp/-/codebase-memory-mcp-0.11.0.tgz
         #    The npm package is a one-shot launcher: bin.js execs
         #    lib/codebase-memory-mcp/bin/codebase-memory-mcp and, when that is
         #    absent, runs install.js to download it from GitHub Releases INTO
@@ -477,6 +482,9 @@
             # document rendering; the browser sidecar remains unaffected.
             args = [ "--no-sandbox" "--disable-setuid-sandbox" ];
           });
+        #    12.0.0 HELD (2026-10-01): mermaid 12 pins chevrotain ~11.1.2 →
+        #    lodash-es 4.17.23 (GHSA-r5fr-rjxr-66jc, high) — a new audit
+        #    finding — and drops -w/-H/--pdfFit (render.sh uses -w/-H).
         mermaidCliPkg = mkNpmCli {
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.17.0";
@@ -495,19 +503,19 @@
         # remote deploys). Version bump: set version below, set BOTH hashes to
         # lib.fakeHash, run ./scripts/prefetch-hashes.sh (resolves them in one
         # sweep), then rebuild; Renovate auto-detects the bump.
-        #   nix-prefetch-url https://registry.npmjs.org/wrangler/-/wrangler-4.125.0.tgz
+        #   nix-prefetch-url https://registry.npmjs.org/wrangler/-/wrangler-4.142.0.tgz
         #
         # Former PIN at 4.78.0 (private @cloudflare/codemod in devDependencies,
         # 4.79.0+) lifted 2026-08-27: 4.127.0 no longer lists codemod in
         # devDependencies (verified against the registry manifest).
         wranglerPkg = mkNpmCli {
           pkgName         = "wrangler";
-          # 4.130.0 remains inside the 72-hour freshness window. 4.129.1 is
-          # the newest stable release outside it for this rebuild.
-          version         = "4.129.1";
-          packageLock = ./config/npm-locks/wrangler-4.129.1.package-lock.json;
-          sha256          = "sha256-ZUwKXAppp3+PtAcB2IBuAnPpZ95SaTkygpcF3WY4et4=";
-          nodeModulesHash = "sha256-mmino6rjYoqtxOWpnKssFSpvELjz+cGhJfTn6X2p9FM=";
+          # 4.143.0–4.145.0 remain inside the 72-hour freshness window on
+          # 2026-10-01. 4.142.0 is the newest stable release outside it.
+          version         = "4.142.0";
+          packageLock = ./config/npm-locks/wrangler-4.142.0.package-lock.json;
+          sha256          = "sha256-yOmfTH0Xzq5Qizv1Xf6BSlt148KkH+pUJWvXmEwh7X4=";
+          nodeModulesHash = "sha256-6uc4Z3X3djtgPa9LgbEHunDlIrNFb7nDVMyJJyMp6WQ=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -522,8 +530,8 @@
         #    Apache-2.0. `deepsec init` is never used in-container (it would
         #    write a .deepsec/ workspace + node_modules and link a Vercel
         #    project); the gate generates a minimal deepsec.config.mjs instead.
-        #    nix-prefetch-url https://registry.npmjs.org/deepsec/-/deepsec-2.3.9.tgz
-        #    sha256 computed 2026-09-05 from the registry tarball. nodeModulesHash
+        #    nix-prefetch-url https://registry.npmjs.org/deepsec/-/deepsec-2.3.10.tgz
+        #    sha256 computed 2026-10-01 from the registry tarball. nodeModulesHash
         #    is the placeholder: the first `nix build .#runtime` after enabling
         #    prints the real hash (see lib/npm-cli.nix "fakeHash sentinel") —
         #    paste it here in the same change that lands the rebuild receipt.
@@ -531,10 +539,10 @@
         #    drive the baked `claude` binary instead of resolving its own copy.
         deepsecPkg = mkNpmCli {
           pkgName         = "deepsec";
-          version         = "2.3.9";
-          packageLock = ./config/npm-locks/deepsec-2.3.9.package-lock.json;
-          sha256          = "sha256-5DHqDxepgjVhBmbjU5/b8U3VX+K9rsxSENt2o/BumHs=";
-          nodeModulesHash = "sha256-Ko78yJan9PA0NZLE6wABwpjUkHNNN5qqBK4vKnr5PBw=";
+          version         = "2.3.10";
+          packageLock = ./config/npm-locks/deepsec-2.3.10.package-lock.json;
+          sha256          = "sha256-D1h7Q+azOEOEcW/6vxSitFbYvHFYvw5r8iv3K0NeFGE=";
+          nodeModulesHash = "sha256-ly86uyyw1PJVHDAt3ZIRzd/drtQZnV9+UGUvILPxKuo=";
           bin             = "deepsec";
           extraEnv        = { CLAUDE_CODE_EXECUTABLE = "claude"; };
           # deepsec's published tarball keeps its own monorepo build-only
@@ -589,7 +597,7 @@
           # the lockfile root name participates in the FOD hash even though
           # the dependency set is unchanged).
           # Refresh via: nix run nixpkgs#prefetch-npm-deps -- management-api/package-lock.json
-          npmDepsHash = "sha256-JWA3qka5b0ZXYfsGFDUOr1NjOm3ubfVHG0wEDgpnni4=";
+          npmDepsHash = "sha256-eDCHlchkpAOPHjcQzWaaYr/IaIhahUg+ernQZg6XrbY=";
           # Vendor the canonical NostrBridge into lib/ so the in-process
           # JunkieJarvis agent (server.js) can require('./lib/nostr-bridge') and
           # resolve nostr-tools + ws from THIS package's node_modules. A bare
@@ -623,7 +631,7 @@
           # Prefetched 2026-04-24 after regenerating mcp/package-lock.json
           # (the shipped lockfile predated the nostr-tools dep addition).
           # Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/package-lock.json
-          npmDepsHash = "sha256-Y3ncZiGBJf8Ul8WSzIuGinFPK3riTGQQoBX2iJXfl/g=";
+          npmDepsHash = "sha256-zwQdwR0aVYnmdpxnxwuno9OEhoK/24M0ABWwAkxfMgA=";
         };
 
         # 3. skills/openai-codex/mcp-server — gated by toolchains.codex
@@ -632,7 +640,7 @@
           src         = ./skills/openai-codex/mcp-server;
           entry       = "server.js";
           # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/openai-codex/mcp-server/package-lock.json
-          npmDepsHash = "sha256-lDX5EgJ/41iC9NjYgJ8w5VAUP3AlgIwY5tmJE0MGgI4=";
+          npmDepsHash = "sha256-7worjv1rfSn4VzN0uO33OYTwr5kLfstqBAMRyV6a5kw=";
         };
 
         # 4. skills/lazy-fetch/mcp-server — gated by toolchains.ruflo or claude_flow.
@@ -650,7 +658,7 @@
             tsc --project tsconfig.json
           '';
           # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/lazy-fetch/mcp-server/package-lock.json
-          npmDepsHash = "sha256-Bh72Bvdqmqnyqoleqmmofp2feMspGOu6+xnfCz3xIbY=";
+          npmDepsHash = "sha256-m0OKM556QKgBbMo6oMAiFFI7AVvvy0Iia0ecqDnuPyQ=";
         };
 
         # 5–6. playwright-mcp and vglrunChromium removed — browser automation
@@ -668,7 +676,7 @@
           # Prefetched 2026-04-25. Refresh:
           #   nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
           # Prefetched 2026-04-25. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/consultants/package-lock.json
-          npmDepsHash = "sha256-o6Tn1wvHvXbDg3yjqXM0J8WMsTMP7suukMgl3L+fYr0=";
+          npmDepsHash = "sha256-vWqVKSZAmlESQJPE36Q00JiEIBe6sNe9765WGOZYBlA=";
         };
 
         # 6. skills/comfyui/mcp-server — gated by skills.media.comfyui_builtin.
@@ -682,7 +690,7 @@
           extraBuildInputs = [ pkgs.python3 pkgs.node-gyp ];
           extraEnv         = { npm_config_build_from_source = "true"; };
           # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/comfyui/mcp-server/package-lock.json
-          npmDepsHash = "sha256-3OchWVs/H+swo4KzBcicvs0+4FW8RVNDqc4DrmC81Xc=";
+          npmDepsHash = "sha256-FHXXtxMmOMPJTovGqKRYPishZ4UDKebm3xPRb2DY5sM=";
         };
 
         # Conditional package lists for allPackages — mirrors the lib.optionals
@@ -752,10 +760,14 @@
         # binary downloaded there during bootstrap can never be launched.
         supercronicPkg = pkgs.stdenvNoCC.mkDerivation {
           pname = "supercronic";
-          version = "0.2.33";
+          # Bumped 0.2.33 -> 0.2.49 (2026-10-01 review). v0.2.49 published
+          # 2026-08-14, safely past the 3-day floor; no SHA1/256SUMS file is
+          # published for this artefact (true at 0.2.33 too), so the hash
+          # below is this agent's own sha256 of the TLS-fetched binary.
+          version = "0.2.49";
           src = pkgs.fetchurl {
-            url = "https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64";
-            hash = "sha256-/u+jENpWnIG5nhAnuGsntR5u6atkd0e0kJlkUSDPxnE=";
+            url = "https://github.com/aptible/supercronic/releases/download/v0.2.49/supercronic-linux-amd64";
+            hash = "sha256-pTriNmAscziro/uv9AvaYwDq47n+24Jh6wbP43JEMME=";
           };
           dontUnpack = true;
           installPhase = ''
@@ -1050,17 +1062,25 @@
         #   first build will print the correct vendorHash to substitute.
         webResearcherMcpPkg = pkgs.buildGoModule rec {
           pname   = "web-researcher-mcp";
-          # Bumped 1.37.5 -> 1.43.0 (2026-07-19). Hashes refresh on bump:
-          #   nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.43.0
+          # Bumped 1.43.0 -> 1.49.3 (2026-10-01 review; v1.49.3 published
+          # 2026-09-01, safely past the 3-day floor — v1.49.4, published
+          # 2026-09-28, was still inside the cool-off window at review time).
+          # v1.47.0 made CACHE_ISOLATION a required fail-closed setting, but
+          # only when OAUTH_ISSUER_URL is configured; this deployment sets
+          # neither (stdio MCP, no OAuth), so it does not apply. v1.47.2
+          # retired the gag_order_search/syllabus_search tools in favour of
+          # web_search with lens selection; agentbox never called either
+          # retired tool name directly. Hashes refresh on bump:
+          #   nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.49.3
           #   then `nix build` once with lib.fakeHash for vendorHash.
-          version = "1.43.0";  # bump together with hashes below
+          version = "1.49.3";  # bump together with hashes below
           src = pkgs.fetchFromGitHub {
             owner = "zoharbabin";
             repo  = "web-researcher-mcp";
             rev   = "v${version}";
-            hash  = "sha256-BxN04tejRS7l+Clji64NN+K7124vcD6hnPjUiWf7h5o=";
+            hash  = "sha256-+k2sEHfhmahCRXj60OGW8zYqb6iz0D8DQY2WSpBmSWA=";
           };
-          vendorHash = "sha256-YnUplHxHiOdQa3D2xTk4MSleSYqvOdptHUL4EZ4+Vuw=";
+          vendorHash = "sha256-cEZyfabc5z1D8kFYMzC2ppL/U4N6BK4HdF6ori21BR4=";
           subPackages = [ "cmd/web-researcher-mcp" ];
           # Strip the auto-Chromium download path — we never use tier 4.
           ldflags = [ "-s" "-w" ];
@@ -1128,7 +1148,7 @@
           # stdio MCP server starts on module load — skip the import check.
           skipLoadCheck = true;
           # Prefetched 2026-07-05. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/aci-shell/package-lock.json
-          npmDepsHash   = "sha256-8aKmf3gvv5aBMp40WHaatZPtRxBcX6ubxcQaZeS9sBA=";
+          npmDepsHash   = "sha256-e9HpFuCp8HxzI7po8bRqlDvsHTgssjyAr18w1gUfFOM=";
         };
 
         # RuvNet Brain: THIN MCP wrapper over the shared ruvector-postgres
@@ -1146,7 +1166,7 @@
           entry         = "server.js";
           skipLoadCheck = true;
           # Prefetched 2026-07-07. Refresh: nix run nixpkgs#prefetch-npm-deps -- mcp/ruvnet-brain/package-lock.json
-          npmDepsHash   = "sha256-kKxKUQMsO6BVKwNaEkOPayyTXv1ssvz6i1vSdu8O8zg=";
+          npmDepsHash   = "sha256-3r+pIf5MwvrxXKp+PVPEnfUtO8FCCToIWL9ueIEyi7A=";
         };
 
         # MCP bridge servers (precedent-bridge, governance-bridge, harness-bridge,
@@ -1159,7 +1179,7 @@
           src           = ./mcp/servers;
           entry         = "governance-bridge.js";
           skipLoadCheck = true;
-          npmDepsHash   = "sha256-h0P+TmD/0sXsxJYB4JloPQpNthXIbwDT/JdnzQ+6HXw=";
+          npmDepsHash   = "sha256-WbYaOKRw7f4DH70wYZk8yHfynNRRKe/0nbZc3HnW1wQ=";
         };
 
         # Perplexity MCP: pins @perplexity-ai/mcp-server so the entrypoint
@@ -1171,7 +1191,7 @@
           src           = ./mcp/perplexity;
           entry         = "node_modules/@perplexity-ai/mcp-server/dist/index.js";
           skipLoadCheck = true;
-          npmDepsHash   = "sha256-iu3TMYhpyWir5IvGwfIFg4BE8YL20nbYWyW2E1BBY4k=";
+          npmDepsHash   = "sha256-8L+F/ckEKqtX+e8u2YDRR2e0q+MobilJziNKCYE12/A=";
         };
 
         codeHarnessPackages =

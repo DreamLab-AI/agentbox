@@ -24,22 +24,10 @@
 # network, so the repo is fetched as a fixed-output derivation and the on-disk
 # layout the relative path-dep expects is reassembled around the source.
 #
-# **This pin is AHEAD of lib/nostr-pod-bridge.nix, deliberately and verifiably.**
-# colloquy is pinned to fcb6b16 (forum HEAD); the bridge is still on c4a94d17 because its Cargo.lock was generated
-# against that tree and advancing it needs a `cargo generate-lockfile` plus a
-# build, which is host-side work.
-#
-# Two revisions in one image would be a problem if a SINGLE binary saw two
-# definitions of NostrEvent — it does not: these are separate binaries with
-# separate closures. The shared surface that could still bite is the event
-# contract itself, and that is VERIFIED identical:
-#
-#   git diff c4a94d17..fcb6b16 -- crates/nostr-bbs-core/src/event.rs   # empty
-#
-# so both binaries hash event ids and verify signatures the same way. The drift
-# is confined to keys.rs and the crate's Cargo.toml, neither of which colloquy
-# uses (it takes SigningKey from k256 directly and signing from event.rs).
-# Advance the bridge on the next host rebuild and the two converge again.
+# This pin and lib/nostr-pod-bridge.nix's forumRev are the SAME revision
+# (fe36bf36, forum HEAD 2026-09-30), so both binaries compile one nostr-bbs-core
+# and hash event ids / verify signatures identically. Move the two together;
+# both crates' checked-in Cargo.lock files resolve this tree as-is.
 #
 # Hash refresh: `nix-prefetch-url --unpack --type sha256 \
 #   https://github.com/DreamLab-AI/nostr-rust-forum/archive/<rev>.tar.gz`
@@ -54,10 +42,9 @@
 let
   version = "0.1.0";
 
-  # Ahead of lib/nostr-pod-bridge.nix on purpose — see the header for why that
-  # is safe here and what closes the gap.
-  forumRev  = "fcb6b160c42b06b4053a55a772abed3650bcaabc";
-  forumHash = "sha256-W8X5ZbIJJEjBHF0D/rEYO3V1n8VfYhlpqkaGSY/aKdQ=";
+  # Same revision as lib/nostr-pod-bridge.nix — see the header.
+  forumRev  = "fe36bf365b7027337dde03368f8a52e1218c2f6c";
+  forumHash = "sha256-9HooIa4vyu0Iw47VPr7RkMDyKrEazcElR2xPIe0njvE=";
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
