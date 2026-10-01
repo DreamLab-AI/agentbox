@@ -136,6 +136,27 @@ rendered files and never redraws them. The re-check caught it by grepping the re
 not the generator. Any edit to a generator (diagrams, manifests, indexes) is followed by running
 that generator, then grepping its output for the old text, before the pack counts as fixed.
 
+**Cite the line that executes, not the line that describes it.** Across all three refreshed packs
+the commonest residual finding was a true claim cited to the nearest readable source: a code
+comment, a docstring or an on-screen caption saying what the code does. One developer pack had
+55 such citations. A citation whose span is only comment lines is a finding until it is moved
+to the executing line or the sentence says it is quoting the comment.
+
+**Reachable means someone writes it.** A schema that allows a value proves only that it can
+exist. Before telling a reader they will see something, find every writer of that value (grep
+the saves, the routes, the generators); one user-pack sentence described a message that the
+schema allowed and nothing in the product ever saves.
+
+**Count scanner findings by exit code or structured output, never by grepping the text.** A
+writer reported a clean slop-scan on 13 chapters because its grep looked for `[high]` and the
+tool prints `[HIGH]`. Ask for the tool's exit status or `--format json`.
+
+**A corpus stamp is a commit, so check it against HEAD before reusing it.** The corpus passed
+its gate at its declared revision while 54 citations had drifted at HEAD one commit later, and
+the warning count understated it: the worktree check flags only spans that land on punctuation
+or past the end of the file. Run `--cite-check --worktree-citations` at the refresh's code
+revision and re-stamp first when any code under the corpus changed.
+
 ## Shipping the corpus
 
 Mining a corpus for a chapter is one use of it. The other is publishing it whole, because a
