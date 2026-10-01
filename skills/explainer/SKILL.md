@@ -120,6 +120,17 @@ shared across all three deliveries:
 - **runtime** — a command actually run, its exit status and output;
 - **visual** — an actual screenshot or capture, not an assumed one.
 
+A caption is a visual claim, so it is checked against the pixels, not against the scene it
+was meant to show. On 1 October 2026 the guided-tour review found that 9 of 33 captions
+described things that were not in frame. Among them were a form below a 900 px crop,
+sections that had not painted, a refusal message in a shot byte-identical to the "before"
+shot, and a LIVE pill on footage of the stand-in engine. Open every still and pull frames
+from every clip (`ffmpeg -vf fps=1`) before you write its caption. Hash-compare any pair of
+shots that claims a before and after. Say what the frame lacks instead of describing what
+should have been there. The same applies to claims about your own tooling: read the
+checker before saying what it guarantees. The citation checker confirms only that each
+cited line exists at a stamped revision, and it warns rather than fails.
+
 When a claim cannot yet be supported, its status is `needs_evidence` (say
 exactly what is missing) or `blocked` (the code fails the required behaviour).
 Never launder a gap into "out of scope", a "limitation", or silence.
