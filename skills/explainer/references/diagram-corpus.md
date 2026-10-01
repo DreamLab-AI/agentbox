@@ -104,11 +104,16 @@ paragraph (643 on that corpus, every one landing on its paragraph). The rule for
 follows: if a chapter is allowed to cite it, the sheet has already resolved it; anything else is
 a question for `QUESTIONS.md`.
 
-**A screen the product labels "mock" shows the mock, not the product.** The same review found a
-chapter presenting the mock engine's request parsing (one regex, a default page id) as the
-product's rule, because the walk that produced the screenshot ran on the default mock engine.
-When a capture or a corpus sentence says a component is mocked, the chapter says so and limits
-the claim to what the mock does; what the real component does is a question, not an inference.
+**A capture shows the configuration it was taken under, and a UI label is not evidence of
+the default.** The first review found a chapter presenting the mock engine's request parsing
+(one regex, a default page id) as the product's rule, because the walk behind the screenshot ran
+with the mock engine configured. The obvious repair was to trust the chat bubble's caption,
+"Replies come from the box's engine — mock by default", and the first version of this lesson
+did. A later review showed the caption is stale: the resolver returns the live engine when the
+engine variable is unset, and the pod sets it to the live engine explicitly. Two rules follow.
+Attribute a capture's behaviour to the configuration of the run that took it (the walk record
+says which), not to the product. And settle any "by default" claim, whether it comes from a
+caption, a comment or the corpus, by reading the resolver that executes.
 
 **Executing code outranks the corpus, and the code's own comments.** On the same refresh the
 corpus and two code comments disagreed about the deploy grant and the *auto* dial. The comments
