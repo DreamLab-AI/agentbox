@@ -2,13 +2,13 @@
 id: ADR-2120
 title: Give Codex daemon packages executable persistent storage
 date: 2026-10-01
-decision_status: proposed
+decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: 0a63db7c49faf1c97bc2f4839f25027c2fec35c2
+verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
 repo: agentbox
@@ -45,10 +45,18 @@ Shell syntax and diff whitespace checks pass. A disposable Docker test
 confirmed that the parent blocks execution while the nested package volume
 allows execution and accepts UID 1000 ownership.
 
-The running agentbox has not been rebuilt or restarted. Full Codex daemon
-startup must be checked after deployment. The decision is recorded as proposed
-pending the ledger's required committed verification anchor; implementation is
-staged in the working tree.
+Image `sha256:399888769570` is live. The resolved Compose model and live mounts
+agree on `agentbox-codex-packages`; all 18 named-volume identities match and the
+original workspace volume is retained. A real `codex app-server daemon start`
+installed the 0.158.0 managed binary into the new volume, reported the daemon
+running, and stopped cleanly. The stored package occupies 351 MiB and survives
+the bounded parent tmpfs.
+
+`codex doctor` still judges free space from the parent `CODEX_HOME` mount and
+therefore reports its 512 MiB limit even though the executable package subtree
+is a separate 59 GiB disk-backed mount. The real install/start test proves the
+original EACCES/storage failure is closed; the remaining doctor result is an
+upstream nested-mount accounting limitation, not a runtime failure.
 
 ADR index regeneration remains blocked by seven existing stale verification
 anchors in other records; those anchors were not rewritten.

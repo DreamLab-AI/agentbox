@@ -2,13 +2,13 @@
 id: ADR-2119
 title: Remove the retired outliner ontology runtime
 date: 2026-10-01
-decision_status: proposed
+decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: 0a63db7c49faf1c97bc2f4839f25027c2fec35c2
+verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
 repo: agentbox
@@ -44,15 +44,15 @@ Nix store nor the running container has been modified by this change.
 The upstream vault source pin must be reviewed separately when deploying newer
 proposal or creation capabilities; this change does not claim those are live.
 
-The user authorised the retirement. The ledger remains proposed pending a
-committed verification anchor: its schema requires an accepted record to name
-a verified commit, and these verified working-tree edits are not yet committed.
+The user authorised the retirement. Image `sha256:399888769570` activates the
+change: `ontology-tools` is absent while the vault-backed ontology governance
+and web-summary tests remain green.
 
 ## Verification
 
 Working-tree checks on 2026-10-01: 29 web-summary Rust tests passed, including
 current-format acceptance and obsolete/unknown-format rejection; 59 Node tests
 passed for ontology proposal/apply governance. `git diff --check` passed.
-No Nix evaluator is installed here, so image evaluation and deployment are
-unverified. The installed `ontology-tools` resolves into the immutable Nix
-store; it is not evidence of a failed source removal.
+The Nix runtime image built and loaded successfully. Live verification confirms
+that `/opt/agentbox/bin/ontology-tools` is absent, all five adapters are healthy,
+and readiness is green.
