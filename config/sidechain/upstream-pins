@@ -5,4 +5,4 @@
 # SIDESTR_ALLOW_UNPINNED=1). sidestr-rs pins the same spec commit in its CI oracle job.
 spec          fa86dac83d47b8f70195132e91e9dc083e1d9228  # sidestr/spec: @sidestr/spec 0.0.6; blocks up to 593 were made on it (2026-09-25)
 schema        b8cbf6337c7450fe14ddc5bce00c7280059aab5d  # bitcoin-desktop/schema v0.0.27
-blaketestnode d2764d21fe1f8c29b1979e49eb8287a72dd2347e  # bitcoin-blake/blaketestnode
+blaketestnode de33b347ccde458f5b82c33b3bab16abd328a7ec  # bitcoin-blake/blaketestnode; operator-accepted active development head (2026-10-01)
