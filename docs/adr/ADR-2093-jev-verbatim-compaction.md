@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: bce90619924eed79941eda6837f64465440476b9
+verified_commit: 47e1879341631185fb1ce4370303e0010afda779
 verified_paths: [config/claude-plugins/jev-compaction/hooks/jev-compaction.ts, config/claude-plugins/jev-compaction/hooks/policy.mjs, config/entrypoint-unified.sh, lib/claude-code-binary.nix, tests/config/jev-compaction-policy.test.mjs]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, or a request to fence a class other than email

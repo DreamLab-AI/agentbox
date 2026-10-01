@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: bce90619924eed79941eda6837f64465440476b9
+verified_commit: 47e1879341631185fb1ce4370303e0010afda779
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -17,6 +17,13 @@ lineage: legacy ADR-042 (AoE interaction plane), ADR-043 (session identity bindi
 ---
 
 # ADR-2009 — The nip98-proxy is the fail-closed AoE identity boundary
+
+## Re-verification — 2026-10-01 (runtime packaging changes)
+
+The proxy remains the sole identity boundary after the ontology-runtime and
+Codex storage changes. Its complete self-test passes with zero failures/skips,
+including tokenless HTTP and WebSocket denial, and signed host-port binding
+passes 4/4. Source anchor: `47e187934`.
 
 ## Re-verification — 2026-10-01 (dependency refresh)
 

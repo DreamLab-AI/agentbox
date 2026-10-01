@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: bce90619924eed79941eda6837f64465440476b9
+verified_commit: 47e1879341631185fb1ce4370303e0010afda779
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, docker-compose.hp.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live

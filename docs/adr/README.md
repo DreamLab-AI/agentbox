@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_110 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_112 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -173,3 +173,5 @@ _110 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2116](ADR-2116-claude-code-permission-posture-from-the-manifest.md) | Project the Claude Code permission posture from the manifest, bypass by default with a deny floor | GOVERNANCE-capabilities | 2026-09-25 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2117](ADR-2117-private-owner-usd-unit-bridged-through-rgb-into-sidestr.md) | Private owner-issued USD unit of account: a labelled test asset bridged through RGB into a dedicated sidestr chain | BASELINE-container | 2026-09-23 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2118](ADR-2118-own-the-instruction-tiers-and-claude-home-in-the-repo.md) | Own the instruction tiers and the Claude home in the repo | BASELINE-container | 2026-09-29 | accepted | partial | live | — | — | jjohare | agentbox |
+| [ADR-2119](ADR-2119-remove-retired-outliner-ontology-runtime.md) | Remove the retired outliner ontology runtime | BASELINE-container | 2026-10-01 | proposed | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2120](ADR-2120-codex-daemon-package-volume.md) | Give Codex daemon packages executable persistent storage | BASELINE-container | 2026-10-01 | proposed | complete | staged | — | — | jjohare | agentbox |

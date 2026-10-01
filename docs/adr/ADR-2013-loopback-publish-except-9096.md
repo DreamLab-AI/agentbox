@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: bce90619924eed79941eda6837f64465440476b9
+verified_commit: 47e1879341631185fb1ce4370303e0010afda779
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -17,6 +17,13 @@ lineage: legacy ADR-045 (sovereign ingress front door), R-003 (loopback publish 
 ---
 
 # ADR-2013 — Loopback-only compose publishes except the sanctioned-exposure list
+
+## Re-verification — 2026-10-01 (runtime packaging changes)
+
+Generated Compose adds only the named Codex package volume and no published
+port. The full inventory passes across 14 Compose files and 11 port blocks;
+the declared-listener audit also passes with no new exposure. Source anchor:
+`47e187934`.
 
 ## Re-verification — 2026-10-01 (dependency refresh)
 

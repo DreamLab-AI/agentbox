@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: bce90619924eed79941eda6837f64465440476b9
+verified_commit: 47e1879341631185fb1ce4370303e0010afda779
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -15,6 +15,13 @@ repo: agentbox
 ---
 
 # ADR-2002 — AoE interaction plane requires token auth — loopback is not a boundary
+
+## Re-verification — 2026-10-01 (runtime packaging changes)
+
+The ontology-runtime removal, Codex package volume, generated-Compose refresh,
+and accepted sidechain checkout do not alter AoE authentication or its loopback
+bind. The NIP-98 self-test passes with zero failures/skips, host-port binding
+passes 4/4, and the port/listener inventory passes. Source anchor: `47e187934`.
 
 ## Re-verification — 2026-10-01 (dependency refresh)
 
