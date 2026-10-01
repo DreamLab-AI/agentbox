@@ -15,7 +15,7 @@
     # enter only as transitive inputs of this flake — agentbox's flake-utils
     # outputs are not restructured (ADR-042; mesh-aoeCompat §Seam 1). Overlay-only:
     # ZERO patches to the AoE crate (N-06). Host `nix build` locks the narHash.
-    aoe.url = "github:DreamLab-AI/agentbox-of-empires/d615b8c8";
+    aoe.url = "github:DreamLab-AI/agentbox-of-empires/33e806ad";
 
     # D.9: skills corpus as a content-addressed Nix input.
     # Currently a path-type input (file-system equivalent to ./skills).

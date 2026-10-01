@@ -59,6 +59,9 @@ jobs:
       - name: check-listeners unit tests (ADR-2062 — supervisor bind-address listener rule)
         run: node --test tests/security/check-listeners.test.mjs
 
+      - name: aoe-launch-never-attaches (2026-10-01 — aoe pin past the non-tty attach fix; no attached launch in our tooling)
+        run: node --test tests/cli/aoe-launch-never-attaches-from-scripts.test.mjs
+
       - name: check-db-password (no :-ruvector default)
         run: sh scripts/ci/check-db-password.sh
 

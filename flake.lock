@@ -7,16 +7,16 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1785837208,
-        "narHash": "sha256-YrFHKDu+PIdlzf64YGvzupYbkqQMIBLt4s3qS6idgw8=",
+        "lastModified": 1790868468,
+        "narHash": "sha256-T3tfBuwtUSC4iqXuuK0hkK5FjOMtUOSXledRl92aUUs=",
         "owner": "DreamLab-AI",
         "repo": "agentbox-of-empires",
-        "rev": "d615b8c829028e272b492ea1726e8f490bc1479c",
+        "rev": "33e806ad8a3eaeb1937c2f1025dfc303475f25fc",
         "type": "github"
       },
       "original": {
         "owner": "DreamLab-AI",
-        "ref": "d615b8c8",
+        "ref": "33e806ad",
         "repo": "agentbox-of-empires",
         "type": "github"
       }

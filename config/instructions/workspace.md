@@ -25,6 +25,18 @@ reference  = ~/workspace/docs/ruvector-system-reference.md
 
 Namespaces: `personal-context` (index key `personal-context-portfolio-index`), `project-state` (index key `project-state-current-focus`).
 
+## Agent sessions (Agent of Empires)
+
+```
+launch  = from any shell WITHOUT its own terminal (an agent's tool shell, a hook, cron): `aoe add … --launch --no-attach`,
+          or `aoe add …` then `aoe session start <title>`, or plain `tmux new-session -d`
+why     = `--launch`/`session attach` hand the CALLER's terminal to the session via `tmux switch-client`; with TMUX merely
+          inherited that is the operator's client, every tab included, and their next prefix-d detaches it. The baked aoe
+          refuses to attach from a non-tty shell and starts detached instead; the flag/env make the intent explicit
+env     = AOE_NO_ATTACH=1 forces detached on every attach path
+watch   = `aoe` TUI in tmux tab 8, `tmux attach -t <aoe_session>` from a terminal you own, or `aoe session capture`
+```
+
 ## Host access & Docker builds
 
 The host Docker socket makes builds launched in here *look* like they work, but bind paths resolve against the **host** filesystem, so they silently bake stale code. Edit sources here; launch the host project's builds from the host shell (its tmux tab), and monitor from here with `tmux capture-pane` and `docker exec`. Do not SSH to the host.
