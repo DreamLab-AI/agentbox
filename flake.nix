@@ -29,7 +29,7 @@
 
     # crates/vault — the sovereign corpus CLI (PRD-sovereign-corpus Q10/Q11,
     # ADR-2107/ADR-2108). The crate lives in the PARENT VisionClaw workspace so
-    # it can share the OntologyBlock parser and Whelk-rs with VisionClaw's
+    # it can share the YAML frontmatter parser and Whelk-rs with VisionClaw's
     # ingest; a flake cannot read a path outside its own tree, so the source
     # arrives as an input rather than as `src = ../../crates/vault`. Same
     # mechanism as `skills` above, files-only like `codexPlugin` below — but it
@@ -1530,7 +1530,6 @@
         # replacement is unconditional too. No new manifest gate, and therefore
         # no system-manifest.js catalogue entry (ADR-039 applies to *optional*
         # features).
-        #   ontology-tools  <- skills/ontology-core/src + skills/ontology-enrich/src
         #   podcast-ingest  <- skills/podcast-{knowledge,bulk}-ingest (weekly cron)
         #   agentbox-mcp    <- the imagemagick / web-summary / gemini-url-context
         #                      Python MCP servers (one rmcp binary, 3 subcommands)
@@ -1540,7 +1539,6 @@
         # Each crate is a self-contained [workspace] on crates.io deps with
         # reqwest pinned to rustls-tls, so none of them add an openssl closure.
         # ---------------------------------------------------------------------------
-        ontologyToolsPkg = import ./lib/ontology-tools.nix { inherit lib; pkgs = rustPkgs; };
         podcastIngestPkg = import ./lib/podcast-ingest.nix { inherit lib; pkgs = rustPkgs; };
         # Bound by name as well as listed: the supervised [program:imagemagick-mcp]
         # block below runs this same derivation's binary.
@@ -1552,7 +1550,6 @@
         # the MCP *registration* is manifest-gated, in the entrypoint.
         colloquyPkg = import ./lib/colloquy.nix { inherit lib; pkgs = rustPkgs; };
         knowledgeToolPackages = [
-          ontologyToolsPkg
           podcastIngestPkg
           secretBackupPkg
           agentboxMcpPkg

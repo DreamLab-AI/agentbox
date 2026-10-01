@@ -1,84 +1,72 @@
 ---
 name: ontology-core
-description: "Author the vault knowledge-graph ontology (OntologyBlock entries) for OWL2 DL / VisionClaw. Use when writing or fixing OntologyBlock entries, sanitizing IRI local names or literals, resolving Turtle prefix-not-bound errors, or validating the 6 narrativegoldmine source-domain prefixes (ai/bc/mv/rb/tc/ngm). This is the data/build layer — not ontology-enrich (validate existing data) or ontology-augment (query the live OWL graph). Note: TTL/output/ontology.ttl export is not yet ported to the Rust ontology-tools crate (see below) — do not promise a working export from this skill until that lands."
-version: 2.0.0
-author: Claude Code
-tags: [ontology, owl2, vault, obsidian, ttl, webvowl, validation]
+description: "Author Obsidian ontology pages with governed YAML frontmatter, immutable resource IRIs and vault CLI validation/builds. Use for schema planning, licensed seed conversion, new domains and grouped corpus upgrades; use ontology-enrich for existing-page enrichment and ontology-augment for live graph queries."
+metadata:
+  version: "3.0.0"
 ---
 
-# Ontology Core Library
+# Ontology authoring
 
-Foundation for vault ontology manipulation with OWL2 DL TTL export — parsing,
-validation, and Turtle generation for the authored corpus under `$VAULT_PAGES`
-(the `[vault]` path authority, ADR-2028), targeting VisionClaw/WebVOWL
-compatibility. Corpus pages are frontmatter-only; the parser's tolerance for
-legacy `key:: value` property blocks on read is a migration affordance, not a
-format, and no writer emits them. `vault validate` is the conformance check
-(ADR-2107) and fails on any that remain.
+The corpus uses Obsidian Markdown with one YAML frontmatter block. Read the
+selected repository's `AGENTS.md`, `vault.toml` and `ontology/vocabulary.yaml`
+before choosing types, lifecycle values, relation keys or identities. Resolve
+configured corpus paths through `agentbox.toml` `[vault]`; do not assume that
+the current directory is the corpus.
 
-## When to use
+## Capability check
 
-- Writing or fixing `OntologyBlock` entries in the vault corpus.
-- Generating `output/ontology.ttl` or debugging a Turtle parse error.
-- Sanitizing IRI local names / literals, or resolving a `Prefix … not bound` error.
-- Validating that `source-domain` uses one of the 6 valid prefixes.
+Run `vault --version`, `vault --help` and the relevant subcommand's `--help`.
+Installed binaries can lag checked-out source. Confirm creation and directory
+proposal support before relying on them. If unavailable, prepare reviewable
+Markdown in an isolated staging directory and report the required CLI update;
+do not write around the corpus mutation guard.
 
-## When not to use
+The supported data/build interface is `vault`. `vault build --out <directory>`
+produces a generation including `data/ontology.ttl`, graph/index artefacts and
+metadata. Build into a fresh staging destination and inspect diagnostics; a
+successful build is not authorisation to publish it.
 
-- Enriching or validating existing ontology data → use `ontology-enrich`.
-- Grounding reasoning in / querying the live DreamLab OWL graph → use `ontology-augment`.
-- General knowledge-graph work unrelated to the vault ontology/OWL2 → use standard RDF tools.
-- VisionClaw graph rendering → this is the data layer, not the display layer.
+## Authoring and conversion
 
-## Quick path
+1. Search with `vault find`, then inspect neighbourhoods with `vault retrieve`
+   and `vault tree`. Reuse existing concepts and their identities. A renamed
+   title, new domain or corrected spelling never remints an existing `resource`.
+2. For external seeds, record the source URL, release or retrieval date, exact
+   licence and attribution requirements before copying content. Keep a source
+   manifest with checksums, conversion decisions and source-to-page mappings.
+   A repository's code licence does not automatically cover its data or images.
+3. Convert seeds into plain Markdown and vocabulary-conforming YAML in a fresh
+   directory outside the live corpus. Use `sources` entries (`id`, `resource`)
+   for origin links and truthful `generated` metadata. Preserve licence notices
+   and attribution in the body or accompanying source manifest; do not invent
+   unsupported frontmatter keys. See
+   [references/obsidian-authoring.md](references/obsidian-authoring.md).
+4. Treat domain membership, subclassing and cross-domain bridges separately.
+   Read the vocabulary's semantics and export status for every chosen relation.
+   New domain roots may require exporter and explorer changes as well as pages;
+   inspect consumers for fixed domain lists. Record significant modelling and
+   schema decisions in ADRs alongside the staging plan.
+5. Validate the staged corpus overlay, including links between new pages and
+   links into existing pages. Run `vault validate` and `vault conflicts` against
+   the isolated repository containing the current vocabulary, configuration and
+   complete proposed corpus. Compare diagnostics with the unchanged baseline;
+   zero errors alone does not establish link integrity or reasoning correctness.
+6. Use the installed `vault propose` interface for grouped changes. Start with
+   `--dry-run`; inspect the diff and gate outcome. Publishing a proposal sends a
+   forum event and is distinct from locally scaffolding a proposal. Follow the
+   repository's governance and the user's authorised scope. Schema changes need
+   their prescribed governance decision; a page proposal does not itself update
+   the vocabulary or deploy consumers.
 
-1. Edit vault pages (YAML frontmatter) with the `vault` CLI:
-   `vault edit <page-id> --set key=value --expect docs=1`, checked by
-   `vault validate`. The `ontology-tools` Rust binary
-   (`services/ontology-tools`) handles the retired outliner `OntologyBlock`
-   format only; its `modify` and `enrich` refuse frontmatter pages:
-   - `ontology-tools parse <file>` — read OntologyBlock structures, print as JSON
-   - `ontology-tools modify <file> --set field=value` — field-preserving
-     edits with automatic backup and OWL2-validated rollback (non-vault files)
-   - `ontology-tools validate <file>` — OWL2 functional-syntax axiom validation
-   - `ontology-tools roundtrip <file>` — verify the zero-data-loss
-     parse/write/parse contract for a specific file
-2. Author blocks to the gold-standard shape. Target output remains a single
-   `output/ontology.ttl` (git handles versioning — no `-v14` filenames) once
-   an exporter exists (see below).
-3. Keep `@prefix` declarations at line 1 and `source-domain` to one of the 6
-   valid prefixes below.
+For a narrow authorised correction use `vault edit <id> --set key=value
+--expect docs=1 --dry-run`, review the result, then apply the guarded edit.
+Creation uses `vault create` only where the installed CLI exposes it. Preserve
+unrelated page content and metadata, and validate the actual resulting files.
 
-Note: `ontology-tools` parses vault markdown `OntologyBlock` property blocks
-and validates OWL2 *functional-syntax* axioms embedded in ```clojure fences —
-it is not an OWL/DL parser or reasoner.
+## Verification
 
-**TTL export is currently blocked.** The Python `Ontology-Tools/tools/converters/convert-to-turtle.py`
-converter this workflow used to reference does not exist anywhere in this
-checkout (verified 2026-09-09). The Rust `ontology-tools` crate that replaced
-the retired Python tooling has no TTL/turtle export subcommand either — its
-full command surface is `parse | validate | roundtrip | modify | links |
-enrich | batch-enrich` (verified against `ontology-tools --help`, 2026-09-09).
-No other TTL/Turtle exporter was found under `services/` or `scripts/`. Until
-one is built, treat `output/ontology.ttl` generation as unavailable rather
-than following a workflow step that shells to a nonexistent path — the
-natural home for a future `ontology-tools export-ttl` subcommand is this
-same Rust crate (`services/ontology-tools`), given it already owns parsing
-and validation of the same OntologyBlock data.
-
-## Valid source-domain prefixes
-
-Only these 6 values are valid; anything else must be fixed in source (e.g.
-`blockchain` → `bc`, `metaverse` → `mv`, `telecollaboration` → `tc`):
-
-`ai` · `bc` · `mv` · `rb` · `tc` · `ngm` — all under `http://narrativegoldmine.com/…#`.
-
-Full namespace table, OntologyBlock gold-standard format, TTL sanitization code,
-the error→fix catalog, and cross-cutting-domain rules live in
-[references/ttl-authoring.md](references/ttl-authoring.md).
-
-## References
-
-- Detailed authoring & TTL rules: [references/ttl-authoring.md](references/ttl-authoring.md)
-- OntologyBlock parser/validator/modifier binary: `services/ontology-tools` (standalone Rust crate; `ontology-tools --help`, or `cd services/ontology-tools && cargo run -- --help`)
-- TTL/Turtle export: not yet ported (no Python converter exists in this checkout; the Rust crate above has no export subcommand) — see the note above
+Exercise a representative slice before bulk conversion: identity collision,
+existing-page amendment, new-page links, cross-domain bridge and publication
+visibility. Check the generated page API and graph as well as Markdown. Keep
+source evidence, baseline deltas and outstanding limitations with the batch;
+never mark a generated page verified or stable without the required review.

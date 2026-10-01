@@ -651,7 +651,7 @@ model = "qwen3.8-27B"
 style = "openai"                            # openai | ollama
 max_concurrency = 2                         # llama.cpp serves multiple KV slots
 # C7 / ADR-113: the condensation index has no natural trigger — nothing re-runs
-# it when GitHubSync/elevation rewrites the logseq corpus, so the class index
+# it when GitHubSync/elevation rewrites the vault corpus, so the class index
 # silently goes stale. This wires a manifest-gated staleness scheduler
 # (scripts/ontology-condense-scheduler.mjs) that re-runs ontology-condense-refresh.sh
 # when the corpus is newer than the last condense output, or on a max-age safety
@@ -673,14 +673,14 @@ schedule_max_age_hours = 24                 # rebuild even without corpus change
 # FAIL-LOUD, not fail-quiet: the boot prints "[vault] disabled" and the corpus
 # consumers switch themselves off rather than index a stale tree.
 # format: "obsidian" is the one format writers emit (YAML frontmatter, V2);
-# "logseq-legacy" is READ-tolerance only for an unconverted graph.
+# The corpus uses Obsidian-compatible YAML frontmatter.
 # tui: "rune" bakes the Rune markdown TUI into the image and opens tmux
 # window 9 "Notes" at the root (ADR-2029). REBUILD-class — the binary is in the
 # Nix package set only when this is "rune".
 [vault]
 root   = "/home/devuser/workspace/visionGraph/knowledge"   # Obsidian vault root = the visionGraph corpus repo (knowledge/ vault); bind-mounted
 pages  = "pages"                            # authored pages, relative to root
-format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
+format = "obsidian"                         # YAML frontmatter
 tui    = "rune"                             # rune | none — see ADR-2029
 # Second vault root (the working graph): pages at <working>/pages. Exported as
 # VAULT_WORKING_ROOT / VAULT_WORKING_PAGES. A layout with more than one vault

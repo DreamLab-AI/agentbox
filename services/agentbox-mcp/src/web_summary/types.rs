@@ -40,7 +40,7 @@ pub struct SummarizeUrlParams {
     /// Include semantic topic links
     #[serde(default = "default_true")]
     pub include_topics: bool,
-    /// Output format: markdown, plain, obsidian (logseq is a legacy synonym of obsidian)
+    /// Output format: markdown, plain, obsidian
     #[serde(default = "default_format_markdown")]
     pub format: String,
 }
@@ -49,6 +49,9 @@ impl SummarizeUrlParams {
     pub fn validate(&self) -> Result<(), String> {
         if !matches!(self.length.as_str(), "short" | "medium" | "long") {
             return Err("length must be 'short', 'medium', or 'long'".to_string());
+        }
+        if !matches!(self.format.as_str(), "markdown" | "plain" | "obsidian") {
+            return Err("format must be markdown, plain, or obsidian".to_string());
         }
         Ok(())
     }
@@ -73,7 +76,7 @@ pub struct TopicsParams {
     /// Maximum topics to extract
     #[serde(default = "default_max_topics")]
     pub max_topics: i64,
-    /// Output format: obsidian (default), plain; logseq is a legacy synonym of obsidian (ADR-2028 D4)
+    /// Output format: obsidian (default), plain
     #[serde(default = "default_format_obsidian")]
     pub format: String,
 }
@@ -85,6 +88,9 @@ impl TopicsParams {
                 "max_topics must be between 1 and 50 (got {})",
                 self.max_topics
             ));
+        }
+        if !matches!(self.format.as_str(), "plain" | "obsidian") {
+            return Err("format must be plain or obsidian".to_string());
         }
         Ok(())
     }
@@ -163,6 +169,40 @@ pub fn extract_video_id(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rejects_retired_and_unknown_formats() {
+        for format in ["logseq", "unknown"] {
+            let summary: SummarizeUrlParams = serde_json::from_value(serde_json::json!({
+                "url": "https://example.com", "format": format
+            }))
+            .unwrap();
+            assert!(summary.validate().is_err());
+            let topics: TopicsParams = serde_json::from_value(serde_json::json!({
+                "text": "Earth observation", "format": format
+            }))
+            .unwrap();
+            assert!(topics.validate().is_err());
+        }
+    }
+
+    #[test]
+    fn accepts_current_formats() {
+        for format in ["markdown", "plain", "obsidian"] {
+            let summary: SummarizeUrlParams = serde_json::from_value(serde_json::json!({
+                "url": "https://example.com", "format": format
+            }))
+            .unwrap();
+            assert!(summary.validate().is_ok());
+        }
+        for format in ["plain", "obsidian"] {
+            let topics: TopicsParams = serde_json::from_value(serde_json::json!({
+                "text": "Earth observation", "format": format
+            }))
+            .unwrap();
+            assert!(topics.validate().is_ok());
+        }
+    }
 
     #[test]
     fn normalize_url_prepends_https_when_scheme_missing() {

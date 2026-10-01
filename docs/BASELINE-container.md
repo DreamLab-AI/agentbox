@@ -126,6 +126,13 @@ default `pages`), `format` (`obsidian` only; the `logseq-legacy` read-tolerance 
 and `tui` (`rune` | `none`, ADR-2029). It is schema-validated
 (`schema/agentbox.toml.schema.json`, `root` required).
 
+The current corpus tools consume Obsidian-compatible Markdown with YAML
+frontmatter. The source tree no longer packages the retired `ontology-tools`
+parser/writer; corpus validation, links, proposals and builds use `vault`.
+Web-summary accepts `obsidian`, `plain`, and (for summaries) `markdown`, and
+rejects obsolete format aliases. ADR-2119 records the removal. Existing images
+retain their baked executables until rebuilt; source removal is not deployment.
+
 `config/entrypoint-unified.sh` resolves it once — before any consumer runs, via
 the hoisted `_ab_toml_val` reader — and exports `VAULT_ROOT`, `VAULT_PAGES`
 (= `root/pages`), `VAULT_FORMAT` and `VAULT_TUI`. Supervised programs inherit

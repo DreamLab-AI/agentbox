@@ -40,11 +40,9 @@ fn truncate_chars(s: &str, max_chars: usize) -> String {
     s.chars().take(max_chars).collect()
 }
 
-/// Matches `format_topics()` in the Python source: `obsidian` (default,
-/// ADR-2028 D4) and its legacy synonym `logseq` both render `[[wikilink]]`
-/// bullets; anything else renders plain bullets.
+/// Obsidian topics render as wikilinks; other supported formats use plain bullets.
 fn format_topics(topics: &[String], format: &str) -> String {
-    if matches!(format, "obsidian" | "logseq") {
+    if format == "obsidian" {
         topics
             .iter()
             .map(|t| format!("- [[{t}]]"))
@@ -245,7 +243,7 @@ fn capabilities_json() -> serde_json::Value {
         "protocol": "rmcp",
         "tools": TOOL_NAMES,
         "llm_backend": "ontology-loom-facade",
-        "supported_formats": ["markdown", "plain", "obsidian", "logseq (legacy synonym)"],
+        "supported_formats": ["markdown", "plain", "obsidian"],
         "visionclaw_compatible": true,
     })
 }
@@ -298,14 +296,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn format_topics_renders_obsidian_wikilinks_for_obsidian_and_logseq() {
+    fn format_topics_renders_obsidian_wikilinks() {
         let topics = vec!["rust".to_string(), "mcp servers".to_string()];
         assert_eq!(
             format_topics(&topics, "obsidian"),
-            "- [[rust]]\n- [[mcp servers]]"
-        );
-        assert_eq!(
-            format_topics(&topics, "logseq"),
             "- [[rust]]\n- [[mcp servers]]"
         );
     }

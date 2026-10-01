@@ -4,7 +4,7 @@
 # (PRD-sovereign-corpus Q10/Q11; agentbox ADR-2107 / ADR-2108).
 #
 # Subcommands, per interface contract C2: validate, find, retrieve, tree,
-# edit --expect, propose, gate, conflicts, build, migrate. Everything that the
+# edit --expect, propose, gate, conflicts, build. Everything that the
 # retired `ontology-bridge` MCP server used to answer, and several things it
 # could not: guarded mutation with a declared blast radius, the autonomous
 # quality gate, the conflict detector, and the whole build.
@@ -12,7 +12,7 @@
 # WHY THIS FILE EXISTS AT ALL, given the crate is not ours
 # -------------------------------------------------------
 # The crate's home is `crates/vault` in the VisionClaw workspace — i.e. the
-# PARENT of this submodule — because it shares the OntologyBlock parser and
+# PARENT of this submodule — because it shares the YAML frontmatter parser and
 # Whelk-rs with VisionClaw's ingest, so the corpus is parsed and reasoned by one
 # implementation (Q11). agentbox's flake root is the submodule directory, and a
 # flake may not read a path outside its own source tree, so `src = ../../crates/vault`

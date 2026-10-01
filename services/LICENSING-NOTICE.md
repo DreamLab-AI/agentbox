@@ -43,7 +43,6 @@ the files inside each crate's package payload.
 | `dream-engine` | **AGPL-3.0-only** (since 2026-09-25) | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
 | `explainer-tools` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `nostr-pod-bridge` | **AGPL-3.0-only** | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
-| `ontology-tools` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `podcast-ingest` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `secret-backup` | **AGPL-3.0-only** | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
 | `skill-tools` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
