@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 6db0ffc8df1e708047c210353f730d1f0427553d
+verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -263,3 +263,7 @@ Tripped by the `sidestr:dreamlab-txbt4` seal. `agentbox.toml` adds the `[sidecha
 
 Tripped by ADR-2097 (the sidestr payment rail). `agentbox.toml` gains one new table, `[payments.sidestr]` (ADR-2097), placed after `[skills.payment_router]`; no existing key, value or line above it moves. Nothing this record governs is touched, and the decision holds unchanged.
 Re-verified by `git diff f7465412d..6db0ffc8d -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
+
+Tripped by the sidechain health and witness change. `agentbox.toml` changed only in `[voice]`: `enabled` false → true, with a comment, so that the descriptive sidecar state matches the four running agentbox-voice containers (CY-A2, `scripts/ci/check-declared-vs-running.js`). No other key moved. Relay ingress and its allowlist are untouched. `node scripts/agentbox-config-validate.js agentbox.toml` is valid (the same 5 advisory warnings as before). Decision and status unchanged.

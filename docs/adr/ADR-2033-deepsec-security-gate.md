@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9b02329673e6f44eb721210b5dbf40c87be33cd6
+verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -230,3 +230,7 @@ Re-verified by `git diff f7465412d..6db0ffc8d -- <verified_paths>`; no re-implem
 
 Tripped by the ADR-2097 catalogue fix. `management-api/lib/system-manifest.js` gains one CATALOGUE entry, `payments-sidestr` (gate `payments.sidestr.enabled`, apply class boot). No existing entry, including deepsec's, changes, and the decision holds unchanged.
 Re-verified by `git diff 6db0ffc8d..9b0232967 -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
+
+Tripped by the sidechain health and witness change. `agentbox.toml` changed only in `[voice]`: `enabled` false → true, with a comment, so that the descriptive sidecar state matches the four running agentbox-voice containers (CY-A2, `scripts/ci/check-declared-vs-running.js`). No other key moved. `management-api/lib/system-manifest.js` changes in three places. `buildSystemView` gains an optional per-module `health` input and a top-level `health` block. The sidechain summary describes the tip-age probe. The sovereign-mesh entry's `service` is corrected to its supervisor program, `nostr-relay`. The deepsec catalogue entry and `[security.deepsec]` are unchanged. The deepsec-gate unit tests pass 10/10, and `check-manifest-catalogue` passes. Decision and status unchanged.

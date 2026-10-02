@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 6db0ffc8df1e708047c210353f730d1f0427553d
+verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -205,3 +205,7 @@ Tripped by ADR-2097 (the sidestr payment rail). `agentbox.toml` gains one block,
 - Payments are explicitly invoked only; nothing routes to that endpoint automatically.
 
 The decision holds unchanged. Re-verified by `git diff f7465412d..6db0ffc8d -- <verified_paths>`.
+
+## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
+
+Tripped by the sidechain health and witness change. `agentbox.toml` changed only in `[voice]`: `enabled` false → true, with a comment, so that the descriptive sidecar state matches the four running agentbox-voice containers (CY-A2, `scripts/ci/check-declared-vs-running.js`). No other key moved. No gate was added. `[voice]` is still descriptive and consumed by no boot path, so ADR-2020's byte-identical-when-off rule is not engaged. `check-manifest-catalogue` passes (77 gate paths). Decision and status unchanged.

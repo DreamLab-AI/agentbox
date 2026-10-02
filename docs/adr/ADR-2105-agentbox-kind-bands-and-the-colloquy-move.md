@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 6db0ffc8df1e708047c210353f730d1f0427553d
+verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -182,3 +182,7 @@ Tripped by the `sidestr:dreamlab-txbt4` seal. `agentbox.toml` adds the `[sidecha
 
 Tripped by ADR-2097 (the sidestr payment rail). `agentbox.toml` gains one new table, `[payments.sidestr]` (ADR-2097), placed after `[skills.payment_router]`; no existing key, value or line above it moves; `docs/PROTOCOL-registry.md` rewords the `38420` row to record what was built (an independent spend key; a pre-0.0.5 chain's `d` carries its genesis hash); the allocation and band are unchanged. Nothing this record governs is touched, and the decision holds unchanged.
 Re-verified by `git diff f7465412d..6db0ffc8d -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
+
+Tripped by the sidechain health and witness change. `agentbox.toml` changed only in `[voice]`: `enabled` false → true, with a comment, so that the descriptive sidecar state matches the four running agentbox-voice containers (CY-A2, `scripts/ci/check-declared-vs-running.js`). No other key moved. No kind band or registry row moved. `node scripts/ci/protocol-registry-lint.mjs` passes (27 kind numbers, every row owned, no collisions). Decision and status unchanged.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
+verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -277,3 +277,7 @@ Tripped by the `sidestr:dreamlab-txbt4` seal. `flake.nix` adds `sidechainChains`
 - the manifest validator is valid;
 - `check-manifest-catalogue` passes;
 - `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.
+
+## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
+
+Tripped by the sidechain health and witness change. `.github/workflows/invariants.yml` gains the CY-A2 `check-declared-vs-running` step, its unit tests and two trigger paths, none of them about exposure. The check-ports-loopback and check-listeners steps are unchanged. `sh scripts/ci/check-ports-loopback.sh` exits 0. Decision and status unchanged.

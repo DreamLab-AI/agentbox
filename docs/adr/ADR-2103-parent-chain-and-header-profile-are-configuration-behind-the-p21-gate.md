@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
-verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh]
+verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
+verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
 repo: agentbox

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 6db0ffc8df1e708047c210353f730d1f0427553d
+verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -155,3 +155,7 @@ commit. Decision and status unchanged.
 
 Tripped by ADR-2097 (the sidestr payment rail). `management-api/server.js` registers `routes/chain-payments` after the chain identity route; no hook, auth-skip entry or existing route changes. Nothing this record governs is touched, and the decision holds unchanged.
 Re-verified by `git diff 66425f9bd..6db0ffc8d -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
+
+Tripped by the sidechain health and witness change. `management-api/server.js` changes only in `GET /ready`. It now probes each enabled sidestr chain's tip age and lists a stale one under a non-blocking `degraded` array (ADR-2103 interim receipt amendment). The JunkieJarvis wiring and the clarify path are unchanged. The three governed JunkieJarvis suites pass (70/70 within the 99-test jest run). Decision and status unchanged.
