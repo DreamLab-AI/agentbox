@@ -312,3 +312,10 @@ evidence is ADR-2102's plus: the supply identity asserted on every block; a repl
 outpoint refused; a burn released only after `FINALISE_BLOCK`; a `bhalt` drill; a reorg-after-mint
 drill on testnet4 or regtest; the disclaimer present on every surface that names the unit; no
 holder key outside the owner's estate.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P3 — parked (review trigger: the owner's live go together with the planning-cycle §10 real-value gate reopening, since a funded Liquid reserve is real value; or this record's own review-trigger events)
+- **Why:** The original decision fits §9's scope: a private, valueless, testnet-only unit for the owner's agents. The 2026-09-23 amendment does not. It admits a real Liquid USDt reserve and a mainnet `btc` parent, which goes beyond §9's "valueless coins" and would trip §10's real-value gate. §10 names this record's Liquid reserve wiring as drift into the parked sidechain. The wiring exists, unfunded and unpublished, at sidestr-rs `bcbe30b2` (`sidestr-reserve` 0.1.0, `sidestr-bridge-liquid` 0.2.0; sidestr-rs ADR-0003 accepted/inactive). TODO N-6 lists it as a key-custody surface: a reserve mnemonic sits under the shared UID, inside X-1's scope. The title says "bridged through RGB", but the origin is now reserve-neutral and RGB is a watch item. Nothing is sealed: `config/sidechain/` holds only `dreamlab/chain.json` (agentbox `c4ed3ec65`).
+- **Next:** Owner decision on keeping or striking the real-value Liquid and mainnet-parent amendment. Until then, Phase 0 (mock unit on a throwaway testnet chain) is the only part inside §9.

@@ -333,3 +333,10 @@ other than the commits in `config/sidechain/upstream-pins` (spec `722ad42`, SPEC
 which fixed sidestr/spec issues 9 and 10). The chain document, its `tbtc4` parent, the
 stock header family and the genesis test are unchanged, and the P21 gate on mainnet parents
 stands. Upstream PR #4 has merged; explorer PR #2 is still open, so the review trigger holds.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P2 — next cycle (planning-cycle §3 reopening; the sealed `tbtc4` chain is the §9 research chain, and D4's P21 gate is the §10 real-value trigger)
+- **Why:** The first seal and the interim supervised producer, mirror and faucet are live on `tbtc4` (`d0fa1b80b`, deployment receipt 2026-09-30; the mirror reached tip 911 on 2 October). That is the chain §9 names. D1's projector check, D3's `pin:` and boot check, and D4's CI receipt check are still unbuilt (this record's first-seal section). The 2026-09-30 amendment proposes a second chain beside `txbt4`. That exceeds §9's stated scope (the research chain beside `tbtc4`), and it is an owner question. That amendment also says "It needs a BLAKE2b testnet4 node the estate does not have". This is overtaken: a Knots 29.4.2 plus rbitcoin 0.7.99 BLAKE2b testnet4 pair is synced on Dell staging (TODO N-10). The review trigger "a BLAKE2b testnet4 node reachable from the container" may therefore have fired; reachability from this container is unverified. A re-verification block also sits between `## Context` and `### Original context`.
+- **Next:** On reopening, build D4's CI receipt check first, because §10 makes it the real-value gate. Get the owner's yes or no on the `txbt4` second chain before any D1 work for it.

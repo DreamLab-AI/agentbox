@@ -99,3 +99,10 @@ Proposed. Ratification evidence: `balance(did)` identical from solid-pod-rs, the
 `sidestr-node` directly for 100 random DIDs; `grep -rn "fn credit\|fn debit" crates/solid-pod-rs/src/payments.rs`
 shows no public API; `contract.rs` no longer constructs `txo: Vec::new()`; the vocabulary lint
 passes on `docs/` and `crates/sidestr/`.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P3 — parked (review trigger: the research chain runs on a Rust producer with an activation receipt (N-10) and the owner chooses to retire a legacy ledger; or any real-value spend under planning-cycle §10)
+- **Why:** PRD-024 D4 ("the chain is truth") has not been reversed. But §9 scopes the next sidechain work to a demo chain with valueless coins. Turning all three estate ledgers into views over that chain is a migration, and the demo does not need it. None of it is built. At solid-pod-rs `6d2e5b0`, `WebLedger::credit`/`debit` are still public (`src/payments.rs:144,158`) and the TXO stand-in deposit remains (`crates/solid-pod-rs-server/src/handlers/pay.rs:498`). The host `FsPaymentStore` remains (`src/handlers/pay_handler.rs:198`). D4's version facts are stale: the forum now pins `=0.5.0-alpha.10` (`Cargo.toml:166`) and the host `0.4.0-alpha.15` (`Cargo.toml:222`), so the skew persists at different numbers.
+- **Next:** Hold until the trigger. On reopening, restate D4's versions and decide whether the gitmark `txo[]` seam (D5) stays bundled with the ledger migration.

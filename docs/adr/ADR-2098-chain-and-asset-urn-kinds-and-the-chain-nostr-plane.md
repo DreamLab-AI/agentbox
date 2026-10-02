@@ -94,3 +94,10 @@ rejection of ad-hoc strings; PROTOCOL-registry rows present in both repos; `supe
 status sidestr-node` on a gated build and byte-identical supervisor text when the gate is off
 (ADR-2077); an integration test that a block signed by a key outside `challenge` is rejected
 regardless of relay origin.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P2 — next cycle (planning-cycle §3 reopening; needed by the research-chain demo's wallet API)
+- **Why:** D4 is still right: consensus authenticates chain ingress, and chain pubkeys stay off the identity allowlist. Three facts have moved. First, D2's kind list predates upstream kind 23503, "parent transaction to broadcast" (sidestr/spec `fe689e9` SPEC.md:363). Second, ADR-2101's adopted consultant review moves level-2 protocol records off the ephemeral 23510–23514 into stored estate-band kinds. Third, the running deployment is a separate `sidestr-producer`, `sidestr-mirror` and `sidestr-faucet` (`d0fa1b80b`, ADR-2103 interim receipt), not D3's `sidestr-node` on `:9097`. Not built at agentbox `c4ed3ec65`: no `chain`/`asset` kind in `management-api/lib/uris.js`, and no `/v1/wallet/*` or `/v1/chain/*` route. `docs/PROTOCOL-registry.md:152-165` carries the proposed kind rows.
+- **Next:** On reopening, add 23503 to the external-kind table and reconcile D3's program shape with the supervised interim programs. Then mint `chain` in `uris.js` with the genesis-pinned form from the amendments.

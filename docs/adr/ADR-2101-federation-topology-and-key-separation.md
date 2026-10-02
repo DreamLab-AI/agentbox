@@ -208,3 +208,10 @@ a checkpointed tombstone; an adversarial test that a session cannot spend beyond
 a known-answer test that `k_spend` and `k_sign` differ from `k_id` and from each other for the
 same chain; `build_did_document` emits two verification methods for a bound principal and the
 DID string is unchanged.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P2 — next cycle (planning-cycle §3 reopening; the research stage and the key separation are the §9 demo's floor; the federation stage parks with federation, §3, until a second operator exists)
+- **Why:** The research stage (D1: level 1, one signer, testnet4, no value) is exactly §9's scope. The live seal follows D3: the signer key sits in the secrets volume and is not derived from the identity key (ADR-2103 first seal). The federation stage has drifted from the direction. §9 defines federation as "instances I leave behind can talk to mine", needing zero maintenance on the left-behind node. A k-of-n root that halts below threshold, needs durable signer services, and treats signers as DreamLab-operated (Consequences) is the opposite. This record's own Consequences already say a non-DreamLab instance forces a per-instance nested root. Upstream has not settled the child-chain mechanism: ephemeral chains remain "a note; nothing built" (sidestr/spec `fe689e9` `proposals/ephemeral.md`). sidestr-rs now ships Hitch channels, inactive (sidestr-rs ADR-0002), as an alternative for in-session agent payments. Forum ADR-2012 D5 derives `k_sign` from `k_id`; this record's amended D3 forbids that, and this record survives.
+- **Next:** When the programme reopens, split the record. Accept the research stage and key separation on the existing seal evidence plus the `k_spend`/`k_sign` known-answer test. Rewrite the federation stage for left-behind nodes (nested per-instance roots) and child sessions (ephemeral chain or Hitch) under the federation reopening condition.

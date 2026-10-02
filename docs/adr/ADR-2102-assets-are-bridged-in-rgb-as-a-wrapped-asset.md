@@ -108,3 +108,10 @@ on our chain, and exited to a consignment `rgb-lib` validates; `cargo tree -p si
 -p sidestr-wallet -p sidestr-nostr | grep -c rgb` is zero; the wrapped-supply-equals-reserve
 invariant asserted on every block by `sidestr-node`; `urn:agentbox:asset:…` resolves to the
 origin contract id.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P3 — parked (review trigger: planning-cycle §10 real-value gate reopening, or USD₮ on RGB confirmed live on mainnet)
+- **Why:** The constraints still hold and ADR-2117 builds on them: no RGB in consensus (D2), the bridge isolated in its own process (D3), honest custody (D4), assets never leaving through the sats peg (D6). The RGB-specific route has been overtaken. ADR-2117's amendments moved the origin to Liquid USDt and then to an origin-neutral reserve attestation. That attestation is now `sidestr-reserve` plus `sidestr-bridge-liquid`, both unpublished and inactive (sidestr-rs ADR-0003 at `bcbe30b2`), and RGB USD₮ is on the watch list. Upstream adopts no RGB: it appears only as prior art (sidestr/spec `fe689e9` SPEC.md Appendix B). Upstream's assets between chains is a level-2 draft with wrapped id `<origin chain id>:<origin asset id>` (`proposals/assets-and-pools.md` §4), which D1's asset identity should align with. Nothing is built (agentbox `c4ed3ec65`).
+- **Next:** On reopening, write a successor that states the bridge as origin-neutral, citing sidestr-rs ADR-0003 and upstream's §4 identity. Then supersede this record with reciprocal links.

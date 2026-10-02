@@ -223,3 +223,10 @@ describes those crates; re-running it is done in sidestr-rs. `verified_paths` no
 pointer directory and the retired workflow, so a crate or workflow reappearing here re-opens
 this record. Decision unchanged; implementation stays partial (the solid-pod-rs port is still
 outstanding).
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P2 — next cycle (planning-cycle §3 reopening: settlement gate wired, ADR-2078 exists, solid-pod-rs `bitcoin_tx.rs` on rust-bitcoin; §9 makes the research chain beside `tbtc4` the next headline demo)
+- **Why:** The umbrella decision still matches §9: one estate chain, valueless coins, one signer. sidestr-rs reached parity with sidestr/spec `fe689e9` at `2bdee2d5` (TODO N-9), so the Rust half of D2 exists. The text is overtaken in four places. D2's licence and location are now carried by accepted ADR-2106 and ADR-2112. D5 excludes `pool`, yet sidestr-rs ships pools and markets inactive (sidestr-rs ADR-0002), and this record's own amendment parks the pod AMM in favour of upstream's. D6 calls the root a level-2 k-of-n federation, but the sealed chain is level 1 with one signer (ADR-2103 first seal; ADR-2101 research stage). The review trigger "an upstream spec release that changes … kinds" has fired: `fe689e9` adds kind 23503. D3's solid-pod-rs port has not started: at solid-pod-rs `6d2e5b0`, `bitcoin_tx.rs:24,146,162` still hand-roll the arithmetic. D4's JS producer is still the only producer (N-10). Verified at agentbox `c4ed3ec65`.
+- **Next:** When the programme reopens, consolidate the amendments into a successor rather than editing D2/D5/D6. The record is ready to accept once three things hold: a Rust validator replays `sidestr:dreamlab` to the JS tip (the mirror shows tip 911), ADR-2008's golden fixtures pass under rust-bitcoin, and N-10 has an activation receipt.

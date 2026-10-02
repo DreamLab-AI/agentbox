@@ -63,3 +63,10 @@ Proposed. Ratification evidence: `tests/contract/pay402/` contains `sidestr` fix
 merge gate passes; a fixture-unwitnessed scheme still classifies `unknown` and cannot spend; an
 acceptance test in which agent A pays agent B 1,000 test sats through a 402 challenge end to
 end with a receipt URN citing the chain txid.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P2 — next cycle (planning-cycle §3 reopening; this is the "agents pay each other live" step of the §9 headline demo)
+- **Why:** The owner dropped Lightning-first, and that still stands: TODO-unified, "External critique" disposition, lines 49–51. Upstream has not moved toward Lightning. sidestr/spec `fe689e9` mentions it nowhere, and sidestr-rs's Hitch is a channel kernel inside sidestr that does not speak to Lightning peers (VisionFlow ADR-2012, Source qualification). Nothing in D3 is built yet: `management-api/lib/pay402.js` has no `sidestr` scheme and no `tests/contract/pay402/` sidestr fixture exists (agentbox `c4ed3ec65`). `docs/developer/economy-loop.md:143` already describes the sidestr rail as proposed. The public site still claims Lightning/NWC as "the rail today" (VisionFlow `website/static/index.html:608,1101-1103`). That is tracked on VisionFlow ADR-2012, not here.
+- **Next:** Do this after the research chain runs a Rust producer (N-10). Capture the first `sidestr` 402 fixture on `sidestr:dreamlab` testnet sats; that is this record's review trigger and the first piece of its ratification evidence.
