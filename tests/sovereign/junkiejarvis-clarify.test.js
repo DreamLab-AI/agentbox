@@ -577,35 +577,41 @@ describe('clarify-before-acting lifecycle', () => {
 // ───────────────────────────────────────────────────────────────────────────
 
 describe('junkiejarvisEnabled', () => {
+  // The manifest is the only switch (owner decision 2026-10-02, R1): the
+  // JUNKIEJARVIS_ENABLED env var is no longer read by anyone.
   test('fails closed when nothing is configured', () => {
-    expect(junkiejarvisEnabled({}, {})).toBe(false);
-    expect(junkiejarvisEnabled(null, null)).toBe(false);
+    expect(junkiejarvisEnabled({})).toBe(false);
+    expect(junkiejarvisEnabled(null)).toBe(false);
+    expect(junkiejarvisEnabled({ sovereign_mesh: {} })).toBe(false);
   });
 
-  test('an explicit manifest false wins over the env var (the Q10 box)', () => {
-    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: false } }, {})).toBe(false);
-    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: false } }, { JUNKIEJARVIS_ENABLED: 'true' })).toBe(false);
+  test('manifest true is on, manifest false is off', () => {
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } })).toBe(true);
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: false } })).toBe(false);
   });
 
-  test('manifest true is on unless the env var vetoes it', () => {
-    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, {})).toBe(true);
-    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, { JUNKIEJARVIS_ENABLED: '' })).toBe(true);
-    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, { JUNKIEJARVIS_ENABLED: 'true' })).toBe(true);
-    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, { JUNKIEJARVIS_ENABLED: 'false' })).toBe(false);
-    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, { JUNKIEJARVIS_ENABLED: 'yes' })).toBe(false);
+  test('the manifest decides and JUNKIEJARVIS_ENABLED in the env is ignored', () => {
+    const saved = process.env.JUNKIEJARVIS_ENABLED;
+    try {
+      process.env.JUNKIEJARVIS_ENABLED = 'true';
+      expect(junkiejarvisEnabled({})).toBe(false);
+      expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: false } }, { JUNKIEJARVIS_ENABLED: 'true' })).toBe(false);
+      process.env.JUNKIEJARVIS_ENABLED = 'false';
+      expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } })).toBe(true);
+      expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, { JUNKIEJARVIS_ENABLED: 'false' })).toBe(true);
+    } finally {
+      if (saved === undefined) delete process.env.JUNKIEJARVIS_ENABLED; else process.env.JUNKIEJARVIS_ENABLED = saved;
+    }
   });
 
-  test('with the key absent the env var decides, so manifest-absent deployments keep working', () => {
-    expect(junkiejarvisEnabled({}, { JUNKIEJARVIS_ENABLED: 'true' })).toBe(true);
-    expect(junkiejarvisEnabled({ sovereign_mesh: {} }, { JUNKIEJARVIS_ENABLED: 'TRUE' })).toBe(true);
-    expect(junkiejarvisEnabled({}, { JUNKIEJARVIS_ENABLED: 'false' })).toBe(false);
-    // only a real boolean counts as declared; a stringly "true" falls through to the env
-    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: 'true' } }, {})).toBe(false);
+  test('only a real boolean true counts', () => {
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: 'true' } })).toBe(false);
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: 1 } })).toBe(false);
   });
 
   test('is independent of the clarify-before-acting gate', () => {
     const m = { sovereign_mesh: { junkiejarvis: false, junkiejarvis_clarify_before_acting: true } };
     expect(clarifyBeforeActingEnabled(m, {})).toBe(true);
-    expect(junkiejarvisEnabled(m, {})).toBe(false);
+    expect(junkiejarvisEnabled(m)).toBe(false);
   });
 });

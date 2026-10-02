@@ -213,11 +213,11 @@ async function main() {
     : clarify.emptyClarifyState();
   log('INFO', `clarify-before-acting ${clarifyOn ? 'ON' : 'OFF'}`);
   // The clarify gate decides whether an unclear post is acted on; the
-  // JunkieJarvis gate (ADR-030, same rule as management-api) decides whether
-  // JunkieJarvis may DM a member at all. With it off, an unclear post is held:
+  // JunkieJarvis gate (ADR-030 D2: the manifest is the only switch, the same
+  // function management-api uses) decides whether JunkieJarvis may DM a member. With it off, an unclear post is held:
   // no DM, no ledger row, not parked, so it is asked once JunkieJarvis is on
   // (owner decision 2026-10-02, Q10).
-  const jjOn = clarify.junkiejarvisEnabled(manifest, process.env);
+  const jjOn = clarify.junkiejarvisEnabled(manifest);
   log('INFO', `JunkieJarvis ${jjOn ? 'ON' : 'OFF'} (clarifying DMs ${jjOn ? 'allowed' : 'held'})`);
 
   const bridge = new NostrBridge({ relays: [RELAY_URL] });

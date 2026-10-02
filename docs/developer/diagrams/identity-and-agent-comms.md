@@ -85,7 +85,7 @@ sequenceDiagram
 ## 2. JunkieJarvis Agent Loop
 
 Source: `management-api/lib/junkiejarvis-agent.js`.
-Startup gate: `startJunkieJarvis()` lines 684-733.
+Startup gate: `startJunkieJarvis()`; the only switch is `agentbox.toml` `[sovereign_mesh].junkiejarvis`, resolved by `junkiejarvisEnabled()` in `management-api/lib/junkiejarvis-clarify.js`. No env var overrides it (owner decision 2026-10-02, R1).
 
 ```mermaid
 sequenceDiagram
@@ -97,7 +97,7 @@ sequenceDiagram
     participant LLM as LLM Provider<br/>(callLlm)
     participant NT as nostr-tools<br/>nip59 / finalizeEvent
 
-    MA->>JJ: startJunkieJarvis(deps)<br/>gate: JUNKIEJARVIS_ENABLED=true<br/>reads JUNKIEJARVIS_PRIVKEY_HEX<br/>or CONCIERGE_PRIVKEY_HEX (line 57)
+    MA->>JJ: startJunkieJarvis(deps)<br/>gate: manifest [sovereign_mesh].junkiejarvis<br/>reads JUNKIEJARVIS_PRIVKEY_HEX<br/>or CONCIERGE_PRIVKEY_HEX (line 57)
 
     JJ->>B: bridge.setAuthSigner(signer)<br/>Registers signer BEFORE subscribe<br/>so NIP-42 AUTH answer is ready<br/>(line 715)
 
@@ -452,7 +452,6 @@ visible in-repo:
 
 | Env var | Read at | Notes |
 |---|---|---|
-| `JUNKIEJARVIS_ENABLED` | `junkiejarvis-agent.js:687` | Gate for the whole JJ agent; silently off if unset |
 | `JUNKIEJARVIS_PRIVKEY_HEX` | `junkiejarvis-agent.js:57` | Required when JJ enabled |
 | `CONCIERGE_PRIVKEY_HEX` | `junkiejarvis-agent.js:57` | Legacy alias — undocumented |
 | `JUNKIEJARVIS_MODEL` | `junkiejarvis-agent.js:294` | LLM model override |

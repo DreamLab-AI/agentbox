@@ -430,33 +430,26 @@ function clarifyBeforeActingEnabled(manifest, env) {
 }
 
 /**
- * The JunkieJarvis gate (ADR-030 D2): may JunkieJarvis speak to a forum member
- * at all? ADR-030 says JunkieJarvis "requires both the manifest gate and
- * JUNKIEJARVIS_ENABLED=true", with the env var kept so manifest-absent
- * deployments still work. Resolved as:
+ * The JunkieJarvis gate (ADR-030 D2): may JunkieJarvis run and speak to a forum
+ * member at all? The manifest is the only switch: `[sovereign_mesh].junkiejarvis
+ * = true` turns it on; `false`, an absent key or an unreadable manifest leaves
+ * it off. It fails closed, the opposite of clarifyBeforeActingEnabled, because
+ * this gate permits outbound speech where that one stops an action.
  *
- *   - `[sovereign_mesh].junkiejarvis = false` → off, whatever the env says. An
- *     explicit manifest "no" is the operator's declared intent and the env
- *     var cannot overrule it (owner decision 2026-10-02, Q10: clarifying DMs
- *     sent while `junkiejarvis = false` are a bug; the box carries
- *     JUNKIEJARVIS_ENABLED=true in its container env).
- *   - `= true` → on, unless JUNKIEJARVIS_ENABLED is set and is not "true" (the
- *     env var can still veto at runtime).
- *   - key absent / manifest unreadable → JUNKIEJARVIS_ENABLED decides; unset
- *     means off. It fails closed, the opposite of clarifyBeforeActingEnabled,
- *     because this gate permits outbound speech where that one stops an action.
+ * The JUNKIEJARVIS_ENABLED env var is not read (owner decision 2026-10-02, R1):
+ * a stale env value once overruled `junkiejarvis = false` and sent unintended
+ * DMs (Q10). Every consumer (management-api, the standalone runner, the nightly
+ * forum-suggestions tenant) asks this one function.
+ *
+ * @param {object|null} manifest - the parsed agentbox.toml.
+ * @returns {boolean}
  */
-function junkiejarvisEnabled(manifest, env) {
-  const raw = env && typeof env === 'object' ? env.JUNKIEJARVIS_ENABLED : undefined;
-  const envSet = raw !== undefined && raw !== null && String(raw).trim() !== '';
-  const envOn = envSet && String(raw).trim().toLowerCase() === 'true';
+function junkiejarvisEnabled(manifest) {
   const sm = manifest && typeof manifest === 'object' && manifest.sovereign_mesh
     && typeof manifest.sovereign_mesh === 'object'
     ? manifest.sovereign_mesh
     : {};
-  if (sm.junkiejarvis === false) return false;
-  if (sm.junkiejarvis === true) return envSet ? envOn : true;
-  return envOn;
+  return sm.junkiejarvis === true;
 }
 
 module.exports = {

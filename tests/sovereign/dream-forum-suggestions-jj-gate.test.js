@@ -156,16 +156,13 @@ describe('dream-forum-suggestions honours the JunkieJarvis gate for clarifying D
     expect(out.ledger).toMatch(/awaiting-clarification \|/);
   }, 60000);
 
-  test('JUNKIEJARVIS_ENABLED=true in the env does not overrule junkiejarvis = false (this box)', () => {
-    const out = run(fixture({ sovereign_mesh: { junkiejarvis: false } }), { JUNKIEJARVIS_ENABLED: 'true' });
-    expect(out.dms).toEqual([]);
-    expect(out.state.clarify.pending[VAGUE_ID]).toBeUndefined();
-  }, 60000);
-
-  test('the env var still decides when the manifest key is absent, and can veto a true', () => {
-    const absent = run(fixture({}), { JUNKIEJARVIS_ENABLED: 'true' });
-    expect(absent.dms).toHaveLength(1);
-    const veto = run(fixture({ sovereign_mesh: { junkiejarvis: true } }), { JUNKIEJARVIS_ENABLED: 'false' });
-    expect(veto.dms).toEqual([]);
+  test('the manifest is the only switch: JUNKIEJARVIS_ENABLED in the env is ignored', () => {
+    const offEnvOn = run(fixture({ sovereign_mesh: { junkiejarvis: false } }), { JUNKIEJARVIS_ENABLED: 'true' });
+    expect(offEnvOn.dms).toEqual([]);
+    expect(offEnvOn.state.clarify.pending[VAGUE_ID]).toBeUndefined();
+    const absentEnvOn = run(fixture({}), { JUNKIEJARVIS_ENABLED: 'true' });
+    expect(absentEnvOn.dms).toEqual([]);
+    const onEnvOff = run(fixture({ sovereign_mesh: { junkiejarvis: true } }), { JUNKIEJARVIS_ENABLED: 'false' });
+    expect(onEnvOff.dms).toHaveLength(1);
   }, 60000);
 });

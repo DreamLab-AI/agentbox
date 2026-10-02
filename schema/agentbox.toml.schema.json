@@ -1702,7 +1702,7 @@
         },
         "junkiejarvis": {
           "type": "boolean",
-          "description": "JunkieJarvis forum agent \u2014 rides the management-api process and answers forum mentions over Nostr. Requires BOTH this gate AND the JUNKIEJARVIS_ENABLED=true env var; the env var remains the runtime override, so deployments without a manifest keep working. Default false."
+          "description": "JunkieJarvis forum agent \u2014 rides the management-api process and answers forum mentions over Nostr. This key is the only switch; no env var overrides it (JUNKIEJARVIS_ENABLED is not read). Also gates the nightly forum-suggestions tenant's clarifying DMs. Default false."
         },
         "junkiejarvis_clarify_before_acting": {
           "type": "boolean",

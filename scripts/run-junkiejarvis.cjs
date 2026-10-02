@@ -18,8 +18,12 @@
  *
  * Usage:
  *   node /home/devuser/workspace/project/agentbox/scripts/run-junkiejarvis.cjs
- *   JUNKIEJARVIS_ENABLED=true node scripts/run-junkiejarvis.cjs   # force-enable
  *   timeout 10 node scripts/run-junkiejarvis.cjs                  # 10s smoke test
+ *
+ * Gate: agentbox.toml [sovereign_mesh].junkiejarvis is the only switch (ADR-030
+ * D2; owner decision 2026-10-02, R1). The manifest is read from
+ * AGENTBOX_MANIFEST_PATH or /etc/agentbox.toml, falling back to the checkout's
+ * agentbox.toml. There is no env override.
  */
 
 const fs = require('fs');
@@ -78,11 +82,24 @@ loadEnvFile(path.join(REPO_ROOT, '.env.dreamlab-additions'));
   if (additions) process.env.NOSTR_RELAYS = additions;
 })();
 
-// Default to enabled in the standalone runner so a bare invocation works.
-if (!('JUNKIEJARVIS_ENABLED' in process.env)) process.env.JUNKIEJARVIS_ENABLED = 'true';
-
 const { NostrBridge } = require(path.join(REPO_ROOT, 'mcp/servers/nostr-bridge'));
 const { startJunkieJarvis } = require(path.join(REPO_ROOT, 'management-api/lib/junkiejarvis-agent'));
+const { loadManifest } = require(path.join(REPO_ROOT, 'management-api/adapters/manifest-loader'));
+
+// The manifest gate, same source of truth as management-api.
+function readManifest() {
+  try { return loadManifest(); } catch { /* fall through to the checkout copy */ }
+  const saved = process.env.AGENTBOX_MANIFEST_PATH;
+  try {
+    process.env.AGENTBOX_MANIFEST_PATH = path.join(REPO_ROOT, 'agentbox.toml');
+    return loadManifest();
+  } catch {
+    return {};
+  } finally {
+    if (saved === undefined) delete process.env.AGENTBOX_MANIFEST_PATH;
+    else process.env.AGENTBOX_MANIFEST_PATH = saved;
+  }
+}
 
 // Tiny logger — same shape (info/warn/error) the agent expects.
 const logger = {
@@ -105,9 +122,9 @@ async function main() {
   const bridge = new NostrBridge({ relays });
   await bridge.connect();
 
-  const agent = startJunkieJarvis({ bridge, logger });
+  const agent = startJunkieJarvis({ bridge, logger, manifest: readManifest() });
   if (!agent) {
-    console.error('[junkiejarvis] not started — check JUNKIEJARVIS_ENABLED and JUNKIEJARVIS_PRIVKEY_HEX');
+    console.error('[junkiejarvis] not started — check [sovereign_mesh].junkiejarvis = true in agentbox.toml and JUNKIEJARVIS_PRIVKEY_HEX');
     await bridge.disconnect();
     process.exit(1);
   }

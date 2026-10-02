@@ -43,12 +43,11 @@ voice_intent = false
 # ontology-propose descriptors at POST /v1/kg-elevation/scan. Off → 503.
 kg_elevation = true
 # JunkieJarvis forum agent (management-api/lib/junkiejarvis-agent.js): rides the
-# management-api process and answers forum mentions over Nostr. Requires BOTH
-# this manifest gate AND the JUNKIEJARVIS_ENABLED=true env var — the env var
-# remains the runtime override, so existing deployments keep working when the
-# manifest is absent.
-# Gate semantics + subsystem boundary: ADR-030.
-junkiejarvis = false
+# management-api process and answers forum mentions over Nostr. This key is the
+# ONLY switch: no env var overrides it (JUNKIEJARVIS_ENABLED is no longer read;
+# owner decision 2026-10-02, R1). It also gates the nightly forum-suggestions
+# tenant's clarifying DMs (ADR-2088). Subsystem boundary: ADR-030.
+junkiejarvis = true
 # Clarify-before-acting (ADR-2088): when JunkieJarvis ingests a forum issue or
 # suggestion whose actionable detail is unclear (no reproduction steps, no
 # surface, an ambiguous target, or below the specificity floor), it MUST NOT act

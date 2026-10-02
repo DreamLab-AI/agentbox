@@ -182,6 +182,12 @@ junkiejarvis bridge agent, operator mobile (Amethyst/Amber). `agent_event_auth =
 (`agentbox.toml:172`) — hardened by default; `POST /v1/agent-events/emit` requires a
 kind-27235 header and stamps `source_urn` from the verified pubkey.
 
+**JunkieJarvis gate.** `[sovereign_mesh].junkiejarvis` is the only switch for the forum
+agent and for the nightly tenant's clarifying DMs; both ask `junkiejarvisEnabled()`
+(`management-api/lib/junkiejarvis-clarify.js`). No env var overrides it: `JUNKIEJARVIS_ENABLED`
+is no longer read (owner decision 2026-10-02, R1). The manifest is baked into
+`/etc/agentbox.toml`, so a change takes effect at the next image rebuild.
+
 **Clarify-before-acting on the ingest path (ADR-2088).** `[sovereign_mesh].junkiejarvis_clarify_before_acting`
 (default `true`) gates the forum-suggestions tenant: a vague suggestion is answered with a
 gift-wrapped clarification DM and parked, never triaged. The one gift-wrap site is

@@ -1389,20 +1389,13 @@ async function start() {
       }
     }
 
-    // ── JunkieJarvis forum agent (manifest + env gated, fail-open) ──────
-    // Rides this always-on process — no supervisor program. Gated by
-    // agentbox.toml [sovereign_mesh].junkiejarvis (default false) ANDed with
-    // the env var: when JUNKIEJARVIS_ENABLED is explicitly set it remains the
-    // runtime override (so existing env-driven deployments keep working);
-    // when it is unset the manifest value decides. Reuses NostrBridge for the
-    // relay pool; never crashes management-api on any failure.
-    const jjEnvRaw = process.env.JUNKIEJARVIS_ENABLED;
-    const jjManifestEnabled = !!(manifest
-      && manifest.sovereign_mesh
-      && manifest.sovereign_mesh.junkiejarvis === true);
-    const jjEnabled = (jjEnvRaw !== undefined && jjEnvRaw !== '')
-      ? String(jjEnvRaw).toLowerCase() === 'true'
-      : jjManifestEnabled;
+    // ── JunkieJarvis forum agent (manifest gated, fail-open) ────────────
+    // Rides this always-on process — no supervisor program. The only switch is
+    // agentbox.toml [sovereign_mesh].junkiejarvis (default false); no env var
+    // overrides it (ADR-030 D2; owner decision 2026-10-02, R1). Reuses
+    // NostrBridge for the relay pool; never crashes management-api on any failure.
+    const { junkiejarvisEnabled } = require('./lib/junkiejarvis-clarify');
+    const jjEnabled = junkiejarvisEnabled(manifest);
     if (jjEnabled) {
       try {
         // The bridge is vendored into lib/ at build time (flake buildPhaseExtra
@@ -1420,7 +1413,7 @@ async function start() {
         } else {
           const jjBridge = new NostrBridge({ relays: jjRelays });
           await jjBridge.connect();
-          const junkiejarvis = startJunkieJarvis({ bridge: jjBridge, logger });
+          const junkiejarvis = startJunkieJarvis({ bridge: jjBridge, logger, manifest });
           if (junkiejarvis) {
             app.addHook('onClose', async () => {
               try { junkiejarvis.stop(); } catch (_) { /* ignore */ }

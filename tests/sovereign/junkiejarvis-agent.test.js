@@ -687,47 +687,61 @@ describe('startJunkieJarvis gating', () => {
     ? { sign: (e) => e, skBytes: new Uint8Array(32), pubkey: 'd'.repeat(64) }
     : null);
 
+  // The gate is the manifest's [sovereign_mesh].junkiejarvis, passed in as
+  // deps.manifest; JUNKIEJARVIS_ENABLED is not read (owner decision 2026-10-02, R1).
+  const ON = { sovereign_mesh: { junkiejarvis: true } };
+
   test('disabled by default → returns null, no throw', () => {
     expect(startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, signerFactory: fakeFactory })).toBeNull();
   });
 
-  test('enabled but no privkey → null (fail-open, warns)', () => {
-    process.env.JUNKIEJARVIS_ENABLED = 'true';
+  test('JUNKIEJARVIS_ENABLED=true without the manifest gate does not start it', () => {
+    process.env.JUNKIEJARVIS_PRIVKEY_HEX = '1'.repeat(64);
     expect(startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, signerFactory: fakeFactory })).toBeNull();
+    expect(startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, signerFactory: fakeFactory,
+      manifest: { sovereign_mesh: { junkiejarvis: false } } })).toBeNull();
+  });
+
+  test('manifest gate on starts it even when JUNKIEJARVIS_ENABLED=false', () => {
+    process.env.JUNKIEJARVIS_ENABLED = 'false';
+    process.env.JUNKIEJARVIS_PRIVKEY_HEX = '1'.repeat(64);
+    const agent = startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, signerFactory: fakeFactory, manifest: ON });
+    expect(agent).toBeInstanceOf(JunkieJarvisAgent);
+    agent.stop();
+  });
+
+  test('enabled but no privkey → null (fail-open, warns)', () => {
+    expect(startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, signerFactory: fakeFactory, manifest: ON })).toBeNull();
   });
 
   test('enabled with a bad privkey → null', () => {
-    process.env.JUNKIEJARVIS_ENABLED = 'true';
     process.env.JUNKIEJARVIS_PRIVKEY_HEX = 'nothex';
-    expect(startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, signerFactory: fakeFactory })).toBeNull();
+    expect(startJunkieJarvis({ bridge: makeBridge(), logger: silentLogger, signerFactory: fakeFactory, manifest: ON })).toBeNull();
   });
 
   test('enabled with a valid privkey → starts and subscribes', () => {
-    process.env.JUNKIEJARVIS_ENABLED = 'true';
     process.env.JUNKIEJARVIS_PRIVKEY_HEX = '1'.repeat(64);
     const bridge = makeBridge();
-    const agent = startJunkieJarvis({ bridge, logger: silentLogger, signerFactory: fakeFactory });
+    const agent = startJunkieJarvis({ bridge, logger: silentLogger, signerFactory: fakeFactory, manifest: ON });
     expect(agent).toBeInstanceOf(JunkieJarvisAgent);
     expect(bridge.subs.length).toBe(2);
     agent.stop();
   });
 
   test('transition fallback: old CONCIERGE_PRIVKEY_HEX still works', () => {
-    process.env.JUNKIEJARVIS_ENABLED = 'true';
     process.env.CONCIERGE_PRIVKEY_HEX = '2'.repeat(64);
     const bridge = makeBridge();
-    const agent = startJunkieJarvis({ bridge, logger: silentLogger, signerFactory: fakeFactory });
+    const agent = startJunkieJarvis({ bridge, logger: silentLogger, signerFactory: fakeFactory, manifest: ON });
     expect(agent).toBeInstanceOf(JunkieJarvisAgent);
     agent.stop();
   });
 
   test('registers the signer for NIP-42 AUTH before subscribing', () => {
-    process.env.JUNKIEJARVIS_ENABLED = 'true';
     process.env.JUNKIEJARVIS_PRIVKEY_HEX = '1'.repeat(64);
     const calls = [];
     const bridge = makeBridge();
     bridge.setAuthSigner = (s) => { calls.push({ signer: s, subsAtCall: bridge.subs.length }); };
-    const agent = startJunkieJarvis({ bridge, logger: silentLogger, signerFactory: fakeFactory });
+    const agent = startJunkieJarvis({ bridge, logger: silentLogger, signerFactory: fakeFactory, manifest: ON });
     expect(agent).toBeInstanceOf(JunkieJarvisAgent);
     expect(calls.length).toBe(1);
     expect(typeof calls[0].signer.sign).toBe('function');

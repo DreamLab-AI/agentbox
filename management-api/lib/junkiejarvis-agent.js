@@ -28,7 +28,8 @@
  * than post plaintext.
  *
  * Invariants (mirrors memory-flash-notifier.js):
- *   - Disabled by default: nothing runs unless JUNKIEJARVIS_ENABLED=true.
+ *   - Disabled by default: nothing runs unless agentbox.toml sets
+ *     [sovereign_mesh].junkiejarvis = true (the only switch).
  *   - Fail-open everywhere: a missing key, an LLM outage, a malformed event, or
  *     a publish failure NEVER crashes management-api. The watcher logs and
  *     continues; the asker, at worst, gets a short canned apology.
@@ -42,6 +43,7 @@
 
 const crypto = require('crypto');
 const zoneKeys = require('./zone-keys');
+const { junkiejarvisEnabled } = require('./junkiejarvis-clarify');
 
 let nostrTools = null;
 function getNostrTools() {
@@ -1175,12 +1177,14 @@ function buildZoneCrypto({ bridge, owner, fetchImpl, logger, env = process.env }
 }
 
 /**
- * Start JunkieJarvis if JUNKIEJARVIS_ENABLED=true and a private key is present.
- * Reuses the supplied (already-connected) NostrBridge. Returns the running
+ * Start JunkieJarvis if the manifest gate `[sovereign_mesh].junkiejarvis` is
+ * true and a private key is present. The manifest is the only switch (ADR-030
+ * D2; owner decision 2026-10-02, R1). Reuses the supplied (already-connected) NostrBridge. Returns the running
  * JunkieJarvisAgent, or null when disabled/misconfigured. NEVER throws.
  *
  * @param {object} deps
  * @param {object} deps.bridge   - a connected NostrBridge.
+ * @param {object} [deps.manifest] - the parsed agentbox.toml; absent → off.
  * @param {object} [deps.logger]
  * @param {Function} [deps.fetchImpl]
  * @param {Function} [deps.signerFactory] - (privHex) => signer; defaults to
@@ -1190,8 +1194,8 @@ function buildZoneCrypto({ bridge, owner, fetchImpl, logger, env = process.env }
 function startJunkieJarvis(deps = {}) {
   const logger = deps.logger || console;
   try {
-    if (String(process.env.JUNKIEJARVIS_ENABLED || '').toLowerCase() !== 'true') {
-      return null; // disabled by default — keeps the repo generic.
+    if (!junkiejarvisEnabled(deps.manifest)) {
+      return null; // off unless the manifest says junkiejarvis = true.
     }
     if (!deps.bridge || typeof deps.bridge.subscribe !== 'function') {
       logger.warn('junkiejarvis: no connected bridge available — not starting');
@@ -1199,7 +1203,7 @@ function startJunkieJarvis(deps = {}) {
     }
     const privHex = readPrivHex();
     if (!privHex) {
-      logger.warn('junkiejarvis: JUNKIEJARVIS_ENABLED=true but JUNKIEJARVIS_PRIVKEY_HEX is unset — not starting');
+      logger.warn('junkiejarvis: manifest gate is on but JUNKIEJARVIS_PRIVKEY_HEX is unset — not starting');
       return null;
     }
     const makeSigner = deps.signerFactory || signerFromHex;
