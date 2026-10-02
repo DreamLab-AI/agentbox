@@ -128,7 +128,9 @@ async function tasksRoutes(fastify, options) {
             logTail: { type: 'string' },
             // D2 (PRD-023 WP-3): echoed claude-flow join key (null when the task
             // carried none). Must be in the schema or fastify strips it.
-            claudeFlowAgentId: { type: ['string', 'null'] }
+            claudeFlowAgentId: { type: ['string', 'null'] },
+            // The did:nostr the task was dispatched as (ADR-2097 render contract).
+            didNostr: { type: ['string', 'null'] }
           }
         },
         404: {
@@ -175,7 +177,9 @@ async function tasksRoutes(fastify, options) {
                   duration: { type: 'number' },
                   // D2 (PRD-023 WP-3): echoed claude-flow join key (null when the
                   // task carried none). Must be in the schema or fastify strips it.
-                  claudeFlowAgentId: { type: ['string', 'null'] }
+                  claudeFlowAgentId: { type: ['string', 'null'] },
+                  // The did:nostr the task was dispatched as (ADR-2097 render contract).
+                  didNostr: { type: ['string', 'null'] }
                 }
               }
             },

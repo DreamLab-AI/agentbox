@@ -189,8 +189,8 @@ function getActionPlane(opts = {}) {
         if (!_boundProcessManager) {
           throw new Error('action-plane: no processManager bound (dispatchTaskSpawn was never called with one)');
         }
-        const { agent, task, provider, claude_flow_agent_id } = action._args || {};
-        return _boundProcessManager.spawnTask(agent, task, provider, claude_flow_agent_id);
+        const { agent, task, provider, claude_flow_agent_id, agent_did } = action._args || {};
+        return _boundProcessManager.spawnTask(agent, task, provider, claude_flow_agent_id, agent_did);
       },
     });
   } catch (err) {
@@ -269,6 +269,7 @@ async function dispatchTaskSpawn(params, deps) {
       task: params.task,
       provider: params.provider,
       claude_flow_agent_id: params.claude_flow_agent_id,
+      agent_did: agentDid,
     },
     target: params.agent,
   });
