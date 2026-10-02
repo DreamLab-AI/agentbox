@@ -49,6 +49,20 @@ Host ADR-124 §2.3 forbids the phrase "single-use seal" until a spent-exactly-on
    and `debit` leave the public API; the TXO stand-in deposit path (`pay.rs:498-519`, "Phase 0:
    deterministic stand-in" in the code, a "free-money oracle" in the R3 audit) is deleted, not
    left default-off.
+   *Amended 2026-10-02:* the stand-in is deleted upstream (solid-pod-rs `e62d028`, ADR-2008 D6;
+   on its main, in no release yet): the pod's `/pay/.deposit` takes only a verified MRC20 body and
+   answers 501 to anything else. agentbox no longer fronts it. `POST /v1/pay/deposit`
+   (`management-api/routes/payments.js`) used to re-serialise `{txo_uri, amount_sats}` to the pod
+   and answer `credited: true`, using `amount_sats` as the balance when the pod reported
+   none. It now answers 501 `deposit-not-served`, naming the pod's own endpoint
+   (`SOLID_POD_PUBLIC_URL`/pay/.deposit), and calls nothing. It does not forward MRC20 either: the
+   pod binds NIP-98 to its own URL and the exact body bytes, and a header signed for
+   `/v1/pay/deposit` fails both, so the proxy could never carry one honestly. Pinned by
+   `tests/contract/pay402/payments-deposit.contract.spec.js`, which offers every historic body
+   shape to a pod stub that would still credit and asserts 501 with no pod call. The
+   running image still ships solid-pod-rs `0.5.0-alpha.9` (`lib/solid-pod-rs.nix`), which
+   predates `e62d028`. Its stand-in is default-off there, but the code is still present until
+   that pin moves to a release carrying `e62d028`.
 4. **Both solid-pod-rs consumers move to one post-port version together**; the version skew
    (host 0.4.0-alpha.15, forum 0.5.0-alpha.7) is a P1 exit criterion.
 5. **The blocktrail `txo[]` is populated per epoch from the anchor outpoint on
