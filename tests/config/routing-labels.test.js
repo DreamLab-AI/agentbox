@@ -107,6 +107,23 @@ describe('library rules', () => {
     expect(JSON.stringify(row)).not.toContain('heat pump');
   });
 
+  test('EXP-B8: the shadow BM25 pick and score are joined from the route line, null when absent', () => {
+    const turn = { uuid: 'u2', ts: '2026-10-02T17:00:00Z', text: PROMPT_A, loads: [], via: [] };
+    const withShadow = L.rowFor(turn, 's', [0.1], 'bge', {}, { choice: 'none', model: 'jev', bm25_pick: 'deep-research', bm25_score: 3.25 });
+    expect(withShadow).toMatchObject({ label: 'none', router_pick: 'none', bm25_pick: 'deep-research', bm25_score: 3.25 });
+    const without = L.rowFor(turn, 's', [0.1], 'bge', {}, { choice: 'none', model: 'jev' });
+    expect(without.bm25_pick).toBeNull();
+    expect(without.bm25_score).toBeNull();
+    expect(L.rowFor(turn, 's', [0.1], 'bge', {}, null).bm25_pick).toBeNull();
+  });
+
+  test('EXP-B8: the recorder DDL migrates an existing table to carry the shadow columns', () => {
+    const { MIGRATIONS } = require(path.resolve(__dirname, '../../config/hooks/routing-label-recorder.cjs'));
+    const sql = MIGRATIONS.join('\n');
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS bm25_pick text/);
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS bm25_score double precision/);
+  });
+
   test('only LAN embeddings endpoints are accepted', () => {
     for (const u of ['http://127.0.0.1:9997/v1/embeddings', 'http://192.168.2.132:9997/v1', 'http://xinference:9997/v1', 'http://10.1.2.3/v1', 'http://172.20.0.4/v1']) {
       expect(isLanUrl(u)).toBe(true);

@@ -112,8 +112,16 @@ const DDL = `CREATE TABLE IF NOT EXISTS ${TABLE} (
   router_cascade text,
   router_margin  double precision,
   prompt_chars   integer NOT NULL,
-  recorded_at    timestamptz NOT NULL DEFAULT now()
+  recorded_at    timestamptz NOT NULL DEFAULT now(),
+  bm25_pick      text,
+  bm25_score     double precision
 )`;
+
+/** EXP-B8: tables created before the shadow arm gain its two nullable columns. */
+const MIGRATIONS = [
+  `ALTER TABLE ${TABLE} ADD COLUMN IF NOT EXISTS bm25_pick text`,
+  `ALTER TABLE ${TABLE} ADD COLUMN IF NOT EXISTS bm25_score double precision`,
+];
 
 async function embed(url, model, text) {
   const ctl = new AbortController();
@@ -201,13 +209,14 @@ async function main() {
   try {
     await client.connect();
     await client.query(DDL);
+    for (const m of MIGRATIONS) await client.query(m);
     for (const r of rows) {
       await client.query(
         `INSERT INTO ${TABLE} (id, session_hash, turn_ts, embed_model, embedding, loaded, load_via, label,
-           router_pick, router_model, router_cascade, router_margin, prompt_chars)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT (id) DO NOTHING`,
+           router_pick, router_model, router_cascade, router_margin, prompt_chars, bm25_pick, bm25_score)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT (id) DO NOTHING`,
         [r.id, r.session_hash, r.turn_ts, r.embed_model, r.embedding, r.loaded, r.load_via, r.label,
-          r.router_pick, r.router_model, r.router_cascade, r.router_margin, r.prompt_chars]);
+          r.router_pick, r.router_model, r.router_cascade, r.router_margin, r.prompt_chars, r.bm25_pick, r.bm25_score]);
     }
     writeWatermark(session, lineCount);
   } catch (e) {
@@ -221,4 +230,4 @@ if (require.main === module) {
   main().catch((e) => log(`fail-open: ${e && e.message}`)).finally(() => process.exit(0));
 }
 
-module.exports = { isLanUrl, DDL };
+module.exports = { isLanUrl, DDL, MIGRATIONS };

@@ -174,7 +174,7 @@ function localRank(prompt, criteria) {
     if (s > s1) { s2 = s1; s1 = s; b1 = i; } else if (s > s2) { s2 = s; }
   });
   const margin = Math.abs(s1) > Number.EPSILON ? (s1 - s2) / Math.abs(s1) : 0;
-  return { choice: names[b1], margin };
+  return { choice: names[b1], margin, score: s1 };
 }
 
 /** Frontmatter `description`: folded block, quoted scalar or bare scalar. */
@@ -447,6 +447,16 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
   const n = Object.keys(criteria).length;
   if (!n) return skip('no-candidates', { skillsDir: cfg.skillsDir });
 
+  // EXP-B8 (ADR-2110 label_log only): the judge-free copy-ceiling arm, scored over the same
+  // candidate map in the same call and logged beside the judge's pick. Never shown to the
+  // model; a skill name and a number, never text. Absent when label_log is off.
+  let shadow = {};
+  if (cfg.labelLog) {
+    const s = localRank(text, criteria);
+    if (s) shadow = { bm25Pick: s.choice, bm25Score: Number(s.score.toFixed(6)) };
+  }
+  scoped = { ...scoped, ...shadow };
+
   let esc = {};
   if (cfg.cascade) {
     const t0 = Date.now();
@@ -577,7 +587,7 @@ function unregisteredPaths(names, cfg) {
 function appendLog(cfg, record) {
   if (!cfg.logPath) return;
   const { candidates, chars, truncated, ms, outcome, reason, choice, confidence, usage, usd, usdPerMTokIn,
-    model, consumer, cascade, margin, session, scope, scopeReason, extras } = record;
+    model, consumer, cascade, margin, session, scope, scopeReason, extras, bm25Pick, bm25Score } = record;
   const line = JSON.stringify({ ts: new Date().toISOString(), consumer, outcome, reason, model, choice, confidence,
     candidates, chars, truncated, ms, input_tokens: usage && usage.input_tokens,
     // `usd` is only meaningful against the price it was costed at; carry both so a log
@@ -587,6 +597,8 @@ function appendLog(cfg, record) {
     ...(cascade ? { cascade, margin } : {}),
     // Present only with label logging on: a 12-hex digest, never the raw session id.
     ...(session ? { session } : {}),
+    // EXP-B8 shadow copy-ceiling arm: present only with label logging on.
+    ...(bm25Pick !== undefined ? { bm25_pick: bm25Pick, bm25_score: bm25Score } : {}),
     // Present only when the caller narrowed the candidates (the hook): which set was ranked.
     ...(scope ? { scope } : {}), ...(scopeReason ? { scope_reason: scopeReason } : {}),
     // Present only when synced account or plugin skills joined the candidates.

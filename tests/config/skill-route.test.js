@@ -424,6 +424,47 @@ describe('hook — local cascade (ADR-2095 addendum; gated off by default)', () 
   });
 });
 
+describe('hook — EXP-B8 shadow copy-ceiling arm (ADR-2110 label_log only)', () => {
+  const on = (extra = {}) => baseEnv({ AGENTBOX_SKILL_ROUTE_LABEL_LOG: '1', ...extra });
+
+  test('off by default: no bm25 field on the log line', async () => {
+    await runHook(PROMPT, baseEnv());
+    const l = logLines()[0];
+    expect(l.bm25_pick).toBeUndefined();
+    expect(l.bm25_score).toBeUndefined();
+  });
+
+  test('with label_log on, the judge still decides and the BM25 pick rides along unshown', async () => {
+    const out = await runHook(PROMPT, on());
+    expect(seen).toHaveLength(1);
+    expect(out).toMatch(/^\[route\] alpha-diagrams 0\.90/);
+    expect(out).not.toMatch(/bm25/i);
+    const l = logLines()[0];
+    expect(l).toMatchObject({ outcome: 'routed', choice: 'alpha-diagrams', bm25_pick: 'alpha-diagrams' });
+    expect(l.bm25_score).toBeGreaterThan(0);
+  });
+
+  test('a turn with no lexical overlap records score 0 (the decline rule reads it as none)', async () => {
+    await runHook('please could you look into the thing we talked about yesterday afternoon', on());
+    expect(logLines()[0].bm25_score).toBe(0);
+  });
+
+  test('the shadow is recorded on a failed judge call too, and never the prompt', async () => {
+    behaviour = { status: 529 };
+    await runHook(SECRET_PROMPT, on());
+    const l = logLines()[0];
+    expect(l.outcome).toBe('failed');
+    expect(typeof l.bm25_pick).toBe('string');
+    expect(fs.readFileSync(logPath, 'utf8')).not.toMatch(/hunter2/);
+  });
+
+  test('localRank reports the top raw score beside the margin', () => {
+    const r = lib.localRank('diagrams of the architecture', { a: 'architecture diagrams as code', b: 'harden servers' });
+    expect(r.choice).toBe('a');
+    expect(r.score).toBeGreaterThan(0);
+  });
+});
+
 describe('hook — fail-open (ADR-2090: the table is the normal path, not an error branch)', () => {
   const cases = [
     ['timeout', () => ({ hang: true }), 'timeout'],

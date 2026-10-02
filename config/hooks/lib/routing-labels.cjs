@@ -167,6 +167,9 @@ function rowFor(turn, session, vector, embedModel, candidates, route) {
     router_model: route ? (route.model || null) : null,
     router_cascade: route ? (route.cascade || null) : null,
     router_margin: route && typeof route.margin === 'number' ? route.margin : null,
+    // EXP-B8: the shadow BM25 (copy-ceiling) pick logged beside the judge's, when present.
+    bm25_pick: route && typeof route.bm25_pick === 'string' ? route.bm25_pick : null,
+    bm25_score: route && typeof route.bm25_score === 'number' ? route.bm25_score : null,
     prompt_chars: turn.text.length,
   };
 }

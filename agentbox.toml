@@ -979,14 +979,19 @@ min_prompt_chars = 24           # shorter turns are never sent (and never routed
 # Validator: E076 (cascade not a boolean / cutoff outside [0, 1]), E077 (label_log).
 cascade = false
 cascade_cutoff = 0.3718         # relative margin (s1-s2)/s1; 0.3718 = openjev parity point
-# Teacher labels for the router (ADR-2110, PROPOSED). At each Stop a hook records,
+# Teacher labels for the router (ADR-2110). At each Stop a hook records,
 # per user turn, the turn's bge-small embedding (never its text), the skills the main
 # model actually USED (Skill tool or Read of a SKILL.md; shell reads are kept as
 # inspection, never the label) and the router's pick for that turn, into
 # `routing_labels` in the RuVector sidecar. Email-gateway turns are never embedded;
-# the embeddings endpoint must be on the LAN (validator E077). Off until the ADR is
-# accepted: storing prompt embeddings changes the ADR-2090 retention contract.
-label_log = false
+# the embeddings endpoint must be on the LAN (validator E077).
+# ON as the bounded experiment EXP-B8 (owner decision 2026-10-02 R5b;
+# docs/experiments/EXP-B8-label-log.md): the router also logs a shadow BM25 pick
+# (a skill name and a score) as the copy-ceiling arm. Live from the checkout without
+# a rebuild: scripts/experiments/exp-b8-label-log.cjs (ticked by the checkout
+# crontab) registers the hooks while this is true and, at 510 rows or 2026-10-20,
+# de-registers them and opens the PR that sets this back to false.
+label_log = true
 label_embeddings_url = "http://192.168.2.132:9997/v1/embeddings"   # bge-small via Xinference (LAN)
 
 [skills.colloquy]

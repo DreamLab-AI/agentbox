@@ -40,3 +40,15 @@
 # UTC, or if the API came back on its own), then retires the marker. All of its
 # times are UTC whatever this file's TZ is. Remove this block after 7 Oct 2026.
 */10 * 5-7 10 * /home/devuser/workspace/project/agentbox/scripts/activation/adr-2071-api-down-night.sh
+
+# ── EXP-B8 bounded label-log experiment (owner decision 2026-10-02, R5b) ──────
+# Not a podcast job: this crontab is read from the checkout, so the experiment
+# runs and stops itself without an image rebuild (same reason as the ADR-2071
+# block above). Every 30 minutes the tick keeps the ADR-2110 label-log hooks
+# registered while [skills.routing].label_log = true in the checkout manifest,
+# counts analysable rows, and when the pre-registered stopping rule fires (510
+# rows or 2026-10-20 UTC) de-registers both hooks, runs the one test, opens a PR
+# setting label_log = false with the verdict in ADR-2110, and posts one forum
+# summary as JunkieJarvis. Protocol: docs/experiments/EXP-B8-label-log.md.
+# Remove this block once that PR has merged.
+*/30 * * * * cd /home/devuser/workspace/project/agentbox && node scripts/experiments/exp-b8-label-log.cjs
