@@ -1606,6 +1606,28 @@ checkpoint_wallet      = ""
 [skills.payment_router]
 enabled = false                          # C5 — enable with [payments.consumer].enabled = true
 
+# ── sidestr payment rail (ADR-2097, amended 2026-10-02) ──────────────────────
+# One agent pays another through a 402: each payment is one sidechain
+# transaction signed with the payer's spend key (owner decision 2026-10-02, SC2).
+# Independent of [payments.consumer]: turning this on never makes an
+# agentbox-ledger offer payable. chain_id must be compiled into
+# management-api/lib/pay402.js SIDESTR_CHAINS (testnet parents only); the
+# producer's chain document is checked against it before every payment.
+# Both estate chains are compiled in; switching to the SC1 demo chain is config:
+# chain_id = "sidestr:dreamlab-txbt4" and that chain's producer_url.
+# Spend-policy runs on POST /v1/chain/pay only; above approval_threshold_sats a
+# payment parks until an allowlisted approver releases it (falls back to
+# [payments.consumer].approval_threshold_sats when unset). RESTART-class.
+[payments.sidestr]
+enabled                 = true
+chain_id                = "sidestr:dreamlab"
+producer_url            = "http://127.0.0.1:3450"
+max_sats_per_payment    = 2000
+max_sats_per_day        = 10000
+approval_threshold_sats = 1000           # > 1000 sats parks pending approval
+settle_timeout_s        = 120
+relays                  = ["wss://nos.lol", "wss://relay.damus.io", "wss://relay.primal.net"]
+
 [linked_data.privacy_handoff]
 order = "after"   # documentation only — the order is fixed in code (E048)
 

@@ -969,6 +969,19 @@ async function start() {
       }
     }
 
+    // ── sidestr payment rail (ADR-2097, amended 2026-10-02) ────────────────
+    // POST /v1/chain/pay (spend-policy in rail mode on this route only),
+    // POST /v1/chain/payments/:id/decide, GET /v1/chain/payments and
+    // /v1/chain/sessions. Self-gates 503 when [payments.sidestr] is off.
+    {
+      try {
+        await app.register(require('./routes/chain-payments'), { logger, manifest });
+        logger.debug({ event: 'chain-payments.mounted' }, 'sidestr rail ready at /v1/chain/pay');
+      } catch (err) {
+        logger.error({ err: err.message }, 'sidestr rail routes failed to mount');
+      }
+    }
+
     // ── System surface (ADR-039 — docBox back-port) ─────────────────────────
     // /v1/system renders the live gate map (surfaces + modules with state and
     // apply-class) over the parsed manifest and resolved adapters;

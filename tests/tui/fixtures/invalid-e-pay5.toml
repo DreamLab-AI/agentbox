@@ -1,0 +1,42 @@
+# E-PAY5: [payments.sidestr] names a chain that is not compiled into
+# management-api/lib/pay402.js SIDESTR_CHAINS (testnet parents only).
+# The validator must emit E-PAY5 and exit non-zero (ADR-2097 value-leak guard).
+[core]
+orchestration = "ruflo-v3"
+vector_db = "ruvector-embedded"
+
+[federation]
+mode = "standalone"
+
+[adapters]
+beads        = "local-sqlite"
+pods         = "local-solid-rs"
+memory       = "embedded-ruvector"
+events       = "local-jsonl"
+orchestrator = "local-process-manager"
+
+[gpu]
+backend = "none"
+
+[desktop]
+enabled = false
+
+[sovereign_mesh]
+enabled = true
+
+[observability]
+metrics_port = 9091
+log_level    = "info"
+
+[toolchains]
+claude = true
+
+[security.exceptions.solid-pod-rs]
+writable_volumes = ["solid-data:/var/lib/solid"]
+reason = "solid-pod-rs WAL and journal"
+
+[payments.sidestr]
+enabled              = true
+chain_id             = "sidestr:mainnet-reserve"
+producer_url         = "http://127.0.0.1:3450"
+max_sats_per_payment = 1000

@@ -24,15 +24,15 @@
  *     MUST have macaroon param AND invoice param starting lnbc / lntb / lnbcrt.
  *     Missing or bad invoice → unknown(reason: "l402-malformed").
  *
- *   unknown: everything else. Terminal. Fail-closed. No payment rail.
+ *   sidestr (ADR-2097 D3): accepts[] scheme "sidestr". unknown: all else, terminal.
  *
  * classify() contract:
  *   - Pure function. No network. Never throws.
  *   - Body capped at 64 KiB BEFORE JSON.parse. Over-size → unknown.
  *   - Headers are normalised to lowercase (RFC 9110).
  *   - Returns { scheme, payable, offer, reason }.
- *   - payable is true only for agentbox-ledger when
- *     process.env.CONSUMER_ENABLED === "true".
+ *   - payable: agentbox-ledger iff CONSUMER_ENABLED === "true"; sidestr iff
+ *     opts.rails.sidestr is enabled for the offer's chain (see SIDESTR below).
  */
 
 const BODY_MAX_BYTES = 64 * 1024; // 64 KiB
@@ -162,7 +162,7 @@ function _parseWwwAuthenticate(headerValue) {
  * @param {string|Buffer|object|null} response.body - Response body (raw string, Buffer, or pre-parsed object)
  * @returns {{ scheme: string, payable: boolean, offer: object|null, reason: string|null }}
  */
-function classify({ status, headers, body } = {}) {
+function classify({ status, headers, body } = {}, opts = {}) {
   const h = _normaliseHeaders(headers);
   const parsed = _parseBody(body);
 
@@ -304,7 +304,16 @@ function classify({ status, headers, body } = {}) {
   }
 
   // -------------------------------------------------------------------------
-  // Scheme 4: unknown (terminal, fail-closed)
+  // Scheme 4: sidestr (ADR-2097 D3). Below agentbox-ledger (D4) and below the
+  // two foreign schemes, whose detection shapes it cannot collide with.
+  // -------------------------------------------------------------------------
+  if (status === 402 && parsed !== null && Array.isArray(parsed.accepts)) {
+    const sidestr = _classifySidestr(parsed.accepts, opts || {});
+    if (sidestr) return sidestr;
+  }
+
+  // -------------------------------------------------------------------------
+  // Scheme 5: unknown (terminal, fail-closed)
   // -------------------------------------------------------------------------
   return { scheme: 'unknown', payable: false, offer: null, reason: null };
 }
@@ -336,7 +345,204 @@ function buildAcceptsEntry({ costSats, operatorDid, depositPath, infoPath } = {}
 }
 
 // ---------------------------------------------------------------------------
+// SIDESTR (ADR-2097 D3, amended 2026-10-02; owner decision SC2)
+// ---------------------------------------------------------------------------
+//
+// A 402 whose accepts[] carries an entry
+//
+//   { scheme: "sidestr", chain_id: "sidestr:<name>", address: "<prefix>1p…",
+//     pubkey: "<64-hex payee spend key>", amount_sats: <int>,
+//     memo: "urn:agentbox:receipt:<payee hex>:sha256-12-<hex>",
+//     pay_to?: "did:nostr:<hex>", binding?: <kind-38420 event> }
+//
+// settles as one sidechain transaction: the payer signs with its spend key
+// (never its identity key, ADR-2101 D3) through sidestr-agent and broadcasts
+// it (producer POST /tx and kind 23500). The payer's receipt cites the txid
+// and the hash of the including block.
+//
+// Value-leak guard: only chains compiled into SIDESTR_CHAINS are accepted,
+// and every compiled chain must sit on a testnet parent (checked at load).
+// A chain id from a 402 is never trusted to name a producer: the payer pays
+// through the producer its own [payments.sidestr] names, after checking that
+// producer's chain document against this table.
+//
+// payable: true only when opts.rails.sidestr = { enabled: true, chain_id }
+// names the offer's chain. CONSUMER_ENABLED plays no part (and turning the
+// rail on never makes an agentbox-ledger offer payable).
+
+/** Parents a compiled chain may sit on. No mainnet parent, ever. */
+const TESTNET_PARENTS = Object.freeze(['tbtc4', 'txbt4']);
+
+/**
+ * The chains this build will pay on. A new chain is a reviewed edit here plus
+ * a fixture, never a runtime option. `hash` is the id of the chain's kind-3500
+ * event (sidestr 0.0.5); null for a chain sealed before 0.0.5, which is then
+ * pinned by `genesisHash` alone.
+ */
+const SIDESTR_CHAINS = Object.freeze({
+  'sidestr:dreamlab': Object.freeze({
+    parent: 'tbtc4',
+    hash: null,
+    genesisHash: '4db37517728bd509c0cb96ee5a2e3e2a77f9e965a092e9f67948b413d453dbc0',
+    addressPrefix: 'drm',
+  }),
+  // The agent-payments demo chain (owner decision SC1), sealed beside BLAKE2b
+  // testnet4 at agentbox f7465412d. Not anchored (SC5): no checkpoints.
+  'sidestr:dreamlab-txbt4': Object.freeze({
+    parent: 'txbt4',
+    hash: null,
+    genesisHash: '1009aa2984d5c699fe61ef1e5905afe472a49d67551542045726828c8b82d108',
+    addressPrefix: 'drt',
+  }),
+});
+
+/**
+ * Throw unless every chain in `table` sits on a testnet parent and is fully
+ * pinned. Run against SIDESTR_CHAINS at module load.
+ *
+ * @param {object} table
+ */
+function assertTestnetOnly(table) {
+  for (const [id, c] of Object.entries(table || {})) {
+    if (!c || !TESTNET_PARENTS.includes(c.parent)) {
+      throw new Error(`pay402: chain ${id} has parent ${c && c.parent}; only testnet parents (${TESTNET_PARENTS.join(', ')}) are compiled in, never mainnet`);
+    }
+    if (!/^[0-9a-f]{64}$/.test(c.genesisHash || '') || !/^[a-z]{1,16}$/.test(c.addressPrefix || '')) {
+      throw new Error(`pay402: chain ${id} is not fully pinned (genesisHash, addressPrefix)`);
+    }
+  }
+}
+assertTestnetOnly(SIDESTR_CHAINS);
+
+const HEX64_RE = /^[0-9a-f]{64}$/;
+const DID_NOSTR_RE = /^did:nostr:([0-9a-f]{64})$/;
+const RECEIPT_URN_RE = /^urn:agentbox:receipt:[0-9a-f]{64}:sha256-12-[0-9a-f]{12}$/;
+const BECH32_DATA_RE = /^[02-9ac-hj-np-z]{8,90}$/;
+const SIDESTR_FIELDS = new Set(['scheme', 'chain_id', 'address', 'pubkey', 'amount_sats', 'memo', 'pay_to', 'binding']);
+
+/** The `d` tag a kind-38420 binding carries for this chain and DID. */
+function sidestrBindingD(chain, didHex) {
+  return `${chain.hash || chain.genesisHash}:${didHex}`;
+}
+
+/**
+ * Validate one sidestr accepts entry. Returns { offer } or { reason }.
+ */
+function _sidestrEntry(e, verifyEvent) {
+  if (!e || typeof e !== 'object' || Array.isArray(e)) return { reason: 'sidestr-malformed' };
+  for (const k of Object.keys(e)) if (!SIDESTR_FIELDS.has(k)) return { reason: 'sidestr-malformed' };
+  const chain = Object.prototype.hasOwnProperty.call(SIDESTR_CHAINS, e.chain_id) ? SIDESTR_CHAINS[e.chain_id] : null;
+  if (!chain) return { reason: 'sidestr-chain-refused' };
+  const prefix = `${chain.addressPrefix}1p`;
+  if (typeof e.address !== 'string' || !e.address.startsWith(prefix) || !BECH32_DATA_RE.test(e.address.slice(prefix.length))) {
+    return { reason: 'sidestr-malformed' };
+  }
+  if (typeof e.pubkey !== 'string' || !HEX64_RE.test(e.pubkey)) return { reason: 'sidestr-malformed' };
+  if (!Number.isSafeInteger(e.amount_sats) || e.amount_sats < 1) return { reason: 'sidestr-malformed' };
+  if (typeof e.memo !== 'string' || !RECEIPT_URN_RE.test(e.memo)) return { reason: 'sidestr-malformed' };
+  let payTo = null;
+  if (e.pay_to !== undefined) {
+    if (typeof e.pay_to !== 'string' || !DID_NOSTR_RE.test(e.pay_to)) return { reason: 'sidestr-malformed' };
+    payTo = e.pay_to;
+  }
+  if (e.binding !== undefined && payTo === null) return { reason: 'sidestr-malformed' };
+
+  // The payee DID counts only when its identity key signed a kind-38420
+  // binding naming this spend key on this chain (ADR-2101 D4).
+  let payeeDid = null;
+  if (e.binding !== undefined) {
+    const b = e.binding;
+    const didHex = DID_NOSTR_RE.exec(payTo)[1];
+    const dTag = b && Array.isArray(b.tags) ? b.tags.find((t) => Array.isArray(t) && t[0] === 'd') : null;
+    const shapeOk = b && typeof b === 'object' && b.kind === 38420 && b.pubkey === didHex
+      && b.content === e.pubkey && dTag && dTag[1] === sidestrBindingD(chain, didHex);
+    if (!shapeOk) return { reason: 'sidestr-binding-invalid' };
+    if (typeof verifyEvent === 'function') {
+      let ok = false;
+      try { ok = verifyEvent(b) === true; } catch { ok = false; }
+      if (!ok) return { reason: 'sidestr-binding-invalid' };
+      payeeDid = payTo;
+    }
+  }
+
+  const offer = {
+    scheme: 'sidestr',
+    chain_id: e.chain_id,
+    address: e.address,
+    pubkey: e.pubkey,
+    amount_sats: e.amount_sats,
+    memo: e.memo,
+    pay_to: payTo,
+    payee_did: payeeDid,
+  };
+  if (e.binding !== undefined) offer.binding = e.binding;
+  return { offer };
+}
+
+/**
+ * Classify the sidestr entries of an accepts[] array. Returns null when there
+ * is no sidestr entry (so classification falls through to unknown).
+ */
+function _classifySidestr(accepts, opts) {
+  const entries = accepts.filter((e) => e && e.scheme === 'sidestr');
+  if (entries.length === 0) return null;
+  const rail = opts.rails && opts.rails.sidestr;
+  const results = entries.map((e) => _sidestrEntry(e, opts.verifyEvent));
+  const valid = results.filter((r) => r.offer);
+  if (valid.length === 0) {
+    const reasons = results.map((r) => r.reason);
+    const reason = reasons.includes('sidestr-binding-invalid') ? 'sidestr-binding-invalid'
+      : reasons.includes('sidestr-chain-refused') ? 'sidestr-chain-refused' : 'sidestr-malformed';
+    return { scheme: 'unknown', payable: false, offer: null, reason };
+  }
+  const configured = rail && rail.enabled === true && typeof rail.chain_id === 'string' ? rail.chain_id : null;
+  const chosen = (configured && valid.find((r) => r.offer.chain_id === configured)) || valid[0];
+  const payable = configured !== null && chosen.offer.chain_id === configured;
+  return {
+    scheme: 'sidestr',
+    payable,
+    offer: chosen.offer,
+    reason: payable || !configured ? null : 'sidestr-chain-not-configured',
+  };
+}
+
+/**
+ * Build a sidestr accepts[] entry for a payee's 402 (ADR-2097 D3). Throws on a
+ * chain that is not compiled in, or on any field the classifier would refuse,
+ * so a payee can never emit an offer a payer here would not accept.
+ *
+ * @param {object} opts
+ * @param {string} opts.chainId     - "sidestr:<name>", compiled in SIDESTR_CHAINS
+ * @param {string} opts.address     - the payee spend key's chain address
+ * @param {string} opts.pubkey      - the payee spend key (x-only hex)
+ * @param {number} opts.amountSats  - price in sats
+ * @param {string} opts.memo        - the payee's receipt URN for this charge
+ * @param {string} [opts.payTo]     - the payee's did:nostr
+ * @param {object} [opts.binding]   - the payee's kind-38420 binding event
+ * @returns {object}
+ */
+function buildSidestrAcceptsEntry({ chainId, address, pubkey, amountSats, memo, payTo, binding } = {}) {
+  if (!Object.prototype.hasOwnProperty.call(SIDESTR_CHAINS, chainId)) {
+    throw new Error(`pay402: chain ${chainId} is not compiled in`);
+  }
+  const entry = { scheme: 'sidestr', chain_id: chainId, address, pubkey, amount_sats: amountSats, memo };
+  if (payTo !== undefined) entry.pay_to = payTo;
+  if (binding !== undefined) entry.binding = binding;
+  const r = _sidestrEntry(entry, null);
+  if (!r.offer) throw new Error(`pay402: refusing to build a sidestr entry (${r.reason})`);
+  return entry;
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 
-module.exports = { classify, buildAcceptsEntry };
+module.exports = {
+  classify,
+  buildAcceptsEntry,
+  buildSidestrAcceptsEntry,
+  sidestrBindingD,
+  assertTestnetOnly,
+  SIDESTR_CHAINS,
+  TESTNET_PARENTS,
+};

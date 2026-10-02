@@ -20,6 +20,13 @@ on:
       - 'management-api/lib/pod-signer.js'
       - 'management-api/lib/agent-identity.js'
       - 'mcp/servers/nostr-bridge.js'
+      - 'management-api/lib/pay402.js'
+      - 'management-api/lib/sidestr-*.js'
+      - 'management-api/middleware/spend-policy.js'
+      - 'management-api/middleware/consumer-payer.js'
+      - 'management-api/routes/chain-payments.js'
+      - 'tests/sovereign/sidestr-spend-key.node-test.js'
+      - 'tests/sovereign/chain-payments.node-test.js'
       - 'agentbox/schemas/adapter-contracts/**'
       - '.github/workflows/contract-tests.yml'
   push:
@@ -41,6 +48,13 @@ on:
       - 'management-api/lib/pod-signer.js'
       - 'management-api/lib/agent-identity.js'
       - 'mcp/servers/nostr-bridge.js'
+      - 'management-api/lib/pay402.js'
+      - 'management-api/lib/sidestr-*.js'
+      - 'management-api/middleware/spend-policy.js'
+      - 'management-api/middleware/consumer-payer.js'
+      - 'management-api/routes/chain-payments.js'
+      - 'tests/sovereign/sidestr-spend-key.node-test.js'
+      - 'tests/sovereign/chain-payments.node-test.js'
       - '.github/workflows/contract-tests.yml'
 
 concurrency:
@@ -93,6 +107,12 @@ jobs:
       - name: Pods signer — sovereign identity (ADR-2078)
         working-directory: management-api
         run: NODE_PATH="$PWD/node_modules" node --test ../tests/sovereign/pod-sovereign-signer.node-test.js
+
+      # ADR-2097 (amended 2026-10-02): the sidestr rail — k_spend/k_id binding
+      # known-answer test and the /v1/chain/pay pipeline, also under node:test.
+      - name: sidestr rail (k_spend binding KAT, /v1/chain/pay, /v1/chain/payments)
+        working-directory: management-api
+        run: node --test ../tests/sovereign/sidestr-spend-key.node-test.js ../tests/sovereign/chain-payments.node-test.js
 
       - name: Upload coverage
         if: always()

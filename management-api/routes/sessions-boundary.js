@@ -38,6 +38,7 @@ const crypto = require('crypto');
 const uris = require('../lib/uris');
 const agentIdentity = require('../lib/agent-identity');
 const { ensureMandate } = require('./mandate');
+const { railConfig } = require('../lib/sidestr-rail');
 
 // ── Session registry (durable, keyed by AoE session id) ──────────────────────
 
@@ -216,6 +217,23 @@ async function sessionsBoundaryRoutes(fastify, options) {
         return reply.code(500).send({ error: 'identity_mint_failed', message: 'could not derive a did:nostr for the session' });
       }
       if (!identity.persisted) notes.push('did:nostr not persisted (run-scoped) — keyfile write failed');
+
+      // ADR-2097 / ADR-2101 D3: with the sidestr rail on, the agent's spend key
+      // is minted beside its identity key and bound to it by a k_id-signed
+      // kind-38420 event. Fail-open like the other bindings: the session
+      // starts, and without a spend key it cannot pay.
+      const sidestrRail = railConfig(manifest);
+      if (sidestrRail.enabled && identity.persisted) {
+        try {
+          const spendKeys = require('../lib/sidestr-spend-key');
+          const spend = spendKeys.loadOrMintSpend({ identity, chainId: sidestrRail.chain_id });
+          notes.push(`sidestr spend key ${spend.minted ? 'minted' : 'loaded'} on ${sidestrRail.chain_id} (binding ${spend.binding.id})`);
+          spendKeys.publishBinding(spend.binding, sidestrRail.relays).catch(() => {});
+        } catch (err) {
+          notes.push(`sidestr spend key unavailable: ${err.message}`);
+          logger.warn({ err: err.message, session_id: sessionId }, 'sessions-boundary: sidestr spend key mint failed');
+        }
+      }
 
       const startedAt = body.changed_at || new Date().toISOString();
 

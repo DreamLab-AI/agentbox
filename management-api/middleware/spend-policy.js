@@ -31,6 +31,19 @@
  * On pass:
  *   request.spendApproved = true
  *   request.requiresApproval = true   -- set (only) when costSats > approval_threshold_sats
+ *
+ * Rail mode (ADR-2097, amended 2026-10-02): spendPolicy(manifest, { rail: 'sidestr',
+ * keyOf, spentToday, reserve }) reads [payments.sidestr] instead:
+ *   enabled                  master gate; missing or false → 402 sidestr-rail-disabled.
+ *                            [payments.consumer].enabled is NOT consulted.
+ *   max_sats_per_payment     per-payment cap (required)
+ *   max_sats_per_day         daily budget keyed by keyOf(request) (the payer DID),
+ *                            read through spentToday(key) and committed with
+ *                            reserve(key, sats) so a caller can persist it
+ *   approval_threshold_sats  above this request.requiresApproval = true and the
+ *                            route parks the payment; falls back to
+ *                            [payments.consumer].approval_threshold_sats
+ * Origin lists do not apply on the rail. Registered on the rail's pay route only.
  */
 
 // Module-level daily budget accumulator.
@@ -79,13 +92,16 @@ function _peekDailySpend(dateKey, origin) {
  * @param {object} manifest - Parsed agentbox.toml object
  * @returns {function} Fastify async preHandler hook
  */
-function spendPolicy(manifest) {
+function spendPolicy(manifest, opts = {}) {
+  const rail = opts.rail === 'sidestr' ? 'sidestr' : null;
   return async function spendPolicyHook(request, reply) {
     // ── 1. Parse policy — any failure is fail-closed ──────────────────────
     let policy;
+    let consumerPolicy = null;
     try {
       const payments = manifest && manifest.payments;
-      policy = payments && payments.consumer;
+      consumerPolicy = payments && payments.consumer && typeof payments.consumer === 'object' ? payments.consumer : null;
+      policy = payments && (rail ? payments.sidestr : payments.consumer);
       // Coerce to plain object; TOML parser may return undefined
       if (!policy || typeof policy !== 'object') {
         policy = null;
@@ -97,7 +113,7 @@ function spendPolicy(manifest) {
 
     // ── 2. Master gate ────────────────────────────────────────────────────
     if (!policy || policy.enabled !== true) {
-      reply.code(402).send({ error: 'consumer-payments-disabled' });
+      reply.code(402).send({ error: rail ? 'sidestr-rail-disabled' : 'consumer-payments-disabled' });
       return reply;
     }
 
@@ -107,11 +123,14 @@ function spendPolicy(manifest) {
     let maxSatsPerCall, dailyBudgetSats, approvalThresholdSats;
     let allowOrigins, denyOrigins;
     try {
-      maxSatsPerCall        = policy.max_sats_per_call;
-      dailyBudgetSats       = policy.daily_budget_sats;
+      maxSatsPerCall        = rail ? policy.max_sats_per_payment : policy.max_sats_per_call;
+      dailyBudgetSats       = rail ? policy.max_sats_per_day : policy.daily_budget_sats;
       approvalThresholdSats = policy.approval_threshold_sats;
-      allowOrigins          = Array.isArray(policy.allow_origins) ? policy.allow_origins : [];
-      denyOrigins           = Array.isArray(policy.deny_origins)  ? policy.deny_origins  : [];
+      if (rail && approvalThresholdSats === undefined && consumerPolicy) {
+        approvalThresholdSats = consumerPolicy.approval_threshold_sats;
+      }
+      allowOrigins          = !rail && Array.isArray(policy.allow_origins) ? policy.allow_origins : [];
+      denyOrigins           = !rail && Array.isArray(policy.deny_origins)  ? policy.deny_origins  : [];
 
       // max_sats_per_call is required; everything else is optional.
       if (typeof maxSatsPerCall !== 'number' || !Number.isFinite(maxSatsPerCall) || maxSatsPerCall < 1) {
@@ -124,7 +143,10 @@ function spendPolicy(manifest) {
     }
 
     // ── 4. Resolve caller origin ──────────────────────────────────────────
-    const origin = (request.headers && request.headers.origin) || '';
+    // On the rail the budget key is the payer (opts.keyOf), not the origin.
+    const origin = rail && typeof opts.keyOf === 'function'
+      ? String(opts.keyOf(request) || '')
+      : ((request.headers && request.headers.origin) || '');
 
     // ── 5. Deny-list check ────────────────────────────────────────────────
     if (denyOrigins.length > 0 && denyOrigins.includes(origin)) {
@@ -165,7 +187,9 @@ function spendPolicy(manifest) {
     // ── 9. Daily budget check ─────────────────────────────────────────────
     if (typeof dailyBudgetSats === 'number' && Number.isFinite(dailyBudgetSats) && dailyBudgetSats >= 1) {
       const dateKey      = _todayKey();
-      const spentSoFar   = _peekDailySpend(dateKey, origin);
+      const spentSoFar   = typeof opts.spentToday === 'function'
+        ? Number(opts.spentToday(origin)) || 0
+        : _peekDailySpend(dateKey, origin);
       const projectedTotal = spentSoFar + costSats;
 
       if (projectedTotal > dailyBudgetSats) {
@@ -173,8 +197,9 @@ function spendPolicy(manifest) {
         return reply;
       }
 
-      // Commit the spend to the accumulator.
-      _incrementDailySpend(dateKey, origin, costSats);
+      // Commit the spend to the accumulator (or the caller's own ledger).
+      if (typeof opts.reserve === 'function') opts.reserve(origin, costSats);
+      else _incrementDailySpend(dateKey, origin, costSats);
     }
 
     // ── 10. Approval threshold ────────────────────────────────────────────

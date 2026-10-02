@@ -27,6 +27,7 @@
  *   E050-E052, W050-W052    ACI MCP + tree-search (ADR-020 / PRD-008)
  *   E-PAY1, E-PAY2, E-PAY3, W-PAY1
  *                           payments.consumer spend-policy coherence
+ *   E-PAY5, E-PAY6          payments.sidestr rail (ADR-2097, amended 2026-10-02)
  *   E066/W066/E067          memory-learning consumer-ahead-of-producer (ADR-2017)
  *                           coherence (PRD-018 / ADR-036 D6)
  *
@@ -1587,6 +1588,40 @@ function isLocalEndpoint(endpoint) {
       code: 'E-PAY3',
       message: 'E-PAY3: skills.payment_router.enabled=true requires payments.consumer.enabled=true (the payment-router skill gates all calls through spend-policy; without consumer enabled every call is rejected 402)'
     });
+  }
+}
+
+// ─── E-PAY5/E-PAY6: payments.sidestr rail (ADR-2097, amended 2026-10-02) ─────
+//
+// E-PAY5 — payments.sidestr.enabled=true requires chain_id to be compiled into
+//           management-api/lib/pay402.js SIDESTR_CHAINS. That table holds only
+//           testnet-parent chains (asserted at load), so this is also the
+//           config-time half of the no-mainnet value-leak guard.
+// E-PAY6 — payments.sidestr.max_sats_per_day, when set, must be >=
+//           max_sats_per_payment (the E-PAY2 incoherence, on the rail).
+{
+  const sidestrCfg = (manifest.payments || {}).sidestr || {};
+  if (sidestrCfg.enabled === true) {
+    let compiled = null;
+    try {
+      compiled = require(path.join(__dirname, '..', 'management-api', 'lib', 'pay402.js')).SIDESTR_CHAINS;
+    } catch (err) {
+      errors.push({ code: 'E-PAY5', message: `E-PAY5: could not load the compiled sidestr chain table (management-api/lib/pay402.js): ${err.message}` });
+    }
+    if (compiled && !Object.prototype.hasOwnProperty.call(compiled, sidestrCfg.chain_id)) {
+      errors.push({
+        code: 'E-PAY5',
+        message: `E-PAY5: payments.sidestr.chain_id "${sidestrCfg.chain_id}" is not compiled into pay402.js SIDESTR_CHAINS (compiled: ${Object.keys(compiled).join(', ')}); a chain is a reviewed code change, never config alone`
+      });
+    }
+    const perPayment = sidestrCfg.max_sats_per_payment;
+    const perDay = sidestrCfg.max_sats_per_day;
+    if (Number.isInteger(perPayment) && Number.isInteger(perDay) && perDay < perPayment) {
+      errors.push({
+        code: 'E-PAY6',
+        message: `E-PAY6: payments.sidestr.max_sats_per_day (${perDay}) is less than max_sats_per_payment (${perPayment})`
+      });
+    }
   }
 }
 

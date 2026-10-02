@@ -3217,6 +3217,63 @@
               "default": "off"
             }
           }
+        },
+        "sidestr": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2097 (amended 2026-10-02): the sidestr payment rail. A 402 offer with scheme sidestr is paid as one sidechain transaction signed with the payer's spend key (owner decision 2026-10-02, SC2). Independent of payments.consumer. Spend-policy runs on POST /v1/chain/pay only. RESTART-class.",
+          "required": [
+            "enabled",
+            "chain_id",
+            "producer_url",
+            "max_sats_per_payment"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Master gate. false makes every /v1/chain/pay, /v1/chain/payments and /v1/chain/sessions call answer 503."
+            },
+            "chain_id": {
+              "type": "string",
+              "pattern": "^sidestr:[a-z0-9][a-z0-9-]*$",
+              "description": "The chain alias. Must be compiled into management-api/lib/pay402.js SIDESTR_CHAINS (testnet parents only, E-PAY5); a 402 naming any other chain is refused."
+            },
+            "producer_url": {
+              "type": "string",
+              "pattern": "^https?://",
+              "description": "The producer the payer reads (/chain.json, /coins, /blocks.json) and posts to (POST /tx). Its chain document is checked against the compiled chain before every payment."
+            },
+            "max_sats_per_payment": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Per-payment cap. Above it: HTTP 402 exceeds-per-call-cap."
+            },
+            "max_sats_per_day": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Daily (UTC) budget per payer DID, counted from the persisted payment record. Must be >= max_sats_per_payment (E-PAY6)."
+            },
+            "approval_threshold_sats": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Payments above this park as pending-approval until an allowlisted approver (not the payer) releases them over NIP-98. Falls back to payments.consumer.approval_threshold_sats."
+            },
+            "settle_timeout_s": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3600,
+              "default": 120,
+              "description": "How long the payer waits for the including block before recording the payment as broadcast, not settled."
+            },
+            "relays": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^wss?://"
+              },
+              "description": "Relays for the kind-23500 spend event and the kind-38420 spend-key binding. Empty: sidestr-agent's defaults for 23500, no binding publish."
+            }
+          }
         }
       }
     },
