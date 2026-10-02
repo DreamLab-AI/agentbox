@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
+verified_commit: e020264b54c6872ca98995c1adda18b8451a39af
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -202,3 +202,8 @@ Re-verified by `git diff f7465412d..6db0ffc8d -- <verified_paths>`; no re-implem
 ## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
 
 Tripped by the sidechain health and witness change. `agentbox.toml` changed only in `[voice]`: `enabled` false → true, with a comment, so that the descriptive sidecar state matches the four running agentbox-voice containers (CY-A2, `scripts/ci/check-declared-vs-running.js`). No other key moved. The embedding model, its dimension and the freeze are untouched. The manifest validator reports the file valid. Decision and status unchanged.
+
+## Re-verification — 2026-10-02 (`e020264b54c6872ca98995c1adda18b8451a39af`)
+
+Tripped by ADR-2097 (the rail keyed by chain). `agentbox.toml` changes only inside `[payments.sidestr]` (ADR-2097): its comment block, `chain_id` now `sidestr:dreamlab-txbt4`, and `producer_url` dropped in favour of the chain's derived port. Nothing else this record governs is touched, and the decision holds unchanged.
+Re-verified by `git diff e434a7a59..e020264b54c6872ca98995c1adda18b8451a39af -- <verified_paths>`; no re-implementation was needed.

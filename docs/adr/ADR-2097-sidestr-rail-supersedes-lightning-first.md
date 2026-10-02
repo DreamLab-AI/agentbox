@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 6db0ffc8df1e708047c210353f730d1f0427553d
-verified_paths: [management-api/lib/pay402.js, management-api/lib/sidestr-spend-key.js, management-api/lib/sidestr-rail.js, management-api/lib/sidestr-payee.js, management-api/middleware/consumer-payer.js, management-api/middleware/spend-policy.js, management-api/routes/chain-payments.js, tests/contract/pay402, scripts/activation/adr-2097-acceptance.js]
+verified_commit: e020264b54c6872ca98995c1adda18b8451a39af
+verified_paths: [management-api/lib/pay402.js, scripts/sidechain/demo-accounts.js, management-api/lib/sidestr-spend-key.js, management-api/lib/sidestr-rail.js, management-api/lib/sidestr-payee.js, management-api/middleware/consumer-payer.js, management-api/middleware/spend-policy.js, management-api/routes/chain-payments.js, tests/contract/pay402, scripts/activation/adr-2097-acceptance.js]
 owner: jjohare
 review_trigger: a chain added to pay402.js SIDESTR_CHAINS; the rail switched to sidestr:dreamlab-txbt4; sidestr-agent gaining a memo or transaction lookup (S2); any proposal to make x402 or l402 payable; any proposal to build NWC
 repo: agentbox
@@ -142,8 +142,27 @@ bump is needed. It still lacks the following.
 - Machine-readable error codes.
 - A spend that does not download the whole `blocks.dat`.
 
-**To switch to the demo chain:** set `chain_id = "sidestr:dreamlab-txbt4"` and that chain's
-`producer_url`. Both estate chains are compiled into `SIDESTR_CHAINS`, each pinned by genesis
-(`sidestr:dreamlab-txbt4`: parent `txbt4`, prefix `drt`, sealed at `f7465412d`, not anchored
-per SC5), and a contract test ties the table to the sealed `chain.json` files. The txbt4
-producer ships disabled, so the live run used `sidestr:dreamlab`.
+**Chain keying and the demo chain (`e020264b54c6872ca98995c1adda18b8451a39af`, same day).** The rail now resolves its chain
+the way `config/sidechain/run-producer.sh` does. `SIDESTR_CHAIN` overrides `chain_id`, and the
+producer is `http://127.0.0.1:<port>`, with the port taken from `SIDESTR_PORT`, else 3450 for
+`dreamlab`, else `[sidechain.<name>].port`, unless `producer_url` is set. Both estate chains are
+compiled into `SIDESTR_CHAINS`, each pinned by genesis, and a contract test ties them to the
+sealed `chain.json` files.
+
+`agentbox.toml` now defaults the rail to the SC1 demo chain `sidestr:dreamlab-txbt4`
+(parent `txbt4`, prefix `drt`, not anchored under SC5) on port 3451. Its producer ships disabled,
+so until it runs every payment fails closed at the chain guard.
+
+`GET /v1/chain/payments` follows `agentbox.chain.payments/1`, the contract agreed with S5 for
+VisionClaw: `tip`, `checkpoint` (null today), `payments` and `balances`. The balances are
+confirmed coins only.
+
+`scripts/sidechain/demo-accounts.js` minted the `demo-a` and `demo-b` agentbox identities, each
+with a bound spend key, and wrote `agents/demo-{a,b}-dreamlab-txbt4.json`:
+- demo-a: `did:nostr:32029837…315d`, address `drt1p4hft4emc…lgd2`
+- demo-b: `did:nostr:ce4827e1…36cb`, address `drt1pe6g45e5r…9aa3j`
+
+**Funding dependency.** The txbt4 chain mints nothing, and the estate holds no post-fork txbt4
+coins yet. The demo payment on `sidestr:dreamlab-txbt4` therefore waits on two things: its
+producer running, and a peg-in or treasury funding demo-a's spend address. The route suite runs
+on both chains with stubs. The live evidence above is on `sidestr:dreamlab`.

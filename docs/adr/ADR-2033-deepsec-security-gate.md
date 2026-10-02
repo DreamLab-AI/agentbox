@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
+verified_commit: e020264b54c6872ca98995c1adda18b8451a39af
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -234,3 +234,8 @@ Re-verified by `git diff 6db0ffc8d..9b0232967 -- <verified_paths>`; no re-implem
 ## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
 
 Tripped by the sidechain health and witness change. `agentbox.toml` changed only in `[voice]`: `enabled` false → true, with a comment, so that the descriptive sidecar state matches the four running agentbox-voice containers (CY-A2, `scripts/ci/check-declared-vs-running.js`). No other key moved. `management-api/lib/system-manifest.js` changes in three places. `buildSystemView` gains an optional per-module `health` input and a top-level `health` block. The sidechain summary describes the tip-age probe. The sovereign-mesh entry's `service` is corrected to its supervisor program, `nostr-relay`. The deepsec catalogue entry and `[security.deepsec]` are unchanged. The deepsec-gate unit tests pass 10/10, and `check-manifest-catalogue` passes. Decision and status unchanged.
+
+## Re-verification — 2026-10-02 (`e020264b54c6872ca98995c1adda18b8451a39af`)
+
+Tripped by ADR-2097 (the rail keyed by chain). `agentbox.toml` changes only inside `[payments.sidestr]` (ADR-2097): its comment block, `chain_id` now `sidestr:dreamlab-txbt4`, and `producer_url` dropped in favour of the chain's derived port; `schema/agentbox.toml.schema.json` changes only `payments.properties.sidestr` (`producer_url` optional, `mirror_url` added). Nothing else this record governs is touched, and the decision holds unchanged.
+Re-verified by `git diff e434a7a59..e020264b54c6872ca98995c1adda18b8451a39af -- <verified_paths>`; no re-implementation was needed.
