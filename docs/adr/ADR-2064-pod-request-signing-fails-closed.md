@@ -115,3 +115,11 @@ signer from the sovereign identity the boot already mints
 at which point the flag returns to `true` in the same change. Verified after the
 flip: `node scripts/agentbox-config-validate.js` on both manifests, and the pods
 contract suite with `sign_requests = false` byte-identical to prior behaviour.
+
+## Update — 2026-10-02 (ADR-2078)
+
+The activation prerequisite in Consequences is met in code: ADR-2078 (`a48ea407a`) provisions the
+signer from the sovereign identity the boot mints and returns `sign_requests` to `true` in both
+manifests (owner decision SC3). This record's fail-closed contract is unchanged and is what makes the
+flip safe: a missing or inconsistent identity throws `SigningUnavailable` before any byte. It stays
+`staged` alongside ADR-2078 until the rebuilt image passes ADR-2078's case 4.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation)
@@ -302,3 +302,8 @@ is shape- and slot-based only. Verification: `node --test` policy + redact → 7
 - **Point 1's literal is stale.** The pin is `2.1.280` (`lib/claude-code-binary.nix:28`, bumped in `fbcfa3f27` on 2026-09-22, before the previous anchor and missed by it), not `2.1.276`. 2.1.280 keeps the function-hook surface, so the substance of point 1 (a pin with `session.compact`, `command.register`, `$.http.fetch`) holds. Read the version as advisory.
 
 Other entrypoint changes (hook timeouts in seconds, the hook registry, permission projection) do not touch the plugin install/uninstall or byte-identical-when-off path. `bash -n` clean. Claim STILL TRUE.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `config/entrypoint-unified.sh` changes only in Phase 3: an `AGENTBOX_IDENTITY_ROOT` default export before `nostr-pod-bridge bootstrap`, and a chown to devuser plus chmod 0600 of the bootstrap identity file after it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff caab741c6..a48ea407a -- <verified_paths>`; no re-implementation was needed.

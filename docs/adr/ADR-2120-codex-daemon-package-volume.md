@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -64,3 +64,8 @@ upstream nested-mount accounting limitation, not a runtime failure.
 
 ADR index regeneration remains blocked by seven existing stale verification
 anchors in other records; those anchors were not rewritten.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `config/entrypoint-unified.sh` changes only in Phase 3: an `AGENTBOX_IDENTITY_ROOT` default export before `nostr-pod-bridge bootstrap`, and a chown to devuser plus chmod 0600 of the bootstrap identity file after it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff c7b5d5f55..a48ea407a -- <verified_paths>`; no re-implementation was needed.

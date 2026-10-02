@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: be358df7b2740134cb3d1155d900a837dafc9e24
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -164,3 +164,8 @@ CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. An isolate
 - **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records"; CY-A4 ratchet to 20 Oct)
 - **Why:** The image booted on 2026-10-01 projects the manifest: `/run/agentbox/runtime-env.sh` exports `VAULT_ROOT`, `VAULT_PAGES`, `VAULT_WORKING_*`, `VAULT_TRANSCRIPTS`, `VAULT_FORMAT=obsidian`, `VAULT_TUI=rune` and `VAULT_REPO`, all verified in this session. The text has fallen behind in three places. `logseq-legacy` is no longer a `format` value (only `obsidian`, per the ADR-2105 re-verification of `d6b976271`). The `repo` key and `VAULT_REPO` were added. The Logseq-to-Obsidian inclusion-equivalence item in Remaining is moot, because the converter is retired (host ADR-2117, TODO N-1). ADR-2107 now names the vault CLI as the agent door, building on this record.
 - **Next:** Note the three revisions in an amendment, then it is ready to accept, with activation `live` on the runtime-env evidence above. **Accepted — owner decision 2026-10-02, Q8** (re-verified at `a238a3764`: `/run/agentbox/runtime-env.sh` exports all eight `VAULT_*` names, `VAULT_FORMAT="obsidian"`, `VAULT_TUI="rune"`). Revisions made in place: Decision 1's `format` comment and Decision 4 now say `obsidian` is the only format; Decision 2's export list is extended by the `repo` key's `VAULT_REPO` (added at `d6b976271`, ADR-2105 re-verification); the inclusion-equivalence item under Remaining (2026-09-05) is moot because the converter is retired (host ADR-2117). `implementation_status: complete`, `activation_status: live`.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `agentbox.toml` changes only in `[integrations.solid_pod_rs]`: `sign_requests` false→true and the comment block above it (ADR-2078); `config/entrypoint-unified.sh` changes only in Phase 3: an `AGENTBOX_IDENTITY_ROOT` default export before `nostr-pod-bridge bootstrap`, and a chown to devuser plus chmod 0600 of the bootstrap identity file after it (ADR-2078); `setup/agentbox.default.toml` carries the same single `sign_requests` change and comment block. It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff be358df7b..a48ea407a -- <verified_paths>`; no re-implementation was needed.

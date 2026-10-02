@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 66425f9bd07206fe6e8f7215625ece1aa7e31eb8
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -164,3 +164,8 @@ kinds, shapes and authors are unchanged. The allocation rule is now executable:
 `scripts/ci/protocol-registry-lint.mjs` (wired into `invariants.yml`) passes with 27 kind
 numbers, each row owned, no collisions, and every band kind agentbox-owned in a band row that
 is not free. Decision and status unchanged.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `agentbox.toml` changes only in `[integrations.solid_pod_rs]`: `sign_requests` false→true and the comment block above it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff 66425f9bd..a48ea407a -- <verified_paths>`; no re-implementation was needed.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: be358df7b2740134cb3d1155d900a837dafc9e24
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -162,3 +162,8 @@ Gates at this commit: `jest tests/config/skill-route.test.js tests/config/routin
 ## Note 2026-10-02 — EXP-B8 shadow arm (ADR-2110 label_log only)
 
 `be358df7b` adds, only when `labelLog` is on, a judge-free BM25 score over the same candidate map in the same call: `localRank` now also returns its top raw `score`, and `route()` carries `bm25Pick`/`bm25Score` into the log line as `bm25_pick`/`bm25_score`. The judge still decides and the injected context is unchanged; the shadow is never shown to the model. **Point 7:** the log line gains a skill name and a number and still never holds the prompt (`tests/config/skill-route.test.js`, "the shadow is recorded on a failed judge call too, and never the prompt"). With `label_log` off the log line is byte-identical to before. The cascade's picks and margins are unchanged (`node --test tests/system-one/cascade-parity.test.mjs` → 4 passed). Router suite: 99 passed with the label and experiment suites. Claim STILL TRUE.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `config/entrypoint-unified.sh` changes only in Phase 3: an `AGENTBOX_IDENTITY_ROOT` default export before `nostr-pod-bridge bootstrap`, and a chown to devuser plus chmod 0600 of the bootstrap identity file after it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff be358df7b..a48ea407a -- <verified_paths>`; no re-implementation was needed.

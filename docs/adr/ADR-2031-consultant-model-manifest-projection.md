@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -141,3 +141,8 @@ One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk:
 ## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
 
 **Governed changes:** `config/entrypoint-unified.sh` only (`b25903ec8`, `2bf05d775`, `6ea592ee0`): permission-posture projection, session-default seeding, hook-timeout units, hook registry reconcile, AGENTS.md embed, Codex AGENTS.md/skills ownership, jev-compaction config fingerprint. None touches the consultant surface. The projection is intact: `if [ -z "${AGENTBOX_ANTIGRAVITY_MODEL:-}" ]` guarding `export AGENTBOX_ANTIGRAVITY_MODEL="$(agentbox-manifest toml-string …)"`, so pre-set env still wins, then the manifest, then the registry default. **Citation drift, not corrected in the Decision:** that block is now at `config/entrypoint-unified.sh:2411-2412`, not `:2223`; per the finding above, grep for `AGENTBOX_ANTIGRAVITY_MODEL`. `tui_write.rs`, `antigravity/server.js` and `skills/mcp.json` did not move. `bash -n` → clean. Claim STILL TRUE.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `config/entrypoint-unified.sh` changes only in Phase 3: an `AGENTBOX_IDENTITY_ROOT` default export before `nostr-pod-bridge bootstrap`, and a chown to devuser plus chmod 0600 of the bootstrap identity file after it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff caab741c6..a48ea407a -- <verified_paths>`; no re-implementation was needed.

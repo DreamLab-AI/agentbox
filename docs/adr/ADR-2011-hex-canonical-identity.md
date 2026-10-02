@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -109,3 +109,8 @@ identity migration, and no booted-image key-persistence test ran.
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Only `config/nip98-proxy/proxy.mjs` moved (`de37998a8`, `cae729aa7`); `management-api/lib/agent-identity.js` is untouched since the previous anchor. The hex-only acceptance is intact at `HEAD` — `^[0-9a-f]{64}$` guards the boot allowlist (`proxy.mjs:222`), the verifier's returned pubkey (`:244`), each route allowlist entry (`:370`) and the session-token pubkey (`:568`). No bech32 acceptance path was added. Claim STILL TRUE.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `management-api/lib/agent-identity.js` gains `sovereignIdentityPath` and `loadSovereignSigner`, a read-only reader of the bootstrap identity that keys on the 64-hex x-only pubkey, returns `did:nostr:<hex>`, and returns only `pubkey`, `did`, `path` and a `sign` closure, never the secret; `loadOrMint`, `deriveXonly`, `multikeyFromXonly` and the CLI mint are unchanged. That extends the record rather than departing from it: the new reader keeps the canonical-hex identity and the private-key-stays-inside rule. The decision holds unchanged.
+Re-verified by `git diff b680a7aee..a48ea407a -- <verified_paths>`; no re-implementation was needed.

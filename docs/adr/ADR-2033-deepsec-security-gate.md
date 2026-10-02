@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -207,3 +207,8 @@ Two governed paths moved for reasons outside this claim. `management-api/lib/sys
 ## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
 
 **Governed changes, none to the decision:** `flake.nix` rehashed the deepsec `nodeModulesHash` (`7f5a224e4`) with the exact pin `2.3.9`, `packageLock` and tarball `sha256` unchanged; the other flake, `agentbox.toml`, schema, validator and catalogue hunks belong to other records (tmpfs, Transformers, jupyter tests, `[claude_code]`, jev-compaction keys, routing cascade/labels: schema blocks, E076, E077, W074, three catalogue entries; plus a `—` re-escaping of existing schema descriptions, including `[security.deepsec]`'s, with identical decoded text). E070/E071/E072/W070 remain in `scripts/agentbox-config-validate.js`; `node scripts/agentbox-config-validate.js agentbox.toml` → valid (5 unrelated advisories); `check-manifest-catalogue.js` → PASS (69). `deepsec-gate.sh`, its reference and the workflow did not move. Claim STILL TRUE.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `agentbox.toml` changes only in `[integrations.solid_pod_rs]`: `sign_requests` false→true and the comment block above it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff c7b5d5f55..a48ea407a -- <verified_paths>`; no re-implementation was needed.

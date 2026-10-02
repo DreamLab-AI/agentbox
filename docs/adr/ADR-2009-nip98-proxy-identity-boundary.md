@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -199,3 +199,8 @@ Governed paths changed in the PRD-024 governing-doc commit: docs/INGRESS-identit
 ## Re-verification — 2026-09-26 (`4f9450ac86477bc3832933953454ea577bd3d531`)
 
 Tripped by `docs/INGRESS-identity.md` gaining item 10 (JunkieJarvis in end-to-end encrypted forum zones, forum ADR-2016) and changelog 0.2.1. The addition describes zone-key grant handling and zk-message decryption on the agent surfaces; it does not touch the NIP-98 proxy identity boundary, the door inventory or any authentication path this record decides. Decision unaffected.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `docs/INGRESS-identity.md` gains invariant 11 (pod origination), a Remediation — 2026-10-02 entry, a superseded-by marker on the 2026-09-05 `sign_requests = false` line and changelog 0.2.2; invariants 1-10 are unchanged. It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff c7b5d5f55..a48ea407a -- <verified_paths>`; no re-implementation was needed.

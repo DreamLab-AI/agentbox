@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a ruflo major bump that renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -123,3 +123,8 @@ One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk:
 **Governed changes:** `ruvector-mcp.cjs` (`b25903ec8`, ADR-2111 D4) now shapes `memory_search` output (limit 5, `min_score` 0.55, 300-char snippets, protected namespaces excluded from `"*"`) and emits compact JSON; `config/entrypoint-unified.sh` moved for other records. `orchestration-proxy.js` and `ruvector-gates.js` did not move, so `DENIED_PREFIXES`, the alias table and fail-open-for-orchestration-only are untouched; the memory tools stay the governed ones. The projection still reads the gate/filter (`entrypoint-unified.sh:1054`, `_RV_ORCH_TOOLS`) into the `claude-flow` env block (`:1189-1190`).
 
 **Deployment narrowed, Decision unchanged.** The running manifest sets `orchestration_tools = "swarm,agent"` (2026-09-25, ~185 tok/tool; `task`/`coordination` unused). The code default this record names is still `swarm,agent,task,coordination` (`orchestration-proxy.js:46`, `setup/agentbox.default.toml`, schema). Under the narrowed filter the Decision's own rule applies: `task_orchestrate` and `load_balance` (targets in `coordination`) are honest stubs in this deployment, so the first Consequence ("templates … `task_orchestrate` get real ruflo implementations") holds only for `swarm_*`/`agent_*` until an operator widens the filter. The catalogue summary (`management-api/lib/system-manifest.js:208`) still says it forwards `task_*`/`coordination_*`; that is the default, not this deployment. `node mcp/servers/lib/orchestration-proxy.test.js` → 11 passed. Claim STILL TRUE.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `config/entrypoint-unified.sh` changes only in Phase 3: an `AGENTBOX_IDENTITY_ROOT` default export before `nostr-pod-bridge bootstrap`, and a chown to devuser plus chmod 0600 of the bootstrap identity file after it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff caab741c6..a48ea407a -- <verified_paths>`; no re-implementation was needed.

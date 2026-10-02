@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -184,3 +184,8 @@ One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk:
 ## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
 
 **Confirms the in-place amendment of 2026-09-25.** The Decision bullet on `reconcile-agents.sh` was edited in place (see its bracketed "amended 2026-09-25"), not superseded. The authority is ADR-2111 D1, and the change is recorded there. The code matches the amended text. `SUPERSEDED_BASE="${AGENTBOX_SUPERSEDED_DIR:-…/agentbox-superseded}"` is at `scripts/reconcile-agents.sh:52` and `scripts/reconcile-commands.sh:33`. Retired files land under `<base>/{agents,commands}/<root-key>/`. A legacy in-root `.superseded/` is migrated out on every run (`reconcile-agents.sh:109`, `reconcile-commands.sh:69-107`): identical copies are dropped, a differing copy is kept as `.migrated-N`, and a copy that cannot be migrated is pruned from the scan. The registered agent set is still 12. Other governed changes are orthogonal: `flake.nix` (tmpfs, closure rehashes, Transformers, jupyter tests), and the `config/entrypoint-unified.sh` blocks for other records. One of those extends this record's registry model to hooks: `config/registered-hooks.txt` + `agentbox-manifest hooks-reconcile` (ADR-2111 D3), which runs after every hook registration. `bash tests/config/agent-reconcile.test.sh` → 45 passed, 0 failed. Claim STILL TRUE as amended.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `config/entrypoint-unified.sh` changes only in Phase 3: an `AGENTBOX_IDENTITY_ROOT` default export before `nostr-pod-bridge bootstrap`, and a chown to devuser plus chmod 0600 of the bootstrap identity file after it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff c7b5d5f55..a48ea407a -- <verified_paths>`; no re-implementation was needed.

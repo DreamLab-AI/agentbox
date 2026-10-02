@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f63760e1976deef544bb08b13bcf3ce30aca578c
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
@@ -131,3 +131,8 @@ Governed paths changed in the PRD-024 governing-doc commit: docs/INGRESS-identit
 ## Re-verification — 2026-09-26 (`4f9450ac86477bc3832933953454ea577bd3d531`)
 
 Tripped by `docs/INGRESS-identity.md` gaining item 10 (encrypted forum zones, forum ADR-2016). Bearer-behind-NIP-98 gating is not mentioned or changed by the addition. Decision unaffected.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `docs/INGRESS-identity.md` gains invariant 11 (pod origination), a Remediation — 2026-10-02 entry, a superseded-by marker on the 2026-09-05 `sign_requests = false` line and changelog 0.2.2; invariants 1-10 are unchanged. It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff f63760e19..a48ea407a -- <verified_paths>`; no re-implementation was needed.

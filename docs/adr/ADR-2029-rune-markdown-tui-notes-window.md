@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -171,3 +171,8 @@ CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. The curren
 - **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records")
 - **Why:** The image has it baked: `rune` resolves to `/nix/store/…-rune-1.5.0-dreamlab.1/bin/rune` and reports `rune 1.5.0-dreamlab.1`, the fork pinned by the 2026-09-25 amendment (`ebca7d62e`, `b558d0d9a`). tmux window `9: Notes` is running in the `agentbox` session. The notes window is part of the operator console that §9 counts as first-class demonstrator work. Two things are still untested: concurrent-edit and restart recovery of the Rune journal.
 - **Next:** Ready to accept on the baked binary and the live window 9. Record activation `live` and keep the journal-recovery test as a named residual. **Accepted — owner decision 2026-10-02, Q8** (re-verified at `a238a3764`: `rune --version` → `rune 1.5.0-dreamlab.1` from `/nix/store/irlv87k4…-rune-1.5.0-dreamlab.1`; tmux `agentbox` window `9: Notes` running). `activation_status: live`. Residual: the Rune journal's concurrent-edit and restart recovery is still untested.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `agentbox.toml` changes only in `[integrations.solid_pod_rs]`: `sign_requests` false→true and the comment block above it (ADR-2078); `setup/agentbox.default.toml` carries the same single `sign_requests` change and comment block. It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff c7b5d5f55..a48ea407a -- <verified_paths>`; no re-implementation was needed.

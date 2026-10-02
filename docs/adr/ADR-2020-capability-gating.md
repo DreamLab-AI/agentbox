@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: be358df7b2740134cb3d1155d900a837dafc9e24
+verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -181,3 +181,8 @@ Commands: `git diff b680a7ae..HEAD -- agentbox.toml skills/tree-search-coder/SKI
 ## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
 
 **Review trigger fired** ("any new optional skill/feature block added to agentbox.toml"). New since `d6b976271`: `[skills.routing].cascade`/`cascade_cutoff` (ADR-2095 addendum) and `label_log`/`label_embeddings_url` (ADR-2110), both `false`; `[claude_code]` (ADR-2116, a posture projection rather than an optional package); six `[features.jev_compaction]` keys (ADR-2093 amendment); `[toolchains].agentic_qe` flipped to `false`; `[resources.tmpfs]` sizes. Each new gate carries a catalogue entry with an honest apply class (`skill-router-cascade`, `routing-teacher-labels`, `claude-code-permissions`, all `boot`; `agentic_qe` stays `rebuild`), and `node scripts/ci/check-manifest-catalogue.js` → PASS, 69 gate paths. Off-state: cascade and label-log inline nothing into the hook command when off, and `label_log=false` strips any prior Stop registration (`config/entrypoint-unified.sh`, `_SR_CASCADE` / `_RL_HOOK` blocks). The `agentic_qe=false` flip drops `agenticQePkg` from the package set (`flake.nix:550`) and the entrypoint now also removes the `agentic-qe` entry from the host-mounted `.mcp.json` (`ENABLE_AGENTIC_QE` else-branch), which closes a residue the "gate omits its process" claim did not cover before. `tree-search-coder` files did not move. Claim STILL TRUE.
+
+## Re-verification — 2026-10-02 (`a48ea407a24185f7a4f654a35e66805778acbec8`)
+
+Tripped by ADR-2078 (pods signer signs as the sovereign identity). `agentbox.toml` changes only in `[integrations.solid_pod_rs]`: `sign_requests` false→true and the comment block above it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
+Re-verified by `git diff be358df7b..a48ea407a -- <verified_paths>`; no re-implementation was needed.
