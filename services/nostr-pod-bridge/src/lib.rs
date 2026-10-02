@@ -1053,7 +1053,7 @@ mod tests {
     async fn listed_author_is_admitted_stored_broadcast_and_acked() {
         let dir = tempfile::tempdir().unwrap();
         let (frame, pubkey, id) = signed_event_frame(0x31, 1, vec![]);
-        let admission = admission_for(&[pubkey.clone()], &"a".repeat(64), dir.path());
+        let admission = admission_for(std::slice::from_ref(&pubkey), &"a".repeat(64), dir.path());
         let relay = Relay::in_memory();
         let mut rx = relay.subscribe();
         let mut subs = HashMap::new();
@@ -1249,7 +1249,7 @@ mod tests {
         // the inbox config does not — the inbox must still refuse.
         let dir = tempfile::tempdir().unwrap();
         let author = "c".repeat(64);
-        let relay_policy = admission_for(&[author.clone()], &"a".repeat(64), dir.path());
+        let relay_policy = admission_for(std::slice::from_ref(&author), &"a".repeat(64), dir.path());
         assert!(relay_policy.policy.admit(&author).is_admitted());
 
         let inbox_cfg = BridgeConfig {
