@@ -643,7 +643,7 @@ permission_deny = [
 ]
 
 [features.jev_compaction]
-# ADR-2093, amended 2026-10-02 — Jev compaction with fact rails. At compaction
+# ADR-2093 (policy) and ADR-2121 (factrail) — Jev compaction with fact rails. At compaction
 # every non-pinned tool call is scored twice by TypeSafe System One (keep the
 # call? keep its result verbatim?). What Jev lets go is REDUCED, not deleted:
 # a reproducible read becomes a one-line note to re-run it; any other result

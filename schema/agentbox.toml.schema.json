@@ -2927,7 +2927,7 @@
         "jev_compaction": {
           "type": "object",
           "additionalProperties": false,
-          "description": "ADR-2093 Jev compaction, amended 2026-10-02: the factrail plugin (config/claude-plugins/factrail) and binary (/opt/agentbox/bin/factrail), baked from DreamLab-AI/factrail by lib/factrail.nix. BOOT-class for the projection, REBUILD-class for the binary and plugin; needs Claude Code >= 2.1.274.",
+          "description": "ADR-2093 Jev compaction, implemented by ADR-2121: the factrail plugin (config/claude-plugins/factrail) and binary (/opt/agentbox/bin/factrail), baked from DreamLab-AI/factrail by lib/factrail.nix. BOOT-class for the projection, REBUILD-class for the binary and plugin; needs Claude Code >= 2.1.274.",
           "properties": {
             "enabled": {
               "type": "boolean",
