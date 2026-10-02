@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
+verified_commit: 22d25b1cc9d1d5e302a7819ed2850aee5bb40361
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
@@ -533,3 +533,15 @@ stands. Upstream PR #4 has merged; explorer PR #2 is still open, so the review t
 - **Priority:** P2 — next cycle (planning-cycle §3 reopening; the sealed `tbtc4` chain is the §9 research chain, and D4's P21 gate is the §10 real-value trigger)
 - **Why:** The first seal and the interim supervised producer, mirror and faucet are live on `tbtc4` (`d0fa1b80b`, deployment receipt 2026-09-30; the mirror reached tip 911 on 2 October). That is the chain §9 names. D1's projector check, D3's `pin:` and boot check, and D4's CI receipt check are still unbuilt (this record's first-seal section). The 2026-09-30 amendment proposes a second chain beside `txbt4`. That exceeds §9's stated scope (the research chain beside `tbtc4`), and it is an owner question. That amendment also says "It needs a BLAKE2b testnet4 node the estate does not have". This is overtaken: a Knots 29.4.2 plus rbitcoin 0.7.99 BLAKE2b testnet4 pair is synced on Dell staging (TODO N-10). The review trigger "a BLAKE2b testnet4 node reachable from the container" may therefore have fired; reachability from this container is unverified. A re-verification block also sits between `## Context` and `### Original context`.
 - **Next:** On reopening, build D4's CI receipt check first, because §10 makes it the real-value gate. Get the owner's yes or no on the `txbt4` second chain before any D1 work for it. **Owner decision 2026-10-02, Q16: yes, `txbt4` is next-cycle work, not parked.** The 2026-09-30 amendment's second chain is therefore in scope for next cycle, beside `tbtc4`. Before D1 work for it, verify that the Dell staging BLAKE2b testnet4 node is reachable from the container (this record's review trigger).
+
+## Re-verification — 2026-10-02 (`22d25b1cc9d1d5e302a7819ed2850aee5bb40361`)
+
+Tripped by the witness receipt reshaping (`sidechain-witness/1`; see the interim receipt
+amendment above). Governed witness paths changed. The chain documents, `run-producer.sh`,
+the genesis and producer-gate tests, and the tip-age probe did not. Re-established at this
+commit:
+- `tests/sovereign/sidechain-witness.node-test.js` passes 30/30, including both loopback
+  families, and `sidechain-health.node-test.js` passes 20/20.
+- A read-only witness run on `sidestr:dreamlab` reads the 23 September payment as
+  30,000 sats alice → bob, with settled balances 0/1,330.
+Decision and status unchanged.
