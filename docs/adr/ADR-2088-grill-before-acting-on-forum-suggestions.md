@@ -130,3 +130,10 @@ Against the uncommitted working tree, with `jest` from `management-api/`:
 `activation_status: inactive` — `[sovereign_mesh].junkiejarvis = false` in the running
 manifest, so the forum agent and its nightly tenant are not live in this container. The
 gate defaults on and will apply the moment the tenant runs.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records")
+- **Why:** The gate is in effect even though `activation_status` says otherwise. The dream engine runs `scripts/dream-forum-suggestions.mjs` (`services/dream-engine/src/engine.rs:328`), the clarify gate defaults on (`agentbox.toml:64`), and `docs/dream-cycle/FORUM-SUGGESTIONS.md` carries four `awaiting-clarification` rows (`f818f07ec` 2026-09-25, `12532c7b2` 2026-10-01). `[sovereign_mesh].junkiejarvis = false` (`agentbox.toml:51`) switches off the live agent, not the nightly tenant, so the record's statement that "the forum agent and its nightly tenant are not live" is overtaken.
+- **Next:** Ready to accept on those ledger rows. Correct `activation_status` from `inactive` to `live` when it is accepted.

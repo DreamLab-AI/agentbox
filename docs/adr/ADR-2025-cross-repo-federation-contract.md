@@ -115,3 +115,10 @@ Governed paths changed in the Wave 3 landing commit: management-api/lib/bc20-pro
 ## Re-verification — 2026-09-21 (`b680a7aeef604276af73e00e1eb5156f379530ae`)
 
 Tripped by `management-api/lib/uris.js`, whose only change since the previous anchor is the additive `knowledge` kind (ADR-2085) — content-addressed with a scope, minted through the same grammar, so the contract was extended by its own rules rather than broken. `management-api/lib/bc20-provenance-bridge.js` is unchanged. Re-established by running the fixture, which is now wired into CI (`.github/workflows/invariants.yml`, added since the previous anchor): `node scripts/ci/federation-fixture-check.mjs` at `HEAD` → `PASS, 37 checks run`. The agentbox half of the contract holds. **Still `proposed` for a reason the fixture itself prints:** the VisionClaw half is not run here, and the bead row remains divergent pending ADR-2061 — that is the cross-repo evidence this record still lacks.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P3 — parked (federation layer reopens when a second operator exists; planning cycle §3, §9)
+- **Why:** The bead divergence and the two-language kind-map gate this record lists as Remaining are closed by ADR-2061 (accepted/complete/live): VisionClaw `src/uri/mod.rs:662` now `include_str!`s `agentbox/schema/federation-kinds.json`. What is still one-sided is the sha12 byte-parity and hex-identity half: VisionClaw does not read `tests/fixtures/federation-identity.v1.json` (grep at host HEAD finds no reference), so the agentbox check in `invariants.yml` is the only one that runs it. The 2026-09-21 cycle parks federation for 12 weeks.
+- **Next:** Revise Remaining to cite ADR-2061 as closing the kind-map and bead items; when federation reopens, wire `federation-identity.v1.json` into VisionClaw's Rust tests, then this is ready to accept.

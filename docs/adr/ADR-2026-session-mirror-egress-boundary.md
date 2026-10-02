@@ -174,3 +174,10 @@ The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe
 ## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
 
 **Governed change:** `config/hooks/nostr-live-mirror.cjs` only (`b25903ec8`). `main()` now evaluates `egress.egressDecision('live-mirror', {})` and `egress.recipientAllowlist()` *first* and returns 0 on a refusal or a missing/malformed allowlist, before deriving the child key, loading nostr-tools or reading stdin (the hook fires four times a turn and spent ~170 ms reaching the same skip). This strengthens clause (c): absence of configuration now does less work and still sends nothing, logged with the same `recipient-allowlist-missing-or-invalid` outcome. The full per-recipient check after key derivation (G-4) is still in place for a configured allowlist; `egress-policy.cjs` and `egress-policy.json` did not move. Test: `jest --roots=tests/sovereign --testPathPattern egress-boundary` → 25 passed (the G-4 count). Status fields unchanged. Claim STILL TRUE.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P1 — this cycle (Track C item 10, fresh-host bring-up; row G-4)
+- **Why:** All four clauses have code and tests behind them (`config/hooks/lib/egress-policy.cjs`, `egress_policy.rs`, 25 egress-boundary tests; G-4 recipient enumeration 2026-09-07; `b25903ec8` checks the allowlist before any work). The mirror hook is registered on every turn in `~/.claude/settings.json`, and in this container no `AGENTBOX_MIRROR_RECIPIENTS` is set, so it skips. A deployment on Trust-owned hardware (§2 Track C, §9) has to show that nothing leaves the box by default. That is this record's clause (c), and it is the one thing the record has not demonstrated on a running instance.
+- **Next:** During the Track C fresh-host run, capture a receipt showing every egress path reports `skipped` with no allowlist configured. With that and the owner's reviewed recipient set (G-4), it is ready to accept.

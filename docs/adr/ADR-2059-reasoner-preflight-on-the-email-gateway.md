@@ -93,3 +93,10 @@ naming that URL within the preflight timeout, and `GET /health` reports degraded
 configured-but-unavailable reason; `refresh_inbox` then fails fast with the same reason
 rather than stalling for 180 s. With the URL correct, `/health` is unchanged from today
 and the preflight adds no user-visible latency beyond one `/v1/models` call.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P2 — next cycle (reopens on the next reasoner black-hole stall, or when the email-gateway source is next touched)
+- **Why:** The preflight has not landed. `GET http://email-mcp-gateway:8765/health` returns `{"status":"ok", …}` today with no reasoner or degraded field, so the liveness lie this record describes is still possible. This is the "instruments are lying" class that Track A targets (§1, §9), but the gateway is not one of Track A's named items. Its source is outside this repo, and its location was not verified in this pass.
+- **Next:** In the gateway's own repo, implement the `/v1/models` startup preflight and the `configured-but-unavailable` `/health` state, then run the acceptance test in this record against a black-holing address.

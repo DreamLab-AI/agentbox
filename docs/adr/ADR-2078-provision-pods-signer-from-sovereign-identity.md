@@ -60,3 +60,10 @@ path declared unsigned and `activation_status: staged`.
 None yet — proposed. The landing commit for this record must run the four cases above
 and the full pods contract suite, and update INGRESS-identity's invariant on pod
 origination.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P2 — next cycle (named in planning cycle §3 as a sidechain reopening condition and in §6 as "the first item of the next cycle")
+- **Why:** Nothing is implemented. `agentbox.toml:546` still has `sign_requests = false`, and no commit references this record since it was filed. The queen's adjudication in §6 is explicit: the record is architecturally right, but a real signer wired into a runtime whose hub was dark would add one more unverifiable claim. The hub has been fixed since then (CY-A1, done 30 Sep).
+- **Next:** At the start of the next cycle, implement it and run the four acceptance cases with the pods contract suite in the rebuilt image.

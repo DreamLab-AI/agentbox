@@ -98,3 +98,10 @@ Against the uncommitted working tree:
 - `relay.rs::a_swarm_on_the_public_relay_still_collapses_to_one_principal` and
   `an_unregistered_publisher_buys_nothing` — the same rules hold through the
   public tier's projection, not only in core.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P2 — next cycle (reopens with ADR-2085 once CY-B7's live kind-31403 exists; ADR-2087 was staged on 2026-10-02, `c4ed3ec65`)
+- **Why:** The rule is implemented and tested in pure crates (`principal.rs`, `graduation.rs`, `ledger.rs`), and the forum's `agent_registry.registered_by` is the principal source it relies on. The connection to B7 is that graduation counts a human principal and cites a signed 31403. No direct citation between this record and ADR-2087 was found (grep), so that coupling is inferred from ADR-2085's Decision, not stated in either record. This record is the load-bearing half of ADR-2085 and should be settled together with it.
+- **Next:** Ready to accept on the crate tests above as soon as ADR-2085 is accepted. Activation follows colloquy publication.

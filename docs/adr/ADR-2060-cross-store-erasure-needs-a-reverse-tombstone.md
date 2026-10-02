@@ -109,3 +109,10 @@ the RuVector-side consumer stopped; restart it; the tombstone is applied on reco
 `memory_retrieve` for that key returns nothing from either store. With both stores live,
 the deletion acknowledges from both before reporting success, and a forced failure of
 either side reports a partial erasure that can be retried to completion.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P2 — next cycle (planning cycle §3: "Erasure pair (agentbox ADR-2060, host ADR-2102) — next cycle; the longest-frozen pair; first candidate after this cycle alongside ADR-2078")
+- **Why:** No commit has touched it since it was filed on 2026-09-05, and `scripts/` still has no RuVector or Postgres point-in-time backup. EA-06 (the host's per-store reconciliation) is blocked on missing backend adapters. The plan places this pair first in line for the next cycle.
+- **Next:** At the start of the next cycle, design it together with host ADR-2102. Item 3, the RuVector backup with a stated RPO and RTO, has no cross-repo dependency and can go first.

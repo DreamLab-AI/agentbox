@@ -102,3 +102,10 @@ injected transports.
    `/loom/search` + `/loom/sparql` path — verified by grep at the landing commit.
 6. Re-running after ADR-2073's graph split produces separate bands for asserted-scoped and
    merged-scope queries, rather than one blended number.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P3 — parked (review trigger: the Loom PRD-028 pilot after this cycle, planning cycle §3, or the next retrieval-geometry change)
+- **Why:** No harness exists: `scripts/` holds only `ruvector-recall-harness.mjs`. Since filing, the agent retrieval path itself has changed. ADR-2107 makes it the `vault` CLI plus Loom `/loom/sparql` and `/mcp`, so the `/loom/search`-seeded path through `ontology-retrieval.js` that this record benchmarks is now used only by the consultants. Loom PRD-028 (parked for 12 weeks) pre-registers the related question of ontology-backed serving against flat-text retrieval. The two should share one instrument rather than build two.
+- **Next:** When the trigger fires, re-target the harness at the ADR-2107 doors and reconcile its query set with the PRD-028 pilot corpus.

@@ -137,3 +137,10 @@ to an *agent*, not a model. `CLAUDE_FLOW_ROUTER_NEURAL` is unset in this contain
 3. A week of routed-vs-default outcomes is queryable in RuVector via `memory_search`, and the
    report states per class whether routing won, lost or tied.
 4. No file under the AoE flake input changed.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P2 — next cycle (planning cycle §3: "AoE plane, XR embodiment — next cycle"; §9 makes the AoE console a first-class demonstrator surface)
+- **Why:** The research spike in Decision §1 has not started. Three things have changed since filing. Phase 0 landed as ADR-2080 (accepted/partial/staged). The regex prompt hook named in Context and in Decision §7 is gone: `~/.claude/settings.json` now runs the ADR-2091 Jev skill router. ADR-2104 confirms the "small Rust crate, not inside AoE" shape this record already chose. The decision itself holds.
+- **Next:** Refresh Context and Decision §7 for ADR-2080, ADR-2091 and ADR-2104, then run the fleet-inventory step of the spike at the start of the next cycle.

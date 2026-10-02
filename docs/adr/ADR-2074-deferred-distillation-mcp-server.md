@@ -2,7 +2,7 @@
 id: ADR-2074
 title: Build the ADR-051 deferred-distillation tools as a discrete, separately gated MCP server
 date: 2026-09-05
-decision_status: proposed
+decision_status: rejected
 implementation_status: none
 activation_status: inactive
 supersedes: []
@@ -104,3 +104,10 @@ inventory both record the absence.
    labelled timeout within ~2 s and holds no model turn.
 7. `ontology_distill_fetch` on a result with a bad provider signature returns a typed
    verification failure and no content.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** discordant
+- **Priority:** withdrawn
+- **Why:** What this record decides is where ADR-051's tools are hosted: as a new MCP server, split off `ontology-bridge`. The estate has since gone the other way. ADR-2107 (accepted) states "No MCP server inside the estate fronts the sovereign corpus" and forbids registering one. ADR-2108 (accepted, `f5d71b874`) deleted `mcp/servers/ontology-bridge.js`, the server this record was defined against. ADR-2104 makes a crate the control surface and requires that "adding an MCP server now needs a reason that a crate plus CLI cannot meet". No commit has touched this record since it was filed.
+- **Next:** `decision_status` set to `rejected`. If deferred distillation (ADR-051 D2/D3) is wanted again, it should come back as a `vault` or crate-plus-CLI subcommand under ADR-2104 and ADR-2107, as a new record.

@@ -164,3 +164,10 @@ CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. The curren
   divergence between the fork and upstream that makes rebasing impractical.
 - **Governed paths changed** — `lib/rune.nix`, `config/tmux-autostart.sh`,
   `config/config.fish`, `tests/tui/notes-launcher.test.sh`.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records")
+- **Why:** The image has it baked: `rune` resolves to `/nix/store/…-rune-1.5.0-dreamlab.1/bin/rune` and reports `rune 1.5.0-dreamlab.1`, the fork pinned by the 2026-09-25 amendment (`ebca7d62e`, `b558d0d9a`). tmux window `9: Notes` is running in the `agentbox` session. The notes window is part of the operator console that §9 counts as first-class demonstrator work. Two things are still untested: concurrent-edit and restart recovery of the Rune journal.
+- **Next:** Ready to accept on the baked binary and the live window 9. Record activation `live` and keep the journal-recovery test as a named residual.

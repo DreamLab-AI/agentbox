@@ -157,3 +157,10 @@ CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. An isolate
   `scripts/ontology-condense-refresh.sh`,
   `tests/config/vault-path-precedence.test.sh` (new),
   `tests/config/vault-consumer-fallback.test.mjs` (new).
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records"; CY-A4 ratchet to 20 Oct)
+- **Why:** The image booted on 2026-10-01 projects the manifest: `/run/agentbox/runtime-env.sh` exports `VAULT_ROOT`, `VAULT_PAGES`, `VAULT_WORKING_*`, `VAULT_TRANSCRIPTS`, `VAULT_FORMAT=obsidian`, `VAULT_TUI=rune` and `VAULT_REPO`, all verified in this session. The text has fallen behind in three places. `logseq-legacy` is no longer a `format` value (only `obsidian`, per the ADR-2105 re-verification of `d6b976271`). The `repo` key and `VAULT_REPO` were added. The Logseq-to-Obsidian inclusion-equivalence item in Remaining is moot, because the converter is retired (host ADR-2117, TODO N-1). ADR-2107 now names the vault CLI as the agent door, building on this record.
+- **Next:** Note the three revisions in an amendment, then it is ready to accept, with activation `live` on the runtime-env evidence above.

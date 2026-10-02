@@ -169,3 +169,10 @@ Tripped by two dream-engine commits. `68270e953` (NIP-09 withdrawal of resolved 
 - (c) **not run**: it needs a night with management-api stopped, which is the owner's call.
 
 Both (a) and (b) are checks C1 and C2 of `scripts/activation/adr-2087-check.sh` (receipt `.claude/evidence/activation/ADR-2087-activation-20261002T133027Z.md`). The morning after a night with the API stopped, `--api-down-night <date>` evaluates (c).
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P1 — this cycle (Track A item 5; CY-A5; the cycle's single focus per planning cycle §10)
+- **Why:** Phase 1 merged (agentbox #8, `69f0c2207`) and is live. The 2026-10-01 image journalled 62 side effects on the night of 2026-10-02 with `failed 0`, `unpaired 0`. Clauses (a) and (b) are met through checks C1 and C2 of `scripts/activation/adr-2087-check.sh`. Clause (c), a night with management-api stopped, has not run.
+- **Next:** The owner schedules one night with management-api stopped. The next morning, run `scripts/activation/adr-2087-check.sh --api-down-night <date>`. If clause (c) passes, accept.

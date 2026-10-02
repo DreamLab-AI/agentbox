@@ -95,3 +95,10 @@ the corpus and a distinct class present only as a Whelk inference:
 5. Every result names the backend and whether provenance was backend-enforced.
 6. Two identical questions differing only in provenance scope produce two cache entries,
    and a cache hit on one never satisfies the other.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P3 — parked (review trigger: the Loom PRD-028 pilot starting after this cycle exits, planning cycle §3, or a Loom store change that splits named graphs)
+- **Why:** The gap is real and has not moved. `loom/crates` contains no `urn:ngm:graph:ontology:assert` or `:inferred` graph (grep at HEAD), and `ontology-retrieval.js` still issues unscoped Loom queries. Since the record was written, ADR-2107 and ADR-2108 (accepted, `f5d71b874`) retired `ontology-bridge` and made the agent door the `vault` CLI plus Loom HTTP. The scope requirement now applies at the Loom's `/loom/sparql` and the `vault` wrapper as well as at the `ontology_ask` path in `ontology-retrieval.js`, whose remaining consumer is `mcp/consultants/shared/consultant-base.js:140`. Loom work is parked for 12 weeks (§3).
+- **Next:** When the trigger fires, restate the acceptance test against the ADR-2107 doors before any build.

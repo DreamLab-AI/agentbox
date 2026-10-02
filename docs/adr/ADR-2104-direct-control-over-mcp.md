@@ -111,3 +111,10 @@ without losing the capability.
   and `curl 127.0.0.1:9720/health` → `{"ok":true,…}` with all nine listed.
 - The supervisor wiring in `flake.nix` takes effect at the next image rebuild; `/etc/supervisord.conf` is a
   read-only `/nix/store` symlink, so it could not be demonstrated in place.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P1 — this cycle (Track A item 1; CY-A1, exit test passed 30 Sep)
+- **Why:** The fail-hard half is proven on the running image. On 30 Sep, `rm /run/agentbox/mcp-hub.json` drove the hub to FATAL after 365 s with no 9720 listener, and restoring the file brought it back (TODO CY-A1; code `d17c557a6`). The inventory is out of date in one row: `ontology-bridge` was retired by ADR-2107 and ADR-2108 (`f5d71b874`), and `[resources.mcp_hub].servers` now lists eight servers (`agentbox.toml:1267`). The port-or-delete follow-on (the `consultant-client` crate, then deleting servers with no call sites) has not started.
+- **Next:** Amend the inventory to note that the `ontology-bridge` row is closed by ADR-2108, then accept on the CY-A1 exit test. The port half stays `partial`.

@@ -130,3 +130,10 @@ shows `nodeModulesHash` resolved to a real hash with the comment that the first
    `implementation_status` then reflects what the receipt actually shows.
 6. Leaves no document claiming byte-identical-when-off for a gate the receipt lists as an
    exception.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P2 — next cycle (reopens with the X-4 boot rehearsal of `deps/nix-flake-update`, which builds images on the same schedule)
+- **Why:** No receipt exists in `docs/estate-closeout/` and ADR-2020 stays `partial`. The image was rebuilt on 2026-10-01 (see ADR-2071) without running this procedure, so the review trigger fired and nothing was recorded. The work fits the "instruments tell the truth" theme of §9, but no Track A or Track C item names it, and Track C's fresh host is a different machine from the host shell that this procedure requires.
+- **Next:** Combine with X-4: the throwaway-container rehearsal runs steps 1 to 4 for one gate and writes the receipt. Nobody may claim closure identity before that.

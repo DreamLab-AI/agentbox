@@ -146,3 +146,10 @@ patch rather than the registry. Everything above is verified.
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `agentbox.toml`: `[vault]` gains the optional `repo` key (the vault repository root, exported as `VAULT_REPO`); `format` comments now state `obsidian` is the only value; one comment reworded ("logseq corpus" → "vault corpus"). **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records")
+- **Why:** The only blocker the record names, "colloquy-nostr 0.2.0 and colloquy-store 0.2.0 are not published", is resolved. Both are on crates.io at 0.2.1, and the forum client pins `colloquy-nostr = "0.2"` from the registry (`nostr-rust-forum/crates/nostr-bbs-forum-client/Cargo.toml:36`). Still open is fixture backing for both allocations under ADR-2061. The settlement half (38420–38425) only reserves numbers for records that are still proposed and parked.
+- **Next:** Amend "Not done, and why" to record the 0.2.1 publication, then accept the band rule and the colloquy move. The ADR-2061 fixture rows remain a named residual.

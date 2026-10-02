@@ -134,3 +134,10 @@ off.
 ## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
 
 **Anchor artefact, no drift.** This record and its three governed paths landed together in `4794ab229`. Its `verified_commit` was set to `de84739ee`, an earlier ancestor at which none of the paths existed yet, so the gate flagged the record's own creation. `git log 4794ab229..HEAD` over the three paths is empty. Around them, `b25903ec8` switched the router hook to the honoured `hookSpecificOutput` shape and to the registered-skill scope (ADR-2091 note of this date). The recorder's join key is unaffected: the hashed `session` tag is still written only with `label_log`, and log lines now also carry `scope`. The entrypoint's Stop registration/de-registration (`_RL_HOOK`, timeout 15 s) is as described. The gate is still `label_log = false`. Tests: `jest tests/config/routing-labels.test.js tests/config/skill-route.test.js` → 57 passed (49 at landing; the router suite grew). Status fields unchanged (proposed / partial / inactive). Claim STILL TRUE.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits
+- **Priority:** P3 — parked (review trigger: the CY-B8 ADR-2095 measurement against the ADR-2094 façade reports)
+- **Why:** The recorder is built, tested (49/49) and gated off (`agentbox.toml:990`, `label_log = false`). Nothing is lost by leaving it switched off. The record continues the typed-decision and routing line (ADR-2091, ADR-2094, ADR-2095) that planning cycle §1 calls "chasing itself". It was filed on 2026-09-23, after the cycle's rule against new records came into force. Track B item 8 is the one run meant to turn that programme into either a closed leaf or a falsified hypothesis. CY-B8 has not started.
+- **Next:** Do not enable `label_log` until B8 reports. If B8 falsifies the façade, withdraw this record. If it does not, take open question 1 (embedding retention) to the owner.

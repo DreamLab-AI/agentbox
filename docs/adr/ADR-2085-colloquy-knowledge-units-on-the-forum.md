@@ -159,3 +159,10 @@ it does not provide.
 
 `activation_status` stays `inactive` only because the entrypoint registration and
 the `publish` subcommand both need a rebuild to be live in the image.
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits, needs revision
+- **Priority:** P2 — next cycle (reopens once CY-B7 has produced a live high-tier kind-31403, because graduation reuses that round trip)
+- **Why:** The crates are published (`colloquy-core` 0.1.1, `colloquy-nostr` and `colloquy-store` 0.2.1 on crates.io), and the forum client pins `colloquy-nostr = "0.2"` from the registry. ADR-2104 cites `colloquy-mcp` as the model shape for an adapter. The closing sentence says activation waits for a rebuild. The image was rebuilt on 2026-10-01, but whether the `[skills.colloquy]` registration and `publish` are live on it was not verified in this pass. No 38410 event has gone outside the container (the review trigger).
+- **Next:** Check activation on the current image and update the closing paragraph. Accept after B7 is live and one 38410 unit has graduated through a real 31403.
