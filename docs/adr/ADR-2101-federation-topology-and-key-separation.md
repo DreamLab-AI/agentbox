@@ -1,6 +1,6 @@
 ---
 id: ADR-2101
-title: One root chain signed k-of-n by the federated instances, ephemeral child chains bound at session create, and domain-separated spend and signer keys that amend ADR-033
+title: A DreamLab root with each client's own root nested under it, ephemeral child chains bound at session create, and domain-separated spend and signer keys that amend ADR-033
 date: 2026-09-21
 decision_status: proposed
 implementation_status: none
@@ -10,12 +10,12 @@ superseded_by: []
 verified_commit:
 verified_paths: []
 owner: jjohare
-review_trigger: the first level-2 block on three hosts; the first child chain closed with pro-rata settlement; any proposal to let the federation include an instance DreamLab does not operate; any change to build_did_document in services/nostr-pod-bridge/src/contract.rs
+review_trigger: the first level-2 block on three hosts; the first child chain closed with pro-rata settlement; federation reopening, or the first left-behind client node (either reopens the federation stage, owner decision 2026-10-02 R5c); any proposal to give DreamLab a key in, or a veto over, a client's root; any change to build_did_document in services/nostr-pod-bridge/src/contract.rs
 repo: agentbox
 domain: INGRESS-identity
 ---
 
-# ADR-2101 — One root chain signed k-of-n by the federated instances, ephemeral child chains bound at session create, and domain-separated spend and signer keys that amend ADR-033
+# ADR-2101 — A DreamLab root with each client's own root nested under it, ephemeral child chains bound at session create, and domain-separated spend and signer keys that amend ADR-033
 
 ## Context
 
@@ -37,17 +37,17 @@ nowhere. The owner chose one root chain with instances as signers and ephemeral 
    **Research stage (now, owner decision 2026-09-21): level 1, one signer** on the agentbox host,
    optionally `multi_a(1, pk1, pk2)` as a hot standby (either key seals; this buys liveness, not
    safety, and is said so in the chain document). Coins are testnet4 and carry no value.
-   **Federation stage (stretch, needs machines we do not have yet): level 2, k-of-n** with one
-   signer key per federated instance, threshold from a stated fault model (see the amendments
-   below): `2k − n > f` for f Byzantine signers, so 4-of-5 for f = 1 before any chain carries
-   value. This stage is the natural first workload of the federation project (repository not yet
-   populated; external interest exists), and in the long term the signers may be agents rather
-   than instances, which the key-separation rules below already allow. Availability tolerance
-   is n minus k and this estate rebuilds containers routinely, so n is sized for rebuilds as
-   well as for f. Signers run on distinct hosts with
-   NTP; wall-clock round entitlement is a documented assumption. Descriptor and share backups
-   are rehearsed off-host, because already-claimed coins on a dead chain have no refund path. Signer-set changes are rule documents (33500) with
-   an activation height and a peg-out of the peg outputs to the new descriptor.
+   **Federation stage (rewritten 2026-10-02, owner decision R5c: "we are not the boss"): each client
+   runs its own root.** A client chain `sidestr:<client>` is a root sealed only by the client's own
+   signer set (one key, or its own k-of-n under the amendments below), nested under `sidestr:dreamlab`
+   only as a parent link for pegs. DreamLab holds no key in it and cannot refuse, reorder or finalise
+   its blocks or change its signers; it seals, spends and runs its own children while our root is
+   halted, rebuilt or gone. Our liveness can delay a peg to or from our root and nothing else, and the
+   client's own signers can drop the parent link by a 33500 rule document; if the sidestr profile
+   cannot express that, this stage is not acceptable until it can. **No co-signed shared root:** no
+   k-of-n across operators, no DreamLab signer in a client set. Our own root may go k-of-n across
+   instances DreamLab operates, under the amendments below. Descriptor and share backups for any root
+   are rehearsed off-host, because already-claimed coins on a dead chain have no refund path.
 2. **Ephemeral child chains.** A session's chain `sidestr:dl-s-<sha12>` is level 1, parent =
    the root (never the parent chain directly), signer = the session's own derived key, with a
    mandatory `close`. It is opened at `sessions-boundary.js` phase=create as a fifth binding,
@@ -191,9 +191,9 @@ It confirms the conflicting-certificate finding and corrects or sharpens this re
 
 ## Consequences
 
-Every federated instance becomes a co-custodian of the root chain's value; if the federation
-ever includes an instance DreamLab does not operate, a per-instance root nested under the
-DreamLab root is the alternative and this record must be reopened (PRD-024 open question 2).
+No other operator is a co-custodian of our root, and we are custodian of no client's root: a
+client's root is nested under ours for pegs only, and only its own signers seal it (Decision 1,
+federation stage; PRD-024 open question 2 is answered by the owner decision of 2026-10-02, R5c).
 A child chain is the agent budget, enforced by consensus rather than by an AoE feature. Refund
 timelocks compound down the nesting: a stalled root freezes every child's refund clock, so the
 root producer carries an explicit liveness requirement and the compounding is measured. The
@@ -215,3 +215,14 @@ DID string is unchanged.
 - **Priority:** P2 — next cycle (planning-cycle §3 reopening; the research stage and the key separation are the §9 demo's floor; the federation stage parks with federation, §3, until a second operator exists)
 - **Why:** The research stage (D1: level 1, one signer, testnet4, no value) is exactly §9's scope. The live seal follows D3: the signer key sits in the secrets volume and is not derived from the identity key (ADR-2103 first seal). The federation stage has drifted from the direction. §9 defines federation as "instances I leave behind can talk to mine", needing zero maintenance on the left-behind node. A k-of-n root that halts below threshold, needs durable signer services, and treats signers as DreamLab-operated (Consequences) is the opposite. This record's own Consequences already say a non-DreamLab instance forces a per-instance nested root. Upstream has not settled the child-chain mechanism: ephemeral chains remain "a note; nothing built" (sidestr/spec `fe689e9` `proposals/ephemeral.md`). sidestr-rs now ships Hitch channels, inactive (sidestr-rs ADR-0002), as an alternative for in-session agent payments. Forum ADR-2012 D5 derives `k_sign` from `k_id`; this record's amended D3 forbids that, and this record survives.
 - **Next:** When the programme reopens, split the record. Accept the research stage and key separation on the existing seal evidence plus the `k_spend`/`k_sign` known-answer test. Rewrite the federation stage for left-behind nodes (nested per-instance roots) and child sessions (ephemeral chain or Hitch) under the federation reopening condition.
+
+## Amendment — 2026-10-02 (owner decision, R5c): each client runs its own root
+
+The owner said: "give them their own root, we are not the boss". The federation stage in Decision 1 and the first sentence of Consequences were rewritten in place on this date. The research stage, the ephemeral children (D2) and the key separation (D3–D5) are unchanged. The record stays **proposed**.
+
+- **Why.** The disposition above found that the old federation stage contradicted the direction. Under that direction, federation means "instances I leave behind can talk to mine", with no maintenance needed on the left-behind node. A shared k-of-n root halts below threshold, so it fails that test: a client's chain would stop whenever our hosts were rebuilt, retired or simply gone. A nested per-client root keeps the client's chain alive with no help from us.
+- **What nesting still costs the client.** A peg between the client's root and ours waits on our root, and value pegged in from our root inherits our root's refund clock. That is the "stalled root freezes every child's refund clock" consequence above, now confined to the peg. A client that never pegs is unaffected. A client that wants no exposure at all drops the parent link (Decision 1).
+- **Rejected alternative: a co-signed shared root**, meaning k-of-n across DreamLab and client instances. It was the original federation stage. It lost for two reasons. Our availability would gate every client's chain. And DreamLab's signer would be a permanent participant in another operator's consensus, which is exactly the authority the owner declined.
+- **The Astra amendments and the consultant review (lines 89–190) still apply** to any root that runs k-of-n, whether ours across our own instances or a client's across theirs. They no longer describe a root shared between operators.
+- **Verification for the rewritten stage.** This replaces the three-host clause of Verification for client roots. With `sidestr:dreamlab` halted, a nested client root seals blocks, settles a spend and closes one of its own child chains. A peg-out to our root then waits, and completes when our root resumes. The client's signers activate a rule document that drops the parent link, and no DreamLab key signs any of these steps. The three-host clause still applies only if our own root goes k-of-n.
+- **Reopen the federation stage** when federation reopens as a programme (planning-cycle §3) or when the first client node is left behind, whichever comes first. The reopening trigger is also recorded in `review_trigger`.

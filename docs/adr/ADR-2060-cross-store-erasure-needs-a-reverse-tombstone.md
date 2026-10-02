@@ -10,7 +10,7 @@ superseded_by: []
 verified_commit: 89301ec7c911eab270c00a0cf81596d0d4f15535
 verified_paths: []
 owner: jjohare
-review_trigger: any right-to-erasure design touching agent memory, a RuVector backup mechanism landing, or a reverse-tombstone path being wired from the Pod
+review_trigger: DEFERRED 2026-10-02 to a future ADR; reopen on the first real user, or on any estate store found holding personal data unencrypted at rest. Earlier triggers: any right-to-erasure design touching agent memory, a RuVector backup mechanism landing, or a reverse-tombstone path being wired from the Pod
 repo: agentbox
 domain: LEARNING-memory
 lineage: LEARNING-memory D5; VisionClaw DATA-authority-erasure (the estate-wide erasure authority)
@@ -116,3 +116,13 @@ either side reports a partial erasure that can be retried to completion.
 - **Priority:** P2 — next cycle (planning cycle §3: "Erasure pair (agentbox ADR-2060, host ADR-2102) — next cycle; the longest-frozen pair; first candidate after this cycle alongside ADR-2078")
 - **Why:** No commit has touched it since it was filed on 2026-09-05, and `scripts/` still has no RuVector or Postgres point-in-time backup. EA-06 (the host's per-store reconciliation) is blocked on missing backend adapters. The plan places this pair first in line for the next cycle.
 - **Next:** At the start of the next cycle, design it together with host ADR-2102. Item 3, the RuVector backup with a stated RPO and RTO, has no cross-repo dependency and can go first.
+
+## Deferred — 2026-10-02 (owner decision, R5d)
+
+**Explicitly deferred to a future ADR.** This record stays `proposed` because the ledger's `decision_status` vocabulary has no `deferred` value (`scripts/adr-index-gen.js:45`). It is not scheduled for the next cycle. That supersedes the P2 "next cycle" placement in the disposition above.
+
+- **Owner's reason (decision 2026-10-02, R5d):** the estate has no users. Data that users hold encrypted at rest in Solid pods and on Nostr is no concern, because it was never ours to read. A complete-removal path SHOULD exist eventually, but it is complex, and building it now would design against a threat with no subject.
+- **What this does not say:** it does not say erasure is unnecessary, and it does not reject the decision above. The intent stands as a direction.
+- **Store list not corrected here.** The disposition above notes that the store list predates host ADR-2114/2115. Restating it is the future ADR's first job. This record is deliberately left as written.
+- **Reopen when** either of these happens first: (1) the first real user, meaning a person other than the owner whose personal data reaches any estate store; or (2) any estate store is found holding personal data unencrypted at rest. The reopening trigger is also recorded at the front of `review_trigger`.
+- **Paired record:** host (VisionClaw) ADR-2102 (estate-wide orchestration) is deferred by the same decision, with the same trigger.
