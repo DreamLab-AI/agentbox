@@ -44,6 +44,11 @@ pub struct InboxItem {
     /// was resolved from the forum rather than locally.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub decision_event_id: String,
+    /// Event id of the kind-5 deletion that withdrew the published request
+    /// once this item stopped being open. Empty = still on the panel (or never
+    /// published). Set once; a withdrawal is never re-sent.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub withdrawn_event_id: String,
 }
 
 /// The live inbox file; `DREAM_INBOX_PATH` overrides it (tests, dry runs
@@ -123,6 +128,26 @@ pub fn mark_published_in(
     Ok(true)
 }
 
+/// Record that item `id`'s published request was withdrawn by deletion
+/// `event_id`. Only the first withdrawal is recorded; returns whether anything
+/// changed.
+pub fn mark_withdrawn_in(
+    path: &std::path::Path,
+    id: &str,
+    published_event_id: &str,
+    event_id: &str,
+) -> std::io::Result<bool> {
+    let mut items = load_from(path);
+    let Some(item) = items.iter_mut().find(|i| {
+        i.id == id && i.published_event_id == published_event_id && i.withdrawn_event_id.is_empty()
+    }) else {
+        return Ok(false);
+    };
+    item.withdrawn_event_id = event_id.to_string();
+    save_to(path, &items)?;
+    Ok(true)
+}
+
 /// Resolve an OPEN item from a forum decision. `status` is `answered` or
 /// `dismissed`. Items already resolved (locally or by an earlier decision)
 /// are left alone, so re-ingesting the same decisions is a no-op.
@@ -173,6 +198,7 @@ pub fn add(
         last_surfaced: 0,
         published_event_id: String::new(),
         decision_event_id: String::new(),
+        withdrawn_event_id: String::new(),
     });
     // Keep the file bounded: drop resolved items older than the newest 200.
     if items.len() > 200 {
@@ -285,6 +311,7 @@ Other text.
             last_surfaced: 0,
             published_event_id: String::new(),
             decision_event_id: String::new(),
+            withdrawn_event_id: String::new(),
         }
     }
 
@@ -326,6 +353,42 @@ Other text.
         let items = load_from(&path);
         assert_eq!(items.len(), 1);
         assert!(items[0].published_event_id.is_empty());
+        assert!(items[0].withdrawn_event_id.is_empty());
+    }
+
+    #[test]
+    fn inbox_written_before_withdrawals_still_loads() {
+        // The shape of the live file on 2026-10-02: published and resolved,
+        // no `withdrawn_event_id` key.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("inbox.json");
+        std::fs::write(
+            &path,
+            r#"[{"id":"x","kind":"question","repo":"r","night_id":"n","date":"d","text":"t","status":"answered","answer":"approve: ok","last_surfaced":0,"published_event_id":"req1","decision_event_id":"dec1"}]"#,
+        )
+        .unwrap();
+        let items = load_from(&path);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].published_event_id, "req1");
+        assert!(items[0].withdrawn_event_id.is_empty());
+        // And the unset field is not written back, so the file stays as it was.
+        save_to(&path, &items).unwrap();
+        assert!(!std::fs::read_to_string(&path)
+            .unwrap()
+            .contains("withdrawn_event_id"));
+    }
+
+    #[test]
+    fn mark_withdrawn_records_once_and_only_for_the_named_request() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("inbox.json");
+        let mut a = item("a", "answered");
+        a.published_event_id = "req1".into();
+        save_to(&path, &[a]).unwrap();
+        assert!(!mark_withdrawn_in(&path, "a", "req-other", "del0").unwrap());
+        assert!(mark_withdrawn_in(&path, "a", "req1", "del1").unwrap());
+        assert!(!mark_withdrawn_in(&path, "a", "req1", "del2").unwrap());
+        assert_eq!(load_from(&path)[0].withdrawn_event_id, "del1");
     }
 
     #[test]

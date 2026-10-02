@@ -24,6 +24,15 @@
 //! free-text answer. The one panel-level action, `acknowledge-alerts`,
 //! dismisses every open alert published before it was pressed.
 //!
+//! **Withdrawals.** Once an inbox item stops being open — resolved by
+//! [`ingest`], by `scripts/dream-inbox.mjs`, or by hand — the engine withdraws
+//! its own case with a NIP-09 kind-5 deletion signed by the same agent key
+//! ([`withdrawal_event`]). The relay hard-deletes an author's own events on a
+//! kind-5, and the forum reads cases by subscription, so the card leaves the
+//! panel. The deletion id is recorded as `withdrawn_event_id`, so a
+//! withdrawal is sent at most once. [`ingest`] withdraws what it just
+//! resolved; [`publish`] sweeps everything else ([`plan_withdrawals`]).
+//!
 //! Everything is fail-open: an unreachable relay or a missing key is logged
 //! and the night carries on.
 //!
@@ -57,6 +66,10 @@ pub const KEY_VAR: &str = "JUNKIEJARVIS_PRIVKEY_HEX";
 pub const MAX_PENDING_HOURS: u32 = 168;
 /// Longest title the forum renders comfortably.
 const TITLE_MAX: usize = 120;
+/// NIP-09 deletion kind.
+pub const KIND_DELETION: u64 = 5;
+/// How much of the recorded answer a withdrawal reason quotes.
+const REASON_ANSWER_MAX: usize = 80;
 
 /// Where the agent key is read from when the env var is unset.
 pub fn env_file() -> PathBuf {
@@ -260,6 +273,197 @@ pub fn request_event(pubkey: &str, item: &InboxItem, created_at: u64) -> Unsigne
     }
 }
 
+/// Content of the kind-5 that withdraws `item`'s case:
+/// `resolved: <status> <date> — <first 80 chars of the answer>`.
+pub fn withdrawal_reason(item: &InboxItem, date: &str) -> String {
+    let answer = item.answer.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut reason = format!("resolved: {} {date}", item.status);
+    if !answer.is_empty() {
+        let quoted: String = answer.chars().take(REASON_ANSWER_MAX).collect();
+        reason.push_str(" — ");
+        reason.push_str(&quoted);
+        if answer.chars().count() > REASON_ANSWER_MAX {
+            reason.push('…');
+        }
+    }
+    reason
+}
+
+/// Unsigned NIP-09 kind-5 withdrawing the case `item` was published as
+/// (`item.published_event_id`).
+///
+/// Tags: `e` = the request id; `a` = the case's `<kind>:<pubkey>:<d>`
+/// coordinate when the request is addressable and `with_coordinate` is set;
+/// `k` = the request kind. The kind and `d` tag are read from
+/// [`request_event`], so the coordinate cannot drift from what was published.
+///
+/// The relay deletes every version at a coordinate regardless of age, so the
+/// caller clears `with_coordinate` when a newer open item reuses the same id
+/// (and therefore the same `d`) — withdrawing the old case must not delete the
+/// live one.
+pub fn withdrawal_event(
+    pubkey: &str,
+    item: &InboxItem,
+    with_coordinate: bool,
+    date: &str,
+    created_at: u64,
+) -> UnsignedEvent {
+    let request = request_event(pubkey, item, created_at);
+    let mut tags = vec![vec!["e".to_string(), item.published_event_id.clone()]];
+    if with_coordinate && (30_000..40_000).contains(&request.kind) {
+        if let Some(d) = request
+            .tags
+            .iter()
+            .find(|t| t.first().map(String::as_str) == Some("d"))
+            .and_then(|t| t.get(1))
+        {
+            tags.push(vec!["a".into(), format!("{}:{pubkey}:{d}", request.kind)]);
+        }
+    }
+    tags.push(vec!["k".into(), request.kind.to_string()]);
+    UnsignedEvent {
+        pubkey: pubkey.to_string(),
+        created_at,
+        kind: KIND_DELETION,
+        tags,
+        content: withdrawal_reason(item, date),
+    }
+}
+
+/// A case the engine will withdraw.
+#[derive(Debug, Clone)]
+pub struct Withdrawal {
+    /// The resolved item (its `published_event_id` is the request to delete).
+    pub item: InboxItem,
+    /// Whether the deletion may also name the case's `a` coordinate.
+    pub with_coordinate: bool,
+}
+
+/// Pure sweep planner: every item that is no longer open, was published, and
+/// has not been withdrawn yet. The coordinate is withheld when an open item
+/// shares the id (see [`withdrawal_event`]).
+pub fn plan_withdrawals(items: &[InboxItem]) -> Vec<Withdrawal> {
+    items
+        .iter()
+        .filter(|i| {
+            i.status != "open"
+                && !i.published_event_id.is_empty()
+                && i.withdrawn_event_id.is_empty()
+        })
+        .map(|i| Withdrawal {
+            item: i.clone(),
+            with_coordinate: !items.iter().any(|o| o.status == "open" && o.id == i.id),
+        })
+        .collect()
+}
+
+fn today_utc() -> String {
+    chrono::Utc::now().format("%Y-%m-%d").to_string()
+}
+
+/// Print the unsigned deletions for `plan` (dry run); returns how many.
+fn print_withdrawals(pubkey: &str, plan: &[Withdrawal]) -> usize {
+    let (date, now) = (today_utc(), relay::now_secs());
+    for w in plan {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&withdrawal_event(
+                pubkey,
+                &w.item,
+                w.with_coordinate,
+                &date,
+                now
+            ))
+            .unwrap_or_default()
+        );
+    }
+    plan.len()
+}
+
+/// Sign and send the deletions for `plan` over `session`, recording each
+/// accepted one in the inbox. A rejection is logged and left unrecorded (the
+/// next sweep retries it); a transport error stops the run (fail-open).
+async fn send_withdrawals(
+    session: &mut RelaySession,
+    key: &SigningKey,
+    inbox_path: &Path,
+    plan: &[Withdrawal],
+    report: &mut Report,
+) {
+    let pubkey = relay::pubkey_hex(key);
+    let date = today_utc();
+    for w in plan {
+        let unsigned = withdrawal_event(
+            &pubkey,
+            &w.item,
+            w.with_coordinate,
+            &date,
+            relay::now_secs(),
+        );
+        let ev = match relay::sign(unsigned, key) {
+            Ok(ev) => ev,
+            Err(e) => {
+                warn!(item = %w.item.id, error = %e, "governance: withdrawal signing failed");
+                continue;
+            }
+        };
+        match session.publish(&ev).await {
+            Ok(r) if r.accepted => {
+                report.withdrawn += 1;
+                if let Err(e) = inbox::mark_withdrawn_in(
+                    inbox_path,
+                    &w.item.id,
+                    &w.item.published_event_id,
+                    &ev.id,
+                ) {
+                    warn!(item = %w.item.id, error = %e, "governance: could not record withdrawal");
+                }
+            }
+            Ok(r) => {
+                report.rejected += 1;
+                warn!(item = %w.item.id, message = %r.message, "governance: withdrawal rejected by relay");
+            }
+            Err(e) => {
+                warn!(item = %w.item.id, error = %e, "governance: withdrawal failed — stopping this run");
+                break;
+            }
+        }
+    }
+}
+
+/// Withdraw every resolved, published, not-yet-withdrawn case (the sweep on
+/// its own). `dry_run` prints the unsigned deletions and sends nothing.
+pub async fn withdraw(inbox_path: &Path, dry_run: bool) -> Report {
+    let mut report = Report::default();
+    let plan = plan_withdrawals(&inbox::load_from(inbox_path));
+    if dry_run {
+        let pubkey = load_key()
+            .map(|k| relay::pubkey_hex(&k))
+            .unwrap_or_else(|| "<agent pubkey>".into());
+        report.skipped = print_withdrawals(&pubkey, &plan);
+        return report;
+    }
+    if plan.is_empty() {
+        return report;
+    }
+    let Some(key) = load_key() else { return report };
+    let mut session = match RelaySession::connect(&relay::relay_url(), &key).await {
+        Ok(s) => s,
+        Err(e) => {
+            warn!(error = %e, "governance: relay unreachable — withdraw skipped (fail-open)");
+            return report;
+        }
+    };
+    send_withdrawals(&mut session, &key, inbox_path, &plan, &mut report).await;
+    session.close().await;
+    info!(
+        withdrawn = report.withdrawn,
+        rejected = report.rejected,
+        "governance: withdraw done"
+    );
+    report
+}
+
 /// What a decision does to an inbox item.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolution {
@@ -454,17 +658,20 @@ pub struct Report {
     pub published: usize,
     pub rejected: usize,
     pub resolved: usize,
+    /// Cases withdrawn from the panel by a kind-5 deletion.
+    pub withdrawn: usize,
     pub skipped: usize,
 }
 
-/// Publish the panel and every open, not-yet-published inbox item.
-/// `dry_run` prints the unsigned events and sends nothing.
+/// Publish the panel, withdraw every resolved case still on it (the nightly
+/// sweep, which also catches items resolved by hand), then publish every
+/// open, not-yet-published inbox item. `dry_run` prints the unsigned events
+/// and sends nothing.
 pub async fn publish(inbox_path: &Path, dry_run: bool) -> Report {
     let mut report = Report::default();
-    let items: Vec<InboxItem> = inbox::load_from(inbox_path)
-        .into_iter()
-        .filter(|i| i.status == "open")
-        .collect();
+    let all = inbox::load_from(inbox_path);
+    let withdrawals = plan_withdrawals(&all);
+    let items: Vec<InboxItem> = all.into_iter().filter(|i| i.status == "open").collect();
     let now = relay::now_secs();
 
     if dry_run {
@@ -475,6 +682,7 @@ pub async fn publish(inbox_path: &Path, dry_run: bool) -> Report {
             "{}",
             serde_json::to_string_pretty(&panel_event(&pubkey, now)).unwrap_or_default()
         );
+        report.skipped += print_withdrawals(&pubkey, &withdrawals);
         for item in items.iter().filter(|i| i.published_event_id.is_empty()) {
             println!(
                 "{}",
@@ -524,6 +732,10 @@ pub async fn publish(inbox_path: &Path, dry_run: bool) -> Report {
         }
     }
 
+    // Sweep before publishing: a resolved case leaves the panel even when it
+    // was resolved outside `ingest`.
+    send_withdrawals(&mut session, &key, inbox_path, &withdrawals, &mut report).await;
+
     for item in items.iter().filter(|i| i.published_event_id.is_empty()) {
         let ev = match relay::sign(request_event(&pubkey, item, now), &key) {
             Ok(ev) => ev,
@@ -552,14 +764,16 @@ pub async fn publish(inbox_path: &Path, dry_run: bool) -> Report {
     session.close().await;
     info!(
         published = report.published,
+        withdrawn = report.withdrawn,
         rejected = report.rejected,
         "governance: publish done"
     );
     report
 }
 
-/// Fetch decisions for published cases and resolve their inbox items.
-/// `dry_run` prints what would change and writes nothing.
+/// Fetch decisions for published cases, resolve their inbox items, and
+/// withdraw the cases just resolved from the panel. `dry_run` prints what
+/// would change and writes or sends nothing.
 pub async fn ingest(inbox_path: &Path, dry_run: bool) -> Report {
     let mut report = Report::default();
     let items = inbox::load_from(inbox_path);
@@ -612,12 +826,12 @@ pub async fn ingest(inbox_path: &Path, dry_run: bool) -> Report {
                 .unwrap_or_default(),
         );
     }
-    session.close().await;
 
+    let mut just_resolved: Vec<String> = Vec::new();
     for applied in plan_decisions(&items, &decisions, &pubkey, &published_at) {
         if dry_run {
             println!(
-                "{} → {} ({}) [decision {}]",
+                "{} → {} ({}) [decision {}] — case would be withdrawn",
                 applied.item_id,
                 applied.resolution.status,
                 applied.resolution.answer,
@@ -633,12 +847,28 @@ pub async fn ingest(inbox_path: &Path, dry_run: bool) -> Report {
             &applied.resolution.answer,
             &applied.decision_event_id,
         ) {
-            Ok(true) => report.resolved += 1,
+            Ok(true) => {
+                report.resolved += 1;
+                just_resolved.push(applied.item_id);
+            }
             Ok(false) => {}
             Err(e) => warn!(item = %applied.item_id, error = %e, "governance: inbox write failed"),
         }
     }
-    info!(resolved = report.resolved, "governance: ingest done");
+
+    if !just_resolved.is_empty() {
+        let plan: Vec<Withdrawal> = plan_withdrawals(&inbox::load_from(inbox_path))
+            .into_iter()
+            .filter(|w| just_resolved.contains(&w.item.id))
+            .collect();
+        send_withdrawals(&mut session, &key, inbox_path, &plan, &mut report).await;
+    }
+    session.close().await;
+    info!(
+        resolved = report.resolved,
+        withdrawn = report.withdrawn,
+        "governance: ingest done"
+    );
     report
 }
 
@@ -668,6 +898,7 @@ mod tests {
             last_surfaced: 0,
             published_event_id: String::new(),
             decision_event_id: String::new(),
+            withdrawn_event_id: String::new(),
         }
     }
 
@@ -966,5 +1197,121 @@ mod tests {
             10,
         );
         assert!(plan_decisions(&[q], &[d], &agent, &HashMap::new()).is_empty());
+    }
+
+    #[test]
+    fn withdrawal_names_the_request_its_coordinate_and_kind() {
+        let k = key(AGENT_SK);
+        let pk = pubkey_hex(&k);
+        let mut it = item("15a655c8", "question", "merge the branch");
+        it.status = "answered".into();
+        it.answer = "approve: looks right".into();
+        it.published_event_id = "ab".repeat(32);
+        let ev = withdrawal_event(&pk, &it, true, "2026-10-02", 50);
+        assert_eq!(ev.kind, 5);
+        assert_eq!(ev.pubkey, pk);
+        assert_eq!(
+            ev.tags,
+            vec![
+                vec!["e".to_string(), "ab".repeat(32)],
+                vec!["a".to_string(), format!("31402:{pk}:dream-15a655c8")],
+                vec!["k".to_string(), "31402".to_string()],
+            ]
+        );
+        assert_eq!(
+            ev.content,
+            "resolved: answered 2026-10-02 — approve: looks right"
+        );
+        // The coordinate is exactly the published case's kind:pubkey:d.
+        let req = request_event(&pk, &it, 1);
+        assert_eq!(
+            tag(&ev.tags, "a").unwrap(),
+            format!("{}:{pk}:{}", req.kind, tag(&req.tags, "d").unwrap())
+        );
+        // Signed by the publishing key, so the relay treats it as own-event.
+        let signed = sign(ev, &k).unwrap();
+        assert!(relay::verify(&signed));
+        assert_eq!(signed.pubkey, pk);
+        // Without the coordinate only the request id is named.
+        let bare = withdrawal_event(&pk, &it, false, "2026-10-02", 50);
+        assert!(tag(&bare.tags, "a").is_none());
+        assert_eq!(tag(&bare.tags, "e"), Some("ab".repeat(32).as_str()));
+        assert_eq!(tag(&bare.tags, "k"), Some("31402"));
+    }
+
+    #[test]
+    fn withdrawal_reason_quotes_at_most_80_chars_of_a_flattened_answer() {
+        let mut it = item("d1", "alert", "harness broke");
+        it.status = "dismissed".into();
+        assert_eq!(
+            withdrawal_reason(&it, "2026-10-02"),
+            "resolved: dismissed 2026-10-02"
+        );
+        it.answer = format!("acknowledged:\n{}", "x".repeat(200));
+        let r = withdrawal_reason(&it, "2026-10-02");
+        assert!(r.starts_with("resolved: dismissed 2026-10-02 — acknowledged: xxx"));
+        assert!(!r.contains('\n'));
+        assert!(r.ends_with('…'));
+        let quoted = r.split(" — ").nth(1).unwrap();
+        assert_eq!(quoted.chars().count(), 81); // 80 + ellipsis
+    }
+
+    #[test]
+    fn sweep_selects_only_resolved_published_unwithdrawn_items() {
+        let mk = |id: &str, status: &str, published: &str, withdrawn: &str| {
+            let mut i = item(id, "question", "decide");
+            i.status = status.into();
+            i.published_event_id = published.into();
+            i.withdrawn_event_id = withdrawn.into();
+            i
+        };
+        let items = vec![
+            mk("open-pub", "open", "r1", ""),
+            mk("open-unpub", "open", "", ""),
+            mk("ans-pub", "answered", "r2", ""),
+            mk("dis-pub", "dismissed", "r3", ""),
+            mk("ans-unpub", "answered", "", ""),
+            mk("ans-done", "answered", "r4", "del4"),
+        ];
+        let plan = plan_withdrawals(&items);
+        let ids: Vec<&str> = plan.iter().map(|w| w.item.id.as_str()).collect();
+        assert_eq!(ids, vec!["ans-pub", "dis-pub"]);
+        assert!(plan.iter().all(|w| w.with_coordinate));
+    }
+
+    #[test]
+    fn sweep_withholds_the_coordinate_when_a_reopened_item_shares_it() {
+        let mut old = item("same", "question", "decide");
+        old.status = "answered".into();
+        old.published_event_id = "r-old".into();
+        let mut reopened = item("same", "question", "decide");
+        reopened.published_event_id = "r-new".into();
+        let plan = plan_withdrawals(&[old, reopened]);
+        assert_eq!(plan.len(), 1);
+        assert_eq!(plan[0].item.published_event_id, "r-old");
+        assert!(!plan[0].with_coordinate);
+    }
+
+    #[tokio::test]
+    async fn withdraw_dry_run_sends_and_writes_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("inbox.json");
+        let mut a = item("a1", "question", "decide");
+        a.status = "answered".into();
+        a.published_event_id = "ab".repeat(32);
+        let mut b = item("b1", "alert", "noise");
+        b.status = "dismissed".into();
+        b.published_event_id = "cd".repeat(32);
+        inbox::save_to(&path, &[a, b, item("c1", "question", "still open")]).unwrap();
+        let before = std::fs::read(&path).unwrap();
+        // A dry run that tried to reach a relay would sit in the connect
+        // timeout; it must return at once with the count.
+        let report = tokio::time::timeout(Duration::from_secs(2), withdraw(&path, true))
+            .await
+            .expect("dry run must not touch the network");
+        assert_eq!(report.skipped, 2);
+        assert_eq!(report.withdrawn, 0);
+        assert_eq!(report.rejected, 0);
+        assert_eq!(std::fs::read(&path).unwrap(), before);
     }
 }

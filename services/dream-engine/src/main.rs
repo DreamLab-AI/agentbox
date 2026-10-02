@@ -93,6 +93,12 @@ enum GovernanceAction {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Withdraw (NIP-09 kind-5) every resolved case still on the panel.
+    Withdraw {
+        /// Print the unsigned deletions; send nothing.
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 /// Run a one-shot subcommand. These touch only the forum and the inbox file,
@@ -107,10 +113,17 @@ async fn run_command(cmd: &Cmd, workspace: &std::path::Path) {
                 GovernanceAction::Ingest { dry_run } => {
                     governance::ingest(&inbox::inbox_path(), *dry_run).await
                 }
+                GovernanceAction::Withdraw { dry_run } => {
+                    governance::withdraw(&inbox::inbox_path(), *dry_run).await
+                }
             };
             println!(
-                "published={} rejected={} resolved={} dry-run-listed={}",
-                report.published, report.rejected, report.resolved, report.skipped
+                "published={} rejected={} resolved={} withdrawn={} dry-run-listed={}",
+                report.published,
+                report.rejected,
+                report.resolved,
+                report.withdrawn,
+                report.skipped
             );
         }
         Cmd::Digest { date, dry_run } => {
@@ -161,7 +174,7 @@ async fn main() {
         return;
     }
     if !cli.once && !cli.loop_mode && !cli.dry_run {
-        eprintln!("usage: dream-engine --once | --loop | --dry-run [--target <repo>] | governance publish|ingest [--dry-run] | digest [--date D] [--dry-run]");
+        eprintln!("usage: dream-engine --once | --loop | --dry-run [--target <repo>] | governance publish|ingest|withdraw [--dry-run] | digest [--date D] [--dry-run]");
         std::process::exit(2);
     }
 

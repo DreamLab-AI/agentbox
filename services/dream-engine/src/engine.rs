@@ -137,7 +137,7 @@ impl Engine {
         if governance::enabled() {
             let c = nj.called("forum.governance", json!({ "op": "ingest" })).await;
             let r = governance::ingest(&inbox::inbox_path(), false).await;
-            nj.completed(c, true, json!({ "resolved": r.resolved, "rejected": r.rejected, "skipped": r.skipped }))
+            nj.completed(c, true, json!({ "resolved": r.resolved, "withdrawn": r.withdrawn, "rejected": r.rejected, "skipped": r.skipped }))
                 .await;
         }
 
@@ -306,7 +306,7 @@ impl Engine {
         if governance::enabled() {
             let c = nj.called("forum.governance", json!({ "op": "publish" })).await;
             let r = governance::publish(&inbox::inbox_path(), false).await;
-            nj.completed(c, r.rejected == 0, json!({ "published": r.published, "rejected": r.rejected }))
+            nj.completed(c, r.rejected == 0, json!({ "published": r.published, "withdrawn": r.withdrawn, "rejected": r.rejected }))
                 .await;
         }
         if std::env::var("DREAM_DIGEST").as_deref() != Ok("0") {
