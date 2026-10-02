@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: b680a7aeef604276af73e00e1eb5156f379530ae
+verified_commit: 66425f9bd07206fe6e8f7215625ece1aa7e31eb8
 verified_paths: [management-api/lib/bc20-provenance-bridge.js, management-api/lib/uris.js]
 owner: jjohare
 review_trigger: any change to the sha12 truncation, the urn:agentbox mint/parse grammar, or the closed inbound kind-map on either repo
@@ -122,3 +122,14 @@ Tripped by `management-api/lib/uris.js`, whose only change since the previous an
 - **Priority:** P3 — parked (federation layer reopens when a second operator exists; planning cycle §3, §9)
 - **Why:** The bead divergence and the two-language kind-map gate this record lists as Remaining are closed by ADR-2061 (accepted/complete/live): VisionClaw `src/uri/mod.rs:662` now `include_str!`s `agentbox/schema/federation-kinds.json`. What is still one-sided is the sha12 byte-parity and hex-identity half: VisionClaw does not read `tests/fixtures/federation-identity.v1.json` (grep at host HEAD finds no reference), so the agentbox check in `invariants.yml` is the only one that runs it. The 2026-09-21 cycle parks federation for 12 weeks.
 - **Next:** Revise Remaining to cite ADR-2061 as closing the kind-map and bead items; when federation reopens, wire `federation-identity.v1.json` into VisionClaw's Rust tests, then this is ready to accept.
+
+## Re-verification — 2026-10-02 (`66425f9bd07206fe6e8f7215625ece1aa7e31eb8`)
+
+Tripped by `management-api/lib/uris.js`, whose change is the additive `chain` kind (ADR-2098,
+amended 2026-10-02 for sidestr 0.0.5): unscoped, keyed by a 64-hex chain event id under a fixed
+local grammar, and declared `not-federated` in `schema/federation-kinds.json`, so it is refused
+on the hot path with an explicit unmapped result, never mapped. `bc20-provenance-bridge.js` is
+unchanged. Re-established at this commit: `node scripts/ci/federation-fixture-check.mjs` →
+`PASS, 37 checks run`; `tests/contract/federation-kind-parity.contract.spec.js` and
+`tests/contract/linked-data/uris.contract.spec.js` pass (contract suite 29/29). Decision and
+status unchanged.

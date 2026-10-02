@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: be358df7b2740134cb3d1155d900a837dafc9e24
+verified_commit: 66425f9bd07206fe6e8f7215625ece1aa7e31eb8
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -153,3 +153,14 @@ named residual, which keeps `implementation_status: partial`.
 - **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records")
 - **Why:** The only blocker the record names, "colloquy-nostr 0.2.0 and colloquy-store 0.2.0 are not published", is resolved. Both are on crates.io at 0.2.1, and the forum client pins `colloquy-nostr = "0.2"` from the registry (`nostr-rust-forum/crates/nostr-bbs-forum-client/Cargo.toml:36`). Still open is fixture backing for both allocations under ADR-2061. The settlement half (38420–38425) only reserves numbers for records that are still proposed and parked.
 - **Next:** Amend "Not done, and why" to record the 0.2.1 publication, then accept the band rule and the colloquy move. The ADR-2061 fixture rows remain a named residual. **Accepted — owner decision 2026-10-02, Q8** (re-verified at `a238a3764`: crates.io `max_version` 0.2.1 for both crates; the forum `Cargo.lock` resolves `colloquy-nostr 0.2.1` from the registry). Revisions made in place: Verification's "Not done, and why" now records the publication, and the Consequences residual names the ADR-2061 fixture as following ADR-2061 rather than gating this record. `implementation_status: partial` (fixture rows); `activation_status: staged`: the manifest relay admits `38410`-`38415` (`agentbox.toml:174`), but no colloquy store or event exists in this container yet, and the settlement half is only reserved.
+
+## Re-verification — 2026-10-02 (`66425f9bd07206fe6e8f7215625ece1aa7e31eb8`)
+
+Tripped by `docs/PROTOCOL-registry.md` (ADR-2098 amendment for sidestr 0.0.5). The band table
+is unchanged and no agentbox kind is allocated, so the review trigger does not fire. Added rows
+are external only: `3500` and `23503` (sidestr), `3700` and `30333` (solidpayorg teller), all
+outside `38000`-`38499`. The colloquy table gains an Owner column (`agentbox (ADR-2085)`); its
+kinds, shapes and authors are unchanged. The allocation rule is now executable:
+`scripts/ci/protocol-registry-lint.mjs` (wired into `invariants.yml`) passes with 27 kind
+numbers, each row owned, no collisions, and every band kind agentbox-owned in a band row that
+is not free. Decision and status unchanged.

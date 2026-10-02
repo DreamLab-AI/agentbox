@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
+verified_commit: 66425f9bd07206fe6e8f7215625ece1aa7e31eb8
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -260,3 +260,12 @@ Two governed paths moved, neither touching the exposure surface. `.github/workfl
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `flake.nix`: statix lint only — assignment→`inherit` (with `or` defaults preserved as `inherit ({ defaults } // cfg)`), redundant parentheses dropped, `(x or false) == true` rewritten as `let v = x or false; in builtins.isBool v && v` (same result for every input), and one comment reworded ("logseq corpus" → "vault corpus"). No derivation, port, service, gate or package changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Re-verification — 2026-10-02 (`66425f9bd07206fe6e8f7215625ece1aa7e31eb8`)
+
+Tripped by `.github/workflows/invariants.yml`, which gains two steps unrelated to exposure
+(`protocol-registry-lint` and its unit tests, ADR-2098 amendment) and two trigger paths
+(`docs/PROTOCOL-registry.md`, `tests/config/protocol-registry-lint.test.mjs`). The
+check-ports-loopback and check-listeners steps are unchanged, and no other governed path moved.
+Re-established by running the gate at this commit: `bash scripts/ci/check-ports-loopback.sh`
+exits 0. Decision and status unchanged.
