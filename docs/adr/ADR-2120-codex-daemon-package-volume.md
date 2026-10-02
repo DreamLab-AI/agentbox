@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
+verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: be358df7b2740134cb3d1155d900a837dafc9e24
+verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
 verified_paths: [config/hooks/routing-label-recorder.cjs, config/hooks/lib/routing-labels.cjs, tests/config/routing-labels.test.js, scripts/experiments/exp-b8-label-log.cjs, tests/config/exp-b8-label-log.test.js]
 owner: jjohare
 review_trigger: the EXP-B8 stopping rule firing (510 analysable rows or 2026-10-20) and its verdict PR; the first 30 days of recorded labels; a learned router measured against the frozen corpus; any change to what the label row stores
@@ -169,7 +169,10 @@ since we might forget … turn it off once the data is statistically significant
   the one test, writes the report, opens a pull request that sets `label_log = false` and
   appends the verdict to this record (never merged, never forced), and posts one plain-English
   summary as JunkieJarvis in the dream digest's channel. The post is at-most-once: the attempt
-  is saved before publishing, so neither a failure nor a crash can post twice.
+  is saved immediately before the event is sent, so neither a failed send nor a crash can post
+  twice; a refusal with nothing sent (no signer, no zone key: never posted in plaintext) is not
+  an attempt and is retried. A no-post check (`--check-post`, 2026-10-02) resolved the write plan
+  for the digest section as `encrypt` (zone4, key held).
 - **Privacy bound.** ADR-2090 licenses egress of the routing prompt to the judge; it says
   nothing about storing it. The storage bound is this record's Decision 4 (no prompt text; the
   row holds the vector and the text's length) and ADR-2091 point 7 (the router log "never holds
