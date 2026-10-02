@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: fc56e7a97cb437502c09d8f512cbb547efb6546c
+verified_commit: 60f8b8458e9b1f92c14604b9f054d3b5299e32e6
 verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, management-api/routes/llm-marketplace.js, mcp/servers/governance-bridge.js, services/dream-engine/src/ledger.rs, scripts/activation/adr-2087-check.sh]
 owner: jjohare
 review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape
@@ -165,3 +165,7 @@ Tests at `b18a52f03`: jest 90 suites, 1496 passed; `node --test` broker-bridge, 
 
 The owner rebuilt agentbox on 2026-10-02 (management-api started 14:57:17). `scripts/activation/adr-2087-check.sh` exits 2, STAGED (receipt `.claude/evidence/activation/ADR-2087-activation-20261002T145933Z.md`): the running management-api, governance-bridge and dream-engine equal `b18a52f03` for every governed file; receipt replay is armed with `forum_auth_api` configured (`60b60b48d`); a live zero-tolerance revoke is denied 403 with `{code: no-decision-surface, hint: governance_manual_continue}`, journalled in the hash chain and served at `/v1/agent-events`; the audit chain verifies (232 records); the baked governance-bridge answers on stdio and refuses an unapproved case. B7 did not run: no receipt has posted yet (posted 0, queued 0). It moves to `live` when the check exits 0, which needs the first real governance response after the rebuild.
 
+
+## Re-verification — 2026-10-02 (`60f8b8458e9b1f92c14604b9f054d3b5299e32e6`)
+
+Tripped by `scripts/activation/adr-2087-check.sh`, changed only in check C3 (ADR-2071 clause (c)) and its header (`usage` now prints the whole header). C3 now also requires the state file of the new one-shot `scripts/activation/adr-2071-api-down-night.sh` (owner decision 2026-10-02, Q9) to show a clean stop before the window and a restart after it. Before this change, a night of failed journal posts passed C3 whatever the reason the posts failed. Checks A and B, which are this record's evidence, are untouched, and so are its decision and status axes. Exercised against a scratch workspace with `--no-live-probe`: a clean state passes C3, and an `interrupted` or absent state fails it.
