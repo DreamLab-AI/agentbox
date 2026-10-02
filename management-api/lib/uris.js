@@ -19,7 +19,8 @@
  *     where:
  *       <kind>   ∈ pod | envelope | credential | mandate | receipt |
  *                  activity | event | decision | mcp | memory | skill |
- *                  adr | prd | ddd | thing | dataset | bead | agent | meta
+ *                  adr | prd | ddd | thing | dataset | bead | knowledge |
+ *                  agent | meta | chain
  *       <scope>  optional; agent pubkey hex or another urn:agentbox: anchor
  *       <local>  ASCII slug or hex/base32 of a content hash
  *
@@ -114,7 +115,25 @@ const KINDS = Object.freeze({
   knowledge:  { ownerScope: true,  scopeRequired: true,  contentAddressed: true,  resolvableSurface: 'memory' },
   agent:      { ownerScope: true,  scopeRequired: false, contentAddressed: false, resolvableSurface: 'agents' },
   meta:       { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'meta' },
+  // chain (ADR-2098, amended 2026-10-02 for sidestr 0.0.5): a sidestr chain,
+  // named by the id of its kind-3500 chain event, the one value that names this
+  // chain and no other (SPEC 3). Not the alias `sidestr:<name>` (a name, not a
+  // proof: two signers can announce the same one) and not the genesis hash (a
+  // cross-check inside the document). Both stay in the resolved record. The
+  // local part is the full 64-hex id, never slugged: `localGrammar` refuses
+  // anything else, so `sidestr:dreamlab` cannot become `sidestr_dreamlab`.
+  // URN_RE admits at most one colon after the kind, so `sidestr:<name>` as a
+  // local part would also parse as scope `sidestr` + local `<name>`; the hash
+  // key avoids that as well. `sha256-12-<first 12 hex>` is display only.
+  chain:      { ownerScope: false, scopeRequired: false, contentAddressed: false, resolvableSurface: 'chains', localGrammar: /^[0-9a-f]{64}$/ },
 });
+
+// sidestr chain identity (SPEC 0.0.5 §3, §11). The chain event is kind 3500,
+// regular and immutable; its id is the chain's hash. Kept beside the URN
+// grammar because the record a `chain` URN resolves to is part of its contract.
+const CHAIN_EVENT_KIND = 3500;
+const CHAIN_HASH_RE = /^[0-9a-f]{64}$/;
+const CHAIN_ALIAS_RE = /^sidestr:[a-z0-9][a-z0-9-]*$/;
 
 const URN_RE = /^urn:agentbox:([a-z]+):([^:]+(?::[^:]+)?)$/;
 // BIP-340 x-only pubkey: 32 bytes serialised as 64 lowercase hex chars.
@@ -169,6 +188,16 @@ function mint({ kind, pubkey, npub, payload, localId } = {}) {
       throw new MalformedUri(`urn:agentbox:${kind}:?`, 'content-addressed kind requires payload');
     }
     local = _contentAddress(payload);
+  } else if (localId && spec.localGrammar) {
+    // A kind with a fixed local grammar takes its id as given or not at all:
+    // slugging would turn a wrong id into a different, well-formed one.
+    // Hex is case-insensitive, so the one normalisation is to lower case
+    // (the same id, as upstream's resolveChain lowercases a hash).
+    const id = String(localId).toLowerCase();
+    if (!spec.localGrammar.test(id)) {
+      throw new MalformedUri(`urn:agentbox:${kind}:${localId}`, `local id must match ${spec.localGrammar}`);
+    }
+    local = id;
   } else if (localId) {
     local = _slug(localId);
   } else {
@@ -254,6 +283,7 @@ function resolveCanonical(uri, { managementApiBase, podBase } = {}) {
   const [, kind, rest] = m;
   if (!(kind in KINDS)) return null;
   const spec = KINDS[kind];
+  if (spec.localGrammar && !spec.localGrammar.test(rest)) return null;
 
   // Most agentbox URIs route through the management-api so the viewer
   // can layer auth, content negotiation, and CORS in one place.
@@ -271,6 +301,7 @@ function parse(uri) {
   const m = uri.match(URN_RE);
   if (!m) return null;
   const [, kind, rest] = m;
+  if (KINDS[kind] && KINDS[kind].localGrammar && !KINDS[kind].localGrammar.test(rest)) return null;
   const parts = rest.split(':');
   if (parts.length === 1) {
     return { scheme: 'urn', kind, pubkey: null, local: parts[0] };
@@ -280,7 +311,150 @@ function parse(uri) {
 
 /** Boolean — is this a canonical agentbox URI? */
 function isCanonical(uri) {
-  return DID_NOSTR_RE.test(uri || '') || URN_RE.test(uri || '');
+  if (DID_NOSTR_RE.test(uri || '')) return true;
+  const m = (uri || '').match(URN_RE);
+  if (!m) return false;
+  const spec = KINDS[m[1]];
+  return !(spec && spec.localGrammar && !spec.localGrammar.test(m[2]));
+}
+
+/**
+ * The display form of a chain hash: `sha256-12-<first 12 hex>`. Display only;
+ * anything that binds to a chain binds to the full 64-hex id.
+ *
+ * @param {string} hashOrUrn — a 64-hex chain hash or a `urn:agentbox:chain:` URN
+ * @returns {string|null}
+ */
+function chainDisplay(hashOrUrn) {
+  const p = typeof hashOrUrn === 'string' && hashOrUrn.startsWith('urn:') ? parse(hashOrUrn) : null;
+  const hash = p ? (p.kind === 'chain' ? p.local : null) : (typeof hashOrUrn === 'string' ? hashOrUrn.toLowerCase() : null);
+  return hash && CHAIN_HASH_RE.test(hash) ? `sha256-12-${hash.slice(0, 12)}` : null;
+}
+
+/**
+ * Build the record a `chain` URN resolves to, from the chain's document and,
+ * when its signer has published one, its kind-3500 chain event.
+ *
+ * With an event the record is keyed by the event id: `{ urn, hash, display,
+ * alias, genesisHash, signer, legacy: false }`. The event is checked the way
+ * upstream's `parseChainEvent` checks it (sidestr/spec siding/lib/announce.mjs):
+ * `verify(event)` must hold (id is the hash of the content, signature good;
+ * the caller supplies a trusted verifier, this module is a name service and
+ * does no cryptography), the content is a document naming its alias in `id`,
+ * a `signer` field (if any) is the event's author and a `signers` list (if
+ * any) includes it. Where a document is also given, its alias and genesisHash
+ * must agree with the event's and its `signer` (or `signers`) must name the
+ * event's author: they are the cross-checks, and a disagreement is an error,
+ * never a silently preferred value.
+ *
+ * Without an event the chain predates 0.0.5: the record has no URN and no
+ * hash, carries the alias and genesisHash it is resolved by, and is marked
+ * `legacy: true`.
+ *
+ * @param {object} opts
+ * @param {object} [opts.document] — the chain document (chain.json)
+ * @param {object} [opts.event] — the kind-3500 chain event (chain-event.json)
+ * @param {function} [opts.verify] — `(event) => boolean`; required with an event
+ * @returns {{urn: string|null, hash: string|null, display: string|null,
+ *            alias: string, genesisHash: string|null, signer: string|null, legacy: boolean}}
+ */
+function chainRecord({ document = null, event = null, verify } = {}) {
+  if (event) {
+    if (event.kind !== CHAIN_EVENT_KIND) throw new MalformedUri('urn:agentbox:chain:?', `not a chain event (kind ${CHAIN_EVENT_KIND})`);
+    if (typeof verify !== 'function') throw new MalformedUri('urn:agentbox:chain:?', 'a chain event needs a verifier');
+    let ok = false;
+    try { ok = !!verify(event); } catch { ok = false; }
+    if (!ok) throw new MalformedUri('urn:agentbox:chain:?', 'the chain event does not verify (id or signature)');
+    const hash = String(event.id).toLowerCase();
+    if (!CHAIN_HASH_RE.test(hash)) throw new MalformedUri('urn:agentbox:chain:?', 'a chain event id is 64 hex');
+    let doc;
+    try { doc = JSON.parse(event.content); } catch { throw new MalformedUri(`urn:agentbox:chain:${hash}`, "the chain event's content is not JSON"); }
+    if (!doc || typeof doc !== 'object' || typeof doc.id !== 'string' || !CHAIN_ALIAS_RE.test(doc.id)) {
+      throw new MalformedUri(`urn:agentbox:chain:${hash}`, 'the chain event carries no document with an alias (sidestr:<name>)');
+    }
+    if (doc.signer !== undefined && doc.signer !== event.pubkey) {
+      throw new MalformedUri(`urn:agentbox:chain:${hash}`, "the document names a signer other than the event's author");
+    }
+    if (Array.isArray(doc.signers) && !doc.signers.includes(event.pubkey)) {
+      throw new MalformedUri(`urn:agentbox:chain:${hash}`, "the event's author is not one of the document's signers");
+    }
+    const lower = (v) => (typeof v === 'string' ? v.toLowerCase() : null);
+    const genesisHash = lower(doc.genesisHash) ?? lower(document && document.genesisHash);
+    if (document) {
+      if (document.id !== doc.id) {
+        throw new MalformedUri(`urn:agentbox:chain:${hash}`, `the chain event is for ${doc.id}, the document is ${document.id}`);
+      }
+      if (doc.genesisHash && document.genesisHash && lower(doc.genesisHash) !== lower(document.genesisHash)) {
+        throw new MalformedUri(`urn:agentbox:chain:${hash}`, 'the chain event and the document disagree on genesisHash');
+      }
+      // The sealed document names who may sign for the chain; an event by anyone
+      // else is not this chain's, whatever alias it claims.
+      if (typeof document.signer === 'string' && document.signer !== event.pubkey) {
+        throw new MalformedUri(`urn:agentbox:chain:${hash}`, "the chain event's author is not the document's signer");
+      }
+      if (Array.isArray(document.signers) && !document.signers.includes(event.pubkey)) {
+        throw new MalformedUri(`urn:agentbox:chain:${hash}`, "the chain event's author is not one of the document's signers");
+      }
+    }
+    return {
+      urn: mint({ kind: 'chain', localId: hash }),
+      hash,
+      display: chainDisplay(hash),
+      alias: doc.id,
+      genesisHash,
+      signer: event.pubkey,
+      legacy: false,
+    };
+  }
+  if (!document || typeof document.id !== 'string' || !CHAIN_ALIAS_RE.test(document.id)) {
+    throw new MalformedUri('urn:agentbox:chain:?', 'a chain without an event needs its document, with an alias (sidestr:<name>)');
+  }
+  const genesisHash = typeof document.genesisHash === 'string' ? document.genesisHash.toLowerCase() : null;
+  if (!genesisHash || !CHAIN_HASH_RE.test(genesisHash)) {
+    throw new MalformedUri('urn:agentbox:chain:?', `${document.id} has no event and no genesisHash: it cannot be resolved`);
+  }
+  return {
+    urn: null,
+    hash: null,
+    display: null,
+    alias: document.id,
+    genesisHash,
+    signer: typeof document.signer === 'string' ? document.signer : null,
+    legacy: true,
+  };
+}
+
+/**
+ * Resolve a chain against known records (from `chainRecord`).
+ *
+ * By hash (or `chain` URN): exactly the record with that hash, or null. A
+ * resolver never redirects one id to another, so a hash no record carries
+ * does not fall back to an alias.
+ *
+ * By alias and genesisHash together: the record carrying both. A record with
+ * a hash comes back as itself; one without (a pre-0.0.5 chain) comes back
+ * `legacy: true`. An alias alone is a name, not a proof, and resolves nothing.
+ *
+ * @param {object} query — `{ hash }`, `{ urn }` or `{ alias, genesisHash }`
+ * @param {Array<object>} records
+ * @returns {object|null}
+ */
+function resolveChain(query = {}, records = []) {
+  let hash = query.hash ?? null;
+  if (query.urn) {
+    const p = parse(query.urn);
+    if (!p || p.kind !== 'chain') return null;
+    hash = p.local;
+  }
+  if (hash != null) {
+    hash = String(hash).toLowerCase();
+    if (!CHAIN_HASH_RE.test(hash)) return null;
+    return records.find((r) => r && r.hash === hash) || null;
+  }
+  const { alias, genesisHash } = query;
+  if (typeof alias !== 'string' || typeof genesisHash !== 'string') return null;
+  const g = genesisHash.toLowerCase();
+  return records.find((r) => r && r.alias === alias && r.genesisHash === g) || null;
 }
 
 function _contentAddress(payload) {
@@ -308,10 +482,14 @@ function _slug(s) {
 
 module.exports = {
   KINDS,
+  CHAIN_EVENT_KIND,
   mint,
   resolveCanonical,
   parse,
   isCanonical,
+  chainDisplay,
+  chainRecord,
+  resolveChain,
   UnknownUriKind,
   MalformedUri,
 };

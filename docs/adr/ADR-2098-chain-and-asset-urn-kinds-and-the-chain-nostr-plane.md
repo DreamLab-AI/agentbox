@@ -3,7 +3,7 @@ id: ADR-2098
 title: Mint chain and asset URN kinds, register the sidestr Nostr kinds, and carry chain traffic on a dedicated program authenticated by consensus rather than the identity relay allowlist
 date: 2026-09-21
 decision_status: proposed
-implementation_status: none
+implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
@@ -101,3 +101,50 @@ regardless of relay origin.
 - **Priority:** P2 — next cycle (planning-cycle §3 reopening; needed by the research-chain demo's wallet API)
 - **Why:** D4 is still right: consensus authenticates chain ingress, and chain pubkeys stay off the identity allowlist. Three facts have moved. First, D2's kind list predates upstream kind 23503, "parent transaction to broadcast" (sidestr/spec `fe689e9` SPEC.md:363). Second, ADR-2101's adopted consultant review moves level-2 protocol records off the ephemeral 23510–23514 into stored estate-band kinds. Third, the running deployment is a separate `sidestr-producer`, `sidestr-mirror` and `sidestr-faucet` (`d0fa1b80b`, ADR-2103 interim receipt), not D3's `sidestr-node` on `:9097`. Not built at agentbox `c4ed3ec65`: no `chain`/`asset` kind in `management-api/lib/uris.js`, and no `/v1/wallet/*` or `/v1/chain/*` route. `docs/PROTOCOL-registry.md:152-165` carries the proposed kind rows.
 - **Next:** On reopening, add 23503 to the external-kind table and reconcile D3's program shape with the supervised interim programs. Then mint `chain` in `uris.js` with the genesis-pinned form from the amendments.
+
+## Amendment 2026-10-02 (sidestr 0.0.5)
+
+sidestr/spec 0.0.5 (`e8deb63`, SPEC §3, §11, Appendix A) makes the chain document a Nostr event
+of kind 3500, regular and immutable, and names its event id the chain's hash: the one value that
+names that chain and no other. This amendment follows it and replaces the URN shape in the first
+amendment above (`urn:agentbox:chain:<name>:<genesis-sha256-12>`); the rule behind that shape, that
+a name is never monetary identity, stands and is now upstream's own.
+
+- **Chain identity is the id of its kind-3500 chain event**, not its name and not its genesis
+  hash. `urn:agentbox:chain:` is keyed by that 64-hex id; `sha256-12-<first 12 hex>` is display
+  only. `uris.js` `mint` refuses any other local id rather than slugging it, so
+  `sidestr:<name>` can never become a chain URN.
+- **The alias `sidestr:<name>` and the `genesisHash` live in the resolved record** as
+  cross-checks (`uris.chainRecord`, `/v1/chain/info`): an event whose alias, genesisHash or
+  author disagrees with the sealed document is an error, never a silently preferred value. The
+  event itself is verified with nostr-tools, not by `uris.js`, which stays a name service.
+- **A resolver never redirects one id to another.** A hash no record carries resolves to
+  nothing, even when an alias matches; `/v1/chain/info?hash=` answers for exactly that hash or
+  404s.
+- **Chains without a chain event resolve by alias and genesisHash together and are marked
+  `legacy`**, with no URN. An alias alone resolves nothing. `sidestr:dreamlab` is such a chain
+  today: `/v1/chain/info` returns its alias and genesisHash with `hash: null` until its signer
+  publishes the event.
+- **38420-38425 carry the chain hash**, never the alias: `<chain id>` in the 38420 `d` tag is
+  the 64-hex hash. The implementation is a later sidestr-rs stream.
+- **The kind table gains 3500** (regular, external) **and 23503** (parent transaction to
+  broadcast, external), **marks 33501 legacy** (pre-0.0.5 chains only; the genesis now travels
+  inside the chain event) and records the 33333 tip's `e` tag (the chain event's id, marker
+  `chain`). solidpayorg teller's 3700 and 30333 are recorded as external beside them, and
+  `scripts/ci/protocol-registry-lint.mjs` gates ownership and collisions.
+- **The mirror serves `chain-event.json`.** `config/sidechain/mirror-sync.sh` copies it from
+  beside the chain document (where `siding chain-event` writes it and the producer reads it)
+  into the Pages checkout when it exists, refuses to replace a published one with a different
+  id, and is unaffected when it is absent. The `/chain/` nip98-proxy upstream of D3 is still
+  unbuilt; the GitHub Pages mirror the tip names is what serves it.
+- **PROTOCOL-registry's "the id is the chain name" rationale is withdrawn**; the registry says
+  so in place.
+
+The hash key has a second reason of our own: `URN_RE` in `uris.js` admits at most one colon after
+the kind, so an alias local part (`sidestr:<name>`) would parse as scope `sidestr` plus local
+`<name>`, and the alias-plus-genesis form would not parse at all.
+
+Not changed by this amendment: no chain event is created or published, the producer pin in
+`config/sidechain/upstream-pins` is unchanged, and no deposit address, chain id or published
+event moves. The `asset` URN kind is still unminted (D1), and the VisionFlow host's mirror of the
+registry table is not updated here.

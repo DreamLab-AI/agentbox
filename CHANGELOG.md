@@ -4,6 +4,31 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-10-02 — sidestr 0.0.5 chain identity, ADR-2098 amendment)
+
+- A sidestr chain is named by the id of its kind-3500 chain event, not its alias and not its
+  genesis hash. `management-api/lib/uris.js` gains the `chain` URN kind keyed by that 64-hex id
+  (`sha256-12-…` for display only); `mint` refuses an alias such as `sidestr:dreamlab` rather
+  than slugging it. `chainRecord` and `resolveChain` carry the alias and genesisHash as
+  cross-checks, never redirect one hash to another, and resolve a chain with no chain event by
+  alias and genesisHash together, flagged `legacy`. `schema/federation-kinds.json` declares
+  `chain` not-federated.
+- `GET /v1/chain/info` returns the produced chain's alias and hash separately (hash null until
+  the chain event exists beside the chain document), verifying the event with nostr-tools;
+  `/v1/uri/<chain urn>` redirects to it for exactly that hash. Read-only, 503 when
+  `[sidechain]` is off.
+- `config/sidechain/mirror-sync.sh` mirrors `chain-event.json` when it exists, refuses to
+  replace a published one with a different id, and is unchanged when it is absent (today).
+- `docs/PROTOCOL-registry.md` records kinds 3500 and 23503 (sidestr), 3700 and 30333
+  (solidpayorg teller), marks 33501 pre-0.0.5 only, records the 33333 tip's `e` tag, and
+  withdraws the "the id is the chain name" rationale. `scripts/ci/protocol-registry-lint.mjs`
+  gates kind ownership, collisions and the agentbox band.
+- `config/sidechain/upstream-pins`: the comment no longer claims sidestr-rs's CI pins the
+  producer's spec commit (it pins `fe689e9`). The pins themselves are unchanged.
+
+No chain event is made or published, the producer is not restarted, and no chain id, deposit
+address or published event moves.
+
 ### Changed (2026-10-01 — dependency refresh and rebuild compatibility)
 
 - Refresh the pinned CLI/runtime estate: Codex 0.158.0, Claude Code 2.1.285,

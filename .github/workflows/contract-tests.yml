@@ -10,6 +10,11 @@ on:
       - 'mcp/nostr-bridge/**'
       - 'scripts/opf-router.py'
       - 'tests/contract/**'
+      - 'management-api/lib/uris.js'
+      - 'management-api/routes/chain.js'
+      - 'management-api/routes/uri-resolver.js'
+      - 'schema/federation-kinds.json'
+      - 'tests/sovereign/chain-info.node-test.js'
       - 'agentbox/schemas/adapter-contracts/**'
       - '.github/workflows/contract-tests.yml'
   push:
@@ -21,6 +26,11 @@ on:
       - 'management-api/package-lock.json'
       - 'mcp/nostr-bridge/**'
       - 'tests/contract/**'
+      - 'management-api/lib/uris.js'
+      - 'management-api/routes/chain.js'
+      - 'management-api/routes/uri-resolver.js'
+      - 'schema/federation-kinds.json'
+      - 'tests/sovereign/chain-info.node-test.js'
       - '.github/workflows/contract-tests.yml'
 
 concurrency:
@@ -59,6 +69,12 @@ jobs:
       - name: Run contract test suites
         working-directory: management-api
         run: npx jest ../tests/contract/ --testPathPatterns='\.contract\.spec\.js$' --ci --forceExit
+
+      # nostr-tools pulls ESM-only @noble packages jest cannot require, so the
+      # chain identity route (ADR-2098 amended 2026-10-02) runs under node:test.
+      - name: Chain identity route (/v1/chain/info, chain URNs)
+        working-directory: management-api
+        run: node --test ../tests/sovereign/chain-info.node-test.js
 
       - name: Upload coverage
         if: always()

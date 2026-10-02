@@ -22,6 +22,7 @@ on:
       - 'services/agentbox-manifest/**'
       - 'tests/config/**'
       - 'tests/tui/**'
+      - 'config/sidechain/**'
       - '.github/workflows/manifest-validate.yml'
   push:
     branches:
@@ -33,6 +34,7 @@ on:
       - 'services/agentbox-manifest/**'
       - 'tests/tui/**'
       - 'tests/config/sidechain-genesis.test.sh'
+      - 'tests/config/sidechain-mirror-chain-event.test.sh'
       - 'config/sidechain/**'
       - '.github/workflows/manifest-validate.yml'
 
@@ -118,6 +120,10 @@ jobs:
         # The block file is not in the repository, so the on-disk hash case skips here;
         # the document invariants, the P21 mainnet gate and the no-key-in-git check run.
         run: bash tests/config/sidechain-genesis.test.sh
+
+      - name: The mirror serves chain-event.json when it exists (ADR-2098 amended 2026-10-02)
+        # Throwaway git repositories and a synthetic event; no chain event is made or published.
+        run: bash tests/config/sidechain-mirror-chain-event.test.sh
 
       - name: Assert all W-codes are routed to warnings (advisory, not fatal)
         run: |

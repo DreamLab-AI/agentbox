@@ -956,6 +956,19 @@ async function start() {
       }
     }
 
+    // ── sidestr chain identity (ADR-2098, amended 2026-10-02) ──────────────
+    // /v1/chain/info returns the produced chain's alias and hash separately
+    // (hash null until its kind-3500 chain event exists); `chain` URNs resolve
+    // here through /v1/uri. Read-only; self-gates 503 when [sidechain] is off.
+    {
+      try {
+        await app.register(require('./routes/chain'), { logger, manifest });
+        logger.debug({ event: 'chain.mounted' }, 'Chain identity ready at /v1/chain/info');
+      } catch (err) {
+        logger.error({ err: err.message }, 'Chain identity route failed to mount');
+      }
+    }
+
     // ── System surface (ADR-039 — docBox back-port) ─────────────────────────
     // /v1/system renders the live gate map (surfaces + modules with state and
     // apply-class) over the parsed manifest and resolved adapters;

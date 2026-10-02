@@ -286,6 +286,17 @@
         "input": "urn:agentbox:knowledge:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:sha256-12-c1a22b203994",
         "expect": null
       }
+    },
+    {
+      "kind": "chain",
+      "crosses": false,
+      "refusal_class": "not-federated",
+      "refusal_reason": "ADR-2098 (amended 2026-10-02). A sidestr chain, named by the id of its kind-3500 chain event (sidestr SPEC 0.0.5 section 3). The 64-hex id is already a global identifier any party can verify against the event, so VisionClaw cites it as it stands rather than through a foreign URN; minting a second VisionClaw identifier for one chain is the duplicate identity ADR-013 forbids.",
+      "source_grammar": "urn:agentbox:chain:<chain-hash>",
+      "fixture": {
+        "input": "urn:agentbox:chain:0000000000000000000000000000000000000000000000000000000000000000",
+        "expect": null
+      }
     }
   ]
 }

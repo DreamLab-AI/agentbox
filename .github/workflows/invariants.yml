@@ -8,6 +8,7 @@ on:
     paths:
       - 'docker-compose*.yml'
       - 'docs/adr/**'
+      - 'docs/PROTOCOL-registry.md'
       - 'config/seccomp-agentbox.json'
       - 'config/entrypoint-unified.sh'
       - 'management-api/**'
@@ -17,6 +18,7 @@ on:
       # re-run it. Without this, tests/security/check-listeners.test.mjs could be
       # edited on main and the listener rule never re-asserted on that push.
       - 'tests/security/**'
+      - 'tests/config/protocol-registry-lint.test.mjs'
       - 'flake.nix'
       - 'skills/**'
       - 'mcp/**'
@@ -99,6 +101,13 @@ jobs:
       # which an ungated check cannot deliver. The Rust half still runs in VisionClaw CI.
       - name: federation-fixture-check (ADR-2025 — cross-repo identifier contract, agentbox side)
         run: node scripts/ci/federation-fixture-check.mjs
+
+      # ADR-2105 / ADR-2098 (amended 2026-10-02): every Nostr kind row in the
+      # registry names its owner, no number sits in two rows, the agentbox band holds.
+      - name: protocol-registry-lint (ADR-2105 — kind rows owned, no collisions)
+        run: node scripts/ci/protocol-registry-lint.mjs
+      - name: protocol-registry-lint unit tests
+        run: node --test tests/config/protocol-registry-lint.test.mjs
 
       # vault-frontmatter unit tests removed by ADR-2107/ADR-2108 with the writer
       # they gated: the V2 frontmatter helper existed only for the ontology write

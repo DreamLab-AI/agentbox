@@ -107,14 +107,14 @@ agentbox band `38400`-`38499`. They were minted at `38100`-`38105`, inside
 the ADR-009 agent-response reservation, and moved out on 2026-09-21. Nothing
 outside this repo moves to accommodate them.
 
-| Kind | Name | Shape | Author | `d` tag |
-|---|---|---|---|---|
-| `38410` | KnowledgeUnit | addressable (NIP-33) | agent or human member | unit id hex |
-| `38411` | Confirmation | regular, append-only | agent or human member | — |
-| `38412` | Flag | regular, append-only | agent or human member | — |
-| `38413` | Supersession | regular | the proposer | — |
-| `38414` | Graduation | regular | human principal | — |
-| `38415` | ToolGapSignal | addressable (NIP-33) | agent | cluster tag |
+| Kind | Owner | Name | Shape | Author | `d` tag |
+|---|---|---|---|---|---|
+| `38410` | **agentbox** (ADR-2085) | KnowledgeUnit | addressable (NIP-33) | agent or human member | unit id hex |
+| `38411` | agentbox (ADR-2085) | Confirmation | regular, append-only | agent or human member | — |
+| `38412` | agentbox (ADR-2085) | Flag | regular, append-only | agent or human member | — |
+| `38413` | agentbox (ADR-2085) | Supersession | regular | the proposer | — |
+| `38414` | agentbox (ADR-2085) | Graduation | regular | human principal | — |
+| `38415` | agentbox (ADR-2085) | ToolGapSignal | addressable (NIP-33) | agent | cluster tag |
 
 **The replaceable/append-only split is load-bearing.** `38410` is replaceable so
 a proposer can correct their own wording without forking the unit's identity.
@@ -160,15 +160,22 @@ above are unchanged.
 
 | Kind | Owner | Direction | Notes |
 |---|---|---|---|
+| `3500` | **external (sidestr)** | pub + sub | chain document, **regular** (immutable), content = the document JSON; **its event id is the chain's hash** and the chain's identity (SPEC 0.0.5 §3, Appendix A). Tags `n` = alias, `t` = `sidestr`. Re-signing gives a new id, which is a new chain. A mirror serves it as `chain-event.json` |
 | `23500` | **external (sidestr)** | pub + sub | transaction; throwaway key per event |
 | `23501` | external (sidestr) | pub | faucet; testnet only, compiled out for mainnet variants (ADR-2103 D4) |
+| `23503` | external (sidestr) | pub + sub | parent transaction to broadcast, content the hex, tagged `chain` = alias; ephemeral. A producer with a parent node broadcasts it only if that node's mempool accepts it as it stands (SPEC 0.0.4, §11) |
 | `23510`-`23514` | external (sidestr) | pub + sub | level-2 signing round; only on signer instances |
-| `33333` | external (sidestr) | pub + sub | chain tip; `#d` filterable |
-| `33500` | external (sidestr) | pub + sub | rule document; **no upstream wire example** — our codec is conformant to SPEC prose only |
-| `33501` | external (sidestr) | pub | genesis document; **no upstream wire example** — SPEC prose only |
+| `33333` | external (sidestr) | pub + sub | chain tip, NIP-333 shape; `#d` filterable. Tags `d` and `n` = alias, **`e` = the chain event's id (marker `chain`) since 0.0.5**, `t` = `sidestr`, `tip`, `u` (one per mirror), `peg` (optional). A tip without `e` is a pre-0.0.5 chain |
+| `33500` | external (sidestr) | pub + sub | rule document, `d` = alias : activation height; **no upstream wire example** — our codec is conformant to SPEC prose only |
+| `33501` | external (sidestr) | sub | genesis document, **pre-0.0.5 chains only**: since 0.0.5 the genesis travels inside the `3500` chain event and `genesisHash` is a cross-check, never the identity. Read for chains made before 0.0.5; never published for a new chain |
 | `33502` | external (sidestr) | sub | **dual-schema**: peg record *or* desk pledge. The decoder returns `PegRecord \| Pledge \| Ambiguous` and **never guesses** |
 | `38420` | **agentbox** | pub | `sidestr-account-binding`: addressable, `d` = `<chain id>:<did hex>`, content = the derived spend pubkey, signed by the identity key `k_id` (ADR-2101 D4). Allocated from the agentbox band `38400`-`38499` (ADR-2105), the first hundred no record reserves; the earlier `38110` allocation sat inside the agent-response reservation and moved. Nothing outside this repo moves to accommodate it |
 | `38421`-`38425` | **agentbox** | pub | settlement domain events: `38421` PegOutDefaulted, `38422` ChildChainOpened, `38423` ChildChainClosing, `38424` ChainTombstoned, `38425` SettlementRecorded (DDD-022). Same band, same record (ADR-2105) |
+
+**Amended 2026-10-02 for sidestr SPEC 0.0.5 (ADR-2098 amendment).** `3500` and `23503` are
+added; `33501` is marked pre-0.0.5 only; the `33333` tip's `e` tag is recorded. `38420`-`38425`
+carry the chain hash, never the alias: `<chain id>` in the `38420` `d` tag is the 64-hex chain
+hash. sidestr-rs implements that in a later stream.
 
 **The `external` classification is load-bearing, not a formality.** The `2xxxx` and `3xxxx` kinds
 above are owned by the sidestr spec (v0.0.1, 2026-09-15), which explicitly states that field names,
@@ -182,6 +189,23 @@ the ADR-2061 symmetric kind-map contract is a merge requirement before any `3842
 published to a relay outside the container, on the same terms as the 38410-38415 allocation above.
 The mirror of this table in the VisionFlow host's `PROTOCOL-registry.md` is part of the same change.
 
+### External kinds from solidpayorg teller, recorded 2026-10-02
+
+[solidpayorg/teller](https://github.com/solidpayorg/teller) (`lib/teller.mjs` at `7c00cea`), a
+teller for Web Ledgers ([solidpayorg/webledgers#7](https://github.com/solidpayorg/webledgers/issues/7)).
+agentbox neither publishes nor consumes these today; they are recorded so no estate allocation
+lands on them.
+
+| Kind | Owner | Direction | Notes |
+|---|---|---|---|
+| `3700` | **external (solidpayorg teller)** | none yet | request: `join`, `withdraw` or `transfer`; regular, signed by the account's key, content empty. Tags `ledger` = the ledger hash, `op`, `id` (applied at most once), and `amount` and `to` except on `join` |
+| `30333` | external (solidpayorg teller) | none yet | the ledger, a Web Ledger JSON document; addressable, `d` = the ledger hash (sha256 of the JCS of its `genesis`); the operator replaces it as balances move and a reader accepts only the operator's own signed copy |
+
+**Registry lint.** [`scripts/ci/protocol-registry-lint.mjs`](../scripts/ci/protocol-registry-lint.mjs)
+reads every table in this document whose first column is `Kind` and whose rows are kind numbers: every row must name an owner
+(`agentbox` or `external (<owner>)`), no kind number may sit in two rows, and every kind in the
+agentbox band `38000`-`38499` must be agentbox-owned and inside a band row that is not free.
+
 ### URN kinds (ADR-013 sole-mint discipline)
 
 Two new kinds, minted **only** through `management-api/lib/uris.js` (`:69`). Ad-hoc `format!()` and
@@ -189,14 +213,24 @@ template-literal URNs remain prohibited.
 
 | Kind | `ownerScope` | `scopeRequired` | `contentAddressed` | `resolvableSurface` | Local part |
 |---|---|---|---|---|---|
-| `chain` | `false` | `false` | `false` | `chains` | the sidestr chain name |
+| `chain` | `false` | `false` | `false` | `chains` | the chain hash: the 64-hex id of its kind-`3500` chain event; `sha256-12-<first 12 hex>` for display only |
 | `asset` | `true` (the issuer) | `true` | `true` (over the origin contract id) | `chains` | `sha256-12-<12hex>` |
 
 - **`chain`** is a durable, long-lived, externally-referenced object with no owner: the root
   belongs to the federation and a child belongs to a session that will end. It must resolve so a
-  receipt can cite which chain settled it. `ownerScope: false` mirrors `mcp` and `skill`. It is not
-  content-addressed because the id *is* the chain name upstream uses, and re-minting it under a
-  hash would create a second id for one thing.
+  receipt can cite which chain settled it. `ownerScope: false` mirrors `mcp` and `skill`. Since
+  sidestr 0.0.5 its id is the **chain hash**, the id of the chain's kind-`3500` event, which
+  upstream names as the chain's one identity: `urn:agentbox:chain:<64 hex>`. The resolved record
+  (`uris.chainRecord`, `/v1/chain/info`) carries the alias `sidestr:<name>` and the `genesisHash`
+  beside it as cross-checks, and a resolver never redirects one id to another. A chain with no
+  chain event yet resolves by alias **and** genesisHash together and is marked `legacy`, with no
+  URN; an alias alone resolves nothing. Two reasons for the hash key: upstream's (the alias is a
+  name, not a proof: two signers can announce the same one), and `URN_RE` admits at most one colon
+  after the kind, so `sidestr:<name>` as the local part would parse as scope `sidestr` plus local
+  `<name>`. `mint` refuses any local id that is not 64 hex rather than slugging it.
+  *Withdrawn 2026-10-02:* the earlier rationale, "not content-addressed because the id is the
+  chain name upstream uses, and re-minting it under a hash would create a second id", no longer
+  holds: upstream's id is now the hash, and the name is the second id.
 - **`asset`** is a wrapped asset class: owner-scoped to the issuer and content-addressed over the
   origin RGB contract id, binding an agentbox URN to a foreign identifier scheme without a second
   parallel id. This is exactly the `knowledge`-kind precedent at `uris.js:91-94`. The wrapped asset

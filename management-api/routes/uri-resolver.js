@@ -146,6 +146,12 @@ async function uriResolverRoutes(fastify, options) {
         reply.redirect(`/v1/beads/${parsed.local || parsed.pubkey}`, 307);
         return;
 
+      case 'chain':
+        // Keyed by the chain event id (ADR-2098 amended); /v1/chain/info
+        // answers for exactly that hash or 404s, never for another chain.
+        reply.redirect(`/v1/chain/info?hash=${parsed.local}`, 307);
+        return;
+
       default:
         // Form-valid URN but no resolver mapped. The URI still names
         // the resource uniquely; we just don't know how to fetch it.

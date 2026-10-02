@@ -90,6 +90,99 @@ describe('ADR-013 — Canonical URI grammar', () => {
     });
   });
 
+  describe('ADR-2098 (amended 2026-10-02) — chain kind keyed by the chain event id', () => {
+    const HASH = 'ab'.repeat(32);
+    const SIGNER = '7092810a05359b29acfa1f884d0e1a8e0290309e1133198b0f059447a4c76d62';
+    const GENESIS = '4db37517728bd509c0cb96ee5a2e3e2a77f9e965a092e9f67948b413d453dbc0';
+    const DOC = { id: 'sidestr:dreamlab', parent: 'tbtc4', signer: SIGNER, genesisHash: GENESIS };
+    const EVENT = {
+      kind: 3500, id: HASH, pubkey: SIGNER, sig: 'cd'.repeat(64), created_at: 1790900000,
+      tags: [['n', 'sidestr:dreamlab'], ['t', 'sidestr']],
+      content: JSON.stringify({ id: 'sidestr:dreamlab', parent: 'tbtc4', genesisHash: GENESIS }),
+    };
+    const verifyOk = () => true;
+
+    test('mints a chain URN from a 64-hex id, unscoped, with a sha256-12 display form', () => {
+      const u = uris.mint({ kind: 'chain', localId: HASH });
+      expect(u).toBe(`urn:agentbox:chain:${HASH}`);
+      expect(uris.isCanonical(u)).toBe(true);
+      expect(uris.parse(u)).toEqual({ scheme: 'urn', kind: 'chain', pubkey: null, local: HASH });
+      expect(uris.chainDisplay(u)).toBe(`sha256-12-${HASH.slice(0, 12)}`);
+      expect(uris.chainDisplay(HASH)).toBe(`sha256-12-${HASH.slice(0, 12)}`);
+    });
+
+    test('upper-case hex is the same id, minted in lower case', () => {
+      expect(uris.mint({ kind: 'chain', localId: HASH.toUpperCase() })).toBe(`urn:agentbox:chain:${HASH}`);
+    });
+
+    test("rejects 'sidestr:<name>' as a local id rather than slugging it", () => {
+      expect(() => uris.mint({ kind: 'chain', localId: 'sidestr:dreamlab' })).toThrow(uris.MalformedUri);
+      expect(() => uris.mint({ kind: 'chain', localId: 'dreamlab' })).toThrow(/local id must match/);
+      expect(() => uris.mint({ kind: 'chain', localId: HASH.slice(0, 63) })).toThrow(uris.MalformedUri);
+      expect(() => uris.mint({ kind: 'chain', localId: GENESIS + '00' })).toThrow(uris.MalformedUri);
+    });
+
+    test('a chain URN on an alias is not canonical and does not parse or resolve', () => {
+      // URN_RE admits one colon after the kind, so this would otherwise read as
+      // scope `sidestr` + local `dreamlab`.
+      const bad = 'urn:agentbox:chain:sidestr:dreamlab';
+      expect(uris.isCanonical(bad)).toBe(false);
+      expect(uris.parse(bad)).toBeNull();
+      expect(uris.resolveCanonical(bad, { managementApiBase: 'http://127.0.0.1:9090' })).toBeNull();
+      expect(uris.isCanonical('urn:agentbox:chain:dreamlab')).toBe(false);
+    });
+
+    test('resolves through /v1/uri on the chains surface', () => {
+      const out = uris.resolveCanonical(`urn:agentbox:chain:${HASH}`, { managementApiBase: 'http://127.0.0.1:9090' });
+      expect(out).toBe(`http://127.0.0.1:9090/v1/uri/${encodeURIComponent(`urn:agentbox:chain:${HASH}`)}?surface=chains`);
+    });
+
+    test('the record carries hash, alias and genesisHash separately, keyed by the event id', () => {
+      const r = uris.chainRecord({ document: DOC, event: EVENT, verify: verifyOk });
+      expect(r).toEqual({
+        urn: `urn:agentbox:chain:${HASH}`, hash: HASH, display: `sha256-12-${HASH.slice(0, 12)}`,
+        alias: 'sidestr:dreamlab', genesisHash: GENESIS, signer: SIGNER, legacy: false,
+      });
+    });
+
+    test('an event that does not verify, or disagrees with the document, is refused', () => {
+      expect(() => uris.chainRecord({ document: DOC, event: EVENT, verify: () => false })).toThrow(/does not verify/);
+      expect(() => uris.chainRecord({ document: DOC, event: EVENT })).toThrow(/needs a verifier/);
+      expect(() => uris.chainRecord({ document: DOC, event: { ...EVENT, kind: 33501 }, verify: verifyOk })).toThrow(/kind 3500/);
+      expect(() => uris.chainRecord({ document: { ...DOC, id: 'sidestr:other' }, event: EVENT, verify: verifyOk })).toThrow(/is for sidestr:dreamlab/);
+      expect(() => uris.chainRecord({ document: { ...DOC, genesisHash: 'ef'.repeat(32) }, event: EVENT, verify: verifyOk })).toThrow(/genesisHash/);
+      expect(() => uris.chainRecord({ document: { ...DOC, signer: 'ee'.repeat(32) }, event: EVENT, verify: verifyOk })).toThrow(/not the document's signer/);
+      const otherSigner = { ...EVENT, content: JSON.stringify({ id: 'sidestr:dreamlab', signer: 'ee'.repeat(32) }) };
+      expect(() => uris.chainRecord({ event: otherSigner, verify: verifyOk })).toThrow(/signer other than/);
+      const notInSet = { ...EVENT, content: JSON.stringify({ id: 'sidestr:dreamlab', signers: ['ee'.repeat(32)] }) };
+      expect(() => uris.chainRecord({ event: notInSet, verify: verifyOk })).toThrow(/not one of the document's signers/);
+    });
+
+    test('a chain without an event resolves by alias + genesis, flagged legacy, with no URN', () => {
+      const legacy = uris.chainRecord({ document: DOC });
+      expect(legacy).toEqual({
+        urn: null, hash: null, display: null, alias: 'sidestr:dreamlab', genesisHash: GENESIS, signer: SIGNER, legacy: true,
+      });
+      expect(uris.resolveChain({ alias: 'sidestr:dreamlab', genesisHash: GENESIS }, [legacy])).toBe(legacy);
+      expect(uris.resolveChain({ alias: 'sidestr:dreamlab', genesisHash: GENESIS.toUpperCase() }, [legacy])).toBe(legacy);
+      // An alias alone is a name, not a proof; a wrong genesis is another chain.
+      expect(uris.resolveChain({ alias: 'sidestr:dreamlab' }, [legacy])).toBeNull();
+      expect(uris.resolveChain({ alias: 'sidestr:dreamlab', genesisHash: 'ef'.repeat(32) }, [legacy])).toBeNull();
+      expect(() => uris.chainRecord({ document: { id: 'sidestr:dreamlab' } })).toThrow(/no genesisHash/);
+    });
+
+    test('a resolver never redirects one id to another', () => {
+      const r = uris.chainRecord({ document: DOC, event: EVENT, verify: verifyOk });
+      expect(uris.resolveChain({ hash: HASH }, [r])).toBe(r);
+      expect(uris.resolveChain({ urn: `urn:agentbox:chain:${HASH}` }, [r])).toBe(r);
+      // Same alias and genesis, different hash: no fallback.
+      expect(uris.resolveChain({ hash: 'cd'.repeat(32) }, [r])).toBeNull();
+      expect(uris.resolveChain({ urn: 'urn:agentbox:chain:sidestr:dreamlab' }, [r])).toBeNull();
+      // Alias + genesis reaches the hashed record as itself, not as legacy.
+      expect(uris.resolveChain({ alias: 'sidestr:dreamlab', genesisHash: GENESIS }, [r]).legacy).toBe(false);
+    });
+  });
+
   describe('L14 — resolver is a pure function', () => {
     test('resolveCanonical never throws on weird input', () => {
       expect(() => uris.resolveCanonical(null)).not.toThrow();
