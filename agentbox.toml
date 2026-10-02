@@ -1577,6 +1577,32 @@ mirror_checkout = "/home/devuser/workspace/sidestr/mirror"
 faucet          = true    # [program:sidestr-faucet]: DREAM for member wallets (forum ADR-2015)
 faucet_key_file = "/home/devuser/workspace/sidestr/agents/treasury.key"
 
+# sidestr:dreamlab-txbt4: the second chain, sealed 2026-10-02 beside BLAKE2b
+# testnet4 for the agent-payments demo (owner SC1/SC2; ADR-2103;
+# config/sidechain/dreamlab-txbt4/chain.json). [sidechain].enabled above
+# dominates. Off until the lead starts it: flipping enabled bakes
+# sidestr-producer-dreamlab-txbt4 (and the mirror/faucet below) on the next
+# rebuild. NOT ANCHORED: checkpoint_every = 0 (owner SC5, cost; ADR-2103 Open).
+[sidechain.dreamlab-txbt4]
+enabled                = false   # [program:sidestr-producer-dreamlab-txbt4]
+parent                 = "txbt4" # must equal the sealed document's parent (ADR-2103 D3)
+port                   = 3451    # loopback; dreamlab holds 3450
+interval               = 600
+parent_rpc             = "http://192.168.2.27:48342/"   # Knots 29.4.2 txbt4 on the Dell, LAN only
+# The read-only txbt4read user serves the peg-in scan today. After the owner runs
+# scripts/sidechain/dell-txbt4-open-rpc.sh, switch to sidestr-txbt4.rpc (adds
+# decoderawtransaction, so parent txs relayed over kind 23503 can be judged).
+parent_credential_file = "/var/lib/agentbox/secrets/knots-txbt4.rpc"
+parent_from            = 152225  # txbt4 tip at the seal; never below the fork, 150308
+announce_mirror        = "https://dreamlab-ai.github.io/sidestr-dreamlab-txbt4"
+mirror                 = true    # its own Pages repo, DreamLab-AI/sidestr-dreamlab-txbt4
+mirror_checkout        = "/home/devuser/workspace/sidestr/mirror-dreamlab-txbt4"
+faucet                 = true    # plain sats; no asset on this chain
+faucet_key_file        = "/home/devuser/workspace/sidestr/agents/treasury-dreamlab-txbt4.key"
+faucet_sats            = 1000
+checkpoint_every       = 0       # SC5: off. To anchor: N > 0 plus checkpoint_wallet (ADR-2103 Open)
+checkpoint_wallet      = ""
+
 [skills.payment_router]
 enabled = false                          # C5 — enable with [payments.consumer].enabled = true
 

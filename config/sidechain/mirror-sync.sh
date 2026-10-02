@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Mirror for sidestr:dreamlab (SPEC 11), [program:sidestr-mirror] (gate [sidechain].mirror): copies
+# Mirror for one estate chain (SPEC 11): [program:sidestr-mirror] for sidestr:dreamlab (gate
+# [sidechain].mirror) and [program:sidestr-mirror-<name>] for each [sidechain.<name>] table. Copies
 # the producer's chain.json, blocks.dat and blocks.json into a GitHub Pages checkout and pushes
 # when they changed. GitHub Pages serves them with open CORS and Range support, which is all a
 # mirror is, and it is where the forum wallet reads the chain. The loopback mirror on :9097 behind
@@ -15,12 +16,17 @@
 # signature is checked by every client that reads it.
 #
 #   mirror-sync.sh <pages checkout> [interval seconds, default 120]
+#
+# Environment: SIDESTR_CHAIN (default dreamlab) names the chain; SIDESTR_STATE, SIDESTR_DOC and
+# SIDESTR_PORT / SIDESTR_PRODUCER_URL override what it implies. One checkout per chain: this loop
+# never pulls, so a second writer on the same repository would wedge every later push.
 set -euo pipefail
 
 WORKSPACE="${WORKSPACE:-$HOME/workspace}"
-STATE="${SIDESTR_STATE:-$WORKSPACE/sidestr/dreamlab}"
+NAME="${SIDESTR_CHAIN:-dreamlab}"
+STATE="${SIDESTR_STATE:-$WORKSPACE/sidestr/$NAME}"
 PRODUCER="${SIDESTR_PRODUCER_URL:-http://127.0.0.1:${SIDESTR_PORT:-3450}}"
-DOC="${SIDESTR_DOC:-$(cd "$(dirname "$0")" && pwd)/dreamlab/chain.json}"
+DOC="${SIDESTR_DOC:-$(cd "$(dirname "$0")" && pwd)/$NAME/chain.json}"
 CHAIN_EVENT="${SIDESTR_CHAIN_EVENT:-$(dirname "$DOC")/chain-event.json}"
 PAGES="${1:?pages checkout}"; EVERY="${2:-120}"
 refused=""

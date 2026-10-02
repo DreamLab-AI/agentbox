@@ -28,7 +28,8 @@ const manifest = loadManifest();
 // ── 1. FAIL: catalogue gate paths that do not resolve ─────────────────────────
 const broken = [];
 for (const entry of CATALOGUE) {
-  const gates = Array.isArray(entry.gates) ? entry.gates : entry.gate ? [entry.gate] : [];
+  const gates = [...(Array.isArray(entry.gates) ? entry.gates : entry.gate ? [entry.gate] : []),
+                 ...(Array.isArray(entry.requires) ? entry.requires : [])];
   for (const g of gates) {
     const v = resolveGate(manifest, g);
     if (v === undefined) broken.push(`${entry.id}: gate '${g}' resolves to undefined`);

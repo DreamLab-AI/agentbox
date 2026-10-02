@@ -243,6 +243,36 @@
         sidechainAnnounce = unplaceheld (sidechainCfg.announce_mirror or "");
         sidechainMirrorCheckout = unplaceheld (sidechainCfg.mirror_checkout or "/home/devuser/workspace/sidestr/mirror");
         sidechainFaucetKey = unplaceheld (sidechainCfg.faucet_key_file or "");
+        # [sidechain.<name>]: every further sealed chain (ADR-2103, "supervision
+        # generalises when the second chain exists"; the first is
+        # sidestr:dreamlab-txbt4, beside txbt4). Each table bakes its own
+        # producer, mirror and faucet, named sidestr-*-<name>. [sidechain].enabled
+        # dominates: false there and no chain program runs, whatever a table says.
+        # The schema names each chain, so a new one lands with its seal.
+        sidechainChains = lib.mapAttrs (name: c:
+          let
+            enabled = sidechainEnabled && (c.enabled or false);
+            every = c.checkpoint_every or 0;
+            ckWallet = unplaceheld (c.checkpoint_wallet or "");
+          in
+          if every > 0 && ckWallet == "" then
+            throw "[sidechain.${name}].checkpoint_every = ${toString every} needs checkpoint_wallet: without one the engine skips every checkpoint silently"
+          else {
+            inherit name enabled every ckWallet;
+            mirror = enabled && (c.mirror or false);
+            faucet = enabled && (c.faucet or false);
+            parent = c.parent;
+            port = toString (c.port or 3451);
+            interval = toString (c.interval or 600);
+            parentRpc = unplaceheld (c.parent_rpc or "http://192.168.2.27:48342/");
+            parentCredential = unplaceheld (c.parent_credential_file or "/var/lib/agentbox/secrets/sidestr-txbt4.rpc");
+            parentFrom = toString (c.parent_from or 152225);
+            announce = unplaceheld (c.announce_mirror or "");
+            mirrorCheckout = unplaceheld (c.mirror_checkout or "/home/devuser/workspace/sidestr/mirror-${name}");
+            faucetKey = unplaceheld (c.faucet_key_file or "/home/devuser/workspace/sidestr/agents/treasury-${name}.key");
+            faucetSats = toString (c.faucet_sats or 1000);
+          }) (lib.filterAttrs (_: v: builtins.isAttrs v) sidechainCfg);
+        sidechainAnyFaucet = sidechainFaucet || lib.any (c: c.faucet) (lib.attrValues sidechainChains);
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         consultantsCfg = agentboxConfig.consultants or {};
@@ -1573,7 +1603,7 @@
         # Baked because a workspace cargo build stops executing after every image
         # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.
         sidestrAgentPkg = import ./lib/sidestr-agent.nix { inherit lib; pkgs = rustPkgs; };
-        sidechainPackages = lib.optionals sidechainFaucet [ sidestrAgentPkg ];
+        sidechainPackages = lib.optionals sidechainAnyFaucet [ sidestrAgentPkg ];
         # factrail — Jev compaction with fact rails ([features.jev_compaction],
         # ADR-2121). One pinned commit gives the binary and the
         # Claude Code shim that calls it; see lib/factrail.nix.
@@ -2686,6 +2716,58 @@ stderr_logfile=/var/log/sidestr-faucet.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}
+${lib.concatMapStrings (c: lib.optionalString c.enabled ''
+
+; [sidechain.${c.name}] (ADR-2103): sidestr:${c.name}'s producer beside ${c.parent}.
+; Same runner as sidestr:dreamlab's, keyed by SIDESTR_CHAIN. It refuses to start
+; on an unpinned upstream checkout, on a document sealed beside a parent other
+; than the manifest's (D3), and on a BLAKE2b parent whose block at the fork
+; height is not the fork hash (D3a). checkpoint_every = ${toString c.every}${lib.optionalString (c.every == 0) ": no checkpoint, so nothing anchors this chain (owner SC5, Open in ADR-2103)"}.
+[program:sidestr-producer-${c.name}]
+command=/opt/agentbox/config/sidechain/run-producer.sh${lib.optionalString (c.announce != "") " --announce-mirror ${c.announce}"}
+user=devuser
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pkgs.nodejs_22 pkgs.git pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",SIDESTR_CHAIN="${c.name}",SIDESTR_EXPECT_PARENT="${c.parent}",SIDESTR_PORT="${c.port}",SIDESTR_INTERVAL="${c.interval}",SIDESTR_PARENT_RPC="${c.parentRpc}",SIDESTR_PARENT_COOKIE="${c.parentCredential}",SIDESTR_PARENT_FROM="${c.parentFrom}",SIDESTR_PARENT_WALLET="",SIDESTR_CHECKPOINT_EVERY="${toString c.every}",SIDESTR_CHECKPOINT_WALLET="${c.ckWallet}"
+autostart=true
+autorestart=true
+startsecs=30
+startretries=5
+priority=263
+stdout_logfile=/var/log/sidestr-producer-${c.name}.log
+stderr_logfile=/var/log/sidestr-producer-${c.name}.error.log
+stdout_logfile_maxbytes=10MB
+stderr_logfile_maxbytes=5MB
+${lib.optionalString c.mirror ''
+
+; [sidechain.${c.name}].mirror: this chain's own Pages checkout (never shared:
+; mirror-sync.sh does not pull, so two writers would wedge each other's pushes).
+[program:sidestr-mirror-${c.name}]
+command=/opt/agentbox/config/sidechain/mirror-sync.sh ${c.mirrorCheckout} 120
+user=devuser
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pkgs.git pkgs.gh pkgs.curl pkgs.jq pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",SIDESTR_CHAIN="${c.name}",SIDESTR_PORT="${c.port}"
+autostart=true
+autorestart=true
+startsecs=10
+priority=264
+stdout_logfile=/var/log/sidestr-mirror-${c.name}.log
+stderr_logfile=/var/log/sidestr-mirror-${c.name}.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}${lib.optionalString c.faucet ''
+
+; [sidechain.${c.name}].faucet: plain sats from this chain's own treasury key.
+[program:sidestr-faucet-${c.name}]
+command=/opt/agentbox/config/sidechain/run-faucet.sh
+user=devuser
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ sidestrAgentPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",SIDESTR_CHAIN="${c.name}",SIDESTR_PORT="${c.port}",SIDESTR_FAUCET_KEY="${c.faucetKey}",SIDESTR_FAUCET_ASSET="",SIDESTR_FAUCET_SATS="${c.faucetSats}"
+autostart=true
+autorestart=true
+startsecs=10
+priority=265
+stdout_logfile=/var/log/sidestr-faucet-${c.name}.log
+stderr_logfile=/var/log/sidestr-faucet-${c.name}.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}'') (lib.attrValues sidechainChains)}
 ${lib.optionalString (toolchainCfg.claude_code or false) ''
 
 ; ADR-2118: Claude Code OAuth credential sync. ~/.claude is a container-owned

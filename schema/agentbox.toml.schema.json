@@ -3248,6 +3248,81 @@
         "faucet_key_file": {
           "type": "string",
           "description": "The faucet's treasury key file (64 hex or nsec1\u2026). Empty \u21d2 $WORKSPACE/sidestr/agents/treasury.key."
+        },
+        "dreamlab-txbt4": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "sidestr:dreamlab-txbt4, the estate's second chain, sealed 2026-10-02 beside BLAKE2b testnet4 (owner SC1; config/sidechain/dreamlab-txbt4/chain.json, ADR-2103). Its own producer, mirror and faucet: [program:sidestr-producer-dreamlab-txbt4], [program:sidestr-mirror-dreamlab-txbt4], [program:sidestr-faucet-dreamlab-txbt4]. [sidechain].enabled dominates: false there \u21d2 none of these run, whatever this table says. REBUILD-class. One table per sealed chain: a new chain is a new property here, landing with its seal.",
+          "required": ["enabled", "parent"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "true (with [sidechain].enabled) \u21d2 [program:sidestr-producer-dreamlab-txbt4] runs config/sidechain/run-producer.sh with SIDESTR_CHAIN=dreamlab-txbt4."
+            },
+            "parent": {
+              "type": "string",
+              "enum": ["txbt4"],
+              "description": "The parent the sealed document names, repeated so the runner can refuse a disagreement at boot (ADR-2103 D3). The manifest configures creation, never interpretation: the document wins by refusing to start, not by being overridden. Mainnet aliases are absent on purpose (P21, ADR-2103 D4)."
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 65535,
+              "description": "The producer's loopback port (default 3451; sidestr:dreamlab holds 3450). The mirror and faucet read the producer here."
+            },
+            "interval": {
+              "type": "integer",
+              "minimum": 10,
+              "description": "Seconds between empty blocks (default 600; 10 s with transactions either way)."
+            },
+            "parent_rpc": {
+              "type": "string",
+              "description": "The txbt4 node's JSON-RPC URL: Knots 29.4.2 on the Dell VM, LAN only (default http://192.168.2.27:48342/)."
+            },
+            "parent_credential_file": {
+              "type": "string",
+              "description": "The parent RPC credential file, user:password of an rpcauth user, mode 0600 under /var/lib/agentbox/secrets (default sidestr-txbt4.rpc, minted by scripts/sidechain/dell-txbt4-open-rpc.sh mint). The read-only knots-txbt4.rpc user also serves the peg-in scan but refuses decoderawtransaction, so parent transactions relayed over kind 23503 are refused."
+            },
+            "parent_from": {
+              "type": "integer",
+              "minimum": 150308,
+              "description": "The txbt4 height the peg-in scan starts from: the parent tip at the seal (152,225). Never below the fork height 150,308 (ADR-2103 D3a: no peg coin from before the fork)."
+            },
+            "announce_mirror": {
+              "type": "string",
+              "description": "https URL of this chain's own GitHub Pages mirror, passed as --announce-mirror. Empty \u21d2 blocks are made but not announced, and wallets cannot find the chain."
+            },
+            "mirror": {
+              "type": "boolean",
+              "description": "true (with enabled) \u21d2 [program:sidestr-mirror-dreamlab-txbt4] runs config/sidechain/mirror-sync.sh against mirror_checkout every 120 s."
+            },
+            "mirror_checkout": {
+              "type": "string",
+              "description": "This chain's own Pages checkout. Never the sidestr:dreamlab checkout: mirror-sync.sh does not pull, so two writers on one repository would wedge each other's pushes."
+            },
+            "faucet": {
+              "type": "boolean",
+              "description": "true (with enabled) \u21d2 [program:sidestr-faucet-dreamlab-txbt4] answers kind-23501 requests for this chain (requests for other chains are ignored)."
+            },
+            "faucet_key_file": {
+              "type": "string",
+              "description": "This chain's treasury key file (64 hex or nsec1\u2026). Never sidestr:dreamlab's treasury.key: a key per chain keeps one chain's grants from emptying the other's treasury view."
+            },
+            "faucet_sats": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Plain sats per grant (no asset is issued on this chain)."
+            },
+            "checkpoint_every": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Write the tip into txbt4 every N blocks (SPEC 11). 0 \u21d2 off, and nothing anchors the chain: owner decision SC5 (2026-10-02, cost), recorded Open in ADR-2103. N > 0 needs checkpoint_wallet, or the runner refuses to start."
+            },
+            "checkpoint_wallet": {
+              "type": "string",
+              "description": "The funded Knots txbt4 wallet that pays checkpoint fees (a separate fee wallet, never a peg wallet). Its RPC user needs send, gettransaction and listtransactions on the whitelist."
+            }
+          }
         }
       }
     },

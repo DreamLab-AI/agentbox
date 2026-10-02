@@ -257,6 +257,11 @@ const CATALOGUE = [
   { id: 'sidechain', name: 'sidestr sidechain producer, mirror and faucet', layer: 'module',
     gate: 'sidechain.enabled', gates: ['sidechain.enabled', 'sidechain.mirror', 'sidechain.faucet'], service: 'sidestr-producer', apply_class: 'rebuild',
     summary: 'PRD-024 P1: [program:sidestr-producer] (config/sidechain/run-producer.sh, the upstream JS engine at the commits in upstream-pins) makes the blocks the forum member wallets read; mirror adds [program:sidestr-mirror] (block files to a GitHub Pages checkout), faucet adds [program:sidestr-faucet] (sidestr-agent, baked from lib/sidestr-agent.nix). mirror and faucet take effect only with enabled. REBUILD-class: flake.nix bakes all three supervisor blocks. Needs the chain signer key and parent cookie under /var/lib/agentbox/secrets.' },
+  { id: 'sidechain-dreamlab-txbt4', name: 'sidestr:dreamlab-txbt4 producer, mirror and faucet (beside txbt4)', layer: 'module',
+    requires: ['sidechain.enabled'], gate: 'sidechain.dreamlab-txbt4.enabled',
+    gates: ['sidechain.dreamlab-txbt4.enabled', 'sidechain.dreamlab-txbt4.mirror', 'sidechain.dreamlab-txbt4.faucet'],
+    service: 'sidestr-producer-dreamlab-txbt4', apply_class: 'rebuild',
+    summary: 'ADR-2103, owner SC1 (2026-10-02): the second estate chain, sealed beside BLAKE2b testnet4. [program:sidestr-producer-dreamlab-txbt4] runs the same run-producer.sh with SIDESTR_CHAIN=dreamlab-txbt4 on :3451 against Knots txbt4 on the Dell (LAN RPC), refusing a parent that disagrees with the sealed document (D3) or a node off the fork branch (D3a); mirror and faucet add its own Pages mirror and a sats-only faucet. [sidechain].enabled dominates, then this table\'s enabled. NOT ANCHORED while checkpoint_every = 0 (owner SC5). REBUILD-class.' },
   // ADR-2020 review_trigger (a new optional block in agentbox.toml) — the
   // [vault] section is split across TWO catalogue entries because its keys have
   // genuinely different apply classes (ADR-039 honesty rule): root/pages/format
@@ -315,6 +320,9 @@ function resolveGate(manifest, gatePath) {
 
 /** Map a gate value to a docBox-style module state word. */
 function stateOf(manifest, entry) {
+  // Required ancestor gates: every one must be on, or nothing under them runs
+  // (e.g. [sidechain].enabled over each [sidechain.<name>] table).
+  if (Array.isArray(entry.requires) && entry.requires.some((g) => resolveGate(manifest, g) !== true)) return 'off';
   // A parent gate dominates optional child gates (e.g. sidechain supervision).
   if (entry.gate && resolveGate(manifest, entry.gate) === false) return 'off';
   // Multi-gate entries (e.g. memory_hygiene's three op gates): any-true = on,

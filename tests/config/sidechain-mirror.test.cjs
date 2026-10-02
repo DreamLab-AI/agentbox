@@ -13,6 +13,16 @@ test('sidechain parent gate dominates enabled child gates in the system catalogu
   }
 });
 
+test('[sidechain].enabled dominates a chain table, which dominates its own mirror and faucet', () => {
+  const { buildSystemView } = require('../../management-api/lib/system-manifest.js');
+  const state = (parent, enabled) => buildSystemView({ sidechain: { enabled: parent, 'dreamlab-txbt4': { enabled, parent: 'txbt4', mirror: true, faucet: true } } })
+    .modules.find(m => m.id === 'sidechain-dreamlab-txbt4').state;
+  assert.equal(state(false, true), 'off', 'the parent table off turns the chain off');
+  assert.equal(state(true, false), 'off', 'the chain off turns its mirror and faucet off');
+  assert.equal(state(false, false), 'off');
+  assert.equal(state(true, true), 'on');
+});
+
 test('mirror retries a failed push without a new block and leaves unrelated staged files alone', { timeout: 15000 }, async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sidechain-mirror-test-'));
   const pages = path.join(root, 'pages'), remote = path.join(root, 'remote.git'), state = path.join(root, 'state');

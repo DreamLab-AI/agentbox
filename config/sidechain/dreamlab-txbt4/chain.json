@@ -1,0 +1,30 @@
+{
+ "id": "sidestr:dreamlab-txbt4",
+ "name": "dreamlab-txbt4",
+ "parent": "txbt4",
+ "comment": "DreamLab sidechain beside BLAKE2b testnet4 (txbt4), sealed 2026-10-02 for the agent-payments demo (owner decisions SC1, SC2; agentbox ADR-2103). Research stage: level 1, one signer, depth 0. Coins carry no value. NOT ANCHORED at the seal: no checkpoint is written into txbt4 (owner SC5, cost), so until checkpoints are switched on a block is the single signer's word; the producer's /tip and checkpoints.json say whether any checkpoint exists. Mainnet parents are behind the P21 owner-and-legal gate.",
+ "challenge": "51205e05b5bae0b9eff8dfd893444817558f67a6acfc8d47b0b65022d5c7c6665f2f",
+ "powLimit": "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+ "addressPrefix": "drt",
+ "magic": "4d7e2702",
+ "pegConfirmations": 6,
+ "refundBlocks": 10000,
+ "pegoutBlocks": 144,
+ "pegoutMin": 10000,
+ "minFeeRate": 1,
+ "genesisTime": 1790972010,
+ "pegs": [],
+ "signer": "5e05b5bae0b9eff8dfd893444817558f67a6acfc8d47b0b65022d5c7c6665f2f",
+ "genesisHash": "1009aa2984d5c699fe61ef1e5905afe472a49d67551542045726828c8b82d108",
+ "depth": 0,
+ "containment": {
+  "parent": "txbt4",
+  "headerProfile": "knots:blake2b-v2",
+  "currencyPin": "txbt",
+  "cashOut": false,
+  "pegConfirmations": 6,
+  "refundBlocks": 10000,
+  "protocolProfile": "sidestr/0.0.4"
+ },
+ "containmentDigest": "sha256:f0d00eb5d3a69cbfaa76f63a101cfdc82d44b7236055cec6521ba23ca89157df"
+}
