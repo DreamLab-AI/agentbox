@@ -222,6 +222,6 @@ against running services, not a commit to point at.
 ## Disposition — 2026-10-02
 
 - **Suitability:** fits
-- **Priority:** P2 — next cycle (reopens before any real-value spend, the ADR-2103 P21 gate, planning cycle §10; X-1 step 1 and G-5 are the same work)
+- **Priority:** P2 — next cycle (confirmed by owner decision 2026-10-02, Q4; reopens before any real-value spend, the ADR-2103 P21 gate, planning cycle §10; X-1 step 1 and G-5 are the same work)
 - **Why:** Break-glass bounds and an age-encrypted backup shipped (selftest section N; `services/secret-backup`, packaged by `lib/secret-backup.nix` 2026-09-07). The lifecycle this record decides has not been built: custodians are unconfirmed, nothing has been rotated, the publisher key split is not done (G-5 blocked), and the shared-UID exposure is still open (X-1, N-6). The 2026-09-21 cycle names none of this, and §10 ties custody to the real-value gate.
-- **Next:** Confirm custodians in the `SECURITY-profiles.md` register, and land X-1 step 1 (per-role service accounts) together with the ADR-2101 key separation before any value-bearing chain.
+- **Next:** Confirm custodians in the `SECURITY-profiles.md` register, and land X-1 step 1 (per-role service accounts) together with the ADR-2101 key separation before any value-bearing chain. **Owner decision 2026-10-02, Q4:** the Trust runbook will not name who holds each secret, so confirming custodians is not a this-cycle step either. The whole record waits for next cycle.

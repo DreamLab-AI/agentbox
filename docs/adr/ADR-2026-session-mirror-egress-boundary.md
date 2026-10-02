@@ -178,6 +178,6 @@ The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe
 ## Disposition — 2026-10-02
 
 - **Suitability:** fits
-- **Priority:** P1 — this cycle (Track C item 10, fresh-host bring-up; row G-4)
+- **Priority:** P2 — next cycle (owner decision 2026-10-02, Q4; was P1, Track C item 10, fresh-host bring-up; row G-4)
 - **Why:** All four clauses have code and tests behind them (`config/hooks/lib/egress-policy.cjs`, `egress_policy.rs`, 25 egress-boundary tests; G-4 recipient enumeration 2026-09-07; `b25903ec8` checks the allowlist before any work). The mirror hook is registered on every turn in `~/.claude/settings.json`, and in this container no `AGENTBOX_MIRROR_RECIPIENTS` is set, so it skips. A deployment on Trust-owned hardware (§2 Track C, §9) has to show that nothing leaves the box by default. That is this record's clause (c), and it is the one thing the record has not demonstrated on a running instance.
-- **Next:** During the Track C fresh-host run, capture a receipt showing every egress path reports `skipped` with no allowlist configured. With that and the owner's reviewed recipient set (G-4), it is ready to accept.
+- **Next:** During the Track C fresh-host run, capture a receipt showing every egress path reports `skipped` with no allowlist configured. With that and the owner's reviewed recipient set (G-4), it is ready to accept. **Moved to P2 — owner decision 2026-10-02, Q4:** the Trust runbook will not include an egress-nothing-by-default receipt or name who holds each secret, so the Track C fresh-host run will not produce clause (c)'s receipt this cycle. The receipt step above stands for next cycle.
