@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0a63db7c49faf1c97bc2f4839f25027c2fec35c2
+verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -16,6 +16,10 @@ domain: BASELINE-container
 ---
 
 # ADR-2120 — Give Codex daemon packages executable persistent storage
+
+## Re-verification — 2026-10-02 at caab741c6 (factrail landing, ADR-2121)
+
+The factrail landing (ADR-2121, `b7fc2b0e5` + `caab741c6`) touched governed paths without touching this decision: `config/entrypoint-unified.sh` changes only inside the compaction section (install/uninstall factrail, store migration, key projection); `flake.nix` gains only the factrail package, its `/opt/agentbox/bin/factrail` link and the shim copy, each under `lib.optionalString jevCompactionOn`. No hunk falls in code this record governs, so its claims and status axes stand unchanged.
 
 ## Context
 

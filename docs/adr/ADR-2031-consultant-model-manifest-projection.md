@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 47e1879341631185fb1ce4370303e0010afda779
+verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -15,6 +15,10 @@ repo: agentbox
 ---
 
 # ADR-2031 — Consultant model selection is projected from the manifest at boot; environment wins, TUI preserves the operator's choice, and tariffs are dated
+
+## Re-verification — 2026-10-02 at caab741c6 (factrail landing, ADR-2121)
+
+The factrail landing (ADR-2121, `b7fc2b0e5` + `caab741c6`) touched governed paths without touching this decision: `config/entrypoint-unified.sh` changes only inside the compaction section (install/uninstall factrail, store migration, key projection). No hunk falls in code this record governs, so its claims and status axes stand unchanged.
 
 ## Re-verification — 2026-10-01 (dependency refresh)
 

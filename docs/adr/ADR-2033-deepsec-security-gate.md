@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 47e1879341631185fb1ce4370303e0010afda779
+verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -16,6 +16,10 @@ domain: GOVERNANCE-capabilities
 ---
 
 # ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy
+
+## Re-verification — 2026-10-02 at caab741c6 (factrail landing, ADR-2121)
+
+The factrail landing (ADR-2121, `b7fc2b0e5` + `caab741c6`) touched governed paths without touching this decision: `agentbox.toml` changes only inside `[features.jev_compaction]` (comments, `min_reduction_ratio` removed, five new keys); `flake.nix` gains only the factrail package, its `/opt/agentbox/bin/factrail` link and the shim copy, each under `lib.optionalString jevCompactionOn`; `management-api/lib/system-manifest.js` changes only the `jev-compaction` catalogue entry (name, summary, `apply_class` boot → rebuild); `schema/agentbox.toml.schema.json` changes only inside the `jev_compaction` object; `scripts/agentbox-config-validate.js` changes only the W072 comment and message. No hunk falls in code this record governs, so its claims and status axes stand unchanged.
 
 ## Re-verification — 2026-10-01 (dependency refresh)
 

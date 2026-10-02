@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 68270e953449c2d2e32003bf65ffabbefe442d61
+verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -17,6 +17,10 @@ lineage: ADR-2093 (the decision this implements; amends its implementation, not 
 ---
 
 # ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit
+
+## Re-verification — 2026-10-02 at caab741c6 (factrail landing anchor)
+
+Anchored to the landing of ADR-2121 (`b7fc2b0e5`, wording follow-up `caab741c6`). Every governed path above is as verified in ADR-2121's Verification section; nothing else changed. Image build, boot and the residency soak remain unverified (`activation_status: staged`).
 
 ## Context
 
