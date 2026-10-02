@@ -2,7 +2,7 @@
 
 /**
  * sidestr-agent-cli — the one place management-api runs the baked
- * `sidestr-agent` binary (lib/sidestr-agent.nix, 0.3.2 @ d68880bf).
+ * `sidestr-agent` binary (lib/sidestr-agent.nix, 0.6.0 @ a7aadd68).
  *
  * Interface used (sidestr-agent 0.3.2, `sidestr-agent <cmd> --help`):
  *

@@ -3010,6 +3010,7 @@ dependencies = [
  "once_cell",
  "serdect",
  "sha2 0.10.9",
+ "signature",
 ]
 
 [[package]]
@@ -4438,6 +4439,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
+name = "ryu-js"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6518fc26bced4d53678a22d6e423e9d8716377def84545fe328236e3af070e7f"
+
+[[package]]
 name = "salsa20"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4666,6 +4673,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_jcs"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3a60f3fda61525e439ef6d67422118f11e986566997d9021c56867ad814a0aa"
+dependencies = [
+ "ryu-js",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "serde_json"
 version = "1.0.151"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4804,7 +4822,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "sidestr-agent"
-version = "0.3.2"
+version = "0.6.0"
 dependencies = [
  "bech32 0.11.1",
  "bitcoin",
@@ -4812,9 +4830,12 @@ dependencies = [
  "getrandom 0.3.4",
  "hex",
  "miniscript",
+ "rustix",
  "serde",
  "serde_json",
  "sidestr-core",
+ "sidestr-header",
+ "sidestr-hitch",
  "sidestr-nostr",
  "sidestr-round",
  "sidestr-wallet",
@@ -4844,12 +4865,13 @@ dependencies = [
 
 [[package]]
 name = "sidestr-core"
-version = "0.3.4"
+version = "0.4.2"
 dependencies = [
  "bech32 0.11.1",
  "bitcoin",
  "bitcoinconsensus",
  "hex",
+ "k256",
  "proptest",
  "serde",
  "serde_json",
@@ -4881,7 +4903,7 @@ dependencies = [
 
 [[package]]
 name = "sidestr-header"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bitcoin",
  "blake2",
@@ -4893,8 +4915,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "sidestr-hitch"
+version = "0.2.1"
+dependencies = [
+ "bitcoin",
+ "bitcoinconsensus",
+ "hex",
+ "serde",
+ "serde_json",
+ "sidestr-core",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "sidestr-nostr"
-version = "0.3.1"
+version = "0.6.0"
 dependencies = [
  "bitcoin",
  "hex",
@@ -4909,8 +4944,10 @@ dependencies = [
 name = "sidestr-reserve"
 version = "0.1.0"
 dependencies = [
+ "bitcoin",
  "hex",
  "secp256k1 0.29.1",
+ "serde_jcs",
  "serde_json",
  "sha2 0.10.9",
  "thiserror 2.0.20",
@@ -4918,7 +4955,7 @@ dependencies = [
 
 [[package]]
 name = "sidestr-round"
-version = "0.2.1"
+version = "0.5.0"
 dependencies = [
  "bitcoin",
  "clap",
@@ -4943,8 +4980,9 @@ dependencies = [
 
 [[package]]
 name = "sidestr-wallet"
-version = "0.4.3"
+version = "0.5.3"
 dependencies = [
+ "base64 0.22.1",
  "bitcoin",
  "hex",
  "hmac",
@@ -4955,6 +4993,16 @@ dependencies = [
  "sidestr-header",
  "thiserror 2.0.20",
  "ureq",
+]
+
+[[package]]
+name = "signal-hook-registry"
+version = "1.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
+dependencies = [
+ "errno",
+ "libc",
 ]
 
 [[package]]
@@ -5276,6 +5324,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",
@@ -5809,6 +5858,20 @@ checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "webledgers-teller"
+version = "0.2.0"
+dependencies = [
+ "bitcoin",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sidestr-core",
+ "sidestr-nostr",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

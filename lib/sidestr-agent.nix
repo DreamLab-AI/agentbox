@@ -26,14 +26,14 @@
 { lib, pkgs }:
 
 let
-  version = "0.3.2";
-  rev = "d68880bf90c2c61699389b9e0b313c9a57d043d2";
+  version = "0.6.0";
+  rev = "a7aadd68d536167507e00e1ce6237fbecb5b46fa";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "sidestr-rs";
     inherit rev;
-    hash  = "sha256-KDMVBdiYynDoLYEv43iE3VdJnMC1mUkjPbkIbSgK4ZA=";
+    hash  = "sha256-ezZbbe9redgu+jSC24b3Z1iRYMmuTDfoIcHvs/uGyaU=";
   };
 
 in
@@ -52,7 +52,7 @@ pkgs.rustPlatform.buildRustPackage {
   doCheck = true;
 
   meta = with lib; {
-    description = "Economic engine for sidestr sidechains: faucet, pegs and transfers over Nostr";
+    description = "Economic engine for sidestr sidechains: faucet, pegs, transfers and Hitch session-channel host over Nostr";
     homepage    = "https://github.com/DreamLab-AI/sidestr-rs";
     license     = licenses.agpl3Only;
     mainProgram = "sidestr-agent";
