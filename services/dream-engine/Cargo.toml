@@ -4,7 +4,7 @@
 name = "dream-engine"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.94"
 license = "AGPL-3.0-only"
 description = "Nightly evidence-gated repository evolution engine for agentbox. Compiles config into deterministic prompts, dispatches to the connected node annexe, calls LLM, parses verdicts, persists to ledger + RuVector."
 repository = "https://github.com/DreamLab-AI/agentbox"
