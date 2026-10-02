@@ -91,8 +91,10 @@ and [ADR-2011](../../../VisionFlow/docs/adr/ADR-2011-task-properties-set-the-bou
   would retry-then-fail silently. The publisher owns its own replay.
 - `/v1/agent-events` gains two new event kinds. Consumers that enumerate kinds will see
   `authority.deny` and `authority.receipt-post-failed`; both are additive.
-- The forum receipts endpoint does not exist yet on the deployed edge, so receipts queue
-  rather than post until it does. That is the intended degraded state, not a failure — the
+- Receipts queue until the forum receipts endpoint answers. It is deployed on the edge as of
+  2026-10-02 (website 8ab4ab4 pins forum kit 341c5d2; the receipts and application routes
+  answered a signed probe in forum ADR-2011's M4 run) and `forum_auth_api` points at it
+  (60b60b48d), so the queue drains once a real governance response exists. Until then the
   journal records every attempt.
 - `activation_status: staged` (2026-10-02, rebuilt image; see "Staged on the rebuilt image"). Before that it was `inactive`: the image booted 2026-10-01 (management-api
   byte-identical to `a25695a36`) does carry this change, but four wiring defects kept it inert
