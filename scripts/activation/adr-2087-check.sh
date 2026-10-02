@@ -33,7 +33,10 @@
 #                  tool.called/tool.completed pair per side effect under each
 #                  session_urn. Clause (c) (API stopped) needs the operator to
 #                  stop management-api for a night; it is NOT-RUN unless
-#                  --api-down-night names such a night.
+#                  --api-down-night names such a night. The stop and restart
+#                  are done by scripts/activation/adr-2071-api-down-night.sh,
+#                  whose state file C3 also requires (a clean, uninterrupted
+#                  stop before the window and a restart after it).
 #
 # Side effects of the live probe (B3), stated so nobody is surprised: one
 # POST /v1/llm/revoke for a grant id that does not exist. In the shipped wiring
@@ -59,7 +62,7 @@ NIGHT=""
 API_DOWN_NIGHT=""
 LIVE_PROBE=1
 
-usage() { sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,49p' "$0" | sed 's/^# \{0,1\}//'; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -397,8 +400,19 @@ if [ -n "$API_DOWN_NIGHT" ]; then
     jq '{date, outcomes, journal}' "$NIGHT_RECORD" > "$C3_DETAIL"
     outcomes="$(jq '[.outcomes[]? | select(.verdict != null)] | length' "$NIGHT_RECORD")"
     failed="$(jq '[.journal[]? | .failed + .skipped] | add // 0' "$NIGHT_RECORD")"
-    if [ "$outcomes" -ge 1 ] && [ "$failed" -ge 1 ]; then
-      record C3 PASS 0 "ADR-2071 (c): night $API_DOWN_NIGHT completed $outcomes repo verdict(s) while $failed journal posts failed/skipped" "$C3_DETAIL"
+    # The one-shot (scripts/activation/adr-2071-api-down-night.sh) records
+    # when it stopped and restarted the API; without that record a night of
+    # failed posts proves nothing about WHY they failed. An `interrupted`
+    # night (the API came back mid-window, e.g. a container restart) fails.
+    API_DOWN_STATE="$WORKSPACE/.agentbox/adr-2071-api-down-night.state"
+    sget() { sed -n "s/^$1=//p" "$API_DOWN_STATE" 2>/dev/null | tail -1; }
+    { echo; echo "# one-shot state ($API_DOWN_STATE)"; cat "$API_DOWN_STATE" 2>/dev/null || echo "absent"; } >> "$C3_DETAIL"
+    st_night="$(sget night)"; st_phase="$(sget phase)"; st_reason="$(sget reason)"; st_stopped="$(sget stopped_at)"
+    if [ "$st_night" != "$API_DOWN_NIGHT" ] || [ "$st_phase" != done ] || [ -z "$st_stopped" ] \
+       || { [ "$st_reason" != night-record ] && [ "$st_reason" != deadline ]; }; then
+      record C3 FAIL 0 "ADR-2071 (c): no clean API-down record for $API_DOWN_NIGHT (one-shot state: night=${st_night:-none} phase=${st_phase:-none} reason=${st_reason:-none})" "$C3_DETAIL"
+    elif [ "$outcomes" -ge 1 ] && [ "$failed" -ge 1 ]; then
+      record C3 PASS 0 "ADR-2071 (c): night $API_DOWN_NIGHT completed $outcomes repo verdict(s) while $failed journal posts failed/skipped; API stopped $st_stopped, restarted $(sget started_at) ($st_reason)" "$C3_DETAIL"
     else
       record C3 FAIL 0 "ADR-2071 (c): night $API_DOWN_NIGHT does not show a completed cycle with the API down" "$C3_DETAIL"
     fi

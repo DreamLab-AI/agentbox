@@ -30,3 +30,13 @@
 # proposal queue (Whelk gate -> ACSP human approval). Idempotent per
 # fingerprint set; unresolvable targets are skipped, never guessed.
 47 8 * * 1 cd /home/devuser/workspace/project/agentbox/skills/podcast-knowledge-ingest && node submit-proposals.mjs 2>&1 | tee -a ${VAULT_TRANSCRIPTS}/.promote-log.txt
+
+# ── ADR-2071 clause (c) one-shot (owner decision 2026-10-02, Q9) ──────────────
+# Not a podcast job: this is the only supervised crontab read from the checkout,
+# so it is the one schedule that survives a container restart without an image
+# rebuild. The script does nothing unless the marker
+# ~/workspace/.agentbox/adr-2071-api-down-night names today's UTC date; it stops
+# management-api at 00:30-00:59 UTC, restarts it after the night (or at 07:30
+# UTC, or if the API came back on its own), then retires the marker. All of its
+# times are UTC whatever this file's TZ is. Remove this block after 7 Oct 2026.
+*/10 * 5-7 10 * /home/devuser/workspace/project/agentbox/scripts/activation/adr-2071-api-down-night.sh
