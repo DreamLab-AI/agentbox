@@ -8,6 +8,10 @@
 //! `--height N` adds the validated block hash at height N under `hashes`
 //! (a parent checkpoint names a height and a hash; this is what it must match).
 //!
+//! `--script HEX` adds the settled balance at the tip of that output script
+//! (for an agent, `5120<x-only key>`) under `balances`: the sum and count of
+//! its unspent coins in the validated UTXO set.
+//!
 //! `--decode FILE` reads lines `<label> <transaction hex>` (the content of
 //! kind-23500 events, labelled by event id) and reports each one's txid, or
 //! null when the hex is not a transaction, under `decoded`.
@@ -39,7 +43,7 @@ struct Loc {
 }
 
 fn usage() -> ! {
-    eprintln!("usage: sidechain-witness-replay --chain chain.json --blocks blocks.dat [--txid HEX]... [--height N]... [--decode FILE]");
+    eprintln!("usage: sidechain-witness-replay --chain chain.json --blocks blocks.dat [--txid HEX]... [--height N]... [--script HEX]... [--decode FILE]");
     std::process::exit(2)
 }
 
@@ -47,6 +51,7 @@ fn main() {
     let argv: Vec<String> = std::env::args().skip(1).collect();
     let (mut chain, mut blocks, mut wanted, mut decode) = (None, None, Vec::new(), None);
     let mut heights: Vec<u32> = Vec::new();
+    let mut scripts: Vec<String> = Vec::new();
     let mut i = 0;
     while i < argv.len() {
         let v = argv.get(i + 1).cloned().unwrap_or_else(|| usage());
@@ -54,6 +59,7 @@ fn main() {
             "--chain" => chain = Some(v),
             "--blocks" => blocks = Some(v),
             "--decode" => decode = Some(v),
+            "--script" => scripts.push(v.to_lowercase()),
             "--height" => heights.push(v.parse().unwrap_or_else(|e| {
                 eprintln!("--height {v}: {e}");
                 std::process::exit(2)
@@ -67,7 +73,7 @@ fn main() {
         i += 2;
     }
     let (chain, blocks) = (chain.unwrap_or_else(|| usage()), blocks.unwrap_or_else(|| usage()));
-    match run(&chain, &blocks, &wanted, &heights).and_then(|mut v| {
+    match run(&chain, &blocks, &wanted, &heights, &scripts).and_then(|mut v| {
         if let Some(f) = &decode {
             v["decoded"] = decode_file(f)?;
         }
@@ -81,13 +87,13 @@ fn main() {
     }
 }
 
-fn run(chain: &str, blocks: &str, wanted: &[Txid], heights: &[u32]) -> Result<Value, String> {
+fn run(chain: &str, blocks: &str, wanted: &[Txid], heights: &[u32], scripts: &[String]) -> Result<Value, String> {
     let doc = ChainDocument::from_json(&std::fs::read_to_string(chain).map_err(|e| format!("{chain}: {e}"))?)
         .map_err(|e| e.to_string())?;
     let dat = std::fs::read(blocks).map_err(|e| format!("{blocks}: {e}"))?;
     match resolve_parent(&doc.parent).map_err(|e| e.to_string())?.family {
-        Family::Stock => replay::<Stock>(doc, &dat, wanted, heights, "stock"),
-        Family::Blake2b => replay::<Blake2bV2>(doc, &dat, wanted, heights, "blake2b-v2"),
+        Family::Stock => replay::<Stock>(doc, &dat, wanted, heights, scripts, "stock"),
+        Family::Blake2b => replay::<Blake2bV2>(doc, &dat, wanted, heights, scripts, "blake2b-v2"),
     }
 }
 
@@ -96,6 +102,7 @@ fn replay<F: HeaderFamily>(
     dat: &[u8],
     wanted: &[Txid],
     heights: &[u32],
+    scripts: &[String],
     family: &str,
 ) -> Result<Value, String> {
     let digest = sha256::Hash::hash(dat);
@@ -104,10 +111,21 @@ fn replay<F: HeaderFamily>(
     let mut at: HashMap<Txid, Loc> = HashMap::new();
     let mut spends: HashMap<Txid, Vec<OutPoint>> = HashMap::new();
     let mut spent_by: HashMap<OutPoint, Txid> = HashMap::new();
+    // Every output ever created, so a located transaction's inputs carry the
+    // value and script they spent (who paid), not only an outpoint.
+    let mut created: HashMap<OutPoint, (u64, String)> = HashMap::new();
+    let mut outs: HashMap<Txid, Vec<Value>> = HashMap::new();
     let state = StateOf::<F>::replay_with(doc, dat, None, |_, height, block| {
         for (index, tx) in block.txdata().iter().enumerate() {
             let txid = tx.compute_txid();
             at.insert(txid, Loc { height, index });
+            for (vout, o) in tx.output.iter().enumerate() {
+                let script = o.script_pubkey.to_hex_string();
+                if want.contains(&txid) {
+                    outs.entry(txid).or_default().push(json!({ "vout": vout, "value": o.value.to_sat(), "script": script }));
+                }
+                created.insert(OutPoint { txid, vout: vout as u32 }, (o.value.to_sat(), script));
+            }
             let ins: Vec<OutPoint> = if tx.is_coinbase() { Vec::new() } else { tx.input.iter().map(|i| i.previous_output).collect() };
             for op in &ins {
                 if want.contains(&op.txid) {
@@ -136,15 +154,16 @@ fn replay<F: HeaderFamily>(
         let entry = match at.get(txid) {
             None => json!({ "found": false }),
             Some(_) => {
-                let inputs: Vec<Value> = spends.get(txid).into_iter().flatten().map(|op| json!({
-                    "txid": op.txid.to_string(), "vout": op.vout, "at": locate(&op.txid),
-                })).collect();
+                let inputs: Vec<Value> = spends.get(txid).into_iter().flatten().map(|op| {
+                    let (value, script) = created.get(op).cloned().map(|(v, s)| (Value::from(v), Value::String(s))).unwrap_or((Value::Null, Value::Null));
+                    json!({ "txid": op.txid.to_string(), "vout": op.vout, "value": value, "script": script, "at": locate(&op.txid) })
+                }).collect();
                 let mut later: Vec<(&OutPoint, &Txid)> = spent_by.iter().filter(|(op, _)| op.txid == *txid).collect();
                 later.sort_by_key(|(op, _)| op.vout);
                 let spent: Vec<Value> = later.into_iter().map(|(op, by)| json!({
                     "vout": op.vout, "by": by.to_string(), "at": locate(by),
                 })).collect();
-                json!({ "found": true, "at": locate(txid), "spends": inputs, "spent_by": spent })
+                json!({ "found": true, "at": locate(txid), "outputs": outs.get(txid).cloned().unwrap_or_default(), "spends": inputs, "spent_by": spent })
             }
         };
         txs.insert(txid.to_string(), entry);
@@ -153,8 +172,20 @@ fn replay<F: HeaderFamily>(
     for h in heights {
         hashes.insert(h.to_string(), state.hash_at(*h).map(|x| Value::String(x.to_string())).unwrap_or(Value::Null));
     }
+    let mut balances = serde_json::Map::new();
+    for sc in scripts {
+        let (mut sats, mut coins) = (0u64, 0u64);
+        for coin in state.utxo().values() {
+            if coin.output.script_pubkey.to_hex_string() == *sc {
+                sats += coin.output.value.to_sat();
+                coins += 1;
+            }
+        }
+        balances.insert(sc.clone(), json!({ "sats": sats, "coins": coins }));
+    }
     let tip = state.tip();
     Ok(json!({
+        "balances": balances,
         "hashes": hashes,
         "engine": {
             "crate": "sidestr-core", "version": "0.4.0", "source": "crates.io",

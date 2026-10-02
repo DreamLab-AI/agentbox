@@ -39,15 +39,20 @@ function journalLine(kind, eventId, causation, tool, extra = {}) {
 }
 
 function passingFacts(over = {}) {
-  const T = (h) => ({ found: true, at: { height: h, hash: `${h}`.padStart(64, 'a'), index: 1 }, spends: [], spent_by: [] });
+  const T = (h, extra = {}) => ({ found: true, at: { height: h, hash: `${h}`.padStart(64, 'a'), index: 1 }, outputs: [], spends: [], spent_by: [], ...extra });
+  const pay = T(20, {
+    spends: [{ txid: 'c'.repeat(64), vout: 0, value: 50000, script: `5120${PK_A}` }],
+    outputs: [{ vout: 0, value: 1000, script: `5120${PK_B}` }, { vout: 1, value: 48800, script: `5120${PK_A}` }],
+  });
   return {
     agents: [PK_A, PK_B],
     payment: 'b'.repeat(64),
+    payments: ['b'.repeat(64)],
     funding: ['c'.repeat(64)],
     close: 'd'.repeat(64),
     closeRequired: true,
     publicOnly: false,
-    replay: { height: 50, tip_hash: 'e'.repeat(64), txs: { ['b'.repeat(64)]: T(20), ['c'.repeat(64)]: T(10), ['d'.repeat(64)]: T(30) } },
+    replay: { height: 50, tip_hash: 'e'.repeat(64), txs: { ['b'.repeat(64)]: pay, ['c'.repeat(64)]: T(10), ['d'.repeat(64)]: T(30) } },
     mirrorIndexHash: 'e'.repeat(64),
     anchoring: { anchored: false, reason: W.SC5_REASON, decision: W.SC5_DECISION },
     anchored: false,
@@ -97,13 +102,15 @@ describe('evaluate: every required element', () => {
   test('all present: PASS, close and journal included', () => {
     const r = W.evaluate(passingFacts());
     assert.equal(r.verdict, 'PASS', JSON.stringify(r.checks.filter((c) => c.status !== 'PASS')));
-    for (const id of ['R1', 'R2', 'S1', 'S2', 'S3', 'A1', 'N1', 'N2', 'N3', 'J1']) assert.equal(status(r, id), 'PASS', id);
+    for (const id of ['R1', 'R2', 'S1', 'P1', 'S2', 'S3', 'A1', 'N1', 'N2', 'N3', 'J1']) assert.equal(status(r, id), 'PASS', id);
   });
 
   const breaks = {
     'R1 replay failed': { replay: null, replayError: 'block 7 refused' },
     'R2 mirror index disagrees': { mirrorIndexHash: '0'.repeat(64) },
-    'S1 payment absent': { payment: '9'.repeat(64) },
+    'S1 payment absent': { payments: ['9'.repeat(64)] },
+    'S1 one of two payments absent': { payments: ['b'.repeat(64), '9'.repeat(64)] },
+    'P1 the payment moves nothing between the agents': { payments: ['c'.repeat(64)] },
     'S2 no funding': { funding: [] },
     'S3 Hitch close absent': { close: undefined },
     'A1 anchoring not stated': { anchoring: { anchored: false, reason: 'unknown' } },
@@ -130,6 +137,35 @@ describe('evaluate: every required element', () => {
     const r = W.evaluate(passingFacts({ closeRequired: false, close: undefined }));
     assert.equal(status(r, 'S3'), 'NOT-RUN');
     assert.equal(r.verdict, 'PASS');
+  });
+});
+
+describe('payments and the headline', () => {
+  test('payer, payee and amount come from the spent and created scripts; change is not counted', () => {
+    const f = passingFacts();
+    assert.deepEqual(W.describePayment('b'.repeat(64), f.replay.txs['b'.repeat(64)], f.agents), {
+      txid: 'b'.repeat(64), payer: `did:nostr:${PK_A}`, payee: `did:nostr:${PK_B}`, amount_sats: 1000,
+      block_height: 20, block_hash: '20'.padStart(64, 'a'),
+    });
+  });
+
+  test('unanchored, the first line is S0\'s preflight wording', () => {
+    assert.equal(W.notAnchoredLine('sidestr:dreamlab-txbt4', 'txbt4', { anchored: false }),
+      'NOT ANCHORED: no checkpoint of sidestr:dreamlab-txbt4 exists in txbt4 (checkpoints are off; for txbt4 that is owner decision SC5). Every block is the single signer\'s word; the demo must say so.');
+  });
+
+  test('the chain defaults to SIDESTR_CHAIN, else the demo chain', () => {
+    const base = ['--agent', PK_A, '--agent', PK_B, '--payment', 'b'.repeat(64), '--replay-bin', '/x', '--out', '/y'];
+    const saved = process.env.SIDESTR_CHAIN;
+    try {
+      delete process.env.SIDESTR_CHAIN;
+      assert.equal(W.parseArgs(base).chain, 'sidestr:dreamlab-txbt4');
+      process.env.SIDESTR_CHAIN = 'dreamlab';
+      assert.equal(W.parseArgs(base).chain, 'sidestr:dreamlab');
+      assert.equal(W.parseArgs(['--chain', 'gitmark', ...base]).chain, 'sidestr:gitmark');
+    } finally {
+      if (saved === undefined) delete process.env.SIDESTR_CHAIN; else process.env.SIDESTR_CHAIN = saved;
+    }
   });
 });
 
@@ -269,7 +305,17 @@ describe('end to end: loopback chain, in-process relay, capture, fixture journal
     const r = JSON.parse(fs.readFileSync(out, 'utf8'));
     assert.ok(Array.isArray(r.checks), `witness error: ${r.error}`);
     const st = Object.fromEntries(r.checks.map((c) => [c.id, c.status]));
-    assert.deepEqual(st, { R1: 'PASS', R2: 'PASS', S1: 'FAIL', S2: 'FAIL', S3: 'NOT-RUN', A1: 'PASS', N1: 'PASS', N2: 'PASS', N3: 'PASS', N4: 'FAIL', J1: 'PASS' }, run.stderr);
+    assert.deepEqual(st, { R1: 'PASS', R2: 'PASS', S1: 'FAIL', P1: 'FAIL', S2: 'FAIL', S3: 'NOT-RUN', A1: 'PASS', N1: 'PASS', N2: 'PASS', N3: 'PASS', N4: 'FAIL', J1: 'PASS' }, run.stderr);
+    assert.match(run.stderr.split('\n')[0], /^NOT ANCHORED: no checkpoint of sidestr:witnesstest exists in tbtc4 \(checkpoints are off/);
+    assert.match(run.stderr.split('\n')[1], /^checkpoints=off reason="checkpoints off, cost; open"/);
+    assert.equal(r.schema, 'sidechain-witness/1');
+    assert.equal(r.chain, 'sidestr:witnesstest');
+    assert.equal(r.checkpoint, null);
+    assert.match(r.headline, /^NOT ANCHORED/);
+    assert.deepEqual(r.replay.balances.map((b) => [b.did, b.settled_sats]), [[`did:nostr:${PK_A}`, 0], [`did:nostr:${PK_B}`, 0]]);
+    assert.match(r.replay.engine, /^sidestr-core 0\.4\.0 \(crates\.io, stock family\)$/);
+    assert.equal(r.payments[0].txid, '7'.repeat(64));
+    assert.equal(r.payments[0].found, false);
     assert.equal(r.verdict, 'FAIL');
     assert.equal(r.replay.height, tip.height);
     assert.equal(r.replay.tip_hash, tip.hash, 'the Rust replay reaches the JS producer\'s tip hash');

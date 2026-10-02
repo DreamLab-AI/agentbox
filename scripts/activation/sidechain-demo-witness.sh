@@ -4,13 +4,21 @@
 # non-zero unless every required element is present and agrees.
 #
 #   scripts/activation/sidechain-demo-witness.sh \
-#       --chain sidestr:dreamlab --agent <hex pubkey A> --agent <hex pubkey B> \
-#       --payment <txid> [--hitch-session <id>] [options]
+#       [--chain sidestr:<name>] --agent <hex pubkey A> --agent <hex pubkey B> \
+#       --payment <txid> [--payment <txid>]... [--hitch-session <id>] [options]
+#
+# The first line of output is the anchoring state. Today it is
+#   NOT ANCHORED: no checkpoint of sidestr:<name> exists in <parent> (checkpoints are off; ...)
+# (the wording of scripts/sidechain/preflight-liquidity.sh), then
+#   checkpoints=off reason="checkpoints off, cost; open" (owner decision 2026-10-02, SC5 ...)
 #
 # Inputs
-#   --chain ID          sidestr:<name>, or the 64-hex id of its kind-3500 chain event
+#   --chain ID          sidestr:<name>, or the 64-hex id of its kind-3500 chain event;
+#                       default sidestr:$SIDESTR_CHAIN, else the demo chain
+#                       sidestr:dreamlab-txbt4 (owner SC1)
 #   --agent HEX         an agent's x-only pubkey (exactly two; the Nostr key is the wallet)
-#   --payment TXID      the payment transaction on the sidechain
+#   --payment TXID      a payment transaction on the sidechain (repeatable); each must
+#                       spend one agent's coin and pay the other (check P1)
 #   --funding TXID      the funding transaction(s); default: what the payment spends
 #   --close TXID        the close; with --hitch-session and no --close, the spender of
 #                       the funding output is taken as the close
@@ -19,9 +27,10 @@
 #   --session-urn URN   the journal session URN, when it is not derived
 #   --harness NAME      the harness the session was journalled under (default sidestr-agent)
 #   --mirror URL        the public mirror; default: discovered from the chain signer's
-#                       kind-33333 tip announcement
-#   --producer URL      the producer, read for checkpoints.json only (default: the
-#                       loopback producer when it answers)
+#                       kind-33333 tip announcement, else the producer's own files
+#                       (noted in the receipt: not re-runnable by a stranger)
+#   --producer URL      the producer, read for checkpoints.json (default: the chain's
+#                       loopback producer, from [sidechain.<name>].port, when it answers)
 #   --relays a,b        relays to ask (default: the five the producer announces to)
 #   --nostr-capture F   JSONL of signed events captured while the session ran. Kinds
 #                       23500 and 23600 are NIP-01 ephemeral (20000-29999): relays
@@ -34,7 +43,8 @@
 # Required elements (each a check in the receipt; any FAIL or NOT-RUN exits 1)
 #   R1 sidestr-core replays the mirror's block file from genesis to a tip hash
 #   R2 the mirror's blocks.json names that same hash at that height
-#   S1 the payment is in the replayed chain (height, block hash, position)
+#   S1 every payment is in the replayed chain (height, block hash, position)
+#   P1 each payment spends one agent's coin and pays the other (payer, payee, amount)
 #   S2 its funding is in the replayed chain
 #   S3 with a Hitch session, the close is in the replayed chain
 #   A1 anchoring is stated: a parent checkpoint at or above the highest height
@@ -59,16 +69,14 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HELPER_DIR="$REPO/scripts/activation/sidechain-witness-replay"
 
-usage() { sed -n '2,56p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,66p' "$0" | sed 's/^# \{0,1\}//'; }
 
 ARGS=()
 OUT=""
-PRODUCER_SET=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
     --out) OUT="$2"; shift 2 ;;
-    --producer) PRODUCER_SET=1; ARGS+=("$1" "$2"); shift 2 ;;
     --public-only) ARGS+=("$1"); shift ;;
     --*) [ $# -ge 2 ] || { echo "sidechain-demo-witness: $1 needs a value" >&2; exit 2; }
          ARGS+=("$1" "$2"); shift 2 ;;
@@ -84,12 +92,6 @@ if [ ! -x "$REPLAY_BIN" ]; then
   command -v cargo >/dev/null 2>&1 || { echo "sidechain-demo-witness: no replay helper at $REPLAY_BIN and no cargo to build it" >&2; exit 2; }
   echo "building the replay helper (crates.io sidestr-core) ..." >&2
   cargo build --release --locked --quiet --manifest-path "$HELPER_DIR/Cargo.toml" >&2
-fi
-
-# The loopback producer, when it answers, is read for checkpoints.json.
-if [ "$PRODUCER_SET" = 0 ]; then
-  LOOP="http://127.0.0.1:${SIDESTR_PORT:-3450}"
-  if curl -sf -m 3 "$LOOP/tip" >/dev/null 2>&1; then ARGS+=(--producer "$LOOP"); fi
 fi
 
 [ -n "$OUT" ] || OUT="$REPO/.claude/evidence/sidechain/$(date -u +%Y%m%dT%H%M%SZ).json"

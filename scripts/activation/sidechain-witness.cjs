@@ -8,8 +8,8 @@
  * It never signs, never broadcasts and never spends.
  *
  * Usage (normally through the .sh wrapper, which documents every flag):
- *   node sidechain-witness.cjs --chain sidestr:dreamlab --agent <hex> --agent <hex> \
- *     --payment <txid> [--funding <txid>]... [--close <txid>] [--hitch-session <id>] \
+ *   node sidechain-witness.cjs [--chain sidestr:<name>] --agent <hex> --agent <hex> \
+ *     --payment <txid> [--payment <txid>]... [--funding <txid>]... [--close <txid>] [--hitch-session <id>] \
  *     [--session-urn <urn> | --harness <name>] [--mirror <url>] [--producer <url>] \
  *     [--relays a,b] [--nostr-capture FILE] [--events-dir DIR] [--public-only] \
  *     --replay-bin PATH --out FILE
@@ -40,11 +40,14 @@ const SC5_REASON = 'checkpoints off, cost; open';
 const SC5_DECISION = 'owner decision 2026-10-02, SC5';
 const DEFAULT_RELAYS = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net', 'wss://nostr.mom', 'wss://nostr.oxtr.dev'];
 const HEX64 = /^[0-9a-f]{64}$/;
+/** The demo chain (owner decision 2026-10-02, SC1). */
+const DEFAULT_CHAIN = 'dreamlab-txbt4';
+const SCHEMA = 'sidechain-witness/1';
 const KIND = { tx: 23500, hitch: 23600, tip: 33333, chain: 3500 };
 
 // ── arguments ───────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const a = { agents: [], funding: [], relays: null, publicOnly: false, harness: 'sidestr-agent' };
+  const a = { agents: [], payments: [], funding: [], relays: null, publicOnly: false, harness: 'sidestr-agent' };
   for (let i = 0; i < argv.length; i += 1) {
     const k = argv[i];
     const v = () => {
@@ -56,7 +59,7 @@ function parseArgs(argv) {
     switch (k) {
       case '--chain': a.chain = v(); break;
       case '--agent': a.agents.push(v().toLowerCase()); break;
-      case '--payment': a.payment = v().toLowerCase(); break;
+      case '--payment': a.payments.push(v().toLowerCase()); break;
       case '--funding': a.funding.push(v().toLowerCase()); break;
       case '--close': a.close = v().toLowerCase(); break;
       case '--hitch-session': a.hitchSession = v(); break;
@@ -74,13 +77,16 @@ function parseArgs(argv) {
       default: throw new Error(`unknown argument ${k}`);
     }
   }
-  if (!a.chain) throw new Error('--chain is required (sidestr:<name> or the 64-hex chain event id)');
+  // The demo chain by default (owner SC1): SIDESTR_CHAIN names it as run-producer.sh does.
+  if (!a.chain) a.chain = `sidestr:${process.env.SIDESTR_CHAIN || DEFAULT_CHAIN}`;
+  if (!HEX64.test(a.chain) && !a.chain.startsWith('sidestr:')) a.chain = `sidestr:${a.chain}`;
   if (a.agents.length !== 2 || !a.agents.every((p) => HEX64.test(p))) throw new Error('exactly two --agent x-only pubkeys (64 hex) are required');
   if (a.agents[0] === a.agents[1]) throw new Error('the two --agent keys must differ');
-  for (const t of [a.payment, ...a.funding, a.close].filter((x) => x !== undefined)) {
+  for (const t of [...a.payments, ...a.funding, a.close].filter((x) => x !== undefined)) {
     if (!HEX64.test(t)) throw new Error(`not a txid: ${t}`);
   }
-  if (!a.payment) throw new Error('--payment <txid> is required');
+  if (!a.payments.length) throw new Error('--payment <txid> is required');
+  a.payment = a.payments[0];
   if (!a.replayBin) throw new Error('--replay-bin is required');
   if (!a.out) throw new Error('--out is required');
   a.relays = a.relays || DEFAULT_RELAYS;
@@ -221,6 +227,64 @@ async function queryRelays(relays, filters, timeoutMs, verify) {
 
 const tagOf = (ev, name) => (ev.tags || []).filter((t) => t[0] === name).map((t) => t[1]);
 
+/**
+ * The receipt's first line. Unanchored, it is the wording of
+ * scripts/sidechain/preflight-liquidity.sh, so the demo says one thing.
+ */
+function notAnchoredLine(alias, parent, anchoring) {
+  if (anchoring && anchoring.anchored) {
+    return `anchored: checkpoint ${anchoring.checkpoint.parent_txid} in ${parent} covers ${alias} height ${anchoring.checkpoint.covers_height}`;
+  }
+  return `NOT ANCHORED: no checkpoint of ${alias} exists in ${parent} (checkpoints are off; for txbt4 that is owner decision SC5). Every block is the single signer's word; the demo must say so.`;
+}
+
+/** The chain's loopback producer URL when it answers /tip, else null. */
+async function loopbackProducer(alias, timeoutMs) {
+  const name = String(alias).replace(/^sidestr:/, '');
+  let port = null;
+  if (name === 'dreamlab') {
+    port = Number(process.env.SIDESTR_PORT || 3450);
+  } else {
+    try {
+      process.env.AGENTBOX_MANIFEST_PATH = process.env.AGENTBOX_MANIFEST_PATH || path.join(REPO, 'agentbox.toml');
+      const { loadManifest } = require(path.join(REPO, 'management-api', 'adapters', 'manifest-loader'));
+      const t = ((loadManifest() || {}).sidechain || {})[name];
+      port = t && Number(t.port);
+    } catch (_) { port = null; }
+  }
+  if (!port) return null;
+  const url = `http://127.0.0.1:${port}`;
+  const r = await fetchWith(`${url}/tip`, Math.min(timeoutMs, 3000), 'json');
+  return r.ok ? url : null;
+}
+
+// ── payments (pure) ─────────────────────────────────────────────────────────
+const scriptOf = (pk) => `5120${pk}`;
+const didOf = (pk) => `did:nostr:${pk}`;
+
+/**
+ * Who paid whom how much, read from the replayed transaction: the payer is
+ * the agent whose coin it spends, the payee the other agent, the amount the
+ * sum of its outputs to the payee's script (change back to the payer is not
+ * counted). null payer/payee when the transaction does not move sats between
+ * the two agent keys.
+ */
+function describePayment(txid, tx, agents) {
+  if (!tx || !tx.found) return { txid, found: false, payer: null, payee: null, amount_sats: null, block_height: null, block_hash: null };
+  const payers = agents.filter((pk) => (tx.spends || []).some((i) => i.script === scriptOf(pk)));
+  const payer = payers.length === 1 ? payers[0] : null;
+  const payee = payer ? agents.find((pk) => pk !== payer) : null;
+  const amount = payee ? (tx.outputs || []).filter((o) => o.script === scriptOf(payee)).reduce((s, o) => s + o.value, 0) : null;
+  return {
+    txid,
+    payer: payer ? didOf(payer) : null,
+    payee: payee && amount > 0 ? didOf(payee) : null,
+    amount_sats: payee && amount > 0 ? amount : null,
+    block_height: tx.at.height,
+    block_hash: tx.at.hash,
+  };
+}
+
 // ── evaluation (pure) ───────────────────────────────────────────────────────
 /**
  * Decide each required element from the gathered facts. Pure, so the
@@ -239,10 +303,18 @@ function evaluate(f) {
   add('R2', true, !!r.tip_hash && f.mirrorIndexHash === r.tip_hash,
     `mirror blocks.json names ${f.mirrorIndexHash || 'nothing'} at height ${r.height}; the replay reached ${r.tip_hash || 'nothing'}`);
 
-  const pay = txs[f.payment];
-  add('S1', true, !!(pay && pay.found), pay && pay.found
-    ? `payment ${f.payment} at height ${pay.at.height}, block ${pay.at.hash}`
-    : `payment ${f.payment} is not in the replayed chain`);
+  const payments = f.payments || [f.payment];
+  const missing = payments.filter((t) => !(txs[t] && txs[t].found));
+  add('S1', true, missing.length === 0, missing.length === 0
+    ? payments.map((t) => `payment ${t} at height ${txs[t].at.height}, block ${txs[t].at.hash}`).join('; ')
+    : `payment ${missing.join(', ')} is not in the replayed chain`);
+  const described = payments.map((t) => describePayment(t, txs[t], f.agents));
+  const strays = described.filter((d) => d.found !== false && !(d.payer && d.payee));
+  add('P1', true, missing.length === 0 && strays.length === 0, missing.length
+    ? 'payments not located, so payer and payee are unknown'
+    : strays.length === 0
+      ? described.map((d) => `${d.payer.slice(10, 22)}… paid ${d.payee.slice(10, 22)}… ${d.amount_sats} sats`).join('; ')
+      : `${strays.map((d) => d.txid).join(', ')} does not move sats from one agent key to the other`);
 
   const funding = f.funding || [];
   const fundingFound = funding.length > 0 && funding.every((t) => txs[t] && txs[t].found);
@@ -300,7 +372,8 @@ function evaluate(f) {
 function claims(f) {
   const proves = [
     'sidestr-core (crates.io, exact version in replay.engine) validated every block of the published mirror from the genesis to replay.tip_hash under the chain\'s consensus rules',
-    'the payment (and funding, and close when present) are in that validated chain at the heights and block hashes given',
+    'the payments (and funding, and close when present) are in that validated chain at the heights and block hashes given, each spending a coin of one agent key and paying the other the amount stated',
+    'replay.balances are the settled sats at each agent key\'s script in the validated UTXO set at replay.height (in-session, off-chain Hitch state is not counted)',
     'the mirror\'s own index agrees with the replayed tip hash',
     'the chain signer announced a tip at or above the highest height cited, in a kind-33333 event whose signature verifies',
     'each agent key signed at least one kind-23500/23600 event (from the relays or the capture file); every event is embedded in nostr.events and its id and signature verify',
@@ -330,7 +403,7 @@ async function main() {
   }
   const verify = loadVerifier();
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'sidechain-witness-'));
-  const facts = { agents: a.agents, payment: a.payment, publicOnly: a.publicOnly, notes: [] };
+  const facts = { agents: a.agents, payment: a.payment, payments: a.payments, publicOnly: a.publicOnly, notes: [] };
   try {
     // 1. Chain alias, signer and mirror: from the arguments, else discovered.
     let alias = a.chain;
@@ -341,14 +414,27 @@ async function main() {
       alias = chainEvent ? (tagOf(chainEvent, 'n')[0] || null) : null;
       if (!alias) throw new Error(`no kind-3500 chain event ${a.chain} on the relays`);
     }
+    // The chain's own loopback producer (read for checkpoints, and the mirror of
+    // last resort): dreamlab on SIDESTR_PORT/3450, any other chain on its
+    // [sidechain.<name>].port in agentbox.toml.
+    if (!a.producer) a.producer = await loopbackProducer(alias, a.timeoutMs);
     const tipQ = await queryRelays(a.relays, [{ kinds: [KIND.tip], '#d': [alias], limit: 20 }], a.timeoutMs, verify);
     const tips = tipQ.events.sort((x, y) => y.created_at - x.created_at);
     let mirror = a.mirror || null;
     if (!mirror) {
       const u = tips.length ? (tips[0].tags || []).find((t) => t[0] === 'u') : null;
       mirror = u ? u[1].replace(/\/+$/, '') : null;
-      if (!mirror) throw new Error(`no --mirror and no kind-33333 announcement for ${alias} names one`);
-      facts.notes.push(`mirror discovered from kind-33333 ${tips[0].id}`);
+      if (mirror) {
+        facts.notes.push(`mirror discovered from kind-33333 ${tips[0].id}`);
+      } else if (a.producer) {
+        // No public mirror yet (a chain not yet announced): the producer's own
+        // files, still replayed and validated here, but no longer a third copy.
+        mirror = a.producer;
+        facts.mirrorSource = 'producer';
+        facts.notes.push(`no kind-33333 announcement names a mirror for ${alias}: replayed the producer's own block file (${a.producer}); a stranger cannot re-run this until a public mirror exists`);
+      } else {
+        throw new Error(`no --mirror, no kind-33333 announcement for ${alias} names one, and no producer answers`);
+      }
     }
 
     // 2. The public files.
@@ -385,7 +471,9 @@ async function main() {
     fs.writeFileSync(path.join(scratch, 'decode.txt'), txEvents.map((e) => `${e.id} ${String(e.content).trim()}`).join('\n'));
 
     // 4. Independent replay, locating the payment and what it spends.
-    const replayArgs = ['--chain', path.join(scratch, 'chain.json'), '--blocks', path.join(scratch, 'blocks.dat'), '--decode', path.join(scratch, 'decode.txt'), '--txid', a.payment];
+    const replayArgs = ['--chain', path.join(scratch, 'chain.json'), '--blocks', path.join(scratch, 'blocks.dat'), '--decode', path.join(scratch, 'decode.txt')];
+    for (const t of a.payments) replayArgs.push('--txid', t);
+    for (const pk of a.agents) replayArgs.push('--script', scriptOf(pk));
     for (const t of a.funding) replayArgs.push('--txid', t);
     if (a.close) replayArgs.push('--txid', a.close);
     let replay = null;
@@ -396,19 +484,21 @@ async function main() {
     }
     // Funding defaults to what the payment spends; a second pass locates it.
     let funding = a.funding;
-    if (replay && funding.length === 0 && replay.txs[a.payment] && replay.txs[a.payment].found) {
-      funding = [...new Set(replay.txs[a.payment].spends.map((s) => s.txid))];
+    if (replay && funding.length === 0) {
+      funding = [...new Set(a.payments.flatMap((t) => (replay.txs[t] && replay.txs[t].found ? replay.txs[t].spends.map((s) => s.txid) : [])))]
+        .filter((t) => !a.payments.includes(t));
     }
     let close = a.close;
     const closeRequired = !!a.hitchSession;
     if (replay && (funding.length || (closeRequired && !close))) {
-      const again = ['--chain', path.join(scratch, 'chain.json'), '--blocks', path.join(scratch, 'blocks.dat'), '--txid', a.payment];
+      const again = ['--chain', path.join(scratch, 'chain.json'), '--blocks', path.join(scratch, 'blocks.dat')];
+      for (const t of a.payments) again.push('--txid', t);
       for (const t of funding) again.push('--txid', t);
       if (close) again.push('--txid', close);
       const r2 = JSON.parse(execFileSync(a.replayBin, again, { encoding: 'utf8', maxBuffer: 64 << 20 }));
       if (closeRequired && !close) {
         // The close of a Hitch channel is the transaction that spends its funding output.
-        const spender = funding.map((t) => r2.txs[t]).filter((x) => x && x.found).flatMap((x) => x.spent_by).find((s) => s.by !== a.payment);
+        const spender = funding.map((t) => r2.txs[t]).filter((x) => x && x.found).flatMap((x) => x.spent_by).find((s) => !a.payments.includes(s.by));
         if (spender) {
           close = spender.by;
           facts.notes.push(`close found as the spender of funding output ${spender.vout}`);
@@ -434,7 +524,7 @@ async function main() {
     } catch (_) { agentCross = null; }
 
     // 5. Anchoring: a checkpoint at or above the highest cited height, or the stated reason.
-    const heights = [a.payment, ...funding, close].filter(Boolean).map((t) => replay && replay.txs[t] && replay.txs[t].found ? replay.txs[t].at.height : null).filter((h) => h !== null);
+    const heights = [...a.payments, ...funding, close].filter(Boolean).map((t) => replay && replay.txs[t] && replay.txs[t].found ? replay.txs[t].at.height : null).filter((h) => h !== null);
     facts.highestHeight = heights.length ? Math.max(...heights) : null;
     const checked = [];
     let checkpoints = null;
@@ -473,7 +563,8 @@ async function main() {
     }
     facts.agentEvents = agentEvents;
     const decoded = (replay && replay.decoded) || {};
-    facts.paymentEvent = Object.entries(decoded).find(([, txid]) => txid === a.payment)?.[0] || null;
+    facts.paymentEvent = Object.entries(decoded).find(([, txid]) => a.payments.includes(txid))?.[0] || null;
+    const paymentEvents = Object.fromEntries(a.payments.map((t) => [t, Object.entries(decoded).find(([, txid]) => txid === t)?.[0] || null]));
     facts.tipEvent = tipEv ? { id: tipEv.id, pubkey: tipEv.pubkey, created_at: tipEv.created_at, tip: Number(tagOf(tipEv, 'tip')[0]), mirrors: tagOf(tipEv, 'u') } : null;
 
     // 7. Journal.
@@ -490,17 +581,25 @@ async function main() {
     }
 
     const { checks, verdict } = evaluate(facts);
+    const headline = notAnchoredLine(alias, doc.parent, facts.anchoring);
+    const payments = a.payments.map((t) => ({ ...describePayment(t, replay && replay.txs[t], a.agents), nostr_event: paymentEvents[t] || null }));
     const receipt = {
+      schema: SCHEMA,
+      headline,
       receipt: 'sidechain-demo-witness',
       format: 1,
       produced_at: new Date().toISOString(),
       produced_by: 'scripts/activation/sidechain-demo-witness.sh',
       checkout_head: (() => { try { return execFileSync('git', ['-C', REPO, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(); } catch (_) { return null; } })(),
       verdict,
-      inputs: { chain: a.chain, agents: a.agents, payment: a.payment, funding: a.funding, close: a.close || null, hitch_session: a.hitchSession || null, session_urn: sessionUrn, mirror, producer: a.producer || null, relays: a.relays, nostr_capture: a.capture || null, public_only: a.publicOnly },
-      chain: { alias, signer, parent: doc.parent, genesis_hash: doc.genesisHash, chain_event: chainEvent ? chainEvent.id : null, chain_json_sha256: crypto.createHash('sha256').update(JSON.stringify(doc)).digest('hex') },
+      chain: alias,
+      checkpoint: facts.anchored ? facts.anchoring.checkpoint : null,
+      checkpoints: facts.anchored ? 'on' : 'off',
+      payments,
+      inputs: { chain: a.chain, agents: a.agents, payments: a.payments, funding: a.funding, close: a.close || null, hitch_session: a.hitchSession || null, session_urn: sessionUrn, mirror, producer: a.producer || null, relays: a.relays, nostr_capture: a.capture || null, public_only: a.publicOnly },
+      chain_document: { alias, signer, parent: doc.parent, mirror_source: facts.mirrorSource || 'mirror', genesis_hash: doc.genesisHash, chain_event: chainEvent ? chainEvent.id : null, chain_json_sha256: crypto.createHash('sha256').update(JSON.stringify(doc)).digest('hex') },
       sidechain: {
-        payment: replay && replay.txs[a.payment] ? { txid: a.payment, ...replay.txs[a.payment] } : { txid: a.payment, found: false },
+        payments: a.payments.map((t) => (replay && replay.txs[t] ? { txid: t, ...replay.txs[t] } : { txid: t, found: false })),
         funding: funding.map((t) => ({ txid: t, ...((replay && replay.txs[t]) || { found: false }) })),
         close: closeRequired ? (close ? { txid: close, ...((replay && replay.txs[close]) || { found: false }) } : { found: false }) : { applicable: false, reason: 'no Hitch session named' },
       },
@@ -517,8 +616,13 @@ async function main() {
       },
       journal: facts.journal,
       replay: replay ? {
-        engine: replay.engine,
+        engine: `sidestr-core ${replay.engine.version} (crates.io, ${replay.engine.header_family} family${replay.engine.header_family === 'stock' ? '' : `, ${replay.engine.family_crate}`})`,
+        engine_detail: replay.engine,
         height: replay.height,
+        balances: a.agents.map((pk) => {
+          const b = (replay.balances || {})[scriptOf(pk)] || { sats: null, coins: null };
+          return { did: didOf(pk), pubkey: pk, script: scriptOf(pk), settled_sats: b.sats, coins: b.coins };
+        }),
         tip_hash: replay.tip_hash,
         tip_time: replay.tip_time,
         genesis_hash: replay.genesis_hash,
@@ -526,7 +630,7 @@ async function main() {
         blocks_dat_bytes: replay.blocks_dat_bytes,
         mirror_index_hash_at_tip: facts.mirrorIndexHash,
         cross_check: agentCross,
-        rerun: `curl -sO ${mirror}/chain.json && curl -sO ${mirror}/blocks.dat && cargo run --release --manifest-path scripts/activation/sidechain-witness-replay/Cargo.toml -- --chain chain.json --blocks blocks.dat --txid ${a.payment}`,
+        rerun: `curl -sO ${mirror}/chain.json && curl -sO ${mirror}/blocks.dat && cargo run --release --manifest-path scripts/activation/sidechain-witness-replay/Cargo.toml -- --chain chain.json --blocks blocks.dat ${a.payments.map((t) => ` --txid ${t}`).join('')}${a.agents.map((pk) => ` --script ${scriptOf(pk)}`).join('')}`,
       } : { error: facts.replayError || 'replay did not run' },
       checks,
       claims: claims(facts),
@@ -534,13 +638,15 @@ async function main() {
     };
     fs.mkdirSync(path.dirname(a.out), { recursive: true });
     fs.writeFileSync(a.out, `${JSON.stringify(receipt, null, 2)}\n`);
+    // First line, always: the anchoring state, in the wording S0's preflight uses.
+    process.stderr.write(`${headline}\n${facts.anchored ? 'checkpoints=on' : `checkpoints=off reason="${SC5_REASON}" (${SC5_DECISION})`}\n\n`);
     for (const c of checks) process.stderr.write(`${c.id.padEnd(4)} ${c.status.padEnd(7)} ${c.required ? 'req' : 'opt'}  ${c.summary}\n`);
     process.stderr.write(`\nverdict: ${verdict}; receipt: ${a.out}\n`);
     process.exitCode = verdict === 'PASS' ? 0 : 1;
   } catch (err) {
     process.stderr.write(`sidechain-witness: ${err.message}\n`);
     fs.mkdirSync(path.dirname(a.out), { recursive: true });
-    fs.writeFileSync(a.out, `${JSON.stringify({ receipt: 'sidechain-demo-witness', format: 1, produced_at: new Date().toISOString(), verdict: 'FAIL', error: err.message, inputs: { chain: a.chain, agents: a.agents, payment: a.payment } }, null, 2)}\n`);
+    fs.writeFileSync(a.out, `${JSON.stringify({ schema: SCHEMA, receipt: 'sidechain-demo-witness', format: 1, produced_at: new Date().toISOString(), verdict: 'FAIL', error: err.message, chain: a.chain, checkpoint: null, inputs: { chain: a.chain, agents: a.agents, payments: a.payments } }, null, 2)}\n`);
     process.exitCode = 1;
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
@@ -549,4 +655,4 @@ async function main() {
 
 if (require.main === module) main();
 
-module.exports = { parseArgs, pairJournal, evaluate, claims, SC5_REASON, SC5_DECISION, sessionUrnFor };
+module.exports = { parseArgs, pairJournal, evaluate, claims, describePayment, notAnchoredLine, SC5_REASON, SC5_DECISION, SCHEMA, DEFAULT_CHAIN, sessionUrnFor };

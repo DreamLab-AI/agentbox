@@ -433,10 +433,26 @@ is true only when the producer reports a checkpoint. Evidence: the 20 cases in
 `tests/sovereign/sidechain-health.node-test.js`. Among them, a loopback siding at 2 s blocks
 turns red about one second after `kill -STOP`, and goes green again after `SIGCONT`.
 
-**The demo witness.** `scripts/activation/sidechain-demo-witness.sh` takes a chain id, two
-agent pubkeys and a payment txid, and optionally a Hitch session. It writes
+**The demo witness.** `scripts/activation/sidechain-demo-witness.sh` takes two agent pubkeys
+and one or more payment txids, and optionally a chain and a Hitch session. The chain defaults
+to `SIDESTR_CHAIN`, else the demo chain `sidestr:dreamlab-txbt4` (owner SC1). It writes
 `.claude/evidence/sidechain/<UTC>.json` and exits 1 unless every required check passes.
-The receipt is `format: 1` and has these parts:
+Its first line of output is the anchoring state, in the wording of
+`scripts/sidechain/preflight-liquidity.sh` ("NOT ANCHORED: no checkpoint of … exists in …").
+The second line is `checkpoints=off` with SC5's reason. The receipt is
+`schema: "sidechain-witness/1"`. Its top level carries the fields the render rehearsal
+(stream S5) diffs against the screen:
+
+- `headline` and `chain` (the alias).
+- `checkpoint`: null while unanchored.
+- `payments[] {txid, payer, payee, amount_sats, block_height, block_hash}`. The payer is the
+  agent whose coin the transaction spends. The amount is what reaches the other agent's
+  script; change is not counted. Check P1 fails a transaction that does not move sats from one
+  agent key to the other.
+- `replay.balances[] {did, settled_sats, coins}`: the settled sats at each agent's `5120<key>`
+  script in the validated UTXO set. In-session Hitch state is not counted.
+
+The receipt also has these parts:
 
 - `sidechain`: the payment, its funding and, with a Hitch session, the close. Each carries
   its height, block hash, position, the outpoints it spends, and its later spenders.
@@ -453,6 +469,10 @@ The receipt is `format: 1` and has these parts:
 - `checks`, plus `claims {proves, does_not_prove}`. An unanchored receipt's first disclaimer
   says it is not anchored.
 
+With no public mirror yet (no kind-33333 announcement names one), the witness replays the
+producer's own block file. It still validates every block, but it notes that a stranger cannot
+re-run the replay until a mirror exists.
+
 The replay helper (`scripts/activation/sidechain-witness-replay`) is a standalone, unpublished
 binary. It takes `sidestr-core` and `sidestr-header` by exact crates.io version, never by path or
 git (ADR-2112),
@@ -466,12 +486,13 @@ Two findings shaped the format:
   captured while the session runs and passed as `--nostr-capture`. The Hitch host (stream S2)
   owns writing that capture.
 - The read-only trial on 2026-10-02 used the 23 September payment `fbb7bf26…`. It replayed
-  the mirror to tip 943, `1fe4e931…`. That hash matches the mirror index, and the baked
+  the mirror to tip 943, `1fe4e931…` (a rerun reached 947). That hash matches the mirror index, and the baked
   `sidestr-agent` 0.3.2 reached the same height. The trial located the payment at height 240
-  and its funding at 131, and stated non-anchoring. It failed N2/N3 (no stored agent events)
+  and its funding at 131. It read alice → bob 30,000 sats and settled balances of 0 and
+  1,330, which match the producer's `/coins`. It stated non-anchoring. It failed N2/N3 (no stored agent events)
   and J1 (no journal session) as designed. The BLAKE2b family replays the sealed
   `sidestr:dreamlab-txbt4` genesis to its document's `genesisHash` (`1009aa29…`).
-  Evidence: the 25 cases in `tests/sovereign/sidechain-witness.node-test.js`.
+  Evidence: the 30 cases in `tests/sovereign/sidechain-witness.node-test.js`.
   - The end-to-end case runs against a loopback chain, an in-process relay and a fixture
     journal. It asserts that the Rust replay reaches the JS producer's tip hash, and that a
     tampered capture line is refused.
