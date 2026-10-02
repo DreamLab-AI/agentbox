@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: a238a37641a08999d92c1a036211d5d95c1d8b29
+verified_commit: f63760e1976deef544bb08b13bcf3ce30aca578c
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md

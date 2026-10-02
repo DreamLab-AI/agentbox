@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
+verified_commit: f63760e1976deef544bb08b13bcf3ce30aca578c
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route

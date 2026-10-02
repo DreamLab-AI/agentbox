@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fc56e7a97cb437502c09d8f512cbb547efb6546c
+verified_commit: f63760e1976deef544bb08b13bcf3ce30aca578c
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
+verified_commit: f63760e1976deef544bb08b13bcf3ce30aca578c
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
