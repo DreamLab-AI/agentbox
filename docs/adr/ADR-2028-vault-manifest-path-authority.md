@@ -2,12 +2,12 @@
 id: ADR-2028
 title: "`[vault]` in agentbox.toml is the single path authority for the authored corpus; no consumer hard-codes a Logseq path"
 date: 2026-09-02
-decision_status: proposed
-implementation_status: partial
-activation_status: staged
+decision_status: accepted
+implementation_status: complete
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: a238a37641a08999d92c1a036211d5d95c1d8b29
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -37,7 +37,7 @@ against a stale tree.
    [vault]
    root   = "/home/devuser/workspace/visionGraph/knowledge"   # vault root = the visionGraph corpus checkout, knowledge/ vault (bind-mounted)
    pages  = "pages"                            # authored pages, relative to root
-   format = "obsidian"                         # obsidian | logseq-legacy (read-tolerance only)
+   format = "obsidian"                         # obsidian only (logseq-legacy withdrawn 2026-09-22)
    tui    = "rune"                             # rune | none — see ADR-2029
    working     = "/home/devuser/workspace/visionGraph/working"      # second vault root (pages at <working>/pages)
    transcripts = "/home/devuser/workspace/visionGraph/transcripts"  # podcast transcript store, outside both vaults
@@ -62,8 +62,8 @@ against a stale tree.
 4. Skills that write pages (`podcast-knowledge-ingest`, `web-summary`'s
    note-link mode) emit the frontmatter format of the governing doc
    `project/docs/VAULT-corpus-format.md` §V2; `web-summary`'s default
-   `format` becomes `obsidian`. The Logseq option remains selectable but is
-   documented as legacy.
+   `format` becomes `obsidian`. The Logseq option was withdrawn on 2026-09-22;
+   `obsidian` is the only format (see the Disposition, 2026-10-02).
 5. `system-manifest` reports the resolved vault root and format so the
    management API and the doctor can show drift.
 
@@ -163,4 +163,4 @@ CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. An isolate
 - **Suitability:** fits, needs revision
 - **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records"; CY-A4 ratchet to 20 Oct)
 - **Why:** The image booted on 2026-10-01 projects the manifest: `/run/agentbox/runtime-env.sh` exports `VAULT_ROOT`, `VAULT_PAGES`, `VAULT_WORKING_*`, `VAULT_TRANSCRIPTS`, `VAULT_FORMAT=obsidian`, `VAULT_TUI=rune` and `VAULT_REPO`, all verified in this session. The text has fallen behind in three places. `logseq-legacy` is no longer a `format` value (only `obsidian`, per the ADR-2105 re-verification of `d6b976271`). The `repo` key and `VAULT_REPO` were added. The Logseq-to-Obsidian inclusion-equivalence item in Remaining is moot, because the converter is retired (host ADR-2117, TODO N-1). ADR-2107 now names the vault CLI as the agent door, building on this record.
-- **Next:** Note the three revisions in an amendment, then it is ready to accept, with activation `live` on the runtime-env evidence above.
+- **Next:** Note the three revisions in an amendment, then it is ready to accept, with activation `live` on the runtime-env evidence above. **Accepted — owner decision 2026-10-02, Q8** (re-verified at `a238a3764`: `/run/agentbox/runtime-env.sh` exports all eight `VAULT_*` names, `VAULT_FORMAT="obsidian"`, `VAULT_TUI="rune"`). Revisions made in place: Decision 1's `format` comment and Decision 4 now say `obsidian` is the only format; Decision 2's export list is extended by the `repo` key's `VAULT_REPO` (added at `d6b976271`, ADR-2105 re-verification); the inclusion-equivalence item under Remaining (2026-09-05) is moot because the converter is retired (host ADR-2117). `implementation_status: complete`, `activation_status: live`.

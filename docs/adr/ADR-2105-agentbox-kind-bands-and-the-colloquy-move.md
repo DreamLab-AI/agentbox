@@ -2,12 +2,12 @@
 id: ADR-2105
 title: The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499
 date: 2026-09-21
-decision_status: proposed
+decision_status: accepted
 implementation_status: partial
-activation_status: inactive
+activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: fc56e7a97cb437502c09d8f512cbb547efb6546c
+verified_commit: a238a37641a08999d92c1a036211d5d95c1d8b29
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -111,8 +111,8 @@ old kinds are not migrated: none existed outside the container except the single
   obvious-looking gap at `38202`-`38299` is not one: agentbox has spent only two
   numbers there, but the host reserves the whole hundred for payment, and a band
   reservation counts even when most of it is unspent.
-- Still open: neither allocation is fixture-backed under the ADR-2061 symmetric
-  kind-map contract. That merge requirement is unchanged and unmet.
+- Residual (named at acceptance, 2026-10-02): neither allocation is fixture-backed
+  yet under the ADR-2061 symmetric kind-map contract; that lands with ADR-2061.
 
 ## Verification
 
@@ -136,12 +136,12 @@ old kinds are not migrated: none existed outside the container except the single
   ADR-2085's Verification, this record's Context, the crate READMEs' changelogs
   and the frozen research pack.
 
-**Not done, and why.** `colloquy-nostr` `0.2.0` and `colloquy-store` `0.2.0` are
-**not published**: `cargo publish` was refused by this session's permission
-classifier as a public-surface action, so the version bumps, changelogs and the
-forum's `0.2` pins are staged but unreleased. Until they are published, this
-record stays `proposed`/`partial` and the forum keeps building against a path
-patch rather than the registry. Everything above is verified.
+**Published since.** `colloquy-nostr` and `colloquy-store` were first held back
+(`cargo publish` refused as a public-surface action) and are now on crates.io at
+`0.2.1`; the forum's `colloquy-nostr = "0.2"` pin resolves from the registry
+(`Cargo.lock`: `colloquy-nostr 0.2.1`, `source = registry+…crates.io-index`),
+not a path patch (re-verified 2026-10-02). The ADR-2061 fixture rows remain a
+named residual, which keeps `implementation_status: partial`.
 
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
@@ -152,4 +152,4 @@ patch rather than the registry. Everything above is verified.
 - **Suitability:** fits, needs revision
 - **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records")
 - **Why:** The only blocker the record names, "colloquy-nostr 0.2.0 and colloquy-store 0.2.0 are not published", is resolved. Both are on crates.io at 0.2.1, and the forum client pins `colloquy-nostr = "0.2"` from the registry (`nostr-rust-forum/crates/nostr-bbs-forum-client/Cargo.toml:36`). Still open is fixture backing for both allocations under ADR-2061. The settlement half (38420–38425) only reserves numbers for records that are still proposed and parked.
-- **Next:** Amend "Not done, and why" to record the 0.2.1 publication, then accept the band rule and the colloquy move. The ADR-2061 fixture rows remain a named residual.
+- **Next:** Amend "Not done, and why" to record the 0.2.1 publication, then accept the band rule and the colloquy move. The ADR-2061 fixture rows remain a named residual. **Accepted — owner decision 2026-10-02, Q8** (re-verified at `a238a3764`: crates.io `max_version` 0.2.1 for both crates; the forum `Cargo.lock` resolves `colloquy-nostr 0.2.1` from the registry). Revisions made in place: Verification's "Not done, and why" now records the publication, and the Consequences residual names the ADR-2061 fixture as following ADR-2061 rather than gating this record. `implementation_status: partial` (fixture rows); `activation_status: staged`: the manifest relay admits `38410`-`38415` (`agentbox.toml:174`), but no colloquy store or event exists in this container yet, and the settlement half is only reserved.

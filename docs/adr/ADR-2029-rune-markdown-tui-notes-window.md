@@ -2,12 +2,12 @@
 id: ADR-2029
 title: "Rune is the first-class markdown TUI; tmux window 9 \"Notes\" opens it at the vault root"
 date: 2026-09-02
-decision_status: proposed
+decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: a238a37641a08999d92c1a036211d5d95c1d8b29
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -170,4 +170,4 @@ CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. The curren
 - **Suitability:** fits
 - **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records")
 - **Why:** The image has it baked: `rune` resolves to `/nix/store/…-rune-1.5.0-dreamlab.1/bin/rune` and reports `rune 1.5.0-dreamlab.1`, the fork pinned by the 2026-09-25 amendment (`ebca7d62e`, `b558d0d9a`). tmux window `9: Notes` is running in the `agentbox` session. The notes window is part of the operator console that §9 counts as first-class demonstrator work. Two things are still untested: concurrent-edit and restart recovery of the Rune journal.
-- **Next:** Ready to accept on the baked binary and the live window 9. Record activation `live` and keep the journal-recovery test as a named residual.
+- **Next:** Ready to accept on the baked binary and the live window 9. Record activation `live` and keep the journal-recovery test as a named residual. **Accepted — owner decision 2026-10-02, Q8** (re-verified at `a238a3764`: `rune --version` → `rune 1.5.0-dreamlab.1` from `/nix/store/irlv87k4…-rune-1.5.0-dreamlab.1`; tmux `agentbox` window `9: Notes` running). `activation_status: live`. Residual: the Rune journal's concurrent-edit and restart recovery is still untested.

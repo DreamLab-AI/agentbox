@@ -2,12 +2,12 @@
 id: ADR-2088
 title: JunkieJarvis grills the author before acting on an unclear forum item
 date: 2026-09-15
-decision_status: proposed
+decision_status: accepted
 implementation_status: complete
-activation_status: inactive
+activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: a238a37641a08999d92c1a036211d5d95c1d8b29
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, scripts/dream-forum-suggestions.mjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -127,14 +127,14 @@ Against the uncommitted working tree, with `jest` from `management-api/`:
 - `junkiejarvis-agent.test.js` passes unchanged, which is the evidence that lifting
   `_sendDm` into `sendGiftWrappedDm` preserved the agent's DM behaviour.
 
-`activation_status: inactive` — `[sovereign_mesh].junkiejarvis = false` in the running
-manifest, so the forum agent and its nightly tenant are not live in this container. The
-gate defaults on and will apply the moment the tenant runs.
+`activation_status: staged` (2026-10-02) — the nightly tenant runs and the gate holds every unclear
+post, but no author is grilled while `[sovereign_mesh].junkiejarvis = false`: the DM leg waits
+for JunkieJarvis to be switched on (owner decision 2026-10-02, Q10; see the Disposition).
 
 ## Disposition — 2026-10-02
 
 - **Suitability:** fits
 - **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records")
 - **Why:** The gate is in effect even though `activation_status` says otherwise. The dream engine runs `scripts/dream-forum-suggestions.mjs` (`services/dream-engine/src/engine.rs:328`), the clarify gate defaults on (`agentbox.toml:64`), and `docs/dream-cycle/FORUM-SUGGESTIONS.md` carries four `awaiting-clarification` rows (`f818f07ec` 2026-09-25, `12532c7b2` 2026-10-01). `[sovereign_mesh].junkiejarvis = false` (`agentbox.toml:51`) switches off the live agent, not the nightly tenant, so the record's statement that "the forum agent and its nightly tenant are not live" is overtaken.
-- **Next:** Ready to accept on those ledger rows. Correct `activation_status` from `inactive` to `live` when it is accepted.
+- **Next:** Ready to accept on those ledger rows. Correct `activation_status` from `inactive` to `live` when it is accepted. **Accepted — owner decision 2026-10-02, Q8**, but `activation_status` is set to `staged`, not `live`: the ledger rows above were the Q10 bug, and once it was fixed no author is grilled while `junkiejarvis = false` (the hold leg runs nightly; the DM leg waits for JunkieJarvis).
 - **Bug fixed — owner decision 2026-10-02, Q10:** the four DMs above were not intended. They were sent because the container env carries `JUNKIEJARVIS_ENABLED=true`, and the tenant honoured only the clarify gate, never the JunkieJarvis gate. The live agent's start rule (`management-api/server.js:1399-1405`) is "env beats manifest", so it started too ("junkiejarvis: started", 2026-10-02 14:57Z). The tenant now asks `junkiejarvisEnabled()` (`management-api/lib/junkiejarvis-clarify.js`) before any clarifying DM. That reads ADR-030 D2's "requires both" as: an explicit `junkiejarvis = false` wins over the env, `true` can be vetoed by `JUNKIEJARVIS_ENABLED=false`, and with the key absent the env decides. With the gate off, an unclear post is **held**: no DM, no ledger row, not parked, not marked replied, so it is asked once JunkieJarvis is on. Test first: `tests/sovereign/dream-forum-suggestions-jj-gate.test.js` runs the real script against stub relay and signer modules; it was red (DM sent with `junkiejarvis = false`) before the fix. The engine runs the script from the checkout (`services/dream-engine/src/engine.rs:326-328`), so the fix needs no rebuild. Still open: the tenant's public in-thread replies and the live agent itself still follow the env, and changing them is a separate decision.
