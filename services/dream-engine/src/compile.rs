@@ -53,7 +53,7 @@ pub fn compile(cfg: &DreamConfig, slot: &Slot, day_int: u32, bonus_dives: &[Stri
         format!(
             "\n## Evaluator entrypoints (the engine runs these on the baseline and on your candidate — you cannot)\n{}\n\
              A REQUIRED evaluator that is missing, silent, blocked, timed out or failing \
-             vetoes ACCEPT deterministically, whatever this report says (ADR-2024).\n",
+             vetoes ACCEPT deterministically, whatever this report says (agentbox ADR-2024).\n",
             lines.join("\n")
         )
     };
