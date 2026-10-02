@@ -4,10 +4,10 @@ title: Journal the nightly dream cycle before policing it, and fix the deny-path
 date: 2026-09-05
 decision_status: proposed
 implementation_status: partial
-activation_status: inactive
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3c5213360f429d521a65317a22a23f8625dd2916
+verified_commit: ddfb6d05608da573f071029476f8e2ebbee37bf1
 verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/sweep.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/ledger.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
@@ -158,3 +158,14 @@ fail-open against a closed port, the breaker, a 401); `sweep.rs` and `ledger.rs`
 tests against scratch git repos. Clauses (a) to (c) end to end need one
 `dream-engine --target <repo>` run on an image built from this commit.
 
+## Re-verification — 2026-10-02 (`ddfb6d05608da573f071029476f8e2ebbee37bf1`)
+
+Tripped by two dream-engine commits. `68270e953` (NIP-09 withdrawal of resolved governance cases) adds a `withdrawn` count to the `forum.governance` ingest and publish `tool.completed` payloads in `engine.rs` (four changed lines, no control flow), and `383a471cc` changes one prompt string in `compile.rs` ("(ADR-2024)" → "(agentbox ADR-2024)"). Pairing and causation are unchanged: the payload gains a field, nothing else. `cargo test journal::` 6 passed; full crate 248 passed.
+
+**Activation corrected from `inactive` to `live`.** The image booted on 2026-10-01 was built after `3c5213360`: its management-api is blob-identical to `a25695a36`, which descends from it, and the supervised `dream-engine` binary contains `/v1/exec/record`, `tool.called`, `tool.completed`, `DREAM_JOURNAL`, `DREAM_LEDGER_COMMIT` and `DREAM_SWEEP`. On that image the 2026-10-02 night journalled 62 side effects across four sessions with `failed 0`, `unpaired 0` in `dream-last-night.json`. The decision stays `proposed` and implementation `partial` because the acceptance test is two-thirds met, on real data rather than a stub repo:
+
+- (a) **met**: `GET /v1/system/audit-chain` returns `ok: true` over 9 day files after the night's appends.
+- (b) **met**: every `exec.tool.called` in `events/2026-10-02.jsonl` has exactly one `exec.tool.completed` whose `causation` names it, under the same `session_urn`, with no orphans.
+- (c) **not run**: it needs a night with management-api stopped, which is the owner's call.
+
+Both (a) and (b) are checks C1 and C2 of `scripts/activation/adr-2087-check.sh` (receipt `.claude/evidence/activation/ADR-2087-activation-20261002T133027Z.md`). The morning after a night with the API stopped, `--api-down-night <date>` evaluates (c).

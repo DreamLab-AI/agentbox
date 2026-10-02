@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 3c5213360f429d521a65317a22a23f8625dd2916
-verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, mcp/servers/governance-bridge.js, services/dream-engine/src/ledger.rs]
+verified_commit: ddfb6d05608da573f071029476f8e2ebbee37bf1
+verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, management-api/routes/llm-marketplace.js, mcp/servers/governance-bridge.js, services/dream-engine/src/ledger.rs, scripts/activation/adr-2087-check.sh]
 owner: jjohare
 review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape
 repo: agentbox
@@ -94,20 +94,23 @@ and [ADR-2011](../../../VisionFlow/docs/adr/ADR-2011-task-properties-set-the-bou
 - The forum receipts endpoint does not exist yet on the deployed edge, so receipts queue
   rather than post until it does. That is the intended degraded state, not a failure — the
   journal records every attempt.
-- `activation_status: inactive` — the container has not been rebuilt against this change.
-  It moves to `staged` on the next image build and `live` once `forum_auth_api` is set and a
-  receipt posts.
+- `activation_status: inactive`. The running image (booted 2026-10-01, management-api
+  byte-identical to `a25695a36`) does carry this change, but four wiring defects kept it inert
+  there; they are fixed at `b18a52f03` and need an image rebuild (see "Activation finding").
+  It moves to `staged` when `scripts/activation/adr-2087-check.sh` exits 2 on the rebuilt
+  image, and to `live` when it exits 0: `forum_auth_api` set and a receipt posted.
 
 ## Verification
 
 Executed evidence, with commands and raw output, is in
-`.claude/evidence/EXP-AC-{003,004,006,007}.evidence.md`. In summary, at `verified_commit`:
+`.claude/evidence/EXP-AC-{003,004,006,007}.evidence.md`. In summary, at the original verification
+(`37a1a1988`; `verified_commit` has since moved, see the dated sections below):
 
 - `node_modules/.bin/jest --config management-api/package.json --rootDir .` — 86 suites,
   1399 passed (86 of them new across `tests/sovereign/task-properties.test.js`,
   `authority-augmentation.test.js`, `authority-journal.test.js`,
   `governance-receipt-publisher.test.js`, `tests/integration/dream-ledger-reviewer.test.js`;
-  a further 18 added at `verified_commit` closing the EXP-AC-003 auditor
+  a further 18 added at `37a1a1988` closing the EXP-AC-003 auditor
   counter-example — see below).
 - `node --test management-api/tests/{broker-bridge,broker-bridge-receipts,governance-application-receipts,governance-manual-continue}.test.js` — 35 passed.
 - `node --test mcp/servers/__tests__/governance-bridge.test.mjs` — 10 passed, including the
@@ -118,7 +121,7 @@ Executed evidence, with commands and raw output, is in
 - `node scripts/agentbox-config-validate.js` — the new manifest keys validate; the four
   pre-existing E016 errors (`/skills/colloquy`, `/dream_machine/loom_url`, two
   `preserve_host`) are unchanged from `main`.
-- **EXP-AC-003 re-audit (`verified_commit`).** The auditor found that a SKILL.md
+- **EXP-AC-003 re-audit (`37a1a1988`).** The auditor found that a SKILL.md
   frontmatter `authority_class` won outright over the operator's
   `[skills.authority.classes]` entry, so `recoverable` on a zero-tolerance action turned the
   ADR-2011 reversibility seed from `irreversible` into `compensable`. The two surfaces now
@@ -142,3 +145,17 @@ The staleness checker could not use this record at all: `verified_commit` was th
 ## Re-verification — 2026-09-25 (`5a7226b797c5949771e8b8ddcd69cfddd3c7f533`)
 
 Tripped by one line in `services/dream-engine/src/ledger.rs`: an `#[allow(clippy::too_many_arguments)]` on `LedgerRow::unreviewed` so the crate passes `cargo clippy --all-targets -- -D warnings` on the current toolchain (ADR-2115 change). No behaviour moved: `git diff de84739ee..5a7226b79 -- services/dream-engine/src/ledger.rs` is that single added line; `cargo test ledger::` passes 10 at `5a7226b79`, and the reviewer/review-minutes columns and `review_from_merge` are unchanged. The other nine governed paths have no diff. Still true.
+
+## Activation finding — 2026-10-02 (`ddfb6d05608da573f071029476f8e2ebbee37bf1`)
+
+The record said `inactive` because the container had not been rebuilt. That was no longer the reason: the image booted on 2026-10-01 carries every file this record governs (its management-api is blob-identical to `a25695a36`). It was inert in that image because of four wiring defects that the unit suites could not see, each now pinned by a test that reproduces the production condition:
+
+1. **The governance-bridge MCP server never started.** `mcp/mcp.json` launches `/opt/agentbox/mcp/servers/governance-bridge.js`; `mcp/servers` is a symlink into `/nix/store`, Node hands an ES module its real path, and the `path.resolve()` entrypoint guard added in `bc4a9b259` compared the two and found them unequal. The process exited 0 without connecting, so `governance_manual_continue` (and the other four governance tools) were absent. Observed on the running image: an `initialize` on stdio gets no reply and the process exits 0. Fixed by comparing real paths; `mcp/servers/__tests__/governance-bridge.test.mjs` now launches the server through a symlinked directory.
+2. **broker-bridge used an unjournalled fallback gate.** It read `fastify.authorityGate`, `authorityDenyJournal` and the receipt publisher at registration. `server.js` registers it at module top level and Fastify loads it at the first awaited `register` inside `start()`, before the boot block decorates them (reproduced on Fastify 5.12.5). Its denials and receipt-post failures were therefore never journalled. It now resolves them per request.
+3. **Nothing replayed the receipt outbox.** `flush()` and `start()` had no production caller. `server.js` now boots one publisher over the deny journal (`bootReceiptPublisher`: a boot flush, then one a minute, never overlapping), and broker-bridge shares it. With no `forum_auth_api` the replay spends no retry budget, so receipts wait for the endpoint rather than being parked `failed` before it exists.
+4. **`/v1/llm/revoke` denials were unrecorded and unhinted.** That route's gate had no journal, and both it and broker-bridge dropped the gate's `{code, hint}` from their 403. Both now carry it, and the revoke deny goes through the boot journal.
+
+A delivered receipt now logs `governance.receipt-posted` at info. The forum's receipt read is admin-NIP-98 only, so that line is the local proof the `live` bar needs.
+
+Tests at `b18a52f03`: jest 90 suites, 1496 passed; `node --test` broker-bridge, broker-bridge-receipts, governance-application-receipts and governance-manual-continue 37 passed; governance-bridge 11 passed. `scripts/activation/adr-2087-check.sh` is the post-rebuild check. Run against the un-rebuilt image it exits 1 (receipt `.claude/evidence/activation/ADR-2087-activation-20261002T133027Z.md`): A2/A3 blob mismatch, A4 no NIP-09 strings in the dream-engine, B1 no replay boot line, B3 403 without `{code, hint}`, B4 nothing journalled, B6 MCP server silent. Status stays `inactive` until the rebuilt image passes it.
+

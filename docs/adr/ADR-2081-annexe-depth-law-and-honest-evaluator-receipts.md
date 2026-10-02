@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3c5213360f429d521a65317a22a23f8625dd2916
+verified_commit: ddfb6d05608da573f071029476f8e2ebbee37bf1
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/gate.rs, services/dream-engine/src/verdict.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
@@ -69,3 +69,7 @@ Tripped by `engine.rs` gaining `record_digest_status` after the night digest (wr
 ## Re-verification — 2026-09-26 (`84ce199877792a2eee45c4133c0a6c05096a43b8`)
 
 Tripped by `engine.rs` gaining a connected-node health gate (`dispatch::annexe_health`) ahead of `runstate::begin`, with the annexe retention sweep moved in front of it. The gate only decides whether a night is BLOCKED-ENV before an attempt counts; nothing this record decides is on that path. Decision holds; `cargo test` 226 pass.
+
+## Re-verification — 2026-10-02 (`ddfb6d05608da573f071029476f8e2ebbee37bf1`)
+
+Tripped by two dream-engine commits. `68270e953` (NIP-09 withdrawal of resolved governance cases) adds a `withdrawn` count to the `forum.governance` ingest and publish `tool.completed` payloads in `engine.rs` (four changed lines, no control flow), and `383a471cc` changes one prompt string in `compile.rs` ("(ADR-2024)" → "(agentbox ADR-2024)"). No decision here is touched: the `engine.rs` change adds no line mentioning `annexe_subpath` or `sanitise_finding`, and `runner.rs`, `gate.rs` and `verdict.rs` have no diff since `3c5213360`. `cargo test` 248 passed. Still true.

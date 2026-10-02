@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3c5213360f429d521a65317a22a23f8625dd2916
+verified_commit: ddfb6d05608da573f071029476f8e2ebbee37bf1
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -72,3 +72,7 @@ Tripped by the encrypted-zone digest (forum ADR-2016, `src/zone_crypto.rs`). `di
 ## Re-verification — 2026-09-26 (`84ce199877792a2eee45c4133c0a6c05096a43b8`)
 
 Tripped by `engine.rs` gaining a connected-node health gate (`dispatch::annexe_health`) ahead of `runstate::begin`, with the annexe retention sweep moved in front of it. The gate only decides whether a night is BLOCKED-ENV before an attempt counts; nothing this record decides is on that path. Decision holds; `cargo test` 226 pass.
+
+## Re-verification — 2026-10-02 (`ddfb6d05608da573f071029476f8e2ebbee37bf1`)
+
+Tripped by `68270e953`, which extends this decision without changing it. Once an inbox item is no longer open, the engine withdraws its kind-31402 with a NIP-09 kind-5 signed by the publishing key. The kind-5 carries `e` = request id, `a` = `31402:<agent>:<case d>` (withheld when a re-opened item shares the id) and `k` = 31402. This happens in `ingest` for items it just resolved, in the nightly `publish` sweep, and via `dream-engine governance withdraw [--dry-run]`. `inbox.rs` records `withdrawn_event_id` (serde default, so old inbox files load), and a withdrawal is never re-sent. It is fail-open, like all forum I/O here. "One kind-31402 case per open inbox item" is now true of what the relay serves, not only of what is published. `cargo test governance::` 15 passed; full crate 248 passed. Activation note: the supervised `dream-engine` in the running image predates `68270e953` (no withdrawal strings in the binary), so the nightly sweep needs the rebuild; check A4 of `scripts/activation/adr-2087-check.sh` asserts it. Still true, extended.
