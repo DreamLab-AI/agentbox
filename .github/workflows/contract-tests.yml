@@ -58,7 +58,7 @@ jobs:
 
       - name: Run contract test suites
         working-directory: management-api
-        run: npx jest ../tests/contract/ --testPathPattern='\.contract\.spec\.js$' --ci --forceExit
+        run: npx jest ../tests/contract/ --testPathPatterns='\.contract\.spec\.js$' --ci --forceExit
 
       - name: Upload coverage
         if: always()
