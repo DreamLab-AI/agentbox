@@ -198,7 +198,7 @@ forum_relay_url  = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
 # The FORUM_AUTH_API env var overrides this at runtime. Empty = not configured:
 # receipts are journalled as authority.receipt-post-failed and QUEUED for
 # replay, never dropped.
-forum_auth_api   = ""
+forum_auth_api   = "https://dreamlab-auth-api.solitary-paper-764d.workers.dev"
 max_event_bytes  = 131072
 messages_per_sec = 5
 retention_days   = 30
