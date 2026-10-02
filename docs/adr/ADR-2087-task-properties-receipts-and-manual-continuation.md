@@ -4,10 +4,10 @@ title: Action authority carries a task-property triple, every gate outcome leave
 date: 2026-09-14
 decision_status: accepted
 implementation_status: complete
-activation_status: inactive
+activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ddfb6d05608da573f071029476f8e2ebbee37bf1
+verified_commit: fc56e7a97cb437502c09d8f512cbb547efb6546c
 verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, management-api/routes/llm-marketplace.js, mcp/servers/governance-bridge.js, services/dream-engine/src/ledger.rs, scripts/activation/adr-2087-check.sh]
 owner: jjohare
 review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape
@@ -94,7 +94,7 @@ and [ADR-2011](../../../VisionFlow/docs/adr/ADR-2011-task-properties-set-the-bou
 - The forum receipts endpoint does not exist yet on the deployed edge, so receipts queue
   rather than post until it does. That is the intended degraded state, not a failure — the
   journal records every attempt.
-- `activation_status: inactive`. The running image (booted 2026-10-01, management-api
+- `activation_status: staged` (2026-10-02, rebuilt image; see "Staged on the rebuilt image"). Before that it was `inactive`: the image booted 2026-10-01 (management-api
   byte-identical to `a25695a36`) does carry this change, but four wiring defects kept it inert
   there; they are fixed at `b18a52f03` and need an image rebuild (see "Activation finding").
   It moves to `staged` when `scripts/activation/adr-2087-check.sh` exits 2 on the rebuilt
@@ -158,4 +158,8 @@ The record said `inactive` because the container had not been rebuilt. That was 
 A delivered receipt now logs `governance.receipt-posted` at info. The forum's receipt read is admin-NIP-98 only, so that line is the local proof the `live` bar needs.
 
 Tests at `b18a52f03`: jest 90 suites, 1496 passed; `node --test` broker-bridge, broker-bridge-receipts, governance-application-receipts and governance-manual-continue 37 passed; governance-bridge 11 passed. `scripts/activation/adr-2087-check.sh` is the post-rebuild check. Run against the un-rebuilt image it exits 1 (receipt `.claude/evidence/activation/ADR-2087-activation-20261002T133027Z.md`): A2/A3 blob mismatch, A4 no NIP-09 strings in the dream-engine, B1 no replay boot line, B3 403 without `{code, hint}`, B4 nothing journalled, B6 MCP server silent. Status stays `inactive` until the rebuilt image passes it.
+
+## Staged on the rebuilt image — 2026-10-02
+
+The owner rebuilt agentbox on 2026-10-02 (management-api started 14:57:17). `scripts/activation/adr-2087-check.sh` exits 2, STAGED (receipt `.claude/evidence/activation/ADR-2087-activation-20261002T145933Z.md`): the running management-api, governance-bridge and dream-engine equal `b18a52f03` for every governed file; receipt replay is armed with `forum_auth_api` configured (`60b60b48d`); a live zero-tolerance revoke is denied 403 with `{code: no-decision-surface, hint: governance_manual_continue}`, journalled in the hash chain and served at `/v1/agent-events`; the audit chain verifies (232 records); the baked governance-bridge answers on stdio and refuses an unapproved case. B7 did not run: no receipt has posted yet (posted 0, queued 0). It moves to `live` when the check exits 0, which needs the first real governance response after the rebuild.
 
