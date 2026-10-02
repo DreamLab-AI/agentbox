@@ -224,3 +224,106 @@ test('a queued (unreachable-forum) receipt still leaves the decision successful'
     await app.close();
   }
 });
+
+// ── Boot ordering (ADR-2087 activation) ─────────────────────────────────────
+// server.js registers broker-bridge at module top level, then `await`s other
+// registrations inside start() — which loads broker-bridge — and only THEN
+// decorates the boot-built authorityGate / authorityDenyJournal /
+// governanceReceiptPublisher. A route that reads those decorations at
+// registration time gets `undefined` and silently builds an unjournalled
+// fallback. These cases replay that exact order.
+async function buildAppInServerOrder(upstreamBody, decorations) {
+  const originalFetch = global.fetch;
+  global.fetch = async (url) => {
+    if (String(url).includes('/api/enrichment-proposals/')) {
+      return {
+        ok: true, status: 200, statusText: 'OK',
+        async json() { return upstreamBody; },
+        async text() { return JSON.stringify(upstreamBody); },
+      };
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  };
+  const app = Fastify();
+  const receiptDir = fs.mkdtempSync(path.join(os.tmpdir(), 'broker-boot-order-'));
+  // Top-level, un-awaited — as server.js line ~402.
+  app.register(brokerBridgeRoutes, {
+    logger: NOOP_LOGGER,
+    manifest: AUTH_MANIFEST,
+    applicationReceipts: new ApplicationReceiptStore(receiptDir),
+  });
+  // An awaited register inside start() loads everything queued before it.
+  await app.register(async () => {});
+  for (const [name, value] of Object.entries(decorations)) app.decorate(name, value);
+  app.addHook('onClose', async () => fs.rmSync(receiptDir, { recursive: true, force: true }));
+  await app.ready();
+  app.__restoreFetch = () => { global.fetch = originalFetch; };
+  return app;
+}
+
+test('boot order: the boot-built receipt publisher decorated AFTER load is the one used', async () => {
+  const publisher = publisherDouble();
+  const app = await buildAppInServerOrder(COMMITTED, {
+    authorityGate: buildGate('approve'),
+    governanceReceiptPublisher: publisher,
+  });
+  try {
+    const res = await app.inject({
+      method: 'POST', url: '/api/broker/bridge/cases/case-b1/decide',
+      headers: { 'content-type': 'application/json', 'x-agent-pubkey': PK },
+      payload: { decision: 'approve' },
+    });
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(publisher.posts.map(p => p.stage), ['consumer-received', 'applied']);
+  } finally {
+    app.__restoreFetch();
+    await app.close();
+  }
+});
+
+test('boot order: a denial goes through the boot-built (journalled) gate, not a fallback', async () => {
+  const journal = [];
+  const gate = authority.buildAuthorityGate(AUTH_MANIFEST, {
+    logger: NOOP_LOGGER,
+    journal: { async append(r) { journal.push(r); return { journalled: true, published: true }; } },
+    publishActionRequest: async (unsigned) => ({ ...unsigned, id: 'c'.repeat(64), sig: 'sig' }),
+    awaitDecision: async (req) => signedResponse(req.id, 'reject'),
+    verifyEvent: () => true,
+  });
+  const app = await buildAppInServerOrder(COMMITTED, {
+    authorityGate: gate,
+    governanceReceiptPublisher: publisherDouble(),
+  });
+  try {
+    const res = await app.inject({
+      method: 'POST', url: '/api/broker/bridge/cases/case-b2/decide',
+      headers: { 'content-type': 'application/json', 'x-agent-pubkey': PK },
+      payload: { decision: 'approve' },
+    });
+    assert.notEqual(res.statusCode, 200);
+    assert.equal(journal.length, 1, 'the denial must reach the boot-built journal');
+    assert.equal(journal[0].type, 'authority.deny');
+  } finally {
+    app.__restoreFetch();
+    await app.close();
+  }
+});
+
+test('FR7.3: a no-decision-surface deny carries code + hint to the HTTP caller', async () => {
+  const gate = authority.buildAuthorityGate(AUTH_MANIFEST, { logger: NOOP_LOGGER }); // no awaitDecision
+  const app = await buildApp(COMMITTED, { publisher: publisherDouble(), gate });
+  try {
+    const res = await app.inject({
+      method: 'POST', url: '/api/broker/bridge/cases/case-h1/decide',
+      headers: { 'content-type': 'application/json', 'x-agent-pubkey': PK },
+      payload: { decision: 'approve' },
+    });
+    assert.equal(res.statusCode, 403);
+    const body = res.json();
+    assert.equal(body.code, 'no-decision-surface');
+    assert.equal(body.hint, 'governance_manual_continue');
+  } finally {
+    app.__restoreFetch();
+    await app.close();
+  }
+});

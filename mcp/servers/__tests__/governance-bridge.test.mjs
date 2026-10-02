@@ -187,3 +187,55 @@ test.after(() => {
   fs.rmSync(POD_ROOT, { recursive: true, force: true });
   fs.rmSync(STATE_DIR, { recursive: true, force: true });
 });
+
+// ADR-2087 activation finding. The image bakes this file under /opt/agentbox,
+// whose mcp/servers directory is a symlink into /nix/store, and mcp.json
+// launches it by the /opt path. Node gives an ES module its REAL path, so a
+// path.resolve() comparison of argv[1] against import.meta.url was false, the
+// stdio transport never connected, and the process exited 0 — every tool on
+// this server, governance_manual_continue included, was silently absent.
+test('launched through a symlinked directory, the server still answers tools/list', async () => {
+  const { spawn } = await import('node:child_process');
+  const linkRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'governance-bridge-link-'));
+  const linkDir = path.join(linkRoot, 'servers');
+  fs.symlinkSync(path.resolve(HERE, '..'), linkDir, 'dir');
+
+  const child = spawn(process.execPath, ['--no-warnings', path.join(linkDir, 'governance-bridge.js')], {
+    env: { ...process.env },
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  const lines = [];
+  let buffered = '';
+  child.stdout.on('data', (chunk) => {
+    buffered += chunk;
+    let i;
+    while ((i = buffered.indexOf('\n')) >= 0) {
+      lines.push(buffered.slice(0, i));
+      buffered = buffered.slice(i + 1);
+    }
+  });
+  const send = (msg) => child.stdin.write(`${JSON.stringify(msg)}\n`);
+  const waitFor = (id, ms) => new Promise((resolve, reject) => {
+    const deadline = setTimeout(() => reject(new Error(`no response to id ${id} within ${ms} ms (process exited: ${child.exitCode})`)), ms);
+    const poll = setInterval(() => {
+      for (const l of lines) {
+        let m; try { m = JSON.parse(l); } catch { continue; }
+        if (m.id === id) { clearTimeout(deadline); clearInterval(poll); resolve(m); return; }
+      }
+    }, 20);
+  });
+
+  try {
+    send({ jsonrpc: '2.0', id: 1, method: 'initialize',
+      params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' } } });
+    await waitFor(1, 5000);
+    send({ jsonrpc: '2.0', method: 'notifications/initialized' });
+    send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
+    const listed = await waitFor(2, 5000);
+    const names = listed.result.tools.map((t) => t.name);
+    assert.ok(names.includes('governance_manual_continue'), `tools/list: ${names.join(', ')}`);
+  } finally {
+    child.kill();
+    fs.rmSync(linkRoot, { recursive: true, force: true });
+  }
+});

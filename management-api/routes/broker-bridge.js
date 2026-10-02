@@ -45,7 +45,7 @@ const WebSocket = require('ws');
 const uris = require('../lib/uris');
 const { ApplicationReceiptStore } = require('../lib/governance-application-receipts');
 const { buildReceiptPublisher } = require('../lib/governance-receipt-publisher');
-const { buildAuthorityGate } = require('../lib/authority');
+const { buildAuthorityGate, loadClassificationTable } = require('../lib/authority');
 const governanceWaiter = require('../lib/governance-decision-waiter');
 
 /**
@@ -225,7 +225,12 @@ async function brokerBridgeRoutes(fastify, options) {
   // approving, signed kind-31403 response arrives (RELEASE), else DENIES
   // (fail-closed: no decision surface / timeout / reject / unverified). Reversible
   // decisions (reject/amend/delegate/precedent) classify recoverable and pass
-  // through ungated. Built ONCE at registration (mirrors llm-marketplace); a test
+  // through ungated. RESOLVED PER REQUEST, not at registration: server.js
+  // registers this plugin at module top level and Fastify loads it at the first
+  // awaited register inside start() — BEFORE the boot-built gate, deny journal
+  // and receipt publisher are decorated. Read eagerly, those were `undefined`
+  // and the route silently ran an unjournalled fallback gate with no ACSP
+  // producer (ADR-2087 activation finding). A test
   // injects `options.authorityGate` (or the decision surface) to exercise the
   // block/RELEASE path. In production the signed-decision consumer defaults to the
   // shared governance-decision waiter fed by the ONE relay subscription
@@ -247,12 +252,20 @@ async function brokerBridgeRoutes(fastify, options) {
   // publisher — never swallowed here, and never allowed to fail the decision:
   // the mutation has already happened, and refusing to report it would make the
   // gap this closes worse, not better.
-  const receiptPublisher = options.receiptPublisher
-    || fastify.governanceReceiptPublisher
-    || buildReceiptPublisher({
-      manifest, logger,
-      journal: options.authorityDenyJournal || fastify.authorityDenyJournal || null,
-    });
+  // Fallbacks are built at most once, and only when nothing better was injected
+  // or decorated by the time the first request needs them.
+  let fallbackPublisher = null;
+  function receiptPublisher() {
+    if (options.receiptPublisher) return options.receiptPublisher;
+    if (fastify.governanceReceiptPublisher) return fastify.governanceReceiptPublisher;
+    if (!fallbackPublisher) {
+      fallbackPublisher = buildReceiptPublisher({
+        manifest, logger,
+        journal: options.authorityDenyJournal || fastify.authorityDenyJournal || null,
+      });
+    }
+    return fallbackPublisher;
+  }
 
   /**
    * Mirror one receipt stage. Always resolves; the decide route's outcome never
@@ -260,7 +273,7 @@ async function brokerBridgeRoutes(fastify, options) {
    */
   async function mirrorReceipt(receipt) {
     try {
-      return await receiptPublisher.post(receipt);
+      return await receiptPublisher().post(receipt);
     } catch (err) {
       // A malformed receipt (e.g. a non-hex response id from a test double) is
       // a programming error, not an operational one — surfaced, not fatal.
@@ -269,14 +282,29 @@ async function brokerBridgeRoutes(fastify, options) {
       return { ok: false, queued: false, error: err.message };
     }
   }
-  const authorityGate = options.authorityGate || fastify.authorityGate || buildAuthorityGate(manifest, {
-    logger,
-    publishActionRequest: options.publishActionRequest,
-    awaitDecision: options.awaitDecision
-      || ((signedRequest, opts) => governanceWaiter.awaitDecision(signedRequest, opts)),
-    verifyEvent: options.verifyEvent,
-  });
-  const authorityEnabled = !authorityGate.table || authorityGate.table.enabled !== false;
+  let fallbackGate = null;
+  function authorityGate() {
+    if (options.authorityGate) return options.authorityGate;
+    if (fastify.authorityGate) return fastify.authorityGate;
+    if (!fallbackGate) {
+      fallbackGate = buildAuthorityGate(manifest, {
+        logger,
+        journal: options.authorityDenyJournal || fastify.authorityDenyJournal || null,
+        publishActionRequest: options.publishActionRequest,
+        awaitDecision: options.awaitDecision
+          || ((signedRequest, opts) => governanceWaiter.awaitDecision(signedRequest, opts)),
+        verifyEvent: options.verifyEvent,
+      });
+      logger.warn({ event: 'broker-bridge.authority-fallback' },
+        'broker-bridge built its own authority gate — the boot-built gate was not decorated');
+    }
+    return fallbackGate;
+  }
+  // Whether the gate is enabled is a property of the manifest every gate here is
+  // built from, so it is decidable now, before any gate is resolved.
+  const authorityTable = (options.authorityGate && options.authorityGate.table)
+    || loadClassificationTable(manifest);
+  const authorityEnabled = authorityTable.enabled !== false;
   logger.info(
     { event: 'broker-bridge.authority', enabled: authorityEnabled },
     `broker-bridge authority gate ${authorityEnabled ? 'active' : 'inert (skills.authority disabled)'}`,
@@ -470,7 +498,7 @@ async function brokerBridgeRoutes(fastify, options) {
     let gate = null;
     if (authorityEnabled) {
       const actionClass = _actionClassForDecision(decision);
-      gate = await authorityGate.guard({
+      gate = await authorityGate().guard({
         actionClass,
         operation,
         action: `Broker "${decision}" on enrichment case ${id}`,
@@ -493,6 +521,9 @@ async function brokerBridgeRoutes(fastify, options) {
           case_id: id,
           authority_class: gate.authority_class,
           reason: gate.reason || null,
+          // FR7.3 — the continuation hint travels with the denial.
+          ...(gate.code ? { code: gate.code } : {}),
+          ...(gate.hint ? { hint: gate.hint } : {}),
           request_event_id: gate.request_event_id || undefined,
           response_event_id: gate.response_event_id || undefined,
           success: false,

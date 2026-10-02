@@ -67,9 +67,25 @@ async function llmMarketplaceRoutes(fastify, opts) {
   // 31402/31403 decision loop (COM-16) is injected when wired; absent → a
   // zero-tolerance action is fail-closed DENIED (escalation-by-default), never
   // silently proceeds.
+  //
+  // ADR-2087 FR4.4: every denial here is journalled through the boot-built
+  // deny journal. It is resolved PER DENIAL, not at registration: server.js
+  // registers this plugin at module top level, Fastify loads it at the first
+  // awaited register inside start(), and the journal is decorated after that.
+  // An unwired journal throws, which the gate reports as
+  // `authority.deny-unjournalled` — loudly, never as a silent success.
   const manifest = opts.manifest || safeLoadManifest();
+  const denyJournal = {
+    async append(record) {
+      const sink = opts.authorityDenyJournal || fastify.authorityDenyJournal;
+      if (!sink || typeof sink.append !== 'function') throw new Error('no authority deny journal is wired');
+      return sink.append(record);
+    },
+  };
   const authorityGate = opts.authorityGate || buildAuthorityGate(manifest, {
     logger,
+    journal: denyJournal,
+    agentDid: process.env.AGENTBOX_PUBKEY ? `did:nostr:${process.env.AGENTBOX_PUBKEY}` : null,
     publishActionRequest: opts.publishActionRequest,
     awaitDecision: opts.awaitDecision,
     verifyEvent: opts.verifyEvent,
@@ -491,6 +507,10 @@ async function llmMarketplaceRoutes(fastify, opts) {
           message: 'Grant revocation is a zero-tolerance action; it requires a verified, approving signed 31403 response.',
           authority_class: gate.authority_class,
           reason: gate.reason || null,
+          // FR7.3 — e.g. {code: 'no-decision-surface', hint: 'governance_manual_continue'}:
+          // the caller learns the continuation path at the denial itself.
+          ...(gate.code ? { code: gate.code } : {}),
+          ...(gate.hint ? { hint: gate.hint } : {}),
           revoked: false,
         });
       }

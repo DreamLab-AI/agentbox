@@ -316,7 +316,10 @@ function buildReceiptPublisher(deps = {}) {
     if (outcome.ok) {
       // A successful post supersedes anything queued for the same stage.
       try { fs.unlinkSync(entryPath(normalised)); } catch { /* nothing queued */ }
-      logger.debug({ event: 'governance.receipt-posted', stage: normalised.stage,
+      // info, not debug: one line per human decision, and the only local proof
+      // that a receipt reached the forum (its read API is admin-NIP-98 only).
+      // The ADR-2087 activation check reads it.
+      logger.info({ event: 'governance.receipt-posted', stage: normalised.stage,
         response_event_id: normalised.response_event_id, status: outcome.status },
         'application receipt mirrored to the forum');
       return { ok: true, queued: false, status: outcome.status };
@@ -357,6 +360,23 @@ function buildReceiptPublisher(deps = {}) {
     try { files = fs.readdirSync(outboxDir).filter((f) => f.endsWith('.json')); }
     catch { return summary; } // no queue yet — nothing to replay
 
+    // No forum endpoint: there is nothing to attempt, so no attempt is spent.
+    // Counting this as a failed delivery would park every receipt `failed`
+    // within `maxAttempts` replay ticks — before the endpoint exists — and the
+    // ADR-2087 degraded state ("receipts queue rather than post until it
+    // does") would silently become "receipts are abandoned".
+    if (!baseUrl) {
+      for (const file of files) {
+        let status = null;
+        try { status = JSON.parse(fs.readFileSync(path.join(outboxDir, file), 'utf8')).status; }
+        catch { /* unparseable entries are an operator's, counted below */ }
+        if (status === 'failed') summary.exhausted += 1;
+        else summary.remaining += 1;
+      }
+      summary.skipped = 'not-configured';
+      return summary;
+    }
+
     for (const file of files) {
       const full = path.join(outboxDir, file);
       let entry;
@@ -384,6 +404,9 @@ function buildReceiptPublisher(deps = {}) {
       if (outcome.ok) {
         try { fs.unlinkSync(full); } catch { /* already gone */ }
         summary.posted += 1;
+        logger.info({ event: 'governance.receipt-posted', stage: normalised.stage,
+          response_event_id: normalised.response_event_id, status: outcome.status, replay: true },
+          'queued application receipt delivered to the forum');
         continue;
       }
       await journalFailure(normalised, outcome.error, { status: outcome.status || null, replay: true });
@@ -400,12 +423,17 @@ function buildReceiptPublisher(deps = {}) {
     return summary;
   }
 
-  /** Start periodic replay. Idempotent; the timer never keeps the process alive. */
-  function start({ intervalMs = DEFAULT_FLUSH_INTERVAL_MS } = {}) {
+  /**
+   * Start periodic replay. Idempotent; the timer never keeps the process alive.
+   * `tick` replaces the default guarded `flush()` (bootReceiptPublisher passes
+   * its own, so the boot flush and every tick share one error path).
+   */
+  function start({ intervalMs = DEFAULT_FLUSH_INTERVAL_MS, tick = null } = {}) {
     if (timer) return timer;
-    timer = setInterval(() => {
-      flush().catch((err) => logger.error({ err: err.message }, 'receipt outbox flush failed'));
-    }, intervalMs);
+    const run = typeof tick === 'function'
+      ? tick
+      : () => flush().catch((err) => logger.error({ err: err.message }, 'receipt outbox flush failed'));
+    timer = setInterval(run, intervalMs);
     if (typeof timer.unref === 'function') timer.unref();
     return timer;
   }
@@ -415,11 +443,68 @@ function buildReceiptPublisher(deps = {}) {
     timer = null;
   }
 
-  return { post, flush, start, stop, outboxDir, baseUrl, APPLICATION_STAGES };
+  /** Whether the periodic replay timer is armed. */
+  function running() {
+    return timer !== null;
+  }
+
+  return { post, flush, start, stop, running, outboxDir, baseUrl, APPLICATION_STAGES };
+}
+
+/**
+ * Build the process-wide publisher and arm its replay: one flush immediately
+ * (receipts queued before a restart, or by the governance-bridge MCP process,
+ * which shares the outbox directory), then one every `intervalMs`.
+ *
+ * This is the production entry point (`server.js`). Without it `flush()` has no
+ * caller and "queued for retry" means "kept on disk until an operator notices".
+ * A failing flush is logged and never fatal: the management API must boot with a
+ * broken outbox, and the timer keeps trying.
+ *
+ * @param {object} [deps] - as {@link buildReceiptPublisher}
+ * @param {object} [opts]
+ * @param {number} [opts.intervalMs=60000] - replay cadence
+ * @param {() => Promise<object>} [opts.flushImpl] - test seam replacing `flush`
+ * @returns {{publisher: object, initialFlush: Promise<object>}} `initialFlush`
+ *   always resolves: to the flush summary, or to `{error}` when it threw.
+ */
+function bootReceiptPublisher(deps = {}, opts = {}) {
+  const logger = deps.logger || NOOP_LOGGER;
+  const publisher = buildReceiptPublisher(deps);
+  const intervalMs = Number.isFinite(opts.intervalMs) && opts.intervalMs > 0
+    ? opts.intervalMs : DEFAULT_FLUSH_INTERVAL_MS;
+  const flushImpl = typeof opts.flushImpl === 'function' ? opts.flushImpl : publisher.flush;
+
+  // One replay at a time: a flush slower than the interval (a hanging forum)
+  // must not overlap the next tick and post the same entry twice.
+  let inFlight = null;
+  const replay = () => {
+    if (inFlight) return inFlight;
+    inFlight = Promise.resolve()
+      .then(() => flushImpl())
+      .catch((err) => {
+        logger.error({ event: 'governance.receipt-replay-failed', err: err.message },
+          'receipt outbox replay failed — entries stay queued for the next tick');
+        return { error: err.message };
+      })
+      .finally(() => { inFlight = null; });
+    return inFlight;
+  };
+
+  logger.info({ event: 'governance.receipt-replay.boot', configured: publisher.baseUrl !== null,
+    outbox: publisher.outboxDir, interval_ms: intervalMs },
+    publisher.baseUrl
+      ? 'governance receipt replay armed'
+      : 'governance receipt replay armed; no forum_auth_api configured, so receipts stay queued');
+
+  const initialFlush = replay();
+  publisher.start({ intervalMs, tick: replay });
+  return { publisher, initialFlush };
 }
 
 module.exports = {
   buildReceiptPublisher,
+  bootReceiptPublisher,
   buildDefaultNip98,
   APPLICATION_STAGES,
   DEFAULT_MAX_ATTEMPTS,

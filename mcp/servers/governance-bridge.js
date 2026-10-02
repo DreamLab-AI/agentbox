@@ -541,8 +541,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Connect ONLY when this file is the process entrypoint. Importing it (from a
 // test, or another server that wants the tool table) must not open a stdio
 // transport or claim the MCP channel.
-const isEntrypoint = process.argv[1]
-  && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+//
+// Compare REAL paths. The image launches this file as
+// /opt/agentbox/mcp/servers/governance-bridge.js, where mcp/servers is a
+// symlink into /nix/store, and Node hands an ES module its resolved path; a
+// path.resolve() comparison was therefore false in production and the server
+// exited 0 without ever connecting (ADR-2087 activation finding).
+function realOrResolved(p) {
+  try { return fs.realpathSync(p); } catch { return path.resolve(p); }
+}
+const isEntrypoint = Boolean(process.argv[1])
+  && realOrResolved(process.argv[1]) === realOrResolved(fileURLToPath(import.meta.url));
 
 if (isEntrypoint) {
   const transport = new StdioServerTransport();

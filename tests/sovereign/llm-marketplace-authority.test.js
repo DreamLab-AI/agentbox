@@ -160,3 +160,53 @@ describe('REC-6 — /v1/llm/revoke is gated by the authority model', () => {
     await app.close();
   });
 });
+
+// ADR-2087 activation — the route as server.js actually boots it: registered at
+// module top level with no gate, loaded by the first awaited register, and only
+// THEN is the boot-built deny journal decorated. In production this gate has no
+// decision surface, so a revoke is the no-decision-surface deny — which must be
+// journalled (FR4.4) and must name the continuation tool to the caller (FR7.3).
+describe('ADR-2087 — the production-wired revoke deny is journalled and hints', () => {
+  async function makeServerOrderApp(journal) {
+    const app = Fastify({ logger: false });
+    app.register(llmRoutes, { logger: { info() {}, debug() {}, warn() {}, error() {} }, manifest: MANIFEST_ON });
+    await app.register(async () => {});
+    app.decorate('authorityDenyJournal', journal);
+    await app.ready();
+    return app;
+  }
+
+  test('a revoke with no decision surface is journalled and returns code + hint', async () => {
+    const records = [];
+    const app = await makeServerOrderApp({ async append(r) { records.push(r); return { journalled: true, published: true }; } });
+    try {
+      const res = await app.inject({ method: 'POST', url: '/v1/llm/revoke', payload: { grant_id: 'grant-adr-2087' } });
+      expect(res.statusCode).toBe(403);
+      expect(res.json()).toMatchObject({
+        error: 'authority_denied', reason: 'no-decision-surface',
+        code: 'no-decision-surface', hint: 'governance_manual_continue',
+      });
+      expect(records).toHaveLength(1);
+      expect(records[0]).toMatchObject({
+        type: 'authority.deny', stage: 'decision-surface', reason: 'no-decision-surface',
+        action_class: 'mandate_revoke', authority_class: 'zero-tolerance',
+      });
+      expect(records[0].task_properties).toMatchObject({ reversibility: 'irreversible' });
+    } finally {
+      await app.close();
+    }
+  });
+
+  test('with no journal decorated the deny still stands (fail-open on the record)', async () => {
+    const app = Fastify({ logger: false });
+    app.register(llmRoutes, { logger: { info() {}, debug() {}, warn() {}, error() {} }, manifest: MANIFEST_ON });
+    await app.ready();
+    try {
+      const res = await app.inject({ method: 'POST', url: '/v1/llm/revoke', payload: { grant_id: 'grant-nojournal' } });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().revoked).toBe(false);
+    } finally {
+      await app.close();
+    }
+  });
+});

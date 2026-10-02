@@ -36,6 +36,7 @@ const { PrimerGenerator } = require('./lib/project-primer');
 // awaitDecision seam wired into buildAuthorityGate at boot.
 const { buildAuthorityGate } = require('./lib/authority');
 const { buildAuthorityJournal } = require('./lib/authority-journal');
+const { bootReceiptPublisher } = require('./lib/governance-receipt-publisher');
 const { buildAuthorityConsumer } = require('./lib/authority-consumer');
 const governanceWaiter = require('./lib/governance-decision-waiter');
 
@@ -1139,6 +1140,17 @@ async function start() {
           verifyEvent: authorityConsumer ? authorityConsumer.verifyEvent : undefined,
         });
         app.decorate('authorityDenyJournal', authorityDenyJournal);
+        // FR4.2 / FR7.1 (ADR-2087) — ONE receipt publisher per process, over the
+        // same journal, with its replay armed: a boot flush (receipts queued
+        // before a restart, or by the governance-bridge MCP process, which shares
+        // the outbox directory) then one per minute. broker-bridge picks this up
+        // via `fastify.governanceReceiptPublisher`. Unarmed, a queued receipt is
+        // only ever delivered by hand.
+        const { publisher: receiptPublisher } = bootReceiptPublisher({
+          manifest, logger, journal: authorityDenyJournal,
+        });
+        app.decorate('governanceReceiptPublisher', receiptPublisher);
+        app.addHook('onClose', async () => { receiptPublisher.stop(); });
         app.decorate('authorityConsumer', authorityConsumer);
         app.decorate('authorityGate', authorityGate);
         logger.info({ event: 'authority-consumer.boot', wired: !!authorityConsumer },
