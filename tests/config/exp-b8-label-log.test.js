@@ -202,17 +202,43 @@ describe('never posts twice', () => {
     expect(publish).toHaveBeenCalledTimes(1);
   });
 
-  test('the attempt is saved BEFORE publishing, so a failed or crashed publish is not retried', async () => {
+  test('the attempt is saved BEFORE the send, so a failed or crashed send is never retried', async () => {
     const state = {};
     const saved = [];
     const save = (s) => saved.push(JSON.parse(JSON.stringify(s)));
-    const publish = jest.fn().mockRejectedValue(new Error('relay down'));
+    const publish = jest.fn(async (_content, markSent) => { markSent(); throw new Error('relay dropped the socket'); });
     const r = await X.postOnce(state, publish, save);
     expect(r).toMatchObject({ posted: false, reason: 'publish-failed' });
     expect(saved[0].post.attempted_at).toBeTruthy();
     expect(saved[0].post.event_id).toBeUndefined();
     await X.postOnce(state, publish, save);
     expect(publish).toHaveBeenCalledTimes(1);
+  });
+
+  test('a refusal before any send (no zone key yet) is not an attempt: retried, then posted once', async () => {
+    const state = {};
+    const save = jest.fn();
+    const publish = jest.fn()
+      .mockImplementationOnce(async () => { throw new Error('no zone key held for encrypted zone zone4; not posted in plaintext'); })
+      .mockImplementation(async (_c, markSent) => { markSent(); return 'ev2'; });
+    expect(await X.postOnce(state, publish, save)).toMatchObject({ posted: false, reason: 'not-sent' });
+    expect(state.post && state.post.attempted_at).toBeFalsy();
+    expect(await X.postOnce(state, publish, save)).toMatchObject({ posted: true, eventId: 'ev2' });
+    expect(await X.postOnce(state, publish, save)).toMatchObject({ posted: false, reason: 'already-attempted' });
+    expect(publish).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('the no-post check', () => {
+  test('a plan summary never carries key material', () => {
+    const key = { pubkey: 'ab'.repeat(32), sk: 'cd'.repeat(32), secret: new Uint8Array(32) };
+    const enc = X.planSummary({ type: 'encrypt', key });
+    expect(enc).toEqual({ type: 'encrypt' });
+    expect(JSON.stringify(enc)).not.toMatch(/abab|cdcd/);
+    expect(X.planSummary({ type: 'plain' })).toEqual({ type: 'plain' });
+    expect(X.planSummary({ type: 'refuse', reason: 'no zone key held for encrypted zone zone4', key }))
+      .toEqual({ type: 'refuse', reason: 'no zone key held for encrypted zone zone4' });
+    expect(X.planSummary(null)).toEqual({ type: 'unknown' });
   });
 });
 
@@ -313,6 +339,18 @@ describe('tick (injected dependencies)', () => {
     const again = await X.tick(d);
     expect(again.phase).toBe('done');
     expect(d.publish).toHaveBeenCalledTimes(1);
+    expect(d.openPr).toHaveBeenCalledTimes(1);
+  });
+
+  test('a post refused before sending keeps the phase at stopped until it goes out once', async () => {
+    const publish = jest.fn()
+      .mockRejectedValueOnce(new Error('no zone key held'))
+      .mockImplementation(async (_c, markSent) => { markSent(); return 'ev'; });
+    const d = deps({ countRows: jest.fn().mockResolvedValue(510), publish });
+    expect((await X.tick(d)).phase).toBe('stopped');
+    expect((await X.tick(d)).phase).toBe('done');
+    expect((await X.tick(d)).phase).toBe('done');
+    expect(publish).toHaveBeenCalledTimes(2);
     expect(d.openPr).toHaveBeenCalledTimes(1);
   });
 

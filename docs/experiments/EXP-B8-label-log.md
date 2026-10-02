@@ -65,4 +65,21 @@ Email-gateway turns are never recorded. The table is kept after the stop pending
 **Machinery.** `scripts/experiments/exp-b8-label-log.cjs` (pure analysis, tested in
 `tests/config/exp-b8-label-log.test.js`), ticked by `skills/podcast-knowledge-ingest/crontab`.
 State: `~/workspace/.agentbox/exp-b8/state.json`. `--status` prints the count; `--dry-run`
-composes the report without posting or committing.
+composes the report without posting or committing; `--check-post` resolves the forum signer and
+zone write plan without sending and records the plan type (never key material) as `post_check`.
+
+## Run log (operational; outside the pre-registration)
+
+- **2026-10-02 16:54Z — on.** `--activate` registered the router hook (`AGENTBOX_SKILL_ROUTE_LABEL_LOG=1`)
+  and the Stop recorder from the checkout; `started_at` recorded. `label_log = true` in the checkout
+  manifest. The tick runs under the supervised `podcast-cron` (supercronic reading
+  `skills/podcast-knowledge-ingest/crontab`, `*/30`; `supercronic -test` valid); cron ticks logged
+  at 17:00Z and 17:30Z. First analysable rows by 17:33Z (n = 2). No image rebuild is needed: the
+  hooks, the script and the crontab all run from the checkout.
+- **2026-10-02 17:33Z — forum path checked without posting** (`--check-post`): signer present,
+  section `zone4-chat-with-agents` → zone `zone4`, gate on, write plan **`encrypt`** (zone key held),
+  so the stop-time post goes out encrypted to members of zone4 and is not refused.
+- **At-most-once, refined.** The attempt is persisted immediately before the event leaves for the
+  relay, not before the call. A refusal with nothing sent (no signing key, no zone key: never posted
+  in plaintext) is not an attempt and is retried on the next tick; a send that fails or crashes is
+  never retried. The phase stays `stopped` until both the pull request and the post have gone out.

@@ -27,6 +27,10 @@
  *   node scripts/experiments/exp-b8-label-log.cjs --status   state and current count; changes nothing
  *   node scripts/experiments/exp-b8-label-log.cjs --dry-run  as a tick, but never registers,
  *                                                            posts, commits or records a stop
+ *   node scripts/experiments/exp-b8-label-log.cjs --check-post  resolve the forum signer and the
+ *                                                            zone write plan WITHOUT sending; records
+ *                                                            the plan type (never key material) in
+ *                                                            state.json as post_check
  */
 
 const fs = require('fs');
@@ -334,22 +338,34 @@ function saveState(dir, st) {
 }
 
 /**
- * At-most-once forum post. The attempt is persisted BEFORE publishing, so neither a failed
- * publish nor a crash mid-publish can lead to a second post on a later tick.
+ * At-most-once forum post. `publish(content, markSent)` calls `markSent()` immediately before
+ * the event leaves for the relay; that persists the attempt, so neither a failed send nor a
+ * crash mid-send can lead to a second post on a later tick. A refusal BEFORE any send (no
+ * signing key, no zone key yet: never posted in plaintext) is not an attempt and is retried.
  */
-async function postOnce(state, publish, save) {
+async function postOnce(state, publish, save, content) {
   if (state.post && state.post.attempted_at) return { posted: false, reason: 'already-attempted' };
-  state.post = { attempted_at: new Date().toISOString() };
-  save(state);
+  const markSent = () => {
+    if (state.post && state.post.attempted_at) return;
+    state.post = { attempted_at: new Date().toISOString() };
+    save(state);
+  };
   try {
-    const id = await publish();
+    const id = await publish(content, markSent);
+    markSent();
     state.post.event_id = id;
     save(state);
     return { posted: true, eventId: id };
   } catch (e) {
-    state.post.error = String((e && e.message) || e);
+    const error = String((e && e.message) || e);
+    if (!(state.post && state.post.attempted_at)) {
+      state.post_refused = { at: new Date().toISOString(), error };
+      save(state);
+      return { posted: false, reason: 'not-sent', error };
+    }
+    state.post.error = error;
     save(state);
-    return { posted: false, reason: 'publish-failed', error: state.post.error };
+    return { posted: false, reason: 'publish-failed', error };
   }
 }
 
@@ -377,8 +393,9 @@ async function finish(d, st, save) {
     }
     save(st);
   }
-  await postOnce(st, () => d.publish(composeForumPost(a, meta())), save);
-  return { phase: st.pr_url ? 'done' : 'stopped', n: a.n, verdict: a.verdict, pr: st.pr_url || null, post: st.post };
+  await postOnce(st, d.publish, save, composeForumPost(a, meta()));
+  const posted = !!(st.post && st.post.attempted_at);
+  return { phase: st.pr_url && posted ? 'done' : 'stopped', n: a.n, verdict: a.verdict, pr: st.pr_url || null, post: st.post };
 }
 
 async function tick(d) {
@@ -494,16 +511,40 @@ function collect(bridge, filter, { quietMs = 2000, maxMs = 8000 } = {}) {
   });
 }
 
-/** One kind-42 in the dream digest's channel, signed by JunkieJarvis; encrypted when the zone is. */
-async function publish(content) {
+/** What a write plan says, minus any key material: safe to print and to persist. */
+function planSummary(plan) {
+  if (!plan || typeof plan.type !== 'string') return { type: 'unknown' };
+  return plan.type === 'refuse' ? { type: 'refuse', reason: String(plan.reason || '') } : { type: plan.type };
+}
+
+/** Resolve the signer and the zone write plan for the digest section. Sends nothing. */
+function resolvePost() {
   const zoneKeys = require(path.join(CHECKOUT, 'management-api/lib/zone-keys.js'));
   const { signerFromHex } = require(path.join(CHECKOUT, 'management-api/lib/junkiejarvis-agent.js'));
-  const { NostrBridge } = require(path.join(CHECKOUT, 'mcp/servers/nostr-bridge.js'));
   const signer = signerFromHex(zoneKeys.readSetting('JUNKIEJARVIS_PRIVKEY_HEX') || '');
-  if (!signer) throw new Error('JUNKIEJARVIS_PRIVKEY_HEX unavailable');
+  if (!signer) return { zoneKeys, signer: null, plan: null, zone: null, gate: null };
   const zones = zoneKeys.loadZones();
-  const plan = zoneKeys.writePlan(zoneKeys.sectionToZone(SECTION, zones),
-    { gate: zoneKeys.gateEnabled(), zones, store: new zoneKeys.ZoneKeyStore({ owner: signer.pubkey }) });
+  const zone = zoneKeys.sectionToZone(SECTION, zones);
+  const gate = zoneKeys.gateEnabled();
+  const plan = zoneKeys.writePlan(zone, { gate, zones, store: new zoneKeys.ZoneKeyStore({ owner: signer.pubkey }) });
+  return { zoneKeys, signer, plan, zone, gate };
+}
+
+/** The no-post check: would the forum post go out, and how? Records the plan type only. */
+function checkPost() {
+  const r = resolvePost();
+  return {
+    at: new Date().toISOString(), relay: RELAY_URL, channel: CHANNEL, section: SECTION,
+    signer: r.signer ? 'present' : 'absent (JUNKIEJARVIS_PRIVKEY_HEX unavailable)',
+    zone: r.zone, gate: r.gate, plan: r.plan ? planSummary(r.plan) : null,
+  };
+}
+
+/** One kind-42 in the dream digest's channel, signed by JunkieJarvis; encrypted when the zone is. */
+async function publish(content, markSent = () => {}) {
+  const { NostrBridge } = require(path.join(CHECKOUT, 'mcp/servers/nostr-bridge.js'));
+  const { zoneKeys, signer, plan } = resolvePost();
+  if (!signer) throw new Error('JUNKIEJARVIS_PRIVKEY_HEX unavailable');
   if (plan.type === 'refuse') throw new Error(`${plan.reason}; not posted in plaintext`);
   const plain = { kind: 42, content, created_at: Math.floor(Date.now() / 1000),
     tags: [['e', CHANNEL, RELAY_URL, 'root'], ['section', SECTION], ['t', 'exp-b8']] };
@@ -511,7 +552,9 @@ async function publish(content) {
   if (typeof bridge.setAuthSigner === 'function') bridge.setAuthSigner(signer);
   await bridge.connect();
   try {
-    const signed = await bridge.publish(zoneKeys.applyWritePlan(plain, plan, signer.skBytes), signer);
+    const event = zoneKeys.applyWritePlan(plain, plan, signer.skBytes);
+    markSent();
+    const signed = await bridge.publish(event, signer);
     await new Promise((r) => setTimeout(r, 2500));
     const found = await collect(bridge, { ids: [signed.id] });
     if (!found.some((e) => e.id === signed.id)) throw new Error(`published ${signed.id.slice(0, 12)}… but not readable back (not republished: at-most-once)`);
@@ -523,6 +566,9 @@ async function publish(content) {
 /** Branch from origin/main in a private worktree; flip the gate, record the verdict, open a PR. */
 async function openPr({ analysis, meta, reportMd }) {
   const git = tool('git'), gh = tool('gh');
+  // git's credential helper is `!gh auth git-credential`, resolved by name: supercronic's
+  // PATH has neither tool, so put the resolved directories first for every subprocess.
+  process.env.PATH = [path.dirname(gh), path.dirname(git), process.env.PATH || ''].join(':');
   const existing = sh(gh, ['pr', 'list', '--head', BRANCH, '--state', 'all', '--json', 'url', '-q', '.[0].url'], { cwd: CHECKOUT });
   if (existing) return existing;
   const wt = path.join(STATE_DIR, 'worktree');
@@ -600,6 +646,13 @@ async function main(argv) {
     console.log(JSON.stringify({ protocol: { targetN: PROTOCOL.targetN, hardStop: PROTOCOL.hardStop }, analysable_now: n, state: st }, null, 2));
     return;
   }
+  if (argv.includes('--check-post')) {
+    const st = loadState(STATE_DIR);
+    st.post_check = checkPost();
+    saveState(STATE_DIR, st);
+    console.log(JSON.stringify(st.post_check, null, 2));
+    return;
+  }
   if (argv.includes('--activate')) {
     const tools = {};
     for (const name of ['git', 'gh']) { try { tools[name] = tool(name); } catch { /* recorded only when found */ } }
@@ -619,5 +672,5 @@ if (require.main === module) {
 module.exports = {
   PROTOCOL, ACTIONS, requiredSampleSize, bare, isAnalysable, countAnalysable, stoppingRule,
   mcnemarExact, copyCeiling, analyse, verdictOf, composeReport, composeForumPost,
-  manifestLabelLog, flipManifestOff, applyAdrVerdict, applyRegistration, postOnce, tick,
+  manifestLabelLog, flipManifestOff, applyAdrVerdict, applyRegistration, postOnce, planSummary, tick,
 };
