@@ -167,7 +167,9 @@ const CATALOGUE = [
     gate: 'voice', service: 'voice-console', apply_class: 'live',
     summary: 'ADR-044: same-origin operator cockpit (Caddy :8444) unifying the web voice loop and AoE session board. The UI/backend sidecar uses ./agentbox.sh voice; shared Nemotron ASR + Pocket TTS follow the core AgentBox lifecycle through docker-compose.speech.yml.' },
   { id: 'sovereign-mesh', name: 'Sovereign mesh (relay + pod bridge)', layer: 'module',
-    gate: 'sovereign_mesh', service: 'nostr-pod-bridge', apply_class: 'rebuild',
+    // The supervisor program is [program:nostr-relay]; nostr-pod-bridge is its
+    // binary. `service` names the runtime unit (CY-A2 declared-vs-running).
+    gate: 'sovereign_mesh', service: 'nostr-relay', apply_class: 'rebuild',
     summary: 'nostr relay, pod-inbox bridge, kind-30840/30841 publishing (ADR-009). Rebuild-class: the solid-pod/https-bridge/relay supervisor blocks are composed conditionally in flake.nix (optionalString sovereignCfg.enabled) — flipping the gate changes the image, a restart does not apply it.' },
   { id: 'solid-pod', name: 'Solid pod (solid-pod-rs)', layer: 'module',
     gate: null, service: 'solid-pod', apply_class: 'rebuild',
@@ -259,7 +261,7 @@ const CATALOGUE = [
     summary: 'ADR-2057 gap 1: [program:podcast-cron] (supercronic over skills/podcast-knowledge-ingest/crontab) was the last unconditionally supervised program. Default true = the behaviour it shipped with, so enabling is never a migration step. REBUILD-class — flake.nix bakes the supervisor text, so false only removes the program after ./agentbox.sh rebuild. Gates the SCHEDULE only: the podcast-ingest binary and supercronic stay in the closure, both shared with always-baked surfaces (the podcast-{knowledge,bulk}-ingest skills and forum-backup-cron).' },
   { id: 'sidechain', name: 'sidestr sidechain producer, mirror and faucet', layer: 'module',
     gate: 'sidechain.enabled', gates: ['sidechain.enabled', 'sidechain.mirror', 'sidechain.faucet'], service: 'sidestr-producer', apply_class: 'rebuild',
-    summary: 'PRD-024 P1: [program:sidestr-producer] (config/sidechain/run-producer.sh, the upstream JS engine at the commits in upstream-pins) makes the blocks the forum member wallets read; mirror adds [program:sidestr-mirror] (block files to a GitHub Pages checkout), faucet adds [program:sidestr-faucet] (sidestr-agent, baked from lib/sidestr-agent.nix). mirror and faucet take effect only with enabled. REBUILD-class: flake.nix bakes all three supervisor blocks. Needs the chain signer key and parent cookie under /var/lib/agentbox/secrets.' },
+    summary: 'PRD-024 P1: [program:sidestr-producer] (config/sidechain/run-producer.sh, the upstream JS engine at the commits in upstream-pins) makes the blocks the forum member wallets read; mirror adds [program:sidestr-mirror] (block files to a GitHub Pages checkout), faucet adds [program:sidestr-faucet] (sidestr-agent, baked from lib/sidestr-agent.nix). mirror and faucet take effect only with enabled. REBUILD-class: flake.nix bakes all three supervisor blocks. Needs the chain signer key and parent cookie under /var/lib/agentbox/secrets. Health is the tip-age probe (lib/sidechain-health.js, ADR-2103 interim receipt 2026-10-02), not supervisor RUNNING: unhealthy when the producer status route is unreachable, the tip is older than 2 x the idle interval (600 s), or transactions have waited longer than 2 x the transaction interval (10 s) with no block. `health.anchored` is false while checkpoints into the parent are off (owner decision 2026-10-02, SC5).' },
   { id: 'sidechain-dreamlab-txbt4', name: 'sidestr:dreamlab-txbt4 producer, mirror and faucet (beside txbt4)', layer: 'module',
     requires: ['sidechain.enabled'], gate: 'sidechain.dreamlab-txbt4.enabled',
     gates: ['sidechain.dreamlab-txbt4.enabled', 'sidechain.dreamlab-txbt4.mirror', 'sidechain.dreamlab-txbt4.faucet'],
@@ -357,8 +359,13 @@ function stateOf(manifest, entry) {
  * Compose the live system view.
  * @param {object} manifest - parsed agentbox.toml
  * @param {object} [adapters] - resolved adapter registry (slot -> BaseAdapter)
+ * @param {object} [health] - live probe records keyed by catalogue id (e.g.
+ *   `{ sidechain: <sidechain-health record> }`). A module with a probe carries
+ *   it as `health`; the top-level `health` block lists every probed module and
+ *   is `ok: false` when any of them is unhealthy. Supervisor RUNNING is never
+ *   reported as health on its own (ADR-2103 interim receipt, 2026-10-02).
  */
-function buildSystemView(manifest, adapters) {
+function buildSystemView(manifest, adapters, health) {
   const core = [
     {
       id: 'manifest', name: 'agentbox.toml manifest', layer: 'core', state: 'core',
@@ -419,13 +426,22 @@ function buildSystemView(manifest, adapters) {
     };
     if (entry.service) view.service = entry.service;
     if (entry.heavy) view.heavy = true;
+    if (health && health[entry.id]) view.health = health[entry.id];
     (entry.layer === 'surface' ? surfaces : modules).push(view);
   }
+
+  const probed = modules.concat(surfaces).filter((m) => m.health);
+  const unhealthy = probed.filter((m) => m.health.status !== 'healthy').map((m) => m.id);
 
   return {
     apply_classes: APPLY_CLASSES,
     core,
     vault,
+    health: {
+      ok: unhealthy.length === 0,
+      probed: probed.map((m) => m.id),
+      unhealthy,
+    },
     surfaces,
     modules,
     counts: {

@@ -405,6 +405,83 @@ therefore stays put.
 The broader proposed settlement decision remains partial; this receipt activates only
 the explicitly approved interim testnet services.
 
+### Interim receipt amendment — 2026-10-02: tip-age health and the demo witness
+
+Two instruments, so that the supervised chain cannot look healthier or more settled than it is.
+Neither one changes consensus, the chain document or the supervisor blocks.
+
+**Tip-age health.** Before this amendment the producer's only health signal was supervisor
+`RUNNING`. The producer has been `RUNNING` while making nothing twice: it retried an invalid
+transaction in a loop on 23 September, and it sat stopped for four days from 25 September.
+`management-api/lib/sidechain-health.js` now reads the producer's status route (`GET /`).
+It reports the module unhealthy in any of these cases:
+
+- the route is unreachable, times out (2 s) or answers non-2xx;
+- the tip is older than 2 × the idle interval (600 s, so 1,200 s), whatever the mempool holds;
+- transactions have waited longer than 2 × the transaction interval (10 s, so 20 s) with no
+  new block. This clock starts at the later of the tip time and the first reading that saw a
+  non-empty mempool, so a transaction that has only just arrived is not a false alarm.
+
+The interval comes from the producer's own status, so a 2-second loopback chain is judged
+at 4 s. Each enabled chain gets its own probe: `sidestr:dreamlab` on :3450, and every enabled
+`[sidechain.<name>]` table on its own `port` and `interval`. For example,
+`sidestr:dreamlab-txbt4` on :3451 is probed once it is switched on. `GET /v1/system` carries
+each record as its catalogue module's `health` (`sidechain`, `sidechain-dreamlab-txbt4`),
+plus a top-level `health {ok, probed, unhealthy}`. `GET /ready` lists a stale chain under `degraded`
+and stays 200: a stalled sidechain is reported and never blocks the box. `health.anchored`
+is true only when the producer reports a checkpoint. Evidence: the 20 cases in
+`tests/sovereign/sidechain-health.node-test.js`. Among them, a loopback siding at 2 s blocks
+turns red about one second after `kill -STOP`, and goes green again after `SIGCONT`.
+
+**The demo witness.** `scripts/activation/sidechain-demo-witness.sh` takes a chain id, two
+agent pubkeys and a payment txid, and optionally a Hitch session. It writes
+`.claude/evidence/sidechain/<UTC>.json` and exits 1 unless every required check passes.
+The receipt is `format: 1` and has these parts:
+
+- `sidechain`: the payment, its funding and, with a Hitch session, the close. Each carries
+  its height, block hash, position, the outpoints it spends, and its later spenders.
+- `anchoring`: either a covering parent checkpoint whose hash matches the replay, or
+  `"anchored": false` with the owner's reason verbatim: "checkpoints off, cost; open"
+  (owner decision 2026-10-02, SC5). The producer's own `every: 0` is cited as evidence.
+- `nostr`: the signer's kind-33333 tip announcement, plus the kind-23500 and kind-23600
+  events from each agent key. They are embedded whole, and each id and signature is verified.
+- `journal`: the ADR-2071 started/completed pairs under the session URN.
+- `replay`: crates.io `sidestr-core` `=0.4.0` replays the Pages mirror's `blocks.dat` from
+  the genesis to a tip hash. The header family follows the document's parent: stock beside
+  `tbtc4`, and `sidestr-header` `=0.3.1`'s BLAKE2b v2 beside `txbt4`. The receipt records the file's SHA-256 and cross-checks the
+  height with the baked `sidestr-agent`.
+- `checks`, plus `claims {proves, does_not_prove}`. An unanchored receipt's first disclaimer
+  says it is not anchored.
+
+The replay helper (`scripts/activation/sidechain-witness-replay`) is a standalone, unpublished
+binary. It takes `sidestr-core` and `sidestr-header` by exact crates.io version, never by path or
+git (ADR-2112),
+so a stranger with cargo and the mirror reaches the same hash. The witness is read-only:
+it signs nothing, broadcasts nothing and reads no key.
+
+Two findings shaped the format:
+
+- Kinds 23500 and 23600 are NIP-01 ephemeral (20000–29999). Relays forward them and do not
+  store them, so a query made after the demo finds none. The demo's events must therefore be
+  captured while the session runs and passed as `--nostr-capture`. The Hitch host (stream S2)
+  owns writing that capture.
+- The read-only trial on 2026-10-02 used the 23 September payment `fbb7bf26…`. It replayed
+  the mirror to tip 943, `1fe4e931…`. That hash matches the mirror index, and the baked
+  `sidestr-agent` 0.3.2 reached the same height. The trial located the payment at height 240
+  and its funding at 131, and stated non-anchoring. It failed N2/N3 (no stored agent events)
+  and J1 (no journal session) as designed. The BLAKE2b family replays the sealed
+  `sidestr:dreamlab-txbt4` genesis to its document's `genesisHash` (`1009aa29…`).
+  Evidence: the 25 cases in `tests/sovereign/sidechain-witness.node-test.js`.
+  - The end-to-end case runs against a loopback chain, an in-process relay and a fixture
+    journal. It asserts that the Rust replay reaches the JS producer's tip hash, and that a
+    tampered capture line is refused.
+  - A second loopback case beside `txbt4` asserts the same tip-hash equality for the BLAKE2b
+    family.
+
+Not changed here: checkpoints stay off. That item and its reminder are in "Open —
+checkpoints into `txbt4`" above. Until the item closes, every receipt carries
+`"anchored": false` and SC5's reason.
+
 The estate is not bound to either hash family: the owner's pivot preference is honoured by the
 default, and the SHA-256d path stays open by configuration. The Rust codec carries both arms,
 roughly doubling the consensus-critical header surface; the BLAKE2b arm is what upstream

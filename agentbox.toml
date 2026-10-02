@@ -1833,8 +1833,12 @@ eager_mandate = false
 # Caddy console plus the external web client/backend sources give one
 # same-origin operator cockpit. Nemotron ASR and Pocket TTS are shared
 # and follows the core AgentBox lifecycle via docker-compose.speech.yml.
+# `enabled` must say what runs: scripts/ci/check-declared-vs-running.js (CY-A2)
+# fails when it disagrees with the agentbox-voice compose project. Set true
+# 2026-10-02: the console, frontend, backend and traefik had run for 5 days
+# while this said false. Flip it with `voice up|down`.
 [voice]
-enabled              = false            # sidecar state (apply-class: sidecar — its own lifecycle, not `agentbox up`)
+enabled              = true             # sidecar state (apply-class: sidecar — its own lifecycle, not `agentbox up`)
 console_port         = 8444             # operator cockpit origin (self-signed TLS; mic secure-context)
 debug_port           = 8443             # web voice debug UI (diagnostics only)
 unmute_build_context = "../voice-stack/unmute"  # external web/backend source checkout; override VOICE_UNMUTE_DIR

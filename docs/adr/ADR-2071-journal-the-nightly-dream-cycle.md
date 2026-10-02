@@ -170,6 +170,18 @@ Tripped by two dream-engine commits. `68270e953` (NIP-09 withdrawal of resolved 
 
 Both (a) and (b) are checks C1 and C2 of `scripts/activation/adr-2087-check.sh` (receipt `.claude/evidence/activation/ADR-2087-activation-20261002T133027Z.md`). The morning after a night with the API stopped, `--api-down-night <date>` evaluates (c).
 
+## Consumer — 2026-10-02: the sidechain demo witness reads Phase-1 pairs
+
+`scripts/activation/sidechain-demo-witness.sh` (ADR-2103, interim receipt amendment
+2026-10-02) requires at least one matched `exec.tool.called`/`exec.tool.completed` pair under
+the demo's session URN, and no unpaired or orphaned record. It applies the same rule as C2 of
+`scripts/activation/adr-2087-check.sh`. When it derives that URN from a Hitch session, it
+mints it through `uris.js` exactly as `routes/exec-record.js` does
+(`urn:agentbox:meta:session-<harness>-<session>`). The witness depends on this record's
+Phase 1 shape (`payload.session_urn`, `event_id`, `causation`) and on nothing in Phase 2.
+Clause (c) still stands: a fail-open journal can only show what reached it. The witness
+therefore treats a missing pair as a failure, never as "nothing happened".
+
 ## Disposition — 2026-10-02
 
 - **Suitability:** fits

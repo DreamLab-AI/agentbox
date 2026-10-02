@@ -6,7 +6,10 @@
  *   GET /v1/system              live system view: core spine (resolved
  *                               adapters), surfaces, modules — each with its
  *                               gate, introspected on/off/available state and
- *                               apply-class (live | boot | rebuild)
+ *                               apply-class (live | boot | rebuild); probed
+ *                               modules (today: each enabled sidestr chain's
+ *                               tip-age probe) carry `health`, summarised in
+ *                               the top-level `health` block
  *   GET /v1/system/audit-chain  verify the hash-chained events JSONL log;
  *                               ?days=N limits to the newest N daily files
  *
@@ -19,6 +22,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { buildSystemView } = require('../lib/system-manifest');
+const { createTipProbe, chainsFromManifest } = require('../lib/sidechain-health');
 const { buildExecutionCoverage } = require('../lib/execution-coverage');
 const auditChain = require('../lib/audit-chain');
 
@@ -29,6 +33,13 @@ function eventsDir() {
 
 async function systemRoutes(fastify, options) {
   const { manifest, adapters, logger } = options;
+  // ADR-2103 interim receipt (2026-10-02): a producer is healthy only while
+  // its tip is fresh, not merely while supervisord says RUNNING. One probe per
+  // enabled chain, keyed by the catalogue id that reports it. Tests inject
+  // `tipProbes` ({ id: probe }).
+  const tipProbes = options.tipProbes || Object.fromEntries(
+    chainsFromManifest(manifest || {}).map((c) => [c.id, createTipProbe({ url: c.url, idleIntervalS: c.idleIntervalS })]),
+  );
 
   fastify.get('/v1/system', async (request, reply) => {
     // Live coverage snapshots from the execution subsystems when the server has
@@ -37,9 +48,16 @@ async function systemRoutes(fastify, options) {
     const live = (options.execution && typeof options.execution.snapshot === 'function')
       ? options.execution.snapshot()
       : {};
+    const health = {};
+    await Promise.all(Object.entries(tipProbes).map(async ([id, probe]) => {
+      health[id] = await probe.probe();
+      if (health[id].status !== 'healthy') {
+        logger.warn({ event: 'sidechain.tip-stale', module: id, ...health[id] }, 'sidestr producer unhealthy');
+      }
+    }));
     reply.send({
       generated_at: new Date().toISOString(),
-      ...buildSystemView(manifest || {}, adapters || null),
+      ...buildSystemView(manifest || {}, adapters || null, health),
       execution: buildExecutionCoverage(live),
     });
   });

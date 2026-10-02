@@ -19,6 +19,8 @@ on:
       # edited on main and the listener rule never re-asserted on that push.
       - 'tests/security/**'
       - 'tests/config/protocol-registry-lint.test.mjs'
+      - 'tests/config/declared-vs-running.test.js'
+      - 'tests/config/fixtures/runtime-state.json'
       - 'flake.nix'
       - 'skills/**'
       - 'mcp/**'
@@ -91,6 +93,15 @@ jobs:
 
       - name: check-manifest-catalogue (ADR-039 gate-path parity)
         run: node scripts/ci/check-manifest-catalogue.js
+
+      # CY-A2: the manifest must not lie about what runs. CI has no runtime, so
+      # it checks agentbox.toml against the committed, dated snapshot captured
+      # on the box (`--capture`); on the box the same script reads the live
+      # supervisor and docker state.
+      - name: check-declared-vs-running (CY-A2 — declared state vs runtime snapshot)
+        run: node scripts/ci/check-declared-vs-running.js --state tests/config/fixtures/runtime-state.json
+      - name: check-declared-vs-running unit tests
+        run: node --test tests/config/declared-vs-running.test.js
 
       - name: check-no-logseq-paths (ADR-2028 — [vault] is the only corpus path authority)
         run: sh scripts/ci/check-no-logseq-paths.sh

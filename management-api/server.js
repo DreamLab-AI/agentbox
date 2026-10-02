@@ -452,6 +452,18 @@ app.get('/livez', {
   return { live: true, uptime: process.uptime() };
 });
 
+// One tip-age probe per enabled chain for /ready, built on first use (each
+// caches a reading for a few seconds, so a polling orchestrator costs each
+// producer one request).
+const readyTipProbes = new Map();
+function readySidechainProbes(manifest) {
+  const { chainsFromManifest, createTipProbe } = require('./lib/sidechain-health');
+  return chainsFromManifest(manifest).map((c) => {
+    if (!readyTipProbes.has(c.url)) readyTipProbes.set(c.url, createTipProbe({ url: c.url, idleIntervalS: c.idleIntervalS }));
+    return { chain: c.chain, probe: readyTipProbes.get(c.url) };
+  });
+}
+
 // Readiness probe — returns 503 until ALL requirements are satisfied.
 app.get('/ready', {
   schema: {
@@ -463,15 +475,17 @@ app.get('/ready', {
         properties: {
           ready:        { type: 'boolean' },
           since:        { type: 'string' },
-          requirements: { type: 'array', items: { type: 'string' } }
+          requirements: { type: 'array', items: { type: 'string' } },
+          degraded:     { type: 'array', items: { type: 'string' } }
         }
       },
       503: {
         type: 'object',
         properties: {
-          ready:   { type: 'boolean' },
-          reason:  { type: 'string' },
-          missing: { type: 'array', items: { type: 'string' } }
+          ready:    { type: 'boolean' },
+          reason:   { type: 'string' },
+          missing:  { type: 'array', items: { type: 'string' } },
+          degraded: { type: 'array', items: { type: 'string' } }
         }
       }
     }
@@ -533,11 +547,22 @@ app.get('/ready', {
     // to keep /ready response time bounded. Declaration of relay list is sufficient here.
   }
 
+  // 5. Degraded optional modules — reported, never blocking. A stalled
+  // sidechain must not hold the whole box un-ready, but /ready must not stay
+  // silent about it either (ADR-2103 interim receipt, 2026-10-02: the producer
+  // is healthy only while its tip is fresh, not while supervisord says RUNNING).
+  const degraded = [];
+  await Promise.all(readySidechainProbes(manifest || {}).map(async ({ chain, probe }) => {
+    const tip = await probe.probe();
+    if (tip.status !== 'healthy') degraded.push(`${chain}: ${tip.reason}`);
+  }));
+
   if (missing.length > 0) {
     reply.code(503).send({
       ready: false,
       reason: `${missing.length} requirement(s) not met`,
-      missing
+      missing,
+      degraded
     });
     return;
   }
@@ -545,7 +570,8 @@ app.get('/ready', {
   return {
     ready: true,
     since: bootstrapState.since,
-    requirements: ['bootstrap.done', 'adapters:healthy', 'paths:accessible']
+    requirements: ['bootstrap.done', 'adapters:healthy', 'paths:accessible'],
+    degraded
   };
 });
 

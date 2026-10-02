@@ -1,0 +1,23 @@
+# The independent replay half of scripts/activation/sidechain-demo-witness.sh
+# (ADR-2103 interim receipt, amended 2026-10-02). A throwaway binary, never
+# published and never a dependency of anything in agentbox: it takes the
+# published sidestr-core from crates.io by exact version (ADR-2112: agentbox
+# consumes the sidestr crates as releases, never by path or git), so a
+# stranger with cargo and the Pages mirror reaches the same tip hash.
+[package]
+name = "sidechain-witness-replay"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+publish = false
+description = "Replay a sidestr block file with sidestr-core and locate transactions in it"
+
+[dependencies]
+sidestr-core = "=0.4.0"
+# The BLAKE2b v2 header family, for chains beside txbt4/xbt (sidestr:dreamlab-txbt4).
+sidestr-header = { version = "=0.3.1", features = ["core"] }
+bitcoin = { version = "0.32", features = ["std"] }
+serde_json = "1"
+
+# Standalone: never folded into a parent workspace.
+[workspace]

@@ -27,6 +27,13 @@ on:
       - 'management-api/routes/chain-payments.js'
       - 'tests/sovereign/sidestr-spend-key.node-test.js'
       - 'tests/sovereign/chain-payments.node-test.js'
+      - 'tests/sovereign/sidechain-health.node-test.js'
+      - 'tests/sovereign/sidechain-witness.node-test.js'
+      - 'management-api/lib/sidechain-health.js'
+      - 'management-api/lib/system-manifest.js'
+      - 'management-api/routes/system.js'
+      - 'scripts/activation/sidechain-witness.cjs'
+      - 'scripts/activation/sidechain-demo-witness.sh'
       - 'agentbox/schemas/adapter-contracts/**'
       - '.github/workflows/contract-tests.yml'
   push:
@@ -55,6 +62,13 @@ on:
       - 'management-api/routes/chain-payments.js'
       - 'tests/sovereign/sidestr-spend-key.node-test.js'
       - 'tests/sovereign/chain-payments.node-test.js'
+      - 'tests/sovereign/sidechain-health.node-test.js'
+      - 'tests/sovereign/sidechain-witness.node-test.js'
+      - 'management-api/lib/sidechain-health.js'
+      - 'management-api/lib/system-manifest.js'
+      - 'management-api/routes/system.js'
+      - 'scripts/activation/sidechain-witness.cjs'
+      - 'scripts/activation/sidechain-demo-witness.sh'
       - '.github/workflows/contract-tests.yml'
 
 concurrency:
@@ -113,6 +127,13 @@ jobs:
       - name: sidestr rail (k_spend binding KAT, /v1/chain/pay, /v1/chain/payments)
         working-directory: management-api
         run: node --test ../tests/sovereign/sidestr-spend-key.node-test.js ../tests/sovereign/chain-payments.node-test.js
+
+      # ADR-2103 interim receipt (amended 2026-10-02): the producer tip-age probe
+      # and the demo witness. Their loopback-chain cases need the upstream siding
+      # checkout and a built replay helper, absent here, and say so as skips.
+      - name: Sidechain tip-age probe and demo witness
+        working-directory: management-api
+        run: node --test ../tests/sovereign/sidechain-health.node-test.js ../tests/sovereign/sidechain-witness.node-test.js
 
       - name: Upload coverage
         if: always()

@@ -1,0 +1,67 @@
+{
+  "captured_at": "2026-10-02T20:30:15.759Z",
+  "supervisor": {
+    "agentbox-hook-drain": "RUNNING",
+    "agentbox-mcp-hub": "RUNNING",
+    "aoe-serve": "RUNNING",
+    "blender-mcp": "RUNNING",
+    "bootstrap": "EXITED",
+    "bootstrap-seal": "EXITED",
+    "claude-cred-sync": "RUNNING",
+    "code-server": "RUNNING",
+    "dream-engine": "RUNNING",
+    "forum-backup-cron": "RUNNING",
+    "https-bridge": "RUNNING",
+    "i3wm": "RUNNING",
+    "imagemagick-mcp": "RUNNING",
+    "jupyter-lab": "RUNNING",
+    "management-api": "RUNNING",
+    "nip98-proxy": "RUNNING",
+    "nostr-gateway": "RUNNING",
+    "nostr-relay": "RUNNING",
+    "ontology-condense-scheduler": "RUNNING",
+    "opf-router": "RUNNING",
+    "podcast-cron": "RUNNING",
+    "qgis-mcp": "RUNNING",
+    "ruvector-aggregate-sweep": "RUNNING",
+    "ruvector-pattern-distill": "RUNNING",
+    "sidestr-faucet": "RUNNING",
+    "sidestr-mirror": "RUNNING",
+    "sidestr-producer": "RUNNING",
+    "solid-pod": "RUNNING",
+    "tab0-bridge": "RUNNING",
+    "tailscale-up": "EXITED",
+    "tailscaled": "RUNNING",
+    "teammate-gc": "RUNNING",
+    "tmux-autostart": "EXITED",
+    "xvnc": "RUNNING"
+  },
+  "containers": {
+    "gui-tools-service": {
+      "state": "running",
+      "project": "agentbox"
+    },
+    "browsercontainer": {
+      "state": "running",
+      "project": "agentbox"
+    },
+    "agentbox-voice-frontend-1": {
+      "state": "running",
+      "project": "agentbox-voice"
+    },
+    "agentbox-voice-backend-1": {
+      "state": "running",
+      "project": "agentbox-voice"
+    },
+    "voice-console": {
+      "state": "running",
+      "project": "agentbox-voice"
+    },
+    "agentbox-voice-traefik-1": {
+      "state": "running",
+      "project": "agentbox-voice"
+    }
+  },
+  "errors": [],
+  "pruned": "containers limited to catalogue services and UNITS compose projects"
+}
