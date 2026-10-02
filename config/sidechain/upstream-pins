@@ -3,6 +3,6 @@
 # Bump a line only after the chain has been restarted and a block produced on that commit;
 # the runner refuses any other checkout (override for a deliberate upgrade test:
 # SIDESTR_ALLOW_UNPINNED=1). sidestr-rs's CI oracle job pins its own spec commit (e8deb63, SPEC 0.0.5, SIDESTR_SPEC_REF), not this one.
-spec          fa86dac83d47b8f70195132e91e9dc083e1d9228  # sidestr/spec: @sidestr/spec 0.0.6; blocks up to 593 were made on it (2026-09-25)
+spec          e8deb63161c7459ed39c01d2ca9fda3d860b65b6  # sidestr/spec: SPEC 0.0.5 / package 0.0.7 (halt fix c3b9e7a, peg-in scan policy 76c3119); first block on it at 951 749f57af (2026-10-02)
 schema        b8cbf6337c7450fe14ddc5bce00c7280059aab5d  # bitcoin-desktop/schema v0.0.27
 blaketestnode de33b347ccde458f5b82c33b3bab16abd328a7ec  # bitcoin-blake/blaketestnode; operator-accepted active development head (2026-10-01)

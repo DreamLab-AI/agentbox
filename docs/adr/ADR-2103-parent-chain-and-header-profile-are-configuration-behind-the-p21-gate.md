@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 22d25b1cc9d1d5e302a7819ed2850aee5bb40361
+verified_commit: 05d886bba7cc7c73c4de8ae47680785c4f81c079
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
@@ -545,3 +545,26 @@ commit:
 - A read-only witness run on `sidestr:dreamlab` reads the 23 September payment as
   30,000 sats alice → bob, with settled balances 0/1,330.
 Decision and status unchanged.
+
+## Re-verification — 2026-10-02 (spec pin fa86dac → e8deb63)
+
+The `spec` line in `config/sidechain/upstream-pins` moves from `fa86dac` (@sidestr/spec
+0.0.6 package, consensus 0.0.4) to `e8deb63` (SPEC 0.0.5, package 0.0.7). Reason: at
+`fa86dac` the producer's mempool accepted a transaction whose time lock had not expired,
+every subsequent `produce` then failed, and nothing evicted it (upstream issue 13, fixed
+in `c3b9e7a`). A Hitch force-close sweep broadcast one block early would have halted the
+live chain. `e8deb63` also changes peg-in scan policy (`76c3119`): a peg-in funded from
+the peg wallet is found only when it pays the announced peg script; the new deposit
+procedure is in `config/sidechain/README.md` (commit `05d886bba`).
+
+Evidence, per the upstream-pins rule (a pin moves only after a block is produced on it):
+- First block on `e8deb63`: height 951, hash `749f57af14ec3c41…e8dde7`, 21:29:49Z.
+- `sidestr-core` (via `sidechain-witness-replay`) replays the live `blocks.dat` to
+  height 964, hash `529c5503c9eabf3d…8509c0`, identical to the producer's `/tip`.
+- `tests/config/sidechain-producer-gates.test.sh` 7/7; `siding/package.json` and its
+  lockfile unchanged between the two pins; the new `@ethereumjs/statemanager` root
+  dependency is loaded only by the EVM overlay, which neither estate chain enables.
+- Both chain documents (`dreamlab`, `dreamlab-txbt4`) derive the same genesis under
+  both pins.
+Decision and status unchanged: the parent chain and header profile remain configuration
+behind the P21 gate; the pin records which engine the producer runs.
