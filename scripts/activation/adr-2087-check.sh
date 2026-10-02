@@ -157,6 +157,13 @@ else
 fi
 
 DREAM_EXE="$( [ -n "$DREAM_PID" ] && readlink -f "/proc/$DREAM_PID/exe" 2>/dev/null || true )"
+# Container runtimes may omit CAP_SYS_PTRACE, making /proc/<pid>/exe unreadable
+# even to container root. The argv remains readable and contains the immutable
+# Nix-store executable that supervisord launched, so use it as the provenance
+# fallback instead of reporting a stale-image false negative.
+if [ -z "$DREAM_EXE" ] && [ -n "$DREAM_PID" ] && [ -r "/proc/$DREAM_PID/cmdline" ]; then
+  DREAM_EXE="$(tr '\0' '\n' < "/proc/$DREAM_PID/cmdline" | grep -m1 '/dream-engine$' || true)"
+fi
 A4_DETAIL="$SCRATCH/A4.txt"; : > "$A4_DETAIL"
 if [ -n "$DREAM_EXE" ]; then
   strings "$DREAM_EXE" > "$SCRATCH/dream.strings"

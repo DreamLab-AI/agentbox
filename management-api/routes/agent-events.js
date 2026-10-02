@@ -157,8 +157,12 @@ async function agentEventsRoutes(fastify, options) {
                 properties: {
                   id: { type: 'integer' },
                   timestamp: { type: 'integer' },
-                  source_agent_id: { type: 'integer' },
-                  target_node_id: { type: 'integer' },
+                  source_agent_id: {
+                    anyOf: [{ type: 'integer' }, { type: 'string' }]
+                  },
+                  target_node_id: {
+                    anyOf: [{ type: 'integer' }, { type: 'string' }]
+                  },
                   action_type: { type: 'integer' },
                   action_type_name: { type: 'string' },
                   duration_ms: { type: 'integer' }

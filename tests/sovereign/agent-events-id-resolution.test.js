@@ -108,6 +108,26 @@ describe('REC-9 — GET /v1/agent-events resolves ?id=<urn> to its own record', 
     expect(body.id).toBeNull();
   });
 
+  test('a recent-events window serializes sovereign string actor and target ids', async () => {
+    const did = `did:nostr:${'c'.repeat(64)}`;
+    agentEventPublisher.emitAgentAction({
+      source_agent_id: did,
+      target_node_id: 'mandate_revoke',
+      action_type: 'update',
+      metadata: { event: 'authority.deny' },
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/v1/agent-events?limit=50' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().events).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        source_agent_id: did,
+        target_node_id: 'mandate_revoke',
+      }),
+    ]));
+  });
+
   test('a bare numeric event id resolves the same envelope', async () => {
     const emitted = agentEventPublisher.emitAgentAction({
       source_agent_id: 55, target_node_id: 66, action_type: 'link',
