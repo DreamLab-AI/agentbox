@@ -38,6 +38,37 @@ The genesis mints no pegs (`pegs: []`): it is sealed by the signer key alone and
 parent funds. Coins enter by peg-in (SPEC 6) and are claimed by the producer at
 `pegConfirmations`.
 
+### Depositing to `sidestr:dreamlab` (peg-in procedure)
+
+From sidestr/spec `76c3119` (issue 15, in `e8deb63`), the producer's parent scan
+(`siding/lib/parent.mjs` `scanPegins`) finds a peg-in in one of two ways. Both are
+producer scan policy, not block rules, so blocks already claimed replay unchanged.
+
+1. **Paid to the announced peg script.** The output paying the script the producer
+   announces (the `peg` tag on every kind-33333 tip; the `sidestr:dreamlab peg` label
+   address in the `sidestr-peg` wallet, logged at start as `peg-ins pay <addr>`) is the
+   peg, whoever funded the transaction.
+2. **Funded from another wallet.** A transaction that the `sidestr-peg` wallet did not
+   fund may pay any taproot receive address the wallet owns (never its change).
+
+A transaction **funded by `sidestr-peg`** that pays anything other than the announced
+script is not a peg-in. It is ignored without a log line, the coins stay in the peg
+wallet and nothing is credited. Before `76c3119` the scan took the first owned taproot
+output instead, which could claim the wallet's own change as the peg. Both peg-ins
+claimed so far (`2c4c5941…` at 153653, `b6c2a4a2…` at 154687) were funded by
+`sidestr-peg` and paid fresh wallet addresses. They replay unchanged, but the same
+deposit made today would not be found.
+
+So a deposit from `sidestr-peg` pays the label address, together with the
+`pegin:sidestr:dreamlab:<recipient>` OP_RETURN:
+
+```sh
+peg=$(bitcoin-cli -rpcwallet=sidestr-peg getaddressesbylabel 'sidestr:dreamlab peg' | jq -r 'keys[0]')
+```
+
+The producer also claims only one output per parent transaction. After a deposit,
+check that `pegins.json` lists it once it has `pegConfirmations` confirmations.
+
 ## Fields beyond upstream's document
 
 `depth`, `containment` and `containmentDigest` are estate fields (ADR-2103 D3). Upstream's
