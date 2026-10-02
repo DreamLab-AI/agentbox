@@ -61,6 +61,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub mod admission;
+pub mod blocktrail;
 pub mod bootstrap;
 pub mod colloquy_publish;
 pub mod contract;

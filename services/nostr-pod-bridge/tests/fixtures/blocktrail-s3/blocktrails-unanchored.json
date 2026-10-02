@@ -1,0 +1,12 @@
+{
+  "@type": "Blocktrail",
+  "version": "0.0.3",
+  "profile": "gitmark",
+  "pubkeyBase": "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+  "chain": "gitmark",
+  "states": [
+    "9adc596cfd1100333393a12f2f41b2d820f16d0b",
+    "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+  ],
+  "txo": []
+}

@@ -1,0 +1,15 @@
+{
+  "@type": "Blocktrail",
+  "version": "0.0.3",
+  "profile": "gitmark",
+  "pubkeyBase": "02f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+  "chain": "gitmark",
+  "states": [
+    "9adc596cfd1100333393a12f2f41b2d820f16d0b",
+    "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+  ],
+  "txo": [
+    "txo:gitmark:51d87101b7cbb01cc5a68785bf3141ec6fd00894d71ab1168d4daa20420eeacf:0?amount=1000000&commit=9adc596cfd1100333393a12f2f41b2d820f16d0b",
+    "txo:gitmark:a3f0c2b1d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f:0?amount=999000&commit=4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+  ]
+}

@@ -125,7 +125,55 @@ fn also_known_as_is_emitted_last_when_present() {
     assert_eq!(*keys.last().unwrap(), "alsoKnownAs");
 }
 
-// ─── B. gitmark / blocktrails — 5-key gitmark; states[] = REAL pod SHAs ───
+// ─── B. gitmark / blocktrails — 5-key gitmark; §5.2 blocktrails ───────────
+
+/// Commits the S3 fixtures were emitted for (`tests/fixtures/blocktrail-s3`).
+const GENESIS: &str = "9adc596cfd1100333393a12f2f41b2d820f16d0b";
+const TIP: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+const TXID0: &str = "51d87101b7cbb01cc5a68785bf3141ec6fd00894d71ab1168d4daa20420eeacf";
+const TXID1: &str = "a3f0c2b1d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f";
+
+/// The blocktrails/spec git-mark profile §5.2 field set, in its order.
+const SECTION_5_2_KEYS: [&str; 7] = [
+    "@type",
+    "version",
+    "profile",
+    "pubkeyBase",
+    "chain",
+    "states",
+    "txo",
+];
+
+/// Output of solid-pod-rs up/blocktrails-verify 97582a8 (`emit.rs` beside it).
+fn s3_fixture(name: &str) -> String {
+    std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/blocktrail-s3")
+            .join(name),
+    )
+    .unwrap()
+}
+
+/// What the bridge writes to disk for `value`, byte for byte.
+fn written<T: serde::Serialize>(value: &T) -> String {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("out.json");
+    nostr_pod_bridge::identity::write_json(&path, value).unwrap();
+    std::fs::read_to_string(path).unwrap()
+}
+
+fn anchor_uris() -> Vec<String> {
+    vec![
+        format!("txo:gitmark:{TXID0}:0?amount=1000000&commit={GENESIS}"),
+        format!("txo:gitmark:{TXID1}:0?amount=999000&commit={TIP}"),
+    ]
+}
+
+fn write_txo_json(repo: &Path, body: &str) {
+    let path = repo.join(TXO_JSON_PATH);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, body).unwrap();
+}
 
 #[test]
 fn gitmark_is_exactly_five_key_ground_truth() {
@@ -133,20 +181,143 @@ fn gitmark_is_exactly_five_key_ground_truth() {
     let keys: Vec<&str> = gm.as_object().unwrap().keys().map(String::as_str).collect();
     assert_eq!(keys, ["@id", "genesis", "nick", "package", "repository"]);
     assert_eq!(gm["@id"], "gitmark:deadbeef:0");
-    assert_eq!(gm["genesis"], "deadbeef");
+    assert_eq!(gm["genesis"], "gitmark:deadbeef:0");
     assert_eq!(gm["nick"], "test-agent");
     assert_eq!(gm["repository"], format!("did:nostr:{EXPECTED_XONLY}"));
 }
 
 #[test]
-fn blocktrail_shape() {
-    let bt = serde_json::to_value(build_blocktrail("g0", vec!["g0".into(), "s1".into()])).unwrap();
-    assert_eq!(bt["@type"], "Blocktrail");
-    assert_eq!(bt["profile"], "gitmark");
-    assert_eq!(bt["genesis"], "g0");
-    assert_eq!(bt["states"], serde_json::json!(["g0", "s1"]));
-    // L0 honest-or-caught: the single-use-seal seam is present but empty.
-    assert_eq!(bt["txo"], serde_json::json!([]));
+fn blocktrail_has_exactly_the_section_5_2_field_set() {
+    for txo in [Vec::new(), read_marks(&anchor_uris())] {
+        let bt = serde_json::to_value(build_blocktrail(
+            &identity(),
+            vec![GENESIS.into(), TIP.into()],
+            txo,
+        ))
+        .unwrap();
+        let keys: Vec<&str> = bt.as_object().unwrap().keys().map(String::as_str).collect();
+        assert_eq!(keys, SECTION_5_2_KEYS);
+        assert_eq!(bt["@type"], "Blocktrail");
+        assert_eq!(bt["version"], "0.0.3");
+        assert_eq!(bt["profile"], "gitmark");
+        assert_eq!(bt["pubkeyBase"], format!("02{EXPECTED_XONLY}"));
+        assert_eq!(bt["chain"], "gitmark");
+        for state in bt["states"].as_array().unwrap() {
+            assert!(nostr_pod_bridge::blocktrail::is_gitmark_commit(
+                state.as_str().unwrap()
+            ));
+        }
+        for uri in bt["txo"].as_array().unwrap() {
+            assert!(uri.as_str().unwrap().starts_with("txo:gitmark:"));
+        }
+    }
+    // Nothing of the earlier shape survives in a freshly built trail.
+    let blob = serde_json::to_string(&build_blocktrail(&identity(), vec![GENESIS.into()], vec![]))
+        .unwrap();
+    assert!(!blob.contains("\"@id\"") && !blob.contains("\"genesis\""));
+}
+
+fn read_marks(uris: &[String]) -> Vec<nostr_pod_bridge::blocktrail::BlocktrailTxo> {
+    let dir = tempfile::tempdir().unwrap();
+    write_txo_json(dir.path(), &serde_json::to_string(uris).unwrap());
+    read_anchor_marks(dir.path())
+}
+
+#[test]
+fn pubkey_base_is_the_identity_as_a_full_compressed_point() {
+    let base = pod_pubkey_base(&identity());
+    assert_eq!(base.len(), 66);
+    assert_eq!(base, format!("02{EXPECTED_XONLY}"));
+    // A public_key_hex that does not parse falls back to lift_x (02 + x).
+    let mut broken = identity();
+    broken.public_key_hex = "zz".into();
+    assert_eq!(pod_pubkey_base(&broken), base);
+}
+
+#[test]
+fn golden_gitmark_json_matches_solid_pod_rs_s3_byte_for_byte() {
+    assert_eq!(
+        written(&build_gitmark(&identity(), GENESIS, "agentbox-pod")),
+        s3_fixture("gitmark.json")
+    );
+}
+
+#[test]
+fn golden_unanchored_blocktrails_json_matches_solid_pod_rs_s3_byte_for_byte() {
+    let bt = build_blocktrail(&identity(), vec![GENESIS.into(), TIP.into()], Vec::new());
+    assert_eq!(written(&bt), s3_fixture("blocktrails-unanchored.json"));
+}
+
+#[test]
+fn golden_anchored_blocktrails_json_matches_solid_pod_rs_s3_byte_for_byte() {
+    let marks = read_marks(&anchor_uris());
+    assert_eq!(marks.len(), 2);
+    let bt = build_blocktrail(&identity(), vec![GENESIS.into(), TIP.into()], marks);
+    assert_eq!(written(&bt), s3_fixture("blocktrails-anchored.json"));
+}
+
+/// The S3 walker (`blocktrail::verify_blocktrail`) was run on the exact bytes
+/// the golden test above pins the bridge to; its report is the fixture. With
+/// no marks it is the confirmation-only reading: the trail parses as a
+/// non-legacy git-mark trail, no commitment is checked, no mark fails, and the
+/// walk names why there is nothing to check.
+#[test]
+fn s3_walker_accepts_the_unanchored_trail_in_confirmed_mode() {
+    let bt = build_blocktrail(&identity(), vec![GENESIS.into(), TIP.into()], Vec::new());
+    assert_eq!(written(&bt), s3_fixture("blocktrails-unanchored.json"));
+
+    let parsed: nostr_pod_bridge::blocktrail::Blocktrail =
+        serde_json::from_str(&s3_fixture("blocktrails-unanchored.json")).unwrap();
+    assert_eq!(parsed, bt);
+    assert!(parsed.is_gitmark() && !parsed.is_legacy());
+
+    let report: serde_json::Value =
+        serde_json::from_str(&s3_fixture("walk-unanchored.json")).unwrap();
+    assert_eq!(report["commitmentsChecked"], false);
+    assert_eq!(report["marks"], serde_json::json!([]));
+    assert_eq!(report["walkError"], "the trail has 0 marks and 2 states");
+    // An empty trail verifies nothing, so solid-pod-rs never rates it above
+    // partial; what matters is that nothing in it fails.
+    assert_eq!(report["verdict"], "partial");
+}
+
+#[test]
+fn s3_walker_verifies_the_anchored_trail_mark_by_mark() {
+    let report: serde_json::Value =
+        serde_json::from_str(&s3_fixture("walk-anchored.json")).unwrap();
+    assert_eq!(report["commitmentsChecked"], true);
+    assert_eq!(report["verdict"], "verified");
+    let marks = report["marks"].as_array().unwrap();
+    assert_eq!(marks.len(), 2);
+    assert!(marks
+        .iter()
+        .all(|m| m["status"] == "verified" && m["commits"] == true));
+    assert_eq!(marks[1]["linksToPrev"], true);
+}
+
+#[test]
+fn read_anchor_marks_ignores_what_a_verifier_would_have_to_guess_at() {
+    let dir = tempfile::tempdir().unwrap();
+    assert!(
+        read_anchor_marks(dir.path()).is_empty(),
+        "no txo.json, no marks"
+    );
+    for bad in [
+        "not json".to_string(),
+        serde_json::json!([format!("txo:gitmark:{TXID0}:0?amount=5")]).to_string(),
+        serde_json::json!([
+            format!("txo:gitmark:{TXID0}:0?commit={GENESIS}"),
+            format!("txo:tbtc4:{TXID1}:0?commit={TIP}")
+        ])
+        .to_string(),
+        serde_json::json!([format!("txo:sidestr:gitmark:{TXID0}:0?commit={GENESIS}")]).to_string(),
+    ] {
+        write_txo_json(dir.path(), &bad);
+        assert!(
+            read_anchor_marks(dir.path()).is_empty(),
+            "{bad} read as marks"
+        );
+    }
 }
 
 #[test]
@@ -156,6 +327,8 @@ fn blocktrail_states_are_real_pod_commit_shas() {
     let bt: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(pod.join("blocktrails.json")).unwrap())
             .unwrap();
+    let gm: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(pod.join("gitmark.json")).unwrap()).unwrap();
     let log = git_log(&pod);
     let states = bt["states"].as_array().unwrap();
     assert!(!states.is_empty(), "blocktrails states[] must not be empty");
@@ -165,8 +338,107 @@ fn blocktrail_states_are_real_pod_commit_shas() {
             log.contains(&sha.to_string()),
             "{sha} is not a real pod commit"
         );
+        assert_eq!(sha.len(), 40);
     }
-    assert_eq!(bt["genesis"], states[0]);
+    assert_eq!(
+        gm["genesis"],
+        format!("gitmark:{}:0", states[0].as_str().unwrap())
+    );
+    assert_eq!(bt["txo"], serde_json::json!([]));
+    assert_eq!(bt["pubkeyBase"], format!("02{EXPECTED_XONLY}"));
+}
+
+#[test]
+fn bootstrap_carries_recorded_marks_one_state_per_mark() {
+    let dir = tempfile::tempdir().unwrap();
+    let pod = dir.path().join("marked-pod");
+    let id = identity();
+    assert!(ensure_pod_git(&pod, &id));
+    write_txo_json(&pod, &serde_json::to_string_pretty(&anchor_uris()).unwrap());
+    let txo_before = std::fs::read(pod.join(TXO_JSON_PATH)).unwrap();
+    wire_pod_contract_substrate(&id, &pod).unwrap();
+
+    let bt: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(pod.join("blocktrails.json")).unwrap())
+            .unwrap();
+    assert_eq!(bt["txo"], serde_json::json!(anchor_uris()));
+    assert_eq!(bt["states"], serde_json::json!([GENESIS, TIP]));
+    assert_eq!(bt["chain"], "gitmark");
+    // The marks file is git-mark's; the bridge only reads it.
+    assert_eq!(std::fs::read(pod.join(TXO_JSON_PATH)).unwrap(), txo_before);
+}
+
+/// The old-shape pod files stay as they are until a bootstrap rewrites them:
+/// every contract entry point other than the bootstrap ritual is read-only on
+/// the repository, and only `contract.rs` names the two files.
+#[test]
+fn old_shape_pod_files_are_rewritten_only_by_bootstrap() {
+    let dir = tempfile::tempdir().unwrap();
+    let pod = dir.path().join("old-pod");
+    let id = identity();
+    assert!(ensure_pod_git(&pod, &id));
+    let old_gitmark = format!(
+        "{{\n  \"@id\": \"gitmark:{GENESIS}:0\",\n  \"genesis\": \"{GENESIS}\",\n  \"nick\": \
+         \"test-agent\",\n  \"package\": \"agentbox-pod\",\n  \"repository\": \
+         \"did:nostr:{EXPECTED_XONLY}\"\n}}\n"
+    );
+    let old_trail = format!(
+        "{{\n  \"@type\": \"Blocktrail\",\n  \"profile\": \"gitmark\",\n  \"genesis\": \
+         \"{GENESIS}\",\n  \"states\": [\n    \"{GENESIS}\"\n  ],\n  \"txo\": []\n}}\n"
+    );
+    std::fs::write(pod.join("gitmark.json"), &old_gitmark).unwrap();
+    std::fs::write(pod.join("blocktrails.json"), &old_trail).unwrap();
+    git(&pod, &["add", "gitmark.json", "blocktrails.json"]).unwrap();
+    git(&pod, &["commit", "-q", "-m", "old shape"]).unwrap();
+    let head = git(&pod, &["rev-parse", "HEAD"]).unwrap();
+
+    // Every non-bootstrap entry point, run against the old-shape pod.
+    let _ = build_gitmark(&id, GENESIS, "agentbox-pod");
+    let _ = build_blocktrail(&id, vec![GENESIS.into()], read_anchor_marks(&pod));
+    let _ = pod_pubkey_base(&id);
+    assert!(ensure_pod_git(&pod, &id));
+    assert_eq!(
+        std::fs::read_to_string(pod.join("gitmark.json")).unwrap(),
+        old_gitmark
+    );
+    assert_eq!(
+        std::fs::read_to_string(pod.join("blocktrails.json")).unwrap(),
+        old_trail
+    );
+    assert_eq!(git(&pod, &["rev-parse", "HEAD"]).unwrap(), head);
+    assert_eq!(git(&pod, &["status", "--porcelain"]).unwrap(), "");
+
+    // The bootstrap ritual is what rewrites them, into the §5.2 shape.
+    write_agent_repo_identity(&id, &pod).unwrap();
+    let bt: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(pod.join("blocktrails.json")).unwrap())
+            .unwrap();
+    let keys: Vec<&str> = bt.as_object().unwrap().keys().map(String::as_str).collect();
+    assert_eq!(keys, SECTION_5_2_KEYS);
+
+    // Only contract.rs names the files, and only bootstrap.rs calls into the
+    // ritual that writes them.
+    let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut sources: Vec<(String, String)> = std::fs::read_dir(&src_dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|x| x == "rs"))
+        .map(|p| {
+            let name = p.file_name().unwrap().to_string_lossy().into_owned();
+            (name, std::fs::read_to_string(&p).unwrap())
+        })
+        .collect();
+    sources.retain(|(name, _)| name != "contract.rs");
+    assert!(sources.iter().any(|(n, _)| n == "bootstrap.rs"));
+    for (name, src) in &sources {
+        assert!(
+            !src.contains("\"gitmark.json\"") && !src.contains("\"blocktrails.json\""),
+            "{name} names a pod contract file"
+        );
+        let ritual = src.contains("write_agent_repo_identity(")
+            || src.contains("wire_pod_contract_substrate(");
+        assert_eq!(ritual, name == "bootstrap.rs", "{name} reaches the ritual");
+    }
 }
 
 // ─── C. write_agent_repo_identity — pod-git root layout ──────────────────
@@ -213,5 +485,19 @@ fn idempotent_on_rerun() {
     let log = git_log(&pod);
     for sha in bt["states"].as_array().unwrap() {
         assert!(log.contains(&sha.as_str().unwrap().to_string()));
+    }
+}
+
+/// The trail is described as marks, trails and anchors (blocktrails/spec
+/// ef54a08); "single-use seal" is not this design's term and stays out.
+#[test]
+fn docs_do_not_speak_of_single_use_seals() {
+    let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    for entry in std::fs::read_dir(src_dir).unwrap() {
+        let path = entry.unwrap().path();
+        let text = std::fs::read_to_string(&path).unwrap().to_lowercase();
+        for term in ["single-use seal", "single-use-seal"] {
+            assert!(!text.contains(term), "{} says {term}", path.display());
+        }
     }
 }

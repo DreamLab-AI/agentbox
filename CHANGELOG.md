@@ -4,6 +4,20 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-10-03 — pod trails in the blocktrails git-mark §5.2 shape)
+
+- `nostr-pod-bridge` writes the pod's `blocktrails.json` in the blocktrails/spec git-mark
+  profile §5.2 shape (`@type`, `version` `0.0.3`, `profile` `gitmark`, `pubkeyBase`, `chain`,
+  `states`, `txo` as TXO URIs), mirroring solid-pod-rs `blocktrail::Blocktrail` field for field;
+  golden fixtures emitted by solid-pod-rs pin the bytes. `pubkeyBase` is the pod identity as a
+  full compressed point. Before any mark exists the trail names chain `gitmark` (git-mark's
+  network for `sidestr:gitmark`), keeps the pod's real commit SHAs as `states` and has an empty
+  `txo`; once `git mark` has recorded marks in `.well-known/txo/txo.json` the trail carries
+  them, one state per mark. The earlier `genesis` field is gone from `blocktrails.json`.
+- `gitmark.json`'s `genesis` is the coordinate `gitmark:<sha>:0`, as solid-pod-rs writes it.
+- Pod files in the earlier shape are rewritten by the next bootstrap only; nothing else
+  writes them. Docs drop "single-use seal".
+
 ### Changed (2026-10-02 — sidestr 0.0.5 chain identity, ADR-2098 amendment)
 
 - A sidestr chain is named by the id of its kind-3500 chain event, not its alias and not its

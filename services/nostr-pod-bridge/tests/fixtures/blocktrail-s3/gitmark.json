@@ -1,0 +1,7 @@
+{
+  "@id": "gitmark:9adc596cfd1100333393a12f2f41b2d820f16d0b:0",
+  "genesis": "gitmark:9adc596cfd1100333393a12f2f41b2d820f16d0b:0",
+  "nick": "test-agent",
+  "package": "agentbox-pod",
+  "repository": "did:nostr:f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+}

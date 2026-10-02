@@ -1,0 +1,31 @@
+{
+  "marks": [
+    {
+      "index": 0,
+      "txid": "51d87101b7cbb01cc5a68785bf3141ec6fd00894d71ab1168d4daa20420eeacf",
+      "vout": 0,
+      "status": "verified",
+      "confirmed": true,
+      "blockHeight": 100,
+      "value": 1000000,
+      "amount": 1000000,
+      "commits": true,
+      "expectedOutput": "25d0042d45b86ab5d5777fbeecb6c2dcaf65ecbe97ed3a4af8ef92f99b53f4a7"
+    },
+    {
+      "index": 1,
+      "txid": "a3f0c2b1d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f",
+      "vout": 0,
+      "status": "verified",
+      "confirmed": true,
+      "blockHeight": 101,
+      "value": 999000,
+      "amount": 999000,
+      "commits": true,
+      "linksToPrev": true,
+      "expectedOutput": "993d150e4e5447f2b3fe1d60811eb972c6f4aa3ef1aa0f092bde4968e57ed6c8"
+    }
+  ],
+  "commitmentsChecked": true,
+  "verdict": "verified"
+}
