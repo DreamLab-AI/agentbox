@@ -443,7 +443,27 @@ echo "[2/8] Bootstrapping sovereign mesh identity..."
 # substrate, /run/agentbox/identity.env at 0600), with the keypair derived
 # through RustCrypto k256 + nostr-bbs-core instead of the pure-Python `ecdsa`
 # package. It self-gates on [sovereign_mesh].enabled and is silent on success.
+#
+# ADR-2078: the pods signer in the supervised management-api signs as this
+# identity, reading <AGENTBOX_IDENTITY_ROOT>/<AGENTBOX_AGENT_ID>.json through
+# management-api/lib/agent-identity.js. Pin the root here so the writer (this
+# bootstrap) and the reader (management-api, which inherits PID 1's env) resolve
+# the same file; AGENTBOX_AGENT_ID reaches PID 1 via identity.env (Phase 5c).
+# Both are paths/slugs, never secrets (SEC-003: no key on argv or in
+# supervisor text).
+export AGENTBOX_IDENTITY_ROOT="${AGENTBOX_IDENTITY_ROOT:-/var/lib/agentbox/identities}"
 nostr-pod-bridge bootstrap
+# The bootstrap writes the identity file as root at the umask mode, so it holds
+# the sovereign secret world-readable. Hand it to devuser (the uid
+# management-api runs as, and its only other reader) at 0600. Fail-open here:
+# a file the signer cannot read makes the pods slot fail closed with a typed
+# SigningUnavailable naming the file (ADR-2064), which is the accepted signal.
+_SOVEREIGN_ID_FILE="$AGENTBOX_IDENTITY_ROOT/${AGENTBOX_AGENT_ID:-agentbox-core}.json"
+if [ -f "$_SOVEREIGN_ID_FILE" ]; then
+  chown devuser:devuser "$_SOVEREIGN_ID_FILE" 2>/dev/null || true
+  chmod 0600 "$_SOVEREIGN_ID_FILE" 2>/dev/null || true
+fi
+unset _SOVEREIGN_ID_FILE
 
 # ---------------------------------------------------------------------------
 # Phase 4 — Workspace defaults (agents dir, tmux config, README)

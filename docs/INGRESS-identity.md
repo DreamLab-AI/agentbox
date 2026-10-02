@@ -1,11 +1,12 @@
 ---
 title: Agentbox Ingress & Identity
 doc_id: AB-INGRESS
-version: 0.2.1
+version: 0.2.2
 status: draft-for-ratification
 verified_commit: 
 date: 2026-09-05
 changelog:
+  - "0.2.2 (2026-10-02): invariant 11 — pod origination signs as the sovereign identity the boot mints, or fails closed (ADR-2078, owner decision SC3); `sign_requests = true` in both manifests."
   - "0.2.1 (2026-09-26): item 10 — JunkieJarvis in end-to-end encrypted forum zones (forum ADR-2016): zone-key grants are stored in a 0600 key file and never read as messages; zk-tagged messages are decrypted before reading and undecryptable ones never reach the LLM; replies into an encrypted zone are encrypted or withheld."
   - "0.2.0 (2026-09-21): PROPOSED, not ratified. ADR-2098/2101 (PRD-024 sovereign settlement): three domain-separated keys where the identity key k_id never spends and never seals blocks, kind 38420 sidestr-account-binding, a second Multikey in the DID document that amends ADR-033 D2'/D3' with I1 intact, ADR-2012's scope narrowed to identity ingress with chain ingress authenticated by consensus, and NIP-98 selecting the spend key on /v1/wallet/*. Recorded in a clearly marked proposed section plus a proposed scope note on Invariant 6; the live compliance surface is unchanged."
   - "0.1.3 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
@@ -329,6 +330,16 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    `ENCRYPTION_ENABLED` exactly `true` plus the zone's `ZONE_CONFIG` `encrypted` flag
    (env, else agentbox `.env`); off, behaviour is unchanged. No primitive is implemented
    here — `nostr-tools` `nip44`/`verifyEvent` (JS), `nostr-bbs-core` `nip44` (Rust digest).
+11. **Pod origination (ADR-2064, ADR-2078).** With `[integrations.solid_pod_rs].sign_requests`
+   on (the default in both manifests since 2026-10-02), every pods-adapter request carries a
+   NIP-98 header signed as the container's sovereign identity — the keypair
+   `nostr-pod-bridge bootstrap` mints at `$AGENTBOX_IDENTITY_ROOT/$AGENTBOX_AGENT_ID.json`
+   and writes into the pod's ACL and DID documents — or it throws `SigningUnavailable` and
+   sends nothing. The identity is read only through `agent-identity.js`
+   `loadSovereignSigner` (never minted there; its secret must derive its recorded pubkey),
+   and signed with `nostr-tools` `finalizeEvent`. A per-stack `nostr.key.enc` is used only
+   when a stack is named explicitly (`AGENTBOX_STACK` or `sign_stack`); a missing sovereign
+   identity never falls through to it or to unsigned.
 
 ## Change process
 
@@ -384,7 +395,7 @@ ADR-2012 is partial for relay-wide allowlisting. The pod bridge authorises inbox
 
 ## Remediation — 2026-09-05
 
-- ADR-2064 landing decision: `sign_requests = false` in both manifests, deliberately, until ADR-2078 (proposed) provisions the pods signer from the sovereign identity the boot mints; the fail-closed adapter stays staged.
+- ADR-2064 landing decision: `sign_requests = false` in both manifests, deliberately, until ADR-2078 (proposed) provisions the pods signer from the sovereign identity the boot mints; the fail-closed adapter stays staged. *Superseded 2026-10-02 by ADR-2078 (see Remediation — 2026-10-02).*
 
 One line per ADR landing in this domain on 2026-09-05. Each amends the Current
 State, Invariants or divergence list above in the same change.
@@ -417,6 +428,14 @@ State, Invariants or divergence list above in the same change.
   state; scope the multi-user `501` claim to suspend/archive.
 - **ADR-2050** — PROPOSED: close the four PROTOCOL-registry federation contract
   rows with paired fixtures.
+
+## Remediation — 2026-10-02
+
+- **ADR-2078** — WIRE: the pods signer reads the sovereign identity the boot already mints
+  (`agentbox-core.json`), so `sign_requests` returns to `true` in both manifests and
+  invariant 11 is added. Activation is staged until the rebuilt image passes the ADR's
+  four acceptance cases; a fail-closed pods slot in the meantime is the accepted signal
+  (owner decision SC3).
 
 ## Settlement identity and key separation — PROPOSED, 2026-09-21
 

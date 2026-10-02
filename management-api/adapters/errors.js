@@ -73,12 +73,13 @@ class SpawnError extends Error {
  * Request signing was REQUIRED but could not be produced (ADR-2064).
  *
  * Raised by the pods adapter when `[integrations.solid_pod_rs].sign_requests`
- * is on but no NIP-98 header could be originated — no signer resolvable, the
+ * is on but no NIP-98 header could be originated — the sovereign identity file
+ * is absent, unreadable or inconsistent (ADR-2078), an explicitly named stack
  * key failed to decrypt, or the originator declined. The adapter fails closed
  * (throws) rather than emitting an unsigned request, so the pods slot degrades
  * visibly instead of silently going out anonymous against a default-deny pod.
  *
- * @see ADR-2064, docs/INGRESS-identity.md §Invariants
+ * @see ADR-2064, ADR-2078, docs/INGRESS-identity.md §Invariants (11)
  */
 class SigningUnavailable extends Error {
   constructor(message, slot = 'pods') {

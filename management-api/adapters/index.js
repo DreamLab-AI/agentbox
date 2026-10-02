@@ -51,8 +51,10 @@ function slotConfig(slot, impl, manifest) {
       return {};
 
     case 'pods': {
-      // Originate signed NIP-98 per request when gated on (default off →
-      // nip98 is null → unsigned, byte-identical to prior behaviour).
+      // Originate signed NIP-98 per request when gated on. Off → nip98 is
+      // null → unsigned, byte-identical to the pre-signing path. On → the
+      // signer signs as the boot-minted sovereign identity (ADR-2078), or as an
+      // explicitly named stack's key.
       //
       // ADR-2064: `sign_requests` is the fail-closed switch, not merely a
       // best-effort hint. When it is on, `requireSigned` rides with the config

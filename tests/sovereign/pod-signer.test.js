@@ -1,12 +1,13 @@
 'use strict';
 
 /**
- * WS4 (PRD-014 Seam C / C2): the pod-signer factory decides — from the
- * manifest gate plus the resolved stack — whether the pods adapter goes out
- * signed. It fails OPEN: any reason it cannot produce a signer (gate off,
- * no stack, key load throws) yields `null`, so the adapter stays unsigned
- * and byte-identical to prior behaviour. Enabling the flag is the only
- * behavioural change.
+ * WS4 (PRD-014 Seam C / C2): the pod-signer factory decides, from the
+ * manifest gate, whether an originator exists and which identity it signs as:
+ * the boot-minted sovereign identity by default, a per-stack key only when a
+ * stack is named explicitly (ADR-2078). A `null` header here does not decide
+ * the request outcome: with `sign_requests` on, the adapter fails closed on
+ * it (ADR-2064). The real-key acceptance cases are in
+ * pod-sovereign-signer.node-test.js.
  */
 
 const { buildPodNip98 } = require('../../management-api/lib/pod-signer');
@@ -23,33 +24,45 @@ describe('buildPodNip98 gating', () => {
     expect(buildPodNip98(undefined)).toBeNull();
   });
 
-  it('returns null and reports when on but no stack resolves', () => {
+  it('with no stack named, takes the sovereign identity and reports when it cannot load (ADR-2078)', async () => {
     const errors = [];
+    const stackLoads = [];
     const fn = buildPodNip98(manifest({ sign_requests: true }), {
-      env: {},
+      // An ambient AGENTBOX_PROFILE no longer selects the stack path.
+      env: { AGENTBOX_PROFILE: 'prof' },
+      loadSigner: (s) => { stackLoads.push(s); return { async sign(u) { return u; } }; },
+      loadSovereignSigner: () => { throw new Error('ENOENT: no such file'); },
+      buildNip98Header: async () => 'Nostr x',
       onError: (e) => errors.push(e),
     });
-    expect(fn).toBeNull();
+    // Factory still returns a function; the header is null, so the adapter
+    // (built with requireSigned from the same flag) fails closed (ADR-2064).
+    expect(typeof fn).toBe('function');
+    expect(await fn('GET', 'http://h/x')).toBeNull();
+    expect(stackLoads).toEqual([]);
     expect(errors).toHaveLength(1);
-    expect(errors[0].message).toMatch(/no stack resolved/);
+    expect(errors[0].message).toMatch(/cannot load sovereign identity .*agentbox-core\.json: ENOENT/);
   });
 
-  it('resolves the stack from env, manifest, in precedence order', () => {
+  it('resolves an explicit stack from env, then manifest, in precedence order', () => {
     const seen = [];
     const loadSigner = (stack) => {
       seen.push(stack);
       return { async sign(u) { return { ...u, sig: 's' }; } };
     };
-    // AGENTBOX_STACK wins over PROFILE and sign_stack
+    const loadSovereignSigner = () => { throw new Error('sovereign source must not be used'); };
+    // AGENTBOX_STACK wins over sign_stack; AGENTBOX_PROFILE is ignored
     buildPodNip98(manifest({ sign_requests: true, sign_stack: 'cfg' }), {
       env: { AGENTBOX_STACK: 'envstack', AGENTBOX_PROFILE: 'prof' },
       loadSigner,
+      loadSovereignSigner,
       buildNip98Header: async () => 'Nostr x',
     })('GET', 'http://h/x');
     // falls back to sign_stack when env is empty
     buildPodNip98(manifest({ sign_requests: true, sign_stack: 'cfg' }), {
       env: {},
       loadSigner,
+      loadSovereignSigner,
       buildNip98Header: async () => 'Nostr x',
     })('GET', 'http://h/x');
     expect(seen).toEqual(['envstack', 'cfg']);

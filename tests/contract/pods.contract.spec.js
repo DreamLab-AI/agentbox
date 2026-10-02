@@ -16,6 +16,40 @@ const { AdapterDisabled, SigningUnavailable } =
 const { LocalSolidRsPodsAdapter }  = require('../../management-api/adapters/pods/local-solid-rs');
 const { ExternalPodsAdapter }      = require('../../management-api/adapters/pods/external');
 const { OffPodsAdapter }           = require('../../management-api/adapters/pods/off');
+const { buildPodNip98 }            = require('../../management-api/lib/pod-signer');
+
+/**
+ * ADR-2078: the production originator, built by `buildPodNip98` with
+ * `sign_requests = true` and no stack named, so it takes the sovereign-identity
+ * source. The identity loader is injected because jest on Node 22 cannot load
+ * nostr-tools' ESM-only @noble packages; the real-key Schnorr round trip is in
+ * tests/sovereign/pod-sovereign-signer.node-test.js. The stub signer stamps the
+ * pubkey it was loaded with, so the assertion is "signed by the sovereign source".
+ */
+const SOVEREIGN_PUBKEY = 'c0'.repeat(32);
+function sovereignOriginator() {
+  const loads = [];
+  const nip98 = buildPodNip98(
+    { integrations: { solid_pod_rs: { sign_requests: true } } },
+    {
+      env: {},
+      loadSigner: () => { throw new Error('stack path must not be taken'); },
+      loadSovereignSigner: (opts) => {
+        loads.push(opts);
+        return {
+          pubkey: SOVEREIGN_PUBKEY,
+          async sign(u) { return { ...u, pubkey: SOVEREIGN_PUBKEY, id: 'i', sig: 's' }; },
+        };
+      },
+    }
+  );
+  return { nip98, loads };
+}
+
+function decodeNip98(header) {
+  expect(header.startsWith('Nostr ')).toBe(true);
+  return JSON.parse(Buffer.from(header.slice(6), 'base64').toString('utf8'));
+}
 
 const REQUIRED_METHODS = ['write', 'read', 'patch', 'del', 'list'];
 
@@ -115,6 +149,14 @@ const IMPLS = [
       probeCapabilities: false,
       requireSigned: true,
     }),
+    // ADR-2078: same impl, signing required AND the sovereign originator present.
+    makeSignedAdapter: (fetchFn, nip98) => new LocalSolidRsPodsAdapter({
+      baseUrl: 'http://127.0.0.1:8484',
+      fetchFn,
+      probeCapabilities: false,
+      requireSigned: true,
+      nip98,
+    }),
   },
   // local-jss row removed 2026-04-25 along with the legacy Python stub.
   // The base class (renamed to SolidHttpPodsAdapter in _solid-http-base.js)
@@ -130,6 +172,12 @@ const IMPLS = [
       fetchFn,
       requireSigned: true,
     }),
+    makeSignedAdapter: (fetchFn, nip98) => new ExternalPodsAdapter({
+      baseUrl: 'http://fake-host',
+      fetchFn,
+      requireSigned: true,
+      nip98,
+    }),
   },
   {
     label: 'off',
@@ -139,7 +187,7 @@ const IMPLS = [
   },
 ];
 
-for (const { label, makeAdapter, isReal, firstClass, makeFailClosedAdapter } of IMPLS) {
+for (const { label, makeAdapter, isReal, firstClass, makeFailClosedAdapter, makeSignedAdapter } of IMPLS) {
   describe(`pods :: ${label}`, () => {
 
     let adapter;
@@ -184,6 +232,48 @@ for (const { label, makeAdapter, isReal, firstClass, makeFailClosedAdapter } of 
             code: 'SIGNING_UNAVAILABLE',
             slot: 'pods',
           });
+        });
+      });
+    }
+
+    // ── ADR-2078: signed as the sovereign identity ────────────────────────
+    // With signing required and the sovereign originator present, every verb
+    // emits exactly one request, each carrying a kind-27235 header from the
+    // sovereign source with the verb's method and URL. The `off` class has no
+    // HTTP surface and is exempt.
+    if (makeSignedAdapter) {
+      describe('[ADR-2078] signed as the sovereign identity', () => {
+        it('every verb sends exactly one request, signed by the sovereign source', async () => {
+          const { nip98, loads } = sovereignOriginator();
+          const calls = [];
+          const backing = makeJssFetch();
+          const spyFetch = async (url, init = {}) => {
+            calls.push({ url, init });
+            return backing(url, init);
+          };
+          const signed = makeSignedAdapter(spyFetch, nip98);
+
+          for (const [verb, args] of [
+            ['write', ['/docs/s', '{"a":1}', 'application/ld+json']],
+            ['read',  ['/docs/s']],
+            ['patch', ['/docs/s', [{ op: 'add', path: '/b', value: 2 }]]],
+            ['del',   ['/docs/s']],
+            ['list',  ['/docs/']],
+          ]) {
+            const before = calls.length;
+            await signed[verb](...args);
+            expect(calls.length - before).toBe(1);
+          }
+
+          for (const { url, init } of calls) {
+            const event = decodeNip98(init.headers.Authorization);
+            expect(event.kind).toBe(27235);
+            expect(event.pubkey).toBe(SOVEREIGN_PUBKEY);
+            expect(event.tags).toContainEqual(['method', (init.method || 'GET').toUpperCase()]);
+            expect(event.tags).toContainEqual(['u', url.split('?')[0]]);
+          }
+          // The identity is loaded once and cached across requests.
+          expect(loads).toHaveLength(1);
         });
       });
     }

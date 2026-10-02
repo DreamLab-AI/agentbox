@@ -177,11 +177,97 @@ function loadOrMint(opts = {}) {
   }
 }
 
+// ─── Sovereign (container) identity — ADR-2078 ──────────────────────────────
+//
+// Distinct from the per-profile keys above. `nostr-pod-bridge bootstrap` (boot
+// phase 3, services/nostr-pod-bridge/src/identity.rs) mints the container's
+// sovereign identity as `<identity_root>/<agent_id>.json` and writes that
+// keypair into the pod's ACL and DID documents. It is therefore the identity a
+// default-deny pod accepts, and the one the pods adapter signs as.
+
+/**
+ * Path of the bootstrap-minted sovereign identity file. Resolves exactly as
+ * the bootstrap does (`AGENTBOX_IDENTITY_ROOT`, default
+ * `/var/lib/agentbox/identities`; `AGENTBOX_AGENT_ID`, default
+ * `agentbox-core`) so reader and writer cannot disagree about the file.
+ *
+ * @param {object} [opts]
+ * @param {object} [opts.env]          - environment (defaults to process.env).
+ * @param {string} [opts.identityRoot] - explicit root, overriding env.
+ * @param {string} [opts.agentId]      - explicit slug, overriding env.
+ * @returns {string}
+ */
+function sovereignIdentityPath(opts = {}) {
+  const env = opts.env || process.env;
+  const root = opts.identityRoot || env.AGENTBOX_IDENTITY_ROOT || '/var/lib/agentbox/identities';
+  const agentId = opts.agentId || env.AGENTBOX_AGENT_ID || 'agentbox-core';
+  return path.join(root, `${agentId}.json`);
+}
+
+/**
+ * Load the sovereign identity as a signer. Read-only: it never mints and never
+ * writes, so an absent file surfaces as the underlying `ENOENT` for the caller
+ * to fail closed on (ADR-2064). The stored secret must derive the stored
+ * x-only pubkey (via {@link deriveXonly}, the same derive path as minting);
+ * a mismatch is refused rather than signing as an identity nobody published.
+ *
+ * The secret stays in this closure. The returned object exposes the public
+ * identity and `sign(event)` — BIP-340 Schnorr via nostr-tools
+ * `finalizeEvent`, the same primitive `loadSigner` in nostr-bridge uses —
+ * and error messages name the file, never its contents.
+ *
+ * @param {object} [opts] - see {@link sovereignIdentityPath}; `opts.path`
+ *   overrides the resolved path outright.
+ * @returns {{pubkey:string, did:string, path:string,
+ *            sign(event:object):Promise<object>}}
+ * @throws {Error} ENOENT/EACCES from the read, or a refusal for a malformed
+ *   or inconsistent identity.
+ */
+function loadSovereignSigner(opts = {}) {
+  const file = opts.path || sovereignIdentityPath(opts);
+  const text = fs.readFileSync(file, 'utf8');
+  let doc;
+  try {
+    doc = JSON.parse(text);
+  } catch (_) {
+    // Deliberately drop the SyntaxError: V8 quotes a slice of the input in its
+    // message, and for this file that slice is key material bound for a log.
+    throw new Error(`sovereign identity ${file} is not valid JSON`);
+  }
+  const privHex = String((doc && doc.private_key_hex) || '').trim().toLowerCase();
+  if (!HEX64.test(privHex)) {
+    throw new Error(`sovereign identity ${file} carries no valid private_key_hex`);
+  }
+  const recorded = String((doc && doc.x_only_pubkey_hex) || '').trim().toLowerCase();
+  const xOnly = deriveXonly(privHex);
+  if (!xOnly || xOnly !== recorded) {
+    throw new Error(
+      `sovereign identity ${file}: the secret does not derive its recorded x_only_pubkey_hex`
+    );
+  }
+  return {
+    pubkey: xOnly,
+    did: `did:nostr:${xOnly}`,
+    path: file,
+    async sign(unsignedEvent) {
+      const { finalizeEvent } = getNostrTools();
+      const sk = Uint8Array.from(Buffer.from(privHex, 'hex'));
+      try {
+        return finalizeEvent(unsignedEvent, sk);
+      } finally {
+        sk.fill(0);
+      }
+    },
+  };
+}
+
 module.exports = {
   loadOrMint,
   deriveXonly,
   multikeyFromXonly,
   profileKeyPath,
+  sovereignIdentityPath,
+  loadSovereignSigner,
   MULTIKEY_PREFIX,
 };
 

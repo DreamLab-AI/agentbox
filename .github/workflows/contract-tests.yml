@@ -15,6 +15,10 @@ on:
       - 'management-api/routes/uri-resolver.js'
       - 'schema/federation-kinds.json'
       - 'tests/sovereign/chain-info.node-test.js'
+      - 'tests/sovereign/pod-sovereign-signer.node-test.js'
+      - 'management-api/lib/pod-signer.js'
+      - 'management-api/lib/agent-identity.js'
+      - 'mcp/servers/nostr-bridge.js'
       - 'agentbox/schemas/adapter-contracts/**'
       - '.github/workflows/contract-tests.yml'
   push:
@@ -31,6 +35,10 @@ on:
       - 'management-api/routes/uri-resolver.js'
       - 'schema/federation-kinds.json'
       - 'tests/sovereign/chain-info.node-test.js'
+      - 'tests/sovereign/pod-sovereign-signer.node-test.js'
+      - 'management-api/lib/pod-signer.js'
+      - 'management-api/lib/agent-identity.js'
+      - 'mcp/servers/nostr-bridge.js'
       - '.github/workflows/contract-tests.yml'
 
 concurrency:
@@ -75,6 +83,14 @@ jobs:
       - name: Chain identity route (/v1/chain/info, chain URNs)
         working-directory: management-api
         run: node --test ../tests/sovereign/chain-info.node-test.js
+
+      # ADR-2078 acceptance: the pods adapter signs as the boot-minted sovereign
+      # identity (real BIP-340 keys, verified by NostrBridge.verifyNip98). The
+      # bridge resolves nostr-tools from mcp/, which CI does not install, so
+      # NODE_PATH points it at management-api's copy (same pinned 2.25.2).
+      - name: Pods signer — sovereign identity (ADR-2078)
+        working-directory: management-api
+        run: NODE_PATH="$PWD/node_modules" node --test ../tests/sovereign/pod-sovereign-signer.node-test.js
 
       - name: Upload coverage
         if: always()

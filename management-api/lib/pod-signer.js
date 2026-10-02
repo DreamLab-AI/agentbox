@@ -9,34 +9,50 @@
  * authenticates to a default-deny Solid pod under its OWN `did:nostr`
  * (PRD-014 Seam C / C2). The signing key is loaded lazily and cached.
  *
- * Returning `null` means "no originator could be built" — it does NOT decide
- * the request outcome. That decision belongs to the adapter, keyed on the same
- * `sign_requests` flag (ADR-2064):
+ * Signing source (ADR-2078) — chosen deterministically, never by fallback:
  *
- *   - `sign_requests` OFF → no signer is wanted; the adapter goes out unsigned,
+ *   - **Sovereign identity (the default).** The container identity that
+ *     `nostr-pod-bridge bootstrap` mints at boot phase 3,
+ *     `<AGENTBOX_IDENTITY_ROOT>/<AGENTBOX_AGENT_ID>.json`
+ *     (`/var/lib/agentbox/identities/agentbox-core.json`), read through
+ *     `lib/agent-identity.loadSovereignSigner`. Its keypair is the one the
+ *     bootstrap writes into the pod's ACL and DID documents, so it is the
+ *     identity a default-deny pod accepts.
+ *   - **Per-stack identity.** Only when a stack is named explicitly — the
+ *     `AGENTBOX_STACK` env or `[integrations.solid_pod_rs].sign_stack` — for a
+ *     profile that owns a distinct identity (`<profiles>/<stack>/nostr.key.enc`
+ *     via nostr-bridge `loadSigner`). `AGENTBOX_PROFILE` no longer selects it:
+ *     every harness wrapper exports that slug, and an ambient session hint must
+ *     not divert pod writes away from the identity the pod trusts.
+ *
+ * A missing or unusable sovereign identity never falls through to the stack
+ * path or to unsigned; the originator returns `null` and the adapter, which is
+ * constructed with `requireSigned` from the same flag, throws
+ * `SigningUnavailable` before any byte is sent (ADR-2064):
+ *
+ *   - `sign_requests` OFF → no signer is wanted; this returns `null` without
+ *     touching any key material and the adapter goes out unsigned,
  *     byte-identical to the pre-signing baseline.
- *   - `sign_requests` ON  → the adapter is constructed with `requireSigned`.
- *     A `null` here (no stack resolvable, key undecryptable) then makes every
- *     request throw `SigningUnavailable` — signing was demanded and could not
- *     be produced, so the slot fails CLOSED rather than silently emitting an
- *     unsigned request at a default-deny pod.
+ *   - `sign_requests` ON  → a `null` header (key absent, unreadable,
+ *     inconsistent) makes every request throw `SigningUnavailable`.
  *
  * There is no dev-profile relaxation: as recorded at ADR-2041, a grep across
  * agentbox for `AGENTBOX_DEV*` / `dev_profile` / `dev_mode` / `dev-profile`
  * finds no such flag, and ADR-2064 does not invent one.
  *
- * @see PRD-014 §4.2  @see ADR-005 §pods slot  @see ADR-2064
+ * @see PRD-014 §4.2  @see ADR-005 §pods slot  @see ADR-2064  @see ADR-2078
  */
 
 /**
  * @param {object} manifest - Parsed agentbox.toml.
  * @param {object} [deps]   - Injection seam for tests.
- * @param {object} [deps.bridge]            - nostr-bridge module override.
- * @param {Function} [deps.loadSigner]      - `(stack, opts) => signer`.
- * @param {Function} [deps.buildNip98Header]- `(signer, method, url, opts) => Promise<string>`.
- * @param {object} [deps.env]               - Environment override (defaults to process.env).
- * @param {object} [deps.signerOpts]        - Passed through to loadSigner.
- * @param {Function} [deps.onError]         - Invoked once if key load fails.
+ * @param {object} [deps.bridge]                - nostr-bridge module override.
+ * @param {Function} [deps.loadSigner]          - `(stack, opts) => signer` (per-stack source).
+ * @param {Function} [deps.loadSovereignSigner] - `(opts) => signer` (sovereign source).
+ * @param {Function} [deps.buildNip98Header]    - `(signer, method, url, opts) => Promise<string>`.
+ * @param {object} [deps.env]                   - Environment override (defaults to process.env).
+ * @param {object} [deps.signerOpts]            - Passed through to the selected loader.
+ * @param {Function} [deps.onError]             - Invoked once if the key load fails.
  * @returns {(null|function(string,string,*):Promise<string|null>)}
  */
 function buildPodNip98(manifest, deps = {}) {
@@ -45,19 +61,7 @@ function buildPodNip98(manifest, deps = {}) {
   if (!integ.sign_requests) return null;
 
   const env = deps.env || process.env;
-  const stack =
-    env.AGENTBOX_STACK || env.AGENTBOX_PROFILE || integ.sign_stack || null;
-  if (!stack) {
-    if (deps.onError) {
-      deps.onError(
-        new Error(
-          'pod-signer: sign_requests is on but no stack resolved ' +
-            '(set AGENTBOX_STACK or integrations.solid_pod_rs.sign_stack)'
-        )
-      );
-    }
-    return null;
-  }
+  const stack = env.AGENTBOX_STACK || integ.sign_stack || null;
 
   let bridge = null;
   const getBridge = () => {
@@ -70,20 +74,34 @@ function buildPodNip98(manifest, deps = {}) {
     }
     return bridge;
   };
-  const loadSigner = deps.loadSigner || ((s, o) => getBridge().loadSigner(s, o));
   const buildNip98Header =
     deps.buildNip98Header || ((...a) => getBridge().NostrBridge.buildNip98Header(...a));
+
+  const signerOpts = deps.signerOpts || {};
+  const load = stack
+    ? () => (deps.loadSigner || ((s, o) => getBridge().loadSigner(s, o)))(stack, signerOpts)
+    : () => (deps.loadSovereignSigner ||
+        ((o) => require('./agent-identity').loadSovereignSigner(o)))({ env, ...signerOpts });
+  const describe = stack
+    ? `stack '${stack}'`
+    : `sovereign identity ${require('./agent-identity').sovereignIdentityPath({ env, ...signerOpts })}`;
 
   let signer = null;
   let loadFailed = false;
   const getSigner = () => {
     if (signer || loadFailed) return signer;
     try {
-      signer = loadSigner(stack, deps.signerOpts || {});
+      signer = load();
     } catch (err) {
       loadFailed = true;
       signer = null;
-      if (deps.onError) deps.onError(err);
+      if (deps.onError) {
+        // Name the source and keep the cause; the cause never carries key
+        // material (fs errors name paths; loaders name files, not contents).
+        const wrapped = new Error(`pod-signer: cannot load ${describe}: ${err.message}`);
+        wrapped.cause = err;
+        deps.onError(wrapped);
+      }
     }
     return signer;
   };
