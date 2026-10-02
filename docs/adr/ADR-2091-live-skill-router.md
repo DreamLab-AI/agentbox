@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: caab741c6858c4e2d08eb513a773fad75fa79b70
+verified_commit: be358df7b2740134cb3d1155d900a837dafc9e24
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -158,3 +158,7 @@ One governed path moved, `config/entrypoint-unified.sh`, in a COMMENT-ONLY hunk:
 - **Point 7:** the log gains `cascade`/`margin`, `scope`/`scope_reason`, and (only with `label_log`) a 12-hex `session` digest. It still never holds the prompt, confirmed in the probe's log line.
 
 Gates at this commit: `jest tests/config/skill-route.test.js tests/config/routing-labels.test.js` → 57 passed. Hook probes: gate off → no stdout; `jev` without key → no stdout, `no-key` logged; cascade forced local → honoured-shape `diagrams-as-code` line, `scope: registered`. Validator valid; `bash -n` clean. `activation_status` is left `staged`: ADR-2111 records the rebuild live, but this pass did not inspect the loaded container. Claim STILL TRUE as amended by ADR-2111 D2.
+
+## Note 2026-10-02 — EXP-B8 shadow arm (ADR-2110 label_log only)
+
+`be358df7b` adds, only when `labelLog` is on, a judge-free BM25 score over the same candidate map in the same call: `localRank` now also returns its top raw `score`, and `route()` carries `bm25Pick`/`bm25Score` into the log line as `bm25_pick`/`bm25_score`. The judge still decides and the injected context is unchanged; the shadow is never shown to the model. **Point 7:** the log line gains a skill name and a number and still never holds the prompt (`tests/config/skill-route.test.js`, "the shadow is recorded on a failed judge call too, and never the prompt"). With `label_log` off the log line is byte-identical to before. The cascade's picks and margins are unchanged (`node --test tests/system-one/cascade-parity.test.mjs` → 4 passed). Router suite: 99 passed with the label and experiment suites. Claim STILL TRUE.

@@ -2,24 +2,26 @@
 id: ADR-2110
 title: Learn skill routing from the skills the main model actually uses, recorded as local embeddings
 date: 2026-09-23
-decision_status: proposed
+decision_status: accepted
 implementation_status: partial
-activation_status: inactive
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
-verified_paths: [config/hooks/routing-label-recorder.cjs, config/hooks/lib/routing-labels.cjs, tests/config/routing-labels.test.js]
+verified_commit: be358df7b2740134cb3d1155d900a837dafc9e24
+verified_paths: [config/hooks/routing-label-recorder.cjs, config/hooks/lib/routing-labels.cjs, tests/config/routing-labels.test.js, scripts/experiments/exp-b8-label-log.cjs, tests/config/exp-b8-label-log.test.js]
 owner: jjohare
-review_trigger: acceptance or rejection of this proposal; the first 30 days of recorded labels; a learned router measured against the frozen corpus; any change to what the label row stores
+review_trigger: the EXP-B8 stopping rule firing (510 analysable rows or 2026-10-20) and its verdict PR; the first 30 days of recorded labels; a learned router measured against the frozen corpus; any change to what the label row stores
 repo: agentbox
 domain: LEARNING-memory
 ---
 
-# ADR-2110 — Learn skill routing from the skills the main model actually uses (PROPOSAL)
+# ADR-2110 — Learn skill routing from the skills the main model actually uses
 
-> **Status: PROPOSED — an outline for review.** The recorder described in the Decision is
-> built and tested, but it is gated off (`[skills.routing].label_log = false`), and it stays
-> off until this record is accepted. Sections marked *open* need an operator decision.
+> **Status: ACCEPTED for a bounded experiment, LIVE since 2026-10-02** (owner decision
+> 2026-10-02 R5b). `[skills.routing].label_log = true` runs as the pre-registered experiment
+> EXP-B8 (`docs/experiments/EXP-B8-label-log.md`), which switches itself off at 510 analysable
+> rows or on 2026-10-20 and records keep or withdraw here. Sections marked *open* still need an
+> operator decision before the log runs again after that.
 
 ## Context
 
@@ -141,3 +143,53 @@ off.
 - **Priority:** P3 — parked (review trigger: the CY-B8 ADR-2095 measurement against the ADR-2094 façade reports)
 - **Why:** The recorder is built, tested (49/49) and gated off (`agentbox.toml:990`, `label_log = false`). Nothing is lost by leaving it switched off. The record continues the typed-decision and routing line (ADR-2091, ADR-2094, ADR-2095) that planning cycle §1 calls "chasing itself". It was filed on 2026-09-23, after the cycle's rule against new records came into force. Track B item 8 is the one run meant to turn that programme into either a closed leaf or a falsified hypothesis. CY-B8 has not started.
 - **Next:** Do not enable `label_log` until B8 reports. If B8 falsifies the façade, withdraw this record. If it does not, take open question 1 (embedding retention) to the owner.
+
+## Amendment 2026-10-02 — bounded activation as EXP-B8
+
+**Owner decision 2026-10-02 R5b** overrides the 2 October Disposition's "do not enable until B8
+reports": the label log *is* the B8 measurement. "Turn on the log and run it as a bounded test
+since we might forget … turn it off once the data is statistically significant."
+
+- **Protocol, pre-registered before any row:** `docs/experiments/EXP-B8-label-log.md`
+  (`fa3f3c045`). Judge against the ADR-2095 copy ceiling, both scored against the teacher label;
+  one exact McNemar test; MDE 5 points; n = 510 (Connor 1987, ψ = 14/86); stop at n or
+  2026-10-20; verdict → keep / withdraw table.
+- **Copy-ceiling arm:** with `label_log` on, the router hook scores the same candidate map with
+  its own BM25 ranker and logs `bm25_pick`/`bm25_score` beside the judge's pick; the recorder
+  joins them into two nullable columns (`config/hooks/lib/skill-route.cjs`, `routing-labels.cjs`,
+  `routing-label-recorder.cjs`, `be358df7b`).
+- **Live without a rebuild.** The image bakes both the manifest and `/opt/agentbox/config/hooks`,
+  so a checkout flip alone does nothing until a rebuild. `scripts/experiments/exp-b8-label-log.cjs`,
+  ticked every 30 minutes from `skills/podcast-knowledge-ingest/crontab` (read from the checkout),
+  registers the router hook (with `AGENTBOX_SKILL_ROUTE_LABEL_LOG=1`) and the Stop recorder from
+  the checkout while the checkout manifest says `true`, and restores the entrypoint's off state
+  exactly at the stop. A rebuild with `label_log = true` registers the same hooks from the image;
+  the tick replaces them idempotently.
+- **Auto-stop:** at the stopping rule the tick records the stop, de-registers both hooks, runs
+  the one test, writes the report, opens a pull request that sets `label_log = false` and
+  appends the verdict to this record (never merged, never forced), and posts one plain-English
+  summary as JunkieJarvis in the dream digest's channel. The post is at-most-once: the attempt
+  is saved before publishing, so neither a failure nor a crash can post twice.
+- **Privacy bound.** ADR-2090 licenses egress of the routing prompt to the judge; it says
+  nothing about storing it. The storage bound is this record's Decision 4 (no prompt text; the
+  row holds the vector and the text's length) and ADR-2091 point 7 (the router log "never holds
+  the prompt"). EXP-B8 adds to the log line and the row only a skill name and a BM25 score,
+  which reveal no more than the router pick already logged. Enforced by
+  `tests/config/routing-labels.test.js` ("the persisted row carries the vector and the length,
+  never the text") and `tests/config/skill-route.test.js` ("the shadow is recorded on a failed
+  judge call too, and never the prompt").
+- **Verification:** `npx jest tests/config/exp-b8-label-log.test.js tests/config/routing-labels.test.js
+  tests/config/skill-route.test.js` → 99 passed; `node --test tests/system-one/cascade-parity.test.mjs`
+  → 4 passed (the ranker's picks unchanged). Live: a throwaway table received a 384-d row with the
+  two new columns and no text (dropped); the checkout hook logged `bm25_pick: diagrams-as-code`
+  beside the judge's `diagrams-as-code`.
+
+## Disposition — 2026-10-02 (owner decision R5b)
+
+- **Suitability:** fits
+- **Priority:** P1 — running (bounded)
+- **Why:** The owner chose to run the measurement rather than park the record. EXP-B8 is the
+  CY-B8 run on live traffic, with its sample size and stop fixed before the first row.
+- **Next:** The EXP-B8 tick fires the stop by 2026-10-20 at the latest and opens the verdict PR.
+  KEEP → take open question 1 (embedding retention) to the owner. WITHDRAW or INCONCLUSIVE →
+  this record becomes rejected.
