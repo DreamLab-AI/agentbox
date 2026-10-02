@@ -116,7 +116,10 @@ jobs:
       - name: check-adr-index (ADR-2001 — docs/adr/README.md matches the records on disk)
         run: node scripts/adr-index-gen.js docs/adr --check-index
 
-      - name: adr-ratchet (planning cycle 2026-09-21 — a new ADR must close a proposed one)
+      - name: adr-ratchet self-test (an ADR added already decided is not backlog)
+        run: bash tests/config/adr-ratchet.test.sh
+
+      - name: adr-ratchet (planning cycle 2026-09-21 — a new proposal must close a proposed one)
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: bash scripts/adr-ratchet.sh docs/adr "${BASE:-0}" "${{ github.sha }}"

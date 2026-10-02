@@ -1,7 +1,7 @@
 //! HTTP ingress: the three routes the estate actually calls.
 //!
 //! `POST /v1/systemone` is byte-compatible with what
-//! `config/hooks/lib/skill-route.cjs` and the `jev-compaction` plugin already
+//! `config/hooks/lib/skill-route.cjs` and the factrail compaction plugin already
 //! send to TypeSafe, because neither consumer may be edited to accommodate a
 //! local backend. `GET /health` is the compose healthcheck. `GET /v1/models`
 //! publishes the engine's real budget so operators can see what the façade is

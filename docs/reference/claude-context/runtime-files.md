@@ -59,11 +59,15 @@ section-map entry and a `SKILL-DIRECTORY.md` row. Registration is by manifest �
 `skills/codex-registered-skills.txt` (Codex / GPT-6 Astra) — reconciled into
 `~/.claude/skills` and `~/.codex/skills` at boot.
 
-Compaction is Jev-judged by default (ADR-2093): `[features.jev_compaction]` installs the
-function-hook plugin `config/claude-plugins/jev-compaction` (Claude Code ≥ 2.1.274), which
-drops or truncates only the tool calls Jev says are stale and never rewrites text;
-**email-tainted sessions always get the built-in summary**, `/jev-compact on|off|status`
-is the switch, and any failure falls open to the built-in compaction.
+Compaction is Jev-judged by default (ADR-2121):
+`[features.jev_compaction]` bakes factrail (`lib/factrail.nix`: `/opt/agentbox/bin/factrail`
+and the function-hook plugin `config/claude-plugins/factrail`, Claude Code ≥ 2.1.274). What
+Jev lets go is *reduced* by fact rails, not deleted: reproducible reads become a re-run note,
+other results keep head, fact lines and tail, and the full output is saved under
+`~/.cache/factrail/outputs` with its path in the note. Text is never rewritten.
+**Email-tainted sessions are never sent** and get local fact rails instead;
+`/factrail on|off|status` is the switch. Without a key or on judge failure, `fallback`
+(`rules` | `summary`) decides.
 
 Routing is live by default (ADR-2091): `[skills.routing].router = "jev"` registers
 `config/hooks/skill-route.cjs` on `UserPromptSubmit`, one System One Choice over every

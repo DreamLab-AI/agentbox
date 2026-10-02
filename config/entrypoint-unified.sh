@@ -2311,20 +2311,30 @@ if [ -d "$_INSTR_LAYERS" ] && command -v agentbox-manifest >/dev/null 2>&1 \
 fi
 unset _INSTR_LAYERS
 
-# ── ADR-2093: Jev verbatim compaction — install/uninstall the function-hook plugin ──
-# [features.jev_compaction].enabled = true ⇒ three things in the root session:
-# CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 in settings.json `env` (the early-access
+# ── ADR-2093/ADR-2121: Jev compaction with fact rails — install/uninstall factrail ──
+# [features.jev_compaction].enabled = true ⇒ in the root session:
+# CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 in settings.json `env` (the function-hook
 # surface the plugin needs), the baked directory marketplace `agentbox`
-# registered, and jev-compaction@agentbox installed with the manifest's values
-# as its userConfig. `claude plugin install` copies the plugin into
-# ~/.claude/plugins/cache/<marketplace>/<name>/<version>/ — a persistent volume that
-# outlives rebuilds — so a rebuilt plugin at the same version would be served
-# stale; the cache is compared to the baked tree by content and reinstalled on
-# any difference. Off ⇒ uninstall, drop the marketplace, delete the env key:
-# byte-identical-when-off (ADR-2020). Never writes a /nix/store path anywhere.
+# registered, and factrail@agentbox installed with the manifest's values as its
+# userConfig. The plugin and /opt/agentbox/bin/factrail are baked from ONE
+# pinned DreamLab-AI/factrail commit (lib/factrail.nix), so the shim and the
+# binary always speak the same hook protocol. `claude plugin install` copies the
+# plugin into ~/.claude/plugins/cache/<marketplace>/<name>/<version>/ — a
+# persistent volume that outlives rebuilds — so a rebuilt plugin at the same
+# version would be served stale; the cache is compared to the baked tree by
+# content and reinstalled on any difference. Off ⇒ uninstall, drop the
+# marketplace, delete the env key: byte-identical-when-off (ADR-2020). Never
+# writes a /nix/store path anywhere: `binary` is the stable /opt path.
+#
+# ADR-2121 retires the vendored jev-compaction plugin. Whatever the gate, a
+# leftover jev-compaction@agentbox install is removed; with the gate on, its
+# sticky email taints and switch position are first carried into factrail's
+# store (scripts/factrail-store-migrate.mjs), so a resumed email session stays
+# fenced.
 _JC_ON="$(_ab_toml_bool features.jev_compaction enabled)"
 _JC_MARKET="/opt/agentbox/config/claude-plugins"
-_JC_PLUGIN="$_JC_MARKET/jev-compaction"
+_JC_PLUGIN="$_JC_MARKET/factrail"
+_JC_BIN="/opt/agentbox/bin/factrail"
 if command -v claude >/dev/null 2>&1 && [ -f "$_CLAUDE_SETTINGS" ] || [ "$_JC_ON" = "1" ]; then
   SETTINGS="$_CLAUDE_SETTINGS" JC_ON="$_JC_ON" node <<'JCENVJS' || true
 const fs = require('fs');
@@ -2333,25 +2343,51 @@ let s = {}, orig = ''; try { orig = fs.readFileSync(f, 'utf8'); s = JSON.parse(o
 if (on) { s.env = s.env || {}; s.env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS = '1'; }
 else if (s.env) { delete s.env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS; if (!Object.keys(s.env).length) delete s.env; }
 const next = JSON.stringify(s, null, 2);
-if (next !== orig) { fs.mkdirSync(require('path').dirname(f), { recursive: true }); fs.writeFileSync(f, next); console.log(`  [jev-compaction] ${on ? 'set' : 'cleared'} CLAUDE_CODE_ENABLE_FUNCTION_HOOKS in settings.json`); }
+if (next !== orig) { fs.mkdirSync(require('path').dirname(f), { recursive: true }); fs.writeFileSync(f, next); console.log(`  [factrail] ${on ? 'set' : 'cleared'} CLAUDE_CODE_ENABLE_FUNCTION_HOOKS in settings.json`); }
 JCENVJS
   chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
 fi
-if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && command -v claude >/dev/null 2>&1; then
+# The retired plugin goes first, whatever the gate: two compaction plugins on one
+# session.compact chain would both act.
+if command -v claude >/dev/null 2>&1 \
+   && grep -q '"jev-compaction@agentbox"' /home/devuser/.claude/plugins/installed_plugins.json 2>/dev/null; then
+  run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall jev-compaction@agentbox >/dev/null 2>&1 \
+    && echo "  [factrail] uninstalled the retired jev-compaction plugin (ADR-2121)" \
+    || echo "  [factrail] could not uninstall the retired jev-compaction plugin (check: claude plugin uninstall jev-compaction@agentbox)"
+  rm -f /home/devuser/.claude/plugins/.jev-compaction-config.sha
+fi
+if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && [ -x "$_JC_BIN" ] && command -v claude >/dev/null 2>&1; then
   if [ -z "$_SSO_PLUGIN_CONFIG" ]; then
-    [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [jev-compaction] enabled but TYPESAFE_API_KEY is unset — every compaction will use the built-in summary (W072)"
+    [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [factrail] enabled but TYPESAFE_API_KEY is unset — compaction runs on local fact rails without Jev (fallback=rules) or the built-in summary (fallback=summary) (W072)"
   fi
+  run_as_devuser env HOME=/home/devuser node /opt/agentbox/scripts/factrail-store-migrate.mjs || true
   _JC_VER="$(node -e "process.stdout.write(require('$_JC_PLUGIN/.claude-plugin/plugin.json').version)" 2>/dev/null || echo 0.0.0)"
-  _JC_CACHE="/home/devuser/.claude/plugins/cache/agentbox/jev-compaction/$_JC_VER"
+  _JC_CACHE="/home/devuser/.claude/plugins/cache/agentbox/factrail/$_JC_VER"
   # Trailing `; true`: a first install has no cache directory, so the `cd`
   # fails and the subshell returns 1 — which under `set -e` ended the whole
   # boot before the MCP projections ran (2026-09-18, ADR-2104). An absent or
-  # unreadable tree is an empty digest, i.e. "differs", i.e. reinstall.
-  _jc_digest() { ( cd "$1" 2>/dev/null && find hooks lib .claude-plugin -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum 2>/dev/null | sha256sum | cut -c1-16 ); true; }
+  # unreadable tree is an empty digest, i.e. "differs", i.e. reinstall. The
+  # binary is part of "current": a new factrail commit can change it alone.
+  _jc_digest() { ( cd "$1" 2>/dev/null && find hooks .claude-plugin -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum 2>/dev/null | sha256sum | cut -c1-16 ); true; }
   _JC_BAKED="$(_jc_digest "$_JC_PLUGIN")"; _JC_HAVE="$(_jc_digest "$_JC_CACHE")"
   run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace add "$_JC_MARKET" >/dev/null 2>&1 \
-    || echo "  [jev-compaction] marketplace add failed (continuing; a stale registration may remain)"
-  _JC_ARGS="--config enabledByDefault=$(_ab_toml_bool features.jev_compaction enabled_by_default | sed 's/1/true/;s/0/false/')"
+    || echo "  [factrail] marketplace add failed (continuing; a stale registration may remain)"
+  # Every pair is checked against the userConfig the baked plugin declares and an
+  # undeclared one is skipped with a log line: an unknown --config key fails the
+  # whole install and would take compaction down with it. An empty manifest value
+  # is not projected, so the plugin's own default (equal to the manifest's) holds.
+  _JC_DECLARED="$(node -e "process.stdout.write(Object.keys(require('$_JC_PLUGIN/.claude-plugin/plugin.json').userConfig || {}).join(' '))" 2>/dev/null || true)"
+  _JC_ARGS=""
+  _jc_project() { # _jc_project KEY=VALUE
+    local key="${1%%=*}"
+    case "$1" in *=) return 0 ;; esac
+    case " $_JC_DECLARED " in
+      *" $key "*) _JC_ARGS="$_JC_ARGS --config $1" ;;
+      *) echo "  [factrail] plugin declares no userConfig key '$key' — not projecting it" ;;
+    esac
+  }
+  _jc_project "binary=$_JC_BIN"
+  _jc_project "enabledByDefault=$(_ab_toml_bool features.jev_compaction enabled_by_default | sed 's/1/true/;s/0/false/')"
   for kv in "taintTools=$(_ab_toml_val features.jev_compaction taint_tools)" \
             "taintSkills=$(_ab_toml_val features.jev_compaction taint_skills)" \
             "compactAtPercent=$(_ab_toml_int features.jev_compaction compact_at_percent 60)" \
@@ -2362,62 +2398,59 @@ if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && command -v claude >/dev/null 2
             "cacheTtlSeconds=$(_ab_toml_val features.jev_compaction cache_ttl_seconds)" \
             "cacheTtlMarginSeconds=$(_ab_toml_val features.jev_compaction cache_ttl_margin_seconds)" \
             "keepThreshold=$(_ab_toml_val features.jev_compaction keep_threshold)" \
-            "minReductionRatio=$(_ab_toml_val features.jev_compaction min_reduction_ratio)" \
-            "model=$(_ab_toml_val features.jev_compaction model)"; do
-    case "$kv" in *=) ;; *) _JC_ARGS="$_JC_ARGS --config $kv" ;; esac
+            "model=$(_ab_toml_val features.jev_compaction model)" \
+            "egress=$(_ab_toml_val features.jev_compaction egress)" \
+            "fallback=$(_ab_toml_val features.jev_compaction fallback)" \
+            "compactionTimeoutMs=$(_ab_toml_val features.jev_compaction compaction_timeout_ms)" \
+            "saveFullOutputs=$(_ab_toml_val features.jev_compaction save_full_outputs)" \
+            "recordDecisions=$(_ab_toml_val features.jev_compaction record_decisions)"; do
+    _jc_project "$kv"
   done
   # ADR-2094: repoint the plugin at the local façade and tell it, explicitly,
   # that the backend is local — the taint fence keys off THIS boolean, never
-  # off the URL (ADR-2094 §5). A pair whose userConfig key the baked plugin
-  # does not declare is skipped rather than passed: an unknown --config key
-  # would fail the whole install and take compaction down with it.
+  # off the URL (ADR-2094 §5).
   if [ -n "$_SSO_PLUGIN_CONFIG" ]; then
     while IFS= read -r kv; do
-      [ -n "$kv" ] || continue
-      _JC_KEY="${kv%%=*}"
-      if grep -q "\"$_JC_KEY\"" "$_JC_PLUGIN/.claude-plugin/plugin.json" 2>/dev/null; then
-        _JC_ARGS="$_JC_ARGS --config $kv"
-      else
-        echo "  [jev-compaction] plugin declares no userConfig key '$_JC_KEY' — not projecting it (ADR-2094)"
-      fi
+      [ -n "$kv" ] && _jc_project "$kv"
     done <<SSOCFG
 $_SSO_PLUGIN_CONFIG
 SSOCFG
   fi
-  # The manifest's userConfig is part of "current": claude plugin install is the
-  # only way options reach the plugin, so a changed [features.jev_compaction]
-  # value with unchanged plugin code must still reinstall (2026-09-26: six new
-  # keys never landed because the code digest alone matched).
-  _JC_CFG_STAMP=/home/devuser/.claude/plugins/.jev-compaction-config.sha
-  _JC_CFG_WANT="$(printf '%s' "$_JC_ARGS" | sha256sum | cut -c1-16)"
+  # The manifest's userConfig and the binary are part of "current": claude plugin
+  # install is the only way options reach the plugin, so a changed
+  # [features.jev_compaction] value with unchanged plugin code must still
+  # reinstall (2026-09-26: six new keys never landed because the code digest
+  # alone matched).
+  _JC_CFG_STAMP=/home/devuser/.claude/plugins/.factrail-config.sha
+  _JC_CFG_WANT="$( { printf '%s' "$_JC_ARGS"; sha256sum "$_JC_BIN" 2>/dev/null; } | sha256sum | cut -c1-16)"
   # A first boot has no stamp: treat it as stale, not a fatal set -e error.
   _JC_CFG_HAVE="$(cat "$_JC_CFG_STAMP" 2>/dev/null || true)"
   if [ -d "$_JC_CACHE" ] && [ "$_JC_BAKED" = "$_JC_HAVE" ] && [ "$_JC_CFG_WANT" = "$_JC_CFG_HAVE" ]; then
-    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin enable jev-compaction@agentbox >/dev/null 2>&1 || true
-    echo "  [jev-compaction] plugin $_JC_VER already installed and current (code ${_JC_BAKED}, config ${_JC_CFG_WANT})"
+    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin enable factrail@agentbox >/dev/null 2>&1 || true
+    echo "  [factrail] plugin $_JC_VER already installed and current (code ${_JC_BAKED}, config ${_JC_CFG_WANT})"
   else
-    [ -d "$_JC_CACHE" ] && run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall jev-compaction@agentbox >/dev/null 2>&1 || true
-    # A ShellCheck directive takes key=value pairs only: prose appended directly
-    # after the code is parsed as another pair (SC1125) and the WHOLE directive is
-    # ignored, so SC2086 was never actually suppressed here. The rationale has to
-    # be its own comment: _JC_ARGS is a deliberate word list of --config KEY=VALUE
-    # pairs, so it must stay unquoted.
+    [ -d "$_JC_CACHE" ] && run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall factrail@agentbox >/dev/null 2>&1 || true
+    # _JC_ARGS is a deliberate word list of --config KEY=VALUE pairs, so it must
+    # stay unquoted (a directive takes key=value pairs only, SC1125).
     # shellcheck disable=SC2086
-    if run_as_devuser env HOME=/home/devuser timeout 120 claude plugin install jev-compaction@agentbox $_JC_ARGS >/dev/null 2>&1; then
-      echo "  [jev-compaction] installed plugin $_JC_VER (${_JC_BAKED}) with manifest userConfig (${_JC_CFG_WANT})"
+    if run_as_devuser env HOME=/home/devuser timeout 120 claude plugin install factrail@agentbox $_JC_ARGS >/dev/null 2>&1; then
+      echo "  [factrail] installed plugin $_JC_VER (${_JC_BAKED}) with manifest userConfig (${_JC_CFG_WANT})"
       printf '%s' "$_JC_CFG_WANT" > "$_JC_CFG_STAMP" 2>/dev/null && chown 1000:1000 "$_JC_CFG_STAMP" 2>/dev/null || true
     else
-      echo "  [jev-compaction] plugin install FAILED — compaction stays built-in (check: claude plugin install jev-compaction@agentbox)"
+      echo "  [factrail] plugin install FAILED — compaction stays built-in (check: claude plugin install factrail@agentbox)"
     fi
   fi
 elif command -v claude >/dev/null 2>&1 && [ -d /home/devuser/.claude/plugins ]; then
-  if grep -q '"jev-compaction@agentbox"' /home/devuser/.claude/plugins/installed_plugins.json 2>/dev/null; then
-    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall jev-compaction@agentbox >/dev/null 2>&1 \
-      && echo "  [jev-compaction] uninstalled plugin (gate off)"
+  if [ "$_JC_ON" = "1" ]; then
+    echo "  [factrail] enabled but not baked ($_JC_PLUGIN or $_JC_BIN missing) — rebuild the image; compaction stays built-in"
+  fi
+  if grep -q '"factrail@agentbox"' /home/devuser/.claude/plugins/installed_plugins.json 2>/dev/null; then
+    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall factrail@agentbox >/dev/null 2>&1 \
+      && echo "  [factrail] uninstalled plugin (gate off)"
   fi
   if grep -q '"agentbox"' /home/devuser/.claude/plugins/known_marketplaces.json 2>/dev/null; then
     run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace remove agentbox >/dev/null 2>&1 \
-      && echo "  [jev-compaction] removed agentbox marketplace (gate off)"
+      && echo "  [factrail] removed agentbox marketplace (gate off)"
   fi
 fi
 

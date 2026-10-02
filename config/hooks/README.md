@@ -75,7 +75,7 @@ nor MCP servers, and nothing in this directory registers them.
 
 | Plugin | Events | Gate |
 |---|---|---|
-| `jev-compaction` | `session.compact`, `turn.complete`, `session.start`, `command.run{jev-compact}` | `[features.jev_compaction].enabled` — the entrypoint installs/uninstalls via `claude plugin` and sets/clears the env flag (byte-identical-when-off) |
+| `factrail` | `session.compact`, `turn.complete`, `turn.start`, `tool.call`, `skill.prompt`, `session.start`, `command.run{factrail}` | `[features.jev_compaction].enabled` — baked from DreamLab-AI/factrail (`lib/factrail.nix`, ADR-2121); the entrypoint installs/uninstalls via `claude plugin` and sets/clears the env flag (byte-identical-when-off) |
 
 ## 5. Pruned from every settings file (vendor scaffolding)
 

@@ -1574,6 +1574,12 @@
         # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.
         sidestrAgentPkg = import ./lib/sidestr-agent.nix { inherit lib; pkgs = rustPkgs; };
         sidechainPackages = lib.optionals sidechainFaucet [ sidestrAgentPkg ];
+        # factrail — Jev compaction with fact rails ([features.jev_compaction],
+        # ADR-2121). One pinned commit gives the binary and the
+        # Claude Code shim that calls it; see lib/factrail.nix.
+        jevCompactionOn = ((agentboxConfig.features or {}).jev_compaction or {}).enabled or false;
+        factrailPkg = import ./lib/factrail.nix { inherit lib; pkgs = rustPkgs; };
+        factrailPackages = lib.optionals jevCompactionOn [ factrailPkg ];
 
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
@@ -1723,6 +1729,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ knowledgeToolPackages
           ++ skillToolPackages
           ++ sidechainPackages
+          ++ factrailPackages
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
           ++ runePackages
@@ -1789,6 +1796,11 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # name a path, and a /nix/store path in prose rots at the next rebuild.
           ln -s ${vaultPkg}/bin/vault $out/opt/agentbox/bin/vault
           ''}
+          ${lib.optionalString jevCompactionOn ''
+          # factrail: the entrypoint projects THIS path as the plugin's `binary`
+          # option, which persists in ~/.claude; a store path there would dangle.
+          ln -s ${factrailPkg}/bin/factrail $out/opt/agentbox/bin/factrail
+          ''}
 
           ${lib.optionalString (toolchainCfg.codex or false) ''
           # Codex-native progressive-disclosure projection. Codex scans the
@@ -1836,6 +1848,15 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # management-api at the operator-configured /lo prefix.
           mkdir -p $out/opt/agentbox/browser
           cp -rL ${linkedObjectsBrowserPkg}/. $out/opt/agentbox/browser/
+          ''}
+
+          ${lib.optionalString jevCompactionOn ''
+          # The factrail shim joins the `agentbox` directory marketplace beside its
+          # catalogue (config/claude-plugins/.claude-plugin/marketplace.json). It
+          # comes from the same pinned commit as /opt/agentbox/bin/factrail.
+          chmod u+w $out/opt/agentbox/config/claude-plugins
+          cp -r ${factrailPkg}/share/factrail/plugin $out/opt/agentbox/config/claude-plugins/factrail
+          chmod -R u+w $out/opt/agentbox/config/claude-plugins/factrail
           ''}
 
           # tmux plugin loader — generated with Nix-interpolated store paths so

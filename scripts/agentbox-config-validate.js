@@ -1366,14 +1366,15 @@ if (ldEnabled) {
   }
 }
 
-// ─── E074 / W072: Jev verbatim compaction (ADR-2093) ─────────────────────────
+// ─── E074 / W072: Jev compaction with fact rails (ADR-2093) ────────
 //
 // E074 — [features.jev_compaction].taint_tools must keep the email gateway
 //         prefix: the email carve-out is the standing operator condition on
 //         the egress decision, not a tunable.
 // W072 — enabled=true with no TYPESAFE_API_KEY in the validating environment:
-//         legal (the plugin falls back to the built-in summary every time) but
-//         the operator asked for Jev and will not get it. Advisory; CI has no key.
+//         legal (factrail compacts on local fact rails, or hands over to the
+//         built-in summary when fallback = "summary") but the operator asked for
+//         Jev and will not get it. Advisory; CI has no key.
 {
   const jc = (manifest.features || {}).jev_compaction || {};
   if (jc.enabled) {
@@ -1389,7 +1390,7 @@ if (ldEnabled) {
         && !((manifest.features || {}).sovereign_system_one || {}).enabled) {
       warnings.push({
         code: 'W072',
-        message: 'W072: [features.jev_compaction].enabled=true but TYPESAFE_API_KEY is not set in this environment — every compaction will use the built-in summary until the key is provided in .env (ADR-2093)',
+        message: `W072: [features.jev_compaction].enabled=true but TYPESAFE_API_KEY is not set in this environment — every compaction will run without Jev (${jc.fallback === 'summary' ? 'the built-in summary' : 'local fact rails'}) until the key is provided in .env (ADR-2093)`,
       });
     }
   }

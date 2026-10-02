@@ -26,7 +26,7 @@ let
   # 2026-10-01): current stable Claude Code release, bumped from 2.1.280.
   # Retains the function-hook surface introduced in 2.1.276
   # (`session.compact`, `command.register`, `$.http.fetch`) that the
-  # jev-compaction plugin needs (ADR-2093). 2.1.257 had none of it.
+  # factrail compaction plugin needs (ADR-2093). 2.1.257 had none of it.
   #
   # NOTE (bump review, 2026-10-01): 2.1.286 is already in the public
   # CHANGELOG.md but had NOT been promoted to the `stable` channel pointer at
@@ -38,8 +38,9 @@ let
   # Anthropic's own published manifest.json checksums for this version
   # (https://downloads.claude.ai/claude-code-releases/2.1.285/manifest.json),
   # not just the downloaded bytes' self-reported digest. Regenerate
-  # /plugin-types after this bump — jev-compaction's generated plugin types
-  # need to be re-checked against 2.1.285's hook surface.
+  # /plugin-types after this bump — the factrail plugin's generated types
+  # need to be re-checked against 2.1.285's hook surface (factrail CI and its
+  # `claude plugin test` run under 2.1.285).
   claudeCodeVersion = "2.1.285";
 
   # Map agentbox's system string to the upstream download platform slug.

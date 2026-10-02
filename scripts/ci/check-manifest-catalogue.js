@@ -73,6 +73,10 @@ const BASELINE = [
       // ADR-2093 starting position of the /jev-compact switch, under the
       // catalogued `features.jev_compaction` gate that installs the plugin.
       'features.jev_compaction.enabled_by_default',
+      // ADR-2121 factrail knobs under the same gate: whether reduced outputs are
+      // saved locally and whether judged decisions are logged locally. Neither
+      // installs anything; both are inert when the parent gate is off.
+      'features.jev_compaction.save_full_outputs', 'features.jev_compaction.record_decisions',
       'skills.code_interpreter.allow_pip_install',
       'integrations.ruvector_external.manage_sidecar', 'integrations.ruvector_external.hybrid_search',
       'integrations.ruvector_external.typed_metadata', 'integrations.ruvector_external.metadata_gin',

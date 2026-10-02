@@ -49,12 +49,16 @@ asserted mechanically, treat the class as must-not-leave.
 
 ## Accepted exception 2: context compaction with an email fence (ADR-2093, 2026-09-18)
 
-The `jev-compaction` plugin sends the conversation — user and assistant text, tool
-inputs (≤1,000 chars each), tool-result *sizes* — to the judge at every compaction. The
+The compaction plugin (factrail since ADR-2121; the vendored `jev-compaction` before it)
+sends the conversation — user and assistant text, tool inputs (≤1,000 chars each, or only
+their shape under `egress = "metadata"`), tool-result *status and sizes* — to the judge at
+every compaction. The
 operator accepted that with one standing condition, enforced in code rather than habit:
 **a transcript containing any email tool call (`mcp__email-gateway__*`, Gmail) or an
-`email-search` Skill load is never sent**; the built-in summary runs instead
-(`config/claude-plugins/jev-compaction/hooks/policy.mjs`, tested). The fence is a
+`email-search` Skill load is never sent**, for the rest of the session (the taint is
+sticky); it is compacted on local fact rails instead, with nothing leaving
+(factrail `crates/factrail-policy`, tested there and baked at the `rev` pinned in
+`lib/factrail.nix`). The fence is a
 tool-name prefix list (`taint_tools`), so any other must-not-leave class above can be
 fenced per project by adding its MCP prefix — no code change, and the validator (E074)
 refuses a manifest that drops the email prefix. Tool-result contents never leave on this

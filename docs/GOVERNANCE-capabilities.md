@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.0
+version: 0.6.1
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.1 (2026-10-02): ADR-2121 — compaction moves onto factrail (Rust, baked from one pinned DreamLab-AI/factrail commit). What Jev lets go is reduced by fact rails instead of deleted; an email-tainted session on a cloud judge is compacted on local fact rails instead of the summary (still never sent); the sticky taint is migrated across the plugin change; min_reduction_ratio retires. The email-never-leaves and result-contents-never-leave invariants are unchanged."
   - "0.6.0 (2026-09-21): PROPOSED, not ratified. ADR-2097/2100/2103 (PRD-024 sovereign settlement): every chain settlement passes the payment_settlement authority class (31402 out, signed 31403 in, hash-chained authority.deny, mirrored receipt), the daily spend budget becomes durable on the memory slot, settlement fails closed, spend authorisation counts authorising principals rather than accounts, the P21 mainnet gate becomes a build and deploy gate whose 31403 receipt is bound on-seal, and the anchor-not-seal vocabulary rule. Recorded as proposed invariants in a clearly marked section; the Invariants compliance surface above is unchanged."
   - "0.5.0 (2026-09-20): ADR-2094 — typed decisions may be answered by a local capacity-adapting facade (Sovereign System One) that speaks the Jev wire protocol; gated off by default, no cloud fallback on any path, and the ADR-2093 email fence relaxes only on an explicit backendLocal boolean from resolved config, never inferred from a URL."
   - "0.4.0 (2026-09-14): ADR-2087 — the action authority axis gains the ADR-2011 task-property triple (stamped as tp-* tags on every 31402 agentbox publishes), every gate denial is journalled as a hash-chained authority.deny readable at /v1/agent-events, application receipts are mirrored to the forum so the approving human learns the outcome, governance_manual_continue gives an outage a signed continuation path, and the dream ledger gains Reviewer / Review-minutes."
@@ -135,22 +136,30 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   routing prompt is accepted for skill routing only (ADR-2090); per-project gates are deferred.
   Measured 2026-09-16: 90% soft accuracy over the fleet, ~0.7–1.1 s, $0.00062 per route.
   Contract tests: `tests/config/skill-route.test.js`.
-- **Verbatim compaction** (ADR-2093) — `[features.jev_compaction]` registers the Claude
-  Code function-hook plugin `config/claude-plugins/jev-compaction` (needs Claude Code ≥
-  2.1.274; image pins 2.1.276). At compaction Jev scores every non-pinned tool call twice
-  (keep the call? keep its result verbatim?) and only what it lets go is dropped or
-  truncated; text is never rewritten. Invariants: **email never leaves** — a session that has
-  *ever* made an `mcp__email-gateway__*`/Gmail call or loaded `email-search` gets the built-in
-  summary for the rest of its life (the taint is sticky per session id in the plugin store,
-  so a summary that absorbed email is never sent later; amendment 2026-09-25; validator
-  E074 refuses a manifest without that prefix in `taint_tools`); the plugin triggers at
-  `min(compact_at_percent of the window, compact_at_tokens)` and re-triggers only after
+- **Jev compaction with fact rails** (ADR-2093, ADR-2121) —
+  `[features.jev_compaction]` bakes factrail (`DreamLab-AI/factrail` at the `rev` pinned in
+  `lib/factrail.nix`: `/opt/agentbox/bin/factrail` plus the function-hook plugin
+  `config/claude-plugins/factrail`; needs Claude Code ≥ 2.1.274) and installs the plugin. At
+  compaction Jev scores every non-pinned tool call twice (keep the call? keep its result
+  verbatim?). What it lets go is **reduced, not deleted**: a reproducible read becomes a note
+  to re-run it; any other result keeps its head, fact lines and tail, and its full output is
+  saved (secrets masked) with the path in the note. Text is never rewritten. Invariants:
+  **email never leaves** — a session that has *ever* made an `mcp__email-gateway__*`/Gmail
+  call or loaded `email-search` is never sent to a cloud judge for the rest of its life (the
+  taint is sticky per session id in the plugin store, carried across the plugin change by
+  `scripts/factrail-store-migrate.mjs`; validator E074 refuses a manifest without that prefix
+  in `taint_tools`); such a session is compacted on local fact rails (no model, no network),
+  or judged when the backend is declared local (ADR-2094, `ok-local`); **tool-result contents
+  never leave** — the judge sees `ok|error, N chars` per result. The plugin triggers at
+  `min(compact_at_percent of the window, compact_at_tokens)`, re-triggers only after
   `rearm_tokens` of growth past the post-compaction size, and compacts an idle session above
-  `cache_warm_floor_tokens` shortly before its prompt cache expires (`cache_warm`); the built-in
-  compaction is the **fail-open** path on any error, missing key or reduction under
-  `min_reduction_ratio`; `/jev-compact on|off|status` is the operator switch. Egress
-  widened from ADR-2090 by operator decision. Contract tests:
-  `tests/config/jev-compaction-policy.test.mjs`.
+  `cache_warm_floor_tokens` shortly before its prompt cache expires (`cache_warm`). The cut is
+  sized from the real context, with the fixed prefix counted. Without a key, on any judge
+  failure, or when even eviction cannot reach the trigger, `fallback` decides: `rules` (local
+  fact rails) or `summary` (built-in). `/factrail on|off|status` is the operator switch.
+  Egress widened from ADR-2090 by operator decision. Contract tests: factrail's own suite at
+  the pinned `rev` (run in the Nix build), `tests/config/factrail-store-migrate.test.mjs`,
+  `tests/config/factrail-projection.test.sh`.
 - **Typed-decision backend** (ADR-2094, PRD-023/DDD-021) — the two System One consumers
   above (router, compaction) address a *protocol*, not a vendor. `[features.sovereign_system_one]`
   (off by default, rebuild class) projects both at a local capacity-adapting facade,
@@ -345,7 +354,8 @@ above, enabled but explicitly-invoke-only.
   An undeclared reduction is indistinguishable from an engine that read everything.
 - **A typed-decision facade has no non-LAN upstream** (ADR-2094) — no cloud fallback on engine
   failure, timeout, degraded mode or behind a flag. It fails loud; the router falls open to the
-  table and compaction to the built-in summary, as ADR-2091/ADR-2093 already require.
+  table and compaction to its local fallback (fact rails or the built-in summary), as
+  ADR-2091/ADR-2093 require.
 - **Backend locality is asserted, never inferred** (ADR-2094) — the ADR-2093 email taint fence
   relaxes only when `decide()` receives an explicit `backendLocal: true` passed from resolved
   configuration. Default `false`; a missing, non-boolean or truthy-string value keeps the fence

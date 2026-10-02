@@ -103,6 +103,8 @@ the core crate, and must not add a network edge to the standard.
 ### 8. Verbatim context compaction — evaluated 2026-09-18; **integrated the same day (ADR-2093)**
 **Landed** — `config/claude-plugins/jev-compaction`, gate `[features.jev_compaction]`, Claude
 Code pinned 2.1.276, email always fenced out (`hooks/policy.mjs`), `/jev-compact on|off|status`.
+**Replaced 2026-10-02 (ADR-2121)** by factrail (`DreamLab-AI/factrail`, baked by
+`lib/factrail.nix`): fact rails reduce instead of delete, under the same gate and fence.
 The evaluation below is kept as written: the two blockers were resolved by a pin bump and an
 operator decision with the email carve-out, and the residency figure is now the review trigger.
 **What** — [tamaratran/fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction)

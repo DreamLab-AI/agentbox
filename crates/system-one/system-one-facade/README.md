@@ -13,7 +13,7 @@ compression — see `src/compress.rs`, which states the measurement that justifi
 it and the change to core that would retire it.
 
 ```
-consumer (skill-route.cjs / jev-compaction)
+consumer (skill-route.cjs / factrail)
    │  POST /v1/systemone     Jev wire format, Bearer auth when SSO_API_KEY is set
    ▼
 system-one-facade  :8097          ← the sole ingress

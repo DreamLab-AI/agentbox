@@ -7,14 +7,25 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 47e1879341631185fb1ce4370303e0010afda779
-verified_paths: [config/claude-plugins/jev-compaction/hooks/jev-compaction.ts, config/claude-plugins/jev-compaction/hooks/policy.mjs, config/entrypoint-unified.sh, lib/claude-code-binary.nix, tests/config/jev-compaction-policy.test.mjs]
+verified_commit: 68270e953449c2d2e32003bf65ffabbefe442d61
+verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
-review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, or a request to fence a class other than email
+review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation)
 repo: agentbox
 ---
 
 # ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch
+
+## Implementation moved — 2026-10-02: see ADR-2121
+
+The policy below (Jev judgement, verbatim, email fenced out, a switch, ADR-2094's local
+relaxation and the 2026-09-25 / 2026-10-01 amendments' trigger, hysteresis and redaction
+rules) stands. Its implementation is now factrail, baked at a pinned commit, recorded in
+[ADR-2121](ADR-2121-factrail-implements-jev-compaction.md). ADR-2121 also retires
+`min_reduction_ratio` and changes what an email-fenced session gets on a cloud judge (local
+fact rails instead of the built-in summary). The vendored plugin, `hooks/policy.mjs`,
+`hooks/redact.mjs` and their tests named in the sections below are deleted; read those
+sections as the history of the rule.
 
 ## Re-verification — 2026-10-01 (dependency refresh)
 

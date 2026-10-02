@@ -643,28 +643,43 @@ permission_deny = [
 ]
 
 [features.jev_compaction]
-# ADR-2093 — verbatim context compaction judged by Jev. At compaction every
-# non-pinned tool call is scored twice by TypeSafe System One (keep the call?
-# keep its result verbatim?); what Jev lets go is dropped or truncated, and
-# user/assistant text is never rewritten. Claude Code plugin at
-# config/claude-plugins/jev-compaction (library vendored from
-# tamaratran/fast-jev-compaction, MIT).
+# ADR-2093, amended 2026-10-02 — Jev compaction with fact rails. At compaction
+# every non-pinned tool call is scored twice by TypeSafe System One (keep the
+# call? keep its result verbatim?). What Jev lets go is REDUCED, not deleted:
+# a reproducible read becomes a one-line note to re-run it; any other result
+# keeps its head, its fact lines (errors, HTTP codes, paths, ids, counts) and
+# its tail, and its full output is saved (secrets masked) under
+# ~/.cache/factrail/outputs with the path in the note. User/assistant text is
+# never rewritten. Implementation: DreamLab-AI/factrail (Rust), baked by
+# lib/factrail.nix as /opt/agentbox/bin/factrail plus the plugin
+# config/claude-plugins/factrail; it re-implements tamaratran/fast-jev-compaction,
+# deadczarvc-labs/jev-factkeep-compaction and deadczarvc/hermes-jev-compaction
+# (all MIT; NOTICE in the factrail repo).
 #
 # EGRESS: each compaction sends the conversation — text and tool inputs, never
-# tool-result contents — to TypeSafe. Accepted by operator decision with one
-# standing carve-out: a transcript containing ANY email tool call (or a Skill
-# load of email-search) is never sent; the built-in summary runs instead.
-# Widen the fence per project with taint_tools. Widens ADR-2090.
+# tool-result contents (only "ok|error, N chars") — to TypeSafe. Accepted by
+# operator decision with one standing carve-out: a session that has EVER made an
+# email tool call (or loaded email-search) is never sent. With the cloud judge it
+# is compacted on local fact rails instead (fallback = "rules": no model, no
+# network); with a declared-local judge (ADR-2094) it is judged, reported as
+# ok-local. Widen the fence per project with taint_tools. Widens ADR-2090.
 #
-# COST (measured 2026-09-18): Jev ≈ $0.005/compaction; the verbatim-kept
-# context ≈ $14–18 per busy agent-hour in cache reads vs the summary.
+# COST (measured 2026-09-18 for the vendored plugin): Jev ≈ $0.005/compaction;
+# verbatim-kept context ≈ $14–18 per busy agent-hour in cache reads vs the
+# summary. Fact rails keep more (≈45–50% of tokens after compaction in the
+# upstream factkeep evaluation, against 7–10% for fast-jev-compaction), so the
+# residency bill is expected to rise: ADR-2121 makes re-measuring it the
+# activation condition.
 #
 # enabled            → BOOT-class: the entrypoint sets CLAUDE_CODE_ENABLE_FUNCTION_HOOKS,
-#                      registers the `agentbox` marketplace and enables the plugin in
-#                      ~/.claude/settings.json; false retracts all three.
-# enabled_by_default → the /jev-compact switch's starting position (persisted per
-#                      operator in the plugin store once toggled).
-# Needs Claude Code >= 2.1.274 (lib/claude-code-binary.nix). Validator: W072.
+#                      registers the `agentbox` marketplace and installs
+#                      factrail@agentbox with these values as userConfig; false
+#                      retracts all three. REBUILD-class for the binary and plugin
+#                      themselves (gated in flake.nix).
+# enabled_by_default → the /factrail switch's starting position (persisted per
+#                      operator in the plugin store once toggled; carried over from
+#                      /jev-compact by scripts/factrail-store-migrate.mjs).
+# Needs Claude Code >= 2.1.274 (lib/claude-code-binary.nix). Validator: E074, W072.
 enabled = true
 enabled_by_default = true
 taint_tools = "mcp__email-gateway__,mcp__claude_ai_Gmail__"   # tool-name prefixes that fence a session
@@ -677,13 +692,20 @@ cache_warm_floor_tokens = 100000 # never arm the idle nudge below this context s
 cache_ttl_seconds = 0            # 0 = detect (subscription 3600, API key 300); else explicit
 cache_ttl_margin_seconds = 300   # fire this long before expiry (half the TTL when the margin would exceed it)
 keep_threshold = 0.5
-# 0.55, not 0.25 (2026-10-01): 42 Jev compactions since the 180k trigger landed at a
-# median 84k after (built-in summary: ~60-75k), but the ones Jev estimated under
-# 55% left 100-196k, re-arming within one or two 40k steps. Those now take the
-# summary; the plugin's estimate ignores the fixed system/tool prefix, so the real
-# cut is smaller than the ratio it reports.
-min_reduction_ratio = 0.55
 model = "jev-latest"
+# min_reduction_ratio is RETIRED (ADR-2121). It sent compactions estimated under
+# 55% to the summary because the vendored plugin left 100-196k that re-armed
+# within one or two 40k steps, and its estimate ignored the fixed system/tool
+# prefix. factrail sizes the cut from the real context: it reduces result by
+# result, cheapest facts first, aiming at 5/6 of the trigger with that prefix
+# counted, and evicts the oldest outputs (saved first) to get under the trigger.
+# Only if even eviction cannot reach the trigger does `fallback` apply: "rules"
+# installs the best local reduction, "summary" hands over to the built-in.
+egress = "full"                  # "full": tool arguments capped per fitting stage | "metadata": kind, key names, count and length only
+fallback = "rules"               # no key, tainted on a cloud judge, or judge failure: "rules" (local fact rails) | "summary" (built-in)
+compaction_timeout_ms = 15000    # judge deadline; past it the fallback runs
+save_full_outputs = true         # save each reduced result's full output (secrets masked) and point the note at it
+record_decisions = true          # log each judged request and its answers to ~/.local/share/factrail/decisions (never for a tainted session): the dream cycle's training and evaluation data
 
 [features.sovereign_system_one]
 # ADR-2094 — Sovereign System One: the local, capacity-adapting typed-decision

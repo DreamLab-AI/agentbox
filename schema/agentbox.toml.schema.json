@@ -2927,15 +2927,15 @@
         "jev_compaction": {
           "type": "object",
           "additionalProperties": false,
-          "description": "ADR-2093 verbatim context compaction judged by Jev (Claude Code plugin config/claude-plugins/jev-compaction). BOOT-class; needs Claude Code >= 2.1.274.",
+          "description": "ADR-2093 Jev compaction, amended 2026-10-02: the factrail plugin (config/claude-plugins/factrail) and binary (/opt/agentbox/bin/factrail), baked from DreamLab-AI/factrail by lib/factrail.nix. BOOT-class for the projection, REBUILD-class for the binary and plugin; needs Claude Code >= 2.1.274.",
           "properties": {
             "enabled": {
               "type": "boolean",
-              "description": "Register the plugin, the agentbox marketplace and CLAUDE_CODE_ENABLE_FUNCTION_HOOKS in ~/.claude/settings.json; false retracts all three."
+              "description": "Bake factrail into the image, then register the plugin, the agentbox marketplace and CLAUDE_CODE_ENABLE_FUNCTION_HOOKS in ~/.claude/settings.json; false retracts all three."
             },
             "enabled_by_default": {
               "type": "boolean",
-              "description": "Starting position of the /jev-compact switch (projected as the plugin's enabledByDefault)."
+              "description": "Starting position of the /factrail switch (projected as the plugin's enabledByDefault)."
             },
             "taint_tools": {
               "type": "string",
@@ -2991,15 +2991,33 @@
               "maximum": 1,
               "description": "Minimum Jev probability for a call or result to stay."
             },
-            "min_reduction_ratio": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 1,
-              "description": "Below this estimated reduction the built-in summary runs instead."
-            },
             "model": {
               "type": "string",
               "description": "System One model id."
+            },
+            "egress": {
+              "type": "string",
+              "enum": ["full", "metadata"],
+              "description": "What of a tool call's arguments the judge request carries: \"full\" (JSON, capped per fitting stage) or \"metadata\" (kind, key names, count and length only). Tool-result contents never leave on either."
+            },
+            "fallback": {
+              "type": "string",
+              "enum": ["rules", "summary"],
+              "description": "Without a usable judge (no key, a tainted session on a cloud judge, a judge failure), or when the judged reduction cannot reach the trigger: \"rules\" compacts on local fact rails (no model, no network); \"summary\" hands over to the built-in compaction."
+            },
+            "compaction_timeout_ms": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 590000,
+              "description": "Deadline for the judge round in milliseconds; past it the fallback runs."
+            },
+            "save_full_outputs": {
+              "type": "boolean",
+              "description": "Save each reduced result's full output (secrets masked) under ~/.cache/factrail/outputs and point its note at the file."
+            },
+            "record_decisions": {
+              "type": "boolean",
+              "description": "Log each judged request and its answers under ~/.local/share/factrail/decisions for evaluation and training; never for a tainted session."
             }
           }
         },
