@@ -11,7 +11,7 @@
  *
  *   GET  /v1/pay/info     -- service payment metadata (chains, tokens, operator DID)
  *   GET  /v1/pay/balance  -- query user balance by DID (NIP-98 auth required)
- *   POST /v1/pay/deposit  -- submit TXO deposit proof
+ *   POST /v1/pay/deposit  -- 501: deposits go to the pod's own /pay/.deposit (MRC20 only)
  *   POST /v1/pay/estimate -- pre-flight cost estimate for a job (local computation)
  *   POST /v1/pay/buy      -- buy DREAM tokens with sats
  *   POST /v1/pay/withdraw -- withdraw sats by burning DREAM tokens
@@ -19,6 +19,7 @@
  * Environment:
  *
  *   SOLID_POD_PORT        -- port of the solid-pod-rs instance (default: 8484)
+ *   SOLID_POD_PUBLIC_URL  -- the pod's public base URL, named in the deposit 501
  *   BASE_COST_SATS        -- base cost per unit in satoshis (default: 10)
  *   DREAM_PER_SAT         -- DREAM tokens minted per sat (default: 10)
  *   INFERENCE_MULTIPLIER  -- cost multiplier for inference tier (default: 10)
@@ -35,6 +36,7 @@
 // ---------------------------------------------------------------------------
 
 const POD_BASE = `http://127.0.0.1:${process.env.SOLID_POD_PORT || 8484}`;
+const POD_PUBLIC_URL = (process.env.SOLID_POD_PUBLIC_URL || '').replace(/\/+$/, '') || null;
 
 const BASE_COST_SATS       = parseInt(process.env.BASE_COST_SATS, 10) || 10;
 const DREAM_PER_SAT        = parseFloat(process.env.DREAM_PER_SAT) || 10;
@@ -273,84 +275,38 @@ async function paymentRoutes(fastify, options) {
   });
 
   // -------------------------------------------------------------------
-  // POST /v1/pay/deposit -- submit TXO deposit proof
+  // POST /v1/pay/deposit -- not served here (501)
+  //
+  // solid-pod-rs e62d028 (ADR-2008 D6) deleted the pod's TXO stand-in
+  // deposit; its /pay/.deposit accepts only a verified MRC20 body. This
+  // route cannot forward one: the pod binds NIP-98 to its own URL and to
+  // the exact body bytes, which a header signed for /v1/pay/deposit fails.
+  // So it answers 501 itself, names the pod's endpoint, and calls nothing.
   // -------------------------------------------------------------------
   fastify.post('/v1/pay/deposit', {
     schema: {
       tags: ['payments'],
-      description: 'Submit a TXO deposit proof to credit the caller balance',
-      body: {
-        type: 'object',
-        required: ['txo_uri', 'amount_sats'],
-        properties: {
-          txo_uri:     { type: 'string', description: 'TXO URI e.g. txo:btc:txid:vout' },
-          amount_sats: { type: 'number', minimum: 1, description: 'Amount in satoshis' },
-        },
-      },
+      description: 'Not served (501). Deposits are verified MRC20 bodies POSTed, NIP-98 signed, to the pod\'s own /pay/.deposit.',
       response: {
-        200: {
+        501: {
           type: 'object',
           properties: {
-            credited:      { type: 'boolean' },
-            txo_uri:       { type: 'string' },
-            amount_sats:   { type: 'number' },
-            new_balance:   { type: 'number' },
-            dream_balance: { type: 'number' },
-          },
-        },
-        401: {
-          type: 'object',
-          properties: {
-            error:   { type: 'string' },
-            message: { type: 'string' },
-          },
-        },
-        502: {
-          type: 'object',
-          properties: {
-            error:   { type: 'string' },
-            message: { type: 'string' },
+            error:       { type: 'string' },
+            message:     { type: 'string' },
+            deposit_url: { type: ['string', 'null'] },
           },
         },
       },
     },
   }, async (req, reply) => {
-    const did = callerDid(req);
-    if (!did) {
-      return reply.code(401).send({
-        error: 'identity-required',
-        message: 'NIP-98 auth is required for deposits.',
-      });
-    }
-
-    const { txo_uri, amount_sats } = req.body;
-
-    logger.info({ did, txo_uri, amount_sats }, 'payments: deposit request');
-
-    let result;
-    try {
-      result = await podFetch('POST', '/pay/.deposit', {
-        body: { txo_uri, amount_sats },
-        headers: authHeaders(req),
-        logger,
-      });
-    } catch (err) {
-      return reply.code(err.statusCode || 502).send({
-        error: 'payment-service-error',
-        message: err.message,
-      });
-    }
-
-    const newBalance = result.body.new_balance ?? result.body.balance_sats ?? amount_sats;
-
-    return {
-      credited: true,
-      txo_uri,
-      amount_sats,
-      new_balance: newBalance,
-      dream_balance: newBalance * DREAM_PER_SAT,
-      ...result.body,
-    };
+    logger.info({ did: callerDid(req) }, 'payments: deposit refused (501, not served here)');
+    return reply.code(501).send({
+      error: 'deposit-not-served',
+      message: 'This route credits nothing. POST a verified MRC20 deposit ({"type":"mrc20", …}) '
+        + 'to the pod\'s own /pay/.deposit, NIP-98 signed for that URL. TXO and amount_sats '
+        + 'deposits are not accepted anywhere (solid-pod-rs ADR-2008 D6).',
+      deposit_url: POD_PUBLIC_URL ? `${POD_PUBLIC_URL}/pay/.deposit` : null,
+    });
   });
 
   // -------------------------------------------------------------------
