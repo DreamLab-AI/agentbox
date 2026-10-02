@@ -126,7 +126,9 @@ jobs:
       # known-answer test and the /v1/chain/pay pipeline, also under node:test.
       - name: sidestr rail (k_spend binding KAT, /v1/chain/pay, /v1/chain/payments)
         working-directory: management-api
-        run: node --test ../tests/sovereign/sidestr-spend-key.node-test.js ../tests/sovereign/chain-payments.node-test.js
+        run: |
+          node --test ../tests/sovereign/sidestr-spend-key.node-test.js ../tests/sovereign/chain-payments.node-test.js
+          SIDESTR_TEST_CHAIN=dreamlab node --test ../tests/sovereign/chain-payments.node-test.js
 
       # ADR-2103 interim receipt (amended 2026-10-02): the producer tip-age probe
       # and the demo witness. Their loopback-chain cases need the upstream siding

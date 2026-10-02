@@ -3225,7 +3225,6 @@
           "required": [
             "enabled",
             "chain_id",
-            "producer_url",
             "max_sats_per_payment"
           ],
           "properties": {
@@ -3241,7 +3240,12 @@
             "producer_url": {
               "type": "string",
               "pattern": "^https?://",
-              "description": "The producer the payer reads (/chain.json, /coins, /blocks.json) and posts to (POST /tx). Its chain document is checked against the compiled chain before every payment."
+              "description": "The producer the payer reads (/chain.json, /coins, /blocks.json) and posts to (POST /tx), for the configured chain_id. Absent: http://127.0.0.1:<port>, port SIDESTR_PORT, 3450 for dreamlab or [sidechain.<name>].port (as config/sidechain/run-producer.sh). Its chain document is checked against the compiled chain before every payment."
+            },
+            "mirror_url": {
+              "type": "string",
+              "pattern": "^https://",
+              "description": "The chain's public mirror, shown to /v1/chain/payments readers. Absent: the chain's [sidechain] or [sidechain.<name>] announce_mirror."
             },
             "max_sats_per_payment": {
               "type": "integer",

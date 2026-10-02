@@ -6,9 +6,21 @@
  * on the chain [payments.sidestr] names, and the receipt URN cites the txid
  * and the including block.
  *
- *   AGENTBOX_MANIFEST_PATH=agentbox.toml node scripts/activation/adr-2097-acceptance.js \
- *     --identity-dir <dir> --out <dir> [--fund-from <key file>] [--fund-sats 3000] \
- *     [--price 1000] [--fixture <path>]
+ *   [SIDESTR_CHAIN=dreamlab-txbt4] AGENTBOX_MANIFEST_PATH=agentbox.toml \
+ *     node scripts/activation/adr-2097-acceptance.js --out <dir> \
+ *     [--identity-dir <dir>] [--payer-profile demo-a] [--payee-profile demo-b] \
+ *     [--fund-from <key file>] [--fund-sats 3000] [--price 1000] [--fixture <path>]
+ *
+ * The chain is the rail's (railConfig: SIDESTR_CHAIN, else [payments.sidestr]
+ * .chain_id; dreamlab-txbt4 by default). Identities default to the demo
+ * agents scripts/sidechain/demo-accounts.js mints ($WORKSPACE/sidestr/agents/
+ * demo). The 2026-10-02 run used SIDESTR_CHAIN=dreamlab with profiles
+ * adr2097-a/adr2097-b in $WORKSPACE/sidestr/agents/adr-2097.
+ *
+ * Funding dependency: the payer's spend address needs spendable coins on the
+ * chain. On dreamlab-txbt4 none exist yet (the chain mints nothing and the
+ * estate holds no post-fork txbt4 coins), so the run stops at the balance
+ * check with a plain message until a peg-in or treasury funds it.
  *
  * What is real: the producer and chain (producer_url), the sidestr-agent
  * binary, both agents' identity keys (agent-identity.loadOrMint) and spend
@@ -45,13 +57,14 @@ const { LocalJsonlEventsAdapter } = require(path.join(MA, 'adapters', 'events', 
 const chainPayments = require(path.join(MA, 'routes', 'chain-payments'));
 
 function args() {
-  const out = { fundSats: 3000, price: 1000 };
+  const ws = process.env.WORKSPACE || require('os').homedir() + '/workspace';
+  const out = { fundSats: 3000, price: 1000, payerProfile: 'demo-a', payeeProfile: 'demo-b', identityDir: `${ws}/sidestr/agents/demo` };
   const a = process.argv.slice(2);
   for (let i = 0; i < a.length; i += 2) {
     const k = a[i].replace(/^--/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
     out[k] = /^\d+$/.test(a[i + 1]) ? Number(a[i + 1]) : a[i + 1];
   }
-  if (!out.identityDir || !out.out) throw new Error('--identity-dir and --out are required');
+  if (!out.out) throw new Error('--out is required');
   return out;
 }
 
@@ -67,7 +80,10 @@ async function main() {
   fs.mkdirSync(opt.out, { recursive: true });
   const agent = createSidestrAgent();
   const producer = createProducer(rail.producer_url);
-  const tipBefore = await producer.tip();
+  let tipBefore;
+  try { tipBefore = await producer.tip(); } catch (err) {
+    throw new Error(`the ${rail.chain_id} producer at ${rail.producer_url} is not answering (${err.message}); the dreamlab-txbt4 producer ships disabled ([sidechain.dreamlab-txbt4].enabled = false)`);
+  }
   log(`chain ${rail.chain_id} at ${rail.producer_url}, tip ${tipBefore.height}`);
 
   // ── Two agentbox agent identities, each with a spend key beside it ───────
@@ -77,8 +93,8 @@ async function main() {
     const s = spendKeys.loadOrMintSpend({ identity: id, chainId: rail.chain_id });
     return { profile, did: id.did, pubkey: id.pubkey, ...s };
   };
-  const A = mk('adr2097-a');
-  const B = mk('adr2097-b');
+  const A = mk(opt.payerProfile);
+  const B = mk(opt.payeeProfile);
   if (A.spendPubkey === A.pubkey || B.spendPubkey === B.pubkey) throw new Error('k_spend equals k_id');
   log(`A ${A.did} spend ${A.spendPubkey}`);
   log(`B ${B.did} spend ${B.spendPubkey}`);
@@ -93,7 +109,7 @@ async function main() {
   let funding = null;
   let balA = await agent.balance({ url: rail.producer_url, keyFile: A.spendKeyPath });
   if (balA.spendable < opt.price + 1000) {
-    if (!opt.fundFrom) throw new Error(`A holds ${balA.spendable} sats; pass --fund-from`);
+    if (!opt.fundFrom) throw new Error(`funding dependency: A (${A.did}) holds ${balA.spendable} spendable sats on ${rail.chain_id} at ${aNames.address}; it needs ${opt.price + 1000}. Fund that address (peg-in or treasury) or pass --fund-from <key file>`);
     log(`funding A with ${opt.fundSats} sats`);
     const f = await agent.send({ url: rail.producer_url, keyFile: opt.fundFrom, relays: rail.relays, to: aNames.address, amountSats: opt.fundSats });
     const inc = await waitForInclusion({ producer, script: aNames.script, txid: f.txid, minValue: opt.fundSats, timeoutMs: 180000, intervalMs: 3000 });

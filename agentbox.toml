@@ -1613,15 +1613,17 @@ enabled = false                          # C5 — enable with [payments.consumer
 # agentbox-ledger offer payable. chain_id must be compiled into
 # management-api/lib/pay402.js SIDESTR_CHAINS (testnet parents only); the
 # producer's chain document is checked against it before every payment.
-# Both estate chains are compiled in; switching to the SC1 demo chain is config:
-# chain_id = "sidestr:dreamlab-txbt4" and that chain's producer_url.
+# Keyed like config/sidechain/run-producer.sh: SIDESTR_CHAIN overrides chain_id,
+# and the producer is http://127.0.0.1:<port> (3450 for dreamlab, else
+# [sidechain.<name>].port, or SIDESTR_PORT) unless producer_url is set. The
+# demo chain (SC1) is dreamlab-txbt4; its producer ships disabled above, so
+# payments fail closed at the chain guard until it runs and the payer is funded.
 # Spend-policy runs on POST /v1/chain/pay only; above approval_threshold_sats a
-# payment parks until an allowlisted approver releases it (falls back to
-# [payments.consumer].approval_threshold_sats when unset). RESTART-class.
+# payment parks until an allowlisted approver releases it. RESTART-class.
 [payments.sidestr]
 enabled                 = true
-chain_id                = "sidestr:dreamlab"
-producer_url            = "http://127.0.0.1:3450"
+# chain_id: the SC1 demo chain; sidestr:dreamlab is the live one on :3450
+chain_id                = "sidestr:dreamlab-txbt4"
 max_sats_per_payment    = 2000
 max_sats_per_day        = 10000
 approval_threshold_sats = 1000           # > 1000 sats parks pending approval

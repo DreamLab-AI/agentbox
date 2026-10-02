@@ -45,21 +45,29 @@ const DID_RE = /^did:nostr:([0-9a-f]{64})$/;
 const DROP_PERSISTED = new Set(['authorization', 'cookie', 'proxy-authorization']);
 const DROP_OUTBOUND = new Set(['host', 'content-length', 'connection', 'transfer-encoding', PAYMENT_HEADER]);
 
-function view(r) {
+/**
+ * One payment row. The first eight fields are the contract VisionClaw renders
+ * (agentbox.chain.payments/1, agreed with S5 on 2026-10-02); the rest are the
+ * payer-side record. `settled` is inclusion at or below `tipHeight` when the
+ * tip is known.
+ */
+function view(r, tipHeight) {
+  const included = r.settled === true && Number.isInteger(r.block_height);
   return {
+    txid: r.txid || null,
+    payer: r.payer_did,
+    payee: r.payee_did || null,
+    amount_sats: r.amount_sats,
+    block_height: r.block_height ?? null,
+    block_hash: r.block_hash || null,
+    settled: included && (!Number.isInteger(tipHeight) || r.block_height <= tipHeight),
+    time: r.settled_at || r.created_at,
     id: r.id,
     status: r.status,
     chain_id: r.chain_id,
-    payer_did: r.payer_did,
-    payee_did: r.payee_did || null,
     payee_pubkey: r.payee_pubkey,
     payee_address: r.payee_address,
-    amount_sats: r.amount_sats,
     fee_sats: r.fee_sats ?? null,
-    txid: r.txid || null,
-    block_hash: r.block_hash || null,
-    block_height: r.block_height ?? null,
-    settled: r.settled === true,
     memo: r.memo,
     payment_urn: r.payment_urn,
     receipt_urn: r.receipt_urn || null,
@@ -270,7 +278,8 @@ async function chainPaymentsRoutes(fastify, options = {}) {
     try {
       rec = store.create({
         status: request.requiresApproval ? 'pending-approval' : 'paying',
-        chain_id: rail.chain_id, payer_did: request.payerDid, payee_did: offer.payee_did, payee_pubkey: offer.pubkey,
+        chain_id: rail.chain_id, payer_did: request.payerDid, payer_spend_pubkey: request.spendKey.spendPubkey,
+        payee_did: offer.payee_did, payee_pubkey: offer.pubkey,
         payee_address: offer.address, amount_sats: offer.amount_sats, memo: offer.memo, payment_urn: paymentUrn,
         url: t.url, offer, target: { ...t, headers: persistedHeaders },
       });
@@ -315,9 +324,47 @@ async function chainPaymentsRoutes(fastify, options = {}) {
     return reply.code(ok ? 200 : 502).send({ paid: ok, payment: view(out.rec), response: out.response || null });
   });
 
+  // Chain-derived facts for the read routes: tip, last checkpoint and the
+  // settled balance of each spend key, cached briefly so a polling renderer
+  // does not hammer the producer. Any producer failure degrades to null.
+  const CACHE_MS = 5000;
+  let cache = { at: 0, key: '', value: null };
+  async function chainFacts(spendKeysByDid) {
+    const key = JSON.stringify(spendKeysByDid);
+    if (cache.value && cache.key === key && Date.now() - cache.at < CACHE_MS) return cache.value;
+    let tip = null;
+    try {
+      const t = await producer.tip();
+      if (t && Number.isInteger(t.height) && /^[0-9a-f]{64}$/.test(t.hash || '')) tip = { height: t.height, hash: t.hash };
+    } catch { tip = null; }
+    let checkpoint = null;
+    try {
+      const ck = await producer.checkpoints();
+      const last = ck && Array.isArray(ck.checkpoints) ? ck.checkpoints[ck.checkpoints.length - 1] : null;
+      if (last && last.parentTxid) {
+        checkpoint = { parent: rail.chain.parent, txid: last.parentTxid, height: Number.isInteger(last.parentHeight) ? last.parentHeight : null, covers_height: last.height };
+      }
+    } catch { checkpoint = null; }
+    const balances = [];
+    if (tip) {
+      for (const [did, spendPubkey] of Object.entries(spendKeysByDid)) {
+        try {
+          const coins = await producer.coins(`5120${spendPubkey}`);
+          const settled = (Array.isArray(coins) ? coins : [])
+            .filter((c) => Number.isInteger(c.height) && c.height <= tip.height)
+            .reduce((a, c) => a + (Number(c.value) || 0), 0);
+          balances.push({ did, settled_sats: settled, fold_height: tip.height });
+        } catch { /* a DID the producer cannot answer for is left out */ }
+      }
+    }
+    const value = { tip, checkpoint, balances };
+    cache = { at: Date.now(), key, value };
+    return value;
+  }
+
   fastify.get('/v1/chain/payments', {
     schema: {
-      description: 'Sidestr payments made by agents on this box: payer and payee did:nostr, amount, txid, block, settled (ADR-2097, ADR-2098 D5).',
+      description: 'Sidestr payments made by agents on this box, with the chain tip, last checkpoint and settled balances (agentbox.chain.payments/1; ADR-2097, ADR-2098 D5).',
       tags: ['chain'],
       querystring: {
         type: 'object',
@@ -328,14 +375,39 @@ async function chainPaymentsRoutes(fastify, options = {}) {
   }, async (request, reply) => {
     if (!rail.enabled) return disabled(reply);
     const q = request.query || {};
-    return reply.send({ chain_id: rail.chain_id, payments: store.list({ payer: q.payer, limit: q.limit || 100 }).map(view) });
+    const rows = store.list({ payer: q.payer, limit: q.limit || 100 }).filter((r) => r.chain_id === rail.chain_id);
+    // Settled balances for every DID on either side whose spend key is known:
+    // the payer's from the record (or its key file), the payee's only when its
+    // 38420 binding verified (payee_did set).
+    const spendByDid = {};
+    for (const r of rows) {
+      if (!spendByDid[r.payer_did]) {
+        let pk = r.payer_spend_pubkey;
+        if (!pk) {
+          const k = spendKeys.findSpendKey({ didHex: DID_RE.exec(r.payer_did)[1], chainId: rail.chain_id, identityDir });
+          pk = k && k.spendPubkey;
+        }
+        if (pk) spendByDid[r.payer_did] = pk;
+      }
+      if (r.payee_did && !spendByDid[r.payee_did]) spendByDid[r.payee_did] = r.payee_pubkey;
+    }
+    const facts = await chainFacts(spendByDid);
+    return reply.send({
+      schema: 'agentbox.chain.payments/1',
+      chain: rail.chain_id,
+      mirror_url: rail.mirror_url,
+      tip: facts.tip,
+      checkpoint: facts.checkpoint,
+      payments: rows.map((r) => view(r, facts.tip ? facts.tip.height : null)),
+      balances: facts.balances,
+    });
   });
 
   fastify.get('/v1/chain/sessions', {
-    schema: { description: 'Hitch payment sessions on the configured chain. Empty until the S2 Hitch host lands.', tags: ['chain'] },
+    schema: { description: 'Hitch payment sessions on the configured chain (agentbox.chain.sessions/1). Empty until the S2 Hitch host lands.', tags: ['chain'] },
   }, async (request, reply) => {
     if (!rail.enabled) return disabled(reply);
-    return reply.send({ chain_id: rail.chain_id, sessions: [] });
+    return reply.send({ schema: 'agentbox.chain.sessions/1', chain: rail.chain_id, sessions: [] });
   });
 }
 

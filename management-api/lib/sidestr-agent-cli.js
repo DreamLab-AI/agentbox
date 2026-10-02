@@ -61,8 +61,10 @@ function createSidestrAgent({ bin = DEFAULT_BIN, timeoutMs = 60000, exec = execF
 
   return {
     /** Every name of a public key on the producer's chain. */
-    address({ url, who }) {
-      return run(['--url', url, 'address', who]);
+    address({ url, who, prefix }) {
+      const args = ['--url', url, 'address', who];
+      if (prefix) args.push('--prefix', prefix);
+      return run(args);
     },
     /** Build, sign with the spend key, POST /tx and publish kind 23500. */
     send({ url, keyFile, relays, to, amountSats }) {

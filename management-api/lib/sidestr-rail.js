@@ -26,28 +26,54 @@ const HEX64 = /^[0-9a-f]{64}$/;
 /**
  * Resolve [payments.sidestr] from the parsed manifest. Never throws.
  *
+ * The chain is keyed by name the way config/sidechain/run-producer.sh,
+ * mirror-sync.sh and run-faucet.sh are: `SIDESTR_CHAIN` (e.g.
+ * `dreamlab-txbt4`) overrides `chain_id`; the producer is `producer_url` when
+ * it is given for the configured chain, else `http://127.0.0.1:<port>` with
+ * port `SIDESTR_PORT`, 3450 for `dreamlab` (run-producer.sh's default) or
+ * `[sidechain.<name>].port`. The mirror is the chain's `announce_mirror`.
+ * `[sidechain.<name>].enabled` is not read: paying is not producing.
+ *
  * @param {object} manifest
- * @returns {{enabled: boolean, reason: string|null, chain_id?: string, chain?: object,
- *            producer_url?: string, relays?: string[], settle_timeout_s?: number}}
+ * @param {object} [env=process.env]
+ * @returns {{enabled: boolean, reason: string|null, chain_id?: string, chain_name?: string,
+ *            chain?: object, producer_url?: string, mirror_url?: string|null,
+ *            relays?: string[], settle_timeout_s?: number}}
  */
-function railConfig(manifest) {
+function railConfig(manifest, env = process.env) {
   const t = manifest && manifest.payments && manifest.payments.sidestr;
   if (!t || typeof t !== 'object') return { enabled: false, reason: 'payments.sidestr absent' };
   if (t.enabled !== true) return { enabled: false, reason: 'payments.sidestr.enabled is false' };
-  if (!Object.prototype.hasOwnProperty.call(SIDESTR_CHAINS, t.chain_id)) {
-    return { enabled: false, reason: `payments.sidestr.chain_id ${t.chain_id} is not compiled in` };
+  const fromEnv = typeof env.SIDESTR_CHAIN === 'string' && env.SIDESTR_CHAIN.trim() !== '';
+  const chainId = fromEnv ? `sidestr:${env.SIDESTR_CHAIN.trim()}` : t.chain_id;
+  if (!Object.prototype.hasOwnProperty.call(SIDESTR_CHAINS, chainId)) {
+    return { enabled: false, reason: `chain ${chainId} is not compiled in (pay402.js SIDESTR_CHAINS)` };
+  }
+  const name = chainId.slice('sidestr:'.length);
+  const sc = (manifest && manifest.sidechain) || {};
+  const table = name === 'dreamlab' ? sc : (sc[name] && typeof sc[name] === 'object' ? sc[name] : {});
+
+  let producer = null;
+  if (typeof t.producer_url === 'string' && chainId === t.chain_id && !env.SIDESTR_PORT) {
+    producer = t.producer_url;
+  } else {
+    const port = env.SIDESTR_PORT ? Number(env.SIDESTR_PORT) : (name === 'dreamlab' ? 3450 : table.port);
+    if (Number.isInteger(port) && port > 0 && port < 65536) producer = `http://127.0.0.1:${port}`;
   }
   let url;
-  try { url = new URL(t.producer_url); } catch { url = null; }
+  try { url = producer ? new URL(producer) : null; } catch { url = null; }
   if (!url || !['http:', 'https:'].includes(url.protocol)) {
-    return { enabled: false, reason: 'payments.sidestr.producer_url must be an http(s) URL' };
+    return { enabled: false, reason: `no producer for ${chainId}: set payments.sidestr.producer_url or [sidechain.${name}].port` };
   }
   return {
     enabled: true,
     reason: null,
-    chain_id: t.chain_id,
-    chain: SIDESTR_CHAINS[t.chain_id],
-    producer_url: String(t.producer_url).replace(/\/+$/, ''),
+    chain_id: chainId,
+    chain_name: name,
+    chain: SIDESTR_CHAINS[chainId],
+    producer_url: String(producer).replace(/\/+$/, ''),
+    mirror_url: typeof t.mirror_url === 'string' ? t.mirror_url
+      : (typeof table.announce_mirror === 'string' ? table.announce_mirror : null),
     relays: Array.isArray(t.relays) ? t.relays.filter((r) => typeof r === 'string' && /^wss?:\/\//.test(r)) : [],
     settle_timeout_s: Number.isInteger(t.settle_timeout_s) && t.settle_timeout_s > 0 ? t.settle_timeout_s : 120,
   };
@@ -77,6 +103,7 @@ function createProducer(baseUrl, { fetch: f = globalThis.fetch, timeoutMs = 1000
       return get(`/coins/${script}`);
     },
     blocks: () => get('/blocks.json'),
+    checkpoints: () => get('/checkpoints.json'),
   };
 }
 

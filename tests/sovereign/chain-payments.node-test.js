@@ -25,8 +25,13 @@ const { createPaymentsStore } = require('../../management-api/lib/sidestr-paymen
 const uris = require('../../management-api/lib/uris');
 
 const logger = { debug() {}, info() {}, warn() {}, error() {}, child() { return this; } };
-const DOC = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'config', 'sidechain', 'dreamlab', 'chain.json'), 'utf8'));
-const CHAIN = 'sidestr:dreamlab';
+// Every case runs on both estate chains: SIDESTR_CHAIN=dreamlab-txbt4 (the SC1
+// demo chain, default here) and dreamlab. Stubs only: the txbt4 chain mints
+// nothing and the estate holds no post-fork txbt4 coins yet.
+const NAME = process.env.SIDESTR_TEST_CHAIN || 'dreamlab-txbt4';
+const DOC = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'config', 'sidechain', NAME, 'chain.json'), 'utf8'));
+const CHAIN = `sidestr:${NAME}`;
+const PREFIX = DOC.addressPrefix;
 const TXID = 'ab'.repeat(32);
 const BLOCK = 'cd'.repeat(32);
 const PAYER_SK = '11'.repeat(32);
@@ -35,7 +40,7 @@ const APPROVER_SK = '44'.repeat(32);
 const PAYER = getPublicKey(Buffer.from(PAYER_SK, 'hex'));
 const PAYEE = getPublicKey(Buffer.from(PAYEE_SK, 'hex'));
 const APPROVER = getPublicKey(Buffer.from(APPROVER_SK, 'hex'));
-const fakeAddress = (pk) => `drm1p${'q'.repeat(52)}${pk.slice(0, 6).replace(/[^02-9ac-hj-np-z]/g, 'q')}`;
+const fakeAddress = (pk) => `${PREFIX}1p${'q'.repeat(52)}${pk.slice(0, 6).replace(/[^02-9ac-hj-np-z]/g, 'q')}`;
 
 function rail(over = {}) {
   return { enabled: true, chain_id: CHAIN, producer_url: 'http://producer.test', max_sats_per_payment: 2000, max_sats_per_day: 10000, approval_threshold_sats: 1000, settle_timeout_s: 2, ...over };
@@ -54,7 +59,7 @@ function setup({ railOver = {}, price = 1000, doc = DOC, plane = 'live', offerCh
   fs.writeFileSync(payeeIdPath, `${PAYEE_SK}\n`, { mode: 0o600 });
   const payee = spendKeys.loadOrMintSpend({ identity: { pubkey: PAYEE, keyPath: payeeIdPath }, chainId: CHAIN });
 
-  const state = { sends: 0, retries: [], paid: false, events: [] };
+  const state = { sends: 0, retries: [], paid: false, events: [], tip: 950, checkpoints: [] };
   const memo = uris.mint({ kind: 'receipt', pubkey: PAYEE, payload: { price, n: Math.random() } });
   const entry = offerChain === CHAIN
     ? buildSidestrAcceptsEntry({ chainId: CHAIN, address: fakeAddress(payee.spendPubkey), pubkey: payee.spendPubkey, amountSats: price, memo, payTo: `did:nostr:${PAYEE}`, binding: payee.binding })
@@ -64,7 +69,11 @@ function setup({ railOver = {}, price = 1000, doc = DOC, plane = 'live', offerCh
   const fetch = async (url, init = {}) => {
     const u = String(url);
     if (u === 'http://producer.test/chain.json') return json(200, doc);
-    if (u.startsWith('http://producer.test/coins/')) return json(200, state.paid ? [{ outpoint: `${TXID}:0`, value: price, height: 950, coinbase: false }] : []);
+    if (u === 'http://producer.test/tip') return json(200, { height: state.tip, hash: BLOCK, time: 1790972000 });
+    if (u === 'http://producer.test/checkpoints.json') return json(200, { checkpoints: state.checkpoints });
+    if (u.startsWith('http://producer.test/coins/5120' + payee.spendPubkey)) return json(200, state.paid ? [{ outpoint: `${TXID}:0`, value: price, height: 950, coinbase: false }] : []);
+    if (u.startsWith('http://producer.test/coins/5120' + payer.spendPubkey)) return json(200, [{ outpoint: `${'12'.repeat(32)}:1`, value: 1845, height: 950, coinbase: false }, { outpoint: `${'34'.repeat(32)}:0`, value: 500, height: 951, coinbase: false }]);
+    if (u.startsWith('http://producer.test/coins/')) return json(200, []);
     if (u === 'http://producer.test/blocks.json') return json(200, { network: CHAIN, blocks: [{ height: 949, hash: 'ee'.repeat(32) }, { height: 950, hash: BLOCK }] });
     if (u === 'http://payee.test/thing') {
       const h = new Headers(init.headers || {});
@@ -87,7 +96,7 @@ function setup({ railOver = {}, price = 1000, doc = DOC, plane = 'live', offerCh
   const journal = new ExecutionJournal({ eventsAdapter: { dispatch: async (e) => { state.events.push(e.payload); } } });
   const getPlane = () => (plane === 'live' ? { ready: true, journal } : { ready: false, reason: 'test: no events adapter' });
   const store = createPaymentsStore({ file: path.join(dir, 'payments.json') });
-  return { dir, payeeDir, payer, payee, state, fetch, agent, getPlane, store, entry, manifest: { payments: { consumer: { enabled: false, max_sats_per_call: 100, approval_threshold_sats: 50 }, sidestr: rail(railOver) } } };
+  return { dir, payeeDir, payer, payee, state, fetch, agent, getPlane, store, entry, manifest: { sidechain: { enabled: true, announce_mirror: 'https://dreamlab-ai.github.io/sidestr-dreamlab', 'dreamlab-txbt4': { enabled: false, port: 3451, announce_mirror: 'https://dreamlab-ai.github.io/sidestr-dreamlab-txbt4' } }, payments: { consumer: { enabled: false, max_sats_per_call: 100, approval_threshold_sats: 50 }, sidestr: rail(railOver) } } };
 }
 
 async function app(ctx) {
@@ -130,15 +139,15 @@ describe('POST /v1/chain/pay', () => {
     assert.equal(p.block_hash, BLOCK);
     assert.equal(p.block_height, 950);
     assert.equal(p.amount_sats, 1000);
-    assert.equal(p.payer_did, `did:nostr:${PAYER}`);
-    assert.equal(p.payee_did, `did:nostr:${PAYEE}`, 'payee DID verified through its 38420 binding');
+    assert.equal(p.payer, `did:nostr:${PAYER}`);
+    assert.equal(p.payee, `did:nostr:${PAYEE}`, 'payee DID verified through its 38420 binding');
     assert.match(p.receipt_urn, new RegExp(`^urn:agentbox:receipt:${PAYER}:sha256-12-[0-9a-f]{12}$`));
     assert.equal(ctx.state.retries.length, 1);
     assert.match(ctx.state.retries[0], new RegExp(`^txid=${TXID}; memo=urn:agentbox:receipt:${PAYEE}:`));
 
     const list = await a.inject({ method: 'GET', url: '/v1/chain/payments' });
     assert.equal(list.statusCode, 200);
-    assert.equal(list.json().chain_id, CHAIN);
+    assert.equal(list.json().chain, CHAIN);
     assert.deepEqual(list.json().payments[0], p);
   });
 
@@ -255,7 +264,7 @@ describe('POST /v1/chain/pay', () => {
   });
 
   test('an offer whose address does not encode its pubkey is refused', async () => {
-    ctx = setup({ addressFor: () => `drm1p${'z'.repeat(58)}` }); a = await app(ctx);
+    ctx = setup({ addressFor: () => `${PREFIX}1p${'z'.repeat(58)}` }); a = await app(ctx);
     const res = await pay(a);
     assert.equal(res.statusCode, 502);
     assert.match(res.json().payment.error, /does not encode/);
@@ -281,7 +290,52 @@ describe('rail gate and read routes', () => {
     ctx = setup(); a = await app(ctx);
     const res = await a.inject({ method: 'GET', url: '/v1/chain/sessions' });
     assert.equal(res.statusCode, 200);
-    assert.deepEqual(res.json(), { chain_id: CHAIN, sessions: [] });
+    assert.deepEqual(res.json(), { schema: 'agentbox.chain.sessions/1', chain: CHAIN, sessions: [] });
+  });
+
+  test('GET /v1/chain/payments follows agentbox.chain.payments/1 (the VisionClaw contract)', async () => {
+    ctx = setup(); a = await app(ctx);
+    const paid = (await pay(a)).json().payment;
+    ctx.state.checkpoints = [{ height: 950, hash: BLOCK, parentTxid: 'aa'.repeat(32), at: 1790972100, parentHeight: null, confirmations: 0 }];
+    const res = await a.inject({ method: 'GET', url: '/v1/chain/payments' });
+    assert.equal(res.statusCode, 200);
+    const body = res.json();
+    assert.deepEqual(Object.keys(body), ['schema', 'chain', 'mirror_url', 'tip', 'checkpoint', 'payments', 'balances']);
+    assert.equal(body.schema, 'agentbox.chain.payments/1');
+    assert.equal(body.chain, CHAIN);
+    assert.equal(body.mirror_url, `https://dreamlab-ai.github.io/sidestr-${NAME}`);
+    assert.deepEqual(body.tip, { height: 950, hash: BLOCK });
+    assert.deepEqual(body.checkpoint, { parent: DOC.parent, txid: 'aa'.repeat(32), height: null, covers_height: 950 });
+    const row = body.payments[0];
+    assert.deepEqual(Object.keys(row).slice(0, 8), ['txid', 'payer', 'payee', 'amount_sats', 'block_height', 'block_hash', 'settled', 'time']);
+    assert.deepEqual({ txid: row.txid, payer: row.payer, payee: row.payee, amount_sats: row.amount_sats, block_height: row.block_height, block_hash: row.block_hash, settled: row.settled, time: row.time },
+      { txid: TXID, payer: `did:nostr:${PAYER}`, payee: `did:nostr:${PAYEE}`, amount_sats: 1000, block_height: 950, block_hash: BLOCK, settled: true, time: paid.time });
+    assert.deepEqual(body.balances, [
+      { did: `did:nostr:${PAYER}`, settled_sats: 1845, fold_height: 950 },
+      { did: `did:nostr:${PAYEE}`, settled_sats: 1000, fold_height: 950 },
+    ], 'confirmed coins at or below the tip only (the height-951 coin is not counted)');
+  });
+
+  test('a payment above the tip reads unsettled; a producer outage leaves tip and balances empty', async () => {
+    ctx = setup(); a = await app(ctx);
+    await pay(a);
+    assert.equal((await a.inject({ method: 'GET', url: '/v1/chain/payments' })).json().tip.height, 950);
+    ctx.state.tip = 949;
+    let body = (await a.inject({ method: 'GET', url: '/v1/chain/payments' })).json();
+    // cached for 5 s: the first read already saw tip 950
+    assert.equal(body.tip.height, 950);
+    await a.close();
+    a = await app(ctx);
+    body = (await a.inject({ method: 'GET', url: '/v1/chain/payments' })).json();
+    assert.equal(body.tip.height, 949);
+    assert.equal(body.payments[0].settled, false);
+    ctx.fetch = async () => { throw new Error('producer down'); };
+    await a.close();
+    a = await app(ctx);
+    body = (await a.inject({ method: 'GET', url: '/v1/chain/payments' })).json();
+    assert.equal(body.tip, null);
+    assert.deepEqual(body.balances, []);
+    assert.equal(body.payments[0].settled, true, 'falls back to the stored inclusion');
   });
 
   test('every route answers 503 with [payments.sidestr] off', async () => {
