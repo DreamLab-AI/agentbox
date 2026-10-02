@@ -429,6 +429,36 @@ function clarifyBeforeActingEnabled(manifest, env) {
   return true;
 }
 
+/**
+ * The JunkieJarvis gate (ADR-030 D2): may JunkieJarvis speak to a forum member
+ * at all? ADR-030 says JunkieJarvis "requires both the manifest gate and
+ * JUNKIEJARVIS_ENABLED=true", with the env var kept so manifest-absent
+ * deployments still work. Resolved as:
+ *
+ *   - `[sovereign_mesh].junkiejarvis = false` → off, whatever the env says. An
+ *     explicit manifest "no" is the operator's declared intent and the env
+ *     var cannot overrule it (owner decision 2026-10-02, Q10: clarifying DMs
+ *     sent while `junkiejarvis = false` are a bug; the box carries
+ *     JUNKIEJARVIS_ENABLED=true in its container env).
+ *   - `= true` → on, unless JUNKIEJARVIS_ENABLED is set and is not "true" (the
+ *     env var can still veto at runtime).
+ *   - key absent / manifest unreadable → JUNKIEJARVIS_ENABLED decides; unset
+ *     means off. It fails closed, the opposite of clarifyBeforeActingEnabled,
+ *     because this gate permits outbound speech where that one stops an action.
+ */
+function junkiejarvisEnabled(manifest, env) {
+  const raw = env && typeof env === 'object' ? env.JUNKIEJARVIS_ENABLED : undefined;
+  const envSet = raw !== undefined && raw !== null && String(raw).trim() !== '';
+  const envOn = envSet && String(raw).trim().toLowerCase() === 'true';
+  const sm = manifest && typeof manifest === 'object' && manifest.sovereign_mesh
+    && typeof manifest.sovereign_mesh === 'object'
+    ? manifest.sovereign_mesh
+    : {};
+  if (sm.junkiejarvis === false) return false;
+  if (sm.junkiejarvis === true) return envSet ? envOn : true;
+  return envOn;
+}
+
 module.exports = {
   // clarity check
   assessClarity,
@@ -450,6 +480,7 @@ module.exports = {
   composeForRecheck,
   // config
   clarifyBeforeActingEnabled,
+  junkiejarvisEnabled,
   // constants
   CLARIFY_EXPIRY_MS,
   MIN_SPECIFICITY,

@@ -33,6 +33,7 @@ const {
   composeForRecheck,
   // config
   clarifyBeforeActingEnabled,
+  junkiejarvisEnabled,
   // constants
   CLARIFY_EXPIRY_MS,
   MIN_SPECIFICITY,
@@ -567,5 +568,44 @@ describe('clarify-before-acting lifecycle', () => {
     expect(assessClarity(post(merged)).clear).toBe(false);
     // and the rate limit still holds — no second grilling.
     expect(shouldSendClarification(state, ITEM)).toBe(false);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// JunkieJarvis gate (ADR-030) — governs whether a clarifying DM may be sent
+// (owner decision 2026-10-02, Q10)
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('junkiejarvisEnabled', () => {
+  test('fails closed when nothing is configured', () => {
+    expect(junkiejarvisEnabled({}, {})).toBe(false);
+    expect(junkiejarvisEnabled(null, null)).toBe(false);
+  });
+
+  test('an explicit manifest false wins over the env var (the Q10 box)', () => {
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: false } }, {})).toBe(false);
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: false } }, { JUNKIEJARVIS_ENABLED: 'true' })).toBe(false);
+  });
+
+  test('manifest true is on unless the env var vetoes it', () => {
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, {})).toBe(true);
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, { JUNKIEJARVIS_ENABLED: '' })).toBe(true);
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, { JUNKIEJARVIS_ENABLED: 'true' })).toBe(true);
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, { JUNKIEJARVIS_ENABLED: 'false' })).toBe(false);
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: true } }, { JUNKIEJARVIS_ENABLED: 'yes' })).toBe(false);
+  });
+
+  test('with the key absent the env var decides, so manifest-absent deployments keep working', () => {
+    expect(junkiejarvisEnabled({}, { JUNKIEJARVIS_ENABLED: 'true' })).toBe(true);
+    expect(junkiejarvisEnabled({ sovereign_mesh: {} }, { JUNKIEJARVIS_ENABLED: 'TRUE' })).toBe(true);
+    expect(junkiejarvisEnabled({}, { JUNKIEJARVIS_ENABLED: 'false' })).toBe(false);
+    // only a real boolean counts as declared; a stringly "true" falls through to the env
+    expect(junkiejarvisEnabled({ sovereign_mesh: { junkiejarvis: 'true' } }, {})).toBe(false);
+  });
+
+  test('is independent of the clarify-before-acting gate', () => {
+    const m = { sovereign_mesh: { junkiejarvis: false, junkiejarvis_clarify_before_acting: true } };
+    expect(clarifyBeforeActingEnabled(m, {})).toBe(true);
+    expect(junkiejarvisEnabled(m, {})).toBe(false);
   });
 });
