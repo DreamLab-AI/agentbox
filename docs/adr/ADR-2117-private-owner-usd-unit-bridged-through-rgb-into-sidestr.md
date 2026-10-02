@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: a2fd86cb4110b8dcfcdfd79785b048a246d8c136
+verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
 verified_paths: ["config/sidechain/*/chain.json"]
 owner: jjohare
 review_trigger: the owner gives the live go for the Liquid USDt proof (amendment 2026-09-23); a second reserve origin (TRON or an EVM network) is proposed for building (amendment 2026-09-26); Tether lists RGB among its supported protocols or publishes a canonical USD₮-on-RGB contract ID; a Tether or UTEXO test asset appears on testnet4 or signet; an rgb-lib release pins final rgb-protocol 0.11.1 or moves to the v0.12 line; Liquid peg-outs restored with a post-mortem; Circle lists a Bitcoin layer as a native USDC chain; any proposal to back the unit with real value, let anyone outside the owner's estate hold or redeem it, or add a chain document under config/sidechain/
@@ -319,3 +319,11 @@ holder key outside the owner's estate.
 - **Priority:** P3 — parked (review trigger: the owner's live go together with the planning-cycle §10 real-value gate reopening, since a funded Liquid reserve is real value; or this record's own review-trigger events)
 - **Why:** The original decision fits §9's scope: a private, valueless, testnet-only unit for the owner's agents. The 2026-09-23 amendment does not. It admits a real Liquid USDt reserve and a mainnet `btc` parent, which goes beyond §9's "valueless coins" and would trip §10's real-value gate. §10 names this record's Liquid reserve wiring as drift into the parked sidechain. The wiring exists, unfunded and unpublished, at sidestr-rs `bcbe30b2` (`sidestr-reserve` 0.1.0, `sidestr-bridge-liquid` 0.2.0; sidestr-rs ADR-0003 accepted/inactive). TODO N-6 lists it as a key-custody surface: a reserve mnemonic sits under the shared UID, inside X-1's scope. The title says "bridged through RGB", but the origin is now reserve-neutral and RGB is a watch item. Nothing is sealed: `config/sidechain/` holds only `dreamlab/chain.json` (agentbox `c4ed3ec65`).
 - **Next:** Owner decision on keeping or striking the real-value Liquid and mainnet-parent amendment. Until then, Phase 0 (mock unit on a throwaway testnet chain) is the only part inside §9. **Owner decision 2026-10-02, Q15: keep the 23 Sep amendment.** Real Liquid USDt and a mainnet parent stay permitted by this record. Funding the reserve still waits for the owner's live go and the §10 real-value gate, so the priority stays P3. The owner reports that UTXO is about to ship RGB USDT, so the title's "through RGB" may become literal again: the reserve stays origin-neutral, and RGB USDT becomes a likely origin. ADR-2102 is reassessed in that light.
+
+## Re-verification — 2026-10-02 (`f7465412de3d0d7a25fc1b6b2c8a72775490616d`)
+
+Tripped by the `sidestr:dreamlab-txbt4` seal. `config/sidechain/dreamlab-txbt4/chain.json` is new: a second sealed chain, beside `txbt4` (ADR-2103, "The `txbt4` seal"). This is this record's review trigger ("add a chain document under config/sidechain/"), and it is answered here. `sidestr:dreamlab-txbt4` is not this record's dedicated USD-unit chain: it issues no asset, carries no attestation, has `cashOut: false`, and only the owner's estate can hold its coins. This record's chain is still unbuilt. This record's decision is unchanged. `verified_commit` moves to the seal commit. Gates at that commit:
+
+- the manifest validator is valid;
+- `check-manifest-catalogue` passes;
+- `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.

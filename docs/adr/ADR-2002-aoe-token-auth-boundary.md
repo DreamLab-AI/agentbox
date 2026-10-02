@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
+verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -196,3 +196,11 @@ Gate tripped by unrelated churn in `flake.nix` and `config/nip98-proxy/proxy.mjs
 ## Re-verification — 2026-09-22 at d6b976271 (Sovereign Corpus landing)
 
 **Governed changes:** `flake.nix`: statix lint only — assignment→`inherit` (with `or` defaults preserved as `inherit ({ defaults } // cfg)`), redundant parentheses dropped, `(x or false) == true` rewritten as `let v = x or false; in builtins.isBool v && v` (same result for every input), and one comment reworded ("logseq corpus" → "vault corpus"). No derivation, port, service, gate or package changed. **Decision unaffected** — none of these touches what this record decides. `verified_commit` moved to the landing commit. Gates at that commit: routing table current; forum e2e real mode 101/101 and stub 30/30 against this tree; management-api jest 88/88.
+
+## Re-verification — 2026-10-02 (`f7465412de3d0d7a25fc1b6b2c8a72775490616d`)
+
+Tripped by the `sidestr:dreamlab-txbt4` seal. `flake.nix` adds `sidechainChains`, one entry per `[sidechain.<name>]` table. For each table enabled under an enabled `[sidechain]` it bakes three supervisor programs, `sidestr-{producer,mirror,faucet}-<name>`: user devuser, the existing `config/sidechain` runners, and a producer the engine binds to 127.0.0.1:3451. `sidestr-agent` is baked when any faucet is on. The one table shipped is `enabled = false`, so the rendered supervisor text is unchanged. No port, Compose service, volume, user, MCP registration or other program moved. No AoE program, token or auth path changed. **Decision unaffected.** `verified_commit` moves to the seal commit. Gates at that commit:
+
+- the manifest validator is valid;
+- `check-manifest-catalogue` passes;
+- `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.

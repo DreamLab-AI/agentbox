@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
+verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -255,3 +255,11 @@ Tripped by `agentbox.toml` alone (`b680a7ae`, ADR-2094); `mcp/servers/lib/ontolo
 
 Tripped by ADR-2078 (pods signer signs as the sovereign identity). `agentbox.toml` changes only in `[integrations.solid_pod_rs]`: `sign_requests` false→true and the comment block above it (ADR-2078). It touches no section, key or phase this record governs, and the decision holds unchanged.
 Re-verified by `git diff be358df7b..a48ea407a -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-02 (`f7465412de3d0d7a25fc1b6b2c8a72775490616d`)
+
+Tripped by the `sidestr:dreamlab-txbt4` seal. `agentbox.toml` adds the `[sidechain.dreamlab-txbt4]` table, with `enabled = false`. No other key changed. No Loom setting changed. **Decision unaffected.** `verified_commit` moves to the seal commit. Gates at that commit:
+
+- the manifest validator is valid;
+- `check-manifest-catalogue` passes;
+- `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.

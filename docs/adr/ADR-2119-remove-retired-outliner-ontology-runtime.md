@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
+verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -60,3 +60,11 @@ passed for ontology proposal/apply governance. `git diff --check` passed.
 The Nix runtime image built and loaded successfully. Live verification confirms
 that `/opt/agentbox/bin/ontology-tools` is absent, all five adapters are healthy,
 and readiness is green.
+
+## Re-verification — 2026-10-02 (`f7465412de3d0d7a25fc1b6b2c8a72775490616d`)
+
+Tripped by the `sidestr:dreamlab-txbt4` seal. `flake.nix` adds `sidechainChains`, one entry per `[sidechain.<name>]` table. For each table enabled under an enabled `[sidechain]` it bakes three supervisor programs, `sidestr-{producer,mirror,faucet}-<name>`: user devuser, the existing `config/sidechain` runners, and a producer the engine binds to 127.0.0.1:3451. `sidestr-agent` is baked when any faucet is on. The one table shipped is `enabled = false`, so the rendered supervisor text is unchanged. No port, Compose service, volume, user, MCP registration or other program moved. No outliner or ontology runtime is reintroduced. **Decision unaffected.** `verified_commit` moves to the seal commit. Gates at that commit:
+
+- the manifest validator is valid;
+- `check-manifest-catalogue` passes;
+- `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.

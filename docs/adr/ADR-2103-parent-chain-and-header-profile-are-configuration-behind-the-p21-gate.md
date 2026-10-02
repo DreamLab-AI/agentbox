@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: d0fa1b80b370ad6c43695d4f781b3687696670de
-verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/README.md, tests/config/sidechain-genesis.test.sh]
+verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
+verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
 repo: agentbox
@@ -284,6 +284,101 @@ takes the chain as a parameter (`?chain=<id>`). `sidestr:dreamlab` is the only c
   names one producer, one mirror and one faucet. A second chain turns it into a list of chains, each
   with its own port, mirror checkout, signer key and gates. That is a schema change and rebuild class,
   so it lands with the seal, not before it.
+
+### The `txbt4` seal (2026-10-02)
+
+Owner decisions SC1, SC2 and SC5 (2026-10-02) make the 2026-09-30 proposal real. The demo's
+parent is `txbt4`, its payments are transactions on a `txbt4`-anchored sidechain, and
+checkpoints stay off for cost. `sidestr:dreamlab` stays on `tbtc4`, unchanged.
+
+- **Sealed** by the pinned engine (`siding new`, spec `fa86dac`), committed at `f7465412d`
+  as `config/sidechain/dreamlab-txbt4/chain.json`:
+  - genesis `1009aa2984d5c699fe61ef1e5905afe472a49d67551542045726828c8b82d108`;
+  - signer `5e05b5bae0b9eff8dfd893444817558f67a6acfc8d47b0b65022d5c7c6665f2f`, key in the
+    secrets volume at 0400;
+  - prefix `drt`, level 1, depth 0, `pegs: []`.
+
+  Block 0 is 418 bytes with Knots' 164-byte v2 header (version `0xa0000000`, committed
+  height 0), and its hash is Knots' BLAKE2b construction. `containment` adds
+  `headerProfile: knots:blake2b-v2` and keeps `cashOut: false`. As for the first seal, the
+  `pin:` record is unbuilt, so containment is bound by the committed document alone.
+- **Header family (D2).** No code was needed. The pinned engine already builds v2 headers
+  and signs with the unified sighash beside a BLAKE2b parent; all seven upstream chain
+  documents sit beside `txbt4`. `sidestr-core` carries the BLAKE2b arm (`Family::Blake2b`);
+  the 0.2 audit replayed `sidestr:txbt4-siding` with it
+  (`docs/proposals/sovereign-settlement-research/AUDIT-sidestr-core-0.2-gpt6-astra.md:330`). The engine-free check is
+  `tests/config/knots_header_v2.py`. It reproduces Knots' own hashes of two live `txbt4`
+  headers (`getblockheader … false`), then hashes block 0 to `genesisHash`.
+- **Parent view.** This record's review trigger has fired. On 2 October the container reached
+  the node and read tip 152,225, and block 150,308 was the fork hash. The Dell's Knots 29.4.2
+  (`knots-txbt4`, `192.168.2.27:48342`) had been opened to the LAN earlier that day: user `txbt4read`, a method whitelist, `rpcwhitelistdefault=0` and
+  nftables. That user already serves everything the producer calls without a wallet:
+  `getblockcount`, `getblockhash`, `getblock` (verbosity 2, needs `txindex`, which is on) and
+  `gettxout`. It refuses `decoderawtransaction` (HTTP 403, checked from the container), so
+  parent transactions relayed over kind 23503 are refused rather than judged.
+  `scripts/sidechain/dell-txbt4-open-rpc.sh` gives the producer a user of its own with that
+  one call added; owner-run, not yet run.
+
+  rbitcoin's Esplora on `:3002` is not a parent view for the engine, because siding's
+  `makeParent` speaks JSON-RPC only. It stays the forum wallet's read path.
+- **D3a, built.** `run-producer.sh` refuses to start beside a BLAKE2b parent unless the
+  node's block 150,308 is the fork hash. A stock-branch node, or an unreachable one, is a
+  boot failure; `tests/config/sidechain-producer-gates.test.sh` covers both. No peg key
+  predates the fork, and the scan starts at 152,225, the tip at the seal.
+- **D3, built in part.** `[sidechain.dreamlab-txbt4].parent` must equal the sealed
+  document's `parent`, or the runner refuses to start. The schema admits only `txbt4` there,
+  so no mainnet alias can be named. The projector check of D1 is still unbuilt, and the
+  document stays the only source of the parent.
+- **Supervision generalised**, as this record said it would be when a second chain existed:
+  - every `[sidechain.<name>]` table bakes `sidestr-producer-<name>`, `sidestr-mirror-<name>`
+    and `sidestr-faucet-<name>`;
+  - `[sidechain].enabled` dominates every table, and a table's `enabled` dominates its own
+    mirror and faucet (catalogue `requires`);
+  - the table ships `enabled = false`.
+
+  The mirror is a Pages repository of its own (`DreamLab-AI/sidestr-dreamlab-txbt4`, not yet
+  created), because `mirror-sync.sh` never pulls and two writers on one repository would
+  wedge each other.
+- **Liquidity: none.** The chain mints nothing: no subsidy, `pegs: []` (SPEC 2). Coins arrive
+  only by peg-in from `txbt4`, and the estate holds no post-fork `txbt4` coins. A Knots
+  29.4.2 mempool also refuses to relay a mined reward younger than 6,705 blocks, so mining
+  for coins is slow. A claimed peg-in is a coinbase output and waits 100 sidechain blocks.
+  `scripts/sidechain/preflight-liquidity.sh` asserts the treasury and two demo agents hold
+  mature sats, and it prints the anchoring state before any balance.
+
+### Open — checkpoints into `txbt4` (owner SC5, cost), recorded 2026-10-02
+
+**`sidestr:dreamlab-txbt4` is not anchored.** No checkpoint is written into `txbt4`, so every
+block is the single signer's word, and a signer could rewrite history without the parent
+noticing. The owner chose this for cost and asked that it be left visibly open and raised
+again. Until it closes, the chain document, the README, the producer's log line and the
+pre-flight all say so, and no demo may imply anchoring.
+
+To switch checkpoints on, all of the following are needed. The owner does the first three
+on the Dell and the agentbox side; nothing here does them.
+
+1. A Knots wallet on `knots-txbt4` used only for fees, never the peg. For example,
+   `createwallet sidestr-txbt4-fees`, run on the Dell with the node's cookie.
+2. That wallet funded with post-fork `txbt4` coins that Knots will relay, meaning no mined
+   reward younger than 6,705 blocks. Each checkpoint is one OP_RETURN transaction.
+3. The producer's RPC user allowed to call the wallet:
+   `dell-txbt4-open-rpc.sh apply --rpcauth '<the minted verifier>' --with-checkpoint-wallet`.
+   This adds `send`, `gettransaction` and `listtransactions` to that user's whitelist.
+   Then point `parent_credential_file` at `sidestr-txbt4.rpc`.
+4. The switch itself, in `[sidechain.dreamlab-txbt4]`:
+   `checkpoint_every = N` and `checkpoint_wallet = "sidestr-txbt4-fees"`, then a rebuild.
+   The runner passes `--checkpoint-every N --checkpoint-wallet sidestr-txbt4-fees`. It
+   refuses N > 0 with no wallet, because the engine would otherwise skip every checkpoint
+   silently.
+
+Every checkpoint then lands in `<state>/checkpoints.json`, and the pre-flight reports the
+last one.
+
+**Reminder on the governance panel.** After merge, queue it once:
+`node scripts/dream-inbox.mjs remind agentbox "sidestr:dreamlab-txbt4 is NOT anchored: checkpoints into txbt4 are off by owner decision SC5 (cost); approve to plan switching them on (checkpoint_every + a funded checkpoint_wallet, ADR-2103 Open) or reject to keep them off."`
+The engine publishes it as a kind-31402 case at the end of the next night. It is queued once
+ever, because the item id is the engine's own hash of the text; an answer or a dismissal
+therefore stays put.
 
 ## Consequences
 

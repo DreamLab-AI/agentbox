@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 66425f9bd07206fe6e8f7215625ece1aa7e31eb8
+verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -269,3 +269,11 @@ Tripped by `.github/workflows/invariants.yml`, which gains two steps unrelated t
 check-ports-loopback and check-listeners steps are unchanged, and no other governed path moved.
 Re-established by running the gate at this commit: `bash scripts/ci/check-ports-loopback.sh`
 exits 0. Decision and status unchanged.
+
+## Re-verification — 2026-10-02 (`f7465412de3d0d7a25fc1b6b2c8a72775490616d`)
+
+Tripped by the `sidestr:dreamlab-txbt4` seal. `flake.nix` adds `sidechainChains`, one entry per `[sidechain.<name>]` table. For each table enabled under an enabled `[sidechain]` it bakes three supervisor programs, `sidestr-{producer,mirror,faucet}-<name>`: user devuser, the existing `config/sidechain` runners, and a producer the engine binds to 127.0.0.1:3451. `sidestr-agent` is baked when any faucet is on. The one table shipped is `enabled = false`, so the rendered supervisor text is unchanged. No port, Compose service, volume, user, MCP registration or other program moved. The new producer binds 127.0.0.1 (siding `produce`, `.listen(port, '127.0.0.1')`) and is published nowhere. `scripts/ci/check-ports-loopback.sh` passes. **Decision unaffected.** `verified_commit` moves to the seal commit. Gates at that commit:
+
+- the manifest validator is valid;
+- `check-manifest-catalogue` passes;
+- `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.

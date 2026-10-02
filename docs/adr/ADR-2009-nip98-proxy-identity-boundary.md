@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
+verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -204,3 +204,11 @@ Tripped by `docs/INGRESS-identity.md` gaining item 10 (JunkieJarvis in end-to-en
 
 Tripped by ADR-2078 (pods signer signs as the sovereign identity). `docs/INGRESS-identity.md` gains invariant 11 (pod origination), a Remediation — 2026-10-02 entry, a superseded-by marker on the 2026-09-05 `sign_requests = false` line and changelog 0.2.2; invariants 1-10 are unchanged. It touches no section, key or phase this record governs, and the decision holds unchanged.
 Re-verified by `git diff c7b5d5f55..a48ea407a -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-02 (`f7465412de3d0d7a25fc1b6b2c8a72775490616d`)
+
+Tripped by the `sidestr:dreamlab-txbt4` seal. `flake.nix` adds `sidechainChains`, one entry per `[sidechain.<name>]` table. For each table enabled under an enabled `[sidechain]` it bakes three supervisor programs, `sidestr-{producer,mirror,faucet}-<name>`: user devuser, the existing `config/sidechain` runners, and a producer the engine binds to 127.0.0.1:3451. `sidestr-agent` is baked when any faucet is on. The one table shipped is `enabled = false`, so the rendered supervisor text is unchanged. No port, Compose service, volume, user, MCP registration or other program moved. The proxy, its routes and its identity check are untouched. The new producer listens on loopback and nothing routes it through the proxy. **Decision unaffected.** `verified_commit` moves to the seal commit. Gates at that commit:
+
+- the manifest validator is valid;
+- `check-manifest-catalogue` passes;
+- `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.
