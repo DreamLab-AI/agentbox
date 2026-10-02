@@ -168,3 +168,34 @@ nix build .#packages.x86_64-linux.vault \
 # after boot, the gate speaks for itself:
 docker logs <container> 2>&1 | grep '\[5d/8\] vault'
 ```
+
+## Disposition — 2026-10-02
+
+- **Suitability:** fits. The Nix-baked binary is the right mechanism. The *source* of the pin changes under the estate's break-out edict.
+- **Priority:** P1 for the pin (done). P2 for the break-out, which waits for the owner's go.
+- **Pin (owner decision 2026-10-02, R10):** `vaultSrc` moved from `0c195f7605f3` to VisionClaw main `64512141bd01` in `e70fcb5df`. At `0c195f760`, `vault build --with-rvdb` predates `f95d0acc1`, and the Loom reload check rejects its vector records. The pin is proven by a real `nix build` of `lib/vault.nix` against the locked inputs, with `doCheck` on: `/nix/store/p00pdlbychd3w5zk63grbdmqr4cdmh4c-vault-0.1.0`, all tests green. The "absolute path" wart in §Consequences is gone: the input is `github:DreamLab-AI/VisionClaw/<rev>`. Note also that `.#packages.<system>.vault` in the recipe above is not a flake output. `vaultPkg` is a `let` binding, so build `lib/vault.nix` directly.
+- **Break-out judgement (standing edict 2026-10-02):** Is it generalisable, meaning could another operator use it with their own Obsidian corpus and ontology?
+  - **`vault-core`: yes.** Its dependencies are all on crates.io, with no VisionClaw internals. The page/frontmatter parser, vocabulary model, OKF v0.2 types, link graph and promotion machine are format-level. Coupling points:
+    1. `vocabulary.rs` defaults the namespaces to `urn:ngm:class:` / `urn:ngm:individual:` and builds in the `vc`/`ngm`/`ngmi` → `narrativegoldmine.com` prefixes. These belong in the estate's `vocabulary.yaml`.
+    2. `domains.rs` is the estate's domain registry and GPU clustering ids, and VisionClaw's GPU actors call it. It is VisionClaw-only.
+    3. `proposal.rs` hard-codes `PROPOSAL_NAMESPACE = urn:ngm:proposal:`, and its prose ties the payload to forum kind 31402.
+    4. The `knowledge/` + `working/` two-vault layout is a convention. It is documented in VisionClaw `docs/VAULT-corpus-format.md` and can become the crate's format spec.
+    5. The crates.io name `vault-core` belongs to an unrelated project.
+  - **`vault` (CLI): partly.** `validate`, `find`/`retrieve`/`tree`, `edit --expect`, `gate`, `conflicts` and the TTL/OKF part of `build` are generic. Coupling points:
+    1. **`whelk` is a git dependency** (`jjohare/whelk-rs` at `79a1ee2`, an MIT fork of `b-gehrke/whelk-rs`). crates.io refuses git dependencies, and the crates.io name `whelk` belongs to another author. This blocks publication.
+    2. `narrativegoldmine.com` IRIs are compiled into `build/turtle.rs`, `build/webvowl.rs`, `build/graph_tiers.rs`, `projection.rs` and `whelk.rs`.
+    3. `build/generation.rs` stamps `visionGraph@<commit>`.
+    4. `build/rvdb.rs` defaults to the LAN embedder `192.168.2.132:9997` and `bge-small-en-v1.5`, with `loom:ontology-corpus:` record ids.
+    5. NGG1 graph tiers, `scaffold-index.json` and WebVOWL are the explorer's and Loom's formats.
+    6. `propose` and `nostr.rs` post DreamLab forum 31402 events.
+    7. `repair bodies` is a Logseq→Obsidian migration tool.
+    8. The crates.io name `vault` is taken.
+- **Plan (not started: needs the owner's go):**
+  1. New repository `DreamLab-AI/okf-vault`, AGPL-3.0-only unless the owner relicenses. History is carried by `git filter-repo` on `crates/vault-core` and `crates/vault`.
+  2. Publish Whelk first. Either `b-gehrke/whelk-rs` upstream takes the fork's changes and publishes, or `whelk-rs` is published from the fork with attribution. Both names are free today.
+  3. `okf-vault-core` 0.2.0 (lib name stays `vault_core`): drop the `ngm` defaults and builtin prefixes, so namespaces come only from `vocabulary.yaml`, and make the proposal namespace a vocabulary key. `domains.rs` stays in VisionClaw.
+  4. `okf-vault` 0.2.0 (binary still `vault`): IRIs, generation prefix and embedder endpoint come from the vocabulary file or flags, with no LAN default. Behind cargo features: `rvdb` (embedding sidecar), `forum` (31402 via `nostr-bbs-core`) and `explorer` (NGG1/WebVOWL/scaffold).
+  5. VisionClaw keeps a thin adapter: the domain registry, its `vocabulary.yaml` with the `ngm` namespaces, and a dependency on `okf-vault-core` with all features on. The golden-parity tests stay in VisionClaw as its adapter's acceptance test.
+  6. agentbox switches `lib/vault.nix` from the `vaultSrc` flake input to the published crate. That retires the input, and with it the cross-repo commit pin this ADR documents.
+- **Done today, toward step 3:** `vault-core` is publishable in place. It has crates.io metadata, a README and licence, a pedantic-clippy cast fix in `domains.rs`, clean `cargo doc --no-deps` (`-D warnings`), and 453 tests green across both crates. `cargo publish --dry-run` passes with `publish` flipped temporarily, and `publish = false` stays as the go gate. `vault` cannot package until step 2 lands.
+- **Why here:** VisionClaw's `scripts/adr-ratchet.sh` admits a new proposed ADR only if a proposed one closes in the same push. Closing another record to make room is not this worker's decision, so the plan is recorded here as the brief directs. When the owner says go, it becomes a VisionClaw ADR that supersedes ADR-2113's "Crate home" clause (PRD Q11).
