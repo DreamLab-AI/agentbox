@@ -27,6 +27,8 @@ on:
       - 'management-api/routes/chain-payments.js'
       - 'tests/sovereign/sidestr-spend-key.node-test.js'
       - 'tests/sovereign/chain-payments.node-test.js'
+      - 'tests/sovereign/dispatch-as.node-test.js'
+      - 'scripts/sidechain/**'
       - 'tests/sovereign/sidechain-health.node-test.js'
       - 'tests/sovereign/sidechain-witness.node-test.js'
       - 'management-api/lib/sidechain-health.js'
@@ -62,6 +64,8 @@ on:
       - 'management-api/routes/chain-payments.js'
       - 'tests/sovereign/sidestr-spend-key.node-test.js'
       - 'tests/sovereign/chain-payments.node-test.js'
+      - 'tests/sovereign/dispatch-as.node-test.js'
+      - 'scripts/sidechain/**'
       - 'tests/sovereign/sidechain-health.node-test.js'
       - 'tests/sovereign/sidechain-witness.node-test.js'
       - 'management-api/lib/sidechain-health.js'
@@ -129,6 +133,7 @@ jobs:
         run: |
           node --test ../tests/sovereign/sidestr-spend-key.node-test.js ../tests/sovereign/chain-payments.node-test.js
           SIDESTR_TEST_CHAIN=dreamlab node --test ../tests/sovereign/chain-payments.node-test.js
+          NODE_PATH="$PWD/node_modules" node --test ../tests/sovereign/dispatch-as.node-test.js
 
       # ADR-2103 interim receipt (amended 2026-10-02): the producer tip-age probe
       # and the demo witness. Their loopback-chain cases need the upstream siding
