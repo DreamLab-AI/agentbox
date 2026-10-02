@@ -2,15 +2,15 @@
 id: ADR-2097
 title: The sidestr rail supersedes Lightning-first, and pay402 gains a fixtured sidestr scheme
 date: 2026-09-21
-decision_status: proposed
-implementation_status: none
-activation_status: inactive
+decision_status: accepted
+implementation_status: complete
+activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: 6db0ffc8df1e708047c210353f730d1f0427553d
+verified_paths: [management-api/lib/pay402.js, management-api/lib/sidestr-spend-key.js, management-api/lib/sidestr-rail.js, management-api/lib/sidestr-payee.js, management-api/middleware/consumer-payer.js, management-api/middleware/spend-policy.js, management-api/routes/chain-payments.js, tests/contract/pay402, scripts/activation/adr-2097-acceptance.js]
 owner: jjohare
-review_trigger: the first captured sidestr 402 fixture landing in tests/contract/pay402/; any proposal to make x402 or l402 payable; any proposal to build NWC
+review_trigger: a chain added to pay402.js SIDESTR_CHAINS; the rail switched to sidestr:dreamlab-txbt4; sidestr-agent gaining a memo or transaction lookup (S2); any proposal to make x402 or l402 payable; any proposal to build NWC
 repo: agentbox
 domain: GOVERNANCE-capabilities
 ---
@@ -35,14 +35,19 @@ review trigger named the arrival of a real-money rail. The owner dropped Lightni
    a bridge on-ramp into a chain (ADR-2102), never as the planned rail.
 2. **`x402` and `l402` continue to classify and stay `payable: false`.** Detection is free and
    legible; the scheme strings are append-only per ADR-032 D5 and are not removed.
-3. **`pay402.js` gains a fourth scheme, `sidestr`, as an ADR-032 revision.** Detection shape,
-   frozen and fixtured: a 402 whose `accepts[]` carries `{ scheme: "sidestr", chain:
-   "sidestr:<name>", address: "<bech32m>", amount_sats | { asset, amount } }`. `payable: true`
-   only when `CONSUMER_ENABLED`, `[sidechain].enabled` and the rail-only table
-   `[payments.sidestr].enabled` all hold (the rail table references the chain block and never
-   restates its fields). Captured-bytes
-   fixtures land in `tests/contract/pay402/` and are immutable once landed (ADR-032 D4).
-   `unknown` remains terminal and unpayable.
+3. **`pay402.js` gains a fourth scheme, `sidestr`, as an ADR-032 revision** *(amended in place
+   2026-10-02, owner decision SC2: a payment is a sidechain transaction)*. Detection shape,
+   frozen and fixtured: a 402 whose `accepts[]` carries `{ scheme: "sidestr", chain_id:
+   "sidestr:<name>", address: "<prefix>1p…", pubkey: <payee spend key>, amount_sats, memo:
+   <payee receipt URN>, pay_to?: did:nostr, binding?: <kind 38420> }`. The payer builds and
+   signs one sidechain transaction with its spend key `k_spend` (never `k_id`, ADR-2101 D3)
+   through `sidestr-agent send --post` (sidestr-wallet underneath), which broadcasts it by
+   producer `POST /tx` and kind 23500; its receipt URN cites the txid and the including block
+   hash. `payable: true` only when `[payments.sidestr]` is enabled for the offer's chain and
+   that chain is compiled into `SIDESTR_CHAINS`, testnet parents only; `CONSUMER_ENABLED` and
+   `[sidechain]` play no part (paying is not producing). Any other chain id is refused.
+   Captured-bytes fixtures in `tests/contract/pay402/` are immutable (ADR-032 D4,
+   `fixtures.sha256`). `unknown` remains terminal and unpayable.
 4. **Precedence.** During P2 `sidestr` sits below `agentbox-ledger` so the legacy rail still
    wins where both are offered; it moves first in P3 once the Web Ledger is a derived view
    (ADR-2099).
@@ -54,7 +59,7 @@ review trigger named the arrival of a real-money rail. The owner dropped Lightni
 
 `economy-loop.md` is rewritten. The consumer pipeline (spend policy, native payer, receipts)
 keeps its shape and gains a real rail; `consumer-payer.js` learns to build and publish a
-kind-23500 spend via `sidestr-wallet`. Anyone who planned on NWC budgets loses that path.
+sidechain spend via `sidestr-agent` (`resolveSidestr`, caller `POST /v1/chain/pay`). Anyone who planned on NWC budgets loses that path.
 ADR-032's own review trigger fires and is answered by this record.
 
 ## Verification
@@ -70,3 +75,75 @@ end with a receipt URN citing the chain txid.
 - **Priority:** P2 — next cycle (planning-cycle §3 reopening; this is the "agents pay each other live" step of the §9 headline demo)
 - **Why:** The owner dropped Lightning-first, and that still stands: TODO-unified, "External critique" disposition, lines 49–51. Upstream has not moved toward Lightning. sidestr/spec `fe689e9` mentions it nowhere, and sidestr-rs's Hitch is a channel kernel inside sidestr that does not speak to Lightning peers (VisionFlow ADR-2012, Source qualification). Nothing in D3 is built yet: `management-api/lib/pay402.js` has no `sidestr` scheme and no `tests/contract/pay402/` sidestr fixture exists (agentbox `c4ed3ec65`). `docs/developer/economy-loop.md:143` already describes the sidestr rail as proposed. The public site still claims Lightning/NWC as "the rail today" (VisionFlow `website/static/index.html:608,1101-1103`). That is tracked on VisionFlow ADR-2012, not here.
 - **Next:** Do this after the research chain runs a Rust producer (N-10). Capture the first `sidestr` 402 fixture on `sidestr:dreamlab` testnet sats; that is this record's review trigger and the first piece of its ratification evidence.
+
+## Acceptance — 2026-10-02
+
+Accepted, implementation complete, activation **staged**. The owner decided on 2026-10-02
+(SC2): "Sidechain transactions on the `txbt4`-anchored sidechain … Each payment is a sidechain
+tx. Hitch session channels are a layer on top, not the demo's payment path." D3 above is
+amended in place to say so. SC1 puts the demo on a new chain sealed on `txbt4`, so the rail is
+chain-agnostic: `[payments.sidestr]` names the chain and producer, and the chain must be
+compiled into `pay402.js` `SIDESTR_CHAINS`. It was built and run against `sidestr:dreamlab`.
+
+**Built at `6db0ffc8d`.**
+
+- The `sidestr` classifier, captured fixtures and the value-leak guard: an uncompiled or
+  mainnet chain id is refused; validator E-PAY5 catches the same thing in config.
+- The payer, `consumer-payer.js` `resolveSidestr`. It runs from `POST /v1/chain/pay`, its first
+  production caller. Before signing it checks the chain guard against the producer's
+  `chain.json` and checks the offer's address through `sidestr-agent address`.
+- Spend-policy in rail mode, on that route only. Above `approval_threshold_sats` a payment
+  parks and waits for a NIP-98 approver on the allowlist; the payer cannot approve its own
+  payment. That makes the "parks pending approval" claim at `agentbox.toml:1556` true on
+  this rail.
+- Journal pairs (`sidestr.send`, `sidestr.settle`, `http.retry`) under the payment's receipt
+  URN.
+- `k_spend` minted at spawn beside `k_id` from an independent key, never derived from it. A
+  kind-38420 binding signed by `k_id` ties them, with a known-answer test.
+- `GET /v1/chain/payments`, and `GET /v1/chain/sessions`, which returns `[]` until there are
+  Hitch sessions.
+
+`[payments.sidestr]` is on in `agentbox.toml`. Activation is staged rather than live: the
+running management-api is the baked image and was not restarted, so the routes go live on the
+next rebuild.
+
+**Ratification evidence, all met.**
+
+1. `tests/contract/pay402/` holds `sidestr` fixtures (59/59). One is the captured 402
+   `sidestr-dreamlab.json`; four are adversarial derivations.
+2. A fixture-unwitnessed scheme (`sidestr-hitch`) classifies `unknown` and cannot spend. With
+   only `[payments.sidestr]` on, an `agentbox-ledger` offer stays `payable:false`.
+3. Live run of `scripts/activation/adr-2097-acceptance.js` on `sidestr:dreamlab`, 2026-10-02
+   (receipt `docs/experiments/ADR-2097-acceptance-2026-10-02.receipt.json`):
+   - Agent A `did:nostr:8d10b68a…0cd3` paid agent B `did:nostr:5d134535…d51f` 1,000 test sats
+     through B's 402.
+   - The payment is txid `921b911cb61f4e977dd88211834de63998e7dc7c70bcad71d48f8c1d65d31f6f`,
+     included at height 946 in block
+     `49a4e0f15bb162ed94341b650811b12453eec438aa89e1e372ea3f4e1105b881`, fee 155.
+   - The receipt URN is
+     `urn:agentbox:receipt:8d10b68a…0cd3:sha256-12-3b3e424c94d3`, content-addressed over the
+     txid and the block hash.
+   - B redeemed it on chain: outpoint `…1f6f:0`, 1,000 sats, and B's balance went from 0 to
+     1,000.
+   - Three tool.called/tool.completed pairs were journalled, each linked by causation.
+   - A was funded from the treasury by `d1f95ae3…4989` at height 945.
+   - What was staged: A's route ran in its own Fastify instance, with the NIP-98 hook replaced
+     by A's verified identity, and B's payee was a loopback HTTP server.
+
+**What S2 must add to `sidestr-agent`.** 0.3.2 at `d68880bf` is enough for this rail, so no pin
+bump is needed. It still lacks the following.
+
+- `send --memo`, so the charge memo goes on chain. Today the memo binds only through the
+  receipt.
+- A transaction lookup (`tx <txid>`, or a producer `GET /tx/<txid>`). Today inclusion is found
+  by scanning the payee's `/coins`, which misses a payee that spends the output first.
+- A Rust `bind` that emits the 38420 event, with the same known-answer test.
+- `hitch open|pay|close` behind `/v1/chain/sessions`.
+- Machine-readable error codes.
+- A spend that does not download the whole `blocks.dat`.
+
+**To switch to the demo chain:** set `chain_id = "sidestr:dreamlab-txbt4"` and that chain's
+`producer_url`. Both estate chains are compiled into `SIDESTR_CHAINS`, each pinned by genesis
+(`sidestr:dreamlab-txbt4`: parent `txbt4`, prefix `drt`, sealed at `f7465412d`, not anchored
+per SC5), and a contract test ties the table to the sealed `chain.json` files. The txbt4
+producer ships disabled, so the live run used `sidestr:dreamlab`.

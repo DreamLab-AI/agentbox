@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 66425f9bd07206fe6e8f7215625ece1aa7e31eb8
+verified_commit: 6db0ffc8df1e708047c210353f730d1f0427553d
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -150,3 +150,8 @@ JunkieJarvis start path changed; it moved down by thirteen lines (`junkiejarvisE
 is now at `management-api/server.js:1410-1411`). `tests/sovereign/` under jest (56 suites, 854
 passed, 3 skipped), including the three JunkieJarvis suites this record governs, pass at this
 commit. Decision and status unchanged.
+
+## Re-verification — 2026-10-02 (`6db0ffc8df1e708047c210353f730d1f0427553d`)
+
+Tripped by ADR-2097 (the sidestr payment rail). `management-api/server.js` registers `routes/chain-payments` after the chain identity route; no hook, auth-skip entry or existing route changes. Nothing this record governs is touched, and the decision holds unchanged.
+Re-verified by `git diff 66425f9bd..6db0ffc8d -- <verified_paths>`; no re-implementation was needed.

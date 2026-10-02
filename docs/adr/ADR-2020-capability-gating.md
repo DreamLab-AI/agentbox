@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
+verified_commit: 6db0ffc8df1e708047c210353f730d1f0427553d
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -194,3 +194,14 @@ Tripped by the `sidestr:dreamlab-txbt4` seal. `agentbox.toml` adds the `[sidecha
 - the manifest validator is valid;
 - `check-manifest-catalogue` passes;
 - `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.
+
+## Re-verification — 2026-10-02 (`6db0ffc8df1e708047c210353f730d1f0427553d`)
+
+Tripped by ADR-2097 (the sidestr payment rail). `agentbox.toml` gains one block, `[payments.sidestr]`, after `[skills.payment_router]`; no existing key moves. This fires the review trigger ("any new optional … block"), so the check is against the decision itself:
+
+- The block is a runtime gate inside the always-on management-api, like `[payments.consumer]`. It adds no Nix package and no supervised program; `sidestr-agent` was already baked under `[sidechain]`. Package and supervisor gating therefore have nothing to omit.
+- With the block off, every route it governs answers 503.
+- Its spend is capped per payment and per payer per day, and the cap is enforced by spend-policy on `POST /v1/chain/pay`.
+- Payments are explicitly invoked only; nothing routes to that endpoint automatically.
+
+The decision holds unchanged. Re-verified by `git diff f7465412d..6db0ffc8d -- <verified_paths>`.

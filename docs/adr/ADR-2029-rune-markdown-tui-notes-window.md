@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
+verified_commit: 6db0ffc8df1e708047c210353f730d1f0427553d
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -184,3 +184,8 @@ Tripped by the `sidestr:dreamlab-txbt4` seal. `agentbox.toml` adds the `[sidecha
 - the manifest validator is valid;
 - `check-manifest-catalogue` passes;
 - `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.
+
+## Re-verification — 2026-10-02 (`6db0ffc8df1e708047c210353f730d1f0427553d`)
+
+Tripped by ADR-2097 (the sidestr payment rail). `agentbox.toml` gains one new table, `[payments.sidestr]` (ADR-2097), placed after `[skills.payment_router]`; no existing key, value or line above it moves; `schema/agentbox.toml.schema.json` gains `payments.properties.sidestr` only. Nothing this record governs is touched, and the decision holds unchanged.
+Re-verified by `git diff f7465412d..6db0ffc8d -- <verified_paths>`; no re-implementation was needed.
