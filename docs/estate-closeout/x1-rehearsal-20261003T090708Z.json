@@ -1,0 +1,805 @@
+{
+  "schema": "agentbox/x1-rehearsal@1",
+  "half": "container",
+  "verdict": "STAGED",
+  "exit_code": 2,
+  "flag": {
+    "key": "[security].role_isolation",
+    "value": false,
+    "source": "absent-default-false",
+    "manifest": "/etc/agentbox.toml"
+  },
+  "image": {
+    "build_id": "sha256:ef292f552fd387d351f9c90aa9a98f955f9352846a0052e9690b8ed49a378203",
+    "version": "2.0.0"
+  },
+  "commit": "3cd5614738f6e3d85d25961b832b1074f307c348",
+  "rehearsal_dirty": false,
+  "started_at": "2026-10-03T09:06:53Z",
+  "finished_at": "2026-10-03T09:07:08Z",
+  "operator": {
+    "user": "devuser",
+    "uid": 1000
+  },
+  "supervisor_config": "/etc/supervisord.conf",
+  "uid_table": {
+    "source": "derived from /etc/agentbox.toml (design §2.2 numbering)",
+    "roles": [
+      {
+        "role": "ab-identity",
+        "uid": 960,
+        "gid": 960,
+        "programs": [
+          "nostr-relay"
+        ],
+        "files": [
+          "/run/secrets/ab-identity/nostr.key"
+        ],
+        "classified_env": [
+          "AGENTBOX_PRIVKEY_HEX",
+          "AGENTBOX_NSEC",
+          "AGENTBOX_BRIDGE_SK",
+          "AGENTBOX_AGENT_PRIVKEY_HEX",
+          "JUNKIEJARVIS_PRIVKEY_HEX",
+          "CONCIERGE_PRIVKEY_HEX"
+        ]
+      },
+      {
+        "role": "ab-gateway",
+        "uid": 961,
+        "gid": 961,
+        "programs": [
+          "nostr-gateway"
+        ],
+        "files": [],
+        "classified_env": []
+      },
+      {
+        "role": "ab-ingress",
+        "uid": 962,
+        "gid": 962,
+        "programs": [
+          "nip98-proxy"
+        ],
+        "files": [],
+        "classified_env": [
+          "NIP98_PROXY_ALLOW_BEARER",
+          "NIP98_PROXY_SESSION_SECRET"
+        ]
+      },
+      {
+        "role": "ab-spend",
+        "uid": 963,
+        "gid": 963,
+        "programs": [],
+        "files": [],
+        "classified_env": [],
+        "deferred": "Q6: pay402 and Hitch stay devuser-class in step 1"
+      },
+      {
+        "role": "ab-sidestr-dreamlab",
+        "uid": 964,
+        "gid": 964,
+        "programs": [
+          "sidestr-producer"
+        ],
+        "files": [
+          "/run/secrets/ab-sidestr-dreamlab/signer.key",
+          "/run/secrets/ab-sidestr-dreamlab/parent.cred"
+        ],
+        "classified_env": []
+      },
+      {
+        "role": "ab-faucet-dreamlab",
+        "uid": 965,
+        "gid": 965,
+        "programs": [
+          "sidestr-faucet"
+        ],
+        "files": [
+          "/run/secrets/ab-faucet-dreamlab/treasury.key"
+        ],
+        "classified_env": []
+      }
+    ]
+  },
+  "checks": [
+    {
+      "check": "a",
+      "target": "/run/secrets",
+      "expected": "root-owned 0711 mount point",
+      "observed": "uid 1000 mode 700, same filesystem as /run (renamable by /run's owner)",
+      "evidence": {
+        "path": "/run/secrets",
+        "uid": "1000",
+        "mode": "700",
+        "mount_point": false
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/ab-identity",
+      "expected": "dir 0500 owned by ab-identity (960)",
+      "observed": "absent",
+      "evidence": {
+        "path": "/run/secrets/ab-identity",
+        "uid": "",
+        "mode": ""
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/ab-identity/nostr.key",
+      "expected": "devuser open() -> EACCES",
+      "observed": "ENOENT",
+      "evidence": {
+        "path": "/run/secrets/ab-identity/nostr.key",
+        "devuser_open": "ENOENT"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/ab-gateway",
+      "expected": "dir 0500 owned by ab-gateway (961)",
+      "observed": "absent",
+      "evidence": {
+        "path": "/run/secrets/ab-gateway",
+        "uid": "",
+        "mode": ""
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/ab-ingress",
+      "expected": "dir 0500 owned by ab-ingress (962)",
+      "observed": "absent",
+      "evidence": {
+        "path": "/run/secrets/ab-ingress",
+        "uid": "",
+        "mode": ""
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/ab-sidestr-dreamlab",
+      "expected": "dir 0500 owned by ab-sidestr-dreamlab (964)",
+      "observed": "absent",
+      "evidence": {
+        "path": "/run/secrets/ab-sidestr-dreamlab",
+        "uid": "",
+        "mode": ""
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/ab-sidestr-dreamlab/signer.key",
+      "expected": "devuser open() -> EACCES",
+      "observed": "ENOENT",
+      "evidence": {
+        "path": "/run/secrets/ab-sidestr-dreamlab/signer.key",
+        "devuser_open": "ENOENT"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/ab-sidestr-dreamlab/parent.cred",
+      "expected": "devuser open() -> EACCES",
+      "observed": "ENOENT",
+      "evidence": {
+        "path": "/run/secrets/ab-sidestr-dreamlab/parent.cred",
+        "devuser_open": "ENOENT"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/ab-faucet-dreamlab",
+      "expected": "dir 0500 owned by ab-faucet-dreamlab (965)",
+      "observed": "absent",
+      "evidence": {
+        "path": "/run/secrets/ab-faucet-dreamlab",
+        "uid": "",
+        "mode": ""
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/ab-faucet-dreamlab/treasury.key",
+      "expected": "devuser open() -> EACCES",
+      "observed": "ENOENT",
+      "evidence": {
+        "path": "/run/secrets/ab-faucet-dreamlab/treasury.key",
+        "devuser_open": "ENOENT"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/run/secrets/nostr.key",
+      "expected": "devuser open() -> EACCES or ENOENT (at rest)",
+      "observed": "ok",
+      "evidence": {
+        "path": "/run/secrets/nostr.key",
+        "devuser_open": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/var/lib/agentbox/identities/agentbox-core.json",
+      "expected": "devuser open() -> EACCES or ENOENT (at rest)",
+      "observed": "ok",
+      "evidence": {
+        "path": "/var/lib/agentbox/identities/agentbox-core.json",
+        "devuser_open": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/var/lib/agentbox/secrets/sidestr-dreamlab.key",
+      "expected": "devuser open() -> EACCES or ENOENT (at rest)",
+      "observed": "ok",
+      "evidence": {
+        "path": "/var/lib/agentbox/secrets/sidestr-dreamlab.key",
+        "devuser_open": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/var/lib/agentbox/secrets/sidestr-faucet-dreamlab.key",
+      "expected": "devuser open() -> EACCES or ENOENT (at rest)",
+      "observed": "ENOENT",
+      "evidence": {
+        "path": "/var/lib/agentbox/secrets/sidestr-faucet-dreamlab.key",
+        "devuser_open": "ENOENT"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": true
+    },
+    {
+      "check": "a",
+      "target": "/var/lib/agentbox/secrets/sidestr-tbtc4.cookie",
+      "expected": "devuser open() -> EACCES or ENOENT (at rest)",
+      "observed": "ok",
+      "evidence": {
+        "path": "/var/lib/agentbox/secrets/sidestr-tbtc4.cookie",
+        "devuser_open": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/var/lib/agentbox/identities/",
+      "expected": "devuser opendir() -> EACCES (at rest)",
+      "observed": "ok",
+      "evidence": {
+        "path": "/var/lib/agentbox/identities",
+        "devuser_opendir": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "a",
+      "target": "/var/lib/agentbox/secrets/",
+      "expected": "devuser opendir() -> EACCES (at rest)",
+      "observed": "ok",
+      "evidence": {
+        "path": "/var/lib/agentbox/secrets",
+        "devuser_opendir": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "b",
+      "target": "nostr-relay",
+      "expected": "RUNNING as ab-identity (960), environ unreadable",
+      "observed": "pid 379 uid 1000/1000, environ ok",
+      "evidence": {
+        "program": "nostr-relay",
+        "pid": 379,
+        "uid": "1000",
+        "environ_devuser_open": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "b",
+      "target": "nostr-gateway",
+      "expected": "RUNNING as ab-gateway (961), environ unreadable",
+      "observed": "pid 773 uid 1000/1000, environ ok",
+      "evidence": {
+        "program": "nostr-gateway",
+        "pid": 773,
+        "uid": "1000",
+        "environ_devuser_open": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "b",
+      "target": "nip98-proxy",
+      "expected": "RUNNING as ab-ingress (962), environ unreadable",
+      "observed": "pid 431 uid 1000/1000, environ ok",
+      "evidence": {
+        "program": "nip98-proxy",
+        "pid": 431,
+        "uid": "1000",
+        "environ_devuser_open": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "b",
+      "target": "sidestr-producer",
+      "expected": "RUNNING as ab-sidestr-dreamlab (964)",
+      "observed": "STOPPED",
+      "evidence": {
+        "program": "sidestr-producer",
+        "state": "STOPPED"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "b",
+      "target": "sidestr-faucet",
+      "expected": "RUNNING as ab-faucet-dreamlab (965), environ unreadable",
+      "observed": "pid 882 uid 1000/1000, environ ok",
+      "evidence": {
+        "program": "sidestr-faucet",
+        "pid": 882,
+        "uid": "1000",
+        "environ_devuser_open": "ok"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "c",
+      "target": "/run/secrets/port/identity.sock",
+      "expected": "identity port socket present",
+      "observed": "absent",
+      "evidence": {
+        "path": "/run/secrets/port/identity.sock"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "c",
+      "target": "pubkey",
+      "expected": "made through the port",
+      "observed": "not attempted: port socket absent",
+      "evidence": {},
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "c",
+      "target": "pods-nip98",
+      "expected": "made through the port",
+      "observed": "not attempted: port socket absent",
+      "evidence": {},
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "c",
+      "target": "forum-event",
+      "expected": "made through the port",
+      "observed": "not attempted: port socket absent",
+      "evidence": {},
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "c",
+      "target": "relay-nip42",
+      "expected": "made through the port",
+      "observed": "not attempted: port socket absent",
+      "evidence": {},
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "c",
+      "target": "refuse-dm_unwrap",
+      "expected": "made through the port",
+      "observed": "not attempted: port socket absent",
+      "evidence": {},
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "c",
+      "target": "refuse-foreign-url",
+      "expected": "made through the port",
+      "observed": "not attempted: port socket absent",
+      "evidence": {},
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "c",
+      "target": "refuse-generic-sign",
+      "expected": "made through the port",
+      "observed": "not attempted: port socket absent",
+      "evidence": {},
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "c",
+      "target": "receipts",
+      "expected": "made through the port",
+      "observed": "not attempted: port socket absent",
+      "evidence": {},
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "d",
+      "target": "sidestr-producer",
+      "expected": "producer runs as ab-sidestr-dreamlab (964)",
+      "observed": "not RUNNING under supervisor",
+      "evidence": {
+        "program": "sidestr-producer",
+        "pid": "",
+        "uid": ""
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "d",
+      "target": "sidestr:dreamlab tip",
+      "expected": "a block younger than 1200s on :3450",
+      "observed": "height 1019, newest block 301s old",
+      "evidence": {
+        "port": 3450,
+        "height": 1019,
+        "block_age_s": 301,
+        "interval_s": 600
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": true
+    },
+    {
+      "check": "e",
+      "target": "argv",
+      "expected": "no classified name or secret flag on any argv (159 processes)",
+      "observed": "0 hits",
+      "evidence": {
+        "processes": 159,
+        "hits_total": 0,
+        "by_name": [],
+        "sample": []
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": true
+    },
+    {
+      "check": "e",
+      "target": "devuser-environ",
+      "expected": "no classified name in any devuser process environ (157 processes)",
+      "observed": "942 hits, 0 unreadable",
+      "evidence": {
+        "devuser_processes": 157,
+        "hits_total": 942,
+        "by_name": [
+          {
+            "name": "AGENTBOX_NSEC",
+            "belongs_to": "ab-identity",
+            "processes": 157
+          },
+          {
+            "name": "AGENTBOX_PRIVKEY_HEX",
+            "belongs_to": "ab-identity",
+            "processes": 157
+          },
+          {
+            "name": "JUNKIEJARVIS_PRIVKEY_HEX",
+            "belongs_to": "ab-identity",
+            "processes": 157
+          },
+          {
+            "name": "NIP98_PROXY_ALLOW_BEARER",
+            "belongs_to": "ab-ingress",
+            "processes": 157
+          },
+          {
+            "name": "NIP98_PROXY_SESSION_SECRET",
+            "belongs_to": "ab-ingress",
+            "processes": 157
+          },
+          {
+            "name": "TAILSCALE_AUTHKEY",
+            "belongs_to": "root",
+            "processes": 157
+          }
+        ],
+        "sample": [
+          {
+            "pid": 10369,
+            "uid": 1000,
+            "name": "AGENTBOX_NSEC"
+          },
+          {
+            "pid": 10369,
+            "uid": 1000,
+            "name": "NIP98_PROXY_SESSION_SECRET"
+          },
+          {
+            "pid": 10369,
+            "uid": 1000,
+            "name": "AGENTBOX_PRIVKEY_HEX"
+          },
+          {
+            "pid": 10369,
+            "uid": 1000,
+            "name": "NIP98_PROXY_ALLOW_BEARER"
+          },
+          {
+            "pid": 10369,
+            "uid": 1000,
+            "name": "TAILSCALE_AUTHKEY"
+          },
+          {
+            "pid": 10369,
+            "uid": 1000,
+            "name": "JUNKIEJARVIS_PRIVKEY_HEX"
+          },
+          {
+            "pid": 10566,
+            "uid": 1000,
+            "name": "AGENTBOX_NSEC"
+          },
+          {
+            "pid": 10566,
+            "uid": 1000,
+            "name": "NIP98_PROXY_SESSION_SECRET"
+          },
+          {
+            "pid": 10566,
+            "uid": 1000,
+            "name": "AGENTBOX_PRIVKEY_HEX"
+          },
+          {
+            "pid": 10566,
+            "uid": 1000,
+            "name": "NIP98_PROXY_ALLOW_BEARER"
+          },
+          {
+            "pid": 10566,
+            "uid": 1000,
+            "name": "TAILSCALE_AUTHKEY"
+          },
+          {
+            "pid": 10566,
+            "uid": 1000,
+            "name": "JUNKIEJARVIS_PRIVKEY_HEX"
+          },
+          {
+            "pid": 10567,
+            "uid": 1000,
+            "name": "AGENTBOX_NSEC"
+          },
+          {
+            "pid": 10567,
+            "uid": 1000,
+            "name": "NIP98_PROXY_SESSION_SECRET"
+          },
+          {
+            "pid": 10567,
+            "uid": 1000,
+            "name": "AGENTBOX_PRIVKEY_HEX"
+          },
+          {
+            "pid": 10567,
+            "uid": 1000,
+            "name": "NIP98_PROXY_ALLOW_BEARER"
+          },
+          {
+            "pid": 10567,
+            "uid": 1000,
+            "name": "TAILSCALE_AUTHKEY"
+          },
+          {
+            "pid": 10567,
+            "uid": 1000,
+            "name": "JUNKIEJARVIS_PRIVKEY_HEX"
+          },
+          {
+            "pid": 10568,
+            "uid": 1000,
+            "name": "AGENTBOX_NSEC"
+          },
+          {
+            "pid": 10568,
+            "uid": 1000,
+            "name": "NIP98_PROXY_SESSION_SECRET"
+          }
+        ]
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "e",
+      "target": "supervisor-text",
+      "expected": "no classified name on an environment= line",
+      "observed": "0 lines",
+      "evidence": {
+        "hits": []
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": true
+    },
+    {
+      "check": "e",
+      "target": "/run/agentbox/identity.env",
+      "expected": "no classified name",
+      "observed": "unreadable to devuser (root half reads it)",
+      "evidence": {
+        "path": "/run/agentbox/identity.env",
+        "devuser_open": "EACCES"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": true
+    },
+    {
+      "check": "e",
+      "target": "/var/log",
+      "expected": "no NAME=value line for a classified name",
+      "observed": "0 lines",
+      "evidence": {
+        "hits": []
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": true
+    },
+    {
+      "check": "f",
+      "target": "groups",
+      "expected": "devuser not in group 0",
+      "observed": "in group 0 (groups: 1000 0 998)",
+      "evidence": {
+        "groups": "1000 0 998"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "f",
+      "target": "docker",
+      "expected": "devuser cannot drive the docker daemon",
+      "observed": "docker version answered (server 29.8.1)",
+      "evidence": {
+        "command": "docker version"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    },
+    {
+      "check": "f",
+      "target": "sudo",
+      "expected": "devuser cannot sudo",
+      "observed": "refused",
+      "evidence": {
+        "command": "sudo -n true"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": true
+    },
+    {
+      "check": "f",
+      "target": "docker.sock-gid",
+      "expected": "no role gid equals the socket's group",
+      "observed": "socket gid 965, collides with a role gid",
+      "evidence": {
+        "path": "/var/run/docker.sock",
+        "gid": 965,
+        "mode": "666"
+      },
+      "status": "not_applicable",
+      "reason": "flag off",
+      "would_pass": false
+    }
+  ],
+  "summary": {
+    "pass": 0,
+    "fail": 0,
+    "not_applicable": 42,
+    "would_fail": 35,
+    "failed_checks": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "f"
+    ]
+  },
+  "legacy_copies": [
+    "/home/devuser/workspace/.agentbox/zone-keys.json",
+    "/home/devuser/workspace/sidestr/agents/treasury.key"
+  ],
+  "degraded": [],
+  "not_covered": [
+    "planting a probe on root PATH and starting [program:bootstrap] (W0 runtime-contract test; the rehearsal never starts or restarts programs)",
+    "renaming /run/secrets (destructive on a failing image; the mount-point and owner test in (a) stands in for it)",
+    "a real pod write with sign_requests=true (the pods header is verified by NostrBridge.verifyNip98, not sent)",
+    "idempotence and rollback across reboots (owner-run; needs two boots)",
+    "role-uid reads, other uids environ and host socket mode and host uid collisions (role-isolation-rehearsal.host.sh)"
+  ]
+}
