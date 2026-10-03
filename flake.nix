@@ -53,9 +53,21 @@
       url = "github:openai/codex-plugin-cc/db52e28f4d9ded852ab3942cea316258ae4ef346";
       flake = false;
     };
+
+    # ruflo's Claude Code mods (function hooks): ruflo-console (the /ruflo
+    # cockpit), plus ruflo-mods and ruflo-swarm, which answer `/ruflo mods` and
+    # `/ruflo swarm …` on the same command. Pinned to the ruflo v3.51.1 tag,
+    # files-only like `codexPlugin`; gated by [toolchains].ruflo_console. The
+    # ruflo repository is ~100 MB, so only the three plugin directories are
+    # baked (scripts/bake-ruflo-console.sh), never the tree. Bump with:
+    #   nix flake lock --update-input rufloConsole
+    rufloConsole = {
+      url = "github:ruvnet/ruflo/09a1cb0244a677f54c2b3d691a7009927add527d";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills, aoe, codexPlugin, vaultSrc }:
+  outputs = { self, nixpkgs, flake-utils, nix2container, rust-overlay, skills, aoe, codexPlugin, rufloConsole, vaultSrc }:
     flake-utils.lib.eachSystem [
       "x86_64-linux"
       "aarch64-linux"
@@ -619,7 +631,10 @@
         npmCliGatedPackages =
           # ruflo ships the claude-flow bins too (consolidated, see rufloPkg) —
           # either gate pulls in the single closure, never both twice.
-          lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false)) [ rufloPkg ]
+          # ruflo_console reaches ruflo through the `ruflo` bin on PATH (its
+          # userConfig cli is baked to "ruflo"), so the console gate pulls the
+          # closure in too.
+          lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false) || rufloConsoleOn) [ rufloPkg ]
           ++ lib.optionals (toolchainCfg.metaharness or false)     [ metaharnessPkg metaharnessDarwinPkg ]
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
@@ -1644,6 +1659,15 @@
         # ADR-2121). One pinned commit gives the binary and the
         # Claude Code shim that calls it; see lib/factrail.nix.
         jevCompactionOn = ((agentboxConfig.features or {}).jev_compaction or {}).enabled or false;
+        # [toolchains].ruflo_console: bake ruflo-console + ruflo-mods + ruflo-swarm
+        # from the pinned rufloConsole input into the `agentbox` marketplace.
+        rufloConsoleOn = toolchainCfg.ruflo_console or false;
+        rufloConsolePlugins = pkgs.runCommand "ruflo-console-plugins-3.51.1" {
+          nativeBuildInputs = [ pkgs.jq ];
+        } ''
+          bash ${./scripts/bake-ruflo-console.sh} ${rufloConsole} $out \
+            ${./config/claude-plugins/.claude-plugin/marketplace.json}
+        '';
         factrailPkg = import ./lib/factrail.nix { inherit lib; pkgs = rustPkgs; };
         factrailPackages = lib.optionals jevCompactionOn [ factrailPkg ];
 
@@ -1931,6 +1955,17 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           chmod u+w $out/opt/agentbox/config/claude-plugins
           cp -r ${factrailPkg}/share/factrail/plugin $out/opt/agentbox/config/claude-plugins/factrail
           chmod -R u+w $out/opt/agentbox/config/claude-plugins/factrail
+          ''}
+
+          ${lib.optionalString rufloConsoleOn ''
+          # ruflo-console, ruflo-mods and ruflo-swarm join the `agentbox` directory
+          # marketplace beside factrail. Only the three plugin directories of the
+          # pinned ruflo tag, with userConfig.cli defaulting to the baked `ruflo`
+          # bin (npx-offline finds no @claude-flow/cli in a fresh npm cache). The
+          # entrypoint registers them at /opt paths, never at a store path.
+          chmod u+w $out/opt/agentbox/config/claude-plugins
+          cp -r ${rufloConsolePlugins}/. $out/opt/agentbox/config/claude-plugins/
+          chmod -R u+w $out/opt/agentbox/config/claude-plugins
           ''}
 
           # tmux plugin loader — generated with Nix-interpolated store paths so

@@ -2690,13 +2690,17 @@ unset _INSTR_LAYERS
 # store (scripts/factrail-store-migrate.mjs), so a resumed email session stays
 # fenced.
 _JC_ON="$(_ab_toml_bool features.jev_compaction enabled)"
+# [toolchains].ruflo_console shares the `agentbox` marketplace and the
+# function-hook switch with factrail, so the factrail block below keeps both
+# while either gate is on (see the ruflo-console block after it).
+_RC_ON="$(_ab_toml_bool toolchains ruflo_console)"
 _JC_MARKET="/opt/agentbox/config/claude-plugins"
 _JC_PLUGIN="$_JC_MARKET/factrail"
 _JC_BIN="/opt/agentbox/bin/factrail"
-if command -v claude >/dev/null 2>&1 && [ -f "$_CLAUDE_SETTINGS" ] || [ "$_JC_ON" = "1" ]; then
-  SETTINGS="$_CLAUDE_SETTINGS" JC_ON="$_JC_ON" node <<'JCENVJS' || true
+if command -v claude >/dev/null 2>&1 && [ -f "$_CLAUDE_SETTINGS" ] || [ "$_JC_ON" = "1" ] || [ "$_RC_ON" = "1" ]; then
+  SETTINGS="$_CLAUDE_SETTINGS" JC_ON="$_JC_ON" RC_ON="$_RC_ON" node <<'JCENVJS' || true
 const fs = require('fs');
-const f = process.env.SETTINGS, on = process.env.JC_ON === '1';
+const f = process.env.SETTINGS, on = process.env.JC_ON === '1' || process.env.RC_ON === '1';
 let s = {}, orig = ''; try { orig = fs.readFileSync(f, 'utf8'); s = JSON.parse(orig); } catch {}
 if (on) { s.env = s.env || {}; s.env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS = '1'; }
 else if (s.env) { delete s.env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS; if (!Object.keys(s.env).length) delete s.env; }
@@ -2806,11 +2810,37 @@ elif command -v claude >/dev/null 2>&1 && [ -d /home/devuser/.claude/plugins ]; 
     run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall factrail@agentbox >/dev/null 2>&1 \
       && echo "  [factrail] uninstalled plugin (gate off)"
   fi
-  if grep -q '"agentbox"' /home/devuser/.claude/plugins/known_marketplaces.json 2>/dev/null; then
+  if [ "$_RC_ON" != "1" ] && grep -q '"agentbox"' /home/devuser/.claude/plugins/known_marketplaces.json 2>/dev/null; then
     run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace remove agentbox >/dev/null 2>&1 \
       && echo "  [factrail] removed agentbox marketplace (gate off)"
   fi
 fi
+
+# ── [toolchains].ruflo_console: ruflo-console + ruflo-mods + ruflo-swarm ──────
+# Baked from the pinned ruflo v3.51.1 tag (flake input rufloConsole) into the
+# `agentbox` marketplace beside factrail. Gate on: the marketplace is
+# registered, and scripts/ruflo-console-project.mjs registers the three plugins
+# at their stable /opt paths in installed_plugins.json (the codex-plugin-cc
+# pattern: no cache copy, so a rebuild is never served a stale plugin), enables
+# them in settings.json and sets userConfig cli=ruflo (the baked bin on PATH;
+# upstream's npx-offline default fails without a warm npm cache).
+# CLAUDE_CODE_ENABLE_FUNCTION_HOOKS is set by the block above. Self-healing: a
+# wrong installPath, version or cli is rewritten every boot. Gate off: the three
+# ids are removed and nothing else changes. Fail-open throughout.
+_RC_MARKET="/opt/agentbox/config/claude-plugins"
+if command -v node >/dev/null 2>&1 && [ -d /home/devuser/.claude ]; then
+  if [ "$_RC_ON" = "1" ] && [ -d "$_RC_MARKET/ruflo-console" ] && command -v claude >/dev/null 2>&1; then
+    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace add "$_RC_MARKET" >/dev/null 2>&1 \
+      || echo "  [ruflo-console] marketplace add failed (continuing; a stale registration may remain)"
+    command -v ruflo >/dev/null 2>&1 \
+      || echo "  [ruflo-console] the ruflo bin is not on PATH — console probes will read n/a until the image is rebuilt with the gate on"
+  fi
+  run_as_devuser env HOME=/home/devuser node /opt/agentbox/scripts/ruflo-console-project.mjs \
+    --on "$_RC_ON" --settings "$_CLAUDE_SETTINGS" \
+    --installed /home/devuser/.claude/plugins/installed_plugins.json \
+    --market "$_RC_MARKET" || true
+fi
+unset _RC_MARKET
 
 # ── MCP registry projection (MCP-1 / MCP-2): project .mcp.json FROM skills/mcp.json ──
 # audit-2026-07-15 MCP-1: skills/mcp.json (the 28-server registry) had NO runtime
