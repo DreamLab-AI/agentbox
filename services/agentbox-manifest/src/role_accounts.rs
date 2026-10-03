@@ -453,7 +453,8 @@ pub fn group_lines(t: &Table) -> String {
     roles.chain(shared).collect()
 }
 
-/// One line per role (name, uid, programs, purpose), then a count. Names and
+/// One line per role (name, uid, programs, purpose), per shared group and per
+/// created directory, then a count. Names and
 /// paths only, never a value.
 pub fn summary(t: &Table) -> String {
     let mut out = String::new();
@@ -482,6 +483,12 @@ pub fn summary(t: &Table) -> String {
             g.name,
             g.owner,
             g.purpose
+        ));
+    }
+    for d in &t.dirs {
+        out.push_str(&format!(
+            "{}\tdir {}:{} {}\t{}\n",
+            d.path, d.owner, d.group, d.mode, d.purpose
         ));
     }
     out.push_str(&format!("role-accounts: {} role(s) valid\n", t.roles.len()));
@@ -730,7 +737,7 @@ pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
         }
         isolated_programs.push(prog.clone());
     }
-    inserts.sort_by(|a, b| b.0.cmp(&a.0));
+    inserts.sort_by_key(|&(at, _)| std::cmp::Reverse(at));
     for (at, line) in inserts {
         lines.insert(at, line);
     }
@@ -1015,7 +1022,7 @@ mod tests {
             .contains(&format!("sockdir\tab-identity-port\t960\t{}\n", g.gid)));
         assert!(iso
             .plan
-            .contains(&format!("dir\t/var/lib/agentbox/events/sign\t960:1000\t2750\n")));
+            .contains("dir\t/var/lib/agentbox/events/sign\t960:1000\t2750\n"));
     }
 
     #[test]

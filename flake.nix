@@ -261,7 +261,7 @@
             inherit name enabled every ckWallet;
             mirror = enabled && (c.mirror or false);
             faucet = enabled && (c.faucet or false);
-            parent = c.parent;
+            inherit (c) parent;
             port = toString (c.port or 3451);
             interval = toString (c.interval or 600);
             parentRpc = unplaceheld (c.parent_rpc or "http://192.168.2.27:48342/");
