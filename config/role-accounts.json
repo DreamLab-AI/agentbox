@@ -1,5 +1,5 @@
 {
-  "$comment": "ADR-2122 (custody X-1 step 1, W1): the single source for per-role service accounts. flake.nix bakes /etc/passwd and /etc/group from it, and `agentbox-manifest role-accounts isolate` derives /etc/supervisord.roles.conf and the /run/secrets delivery plan from today's rendered supervisord.conf with it. Inert unless [security].role_isolation = true. A secret is EITHER `source` (a file path; the program's own environment= value for `env` wins over it) OR `from_env` (a PID-1 environment variable, written to the file and unset before supervisord). `env` names the variable the program reads the path from; the isolated config points it at /run/secrets/<role>/<file>. Never put a secret VALUE here.",
+  "$comment": "ADR-2122 (custody X-1 step 1, W1): the single source for per-role service accounts. flake.nix bakes /etc/passwd and /etc/group from it, and `agentbox-manifest role-accounts isolate` derives /etc/supervisord.roles.conf and the /run/secrets delivery plan from today's rendered supervisord.conf with it. Inert unless [security].role_isolation = true. A secret is EITHER `source` (a file path; the program's own environment= value for `env` wins over it, unless that value is the secret's `legacy` path, which the custody migrate step copies from once and never deletes) OR `from_env` (a PID-1 environment variable, written to the file and unset before supervisord). `env` names the variable the program reads the path from; the isolated config points it at /run/secrets/<role>/<file>. Never put a secret VALUE here.",
   "schema": "agentbox.role-accounts/1",
   "uid_range": [960, 979],
   "reserved_ids": {
@@ -26,6 +26,10 @@
         { "file": "AGENTBOX_NSEC", "from_env": "AGENTBOX_NSEC" },
         { "file": "JUNKIEJARVIS_PRIVKEY_HEX", "from_env": "JUNKIEJARVIS_PRIVKEY_HEX" },
         { "file": "CONCIERGE_PRIVKEY_HEX", "from_env": "CONCIERGE_PRIVKEY_HEX" }
+      ],
+      "at_rest": [
+        { "path": "/var/lib/agentbox/identities/agentbox-core.json", "purpose": "The sovereign identity file nostr-pod-bridge bootstrap writes (root reads it at boot). Flag off: devuser 0600 (management-api's pods signer). Flag on: ab-identity 0400; the pods signer goes through the identity port." },
+        { "path": "/var/lib/agentbox/secrets/zone-keys.json", "legacy": "/home/devuser/workspace/.agentbox/zone-keys.json", "purpose": "JunkieJarvis zone keys. Copied once from the workspace bind; the workspace copy stays (Q5) and is what flag-off readers use until W3b moves the zone gate." }
       ]
     },
     {
@@ -68,7 +72,7 @@
       "purpose": "sidestr:dreamlab faucet: treasury key. 965 is skipped (reserved_ids).",
       "programs": ["sidestr-faucet"],
       "secrets": [
-        { "file": "treasury.key", "env": "SIDESTR_FAUCET_KEY", "source": "/home/devuser/workspace/sidestr/agents/treasury.key" }
+        { "file": "treasury.key", "env": "SIDESTR_FAUCET_KEY", "source": "/var/lib/agentbox/secrets/sidestr-faucet-dreamlab.key", "legacy": "/home/devuser/workspace/sidestr/agents/treasury.key" }
       ]
     },
     {
@@ -87,7 +91,7 @@
       "purpose": "sidestr:dreamlab-txbt4 faucet: treasury key.",
       "programs": ["sidestr-faucet-dreamlab-txbt4"],
       "secrets": [
-        { "file": "treasury.key", "env": "SIDESTR_FAUCET_KEY", "source": "/home/devuser/workspace/sidestr/agents/treasury-dreamlab-txbt4.key" }
+        { "file": "treasury.key", "env": "SIDESTR_FAUCET_KEY", "source": "/var/lib/agentbox/secrets/sidestr-faucet-dreamlab-txbt4.key", "legacy": "/home/devuser/workspace/sidestr/agents/treasury-dreamlab-txbt4.key" }
       ]
     }
   ],
@@ -101,6 +105,10 @@
       "env": "AGENTBOX_IDENTITY_SOCK_GID"
     }
   ],
+  "at_rest_dirs": [
+    { "path": "/var/lib/agentbox/secrets", "mode": "700", "purpose": "The agentbox-secrets volume. Flag on: root:root 0700, so devuser cannot list or open any at-rest copy; root copies each role's files into /run/secrets/<role>/ at boot." },
+    { "path": "/var/lib/agentbox/identities", "mode": "711", "purpose": "The sovereign-identities volume. Flag on: root:root 0711, not 0700, because the pay402/Hitch spend keys (management-api/lib/sidestr-spend-key.js) stay devuser-class until the spend port (owner decision Q6) and are opened by known name. devuser cannot list it, and agentbox-core.json inside it is ab-identity 0400." }
+  ],
   "dirs": [
     {
       "path": "/var/lib/agentbox/events/sign",
@@ -108,6 +116,45 @@
       "group": "devuser",
       "mode": "2750",
       "purpose": "Identity-port sign receipts: written by ab-identity, read by devuser (the rehearsal, operators). The parent is devuser-owned, so the port cannot create it itself."
+    },
+    {
+      "path": "/var/lib/agentbox/events/sidestr",
+      "owner": "root",
+      "group": "root",
+      "mode": "755",
+      "purpose": "Custody W4: sidechain state on the agentbox-events volume. Under the flag a role program's HOME is on the /run/secrets tmpfs, so the workspace defaults would lose the chain on every boot."
+    },
+    {
+      "path": "/var/lib/agentbox/events/sidestr/dreamlab",
+      "owner": "ab-sidestr-dreamlab",
+      "group": "devuser",
+      "mode": "2750",
+      "seed": [{ "from": "/home/devuser/workspace/sidestr/dreamlab" }],
+      "purpose": "sidestr:dreamlab block files (run-producer.sh SIDESTR_STATE under the flag). The producer writes (umask 027); the devuser mirror reads through the group. Seeded once from the workspace state, which stays."
+    },
+    {
+      "path": "/var/lib/agentbox/events/sidestr/dreamlab-txbt4",
+      "owner": "ab-sidestr-dreamlab-txbt4",
+      "group": "devuser",
+      "mode": "2750",
+      "seed": [{ "from": "/home/devuser/workspace/sidestr/dreamlab-txbt4" }],
+      "purpose": "sidestr:dreamlab-txbt4 block files, as for dreamlab."
+    },
+    {
+      "path": "/var/lib/agentbox/events/sidestr/faucet-dreamlab",
+      "owner": "ab-faucet-dreamlab",
+      "group": "devuser",
+      "mode": "2750",
+      "seed": [{ "from": "/home/devuser/workspace/sidestr/agents/faucet.json", "to": "faucet.json" }],
+      "purpose": "sidestr:dreamlab faucet grant ledger (run-faucet.sh SIDESTR_FAUCET_STATE under the flag). Losing it would re-grant every claimant. Seeded once from the workspace ledger, which stays. Group devuser reads it (grant records, no key) so a flag-off run-faucet.sh can refuse a stale workspace ledger."
+    },
+    {
+      "path": "/var/lib/agentbox/events/sidestr/faucet-dreamlab-txbt4",
+      "owner": "ab-faucet-dreamlab-txbt4",
+      "group": "devuser",
+      "mode": "2750",
+      "seed": [{ "from": "/home/devuser/workspace/sidestr/agents/faucet-dreamlab-txbt4.json", "to": "faucet.json" }],
+      "purpose": "sidestr:dreamlab-txbt4 faucet grant ledger, as for dreamlab."
     }
   ]
 }

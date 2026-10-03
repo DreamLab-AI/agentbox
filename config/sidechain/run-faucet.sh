@@ -27,6 +27,20 @@ else
   KEY="${SIDESTR_FAUCET_KEY:-$WORKSPACE/sidestr/agents/treasury-$NAME.key}"
   STATE="${SIDESTR_FAUCET_STATE:-$WORKSPACE/sidestr/agents/faucet-$NAME.json}"
 fi
+# Custody W4: under [security].role_isolation the grant ledger is on the agentbox-events volume,
+# owned by this faucet's role (its HOME is on the /run/secrets tmpfs: a workspace-default ledger
+# would be empty every boot and re-grant every claimant). Seeded once from the workspace ledger,
+# which stays. Flag off again with a custody ledger longer than the workspace one: refuse, since
+# the workspace ledger has forgotten grants made under the flag.
+CUSTODY_LEDGER="${SIDESTR_CUSTODY_ROOT:-/var/lib/agentbox/events/sidestr}/faucet-$NAME/faucet.json"
+if [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ]; then
+  [ -n "${SIDESTR_FAUCET_STATE:-}" ] || STATE="$CUSTODY_LEDGER"
+  umask 027
+elif [ -z "${SIDESTR_FAUCET_STATE:-}" ] && [ -r "$CUSTODY_LEDGER" ] \
+     && [ "$(stat -c %s "$CUSTODY_LEDGER")" -gt "$(stat -c %s "$STATE" 2>/dev/null || echo 0)" ]; then
+  echo "run-faucet[$NAME]: CUSTODY-STATE-AHEAD: $CUSTODY_LEDGER is longer than $STATE (grants made under role_isolation). Refusing to re-grant: copy it over $STATE, or set SIDESTR_FAUCET_STATE." >&2
+  exit 1
+fi
 PRODUCER="http://127.0.0.1:${SIDESTR_PORT:-3450}"
 ASSET="${SIDESTR_FAUCET_ASSET-DREAM}"   # unset: DREAM; set empty: sats only
 

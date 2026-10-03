@@ -2105,10 +2105,12 @@ audit_acknowledged = true
 # /run/secrets/<role>/ (root-owned tmpfs, 0500 dir, 0400 files), the classified
 # variables leave PID 1's environment, and devuser loses the raw Docker socket
 # (W0). Boot-class: the image ships both supervisor configs; restart to apply.
-# Leave OFF until the role-isolation rehearsal passes
-# (scripts/activation/role-isolation-rehearsal.sh): the identity port and the
-# custody migration (W2-W4) are not in the image yet, so role programs fail
-# closed under the flag.
+# Leave OFF until the role-isolation rehearsal passes on a rebuilt image
+# (scripts/activation/role-isolation-rehearsal.sh). The identity port (W3), the
+# at-rest custody migrate/revert (W2b) and the sidechain state move (W4) are
+# built but not yet proven in an image, and the W3b consumer cutover is owed:
+# until it lands JunkieJarvis, the mirror hook and dream-engine cannot sign
+# under the flag.
 role_isolation = false
 
 # Feature-specific exceptions to the hardened baseline.

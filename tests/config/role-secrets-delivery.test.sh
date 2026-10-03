@@ -77,10 +77,11 @@ _owner() {
 VOL="$T/vol"; WS="$T/ws"; SEC="$T/run-secrets"
 mkdir -p "$VOL" "$WS/sidestr/agents"
 # Workspace prefix first: the scratch dir itself may live under /home/devuser/workspace.
-# `dir` rows name real paths outside the secrets root: point them into scratch too.
+# `dir` rows (and the `seed` rows that follow them) name real paths outside the secrets root:
+# point them into scratch too.
 VARLIB="$T/varlib"; mkdir -p "$VARLIB/events"
 sed -e "s#\t/home/devuser/workspace/#\t${WS}/#" -e "s#\t/var/lib/agentbox/secrets/#\t${VOL}/#" \
-  -e "s#^dir\t/var/lib/agentbox/#dir\t${VARLIB}/#" "$T/plan.real" >"$T/plan"
+  -e "s#^dir\t/var/lib/agentbox/#dir\t${VARLIB}/#" -e "s#^seed\t/var/lib/agentbox/#seed\t${VARLIB}/#" "$T/plan.real" >"$T/plan"
 [ -z "$(awk -F'\t' -v t="$T/" '$1=="dir" && index($2,t)!=1' "$T/plan")" ] \
   && _ok "the real plan's dir rows are rewritten into the scratch dir" || _bad "dir rows escape the scratch dir" "$(grep $'^dir' "$T/plan")"
 grep -q $'^file\t' "$T/plan" && [ -z "$(awk -F'\t' -v t="$T/" '$1=="file" && index($4,t)!=1' "$T/plan")" ] \

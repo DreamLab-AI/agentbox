@@ -20,7 +20,10 @@
 #     anyway, because the workspace bind persists across boots.
 #
 # Test seams: AB_RC_CHOWN (default chown) is the only call that needs root;
-# tests/config/role-secrets-delivery.test.sh stubs it with a ledger.
+# tests/config/role-secrets-delivery.test.sh stubs it with a ledger. The at-rest
+# migrate/revert (W2b, below) adds AB_RC_STAT (default stat; the stub reports
+# the ledger's owner) and AB_RC_ROOT (a prefix on every registry path, so the
+# real plan runs against a scratch tree); tests/config/role-custody-migrate.test.sh.
 
 AB_RC_MAX_SECRET_BYTES=65536
 
@@ -145,6 +148,58 @@ _ab_rc_dir() {
   return 1
 }
 
+# AB_RC_MAX_SEED_BYTES caps one seeded state file (a chain's blocks.dat grows).
+AB_RC_MAX_SEED_BYTES=268435456
+
+# _ab_rc_seed <dir> <from> <to|-> <uid:gid> <dir-mode> — custody W4: a role
+# program's state leaves the workspace bind for a volume dir it owns. Runs only
+# while <dir> holds no regular file, so it copies once and never overwrites what
+# the role has written since. <from> a directory: its top-level regular files;
+# <from> a file: that file, named <to>. Symlinks and non-regular entries are
+# skipped, never followed. Each copy is verified (size and sha256 of both
+# sides; state, not secrets, so the hash is not a disclosure), then owned by
+# <uid:gid>, 0640 when the dir's group may read (the mirror) else 0600. The
+# source is never touched. Names only in the log.
+_ab_rc_seed() {
+  local dir="$1" from="$2" to="$3" ids="$4" dmode="$5" f n=0 dest tmp size fmode=0600 chown_cmd="${AB_RC_CHOWN:-chown}"
+  local -a srcs=()
+  [ -d "$dir" ] && [ ! -L "$dir" ] || { echo "[security] ROLE-ISOLATION-ERROR: seed: ${dir} is not a directory" >&2; return 1; }
+  for f in "$dir"/* "$dir"/.[!.]*; do
+    if [ -f "$f" ] && [ ! -L "$f" ]; then return 0; fi   # already holds state: never re-seed
+  done
+  if [ -L "$from" ]; then
+    echo "[security] ROLE-ISOLATION-ERROR: seed: ${from} is a symlink; not followed" >&2; return 1
+  elif [ -d "$from" ]; then
+    for f in "$from"/* "$from"/.[!.]*; do [ -f "$f" ] && [ ! -L "$f" ] && srcs+=("$f"); done
+    to=-
+  elif [ -f "$from" ]; then
+    srcs=("$from")
+  else
+    return 0   # nothing to seed (a chain that never ran): the role starts fresh
+  fi
+  case "${dmode: -2:1}" in [4-7]) fmode=0640 ;; *) fmode=0600 ;; esac
+  for f in "${srcs[@]}"; do
+    if [ "$to" != - ]; then dest="${dir}/${to}"; else dest="${dir}/${f##*/}"; fi
+    size="$(stat -c %s -- "$f" 2>/dev/null || echo -1)"
+    if [ "$size" -lt 0 ] || [ "$size" -gt "$AB_RC_MAX_SEED_BYTES" ]; then
+      echo "[security] ROLE-ISOLATION-ERROR: seed: ${f} is ${size} bytes; skipped" >&2; return 1
+    fi
+    tmp="${dir}/.${dest##*/}.seed.$$"
+    if ( umask 077; cat -- "$f" >"$tmp" ) 2>/dev/null && sync -- "$tmp" 2>/dev/null \
+       && [ "$(stat -c %s -- "$tmp" 2>/dev/null)" = "$size" ] \
+       && [ "$(sha256sum <"$f")" = "$(sha256sum <"$tmp")" ] \
+       && chmod "$fmode" "$tmp" && "$chown_cmd" "$ids" "$tmp" && mv -T -- "$tmp" "$dest"; then
+      n=$((n + 1))
+    else
+      rm -f -- "$tmp" 2>/dev/null || true
+      echo "[security] ROLE-ISOLATION-ERROR: seed: copying ${f} into ${dir} failed verification" >&2; return 1
+    fi
+  done
+  sync -- "$dir" 2>/dev/null || true
+  [ "$n" -gt 0 ] && echo "[security] role-isolation: seeded ${dir} with ${n} file(s) from ${from} (source left in place)"
+  return 0
+}
+
 # ab_role_secrets_deliver <plan> [secrets-root-override]
 # Execute the plan written by `agentbox-manifest role-accounts isolate`:
 #   root <path>                     the secrets root (the override, if given, wins)
@@ -155,12 +210,15 @@ _ab_rc_dir() {
 #                                   port's socket dir: inside the root mount, so
 #                                   devuser, owner of /run, cannot rename it)
 #   dir  <path> <uid>:<gid> <mode>  create or re-own <path> outside <root>
+#   seed <dir> <from> <to|->        copy state into that dir once, while it holds no
+#                                   regular file (_ab_rc_seed; custody W4)
+#   atrest / atrestdir              the at-rest registry; skipped here (ab_custody_migrate)
 # Every `env` variable is unset whether or not it had a value, so none of them
 # reaches supervisord (PID 1) or any child. Sets AB_RC_DELIVERED, AB_RC_FAILURES.
 ab_role_secrets_deliver() {
   local plan="$1" override="${2:-}" root="" kind name a b uid gid dir dest tmp size
   local chown_cmd="${AB_RC_CHOWN:-chown}"
-  local -A role_uid=() role_gid=()
+  local -A role_uid=() role_gid=() dir_ids=() dir_mode=()
   AB_RC_DELIVERED=0
   AB_RC_FAILURES=0
   if [ ! -r "$plan" ]; then
@@ -170,12 +228,20 @@ ab_role_secrets_deliver() {
   fi
   while IFS=$'\t' read -r kind name a b || [ -n "$kind" ]; do
     case "$kind" in
-      ''|'#'*) continue ;;
+      ''|'#'*|atrest|atrestdir) continue ;;  # the at-rest registry: ab_custody_migrate/revert
       root)
         root="${override:-$name}"
         continue ;;
       dir)
-        _ab_rc_dir "$name" "$a" "$b" || AB_RC_FAILURES=$((AB_RC_FAILURES + 1))
+        if _ab_rc_dir "$name" "$a" "$b"; then dir_ids[$name]="$a"; dir_mode[$name]="$b"
+        else AB_RC_FAILURES=$((AB_RC_FAILURES + 1)); fi
+        continue ;;
+      seed)
+        if [ -z "${dir_ids[$name]:-}" ]; then
+          echo "[security] ROLE-ISOLATION-ERROR: seed row for ${name} has no prepared dir row before it; skipped" >&2
+          AB_RC_FAILURES=$((AB_RC_FAILURES + 1)); continue
+        fi
+        _ab_rc_seed "$name" "$a" "$b" "${dir_ids[$name]}" "${dir_mode[$name]}" || AB_RC_FAILURES=$((AB_RC_FAILURES + 1))
         continue ;;
     esac
     if [ -z "$root" ]; then
@@ -235,6 +301,10 @@ ab_role_secrets_deliver() {
         tmp="${dir}/.${a}.tmp.$$"
         rm -f -- "$tmp" 2>/dev/null || true
         if [ "$kind" = file ]; then
+          if [ -n "${AB_RC_REFUSED[$b]:-}" ]; then
+            echo "[security] ROLE-ISOLATION-ERROR: ${name}/${a}: source ${b} was refused by the custody migrate step (${AB_RC_REFUSED[$b]}); not delivered" >&2
+            AB_RC_FAILURES=$((AB_RC_FAILURES + 1)); continue
+          fi
           if [ -L "$b" ] || [ ! -f "$b" ]; then
             if [ -e "$b" ] || [ -L "$b" ]; then
               echo "[security] ROLE-ISOLATION-ERROR: ${name}/${a}: source ${b} is a symlink or not a regular file; refused" >&2
@@ -285,5 +355,266 @@ ab_role_secrets_deliver() {
       || { echo "[security] ROLE-ISOLATION-ERROR: cannot chown ${root}/${name}" >&2; AB_RC_FAILURES=$((AB_RC_FAILURES + 1)); }
   done
   echo "[security] role-isolation: delivered ${AB_RC_DELIVERED} secret(s) into ${#role_uid[@]} role dir(s) under ${root:-?}; ${AB_RC_FAILURES} problem(s)"
+  return 0
+}
+
+# ── At-rest custody: migrate (flag on) and revert (flag off) ──────────────────
+# Custody design 3.2-3.4 (W2b). The registry is the `atrest` and `atrestdir`
+# rows of the delivery plan, derived by `agentbox-manifest role-accounts
+# isolate` from config/role-accounts.json (each file secret's resolved source,
+# each role's `at_rest`, and `at_rest_dirs`); nothing here lists a secret.
+#
+#   atrestdir <path> <mode>          root:root <mode> under the flag
+#   atrest <role> <path> <legacy|->  <role>:<role> 0400 under the flag
+#
+# migrate, per atrest row: when <path> is absent and <legacy> is a regular file,
+# copy it (umask 077, temp file in the same dir, fsync, size and byte compare,
+# rename, fsync the dir). The legacy copy is never touched or deleted (Q5). A
+# <path> that is a symlink, not a regular file, hard-linked, empty or oversized
+# is REFUSED: not re-owned, not delivered, counted. So is a <path> that already
+# existed on the first migration and differs from its legacy copy (something
+# other than this step put it there). Then the copy goes to its role, 0400, and
+# each atrestdir to root:root.
+#
+# Pre-flag owner and mode go to a modes record (<first atrestdir>/
+# .role-custody.modes, root 0600) the first time a path is seen, and only then;
+# revert hands each registry path back to devuser (or to root, when root owned
+# it before) with that mode. The record is
+# trusted only when root owns it and it is a single-link regular file: devuser
+# owns the volumes with the flag off and could otherwise forge it. No record
+# means nothing was ever migrated, and revert changes nothing.
+#
+# Every path, legacy copy and refusal is written, by NAME only, to the migrated
+# record (default /run/secrets/role-isolation.migrated, 0644: it holds no value
+# and the rehearsal receipt lists it). Nothing here opens a secret except cat
+# into the temp copy and the od compare, neither of which prints content.
+#
+# Both functions are fail-open (rc 0) and idempotent: an owner or mode already
+# right is not set again, so a second run leaves every inode's ctime alone and
+# a stat of the registry hashes the same before and after.
+
+AB_RC_DEVUSER_IDS=1000:1000
+declare -gA AB_RC_REFUSED=()
+
+# _ab_rc_stat <path> -> "uid gid mode nlink size type" (empty when absent).
+# Never follows a symlink (stat without -L).
+_ab_rc_stat() { "${AB_RC_STAT:-stat}" -c '%u %g %a %h %s %F' -- "$1" 2>/dev/null; }
+
+# _ab_rc_same <a> <b> -> 0 when the two files are byte-identical. Compared in
+# memory as od hex (coreutils only: the root boot PATH is store-only and need not
+# carry diffutils' cmp); nothing is printed. Callers cap sizes at
+# AB_RC_MAX_SECRET_BYTES, so each string is at most ~200 KiB.
+_ab_rc_same() {
+  local x y
+  x="$(od -An -v -tx1 -- "$1" 2>/dev/null)" || return 1
+  y="$(od -An -v -tx1 -- "$2" 2>/dev/null)" || return 1
+  [ "$x" = "$y" ]
+}
+
+# _ab_rc_set <path> <uid:gid> <mode>: chown/chmod only what differs. A symlink is
+# never passed to chown (it would follow it).
+_ab_rc_set() {
+  local p="$1" ids="$2" mode="$3" st uid gid cur chown_cmd="${AB_RC_CHOWN:-chown}"
+  [ -L "$p" ] && return 1
+  st="$(_ab_rc_stat "$p")" || return 1
+  [ -n "$st" ] || return 1
+  read -r uid gid cur _ <<<"$st"
+  if [ "${uid}:${gid}" != "$ids" ]; then "$chown_cmd" "$ids" "$p" || return 1; fi
+  if [ "$((8#$cur))" != "$((8#$mode))" ]; then chmod "$mode" "$p" || return 1; fi
+  return 0
+}
+
+# _ab_rc_modes_trusted <file> -> 0 when root owns it, it is a regular file with
+# one link and nobody else can write it.
+_ab_rc_modes_trusted() {
+  local st uid mode links type
+  [ -f "$1" ] && [ ! -L "$1" ] || return 1
+  st="$(_ab_rc_stat "$1")" || return 1
+  read -r uid _ mode links _ type <<<"$st"
+  [ "$uid" = 0 ] && [ "$links" = 1 ] || return 1
+  case "${mode: -2}" in 00) return 0 ;; esac
+  return 1
+}
+
+# _ab_rc_plan_rows <plan>: print "kind<TAB>a<TAB>b<TAB>c" for role, atrest and
+# atrestdir rows; the parsers below share it.
+_ab_rc_plan_rows() {
+  awk -F'\t' '$1=="role"||$1=="atrest"||$1=="atrestdir" {print}' "$1" 2>/dev/null
+}
+
+# ab_custody_migrate <plan> [migrated-record=/run/secrets/role-isolation.migrated]
+# Sets AB_RC_MIGRATED (copies made this run), AB_RC_MIG_FAILURES, AB_RC_REFUSED.
+ab_custody_migrate() {
+  local plan="$1" record="${2:-/run/secrets/role-isolation.migrated}"
+  local R="${AB_RC_ROOT:-}" kind a b c p l st uid gid mode links size type dir modes="" tmp rec seen
+  local -A role_uid=() is_dir=() recorded=()
+  AB_RC_MIGRATED=0; AB_RC_MIG_FAILURES=0; AB_RC_REFUSED=()
+  if [ ! -r "$plan" ]; then
+    echo "[security] ROLE-ISOLATION-ERROR: custody migrate: plan ${plan} is missing; nothing migrated" >&2
+    AB_RC_MIG_FAILURES=1; return 0
+  fi
+  rec="$(mktemp "$R${record%/*}/.role-isolation.migrated.XXXXXX" 2>/dev/null)" || rec=/dev/null
+  printf '# role-isolation custody migrate (design 3.2). Paths only; no value, no hash.\n# status\tpath\tlegacy-or-reason\n' >"$rec"
+  while IFS=$'\t' read -r kind a b c; do
+    case "$kind" in
+      role) role_uid[$a]="$b" ;;
+      atrestdir) is_dir[$a]="$b"; [ -n "$modes" ] || modes="${a}/.role-custody.modes" ;;
+    esac
+  done < <(_ab_rc_plan_rows "$plan")
+  if [ -z "$modes" ]; then
+    echo "[security] role-isolation: custody migrate: the plan has no at-rest registry; nothing to migrate"
+    rm -f -- "$rec" 2>/dev/null; return 0
+  fi
+  # Earlier records win: only a path never seen before gets its state recorded.
+  if _ab_rc_modes_trusted "$R$modes"; then
+    while IFS=$'\t' read -r _ p _; do [ -n "$p" ] && recorded[$p]=1; done <"$R$modes"
+  elif [ -e "$R$modes" ] || [ -L "$R$modes" ]; then
+    echo "[security] ROLE-ISOLATION-ERROR: custody migrate: ${modes} is not a root-owned 0600 single-link file; moved aside, recording afresh" >&2
+    mv -T -- "$R$modes" "$R$modes.untrusted.$$" 2>/dev/null || true
+    AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1))
+  fi
+  _ab_rc_note() { # <path> <d|f> <uid> <gid> <mode>: first sighting only
+    [ -n "${recorded[$1]:-}" ] && return 0
+    ( umask 077; printf '%s\t%s\t%s:%s\t%s\n' "${2}" "$1" "$3" "$4" "$5" >>"$R$modes" ) 2>/dev/null \
+      || { echo "[security] ROLE-ISOLATION-ERROR: custody migrate: cannot record the pre-flag state of $1" >&2; return 1; }
+    recorded[$1]=1
+  }
+  # Directories first: a symlink or non-directory at a registry dir stops its rows.
+  for dir in "${!is_dir[@]}"; do
+    if [ -L "$R$dir" ] || [ ! -d "$R$dir" ]; then
+      echo "[security] ROLE-ISOLATION-ERROR: custody migrate: ${dir} is not a real directory; its at-rest copies are left alone" >&2
+      is_dir[$dir]=; AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1)); continue
+    fi
+    read -r uid gid mode _ <<<"$(_ab_rc_stat "$R$dir")"
+    _ab_rc_note "$dir" d "$uid" "$gid" "$mode" || AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1))
+  done
+  # The record itself: root 0600 (created by this root process; tests stub chown).
+  if [ -f "$R$modes" ]; then
+    _ab_rc_set "$R$modes" 0:0 600 || true
+  fi
+  while IFS=$'\t' read -r kind a b c; do
+    [ "$kind" = atrest ] || continue
+    p="$b"; l="$c"
+    if [ -z "${role_uid[$a]:-}" ]; then
+      echo "[security] ROLE-ISOLATION-ERROR: custody migrate: ${p} names role ${a:-?}, which has no role row; skipped" >&2
+      AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1)); continue
+    fi
+    if [ -z "${is_dir[${p%/*}]:-}" ]; then
+      echo "[security] ROLE-ISOLATION-ERROR: custody migrate: ${p} is not inside a usable at-rest dir; left alone" >&2
+      AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1)); continue
+    fi
+    seen="${recorded[$p]:-}"
+    if [ ! -e "$R$p" ] && [ ! -L "$R$p" ] && [ "$l" != - ] && [ -f "$R$l" ] && [ ! -L "$R$l" ]; then
+      size="$(stat -c %s -- "$R$l" 2>/dev/null || echo 0)"
+      if [ "$size" -gt "$AB_RC_MAX_SECRET_BYTES" ] || [ "$size" -eq 0 ]; then
+        echo "[security] ROLE-ISOLATION-ERROR: custody migrate: legacy ${l} is ${size} bytes; not copied" >&2
+        printf 'refused\t%s\tlegacy-size\n' "$p" >>"$rec"
+        AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1)); continue
+      fi
+      tmp="$R${p%/*}/.${p##*/}.migrate.$$"
+      rm -f -- "$tmp" 2>/dev/null || true
+      if ( umask 077; cat -- "$R$l" >"$tmp" ) 2>/dev/null && sync -- "$tmp" 2>/dev/null \
+         && [ "$(stat -c %s -- "$tmp" 2>/dev/null)" = "$size" ] && _ab_rc_same "$R$l" "$tmp" \
+         && mv -T -- "$tmp" "$R$p"; then
+        sync -- "$R${p%/*}" 2>/dev/null || true
+        read -r uid gid mode _ <<<"$(_ab_rc_stat "$R$l")"
+        # Pre-flag state of a copy that did not exist: devuser's, at the legacy mode.
+        _ab_rc_note "$p" f "${AB_RC_DEVUSER_IDS%%:*}" "${AB_RC_DEVUSER_IDS##*:}" "$mode" || AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1))
+        seen=copied
+        printf 'copied\t%s\t%s\n' "$p" "$l" >>"$rec"
+        AB_RC_MIGRATED=$((AB_RC_MIGRATED + 1))
+        echo "[security] role-isolation: custody migrate: copied ${l} -> ${p} (verified; legacy copy left in place)"
+      else
+        rm -f -- "$tmp" 2>/dev/null || true
+        echo "[security] ROLE-ISOLATION-ERROR: custody migrate: copying ${l} -> ${p} failed verification; nothing placed" >&2
+        printf 'refused\t%s\tcopy-verify\n' "$p" >>"$rec"
+        AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1)); continue
+      fi
+    fi
+    if [ ! -e "$R$p" ] && [ ! -L "$R$p" ]; then
+      printf 'absent\t%s\t%s\n' "$p" "$l" >>"$rec"
+      continue
+    fi
+    st="$(_ab_rc_stat "$R$p")"
+    read -r uid gid mode links size type <<<"$st"
+    local why=""
+    if [ -L "$R$p" ]; then why=symlink
+    elif [ ! -f "$R$p" ]; then why=not-regular
+    elif [ "${links:-0}" != 1 ]; then why=hard-linked
+    elif [ "${size:-0}" -eq 0 ]; then why=empty
+    elif [ "$size" -gt "$AB_RC_MAX_SECRET_BYTES" ]; then why=oversized
+    elif [ -z "$seen" ] && [ "$l" != - ] && [ -f "$R$l" ] && [ ! -L "$R$l" ] && ! _ab_rc_same "$R$l" "$R$p"; then
+      why=differs-from-legacy
+    fi
+    if [ -n "$why" ]; then
+      AB_RC_REFUSED[$p]="$why"
+      echo "[security] ROLE-ISOLATION-ERROR: custody migrate: ${p} refused (${why}); not re-owned, not delivered. Inspect it, then remove it to re-migrate from ${l}" >&2
+      printf 'refused\t%s\t%s\n' "$p" "$why" >>"$rec"
+      AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1)); continue
+    fi
+    _ab_rc_note "$p" f "$uid" "$gid" "$mode" || AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1))
+    if ! _ab_rc_set "$R$p" "${role_uid[$a]}:${role_uid[$a]}" 400; then
+      echo "[security] ROLE-ISOLATION-ERROR: custody migrate: cannot hand ${p} to ${a} 0400" >&2
+      AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1)); continue
+    fi
+    if [ "$seen" != copied ]; then
+      if [ "$l" != - ] && [ -e "$R$l" ]; then printf 'present\t%s\t%s\n' "$p" "$l" >>"$rec"
+      else printf 'present\t%s\t-\n' "$p" >>"$rec"; fi
+    fi
+  done < <(_ab_rc_plan_rows "$plan")
+  for dir in "${!is_dir[@]}"; do
+    [ -n "${is_dir[$dir]}" ] || continue
+    _ab_rc_set "$R$dir" 0:0 "${is_dir[$dir]}" \
+      || { echo "[security] ROLE-ISOLATION-ERROR: custody migrate: cannot make ${dir} root ${is_dir[$dir]}" >&2; AB_RC_MIG_FAILURES=$((AB_RC_MIG_FAILURES + 1)); }
+  done
+  unset -f _ab_rc_note
+  if [ "$rec" != /dev/null ]; then
+    chmod 0644 "$rec" 2>/dev/null || true
+    if [ -L "$R$record" ] || { [ -e "$R$record" ] && [ ! -f "$R$record" ]; }; then
+      mv -T -- "$R$record" "$R$record.squatted.$$" 2>/dev/null || true
+    fi
+    # mktemp ran as root, so the record is root's already; the rename keeps that.
+    mv -f -- "$rec" "$R$record" 2>/dev/null || rm -f -- "$rec"
+  fi
+  echo "[security] role-isolation: custody migrate: ${AB_RC_MIGRATED} copied, ${#AB_RC_REFUSED[@]} refused, ${AB_RC_MIG_FAILURES} problem(s); record ${record}"
+  return 0
+}
+
+# ab_custody_revert <plan>: hand every recorded registry path back to devuser (root
+# if root owned it before) at its pre-flag mode. No trusted record, no change.
+# Sets AB_RC_REVERTED.
+ab_custody_revert() {
+  local plan="$1" R="${AB_RC_ROOT:-}" kind a b c modes="" p kindc ids mode n=0
+  local -A want=()
+  AB_RC_REVERTED=0
+  [ -r "$plan" ] || return 0
+  while IFS=$'\t' read -r kind a b c; do
+    case "$kind" in
+      atrestdir) want[$a]=d; [ -n "$modes" ] || modes="${a}/.role-custody.modes" ;;
+      atrest) want[$b]=f ;;
+    esac
+  done < <(_ab_rc_plan_rows "$plan")
+  [ -n "$modes" ] || return 0
+  if [ ! -e "$R$modes" ] && [ ! -L "$R$modes" ]; then return 0; fi
+  if ! _ab_rc_modes_trusted "$R$modes"; then
+    echo "[security] ROLE-ISOLATION-ERROR: custody revert: ${modes} is not a root-owned 0600 single-link file; nothing reverted" >&2
+    return 0
+  fi
+  while IFS=$'\t' read -r kindc p ids mode; do
+    case "$kindc" in d|f) ;; *) continue ;; esac
+    # Only registry paths, and only as the kind the plan names.
+    [ "${want[$p]:-}" = "$kindc" ] || continue
+    case "$mode" in [0-7][0-7][0-7]) ;; [0-7][0-7][0-7][0-7]) [ "$kindc" = d ] || mode="${mode#?}" ;; *) continue ;; esac
+    if [ ! -e "$R$p" ] || [ -L "$R$p" ]; then continue; fi
+    if [ "$kindc" = d ] && [ ! -d "$R$p" ]; then continue; fi
+    if [ "$kindc" = f ] && [ ! -f "$R$p" ]; then continue; fi
+    # Back to devuser; a path root owned before the flag (identities/ is made by
+    # root's mkdir) goes back to root. No other owner is ever restored.
+    [ "$ids" = 0:0 ] || ids="$AB_RC_DEVUSER_IDS"
+    if _ab_rc_set "$R$p" "$ids" "$mode"; then n=$((n + 1))
+    else echo "[security] ROLE-ISOLATION-ERROR: custody revert: cannot hand ${p} back to devuser ${mode}" >&2; fi
+  done <"$R$modes"
+  AB_RC_REVERTED=$n
+  echo "[security] role-isolation: custody revert: ${n} registry path(s) handed back to devuser"
   return 0
 }

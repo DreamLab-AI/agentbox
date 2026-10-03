@@ -142,6 +142,9 @@ ROLE_PLAN="$R/etc/agentbox/role-secrets.tsv"
 # holder, including the ones W1's plan does not deliver (w2_only). (e) classifies by these names.
 ENV_CLASSES="${RH_ENV_CLASSES:-$REPO/config/custody/env-classes.json}"
 # Copies the table does not deliver but that hold ab-identity's keys today; (a) probes them.
+# A plan with the custody registry (atrest/atrestdir rows, W2b) supplies the volume copies,
+# their dirs and their legacy twins itself; this constant then adds only the flag-off tmpfs
+# copy (/run/secrets/nostr.key, which must be absent under the flag).
 IDENTITY_AT_REST='{"at_rest":["/var/lib/agentbox/identities/agentbox-core.json","/run/secrets/nostr.key"],"at_rest_dirs":["/var/lib/agentbox/identities"],"legacy":["/home/devuser/workspace/.agentbox/zone-keys.json"]}'
 
 normalise_registry() { # <table.json> <plan.tsv>
@@ -162,6 +165,8 @@ normalise_registry() { # <table.json> <plan.tsv>
   jq -c --rawfile plan "$2" --arg src "$1 + $2 + ${ENV_CLASSES#"$REPO/"}" --argjson chains "$cfg" --argjson ident "$IDENTITY_AT_REST" \
     --slurpfile classes "$ENV_CLASSES" '
     ($plan | split("\n") | map(select(length > 0 and (startswith("#") | not)) | split("\t"))) as $rows
+    | ([$rows[] | select(.[0] == "atrestdir") | .[1]]) as $ardirs
+    | (($ardirs | length) > 0) as $registry
     | (.reserved_ids // {} | keys | map(tonumber)) as $reserved
     | (reduce .roles[] as $r ({}; .[$r.name] = $r.uid)) as $roles_uid
     | if ([.roles[].uid] | any(. as $u | $reserved | index($u))) then error("a role uid is reserved (reserved_ids)") else . end
@@ -175,14 +180,21 @@ normalise_registry() { # <table.json> <plan.tsv>
        roles: [.roles[] | .name as $n
          | ([$rows[] | select((.[0] == "file" or .[0] == "env") and .[1] == $n)]) as $mine
          | ((.secrets | length) == 0 or ($mine | length) > 0) as $on
+         | ([$rows[] | select(.[0] == "atrest" and .[1] == $n)]) as $ar
          | {name: $n, uid, gid: .uid,
             programs: (if $on then .programs else [] end),
             files: [$mine[] | .[2]],
             env: ([.secrets[] | .from_env // empty] + [$role_env[] | select(.role == $n) | .name] | unique),
-            at_rest: ([$mine[] | select(.[0] == "file") | .[3]] + (if $n == "ab-identity" then $ident.at_rest else [] end)),
-            at_rest_dirs: (([$mine[] | select(.[0] == "file") | .[3] | select(startswith("/var/lib/agentbox/")) | sub("/[^/]*$"; "")] | unique)
-                           + (if $n == "ab-identity" then $ident.at_rest_dirs else [] end)),
-            legacy: (if $n == "ab-identity" then $ident.legacy else [] end)}
+            at_rest: (if $registry
+                then ([$mine[] | select(.[0] == "file") | .[3]] + [$ar[] | .[2]]
+                      + (if $n == "ab-identity" then ["/run/secrets/nostr.key"] else [] end) | unique)
+                else ([$mine[] | select(.[0] == "file") | .[3]] + (if $n == "ab-identity" then $ident.at_rest else [] end)) end),
+            at_rest_dirs: (if $registry
+                then ([$ar[] | .[2] | sub("/[^/]*$"; "") | select(. as $d | $ardirs | index($d))] | unique)
+                else (([$mine[] | select(.[0] == "file") | .[3] | select(startswith("/var/lib/agentbox/")) | sub("/[^/]*$"; "")] | unique)
+                      + (if $n == "ab-identity" then $ident.at_rest_dirs else [] end)) end),
+            legacy: (if $registry then ([$ar[] | .[3] | select(. != "-")] | unique)
+                else (if $n == "ab-identity" then $ident.legacy else [] end) end)}
          + (if ($n | startswith("ab-sidestr-")) then ($n | sub("^ab-sidestr-"; "")) as $c
               | {chain: $c, baked: $on} + ($chains[$c] // {port: 3450, interval: 600, enabled: false}) else {} end)
          + (if (.programs | length) == 0 and (.secrets | length) == 0 then {deferred: .purpose} else {} end)]}' "$1"

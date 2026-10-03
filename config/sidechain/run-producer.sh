@@ -24,7 +24,8 @@
 #                          (default /opt/agentbox/sidestr/upstream)
 #   SIDESTR_UPSTREAM       checkouts of the same three; read only under SIDESTR_ALLOW_UNPINNED=1
 #                          (default $WORKSPACE/sidestr/upstream)
-#   SIDESTR_STATE          the chain's block file directory
+#   SIDESTR_STATE          the chain's block file directory (default: the workspace path above;
+#                          /var/lib/agentbox/events/sidestr/<name> under [security].role_isolation)
 #   SIDESTR_DOC            the sealed chain document
 #   SIDESTR_KEY            the signer key file
 #   SIDESTR_EXPECT_PARENT  the parent the manifest declares; a document naming another is a boot
@@ -46,7 +47,24 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE="${WORKSPACE:-$HOME/workspace}"
 NAME="${SIDESTR_CHAIN:-dreamlab}"
-STATE="${SIDESTR_STATE:-$WORKSPACE/sidestr/$NAME}"
+# Custody W4 (ADR-2122): under [security].role_isolation the state lives on the agentbox-events
+# volume, owned by this chain's role (group devuser, so the mirror reads it); the role's HOME is on
+# the /run/secrets tmpfs, so the workspace default would restart the chain every boot. The entrypoint
+# seeds it once from the workspace copy, which stays. With the flag off again, a custody copy that
+# has grown past the workspace copy means blocks were made under the flag: starting from the
+# workspace would fork the chain, so refuse and say how to recover.
+CUSTODY_STATE="${SIDESTR_CUSTODY_ROOT:-/var/lib/agentbox/events/sidestr}/$NAME"
+if [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ]; then
+  STATE="${SIDESTR_STATE:-$CUSTODY_STATE}"
+  umask 027
+else
+  STATE="${SIDESTR_STATE:-$WORKSPACE/sidestr/$NAME}"
+  if [ -z "${SIDESTR_STATE:-}" ] && [ -r "$CUSTODY_STATE/blocks.dat" ] \
+     && [ "$(stat -c %s "$CUSTODY_STATE/blocks.dat")" -gt "$(stat -c %s "$STATE/blocks.dat" 2>/dev/null || echo 0)" ]; then
+    echo "run-producer[$NAME]: CUSTODY-STATE-AHEAD: $CUSTODY_STATE/blocks.dat is longer than $STATE/blocks.dat (blocks made under role_isolation). Refusing to fork: copy the custody state into $STATE, or set SIDESTR_STATE=$CUSTODY_STATE." >&2
+    exit 1
+  fi
+fi
 DOC="${SIDESTR_DOC:-$HERE/$NAME/chain.json}"
 KEY="${SIDESTR_KEY:-/var/lib/agentbox/secrets/sidestr-$NAME.key}"
 COOKIE="${SIDESTR_PARENT_COOKIE:-/var/lib/agentbox/secrets/sidestr-tbtc4.cookie}"

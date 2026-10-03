@@ -543,6 +543,9 @@ for _vol_root in \
     /home/devuser/.gemini \
     /var/cache \
     /var/cache/ruflo-plugins; do
+  # Custody W2b: under [security].role_isolation the secrets volume root is
+  # root:root 0700 (ab_custody_migrate, before Phase 3); never hand it back here.
+  [ "$AGENTBOX_ROLE_ISOLATION" = 1 ] && [ "$_vol_root" = /var/lib/agentbox/secrets ] && continue
   if [ -d "$_vol_root" ]; then
     # Only chown the root, not -R. If the dir is already uid 1000, this
     # is a no-op kernel call. Crucially: Docker auto-creates the parent
@@ -706,6 +709,24 @@ if [ "${ENABLE_DESKTOP:-false}" = "true" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Custody W2b (design 3.2-3.4): at-rest secret copies
+# ---------------------------------------------------------------------------
+# After /run/secrets is prepared (Phase 1) and the volume roots are chowned,
+# before the identity bootstrap reads or writes the identities volume. The
+# registry is the atrest/atrestdir rows of /etc/agentbox/role-secrets.tsv.
+# Flag on: copy each legacy copy to its canonical volume path once (verified,
+# legacy left in place), hand each copy to its role 0400 and the volume dirs to
+# root. Flag off: hand back to devuser whatever an earlier flag-on boot moved;
+# on a volume that was never migrated this changes nothing. Fail-open both ways.
+if declare -F ab_custody_migrate >/dev/null && [ -r /etc/agentbox/role-secrets.tsv ]; then
+  if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
+    ab_custody_migrate /etc/agentbox/role-secrets.tsv /run/secrets/role-isolation.migrated
+  else
+    ab_custody_revert /etc/agentbox/role-secrets.tsv
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Phase 3 — Sovereign mesh identity bootstrap
 # ---------------------------------------------------------------------------
 echo "[2/8] Bootstrapping sovereign mesh identity..."
@@ -729,8 +750,13 @@ nostr-pod-bridge bootstrap
 # management-api runs as, and its only other reader) at 0600. Fail-open here:
 # a file the signer cannot read makes the pods slot fail closed with a typed
 # SigningUnavailable naming the file (ADR-2064), which is the accepted signal.
+# Custody W2b: under [security].role_isolation it is ab-identity's, 0400 (the
+# pods signer goes through the identity port), the same as the migrate step left
+# it; a bootstrap that rewrote it must not hand it back to devuser.
 _SOVEREIGN_ID_FILE="$AGENTBOX_IDENTITY_ROOT/${AGENTBOX_AGENT_ID:-agentbox-core}.json"
-if [ -f "$_SOVEREIGN_ID_FILE" ]; then
+if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
+  _ab_role_key_file_own 1 "$_SOVEREIGN_ID_FILE" ab-identity
+elif [ -f "$_SOVEREIGN_ID_FILE" ]; then
   chown devuser:devuser "$_SOVEREIGN_ID_FILE" 2>/dev/null || true
   chmod 0600 "$_SOVEREIGN_ID_FILE" 2>/dev/null || true
 fi
