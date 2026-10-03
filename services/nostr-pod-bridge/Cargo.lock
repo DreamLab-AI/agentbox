@@ -1090,6 +1090,7 @@ name = "nostr-pod-bridge"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "bech32 0.12.0",
  "futures-util",
  "hex",
@@ -1108,6 +1109,8 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+ "url",
+ "zeroize",
 ]
 
 [[package]]

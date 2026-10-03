@@ -39,6 +39,13 @@ sha2 = "0.10"
 # HMAC-SHA256 for the live-mirror child key (`mirror_key`): RustCrypto, already
 # in the lock graph at 0.12.1 via nostr-bbs-core, so this adds no new crate.
 hmac = "0.12"
+# Identity port (custody W3): `url` parses the NIP-98 URL allowlist, `base64`
+# encodes the NIP-98 header, `zeroize` wipes held key bytes on drop. All three
+# are already in the lock graph (via reqwest, solid-pod-rs and k256); none is a
+# cryptographic primitive.
+url = "2"
+base64 = "0.22"
+zeroize = "1"
 # secp256k1 scalar/point arithmetic for the BIP-340 even-y normalisation and the
 # 64-byte SEC1 (X || Y) `public_key_hex` the identity file records. Signing and
 # every NIP-19 encoding still go through nostr-bbs-core; this is encoding only.

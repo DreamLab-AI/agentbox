@@ -26,6 +26,12 @@
 //! |                   | it (ADR-2085). Colloquy kinds ONLY — see                |
 //! |                   | [`nostr_pod_bridge::colloquy_publish`] for the          |
 //! |                   | allowlist and the two deliberate exclusions.            |
+//! | `serve-identity`  | The identity port (custody X-1 step 1): hold the keys,  |
+//! |                   | answer named operations on a unix socket, authorised by |
+//! |                   | `SO_PEERCRED`. Exits 0 at once unless role isolation is |
+//! |                   | on. See [`nostr_pod_bridge::identity_port`].            |
+//! | `sign-request OP` | One-shot identity-port client: params JSON on stdin,    |
+//! |                   | result JSON on stdout; exit 1 refused, 2 no port.       |
 //!
 //! Only the subcommands that actually publish need the bridge secrets, so
 //! `bootstrap` — which *creates* those secrets — resolves its own configuration
@@ -45,6 +51,7 @@ use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 use nostr_pod_bridge::envmap::EnvMap;
+use nostr_pod_bridge::identity_port;
 use nostr_pod_bridge::{
     bootstrap, publish_colloquy, publish_project_tracking, publish_session_summary, serve,
     session_summary,
@@ -68,9 +75,16 @@ async fn main() -> anyhow::Result<()> {
         Some("summarise") => run_summarise(&BridgeConfig::from_env(&env)?).await,
         Some("track") => run_track(&BridgeConfig::from_env(&env)?).await,
         Some("publish") => run_publish(&BridgeConfig::from_env(&env)?).await,
+        Some("serve-identity") => identity_port::run_serve_identity(&env).await,
+        Some("sign-request") => {
+            let op = std::env::args().nth(2);
+            let code = identity_port::client::run(&identity_port::socket_path(&env), op.as_deref());
+            std::process::exit(code);
+        }
         Some(other) => Err(anyhow!(
             "unknown subcommand '{other}'; expected 'bootstrap', 'session-summary', \
-             'summarise', 'track', 'publish', or no argument (daemon mode)"
+             'summarise', 'track', 'publish', 'serve-identity', 'sign-request', or no \
+             argument (daemon mode)"
         )),
         None => run_daemon(BridgeConfig::from_env(&env)?).await,
     }

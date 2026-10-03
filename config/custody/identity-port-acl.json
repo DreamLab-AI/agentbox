@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "_comment": [
+    "Identity-port ACL (custody X-1 step 1, W3; ADR-2122; closed operation list per ADR-2101 :110-111).",
+    "Loaded once by `nostr-pod-bridge serve-identity` (AGENTBOX_IDENTITY_ACL). Authorisation is the caller's",
+    "uid from SO_PEERCRED, never the socket mode. Callers are keyed by numeric uid; `name` is for receipts only.",
+    "uids follow design §2.2 (960 identity, 961 gateway, 962 ingress, 963 spend); W1's role registry is authoritative.",
+    "Key files live under AGENTBOX_IDENTITY_KEY_DIR (default /run/secrets/identity). core.key must hold the",
+    "operator hex exactly as AGENTBOX_PRIVKEY_HEX supplies it (not the even-y normalised scalar): the mirror child",
+    "is derived from it (src/mirror_key.rs), and an odd-y house key would otherwise hand the phone a different key.",
+    "`manifest:a.b.c` resolves from /etc/agentbox.toml at start; an unresolved reference grants nothing.",
+    "Kinds 27235, 22242, 31400-31405 and 38414 cannot be granted (the loader refuses the file).",
+    "mirror_key `secret: true` returns the live-mirror CHILD secret (the key the phone holds) because",
+    "config/hooks/nostr-live-mirror.cjs:487 signs the self-DM wrap with it; the sovereign secret never crosses."
+  ],
+  "keys": {
+    "core": {
+      "file": "core.key",
+      "required": true,
+      "mirror_root": true,
+      "nip98_url_prefixes": ["manifest:integrations.solid_pod_rs.base_url"],
+      "relays": [
+        "ws://127.0.0.1:7777",
+        "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
+      ]
+    },
+    "junkiejarvis": {
+      "file": "junkiejarvis.key",
+      "required": false
+    }
+  },
+  "callers": {
+    "1000": {
+      "name": "devuser",
+      "ops": {
+        "pubkey": { "keys": ["core", "junkiejarvis"] },
+        "nip98": { "keys": ["core"] },
+        "sign_event": { "keys": ["core"], "kinds": [38410, 38411, 38412, 38413, 38415, 30840, 30841] },
+        "forum_event": { "keys": ["junkiejarvis"], "kinds": [1, 42, 31923] },
+        "nip42_auth": { "keys": ["core"] },
+        "mirror_key": { "secret": true }
+      }
+    },
+    "961": {
+      "name": "ab-gateway",
+      "ops": {
+        "pubkey": { "keys": ["core"] },
+        "nip42_auth": { "keys": ["core"] },
+        "mirror_key": {}
+      }
+    }
+  }
+}
