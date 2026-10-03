@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
 verified_paths: [mcp/servers/ruflo-memory-cli.cjs, tests/contract/ruflo-memory-cli.contract.spec.js, tests/config/ruflo-memory-governed.test.sh]
 owner: jjohare
 review_trigger: a ruflo release whose memory subsystem gains a Postgres backend or an external embedding provider, or a ruflo-console release whose memory pane stops shelling out to `ruflo memory stats|list --format json`
