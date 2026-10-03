@@ -32,13 +32,22 @@
 
 let
 
-  # Pin: solid-pod-rs v0.5.0-alpha.9 (2026-09-06), the tagged release cut from
-  # the estate closeout. It carries the OIDC compatibility matrix, WAC policy
-  # outcomes, provenance receipts, the chacha20 unyank and deterministic
-  # rate-limit tests, and re-aligns the crates.io set (every sibling crate is
-  # published at the same version again). This is the same snapshot that the
-  # `nostr-pod-bridge` path dependencies compile against, so the Nix-built
-  # server binary and any cargo build of the bridge share one upstream.
+  # Pin: solid-pod-rs v0.5.0-alpha.12 (tag cut 2026-10-02T23:33Z from main
+  # d64131b; crates.io max on 2026-10-03; upstream CI green on that commit,
+  # including msrv 1.88). Bumped from alpha.9 (1d9da527) on the estate-wide
+  # upgrade. alpha.12 changes the TxInfo.vin, BuiltTx.txid and
+  # Mrc20AnchorResult.report struct literals. Those types live in the
+  # library's mrc20/bitcoin_tx modules (feature `mrc20`, via the server's
+  # `forge-anchoring`), which no agentbox feature set enables; this file
+  # builds only the server binary and constructs none of them. The server
+  # and library feature sets are identical to alpha.9, and the postPatch
+  # target line below is still present once.
+  #
+  # DECOUPLED from lib/nostr-pod-bridge.nix, which still pins alpha.9 by its
+  # own solidRev and Cargo.lock: the two are separate binaries and neither
+  # links the other. Its tests/fixtures/blocktrail-s3/emit.rs builds TxInfo
+  # literals but is not a compiled cargo target. Move the bridge only
+  # together with a regenerated bridge Cargo.lock.
   #
   # Refresh procedure when the rev bumps (no local nix needed):
   #   1. Set `version` and `rev` to the new tag and its commit.
@@ -50,12 +59,12 @@ let
   #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
   #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
   #      Nix build hermetic and byte-identical to the tag).
-  version = "0.5.0-alpha.9";
+  version = "0.5.0-alpha.12";
 
-  # Pinned to the v0.5.0-alpha.9 tag commit.
-  rev     = "1d9da527076e733d6a5571f474a573c16e5a6047";
+  # Pinned to the v0.5.0-alpha.12 tag commit.
+  rev     = "d64131b32be2fc07ea120195686d2e1d3fbbe3c2";
 
-  srcHash = "sha256-0/iDL8E9J5SGFnnJQwR3wP/qAjl9AHiKyKxU1U6qRfc=";
+  srcHash = "sha256-nMqFCn/QKpl49nQ/voONbd4DRtW00wp8dnPieM4i4Aw=";
 
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 
