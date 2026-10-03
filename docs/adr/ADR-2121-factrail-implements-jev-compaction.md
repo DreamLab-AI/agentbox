@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: b41d9486c55e32c332f26e87f82271ee65ea24f5
+verified_commit: daba195e5671cdf3906095965d323cef3f80aa3a
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -193,3 +193,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (poker house seat, PR #14)
 
 `f93586b9e..b41d9486c`: the schema declares the closed `[poker_citizen]` object (`b41d9486c`). Nothing this record governs (ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit) reads the new table or program. The decision holds. Re-verified by `git log f93586b9e..b41d9486c -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo 3.51.1, Claude Code 2.1.288)
+
+`b41d9486c..daba195e5`: `lib/claude-code-binary.nix` moves Claude Code 2.1.285 → 2.1.288 (`c23592687`); both per-arch hashes equal Anthropic's 2.1.288 manifest checksums. The factrail plugin baked at the pinned rev (`share/factrail/plugin`) passes `claude plugin validate --strict` under the 2.1.288 binary with the hook surface it reports under 2.1.285, unchanged: session.start, tool.call, skill.prompt, command.run, session.compact, turn.start, turn.complete; calls include `$.session.compact` and `$.command.register`. Nothing this record governs (ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit) changes meaning. The decision holds. Re-verified by `git log b41d9486c..daba195e5 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.

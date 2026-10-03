@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e3b06d6888293a32a758179e8c7dc9667c5d9f58
+verified_commit: daba195e5671cdf3906095965d323cef3f80aa3a
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -289,3 +289,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (key-variable rule)
 
 `4ea3181b5..e3b06d688` changes one governed line: `flake.nix` passes `--env-classes ${./config/custody/env-classes.json}` to the build-time `role-accounts isolate`, which now refuses a devuser program holding a key variable without a role (ADR-2122). Nothing this record governs (ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy) changes. The decision holds. Re-verified by `git log 4ea3181b5..e3b06d688 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo 3.51.1, Claude Code 2.1.288)
+
+`e3b06d688..daba195e5`: `flake.nix` changes only the `rufloPkg` pin: version 3.51.1, its lock (`config/npm-locks/ruflo-3.51.1.package-lock.json`) and both hashes (`daba195e5`), with the rationale comment. The ruflo closure's bins and extraBins aliases, every gate and every other derivation are unchanged. Nothing this record governs (ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy) changes meaning. The decision holds. Re-verified by `git log e3b06d688..daba195e5 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
