@@ -3392,6 +3392,34 @@
         }
       }
     },
+    "poker_citizen": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Forum ADR-2020: the forum poker table's house seat (nostr-bbs-poker-citizen, baked by lib/poker-citizen.nix). REBUILD-class: flake.nix bakes [program:poker-citizen] (config/poker/run-citizen.sh) only when this and [sidechain].enabled are both true, because hands settle on sidestr:dreamlab through the local producer.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "true (with [sidechain].enabled) ⇒ [program:poker-citizen] runs and the binary is baked. false ⇒ no program and no package."
+        },
+        "key_file": {
+          "type": "string",
+          "description": "The house key file (64 hex or nsec1…), passed as POKER_CITIZEN_KEY_FILE, never as an argument. Empty ⇒ run-citizen.sh's default under $WORKSPACE/sidestr/agents/."
+        },
+        "state": {
+          "type": "string",
+          "description": "The ledger file (what members owe, what the house owes), passed as POKER_CITIZEN_STATE. Empty ⇒ run-citizen.sh's default."
+        },
+        "relay": {
+          "type": "string",
+          "description": "The forum relay (wss://…) the table deals over, passed as POKER_CITIZEN_RELAY. Empty ⇒ run-citizen.sh's default."
+        },
+        "daily_cap": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "DREAM the house pays out per day at most, passed as POKER_DAILY_CAP. Default 20000."
+        }
+      }
+    },
     "plugins": {
       "type": "object",
       "additionalProperties": true,
