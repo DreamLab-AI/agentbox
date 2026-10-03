@@ -28,6 +28,9 @@
 #  15. a role at a reserved id (965, the host docker group) -> 1; 16. --print-registry shape
 #  17. the socket dir under a devuser-writable parent (the /run/agentbox case) -> 1, (a) fails,
 #      the dir restored; in the PASS fixture devuser can neither rename it nor create beside it
+#  18. (d) against the shipped agentbox.toml [sidechain] tables -> passes, txbt4 not probed
+#  19. manifest enables a chain the plan did not bake -> 1, (d); 20. baked but disabled -> 1, (d)
+#  21. no chain enabled and none baked -> (d) passes
 #  12. host half refuses to run inside a container; flags a host uid in 960-979; passes a clean host
 # Run: bash tests/config/role-isolation-rehearsal.test.sh
 set -u
@@ -341,6 +344,41 @@ if jq -e '
   and ([.roles[].uid] | index(965) == null)' <<<"$reg" >/dev/null 2>&1; then
   ok "--print-registry reads W1's table, its plan and W2's ROLE class: faucet 966, txbt4 roles undelivered, ab-spend deferred, 965 unused"
 else bad "--print-registry reads W1's table and plan" "$(head -c 600 <<<"$reg")"; fi
+
+# ── (d) reads the chains from the manifest's [sidechain] / [sidechain.<name>] tables and the
+# plan, and fails when the two disagree (custody W10). The live /etc/agentbox.toml is a bind
+# of the repo's agentbox.toml, so it can drift from the image that baked the plan.
+d_rows() { field '[.checks[] | select(.check == "d")] | map("\(.target)=\(.status)") | join(" ")'; }
+
+# 18. The SHIPPED manifest's sidechain tables (agentbox.toml: dreamlab on, dreamlab-txbt4 off)
+#     with the fixture plan (which bakes exactly that): (d) passes, dreamlab on :3450, no txbt4 row.
+F="$(fresh 18)"
+awk '/^\[sidechain(\.[^]]*)?\]$/ {p=1; print; next} /^\[/ {p=0} p' "$REPO/agentbox.toml" >"$F/sidechain.toml"
+{ awk '/^\[sidechain\]$/ {exit} {print}' "$F/etc/agentbox.toml"; cat "$F/sidechain.toml"; } >"$F/m.toml" && mv "$F/m.toml" "$F/etc/agentbox.toml"
+reg="$(RH_ROOT="$F" bash "$SCRIPT" --print-registry 2>&1)"; rehearse "$F"
+if [ "$rc" = 0 ] && [ "$(d_rows)" = "sidestr-producer=pass sidestr:dreamlab tip=pass" ] \
+   && [ "$(field '.checks[] | select(.target == "sidestr:dreamlab tip") | .evidence.port')" = 3450 ] \
+   && jq -e '(.roles[] | select(.name == "ab-sidestr-dreamlab-txbt4") | .chain == "dreamlab-txbt4" and .port == 3451 and (.enabled | not) and (.baked | not))
+             and (.roles[] | select(.name == "ab-sidestr-dreamlab") | .enabled and .baked)' <<<"$reg" >/dev/null; then
+  ok "(d) against the shipped [sidechain] tables: dreamlab produces on :3450 as 964; txbt4 (off, port 3451) is not probed"
+else bad "(d) against the shipped [sidechain] tables" "rc=$rc d=[$(d_rows)] failed=$(failed) reg=$(jq -c '[.roles[] | select(.chain) | {name,chain,port,enabled,baked}]' <<<"$reg" 2>&1 | head -c 400)"; fi
+
+# 19. The manifest enables dreamlab-txbt4 but the image's plan bakes nothing for it -> only (d).
+F="$(fresh 19)"; printf '\n[sidechain.dreamlab-txbt4]\nenabled = true\nport = 3451\ninterval = 600\n' >>"$F/etc/agentbox.toml"; rehearse "$F"
+expect_fail "(d) a chain the manifest enables but the image did not bake: exit 1, only (d) fails" d
+if field '.checks[] | select(.check == "d" and .target == "sidestr:dreamlab-txbt4") | .observed' | grep -q 'rebuild'; then
+  ok "(d) the unbaked chain's row names the rebuild"
+else bad "(d) the unbaked chain's row names the rebuild" "$(d_rows)"; fi
+
+# 20. [sidechain].enabled = false dominates while the image still bakes dreamlab -> only (d).
+F="$(fresh 20)"; sed -i '/^\[sidechain\]$/,/^\[/ s/^enabled = true$/enabled = false/' "$F/etc/agentbox.toml"; rehearse "$F"
+expect_fail "(d) a baked producer whose chain the manifest disables: exit 1, only (d) fails" d
+
+# 21. No chain on in the manifest and none baked: (d) has nothing to produce and passes.
+F="$(fresh 21)"; sed -i '/^\[sidechain\]$/,/^\[/ s/^enabled = true$/enabled = false/' "$F/etc/agentbox.toml"
+sed -i '/^file\tab-sidestr-dreamlab\t/d' "$F/etc/agentbox/role-secrets.tsv"; rehearse "$F"
+if [ "$rc" = 0 ] && [ "$(d_rows)" = "producers=pass" ]; then ok "(d) no chain enabled and none baked: one passing row, exit 0"
+else bad "(d) no chain enabled and none baked" "rc=$rc d=[$(d_rows)] failed=$(failed)"; fi
 
 n_receipts="$(find "$ROOT" -maxdepth 1 -name 'all-receipts.*.json' | wc -l)"
 if [ "$n_receipts" -ge 10 ] && ! grep -l -e "$SENTINEL" -e 'not-a-secret' "$ROOT"/all-receipts.*.json >/dev/null 2>&1; then

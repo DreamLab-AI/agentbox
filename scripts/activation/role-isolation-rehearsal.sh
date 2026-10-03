@@ -16,8 +16,9 @@
 #       the port verify with the estate's own verifier (NostrBridge.verifyNip98 / nostr-tools),
 #       a NIP-42 AUTH is accepted by the loopback relay, and dm_unwrap / a foreign URL / a
 #       generic sign op are refused, with one sign receipt line per call
-#   (d) each enabled chain's producer runs as its role uid and has a block younger than
-#       2 x its interval (--wait: otherwise poll until the tip advances, at most 2 x interval)
+#   (d) each chain enabled in the manifest ([sidechain], [sidechain.<name>]) is baked into the
+#       image's plan and vice versa; its producer runs as its role uid and has a block younger
+#       than 2 x its interval (--wait: otherwise poll until the tip advances, at most 2 x interval)
 #   (e) no role secret is ambient: classified by the role inventory's VARIABLE NAMES and flag
 #       names, never by value, across every process's argv, the environ of every devuser
 #       process, the supervisor configs' environment= lines, identity.env and /var/log
@@ -132,7 +133,8 @@ else FLAG="$(toml_bool security role_isolation)"; FLAG_SOURCE="manifest"; fi
 # /etc/agentbox/role-secrets.tsv. There is no fallback numbering: an image without both cannot
 # be rehearsed, and that is a FAIL. normalise_registry folds the two into the rows the checks
 # read: per role {name, uid, gid, programs, files, env, at_rest, at_rest_dirs, legacy} plus
-# {chain, port, interval, enabled} for producers. A role with secrets but no plan row is not
+# {chain, port, interval, enabled, baked} for producers: enabled is the manifest's
+# [sidechain] / [sidechain.<name>] tables, baked is whether the plan delivers the role anything. A role with secrets but no plan row is not
 # delivered on this image (its chain is off): it gets no programs and no files.
 ROLE_TABLE="$R/etc/agentbox/role-accounts.json"
 ROLE_PLAN="$R/etc/agentbox/role-secrets.tsv"
@@ -143,14 +145,19 @@ ENV_CLASSES="${RH_ENV_CLASSES:-$REPO/config/custody/env-classes.json}"
 IDENTITY_AT_REST='{"at_rest":["/var/lib/agentbox/identities/agentbox-core.json","/run/secrets/nostr.key"],"at_rest_dirs":["/var/lib/agentbox/identities"],"legacy":["/home/devuser/workspace/.agentbox/zone-keys.json"]}'
 
 normalise_registry() { # <table.json> <plan.tsv>
-  local chains c port interval
+  local chains c port interval on base
   chains="$(jq -r '.roles[].name | select(startswith("ab-sidestr-")) | sub("^ab-sidestr-"; "")' "$1")"
   local cfg='{}'
+  # The manifest decides which chains are on: [sidechain] is dreamlab's table and its
+  # `enabled` dominates; every other chain needs its own [sidechain.<name>].enabled as well
+  # (agentbox.toml, "[sidechain].enabled above dominates"). A missing key is off.
+  base="$(toml_bool sidechain enabled)"
   while IFS= read -r c; do
     [ -n "$c" ] || continue
-    if [ "$c" = dreamlab ]; then port="$(toml_int sidechain port 3450)"; interval="$(toml_int sidechain interval 600)"
-    else port="$(toml_int "sidechain.$c" port 3450)"; interval="$(toml_int "sidechain.$c" interval 600)"; fi
-    cfg="$(jq -c --arg c "$c" --argjson p "$port" --argjson i "$interval" '.[$c] = {port: $p, interval: $i}' <<<"$cfg")"
+    if [ "$c" = dreamlab ]; then port="$(toml_int sidechain port 3450)"; interval="$(toml_int sidechain interval 600)"; on="$base"
+    else port="$(toml_int "sidechain.$c" port 3450)"; interval="$(toml_int "sidechain.$c" interval 600)"
+      on=false; [ "$base" = true ] && on="$(toml_bool "sidechain.$c" enabled)"; fi
+    cfg="$(jq -c --arg c "$c" --argjson p "$port" --argjson i "$interval" --argjson on "$on" '.[$c] = {port: $p, interval: $i, enabled: $on}' <<<"$cfg")"
   done <<<"$chains"
   jq -c --rawfile plan "$2" --arg src "$1 + $2 + ${ENV_CLASSES#"$REPO/"}" --argjson chains "$cfg" --argjson ident "$IDENTITY_AT_REST" \
     --slurpfile classes "$ENV_CLASSES" '
@@ -177,7 +184,7 @@ normalise_registry() { # <table.json> <plan.tsv>
                            + (if $n == "ab-identity" then $ident.at_rest_dirs else [] end)),
             legacy: (if $n == "ab-identity" then $ident.legacy else [] end)}
          + (if ($n | startswith("ab-sidestr-")) then ($n | sub("^ab-sidestr-"; "")) as $c
-              | {chain: $c, enabled: $on} + ($chains[$c] // {port: 3450, interval: 600}) else {} end)
+              | {chain: $c, baked: $on} + ($chains[$c] // {port: 3450, interval: 600, enabled: false}) else {} end)
          + (if (.programs | length) == 0 and (.secrets | length) == 0 then {deferred: .purpose} else {} end)]}' "$1"
 }
 
@@ -447,9 +454,18 @@ check_c() {
 
 # ── (d) the producer still makes a block ──────────────────────────────────────────────────
 check_d() {
-  local role ruid chain port iv prog tip h t age pid ru eu n=0 deadline h2 obs
-  while IFS=$'\t' read -r role ruid chain port iv prog; do
+  local role ruid chain port iv prog on baked tip h t age pid ru eu n=0 deadline h2 obs
+  while IFS=$'\t' read -r role ruid chain port iv prog on baked; do
     n=$((n + 1))
+    # The manifest and the image's plan must agree before a tip means anything: the live
+    # /etc/agentbox.toml is a bind of the repo file, the plan was resolved at build time.
+    if [ "$on" != "$baked" ]; then
+      if [ "$on" = true ]; then obs="the manifest enables sidestr:$chain but the image's plan delivers $role nothing; rebuild before rehearsing"
+      else obs="the image bakes $role but the manifest disables sidestr:$chain; rebuild before rehearsing"; fi
+      row d "sidestr:$chain" "manifest and image agree on sidestr:$chain" "$obs" 0 \
+        "$(jq -nc --arg c "$chain" --argjson on "$on" --argjson b "$baked" '{chain:$c,manifest_enabled:$on,baked:$b}')"
+      continue
+    fi
     pid="$(sup_pid "$prog")"; read -r ru eu _ _ <<<"$(proc_uids "${pid:-0}")"
     if [ -n "$pid" ] && [ "$ru" = "$ruid" ] && [ "$eu" = "$ruid" ]; then
       row d "$prog" "producer runs as $role ($ruid)" "pid $pid uid $ru" 1 "$(jq -nc --arg p "$prog" --argjson pid "$pid" --argjson u "$ru" '{program:$p,pid:$pid,uid:$u}')"
@@ -474,8 +490,12 @@ check_d() {
     fi
     row d "sidestr:$chain tip" "a block younger than $((2 * iv))s on :$port" "height $h, newest block ${age}s old" "$([ "$age" -le $((2 * iv)) ] && echo 1 || echo 0)" \
       "$(jq -nc --argjson port "$port" --argjson h "$h" --argjson a "$age" --argjson iv "$iv" '{port:$port,height:$h,block_age_s:$a,interval_s:$iv}')"
-  done < <(jq -r '.roles[] | select(.chain and (.name | startswith("ab-sidestr-")) and .enabled) | [.name, .uid, .chain, .port, .interval, .programs[0]] | @tsv' <<<"$REGISTRY")
-  [ "$n" -gt 0 ] || row d producers "at least one enabled chain" "no enabled producer in the role table" 0 '{}'
+  done < <(jq -r '.roles[] | select(.chain and (.name | startswith("ab-sidestr-")) and (.enabled or .baked))
+                  | [.name, .uid, .chain, .port, .interval, (.programs[0] // ""), .enabled, .baked] | @tsv' <<<"$REGISTRY")
+  # (d) is about each enabled chain; with none enabled in the manifest and none baked there is
+  # nothing to produce, which is a pass, not a missing probe.
+  [ "$n" -gt 0 ] || row d producers "every chain the manifest enables produces" "no chain enabled in the manifest and none baked" 1 \
+    "$(jq -nc --argjson c "$(jq -c '[.roles[] | select(.chain) | .chain]' <<<"$REGISTRY")" '{chains:$c,enabled:[]}')"
 }
 
 # ── (e) no secret is ambient (names, never values) ────────────────────────────────────────
