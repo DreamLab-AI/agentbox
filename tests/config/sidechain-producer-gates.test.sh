@@ -117,5 +117,25 @@ if [ "$rc" = 0 ] && [ "$(after --parent-wallet)" = sidestr-peg ] && [ "$(after -
 else bad "sidestr:dreamlab defaults unchanged" "rc=$rc args=$args err=$err"; fi
 
 echo
+# ── poker seats per chain (kit ADR-2021) ───────────────────────────────────
+# [poker_citizen.<name>] bakes [program:poker-citizen-<name>] from the seats
+# map; the stanza must name the chain, instance, asset and producer port, and
+# the package gate must count a seat as well as the single [poker_citizen].
+F="$REPO/flake.nix"
+grep -q 'pokerCitizenSeats = lib.mapAttrs' "$F" && grep -q '\[program:\${c.instance}\]' "$F" \
+  && grep -q 'POKER_CHAIN_ID="\${c.chainId}",POKER_INSTANCE="\${c.instance}",POKER_TICKER="\${c.ticker}",POKER_ASSET_ID="\${c.assetId}",SIDESTR_PORT="\${c.port}"' "$F" \
+  && grep -q 'pokerCitizenPackages = lib.optionals (pokerCitizenEnabled || pokerCitizenAnySeat)' "$F" \
+  && ok "poker seats: [poker_citizen.<name>] bakes a per-chain program with chain, instance, asset and port; the package gate counts it" \
+  || bad "poker seats per chain" "flake.nix lost the pokerCitizenSeats stanza or its environment"
+grep -q '^\[poker_citizen.dreamlab-txbt4\]' "$REPO/agentbox.toml" \
+  && grep -A9 '^\[poker_citizen.dreamlab-txbt4\]' "$REPO/agentbox.toml" | grep -q '^port *= *3451' \
+  && ok "poker seats: the BLAKES7 seat is configured on the dreamlab-txbt4 producer (:3451)" \
+  || bad "BLAKES7 seat config" "agentbox.toml [poker_citizen.dreamlab-txbt4] missing or not on :3451"
+PK="$REPO/config/poker/run-citizen.sh"
+out="$(env -i HOME=/x PATH="$PATH" WORKSPACE=/x POKER_CHAIN_ID=sidestr:dreamlab-txbt4 POKER_INSTANCE=poker-citizen-dreamlab-txbt4 bash "$PK" 2>&1 || true)"
+grep -q 'needs POKER_ASSET_ID and POKER_TICKER' <<<"$out" \
+  && ok "poker seats: run-citizen.sh refuses a non-dreamlab chain without its asset id and ticker" \
+  || bad "run-citizen.sh chain guard" "$out"
+
 echo "passed $pass, failed $fail"
 [ "$fail" -eq 0 ]

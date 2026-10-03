@@ -1638,6 +1638,21 @@ key_file  = "/home/devuser/workspace/sidestr/agents/poker-citizen.key"
 relay     = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
 daily_cap = 20000    # DREAM the house pays out per day at most
 
+# [poker_citizen.<name>]: a further seat, one per sidestr chain (kit ADR-2021,
+# website ADR-2009). <name> is the [sidechain.<name>] it settles on; its
+# program is poker-citizen-<name>, its files poker-citizen-<name>.{key,json}.
+# asset_id is the chain's asset issue txid (BLAKES7 on dreamlab-txbt4) and is
+# required: the seat refuses to deal until the asset exists.
+[poker_citizen.dreamlab-txbt4]
+enabled   = true
+chain_id  = "sidestr:dreamlab-txbt4"
+ticker    = "BLAKES7"
+asset_id  = ""        # set to the BLAKES7 issue txid once issued (2026-10-03 pending)
+key_file  = "/home/devuser/workspace/sidestr/agents/poker-citizen-txbt4.key"
+port      = 3451
+relay     = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
+daily_cap = 200000   # BLAKES7 the house pays out per day at most
+
 [payments.sidestr]
 enabled                 = true
 # chain_id: the SC1 demo chain; sidestr:dreamlab is the live one on :3450

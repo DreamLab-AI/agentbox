@@ -3399,7 +3399,22 @@
     },
     "poker_citizen": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": {
+        "type": "object",
+        "description": "[poker_citizen.<name>] (kit ADR-2021): a further house seat on [sidechain.<name>], baked as [program:poker-citizen-<name>] with its own key, ledger and asset.",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": { "type": "boolean", "description": "true (with [sidechain.<name>].enabled) \u21d2 the seat's program runs." },
+          "chain_id": { "type": "string", "description": "The chain id the seat settles on; default sidestr:<name>." },
+          "ticker": { "type": "string", "description": "The chain's asset ticker (e.g. BLAKES7), passed as POKER_TICKER." },
+          "asset_id": { "type": "string", "description": "The asset's issue txid (64 hex), passed as POKER_ASSET_ID; empty until issued, when the seat refuses to deal." },
+          "key_file": { "type": "string", "description": "The seat's key file; default ~/workspace/sidestr/agents/poker-citizen-<name>.key." },
+          "state": { "type": "string", "description": "The seat's ledger file; default per run-citizen.sh (workspace or custody)." },
+          "port": { "type": "integer", "description": "The chain's producer port (SIDESTR_PORT); default 3450." },
+          "relay": { "type": "string", "description": "The forum relay (wss://\u2026)." },
+          "daily_cap": { "type": "integer", "description": "Units of the asset the seat pays out per day at most." }
+        }
+      },
       "description": "Forum ADR-2020: the forum poker table's house seat (nostr-bbs-poker-citizen, baked by lib/poker-citizen.nix). REBUILD-class: flake.nix bakes [program:poker-citizen] (config/poker/run-citizen.sh) only when this and [sidechain].enabled are both true, because hands settle on sidestr:dreamlab through the local producer.",
       "properties": {
         "enabled": {

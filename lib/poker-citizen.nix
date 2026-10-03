@@ -24,13 +24,13 @@
 
 let
   version = "1.0.0-beta.13";
-  rev = "d67370884b02fc9f0586cc8d6078d80aca69e9ef";
+  rev = "7fe04b69bc75b20f19560da7e80cfea425022051";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "nostr-rust-forum";
     inherit rev;
-    hash  = "sha256-z9efv3bkuGPU7wB9opCn5ezG7of5iwj9570rtUuBCIs=";
+    hash  = "sha256-dwrlAcIFGkSPzxtUndmRiRZQc6BP2iPj/vEihyVTY8E=";
   };
 
 in

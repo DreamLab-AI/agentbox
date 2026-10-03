@@ -13,7 +13,8 @@
     "nip98-proxy",
     "sidestr-producer*",
     "sidestr-faucet*",
-    "poker-citizen"
+    "poker-citizen",
+    "poker-citizen-*"
   ],
   "roles": [
     {
@@ -103,6 +104,15 @@
       "secrets": [
         { "file": "house.key", "env": "POKER_CITIZEN_KEY_FILE", "source": "/var/lib/agentbox/secrets/poker-citizen.key", "legacy": "/home/devuser/workspace/sidestr/agents/poker-citizen.key" }
       ]
+    },
+    {
+      "name": "ab-poker-citizen-dreamlab-txbt4",
+      "uid": 971,
+      "purpose": "The BLAKES7 poker house seat (kit ADR-2021): its own key on sidestr:dreamlab-txbt4, kept apart from the DREAM seat so neither can spend the other's chain.",
+      "programs": ["poker-citizen-dreamlab-txbt4"],
+      "secrets": [
+        { "file": "house.key", "env": "POKER_CITIZEN_KEY_FILE", "source": "/var/lib/agentbox/secrets/poker-citizen-dreamlab-txbt4.key", "legacy": "/home/devuser/workspace/sidestr/agents/poker-citizen-txbt4.key" }
+      ]
     }
   ],
   "groups": [
@@ -172,6 +182,14 @@
       "group": "devuser",
       "mode": "2750",
       "seed": [{ "from": "/home/devuser/workspace/sidestr/agents/poker-citizen.json", "to": "poker-citizen.json" }],
+      "purpose": "Poker house-seat ledger (run-citizen.sh POKER_CITIZEN_STATE under the flag): member and house balances and the daily cap's spend. Losing it would re-pay settled hands and reset the cap. Seeded once from the workspace ledger, which stays."
+    },
+    {
+      "path": "/var/lib/agentbox/events/sidestr/poker-citizen-dreamlab-txbt4",
+      "owner": "ab-poker-citizen-dreamlab-txbt4",
+      "group": "devuser",
+      "mode": "2750",
+      "seed": [{ "from": "/home/devuser/workspace/sidestr/agents/poker-citizen-txbt4.json", "to": "poker-citizen-dreamlab-txbt4.json" }],
       "purpose": "Poker house-seat ledger (run-citizen.sh POKER_CITIZEN_STATE under the flag): member and house balances and the daily cap's spend. Losing it would re-pay settled hands and reset the cap. Seeded once from the workspace ledger, which stays."
     }
   ]

@@ -17,14 +17,20 @@
 set -euo pipefail
 
 WORKSPACE="${WORKSPACE:-$HOME/workspace}"
-KEY="${POKER_CITIZEN_KEY_FILE:-$WORKSPACE/sidestr/agents/poker-citizen.key}"
-STATE="${POKER_CITIZEN_STATE:-$WORKSPACE/sidestr/agents/poker-citizen.json}"
+# One instance per sidestr chain (kit ADR-2021). POKER_CHAIN_ID names the chain
+# (default sidestr:dreamlab); POKER_INSTANCE is the per-chain file stem
+# (poker-citizen for dreamlab, poker-citizen-<name> otherwise), so keys,
+# ledgers and custody paths never collide between seats.
+CHAIN_ID="${POKER_CHAIN_ID:-sidestr:dreamlab}"
+INSTANCE="${POKER_INSTANCE:-poker-citizen}"
+KEY="${POKER_CITIZEN_KEY_FILE:-$WORKSPACE/sidestr/agents/$INSTANCE.key}"
+STATE="${POKER_CITIZEN_STATE:-$WORKSPACE/sidestr/agents/$INSTANCE.json}"
 # Custody (ADR-2122): under [security].role_isolation the ledger is on the agentbox-events volume,
 # owned by ab-poker-citizen (its HOME is on the /run/secrets tmpfs and it cannot write the
 # workspace). Seeded once from the workspace ledger, which stays. Flag off again with a custody
 # ledger longer than the workspace one: refuse, since the workspace ledger has forgotten hands
 # settled under the flag and would pay them twice.
-CUSTODY_LEDGER="${POKER_CUSTODY_ROOT:-/var/lib/agentbox/events/sidestr}/poker-citizen/poker-citizen.json"
+CUSTODY_LEDGER="${POKER_CUSTODY_ROOT:-/var/lib/agentbox/events/sidestr}/$INSTANCE/$INSTANCE.json"
 if [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ]; then
   [ -n "${POKER_CITIZEN_STATE:-}" ] || STATE="$CUSTODY_LEDGER"
   umask 027
@@ -35,6 +41,14 @@ elif [ -z "${POKER_CITIZEN_STATE:-}" ] && [ -r "$CUSTODY_LEDGER" ] \
 fi
 RELAY="${POKER_CITIZEN_RELAY:-wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev}"
 PRODUCER="http://127.0.0.1:${SIDESTR_PORT:-3450}"
+# A chain other than sidestr:dreamlab names its asset explicitly; the binary
+# refuses to start if the producer's chain.json is not that chain's.
+CHAIN_ARGS=()
+if [ "$CHAIN_ID" != "sidestr:dreamlab" ]; then
+  [ -n "${POKER_ASSET_ID:-}" ] && [ -n "${POKER_TICKER:-}" ] \
+    || { echo "run-citizen: $CHAIN_ID needs POKER_ASSET_ID and POKER_TICKER" >&2; exit 1; }
+  CHAIN_ARGS=(--chain-id "$CHAIN_ID" --asset-id "$POKER_ASSET_ID" --ticker "$POKER_TICKER")
+fi
 
 [ -r "$KEY" ] || { echo "run-citizen: missing $KEY" >&2; exit 1; }
 command -v nostr-bbs-poker-citizen >/dev/null || { echo "run-citizen: nostr-bbs-poker-citizen not on PATH" >&2; exit 1; }
@@ -52,4 +66,5 @@ exec nostr-bbs-poker-citizen \
   --stakes-bb "${POKER_STAKES_BB:-2,10,20,100,200}" \
   --buyin-bb "${POKER_BUYIN_BB:-100}" \
   --profile "${POKER_BOT_PROFILE:-tag}" \
-  --daily-cap "${POKER_DAILY_CAP:-20000}"
+  --daily-cap "${POKER_DAILY_CAP:-20000}" \
+  "${CHAIN_ARGS[@]}"

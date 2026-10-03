@@ -296,6 +296,24 @@
         pokerCitizenState = unplaceheld (pokerCitizenCfg.state or "");
         pokerCitizenRelay = unplaceheld (pokerCitizenCfg.relay or "");
         pokerCitizenCap = toString (pokerCitizenCfg.daily_cap or 20000);
+        # [poker_citizen.<name>]: one further seat per sidestr chain (kit
+        # ADR-2021). Each bakes [program:poker-citizen-<name>] on its chain's
+        # producer port with its own key, ledger and asset. Gated on the chain's
+        # own [sidechain.<name>].enabled as well.
+        pokerCitizenSeats = lib.mapAttrs (name: c: rec {
+            chainOn = (sidechainChains.${name} or { enabled = false; }).enabled;
+            enabled = chainOn && (c.enabled or false);
+            chainId = c.chain_id or "sidestr:${name}";
+            ticker = c.ticker or "";
+            assetId = unplaceheld (c.asset_id or "");
+            keyFile = unplaceheld (c.key_file or "/home/devuser/workspace/sidestr/agents/poker-citizen-${name}.key");
+            state = unplaceheld (c.state or "");
+            relay = unplaceheld (c.relay or "");
+            port = toString (c.port or 3450);
+            cap = toString (c.daily_cap or 20000);
+            instance = "poker-citizen-${name}";
+          }) (lib.filterAttrs (_: v: builtins.isAttrs v) pokerCitizenCfg);
+        pokerCitizenAnySeat = lib.any (c: c.enabled) (lib.attrValues pokerCitizenSeats);
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         consultantsCfg = agentboxConfig.consultants or {};
@@ -1674,7 +1692,7 @@
         # nostr-bbs-poker-citizen — the poker table's house seat ([poker_citizen]).
         # Baked from the kit at the website's KIT_REF; see lib/poker-citizen.nix.
         pokerCitizenPkg = import ./lib/poker-citizen.nix { inherit lib; pkgs = rustPkgs; };
-        pokerCitizenPackages = lib.optionals pokerCitizenEnabled [ pokerCitizenPkg ];
+        pokerCitizenPackages = lib.optionals (pokerCitizenEnabled || pokerCitizenAnySeat) [ pokerCitizenPkg ];
         # factrail — Jev compaction with fact rails ([features.jev_compaction],
         # ADR-2121). One pinned commit gives the binary and the
         # Claude Code shim that calls it; see lib/factrail.nix.
@@ -2891,6 +2909,21 @@ stderr_logfile=/var/log/poker-citizen.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}
+${lib.concatMapStrings (c: lib.optionalString c.enabled ''
+
+[program:${c.instance}]
+command=/opt/agentbox/config/poker/run-citizen.sh
+user=devuser
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pokerCitizenPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",POKER_CHAIN_ID="${c.chainId}",POKER_INSTANCE="${c.instance}",POKER_TICKER="${c.ticker}",POKER_ASSET_ID="${c.assetId}",SIDESTR_PORT="${c.port}",POKER_CITIZEN_KEY_FILE="${c.keyFile}"${lib.optionalString (c.state != "") ",POKER_CITIZEN_STATE=\"${c.state}\""}${lib.optionalString (c.relay != "") ",POKER_CITIZEN_RELAY=\"${c.relay}\""},POKER_DAILY_CAP="${c.cap}"
+autostart=true
+autorestart=true
+startsecs=10
+priority=265
+stdout_logfile=/var/log/${c.instance}.log
+stderr_logfile=/var/log/${c.instance}.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+'') (lib.attrValues pokerCitizenSeats)}
 ${lib.concatMapStrings (c: lib.optionalString c.enabled ''
 
 ; [sidechain.${c.name}] (ADR-2103): sidestr:${c.name}'s producer beside ${c.parent}.
