@@ -45,8 +45,8 @@ let
     spec = {
       owner = "sidestr";
       repo  = "spec";
-      rev   = "e8deb63161c7459ed39c01d2ca9fda3d860b65b6";
-      hash  = "sha256-ZCk7VtqVg7vo4Gg7MR6fBW2kZW/uPJ8W7OQbNwsi0XA=";
+      rev   = "83dd662ef49bcf68a80f5cebc0b4de46b50cea63";
+      hash  = "sha256-+SeQWmys1X5qKIKx/87ccifwuNUJmX3HWJZoe+smnKo=";
     };
     schema = {
       owner = "bitcoin-desktop";
