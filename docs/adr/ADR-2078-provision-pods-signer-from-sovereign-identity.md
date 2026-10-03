@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
 verified_paths: [management-api/lib/pod-signer.js, management-api/lib/agent-identity.js, management-api/adapters/index.js, management-api/adapters/pods/_solid-http-base.js, tests/sovereign/pod-sovereign-signer.node-test.js]
 owner: jjohare
 review_trigger: ADR-2064 flipping sign_requests back to true, a change to nostr-pod-bridge bootstrap key layout, or a second stack needing its own pod identity
@@ -145,3 +145,8 @@ entrypoint change runs at boot. `activation_status` moves to `live` once case 4 
 rebuilt image: `./agentbox.sh health` and `/ready` green with the flag on, and a pods write carrying
 a header that verifies as the `agentbox-core.json` pubkey. Until then, and after it if the pod is not
 running, a pods slot failing closed with `SigningUnavailable` is the expected, accepted state (SC3).
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `management-api/lib/agent-identity.js`: `loadSovereignSigner` and `sovereignIdentityPath` are unchanged; the file re-exports the ROLE-secret loader and `loadOrMint` reads its override through it. Under the flag `identity.env` no longer exports `AGENTBOX_NSEC`; the pods signer never read it (it reads the identity file), so cases 1–4 are unaffected. `tests/sovereign/pod-sovereign-signer.node-test.js` passes 13/13. The decision holds.
+Re-verified by `git diff a48ea407a..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.

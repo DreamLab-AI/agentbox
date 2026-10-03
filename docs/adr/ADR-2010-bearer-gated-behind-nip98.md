@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
@@ -136,3 +136,8 @@ Tripped by `docs/INGRESS-identity.md` gaining item 10 (encrypted forum zones, fo
 
 Tripped by ADR-2078 (pods signer signs as the sovereign identity). `docs/INGRESS-identity.md` gains invariant 11 (pod origination), a Remediation — 2026-10-02 entry, a superseded-by marker on the 2026-09-05 `sign_requests = false` line and changelog 0.2.2; invariants 1-10 are unchanged. It touches no section, key or phase this record governs, and the decision holds unchanged.
 Re-verified by `git diff f63760e19..a48ea407a -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `config/nip98-proxy/proxy.mjs` reads the break-glass bearer through `management-api/lib/role-secret.js`. Flag off it is the same read; under the flag it comes from the ab-ingress file W1 delivers and a bare variable is ignored and logged `ROLE-ISOLATION-LEAK`. The per-route bearer gating behind a verified NIP-98 identity is untouched. Recorded fact: the bearer is still the same value as `BRIDGE_TOKEN`, which stays devuser-class (`config/custody/env-classes.json`), so it stays devuser-reachable until the Q4 split (ADR-2027). The decision holds.
+Re-verified by `git diff a48ea407a..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.

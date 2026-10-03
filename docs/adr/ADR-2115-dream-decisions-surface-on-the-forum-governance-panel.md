@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ddfb6d05608da573f071029476f8e2ebbee37bf1
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -76,3 +76,8 @@ Tripped by `engine.rs` gaining a connected-node health gate (`dispatch::annexe_h
 ## Re-verification — 2026-10-02 (`ddfb6d05608da573f071029476f8e2ebbee37bf1`)
 
 Tripped by `68270e953`, which extends this decision without changing it. Once an inbox item is no longer open, the engine withdraws its kind-31402 with a NIP-09 kind-5 signed by the publishing key. The kind-5 carries `e` = request id, `a` = `31402:<agent>:<case d>` (withheld when a re-opened item shares the id) and `k` = 31402. This happens in `ingest` for items it just resolved, in the nightly `publish` sweep, and via `dream-engine governance withdraw [--dry-run]`. `inbox.rs` records `withdrawn_event_id` (serde default, so old inbox files load), and a withdrawal is never re-sent. It is fail-open, like all forum I/O here. "One kind-31402 case per open inbox item" is now true of what the relay serves, not only of what is published. `cargo test governance::` 15 passed; full crate 248 passed. Activation note: the supervised `dream-engine` in the running image predates `68270e953` (no withdrawal strings in the binary), so the nightly sweep needs the rebuild; check A4 of `scripts/activation/adr-2087-check.sh` asserts it. Still true, extended.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `services/dream-engine/src/relay.rs` `load_signing_key` gains the ROLE-secret contract: `<VAR>_FILE` first; the env var and then the repo `.env` only with the flag off; under the flag a bare variable is a logged leak and `.env` is not read. Signing and verification are unchanged (dream-engine 253/253). **Consequence under the flag with W1:** the devuser engine cannot read the `ab-identity` key file, so panel and digest posts stop (fail-open: "the forum is unreachable tonight") until `forum_event` on the identity port (W3b). The decision holds.
+Re-verified by `git diff ddfb6d056..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.

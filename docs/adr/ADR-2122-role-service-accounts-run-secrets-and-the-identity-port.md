@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 055c06ff69b2f53bf38a67d254c048bb03599fc8
-verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf]
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
+verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port (W3a) landing
 repo: agentbox
@@ -135,6 +135,59 @@ The decision is accepted when `scripts/activation/role-isolation-rehearsal.sh` (
 `degraded:docker-socket` and `degraded:secrets-*` are failures. `activation_status` moves only
 on that receipt. Peer agent messages are not approval.
 
+### 3a. The environment scrub (W2, bypass 3) — added 2026-10-03
+
+compose `env_file` puts `.env` into PID 1 and supervisord hands its environment to every
+child, so delivery to files is not enough on its own: the variables must also leave PID 1.
+The ROLE set is a checked-in table, `config/custody/env-classes.json`. Every environment
+variable name that the entrypoint, `config/lib/role-custody.sh`, `flake.nix`, the compose files,
+management-api and the role-secret consumers read is in exactly one class:
+
+- **ROLE (11):** `AGENTBOX_PRIVKEY_HEX`, `AGENTBOX_NSEC`, `AGENTBOX_BRIDGE_SK`,
+  `OPERATOR_NOSTR_PRIVKEY`, `JUNKIEJARVIS_PRIVKEY_HEX`, `CONCIERGE_PRIVKEY_HEX`,
+  `AGENTBOX_AGENT_PRIVKEY_HEX` and `AGENT_PRIVKEY_HEX` (all `ab-identity`);
+  `NIP98_PROXY_ALLOW_BEARER` and `NIP98_PROXY_SESSION_SECRET` (`ab-ingress`);
+  `TAILSCALE_AUTHKEY` (`root`).
+- **DEVUSER_CLASS (35):** accepted exceptions, each with a reason. These are the Q8 provider
+  and devuser credentials, `BRIDGE_TOKEN`, `MANAGEMENT_API_KEY` and `VAULT_NOSTR_SECRET`
+  (a ROLE candidate for W3b).
+- **NON_SECRET:** everything else. A credential-shaped name needs an exact entry.
+
+`scripts/ci/env-secret-inventory.js --check` fails on any of the following:
+
+- an unclassified name;
+- a name in two classes;
+- a secret-shaped name classified by pattern;
+- drift between the ROLE set and the entrypoint's `_AB_ROLE_ENV_VARS`;
+- drift from this record's `config/role-accounts.json`. Every `from_env` there is ROLE with the
+  same role, and the four ROLE vars the plan lacks are listed as `w2_only`.
+
+Under the flag, the entrypoint does three things:
+
+1. **`_ab_role_env_capture` runs before the identity bootstrap.** Each ROLE variable present is
+   written to `/run/secrets/<role>/<NAME>` at `0400` (the same artefact §3's plan writes). Its
+   `<NAME>_FILE` is exported and the variable is unset. It runs this early because under the flag
+   the bootstrap must not read a bare operator pin. §3's `env` rows then find these variables
+   already unset and skip them.
+2. **`identity.env` is public-only.** It carries no `AGENTBOX_NSEC` and no
+   `AGENTBOX_BRIDGE_SK`. The bootstrap writes the relay key itself to
+   `/run/secrets/ab-identity/nostr.key` (`create_new`, `0400`). The secret otherwise lives only
+   in the identity file.
+3. **`_ab_role_env_scrub` runs on the line before `exec`.** It unsets anything re-exported since
+   and logs `ROLE-ISOLATION-LEAK <NAME>`.
+
+Readers use one loader per language: `management-api/lib/role-secret.js`, re-exported by
+`agent-identity.js`, and `nostr-pod-bridge::role_secret`. dream-engine's `load_signing_key`
+keeps the same contract. The precedence is:
+
+1. `<NAME>_FILE`;
+2. `$AGENTBOX_SECRETS_DIR/<NAME>` (§2's isolated config);
+3. the bare variable, only with the flag off.
+
+Under the flag, a bare ROLE variable that is present at all is logged as `ROLE-ISOLATION-LEAK`
+and ignored. Flag off, the environment handed to supervisord is byte-identical (RC-X1-06).
+`tailscale-up` now gets `--authkey=file:<path>`, which closes the argv finding below.
+
 ## Status: what exists and what is owed
 
 **Built (W0 + W1, staged, unverified in an image).**
@@ -153,7 +206,7 @@ on that receipt. Peer agent messages are not approval.
   at-rest copies in `/var/lib/agentbox/secrets` and the workspace treasury keys**, so the flag
   gives no confidentiality on its own.
 - **W2 other items.**
-  - A public-only `identity.env`.
+  - ~~A public-only `identity.env`.~~ Done (§3a, `custody/w2-env-scrub`).
   - The aoe-share copy for `ab-gateway` and `ab-ingress`. Both still point at devuser's
     `serve.url`.
   - Ownership of the relay data dir `/var/lib/nostr-relay` for `ab-identity`.
@@ -163,10 +216,12 @@ on that receipt. Peer agent messages are not approval.
 - **W3a/W3b.** The identity port, and the consumer cutover: the pods signer, JunkieJarvis, the
   mirror hook, the gateway and dream-engine.
 - **Readers of the delivered files.**
-  - `nip98-proxy` reads `NIP98_PROXY_ALLOW_BEARER` and `NIP98_PROXY_SESSION_SECRET` from its
-    environment only. Under the flag break-glass is off and sessions use a per-boot secret: fail
-    closed.
-  - The gateway reads `AGENTBOX_PRIVKEY_HEX` from its environment only.
+  - ~~`nip98-proxy` reads `NIP98_PROXY_ALLOW_BEARER` and `NIP98_PROXY_SESSION_SECRET` from its
+    environment only.~~ Done (§3a): it reads `$AGENTBOX_SECRETS_DIR/<NAME>` as `ab-ingress`.
+    Recorded fact: the bearer is still the same value as `BRIDGE_TOKEN`, which stays
+    devuser-class until the Q4 split (ADR-2027).
+  - The gateway now reads the operator key file-only under the flag (§3a). As `ab-gateway`
+    it holds no key by design, so it signs nothing until the identity port (W3a/W3b).
 - **W4.** The sidestr upstream baked from Nix. As `ab-sidestr-*`, git refuses the devuser-owned
   workspace checkouts. W4 also moves the state off the workspace and creates the
   `ab-sidestr-read` group.
@@ -190,9 +245,10 @@ on that receipt. Peer agent messages are not approval.
 
 - `11ed64…` keeps read access to the forum's epoch-1 zone secrets. It cannot be undone. Re-sealing
   is a named follow-up (queen's disposition on Q16).
-- `[program:tailscale-up]` passes `TAILSCALE_AUTHKEY` on argv (pre-existing, root program). It is
-  not classified in this step because the scrub would remove its only source. It belongs to the
-  design's root-only delivery and is a finding for W2.
+- `[program:tailscale-up]` passed `TAILSCALE_AUTHKEY` on argv (pre-existing, root program).
+  Resolved by W2 (§3a). Under the flag the key is delivered root-only to
+  `/run/secrets/root/TAILSCALE_AUTHKEY` and passed as `--authkey=file:<path>`, a form
+  tailscale 1.102 documents. With the flag off the original branch runs unchanged.
 - `[program:docker-read-proxy]` (W0) carries a TODO to move into this registry. It needs no
   account: it holds no secret and must start as root to join the socket's group before dropping to
   65534. The comment is left in the supervisor text so that today's config stays byte-identical,
@@ -237,3 +293,13 @@ nor a boot has been exercised.
 - `/etc/supervisord.isolated.conf` and `/etc/agentbox/role-secrets.tsv` exist.
 - `supervisorctl status` matches the pre-rebuild set.
 - `/run/secrets` is `devuser 0700`, and `nostr.key` is present as before.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody W2 (`custody/w2-env-scrub`, rebased onto this record's branch). §3a above
+records what it adds. The entrypoint's exec block now runs `_ab_role_env_scrub` between the
+config pick and `exec`. `tests/config/role-isolation-boot.test.sh` stubs the scrub and
+asserts deliver → pick → scrub → exec (22/22). `flake.nix` changes only `[program:tailscale-up]`
+and a comment. The §3 plan, the accounts and the isolated config are untouched, and their suites
+pass: `role-secrets-delivery` 26/26 and `role-isolation-supervisor` 20/20. The image is
+unverified until the owner's rebuild.
