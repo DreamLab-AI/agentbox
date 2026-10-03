@@ -58,6 +58,39 @@ pub struct Table {
     /// for a role program that cannot create them itself.
     #[serde(default)]
     pub dirs: Vec<DirSpec>,
+    /// Volume directories that hold at-rest secret copies (custody design 3.2,
+    /// W2b). Under the flag the migrate step makes each one `root:root <mode>`;
+    /// flag off, the revert step hands it back. Every `at_rest` path and every
+    /// file secret's resolved source must sit directly inside one of them.
+    #[serde(default)]
+    pub at_rest_dirs: Vec<AtRestDir>,
+}
+
+/// A volume directory of at-rest secret copies, root-owned under the flag.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AtRestDir {
+    pub path: String,
+    /// Octal mode under the flag, three digits, owner root, no group or other
+    /// write bit (`700`, or `711` when devuser still has to reach a known file
+    /// name inside it).
+    pub mode: String,
+    #[serde(default)]
+    pub purpose: String,
+}
+
+/// An at-rest copy a role owns (`<role> 0400` under the flag) that the
+/// delivery plan does not copy into `/run/secrets` (the identity JSON).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AtRest {
+    pub path: String,
+    /// Where the copy lived before custody: migrated from when `path` is
+    /// absent, then left in place (owner decision Q5: never deleted).
+    #[serde(default)]
+    pub legacy: Option<String>,
+    #[serde(default)]
+    pub purpose: String,
 }
 
 /// A shared group: a gid in `uid_range`, explicit members, and a role that owns
@@ -93,6 +126,21 @@ pub struct DirSpec {
     pub mode: String,
     #[serde(default)]
     pub purpose: String,
+    /// State to copy in once, while the directory holds no regular file (custody
+    /// W4: a role program's state leaving the workspace bind). The source is
+    /// never deleted.
+    #[serde(default)]
+    pub seed: Vec<Seed>,
+}
+
+/// One `seed` source: a directory (its top-level regular files are copied) or a
+/// single file (copied as `to`, default its own name).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Seed {
+    pub from: String,
+    #[serde(default)]
+    pub to: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -106,6 +154,8 @@ pub struct Role {
     pub programs: Vec<String>,
     #[serde(default)]
     pub secrets: Vec<Secret>,
+    #[serde(default)]
+    pub at_rest: Vec<AtRest>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -118,6 +168,12 @@ pub struct Secret {
     pub source: Option<String>,
     #[serde(default)]
     pub from_env: Option<String>,
+    /// The pre-custody location of a `source` secret. When a program's own
+    /// `environment=` still names this path (flag-off config), the isolated
+    /// plan reads `source` instead, and the migrate step copies legacy to
+    /// source once. The legacy copy is never deleted (Q5).
+    #[serde(default)]
+    pub legacy: Option<String>,
 }
 
 impl Table {
@@ -205,6 +261,36 @@ fn is_plain_abs_path(s: &str) -> bool {
         && !s.chars().any(|c| {
             c.is_whitespace() || c.is_control() || matches!(c, '"' | '\'' | ',' | '%' | '\\')
         })
+}
+
+/// The directory part of a plain absolute path (`/a/b/c` -> `/a/b`).
+fn parent_of(p: &str) -> &str {
+    p.rsplit_once('/').map(|(d, _)| d).unwrap_or("")
+}
+
+/// An at-rest copy (and its legacy twin) must be a plain absolute path outside
+/// the tmpfs; the copy itself must sit directly inside a declared
+/// `at_rest_dirs` entry, so the migrate step never re-owns a file it was not
+/// told about, and never one on the workspace bind (the host's own files).
+fn check_at_rest(t: &Table, at: &str, path: &str, legacy: Option<&str>, errs: &mut Vec<String>) {
+    if !is_plain_abs_path(path) {
+        return; // reported by the caller's own path rule
+    }
+    if !t.at_rest_dirs.iter().any(|d| d.path == parent_of(path)) {
+        errs.push(format!(
+            "{at}: {path:?} is not directly inside an at_rest_dirs entry"
+        ));
+    }
+    if let Some(l) = legacy {
+        if !is_plain_abs_path(l) || l.starts_with(&format!("{}/", t.secrets_root)) {
+            errs.push(format!(
+                "{at}: legacy {l:?} must be a plain absolute path outside secrets_root"
+            ));
+        }
+        if l == path {
+            errs.push(format!("{at}: legacy is the same path as the copy itself"));
+        }
+    }
 }
 
 /// Check every rule in ADR-2122's account table.
@@ -321,8 +407,12 @@ pub fn validate(t: &Table) -> Result<(), String> {
                             "{at}: a file secret needs `env`, the variable its program reads the path from"
                         ));
                     }
+                    check_at_rest(t, &at, src, s.legacy.as_deref(), &mut errs);
                 }
                 (None, Some(var)) => {
+                    if s.legacy.is_some() {
+                        errs.push(format!("{at}: `legacy` belongs to a `source` secret"));
+                    }
                     if !is_env_name(var) {
                         errs.push(format!("{at}: from_env {var:?} is not an environment name"));
                     } else if let Some(other) = env_owners.insert(var.as_str(), r.name.as_str()) {
@@ -343,6 +433,33 @@ pub fn validate(t: &Table) -> Result<(), String> {
                     errs.push(format!("{at}: env {e} names two secrets"));
                 }
             }
+        }
+    }
+    for r in &t.roles {
+        for a in &r.at_rest {
+            let at = format!("role {} at_rest {:?}", r.name, a.path);
+            check_at_rest(t, &at, &a.path, a.legacy.as_deref(), &mut errs);
+        }
+    }
+    let mut seen_dirs = BTreeSet::new();
+    for d in &t.at_rest_dirs {
+        let at = format!("at_rest_dir {:?}", d.path);
+        if !is_plain_abs_path(&d.path) || d.path.ends_with('/') || d.path.matches('/').count() < 2 {
+            errs.push(format!(
+                "{at}: must be a plain absolute path below a top-level directory"
+            ));
+        }
+        if d.path == t.secrets_root || d.path.starts_with(&format!("{}/", t.secrets_root)) {
+            errs.push(format!("{at}: secrets_root is a tmpfs, not a volume"));
+        }
+        if !seen_dirs.insert(d.path.as_str()) {
+            errs.push(format!("{at}: listed twice"));
+        }
+        if !matches!(d.mode.as_str(), "700" | "711" | "500" | "511") {
+            errs.push(format!(
+                "{at}: mode {:?} must be 700, 711, 500 or 511",
+                d.mode
+            ));
         }
     }
     let mut gids = BTreeSet::new();
@@ -396,6 +513,23 @@ pub fn validate(t: &Table) -> Result<(), String> {
         }
         if t.group_id(&d.group).is_none() {
             errs.push(format!("{at}: group {:?} is not root, devuser, a role or a group", d.group));
+        }
+        for sd in &d.seed {
+            if !is_plain_abs_path(&sd.from)
+                || sd.from.ends_with('/')
+                || sd.from == t.secrets_root
+                || sd.from.starts_with(&format!("{}/", t.secrets_root))
+            {
+                errs.push(format!(
+                    "{at}: seed {:?} must be a plain absolute path outside secrets_root",
+                    sd.from
+                ));
+            }
+            if let Some(to) = &sd.to {
+                if !is_file_name(to) {
+                    errs.push(format!("{at}: seed `to` {to:?} is not a plain file name"));
+                }
+            }
         }
         let m = d.mode.as_str();
         if !(3..=4).contains(&m.len()) || !m.chars().all(|c| ('0'..='7').contains(&c)) || m.ends_with(['2', '3', '6', '7']) {
@@ -490,6 +624,26 @@ pub fn summary(t: &Table) -> String {
             "{}\tdir {}:{} {}\t{}\n",
             d.path, d.owner, d.group, d.mode, d.purpose
         ));
+    }
+    for d in &t.at_rest_dirs {
+        out.push_str(&format!(
+            "{}\tat-rest dir, root {} under the flag\t{}\n",
+            d.path, d.mode, d.purpose
+        ));
+    }
+    for r in &t.roles {
+        for a in &r.at_rest {
+            out.push_str(&format!(
+                "{}\tat rest, {} 0400 under the flag{}\t{}\n",
+                a.path,
+                r.name,
+                a.legacy
+                    .as_deref()
+                    .map(|l| format!(", migrated once from {l}"))
+                    .unwrap_or_default(),
+                a.purpose
+            ));
+        }
     }
     out.push_str(&format!("role-accounts: {} role(s) valid\n", t.roles.len()));
     out
@@ -706,6 +860,10 @@ pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
             if let Some(src) = &sec.source {
                 let var = sec.env.as_deref().unwrap_or_default();
                 let from_program = items.iter().find(|i| i.key == var).map(|i| i.value.clone());
+                // The flag-off config still names the legacy copy; under the
+                // flag the canonical volume copy is read (migrated there first).
+                let from_program =
+                    from_program.filter(|v| sec.legacy.as_deref() != Some(v.as_str()));
                 let src = from_program.unwrap_or_else(|| src.clone());
                 if !is_plain_abs_path(&src) {
                     return Err(format!(
@@ -748,7 +906,10 @@ pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
          # file <name> <file> <source>   copy an at-rest file to <secrets_root>/<name>/<file>, 0400\n\
          # env  <name> <file> <VAR>      write PID 1's $VAR to <secrets_root>/<name>/<file>, 0400, then unset it\n\
          # sockdir <group> <uid> <gid>   create <secrets_root>/<group> (0750) owned by <uid>, group <gid>\n\
-         # dir  <path> <uid>:<gid> <mode> create or re-own <path> outside secrets_root\n",
+         # dir  <path> <uid>:<gid> <mode> create or re-own <path> outside secrets_root\n\
+         # atrest <name> <path> <legacy|->  an at-rest copy the role owns, 0400 under the flag (migrate/revert)\n\
+         # atrestdir <path> <mode>        a volume dir of at-rest copies, root-owned <mode> under the flag\n\
+         # seed <dir> <from> <to|->       copy <from> (a dir's top-level files, or one file as <to>) into an empty <dir> once\n",
     );
     plan.push_str(&format!("root\t{}\n", t.secrets_root));
     for r in &t.roles {
@@ -772,6 +933,31 @@ pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
             t.group_id(&d.group).unwrap_or_default(),
         );
         plan.push_str(&format!("dir\t{}\t{u}:{g}\t{}\n", d.path, d.mode));
+        for sd in &d.seed {
+            let to = sd.to.as_deref().unwrap_or("-");
+            plan.push_str(&format!("seed\t{}\t{}\t{to}\n", d.path, sd.from));
+        }
+    }
+    // The custody registry (design 3.2): every at-rest copy and the dirs that
+    // hold them. Derived, never hand-listed: a file secret's row is its resolved
+    // source, so a plan without a file row (chain off) migrates nothing for it.
+    for d in &t.at_rest_dirs {
+        plan.push_str(&format!("atrestdir\t{}\t{}\n", d.path, d.mode));
+    }
+    for r in &t.roles {
+        for sec in &r.secrets {
+            if let Some(src) = sources.get(&r.name).and_then(|m| m.get(&sec.file)) {
+                let legacy = match (&sec.source, &sec.legacy) {
+                    (Some(canon), Some(l)) if canon == src => l.as_str(),
+                    _ => "-",
+                };
+                plan.push_str(&format!("atrest\t{}\t{src}\t{legacy}\n", r.name));
+            }
+        }
+        for a in &r.at_rest {
+            let legacy = a.legacy.as_deref().unwrap_or("-");
+            plan.push_str(&format!("atrest\t{}\t{}\t{legacy}\n", r.name, a.path));
+        }
     }
 
     Ok(Isolated {
@@ -910,11 +1096,12 @@ mod tests {
         serde_json::from_str(&format!(
             r#"{{{BASE},"roles":[
               {{"name":"ab-a","uid":960,"programs":["p"],"secrets":[
-                {{"file":"k.key","env":"K","source":"/default/k"}},
+                {{"file":"k.key","env":"K","source":"/var/sec/k"}},
                 {{"file":"tok","from_env":"TOKEN","env":"TOKEN_FILE"}}]}},
               {{"name":"ab-b","uid":961,"programs":["q-one"],"secrets":[
-                {{"file":"c","env":"C","source":"/default/c"}}]}},
-              {{"name":"ab-idle","uid":962,"programs":[],"secrets":[]}}]}}"#
+                {{"file":"c","env":"C","source":"/var/sec/c"}}]}},
+              {{"name":"ab-idle","uid":962,"programs":[],"secrets":[]}}],
+              "at_rest_dirs":[{{"path":"/var/sec","mode":"700"}}]}}"#
         ))
         .unwrap()
     }
@@ -954,8 +1141,11 @@ mod tests {
                 "file\tab-a\tk.key\t/vol/k",
                 "env\tab-a\ttok\tTOKEN",
                 "role\tab-b\t961\t961",
-                "file\tab-b\tc\t/default/c",
+                "file\tab-b\tc\t/var/sec/c",
                 "role\tab-idle\t962\t962",
+                "atrestdir\t/var/sec\t700",
+                "atrest\tab-a\t/vol/k\t-",
+                "atrest\tab-b\t/var/sec/c\t-",
             ]
         );
     }
@@ -1053,5 +1243,118 @@ mod tests {
             "dirs":[{{"path":"/var/lib/x","owner":"ab-a","group":"ab-g","mode":"2750"}}]}}"#
         ))
         .expect("a well-formed group and dir validate");
+    }
+
+    #[test]
+    fn the_registry_rows_follow_the_resolved_sources() {
+        let t = small_table();
+        let iso = isolate(&t, CONF).unwrap();
+        // ab-a's source is overridden by its program (/vol/k): the registry
+        // names the file the delivery will actually read, with no legacy.
+        assert!(iso.plan.contains("atrestdir\t/var/sec\t700\n"));
+        assert!(iso.plan.contains("atrest\tab-a\t/vol/k\t-\n"));
+        assert!(iso.plan.contains("atrest\tab-b\t/var/sec/c\t-\n"));
+        // from_env secrets have no at-rest copy; idle roles contribute nothing.
+        assert!(!iso.plan.contains("atrest\tab-a\ttok"));
+        assert!(!iso.plan.contains("atrest\tab-idle"));
+    }
+
+    #[test]
+    fn a_program_naming_the_legacy_copy_reads_the_canonical_one() {
+        let t: Table = serde_json::from_str(&format!(
+            r#"{{{BASE},"roles":[
+              {{"name":"ab-a","uid":960,"programs":["p"],"secrets":[
+                {{"file":"k.key","env":"K","source":"/var/sec/k","legacy":"/vol/k"}}],
+                "at_rest":[{{"path":"/var/sec/id.json"}},{{"path":"/var/sec/z.json","legacy":"/ws/z.json"}}]}}],
+              "at_rest_dirs":[{{"path":"/var/sec","mode":"700"}}]}}"#
+        ))
+        .unwrap();
+        validate(&t).unwrap();
+        let conf = CONF.replace("[program:q-one]", "[program:unrelated]");
+        let iso = isolate(&t, &conf).unwrap();
+        assert!(
+            iso.plan.contains("file\tab-a\tk.key\t/var/sec/k\n"),
+            "{}",
+            iso.plan
+        );
+        assert!(iso.plan.contains("atrest\tab-a\t/var/sec/k\t/vol/k\n"));
+        assert!(iso.plan.contains("atrest\tab-a\t/var/sec/id.json\t-\n"));
+        assert!(iso
+            .plan
+            .contains("atrest\tab-a\t/var/sec/z.json\t/ws/z.json\n"));
+        // The program's environment still points at the role's /run/secrets copy.
+        assert!(iso.conf.contains("K=\"/run/secrets/ab-a/k.key\""));
+    }
+
+    #[test]
+    fn at_rest_rules_are_enforced() {
+        let e = tiny(&format!(
+            r#"{{{BASE},"roles":[{{"name":"ab-a","uid":960,"programs":["p"],"secrets":[
+                {{"file":"k","env":"K","source":"/elsewhere/k","legacy":"/elsewhere/k"}},
+                {{"file":"t","from_env":"T","legacy":"/x/t"}}],
+                "at_rest":[{{"path":"/home/devuser/workspace/id.json"}}]}}],
+              "at_rest_dirs":[{{"path":"/etc","mode":"700"}},{{"path":"/var/sec","mode":"777"}},
+                              {{"path":"/run/secrets/x","mode":"700"}}]}}"#
+        ))
+        .unwrap_err();
+        for want in [
+            "\"/elsewhere/k\" is not directly inside an at_rest_dirs entry",
+            "legacy is the same path as the copy itself",
+            "`legacy` belongs to a `source` secret",
+            "\"/home/devuser/workspace/id.json\" is not directly inside",
+            "at_rest_dir \"/etc\": must be a plain absolute path below a top-level directory",
+            "mode \"777\" must be 700, 711, 500 or 511",
+            "secrets_root is a tmpfs",
+        ] {
+            assert!(e.contains(want), "missing {want:?} in {e}");
+        }
+    }
+
+    #[test]
+    fn seeds_are_planned_after_their_dir_and_validated() {
+        let t: Table = serde_json::from_str(&format!(
+            r#"{{{BASE},"roles":[{{"name":"ab-a","uid":960}}],
+              "dirs":[{{"path":"/var/st/a","owner":"ab-a","group":"devuser","mode":"2750",
+                        "seed":[{{"from":"/ws/a"}},{{"from":"/ws/f.json","to":"f.json"}}]}}]}}"#
+        ))
+        .unwrap();
+        validate(&t).unwrap();
+        let iso = isolate(&t, "[program:x]\ncommand=y\nuser=devuser\n").unwrap();
+        assert!(iso.plan.contains(
+            "dir\t/var/st/a\t960:1000\t2750\nseed\t/var/st/a\t/ws/a\t-\nseed\t/var/st/a\t/ws/f.json\tf.json\n"
+        ), "{}", iso.plan);
+        let e = tiny(&format!(
+            r#"{{{BASE},"roles":[{{"name":"ab-a","uid":960}}],
+              "dirs":[{{"path":"/var/st/a","owner":"ab-a","group":"ab-a","mode":"700",
+                        "seed":[{{"from":"/run/secrets/x"}},{{"from":"/ws/f","to":"../x"}}]}}]}}"#
+        ))
+        .unwrap_err();
+        assert!(
+            e.contains("must be a plain absolute path outside secrets_root"),
+            "{e}"
+        );
+        assert!(e.contains("is not a plain file name"), "{e}");
+    }
+
+    #[test]
+    fn the_repository_registry_covers_the_identity_file_and_the_treasury_keys() {
+        let t = table();
+        let conf = "[program:sidestr-faucet]\ncommand=x\nuser=devuser\nenvironment=SIDESTR_FAUCET_KEY=\"/home/devuser/workspace/sidestr/agents/treasury.key\"\n\n[program:serve-identity]\ncommand=y\nuser=devuser\n";
+        let iso = isolate(&t, conf).unwrap();
+        assert!(iso
+            .plan
+            .contains("atrestdir\t/var/lib/agentbox/secrets\t700\n"));
+        assert!(iso
+            .plan
+            .contains("atrestdir\t/var/lib/agentbox/identities\t"));
+        assert!(iso
+            .plan
+            .contains("atrest\tab-identity\t/var/lib/agentbox/identities/agentbox-core.json\t-\n"));
+        assert!(iso.plan.contains(
+            "file\tab-faucet-dreamlab\ttreasury.key\t/var/lib/agentbox/secrets/sidestr-faucet-dreamlab.key\n"
+        ), "{}", iso.plan);
+        assert!(iso.plan.contains(
+            "atrest\tab-faucet-dreamlab\t/var/lib/agentbox/secrets/sidestr-faucet-dreamlab.key\t/home/devuser/workspace/sidestr/agents/treasury.key\n"
+        ));
     }
 }

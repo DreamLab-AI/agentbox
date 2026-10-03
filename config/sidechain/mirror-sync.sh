@@ -24,7 +24,10 @@ set -euo pipefail
 
 WORKSPACE="${WORKSPACE:-$HOME/workspace}"
 NAME="${SIDESTR_CHAIN:-dreamlab}"
-STATE="${SIDESTR_STATE:-$WORKSPACE/sidestr/$NAME}"
+# Custody W4: under [security].role_isolation the producer's state is on the agentbox-events
+# volume, owned by its role with group devuser (2750); this devuser loop reads it through the group.
+if [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ]; then STATE="${SIDESTR_STATE:-${SIDESTR_CUSTODY_ROOT:-/var/lib/agentbox/events/sidestr}/$NAME}"
+else STATE="${SIDESTR_STATE:-$WORKSPACE/sidestr/$NAME}"; fi
 PRODUCER="${SIDESTR_PRODUCER_URL:-http://127.0.0.1:${SIDESTR_PORT:-3450}}"
 DOC="${SIDESTR_DOC:-$(cd "$(dirname "$0")" && pwd)/$NAME/chain.json}"
 # Beside the document first; the image's document dir is read-only, so the event normally sits in

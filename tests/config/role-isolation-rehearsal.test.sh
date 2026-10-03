@@ -31,6 +31,8 @@
 #  18. (d) against the shipped agentbox.toml [sidechain] tables -> passes, txbt4 not probed
 #  19. manifest enables a chain the plan did not bake -> 1, (d); 20. baked but disabled -> 1, (d)
 #  21. no chain enabled and none baked -> (d) passes
+#  22. the at-rest tree ab_custody_migrate leaves (W2b), given root ownership -> 0 PASS, (a) clean;
+#      22b. the flag-off volumes without it -> 1, only (a) fails
 #  12. host half refuses to run inside a container; flags a host uid in 960-979; passes a clean host
 # Run: bash tests/config/role-isolation-rehearsal.test.sh
 set -u
@@ -174,8 +176,16 @@ TOML
     printf 'file\tab-sidestr-dreamlab\tsigner.key\t/var/lib/agentbox/secrets/sidestr-dreamlab.key\n'
     printf 'file\tab-sidestr-dreamlab\tparent.credential\t/var/lib/agentbox/secrets/sidestr-tbtc4.cookie\n'
     printf 'role\tab-faucet-dreamlab\t966\t966\n'
-    printf 'file\tab-faucet-dreamlab\ttreasury.key\t/home/devuser/workspace/sidestr/agents/treasury.key\n'
+    printf 'file\tab-faucet-dreamlab\ttreasury.key\t/var/lib/agentbox/secrets/sidestr-faucet-dreamlab.key\n'
     printf 'role\tab-sidestr-dreamlab-txbt4\t967\t967\nrole\tab-faucet-dreamlab-txbt4\t968\t968\n'
+    # The custody registry (W2b): the faucet reads the canonical volume copy; the workspace
+    # treasury key and zone-keys.json are legacy twins.
+    printf 'atrestdir\t/var/lib/agentbox/secrets\t700\natrestdir\t/var/lib/agentbox/identities\t711\n'
+    printf 'atrest\tab-identity\t/var/lib/agentbox/identities/agentbox-core.json\t-\n'
+    printf 'atrest\tab-identity\t/var/lib/agentbox/secrets/zone-keys.json\t/home/devuser/workspace/.agentbox/zone-keys.json\n'
+    printf 'atrest\tab-sidestr-dreamlab\t/var/lib/agentbox/secrets/sidestr-dreamlab.key\t-\n'
+    printf 'atrest\tab-sidestr-dreamlab\t/var/lib/agentbox/secrets/sidestr-tbtc4.cookie\t-\n'
+    printf 'atrest\tab-faucet-dreamlab\t/var/lib/agentbox/secrets/sidestr-faucet-dreamlab.key\t/home/devuser/workspace/sidestr/agents/treasury.key\n'
   } >"$F/etc/agentbox/role-secrets.tsv"
   cat >"$F/sup" <<SUP
 management-api                   RUNNING   pid 200, uptime 1:00:00
@@ -331,6 +341,62 @@ F="$(fresh 15)"; jq '(.roles[] | select(.name == "ab-faucet-dreamlab") | .uid) =
 if [ "$rc" = 1 ] && grep -q 'reserved' <<<"$out"; then ok "a role at uid 965 (host docker group, reserved_ids): exit 1"
 else bad "a role at uid 965: exit 1" "rc=$rc out=$(tail -3 <<<"$out")"; fi
 
+
+# 22. The at-rest tree as the custody migrate step leaves it (W2b). The volumes start as a flag-off
+# boot leaves them: devuser-owned dirs, devuser-owned key files, the treasury key and zone keys
+# only on the workspace bind. Without the migrate step (22b) devuser opens every at-rest copy and
+# (a) fails. With it (18), ab_custody_migrate from config/lib/role-custody.sh runs the fixture's
+# plan with a chown ledger; "given root ownership" then means applying the modes devuser sees for
+# each ledger owner that is not devuser (a role's 0400 file, root's 0700 dir: nothing; root's 0711
+# dir: traverse only). Only the checks' own fixtures stand in for root; the copy is real.
+LIB="$REPO/config/lib/role-custody.sh"
+w2b_volumes() { # <F>: the flag-off volume state
+  local F="$1"
+  chmod 755 "$F/var/lib/agentbox/identities" "$F/var/lib/agentbox/secrets"
+  mkdir -p "$F/home/devuser/workspace/sidestr/agents" "$F/home/devuser/workspace/.agentbox"
+  printf 'not-a-secret-%s-treasury' "$SENTINEL" >"$F/home/devuser/workspace/sidestr/agents/treasury.key"
+  printf '{"version":1,"owner":"x","keys":[]}' >"$F/home/devuser/workspace/.agentbox/zone-keys.json"
+  chmod 0600 "$F/home/devuser/workspace/sidestr/agents/treasury.key" "$F/home/devuser/workspace/.agentbox/zone-keys.json"
+  chmod 0400 "$F/var/lib/agentbox/secrets"/* "$F/var/lib/agentbox/identities"/*
+}
+F="$(fresh 22b)"; w2b_volumes "$F"
+chmod 0644 "$F/var/lib/agentbox/secrets/sidestr-dreamlab.key"   # as the rpc helper leaves some copies
+rehearse "$F"
+expect_fail "22b. flag-off volumes, no custody migrate: devuser opens the at-rest copies, only (a) fails" a
+
+F="$(fresh 22)"; w2b_volumes "$F"
+legacy_sum="$(sha256sum <"$F/home/devuser/workspace/sidestr/agents/treasury.key")"
+LEDGER22="$F/chown.ledger"; : >"$LEDGER22"
+mig_out="$(
+  # shellcheck source=../../config/lib/role-custody.sh
+  . "$LIB"
+  _led() { [ "$#" -eq 2 ] && printf '%s\t%s\n' "$1" "$2" >>"$LEDGER22"; }
+  _lstat() { # stat -c FMT -- PATH, uid/gid from the ledger when it has the path
+    local o out; out="$(command stat -c "$2" -- "$4" 2>/dev/null)" || return 1
+    o="$(awk -F'\t' -v p="$4" '$2 == p {o=$1} END {print o}' "$LEDGER22")"
+    [ -n "$o" ] && out="${o%%:*} ${o##*:} ${out#* * }"; printf '%s\n' "$out"; }
+  AB_RC_CHOWN=_led AB_RC_STAT=_lstat AB_RC_ROOT="$F"
+  mkdir -p "$F/run/secrets"; chmod u+w "$F/run/secrets"
+  ab_custody_migrate "$F/etc/agentbox/role-secrets.tsv" /run/secrets/role-isolation.migrated 2>&1
+  chmod 0555 "$F/run/secrets"
+)"
+# Given root ownership: what devuser sees of each path the ledger hands to someone else.
+while IFS=$'\t' read -r owner path; do
+  [ "${owner%%:*}" = 1000 ] && continue
+  if [ -d "$path" ]; then case "$(stat -c %a "$path")" in 711) chmod 111 "$path" ;; *) chmod 000 "$path" ;; esac
+  else chmod 000 "$path"; fi
+done < <(awk -F'\t' '{o[$2]=$1} END {for (p in o) print o[p] "\t" p}' "$LEDGER22" | sort -t$'\t' -k2,2r)  # children first
+rehearse "$F"
+a_rows="$(field '[.checks[] | select(.check == "a" and .status != "pass")] | length')"
+at_rest_ok="$(field '[.checks[] | select(.check == "a" and (.target == "/var/lib/agentbox/secrets/sidestr-faucet-dreamlab.key" or .target == "/var/lib/agentbox/identities/agentbox-core.json" or .target == "/var/lib/agentbox/secrets/zone-keys.json") and .observed == "EACCES")] | length')"
+dirs_ok="$(field '[.checks[] | select(.check == "a" and (.target == "/var/lib/agentbox/secrets/" or .target == "/var/lib/agentbox/identities/") and .observed == "EACCES")] | length')"
+if [ "$rc" = 0 ] && [ "$(field .verdict)" = PASS ] && [ "$a_rows" = 0 ] && [ "$at_rest_ok" = 3 ] && [ "$dirs_ok" = 2 ] \
+   && [ "$(field '.legacy_copies | index("/home/devuser/workspace/sidestr/agents/treasury.key") != null')" = true ] \
+   && [ "$(sha256sum <"$F/home/devuser/workspace/sidestr/agents/treasury.key")" = "$legacy_sum" ] && valid 2>/dev/null \
+   && ! grep -q -e "$SENTINEL" -e 'not-a-secret' <<<"$mig_out"; then
+  ok "22. after ab_custody_migrate, given root ownership: (a) passes every row (treasury, identity JSON, zone keys, secrets/ and identities/ refused), PASS; legacy copy unchanged and in the receipt"
+else bad "22. after ab_custody_migrate, (a) passes" "rc=$rc verdict=$(field .verdict) a_fail=$a_rows at_rest=$at_rest_ok dirs=$dirs_ok failed=$(failed) $(field '[.checks[] | select(.check == "a" and .status != "pass") | .target + "=" + .observed] | join(" ")') mig=$(tail -2 <<<"$mig_out")"; fi
+
 reg="$(RH_ROOT="$ROOT/case-1" bash "$SCRIPT" --print-registry 2>&1)"
 if jq -e '
   (.roles | map(.name) | index("ab-faucet-dreamlab")) as $_
@@ -341,8 +407,13 @@ if jq -e '
   and (.roles[] | select(.name == "ab-identity") | (.env | index("AGENTBOX_AGENT_PRIVKEY_HEX")) != null and (.env | index("OPERATOR_NOSTR_PRIVKEY")) != null)
   and (.classified_root_env | map(.name) == ["TAILSCALE_AUTHKEY"])
   and (.roles[] | select(.name == "ab-spend") | .deferred != null)
-  and ([.roles[].uid] | index(965) == null)' <<<"$reg" >/dev/null 2>&1; then
-  ok "--print-registry reads W1's table, its plan and W2's ROLE class: faucet 966, txbt4 roles undelivered, ab-spend deferred, 965 unused"
+  and ([.roles[].uid] | index(965) == null)
+  and (.roles[] | select(.name == "ab-faucet-dreamlab") | .at_rest == ["/var/lib/agentbox/secrets/sidestr-faucet-dreamlab.key"]
+       and .legacy == ["/home/devuser/workspace/sidestr/agents/treasury.key"] and .at_rest_dirs == ["/var/lib/agentbox/secrets"])
+  and (.roles[] | select(.name == "ab-identity") | (.at_rest | index("/var/lib/agentbox/identities/agentbox-core.json")) != null
+       and (.at_rest | index("/run/secrets/nostr.key")) != null
+       and .at_rest_dirs == ["/var/lib/agentbox/identities","/var/lib/agentbox/secrets"])' <<<"$reg" >/dev/null 2>&1; then
+  ok "--print-registry reads W1's table, its plan and W2's ROLE class: faucet 966, txbt4 roles undelivered, ab-spend deferred, 965 unused, at-rest set from the custody registry"
 else bad "--print-registry reads W1's table and plan" "$(head -c 600 <<<"$reg")"; fi
 
 # ── (d) reads the chains from the manifest's [sidechain] / [sidechain.<name>] tables and the

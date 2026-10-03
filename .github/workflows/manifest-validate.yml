@@ -142,6 +142,11 @@ jobs:
         run: bash tests/config/role-secrets-delivery.test.sh
         env:
           AGENTBOX_MANIFEST_BIN: services/agentbox-manifest/target/release/agentbox-manifest
+      - name: at-rest custody migrate/revert and sidechain state seed (ADR-2122, design 3.2-3.4, W2b/W4)
+        # The real registry rows against a scratch root; chown is a recording stub (no root in CI).
+        run: bash tests/config/role-custody-migrate.test.sh
+        env:
+          AGENTBOX_MANIFEST_BIN: services/agentbox-manifest/target/release/agentbox-manifest
 
       - name: With [security].role_isolation off the boot is today's (ADR-2122)
         run: bash tests/config/role-isolation-boot.test.sh

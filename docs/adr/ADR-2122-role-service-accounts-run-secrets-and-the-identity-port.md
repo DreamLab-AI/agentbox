@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: dc91e092ab646b4a825805b8229602ac8b15bad3
-verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, docker-compose.hp.yml]
+verified_commit: f93586b9e52fda0d0b367881e2d2ff3014509faf
+verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, docker-compose.hp.yml, tests/config/role-custody-migrate.test.sh, config/sidechain/run-producer.sh, config/sidechain/run-faucet.sh, config/sidechain/mirror-sync.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
 repo: agentbox
@@ -133,7 +133,11 @@ kind or published crate is introduced.
 
 The decision is accepted when `scripts/activation/role-isolation-rehearsal.sh` (W6a, branch
 `custody/w6a-rehearsal`) and its host half pass on a rebuilt image with the flag on, checks
-(a)–(f) of design §4, and land a receipt under `docs/estate-closeout/<date>/`.
+(a)–(f) of design §4, and land their receipts as the scripts write them:
+`docs/estate-closeout/x1-rehearsal-<UTC>.json` (container half) and
+`docs/estate-closeout/x1-rehearsal-host-<UTC>.json` (host half), both against
+`docs/estate-closeout/schema/x1-rehearsal.schema.json`. (Corrected 2026-10-03: this sentence
+first named a dated subdirectory, which neither script writes.)
 `degraded:docker-socket` and `degraded:secrets-*` are failures. `activation_status` moves only
 on that receipt. Peer agent messages are not approval.
 
@@ -204,10 +208,10 @@ and ignored. Flag off, the environment handed to supervisord is byte-identical (
 
 **Owed before the flag may be turned on.** Under the flag today, role programs fail closed.
 
-- **W2 custody.** It locks the at-rest volumes (`secrets/` and `identities/` to `root 0700`,
-  files to `0400`), with an idempotent migrate/revert. **Until W2, devuser can still read the
-  at-rest copies in `/var/lib/agentbox/secrets` and the workspace treasury keys**, so the flag
-  gives no confidentiality on its own.
+- ~~**W2 custody.** It locks the at-rest volumes, with an idempotent migrate/revert.~~ Built
+  (W2b, `f93586b9e`; see the dated section below). It is unproven in an image. **The
+  legacy copies stay readable to devuser by design (Q5)**: the workspace treasury keys and
+  `zone-keys.json` remain on the bind until a manual purge.
 - **W2 other items.**
   - ~~A public-only `identity.env`.~~ Done (§3a, `custody/w2-env-scrub`).
   - The aoe-share copy for `ab-gateway` and `ab-ingress`. Both still point at devuser's
@@ -225,9 +229,9 @@ and ignored. Flag off, the environment handed to supervisord is byte-identical (
     devuser-class until the Q4 split (ADR-2027).
   - The gateway now reads the operator key file-only under the flag (§3a). As `ab-gateway`
     it holds no key by design, so it signs nothing until the identity port (W3a/W3b).
-- **W4.** The sidestr upstream baked from Nix. As `ab-sidestr-*`, git refuses the devuser-owned
-  workspace checkouts. W4 also moves the state off the workspace and creates the
-  `ab-sidestr-read` group.
+- ~~**W4.** The sidestr upstream baked from Nix, and the state moved off the workspace.~~ The
+  bake is W5; the state move is built (W2b section below). The `ab-sidestr-read` group was not
+  needed (deviation below).
 
 ### Deviations from the design, with reasons
 
@@ -240,7 +244,13 @@ and ignored. Flag off, the environment handed to supervisord is byte-identical (
 - **There is no `role-exec` wrapper yet.** The contract that only `user=` and `environment=`
   differ is what makes this step reviewable.
 - **The `ab-sidestr-read` and `ab-aoe-share` groups are not created.** Their consumers are W4
-  and W2, and devuser joins no group in this step.
+  and W2, and devuser joins no group in this step. W4 gives the mirror read access through
+  devuser's own group instead: each chain's state dir is `ab-sidestr-<chain>:devuser 2750`, the
+  precedent `/var/lib/agentbox/events/sign` set. No new group, and no new member of any group.
+- **`identities/` is `root 0711` under the flag, not `0700`.** The pay402/Hitch spend keys live
+  there (`management-api/lib/sidestr-spend-key.js`) and stay devuser-class until the spend port
+  (Q6). devuser still cannot list the dir, and `agentbox-core.json` in it is `ab-identity 0400`.
+  `secrets/` is `root 0700` as designed.
 - **The catalogue apply class is `boot`, not `rebuild`.** The flag does not change the image's
   composition (ADR-039's definitions).
 
@@ -343,6 +353,54 @@ lives in the sidecar, not in this container, so no role account here holds or de
 nothing in this record's table changes. The custody of that key and the pin's forward-only rule
 are recorded in `browsercontainer/README.md` ("Podkey and the persistent profile").
 
+## At-rest custody and the sidechain state move (W2b, W4) — 2026-10-03
+
+Design 3.2–3.4 was not built when the docs pass ran, and check (a) of the rehearsal failed with
+the flag on. It is built in `f93586b9e`.
+
+- **The registry is derived from the role table, not listed by hand.** `role-accounts isolate`
+  writes two extra row kinds into `role-secrets.tsv`. `atrest <role> <path> <legacy|->` is
+  written for every resolved file secret and for each role's `at_rest` entries
+  (`agentbox-core.json`; `zone-keys.json`, whose legacy copy is on the workspace).
+  `atrestdir <path> <mode>` is written for `at_rest_dirs`. The validator requires every at-rest
+  path to sit directly inside a declared dir, so the migrate step never re-owns a workspace file.
+  The treasury keys' `source` is now the volume copy
+  (`/var/lib/agentbox/secrets/sidestr-faucet-<chain>.key`), and the workspace path is its
+  `legacy`. While a program's `environment=` still names the legacy path (flag-off config), the
+  isolated plan reads the volume copy.
+- **Migrate (flag on), `ab_custody_migrate`.** It runs after the `/run/secrets` prep and the
+  volume-root chown, before `nostr-pod-bridge bootstrap`. For each row where the canonical copy
+  is absent, it copies the legacy twin once: umask 077, fsync, size and in-memory byte compare,
+  rename. It never touches or deletes the legacy copy. It refuses a canonical copy that is a
+  symlink, hard-linked, empty or oversized, or that already existed on the first migration and
+  differs from its legacy twin: such a copy is not re-owned and not delivered. Each accepted copy
+  goes to its role at `0400`; `secrets/` becomes `root 0700` and `identities/` `root 0711`.
+  Pre-flag owner and mode are recorded once in `secrets/.role-custody.modes` (root 0600, trusted
+  only when root-owned). The names and statuses go to `/run/secrets/role-isolation.migrated`
+  (0644, paths only). Every step is fail-open and counted.
+- **Revert (flag off), `ab_custody_revert`.** It hands each recorded path back to devuser at its
+  pre-flag mode, or to root when root owned it before. With no trusted record it changes
+  nothing, so a volume that was never migrated keeps a byte-identical stat set.
+- **W4 state.** A role's HOME is on the tmpfs, so the workspace defaults restarted the chain and
+  emptied the faucet ledger on every boot. Under the flag the producer, mirror and faucet now
+  default to `/var/lib/agentbox/events/sidestr/<chain>` and `faucet-<chain>/faucet.json`. These
+  are `dirs` rows, owned by the role with group devuser 2750, and `seed` rows copy the workspace
+  state into them once and never over newer state. With the flag off, the producer and faucet
+  refuse to start (`CUSTODY-STATE-AHEAD`) when the custody copy has outgrown the workspace copy.
+  That covers rollback after blocks or grants were made under the flag; design 3.4's "no data
+  movement" does not hold for chain state.
+- **Tests.** `tests/config/role-custody-migrate.test.sh` 31/31 (new). The rehearsal test goes from
+  28 to 30: case 22 runs the real migrate, and given root ownership (a) passes every row. 22b shows
+  (a) failing on the same volumes without it. Delivery 30, boot 22, supervisor 23, manifest
+  cargo 121, RC-X1-01..07 green, env-secret-inventory PASS.
+
+Still owed for a flag-on PASS (named, not built here): the W3b consumer cutover
+(JunkieJarvis, the mirror hook, the gateway and dream-engine); the aoe-share copy for
+`ab-gateway`/`ab-ingress`; the `/var/lib/nostr-relay` ownership for `ab-identity`; the
+`role-exec` launcher; and the owner's rebuild with the rehearsal's host half. Under the flag,
+devuser readers of `secrets/` lose it: `scripts/run-per-user-agent.cjs:125` (a management-key
+fallback) and `scripts/sidechain/dell-txbt4-open-rpc.sh`, which writes there as an operator.
+
 ## Consequences
 
 - The image gains 8 passwd and 9 group lines (8 role groups and `ab-identity-port`), `/etc/supervisord.roles.conf`,
@@ -441,3 +499,12 @@ Consequence for activation: **turning the flag on now needs a rebuild with the f
 
 Suites at `dc91e092a`: compose-role-env 16, role-isolation-rehearsal 28, RC-X1-01..07 14 + 16 + 3 + 17 + 6 + 30 + 21, role-isolation-boot 22, nostr-pod-bridge cargo 209, identity-port node 10, role-secret node 23, env-secret-inventory PASS (node test 13). `decision_status` and `activation_status` are unchanged. Nix was not evaluated in this container, and shellcheck was not run here.
 
+## Re-verification — 2026-10-03 (`f93586b9e52fda0d0b367881e2d2ff3014509faf`, custody W2b/W4)
+
+Tripped by `f93586b9e`, which this record's section above describes. Every governed path changed
+only as listed there. `agentbox.toml` changes in its comment only, and
+`config/custody/env-classes.json` adds the new lib's shell names to NON_SECRET. With the flag
+off, the boot keeps today's statements apart from the revert step, a proven no-op on a volume
+that was never migrated. `decision_status` stays `proposed` and `activation_status` stays
+`inactive` until the rehearsal passes on the owner's rebuild. Re-verified by
+`git log dc91e092a..f93586b9e -- <verified_paths>`.

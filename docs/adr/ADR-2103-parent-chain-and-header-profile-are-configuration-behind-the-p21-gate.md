@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 3b54129631067277f6363309b01cce485faa027a
+verified_commit: f93586b9e52fda0d0b367881e2d2ff3014509faf
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, config/sidechain/upstream-pins, lib/sidestr-upstream.nix, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, tests/config/sidechain-producer-baked.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
@@ -621,3 +621,7 @@ the integration resolutions, ADR-2122). Since `e103f81a7` the governed paths cha
 The parent check, the seal, the P21 gate and the checkpoint position are unchanged; the producer gates pass 7/7 and genesis 7/7. The decision holds. Re-verified by `git log e103f81a7..3b5412963 -- <verified_paths>`
 and the integration gates. Nix was not evaluated in this container; the image is unverified
 until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`f93586b9e52fda0d0b367881e2d2ff3014509faf`, custody W4)
+
+Tripped by `f93586b9e`. `config/sidechain/run-producer.sh` changes only in where the block files live. Under `[security].role_isolation` the producer runs as its role with HOME on the `/run/secrets` tmpfs, so `SIDESTR_STATE` now defaults to `/var/lib/agentbox/events/sidestr/<name>` on the agentbox-events volume (umask 027, so the devuser mirror reads it through the group), seeded once from the workspace state, which stays. With the flag off the default is unchanged, and the runner refuses to start (`CUSTODY-STATE-AHEAD`) when the custody `blocks.dat` has outgrown the workspace copy, because starting from the workspace would fork the chain. The parent check, the seal, the P21 gate, the checkpoint position and the baked upstream are unchanged; the producer gates pass 7/7 and the baked-upstream suite 8/8. The decision holds. Re-verified by `git log 3b5412963..f93586b9e -- <verified_paths>`.

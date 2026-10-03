@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: dc91e092ab646b4a825805b8229602ac8b15bad3
+verified_commit: f93586b9e52fda0d0b367881e2d2ff3014509faf
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -189,3 +189,7 @@ until the owner's rebuild.
 ## Re-verification — 2026-10-03 (`dc91e092ab646b4a825805b8229602ac8b15bad3`, custody W10)
 
 Tripped by the W10 gap fixes on `custody/integration`. `config/entrypoint-unified.sh` (`dc91e092a`) gains `_ab_devuser_privilege_check` and its call after the docker-socket check; it reads files only and is a no-op with `[security].role_isolation` off. Nothing this record governs changes meaning. The decision holds. Re-verified by `git log 3b5412963..dc91e092a -- <verified_paths>`. Nix was not evaluated in this container.
+
+## Re-verification — 2026-10-03 (`f93586b9e52fda0d0b367881e2d2ff3014509faf`, custody W2b/W4)
+
+Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the sidechain state move). `config/entrypoint-unified.sh` changes only in three custody blocks (ADR-2122, design 3.2). (1) A new at-rest step before Phase 3: `ab_custody_migrate` when `[security].role_isolation` is on, otherwise `ab_custody_revert`, which changes nothing on a volume that was never migrated (`tests/config/role-custody-migrate.test.sh` shows the stat set, ctime included, byte-identical). (2) Under the flag only, the volume-root chown loop skips `/var/lib/agentbox/secrets`. (3) After the identity bootstrap, the identity file goes to ab-identity 0400 under the flag; with the flag off, the devuser 0600 statements are unchanged. The skill-router projection is untouched. The decision holds. Re-verified by `git log dc91e092a..f93586b9e -- <verified_paths>`.
