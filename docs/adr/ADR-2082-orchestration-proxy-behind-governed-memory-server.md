@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a ruflo major bump that renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -162,3 +162,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `config/entrypoint-unified.sh` changes in one place (`012bf98f5`): three exports in the runtime-env block after `RUFLO_DAEMON_AI_WORKERS` — `RUFLO_DAEMON_AUTOSTART` (default `0`), `CLAUDE_FLOW_DISABLE_BRIDGE` (default `1`) and `CLAUDE_FLOW_MEMORY_PATH` (default `/home/devuser/.cache/ruflo/memory`), each `${X:-default}` so an operator export wins (ADR-2123). `orchestration-proxy.js`, `ruvector-mcp.cjs` and `ruvector-gates.js` did not move, so `DENIED_PREFIXES`, the alias table and fail-open-for-orchestration-only are untouched, and the projection of `RUVECTOR_ORCHESTRATION_PROXY` into the `claude-flow` env block is unchanged. The proxy child is still `claude-flow-mcp`, which `rufloGovernedPkg` links through unwrapped (`flake.nix`, `012bf98f5`); it inherits the three exports from the session environment, so ruflo's AgentDB bridge is off and its sql.js bookkeeping lands under `~/.cache/ruflo/memory` in the child as well. That narrows what the child writes locally and leaves the governed memory tools as the only durable memory path, which is what this record requires. Nothing this record decides (ADR-2082 — The governed claude-flow server forwards orchestration tools to a filtered ruflo child; memory never crosses) changed. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
+
+`1fc26c786..34f5e4254`: one line in the runtime-env heredoc (`config/entrypoint-unified.sh`): `CLAUDE_FLOW_MEMORY_PATH` is now escaped so it resolves in the sourcing shell to `$HOME/.cache/ruflo/memory` instead of a root-side `/home/devuser` literal (RC-X1-01). The `claude-flow-mcp` proxy child still receives the same default; memory still never crosses the proxy. Nothing this record decides changed.

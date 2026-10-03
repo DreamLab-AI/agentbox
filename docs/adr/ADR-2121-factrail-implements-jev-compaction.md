@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -211,3 +211,7 @@ The schema and entrypoint diffs are otherwise limited to the new gate. Factrail'
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `scripts/ruflo-console-project.mjs` (`2df10dc94`) replaces the `import.meta.url === file://argv[1]` main guard with a realpath comparison, so the projector runs when invoked through the image's symlinked path (before, the comparison failed through the symlink and the boot projection did nothing); `tests/config/ruflo-console.test.mjs` adds that symlink case and now asserts `[toolchains].ruflo_console = true` because `a2ffa05eb` set it on in the shipped manifest; `schema/agentbox.toml.schema.json` declares `faucet_units`/`faucet_sats`, `peg_script`, the `[poker_citizen.<name>]` sub-objects and `[poker_coach]` (`bde96a334`, `a2ffa05eb`, `18a85577c`). `config/entrypoint-unified.sh` changes in one place (`012bf98f5`): three exports in the runtime-env block after `RUFLO_DAEMON_AI_WORKERS` — `RUFLO_DAEMON_AUTOSTART` (default `0`), `CLAUDE_FLOW_DISABLE_BRIDGE` (default `1`) and `CLAUDE_FLOW_MEMORY_PATH` (default `/home/devuser/.cache/ruflo/memory`), each `${X:-default}` so an operator export wins (ADR-2123). `lib/factrail.nix`, the lockfile, `lib/claude-code-binary.nix`, `marketplace.json`, the store-migrate script and both factrail tests did not move. The decision — factrail implements Jev compaction, in Rust, at a pinned commit — is not affected: the pin, the shim and the projection are unchanged. One dated statement in the `451823ca8` note moves: `ruflo_console` is no longer "default off" in the shipped manifest, so in the running configuration factrail's gate-off branch does not remove the `agentbox` marketplace (consequence 1 of that note) because the console gate holds it. `tests/config/ruflo-console.test.mjs` passes 15/15 at HEAD. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
+
+`1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
 verified_paths: [mcp/servers/ruflo-memory-cli.cjs, tests/contract/ruflo-memory-cli.contract.spec.js, tests/config/ruflo-memory-governed.test.sh]
 owner: jjohare
 review_trigger: a ruflo release whose memory subsystem gains a Postgres backend or an external embedding provider, or a ruflo-console release whose memory pane stops shelling out to `ruflo memory stats|list --format json`
@@ -38,3 +38,7 @@ The `ruflo` and `claude-flow` bins the image puts on PATH are governed wrappers 
 ## Verification
 
 Live, 2026-10-03, against the running sidecar (213,332 rows, 464 namespaces, ruvector-postgres 0.3.0, Xinference bge-small-en-v1.5): `stats --format json` and `list --format json --limit 3` returned the governed corpus in the ruflo shapes; `search -q … -n project-state` returned HNSW results at 0.795 and 0.776 via `hnsw-xinference`; a `store` in namespace `cli-probe` embedded, was found by `search` at 0.769, was returned by `retrieve` and removed by `delete`; `init`, `configure` exit 2 with no file created; `git status` clean apart from the new file. Static and stub-backed: `tests/config/ruflo-memory-governed.test.sh` (wrapper, gate, env defaults, refusal list, no shipped `memory init`) and `tests/contract/ruflo-memory-cli.contract.spec.js` (shapes against the captured ruflo 3.51.1 output, refusals, fail-closed, protected-namespace refusal through the governed `memStore`, flag parsing). The baked wrapper itself is verified at the host rebuild (`ruflo memory help` prints the governed usage; `ruflo --help` in an empty directory writes nothing).
+
+### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
+
+`1fc26c786..34f5e4254`: the boot export of `CLAUDE_FLOW_MEMORY_PATH` is escaped in the runtime-env heredoc so it resolves per user (`$HOME/.cache/ruflo/memory`), satisfying RC-X1-01; `tests/config/ruflo-memory-governed.test.sh` accepts the escaped form. The decision (governed `ruflo memory`, repo-safe defaults) is unchanged; the wrapper's own default was already `$HOME`-relative. Live checks unchanged.
