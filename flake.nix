@@ -1155,6 +1155,10 @@
           # retired tool name directly. Hashes refresh on bump:
           #   nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.49.3
           #   then `nix build` once with lib.fakeHash for vendorHash.
+          # v1.49.4 HELD (2026-10-03 estate upgrade): its go.mod raises the
+          # directive to `go 1.27.1`, and the pinned nixpkgs (9ae611a4) tops
+          # out at go_1_26 (1.26.3); buildGoModule runs GOTOOLCHAIN=local, so
+          # the build would refuse. Move with the next nixpkgs bump.
           version = "1.49.3";  # bump together with hashes below
           src = pkgs.fetchFromGitHub {
             owner = "zoharbabin";
