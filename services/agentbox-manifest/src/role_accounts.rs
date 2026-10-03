@@ -763,8 +763,57 @@ pub struct Isolated {
     pub isolated_programs: Vec<String>,
 }
 
-/// Derive `supervisord.roles.conf` and the delivery plan from today's config.
+/// Suffixes that name a key or a key file. A `user=devuser` program whose
+/// environment names one must be in `secret_bearing_programs` (and so have a
+/// role), or the build fails: an opt-in list alone misses a new program.
+pub const KEY_VAR_SUFFIXES: [&str; 3] = ["_PRIVKEY_HEX", "_SK", "_KEY_FILE"];
+
+/// The ROLE-class variable names in `config/custody/env-classes.json`, each
+/// with its `file_var` twin when the class names one.
+pub fn role_class_vars(path: &Path) -> Result<BTreeSet<String>, String> {
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| format!("role-accounts: cannot read {}: {e}", path.display()))?;
+    let v: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|e| format!("role-accounts: {} is not JSON: {e}", path.display()))?;
+    let role = v
+        .pointer("/classes/ROLE")
+        .and_then(|r| r.as_object())
+        .ok_or_else(|| format!("role-accounts: {} has no classes.ROLE object", path.display()))?;
+    let mut out = BTreeSet::new();
+    for (name, entry) in role {
+        out.insert(name.clone());
+        if let Some(f) = entry.get("file_var").and_then(|f| f.as_str()) {
+            out.insert(f.to_string());
+        }
+    }
+    Ok(out)
+}
+
+/// Why a variable name marks its program as key-holding, if it does.
+fn key_var_reason(name: &str, role_vars: &BTreeSet<String>) -> Option<&'static str> {
+    if role_vars.contains(name) {
+        return Some("is classed ROLE in config/custody/env-classes.json");
+    }
+    KEY_VAR_SUFFIXES
+        .iter()
+        .any(|s| name.ends_with(s))
+        .then_some("names a key or key file")
+}
+
+/// Derive `supervisord.roles.conf` and the delivery plan from today's config,
+/// with the key-variable rule applied by suffix only (the unit tests' entry).
+#[cfg(test)]
 pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
+    isolate_with(t, conf, &BTreeSet::new())
+}
+
+/// [`isolate`], with `role_vars` (from [`role_class_vars`]) also marking a
+/// program key-holding.
+pub fn isolate_with(
+    t: &Table,
+    conf: &str,
+    role_vars: &BTreeSet<String>,
+) -> Result<Isolated, String> {
     let mut lines: Vec<String> = conf.split_inclusive('\n').map(str::to_string).collect();
 
     let mut sections: Vec<Section> = Vec::new();
@@ -808,6 +857,24 @@ pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
                 "[program:{}] is secret-bearing but no role in config/role-accounts.json runs it; add one (ADR-2122)",
                 s.program
             ));
+        }
+        let runs_as_devuser = s
+            .user_line
+            .and_then(|i| ini_kv(&lines[i]).map(|(_, v)| v == DEVUSER))
+            .unwrap_or(false);
+        if runs_as_devuser && !t.is_secret_bearing(&s.program) {
+            if let Some(i) = s.env_line {
+                let v = ini_kv(&lines[i]).map(|(_, v)| v).unwrap_or("");
+                let items = parse_env(v).map_err(|e| format!("[program:{}] {e}", s.program))?;
+                for it in &items {
+                    if let Some(why) = key_var_reason(&it.key, role_vars) {
+                        errs.push(format!(
+                            "[program:{}] runs as {DEVUSER} and its environment {} ({why}), but it is not in secret_bearing_programs; give it a role in config/role-accounts.json (ADR-2122)",
+                            s.program, it.key
+                        ));
+                    }
+                }
+            }
         }
     }
     if !errs.is_empty() {
@@ -968,11 +1035,21 @@ pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
 }
 
 /// `role-accounts isolate`: write both outputs, or nothing.
-pub fn run_isolate(table: &Path, conf: &Path, out: &Path, plan: &Path) -> Result<(), String> {
+pub fn run_isolate(
+    table: &Path,
+    conf: &Path,
+    out: &Path,
+    plan: &Path,
+    env_classes: Option<&Path>,
+) -> Result<(), String> {
     let t = load(table)?;
     let text = std::fs::read_to_string(conf)
         .map_err(|e| format!("role-accounts: cannot read {}: {e}", conf.display()))?;
-    let iso = isolate(&t, &text)?;
+    let role_vars = match env_classes {
+        Some(p) => role_class_vars(p)?,
+        None => BTreeSet::new(),
+    };
+    let iso = isolate_with(&t, &text, &role_vars)?;
     std::fs::write(out, &iso.conf)
         .map_err(|e| format!("role-accounts: cannot write {}: {e}", out.display()))?;
     std::fs::write(plan, &iso.plan)
@@ -1158,6 +1235,43 @@ mod tests {
             e.contains("[program:q-two] is secret-bearing but no role"),
             "{e}"
         );
+    }
+
+    #[test]
+    fn a_devuser_program_naming_a_key_variable_without_a_role_fails_the_build() {
+        for var in ["HOUSE_KEY_FILE", "SEAT_PRIVKEY_HEX", "BRIDGE_SK"] {
+            let conf = format!("{CONF}\n[program:z]\ncommand=/bin/z\nuser=devuser\nenvironment={var}=\"/x\"\n");
+            let e = isolate(&small_table(), &conf).err().unwrap();
+            assert!(
+                e.contains(&format!("[program:z] runs as devuser and its environment {var}")),
+                "{var}: {e}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_role_class_variable_marks_a_program_key_holding() {
+        let conf = format!("{CONF}\n[program:z]\ncommand=/bin/z\nuser=devuser\nenvironment=OPERATOR_NOSTR_PRIVKEY=\"x\"\n");
+        assert!(isolate(&small_table(), &conf).is_ok(), "no suffix match without the classes");
+        let role_vars: BTreeSet<String> = ["OPERATOR_NOSTR_PRIVKEY".to_string()].into();
+        let e = isolate_with(&small_table(), &conf, &role_vars).err().unwrap();
+        assert!(e.contains("OPERATOR_NOSTR_PRIVKEY (is classed ROLE"), "{e}");
+    }
+
+    #[test]
+    fn the_key_variable_rule_spares_roles_root_programs_and_plain_names() {
+        // A role program (p) and a root program may carry key variables; a plain name is not one.
+        let conf = format!(
+            "{CONF}\n[program:r]\ncommand=/bin/r\nuser=root\nenvironment=X_KEY_FILE=\"/x\"\n\n[program:y]\ncommand=/bin/y\nuser=devuser\nenvironment=KEY_FILES_DIR=\"/x\",TASK=\"/x\"\n"
+        );
+        assert!(isolate(&small_table(), &conf).is_ok());
+    }
+
+    #[test]
+    fn role_class_vars_reads_names_and_their_file_twins() {
+        let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../config/custody/env-classes.json");
+        let v = role_class_vars(&p).unwrap();
+        assert!(v.contains("AGENTBOX_NSEC") && v.contains("AGENTBOX_NSEC_FILE"));
     }
 
     #[test]
