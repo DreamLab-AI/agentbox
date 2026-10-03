@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d52d3eeb43b057ede41050a831dfac9ebb353d30
+verified_commit: 341c8bd36454ce6c6a9d917c07f562578210faff
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -335,3 +335,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `.github/workflows/invari
 ### Re-verification — 2026-10-03 (agentic-qe 3.14.7)
 
 `451823ca8..d52d3eeb4`: `flake.nix` changes only the `agenticQePkg` pin: version 3.14.7, its lock and both hashes (`d52d3eeb4`), with the rationale comment. Nothing this record governs (ADR-2013 — Every compose publish binds 127.0.0.1 unless on the sanctioned-exposure list, CI-enforced across all overlays) changes meaning. The decision holds. Re-verified by `git log 451823ca8..d52d3eeb4 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (wrangler 4.147.0)
+
+`d52d3eeb4..341c8bd36`: `flake.nix` changes only the `wranglerPkg` pin: version 4.147.0, its lock and both hashes (`341c8bd36`), with the rationale comment. Nothing this record governs (ADR-2013 — Every compose publish binds 127.0.0.1 unless on the sanctioned-exposure list, CI-enforced across all overlays) changes meaning. The decision holds. Re-verified by `git log d52d3eeb4..341c8bd36 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
