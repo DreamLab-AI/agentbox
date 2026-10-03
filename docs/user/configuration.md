@@ -802,6 +802,24 @@ Run `preflight` before `up` whenever you change `agentbox.toml`, the override fi
 
 Hardening baseline is applied unconditionally. Feature-specific privilege expansions are manifest-declared.
 
+### `[security].role_isolation` — role service accounts (ADR-2122)
+
+```toml
+[security]
+role_isolation = false   # boot-class; keep off until the rehearsal passes
+```
+
+On, the boot keeps `/run/secrets` root-owned, copies each role's secrets into
+`/run/secrets/<role>/` (directory `0500`, files `0400`, owned by the role),
+unsets the classified variables (`AGENTBOX_PRIVKEY_HEX`, `AGENTBOX_NSEC`,
+`AGENTBOX_BRIDGE_SK`, `JUNKIEJARVIS_PRIVKEY_HEX`, `CONCIERGE_PRIVKEY_HEX`,
+`NIP98_PROXY_ALLOW_BEARER`, `NIP98_PROXY_SESSION_SECRET`) from PID 1, and execs
+`/etc/supervisord.isolated.conf`, in which `nostr-relay`, `nostr-gateway`,
+`nip98-proxy` and the sidestr producers and faucets run as their roles. The roles,
+uids and secret mapping live in `config/role-accounts.json`. Off, the boot is
+today's. Problems are logged with `ROLE-ISOLATION-` markers and recorded in
+`/run/secrets/role-isolation.state`; none of them stops the boot.
+
 ### `[security.deepsec]` — the build-with-quality Security gate (ADR-2033)
 
 Runtime policy for `skills/build-with-quality/scripts/deepsec-gate.sh`, which drives the

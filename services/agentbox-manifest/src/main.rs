@@ -29,6 +29,7 @@ mod mcp_hub;
 mod permissions;
 mod plugins;
 mod proxy;
+mod role_accounts;
 mod routing;
 mod sso;
 mod stacks;
@@ -240,6 +241,13 @@ enum Command {
         #[arg(long)]
         path: String,
     },
+    /// Per-role service accounts (ADR-2122): validate `config/role-accounts.json`,
+    /// print its `/etc/passwd` or `/etc/group` lines, or derive the isolated
+    /// supervisor config and the `/run/secrets` delivery plan from today's config.
+    RoleAccounts {
+        #[command(subcommand)]
+        action: RoleAccountsAction,
+    },
     /// Print the embedding dimension of an OpenAI-shaped response on stdin.
     EmbeddingDim,
     /// Print one key from a flat TUI state document.
@@ -255,6 +263,37 @@ enum Command {
         file: PathBuf,
         key: String,
         value: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum RoleAccountsAction {
+    /// Validate the table; exit 1 listing every violated rule.
+    Check {
+        #[arg(long)]
+        table: PathBuf,
+    },
+    /// Print one `/etc/passwd` line per role.
+    Passwd {
+        #[arg(long)]
+        table: PathBuf,
+    },
+    /// Print one `/etc/group` line per role (no members, ever).
+    Group {
+        #[arg(long)]
+        table: PathBuf,
+    },
+    /// Write `--out` (the isolated supervisor config) and `--plan` (the
+    /// delivery plan) from `--conf` (today's rendered supervisord.conf).
+    Isolate {
+        #[arg(long)]
+        table: PathBuf,
+        #[arg(long)]
+        conf: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        plan: PathBuf,
     },
 }
 
@@ -425,6 +464,23 @@ fn run(cmd: Command) -> Result<(), String> {
             );
             Ok(())
         }
+        Command::RoleAccounts { action } => match action {
+            RoleAccountsAction::Check { table } => {
+                role_accounts::load(&table).map(|t| print!("{}", role_accounts::summary(&t)))
+            }
+            RoleAccountsAction::Passwd { table } => {
+                role_accounts::load(&table).map(|t| print!("{}", role_accounts::passwd_lines(&t)))
+            }
+            RoleAccountsAction::Group { table } => {
+                role_accounts::load(&table).map(|t| print!("{}", role_accounts::group_lines(&t)))
+            }
+            RoleAccountsAction::Isolate {
+                table,
+                conf,
+                out,
+                plan,
+            } => role_accounts::run_isolate(&table, &conf, &out, &plan),
+        },
         Command::EmbeddingDim => {
             let mut buf = String::new();
             std::io::stdin()

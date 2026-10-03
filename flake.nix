@@ -3219,6 +3219,11 @@ stderr_logfile_maxbytes=5MB
           # acrobatics. Bootstrap-as-root still has CAP_CHOWN baseline
           # cap if it needs to fix anything.
           "/run:mode=755,size=${resTmpfsRun},uid=1000,gid=1000"
+          # ADR-2122 (custody W1): /run/secrets is its OWN root-owned tmpfs, so
+          # devuser, owner of /run, cannot rename or replace it. Ships in both
+          # modes; with [security].role_isolation off the entrypoint chowns it to
+          # devuser 0700 exactly as before.
+          "/run/secrets:mode=711,size=8M,uid=0,gid=0,noexec,nosuid,nodev"
           "/var/run:mode=755,size=16M,uid=1000,gid=1000"
           "/var/log:mode=755,size=128M,uid=1000,gid=1000"
           "/var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000"
@@ -3511,6 +3516,14 @@ ${ragflowNetworkDecl}
               "legacy JSS environment leaked into the agentbox supervisor config";
             supervisorText
           )} $out/etc/supervisord.conf
+          # ADR-2122 (custody W1): the isolated config and the /run/secrets
+          # delivery plan are a pure function of the config above and
+          # config/role-accounts.json, so the two configs cannot drift
+          # (tests/config/role-isolation-supervisor.test.sh). Both ship in every
+          # image; the entrypoint picks one from [security].role_isolation.
+          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts isolate --table ${./config/role-accounts.json} --conf $out/etc/supervisord.conf --out $out/etc/supervisord.isolated.conf --plan $out/etc/agentbox/role-secrets.tsv
+          # The table itself, for the role-isolation rehearsal and operators (names and paths only).
+          cp ${./config/role-accounts.json} $out/etc/agentbox/role-accounts.json
           cp ${./agentbox.toml} $out/etc/agentbox.toml
           cp ${pkgs.writeText "docker-compose.yml" composeText} $out/etc/agentbox/docker-compose.yml
           ${lib.optionalString relayLocal ''
@@ -3526,6 +3539,9 @@ ${ragflowNetworkDecl}
           PASSWD
           # Strip leading whitespace introduced by Nix heredoc indentation
           sed -i 's/^[[:space:]]*//' $out/etc/passwd
+          # ADR-2122 (custody W1): one account per role, uid = gid in 960-979,
+          # from config/role-accounts.json. Inert unless [security].role_isolation.
+          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts passwd --table ${./config/role-accounts.json} >> $out/etc/passwd
 
           # Custody W0: devuser is NOT a member of group root. Membership gave
           # every devuser process gid 0 and with it anything root left
@@ -3537,6 +3553,8 @@ ${ragflowNetworkDecl}
           devuser:x:1000:
           GROUP
           sed -i 's/^[[:space:]]*//' $out/etc/group
+          # ADR-2122: each role's own primary group, with no members.
+          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts group --table ${./config/role-accounts.json} >> $out/etc/group
 
           # Passwordless sudo for devuser. Both /etc/sudoers and the drop-in
           # are baked into the image because the rootfs is read_only at runtime

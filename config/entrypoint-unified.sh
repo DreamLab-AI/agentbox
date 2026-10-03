@@ -229,8 +229,11 @@ export PATH
 # tmpfs mounts owned by uid 1000 (flake.nix baselineTmpfsMounts), so devuser can
 # rename any entry directly under them, root's included. /tmp is root 1777: the
 # sticky bit stops devuser renaming or unlinking root's entries, and it is a
-# fresh tmpfs per container start. Move it under /run/secrets once W1 makes that
-# a root-owned mount point. Test: tests/runtime-contract/RC-X1-02.sh.
+# fresh tmpfs per container start. Custody W1 (ADR-2122): with
+# [security].role_isolation on and /run/secrets its own root-owned mount, the
+# guard moves to /run/secrets/.root-guard (ab_root_state_dir_pick, below); with
+# the flag off it stays here, because the flag-off boot hands /run/secrets to
+# devuser. Tests: tests/runtime-contract/RC-X1-02.sh, tests/config/role-isolation-boot.test.sh.
 AB_ROOT_STATE_DIR=/tmp/.agentbox-root
 _ab_root_state_dir_ok() { # _ab_root_state_dir_ok <dir> [owner-uid=0] → 0 when trustworthy
   [ -d "$1" ] && [ ! -L "$1" ] || return 1
@@ -257,6 +260,16 @@ _ab_stage_b_claim() { # _ab_stage_b_claim <dir> [owner-uid=0] → 0 claimed, 1 a
   mkdir -- "${1}/stage-b.claimed" 2>/dev/null || return 1
   return 0
 }
+
+# Role custody (ADR-2122, custody X-1 step 1, W1): the /run/secrets delivery and
+# the supervisor-config pick. Definitions only. Every caller is behind
+# [security].role_isolation = true; a missing lib turns the flag off (Stage A,
+# Phase 1) so the boot stays today's.
+_AB_ROLE_CUSTODY_LIB=/opt/agentbox/config/lib/role-custody.sh
+if [ -r "$_AB_ROLE_CUSTODY_LIB" ]; then
+  # shellcheck source=lib/role-custody.sh
+  . "$_AB_ROLE_CUSTODY_LIB"
+fi
 
 # Stage dispatch — when running as the supervisord bootstrap program, skip to B.
 if [ "${AGENTBOX_BOOTSTRAP_STAGE:-A}" = "B" ]; then
@@ -331,6 +344,20 @@ _ab_vault_resolve
 # once here and exported, so supervisord and every program see the same value;
 # the manifest wins over anything inherited from the compose environment.
 AGENTBOX_ROLE_ISOLATION="$(_ab_toml_bool security role_isolation)"
+# Custody W1 (ADR-2122). Flag on: /run/secrets must be root:root 0711 before
+# anything is written into it, and the Stage-B guard moves inside it when it is a
+# real mount. An image that cannot honour the flag (no lib, no isolated config or
+# no plan) boots exactly as with the flag off, and says so loudly.
+_AB_SECRETS_MOUNT_STATE=ok
+if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
+  if declare -F ab_role_isolation_ready >/dev/null && ab_role_isolation_ready; then
+    ab_secrets_root_prepare /run/secrets || _AB_SECRETS_MOUNT_STATE=degraded
+    AB_ROOT_STATE_DIR="$(ab_root_state_dir_pick 1)"
+  else
+    echo "[security] ROLE-ISOLATION-UNAVAILABLE: [security].role_isolation = true, but this image lacks ${_AB_ROLE_CUSTODY_LIB}, /etc/supervisord.isolated.conf or /etc/agentbox/role-secrets.tsv; booting as role_isolation = false" >&2
+    AGENTBOX_ROLE_ISOLATION=0
+  fi
+fi
 export AGENTBOX_ROLE_ISOLATION
 # Arm Stage B's one-shot guard (see _ab_stage_b_claim). Fail loud, not fatal:
 # an unarmed dir makes Stage B refuse, which shows in bootstrap.error.log.
@@ -355,8 +382,13 @@ mkdir -p \
 # decrypted Nostr bridge key written in Phase 5c). Tight perms — only devuser
 # (the uid services run as) may traverse it. This is the ONLY place root creates
 # it; all secret writes happen in the root boot phase before the drop to devuser.
-chmod 0700 /run/secrets 2>/dev/null || true
-chown 1000:1000 /run/secrets 2>/dev/null || true
+# Custody W1: with [security].role_isolation on, /run/secrets stays root:root
+# 0711 (prepared above) and each role gets its own 0500 subdirectory before
+# supervisord starts (ab_role_secrets_deliver, just before the exec).
+if [ "$AGENTBOX_ROLE_ISOLATION" != 1 ]; then
+  chmod 0700 /run/secrets 2>/dev/null || true
+  chown 1000:1000 /run/secrets 2>/dev/null || true
+fi
 
 # R-012: Boot assertion — WORKSPACE must be a mounted volume, not tmpfs.
 # If the compose mount is missing, $WORKSPACE silently lands on the container
@@ -878,8 +910,11 @@ fi
 # launcher's environment before exec'ing supervisord. nostr-pod-bridge reads
 # AGENTBOX_BRIDGE_SK_FILE (see services/nostr-pod-bridge/src/main.rs); the env
 # var remains supported only as a back-compat fallback.
+# Custody W1: with [security].role_isolation on, this devuser copy is NOT
+# written; the key goes only to /run/secrets/ab-identity/nostr.key (the delivery
+# plan, just before the exec), which also unsets AGENTBOX_BRIDGE_SK.
 NOSTR_KEY_FILE="/run/secrets/nostr.key"
-if [ -n "${AGENTBOX_BRIDGE_SK:-}" ]; then
+if [ -n "${AGENTBOX_BRIDGE_SK:-}" ] && [ "$AGENTBOX_ROLE_ISOLATION" != 1 ]; then
   ( umask 077; printf '%s' "$AGENTBOX_BRIDGE_SK" > "$NOSTR_KEY_FILE" )
   chmod 0400 "$NOSTR_KEY_FILE" 2>/dev/null || true
   chown 1000:1000 "$NOSTR_KEY_FILE" 2>/dev/null || true
@@ -997,8 +1032,26 @@ if [ "${AGENTBOX_TAB0_BRIDGE_SUPERVISED:-0}" = "1" ] && [ -z "${BRIDGE_TOKEN:-}"
   export BRIDGE_TOKEN
 fi
 
+# Custody W1 (ADR-2122): pick the supervisor config. Flag off: today's
+# /etc/supervisord.conf, unchanged. Flag on: deliver every role's secrets into
+# /run/secrets/<role>/ (0500 dir, 0400 files, owned by the role), unset the
+# classified variables from this launcher's environment so supervisord never
+# inherits them, then run /etc/supervisord.isolated.conf, which differs from
+# today's only in the role programs' user= and environment= lines.
+_AB_SUPERVISORD_CONF=/etc/supervisord.conf
+if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
+  AB_RC_FAILURES=0
+  ab_role_secrets_deliver /etc/agentbox/role-secrets.tsv || true
+  {
+    [ "$_AB_SECRETS_MOUNT_STATE" = ok ] || echo "degraded:secrets-mount"
+    [ "${AB_RC_FAILURES:-0}" = 0 ] && echo "ok:secrets-delivery" || echo "degraded:secrets-delivery"
+  } >>/run/secrets/role-isolation.state 2>/dev/null \
+    || echo "[security] WARN: could not record the delivery state in /run/secrets/role-isolation.state" >&2
+  _AB_SUPERVISORD_CONF="$(ab_supervisord_conf_pick 1)"
+  echo "[security] role_isolation: supervisord config ${_AB_SUPERVISORD_CONF}"
+fi
 echo "[5b/8] Starting supervisord..."
-exec supervisord -c /etc/supervisord.conf -n
+exec supervisord -c "$_AB_SUPERVISORD_CONF" -n
 
 fi  # end STAGE_B_MODE=0 block — Stage A exits via exec above
 
@@ -1020,7 +1073,12 @@ export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 # supervisord); this only fires if Stage B is ever invoked standalone.
 [ -n "${AGENTBOX_VAULT_ENABLED:-}" ] || _ab_vault_resolve
 # One-shot (custody W0): a replay via `supervisorctl start bootstrap` is a no-op.
-# PATH is already store-only (sanitised above the stage dispatch).
+# PATH is already store-only (sanitised above the stage dispatch). Custody W1:
+# AGENTBOX_ROLE_ISOLATION is PID 1's effective value (inherited through
+# supervisord), so Stage B picks the same guard dir Stage A armed.
+if [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ] && declare -F ab_root_state_dir_pick >/dev/null; then
+  AB_ROOT_STATE_DIR="$(ab_root_state_dir_pick 1)"
+fi
 _ab_b_claim_rc=0
 _ab_stage_b_claim "$AB_ROOT_STATE_DIR" || _ab_b_claim_rc=$?
 case "$_ab_b_claim_rc" in

@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_113 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_114 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -176,3 +176,4 @@ _113 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2119](ADR-2119-remove-retired-outliner-ontology-runtime.md) | Remove the retired outliner ontology runtime | BASELINE-container | 2026-10-01 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2120](ADR-2120-codex-daemon-package-volume.md) | Give Codex daemon packages executable persistent storage | BASELINE-container | 2026-10-01 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2121](ADR-2121-factrail-implements-jev-compaction.md) | Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit | GOVERNANCE-capabilities | 2026-10-02 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2122](ADR-2122-role-service-accounts-run-secrets-and-the-identity-port.md) | Role service accounts, /run/secrets, and the identity port | SECURITY-profiles | 2026-10-03 | proposed | partial | inactive | — | — | jjohare | agentbox |

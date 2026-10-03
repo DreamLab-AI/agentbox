@@ -1955,6 +1955,11 @@
           "type": "boolean",
           "description": "Operator acknowledgement of residual risk from security exceptions."
         },
+        "role_isolation": {
+          "type": "boolean",
+          "default": false,
+          "description": "ADR-2122 (custody X-1 step 1): run role programs under per-role service accounts (config/role-accounts.json) with their secrets in a root-owned /run/secrets/<role>/, the classified variables scrubbed from PID 1's environment, and devuser without the raw Docker socket. Boot-class: both supervisor configs ship in every image. Keep false until the role-isolation rehearsal passes."
+        },
         "deepsec": {
           "type": "object",
           "additionalProperties": false,

@@ -2099,6 +2099,18 @@ log_level = "info"
 # the residual attack surface analysis before flipping this to true.
 audit_acknowledged = true
 
+# Custody X-1 step 1 (ADR-2122): per-role service accounts. On, role programs
+# (nostr-relay, nostr-gateway, nip98-proxy, sidestr producers and faucets) run
+# under their own uids from config/role-accounts.json, read their secrets from
+# /run/secrets/<role>/ (root-owned tmpfs, 0500 dir, 0400 files), the classified
+# variables leave PID 1's environment, and devuser loses the raw Docker socket
+# (W0). Boot-class: the image ships both supervisor configs; restart to apply.
+# Leave OFF until the role-isolation rehearsal passes
+# (scripts/activation/role-isolation-rehearsal.sh): the identity port and the
+# custody migration (W2-W4) are not in the image yet, so role programs fail
+# closed under the flag.
+role_isolation = false
+
 # Feature-specific exceptions to the hardened baseline.
 # Each key must match an enabled feature gate (validator rule E020).
 # Add the exception block when you enable the corresponding feature.
