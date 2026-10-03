@@ -46,6 +46,7 @@ _run_exec() { # <flag> <deliver-failures> → stdout of the simulated block
   ( set -euo pipefail
     # shellcheck source=../../config/lib/role-custody.sh
     . "$LIB"
+    # shellcheck disable=SC2034  # read by the entrypoint block under test
     ab_role_secrets_deliver() { echo "DELIVER $1" >>"$T/calls"; AB_RC_FAILURES="$DELIVER_FAILS"; return 0; }
     ab_supervisord_conf_pick() { echo "PICK $1" >>"$T/calls"; echo /etc/supervisord.roles.conf; }
     AGENTBOX_ROLE_ISOLATION="$1"; DELIVER_FAILS="$2"; _AB_SECRETS_MOUNT_STATE="${3:-ok}"
@@ -78,6 +79,7 @@ out="$(_run_exec 1 3 degraded 2>"$T/err")"
   && _ok "delivery problems and a bad mount are recorded degraded; the boot still reaches exec (fail loud, not fatal)" \
   || _bad "degraded path" "state=$(cat "$T/state" 2>/dev/null)"
 # The real pick, flag off and on, against scratch configs.
+# shellcheck source=../../config/lib/role-custody.sh
 . "$LIB"
 : >"$T/today"; : >"$T/iso"
 [ "$(ab_supervisord_conf_pick 0 "$T/today" "$T/iso")" = "$T/today" ] && [ "$(ab_supervisord_conf_pick 1 "$T/today" "$T/iso")" = "$T/iso" ] \
@@ -93,6 +95,7 @@ FLAG_BLK="$(_block '_AB_SECRETS_MOUNT_STATE=ok' 'export AGENTBOX_ROLE_ISOLATION'
 [ -n "$FLAG_BLK" ] && _ok "the Stage A flag block is present" || { _bad "Stage A flag block not found"; _done; }
 _run_flag() { # <flag> <ready 0|1> → "flag guard mount" plus calls
   ( set -euo pipefail
+    # shellcheck source=../../config/lib/role-custody.sh
     . "$LIB"
     ab_role_isolation_ready() { [ "$READY" = 1 ]; }
     ab_secrets_root_prepare() { echo "PREPARE $1" >>"$T/calls"; return "${PREP_RC:-0}"; }
@@ -137,7 +140,9 @@ claim_line="$(grep -n '^_ab_stage_b_claim "\$AB_ROOT_STATE_DIR"' "$ENTRY" | cut 
 b_line="$(grep -n '^if \[ "\${AGENTBOX_ROLE_ISOLATION:-0}" = 1 \] && declare -F ab_root_state_dir_pick' "$ENTRY" | cut -d: -f1)"
 [ -n "$B" ] && [ -n "$b_line" ] && [ -n "$claim_line" ] && [ "$b_line" -lt "$claim_line" ] && [ $((claim_line - b_line)) -lt 6 ] \
   && _ok "Stage B re-picks the guard dir from PID 1's effective flag just before claiming" || _bad "Stage B guard pick" "b=${b_line:-?} claim=${claim_line:-?}"
+# shellcheck source=../../config/lib/role-custody.sh
 out="$( . "$LIB"; ab_secrets_mount_ok() { return 0; }; AB_ROOT_STATE_DIR=/tmp/.agentbox-root; AGENTBOX_ROLE_ISOLATION=0; eval "$B"; echo "$AB_ROOT_STATE_DIR")"
+# shellcheck source=../../config/lib/role-custody.sh
 out1="$( . "$LIB"; ab_secrets_mount_ok() { return 0; }; AB_ROOT_STATE_DIR=/tmp/.agentbox-root; AGENTBOX_ROLE_ISOLATION=1; eval "$B"; echo "$AB_ROOT_STATE_DIR")"
 [ "$out" = /tmp/.agentbox-root ] && [ "$out1" = /run/secrets/.root-guard ] \
   && _ok "Stage B: off → /tmp/.agentbox-root; on with a good mount → /run/secrets/.root-guard (same as Stage A)" || _bad "Stage B pick" "$out / $out1"

@@ -117,7 +117,7 @@ done
 [ -z "$bad4" ] && _ok "no program names another role's /run/secrets/<role>/ path; non-role programs name none" \
   || _bad "a program names a secret path that is not its own" "$bad4"
 leaked=""
-while IFS=$'\t' read -r kind role file src; do
+while IFS=$'\t' read -r kind role _ src; do
   [ "$kind" = file ] || continue
   grep -qF -- "$src" "$ISO" && leaked="${leaked} ${role}:${src}"
 done <"$PLAN"
