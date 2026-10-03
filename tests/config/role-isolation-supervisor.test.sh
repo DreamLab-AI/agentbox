@@ -203,6 +203,9 @@ grep -q 'role-accounts passwd --table \${./config/role-accounts.json} >> \$out/e
   && grep -q 'role-accounts group --table \${./config/role-accounts.json} >> \$out/etc/group' "$F" \
   && _ok "flake.nix appends the role passwd and group lines from the table" \
   || _bad "flake.nix must append role passwd/group lines from config/role-accounts.json"
+grep -q 'cp \${./config/role-accounts.json} \$out/etc/agentbox/role-accounts.json' "$F" \
+  && _ok "flake.nix ships the table at /etc/agentbox/role-accounts.json (the rehearsal reads it)" \
+  || _bad "flake.nix must ship config/role-accounts.json at /etc/agentbox/role-accounts.json"
 grep -qE '"/run/secrets:mode=711,size=[0-9]+[mM],uid=0,gid=0' "$F" && grep -qE -- '- /run/secrets:mode=711,size=[0-9]+[mM],uid=0,gid=0' "$ROOT/docker-compose.yml" \
   && _ok "/run/secrets is its own root-owned tmpfs in flake.nix and the generated docker-compose.yml" \
   || _bad "/run/secrets must be a root-owned tmpfs mount in flake.nix and docker-compose.yml"
