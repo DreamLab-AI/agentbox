@@ -491,9 +491,15 @@ host() { # host [VAR=value ...]: run the host half against the fakes; sets $rc $
 }
 printf '%s/docker.sock\t0 965 660 1\n' "$H" >"$H/stat-table"; : >"$H/docker.sock"
 
-out="$(env -u HR_TEST_ROOT bash "$HOST_SCRIPT" 2>&1)"; rc=$?
+out="$(env -u HR_TEST_ROOT HR_ASSUME_CONTAINER=1 bash "$HOST_SCRIPT" 2>&1)"; rc=$?
 if [ "$rc" = 1 ] && grep -q 'never from inside the container' <<<"$out"; then ok "host half refuses to run inside the container"
 else bad "host half refuses to run inside the container" "rc=$rc out=$out"; fi
+# Inside a real container (the agentbox image), the genuine detection must refuse without the seam.
+if [ -e /.dockerenv ] || [ -e /run/.containerenv ] || grep -qE '(docker|containerd|kubepods|libpod)' /proc/1/cgroup 2>/dev/null; then
+  out="$(env -u HR_TEST_ROOT -u HR_ASSUME_CONTAINER bash "$HOST_SCRIPT" 2>&1)"; rc=$?
+  if [ "$rc" = 1 ] && grep -q 'never from inside the container' <<<"$out"; then ok "host half detects a real container without the seam"
+  else bad "host half detects a real container without the seam" "rc=$rc out=$out"; fi
+fi
 
 host RH_ROOT="$ROOT/case-1" RH_MANIFEST="$ROOT/case-1/etc/agentbox.toml"
 if [ "$rc" = 0 ] && [ "$(field .half)" = host ] && [ "$(field .verdict)" = PASS ] && [ "$(field '.checks[] | select(.target == "/var/run/docker.sock (host)") | .status')" = recorded ] && valid; then

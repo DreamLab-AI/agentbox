@@ -31,7 +31,8 @@
 #   --receipt-dir DIR  default docs/estate-closeout of this checkout
 #   --allow-dirty      run although scripts/activation differs from HEAD
 #
-# Test seams (tests/config/role-isolation-rehearsal.test.sh): HR_TEST_ROOT (skips the host,
+# Test seams (tests/config/role-isolation-rehearsal.test.sh): HR_ASSUME_CONTAINER=1 (forces the
+# in-container refusal; it cannot suppress it), HR_TEST_ROOT (skips the host,
 # root and clean-tree guards; only for fakes), HR_DOCKER, HR_GETENT, HR_STAT, HR_HOST_SOCKET,
 # HR_REGISTRY, HR_CONTAINER_REPO.
 
@@ -66,6 +67,9 @@ while [ $# -gt 0 ]; do
 done
 
 in_container() {
+  # HR_ASSUME_CONTAINER=1 can only add a refusal, never remove one: the test sets it so the
+  # refusal is exercised on a CI runner that is a VM, not a container.
+  [ "${HR_ASSUME_CONTAINER:-}" = 1 ] && return 0
   [ -e /.dockerenv ] || [ -e /run/.containerenv ] && return 0
   grep -qE '(docker|containerd|kubepods|libpod)' /proc/1/cgroup 2>/dev/null
 }

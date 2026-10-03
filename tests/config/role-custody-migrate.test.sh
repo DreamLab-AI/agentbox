@@ -119,6 +119,9 @@ put /var/lib/agentbox/identities/agentbox-core.json identity 0600
 put /home/devuser/workspace/sidestr/agents/treasury.key treasury 0600
 put /home/devuser/workspace/sidestr/agents/treasury-dreamlab-txbt4.key treasury-txbt4 0400
 put /home/devuser/workspace/.agentbox/zone-keys.json zones 0600
+# The flag-off volume is devuser's (1000:1000) whoever runs the test: record that in the ledger
+# rather than inherit the real owner (uid 1001 on a GitHub runner).
+find "$R" -mindepth 1 -print0 | while IFS= read -r -d '' p; do printf '1000:1000\t%s\n' "$p"; done >>"$LEDGER"
 # identities/ is root's before the flag (mkdir by the root entrypoint).
 printf '0:0\t%s\n' "$R/var/lib/agentbox/identities" >>"$LEDGER"
 LEGACY_BEFORE="$(for p in treasury.key treasury-dreamlab-txbt4.key; do stat -c '%n %a %s %Y %Z' "$R/home/devuser/workspace/sidestr/agents/$p"; sha256sum <"$R/home/devuser/workspace/sidestr/agents/$p"; done; stat -c '%n %a %s %Y %Z' "$R/home/devuser/workspace/.agentbox/zone-keys.json")"
