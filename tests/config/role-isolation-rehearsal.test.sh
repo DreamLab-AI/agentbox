@@ -375,6 +375,7 @@ mig_out="$(
     local o out; out="$(command stat -c "$2" -- "$4" 2>/dev/null)" || return 1
     o="$(awk -F'\t' -v p="$4" '$2 == p {o=$1} END {print o}' "$LEDGER22")"
     [ -n "$o" ] && out="${o%%:*} ${o##*:} ${out#* * }"; printf '%s\n' "$out"; }
+  # shellcheck disable=SC2034  # test seams read by the sourced role-custody.sh
   AB_RC_CHOWN=_led AB_RC_STAT=_lstat AB_RC_ROOT="$F"
   mkdir -p "$F/run/secrets"; chmod u+w "$F/run/secrets"
   ab_custody_migrate "$F/etc/agentbox/role-secrets.tsv" /run/secrets/role-isolation.migrated 2>&1

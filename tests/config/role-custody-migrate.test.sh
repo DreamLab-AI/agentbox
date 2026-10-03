@@ -210,6 +210,7 @@ tamper_case() { # <label> <setup-fn>: fresh root, the setup plants the canonical
   local o; AB_RC_ROOT="$RT" ab_custody_migrate "$PLAN" /run/secrets/role-isolation.migrated >"$T/run.out" 2>&1; o="$(cat "$T/run.out")"
   local chowned; chowned="$(awk -F'\t' -v p="$RT$target" '$2 == p' "$LEDGER" | wc -l)"
   local delivered=no
+  # shellcheck disable=SC2034  # AB_RC_DELIVERED is the sourced library's counter
   ( AB_RC_DELIVERED=0; sed "s#\t/var/lib/agentbox/#\t$RT/var/lib/agentbox/#" "$PLAN" >"$RT/plan.d"
     declare -A refused=(); for k in "${!AB_RC_REFUSED[@]}"; do refused["$RT$k"]="${AB_RC_REFUSED[$k]}"; done
     AB_RC_REFUSED=(); for k in "${!refused[@]}"; do AB_RC_REFUSED[$k]="${refused[$k]}"; done
@@ -262,7 +263,9 @@ grep -q -F '_ab_role_key_file_own 1 "$_SOVEREIGN_ID_FILE" ab-identity' "$ENTRY" 
 # Flag-off execution of the block: revert is called, migrate is not.
 BLK="$(awk '/^if declare -F ab_custody_migrate >\/dev\/null/ {f=1} f {print} f && /^fi$/ {exit}' "$ENTRY")"
 calls="$( ab_custody_migrate() { echo migrate; }; ab_custody_revert() { echo revert; }
+  # shellcheck disable=SC2034  # read by the eval'd entrypoint block
   AGENTBOX_ROLE_ISOLATION=0; eval "${BLK//\/etc\/agentbox\/role-secrets.tsv/$PLAN}"
+  # shellcheck disable=SC2034  # read by the eval'd entrypoint block
   AGENTBOX_ROLE_ISOLATION=1; eval "${BLK//\/etc\/agentbox\/role-secrets.tsv/$PLAN}" )"
 [ "$calls" = $'revert\nmigrate' ] && _ok "the block runs revert with the flag off and migrate with it on" || _bad "block dispatch" "$calls"
 

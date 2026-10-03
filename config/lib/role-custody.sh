@@ -427,10 +427,10 @@ _ab_rc_set() {
 # _ab_rc_modes_trusted <file> -> 0 when root owns it, it is a regular file with
 # one link and nobody else can write it.
 _ab_rc_modes_trusted() {
-  local st uid mode links type
+  local st uid mode links
   [ -f "$1" ] && [ ! -L "$1" ] || return 1
   st="$(_ab_rc_stat "$1")" || return 1
-  read -r uid _ mode links _ type <<<"$st"
+  read -r uid _ mode links _ <<<"$st"
   [ "$uid" = 0 ] && [ "$links" = 1 ] || return 1
   case "${mode: -2}" in 00) return 0 ;; esac
   return 1
@@ -446,7 +446,7 @@ _ab_rc_plan_rows() {
 # Sets AB_RC_MIGRATED (copies made this run), AB_RC_MIG_FAILURES, AB_RC_REFUSED.
 ab_custody_migrate() {
   local plan="$1" record="${2:-/run/secrets/role-isolation.migrated}"
-  local R="${AB_RC_ROOT:-}" kind a b c p l st uid gid mode links size type dir modes="" tmp rec seen
+  local R="${AB_RC_ROOT:-}" kind a b c p l st uid gid mode links size dir modes="" tmp rec seen
   local -A role_uid=() is_dir=() recorded=()
   AB_RC_MIGRATED=0; AB_RC_MIG_FAILURES=0; AB_RC_REFUSED=()
   if [ ! -r "$plan" ]; then
@@ -536,7 +536,7 @@ ab_custody_migrate() {
       continue
     fi
     st="$(_ab_rc_stat "$R$p")"
-    read -r uid gid mode links size type <<<"$st"
+    read -r uid gid mode links size _ <<<"$st"
     local why=""
     if [ -L "$R$p" ]; then why=symlink
     elif [ ! -f "$R$p" ]; then why=not-regular
@@ -614,6 +614,7 @@ ab_custody_revert() {
     if _ab_rc_set "$R$p" "$ids" "$mode"; then n=$((n + 1))
     else echo "[security] ROLE-ISOLATION-ERROR: custody revert: cannot hand ${p} back to devuser ${mode}" >&2; fi
   done <"$R$modes"
+  # shellcheck disable=SC2034  # documented output (see the header above), read by callers
   AB_RC_REVERTED=$n
   echo "[security] role-isolation: custody revert: ${n} registry path(s) handed back to devuser"
   return 0
