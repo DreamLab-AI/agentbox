@@ -93,7 +93,7 @@ const CATALOGUE = [
     summary: 'ADR-2033: vercel-labs deepsec vulnerability reviewer baked as a CLI; build-with-quality drives it in PR mode via scripts/deepsec-gate.sh under the [security.deepsec] policy.' },
   { id: 'role-isolation', name: 'Role service accounts + /run/secrets (custody X-1 step 1)', layer: 'module',
     gate: 'security.role_isolation', apply_class: 'boot',
-    summary: 'ADR-2122: role programs run under per-role uids (config/role-accounts.json, 960-979) from /etc/supervisord.isolated.conf, read their secrets from the root-owned /run/secrets/<role>/, and the classified variables leave PID 1; devuser loses the raw Docker socket (W0). Boot-class: accounts, both supervisor configs and the mount ship in every image and the entrypoint picks at boot (the image that first carries them needs one ./agentbox.sh rebuild). Off until the role-isolation rehearsal passes.' },
+    summary: 'ADR-2122: role programs run under per-role uids (config/role-accounts.json, 960-979) from /etc/supervisord.roles.conf, read their secrets from the root-owned /run/secrets/<role>/, and the classified variables leave PID 1; devuser loses the raw Docker socket (W0). Boot-class: accounts, both supervisor configs and the mount ship in every image and the entrypoint picks at boot (the image that first carries them needs one ./agentbox.sh rebuild). Off until the role-isolation rehearsal passes.' },
   { id: 'codebase-memory', name: 'codebase-memory MCP', layer: 'module',
     gate: 'toolchains.codebase_memory', apply_class: 'rebuild',
     summary: 'Structural code-graph index MCP (callers, architecture, snippets).' },

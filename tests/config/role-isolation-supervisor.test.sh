@@ -2,7 +2,7 @@
 # role-isolation-supervisor — the two supervisor configs cannot drift (ADR-2122,
 # custody X-1 step 1, W1).
 #
-# /etc/supervisord.isolated.conf is derived from today's rendered
+# /etc/supervisord.roles.conf is derived from today's rendered
 # /etc/supervisord.conf by `agentbox-manifest role-accounts isolate` with
 # config/role-accounts.json. Against a fixture that is a real rendered config
 # (the running image's, plus the per-chain and docker-read-proxy blocks it
@@ -48,7 +48,7 @@ _manifest_bin() {
 BIN="$(_manifest_bin)" || { echo "SKIP: agentbox-manifest is not built and cargo is unavailable"; exit 77; }
 command -v jq >/dev/null 2>&1 || { echo "SKIP: jq is required"; exit 77; }
 
-ISO="$T/supervisord.isolated.conf"; PLAN="$T/role-secrets.tsv"
+ISO="$T/supervisord.roles.conf"; PLAN="$T/role-secrets.tsv"
 _same() { [ "$(sha256sum <"$1")" = "$(sha256sum <"$2")" ]; }   # no diffutils needed
 
 # ── 1. the transform runs ────────────────────────────────────────────────────
@@ -196,8 +196,8 @@ grep -qE ':0:|:1000:|devuser' "$T/group" "$T/passwd" && _bad "a role line refere
 
 # ── 8. flake wiring (static: Nix cannot be evaluated here) ───────────────────
 F="$ROOT/flake.nix"
-grep -q 'role-accounts isolate --table \${./config/role-accounts.json} --conf \$out/etc/supervisord.conf --out \$out/etc/supervisord.isolated.conf --plan \$out/etc/agentbox/role-secrets.tsv' "$F" \
-  && _ok "flake.nix derives supervisord.isolated.conf and the plan from the baked supervisord.conf" \
+grep -q 'role-accounts isolate --table \${./config/role-accounts.json} --conf \$out/etc/supervisord.conf --out \$out/etc/supervisord.roles.conf --plan \$out/etc/agentbox/role-secrets.tsv' "$F" \
+  && _ok "flake.nix derives supervisord.roles.conf and the plan from the baked supervisord.conf" \
   || _bad "flake.nix must run role-accounts isolate on \$out/etc/supervisord.conf"
 grep -q 'role-accounts passwd --table \${./config/role-accounts.json} >> \$out/etc/passwd' "$F" \
   && grep -q 'role-accounts group --table \${./config/role-accounts.json} >> \$out/etc/group' "$F" \

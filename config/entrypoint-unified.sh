@@ -354,7 +354,7 @@ if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
     ab_secrets_root_prepare /run/secrets || _AB_SECRETS_MOUNT_STATE=degraded
     AB_ROOT_STATE_DIR="$(ab_root_state_dir_pick 1)"
   else
-    echo "[security] ROLE-ISOLATION-UNAVAILABLE: [security].role_isolation = true, but this image lacks ${_AB_ROLE_CUSTODY_LIB}, /etc/supervisord.isolated.conf or /etc/agentbox/role-secrets.tsv; booting as role_isolation = false" >&2
+    echo "[security] ROLE-ISOLATION-UNAVAILABLE: [security].role_isolation = true, but this image lacks ${_AB_ROLE_CUSTODY_LIB}, /etc/supervisord.roles.conf or /etc/agentbox/role-secrets.tsv; booting as role_isolation = false" >&2
     AGENTBOX_ROLE_ISOLATION=0
   fi
 fi
@@ -1036,7 +1036,7 @@ fi
 # /etc/supervisord.conf, unchanged. Flag on: deliver every role's secrets into
 # /run/secrets/<role>/ (0500 dir, 0400 files, owned by the role), unset the
 # classified variables from this launcher's environment so supervisord never
-# inherits them, then run /etc/supervisord.isolated.conf, which differs from
+# inherits them, then run /etc/supervisord.roles.conf, which differs from
 # today's only in the role programs' user= and environment= lines.
 _AB_SUPERVISORD_CONF=/etc/supervisord.conf
 if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then

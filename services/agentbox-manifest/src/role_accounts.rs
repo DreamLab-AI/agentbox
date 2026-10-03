@@ -6,7 +6,7 @@
 //! may read. Three things are derived from it, and only from it:
 //!
 //! * `/etc/passwd` and `/etc/group` lines, baked by `flake.nix`;
-//! * `/etc/supervisord.isolated.conf`, a pure function of today's rendered
+//! * `/etc/supervisord.roles.conf`, a pure function of today's rendered
 //!   `/etc/supervisord.conf`: each role program's `user=` becomes its role and its
 //!   `environment=` gains `HOME`, `AGENTBOX_SECRETS_DIR` and the per-secret path
 //!   variables pointed at `/run/secrets/<role>/`. No other line changes, so the
@@ -470,7 +470,7 @@ pub struct Isolated {
     pub isolated_programs: Vec<String>,
 }
 
-/// Derive `supervisord.isolated.conf` and the delivery plan from today's config.
+/// Derive `supervisord.roles.conf` and the delivery plan from today's config.
 pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
     let mut lines: Vec<String> = conf.split_inclusive('\n').map(str::to_string).collect();
 

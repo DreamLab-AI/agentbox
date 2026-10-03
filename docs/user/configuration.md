@@ -814,7 +814,7 @@ On, the boot keeps `/run/secrets` root-owned, copies each role's secrets into
 unsets the classified variables (`AGENTBOX_PRIVKEY_HEX`, `AGENTBOX_NSEC`,
 `AGENTBOX_BRIDGE_SK`, `JUNKIEJARVIS_PRIVKEY_HEX`, `CONCIERGE_PRIVKEY_HEX`,
 `NIP98_PROXY_ALLOW_BEARER`, `NIP98_PROXY_SESSION_SECRET`) from PID 1, and execs
-`/etc/supervisord.isolated.conf`, in which `nostr-relay`, `nostr-gateway`,
+`/etc/supervisord.roles.conf`, in which `nostr-relay`, `nostr-gateway`,
 `nip98-proxy` and the sidestr producers and faucets run as their roles. The roles,
 uids and secret mapping live in `config/role-accounts.json`. Off, the boot is
 today's. Problems are logged with `ROLE-ISOLATION-` markers and recorded in

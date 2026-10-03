@@ -3521,7 +3521,7 @@ ${ragflowNetworkDecl}
           # config/role-accounts.json, so the two configs cannot drift
           # (tests/config/role-isolation-supervisor.test.sh). Both ship in every
           # image; the entrypoint picks one from [security].role_isolation.
-          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts isolate --table ${./config/role-accounts.json} --conf $out/etc/supervisord.conf --out $out/etc/supervisord.isolated.conf --plan $out/etc/agentbox/role-secrets.tsv
+          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts isolate --table ${./config/role-accounts.json} --conf $out/etc/supervisord.conf --out $out/etc/supervisord.roles.conf --plan $out/etc/agentbox/role-secrets.tsv
           # The table itself, for the role-isolation rehearsal and operators (names and paths only).
           cp ${./config/role-accounts.json} $out/etc/agentbox/role-accounts.json
           cp ${./agentbox.toml} $out/etc/agentbox.toml

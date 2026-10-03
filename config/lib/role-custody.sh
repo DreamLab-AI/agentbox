@@ -43,7 +43,7 @@ ab_root_state_dir_pick() {
 # The config `exec supervisord -c` gets. Only the exact value 1 with a readable
 # isolated config selects it; anything else is today's config, byte for byte.
 ab_supervisord_conf_pick() {
-  local today="${2:-/etc/supervisord.conf}" isolated="${3:-/etc/supervisord.isolated.conf}"
+  local today="${2:-/etc/supervisord.conf}" isolated="${3:-/etc/supervisord.roles.conf}"
   if [ "${1:-0}" = 1 ] && [ -r "$isolated" ] && [ ! -L "$isolated" ]; then
     printf '%s\n' "$isolated"
   else
@@ -54,7 +54,7 @@ ab_supervisord_conf_pick() {
 # ab_role_isolation_ready [isolated-conf] [plan] → 0 when the image can honour
 # the flag. An image that lacks either artefact boots exactly as today.
 ab_role_isolation_ready() {
-  local conf="${1:-/etc/supervisord.isolated.conf}" plan="${2:-/etc/agentbox/role-secrets.tsv}"
+  local conf="${1:-/etc/supervisord.roles.conf}" plan="${2:-/etc/agentbox/role-secrets.tsv}"
   [ -r "$conf" ] && [ -r "$plan" ] && grep -q '^role	' "$plan" 2>/dev/null
 }
 

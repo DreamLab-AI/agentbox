@@ -47,7 +47,7 @@ _run_exec() { # <flag> <deliver-failures> → stdout of the simulated block
     # shellcheck source=../../config/lib/role-custody.sh
     . "$LIB"
     ab_role_secrets_deliver() { echo "DELIVER $1" >>"$T/calls"; AB_RC_FAILURES="$DELIVER_FAILS"; return 0; }
-    ab_supervisord_conf_pick() { echo "PICK $1" >>"$T/calls"; echo /etc/supervisord.isolated.conf; }
+    ab_supervisord_conf_pick() { echo "PICK $1" >>"$T/calls"; echo /etc/supervisord.roles.conf; }
     AGENTBOX_ROLE_ISOLATION="$1"; DELIVER_FAILS="$2"; _AB_SECRETS_MOUNT_STATE="${3:-ok}"
     eval "$SIM" )
 }
@@ -64,7 +64,7 @@ done
 [ -z "$badj" ] && _ok "only the exact effective value 1 (from _ab_toml_bool) turns the block on" || _bad "flag values must count as off" "$badj"
 rm -f "$T/calls" "$T/state"
 out="$(_run_exec 1 0 2>"$T/err")"
-if [ "$(printf '%s\n' "$out" | tail -1)" = "CONF=/etc/supervisord.isolated.conf" ] \
+if [ "$(printf '%s\n' "$out" | tail -1)" = "CONF=/etc/supervisord.roles.conf" ] \
    && [ "$(cat "$T/calls")" = "$(printf 'DELIVER /etc/agentbox/role-secrets.tsv\nPICK 1')" ] \
    && [ "$(cat "$T/state")" = "ok:secrets-delivery" ]; then
   _ok "flag on: deliver from /etc/agentbox/role-secrets.tsv, then the isolated config; state ok:secrets-delivery"
@@ -73,7 +73,7 @@ else
 fi
 rm -f "$T/calls" "$T/state"
 out="$(_run_exec 1 3 degraded 2>"$T/err")"
-[ "$(printf '%s\n' "$out" | tail -1)" = "CONF=/etc/supervisord.isolated.conf" ] \
+[ "$(printf '%s\n' "$out" | tail -1)" = "CONF=/etc/supervisord.roles.conf" ] \
   && [ "$(cat "$T/state")" = "$(printf 'degraded:secrets-mount\ndegraded:secrets-delivery')" ] \
   && _ok "delivery problems and a bad mount are recorded degraded; the boot still reaches exec (fail loud, not fatal)" \
   || _bad "degraded path" "state=$(cat "$T/state" 2>/dev/null)"

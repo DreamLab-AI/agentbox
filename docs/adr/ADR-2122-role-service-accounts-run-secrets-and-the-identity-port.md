@@ -68,7 +68,7 @@ inventory decides. JunkieJarvis is a key in `ab-identity`'s keyring, not an acco
 
 ### 2. Two supervisor configs, one flag (design §2.3, §3.1)
 
-`/etc/supervisord.isolated.conf` is a pure function of today's rendered `/etc/supervisord.conf`
+`/etc/supervisord.roles.conf` is a pure function of today's rendered `/etc/supervisord.conf`
 (`agentbox-manifest role-accounts isolate`). In each role program it changes exactly two lines:
 
 - `user=devuser` becomes `user=<role>`;
@@ -173,7 +173,7 @@ on that receipt. Peer agent messages are not approval.
 
 ### Deviations from the design, with reasons
 
-- **The isolated config is named `supervisord.isolated.conf`**, not `supervisord.roles.conf`,
+- **The isolated config is named `supervisord.roles.conf`**, not `supervisord.roles.conf`,
   per the lead's brief. W6a's rehearsal currently probes `supervisord.roles.conf`. One of the two
   must be renamed before the rehearsal runs.
 - **Role homes are under `/run/secrets/<role>/home`**, not `/var/lib/agentbox/home/<role>`.
@@ -200,7 +200,7 @@ on that receipt. Peer agent messages are not approval.
 
 ## Consequences
 
-- The image gains 8 passwd and 8 group lines, `/etc/supervisord.isolated.conf`,
+- The image gains 8 passwd and 8 group lines, `/etc/supervisord.roles.conf`,
   `/etc/agentbox/role-secrets.tsv`, `/etc/agentbox/role-accounts.json` and an 8 MiB tmpfs. With
   the flag off it behaves as before. In ADR-2020's terms, it is identical in effect but not
   identical in bytes. One thing changes in both modes: `/run/secrets` becomes a mount point that
@@ -234,6 +234,6 @@ nor a boot has been exercised.
 
 - `getent passwd ab-identity` gives `960`.
 - `findmnt /run/secrets` is a tmpfs.
-- `/etc/supervisord.isolated.conf` and `/etc/agentbox/role-secrets.tsv` exist.
+- `/etc/supervisord.roles.conf` and `/etc/agentbox/role-secrets.tsv` exist.
 - `supervisorctl status` matches the pre-rebuild set.
 - `/run/secrets` is `devuser 0700`, and `nostr.key` is present as before.
