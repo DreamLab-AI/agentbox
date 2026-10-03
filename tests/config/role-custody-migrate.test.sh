@@ -311,5 +311,16 @@ o3="$(env -i HOME="$SD/h" PATH="$PATH" WORKSPACE="$SD/ws" AGENTBOX_ROLE_ISOLATIO
 if [ "$rc" = 1 ] && grep -q CUSTODY-STATE-AHEAD <<<"$o" && ! grep -q CUSTODY-STATE-AHEAD <<<"$o2" && [ "$rc3" = 1 ] && grep -q CUSTODY-STATE-AHEAD <<<"$o3"; then
   _ok "W4 rollback guard: flag off with custody state ahead of the workspace copy, producer and faucet refuse (no fork, no re-grant); an equal ledger passes the guard"
 else _bad "W4 rollback guard" "producer rc=$rc $(tail -1 <<<"$o") | faucet-equal rc=$rc2 $(tail -1 <<<"$o2") | faucet-ahead rc=$rc3 $(tail -1 <<<"$o3")"; fi
+# The poker house seat (ab-poker-citizen): same custody ledger rule, same rollback guard.
+PK="$ROOT/config/poker/run-citizen.sh"
+grep -q '\[ -n "${POKER_CITIZEN_STATE:-}" \] || STATE="$CUSTODY_LEDGER"' "$PK" && grep -q '^  umask 027$' "$PK" \
+  && _ok "poker seat: run-citizen.sh defaults to the events-volume ledger under the flag" || _bad "poker seat ledger path"
+mkdir -p "$st/poker-citizen"
+p1="$(env -i HOME="$SD/h" PATH="$PATH" WORKSPACE="$SD/ws" AGENTBOX_ROLE_ISOLATION=0 POKER_CUSTODY_ROOT="$st" POKER_CITIZEN_KEY_FILE=/nonexistent bash "$PK" 2>&1)"; pr1=$?
+printf '{"hands":[1,2,3]}' >"$st/poker-citizen/poker-citizen.json"
+p2="$(env -i HOME="$SD/h" PATH="$PATH" WORKSPACE="$SD/ws" AGENTBOX_ROLE_ISOLATION=0 POKER_CUSTODY_ROOT="$st" POKER_CITIZEN_KEY_FILE=/nonexistent bash "$PK" 2>&1)"; pr2=$?
+if ! grep -q CUSTODY-STATE-AHEAD <<<"$p1" && [ "$pr2" = 1 ] && grep -q CUSTODY-STATE-AHEAD <<<"$p2"; then
+  _ok "poker seat rollback guard: flag off with the custody ledger ahead, run-citizen.sh refuses (no double settlement); no custody ledger passes the guard"
+else _bad "poker seat rollback guard" "absent rc=$pr1 $(tail -1 <<<"$p1") | ahead rc=$pr2 $(tail -1 <<<"$p2")"; fi
 
 _done

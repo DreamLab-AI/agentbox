@@ -56,6 +56,7 @@ Home is `/run/secrets/<role>/home`. Shell is `/sbin/nologin`.
 | `ab-faucet-dreamlab` | **966** | `sidestr-faucet` | `treasury.key` ← the program's `SIDESTR_FAUCET_KEY` (`[sidechain].faucet_key_file`) |
 | `ab-sidestr-dreamlab-txbt4` | 967 | `sidestr-producer-dreamlab-txbt4` | `signer.key` ← `secrets/sidestr-dreamlab-txbt4.key`; `parent.credential` ← the program's `SIDESTR_PARENT_COOKIE` (`parent_credential_file`) |
 | `ab-faucet-dreamlab-txbt4` | 968 | `sidestr-faucet-dreamlab-txbt4` | `treasury.key` ← the program's `SIDESTR_FAUCET_KEY` |
+| `ab-poker-citizen` | 970 | `poker-citizen` | `house.key` ← the program's `POKER_CITIZEN_KEY_FILE` (`[poker_citizen].key_file`); added 2026-10-03, see the dated note |
 
 **965 is reserved.** It is the host docker group that `docker-compose.override.yml` adds through
 `group_add`. A role whose gid is 965 would be in the Docker socket's group, and the Docker daemon

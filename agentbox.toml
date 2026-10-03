@@ -1630,7 +1630,8 @@ enabled = false                          # C5 — enable with [payments.consumer
 [poker_citizen]
 enabled   = true
 key_file  = "/home/devuser/workspace/sidestr/agents/poker-citizen.key"
-state     = "/home/devuser/workspace/sidestr/agents/poker-citizen.json"
+# state   = "/home/devuser/workspace/sidestr/agents/poker-citizen.json"   # unset: run-citizen.sh picks the
+#           workspace ledger flag-off and the custody ledger under [security].role_isolation (ADR-2122)
 relay     = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
 daily_cap = 20000    # DREAM the house pays out per day at most
 
