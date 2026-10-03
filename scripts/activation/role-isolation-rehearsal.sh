@@ -42,13 +42,17 @@
 # numbering (960 identity, 961 gateway, 962 ingress, 963 spend, then per chain from 964:
 # ab-sidestr-<chain>, ab-faucet-<chain>; dreamlab first, then [sidechain.<name>] sorted).
 #
-# Identity-port client contract assumed for (c) (W3a implements it; design §2.5):
+# Identity-port client contract for (c), as W3 implements it (custody/w3-identity-port;
+# services/nostr-pod-bridge/src/identity_port). Socket /run/agentbox/identity.sock (0660,
+# authorised by SO_PEERCRED uid against config/custody/identity-port-acl.json):
 #   nostr-pod-bridge sign-request <op>   JSON params on stdin, JSON on stdout, exit 0
-#     pubkey        {key}                               -> {"pubkey": "<x-only hex>"}
-#     nip98         {key, method, url, payload_sha256}  -> {"header": "Nostr <base64>"}
+#     pubkey        {key}                               -> {"pubkey": "<x-only hex>", "npub", "did"}
+#     nip98         {key, method, url, payload_sha256}  -> {"header": "Nostr <base64>", "event_id"}
 #     forum_event   {key, kind, content, dry_run}       -> {"event": {...signed...}}
 #     nip42_auth    {key, relay, challenge}             -> {"event": {...kind 22242...}}
-#   a refusal exits non-zero with {"refused": "<reason>"}.
+#   a refusal exits 1 with {"refused": {"op": "<op>", "reason": "<reason>"}}; no port exits 2
+#   with {"unavailable": {...}}. Each decision appends one line under
+#   /var/lib/agentbox/events/sign/sign-<date>.jsonl.
 #
 #   --print-registry   print the role table as JSON and exit (the host half uses this)
 #   --wait             (d): poll a stale tip for up to 2 x interval instead of failing at once
@@ -57,7 +61,7 @@
 # Test seams (tests/config/role-isolation-rehearsal.test.sh): RH_ROOT (prefix for every
 # filesystem path), RH_MANIFEST, RH_REGISTRY, RH_SUPERVISORCTL, RH_DOCKER, RH_SUDO, RH_GROUPS,
 # RH_DEVUSER_UID, RH_STAT, RH_SIGN_CLIENT, RH_NIP98_VERIFIER, RH_RELAY_AUTH, RH_CURL, RH_NOW,
-# RH_EXPECT_CORE_PUBKEY, RH_EXPECT_JJ_PUBKEY, RH_IMAGE_ID, RH_RELAY_URL.
+# RH_EXPECT_CORE_PUBKEY, RH_EXPECT_JJ_PUBKEY, RH_IMAGE_ID, RH_RELAY_URL, RH_IDENTITY_SOCK.
 
 set -uo pipefail
 
@@ -345,7 +349,7 @@ ws.onmessage = (m) => {
 '
 
 check_c() {
-  local sock="/run/secrets/port/identity.sock" verifier client=() r out ok pod_base url before after calls=0 rdir
+  local sock="${RH_IDENTITY_SOCK:-${AGENTBOX_IDENTITY_SOCK:-/run/agentbox/identity.sock}}" verifier client=() r out ok pod_base url before after calls=0 rdir
   local ops=(pods-nip98 forum-event relay-nip42 refuse-dm_unwrap refuse-foreign-url refuse-generic-sign)
   verifier="${RH_NIP98_VERIFIER:-}"
   if [ -z "$verifier" ]; then
@@ -398,7 +402,7 @@ check_c() {
   refuse() { # <target> <op> <json>
     local o rc
     calls=$((calls + 1)); o="$(call "$2" "$3")"; rc=$?
-    if [ $rc != 0 ]; then row c "$1" "refused" "refused: $(jq -r '.refused // "no reason"' <<<"$o" 2>/dev/null)" 1 "$(jq -nc --arg op "$2" --argjson rc "$rc" '{op:$op,exit:$rc}')"
+    if [ $rc != 0 ]; then row c "$1" "refused" "refused: $(jq -r '.refused.reason? // .refused // "no reason"' <<<"$o" 2>/dev/null)" 1 "$(jq -nc --arg op "$2" --argjson rc "$rc" '{op:$op,exit:$rc}')"
     else row c "$1" "refused" "ADMITTED" 0 "$(jq -nc --arg op "$2" '{op:$op,exit:0}')"; fi
   }
   refuse refuse-dm_unwrap dm_unwrap '{"envelope":{}}'

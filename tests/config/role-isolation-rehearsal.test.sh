@@ -92,7 +92,7 @@ const sk = (id) => Uint8Array.from(Buffer.from(keys[id], 'hex'));
 const op = process.argv[2];
 const req = JSON.parse(fs.readFileSync(0, 'utf8') || '{}');
 const receipt = (decision) => fs.appendFileSync(process.env.FAKE_RECEIPTS, JSON.stringify({ op, key: req.key || null, decision }) + '\n');
-const refuse = (why) => { receipt('refuse'); process.stdout.write(JSON.stringify({ refused: why })); process.exit(3); };
+const refuse = (why) => { receipt('refuse'); process.stdout.write(JSON.stringify({ refused: { op, reason: why } })); process.exit(1); };
 const reply = (o) => { receipt('admit'); process.stdout.write(JSON.stringify(o)); };
 const signer = (id) => ({ sign: async (ev) => tools.finalizeEvent(ev, sk(id)) });
 (async () => {
@@ -132,7 +132,7 @@ JJ_PUB="$(node -e 'const t=require(process.argv[1]);const k=require(process.argv
 # fixture <dir>: a scratch root where every isolation property holds.
 fixture() {
   local F="$1"
-  mkdir -p "$F"/{etc,run/agentbox,run/secrets/port,var/log,var/lib/agentbox/events/sign,var/lib/agentbox/identities,var/lib/agentbox/secrets}
+  mkdir -p "$F"/{etc,run/agentbox,var/log,var/lib/agentbox/events/sign,var/lib/agentbox/identities,var/lib/agentbox/secrets}
   cat >"$F/etc/agentbox.toml" <<'TOML'
 [security]
 audit_acknowledged = true
@@ -180,7 +180,7 @@ SUP
   mkdir -p "$F/run/secrets/ab-gateway" "$F/run/secrets/ab-ingress"
   printf 'not-a-secret-%s' "$SENTINEL" >"$F/var/lib/agentbox/identities/agentbox-core.json"
   for f in sidestr-dreamlab.key sidestr-tbtc4.cookie sidestr-faucet-dreamlab.key; do printf 'not-a-secret' >"$F/var/lib/agentbox/secrets/$f"; done
-  python3 -c 'import socket,sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$F/run/secrets/port/identity.sock"
+  python3 -c 'import socket,sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$F/run/agentbox/identity.sock"
   printf 'export AGENTBOX_NPUB=npub1x\nexport AGENTBOX_X_ONLY_PUBKEY_HEX=%s\n' "$CORE_PUB" >"$F/run/agentbox/identity.env"
   printf '[bootstrap] role custody: 6 roles populated\n' >"$F/var/log/bootstrap.log"
   printf '{"height":42,"hash":"00","time":%s}\n' "$((NOW - 100))" >"$F/tip"
@@ -267,7 +267,7 @@ else bad "(e) the hit is named, the value appears nowhere" "$(field '.checks[] |
 F="$(fresh 8)"; echo "1000 0 998" >"$F/groups"; rehearse "$F"
 expect_fail "(f) devuser in group 0: exit 1, only (f) fails" f
 
-F="$(fresh 9)"; rm -f "$F/run/secrets/port/identity.sock"; rehearse "$F"
+F="$(fresh 9)"; rm -f "$F/run/agentbox/identity.sock"; rehearse "$F"
 expect_fail "required but skipped: port socket absent fails (c), never passes" c
 if [ "$(field '[.checks[] | select(.check == "c" and (.observed | startswith("not attempted")))] | length')" -ge 6 ]; then
   ok "required but skipped: each unattempted (c) row is a FAIL saying 'not attempted'"
