@@ -15,6 +15,11 @@ NIP-11, NIP-16) from `solid-pod-rs-nostr`.
 - Hosts the embedded relay and applies the allowlist ingress policy.
 - Bridges accepted events into Solid pod writes under a `did:nostr` identity.
 - Delegates all NIP crypto to audited upstream crates.
+- Under `[security].role_isolation`, holds the sovereign key as the identity
+  port (`serve-identity`): a unix socket that signs named operations for
+  callers authorised by `SO_PEERCRED` uid against
+  `config/custody/identity-port-acl.json`. `sign-request <op>` is its one-shot
+  client. The secret never crosses the socket. See `src/identity_port/`.
 
 
 ## Licence — AGPL-3.0-only, NOT dual-licensed
