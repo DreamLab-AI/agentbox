@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f93586b9e52fda0d0b367881e2d2ff3014509faf
+verified_commit: 4ea3181b5296081411e95ca3687f03ed9aa11785
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -235,3 +235,11 @@ until the owner's rebuild.
 ## Re-verification — 2026-10-03 (`f93586b9e52fda0d0b367881e2d2ff3014509faf`, custody W2b/W4)
 
 Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the sidechain state move). `agentbox.toml` changes only in the comment above `[security].role_isolation = false`: it no longer says the identity port and the custody migration are absent, and names what is built (W3, W2b, W4) and what is owed (W3b). No key or value moves. No capability gate or spend cap moves. The decision holds. Re-verified by `git log 3b5412963..f93586b9e -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (poker house seat, PR #14)
+
+`f93586b9e..b41d9486c`: `agentbox.toml` gains `[poker_citizen]` (`enabled = true`, key and state under `sidestr/agents`, the forum relay, `daily_cap = 20000`) (`55b9fe9f6`). The new gate is catalogued and validated like every other, which is what this record requires. The decision holds. Re-verified by `git log f93586b9e..b41d9486c -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ab-poker-citizen role)
+
+`b41d9486c..4ea3181b5` changes one governed line: `agentbox.toml` `[poker_citizen].state` becomes a comment (the runner's default is the same path flag-off), for the poker seat's role (`4ea3181b5`). Nothing this record governs (ADR-2020 — Optional capabilities are manifest-gated and byte-identical-when-off; execution-gated tools are spend-capped and never auto-routed) reads that key. The decision holds. Re-verified by `git log b41d9486c..4ea3181b5 -- <verified_paths>`.

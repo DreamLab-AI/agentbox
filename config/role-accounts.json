@@ -12,7 +12,8 @@
     "nostr-gateway",
     "nip98-proxy",
     "sidestr-producer*",
-    "sidestr-faucet*"
+    "sidestr-faucet*",
+    "poker-citizen"
   ],
   "roles": [
     {
@@ -93,6 +94,15 @@
       "secrets": [
         { "file": "treasury.key", "env": "SIDESTR_FAUCET_KEY", "source": "/var/lib/agentbox/secrets/sidestr-faucet-dreamlab-txbt4.key", "legacy": "/home/devuser/workspace/sidestr/agents/treasury-dreamlab-txbt4.key" }
       ]
+    },
+    {
+      "name": "ab-poker-citizen",
+      "uid": 970,
+      "purpose": "Forum poker table house seat ([poker_citizen], forum ADR-2020): the house key that settles hands on sidestr:dreamlab, up to daily_cap DREAM a day.",
+      "programs": ["poker-citizen"],
+      "secrets": [
+        { "file": "house.key", "env": "POKER_CITIZEN_KEY_FILE", "source": "/var/lib/agentbox/secrets/poker-citizen.key", "legacy": "/home/devuser/workspace/sidestr/agents/poker-citizen.key" }
+      ]
     }
   ],
   "groups": [
@@ -155,6 +165,14 @@
       "mode": "2750",
       "seed": [{ "from": "/home/devuser/workspace/sidestr/agents/faucet-dreamlab-txbt4.json", "to": "faucet.json" }],
       "purpose": "sidestr:dreamlab-txbt4 faucet grant ledger, as for dreamlab."
+    },
+    {
+      "path": "/var/lib/agentbox/events/sidestr/poker-citizen",
+      "owner": "ab-poker-citizen",
+      "group": "devuser",
+      "mode": "2750",
+      "seed": [{ "from": "/home/devuser/workspace/sidestr/agents/poker-citizen.json", "to": "poker-citizen.json" }],
+      "purpose": "Poker house-seat ledger (run-citizen.sh POKER_CITIZEN_STATE under the flag): member and house balances and the daily cap's spend. Losing it would re-pay settled hands and reset the cap. Seeded once from the workspace ledger, which stays."
     }
   ]
 }

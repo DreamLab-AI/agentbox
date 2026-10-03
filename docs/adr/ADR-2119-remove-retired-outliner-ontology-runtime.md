@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 33cbb29e86ba0e7def92fb100029b124e9269da7
+verified_commit: e3b06d6888293a32a758179e8c7dc9667c5d9f58
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -98,3 +98,11 @@ Tripped by the W10 gap fixes on `custody/integration`. `flake.nix` (`dc91e092a`)
 ### Re-verification — 2026-10-03 (vaultSrc repin)
 
 `dc91e092a..33cbb29e8` changes one governed line: `flake.nix` `vaultSrc` moves from VisionClaw `64512141b` to main `94dc0ff60` (`33cbb29e8`, PR #13; ADR-2108 records why). Its one consumer is `lib/vault.nix` (the vault CLI package, `flake.nix:781`); nothing this record governs (ADR-2119 — Remove the retired outliner ontology runtime) reads it. The decision holds. Re-verified by `git log dc91e092a..33cbb29e8 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (poker house seat, PR #14)
+
+`33cbb29e8..b41d9486c`: `flake.nix` bakes `nostr-bbs-poker-citizen` (`lib/poker-citizen.nix`) and a `[program:poker-citizen]` (`user=devuser`) only when `[sidechain].enabled` and `[poker_citizen].enabled`; it opens no listener: it dials the forum relay over `wss` and the local producer at `127.0.0.1:3450` (`55b9fe9f6`). Nothing this record governs (ADR-2119 — Remove the retired outliner ontology runtime) reads the new table or program. The decision holds. Re-verified by `git log 33cbb29e8..b41d9486c -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (key-variable rule)
+
+`b41d9486c..e3b06d688` changes one governed line: `flake.nix` passes `--env-classes ${./config/custody/env-classes.json}` to the build-time `role-accounts isolate`, which now refuses a devuser program holding a key variable without a role (ADR-2122). Nothing this record governs (ADR-2119 — Remove the retired outliner ontology runtime) changes. The decision holds. Re-verified by `git log b41d9486c..e3b06d688 -- <verified_paths>`.

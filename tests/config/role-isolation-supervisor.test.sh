@@ -228,7 +228,7 @@ grep -qE ':0:|:1000:|devuser' "$T/group.roles" "$T/passwd" && _bad "a role line 
 
 # ── 8. flake wiring (static: Nix cannot be evaluated here) ───────────────────
 F="$ROOT/flake.nix"
-grep -q 'role-accounts isolate --table \${./config/role-accounts.json} --conf \$out/etc/supervisord.conf --out \$out/etc/supervisord.roles.conf --plan \$out/etc/agentbox/role-secrets.tsv' "$F" \
+grep -q 'role-accounts isolate --table \${./config/role-accounts.json} --conf \$out/etc/supervisord.conf --out \$out/etc/supervisord.roles.conf --plan \$out/etc/agentbox/role-secrets.tsv --env-classes \${./config/custody/env-classes.json}' "$F" \
   && _ok "flake.nix derives supervisord.roles.conf and the plan from the baked supervisord.conf" \
   || _bad "flake.nix must run role-accounts isolate on \$out/etc/supervisord.conf"
 grep -q 'role-accounts passwd --table \${./config/role-accounts.json} >> \$out/etc/passwd' "$F" \
@@ -241,5 +241,23 @@ grep -q 'cp \${./config/role-accounts.json} \$out/etc/agentbox/role-accounts.jso
 grep -qE '"/run/secrets:mode=711,size=[0-9]+[mM],uid=0,gid=0' "$F" && grep -qE -- '- /run/secrets:mode=711,size=[0-9]+[mM],uid=0,gid=0' "$ROOT/docker-compose.yml" \
   && _ok "/run/secrets is its own root-owned tmpfs in flake.nix and the generated docker-compose.yml" \
   || _bad "/run/secrets must be a root-owned tmpfs mount in flake.nix and docker-compose.yml"
+
+# ── 9. every real program: a key variable without a role fails the build ────
+# The opt-in list (secret_bearing_programs) missed the poker house seat when it was added. isolate
+# now refuses any user=devuser program whose environment names a ROLE-class variable (or its _FILE
+# twin) or one ending _PRIVKEY_HEX, _SK or _KEY_FILE while it is absent from the list. Run over
+# every [program:] block in flake.nix (names only; no Nix eval), and over the same with the poker
+# seat's role taken out of the table, which must go red naming it.
+EC="$ROOT/config/custody/env-classes.json"
+bash "$HERE/lib/flake-programs.sh" "$ROOT/flake.nix" >"$T/flake-programs.conf"
+if "$BIN" role-accounts isolate --table "$TABLE" --conf "$T/flake-programs.conf" --out "$T/o9" --plan "$T/p9" --env-classes "$EC" >"$T/o9.log" 2>&1; then
+  _ok "every program in flake.nix that names a key variable has a role ($(grep -c '^\[program:' "$T/flake-programs.conf") programs judged)"
+else _bad "a key-holding program in flake.nix has no role" "$(cat "$T/o9.log")"; fi
+jq '.secret_bearing_programs -= ["poker-citizen"] | .roles |= map(select(.name != "ab-poker-citizen")) | .dirs |= map(select(.owner != "ab-poker-citizen"))' "$TABLE" >"$T/no-poker.json"
+if ! "$BIN" role-accounts isolate --table "$T/no-poker.json" --conf "$T/flake-programs.conf" --out "$T/o10" --plan "$T/p10" --env-classes "$EC" >"$T/o10.log" 2>&1 \
+   && grep -q '\[program:poker-citizen\] runs as devuser and its environment POKER_CITIZEN_KEY_FILE' "$T/o10.log" \
+   && [ "$(grep -c '^  - ' "$T/o10.log")" = 1 ]; then
+  _ok "without its role the poker house seat fails the build, alone and by name (the red the rule was written against)"
+else _bad "the key-variable rule did not catch the roleless poker seat" "$(cat "$T/o10.log")"; fi
 
 _done

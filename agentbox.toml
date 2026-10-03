@@ -1620,6 +1620,21 @@ enabled = false                          # C5 — enable with [payments.consumer
 # payments fail closed at the chain guard until it runs and the payer is funded.
 # Spend-policy runs on POST /v1/chain/pay only; above approval_threshold_sats a
 # payment parks until an allowlisted approver releases it. RESTART-class.
+# ── Poker house seat (forum ADR-2020) ─────────────────────────────────────────
+# nostr-bbs-poker-citizen: deals DREAM hands to forum members at
+# /community/table over the forum relay, plays the house bot, settles each hand
+# on sidestr:dreamlab through the local producer (needs [sidechain].enabled).
+# The key is whitelisted on the relay with cohorts dreamlab+agent and named in
+# the website overlay's [poker].citizen_pubkey (website ADR-2009). Baked binary
+# (lib/poker-citizen.nix). REBUILD-class.
+[poker_citizen]
+enabled   = true
+key_file  = "/home/devuser/workspace/sidestr/agents/poker-citizen.key"
+# state   = "/home/devuser/workspace/sidestr/agents/poker-citizen.json"   # unset: run-citizen.sh picks the
+#           workspace ledger flag-off and the custody ledger under [security].role_isolation (ADR-2122)
+relay     = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
+daily_cap = 20000    # DREAM the house pays out per day at most
+
 [payments.sidestr]
 enabled                 = true
 # chain_id: the SC1 demo chain; sidestr:dreamlab is the live one on :3450

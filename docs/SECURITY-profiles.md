@@ -214,6 +214,7 @@ it is the host docker group (`reserved_ids`).
 | `ab-sidestr-dreamlab-txbt4` | 967 | `sidestr-producer-dreamlab-txbt4` | `signer.key`, `parent.credential` |
 | `ab-faucet-dreamlab-txbt4` | 968 | `sidestr-faucet-dreamlab-txbt4` | `treasury.key` |
 | group `ab-identity-port` | 969 | — | members devuser, `ab-identity`, `ab-gateway`; owns the port socket's directory |
+| `ab-poker-citizen` | 970 | `poker-citizen` | `house.key` (copied once from the workspace path the manifest names); its ledger moves to `/var/lib/agentbox/events/sidestr/poker-citizen` |
 
 management-api, dream-engine, aoe, tmux and the agents stay devuser. JunkieJarvis is a key held
 by `ab-identity`, not an account.

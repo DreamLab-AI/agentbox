@@ -294,6 +294,10 @@ enum RoleAccountsAction {
         out: PathBuf,
         #[arg(long)]
         plan: PathBuf,
+        /// `config/custody/env-classes.json`: its ROLE-class names (and their
+        /// `_FILE` twins) also mark a devuser program as key-holding.
+        #[arg(long)]
+        env_classes: Option<PathBuf>,
     },
 }
 
@@ -479,7 +483,8 @@ fn run(cmd: Command) -> Result<(), String> {
                 conf,
                 out,
                 plan,
-            } => role_accounts::run_isolate(&table, &conf, &out, &plan),
+                env_classes,
+            } => role_accounts::run_isolate(&table, &conf, &out, &plan, env_classes.as_deref()),
         },
         Command::EmbeddingDim => {
             let mut buf = String::new();

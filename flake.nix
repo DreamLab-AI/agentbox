@@ -273,6 +273,14 @@
             faucetSats = toString (c.faucet_sats or 1000);
           }) (lib.filterAttrs (_: v: builtins.isAttrs v) sidechainCfg);
         sidechainAnyFaucet = sidechainFaucet || lib.any (c: c.faucet) (lib.attrValues sidechainChains);
+        # [poker_citizen] (forum ADR-2020): the poker table's house seat. Needs
+        # the sidestr:dreamlab producer to settle hands. REBUILD-class.
+        pokerCitizenCfg = agentboxConfig.poker_citizen or {};
+        pokerCitizenEnabled = sidechainEnabled && (pokerCitizenCfg.enabled or false);
+        pokerCitizenKey = unplaceheld (pokerCitizenCfg.key_file or "");
+        pokerCitizenState = unplaceheld (pokerCitizenCfg.state or "");
+        pokerCitizenRelay = unplaceheld (pokerCitizenCfg.relay or "");
+        pokerCitizenCap = toString (pokerCitizenCfg.daily_cap or 20000);
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         consultantsCfg = agentboxConfig.consultants or {};
@@ -1612,6 +1620,10 @@
           inherit lib pkgs;
           pinsFile = ./config/sidechain/upstream-pins;
         };
+        # nostr-bbs-poker-citizen — the poker table's house seat ([poker_citizen]).
+        # Baked from the kit at the website's KIT_REF; see lib/poker-citizen.nix.
+        pokerCitizenPkg = import ./lib/poker-citizen.nix { inherit lib; pkgs = rustPkgs; };
+        pokerCitizenPackages = lib.optionals pokerCitizenEnabled [ pokerCitizenPkg ];
         # factrail — Jev compaction with fact rails ([features.jev_compaction],
         # ADR-2121). One pinned commit gives the binary and the
         # Claude Code shim that calls it; see lib/factrail.nix.
@@ -1767,6 +1779,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ knowledgeToolPackages
           ++ skillToolPackages
           ++ sidechainPackages
+          ++ pokerCitizenPackages
           ++ factrailPackages
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
@@ -2789,6 +2802,24 @@ stderr_logfile=/var/log/sidestr-faucet.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}
+${lib.optionalString pokerCitizenEnabled ''
+
+; [poker_citizen] (forum ADR-2020): the poker table's house seat. Deals DREAM
+; hands over the forum relay and settles them through the local producer
+; (run-citizen.sh waits for it).
+[program:poker-citizen]
+command=/opt/agentbox/config/poker/run-citizen.sh
+user=devuser
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pokerCitizenPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"${lib.optionalString (pokerCitizenKey != "") ",POKER_CITIZEN_KEY_FILE=\"${pokerCitizenKey}\""}${lib.optionalString (pokerCitizenState != "") ",POKER_CITIZEN_STATE=\"${pokerCitizenState}\""}${lib.optionalString (pokerCitizenRelay != "") ",POKER_CITIZEN_RELAY=\"${pokerCitizenRelay}\""},POKER_DAILY_CAP="${pokerCitizenCap}"
+autostart=true
+autorestart=true
+startsecs=10
+priority=265
+stdout_logfile=/var/log/poker-citizen.log
+stderr_logfile=/var/log/poker-citizen.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
 ${lib.concatMapStrings (c: lib.optionalString c.enabled ''
 
 ; [sidechain.${c.name}] (ADR-2103): sidestr:${c.name}'s producer beside ${c.parent}.
@@ -3578,7 +3609,7 @@ ${ragflowNetworkDecl}
           # config/role-accounts.json, so the two configs cannot drift
           # (tests/config/role-isolation-supervisor.test.sh). Both ship in every
           # image; the entrypoint picks one from [security].role_isolation.
-          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts isolate --table ${./config/role-accounts.json} --conf $out/etc/supervisord.conf --out $out/etc/supervisord.roles.conf --plan $out/etc/agentbox/role-secrets.tsv
+          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts isolate --table ${./config/role-accounts.json} --conf $out/etc/supervisord.conf --out $out/etc/supervisord.roles.conf --plan $out/etc/agentbox/role-secrets.tsv --env-classes ${./config/custody/env-classes.json}
           # The table itself, for the role-isolation rehearsal and operators (names and paths only).
           cp ${./config/role-accounts.json} $out/etc/agentbox/role-accounts.json
           cp ${./agentbox.toml} $out/etc/agentbox.toml
