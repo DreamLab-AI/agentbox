@@ -1,0 +1,1 @@
+- `x1-rehearsal-20261003T090708Z.json` is superseded and is kept unedited as a record: it ran a pre-integration role table that put `ab-faucet-dreamlab` at uid 965, the host Docker group's gid, which `config/role-accounts.json` now reserves (the faucet is 966). Use a later `x1-rehearsal-<UTC>.json`.
