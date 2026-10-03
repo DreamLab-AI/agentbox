@@ -464,7 +464,7 @@
         #    templates to $HOME/.claude/agents/ — it must run as the runtime user
         #    after container start, NOT at Nix build time. Add to agentbox.sh init:
         #      [[ "${ENABLE_AGENTIC_QE:-false}" == "true" ]] && aqe init --auto || true
-        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.14.4.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.14.7.tgz
         #    3.13.0 (2026-07-18): QE-Court multi-vendor adversarial review
         #    (Codex/GPT + Cognitum + Claude), Codex CLI provider via `codex
         #    exec`, @huggingface/transformers demoted to optional peer (4 HIGH
@@ -476,12 +476,15 @@
         #    nodeModulesHash resolved 2026-07-24 during the ADR-041 rebuild.
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          # 3.14.4 (2026-09-27): newest outside the 72-hour freshness window
-          # on 2026-10-01; 3.14.5 and 3.14.6 are inside it.
-          version         = "3.14.4";
-          packageLock = ./config/npm-locks/agentic-qe-3.14.4.package-lock.json;
-          sha256          = "sha256-9lwDo+qpSiIxVtg9r/Kee9TdZru9fVBXSp5/Vpy9x6c=";
-          nodeModulesHash = "sha256-Vvg/qJpAvOU9s2afX/JZLv1C6YJfHCVHo2R9T3BYuwA=";
+          # 3.14.7 (2026-10-02T09:25Z): npm latest, taken 2026-10-03 inside
+          # the 72-hour window on the owner's estate-wide upgrade. vibium (the
+          # opt-in qe-browser engine) moved from a dependency to an optional
+          # peer (^26.8.21), so the closure no longer carries vibium 0.1.8;
+          # qe-browser stays "install with aqe init", as the skill says.
+          version         = "3.14.7";
+          packageLock = ./config/npm-locks/agentic-qe-3.14.7.package-lock.json;
+          sha256          = "sha256-dtTtXe+f2O6gidB7xIIDJ3scr5XxdzdCwKqFRdLVuMY=";
+          nodeModulesHash = "sha256-r/FZrkcdDt1o+Tyrga6QcuEHcLPlgpY1t2efFgMyfP4=";
           bin             = "aqe";
         };
 
@@ -548,9 +551,19 @@
             # document rendering; the browser sidecar remains unaffected.
             args = [ "--no-sandbox" "--disable-setuid-sandbox" ];
           });
-        #    12.0.0 HELD (2026-10-01): mermaid 12 pins chevrotain ~11.1.2 →
-        #    lodash-es 4.17.23 (GHSA-r5fr-rjxr-66jc, high) — a new audit
-        #    finding — and drops -w/-H/--pdfFit (render.sh uses -w/-H).
+        #    12.0.0 HELD (2026-10-01; re-evaluated 2026-10-03, still held).
+        #    The 2026-10-01 audit finding (lodash-es via chevrotain) is gone:
+        #    a fresh 12.0.0 lock audits clean. Still blocking: (1) every
+        #    render changes. On the VisionFlow corpus gate
+        #    (`diagram-index-gen.cjs docs/diagrams --check --render --only
+        #    agentbox/36-`) both versions pass 7/7, but all 7 SVGs change
+        #    geometry (AB-36.3 2015→476.5 px wide; layout direction flips)
+        #    and grow ~7× (fonts embedded by default; --no-font-embed opts
+        #    out). (2) -w/-H/-f(--pdfFit) are removed for --size and
+        #    --pdf-paper-format; skills/mermaid-diagrams/scripts/render.sh
+        #    passes -w/-H. Moving needs a corpus re-render and review, a
+        #    render.sh port to --size, then hashes from a --before lock with
+        #    runtimeDependencies.puppeteer kept (12 still peers ^25).
         mermaidCliPkg = mkNpmCli {
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.17.0";
@@ -569,19 +582,19 @@
         # remote deploys). Version bump: set version below, set BOTH hashes to
         # lib.fakeHash, run ./scripts/prefetch-hashes.sh (resolves them in one
         # sweep), then rebuild; Renovate auto-detects the bump.
-        #   nix-prefetch-url https://registry.npmjs.org/wrangler/-/wrangler-4.142.0.tgz
+        #   nix-prefetch-url https://registry.npmjs.org/wrangler/-/wrangler-4.147.0.tgz
         #
         # Former PIN at 4.78.0 (private @cloudflare/codemod in devDependencies,
         # 4.79.0+) lifted 2026-08-27: 4.127.0 no longer lists codemod in
         # devDependencies (verified against the registry manifest).
         wranglerPkg = mkNpmCli {
           pkgName         = "wrangler";
-          # 4.143.0–4.145.0 remain inside the 72-hour freshness window on
-          # 2026-10-01. 4.142.0 is the newest stable release outside it.
-          version         = "4.142.0";
-          packageLock = ./config/npm-locks/wrangler-4.142.0.package-lock.json;
-          sha256          = "sha256-yOmfTH0Xzq5Qizv1Xf6BSlt148KkH+pUJWvXmEwh7X4=";
-          nodeModulesHash = "sha256-6uc4Z3X3djtgPa9LgbEHunDlIrNFb7nDVMyJJyMp6WQ=";
+          # 4.147.0 (2026-10-02T11:30Z): npm latest, taken 2026-10-03 inside
+          # the 72-hour window on the owner's estate-wide upgrade.
+          version         = "4.147.0";
+          packageLock = ./config/npm-locks/wrangler-4.147.0.package-lock.json;
+          sha256          = "sha256-xC0hD6GfbkC2Oo3zsSd0ATbf/nUl7p7YK4qxg9LNg5U=";
+          nodeModulesHash = "sha256-VfJKdHz1BWwxofXSq70Un/gR4ooJo92GnzLzrHOPuD4=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -1142,6 +1155,10 @@
           # retired tool name directly. Hashes refresh on bump:
           #   nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.49.3
           #   then `nix build` once with lib.fakeHash for vendorHash.
+          # v1.49.4 HELD (2026-10-03 estate upgrade): its go.mod raises the
+          # directive to `go 1.27.1`, and the pinned nixpkgs (9ae611a4) tops
+          # out at go_1_26 (1.26.3); buildGoModule runs GOTOOLCHAIN=local, so
+          # the build would refuse. Move with the next nixpkgs bump.
           version = "1.49.3";  # bump together with hashes below
           src = pkgs.fetchFromGitHub {
             owner = "zoharbabin";

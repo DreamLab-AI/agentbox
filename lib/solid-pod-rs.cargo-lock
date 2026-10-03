@@ -332,6 +332,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
+
+[[package]]
 name = "asn1-rs"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -496,6 +502,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "240e56f4d3c453c36faacb695c535a4d5f8c7d23dac175014f32eb0a71012a03"
 
 [[package]]
+name = "base58ck"
+version = "0.1.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "365c0acd5b2e8dd0111a46c4faea83fb3cfb6e39a49a7c73a06e090db7b2eff0"
+dependencies = [
+ "bitcoin_hashes",
+]
+
+[[package]]
 name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -522,6 +537,73 @@ dependencies = [
  "base64 0.21.7",
  "pastey",
  "serde",
+]
+
+[[package]]
+name = "bech32"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32637268377fc7b10a8c6d51de3e7fba1ce5dd371a96e342b34e6078db558e7f"
+
+[[package]]
+name = "bitcoin"
+version = "0.32.102"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb0ce8bd5baaa0d303a19915a6d93afed161f528654e42da2a7a97d05c59499a"
+dependencies = [
+ "base58ck",
+ "bech32",
+ "bitcoin-io",
+ "bitcoin-units",
+ "bitcoin_hashes",
+ "hex-conservative 0.2.3",
+ "hex_lit",
+ "secp256k1",
+]
+
+[[package]]
+name = "bitcoin-consensus-encoding"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9daa31138eb443d5751b207f3f64154e2bb09cd59960562ccc7a7112be38147f"
+dependencies = [
+ "bitcoin-internals",
+ "hex-conservative 1.3.0",
+ "serde",
+]
+
+[[package]]
+name = "bitcoin-internals"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8bea3a9f0cfece4564e37cb49a38cc245ca5184719e50d7d0dda3268722c4e2"
+
+[[package]]
+name = "bitcoin-io"
+version = "0.1.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb5de036369d1ac59d3c1819ebc4d850f89466f5401c571a285b6ed564a4cb78"
+dependencies = [
+ "bitcoin-consensus-encoding",
+]
+
+[[package]]
+name = "bitcoin-units"
+version = "0.1.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cb95693f371d089a4b5b6fc41c6f3ea6e01ee8c15388335dfac8ea685173b51"
+dependencies = [
+ "bitcoin-consensus-encoding",
+]
+
+[[package]]
+name = "bitcoin_hashes"
+version = "0.14.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bca4c7abb40c8817d77403c880988cfd484f23ab2365726afb2f798363e2c4a2"
+dependencies = [
+ "bitcoin-io",
+ "hex-conservative 0.2.3",
 ]
 
 [[package]]
@@ -1740,6 +1822,30 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hex-conservative"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db3fef046dca3ca91ee1408a8c1b80ab777e80a4d308d1bf4e7adb3fcb047e08"
+dependencies = [
+ "arrayvec",
+]
+
+[[package]]
+name = "hex-conservative"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "271e0d19bcb473b6675739a2b536076b24a082316cb5199ad918edce10c599e8"
+dependencies = [
+ "arrayvec",
+]
+
+[[package]]
+name = "hex_lit"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3011d1213f159867b13cfd6ac92d2cd5f1345762c63be3554e84092d85a50bbd"
 
 [[package]]
 name = "hkdf"
@@ -3401,9 +3507,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.43"
+version = "0.23.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0283386ce02abc0151e1761d08802dfe86c173b0b494af5cbc086574e453da06"
+checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
 dependencies = [
  "once_cell",
  "ring",
@@ -3497,6 +3603,26 @@ dependencies = [
  "pkcs8",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "secp256k1"
+version = "0.29.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9465315bc9d4566e1724f0fffcbcc446268cb522e60f9a27bcded6b19c108113"
+dependencies = [
+ "bitcoin_hashes",
+ "rand 0.8.7",
+ "secp256k1-sys",
+]
+
+[[package]]
+name = "secp256k1-sys"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4387882333d3aa8cb20530a17c69a3752e97837832f34f6dccc760e715001d9"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -3768,12 +3894,13 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs"
-version = "0.5.0-alpha.9"
+version = "0.5.0-alpha.12"
 dependencies = [
  "actix-web",
  "async-trait",
  "axum",
  "base64 0.22.1",
+ "bitcoin",
  "bytes",
  "cap-std",
  "chrono",
@@ -3818,7 +3945,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-activitypub"
-version = "0.5.0-alpha.9"
+version = "0.5.0-alpha.12"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -3844,7 +3971,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-didkey"
-version = "0.5.0-alpha.9"
+version = "0.5.0-alpha.12"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -3865,7 +3992,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-forge"
-version = "0.5.0-alpha.9"
+version = "0.5.0-alpha.12"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -3888,12 +4015,13 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-git"
-version = "0.5.0-alpha.9"
+version = "0.5.0-alpha.12"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
  "bytes",
  "hex",
+ "k256",
  "serde",
  "serde_json",
  "sha2",
@@ -3902,11 +4030,12 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "zeroize",
 ]
 
 [[package]]
 name = "solid-pod-rs-idp"
-version = "0.5.0-alpha.9"
+version = "0.5.0-alpha.12"
 dependencies = [
  "argon2",
  "async-trait",
@@ -3939,7 +4068,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-nostr"
-version = "0.5.0-alpha.9"
+version = "0.5.0-alpha.12"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -3961,7 +4090,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-server"
-version = "0.5.0-alpha.9"
+version = "0.5.0-alpha.12"
 dependencies = [
  "actix-http",
  "actix-web",

@@ -50,14 +50,15 @@ let
   forumHash = "sha256-9HooIa4vyu0Iw47VPr7RkMDyKrEazcElR2xPIe0njvE=";
 
   # solid-pod-rs → crates/solid-pod-rs-nostr (relay substrate) + crates/solid-pod-rs
-  # (the [patch.crates-io] target). Pinned to the v0.5.0-alpha.9 tag
-  # (2026-09-06), the same revision lib/solid-pod-rs.nix builds the standalone
-  # server from, so the bridge and the server compile one upstream snapshot
-  # (register G-20 closed). services/nostr-pod-bridge/Cargo.lock resolves
-  # solid-pod-rs-nostr 0.5.0-alpha.9 to match. Bump both files together;
-  # the hash is the SRI of the tag tarball (procedure above / lib/solid-pod-rs.nix).
-  solidRev  = "1d9da527076e733d6a5571f474a573c16e5a6047";
-  solidHash = "sha256-0/iDL8E9J5SGFnnJQwR3wP/qAjl9AHiKyKxU1U6qRfc="; # v0.5.0-alpha.9
+  # (the [patch.crates-io] target). Pinned to the v0.5.0-alpha.12 tag commit
+  # d64131b (2026-10-02), the same revision lib/solid-pod-rs.nix builds the
+  # standalone server from, so the bridge and the server compile one upstream
+  # snapshot (register G-20 closed). services/nostr-pod-bridge/Cargo.lock
+  # resolves solid-pod-rs and solid-pod-rs-nostr 0.5.0-alpha.12 to match.
+  # Bump both files together; the hash is the SRI of the tag tarball
+  # (procedure above / lib/solid-pod-rs.nix).
+  solidRev  = "d64131b32be2fc07ea120195686d2e1d3fbbe3c2";
+  solidHash = "sha256-nMqFCn/QKpl49nQ/voONbd4DRtW00wp8dnPieM4i4Aw="; # v0.5.0-alpha.12
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
@@ -91,6 +92,14 @@ let
     mkdir -p $out/project/agentbox/tests/fixtures
     cp ${../tests/fixtures/egress-redaction.v1.json} \
       $out/project/agentbox/tests/fixtures/egress-redaction.v1.json
+    # tests/identity_port.rs (custody W3) loads the checked-in identity-port
+    # ACL against the manifest from ../../ of the crate; without these two
+    # files doCheck fails with ENOENT. Cost: an agentbox.toml edit now
+    # re-runs the bridge build.
+    mkdir -p $out/project/agentbox/config/custody
+    cp ${../agentbox.toml} $out/project/agentbox/agentbox.toml
+    cp ${../config/custody/identity-port-acl.json} \
+      $out/project/agentbox/config/custody/identity-port-acl.json
     chmod -R u+w $out
   '';
 
