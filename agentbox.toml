@@ -1895,7 +1895,6 @@ codex = true
 opencode = true
 code_server = true
 cuda = true
-ruflo_console = false  # ruflo's Claude Code mods (function hooks), baked from the pinned ruflo v3.51.1 tag (flake input rufloConsole): ruflo-console (the /ruflo cockpit) + ruflo-mods (/ruflo mods) + ruflo-swarm (/ruflo swarm …) in the `agentbox` marketplace, userConfig cli=ruflo (the baked bin; also pulls in the ruflo closure). Rebuild-class; needs Claude Code >= 2.1.287. Off = the three ids are unregistered at boot
 
 # ── Plugins (ruflo/claude-flow plugin system) ────────────────────────────────
 # Plugins are installed into $HOME/.claude-flow/plugins/ at container boot

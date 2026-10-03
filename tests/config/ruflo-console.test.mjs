@@ -206,10 +206,10 @@ test('the entrypoint keeps the shared marketplace and function hooks while the c
   assert.ok(entry.indexOf('_RC_ON="$(') < entry.indexOf('RC_ON="$_RC_ON"'))
 })
 
-test('manifest, schema and catalogue carry the gate as rebuild-class, default off', async () => {
+test('running manifest enables the rebuild-class gate carried by schema and catalogue', async () => {
   const toml = fs.readFileSync(path.join(root, 'agentbox.toml'), 'utf8')
   const section = toml.slice(toml.indexOf('\n[toolchains]'), toml.indexOf('\n[', toml.indexOf('\n[toolchains]') + 1))
-  assert.match(section, /\nruflo_console = false\b/)
+  assert.match(section, /\nruflo_console = true\b/)
   const schema = JSON.parse(fs.readFileSync(path.join(root, 'schema/agentbox.toml.schema.json'), 'utf8'))
   assert.equal(schema.properties.toolchains.properties.ruflo_console.type, 'boolean')
   const { CATALOGUE } = await import(path.join(root, 'management-api/lib/system-manifest.js'))

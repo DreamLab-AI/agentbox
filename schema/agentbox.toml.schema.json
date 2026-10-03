@@ -3320,6 +3320,16 @@
           "type": "string",
           "description": "The faucet's treasury key file (64 hex or nsec1\u2026). Empty \u21d2 $WORKSPACE/sidestr/agents/treasury.key."
         },
+        "faucet_units": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Asset units included with each base-chain faucet grant."
+        },
+        "faucet_sats": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Plain fee sats included with each base-chain faucet grant."
+        },
         "dreamlab-txbt4": {
           "type": "object",
           "additionalProperties": false,
@@ -3358,6 +3368,11 @@
               "type": "integer",
               "minimum": 150308,
               "description": "The txbt4 height the peg-in scan starts from: the parent tip at the seal (152,225). Never below the fork height 150,308 (ADR-2103 D3a: no peg coin from before the fork)."
+            },
+            "peg_script": {
+              "type": "string",
+              "pattern": "^[0-9a-f]+$",
+              "description": "Hex scriptPubKey challenge watched for parent-chain peg deposits. Empty or absent disables peg scanning."
             },
             "announce_mirror": {
               "type": "string",
