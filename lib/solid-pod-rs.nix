@@ -43,11 +43,8 @@ let
   # and library feature sets are identical to alpha.9, and the postPatch
   # target line below is still present once.
   #
-  # DECOUPLED from lib/nostr-pod-bridge.nix, which still pins alpha.9 by its
-  # own solidRev and Cargo.lock: the two are separate binaries and neither
-  # links the other. Its tests/fixtures/blocktrail-s3/emit.rs builds TxInfo
-  # literals but is not a compiled cargo target. Move the bridge only
-  # together with a regenerated bridge Cargo.lock.
+  # lib/nostr-pod-bridge.nix pins the same rev (its solidRev) and its
+  # Cargo.lock resolves alpha.12: bump the two files together.
   #
   # Refresh procedure when the rev bumps (no local nix needed):
   #   1. Set `version` and `rev` to the new tag and its commit.
