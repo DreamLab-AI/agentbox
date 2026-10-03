@@ -137,6 +137,18 @@ test('gate on adds exactly the three enabledPlugins entries and cli=ruflo', () =
   for (const id of Object.keys(doc.pluginConfigs)) assert.equal(doc.pluginConfigs[id].options.cli, 'ruflo')
 })
 
+test('the projector executes when invoked through the image symlink path', () => {
+  const dir = tmp()
+  const linked = path.join(dir, 'ruflo-console-project.mjs')
+  fs.symlinkSync(project, linked)
+  const settings = path.join(dir, 'settings.json')
+  const installed = path.join(dir, 'installed_plugins.json')
+  const { out: baked } = runBake(fixtureRuflo())
+  const r = spawnSync('node', [linked, '--on', '1', '--settings', settings, '--installed', installed, '--market', baked], { encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr)
+  for (const id of IDS) assert.equal(JSON.parse(fs.readFileSync(settings, 'utf8')).enabledPlugins[id], true)
+})
+
 test('gate on then off restores the original settings', () => {
   const { out: baked } = runBake(fixtureRuflo())
   const before = { enabledPlugins: { ...OTHER }, model: 'opus' }

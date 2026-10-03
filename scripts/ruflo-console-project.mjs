@@ -27,6 +27,7 @@
 // and the script always exits 0 unless called with bad arguments.
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const PLUGINS = ['ruflo-console', 'ruflo-mods', 'ruflo-swarm']
 export const MARKETPLACE = 'agentbox'
@@ -184,7 +185,12 @@ function main(argv) {
   return 0
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+let invokedDirectly = false
+try {
+  invokedDirectly = Boolean(process.argv[1])
+    && fs.realpathSync(fileURLToPath(import.meta.url)) === fs.realpathSync(process.argv[1])
+} catch {}
+if (invokedDirectly) {
   let code = 0
   try {
     code = main(process.argv.slice(2))
