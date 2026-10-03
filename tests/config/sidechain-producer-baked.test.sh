@@ -21,6 +21,7 @@
 #                                                       SIDESTR-UNPINNED
 #   8. a chain naming the evm rule, bake without
 #      @ethereumjs                                  -> refuses before the engine fails lazily
+#   9. every supervised producer PATH includes findutils, used by the bake guard
 # Run: bash tests/config/sidechain-producer-baked.test.sh
 set -u
 
@@ -75,6 +76,10 @@ run() {
 field() { printf '%s' "$out" | node -e 'const o = JSON.parse(require("fs").readFileSync(0, "utf8") || "{}"); process.stdout.write(String(o[process.argv[1]] ?? ""))' -- "$1"; }
 
 echo "sidechain producer runs the baked upstream (custody W5, design §2.7)"
+
+if [ "$(grep -c 'pkgs.coreutils pkgs.findutils' "$REPO/flake.nix")" -eq 2 ]; then
+  ok "both supervised producer PATHs include findutils for the read-only bake guard"
+else bad "both supervised producer PATHs include findutils" "the runner uses find before exec"; fi
 
 if [ "$(id -u)" = 0 ]; then
   echo "  skip: run as a non-root user (root writes through read-only modes, so case 4 cannot hold)"
