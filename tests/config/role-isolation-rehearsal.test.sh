@@ -26,6 +26,8 @@
 #  11. no receipt from any case carries a fixture secret value
 #  13. no /etc/agentbox/role-accounts.json -> 1 (no derived numbering); 14. no role-secrets.tsv -> 1
 #  15. a role at a reserved id (965, the host docker group) -> 1; 16. --print-registry shape
+#  17. the socket dir under a devuser-writable parent (the /run/agentbox case) -> 1, (a) fails,
+#      the dir restored; in the PASS fixture devuser can neither rename it nor create beside it
 #  12. host half refuses to run inside a container; flags a host uid in 960-979; passes a clean host
 # Run: bash tests/config/role-isolation-rehearsal.test.sh
 set -u
@@ -209,6 +211,7 @@ SUP
   printf '/run\t1000 1000 755 1\n/run/secrets\t0 0 711 2\n/var/run/docker.sock\t0 0 660 1\n' >"$F/stat-table"
   printf '/run/secrets/ab-identity\t960 960 500 2\n/run/secrets/ab-gateway\t961 961 500 2\n/run/secrets/ab-ingress\t962 962 500 2\n' >>"$F/stat-table"
   printf '/run/secrets/ab-sidestr-dreamlab\t964 964 500 2\n/run/secrets/ab-faucet-dreamlab\t966 966 500 2\n' >>"$F/stat-table"
+  printf '/run/secrets/ab-identity-port\t960 969 750 2\n' >>"$F/stat-table"
   sed -i "s#^/#$F/#" "$F/stat-table"
   echo "1000 998" >"$F/groups"
   lock "$F"
@@ -219,6 +222,8 @@ lock() {
   local d
   for d in "$1"/run/secrets/ab-*; do [ "${d##*/}" = ab-identity-port ] || chmod 000 "$d"; done
   chmod 000 "$1/var/lib/agentbox/identities" "$1/var/lib/agentbox/secrets"
+  # The root-owned 0711 mount: the runner (devuser's stand-in) may not write its entries.
+  chmod 0555 "$1/run/secrets"
 }
 
 # rehearse <dir> [VAR=value ...]: run the rehearsal; sets $rc $out $receipt
@@ -300,6 +305,16 @@ else bad "required but skipped: each unattempted (c) row is a FAIL" "$(field '[.
 
 F="$(fresh 10)"; sed -i '/^\[program:nostr-gateway\]/,/^$/d' "$F/etc/supervisord.roles.conf"; rehearse "$F"
 expect_fail "required but skipped: a role program missing from the roles config fails (b)" b
+
+F="$(fresh 17)"; chmod 0755 "$F/run/secrets"; rehearse "$F"
+if [ "$rc" = 1 ] && [ "$(failed)" = a ] \
+   && [ "$(field '.checks[] | select(.target == "/run/secrets/ab-identity-port (rename/replace)") | .observed')" = "rename succeeded; create beside planted" ] \
+   && [ -S "$F/run/secrets/ab-identity-port/identity.sock" ] && [ -z "$(find "$F/run/secrets" -maxdepth 1 -name '.x1-rehearsal-probe.*')" ]; then
+  ok "a socket dir whose parent devuser can write (the /run/agentbox case): rename succeeds, so (a) fails; the dir is restored and no probe is left"
+else bad "socket dir under a devuser-writable parent fails (a)" "sock=$([ -S "$F/run/secrets/ab-identity-port/identity.sock" ] && echo y) probes=$(ls -a "$F/run/secrets" | tr "\n" " ") rc=$rc failed=$(failed) row=$(field '.checks[] | select(.target | startswith("/run/secrets/ab-identity-port")) | .observed')"; fi
+if [ "$(jq -r '.checks[] | select(.target == "/run/secrets/ab-identity-port (rename/replace)") | .observed' "$(ls "$ROOT"/case-1/receipts/x1-rehearsal-*.json | head -1)")" = "rename refused; create beside refused" ]; then
+  ok "devuser can neither rename the socket dir nor create beside it in the root-owned mount"
+else bad "socket dir rename/replace refused in the PASS fixture" "$(jq -c '[.checks[] | select(.target | startswith("/run/secrets/ab-identity-port"))]' "$(ls "$ROOT"/case-1/receipts/x1-rehearsal-*.json | head -1)")"; fi
 
 F="$(fresh 13)"; rm -f "$F/etc/agentbox/role-accounts.json"; rehearse "$F"
 if [ "$rc" = 1 ] && grep -q 'role-accounts.json is missing' <<<"$out"; then ok "no role table: exit 1, no derived numbering"

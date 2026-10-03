@@ -156,10 +156,15 @@ normalise_registry() { # <table.json> <plan.tsv>
     --slurpfile classes "$ENV_CLASSES" '
     ($plan | split("\n") | map(select(length > 0 and (startswith("#") | not)) | split("\t"))) as $rows
     | (.reserved_ids // {} | keys | map(tonumber)) as $reserved
+    | (reduce .roles[] as $r ({}; .[$r.name] = $r.uid)) as $roles_uid
     | if ([.roles[].uid] | any(. as $u | $reserved | index($u))) then error("a role uid is reserved (reserved_ids)") else . end
     | ($classes[0].classes.ROLE | to_entries | map({name: .key, role: .value.role})) as $role_env
+    | .secrets_root as $sr
+    | ([.groups // [] | .[] | .owner as $o | {path: ($sr + "/" + .name), group: .name, gid,
+         owner: $o}]) as $sockdirs
     | {source: $src, schema: .schema, reserved_ids: ($reserved),
        classified_root_env: [$role_env[] | select(.role == "root") | {name, holder: "root"}],
+       socket_dirs: [$sockdirs[] | . as $d | . + {owner_uid: ($roles_uid[$d.owner] // null)}],
        roles: [.roles[] | .name as $n
          | ([$rows[] | select((.[0] == "file" or .[0] == "env") and .[1] == $n)]) as $mine
          | ((.secrets | length) == 0 or ($mine | length) > 0) as $on
@@ -234,7 +239,7 @@ echo "X-1 role-isolation rehearsal, container half — flag role_isolation=$FLAG
 
 # ── (a) only the role can read its secret ─────────────────────────────────────────────────
 check_a() {
-  local s uid mode dev rdev role ruid f p r d
+  local s uid gid mode dev rdev role ruid f p r d
   local obs mp=false ok=0
   s="$(st "$R/run/secrets")"; read -r uid _ mode dev <<<"$s"
   rdev="$(st "$R/run" | awk '{print $4}')"
@@ -246,6 +251,25 @@ check_a() {
   fi
   row a /run/secrets "root-owned 0711 mount point" "$obs" "$ok" \
     "$(jq -nc --arg u "${uid:-}" --arg m "${mode:-}" --argjson mp "$mp" '{path:"/run/secrets",uid:$u,mode:$m,mount_point:$mp}')"
+  # The identity port's socket dir (ADR-2122 integration, 2026-10-03): devuser can reach it
+  # through the group, but must be unable to rename it away or plant a replacement beside it.
+  # That is why it sits in the root-owned secrets mount and not under /run, which devuser owns.
+  local sd sgid sown probe moved
+  while IFS=$'\t' read -r sd sgid sown; do
+    [ -n "$sd" ] || continue
+    s="$(st "$R$sd")"; read -r uid gid mode _ <<<"$s"
+    if [ -n "$s" ] && [ "$uid" = "$sown" ] && [ "$gid" = "$sgid" ] && [ "$mode" = 750 ]; then ok=1; else ok=0; fi
+    row a "$sd" "socket dir 0750, owner $sown, group $sgid" "$([ -n "$s" ] && echo "uid $uid gid $gid mode $mode" || echo absent)" "$ok" \
+      "$(jq -nc --arg p "$sd" --arg u "${uid:-}" --arg g "${gid:-}" --arg m "${mode:-}" '{path:$p,uid:$u,gid:$g,mode:$m}')"
+    probe="$R${sd%/*}/.x1-rehearsal-probe.$$"; moved=no
+    if [ -e "$R$sd" ] && mv -T -- "$R$sd" "$probe" 2>/dev/null; then
+      moved=yes; mv -T -- "$probe" "$R$sd" 2>/dev/null || echo "role-isolation-rehearsal: WARNING: could not restore $sd from $probe" >&2
+    fi
+    if mkdir -- "$probe" 2>/dev/null; then rmdir -- "$probe" 2>/dev/null; r=planted; else r=refused; fi
+    if [ "$moved" = no ] && [ "$r" = refused ]; then ok=1; else ok=0; fi
+    row a "$sd (rename/replace)" "devuser can neither rename it nor create beside it" "rename $([ "$moved" = yes ] && echo succeeded || echo refused); create beside $r" "$ok" \
+      "$(jq -nc --arg p "$sd" --arg mv "$moved" --arg cr "$r" '{path:$p,devuser_rename:$mv,devuser_create_beside:$cr}')"
+  done < <(jq -r '(.socket_dirs // [])[] | [.path, .gid, .owner_uid] | @tsv' <<<"$REGISTRY")
   while IFS=$'\t' read -r role ruid; do
     d="/run/secrets/$role"; s="$(st "$R$d")"; read -r uid _ mode dev <<<"$s"
     if [ -n "$s" ] && [ "$uid" = "$ruid" ] && [ "$mode" = 500 ]; then

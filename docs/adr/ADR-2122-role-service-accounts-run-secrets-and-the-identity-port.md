@@ -313,6 +313,35 @@ own commit with the reason.
   `/ready` signal) and `teammate-gc` under the flag. The socket therefore sits inside the
   `/run/secrets` mount.
 
+## Correction to the integration disposition: the socket's directory — 2026-10-03
+
+The queen's integration disposition (design §13) placed the identity socket in a root-owned
+`/run/agentbox`. That does not hold, because `/run` is devuser's. It is a tmpfs mounted
+`uid=1000,gid=1000` (`docker-compose.yml:109`, `flake.nix:3273`). A non-root owner of a
+directory can rename any entry in it, so devuser can move a root-owned `/run/agentbox` aside and
+plant a directory with its own socket. Ownership of the entry does not matter; ownership of the
+parent does. `/run/secrets` is safe for the same reason in reverse: it is its own tmpfs,
+`uid=0,gid=0,mode=711` (`docker-compose.yml:110`, `flake.nix:3278`), so it is a mount point
+devuser can neither rename nor write. The socket's directory, `/run/secrets/ab-identity-port`,
+sits inside it. Root-owning `/run/agentbox` would also have broken two devuser writers under the
+flag: `bootstrap-seal`, whose `/run/agentbox/bootstrap.done` is the `/ready` signal
+(`config/seal-bootstrap.sh:15`), and `teammate-gc`.
+
+The queen accepted the correction. The rehearsal now tests the property. In check (a), devuser
+tries to rename the socket directory and to create an entry beside it, and both must be refused.
+A directory that is renamed is moved straight back. `tests/config/role-isolation-rehearsal.test.sh`
+case 17 puts the socket directory under a devuser-writable parent, the `/run/agentbox` case,
+and shows (a) failing with the directory restored. The PASS fixture shows both attempts refused.
+
+## Pointer: the browser sidecar's key (W9) — 2026-10-03
+
+`custody/w9-sidecar-podkey` gives the Chrome sidecar Podkey, pinned by commit, run, artefact and
+zip sha256 in `browsercontainer/podkey.pin`, and keeps the profile on the
+`browsercontainer-profile` volume. The key Podkey holds is K_browser, the sidecar's identity in the G-5 split. It
+lives in the sidecar, not in this container, so no role account here holds or delivers it, and
+nothing in this record's table changes. The custody of that key and the pin's forward-only rule
+are recorded in `browsercontainer/README.md` ("Podkey and the persistent profile").
+
 ## Consequences
 
 - The image gains 8 passwd and 9 group lines (8 role groups and `ab-identity-port`), `/etc/supervisord.roles.conf`,
