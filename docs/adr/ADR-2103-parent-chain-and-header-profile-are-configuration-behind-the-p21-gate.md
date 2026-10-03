@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 05d886bba7cc7c73c4de8ae47680785c4f81c079
+verified_commit: 0919dc39afb7d4ab22bfc14a431f0d55ef1b81b3
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
@@ -568,3 +568,11 @@ Evidence, per the upstream-pins rule (a pin moves only after a block is produced
   both pins.
 Decision and status unchanged: the parent chain and header profile remain configuration
 behind the P21 gate; the pin records which engine the producer runs.
+
+## Re-verification — 2026-10-03 (chain-event announce)
+
+`b6c44c9a5` added a four-line change to `config/sidechain/run-producer.sh`: when a
+`chain-event.json` sits beside the chain document, the producer is started with
+`--chain-event` so its tips carry the chain hash (SPEC 0.0.5). The producer's parent check,
+the seal, the checkpoint position (open, SC5) and this record's decision are unchanged.
+Re-verified at `0919dc39afb7d4ab22bfc14a431f0d55ef1b81b3`.
