@@ -320,9 +320,11 @@ if jq -e '
   and (.roles[] | select(.name == "ab-sidestr-dreamlab") | .enabled and .chain == "dreamlab" and .interval == 600 and .files == ["signer.key","parent.credential"])
   and (.roles[] | select(.name == "ab-sidestr-dreamlab-txbt4") | (.enabled | not) and .programs == [] and .files == [])
   and (.roles[] | select(.name == "ab-identity") | (.env | index("AGENTBOX_NSEC")) != null and (.files | length) == 5)
+  and (.roles[] | select(.name == "ab-identity") | (.env | index("AGENTBOX_AGENT_PRIVKEY_HEX")) != null and (.env | index("OPERATOR_NOSTR_PRIVKEY")) != null)
+  and (.classified_root_env | map(.name) == ["TAILSCALE_AUTHKEY"])
   and (.roles[] | select(.name == "ab-spend") | .deferred != null)
   and ([.roles[].uid] | index(965) == null)' <<<"$reg" >/dev/null 2>&1; then
-  ok "--print-registry reads W1's table and plan: faucet 966, txbt4 roles undelivered, ab-spend deferred, 965 unused"
+  ok "--print-registry reads W1's table, its plan and W2's ROLE class: faucet 966, txbt4 roles undelivered, ab-spend deferred, 965 unused"
 else bad "--print-registry reads W1's table and plan" "$(head -c 600 <<<"$reg")"; fi
 
 n_receipts="$(find "$ROOT" -maxdepth 1 -name 'all-receipts.*.json' | wc -l)"

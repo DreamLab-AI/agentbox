@@ -136,6 +136,9 @@ else FLAG="$(toml_bool security role_isolation)"; FLAG_SOURCE="manifest"; fi
 # delivered on this image (its chain is off): it gets no programs and no files.
 ROLE_TABLE="$R/etc/agentbox/role-accounts.json"
 ROLE_PLAN="$R/etc/agentbox/role-secrets.tsv"
+# W2's environment classes (ADR-2122 §3a): the ROLE class names every secret variable and its
+# holder, including the ones W1's plan does not deliver (w2_only). (e) classifies by these names.
+ENV_CLASSES="${RH_ENV_CLASSES:-$REPO/config/custody/env-classes.json}"
 # Copies the table does not deliver but that hold ab-identity's keys today; (a) probes them.
 IDENTITY_AT_REST='{"at_rest":["/var/lib/agentbox/identities/agentbox-core.json","/run/secrets/nostr.key"],"at_rest_dirs":["/var/lib/agentbox/identities"],"legacy":["/home/devuser/workspace/.agentbox/zone-keys.json"]}'
 
@@ -149,19 +152,21 @@ normalise_registry() { # <table.json> <plan.tsv>
     else port="$(toml_int "sidechain.$c" port 3450)"; interval="$(toml_int "sidechain.$c" interval 600)"; fi
     cfg="$(jq -c --arg c "$c" --argjson p "$port" --argjson i "$interval" '.[$c] = {port: $p, interval: $i}' <<<"$cfg")"
   done <<<"$chains"
-  jq -c --rawfile plan "$2" --arg src "$1 + $2" --argjson chains "$cfg" --argjson ident "$IDENTITY_AT_REST" '
+  jq -c --rawfile plan "$2" --arg src "$1 + $2 + ${ENV_CLASSES#"$REPO/"}" --argjson chains "$cfg" --argjson ident "$IDENTITY_AT_REST" \
+    --slurpfile classes "$ENV_CLASSES" '
     ($plan | split("\n") | map(select(length > 0 and (startswith("#") | not)) | split("\t"))) as $rows
     | (.reserved_ids // {} | keys | map(tonumber)) as $reserved
     | if ([.roles[].uid] | any(. as $u | $reserved | index($u))) then error("a role uid is reserved (reserved_ids)") else . end
+    | ($classes[0].classes.ROLE | to_entries | map({name: .key, role: .value.role})) as $role_env
     | {source: $src, schema: .schema, reserved_ids: ($reserved),
-       classified_root_env: [{name: "TAILSCALE_AUTHKEY", holder: "tailscale-up (root)"}],
+       classified_root_env: [$role_env[] | select(.role == "root") | {name, holder: "root"}],
        roles: [.roles[] | .name as $n
          | ([$rows[] | select((.[0] == "file" or .[0] == "env") and .[1] == $n)]) as $mine
          | ((.secrets | length) == 0 or ($mine | length) > 0) as $on
          | {name: $n, uid, gid: .uid,
             programs: (if $on then .programs else [] end),
             files: [$mine[] | .[2]],
-            env: [.secrets[] | .from_env // empty],
+            env: ([.secrets[] | .from_env // empty] + [$role_env[] | select(.role == $n) | .name] | unique),
             at_rest: ([$mine[] | select(.[0] == "file") | .[3]] + (if $n == "ab-identity" then $ident.at_rest else [] end)),
             at_rest_dirs: (([$mine[] | select(.[0] == "file") | .[3] | select(startswith("/var/lib/agentbox/")) | sub("/[^/]*$"; "")] | unique)
                            + (if $n == "ab-identity" then $ident.at_rest_dirs else [] end)),
@@ -176,6 +181,7 @@ else
   [ -r "$ROLE_TABLE" ] || die "${ROLE_TABLE#"$R"} is missing: this image predates the role accounts (ADR-2122) and cannot be rehearsed"
   [ -r "$ROLE_PLAN" ] || die "${ROLE_PLAN#"$R"} is missing: the image ships the role table without its resolved plan"
   [ "$(jq -r .schema "$ROLE_TABLE" 2>/dev/null)" = agentbox.role-accounts/1 ] || die "${ROLE_TABLE#"$R"} is not agentbox.role-accounts/1"
+  jq -e '.classes.ROLE | type == "object"' "$ENV_CLASSES" >/dev/null 2>&1 || die "$ENV_CLASSES has no ROLE class (custody W2)"
   REGISTRY="$(normalise_registry "$ROLE_TABLE" "$ROLE_PLAN")" || die "could not read the role table and plan"
 fi
 
