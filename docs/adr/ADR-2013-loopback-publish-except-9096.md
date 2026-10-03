@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9fc8b4e693edbf6ec2dfd0f372328903819eeb30
+verified_commit: 4301b278218dae6d1752bc213eb33a39c2702021
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -335,3 +335,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `.github/workflows/invari
 ### Re-verification — 2026-10-03 (wrangler 4.147.0)
 
 `541e96dcc..9fc8b4e69`: `flake.nix` changes only the `wranglerPkg` pin: version 4.147.0, its lock and both hashes (`9fc8b4e69`), with the rationale comment. Nothing this record governs (ADR-2013 — Every compose publish binds 127.0.0.1 unless on the sanctioned-exposure list, CI-enforced across all overlays) changes meaning. The decision holds. Re-verified by `git log 541e96dcc..9fc8b4e69 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (mermaid-cli hold note)
+
+`9fc8b4e69..4301b2782`: `flake.nix` changes only the comment above `mermaidCliPkg` (12.0.0 held, re-evaluation recorded); no pin, hash or gate changes (`4301b2782`). Nothing this record governs (ADR-2013 — Every compose publish binds 127.0.0.1 unless on the sanctioned-exposure list, CI-enforced across all overlays) changes meaning. The decision holds. Re-verified by `git log 9fc8b4e69..4301b2782 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.

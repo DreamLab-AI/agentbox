@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9fc8b4e693edbf6ec2dfd0f372328903819eeb30
+verified_commit: 4301b278218dae6d1752bc213eb33a39c2702021
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -254,3 +254,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `flake.nix` (`dc91e092a`)
 ### Re-verification — 2026-10-03 (wrangler 4.147.0)
 
 `541e96dcc..9fc8b4e69`: `flake.nix` changes only the `wranglerPkg` pin: version 4.147.0, its lock and both hashes (`9fc8b4e69`), with the rationale comment. Nothing this record governs (ADR-2002 — AoE interaction plane requires token auth — loopback is not a boundary) changes meaning. The decision holds. Re-verified by `git log 541e96dcc..9fc8b4e69 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (mermaid-cli hold note)
+
+`9fc8b4e69..4301b2782`: `flake.nix` changes only the comment above `mermaidCliPkg` (12.0.0 held, re-evaluation recorded); no pin, hash or gate changes (`4301b2782`). Nothing this record governs (ADR-2002 — AoE interaction plane requires token auth — loopback is not a boundary) changes meaning. The decision holds. Re-verified by `git log 9fc8b4e69..4301b2782 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
