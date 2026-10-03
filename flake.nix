@@ -314,6 +314,19 @@
             instance = "poker-citizen-${name}";
           }) (lib.filterAttrs (_: v: builtins.isAttrs v) pokerCitizenCfg);
         pokerCitizenAnySeat = lib.any (c: c.enabled) (lib.attrValues pokerCitizenSeats);
+        # [poker_coach] (forum kit coach.rs): the practice table's coach on its own
+        # key, from the same kit crate as the seats (binary nostr-bbs-poker-coach).
+        # No funds, no producer: gated on nothing but itself. REBUILD-class.
+        pokerCoachCfg = agentboxConfig.poker_coach or {};
+        pokerCoachEnabled = pokerCoachCfg.enabled or false;
+        pokerCoachKey = unplaceheld (pokerCoachCfg.key_file or "/home/devuser/workspace/sidestr/agents/poker-coach.key");
+        pokerCoachRelay = unplaceheld (pokerCoachCfg.relay or "");
+        pokerCoachLlmUrl = unplaceheld (pokerCoachCfg.llm_url or "");
+        pokerCoachModel = pokerCoachCfg.model or "";
+        pokerCoachExtraFile = unplaceheld (pokerCoachCfg.extra_file or "");
+        pokerCoachLlmKeyFile = unplaceheld (pokerCoachCfg.key_file_llm or "");
+        pokerCoachMaxTokens = toString (pokerCoachCfg.max_tokens or 400);
+        pokerCoachReplySecs = toString (pokerCoachCfg.reply_secs or 25);
         securityCfg = agentboxConfig.security or {};
         securityExceptions = securityCfg.exceptions or {};
         consultantsCfg = agentboxConfig.consultants or {};
@@ -2924,6 +2937,25 @@ stderr_logfile=/var/log/${c.instance}.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 '') (lib.attrValues pokerCitizenSeats)}
+${lib.optionalString pokerCoachEnabled ''
+
+; [poker_coach] (forum kit coach.rs): the practice table's coach. Answers the
+; table's [poker-coach] DMs from an OpenAI-compatible model on its own key, so
+; coaching never reaches JunkieJarvis or the operator's control gateway.
+; Holds no funds and needs no producer.
+[program:poker-coach]
+command=/opt/agentbox/config/poker/run-coach.sh
+user=devuser
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pokerCitizenPkg pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",POKER_COACH_KEY_FILE="${pokerCoachKey}"${lib.optionalString (pokerCoachRelay != "") '',POKER_COACH_RELAY="${pokerCoachRelay}"''},POKER_COACH_LLM_URL="${pokerCoachLlmUrl}",POKER_COACH_MODEL="${pokerCoachModel}"${lib.optionalString (pokerCoachExtraFile != "") '',POKER_COACH_LLM_EXTRA_FILE="${pokerCoachExtraFile}"''}${lib.optionalString (pokerCoachLlmKeyFile != "") '',POKER_COACH_LLM_KEY_FILE="${pokerCoachLlmKeyFile}"''},POKER_COACH_MAX_TOKENS="${pokerCoachMaxTokens}",POKER_COACH_REPLY_SECS="${pokerCoachReplySecs}"
+autostart=true
+autorestart=true
+startsecs=10
+priority=265
+stdout_logfile=/var/log/poker-coach.log
+stderr_logfile=/var/log/poker-coach.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
 ${lib.concatMapStrings (c: lib.optionalString c.enabled ''
 
 ; [sidechain.${c.name}] (ADR-2103): sidestr:${c.name}'s producer beside ${c.parent}.

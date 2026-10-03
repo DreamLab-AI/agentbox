@@ -14,7 +14,8 @@
     "sidestr-producer*",
     "sidestr-faucet*",
     "poker-citizen",
-    "poker-citizen-*"
+    "poker-citizen-*",
+    "poker-coach"
   ],
   "roles": [
     {
@@ -112,6 +113,15 @@
       "programs": ["poker-citizen-dreamlab-txbt4"],
       "secrets": [
         { "file": "house.key", "env": "POKER_CITIZEN_KEY_FILE", "source": "/var/lib/agentbox/secrets/poker-citizen-dreamlab-txbt4.key", "legacy": "/home/devuser/workspace/sidestr/agents/poker-citizen-txbt4.key" }
+      ]
+    },
+    {
+      "name": "ab-poker-coach",
+      "uid": 972,
+      "purpose": "The practice table's poker coach ([poker_coach], forum kit coach.rs): its own Nostr key, so coaching DMs never reach JunkieJarvis or the operator's control gateway. Holds no funds and signs no transactions; the key is an identity only.",
+      "programs": ["poker-coach"],
+      "secrets": [
+        { "file": "coach.key", "env": "POKER_COACH_KEY_FILE", "source": "/var/lib/agentbox/secrets/poker-coach.key", "legacy": "/home/devuser/workspace/sidestr/agents/poker-coach.key" }
       ]
     }
   ],

@@ -1653,6 +1653,25 @@ port      = 3451
 relay     = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
 daily_cap = 200000   # BLAKES7 the house pays out per day at most
 
+# [poker_coach] (forum kit coach.rs; website [poker] coach_pubkey): the practice
+# table's coach, [program:poker-coach], binary nostr-bbs-poker-coach from the
+# same kit crate as the house seats. The table DMs it each decision with a
+# [poker-coach] request; it answers from an OpenAI-compatible model with a
+# [coach] reply. Its own key (never JunkieJarvis's: a DM to the forum agent
+# costs its clarify gate and lands in its logs), no funds, no producer.
+# llm_url is the Ontology Loom door (workspace tier); extra is the JSON object
+# merged into every request (thinking off, no ontology scaffold).
+[poker_coach]
+enabled    = true
+key_file   = "/home/devuser/workspace/sidestr/agents/poker-coach.key"   # pubkey 032f0527…ea50 — forum [[agents]] poker-coach
+relay      = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
+llm_url    = "http://192.168.2.132:8084/v1"
+model      = "qwen3.8-27b-heretic-q8_0"
+extra_file = ""        # unset: config/poker/coach-llm.json
+key_file_llm = ""      # a bearer-token file for a keyed model; unset for the Loom
+max_tokens = 400
+reply_secs = 25
+
 [payments.sidestr]
 enabled                 = true
 # chain_id: the SC1 demo chain; sidestr:dreamlab is the live one on :3450

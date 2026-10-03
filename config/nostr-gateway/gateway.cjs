@@ -724,8 +724,19 @@ function handleWrap(ws, wrap) {
   if (notifyEnquiry(ws, wrap, rumor)) return;                          // website form → phone, never a command
   if (String(rumor.pubkey || '').toLowerCase() !== commanderPub) return; // only the operator may command
   if (Array.isArray(rumor.tags) && rumor.tags.some((tag) => tag[0] === 'client' && /^agentbox-/.test(String(tag[1] || '')))) return;
+  // The rumor must be addressed to this identity: a self-DM, the operator
+  // typing in their own thread. NIP-17 senders also wrap a copy of every DM
+  // to THEMSELVES, and that copy's inner rumor still names the real
+  // recipient in `p`. Without this gate, each DM the operator sends anyone
+  // from the forum (a member, an agent, the practice table's coach) arrives
+  // here sealed by the operator and reads as a command typed from the phone.
+  const addressed = (Array.isArray(rumor.tags) ? rumor.tags : []).find((tag) => tag[0] === 'p')?.[1];
+  if (addressed && String(addressed).toLowerCase() !== pub) { log('skipped: a copy of a DM to', String(addressed).slice(0, 8) + '…'); return; }
   const text = String(rumor.content || '').trim();
   if (!text) return;
+  // Table traffic is never a command, whichever key it reached us by
+  // (forum client poker::coach: `[poker-coach]` requests, `[coach]` replies).
+  if (/^\[(poker-coach|coach)\]/.test(text)) { log('skipped: poker coach traffic'); return; }
   // Replay guards, in order of authority (the relay re-serves stored history
   // on every keep-warm re-REQ, so "it arrived" never implies "it is new"):
   //   a. durable executed store — this exact wrap already ran, maybe in a

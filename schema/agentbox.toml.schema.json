@@ -3455,6 +3455,22 @@
         }
       }
     },
+    "poker_coach": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Forum kit coach.rs: the practice table's coach (nostr-bbs-poker-coach, from the same kit crate as the house seats, baked by lib/poker-citizen.nix) as [program:poker-coach] on its own key, so coaching DMs never reach JunkieJarvis or the operator's control gateway. Holds no funds and needs no producer. REBUILD-class.",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "true \u21d2 [program:poker-coach] runs. false \u21d2 no program." },
+        "key_file": { "type": "string", "description": "The coach's Nostr key file (64 hex or nsec1\u2026), passed as POKER_COACH_KEY_FILE, never as an argument. Default ~/workspace/sidestr/agents/poker-coach.key." },
+        "relay": { "type": "string", "description": "The forum relay (wss://\u2026), passed as POKER_COACH_RELAY. Empty \u21d2 run-coach.sh's default." },
+        "llm_url": { "type": "string", "description": "The model's OpenAI-compatible base URL up to /v1 (POKER_COACH_LLM_URL). Required." },
+        "model": { "type": "string", "description": "The model name the endpoint expects (POKER_COACH_MODEL). Required." },
+        "extra_file": { "type": "string", "description": "A JSON object merged into every request (POKER_COACH_LLM_EXTRA_FILE). Empty \u21d2 config/poker/coach-llm.json." },
+        "key_file_llm": { "type": "string", "description": "A bearer-token file for a keyed model (POKER_COACH_LLM_KEY_FILE), read by the runner into the binary's environment. Empty \u21d2 no token." },
+        "max_tokens": { "type": "integer", "minimum": 1, "description": "The most tokens the model may spend on one answer (POKER_COACH_MAX_TOKENS). Default 400." },
+        "reply_secs": { "type": "integer", "minimum": 1, "description": "Seconds the model has before the table is told to play on (POKER_COACH_REPLY_SECS); under the table's own 30 s. Default 25." }
+      }
+    },
     "plugins": {
       "type": "object",
       "additionalProperties": true,
