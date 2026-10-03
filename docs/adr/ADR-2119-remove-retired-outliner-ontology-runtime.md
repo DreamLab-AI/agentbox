@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4301b278218dae6d1752bc213eb33a39c2702021
+verified_commit: 1f1fd9b2eeaf79f6cdcbd16fabfd6909c53d4965
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -122,3 +122,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `flake.nix` (`dc91e092a`)
 ### Re-verification — 2026-10-03 (mermaid-cli hold note)
 
 `9fc8b4e69..4301b2782`: `flake.nix` changes only the comment above `mermaidCliPkg` (12.0.0 held, re-evaluation recorded); no pin, hash or gate changes (`4301b2782`). Nothing this record governs (ADR-2119 — Remove the retired outliner ontology runtime) changes meaning. The decision holds. Re-verified by `git log 9fc8b4e69..4301b2782 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (web-researcher hold note)
+
+`4301b2782..1f1fd9b2e`: `flake.nix` changes only a comment in `webResearcherMcpPkg` (v1.49.4 held: needs Go 1.27.1, beyond the pinned nixpkgs); no pin, hash or gate changes (`1f1fd9b2e`). Nothing this record governs (ADR-2119 — Remove the retired outliner ontology runtime) changes meaning. The decision holds. Re-verified by `git log 4301b2782..1f1fd9b2e -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
