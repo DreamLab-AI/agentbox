@@ -1596,6 +1596,7 @@ parent_rpc             = "http://192.168.2.27:48342/"   # Knots 29.4.2 txbt4 on 
 # decoderawtransaction, so parent txs relayed over kind 23503 can be judged).
 parent_credential_file = "/var/lib/agentbox/secrets/knots-txbt4.rpc"
 parent_from            = 152225  # txbt4 tip at the seal; never below the fork, 150308
+peg_script             = "51205e05b5bae0b9eff8dfd893444817558f67a6acfc8d47b0b65022d5c7c6665f2f"  # SPEC 6 Level 2: the challenge; deposits pay it, no parent wallet (txbt4 RPC is read-only)
 announce_mirror        = "https://dreamlab-ai.github.io/sidestr-dreamlab-txbt4"
 mirror                 = true    # its own Pages repo, DreamLab-AI/sidestr-dreamlab-txbt4
 mirror_checkout        = "/home/devuser/workspace/sidestr/mirror-dreamlab-txbt4"

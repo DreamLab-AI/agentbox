@@ -35,6 +35,7 @@
 #                          rpcauth user); read again by the engine on a 401
 #   SIDESTR_PARENT_FROM    the parent height the peg-in scan starts from
 #   SIDESTR_PARENT_WALLET  the parent wallet that pays peg-outs; empty: peg-outs are recorded, not paid
+#   SIDESTR_PEG_SCRIPT     an output script hex announced as the peg (SPEC 6 Level 2) for a chain with no parent wallet
 #   SIDESTR_CHECKPOINT_EVERY / SIDESTR_CHECKPOINT_WALLET
 #                          write the tip into the parent every N blocks from that wallet (SPEC 11).
 #                          0 (the default): no checkpoint, so nothing anchors the chain. N > 0 needs
@@ -154,6 +155,9 @@ else
   echo "run-producer[$NAME]: checkpoints off: no block of $NAME is anchored in $parent" >&2
 fi
 [ -n "$PARENT_WALLET" ] && extra+=(--parent-wallet "$PARENT_WALLET")
+# SPEC 6 Level 2 for a single-signer chain: announce this output script as the peg and credit deposits
+# paying it, with no parent wallet (peg-outs recorded, not paid). sidestr:dreamlab-txbt4 passes its challenge.
+[ -n "${SIDESTR_PEG_SCRIPT:-}" ] && extra+=(--peg-script "$SIDESTR_PEG_SCRIPT")
 # SPEC 0.0.5: the chain's published kind-3500 event (siding chain-event). The document lives in the
 # read-only image, so the event sits in the writable state dir; produce verifies it and announces its
 # id as the chain hash (`e` tag) with every tip. sidestr:dreamlab = 44eb8c91..., published 2026-10-03.

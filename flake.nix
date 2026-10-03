@@ -283,6 +283,7 @@
             parentFrom = toString (c.parent_from or 152225);
             announce = unplaceheld (c.announce_mirror or "");
             mirrorCheckout = unplaceheld (c.mirror_checkout or "/home/devuser/workspace/sidestr/mirror-${name}");
+            pegScript = c.peg_script or "";
             faucetKey = unplaceheld (c.faucet_key_file or "/home/devuser/workspace/sidestr/agents/treasury-${name}.key");
             faucetSats = toString (c.faucet_sats or 1000);
           }) (lib.filterAttrs (_: v: builtins.isAttrs v) sidechainCfg);
@@ -2900,7 +2901,7 @@ ${lib.concatMapStrings (c: lib.optionalString c.enabled ''
 [program:sidestr-producer-${c.name}]
 command=/opt/agentbox/config/sidechain/run-producer.sh${lib.optionalString (c.announce != "") " --announce-mirror ${c.announce}"}
 user=devuser
-environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pkgs.nodejs_22 pkgs.git pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",SIDESTR_CHAIN="${c.name}",SIDESTR_EXPECT_PARENT="${c.parent}",SIDESTR_PORT="${c.port}",SIDESTR_INTERVAL="${c.interval}",SIDESTR_PARENT_RPC="${c.parentRpc}",SIDESTR_PARENT_COOKIE="${c.parentCredential}",SIDESTR_PARENT_FROM="${c.parentFrom}",SIDESTR_PARENT_WALLET="",SIDESTR_CHECKPOINT_EVERY="${toString c.every}",SIDESTR_CHECKPOINT_WALLET="${c.ckWallet}"
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ pkgs.nodejs_22 pkgs.git pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",SIDESTR_CHAIN="${c.name}",SIDESTR_EXPECT_PARENT="${c.parent}",SIDESTR_PORT="${c.port}",SIDESTR_INTERVAL="${c.interval}",SIDESTR_PARENT_RPC="${c.parentRpc}",SIDESTR_PARENT_COOKIE="${c.parentCredential}",SIDESTR_PARENT_FROM="${c.parentFrom}",SIDESTR_PARENT_WALLET="",SIDESTR_PEG_SCRIPT="${c.pegScript}",SIDESTR_CHECKPOINT_EVERY="${toString c.every}",SIDESTR_CHECKPOINT_WALLET="${c.ckWallet}"
 autostart=true
 autorestart=true
 startsecs=30
