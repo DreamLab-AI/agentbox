@@ -17,8 +17,8 @@ services:
       - DISPLAY=:1
       - WLR_BACKENDS=headless
       - AGENTBOX_NODE_LABEL=hp-desktop
-      - AGENTBOX_NSEC=${AGENTBOX_NSEC:-}
-      - AGENTBOX_PRIVKEY_HEX=${AGENTBOX_PRIVKEY_HEX:-}
+      # AGENTBOX_NSEC / AGENTBOX_PRIVKEY_HEX arrive by env_file (.env), never
+      # here: ROLE-class (config/custody/env-classes.json; custody W10 2026-10-03).
       - COMFYUI_OUTPUTS=/run/comfyui/output
     volumes:
       # Legacy whole-directory bind: this node has not yet run
