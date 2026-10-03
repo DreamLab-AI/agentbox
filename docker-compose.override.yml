@@ -108,9 +108,13 @@ services:
       # Q21: Docker socket mount (accepted security trade-off — local dev host).
       # Allows agentbox to orchestrate sibling containers on visionclaw_network.
       # See ADR (Q21) for the documented escalation: host-escape risk in
-      # combination with SYS_ADMIN. On multi-tenant or hardened deployments,
-      # replace with a tecnativa/docker-socket-proxy sidecar restricted to
-      # specific GET endpoints.
+      # combination with SYS_ADMIN. The Docker daemon is root on the host.
+      # Custody X-1 step 1 (W0): with [security].role_isolation = true the
+      # entrypoint no longer widens this socket for devuser; devuser gets the
+      # in-container GET-only proxy /run/docker-ro.sock ([program:docker-read-proxy],
+      # config/docker-read-proxy.cjs) and docker exec/run move to the host shell.
+      # This is the HOST inode: earlier boots left it o+rw, and only a host-side
+      # `chmod 0660 /var/run/docker.sock` narrows it (risk R2, owner question Q2).
       - /var/run/docker.sock:/var/run/docker.sock:rw
       # X11 socket is provided by the desktop security exception's tmpfs
       # in the base compose (in-container VNC at :5902). Host X11
@@ -151,9 +155,11 @@ services:
     # security_opt (no-new-privileges + seccomp), cap_add and shm_size are set
     # in the generated base docker-compose.yml ([resources].shm).
 
-    # Docker socket access: host docker group is gid 965. Without this,
-    # devuser (uid 1000) can't talk to /var/run/docker.sock and every
-    # docker/compose command requires sudo (blocked by no-new-privileges).
+    # Docker socket group: the host docker group is gid 965. group_add reaches
+    # PID 1 (root) and processes Docker starts directly; supervisord programs that
+    # drop to devuser (user=devuser) do NOT get it, so devuser's access came from
+    # the entrypoint's o+rw on the socket, which role_isolation turns off (W0).
+    # The read proxy joins the socket's group itself before dropping to 65534.
     group_add:
       - "965"
 

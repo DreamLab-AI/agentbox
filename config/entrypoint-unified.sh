@@ -327,6 +327,11 @@ export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/home/devuser/.config/git/config}
 # from PID 1. PATH stays store-only for root (sanitised above the stage
 # dispatch); the workspace cargo bin reaches devuser shells via Phase 8 only.
 _ab_vault_resolve
+# Custody X-1 step 1: [security].role_isolation (boot-class, default false). Read
+# once here and exported, so supervisord and every program see the same value;
+# the manifest wins over anything inherited from the compose environment.
+AGENTBOX_ROLE_ISOLATION="$(_ab_toml_bool security role_isolation)"
+export AGENTBOX_ROLE_ISOLATION
 # Arm Stage B's one-shot guard (see _ab_stage_b_claim). Fail loud, not fatal:
 # an unarmed dir makes Stage B refuse, which shows in bootstrap.error.log.
 _ab_root_state_dir_prepare "$AB_ROOT_STATE_DIR" \
@@ -435,13 +440,46 @@ if [ -d "$WORKSPACE" ]; then
   chown -R 1000:1000 "$WORKSPACE/project/.git/worktrees" 2>/dev/null || true
 fi
 
-# Docker socket: make accessible to devuser (gid 965 on host, not mapped
-# inside container). group_add in compose only affects PID 1's supplementary
-# groups, not processes that later switch to devuser via supervisord user=.
-# chmod o+rw is safe here — this is a single-user dev container.
-if [ -S /var/run/docker.sock ]; then
-  chmod o+rw /var/run/docker.sock 2>/dev/null || true
-fi
+# Docker socket (custody X-1 step 1, W0, bypass 1). The host's docker group is
+# gid 965 and is not mapped inside the container; compose group_add reaches only
+# PID 1, not programs that drop to devuser via supervisord user=.
+#   role_isolation off: widen the socket o+rw for devuser, exactly as before.
+#   role_isolation on:  do NOT widen it. The Docker daemon is root on the host,
+#     so socket access voids every in-container boundary. devuser gets the
+#     GET-only proxy at /run/docker-ro.sock ([program:docker-read-proxy]).
+#     The socket is a bind of the HOST inode, and earlier boots already widened
+#     it; skipping the chmod does not narrow it (risk R2). This never narrows it
+#     either: that is a host-side decision (Q2). If devuser can still reach it,
+#     the boot records degraded:docker-socket and logs a grep-able marker:
+#     fail loud, not fatal, like the vault gate.
+# Test: tests/runtime-contract/RC-X1-04.sh.
+_ab_docker_socket_access() { # _ab_docker_socket_access <socket> <0|1> [state-file] [user=devuser]
+  local sock="$1" iso="$2" state="${3:-/run/secrets/role-isolation.state}" user="${4:-devuser}" mode gid uid verdict
+  [ -S "$sock" ] || return 0
+  if [ "$iso" != 1 ]; then
+    chmod o+rw "$sock" 2>/dev/null || true
+    return 0
+  fi
+  mode="$(stat -L -c %a -- "$sock" 2>/dev/null || echo 0)"
+  gid="$(stat -L -c %g -- "$sock" 2>/dev/null || echo 0)"
+  uid="$(stat -L -c %u -- "$sock" 2>/dev/null || echo 0)"
+  verdict=ok
+  # devuser can connect if it owns the socket, is in its group, or other has w.
+  case "${mode: -1}" in [2367]) verdict=degraded ;; esac
+  [ "$uid" = "$(id -u "$user" 2>/dev/null || echo none)" ] && verdict=degraded
+  case " $(id -G "$user" 2>/dev/null) " in *" ${gid} "*) verdict=degraded ;; esac
+  if [ "$verdict" = degraded ]; then
+    echo "[security] ROLE-ISOLATION-DEGRADED docker-socket: ${sock} is mode ${mode} gid ${gid}; devuser can still drive the host Docker daemon. Host-side fix (R2/Q2): chmod 0660 /var/run/docker.sock on the host." >&2
+  else
+    echo "[security] role_isolation: ${sock} not widened; devuser uses /run/docker-ro.sock (read-only)"
+  fi
+  # Never write through a planted symlink: remove, then create with O_EXCL (noclobber).
+  rm -f -- "$state" 2>/dev/null || true
+  ( set -C; printf '%s:docker-socket\n' "$verdict" >"$state" ) 2>/dev/null \
+    || echo "[security] WARN: could not record ${verdict}:docker-socket in ${state}" >&2
+  return 0
+}
+_ab_docker_socket_access /var/run/docker.sock "$AGENTBOX_ROLE_ISOLATION"
 
 # Claude-flow data directory (hooks write here as devuser)
 mkdir -p /home/devuser/.claude-flow/data 2>/dev/null || true
@@ -3045,8 +3083,15 @@ echo "[8/8] Publishing environment hints..."
 RUNTIME_ENV_FILE=/run/agentbox/runtime-env.sh
 RUNTIME_ENV_DURABLE=/home/devuser/workspace/.agentbox-runtime-env.sh
 mkdir -p "$(dirname "$RUNTIME_ENV_FILE")" 2>/dev/null || true
+# Custody W0: under [security].role_isolation devuser's docker CLI talks to the
+# GET-only proxy (ps/logs/inspect); exec/run move to the host shell (Q1).
+_ROLE_ISO_EXPORTS=""
+if [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ]; then
+  _ROLE_ISO_EXPORTS='export DOCKER_HOST="unix:///run/docker-ro.sock"'
+fi
 cat > "$RUNTIME_ENV_FILE" <<EOF
 export WORKSPACE="$WORKSPACE"
+$_ROLE_ISO_EXPORTS
 export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
 export RUVECTOR_PORT="$RUVECTOR_PORT"
 : "${RUVECTOR_PG_PASSWORD:=ruvector}"

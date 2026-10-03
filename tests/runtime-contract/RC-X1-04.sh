@@ -14,12 +14,17 @@
 #
 # Asserts, against the real functions extracted from config/entrypoint-unified.sh:
 #   1. flag off: a 0660 socket becomes 0666 (today's behaviour, same command)
-#   2. flag on, socket 0660: untouched; state ok:docker-socket
-#   3. flag on, socket already o+rw: untouched (host inode); state degraded + loud marker
+#   2. flag on, socket 0660 that devuser neither owns nor shares a group with:
+#      untouched; state ok:docker-socket
+#   3. flag on, socket already o+rw (or owned by / grouped with devuser):
+#      untouched (host inode); state degraded + loud marker
 #   4. the state write never follows a planted symlink
 #   5. no socket: no-op
 #   6. [security].role_isolation is read with the manifest reader and exported
 #   7. live (AGENTBOX_RC_LIVE=1 with the flag on): devuser cannot use the raw socket
+# shellcheck disable=SC2015,SC2016
+# SC2015: _ok/_bad always return 0, so `cond && _ok || _bad` is a true if/else.
+# SC2016: single-quoted $ is deliberate (regexes and code run in a child bash).
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENTRY="${HERE}/../../config/entrypoint-unified.sh"
@@ -57,20 +62,27 @@ printf '%s' "$BODY" | grep -qF 'chmod o+rw "$sock" 2>/dev/null || true' \
 
 # ── 2. flag on, socket not widened ───────────────────────────────────────────
 S="${TMP}/on.sock"; _mksock "$S" 0660; ST="${TMP}/on.state"
-OUT="$(_ab_docker_socket_access "$S" 1 "$ST" 2>&1)"
+# The fixture socket is ours (uid/gid of this shell), so "devuser" is played by
+# an account that does not exist: it neither owns the socket nor shares its group.
+OUT="$(_ab_docker_socket_access "$S" 1 "$ST" rc-x1-no-such-user 2>&1)"
 [ "$(_mode "$S")" = 660 ] && _ok "flag on: socket mode untouched (0660)" || _bad "flag on must not chmod" "mode $(_mode "$S")"
 [ "$(cat "$ST" 2>/dev/null)" = "ok:docker-socket" ] && _ok "flag on, narrow socket: state ok:docker-socket" \
   || _bad "state must read ok:docker-socket" "$(cat "$ST" 2>&1)"
 
 # ── 3. flag on, host inode already widened (R2) ──────────────────────────────
 S="${TMP}/wide.sock"; _mksock "$S" 0666; ST="${TMP}/wide.state"
-OUT="$(_ab_docker_socket_access "$S" 1 "$ST" 2>&1)"
+OUT="$(_ab_docker_socket_access "$S" 1 "$ST" rc-x1-no-such-user 2>&1)"
 [ "$(_mode "$S")" = 666 ] && _ok "flag on, widened socket: left alone (never chmods the host inode either way)" \
   || _bad "flag on must not chmod a widened socket" "mode $(_mode "$S")"
 [ "$(cat "$ST" 2>/dev/null)" = "degraded:docker-socket" ] && _ok "flag on, widened socket: state degraded:docker-socket" \
   || _bad "state must read degraded:docker-socket" "$(cat "$ST" 2>&1)"
 printf '%s' "$OUT" | grep -q 'ROLE-ISOLATION-DEGRADED docker-socket' && _ok "a grep-able ROLE-ISOLATION-DEGRADED marker is logged" \
   || _bad "degraded marker must be logged" "$OUT"
+
+S2="${TMP}/owned.sock"; _mksock "$S2" 0600; ST="${TMP}/owned.state"
+_ab_docker_socket_access "$S2" 1 "$ST" "$(id -un)" >/dev/null 2>&1
+[ "$(cat "$ST" 2>/dev/null)" = "degraded:docker-socket" ] && _ok "flag on, 0600 socket owned by the user: degraded (owner bits count)" \
+  || _bad "an owned socket must read degraded" "$(cat "$ST" 2>&1)"
 
 # ── 4. symlinked state path ──────────────────────────────────────────────────
 VICTIM="${TMP}/victim"; printf 'precious\n' >"$VICTIM"; ln -s "$VICTIM" "${TMP}/link.state"
@@ -88,7 +100,8 @@ printf '[security]\naudit_acknowledged = true\n' >"${TMP}/off.toml"
 a="$(AGENTBOX_CONFIG="${TMP}/on.toml" _ab_toml_bool security role_isolation)"
 b="$(AGENTBOX_CONFIG="${TMP}/off.toml" _ab_toml_bool security role_isolation)"
 [ "$a" = 1 ] && [ "$b" = 0 ] && _ok "role_isolation reads 1 when true, 0 when absent (default false)" || _bad "flag read" "on=$a off=$b"
-grep -qE '^export AGENTBOX_ROLE_ISOLATION="\$\(_ab_toml_bool security role_isolation\)"' "$ENTRY" \
+grep -qE '^AGENTBOX_ROLE_ISOLATION="\$\(_ab_toml_bool security role_isolation\)"' "$ENTRY" \
+   && grep -qE '^export AGENTBOX_ROLE_ISOLATION$' "$ENTRY" \
   && _ok "Stage A exports AGENTBOX_ROLE_ISOLATION from the manifest" || _bad "Stage A must export AGENTBOX_ROLE_ISOLATION"
 grep -qE '^_ab_docker_socket_access /var/run/docker\.sock "\$AGENTBOX_ROLE_ISOLATION"' "$ENTRY" \
   && _ok "Stage A gates the socket on the flag" || _bad "Stage A must call _ab_docker_socket_access with the flag"
