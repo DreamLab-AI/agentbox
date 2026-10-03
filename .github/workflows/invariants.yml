@@ -9,6 +9,9 @@ on:
       - 'docker-compose*.yml'
       - 'docs/adr/**'
       - 'docs/PROTOCOL-registry.md'
+      - 'docs/SECURITY-profiles.md'
+      - 'config/egress-policy.json'
+      - 'docs/LAN-door-threat-model.md'
       - 'config/seccomp-agentbox.json'
       - 'config/entrypoint-unified.sh'
       - 'management-api/**'
@@ -135,6 +138,13 @@ jobs:
       # `node scripts/adr-index-gen.js docs/adr` now fails here.
       - name: check-adr-index (ADR-2001 — docs/adr/README.md matches the records on disk)
         run: node scripts/adr-index-gen.js docs/adr --check-index
+
+      # N-7: the prompt egress register is rendered from config/egress-policy.json
+      # `.register` into docs/SECURITY-profiles.md. --check fails on a hand edit to
+      # the table, an unrendered JSON change, an unmarked gap (gate or accepted
+      # record "none" without its marker) or a path:line citation outside its file.
+      - name: check-egress-register (N-7 — SECURITY-profiles.md table matches config/egress-policy.json)
+        run: node scripts/ci/render-egress-register.js --check
 
       - name: adr-ratchet self-test (an ADR added already decided is not backlog)
         run: bash tests/config/adr-ratchet.test.sh

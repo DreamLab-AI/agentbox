@@ -76,3 +76,15 @@ decision ADR-2091 relies on — and its `implementation_status` stays `none` bec
 described work of its own. The two carried-over consequences are now tested rather than
 stated: fail-open on 429/529/timeout and the no-retry rule are contract cases in
 `tests/config/skill-route.test.js`. The per-project bypass remains the open debt.
+
+## Cross-reference — 2026-10-03 (prompt egress register, N-7)
+
+This record is the `skill-router` row's accepted-egress record in the
+[prompt egress register](../SECURITY-profiles.md#prompt-egress-register--2026-10-03)
+(`config/egress-policy.json` `.register`), which catalogues every route by which a prompt,
+code, a secret-adjacent string or a key leaves the box, beside the routes this record does
+**not** widen to. Re-verified at `0919dc39a`: the router still sends the user's turn, clamped
+head+tail (`config/hooks/lib/skill-route.cjs:408-414`), to `api.typesafe.ai`
+(`config/hooks/lib/skill-route.cjs:33`); `[skills.routing].router` (`agentbox.toml:962`) is
+still the switch; and no per-project gate or bypass exists yet, so the debt in Consequences
+stands. Decision and status axes unchanged.
