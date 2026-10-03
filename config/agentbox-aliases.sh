@@ -13,7 +13,10 @@ alias dspb="claude --permission-mode bypassPermissions"
 
 # === CLAUDE FLOW (orchestration — Nix-packaged binary, no npx) ===
 alias cf="claude-flow"
-alias cf-init="claude-flow init --force"
+# --no-mods: ruflo 3.51+ init enables its mods by default, writing project
+# enabledPlugins, the ruflo marketplace and env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS
+# (gated by the manifest, not by init). Opt in explicitly: `ruflo mods install`.
+alias cf-init="claude-flow init --force --no-mods"
 alias cf-swarm="claude-flow swarm"
 alias cf-hive="claude-flow hive-mind spawn"
 alias cf-spawn="claude-flow hive-mind spawn"
@@ -198,11 +201,11 @@ generate-claude-md() { claude "Read the .specify/ directory and generate an opti
 agentbox-init() {
     if command -v gum >/dev/null 2>&1; then
         gum spin --spinner dot --title "Initialising spec-kit..." -- specify init . --ai claude 2>/dev/null || true
-        gum spin --spinner dot --title "Initialising claude-flow..." -- claude-flow init --force 2>/dev/null || true
+        gum spin --spinner dot --title "Initialising claude-flow..." -- claude-flow init --force --no-mods 2>/dev/null || true
         gum style --foreground '#9ece6a' "Workspace ready — run: claude"
     else
         specify init . --ai claude 2>/dev/null || echo "spec-kit init skipped"
-        claude-flow init --force 2>/dev/null || echo "claude-flow init skipped"
+        claude-flow init --force --no-mods 2>/dev/null || echo "claude-flow init skipped"
         echo "Workspace ready — run: claude"
     fi
 }

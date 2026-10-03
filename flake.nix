@@ -380,18 +380,34 @@
         #    the scoped tarball basename is `cli-<ver>.tgz`, and the unscoped
         #    `claude-flow` npm package is a third artefact of the same code.
         #
-        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.47.0.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/ruflo/-/ruflo-3.51.1.tgz
         #    3.41.0 (2026-09-10): federation topology, trust, routing, and
         #    lifecycle support plus the corresponding MCP tool surface.
         #    3.47.0 (2026-09-27; locks @claude-flow/cli 3.47.0): newest release
         #    outside the 72-hour freshness window on 2026-10-01 (3.47.1–3.49.0
         #    are inside it). Lock resolved with --before so transitives obey it.
+        #    3.51.1 (2026-10-02T16:17Z; locks @claude-flow/cli 3.51.1): npm
+        #    latest on 2026-10-03, taken INSIDE the 72-hour window for the
+        #    ruflo mods (ADR-404 upstream; ruflo-console needs Claude Code
+        #    2.1.287+, pinned in lib/claude-code-binary.nix). Lock resolved
+        #    with --before=2026-10-02T16:20:00Z so no transitive is newer than
+        #    the root. Upstream changes the image depends on: `ruflo init` now
+        #    enables the mods by default (project enabledPlugins, the ruflo
+        #    marketplace, env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS, then
+        #    `claude plugin install`), which would bypass the manifest gate on
+        #    function hooks, so every init the image runs passes --no-mods
+        #    (config/agentbox-aliases.sh, tests/config/ruflo-init-no-mods.test.sh);
+        #    hooks_route reports `matched:false` at 30% on no match (no
+        #    consumer here thresholds it: the CLI route output the adapter
+        #    filters is unchanged, and the proxy denies hooks_*); the
+        #    .claude/helpers memory/router/session scripts became .cjs
+        #    (hook-handler.cjs, which registered-hooks.txt prunes, is unchanged).
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.47.0";
-          packageLock = ./config/npm-locks/ruflo-3.47.0.package-lock.json;
-          sha256          = "sha256-3uiMaPAmDPypDYSLjmuLpRerQVqZWAWcgjF3yczjZxM=";
-          nodeModulesHash = "sha256-Wd//CPe78tLakvglOGGkC3u+uS2Y2olsRieAdlKfYEg=";
+          version         = "3.51.1";
+          packageLock = ./config/npm-locks/ruflo-3.51.1.package-lock.json;
+          sha256          = "sha256-vKkzPdeUUxh1cvtDUMuvdjIbJI3I44CQEr4JavXLpB4=";
+          nodeModulesHash = "sha256-NMX4U+qBrQ+1P87EBlBp+QeBGBPRoXShqpcgV31CXCw=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
