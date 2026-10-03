@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 275e12356319a9630846656580d497d53de3d38c
+verified_commit: 3b54129631067277f6363309b01cce485faa027a
 verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
@@ -391,3 +391,34 @@ asserts deliver → pick → scrub → exec (22/22). `flake.nix` changes only `[
 and a comment. The §3 plan, the accounts and the isolated config are untouched, and their suites
 pass: `role-secrets-delivery` 26/26 and `role-isolation-supervisor` 20/20. The image is
 unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`3b54129631067277f6363309b01cce485faa027a`, custody integration head)
+
+Re-stamped once at the head of `custody/integration`, after W0, W1, W5, W3 (with W6a), W7a,
+W8, W2 and W9 and the integration resolutions recorded above. Since W2's stamp (`275e12356`) the
+governed paths changed only by the commits those sections describe:
+
+- the config rename (`760ed01e4`);
+- the single role table in the rehearsal (`860f58fa2`, `31aa27f7b`);
+- `serve-identity`, the `ab-identity-port` group and the `sockdir`/`dir` plan rows (`b49c62249`);
+- the socket-directory probe (`ab55fbf0e`);
+- W3's port and pods consumer;
+- W5's bake;
+- the SC2174 fix (`3b5412963`).
+
+Suites at this head:
+
+| Suite | Result |
+|---|---|
+| agentbox-manifest cargo | 163 |
+| nostr-pod-bridge cargo | 209 |
+| role-isolation-supervisor | 23 |
+| role-secrets-delivery | 30 |
+| role-isolation-boot | 22 |
+| role-isolation-rehearsal | 23 |
+| RC-X1-01..06 | 14 + 16 + 3 + 17 + 6 + 30 |
+| env-secret-inventory | PASS, node test 13 |
+| management-api test:node | 232 pass, 2 skipped (W8's owner-pending keys), 0 fail |
+
+`decision_status` stays `proposed` and `activation_status` stays `inactive` until the rehearsal
+passes on the owner's rebuild with the flag on (§ Acceptance). Nix was not evaluated here.

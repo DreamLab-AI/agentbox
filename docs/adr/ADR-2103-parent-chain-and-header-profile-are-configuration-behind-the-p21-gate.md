@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: e103f81a769c7a762786f6bf7fcb6a6e00ff544e
+verified_commit: 3b54129631067277f6363309b01cce485faa027a
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, config/sidechain/upstream-pins, lib/sidestr-upstream.nix, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, tests/config/sidechain-producer-baked.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
@@ -613,3 +613,11 @@ fetch hashes were computed with the NAR method, which reproduces `lib/sidestr-ag
 pin exactly; the derivation itself is unbuilt until the owner's host rebuild. Until that
 rebuild the live producer stays on its tmux bridge under `SIDESTR_ALLOW_UNPINNED=1`, which the
 new runner still serves, now with the marker. Decision and status axes unchanged.
+
+## Re-verification — 2026-10-03 (`3b54129631067277f6363309b01cce485faa027a`, custody integration head)
+
+Tripped by the custody integration (`custody/integration`: W0, W1, W5, W3, W7a, W8, W2, W9 and
+the integration resolutions, ADR-2122). Since `e103f81a7` the governed paths changed as follows. `tests/config/sidechain-producer-baked.test.sh` was touched by W5's own re-verification commit (`a75491dba`) after the stamp it carries. It passes 8/8 here.
+The parent check, the seal, the P21 gate and the checkpoint position are unchanged; the producer gates pass 7/7 and genesis 7/7. The decision holds. Re-verified by `git log e103f81a7..3b5412963 -- <verified_paths>`
+and the integration gates. Nix was not evaluated in this container; the image is unverified
+until the owner's rebuild.

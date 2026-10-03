@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d3ff8e9a876e6b026b543f8824487e002e04cfa0
+verified_commit: 3b54129631067277f6363309b01cce485faa027a
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -343,3 +343,11 @@ Tripped by `services/nostr-pod-bridge/Cargo.toml` on the custody W3 branch, whic
 ## Re-verification — 2026-10-03 (`d3ff8e9a876e6b026b543f8824487e002e04cfa0`)
 
 Tripped by `services/nostr-pod-bridge/Cargo.toml` gaining `hmac = "0.12"` as a normal dependency, for the G-5 mirror-child known-answer test (`src/mirror_key.rs`). `hmac` 0.12.1 is `MIT OR Apache-2.0` and was already in the lock transitively through `nostr-bbs-core`, so the lock gains one edge and no package. The crate's declared licence is unchanged (`AGPL-3.0-only`). `sh scripts/ci/check-crate-licensing.sh` reports `OK … 9 services/ package directories`, the same count as `origin/main` (`0919dc39a`). The drop from the ten above predates this change. Decision and status unchanged.
+
+## Re-verification — 2026-10-03 (`3b54129631067277f6363309b01cce485faa027a`, custody integration head)
+
+Tripped by the custody integration (`custody/integration`: W0, W1, W5, W3, W7a, W8, W2, W9 and
+the integration resolutions, ADR-2122). Since `d3ff8e9a8` the governed paths changed as follows. `services/nostr-pod-bridge/Cargo.toml` gains `url`, `base64` and `zeroize` for the identity port (`a44ea413f`, W3) and `hmac` as a normal dependency for the G-5 mirror-child known-answer test (`86fc90e3c`). All four are permissively licensed and already in the lock graph; none is a new cryptographic primitive.
+Every service crate's licence stays MIT OR Apache-2.0, and the new dependencies are permissive. The decision holds. Re-verified by `git log d3ff8e9a8..3b5412963 -- <verified_paths>`
+and the integration gates. Nix was not evaluated in this container; the image is unverified
+until the owner's rebuild.

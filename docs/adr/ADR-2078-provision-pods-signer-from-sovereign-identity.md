@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 275e12356319a9630846656580d497d53de3d38c
+verified_commit: 3b54129631067277f6363309b01cce485faa027a
 verified_paths: [management-api/lib/pod-signer.js, management-api/lib/agent-identity.js, management-api/adapters/index.js, management-api/adapters/pods/_solid-http-base.js, tests/sovereign/pod-sovereign-signer.node-test.js]
 owner: jjohare
 review_trigger: ADR-2064 flipping sign_requests back to true, a change to nostr-pod-bridge bootstrap key layout, or a second stack needing its own pod identity
@@ -154,3 +154,11 @@ Tripped by `management-api/lib/pod-signer.js` gaining a third, flag-gated signin
 
 Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `management-api/lib/agent-identity.js`: `loadSovereignSigner` and `sovereignIdentityPath` are unchanged; the file re-exports the ROLE-secret loader and `loadOrMint` reads its override through it. Under the flag `identity.env` no longer exports `AGENTBOX_NSEC`; the pods signer never read it (it reads the identity file), so cases 1–4 are unaffected. `tests/sovereign/pod-sovereign-signer.node-test.js` passes 13/13. The decision holds.
 Re-verified by `git diff a48ea407a..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`3b54129631067277f6363309b01cce485faa027a`, custody integration head)
+
+Tripped by the custody integration (`custody/integration`: W0, W1, W5, W3, W7a, W8, W2, W9 and
+the integration resolutions, ADR-2122). Since `275e12356` the governed paths changed as follows. `management-api/lib/pod-signer.js` gains the identity-port source (`9e87ae402`, W3). It is selected only by `[security].role_isolation` or `sign_source = "identity-port"`, and is then the only source; a refusal or an absent port becomes `SigningUnavailable` before a byte is sent.
+Case 1 (the identity file) is unchanged with the flag off. Under the flag the port signs with the same core key, and ADR-2122 records it. The decision holds. Re-verified by `git log 275e12356..3b5412963 -- <verified_paths>`
+and the integration gates. Nix was not evaluated in this container; the image is unverified
+until the owner's rebuild.

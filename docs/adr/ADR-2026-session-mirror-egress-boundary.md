@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 275e12356319a9630846656580d497d53de3d38c
+verified_commit: 3b54129631067277f6363309b01cce485faa027a
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -190,3 +190,11 @@ The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe
 
 Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `config/hooks/nostr-live-mirror.cjs` takes the operator key from `config/hooks/lib/operator-key.cjs`. Flag off that is the pre-W2 `envFirst` read, unchanged, so the phone's mirror child key cannot move. Under the flag only `<NAME>_FILE` counts. **Consequence under the flag with W1:** the files are `ab-identity` 0400, so the devuser hook gets no key and seals under a throwaway key with no child key (fail-open, as designed) until the identity port's `mirror_wrap` (W3a/W3b) exists. The egress gates (`AGENTBOX_LIVE_MIRROR`, `AGENTBOX_EGRESS`, `config/egress-policy.json`) are untouched. The decision holds.
 Re-verified by `git diff 526b97dc6..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`3b54129631067277f6363309b01cce485faa027a`, custody integration head)
+
+Tripped by the custody integration (`custody/integration`: W0, W1, W5, W3, W7a, W8, W2, W9 and
+the integration resolutions, ADR-2122). Since `275e12356` the governed paths changed as follows. `config/egress-policy.json` gains the `.register` catalogue of egress routes (`a10f336fc`, N-7); `paths`, the redaction contract, is unchanged.
+The session mirror's egress boundary and its redaction paths are unchanged. The register only catalogues routes. The decision holds. Re-verified by `git log 275e12356..3b5412963 -- <verified_paths>`
+and the integration gates. Nix was not evaluated in this container; the image is unverified
+until the owner's rebuild.
