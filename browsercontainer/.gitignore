@@ -1,0 +1,2 @@
+# Podkey CI artefact cache: fetched by scripts/fetch-podkey.sh, verified against podkey.pin.
+/vendor/
