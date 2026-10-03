@@ -114,7 +114,7 @@ for four days with nothing to bring it back.
 
 | program | gate | runs | does |
 |---|---|---|---|
-| `sidestr-producer` | `enabled` | `run-producer.sh --announce-mirror <announce_mirror>` | the upstream JS engine from the durable checkouts under `$WORKSPACE/sidestr/upstream`: port `:3450` on loopback, a block every 600 s (10 s with transactions), the five default public relays, peg-ins scanned on the estate's testnet4 node from the funding height and paid from wallet `sidestr-peg` |
+| `sidestr-producer` | `enabled` | `run-producer.sh --announce-mirror <announce_mirror>` | the upstream JS engine baked at the pins (`lib/sidestr-upstream.nix`, `/opt/agentbox/sidestr/upstream`): port `:3450` on loopback, a block every 600 s (10 s with transactions), the five default public relays, peg-ins scanned on the estate's testnet4 node from the funding height and paid from wallet `sidestr-peg` |
 | `sidestr-mirror` | `mirror` | `mirror-sync.sh <mirror_checkout> 120` | copies `chain.json`, `blocks.dat` and `blocks.json` into a GitHub Pages checkout and pushes on change |
 | `sidestr-faucet` | `faucet` | `run-faucet.sh` | `sidestr-agent faucet` (baked, `lib/sidestr-agent.nix`): 100 DREAM and 1,000 sats per script per 24 h, 20 grants an hour, paid from `faucet_key_file` |
 
@@ -126,10 +126,23 @@ that has announced, and `play-grounds.github.io/sidestr` is one such client. Wit
 producer makes blocks that no wallet can find. GitHub Pages serves the mirror with open
 CORS and Range requests, which is all a mirror is.
 
-The producer refuses to start unless each checkout is at the commit recorded in
-`upstream-pins`, so the upstream code the chain runs is a fact of this repository, not of
-the host; supervisord gives up after five attempts (FATAL), because the fix is a pin, not
-a retry. `SIDESTR_ALLOW_UNPINNED=1` overrides the check for an upgrade test.
+The producer runs the image's bake of the commits in `upstream-pins` (`lib/sidestr-upstream.nix`):
+sidestr/spec, bitcoin-desktop/schema and bitcoin-blake/blaketestnode in one read-only
+`/nix/store` tree linked at `/opt/agentbox/sidestr/upstream`. The producer holds the chain's
+signing key, so it runs only code its own user cannot change; a workspace checkout could be
+edited without a commit, and the old `HEAD` comparison let that pass. Each baked directory
+records its commit in `.pin-commit`. The runner refuses to start when one differs from
+`upstream-pins` (a stale bake), when any file in the bake is writable, or when the image ships
+no bake. Nix evaluation already fails when `lib/sidestr-upstream.nix` and `upstream-pins`
+disagree, so a pin moves together with its hash and the next rebuild picks it up.
+supervisord gives up after five attempts (FATAL), because the fix is a rebuild, not a retry.
+
+`SIDESTR_ALLOW_UNPINNED=1` runs the workspace checkout `SIDESTR_UPSTREAM` (default
+`$WORKSPACE/sidestr/upstream`) instead, at any commit, for an upgrade test. Every start then
+logs `SIDESTR-UNPINNED`, naming each directory that is off its pin or has uncommitted edits.
+`SIDESTR_UPSTREAM` without the override is refused. The bake carries no `node_modules`: siding
+loads `@ethereumjs/*` only for a chain whose document names the `evm` rule, and neither estate
+chain does; the runner refuses such a chain on this bake.
 
 ### Further chains: `[sidechain.<name>]`
 

@@ -1604,6 +1604,14 @@
         # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.
         sidestrAgentPkg = import ./lib/sidestr-agent.nix { inherit lib; pkgs = rustPkgs; };
         sidechainPackages = lib.optionals sidechainAnyFaucet [ sidestrAgentPkg ];
+        # The producer's consensus code (spec, schema, blaketestnode) at the
+        # commits in upstream-pins, read-only; run-producer.sh runs it by default
+        # and a workspace checkout only under SIDESTR_ALLOW_UNPINNED=1 (custody
+        # W5, design §2.7). Evaluation fails if the two disagree.
+        sidestrUpstreamPkg = import ./lib/sidestr-upstream.nix {
+          inherit lib pkgs;
+          pinsFile = ./config/sidechain/upstream-pins;
+        };
         # factrail — Jev compaction with fact rails ([features.jev_compaction],
         # ADR-2121). One pinned commit gives the binary and the
         # Claude Code shim that calls it; see lib/factrail.nix.
@@ -1825,6 +1833,13 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # Same reasoning for `vault`: skills, agent prose and the boot gate all
           # name a path, and a /nix/store path in prose rots at the next rebuild.
           ln -s ${vaultPkg}/bin/vault $out/opt/agentbox/bin/vault
+          ''}
+          ${lib.optionalString sidechainEnabled ''
+          # The sidestr producer's baked upstream, at a stable path the runner
+          # defaults to (lib/sidestr-upstream.nix). [sidechain].enabled gates
+          # every chain program, so it gates the bake too.
+          mkdir -p $out/opt/agentbox/sidestr
+          ln -s ${sidestrUpstreamPkg} $out/opt/agentbox/sidestr/upstream
           ''}
           ${lib.optionalString jevCompactionOn ''
           # factrail: the entrypoint projects THIS path as the plugin's `binary`
@@ -2684,9 +2699,10 @@ ${lib.optionalString sidechainEnabled ''
 ; [sidechain] (PRD-024 P1): the sidestr chain producer, which the forum's
 ; member wallets read (dreamlab-ai-website, forum ADR-2015). It ran in a tmux
 ; window until 2026-09-25, when a container restart stopped the chain for four
-; days with nothing to bring it back. run-producer.sh refuses to start unless
-; the upstream checkouts match config/sidechain/upstream-pins, so a failed
-; start means a pin to fix, not a restart loop: startretries caps it at FATAL.
+; days with nothing to bring it back. run-producer.sh runs the baked upstream
+; (/opt/agentbox/sidestr/upstream, lib/sidestr-upstream.nix) and refuses to
+; start unless its recorded commits match config/sidechain/upstream-pins, so a
+; failed start means a pin to fix, not a restart loop: startretries caps it at FATAL.
 ; The runner and the sealed chain document are baked; the block file is the
 ; workspace's (SIDESTR_STATE).
 [program:sidestr-producer]
@@ -2741,7 +2757,7 @@ ${lib.concatMapStrings (c: lib.optionalString c.enabled ''
 
 ; [sidechain.${c.name}] (ADR-2103): sidestr:${c.name}'s producer beside ${c.parent}.
 ; Same runner as sidestr:dreamlab's, keyed by SIDESTR_CHAIN. It refuses to start
-; on an unpinned upstream checkout, on a document sealed beside a parent other
+; on a baked upstream that disagrees with upstream-pins, on a document sealed beside a parent other
 ; than the manifest's (D3), and on a BLAKE2b parent whose block at the fork
 ; height is not the fork hash (D3a). checkpoint_every = ${toString c.every}${lib.optionalString (c.every == 0) ": no checkpoint, so nothing anchors this chain (owner SC5, Open in ADR-2103)"}.
 [program:sidestr-producer-${c.name}]
