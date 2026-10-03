@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: daba195e5671cdf3906095965d323cef3f80aa3a
-verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json]
+verified_commit: 451823ca8ec0b5452ceb8fdc52e777f77a2bbc43
+verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
 repo: agentbox
@@ -197,3 +197,13 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo 3.51.1, Claude Code 2.1.288)
 
 `b41d9486c..daba195e5`: `lib/claude-code-binary.nix` moves Claude Code 2.1.285 → 2.1.288 (`c23592687`); both per-arch hashes equal Anthropic's 2.1.288 manifest checksums. The factrail plugin baked at the pinned rev (`share/factrail/plugin`) passes `claude plugin validate --strict` under the 2.1.288 binary with the hook surface it reports under 2.1.285, unchanged: session.start, tool.call, skill.prompt, command.run, session.compact, turn.start, turn.complete; calls include `$.session.compact` and `$.command.register`. Nothing this record governs (ADR-2121 — Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit) changes meaning. The decision holds. Re-verified by `git log b41d9486c..daba195e5 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification and note — 2026-10-03 (ruflo mods join the `agentbox` marketplace, `451823ca8`)
+
+`daba195e5..451823ca8`: the `agentbox` directory marketplace this record introduced for factrail now also carries ruflo-console, ruflo-mods and ruflo-swarm. These are ruflo's function-hook mods, baked from the ruflo v3.51.1 tag (flake input `rufloConsole`, `09a1cb0`) behind `[toolchains].ruflo_console`, default off, rebuild-class. Three consequences for this record:
+
+1. **Shared marketplace.** Factrail's gate-off branch removed the whole `agentbox` marketplace. It now does so only when `[toolchains].ruflo_console` is also off, and the ruflo block registers the marketplace itself when on. `marketplace.json` lists the three mods beside factrail. `scripts/bake-ruflo-console.sh` fails the build if a baked `plugin.json` version differs from the catalogue.
+2. **Shared function-hook switch.** `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` is set when either gate is on and cleared only when both are off.
+3. **A second registration pattern in one marketplace.** Factrail is still installed with `claude plugin install` into the persistent cache, with the content-digest and config-stamp reinstall. The ruflo mods follow the codex-plugin-cc pattern instead: `scripts/ruflo-console-project.mjs` registers them in `installed_plugins.json` at their stable `/opt/agentbox/config/claude-plugins/<name>` paths, so no cache copy can go stale. It rewrites a wrong path or version every boot, writes `pluginConfigs` cli=`ruflo` (the baked bin; upstream's npx-offline default fails ENOTCACHED on a fresh npm cache), and removes the three ids when the gate is off.
+
+The schema and entrypoint diffs are otherwise limited to the new gate. Factrail's pin, projection and userConfig keys are unchanged (`tests/config/factrail-projection.test.sh` passes). The three new files join `verified_paths`. The decision holds. Re-verified by `git log daba195e5..451823ca8 -- <verified_paths>`. Nix was not evaluated in this container (no `nix` binary); the image is unverified until the owner's rebuild.
