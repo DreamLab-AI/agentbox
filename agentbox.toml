@@ -1589,7 +1589,7 @@ faucet_sats     = 2000    # fee sats per grant: about two settlements at ~1,010 
 enabled                = true    # [program:sidestr-producer-dreamlab-txbt4]; live 2026-10-03 (BLAKES7 / second poker chain)
 parent                 = "txbt4" # must equal the sealed document's parent (ADR-2103 D3)
 port                   = 3451    # loopback; dreamlab holds 3450
-interval               = 600
+interval               = 60     # 60 s while the chain bootstraps (100-block coinbase maturity in ~2 h); raise to 600 once BLAKES7 circulates
 parent_rpc             = "http://192.168.2.27:48342/"   # Knots 29.4.2 txbt4 on the Dell, LAN only
 # The read-only txbt4read user serves the peg-in scan today. After the owner runs
 # scripts/sidechain/dell-txbt4-open-rpc.sh, switch to sidestr-txbt4.rpc (adds
