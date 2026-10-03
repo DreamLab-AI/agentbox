@@ -21,27 +21,24 @@
 { lib, pkgs }:
 
 let
-  # 2.1.285 (built 2026-09-29, published to the `stable` auto-update channel
-  # at https://downloads.claude.ai/claude-code-releases/stable as of
-  # 2026-10-01): current stable Claude Code release, bumped from 2.1.280.
+  # 2.1.288 (built 2026-10-02T17:00:28Z; bumped 2026-10-03 from 2.1.285).
+  # Driver: the ruflo 3.51.x mods (ruflo-console) need Claude Code 2.1.287+.
   # Retains the function-hook surface introduced in 2.1.276
   # (`session.compact`, `command.register`, `$.http.fetch`) that the
-  # factrail compaction plugin needs (ADR-2093). 2.1.257 had none of it.
+  # factrail compaction plugin needs (ADR-2093).
   #
-  # NOTE (bump review, 2026-10-01): 2.1.286 is already in the public
-  # CHANGELOG.md but had NOT been promoted to the `stable` channel pointer at
-  # bump time, and 2.1.285 itself was only ~2d7h past its build timestamp
-  # (manifest buildDate 2026-09-29T01:45:50Z) — short of the renovate.json
-  # 3-day cool-off this repo otherwise applies. Picked anyway because it is
-  # the vendor's own current default-rollout target (not a bleeding-edge
-  # tag), and both per-arch hashes below were verified byte-for-byte against
-  # Anthropic's own published manifest.json checksums for this version
-  # (https://downloads.claude.ai/claude-code-releases/2.1.285/manifest.json),
-  # not just the downloaded bytes' self-reported digest. Regenerate
-  # /plugin-types after this bump — the factrail plugin's generated types
-  # need to be re-checked against 2.1.285's hook surface (factrail CI and its
-  # `claude plugin test` run under 2.1.285).
-  claudeCodeVersion = "2.1.285";
+  # NOTE (bump review, 2026-10-03): 2.1.288 is the `latest` channel pointer;
+  # `stable` still points at 2.1.285, and 2.1.288 is ~1 day past its build
+  # timestamp, short of the renovate.json 3-day cool-off. Taken deliberately
+  # for the ruflo-console floor above. Both per-arch hashes below are the
+  # sha256 of the downloaded bytes and were checked byte-for-byte against
+  # Anthropic's published checksums
+  # (https://downloads.claude.ai/claude-code-releases/2.1.288/manifest.json):
+  #   linux-x64   0298068b686e7fdbaf9402a7a587bb7f49c0b0e084de09f69145a0719207640c
+  #   linux-arm64 359ab6a058fcde9741dff54979a212fd134cdf8e8cfc2f8de02bc350b9e2b9d5
+  # Regenerate /plugin-types after this bump: the factrail plugin's generated
+  # types need re-checking against 2.1.288's hook surface.
+  claudeCodeVersion = "2.1.288";
 
   # Map agentbox's system string to the upstream download platform slug.
   platforms = {
@@ -62,10 +59,10 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = "sha256-M9rR7GFaLgjMeLSU8FwRDkmRbeLHnXjsh5nr9GsjPSk=";
+      sha256 = "sha256-ApgGi2huf9uvlAKnpYe7f0nAsOCE3gn2kUWgcZIHZAw=";
     };
     "aarch64-linux" = {
-      sha256 = "sha256-JPrHd0m+09kTZda2kVqkuCThQxjstrwXrbwZLwHJFz0=";
+      sha256 = "sha256-NZq2oFj83pdB3/VJeaIS/RNM346M/C+N4CvDULniudU=";
     };
   };
 
