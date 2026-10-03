@@ -3384,7 +3384,7 @@ export RUFLO_DAEMON_AI_WORKERS="${RUFLO_DAEMON_AI_WORKERS:-0}"
 # memory is the ruvector-postgres sidecar via `ruflo memory …` / memory_* only.
 export RUFLO_DAEMON_AUTOSTART="${RUFLO_DAEMON_AUTOSTART:-0}"
 export CLAUDE_FLOW_DISABLE_BRIDGE="${CLAUDE_FLOW_DISABLE_BRIDGE:-1}"
-export CLAUDE_FLOW_MEMORY_PATH="${CLAUDE_FLOW_MEMORY_PATH:-/home/devuser/.cache/ruflo/memory}"
+export CLAUDE_FLOW_MEMORY_PATH="\${CLAUDE_FLOW_MEMORY_PATH:-\${HOME:-/tmp}/.cache/ruflo/memory}"
 # ADR-2080 model-router console knobs (empty unless [model_routing.neural].enabled)
 $_MRN_EXPORTS
 # Interaction plane (PRD-021 / ADR-042): expose the AoE daemon + NIP-98 proxy

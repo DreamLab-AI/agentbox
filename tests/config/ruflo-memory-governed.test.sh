@@ -16,7 +16,11 @@ grep -q 'rufloConsoleOn) \[ rufloGovernedPkg \]' "$root/flake.nix" || note 'the 
 grep -q 'exec \${pkgs.nodejs_22}/bin/node /opt/agentbox/mcp/servers/ruflo-memory-cli.cjs' "$root/flake.nix" || note 'wrapper does not exec the governed memory CLI'
 for v in RUFLO_DAEMON_AUTOSTART CLAUDE_FLOW_DISABLE_BRIDGE CLAUDE_FLOW_MEMORY_PATH; do
   grep -q "export $v=" "$root/flake.nix" || note "wrapper does not default $v"
-  grep -q "^export $v=\"\${$v:-" "$root/config/entrypoint-unified.sh" || note "entrypoint does not export $v with an operator-overridable default"
+  # The exports live in the runtime-env heredoc: a plain ${X:-…} resolves at boot,
+  # an escaped \${X:-…} resolves in the sourcing shell (per-user $HOME). Either
+  # form keeps the operator override; RC-X1-01 forbids a root-side literal
+  # /home/devuser path, which is why CLAUDE_FLOW_MEMORY_PATH is the escaped one.
+  grep -qE "^export $v=\"\\\\?\\\$\{$v:-" "$root/config/entrypoint-unified.sh" || note "entrypoint does not export $v with an operator-overridable default"
 done
 
 # 2. The CLI ships, is CommonJS, reuses the governed library and refuses the local-store verbs.
