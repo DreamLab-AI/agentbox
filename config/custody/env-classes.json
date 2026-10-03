@@ -807,6 +807,8 @@
         "_RB_MCP_DIR",
         "_RB_NS",
         "_RB_STAGING",
+        "_RC_MARKET",
+        "_RC_ON",
         "_RECONCILE_AGENTS",
         "_RECONCILE_COMMANDS",
         "_RECONCILE_SKILLS",
