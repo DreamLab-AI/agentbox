@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 541e96dcc2ede699b97f0e9699bc4c9c34f1ad17
+verified_commit: 9fc8b4e693edbf6ec2dfd0f372328903819eeb30
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -114,3 +114,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `flake.nix` (`dc91e092a`)
 ### Re-verification — 2026-10-03 (agentic-qe 3.14.7)
 
 `dc6c7c5d8..541e96dcc`: `flake.nix` changes only the `agenticQePkg` pin: version 3.14.7, its lock and both hashes (`541e96dcc`), with the rationale comment. Nothing this record governs (ADR-2119 — Remove the retired outliner ontology runtime) changes meaning. The decision holds. Re-verified by `git log dc6c7c5d8..541e96dcc -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (wrangler 4.147.0)
+
+`541e96dcc..9fc8b4e69`: `flake.nix` changes only the `wranglerPkg` pin: version 4.147.0, its lock and both hashes (`9fc8b4e69`), with the rationale comment. Nothing this record governs (ADR-2119 — Remove the retired outliner ontology runtime) changes meaning. The decision holds. Re-verified by `git log 541e96dcc..9fc8b4e69 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.

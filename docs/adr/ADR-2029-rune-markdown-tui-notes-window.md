@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 541e96dcc2ede699b97f0e9699bc4c9c34f1ad17
+verified_commit: 9fc8b4e693edbf6ec2dfd0f372328903819eeb30
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -256,3 +256,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (agentic-qe 3.14.7)
 
 `dc6c7c5d8..541e96dcc`: `flake.nix` changes only the `agenticQePkg` pin: version 3.14.7, its lock and both hashes (`541e96dcc`), with the rationale comment. Nothing this record governs (ADR-2029 — Rune is the first-class markdown TUI; tmux window 9 \"Notes\" opens it at the vault root) changes meaning. The decision holds. Re-verified by `git log dc6c7c5d8..541e96dcc -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (wrangler 4.147.0)
+
+`541e96dcc..9fc8b4e69`: `flake.nix` changes only the `wranglerPkg` pin: version 4.147.0, its lock and both hashes (`9fc8b4e69`), with the rationale comment. Nothing this record governs (ADR-2029 — Rune is the first-class markdown TUI; tmux window 9 \"Notes\" opens it at the vault root) changes meaning. The decision holds. Re-verified by `git log 541e96dcc..9fc8b4e69 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.

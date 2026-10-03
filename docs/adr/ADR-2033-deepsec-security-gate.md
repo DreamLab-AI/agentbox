@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 541e96dcc2ede699b97f0e9699bc4c9c34f1ad17
+verified_commit: 9fc8b4e693edbf6ec2dfd0f372328903819eeb30
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -297,3 +297,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (agentic-qe 3.14.7)
 
 `dc6c7c5d8..541e96dcc`: `flake.nix` changes only the `agenticQePkg` pin: version 3.14.7, its lock and both hashes (`541e96dcc`), with the rationale comment. Nothing this record governs (ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy) changes meaning. The decision holds. Re-verified by `git log dc6c7c5d8..541e96dcc -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (wrangler 4.147.0)
+
+`541e96dcc..9fc8b4e69`: `flake.nix` changes only the `wranglerPkg` pin: version 4.147.0, its lock and both hashes (`9fc8b4e69`), with the rationale comment. Nothing this record governs (ADR-2033 — deepsec is the executed Security gate of build-with-quality, baked as a manifest-gated CLI under a names-only credential policy) changes meaning. The decision holds. Re-verified by `git log 541e96dcc..9fc8b4e69 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.

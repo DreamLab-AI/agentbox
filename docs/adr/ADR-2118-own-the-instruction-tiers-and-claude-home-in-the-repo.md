@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 541e96dcc2ede699b97f0e9699bc4c9c34f1ad17
+verified_commit: 9fc8b4e693edbf6ec2dfd0f372328903819eeb30
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, docker-compose.hp.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -148,3 +148,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (agentic-qe 3.14.7)
 
 `dc6c7c5d8..541e96dcc`: `flake.nix` changes only the `agenticQePkg` pin: version 3.14.7, its lock and both hashes (`541e96dcc`), with the rationale comment. Nothing this record governs (ADR-2118 — Own the instruction tiers and the Claude home in the repo) changes meaning. The decision holds. Re-verified by `git log dc6c7c5d8..541e96dcc -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (wrangler 4.147.0)
+
+`541e96dcc..9fc8b4e69`: `flake.nix` changes only the `wranglerPkg` pin: version 4.147.0, its lock and both hashes (`9fc8b4e69`), with the rationale comment. Nothing this record governs (ADR-2118 — Own the instruction tiers and the Claude home in the repo) changes meaning. The decision holds. Re-verified by `git log 541e96dcc..9fc8b4e69 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
