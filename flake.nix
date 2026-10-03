@@ -2467,6 +2467,27 @@ priority=16
 stdout_logfile=/var/log/tailscale-up.log
 stderr_logfile=/var/log/tailscale-up.error.log
 ''}
+
+[program:docker-read-proxy]
+; Custody X-1 step 1, W0 (owner question Q1 default). Under
+; [security].role_isolation = true devuser loses the raw host Docker socket and
+; gets this GET-only proxy at /run/docker-ro.sock: ps/logs/inspect/version/info
+; pass, exec/run/create/cp/export get 403. With the flag off (the default) the
+; program prints one line and exits 0, so status shows EXITED; that is expected.
+; No user= on purpose: it starts as root only to bind the socket and join the
+; host socket's group, then drops to uid/gid 65534 itself. `env -i` keeps the
+; .env secrets that PID 1 inherits out of this process (design §0 bypass 3).
+; TODO(custody W1): move into the role registry (lib/role-accounts.nix) with its
+; own account; until then it follows the devuser-block layout, minus user=.
+command=${pkgs.bash}/bin/bash -c 'exec ${pkgs.coreutils}/bin/env -i AGENTBOX_ROLE_ISOLATION="''${AGENTBOX_ROLE_ISOLATION:-0}" ${pkgs.nodejs_22}/bin/node /opt/agentbox/config/docker-read-proxy.cjs'
+directory=/
+autostart=true
+autorestart=unexpected
+exitcodes=0
+startsecs=0
+priority=20
+stdout_logfile=/var/log/docker-read-proxy.log
+stderr_logfile=/var/log/docker-read-proxy.error.log
 ${lib.optionalString (toolchainCfg.code_server or false) ''
 
 [program:code-server]
@@ -3506,8 +3527,12 @@ ${ragflowNetworkDecl}
           # Strip leading whitespace introduced by Nix heredoc indentation
           sed -i 's/^[[:space:]]*//' $out/etc/passwd
 
+          # Custody W0: devuser is NOT a member of group root. Membership gave
+          # every devuser process gid 0 and with it anything root left
+          # group-accessible. Undoing this needs a rebuild (it is baked).
+          # Test: tests/runtime-contract/RC-X1-03.sh.
           cat > $out/etc/group <<'GROUP'
-          root:x:0:devuser
+          root:x:0:
           wheel:x:998:devuser
           devuser:x:1000:
           GROUP

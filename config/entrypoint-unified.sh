@@ -166,8 +166,6 @@ _ab_vault_resolve() {
   echo "[vault] root=$VAULT_ROOT repo=${VAULT_REPO:-—} pages=$VAULT_PAGES format=$VAULT_FORMAT tui=$VAULT_TUI working=${VAULT_WORKING_ROOT:-—} transcripts=${VAULT_TRANSCRIPTS:-—}"
 }
 
-# ADR-2029 D4: until the image bakes Rune, the bind-mounted cargo bin dir is
-# where `rune` lives. One line, fail-open — absent dir changes nothing.
 # Run a command as devuser from the root-owned boot path. The image ships
 # util-linux for `setpriv`; fall back to `runuser`, then `su`, and fail LOUDLY
 # when none exists — the 2026-09-03 image had neither runuser nor su and three
@@ -191,8 +189,72 @@ run_as_devuser() {
   fi
 }
 
-_ab_cargo_bin_on_path() {
-  [ -d "/home/devuser/workspace/.cargo/bin" ] && case ":$PATH:" in *":/home/devuser/workspace/.cargo/bin:"*) :;; *) PATH="/home/devuser/workspace/.cargo/bin:$PATH"; export PATH;; esac
+# ---------------------------------------------------------------------------
+# Root boot PATH: store-only (custody X-1 step 1, W0, bypass 2)
+# ---------------------------------------------------------------------------
+# Both stages run as root. Until W0 the boot PREPENDED the devuser-owned
+# /home/devuser/workspace/.cargo/bin to PATH (ADR-2029 D4, for rune), so a
+# binary planted there under the name of any tool the boot calls (mkdir, node,
+# jq ...) ran as root, and `supervisorctl start bootstrap` let devuser trigger it
+# at will. rune is baked now (lib/rune.nix). Root keeps only /nix/store entries
+# and the image's fixed system dirs, in their original order; anything relative,
+# dotted, globbed or outside that set is dropped. devuser shells get the cargo
+# bin APPENDED by the Phase-8 runtime-env and fish snippets, never root.
+# Test: tests/runtime-contract/RC-X1-01.sh.
+_ab_root_path_sanitise() { # _ab_root_path_sanitise <PATH> → trusted PATH on stdout
+  local out="" e
+  local -a parts=()
+  IFS=: read -r -a parts <<<"$1"
+  for e in "${parts[@]}"; do
+    case "$e" in
+      *..*|*[*?[]*) continue ;;
+      /nix/store/?*|/usr/local/bin|/usr/local/sbin|/bin|/sbin|/usr/bin|/usr/sbin) ;;
+      *) continue ;;
+    esac
+    case ":$out:" in *":$e:"*) continue ;; esac
+    out="${out:+$out:}$e"
+  done
+  printf '%s' "${out:-/usr/local/bin:/bin:/usr/bin}"
+}
+PATH="$(_ab_root_path_sanitise "$PATH")"
+export PATH
+
+# ---------------------------------------------------------------------------
+# Stage B is one-shot per container start (custody X-1 step 1, W0, bypass 2)
+# ---------------------------------------------------------------------------
+# [program:bootstrap] runs Stage B as root and devuser holds supervisor control
+# (Q10), so `supervisorctl start bootstrap` could replay it. Stage A arms a
+# root-owned state dir; Stage B claims it with an atomic mkdir; every later claim
+# is a no-op. The dir lives in /tmp, NOT /run: /run, /var/run and /var/log are
+# tmpfs mounts owned by uid 1000 (flake.nix baselineTmpfsMounts), so devuser can
+# rename any entry directly under them, root's included. /tmp is root 1777: the
+# sticky bit stops devuser renaming or unlinking root's entries, and it is a
+# fresh tmpfs per container start. Move it under /run/secrets once W1 makes that
+# a root-owned mount point. Test: tests/runtime-contract/RC-X1-02.sh.
+AB_ROOT_STATE_DIR=/tmp/.agentbox-root
+_ab_root_state_dir_ok() { # _ab_root_state_dir_ok <dir> [owner-uid=0] → 0 when trustworthy
+  [ -d "$1" ] && [ ! -L "$1" ] || return 1
+  [ "$(stat -c '%u %a' -- "$1" 2>/dev/null)" = "${2:-0} 700" ]
+}
+_ab_root_state_dir_prepare() { # _ab_root_state_dir_prepare <dir> [owner-uid=0] — Stage A only
+  local d="$1" uid="${2:-0}"
+  if [ -e "$d" ] || [ -L "$d" ]; then
+    if ! _ab_root_state_dir_ok "$d" "$uid"; then
+      # Squatted (wrong owner, loose mode or a symlink): move it aside, never follow it.
+      mv -T -- "$d" "${d}.squatted.$$" || return 1
+      echo "[security] moved an untrusted ${d} aside to ${d}.squatted.$$" >&2
+    fi
+  fi
+  if [ ! -d "$d" ]; then
+    (umask 077 && mkdir -- "$d") || return 1
+  fi
+  # A new container start re-arms Stage B (matters only where /tmp is not a tmpfs).
+  rmdir -- "${d}/stage-b.claimed" 2>/dev/null || true
+  _ab_root_state_dir_ok "$d" "$uid"
+}
+_ab_stage_b_claim() { # _ab_stage_b_claim <dir> [owner-uid=0] → 0 claimed, 1 already ran, 2 refuse
+  _ab_root_state_dir_ok "$1" "${2:-0}" || return 2
+  mkdir -- "${1}/stage-b.claimed" 2>/dev/null || return 1
   return 0
 }
 
@@ -262,9 +324,18 @@ export CODEX_HOME="${CODEX_HOME:-/home/devuser/.codex}"
 export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/home/devuser/.config/git/config}"
 # ADR-2028: [vault] is resolved here, before any consumer runs, so every
 # supervised program inherits VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI
-# from PID 1. ADR-2029 D4 puts the bind-mounted cargo bin dir on PATH.
+# from PID 1. PATH stays store-only for root (sanitised above the stage
+# dispatch); the workspace cargo bin reaches devuser shells via Phase 8 only.
 _ab_vault_resolve
-_ab_cargo_bin_on_path
+# Custody X-1 step 1: [security].role_isolation (boot-class, default false). Read
+# once here and exported, so supervisord and every program see the same value;
+# the manifest wins over anything inherited from the compose environment.
+AGENTBOX_ROLE_ISOLATION="$(_ab_toml_bool security role_isolation)"
+export AGENTBOX_ROLE_ISOLATION
+# Arm Stage B's one-shot guard (see _ab_stage_b_claim). Fail loud, not fatal:
+# an unarmed dir makes Stage B refuse, which shows in bootstrap.error.log.
+_ab_root_state_dir_prepare "$AB_ROOT_STATE_DIR" \
+  || echo "[security] ERROR: could not prepare ${AB_ROOT_STATE_DIR}; Stage B will refuse to run" >&2
 
 echo "[1/8] Preparing runtime directories..."
 mkdir -p \
@@ -369,13 +440,46 @@ if [ -d "$WORKSPACE" ]; then
   chown -R 1000:1000 "$WORKSPACE/project/.git/worktrees" 2>/dev/null || true
 fi
 
-# Docker socket: make accessible to devuser (gid 965 on host, not mapped
-# inside container). group_add in compose only affects PID 1's supplementary
-# groups, not processes that later switch to devuser via supervisord user=.
-# chmod o+rw is safe here — this is a single-user dev container.
-if [ -S /var/run/docker.sock ]; then
-  chmod o+rw /var/run/docker.sock 2>/dev/null || true
-fi
+# Docker socket (custody X-1 step 1, W0, bypass 1). The host's docker group is
+# gid 965 and is not mapped inside the container; compose group_add reaches only
+# PID 1, not programs that drop to devuser via supervisord user=.
+#   role_isolation off: widen the socket o+rw for devuser, exactly as before.
+#   role_isolation on:  do NOT widen it. The Docker daemon is root on the host,
+#     so socket access voids every in-container boundary. devuser gets the
+#     GET-only proxy at /run/docker-ro.sock ([program:docker-read-proxy]).
+#     The socket is a bind of the HOST inode, and earlier boots already widened
+#     it; skipping the chmod does not narrow it (risk R2). This never narrows it
+#     either: that is a host-side decision (Q2). If devuser can still reach it,
+#     the boot records degraded:docker-socket and logs a grep-able marker:
+#     fail loud, not fatal, like the vault gate.
+# Test: tests/runtime-contract/RC-X1-04.sh.
+_ab_docker_socket_access() { # _ab_docker_socket_access <socket> <0|1> [state-file] [user=devuser]
+  local sock="$1" iso="$2" state="${3:-/run/secrets/role-isolation.state}" user="${4:-devuser}" mode gid uid verdict
+  [ -S "$sock" ] || return 0
+  if [ "$iso" != 1 ]; then
+    chmod o+rw "$sock" 2>/dev/null || true
+    return 0
+  fi
+  mode="$(stat -L -c %a -- "$sock" 2>/dev/null || echo 0)"
+  gid="$(stat -L -c %g -- "$sock" 2>/dev/null || echo 0)"
+  uid="$(stat -L -c %u -- "$sock" 2>/dev/null || echo 0)"
+  verdict=ok
+  # devuser can connect if it owns the socket, is in its group, or other has w.
+  case "${mode: -1}" in [2367]) verdict=degraded ;; esac
+  [ "$uid" = "$(id -u "$user" 2>/dev/null || echo none)" ] && verdict=degraded
+  case " $(id -G "$user" 2>/dev/null) " in *" ${gid} "*) verdict=degraded ;; esac
+  if [ "$verdict" = degraded ]; then
+    echo "[security] ROLE-ISOLATION-DEGRADED docker-socket: ${sock} is mode ${mode} gid ${gid}; devuser can still drive the host Docker daemon. Host-side fix (R2/Q2): chmod 0660 /var/run/docker.sock on the host." >&2
+  else
+    echo "[security] role_isolation: ${sock} not widened; devuser uses /run/docker-ro.sock (read-only)"
+  fi
+  # Never write through a planted symlink: remove, then create with O_EXCL (noclobber).
+  rm -f -- "$state" 2>/dev/null || true
+  ( set -C; printf '%s:docker-socket\n' "$verdict" >"$state" ) 2>/dev/null \
+    || echo "[security] WARN: could not record ${verdict}:docker-socket in ${state}" >&2
+  return 0
+}
+_ab_docker_socket_access /var/run/docker.sock "$AGENTBOX_ROLE_ISOLATION"
 
 # Claude-flow data directory (hooks write here as devuser)
 mkdir -p /home/devuser/.claude-flow/data 2>/dev/null || true
@@ -915,7 +1019,15 @@ export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 # ADR-2028: normally inherited from PID 1 (Stage A resolved it before exec
 # supervisord); this only fires if Stage B is ever invoked standalone.
 [ -n "${AGENTBOX_VAULT_ENABLED:-}" ] || _ab_vault_resolve
-_ab_cargo_bin_on_path
+# One-shot (custody W0): a replay via `supervisorctl start bootstrap` is a no-op.
+# PATH is already store-only (sanitised above the stage dispatch).
+_ab_b_claim_rc=0
+_ab_stage_b_claim "$AB_ROOT_STATE_DIR" || _ab_b_claim_rc=$?
+case "$_ab_b_claim_rc" in
+  0) echo "[bootstrap] Stage B claimed ${AB_ROOT_STATE_DIR}/stage-b.claimed (one-shot)" ;;
+  1) echo "[bootstrap] Stage B already ran in this container start; no-op (restart the container to re-run)"; exit 0 ;;
+  *) echo "[bootstrap] REFUSED: ${AB_ROOT_STATE_DIR} is missing or not root-owned 0700; Stage B will not run" >&2; exit 1 ;;
+esac
 
 # ---------------------------------------------------------------------------
 # Phase 6 — Service closure probes (PRD-002 §9 Phase 1)
@@ -2971,8 +3083,15 @@ echo "[8/8] Publishing environment hints..."
 RUNTIME_ENV_FILE=/run/agentbox/runtime-env.sh
 RUNTIME_ENV_DURABLE=/home/devuser/workspace/.agentbox-runtime-env.sh
 mkdir -p "$(dirname "$RUNTIME_ENV_FILE")" 2>/dev/null || true
+# Custody W0: under [security].role_isolation devuser's docker CLI talks to the
+# GET-only proxy (ps/logs/inspect); exec/run move to the host shell (Q1).
+_ROLE_ISO_EXPORTS=""
+if [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ]; then
+  _ROLE_ISO_EXPORTS='export DOCKER_HOST="unix:///run/docker-ro.sock"'
+fi
 cat > "$RUNTIME_ENV_FILE" <<EOF
 export WORKSPACE="$WORKSPACE"
+$_ROLE_ISO_EXPORTS
 export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
 export RUVECTOR_PORT="$RUVECTOR_PORT"
 : "${RUVECTOR_PG_PASSWORD:=ruvector}"
@@ -3034,10 +3153,12 @@ export VAULT_WORKING_ROOT="${VAULT_WORKING_ROOT:-}"
 export VAULT_WORKING_PAGES="${VAULT_WORKING_PAGES:-}"
 export VAULT_TRANSCRIPTS="${VAULT_TRANSCRIPTS:-}"
 export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-}"
-# ADR-2029 D4: cargo-installed binaries (rune) before the image bakes them.
-if [ -d "/home/devuser/workspace/.cargo/bin" ]; then
+# ADR-2029 D4: cargo-installed binaries (cargo-audit, cargo-deny ...). Custody W0:
+# devuser shells only, and APPENDED, so a planted or stale workspace binary can
+# never shadow an image tool. A root shell sourcing this file is left alone.
+if [ "\$(id -u)" != 0 ] && [ -d "/home/devuser/workspace/.cargo/bin" ]; then
   case ":\$PATH:" in *":/home/devuser/workspace/.cargo/bin:"*) : ;;
-    *) PATH="/home/devuser/workspace/.cargo/bin:\$PATH"; export PATH ;;
+    *) PATH="\$PATH:/home/devuser/workspace/.cargo/bin"; export PATH ;;
   esac
 fi
 EOF
@@ -3132,6 +3253,10 @@ if test -f $envfile
       set -gx $parts[1] (string trim -c '"' $parts[2])
     end
   end
+end
+# Custody W0: the workspace cargo bin is for devuser shells only, appended.
+if test (id -u) -ne 0; and test -d /home/devuser/workspace/.cargo/bin
+  fish_add_path --global --append --path /home/devuser/workspace/.cargo/bin
 end
 FISHEOF
 chown devuser:devuser "$FISH_CONF_D/agentbox-runtime.fish" 2>/dev/null || true
