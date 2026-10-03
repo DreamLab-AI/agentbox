@@ -572,19 +572,19 @@
         # remote deploys). Version bump: set version below, set BOTH hashes to
         # lib.fakeHash, run ./scripts/prefetch-hashes.sh (resolves them in one
         # sweep), then rebuild; Renovate auto-detects the bump.
-        #   nix-prefetch-url https://registry.npmjs.org/wrangler/-/wrangler-4.142.0.tgz
+        #   nix-prefetch-url https://registry.npmjs.org/wrangler/-/wrangler-4.147.0.tgz
         #
         # Former PIN at 4.78.0 (private @cloudflare/codemod in devDependencies,
         # 4.79.0+) lifted 2026-08-27: 4.127.0 no longer lists codemod in
         # devDependencies (verified against the registry manifest).
         wranglerPkg = mkNpmCli {
           pkgName         = "wrangler";
-          # 4.143.0–4.145.0 remain inside the 72-hour freshness window on
-          # 2026-10-01. 4.142.0 is the newest stable release outside it.
-          version         = "4.142.0";
-          packageLock = ./config/npm-locks/wrangler-4.142.0.package-lock.json;
-          sha256          = "sha256-yOmfTH0Xzq5Qizv1Xf6BSlt148KkH+pUJWvXmEwh7X4=";
-          nodeModulesHash = "sha256-6uc4Z3X3djtgPa9LgbEHunDlIrNFb7nDVMyJJyMp6WQ=";
+          # 4.147.0 (2026-10-02T11:30Z): npm latest, taken 2026-10-03 inside
+          # the 72-hour window on the owner's estate-wide upgrade.
+          version         = "4.147.0";
+          packageLock = ./config/npm-locks/wrangler-4.147.0.package-lock.json;
+          sha256          = "sha256-xC0hD6GfbkC2Oo3zsSd0ATbf/nUl7p7YK4qxg9LNg5U=";
+          nodeModulesHash = "sha256-VfJKdHz1BWwxofXSq70Un/gR4ooJo92GnzLzrHOPuD4=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
