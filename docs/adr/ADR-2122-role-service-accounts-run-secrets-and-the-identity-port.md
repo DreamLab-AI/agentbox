@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: ad5d0b91a794ecfec40a5072de072ec86d63eaf2
+verified_commit: 5c787fedc999001c5bbe275a8111a21276a5abbc
 verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, docker-compose.hp.yml, tests/config/role-custody-migrate.test.sh, config/sidechain/run-producer.sh, config/sidechain/run-faucet.sh, config/sidechain/mirror-sync.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
@@ -512,3 +512,7 @@ that was never migrated. `decision_status` stays `proposed` and `activation_stat
 ## Re-verification — 2026-10-03 (`ad5d0b91a794ecfec40a5072de072ec86d63eaf2`, custody integration, after W2b-r)
 
 Tripped by `ad5d0b91a`, a shellcheck-only change to `config/lib/role-custody.sh`: two unused `type` read targets in `_ab_rc_modes_trusted` and the migrate scan become `_`, and `AB_RC_REVERTED` (a documented output of `ab_custody_revert`) keeps an SC2034 disable with its reason. Migrate, revert, delivery and the plan format are unchanged; migrate 31, rehearsal 30, delivery 30, boot 22 and supervisor 23 pass. The decision holds. Re-verified by `git log f93586b9e..ad5d0b91a -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (integration, CI portability)
+
+`ad5d0b91a..5c787fedc` touches `scripts/activation/role-isolation-rehearsal.host.sh` only to add the test seam `HR_ASSUME_CONTAINER=1`, which forces the in-container refusal and cannot suppress it, plus two test fixtures (`5c787fedc`). Detection, the root check and every rehearsal row are unchanged; the decision holds. Re-verified by `git log ad5d0b91a..5c787fedc -- <verified_paths>`.
