@@ -23,7 +23,8 @@ depends_on_mcps:
 
 ## Where the corpus lives
 
-The ~147k source chunks (186 repos, corpus **v4.2.2-dev**, reconciled 2026-08-21)
+The ~162k source chunks (199 repos, corpus
+**`corpus-sha256-832bae01…`**, shipped runtime v4.5.2, reconciled 2026-10-03)
 are rows in **ruvector-postgres** (the shared memory sidecar), namespace
 **`ruvnet-kb`**, `source_type = ruvnet-brain-ingest`, `memory_type = semantic`.
 They share the single 384-dim embedding space with every other memory entry,
@@ -54,7 +55,9 @@ idempotent: it resolves the newest release that actually carries the zip,
 fast no-ops when the stamped `corpus_version` matches, and on a real bump
 embeds only new/changed chunks (content-addressed keys) and prunes rows absent
 from the new corpus. The 2026-08-14 v3.3.1→v4.0.36 reconcile embedded 6,259
-and pruned 1,807 of 136,439 chunks in ~7 min.
+and pruned 1,807 of 136,439 chunks in ~7 min. The 2026-10-03 v4.5.1→`corpus-sha256-832bae01…`
+reconcile embedded 1,518, kept 160,774 and pruned 450 (162,292 chunks) in ~9 min,
+most of it the 679 MB download.
 
 **Content-addressed generations (since 2026-10-03).** Upstream tags are now
 `corpus-sha256-<archive sha256>` (e.g. `corpus-sha256-832bae01…`, shipped

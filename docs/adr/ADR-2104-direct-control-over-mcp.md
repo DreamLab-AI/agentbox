@@ -118,3 +118,20 @@ without losing the capability.
 - **Priority:** P1 — this cycle (Track A item 1; CY-A1, exit test passed 30 Sep)
 - **Why:** The fail-hard half is proven on the running image. On 30 Sep, `rm /run/agentbox/mcp-hub.json` drove the hub to FATAL after 365 s with no 9720 listener, and restoring the file brought it back (TODO CY-A1; code `d17c557a6`). The inventory is out of date in one row: `ontology-bridge` was retired by ADR-2107 and ADR-2108 (`f5d71b874`), and `[resources.mcp_hub].servers` now lists eight servers (`agentbox.toml:1267`). The port-or-delete follow-on (the `consultant-client` crate, then deleting servers with no call sites) has not started.
 - **Next:** Amend the inventory to note that the `ontology-bridge` row is closed by ADR-2108, then accept on the CY-A1 exit test. The port half stays `partial`.
+
+## Note — 2026-10-03: ruvnet-brain corpus ingest follows upstream's content-addressed releases
+
+No active ADR owns `scripts/ruvnet-brain-ingest.mjs` (its lineage is archived), so this record, the only
+active one ruling on the `ruvnet-brain` surface, carries the note. It does not move the order-3 row: the
+ingest writes `ruvnet-kb` rows into RuVector, and the MCP server only gained a derived `provenance` block in
+`ruvnet_brain_status`.
+
+- Upstream `stuinfla/ruvnet-brain` tags are now `corpus-sha256-<archive digest>`, with `.zip.sig` and
+  `corpus-receipt.json`. The ingest takes GitHub's designated `/releases/latest`, because the list API had
+  put `v4.5.2` ahead of the promoted `corpus-sha256-832bae01…`. It requires `.zip.sha256` to equal the tag
+  digest and the receipt's archive digest to equal the zip, and it records `sig_present`. It reports
+  `signature_verified: false` ("no published public key"); no key is guessed.
+- Live reconcile, 2026-10-03 12:37–12:46Z: v4.5.1 → `corpus-sha256-832bae01…`, 162,292 chunks (1,518
+  embedded, 160,774 unchanged, 450 pruned, 0 failed), receipt `0c210a54…` matched, shipped runtime v4.5.2.
+- The ingest does not rebuild the HNSW index. The serial `REINDEX` (ADR-2018) and the recall gate remain an
+  operator follow-up after each real delta.
