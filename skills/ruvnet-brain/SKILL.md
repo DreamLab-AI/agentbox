@@ -7,7 +7,7 @@ description: >
   alternative (Pinecone, LangChain, ChromaDB, hnswlib): query the
   search_ruvnet MCP tool to ground the answer in indexed source code
   rather than training-data guesses.
-version: 0.3.0
+version: 0.4.0
 related_skills:
   - lazy-fetch
   - agentdb-memory-patterns
@@ -48,26 +48,54 @@ so this guard is firm.
 ## Keeping the corpus current (periodic update playbook)
 
 The upstream corpus is a GitHub release asset that moves independently of this
-deployment (`stuinfla/ruvnet-brain` `releases/latest/download/ruvnet-brain.zip`).
-The ingest is fully idempotent: it discovers the latest tag via the release
-redirect, fast no-ops when the stamped `corpus_version` matches, and on a real
-bump embeds only new/changed chunks (content-addressed keys) and prunes rows
-absent from the new corpus. The 2026-08-14 v3.3.1→v4.0.36 reconcile embedded
-6,259 and pruned 1,807 of 136,439 chunks in ~7 min.
+deployment (`stuinfla/ruvnet-brain` `releases/latest/download/ruvnet-brain.zip`;
+upstream docs: <https://isovision.ai/ruvnet-brain>). The ingest is fully
+idempotent: it resolves the newest release that actually carries the zip,
+fast no-ops when the stamped `corpus_version` matches, and on a real bump
+embeds only new/changed chunks (content-addressed keys) and prunes rows absent
+from the new corpus. The 2026-08-14 v3.3.1→v4.0.36 reconcile embedded 6,259
+and pruned 1,807 of 136,439 chunks in ~7 min.
+
+**Content-addressed generations (since 2026-10-03).** Upstream tags are now
+`corpus-sha256-<archive sha256>` (e.g. `corpus-sha256-832bae01…`, shipped
+runtime v4.5.2) instead of `v4.x`. Each release carries `ruvnet-brain.zip`,
+`.zip.sha256`, `.zip.sig` (64-byte detached signature) and
+`corpus-receipt.json`. The ingest treats the tag as an opaque version (the
+manifest keeps the **full** tag) and enforces:
+
+- the published `.zip.sha256` must **equal the tag digest** (checked before
+  the download; refused otherwise), and the downloaded bytes must hash to it;
+- the receipt's `archive.sha256` must equal the zip digest, and the receipt
+  must hash to the release body's `Receipt SHA-256` when stated (refused
+  otherwise);
+- the `.sig` is **recorded, not verified**: upstream publishes no public key,
+  so `signature_verified` is always `false` with
+  `signature_reason: "no published public key"`. Never guess or hand-roll a
+  key; wire verification only once upstream publishes one.
+
+`ruvnet_brain_status` (and `./agentbox.sh ruvnet-brain status`) show these in
+the manifest: `corpus_version`, `content_addressed`, `archive_sha256`,
+`sig_present`, `sig_bytes`, `signature_verified`, `signature_reason`,
+`receipt_sha256`, `receipt_matches_archive`, `shipped_runtime`. The `.sig` and
+receipt stay in `RUVNET_BRAIN_STAGING` beside the (deleted) zip for inspection.
+
+**`npx ruvnet-brain` is not our path.** Upstream's own delivery installs RVF
+stores into `~/.cache` and runs its own embedder. Agentbox deliberately takes
+only the zip's `*.passages.jsonl` into ruvector-postgres (`ruvnet-kb`, our
+bge-small 384-dim space). Do not switch this deployment to npx.
 
 Procedure (run whenever staleness is suspected; safe to run any time):
 
 ```bash
 ./agentbox.sh ruvnet-brain status    # compare manifest corpus_version vs upstream
 ./agentbox.sh ruvnet-brain ingest    # reconcile (no-op if current)
-# AFTER any real delta (embedded+pruned > 0): the index-law applies —
-# non-concurrent HNSW rebuild, NEVER CREATE INDEX CONCURRENTLY on this AM:
+# AFTER any real delta (embedded+pruned > 0) the index-law applies: the
+# ingest does NOT rebuild the index. Non-concurrent AND serial rebuild
+# (~8 min, memory writes block meanwhile); NEVER CREATE INDEX CONCURRENTLY:
 docker exec ruvector-postgres psql -U ruvector -d ruvector \
-  -c "DROP INDEX idx_memory_embedding_hnsw;" \
-  -c "CREATE INDEX idx_memory_embedding_hnsw ON public.memory_entries
-      USING hnsw (embedding ruvector_cosine_ops)
-      WITH (m='16', ef_construction='128');"   # ~5-7 min; memory WRITES BLOCK meanwhile
-./agentbox.sh ruvector recall        # gate: frozen band must hold
+  -c "SET max_parallel_maintenance_workers = 0;" \
+  -c "REINDEX INDEX idx_memory_embedding_hnsw;"   # keeps m=16, ef_construction=128
+./agentbox.sh ruvector recall        # gate: self >=175/200, true >=102/120
 ```
 
 Post-bump gate expectations (observed 2026-08-14): a corpus bump that PRUNES

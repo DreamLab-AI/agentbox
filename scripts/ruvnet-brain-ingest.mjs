@@ -27,11 +27,24 @@
 // failures exceed RUVNET_BRAIN_MAX_FAILED_CHUNKS (default 1000). Safe to
 // re-run at every boot / after every build — this IS the "bleeding edge at
 // build time" reconciliation.
+//
+// Content-addressed generations (upstream since 2026-10-03): release tags are
+// `corpus-sha256-<archive digest>`. For those the published .zip.sha256 MUST
+// equal the tag digest (checked before the download) and the downloaded bytes
+// must hash to it. The detached .zip.sig and corpus-receipt.json are fetched
+// beside the zip; the receipt's archive digest must equal the zip digest and,
+// when the release body states a "Receipt SHA-256", the receipt must hash to
+// it. The signature is RECORDED (sig_present) but never claimed verified:
+// upstream publishes no public key, and we do not guess one
+// (signature_verified=false, signature_reason="no published public key").
+// Upstream's own delivery (`npx ruvnet-brain` → RVF files in ~/.cache) is
+// not this path; agentbox ingests the zip's passages into ruvector-postgres.
 
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readdirSync, createReadStream, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readdirSync, readFileSync, realpathSync, createReadStream, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 import { execFileSync } from 'node:child_process';
 import http from 'node:http';
@@ -73,7 +86,6 @@ function loadPg() {
   for (const c of candidates) { try { return req(c); } catch { /* next */ } }
   die('pg module not found in any baked closure');
 }
-const { Pool } = loadPg();
 
 // ── Xinference client (batch) ────────────────────────────────────────────────
 function httpJson(url, { method = 'GET', body = null, timeout = 60000, headers = {} } = {}) {
@@ -147,27 +159,124 @@ const wellFormed = (s) => {
 // again after the cut.
 const embedText = (s) => wellFormed(s.substring(0, EMBED_TRUNC));
 
-// ── Release digest verification ──────────────────────────────────────────────
-// Upstream publishes <asset>.sha256 alongside the zip. A mismatch is fatal
-// (this corpus is treated as ground truth by the grounding hook); a release
-// without a digest asset only warns unless RUVNET_BRAIN_REQUIRE_DIGEST=1.
-function verifyDigest(zipPath, releaseUrl) {
-  let expected = null;
+// ── Release provenance (pure helpers, unit-tested) ──────────────────────────
+const HEX64 = /\b[0-9a-f]{64}\b/i;
+export const SIGNATURE_UNVERIFIED_REASON = 'no published public key';
+
+/** Digest carried by a content-addressed tag `corpus-sha256-<64 hex>`, else null. */
+export function tagDigest(tag) {
+  const m = typeof tag === 'string' ? tag.match(/^corpus-sha256-([0-9a-f]{64})$/i) : null;
+  return m ? m[1].toLowerCase() : null;
+}
+
+/** First 64-hex digest in a sha256sum-style asset body, lower-cased, else null. */
+export function parseDigest(text) {
+  const m = typeof text === 'string' ? text.match(HEX64) : null;
+  return m ? m[0].toLowerCase() : null;
+}
+
+/**
+ * Content-addressing proof. A `corpus-sha256-*` tag IS the archive digest, so
+ * the release's published .sha256 must exist and equal it; anything else is
+ * refused. Legacy tags (v4.x) are not content-addressed and pass through.
+ */
+export function checkContentAddress(tag, publishedDigest) {
+  const want = tagDigest(tag);
+  if (!want) return { contentAddressed: false, ok: true, reason: null };
+  const got = publishedDigest ? String(publishedDigest).toLowerCase() : null;
+  if (!got) return { contentAddressed: true, ok: false, reason: `content-addressed tag ${tag} but no published .sha256 digest` };
+  if (got !== want) return { contentAddressed: true, ok: false, reason: `published .sha256 ${got} does not equal tag digest ${want}` };
+  return { contentAddressed: true, ok: true, reason: null };
+}
+
+/** URL of another asset in the same release directory as `assetUrl`. */
+export function siblingAssetUrl(assetUrl, name) {
+  const u = new URL(assetUrl);
+  u.pathname = u.pathname.replace(/[^/]*$/, encodeURIComponent(name));
+  u.search = ''; u.hash = '';
+  return u.toString();
+}
+
+/** Upstream runtime the corpus shipped with: receipt first, then release body. */
+export function shippedRuntime(receipt, releaseBody) {
+  if (receipt && typeof receipt === 'object') {
+    if (typeof receipt.archiveManifestReleaseTag === 'string' && receipt.archiveManifestReleaseTag) return receipt.archiveManifestReleaseTag;
+    if (typeof receipt.archiveManifestVersion === 'string' && receipt.archiveManifestVersion) {
+      return receipt.archiveManifestVersion.startsWith('v') ? receipt.archiveManifestVersion : `v${receipt.archiveManifestVersion}`;
+    }
+  }
+  const m = typeof releaseBody === 'string' ? releaseBody.match(/^\s*Shipped runtime:\s*(\S+)/mi) : null;
+  return m ? m[1] : null;
+}
+
+/**
+ * Evaluate the detached signature and corpus receipt against the downloaded
+ * archive digest. Returns the manifest provenance fields plus ok/reason; a
+ * receipt that names a different archive, does not parse, or does not hash to
+ * the release body's "Receipt SHA-256" is refused. The signature is recorded
+ * only — there is no published key to verify it against.
+ */
+export function evaluateProvenance({ zipSha256, receiptText, sigBytes, releaseBody }) {
+  const out = {
+    ok: true, reason: null,
+    sig_present: Boolean(sigBytes && sigBytes.length),
+    sig_bytes: sigBytes ? sigBytes.length : 0,
+    signature_verified: false,
+    signature_reason: SIGNATURE_UNVERIFIED_REASON,
+    receipt_sha256: null, receipt_archive_sha256: null, receipt_matches_archive: null,
+    shipped_runtime: null,
+  };
+  const refuse = (reason) => { out.ok = false; out.reason = reason; return out; };
+  let receipt = null;
+  if (receiptText != null) {
+    out.receipt_sha256 = createHash('sha256').update(receiptText).digest('hex');
+    try { receipt = JSON.parse(receiptText); } catch (e) { return refuse(`corpus receipt does not parse (${e.message})`); }
+    const archived = parseDigest(receipt?.archive?.sha256 ?? receipt?.archiveSha256 ?? '');
+    out.receipt_archive_sha256 = archived;
+    out.receipt_matches_archive = Boolean(archived && zipSha256 && archived === String(zipSha256).toLowerCase());
+    if (!out.receipt_matches_archive) {
+      return refuse(`receipt archive sha256 ${archived || 'missing'} does not equal downloaded zip sha256 ${zipSha256}`);
+    }
+    const stated = typeof releaseBody === 'string' ? releaseBody.match(/Receipt SHA-256:\s*([0-9a-f]{64})/i) : null;
+    if (stated && stated[1].toLowerCase() !== out.receipt_sha256) {
+      return refuse(`receipt sha256 ${out.receipt_sha256} does not equal the release body's Receipt SHA-256 ${stated[1].toLowerCase()}`);
+    }
+  }
+  out.shipped_runtime = shippedRuntime(receipt, releaseBody);
+  return out;
+}
+
+/** Manifest row value. corpus_version is always the full release tag. */
+export function buildManifest({ version, stats, source, archiveSha256, provenance, urn = null, now = new Date().toISOString() }) {
+  const p = provenance || {};
+  return {
+    corpus_version: version,
+    ingested_at: now,
+    chunks: stats.chunks, embedded: stats.embedded, unchanged: stats.unchanged,
+    pruned: stats.pruned, failed_chunks: stats.failed_chunks,
+    source,
+    content_addressed: Boolean(tagDigest(version)),
+    archive_sha256: archiveSha256 || null,
+    sig_present: Boolean(p.sig_present),
+    sig_bytes: p.sig_bytes || 0,
+    signature_verified: false,
+    signature_reason: p.signature_reason || SIGNATURE_UNVERIFIED_REASON,
+    receipt_sha256: p.receipt_sha256 ?? null,
+    receipt_matches_archive: p.receipt_matches_archive ?? null,
+    shipped_runtime: p.shipped_runtime ?? null,
+    ...(urn ? { dataset_urn: urn } : {}),
+  };
+}
+
+// ── Release asset fetches (curl; absent asset → null) ────────────────────────
+function fetchText(url) {
+  try { return execFileSync('curl', ['-fsSL', '--retry', '2', '--max-time', '60', url], { encoding: 'utf8' }); } catch { return null; }
+}
+function fetchBytes(url, dest) {
   try {
-    const out = execFileSync('curl', ['-fsSL', '--retry', '2', '--max-time', '60', `${releaseUrl}.sha256`], { encoding: 'utf8' });
-    expected = (out.match(/\b[0-9a-f]{64}\b/i) || [null])[0];
-  } catch { /* digest asset absent or unreachable */ }
-  if (!expected) {
-    if (process.env.RUVNET_BRAIN_REQUIRE_DIGEST === '1') die(`no .sha256 digest at ${releaseUrl}.sha256 and RUVNET_BRAIN_REQUIRE_DIGEST=1`);
-    log('WARN: no .sha256 digest published for this release — skipping download verification');
-    return;
-  }
-  const actual = execFileSync('sha256sum', [zipPath], { encoding: 'utf8' }).split(/\s+/)[0];
-  if (actual.toLowerCase() !== expected.toLowerCase()) {
-    rmSync(zipPath, { force: true });
-    die(`download sha256 mismatch: expected ${expected}, got ${actual} — refusing to ingest`);
-  }
-  log(`download digest verified (sha256 ${expected.slice(0, 12)}…)`);
+    execFileSync('curl', ['-fsSL', '--retry', '2', '--max-time', '120', '-o', dest, url], { stdio: ['ignore', 'ignore', 'ignore'] });
+    return readFileSync(dest);
+  } catch { rmSync(dest, { force: true }); return null; }
 }
 
 // ── Release version discovery ────────────────────────────────────────────────
@@ -192,51 +301,60 @@ function discoverVersion(url) {
   });
 }
 
-// GitHub can mark a release "latest" before its large corpus asset finishes
-// uploading (v4.3.1 was observed with zero assets). The convenience
-// /latest/download URL then returns 404 even though the previous complete
-// release remains usable. Resolve that URL through the releases API and pick
-// the newest release that actually contains the requested asset. This keeps
-// version reconciliation tied to downloadable bytes instead of a bare tag.
+// Release selection. GitHub's designated latest (/releases/latest) is
+// authoritative: upstream stages a content-addressed generation as a
+// prerelease and promotes it to latest only after a clean customer install.
+// The list API orders by creation time, NOT by that designation — on
+// 2026-10-03 it put runtime release v4.5.2 ahead of the promoted
+// corpus-sha256-832bae01… (same created_at), so "first in list" picked the
+// wrong corpus. The list is only the fallback for when the designated release
+// lacks the asset (v4.3.1 was marked latest before its zip finished uploading).
+const assetOf = (release, assetName) => (release && !release.draft && release.tag_name && Array.isArray(release.assets)
+  ? release.assets.find((a) => a?.name === assetName && a?.browser_download_url) || null
+  : null);
+
+export function pickRelease(latest, releases, assetName) {
+  const hit = assetOf(latest, assetName);
+  if (hit) return { url: hit.browser_download_url, version: latest.tag_name, body: typeof latest.body === 'string' ? latest.body : '', fallback: false };
+  for (const release of Array.isArray(releases) ? releases : []) {
+    const asset = assetOf(release, assetName);
+    if (asset) return { url: asset.browser_download_url, version: release.tag_name, body: typeof release.body === 'string' ? release.body : '', fallback: true };
+  }
+  return { url: null, version: null, body: '', fallback: true };
+}
+
 async function resolveRelease(url) {
   const pinned = url.match(/\/releases\/download\/([^/]+)\//);
-  if (pinned) return { url, version: decodeURIComponent(pinned[1]) };
+  if (pinned) return { url, version: decodeURIComponent(pinned[1]), body: '' };
 
-  const latest = url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/latest\/download\/([^/?#]+)(?:[?#].*)?$/);
-  if (latest) {
-    const [, owner, repo, encodedAsset] = latest;
+  const latestUrl = url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/latest\/download\/([^/?#]+)(?:[?#].*)?$/);
+  if (latestUrl) {
+    const [, owner, repo, encodedAsset] = latestUrl;
     const assetName = decodeURIComponent(encodedAsset);
+    const api = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases`;
+    const headers = {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'agentbox-ruvnet-brain-ingest',
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
     try {
-      const releases = await httpJson(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases?per_page=20`,
-        {
-          timeout: 30000,
-          headers: {
-            Accept: 'application/vnd.github+json',
-            'User-Agent': 'agentbox-ruvnet-brain-ingest',
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-        },
-      );
-      for (const release of Array.isArray(releases) ? releases : []) {
-        if (release?.draft) continue;
-        const asset = Array.isArray(release?.assets)
-          ? release.assets.find((candidate) => candidate?.name === assetName)
-          : null;
-        if (!asset?.browser_download_url || !release?.tag_name) continue;
-        if (release.tag_name !== releases[0]?.tag_name) {
-          log(`WARN: latest GitHub release ${releases[0]?.tag_name || 'unknown'} has no ${assetName}; using newest complete release ${release.tag_name}`);
-        }
-        return { url: asset.browser_download_url, version: release.tag_name };
+      let latest = null;
+      try { latest = await httpJson(`${api}/latest`, { timeout: 30000, headers }); } catch (error) {
+        log(`WARN: GitHub /releases/latest lookup failed (${error.message}); scanning the release list`);
       }
-      log(`WARN: no downloadable ${assetName} found in the 20 newest GitHub releases`);
-      return { url: null, version: null };
+      const releases = assetOf(latest, assetName) ? [] : await httpJson(`${api}?per_page=20`, { timeout: 30000, headers });
+      const picked = pickRelease(latest, releases, assetName);
+      if (picked.version && picked.fallback) {
+        log(`WARN: designated latest release ${latest?.tag_name || 'unknown'} has no ${assetName}; using newest complete release ${picked.version}`);
+      }
+      if (!picked.version) log(`WARN: no downloadable ${assetName} found in the designated latest or the 20 newest GitHub releases`);
+      return picked;
     } catch (error) {
       log(`WARN: GitHub release API lookup failed (${error.message}); falling back to the configured URL`);
     }
   }
 
-  return { url, version: await discoverVersion(url) };
+  return { url, version: await discoverVersion(url), body: '' };
 }
 
 // ── SQL helpers (mirror ruvector-mcp.cjs conventions) ────────────────────────
@@ -294,6 +412,7 @@ function poolConfig(conninfo) {
 
 async function main() {
   if (!CONNINFO) die('RUVECTOR_PG_CONNINFO not set');
+  const { Pool } = loadPg();
   const pool = new Pool({ ...poolConfig(CONNINFO), max: 4 });
 
   const manifestRow = async () => {
@@ -345,9 +464,34 @@ async function main() {
   const extractDir = join(STAGING, 'passages');
   rmSync(extractDir, { recursive: true, force: true });
   mkdirSync(extractDir, { recursive: true });
+  // 3a. Published digest first: for a content-addressed tag it must equal the
+  //     tag digest, so a mislabelled release is refused before 600+ MB moves.
+  const publishedDigest = parseDigest(fetchText(`${release.url}.sha256`));
+  const ca = checkContentAddress(version, publishedDigest);
+  if (!ca.ok) die(`${ca.reason} — refusing to ingest`);
+  if (ca.contentAddressed) log(`content-addressed release: published .sha256 equals tag digest (${publishedDigest.slice(0, 12)}…)`);
+  if (!publishedDigest) {
+    if (process.env.RUVNET_BRAIN_REQUIRE_DIGEST === '1') die(`no .sha256 digest at ${release.url}.sha256 and RUVNET_BRAIN_REQUIRE_DIGEST=1`);
+    log('WARN: no .sha256 digest published for this release — skipping download verification');
+  }
   log(`downloading ${release.url} → ${zipPath} (hundreds of MB, be patient)`);
   execFileSync('curl', ['-fSL', '--retry', '3', '--max-time', '1800', '-o', zipPath, release.url], { stdio: ['ignore', 'ignore', 'inherit'] });
-  verifyDigest(zipPath, release.url);
+  const zipSha256 = execFileSync('sha256sum', [zipPath], { encoding: 'utf8' }).split(/\s+/)[0].toLowerCase();
+  if (publishedDigest && zipSha256 !== publishedDigest) {
+    rmSync(zipPath, { force: true });
+    die(`download sha256 mismatch: expected ${publishedDigest}, got ${zipSha256} — refusing to ingest`);
+  }
+  if (publishedDigest) log(`download digest verified (sha256 ${zipSha256.slice(0, 12)}…)`);
+
+  // 3b. Detached signature + corpus receipt, kept beside the zip in staging.
+  const sigBytes = fetchBytes(`${release.url}.sig`, join(STAGING, 'ruvnet-brain.zip.sig'));
+  const receiptBytes = fetchBytes(siblingAssetUrl(release.url, 'corpus-receipt.json'), join(STAGING, 'corpus-receipt.json'));
+  const provenance = evaluateProvenance({
+    zipSha256, receiptText: receiptBytes ? receiptBytes.toString('utf8') : null, sigBytes, releaseBody: release.body,
+  });
+  if (!provenance.ok) { rmSync(zipPath, { force: true }); die(`${provenance.reason} — refusing to ingest`); }
+  log(`provenance: sig ${provenance.sig_present ? `present (${provenance.sig_bytes} B, NOT verified: ${provenance.signature_reason})` : 'absent'}; `
+    + `receipt ${provenance.receipt_sha256 ? `${provenance.receipt_sha256.slice(0, 12)}… matches archive` : 'absent'}; shipped runtime ${provenance.shipped_runtime || 'unknown'}`);
   log('extracting *.passages.jsonl');
   try {
     // Exclude macOS AppleDouble junk (__MACOSX/, ._*) — upstream zips are built
@@ -479,13 +623,11 @@ async function main() {
 
   // 7. Manifest stamp (+ best-effort ADR-013 dataset URN).
   const urn = mintCorpusUrn(version);
-  const manifestValue = {
-    corpus_version: version,
-    ingested_at: new Date().toISOString(),
-    chunks: seenKeys.size, embedded: inserted, unchanged: skipped,
-    pruned: pruned.rowCount, failed_chunks: failedChunks,
-    source: RELEASE_URL, ...(urn ? { dataset_urn: urn } : {}),
-  };
+  const manifestValue = buildManifest({
+    version,
+    stats: { chunks: seenKeys.size, embedded: inserted, unchanged: skipped, pruned: pruned.rowCount, failed_chunks: failedChunks },
+    source: RELEASE_URL, archiveSha256: zipSha256, provenance, urn,
+  });
   await pool.query(
     `INSERT INTO memory_entries (id, namespace, key, value, source_type, metadata, embedding)
      VALUES ($1, $2, 'ruvnet/manifest', $3::jsonb, $4, $5::jsonb, NULL)
@@ -500,4 +642,8 @@ async function main() {
   await pool.end();
 }
 
-main().catch((e) => die(e.stack || e.message));
+// Entry guard: importing this module (unit tests) must not run an ingest.
+const realOrSelf = (p) => { try { return realpathSync(p); } catch { return p; } };
+const invokedDirectly = Boolean(process.argv[1])
+  && realOrSelf(resolve(process.argv[1])) === realOrSelf(fileURLToPath(import.meta.url));
+if (invokedDirectly) main().catch((e) => die(e.stack || e.message));

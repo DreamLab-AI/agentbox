@@ -188,6 +188,21 @@ async function brainStatus() {
     [NAMESPACE],
   );
   out.manifest = manifest.rows.length ? parseVal(manifest.rows[0].value) : null;
+  // Release provenance, as recorded by the ingest (scripts/ruvnet-brain-ingest.mjs).
+  // A manifest from a pre-2026-10-03 ingest carries none of these fields.
+  const m = out.manifest && typeof out.manifest === 'object' ? out.manifest : null;
+  if (m && 'sig_present' in m) {
+    out.provenance = {
+      content_addressed: Boolean(m.content_addressed),
+      archive_sha256: m.archive_sha256 ?? null,
+      sig_present: Boolean(m.sig_present),
+      signature_verified: Boolean(m.signature_verified),
+      signature_reason: m.signature_reason ?? null,
+      receipt_sha256: m.receipt_sha256 ?? null,
+      receipt_matches_archive: m.receipt_matches_archive ?? null,
+      shipped_runtime: m.shipped_runtime ?? null,
+    };
+  }
   if (!out.corpus.total) {
     out.hint = 'Corpus empty — run scripts/ruvnet-brain-ingest.mjs (auto-runs at boot when [skills.ruvnet_brain].auto_ingest = true).';
   }
@@ -219,7 +234,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'ruvnet_brain_status',
-      description: 'Corpus health: chunk counts, embedded coverage, distinct repos, ingest manifest (corpus version + timestamp).',
+      description: 'Corpus health: chunk counts, embedded coverage, distinct repos, ingest manifest (corpus version + timestamp) and release provenance (archive digest, signature present/verified, receipt digest, shipped runtime).',
       inputSchema: { type: 'object', properties: {} },
     },
   ],
