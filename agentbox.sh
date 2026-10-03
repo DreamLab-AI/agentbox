@@ -1450,12 +1450,25 @@ CONCAT_HELP
 # browsercontainer lifecycle
 # ---------------------------------------------------------------------------
 
+# W9: the sidecar image ships the pinned Podkey CI artefact (browsercontainer/podkey.pin).
+# Fetch it into the build context before any build; a cached zip that already
+# matches the pin is reused, so this needs gh or GH_TOKEN only on first fetch or
+# after the pin moves.
+browsercontainer_fetch_podkey() {
+    if ! "${SCRIPT_DIR}/browsercontainer/scripts/fetch-podkey.sh" fetch; then
+        echo -e "${RED}Cannot obtain the pinned Podkey artefact; the browsercontainer image is not built without it.${NC}"
+        echo "  Authenticate gh (gh auth login) or export GH_TOKEN, then retry. See browsercontainer/README.md (Podkey)."
+        exit 1
+    fi
+}
+
 cmd_browsercontainer() {
     local subcmd="${1:-help}"
     shift 2>/dev/null || true
 
     case "$subcmd" in
         up)
+            browsercontainer_fetch_podkey
             echo -e "${CYAN}Building and starting browsercontainer...${NC}"
             docker compose "${SIDECAR_COMPOSE_ARGS[@]}" up -d --build
             local deadline=$(( $(date +%s) + 60 ))
@@ -1499,9 +1512,24 @@ cmd_browsercontainer() {
             ;;
         rebuild)
             echo -e "${CYAN}Rebuilding browsercontainer...${NC}"
+            browsercontainer_fetch_podkey
             docker compose "${SIDECAR_COMPOSE_ARGS[@]}" down
             docker compose "${SIDECAR_COMPOSE_ARGS[@]}" build --no-cache
             cmd_browsercontainer up
+            ;;
+        podkey)
+            # W9: the sidecar's Podkey (pinned CI artefact). Never handles a private key:
+            # status/pubkey read state and the public key; unlock prompts for the vault
+            # passphrase on this terminal (no echo) for the current Chrome session.
+            local pk_cmd="${1:-status}"
+            case "$pk_cmd" in
+                status|pubkey|id)
+                    docker exec --user 1000 browsercontainer node /opt/browsercontainer/podkey-ctl.js "$pk_cmd" ;;
+                unlock)
+                    docker exec -it --user 1000 browsercontainer node /opt/browsercontainer/podkey-ctl.js unlock ;;
+                *)
+                    echo "Usage: $0 browsercontainer podkey [status|pubkey|unlock|id]"; exit 2 ;;
+            esac
             ;;
         shell)
             docker exec -it --user 1000 browsercontainer bash
@@ -1540,6 +1568,7 @@ Usage: $0 browsercontainer <command>
   ${GREEN}status${NC}    Show container status
   ${GREEN}rebuild${NC}   Full rebuild (down + build --no-cache + up)
   ${GREEN}shell${NC}     Open bash in the container
+  ${GREEN}podkey${NC}    Podkey in the sidecar: status | pubkey | unlock | id
   ${GREEN}gpu${NC}       Check GPU and Vulkan status inside container
   ${GREEN}cdp${NC}       Check CDP connectivity and list browser tabs
 

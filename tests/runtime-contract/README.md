@@ -49,6 +49,33 @@ Jest equivalents use `test.skip` gated on `process.env.SKIP_DOCKER`.
 | RC-003-08 | Metrics port from manifest appears in compose ports, is bound, returns Prometheus text |
 | RC-003-09 | `docker inspect`: `User != 0`, `ReadonlyRootfs true`, `CapDrop` has `ALL`, ≥2 tmpfs mounts |
 | RC-003-10 | Desktop exception adds tmpfs entries without removing baseline `cap_drop: ALL` |
+| RC-X1-01 | Root boot PATH is store-only: a probe planted in `~/workspace/.cargo/bin` never runs as root; devuser shells get the cargo bin appended |
+| RC-X1-02 | Stage B is one-shot per container start (root 0700 sentinel dir in sticky `/tmp`); a `supervisorctl start bootstrap` replay is a no-op |
+| RC-X1-03 | Baked `/etc/group` gives `root` no members; live (`AGENTBOX_RC_LIVE=1`): `id -G devuser` lacks 0 |
+| RC-X1-04 | `chmod o+rw` on the Docker socket only with `[security].role_isolation` off; on, a still-widened socket is reported `degraded:docker-socket` |
+| RC-X1-05 | `config/docker-read-proxy.cjs`: GET-only allowlist (fixtures), 403 never reaches the daemon, real `docker` CLI ps/inspect/logs pass and exec/run fail |
+
+The RC-X1 tests (custody X-1 step 1, workstream W0) need no container: they extract
+the entrypoint functions by name and run them against a scratch filesystem.
+
+```bash
+for f in tests/runtime-contract/RC-X1-0*.sh; do bash "$f"; done
+node --test tests/runtime-contract/RC-X1-05.node-test.cjs
+```
+
+### Host-half contract for the role-isolation rehearsal (R2)
+
+The Docker socket inside the container is a bind of the **host's**
+`/var/run/docker.sock` inode. Every boot before W0 ran `chmod o+rw` on it, so the
+host socket is world-writable until someone narrows it **on the host**. Turning
+`[security].role_isolation` on stops the container widening it but never narrows
+it (that is the owner's host-side decision, Q2). Until the host runs
+`chmod 0660 /var/run/docker.sock` (or the Docker daemon restarts and recreates it),
+the boot writes `degraded:docker-socket` to `/run/secrets/role-isolation.state` and
+logs `ROLE-ISOLATION-DEGRADED docker-socket`. The rehearsal's host half
+(`scripts/activation/role-isolation-rehearsal.host.sh`, W6a) must report the host
+socket's mode and owner and treat anything with other-bits set as a failed check;
+the in-container half must treat `degraded:docker-socket` as red.
 
 ## Running locally
 

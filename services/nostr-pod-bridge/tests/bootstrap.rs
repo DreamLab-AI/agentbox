@@ -168,7 +168,7 @@ fn identity_env_exports_the_expected_variables_in_order() {
 fn identity_env_is_written_at_mode_0600() {
     use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
-    write_runtime_env(&identity(), dir.path()).unwrap();
+    write_runtime_env(&identity(), dir.path(), None).unwrap();
     let path = dir.path().join("identity.env");
     let mode = std::fs::metadata(&path).unwrap().permissions().mode();
     assert_eq!(mode & 0o777, 0o600);

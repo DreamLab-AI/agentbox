@@ -492,12 +492,19 @@ fn idempotent_on_rerun() {
 /// ef54a08); "single-use seal" is not this design's term and stays out.
 #[test]
 fn docs_do_not_speak_of_single_use_seals() {
-    let src_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    for entry in std::fs::read_dir(src_dir).unwrap() {
-        let path = entry.unwrap().path();
-        let text = std::fs::read_to_string(&path).unwrap().to_lowercase();
-        for term in ["single-use seal", "single-use-seal"] {
-            assert!(!text.contains(term), "{} says {term}", path.display());
+    // Recurses: module directories (src/identity_port/) are scanned too.
+    let mut dirs = vec![Path::new(env!("CARGO_MANIFEST_DIR")).join("src")];
+    while let Some(dir) = dirs.pop() {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                dirs.push(path);
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).unwrap().to_lowercase();
+            for term in ["single-use seal", "single-use-seal"] {
+                assert!(!text.contains(term), "{} says {term}", path.display());
+            }
         }
     }
 }

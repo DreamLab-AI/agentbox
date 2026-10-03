@@ -1,0 +1,33 @@
+{
+  "$comment": [
+    "G-5 key split (TODO row G-5; custody design §11; docs/estate-closeout/g5-key-split-handoff.md).",
+    "PUBLIC KEYS ONLY. A private key, nsec or seed never goes in this file or anywhere in this repo.",
+    "Each replacement key is minted inside its eventual holder, never in agentbox (D3, 2026-10-03).",
+    "pubkey stays null until the owner supplies the 64-hex x-only public key. When it is set, add the",
+    "same pubkey to every path in agentbox_verifiers. tests/sovereign/g5-key-split.node-test.js then",
+    "proves the real verifier admits it alongside house_key. house_key stays admitted until its role is",
+    "listed in house_key_withdrawn_from (migration step E, after owner rebuild 1 and the signer switch).",
+    "K_admin (forum house admin) is deliberately absent: the operator creates it in a NIP-07 extension",
+    "and its only verifier is the forum deploy, not agentbox (D2, 2026-10-03)."
+  ],
+  "house_key": "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",
+  "replacements": [
+    {
+      "role": "k_browser",
+      "replaces_use": "U8: browser automation identity",
+      "minted_in": "a NIP-07 signer inside browsercontainer's Chromium profile (the owner creates it there)",
+      "pubkey": null,
+      "agentbox_verifiers": ["interaction_plane.proxy.allowed_pubkeys"],
+      "external_verifiers": []
+    },
+    {
+      "role": "k_broker",
+      "replaces_use": "U7: VisionClaw governance signer (kinds 31400/31402)",
+      "minted_in": "inside visionclaw_container (nostr-tools generateSecretKey), written by the owner from tab 6 over VISIONCLAW_NOSTR_PRIVKEY in VisionClaw .env",
+      "pubkey": null,
+      "agentbox_verifiers": [],
+      "external_verifiers": ["dreamlab forum relay whitelist (nostr-rust-forum deploy)"]
+    }
+  ],
+  "house_key_withdrawn_from": []
+}

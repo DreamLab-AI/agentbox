@@ -139,13 +139,23 @@ async function main() {
   }
 
   // Agent key: delegated AGENT_PRIVKEY_HEX, prototype fallback to JunkieJarvis.
-  const agentPrivHex = (process.env.AGENT_PRIVKEY_HEX
-    || process.env.JUNKIEJARVIS_PRIVKEY_HEX
-    || process.env.CONCIERGE_PRIVKEY_HEX
-    || '').trim();
+  // Custody W2: through the shared ROLE-secret loader, so <NAME>_FILE wins and
+  // the bare variables (including any this script loaded from .env) are
+  // honoured only while [security].role_isolation is off.
+  const { readRoleSecretFirst } = require(path.join(REPO_ROOT, 'management-api/lib/role-secret'));
+  let agentPrivHex = '';
+  try {
+    agentPrivHex = readRoleSecretFirst(
+      ['AGENT_PRIVKEY_HEX', 'JUNKIEJARVIS_PRIVKEY_HEX', 'CONCIERGE_PRIVKEY_HEX'],
+      { log: (m) => console.error(`[puaf] ${m}`) },
+    ).value;
+  } catch (err) {
+    console.error(`[puaf] ${err.message}`);
+    process.exit(1);
+  }
   const signer = signerFromHex(agentPrivHex);
   if (!signer) {
-    console.error('[puaf] no valid agent key — set AGENT_PRIVKEY_HEX (64 hex) or JUNKIEJARVIS_PRIVKEY_HEX');
+    console.error('[puaf] no valid agent key — set AGENT_PRIVKEY_HEX (64 hex) or JUNKIEJARVIS_PRIVKEY_HEX (or their _FILE)');
     process.exit(1);
   }
 

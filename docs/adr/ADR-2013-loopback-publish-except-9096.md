@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
+verified_commit: dc91e092ab646b4a825805b8229602ac8b15bad3
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -17,6 +17,10 @@ lineage: legacy ADR-045 (sovereign ingress front door), R-003 (loopback publish 
 ---
 
 # ADR-2013 — Loopback-only compose publishes except the sanctioned-exposure list
+
+## Re-verification — 2026-10-03 at a10f336fc (prompt egress register, N-7)
+
+`a10f336fc` touched the governed `.github/workflows/invariants.yml` without touching this decision: it adds `docs/SECURITY-profiles.md`, `config/egress-policy.json` and `docs/LAN-door-threat-model.md` to the push paths and one step, `check-egress-register`, after `check-adr-index`. The `check-ports-loopback` step this record relies on is unchanged (`.github/workflows/invariants.yml:63-64`). No publish, SANCTIONED entry or overlay changed. Status axes unchanged.
 
 ## Re-verification — 2026-10-02 at caab741c6 (factrail landing, ADR-2121)
 
@@ -281,3 +285,29 @@ Tripped by the `sidestr:dreamlab-txbt4` seal. `flake.nix` adds `sidechainChains`
 ## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
 
 Tripped by the sidechain health and witness change. `.github/workflows/invariants.yml` gains the CY-A2 `check-declared-vs-running` step, its unit tests and two trigger paths, none of them about exposure. The check-ports-loopback and check-listeners steps are unchanged. `sh scripts/ci/check-ports-loopback.sh` exits 0. Decision and status unchanged.
+
+## Re-verification — 2026-10-03 (`055c06ff69b2f53bf38a67d254c048bb03599fc8`)
+
+Tripped by custody X-1 step 1 (W0 `custody/w0-bypasses` and W1 `custody/w1-role-accounts`). `flake.nix` changed only as follows. W0 (`8070c1010`, `6a433e6b3`): `root` loses its `devuser` member, and `[program:docker-read-proxy]` is added (root start, drops to 65534). W1 (`b8c66625a`, `055c06ff6`): role passwd and group lines are appended from `config/role-accounts.json`, `supervisord.roles.conf`, `role-secrets.tsv` and `role-accounts.json` are derived beside the unchanged `supervisord.conf`, and a root-owned `/run/secrets` tmpfs is added (ADR-2122). `docker-compose.yml` gains one tmpfs line (`/run/secrets`) and no `ports:` entry. The read proxy is a unix socket. No publish changes, so the decision holds.
+Re-verified by `git diff 0919dc39a..055c06ff6 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `.github/workflows/invariants.yml` gains the env-secret-inventory check, its unit tests and RC-X1-06; no existing step changes. `flake.nix` changes only `[program:tailscale-up]` (a `TAILSCALE_AUTHKEY_FILE` branch that passes `--authkey=file:<path>`; the original branch is unchanged and is the one taken with the flag off) and the `[program:nostr-gateway]` comment. The decision holds.
+Re-verified by `git diff 055c06ff6..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`3b54129631067277f6363309b01cce485faa027a`, custody integration head)
+
+Tripped by the custody integration (`custody/integration`: W0, W1, W5, W3, W7a, W8, W2, W9 and
+the integration resolutions, ADR-2122). Since `275e12356` the governed paths changed as follows. `.github/workflows/invariants.yml` gains the `check-egress-register` step (`a10f336fc`, N-7). `flake.nix` gains three things: W5's read-only bake of the sidestr upstream (`lib/sidestr-upstream.nix`, linked at `/opt/agentbox/sidestr/upstream` under `[sidechain].enabled`; `e103f81a7`); the isolated supervisor config renamed `/etc/supervisord.roles.conf` (`760ed01e4`); and a `[program:serve-identity]` block that prints one line and exits 0 while `[security].role_isolation` is off (`b49c62249`).
+No compose publish is added or widened; `check-ports-loopback.sh` passes. The decision holds. Re-verified by `git log 275e12356..3b5412963 -- <verified_paths>`
+and the integration gates. Nix was not evaluated in this container; the image is unverified
+until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`32cedf9925ff6de8112fb45e41de048106d0d710`, custody integration CI fix)
+
+Tripped by `32cedf992`, the fix for the PR's clippy and statix failures. `flake.nix` changes by one line in the `[sidechain.*]` normaliser: `parent = c.parent;` becomes `inherit (c) parent;` (statix W04), which evaluates to the same attribute set. Nothing this record governs changes meaning. The decision holds. Re-verified by `git log 3b5412963..32cedf992 -- <verified_paths>`.
+
+## Re-verification — 2026-10-03 (`dc91e092ab646b4a825805b8229602ac8b15bad3`, custody W10)
+
+Tripped by the W10 gap fixes on `custody/integration`. `.github/workflows/invariants.yml` (`e9f5cd6da`, `dc91e092a`) adds the RC-X1-01..05 and -07 steps and the compose-role-env step, widens its path filter, and corrects one step label; no existing step changes; `flake.nix` (`dc91e092a`) gains one let-binding, `roleIsolationBaked = securityCfg.role_isolation or false`, and its inline `/etc/sudoers` lines become a call to `config/bake-devuser-privilege.sh` with that flag; with the flag off (the shipped value) the baked `/etc/group`, `/etc/sudoers` and `/etc/sudoers.d/devuser` are byte-identical (RC-X1-07). Nothing this record governs changes meaning. The decision holds. Re-verified by `git log 32cedf992..dc91e092a -- <verified_paths>`. Nix was not evaluated in this container.

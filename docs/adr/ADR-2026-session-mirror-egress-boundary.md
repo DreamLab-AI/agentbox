@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
+verified_commit: 3b54129631067277f6363309b01cce485faa027a
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -16,6 +16,10 @@ domain: SECURITY-profiles
 ---
 
 # ADR-2026 — Session-mirror cloud egress boundary
+
+## Re-verification — 2026-10-03 at a10f336fc (prompt egress register, N-7)
+
+`a10f336fc` touched the governed `config/egress-policy.json` without touching this decision. It adds a top-level `register` key (31 routes, rendered into `docs/SECURITY-profiles.md` by `scripts/ci/render-egress-register.js`), and changes no byte of `paths`, `switches`, `invariants` or `outcomes` beyond the comma that separates the new key. The register cites this record as `proposed` for the `live-mirror` and `session-digest` rows, beside their accepted predecessors (ADR-029 D3, ADR-030 D3). Test: `jest --roots=tests/sovereign --testPathPatterns egress-boundary` → 25 passed, including the assertion that `paths` holds exactly `live-mirror` and `session-digest`. Status axes unchanged.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 
@@ -181,3 +185,16 @@ The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe
 - **Priority:** P2 — next cycle (owner decision 2026-10-02, Q4; was P1, Track C item 10, fresh-host bring-up; row G-4)
 - **Why:** All four clauses have code and tests behind them (`config/hooks/lib/egress-policy.cjs`, `egress_policy.rs`, 25 egress-boundary tests; G-4 recipient enumeration 2026-09-07; `b25903ec8` checks the allowlist before any work). The mirror hook is registered on every turn in `~/.claude/settings.json`, and in this container no `AGENTBOX_MIRROR_RECIPIENTS` is set, so it skips. A deployment on Trust-owned hardware (§2 Track C, §9) has to show that nothing leaves the box by default. That is this record's clause (c), and it is the one thing the record has not demonstrated on a running instance.
 - **Next:** During the Track C fresh-host run, capture a receipt showing every egress path reports `skipped` with no allowlist configured. With that and the owner's reviewed recipient set (G-4), it is ready to accept. **Moved to P2 — owner decision 2026-10-02, Q4:** the Trust runbook will not include an egress-nothing-by-default receipt or name who holds each secret, so the Track C fresh-host run will not produce clause (c)'s receipt this cycle. The receipt step above stands for next cycle.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `config/hooks/nostr-live-mirror.cjs` takes the operator key from `config/hooks/lib/operator-key.cjs`. Flag off that is the pre-W2 `envFirst` read, unchanged, so the phone's mirror child key cannot move. Under the flag only `<NAME>_FILE` counts. **Consequence under the flag with W1:** the files are `ab-identity` 0400, so the devuser hook gets no key and seals under a throwaway key with no child key (fail-open, as designed) until the identity port's `mirror_wrap` (W3a/W3b) exists. The egress gates (`AGENTBOX_LIVE_MIRROR`, `AGENTBOX_EGRESS`, `config/egress-policy.json`) are untouched. The decision holds.
+Re-verified by `git diff 526b97dc6..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`3b54129631067277f6363309b01cce485faa027a`, custody integration head)
+
+Tripped by the custody integration (`custody/integration`: W0, W1, W5, W3, W7a, W8, W2, W9 and
+the integration resolutions, ADR-2122). Since `275e12356` the governed paths changed as follows. `config/egress-policy.json` gains the `.register` catalogue of egress routes (`a10f336fc`, N-7); `paths`, the redaction contract, is unchanged.
+The session mirror's egress boundary and its redaction paths are unchanged. The register only catalogues routes. The decision holds. Re-verified by `git log 275e12356..3b5412963 -- <verified_paths>`
+and the integration gates. Nix was not evaluated in this container; the image is unverified
+until the owner's rebuild.

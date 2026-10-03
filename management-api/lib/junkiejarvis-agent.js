@@ -43,6 +43,7 @@
 
 const crypto = require('crypto');
 const zoneKeys = require('./zone-keys');
+const { readRoleSecretFirst } = require('./role-secret');
 const { junkiejarvisEnabled } = require('./junkiejarvis-clarify');
 
 let nostrTools = null;
@@ -82,9 +83,19 @@ const PROFILE_METADATA = Object.freeze({
 const VALID_ZONES = Object.freeze(['public', 'friends', 'family', 'business']);
 const VALID_VENUES = Object.freeze(['fairfield', 'dreamlab']);
 
-/** Private key env var (new name), with a transition fallback to the old one. */
-function readPrivHex() {
-  return process.env.JUNKIEJARVIS_PRIVKEY_HEX || process.env.CONCIERGE_PRIVKEY_HEX || '';
+/**
+ * The JunkieJarvis private key (new name), with a transition fallback to the
+ * old one. Custody W2: read through role-secret.js, so `<NAME>_FILE` wins and
+ * the bare variables are honoured only while [security].role_isolation is off.
+ * An unreadable key file reads as no key (the agent then does not start).
+ */
+function readPrivHex(opts = {}) {
+  try {
+    return readRoleSecretFirst(['JUNKIEJARVIS_PRIVKEY_HEX', 'CONCIERGE_PRIVKEY_HEX'], opts).value;
+  } catch (err) {
+    (opts.logger || console).warn(`junkiejarvis: ${err.message}`);
+    return '';
+  }
 }
 
 // ─── Personality ────────────────────────────────────────────────────────────

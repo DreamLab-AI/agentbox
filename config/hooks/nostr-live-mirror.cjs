@@ -44,6 +44,7 @@ const crypto = require('crypto');
 // ADR-2026 (closeout 2026-09-05): the shared content-egress policy — the same
 // decision table and redaction contract the Rust digest path implements.
 const egress = require('./lib/egress-policy.cjs');
+const { operatorKeyHex } = require('./lib/operator-key.cjs');
 const fs = require('fs');
 const path = require('path');
 
@@ -210,7 +211,7 @@ let _childCache;
 function deriveChildKey() {
   if (_childCache !== undefined) return _childCache;
   if (String(process.env.AGENTBOX_MIRROR_CHILD || '').trim() === '0') { _childCache = null; return null; }
-  const hex = envFirst('AGENTBOX_PRIVKEY_HEX', 'AGENTBOX_BRIDGE_SK', 'OPERATOR_NOSTR_PRIVKEY');
+  const hex = operatorKeyHex({ log });
   if (!/^[0-9a-f]{64}$/i.test(hex)) { _childCache = null; return null; }
   const tag = envFirst('AGENTBOX_MIRROR_KEY_TAG') || 'agentbox-mirror-v1';
   try {
@@ -222,7 +223,7 @@ function deriveChildKey() {
 
 /** Sender identity sealed inside the gift wrap. */
 function senderSecretKey(tools) {
-  const hex = envFirst('AGENTBOX_PRIVKEY_HEX', 'AGENTBOX_BRIDGE_SK', 'OPERATOR_NOSTR_PRIVKEY');
+  const hex = operatorKeyHex({ log });
   if (/^[0-9a-f]{64}$/i.test(hex)) {
     try { return Uint8Array.from(Buffer.from(hex, 'hex')); } catch { /* fall through */ }
   }
@@ -524,6 +525,9 @@ async function main() {
 // hook is invoked directly, so a `require()` in a test never spawns the publish
 // path or the process-exit guard.
 module.exports = {
+  // Custody W2: the operator-key read, re-exported so a test can assert the hook
+  // uses the shared one.
+  operatorKeyHex,
   composeBody,
   mintActivityUrn,
   activityScopePubkey,

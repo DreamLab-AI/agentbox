@@ -78,6 +78,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+// Custody W2: the operator key, file-only under [security].role_isolation.
+const { operatorKeyHex } = require(path.join(__dirname, '..', 'hooks', 'lib', 'operator-key.cjs'));
 const { execFile, execFileSync } = require('child_process');
 
 // ── constants (mirror parity) ───────────────────────────────────────────────
@@ -181,7 +183,7 @@ function envFirst(...ks) { for (const k of ks) { const v = process.env[k]; if (v
 // 'agentbox-gateway-v1') if you ever want a dedicated bot contact instead.
 // In both modes the sole authorised commander is the operator, and replies go to
 // the operator (your phone).
-const OP_HEX = envFirst('AGENTBOX_PRIVKEY_HEX', 'AGENTBOX_BRIDGE_SK', 'OPERATOR_NOSTR_PRIVKEY');
+const OP_HEX = operatorKeyHex({ log: log });
 if (!/^[0-9a-f]{64}$/i.test(OP_HEX)) { log('no operator key (AGENTBOX_PRIVKEY_HEX) — exiting'); process.exit(0); }
 const rawSk = Uint8Array.from(Buffer.from(OP_HEX, 'hex'));
 const adminPub = tools.getPublicKey(rawSk).toLowerCase();

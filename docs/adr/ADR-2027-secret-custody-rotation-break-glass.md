@@ -225,3 +225,14 @@ against running services, not a commit to point at.
 - **Priority:** P2 — next cycle (confirmed by owner decision 2026-10-02, Q4; reopens before any real-value spend, the ADR-2103 P21 gate, planning cycle §10; X-1 step 1 and G-5 are the same work)
 - **Why:** Break-glass bounds and an age-encrypted backup shipped (selftest section N; `services/secret-backup`, packaged by `lib/secret-backup.nix` 2026-09-07). The lifecycle this record decides has not been built: custodians are unconfirmed, nothing has been rotated, the publisher key split is not done (G-5 blocked), and the shared-UID exposure is still open (X-1, N-6). The 2026-09-21 cycle names none of this, and §10 ties custody to the real-value gate.
 - **Next:** Confirm custodians in the `SECURITY-profiles.md` register, and land X-1 step 1 (per-role service accounts) together with the ADR-2101 key separation before any value-bearing chain. **Owner decision 2026-10-02, Q4:** the Trust runbook will not name who holds each secret, so confirming custodians is not a this-cycle step either. The whole record waits for next cycle.
+
+## Note — 2026-10-03: the break-glass bearer in the environment classes (custody W2)
+
+`config/custody/env-classes.json` classifies `NIP98_PROXY_ALLOW_BEARER` as ROLE (`ab-ingress`).
+Under `[security].role_isolation` it leaves PID 1's environment, and nip98-proxy reads it from a
+file. `BRIDGE_TOKEN` is classified DEVUSER_CLASS, with a dated exception that points here. It is
+the same value (`management-api/lib/system-manifest.js:79`) and stays ambient for tab0-bridge, so
+the break-glass credential remains devuser-reachable until the bearer is split (Q4). Nothing in
+this record's lifecycle changed. See `docs/SECURITY-profiles.md`, "Environment classes —
+2026-10-03".
+

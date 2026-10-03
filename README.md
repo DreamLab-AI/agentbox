@@ -114,8 +114,9 @@ Each sibling in its own words:
 <summary><b>sidestr-rs</b> — <em>Rust sidechain engine: a did:nostr key is a sidechain wallet</em></summary>
 
 The optional `[sidechain]` gates supervise the interim testnet producer, public Pages mirror
-and standalone Rust faucet. Setup defaults are off; keys, pinned upstream checkouts and
-persistent chain/grant state must already exist. See [sidechain operations](config/sidechain/README.md).
+and standalone Rust faucet. Setup defaults are off; keys and persistent chain/grant state must
+already exist. The producer runs the image's read-only bake of the pinned upstream
+(`lib/sidestr-upstream.nix`), not a workspace checkout. See [sidechain operations](config/sidechain/README.md).
 <br/>
 
 > **sidestr-rs — Rust port of Melvin Carvalho's sidestr sidechains, AGPL-3.0-only: the economic engine for did:nostr agents. A did:nostr key is a sidechain wallet.** Five published crates (`sidestr-header`, `-core`, `-nostr`, `-wallet`, `-round`) are attributed ports of upstream `siding`, proven byte-for-byte against the JavaScript reference and audited before every publish. Agentbox runs the estate's own chain, `sidestr:dreamlab`, on Bitcoin testnet4 (interim producer: the upstream JS engine) and takes the crates from crates.io when its Rust node lands. Experimental, testnet only; no real funds anywhere.

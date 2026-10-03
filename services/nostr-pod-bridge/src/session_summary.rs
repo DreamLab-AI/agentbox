@@ -83,7 +83,10 @@ fn log(msg: &str) {
 /// container and the phone mirror never fired. Accepting the key file restores
 /// the intended behaviour; the gate is otherwise unchanged.
 pub fn bridge_configured(env: &EnvMap) -> bool {
-    let sk_available = env.non_empty("AGENTBOX_BRIDGE_SK").is_some() || {
+    // Custody W2: the bare variable counts only while role isolation is off.
+    let env_sk =
+        !crate::role_secret::role_isolation(env) && env.non_empty("AGENTBOX_BRIDGE_SK").is_some();
+    let sk_available = env_sk || {
         let path = env.or("AGENTBOX_BRIDGE_SK_FILE", "/run/secrets/nostr.key");
         Path::new(&path).is_file()
     };

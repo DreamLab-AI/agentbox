@@ -9,6 +9,9 @@ on:
       - 'docker-compose*.yml'
       - 'docs/adr/**'
       - 'docs/PROTOCOL-registry.md'
+      - 'docs/SECURITY-profiles.md'
+      - 'config/egress-policy.json'
+      - 'docs/LAN-door-threat-model.md'
       - 'config/seccomp-agentbox.json'
       - 'config/entrypoint-unified.sh'
       - 'management-api/**'
@@ -21,6 +24,12 @@ on:
       - 'tests/config/protocol-registry-lint.test.mjs'
       - 'tests/config/declared-vs-running.test.js'
       - 'tests/config/fixtures/runtime-state.json'
+      # Custody X-1 W0/W2 runtime contracts (RC-X1-01..06) and what they read
+      # beyond config/entrypoint-unified.sh and flake.nix (both listed here).
+      - 'tests/runtime-contract/RC-X1-*'
+      - 'config/docker-read-proxy.cjs'
+      - 'config/bake-devuser-privilege.sh'
+      - 'config/custody/**'
       - 'flake.nix'
       - 'skills/**'
       - 'mcp/**'
@@ -71,6 +80,39 @@ jobs:
 
       - name: check-secret-not-in-env (AGENTBOX_BRIDGE_SK scrubbed before exec)
         run: sh scripts/ci/check-secret-not-in-env.sh
+
+      # Custody X-1 step 1, W2 (bypass 3): every env var name the boot path and
+      # the role-secret consumers read is classified ROLE / DEVUSER_CLASS /
+      # NON_SECRET (config/custody/env-classes.json); ROLE vars leave PID 1's
+      # environment under [security].role_isolation and are read by file.
+      - name: env-secret-inventory (custody W2 — every env name classified; names only)
+        run: node scripts/ci/env-secret-inventory.js --check
+      # The <NAME>_FILE loader and its consumers run in contract-tests.yml, step
+      # "Role-secret loader and consumers (custody W2)" (it needs management-api's
+      # node_modules). Until 2026-10-03 this label claimed that step and none existed.
+      - name: env-secret-inventory unit tests (custody W2)
+        run: node --test tests/security/env-secret-inventory.node-test.js
+      - name: compose-role-env (custody W10 — no ROLE-class variable under a compose environment key)
+        run: node --test tests/security/compose-role-env.test.mjs
+
+      # Custody X-1 step 1 runtime contracts. Each extracts the real functions from
+      # config/entrypoint-unified.sh (or reads flake.nix / config/docker-read-proxy.cjs)
+      # and runs them against a scratch root: no Docker, no root. RC-X1-03's live half
+      # (AGENTBOX_RC_LIVE=1) needs a rebuilt image and stays off here.
+      - name: RC-X1-01 root boot runs no binary from a devuser-writable dir (custody W0)
+        run: bash tests/runtime-contract/RC-X1-01.sh
+      - name: RC-X1-02 Stage B is one-shot per container start (custody W0)
+        run: bash tests/runtime-contract/RC-X1-02.sh
+      - name: RC-X1-03 devuser is not in group root (custody W0; static half)
+        run: bash tests/runtime-contract/RC-X1-03.sh
+      - name: RC-X1-04 docker socket widened only with role isolation off (custody W0)
+        run: bash tests/runtime-contract/RC-X1-04.sh
+      - name: RC-X1-05 read-only docker proxy for devuser (custody W0)
+        run: node --test tests/runtime-contract/RC-X1-05.node-test.cjs
+      - name: RC-X1-06 role-secret scrub contract (custody W2; no Docker needed)
+        run: bash tests/runtime-contract/RC-X1-06.sh
+      - name: RC-X1-07 devuser has no sudo route under role isolation (custody W10; bake + boot check)
+        run: bash tests/runtime-contract/RC-X1-07.sh
 
       - name: check-single-metrics (exactly one collectDefaultMetrics call)
         run: node scripts/ci/check-single-metrics.js
@@ -135,6 +177,13 @@ jobs:
       # `node scripts/adr-index-gen.js docs/adr` now fails here.
       - name: check-adr-index (ADR-2001 — docs/adr/README.md matches the records on disk)
         run: node scripts/adr-index-gen.js docs/adr --check-index
+
+      # N-7: the prompt egress register is rendered from config/egress-policy.json
+      # `.register` into docs/SECURITY-profiles.md. --check fails on a hand edit to
+      # the table, an unrendered JSON change, an unmarked gap (gate or accepted
+      # record "none" without its marker) or a path:line citation outside its file.
+      - name: check-egress-register (N-7 — SECURITY-profiles.md table matches config/egress-policy.json)
+        run: node scripts/ci/render-egress-register.js --check
 
       - name: adr-ratchet self-test (an ADR added already decided is not backlog)
         run: bash tests/config/adr-ratchet.test.sh

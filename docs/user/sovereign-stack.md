@@ -118,7 +118,9 @@ the DID document that solid-pod-rs's resolver will serve.
 
 ```sh
 # What identity does this container hold?
-docker exec agentbox bash -lc 'source /run/agentbox/identity.env && env | grep AGENTBOX_'
+# Public names only: with [security].role_isolation off, identity.env also
+# exports AGENTBOX_NSEC and AGENTBOX_BRIDGE_SK, so never print all of it.
+docker exec agentbox bash -lc 'source /run/agentbox/identity.env && env | grep -E "^AGENTBOX_(NPUB|DID|PUBKEY_HEX|X_ONLY_PUBKEY_HEX)="'
 # AGENTBOX_NPUB=npub1...
 # AGENTBOX_DID=did:nostr:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 # AGENTBOX_PUBKEY_HEX=...

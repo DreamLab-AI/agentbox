@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -159,3 +159,8 @@ Re-verified by `git diff 66425f9bd..6db0ffc8d -- <verified_paths>`; no re-implem
 ## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
 
 Tripped by the sidechain health and witness change. `management-api/server.js` changes only in `GET /ready`. It now probes each enabled sidestr chain's tip age and lists a stale one under a non-blocking `degraded` array (ADR-2103 interim receipt amendment). The JunkieJarvis wiring and the clarify path are unchanged. The three governed JunkieJarvis suites pass (70/70 within the 99-test jest run). Decision and status unchanged.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `management-api/lib/junkiejarvis-agent.js` (`readPrivHex`) and `scripts/dream-forum-suggestions.mjs` read the JunkieJarvis key through the ROLE-secret loader. Flag off: the same read (the jj-gate suite passes 3/3, the agent and dm-send suites unchanged). **Consequence under the flag with W1:** the key file is `ab-identity` 0400, so the devuser agent finds no key and does not start (fail closed) until it signs through the identity port (`forum_event`, W3b). The grill-before-acting behaviour is untouched. The decision holds.
+Re-verified by `git diff e434a7a59..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.

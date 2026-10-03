@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: fc56e7a97cb437502c09d8f512cbb547efb6546c
+verified_commit: 3b54129631067277f6363309b01cce485faa027a
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -335,3 +335,19 @@ Verified at `7f1cdaaad68fac7681cec1e510765f979037aee1` (`verified_commit`): gate
 ## Re-verification — 2026-09-26 (`4f9450ac86477bc3832933953454ea577bd3d531`)
 
 Tripped by `services/dream-engine/Cargo.toml` gaining `base64 = "0.22"` as a **dev-dependency** (test-only NIP-44 payload shape check in `src/zone_crypto.rs`; already in the lockfile transitively, MIT OR Apache-2.0). The crate's declared licence is unchanged (`AGPL-3.0-only`, `nostr-bbs-core` linked); `sh scripts/ci/check-crate-licensing.sh` → `OK … 10 services/ package directories carry the texts they declare`. Decision unaffected.
+
+## Re-verification — 2026-10-03 (`26fc543d2a98f1e3d192408ea4cd13d10cd59ddf`)
+
+Tripped by `services/nostr-pod-bridge/Cargo.toml` on the custody W3 branch, which gains the identity port. Its dependency changes are `hmac = "0.12"`, which arrived with W8's mirror-key commit (cherry-picked unchanged and re-verified on W8's own branch), and three normal dependencies, `url = "2"` (2.5.8), `base64 = "0.22"` (0.22.1) and `zeroize = "1"` (1.9.0). All three are `MIT OR Apache-2.0` and were already in the lock transitively, so the lock gains three edges and no package. The crate's declared licence is unchanged (`AGPL-3.0-only`). `sh scripts/ci/check-crate-licensing.sh` → `OK … 9 services/ package directories carry the texts they declare`. Decision and status unchanged.
+
+## Re-verification — 2026-10-03 (`d3ff8e9a876e6b026b543f8824487e002e04cfa0`)
+
+Tripped by `services/nostr-pod-bridge/Cargo.toml` gaining `hmac = "0.12"` as a normal dependency, for the G-5 mirror-child known-answer test (`src/mirror_key.rs`). `hmac` 0.12.1 is `MIT OR Apache-2.0` and was already in the lock transitively through `nostr-bbs-core`, so the lock gains one edge and no package. The crate's declared licence is unchanged (`AGPL-3.0-only`). `sh scripts/ci/check-crate-licensing.sh` reports `OK … 9 services/ package directories`, the same count as `origin/main` (`0919dc39a`). The drop from the ten above predates this change. Decision and status unchanged.
+
+## Re-verification — 2026-10-03 (`3b54129631067277f6363309b01cce485faa027a`, custody integration head)
+
+Tripped by the custody integration (`custody/integration`: W0, W1, W5, W3, W7a, W8, W2, W9 and
+the integration resolutions, ADR-2122). Since `d3ff8e9a8` the governed paths changed as follows. `services/nostr-pod-bridge/Cargo.toml` gains `url`, `base64` and `zeroize` for the identity port (`a44ea413f`, W3) and `hmac` as a normal dependency for the G-5 mirror-child known-answer test (`86fc90e3c`). All four are permissively licensed and already in the lock graph; none is a new cryptographic primitive.
+Every service crate's licence stays MIT OR Apache-2.0, and the new dependencies are permissive. The decision holds. Re-verified by `git log d3ff8e9a8..3b5412963 -- <verified_paths>`
+and the integration gates. Nix was not evaluated in this container; the image is unverified
+until the owner's rebuild.

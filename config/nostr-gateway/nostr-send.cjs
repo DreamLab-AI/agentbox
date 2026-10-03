@@ -14,6 +14,8 @@
  */
 const crypto = require('crypto');
 const path = require('path');
+// Custody W2: the operator key, file-only under [security].role_isolation.
+const { operatorKeyHex } = require(path.join(__dirname, '..', 'hooks', 'lib', 'operator-key.cjs'));
 
 const DEFAULT_RELAY = 'wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev';
 const KIND_DM_RUMOR = 14;
@@ -29,7 +31,7 @@ const envFirst = (...ks) => { for (const k of ks) { const v = process.env[k]; if
 // Same identity selection as the gateway: default to the whitelisted operator/
 // admin key so replies reach the recipient the relay accepts (and your phone reads).
 function loadIdentity() {
-  const hex = envFirst('AGENTBOX_PRIVKEY_HEX', 'AGENTBOX_BRIDGE_SK', 'OPERATOR_NOSTR_PRIVKEY');
+  const hex = operatorKeyHex({ log: (m) => process.stderr.write(`[nostr-send] ${m}\n`) });
   if (!/^[0-9a-f]{64}$/i.test(hex)) return null;
   const mode = (envFirst('AGENTBOX_GATEWAY_IDENTITY') || 'operator').toLowerCase();
   try {

@@ -166,8 +166,6 @@ _ab_vault_resolve() {
   echo "[vault] root=$VAULT_ROOT repo=${VAULT_REPO:-—} pages=$VAULT_PAGES format=$VAULT_FORMAT tui=$VAULT_TUI working=${VAULT_WORKING_ROOT:-—} transcripts=${VAULT_TRANSCRIPTS:-—}"
 }
 
-# ADR-2029 D4: until the image bakes Rune, the bind-mounted cargo bin dir is
-# where `rune` lives. One line, fail-open — absent dir changes nothing.
 # Run a command as devuser from the root-owned boot path. The image ships
 # util-linux for `setpriv`; fall back to `runuser`, then `su`, and fail LOUDLY
 # when none exists — the 2026-09-03 image had neither runuser nor su and three
@@ -191,10 +189,87 @@ run_as_devuser() {
   fi
 }
 
-_ab_cargo_bin_on_path() {
-  [ -d "/home/devuser/workspace/.cargo/bin" ] && case ":$PATH:" in *":/home/devuser/workspace/.cargo/bin:"*) :;; *) PATH="/home/devuser/workspace/.cargo/bin:$PATH"; export PATH;; esac
+# ---------------------------------------------------------------------------
+# Root boot PATH: store-only (custody X-1 step 1, W0, bypass 2)
+# ---------------------------------------------------------------------------
+# Both stages run as root. Until W0 the boot PREPENDED the devuser-owned
+# /home/devuser/workspace/.cargo/bin to PATH (ADR-2029 D4, for rune), so a
+# binary planted there under the name of any tool the boot calls (mkdir, node,
+# jq ...) ran as root, and `supervisorctl start bootstrap` let devuser trigger it
+# at will. rune is baked now (lib/rune.nix). Root keeps only /nix/store entries
+# and the image's fixed system dirs, in their original order; anything relative,
+# dotted, globbed or outside that set is dropped. devuser shells get the cargo
+# bin APPENDED by the Phase-8 runtime-env and fish snippets, never root.
+# Test: tests/runtime-contract/RC-X1-01.sh.
+_ab_root_path_sanitise() { # _ab_root_path_sanitise <PATH> → trusted PATH on stdout
+  local out="" e
+  local -a parts=()
+  IFS=: read -r -a parts <<<"$1"
+  for e in "${parts[@]}"; do
+    case "$e" in
+      *..*|*[*?[]*) continue ;;
+      /nix/store/?*|/usr/local/bin|/usr/local/sbin|/bin|/sbin|/usr/bin|/usr/sbin) ;;
+      *) continue ;;
+    esac
+    case ":$out:" in *":$e:"*) continue ;; esac
+    out="${out:+$out:}$e"
+  done
+  printf '%s' "${out:-/usr/local/bin:/bin:/usr/bin}"
+}
+PATH="$(_ab_root_path_sanitise "$PATH")"
+export PATH
+
+# ---------------------------------------------------------------------------
+# Stage B is one-shot per container start (custody X-1 step 1, W0, bypass 2)
+# ---------------------------------------------------------------------------
+# [program:bootstrap] runs Stage B as root and devuser holds supervisor control
+# (Q10), so `supervisorctl start bootstrap` could replay it. Stage A arms a
+# root-owned state dir; Stage B claims it with an atomic mkdir; every later claim
+# is a no-op. The dir lives in /tmp, NOT /run: /run, /var/run and /var/log are
+# tmpfs mounts owned by uid 1000 (flake.nix baselineTmpfsMounts), so devuser can
+# rename any entry directly under them, root's included. /tmp is root 1777: the
+# sticky bit stops devuser renaming or unlinking root's entries, and it is a
+# fresh tmpfs per container start. Custody W1 (ADR-2122): with
+# [security].role_isolation on and /run/secrets its own root-owned mount, the
+# guard moves to /run/secrets/.root-guard (ab_root_state_dir_pick, below); with
+# the flag off it stays here, because the flag-off boot hands /run/secrets to
+# devuser. Tests: tests/runtime-contract/RC-X1-02.sh, tests/config/role-isolation-boot.test.sh.
+AB_ROOT_STATE_DIR=/tmp/.agentbox-root
+_ab_root_state_dir_ok() { # _ab_root_state_dir_ok <dir> [owner-uid=0] → 0 when trustworthy
+  [ -d "$1" ] && [ ! -L "$1" ] || return 1
+  [ "$(stat -c '%u %a' -- "$1" 2>/dev/null)" = "${2:-0} 700" ]
+}
+_ab_root_state_dir_prepare() { # _ab_root_state_dir_prepare <dir> [owner-uid=0] — Stage A only
+  local d="$1" uid="${2:-0}"
+  if [ -e "$d" ] || [ -L "$d" ]; then
+    if ! _ab_root_state_dir_ok "$d" "$uid"; then
+      # Squatted (wrong owner, loose mode or a symlink): move it aside, never follow it.
+      mv -T -- "$d" "${d}.squatted.$$" || return 1
+      echo "[security] moved an untrusted ${d} aside to ${d}.squatted.$$" >&2
+    fi
+  fi
+  if [ ! -d "$d" ]; then
+    (umask 077 && mkdir -- "$d") || return 1
+  fi
+  # A new container start re-arms Stage B (matters only where /tmp is not a tmpfs).
+  rmdir -- "${d}/stage-b.claimed" 2>/dev/null || true
+  _ab_root_state_dir_ok "$d" "$uid"
+}
+_ab_stage_b_claim() { # _ab_stage_b_claim <dir> [owner-uid=0] → 0 claimed, 1 already ran, 2 refuse
+  _ab_root_state_dir_ok "$1" "${2:-0}" || return 2
+  mkdir -- "${1}/stage-b.claimed" 2>/dev/null || return 1
   return 0
 }
+
+# Role custody (ADR-2122, custody X-1 step 1, W1): the /run/secrets delivery and
+# the supervisor-config pick. Definitions only. Every caller is behind
+# [security].role_isolation = true; a missing lib turns the flag off (Stage A,
+# Phase 1) so the boot stays today's.
+_AB_ROLE_CUSTODY_LIB=/opt/agentbox/config/lib/role-custody.sh
+if [ -r "$_AB_ROLE_CUSTODY_LIB" ]; then
+  # shellcheck source=lib/role-custody.sh
+  . "$_AB_ROLE_CUSTODY_LIB"
+fi
 
 # Stage dispatch — when running as the supervisord bootstrap program, skip to B.
 if [ "${AGENTBOX_BOOTSTRAP_STAGE:-A}" = "B" ]; then
@@ -262,9 +337,32 @@ export CODEX_HOME="${CODEX_HOME:-/home/devuser/.codex}"
 export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/home/devuser/.config/git/config}"
 # ADR-2028: [vault] is resolved here, before any consumer runs, so every
 # supervised program inherits VAULT_ROOT/VAULT_PAGES/VAULT_FORMAT/VAULT_TUI
-# from PID 1. ADR-2029 D4 puts the bind-mounted cargo bin dir on PATH.
+# from PID 1. PATH stays store-only for root (sanitised above the stage
+# dispatch); the workspace cargo bin reaches devuser shells via Phase 8 only.
 _ab_vault_resolve
-_ab_cargo_bin_on_path
+# Custody X-1 step 1: [security].role_isolation (boot-class, default false). Read
+# once here and exported, so supervisord and every program see the same value;
+# the manifest wins over anything inherited from the compose environment.
+AGENTBOX_ROLE_ISOLATION="$(_ab_toml_bool security role_isolation)"
+# Custody W1 (ADR-2122). Flag on: /run/secrets must be root:root 0711 before
+# anything is written into it, and the Stage-B guard moves inside it when it is a
+# real mount. An image that cannot honour the flag (no lib, no isolated config or
+# no plan) boots exactly as with the flag off, and says so loudly.
+_AB_SECRETS_MOUNT_STATE=ok
+if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
+  if declare -F ab_role_isolation_ready >/dev/null && ab_role_isolation_ready; then
+    ab_secrets_root_prepare /run/secrets || _AB_SECRETS_MOUNT_STATE=degraded
+    AB_ROOT_STATE_DIR="$(ab_root_state_dir_pick 1)"
+  else
+    echo "[security] ROLE-ISOLATION-UNAVAILABLE: [security].role_isolation = true, but this image lacks ${_AB_ROLE_CUSTODY_LIB}, /etc/supervisord.roles.conf or /etc/agentbox/role-secrets.tsv; booting as role_isolation = false" >&2
+    AGENTBOX_ROLE_ISOLATION=0
+  fi
+fi
+export AGENTBOX_ROLE_ISOLATION
+# Arm Stage B's one-shot guard (see _ab_stage_b_claim). Fail loud, not fatal:
+# an unarmed dir makes Stage B refuse, which shows in bootstrap.error.log.
+_ab_root_state_dir_prepare "$AB_ROOT_STATE_DIR" \
+  || echo "[security] ERROR: could not prepare ${AB_ROOT_STATE_DIR}; Stage B will refuse to run" >&2
 
 echo "[1/8] Preparing runtime directories..."
 mkdir -p \
@@ -284,8 +382,111 @@ mkdir -p \
 # decrypted Nostr bridge key written in Phase 5c). Tight perms — only devuser
 # (the uid services run as) may traverse it. This is the ONLY place root creates
 # it; all secret writes happen in the root boot phase before the drop to devuser.
-chmod 0700 /run/secrets 2>/dev/null || true
-chown 1000:1000 /run/secrets 2>/dev/null || true
+# Custody W1: with [security].role_isolation on, /run/secrets stays root:root
+# 0711 (prepared above) and each role gets its own 0500 subdirectory before
+# supervisord starts (ab_role_secrets_deliver, just before the exec).
+if [ "$AGENTBOX_ROLE_ISOLATION" != 1 ]; then
+  chmod 0700 /run/secrets 2>/dev/null || true
+  chown 1000:1000 /run/secrets 2>/dev/null || true
+fi
+
+# ---------------------------------------------------------------------------
+# Custody W2 (bypass 3): ROLE secrets leave PID 1's environment
+# ---------------------------------------------------------------------------
+# compose env_file feeds .env into PID 1 and supervisord hands its whole
+# environment to every child, so a signing key in .env sat in every agent shell,
+# every MCP server, and every `env` an agent ever printed into a transcript.
+# Under [security].role_isolation each ROLE variable is handed to a file and
+# unset from this process before anything else reads it: the identity bootstrap
+# included, because it reads <NAME>_FILE under the flag. The variable names and
+# their roles are the ROLE set of config/custody/env-classes.json; the inventory
+# (scripts/ci/env-secret-inventory.js --check) fails if this list drifts from it.
+#
+# Seam with W1 (which owns /run/secrets delivery from the volumes): when
+# <NAME>_FILE already names a delivered file, capture only unsets <NAME>. The
+# owner of a delivered file is the role's own account once W1 bakes it, and
+# devuser (the uid every reader runs as today) until then. Flag off: every
+# function below returns at its first line, so the environment supervisord
+# receives is byte-identical to before (tests/runtime-contract/RC-X1-06.sh).
+_AB_ROLE_ENV_VARS="AGENTBOX_AGENT_PRIVKEY_HEX:ab-identity AGENTBOX_BRIDGE_SK:ab-identity AGENTBOX_NSEC:ab-identity AGENTBOX_PRIVKEY_HEX:ab-identity AGENT_PRIVKEY_HEX:ab-identity CONCIERGE_PRIVKEY_HEX:ab-identity JUNKIEJARVIS_PRIVKEY_HEX:ab-identity NIP98_PROXY_ALLOW_BEARER:ab-ingress NIP98_PROXY_SESSION_SECRET:ab-ingress OPERATOR_NOSTR_PRIVKEY:ab-identity TAILSCALE_AUTHKEY:root"
+
+_ab_role_owner() { # _ab_role_owner <role> → uid:gid that owns the role's delivered files
+  case "$1" in root) echo 0:0; return 0 ;; esac
+  local u g
+  if u="$(id -u "$1" 2>/dev/null)" && g="$(id -g "$1" 2>/dev/null)"; then
+    echo "${u}:${g}"
+  else
+    echo 1000:1000
+  fi
+}
+
+_ab_role_env_capture() { # _ab_role_env_capture <role_isolation 0|1> [secrets-root=/run/secrets]
+  [ "$1" = 1 ] || return 0
+  local root="${2:-/run/secrets}" tok name role fvar dir file dirs=""
+  for tok in $_AB_ROLE_ENV_VARS; do
+    name="${tok%%:*}"; role="${tok#*:}"; fvar="${name}_FILE"
+    [ -n "${!name+x}" ] || continue
+    if [ -n "${!fvar:-}" ] && [ -f "${!fvar}" ] && [ ! -L "${!fvar}" ]; then
+      unset "$name"
+      echo "[security] role-env: ${name} already delivered by file (${fvar}); unset from PID 1"
+      continue
+    fi
+    if [ -z "${!name}" ]; then
+      unset "$name"
+      continue
+    fi
+    dir="${root}/${role}"
+    # A fresh tmpfs holds nothing here; anything that is not a plain directory
+    # we created is replaced rather than followed.
+    if [ -L "$dir" ] || { [ -e "$dir" ] && [ ! -d "$dir" ]; }; then rm -f -- "$dir"; fi
+    mkdir -p -- "$root"; [ -d "$dir" ] || mkdir -m 0700 -- "$dir"
+    chown 0:0 "$dir" 2>/dev/null || true
+    chmod 0700 "$dir"
+    file="${dir}/${name}"
+    rm -f -- "$file"
+    if ! ( umask 077; set -o noclobber; printf '%s' "${!name}" >"$file" ); then
+      unset "$name"
+      echo "[security] ROLE-ISOLATION-DEGRADED role-env: ${name} could not be delivered; unset anyway" >&2
+      continue
+    fi
+    chown "$(_ab_role_owner "$role")" "$file" 2>/dev/null || true
+    chmod 0400 "$file"
+    export "${fvar}=${file}"
+    unset "$name"
+    case " $dirs " in *" ${dir}:${role} "*) ;; *) dirs="${dirs} ${dir}:${role}" ;; esac
+    echo "[security] role-env: ${name} -> ${file} (0400, role ${role}); unset from PID 1"
+  done
+  for tok in $dirs; do
+    dir="${tok%:*}"; role="${tok##*:}"
+    chown "$(_ab_role_owner "$role")" "$dir" 2>/dev/null || true
+    chmod 0500 "$dir"
+  done
+  return 0
+}
+
+_ab_role_env_scrub() { # _ab_role_env_scrub <role_isolation 0|1> — last line of defence before exec
+  [ "$1" = 1 ] || return 0
+  local tok name n=0
+  for tok in $_AB_ROLE_ENV_VARS; do
+    name="${tok%%:*}"
+    if [ -n "${!name+x}" ]; then
+      echo "[security] ROLE-ISOLATION-LEAK ${name} was in PID 1's environment at exec; unset" >&2
+      unset "$name"
+      n=$((n + 1))
+    fi
+  done
+  [ "$n" -eq 0 ] && echo "[security] role-env: PID 1's environment carries no ROLE variable"
+  return 0
+}
+
+_ab_role_key_file_own() { # _ab_role_key_file_own <role_isolation 0|1> <file> <role>
+  [ "$1" = 1 ] || return 0
+  [ -n "${2:-}" ] && [ -f "$2" ] && [ ! -L "$2" ] || return 0
+  chown "$(_ab_role_owner "$3")" "$2" 2>/dev/null || true
+  chmod 0400 "$2" 2>/dev/null || true
+}
+
+_ab_role_env_capture "$AGENTBOX_ROLE_ISOLATION" /run/secrets
 
 # R-012: Boot assertion — WORKSPACE must be a mounted volume, not tmpfs.
 # If the compose mount is missing, $WORKSPACE silently lands on the container
@@ -342,6 +543,9 @@ for _vol_root in \
     /home/devuser/.gemini \
     /var/cache \
     /var/cache/ruflo-plugins; do
+  # Custody W2b: under [security].role_isolation the secrets volume root is
+  # root:root 0700 (ab_custody_migrate, before Phase 3); never hand it back here.
+  [ "$AGENTBOX_ROLE_ISOLATION" = 1 ] && [ "$_vol_root" = /var/lib/agentbox/secrets ] && continue
   if [ -d "$_vol_root" ]; then
     # Only chown the root, not -R. If the dir is already uid 1000, this
     # is a no-op kernel call. Crucially: Docker auto-creates the parent
@@ -369,13 +573,83 @@ if [ -d "$WORKSPACE" ]; then
   chown -R 1000:1000 "$WORKSPACE/project/.git/worktrees" 2>/dev/null || true
 fi
 
-# Docker socket: make accessible to devuser (gid 965 on host, not mapped
-# inside container). group_add in compose only affects PID 1's supplementary
-# groups, not processes that later switch to devuser via supervisord user=.
-# chmod o+rw is safe here — this is a single-user dev container.
-if [ -S /var/run/docker.sock ]; then
-  chmod o+rw /var/run/docker.sock 2>/dev/null || true
-fi
+# Docker socket (custody X-1 step 1, W0, bypass 1). The host's docker group is
+# gid 965 and is not mapped inside the container; compose group_add reaches only
+# PID 1, not programs that drop to devuser via supervisord user=.
+#   role_isolation off: widen the socket o+rw for devuser, exactly as before.
+#   role_isolation on:  do NOT widen it. The Docker daemon is root on the host,
+#     so socket access voids every in-container boundary. devuser gets the
+#     GET-only proxy at /run/docker-ro.sock ([program:docker-read-proxy]).
+#     The socket is a bind of the HOST inode, and earlier boots already widened
+#     it; skipping the chmod does not narrow it (risk R2). This never narrows it
+#     either: that is a host-side decision (Q2). If devuser can still reach it,
+#     the boot records degraded:docker-socket and logs a grep-able marker:
+#     fail loud, not fatal, like the vault gate.
+# Test: tests/runtime-contract/RC-X1-04.sh.
+_ab_docker_socket_access() { # _ab_docker_socket_access <socket> <0|1> [state-file] [user=devuser]
+  local sock="$1" iso="$2" state="${3:-/run/secrets/role-isolation.state}" user="${4:-devuser}" mode gid uid verdict
+  [ -S "$sock" ] || return 0
+  if [ "$iso" != 1 ]; then
+    chmod o+rw "$sock" 2>/dev/null || true
+    return 0
+  fi
+  mode="$(stat -L -c %a -- "$sock" 2>/dev/null || echo 0)"
+  gid="$(stat -L -c %g -- "$sock" 2>/dev/null || echo 0)"
+  uid="$(stat -L -c %u -- "$sock" 2>/dev/null || echo 0)"
+  verdict=ok
+  # devuser can connect if it owns the socket, is in its group, or other has w.
+  case "${mode: -1}" in [2367]) verdict=degraded ;; esac
+  [ "$uid" = "$(id -u "$user" 2>/dev/null || echo none)" ] && verdict=degraded
+  case " $(id -G "$user" 2>/dev/null) " in *" ${gid} "*) verdict=degraded ;; esac
+  if [ "$verdict" = degraded ]; then
+    echo "[security] ROLE-ISOLATION-DEGRADED docker-socket: ${sock} is mode ${mode} gid ${gid}; devuser can still drive the host Docker daemon. Host-side fix (R2/Q2): chmod 0660 /var/run/docker.sock on the host." >&2
+  else
+    echo "[security] role_isolation: ${sock} not widened; devuser uses /run/docker-ro.sock (read-only)"
+  fi
+  # Never write through a planted symlink: remove, then create with O_EXCL (noclobber).
+  rm -f -- "$state" 2>/dev/null || true
+  ( set -C; printf '%s:docker-socket\n' "$verdict" >"$state" ) 2>/dev/null \
+    || echo "[security] WARN: could not record ${verdict}:docker-socket in ${state}" >&2
+  return 0
+}
+_ab_docker_socket_access /var/run/docker.sock "$AGENTBOX_ROLE_ISOLATION"
+
+# devuser's sudo route (custody X-1, W10). flake.nix bakes /etc/group and
+# /etc/sudoers{,.d} with the BUILD-time [security].role_isolation
+# (config/bake-devuser-privilege.sh): built on, devuser is in neither wheel nor
+# root and no sudoers line grants it NOPASSWD. The flag is boot-class, so an
+# image built off can boot with it on; /etc is read-only and cannot be fixed
+# here. no-new-privileges:true still neuters the setuid bit, so this is fail
+# loud, not fatal, like the docker socket: record degraded:devuser-sudo and log
+# a grep-able marker naming the rebuild. Reads files only; flag off: no-op.
+# Conservative: any NOPASSWD grant to the user, %user, %wheel or ALL counts.
+# Test: tests/runtime-contract/RC-X1-07.sh.
+_ab_devuser_privilege_check() { # _ab_devuser_privilege_check <0|1> [etc=/etc] [state-file] [user=devuser]
+  local iso="$1" etc="${2:-/etc}" state="${3:-/run/secrets/role-isolation.state}" user="${4:-devuser}" why="" f verdict=ok
+  [ "$iso" = 1 ] || return 0
+  if awk -F: -v u="$user" '($1 == "wheel" || $3 == "0") { n = split($4, m, ","); for (i = 1; i <= n; i++) if (m[i] == u) hit = 1 }
+                           END { exit !hit }' "${etc}/group" 2>/dev/null; then
+    why="a member of wheel or root (${etc}/group)"
+  fi
+  for f in "${etc}/sudoers" "${etc}"/sudoers.d/*; do
+    [ -f "$f" ] || continue
+    if grep -Eq "^[[:space:]]*(${user}|%${user}|%wheel|ALL)[[:space:]].*NOPASSWD" "$f" 2>/dev/null; then
+      why="${why:+${why}; }granted NOPASSWD by ${f}"
+    fi
+  done
+  if [ -n "$why" ]; then
+    verdict=degraded
+    echo "[security] ROLE-ISOLATION-DEGRADED devuser-sudo: ${user} is ${why}. This image was built with [security].role_isolation = false and /etc is read-only; rebuild with the flag on (./agentbox.sh rebuild) to remove the sudo route." >&2
+  else
+    echo "[security] role_isolation: ${user} has no sudo route (not in wheel or root; no NOPASSWD grant)"
+  fi
+  # Appended beside docker-socket. Under the flag the state lives in the root-owned
+  # 0711 /run/secrets tmpfs, where devuser cannot plant a link.
+  printf '%s:devuser-sudo\n' "$verdict" >>"$state" 2>/dev/null \
+    || echo "[security] WARN: could not record ${verdict}:devuser-sudo in ${state}" >&2
+  return 0
+}
+_ab_devuser_privilege_check "$AGENTBOX_ROLE_ISOLATION"
 
 # Claude-flow data directory (hooks write here as devuser)
 mkdir -p /home/devuser/.claude-flow/data 2>/dev/null || true
@@ -435,6 +709,24 @@ if [ "${ENABLE_DESKTOP:-false}" = "true" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Custody W2b (design 3.2-3.4): at-rest secret copies
+# ---------------------------------------------------------------------------
+# After /run/secrets is prepared (Phase 1) and the volume roots are chowned,
+# before the identity bootstrap reads or writes the identities volume. The
+# registry is the atrest/atrestdir rows of /etc/agentbox/role-secrets.tsv.
+# Flag on: copy each legacy copy to its canonical volume path once (verified,
+# legacy left in place), hand each copy to its role 0400 and the volume dirs to
+# root. Flag off: hand back to devuser whatever an earlier flag-on boot moved;
+# on a volume that was never migrated this changes nothing. Fail-open both ways.
+if declare -F ab_custody_migrate >/dev/null && [ -r /etc/agentbox/role-secrets.tsv ]; then
+  if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
+    ab_custody_migrate /etc/agentbox/role-secrets.tsv /run/secrets/role-isolation.migrated
+  else
+    ab_custody_revert /etc/agentbox/role-secrets.tsv
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Phase 3 — Sovereign mesh identity bootstrap
 # ---------------------------------------------------------------------------
 echo "[2/8] Bootstrapping sovereign mesh identity..."
@@ -458,8 +750,13 @@ nostr-pod-bridge bootstrap
 # management-api runs as, and its only other reader) at 0600. Fail-open here:
 # a file the signer cannot read makes the pods slot fail closed with a typed
 # SigningUnavailable naming the file (ADR-2064), which is the accepted signal.
+# Custody W2b: under [security].role_isolation it is ab-identity's, 0400 (the
+# pods signer goes through the identity port), the same as the migrate step left
+# it; a bootstrap that rewrote it must not hand it back to devuser.
 _SOVEREIGN_ID_FILE="$AGENTBOX_IDENTITY_ROOT/${AGENTBOX_AGENT_ID:-agentbox-core}.json"
-if [ -f "$_SOVEREIGN_ID_FILE" ]; then
+if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
+  _ab_role_key_file_own 1 "$_SOVEREIGN_ID_FILE" ab-identity
+elif [ -f "$_SOVEREIGN_ID_FILE" ]; then
   chown devuser:devuser "$_SOVEREIGN_ID_FILE" 2>/dev/null || true
   chmod 0600 "$_SOVEREIGN_ID_FILE" 2>/dev/null || true
 fi
@@ -766,6 +1063,11 @@ fi
 if [ -f /run/agentbox/identity.env ]; then
   . /run/agentbox/identity.env
 fi
+# Custody W2: under role isolation identity.env is public-only (no
+# AGENTBOX_NSEC, no AGENTBOX_BRIDGE_SK). The bootstrap wrote the relay key to
+# AGENTBOX_BRIDGE_SK_FILE itself; hand that file to its role here. Flag off this
+# is a no-op and the SEC-003 block below runs exactly as before.
+_ab_role_key_file_own "$AGENTBOX_ROLE_ISOLATION" "${AGENTBOX_BRIDGE_SK_FILE:-}" ab-identity
 
 # SEC-003: Do NOT propagate the decrypted Nostr secret key as an env var into
 # long-running processes (env is readable via /proc/<pid>/environ by anything
@@ -774,8 +1076,11 @@ fi
 # launcher's environment before exec'ing supervisord. nostr-pod-bridge reads
 # AGENTBOX_BRIDGE_SK_FILE (see services/nostr-pod-bridge/src/main.rs); the env
 # var remains supported only as a back-compat fallback.
+# Custody W1: with [security].role_isolation on, this devuser copy is NOT
+# written; the key goes only to /run/secrets/ab-identity/nostr.key (the delivery
+# plan, just before the exec), which also unsets AGENTBOX_BRIDGE_SK.
 NOSTR_KEY_FILE="/run/secrets/nostr.key"
-if [ -n "${AGENTBOX_BRIDGE_SK:-}" ]; then
+if [ -n "${AGENTBOX_BRIDGE_SK:-}" ] && [ "$AGENTBOX_ROLE_ISOLATION" != 1 ]; then
   ( umask 077; printf '%s' "$AGENTBOX_BRIDGE_SK" > "$NOSTR_KEY_FILE" )
   chmod 0400 "$NOSTR_KEY_FILE" 2>/dev/null || true
   chown 1000:1000 "$NOSTR_KEY_FILE" 2>/dev/null || true
@@ -893,8 +1198,28 @@ if [ "${AGENTBOX_TAB0_BRIDGE_SUPERVISED:-0}" = "1" ] && [ -z "${BRIDGE_TOKEN:-}"
   export BRIDGE_TOKEN
 fi
 
+# Custody W1 (ADR-2122): pick the supervisor config. Flag off: today's
+# /etc/supervisord.conf, unchanged. Flag on: deliver every role's secrets into
+# /run/secrets/<role>/ (0500 dir, 0400 files, owned by the role), unset the
+# classified variables from this launcher's environment so supervisord never
+# inherits them, then run /etc/supervisord.roles.conf, which differs from
+# today's only in the role programs' user= and environment= lines.
+_AB_SUPERVISORD_CONF=/etc/supervisord.conf
+if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
+  AB_RC_FAILURES=0
+  ab_role_secrets_deliver /etc/agentbox/role-secrets.tsv || true
+  {
+    [ "$_AB_SECRETS_MOUNT_STATE" = ok ] || echo "degraded:secrets-mount"
+    [ "${AB_RC_FAILURES:-0}" = 0 ] && echo "ok:secrets-delivery" || echo "degraded:secrets-delivery"
+  } >>/run/secrets/role-isolation.state 2>/dev/null \
+    || echo "[security] WARN: could not record the delivery state in /run/secrets/role-isolation.state" >&2
+  _AB_SUPERVISORD_CONF="$(ab_supervisord_conf_pick 1)"
+  echo "[security] role_isolation: supervisord config ${_AB_SUPERVISORD_CONF}"
+fi
 echo "[5b/8] Starting supervisord..."
-exec supervisord -c /etc/supervisord.conf -n
+# Custody W2: nothing between here and exec may export a ROLE variable.
+_ab_role_env_scrub "$AGENTBOX_ROLE_ISOLATION"
+exec supervisord -c "$_AB_SUPERVISORD_CONF" -n
 
 fi  # end STAGE_B_MODE=0 block — Stage A exits via exec above
 
@@ -915,7 +1240,20 @@ export SHARED_PROJECTS_ROOT="${SHARED_PROJECTS_ROOT:-/projects}"
 # ADR-2028: normally inherited from PID 1 (Stage A resolved it before exec
 # supervisord); this only fires if Stage B is ever invoked standalone.
 [ -n "${AGENTBOX_VAULT_ENABLED:-}" ] || _ab_vault_resolve
-_ab_cargo_bin_on_path
+# One-shot (custody W0): a replay via `supervisorctl start bootstrap` is a no-op.
+# PATH is already store-only (sanitised above the stage dispatch). Custody W1:
+# AGENTBOX_ROLE_ISOLATION is PID 1's effective value (inherited through
+# supervisord), so Stage B picks the same guard dir Stage A armed.
+if [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ] && declare -F ab_root_state_dir_pick >/dev/null; then
+  AB_ROOT_STATE_DIR="$(ab_root_state_dir_pick 1)"
+fi
+_ab_b_claim_rc=0
+_ab_stage_b_claim "$AB_ROOT_STATE_DIR" || _ab_b_claim_rc=$?
+case "$_ab_b_claim_rc" in
+  0) echo "[bootstrap] Stage B claimed ${AB_ROOT_STATE_DIR}/stage-b.claimed (one-shot)" ;;
+  1) echo "[bootstrap] Stage B already ran in this container start; no-op (restart the container to re-run)"; exit 0 ;;
+  *) echo "[bootstrap] REFUSED: ${AB_ROOT_STATE_DIR} is missing or not root-owned 0700; Stage B will not run" >&2; exit 1 ;;
+esac
 
 # ---------------------------------------------------------------------------
 # Phase 6 — Service closure probes (PRD-002 §9 Phase 1)
@@ -2971,8 +3309,15 @@ echo "[8/8] Publishing environment hints..."
 RUNTIME_ENV_FILE=/run/agentbox/runtime-env.sh
 RUNTIME_ENV_DURABLE=/home/devuser/workspace/.agentbox-runtime-env.sh
 mkdir -p "$(dirname "$RUNTIME_ENV_FILE")" 2>/dev/null || true
+# Custody W0: under [security].role_isolation devuser's docker CLI talks to the
+# GET-only proxy (ps/logs/inspect); exec/run move to the host shell (Q1).
+_ROLE_ISO_EXPORTS=""
+if [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ]; then
+  _ROLE_ISO_EXPORTS='export DOCKER_HOST="unix:///run/docker-ro.sock"'
+fi
 cat > "$RUNTIME_ENV_FILE" <<EOF
 export WORKSPACE="$WORKSPACE"
+$_ROLE_ISO_EXPORTS
 export RUVECTOR_DATA_DIR="$RUVECTOR_DATA_DIR"
 export RUVECTOR_PORT="$RUVECTOR_PORT"
 : "${RUVECTOR_PG_PASSWORD:=ruvector}"
@@ -3034,10 +3379,12 @@ export VAULT_WORKING_ROOT="${VAULT_WORKING_ROOT:-}"
 export VAULT_WORKING_PAGES="${VAULT_WORKING_PAGES:-}"
 export VAULT_TRANSCRIPTS="${VAULT_TRANSCRIPTS:-}"
 export ONTOLOGY_PAGES_DIR="${ONTOLOGY_PAGES_DIR:-}"
-# ADR-2029 D4: cargo-installed binaries (rune) before the image bakes them.
-if [ -d "/home/devuser/workspace/.cargo/bin" ]; then
+# ADR-2029 D4: cargo-installed binaries (cargo-audit, cargo-deny ...). Custody W0:
+# devuser shells only, and APPENDED, so a planted or stale workspace binary can
+# never shadow an image tool. A root shell sourcing this file is left alone.
+if [ "\$(id -u)" != 0 ] && [ -d "/home/devuser/workspace/.cargo/bin" ]; then
   case ":\$PATH:" in *":/home/devuser/workspace/.cargo/bin:"*) : ;;
-    *) PATH="/home/devuser/workspace/.cargo/bin:\$PATH"; export PATH ;;
+    *) PATH="\$PATH:/home/devuser/workspace/.cargo/bin"; export PATH ;;
   esac
 fi
 EOF
@@ -3132,6 +3479,10 @@ if test -f $envfile
       set -gx $parts[1] (string trim -c '"' $parts[2])
     end
   end
+end
+# Custody W0: the workspace cargo bin is for devuser shells only, appended.
+if test (id -u) -ne 0; and test -d /home/devuser/workspace/.cargo/bin
+  fish_add_path --global --append --path /home/devuser/workspace/.cargo/bin
 end
 FISHEOF
 chown devuser:devuser "$FISH_CONF_D/agentbox-runtime.fish" 2>/dev/null || true

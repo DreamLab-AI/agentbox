@@ -44,5 +44,497 @@
     "accepted": "The peer positively acknowledged (relay OK / provider 2xx).",
     "failed": "The attempt was made and the transport or peer rejected or errored."
   },
-  "notes": "Exit code zero from either path means the calling session was not blocked. It is NOT proof of delivery and NOT proof the path was disabled — read the outcome, not the exit code."
+  "notes": "Exit code zero from either path means the calling session was not blocked. It is NOT proof of delivery and NOT proof the path was disabled — read the outcome, not the exit code.",
+  "register": {
+    "title": "Prompt egress register",
+    "todo": "N-7",
+    "verified_commit": "0919dc39afb7d4ab22bfc14a431f0d55ef1b81b3",
+    "verified_on": "2026-10-03",
+    "rendered_to": "docs/SECURITY-profiles.md",
+    "renderer": "scripts/ci/render-egress-register.js",
+    "scope": "One row per route by which a prompt, code, a secret-adjacent string or a key can leave the container. The register catalogues routes; the same file's `paths` is the redaction contract for the two routes that implement it. A route with no gate or no accepted-egress record carries a marker. The register records the gap and does not invent a gate or a record.",
+    "leaves_vocabulary": [
+      "prompt",
+      "code",
+      "secret-adjacent",
+      "public artefact"
+    ],
+    "destination_classes": [
+      "LAN",
+      "vendor",
+      "public internet"
+    ],
+    "marker_vocabulary": {
+      "no-gate": "Nothing turns the route off short of removing a credential or a binary.",
+      "no-accepted-record": "No ADR or dated owner decision accepts what leaves on this route."
+    },
+    "credential_class": "Provider credentials stay devuser-class in this step (owner disposition Q8, 2026-10-03, pending owner review). Each row names the credential it uses.",
+    "routes": [
+      {
+        "id": "primary-model",
+        "route": "Claude Code and Codex sessions (the primary model routes)",
+        "leaves": [
+          "prompt",
+          "code",
+          "secret-adjacent"
+        ],
+        "destination_class": "vendor",
+        "destination": "Anthropic API; OpenAI API",
+        "gate": "none. A running session is the egress. `[toolchains].claude` (`agentbox.toml:1849`) and `codex` (`agentbox.toml:1860`) are rebuild-class bake gates, not runtime switches.",
+        "accepted_egress": "Owner disposition Q14, 2026-10-03 (custody-isolation design §11, pending owner review): primary-model egress recorded as accepted. No ADR yet.",
+        "markers": [
+          "no-gate"
+        ],
+        "notes": "Everything an agent reads can leave: prompts, file contents, tool output. Providers declared at `agentbox.toml:1165-1169` (Anthropic, oauth) and `agentbox.toml:1171-1173` (OpenAI). Credentials `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` are projected into the container environment (`flake.nix:3432`, `flake.nix:3434`): devuser-class this step (Q8)."
+      },
+      {
+        "id": "skill-router",
+        "route": "Live skill router, `UserPromptSubmit` hook (ADR-2091)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "vendor",
+        "destination": "TypeSafe System One, `api.typesafe.ai` (`config/hooks/lib/skill-route.cjs:33`)",
+        "gate": "`[skills.routing].router = \"table\"` (`agentbox.toml:962`) de-registers the hook; `hook` (`agentbox.toml:963`). An absent `TYPESAFE_API_KEY` (`config/hooks/lib/skill-route.cjs:398`) fails open without sending.",
+        "accepted_egress": "ADR-2090 (accepted, `5e213c3ec`): routing prompt may leave, skill routing only (`docs/adr/ADR-2090-skill-routing-prompt-egress.md:31-40`); per-project gates deferred, not waived (`docs/adr/ADR-2090-skill-routing-prompt-egress.md:42-45`).",
+        "markers": [],
+        "notes": "The user's turn text, clamped head+tail (`config/hooks/lib/skill-route.cjs:408-414`), plus every routable skill description. No per-project bypass exists at HEAD; that is the debt ADR-2090 records. Credential `TYPESAFE_API_KEY`: devuser-class (Q8)."
+      },
+      {
+        "id": "jev-compaction",
+        "route": "Jev compaction via factrail (ADR-2093 policy, ADR-2121 implementation)",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "vendor",
+        "destination": "TypeSafe System One (cloud) unless repointed at the local façade",
+        "gate": "`[features.jev_compaction].enabled` (`agentbox.toml:680`); `egress = \"metadata\"` (`agentbox.toml:701`) narrows the payload to kinds, key names, counts and lengths.",
+        "accepted_egress": "ADR-2093 (accepted): operator decision to send transcript windows beyond ADR-2090's routing-only scope, with email fenced out (`docs/adr/ADR-2093-jev-verbatim-compaction.md:53-54`).",
+        "markers": [],
+        "notes": "Tool-call arguments and results from the session transcript, capped per fitting stage. Email-tainted sessions never reach a cloud judge. Credential `TYPESAFE_API_KEY`: devuser-class (Q8)."
+      },
+      {
+        "id": "system-one-local",
+        "route": "Sovereign System One façade (ADR-2094)",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "LAN",
+        "destination": "`system-one-facade` on `visionclaw_network`; option embeddings to `192.168.2.132:9997` (`agentbox.toml:737`)",
+        "gate": "`[features.sovereign_system_one].enabled` (`agentbox.toml:732`), currently `false`",
+        "accepted_egress": "ADR-2094 (accepted, activation inactive): a local façade in the Jev wire format (`docs/adr/ADR-2094-local-capacity-adapting-typed-decision-facade.md:35-38`).",
+        "markers": [],
+        "notes": "Carries the router and compaction payloads above. When on, nothing leaves the LAN. Inactive at HEAD, so the two vendor rows above are the live routes."
+      },
+      {
+        "id": "loom-door",
+        "route": "Ontology Loom façade: ontology condense; dream nights when `llm_provider = \"loom\"`",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "LAN",
+        "destination": "`${LOOM_BASE_URL}`: the estate façade `:8084` on the HP host. Compose default is `http://loom:8080/v1` (`flake.nix:3438`); the LAN address is deployment configuration.",
+        "gate": "`[skills.ontology.condense].enabled` (`agentbox.toml:860`); `[dream_machine].llm_provider` (`agentbox.toml:2179`) or `DREAM_LLM_PROVIDER`",
+        "accepted_egress": "ADR-2070 (accepted, live): the Loom endpoints are named egress doors and knowledge work holds `:8084` (`docs/adr/ADR-2070-one-front-door-is-ingress-the-loom-raw-port-is-a-named-egress-door.md:39-47`); `docs/LAN-door-threat-model.md:16`.",
+        "markers": [],
+        "notes": "Knowledge-graph class text and dream prompts. The trust is service identity, not remote attestation (`docs/LAN-door-threat-model.md:16`)."
+      },
+      {
+        "id": "loom-raw",
+        "route": "Loom raw model door, `loom-raw` interaction-plane session",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "LAN",
+        "destination": "Loom raw model `:8085` on the HP host",
+        "gate": "none at runtime. The session seed (`agentbox.toml:1810`) is chosen per session by the operator or agent.",
+        "accepted_egress": "ADR-2070 (accepted): the raw door is agent-choice and benchmark-only (`docs/adr/ADR-2070-one-front-door-is-ingress-the-loom-raw-port-is-a-named-egress-door.md:48-52`); `docs/LAN-door-threat-model.md:17`.",
+        "markers": [
+          "no-gate"
+        ],
+        "notes": "Raw coding sessions send their whole working context to the LAN model. The purpose restriction is policy, not runtime isolation (`docs/LAN-door-threat-model.md:17`)."
+      },
+      {
+        "id": "routing-label-embeddings",
+        "route": "Routing teacher label log, EXP-B8 (ADR-2110)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "LAN",
+        "destination": "bge-small on Xinference, `192.168.2.132:9997` (`agentbox.toml:993`)",
+        "gate": "`[skills.routing].label_log` (`agentbox.toml:992`)",
+        "accepted_egress": "Owner decision 2026-10-02 R5b: label log on as a bounded experiment (`agentbox.toml:986-987`; `scripts/experiments/exp-b8-label-log.cjs:7-8`).",
+        "markers": [],
+        "notes": "Turn text is embedded for the shadow BM25 comparison. LAN only. The experiment switches itself off at its stopping rule."
+      },
+      {
+        "id": "consultant-codex",
+        "route": "Consultant MCP `consultant-codex` (`/consult codex`, auto-consultant)",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "vendor",
+        "destination": "OpenAI, via the Codex CLI (`mcp/consultants/codex/server.js:39`)",
+        "gate": "`[consultants].enabled` (`agentbox.toml:1302`); `[consultants.codex].enabled` (`agentbox.toml:1307`)",
+        "accepted_egress": "none. ADR-011 (accepted, archived) designs the consultant tier; no record accepts sending repo context to the vendor.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Full consult prompts including repository context. Drift: ADR-011 (`docs/archive/adr/ADR-011-consultation-mcps.md:182`) and `mcp/consultants/README.md:102-104` claim outbound privacy-filter redaction. No redaction call exists in `mcp/consultants/shared/` at HEAD. Codex CLI credentials: devuser-class (Q8)."
+      },
+      {
+        "id": "consultant-antigravity",
+        "route": "Consultant MCP `consultant-antigravity`",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "vendor",
+        "destination": "Google (Gemini), via the Antigravity CLI (`mcp/consultants/antigravity/server.js:38`)",
+        "gate": "`[consultants].enabled` (`agentbox.toml:1302`); `[consultants.antigravity].enabled` (`agentbox.toml:1313`)",
+        "accepted_egress": "none. ADR-011 designs the tier only.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "As consultant-codex, including the privacy-filter drift. CLI credentials: devuser-class (Q8)."
+      },
+      {
+        "id": "consultant-zai",
+        "route": "Consultant MCP `consultant-zai`",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "vendor",
+        "destination": "Z.AI (GLM), via the `claude-zai` CLI (`mcp/consultants/zai/server.js:41`)",
+        "gate": "`[consultants].enabled` (`agentbox.toml:1302`); `[consultants.zai].enabled` (`agentbox.toml:1319`)",
+        "accepted_egress": "none. ADR-011 designs the tier only.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "As consultant-codex. Credential `ZAI_ANTHROPIC_API_KEY`: devuser-class (Q8)."
+      },
+      {
+        "id": "consultant-perplexity",
+        "route": "Consultant MCP `consultant-perplexity`",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "vendor",
+        "destination": "`api.perplexity.ai` (`mcp/consultants/perplexity/server.js:17`)",
+        "gate": "`[consultants].enabled` (`agentbox.toml:1302`); `[consultants.perplexity].enabled` (`agentbox.toml:1326`)",
+        "accepted_egress": "none. ADR-011 designs the tier only.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "As consultant-codex. Credential `PERPLEXITY_API_KEY` (`agentbox.toml:1189-1191`): devuser-class (Q8)."
+      },
+      {
+        "id": "consultant-deepseek",
+        "route": "Consultant MCP `consultant-deepseek`",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "vendor",
+        "destination": "`api.deepseek.com` (`mcp/consultants/deepseek/server.js:18`)",
+        "gate": "`[consultants].enabled` (`agentbox.toml:1302`); `[consultants.deepseek].enabled` (`agentbox.toml:1331`)",
+        "accepted_egress": "none. ADR-011 designs the tier only.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "As consultant-codex. DeepSeek API key: devuser-class (Q8)."
+      },
+      {
+        "id": "zai-night",
+        "route": "Dream engine night provider (`services/dream-engine`)",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "vendor",
+        "destination": "Z.AI, `https://api.z.ai/api/anthropic` (`services/dream-engine/src/config.rs:381`)",
+        "gate": "`[dream_machine].llm_provider = \"loom\"` (`agentbox.toml:2179`) or `DREAM_LLM_PROVIDER` (`services/dream-engine/src/engine.rs:1687`); `[dream_machine].enabled` (`agentbox.toml:2163`)",
+        "accepted_egress": "none. No ADR or owner decision accepts the dream corpus leaving for Z.AI.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Nightly dream prompts built from workspace and repository context. Default provider is `zai`. Credential `ZAI_ANTHROPIC_API_KEY` (`services/dream-engine/src/engine.rs:1695`): devuser-class (Q8)."
+      },
+      {
+        "id": "session-digest",
+        "route": "Mobile-bridge session digest (`egress-policy.json` path `session-digest`)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "vendor",
+        "destination": "`ZAI_URL` (Z.AI by default) for summarisation, then the cloud relay and the Solid pod",
+        "gate": "`[sovereign_mesh.mobile_bridge].enabled` (`agentbox.toml:98`), currently `false`; `AGENTBOX_SESSION_DIGEST` / `AGENTBOX_EGRESS` (`config/hooks/lib/egress-policy.cjs:145-148`)",
+        "accepted_egress": "ADR-030 D3 (accepted, archived): the mesh's one accepted external hop (`docs/archive/adr/ADR-030-sovereign-mesh-manifest-boundary.md:65-67`). The ADR-2026 contract is still `proposed`.",
+        "markers": [],
+        "notes": "Flattened transcript text, redacted before the provider hop. The signed kind-30840 is not encrypted."
+      },
+      {
+        "id": "ontology-monitor",
+        "route": "Ontology monitor `SessionEnd` hook (`config/hooks/ontology-monitor.cjs`)",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "vendor",
+        "destination": "Z.AI via the `claude-zai` CLI (`config/hooks/ontology-monitor.cjs:156`, `config/hooks/ontology-monitor.cjs:177`); proposals to the forum relay as kind 31402",
+        "gate": "`[ontology_monitor].enabled` (`agentbox.toml:116`); `mode = \"dryrun\"` (`agentbox.toml:117`) stops the publish",
+        "accepted_egress": "none. This contradicts ADR-030 D3's \"exactly one external data hop\" (`docs/archive/adr/ADR-030-sovereign-mesh-manifest-boundary.md:67`).",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Changed files plus a transcript tail of up to 12,000 characters (`config/hooks/ontology-monitor.cjs:115`). Not routed through the ADR-2026 redactor or `AGENTBOX_EGRESS`."
+      },
+      {
+        "id": "project-tracking",
+        "route": "Project tracking: primers, GitHub enrichment, kind-30841 publish (ADR-035)",
+        "leaves": [
+          "code",
+          "public artefact"
+        ],
+        "destination_class": "vendor",
+        "destination": "Z.AI (primers); GitHub API (enrichment); the configured relay (kind 30841)",
+        "gate": "`[project_tracking].enabled` (`agentbox.toml:1668`); `github_enrichment` (`agentbox.toml:1671`); `primer_on_scan` (`agentbox.toml:1673`); `nostr_publish` (`agentbox.toml:1674`)",
+        "accepted_egress": "ADR-035 D5 (accepted, archived): fail-open nostr publish and GitHub enrichment (`docs/archive/adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md:105`). The Z.AI primer hop is not separately accepted.",
+        "markers": [],
+        "notes": "Primers summarise repository content. Credential `GITHUB_TOKEN`: devuser-class (Q8)."
+      },
+      {
+        "id": "live-mirror",
+        "route": "Per-turn session mirror, NIP-59 (`config/hooks/nostr-live-mirror.cjs`)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "public internet",
+        "destination": "One relay: `NOSTR_MIRROR_RELAY`, else the cloud default (`config/hooks/nostr-live-mirror.cjs:51`)",
+        "gate": "`AGENTBOX_LIVE_MIRROR`, `AGENTBOX_EGRESS` (`config/hooks/lib/egress-policy.cjs:145-148`); refused without a valid `AGENTBOX_MIRROR_RECIPIENTS` allowlist",
+        "accepted_egress": "ADR-029 D3 (accepted, archived): no LLM hop, cloud relay only (`docs/archive/adr/ADR-029-session-mirror-live-egress.md:67-71`). The ADR-2026 contract is still `proposed`.",
+        "markers": [],
+        "notes": "Selected turn text, redacted, then gift-wrapped (kind 1059) to the operator's derived child key."
+      },
+      {
+        "id": "nostr-gateway",
+        "route": "Nostr control gateway, operator command DMs (`config/nostr-gateway/gateway.cjs`)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "public internet",
+        "destination": "Cloud relay (`config/nostr-gateway/gateway.cjs:84`)",
+        "gate": "`AGENTBOX_NOSTR_GATEWAY=0` (`config/nostr-gateway/gateway.cjs:166`; `flake.nix:2087`)",
+        "accepted_egress": "none.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Replies carry session output from the tmux fleet, gift-wrapped to the operator. Not routed through the ADR-2026 redactor. The operator key `AGENTBOX_PRIVKEY_HEX` is in the process environment."
+      },
+      {
+        "id": "junkiejarvis-posts",
+        "route": "JunkieJarvis forum replies and clarifying DMs (`management-api/lib/junkiejarvis-agent.js`)",
+        "leaves": [
+          "public artefact"
+        ],
+        "destination_class": "public internet",
+        "destination": "The forum relay (`NOSTR_RELAYS`)",
+        "gate": "`[sovereign_mesh].junkiejarvis` (`agentbox.toml:50`), the only switch",
+        "accepted_egress": "ADR-030 (accepted, archived) places JunkieJarvis in the mesh; ADR-2088 (accepted, staged) accepts the clarifying DMs.",
+        "markers": [],
+        "notes": "Kind-42 replies in forum sections and kind-1059 DMs. Encrypted to the zone key where the zone is encrypted."
+      },
+      {
+        "id": "junkiejarvis-llm",
+        "route": "JunkieJarvis reply generation",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "vendor",
+        "destination": "Anthropic (`management-api/lib/junkiejarvis-agent.js:466`), else Z.AI or OpenAI (`management-api/lib/junkiejarvis-agent.js:496-497`)",
+        "gate": "`[sovereign_mesh].junkiejarvis` (`agentbox.toml:50`)",
+        "accepted_egress": "none. This contradicts ADR-030 D3 (`docs/archive/adr/ADR-030-sovereign-mesh-manifest-boundary.md:67`).",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Forum members' messages (third-party content) and the agent's context. Credentials `ANTHROPIC_API_KEY` / `ZAI_ANTHROPIC_API_KEY`: devuser-class (Q8)."
+      },
+      {
+        "id": "dream-forum-suggestions",
+        "route": "Dream forum-suggestions tenant (`scripts/dream-forum-suggestions.mjs`)",
+        "leaves": [
+          "prompt",
+          "public artefact"
+        ],
+        "destination_class": "vendor",
+        "destination": "Z.AI triage (`scripts/dream-forum-suggestions.mjs:57`); replies to the forum relay (`scripts/dream-forum-suggestions.mjs:48-49`)",
+        "gate": "`DREAM_FORUM_SUGGESTIONS=0` (`scripts/dream-machine-nightly.mjs:700`); clarifying DMs held while `[sovereign_mesh].junkiejarvis` is off (`scripts/dream-forum-suggestions.mjs:220`)",
+        "accepted_egress": "ADR-2088 (accepted) covers the clarifying DMs. None for the Z.AI triage hop.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Forum suggestion text goes to Z.AI. Replies are posted in-thread as JunkieJarvis."
+      },
+      {
+        "id": "dream-digest",
+        "route": "Nightly dream digest forum post (`services/dream-engine/src/digest.rs`)",
+        "leaves": [
+          "public artefact"
+        ],
+        "destination_class": "public internet",
+        "destination": "Forum relay, `DREAM_RELAY` else the cloud default (`services/dream-engine/src/relay.rs:32-38`)",
+        "gate": "`DREAM_DIGEST=0` (`services/dream-engine/src/engine.rs:312`)",
+        "accepted_egress": "none.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Kind-42 summary of the night. Encrypted to the zone key or refused, never plaintext in an encrypted zone (`services/dream-engine/src/digest.rs:412-424`)."
+      },
+      {
+        "id": "dream-governance",
+        "route": "Dream governance panel and cases, kinds 31400/31402 (`services/dream-engine/src/governance.rs`)",
+        "leaves": [
+          "public artefact"
+        ],
+        "destination_class": "public internet",
+        "destination": "Forum relay (`services/dream-engine/src/governance.rs:9-11`)",
+        "gate": "`DREAM_GOVERNANCE=0` (`services/dream-engine/src/governance.rs:82-83`)",
+        "accepted_egress": "none.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "One case per open inbox item, signed by JunkieJarvis. Admin replies (31403) are ingested the next night."
+      },
+      {
+        "id": "exp-b8-report",
+        "route": "EXP-B8 stop report and gate-flip PR (`scripts/experiments/exp-b8-label-log.cjs`)",
+        "leaves": [
+          "public artefact",
+          "code"
+        ],
+        "destination_class": "public internet",
+        "destination": "Forum relay (`scripts/experiments/exp-b8-label-log.cjs:445`); a GitHub PR",
+        "gate": "`[skills.routing].label_log` (`agentbox.toml:992`); `--dry-run` never posts",
+        "accepted_egress": "Owner decision 2026-10-02 R5b: report on the forum when the stopping rule fires (`scripts/experiments/exp-b8-label-log.cjs:7-8`).",
+        "markers": [],
+        "notes": "One kind-42 summary, zone-encrypted or refused (`scripts/experiments/exp-b8-label-log.cjs:548`), at most once."
+      },
+      {
+        "id": "sidestr-announce",
+        "route": "sidestr producer tips, kind 33333 (`config/sidechain/run-producer.sh`)",
+        "leaves": [
+          "public artefact"
+        ],
+        "destination_class": "public internet",
+        "destination": "Five public relays (`config/sidechain/run-producer.sh:49`)",
+        "gate": "`[sidechain].enabled` (`agentbox.toml:1573`), rebuild-class",
+        "accepted_egress": "none accepted. ADR-2098 registers kind 33333 but is `proposed`.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Public chain data, not a prompt. Recorded for completeness. Signer key under `/var/lib/agentbox/secrets`."
+      },
+      {
+        "id": "sidestr-pages",
+        "route": "sidestr Pages mirror (`config/sidechain/mirror-sync.sh`)",
+        "leaves": [
+          "public artefact"
+        ],
+        "destination_class": "public internet",
+        "destination": "GitHub Pages checkout, `git push` (`config/sidechain/mirror-sync.sh:81`); announced URL `agentbox.toml:1574`",
+        "gate": "`[sidechain].mirror` (`agentbox.toml:1575`), rebuild-class",
+        "accepted_egress": "none accepted. ADR-2098 and ADR-2103 are `proposed`.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Block files only. Uses the devuser `gh` credential (`flake.nix:2692`)."
+      },
+      {
+        "id": "github",
+        "route": "`gh` and `git push` from agent sessions",
+        "leaves": [
+          "code",
+          "public artefact"
+        ],
+        "destination_class": "vendor",
+        "destination": "GitHub",
+        "gate": "none",
+        "accepted_egress": "none.",
+        "markers": [
+          "no-gate",
+          "no-accepted-record"
+        ],
+        "notes": "Every agent can push via the `gh` credential helper (`config/entrypoint-unified.sh:388-391`). Credential `GITHUB_TOKEN` (`flake.nix:3433`): devuser-class (Q8). Private repositories land in vendor custody; public ones are published."
+      },
+      {
+        "id": "crates-io",
+        "route": "`cargo publish`",
+        "leaves": [
+          "public artefact",
+          "code"
+        ],
+        "destination_class": "public internet",
+        "destination": "crates.io",
+        "gate": "none. The credential is written whenever `CRATES_TOKEN` is set (`config/entrypoint-unified.sh:3072-3077`).",
+        "accepted_egress": "ADR-2106 (accepted) for `sidestr-*` crates only, each publication approved by the owner case by case (`docs/adr/ADR-2106-sidestr-crates-are-agpl-derivatives-of-siding-published-and-consumed.md:36-47`). Any other crate has none.",
+        "markers": [
+          "no-gate"
+        ],
+        "notes": "Publication is irreversible (yank only hides a version). Credential `CRATES_TOKEN`: devuser-class (Q8)."
+      },
+      {
+        "id": "cloudflare",
+        "route": "`wrangler` (Workers deploy, D1, `secret put`) and the forum backup cron",
+        "leaves": [
+          "code",
+          "secret-adjacent"
+        ],
+        "destination_class": "vendor",
+        "destination": "Cloudflare API",
+        "gate": "none. `wrangler` is always baked (`flake.nix:531-533`); the backup cron is unconditional (`flake.nix:2643-2649`).",
+        "accepted_egress": "none.",
+        "markers": [
+          "no-gate",
+          "no-accepted-record"
+        ],
+        "notes": "`wrangler secret put` sends secret values by design. The backup pulls data in but presents the token. Credentials `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`: devuser-class (Q8)."
+      },
+      {
+        "id": "tailscale",
+        "route": "`tailscaled` (`flake.nix:2447-2450`)",
+        "leaves": [
+          "secret-adjacent"
+        ],
+        "destination_class": "vendor",
+        "destination": "Tailscale coordination plane; peers on the tailnet",
+        "gate": "`[networking].tailscale` (`agentbox.toml:282`), currently `true`",
+        "accepted_egress": "none. ADR-007 (accepted, archived) only covers `tailscaled` running as root; ADR-045 is `proposed`.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Node identity and metadata go to the vendor. Tailnet traffic bypasses the did:nostr boundary (`agentbox.toml:266-272`). The manifest comment says off by default (`agentbox.toml:277-281`) but the value is `true`. Credential `TAILSCALE_AUTHKEY`: devuser-class (Q8)."
+      },
+      {
+        "id": "mcp-research",
+        "route": "Research MCPs: `web-researcher`, `perplexity` (MCP hub)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "vendor",
+        "destination": "Search and answer vendors (Perplexity and the web-researcher backends)",
+        "gate": "`[skills.research].web_researcher` (`agentbox.toml:581`), rebuild-class; `perplexity` sits in the MCP hub list (`agentbox.toml:1269-1272`) with no runtime switch",
+        "accepted_egress": "none.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Search queries written by agents, often paraphrasing the task. Credential `PERPLEXITY_API_KEY`: devuser-class (Q8)."
+      }
+    ]
+  }
 }

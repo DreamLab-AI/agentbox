@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DreamLab-AI/agentbox/docs/estate-closeout/schema/x1-rehearsal.schema.json",
+  "title": "X-1 role-isolation rehearsal receipt",
+  "description": "Written by scripts/activation/role-isolation-rehearsal.sh (half = container, run as devuser) and scripts/activation/role-isolation-rehearsal.host.sh (half = host, run as root on the host). Decides whether [security].role_isolation may stay on (custody design §4). A receipt holds names, paths, modes, uids, gids, pids, counts and public keys only: never a secret value, hash or fingerprint. Evidence keys that name a value-bearing field are refused by propertyNames.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "half", "verdict", "exit_code", "flag", "image", "commit", "started_at", "finished_at", "operator", "uid_table", "checks", "summary", "legacy_copies", "degraded", "not_covered"],
+  "properties": {
+    "schema": { "const": "agentbox/x1-rehearsal@1" },
+    "half": { "enum": ["container", "host"] },
+    "verdict": { "enum": ["PASS", "STAGED", "FAIL"] },
+    "exit_code": { "enum": [0, 1, 2] },
+    "flag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "value", "source"],
+      "properties": {
+        "key": { "const": "[security].role_isolation" },
+        "value": { "type": "boolean" },
+        "source": { "enum": ["manifest", "absent-default-false", "container-receipt"] },
+        "manifest": { "type": "string" }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["build_id"],
+      "properties": {
+        "build_id": { "type": "string", "minLength": 1, "description": "Image id (sha256:...) or 'unknown'." },
+        "version": { "type": "string" },
+        "container": { "type": "string" }
+      }
+    },
+    "commit": { "type": "string", "minLength": 1 },
+    "rehearsal_dirty": { "type": "boolean", "description": "scripts/activation differs from HEAD in the checkout that ran the rehearsal." },
+    "started_at": { "$ref": "#/$defs/utc" },
+    "finished_at": { "$ref": "#/$defs/utc" },
+    "operator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user", "uid"],
+      "properties": { "user": { "type": "string" }, "uid": { "type": "integer" } }
+    },
+    "supervisor_config": { "type": "string" },
+    "uid_table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "roles"],
+      "properties": {
+        "source": { "type": "string" },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["role", "uid", "gid", "programs", "files"],
+            "properties": {
+              "role": { "type": "string", "pattern": "^ab-[a-z0-9-]+$" },
+              "uid": { "type": "integer", "minimum": 960, "maximum": 979 },
+              "gid": { "type": "integer", "minimum": 960, "maximum": 979 },
+              "programs": { "type": "array", "items": { "type": "string" } },
+              "files": { "type": "array", "items": { "type": "string", "pattern": "^/run/secrets/" } },
+              "classified_env": { "type": "array", "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } },
+              "deferred": { "type": "string" }
+            }
+          }
+        },
+        "host_accounts": {
+          "type": "array",
+          "description": "Host half: getent passwd/group entries found in 960-979 (names and numbers only).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["db", "id", "name"],
+            "properties": { "db": { "enum": ["passwd", "group"] }, "id": { "type": "integer" }, "name": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "checks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/check" } },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "fail", "not_applicable", "would_fail", "failed_checks"],
+      "properties": {
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "not_applicable": { "type": "integer", "minimum": 0 },
+        "recorded": { "type": "integer", "minimum": 0 },
+        "would_fail": { "type": "integer", "minimum": 0 },
+        "failed_checks": { "type": "array", "items": { "$ref": "#/$defs/check_id" }, "uniqueItems": true }
+      }
+    },
+    "legacy_copies": { "type": "array", "items": { "type": "string" }, "description": "Paths of legacy key copies kept until a manual purge (owner Q5). Paths only." },
+    "degraded": { "type": "array", "items": { "type": "string" } },
+    "not_covered": { "type": "array", "items": { "type": "string" } }
+  },
+  "allOf": [
+    { "if": { "properties": { "verdict": { "const": "PASS" } } }, "then": { "properties": { "exit_code": { "const": 0 }, "flag": { "properties": { "value": { "const": true } } }, "summary": { "properties": { "fail": { "const": 0 } } } } } },
+    { "if": { "properties": { "verdict": { "const": "STAGED" } } }, "then": { "properties": { "exit_code": { "const": 2 }, "flag": { "properties": { "value": { "const": false } } }, "checks": { "items": { "properties": { "status": { "enum": ["not_applicable", "recorded"] } } } } } } },
+    { "if": { "properties": { "verdict": { "const": "FAIL" } } }, "then": { "properties": { "exit_code": { "const": 1 } } } }
+  ],
+  "$defs": {
+    "utc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "check_id": { "type": "string", "pattern": "^(a|b|c|d|e|f|h-[a-z0-9-]+)$" },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check", "target", "expected", "observed", "status", "evidence"],
+      "properties": {
+        "check": { "$ref": "#/$defs/check_id" },
+        "target": { "type": "string", "minLength": 1 },
+        "expected": { "type": "string" },
+        "observed": { "type": "string", "maxLength": 400 },
+        "status": { "enum": ["pass", "fail", "not_applicable", "recorded"], "description": "recorded: reported for the owner, not a gate (e.g. the host socket mode, owner Q2)." },
+        "reason": { "type": "string" },
+        "would_pass": { "type": "boolean", "description": "Flag off only: whether the row would have passed with the flag on." },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      },
+      "allOf": [
+        { "if": { "properties": { "status": { "const": "not_applicable" } } }, "then": { "required": ["reason", "would_pass"] } }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$", "not": { "pattern": "(value|secret|nsec|privkey|private|password|token|bearer|content|hash|fingerprint)" } },
+      "additionalProperties": { "$ref": "#/$defs/evidence_item" }
+    },
+    "evidence_item": {
+      "anyOf": [
+        { "type": ["integer", "boolean", "null"] },
+        { "type": "string", "maxLength": 300 },
+        { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/evidence_item" } },
+        { "$ref": "#/$defs/evidence" }
+      ]
+    }
+  }
+}

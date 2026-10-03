@@ -31,6 +31,7 @@ RUN pacman -Syu --noconfirm && pacman -S --noconfirm --needed \
         base-devel \
         git \
         sudo \
+        unzip \
     && pacman -Scc --noconfirm \
     && rm -rf /var/cache/pacman/pkg/* /root/.npm /tmp/*
 
@@ -53,8 +54,11 @@ RUN sudo -u devuser yay -S --noconfirm --needed google-chrome-beta \
     && rm -rf /home/devuser/.cache/yay /tmp/*
 
 # Application directory
-RUN mkdir -p /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/chrome-profile /home/devuser/exchange \
-    && chown -R devuser:devuser /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/chrome-profile /home/devuser/exchange
+# /home/devuser/chrome-profile is the mount point of the named volume
+# browsercontainer-profile (W9); creating it here owned by devuser means a fresh
+# volume is initialised with devuser ownership.
+RUN mkdir -p /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/browsercontainer /home/devuser/chrome-profile /home/devuser/exchange \
+    && chown -R devuser:devuser /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/browsercontainer /home/devuser/chrome-profile /home/devuser/exchange
 
 # Install chrome-devtools-mcp and ws globally (runtime uses Chrome Beta from AUR)
 RUN npm install -g chrome-devtools-mcp@latest ws && rm -rf /root/.npm
@@ -69,6 +73,24 @@ COPY --chown=devuser:devuser server.js /opt/browsercontainer/server.js
 COPY --chown=devuser:devuser launch-chromium.sh /opt/browsercontainer/launch-chromium.sh
 COPY --chown=devuser:devuser cdp-diagnose.js /opt/browsercontainer/cdp-diagnose.js
 COPY --chown=devuser:devuser puppeteer-mermaid.json /opt/browsercontainer/puppeteer-mermaid.json
+COPY --chown=devuser:devuser podkey-ctl.js /opt/browsercontainer/podkey-ctl.js
+
+# Podkey (W9, owner rule 2026-10-03): the published `podkey-extension` CI artefact
+# of JavaScriptSolidServer/podkey, named exactly by podkey.pin. The zip is fetched
+# on the host before the build (`agentbox.sh browsercontainer up|rebuild` runs
+# scripts/fetch-podkey.sh fetch), so no token enters the build; here it is only
+# verified against the pin and unpacked. Never built from source, never a fork zip.
+COPY --chown=devuser:devuser podkey.pin /opt/browsercontainer/podkey.pin
+COPY --chown=devuser:devuser scripts/fetch-podkey.sh /opt/browsercontainer/scripts/fetch-podkey.sh
+COPY vendor/podkey-extension.zip /tmp/podkey-extension.zip
+RUN bash /opt/browsercontainer/scripts/fetch-podkey.sh install --pin /opt/browsercontainer/podkey.pin \
+        --zip /tmp/podkey-extension.zip --dest /opt/browsercontainer/extensions/podkey \
+    && rm -f /tmp/podkey-extension.zip
+# Managed policy: block every extension except Podkey (id derived from the path
+# above; podkey-ctl.js `id`). Branded Chrome reads /etc/opt/chrome, Chromium /etc/chromium.
+COPY policies/podkey-only.json /etc/opt/chrome/policies/managed/podkey-only.json
+RUN install -D -m 0644 /etc/opt/chrome/policies/managed/podkey-only.json /etc/chromium/policies/managed/podkey-only.json
+
 COPY supervisord.conf /etc/supervisord.conf
 COPY --chown=devuser:devuser healthcheck.sh /opt/browsercontainer/healthcheck.sh
 RUN chmod +x /opt/browsercontainer/healthcheck.sh /opt/browsercontainer/launch-chromium.sh

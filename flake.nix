@@ -261,7 +261,7 @@
             inherit name enabled every ckWallet;
             mirror = enabled && (c.mirror or false);
             faucet = enabled && (c.faucet or false);
-            parent = c.parent;
+            inherit (c) parent;
             port = toString (c.port or 3451);
             interval = toString (c.interval or 600);
             parentRpc = unplaceheld (c.parent_rpc or "http://192.168.2.27:48342/");
@@ -1604,6 +1604,14 @@
         # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.
         sidestrAgentPkg = import ./lib/sidestr-agent.nix { inherit lib; pkgs = rustPkgs; };
         sidechainPackages = lib.optionals sidechainAnyFaucet [ sidestrAgentPkg ];
+        # The producer's consensus code (spec, schema, blaketestnode) at the
+        # commits in upstream-pins, read-only; run-producer.sh runs it by default
+        # and a workspace checkout only under SIDESTR_ALLOW_UNPINNED=1 (custody
+        # W5, design §2.7). Evaluation fails if the two disagree.
+        sidestrUpstreamPkg = import ./lib/sidestr-upstream.nix {
+          inherit lib pkgs;
+          pinsFile = ./config/sidechain/upstream-pins;
+        };
         # factrail — Jev compaction with fact rails ([features.jev_compaction],
         # ADR-2121). One pinned commit gives the binary and the
         # Claude Code shim that calls it; see lib/factrail.nix.
@@ -1825,6 +1833,13 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # Same reasoning for `vault`: skills, agent prose and the boot gate all
           # name a path, and a /nix/store path in prose rots at the next rebuild.
           ln -s ${vaultPkg}/bin/vault $out/opt/agentbox/bin/vault
+          ''}
+          ${lib.optionalString sidechainEnabled ''
+          # The sidestr producer's baked upstream, at a stable path the runner
+          # defaults to (lib/sidestr-upstream.nix). [sidechain].enabled gates
+          # every chain program, so it gates the bake too.
+          mkdir -p $out/opt/agentbox/sidestr
+          ln -s ${sidestrUpstreamPkg} $out/opt/agentbox/sidestr/upstream
           ''}
           ${lib.optionalString jevCompactionOn ''
           # factrail: the entrypoint projects THIS path as the plugin's `binary`
@@ -2084,7 +2099,9 @@ stderr_logfile=/var/log/ruvector-aggregate-sweep.error.log
 ; phone (Amethyst), executes them against the tmux fleet and DMs replies back.
 ; The operator secret (AGENTBOX_PRIVKEY_HEX) is injected into the process
 ; environment by the entrypoint launcher and inherited here — never written into
-; the generated supervisor text. Off switch: AGENTBOX_NOSTR_GATEWAY=0.
+; the generated supervisor text. Under [security].role_isolation it arrives as a
+; file instead (AGENTBOX_PRIVKEY_HEX_FILE / AGENTBOX_BRIDGE_SK_FILE, custody W2)
+; and the bare variable is refused. Off switch: AGENTBOX_NOSTR_GATEWAY=0.
 [program:nostr-gateway]
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/config/nostr-gateway/gateway.cjs
 directory=/opt/agentbox/config/nostr-gateway
@@ -2456,8 +2473,13 @@ priority=15
 stdout_logfile=/var/log/tailscaled.log
 stderr_logfile=/var/log/tailscaled.error.log
 
+; Custody W2: under [security].role_isolation the entrypoint delivers the join
+; key to TAILSCALE_AUTHKEY_FILE (root 0400) and unsets TAILSCALE_AUTHKEY, so the
+; key is never in any process's environment or on argv: tailscale reads it via
+; its own "file:" prefix. With the flag off the file var is unset and the
+; original branch runs unchanged.
 [program:tailscale-up]
-command=${pkgs.bash}/bin/bash -c "sleep 2 && if [ -n \"$TAILSCALE_AUTHKEY\" ]; then ${pkgs.tailscale}/bin/tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=${networkingCfg.hostname or "agentbox"} --accept-routes --ssh 2>&1; else echo 'No TAILSCALE_AUTHKEY set — run: docker exec agentbox tailscale up'; fi"
+command=${pkgs.bash}/bin/bash -c "sleep 2 && if [ -n \"$TAILSCALE_AUTHKEY_FILE\" ] && [ -f \"$TAILSCALE_AUTHKEY_FILE\" ]; then ${pkgs.tailscale}/bin/tailscale up --authkey=file:$TAILSCALE_AUTHKEY_FILE --hostname=${networkingCfg.hostname or "agentbox"} --accept-routes --ssh 2>&1; elif [ -n \"$TAILSCALE_AUTHKEY\" ]; then ${pkgs.tailscale}/bin/tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=${networkingCfg.hostname or "agentbox"} --accept-routes --ssh 2>&1; else echo 'No TAILSCALE_AUTHKEY set — run: docker exec agentbox tailscale up'; fi"
 directory=/var/lib/tailscale
 environment=HOME="/home/devuser"
 autostart=true
@@ -2466,6 +2488,56 @@ startsecs=0
 priority=16
 stdout_logfile=/var/log/tailscale-up.log
 stderr_logfile=/var/log/tailscale-up.error.log
+''}
+
+[program:docker-read-proxy]
+; Custody X-1 step 1, W0 (owner question Q1 default). Under
+; [security].role_isolation = true devuser loses the raw host Docker socket and
+; gets this GET-only proxy at /run/docker-ro.sock: ps/logs/inspect/version/info
+; pass, exec/run/create/cp/export get 403. With the flag off (the default) the
+; program prints one line and exits 0, so status shows EXITED; that is expected.
+; No user= on purpose: it starts as root only to bind the socket and join the
+; host socket's group, then drops to uid/gid 65534 itself. `env -i` keeps the
+; .env secrets that PID 1 inherits out of this process (design §0 bypass 3).
+; TODO(custody W1): move into the role registry (lib/role-accounts.nix) with its
+; own account; until then it follows the devuser-block layout, minus user=.
+command=${pkgs.bash}/bin/bash -c 'exec ${pkgs.coreutils}/bin/env -i AGENTBOX_ROLE_ISOLATION="''${AGENTBOX_ROLE_ISOLATION:-0}" ${pkgs.nodejs_22}/bin/node /opt/agentbox/config/docker-read-proxy.cjs'
+directory=/
+autostart=true
+autorestart=unexpected
+exitcodes=0
+startsecs=0
+priority=20
+stdout_logfile=/var/log/docker-read-proxy.log
+stderr_logfile=/var/log/docker-read-proxy.error.log
+${lib.optionalString (nostrPodBridgePkg != null) ''
+
+[program:serve-identity]
+; Custody X-1 step 1, W3: the identity port (design §2.5; ADR-2122). Holds the
+; core and JunkieJarvis keys and signs named operations for the callers in
+; config/custody/identity-port-acl.json, authorised by SO_PEERCRED uid.
+; Today's config runs it as devuser, and with [security].role_isolation off it
+; prints one line and exits 0 (status EXITED, expected), like docker-read-proxy.
+; With the flag on, `agentbox-manifest role-accounts isolate` rewrites user= to
+; ab-identity and sets AGENTBOX_SECRETS_DIR=/run/secrets/ab-identity (where the
+; delivery plan wrote AGENTBOX_PRIVKEY_HEX and JUNKIEJARVIS_PRIVKEY_HEX) and
+; AGENTBOX_IDENTITY_SOCK_GID (the ab-identity-port group) in environment=; the
+; command passes exactly those through `env -i`, so PID 1's inherited .env
+; (design §0 bypass 3) never reaches this process. The socket dir
+; /run/secrets/ab-identity-port/ (0750) is made by the delivery plan inside the
+; root-owned secrets mount: devuser owns /run and could rename anything else.
+command=${pkgs.bash}/bin/bash -c 'exec ${pkgs.coreutils}/bin/env -i AGENTBOX_ROLE_ISOLATION="''${AGENTBOX_ROLE_ISOLATION:-0}" RUST_LOG=info AGENTBOX_IDENTITY_ACL=/opt/agentbox/config/custody/identity-port-acl.json AGENTBOX_IDENTITY_KEY_DIR="''${AGENTBOX_SECRETS_DIR:-/run/secrets/ab-identity}" AGENTBOX_IDENTITY_SOCK=/run/secrets/ab-identity-port/identity.sock AGENTBOX_IDENTITY_SOCK_GID="''${AGENTBOX_IDENTITY_SOCK_GID:-}" AGENTBOX_IDENTITY_RECEIPT_DIR=/var/lib/agentbox/events/sign AGENTBOX_CONFIG=/etc/agentbox.toml ${nostrPodBridgePkg}/bin/nostr-pod-bridge serve-identity'
+directory=/
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=unexpected
+exitcodes=0
+startsecs=0
+priority=30
+stopsignal=TERM
+stdout_logfile=/var/log/serve-identity.log
+stderr_logfile=/var/log/serve-identity.error.log
 ''}
 ${lib.optionalString (toolchainCfg.code_server or false) ''
 
@@ -2663,9 +2735,10 @@ ${lib.optionalString sidechainEnabled ''
 ; [sidechain] (PRD-024 P1): the sidestr chain producer, which the forum's
 ; member wallets read (dreamlab-ai-website, forum ADR-2015). It ran in a tmux
 ; window until 2026-09-25, when a container restart stopped the chain for four
-; days with nothing to bring it back. run-producer.sh refuses to start unless
-; the upstream checkouts match config/sidechain/upstream-pins, so a failed
-; start means a pin to fix, not a restart loop: startretries caps it at FATAL.
+; days with nothing to bring it back. run-producer.sh runs the baked upstream
+; (/opt/agentbox/sidestr/upstream, lib/sidestr-upstream.nix) and refuses to
+; start unless its recorded commits match config/sidechain/upstream-pins, so a
+; failed start means a pin to fix, not a restart loop: startretries caps it at FATAL.
 ; The runner and the sealed chain document are baked; the block file is the
 ; workspace's (SIDESTR_STATE).
 [program:sidestr-producer]
@@ -2720,7 +2793,7 @@ ${lib.concatMapStrings (c: lib.optionalString c.enabled ''
 
 ; [sidechain.${c.name}] (ADR-2103): sidestr:${c.name}'s producer beside ${c.parent}.
 ; Same runner as sidestr:dreamlab's, keyed by SIDESTR_CHAIN. It refuses to start
-; on an unpinned upstream checkout, on a document sealed beside a parent other
+; on a baked upstream that disagrees with upstream-pins, on a document sealed beside a parent other
 ; than the manifest's (D3), and on a BLAKE2b parent whose block at the fork
 ; height is not the fork hash (D3a). checkpoint_every = ${toString c.every}${lib.optionalString (c.every == 0) ": no checkpoint, so nothing anchors this chain (owner SC5, Open in ADR-2103)"}.
 [program:sidestr-producer-${c.name}]
@@ -3149,6 +3222,11 @@ stderr_logfile_maxbytes=5MB
         securityCapsRaiseAttackSurface =
           (exceptionCapAdd != []) || (exceptionSecurityOptOverrides != []);
         auditAcknowledged = securityCfg.audit_acknowledged or false;
+        # Custody W10 (ADR-2122): [security].role_isolation as this image was BUILT.
+        # The flag is boot-class for everything the entrypoint can pick at runtime;
+        # devuser's wheel membership and sudoers drop-in live in the read-only /etc,
+        # so they follow the build-time value (config/bake-devuser-privilege.sh).
+        roleIsolationBaked = securityCfg.role_isolation or false;
         _w021Check =
           if securityCapsRaiseAttackSurface && !auditAcknowledged
           then throw ''
@@ -3198,6 +3276,11 @@ stderr_logfile_maxbytes=5MB
           # acrobatics. Bootstrap-as-root still has CAP_CHOWN baseline
           # cap if it needs to fix anything.
           "/run:mode=755,size=${resTmpfsRun},uid=1000,gid=1000"
+          # ADR-2122 (custody W1): /run/secrets is its OWN root-owned tmpfs, so
+          # devuser, owner of /run, cannot rename or replace it. Ships in both
+          # modes; with [security].role_isolation off the entrypoint chowns it to
+          # devuser 0700 exactly as before.
+          "/run/secrets:mode=711,size=8M,uid=0,gid=0,noexec,nosuid,nodev"
           "/var/run:mode=755,size=16M,uid=1000,gid=1000"
           "/var/log:mode=755,size=128M,uid=1000,gid=1000"
           "/var/log/supervisor:mode=755,size=64M,uid=1000,gid=1000"
@@ -3490,6 +3573,14 @@ ${ragflowNetworkDecl}
               "legacy JSS environment leaked into the agentbox supervisor config";
             supervisorText
           )} $out/etc/supervisord.conf
+          # ADR-2122 (custody W1): the isolated config and the /run/secrets
+          # delivery plan are a pure function of the config above and
+          # config/role-accounts.json, so the two configs cannot drift
+          # (tests/config/role-isolation-supervisor.test.sh). Both ship in every
+          # image; the entrypoint picks one from [security].role_isolation.
+          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts isolate --table ${./config/role-accounts.json} --conf $out/etc/supervisord.conf --out $out/etc/supervisord.roles.conf --plan $out/etc/agentbox/role-secrets.tsv
+          # The table itself, for the role-isolation rehearsal and operators (names and paths only).
+          cp ${./config/role-accounts.json} $out/etc/agentbox/role-accounts.json
           cp ${./agentbox.toml} $out/etc/agentbox.toml
           cp ${pkgs.writeText "docker-compose.yml" composeText} $out/etc/agentbox/docker-compose.yml
           ${lib.optionalString relayLocal ''
@@ -3505,23 +3596,31 @@ ${ragflowNetworkDecl}
           PASSWD
           # Strip leading whitespace introduced by Nix heredoc indentation
           sed -i 's/^[[:space:]]*//' $out/etc/passwd
+          # ADR-2122 (custody W1): one account per role, uid = gid in 960-979,
+          # from config/role-accounts.json. Inert unless [security].role_isolation.
+          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts passwd --table ${./config/role-accounts.json} >> $out/etc/passwd
 
+          # Custody W0: devuser is NOT a member of group root. Membership gave
+          # every devuser process gid 0 and with it anything root left
+          # group-accessible. Undoing this needs a rebuild (it is baked).
+          # Test: tests/runtime-contract/RC-X1-03.sh.
           cat > $out/etc/group <<'GROUP'
-          root:x:0:devuser
+          root:x:0:
           wheel:x:998:devuser
           devuser:x:1000:
           GROUP
           sed -i 's/^[[:space:]]*//' $out/etc/group
+          # ADR-2122: each role's own primary group, with no members.
+          ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts group --table ${./config/role-accounts.json} >> $out/etc/group
 
-          # Passwordless sudo for devuser. Both /etc/sudoers and the drop-in
-          # are baked into the image because the rootfs is read_only at runtime
-          # — there's no place for the entrypoint to write these.
-          echo "root ALL=(ALL) ALL" > $out/etc/sudoers
-          echo "#includedir /etc/sudoers.d" >> $out/etc/sudoers
-          chmod 440 $out/etc/sudoers
-          mkdir -p $out/etc/sudoers.d
-          echo "devuser ALL=(ALL) NOPASSWD: ALL" > $out/etc/sudoers.d/devuser
-          chmod 440 $out/etc/sudoers.d/devuser
+          # devuser's sudo route. /etc/sudoers and the drop-in are baked
+          # because the rootfs is read_only at runtime. Custody W10: built with
+          # [security].role_isolation off, devuser stays in wheel with today's
+          # passwordless drop-in (byte-identical); built with it on, devuser
+          # leaves wheel (and root) and there is no drop-in. An image built off
+          # and booted on reports degraded:devuser-sudo until rebuilt
+          # (_ab_devuser_privilege_check). Test: tests/runtime-contract/RC-X1-07.sh.
+          ${pkgs.bash}/bin/bash ${./config/bake-devuser-privilege.sh} $out/etc ${if roleIsolationBaked then "1" else "0"}
 
           # Shell-rc seeding (Q23). Baked into the image at build time so
           # interactive devuser shells consistently source the agentbox

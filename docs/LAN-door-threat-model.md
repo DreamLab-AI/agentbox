@@ -23,3 +23,15 @@ sibling. Separate network namespaces/credentials or authenticated VNC/CDP are
 required before selecting a hostile-sibling profile. Existing exceptions are
 recorded rather than silently widened. No credentials were copied into this
 document and no new listener was enabled.
+
+## Egress doors: the prompt egress register (G-10) — 2026-10-03
+
+The table above covers doors *into* the box and the two Loom doors out of it.
+Every other route by which a prompt, code, a secret-adjacent string or a key
+leaves (LAN, vendor and public internet) is catalogued in the
+[prompt egress register](SECURITY-profiles.md#prompt-egress-register--2026-10-03),
+rendered from `config/egress-policy.json` `.register` by
+`scripts/ci/render-egress-register.js` and checked in CI. The Loom rows there
+(`loom-door`, `loom-raw`) cite this document's lines 16 and 17. Routes with no
+gate or no accepted-egress record carry a marker in the register; this document
+does not restate them.

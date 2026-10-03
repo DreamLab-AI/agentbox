@@ -802,6 +802,38 @@ Run `preflight` before `up` whenever you change `agentbox.toml`, the override fi
 
 Hardening baseline is applied unconditionally. Feature-specific privilege expansions are manifest-declared.
 
+### `[security].role_isolation` — role service accounts (ADR-2122)
+
+```toml
+[security]
+role_isolation = false   # boot-class; keep off until the rehearsal passes
+```
+
+On, the boot does the following:
+
+- It keeps `/run/secrets` root-owned and copies each role's secrets into
+  `/run/secrets/<role>/` (directory `0500`, files `0400`, owned by the role).
+- It writes the 11 ROLE-class variables to files and unsets them from PID 1. The
+  classes are in `config/custody/env-classes.json`; `TAILSCALE_AUTHKEY` goes to
+  root only.
+- It renders `identity.env` with public values only.
+- It execs `/etc/supervisord.roles.conf`. In that config `nostr-relay` and
+  `serve-identity` (the identity port) run as `ab-identity`, and `nostr-gateway`,
+  `nip98-proxy` and the sidestr producers and faucets run as their own roles.
+- devuser's Docker CLI moves to the GET-only `/run/docker-ro.sock`, so
+  `docker exec` from inside the container stops working.
+
+The roles, uids and secret mapping live in `config/role-accounts.json`. Off, the
+boot is today's. Problems are logged with `ROLE-ISOLATION-` markers and recorded
+in `/run/secrets/role-isolation.state`. None of them stops the boot.
+
+The first image that carries the flag needs `./agentbox.sh rebuild`. After that
+the flag applies on a restart. Several pieces are not on the branch yet (at-rest
+custody, the W3b consumer cutover, the producer state move), so with the flag on
+some programs fail closed. Follow
+[Turning on role_isolation](../developer/role-isolation-runbook.md), and keep the
+flag off until its rehearsal passes.
+
 ### `[security.deepsec]` — the build-with-quality Security gate (ADR-2033)
 
 Runtime policy for `skills/build-with-quality/scripts/deepsec-gate.sh`, which drives the

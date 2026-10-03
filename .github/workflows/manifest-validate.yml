@@ -23,6 +23,9 @@ on:
       - 'tests/config/**'
       - 'tests/tui/**'
       - 'config/sidechain/**'
+      - 'config/role-accounts.json'
+      - 'config/lib/**'
+      - 'config/entrypoint-unified.sh'
       - 'scripts/dream-inbox.mjs'
       - 'management-api/lib/system-manifest.js'
       - '.github/workflows/manifest-validate.yml'
@@ -44,6 +47,9 @@ on:
       - 'management-api/lib/system-manifest.js'
       - 'tests/config/knots_header_v2.py'
       - 'config/sidechain/**'
+      - 'config/role-accounts.json'
+      - 'config/lib/**'
+      - 'config/entrypoint-unified.sh'
       - '.github/workflows/manifest-validate.yml'
 
 concurrency:
@@ -123,6 +129,27 @@ jobs:
 
       - name: Assert JSON Schema is well-formed
         run: python3 -c "import json; json.load(open('schema/agentbox.toml.schema.json'))"
+
+      - name: The two supervisor configs cannot drift (ADR-2122)
+        # Today's rendered config vs the isolated one derived from it: only the role
+        # programs' user= and environment= lines differ; secret paths are per-role.
+        run: bash tests/config/role-isolation-supervisor.test.sh
+        env:
+          AGENTBOX_MANIFEST_BIN: services/agentbox-manifest/target/release/agentbox-manifest
+
+      - name: /run/secrets delivery builds the right owner/mode tree (ADR-2122)
+        # The real plan against a scratch root; chown is a recording stub (no root in CI).
+        run: bash tests/config/role-secrets-delivery.test.sh
+        env:
+          AGENTBOX_MANIFEST_BIN: services/agentbox-manifest/target/release/agentbox-manifest
+      - name: at-rest custody migrate/revert and sidechain state seed (ADR-2122, design 3.2-3.4, W2b/W4)
+        # The real registry rows against a scratch root; chown is a recording stub (no root in CI).
+        run: bash tests/config/role-custody-migrate.test.sh
+        env:
+          AGENTBOX_MANIFEST_BIN: services/agentbox-manifest/target/release/agentbox-manifest
+
+      - name: With [security].role_isolation off the boot is today's (ADR-2122)
+        run: bash tests/config/role-isolation-boot.test.sh
 
       - name: Sealed chain documents are well-formed and gated (ADR-2103)
         # The block file is not in the repository, so the on-disk hash case skips here;
