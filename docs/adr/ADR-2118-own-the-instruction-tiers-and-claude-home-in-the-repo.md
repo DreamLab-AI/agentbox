@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 31a54c2f3b03663c6ed2f90196d81dbfd113af57
+verified_commit: dc91e092ab646b4a825805b8229602ac8b15bad3
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, docker-compose.hp.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -120,3 +120,7 @@ through the identity port. This is content in a tier, not a change to how the ti
 projected. It is tool-neutral and has no estate specifics, so it belongs in the tracked layer.
 `tests/config/instructions-layers.test.sh` passes 9/9. The decision holds. Re-verified by
 `git log 32cedf992..31a54c2f3 -- <verified_paths>`.
+
+## Re-verification — 2026-10-03 (`dc91e092ab646b4a825805b8229602ac8b15bad3`, custody W10)
+
+Tripped by the W10 gap fixes on `custody/integration`. `config/entrypoint-unified.sh` (`dc91e092a`) gains `_ab_devuser_privilege_check` and its call after the docker-socket check; it reads files only and is a no-op with `[security].role_isolation` off; `docker-compose.hp.yml` (`248d36f15`) drops `AGENTBOX_NSEC` and `AGENTBOX_PRIVKEY_HEX` from `environment:`; `env_file: .env` still carries them; `docker-compose.override.yml` (`248d36f15`) drops `TAILSCALE_AUTHKEY`, `AGENTBOX_NSEC` and `AGENTBOX_PRIVKEY_HEX` from `environment:`; `env_file: .env` still carries them; `flake.nix` (`dc91e092a`) gains one let-binding, `roleIsolationBaked = securityCfg.role_isolation or false`, and its inline `/etc/sudoers` lines become a call to `config/bake-devuser-privilege.sh` with that flag; with the flag off (the shipped value) the baked `/etc/group`, `/etc/sudoers` and `/etc/sudoers.d/devuser` are byte-identical (RC-X1-07). Nothing this record governs changes meaning. The decision holds. Re-verified by `git log 31a54c2f3..dc91e092a -- <verified_paths>`. Nix was not evaluated in this container.
