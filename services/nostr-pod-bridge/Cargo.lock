@@ -1093,6 +1093,7 @@ dependencies = [
  "bech32 0.12.0",
  "futures-util",
  "hex",
+ "hmac",
  "k256",
  "nostr-bbs-core",
  "reqwest",

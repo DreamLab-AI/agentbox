@@ -36,6 +36,9 @@ serde_json = { version = "1", features = ["preserve_order"] }
 hex = "0.4"
 # SHA-256 for the urn:agentbox:activity content address (ADR-013 minter parity).
 sha2 = "0.10"
+# HMAC-SHA256 for the live-mirror child key (`mirror_key`): RustCrypto, already
+# in the lock graph at 0.12.1 via nostr-bbs-core, so this adds no new crate.
+hmac = "0.12"
 # secp256k1 scalar/point arithmetic for the BIP-340 even-y normalisation and the
 # 64-byte SEC1 (X || Y) `public_key_hex` the identity file records. Signing and
 # every NIP-19 encoding still go through nostr-bbs-core; this is encoding only.
