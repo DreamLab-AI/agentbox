@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: dc6c7c5d88cb202fd7f3b6ceb0b02fa571475411
+verified_commit: 541e96dcc2ede699b97f0e9699bc4c9c34f1ad17
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -243,3 +243,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo 3.51.1, Claude Code 2.1.288)
 
 `e3b06d688..dc6c7c5d8`: `flake.nix` changes only the `rufloPkg` pin: version 3.51.1, its lock (`config/npm-locks/ruflo-3.51.1.package-lock.json`) and both hashes (`dc6c7c5d8`), with the rationale comment. The ruflo closure's bins and extraBins aliases, every gate and every other derivation are unchanged. ruflo 3.51.1 `init` still writes its agent and command template trees, which the reconcile scripts govern unchanged; the image's own `init` calls now pass `--no-mods` (`config/agentbox-aliases.sh`), so they also leave the mods' project settings unwritten (`tests/config/ruflo-init-no-mods.test.sh`). Nothing this record governs (ADR-2092 — Agents and slash-commands get the same manifest governance skills already have) changes meaning. The decision holds. Re-verified by `git log e3b06d688..dc6c7c5d8 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (agentic-qe 3.14.7)
+
+`dc6c7c5d8..541e96dcc`: `flake.nix` changes only the `agenticQePkg` pin: version 3.14.7, its lock and both hashes (`541e96dcc`), with the rationale comment. Nothing this record governs (ADR-2092 — Agents and slash-commands get the same manifest governance skills already have) changes meaning. The decision holds. Re-verified by `git log dc6c7c5d8..541e96dcc -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.

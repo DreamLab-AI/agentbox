@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: dc6c7c5d88cb202fd7f3b6ceb0b02fa571475411
+verified_commit: 541e96dcc2ede699b97f0e9699bc4c9c34f1ad17
 verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, docker-compose.hp.yml, tests/config/role-custody-migrate.test.sh, config/sidechain/run-producer.sh, config/sidechain/run-faucet.sh, config/sidechain/mirror-sync.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
@@ -537,3 +537,7 @@ Tripped by `ad5d0b91a`, a shellcheck-only change to `config/lib/role-custody.sh`
 ### Re-verification — 2026-10-03 (ruflo 3.51.1, Claude Code 2.1.288)
 
 `e3b06d688..dc6c7c5d8`: `flake.nix` changes only the `rufloPkg` pin: version 3.51.1, its lock (`config/npm-locks/ruflo-3.51.1.package-lock.json`) and both hashes (`dc6c7c5d8`), with the rationale comment. The ruflo closure's bins and extraBins aliases, every gate and every other derivation are unchanged. Nothing this record governs (ADR-2122 — Role service accounts, /run/secrets, and the identity port) changes meaning. The decision holds. Re-verified by `git log e3b06d688..dc6c7c5d8 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+### Re-verification — 2026-10-03 (agentic-qe 3.14.7)
+
+`dc6c7c5d8..541e96dcc`: `flake.nix` changes only the `agenticQePkg` pin: version 3.14.7, its lock and both hashes (`541e96dcc`), with the rationale comment. Nothing this record governs (ADR-2122 — Role service accounts, /run/secrets, and the identity port) changes meaning. The decision holds. Re-verified by `git log dc6c7c5d8..541e96dcc -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
