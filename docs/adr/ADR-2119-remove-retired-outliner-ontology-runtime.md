@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e3b06d6888293a32a758179e8c7dc9667c5d9f58
+verified_commit: dc6c7c5d88cb202fd7f3b6ceb0b02fa571475411
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -106,3 +106,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `flake.nix` (`dc91e092a`)
 ### Re-verification — 2026-10-03 (key-variable rule)
 
 `b41d9486c..e3b06d688` changes one governed line: `flake.nix` passes `--env-classes ${./config/custody/env-classes.json}` to the build-time `role-accounts isolate`, which now refuses a devuser program holding a key variable without a role (ADR-2122). Nothing this record governs (ADR-2119 — Remove the retired outliner ontology runtime) changes. The decision holds. Re-verified by `git log b41d9486c..e3b06d688 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo 3.51.1, Claude Code 2.1.288)
+
+`e3b06d688..dc6c7c5d8`: `flake.nix` changes only the `rufloPkg` pin: version 3.51.1, its lock (`config/npm-locks/ruflo-3.51.1.package-lock.json`) and both hashes (`dc6c7c5d8`), with the rationale comment. The ruflo closure's bins and extraBins aliases, every gate and every other derivation are unchanged. Nothing this record governs (ADR-2119 — Remove the retired outliner ontology runtime) changes meaning. The decision holds. Re-verified by `git log e3b06d688..dc6c7c5d8 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.

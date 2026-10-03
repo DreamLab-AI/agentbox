@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f93586b9e52fda0d0b367881e2d2ff3014509faf
+verified_commit: dc6c7c5d88cb202fd7f3b6ceb0b02fa571475411
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation)
@@ -333,3 +333,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `config/entrypoint-unifie
 ## Re-verification — 2026-10-03 (`f93586b9e52fda0d0b367881e2d2ff3014509faf`, custody W2b/W4)
 
 Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the sidechain state move). `config/entrypoint-unified.sh` changes only in three custody blocks (ADR-2122, design 3.2). (1) A new at-rest step before Phase 3: `ab_custody_migrate` when `[security].role_isolation` is on, otherwise `ab_custody_revert`, which changes nothing on a volume that was never migrated (`tests/config/role-custody-migrate.test.sh` shows the stat set, ctime included, byte-identical). (2) Under the flag only, the volume-root chown loop skips `/var/lib/agentbox/secrets`. (3) After the identity bootstrap, the identity file goes to ab-identity 0400 under the flag; with the flag off, the devuser 0600 statements are unchanged. The Jev compaction projection is untouched. The decision holds. Re-verified by `git log dc91e092a..f93586b9e -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo 3.51.1, Claude Code 2.1.288)
+
+`f93586b9e..dc6c7c5d8`: `lib/claude-code-binary.nix` moves Claude Code 2.1.285 → 2.1.288 (`0ffae7c0e`); both per-arch hashes equal Anthropic's 2.1.288 manifest checksums. The factrail plugin baked at the pinned rev (`share/factrail/plugin`) passes `claude plugin validate --strict` under the 2.1.288 binary with the hook surface it reports under 2.1.285, unchanged: session.start, tool.call, skill.prompt, command.run, session.compact, turn.start, turn.complete; calls include `$.session.compact` and `$.command.register`. Nothing this record governs (ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch) changes meaning. The decision holds. Re-verified by `git log f93586b9e..dc6c7c5d8 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
