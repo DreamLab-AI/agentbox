@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f93586b9e52fda0d0b367881e2d2ff3014509faf
+verified_commit: b41d9486c55e32c332f26e87f82271ee65ea24f5
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -235,3 +235,7 @@ until the owner's rebuild.
 ## Re-verification — 2026-10-03 (`f93586b9e52fda0d0b367881e2d2ff3014509faf`, custody W2b/W4)
 
 Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the sidechain state move). `agentbox.toml` changes only in the comment above `[security].role_isolation = false`: it no longer says the identity port and the custody migration are absent, and names what is built (W3, W2b, W4) and what is owed (W3b). No key or value moves. No capability gate or spend cap moves. The decision holds. Re-verified by `git log 3b5412963..f93586b9e -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (poker house seat, PR #14)
+
+`f93586b9e..b41d9486c`: `agentbox.toml` gains `[poker_citizen]` (`enabled = true`, key and state under `sidestr/agents`, the forum relay, `daily_cap = 20000`) (`55b9fe9f6`). The new gate is catalogued and validated like every other, which is what this record requires. The decision holds. Re-verified by `git log f93586b9e..b41d9486c -- <verified_paths>`.
