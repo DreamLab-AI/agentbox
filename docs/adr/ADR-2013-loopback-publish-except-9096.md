@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 451823ca8ec0b5452ceb8fdc52e777f77a2bbc43
+verified_commit: d52d3eeb43b057ede41050a831dfac9ebb353d30
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -331,3 +331,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `.github/workflows/invari
 ### Re-verification — 2026-10-03 (ruflo-console gate, `451823ca8`)
 
 `daba195e5..451823ca8`: `invariants.yml` runs `tests/config/ruflo-console.test.mjs` and widens its path filter; `flake.nix` adds the pinned `rufloConsole` input (ruflo v3.51.1, files-only), the `rufloConsolePlugins` bake (only the three mod directories) and its copy into the `agentbox` marketplace under `[toolchains].ruflo_console`, and lets that gate pull in the ruflo closure. Nothing this record governs (ADR-2013 — Every compose publish binds 127.0.0.1 unless on the sanctioned-exposure list, CI-enforced across all overlays) changes meaning. The decision holds. Re-verified by `git log daba195e5..451823ca8 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (agentic-qe 3.14.7)
+
+`451823ca8..d52d3eeb4`: `flake.nix` changes only the `agenticQePkg` pin: version 3.14.7, its lock and both hashes (`d52d3eeb4`), with the rationale comment. Nothing this record governs (ADR-2013 — Every compose publish binds 127.0.0.1 unless on the sanctioned-exposure list, CI-enforced across all overlays) changes meaning. The decision holds. Re-verified by `git log 451823ca8..d52d3eeb4 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
