@@ -102,14 +102,16 @@ done
 bad4=""
 for p in "${programs[@]}"; do
   r="$(role_of "$p")"
+  # A shared group's socket dir is allowed to its members (devuser for non-role programs).
+  shared="$(jq -r --arg m "${r:-devuser}" '(.groups // [])[] | select(.members | index($m)) | "/run/secrets/\(.name)/"' "$TABLE")"
   while IFS= read -r ref; do
     [ -n "$ref" ] || continue
-    [ "$ref" = "/run/secrets/${r:-<none>}/" ] || bad4="${bad4} ${p}->${ref}"
+    [ "$ref" = "/run/secrets/${r:-<none>}/" ] || grep -qxF -- "$ref" <<<"$shared" || bad4="${bad4} ${p}->${ref}"
   done < <(_section "$ISO" "$p" | grep -oE '/run/secrets/[^/"]+/' | sort -u)
-  # The bare role dir (AGENTBOX_SECRETS_DIR) must be the program's own too.
+  # The bare role dir (AGENTBOX_SECRETS_DIR, or a ${...:-default} of it) must be the program's own too.
   while IFS= read -r ref; do
     [ -n "$ref" ] || continue
-    [ "$ref" = "/run/secrets/${r:-<none>}\"" ] || bad4="${bad4} ${p}->${ref}"
+    case "$ref" in "/run/secrets/${r:-<none>}\""|"/run/secrets/${r:-<none>}}\"") ;; *) bad4="${bad4} ${p}->${ref}" ;; esac
   done < <(_section "$ISO" "$p" | grep -oE '/run/secrets/ab-[^/"]+"' | sort -u)
 done
 [ -z "$bad4" ] && _ok "no program names another role's /run/secrets/<role>/ path; non-role programs name none" \
@@ -170,6 +172,25 @@ else
     || _bad "the failure must name the program and write no output" "$(head -3 "$T/o3.log")"
 fi
 
+# ── 6b. the identity port (custody W3 at integration) ────────────────────────
+blk="$(awk '/^\[program:serve-identity\]/{f=1;print;next} /^\[/{f=0} f' "$ISO")"
+gid="$(jq -r '.groups[] | select(.name == "ab-identity-port") | .gid' "$TABLE")"
+if grep -q '^user=ab-identity$' <<<"$blk" && grep -q "AGENTBOX_IDENTITY_SOCK_GID=\"$gid\"" <<<"$blk" \
+   && grep -q 'AGENTBOX_SECRETS_DIR="/run/secrets/ab-identity"' <<<"$blk"; then
+  _ok "serve-identity runs as ab-identity with AGENTBOX_SECRETS_DIR and the socket gid ($gid) from the table"
+else
+  _bad "serve-identity in the roles config" "$blk"
+fi
+fl="$(awk '/^\[program:serve-identity\]/{f=1;next} f && /^command=/{print; exit}' "$ROOT/flake.nix")"
+if grep -q 'env -i' <<<"$fl" && grep -q "AGENTBOX_IDENTITY_KEY_DIR=\"''\${AGENTBOX_SECRETS_DIR" <<<"$fl" \
+   && grep -q "AGENTBOX_IDENTITY_SOCK_GID=\"''\${AGENTBOX_IDENTITY_SOCK_GID" <<<"$fl" \
+   && grep -q 'AGENTBOX_IDENTITY_SOCK=/run/secrets/ab-identity-port/identity.sock' <<<"$fl" \
+   && awk '/^\[program:serve-identity\]/{f=1;next} /^\[/{f=0} f' "$ROOT/flake.nix" | grep -q '^user=devuser$'; then
+  _ok "flake.nix: serve-identity is a devuser program that passes only the role's dir and gid through env -i"
+else
+  _bad "flake.nix serve-identity block" "$fl"
+fi
+
 # ── 7. ids: the docker gid, the range, no members ────────────────────────────
 mapfile -t gids < <(awk '/group_add:/{f=1;next} f && /^[[:space:]]*-/{gsub(/[^0-9]/,""); print; next} f{f=0}' "$ROOT/docker-compose.override.yml" "$ROOT/docker-compose.yml" 2>/dev/null | sort -u)
 bad7=""
@@ -177,21 +198,32 @@ for g in "${gids[@]}"; do
   [ -n "$g" ] || continue
   jq -e --arg g "$g" '.reserved_ids | has($g)' "$TABLE" >/dev/null || bad7="${bad7} ${g}:not-reserved"
   jq -e --argjson g "$g" '[.roles[].uid] | index($g) == null' "$TABLE" >/dev/null || bad7="${bad7} ${g}:taken-by-a-role"
+  jq -e --argjson g "$g" '[(.groups // [])[].gid] | index($g) == null' "$TABLE" >/dev/null || bad7="${bad7} ${g}:taken-by-a-group"
 done
 [ "${#gids[@]}" -ge 1 ] && [ -z "$bad7" ] && _ok "compose group_add gid(s) ${gids[*]} are reserved and held by no role" \
   || _bad "a compose group_add gid collides with the role table" "gids=${gids[*]:-none}${bad7}"
 "$BIN" role-accounts group --table "$TABLE" >"$T/group" 2>&1 && "$BIN" role-accounts passwd --table "$TABLE" >"$T/passwd" 2>&1
-if [ "$(grep -c '' "$T/group")" = "$(jq '.roles | length' "$TABLE")" ] && ! grep -qvE '^ab-[a-z0-9-]+:x:9[67][0-9]:$' "$T/group"; then
+NROLES="$(jq '.roles | length' "$TABLE")"
+head -n "$NROLES" "$T/group" >"$T/group.roles"; tail -n +"$((NROLES + 1))" "$T/group" >"$T/group.shared"
+if [ "$(grep -c '' "$T/group.roles")" = "$NROLES" ] && ! grep -qvE '^ab-[a-z0-9-]+:x:9[67][0-9]:$' "$T/group.roles"; then
   _ok "every role has its own primary group with no members (devuser joins none)"
 else
   _bad "group lines must be ab-<role>:x:<960-979>: with no members" "$(head -3 "$T/group")"
+fi
+# Shared groups (the identity port's socket group): exactly the members the table lists.
+want_shared="$(jq -r '(.groups // [])[] | "\(.name):x:\(.gid):\(.members | join(","))"' "$TABLE")"
+if [ "$want_shared" = "$(cat "$T/group.shared")" ] \
+   && ! grep -qvE '^ab-[a-z0-9-]+:x:9[67][0-9]:[a-z0-9,-]*$' "$T/group.shared"; then
+  _ok "shared group lines carry exactly the table's members ($(cut -d: -f1 "$T/group.shared" | paste -sd, -))"
+else
+  _bad "shared group lines differ from the table" "want=$want_shared got=$(cat "$T/group.shared")"
 fi
 if ! grep -qvE '^ab-[a-z0-9-]+:x:(9[67][0-9]):\1:agentbox role ab-[a-z0-9-]+:/run/secrets/ab-[a-z0-9-]+/home:/sbin/nologin$' "$T/passwd"; then
   _ok "passwd lines: uid = gid in 960-979, home under the role's own secrets dir, nologin"
 else
   _bad "passwd line shape" "$(head -3 "$T/passwd")"
 fi
-grep -qE ':0:|:1000:|devuser' "$T/group" "$T/passwd" && _bad "a role line references root's or devuser's ids" \
+grep -qE ':0:|:1000:|devuser' "$T/group.roles" "$T/passwd" && _bad "a role line references root's or devuser's ids" \
   || _ok "no role line names gid 0, gid 1000 or devuser"
 
 # ── 8. flake wiring (static: Nix cannot be evaluated here) ───────────────────

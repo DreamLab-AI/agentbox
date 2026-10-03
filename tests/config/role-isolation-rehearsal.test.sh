@@ -149,7 +149,7 @@ faucet = true
 faucet_key_file = "/home/devuser/workspace/sidestr/agents/treasury.key"
 TOML
   {
-    for p in nostr-relay nostr-gateway nip98-proxy sidestr-producer sidestr-faucet management-api; do
+    for p in nostr-relay serve-identity nostr-gateway nip98-proxy sidestr-producer sidestr-faucet management-api; do
       printf '[program:%s]\ncommand=/nix/store/x-%s/bin/run\nenvironment=HOME="/var/lib/agentbox/home/%s",PATH="/nix/store/x/bin"\n\n' "$p" "$p" "$p"
     done
   } >"$F/etc/supervisord.roles.conf"
@@ -177,6 +177,7 @@ management-api                   RUNNING   pid 200, uptime 1:00:00
 nip98-proxy                      RUNNING   pid 103, uptime 1:00:00
 nostr-gateway                    RUNNING   pid 102, uptime 1:00:00
 nostr-relay                      RUNNING   pid 101, uptime 1:00:00
+serve-identity                   RUNNING   pid 106, uptime 1:00:00
 sidestr-faucet                   RUNNING   pid 105, uptime 1:00:00
 sidestr-producer                 RUNNING   pid 104, uptime 1:00:00
 SUP
@@ -188,19 +189,20 @@ SUP
   }
   mkproc 1   0    'supervisord|-c|/etc/supervisord.roles.conf|' 'PATH=/bin|' 000
   mkproc 101 960  'nostr-pod-bridge|serve|' 'HOME=/var/lib/agentbox/home/ab-identity|' 000
+  mkproc 106 960  'nostr-pod-bridge|serve-identity|' 'AGENTBOX_SECRETS_DIR=/run/secrets/ab-identity|' 000
   mkproc 102 961  'node|gateway.cjs|' 'HOME=/x|' 000
   mkproc 103 962  'node|proxy.mjs|' 'HOME=/x|' 000
   mkproc 104 964  'node|siding.mjs|produce|--key-file|/run/secrets/ab-sidestr-dreamlab/signer.key|' 'HOME=/x|' 000
   mkproc 105 966  'sidestr-agent|--key-file|/run/secrets/ab-faucet-dreamlab/treasury.key|' 'HOME=/x|' 000
   mkproc 200 "$ME" 'node|server.js|' 'PATH=/bin|BRIDGE_TOKEN=devuser-class|MANAGEMENT_API_KEY=devuser-class|' 600
   # Secrets: the role dirs are untraversable to the runner (as to devuser); stat reports the role.
-  for d in ab-identity:nostr.key ab-sidestr-dreamlab:signer.key ab-sidestr-dreamlab:parent.credential ab-faucet-dreamlab:treasury.key; do
+  for d in ab-identity:nostr.key ab-identity:AGENTBOX_PRIVKEY_HEX ab-identity:AGENTBOX_NSEC ab-identity:JUNKIEJARVIS_PRIVKEY_HEX ab-identity:CONCIERGE_PRIVKEY_HEX ab-sidestr-dreamlab:signer.key ab-sidestr-dreamlab:parent.credential ab-faucet-dreamlab:treasury.key; do
     mkdir -p "$F/run/secrets/${d%%:*}"; printf 'not-a-secret-%s' "$SENTINEL" >"$F/run/secrets/${d%%:*}/${d#*:}"
   done
-  mkdir -p "$F/run/secrets/ab-gateway" "$F/run/secrets/ab-ingress"
+  mkdir -p "$F/run/secrets/ab-gateway" "$F/run/secrets/ab-ingress" "$F/run/secrets/ab-identity-port"
   printf 'not-a-secret-%s' "$SENTINEL" >"$F/var/lib/agentbox/identities/agentbox-core.json"
   for f in sidestr-dreamlab.key sidestr-tbtc4.cookie; do printf 'not-a-secret' >"$F/var/lib/agentbox/secrets/$f"; done
-  python3 -c 'import socket,sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$F/run/agentbox/identity.sock"
+  python3 -c 'import socket,sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$F/run/secrets/ab-identity-port/identity.sock"
   printf 'export AGENTBOX_NPUB=npub1x\nexport AGENTBOX_X_ONLY_PUBKEY_HEX=%s\n' "$CORE_PUB" >"$F/run/agentbox/identity.env"
   printf '[bootstrap] role custody: 6 roles populated\n' >"$F/var/log/bootstrap.log"
   printf '{"height":42,"hash":"00","time":%s}\n' "$((NOW - 100))" >"$F/tip"
@@ -211,9 +213,12 @@ SUP
   echo "1000 998" >"$F/groups"
   lock "$F"
 }
-# lock <dir>: apply the modes that stand in for other owners.
+# lock <dir>: apply the modes that stand in for other owners. The port's socket dir
+# stays traversable: devuser reaches it as a member of ab-identity-port.
 lock() {
-  chmod 000 "$1"/run/secrets/ab-* "$1/var/lib/agentbox/identities" "$1/var/lib/agentbox/secrets"
+  local d
+  for d in "$1"/run/secrets/ab-*; do [ "${d##*/}" = ab-identity-port ] || chmod 000 "$d"; done
+  chmod 000 "$1/var/lib/agentbox/identities" "$1/var/lib/agentbox/secrets"
 }
 
 # rehearse <dir> [VAR=value ...]: run the rehearsal; sets $rc $out $receipt
@@ -261,7 +266,7 @@ if [ "$rc" = 2 ] && [ "$(field .verdict)" = STAGED ] && [ "$(field .flag.source)
   ok "flag absent: exit 2 STAGED, every row 'not_applicable: flag off', would_pass recorded"
 else bad "flag absent: exit 2 STAGED" "rc=$rc verdict=$(field .verdict) src=$(field .flag.source)"; fi
 
-F="$(fresh 3)"; chmod 755 "$F/run/secrets/ab-identity"; chmod 644 "$F/run/secrets/ab-identity/nostr.key"; rehearse "$F"
+F="$(fresh 3)"; chmod 755 "$F/run/secrets/ab-identity"; chmod 644 "$F/run/secrets/ab-identity"/*; rehearse "$F"
 expect_fail "(a) identity secret readable by devuser: exit 1, only (a) fails" a
 
 F="$(fresh 4)"; sed -i 's/^Uid:.*/Uid:\t4321\t4321\t4321\t4321/' "$F/proc/101/status"; rehearse "$F"
@@ -287,7 +292,7 @@ else bad "(e) the hit is named, the value appears nowhere" "$(field '.checks[] |
 F="$(fresh 8)"; echo "1000 0 998" >"$F/groups"; rehearse "$F"
 expect_fail "(f) devuser in group 0: exit 1, only (f) fails" f
 
-F="$(fresh 9)"; rm -f "$F/run/agentbox/identity.sock"; rehearse "$F"
+F="$(fresh 9)"; rm -f "$F/run/secrets/ab-identity-port/identity.sock"; rehearse "$F"
 expect_fail "required but skipped: port socket absent fails (c), never passes" c
 if [ "$(field '[.checks[] | select(.check == "c" and (.observed | startswith("not attempted")))] | length')" -ge 6 ]; then
   ok "required but skipped: each unattempted (c) row is a FAIL saying 'not attempted'"

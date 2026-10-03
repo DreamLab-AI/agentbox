@@ -77,7 +77,12 @@ _owner() {
 VOL="$T/vol"; WS="$T/ws"; SEC="$T/run-secrets"
 mkdir -p "$VOL" "$WS/sidestr/agents"
 # Workspace prefix first: the scratch dir itself may live under /home/devuser/workspace.
-sed -e "s#\t/home/devuser/workspace/#\t${WS}/#" -e "s#\t/var/lib/agentbox/secrets/#\t${VOL}/#" "$T/plan.real" >"$T/plan"
+# `dir` rows name real paths outside the secrets root: point them into scratch too.
+VARLIB="$T/varlib"; mkdir -p "$VARLIB/events"
+sed -e "s#\t/home/devuser/workspace/#\t${WS}/#" -e "s#\t/var/lib/agentbox/secrets/#\t${VOL}/#" \
+  -e "s#^dir\t/var/lib/agentbox/#dir\t${VARLIB}/#" "$T/plan.real" >"$T/plan"
+[ -z "$(awk -F'\t' -v t="$T/" '$1=="dir" && index($2,t)!=1' "$T/plan")" ] \
+  && _ok "the real plan's dir rows are rewritten into the scratch dir" || _bad "dir rows escape the scratch dir" "$(grep $'^dir' "$T/plan")"
 grep -q $'^file\t' "$T/plan" && [ -z "$(awk -F'\t' -v t="$T/" '$1=="file" && index($4,t)!=1' "$T/plan")" ] \
   && _ok "the real plan's file sources are rewritten into the scratch dir" || _bad "plan rewrite" "$(grep $'^file' "$T/plan" | head -2)"
 
@@ -126,6 +131,21 @@ done
 extra="$(find "$SEC" -mindepth 2 -type f | wc -l)"
 [ "$extra" = "${#WANT[@]}" ] && _ok "nothing else was written (no temp files, no stray copies)" || _bad "unexpected files under the root" "$(find "$SEC" -type f | head)"
 [ ! -e "$SEC/ab-ingress/NIP98_PROXY_SESSION_SECRET" ] && _ok "an absent classified variable produces no file" || _bad "absent variable produced a file"
+
+# 2b. the identity port's socket dir and the receipts dir
+sd="$SEC/ab-identity-port"
+[ -d "$sd" ] && [ "$(stat -c %a "$sd")" = 750 ] && [ "$(_owner "$sd")" = "960:969" ] \
+  && _ok "sockdir: <root>/ab-identity-port is 0750, ab-identity:ab-identity-port (960:969)" \
+  || _bad "sockdir" "exists=$([ -d "$sd" ] && echo y) mode=$(stat -c %a "$sd" 2>/dev/null) owner=$(_owner "$sd")"
+rd="$VARLIB/events/sign"
+[ -d "$rd" ] && [ "$(stat -c %a "$rd")" = 2750 ] && [ "$(_owner "$rd")" = "960:1000" ] \
+  && _ok "dir: the sign-receipt dir is 2750, ab-identity:devuser" \
+  || _bad "receipt dir" "mode=$(stat -c %a "$rd" 2>/dev/null) owner=$(_owner "$rd")"
+printf 'root\t%s\ndir\t%s/nope/sign\t960:1000\t2750\ndir\t%s/l\t960:1000\t0777\n' "$T/r5" "$T" "$T" >"$T/plan5"
+ab_role_secrets_deliver "$T/plan5" "" >/dev/null 2>&1
+[ "$AB_RC_FAILURES" = 2 ] && [ ! -e "$T/nope" ] && [ ! -e "$T/l" ] \
+  && _ok "dir rows: an absent parent is not created, a world-writable mode is refused" \
+  || _bad "dir row refusals" "failures=$AB_RC_FAILURES"
 
 # 3. environment scrub
 still=""; for v in "${ENVVARS[@]}"; do [ -n "${!v+x}" ] && still="${still} ${v}"; done

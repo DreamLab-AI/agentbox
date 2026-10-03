@@ -110,12 +110,51 @@ _ab_rc_place() {
   return 1
 }
 
+# _ab_rc_dir <path> <uid>:<gid> <mode> — a `dir` plan row. Refuses a symlink at
+# <path> (moved aside) and any path inside the secrets root; the parent must exist.
+_ab_rc_dir() {
+  local path="$1" ids="$2" mode="$3" chown_cmd="${AB_RC_CHOWN:-chown}"
+  case "$path" in
+    /*/*) ;;
+    *) echo "[security] ROLE-ISOLATION-ERROR: dir row ${path:-?} is not below a top-level directory; skipped" >&2; return 1 ;;
+  esac
+  case "$path" in *..*|*//*|*/)
+    echo "[security] ROLE-ISOLATION-ERROR: dir row ${path} is not a plain path; skipped" >&2; return 1 ;;
+  esac
+  case "$ids" in [0-9]*:[0-9]*) ;; *)
+    echo "[security] ROLE-ISOLATION-ERROR: dir row ${path} has owner ${ids:-?}, not uid:gid; skipped" >&2; return 1 ;;
+  esac
+  case "${ids%%:*}${ids#*:}" in *[!0-9]*)
+    echo "[security] ROLE-ISOLATION-ERROR: dir row ${path} has owner ${ids}, not uid:gid; skipped" >&2; return 1 ;;
+  esac
+  case "$mode" in *[2367]|*[!0-7]*) mode=bad ;; esac
+  case "$mode" in [0-7][0-7][0-7]|[0-7][0-7][0-7][0-7]) ;; *)
+    echo "[security] ROLE-ISOLATION-ERROR: dir row ${path} has mode ${3:-?} (3-4 octal digits, not world-writable); skipped" >&2; return 1 ;;
+  esac
+  if [ -L "$path" ] || { [ -e "$path" ] && [ ! -d "$path" ]; }; then
+    mv -T -- "$path" "${path}.squatted.$$" 2>/dev/null || rm -f -- "$path" 2>/dev/null || true
+  fi
+  if [ ! -d "${path%/*}" ]; then
+    echo "[security] ROLE-ISOLATION-ERROR: dir row ${path}: parent ${path%/*} is absent; not created" >&2
+    return 1
+  fi
+  if { [ -d "$path" ] || mkdir -- "$path"; } && "$chown_cmd" "$ids" "$path" && chmod "$mode" "$path"; then
+    return 0
+  fi
+  echo "[security] ROLE-ISOLATION-ERROR: cannot prepare ${path} (${ids} ${mode})" >&2
+  return 1
+}
+
 # ab_role_secrets_deliver <plan> [secrets-root-override]
 # Execute the plan written by `agentbox-manifest role-accounts isolate`:
 #   root <path>                     the secrets root (the override, if given, wins)
 #   role <name> <uid> <gid>         <root>/<name> 0500 and <root>/<name>/home 0700
 #   file <name> <file> <source>     copy <source> to <root>/<name>/<file>, 0400
 #   env  <name> <file> <VAR>        write $VAR to <root>/<name>/<file>, 0400; unset VAR
+#   sockdir <group> <uid> <gid>     <root>/<group> 0750 owned uid:gid (the identity
+#                                   port's socket dir: inside the root mount, so
+#                                   devuser, owner of /run, cannot rename it)
+#   dir  <path> <uid>:<gid> <mode>  create or re-own <path> outside <root>
 # Every `env` variable is unset whether or not it had a value, so none of them
 # reaches supervisord (PID 1) or any child. Sets AB_RC_DELIVERED, AB_RC_FAILURES.
 ab_role_secrets_deliver() {
@@ -134,6 +173,9 @@ ab_role_secrets_deliver() {
       ''|'#'*) continue ;;
       root)
         root="${override:-$name}"
+        continue ;;
+      dir)
+        _ab_rc_dir "$name" "$a" "$b" || AB_RC_FAILURES=$((AB_RC_FAILURES + 1))
         continue ;;
     esac
     if [ -z "$root" ]; then
@@ -169,6 +211,20 @@ ab_role_secrets_deliver() {
         "$chown_cmd" "${uid}:${gid}" "$dir/home" 2>/dev/null \
           || { echo "[security] ROLE-ISOLATION-ERROR: cannot chown ${dir}/home to ${uid}" >&2; AB_RC_FAILURES=$((AB_RC_FAILURES + 1)); }
         role_uid[$name]="$uid"; role_gid[$name]="$gid"
+        ;;
+      sockdir)
+        case "$a$b" in ''|*[!0-9]*)
+          echo "[security] ROLE-ISOLATION-ERROR: sockdir ${name} has a non-numeric uid/gid; skipped" >&2
+          AB_RC_FAILURES=$((AB_RC_FAILURES + 1)); continue ;;
+        esac
+        if [ -L "$dir" ] || { [ -e "$dir" ] && [ ! -d "$dir" ]; }; then
+          mv -T -- "$dir" "${dir}.squatted.$$" 2>/dev/null || rm -f -- "$dir" 2>/dev/null || true
+        fi
+        if mkdir -p -- "$dir" && chmod 0750 "$dir" && "$chown_cmd" "${a}:${b}" "$dir"; then :
+        else
+          echo "[security] ROLE-ISOLATION-ERROR: cannot prepare socket dir ${dir} (${a}:${b} 0750)" >&2
+          AB_RC_FAILURES=$((AB_RC_FAILURES + 1))
+        fi
         ;;
       file|env)
         if [ -z "${role_uid[$name]:-}" ]; then

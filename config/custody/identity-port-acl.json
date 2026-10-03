@@ -5,7 +5,8 @@
     "Loaded once by `nostr-pod-bridge serve-identity` (AGENTBOX_IDENTITY_ACL). Authorisation is the caller's",
     "uid from SO_PEERCRED, never the socket mode. Callers are keyed by numeric uid; `name` is for receipts only.",
     "uids follow design §2.2 (960 identity, 961 gateway, 962 ingress, 963 spend); W1's role registry is authoritative.",
-    "Key files live under AGENTBOX_IDENTITY_KEY_DIR (default /run/secrets/identity). core.key must hold the",
+    "Key files live under AGENTBOX_IDENTITY_KEY_DIR (default /run/secrets/ab-identity, W1's delivery dir; file names are the",
+    "variable names, as W2's role_secret readers expect). AGENTBOX_PRIVKEY_HEX must hold the",
     "operator hex exactly as AGENTBOX_PRIVKEY_HEX supplies it (not the even-y normalised scalar): the mirror child",
     "is derived from it (src/mirror_key.rs), and an odd-y house key would otherwise hand the phone a different key.",
     "`manifest:a.b.c` resolves from /etc/agentbox.toml at start; an unresolved reference grants nothing.",
@@ -15,7 +16,7 @@
   ],
   "keys": {
     "core": {
-      "file": "core.key",
+      "file": "AGENTBOX_PRIVKEY_HEX",
       "required": true,
       "mirror_root": true,
       "nip98_url_prefixes": ["manifest:integrations.solid_pod_rs.base_url"],
@@ -25,7 +26,7 @@
       ]
     },
     "junkiejarvis": {
-      "file": "junkiejarvis.key",
+      "file": "JUNKIEJARVIS_PRIVKEY_HEX",
       "required": false
     }
   },

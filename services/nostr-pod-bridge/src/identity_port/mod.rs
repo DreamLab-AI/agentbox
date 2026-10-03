@@ -26,8 +26,8 @@
 //! |---|---|
 //! | `AGENTBOX_ROLE_ISOLATION` | must be `1`, otherwise `serve-identity` exits 0 at once |
 //! | `AGENTBOX_IDENTITY_ACL` | `/opt/agentbox/config/custody/identity-port-acl.json` |
-//! | `AGENTBOX_IDENTITY_KEY_DIR` | `/run/secrets/identity` |
-//! | `AGENTBOX_IDENTITY_SOCK` | `/run/agentbox/identity.sock` (also read by the client) |
+//! | `AGENTBOX_IDENTITY_KEY_DIR` | `/run/secrets/ab-identity` (W1's delivery dir for the role) |
+//! | `AGENTBOX_IDENTITY_SOCK` | `/run/secrets/ab-identity-port/identity.sock` (also read by the client) |
 //! | `AGENTBOX_IDENTITY_SOCK_GID` | unset: the process's own gid |
 //! | `AGENTBOX_IDENTITY_RECEIPT_DIR` | `/var/lib/agentbox/events/sign` |
 //! | `AGENTBOX_CONFIG` | `/etc/agentbox.toml` (resolves `manifest:` ACL references) |
@@ -47,11 +47,13 @@ use anyhow::{anyhow, Context, Result};
 use crate::envmap::EnvMap;
 
 /// Default socket path.
-pub const DEFAULT_SOCK: &str = "/run/agentbox/identity.sock";
+/// Inside the root-owned `/run/secrets` mount: devuser owns the rest of `/run`
+/// and could rename any other directory out from under the socket.
+pub const DEFAULT_SOCK: &str = "/run/secrets/ab-identity-port/identity.sock";
 /// Default ACL path (the checked-in file as installed in the image).
 pub const DEFAULT_ACL: &str = "/opt/agentbox/config/custody/identity-port-acl.json";
 /// Default key directory (the identity role's tmpfs secrets).
-pub const DEFAULT_KEY_DIR: &str = "/run/secrets/identity";
+pub const DEFAULT_KEY_DIR: &str = "/run/secrets/ab-identity";
 /// Default receipt directory.
 pub const DEFAULT_RECEIPT_DIR: &str = "/var/lib/agentbox/events/sign";
 

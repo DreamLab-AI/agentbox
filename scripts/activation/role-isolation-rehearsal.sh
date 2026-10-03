@@ -42,7 +42,7 @@
 # required; there is no derived numbering (uid 965 is the host docker group and is reserved).
 #
 # Identity-port client contract for (c), as W3 implements it (custody/w3-identity-port;
-# services/nostr-pod-bridge/src/identity_port). Socket /run/agentbox/identity.sock (0660,
+# services/nostr-pod-bridge/src/identity_port). Socket /run/secrets/ab-identity-port/identity.sock (0660,
 # authorised by SO_PEERCRED uid against config/custody/identity-port-acl.json):
 #   nostr-pod-bridge sign-request <op>   JSON params on stdin, JSON on stdout, exit 0
 #     pubkey        {key}                               -> {"pubkey": "<x-only hex>", "npub", "did"}
@@ -350,7 +350,7 @@ ws.onmessage = (m) => {
 '
 
 check_c() {
-  local sock="${RH_IDENTITY_SOCK:-${AGENTBOX_IDENTITY_SOCK:-/run/agentbox/identity.sock}}" verifier client=() r out ok pod_base url before after calls=0 rdir
+  local sock="${RH_IDENTITY_SOCK:-${AGENTBOX_IDENTITY_SOCK:-/run/secrets/ab-identity-port/identity.sock}}" verifier client=() r out ok pod_base url before after calls=0 rdir
   local ops=(pods-nip98 forum-event relay-nip42 refuse-dm_unwrap refuse-foreign-url refuse-generic-sign)
   verifier="${RH_NIP98_VERIFIER:-}"
   if [ -z "$verifier" ]; then

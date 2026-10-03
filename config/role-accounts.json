@@ -8,6 +8,7 @@
   "secrets_root": "/run/secrets",
   "secret_bearing_programs": [
     "nostr-relay",
+    "serve-identity",
     "nostr-gateway",
     "nip98-proxy",
     "sidestr-producer*",
@@ -17,8 +18,8 @@
     {
       "name": "ab-identity",
       "uid": 960,
-      "purpose": "identity signer: the nostr-pod-bridge daemon (relay slot, NIP-59 unwrap). Sole holder of the sovereign/operator, JunkieJarvis and concierge keys; the identity port (W3a) serves every other caller.",
-      "programs": ["nostr-relay"],
+      "purpose": "identity signer: the nostr-pod-bridge daemon (relay slot, NIP-59 unwrap). Sole holder of the sovereign/operator, JunkieJarvis and concierge keys; it runs the identity port (serve-identity, W3), which signs for every other caller through /run/secrets/ab-identity-port/identity.sock.",
+      "programs": ["nostr-relay", "serve-identity"],
       "secrets": [
         { "file": "nostr.key", "from_env": "AGENTBOX_BRIDGE_SK", "env": "AGENTBOX_BRIDGE_SK_FILE" },
         { "file": "AGENTBOX_PRIVKEY_HEX", "from_env": "AGENTBOX_PRIVKEY_HEX" },
@@ -88,6 +89,25 @@
       "secrets": [
         { "file": "treasury.key", "env": "SIDESTR_FAUCET_KEY", "source": "/home/devuser/workspace/sidestr/agents/treasury-dreamlab-txbt4.key" }
       ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "ab-identity-port",
+      "gid": 969,
+      "purpose": "The identity port's socket group (ADR-2122, W3). /run/secrets/ab-identity-port/ is ab-identity:ab-identity-port 0750 inside the root-owned secrets mount, so devuser (owner of /run) cannot rename it; the socket is 0660 in this group. The group only narrows who can connect: authorisation is SO_PEERCRED against config/custody/identity-port-acl.json, whose callers are devuser (1000) and ab-gateway (961). ab-identity is a member because chgrp needs membership. 969 is the next free id (965 reserved).",
+      "members": ["devuser", "ab-identity", "ab-gateway"],
+      "owner": "ab-identity",
+      "env": "AGENTBOX_IDENTITY_SOCK_GID"
+    }
+  ],
+  "dirs": [
+    {
+      "path": "/var/lib/agentbox/events/sign",
+      "owner": "ab-identity",
+      "group": "devuser",
+      "mode": "2750",
+      "purpose": "Identity-port sign receipts: written by ab-identity, read by devuser (the rehearsal, operators). The parent is devuser-owned, so the port cannot create it itself."
     }
   ]
 }

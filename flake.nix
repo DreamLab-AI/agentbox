@@ -2488,6 +2488,35 @@ startsecs=0
 priority=20
 stdout_logfile=/var/log/docker-read-proxy.log
 stderr_logfile=/var/log/docker-read-proxy.error.log
+${lib.optionalString (nostrPodBridgePkg != null) ''
+
+[program:serve-identity]
+; Custody X-1 step 1, W3: the identity port (design §2.5; ADR-2122). Holds the
+; core and JunkieJarvis keys and signs named operations for the callers in
+; config/custody/identity-port-acl.json, authorised by SO_PEERCRED uid.
+; Today's config runs it as devuser, and with [security].role_isolation off it
+; prints one line and exits 0 (status EXITED, expected), like docker-read-proxy.
+; With the flag on, `agentbox-manifest role-accounts isolate` rewrites user= to
+; ab-identity and sets AGENTBOX_SECRETS_DIR=/run/secrets/ab-identity (where the
+; delivery plan wrote AGENTBOX_PRIVKEY_HEX and JUNKIEJARVIS_PRIVKEY_HEX) and
+; AGENTBOX_IDENTITY_SOCK_GID (the ab-identity-port group) in environment=; the
+; command passes exactly those through `env -i`, so PID 1's inherited .env
+; (design §0 bypass 3) never reaches this process. The socket dir
+; /run/secrets/ab-identity-port/ (0750) is made by the delivery plan inside the
+; root-owned secrets mount: devuser owns /run and could rename anything else.
+command=${pkgs.bash}/bin/bash -c 'exec ${pkgs.coreutils}/bin/env -i AGENTBOX_ROLE_ISOLATION="''${AGENTBOX_ROLE_ISOLATION:-0}" RUST_LOG=info AGENTBOX_IDENTITY_ACL=/opt/agentbox/config/custody/identity-port-acl.json AGENTBOX_IDENTITY_KEY_DIR="''${AGENTBOX_SECRETS_DIR:-/run/secrets/ab-identity}" AGENTBOX_IDENTITY_SOCK=/run/secrets/ab-identity-port/identity.sock AGENTBOX_IDENTITY_SOCK_GID="''${AGENTBOX_IDENTITY_SOCK_GID:-}" AGENTBOX_IDENTITY_RECEIPT_DIR=/var/lib/agentbox/events/sign AGENTBOX_CONFIG=/etc/agentbox.toml ${nostrPodBridgePkg}/bin/nostr-pod-bridge serve-identity'
+directory=/
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=unexpected
+exitcodes=0
+startsecs=0
+priority=30
+stopsignal=TERM
+stdout_logfile=/var/log/serve-identity.log
+stderr_logfile=/var/log/serve-identity.error.log
+''}
 ${lib.optionalString (toolchainCfg.code_server or false) ''
 
 [program:code-server]

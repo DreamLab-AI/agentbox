@@ -5,7 +5,9 @@
 //! uid (= gid), the supervised programs that run as it and the secrets it alone
 //! may read. Three things are derived from it, and only from it:
 //!
-//! * `/etc/passwd` and `/etc/group` lines, baked by `flake.nix`;
+//! * `/etc/passwd` and `/etc/group` lines, baked by `flake.nix` (the role
+//!   groups have no members; a `groups` entry, such as the identity port's
+//!   socket group, lists its members explicitly);
 //! * `/etc/supervisord.roles.conf`, a pure function of today's rendered
 //!   `/etc/supervisord.conf`: each role program's `user=` becomes its role and its
 //!   `environment=` gains `HOME`, `AGENTBOX_SECRETS_DIR` and the per-secret path
@@ -34,6 +36,7 @@ const NAME_MAX: usize = 32;
 /// The account every non-role program runs as, and the only `user=` a role
 /// program may have in today's config.
 const DEVUSER: &str = "devuser";
+const DEVUSER_ID: u32 = 1000;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -48,6 +51,48 @@ pub struct Table {
     #[serde(default)]
     pub secret_bearing_programs: Vec<String>,
     pub roles: Vec<Role>,
+    /// Shared groups beyond each role's own (the identity port's socket group).
+    #[serde(default)]
+    pub groups: Vec<Group>,
+    /// Directories outside `secrets_root` that root prepares before supervisord
+    /// for a role program that cannot create them itself.
+    #[serde(default)]
+    pub dirs: Vec<DirSpec>,
+}
+
+/// A shared group: a gid in `uid_range`, explicit members, and a role that owns
+/// `<secrets_root>/<name>/` (0750, group = this gid) to put a socket in. The
+/// owner's programs get the gid in `env`, so the socket can be chgrp'd to it.
+/// The directory sits inside the root-owned secrets mount because the rest of
+/// `/run` belongs to devuser, who could rename anything else out of the way.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Group {
+    pub name: String,
+    pub gid: u32,
+    #[serde(default)]
+    pub purpose: String,
+    /// `devuser` or role names. The owner must be one (chgrp needs membership).
+    pub members: Vec<String>,
+    /// The role that owns `<secrets_root>/<name>/` and receives `env`.
+    pub owner: String,
+    /// The variable the owner's programs read the gid from.
+    pub env: String,
+}
+
+/// A directory root creates (or re-owns) before supervisord starts.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DirSpec {
+    pub path: String,
+    /// `root`, `devuser` or a role name.
+    pub owner: String,
+    /// `root`, `devuser`, a role name or a `groups` name.
+    pub group: String,
+    /// Octal mode, three or four digits.
+    pub mode: String,
+    #[serde(default)]
+    pub purpose: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -88,6 +133,21 @@ impl Table {
         self.roles
             .iter()
             .find(|r| r.programs.iter().any(|p| p == program))
+    }
+
+    /// uid of `root`, `devuser` or a role.
+    fn user_id(&self, name: &str) -> Option<u32> {
+        match name {
+            "root" => Some(0),
+            DEVUSER => Some(DEVUSER_ID),
+            _ => self.roles.iter().find(|r| r.name == name).map(|r| r.uid),
+        }
+    }
+
+    /// gid of `root`, `devuser`, a role's own group or a shared group.
+    fn group_id(&self, name: &str) -> Option<u32> {
+        self.user_id(name)
+            .or_else(|| self.groups.iter().find(|g| g.name == name).map(|g| g.gid))
     }
 
     fn is_secret_bearing(&self, program: &str) -> bool {
@@ -285,6 +345,63 @@ pub fn validate(t: &Table) -> Result<(), String> {
             }
         }
     }
+    let mut gids = BTreeSet::new();
+    for g in &t.groups {
+        let at = format!("group {:?}", g.name);
+        if !is_role_name(&g.name) {
+            errs.push(format!("{at}: names are ab-<lowercase, digits, hyphens>, at most {NAME_MAX} characters"));
+        }
+        if !names.insert(g.name.as_str()) {
+            errs.push(format!("{at}: the name is already a role or group"));
+        }
+        if g.gid < lo || g.gid > hi {
+            errs.push(format!("{at}: gid {} is outside uid_range [{lo}, {hi}]", g.gid));
+        }
+        if reserved.contains(&g.gid) {
+            errs.push(format!("{at}: gid {} is reserved", g.gid));
+        }
+        if uids.contains(&g.gid) || !gids.insert(g.gid) {
+            errs.push(format!("{at}: gid {} is already taken", g.gid));
+        }
+        for m in &g.members {
+            if m != DEVUSER && !t.roles.iter().any(|r| &r.name == m) {
+                errs.push(format!("{at}: member {m:?} is neither devuser nor a role"));
+            }
+        }
+        match t.roles.iter().find(|r| r.name == g.owner) {
+            None => errs.push(format!("{at}: owner {:?} is not a role", g.owner)),
+            Some(r) => {
+                if !g.members.contains(&g.owner) {
+                    errs.push(format!("{at}: owner {} must be a member (chgrp needs it)", g.owner));
+                }
+                if r.secrets.iter().any(|s| s.env.as_deref() == Some(g.env.as_str())) {
+                    errs.push(format!("{at}: env {} already names a secret of {}", g.env, g.owner));
+                }
+            }
+        }
+        if !is_env_name(&g.env) || matches!(g.env.as_str(), "HOME" | "AGENTBOX_SECRETS_DIR") {
+            errs.push(format!("{at}: env {:?} is not a free environment name", g.env));
+        }
+    }
+    for d in &t.dirs {
+        let at = format!("dir {:?}", d.path);
+        if !is_plain_abs_path(&d.path) || d.path.ends_with('/') || d.path.matches('/').count() < 2 {
+            errs.push(format!("{at}: must be a plain absolute path below a top-level directory"));
+        }
+        if d.path == t.secrets_root || d.path.starts_with(&format!("{}/", t.secrets_root)) {
+            errs.push(format!("{at}: secrets_root is the delivery's own; list groups there instead"));
+        }
+        if d.owner != "root" && d.owner != DEVUSER && !t.roles.iter().any(|r| r.name == d.owner) {
+            errs.push(format!("{at}: owner {:?} is not root, devuser or a role", d.owner));
+        }
+        if t.group_id(&d.group).is_none() {
+            errs.push(format!("{at}: group {:?} is not root, devuser, a role or a group", d.group));
+        }
+        let m = d.mode.as_str();
+        if !(3..=4).contains(&m.len()) || !m.chars().all(|c| ('0'..='7').contains(&c)) || m.ends_with(['2', '3', '6', '7']) {
+            errs.push(format!("{at}: mode {m:?} must be 3-4 octal digits and not world-writable"));
+        }
+    }
     for reserved_name in ["root", DEVUSER, "wheel", "nobody", "nogroup"] {
         if names.contains(reserved_name) {
             errs.push(format!("role name {reserved_name} is a system account"));
@@ -324,13 +441,16 @@ pub fn passwd_lines(t: &Table) -> String {
         .collect()
 }
 
-/// `/etc/group` lines: each role's own primary group, with NO members. Nobody,
-/// devuser included, joins a role group.
+/// `/etc/group` lines: each role's own primary group, with NO members (nobody,
+/// devuser included, joins a role group), then each shared group with exactly
+/// the members the table lists.
 pub fn group_lines(t: &Table) -> String {
-    t.roles
+    let roles = t.roles.iter().map(|r| format!("{}:x:{}:\n", r.name, r.uid));
+    let shared = t
+        .groups
         .iter()
-        .map(|r| format!("{}:x:{}:\n", r.name, r.uid))
-        .collect()
+        .map(|g| format!("{}:x:{}:{}\n", g.name, g.gid, g.members.join(",")));
+    roles.chain(shared).collect()
 }
 
 /// One line per role (name, uid, programs, purpose), then a count. Names and
@@ -350,6 +470,18 @@ pub fn summary(t: &Table) -> String {
             programs,
             r.secrets.len(),
             r.purpose
+        ));
+    }
+    for g in &t.groups {
+        out.push_str(&format!(
+            "{}\t{}\tgroup of {}\t{}/{}/ owned by {}\t{}\n",
+            g.name,
+            g.gid,
+            g.members.join(","),
+            t.secrets_root,
+            g.name,
+            g.owner,
+            g.purpose
         ));
     }
     out.push_str(&format!("role-accounts: {} role(s) valid\n", t.roles.len()));
@@ -588,6 +720,9 @@ pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
             }
         }
         set_env(&mut items, "AGENTBOX_SECRETS_DIR", &dir);
+        for g in t.groups.iter().filter(|g| g.owner == role.name) {
+            set_env(&mut items, &g.env, &g.gid.to_string());
+        }
         let env_line = format!("environment={}\n", render_env(&items));
         match s.env_line {
             Some(i) => lines[i] = env_line,
@@ -604,7 +739,9 @@ pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
         "# agentbox role-secrets plan (ADR-2122). Generated by `agentbox-manifest role-accounts isolate`; do not edit.\n\
          # role <name> <uid> <gid>       create <secrets_root>/<name> (0500) and its home (0700), owned by the role\n\
          # file <name> <file> <source>   copy an at-rest file to <secrets_root>/<name>/<file>, 0400\n\
-         # env  <name> <file> <VAR>      write PID 1's $VAR to <secrets_root>/<name>/<file>, 0400, then unset it\n",
+         # env  <name> <file> <VAR>      write PID 1's $VAR to <secrets_root>/<name>/<file>, 0400, then unset it\n\
+         # sockdir <group> <uid> <gid>   create <secrets_root>/<group> (0750) owned by <uid>, group <gid>\n\
+         # dir  <path> <uid>:<gid> <mode> create or re-own <path> outside secrets_root\n",
     );
     plan.push_str(&format!("root\t{}\n", t.secrets_root));
     for r in &t.roles {
@@ -616,6 +753,18 @@ pub fn isolate(t: &Table, conf: &str) -> Result<Isolated, String> {
                 plan.push_str(&format!("file\t{}\t{}\t{src}\n", r.name, sec.file));
             }
         }
+    }
+
+    for g in &t.groups {
+        let owner = t.user_id(&g.owner).unwrap_or_default();
+        plan.push_str(&format!("sockdir\t{}\t{owner}\t{}\n", g.name, g.gid));
+    }
+    for d in &t.dirs {
+        let (u, g) = (
+            t.user_id(&d.owner).unwrap_or_default(),
+            t.group_id(&d.group).unwrap_or_default(),
+        );
+        plan.push_str(&format!("dir\t{}\t{u}:{g}\t{}\n", d.path, d.mode));
     }
 
     Ok(Isolated {
@@ -675,10 +824,11 @@ mod tests {
     fn passwd_and_group_lines_have_no_members_and_role_homes() {
         let t = table();
         let g = group_lines(&t);
-        for line in g.lines() {
-            assert!(line.ends_with(':'), "group line has members: {line}");
+        for line in g.lines().take(t.roles.len()) {
+            assert!(line.ends_with(':'), "role group line has members: {line}");
             assert!(!line.contains("devuser"));
         }
+        assert_eq!(g.lines().count(), t.roles.len() + t.groups.len());
         let p = passwd_lines(&t);
         assert!(p.contains(
             "ab-identity:x:960:960:agentbox role ab-identity:/run/secrets/ab-identity/home:/sbin/nologin\n"
@@ -836,5 +986,65 @@ mod tests {
         let iso = isolate(&small_table(), &conf).unwrap();
         assert!(!iso.plan.contains("file\tab-b"));
         assert!(iso.plan.contains("role\tab-b\t961\t961"));
+    }
+
+    #[test]
+    fn the_identity_port_group_is_baked_exported_and_planned() {
+        let t = table();
+        let g = t
+            .groups
+            .iter()
+            .find(|g| g.name == "ab-identity-port")
+            .expect("the repository table declares the identity port's group");
+        assert_eq!(g.owner, "ab-identity");
+        assert_ne!(g.gid, 965);
+        assert!(group_lines(&t).contains(&format!(
+            "ab-identity-port:x:{}:{}\n",
+            g.gid,
+            g.members.join(",")
+        )));
+        let conf = "[program:serve-identity]\ncommand=x\nuser=devuser\nenvironment=HOME=\"/home/devuser\"\n\n[program:other]\ncommand=y\nuser=devuser\n";
+        let iso = isolate(&t, conf).unwrap();
+        assert!(iso.conf.contains("user=ab-identity\n"));
+        assert!(iso
+            .conf
+            .contains(&format!("AGENTBOX_IDENTITY_SOCK_GID=\"{}\"", g.gid)));
+        assert!(iso.conf.contains("AGENTBOX_SECRETS_DIR=\"/run/secrets/ab-identity\""));
+        assert!(iso
+            .plan
+            .contains(&format!("sockdir\tab-identity-port\t960\t{}\n", g.gid)));
+        assert!(iso
+            .plan
+            .contains(&format!("dir\t/var/lib/agentbox/events/sign\t960:1000\t2750\n")));
+    }
+
+    #[test]
+    fn group_and_dir_rules_are_enforced() {
+        let e = tiny(&format!(
+            r#"{{{BASE},"roles":[{{"name":"ab-a","uid":960}}],
+            "groups":[{{"name":"ab-g","gid":965,"members":["ab-a","eve"],"owner":"ab-a","env":"HOME"}},
+                      {{"name":"ab-h","gid":960,"members":[],"owner":"ab-z","env":"G"}}],
+            "dirs":[{{"path":"/run/secrets/x","owner":"eve","group":"nobody","mode":"0777"}}]}}"#
+        ))
+        .unwrap_err();
+        for want in [
+            "gid 965 is reserved",
+            "member \"eve\" is neither devuser nor a role",
+            "env \"HOME\" is not a free environment name",
+            "gid 960 is already taken",
+            "owner \"ab-z\" is not a role",
+            "secrets_root is the delivery's own",
+            "owner \"eve\" is not root",
+            "group \"nobody\" is not",
+            "not world-writable",
+        ] {
+            assert!(e.contains(want), "missing {want:?} in {e}");
+        }
+        tiny(&format!(
+            r#"{{{BASE},"roles":[{{"name":"ab-a","uid":960}}],
+            "groups":[{{"name":"ab-g","gid":969,"members":["devuser","ab-a"],"owner":"ab-a","env":"G_GID"}}],
+            "dirs":[{{"path":"/var/lib/x","owner":"ab-a","group":"ab-g","mode":"2750"}}]}}"#
+        ))
+        .expect("a well-formed group and dir validate");
     }
 }
