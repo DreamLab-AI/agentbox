@@ -439,7 +439,7 @@ _ab_role_env_capture() { # _ab_role_env_capture <role_isolation 0|1> [secrets-ro
     # A fresh tmpfs holds nothing here; anything that is not a plain directory
     # we created is replaced rather than followed.
     if [ -L "$dir" ] || { [ -e "$dir" ] && [ ! -d "$dir" ]; }; then rm -f -- "$dir"; fi
-    mkdir -p -m 0700 -- "$dir"
+    mkdir -p -- "$root"; [ -d "$dir" ] || mkdir -m 0700 -- "$dir"
     chown 0:0 "$dir" 2>/dev/null || true
     chmod 0700 "$dir"
     file="${dir}/${name}"
