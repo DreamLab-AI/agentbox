@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e020264b54c6872ca98995c1adda18b8451a39af
+verified_commit: d3ff8e9a876e6b026b543f8824487e002e04cfa0
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -272,3 +272,7 @@ Tripped by the sidechain health and witness change. `agentbox.toml` changed only
 
 Tripped by ADR-2097 (the rail keyed by chain). `agentbox.toml` changes only inside `[payments.sidestr]` (ADR-2097): its comment block, `chain_id` now `sidestr:dreamlab-txbt4`, and `producer_url` dropped in favour of the chain's derived port. Nothing else this record governs is touched, and the decision holds unchanged.
 Re-verified by `git diff e434a7a59..e020264b54c6872ca98995c1adda18b8451a39af -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-03 (`d3ff8e9a876e6b026b543f8824487e002e04cfa0`)
+
+Tripped by the G-5 Q15 correction (`custody/w8-key-split`). `agentbox.toml` changed only in the trailing comments of two allowlist entries: `b41654017f…2f7a` is relabelled as the operator's NIP-07 31403 decision signer (it is `[sovereign_mesh.operator].pubkey_hex`), not visionclaw-server, and the `11ed6422…663c` entry in `[interaction_plane.proxy]` notes that its Podkey-vault copy is to be replaced by K_browser. No key, value, table or list member moved. This record's claim at `:157-160` needs one correction and one confirmation. The correction: the entry it calls `visionclaw-server (governance publisher)` is the operator's decision signer. Q15 evidence, read from the dreamlab relay (every stored event of kinds 31400-31403) and from VisionClaw source: VisionClaw's 31402s are signed by `11ed6422…663c`, and `b41654017f…` signs only 31403. The confirmation: the ADR-040 D3 / G-5 key split has **not** landed, because no new pubkey is admitted yet, so `review_trigger` has not fired. The inline annotation now names G-5 rather than ADR-040 D3. `flake.nix` is untouched, so the baked allowlist is byte-identical. `node scripts/agentbox-config-validate.js agentbox.toml` is valid with the same 5 advisory warnings as `origin/main` (`0919dc39a`). Decision and status unchanged.
