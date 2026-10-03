@@ -1,0 +1,93 @@
+{
+  "$comment": "ADR-2122 (custody X-1 step 1, W1): the single source for per-role service accounts. flake.nix bakes /etc/passwd and /etc/group from it, and `agentbox-manifest role-accounts isolate` derives /etc/supervisord.isolated.conf and the /run/secrets delivery plan from today's rendered supervisord.conf with it. Inert unless [security].role_isolation = true. A secret is EITHER `source` (a file path; the program's own environment= value for `env` wins over it) OR `from_env` (a PID-1 environment variable, written to the file and unset before supervisord). `env` names the variable the program reads the path from; the isolated config points it at /run/secrets/<role>/<file>. Never put a secret VALUE here.",
+  "schema": "agentbox.role-accounts/1",
+  "uid_range": [960, 979],
+  "reserved_ids": {
+    "965": "host docker group: docker-compose.override.yml group_add. A role whose gid is 965 would sit in the Docker socket's group, and the Docker daemon is root on the host."
+  },
+  "secrets_root": "/run/secrets",
+  "secret_bearing_programs": [
+    "nostr-relay",
+    "nostr-gateway",
+    "nip98-proxy",
+    "sidestr-producer*",
+    "sidestr-faucet*"
+  ],
+  "roles": [
+    {
+      "name": "ab-identity",
+      "uid": 960,
+      "purpose": "identity signer: the nostr-pod-bridge daemon (relay slot, NIP-59 unwrap). Sole holder of the sovereign/operator, JunkieJarvis and concierge keys; the identity port (W3a) serves every other caller.",
+      "programs": ["nostr-relay"],
+      "secrets": [
+        { "file": "nostr.key", "from_env": "AGENTBOX_BRIDGE_SK", "env": "AGENTBOX_BRIDGE_SK_FILE" },
+        { "file": "AGENTBOX_PRIVKEY_HEX", "from_env": "AGENTBOX_PRIVKEY_HEX" },
+        { "file": "AGENTBOX_NSEC", "from_env": "AGENTBOX_NSEC" },
+        { "file": "JUNKIEJARVIS_PRIVKEY_HEX", "from_env": "JUNKIEJARVIS_PRIVKEY_HEX" },
+        { "file": "CONCIERGE_PRIVKEY_HEX", "from_env": "CONCIERGE_PRIVKEY_HEX" }
+      ]
+    },
+    {
+      "name": "ab-gateway",
+      "uid": 961,
+      "purpose": "nostr-gateway: operator DMs and relay AUTH. Holds no key; signs through the identity port (W3a), reads the AoE bearer through the aoe-share copy (design 2.6, W2).",
+      "programs": ["nostr-gateway"],
+      "secrets": []
+    },
+    {
+      "name": "ab-ingress",
+      "uid": 962,
+      "purpose": "nip98-proxy: the LAN door. Break-glass bearer and session secret.",
+      "programs": ["nip98-proxy"],
+      "secrets": [
+        { "file": "NIP98_PROXY_ALLOW_BEARER", "from_env": "NIP98_PROXY_ALLOW_BEARER" },
+        { "file": "NIP98_PROXY_SESSION_SECRET", "from_env": "NIP98_PROXY_SESSION_SECRET" }
+      ]
+    },
+    {
+      "name": "ab-spend",
+      "uid": 963,
+      "purpose": "hitch host and pay402 spend keys. Account only in step 1: owner disposition Q6 defers the spend port (W5), so pay402 and Hitch stay devuser-class.",
+      "programs": [],
+      "secrets": []
+    },
+    {
+      "name": "ab-sidestr-dreamlab",
+      "uid": 964,
+      "purpose": "sidestr:dreamlab producer: block-signing key and parent RPC credential.",
+      "programs": ["sidestr-producer"],
+      "secrets": [
+        { "file": "signer.key", "env": "SIDESTR_KEY", "source": "/var/lib/agentbox/secrets/sidestr-dreamlab.key" },
+        { "file": "parent.credential", "env": "SIDESTR_PARENT_COOKIE", "source": "/var/lib/agentbox/secrets/sidestr-tbtc4.cookie" }
+      ]
+    },
+    {
+      "name": "ab-faucet-dreamlab",
+      "uid": 966,
+      "purpose": "sidestr:dreamlab faucet: treasury key. 965 is skipped (reserved_ids).",
+      "programs": ["sidestr-faucet"],
+      "secrets": [
+        { "file": "treasury.key", "env": "SIDESTR_FAUCET_KEY", "source": "/home/devuser/workspace/sidestr/agents/treasury.key" }
+      ]
+    },
+    {
+      "name": "ab-sidestr-dreamlab-txbt4",
+      "uid": 967,
+      "purpose": "sidestr:dreamlab-txbt4 producer ([sidechain.dreamlab-txbt4], ADR-2103).",
+      "programs": ["sidestr-producer-dreamlab-txbt4"],
+      "secrets": [
+        { "file": "signer.key", "env": "SIDESTR_KEY", "source": "/var/lib/agentbox/secrets/sidestr-dreamlab-txbt4.key" },
+        { "file": "parent.credential", "env": "SIDESTR_PARENT_COOKIE", "source": "/var/lib/agentbox/secrets/sidestr-txbt4.rpc" }
+      ]
+    },
+    {
+      "name": "ab-faucet-dreamlab-txbt4",
+      "uid": 968,
+      "purpose": "sidestr:dreamlab-txbt4 faucet: treasury key.",
+      "programs": ["sidestr-faucet-dreamlab-txbt4"],
+      "secrets": [
+        { "file": "treasury.key", "env": "SIDESTR_FAUCET_KEY", "source": "/home/devuser/workspace/sidestr/agents/treasury-dreamlab-txbt4.key" }
+      ]
+    }
+  ]
+}
