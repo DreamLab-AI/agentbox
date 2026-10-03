@@ -10,6 +10,7 @@
     "management-api/**/*.js|.cjs|.mjs",
     "config/hooks/nostr-live-mirror.cjs",
     "config/hooks/project-tracking-publish.cjs",
+    "config/hooks/lib/operator-key.cjs",
     "config/nostr-gateway/gateway.cjs",
     "config/nostr-gateway/nostr-send.cjs",
     "config/nip98-proxy/proxy.mjs",
@@ -82,15 +83,15 @@
       },
       "AGENTBOX_EMAIL_GATEWAY_TOKEN": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (email gateway MCP). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (email gateway MCP). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "ANTHROPIC_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Anthropic). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Anthropic). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "BRAVE_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Brave search). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Brave search). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "BRIDGE_TOKEN": {
         "exception": "Q8; ADR-2027 (proposed) rotation and break-glass lifecycle; Q4 split",
@@ -106,7 +107,7 @@
       },
       "CONTEXT7_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Context7). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Context7). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "CRATES_TOKEN": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
@@ -114,11 +115,11 @@
       },
       "DEEPSEEK_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (DeepSeek). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (DeepSeek). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "GEMINI_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Google Gemini). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Google Gemini). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "GITHUB_TOKEN": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
@@ -126,19 +127,19 @@
       },
       "GOOGLE_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Google). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Google). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "GOOGLE_GEMINI_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Google Gemini). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Google Gemini). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "HF_TOKEN": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Hugging Face). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Hugging Face). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "JUNKIEJARVIS_LLM_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (JunkieJarvis LLM endpoint). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (JunkieJarvis LLM endpoint). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "JUPYTER_TOKEN": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
@@ -146,27 +147,27 @@
       },
       "MANAGEMENT_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "management-api bearer. management-api stays devuser (design §1); run-per-user-agent and agents call it."
+        "reason": "management-api bearer. management-api stays devuser (design \u00a71); run-per-user-agent and agents call it."
       },
       "NIP98_PROXY_ALLOW_BEARER": {
         "exception": "ADR-2027 (proposed) break-glass lifecycle; Q4 split",
         "reason": "The break-glass bearer at the nip98-proxy. Same value as BRIDGE_TOKEN until Q4 splits them; scrubbing one while the other stays ambient protects nothing, so both stay devuser-class this step (2026-10-03)."
       },
       "NIP98_PROXY_SESSION_SECRET": {
-        "exception": "Design §2.4 (ab-ingress, W1); Q4",
+        "exception": "Design \u00a72.4 (ab-ingress, W1); Q4",
         "reason": "NIP-07 session-cookie HMAC secret. Destined for the ab-ingress role, but nip98-proxy runs as devuser until W1 gives it that uid; moves with the break-glass split."
       },
       "OPENAI_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (OpenAI). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (OpenAI). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "OPENROUTER_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (OpenRouter). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (OpenRouter). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "PERPLEXITY_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Perplexity). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Perplexity). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "POSTGRES_PASSWORD": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
@@ -186,7 +187,7 @@
       },
       "SSO_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (System-One façade). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (System-One fa\u00e7ade). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "TUNNEL_TOKEN": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
@@ -194,7 +195,7 @@
       },
       "TYPESAFE_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (TypeSafe skill router). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (TypeSafe skill router). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "VAULT_NOSTR_SECRET": {
         "exception": "Q8; ROLE candidate for W3b",
@@ -210,11 +211,11 @@
       },
       "ZAI_ANTHROPIC_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Z.AI, dream-engine and session-summary). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Z.AI, dream-engine and session-summary). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "ZAI_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
-        "reason": "Provider credential (Z.AI). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
+        "reason": "Provider credential (Z.AI). Agents and their tools are its users; devuser-class by design (design \u00a71 role inventory)."
       },
       "_CS_PASSWORD": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
@@ -664,6 +665,7 @@
         "ZAI_URL",
         "ZONE_CONFIG",
         "ZONE_KEYS_FILE",
+        "_AB_ROLE_ENV_VARS",
         "_AGENT_ID_DID",
         "_AGENT_ID_EXPECTED",
         "_AGENT_ID_NODE",

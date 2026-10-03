@@ -2084,7 +2084,9 @@ stderr_logfile=/var/log/ruvector-aggregate-sweep.error.log
 ; phone (Amethyst), executes them against the tmux fleet and DMs replies back.
 ; The operator secret (AGENTBOX_PRIVKEY_HEX) is injected into the process
 ; environment by the entrypoint launcher and inherited here — never written into
-; the generated supervisor text. Off switch: AGENTBOX_NOSTR_GATEWAY=0.
+; the generated supervisor text. Under [security].role_isolation it arrives as a
+; file instead (AGENTBOX_PRIVKEY_HEX_FILE / AGENTBOX_BRIDGE_SK_FILE, custody W2)
+; and the bare variable is refused. Off switch: AGENTBOX_NOSTR_GATEWAY=0.
 [program:nostr-gateway]
 command=${pkgs.nodejs_22}/bin/node /opt/agentbox/config/nostr-gateway/gateway.cjs
 directory=/opt/agentbox/config/nostr-gateway
@@ -2456,8 +2458,13 @@ priority=15
 stdout_logfile=/var/log/tailscaled.log
 stderr_logfile=/var/log/tailscaled.error.log
 
+; Custody W2: under [security].role_isolation the entrypoint delivers the join
+; key to TAILSCALE_AUTHKEY_FILE (root 0400) and unsets TAILSCALE_AUTHKEY, so the
+; key is never in any process's environment or on argv: tailscale reads it via
+; its own "file:" prefix. With the flag off the file var is unset and the
+; original branch runs unchanged.
 [program:tailscale-up]
-command=${pkgs.bash}/bin/bash -c "sleep 2 && if [ -n \"$TAILSCALE_AUTHKEY\" ]; then ${pkgs.tailscale}/bin/tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=${networkingCfg.hostname or "agentbox"} --accept-routes --ssh 2>&1; else echo 'No TAILSCALE_AUTHKEY set — run: docker exec agentbox tailscale up'; fi"
+command=${pkgs.bash}/bin/bash -c "sleep 2 && if [ -n \"$TAILSCALE_AUTHKEY_FILE\" ] && [ -f \"$TAILSCALE_AUTHKEY_FILE\" ]; then ${pkgs.tailscale}/bin/tailscale up --authkey=file:$TAILSCALE_AUTHKEY_FILE --hostname=${networkingCfg.hostname or "agentbox"} --accept-routes --ssh 2>&1; elif [ -n \"$TAILSCALE_AUTHKEY\" ]; then ${pkgs.tailscale}/bin/tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=${networkingCfg.hostname or "agentbox"} --accept-routes --ssh 2>&1; else echo 'No TAILSCALE_AUTHKEY set — run: docker exec agentbox tailscale up'; fi"
 directory=/var/lib/tailscale
 environment=HOME="/home/devuser"
 autostart=true

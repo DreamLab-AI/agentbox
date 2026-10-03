@@ -218,16 +218,91 @@ pub fn render_runtime_env(identity: &Identity) -> String {
     .join("\n")
 }
 
-/// Write `identity.env` at mode 0600 — it carries the agent secret (nsec + SK
-/// hex). Root sources it pre-supervisord; devuser never reads it directly.
-pub fn write_runtime_env(identity: &Identity, run_root: &Path) -> Result<()> {
+/// Render the public-only `identity.env` used under `[security].role_isolation`
+/// (custody W2, bypass 3).
+///
+/// It carries the identity's public names and the *path* of the relay key file,
+/// never a secret: no `AGENTBOX_NSEC` and no `AGENTBOX_BRIDGE_SK`. The entrypoint
+/// sources this file into PID 1, and PID 1's environment reaches every
+/// supervised child, so a secret here would be in every agent shell. The secret
+/// stays in the identity file and in `bridge_sk_file` (written by
+/// [`write_bridge_key_file`]).
+pub fn render_runtime_env_public(identity: &Identity, bridge_sk_file: &Path) -> String {
+    let hex = &identity.x_only_pubkey_hex;
+    [
+        format!("export AGENTBOX_AGENT_ID={}", identity.agent_id),
+        format!("export AGENTBOX_NPUB={}", identity.npub),
+        format!("export AGENTBOX_PUBKEY_HEX={}", identity.public_key_hex),
+        format!("export AGENTBOX_X_ONLY_PUBKEY_HEX={hex}"),
+        format!("export AGENTBOX_DID=did:nostr:{hex}"),
+        format!(
+            "export AGENTBOX_URN=urn:agentbox:agent:{}",
+            identity.agent_id
+        ),
+        format!("export AGENTBOX_BRIDGE_RECIPIENT_PUBKEY={hex}"),
+        format!(
+            "export AGENTBOX_BRIDGE_SK_FILE={}",
+            bridge_sk_file.display()
+        ),
+        String::new(),
+    ]
+    .join("\n")
+}
+
+/// Write the relay daemon's key file (64-hex secret, no newline) at mode 0400.
+///
+/// Used under role isolation in place of the entrypoint's SEC-003 hand-off,
+/// which needed the secret in `identity.env`. Any existing entry at the path
+/// (file or planted symlink) is removed first and the file is created
+/// exclusively, so the write never follows a link. The entrypoint then gives
+/// the file to its role (`_ab_role_key_file_own`).
+pub fn write_bridge_key_file(identity: &Identity, path: &Path) -> Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("creating {}", parent.display()))?;
+    }
+    match std::fs::remove_file(path) {
+        Ok(()) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => {
+            return Err(e).with_context(|| format!("replacing {}", path.display()));
+        }
+    }
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o400)
+        .open(path)
+        .with_context(|| format!("creating {}", path.display()))?;
+    file.write_all(identity.private_key_hex.as_bytes())
+        .with_context(|| format!("writing {}", path.display()))
+}
+
+/// Write `identity.env` at mode 0600. Flag off it carries the agent secret
+/// (nsec + SK hex), exactly as before; root sources it pre-supervisord and
+/// devuser never reads it directly. Under role isolation it is public-only and
+/// the secret goes to `bridge_sk_file` instead.
+pub fn write_runtime_env(
+    identity: &Identity,
+    run_root: &Path,
+    isolation: Option<&Path>,
+) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
     std::fs::create_dir_all(run_root)
         .with_context(|| format!("creating {}", run_root.display()))?;
+    let body = match isolation {
+        None => render_runtime_env(identity),
+        Some(bridge_sk_file) => {
+            write_bridge_key_file(identity, bridge_sk_file)?;
+            render_runtime_env_public(identity, bridge_sk_file)
+        }
+    };
     let path = run_root.join("identity.env");
-    std::fs::write(&path, render_runtime_env(identity))
-        .with_context(|| format!("writing {}", path.display()))?;
+    std::fs::write(&path, body).with_context(|| format!("writing {}", path.display()))?;
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
         .with_context(|| format!("chmod 0600 {}", path.display()))
 }
@@ -243,6 +318,11 @@ pub struct Roots {
     pub run_root: PathBuf,
     /// Explicit override for non-pod deployments; otherwise the pod directory.
     pub repo_root: Option<PathBuf>,
+    /// The relay daemon's key file, written by the bootstrap under role
+    /// isolation (`AGENTBOX_BRIDGE_SK_FILE`, default `/run/secrets/nostr.key`).
+    pub bridge_sk_file: PathBuf,
+    /// `[security].role_isolation`, as exported by the entrypoint.
+    pub role_isolation: bool,
 }
 
 impl Roots {
@@ -258,6 +338,10 @@ impl Roots {
             pod_root: PathBuf::from(env.or("SOLID_POD_ROOT", "/var/lib/solid")).join("pods"),
             run_root: env.or("AGENTBOX_RUN_ROOT", "/run/agentbox").into(),
             repo_root: env.non_empty("AGENTBOX_AGENT_REPO_ROOT").map(PathBuf::from),
+            bridge_sk_file: env
+                .or("AGENTBOX_BRIDGE_SK_FILE", "/run/secrets/nostr.key")
+                .into(),
+            role_isolation: crate::role_secret::role_isolation(env),
         }
     }
 }
@@ -279,7 +363,10 @@ fn sovereign_mesh_enabled(path: &Path) -> Result<bool> {
 pub fn provision(agent_id: &str, roots: &Roots, env: &EnvMap) -> Result<Identity> {
     let identity = ensure_identity(agent_id, &roots.identity_root, env)?;
     ensure_acl(&roots.pod_root, &identity, env)?;
-    write_runtime_env(&identity, &roots.run_root)?;
+    let isolation = roots
+        .role_isolation
+        .then_some(roots.bridge_sk_file.as_path());
+    write_runtime_env(&identity, &roots.run_root, isolation)?;
 
     // ADR-053: the git repo root co-locates with the canonical pod directory
     // unless an explicit override is set for a non-pod deployment.

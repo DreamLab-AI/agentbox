@@ -107,6 +107,7 @@ test('extraction: shell, nix, compose, js and rust readers', () => {
   assert.ok(has('env.non_empty("AGENTBOX_BRIDGE_SK")', 'rust', 'AGENTBOX_BRIDGE_SK'));
   assert.ok(has('pub const KEY_VAR: &str = "JUNKIEJARVIS_PRIVKEY_HEX";', 'rust', 'JUNKIEJARVIS_PRIVKEY_HEX'));
   assert.ok(has('env.first(&["A_ONE", "B_TWO"])', 'rust', 'B_TWO'));
+  assert.ok(has("const OPERATOR_KEY_VARS = Object.freeze(['X_ONE', 'OPERATOR_NOSTR_PRIVKEY']);", 'js', 'OPERATOR_NOSTR_PRIVKEY'));
 });
 
 test('the inventory reads code, never an env file', () => {

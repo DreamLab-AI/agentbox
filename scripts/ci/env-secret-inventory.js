@@ -123,6 +123,8 @@ function extractNames(text, kind) {
       each(new RegExp(`\\benv\\.(${NAME})\\b`, 'g'));
       each(new RegExp(`\\benv\\[\\s*['"\`](${NAME})['"\`]`, 'g'));
       literalsIn(/\b(?:envFirst|readSetting|readRoleSecret|readRoleSecretFirst|roleSecret|envBool|envInt|envStr)\s*\(([^)]*)\)/g);
+      // Name lists handed to a reader: `const OPERATOR_KEY_VARS = Object.freeze([...])`.
+      literalsIn(/\bconst\s+[A-Z_]*VARS\s*=\s*(?:Object\.freeze\()?\[([^\]]*)\]/g);
       break;
     case 'rust':
       each(new RegExp(`\\b(?:var|var_os|get|non_empty|or|remove_var|set_var)\\(\\s*"(${NAME})"`, 'g'));

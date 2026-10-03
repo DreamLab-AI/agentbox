@@ -29,7 +29,7 @@ _bad() { FAIL=$((FAIL + 1)); printf 'not ok %d - %s\n' "$((PASS + FAIL))" "$1"; 
 _skip() { PASS=$((PASS + 1)); printf 'ok %d # SKIP %s\n' "$((PASS + FAIL))" "$1"; }
 _done() { printf '1..%d\n# RC-X1-06: %d passed, %d failed\n' "$((PASS + FAIL))" "$PASS" "$FAIL"; [ "$FAIL" -eq 0 ]; exit $?; }
 
-TMP="$(mktemp -d "${TMPDIR:-/tmp}/rc-x1-06.XXXXXX")"; trap 'rm -rf "$TMP"' EXIT
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/rc-x1-06.XXXXXX")"; trap 'chmod -R u+w "$TMP" 2>/dev/null; rm -rf "$TMP"' EXIT
 _extract() { awk -v n="$1" '$0 ~ "^"n"\\(\\) \\{" {f=1} f {print} f && /^}$/ {exit}' "$ENTRY"; }
 LIST="$(grep -E '^_AB_ROLE_ENV_VARS="' "$ENTRY" | head -1)"
 if [ -z "$LIST" ]; then _bad "_AB_ROLE_ENV_VARS is defined in the entrypoint"; _done; fi
@@ -54,7 +54,7 @@ _run() { # _run <flag> <secrets-root> <extra-bash> → env -0 dump at "exec" in 
     bash -c 'set -euo pipefail; . "$1"; '"$3"'
       _ab_role_env_capture "$2" "$4"
       _ab_role_env_scrub "$2"
-      env -0 | sort -z > "$5"' _ "${TMP}/fns.sh" "$1" "${4:-:}" "$2" "${TMP}/env.$5"
+      env -0 | sort -z > "$5"' _ "${TMP}/fns.sh" "$1" "" "$2" "${TMP}/env.$4"
 }
 
 # ── 1. flag off: byte-identical ──────────────────────────────────────────────
@@ -63,9 +63,9 @@ env -i PATH="$PATH" HOME="$TMP" \
   TAILSCALE_AUTHKEY="" BRIDGE_TOKEN="$V3" ANTHROPIC_API_KEY="prov-synthetic" WORKSPACE=/w \
   bash -c 'env -0 | sort -z > "$1"' _ "${TMP}/env.baseline"
 OUT="$(_run 0 "${TMP}/sec-off" : off 2>&1)"
-cmp -s "${TMP}/env.baseline" "${TMP}/env.off" \
+[ -s "${TMP}/env.off" ] && [ "$(sha256sum <"${TMP}/env.baseline")" = "$(sha256sum <"${TMP}/env.off")" ] \
   && _ok "flag off: the environment handed to supervisord is byte-identical" \
-  || _bad "flag off must not change the environment" "$(diff <(tr '\0' '\n' <"${TMP}/env.baseline" | cut -d= -f1) <(tr '\0' '\n' <"${TMP}/env.off" | cut -d= -f1))"
+  || _bad "flag off must not change the environment" "names: $(tr '\0' '\n' <"${TMP}/env.off" 2>/dev/null | cut -d= -f1 | tr '\n' ' ')"
 [ ! -e "${TMP}/sec-off" ] && _ok "flag off: nothing is written" || _bad "flag off must write no files"
 
 # ── 2. flag on: delivered and unset ──────────────────────────────────────────
@@ -122,6 +122,18 @@ done
 ALL="$(_run 1 "${TMP}/sec-print" : print 2>&1; env -i PATH="$PATH" bash -c '. "$1"; export AGENTBOX_PRIVKEY_HEX='"$V1"'; _ab_role_env_scrub 1' _ "${TMP}/fns.sh" 2>&1)"
 if printf '%s' "$ALL" | grep -qE "$V1|$V2|nsec1synthetic"; then _bad "a value was printed"; else _ok "names only: no value in any output"; fi
 
+# ── 8b. the bootstrap-written relay key is handed to its role ────────────────
+K="${TMP}/nostr.key"; printf 'k' >"$K"; chmod 0644 "$K"
+bash -c '. "$1"; _ab_role_key_file_own 0 "$2" ab-identity' _ "${TMP}/fns.sh" "$K"
+[ "$(stat -c %a "$K")" = 644 ] && _ok "flag off: the relay key file is not touched" || _bad "flag off must not chmod the key file"
+bash -c '. "$1"; _ab_role_key_file_own 1 "$2" ab-identity' _ "${TMP}/fns.sh" "$K"
+[ "$(stat -c %a "$K")" = 400 ] && _ok "flag on: the relay key file is 0400" || _bad "flag on must chmod 0400" "$(stat -c %a "$K")"
+ln -s "$VICTIM" "${TMP}/nostr.link"; chmod 0644 "$VICTIM"
+bash -c '. "$1"; _ab_role_key_file_own 1 "$2" ab-identity' _ "${TMP}/fns.sh" "${TMP}/nostr.link"
+[ "$(stat -c %a "$VICTIM")" = 644 ] && _ok "a symlinked key path is not followed" || _bad "key-file ownership followed a symlink"
+grep -qE '^_ab_role_key_file_own "\$AGENTBOX_ROLE_ISOLATION" "\$\{AGENTBOX_BRIDGE_SK_FILE:-\}" ab-identity' "$ENTRY" \
+  && _ok "Phase 5c hands AGENTBOX_BRIDGE_SK_FILE to ab-identity" || _bad "Phase 5c must call _ab_role_key_file_own"
+
 # ── 9. wiring ────────────────────────────────────────────────────────────────
 cap="$(grep -nE '^_ab_role_env_capture "\$AGENTBOX_ROLE_ISOLATION"' "$ENTRY" | head -1 | cut -d: -f1)"
 boot="$(grep -nE '^nostr-pod-bridge bootstrap' "$ENTRY" | head -1 | cut -d: -f1)"
@@ -131,9 +143,29 @@ ex="$(grep -nE '^exec supervisord' "$ENTRY" | head -1 | cut -d: -f1)"
 [ -n "$cap" ] && [ -n "$boot" ] && [ "$cap" -lt "$boot" ] && _ok "capture runs before the identity bootstrap (line $cap < $boot)" \
   || _bad "capture must run before nostr-pod-bridge bootstrap" "cap=${cap:-none} boot=${boot:-none}"
 [ -n "$scr" ] && [ -n "$src" ] && [ -n "$ex" ] && [ "$scr" -gt "$src" ] && [ "$scr" -lt "$ex" ] \
-  && [ -z "$(sed -n "$((scr + 1)),$((ex - 1))p" "$ENTRY" | grep -E '^\s*[^#[:space:]]' | grep -vE '^\s*echo ')" ] \
+  && { [ "$ex" -eq "$((scr + 1))" ] || [ -z "$(sed -n "$((scr + 1)),$((ex - 1))p" "$ENTRY" | grep -E '^\s*[^#[:space:]]' | grep -vE '^\s*echo ')" ]; } \
   && _ok "scrub runs after identity.env is sourced and immediately before exec supervisord" \
   || _bad "scrub must sit right before exec supervisord" "src=${src:-none} scrub=${scr:-none} exec=${ex:-none}"
+
+# ── 9b. tailscale-up (root, the one ROLE consumer outside identity) ─────────
+# Run the real supervisor command from flake.nix against a stub tailscale that
+# records its argv: with the file var the key never reaches argv; flag off, the
+# original branch is unchanged.
+LINE="$(grep -E '^command=.*tailscale up' "${HERE}/../../flake.nix" | head -1 | sed 's/^command=//')"
+if [ -z "$LINE" ]; then _bad "tailscale-up command found in flake.nix"; else
+  mkdir -p "${TMP}/ts/bin"
+  printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s/ts/argv"\n' "$TMP" >"${TMP}/ts/bin/tailscale"; chmod +x "${TMP}/ts/bin/tailscale"
+  CMD="$(printf '%s' "$LINE" | sed -e "s|\${pkgs.bash}|$(dirname "$(command -v bash)")/..|; s|\${pkgs.tailscale}|${TMP}/ts|g; s|\${networkingCfg.hostname or \"agentbox\"}|agentbox|g; s|sleep 2|true|")"
+  KEYF="${TMP}/ts/authkey"; printf 'tskey-synthetic-000' >"$KEYF"
+  env -i PATH="$PATH" TAILSCALE_AUTHKEY_FILE="$KEYF" bash -c "$CMD" >/dev/null 2>&1
+  if grep -qx -- "--authkey=file:${KEYF}" "${TMP}/ts/argv" 2>/dev/null && ! grep -q 'tskey-synthetic' "${TMP}/ts/argv"; then
+    _ok "tailscale-up: TAILSCALE_AUTHKEY_FILE → --authkey=file:<path>; the key is not on argv"
+  else _bad "tailscale-up must pass file:<path>" "$(tr '\n' ' ' <"${TMP}/ts/argv" 2>/dev/null)"; fi
+  rm -f "${TMP}/ts/argv"
+  env -i PATH="$PATH" TAILSCALE_AUTHKEY=tskey-legacy bash -c "$CMD" >/dev/null 2>&1
+  grep -qx -- "--authkey=tskey-legacy" "${TMP}/ts/argv" 2>/dev/null \
+    && _ok "tailscale-up, flag off: the original TAILSCALE_AUTHKEY branch is unchanged" || _bad "flag-off tailscale-up branch changed"
+fi
 
 # ── 10. live ─────────────────────────────────────────────────────────────────
 if [ "${AGENTBOX_RC_LIVE:-0}" = 1 ] && [ "${AGENTBOX_ROLE_ISOLATION:-0}" = 1 ]; then

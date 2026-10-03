@@ -30,6 +30,7 @@ const { promisify } = require('util');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const agentIdentity = require('../lib/agent-identity');
 
 const execFileAsync = promisify(execFile);
 const fsMkdir = promisify(fs.mkdir);
@@ -223,19 +224,13 @@ async function emitNostrEvent(decision, logger) {
   };
 
   // Signing requires a secret key — if not available, emit unsigned for relay
-  // bridges that accept them (e.g. the embedded relay). In production, the
-  // sovereign-bootstrap injects AGENTBOX_NSEC.
-  const nsec = process.env.AGENTBOX_NSEC;
-  if (nsec) {
+  // bridges that accept them (e.g. the embedded relay). Custody W2: the key
+  // comes from resolveDecisionSigner (AGENTBOX_NSEC_FILE, the bare variable only
+  // with role isolation off, else the sovereign identity file under the flag).
+  const signer = resolveDecisionSigner({ logger });
+  if (signer) {
     try {
-      let sk;
-      if (nsec.startsWith('nsec1')) {
-        const decoded = nostrTools.nip19.decode(nsec);
-        sk = decoded.data;
-      } else {
-        sk = nsec;
-      }
-      const signedEvent = nostrTools.finalizeEvent(event, sk);
+      const signedEvent = await signer.sign(event, nostrTools);
 
       for (const relayUrl of NOSTR_RELAYS) {
         try {
@@ -251,7 +246,52 @@ async function emitNostrEvent(decision, logger) {
       logger.error({ err: err.message }, 'git-bridge: Nostr event signing failed');
     }
   } else {
-    logger.debug('git-bridge: AGENTBOX_NSEC not set, skipping Nostr event signing');
+    logger.debug('git-bridge: no signing key (AGENTBOX_NSEC / sovereign identity), skipping Nostr event signing');
+  }
+}
+
+/**
+ * The signer for enrichment-decision events (custody W2).
+ *
+ * 1. AGENTBOX_NSEC through role-secret.js: AGENTBOX_NSEC_FILE wins; the bare
+ *    variable is honoured only while [security].role_isolation is off.
+ * 2. Under the flag, identity.env no longer exports AGENTBOX_NSEC, so the same
+ *    sovereign key is taken from the identity file (loadSovereignSigner, the
+ *    ADR-2078 pods signer path), which verifies the key against its pubkey.
+ *
+ * Returns null when neither yields a key. Never logs a value.
+ *
+ * @param {object} [opts]
+ * @param {object} [opts.env=process.env]
+ * @param {object} [opts.logger]
+ * @param {Function} [opts.loadSovereignSigner]
+ * @returns {{source:string, sign(event:object, nostrTools:object):Promise<object>}|null}
+ */
+function resolveDecisionSigner(opts = {}) {
+  const env = opts.env || process.env;
+  const log = opts.logger || { warn() {} };
+  let nsec = '';
+  try {
+    nsec = agentIdentity.readRoleSecret('AGENTBOX_NSEC', { env });
+  } catch (err) {
+    log.warn({ err: err.message }, 'git-bridge: AGENTBOX_NSEC_FILE unreadable');
+  }
+  if (nsec) {
+    return {
+      source: 'AGENTBOX_NSEC',
+      async sign(event, nostrTools) {
+        const sk = nsec.startsWith('nsec1') ? nostrTools.nip19.decode(nsec).data : nsec;
+        return nostrTools.finalizeEvent(event, sk);
+      },
+    };
+  }
+  if (!agentIdentity.roleIsolation(env)) return null;
+  try {
+    const sovereign = (opts.loadSovereignSigner || agentIdentity.loadSovereignSigner)({ env });
+    return { source: 'sovereign-identity', sign: (event) => sovereign.sign(event) };
+  } catch (err) {
+    log.warn({ err: err.message }, 'git-bridge: sovereign identity unavailable for signing');
+    return null;
   }
 }
 
@@ -760,3 +800,4 @@ async function gitBridgeRoutes(fastify, options) {
 }
 
 module.exports = gitBridgeRoutes;
+module.exports.resolveDecisionSigner = resolveDecisionSigner;
