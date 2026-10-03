@@ -24,13 +24,13 @@
 
 let
   version = "1.0.0-beta.13";
-  rev = "39ec4d458838888b277d9fe2ae8480a83e54e570";
+  rev = "d383e428f7c2fa09c22b00ec695c19cd92d5291e";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "nostr-rust-forum";
     inherit rev;
-    hash  = "sha256-v/g1O0DDydBYZ0yWFVbUqDR5qur2UNfJ7T51ObKU1kc=";
+    hash  = "sha256-+mak1QL8YH8z6PDcDo/vufMXPiAqF0PDtuj8kGlC68U=";
   };
 
 in
@@ -44,8 +44,11 @@ pkgs.rustPlatform.buildRustPackage {
 
   # Build and test only the house seat and the poker crate it is built on; the
   # rest of the workspace is the forum's workers and clients.
-  cargoBuildFlags = [ "-p" "nostr-bbs-poker-citizen" ];
-  cargoTestFlags  = [ "-p" "nostr-bbs-poker-citizen" "-p" "nostr-bbs-poker" ];
+  # Three binaries from two crates: the house seat and the coach
+  # (nostr-bbs-poker-citizen), and the operator wallet whose `faucet` serves
+  # BLAKE2b-parent chains (nostr-bbs-sidestr-admin; run-faucet.sh).
+  cargoBuildFlags = [ "-p" "nostr-bbs-poker-citizen" "-p" "nostr-bbs-sidestr-admin" ];
+  cargoTestFlags  = [ "-p" "nostr-bbs-poker-citizen" "-p" "nostr-bbs-poker" "-p" "nostr-bbs-sidestr-admin" ];
   doCheck = true;
 
   meta = with lib; {

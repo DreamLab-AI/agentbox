@@ -2894,7 +2894,7 @@ ${lib.optionalString sidechainFaucet ''
 [program:sidestr-faucet]
 command=/opt/agentbox/config/sidechain/run-faucet.sh
 user=devuser
-environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ sidestrAgentPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"${lib.optionalString (sidechainFaucetKey != "") ",SIDESTR_FAUCET_KEY=\"${sidechainFaucetKey}\""},SIDESTR_FAUCET_UNITS="${sidechainFaucetUnits}",SIDESTR_FAUCET_SATS="${sidechainFaucetSats}"
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ sidestrAgentPkg pkgs.nodejs_22 pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"${lib.optionalString (sidechainFaucetKey != "") ",SIDESTR_FAUCET_KEY=\"${sidechainFaucetKey}\""},SIDESTR_FAUCET_UNITS="${sidechainFaucetUnits}",SIDESTR_FAUCET_SATS="${sidechainFaucetSats}"
 autostart=true
 autorestart=true
 startsecs=10
@@ -2994,11 +2994,13 @@ stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}${lib.optionalString c.faucet ''
 
-; [sidechain.${c.name}].faucet: plain sats from this chain's own treasury key.
+; [sidechain.${c.name}].faucet: plain sats from this chain's own treasury key. run-faucet.sh
+; reads the chain's parent: a BLAKE2b parent is served by nostr-bbs-sidestr-admin (forum kit,
+; pokerCitizenPkg), any other by sidestr-agent.
 [program:sidestr-faucet-${c.name}]
 command=/opt/agentbox/config/sidechain/run-faucet.sh
 user=devuser
-environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ sidestrAgentPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",SIDESTR_CHAIN="${c.name}",SIDESTR_PORT="${c.port}",SIDESTR_FAUCET_KEY="${c.faucetKey}",SIDESTR_FAUCET_ASSET="",SIDESTR_FAUCET_SATS="${c.faucetSats}"
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ sidestrAgentPkg pokerCitizenPkg pkgs.nodejs_22 pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin",SIDESTR_CHAIN="${c.name}",SIDESTR_PORT="${c.port}",SIDESTR_FAUCET_KEY="${c.faucetKey}",SIDESTR_FAUCET_ASSET="",SIDESTR_FAUCET_SATS="${c.faucetSats}"
 autostart=true
 autorestart=true
 startsecs=10

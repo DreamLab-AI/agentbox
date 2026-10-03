@@ -2625,14 +2625,19 @@ version = "1.0.0-beta.13"
 dependencies = [
  "bitcoin",
  "clap",
+ "futures-util",
  "hex",
  "nostr-bbs-core",
  "nostr-bbs-poker-citizen",
  "reqwest",
+ "serde",
+ "serde_json",
  "sidestr-agent",
  "sidestr-core",
+ "sidestr-nostr",
  "sidestr-wallet",
  "tokio",
+ "tokio-tungstenite",
  "zeroize",
 ]
 

@@ -4,7 +4,10 @@
 # [sidechain.<name>] table (plain sats; SIDESTR_FAUCET_ASSET set empty). Answers kind-23501
 # requests from member wallets (dreamlab-ai-website, forum ADR-2015) for this chain only, once
 # per script per window, paid from the chain's treasury key through the local producer.
-# sidestr-agent is baked into the image (lib/sidestr-agent.nix).
+# sidestr-agent is baked into the image (lib/sidestr-agent.nix) and serves a chain beside a
+# stock-header parent. A chain beside a BLAKE2b parent (txbt4, xbt) is served instead by
+# nostr-bbs-sidestr-admin's faucet (forum kit, baked by lib/poker-citizen.nix): sidestr-agent's
+# replay cannot read Blake2bV2 headers. Same flags, same request protocol, same grant ledger.
 #
 #   run-faucet.sh
 #
@@ -45,7 +48,19 @@ PRODUCER="http://127.0.0.1:${SIDESTR_PORT:-3450}"
 ASSET="${SIDESTR_FAUCET_ASSET-DREAM}"   # unset: DREAM; set empty: sats only
 
 [ -r "$KEY" ] || { echo "run-faucet[$NAME]: missing $KEY" >&2; exit 1; }
-command -v sidestr-agent >/dev/null || { echo "run-faucet[$NAME]: sidestr-agent not on PATH" >&2; exit 1; }
+
+# The header family decides the faucet: read the parent from the sealed chain document, as
+# run-producer.sh does. An unreadable document is a boot failure, not a guess.
+HERE="$(cd "$(dirname "$0")" && pwd)"
+DOC="${SIDESTR_DOC:-$HERE/$NAME/chain.json}"
+[ -r "$DOC" ] || { echo "run-faucet[$NAME]: missing $DOC" >&2; exit 1; }
+read -r CHAIN_ID PARENT < <(node -e 'const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.stdout.write(`${c.id ?? ""} ${c.parent ?? ""}\n`)' "$DOC") && [ -n "$CHAIN_ID" ] \
+  || { echo "run-faucet[$NAME]: $DOC is not a chain document" >&2; exit 1; }
+case "$PARENT" in
+  txbt4|btc:testnet4-blake2b|xbt|btc:mainnet-blake2b) FAUCET=(nostr-bbs-sidestr-admin --url "http://127.0.0.1:${SIDESTR_PORT:-3450}" --chain-id "$CHAIN_ID" --key-file "$KEY" faucet) ;;
+  *) FAUCET=(sidestr-agent --url "http://127.0.0.1:${SIDESTR_PORT:-3450}" --key-file "$KEY" faucet) ;;
+esac
+command -v "${FAUCET[0]}" >/dev/null || { echo "run-faucet[$NAME]: ${FAUCET[0]} not on PATH (parent $PARENT)" >&2; exit 1; }
 
 # Grants spend through the producer: wait for it rather than burn supervisor retries at boot.
 until curl -fs --max-time 5 -o /dev/null "$PRODUCER/tip"; do
@@ -54,7 +69,8 @@ done
 
 asset=()
 [ -n "$ASSET" ] && asset=(--asset "$ASSET" --units "${SIDESTR_FAUCET_UNITS:-100}")
-exec sidestr-agent --url "$PRODUCER" --key-file "$KEY" faucet \
+echo "run-faucet[$NAME]: ${FAUCET[0]} for $CHAIN_ID beside $PARENT" >&2
+exec "${FAUCET[@]}" \
   "${asset[@]}" \
   --sats "${SIDESTR_FAUCET_SATS:-1000}" \
   --per-address-hours "${SIDESTR_FAUCET_PER_ADDRESS_HOURS:-24}" \
