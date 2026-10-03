@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 26fc543d2a98f1e3d192408ea4cd13d10cd59ddf
+verified_commit: d3ff8e9a876e6b026b543f8824487e002e04cfa0
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -339,3 +339,7 @@ Tripped by `services/dream-engine/Cargo.toml` gaining `base64 = "0.22"` as a **d
 ## Re-verification — 2026-10-03 (`26fc543d2a98f1e3d192408ea4cd13d10cd59ddf`)
 
 Tripped by `services/nostr-pod-bridge/Cargo.toml` on the custody W3 branch, which gains the identity port. Its dependency changes are `hmac = "0.12"`, which arrived with W8's mirror-key commit (cherry-picked unchanged and re-verified on W8's own branch), and three normal dependencies, `url = "2"` (2.5.8), `base64 = "0.22"` (0.22.1) and `zeroize = "1"` (1.9.0). All three are `MIT OR Apache-2.0` and were already in the lock transitively, so the lock gains three edges and no package. The crate's declared licence is unchanged (`AGPL-3.0-only`). `sh scripts/ci/check-crate-licensing.sh` → `OK … 9 services/ package directories carry the texts they declare`. Decision and status unchanged.
+
+## Re-verification — 2026-10-03 (`d3ff8e9a876e6b026b543f8824487e002e04cfa0`)
+
+Tripped by `services/nostr-pod-bridge/Cargo.toml` gaining `hmac = "0.12"` as a normal dependency, for the G-5 mirror-child known-answer test (`src/mirror_key.rs`). `hmac` 0.12.1 is `MIT OR Apache-2.0` and was already in the lock transitively through `nostr-bbs-core`, so the lock gains one edge and no package. The crate's declared licence is unchanged (`AGPL-3.0-only`). `sh scripts/ci/check-crate-licensing.sh` reports `OK … 9 services/ package directories`, the same count as `origin/main` (`0919dc39a`). The drop from the ten above predates this change. Decision and status unchanged.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 055c06ff69b2f53bf38a67d254c048bb03599fc8
+verified_commit: d3ff8e9a876e6b026b543f8824487e002e04cfa0
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -203,3 +203,7 @@ Re-verified by `git diff e434a7a59..e020264b54c6872ca98995c1adda18b8451a39af -- 
 
 Tripped by custody X-1 step 1 (W0 `custody/w0-bypasses` and W1 `custody/w1-role-accounts`). `flake.nix` changed only as follows. W0 (`8070c1010`, `6a433e6b3`): `root` loses its `devuser` member, and `[program:docker-read-proxy]` is added (root start, drops to 65534). W1 (`b8c66625a`, `055c06ff6`): role passwd and group lines are appended from `config/role-accounts.json`, `supervisord.isolated.conf`, `role-secrets.tsv` and `role-accounts.json` are derived beside the unchanged `supervisord.conf`, and a root-owned `/run/secrets` tmpfs is added (ADR-2122). `agentbox.toml` gains only `[security].role_isolation = false` with its comment (ADR-2122); no other key moved. **D4 amended in effect by custody W0.** The entrypoint no longer adds `/home/devuser/workspace/.cargo/bin` to `PATH` globally: root's boot `PATH` is store-only (a planted binary there ran as root), and devuser shells get the directory *appended* (runtime-env and fish snippets). Window 9 is unaffected for two reasons. With `[vault].tui = "rune"`, rune is baked (`lib/rune.nix`). And `config/tmux-autostart.sh` re-adds the cargo bin via `new-window -e` for the interim fallback. The decision holds, but D4's sentence "the entrypoint adds … to `PATH`" no longer describes root.
 Re-verified by `git diff 0919dc39a..055c06ff6 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`d3ff8e9a876e6b026b543f8824487e002e04cfa0`)
+
+Tripped by the G-5 Q15 correction (`custody/w8-key-split`). `agentbox.toml` changed only in the trailing comments of two allowlist entries: `b41654017f…2f7a` is relabelled as the operator's NIP-07 31403 decision signer (it is `[sovereign_mesh.operator].pubkey_hex`), not visionclaw-server, and the `11ed6422…663c` entry in `[interaction_plane.proxy]` notes that its Podkey-vault copy is to be replaced by K_browser. No key, value, table or list member moved. `setup/agentbox.default.toml` received the same comment correction on its `b41654017f…` relay entry and nothing else. `node scripts/agentbox-config-validate.js agentbox.toml` is valid with the same 5 advisory warnings as `origin/main` (`0919dc39a`). Decision and status unchanged.

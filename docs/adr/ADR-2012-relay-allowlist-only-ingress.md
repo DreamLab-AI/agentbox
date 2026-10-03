@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 055c06ff69b2f53bf38a67d254c048bb03599fc8
+verified_commit: d3ff8e9a876e6b026b543f8824487e002e04cfa0
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -277,3 +277,7 @@ Re-verified by `git diff e434a7a59..e020264b54c6872ca98995c1adda18b8451a39af -- 
 
 Tripped by custody X-1 step 1 (W0 `custody/w0-bypasses` and W1 `custody/w1-role-accounts`). `flake.nix` changed only as follows. W0 (`8070c1010`, `6a433e6b3`): `root` loses its `devuser` member, and `[program:docker-read-proxy]` is added (root start, drops to 65534). W1 (`b8c66625a`, `055c06ff6`): role passwd and group lines are appended from `config/role-accounts.json`, `supervisord.isolated.conf`, `role-secrets.tsv` and `role-accounts.json` are derived beside the unchanged `supervisord.conf`, and a root-owned `/run/secrets` tmpfs is added (ADR-2122). `agentbox.toml` gains only `[security].role_isolation = false` with its comment (ADR-2122); no other key moved. `AGENTBOX_ALLOWED_PUBKEYS` and the relay's no-fallback admission are byte-identical in both supervisor configs (`tests/config/role-isolation-supervisor.test.sh`). The decision holds.
 Re-verified by `git diff 0919dc39a..055c06ff6 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`d3ff8e9a876e6b026b543f8824487e002e04cfa0`)
+
+Tripped by the G-5 Q15 correction (`custody/w8-key-split`). `agentbox.toml` changed only in the trailing comments of two allowlist entries: `b41654017f…2f7a` is relabelled as the operator's NIP-07 31403 decision signer (it is `[sovereign_mesh.operator].pubkey_hex`), not visionclaw-server, and the `11ed6422…663c` entry in `[interaction_plane.proxy]` notes that its Podkey-vault copy is to be replaced by K_browser. No key, value, table or list member moved. This record's claim at `:157-160` needs one correction and one confirmation. The correction: the entry it calls `visionclaw-server (governance publisher)` is the operator's decision signer. Q15 evidence, read from the dreamlab relay (every stored event of kinds 31400-31403) and from VisionClaw source: VisionClaw's 31402s are signed by `11ed6422…663c`, and `b41654017f…` signs only 31403. The confirmation: the ADR-040 D3 / G-5 key split has **not** landed, because no new pubkey is admitted yet, so `review_trigger` has not fired. The inline annotation now names G-5 rather than ADR-040 D3. `flake.nix` is untouched, so the baked allowlist is byte-identical. `node scripts/agentbox-config-validate.js agentbox.toml` is valid with the same 5 advisory warnings as `origin/main` (`0919dc39a`). Decision and status unchanged.
