@@ -95,9 +95,10 @@ FLAG_RAW="$(awk '$0=="[security]"{f=1;next} /^\[/{f=0} f && /^role_isolation[[:s
 if [ -z "$FLAG_RAW" ]; then FLAG=false; FLAG_SOURCE=absent-default-false
 else case "$FLAG_RAW" in 1|true|TRUE|True|yes|on) FLAG=true ;; *) FLAG=false ;; esac; FLAG_SOURCE=manifest; fi
 
+# One reader of W1's table and plan: the container half's --print-registry normalises
+# /etc/agentbox/role-accounts.json + role-secrets.tsv into the rows both halves check.
 if [ -n "${HR_REGISTRY:-}" ]; then REGISTRY="$HR_REGISTRY"
-elif REGISTRY="$("$DOCKER" exec -u 0 "$C" cat /etc/agentbox/role-accounts.json 2>/dev/null)" && [ -n "$REGISTRY" ]; then :
-else REGISTRY="$("$DOCKER" exec -u 1000 "$C" bash "$CONTAINER_REPO/scripts/activation/role-isolation-rehearsal.sh" --print-registry)" || die "could not obtain the role table"; fi
+else REGISTRY="$("$DOCKER" exec -u 1000 "$C" bash "$CONTAINER_REPO/scripts/activation/role-isolation-rehearsal.sh" --print-registry)" || die "could not obtain the role table (the image needs /etc/agentbox/role-accounts.json and role-secrets.tsv)"; fi
 REGISTRY="$(jqx -c . <<<"$REGISTRY")" || die "the role table is not JSON"
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/x1-rehearsal-host.XXXXXX")" || die "mktemp failed"

@@ -37,10 +37,9 @@
 # environ files are parsed for names, log files are counted with grep -c, and secret files
 # are only opened, never read.
 #
-# The role table: /etc/agentbox/role-accounts.json when the image ships it (W1 emits it from
-# lib/role-accounts.nix); otherwise derived here from the manifest with the design's §2.2
-# numbering (960 identity, 961 gateway, 962 ingress, 963 spend, then per chain from 964:
-# ab-sidestr-<chain>, ab-faucet-<chain>; dreamlab first, then [sidechain.<name>] sorted).
+# The role table: /etc/agentbox/role-accounts.json (W1's agentbox.role-accounts/1, baked from
+# config/role-accounts.json) and its resolved plan /etc/agentbox/role-secrets.tsv. Both are
+# required; there is no derived numbering (uid 965 is the host docker group and is reserved).
 #
 # Identity-port client contract for (c), as W3 implements it (custody/w3-identity-port;
 # services/nostr-pod-bridge/src/identity_port). Socket /run/agentbox/identity.sock (0660,
@@ -128,55 +127,57 @@ if [ -z "$FLAG_RAW" ]; then FLAG=false; FLAG_SOURCE="absent-default-false"
 else FLAG="$(toml_bool security role_isolation)"; FLAG_SOURCE="manifest"; fi
 
 # ── role table ────────────────────────────────────────────────────────────────────────────
-IDENTITY_ENV='["AGENTBOX_PRIVKEY_HEX","AGENTBOX_NSEC","AGENTBOX_BRIDGE_SK","AGENTBOX_AGENT_PRIVKEY_HEX","JUNKIEJARVIS_PRIVKEY_HEX","CONCIERGE_PRIVKEY_HEX"]'
-INGRESS_ENV='["NIP98_PROXY_ALLOW_BEARER","NIP98_PROXY_SESSION_SECRET"]'
+# W1's table is canonical (ADR-2122): /etc/agentbox/role-accounts.json (agentbox.role-accounts/1)
+# and the plan `agentbox-manifest role-accounts isolate` resolved from it,
+# /etc/agentbox/role-secrets.tsv. There is no fallback numbering: an image without both cannot
+# be rehearsed, and that is a FAIL. normalise_registry folds the two into the rows the checks
+# read: per role {name, uid, gid, programs, files, env, at_rest, at_rest_dirs, legacy} plus
+# {chain, port, interval, enabled} for producers. A role with secrets but no plan row is not
+# delivered on this image (its chain is off): it gets no programs and no files.
+ROLE_TABLE="$R/etc/agentbox/role-accounts.json"
+ROLE_PLAN="$R/etc/agentbox/role-secrets.tsv"
+# Copies the table does not deliver but that hold ab-identity's keys today; (a) probes them.
+IDENTITY_AT_REST='{"at_rest":["/var/lib/agentbox/identities/agentbox-core.json","/run/secrets/nostr.key"],"at_rest_dirs":["/var/lib/agentbox/identities"],"legacy":["/home/devuser/workspace/.agentbox/zone-keys.json"]}'
 
-derive_registry() {
-  local chains=() c i=0 base=964 enabled faucet port interval cred fkey prod_prog fauc_prog roles
-  grep -q '^\[sidechain\]' "$MANIFEST" && chains+=(dreamlab)
-  while IFS= read -r c; do [ -n "$c" ] && chains+=("$c"); done < <(sed -n 's/^\[sidechain\.\([A-Za-z0-9_-]*\)\][[:space:]]*$/\1/p' "$MANIFEST" | sort)
-  roles="$(jq -nc --argjson ienv "$IDENTITY_ENV" --argjson genv "$INGRESS_ENV" '[
-    {name:"ab-identity",uid:960,gid:960,programs:["nostr-relay"],files:["nostr.key"],env:$ienv,
-     at_rest:["/var/lib/agentbox/identities/agentbox-core.json","/run/secrets/nostr.key"],
-     at_rest_dirs:["/var/lib/agentbox/identities"],legacy:["/home/devuser/workspace/.agentbox/zone-keys.json"]},
-    {name:"ab-gateway",uid:961,gid:961,programs:["nostr-gateway"],files:[],env:[],at_rest:[],at_rest_dirs:[],legacy:[]},
-    {name:"ab-ingress",uid:962,gid:962,programs:["nip98-proxy"],files:[],env:$genv,at_rest:[],at_rest_dirs:[],legacy:[]},
-    {name:"ab-spend",uid:963,gid:963,programs:[],files:[],env:[],at_rest:[],at_rest_dirs:[],legacy:[],deferred:"Q6: pay402 and Hitch stay devuser-class in step 1"}
-  ]')"
-  for c in "${chains[@]}"; do
-    if [ "$c" = dreamlab ]; then
-      enabled="$(toml_bool sidechain enabled)"; faucet="$(toml_bool sidechain faucet)"
-      port="$(toml_int sidechain port 3450)"; interval="$(toml_int sidechain interval 600)"
-      cred="$(toml_val sidechain parent_credential_file)"; cred="${cred:-/var/lib/agentbox/secrets/sidestr-tbtc4.cookie}"
-      fkey="$(toml_val sidechain faucet_key_file)"; prod_prog=sidestr-producer; fauc_prog=sidestr-faucet
-    else
-      enabled=false; [ "$(toml_bool sidechain enabled)" = true ] && enabled="$(toml_bool "sidechain.$c" enabled)"
-      faucet="$(toml_bool "sidechain.$c" faucet)"
-      port="$(toml_int "sidechain.$c" port 3450)"; interval="$(toml_int "sidechain.$c" interval 600)"
-      cred="$(toml_val "sidechain.$c" parent_credential_file)"
-      fkey="$(toml_val "sidechain.$c" faucet_key_file)"; prod_prog="sidestr-producer-$c"; fauc_prog="sidestr-faucet-$c"
-    fi
-    [ "$enabled" = true ] || faucet=false
-    roles="$(jq -c --arg c "$c" --argjson u $((base + 2 * i)) --argjson en "$enabled" --argjson fa "$faucet" \
-      --argjson port "$port" --argjson iv "$interval" --arg cred "$cred" --arg fkey "$fkey" \
-      --arg pp "$prod_prog" --arg fp "$fauc_prog" '. + [
-      {name:("ab-sidestr-" + $c),uid:$u,gid:$u,chain:$c,port:$port,interval:$iv,enabled:$en,
-       programs:(if $en then [$pp] else [] end),files:(if $en then ["signer.key","parent.cred"] else [] end),env:[],
-       at_rest:(if $en then ["/var/lib/agentbox/secrets/sidestr-" + $c + ".key"] + (if $cred == "" then [] else [$cred] end) else [] end),
-       at_rest_dirs:(if $en then ["/var/lib/agentbox/secrets"] else [] end),legacy:[]},
-      {name:("ab-faucet-" + $c),uid:($u + 1),gid:($u + 1),chain:$c,enabled:$fa,
-       programs:(if $fa then [$fp] else [] end),files:(if $fa then ["treasury.key"] else [] end),env:[],
-       at_rest:(if $fa then ["/var/lib/agentbox/secrets/sidestr-faucet-" + $c + ".key"] else [] end),at_rest_dirs:[],
-       legacy:(if $fa and $fkey != "" then [$fkey] else [] end)}
-    ]' <<<"$roles")"
-    i=$((i + 1))
-  done
-  jq -c --arg src "derived from $MANIFEST (design §2.2 numbering)" '{source:$src, roles:., classified_root_env:[{name:"TAILSCALE_AUTHKEY",holder:"tailscale-up (root)"}]}' <<<"$roles"
+normalise_registry() { # <table.json> <plan.tsv>
+  local chains c port interval
+  chains="$(jq -r '.roles[].name | select(startswith("ab-sidestr-")) | sub("^ab-sidestr-"; "")' "$1")"
+  local cfg='{}'
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    if [ "$c" = dreamlab ]; then port="$(toml_int sidechain port 3450)"; interval="$(toml_int sidechain interval 600)"
+    else port="$(toml_int "sidechain.$c" port 3450)"; interval="$(toml_int "sidechain.$c" interval 600)"; fi
+    cfg="$(jq -c --arg c "$c" --argjson p "$port" --argjson i "$interval" '.[$c] = {port: $p, interval: $i}' <<<"$cfg")"
+  done <<<"$chains"
+  jq -c --rawfile plan "$2" --arg src "$1 + $2" --argjson chains "$cfg" --argjson ident "$IDENTITY_AT_REST" '
+    ($plan | split("\n") | map(select(length > 0 and (startswith("#") | not)) | split("\t"))) as $rows
+    | (.reserved_ids // {} | keys | map(tonumber)) as $reserved
+    | if ([.roles[].uid] | any(. as $u | $reserved | index($u))) then error("a role uid is reserved (reserved_ids)") else . end
+    | {source: $src, schema: .schema, reserved_ids: ($reserved),
+       classified_root_env: [{name: "TAILSCALE_AUTHKEY", holder: "tailscale-up (root)"}],
+       roles: [.roles[] | .name as $n
+         | ([$rows[] | select((.[0] == "file" or .[0] == "env") and .[1] == $n)]) as $mine
+         | ((.secrets | length) == 0 or ($mine | length) > 0) as $on
+         | {name: $n, uid, gid: .uid,
+            programs: (if $on then .programs else [] end),
+            files: [$mine[] | .[2]],
+            env: [.secrets[] | .from_env // empty],
+            at_rest: ([$mine[] | select(.[0] == "file") | .[3]] + (if $n == "ab-identity" then $ident.at_rest else [] end)),
+            at_rest_dirs: (([$mine[] | select(.[0] == "file") | .[3] | select(startswith("/var/lib/agentbox/")) | sub("/[^/]*$"; "")] | unique)
+                           + (if $n == "ab-identity" then $ident.at_rest_dirs else [] end)),
+            legacy: (if $n == "ab-identity" then $ident.legacy else [] end)}
+         + (if ($n | startswith("ab-sidestr-")) then ($n | sub("^ab-sidestr-"; "")) as $c
+              | {chain: $c, enabled: $on} + ($chains[$c] // {port: 3450, interval: 600}) else {} end)
+         + (if (.programs | length) == 0 and (.secrets | length) == 0 then {deferred: .purpose} else {} end)]}' "$1"
 }
 
 if [ -n "${RH_REGISTRY:-}" ]; then REGISTRY="$(jq -c . "$RH_REGISTRY")" || die "RH_REGISTRY is not JSON"
-elif [ -r "$R/etc/agentbox/role-accounts.json" ]; then REGISTRY="$(jq -c --arg src "$R/etc/agentbox/role-accounts.json" '.source = $src' "$R/etc/agentbox/role-accounts.json")" || die "role-accounts.json is not JSON"
-else REGISTRY="$(derive_registry)" || die "could not derive the role table"; fi
+else
+  [ -r "$ROLE_TABLE" ] || die "${ROLE_TABLE#"$R"} is missing: this image predates the role accounts (ADR-2122) and cannot be rehearsed"
+  [ -r "$ROLE_PLAN" ] || die "${ROLE_PLAN#"$R"} is missing: the image ships the role table without its resolved plan"
+  [ "$(jq -r .schema "$ROLE_TABLE" 2>/dev/null)" = agentbox.role-accounts/1 ] || die "${ROLE_TABLE#"$R"} is not agentbox.role-accounts/1"
+  REGISTRY="$(normalise_registry "$ROLE_TABLE" "$ROLE_PLAN")" || die "could not read the role table and plan"
+fi
 
 if [ "$MODE" = registry ]; then printf '%s\n' "$REGISTRY"; exit 0; fi
 
