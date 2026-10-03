@@ -106,6 +106,10 @@ else
   echo "run-producer[$NAME]: checkpoints off: no block of $NAME is anchored in $parent" >&2
 fi
 [ -n "$PARENT_WALLET" ] && extra+=(--parent-wallet "$PARENT_WALLET")
+# SPEC 0.0.5: the chain's published kind-3500 event (siding chain-event). The document lives in the
+# read-only image, so the event sits in the writable state dir; produce verifies it and announces its
+# id as the chain hash (`e` tag) with every tip. sidestr:dreamlab = 44eb8c91..., published 2026-10-03.
+[ -f "$STATE/chain-event.json" ] && extra+=(--chain-event "$STATE/chain-event.json")
 mkdir -p "$STATE"
 
 exec env SCHEMA="$UP/schema" BLAKETESTNODE="$UP/blaketestnode" \
