@@ -3,6 +3,22 @@
 # Launched by supervisord; MCP server attaches via CDP on port 9222
 # socat proxy on 9223 exposes CDP to the Docker host
 # Prefers google-chrome-beta (149+, WebMCP), falls back to chromium
+#
+# Podkey (W9, owner rule 2026-10-03): the pinned Podkey CI artefact is unpacked
+# at $PODKEY_EXT_DIR at image build (scripts/fetch-podkey.sh). How it is loaded
+# depends on the browser, and this script records which in $RUN_DIR/podkey-mode
+# for podkey-ctl.js (supervisord program podkey-loader):
+#   Chromium      --load-extension + --disable-extensions-except      mode=flag
+#   Google Chrome  branded Chrome 137+ ignores --load-extension, and on 151
+#                  --disable-extensions-except disables even a CDP-loaded
+#                  extension, so neither flag is passed; podkey-loader calls
+#                  Extensions.loadUnpacked (needs
+#                  --enable-unsafe-extension-debugging); the managed policy
+#                  policies/podkey-only.json allowlists only Podkey      mode=cdp
+#   no extension dir  Chrome starts without Podkey (fail-open)            mode=none
+# The profile ($CHROME_PROFILE_DIR) is the named volume browsercontainer-profile,
+# so Podkey's chrome.storage.local (encrypted vault, pubkey, grants) survives
+# container recreation.
 
 SECURE_ORIGINS="${TREAT_AS_SECURE:-http://the model host:3001,http://the model host:3000,http://host.docker.internal:3001,http://host.docker.internal:3000}"
 
@@ -21,6 +37,10 @@ if [ -z "$CHROME_BIN" ]; then
   exit 1
 fi
 
+PROFILE_DIR="${CHROME_PROFILE_DIR:-/home/devuser/chrome-profile}"
+PODKEY_EXT_DIR="${PODKEY_EXT_DIR:-/opt/browsercontainer/extensions/podkey}"
+RUN_DIR="${BROWSERCONTAINER_RUN_DIR:-/tmp/browsercontainer}"
+
 echo "[launch-chromium] Using: $CHROME_BIN" >&2
 echo "[launch-chromium] TREAT_AS_SECURE: $SECURE_ORIGINS" >&2
 
@@ -31,8 +51,34 @@ echo "[launch-chromium] TREAT_AS_SECURE: $SECURE_ORIGINS" >&2
 # on Chrome 149 even though SharedArrayBuffer worked. Use the single-flag
 # comma form.
 
+# The profile survives container recreation; a Singleton* left by the previous
+# container (same hostname, dead pid) would make Chrome refuse the profile as
+# "in use". Only this script starts Chrome in this container, so they are stale.
+mkdir -p "$PROFILE_DIR" "$RUN_DIR"
+rm -f "$PROFILE_DIR/SingletonLock" "$PROFILE_DIR/SingletonSocket" "$PROFILE_DIR/SingletonCookie"
+
+EXTENSION_ARGS=()
+PODKEY_MODE=none
+if [ -f "$PODKEY_EXT_DIR/manifest.json" ]; then
+  case "$("$CHROME_BIN" --version 2>/dev/null)" in
+    "Google Chrome"*)
+      PODKEY_MODE=cdp
+      EXTENSION_ARGS=(--enable-unsafe-extension-debugging)
+      ;;
+    *)
+      PODKEY_MODE=flag
+      EXTENSION_ARGS=(--load-extension="$PODKEY_EXT_DIR" --disable-extensions-except="$PODKEY_EXT_DIR")
+      ;;
+  esac
+else
+  echo "[launch-chromium] WARN: no Podkey at $PODKEY_EXT_DIR; starting without it" >&2
+fi
+echo "$PODKEY_MODE" >"$RUN_DIR/podkey-mode" || true
+echo "[launch-chromium] Podkey load mode: $PODKEY_MODE" >&2
+
 exec "$CHROME_BIN" \
-    --user-data-dir=/tmp/chrome-profile \
+    --user-data-dir="$PROFILE_DIR" \
+    "${EXTENSION_ARGS[@]}" \
     --no-first-run \
     --no-default-browser-check \
     --no-sandbox \

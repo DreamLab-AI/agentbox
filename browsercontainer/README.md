@@ -140,3 +140,100 @@ For Claude Code / agentbox agents, add to `.mcp.json`:
   }
 }
 ```
+
+## Podkey and the persistent profile (2026-10-03, custody-isolation W9)
+
+Owner rule (2026-10-03): the sidecar installs and enables **Podkey** from the
+published artefact as a matter of course. The sidecar's identity, K_browser
+(G-5), is held by Podkey, not by Proton Pass and not by a throwaway `/tmp` profile.
+
+### Fresh host (CY-C)
+
+A fresh host's sidecar ships Podkey with no identity. `agentbox.sh browsercontainer up`
+(or `rebuild`) first runs `scripts/fetch-podkey.sh fetch`, which needs an
+authenticated `gh` or an exported `GH_TOKEN`/`GITHUB_TOKEN` (GitHub serves
+artefacts to authenticated callers only). After that the zip is cached in
+`browsercontainer/vendor/` (gitignored) and later builds need no network. The
+container comes up healthy with Podkey loaded and `state: none` until the owner
+mints K_browser (below).
+
+### What is installed, and from where
+
+| Item | Value |
+|---|---|
+| Source | `podkey-extension` artefact of `JavaScriptSolidServer/podkey` CI (`.github/workflows/ci.yml`); there are no GitHub releases |
+| Pin | `browsercontainer/podkey.pin`: commit, run id, artefact id, zip sha256, expected name and version |
+| Fetch | host side, raw zip via `GET /repos/…/actions/artifacts/{id}/zip` (`gh api`, or curl + token). Before downloading, the run's `head_sha` must equal the pinned commit and the artefact must belong to the pinned run. `gh run download` is not used because it unpacks, so the zip bytes the pin covers would never be seen |
+| Verify | the zip's sha256 must equal the pin (refused otherwise, exit 3). Inside the image build, `fetch-podkey.sh install` re-verifies, refuses `..`/absolute entries, and checks `manifest.json` name/version and `build.json` commit against the pin |
+| Install path | `/opt/browsercontainer/extensions/podkey` (inside the image) |
+| Extension id | `cakgjkgiodcdhecnnfhmcfphjkknfjkd`. The artefact's manifest has no `key`, so Chrome derives the id from the absolute path: the first 16 bytes of SHA-256(path), each hex nibble mapped `0-f` to `a-p`. The path is fixed in the image, so the id is stable across rebuilds and hosts. `node /opt/browsercontainer/podkey-ctl.js id` prints it |
+| Policy | `/etc/opt/chrome/policies/managed/podkey-only.json` (and `/etc/chromium/…`): `ExtensionInstallBlocklist ["*"]`, `ExtensionInstallAllowlist [<id>]` |
+
+**Moving the pin forward** (the only way it changes; rule-estate-pins-move-forward):
+pick a green `ci.yml` run on podkey `main`, then edit `podkey.pin` with its `head_sha`,
+run id, the `podkey-extension` artefact id, the artefact's `digest` (that is the
+zip sha256), the manifest version and `expires_at`. Then `rebuild`. CI artefacts
+expire after 90 days. The current pin expires **2026-12-24**, after which only
+hosts with a cached zip can build until the pin moves.
+
+### How Chrome loads it
+
+| Browser | Flags | Load |
+|---|---|---|
+| Google Chrome beta (default) | `--enable-unsafe-extension-debugging` | `podkey-loader` (supervisord) calls CDP `Extensions.loadUnpacked` |
+| Chromium (fallback) | `--load-extension=<dir> --disable-extensions-except=<dir>` | Chrome itself |
+| no extension dir | none | Chrome starts without Podkey (fail-open) |
+
+Branded Chrome 137+ ignores `--load-extension`. On Chrome beta 151,
+`--disable-extensions-except` still applies and disables even the CDP-loaded
+Podkey. Both were observed in this sidecar on 2026-10-03, which is why branded
+Chrome gets neither flag and the managed policy enforces "Podkey only" instead.
+The loader loads **once per Chrome process**: re-loading an unpacked extension
+clears `chrome.storage.session`, which would silently lock an unlocked key.
+
+### The profile volume
+
+Chrome's `--user-data-dir` is `/home/devuser/chrome-profile`, the named volume
+**`browsercontainer-profile`** (stable name, independent of the compose project).
+It holds Podkey's `chrome.storage.local`: the **encrypted vault**
+(scrypt + AES-256-GCM, sealed under the owner's passphrase), the public key, and
+site grants. The plaintext private key exists only in `chrome.storage.session`
+(memory) while unlocked. Never run `docker compose -f docker-compose.browsercontainer.yml down -v`.
+That deletes the volume and, with it, the sealed K_browser.
+
+`/tmp/chrome-profile` is gone. Extensions installed by hand into it (Proton Pass
+was added from the Chrome Web Store via VNC on 2026-09-28 13:03 UTC; it was never
+part of this build) are not carried over, and the policy blocks re-installing them.
+
+### Owner steps
+
+**Mint K_browser (once, after the first rebuild with this change)**
+
+1. `./agentbox.sh browsercontainer podkey status` should show `"state": "none"`
+   and `"extension_id": "cakgjkgiodcdhecnnfhmcfphjkknfjkd"`.
+2. Open VNC (`vnc://<host>:5903`). In Chrome, open
+   `chrome-extension://cakgjkgiodcdhecnnfhmcfphjkknfjkd/popup/popup.html` (or click
+   Podkey's toolbar icon). Choose **Generate new key**, using the passphrase path:
+   the sidecar has no security key for the passkey path. Pick a passphrase of at
+   least 8 characters and keep it outside the sidecar.
+3. Back up per D3 at mint time: **Export key** in Podkey's popup, then seal the
+   nsec with your age key on your own machine. It never goes into this repository
+   or the agent's view.
+4. `./agentbox.sh browsercontainer podkey pubkey` prints the 64-hex public key.
+   Give it to the agent, which puts it in `config/custody/g5-key-split.json`
+   (`k_browser.pubkey`) and `[interaction_plane.proxy].allowed_pubkeys` (G-5 step 2).
+
+**After every sidecar restart or recreate** the vault is still on the volume, but the
+session key is gone, so Podkey is `locked`. Re-unlock (no re-import):
+
+```bash
+./agentbox.sh browsercontainer podkey unlock   # prompts for the passphrase, no echo
+```
+
+or type it into Podkey's unlock screen over VNC. Unlock is deliberately not part
+of the start script: doing it unattended would mean storing the passphrase in the
+sidecar, which defeats the vault.
+
+**Only if the volume is lost:** Podkey shows `state: none`. Restore from the age
+backup, then use **Import existing key** in the popup over VNC, paste the nsec, and
+set a passphrase. The public key, and so every verifier, is unchanged.

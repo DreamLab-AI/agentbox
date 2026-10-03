@@ -59,6 +59,9 @@ services:
     volumes:
       # Shared exchange volume — mermaid renders here for agentbox/gui-tools pickup.
       - gui-tools-exchange:/home/devuser/exchange
+      # Chrome profile (W9): Podkey's chrome.storage.local (encrypted key vault,
+      # public key, consent grants) must survive container recreation.
+      - browsercontainer-profile:/home/devuser/chrome-profile
 
 networks:
   visionclaw:
@@ -67,3 +70,7 @@ networks:
 
 volumes:
   gui-tools-exchange:
+  # Stable name, independent of the compose project. Holds the sidecar's identity
+  # (K_browser, sealed in Podkey's vault): never `down -v` this file.
+  browsercontainer-profile:
+    name: browsercontainer-profile
