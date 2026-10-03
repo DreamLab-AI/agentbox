@@ -39,6 +39,18 @@ on:
       - 'management-api/routes/system.js'
       - 'scripts/activation/sidechain-witness.cjs'
       - 'scripts/activation/sidechain-demo-witness.sh'
+      # Custody X-1 (ADR-2122): the identity port (nostr-pod-bridge) and the
+      # activation rehearsal, job `custody` below.
+      - 'services/nostr-pod-bridge/**'
+      - 'lib/nostr-pod-bridge.nix'
+      - 'tests/sovereign/identity-port.node-test.js'
+      - 'config/custody/**'
+      - 'config/role-accounts.json'
+      - 'agentbox.toml'
+      - 'scripts/activation/role-isolation-rehearsal.sh'
+      - 'scripts/activation/role-isolation-rehearsal.host.sh'
+      - 'tests/config/role-isolation-rehearsal.test.sh'
+      - 'docs/estate-closeout/schema/x1-rehearsal.schema.json'
       - 'agentbox/schemas/adapter-contracts/**'
       - '.github/workflows/contract-tests.yml'
   push:
@@ -79,6 +91,18 @@ on:
       - 'management-api/routes/system.js'
       - 'scripts/activation/sidechain-witness.cjs'
       - 'scripts/activation/sidechain-demo-witness.sh'
+      # Custody X-1 (ADR-2122): the identity port (nostr-pod-bridge) and the
+      # activation rehearsal, job `custody` below.
+      - 'services/nostr-pod-bridge/**'
+      - 'lib/nostr-pod-bridge.nix'
+      - 'tests/sovereign/identity-port.node-test.js'
+      - 'config/custody/**'
+      - 'config/role-accounts.json'
+      - 'agentbox.toml'
+      - 'scripts/activation/role-isolation-rehearsal.sh'
+      - 'scripts/activation/role-isolation-rehearsal.host.sh'
+      - 'tests/config/role-isolation-rehearsal.test.sh'
+      - 'docs/estate-closeout/schema/x1-rehearsal.schema.json'
       - '.github/workflows/contract-tests.yml'
 
 concurrency:
@@ -132,6 +156,12 @@ jobs:
         working-directory: management-api
         run: NODE_PATH="$PWD/node_modules" node --test ../tests/sovereign/pod-sovereign-signer.node-test.js
 
+      # Custody X-1 W2: the <NAME>_FILE role-secret loader (management-api/lib/role-secret.js)
+      # and its consumers (operator-key, pod-signer, agent-identity). invariants.yml points here.
+      - name: Role-secret loader and consumers (custody W2)
+        working-directory: management-api
+        run: NODE_PATH="$PWD/node_modules" node --test ../tests/sovereign/role-secret.node-test.js
+
       # ADR-2097 (amended 2026-10-02): the sidestr rail — k_spend/k_id binding
       # known-answer test and the /v1/chain/pay pipeline, also under node:test.
       - name: sidestr rail (k_spend binding KAT, /v1/chain/pay, /v1/chain/payments)
@@ -155,3 +185,90 @@ jobs:
           name: contract-test-results
           path: management-api/coverage/
           retention-days: 14
+
+  # Custody X-1 step 1 (ADR-2122): the identity port and the activation rehearsal.
+  # nostr-pod-bridge resolves nostr-bbs-core and solid-pod-rs through
+  # ../../../../<repo> path dependencies, so the job rebuilds the layout
+  # lib/nostr-pod-bridge.nix assembles: agentbox at project/agentbox, the two
+  # public siblings beside project/, at the revisions that file pins (read from
+  # it, so the pins move in one place).
+  custody:
+    name: Custody — identity port and activation rehearsal
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: project/agentbox
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: project/agentbox
+
+      - name: Read the sibling pins from lib/nostr-pod-bridge.nix
+        id: pins
+        run: |
+          forum="$(sed -n 's/^ *forumRev *= *"\([0-9a-f]\{40\}\)";.*/\1/p' lib/nostr-pod-bridge.nix)"
+          solid="$(sed -n 's/^ *solidRev *= *"\([0-9a-f]\{40\}\)";.*/\1/p' lib/nostr-pod-bridge.nix)"
+          [ -n "$forum" ] && [ -n "$solid" ] || { echo "::error::forumRev/solidRev not found in lib/nostr-pod-bridge.nix"; exit 1; }
+          echo "forum=$forum" >>"$GITHUB_OUTPUT"
+          echo "solid=$solid" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: DreamLab-AI/nostr-rust-forum
+          ref: ${{ steps.pins.outputs.forum }}
+          path: nostr-rust-forum
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: DreamLab-AI/solid-pod-rs
+          ref: ${{ steps.pins.outputs.solid }}
+          path: solid-pod-rs
+
+      - name: Set up Node 22 (matches the runtime image — nodejs_22 in flake.nix)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: project/agentbox/management-api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: project/agentbox/management-api
+        run: npm ci
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
+        with:
+          toolchain: stable
+
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          workspaces: project/agentbox/services/nostr-pod-bridge
+
+      # The whole crate: tests/identity_port.rs (port transport, SO_PEERCRED ACL,
+      # receipts), the lib's identity_port unit tests, tests/role_isolation.rs
+      # and the bootstrap/identity suites the port's keys come from.
+      - name: nostr-pod-bridge tests (identity port, role isolation, bootstrap)
+        working-directory: project/agentbox/services/nostr-pod-bridge
+        run: cargo test --locked
+
+      - name: Build the nostr-pod-bridge binary for the node-side port test
+        working-directory: project/agentbox/services/nostr-pod-bridge
+        run: cargo build --locked --bin nostr-pod-bridge
+
+      # Without NOSTR_POD_BRIDGE_BIN every case skips; here the binary is built,
+      # so a skip would mean the job is not testing the port.
+      - name: Identity port end to end (sign-request client against serve-identity)
+        working-directory: project/agentbox/management-api
+        run: |
+          NOSTR_POD_BRIDGE_BIN="$GITHUB_WORKSPACE/project/agentbox/services/nostr-pod-bridge/target/debug/nostr-pod-bridge" \
+          NODE_PATH="$PWD/node_modules" node --test ../tests/sovereign/identity-port.node-test.js | tee "$RUNNER_TEMP/port.tap"
+          ! grep -Eq '^# skipped [1-9]' "$RUNNER_TEMP/port.tap"
+
+      # The rehearsal's checks (a)-(f) against a scratch root with fake
+      # /proc, supervisorctl, stat, docker, sudo and curl; (c) signs with
+      # throwaway keys and verifies with NostrBridge.verifyNip98 (nostr-tools
+      # from management-api, as the pods signer step does).
+      - name: Role-isolation rehearsal decides correctly (custody W6a/W10)
+        run: NODE_PATH="$PWD/management-api/node_modules" bash tests/config/role-isolation-rehearsal.test.sh
