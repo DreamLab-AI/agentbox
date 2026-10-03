@@ -21,6 +21,9 @@
 #   5. prepare moves a squatted path aside rather than trusting or following it
 #   6. the sentinel path is not under a devuser-owned tmpfs; /tmp is root 1777 here
 #   7. the Stage B prologue claims before Phase 6 and exits 0 on a replay
+# shellcheck disable=SC2015,SC2016
+# SC2015: _ok/_bad always return 0, so `cond && _ok || _bad` is a true if/else.
+# SC2016: single-quoted $ is deliberate (regexes and code run in a child bash).
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENTRY="${HERE}/../../config/entrypoint-unified.sh"
@@ -116,7 +119,7 @@ prep_line="$(grep -n '_ab_root_state_dir_prepare "\$AB_ROOT_STATE_DIR"' "$ENTRY"
   && _ok "Stage A prepares the state dir (line ${prep_line})" || _bad "Stage A must prepare the state dir"
 if [ -n "$claim_line" ]; then
   blk="$(sed -n "${claim_line},$((claim_line + 12))p" "$ENTRY")"
-  printf '%s' "$blk" | grep -qE '1\)[^;]*exit 0' && printf '%s' "$blk" | grep -qE '2\)|\*\)' \
+  printf '%s' "$blk" | grep -qE '^ *1\).*; exit 0 ;;' && printf '%s' "$blk" | grep -qE '2\)|\*\)' \
     && _ok "a replay exits 0 (supervisord records a clean one-shot); an untrusted dir exits non-zero" \
     || _bad "replay must exit 0 and refusal must exit non-zero" "$blk"
 fi

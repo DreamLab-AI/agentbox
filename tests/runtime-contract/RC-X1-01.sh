@@ -17,6 +17,9 @@
 #   7. the shell profile snippet appends the cargo bin for devuser only, never root
 #
 # No container, no Docker, nothing executed as root. Exit 0 = all pass, 1 = any fail.
+# shellcheck disable=SC2015,SC2016
+# SC2015: _ok/_bad always return 0, so `cond && _ok || _bad` is a true if/else.
+# SC2016: single-quoted $ is deliberate (regexes and code run in a child bash).
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENTRY="${HERE}/../../config/entrypoint-unified.sh"
