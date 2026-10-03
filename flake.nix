@@ -551,9 +551,19 @@
             # document rendering; the browser sidecar remains unaffected.
             args = [ "--no-sandbox" "--disable-setuid-sandbox" ];
           });
-        #    12.0.0 HELD (2026-10-01): mermaid 12 pins chevrotain ~11.1.2 →
-        #    lodash-es 4.17.23 (GHSA-r5fr-rjxr-66jc, high) — a new audit
-        #    finding — and drops -w/-H/--pdfFit (render.sh uses -w/-H).
+        #    12.0.0 HELD (2026-10-01; re-evaluated 2026-10-03, still held).
+        #    The 2026-10-01 audit finding (lodash-es via chevrotain) is gone:
+        #    a fresh 12.0.0 lock audits clean. Still blocking: (1) every
+        #    render changes. On the VisionFlow corpus gate
+        #    (`diagram-index-gen.cjs docs/diagrams --check --render --only
+        #    agentbox/36-`) both versions pass 7/7, but all 7 SVGs change
+        #    geometry (AB-36.3 2015→476.5 px wide; layout direction flips)
+        #    and grow ~7× (fonts embedded by default; --no-font-embed opts
+        #    out). (2) -w/-H/-f(--pdfFit) are removed for --size and
+        #    --pdf-paper-format; skills/mermaid-diagrams/scripts/render.sh
+        #    passes -w/-H. Moving needs a corpus re-render and review, a
+        #    render.sh port to --size, then hashes from a --before lock with
+        #    runtimeDependencies.puppeteer kept (12 still peers ^25).
         mermaidCliPkg = mkNpmCli {
           pkgName         = "@mermaid-js/mermaid-cli";
           version         = "11.17.0";
