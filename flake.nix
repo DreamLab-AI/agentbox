@@ -255,6 +255,8 @@
         sidechainAnnounce = unplaceheld (sidechainCfg.announce_mirror or "");
         sidechainMirrorCheckout = unplaceheld (sidechainCfg.mirror_checkout or "/home/devuser/workspace/sidestr/mirror");
         sidechainFaucetKey = unplaceheld (sidechainCfg.faucet_key_file or "");
+        sidechainFaucetUnits = toString (sidechainCfg.faucet_units or 100);
+        sidechainFaucetSats = toString (sidechainCfg.faucet_sats or 1000);
         # [sidechain.<name>]: every further sealed chain (ADR-2103, "supervision
         # generalises when the second chain exists"; the first is
         # sidestr:dreamlab-txbt4, beside txbt4). Each table bakes its own
@@ -2860,7 +2862,7 @@ ${lib.optionalString sidechainFaucet ''
 [program:sidestr-faucet]
 command=/opt/agentbox/config/sidechain/run-faucet.sh
 user=devuser
-environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ sidestrAgentPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"${lib.optionalString (sidechainFaucetKey != "") ",SIDESTR_FAUCET_KEY=\"${sidechainFaucetKey}\""}
+environment=HOME="/home/devuser",PATH="${lib.makeBinPath [ sidestrAgentPkg pkgs.curl pkgs.bash pkgs.coreutils ]}:/usr/local/bin:/bin:/usr/bin"${lib.optionalString (sidechainFaucetKey != "") ",SIDESTR_FAUCET_KEY=\"${sidechainFaucetKey}\""},SIDESTR_FAUCET_UNITS="${sidechainFaucetUnits}",SIDESTR_FAUCET_SATS="${sidechainFaucetSats}"
 autostart=true
 autorestart=true
 startsecs=10

@@ -1576,6 +1576,8 @@ mirror          = true    # [program:sidestr-mirror]: push block files to the Pa
 mirror_checkout = "/home/devuser/workspace/sidestr/mirror"
 faucet          = true    # [program:sidestr-faucet]: DREAM for member wallets (forum ADR-2015)
 faucet_key_file = "/home/devuser/workspace/sidestr/agents/treasury.key"
+faucet_units    = 1000    # DREAM per grant: covers the 5/10 table's 1,000 buy-in (ADR-2020)
+faucet_sats     = 2000    # fee sats per grant: about two settlements at ~1,010 sats each
 
 # sidestr:dreamlab-txbt4: the second chain, sealed 2026-10-02 beside BLAKE2b
 # testnet4 for the agent-payments demo (owner SC1/SC2; ADR-2103;
