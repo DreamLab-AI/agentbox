@@ -47,7 +47,8 @@ the estate's **chain instance**, not the crates: the sealed `sidestr:dreamlab` d
 interim producer runner, mirror sync and faucet runner in `config/sidechain/`. The optional
 supervised faucet bakes the standalone AGPL `sidestr-agent` binary from a pinned upstream
 Git revision and lockfile (`lib/sidestr-agent.nix`), not into any permissive crate.
-The interim producer remains the upstream JS engine; a future
+The interim producer remains the upstream JS engine, baked read-only at the commits in
+`config/sidechain/upstream-pins` (`lib/sidestr-upstream.nix`); a future
 `sidestr-node` takes them from crates.io and is AGPL-3.0 in effect. Testnet only; no real
 funds anywhere.
 

@@ -7,8 +7,8 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 055c06ff69b2f53bf38a67d254c048bb03599fc8
-verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
+verified_commit: e103f81a769c7a762786f6bf7fcb6a6e00ff544e
+verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, config/sidechain/upstream-pins, lib/sidestr-upstream.nix, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, tests/config/sidechain-producer-baked.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
 repo: agentbox
@@ -581,3 +581,35 @@ Re-verified at `0919dc39afb7d4ab22bfc14a431f0d55ef1b81b3`.
 
 Tripped by `b6c44c9a5` (SPEC 0.0.5, on main before the custody branches), which surfaced while re-verifying for custody W1. `config/sidechain/run-producer.sh` gains one optional argument: `--chain-event "$STATE/chain-event.json"` is passed when that file exists. The parent check (D3), the BLAKE2b fork-hash check (D3a), the P21 mainnet gate and the "no implied anchor" message are untouched. `tests/config/sidechain-producer-gates.test.sh` passes 7/7 and `sidechain-genesis.test.sh` 7/7. Custody W1 does not edit the runner. Under `[security].role_isolation` it only points `SIDESTR_KEY` and `SIDESTR_PARENT_COOKIE` at `/run/secrets/ab-sidestr-<chain>/` (ADR-2122). The decision holds.
 Re-verified by `git diff 05d886bba..055c06ff6 -- config/sidechain/run-producer.sh`. No re-implementation was needed.
+
+## Re-verification — 2026-10-03 (`e103f81a769c7a762786f6bf7fcb6a6e00ff544e`, custody W5: the producer runs baked code)
+
+`run-producer.sh` no longer runs the workspace checkouts by default. `lib/sidestr-upstream.nix`
+bakes sidestr/spec, bitcoin-desktop/schema and bitcoin-blake/blaketestnode at the commits in
+`config/sidechain/upstream-pins` into one read-only `/nix/store` tree, linked at
+`/opt/agentbox/sidestr/upstream` whenever `[sidechain].enabled`. Each directory records its
+commit in `.pin-commit`, and Nix evaluation fails when the file's revs and `upstream-pins`
+disagree. The runner refuses a bake whose `.pin-commit` differs (a stale bake), a bake with any
+file writable by the producer's user, and an image with no bake. A workspace checkout runs only
+under `SIDESTR_ALLOW_UNPINNED=1`, and every such start logs `SIDESTR-UNPINNED`, naming the
+directories that are off their pin or carry uncommitted edits. The old `rev-parse HEAD`
+comparison let an uncommitted edit through; that path now exists only behind the override.
+
+This is the default **with `[security].role_isolation` off as well as on**. The flag ships off
+and only changes which uid runs the producer and where its key is read from (ADR-2122). Running
+pinned code is a property of the runner, not of the custody flag, and a pinned
+default is the honest one in either mode.
+
+The bake carries no `node_modules`. siding's producer path imports only `node:` builtins.
+`@ethereumjs/*` loads lazily, and only for a chain whose document names the `evm` rule. Neither
+`dreamlab` nor `dreamlab-txbt4` names it, and the runner refuses such a chain on this bake.
+
+Unchanged: the parent check (D3), the BLAKE2b fork-hash check (D3a), the checkpoint and
+"no implied anchor" gates, the P21 mainnet gate and both sealed documents. Evidence:
+`tests/config/sidechain-producer-baked.test.sh` 8/8 (red 0/8 before the runner change),
+`sidechain-producer-gates.test.sh` 7/7, `sidechain-genesis.test.sh` 7/7, shellcheck clean. A
+bake assembled from the three real commit tarballs passes every new gate and stops at D3a. The
+fetch hashes were computed with the NAR method, which reproduces `lib/sidestr-agent.nix`'s
+pin exactly; the derivation itself is unbuilt until the owner's host rebuild. Until that
+rebuild the live producer stays on its tmux bridge under `SIDESTR_ALLOW_UNPINNED=1`, which the
+new runner still serves, now with the marker. Decision and status axes unchanged.

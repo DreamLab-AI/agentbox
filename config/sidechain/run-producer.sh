@@ -3,16 +3,27 @@
 # sidestr:dreamlab (gate [sidechain].enabled) and [program:sidestr-producer-<name>] for each
 # [sidechain.<name>] table (gate [sidechain.<name>].enabled, dominated by [sidechain].enabled).
 # flake.nix passes --announce-mirror from the table's announce_mirror and the chain's settings as
-# the environment below. Runs the upstream JS reference engine from durable checkouts under
-# $WORKSPACE/sidestr/upstream against the chain's parent node. Keys and RPC credentials are files
-# under /var/lib/agentbox/secrets, never arguments.
+# the environment below. Runs the upstream JS reference engine against the chain's parent node.
+# Keys and RPC credentials are files under /var/lib/agentbox/secrets, never arguments.
+#
+# Which upstream runs (custody W5, design §2.7, owner Q7). The upstream code is consensus for the
+# chain and the producer holds the chain's signing key, so by default it runs only code its own user
+# cannot modify: the image's bake of the commits in upstream-pins (lib/sidestr-upstream.nix, linked
+# at /opt/agentbox/sidestr/upstream, a read-only /nix/store tree). Each baked directory carries
+# .pin-commit, written at build time; one that differs from upstream-pins is a stale bake and the
+# runner refuses, as it does when any file in the bake is writable. A workspace checkout runs only
+# under SIDESTR_ALLOW_UNPINNED=1, and every start then logs SIDESTR-UNPINNED. This default holds
+# whether or not [security].role_isolation is on.
 #
 #   run-producer.sh [--announce-mirror https://host/path]
 #
 # Environment (all optional; the defaults are sidestr:dreamlab's, unchanged since 2026-09-22):
 #   SIDESTR_CHAIN          the chain's name: config/sidechain/<name>/chain.json, the signer key
 #                          /var/lib/agentbox/secrets/sidestr-<name>.key, state $WORKSPACE/sidestr/<name>
-#   SIDESTR_UPSTREAM       checkouts of sidestr/spec, bitcoin-desktop/schema, bitcoin-blake/blaketestnode
+#   SIDESTR_UPSTREAM_BAKED the baked sidestr/spec, bitcoin-desktop/schema, bitcoin-blake/blaketestnode
+#                          (default /opt/agentbox/sidestr/upstream)
+#   SIDESTR_UPSTREAM       checkouts of the same three; read only under SIDESTR_ALLOW_UNPINNED=1
+#                          (default $WORKSPACE/sidestr/upstream)
 #   SIDESTR_STATE          the chain's block file directory
 #   SIDESTR_DOC            the sealed chain document
 #   SIDESTR_KEY            the signer key file
@@ -28,13 +39,13 @@
 #                          0 (the default): no checkpoint, so nothing anchors the chain. N > 0 needs
 #                          a wallet: the engine would otherwise skip every checkpoint without a word.
 #   SIDESTR_PORT / SIDESTR_INTERVAL / SIDESTR_RELAYS
-#   SIDESTR_ALLOW_UNPINNED=1  run an upstream checkout other than upstream-pins (upgrade tests only)
+#   SIDESTR_ALLOW_UNPINNED=1  run the SIDESTR_UPSTREAM checkout instead of the bake, at any commit
+#                          (upgrade tests only; logs SIDESTR-UNPINNED)
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE="${WORKSPACE:-$HOME/workspace}"
 NAME="${SIDESTR_CHAIN:-dreamlab}"
-UP="${SIDESTR_UPSTREAM:-$WORKSPACE/sidestr/upstream}"
 STATE="${SIDESTR_STATE:-$WORKSPACE/sidestr/$NAME}"
 DOC="${SIDESTR_DOC:-$HERE/$NAME/chain.json}"
 KEY="${SIDESTR_KEY:-/var/lib/agentbox/secrets/sidestr-$NAME.key}"
@@ -50,22 +61,41 @@ RELAYS="${SIDESTR_RELAYS:-wss://nos.lol,wss://relay.damus.io,wss://relay.primal.
 
 die() { echo "run-producer[$NAME]: $*" >&2; exit 1; }
 
+PINS="$HERE/upstream-pins"
+if [ "${SIDESTR_ALLOW_UNPINNED:-0}" = 1 ]; then
+  UP="${SIDESTR_UPSTREAM:-$WORKSPACE/sidestr/upstream}"
+  echo "run-producer[$NAME]: SIDESTR-UNPINNED: running consensus code from the writable checkout $UP, not the baked pins (SIDESTR_ALLOW_UNPINNED=1; upgrade tests only)" >&2
+  while read -r dir want _; do
+    case "$dir" in ''|'#'*) continue ;; esac
+    have=$(git -C "$UP/$dir" rev-parse HEAD 2>/dev/null || echo none)
+    dirty=""
+    [ -n "$(git -C "$UP/$dir" status --porcelain --untracked-files=no 2>/dev/null)" ] && dirty=" with uncommitted edits"
+    if [ "$have" != "$want" ] || [ -n "$dirty" ]; then
+      echo "run-producer[$NAME]: SIDESTR-UNPINNED: $dir is at $have$dirty, pinned $want" >&2
+    fi
+  done < "$PINS"
+else
+  [ -z "${SIDESTR_UPSTREAM:-}" ] || die "SIDESTR_UPSTREAM=$SIDESTR_UPSTREAM names a checkout; a checkout runs only under SIDESTR_ALLOW_UNPINNED=1"
+  UP="${SIDESTR_UPSTREAM_BAKED:-/opt/agentbox/sidestr/upstream}"
+  [ -d "$UP/" ] || die "no baked upstream at $UP (this image does not ship one); rebuild, or run a checkout with SIDESTR_ALLOW_UNPINNED=1"
+  while read -r dir want _; do
+    case "$dir" in ''|'#'*) continue ;; esac
+    have=$(cat "$UP/$dir/.pin-commit" 2>/dev/null || echo none)
+    [ "$have" = "$want" ] || die "stale bake: $UP/$dir records $have but upstream-pins says $want; rebuild the image"
+  done < "$PINS"
+  # The bake is the producer's guarantee only while its user cannot change it.
+  w="$(find "$UP/" -writable -print -quit 2>/dev/null)"
+  [ -z "$w" ] || die "$w is writable by $(id -un); the baked upstream must be immutable to the producer"
+fi
 for f in "$KEY" "$COOKIE" "$DOC" "$UP/spec/siding/bin/siding.mjs" "$UP/schema/codec/kernel.js" "$UP/blaketestnode/lib/node.mjs"; do
   [ -r "$f" ] || die "missing $f"
 done
-# The upstream code is consensus for this chain: run only the commits recorded in upstream-pins.
-PINS="$HERE/upstream-pins"
-while read -r dir want _; do
-  case "$dir" in ''|'#'*) continue ;; esac
-  have=$(git -C "$UP/$dir" rev-parse HEAD 2>/dev/null || echo none)
-  if [ "$have" != "$want" ]; then
-    if [ "${SIDESTR_ALLOW_UNPINNED:-0}" = 1 ]; then
-      echo "run-producer[$NAME]: WARNING $dir is at $have, pinned $want (SIDESTR_ALLOW_UNPINNED=1)" >&2
-    else
-      die "$UP/$dir is at $have but upstream-pins says $want; check it out or bump the pin"
-    fi
-  fi
-done < "$PINS"
+# siding loads ethereumjs lazily, only for a chain whose document names the evm rule, so a missing
+# package would surface blocks later. The bake carries no node_modules (no estate chain names the
+# rule; lib/sidestr-upstream.nix): refuse such a chain here instead.
+if node -e 'const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); process.exit((c.rules ?? []).some((r) => (typeof r === "string" ? r : r.name) === "evm") ? 0 : 1)' "$DOC"; then
+  [ -d "$UP/spec/siding/node_modules/@ethereumjs/vm" ] || die "$DOC names the evm rule but $UP/spec/siding has no @ethereumjs packages"
+fi
 
 # ADR-2103 D3: the sealed document says which parent this chain sits beside; the manifest only
 # repeats it. A disagreement is a boot failure.
