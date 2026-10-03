@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 32cedf9925ff6de8112fb45e41de048106d0d710
+verified_commit: 31a54c2f3b03663c6ed2f90196d81dbfd113af57
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, docker-compose.hp.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -108,3 +108,15 @@ until the owner's rebuild.
 ## Re-verification — 2026-10-03 (`32cedf9925ff6de8112fb45e41de048106d0d710`, custody integration CI fix)
 
 Tripped by `32cedf992`, the fix for the PR's clippy and statix failures. `flake.nix` changes by one line in the `[sidechain.*]` normaliser: `parent = c.parent;` becomes `inherit (c) parent;` (statix W04), which evaluates to the same attribute set. Nothing this record governs changes meaning. The decision holds. Re-verified by `git log 3b5412963..32cedf992 -- <verified_paths>`.
+
+## Re-verification — 2026-10-03 (`31a54c2f3b03663c6ed2f90196d81dbfd113af57`, custody docs pass)
+
+Tripped by `31a54c2f3`, the custody docs pass. The only governed path that changed is the
+tracked workspace layer `config/instructions/workspace.md`. Its "Host access & Docker builds"
+section gains one paragraph of container facts for `[security].role_isolation` (ADR-2122,
+staged): under the flag `docker exec` from inside is refused by the GET-only
+`/run/docker-ro.sock`, role secrets sit in the root-owned `/run/secrets/<role>/`, and signing goes
+through the identity port. This is content in a tier, not a change to how the tiers are
+projected. It is tool-neutral and has no estate specifics, so it belongs in the tracked layer.
+`tests/config/instructions-layers.test.sh` passes 9/9. The decision holds. Re-verified by
+`git log 32cedf992..31a54c2f3 -- <verified_paths>`.
