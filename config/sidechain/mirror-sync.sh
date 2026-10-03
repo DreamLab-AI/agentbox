@@ -27,7 +27,10 @@ NAME="${SIDESTR_CHAIN:-dreamlab}"
 STATE="${SIDESTR_STATE:-$WORKSPACE/sidestr/$NAME}"
 PRODUCER="${SIDESTR_PRODUCER_URL:-http://127.0.0.1:${SIDESTR_PORT:-3450}}"
 DOC="${SIDESTR_DOC:-$(cd "$(dirname "$0")" && pwd)/$NAME/chain.json}"
+# Beside the document first; the image's document dir is read-only, so the event normally sits in
+# the writable state dir (where run-producer also reads it).
 CHAIN_EVENT="${SIDESTR_CHAIN_EVENT:-$(dirname "$DOC")/chain-event.json}"
+[ -z "${SIDESTR_CHAIN_EVENT:-}" ] && [ ! -f "$CHAIN_EVENT" ] && CHAIN_EVENT="$STATE/chain-event.json"
 PAGES="${1:?pages checkout}"; EVERY="${2:-120}"
 refused=""
 

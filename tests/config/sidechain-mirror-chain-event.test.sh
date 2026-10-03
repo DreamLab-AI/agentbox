@@ -13,6 +13,7 @@
 #   2. present: chain-event.json is copied, committed and pushed beside them
 #   3. a different event over a published one is refused; the published one stays
 #   4. an event for another alias is not mirrored
+#   5. state dir: the event in the writable state dir is mirrored when none sits beside the document
 # Run: bash tests/config/sidechain-mirror-chain-event.test.sh
 set -u
 
@@ -109,6 +110,13 @@ if [ ! -e "$ROOT/foreign/pages/chain-event.json" ] \
    && grep -q 'not a kind-3500 event for sidestr:dreamlab' "$ROOT/foreign.log"; then
   ok "an event for another alias is not mirrored; the blocks still are"
 else bad "an event for another alias is not mirrored" "$(cat "$ROOT/foreign.log")"; fi
+
+# 5. state dir fallback (the image's document dir is read-only)
+setup statedir; event d sidestr:dreamlab >"$ROOT/statedir/state/chain-event.json"; run_once statedir
+want="$(jq -r .id "$ROOT/statedir/state/chain-event.json")"
+if [ "$(g "$ROOT/statedir/remote.git" show main:chain-event.json 2>/dev/null | jq -r .id)" = "$want" ]; then
+  ok "state dir: the event beside the state, not the document, is mirrored"
+else bad "state dir: the event beside the state is mirrored" "$(cat "$ROOT/statedir.log")"; fi
 
 echo "passed $pass, failed $fail"
 [ "$fail" -eq 0 ]
