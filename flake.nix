@@ -3506,8 +3506,12 @@ ${ragflowNetworkDecl}
           # Strip leading whitespace introduced by Nix heredoc indentation
           sed -i 's/^[[:space:]]*//' $out/etc/passwd
 
+          # Custody W0: devuser is NOT a member of group root. Membership gave
+          # every devuser process gid 0 and with it anything root left
+          # group-accessible. Undoing this needs a rebuild (it is baked).
+          # Test: tests/runtime-contract/RC-X1-03.sh.
           cat > $out/etc/group <<'GROUP'
-          root:x:0:devuser
+          root:x:0:
           wheel:x:998:devuser
           devuser:x:1000:
           GROUP
