@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 055c06ff69b2f53bf38a67d254c048bb03599fc8
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -209,3 +209,8 @@ Tripped by the `sidestr:dreamlab-txbt4` seal. `flake.nix` adds `sidechainChains`
 
 Tripped by custody X-1 step 1 (W0 `custody/w0-bypasses` and W1 `custody/w1-role-accounts`). `flake.nix` changed only as follows. W0 (`8070c1010`, `6a433e6b3`): `root` loses its `devuser` member, and `[program:docker-read-proxy]` is added (root start, drops to 65534). W1 (`b8c66625a`, `055c06ff6`): role passwd and group lines are appended from `config/role-accounts.json`, `supervisord.roles.conf`, `role-secrets.tsv` and `role-accounts.json` are derived beside the unchanged `supervisord.conf`, and a root-owned `/run/secrets` tmpfs is added (ADR-2122). `[program:aoe-serve]` and its `--auth token` are untouched, so the decision holds. Under the flag, `nostr-gateway` and `nip98-proxy` run as `ab-gateway` and `ab-ingress` and can no longer read devuser's 0600 `serve.url`. They fail closed (no token, no drive) until the aoe-share copy (custody design §2.6, W2) exists, which strengthens this record rather than weakening it.
 Re-verified by `git diff 0919dc39a..055c06ff6 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `config/nip98-proxy/proxy.mjs` changes only how it reads `NIP98_PROXY_ALLOW_BEARER` and `NIP98_PROXY_SESSION_SECRET` (through `management-api/lib/role-secret.js`; flag off the same read). The AoE token path (`AOE_TOKEN_FILE`, `serve.url`, the forwarded bearer) is untouched. `flake.nix` changes only `[program:tailscale-up]` (a `TAILSCALE_AUTHKEY_FILE` branch that passes `--authkey=file:<path>`; the original branch is unchanged and is the one taken with the flag off) and the `[program:nostr-gateway]` comment. The decision holds.
+Re-verified by `git diff 055c06ff6..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.

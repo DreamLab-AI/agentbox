@@ -521,7 +521,13 @@ function planSummary(plan) {
 function resolvePost() {
   const zoneKeys = require(path.join(CHECKOUT, 'management-api/lib/zone-keys.js'));
   const { signerFromHex } = require(path.join(CHECKOUT, 'management-api/lib/junkiejarvis-agent.js'));
-  const signer = signerFromHex(zoneKeys.readSetting('JUNKIEJARVIS_PRIVKEY_HEX') || '');
+  // Custody W2: the JJ key is a ROLE secret. <NAME>_FILE wins; with role
+  // isolation off the pre-W2 read (env, then the repo .env) is kept as is.
+  const roleSecret = require(path.join(__dirname, '..', '..', 'management-api/lib/role-secret.js'));
+  let keyHex = '';
+  try { keyHex = roleSecret.readRoleSecret('JUNKIEJARVIS_PRIVKEY_HEX'); } catch (_) { keyHex = ''; }
+  if (!keyHex && !roleSecret.roleIsolation()) keyHex = zoneKeys.readSetting('JUNKIEJARVIS_PRIVKEY_HEX') || '';
+  const signer = signerFromHex(keyHex);
   if (!signer) return { zoneKeys, signer: null, plan: null, zone: null, gate: null };
   const zones = zoneKeys.loadZones();
   const zone = zoneKeys.sectionToZone(SECTION, zones);

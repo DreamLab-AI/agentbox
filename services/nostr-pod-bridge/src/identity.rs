@@ -157,26 +157,27 @@ pub fn generate_keypair() -> Result<KeyMaterial> {
     keypair_from_privkey_hex(&hex::encode(kp.secret.as_bytes()))
 }
 
-/// Resolve an operator-supplied secret key from the environment.
+/// Resolve an operator-supplied secret key.
 ///
 /// Precedence matches the Python original: `AGENTBOX_PRIVKEY_HEX` (64-char hex)
-/// wins; otherwise `AGENTBOX_NSEC` (bech32) is decoded. A malformed value in
-/// either falls through to the persisted-or-generated path rather than failing
-/// the boot — an unusable override must not brick the container.
+/// wins; otherwise `AGENTBOX_NSEC` (bech32) is decoded. Each is read through
+/// [`crate::role_secret`], so `<NAME>_FILE` wins over `<NAME>`, and under
+/// `[security].role_isolation` the bare variables are ignored as leaks (custody
+/// W2). A malformed or unreadable value in either falls through to the
+/// persisted-or-generated path rather than failing the boot — an unusable
+/// override must not brick the container.
 pub fn env_privkey_hex(env: &EnvMap) -> Option<String> {
-    let hex_var = env
-        .get("AGENTBOX_PRIVKEY_HEX")
-        .unwrap_or("")
-        .trim()
-        .to_lowercase();
-    if !hex_var.is_empty() {
-        return Some(hex_var);
+    let read = |name: &str| match crate::role_secret::read(env, name) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!("{e:#}; ignoring the operator pin");
+            None
+        }
+    };
+    if let Some(hex_var) = read("AGENTBOX_PRIVKEY_HEX") {
+        return Some(hex_var.to_lowercase());
     }
-    let nsec = env.get("AGENTBOX_NSEC").unwrap_or("").trim();
-    if nsec.is_empty() {
-        return None;
-    }
-    decode_nsec(nsec).ok()
+    decode_nsec(&read("AGENTBOX_NSEC")?).ok()
 }
 
 /// Path of the identity file for `agent_id`.

@@ -53,33 +53,93 @@ pub enum RelayError {
     Key(String),
 }
 
-/// Load a 64-hex secret key from the environment variable `var`, else from
-/// the `KEY=value` line of `env_file`. The value is never logged.
+/// The environment variable the entrypoint exports from
+/// `[security].role_isolation` (custody X-1 step 1, W2).
+pub const ROLE_ISOLATION_VAR: &str = "AGENTBOX_ROLE_ISOLATION";
+
+/// Upper bound on a key file; a 64-hex key is 64 bytes.
+const MAX_KEY_FILE_BYTES: u64 = 4096;
+
+/// Load the publishing key named by `var` (for example
+/// `JUNKIEJARVIS_PRIVKEY_HEX`).
+///
+/// Custody W2 (bypass 3): this is dream-engine's one ROLE-secret reader and
+/// keeps the contract of `nostr-pod-bridge`'s `role_secret` module and
+/// `management-api/lib/role-secret.js`:
+///
+/// 1. `<var>_FILE`, when set and non-empty, wins; an unreadable file is an
+///    error naming the path, never a fallback.
+/// 2. With `[security].role_isolation` off: `<var>` from the environment, then
+///    the `<var>=` line of `env_file` (the pre-W2 behaviour, unchanged).
+/// 3. With it on: neither. A `<var>` present in the environment is reported as
+///    `ROLE-ISOLATION-LEAK <var>` and ignored, and the repo `.env` is not read.
 pub fn load_signing_key(var: &str, env_file: &Path) -> Result<SigningKey, RelayError> {
-    let hex_value = match std::env::var(var) {
-        Ok(v) if !v.trim().is_empty() => v.trim().to_string(),
-        _ => {
-            let text = std::fs::read_to_string(env_file).map_err(|e| {
-                RelayError::Key(format!(
-                    "{var} not set and {} unreadable: {e}",
-                    env_file.display()
-                ))
-            })?;
-            text.lines()
-                .find_map(|l| {
-                    l.strip_prefix(&format!("{var}="))
-                        .map(|v| v.trim().trim_matches(['"', '\'']).to_string())
-                })
-                .ok_or_else(|| {
-                    RelayError::Key(format!("{var} not found in {}", env_file.display()))
-                })?
+    load_signing_key_from(var, env_file, &|k| std::env::var(k).ok())
+}
+
+/// [`load_signing_key`] over an explicit environment lookup (tests pass a map;
+/// the process environment is shared by every test thread).
+pub fn load_signing_key_from(
+    var: &str,
+    env_file: &Path,
+    lookup: &dyn Fn(&str) -> Option<String>,
+) -> Result<SigningKey, RelayError> {
+    let isolated = lookup(ROLE_ISOLATION_VAR).as_deref() == Some("1");
+    let file_var = format!("{var}_FILE");
+    if isolated && lookup(var).is_some() {
+        eprintln!(
+            "[role-secret] ROLE-ISOLATION-LEAK {var} is set in the environment under role \
+             isolation; ignored (deliver it as {file_var})"
+        );
+    }
+    let hex_value = match lookup(&file_var).filter(|p| !p.trim().is_empty()) {
+        Some(path) => read_key_file(Path::new(path.trim()))?,
+        None if isolated => {
+            return Err(RelayError::Key(format!(
+                "{var} unavailable: role isolation requires {file_var}"
+            )))
         }
+        None => match lookup(var) {
+            Some(v) if !v.trim().is_empty() => v.trim().to_string(),
+            _ => {
+                let text = std::fs::read_to_string(env_file).map_err(|e| {
+                    RelayError::Key(format!(
+                        "{var} not set and {} unreadable: {e}",
+                        env_file.display()
+                    ))
+                })?;
+                text.lines()
+                    .find_map(|l| {
+                        l.strip_prefix(&format!("{var}="))
+                            .map(|v| v.trim().trim_matches(['"', '\'']).to_string())
+                    })
+                    .ok_or_else(|| {
+                        RelayError::Key(format!("{var} not found in {}", env_file.display()))
+                    })?
+            }
+        },
     };
     let bytes: [u8; 32] = hex::decode(&hex_value)
         .ok()
         .and_then(|b| b.try_into().ok())
         .ok_or_else(|| RelayError::Key(format!("{var} is not 64 hex characters")))?;
     nostr_bbs_core::keys::signing_key_from_bytes(&bytes).map_err(|e| RelayError::Key(e.to_string()))
+}
+
+/// Read a key file: regular, bounded, UTF-8, trimmed. Errors name the path only.
+fn read_key_file(path: &Path) -> Result<String, RelayError> {
+    use std::io::Read;
+    let err = |what: &str| RelayError::Key(format!("key file {}: {what}", path.display()));
+    let file = std::fs::File::open(path).map_err(|e| err(&e.kind().to_string()))?;
+    let meta = file.metadata().map_err(|e| err(&e.kind().to_string()))?;
+    if !meta.is_file() || meta.len() > MAX_KEY_FILE_BYTES {
+        return Err(err("not a regular file of at most 4096 bytes"));
+    }
+    let mut buf = String::new();
+    file.take(MAX_KEY_FILE_BYTES)
+        .read_to_string(&mut buf)
+        .map_err(|e| err(&e.kind().to_string()))?;
+    Ok(buf.trim().to_string())
 }
 
 /// Lower-case hex x-only public key of `key`.
@@ -327,6 +387,87 @@ mod tests {
             &key,
         );
         assert!(res.is_err());
+    }
+
+    fn lookup_of(pairs: &[(&str, String)]) -> impl Fn(&str) -> Option<String> {
+        let m: std::collections::HashMap<String, String> = pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect();
+        move |k: &str| m.get(k).cloned()
+    }
+
+    const SK1: &str = "b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef";
+    const PK1: &str = "dff1d77f2a671c5f36183726db2341be58feae1da2deced843240f7b502ba659";
+
+    #[test]
+    fn role_key_file_wins_over_env_and_env_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let f = dir.path().join("k");
+        std::fs::write(&f, format!("{SK1}\n")).unwrap();
+        let env = dir.path().join(".env");
+        std::fs::write(&env, format!("JJ={}\n", "11".repeat(32))).unwrap();
+        let l = lookup_of(&[
+            ("JJ", "22".repeat(32)),
+            ("JJ_FILE", f.display().to_string()),
+        ]);
+        assert_eq!(
+            pubkey_hex(&load_signing_key_from("JJ", &env, &l).unwrap()),
+            PK1
+        );
+    }
+
+    #[test]
+    fn role_isolation_refuses_the_env_var_and_the_env_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = dir.path().join(".env");
+        std::fs::write(&env, format!("JJ={SK1}\n")).unwrap();
+        let l = lookup_of(&[(ROLE_ISOLATION_VAR, "1".into()), ("JJ", SK1.into())]);
+        let err = match load_signing_key_from("JJ", &env, &l) {
+            Err(e) => e.to_string(),
+            Ok(_) => panic!("role isolation must refuse the env var and the .env file"),
+        };
+        assert!(err.contains("JJ_FILE"), "{err}");
+        assert!(!err.contains(SK1), "{err}");
+    }
+
+    #[test]
+    fn role_isolation_reads_the_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let f = dir.path().join("k");
+        std::fs::write(&f, SK1).unwrap();
+        let l = lookup_of(&[
+            (ROLE_ISOLATION_VAR, "1".into()),
+            ("JJ_FILE", f.display().to_string()),
+        ]);
+        let key = load_signing_key_from("JJ", &dir.path().join("none"), &l).unwrap();
+        assert_eq!(pubkey_hex(&key), PK1);
+    }
+
+    #[test]
+    fn flag_off_keeps_env_then_env_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = dir.path().join(".env");
+        std::fs::write(&env, format!("JJ=\"{SK1}\"\n")).unwrap();
+        let from_file = load_signing_key_from("JJ", &env, &lookup_of(&[])).unwrap();
+        assert_eq!(pubkey_hex(&from_file), PK1);
+        let l = lookup_of(&[("JJ", SK1.into())]);
+        let from_env = load_signing_key_from("JJ", &dir.path().join("none"), &l).unwrap();
+        assert_eq!(pubkey_hex(&from_env), PK1);
+    }
+
+    #[test]
+    fn unreadable_key_file_names_the_path_and_does_not_fall_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let l = lookup_of(&[
+            ("JJ", SK1.into()),
+            ("JJ_FILE", "/nonexistent/jj.key".into()),
+        ]);
+        let err = match load_signing_key_from("JJ", &dir.path().join("none"), &l) {
+            Err(e) => e.to_string(),
+            Ok(_) => panic!("an unreadable JJ_FILE must not fall back to JJ"),
+        };
+        assert!(err.contains("/nonexistent/jj.key"), "{err}");
     }
 
     #[test]

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: d3ff8e9a876e6b026b543f8824487e002e04cfa0
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -281,3 +281,8 @@ Re-verified by `git diff 0919dc39a..055c06ff6 -- <verified_paths>`. No re-implem
 ## Re-verification — 2026-10-03 (`d3ff8e9a876e6b026b543f8824487e002e04cfa0`)
 
 Tripped by the G-5 Q15 correction (`custody/w8-key-split`). `agentbox.toml` changed only in the trailing comments of two allowlist entries: `b41654017f…2f7a` is relabelled as the operator's NIP-07 31403 decision signer (it is `[sovereign_mesh.operator].pubkey_hex`), not visionclaw-server, and the `11ed6422…663c` entry in `[interaction_plane.proxy]` notes that its Podkey-vault copy is to be replaced by K_browser. No key, value, table or list member moved. This record's claim at `:157-160` needs one correction and one confirmation. The correction: the entry it calls `visionclaw-server (governance publisher)` is the operator's decision signer. Q15 evidence, read from the dreamlab relay (every stored event of kinds 31400-31403) and from VisionClaw source: VisionClaw's 31402s are signed by `11ed6422…663c`, and `b41654017f…` signs only 31403. The confirmation: the ADR-040 D3 / G-5 key split has **not** landed, because no new pubkey is admitted yet, so `review_trigger` has not fired. The inline annotation now names G-5 rather than ADR-040 D3. `flake.nix` is untouched, so the baked allowlist is byte-identical. `node scripts/agentbox-config-validate.js agentbox.toml` is valid with the same 5 advisory warnings as `origin/main` (`0919dc39a`). Decision and status unchanged.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `flake.nix` changes only `[program:tailscale-up]` (a `TAILSCALE_AUTHKEY_FILE` branch that passes `--authkey=file:<path>`; the original branch is unchanged and is the one taken with the flag off) and the `[program:nostr-gateway]` comment. The decision holds.
+Re-verified by `git diff 055c06ff6..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.

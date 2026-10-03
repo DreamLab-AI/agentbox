@@ -71,6 +71,7 @@ pub mod identity;
 pub mod identity_port;
 pub mod mirror_key;
 pub mod pyjson;
+pub mod role_secret;
 pub mod session_summary;
 
 use crate::admission::RelayAdmission;
@@ -168,26 +169,32 @@ fn parse_sk(hex_str: &str) -> anyhow::Result<[u8; 32]> {
 
 /// SEC-003: load the agent secret key, preferring a file over an env var.
 ///
-/// The agentbox launcher writes the decrypted key to a tmpfs file (0400 devuser)
-/// and exports its path as `AGENTBOX_BRIDGE_SK_FILE` (default
+/// The agentbox launcher writes the decrypted key to a tmpfs file (0400) and
+/// exports its path as `AGENTBOX_BRIDGE_SK_FILE` (default
 /// `/run/secrets/nostr.key`), deliberately keeping the raw secret out of the
 /// process environment — env is world-readable via `/proc/<pid>/environ` for the
-/// same uid, and leaks into crash dumps. We read the file first; only when no
-/// file is present do we fall back to the legacy `AGENTBOX_BRIDGE_SK` variable.
+/// same uid, and leaks into crash dumps. The file wins; the legacy
+/// `AGENTBOX_BRIDGE_SK` variable is honoured only while
+/// `[security].role_isolation` is off ([`role_secret`], custody W2).
 fn load_agent_sk(env: &EnvMap) -> anyhow::Result<[u8; 32]> {
-    let path = env.or("AGENTBOX_BRIDGE_SK_FILE", "/run/secrets/nostr.key");
-    if let Ok(mut contents) = std::fs::read_to_string(&path) {
-        let sk =
-            parse_sk(&contents).with_context(|| format!("parsing agent secret key from {path}"))?;
-        // Best-effort scrub of the heap-resident hex before the String drops.
-        // Safety: overwriting valid UTF-8 (NUL) in place; the length is unchanged.
-        unsafe { contents.as_bytes_mut().fill(0) };
-        return Ok(sk);
-    }
-    let raw = env
-        .non_empty("AGENTBOX_BRIDGE_SK")
-        .ok_or_else(|| anyhow::anyhow!("missing required env var AGENTBOX_BRIDGE_SK"))?;
-    parse_sk(raw).context("parsing agent secret key from AGENTBOX_BRIDGE_SK env")
+    let default = std::path::Path::new("/run/secrets/nostr.key");
+    let mut raw = role_secret::read_with_default(env, "AGENTBOX_BRIDGE_SK", Some(default))?
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "no agent secret key: AGENTBOX_BRIDGE_SK_FILE (default {}) is absent{}",
+                default.display(),
+                if role_secret::role_isolation(env) {
+                    " and role isolation forbids the AGENTBOX_BRIDGE_SK env var"
+                } else {
+                    " and AGENTBOX_BRIDGE_SK is unset"
+                }
+            )
+        })?;
+    let sk = parse_sk(&raw).context("parsing the agent secret key");
+    // Best-effort scrub of the heap-resident hex before the String drops.
+    // Safety: overwriting valid UTF-8 (NUL) in place; the length is unchanged.
+    unsafe { raw.as_bytes_mut().fill(0) };
+    sk
 }
 
 /// Outcome of the authorization decision for an inbound event.

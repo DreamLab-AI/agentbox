@@ -48,6 +48,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const roleSecret = require('./role-secret');
 
 let nostrTools = null;
 function getNostrTools() {
@@ -112,7 +113,9 @@ function profileKeyPath(opts = {}) {
  * Mint or load a per-agent did:nostr, persisting the private key per profile.
  *
  * Precedence for the private key: (1) an explicit
- * `AGENTBOX_AGENT_PRIVKEY_HEX` env override (stable-identity injection), then
+ * `AGENTBOX_AGENT_PRIVKEY_HEX` override (stable-identity injection), read
+ * through role-secret.js: `<NAME>_FILE` first, the bare variable only while
+ * role isolation is off; then
  * (2) the persisted profile key file, then (3) a freshly generated key.
  *
  * @param {object} [opts]
@@ -128,7 +131,10 @@ function loadOrMint(opts = {}) {
     let privHex = null;
     let minted = false;
 
-    const envHex = String(process.env.AGENTBOX_AGENT_PRIVKEY_HEX || '').trim().toLowerCase();
+    // Custody W2: AGENTBOX_AGENT_PRIVKEY_HEX_FILE wins; the bare variable is
+    // honoured only while [security].role_isolation is off.
+    const envHex = String(roleSecret.readRoleSecret('AGENTBOX_AGENT_PRIVKEY_HEX', opts.roleSecretOpts) || '')
+      .trim().toLowerCase();
     if (HEX64.test(envHex)) {
       privHex = envHex;
     }
@@ -269,6 +275,11 @@ module.exports = {
   sovereignIdentityPath,
   loadSovereignSigner,
   MULTIKEY_PREFIX,
+  // Custody W2: the shared ROLE-secret loader (see role-secret.js).
+  roleIsolation: roleSecret.roleIsolation,
+  readRoleSecret: roleSecret.readRoleSecret,
+  readRoleSecretFirst: roleSecret.readRoleSecretFirst,
+  resolveRoleSecret: roleSecret.resolveRoleSecret,
 };
 
 // ─── CLI (env-gated shell integration) ──────────────────────────────────────

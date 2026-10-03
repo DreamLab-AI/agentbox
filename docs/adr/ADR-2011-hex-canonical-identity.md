@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: a48ea407a24185f7a4f654a35e66805778acbec8
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
 verified_paths: [management-api/lib/agent-identity.js, config/nip98-proxy/proxy.mjs]
 owner: jjohare
 review_trigger: A durable identity appears in bech32/npub form in storage or a URL, or the did:nostr:local fallback fires in production
@@ -114,3 +114,8 @@ Only `config/nip98-proxy/proxy.mjs` moved (`de37998a8`, `cae729aa7`); `managemen
 
 Tripped by ADR-2078 (pods signer signs as the sovereign identity). `management-api/lib/agent-identity.js` gains `sovereignIdentityPath` and `loadSovereignSigner`, a read-only reader of the bootstrap identity that keys on the 64-hex x-only pubkey, returns `did:nostr:<hex>`, and returns only `pubkey`, `did`, `path` and a `sign` closure, never the secret; `loadOrMint`, `deriveXonly`, `multikeyFromXonly` and the CLI mint are unchanged. That extends the record rather than departing from it: the new reader keeps the canonical-hex identity and the private-key-stays-inside rule. The decision holds unchanged.
 Re-verified by `git diff b680a7aee..a48ea407a -- <verified_paths>`; no re-implementation was needed.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `management-api/lib/agent-identity.js` now re-exports the ROLE-secret loader and reads the `AGENTBOX_AGENT_PRIVKEY_HEX` override through it (`<NAME>_FILE` first; the bare variable only with the flag off). Derivation, the x-only hex identity and the DID string are unchanged. `config/nip98-proxy/proxy.mjs` changes only how its two secrets are read; pubkeys stay 64-hex x-only. The decision holds.
+Re-verified by `git diff a48ea407a..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.

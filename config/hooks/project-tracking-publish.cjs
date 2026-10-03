@@ -58,7 +58,10 @@ function envFirst(...keys) {
 
 /** True only when every input the `track` subcommand requires is set. */
 function bridgeConfigured() {
-  const haveSk = !!(envFirst('AGENTBOX_BRIDGE_SK') || envFirst('AGENTBOX_BRIDGE_SK_FILE'));
+  // Custody W2: under [security].role_isolation only the key file counts; the
+  // bare AGENTBOX_BRIDGE_SK is a leak there (same rule as the Rust reader).
+  const isolated = String(process.env.AGENTBOX_ROLE_ISOLATION || '') === '1';
+  const haveSk = !!((!isolated && envFirst('AGENTBOX_BRIDGE_SK')) || envFirst('AGENTBOX_BRIDGE_SK_FILE'));
   return haveSk
     && !!envFirst('AGENTBOX_BRIDGE_RECIPIENT_PUBKEY')
     && !!envFirst('AGENTBOX_POD_ROOT')

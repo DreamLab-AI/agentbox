@@ -35,6 +35,7 @@
 import { readFileSync, writeFileSync, mkdirSync, appendFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 
@@ -186,8 +187,17 @@ function queueHandoff(post, verdict) {
 
 async function main() {
   if (!ZAI_KEY) { log('ERROR', 'no ZAI credentials — skipping'); return; }
-  const privHex = process.env.JUNKIEJARVIS_PRIVKEY_HEX || process.env.CONCIERGE_PRIVKEY_HEX || '';
-  if (!privHex) { log('ERROR', 'JUNKIEJARVIS_PRIVKEY_HEX not set — skipping'); return; }
+  // Custody W2: the JJ key through the shared ROLE-secret loader. <NAME>_FILE
+  // wins; the bare variables only while [security].role_isolation is off.
+  // The loader ships beside this script (same checkout / same /opt/agentbox),
+  // never from AGENTBOX_DIR, which may point at another tree.
+  const { readRoleSecretFirst } = require(join(dirname(fileURLToPath(import.meta.url)), '..', 'management-api/lib/role-secret.js'));
+  let privHex = '';
+  try {
+    privHex = readRoleSecretFirst(['JUNKIEJARVIS_PRIVKEY_HEX', 'CONCIERGE_PRIVKEY_HEX'],
+      { log: (m) => log('WARN', m) }).value;
+  } catch (err) { log('ERROR', err.message); return; }
+  if (!privHex) { log('ERROR', 'JUNKIEJARVIS_PRIVKEY_HEX (or its _FILE) not set — skipping'); return; }
 
   const { NostrBridge } = require(join(AGENTBOX_DIR, 'mcp/servers/nostr-bridge.js'));
   const { signerFromHex, sendGiftWrappedDm, unwrapDmRumor } =

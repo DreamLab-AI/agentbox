@@ -390,6 +390,104 @@ if [ "$AGENTBOX_ROLE_ISOLATION" != 1 ]; then
   chown 1000:1000 /run/secrets 2>/dev/null || true
 fi
 
+# ---------------------------------------------------------------------------
+# Custody W2 (bypass 3): ROLE secrets leave PID 1's environment
+# ---------------------------------------------------------------------------
+# compose env_file feeds .env into PID 1 and supervisord hands its whole
+# environment to every child, so a signing key in .env sat in every agent shell,
+# every MCP server, and every `env` an agent ever printed into a transcript.
+# Under [security].role_isolation each ROLE variable is handed to a file and
+# unset from this process before anything else reads it: the identity bootstrap
+# included, because it reads <NAME>_FILE under the flag. The variable names and
+# their roles are the ROLE set of config/custody/env-classes.json; the inventory
+# (scripts/ci/env-secret-inventory.js --check) fails if this list drifts from it.
+#
+# Seam with W1 (which owns /run/secrets delivery from the volumes): when
+# <NAME>_FILE already names a delivered file, capture only unsets <NAME>. The
+# owner of a delivered file is the role's own account once W1 bakes it, and
+# devuser (the uid every reader runs as today) until then. Flag off: every
+# function below returns at its first line, so the environment supervisord
+# receives is byte-identical to before (tests/runtime-contract/RC-X1-06.sh).
+_AB_ROLE_ENV_VARS="AGENTBOX_AGENT_PRIVKEY_HEX:ab-identity AGENTBOX_BRIDGE_SK:ab-identity AGENTBOX_NSEC:ab-identity AGENTBOX_PRIVKEY_HEX:ab-identity AGENT_PRIVKEY_HEX:ab-identity CONCIERGE_PRIVKEY_HEX:ab-identity JUNKIEJARVIS_PRIVKEY_HEX:ab-identity NIP98_PROXY_ALLOW_BEARER:ab-ingress NIP98_PROXY_SESSION_SECRET:ab-ingress OPERATOR_NOSTR_PRIVKEY:ab-identity TAILSCALE_AUTHKEY:root"
+
+_ab_role_owner() { # _ab_role_owner <role> → uid:gid that owns the role's delivered files
+  case "$1" in root) echo 0:0; return 0 ;; esac
+  local u g
+  if u="$(id -u "$1" 2>/dev/null)" && g="$(id -g "$1" 2>/dev/null)"; then
+    echo "${u}:${g}"
+  else
+    echo 1000:1000
+  fi
+}
+
+_ab_role_env_capture() { # _ab_role_env_capture <role_isolation 0|1> [secrets-root=/run/secrets]
+  [ "$1" = 1 ] || return 0
+  local root="${2:-/run/secrets}" tok name role fvar dir file dirs=""
+  for tok in $_AB_ROLE_ENV_VARS; do
+    name="${tok%%:*}"; role="${tok#*:}"; fvar="${name}_FILE"
+    [ -n "${!name+x}" ] || continue
+    if [ -n "${!fvar:-}" ] && [ -f "${!fvar}" ] && [ ! -L "${!fvar}" ]; then
+      unset "$name"
+      echo "[security] role-env: ${name} already delivered by file (${fvar}); unset from PID 1"
+      continue
+    fi
+    if [ -z "${!name}" ]; then
+      unset "$name"
+      continue
+    fi
+    dir="${root}/${role}"
+    # A fresh tmpfs holds nothing here; anything that is not a plain directory
+    # we created is replaced rather than followed.
+    if [ -L "$dir" ] || { [ -e "$dir" ] && [ ! -d "$dir" ]; }; then rm -f -- "$dir"; fi
+    mkdir -p -m 0700 -- "$dir"
+    chown 0:0 "$dir" 2>/dev/null || true
+    chmod 0700 "$dir"
+    file="${dir}/${name}"
+    rm -f -- "$file"
+    if ! ( umask 077; set -o noclobber; printf '%s' "${!name}" >"$file" ); then
+      unset "$name"
+      echo "[security] ROLE-ISOLATION-DEGRADED role-env: ${name} could not be delivered; unset anyway" >&2
+      continue
+    fi
+    chown "$(_ab_role_owner "$role")" "$file" 2>/dev/null || true
+    chmod 0400 "$file"
+    export "${fvar}=${file}"
+    unset "$name"
+    case " $dirs " in *" ${dir}:${role} "*) ;; *) dirs="${dirs} ${dir}:${role}" ;; esac
+    echo "[security] role-env: ${name} -> ${file} (0400, role ${role}); unset from PID 1"
+  done
+  for tok in $dirs; do
+    dir="${tok%:*}"; role="${tok##*:}"
+    chown "$(_ab_role_owner "$role")" "$dir" 2>/dev/null || true
+    chmod 0500 "$dir"
+  done
+  return 0
+}
+
+_ab_role_env_scrub() { # _ab_role_env_scrub <role_isolation 0|1> — last line of defence before exec
+  [ "$1" = 1 ] || return 0
+  local tok name n=0
+  for tok in $_AB_ROLE_ENV_VARS; do
+    name="${tok%%:*}"
+    if [ -n "${!name+x}" ]; then
+      echo "[security] ROLE-ISOLATION-LEAK ${name} was in PID 1's environment at exec; unset" >&2
+      unset "$name"
+      n=$((n + 1))
+    fi
+  done
+  [ "$n" -eq 0 ] && echo "[security] role-env: PID 1's environment carries no ROLE variable"
+  return 0
+}
+
+_ab_role_key_file_own() { # _ab_role_key_file_own <role_isolation 0|1> <file> <role>
+  [ "$1" = 1 ] || return 0
+  [ -n "${2:-}" ] && [ -f "$2" ] && [ ! -L "$2" ] || return 0
+  chown "$(_ab_role_owner "$3")" "$2" 2>/dev/null || true
+  chmod 0400 "$2" 2>/dev/null || true
+}
+
+_ab_role_env_capture "$AGENTBOX_ROLE_ISOLATION" /run/secrets
+
 # R-012: Boot assertion — WORKSPACE must be a mounted volume, not tmpfs.
 # If the compose mount is missing, $WORKSPACE silently lands on the container
 # overlay/tmpfs and every "durable" write evaporates on restart. Warn loudly
@@ -902,6 +1000,11 @@ fi
 if [ -f /run/agentbox/identity.env ]; then
   . /run/agentbox/identity.env
 fi
+# Custody W2: under role isolation identity.env is public-only (no
+# AGENTBOX_NSEC, no AGENTBOX_BRIDGE_SK). The bootstrap wrote the relay key to
+# AGENTBOX_BRIDGE_SK_FILE itself; hand that file to its role here. Flag off this
+# is a no-op and the SEC-003 block below runs exactly as before.
+_ab_role_key_file_own "$AGENTBOX_ROLE_ISOLATION" "${AGENTBOX_BRIDGE_SK_FILE:-}" ab-identity
 
 # SEC-003: Do NOT propagate the decrypted Nostr secret key as an env var into
 # long-running processes (env is readable via /proc/<pid>/environ by anything
@@ -1051,6 +1154,8 @@ if [ "$AGENTBOX_ROLE_ISOLATION" = 1 ]; then
   echo "[security] role_isolation: supervisord config ${_AB_SUPERVISORD_CONF}"
 fi
 echo "[5b/8] Starting supervisord..."
+# Custody W2: nothing between here and exec may export a ROLE variable.
+_ab_role_env_scrub "$AGENTBOX_ROLE_ISOLATION"
 exec supervisord -c "$_AB_SUPERVISORD_CONF" -n
 
 fi  # end STAGE_B_MODE=0 block — Stage A exits via exec above

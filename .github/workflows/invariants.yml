@@ -75,6 +75,17 @@ jobs:
       - name: check-secret-not-in-env (AGENTBOX_BRIDGE_SK scrubbed before exec)
         run: sh scripts/ci/check-secret-not-in-env.sh
 
+      # Custody X-1 step 1, W2 (bypass 3): every env var name the boot path and
+      # the role-secret consumers read is classified ROLE / DEVUSER_CLASS /
+      # NON_SECRET (config/custody/env-classes.json); ROLE vars leave PID 1's
+      # environment under [security].role_isolation and are read by file.
+      - name: env-secret-inventory (custody W2 — every env name classified; names only)
+        run: node scripts/ci/env-secret-inventory.js --check
+      - name: env-secret-inventory unit tests (custody W2; the loader and consumers run in contract-tests)
+        run: node --test tests/security/env-secret-inventory.node-test.js
+      - name: RC-X1-06 role-secret scrub contract (custody W2; no Docker needed)
+        run: bash tests/runtime-contract/RC-X1-06.sh
+
       - name: check-single-metrics (exactly one collectDefaultMetrics call)
         run: node scripts/ci/check-single-metrics.js
 

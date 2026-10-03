@@ -126,3 +126,44 @@ Marked with no gate (5): `primary-model`, `loom-raw`, `github`, `crates-io`, `cl
 Marked with no accepted-egress record (18): `consultant-codex`, `consultant-antigravity`, `consultant-zai`, `consultant-perplexity`, `consultant-deepseek`, `zai-night`, `ontology-monitor`, `nostr-gateway`, `junkiejarvis-llm`, `dream-forum-suggestions`, `dream-digest`, `dream-governance`, `sidestr-announce`, `sidestr-pages`, `github`, `cloudflare`, `tailscale`, `mcp-research`.
 
 <!-- egress-register:end -->
+
+## Environment classes — 2026-10-03 (custody X-1 step 1, W2)
+
+Bypass 3 of the role-isolation design: compose `env_file` puts `.env` into PID 1, supervisord
+hands PID 1's environment to every child, and `identity.env` added `AGENTBOX_NSEC` on top. So
+every agent shell, MCP server and hook carried the sovereign key, the JunkieJarvis key and the
+break-glass bearer. An agent that ran `env` copied them into a transcript, and the transcript
+went to a model provider.
+
+[`config/custody/env-classes.json`](../config/custody/env-classes.json) now names every
+environment variable that the boot path and the role-secret consumers read. It lists names
+only, never values. Each name is in exactly one class.
+`node scripts/ci/env-secret-inventory.js --check` fails CI if a name read in code is
+unclassified, if a name is in two classes, or if the table drifts from the entrypoint's scrub
+list or from [ADR-2122](adr/ADR-2122-role-service-accounts-run-secrets-and-the-identity-port.md)'s
+delivery plan (`config/role-accounts.json`).
+
+| Class | Count | Members | Why |
+|---|---|---|---|
+| **ROLE** | 11 | `AGENTBOX_PRIVKEY_HEX`, `AGENTBOX_NSEC` and `AGENTBOX_BRIDGE_SK` (the sovereign key under three names); `OPERATOR_NOSTR_PRIVKEY`; `JUNKIEJARVIS_PRIVKEY_HEX` and `CONCIERGE_PRIVKEY_HEX`; `AGENTBOX_AGENT_PRIVKEY_HEX` and `AGENT_PRIVKEY_HEX` (per-agent keys), all `ab-identity`. `NIP98_PROXY_ALLOW_BEARER` and `NIP98_PROXY_SESSION_SECRET` (`ab-ingress`). `TAILSCALE_AUTHKEY` (`root`). | A signing, join or session key belongs to one role. Under `[security].role_isolation` the entrypoint writes it to `/run/secrets/<role>/<NAME>` (`0400`) and unsets it from PID 1 before the identity bootstrap. `identity.env` becomes public-only, and a final scrub before `exec supervisord` logs and removes any that reappear (`ROLE-ISOLATION-LEAK <NAME>`). Readers take `<NAME>_FILE` (or `$AGENTBOX_SECRETS_DIR/<NAME>`). Under the flag they ignore and report the bare variable. |
+| **DEVUSER_CLASS** | 35 | `BRIDGE_TOKEN`; `MANAGEMENT_API_KEY`, `AGENTBOX_ACTION_PIPELINE_SECRET`, `WEBHOOK_HMAC_SECRET`, `SOLID_ADMIN_KEY` and `VISIONCLAW_AGENT_KEY` (management-api); `VAULT_NOSTR_SECRET`; the Anthropic, OpenAI, Gemini/Google, DeepSeek, OpenRouter, Perplexity, Brave, Context7, Hugging Face, Z.AI, TypeSafe, System-One, JunkieJarvis-LLM and email-gateway keys; GitHub, crates.io and Cloudflare tunnel tokens; the Postgres/RuVector password and connection string; code-server and Jupyter logins (and two entrypoint-local copies). | **Accepted exceptions** (queen's disposition Q8, pending owner). The agents are these credentials' users, and their processes run as devuser. Each row in the table carries its reason. Two are flagged. `VAULT_NOSTR_SECRET` is a signing key whose only consumer, the external vault CLI, has no file input yet, so it is a ROLE candidate for W3b. `BRIDGE_TOKEN` is below. |
+| **NON_SECRET** | ~600 | Paths, ports, switches, model names, public keys, and shell locals. | Nothing to protect. A credential-shaped name can never land here by pattern; it needs an exact entry. |
+
+**The break-glass double, recorded 2026-10-03.** `voice up` copies `BRIDGE_TOKEN` into
+`NIP98_PROXY_ALLOW_BEARER` (`management-api/lib/system-manifest.js:79`). The proxy's copy is
+ROLE and leaves PID 1 under the flag. `BRIDGE_TOKEN` stays devuser-class because tab0-bridge,
+which drives tmux as devuser, needs it. So the LAN-door break-glass credential stays reachable
+by devuser until Q4 splits the bearer. The lifecycle belongs to
+[ADR-2027](adr/ADR-2027-secret-custody-rotation-break-glass.md) (proposed); this step does not
+redesign it.
+
+**What the flag does and does not buy.** The flag ships off, and with it off the environment
+handed to supervisord is byte-identical (`tests/runtime-contract/RC-X1-06.sh`). With it on:
+
+- ROLE values are gone from every process's environment and from `tailscale-up`'s argv. That
+  closes the transcript and crash-dump leak.
+- Until W3's identity port exists, the devuser readers of `ab-identity` files fail closed:
+  JunkieJarvis does not start, dream-engine's forum posts stop, and the live mirror seals under
+  a throwaway key. Do not turn the flag on before W3b.
+- DEVUSER_CLASS credentials are unchanged by design.
+- The repo `.env` remains readable on the workspace bind (Q13, host-side).

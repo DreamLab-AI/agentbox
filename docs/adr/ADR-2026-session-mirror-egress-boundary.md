@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: a10f336fca4c2ad2bdf0b7222545218298757569
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -185,3 +185,8 @@ The source verification anchor for this execution is `a0ee1fe5740baa38e14c4ff3fe
 - **Priority:** P2 — next cycle (owner decision 2026-10-02, Q4; was P1, Track C item 10, fresh-host bring-up; row G-4)
 - **Why:** All four clauses have code and tests behind them (`config/hooks/lib/egress-policy.cjs`, `egress_policy.rs`, 25 egress-boundary tests; G-4 recipient enumeration 2026-09-07; `b25903ec8` checks the allowlist before any work). The mirror hook is registered on every turn in `~/.claude/settings.json`, and in this container no `AGENTBOX_MIRROR_RECIPIENTS` is set, so it skips. A deployment on Trust-owned hardware (§2 Track C, §9) has to show that nothing leaves the box by default. That is this record's clause (c), and it is the one thing the record has not demonstrated on a running instance.
 - **Next:** During the Track C fresh-host run, capture a receipt showing every egress path reports `skipped` with no allowlist configured. With that and the owner's reviewed recipient set (G-4), it is ready to accept. **Moved to P2 — owner decision 2026-10-02, Q4:** the Trust runbook will not include an egress-nothing-by-default receipt or name who holds each secret, so the Track C fresh-host run will not produce clause (c)'s receipt this cycle. The receipt step above stands for next cycle.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `config/hooks/nostr-live-mirror.cjs` takes the operator key from `config/hooks/lib/operator-key.cjs`. Flag off that is the pre-W2 `envFirst` read, unchanged, so the phone's mirror child key cannot move. Under the flag only `<NAME>_FILE` counts. **Consequence under the flag with W1:** the files are `ab-identity` 0400, so the devuser hook gets no key and seals under a throwaway key with no child key (fail-open, as designed) until the identity port's `mirror_wrap` (W3a/W3b) exists. The egress gates (`AGENTBOX_LIVE_MIRROR`, `AGENTBOX_EGRESS`, `config/egress-policy.json`) are untouched. The decision holds.
+Re-verified by `git diff 526b97dc6..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.

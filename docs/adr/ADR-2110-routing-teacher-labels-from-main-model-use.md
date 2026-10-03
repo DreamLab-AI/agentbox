@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c7b5d5f5535c9203f21b24ed710705a3fe16dcf2
+verified_commit: 275e12356319a9630846656580d497d53de3d38c
 verified_paths: [config/hooks/routing-label-recorder.cjs, config/hooks/lib/routing-labels.cjs, tests/config/routing-labels.test.js, scripts/experiments/exp-b8-label-log.cjs, tests/config/exp-b8-label-log.test.js]
 owner: jjohare
 review_trigger: the EXP-B8 stopping rule firing (510 analysable rows or 2026-10-20) and its verdict PR; the first 30 days of recorded labels; a learned router measured against the frozen corpus; any change to what the label row stores
@@ -196,3 +196,8 @@ since we might forget … turn it off once the data is statistically significant
 - **Next:** The EXP-B8 tick fires the stop by 2026-10-20 at the latest and opens the verdict PR.
   KEEP → take open question 1 (embedding retention) to the owner. WITHDRAW or INCONCLUSIVE →
   this record becomes rejected.
+
+## Re-verification — 2026-10-03 (`275e12356319a9630846656580d497d53de3d38c`)
+
+Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `scripts/experiments/exp-b8-label-log.cjs` reads the JunkieJarvis key through the ROLE-secret loader; with the flag off its pre-W2 read (env, then the repo `.env` via `zone-keys.readSetting`) is kept as is. Label recording is untouched (`tests/config/exp-b8-label-log.test.js` 34/34). The decision holds.
+Re-verified by `git diff c7b5d5f55..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
