@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.2
+version: 0.5.3
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.3 (2026-10-03): custody X-1 step 1 (ADR-2122, staged). Under [security].role_isolation (boot-class, default off), role programs run under ab-* uids from /etc/supervisord.roles.conf, secrets sit in the root-owned /run/secrets/<role>/, and devuser's Docker CLI is GET-only. New programs serve-identity and docker-read-proxy (EXITED while off). The sidecar gains podkey-loader. The sidestr producer runs the Nix bake of upstream-pins in both modes."
   - "0.5.2 (2026-10-01): CLI, JavaScript and Rust dependency refresh. Fastify 5 compatibility preserves NIP-98 host ports, redirects, WebSocket callbacks, CORS methods and metrics. Stale cargo binaries are quarantined with numbered recovery copies. No data-volume or memory-geometry migration."
   - "0.5.1 (2026-09-30): Supervised interim testnet producer, Pages mirror and standalone sidestr-agent faucet under rebuild-class sidechain gates; catalogue now 79 entries. Native node, bridge and proposed settlement invariants remain deferred."
   - "0.5.0 (2026-09-29): ADR-2118. Two new invariants: the global and workspace instruction tiers are generated every boot from config/instructions/ (tracked public layer + gitignored local/ estate layer, mounted read-only, never baked), and ~/.claude is a container-owned volume sharing only .credentials.json with the host via [program:claude-cred-sync]. New open item for the partial rollout (connected node, ~/.config/claude, Q43, profiles). CATALOGUE count corrected to 78 (was stale at 60)."
@@ -53,7 +54,7 @@ The image is composed entirely by `flake.nix` (3,297 lines). `agentbox.toml` is 
 
 ### Supervised services (real `[program:*]` blocks in flake.nix)
 
-Supervisord runs as PID 1 root; every long-running program drops to `user=devuser`. Enumerated from the generated supervisor text:
+Supervisord runs as PID 1 root; every long-running program drops to `user=devuser`, with one exception. Under `[security].role_isolation = true` (ADR-2122; boot-class, default off, staged until its rehearsal passes), the entrypoint execs `/etc/supervisord.roles.conf`. That config is derived from this one and differs only in `user=` and `environment=`. In it `nostr-relay` and `serve-identity` run as `ab-identity`, `nostr-gateway` as `ab-gateway`, `nip98-proxy` as `ab-ingress`, and each sidestr producer and faucet as its chain's role (`config/role-accounts.json`). Enumerated from the generated supervisor text:
 
 | Program | Role | Port (bind) |
 |---|---|---|
@@ -68,6 +69,8 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 | `https-bridge` | pod HTTPS bridge | — |
 | `nostr-relay` | sovereign relay | `7777` (gated expose) |
 | `nostr-gateway` | nostr gateway | — |
+| `serve-identity` | identity port (ADR-2122, W3): named signing operations on `/run/secrets/ab-identity-port/identity.sock`, authorised by `SO_PEERCRED` uid; exits 0 (`EXITED`) while `role_isolation` is off | unix socket |
+| `docker-read-proxy` | GET-only Docker proxy for devuser under `role_isolation` (W0); starts as root, drops to 65534; exits 0 while off | `/run/docker-ro.sock` |
 | `opf-router` | privacy-filter redaction sidecar (legacy ADR-008), gate `[privacy_filter]` | `127.0.0.1:9092` |
 | `ruvector-aggregate-sweep` / `ruvector-pattern-distill` | memory sweep + distil loops | — |
 | `ontology-condense-scheduler` | ontology condensation | — |
@@ -79,7 +82,7 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 | `xvnc` / `x11vnc` / `wayvnc` / `xorg-nvidia` / `hyprland` / `i3wm` / `xwayland-session` | desktop stack (gated `desktop.enabled`) | `127.0.0.1:5901` |
 | `tailscaled` / `tailscale-up` | mesh networking (gated) | — |
 | `podcast-cron` / `forum-backup-cron` | scheduled jobs | — |
-| `sidestr-producer` / `sidestr-mirror` / `sidestr-faucet` | sidestr:dreamlab chain, Pages mirror, DREAM faucet (gated `[sidechain]`, rebuild-class) | `127.0.0.1:3450` |
+| `sidestr-producer` / `sidestr-mirror` / `sidestr-faucet` | sidestr:dreamlab chain, Pages mirror, DREAM faucet (gated `[sidechain]`, rebuild-class). The producer runs the read-only Nix bake of `config/sidechain/upstream-pins` (`/opt/agentbox/sidestr/upstream`), never a workspace checkout unless `SIDESTR_ALLOW_UNPINNED=1` | `127.0.0.1:3450` |
 
 Readiness (`server.js:508`) requires `bootstrap.done`, `adapters:healthy`, and `paths:accessible`; `bootstrap-seal` is a one-shot at `priority=99` — if it times out `/ready` stays 503.
 
@@ -108,7 +111,7 @@ Applied only when `gpu.backend == "local-cuda"` (`flake.nix:170`); on `backend=n
 
 Not supervised inside the box — external compose services on `visionclaw_network`, managed via `./agentbox.sh <name>`:
 
-- **browsercontainer** — GPU Chrome, chrome-devtools-mcp at `:8931/sse` (`system-manifest.js:154`, apply-class `live`).
+- **browsercontainer** — GPU Chrome, chrome-devtools-mcp at `:8931/sse` (`system-manifest.js:154`, apply-class `live`). `[program:podkey-loader]` loads the pinned Podkey extension over CDP once per Chrome process. Its vault, holding K_browser, persists on the `browsercontainer-profile` volume; the owner mints and unlocks it (`./agentbox.sh browsercontainer podkey status|pubkey|unlock`, `browsercontainer/README.md`).
 - **gui-tools-service** — FHS GPU sidecar for BlenderMCP `:9876` and QGIS `:9877` under `vglrun` (`:157`).
 - **voice-console** — ADR-044 Caddy origin `:8444`, Unmute voice loop + AoE board; external build context (`:160`).
 - **ruvector-postgres** — mandatory memory store sidecar (ADR-015); compose block generated in `flake.nix:2200`, `db ruvector`, health-gated. `ruvector-mcp.cjs` fails closed, no sql.js fallback.

@@ -88,6 +88,7 @@ You are adding a feature, implementing an adapter, or investigating a regression
 | [Architecture overview](developer/architecture.md) | How it all fits together — manifest → flake → image → runtime |
 | [Web interface design system](developer/web-interface-design-system.md) | Tokens and components shared by the operator cockpit, console and setup wizard |
 | [ComfyUI API](developer/comfyui-api.md) | REST/WebSocket surface the management API exposes for an external ComfyUI backend |
+| [Turning on role_isolation](developer/role-isolation-runbook.md) | Owner runbook for ADR-2122 (staged): rebuild, flag, the two-half rehearsal, receipts, rollback, the sidecar's Podkey key |
 | [Identity and tracing mesh](developer/identity-mesh.md) | secp256k1 identity root, 19-kind URN namespace, adapter dispatch pipeline, credential provenance, federation invariants |
 | [Adapter pattern](developer/adapters.md) | Five slots × three classes; how to write a new impl |
 | [Native pod mesh](developer/native-pod-mesh.md) | In-container git-versioned `solid-pod-rs` tier — architecture + wiring ([PRD-007](archive/prd/PRD-007-multi-tenant-federation.md) / [ADR-010](archive/adr/ADR-010-rust-solid-pod-adoption.md)) |

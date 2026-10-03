@@ -167,3 +167,142 @@ handed to supervisord is byte-identical (`tests/runtime-contract/RC-X1-06.sh`). 
   a throwaway key. Do not turn the flag on before W3b.
 - DEVUSER_CLASS credentials are unchanged by design.
 - The repo `.env` remains readable on the workspace bind (Q13, host-side).
+
+## Role isolation — 2026-10-03 (custody X-1 step 1, staged)
+
+Decision: [ADR-2122](adr/ADR-2122-role-service-accounts-run-secrets-and-the-identity-port.md)
+(proposed, `activation_status: inactive`). Citations are at `custody/integration` `d03defbea`.
+Owner procedure: [Turning on role_isolation](developer/role-isolation-runbook.md).
+
+**Staged, not live.** Everything below is in the source on this branch. None of it runs in
+an image until the owner rebuilds. None of it is enforced until the flag is on **and**
+the two-half rehearsal has passed and landed its receipt. Until then this section describes what
+the branch would enforce. It is not a claim about the running container. "Live" in this register
+means a passing receipt, never a merge.
+
+### The switch
+
+`[security].role_isolation`, default `false` (`agentbox.toml:2112`,
+`setup/agentbox.default.toml:1625`, catalogue `management-api/lib/system-manifest.js:94-96`,
+apply class `boot`). The entrypoint reads it once and exports it
+(`config/entrypoint-unified.sh:343-361`). The image must carry the custody library, both
+supervisor configs and the delivery plan. An image without them logs
+`ROLE-ISOLATION-UNAVAILABLE` and boots as if the flag were off (`:352-359`). The first image
+built from this branch needs one `./agentbox.sh rebuild`. After that, flipping the flag needs
+only a restart.
+
+**With the flag off, the boot is today's**, with one exception: `/run/secrets` becomes its own
+tmpfs, which devuser cannot rename. The entrypoint still chowns it to devuser `0700` and writes
+the devuser `nostr.key` as before (`config/entrypoint-unified.sh:388-391`, `:1020`). The
+environment that reaches supervisord is byte-identical (`tests/runtime-contract/RC-X1-06.sh`).
+
+### The role table
+
+Single source: `config/role-accounts.json`. It is baked into `/etc/passwd`, `/etc/group` and
+`/etc/agentbox/role-accounts.json` (`flake.nix:3571-3577`). Each role has its own primary group
+with no members, shell `/sbin/nologin` and home `/run/secrets/<role>/home`. uid 965 is skipped:
+it is the host docker group (`reserved_ids`).
+
+| Role | uid | Programs under the flag | Secrets in `/run/secrets/<role>/` |
+|---|---|---|---|
+| `ab-identity` | 960 | `nostr-relay`, `serve-identity` | `nostr.key`, `AGENTBOX_PRIVKEY_HEX`, `AGENTBOX_NSEC`, `JUNKIEJARVIS_PRIVKEY_HEX`, `CONCIERGE_PRIVKEY_HEX` (from PID 1's environment) |
+| `ab-gateway` | 961 | `nostr-gateway` | none; it signs through the identity port |
+| `ab-ingress` | 962 | `nip98-proxy` | `NIP98_PROXY_ALLOW_BEARER`, `NIP98_PROXY_SESSION_SECRET` (from PID 1's environment) |
+| `ab-spend` | 963 | none (account only; Q6 deferred the spend port) | none |
+| `ab-sidestr-dreamlab` | 964 | `sidestr-producer` | `signer.key`, `parent.credential` (copied from `/var/lib/agentbox/secrets`) |
+| `ab-faucet-dreamlab` | 966 | `sidestr-faucet` | `treasury.key` (copied from the workspace path the manifest names) |
+| `ab-sidestr-dreamlab-txbt4` | 967 | `sidestr-producer-dreamlab-txbt4` | `signer.key`, `parent.credential` |
+| `ab-faucet-dreamlab-txbt4` | 968 | `sidestr-faucet-dreamlab-txbt4` | `treasury.key` |
+| group `ab-identity-port` | 969 | — | members devuser, `ab-identity`, `ab-gateway`; owns the port socket's directory |
+
+management-api, dream-engine, aoe, tmux and the agents stay devuser. JunkieJarvis is a key held
+by `ab-identity`, not an account.
+
+### Two supervisor configs
+
+`/etc/supervisord.conf` is today's config. `/etc/supervisord.roles.conf` is derived from it by
+`agentbox-manifest role-accounts isolate` (`flake.nix:3571-3576`). In each role program the
+derivation changes only the `user=` and `environment=` lines, and
+`tests/config/role-isolation-supervisor.test.sh` fails on any other difference. The build itself
+fails if a secret-bearing program has no role or a role program is not `user=devuser` in today's
+config. The entrypoint picks one
+config at its final `exec` (`config/entrypoint-unified.sh:1142-1160`).
+
+### `/run/secrets`
+
+- **The mount.** In both modes `/run/secrets` is its own tmpfs,
+  `mode=711,uid=0,gid=0,noexec,nosuid,nodev` (`docker-compose.yml:110`, `flake.nix:3278`).
+  Because it is a mount point, devuser, who owns `/run`, cannot rename it.
+- **Delivery.** Under the flag the root phase delivers each role's files just before `exec`
+  (`ab_role_secrets_deliver`, `config/lib/role-custody.sh:160`). Each role directory is
+  `0500` and each file `0400`, owned by the role. A file source is copied only if it is a
+  regular file, not a symlink, and at most 64 KiB.
+- **The state file.** The result, `ok:` or `degraded:` for `secrets-mount`,
+  `secrets-delivery` and `docker-socket`, goes to `/run/secrets/role-isolation.state`.
+- **Failure.** A failure never stops the boot. A role whose secret is missing fails closed
+  under supervisord.
+
+### The environment classes
+
+The ROLE / DEVUSER_CLASS / NON_SECRET split is the section above ("Environment classes"). Under
+the flag:
+
+1. ROLE variables are captured to files and unset before the identity bootstrap
+   (`config/entrypoint-unified.sh:489`).
+2. `identity.env` is public-only (`services/nostr-pod-bridge/src/bootstrap.rs:230`).
+3. A last scrub before `exec` logs `ROLE-ISOLATION-LEAK <NAME>` for anything that reappears
+   (`config/entrypoint-unified.sh:1158`).
+
+DEVUSER_CLASS credentials, including `BRIDGE_TOKEN` and the provider keys, stay in devuser's
+environment by design.
+
+### The identity port
+
+`nostr-pod-bridge serve-identity` (`[program:serve-identity]`, `flake.nix:2515-2529`) runs as
+`ab-identity` under the flag. With the flag off it prints one line and exits 0, so `EXITED` is
+its expected status. It serves `/run/secrets/ab-identity-port/identity.sock` (`0660`, group
+`ab-identity-port`) and admits callers by `SO_PEERCRED` uid against
+`config/custody/identity-port-acl.json`: devuser (1000) and `ab-gateway` (961).
+
+Its operations are a closed list (`services/nostr-pod-bridge/src/identity_port/acl.rs:43`):
+`pubkey`, `nip98`, `sign_event` (granted kinds only), `forum_event`, `nip42_auth` and
+`mirror_key`. There is no generic sign operation (ADR-2101). Every decision appends one
+content-free line under `/var/lib/agentbox/events/sign/`.
+
+The pods signer uses the port when the flag is on (`management-api/lib/pod-signer.js:131`).
+JunkieJarvis, the mirror hook, the gateway and dream-engine are not yet cut over (W3b).
+
+### Docker under the flag
+
+The entrypoint does not widen `/var/run/docker.sock` for devuser
+(`config/entrypoint-unified.sh:586-612`). devuser's `DOCKER_HOST` points at the GET-only
+`[program:docker-read-proxy]`, `/run/docker-ro.sock` (`flake.nix:2493`;
+`config/entrypoint-unified.sh:3252-3254`). `ps`, `logs`, `inspect`, `version` and `info`
+pass. `exec`, `run`, `create`, `cp` and `export` get 403.
+
+If the host socket is still world-writable, the boot records `degraded:docker-socket`. The fix
+is host-side (Q2): `chmod 0660 /var/run/docker.sock` on the host.
+
+### What is still open (the flag gives less than its name until these land)
+
+- **At-rest custody (W2 remainder).** No migrate step on this branch chowns
+  `/var/lib/agentbox/secrets`, the identities volume or the workspace treasury keys to root.
+  devuser can still read the at-rest copies. The flag protects only the delivered runtime
+  copies and the environment.
+- **Consumers (W3b).** JunkieJarvis, dream-engine's forum posts, the live-mirror hook and the
+  gateway still read keys that leave the environment under the flag, so they fail closed.
+- **Producer state and checkouts (W4).** Chain state is still under `$WORKSPACE/sidestr/<chain>`.
+  The producer's code is the Nix bake of `config/sidechain/upstream-pins` in both modes
+  (custody W5, `config/sidechain/run-producer.sh:64-89`), and that is also staged until the
+  rebuild.
+- **The AoE share and `role-exec` (W2).** `ab-gateway` and `ab-ingress` still point at
+  devuser's `serve.url`. There is no `role-exec` wrapper yet.
+- **The break-glass double (Q4).** `NIP98_PROXY_ALLOW_BEARER` equals `BRIDGE_TOKEN`, which
+  stays devuser-class.
+- **The repo `.env`.** It remains the at-rest home of the ROLE values and is readable on the
+  workspace bind (Q13, host-side). The flag moves those values out of the process
+  environment. It does not move them out of `.env`.
+
+The register rows of 2026-09-04 and 2026-09-05 above are unchanged by this section. The bridge
+key's interface there (`/run/secrets/nostr.key`) is still the flag-off path. Under the flag,
+the same key is `/run/secrets/ab-identity/nostr.key`.

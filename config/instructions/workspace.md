@@ -41,6 +41,8 @@ watch   = `aoe` TUI in tmux tab 8, `tmux attach -t <aoe_session>` from a termina
 
 The host Docker socket makes builds launched in here *look* like they work, but bind paths resolve against the **host** filesystem, so they silently bake stale code. Edit sources here; launch the host project's builds from the host shell (its tmux tab), and monitor from here with `tmux capture-pane` and `docker exec`. Do not SSH to the host.
 
+Under `[security].role_isolation = true` (ADR-2122; off by default, staged), `docker exec` is no longer a monitoring path from in here. `DOCKER_HOST` points at the GET-only proxy `/run/docker-ro.sock`: `docker ps`, `logs` and `inspect` work, while `exec`, `run` and `cp` get 403. Monitor with `tmux capture-pane` and `docker logs`, and run anything that needs `exec` from the host shell. Under the flag, role secrets sit in the root-owned `/run/secrets/<role>/` and are unreadable to devuser. Signing goes through the identity port, `/run/secrets/ab-identity-port/identity.sock` (`nostr-pod-bridge sign-request <op>`).
+
 ## Claude Cowork
 
 `cowork start|stop|status|restart|logs` — Claude Desktop Cowork on VNC :1. `claude-desktop --devtools|--doctor`.
