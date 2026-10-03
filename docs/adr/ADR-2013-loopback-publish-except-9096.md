@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 055c06ff69b2f53bf38a67d254c048bb03599fc8
+verified_commit: a10f336fca4c2ad2bdf0b7222545218298757569
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -17,6 +17,10 @@ lineage: legacy ADR-045 (sovereign ingress front door), R-003 (loopback publish 
 ---
 
 # ADR-2013 — Loopback-only compose publishes except the sanctioned-exposure list
+
+## Re-verification — 2026-10-03 at a10f336fc (prompt egress register, N-7)
+
+`a10f336fc` touched the governed `.github/workflows/invariants.yml` without touching this decision: it adds `docs/SECURITY-profiles.md`, `config/egress-policy.json` and `docs/LAN-door-threat-model.md` to the push paths and one step, `check-egress-register`, after `check-adr-index`. The `check-ports-loopback` step this record relies on is unchanged (`.github/workflows/invariants.yml:63-64`). No publish, SANCTIONED entry or overlay changed. Status axes unchanged.
 
 ## Re-verification — 2026-10-02 at caab741c6 (factrail landing, ADR-2121)
 

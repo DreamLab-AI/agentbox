@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 526b97dc6752ceaa9889ed3cd199b5145b7cf94c
+verified_commit: a10f336fca4c2ad2bdf0b7222545218298757569
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -16,6 +16,10 @@ domain: SECURITY-profiles
 ---
 
 # ADR-2026 — Session-mirror cloud egress boundary
+
+## Re-verification — 2026-10-03 at a10f336fc (prompt egress register, N-7)
+
+`a10f336fc` touched the governed `config/egress-policy.json` without touching this decision. It adds a top-level `register` key (31 routes, rendered into `docs/SECURITY-profiles.md` by `scripts/ci/render-egress-register.js`), and changes no byte of `paths`, `switches`, `invariants` or `outcomes` beyond the comma that separates the new key. The register cites this record as `proposed` for the `live-mirror` and `session-digest` rows, beside their accepted predecessors (ADR-029 D3, ADR-030 D3). Test: `jest --roots=tests/sovereign --testPathPatterns egress-boundary` → 25 passed, including the assertion that `paths` holds exactly `live-mirror` and `session-digest`. Status axes unchanged.
 
 ## Re-verification — 2026-09-29 (instruction-home migration)
 
