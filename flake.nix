@@ -452,7 +452,7 @@
         #    templates to $HOME/.claude/agents/ — it must run as the runtime user
         #    after container start, NOT at Nix build time. Add to agentbox.sh init:
         #      [[ "${ENABLE_AGENTIC_QE:-false}" == "true" ]] && aqe init --auto || true
-        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.14.4.tgz
+        #    nix-prefetch-url https://registry.npmjs.org/agentic-qe/-/agentic-qe-3.14.7.tgz
         #    3.13.0 (2026-07-18): QE-Court multi-vendor adversarial review
         #    (Codex/GPT + Cognitum + Claude), Codex CLI provider via `codex
         #    exec`, @huggingface/transformers demoted to optional peer (4 HIGH
@@ -464,12 +464,15 @@
         #    nodeModulesHash resolved 2026-07-24 during the ADR-041 rebuild.
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          # 3.14.4 (2026-09-27): newest outside the 72-hour freshness window
-          # on 2026-10-01; 3.14.5 and 3.14.6 are inside it.
-          version         = "3.14.4";
-          packageLock = ./config/npm-locks/agentic-qe-3.14.4.package-lock.json;
-          sha256          = "sha256-9lwDo+qpSiIxVtg9r/Kee9TdZru9fVBXSp5/Vpy9x6c=";
-          nodeModulesHash = "sha256-Vvg/qJpAvOU9s2afX/JZLv1C6YJfHCVHo2R9T3BYuwA=";
+          # 3.14.7 (2026-10-02T09:25Z): npm latest, taken 2026-10-03 inside
+          # the 72-hour window on the owner's estate-wide upgrade. vibium (the
+          # opt-in qe-browser engine) moved from a dependency to an optional
+          # peer (^26.8.21), so the closure no longer carries vibium 0.1.8;
+          # qe-browser stays "install with aqe init", as the skill says.
+          version         = "3.14.7";
+          packageLock = ./config/npm-locks/agentic-qe-3.14.7.package-lock.json;
+          sha256          = "sha256-dtTtXe+f2O6gidB7xIIDJ3scr5XxdzdCwKqFRdLVuMY=";
+          nodeModulesHash = "sha256-r/FZrkcdDt1o+Tyrga6QcuEHcLPlgpY1t2efFgMyfP4=";
           bin             = "aqe";
         };
 
