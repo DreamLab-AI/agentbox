@@ -1586,7 +1586,7 @@ faucet_sats     = 2000    # fee sats per grant: about two settlements at ~1,010 
 # sidestr-producer-dreamlab-txbt4 (and the mirror/faucet below) on the next
 # rebuild. NOT ANCHORED: checkpoint_every = 0 (owner SC5, cost; ADR-2103 Open).
 [sidechain.dreamlab-txbt4]
-enabled                = false   # [program:sidestr-producer-dreamlab-txbt4]
+enabled                = true    # [program:sidestr-producer-dreamlab-txbt4]; live 2026-10-03 (BLAKES7 / second poker chain)
 parent                 = "txbt4" # must equal the sealed document's parent (ADR-2103 D3)
 port                   = 3451    # loopback; dreamlab holds 3450
 interval               = 600
@@ -1866,6 +1866,7 @@ unmute_build_context = "../voice-stack/unmute"  # external web/backend source ch
 claude = true
 claude_code = true
 ruflo = true
+ruflo_console = true
 claude_flow = true  # legacy alias gate: claude-flow IS ruflo (upstream rename, github.com/ruvnet/ruflo) — either gate bakes the ONE consolidated closure, which ships `ruflo` + `claude-flow` + `claude-flow-mcp` bins
 agentic_qe = false  # 2026-09-25: 0 MCP calls in 14 days; build-with-quality supersedes the aqe fleet. Rebuild-class (drops the aqe CLI + root-session agentic-qe MCP)
 metaharness = true  # ADR-064: bakes metaharness@0.3.2 + @metaharness/darwin@0.8.3 CLIs (the versions the ruflo-metaharness plugin pins); pin discipline per ADR-067
