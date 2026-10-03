@@ -118,3 +118,7 @@ structural rather than evidenced per row. Backup participation in TTL is still
 undefined: an expired row the sweep deletes may survive in a retained backup.
 `implementation_status` stays `partial` until a production repair run and a
 passing recall receipt exist together.
+
+## Re-affirmation — 2026-10-03 (ruflo 3.51.1 memory, ADR-2123)
+
+The `review_trigger` fired in substance: ruflo 3.51.1 (baked under the console gate) carries its own memory subsystem, and one `memory init` wrote three local stores into a repository. Tested, it is local-only (sql.js, AgentDB mirror, `./ruvector.db`, MiniLM) with no Postgres path, so it is not a new backend for this record to admit; it is a second system this record forbids. ADR-2123 closes the gap by routing `ruflo memory …` through `memStore`/`memSearch` of `lib/memory-tools.js` and refusing the local-store verbs, so the MCP-only, fail-closed mandate now also holds for the CLI and the ruflo-console memory pane. The upstream lineage (why ruvnet has an embedded line and a Postgres line, and why the Postgres line is current) is recorded in ADR-2123 so it is not re-derived. Nothing this record decides changed.
