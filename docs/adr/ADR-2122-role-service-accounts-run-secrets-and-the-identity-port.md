@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 5c787fedc999001c5bbe275a8111a21276a5abbc
+verified_commit: 33cbb29e86ba0e7def92fb100029b124e9269da7
 verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, docker-compose.hp.yml, tests/config/role-custody-migrate.test.sh, config/sidechain/run-producer.sh, config/sidechain/run-faucet.sh, config/sidechain/mirror-sync.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
@@ -516,3 +516,7 @@ Tripped by `ad5d0b91a`, a shellcheck-only change to `config/lib/role-custody.sh`
 ### Re-verification — 2026-10-03 (integration, CI portability)
 
 `ad5d0b91a..5c787fedc` touches `scripts/activation/role-isolation-rehearsal.host.sh` only to add the test seam `HR_ASSUME_CONTAINER=1`, which forces the in-container refusal and cannot suppress it, plus two test fixtures (`5c787fedc`). Detection, the root check and every rehearsal row are unchanged; the decision holds. Re-verified by `git log ad5d0b91a..5c787fedc -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (vaultSrc repin)
+
+`5c787fedc..33cbb29e8` changes one governed line: `flake.nix` `vaultSrc` moves from VisionClaw `64512141b` to main `94dc0ff60` (`33cbb29e8`, PR #13; ADR-2108 records why). Its one consumer is `lib/vault.nix` (the vault CLI package, `flake.nix:781`); nothing this record governs (ADR-2122 — Role service accounts, /run/secrets, and the identity port) reads it. The decision holds. Re-verified by `git log 5c787fedc..33cbb29e8 -- <verified_paths>`.
