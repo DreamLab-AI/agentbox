@@ -1,0 +1,64 @@
+# browsercontainer.yml
+#
+# W9 (custody-isolation 2026-10-03): the browser sidecar ships the pinned Podkey
+# CI artefact and keeps its Chrome profile on a named volume. These tests guard
+# the pin (sha256, upstream repo, content), the launch flags per browser, the
+# load-once rule and the profile volume. The image itself is built on the host
+# (`agentbox.sh browsercontainer rebuild`), never here.
+
+name: Browsercontainer
+
+on:
+  pull_request:
+    paths:
+      - 'browsercontainer/**'
+      - 'docker-compose.browsercontainer.yml'
+      - 'tests/browsercontainer/**'
+      - '.github/workflows/browsercontainer.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'browsercontainer/**'
+      - 'docker-compose.browsercontainer.yml'
+      - 'tests/browsercontainer/**'
+      - '.github/workflows/browsercontainer.yml'
+
+concurrency:
+  group: browsercontainer-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  podkey:
+    name: Podkey pin, launch args, profile volume
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      # Best effort: populates browsercontainer/vendor/ so the real-artefact cases
+      # run. If the token cannot read the upstream artefact (or it has expired),
+      # those cases SKIP and the fixture cases still gate.
+      - name: Fetch pinned Podkey artefact (best effort)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash browsercontainer/scripts/fetch-podkey.sh fetch
+
+      - name: fetch-podkey.sh (pin, sha256, content, fetch paths)
+        run: bash tests/browsercontainer/fetch-podkey.test.sh
+
+      - name: launch-chromium.sh flags
+        run: bash tests/browsercontainer/launch-args.test.sh
+
+      - name: podkey-ctl.js (id derivation, load-once, output hygiene)
+        run: node --test tests/browsercontainer/podkey-ctl.test.cjs
+
+      - name: compose profile volume
+        run: node tests/browsercontainer/compose-profile-volume.test.cjs

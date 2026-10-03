@@ -1,0 +1,12 @@
+{
+  "repo": "JavaScriptSolidServer/podkey",
+  "workflow": ".github/workflows/ci.yml",
+  "artifact": "podkey-extension",
+  "commit": "3752aa2b7f579ba4414ea21745fb7e826e08406e",
+  "run_id": "36134082610",
+  "artifact_id": "10862859494",
+  "sha256": "e1cfd874b1ae96e4bb419251795eb4c625a8158e3bb37616564d48761b8453cd",
+  "extension_name": "Podkey",
+  "version": "0.0.11",
+  "artifact_expires": "2026-12-24T12:17:30Z"
+}
