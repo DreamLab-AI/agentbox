@@ -16,6 +16,16 @@ struct OwnedChild {
 }
 
 impl OwnedChild {
+    fn wait_for_argv(pid: u32) {
+        for _ in 0..500 {
+            if std::fs::read(format!("/proc/{pid}/cmdline")).is_ok_and(|v| !v.is_empty()) {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        panic!("spawned process {pid} never exposed a non-empty argv");
+    }
+
     fn spawn(script: &str) -> Self {
         let child = Command::new("sh")
             .arg("-c")
@@ -26,12 +36,26 @@ impl OwnedChild {
             .spawn()
             .expect("the test harness must be able to spawn sh");
         let pid = child.id();
-        // Let the shell settle into its final argv before identity is captured.
+        Self::wait_for_argv(pid);
+        // Shell-backed fixtures may immediately exec their final command.
         std::thread::sleep(Duration::from_millis(120));
         Self {
             child: Some(child),
             pid,
         }
+    }
+
+    fn spawn_program(program: &str, args: &[&str]) -> Self {
+        let child = Command::new(program)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("the test harness must be able to spawn the program");
+        let pid = child.id();
+        Self::wait_for_argv(pid);
+        Self { child: Some(child), pid }
     }
 
     fn is_alive(&self) -> bool {
@@ -53,6 +77,18 @@ impl Drop for OwnedChild {
     fn drop(&mut self) {
         self.kill_and_reap();
     }
+}
+
+fn capture_live(proc: &ProcFs, pid: u32) -> Result<ProcessIdentity, ProcError> {
+    for _ in 0..500 {
+        match capture(proc, pid) {
+            Err(ProcError::Malformed(message)) if message.contains("exposes no argv") => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            result => return result,
+        }
+    }
+    capture(proc, pid)
 }
 
 /// A `/proc` that refuses every read.
@@ -161,7 +197,7 @@ fn a_record_without_an_identity_is_unverifiable_and_is_never_signalled() {
 fn a_reused_pid_is_refused_and_never_signalled() {
     let tmp = tempfile::tempdir().unwrap();
     let child = OwnedChild::spawn("trap '' TERM; while :; do sleep 1; done");
-    let mut identity = capture(&ProcFs::default(), child.pid).expect("live child");
+    let mut identity = capture_live(&ProcFs::default(), child.pid).expect("live child");
     // Synthesise the reuse the kernel will not stage on demand: same PID, a
     // start time that is not the recorded one.
     identity.starttime += 1;
@@ -191,7 +227,7 @@ fn a_reused_pid_is_refused_and_never_signalled() {
 fn an_unknown_wrapper_argv_is_refused_even_at_the_same_pid() {
     let tmp = tempfile::tempdir().unwrap();
     let child = OwnedChild::spawn("trap '' TERM; while :; do sleep 1; done");
-    let mut identity = capture(&ProcFs::default(), child.pid).expect("live child");
+    let mut identity = capture_live(&ProcFs::default(), child.pid).expect("live child");
     // The PID is right and the start time is right, but the command is not the
     // one that was launched — a wrapper swap, refused like any other mismatch.
     identity.argv = vec![
@@ -244,7 +280,7 @@ fn unreadable_proc_data_is_an_explicit_refusal_not_an_assumed_match() {
 fn a_failed_signal_is_reported_and_leaves_recoverable_state() {
     let tmp = tempfile::tempdir().unwrap();
     let child = OwnedChild::spawn("trap '' TERM; while :; do sleep 1; done");
-    let identity = capture(&ProcFs::default(), child.pid).expect("live child");
+    let identity = capture_live(&ProcFs::default(), child.pid).expect("live child");
     let store = store_for(tmp.path(), child.pid, Some(&identity));
 
     let signal = RecordingSignal::failing("Operation not permitted (os error 1)");
@@ -274,7 +310,7 @@ fn a_daemon_that_ignores_sigterm_is_reported_as_signalled_not_stopped() {
     let tmp = tempfile::tempdir().unwrap();
     // The shell ignores SIGTERM, so delivery succeeds and shutdown does not.
     let child = OwnedChild::spawn("trap '' TERM; while :; do sleep 1; done");
-    let identity = capture(&ProcFs::default(), child.pid).expect("live child");
+    let identity = capture_live(&ProcFs::default(), child.pid).expect("live child");
     let store = store_for(tmp.path(), child.pid, Some(&identity));
 
     let outcome = daemon_stop_with(
@@ -308,8 +344,8 @@ fn a_daemon_that_ignores_sigterm_is_reported_as_signalled_not_stopped() {
 fn a_daemon_that_exits_is_confirmed_and_its_records_are_cleared() {
     let tmp = tempfile::tempdir().unwrap();
     // A plain `sleep` takes the default SIGTERM disposition and dies.
-    let child = OwnedChild::spawn("exec sleep 30");
-    let identity = capture(&ProcFs::default(), child.pid).expect("live child");
+    let child = OwnedChild::spawn_program("sleep", &["30"]);
+    let identity = capture_live(&ProcFs::default(), child.pid).expect("live child");
     let store = store_for(tmp.path(), child.pid, Some(&identity));
 
     let outcome = daemon_stop_with(
@@ -333,8 +369,8 @@ fn a_daemon_that_exits_is_confirmed_and_its_records_are_cleared() {
 #[test]
 fn a_stale_record_for_a_dead_pid_reports_not_running_and_clears() {
     let tmp = tempfile::tempdir().unwrap();
-    let mut child = OwnedChild::spawn("exec sleep 30");
-    let identity = capture(&ProcFs::default(), child.pid).expect("live child");
+    let mut child = OwnedChild::spawn_program("sleep", &["30"]);
+    let identity = capture_live(&ProcFs::default(), child.pid).expect("live child");
     let store = store_for(tmp.path(), child.pid, Some(&identity));
     // Killed *and reaped*, so the PID is genuinely retired rather than a zombie.
     child.kill_and_reap();

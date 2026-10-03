@@ -13,6 +13,16 @@ pub struct OwnedChild {
 }
 
 impl OwnedChild {
+    fn wait_for_argv(pid: u32) {
+        for _ in 0..500 {
+            if std::fs::read(format!("/proc/{pid}/cmdline")).is_ok_and(|v| !v.is_empty()) {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        panic!("spawned process {pid} never exposed a non-empty argv");
+    }
+
     /// Spawns `sh -c <script>` with no stdio attached.
     pub fn spawn(script: &str) -> Self {
         let child = Command::new("sh")
@@ -24,13 +34,27 @@ impl OwnedChild {
             .spawn()
             .expect("the test harness must be able to spawn sh");
         let pid = child.id();
-        // A process mid-`exec` briefly exposes an empty /proc/<pid>/cmdline;
-        // settle so the test reads the command it means to record.
+        Self::wait_for_argv(pid);
+        // Shell-backed fixtures may immediately exec their final command.
         std::thread::sleep(std::time::Duration::from_millis(120));
         Self {
             child: Some(child),
             pid,
         }
+    }
+
+    /// Spawns a program directly when a test cares about its exact argv.
+    pub fn spawn_program(program: &str, args: &[&str]) -> Self {
+        let child = Command::new(program)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("the test harness must be able to spawn the program");
+        let pid = child.id();
+        Self::wait_for_argv(pid);
+        Self { child: Some(child), pid }
     }
 
     /// Kills and reaps now, so the PID is genuinely retired before the test
@@ -47,6 +71,18 @@ impl Drop for OwnedChild {
     fn drop(&mut self) {
         self.kill_and_reap();
     }
+}
+
+fn capture_live(proc: &ProcFs, pid: u32) -> Result<ProcessIdentity, ProcError> {
+    for _ in 0..500 {
+        match capture(proc, pid) {
+            Err(ProcError::Malformed(message)) if message.contains("exposes no argv") => {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            result => return result,
+        }
+    }
+    capture(proc, pid)
 }
 
 /// A `/proc` that refuses every read, standing in for `hidepid`, a denied
@@ -128,9 +164,9 @@ fn argv_splits_on_nul_and_drops_the_terminator() {
 
 #[test]
 fn a_recognised_owned_process_verifies_against_its_recorded_identity() {
-    let child = OwnedChild::spawn("exec sleep 30");
+    let child = OwnedChild::spawn_program("sleep", &["30"]);
     let proc = ProcFs::default();
-    let recorded = capture(&proc, child.pid).expect("an owned live child must be capturable");
+    let recorded = capture_live(&proc, child.pid).expect("an owned live child must be capturable");
 
     assert_eq!(recorded.pid, child.pid);
     assert_eq!(recorded.argv, vec!["sleep".to_string(), "30".to_string()]);
@@ -140,9 +176,9 @@ fn a_recognised_owned_process_verifies_against_its_recorded_identity() {
 
 #[test]
 fn a_stale_pid_is_no_such_process_after_the_child_is_reaped() {
-    let mut child = OwnedChild::spawn("exec sleep 30");
+    let mut child = OwnedChild::spawn_program("sleep", &["30"]);
     let proc = ProcFs::default();
-    let recorded = capture(&proc, child.pid).expect("live child");
+    let recorded = capture_live(&proc, child.pid).expect("live child");
     child.kill_and_reap();
 
     assert_eq!(verify(&proc, &recorded), IdentityVerdict::NoSuchProcess);
@@ -155,8 +191,8 @@ fn a_reused_pid_is_a_mismatch_not_a_match() {
     // Real reuse cannot be forced deterministically, so the reused-PID state is
     // synthesised exactly: a live process carrying a *different* start time than
     // the one recorded is, by definition, a PID that has been handed on.
-    let live = OwnedChild::spawn("exec sleep 30");
-    let mut recorded = capture(&proc, live.pid).expect("live child");
+    let live = OwnedChild::spawn_program("sleep", &["30"]);
+    let mut recorded = capture_live(&proc, live.pid).expect("live child");
     recorded.starttime += 1;
     match verify(&proc, &recorded) {
         IdentityVerdict::Mismatch { reason } => {
@@ -168,7 +204,7 @@ fn a_reused_pid_is_a_mismatch_not_a_match() {
 
     // The same PID running a different command is also a mismatch, even when the
     // start time is left alone.
-    let mut recorded = capture(&proc, live.pid).expect("live child");
+    let mut recorded = capture_live(&proc, live.pid).expect("live child");
     recorded.argv = vec!["hermes-scheduler".to_string(), "run-loop".to_string()];
     match verify(&proc, &recorded) {
         IdentityVerdict::Mismatch { reason } => assert!(reason.contains("argv"), "{reason}"),
@@ -176,7 +212,7 @@ fn a_reused_pid_is_a_mismatch_not_a_match() {
     }
 
     // And a second, genuinely different child never matches the first's record.
-    let second = OwnedChild::spawn("exec sleep 31");
+    let second = OwnedChild::spawn_program("sleep", &["31"]);
     let first_record = capture(&proc, live.pid).expect("live child");
     let impostor = ProcessIdentity {
         pid: second.pid,
