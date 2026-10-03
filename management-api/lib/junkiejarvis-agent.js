@@ -867,8 +867,12 @@ class JunkieJarvisAgent {
     if (rumor.kind !== KIND_DM_RUMOR) return;
     const asker = rumor.pubkey;
     if (this._shouldIgnore(asker)) return;
-    // Dedup on the inner rumor id too (the wrap id is random per relay).
-    if (this._dedup(rumor.id)) return;
+    // Dedup on the inner rumor id too (the wrap id is random per relay). A
+    // rumor with no id is NOT a duplicate: some senders (the nostr-bbs kit
+    // before its rumor-id fix) seal the bare unsigned template without `id`,
+    // and treating that as "seen" dropped every forum member's DM silently.
+    // The wrap id dedup above already bounds replays for those.
+    if (rumor.id && this._dedup(rumor.id)) return;
 
     if ((rumor.created_at || 0) < this._startedAt) return; // backlog replay
     const userText = typeof rumor.content === 'string' ? rumor.content : '';
