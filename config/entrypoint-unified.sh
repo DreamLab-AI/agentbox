@@ -611,6 +611,43 @@ _ab_docker_socket_access() { # _ab_docker_socket_access <socket> <0|1> [state-fi
 }
 _ab_docker_socket_access /var/run/docker.sock "$AGENTBOX_ROLE_ISOLATION"
 
+# devuser's sudo route (custody X-1, W10). flake.nix bakes /etc/group and
+# /etc/sudoers{,.d} with the BUILD-time [security].role_isolation
+# (config/bake-devuser-privilege.sh): built on, devuser is in neither wheel nor
+# root and no sudoers line grants it NOPASSWD. The flag is boot-class, so an
+# image built off can boot with it on; /etc is read-only and cannot be fixed
+# here. no-new-privileges:true still neuters the setuid bit, so this is fail
+# loud, not fatal, like the docker socket: record degraded:devuser-sudo and log
+# a grep-able marker naming the rebuild. Reads files only; flag off: no-op.
+# Conservative: any NOPASSWD grant to the user, %user, %wheel or ALL counts.
+# Test: tests/runtime-contract/RC-X1-07.sh.
+_ab_devuser_privilege_check() { # _ab_devuser_privilege_check <0|1> [etc=/etc] [state-file] [user=devuser]
+  local iso="$1" etc="${2:-/etc}" state="${3:-/run/secrets/role-isolation.state}" user="${4:-devuser}" why="" f verdict=ok
+  [ "$iso" = 1 ] || return 0
+  if awk -F: -v u="$user" '($1 == "wheel" || $3 == "0") { n = split($4, m, ","); for (i = 1; i <= n; i++) if (m[i] == u) hit = 1 }
+                           END { exit !hit }' "${etc}/group" 2>/dev/null; then
+    why="a member of wheel or root (${etc}/group)"
+  fi
+  for f in "${etc}/sudoers" "${etc}"/sudoers.d/*; do
+    [ -f "$f" ] || continue
+    if grep -Eq "^[[:space:]]*(${user}|%${user}|%wheel|ALL)[[:space:]].*NOPASSWD" "$f" 2>/dev/null; then
+      why="${why:+${why}; }granted NOPASSWD by ${f}"
+    fi
+  done
+  if [ -n "$why" ]; then
+    verdict=degraded
+    echo "[security] ROLE-ISOLATION-DEGRADED devuser-sudo: ${user} is ${why}. This image was built with [security].role_isolation = false and /etc is read-only; rebuild with the flag on (./agentbox.sh rebuild) to remove the sudo route." >&2
+  else
+    echo "[security] role_isolation: ${user} has no sudo route (not in wheel or root; no NOPASSWD grant)"
+  fi
+  # Appended beside docker-socket. Under the flag the state lives in the root-owned
+  # 0711 /run/secrets tmpfs, where devuser cannot plant a link.
+  printf '%s:devuser-sudo\n' "$verdict" >>"$state" 2>/dev/null \
+    || echo "[security] WARN: could not record ${verdict}:devuser-sudo in ${state}" >&2
+  return 0
+}
+_ab_devuser_privilege_check "$AGENTBOX_ROLE_ISOLATION"
+
 # Claude-flow data directory (hooks write here as devuser)
 mkdir -p /home/devuser/.claude-flow/data 2>/dev/null || true
 chown -R 1000:1000 /home/devuser/.claude-flow 2>/dev/null || true

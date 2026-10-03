@@ -3222,6 +3222,11 @@ stderr_logfile_maxbytes=5MB
         securityCapsRaiseAttackSurface =
           (exceptionCapAdd != []) || (exceptionSecurityOptOverrides != []);
         auditAcknowledged = securityCfg.audit_acknowledged or false;
+        # Custody W10 (ADR-2122): [security].role_isolation as this image was BUILT.
+        # The flag is boot-class for everything the entrypoint can pick at runtime;
+        # devuser's wheel membership and sudoers drop-in live in the read-only /etc,
+        # so they follow the build-time value (config/bake-devuser-privilege.sh).
+        roleIsolationBaked = securityCfg.role_isolation or false;
         _w021Check =
           if securityCapsRaiseAttackSurface && !auditAcknowledged
           then throw ''
@@ -3608,15 +3613,14 @@ ${ragflowNetworkDecl}
           # ADR-2122: each role's own primary group, with no members.
           ${agentboxManifestPkg}/bin/agentbox-manifest role-accounts group --table ${./config/role-accounts.json} >> $out/etc/group
 
-          # Passwordless sudo for devuser. Both /etc/sudoers and the drop-in
-          # are baked into the image because the rootfs is read_only at runtime
-          # — there's no place for the entrypoint to write these.
-          echo "root ALL=(ALL) ALL" > $out/etc/sudoers
-          echo "#includedir /etc/sudoers.d" >> $out/etc/sudoers
-          chmod 440 $out/etc/sudoers
-          mkdir -p $out/etc/sudoers.d
-          echo "devuser ALL=(ALL) NOPASSWD: ALL" > $out/etc/sudoers.d/devuser
-          chmod 440 $out/etc/sudoers.d/devuser
+          # devuser's sudo route. /etc/sudoers and the drop-in are baked
+          # because the rootfs is read_only at runtime. Custody W10: built with
+          # [security].role_isolation off, devuser stays in wheel with today's
+          # passwordless drop-in (byte-identical); built with it on, devuser
+          # leaves wheel (and root) and there is no drop-in. An image built off
+          # and booted on reports degraded:devuser-sudo until rebuilt
+          # (_ab_devuser_privilege_check). Test: tests/runtime-contract/RC-X1-07.sh.
+          ${pkgs.bash}/bin/bash ${./config/bake-devuser-privilege.sh} $out/etc ${if roleIsolationBaked then "1" else "0"}
 
           # Shell-rc seeding (Q23). Baked into the image at build time so
           # interactive devuser shells consistently source the agentbox

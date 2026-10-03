@@ -28,6 +28,7 @@ on:
       # beyond config/entrypoint-unified.sh and flake.nix (both listed here).
       - 'tests/runtime-contract/RC-X1-*'
       - 'config/docker-read-proxy.cjs'
+      - 'config/bake-devuser-privilege.sh'
       - 'config/custody/**'
       - 'flake.nix'
       - 'skills/**'
@@ -110,6 +111,8 @@ jobs:
         run: node --test tests/runtime-contract/RC-X1-05.node-test.cjs
       - name: RC-X1-06 role-secret scrub contract (custody W2; no Docker needed)
         run: bash tests/runtime-contract/RC-X1-06.sh
+      - name: RC-X1-07 devuser has no sudo route under role isolation (custody W10; bake + boot check)
+        run: bash tests/runtime-contract/RC-X1-07.sh
 
       - name: check-single-metrics (exactly one collectDefaultMetrics call)
         run: node scripts/ci/check-single-metrics.js
