@@ -96,7 +96,39 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number.parseInt(process.env.NIP98_PROXY_PORT || '9096', 10);
 const BIND = process.env.NIP98_PROXY_HOST || '0.0.0.0';
 const UPSTREAM_URL = process.env.AOE_UPSTREAM || 'http://127.0.0.1:9095';
-const BREAK_GLASS = process.env.NIP98_PROXY_ALLOW_BEARER || '';
+// Custody W2 (bypass 3): NIP98_PROXY_ALLOW_BEARER and NIP98_PROXY_SESSION_SECRET
+// are ROLE secrets of ab-ingress (config/custody/env-classes.json). They are read
+// through the shared loader (management-api/lib/role-secret.js): <NAME>_FILE,
+// then $AGENTBOX_SECRETS_DIR/<NAME> (W1's isolated config), and the bare
+// variable only while [security].role_isolation is off. Flag off this is the
+// same read as before. An unreadable file reads as unset: break-glass off, a
+// per-boot session secret (fail closed, never a crash at the LAN door).
+const ROLE_SECRET = (() => {
+  for (const c of [
+    pathResolve(__dirname, '..', 'management-api', 'lib', 'role-secret.js'),
+    pathResolve(__dirname, '..', '..', 'management-api', 'lib', 'role-secret.js'),
+    '/opt/agentbox/management-api/lib/role-secret.js',
+  ]) {
+    try { return require(c); } catch { /* next */ }
+  }
+  return null;
+})();
+function roleSecret(name) {
+  if (!ROLE_SECRET) {
+    if (String(process.env.AGENTBOX_ROLE_ISOLATION || '') === '1') {
+      console.error(`[nip98-proxy] role-secret loader unavailable: ${name} not read under role isolation`);
+      return '';
+    }
+    return process.env[name] || '';
+  }
+  try {
+    return ROLE_SECRET.readRoleSecret(name, { log: (l) => console.error(`[nip98-proxy] ${l}`) });
+  } catch (err) {
+    console.error(`[nip98-proxy] ${err.message}`);
+    return '';
+  }
+}
+const BREAK_GLASS = roleSecret('NIP98_PROXY_ALLOW_BEARER');
 const BREAK_GLASS_PUBKEY = process.env.NIP98_PROXY_BEARER_PUBKEY || 'break-glass';
 
 // ── ADR-2027 (closeout 2026-09-05): break-glass is BOUNDED authority ─────────
@@ -209,7 +241,8 @@ const SESSION_TTL_S = Number.parseInt(process.env.NIP98_PROXY_SESSION_TTL || '43
 if (!Number.isSafeInteger(SESSION_TTL_S) || SESSION_TTL_S <= 0) {
   throw new Error('NIP98_PROXY_SESSION_TTL must be a positive integer');
 }
-const SESSION_SECRET = process.env.NIP98_PROXY_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const PINNED_SESSION_SECRET = roleSecret('NIP98_PROXY_SESSION_SECRET');
+const SESSION_SECRET = PINNED_SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const SESSION_COOKIE = 'agentbox_nip07_session';
 
 // Optional npub gate (ADR-045 D2): restrict which verified identities are
@@ -1191,7 +1224,7 @@ server.listen(PORT, BIND, () => {
         audit: 'per-use, by fingerprint, to the proxy log (in-process counters are not a durable audit store)',
       }
       : 'disabled',
-    nip07Sessions: `enabled (ttl ${SESSION_TTL_S}s${process.env.NIP98_PROXY_SESSION_SECRET ? ', pinned secret' : ', per-boot secret'})`,
+    nip07Sessions: `enabled (ttl ${SESSION_TTL_S}s${PINNED_SESSION_SECRET ? ', pinned secret' : ', per-boot secret'})`,
     allowedPubkeys: ALLOWED_PUBKEYS.size || 'any-valid-signature',
   });
 });

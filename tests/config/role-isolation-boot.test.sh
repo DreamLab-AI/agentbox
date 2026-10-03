@@ -48,6 +48,9 @@ _run_exec() { # <flag> <deliver-failures> → stdout of the simulated block
     . "$LIB"
     ab_role_secrets_deliver() { echo "DELIVER $1" >>"$T/calls"; AB_RC_FAILURES="$DELIVER_FAILS"; return 0; }
     ab_supervisord_conf_pick() { echo "PICK $1" >>"$T/calls"; echo /etc/supervisord.isolated.conf; }
+    # Custody W2: the final ROLE-variable scrub (RC-X1-06 tests its body; here
+    # only that it runs after delivery, flag on only, right before exec).
+    _ab_role_env_scrub() { [ "$1" = 1 ] || return 0; echo "SCRUB" >>"$T/calls"; }
     AGENTBOX_ROLE_ISOLATION="$1"; DELIVER_FAILS="$2"; _AB_SECRETS_MOUNT_STATE="${3:-ok}"
     eval "$SIM" )
 }
@@ -65,9 +68,9 @@ done
 rm -f "$T/calls" "$T/state"
 out="$(_run_exec 1 0 2>"$T/err")"
 if [ "$(printf '%s\n' "$out" | tail -1)" = "CONF=/etc/supervisord.isolated.conf" ] \
-   && [ "$(cat "$T/calls")" = "$(printf 'DELIVER /etc/agentbox/role-secrets.tsv\nPICK 1')" ] \
+   && [ "$(cat "$T/calls")" = "$(printf 'DELIVER /etc/agentbox/role-secrets.tsv\nPICK 1\nSCRUB')" ] \
    && [ "$(cat "$T/state")" = "ok:secrets-delivery" ]; then
-  _ok "flag on: deliver from /etc/agentbox/role-secrets.tsv, then the isolated config; state ok:secrets-delivery"
+  _ok "flag on: deliver from /etc/agentbox/role-secrets.tsv, then the isolated config, then the W2 scrub; state ok:secrets-delivery"
 else
   _bad "flag on must deliver, then pick the isolated config" "out=$out calls=$(tr '\n' ';' <"$T/calls") state=$(cat "$T/state" 2>/dev/null)"
 fi

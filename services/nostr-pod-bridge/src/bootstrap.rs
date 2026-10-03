@@ -309,6 +309,11 @@ pub fn write_runtime_env(
 
 // ── Entry point ──────────────────────────────────────────────────────────────
 
+/// The role that holds the sovereign key under role isolation (ADR-2122).
+pub const IDENTITY_ROLE: &str = "ab-identity";
+/// The relay key's file name inside the role's secrets directory.
+pub const BRIDGE_KEY_FILE: &str = "nostr.key";
+
 /// Resolved filesystem roots for one bootstrap run. Every root is overridable so
 /// the whole flow can be exercised against a scratch directory.
 #[derive(Debug, Clone)]
@@ -319,7 +324,9 @@ pub struct Roots {
     /// Explicit override for non-pod deployments; otherwise the pod directory.
     pub repo_root: Option<PathBuf>,
     /// The relay daemon's key file, written by the bootstrap under role
-    /// isolation (`AGENTBOX_BRIDGE_SK_FILE`, default `/run/secrets/nostr.key`).
+    /// isolation: `<AGENTBOX_SECRETS_ROOT>/ab-identity/nostr.key` (default root
+    /// `/run/secrets`), the path W1's delivery plan and isolated supervisor
+    /// config give the `ab-identity` relay program (`config/role-accounts.json`).
     pub bridge_sk_file: PathBuf,
     /// `[security].role_isolation`, as exported by the entrypoint.
     pub role_isolation: bool,
@@ -338,9 +345,9 @@ impl Roots {
             pod_root: PathBuf::from(env.or("SOLID_POD_ROOT", "/var/lib/solid")).join("pods"),
             run_root: env.or("AGENTBOX_RUN_ROOT", "/run/agentbox").into(),
             repo_root: env.non_empty("AGENTBOX_AGENT_REPO_ROOT").map(PathBuf::from),
-            bridge_sk_file: env
-                .or("AGENTBOX_BRIDGE_SK_FILE", "/run/secrets/nostr.key")
-                .into(),
+            bridge_sk_file: PathBuf::from(env.or("AGENTBOX_SECRETS_ROOT", "/run/secrets"))
+                .join(IDENTITY_ROLE)
+                .join(BRIDGE_KEY_FILE),
             role_isolation: crate::role_secret::role_isolation(env),
         }
     }

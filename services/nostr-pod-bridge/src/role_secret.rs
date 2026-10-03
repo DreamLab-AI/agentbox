@@ -11,9 +11,13 @@
 //! 1. `<NAME>_FILE`, when set and non-empty, wins. Its contents are read
 //!    (bounded, trimmed). A file that cannot be read is an error naming the
 //!    path, never a silent fallback.
-//! 2. A caller-supplied default file (for example `/run/secrets/nostr.key`),
+//! 2. `$AGENTBOX_SECRETS_DIR/<NAME>`, when that file exists. W1's isolated
+//!    supervisor config sets `AGENTBOX_SECRETS_DIR` for each role program to
+//!    its `/run/secrets/<role>`, where the delivery plan writes env-sourced
+//!    secrets under their variable's name (`config/role-accounts.json`).
+//! 3. A caller-supplied default file (for example `/run/secrets/nostr.key`),
 //!    when it exists.
-//! 3. `<NAME>` itself, **only while the flag is off**. Under the flag a ROLE
+//! 4. `<NAME>` itself, **only while the flag is off**. Under the flag a ROLE
 //!    variable present at all is a leak: it is reported as
 //!    `ROLE-ISOLATION-LEAK <NAME>` and ignored.
 //!
@@ -28,6 +32,9 @@ use std::path::{Path, PathBuf};
 
 /// The environment variable the entrypoint exports from `[security].role_isolation`.
 pub const FLAG_VAR: &str = "AGENTBOX_ROLE_ISOLATION";
+
+/// The role program's own secrets directory (W1's isolated supervisor config).
+pub const SECRETS_DIR_VAR: &str = "AGENTBOX_SECRETS_DIR";
 
 /// Upper bound on a secret file. Keys and tokens are well under 1 KiB; a larger
 /// file is a misconfiguration, and reading it whole would let a path pointed at
@@ -104,6 +111,11 @@ pub fn resolve(env: &EnvMap, name: &str, default_file: Option<&Path>) -> Result<
     let file = env
         .non_empty(&fv)
         .map(PathBuf::from)
+        .or_else(|| {
+            env.non_empty(SECRETS_DIR_VAR)
+                .map(|d| Path::new(d).join(name))
+                .filter(|p| p.is_file())
+        })
         .or_else(|| default_file.filter(|p| p.is_file()).map(Path::to_path_buf));
     if let Some(path) = file {
         let value = read_secret_file(&path).with_context(|| format!("resolving {name}"))?;
@@ -251,6 +263,26 @@ mod tests {
             r.source,
             Some(Source::Env),
             "an absent default falls through"
+        );
+    }
+
+    #[test]
+    fn role_secrets_dir_is_consulted_after_the_file_var() {
+        let dir = tempfile::tempdir().unwrap();
+        secret_file(dir.path(), "K", "from-dir");
+        let d = dir.path().to_str().unwrap();
+        let r = resolve(&env(&[(FLAG_VAR, "1"), (SECRETS_DIR_VAR, d)]), "K", None).unwrap();
+        assert_eq!(r.value.as_deref(), Some("from-dir"));
+        let other = secret_file(dir.path(), "other", "from-file-var");
+        let e = env(&[(SECRETS_DIR_VAR, d), ("K_FILE", other.to_str().unwrap())]);
+        assert_eq!(
+            resolve(&e, "K", None).unwrap().value.as_deref(),
+            Some("from-file-var")
+        );
+        let r = resolve(&env(&[(SECRETS_DIR_VAR, d)]), "ABSENT", None).unwrap();
+        assert_eq!(
+            r.value, None,
+            "a name with no file in the dir falls through"
         );
     }
 

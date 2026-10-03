@@ -18,6 +18,7 @@ const REQUIRED_ROLE = [
   'AGENTBOX_NSEC', 'AGENTBOX_PRIVKEY_HEX', 'AGENTBOX_BRIDGE_SK', 'OPERATOR_NOSTR_PRIVKEY',
   'JUNKIEJARVIS_PRIVKEY_HEX', 'AGENTBOX_AGENT_PRIVKEY_HEX',
 ];
+const REQUIRED_ROLE_INGRESS = ['NIP98_PROXY_ALLOW_BEARER', 'NIP98_PROXY_SESSION_SECRET'];
 const REQUIRED_DEVUSER = [
   'BRIDGE_TOKEN', 'MANAGEMENT_API_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'ZAI_API_KEY',
   'GITHUB_TOKEN', 'CRATES_TOKEN', 'RUVECTOR_PG_PASSWORD', 'CLOUDFLARE_TUNNEL_TOKEN',
@@ -128,4 +129,16 @@ test('the report prints names only (no values, no assignments)', () => {
   for (const [c, names] of Object.entries(j.names)) {
     for (const n of names) assert.match(n, /^[A-Z_][A-Z0-9_]*$/, `${c} entry ${n} is a bare name`);
   }
+});
+
+test('the ROLE set agrees with W1\'s delivery plan (config/role-accounts.json)', () => {
+  const plan = inv.w1PlanEnv(table);
+  assert.ok(plan, 'W1 plan present');
+  assert.deepEqual(inv.checkW1Parity(table, plan), []);
+  for (const n of REQUIRED_ROLE_INGRESS) assert.equal(table.classes.ROLE[n].role, 'ab-ingress');
+  const drifted = { ...plan, SOME_NEW_KEY: 'ab-identity' };
+  assert.ok(inv.checkW1Parity(table, drifted).some((s) => s.includes('SOME_NEW_KEY')));
+  const t = JSON.parse(JSON.stringify(table));
+  delete t.w1_plan.w2_only.TAILSCALE_AUTHKEY;
+  assert.ok(inv.checkW1Parity(t, plan).some((s) => s.includes('ROLE TAILSCALE_AUTHKEY')));
 });

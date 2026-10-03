@@ -408,7 +408,7 @@ fi
 # devuser (the uid every reader runs as today) until then. Flag off: every
 # function below returns at its first line, so the environment supervisord
 # receives is byte-identical to before (tests/runtime-contract/RC-X1-06.sh).
-_AB_ROLE_ENV_VARS="AGENTBOX_AGENT_PRIVKEY_HEX:ab-identity AGENTBOX_BRIDGE_SK:ab-identity AGENTBOX_NSEC:ab-identity AGENTBOX_PRIVKEY_HEX:ab-identity AGENT_PRIVKEY_HEX:ab-identity CONCIERGE_PRIVKEY_HEX:ab-identity JUNKIEJARVIS_PRIVKEY_HEX:ab-identity OPERATOR_NOSTR_PRIVKEY:ab-identity TAILSCALE_AUTHKEY:root"
+_AB_ROLE_ENV_VARS="AGENTBOX_AGENT_PRIVKEY_HEX:ab-identity AGENTBOX_BRIDGE_SK:ab-identity AGENTBOX_NSEC:ab-identity AGENTBOX_PRIVKEY_HEX:ab-identity AGENT_PRIVKEY_HEX:ab-identity CONCIERGE_PRIVKEY_HEX:ab-identity JUNKIEJARVIS_PRIVKEY_HEX:ab-identity NIP98_PROXY_ALLOW_BEARER:ab-ingress NIP98_PROXY_SESSION_SECRET:ab-ingress OPERATOR_NOSTR_PRIVKEY:ab-identity TAILSCALE_AUTHKEY:root"
 
 _ab_role_owner() { # _ab_role_owner <role> → uid:gid that owns the role's delivered files
   case "$1" in root) echo 0:0; return 0 ;; esac

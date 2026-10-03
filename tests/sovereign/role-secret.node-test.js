@@ -106,6 +106,15 @@ test('defaultFile is consulted when <NAME>_FILE is unset', () => {
   assert.equal(rs.readRoleSecret('K', { env: { K: HEX_A }, defaultFile: path.join(d, 'none') }), HEX_A);
 });
 
+test('$AGENTBOX_SECRETS_DIR/<NAME> (W1 role programs) comes after <NAME>_FILE', () => {
+  const d = tmpdir();
+  secretFile(d, 'NIP98_PROXY_ALLOW_BEARER', HEX_B);
+  const other = secretFile(d, 'other', HEX_A);
+  assert.equal(rs.readRoleSecret('NIP98_PROXY_ALLOW_BEARER', { env: { ...ON, AGENTBOX_SECRETS_DIR: d } }), HEX_B);
+  assert.equal(rs.readRoleSecret('NIP98_PROXY_ALLOW_BEARER', { env: { AGENTBOX_SECRETS_DIR: d, NIP98_PROXY_ALLOW_BEARER_FILE: other } }), HEX_A);
+  assert.equal(rs.readRoleSecret('ABSENT_X', { env: { ...ON, AGENTBOX_SECRETS_DIR: d } }), '');
+});
+
 test('readRoleSecretFirst returns the first value and its name, reporting every leak', () => {
   rs._resetReported();
   const d = tmpdir();
@@ -240,10 +249,7 @@ test('no JS consumer reads a ROLE variable straight from process.env', () => {
   const roles = Object.keys(table.classes.ROLE);
   const re = new RegExp(`process\\.env(?:\\.(${roles.join('|')})\\b|\\[\\s*['"\`](${roles.join('|')})['"\`])`);
   const roots = ['management-api/lib', 'management-api/routes', 'management-api/adapters', 'config', 'scripts'];
-  const allow = new Set([
-    // Deletes the override so a demo cannot sign as the container (not a read).
-    'scripts/sidechain/demo-accounts.js', 'scripts/activation/adr-2097-acceptance.js',
-  ]);
+  const allow = new Set();
   const offenders = [];
   const walk = (dir) => {
     for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
@@ -251,9 +257,62 @@ test('no JS consumer reads a ROLE variable straight from process.env', () => {
       if (e.isDirectory()) { if (!['node_modules', 'tests', '__tests__'].includes(e.name)) walk(rel); continue; }
       if (!/\.(c|m)?js$/.test(e.name) || /\.(test|spec)\.(c|m)?js$/.test(e.name) || allow.has(rel)) continue;
       const lines = fs.readFileSync(path.join(ROOT, rel), 'utf8').split('\n');
-      lines.forEach((l, i) => { if (re.test(l) && !/^\s*(\/\/|\*)/.test(l)) offenders.push(`${rel}:${i + 1}`); });
+      // A read, not a write: `process.env.X = …` (a selftest arranging its child)
+      // and `delete process.env.X` are not consumers.
+      const write = new RegExp(`(^|[^.\\w])delete\\s+process\\.env|process\\.env(?:\\.\\w+|\\[[^\\]]+\\])\\s*=(?!=)`);
+      lines.forEach((l, i) => {
+        if (re.test(l) && !/^\s*(\/\/|\*)/.test(l) && !write.test(l)) offenders.push(`${rel}:${i + 1}`);
+      });
     }
   };
   for (const r of roots) walk(r);
   assert.deepEqual(offenders, []);
+});
+
+// ── consumer: nip98-proxy (NIP98_PROXY_ALLOW_BEARER / NIP98_PROXY_SESSION_SECRET) ─
+
+function proxyStartup(extraEnv) {
+  const { spawn } = require('child_process');
+  return new Promise((resolve, reject) => {
+    const env = {
+      PATH: process.env.PATH, HOME: os.tmpdir(), NIP98_PROXY_PORT: '0', NIP98_PROXY_HOST: '127.0.0.1',
+      AOE_UPSTREAM: 'http://127.0.0.1:9', NIP98_PROXY_CONFIG_FILE: path.join(tmpdir(), 'absent.json'), ...extraEnv,
+    };
+    const child = spawn(process.execPath, [path.join(ROOT, 'config/nip98-proxy/proxy.mjs')], { env, cwd: os.tmpdir() });
+    let out = '';
+    const done = (err) => { clearTimeout(timer); child.kill('SIGKILL'); if (err) reject(err); };
+    const timer = setTimeout(() => done(new Error(`proxy startup timeout\n${out}`)), 8000);
+    const onData = (c) => {
+      out += c;
+      const line = out.split('\n').find((l) => l.includes('nip98-proxy listening'));
+      if (line) { done(); resolve({ out, line }); }
+    };
+    child.stdout.on('data', onData); child.stderr.on('data', onData);
+    child.once('exit', (code) => { if (code) done(new Error(`proxy exited ${code}\n${out}`)); });
+  });
+}
+
+test('nip98-proxy: flag off reads the bare variables exactly as before', async () => {
+  const { line, out } = await proxyStartup({ NIP98_PROXY_ALLOW_BEARER: HEX_A, NIP98_PROXY_SESSION_SECRET: HEX_B });
+  assert.match(line, /"state":"ENABLED"/);
+  assert.match(line, /pinned secret/);
+  assert.ok(!out.includes(HEX_A) && !out.includes(HEX_B), 'no value in the log');
+});
+
+test('nip98-proxy: under the flag the bare variables are ignored and reported', async () => {
+  const { line, out } = await proxyStartup({ ...ON, NIP98_PROXY_ALLOW_BEARER: HEX_A, NIP98_PROXY_SESSION_SECRET: HEX_B });
+  assert.doesNotMatch(line, /"state":"ENABLED"/);
+  assert.match(line, /per-boot secret/);
+  assert.match(out, /ROLE-ISOLATION-LEAK NIP98_PROXY_ALLOW_BEARER\b/);
+  assert.match(out, /ROLE-ISOLATION-LEAK NIP98_PROXY_SESSION_SECRET\b/);
+  assert.ok(!out.includes(HEX_A) && !out.includes(HEX_B), 'no value in the log');
+});
+
+test('nip98-proxy: under the flag it reads $AGENTBOX_SECRETS_DIR (W1) and <NAME>_FILE', async () => {
+  const d = tmpdir();
+  secretFile(d, 'NIP98_PROXY_ALLOW_BEARER', HEX_A);
+  const sess = secretFile(d, 'session', HEX_B);
+  const { line } = await proxyStartup({ ...ON, AGENTBOX_SECRETS_DIR: d, NIP98_PROXY_SESSION_SECRET_FILE: sess });
+  assert.match(line, /"state":"ENABLED"/);
+  assert.match(line, /pinned secret/);
 });

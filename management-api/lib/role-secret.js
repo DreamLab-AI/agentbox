@@ -15,8 +15,12 @@
  *   1. `<NAME>_FILE`, when set and non-empty, wins. Its contents are read
  *      (bounded, trimmed). An unreadable file throws, naming the path, never
  *      falling back.
- *   2. `opts.defaultFile`, when it exists.
- *   3. `<NAME>` itself, ONLY while the flag is off. Under the flag a ROLE
+ *   2. `$AGENTBOX_SECRETS_DIR/<NAME>`, when that file exists. W1's isolated
+ *      supervisor config sets AGENTBOX_SECRETS_DIR for each role program to its
+ *      /run/secrets/<role>, where the delivery plan writes env-sourced secrets
+ *      under their variable's name (config/role-accounts.json).
+ *   3. `opts.defaultFile`, when it exists.
+ *   4. `<NAME>` itself, ONLY while the flag is off. Under the flag a ROLE
  *      variable present at all is reported as `ROLE-ISOLATION-LEAK <NAME>` and
  *      ignored.
  *
@@ -25,8 +29,10 @@
  */
 
 const fs = require('fs');
+const path = require('path');
 
 const FLAG_VAR = 'AGENTBOX_ROLE_ISOLATION';
+const SECRETS_DIR_VAR = 'AGENTBOX_SECRETS_DIR';
 /** Keys and tokens are far below this; a bigger file is a misconfiguration. */
 const MAX_SECRET_FILE_BYTES = 4096;
 
@@ -94,6 +100,9 @@ function resolveRoleSecret(name, opts = {}) {
   const isolated = roleIsolation(env);
   const leaked = isolated && Object.prototype.hasOwnProperty.call(env, name);
   let file = String(env[fileVar(name)] ?? '').trim() || null;
+  const isFile = (p) => { try { return fsImpl.statSync(p).isFile(); } catch (_) { return false; } };
+  const secretsDir = String(env[SECRETS_DIR_VAR] ?? '').trim();
+  if (!file && secretsDir && isFile(path.join(secretsDir, name))) file = path.join(secretsDir, name);
   if (!file && opts.defaultFile) {
     try {
       if (fsImpl.statSync(opts.defaultFile).isFile()) file = opts.defaultFile;
@@ -159,6 +168,7 @@ function _resetReported() {
 
 module.exports = {
   FLAG_VAR,
+  SECRETS_DIR_VAR,
   MAX_SECRET_FILE_BYTES,
   roleIsolation,
   fileVar,

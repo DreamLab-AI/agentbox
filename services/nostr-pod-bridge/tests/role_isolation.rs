@@ -34,8 +34,8 @@ fn scratch_env(dir: &Path, extra: &[(&str, &str)]) -> EnvMap {
             dir.join("run").display().to_string(),
         ),
         (
-            "AGENTBOX_BRIDGE_SK_FILE".into(),
-            dir.join("secrets/nostr.key").display().to_string(),
+            "AGENTBOX_SECRETS_ROOT".into(),
+            dir.join("secrets").display().to_string(),
         ),
         ("AGENTBOX_AGENT_ID".into(), "agentbox-core".into()),
     ];
@@ -72,7 +72,7 @@ fn flag_off_identity_env_is_byte_identical_and_no_key_file_is_written() {
     )
     .unwrap();
     assert_eq!(identity_env(dir.path()), render_runtime_env(&id));
-    assert!(!dir.path().join("secrets/nostr.key").exists());
+    assert!(!dir.path().join("secrets/ab-identity/nostr.key").exists());
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn flag_on_secret_goes_to_the_key_file_and_the_identity_file_only() {
         ],
     );
     run(&env).unwrap();
-    let key = dir.path().join("secrets/nostr.key");
+    let key = dir.path().join("secrets/ab-identity/nostr.key");
     let km = keypair_from_privkey_hex(PRIV_HEX).unwrap();
     assert_eq!(std::fs::read_to_string(&key).unwrap(), km.private_key_hex);
     assert_eq!(mode(&key), 0o400);
@@ -151,8 +151,8 @@ fn flag_on_rerun_replaces_the_key_file_and_never_follows_a_symlink() {
     let dir = tempfile::tempdir().unwrap();
     let victim = dir.path().join("victim");
     std::fs::write(&victim, "precious").unwrap();
-    std::fs::create_dir_all(dir.path().join("secrets")).unwrap();
-    std::os::unix::fs::symlink(&victim, dir.path().join("secrets/nostr.key")).unwrap();
+    std::fs::create_dir_all(dir.path().join("secrets/ab-identity")).unwrap();
+    std::os::unix::fs::symlink(&victim, dir.path().join("secrets/ab-identity/nostr.key")).unwrap();
     let pin = dir.path().join("pin");
     std::fs::write(&pin, PRIV_HEX).unwrap();
     let env = scratch_env(
@@ -164,7 +164,7 @@ fn flag_on_rerun_replaces_the_key_file_and_never_follows_a_symlink() {
     );
     run(&env).unwrap();
     assert_eq!(std::fs::read_to_string(&victim).unwrap(), "precious");
-    let key = dir.path().join("secrets/nostr.key");
+    let key = dir.path().join("secrets/ab-identity/nostr.key");
     assert!(!key.is_symlink());
     run(&env).unwrap(); // a 0400 file from the previous boot is replaced, not an error
     assert_eq!(mode(&key), 0o400);

@@ -189,8 +189,42 @@ function entrypointRoleList(file = ENTRYPOINT) {
   return map;
 }
 
+/** W1's delivery table (config/role-accounts.json): from_env VAR → role. */
+function w1PlanEnv(table, root = ROOT) {
+  if (!table.w1_plan || !table.w1_plan.file) return null;
+  const file = path.join(root, table.w1_plan.file);
+  if (!fs.existsSync(file)) return null;
+  const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const map = {};
+  for (const r of doc.roles || []) {
+    for (const sec of r.secrets || []) if (sec.from_env) map[sec.from_env] = r.name;
+  }
+  return map;
+}
+
+/** Parity between the ROLE set and W1's plan. Returns violation strings. */
+function checkW1Parity(table, plan) {
+  const v = [];
+  if (!table.w1_plan) return v;
+  if (plan === null) return [`w1_plan file ${table.w1_plan.file} is missing`];
+  const role = table.classes.ROLE;
+  const only = table.w1_plan.w2_only || {};
+  for (const [name, r] of Object.entries(plan)) {
+    if (!role[name]) v.push(`W1-PARITY ${name} is delivered from the env by W1 (${r}) but is not ROLE here`);
+    else if (role[name].role !== r) v.push(`W1-PARITY ${name}: role ${role[name].role} here, ${r} in W1's plan`);
+    if (only[name]) v.push(`W1-PARITY ${name} is listed w2_only but W1's plan carries it`);
+  }
+  for (const name of Object.keys(role)) {
+    if (!plan[name] && !only[name]) v.push(`W1-PARITY ROLE ${name} is in neither W1's plan nor w1_plan.w2_only`);
+  }
+  for (const name of Object.keys(only)) {
+    if (name !== '$comment' && !role[name]) v.push(`W1-PARITY w2_only ${name} is not ROLE`);
+  }
+  return v;
+}
+
 /** Every rule the table and the code must satisfy. Returns violation strings. */
-function check(table, found, epList) {
+function check(table, found, epList, plan) {
   const v = [];
   for (const c of CLASSES) {
     if (!table.classes[c]) v.push(`table has no ${c} class`);
@@ -218,6 +252,7 @@ function check(table, found, epList) {
     if (!e.reason) v.push(`DEVUSER_CLASS ${name} has no reason`);
     if (!e.exception) v.push(`DEVUSER_CLASS ${name} names no exception (Q8, ADR, …)`);
   }
+  if (plan !== undefined) v.push(...checkW1Parity(table, plan));
   if (epList === null) {
     v.push('entrypoint defines no _AB_ROLE_ENV_VARS list');
   } else {
@@ -257,7 +292,7 @@ function main(argv) {
     process.stdout.write(`\n## NON_SECRET (${by.NON_SECRET.length} names read; listed with --json)\n`);
     if (by.UNCLASSIFIED.length) process.stdout.write(`\n## UNCLASSIFIED (${by.UNCLASSIFIED.length})\n  ${by.UNCLASSIFIED.join('\n  ')}\n`);
   }
-  const v = check(table, found, ep);
+  const v = check(table, found, ep, w1PlanEnv(table));
   if (argv.includes('--check')) {
     if (v.length) {
       process.stderr.write(`FAIL (env-secret-inventory): ${v.length} violation(s)\n  ${v.join('\n  ')}\n`);
@@ -270,7 +305,7 @@ function main(argv) {
 
 module.exports = {
   extractNames, classify, check, scan, report, loadTable, resolveSources,
-  entrypointRoleList, isSecretShaped, refuseEnvFile, TABLE, ENTRYPOINT,
+  entrypointRoleList, isSecretShaped, refuseEnvFile, w1PlanEnv, checkW1Parity, TABLE, ENTRYPOINT,
 };
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
