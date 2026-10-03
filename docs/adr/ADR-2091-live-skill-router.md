@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f93586b9e52fda0d0b367881e2d2ff3014509faf
+verified_commit: 451823ca8ec0b5452ceb8fdc52e777f77a2bbc43
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -193,3 +193,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `config/entrypoint-unifie
 ## Re-verification — 2026-10-03 (`f93586b9e52fda0d0b367881e2d2ff3014509faf`, custody W2b/W4)
 
 Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the sidechain state move). `config/entrypoint-unified.sh` changes only in three custody blocks (ADR-2122, design 3.2). (1) A new at-rest step before Phase 3: `ab_custody_migrate` when `[security].role_isolation` is on, otherwise `ab_custody_revert`, which changes nothing on a volume that was never migrated (`tests/config/role-custody-migrate.test.sh` shows the stat set, ctime included, byte-identical). (2) Under the flag only, the volume-root chown loop skips `/var/lib/agentbox/secrets`. (3) After the identity bootstrap, the identity file goes to ab-identity 0400 under the flag; with the flag off, the devuser 0600 statements are unchanged. The skill-router projection is untouched. The decision holds. Re-verified by `git log dc91e092a..f93586b9e -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo-console gate, `451823ca8`)
+
+`f93586b9e..451823ca8`: `config/entrypoint-unified.sh` adds the ruflo-console boot block after factrail's, and factrail's function-hook switch and `agentbox` marketplace removal also respect the new gate; with it off both behave as before. Nothing this record governs (ADR-2091 — Route each turn to a skill with one typed judgement, failing open to the table) changes meaning. The decision holds. Re-verified by `git log f93586b9e..451823ca8 -- <verified_paths>`.

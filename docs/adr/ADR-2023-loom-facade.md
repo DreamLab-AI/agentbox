@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4ea3181b5296081411e95ca3687f03ed9aa11785
+verified_commit: 451823ca8ec0b5452ceb8fdc52e777f77a2bbc43
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -306,3 +306,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ab-poker-citizen role)
 
 `b41d9486c..4ea3181b5` changes one governed line: `agentbox.toml` `[poker_citizen].state` becomes a comment (the runner's default is the same path flag-off), for the poker seat's role (`4ea3181b5`). Nothing this record governs (ADR-2023 — The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it) reads that key. The decision holds. Re-verified by `git log b41d9486c..4ea3181b5 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo-console gate, `451823ca8`)
+
+`4ea3181b5..451823ca8`: `agentbox.toml` adds `[toolchains].ruflo_console = false`. Nothing this record governs (ADR-2023 — The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it) changes meaning. The decision holds. Re-verified by `git log 4ea3181b5..451823ca8 -- <verified_paths>`.

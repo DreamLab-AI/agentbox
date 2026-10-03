@@ -847,6 +847,11 @@
         },
         "gemini_cli": {
           "type": "boolean"
+        },
+        "ruflo_console": {
+          "type": "boolean",
+          "default": false,
+          "description": "Bake ruflo-console, ruflo-mods and ruflo-swarm (Claude Code function-hook mods) from the pinned ruflo v3.51.1 tag into the agentbox marketplace and enable them at boot with userConfig cli=ruflo. Rebuild-class; needs Claude Code >= 2.1.287."
         }
       }
     },

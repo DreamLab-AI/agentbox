@@ -24,6 +24,9 @@ on:
       - 'tests/config/protocol-registry-lint.test.mjs'
       - 'tests/config/declared-vs-running.test.js'
       - 'tests/config/fixtures/runtime-state.json'
+      - 'tests/config/ruflo-console.test.mjs'
+      - 'config/claude-plugins/**'
+      - 'flake.lock'
       # Custody X-1 W0/W2 runtime contracts (RC-X1-01..06) and what they read
       # beyond config/entrypoint-unified.sh and flake.nix (both listed here).
       - 'tests/runtime-contract/RC-X1-*'
@@ -135,6 +138,9 @@ jobs:
 
       - name: check-manifest-catalogue (ADR-039 gate-path parity)
         run: node scripts/ci/check-manifest-catalogue.js
+
+      - name: ruflo-console bake + boot projection ([toolchains].ruflo_console)
+        run: node --test tests/config/ruflo-console.test.mjs
 
       # CY-A2: the manifest must not lie about what runs. CI has no runtime, so
       # it checks agentbox.toml against the committed, dated snapshot captured
