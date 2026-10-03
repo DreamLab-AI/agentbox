@@ -39,30 +39,37 @@ other job its own key, so that the two copies outside agentbox can be deleted.
    `11ed6422…`'s admin role at the forum (step E below). Keep the tool: re-sealing history (Q16)
    would need it.
 
-## Held: three decisions before any key is minted
+## Held: decisions before any key is minted
 
-Nothing has been minted. Minting is quick once these three are settled.
+Nothing has been minted. D2 is decided; D1 is waiting on you; D3 is open.
 
 - **D1. Where are the backups encrypted to?** The repo records no operator age recipient
   (`age1…`). Without one, the age backup can only be keyed by something that also lives in the
   container, and that protects nothing. Please supply a public `age1…` recipient. Its private
   identity stays with you. To make the restore test meaningful, it will also use a second
   throw-away recipient that is destroyed after the check.
-- **D2. Who mints the forum admin key?** The design (§11.2, Q17) says you mint it yourself in a
-  NIP-07 browser extension, so that a key that can read sealed history never touches an agent
-  container. The workstream brief asked for it to be minted in the container and then moved.
-  An extension can generate the key itself. Either way, only the public key needs to come back.
-  Recommendation: mint it in the extension.
+- **D2. Decided (lead, 2026-10-03): you create the forum admin key (K_admin) yourself, in your
+  NIP-07 browser extension.** The design (§11.2, Q17) takes precedence over the earlier brief.
+  K_admin is never minted in, copied into or backed up from any container. Only its public key
+  comes back, so it can be added to the forum admin list.
 - **D3. Where do K_broker and K_browser start out?** `sudo` is blocked in this container, so a
   key minted here would be a devuser-owned 0600 file. Every agent process runs as devuser and
   could read it until you move it. The alternative is to mint each one in its holder (the
   VisionClaw environment, the Podkey vault), using the same `nostr-bbs-core` path.
 
+## The new keys
+
+| Key | Job | Created by, where | Public key |
+|---|---|---|---|
+| K_admin | forum house admin (replaces `11ed6422…` there) | you, in your NIP-07 extension (D2) | not yet created: you send it after creating the key |
+| K_broker | VisionClaw governance signer (31400/31402) | agent, after D1 and D3 | not yet minted |
+| K_browser | browser sidecar login (Podkey vault) | agent, after D1 and D3 | not yet minted |
+
 ## What remains, in order (no flag day)
 
 | Step | Who | What |
 |---|---|---|
-| A | agent, after D1-D3 | Mint K_broker and K_browser, back them up with `agentbox-secret-backup`, and test-restore them. You mint K_admin in your extension. |
+| A | you; agent after D1 and D3 | You create K_admin in your extension and send its **public** key only. The agent mints K_broker and K_browser, backs them up with `agentbox-secret-backup` to your age recipient, and test-restores them. |
 | B | agent | Add the new pubkeys *beside* `11ed6422…`, each with a test. The agentbox verifiers are K_browser → `[interaction_plane.proxy].allowed_pubkeys` (`agentbox.toml`, boot-class, no rebuild) and K_broker → `[sovereign_mesh.relay].allowed_pubkeys` (baked by `flake.nix:1619-1621`), if VisionClaw also publishes to the embedded relay. K_broker's main verifier and the forum admin list are in the forum deploy, not in this repo. |
 | C | **you: rebuild 1** | `./scripts/launch.sh rebuild dev` from tab 6. This bakes the new relay allowlist. Afterwards both old and new keys must be admitted. |
 | D | you | Switch the signers one at a time: put K_broker in VisionClaw's `.env` as `ACSP_PANEL_NOSTR_PRIVKEY`, put K_browser in the Podkey vault, and put K_admin in the forum admin config. Check from the relay that the new key's events are accepted. |
