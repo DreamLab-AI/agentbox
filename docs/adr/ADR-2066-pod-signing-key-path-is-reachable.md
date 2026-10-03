@@ -89,3 +89,20 @@ empty.
   0 failed, including `tests/sovereign/pod-signer.test.js` and
   `tests/sovereign/elevation-publisher.test.js`, which exercise `loadSigner`
   through the `profilesRoot` override and are unaffected by the default change.
+
+## Note — 2026-10-03: the devuser key path under `[security].role_isolation` (ADR-2122)
+
+With the flag on, the devuser-readable copies of the sovereign key that a pod signer in
+management-api could reach are removed from devuser's view:
+
+- the boot no longer writes `/run/secrets/nostr.key` (devuser `0400`);
+- `AGENTBOX_PRIVKEY_HEX`, `AGENTBOX_NSEC` and `AGENTBOX_BRIDGE_SK` are written to
+  `/run/secrets/ab-identity/` (`0400`, uid 960) and then unset from PID 1's environment;
+- `/run/secrets` itself is root-owned `0711` on its own tmpfs.
+
+The fallback `$WORKSPACE/profiles/<stack>/nostr.key.enc` path that this record repaired is
+**not** removed by W1. It goes when the pods signer moves to the identity port (custody W3b;
+ADR-2078 amended). Once that lands, this record is superseded by ADR-2122 for "where the pod
+signer gets its key". `superseded_by` is not set while ADR-2122 is `proposed`. With the flag off
+nothing here changes. Status fields are unchanged: this note records a dependency and is not a
+re-verification of this record's paths.

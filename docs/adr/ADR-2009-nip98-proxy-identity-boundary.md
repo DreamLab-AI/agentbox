@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: f7465412de3d0d7a25fc1b6b2c8a72775490616d
+verified_commit: 055c06ff69b2f53bf38a67d254c048bb03599fc8
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -212,3 +212,8 @@ Tripped by the `sidestr:dreamlab-txbt4` seal. `flake.nix` adds `sidechainChains`
 - the manifest validator is valid;
 - `check-manifest-catalogue` passes;
 - `tests/config/sidechain-genesis.test.sh` passes 7/7 and `sidechain-producer-gates.test.sh` 7/7.
+
+## Re-verification — 2026-10-03 (`055c06ff69b2f53bf38a67d254c048bb03599fc8`)
+
+Tripped by custody X-1 step 1 (W0 `custody/w0-bypasses` and W1 `custody/w1-role-accounts`). `flake.nix` changed only as follows. W0 (`8070c1010`, `6a433e6b3`): `root` loses its `devuser` member, and `[program:docker-read-proxy]` is added (root start, drops to 65534). W1 (`b8c66625a`, `055c06ff6`): role passwd and group lines are appended from `config/role-accounts.json`, `supervisord.isolated.conf`, `role-secrets.tsv` and `role-accounts.json` are derived beside the unchanged `supervisord.conf`, and a root-owned `/run/secrets` tmpfs is added (ADR-2122). `[program:nip98-proxy]` is unchanged in `supervisord.conf`. Under the flag it runs as `ab-ingress`. `NIP98_PROXY_ALLOW_BEARER` and `NIP98_PROXY_SESSION_SECRET` are delivered to `/run/secrets/ab-ingress/` and removed from PID 1, and `proxy.mjs` reads them from the environment only. With the flag on, break-glass is therefore off and sessions use a per-boot secret (`proxy.mjs:212`). Both are fail-closed outcomes, so the boundary holds.
+Re-verified by `git diff 0919dc39a..055c06ff6 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.

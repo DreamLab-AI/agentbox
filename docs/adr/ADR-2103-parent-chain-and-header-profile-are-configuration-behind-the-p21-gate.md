@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 05d886bba7cc7c73c4de8ae47680785c4f81c079
+verified_commit: 055c06ff69b2f53bf38a67d254c048bb03599fc8
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
@@ -568,3 +568,8 @@ Evidence, per the upstream-pins rule (a pin moves only after a block is produced
   both pins.
 Decision and status unchanged: the parent chain and header profile remain configuration
 behind the P21 gate; the pin records which engine the producer runs.
+
+## Re-verification — 2026-10-03 (`055c06ff69b2f53bf38a67d254c048bb03599fc8`)
+
+Tripped by `b6c44c9a5` (SPEC 0.0.5, on main before the custody branches), which surfaced while re-verifying for custody W1. `config/sidechain/run-producer.sh` gains one optional argument: `--chain-event "$STATE/chain-event.json"` is passed when that file exists. The parent check (D3), the BLAKE2b fork-hash check (D3a), the P21 mainnet gate and the "no implied anchor" message are untouched. `tests/config/sidechain-producer-gates.test.sh` passes 7/7 and `sidechain-genesis.test.sh` 7/7. Custody W1 does not edit the runner. Under `[security].role_isolation` it only points `SIDESTR_KEY` and `SIDESTR_PARENT_COOKIE` at `/run/secrets/ab-sidestr-<chain>/` (ADR-2122). The decision holds.
+Re-verified by `git diff 05d886bba..055c06ff6 -- config/sidechain/run-producer.sh`. No re-implementation was needed.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: e434a7a596a3a0518c51b7da107d6e0831891910
+verified_commit: 055c06ff69b2f53bf38a67d254c048bb03599fc8
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -281,3 +281,8 @@ Tripped by the `sidestr:dreamlab-txbt4` seal. `flake.nix` adds `sidechainChains`
 ## Re-verification — 2026-10-02 (`e434a7a596a3a0518c51b7da107d6e0831891910`)
 
 Tripped by the sidechain health and witness change. `.github/workflows/invariants.yml` gains the CY-A2 `check-declared-vs-running` step, its unit tests and two trigger paths, none of them about exposure. The check-ports-loopback and check-listeners steps are unchanged. `sh scripts/ci/check-ports-loopback.sh` exits 0. Decision and status unchanged.
+
+## Re-verification — 2026-10-03 (`055c06ff69b2f53bf38a67d254c048bb03599fc8`)
+
+Tripped by custody X-1 step 1 (W0 `custody/w0-bypasses` and W1 `custody/w1-role-accounts`). `flake.nix` changed only as follows. W0 (`8070c1010`, `6a433e6b3`): `root` loses its `devuser` member, and `[program:docker-read-proxy]` is added (root start, drops to 65534). W1 (`b8c66625a`, `055c06ff6`): role passwd and group lines are appended from `config/role-accounts.json`, `supervisord.isolated.conf`, `role-secrets.tsv` and `role-accounts.json` are derived beside the unchanged `supervisord.conf`, and a root-owned `/run/secrets` tmpfs is added (ADR-2122). `docker-compose.yml` gains one tmpfs line (`/run/secrets`) and no `ports:` entry. The read proxy is a unix socket. No publish changes, so the decision holds.
+Re-verified by `git diff 0919dc39a..055c06ff6 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
