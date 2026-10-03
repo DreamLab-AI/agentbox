@@ -92,6 +92,14 @@ let
     mkdir -p $out/project/agentbox/tests/fixtures
     cp ${../tests/fixtures/egress-redaction.v1.json} \
       $out/project/agentbox/tests/fixtures/egress-redaction.v1.json
+    # tests/identity_port.rs (custody W3) loads the checked-in identity-port
+    # ACL against the manifest from ../../ of the crate; without these two
+    # files doCheck fails with ENOENT. Cost: an agentbox.toml edit now
+    # re-runs the bridge build.
+    mkdir -p $out/project/agentbox/config/custody
+    cp ${../agentbox.toml} $out/project/agentbox/agentbox.toml
+    cp ${../config/custody/identity-port-acl.json} \
+      $out/project/agentbox/config/custody/identity-port-acl.json
     chmod -R u+w $out
   '';
 
