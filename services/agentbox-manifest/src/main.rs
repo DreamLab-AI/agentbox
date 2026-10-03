@@ -278,7 +278,7 @@ enum RoleAccountsAction {
         #[arg(long)]
         table: PathBuf,
     },
-    /// Print one `/etc/group` line per role (no members, ever).
+    /// Print one `/etc/group` line per role (no members, ever), then one per shared `groups` entry (its listed members only)
     Group {
         #[arg(long)]
         table: PathBuf,
