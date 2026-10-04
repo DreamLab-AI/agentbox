@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 451823ca8ec0b5452ceb8fdc52e777f77a2bbc43
+verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -240,3 +240,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo-console gate, `451823ca8`)
 
 `4ea3181b5..451823ca8`: `agentbox.toml` adds `[toolchains].ruflo_console = false`. Nothing this record governs (ADR-2019 — Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off) changes meaning. The decision holds. Re-verified by `git log 4ea3181b5..451823ca8 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
+
+`451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `agentbox.toml`: `34f322740` adds `[sidechain].faucet_units = 1000`/`faucet_sats = 2000`; `29bff6d94`, `5241b28e7` and `aeca58df6` switch `[sidechain.dreamlab-txbt4]` on (`enabled = true`, `interval = 60`, `peg_script`); `bde96a334`/`f2dfc5bfa` add `[poker_citizen.dreamlab-txbt4]` (the BLAKES7 seat on `:3451`, `asset_id`); `18a85577c` adds `[poker_coach]`; `a2ffa05eb` moves `[toolchains].ruflo_console` beside `ruflo` and sets it `true`. `mcp/servers/lib/aggregate-effectiveness.js` and `scripts/ruvector-sona-feeder.mjs` did not move. Nothing this record decides (ADR-2019 — Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off) changed: no embedding, SONA or rerank key changes. Outside the governed paths, `012bf98f5` routes `ruflo memory` to the ruvector-postgres sidecar and its 384-dim Xinference embedder instead of ruflo's own MiniLM store (ADR-2123), which is consistent with this freeze. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.

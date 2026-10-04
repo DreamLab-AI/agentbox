@@ -4,6 +4,20 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-10-03 — ruflo memory governed on the sidecar, ADR-2123)
+
+- The image's `ruflo` / `claude-flow` bins are governed wrappers. `ruflo memory …` runs
+  `mcp/servers/ruflo-memory-cli.cjs`, which serves store/retrieve/search/list/delete/stats from
+  the ruvector-postgres sidecar through the governed memory library (Xinference bge-small
+  embeddings, the MCP server's entry ids) and emits ruflo 3.51.1's `--format json` shapes, so the
+  ruflo-console memory pane shows the sidecar corpus. `init`, `configure`, `export`, `import`,
+  `purge`, `distill`, `backup`, `compress`, `cleanup`, `classify`, `select-operator` and
+  `migrate` are refused (exit 2): ruflo's memory subsystem is local-only and would be a second
+  memory system. Every other subcommand runs with `RUFLO_DAEMON_AUTOSTART=0`,
+  `CLAUDE_FLOW_DISABLE_BRIDGE=1` and `CLAUDE_FLOW_MEMORY_PATH=~/.cache/ruflo/memory` as
+  overridable defaults (also exported at boot), so no invocation spawns a daemon or writes
+  `.swarm/`, `ruvector.db` or an ONNX model into the working directory.
+
 ### Changed (2026-10-03 — pod trails in the blocktrails git-mark §5.2 shape)
 
 - `nostr-pod-bridge` writes the pod's `blocktrails.json` in the blocktrails/spec git-mark
