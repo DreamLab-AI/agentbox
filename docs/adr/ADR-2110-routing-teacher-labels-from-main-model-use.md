@@ -2,9 +2,9 @@
 id: ADR-2110
 title: Learn skill routing from the skills the main model actually uses, recorded as local embeddings
 date: 2026-09-23
-decision_status: accepted
+decision_status: rejected
 implementation_status: partial
-activation_status: live
+activation_status: inactive
 supersedes: []
 superseded_by: []
 verified_commit: 275e12356319a9630846656580d497d53de3d38c
@@ -201,3 +201,9 @@ since we might forget … turn it off once the data is statistically significant
 
 Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `scripts/experiments/exp-b8-label-log.cjs` reads the JunkieJarvis key through the ROLE-secret loader; with the flag off its pre-W2 read (env, then the repo `.env` via `zone-keys.readSetting`) is kept as is. Label recording is untouched (`tests/config/exp-b8-label-log.test.js` 34/34). The decision holds.
 Re-verified by `git diff c7b5d5f55..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Disposition — 2026-10-04 (EXP-B8 verdict)
+
+- **Verdict:** WITHDRAW. Judge 433/513 (84.4%) against the BM25 copy ceiling 500/513 (97.5%); discordant b = 4, c = 71; exact McNemar p = 6.81e-17.
+- **Stop:** the sample of 510 was reached; written by `scripts/experiments/exp-b8-label-log.cjs` under the pre-registered protocol `docs/experiments/EXP-B8-label-log.md` (owner decision 2026-10-02 R5b). Report: `docs/experiments/EXP-B8-report.md`.
+- **Action:** `label_log = false`; decision_status `rejected`, activation_status `inactive`. ADR-2110 is withdrawn (rejected): the judge did not beat its copy ceiling on live turns, so the routing premise of the façade programme is falsified at this effect size.
