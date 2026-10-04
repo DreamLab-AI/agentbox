@@ -989,7 +989,7 @@ cascade_cutoff = 0.3718         # relative margin (s1-s2)/s1; 0.3718 = openjev p
 # a rebuild: scripts/experiments/exp-b8-label-log.cjs (ticked by the checkout
 # crontab) registers the hooks while this is true and, at 510 rows or 2026-10-20,
 # de-registers them and opens the PR that sets this back to false.
-label_log = true
+label_log = false
 label_embeddings_url = "http://192.168.2.132:9997/v1/embeddings"   # bge-small via Xinference (LAN)
 
 [skills.colloquy]
