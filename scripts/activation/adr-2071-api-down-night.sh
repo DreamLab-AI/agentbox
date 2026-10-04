@@ -27,7 +27,8 @@
 #               state=done with the reason. An EXIT trap also restarts it if the
 #               tick dies between stop and the state write.
 #   3. retire   when state is done/missed the marker is renamed *.consumed, so
-#               the crontab line is inert until someone removes it.
+#               the tick is inert without a fresh marker. (The crontab line was
+#               removed on 2026-10-04 once clause (c) passed; re-add it to reuse.)
 #
 # The morning after: scripts/activation/adr-2087-check.sh --api-down-night DATE
 # reads the state file as well as the night record (check C3).

@@ -2,8 +2,8 @@
 id: ADR-2071
 title: Journal the nightly dream cycle before policing it, and fix the deny-path typo first
 date: 2026-09-05
-decision_status: proposed
-implementation_status: partial
+decision_status: accepted
+implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
@@ -189,3 +189,17 @@ therefore treats a missing pair as a failure, never as "nothing happened".
 - **Why:** Phase 1 merged (agentbox #8, `69f0c2207`) and is live. The 2026-10-01 image journalled 62 side effects on the night of 2026-10-02 with `failed 0`, `unpaired 0`. Clauses (a) and (b) are met through checks C1 and C2 of `scripts/activation/adr-2087-check.sh`. Clause (c), a night with management-api stopped, has not run.
 - **Next:** The owner schedules one night with management-api stopped. The next morning, run `scripts/activation/adr-2087-check.sh --api-down-night <date>`. If clause (c) passes, accept.
 - **Arranged — owner decision 2026-10-02, Q9:** the night of Monday 5 Oct, i.e. the 01:00–05:00 UTC window on **Tue 6 Oct**. Mechanism, chosen to survive a container restart with no image rebuild: the marker `~/workspace/.agentbox/adr-2071-api-down-night` (on the workspace volume) holds `2026-10-06`. `scripts/activation/adr-2071-api-down-night.sh` runs every 10 minutes on 5–7 Oct from the crontab that `[program:podcast-cron]` (supercronic) already reads from the checkout. It is a stateless tick that works in UTC: it stops management-api once between 00:30 and 00:59 UTC. It restarts it when `dream-last-night.json` is dated 2026-10-06, at the 07:30 UTC deadline, or when it finds the API running again (a container restart: supervisord autostarts it, recorded as `interrupted`). It then retires the marker. It never stops the API if no tick lands before 01:00 or if dreaming is paused. Tests: `tests/config/adr-2071-api-down-night.test.sh` (26 cases, run under the cron PATH, which has no `sed`/`awk`). Check C3 of `adr-2087-check.sh` now also requires the one-shot's state file to show a clean stop and a restart (`night-record` or `deadline`), so a night of failed posts alone no longer passes. **Tuesday morning:** `scripts/activation/adr-2071-api-down-night.sh --status`, then `scripts/activation/adr-2087-check.sh --api-down-night 2026-10-06`. If C3 passes, accept this record. Afterwards, remove the crontab block.
+
+## Acceptance — 2026-10-04
+
+**Accepted, implementation complete, activation live.** Clause (c) ran on 4 October at the owner's request ("let's manually stop the api and run the dream cycle now please"), in place of the 6 October night arranged under Q9. All three Phase 1 clauses now pass on the live image, on real nights rather than a stub repo. Receipt: `.claude/evidence/activation/ADR-2087-activation-20261004T100615Z.md` (`adr-2087-check.sh --api-down-night 2026-10-04`, C1 to C3 PASS).
+
+- (a) **met** (C2): the audit chain verifies intact across 11 day files after the night's appends.
+- (b) **met** (C1): 80 side effects across 5 sessions on 2026-10-04, each a matched `exec.tool.called`/`exec.tool.completed` pair under its `session_urn`. These come from that morning's scheduled night, with the API up.
+- (c) **met** (C3): management-api was `STOPPED` from 09:38:39Z to 10:06:04Z. A full `dream-engine --once` ran inside that window and exited 0. It produced 4 repo verdicts while 130 journal posts failed or were skipped. Each session's breaker opened after 3 failures, so the down API cost seconds rather than a timeout per side effect. The engine still committed its own ledger rows locally: factrail `4d3d367` (INCONCLUSIVE), dreamlab-ai-website `688486b` (ACCEPT) and dream-machine `6a3eda7` (ACCEPT). The state file reads `reason=night-record`, `engine_exit=0`.
+
+**How it differs from the arranged run.** A scratchpad wrapper did the stop and restart by hand: it stopped the supervised loop, ran a one-shot with the loop's environment (the `/dream run` recipe) and restarted both programs from an EXIT trap. The cron one-shot was not used, so the state file carries `mode=manual-owner-2026-10-04`. It is otherwise in the format C3 reads. VisionFlow was skipped because its run had already completed that morning (same run id, so no duplicate PR), so 3 of the 4 verdicts were dreamed with the API down. The night digest was skipped after the relay answered HTTP 500. That is the fail-open path working, not a journal fault. Two earlier attempts aborted before any night ran: one was a wrapper argv error, the other the singleton lock refusing a second engine. Their state files are kept as `.state.aborted-0937*`.
+
+**Retired.** The 6 October marker was renamed `*.consumed`, and the crontab block in `skills/podcast-knowledge-ingest/crontab` is removed in this change. `scripts/activation/adr-2071-api-down-night.sh` and its tests stay, for reuse after a future image change. The verified paths are unchanged since `ddfb6d056`.
+
+Phase 2 (policing) stays out of scope, as the Decision says. It needs an approver wired into the action pipeline, which is this record's review trigger.
