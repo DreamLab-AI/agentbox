@@ -932,13 +932,14 @@ test('Demote of an amend proposal keeps the status edit', async (t) => {
 // ── Committing the written page ─────────────────────────────────────────────
 
 /** A runGit double: answers each step and records the argv. */
-function stubGit({ top, upstream = true, pushFails = false } = {}) {
+function stubGit({ top, upstream = true, pushFails = false, ahead = 1 } = {}) {
   const calls = [];
   const fn = async (args) => {
     calls.push(args);
     const sub = args.slice(2).join(' ');
     if (sub === 'rev-parse --show-toplevel') return `${top}\n`;
     if (sub === 'rev-parse HEAD') return 'c0ffee\n';
+    if (sub === 'rev-list --count @{u}..HEAD') return `${ahead}\n`;
     if (sub.startsWith('rev-parse --abbrev-ref')) {
       if (!upstream) { const e = new Error('no upstream'); e.stderr = 'fatal: no upstream configured'; throw e; }
       return 'origin/main\n';
@@ -966,6 +967,7 @@ test('a successful write commits exactly that one page, pathspec-limited, with t
     ['-C', stub.repo, 'commit'],
     ['-C', stub.repo, 'rev-parse'],
     ['-C', stub.repo, 'rev-parse'],
+    ['-C', stub.repo, 'rev-list'],
     ['-C', stub.repo, 'push'],
   ]);
   assert.deepEqual(runGit.calls[1], ['-C', stub.repo, 'add', '--', rel]);
@@ -1106,4 +1108,13 @@ test('an approve whose proposal digest is not the case refuses; off-roster appro
   res = await adapter.handleGovernanceDecision(approveEvent());
   assert.match(res.ontology.error, /is not on the forum governance signer roster/);
   assert.deepEqual(stub.calls(), []);
+});
+
+test('the push is held when other sessions\' commits are also ahead of the upstream', async (t) => {
+  const stub = stubVault(t);
+  const runGit = stubGit({ top: stub.repo, ahead: 36 });
+  const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn: stubFetch(200), runGit });
+  assert.deepEqual([result.committed, result.pushed], [true, false]);
+  assert.match(result.pushHeld, /35 other unpushed commit/);
+  assert.ok(!runGit.calls.some(a => a[2] === 'push'), 'nothing is pushed');
 });

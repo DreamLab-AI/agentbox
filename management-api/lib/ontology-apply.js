@@ -797,7 +797,8 @@ function commitMessage({ outcome, page, digest, eventId, signerNpub }) {
 
 /**
  * Commit exactly one written page in the vault repository, then push when the
- * branch tracks an upstream.
+ * branch tracks an upstream and this commit is the only one ahead of it
+ * (`pushHeld` says why it was not pushed otherwise).
  *
  * `git add -- <path>` then `git commit --only -- <path>`: both pathspec-
  * limited, so whatever else is dirty or staged in the tree — other sessions
@@ -845,6 +846,20 @@ async function commitPage(file, decision, deps = {}) {
     upstream = Boolean((await runGit(['-C', repo, 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])).trim());
   } catch { upstream = false; }
   if (!upstream) return { committed: true, commit, pushed: false, pushError: null };
+  // A push sends EVERY unpushed commit, and other sessions commit to this
+  // repository too. Push only when this governed commit is the sole one
+  // ahead of the upstream; otherwise hold it, say why, and leave publishing
+  // the rest to whoever owns it.
+  let ahead = null;
+  try {
+    ahead = Number((await runGit(['-C', repo, 'rev-list', '--count', '@{u}..HEAD'])).trim());
+  } catch { ahead = null; }
+  if (ahead !== 1) {
+    return { committed: true, commit, pushed: false, pushError: null,
+      pushHeld: ahead == null
+        ? 'could not count commits ahead of the upstream; not pushing'
+        : `${ahead - 1} other unpushed commit(s) are ahead of the upstream; not pushing them` };
+  }
   try {
     await runGit(['-C', repo, 'push'], { timeoutMs: GIT_PUSH_TIMEOUT_MS });
     return { committed: true, commit, pushed: true, pushError: null };
