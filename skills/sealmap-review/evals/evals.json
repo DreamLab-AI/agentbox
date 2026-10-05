@@ -1,0 +1,35 @@
+{
+  "skill_name": "sealmap-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We've got the docs/diagrams corpus for this repo. Get me an outside opinion on the project before we commit to running it for a client.",
+      "expected_output": "Runs scripts/external-review.cjs on docs/diagrams with the default critical and premortem lenses, diagrams only, never code. Checks the corpus passes diagram-index-gen --check first. Reports where the output landed, the token count and cache hits, and summarises the ranked findings, saying which the authors had already marked. Presents every finding as an unverified hypothesis for build-with-quality triage, not as a fix list. Does not use an open 'what do you think' prompt.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Pre-mortem this system for me from its diagrams. It's huge, the corpus is about 1.4 million tokens.",
+      "expected_output": "Recognises the pack is over the 1M budget, either from the dry run or from the script's refusal, and runs the premortem lens one area at a time with --only, then merges the root causes across areas. Does not truncate the pack or send code.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I just rewrote the control-plane audit topic. Do the diagrams in it still match the code?",
+      "expected_output": "Uses inline mode, not the external Gemini review: a Sonnet subagent (Opus, given an audit and custody topic) reads every cited path:line at the topic's verified_commit and reports faults in the F-nn shape, with a fault class. The author fixes topic faults and the generator gate is rerun until none remain. A code-defect finding goes to build-with-quality to be reproduced test-first.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Can you review my PR #212 before I merge it?",
+      "expected_output": "Does not use this skill: a diff or PR review belongs to code-review.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "How good is our diagram corpus at actually carrying the problems in the codebase? I want a number.",
+      "expected_output": "Runs the external review with --register strip and the critical lens, so the reviewer cannot read the authors' markers. Scores the claims against the register's Tension list, with a scorer from a different model family to the reviewer. Reports full and partial recall with the caveat that one run per cell is indicative. Recommends repeats or per-area shards before quoting a figure.",
+      "files": []
+    }
+  ]
+}

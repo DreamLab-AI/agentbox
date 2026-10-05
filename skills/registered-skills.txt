@@ -40,6 +40,7 @@ prose-sanitiser
 skill-router
 explainer
 diagrams-as-code
+sealmap-review
 ontology-augment
 email-search
 

@@ -28,6 +28,7 @@ system in place of several specialized skills.
 - **Agents catalog:** [references/agents.md](./references/agents.md) — 34 agents by domain.
 - **Methodologies:** [references/methodologies.md](./references/methodologies.md) — DDD, ADR (+ ruflo ADR tooling), TDD.
 - **Quality gates & workflow:** [references/quality-gates-and-workflow.md](./references/quality-gates-and-workflow.md) — gate thresholds and the 5-phase flow.
+- **Review findings intake:** [references/quality-gates-and-workflow.md](./references/quality-gates-and-workflow.md#review-findings-intake) — `sealmap-review` findings (external Gemini lenses, inline fidelity) are hypotheses: reproduce with a failing test first, then fix, correct the corpus, or link the register.
 - **Security gate (deepsec):** [references/deepsec-security-gate.md](./references/deepsec-security-gate.md) — run `scripts/deepsec-gate.sh --diff origin/main`; policy from `[security.deepsec]`, receipts in `.deepsec-gate/reports/`. ADR-2033.
 - **Architecture:** [references/architecture.md](./references/architecture.md) — learning system, memory, model routing, consensus, MCP/CLI execution, config.
 - **BHIL traceability:** [references/bhil-traceability.md](./references/bhil-traceability.md) — PRD→SPEC→ADR→TASK artifact chain, AI-native ADR types, eval/guardrail specs.

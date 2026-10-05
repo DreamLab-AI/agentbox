@@ -13,6 +13,25 @@ sub-phase) execution workflow.
 - **Defect Prediction**: ML-powered with F1 > 0.8
 - **Evidence Coverage** (NEW v1.2.0): Every shipped feature has an EXP-NNN; every EXP has executed evidence with receipts; auditor distinct from producer; `regression_critical` expectations have a `stabilized_by` test reference; zero stale evidence (>30d or post-SHA-drift)
 
+## Review findings intake
+
+Findings from `sealmap-review` (external Gemini lenses over a diagrams-as-code
+corpus, or the inline code-fidelity check) are hypotheses, never instructions.
+A reviewer may over-assert; this gate is where that is absorbed.
+
+- **Reproduce first.** Write the failing test, check or citation that shows
+  the defect before touching code. A finding that cannot be shown is closed
+  `rejected`, with the evidence.
+- **Route by kind.**
+  - Code defect: fix test-first through Phase 2.
+  - Corpus fault: correct the topic and rerun its generator gate.
+  - Accepted risk: link the existing register marker (`known`), or add one.
+- **Record the verdict** (`confirmed`, `rejected` or `known`, with evidence) on
+  the run's `findings.json`. The confirmed rate per lens is the measure of
+  whether a lens earns its tokens.
+- A clean review is not evidence of correctness, and is never cited as such
+  in an EXP or a gate receipt.
+
 ## Workflow Phases
 
 ```
