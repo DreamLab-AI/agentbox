@@ -23,14 +23,14 @@
 { lib, pkgs }:
 
 let
-  version = "1.0.0-beta.13";
-  rev = "d383e428f7c2fa09c22b00ec695c19cd92d5291e";
+  version = "1.0.0-beta.14";
+  rev = "faba9b71ff4c4379ff9952d717c21066b4607f00";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "nostr-rust-forum";
     inherit rev;
-    hash  = "sha256-+mak1QL8YH8z6PDcDo/vufMXPiAqF0PDtuj8kGlC68U=";
+    hash  = "sha256-vJPa+0X6q/cQzOqBl0YKmIt31HpXmGDGr9qBWtCXI0s=";
   };
 
 in

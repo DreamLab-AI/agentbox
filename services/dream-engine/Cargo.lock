@@ -1397,9 +1397,9 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-core"
-version = "1.0.0-beta.11"
+version = "1.0.0-beta.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dd4b0239cc6645ecb3acb16cbe18d1e39268c79727561019ca473cd9cb351c5"
+checksum = "a92a653e8b9fe702f8af8c5ce4143649be75883649df62ec3f97a1bce864add6"
 dependencies = [
  "aes",
  "async-trait",
@@ -2142,9 +2142,9 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs"
-version = "0.5.0-alpha.7"
+version = "0.5.0-alpha.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "615d04af22c42d2a20e9695e779b99c432e0781dc6816a0e1aeb0881c7453aa8"
+checksum = "4f1d9628ede063b8b657df1d67e6805059ee9a2caceeb513a8a5de9b30a1b4cd"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2153,6 +2153,7 @@ dependencies = [
  "getrandom 0.2.17",
  "hex",
  "js-sys",
+ "k256",
  "mime_guess",
  "serde",
  "serde_json",
