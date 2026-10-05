@@ -109,6 +109,9 @@ class H(BaseHTTPRequestHandler):
                                          "timestamp": "2026-10-05T00:00:00Z", "request_id": None})
             if "s-500" in subj:
                 self.send_json(500, {"error": "Membership check failed"})
+            elif "s-unknown" in subj:
+                self.send_json(400, {"error": "Unresolved term",
+                                     "message": "'s-unknown' names no class in the loaded ontology"})
             elif "s-noverdict" in subj:
                 ok({"success": True})
             elif "s-entailed" in subj:
@@ -379,6 +382,10 @@ check "check: HTTP 500 → degraded"                     "$out" '.grounding == "
 [ "$rc" -eq 0 ] && ok "check: HTTP 500 exit 0 (fail-open)" || bad "check: HTTP 500 exit 0" "rc=$rc"
 out="$(run env VISIONCLAW_API_URL="$STUB" bash "$S" check s-entailed-s-bare 'urn:x:C' 2>/dev/null)"
 check "check: unenveloped body still answered"         "$out" '.grounding == "answered" and .result.check.verdict == "entailed"'
+out="$(run env VISIONCLAW_API_URL="$STUB" bash "$S" check s-unknown 'urn:x:C' 2>/dev/null)"; rc=$?
+check "check: 400 unknown term → degraded with the message" "$out" \
+  '.grounding == "degraded" and .result.reason == "visionclaw_http_400" and (.result.message | test("names no class"))'
+[ "$rc" -eq 0 ] && ok "check: 400 exit 0 (fail-open)" || bad "check: 400 exit 0" "rc=$rc"
 out="$(run env VISIONCLAW_API_URL="$STUB" bash "$S" check s-noverdict 'urn:x:C' 2>/dev/null)"
 check "check: 200 with no verdict → degraded"          "$out" '.grounding == "degraded"'
 out="$(run env VISIONCLAW_API_URL="http://127.0.0.1:1" bash "$S" check s-entailed 'urn:x:C' 2>/dev/null)"; rc=$?

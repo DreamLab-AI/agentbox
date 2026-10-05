@@ -226,15 +226,24 @@ $S check <subject> <class>                         # POST {subject, class}
 $S check <subject> --property <p> --object <o>     # POST {subject, property, object}
 ```
 
-`POST $VISIONCLAW_API_URL/api/ontology-agent/check`; the reply is
-`{success, check: {verdict, basis, witness, scope: {closure, generation}}}`.
+`POST $VISIONCLAW_API_URL/api/ontology-agent/check`; the reply is VisionClaw's
+standard envelope `{success, data: {success, check: {verdict, basis, witness,
+scope: {closure, generation}}}, error, timestamp}`, unwrapped by the wrapper so
+`result.check` is the answer.
+
+A class term is a class IRI (`urn:ngm:class:1-inch`) or that class's exact label
+in any case (`1inch`); the answer echoes the resolved IRIs. A term naming no class,
+or a label shared by several, is refused with HTTP 400 and a `message` naming the
+term (and the candidates) — the question is wrong, not the corpus silent. Fix the
+term and ask again; never read that refusal as `not_asserted`.
 
 | `verdict` | `grounding` |
 |---|---|
 | `entailed` | `answered` (`basis`: asserted / inferred) |
 | `entailed_false` | `contradicted` (`witness`: the disjointness) |
 | `not_asserted` | `silent` (open world) |
-| unreachable, non-200, no verdict | `degraded`, exit 0 (`reason`: `visionclaw_unreachable`, `visionclaw_http_<code>`, `visionclaw_no_verdict`) |
+| unknown or ambiguous term | `degraded`, exit 0, `reason: visionclaw_http_400` with the server's `message` |
+| unreachable, other non-200, no verdict | `degraded`, exit 0 (`reason`: `visionclaw_unreachable`, `visionclaw_http_<code>`, `visionclaw_no_verdict`) |
 
 ## Degradation semantics
 

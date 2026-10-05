@@ -335,8 +335,12 @@ vc_post() {
   VC_BODY="$(printf '%s' "$VC_BODY" | jq -c 'if type == "object" and (.data? | type) == "object"
       and ((.data.check? // .data.verdict?) != null) then .data else . end' 2>/dev/null || printf '%s' "$VC_BODY")"
   if [ "$VC_STATUS" != "200" ] || ! printf '%s' "$VC_BODY" | jq -e 'type == "object"' >/dev/null 2>&1; then
-    echo "ontology-augment: ${url} returned HTTP ${VC_STATUS} — degrading (fail-open)" >&2
-    VC_BODY="$(jq -nc --arg s "$VC_STATUS" --arg e "$url" '{degraded: true, reason: ("visionclaw_http_" + $s), endpoint: $e}')"
+    # A 400 is VisionClaw refusing the question (a term naming no class, or
+    # an ambiguous label); carry its message so the caller can fix the term.
+    local msg; msg="$(printf '%s' "$VC_BODY" | jq -r '.message? // .error? // empty' 2>/dev/null || true)"
+    echo "ontology-augment: ${url} returned HTTP ${VC_STATUS}${msg:+: $msg} — degrading (fail-open)" >&2
+    VC_BODY="$(jq -nc --arg s "$VC_STATUS" --arg e "$url" --arg m "$msg" \
+      '{degraded: true, reason: ("visionclaw_http_" + $s), endpoint: $e} + (if $m == "" then {} else {message: $m} end)')"
   elif ! printf '%s' "$VC_BODY" | jq -e '(.check.verdict? // .verdict?) | type == "string"' >/dev/null 2>&1; then
     echo "ontology-augment: ${url} answered without a verdict — degrading (fail-open)" >&2
     VC_BODY="$(printf '%s' "$VC_BODY" | jq -c --arg e "$url" '{degraded: true, reason: "visionclaw_no_verdict", endpoint: $e, body: .}')"
