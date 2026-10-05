@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 451823ca8ec0b5452ceb8fdc52e777f77a2bbc43
+verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -310,3 +310,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo-console gate, `451823ca8`)
 
 `4ea3181b5..451823ca8`: `agentbox.toml` adds `[toolchains].ruflo_console = false`. Nothing this record governs (ADR-2023 — The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it) changes meaning. The decision holds. Re-verified by `git log 4ea3181b5..451823ca8 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
+
+`451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `agentbox.toml`: `34f322740` adds `[sidechain].faucet_units = 1000`/`faucet_sats = 2000`; `29bff6d94`, `5241b28e7` and `aeca58df6` switch `[sidechain.dreamlab-txbt4]` on (`enabled = true`, `interval = 60`, `peg_script`); `bde96a334`/`f2dfc5bfa` add `[poker_citizen.dreamlab-txbt4]` (the BLAKES7 seat on `:3451`, `asset_id`); `18a85577c` adds `[poker_coach]`; `a2ffa05eb` moves `[toolchains].ruflo_console` beside `ruflo` and sets it `true`. `mcp/servers/lib/ontology-retrieval.js` did not move; `loom_url`, `loom_model` and `loom_max_tokens` are unchanged. One new consumer appears: `[poker_coach].llm_url = "http://192.168.2.132:8084/v1"` holds the `:8084` door, with `[poker_coach].model` naming what the endpoint expects (`18a85577c`) — the façade contract this record requires, not a second door. Nothing this record decides (ADR-2023 — The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it) changed. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.

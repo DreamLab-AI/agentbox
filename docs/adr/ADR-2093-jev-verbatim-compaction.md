@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 451823ca8ec0b5452ceb8fdc52e777f77a2bbc43
+verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation)
@@ -341,3 +341,11 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo-console gate, `451823ca8`)
 
 `daba195e5..451823ca8`: `config/entrypoint-unified.sh` adds the ruflo-console boot block after factrail's, and factrail's function-hook switch and `agentbox` marketplace removal also respect the new gate; with it off both behave as before. Nothing this record governs (ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch) changes meaning. The compaction policy is untouched: CLAUDE_CODE_ENABLE_FUNCTION_HOOKS is still set whenever `[features.jev_compaction]` is on, and is now also kept on for the console. The decision holds. Re-verified by `git log daba195e5..451823ca8 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
+
+`451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `config/entrypoint-unified.sh` changes in one place (`012bf98f5`): three exports in the runtime-env block after `RUFLO_DAEMON_AI_WORKERS` — `RUFLO_DAEMON_AUTOSTART` (default `0`), `CLAUDE_FLOW_DISABLE_BRIDGE` (default `1`) and `CLAUDE_FLOW_MEMORY_PATH` (default `/home/devuser/.cache/ruflo/memory`), each `${X:-default}` so an operator export wins (ADR-2123). `lib/factrail.nix` and `lib/claude-code-binary.nix` did not move. Nothing this record decides (ADR-2093 — Compact context by Jev judgement, verbatim, with email fenced out and a switch) changed: the compaction block, its switch and the email fence are untouched. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
+
+`1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.

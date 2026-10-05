@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 451823ca8ec0b5452ceb8fdc52e777f77a2bbc43
+verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -197,3 +197,11 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo-console gate, `451823ca8`)
 
 `f93586b9e..451823ca8`: `config/entrypoint-unified.sh` adds the ruflo-console boot block after factrail's, and factrail's function-hook switch and `agentbox` marketplace removal also respect the new gate; with it off both behave as before. Nothing this record governs (ADR-2091 — Route each turn to a skill with one typed judgement, failing open to the table) changes meaning. The decision holds. Re-verified by `git log f93586b9e..451823ca8 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
+
+`451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `config/entrypoint-unified.sh` changes in one place (`012bf98f5`): three exports in the runtime-env block after `RUFLO_DAEMON_AI_WORKERS` — `RUFLO_DAEMON_AUTOSTART` (default `0`), `CLAUDE_FLOW_DISABLE_BRIDGE` (default `1`) and `CLAUDE_FLOW_MEMORY_PATH` (default `/home/devuser/.cache/ruflo/memory`), each `${X:-default}` so an operator export wins (ADR-2123). `config/hooks/lib/skill-route.cjs`, `config/hooks/skill-route.cjs`, `skills/skill-router/scripts/route.mjs` and `tests/config/skill-route.test.js` did not move. Nothing this record decides (ADR-2091 — Route each turn to a skill with one typed judgement, failing open to the table) changed: the router's projection block and the fail-open rule are untouched. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
+
+`1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.

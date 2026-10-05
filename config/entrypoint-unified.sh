@@ -3374,6 +3374,17 @@ export EMBEDDING_MODEL="${EMBEDDING_MODEL}"
 # explicitly so an enabled plugin — ruflo-loop-workers / ruflo-autopilot —
 # can never flip headless Claude launches on without an operator export).
 export RUFLO_DAEMON_AI_WORKERS="${RUFLO_DAEMON_AI_WORKERS:-0}"
+# ADR-2123 governed ruflo: the baked `ruflo`/`claude-flow` wrappers set these
+# per invocation; exporting them here covers anything that reaches
+# @claude-flow/cli directly (node …/cli.js, the console's subprocess env).
+# No daemon autostart (every CLI call, even --help, spawned one into the CWD),
+# no AgentDB bridge (its native engine writes ./ruvector.db wherever it runs
+# and downloads MiniLM into the read-only store path), and the sql.js
+# bookkeeping store under the cache dir instead of <cwd>/.swarm. Durable
+# memory is the ruvector-postgres sidecar via `ruflo memory …` / memory_* only.
+export RUFLO_DAEMON_AUTOSTART="${RUFLO_DAEMON_AUTOSTART:-0}"
+export CLAUDE_FLOW_DISABLE_BRIDGE="${CLAUDE_FLOW_DISABLE_BRIDGE:-1}"
+export CLAUDE_FLOW_MEMORY_PATH="\${CLAUDE_FLOW_MEMORY_PATH:-\${HOME:-/tmp}/.cache/ruflo/memory}"
 # ADR-2080 model-router console knobs (empty unless [model_routing.neural].enabled)
 $_MRN_EXPORTS
 # Interaction plane (PRD-021 / ADR-042): expose the AoE daemon + NIP-98 proxy

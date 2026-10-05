@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 451823ca8ec0b5452ceb8fdc52e777f77a2bbc43
+verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -224,3 +224,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo-console gate, `451823ca8`)
 
 `4ea3181b5..451823ca8`: `agentbox.toml` adds `[toolchains].ruflo_console = false`. Nothing this record governs (ADR-2105 — The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499) changes meaning. The decision holds. Re-verified by `git log 4ea3181b5..451823ca8 -- <verified_paths>`.
+
+### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
+
+`451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `agentbox.toml`: `34f322740` adds `[sidechain].faucet_units = 1000`/`faucet_sats = 2000`; `29bff6d94`, `5241b28e7` and `aeca58df6` switch `[sidechain.dreamlab-txbt4]` on (`enabled = true`, `interval = 60`, `peg_script`); `bde96a334`/`f2dfc5bfa` add `[poker_citizen.dreamlab-txbt4]` (the BLAKES7 seat on `:3451`, `asset_id`); `18a85577c` adds `[poker_coach]`; `a2ffa05eb` moves `[toolchains].ruflo_console` beside `ruflo` and sets it `true`. `crates/colloquy/colloquy-nostr/src/kinds.rs`, `docs/PROTOCOL-registry.md` and `colloquy_publish.rs` did not move. Nothing this record decides (ADR-2105 — The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499) changed: no kind number or band appears in the diff. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.

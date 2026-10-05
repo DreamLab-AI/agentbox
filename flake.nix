@@ -461,6 +461,48 @@
           };
         };
 
+        # 2+3 (governed). The `ruflo` / `claude-flow` bins the image puts on
+        #    PATH are these wrappers, not rufloPkg's (ADR-2123). ruflo 3.51.1's
+        #    memory subsystem is local-only: sql.js under .swarm/, an AgentDB
+        #    mirror, the native engine's ./ruvector.db in the CWD and a MiniLM
+        #    ONNX embedder; its --backend flag is a label and no setting reaches
+        #    Postgres or an external embedder. Durable memory here is the
+        #    ruvector-postgres sidecar embedded by Xinference (ADR-015/2014), so:
+        #      * `ruflo memory …` execs mcp/servers/ruflo-memory-cli.cjs, which
+        #        reuses the governed server's lib/memory-tools.js (same pool,
+        #        embedder, entry ids) and emits ruflo-shaped --format json. The
+        #        ruflo-console memory pane shells out to exactly these calls, so
+        #        it shows the sidecar corpus; init/configure/export/… are refused.
+        #      * every other subcommand runs the real CLI with defaults that keep
+        #        its residual local state out of repositories: no daemon
+        #        autostart (every `ruflo` invocation, even --help, spawned one),
+        #        AgentDB bridge off (no ./ruvector.db, no agentdb-memory.db, no
+        #        MiniLM download into the read-only store path), and the sql.js
+        #        bookkeeping store under ~/.cache/ruflo/memory instead of
+        #        <cwd>/.swarm. Each is an env default: an operator export wins.
+        #    claude-flow-mcp is passed through unchanged (ADR-2082 proxy child).
+        rufloGovernedPkg = pkgs.runCommand "ruflo-governed-3.51.1" { } ''
+          mkdir -p $out/bin
+          for b in ruflo claude-flow; do
+            cat > $out/bin/$b <<WRAP
+          #!/bin/sh
+          # agentbox governed ruflo wrapper (ADR-2123) — see flake.nix rufloGovernedPkg
+          if [ "\$1" = "memory" ]; then
+            shift
+            exec ${pkgs.nodejs_22}/bin/node /opt/agentbox/mcp/servers/ruflo-memory-cli.cjs "\$@"
+          fi
+          export RUFLO_DAEMON_AUTOSTART="\''${RUFLO_DAEMON_AUTOSTART:-0}"
+          export CLAUDE_FLOW_DISABLE_BRIDGE="\''${CLAUDE_FLOW_DISABLE_BRIDGE:-1}"
+          export CLAUDE_FLOW_MEMORY_PATH="\''${CLAUDE_FLOW_MEMORY_PATH:-\''${HOME:-/tmp}/.cache/ruflo/memory}"
+          mkdir -p "\$CLAUDE_FLOW_MEMORY_PATH" 2>/dev/null || true
+          exec ${rufloPkg}/bin/$b "\$@"
+          WRAP
+            chmod +x $out/bin/$b
+          done
+          ln -s ${rufloPkg}/bin/claude-flow-mcp $out/bin/claude-flow-mcp
+          ln -s ${rufloPkg}/lib $out/lib
+        '';
+
         # 3b+3c. metaharness runtime binaries — gated by toolchains.metaharness
         #    (ADR-062/063/064). Bakes the CLIs the ruflo-metaharness plugin
         #    skills shell out to, at the versions the plugin tree pins
@@ -681,7 +723,9 @@
           # ruflo_console reaches ruflo through the `ruflo` bin on PATH (its
           # userConfig cli is baked to "ruflo"), so the console gate pulls the
           # closure in too.
-          lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false) || rufloConsoleOn) [ rufloPkg ]
+          # rufloGovernedPkg wraps rufloPkg's bins (ADR-2123: `memory` → the
+          # governed CLI on the sidecar; everything else with repo-safe defaults).
+          lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false) || rufloConsoleOn) [ rufloGovernedPkg ]
           ++ lib.optionals (toolchainCfg.metaharness or false)     [ metaharnessPkg metaharnessDarwinPkg ]
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
