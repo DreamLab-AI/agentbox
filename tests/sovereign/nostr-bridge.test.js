@@ -776,6 +776,72 @@ describe('NostrBridge idle subscription keepalive', () => {
       delete process.env.AGENTBOX_BRIDGE_SUB_REFRESH_MS;
     }
   });
+
+  const reqFilters = (h) => h._sent.map(JSON.parse).filter((m) => m[0] === 'REQ').map((m) => m[2]);
+
+  it('a subscription with a since provider carries a FRESH since on every REQ it puts on the wire', () => {
+    // The forum relay is D1-backed: an unbounded re-REQ replays its history
+    // and bills the read quota. The cursor must ride every re-issue.
+    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 86400000 });
+    bridge.connect();
+    const ws = handles[RELAY];
+    ws.simulateOpen();
+
+    let cursor = 1000;
+    bridge.subscribe({ kinds: [kinds.ACTION_RESPONSE], authors: ['f'.repeat(64)] }, () => {}, { since: () => cursor });
+    cursor = 2000;
+    jest.advanceTimersByTime(3600000);          // idle-keepalive refresh
+    cursor = 3000;
+    bridge._replaySubscriptions(RELAY);           // post-AUTH replay
+
+    expect(reqFilters(ws)).toEqual([
+      { kinds: [kinds.ACTION_RESPONSE], authors: ['f'.repeat(64)], since: 1000 },
+      { kinds: [kinds.ACTION_RESPONSE], authors: ['f'.repeat(64)], since: 2000 },
+      { kinds: [kinds.ACTION_RESPONSE], authors: ['f'.repeat(64)], since: 3000 },
+    ]);
+    bridge.disconnect();
+  });
+
+  it('a subscription without a since provider is still re-issued verbatim (gift wraps need no floor)', () => {
+    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 86400000 });
+    bridge.connect();
+    const ws = handles[RELAY];
+    ws.simulateOpen();
+    bridge.subscribe([1059], () => {});
+    jest.advanceTimersByTime(3600000);
+    expect(reqFilters(ws)).toEqual([{ kinds: [1059] }, { kinds: [1059] }]);
+    bridge.disconnect();
+  });
+
+  it('since is applied on the wire only: inbound events are matched against the caller\'s filter', () => {
+    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 86400000 });
+    bridge.connect();
+    const ws = handles[RELAY];
+    ws.simulateOpen();
+    const got = [];
+    const id = bridge.subscribe({ kinds: [kinds.ACTION_RESPONSE] }, (e) => got.push(e.id), { since: () => 5000 });
+    // The relay may legitimately return an event at since-slack; the bridge
+    // must not second-guess the cursor its subscriber chose.
+    ws.simulateMessage(['EVENT', id, { id: 'old', kind: kinds.ACTION_RESPONSE, created_at: 10, tags: [], content: '' }]);
+    expect(got).toEqual(['old']);
+    bridge.disconnect();
+  });
+
+  it('EOSE reaches a subscriber that asked for it, under a rotated wire id too', () => {
+    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 86400000 });
+    bridge.connect();
+    const ws = handles[RELAY];
+    ws.simulateOpen();
+    const eose = [];
+    bridge.subscribe({ ids: ['a'.repeat(64)] }, () => {}, { onEose: (url) => eose.push(url) });
+    bridge.subscribe([1], () => {}); // no onEose: EOSE stays informational
+    bridge._replaySubscriptions(RELAY);
+    const wire = reqIds(ws);
+    ws.simulateMessage(['EOSE', wire[2]]);
+    ws.simulateMessage(['EOSE', wire[3]]);
+    expect(eose).toEqual([RELAY]);
+    bridge.disconnect();
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

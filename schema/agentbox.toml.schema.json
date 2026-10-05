@@ -1857,6 +1857,24 @@
             }
           }
         },
+        "forum_governance": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Forum governance ingress (ADR-2109): a forum admin's signed ontology Promote/Demote (kind 31403) on the forum relay is applied to the vault corpus and that one page committed in VAULT_REPO. Off unless BOTH relay_url and signers are set; an empty roster refuses every ontology decision from any relay (fail closed). Projected to AGENTBOX_FORUM_GOVERNANCE_RELAY / AGENTBOX_FORUM_GOVERNANCE_SIGNERS. See E078 / W075.",
+          "properties": {
+            "relay_url": {
+              "type": "string",
+              "description": "Forum relay (ws:// or wss://) subscribed for kind-31403 decisions, always with a persisted since cursor. Empty = off."
+            },
+            "signers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "64-char lowercase hex pubkeys whose decisions may write the corpus (E078 checks the form). Empty = off, and every ontology decision is refused. This box's own identity is refused even if listed."
+            }
+          }
+        },
         "multi_user": {
           "type": "object",
           "additionalProperties": false,

@@ -205,6 +205,27 @@ allow_nip04      = false
 info_description = "Agentbox sovereign relay"
 info_contact     = ""
 
+# ── Forum governance → corpus (ADR-2109) ────────────────────────────────────
+# A forum admin's signed ontology Promote/Demote (kind 31403) lives on the
+# public forum relay with no `p` tag for this box, so the loopback relay never
+# carries it. With BOTH keys set, the relay consumer holds ONE extra
+# connection to `relay_url` (NIP-42 AUTH with the agent key) subscribed to
+# `{kinds:[31403], authors:signers, since:<persisted cursor>}`, fetches the
+# answered 31402 by id when the pod has no copy, and the orchestrator applies
+# the decision to the vault (vault edit | create | apply) and commits that one
+# page in VAULT_REPO (pushing when the branch has an upstream).
+#   relay_url = the forum relay (wss://…). "" = feature off.
+#   signers   = 64-char hex pubkeys whose decisions may write the corpus.
+#               [] = feature off AND every ontology decision, from any relay,
+#               is refused (fail closed). This box's own identity is refused
+#               even if listed: a self-signed decision is not a human's.
+# Projected by flake.nix into the management-api env as
+# AGENTBOX_FORUM_GOVERNANCE_RELAY / AGENTBOX_FORUM_GOVERNANCE_SIGNERS (csv);
+# changes need a rebuild. Validated by E078 / W075.
+[sovereign_mesh.forum_governance]
+relay_url = "wss://dreamlab-nostr-relay.solitary-paper-764d.workers.dev"
+signers   = ["b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a"]  # operator browser-extension key; never the box key
+
 # ── Multi-tenant did:nostr user pods (PRD-007, ADR-017) ─────────────────────
 # When enabled, agentbox hosts per-user pods at pods/<pubkey-hex>/ for each
 # successfully AUTH'd did:nostr identity. When disabled (default), only the

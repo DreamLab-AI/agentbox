@@ -962,3 +962,45 @@ describe('E055-E057+W058: multi-tenant did:nostr pods', () => {
     expect(stderrContains(r, 'W058')).toBe(true);
   });
 });
+
+// ─── E078 / W075: [sovereign_mesh.forum_governance] (ADR-2109) ───────────────
+describe('forum governance roster (E078 / W075)', () => {
+  const ADMIN = '1'.repeat(64);
+
+  test('silent when both are set and well formed, and when both are empty (off)', () => {
+    for (const fg of [{ relay_url: 'wss://forum.example/relay', signers: [ADMIN] }, { relay_url: '', signers: [] }]) {
+      const m = baseValid();
+      m.sovereign_mesh.forum_governance = fg;
+      const r = runValidator(m);
+      expect(stderrContains(r, 'E078')).toBe(false);
+      expect(stderrContains(r, 'W075')).toBe(false);
+      expect(stderrContains(r, 'E016')).toBe(false);
+    }
+  });
+
+  test('E078 fires on a non-ws relay_url and on a signer that is not 64-char lowercase hex', () => {
+    for (const fg of [
+      { relay_url: 'https://forum.example', signers: [ADMIN] },
+      { relay_url: 'wss://forum.example', signers: ['npub1notaccepted'] },
+      { relay_url: 'wss://forum.example', signers: [ADMIN.toUpperCase().replace(/1/g, 'A')] },
+    ]) {
+      const m = baseValid();
+      m.sovereign_mesh.forum_governance = fg;
+      expect(stderrContains(runValidator(m), 'E078')).toBe(true);
+    }
+  });
+
+  test('W075 fires when only one of relay_url / signers is set', () => {
+    for (const fg of [{ relay_url: 'wss://forum.example', signers: [] }, { relay_url: '', signers: [ADMIN] }]) {
+      const m = baseValid();
+      m.sovereign_mesh.forum_governance = fg;
+      expect(stderrContains(runValidator(m), 'W075')).toBe(true);
+    }
+  });
+
+  test('an unknown key in the section is a schema violation', () => {
+    const m = baseValid();
+    m.sovereign_mesh.forum_governance = { relay_url: '', signers: [], roster: [] };
+    expect(stderrContains(runValidator(m), 'E016')).toBe(true);
+  });
+});

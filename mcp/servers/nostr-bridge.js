@@ -385,22 +385,36 @@ class NostrBridge {
    * @param {object|number[]} filter  - Nostr filter object OR array of kind numbers
    *                                    (convenience: auto-wraps in `{ kinds }` filter).
    * @param {Function}        handler - Called with each matching event.
+   * @param {object}   [opts]
+   * @param {Function} [opts.since]   - `() => unixSeconds`. When given, EVERY REQ
+   *   this subscription puts on the wire (the first one, each post-AUTH replay
+   *   and each idle-keepalive refresh) carries `since` from a fresh call, so a
+   *   re-issue asks only for what is newer than the caller's cursor instead of
+   *   replaying the relay's whole history. Absent → the filter is re-issued
+   *   verbatim, the long-standing behaviour (see _refreshSubscriptions for why
+   *   the gift-wrap subscriptions must not take a `since`).
+   * @param {Function} [opts.onEose]  - `(relayUrl) => void`, called on each
+   *   relay's EOSE for this subscription. Lets a one-shot lookup close itself
+   *   once stored events are exhausted.
    * @returns {string} Subscription ID (pass to unsubscribe).
    */
-  subscribe(filter, handler) {
+  subscribe(filter, handler, opts = {}) {
     const normalisedFilter = Array.isArray(filter)
       ? { kinds: filter }
       : (filter ?? { kinds: this._subscribeKinds });
+    const sinceFn = typeof opts.since === 'function' ? opts.since : null;
+    const onEose = typeof opts.onEose === 'function' ? opts.onEose : null;
 
     // stableId is returned to the caller (and is what unsubscribe() expects).
     // The initial wireId equals it; it rotates on each post-AUTH replay. Inbound
     // EVENT frames are routed back to this record via _wireIndex.
     const stableId = `sub-${++this._subCounter}`;
     const wireId = stableId;
-    this._subscriptions.set(stableId, { filter: normalisedFilter, handler, wireId });
+    const record = { filter: normalisedFilter, handler, wireId, sinceFn, onEose };
+    this._subscriptions.set(stableId, record);
     this._wireIndex.set(wireId, stableId);
 
-    const reqMsg = JSON.stringify(['REQ', wireId, normalisedFilter]);
+    const reqMsg = JSON.stringify(['REQ', wireId, NostrBridge._wireFilter(record)]);
     for (const conn of this._connections.values()) {
       conn.send(reqMsg);
     }
@@ -422,6 +436,20 @@ class NostrBridge {
     for (const conn of this._connections.values()) {
       conn.send(closeMsg);
     }
+  }
+
+  /**
+   * The filter a subscription puts on the wire: the stored filter, plus a
+   * freshly computed `since` when the subscriber supplied a cursor. The stored
+   * filter itself is never mutated, so _matchesFilter keeps judging inbound
+   * events against what the caller asked for.
+   * @private
+   */
+  static _wireFilter(sub) {
+    if (!sub.sinceFn) return sub.filter;
+    let since;
+    try { since = Math.floor(Number(sub.sinceFn())); } catch { since = NaN; }
+    return Number.isFinite(since) && since >= 0 ? { ...sub.filter, since } : sub.filter;
   }
 
   // ── Publish ──
@@ -832,10 +860,14 @@ class NostrBridge {
    * keeps working); only the wireId rotates, and _wireIndex is rekeyed so
    * inbound EVENT routing resolves to the handler under the new id.
    *
-   * The stored filter is re-issued VERBATIM every time — deliberately no `since`
-   * floor. NIP-59 gift wraps (kind 1059) carry a RANDOMISED created_at up to ~2
-   * days in the past, so any `since` filter would silently drop legitimately-new
-   * DMs. The agent dedups the resulting historical re-delivery by event id.
+   * The stored filter is re-issued VERBATIM by default — deliberately no
+   * `since` floor. NIP-59 gift wraps (kind 1059) carry a RANDOMISED created_at
+   * up to ~2 days in the past, so any `since` filter would silently drop
+   * legitimately-new DMs. The agent dedups the resulting historical re-delivery
+   * by event id. A subscriber that DID pass `opts.since` to subscribe() owns a
+   * cursor and gets it applied here (see _wireFilter): the forum-governance
+   * subscription is one, because every unbounded REQ against the D1-backed
+   * forum relay is a full-history read billed against its free-tier quota.
    *
    * Fail-open: RelayConnection.send buffers or drops on a dead socket; a rotate
    * failure never crashes the bridge.
@@ -852,7 +884,7 @@ class NostrBridge {
       sub.wireId = newWire;
       this._wireIndex.set(newWire, stableId);
       const closeMsg = JSON.stringify(['CLOSE', oldWire]);
-      const reqMsg   = JSON.stringify(['REQ', newWire, sub.filter]);
+      const reqMsg   = JSON.stringify(['REQ', newWire, NostrBridge._wireFilter(sub)]);
       for (const conn of conns) {
         conn.send(closeMsg);
         conn.send(reqMsg);
@@ -930,7 +962,17 @@ class NostrBridge {
       }
       return;
     }
-    // EOSE, NOTICE are informational — no action needed for the library contract
+    if (type === 'EOSE') {
+      // Only subscribers that asked (opts.onEose) hear about it; for everyone
+      // else EOSE stays informational, as before.
+      const stableId = this._wireIndex.get(subId);
+      const sub = stableId ? this._subscriptions.get(stableId) : undefined;
+      if (sub && sub.onEose) {
+        try { sub.onEose(relayUrl); } catch { /* must not crash the bridge */ }
+      }
+      return;
+    }
+    // NOTICE is informational — no action needed for the library contract
   }
 
   _matchesFilter(event, filter) {

@@ -34,6 +34,13 @@
  * `$VAULT_BIN` (default `vault`) so this module is testable today against a
  * stub on PATH that records its argv, and needs no change when the real binary
  * lands.
+ *
+ * Every successful corpus write (edit, create, apply) is then committed in the
+ * vault repository — that ONE page and nothing else, pathspec-limited, because
+ * other sessions edit the same working tree and a governance commit must never
+ * sweep their changes in — and pushed when the branch has an upstream. A
+ * commit or push failure is recorded on the result, never thrown: the page is
+ * written either way, and unwinding is not on offer.
  */
 
 const { execFile } = require('child_process');
@@ -363,6 +370,19 @@ async function applyOntologyDecision(decision, deps = {}) {
     return applyCreateProposal(decision, proposal, { ...deps, runVault });
   }
 
+  // An approved amendment is the proposal's diff, applied by `vault apply`. A
+  // demote of an amendment keeps the status edit below: it withdraws trust in
+  // the page, it does not apply anything.
+  if (outcome === 'promote' && isAmendProposal(proposal)) {
+    return applyAmendProposal(decision, proposal, { ...deps, runVault });
+  }
+  // The decision says it approved an amendment, yet there is no proposal to
+  // apply: refusing is the only honest outcome (a status edit would stamp the
+  // human's signature on the page WITHOUT the change they approved).
+  if (decision.kind === AMEND_KIND && !proposal) {
+    throw new Error('ontology-apply: an amend decision carries no proposal to apply; refusing');
+  }
+
   const page = await resolveIriToPage(iri, { runVault, page: pageHint });
   return editAndAttest(page, decision, { ...deps, runVault });
 }
@@ -386,13 +406,15 @@ async function editAndAttest(page, decision, deps) {
   const currentStatus = readStatus(page);
   const sets = setArgsFor(outcome, { npub: signerNpub, at, currentStatus });
   const reattest = outcome === 'promote' && currentStatus === 'stable';
+  let commit = NOT_COMMITTED;
   if (sets.length > 0) {
-    await runVault([
+    const out = await runVault([
       'edit', page,
       ...sets,
       '--expect', expectFor(sets),
       '--json',
     ]);
+    commit = await commitPage(writtenPath(out, page), decision, { ...deps, page });
   }
 
   // The decision is ledgered even when it changed nothing on the page (a
@@ -422,6 +444,7 @@ async function editAndAttest(page, decision, deps) {
     blocks: sets.length / 2,
     attested: ledger.ok,
     attestError: ledger.error,
+    ...commit,
   };
 }
 
@@ -551,11 +574,12 @@ async function applyCreateProposal(decision, proposal, deps) {
   }
 
   const stageDir = fs.mkdtempSync(path.join(deps.tmpRoot || require('os').tmpdir(), 'ontology-create-'));
+  let created = null;
   try {
     const file = path.join(stageDir, `${basename(page)}.md`);
     fs.writeFileSync(file, markdown);
     try {
-      await runVault(createArgsFor(file, { npub: signerNpub, at }));
+      created = await runVault(createArgsFor(file, { npub: signerNpub, at }));
     } catch (err) {
       if (err && err.code === CREATE_REFUSED_EXIT) {
         // Every refusal wrote nothing. EXISTS is the race — the page appeared
@@ -584,6 +608,7 @@ async function applyCreateProposal(decision, proposal, deps) {
     fs.rmSync(stageDir, { recursive: true, force: true });
   }
 
+  const commit = await commitPage(writtenPath(created, basename(page)), decision, { ...deps, page });
   const ledger = await attest(
     { case_id: caseId, digest: canonicalDigest(digest), outcome, signer: `human:${signerNpub}`, at },
     deps,
@@ -595,7 +620,242 @@ async function applyCreateProposal(decision, proposal, deps) {
     outcome,
     attested: ledger.ok,
     attestError: ledger.error,
+    ...commit,
   };
+}
+
+// ── Amend proposals (`kind: amend`) ─────────────────────────────────────────
+
+/** The PatchProposal `kind` of a proposal that changes an existing page. */
+const AMEND_KIND = 'amend';
+
+/**
+ * `vault apply`'s exit status for EVERY refusal (nothing written); stdout then
+ * carries `{applied:false, code, message, blockers}`.
+ */
+const APPLY_REFUSED_EXIT = 2;
+
+/**
+ * Whether a proposal is an amendment `vault apply` can apply. The vault's own
+ * serde default makes an ABSENT kind an amendment (vault-core proposal.rs,
+ * `ProposalKind::Amend` is `#[default]`), so absent counts; but only a
+ * PatchProposal carries a diff, and a 31402 whose content is anything else (an
+ * older agentbox shape) is not something to hand to `vault apply`.
+ */
+function isAmendProposal(proposal) {
+  if (!proposal || typeof proposal !== 'object') return false;
+  if (proposal.kind != null && proposal.kind !== AMEND_KIND) return false;
+  return typeof proposal.diff === 'string' && proposal.diff.length > 0;
+}
+
+/**
+ * The `vault apply` invocation for an approved amendment — the ONE place the
+ * interface is written: `vault --repo <root> apply <proposal.json> --expect
+ * docs=1 --set 'verified+={by: human:<npub>, at: <iso>}' --json`. The vault
+ * applies the proposal's own diff and appends the human attestation in the
+ * same write; exit 2 is a refusal with nothing written.
+ */
+function applyArgsFor(file, { npub, at }) {
+  return [
+    'apply', file,
+    '--expect', 'docs=1',
+    '--set', `verified+={by: human:${npub}, at: ${at}}`,
+    '--json',
+  ];
+}
+
+/**
+ * Apply a Promote of a `kind: amend` proposal.
+ *
+ * The bytes applied are the proposal the human's 31403 answers, staged
+ * verbatim as JSON — never re-derived — for ONE `vault apply`. The proposal
+ * must be about the IRI the human signed and its page must answer to that IRI;
+ * a grouped proposal is refused, since the guard and the commit are both
+ * one-page. Every vault refusal (exit 2) throws with its code and blockers and
+ * is not ledgered.
+ */
+async function applyAmendProposal(decision, proposal, deps) {
+  const { outcome, iri, signerNpub, at, caseId, digest } = decision;
+  const { runVault } = deps;
+  if (proposal.iri !== iri) {
+    throw new Error(`ontology-apply: the signed iri ${iri} is not the amend proposal's ${proposal.iri}`);
+  }
+  const page = proposal.page;
+  if (!page || slugify(basename(page)) !== iriSlug(iri)) {
+    throw new Error(`ontology-apply: amend proposal page ${JSON.stringify(page)} does not answer to ${iri}`);
+  }
+  if (Array.isArray(proposal.pages) && proposal.pages.length > 1) {
+    throw new Error('ontology-apply: a grouped amend proposal is not applied page-by-page; refusing');
+  }
+
+  const stageDir = fs.mkdtempSync(path.join(deps.tmpRoot || require('os').tmpdir(), 'ontology-amend-'));
+  let out = null;
+  try {
+    const file = path.join(stageDir, 'proposal.json');
+    fs.writeFileSync(file, JSON.stringify(proposal));
+    try {
+      out = await runVault(applyArgsFor(file, { npub: signerNpub, at }));
+    } catch (err) {
+      if (err && err.code === APPLY_REFUSED_EXIT) {
+        let refusal = {};
+        try { refusal = JSON.parse(String(err.stdout || '').trim() || '{}'); } catch { /* prose */ }
+        const blockers = Array.isArray(refusal.blockers) && refusal.blockers.length
+          ? ` [${refusal.blockers.map(b => (b && (b.code || b.message)) || String(b)).join(', ')}]` : '';
+        const refused = new Error(
+          `ontology-apply: vault apply refused ${page}: ${refusal.code || 'REFUSED'} — ` +
+          `${refusal.message || String(err.stderr || err.message || '').trim()}${blockers}`,
+        );
+        refused.code = refusal.code || 'REFUSED';
+        refused.blockers = Array.isArray(refusal.blockers) ? refusal.blockers : [];
+        throw refused;
+      }
+      throw err;
+    }
+  } finally {
+    fs.rmSync(stageDir, { recursive: true, force: true });
+  }
+  if (out && out.applied === false) {
+    // A refusal reported on a zero exit is still a refusal.
+    const refused = new Error(`ontology-apply: vault apply refused ${page}: ${out.code || 'REFUSED'} — ${out.message || ''}`);
+    refused.code = out.code || 'REFUSED';
+    refused.blockers = Array.isArray(out.blockers) ? out.blockers : [];
+    throw refused;
+  }
+  const appliedPage = (out && out.page) || page;
+
+  const commit = await commitPage(writtenPath(out, page), decision, { ...deps, page: appliedPage });
+  const ledger = await attest(
+    { case_id: caseId, digest: canonicalDigest(digest), outcome, signer: `human:${signerNpub}`, at },
+    deps,
+  );
+  return {
+    applied: true,
+    amended: true,
+    page: appliedPage,
+    path: (out && out.path) || null,
+    digest: (out && out.digest) || null,
+    outcome,
+    attested: ledger.ok,
+    attestError: ledger.error,
+    ...commit,
+  };
+}
+
+// ── Committing the written page ─────────────────────────────────────────────
+
+/** How long one git step may take. Push is the slow one (network). */
+const GIT_TIMEOUT_MS = 60_000;
+const GIT_PUSH_TIMEOUT_MS = 120_000;
+
+/** The commit fields every write result carries when nothing was committed. */
+const NOT_COMMITTED = Object.freeze({ committed: false, commit: null, pushed: false, pushError: null });
+
+/**
+ * The environment a `git` invocation gets: allow-listed like `vaultEnv`, and
+ * like `GIT_SAFE_ENV` in routes/git-bridge.js never prompting (a push that
+ * needs a password fails and is recorded rather than hanging the handler).
+ */
+function gitEnv() {
+  return {
+    PATH: process.env.PATH,
+    HOME: process.env.HOME,
+    GIT_TERMINAL_PROMPT: '0',
+    ...(process.env.SSH_AUTH_SOCK ? { SSH_AUTH_SOCK: process.env.SSH_AUTH_SOCK } : {}),
+  };
+}
+
+async function runGitCommand(args, { timeoutMs = GIT_TIMEOUT_MS } = {}) {
+  const { stdout } = await execFileAsync('git', args, {
+    env: gitEnv(),
+    timeout: timeoutMs,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  return String(stdout || '');
+}
+
+/**
+ * The repository-relative file a vault write produced: the `path` the vault
+ * reported when it reported one, else the C2 location of the page id.
+ */
+function writtenPath(out, pageId) {
+  if (out && typeof out.path === 'string' && out.path) return out.path;
+  return path.join(KNOWLEDGE_PAGES, `${pageId}.md`);
+}
+
+/** The commit message: subject, blank line, trailers. */
+function commitMessage({ outcome, page, digest, eventId, signerNpub }) {
+  const hex = String(canonicalDigest(digest) || '').replace(/^sha256:/, '');
+  const short = hex ? hex.slice(0, 12) : 'unknown';
+  return [
+    `governance: ${outcome} ${page} (case ${short})`,
+    '',
+    `Governance-Decision: ${eventId || 'unknown'}`,
+    `Signed-off-by-human: ${signerNpub}`,
+    '',
+  ].join('\n');
+}
+
+/**
+ * Commit exactly one written page in the vault repository, then push when the
+ * branch tracks an upstream.
+ *
+ * `git add -- <path>` then `git commit --only -- <path>`: both pathspec-
+ * limited, so whatever else is dirty or staged in the tree — other sessions
+ * edit this repository too — is neither swept into this commit nor unstaged.
+ * The repository must BE a git top level (not merely sit inside one), or a
+ * stray `VAULT_REPO` could commit into an enclosing repository; and the file
+ * must resolve inside it.
+ *
+ * Never throws: `{committed, commit, pushed, pushError}`, plus `commitError`
+ * when the commit itself did not happen.
+ */
+async function commitPage(file, decision, deps = {}) {
+  const runGit = deps.runGit || runGitCommand;
+  const page = deps.page || decision.page || path.basename(String(file), '.md');
+  let repo;
+  try {
+    repo = deps.repo || resolveVaultRepo();
+  } catch (err) {
+    return { ...NOT_COMMITTED, commitError: String(err.message || err) };
+  }
+  const abs = path.resolve(repo, String(file));
+  const rel = path.relative(repo, abs);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
+    return { ...NOT_COMMITTED, commitError: `ontology-apply: ${file} is outside the vault repository ${repo}` };
+  }
+  try {
+    const top = (await runGit(['-C', repo, 'rev-parse', '--show-toplevel'])).trim();
+    const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
+    if (real(top) !== real(repo)) {
+      return { ...NOT_COMMITTED, commitError: `ontology-apply: ${repo} is not a git top level (${top}); not committing` };
+    }
+    await runGit(['-C', repo, 'add', '--', rel]);
+    await runGit(['-C', repo, 'commit', '--only', '-m', commitMessage({ ...decision, page }), '--', rel]);
+  } catch (err) {
+    return { ...NOT_COMMITTED, commitError: gitFailure(err) };
+  }
+
+  let commit = null;
+  try { commit = (await runGit(['-C', repo, 'rev-parse', 'HEAD'])).trim() || null; } catch { /* reported as null */ }
+
+  // Push only to an upstream the branch already tracks: no upstream is a
+  // local-only repository, which is a configuration, not an error.
+  let upstream = false;
+  try {
+    upstream = Boolean((await runGit(['-C', repo, 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])).trim());
+  } catch { upstream = false; }
+  if (!upstream) return { committed: true, commit, pushed: false, pushError: null };
+  try {
+    await runGit(['-C', repo, 'push'], { timeoutMs: GIT_PUSH_TIMEOUT_MS });
+    return { committed: true, commit, pushed: true, pushError: null };
+  } catch (err) {
+    return { committed: true, commit, pushed: false, pushError: gitFailure(err) };
+  }
+}
+
+function gitFailure(err) {
+  const detail = String((err && (err.stderr || err.message)) || err).trim();
+  return detail.split('\n').slice(-3).join(' ').slice(0, 500);
 }
 
 /**
@@ -641,6 +901,13 @@ module.exports = {
   CREATE_KIND,
   CREATE_REFUSED_EXIT,
   createArgsFor,
+  AMEND_KIND,
+  APPLY_REFUSED_EXIT,
+  applyArgsFor,
+  isAmendProposal,
+  commitPage,
+  commitMessage,
+  gitEnv,
   pageFromCreateDiff,
   proposalFromRequest,
   slugify,

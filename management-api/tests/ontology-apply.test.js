@@ -42,7 +42,7 @@ function fakeRepo(parent, { pageStatus = 'draft' } = {}) {
  * exit code for `vault edit`, so a refused guard is testable without a real
  * vault.
  */
-function stubVault(t, { findResult = [{ id: PAGE, title: PAGE, type: 'Class', score: 1 }], editExit = 0, createExit = 0, pageStatus = 'draft' } = {}) {
+function stubVault(t, { findResult = [{ id: PAGE, title: PAGE, type: 'Class', score: 1 }], editExit = 0, createExit = 0, pageStatus = 'draft', applyExit = 0, applyOut = null } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-stub-'));
   const log = path.join(dir, 'argv.log');
   const repo = fakeRepo(dir, { pageStatus });
@@ -55,6 +55,10 @@ case "$1" in
   create) dest=${JSON.stringify(path.join(repo, 'knowledge', 'pages'))}/"$(basename "$2")"
           [ -e "$dest" ] && { printf '%s' '{"created":false,"code":"EXISTS","message":"refused: already exists","blockers":[]}'; exit 2; }
           [ ${createExit} -eq 0 ] && cp "$2" "$dest"; printf '%s' '{"created":true}'; exit ${createExit} ;;
+  apply) cp "$2" ${JSON.stringify(path.join(dir, 'applied-proposal.json'))}
+         [ ${applyExit} -eq 0 ] && printf 'amended\n' >> ${JSON.stringify(path.join(repo, 'knowledge', 'pages', `${PAGE}.md`))}
+         printf '%s' ${JSON.stringify(JSON.stringify(applyOut || { applied: true, page: PAGE, path: `knowledge/pages/${PAGE}.md`, digest: 'sha256:00' }))}
+         exit ${applyExit} ;;
   *) printf '%s' 'null' ;;
 esac
 `;
@@ -77,6 +81,10 @@ esac
 
   return {
     repo,
+    /** The proposal JSON the stub `vault apply` was handed, parsed. */
+    appliedProposal() {
+      return JSON.parse(fs.readFileSync(path.join(dir, 'applied-proposal.json'), 'utf8'));
+    },
     /** Every raw invocation, `--repo <root>` included. */
     rawCalls() {
       if (!fs.existsSync(log)) return [];
@@ -288,6 +296,27 @@ test('a vault edit that refuses its guard fails the apply and writes nothing fur
 
 // ── The handler ─────────────────────────────────────────────────────────────
 
+/** Put `keys` on the forum governance signer roster for one test. */
+function withRoster(t, ...keys) {
+  const prev = process.env.AGENTBOX_FORUM_GOVERNANCE_SIGNERS;
+  process.env.AGENTBOX_FORUM_GOVERNANCE_SIGNERS = keys.join(',');
+  t.after(() => {
+    if (prev === undefined) delete process.env.AGENTBOX_FORUM_GOVERNANCE_SIGNERS;
+    else process.env.AGENTBOX_FORUM_GOVERNANCE_SIGNERS = prev;
+  });
+}
+
+/** Run a test in a scratch cwd (the adapter persists decisions under cwd). */
+function inScratchCwd(t) {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'gov-cwd-'));
+  const prevCwd = process.cwd();
+  process.chdir(cwd);
+  t.after(() => { process.chdir(prevCwd); fs.rmSync(cwd, { recursive: true, force: true }); });
+}
+
+/** The 31402 a `promoteEvent` answers: same case, no PatchProposal in it. */
+const LEGACY_REQUEST = { tags: [['d', 'sha256:abc']], content: JSON.stringify({ action: 'promote' }) };
+
 function promoteEvent(content) {
   return {
     id: 'e'.repeat(64),
@@ -301,8 +330,9 @@ function promoteEvent(content) {
 
 test('handleGovernanceDecision applies a promote and reports the page it wrote', async (t) => {
   const stub = stubVault(t);
+  withRoster(t, 'a'.repeat(64));
   const adapter = new LocalProcessManagerOrchestratorAdapter({});
-  adapter._ontologyDeps = { fetchFn: stubFetch(200) };
+  adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => LEGACY_REQUEST };
 
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'gov-cwd-'));
   const prevCwd = process.cwd();
@@ -338,8 +368,9 @@ test('handleGovernanceDecision leaves a plain approve alone', async (t) => {
 
 test('a failing apply records the failure instead of losing the signed decision', async (t) => {
   stubVault(t, { findResult: [] });
+  withRoster(t, 'a'.repeat(64));
   const adapter = new LocalProcessManagerOrchestratorAdapter({});
-  adapter._ontologyDeps = { fetchFn: stubFetch(200) };
+  adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => LEGACY_REQUEST };
 
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'gov-cwd-'));
   const prevCwd = process.cwd();
@@ -702,6 +733,7 @@ test('proposalFromRequest reads the PatchProposal from a stored 31402', () => {
 
 test('the adapter applies a create only when the stored 31402 is the SAME case as the 31403', async (t) => {
   const stub = stubVault(t);
+  withRoster(t, 'cc'.repeat(32));
   const request = { event_id: 'aa'.repeat(32), kind: 31402, d_tag: DIGEST_HEX, content: JSON.stringify(createProposal()) };
   const response = (dTag) => ({
     id: 'bb'.repeat(32), pubkey: 'cc'.repeat(32), created_at: 1790078460, kind: 31403,
@@ -724,4 +756,294 @@ test('the adapter applies a create only when the stored 31402 is the SAME case a
   const res = await adapter.handleGovernanceDecision(response(DIGEST_HEX));
   assert.equal(res.ontology.created, true, res.ontology.error);
   assert.deepEqual(stub.calls().filter(c => c[0] === 'create').length, 1);
+});
+
+// ── Who may write: the forum governance signer roster ───────────────────────
+
+const ADMIN_HEX = 'a'.repeat(64);
+
+test('an empty roster refuses every corpus write, records it, and spawns nothing', async (t) => {
+  const stub = stubVault(t);
+  withRoster(t);
+  inScratchCwd(t);
+  const adapter = new LocalProcessManagerOrchestratorAdapter({});
+  adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => LEGACY_REQUEST };
+  const res = await adapter.handleGovernanceDecision(promoteEvent({ action: 'promote', iri: IRI }));
+  assert.equal(res.dispatched, true, 'the decision is still relayed and persisted');
+  assert.deepEqual([res.ontology.applied, res.ontology.refused], [false, true]);
+  assert.match(res.ontology.error, /no forum governance signers are configured/);
+  assert.deepEqual(stub.calls(), []);
+});
+
+test('a signer off the roster is refused; demote included', async (t) => {
+  const stub = stubVault(t);
+  withRoster(t, 'b'.repeat(64));
+  inScratchCwd(t);
+  const adapter = new LocalProcessManagerOrchestratorAdapter({});
+  adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => LEGACY_REQUEST };
+  for (const action of ['promote', 'demote']) {
+    const res = await adapter.handleGovernanceDecision(promoteEvent({ action, iri: IRI }));
+    assert.equal(res.ontology.applied, false);
+    assert.match(res.ontology.error, /is not on the forum governance signer roster/);
+  }
+  assert.deepEqual(stub.calls(), []);
+});
+
+test('a decision signed by this box\'s own identity is refused even when that key is on the roster', async (t) => {
+  const stub = stubVault(t);
+  withRoster(t, ADMIN_HEX);
+  inScratchCwd(t);
+  const prev = process.env.AGENTBOX_PUBKEY;
+  process.env.AGENTBOX_PUBKEY = ADMIN_HEX;
+  t.after(() => { if (prev === undefined) delete process.env.AGENTBOX_PUBKEY; else process.env.AGENTBOX_PUBKEY = prev; });
+  const adapter = new LocalProcessManagerOrchestratorAdapter({});
+  adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => LEGACY_REQUEST };
+  const res = await adapter.handleGovernanceDecision(promoteEvent({ action: 'promote', iri: IRI }));
+  assert.equal(res.ontology.applied, false);
+  assert.match(res.ontology.error, /own identity/);
+  assert.deepEqual(stub.calls(), []);
+});
+
+test('the request must be the same case AND about the signed iri; a promote with no findable request is refused', async (t) => {
+  const stub = stubVault(t);
+  withRoster(t, ADMIN_HEX);
+  inScratchCwd(t);
+  const adapter = new LocalProcessManagerOrchestratorAdapter({});
+  const run = async (fetchRequest, content = { action: 'promote', iri: IRI }) => {
+    adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest };
+    return (await adapter.handleGovernanceDecision(promoteEvent(content))).ontology;
+  };
+  const otherCase = await run(async () => ({ tags: [['d', 'sha256:other']], content: '{}' }));
+  assert.match(otherCase.error, /is case sha256:other, not the decision's sha256:abc/);
+  const otherIri = await run(async () => ({ tags: [['d', 'sha256:abc']], content: JSON.stringify({ iri: 'urn:ngm:class:elsewhere', page: 'Elsewhere', diff: 'x' }) }));
+  assert.match(otherIri.error, /signed iri .* is not the proposal's urn:ngm:class:elsewhere/);
+  const missing = await run(async () => null);
+  assert.match(missing.error, /could not be found; refusing to guess/);
+  assert.deepEqual(stub.calls(), [], 'every refusal happened before the vault was spawned');
+
+  // A demote withdraws trust in the page as it stands: no proposal is needed.
+  const demote = await run(async () => null, { action: 'demote', iri: IRI });
+  assert.equal(demote.applied, true);
+});
+
+test('the caller\'s request fetcher is used when the pod holds no stored copy', async (t) => {
+  stubVault(t);
+  withRoster(t, ADMIN_HEX);
+  inScratchCwd(t);
+  const adapter = new LocalProcessManagerOrchestratorAdapter({});
+  const asked = [];
+  adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => null }; // the stored lookup misses
+  const res = await adapter.handleGovernanceDecision(
+    promoteEvent({ action: 'promote', iri: IRI }),
+    { fetchRequest: async (id) => { asked.push(id); return LEGACY_REQUEST; } },
+  );
+  assert.deepEqual(asked, ['r'.repeat(64)]);
+  assert.equal(res.ontology.applied, true, res.ontology.error);
+});
+
+// ── kind: amend — Promote applies the proposal through `vault apply` ───────
+
+const amendProposal = (over = {}) => ({ level: 'content', kind: 'amend', iri: IRI, page: PAGE,
+  hypothesis: 'tighten the definition', diff: `--- a/${PAGE}\n+++ b/${PAGE}\n@@ -1 +1 @@\n-x\n+y\n`,
+  digest: `sha256:${DIGEST_HEX}`, blockers: [], pages: [PAGE], ...over });
+const amendDecision = (over = {}) => ({ outcome: 'promote', iri: IRI, signerNpub: NPUB, at: AT,
+  caseId: DIGEST_HEX, digest: DIGEST_HEX, eventId: 'f'.repeat(64), proposal: amendProposal(), ...over });
+
+test('Promote of an amend proposal: ONE vault apply of the staged proposal, attestation in the same write, then the ledger', async (t) => {
+  const stub = stubVault(t);
+  const fetchFn = stubFetch(200);
+  const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn });
+
+  assert.deepEqual([result.applied, result.amended, result.page, result.attested], [true, true, PAGE, true]);
+  const calls = stub.calls();
+  assert.equal(calls.length, 1, 'no find, no edit: apply writes and stamps in one step');
+  assert.equal(path.basename(calls[0][1]), 'proposal.json');
+  assert.deepEqual(calls[0].filter((_, i) => i !== 1), [
+    'apply',
+    '--expect', 'docs=1',
+    '--set', `verified+={by: human:${NPUB}, at: ${AT}}`,
+    '--json',
+  ]);
+  assert.deepEqual(stub.appliedProposal(), amendProposal(), 'the vault received the proposal verbatim');
+  assert.ok(!fs.existsSync(calls[0][1]), 'the staged file is removed');
+  assert.equal(fetchFn.calls.length, 1);
+});
+
+test('an ABSENT kind with a diff is an amendment (the vault\'s serde default)', async (t) => {
+  const stub = stubVault(t);
+  const p = amendProposal();
+  delete p.kind;
+  await apply.applyOntologyDecision(amendDecision({ proposal: p }), { fetchFn: stubFetch(200) });
+  assert.deepEqual(stub.calls().map(c => c[0]), ['apply']);
+});
+
+test('every vault apply refusal (exit 2) throws with its code and blockers, and is not ledgered', async (t) => {
+  for (const code of ['STALE', 'BLOCKED', 'GUARD_VIOLATED']) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'apply-refuse-'));
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    const refusal = { applied: false, code, message: `refused: ${code}`,
+      blockers: code === 'BLOCKED' ? [{ code: 'SLUG_COLLISION', message: 'x' }] : [] };
+    const runVault = async () => {
+      const err = new Error('Command failed');
+      err.code = 2;
+      err.stdout = JSON.stringify(refusal);
+      throw err;
+    };
+    const fetchFn = stubFetch(200);
+    const runGit = async () => { throw new Error('git must not run for a refused write'); };
+    await assert.rejects(apply.applyOntologyDecision(amendDecision(), { fetchFn, runVault, runGit, tmpRoot: dir }),
+      (err) => err.code === code && /vault apply refused Knowledge Graph/.test(err.message)
+        && (code !== 'BLOCKED' || (/SLUG_COLLISION/.test(err.message) && err.blockers.length === 1)));
+    assert.equal(fetchFn.calls.length, 0, `${code}: nothing ledgered`);
+    assert.deepEqual(fs.readdirSync(dir), [], `${code}: the staged file is removed`);
+  }
+});
+
+test('a refusal reported on a zero exit is still a refusal', async (t) => {
+  stubVault(t, { applyOut: { applied: false, code: 'STALE', message: 'generation moved' } });
+  const fetchFn = stubFetch(200);
+  await assert.rejects(apply.applyOntologyDecision(amendDecision(), { fetchFn }), (err) => err.code === 'STALE');
+  assert.equal(fetchFn.calls.length, 0);
+});
+
+test('amend proposals refuse what they cannot do safely — and spawn nothing', async (t) => {
+  const stub = stubVault(t);
+  const f = { fetchFn: stubFetch() };
+  await assert.rejects(apply.applyOntologyDecision(amendDecision({ iri: 'urn:ngm:class:other' }), f),
+    /is not the amend proposal's/);
+  await assert.rejects(apply.applyOntologyDecision(
+    amendDecision({ proposal: amendProposal({ page: 'Wrong Page' }) }), f), /does not answer to/);
+  await assert.rejects(apply.applyOntologyDecision(
+    amendDecision({ proposal: amendProposal({ pages: [PAGE, 'Other'] }) }), f), /grouped amend/);
+  await assert.rejects(apply.applyOntologyDecision(
+    { outcome: 'promote', iri: IRI, signerNpub: NPUB, at: AT, caseId: 'c', digest: 'd', kind: 'amend', proposal: null }, f),
+    /amend decision carries no proposal/);
+  assert.deepEqual(stub.calls(), []);
+});
+
+test('Demote of an amend proposal keeps the status edit', async (t) => {
+  const stub = stubVault(t);
+  const result = await apply.applyOntologyDecision(amendDecision({ outcome: 'demote' }), { fetchFn: stubFetch(200) });
+  assert.equal(result.applied, true);
+  assert.deepEqual(stub.calls().map(c => c[0]), ['find', 'edit']);
+  assert.ok(stub.calls()[1].includes('status=deprecated'));
+});
+
+// ── Committing the written page ─────────────────────────────────────────────
+
+/** A runGit double: answers each step and records the argv. */
+function stubGit({ top, upstream = true, pushFails = false } = {}) {
+  const calls = [];
+  const fn = async (args) => {
+    calls.push(args);
+    const sub = args.slice(2).join(' ');
+    if (sub === 'rev-parse --show-toplevel') return `${top}\n`;
+    if (sub === 'rev-parse HEAD') return 'c0ffee\n';
+    if (sub.startsWith('rev-parse --abbrev-ref')) {
+      if (!upstream) { const e = new Error('no upstream'); e.stderr = 'fatal: no upstream configured'; throw e; }
+      return 'origin/main\n';
+    }
+    if (args[2] === 'push' && pushFails) {
+      const e = new Error('Command failed: git push');
+      e.stderr = 'To github.com:x/y.git\n ! [rejected]        main -> main (fetch first)\nerror: failed to push some refs';
+      throw e;
+    }
+    return '';
+  };
+  fn.calls = calls;
+  return fn;
+}
+
+test('a successful write commits exactly that one page, pathspec-limited, with the governance trailers, then pushes', async (t) => {
+  const stub = stubVault(t);
+  const runGit = stubGit({ top: stub.repo });
+  const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn: stubFetch(200), runGit });
+
+  const rel = path.join('knowledge', 'pages', `${PAGE}.md`);
+  assert.deepEqual(runGit.calls.map(a => a.slice(0, 3)), [
+    ['-C', stub.repo, 'rev-parse'],
+    ['-C', stub.repo, 'add'],
+    ['-C', stub.repo, 'commit'],
+    ['-C', stub.repo, 'rev-parse'],
+    ['-C', stub.repo, 'rev-parse'],
+    ['-C', stub.repo, 'push'],
+  ]);
+  assert.deepEqual(runGit.calls[1], ['-C', stub.repo, 'add', '--', rel]);
+  const commit = runGit.calls[2];
+  assert.deepEqual([commit[3], commit[4]], ['--only', '-m']);
+  assert.deepEqual(commit.slice(-2), ['--', rel], 'the commit names one path and nothing else');
+  assert.equal(commit[5],
+    `governance: promote ${PAGE} (case ${DIGEST_HEX.slice(0, 12)})\n\n` +
+    `Governance-Decision: ${'f'.repeat(64)}\nSigned-off-by-human: ${NPUB}\n`);
+  assert.deepEqual([result.committed, result.commit, result.pushed, result.pushError], [true, 'c0ffee', true, null]);
+});
+
+test('a push failure is recorded, not thrown: the page stays applied and committed', async (t) => {
+  const stub = stubVault(t);
+  const runGit = stubGit({ top: stub.repo, pushFails: true });
+  const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn: stubFetch(200), runGit });
+  assert.deepEqual([result.applied, result.committed, result.pushed], [true, true, false]);
+  assert.match(result.pushError, /rejected|failed to push/);
+});
+
+test('no upstream: committed, not pushed, and that is not an error', async (t) => {
+  const stub = stubVault(t);
+  const runGit = stubGit({ top: stub.repo, upstream: false });
+  const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn: stubFetch(200), runGit });
+  assert.deepEqual([result.committed, result.pushed, result.pushError], [true, false, null]);
+  assert.ok(!runGit.calls.some(a => a[2] === 'push'));
+});
+
+test('a repository that is not its own git top level is never committed into', async (t) => {
+  const stub = stubVault(t);
+  const runGit = stubGit({ top: path.dirname(stub.repo) });
+  const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn: stubFetch(200), runGit });
+  assert.equal(result.applied, true);
+  assert.equal(result.committed, false);
+  assert.match(result.commitError, /not a git top level/);
+  assert.ok(!runGit.calls.some(a => a[2] === 'add' || a[2] === 'commit'));
+});
+
+test('the edit and create paths commit too; a no-op demote commits nothing', async (t) => {
+  const stub = stubVault(t);
+  const runGit = stubGit({ top: stub.repo });
+  const edited = await apply.applyOntologyDecision(
+    { outcome: 'promote', iri: IRI, signerNpub: NPUB, at: AT, caseId: 'c', digest: DIGEST_HEX, eventId: 'f'.repeat(64) },
+    { fetchFn: stubFetch(200), runGit });
+  assert.equal(edited.committed, true);
+  const created = await apply.applyOntologyDecision(createDecision({ eventId: 'f'.repeat(64) }), { fetchFn: stubFetch(200), runGit });
+  assert.equal(created.committed, true);
+  const adds = runGit.calls.filter(a => a[2] === 'add').map(a => a[4]);
+  assert.deepEqual(adds, [path.join('knowledge', 'pages', `${PAGE}.md`), path.join('knowledge', 'pages', `${NEW_PAGE}.md`)]);
+
+  const stub2 = stubVault(t, { pageStatus: 'deprecated' });
+  const runGit2 = stubGit({ top: stub2.repo });
+  const noop = await apply.applyOntologyDecision(
+    { outcome: 'demote', iri: IRI, signerNpub: NPUB, at: AT, caseId: 'c', digest: 'd' }, { fetchFn: stubFetch(200), runGit: runGit2 });
+  assert.equal(noop.committed, false);
+  assert.deepEqual(runGit2.calls, []);
+});
+
+test('against a real git repository, other sessions\' dirty and staged files are neither committed nor unstaged', async (t) => {
+  const stub = stubVault(t);
+  const git = (...a) => require('child_process').execFileSync('git', ['-C', stub.repo, ...a], { encoding: 'utf8' });
+  git('init', '-q', '-b', 'main');
+  git('config', 'user.email', 'test@example.invalid');
+  git('config', 'user.name', 'test');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'seed');
+  // Another session's work in progress: one staged, one merely dirty.
+  fs.writeFileSync(path.join(stub.repo, 'ontology', 'vocabulary.yaml'), 'version: 2\n');
+  git('add', 'ontology/vocabulary.yaml');
+  fs.writeFileSync(path.join(stub.repo, 'knowledge', 'pages', 'Other.md'), 'wip\n');
+
+  const result = await apply.applyOntologyDecision(amendDecision(), { fetchFn: stubFetch(200) });
+  assert.equal(result.committed, true, result.commitError);
+  assert.equal(result.pushed, false, 'no upstream configured');
+  assert.equal(result.commit, git('rev-parse', 'HEAD').trim());
+
+  assert.deepEqual(git('show', '--name-only', '--format=', 'HEAD').trim().split('\n'), [`knowledge/pages/${PAGE}.md`]);
+  assert.match(git('log', '-1', '--format=%B'), /Governance-Decision: f{64}\nSigned-off-by-human: npub1testhuman/);
+  const status = git('status', '--porcelain').split('\n').filter(Boolean).sort();
+  assert.deepEqual(status, ['?? knowledge/pages/Other.md', 'M  ontology/vocabulary.yaml']);
 });

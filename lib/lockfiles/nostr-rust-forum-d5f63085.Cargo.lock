@@ -2364,7 +2364,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-config"
-version = "1.0.0-beta.14"
+version = "1.0.0-beta.15"
 dependencies = [
  "proptest",
  "schemars",
@@ -2377,7 +2377,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-core"
-version = "1.0.0-beta.14"
+version = "1.0.0-beta.15"
 dependencies = [
  "aes",
  "async-trait",
@@ -2451,7 +2451,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-governance-probe"
-version = "1.0.0-beta.14"
+version = "1.0.0-beta.15"
 dependencies = [
  "futures-util",
  "hex",
@@ -2467,7 +2467,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-mesh"
-version = "1.0.0-beta.14"
+version = "1.0.0-beta.15"
 dependencies = [
  "async-trait",
  "hex",
@@ -2508,7 +2508,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-poker"
-version = "1.0.0-beta.14"
+version = "1.0.0-beta.15"
 dependencies = [
  "hex",
  "serde",
@@ -2519,7 +2519,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-poker-citizen"
-version = "1.0.0-beta.14"
+version = "1.0.0-beta.15"
 dependencies = [
  "bitcoin",
  "clap",
@@ -2559,7 +2559,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-rate-limit"
-version = "1.0.0-beta.14"
+version = "1.0.0-beta.15"
 dependencies = [
  "async-trait",
  "hex",
@@ -2621,7 +2621,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-bbs-sidestr-admin"
-version = "1.0.0-beta.14"
+version = "1.0.0-beta.15"
 dependencies = [
  "bitcoin",
  "clap",

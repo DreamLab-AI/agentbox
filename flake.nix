@@ -39,7 +39,7 @@
     # Pin the parent VisionClaw commit so the corpus door is reproducible and
     # cannot drift with a mutable branch.
     vaultSrc = {
-      url = "github:DreamLab-AI/VisionClaw/f1147d91571193033fde23c435b1c84a31872afa";
+      url = "github:DreamLab-AI/VisionClaw/3213e314f82491f338660c79b77332da6610ed9c";
       flake = false;
     };
 
@@ -332,6 +332,13 @@
         consultantsCfg = agentboxConfig.consultants or {};
         privacyFilterCfg = agentboxConfig.privacy_filter or {};
         relayCfg = sovereignCfg.relay or {};
+        # [sovereign_mesh.forum_governance] (ADR-2109): the forum relay and the
+        # roster whose signed 31403s may write the corpus. Both projected into
+        # the management-api env; either empty keeps the forum path off, and an
+        # empty roster refuses every ontology decision (fail closed).
+        forumGovCfg = sovereignCfg.forum_governance or {};
+        forumGovRelay = forumGovCfg.relay_url or "";
+        forumGovSignersCsv = lib.concatStringsSep "," (forumGovCfg.signers or []);
         adaptersCfgTop = agentboxConfig.adapters or {};
         solidPodRsCfg  = (agentboxConfig.integrations or {}).solid_pod_rs or {};
         podsImpl       = adaptersCfgTop.pods or "local-solid-rs";
@@ -2506,7 +2513,7 @@ stderr_logfile=/var/log/bootstrap.error.log
 command=${managementApiPkg}/bin/management-api
 directory=/opt/agentbox/management-api
 user=devuser
-environment=HOME="/home/devuser",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s",MEMORY_ADMIN_ACCESS_MODE="%(ENV_MEMORY_ADMIN_ACCESS_MODE)s",AGENTBOX_REQUIRED_FOR_READINESS="true"
+environment=HOME="/home/devuser",MANAGEMENT_API_PORT="%(ENV_MANAGEMENT_API_PORT)s",MANAGEMENT_API_KEY="%(ENV_MANAGEMENT_API_KEY)s",MANAGEMENT_API_AUTH_MODE="%(ENV_MANAGEMENT_API_AUTH_MODE)s",MEMORY_ADMIN_ACCESS_MODE="%(ENV_MEMORY_ADMIN_ACCESS_MODE)s",AGENTBOX_REQUIRED_FOR_READINESS="true",AGENTBOX_FORUM_GOVERNANCE_RELAY="${forumGovRelay}",AGENTBOX_FORUM_GOVERNANCE_SIGNERS="${forumGovSignersCsv}"
 autostart=true
 autorestart=true
 priority=20

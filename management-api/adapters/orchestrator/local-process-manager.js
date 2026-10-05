@@ -129,9 +129,14 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
    * pod governance directory for later pickup.
    *
    * @param {object} event - Nostr event (kind 31403)
+   * @param {object} [opts]
+   * @param {Function} [opts.fetchRequest] - `(eventId) => Promise<event|null>`:
+   *   where to find the 31402 a decision answers when the pod's stored copy
+   *   misses. The relay consumer's forum path supplies a one-shot lookup on
+   *   the forum relay, which is where a forum case's 31402 lives.
    * @returns {{ dispatched: boolean, target: string, event_id: string }}
    */
-  async handleGovernanceDecision(event) {
+  async handleGovernanceDecision(event, opts = {}) {
     if (!event || !event.id) throw new Error('event with id is required');
 
     let parsed;
@@ -207,45 +212,17 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     // reconciliation path to retry.
     let ontology = null;
     if (outcome === 'promote' || outcome === 'demote') {
-      const signerNpub = LocalProcessManagerOrchestratorAdapter._hexToNpub(
-        event.pubkey || decidingPubkey,
-      );
-      const at = new Date((Number(event.created_at) || 0) * 1000).toISOString();
-      const ontologyDeps = this._ontologyDeps || {};
-      // The 31402 this decision answers (its `e` tag): needed only for a
-      // `kind: create` proposal, whose page exists nowhere but in the
-      // proposal's diff. Looked up, never trusted blind: it must be the same
-      // case (`d` tag) as the signed 31403.
-      let proposal = null;
-      if (eTag) {
-        try {
-          const fetchRequest = ontologyDeps.fetchRequest
-            || LocalProcessManagerOrchestratorAdapter._storedGovernanceRequest;
-          const request = await fetchRequest(eTag);
-          const reqD = request && ((request.tags || []).find(t => t[0] === 'd') || [])[1];
-          if (request && (reqD || request.d_tag) === dTag) proposal = proposalFromRequest(request);
-        } catch (_) {
-          // No stored request: the ordinary (existing-page) path still applies.
-        }
-      }
-      try {
-        ontology = await applyOntologyDecision({
-          proposal,
-          outcome,
-          // The subject comes from the human's own signed content. `context_url`
-          // on the 31402 is the agent's claim; only this was signed by the
-          // party whose authority the corpus write rests on.
-          iri: parsed.iri || null,
-          page: parsed.page || null,
-          signerNpub,
-          at,
-          caseId: caseId || dTag,
-          // C5: the 31402's `d` tag IS the proposal digest, and the 31403
-          // carries it back so request and response correlate on one value.
-          digest: dTag,
-        }, ontologyDeps);
-      } catch (err) {
-        ontology = { applied: false, error: String((err && err.message) || err) };
+      // WHO may write the corpus is decided before anything else is read: a
+      // signature only proves which key signed, and a corpus write rests on
+      // that key belonging to a human the operator named. Refusals are
+      // recorded, never thrown, like every other failure on this branch.
+      const refusal = LocalProcessManagerOrchestratorAdapter._ontologySignerRefusal(event);
+      if (refusal) {
+        ontology = { applied: false, refused: true, error: refusal };
+      } else {
+        ontology = await this._applyOntologyBranch(event, {
+          parsed, outcome, caseId, dTag, eTag, decidingPubkey, fetchRequest: opts.fetchRequest,
+        });
       }
     }
 
@@ -359,6 +336,143 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     }
 
     return { dispatched: true, target: 'file', event_id: event.id, activity_urn: activityUrn, receipt_urn: receiptUrn, ontology };
+  }
+
+  /**
+   * The ADR-2109 apply, for a decision whose signer has already been admitted.
+   *
+   * The 31402 this decision answers (its `e` tag) is looked up — the pod's
+   * stored copy first, then the caller's fetcher (the forum relay) — and
+   * never trusted blind: it must be the same case (`d` tag) as the signed
+   * 31403, and the proposal it carries must be about the very IRI the human
+   * signed. A promote whose request cannot be found is refused: without the
+   * proposal there is no telling whether the human approved the page as it
+   * stands or an amendment to it, and stamping the former for the latter
+   * would attach a signature to bytes nobody saw.
+   *
+   * @private
+   * @returns {Promise<object>} the apply result, or `{applied:false, error}`
+   */
+  async _applyOntologyBranch(event, ctx) {
+    const { parsed, outcome, caseId, dTag, eTag, decidingPubkey } = ctx;
+    const signerNpub = LocalProcessManagerOrchestratorAdapter._hexToNpub(
+      event.pubkey || decidingPubkey,
+    );
+    const at = new Date((Number(event.created_at) || 0) * 1000).toISOString();
+    const ontologyDeps = this._ontologyDeps || {};
+    const signedIri = parsed.iri || null;
+
+    let proposal = null;
+    if (eTag) {
+      let request = null;
+      try {
+        const stored = ontologyDeps.fetchRequest
+          || LocalProcessManagerOrchestratorAdapter._storedGovernanceRequest;
+        request = await stored(eTag);
+        if (!request && typeof ctx.fetchRequest === 'function') request = await ctx.fetchRequest(eTag);
+      } catch (_) {
+        request = null;
+      }
+      if (request) {
+        const reqD = ((request.tags || []).find(t => t[0] === 'd') || [])[1] || request.d_tag;
+        if (reqD !== dTag) {
+          return { applied: false, refused: true,
+            error: `ontology-apply: request ${eTag} is case ${reqD}, not the decision's ${dTag}` };
+        }
+        proposal = proposalFromRequest(request);
+        if (proposal && proposal.iri && proposal.iri !== signedIri) {
+          return { applied: false, refused: true,
+            error: `ontology-apply: the signed iri ${signedIri} is not the proposal's ${proposal.iri}` };
+        }
+      } else if (outcome === 'promote') {
+        return { applied: false, refused: true,
+          error: `ontology-apply: the request ${eTag} this promote answers could not be found; ` +
+            'refusing to guess what was approved' };
+      }
+    }
+
+    try {
+      return await applyOntologyDecision({
+        proposal,
+        outcome,
+        // The subject comes from the human's own signed content. `context_url`
+        // on the 31402 is the agent's claim; only this was signed by the
+        // party whose authority the corpus write rests on.
+        iri: signedIri,
+        page: parsed.page || null,
+        signerNpub,
+        at,
+        caseId: caseId || dTag,
+        // C5: the 31402's `d` tag IS the proposal digest, and the 31403
+        // carries it back so request and response correlate on one value.
+        digest: dTag,
+        // The commit trailer names the decision that authorised the write.
+        eventId: event.id,
+        // Should the signed content ever say what kind of proposal it
+        // approved, an amend with no proposal to apply is refused downstream.
+        kind: parsed.kind || null,
+      }, ontologyDeps);
+    } catch (err) {
+      return {
+        applied: false,
+        error: String((err && err.message) || err),
+        ...(err && err.code && typeof err.code === 'string' ? { code: err.code } : {}),
+        ...(err && Array.isArray(err.blockers) ? { blockers: err.blockers } : {}),
+      };
+    }
+  }
+
+  /**
+   * Why a decision's signer may NOT write the corpus, or null when it may.
+   *
+   * The roster is `AGENTBOX_FORUM_GOVERNANCE_SIGNERS` (agentbox.toml
+   * `[sovereign_mesh.forum_governance].signers`), read per call so a test or
+   * an operator change needs no restart. Fail closed throughout: an empty
+   * roster refuses everyone, and so does a missing pubkey. A decision signed
+   * by THIS box's own identity is refused even when that key is on the
+   * roster: the agent holds that key, so its signature proves no human
+   * approved anything, and the commit would carry a false
+   * `Signed-off-by-human` trailer.
+   */
+  static _ontologySignerRefusal(event) {
+    const roster = LocalProcessManagerOrchestratorAdapter._forumGovernanceSigners();
+    if (roster.size === 0) {
+      return 'ontology-apply: no forum governance signers are configured ' +
+        '([sovereign_mesh.forum_governance].signers is empty); refusing every corpus write';
+    }
+    const signer = String((event && event.pubkey) || '').toLowerCase();
+    if (!signer || !roster.has(signer)) {
+      return `ontology-apply: ${signer || 'an unsigned decision'} is not on the forum governance signer roster`;
+    }
+    if (LocalProcessManagerOrchestratorAdapter._ownPubkeys().has(signer)) {
+      return `ontology-apply: ${signer} is this agentbox's own identity — a self-signed decision is not a human's`;
+    }
+    return null;
+  }
+
+  /** The configured roster as a set of lowercase hex pubkeys. @private */
+  static _forumGovernanceSigners() {
+    return new Set(String(process.env.AGENTBOX_FORUM_GOVERNANCE_SIGNERS || '')
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(s => /^[0-9a-f]{64}$/.test(s)));
+  }
+
+  /** This box's own signing identities, hex. @private */
+  static _ownPubkeys() {
+    const own = new Set();
+    for (const k of ['AGENTBOX_PUBKEY', 'AGENTBOX_PUBKEY_HEX', 'AGENTBOX_X_ONLY_PUBKEY_HEX']) {
+      const v = String(process.env[k] || '').trim().toLowerCase();
+      if (/^[0-9a-f]{64}$/.test(v)) own.add(v);
+    }
+    for (const npub of String(process.env.AGENTBOX_NPUB || '').split(',')) {
+      if (!npub.trim()) continue;
+      try {
+        const { type, data } = require('nostr-tools').nip19.decode(npub.trim());
+        if (type === 'npub') own.add(String(data).toLowerCase());
+      } catch (_) { /* not an npub, or nostr-tools absent */ }
+    }
+    return own;
   }
 
   /**

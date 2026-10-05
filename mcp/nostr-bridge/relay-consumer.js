@@ -45,11 +45,24 @@
  *   - I09 attempts[] timestamps are strictly increasing
  *   - I10 recipient_npub matches a local AgentIdentity.npub
  *
+ * Forum governance (agentbox.toml [sovereign_mesh.forum_governance]):
+ *   A forum admin's signed ontology Promote/Demote (kind 31403) is published
+ *   on the public forum relay and never carries a `p` tag for a local npub, so
+ *   the loopback path above can never see it. When BOTH a relay URL and a
+ *   signer roster are configured, ONE extra connection to the forum relay
+ *   subscribes to `{kinds:[31403], authors:<roster>, since:<cursor>}` and hands
+ *   each verified, roster-authored decision to the orchestrator. The cursor is
+ *   persisted, and every REQ (first, post-AUTH replay, keepalive refresh)
+ *   carries it: the forum relay is a Worker over D1 whose free-tier read quota
+ *   an unbounded REQ burns. Either value empty = the path is off.
+ *
  * Gated on env vars set by flake.nix:
  *   AGENTBOX_RELAY_ENABLED=true|false
  *   AGENTBOX_RELAY_PORT=7777
  *   AGENTBOX_RELAY_POLICY=allowlist|signed-only|open
  *   AGENTBOX_RELAY_POD_BRIDGE=true|false   (set by the ADR-009 manifest)
+ *   AGENTBOX_FORUM_GOVERNANCE_RELAY=wss://…   ([sovereign_mesh.forum_governance].relay_url)
+ *   AGENTBOX_FORUM_GOVERNANCE_SIGNERS=<hex>,… ([sovereign_mesh.forum_governance].signers)
  */
 
 const fs = require('fs');
@@ -77,6 +90,15 @@ const JOB_SETTLEMENT_KIND = 38201;
 // forum humans publish 31403 ActionResponse (inbound).
 const GOVERNANCE_KIND_MIN = 31400;
 const GOVERNANCE_KIND_MAX = 31405;
+
+// Forum-governance subscription (see the header). The cursor is the newest
+// decision's created_at; REQs ask from SLACK before it so a decision stamped a
+// little earlier than one already seen (clock skew between admins) is not lost.
+// The first ever start looks back a week; after that the persisted cursor rules.
+const FORUM_CURSOR_SLACK_S = 60;
+const FORUM_FIRST_LOOKBACK_S = 7 * 24 * 3600;
+const FORUM_REQUEST_FETCH_TIMEOUT_MS = 10_000;
+const HEX64 = /^[0-9a-f]{64}$/;
 
 const DEFAULT_OUTBOX_POLL_MS = 500;
 const DEFAULT_OUTBOX_RETRY_BACKOFF = [1_000, 5_000, 30_000, 300_000];
@@ -107,6 +129,14 @@ class RelayConsumer {
    *                                                  and lets downstream handlers poll. The marker
    *                                                  write is always durable regardless of whether
    *                                                  a spec is provided.
+   * @param {object}   [opts.forumGovernance]      - Forum 31403 ingress. Defaults
+   *                                                  from AGENTBOX_FORUM_GOVERNANCE_RELAY /
+   *                                                  _SIGNERS; off unless both are set.
+   * @param {string}   [opts.forumGovernance.relayUrl]
+   * @param {string[]} [opts.forumGovernance.signers]  - hex pubkeys whose 31403s are taken
+   * @param {string}   [opts.forumGovernance.stateFile] - cursor + seen-id persistence
+   * @param {object}   [opts.forumGovernance.bridge]    - injected NostrBridge (tests)
+   * @param {object}   [opts.forumGovernance.authSigner] - NIP-42 signer; default loadSigner(stack)
    * @param {object}   [opts.logger=console]       - Structured logger (pino-style)
    * @param {Function} [opts.verifyEvent]          - Override for tests
    * @param {Function} [opts.now=() => Date.now()] - Clock injection for tests
@@ -177,7 +207,13 @@ class RelayConsumer {
     // another process owns.
     this._seenEventIds = new Set();
 
+    this._forum = this._forumConfig(opts.forumGovernance);
+
     this._metrics = {
+      forum_governance_accepted: 0,
+      forum_governance_rejected_sig: 0,
+      forum_governance_rejected_author: 0,
+      forum_governance_rejected_duplicate: 0,
       inbound_accepted: 0,
       inbound_rejected_sig: 0,
       inbound_rejected_policy: 0,
@@ -237,6 +273,13 @@ class RelayConsumer {
       fanout: this._fanout,
       kinds: this._allowedKinds,
     }, 'relay-consumer started');
+    // Fail-open: the forum path is an addition; a fault in it must never take
+    // the loopback consumer down with it.
+    try {
+      await this._startForumGovernance();
+    } catch (err) {
+      this._logger.warn({ err }, 'forum-governance-start-failed');
+    }
   }
 
   async stop() {
@@ -244,6 +287,7 @@ class RelayConsumer {
     this._outboxTimer = null;
     if (this._subId) this._bridge.unsubscribe(this._subId);
     await this._bridge.disconnect();
+    await this._stopForumGovernance();
   }
 
   metrics() {
@@ -272,6 +316,229 @@ class RelayConsumer {
    */
   _isMultiUserMode() {
     return this._multiUser && this._multiUser.enabled === true;
+  }
+
+  // ── forum governance (31403 from the public forum relay) ─────────────────
+
+  /**
+   * Resolve the forum-governance settings. The feature is ON only when a relay
+   * URL AND at least one well-formed signer are present: the roster is the
+   * whole authority model, so an empty or malformed one means off, never
+   * "anyone". A malformed roster entry is dropped and named in the log.
+   * @private
+   */
+  _forumConfig(fg = {}) {
+    const relayUrl = String(fg.relayUrl ?? process.env.AGENTBOX_FORUM_GOVERNANCE_RELAY ?? '').trim();
+    const raw = Array.isArray(fg.signers)
+      ? fg.signers
+      : String(process.env.AGENTBOX_FORUM_GOVERNANCE_SIGNERS || '').split(',');
+    const signers = [];
+    for (const entry of raw) {
+      const hex = String(entry || '').trim().toLowerCase();
+      if (!hex) continue;
+      if (HEX64.test(hex)) signers.push(hex);
+      else this._logger.warn({ entry: String(entry).slice(0, 16) }, 'forum-governance-signer-malformed (dropped)');
+    }
+    const firstNpub = Array.from(this._npubs)[0];
+    const stateFile = fg.stateFile
+      || process.env.AGENTBOX_FORUM_GOVERNANCE_STATE
+      // Beside the governance records this consumer already writes, on the
+      // persistent pod volume: a cursor that a rebuild wiped would replay a
+      // week of decisions, and the seen-ids are what keep that idempotent.
+      || path.join(this._podRoot, 'pods', firstNpub, 'events', 'forum-governance', 'cursor.json');
+    return {
+      enabled: Boolean(relayUrl) && signers.length > 0,
+      relayUrl,
+      signers: new Set(signers),
+      stateFile,
+      bridge: fg.bridge || null,
+      authSigner: fg.authSigner || null,
+      cursor: 0,              // newest created_at accepted (unix seconds)
+      seen: new Map(),        // event id → created_at, pruned behind the cursor
+      subId: null,
+      chain: Promise.resolve(), // decisions apply one at a time (one git index)
+    };
+  }
+
+  /** The `since` every forum REQ carries: the cursor less the skew slack. @private */
+  _forumSince() {
+    return Math.max(0, this._forum.cursor - FORUM_CURSOR_SLACK_S);
+  }
+
+  /** @private */
+  _loadForumState() {
+    const f = this._forum;
+    const nowS = Math.floor(this._now() / 1000);
+    f.cursor = nowS - FORUM_FIRST_LOOKBACK_S;
+    try {
+      const state = JSON.parse(fs.readFileSync(f.stateFile, 'utf8'));
+      if (Number.isFinite(state.cursor) && state.cursor > 0) f.cursor = Math.min(state.cursor, nowS);
+      for (const [id, at] of Object.entries(state.seen || {})) {
+        if (HEX64.test(id) && Number.isFinite(at)) f.seen.set(id, at);
+      }
+    } catch (err) {
+      if (err.code !== 'ENOENT') this._logger.warn({ err: err.message }, 'forum-governance-state-unreadable (starting from the default look-back)');
+    }
+  }
+
+  /**
+   * Persist cursor + seen ids atomically. Seen ids older than the REQ window
+   * can never be re-delivered, so they are pruned rather than kept forever.
+   * @private
+   */
+  _saveForumState() {
+    const f = this._forum;
+    const floor = this._forumSince() - FORUM_CURSOR_SLACK_S;
+    for (const [id, at] of f.seen) if (at < floor) f.seen.delete(id);
+    try {
+      fs.mkdirSync(path.dirname(f.stateFile), { recursive: true });
+      this._writeAtomic(f.stateFile, { cursor: f.cursor, seen: Object.fromEntries(f.seen) });
+    } catch (err) {
+      this._logger.warn({ err: err.message }, 'forum-governance-state-write-failed');
+    }
+  }
+
+  /** @private */
+  async _startForumGovernance() {
+    const f = this._forum;
+    if (!f || !f.enabled) return;
+    this._loadForumState();
+    f.bridge = f.bridge || new NostrBridge({ relays: [f.relayUrl], subscribeKinds: [kinds.ACTION_RESPONSE] });
+    // NIP-42: the forum relay withholds events from unauthenticated sessions.
+    // Register the agent's signer BEFORE subscribing so the bridge answers the
+    // challenge and replays the REQ on the authenticated session.
+    let signer = f.authSigner;
+    if (!signer) {
+      try { signer = loadSigner(this._stack); }
+      catch (err) { this._logger.warn({ err: err.message }, 'forum-governance-no-auth-signer (unauthenticated session)'); }
+    }
+    if (signer && typeof f.bridge.setAuthSigner === 'function') f.bridge.setAuthSigner(signer);
+    await f.bridge.connect();
+    f.subId = f.bridge.subscribe(
+      { kinds: [kinds.ACTION_RESPONSE], authors: Array.from(f.signers) },
+      (event, relayUrl) => this._onForumGovernance(event, relayUrl),
+      { since: () => this._forumSince() },
+    );
+    this._logger.info({
+      relay: f.relayUrl,
+      signers: f.signers.size,
+      since: this._forumSince(),
+    }, 'forum-governance subscription started');
+  }
+
+  /** @private */
+  async _stopForumGovernance() {
+    const f = this._forum;
+    if (!f || !f.enabled || !f.bridge) return;
+    try { await f.chain; } catch (_) { /* each link already logged */ }
+    if (f.subId) f.bridge.unsubscribe(f.subId);
+    f.subId = null;
+    await f.bridge.disconnect();
+  }
+
+  /**
+   * One 31403 from the forum relay. Verified, roster-checked (the REQ's
+   * `authors` is the relay's promise; this is ours), deduplicated by id, then
+   * dispatched — with no `p`-tag requirement, because a forum decision is
+   * addressed to the case, not to this box.
+   * @private
+   */
+  _onForumGovernance(event, relayUrl) {
+    const f = this._forum;
+    if (!event || event.kind !== kinds.ACTION_RESPONSE) return;
+    if (!this._verifySig(event)) {
+      this._metrics.forum_governance_rejected_sig++;
+      this._logger.warn({ eventId: event.id, relayUrl }, 'forum-governance-sig-invalid');
+      return;
+    }
+    if (!f.signers.has(String(event.pubkey || '').toLowerCase())) {
+      this._metrics.forum_governance_rejected_author++;
+      this._logger.warn({ eventId: event.id, pubkey: event.pubkey }, 'forum-governance-author-not-in-roster');
+      return;
+    }
+    if (f.seen.has(event.id)) {
+      this._metrics.forum_governance_rejected_duplicate++;
+      return;
+    }
+    const createdAt = Number(event.created_at) || 0;
+    f.seen.set(event.id, createdAt);
+    this._metrics.forum_governance_accepted++;
+    // The cursor moves, and is persisted, only once the decision has been
+    // handled: a crash mid-apply leaves it re-deliverable on restart instead
+    // of recorded as seen and lost. A future-dated event must not drag the
+    // cursor past real time and so hide every decision made before it.
+    const settle = () => {
+      const nowS = Math.floor(this._now() / 1000);
+      f.cursor = Math.max(f.cursor, Math.min(createdAt, nowS));
+      this._saveForumState();
+    };
+
+    // The durable record, beside every other governance event this consumer
+    // keeps, under the box's own pod.
+    const owner = Array.from(this._npubs)[0];
+    this._writeGovernanceEvent(owner, event);
+
+    if (this._governanceSink) {
+      try { this._governanceSink.notify(event); } catch (err) {
+        this._logger.warn({ err, eventId: event.id }, 'governance-decision-notify-failed');
+      }
+    }
+
+    const orch = this._adapters.orchestrator;
+    if (!orch || typeof orch.handleGovernanceDecision !== 'function') {
+      settle();
+      return;
+    }
+    // Serialised: each decision may write and commit one page, and two
+    // concurrent commits in one repository contend for its index lock. A
+    // dispatch that throws is logged and settled, not retried: the orchestrator
+    // already records its own apply failures for reconciliation.
+    f.chain = f.chain
+      .then(() => orch.handleGovernanceDecision(event, {
+        fetchRequest: (id) => this._fetchForumRequest(id),
+      }))
+      .then(() => this._logger.info({ eventId: event.id }, 'forum-governance-decision-dispatched'))
+      .catch(err => this._logger.warn({ err, eventId: event.id }, 'forum-governance-decision-dispatch-failed'))
+      .then(settle);
+  }
+
+  /**
+   * Fetch the 31402 a decision answers, by id, from the forum relay: ONE
+   * `{ids:[id], kinds:[31402], limit:1}` REQ, closed at EOSE (or timeout).
+   * Resolves the event only when its signature — and so its id, which is the
+   * hash of its content — verifies and the id is the one asked for; else null.
+   * @param {string} id
+   * @returns {Promise<object|null>}
+   */
+  _fetchForumRequest(id) {
+    const f = this._forum;
+    if (!f || !f.bridge || !HEX64.test(String(id))) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      let subId = null;
+      let done = false;
+      let timer = null;
+      const finish = (value) => {
+        if (done) return;
+        done = true;
+        if (timer) clearTimeout(timer);
+        if (subId) { try { f.bridge.unsubscribe(subId); } catch (_) { /* ignore */ } }
+        resolve(value);
+      };
+      timer = setTimeout(() => finish(null), FORUM_REQUEST_FETCH_TIMEOUT_MS);
+      if (timer.unref) timer.unref();
+      subId = f.bridge.subscribe(
+        { ids: [id], kinds: [kinds.ACTION_REQUEST], limit: 1 },
+        (event) => {
+          if (event && event.id === id && event.kind === kinds.ACTION_REQUEST && this._verifySig(event)) {
+            finish(event);
+          }
+        },
+        { onEose: () => finish(null) },
+      );
+      // A synchronous EOSE/EVENT (test doubles) settles before subId is
+      // assigned; close the subscription now that its id is known.
+      if (done && subId) { try { f.bridge.unsubscribe(subId); } catch (_) { /* ignore */ } }
+    });
   }
 
   // ── inbound path ──────────────────────────────────────────────────────────

@@ -617,6 +617,41 @@ if (observability.metrics_port !== undefined) {
   }
 }
 
+// ─── E078 + W075: forum governance → corpus (ADR-2109) ───────────────────────
+//
+// E078 — [sovereign_mesh.forum_governance].relay_url, when set, must be a
+//        ws:// or wss:// URL, and every signer must be a 64-char lowercase hex
+//        pubkey. The roster is the whole authority model for a corpus write; a
+//        malformed entry is dropped at runtime, so a typo would silently
+//        narrow (or empty) it.
+// W075 — exactly one of relay_url / signers is set: the forum subscription
+//        stays off. (signers alone still admits matching decisions arriving on
+//        the loopback relay; relay_url alone admits nothing.)
+{
+  const fg = sovereignMesh.forum_governance || {};
+  const relayUrl = typeof fg.relay_url === 'string' ? fg.relay_url.trim() : '';
+  const signers = Array.isArray(fg.signers) ? fg.signers : [];
+  if (relayUrl && !/^wss?:\/\/\S+$/.test(relayUrl)) {
+    errors.push({
+      code: 'E078',
+      message: `E078: [sovereign_mesh.forum_governance].relay_url must be a ws:// or wss:// URL (got ${JSON.stringify(fg.relay_url)})`,
+    });
+  }
+  const bad = signers.filter((k) => typeof k !== 'string' || !/^[0-9a-f]{64}$/.test(k));
+  if (bad.length) {
+    errors.push({
+      code: 'E078',
+      message: `E078: [sovereign_mesh.forum_governance].signers must be 64-char lowercase hex pubkeys (npub is not accepted); offending: ${bad.map((k) => JSON.stringify(String(k).slice(0, 20))).join(', ')}`,
+    });
+  }
+  if (Boolean(relayUrl) !== (signers.length > 0)) {
+    warnings.push({
+      code: 'W075',
+      message: `W075: [sovereign_mesh.forum_governance] has ${relayUrl ? 'a relay_url but no signers' : 'signers but no relay_url'} — the forum governance subscription stays off until both are set`,
+    });
+  }
+}
+
 // ─── E065 + W065: mobile bridge egress (session-summary phone mirror) ────────
 //
 // E065 — [sovereign_mesh.mobile_bridge].enabled=true requires the embedded relay
