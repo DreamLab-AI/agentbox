@@ -330,6 +330,10 @@ vc_post() {
   fi
   VC_STATUS="${raw##*$'\n'}"
   VC_BODY="${raw%$'\n'*}"
+  # VisionClaw's ok_json! wraps every 200 in {success, data, error, timestamp};
+  # the verdict lives at .data.check. Unwrap once so everything below reads .check.
+  VC_BODY="$(printf '%s' "$VC_BODY" | jq -c 'if type == "object" and (.data? | type) == "object"
+      and ((.data.check? // .data.verdict?) != null) then .data else . end' 2>/dev/null || printf '%s' "$VC_BODY")"
   if [ "$VC_STATUS" != "200" ] || ! printf '%s' "$VC_BODY" | jq -e 'type == "object"' >/dev/null 2>&1; then
     echo "ontology-augment: ${url} returned HTTP ${VC_STATUS} — degrading (fail-open)" >&2
     VC_BODY="$(jq -nc --arg s "$VC_STATUS" --arg e "$url" '{degraded: true, reason: ("visionclaw_http_" + $s), endpoint: $e}')"

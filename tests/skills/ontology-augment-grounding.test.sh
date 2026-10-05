@@ -99,17 +99,25 @@ class H(BaseHTTPRequestHandler):
             subj = req.get("subject", "")
             scope = {"closure": "open", "generation": "https://narrativegoldmine.com/ontology/sha256-12-feedfeedfeed"}
             base = {"subject": subj, "class": req.get("class", ""), "basis": None, "witness": None, "scope": scope}
+            # The live server wraps every 200 in ok_json!'s envelope; s-bare
+            # keeps the unwrapped shape covered too.
+            def ok(payload):
+                if "s-bare" in subj:
+                    self.send_json(200, payload)
+                else:
+                    self.send_json(200, {"success": True, "data": payload, "error": None,
+                                         "timestamp": "2026-10-05T00:00:00Z", "request_id": None})
             if "s-500" in subj:
                 self.send_json(500, {"error": "Membership check failed"})
             elif "s-noverdict" in subj:
-                self.send_json(200, {"success": True})
+                ok({"success": True})
             elif "s-entailed" in subj:
-                self.send_json(200, {"success": True, "check": dict(base, verdict="entailed", basis="inferred")})
+                ok({"success": True, "check": dict(base, verdict="entailed", basis="inferred")})
             elif "s-false" in subj:
-                self.send_json(200, {"success": True, "check": dict(base, verdict="entailed_false",
+                ok({"success": True, "check": dict(base, verdict="entailed_false",
                                      witness={"asserted": "urn:x:A", "disjoint_with": "urn:x:B"})})
             else:
-                self.send_json(200, {"success": True, "check": dict(base, verdict="not_asserted")})
+                ok({"success": True, "check": dict(base, verdict="not_asserted")})
             return
         if self.path == "/mcp":
             iri = req.get("params", {}).get("arguments", {}).get("iri", "")
@@ -369,6 +377,8 @@ check "check: not_asserted → silent (open world)"      "$out" '.grounding == "
 out="$(run env VISIONCLAW_API_URL="$STUB" bash "$S" check s-500 'urn:x:C' 2>/dev/null)"; rc=$?
 check "check: HTTP 500 → degraded"                     "$out" '.grounding == "degraded" and .result.reason == "visionclaw_http_500"'
 [ "$rc" -eq 0 ] && ok "check: HTTP 500 exit 0 (fail-open)" || bad "check: HTTP 500 exit 0" "rc=$rc"
+out="$(run env VISIONCLAW_API_URL="$STUB" bash "$S" check s-entailed-s-bare 'urn:x:C' 2>/dev/null)"
+check "check: unenveloped body still answered"         "$out" '.grounding == "answered" and .result.check.verdict == "entailed"'
 out="$(run env VISIONCLAW_API_URL="$STUB" bash "$S" check s-noverdict 'urn:x:C' 2>/dev/null)"
 check "check: 200 with no verdict → degraded"          "$out" '.grounding == "degraded"'
 out="$(run env VISIONCLAW_API_URL="http://127.0.0.1:1" bash "$S" check s-entailed 'urn:x:C' 2>/dev/null)"; rc=$?
