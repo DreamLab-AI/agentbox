@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.2
+version: 0.6.3
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.3 (2026-10-05): ADR-2130 (accepted, not implemented) — diagram skills name four [model_routing] activities (diagram-polish T1, diagram-narrative T2, diagram-synthesis T3, seal-review T3 cross-family) on two new hosts, loom and zai, and never name model ids. Deterministic sealmap steps are T0. Tiers are set by measured descent and recorded per corpus in docs/diagrams/.tiers.json. Seal review is always a different model family from the author. The external Gemini review is a transport outside [model_routing]. Recorded in a dated section; the Invariants compliance surface is unchanged until the sealmap skill lands."
   - "0.6.2 (2026-10-05): PROPOSED, not ratified. ADR-2129 (host PRD-029 / DDD-023): ontology-augment distinguishes a degraded empty (Loom unreachable) from a silent empty (healthy, not asserted) and, once reachable, a contradicted answer; a silent result is never negative evidence, and every grounded answer cites the ontology generation it read. Recorded under the Loom section; the Invariants compliance surface is unchanged."
   - "0.6.1 (2026-10-02): ADR-2121 — compaction moves onto factrail (Rust, baked from one pinned DreamLab-AI/factrail commit). What Jev lets go is reduced by fact rails instead of deleted; an email-tainted session on a cloud judge is compacted on local fact rails instead of the summary (still never sent); the sticky taint is migrated across the plugin change; min_reduction_ratio retires. The email-never-leaves and result-contents-never-leave invariants are unchanged."
   - "0.6.0 (2026-09-21): PROPOSED, not ratified. ADR-2097/2100/2103 (PRD-024 sovereign settlement): every chain settlement passes the payment_settlement authority class (31402 out, signed 31403 in, hash-chained authority.deny, mirrored receipt), the daily spend budget becomes durable on the memory slot, settlement fails closed, spend authorisation counts authorising principals rather than accounts, the P21 mainnet gate becomes a build and deploy gate whose 31403 receipt is bound on-seal, and the anchor-not-seal vocabulary rule. Recorded as proposed invariants in a clearly marked section; the Invariants compliance surface above is unchanged."
@@ -19,6 +20,8 @@ changelog:
 sources:
   - agentbox.toml (cited by [section].key per ADR-2052 — [skills.ontology.condense].endpoint, [dream_machine].loom_url/.loom_model/.loom_max_tokens, [[interaction_plane.session_seeds]], [interaction_plane] N-05 token auth, the [skills.*] gates, [skills.ontology].direct_axiom_load)
   - agentbox/skills/SKILL-DIRECTORY.md
+  - agentbox/services/agentbox-manifest/src/routing.rs ([model_routing.routes] grammar and host → provider map)
+  - agentbox/skills/sealmap-review/SKILL.md (external diagrams-only review transport)
   - agentbox/docs/proposals/sovereign-system-one.md (PRD-023) + sovereign-system-one-domain.md (DDD-021/BC24)
   - agentbox/skills/lint-skills.sh
   - agentbox/skills/tree-search-coder/SKILL.md
@@ -576,3 +579,28 @@ refusal journals `authority.deny`. Alongside it,
 `grep -n "require('../lib/authority')" management-api/routes/payments.js` must be non-empty, the
 daily budget must survive `supervisorctl restart management-api`, and a chain-settling call with
 `sidestr-node` stopped must be refused rather than waved through.
+
+## Diagram model routing — 2026-10-05
+
+ADR-2130 (accepted; implementation `none`, activation `inactive`) records the owner's decision
+from sealmap DESIGN §6. Diagram skills name `[model_routing]` activities and never name model
+ids. Deterministic steps (extraction, symbol to line, staleness, pack) are **T0** in `sealmap`
+and cost zero tokens. Four activities are added: `diagram-polish` (T1, `loom:qwen3.8-27B` or
+Claude Haiku), `diagram-narrative` (T2, Sonnet), `diagram-synthesis` (T3, Opus, with T4 Fable as
+its rung) and `seal-review` (T3 cross-family, `zai:glm-5.3` for Claude-authored work, with T4
+on a contract-class disagreement). The escalation triggers are checked by the skill; the
+grammar names only the next rung. Two hosts are added. **`loom`** is the Ontology Loom façade
+(`${LOOM_BASE_URL}`, the `:8084` door, or the sidecar `http://loom:8080`): OpenAI-compatible,
+keyless, LAN, with `{"loom_options":{"scaffold":false}}` for non-ontology subjects. **`zai`**
+is GLM on Z.AI's Anthropic Messages API (`[providers.zai]`, `[consultants.zai]`): metered, on
+the egress path ADR-2053 names. Tiers are lowered one step at a time while accuracy holds within
+0.03, and each step is confirmed on held-out data. De-escalation is sticky per corpus in
+`docs/diagrams/.tiers.json`, and seal review is always a different family from the author.
+`sealmap-review` reaches Gemini 3.8 Flash directly with `GEMINI_API_KEY` from `.env`. It is a
+review transport outside `[model_routing]` and is not a `seal-review` substitute.
+
+**Not yet true of the code.** `routing.rs:82-87` admits only the `claude|codex` hosts, and
+`routing.rs:68-73` maps any other host to `codex`. The routes, both hosts, explicit provider arms
+and the `.tiers.json` reader ship together with the `sealmap` skill (DESIGN §10 step 5). The
+two rules (activities rather than ids, and cross-family seal review) move into *Invariants*
+when that lands with a test that refuses a same-family seal review.

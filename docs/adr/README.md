@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_115 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_117 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -178,3 +178,5 @@ _115 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2121](ADR-2121-factrail-implements-jev-compaction.md) | Implement Jev compaction with factrail — fact rails in Rust, baked at a pinned commit | GOVERNANCE-capabilities | 2026-10-02 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2122](ADR-2122-role-service-accounts-run-secrets-and-the-identity-port.md) | Role service accounts, /run/secrets, and the identity port | SECURITY-profiles | 2026-10-03 | proposed | partial | inactive | — | — | jjohare | agentbox |
 | [ADR-2123](ADR-2123-govern-the-ruflo-memory-cli-on-the-sidecar.md) | Govern the ruflo memory CLI on the ruvector-postgres sidecar | — | 2026-10-03 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2129](ADR-2129-ontology-grounding-treats-silence-as-unknown-and-cites-its-generation.md) | Agent ontology grounding treats corpus silence as unknown, and every grounded answer cites the ontology generation it read | GOVERNANCE-capabilities | 2026-10-05 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2130](ADR-2130-diagram-work-routes-by-activity-with-measured-tiers.md) | Diagram skills route by four model_routing activities on loom and zai hosts, with tiers set by measured descent and seal review always cross-family | GOVERNANCE-capabilities | 2026-10-05 | accepted | none | inactive | — | — | jjohare | agentbox |
