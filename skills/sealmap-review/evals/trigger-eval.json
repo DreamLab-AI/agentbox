@@ -1,0 +1,22 @@
+[
+{"query":"we're thinking of taking over the campaignbuilder platform from the contractor next month. there's a docs/diagrams corpus in the repo (45 topics). before I sign anything can you tell me what would worry you about running it in production?","should_trigger":true},
+{"query":"pre-mortem the co-created system for me — assume it falls over badly in a year, what was the cause? use the diagrams in docs/diagrams, they're up to date as of this morning","should_trigger":true},
+{"query":"get gemini to give the diagrams-as-code pack a hard look, I want an outside model's take not yours, critical not cheerleading","should_trigger":true},
+{"query":"i've just finished the enclosure topics in docs/diagrams/enclosure. can you check the sequence diagrams there still match what the code actually does? I changed spool.ts and ship.ts a fair bit","should_trigger":true},
+{"query":"technical due diligence on this repo please. we have the full diagram corpus with the register, a client is asking whether the multi-tenant isolation story holds up","should_trigger":true},
+{"query":"give me an honest, unflattering opinion of this project's architecture from the docs/diagrams corpus — biggest risks first, with evidence","should_trigger":true},
+{"query":"before we ship v2 of control-plane, run an external review over the architecture diagrams and file whatever it finds as hypotheses for the team to test","should_trigger":true},
+{"query":"the audit topic in docs/diagrams/control-plane/07-audit.md cites a bunch of path:line spans, has the code drifted away from what the diagrams claim? verify them against HEAD","should_trigger":true},
+{"query":"do a blind review — strip the register (tensions/debt/drift) out of the diagram corpus and see what risks a reviewer can still find from the diagrams alone","should_trigger":true},
+{"query":"what would keep you up at night operating this system? there's a full diagrams-as-code set under docs/diagrams for every subsystem","should_trigger":true},
+{"query":"review PR #412 on campaignbuilder, it touches the migration runner and I want bugs flagged before merge","should_trigger":false},
+{"query":"write the diagrams-as-code topic for the new foreman scheduler, cite the code as path:line and add it to the register","should_trigger":false},
+{"query":"re-stamp the whole docs/diagrams corpus against HEAD and regenerate REGISTER.md and the indexes, the generator gate is failing","should_trigger":false},
+{"query":"make me a single mermaid sequence diagram of the oauth login flow for the README","should_trigger":false},
+{"query":"do some due diligence on Supabase vs Neon for our postgres hosting — pricing, branching, region availability in the UK","should_trigger":false},
+{"query":"the test suite in control-plane is red after my last change, 3 failures in authorise.test.ts, can you work out why and fix it","should_trigger":false},
+{"query":"explain this codebase to the new CFO, she's not technical, a short doc with a couple of pictures","should_trigger":false},
+{"query":"run a security review of the pending changes on this branch, especially the token handling in auth/","should_trigger":false},
+{"query":"ask gemini what the best practice is for structuring a monorepo with pnpm workspaces and turborepo","should_trigger":false},
+{"query":"render all the mermaid diagrams in docs/diagrams to svg and check none of them are wider than 4500px","should_trigger":false}
+]
