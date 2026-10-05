@@ -152,8 +152,16 @@ function vaultBin() {
   return process.env.VAULT_BIN || 'vault';
 }
 
-function loomBase() {
-  return (process.env.LOOM_BASE_URL || DEFAULT_LOOM_BASE).replace(/\/+$/, '');
+/**
+ * The Loom façade root that `/loom/attest` hangs off. The estate exports
+ * `LOOM_BASE_URL` as the OpenAI-compatible root, ending `/v1`, and
+ * `LOOM_FACADE_URL` as the bare door; the ledger route is NOT under `/v1`, so
+ * the bare door wins and a trailing `/v1` is stripped (a `/v1/loom/attest`
+ * 404s, and every attestation was lost to it).
+ */
+function loomBase(env = process.env) {
+  const raw = env.LOOM_FACADE_URL || env.LOOM_BASE_URL || DEFAULT_LOOM_BASE;
+  return raw.replace(/\/+$/, '').replace(/\/v1$/, '');
 }
 
 /**
@@ -928,5 +936,6 @@ module.exports = {
   slugify,
   iriSlug,
   attest,
+  loomBase,
   DEFAULT_LOOM_BASE,
 };

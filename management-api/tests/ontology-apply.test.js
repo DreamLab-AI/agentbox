@@ -1118,3 +1118,10 @@ test('the push is held when other sessions\' commits are also ahead of the upstr
   assert.match(result.pushHeld, /35 other unpushed commit/);
   assert.ok(!runGit.calls.some(a => a[2] === 'push'), 'nothing is pushed');
 });
+
+test('the attest route is off the bare Loom door, never under /v1', () => {
+  assert.equal(apply.loomBase({ LOOM_BASE_URL: 'http://door:8084/v1' }), 'http://door:8084');
+  assert.equal(apply.loomBase({ LOOM_BASE_URL: 'http://door:8084/v1/' }), 'http://door:8084');
+  assert.equal(apply.loomBase({ LOOM_FACADE_URL: 'http://door:8084', LOOM_BASE_URL: 'http://x/v1' }), 'http://door:8084');
+  assert.equal(apply.loomBase({}), 'http://loom:8080');
+});
