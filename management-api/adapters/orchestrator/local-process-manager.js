@@ -17,7 +17,10 @@ const { BaseAdapter } = require('../base');
 const { NotFound, SpawnError } = require('../errors');
 const CONTRACT_VERSIONS = require('../contract-versions');
 const uris = require('../../lib/uris');
-const { applyOntologyDecision, proposalFromRequest } = require('../../lib/ontology-apply');
+const { applyOntologyDecision, proposalFromRequest, canonicalDigest } = require('../../lib/ontology-apply');
+
+/** The ACSP panel whose cases are corpus proposals (nostr-bbs-core PANEL_ONTOLOGY_GOVERNANCE). */
+const ONTOLOGY_PANEL = 'ontology-governance';
 
 class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
   /**
@@ -211,7 +214,16 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     // the failure leaves the receipt ladder honestly at `not-applied` for the
     // reconciliation path to retry.
     let ontology = null;
-    if (outcome === 'promote' || outcome === 'demote') {
+    if (outcome === 'approve') {
+      // An `approve` on an ontology-governance AMEND is the human approving
+      // that exact diff: the 31403's `d` tag is the proposal's content
+      // digest, so the signature binds the change itself. It applies as a
+      // promote, taking the IRI from the verified request (null = not an
+      // ontology amend, and the approve is dispatched as before).
+      ontology = await this._ontologyApprove(event, {
+        parsed, caseId, dTag, eTag, decidingPubkey, fetchRequest: opts.fetchRequest,
+      });
+    } else if (outcome === 'promote' || outcome === 'demote') {
       // WHO may write the corpus is decided before anything else is read: a
       // signature only proves which key signed, and a corpus write rests on
       // that key belonging to a human the operator named. Refusals are
@@ -353,6 +365,56 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
    * @private
    * @returns {Promise<object>} the apply result, or `{applied:false, error}`
    */
+  /**
+   * Resolve an `approve` that answers an ontology-governance `kind: amend`
+   * request into the promote it means, or null when it is not one.
+   *
+   * Only a request that is (1) the same case as the decision, (2) routed to
+   * the ontology-governance panel, (3) an amend, and (4) whose digest is the
+   * decision's `d` tag qualifies, so the human's signature over `d` is a
+   * signature over the diff `vault apply` will write (and `vault apply`
+   * re-derives that digest from the content before writing). The roster
+   * check then runs exactly as for a signed promote.
+   */
+  async _ontologyApprove(event, ctx) {
+    const { dTag, eTag } = ctx;
+    if (!eTag || !dTag) return null;
+    const ontologyDeps = this._ontologyDeps || {};
+    let request = null;
+    try {
+      const stored = ontologyDeps.fetchRequest
+        || LocalProcessManagerOrchestratorAdapter._storedGovernanceRequest;
+      request = await stored(eTag);
+      if (!request && typeof ctx.fetchRequest === 'function') request = await ctx.fetchRequest(eTag);
+    } catch (_) {
+      return null;
+    }
+    if (!request) return null;
+    const tags = request.tags || [];
+    const reqD = (tags.find(t => t[0] === 'd') || [])[1] || request.d_tag;
+    const panel = (tags.find(t => t[0] === 'panel') || [])[1]
+      || ((tags.find(t => t[0] === 'a') || [])[1] || '').split(':')[2];
+    if (reqD !== dTag || panel !== ONTOLOGY_PANEL) return null;
+    const proposal = proposalFromRequest(request);
+    if (!proposal || (proposal.kind || 'amend') !== 'amend' || !proposal.iri) return null;
+    if (canonicalDigest(proposal.digest) !== canonicalDigest(dTag)) {
+      return { applied: false, refused: true, via: 'approve',
+        error: `ontology-apply: proposal digest ${proposal.digest} is not the approved case ${dTag}` };
+    }
+    const refusal = LocalProcessManagerOrchestratorAdapter._ontologySignerRefusal(event);
+    if (refusal) return { applied: false, refused: true, via: 'approve', error: refusal };
+    const result = await this._applyOntologyBranch(event, {
+      ...ctx,
+      parsed: { ...ctx.parsed, iri: proposal.iri, kind: 'amend' },
+      outcome: 'promote',
+      // The request was just verified; hand it straight back rather than
+      // asking the relay for it a second time.
+      fetchRequest: async () => request,
+      preferCtxFetch: true,
+    });
+    return { ...result, via: 'approve' };
+  }
+
   async _applyOntologyBranch(event, ctx) {
     const { parsed, outcome, caseId, dTag, eTag, decidingPubkey } = ctx;
     const signerNpub = LocalProcessManagerOrchestratorAdapter._hexToNpub(
@@ -366,10 +428,14 @@ class LocalProcessManagerOrchestratorAdapter extends BaseAdapter {
     if (eTag) {
       let request = null;
       try {
-        const stored = ontologyDeps.fetchRequest
-          || LocalProcessManagerOrchestratorAdapter._storedGovernanceRequest;
-        request = await stored(eTag);
-        if (!request && typeof ctx.fetchRequest === 'function') request = await ctx.fetchRequest(eTag);
+        if (ctx.preferCtxFetch && typeof ctx.fetchRequest === 'function') {
+          request = await ctx.fetchRequest(eTag);
+        } else {
+          const stored = ontologyDeps.fetchRequest
+            || LocalProcessManagerOrchestratorAdapter._storedGovernanceRequest;
+          request = await stored(eTag);
+          if (!request && typeof ctx.fetchRequest === 'function') request = await ctx.fetchRequest(eTag);
+        }
       } catch (_) {
         request = null;
       }

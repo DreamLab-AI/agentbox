@@ -1047,3 +1047,63 @@ test('against a real git repository, other sessions\' dirty and staged files are
   const status = git('status', '--porcelain').split('\n').filter(Boolean).sort();
   assert.deepEqual(status, ['?? knowledge/pages/Other.md', 'M  ontology/vocabulary.yaml']);
 });
+
+// ── `approve` on an ontology AMEND applies as the promote it means ─────────
+
+/** A forum 31402 routed to the ontology panel whose `d` is the proposal digest. */
+const amendRequest = (over = {}, tags = null) => ({
+  tags: tags || [['d', DIGEST_HEX], ['panel', 'ontology-governance']],
+  content: JSON.stringify(amendProposal(over)),
+});
+const approveEvent = () => ({
+  id: 'e'.repeat(64), pubkey: ADMIN_HEX, kind: 31403, created_at: 1790078400,
+  tags: [['d', DIGEST_HEX], ['e', 'r'.repeat(64)]],
+  content: JSON.stringify({ action: 'approve', reasoning: 'agreed' }),
+});
+
+test('an approve of an ontology amend runs vault apply with the request\'s IRI', async (t) => {
+  const stub = stubVault(t);
+  withRoster(t, ADMIN_HEX);
+  inScratchCwd(t);
+  const adapter = new LocalProcessManagerOrchestratorAdapter({});
+  adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => amendRequest() };
+  const res = await adapter.handleGovernanceDecision(approveEvent());
+  assert.deepEqual([res.ontology.applied, res.ontology.via], [true, 'approve']);
+  assert.deepEqual(stub.calls().map(c => c[0]), ['apply']);
+  assert.deepEqual(stub.appliedProposal(), amendProposal());
+});
+
+test('an approve outside the ontology panel, or of a non-amend, is not a corpus write', async (t) => {
+  const stub = stubVault(t);
+  withRoster(t, ADMIN_HEX);
+  inScratchCwd(t);
+  const adapter = new LocalProcessManagerOrchestratorAdapter({});
+  for (const request of [
+    amendRequest({}, [['d', DIGEST_HEX], ['panel', 'dream-machine']]),
+    amendRequest({ kind: 'create' }),
+    { tags: [['d', 'other']], content: JSON.stringify(amendProposal()) },
+    null,
+  ]) {
+    adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => request };
+    const res = await adapter.handleGovernanceDecision(approveEvent());
+    assert.equal(res.ontology, null);
+  }
+  assert.deepEqual(stub.calls(), []);
+});
+
+test('an approve whose proposal digest is not the case refuses; off-roster approves refuse', async (t) => {
+  const stub = stubVault(t);
+  inScratchCwd(t);
+  const adapter = new LocalProcessManagerOrchestratorAdapter({});
+  withRoster(t, ADMIN_HEX);
+  adapter._ontologyDeps = { fetchFn: stubFetch(200),
+    fetchRequest: async () => amendRequest({ digest: `sha256:${'0'.repeat(64)}` }) };
+  let res = await adapter.handleGovernanceDecision(approveEvent());
+  assert.deepEqual([res.ontology.applied, res.ontology.refused], [false, true]);
+  assert.match(res.ontology.error, /is not the approved case/);
+  process.env.AGENTBOX_FORUM_GOVERNANCE_SIGNERS = 'b'.repeat(64);
+  adapter._ontologyDeps = { fetchFn: stubFetch(200), fetchRequest: async () => amendRequest() };
+  res = await adapter.handleGovernanceDecision(approveEvent());
+  assert.match(res.ontology.error, /is not on the forum governance signer roster/);
+  assert.deepEqual(stub.calls(), []);
+});
