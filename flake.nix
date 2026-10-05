@@ -39,7 +39,7 @@
     # Pin the parent VisionClaw commit so the corpus door is reproducible and
     # cannot drift with a mutable branch.
     vaultSrc = {
-      url = "github:DreamLab-AI/VisionClaw/94dc0ff609237e06f5f0cbf4e93941f867a63260";
+      url = "github:DreamLab-AI/VisionClaw/d33400fa6561efb08a0fdf015dde691252bd4835";
       flake = false;
     };
 
