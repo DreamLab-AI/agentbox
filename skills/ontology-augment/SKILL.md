@@ -27,7 +27,9 @@ Two doors, both reachable from Bash:
 That split is not an implementation detail you can ignore. `vault` reads the
 corpus on disk and knows nothing of inference; the Loom serves a *built
 generation* and may be hours behind the disk. When the two disagree, say which
-one you asked.
+one you asked. A third, narrow door: `check` asks VisionClaw
+(`$VISIONCLAW_API_URL/api/ontology-agent/check`) for a tri-valued membership
+verdict, the only answer that can be `contradicted`.
 
 ## When To Use
 
@@ -59,6 +61,28 @@ No token, no bearer, no pubkey: reads are local file access plus a LAN HTTP call
 marked-degraded empty result and exits 0. Grounding is an augmentation, never a
 dependency — a turn must continue ungrounded rather than die.
 
+## Reading a result: three empties and a generation (ADR-2129)
+
+Every wrapper call prints one envelope: `grounding`, `source`, `generation`,
+`note`, and the untouched body under `result`.
+
+| `grounding` | Means | You may |
+|---|---|---|
+| `answered` | facts came back | cite them with `generation.id` |
+| `silent` | a **healthy** call found nothing: the corpus does not say | treat as *unknown*, never as "no"; propose, never assert |
+| `degraded` | nobody answered (Loom down, wrong route) | proceed ungrounded; it is evidence of nothing |
+| `contradicted` | `check` got `entailed_false` from VisionClaw (ADR-2127) | act on it as a real negative |
+
+`generation` is filled automatically: Loom calls carry `x-loom-generation` and
+`x-loom-content-digest`; `vault` calls carry the local build's
+`.generation.json` id plus the working-tree commit; `version_iri` is the
+`owl:versionIRI` whenever the response or build carries one. Quote it with any
+claim that matters. A SPARQL query using `FILTER NOT EXISTS` or `MINUS` gets a
+`negation` block reading **"not asserted at this generation"**: its rows lack a
+statement, they are not proven false. Only a positive count is `answered`; a
+healthy body whose shape the wrapper cannot count is `silent` with
+`shape: "unrecognised"` (read `.result` yourself).
+
 ## Quick Start
 
 Everything routes through one wrapper:
@@ -71,6 +95,7 @@ $S search "gaussian splatting" --limit 5       # name/semantic lookup
 $S get "Knowledge Graph"                       # one page, whole frontmatter
 $S sparql 'SELECT ?c WHERE { ?c a <http://www.w3.org/2002/07/owl#Class> } LIMIT 20'
 $S neighbours knowledge-graph                  # reasoned, else asserted
+$S check urn:x:alice urn:x:Person              # entailed | entailed_false | not_asserted
 $S validate --vault knowledge                  # OKF conformance, exit 0/1
 $S health                                      # is grounding available, how old
 ```
@@ -141,6 +166,6 @@ edit touching more than you predicted is a bug, and it should stop.
 
 ## Reference & Examples
 
-- Full flags, the two-authority model, degradation semantics, the exact `/mcp`
-  request bodies, governance: **[references/REFERENCE.md](references/REFERENCE.md)**
+- Full flags, the two-authority model, the output envelope and generation
+  resolution, degradation semantics, the exact `/mcp` request bodies, governance: **[references/REFERENCE.md](references/REFERENCE.md)**
 - Worked examples with real captured output: **[references/EXAMPLES.md](references/EXAMPLES.md)**

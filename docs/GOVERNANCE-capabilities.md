@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.1
+version: 0.6.2
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.2 (2026-10-05): PROPOSED, not ratified. ADR-2129 (host PRD-029 / DDD-023): ontology-augment distinguishes a degraded empty (Loom unreachable) from a silent empty (healthy, not asserted) and, once reachable, a contradicted answer; a silent result is never negative evidence, and every grounded answer cites the ontology generation it read. Recorded under the Loom section; the Invariants compliance surface is unchanged."
   - "0.6.1 (2026-10-02): ADR-2121 — compaction moves onto factrail (Rust, baked from one pinned DreamLab-AI/factrail commit). What Jev lets go is reduced by fact rails instead of deleted; an email-tainted session on a cloud judge is compacted on local fact rails instead of the summary (still never sent); the sticky taint is migrated across the plugin change; min_reduction_ratio retires. The email-never-leaves and result-contents-never-leave invariants are unchanged."
   - "0.6.0 (2026-09-21): PROPOSED, not ratified. ADR-2097/2100/2103 (PRD-024 sovereign settlement): every chain settlement passes the payment_settlement authority class (31402 out, signed 31403 in, hash-chained authority.deny, mirrored receipt), the daily spend budget becomes durable on the memory slot, settlement fails closed, spend authorisation counts authorising principals rather than accounts, the P21 mainnet gate becomes a build and deploy gate whose 31403 receipt is bound on-seal, and the anchor-not-seal vocabulary rule. Recorded as proposed invariants in a clearly marked section; the Invariants compliance surface above is unchanged."
   - "0.5.0 (2026-09-20): ADR-2094 — typed decisions may be answered by a local capacity-adapting facade (Sovereign System One) that speaks the Jev wire protocol; gated off by default, no cloud fallback on any path, and the ADR-2093 email fence relaxes only on an explicit backendLocal boolean from resolved config, never inferred from a URL."
@@ -237,6 +238,8 @@ The engine ships; the surrounding governance/decision/telemetry apparatus is lar
 proposal prose.
 
 ### The Ontology Loom (this document is its interim authority)
+
+> **PROPOSED (ADR-2129, 2026-10-05, not ratified).** Grounding output labels three empties, `degraded` / `silent` / `contradicted`, and cites the generation (`owl:versionIRI` per host ADR-2128, `.generation.json` id until then). `silent` is never negative evidence. Host scope: PRD-029.
 
 The Loom is **load-bearing in production** but its harness-side decision record
 (legacy ADR-051) is still `status: proposed` (`docs/reference/adr/ADR-051-...:5`). Until

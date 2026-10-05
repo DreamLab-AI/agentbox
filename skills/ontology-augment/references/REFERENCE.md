@@ -82,8 +82,21 @@ graph that is unavailable is a **200 with a degraded body**, so check the shape,
 not just the status.
 
 Response headers carry the serving identity — `x-loom-generation`,
-`x-loom-content-digest`, `x-loom-atomicity-verified`. Quote them when a result
-matters.
+`x-loom-content-digest`, `x-loom-atomicity-verified`. The wrapper copies the
+first two into every result's `generation` block (see *Output envelope*), so
+quoting them is not left to judgement.
+
+A query that uses `FILTER NOT EXISTS` or `MINUS` asks what the closure does
+**not** contain. Over an open-world corpus that answer is "not asserted at this
+generation", never "false": the wrapper adds a `negation` block saying so, and
+the rows must be reported that way.
+
+```bash
+# classes with no declared `requires` edge — NOT "classes that require nothing"
+$S sparql 'SELECT ?c WHERE { ?c a <http://www.w3.org/2002/07/owl#Class>
+  FILTER NOT EXISTS { ?c <https://narrativegoldmine.com/ns/v1#requires> ?x } } LIMIT 20'
+# → "negation": {"operators":["FILTER NOT EXISTS"],"reading":"not asserted at this generation", …}
+```
 
 ### `GET /health` — is grounding available, and how old
 
@@ -139,6 +152,90 @@ A curl POST to a LAN URL has none of those.
 
 ---
 
+## Output envelope (ADR-2129)
+
+Every subcommand prints exactly one JSON object; the Loom or `vault` body is
+kept verbatim under `result`, so a former parser of the raw body reads
+`.result` instead of `.`.
+
+```jsonc
+{
+  "grounding": "silent",              // answered | silent | degraded | contradicted
+  "degraded": false,                  // kept for older parsers; true iff grounding == degraded
+  "source": "loom",                   // loom | vault | visionclaw — which authority answered
+  "generation": {
+    "id": "visionGraph@ae913f93…",    // the generation the answer belongs to
+    "content_digest": "6afcf4aa…",
+    "version_iri": null,              // owl:versionIRI (VisionClaw ADR-2128) when carried
+    "from": "x-loom-generation header"
+  },
+  "negation": { … },                  // only for FILTER NOT EXISTS / MINUS
+  "shape": "unrecognised",            // only when a healthy body could not be counted
+  "note": "healthy call, nothing asserted or inferred matched: …",
+  "fallback": { … },                  // only when neighbours fell back to vault tree
+  "result": { "boolean": null, "columns": ["c"], "rows": [], "truncated": false }
+}
+```
+
+### How the state is decided
+
+Evaluated in order; the first that holds wins.
+
+1. **`degraded`** — the body has `degraded: true` (unreachable, non-200, or the
+   Loom's own 200-with-degraded-body), a JSON-RPC `error`, or an MCP
+   `result.isError: true`; for `check`, also a 200 with no verdict. `generation.id` is
+   null: nobody answered, so there is nothing to cite.
+2. **`contradicted`** — some object in the body has a value `entailed_false`
+   (`verdict: "entailed_false"` from `check`, VisionClaw ADR-2127). The wrapper
+   never infers this; it needs disjointness in the corpus (VisionClaw ADR-2125).
+3. **`silent`** — a query call whose count is not positive: SPARQL `rows`
+   empty, an `ASK` that answered `false`, `vault find` returning `[]`, `ask` or
+   `get` with no seed (`missing` lists unmatched ids), a `vault tree` node with
+   no `children` (vault omits the key when empty), MCP `tools/call` content
+   whose text items parse to empty JSON, or a `check` verdict `not_asserted`.
+   An `ASK` false is silent, not contradicted: no match in the closure is not
+   entailed falsity. A healthy body with **no countable shape** (prose MCP text,
+   an unknown object) is also `silent`, flagged `shape: "unrecognised"`: the
+   count is unknown, so it is never promoted to `answered`.
+4. **`answered`** — a query call with a positive count (`check` `entailed`
+   counts 1), and the reports `validate`, `propose` and `health`, which are
+   never `silent`.
+
+`silent` is the open-world answer: the corpus does not say. It is a reason to
+`propose` a fact, never to assert its negation.
+
+### Where the generation comes from
+
+| Call | `generation` |
+|---|---|
+| Loom (`sparql`, `neighbours`, `paths`) | `x-loom-generation`, `x-loom-content-digest` headers; `version_iri` from an `x-loom-version-iri` header or a `version_iri` / `versionIRI` / `owl:versionIRI` body field |
+| `health` | the body's `generation.id` / `content_digest` |
+| `check` | VisionClaw's `check.scope.generation` as `id`, and as `version_iri` when it is an IRI (ADR-2128) |
+| `vault` (`ask`, `search`, `get`, `classes`, `validate`, `propose`, the `neighbours` fallback) | the newest `.generation.json` among `<repo>/<vault.toml [build].out>`, `<repo>/site-data`, `<repo>/www`; `version_iri` = `https://narrativegoldmine.com/ontology/<ontology_digest>` once the build records one (ADR-2128); plus `working_tree_commit`, because `vault` reads the working tree, not the build |
+
+The vault repo is `VAULT_REPO` (exported at boot), else `[vault].repo` in
+`AGENTBOX_CONFIG` (default `/etc/agentbox.toml`), else derived from
+`[vault].root`. Every `vault` call is pinned to it with `--repo`, so the wrapper
+works from any directory. With no marker found, `generation.id` is null and
+`generation.reason` says why; the call still succeeds.
+
+## `check` — VisionClaw tri-valued membership (ADR-2127)
+
+```bash
+$S check <subject> <class>                         # POST {subject, class}
+$S check <subject> --property <p> --object <o>     # POST {subject, property, object}
+```
+
+`POST $VISIONCLAW_API_URL/api/ontology-agent/check`; the reply is
+`{success, check: {verdict, basis, witness, scope: {closure, generation}}}`.
+
+| `verdict` | `grounding` |
+|---|---|
+| `entailed` | `answered` (`basis`: asserted / inferred) |
+| `entailed_false` | `contradicted` (`witness`: the disjointness) |
+| `not_asserted` | `silent` (open world) |
+| unreachable, non-200, no verdict | `degraded`, exit 0 (`reason`: `visionclaw_unreachable`, `visionclaw_http_<code>`, `visionclaw_no_verdict`) |
+
 ## Degradation semantics
 
 `scripts/ontology-augment.sh` distinguishes three states, because they have three
@@ -150,12 +247,16 @@ different fixes:
 | `returned HTTP 404` | `loom_http_404` | route absent on this generation | deploy, not config |
 | `returned HTTP 400` | `loom_http_400` | your query | the query |
 
-All three exit **0** with a JSON body carrying `"degraded": true`. Never read a
-degraded empty result as "no such class" — it means nobody answered.
+All three exit **0** with `"grounding": "degraded"` and the reason under
+`result.reason`. Never read a degraded empty result as "no such class": it means
+nobody answered. A **healthy** empty result is `silent`, the other empty, and is
+not "no" either.
 
 `vault` failures are the opposite and deliberately so: a corpus that cannot be
 read is not a degraded grounding, it is a broken environment, so `vault` exits
-non-zero and the wrapper lets that through.
+non-zero and the wrapper lets that through unwrapped. A `vault` exit code that
+comes with a JSON report (`validate` exits 1 on errors) is kept, and the report
+is enveloped.
 
 ---
 
@@ -190,7 +291,11 @@ expectation; nothing else should call it by hand.
 |---|---|---|
 | `VAULT_ROOT` / `VAULT_PAGES` | corpus path authority, resolved from `[vault]` (ADR-2028) | `…/visionGraph/knowledge[/pages]` |
 | `VAULT_WORKING_ROOT` | the working vault | `…/visionGraph/working` |
+| `VAULT_REPO` | vault repository root; every `vault` call gets `--repo` | `[vault].repo` from `AGENTBOX_CONFIG` |
+| `AGENTBOX_CONFIG` | manifest read when `VAULT_REPO` is unset | `/etc/agentbox.toml` |
+| `VAULT_GENERATION_FILE` | pin the `.generation.json` cited for `vault` calls | newest under the repo's build outputs |
 | `LOOM_BASE_URL` | Loom façade base | `http://192.168.2.132:8084` |
+| `VISIONCLAW_API_URL` | VisionClaw REST base for `check` | `[skills.ontology].visionclaw_api_url`, else `http://visionclaw-server:4000` |
 | `ONTOLOGY_TIMEOUT_SECS` | per-Loom-call timeout | `10` |
 | `ONTOLOGY_ASK_MAX_DOCUMENTS` | default `ask` budget | `12` |
 | `ONTOLOGY_ASK_DEPTH` | default `ask` expansion depth | `1` |
@@ -209,6 +314,7 @@ documented cause of whole-session hangs.
 | Nix gate | `agentbox/flake.nix` `vaultCliActive` ⇐ `[vault].root` + `[vault].cli` |
 | boot liveness gate | `agentbox/config/entrypoint-unified.sh`, Phase 5d(ii) |
 | wrapper | `agentbox/skills/ontology-augment/scripts/ontology-augment.sh` |
+| wrapper test (stub Loom + stub vault) | `agentbox/tests/skills/ontology-augment-grounding.test.sh` |
 | Loom routes | `loom/crates/loom-facade/src/routes/mod.rs` |
 | Loom MCP tools | `loom/crates/loom-mcp/src/schema.rs` |
 | CLI contract | `VisionFlow/docs/engineering/sovereign-corpus-contracts.md` §C2 |

@@ -6,6 +6,10 @@ Worked examples. Outputs marked **live** were captured against the Loom on
 
 Throughout: `S=/opt/agentbox/skills/ontology-augment/scripts/ontology-augment.sh`.
 
+Since ADR-2129 every wrapper call prints an envelope (`grounding`, `source`,
+`generation`, `note`) with the body below under `result`; the bodies shown here
+are what sits in `.result`. See REFERENCE.md, *Output envelope*.
+
 ---
 
 ## Natural-language triggers
@@ -51,14 +55,21 @@ STUB-ARGV: retrieve "Price Oracle" "Escrow Contract" --expand is-a=2,requires=2,
 `truncated: true` means the `--max-documents` cap bit. It means *there is more*,
 never *that is all there is*.
 
-With no seed match you get an explicit empty, not an error:
+With no seed match you get an explicit empty, not an error (captured
+2026-10-05 against the local corpus):
 
 ```jsonc
-{ "seeds": [], "expanded": [], "degraded": false, "note": "no seed matched" }
+{ "grounding": "silent", "degraded": false, "source": "vault",
+  "generation": { "id": "visionGraph@ae913f93a23e7cd604f4c5ec94d0d48dfee8aec8",
+                  "from": ".../visionGraph/site-data/.generation.json",
+                  "working_tree_commit": "ec5af2d9…", "version_iri": null, … },
+  "note": "healthy call, nothing asserted or inferred matched: the corpus does not say at this generation. This is not negative evidence; propose, never assert (ADR-2129).",
+  "result": { "seeds": [], "expanded": [], "query": "…", "reason": "no seed matched" } }
 ```
 
-`degraded: false` is the important field there: nothing was wrong, the corpus
-genuinely has no page for that phrase. Compare with the degraded shape below.
+`silent` is the important field there: nothing was wrong, and the corpus has no
+page for that phrase. That is *unknown*, not *no*. Compare with the degraded
+shape below, where nobody answered at all.
 
 ## `search` / `get` / `classes`
 
@@ -109,7 +120,7 @@ edited five minutes ago is not in here.
 ## `health` — availability and age (live)
 
 ```bash
-$S health | jq '{ok, classes: .index_classes, generation: .generation.id, promoted: .generation.promoted_at, triples: .graph.triples}'
+$S health | jq '.result | {ok, classes: .index_classes, generation: .generation.id, promoted: .generation.promoted_at, triples: .graph.triples}'
 ```
 
 ```json
