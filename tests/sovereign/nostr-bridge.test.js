@@ -697,7 +697,7 @@ describe('NostrBridge idle subscription keepalive', () => {
   it('re-issues subscriptions under fresh ids on a HEALTHY socket, with no reconnect', () => {
     // Ping keepalive pushed out of the window: this test must prove the
     // SUBSCRIPTION refresh alone rotates ids — not a ping-death reconnect.
-    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 3600000 });
+    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 86400000 });
     bridge.connect();
     const ws = handles[RELAY];
     ws.simulateOpen();
@@ -706,7 +706,7 @@ describe('NostrBridge idle subscription keepalive', () => {
     const stableId = bridge.subscribe([kinds.AGENT_STATE], (ev) => received.push(ev));
     expect(reqIds(ws)).toEqual([stableId]);
 
-    jest.advanceTimersByTime(15000); // default subRefreshIntervalMs
+    jest.advanceTimersByTime(3600000); // default subRefreshIntervalMs
 
     const reqs = reqIds(ws);
     expect(reqs).toHaveLength(2);
@@ -721,7 +721,7 @@ describe('NostrBridge idle subscription keepalive', () => {
     expect(received.map((e) => e.id)).toEqual(['live']);
 
     // Every tick rotates again — wire ids never repeat.
-    jest.advanceTimersByTime(15000);
+    jest.advanceTimersByTime(3600000);
     expect(reqIds(ws)).toHaveLength(3);
     expect(new Set(reqIds(ws)).size).toBe(3);
 
@@ -729,7 +729,7 @@ describe('NostrBridge idle subscription keepalive', () => {
   });
 
   it('skips ticks while no connection is healthy and stops entirely on disconnect', () => {
-    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 3600000 });
+    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 3600000, subRefreshIntervalMs: 15000 });
     bridge.connect();
     const ws = handles[RELAY];
 
@@ -754,6 +754,27 @@ describe('NostrBridge idle subscription keepalive', () => {
     const sentAfter = ws._sent.length;
     jest.advanceTimersByTime(60000);
     expect(ws._sent).toHaveLength(sentAfter);
+  });
+
+  it('defaults to a 1-hour refresh (each tick replays history from D1) and honours the env override', () => {
+    const { bridge, handles } = makeBridge([RELAY], { pingIntervalMs: 86400000 });
+    bridge.connect();
+    const ws = handles[RELAY];
+    ws.simulateOpen();
+    bridge.subscribe([kinds.AGENT_STATE], () => {});
+    jest.advanceTimersByTime(3599000);
+    expect(reqIds(ws)).toHaveLength(1);
+    jest.advanceTimersByTime(1000);
+    expect(reqIds(ws)).toHaveLength(2);
+    bridge.disconnect();
+
+    process.env.AGENTBOX_BRIDGE_SUB_REFRESH_MS = '15000';
+    try {
+      const b2 = makeBridge([RELAY], { pingIntervalMs: 3600000 });
+      expect(b2.bridge._subRefreshMs).toBe(15000);
+    } finally {
+      delete process.env.AGENTBOX_BRIDGE_SUB_REFRESH_MS;
+    }
   });
 });
 

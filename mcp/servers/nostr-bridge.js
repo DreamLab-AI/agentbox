@@ -323,7 +323,20 @@ class NostrBridge {
     // under a fresh wire id on an interval UNDER that ~20s window, independent
     // of reconnects — the same reason dreamlab-ai-website's DmSession (ADR-042)
     // pokes the relay on a 12s timer. Set to 0 to disable (tests).
-    this._subRefreshMs = options.subRefreshIntervalMs ?? 15000;
+    //
+    // Default is 1 hour, not 15s (operator decision 2026-10-05: back right
+    // off). The idle-death above was the relay broadcasting to an empty session
+    // map after a fresh connection woke the hibernated DO; nostr-rust-forum
+    // f709bf0 (2026-09-26) recovers those sessions on every wake path, so the
+    // timer is now belt-and-braces, as the nostr-gateway's REARM_MS already is.
+    // Each tick replays every filter's full history from the relay's D1 (no
+    // `since`, see _refreshSubscriptions); at 15s two subscriptions cost ~1.5M
+    // D1 rows/day, over a third of the relay's 5M free-tier read budget. If
+    // deafness ever returns, a tick still catches up on missed events within
+    // one interval (an hour, worst case): tighten it with
+    // AGENTBOX_BRIDGE_SUB_REFRESH_MS rather than editing this default.
+    this._subRefreshMs = options.subRefreshIntervalMs
+      ?? (Number(process.env.AGENTBOX_BRIDGE_SUB_REFRESH_MS) || 3600000);
     this._subRefreshTimer = null;
 
     for (const url of relayUrls) {
