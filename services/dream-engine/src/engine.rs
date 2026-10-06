@@ -1189,11 +1189,8 @@ impl Engine {
         } else {
             vetoed_finding(&verdict::sanitise_finding(&report, lenient, date), &decision)
         };
-        let finding_full = format!(
-            "{}\n\nGate: {}",
-            verdict::sanitise_finding_full(&report, lenient),
-            decision.summary
-        );
+        let finding_head = verdict::sanitise_finding_full(&report, lenient);
+        let finding_full = format!("{}\n\nGate: {}", finding_head, decision.summary);
 
         // 10. Witness: bind report to the repo's current commit.
         let (wit_full, wit_short) = match witness::witness(&report, &commit) {
@@ -1248,7 +1245,7 @@ impl Engine {
         match (&prepared, decision.accepted) {
             (Some(c), true) if self.runtime.persist_accepts => {
                 candidate::cleanup(&repo_path, c);
-                let title = format!("dream({}): {}", slot.deep, tail(&finding, 60));
+                let title = pr_title(&slot.deep, &finding, &finding_head);
                 let body = format!(
                     "Draft PR opened by the dream engine on a GATED ACCEPT night ({night_id}, \
                      run `{run_id}`).\n\nCandidate tree `{tree}` was applied in isolation and the \
@@ -2044,6 +2041,25 @@ fn gate_result_line(decision: &gate::GateDecision) -> String {
     verdict::clip_words(&bare, 80)
 }
 
+/// Longest finding text in a PR title, in chars, ellipsis included.
+const PR_TITLE_FINDING_MAX: usize = 60;
+
+/// The draft-PR title for a gated ACCEPT: `dream(<deep>): <finding head>`.
+///
+/// The head comes from `cell`, the ledger finding, when it is a
+/// contract-satisfying result (a whole statement of at most 80 chars);
+/// otherwise from the first line of `full`, the uncapped finding, since a
+/// failing cell is a capped hypothesis or a pointer. Either way it is the
+/// start of the text, clipped on a word boundary with an ellipsis.
+fn pr_title(deep: &str, cell: &str, full: &str) -> String {
+    let source = if verdict::ledger_cell_ok(cell) {
+        cell
+    } else {
+        full.lines().next().unwrap_or("")
+    };
+    format!("dream({}): {}", deep, verdict::clip_words(source, PR_TITLE_FINDING_MAX))
+}
+
 /// Last `max` bytes of a string, on a char boundary.
 fn tail(s: &str, max: usize) -> &str {
     if s.len() <= max {
@@ -2182,6 +2198,39 @@ mod tests {
         let f = gate_result_line(&d);
         assert!(verdict::ledger_cell_ok(&f), "{f}");
         assert_eq!(f, "ACCEPT vetoed → REJECT by the required-check gate");
+    }
+
+    /// 2026-10-06: titles were `tail(&finding, 60)` of a finding already cut
+    /// to 80 chars, so they lost both ends ("andidatesPerGeneration … out").
+    #[test]
+    fn pr_title_takes_the_head_of_the_full_finding_on_a_word_boundary() {
+        let full = "Given the darwin evaluator caps candidatesPerGeneration at four, when the cap is \
+                    lifted to eight, then the smoke run completes without timing out";
+        let cell: String = full.chars().take(80).collect();
+        let title = pr_title("evaluator", &cell, full);
+        let tail_part = title.strip_prefix("dream(evaluator): ").expect(&title);
+        assert!(tail_part.chars().count() <= 60, "{title}");
+        assert!(tail_part.ends_with('…'), "{title}");
+        assert_eq!(tail_part, "Given the darwin evaluator caps candidatesPerGeneration at…");
+        let head = tail_part.trim_end_matches('…');
+        assert!(full.starts_with(head), "{title}");
+        assert_eq!(full.as_bytes()[head.len()], b' ', "cut on a word boundary: {title}");
+    }
+
+    /// A contract-satisfying result in the cell is the better title; a short
+    /// one is used whole.
+    #[test]
+    fn pr_title_prefers_a_result_cell_and_keeps_short_findings_whole() {
+        let full = "Given a long hypothesis that the cell replaced with tonight's result line";
+        assert_eq!(
+            pr_title("cache", "warm cache halves p50 latency (412ms → 198ms)", full),
+            "dream(cache): warm cache halves p50 latency (412ms → 198ms)"
+        );
+        // Multi-line full findings title from their first line only.
+        assert_eq!(
+            pr_title("x", "Given a b", "Given a b\n\nGate: ACCEPT upheld"),
+            "dream(x): Given a b"
+        );
     }
 
     #[test]
