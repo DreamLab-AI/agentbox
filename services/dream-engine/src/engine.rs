@@ -1187,8 +1187,7 @@ impl Engine {
         let finding = if decision.accepted || decision.vetoes.is_empty() {
             verdict::sanitise_finding(&report, lenient, date)
         } else {
-            let base = verdict::sanitise_finding(&report, lenient, date);
-            format!("VETOED: {}", base).chars().take(80).collect()
+            vetoed_finding(&verdict::sanitise_finding(&report, lenient, date), &decision)
         };
         let finding_full = format!(
             "{}\n\nGate: {}",
@@ -1975,6 +1974,44 @@ fn redact(s: &str) -> String {
     s.replace("/home/john", "~")
 }
 
+/// The ledger finding for a night whose claimed ACCEPT the gate vetoed.
+///
+/// A contract-satisfying `base` keeps its text behind a single `VETOED: `
+/// prefix (an existing prefix is not doubled), clipped on a word boundary to
+/// fit the cell. A `base` that breaks the contract — typically the "Given …"
+/// hypothesis or the "see report" fallback — is not dressed up with the prefix,
+/// which would slip a hypothesis past the `^given` rule; the gate's own result
+/// line is written instead.
+fn vetoed_finding(base: &str, decision: &gate::GateDecision) -> String {
+    let mut core = base.trim();
+    while let Some(rest) = core.strip_prefix("VETOED:") {
+        core = rest.trim_start();
+    }
+    if verdict::ledger_cell_ok(core) {
+        let prefixed = format!("VETOED: {}", verdict::clip_words(core, 80 - "VETOED: ".len()));
+        if verdict::ledger_cell_ok(&prefixed) {
+            return prefixed;
+        }
+    }
+    gate_result_line(decision)
+}
+
+/// A contract-satisfying finding that states what the gate decided: its
+/// summary clipped to the cell, or, when the summary itself breaks the
+/// contract, the bare model-versus-gate verdicts.
+fn gate_result_line(decision: &gate::GateDecision) -> String {
+    let line = verdict::clip_words(&decision.summary, 80);
+    if verdict::ledger_cell_ok(&line) {
+        return line;
+    }
+    let bare = if decision.vetoes.is_empty() {
+        format!("gate verdict {} (model claimed {})", decision.verdict, decision.model_verdict)
+    } else {
+        format!("{} vetoed → {} by the required-check gate", decision.model_verdict, decision.verdict)
+    };
+    verdict::clip_words(&bare, 80)
+}
+
 /// Last `max` bytes of a string, on a char boundary.
 fn tail(s: &str, max: usize) -> &str {
     if s.len() <= max {
@@ -2046,6 +2083,73 @@ mod tests {
         assert_eq!(env_u32("DREAM_TEST_OK_VAR", 16384), 32768);
         std::env::remove_var("DREAM_TEST_GARBAGE_VAR");
         std::env::remove_var("DREAM_TEST_OK_VAR");
+    }
+
+    fn vetoed_decision(verdict: &str, reason: &str) -> gate::GateDecision {
+        gate::GateDecision {
+            accepted: false,
+            verdict: verdict.into(),
+            model_verdict: "ACCEPT".into(),
+            vetoes: vec![gate::Veto {
+                class: gate::VetoClass::Evidence,
+                subject: "darwin-smoke".into(),
+                reason: reason.into(),
+            }],
+            required_outcomes: vec![("darwin-smoke".into(), "failed".into())],
+            summary: format!("ACCEPT vetoed → {verdict}: darwin-smoke: {reason}"),
+        }
+    }
+
+    /// A "Given …" fallback must not be laundered through the prefix:
+    /// `VETOED: Given …` passes `^given` but is still hypothesis text.
+    #[test]
+    fn vetoed_finding_replaces_a_hypothesis_with_the_gate_result() {
+        let d = vetoed_decision("REJECT", "exit 1 on candidate tree");
+        let base = "Given the Darwin evaluator at commit 7c30573a, when the cap is lifted, then…";
+        let f = vetoed_finding(base, &d);
+        assert!(verdict::ledger_cell_ok(&f), "{f}");
+        assert!(!f.to_ascii_lowercase().contains("given"), "{f}");
+        assert_eq!(f, "ACCEPT vetoed → REJECT: darwin-smoke: exit 1 on candidate tree");
+        // A pointer fallback is not a result either.
+        let f = vetoed_finding("INCONCLUSIVE — see report", &d);
+        assert_eq!(f, "ACCEPT vetoed → REJECT: darwin-smoke: exit 1 on candidate tree");
+    }
+
+    #[test]
+    fn vetoed_finding_prefixes_a_compliant_result_once() {
+        let d = vetoed_decision("REJECT", "exit 1");
+        assert_eq!(
+            vetoed_finding("cap lifted to 8 candidates per generation", &d),
+            "VETOED: cap lifted to 8 candidates per generation"
+        );
+        assert_eq!(
+            vetoed_finding("VETOED: cap lifted to 8 candidates", &d),
+            "VETOED: cap lifted to 8 candidates"
+        );
+        assert_eq!(
+            vetoed_finding("VETOED: VETOED: cap lifted", &d),
+            "VETOED: cap lifted"
+        );
+        // Long but compliant: clipped on a word boundary, still under the cap.
+        let long = "cap lifted to eight candidates per generation and the smoke run finished in time";
+        let f = vetoed_finding(long, &d);
+        assert!(f.starts_with("VETOED: cap lifted"), "{f}");
+        assert!(f.ends_with('…'), "{f}");
+        assert!(verdict::ledger_cell_ok(&f), "{f}");
+    }
+
+    /// The gate summary can be long or carry a pointer; the fallback still
+    /// states the gate's result and passes the contract.
+    #[test]
+    fn gate_result_line_is_always_compliant() {
+        let d = vetoed_decision("BLOCKED-ENV", &"evaluator timed out after 600s ".repeat(5));
+        let f = gate_result_line(&d);
+        assert!(verdict::ledger_cell_ok(&f), "{f}");
+        assert!(f.starts_with("ACCEPT vetoed → BLOCKED-ENV"), "{f}");
+        let d = vetoed_decision("REJECT", "see report for the trace");
+        let f = gate_result_line(&d);
+        assert!(verdict::ledger_cell_ok(&f), "{f}");
+        assert_eq!(f, "ACCEPT vetoed → REJECT by the required-check gate");
     }
 
     #[test]
