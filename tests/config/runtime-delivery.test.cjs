@@ -46,11 +46,11 @@ function fixture(t, failAt) {
   fs.mkdirSync(path.join(copier, 'bin'), { recursive: true });
   fs.writeFileSync(path.join(copier, 'bin/copy-to'), 'fixture');
   const calls = [];
-  const state = { config: 'original', imageId: digest, current: live, registry: null };
+  const state = { config: 'original', imageId: digest, imagePath, current: live, registry: null };
   const runner = (cmd, args, opts) => {
     calls.push({ cmd, args, opts });
     if (failAt?.(cmd, args)) throw new Error('injected failure');
-    if (cmd === 'nix') return JSON.stringify([{ outputs: { out: imagePath } }, { outputs: { out: copier } }]);
+    if (cmd === 'nix') return args[0] === 'eval' ? state.imagePath : JSON.stringify([{ outputs: { out: imagePath } }, { outputs: { out: copier } }]);
     if (cmd.endsWith('/bin/copy-to') && args.includes('--digestfile')) {
       fs.writeFileSync(args[args.indexOf('--digestfile') + 1], digest);
     }
@@ -121,7 +121,7 @@ for (const failure of ['build', 'delivery', 'smoke']) {
     noDisruption(f.calls);
   });
 }
-for (const drift of ['manifest', 'config', 'image', 'container', 'restart']) {
+for (const drift of ['manifest', 'config', 'image', 'container', 'restart', 'source']) {
   test(`activation rejects ${drift} drift before any mutation`, t => {
     const f = fixture(t);
     f.flow.prepare('daemon');
@@ -129,6 +129,7 @@ for (const drift of ['manifest', 'config', 'image', 'container', 'restart']) {
     if (drift === 'manifest') fs.appendFileSync(path.join(f.repo, 'agentbox.toml'), '# drift');
     if (drift === 'config') f.state.config = 'changed';
     if (drift === 'image') f.state.imageId = 'different';
+    if (drift === 'source') f.state.imagePath = '/different-image';
     if (drift === 'container') f.state.current = { ...live, Id: 'different' };
     if (drift === 'restart') f.state.current = { ...live, State: { StartedAt: 'different' } };
     assert.throws(() => f.flow.activate(), /changed/);

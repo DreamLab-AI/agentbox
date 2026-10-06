@@ -55,12 +55,13 @@ are pulled and activated by immutable manifest digest.
 ## Receipts, activation and recovery
 
 Host-only `.agentbox-build/candidate.json` records the Nix output, layer report,
-image identity, timings, original running container and a hash of the complete
+image identity, source commit/dirty marker, timings, original running container and a hash of the complete
 merged Compose configuration (including resolved environment). Secrets are
 neither printed nor written to receipts. Generation receipts and Nix GC roots
 remain in `.agentbox-build/generation-*`.
 
-Activation refuses configuration drift, image replacement, a restarted/replaced
+Activation re-evaluates the Nix output and refuses changed baked source,
+configuration drift, image replacement, a restarted/replaced
 running container, or any change to persistent mount source, target or access
 mode. Volume/mount migrations need a separately reviewed procedure. It tags the
 current image for recovery, then uses the base **and override** Compose files

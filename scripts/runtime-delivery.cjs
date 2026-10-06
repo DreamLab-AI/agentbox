@@ -153,6 +153,8 @@ class Delivery {
     const candidateFile = path.join(this.state, 'candidate.json');
     const previous = fs.existsSync(candidateFile) ? readJSON(candidateFile) : null;
     const original = this.inspect('container', 'agentbox');
+    const sourceCommit = this.capture('git', ['rev-parse', 'HEAD']);
+    const sourceDirty = !!this.capture('git', ['status', '--porcelain', '--untracked-files=no']);
     const manifestChecksum = this.manifestChecksum();
     this.run('bash', ['scripts/refresh-compose.sh']);
     const outputs = JSON.parse(this.capture('nix', ['build', '.#runtime', '.#runtime.copyTo',
@@ -200,7 +202,7 @@ class Delivery {
     }
     if (manifestChecksum !== this.manifestChecksum()) throw new Error('Manifest changed during preparation; prepare again');
     const receipt = { version: 1, createdAt: new Date().toISOString(), generation,
-      imagePath, imageRef, imageId, delivery, manifestChecksum,
+      imagePath, imageRef, imageId, delivery, manifestChecksum, sourceCommit, sourceDirty,
       preparedFrom: original?.Id || null, preparedStartedAt: original?.State.StartedAt || null, report,
       seconds: { build: (builtAt - started) / 1000,
         registrySetup: (registryReadyAt - builtAt) / 1000,
@@ -227,6 +229,8 @@ class Delivery {
   validate() {
     const receipt = readJSON(path.join(this.state, 'candidate.json'));
     if (receipt.version !== 1 || !/^sha256:[a-f0-9]{64}$/.test(receipt.imageId || '')) throw new Error('No loaded candidate');
+    const currentOutput = this.capture('nix', ['eval', '--raw', '.#runtime.outPath', '--no-write-lock-file']);
+    if (currentOutput !== receipt.imagePath) throw new Error('Candidate source changed since preparation; prepare again');
     if (receipt.manifestChecksum !== this.manifestChecksum() || receipt.configurationHash !== this.configuration(receipt).hash) {
       throw new Error('Deployment configuration changed since preparation; prepare again');
     }
