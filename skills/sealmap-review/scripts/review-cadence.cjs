@@ -60,6 +60,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const ER = require('./external-review.cjs');
+const MF = require('./merge-findings.cjs');
 
 // ── Pricing (USD per million tokens). Gemini 3.8 Flash list price as of 2026-10-06, taken from
 //    the operator's brief; check ai.google.dev/pricing before trusting the budget to the cent.
@@ -841,6 +842,24 @@ async function auditGemini(repo, ctx) {
     : { skipped: 'no shard passed the gate', refused: refused.length };
 }
 
+/** Merge the newest GLM and Gemini findings files in docs/review and rank findings that both
+ *  families raised independently first (merge-findings.cjs). Writes `<date>-merged.{md,json}`. */
+function mergeReviews(repo, ctx) {
+  const dir = path.join(repo, REVIEW_REL);
+  const newest = (suffix) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(`-${suffix}.json`)).sort().pop() : null);
+  const picked = ['glm', 'gemini'].map((k) => ({ family: k, file: newest(k) }));
+  const missing = picked.filter((p) => !p.file).map((p) => p.family);
+  if (missing.length) return { skipped: `need findings from two families; no ${missing.join(' or ')} findings file in ${REVIEW_REL}` };
+  const groups = picked.map((p) => ({ family: p.family, findings: JSON.parse(fs.readFileSync(path.join(dir, p.file), 'utf8')) }));
+  const merged = MF.mergeFindings(groups);
+  const agreed = merged.filter((f) => f.agreement >= 2).length;
+  if (ctx.dryRun) return { would_merge: picked.map((p) => p.file), findings: merged.length, agreed };
+  const out = uniquePath(dir, `${utcDate(ctx.now)}-merged`, '.json');
+  fs.writeFileSync(out, `${JSON.stringify(merged, null, 2)}\n`);
+  fs.writeFileSync(out.replace(/\.json$/, '.md'), MF.renderMarkdown(merged));
+  return { merged: rel(repo, out), findings: merged.length, agreed };
+}
+
 function runExternalChild(corpus, outDir, files) {
   const list = path.join(outDir, 'files.txt');
   fs.writeFileSync(list, `${files.join('\n')}\n`);
@@ -895,8 +914,8 @@ function parseArgs(argv) {
     else if (a === '--window') { /* accepted: the crontab passes it; the gate is the interval */ }
     else throw new Error(`unknown option ${a}`);
   }
-  if (!['triage', 'review-glm', 'audit-gemini', 'status'].includes(opts.cmd)) {
-    throw new Error('usage: review-cadence.cjs <triage|review-glm|audit-gemini|status> [--manifest f] [--repo dir]... [--workspace dir] [--dry-run] [--now ISO]');
+  if (!['triage', 'review-glm', 'audit-gemini', 'merge', 'status'].includes(opts.cmd)) {
+    throw new Error('usage: review-cadence.cjs <triage|review-glm|audit-gemini|merge|status> [--manifest f] [--repo dir]... [--workspace dir] [--dry-run] [--now ISO]');
   }
   if (opts.now && Number.isNaN(Date.parse(opts.now))) throw new Error('--now is an ISO time');
   return opts;
@@ -922,7 +941,7 @@ async function main(argv, deps = {}) {
     now, cfg, dryRun: opts.dryRun, env: process.env, post: deps.post, runExternal: deps.runExternal ?? runExternalChild,
     model: process.env.DIAGRAM_REVIEW_MODEL || 'gemini-3.8-flash',
   };
-  const fn = { triage, 'review-glm': reviewGlm, 'audit-gemini': auditGemini }[opts.cmd];
+  const fn = { triage, 'review-glm': reviewGlm, 'audit-gemini': auditGemini, merge: mergeReviews }[opts.cmd];
   let failed = 0;
   for (const repo of repos) {
     // Spend is capped across every repo, so each audit sees what the earlier ones just booked.
@@ -937,7 +956,7 @@ module.exports = {
   readSection, loadConfig, discoverRepos, hasCorpus, readLocalFile, resolveRepos, createResolver, parseSources, loadTopics,
   triageCandidates, changedByRepo, headsOf, reposOf, buildShards, shardChangedTopics, readLedger, appendLedger, monthToDateUsd,
   ledgerPath, decideGemini, estimateGeminiUsd, actualGeminiUsd, packUnchanged, isHighSeverity, parseVerdict, zaiSettings, glm,
-  triage, reviewGlm, auditGemini, statusOf, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M,
+  triage, reviewGlm, auditGemini, mergeReviews, statusOf, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M,
 };
 
 if (require.main === module) {

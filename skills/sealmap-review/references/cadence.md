@@ -106,6 +106,18 @@ node $C triage|review-glm|audit-gemini|status [--manifest f] [--repo dir]... [--
 manual run); `--workspace` changes the scan root. `--dry-run` decides and prints; it writes no ledger line and calls no
 model. Exit 1 when any repo failed; a refusal is not a failure.
 
+### merge
+
+`merge` takes the newest `*-glm.json` and `*-gemini.json` in `docs/review/` and
+writes `<date>-merged.{md,json}` through `scripts/merge-findings.cjs`. Two
+findings from different families agree when they share a topic id (`CP-03.2` is
+topic `cp-03`) or a cited file, and their claim text (title, evidence, failure)
+shares at least 3 content words and 30% of the shorter text's words. Findings of
+one family never corroborate each other. Output: each finding gains `families`,
+`agreement` and `corroborated_by`; findings raised by two families sort first,
+otherwise input order. It spends nothing and calls no model; with only one
+family present it skips and says why. `--dry-run` reports counts only.
+
 ### triage
 
 1. The window for each source repository starts at the commit the last triage line

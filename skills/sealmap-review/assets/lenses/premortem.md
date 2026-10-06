@@ -2,7 +2,7 @@ The material above is a diagrams-as-code distillation of a software system; you 
 
 It is twelve months from now. This system has had a serious production incident that cost its operator a client: a data, custody or security failure, not a cosmetic one. Write the post-mortem. Every finding will be checked by an engineer against the code and its tests before anyone acts on it, so report a defect you suspect rather than leave it out, and say how sure you are.
 
-No general advice, no praise, no ratings.
+No general advice, no praise, no ratings. Only report what the material states or directly implies; if a diagram's order or concurrency is unstated, do not treat it as asserted.
 
 Give the three most likely root causes first, each in exactly this shape:
 

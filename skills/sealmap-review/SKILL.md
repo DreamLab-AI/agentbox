@@ -27,6 +27,7 @@ different questions.
 | Inline | Claude subagent (Sonnet; Opus for security- or custody-heavy topics) | a topic plus the code it cites | does this topic still tell the truth about the code | minutes per topic |
 
 Both write findings in one shape, and every finding is a hypothesis.
+What measurement showed works and what does not: [references/evidence.md](references/evidence.md).
 A reviewer may over-assert or be wrong. Nothing is fixed on a reviewer's word:
 findings go to build-with-quality, which reproduces each one with a failing test
 or check before anyone acts on it (see "After the review").
@@ -108,6 +109,13 @@ code itself become findings like any other.
 
 ## After the review
 
+**Staleness.** A pack built from topics that have gone stale produces false
+findings. Run triage and re-stamp what it flags before an expensive audit.
+
+**Two families.** When both a GLM review and a Gemini audit exist for a pack,
+`node $C merge` ranks findings raised independently by both first
+(`docs/review/<date>-merged.{md,json}`; agreement ranks, it does not verify).
+
 Findings are input to build-with-quality, never instructions. For each one:
 
 1. **Reproduce it.** Write the failing test, check or citation that shows the
@@ -149,6 +157,7 @@ findings land in `docs/review/` as unverified hypotheses.
 C=skills/sealmap-review/scripts/review-cadence.cjs
 node $C status                 # resolved repos, ledger summary, month-to-date spend
 node $C audit-gemini --dry-run # which shards would the gate open, at what estimate?
+node $C merge                  # rank findings both GLM and Gemini raised first
 ```
 
 Gate, ledger fields, discovery, sharding and pricing: [references/cadence.md](references/cadence.md).
@@ -176,6 +185,8 @@ Gate, ledger fields, discovery, sharding and pricing: [references/cadence.md](re
   ledger, schedules, spend cap, pricing constants.
 - `scripts/review-cadence.cjs`, `run-cron.sh`, `crontab`: the cadence runner,
   its boot wrapper and crontab template.
-- `scripts/external-review.test.cjs`, `scripts/review-cadence.test.cjs`: the
-  offline suites (`node --test`).
+- [references/evidence.md](references/evidence.md): the measured evidence table.
+- `scripts/merge-findings.cjs`: the multi-family agreement merge.
+- `scripts/external-review.test.cjs`, `scripts/review-cadence.test.cjs`,
+  `scripts/merge-findings.test.cjs`: the offline suites (`node --test`).
 - `evals/evals.json`: trigger and behaviour cases.

@@ -52,6 +52,15 @@ Use class code-defect when the topic is accurate and the code itself is wrong.
 End with one line: "checked N citations, M faults".
 ```
 
+## Checks, not impressions
+
+A gate or checker prompt, here or anywhere a model judges fidelity, applies its
+rules as explicit checks it must list, not as a general instruction to be
+faithful. For example: "list every ordering or concurrency the original does not
+state; any entry fails". Sequence diagrams assert order, so an unstated order is
+an invented fact (14 of 15 invented claims in the rewrite experiments were
+exactly this). See [evidence.md](evidence.md).
+
 ## Fault classes
 
 | Class | Meaning | Fix lands in |

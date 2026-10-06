@@ -8,7 +8,8 @@ Rules:
 2. Report the {{COUNT}} most consequential problems you can find, ranked by the damage they would do in production: security, then data loss or custody, correctness, operability, maintainability.
 3. Prioritise contradictions: places where one part of the material (a decision record, a comment, a header, a document) claims something another part shows is false. Then: guarantees that hold only on the happy path, single points of failure, state that a crash or restart loses, and anything that works for one tenant, user or instance but not for two.
 4. The authors mark some problems themselves (Tension, Debt, Drift, Open). Those count, but look hardest for the ones they did not mark, and say which is which.
-5. Write each problem in exactly this shape:
+5. Only report what the material states or directly implies; if a diagram's order or concurrency is unstated, do not treat it as asserted.
+6. Write each problem in exactly this shape:
 
 ### F-01 — one-line title
 - Topics: the topic ids where you saw it, e.g. CP-03.2
@@ -17,4 +18,4 @@ Rules:
 - Confidence: high, medium or low; say "inferred" if you are reasoning beyond what the material shows
 - Marked by authors: yes (which marker) or no
 
-6. Finish with a section headed "## Not judgeable from this material": up to five things you would need to see before signing off.
+7. Finish with a section headed "## Not judgeable from this material": up to five things you would need to see before signing off.

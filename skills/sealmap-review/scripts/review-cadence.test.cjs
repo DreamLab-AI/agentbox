@@ -626,3 +626,28 @@ test('main: discovers repos with no manifest paths, honours disabled, reports a 
   } finally { console.log = realLog; }
   await assert.rejects(C.main(['bogus']), /usage:/);
 });
+
+test('merge: ranks findings two families raised first, and skips with a reason when a family is missing', () => {
+  const e = estate();
+  const dir = path.join(e.est, 'docs/review');
+  fs.mkdirSync(dir, { recursive: true });
+  const mk = (id, topics, title, evidence) => ({ id, topics, title, evidence, failure: '', status: 'unverified' });
+  assert.match(C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z') }).skipped, /no glm or gemini/);
+  fs.writeFileSync(path.join(dir, '2026-10-05-glm.json'), JSON.stringify([
+    mk('s:critical:F-01', 'AA-01', 'Queue drops jobs on restart', 'worker queue is in memory so pending jobs vanish on restart src/q.rs:9'),
+    mk('s:critical:F-02', 'AA-02', 'Unrelated glm finding', 'something entirely different about logging verbosity'),
+  ]));
+  assert.match(C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z') }).skipped, /no gemini/);
+  fs.writeFileSync(path.join(dir, '2026-10-05-gemini.json'), JSON.stringify([
+    mk('s:critical:F-07', 'AA-01', 'Pending jobs are lost when the worker restarts', 'the in memory worker queue loses pending jobs on restart src/q.rs:9'),
+  ]));
+  const dry = C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z'), dryRun: true });
+  assert.equal(dry.agreed, 2);
+  assert.ok(!fs.existsSync(path.join(dir, '2026-10-06-merged.json')));
+  const r = C.mergeReviews(e.est, { now: Date.parse('2026-10-06T00:00:00Z') });
+  assert.equal(r.findings, 3);
+  const merged = JSON.parse(fs.readFileSync(path.join(dir, '2026-10-06-merged.json'), 'utf8'));
+  assert.deepEqual(merged.slice(0, 2).map((f) => f.agreement), [2, 2]);
+  assert.equal(merged[2].agreement, 1);
+  assert.ok(fs.existsSync(path.join(dir, '2026-10-06-merged.md')));
+});
