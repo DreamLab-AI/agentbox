@@ -2266,7 +2266,12 @@ loom_max_tokens        = 32768
 # or the generated supervisor block.
 llm_provider           = "zai"
 zai_model              = "glm-5.3"
-zai_max_tokens         = 32768
+# glm-5.3 is Z.AI's strongest tier and, with no effort named in the request, runs
+# at max reasoning effort (probed 2026-10-06: an explicit thinking budget only
+# lowers it). Max effort can spend ~75K output tokens on a hard task, and a cap
+# hit returns EMPTY content, so the cap is the model's full 128K output; the
+# client timeout scales with it (llm.rs zai_timeout).
+zai_max_tokens         = 131072
 # Evaluator-liveness discipline (darwin lesson, ADR-099 upstream): target repos
 # declare their own evaluators in their dream.config.json evaluatorEntrypoints.
 # Any @metaharness/darwin entrypoint MUST pass `--sandbox mock` (or `--sandbox

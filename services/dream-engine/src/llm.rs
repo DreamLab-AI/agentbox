@@ -108,6 +108,15 @@ struct ZaiContent {
     thinking: Option<String>,
 }
 
+/// Request timeout for a Z.AI call, scaled to its token budget. GLM-5.3 runs at
+/// its maximum reasoning effort whenever a request names no effort, and at max
+/// effort a hard prompt can spend most of a 128K budget on thinking. The
+/// slowest 5.3 tier streams about 50 tokens/s, so a fixed 600 s would cut a
+/// long answer off and waste the whole call. Never below the old 600 s.
+pub(crate) fn zai_timeout(max_tokens: u32) -> Duration {
+    Duration::from_secs((u64::from(max_tokens) / 50 + 120).max(600))
+}
+
 async fn call_zai(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
     let api_key = cfg
         .api_key
@@ -116,7 +125,7 @@ async fn call_zai(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
         .ok_or_else(|| LlmError::MissingCredentials("ZAI_ANTHROPIC_API_KEY".into()))?;
 
     let client = Client::builder()
-        .timeout(Duration::from_secs(600))
+        .timeout(zai_timeout(cfg.max_tokens))
         .build()?;
 
     let body = ZaiRequest {
@@ -223,4 +232,14 @@ async fn call_loom(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
     );
 
     Ok(answer.content)
+}
+
+#[cfg(test)]
+mod timeout_tests {
+    #[test]
+    fn zai_timeout_scales_with_the_token_budget() {
+        assert_eq!(super::zai_timeout(32_768).as_secs(), 775);
+        assert_eq!(super::zai_timeout(131_072).as_secs(), 2741);
+        assert_eq!(super::zai_timeout(1_000).as_secs(), 600);
+    }
 }
