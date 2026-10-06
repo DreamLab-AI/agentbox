@@ -237,6 +237,7 @@ Each of these cost a render cycle on a live corpus.
 | `&&`, `\|`, `>` | sequence messages | prose |
 | `call` as a classDef name | flowchart | another name |
 | wide `erDiagram`, an `LR` subgraph of unconnected nodes, an unwrapped `note for` | render > 4500 px | `flowchart TB` with subgraphs; wrap notes at ~55 chars with `<br/>` |
+| a sequence participant alias that is a Mermaid keyword (e.g. `PAR` read as `par`) | sequence `participant X as …` | any non-keyword alias (`PRL`); the error is misleading and only `--render` catches it |
 | sibling `subgraph` blocks in one rank converging on one node | render > 4500 px | chain them (`A --> B --> C`) so they stack |
 
 Citation traps the checker resolves in ways that surprise:
@@ -260,6 +261,8 @@ Ports are written `port 8788`, never `:8788` — a bare colon-number is a citati
   marker means, how to word one, how they are collected.
 - [references/verification.md](references/verification.md) — declared revisions,
   re-stamping, `worktree:`, strict mode, warning classes.
+- [references/authoring-guidance.md](references/authoring-guidance.md) — diagram-kind
+  choice, what to cite, what the citation checker misses, drafting with `sealmap`.
 - [references/authoring-mesh.md](references/authoring-mesh.md) — producing a
   corpus for a new repository as a managed mesh, with measured throughput.
 - [assets/topic-template.md](assets/topic-template.md) — copy and fill.

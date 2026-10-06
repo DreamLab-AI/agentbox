@@ -32,6 +32,15 @@ A reviewer may over-assert; this gate is where that is absorbed.
 - A clean review is not evidence of correctness, and is never cited as such
   in an EXP or a gate receipt.
 
+## Rust code lens
+
+On a hard Rust bug, or a resolver or flow question, run `sealmap dense` or
+`sealmap generate` around the suspect symbol and read the call tree before
+guessing. Generated views show missing or wrong call edges that no test asserts:
+dogfooding them found about a dozen real bugs the suite had missed. The `sealmap`
+CLI is on PATH in the image. Treat what the view shows as a lead and still
+reproduce it with a failing test (see "Review findings intake").
+
 ## Workflow Phases
 
 ```
