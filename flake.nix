@@ -4372,16 +4372,34 @@ ${ragflowNetworkDecl}
           "${toString interactionPlaneProxyPort}/tcp" = {};
         };
 
-        mkImage = { tag, extraPackages ? [], maxLayers ? 100 }:
+        # ADR-2132: stable closures first, frequently updated tools and sources
+        # last. Each layer excludes ALL previous layers, not just its neighbour.
+        # Otherwise shared libc/LLVM/JDK closures are emitted repeatedly.
+        imageLayers = extraPackages: import ./lib/image-layers.nix {
+          inherit lib n2c;
+          groups = [
+            { name = "platform"; packages = basePackages ++ nodeEnvPackages
+                ++ pythonBasePackages ++ mediaPackages ++ browserPackages
+                ++ spatialPackages ++ dataSciencePackages ++ docsPackages
+                ++ desktopPackages ++ dbPackages ++ wasmPackages
+                ++ networkingPackages ++ gpuCfg.nixPackages
+                ++ lib.subtractLists allPackages extraPackages; }
+            { name = "toolchains"; packages = [ rustToolchain rustNightlyToolchain
+                pkgs.pkgsStatic.stdenv.cc pkgs.musl ] ++ headroomPackages; }
+            { name = "agent-clis"; packages = codexPackages ++ claudeCodePackages
+                ++ opencodePackages ++ antigravityCliPackages
+                ++ npmCliAlwaysPackages ++ npmCliGatedPackages; }
+            # Includes every enabled package even when a new capability has
+            # not been assigned an optimisation group yet. Never drop tools.
+            { name = "services"; packages = allPackages; }
+          ];
+        };
+
+        mkImage = { tag, extraPackages ? [], maxLayers ? 1 }:
           n2c.buildImage {
             name = "agentbox";
             inherit tag maxLayers;
-            layers = [
-              (n2c.buildLayer { deps = basePackages; })
-              (n2c.buildLayer { deps = nodeEnvPackages ++ pythonBasePackages; })
-              (n2c.buildLayer { deps = [ rustToolchain rustNightlyToolchain pkgs.pkgsStatic.stdenv.cc pkgs.musl ] ++ wasmPackages ++ dbPackages ++ headroomPackages; })
-              (n2c.buildLayer { deps = mediaPackages ++ browserPackages ++ spatialPackages ++ dataSciencePackages ++ docsPackages ++ desktopPackages ++ extraPackages; })
-            ];
+            layers = imageLayers extraPackages;
             copyToRoot = pkgs.buildEnv {
               name = "agentbox-root";
               paths = [ entrypoint configFiles appRoot ];
@@ -4416,12 +4434,10 @@ ${ragflowNetworkDecl}
           runtime = mkImage { tag = "runtime-${system}"; };
           full = mkImage {
             tag = "full-${system}";
-            maxLayers = 120;
             extraPackages = allPackages;
           };
           desktop = mkImage {
             tag = "desktop-${system}";
-            maxLayers = 125;
             extraPackages = desktopPackages;
           };
           default = mkImage { tag = "runtime-${system}"; };
@@ -4449,7 +4465,6 @@ ${ragflowNetworkDecl}
             mkImage {
               tag          = "cuda-runtime-${system}";
               extraPackages = cudaCfg.nixPackages;
-              maxLayers    = 110;
             };
 
           # gaussian-splatting — CUDA runtime image with the 3DGS stack layered on top.
@@ -4474,7 +4489,6 @@ ${ragflowNetworkDecl}
             mkImage {
               tag           = "gaussian-splatting-${system}";
               extraPackages = cudaCfg.nixPackages ++ gs3dDrvs;
-              maxLayers     = 115;
             };
 
         } // {
