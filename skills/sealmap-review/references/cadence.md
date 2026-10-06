@@ -26,12 +26,12 @@ belongs in `agentbox.toml`. `status` prints the resolved list and where it came 
 [diagram_review]
 enabled = true                       # rebuild-class: flake.nix bakes the supervisor block
 repos = []                           # empty = auto-discover (above)
-glm_triage_cron = "17 5 * * 1-6"     # daily GLM triage (UTC)
-glm_review_cron = "47 5 * * 0"       # weekly GLM review, then the Gemini gate
+glm_triage_cron = "17 5 * * *"       # daily GLM triage (UTC)
+glm_review_cron = "47 2 * * *"       # nightly GLM review (after the 01:00 dream window), then the Gemini gate
 gemini_min_interval_days = 7
 gemini_min_changed_topics = 3
 gemini_monthly_usd = 10
-weekly_window = true                 # Gemini gate only on the weekly tick
+weekly_window = true                 # Gemini gate only on the review tick
 ```
 
 `enabled` decides whether `[program:diagram-review-cron]` exists, so flipping it
@@ -74,7 +74,7 @@ gets a chunk of its own. The same shards feed GLM and Gemini, so "the last GLM r
 shard" is well defined. The pack-hash skip, the change thresholds, the interval and the budget
 all apply per shard, and the ledger lines carry `shard`. A whole-estate pack (about 850k tokens)
 would sit at Gemini's limit and over GLM's; the cost of sharding is that a contradiction between
-two areas is not seen by one reviewer, which is what the estate area and the weekly cadence are for.
+two areas is not seen by one reviewer, which is what the estate area and the nightly cadence are for.
 
 ## How the crontab is made
 
@@ -86,10 +86,14 @@ is refused with a line on stderr and the default is used, so a typo cannot injec
 shell into a job. The supervisor `command=` carries the supercronic store path;
 the rendered file never does.
 
-With `weekly_window = true` the audit runs after `review-glm` on the weekly tick.
-With `false` it is also tried after each triage. The interval and budget gates
-apply either way, so this changes how often the gate is read, not how often
-Gemini is paid.
+With `weekly_window = true` the audit runs after `review-glm` on the review tick (nightly by default).
+With `false` it is also tried after each triage. The per-shard interval and the budget
+apply either way, so this changes how often the gate is read, not how often Gemini is
+paid: a shard is audited at most once per `gemini_min_interval_days`.
+
+GLM is treated as effectively free, so both GLM passes run daily. Repeated refusals of
+the same kind for a shard (and repeated "pack unchanged" skips) are written to the ledger
+once, not every night.
 
 ## Subcommands
 

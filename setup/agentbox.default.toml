@@ -786,15 +786,19 @@ enabled = true
 # name them here: list extra paths, or exclude one with a leading "!", in the
 # gitignored config/diagram-review.local, one path per line.
 repos = []
-# supercronic cron expressions (UTC). Triage is the cheap daily GLM pass;
-# the review tick runs the GLM review and then considers the Gemini audit.
-glm_triage_cron = "17 5 * * 1-6"
-glm_review_cron = "47 5 * * 0"
+# supercronic cron expressions (UTC). GLM is effectively free, so both GLM
+# passes run every day: triage at 05:17, and the review nightly at 02:47, after
+# the 01:00 dream window. The per-shard pack-hash skip keeps unchanged areas
+# free, so a quiet night costs nothing. The review tick then considers the
+# Gemini audit; its interval, change and budget gates keep that rare.
+glm_triage_cron = "17 5 * * *"
+glm_review_cron = "47 2 * * *"
 # Gemini audit gate: every condition must hold, per shard.
 gemini_min_interval_days = 7
 gemini_min_changed_topics = 3
 gemini_monthly_usd = 10
-# true: Gemini is considered only on the weekly review tick. false: after
+# true: Gemini is considered only on the review tick (nightly by default; the
+# per-shard interval still holds it to one audit a week). false: after
 # each triage run as well (the interval and budget still apply).
 weekly_window = true
 

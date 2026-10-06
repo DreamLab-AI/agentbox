@@ -16,8 +16,8 @@ TEMPLATE="${DIAGRAM_REVIEW_CRONTAB_TEMPLATE:-$HERE/crontab}"
 MANIFEST="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 OUT_DIR="${DIAGRAM_REVIEW_CRONTAB_DIR:-/run/agentbox}"
 
-DEFAULT_TRIAGE='17 5 * * 1-6'
-DEFAULT_REVIEW='47 5 * * 0'
+DEFAULT_TRIAGE='17 5 * * *'
+DEFAULT_REVIEW='47 2 * * *'
 
 manifest_string() {
   agentbox-manifest toml-string --manifest "$MANIFEST" --path "$1" 2>/dev/null || true

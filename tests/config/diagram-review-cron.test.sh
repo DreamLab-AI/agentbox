@@ -119,7 +119,7 @@ weekly_window = true')"
   if has '^5 4 \* \* 2 node .*review-cadence.cjs triage' && has '^30 3 \* \* 6 node .*review-cadence.cjs review-glm'; then
     ok "triage and review take the manifest schedules"; else bad "triage and review take the manifest schedules" "$out"; fi
   if [ "$(printf '%s\n' "$out" | grep -c audit-gemini)" = 1 ] && has '^30 3.*audit-gemini'; then
-    ok "weekly_window = true: the audit runs only on the review line"; else bad "weekly_window = true: the audit runs only on the review line" "$out"; fi
+    ok "weekly_window = true: the audit runs only on the review (nightly) line"; else bad "weekly_window = true: the audit runs only on the review (nightly) line" "$out"; fi
   if ! has '@[A-Z_]+@'; then ok "no placeholder left unfilled"; else bad "no placeholder left unfilled" "$out"; fi
   if ! grep -q '/nix/store' "$ROOT/out.crontab"; then ok "no /nix/store path in the rendered crontab"
   else bad "no /nix/store path in the rendered crontab"; fi
@@ -128,12 +128,12 @@ weekly_window = true')"
 weekly_window = false')"
   if has 'triage 2>&1 ; node .*audit-gemini'; then ok "weekly_window = false: the audit is also considered after triage"
   else bad "weekly_window = false: the audit is also considered after triage" "$out"; fi
-  if has '^17 5 \* \* 1-6 node' && has '^47 5 \* \* 0 node'; then ok "unset schedules take the shipped defaults"
+  if has '^17 5 \* \* \* node' && has '^47 2 \* \* \* node'; then ok "unset schedules take the shipped defaults"
   else bad "unset schedules take the shipped defaults" "$out"; fi
 
   out="$(render '[diagram_review]
 glm_triage_cron = "every day; touch /tmp/injected"')"
-  if has '^17 5 \* \* 1-6 node' && ! has 'injected' && grep -q 'not a five-field' "$ROOT/err"; then
+  if has '^17 5 \* \* \* node' && ! has 'injected' && grep -q 'not a five-field' "$ROOT/err"; then
     ok "a malformed expression is refused and the default used"
   else bad "a malformed expression is refused and the default used" "$out"; fi
 fi

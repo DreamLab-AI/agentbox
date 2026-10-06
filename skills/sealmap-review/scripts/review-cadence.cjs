@@ -48,8 +48,8 @@
  *
  * WHAT IT MEANS FOR THE CLIENT
  *   The diagrams stay honest without anyone remembering to ask. A cheap model watches every
- *   code change that touches a documented topic, in whichever repository it lands. A weekly
- *   outside review catches what the authors cannot see, and the expensive outside audit runs
+ *   code change that touches a documented topic, in whichever repository it lands. A nightly
+ *   GLM review catches what the authors cannot see, and the expensive outside audit runs
  *   only on the areas that changed, when there is a reason and money left under a cap the
  *   operator set.
  */
@@ -89,7 +89,7 @@ const DISCOVERY_DEPTH = 3;
 const DISCOVERY_SKIP = new Set(['.tmp', 'node_modules', 'target']);
 const LOCAL_FILE = path.join(__dirname, '..', '..', '..', 'config', 'diagram-review.local');
 const DEFAULTS = {
-  enabled: false, repos: [], glm_triage_cron: '17 5 * * 1-6', glm_review_cron: '47 5 * * 0',
+  enabled: false, repos: [], glm_triage_cron: '17 5 * * *', glm_review_cron: '47 2 * * *',
   gemini_min_interval_days: 7, gemini_min_changed_topics: 3, gemini_monthly_usd: 10, weekly_window: true,
 };
 const DAY_MS = 86400000;
@@ -276,6 +276,14 @@ function appendLedger(repo, entry) {
 const isRun = (e, kind, reviewer, shard) => e.kind === kind && e.reviewer === reviewer && !e.skipped && !e.error
   && (shard === undefined || (e.shard ?? null) === shard);
 const lastOf = (ledger, kind, reviewer, shard) => [...ledger].reverse().find((e) => isRun(e, kind, reviewer, shard)) ?? null;
+
+/** True when the latest ledger line for this kind, reviewer and shard is already a skip of the
+ *  same kind (`reason` up to its first colon), so a nightly tick does not repeat itself. */
+function repeatsLastSkip(ledger, kind, reviewer, shard, reason) {
+  const last = [...ledger].reverse().find((e) => e.kind === kind && e.reviewer === reviewer && (e.shard ?? null) === (shard ?? null));
+  const key = (r) => String(r).split(':')[0];
+  return Boolean(last && last.skipped && !last.error && key(last.skipped) === key(reason));
+}
 
 /** Gemini spend recorded in the UTC month of `now`, across the given ledgers. Failed calls count
  *  at their estimate, because a timed-out generation may have been billed. */
@@ -726,7 +734,10 @@ async function reviewGlm(repo, ctx) {
   const todo = [], skipped = [];
   for (const s of shards) (packUnchanged(ledger, s.name, s.sha) ? skipped : todo).push(s);
   if (!dryRun) {
-    for (const s of skipped) appendLedger(repo, { ts: stamp, kind: 'review', reviewer: 'glm', shard: s.name, commit: head, pack_sha256: s.sha, skipped: 'pack unchanged since the last GLM review of this shard' });
+    const why = 'pack unchanged since the last GLM review of this shard';
+    for (const s of skipped) {
+      if (!repeatsLastSkip(ledger, 'review', 'glm', s.name, why)) appendLedger(repo, { ts: stamp, kind: 'review', reviewer: 'glm', shard: s.name, commit: head, pack_sha256: s.sha, skipped: why });
+    }
   }
   if (dryRun) return { would_review: todo.map((s) => s.name), unchanged: skipped.map((s) => s.name) };
   if (todo.length === 0) return { skipped: 'pack unchanged', shards: shards.length };
@@ -782,7 +793,7 @@ async function auditGemini(repo, ctx) {
   const shards = buildShards(repo, ctx.shardTokens ?? shardBudget(ctx.env));
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
   const log = (shard, reason, extra = {}) => {
-    if (!dryRun) appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'gemini', shard: shard?.name ?? null, commit: head, pack_sha256: shard?.sha ?? null, skipped: reason, ...extra });
+    if (!dryRun && !repeatsLastSkip(ledger, 'audit', 'gemini', shard?.name ?? null, reason)) appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'gemini', shard: shard?.name ?? null, commit: head, pack_sha256: shard?.sha ?? null, skipped: reason, ...extra });
   };
   if (!key && !dryRun) { log(null, 'no GEMINI_API_KEY in the environment'); return { skipped: 'no GEMINI_API_KEY in the environment' }; }
 

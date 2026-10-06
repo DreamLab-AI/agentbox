@@ -3321,7 +3321,7 @@
         "gemini_min_interval_days": { "type": "number", "minimum": 0, "description": "Minimum days between Gemini audits." },
         "gemini_min_changed_topics": { "type": "integer", "minimum": 0, "description": "Topics changed since the last audit that open the gate, unless the last GLM review recorded a high-severity finding." },
         "gemini_monthly_usd": { "type": "number", "minimum": 0, "description": "Cap on estimated Gemini spend per UTC month, across all repos." },
-        "weekly_window": { "type": "boolean", "description": "true \u21d2 the Gemini gate is considered only on the weekly review tick; false \u21d2 after each triage run too." }
+        "weekly_window": { "type": "boolean", "description": "true \u21d2 the Gemini gate is considered only on the review tick (nightly by default; the per-shard interval still holds Gemini to one audit a week); false \u21d2 after each triage run too." }
       }
     },
     "sidechain": {

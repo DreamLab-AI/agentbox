@@ -134,8 +134,9 @@ in the public manifest.
   the innermost git repo that owns it, so an estate corpus citing sibling repos and
   a nested submodule is read from the right history. `docs/review/<date>-triage.md`
   lists what to re-author. It never edits a topic.
-- **review-glm** (GLM, weekly): critical and premortem lenses, one pack per area
-  (large areas split by token budget). A shard whose pack hash is unchanged is skipped.
+- **review-glm** (GLM, nightly after the dream window): critical and premortem lenses, one
+  pack per area (large areas split by token budget). GLM is effectively free, and a shard
+  whose pack hash is unchanged is skipped, so a quiet night costs nothing.
 - **audit-gemini**: the external review above, per shard, only when
   `gemini_min_interval_days` have passed, `gemini_min_changed_topics` topics changed
   (or the shard's last GLM review found something high severity), and month-to-date

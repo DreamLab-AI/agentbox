@@ -79,10 +79,10 @@ test('readSection reads strings, numbers, booleans and multi-line arrays, ignori
     '[other]', 'enabled = true',
     '[diagram_review]  # the cadence',
     'enabled = true', 'repos = [', '  "/a/b",  # first', '  "/c d",', ']',
-    'glm_triage_cron = "17 5 * * 1-6"', 'gemini_monthly_usd = 12.5', 'weekly_window = false',
+    'glm_triage_cron = "17 5 * * *"', 'gemini_monthly_usd = 12.5', 'weekly_window = false',
     '[next]', 'enabled = false',
   ].join('\n'), 'diagram_review');
-  assert.deepEqual(s, { enabled: true, repos: ['/a/b', '/c d'], glm_triage_cron: '17 5 * * 1-6', gemini_monthly_usd: 12.5, weekly_window: false });
+  assert.deepEqual(s, { enabled: true, repos: ['/a/b', '/c d'], glm_triage_cron: '17 5 * * *', gemini_monthly_usd: 12.5, weekly_window: false });
 });
 
 test('loadConfig is disabled with the spec defaults when the manifest has no section or no file', () => {
@@ -434,6 +434,27 @@ test('review-glm: reviews each shard, records high severity per shard, skips unc
   assert.equal(again.shards, 1);
   assert.equal(again.unchanged, 1);
   assert.equal(seen.length, 6, 'only the edited shard is sent again');
+});
+
+test('nightly ticks do not repeat themselves: an identical skip is ledgered once, a changed reason is ledgered again', async () => {
+  const e = estate();
+  const post = fakePost(() => '### F-01 — t\n- Confidence: low\n- Marked by authors: no');
+  await C.reviewGlm(e.est, ctxFor({ post }));
+  for (let i = 0; i < 3; i++) await C.reviewGlm(e.est, ctxFor({ post }));
+  assert.equal(C.readLedger(e.est).filter((r) => r.kind === 'review' && r.skipped).length, 2, 'one "unchanged" line per shard, not one per night');
+
+  const head = C.headsOf(C.reposOf(C.loadTopics(e.est)));
+  for (const shard of ['core', 'edge']) C.appendLedger(e.est, { ts: daysAgo(3), kind: 'audit', reviewer: 'gemini', shard, commits: head, est_usd: 1 });
+  process.env.GEMINI_API_KEY = 'gem-secret';
+  try {
+    for (let i = 0; i < 3; i++) await C.auditGemini(e.est, ctxFor({ runExternal: fakeExternal([]) }));
+  } finally { delete process.env.GEMINI_API_KEY; }
+  const skips = C.readLedger(e.est).filter((r) => r.kind === 'audit' && r.skipped);
+  assert.equal(skips.length, 2, 'one interval refusal per shard across three nights');
+  // Once the interval has passed the reason changes ("no cause"), and that is worth a line.
+  process.env.GEMINI_API_KEY = 'gem-secret';
+  try { await C.auditGemini(e.est, ctxFor({ now: new Date(NOW.getTime() + 8 * 86400000), runExternal: fakeExternal([]) })); } finally { delete process.env.GEMINI_API_KEY; }
+  assert.equal(C.readLedger(e.est).filter((r) => r.kind === 'audit' && /^no cause/.test(r.skipped ?? '')).length, 2);
 });
 
 test('review-glm: a failing shard is recorded and the others still complete', async () => {
