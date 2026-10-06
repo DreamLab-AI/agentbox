@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.3
+version: 0.6.4
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.4 (2026-10-06): ADR-2131 (accepted, implemented, inactive) — scheduled diagram review: GLM triage and review on manifest schedules and a Gemini audit behind an interval, changed-topic or high-severity, and monthly USD gate, all recorded in an append-only per-repo ledger. The Gemini audit stays a transport outside [model_routing]. The Invariants compliance surface is unchanged."
   - "0.6.3 (2026-10-05): ADR-2130 (accepted, not implemented) — diagram skills name four [model_routing] activities (diagram-polish T1, diagram-narrative T2, diagram-synthesis T3, seal-review T3 cross-family) on two new hosts, loom and zai, and never name model ids. Deterministic sealmap steps are T0. Tiers are set by measured descent and recorded per corpus in docs/diagrams/.tiers.json. Seal review is always a different model family from the author. The external Gemini review is a transport outside [model_routing]. Recorded in a dated section; the Invariants compliance surface is unchanged until the sealmap skill lands."
   - "0.6.2 (2026-10-05): PROPOSED, not ratified. ADR-2129 (host PRD-029 / DDD-023): ontology-augment distinguishes a degraded empty (Loom unreachable) from a silent empty (healthy, not asserted) and, once reachable, a contradicted answer; a silent result is never negative evidence, and every grounded answer cites the ontology generation it read. Recorded under the Loom section; the Invariants compliance surface is unchanged."
   - "0.6.1 (2026-10-02): ADR-2121 — compaction moves onto factrail (Rust, baked from one pinned DreamLab-AI/factrail commit). What Jev lets go is reduced by fact rails instead of deleted; an email-tainted session on a cloud judge is compacted on local fact rails instead of the summary (still never sent); the sticky taint is migrated across the plugin change; min_reduction_ratio retires. The email-never-leaves and result-contents-never-leave invariants are unchanged."
@@ -598,6 +599,8 @@ the egress path ADR-2053 names. Tiers are lowered one step at a time while accur
 `docs/diagrams/.tiers.json`, and seal review is always a different family from the author.
 `sealmap-review` reaches Gemini 3.8 Flash directly with `GEMINI_API_KEY` from `.env`. It is a
 review transport outside `[model_routing]` and is not a `seal-review` substitute.
+
+**Scheduled review (ADR-2131).** With `[diagram_review].enabled` (default off, rebuild-class) `[program:diagram-review-cron]` runs GLM triage and a GLM review of each configured corpus, and the Gemini audit only when `gemini_min_interval_days`, `gemini_min_changed_topics` (or a high-severity GLM finding) and `gemini_monthly_usd` all allow it. Each run, refusals included, is a line in `docs/diagrams/review-ledger.jsonl`; findings are unverified hypotheses in `docs/review/`. Detail: `skills/sealmap-review/references/cadence.md`.
 
 **Not yet true of the code.** `routing.rs:82-87` admits only the `claude|codex` hosts, and
 `routing.rs:68-73` maps any other host to `codex`. The routes, both hosts, explicit provider arms
