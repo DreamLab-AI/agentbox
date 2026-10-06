@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cc5f5dcc02c91f7577f9e5c129c978571b78551c
+verified_commit: 2bc789d339f0c166e0a3dfcf62feffa4ee95e788
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; the sealmap binary's `stale --since` output format becoming known; a second corpus joining repos
@@ -51,4 +51,4 @@ Gemini is priced from constants dated 2026-10-06 (input $0.75/M, cached $0.075/M
 
 ## Verification
 
-`implementation_status: complete` and `activation_status: staged`. At `cc5f5dcc0`: `node --test` in `skills/sealmap-review/scripts` (23 new cases across the gate, pack-hash skip, ledger, triage candidates and subcommands with faked model calls, beside the 14 existing external-review cases), `bash tests/config/diagram-review-cron.test.sh` (15), `semantic-rules.test.js` for `E079`/`W076`, `skills/lint-skills.sh`, the role-isolation suites and `cargo test` in `services/agentbox-manifest`. Not run: `nix flake check` (no Nix in the authoring container), so the supervisor block is checked by text, not evaluation; and no live GLM or Gemini call, so the Messages-API request shape, `sealmap stale --since` parsing and the Gemini price constants are unverified against the real services. The image is unverified until the host `./agentbox.sh rebuild`.
+`implementation_status: complete` and `activation_status: staged`. At `cc5f5dcc0`: `node --test` in `skills/sealmap-review/scripts` (36 cadence cases (discovery with symlinks, depth and skipped directories; the gate; per-shard pack-hash skip and sharding; multi-repo change detection with symlinked spellings, a nested submodule, a missing sibling and a dangling link; subcommands with faked model calls) beside 15 external-review cases), `bash tests/config/diagram-review-cron.test.sh` (21), `semantic-rules.test.js` for `E079`/`W076`, `skills/lint-skills.sh`, the role-isolation suites and `cargo test` in `services/agentbox-manifest`. Known red, not caused here: `declared-vs-running` now also lists diagram-review as declared on but not running, because the committed runtime snapshot predates the program; it clears when the snapshot is recaptured after the rebuild. Not run: `nix flake check` (no Nix in the authoring container), so the supervisor block is checked by text, not evaluation; and no live GLM or Gemini call, so the Messages-API request shape, `sealmap stale --since` parsing and the Gemini price constants are unverified against the real services. The image is unverified until the host `./agentbox.sh rebuild`.
