@@ -41,7 +41,7 @@ pkgs.rustPlatform.buildRustPackage {
   doCheck = false;
 
   meta = with lib; {
-    description = "Deterministic code maps and sealed diagram contracts; code lens for agentbox";
+    description = "Deterministic Rust code lens: call trees, dense views and generated diagrams";
     homepage    = "https://github.com/DreamLab-AI/sealmap";
     license     = with licenses; [ mit asl20 ];
     mainProgram = "sealmap";
