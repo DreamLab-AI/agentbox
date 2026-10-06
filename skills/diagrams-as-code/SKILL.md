@@ -164,7 +164,9 @@ bulk of the corpus, but the reviewer must check exact commit ids, the source
 meaning at cited lines, prose citations, and any claim drawn from a dirty
 working tree before accepting its stamps. Existing corpora may carry older
 copies of the generator with fewer checks than this skill describes; inspect
-the repository's actual script before trusting a green result. The concrete
+the repository's actual script before trusting a green result. Sweep both
+`sources:` and `governing:` paths for drift, then repeat the sweep across all
+topics after the model pass to catch omissions in the first inventory. The concrete
 batch procedure and version-skew traps are in [references/verification.md](references/verification.md).
 
 ## The render rule

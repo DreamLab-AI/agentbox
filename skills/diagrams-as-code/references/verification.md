@@ -72,9 +72,11 @@ absence of evidence.
 ## Model-assisted estate refresh
 
 When many repositories moved, collect candidate topics by comparing each
-topic's `sources:` with the diff from **that topic's declared commit** to the
-current commit of the repository that owns each source. A changed file is a
-candidate for semantic review even when every old citation still resolves.
+topic's `sources:` **and `governing:`** paths with the diff from **that topic's
+declared commit** to the current commit of the repository that owns each path.
+Use every entry in a multi-repository `verified_commit` map; a missing key is
+an unresolved source, not a clean diff. A changed file is a candidate for
+semantic review even when every old citation still resolves.
 GLM or another tool-using model can do the bulk of the re-authoring. First
 pilot one topic; then assign disjoint files to separate workers. Have each
 worker read committed source bytes with `git show <sha>:<path>`, revise changed
@@ -88,8 +90,12 @@ wrong line inside a valid file, and described an uncommitted vocabulary
 addition while stamping the topic to HEAD. A passing citation checker alone
 would not have caught all three. Check exact `git rev-parse HEAD` values, read
 the content at changed anchors, and inspect the meaning of each changed edge
-and narrative claim. Run the full corpus gate and regenerate indexes only
-after the workers finish; `--only` avoids concurrent writes to shared reports.
+and narrative claim. After the workers finish, repeat the changed-path sweep
+over **all** topics, including those the first inventory marked unchanged;
+this catches changes in governing documents and cross-repository sources that
+were omitted from an initial candidate list. Run the full corpus gate and
+regenerate indexes only after the workers finish; `--only` avoids concurrent
+writes to shared reports.
 
 ### Check the generator that the corpus actually ships
 
