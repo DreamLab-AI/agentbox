@@ -335,23 +335,26 @@ fn after_colon(line: &str) -> &str {
 /// Produce a short single-line finding (≤80 chars) for a markdown table cell.
 ///
 /// Preference order:
-/// 1. the frozen hypothesis — the first line whose (markdown-stripped) text
-///    starts with `Given `;
-/// 2. a `**Main lesson:**` line — the text after the colon;
-/// 3. a `**Finding:**` line — the text after the colon;
-/// 4. for an inconclusive verdict, the literal `INCONCLUSIVE — see report`;
-/// 5. otherwise the first non-empty, non-heading line.
+/// 0. the finding cell of the ledger row the report proposes for tonight —
+///    a row dated `night_date`, bare or wrapped in backticks — when it
+///    satisfies the row contract;
+/// 1. a contract-satisfying `Finding:` line;
+/// 2. the [`select_finding`] heuristics (frozen hypothesis, `Main lesson:`,
+///    `Finding:`, the INCONCLUSIVE fallback, the first prose line).
 ///
-/// The chosen text is then whitespace-collapsed, stripped of `|`, and truncated
-/// to 80 characters.
-pub fn sanitise_finding(report: &str, verdict: Verdict) -> String {
+/// The chosen text is whitespace-collapsed, stripped of `|`, and truncated to
+/// 80 characters. Steps 0 and 1 already satisfy the row contract; step 2 may
+/// not (a "Given …" hypothesis, the "see report" fallback), which is why the
+/// append path re-checks every row with [`finding_violations`].
+pub fn sanitise_finding(report: &str, verdict: Verdict, night_date: &str) -> String {
     // 0. The ledger row the report authored itself (Step 19). Every night
     //    since 2026-09-02 wrote a self-contained, ≤80-char finding cell there,
     //    and the engine discarded it for the truncated hypothesis — which is
     //    exactly what the ledger row contract (dream-engine PR #10,
-    //    `finding-hypothesis-leak`) rejects. Only a contract-satisfying cell
-    //    is taken; anything else falls through to the older heuristics.
-    if let Some(cell) = report_ledger_row_finding(report) {
+    //    `finding-hypothesis-leak`) rejects. Only tonight's row, and only a
+    //    contract-satisfying cell, is taken; anything else falls through to
+    //    the older heuristics.
+    if let Some(cell) = report_ledger_row_finding(report, night_date) {
         return cell;
     }
     // 1. A self-contained `Finding:` line that satisfies the contract.
@@ -366,40 +369,116 @@ pub fn sanitise_finding(report: &str, verdict: Verdict) -> String {
     select_finding(report, verdict).chars().take(80).collect()
 }
 
-/// The ledger-row contract for the finding cell (mirrors dream-engine
-/// `packages/ledger/src/rowContract.ts`): non-empty, ≤80 chars, not a pointer
-/// ("see report" / "see gist"), and not frozen-hypothesis prose ("Given …").
-fn ledger_cell_ok(cell: &str) -> bool {
+/// Maximum finding-cell length, counted as the contract counts it: UTF-16
+/// code units (JavaScript `String.length`), not Rust chars.
+pub const FINDING_MAX_UTF16: usize = 80;
+
+/// The rules a ledger finding cell breaks, named as dream-machine's
+/// `packages/ledger/src/rowContract.ts` names them (`finding-empty`,
+/// `finding-too-long`, `finding-pointer`, `finding-hypothesis-leak`).
+///
+/// This is the engine's only implementation of the finding rules; the
+/// row-level check ([`crate::ledger::row_violations`]) builds on it. The cell
+/// is trimmed first, as the TypeScript parser trims every cell.
+pub fn finding_violations(cell: &str) -> Vec<&'static str> {
+    let cell = cell.trim();
     let lower = cell.to_ascii_lowercase();
-    !cell.is_empty()
-        && cell.chars().count() <= 80
-        && !lower.starts_with("given")
-        && !lower.starts_with("see ")
-        && !lower.starts_with("gist")
-        && !lower.contains("see report")
-        && !lower.contains("see gist")
+    let mut out = Vec::new();
+    if cell.is_empty() {
+        out.push("finding-empty");
+    }
+    if cell.encode_utf16().count() > FINDING_MAX_UTF16 {
+        out.push("finding-too-long");
+    }
+    // /\bsee\s+(report|gist)\b/i  ||  /^(see|gist)\b/i
+    if contains_see_pointer(&lower) || starts_with_word(&lower, "see") || starts_with_word(&lower, "gist") {
+        out.push("finding-pointer");
+    }
+    // /^given\b/i
+    if starts_with_word(&lower, "given") {
+        out.push("finding-hypothesis-leak");
+    }
+    out
 }
 
-/// The finding cell of the first ledger table row the report contains — the
-/// row the model is asked to append at Step 19 — when that cell satisfies the
-/// contract. A ledger row is a `|`-delimited line with at least ten cells
-/// whose first cell is an ISO date.
-fn report_ledger_row_finding(report: &str) -> Option<String> {
+/// True when `cell` satisfies every finding rule of the row contract.
+pub fn ledger_cell_ok(cell: &str) -> bool {
+    finding_violations(cell).is_empty()
+}
+
+/// A JavaScript `\w` character (ASCII letters, digits, underscore).
+fn js_word(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
+}
+
+/// `^word\b` on already-lowercased text.
+fn starts_with_word(lower: &str, word: &str) -> bool {
+    lower
+        .strip_prefix(word)
+        .is_some_and(|rest| !rest.chars().next().is_some_and(js_word))
+}
+
+/// `\bsee\s+(report|gist)\b` on already-lowercased text.
+fn contains_see_pointer(lower: &str) -> bool {
+    lower.match_indices("see").any(|(i, _)| {
+        if lower[..i].chars().next_back().is_some_and(js_word) {
+            return false;
+        }
+        let rest = &lower[i + 3..];
+        let after_ws = rest.trim_start();
+        if after_ws.len() == rest.len() {
+            return false; // `\s+` needs at least one whitespace char
+        }
+        ["report", "gist"].iter().any(|w| starts_with_word(after_ws, w))
+    })
+}
+
+/// Truncate `s` to at most `max` chars at a word boundary, ending in `…` when
+/// anything was cut. A single word longer than `max` is cut mid-word.
+pub fn clip_words(s: &str, max: usize) -> String {
+    let s = s.trim();
+    if s.chars().count() <= max {
+        return s.to_string();
+    }
+    if max == 0 {
+        return String::new();
+    }
+    // Leave room for the ellipsis.
+    let budget: String = s.chars().take(max - 1).collect();
+    let next_is_break = s.chars().nth(max - 1).is_some_and(char::is_whitespace);
+    let head = if next_is_break {
+        budget.trim_end()
+    } else {
+        match budget.rfind(char::is_whitespace) {
+            Some(i) if !budget[..i].trim().is_empty() => budget[..i].trim_end(),
+            _ => budget.trim_end(),
+        }
+    };
+    let head = head.trim_end_matches([',', ';', ':', '—', '-', ' ']);
+    format!("{head}…")
+}
+
+/// The finding cell of tonight's ledger row in the report — the row the model
+/// is asked to propose at Step 19 — when that cell satisfies the contract.
+///
+/// A ledger row is a `|`-delimited line with at least ten cells; it may be
+/// wrapped in backticks or quoted as a blockquote, which is how reports
+/// usually present it. Only a row whose date cell equals `night_date` counts:
+/// a report quotes earlier nights' rows (patch context, ledger excerpts), and
+/// taking one of those would write a previous night's result under tonight's
+/// date.
+fn report_ledger_row_finding(report: &str, night_date: &str) -> Option<String> {
     for line in report.lines() {
-        let t = line.trim();
+        let t = line
+            .trim()
+            .trim_start_matches(['>', ' '])
+            .trim_matches('`')
+            .trim();
         if !t.starts_with('|') {
             continue;
         }
         let cells: Vec<&str> = t.split('|').map(str::trim).collect();
-        if cells.len() < 12 {
-            continue;
-        }
-        let date = cells[1].as_bytes();
-        let is_date = date.len() == 10
-            && date[4] == b'-'
-            && date[7] == b'-'
-            && date.iter().filter(|b| b.is_ascii_digit()).count() == 8;
-        if !is_date {
+        if cells.len() < 12 || cells[1] != night_date {
             continue;
         }
         let finding = finalize(cells[3]);
@@ -473,6 +552,9 @@ fn select_finding(report: &str, verdict: Verdict) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The night date the sanitiser tests run under.
+    const NIGHT: &str = "2026-09-07";
 
     #[test]
     fn verdict_str_and_significance() {
@@ -568,7 +650,7 @@ Given a cold cache, the second request should be faster than the first.
 More prose here.
 **Main lesson:** something else entirely
 ";
-        let finding = sanitise_finding(report, Verdict::Accept);
+        let finding = sanitise_finding(report, Verdict::Accept, NIGHT);
         assert_eq!(
             finding,
             "Given a cold cache, the second request should be faster than the first."
@@ -584,12 +666,12 @@ More prose here.
 ### Step 19 — Ledger row (appended in annexe clone)
 
 ```
-| 2026-09-06 | sovereign-mesh | sovereign-mesh-bridge PASS is pipe-masked (cargo dep err, exit=0): FALLBACK rule | NONE | NONE | yes | ACCEPT | docs-only marker | BLOCKED | |
+| 2026-09-07 | sovereign-mesh | sovereign-mesh-bridge PASS is pipe-masked (cargo dep err, exit=0): FALLBACK rule | NONE | NONE | yes | ACCEPT | docs-only marker | BLOCKED | |
 ```
 VERDICT: ACCEPT
 ";
         assert_eq!(
-            sanitise_finding(report, Verdict::Accept),
+            sanitise_finding(report, Verdict::Accept, NIGHT),
             "sovereign-mesh-bridge PASS is pipe-masked (cargo dep err, exit=0): FALLBACK rule"
         );
         // The full variant still carries the whole hypothesis for memory/PR bodies.
@@ -602,12 +684,12 @@ VERDICT: ACCEPT
     fn sanitise_ignores_a_ledger_row_cell_that_breaks_the_contract() {
         let leak = "| 2026-09-07 | x | Given the annexe clone lacks the siblings, when… | NONE | NONE | yes | ACCEPT |  | abc |  |\n**Finding:** siblings absent on the annexe\n";
         assert_eq!(
-            sanitise_finding(leak, Verdict::Accept),
+            sanitise_finding(leak, Verdict::Accept, NIGHT),
             "siblings absent on the annexe"
         );
         let pointer = "| 2026-09-07 | x | INCONCLUSIVE — see report | NONE | NONE | yes | INCONCLUSIVE |  | abc |  |\n";
         assert_eq!(
-            sanitise_finding(pointer, Verdict::Inconclusive),
+            sanitise_finding(pointer, Verdict::Inconclusive, NIGHT),
             "INCONCLUSIVE — see report"
         );
         let long = format!(
@@ -615,7 +697,7 @@ VERDICT: ACCEPT
             "y ".repeat(60)
         );
         assert_eq!(
-            sanitise_finding(&long, Verdict::Inconclusive),
+            sanitise_finding(&long, Verdict::Inconclusive, NIGHT),
             "INCONCLUSIVE — see report"
         );
     }
@@ -625,7 +707,7 @@ VERDICT: ACCEPT
     fn sanitise_prefers_a_self_contained_finding_line_over_the_hypothesis() {
         let report = "Given a cold cache, the second request should be faster than the first.\n**Finding:** warm cache halves p50 latency (412ms → 198ms)\n";
         assert_eq!(
-            sanitise_finding(report, Verdict::Accept),
+            sanitise_finding(report, Verdict::Accept, NIGHT),
             "warm cache halves p50 latency (412ms → 198ms)"
         );
     }
@@ -633,7 +715,7 @@ VERDICT: ACCEPT
     #[test]
     fn sanitise_strips_blockquote_from_given() {
         let report = "> Given the flag is off, no requests should be made.";
-        let finding = sanitise_finding(report, Verdict::Reject);
+        let finding = sanitise_finding(report, Verdict::Reject, NIGHT);
         assert_eq!(
             finding,
             "Given the flag is off, no requests should be made."
@@ -643,28 +725,28 @@ VERDICT: ACCEPT
     #[test]
     fn sanitise_uses_main_lesson() {
         let report = "# Report\nno hypothesis line\n- **Main lesson:** cache warming pays off\n";
-        let finding = sanitise_finding(report, Verdict::Accept);
+        let finding = sanitise_finding(report, Verdict::Accept, NIGHT);
         assert_eq!(finding, "cache warming pays off");
     }
 
     #[test]
     fn sanitise_uses_finding_line() {
         let report = "# Report\n**Finding:** the retry loop never terminates\n";
-        let finding = sanitise_finding(report, Verdict::Reject);
+        let finding = sanitise_finding(report, Verdict::Reject, NIGHT);
         assert_eq!(finding, "the retry loop never terminates");
     }
 
     #[test]
     fn sanitise_inconclusive_fallback() {
         let report = "# Report\n## Details\n";
-        let finding = sanitise_finding(report, Verdict::Inconclusive);
+        let finding = sanitise_finding(report, Verdict::Inconclusive, NIGHT);
         assert_eq!(finding, "INCONCLUSIVE — see report");
     }
 
     #[test]
     fn sanitise_first_non_heading_line() {
         let report = "# Heading\n\nThe system behaved as expected under load.\n";
-        let finding = sanitise_finding(report, Verdict::Accept);
+        let finding = sanitise_finding(report, Verdict::Accept, NIGHT);
         assert_eq!(finding, "The system behaved as expected under load.");
     }
 
@@ -676,7 +758,7 @@ VERDICT: ACCEPT
         assert_eq!(sanitise_finding_full(&report, Verdict::Accept), hypothesis);
         // Cell variant is the same text, capped.
         assert_eq!(
-            sanitise_finding(&report, Verdict::Accept),
+            sanitise_finding(&report, Verdict::Accept, NIGHT),
             hypothesis.chars().take(80).collect::<String>()
         );
         // Full variant is still bounded.
@@ -687,7 +769,7 @@ VERDICT: ACCEPT
     #[test]
     fn sanitise_is_table_safe_and_truncated() {
         let long = "Given ".to_string() + &"x ".repeat(100) + "| pipe | here";
-        let finding = sanitise_finding(&long, Verdict::Accept);
+        let finding = sanitise_finding(&long, Verdict::Accept, NIGHT);
         assert!(finding.chars().count() <= 80);
         assert!(!finding.contains('|'));
         assert!(!finding.contains('\n'));
@@ -699,7 +781,7 @@ VERDICT: ACCEPT
         // the keywords defeated the prefix strip and fell through to the
         // "INCONCLUSIVE — see report" fallback.
         let report = "> **Given** the `tests/` suite of DreamLab-AI/loom, **when** pytest runs, **then** zero tests exercise triple-loading.\n\nVERDICT: INCONCLUSIVE";
-        let finding = sanitise_finding(report, Verdict::Inconclusive);
+        let finding = sanitise_finding(report, Verdict::Inconclusive, NIGHT);
         assert!(finding.starts_with("Given the"), "got: {finding}");
     }
     #[test]
@@ -787,4 +869,79 @@ VERDICT: ACCEPT
         assert_eq!(from_label(" accept "), Verdict::Accept);
     }
 
+    /// 2026-10-06 (dream-machine f56ede7, factrail 9669e7b): the night's own
+    /// proposed row was wrapped in backticks, so it was skipped and a row
+    /// quoted from an EARLIER night (patch context) supplied tonight's finding.
+    #[test]
+    fn sanitise_takes_tonights_backticked_row_not_an_earlier_nights_quoted_row() {
+        let report = "\
+```diff
+@@ -12,3 +12,4 @@
+ | 2026-10-05 | evaluator | candidatesPerGeneration capped at 4 on the annexe | NONE | NONE | yes | REJECT |  | 0123456789ab |  |
+```
+
+Proposed ledger row:
+
+`| 2026-10-06 | evaluator | darwin smoke run passes with 8 candidates per generation | NONE | pending | yes | ACCEPT |  | abcdef012345 |  |`
+
+VERDICT: ACCEPT
+";
+        assert_eq!(
+            sanitise_finding(report, Verdict::Accept, "2026-10-06"),
+            "darwin smoke run passes with 8 candidates per generation"
+        );
+    }
+
+    /// A report that quotes only earlier nights' rows has no row for tonight:
+    /// the older heuristics apply instead of a previous night's result.
+    #[test]
+    fn sanitise_ignores_rows_dated_for_another_night() {
+        let report = "\
+ | 2026-10-05 | evaluator | candidatesPerGeneration capped at 4 on the annexe | NONE | NONE | yes | REJECT |  | 0123456789ab |  |
+**Finding:** tonight's evaluator run timed out after 600s
+";
+        assert_eq!(
+            sanitise_finding(report, Verdict::Inconclusive, "2026-10-06"),
+            "tonight's evaluator run timed out after 600s"
+        );
+    }
+
+    /// The finding rules mirror `rowContract.ts`, including its word
+    /// boundaries and its UTF-16 length.
+    #[test]
+    fn finding_violations_mirror_the_typescript_contract() {
+        assert!(finding_violations("row-contract validator added; prior rows show format drift").is_empty());
+        assert_eq!(finding_violations(""), vec!["finding-empty"]);
+        assert_eq!(finding_violations("   "), vec!["finding-empty"]);
+        assert_eq!(finding_violations(&"x".repeat(81)), vec!["finding-too-long"]);
+        assert!(finding_violations(&"x".repeat(80)).is_empty());
+        assert_eq!(finding_violations("INCONCLUSIVE — see report"), vec!["finding-pointer"]);
+        assert_eq!(finding_violations("details: See   Gist."), vec!["finding-pointer"]);
+        assert_eq!(finding_violations("see the annexe log"), vec!["finding-pointer"]);
+        assert_eq!(finding_violations("Gist published"), vec!["finding-pointer"]);
+        assert_eq!(
+            finding_violations("Given the Darwin evaluator at commit `7c30573a`"),
+            vec!["finding-hypothesis-leak"]
+        );
+        // Word boundaries: none of these is a pointer or a hypothesis.
+        assert!(finding_violations("givens are cached per run").is_empty());
+        assert!(finding_violations("seed corpus grows by 12 rows").is_empty());
+        assert!(finding_violations("gisting step dropped").is_empty());
+        assert!(finding_violations("foresee reporting gap closed").is_empty());
+        assert!(finding_violations("see-through cache keys removed").contains(&"finding-pointer"));
+        // JS String.length counts UTF-16 code units: 41 emoji are 82 units.
+        assert_eq!(finding_violations(&"😀".repeat(41)), vec!["finding-too-long"]);
+        assert!(finding_violations(&"€".repeat(80)).is_empty());
+    }
+
+    #[test]
+    fn clip_words_cuts_on_a_word_boundary_with_an_ellipsis() {
+        assert_eq!(clip_words("short enough", 60), "short enough");
+        let long = "darwin evaluator caps candidatesPerGeneration at four and times out";
+        let clipped = clip_words(long, 40);
+        assert!(clipped.chars().count() <= 40, "{clipped}");
+        assert_eq!(clipped, "darwin evaluator caps…");
+        assert_eq!(clip_words(&"x".repeat(10), 5), "xxxx…");
+        assert_eq!(clip_words("alpha beta gamma", 11), "alpha beta…");
+    }
 }

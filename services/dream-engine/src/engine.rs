@@ -1185,9 +1185,9 @@ impl Engine {
         // The finding shown in the ledger must not read as a win when the gate
         // refused one.
         let finding = if decision.accepted || decision.vetoes.is_empty() {
-            verdict::sanitise_finding(&report, lenient)
+            verdict::sanitise_finding(&report, lenient, date)
         } else {
-            let base = verdict::sanitise_finding(&report, lenient);
+            let base = verdict::sanitise_finding(&report, lenient, date);
             format!("VETOED: {}", base).chars().take(80).collect()
         };
         let finding_full = format!(
