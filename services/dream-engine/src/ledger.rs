@@ -145,6 +145,126 @@ pub fn escape_cell(s: &str) -> String {
     s.replace('|', "\\|").replace(['\n', '\r'], " ")
 }
 
+/// The first night date the row contract applies to. Rows dated earlier are
+/// grandfathered, as in dream-machine's `rowContract.test.ts`.
+pub const CONTRACT_ENFORCE_FROM: &str = "2026-09-06";
+
+/// Every verdict token a ledger row may carry: the three night outcomes and
+/// the three non-night tokens of `rowContract.ts` (`OPERATOR` is written by
+/// hand, never by the engine).
+pub const LEDGER_VERDICTS: [&str; 6] = [
+    "ACCEPT",
+    "REJECT",
+    "INCONCLUSIVE",
+    "BLOCKED-ENV",
+    "HANDOFF",
+    "OPERATOR",
+];
+
+/// `^#\d+:(MERGED|CLOSED|OPEN|STALE)$`.
+fn fate_token(token: &str) -> bool {
+    let Some((num, fate)) = token.strip_prefix('#').and_then(|t| t.split_once(':')) else {
+        return false;
+    };
+    !num.is_empty()
+        && num.bytes().all(|b| b.is_ascii_digit())
+        && matches!(fate, "MERGED" | "CLOSED" | "OPEN" | "STALE")
+}
+
+/// `YYYY-MM-DD` by shape (the contract's `^\d{4}-\d{2}-\d{2}$`).
+fn iso_date(date: &str) -> bool {
+    let b = date.as_bytes();
+    b.len() == 10
+        && b.iter()
+            .enumerate()
+            .all(|(i, c)| if i == 4 || i == 7 { *c == b'-' } else { c.is_ascii_digit() })
+}
+
+/// The row-contract rules `row` breaks, named as dream-machine's
+/// `packages/ledger/src/rowContract.ts` names them.
+///
+/// The finding rules come from [`crate::verdict::finding_violations`] (the
+/// engine's single finding validator); this adds the row-level rules: verdict
+/// vocabulary, ACCEPT rows tracking a PR and carrying a witness, and the
+/// prior-night fates grammar. A row with no ISO date, or dated before
+/// [`CONTRACT_ENFORCE_FROM`], is not checked, exactly as in the TS contract.
+/// Cells are read as written, after the same trim the TS parser applies.
+pub fn row_violations(row: &LedgerRow) -> Vec<&'static str> {
+    let date = row.date.trim();
+    if !iso_date(date) || date < CONTRACT_ENFORCE_FROM {
+        return Vec::new();
+    }
+    let mut out = crate::verdict::finding_violations(&row.finding);
+    let verdict = row.verdict.trim();
+    if !LEDGER_VERDICTS.contains(&verdict) {
+        out.push("verdict-vocab");
+    }
+    let pr = row.pr.trim();
+    if verdict == "ACCEPT" && (pr == "NONE" || pr.is_empty()) {
+        out.push("accept-without-pr");
+    }
+    if verdict == "ACCEPT" && row.witness.trim().is_empty() {
+        out.push("accept-without-witness");
+    }
+    let fates = row.prior_fates.trim();
+    if !fates.is_empty() && !fates.split_whitespace().all(fate_token) {
+        out.push("fates-grammar");
+    }
+    out
+}
+
+/// Bring `row` into compliance with the row contract before it is written,
+/// returning the rules it broke (empty when it was already compliant).
+///
+/// A `|` in the finding is dropped first: [`escape_cell`] writes it as `\|`,
+/// which the TS parser still splits on, shifting every later column. Then:
+///
+/// * a failing finding is replaced by `fallback` — a line stating what
+///   happened, supplied by the caller — clipped on a word boundary; if that
+///   also fails, by a fixed line naming the verdict;
+/// * an unknown verdict reads as `INCONCLUSIVE` (never as an acceptance);
+/// * an ACCEPT row without a PR records `MISSING`, and without a witness
+///   `BLOCKED` (the engine's marker for an unavailable witness);
+/// * prior-night fates that are not `#N:FATE` tokens are dropped.
+///
+/// The engine's own paths never produce the last three (the gate accepts
+/// only an applied candidate, which always yields a PR reference and a
+/// witness cell); they exist so no row of any shape is written non-compliant.
+pub fn enforce_contract(row: &mut LedgerRow, fallback: &str) -> Vec<&'static str> {
+    if row.finding.contains('|') {
+        row.finding = row.finding.replace('|', " ").split_whitespace().collect::<Vec<_>>().join(" ");
+    }
+    let broken = row_violations(row);
+    if broken.is_empty() {
+        return broken;
+    }
+    if !LEDGER_VERDICTS.contains(&row.verdict.trim()) {
+        row.verdict = crate::verdict::from_label(&row.verdict).as_str().to_string();
+    }
+    if !crate::verdict::finding_violations(&row.finding).is_empty() {
+        let clean: String = fallback.replace('|', " ").split_whitespace().collect::<Vec<_>>().join(" ");
+        let clipped = crate::verdict::clip_words(&clean, crate::verdict::FINDING_MAX_UTF16);
+        row.finding = if crate::verdict::ledger_cell_ok(&clipped) {
+            clipped
+        } else {
+            format!("{} night; finding withheld for breaking the ledger row contract", row.verdict.trim())
+        };
+    }
+    if row.verdict.trim() == "ACCEPT" {
+        if row.pr.trim().is_empty() || row.pr.trim() == "NONE" {
+            row.pr = "MISSING".into();
+        }
+        if row.witness.trim().is_empty() {
+            row.witness = "BLOCKED".into();
+        }
+    }
+    let fates = row.prior_fates.trim();
+    if !fates.is_empty() && !fates.split_whitespace().all(fate_token) {
+        row.prior_fates = String::new();
+    }
+    broken
+}
+
 /// Render one table row (without trailing newline).
 fn row_line(row: &LedgerRow) -> String {
     let cells = [
@@ -183,8 +303,19 @@ fn divider_line() -> String {
 /// * bootstraps the header + divider if the file is missing or empty;
 /// * inserts a missing trailing newline before appending, so the new row is
 ///   never concatenated onto the previous one;
+/// * repairs the row against the row contract ([`enforce_contract`]) with a
+///   warning, so a non-compliant row is never written;
 /// * appends exactly one row line.
 pub fn append_row(ledger_path: &Path, row: &LedgerRow) -> Result<(), LedgerError> {
+    // Backstop: callers repair with a contextual fallback first
+    // ([`enforce_contract`]); whatever reaches here is still never written
+    // non-compliant, and never fails the night over it.
+    let mut row = row.clone();
+    let broken = enforce_contract(&mut row, "");
+    if !broken.is_empty() {
+        tracing::warn!(rules = ?broken, finding = %row.finding, "ledger row broke the row contract; repaired before append");
+    }
+    let row = &row;
     if let Some(parent) = ledger_path.parent() {
         if !parent.as_os_str().is_empty() {
             std::fs::create_dir_all(parent)?;
@@ -313,6 +444,141 @@ mod tests {
             reviewer: "jjohare".into(),
             review_minutes: "42".into(),
         }
+    }
+
+    /// The compliant row of dream-machine's `rowContract.test.ts`, widened to
+    /// the engine's twelve columns.
+    fn compliant_row() -> LedgerRow {
+        LedgerRow::unreviewed(
+            "2026-09-06".into(),
+            "ledger-signals".into(),
+            "row-contract validator added; prior rows show format drift".into(),
+            "NONE".into(),
+            "pending".into(),
+            "yes".into(),
+            "ACCEPT".into(),
+            "guards cross-night memory".into(),
+            "0123456789ab".into(),
+            String::new(),
+        )
+    }
+
+    /// One case per rule of `rowContract.test.ts`, same rule names.
+    #[test]
+    fn row_violations_mirror_the_typescript_contract() {
+        assert!(row_violations(&compliant_row()).is_empty());
+        let with = |f: &dyn Fn(&mut LedgerRow)| {
+            let mut r = compliant_row();
+            f(&mut r);
+            row_violations(&r)
+        };
+        assert!(with(&|r| r.finding = "INCONCLUSIVE — see report".into()).contains(&"finding-pointer"));
+        assert!(with(&|r| r.finding = "Given the Darwin evaluator at commit `7c30573a`".into())
+            .contains(&"finding-hypothesis-leak"));
+        assert!(with(&|r| r.finding = "x".repeat(81)).contains(&"finding-too-long"));
+        assert!(with(&|r| r.finding = String::new()).contains(&"finding-empty"));
+        assert!(with(&|r| r.pr = "NONE".into()).contains(&"accept-without-pr"));
+        assert!(with(&|r| r.pr = String::new()).contains(&"accept-without-pr"));
+        assert!(with(&|r| r.witness = String::new()).contains(&"accept-without-witness"));
+        assert!(with(&|r| r.prior_fates = "merged #7 by human".into()).contains(&"fates-grammar"));
+        assert!(with(&|r| r.prior_fates = "#7:MERGED #8:OPEN #9:STALE #10:CLOSED".into()).is_empty());
+        assert!(with(&|r| r.verdict = "MAYBE".into()).contains(&"verdict-vocab"));
+        for v in ["ACCEPT", "REJECT", "INCONCLUSIVE", "BLOCKED-ENV", "HANDOFF", "OPERATOR"] {
+            assert!(with(&|r| r.verdict = v.into()).is_empty(), "{v}");
+        }
+        // Only ACCEPT is held to the PR and witness rules.
+        assert!(with(&|r| {
+            r.verdict = "OPERATOR".into();
+            r.pr = "NONE".into();
+            r.witness = String::new();
+        })
+        .is_empty());
+        // Rows before the cutoff are grandfathered, as in the TS contract.
+        assert!(with(&|r| {
+            r.date = "2026-09-01".into();
+            r.finding = "INCONCLUSIVE — see report".into();
+        })
+        .is_empty());
+    }
+
+    #[test]
+    fn enforce_contract_replaces_a_failing_finding_with_the_fallback() {
+        let mut r = compliant_row();
+        r.verdict = "REJECT".into();
+        r.finding = "Given the annexe lacks the siblings, when the build runs, then it fails".into();
+        let broken = enforce_contract(&mut r, "ACCEPT vetoed → REJECT: darwin-smoke: exit 1");
+        assert_eq!(broken, vec!["finding-hypothesis-leak"]);
+        assert_eq!(r.finding, "ACCEPT vetoed → REJECT: darwin-smoke: exit 1");
+        assert!(row_violations(&r).is_empty());
+    }
+
+    #[test]
+    fn enforce_contract_uses_a_last_resort_line_when_the_fallback_also_fails() {
+        let mut r = compliant_row();
+        r.verdict = "INCONCLUSIVE".into();
+        r.finding = "INCONCLUSIVE — see report".into();
+        enforce_contract(&mut r, "see report");
+        assert!(row_violations(&r).is_empty(), "{}", r.finding);
+        assert!(r.finding.starts_with("INCONCLUSIVE"), "{}", r.finding);
+        let mut r = compliant_row();
+        r.finding = String::new();
+        enforce_contract(&mut r, "");
+        assert!(row_violations(&r).is_empty(), "{}", r.finding);
+    }
+
+    #[test]
+    fn enforce_contract_repairs_every_cell_rule() {
+        let mut r = compliant_row();
+        r.pr = "NONE".into();
+        r.witness = String::new();
+        r.prior_fates = "merged #7 by human".into();
+        let broken = enforce_contract(&mut r, "unused");
+        assert_eq!(broken, vec!["accept-without-pr", "accept-without-witness", "fates-grammar"]);
+        assert!(row_violations(&r).is_empty());
+        assert_eq!(r.finding, compliant_row().finding, "a compliant finding is kept");
+        let mut r = compliant_row();
+        r.verdict = "MAYBE".into();
+        enforce_contract(&mut r, "unused");
+        assert_eq!(r.verdict, "INCONCLUSIVE", "an unknown verdict never reads as acceptance");
+        assert!(row_violations(&r).is_empty());
+    }
+
+    /// A compliant row is written exactly as given.
+    #[test]
+    fn enforce_contract_leaves_a_compliant_row_alone() {
+        let mut r = compliant_row();
+        assert!(enforce_contract(&mut r, "unused").is_empty());
+        assert_eq!(row_line(&r), row_line(&compliant_row()));
+    }
+
+    /// The backstop: whatever a caller hands `append_row`, the line written
+    /// satisfies the contract as the TS parser reads it (raw `|` split).
+    #[test]
+    fn append_row_never_writes_a_non_compliant_row() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("LEDGER.md");
+        let mut r = compliant_row();
+        r.date = "2026-10-06".into();
+        r.verdict = "REJECT".into();
+        r.finding = "VETOED: Given the Darwin evaluator at commit 7c30573a".into();
+        append_row(&path, &r).unwrap();
+        let mut r = compliant_row();
+        r.date = "2026-10-06".into();
+        r.finding = "cap | lifted to 8".into();
+        append_row(&path, &r).unwrap();
+
+        let content = fs::read_to_string(&path).unwrap();
+        let rows: Vec<&str> = content.lines().skip(2).collect();
+        assert_eq!(rows.len(), 2);
+        for line in rows {
+            // rowContract.ts parseRow: split on every `|`, trim, cells 1..=10.
+            let cells: Vec<&str> = line.trim().split('|').map(str::trim).collect();
+            assert_eq!(cells.len(), 14, "{line}");
+            let finding = cells[3];
+            assert!(crate::verdict::ledger_cell_ok(finding), "{line}");
+            assert!(!finding.to_ascii_lowercase().contains("given"), "{line}");
+        }
+        assert!(content.contains("| cap lifted to 8 |"));
     }
 
     #[test]

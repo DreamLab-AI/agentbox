@@ -1291,7 +1291,7 @@ impl Engine {
         let row = LedgerRow {
             date: date.into(),
             deep: slot.deep.clone(),
-            finding: finding.clone(),
+            finding,
             issue: "NONE".into(),
             pr: pr_ref.clone(),
             evaluated: "yes".into(),
@@ -1306,7 +1306,9 @@ impl Engine {
             reviewer: String::new(),
             review_minutes: String::new(),
         };
-        self.append_and_commit_ledger(&repo_path, &ledger_path, &row, &night_id, j).await?;
+        let row = self
+            .append_and_commit_ledger(&repo_path, &ledger_path, row, &gate_result_line(&decision), &night_id, j)
+            .await?;
         info!(path = %ledger_path.display(), "ledger row appended");
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::Persisted);
 
@@ -1363,7 +1365,7 @@ impl Engine {
         Ok(CycleResult {
             repo: repo_name,
             verdict: v,
-            finding,
+            finding: row.finding,
             witness_short: wit_short,
             report_path,
             ledger_path,
@@ -1371,24 +1373,38 @@ impl Engine {
         })
     }
 
-    /// Append the night's ledger row, then commit it on the default branch so
-    /// the night is visible in git (ADR-2071 Phase 1). Both are journalled.
-    /// The append is fatal as before; the commit is fail-open.
+    /// Check the night's ledger row against the row contract, append it, then
+    /// commit it on the default branch so the night is visible in git
+    /// (ADR-2071 Phase 1). Both are journalled. The append is fatal as before;
+    /// the commit is fail-open.
+    ///
+    /// A row that breaks the contract is repaired, never appended as is and
+    /// never fatal: a failing finding is replaced by `fallback`, a line stating
+    /// what happened tonight ([`ledger::enforce_contract`]), with a warning.
+    /// Later nights read these rows as memory, so a false row misleads them.
+    /// Returns the row as written.
     async fn append_and_commit_ledger(
         &self,
         repo_path: &Path,
         ledger_path: &Path,
-        row: &LedgerRow,
+        mut row: LedgerRow,
+        fallback: &str,
         night_id: &str,
         j: &Journal,
-    ) -> Result<(), EngineError> {
-        let c = j.called("ledger.append", json!({ "verdict": row.verdict, "deep": row.deep })).await;
-        let appended = ledger::append_row(ledger_path, row);
+    ) -> Result<LedgerRow, EngineError> {
+        let broken = ledger::enforce_contract(&mut row, fallback);
+        if !broken.is_empty() {
+            warn!(rules = ?broken, finding = %row.finding, "ledger row broke the row contract; repaired before append");
+        }
+        let c = j
+            .called("ledger.append", json!({ "verdict": row.verdict, "deep": row.deep, "repaired": broken }))
+            .await;
+        let appended = ledger::append_row(ledger_path, &row);
         j.completed(c, appended.is_ok(), json!({})).await;
         appended?;
 
         if std::env::var("DREAM_LEDGER_COMMIT").as_deref() == Ok("0") {
-            return Ok(());
+            return Ok(row);
         }
         let c = j.called("git.commit", json!({ "path": ledger_path.display().to_string() })).await;
         let outcome = ledger::commit_ledger(
@@ -1403,7 +1419,7 @@ impl Engine {
             ledger::LedgerCommit::Failed(e) => warn!(error = %e, "ledger commit failed (fail-open — row stays in the working tree)"),
             other => info!(outcome = ?other, "ledger row not committed"),
         }
-        Ok(())
+        Ok(row)
     }
 
     /// Apply the seven-day rule to every nominated repo's `dream/*` branches,
@@ -1549,7 +1565,15 @@ impl Engine {
             reviewer: String::new(),
             review_minutes: String::new(),
         };
-        self.append_and_commit_ledger(repo_path, &ledger_path, &row, night_id, j).await?;
+        self.append_and_commit_ledger(
+            repo_path,
+            &ledger_path,
+            row,
+            "Environment fault, hypothesis untested",
+            night_id,
+            j,
+        )
+        .await?;
 
         let c = j.called("inbox.write", json!({ "kind": "alert", "why": "blocked-env" })).await;
         let added = inbox::add(
@@ -1649,7 +1673,15 @@ impl Engine {
             reviewer: String::new(),
             review_minutes: String::new(),
         };
-        self.append_and_commit_ledger(repo_path, &ledger_path, &row, night_id, j).await?;
+        self.append_and_commit_ledger(
+            repo_path,
+            &ledger_path,
+            row,
+            "HANDOFF: no usable evaluator for tonight's deep",
+            night_id,
+            j,
+        )
+        .await?;
 
         let c = j.called("inbox.write", json!({ "kind": "question", "why": "handoff" })).await;
         let added = inbox::add(

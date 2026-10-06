@@ -380,9 +380,17 @@ pub const FINDING_MAX_UTF16: usize = 80;
 /// This is the engine's only implementation of the finding rules; the
 /// row-level check ([`crate::ledger::row_violations`]) builds on it. The cell
 /// is trimmed first, as the TypeScript parser trims every cell.
+///
+/// One deliberate tightening over the TS contract: the pointer and
+/// hypothesis rules look through the engine's own `VETOED:` prefix, so
+/// `VETOED: Given …` is still a hypothesis leak. Everything this accepts the
+/// TS contract also accepts.
 pub fn finding_violations(cell: &str) -> Vec<&'static str> {
     let cell = cell.trim();
-    let lower = cell.to_ascii_lowercase();
+    let mut lower = cell.to_ascii_lowercase();
+    while let Some(rest) = lower.strip_prefix("vetoed:") {
+        lower = rest.trim_start().to_string();
+    }
     let mut out = Vec::new();
     if cell.is_empty() {
         out.push("finding-empty");
@@ -923,6 +931,13 @@ VERDICT: ACCEPT
             finding_violations("Given the Darwin evaluator at commit `7c30573a`"),
             vec!["finding-hypothesis-leak"]
         );
+        // The engine's veto prefix does not launder a hypothesis or pointer.
+        assert_eq!(
+            finding_violations("VETOED: Given the cap is lifted"),
+            vec!["finding-hypothesis-leak"]
+        );
+        assert_eq!(finding_violations("VETOED: VETOED: see report"), vec!["finding-pointer"]);
+        assert!(finding_violations("VETOED: cap lifted to 8").is_empty());
         // Word boundaries: none of these is a pointer or a hypothesis.
         assert!(finding_violations("givens are cached per run").is_empty());
         assert!(finding_violations("seed corpus grows by 12 rows").is_empty());
