@@ -217,14 +217,18 @@ describe('governance flow :: end-to-end', () => {
   let podRoot;
   let orchestrator;
   let logger;
+  let originalCwd;
 
   beforeEach(() => {
     podRoot      = makeTmpPodRoot();
+    originalCwd = process.cwd();
+    process.chdir(podRoot);
     orchestrator = new LocalProcessManagerOrchestratorAdapter({ spawnFn: makeSpawnStub() });
     logger       = makeCaptureLogger();
   });
 
   afterEach(() => {
+    process.chdir(originalCwd);
     rmTmpDir(podRoot);
   });
 
