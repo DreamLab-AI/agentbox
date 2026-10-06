@@ -23,9 +23,9 @@ use crate::receipts;
 use crate::roster;
 use crate::runner::EvaluatorRunner;
 use crate::runstate;
+use crate::ruvector::{self, DreamFinding, RuVectorConfig};
 use crate::source;
 use crate::sweep;
-use crate::ruvector::{self, DreamFinding, RuVectorConfig};
 use crate::verdict::{self, Verdict};
 use crate::witness;
 use serde_json::json;
@@ -129,13 +129,16 @@ impl Engine {
             &format!("night-{date}"),
             chrono::Utc::now().timestamp(),
         ));
-        nj.turn_started(json!({ "date": date, "day": day_int })).await;
+        nj.turn_started(json!({ "date": date, "day": day_int }))
+            .await;
 
         // Decisions the operator made on the forum governance panel since the
         // last night resolve their inbox items first, so tonight's carry-over
         // sees them. Fail-open.
         if governance::enabled() {
-            let c = nj.called("forum.governance", json!({ "op": "ingest" })).await;
+            let c = nj
+                .called("forum.governance", json!({ "op": "ingest" }))
+                .await;
             let r = governance::ingest(&inbox::inbox_path(), false).await;
             nj.completed(c, true, json!({ "resolved": r.resolved, "withdrawn": r.withdrawn, "rejected": r.rejected, "skipped": r.skipped }))
                 .await;
@@ -145,7 +148,8 @@ impl Engine {
             Ok(r) => r,
             Err(e) => {
                 warn!(error = %e, "night aborted — no nominated repos");
-                nj.turn_completed(json!({ "aborted": "no nominated repos" })).await;
+                nj.turn_completed(json!({ "aborted": "no nominated repos" }))
+                    .await;
                 return Some(vec![]);
             }
         };
@@ -227,7 +231,9 @@ impl Engine {
         let mut outcomes = Vec::new();
         let mut journal_stats: Vec<JournalStats> = Vec::new();
         for (name, path) in eligible {
-            let (result, stats) = self.cycle_repo_recorded(&name, &path, day_int, date, false).await;
+            let (result, stats) = self
+                .cycle_repo_recorded(&name, &path, day_int, date, false)
+                .await;
             journal_stats.push(stats);
             let verdict_label = match result {
                 Ok(res) => res.verdict.as_str().to_string(),
@@ -289,7 +295,9 @@ impl Engine {
                     failures.iter().map(|(n, v)| format!("{}={}", n, v)).collect::<Vec<_>>().join(", ")
                 )
             };
-            let c = nj.called("inbox.write", json!({ "kind": "alert", "repo": "roster" })).await;
+            let c = nj
+                .called("inbox.write", json!({ "kind": "alert", "repo": "roster" }))
+                .await;
             let r = inbox::add("alert", "roster", &format!("{}-night", date), date, &text);
             nj.completed(c, r.is_ok(), json!({})).await;
             if let Err(e) = r {
@@ -304,7 +312,9 @@ impl Engine {
         // publishing must never silence the night report. Both fail-open:
         // forum trouble never taints the night.
         if governance::enabled() {
-            let c = nj.called("forum.governance", json!({ "op": "publish" })).await;
+            let c = nj
+                .called("forum.governance", json!({ "op": "publish" }))
+                .await;
             let r = governance::publish(&inbox::inbox_path(), false).await;
             nj.completed(c, r.rejected == 0, json!({ "published": r.published, "withdrawn": r.withdrawn, "rejected": r.rejected }))
                 .await;
@@ -312,7 +322,8 @@ impl Engine {
         if std::env::var("DREAM_DIGEST").as_deref() != Ok("0") {
             let c = nj.called("forum.post", json!({ "op": "digest" })).await;
             let status = digest::run(&self.workspace, date, false).await;
-            nj.completed(c, !status.contains("failed"), json!({ "status": status })).await;
+            nj.completed(c, !status.contains("failed"), json!({ "status": status }))
+                .await;
             info!(result = %status, "night digest");
             record_digest_status(date, &status);
         }
@@ -325,27 +336,36 @@ impl Engine {
         // DREAM_FORUM_SUGGESTIONS=0.
         if std::env::var("DREAM_FORUM_SUGGESTIONS").as_deref() != Ok("0") {
             let forum_script = std::env::var("DREAM_FORUM_SCRIPT").unwrap_or_else(|_| {
-                "/home/devuser/workspace/project/agentbox/scripts/dream-forum-suggestions.mjs".into()
+                "/home/devuser/workspace/project/agentbox/scripts/dream-forum-suggestions.mjs"
+                    .into()
             });
             if Path::new(&forum_script).exists() {
-                let c = nj.called("forum.suggestions", json!({ "script": forum_script })).await;
+                let c = nj
+                    .called("forum.suggestions", json!({ "script": forum_script }))
+                    .await;
                 match Command::new("node").arg(&forum_script).output() {
                     Ok(out) => {
                         let tail = String::from_utf8_lossy(&out.stdout);
                         let last = tail.lines().last().unwrap_or("").to_string();
-                        nj.completed(c, out.status.success(), json!({ "exit": out.status.code(), "tail": last }))
-                            .await;
+                        nj.completed(
+                            c,
+                            out.status.success(),
+                            json!({ "exit": out.status.code(), "tail": last }),
+                        )
+                        .await;
                         info!(result = %last, "forum suggestions");
                     }
                     Err(e) => {
-                        nj.completed(c, false, json!({ "error": e.to_string() })).await;
+                        nj.completed(c, false, json!({ "error": e.to_string() }))
+                            .await;
                         warn!(error = %e, "forum suggestions failed (fail-open)")
                     }
                 }
             }
         }
 
-        nj.turn_completed(json!({ "outcomes": outcomes.len() })).await;
+        nj.turn_completed(json!({ "outcomes": outcomes.len() }))
+            .await;
         record_night_journal(&nj.stats());
         Some(outcomes)
     }
@@ -384,7 +404,9 @@ impl Engine {
         date: &str,
         dry_run: bool,
     ) -> Result<CycleResult, EngineError> {
-        self.cycle_repo_recorded(repo_name, repo_path, day_int, date, dry_run).await.0
+        self.cycle_repo_recorded(repo_name, repo_path, day_int, date, dry_run)
+            .await
+            .0
     }
 
     /// One repo's cycle as one journal session (ADR-2071): `turn.started`,
@@ -404,10 +426,16 @@ impl Engine {
         let j = if dry_run {
             Journal::disabled(&night_id)
         } else {
-            Journal::from_env(&journal::session_for(&night_id, chrono::Utc::now().timestamp()))
+            Journal::from_env(&journal::session_for(
+                &night_id,
+                chrono::Utc::now().timestamp(),
+            ))
         };
-        j.turn_started(json!({ "repo": repo_name, "date": date, "night_id": night_id })).await;
-        let result = self.cycle_repo_body(repo_name, repo_path, day_int, date, dry_run, &j).await;
+        j.turn_started(json!({ "repo": repo_name, "date": date, "night_id": night_id }))
+            .await;
+        let result = self
+            .cycle_repo_body(repo_name, repo_path, day_int, date, dry_run, &j)
+            .await;
         let outcome = match &result {
             Ok(r) => json!({ "verdict": r.verdict.as_str(), "finding": r.finding }),
             Err(e) => json!({ "error": e.to_string() }),
@@ -463,7 +491,9 @@ impl Engine {
                 });
             }
             return self
-                .persist_handoff(&cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, &admission, j)
+                .persist_handoff(
+                    &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, &admission, j,
+                )
                 .await;
         }
         info!(
@@ -561,7 +591,13 @@ impl Engine {
                 warn!(error = %e, "manifest freeze failed — refusing to run unwitnessed");
                 return self
                     .persist_blocked_env(
-                        &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
+                        &cfg,
+                        &repo_name,
+                        &repo_path,
+                        &slot.deep,
+                        &night_id,
+                        date,
+                        "",
                         &format!("experiment manifest could not be frozen: {e}"),
                         j,
                     )
@@ -576,7 +612,12 @@ impl Engine {
         //     for tonight but leaves the experiment's retry budget intact
         //     (2026-09-26: a full HP disk abandoned loom's run on two
         //     attempts that never reached the model).
-        let c = j.called("annexe.ssh", json!({ "op": "retention-sweep", "run_id": frozen.run_id })).await;
+        let c = j
+            .called(
+                "annexe.ssh",
+                json!({ "op": "retention-sweep", "run_id": frozen.run_id }),
+            )
+            .await;
         let swept = dispatch::ssh(
             &self.runtime.hp_host,
             &format!(
@@ -584,7 +625,12 @@ impl Engine {
                 dispatch::shell_quote(&self.runtime.hp_annexe_dir)
             ),
         );
-        j.completed(c, swept.is_ok(), json!({ "error": swept.as_ref().err().map(|e| e.to_string()) })).await;
+        j.completed(
+            c,
+            swept.is_ok(),
+            json!({ "error": swept.as_ref().err().map(|e| e.to_string()) }),
+        )
+        .await;
         if let Err(e) = swept {
             warn!(error = %e, "annexe retention sweep failed (fail-open)");
         }
@@ -594,8 +640,12 @@ impl Engine {
             &self.runtime.hp_annexe_dir,
             dispatch::ANNEXE_MIN_FREE_GIB,
         );
-        j.completed(c, health.is_ok(), json!({ "free_gib": health.as_ref().ok(), "error": health.as_ref().err() }))
-            .await;
+        j.completed(
+            c,
+            health.is_ok(),
+            json!({ "free_gib": health.as_ref().ok(), "error": health.as_ref().err() }),
+        )
+        .await;
         match health {
             Ok(gib) => info!(free_gib = gib, "connected node annexe healthy"),
             Err(reason) => {
@@ -613,7 +663,13 @@ impl Engine {
                 );
                 return self
                     .persist_blocked_env(
-                        &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
+                        &cfg,
+                        &repo_name,
+                        &repo_path,
+                        &slot.deep,
+                        &night_id,
+                        date,
+                        "",
                         &format!("connected node annexe unhealthy: {reason}"),
                         j,
                     )
@@ -661,12 +717,21 @@ impl Engine {
                     &format!(
                         "Dream run {} for {} was abandoned after {} attempts (phase {}). \
                          Investigate before the next window; it will not retry itself.",
-                        prior.run_id, repo_name, prior.attempts, prior.phase.as_str()
+                        prior.run_id,
+                        repo_name,
+                        prior.attempts,
+                        prior.phase.as_str()
                     ),
                 );
                 return self
                     .persist_blocked_env(
-                        &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
+                        &cfg,
+                        &repo_name,
+                        &repo_path,
+                        &slot.deep,
+                        &night_id,
+                        date,
+                        "",
                         &format!("run abandoned after {} attempts", prior.attempts),
                         j,
                     )
@@ -686,7 +751,13 @@ impl Engine {
                 warn!(error = %e, "run journal unusable — refusing to run unrecoverably");
                 return self
                     .persist_blocked_env(
-                        &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, "",
+                        &cfg,
+                        &repo_name,
+                        &repo_path,
+                        &slot.deep,
+                        &night_id,
+                        date,
+                        "",
                         &format!("run journal unwritable: {e}"),
                         j,
                     )
@@ -699,12 +770,20 @@ impl Engine {
         //    The remote dir carries the RUN ID, not the pid: two attempts at the
         //    same experiment reuse one workspace, two different experiments
         //    never collide, and the name survives a restart.
-        let remote_dir = format!("{}/{}-r{}", self.runtime.hp_annexe_dir, night_id, frozen.run_id);
+        let remote_dir = format!(
+            "{}/{}-r{}",
+            self.runtime.hp_annexe_dir, night_id, frozen.run_id
+        );
         info!(remote = %remote_dir, "dispatching to the connected node");
         // Mirror the repo's real depth under the workspace so sibling
         // path-deps resolve on the annexe (see `clone_repo_and_siblings`).
         let repo_subpath = annexe_subpath(&repo_path, &self.workspace);
-        let c = j.called("annexe.clone", json!({ "remote": remote_dir, "include": cfg.annexe_include })).await;
+        let c = j
+            .called(
+                "annexe.clone",
+                json!({ "remote": remote_dir, "include": cfg.annexe_include }),
+            )
+            .await;
         let cloned = clone_repo_and_siblings(
             &self.runtime.hp_host,
             &repo_path,
@@ -713,7 +792,12 @@ impl Engine {
             &cfg.annexe_include,
             &self.workspace,
         );
-        j.completed(c, cloned.is_ok(), json!({ "error": cloned.as_ref().err().map(|e| e.to_string()) })).await;
+        j.completed(
+            c,
+            cloned.is_ok(),
+            json!({ "error": cloned.as_ref().err().map(|e| e.to_string()) }),
+        )
+        .await;
         cloned?;
 
         // Pre-flight probe: the checkout must exist and be non-empty on the connected node
@@ -739,7 +823,12 @@ impl Engine {
             true
         } else {
             warn!(result = ?first.err().map(|e| e.to_string()), "pre-flight failed — re-provisioning annexe checkout once");
-            let c = j.called("annexe.clone", json!({ "remote": remote_dir, "op": "reprovision" })).await;
+            let c = j
+                .called(
+                    "annexe.clone",
+                    json!({ "remote": remote_dir, "op": "reprovision" }),
+                )
+                .await;
             let _ = dispatch::ssh(
                 &self.runtime.hp_host,
                 &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
@@ -752,10 +841,16 @@ impl Engine {
                 &cfg.annexe_include,
                 &self.workspace,
             );
-            j.completed(c, recloned.is_ok(), json!({ "error": recloned.as_ref().err().map(|e| e.to_string()) }))
-                .await;
+            j.completed(
+                c,
+                recloned.is_ok(),
+                json!({ "error": recloned.as_ref().err().map(|e| e.to_string()) }),
+            )
+            .await;
             recloned?;
-            let c = j.called("annexe.ssh", json!({ "op": "preflight", "retry": true })).await;
+            let c = j
+                .called("annexe.ssh", json!({ "op": "preflight", "retry": true }))
+                .await;
             let ok = matches!(probe(&work_dir), Ok(out) if out.contains("PREFLIGHT-OK"));
             j.completed(c, ok, json!({})).await;
             ok
@@ -776,8 +871,8 @@ impl Engine {
                         "annexe checkout {}/{} missing or empty after two provisioning attempts",
                         remote_dir, repo_subpath
                     ),
-                        j,
-                    )
+                    j,
+                )
                 .await;
         }
 
@@ -786,14 +881,26 @@ impl Engine {
         //    than an untyped blob of stdout.
         let build_out = match cfg.build_step.as_ref() {
             Some(bs) => {
-                let c = j.called("annexe.exec", json!({ "op": "build", "cmd": bs.cmd })).await;
-                let exec = self.runner.run(&work_dir, &bs.cmd, DEFAULT_BUILD_TIMEOUT_SECS);
-                j.completed(c, exec.exit_code == Some(0), json!({ "exit": exec.exit_code })).await;
+                let c = j
+                    .called("annexe.exec", json!({ "op": "build", "cmd": bs.cmd }))
+                    .await;
+                let exec = self
+                    .runner
+                    .run(&work_dir, &bs.cmd, DEFAULT_BUILD_TIMEOUT_SECS);
+                j.completed(
+                    c,
+                    exec.exit_code == Some(0),
+                    json!({ "exit": exec.exit_code }),
+                )
+                .await;
                 match exec.exit_code {
                     Some(0) => exec.stdout,
                     other => {
                         warn!(exit = ?other, "build step did not succeed — evaluators decide the night");
-                        format!("BUILD FAILED (exit {:?})\n{}\n{}", other, exec.stdout, exec.stderr)
+                        format!(
+                            "BUILD FAILED (exit {:?})\n{}\n{}",
+                            other, exec.stdout, exec.stderr
+                        )
                     }
                 }
             }
@@ -801,15 +908,25 @@ impl Engine {
         };
         let applicable = frozen.applicable();
         let c = j
-            .called("annexe.exec", json!({ "op": "evaluate", "phase": "baseline",
-                "evaluators": applicable.iter().map(|e| e.name.clone()).collect::<Vec<_>>() }))
+            .called(
+                "annexe.exec",
+                json!({ "op": "evaluate", "phase": "baseline",
+                "evaluators": applicable.iter().map(|e| e.name.clone()).collect::<Vec<_>>() }),
+            )
             .await;
-        let baseline_receipts = self.run_evaluators(&work_dir, &applicable, receipts::Phase::Baseline);
-        j.completed(c, true, json!({ "outcomes": receipt_outcomes(&baseline_receipts) })).await;
+        let baseline_receipts =
+            self.run_evaluators(&work_dir, &applicable, receipts::Phase::Baseline);
+        j.completed(
+            c,
+            true,
+            json!({ "outcomes": receipt_outcomes(&baseline_receipts) }),
+        )
+        .await;
         for r in &baseline_receipts {
             info!(receipt = %r.summary(), "baseline evaluator");
         }
-        if let Err(e) = receipts::persist(&night_dir, receipts::Phase::Baseline, &baseline_receipts) {
+        if let Err(e) = receipts::persist(&night_dir, receipts::Phase::Baseline, &baseline_receipts)
+        {
             warn!(error = %e, "baseline receipt persist failed (fail-open)");
         }
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::BaselineEvaluated);
@@ -829,9 +946,16 @@ impl Engine {
             let _ = runstate::fail(&night_dir, &mut run, &detail);
             let res = self
                 .persist_blocked_env(
-                    &cfg, &repo_name, &repo_path, &slot.deep, &night_id, date, &remote_dir, &detail,
-                        j,
-                    )
+                    &cfg,
+                    &repo_name,
+                    &repo_path,
+                    &slot.deep,
+                    &night_id,
+                    date,
+                    &remote_dir,
+                    &detail,
+                    j,
+                )
                 .await?;
             let _ = runstate::complete(&night_dir, &mut run, res.verdict.as_str());
             return Ok(res);
@@ -844,7 +968,9 @@ impl Engine {
         //    reach an external provider.
         let commit = baseline_rev.clone();
         let evidence_start = prompt.len();
-        prompt.push_str("\n\n---\n\n# TONIGHT'S EVIDENCE (receipts from the connected node annexe)\n\n");
+        prompt.push_str(
+            "\n\n---\n\n# TONIGHT'S EVIDENCE (receipts from the connected node annexe)\n\n",
+        );
         prompt.push_str(&format!(
             "## Session commit\n`{}` (tree `{}`, run `{}`)\n\n",
             commit, baseline_tree, frozen.run_id
@@ -881,9 +1007,9 @@ impl Engine {
         //     the legacy path, and the sidecars are still written (recoverable
         //     evidence is worth keeping even when governance is off).
         let mut governed_pack: Option<String> = None;
-        match std::fs::create_dir_all(&night_dir).and_then(|_| {
-            context::persist_receipts(&night_dir, &night_id, &build_out, &eval_outs)
-        }) {
+        match std::fs::create_dir_all(&night_dir)
+            .and_then(|_| context::persist_receipts(&night_dir, &night_id, &build_out, &eval_outs))
+        {
             Ok(mut objects) => {
                 if context::enabled() {
                     objects.extend(context::load_prior_objects(
@@ -891,7 +1017,12 @@ impl Engine {
                         &repo_name,
                         date,
                     ));
-                    let c = j.called("llm.call", json!({ "purpose": "context-govern", "model": self.llm.model })).await;
+                    let c = j
+                        .called(
+                            "llm.call",
+                            json!({ "purpose": "context-govern", "model": self.llm.model }),
+                        )
+                        .await;
                     governed_pack = context::govern(
                         &self.llm,
                         self.llm_fallback.as_ref(),
@@ -933,7 +1064,12 @@ impl Engine {
             .map(|id| id.command.clone())
             .chain(cfg.build_step.as_ref().map(|b| b.cmd.clone()))
             .collect();
-        let c = j.called("llm.call", json!({ "purpose": "source-gather", "model": self.llm.model })).await;
+        let c = j
+            .called(
+                "llm.call",
+                json!({ "purpose": "source-gather", "model": self.llm.model }),
+            )
+            .await;
         let gathered = source::gather(
             &self.llm,
             self.llm_fallback.as_ref(),
@@ -965,11 +1101,19 @@ impl Engine {
         info!(provider = ?self.llm.provider, model = %self.llm.model, "calling LLM");
         let mut model_used = self.llm.model.clone();
         let c = j
-            .called("llm.call", json!({ "purpose": "verdict", "provider": format!("{:?}", self.llm.provider),
-                "model": self.llm.model, "prompt_chars": prompt.len() }))
+            .called(
+                "llm.call",
+                json!({ "purpose": "verdict", "provider": format!("{:?}", self.llm.provider),
+                "model": self.llm.model, "prompt_chars": prompt.len() }),
+            )
             .await;
         let primary = llm::call(&self.llm, &prompt).await;
-        j.completed(c, primary.is_ok(), json!({ "error": primary.as_ref().err().map(|e| e.to_string()) })).await;
+        j.completed(
+            c,
+            primary.is_ok(),
+            json!({ "error": primary.as_ref().err().map(|e| e.to_string()) }),
+        )
+        .await;
         let report = match primary {
             Ok(r) => r,
             Err(primary_err) => match &self.llm_fallback {
@@ -981,12 +1125,19 @@ impl Engine {
                         "primary LLM failed — trying fallback provider"
                     );
                     let c = j
-                        .called("llm.call", json!({ "purpose": "verdict-fallback",
-                            "provider": format!("{:?}", fb.provider), "model": fb.model }))
+                        .called(
+                            "llm.call",
+                            json!({ "purpose": "verdict-fallback",
+                            "provider": format!("{:?}", fb.provider), "model": fb.model }),
+                        )
                         .await;
                     let fallback = llm::call(fb, &prompt).await;
-                    j.completed(c, fallback.is_ok(), json!({ "error": fallback.as_ref().err().map(|e| e.to_string()) }))
-                        .await;
+                    j.completed(
+                        c,
+                        fallback.is_ok(),
+                        json!({ "error": fallback.as_ref().err().map(|e| e.to_string()) }),
+                    )
+                    .await;
                     match fallback {
                         Ok(r) => {
                             model_used = fb.model.clone();
@@ -1035,7 +1186,12 @@ impl Engine {
         let mut patch = persist::extract_patch(&report);
         if source::needs_repair(claimed_accept, patch.is_some()) {
             info!("ACCEPT without a dream-patch block — running the one-shot repair pass");
-            let c = j.called("llm.call", json!({ "purpose": "repair", "model": self.llm.model })).await;
+            let c = j
+                .called(
+                    "llm.call",
+                    json!({ "purpose": "repair", "model": self.llm.model }),
+                )
+                .await;
             let record = source::repair(
                 &self.llm,
                 self.llm_fallback.as_ref(),
@@ -1043,7 +1199,12 @@ impl Engine {
                 source_section.as_deref(),
             )
             .await;
-            j.completed(c, matches!(record.outcome, source::RepairOutcome::Patch(_)), json!({})).await;
+            j.completed(
+                c,
+                matches!(record.outcome, source::RepairOutcome::Patch(_)),
+                json!({}),
+            )
+            .await;
             info!(outcome = ?record.outcome, "repair pass finished");
             let _ = manifest::write_atomic(
                 &night_dir.join("repair.json"),
@@ -1057,7 +1218,9 @@ impl Engine {
         if claimed_accept {
             match patch {
                 None => {
-                    info!("report claims ACCEPT but carries no candidate patch — nothing to verify");
+                    info!(
+                        "report claims ACCEPT but carries no candidate patch — nothing to verify"
+                    );
                     candidate_state = gate::CandidateState::NoPatch;
                 }
                 Some(patch) if persist::deletes_binary(&patch) => {
@@ -1071,7 +1234,12 @@ impl Engine {
                     // worktree; drop it first — the run id, not the branch,
                     // is the identity.
                     persist::delete_branch(&repo_path, &branch);
-                    let c = j.called("git.worktree", json!({ "op": "apply-candidate", "branch": branch })).await;
+                    let c = j
+                        .called(
+                            "git.worktree",
+                            json!({ "op": "apply-candidate", "branch": branch }),
+                        )
+                        .await;
                     let prepared_res = candidate::prepare(
                         &repo_path,
                         &branch,
@@ -1079,15 +1247,21 @@ impl Engine {
                         &format!("dream({}): candidate for {}", slot.deep, night_id),
                         &baseline_rev,
                     );
-                    j.completed(c, prepared_res.is_ok(), json!({
-                        "error": prepared_res.as_ref().err().map(|e| e.to_string()),
-                        "tree": prepared_res.as_ref().ok().map(|c| c.tree_hash.clone()),
-                    }))
+                    j.completed(
+                        c,
+                        prepared_res.is_ok(),
+                        json!({
+                            "error": prepared_res.as_ref().err().map(|e| e.to_string()),
+                            "tree": prepared_res.as_ref().ok().map(|c| c.tree_hash.clone()),
+                        }),
+                    )
                     .await;
                     match prepared_res {
                         Err(e) => {
                             warn!(error = %e, "candidate patch did not apply — acceptance cannot be verified");
-                            candidate_state = gate::CandidateState::DidNotApply { detail: e.to_string() };
+                            candidate_state = gate::CandidateState::DidNotApply {
+                                detail: e.to_string(),
+                            };
                         }
                         Ok(c) => {
                             info!(tree = %c.tree_hash, branch = %c.branch, "candidate tree built in isolation");
@@ -1095,7 +1269,12 @@ impl Engine {
                             // The worktree lives in a temp dir, so reuse the
                             // subpath derived from the real checkout.
                             let cand_work = format!("{}/{}", cand_remote, repo_subpath);
-                            let jc = j.called("annexe.clone", json!({ "remote": cand_remote, "op": "candidate" })).await;
+                            let jc = j
+                                .called(
+                                    "annexe.clone",
+                                    json!({ "remote": cand_remote, "op": "candidate" }),
+                                )
+                                .await;
                             let shipped = clone_repo_and_siblings(
                                 &self.runtime.hp_host,
                                 &c.worktree,
@@ -1104,22 +1283,38 @@ impl Engine {
                                 &cfg.annexe_include,
                                 &self.workspace,
                             );
-                            j.completed(jc, shipped.is_ok(), json!({ "error": shipped.as_ref().err().map(|e| e.to_string()) }))
-                                .await;
+                            j.completed(
+                                jc,
+                                shipped.is_ok(),
+                                json!({ "error": shipped.as_ref().err().map(|e| e.to_string()) }),
+                            )
+                            .await;
                             match shipped {
                                 Ok(()) => {
                                     if let Some(bs) = cfg.build_step.as_ref() {
                                         let jc = j.called("annexe.exec", json!({ "op": "build", "phase": "candidate", "cmd": bs.cmd })).await;
-                                        let b = self.runner.run(&cand_work, &bs.cmd, DEFAULT_BUILD_TIMEOUT_SECS);
-                                        j.completed(jc, b.exit_code == Some(0), json!({ "exit": b.exit_code })).await;
+                                        let b = self.runner.run(
+                                            &cand_work,
+                                            &bs.cmd,
+                                            DEFAULT_BUILD_TIMEOUT_SECS,
+                                        );
+                                        j.completed(
+                                            jc,
+                                            b.exit_code == Some(0),
+                                            json!({ "exit": b.exit_code }),
+                                        )
+                                        .await;
                                         info!(exit = ?b.exit_code, "candidate build");
                                     }
                                     let jc = j
                                         .called("annexe.exec", json!({ "op": "evaluate", "phase": "candidate",
                                             "evaluators": required.iter().map(|e| e.name.clone()).collect::<Vec<_>>() }))
                                         .await;
-                                    candidate_receipts =
-                                        candidate::evaluate(self.runner.as_ref(), &cand_work, &required);
+                                    candidate_receipts = candidate::evaluate(
+                                        self.runner.as_ref(),
+                                        &cand_work,
+                                        &required,
+                                    );
                                     j.completed(jc, true, json!({ "outcomes": receipt_outcomes(&candidate_receipts) })).await;
                                     for r in &candidate_receipts {
                                         info!(receipt = %r.summary(), "candidate evaluator");
@@ -1144,10 +1339,15 @@ impl Engine {
                                     patch_bytes: c.patch_bytes,
                                     candidate_tree_hash: c.tree_hash.clone(),
                                     branch: c.branch.clone(),
-                                    applied: matches!(candidate_state, gate::CandidateState::Applied { .. }),
+                                    applied: matches!(
+                                        candidate_state,
+                                        gate::CandidateState::Applied { .. }
+                                    ),
                                     apply_error: match &candidate_state {
                                         gate::CandidateState::DidNotApply { detail }
-                                        | gate::CandidateState::Refused { detail } => Some(detail.clone()),
+                                        | gate::CandidateState::Refused { detail } => {
+                                            Some(detail.clone())
+                                        }
                                         _ => None,
                                     },
                                     created_at: chrono::Utc::now().to_rfc3339(),
@@ -1187,7 +1387,10 @@ impl Engine {
         let finding = if decision.accepted || decision.vetoes.is_empty() {
             verdict::sanitise_finding(&report, lenient, date)
         } else {
-            vetoed_finding(&verdict::sanitise_finding(&report, lenient, date), &decision)
+            vetoed_finding(
+                &verdict::sanitise_finding(&report, lenient, date),
+                &decision,
+            )
         };
         let finding_head = verdict::sanitise_finding_full(&report, lenient);
         let finding_full = format!("{}\n\nGate: {}", finding_head, decision.summary);
@@ -1222,7 +1425,9 @@ impl Engine {
         }
         // A vetoed ACCEPT is exactly the kind of thing a human should see.
         if !decision.vetoes.is_empty() {
-            let c = j.called("inbox.write", json!({ "kind": "alert", "why": "veto" })).await;
+            let c = j
+                .called("inbox.write", json!({ "kind": "alert", "why": "veto" }))
+                .await;
             let added = inbox::add(
                 "alert",
                 &repo_name,
@@ -1261,11 +1466,21 @@ impl Engine {
                         .join(", "),
                 );
                 let jc = j.called("git.push", json!({ "branch": c.branch, "repo": cfg.repo, "then": "gh pr create --draft" })).await;
-                let out = persist::push_and_open_pr(&repo_path, &cfg.repo, &c.branch, &title, &body);
-                j.completed(jc, out.pushed && out.pr_url.is_some(), json!({ "pushed": out.pushed, "pr": out.pr_url })).await;
+                let out =
+                    persist::push_and_open_pr(&repo_path, &cfg.repo, &c.branch, &title, &body);
+                j.completed(
+                    jc,
+                    out.pushed && out.pr_url.is_some(),
+                    json!({ "pushed": out.pushed, "pr": out.pr_url }),
+                )
+                .await;
                 info!(branch = %out.branch, pushed = out.pushed, pr = ?out.pr_url, "verified candidate persisted as draft PR");
                 pr_ref = out.pr_url.clone().unwrap_or_else(|| {
-                    if out.pushed { format!("branch:{}", out.branch) } else { "PERSIST-LOCAL".into() }
+                    if out.pushed {
+                        format!("branch:{}", out.branch)
+                    } else {
+                        "PERSIST-LOCAL".into()
+                    }
                 });
             }
             (Some(c), true) => {
@@ -1275,7 +1490,12 @@ impl Engine {
             }
             (Some(c), false) => {
                 warn!(branch = %c.branch, "candidate vetoed — discarding branch and worktree");
-                let jc = j.called("git.branch-delete", json!({ "branch": c.branch, "why": "vetoed" })).await;
+                let jc = j
+                    .called(
+                        "git.branch-delete",
+                        json!({ "branch": c.branch, "why": "vetoed" }),
+                    )
+                    .await;
                 candidate::discard(&repo_path, c);
                 j.completed(jc, true, json!({})).await;
                 pr_ref = "VETOED".into();
@@ -1304,7 +1524,14 @@ impl Engine {
             review_minutes: String::new(),
         };
         let row = self
-            .append_and_commit_ledger(&repo_path, &ledger_path, row, &gate_result_line(&decision), &night_id, j)
+            .append_and_commit_ledger(
+                &repo_path,
+                &ledger_path,
+                row,
+                &gate_result_line(&decision),
+                &night_id,
+                j,
+            )
             .await?;
         info!(path = %ledger_path.display(), "ledger row appended");
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::Persisted);
@@ -1324,9 +1551,19 @@ impl Engine {
             },
             source: format!("hp-annexe-{}", model_used),
         };
-        let c = j.called("ruvector.store", json!({ "namespace": self.ruvector.namespace, "key": df.night_id })).await;
+        let c = j
+            .called(
+                "ruvector.store",
+                json!({ "namespace": self.ruvector.namespace, "key": df.night_id }),
+            )
+            .await;
         let store = ruvector::store_finding(&self.ruvector, &df).await;
-        j.completed(c, matches!(store, Ok(true)), json!({ "error": store.as_ref().err().map(|e| e.to_string()) })).await;
+        j.completed(
+            c,
+            matches!(store, Ok(true)),
+            json!({ "error": store.as_ref().err().map(|e| e.to_string()) }),
+        )
+        .await;
         let stored = match store {
             Ok(s) => s,
             Err(e) => {
@@ -1338,7 +1575,12 @@ impl Engine {
         // 14. Clean this night's remote dir — everything worth keeping (report,
         //     verdict, receipts, ledger row, witness, memory) is already
         //     control-plane side. Kept on failure paths for debugging.
-        let c = j.called("annexe.ssh", json!({ "op": "cleanup", "remote": remote_dir })).await;
+        let c = j
+            .called(
+                "annexe.ssh",
+                json!({ "op": "cleanup", "remote": remote_dir }),
+            )
+            .await;
         let cleaned = dispatch::ssh(
             &self.runtime.hp_host,
             &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
@@ -1394,7 +1636,10 @@ impl Engine {
             warn!(rules = ?broken, finding = %row.finding, "ledger row broke the row contract; repaired before append");
         }
         let c = j
-            .called("ledger.append", json!({ "verdict": row.verdict, "deep": row.deep, "repaired": broken }))
+            .called(
+                "ledger.append",
+                json!({ "verdict": row.verdict, "deep": row.deep, "repaired": broken }),
+            )
             .await;
         let appended = ledger::append_row(ledger_path, &row);
         j.completed(c, appended.is_ok(), json!({})).await;
@@ -1403,17 +1648,28 @@ impl Engine {
         if std::env::var("DREAM_LEDGER_COMMIT").as_deref() == Ok("0") {
             return Ok(row);
         }
-        let c = j.called("git.commit", json!({ "path": ledger_path.display().to_string() })).await;
+        let c = j
+            .called(
+                "git.commit",
+                json!({ "path": ledger_path.display().to_string() }),
+            )
+            .await;
         let outcome = ledger::commit_ledger(
             repo_path,
             ledger_path,
             &format!("dream-cycle: {} ledger row ({})", night_id, row.verdict),
         );
-        let ok = matches!(outcome, ledger::LedgerCommit::Committed(_) | ledger::LedgerCommit::NothingToCommit);
-        j.completed(c, ok, serde_json::to_value(&outcome).unwrap_or_default()).await;
+        let ok = matches!(
+            outcome,
+            ledger::LedgerCommit::Committed(_) | ledger::LedgerCommit::NothingToCommit
+        );
+        j.completed(c, ok, serde_json::to_value(&outcome).unwrap_or_default())
+            .await;
         match &outcome {
             ledger::LedgerCommit::Committed(id) => info!(commit = %id, "ledger row committed"),
-            ledger::LedgerCommit::Failed(e) => warn!(error = %e, "ledger commit failed (fail-open — row stays in the working tree)"),
+            ledger::LedgerCommit::Failed(e) => {
+                warn!(error = %e, "ledger commit failed (fail-open — row stays in the working tree)")
+            }
             other => info!(outcome = ?other, "ledger row not committed"),
         }
         Ok(row)
@@ -1421,7 +1677,11 @@ impl Engine {
 
     /// Apply the seven-day rule to every nominated repo's `dream/*` branches,
     /// journalling each deletion or PR closure. Fail-open per branch.
-    async fn sweep_branches(&self, repos: &[(String, PathBuf)], nj: &Journal) -> Vec<sweep::SweepRecord> {
+    async fn sweep_branches(
+        &self,
+        repos: &[(String, PathBuf)],
+        nj: &Journal,
+    ) -> Vec<sweep::SweepRecord> {
         let now = chrono::Utc::now().timestamp();
         let mut records = Vec::new();
         for (name, path) in repos {
@@ -1432,7 +1692,12 @@ impl Engine {
                 if p.action == sweep::SweepAction::Keep {
                     continue;
                 }
-                let c = nj.called("git.branch-sweep", serde_json::to_value(&p).unwrap_or_default()).await;
+                let c = nj
+                    .called(
+                        "git.branch-sweep",
+                        serde_json::to_value(&p).unwrap_or_default(),
+                    )
+                    .await;
                 let ok = sweep::apply(path, &slug, &p);
                 nj.completed(c, ok, json!({})).await;
                 info!(repo = %name, branch = %p.branch, action = ?p.action, ok, "branch sweep");
@@ -1572,7 +1837,12 @@ impl Engine {
         )
         .await?;
 
-        let c = j.called("inbox.write", json!({ "kind": "alert", "why": "blocked-env" })).await;
+        let c = j
+            .called(
+                "inbox.write",
+                json!({ "kind": "alert", "why": "blocked-env" }),
+            )
+            .await;
         let added = inbox::add(
             "alert",
             repo_name,
@@ -1589,7 +1859,12 @@ impl Engine {
         }
 
         if !remote_dir.is_empty() {
-            let c = j.called("annexe.ssh", json!({ "op": "cleanup", "remote": remote_dir })).await;
+            let c = j
+                .called(
+                    "annexe.ssh",
+                    json!({ "op": "cleanup", "remote": remote_dir }),
+                )
+                .await;
             let cleaned = dispatch::ssh(
                 &self.runtime.hp_host,
                 &format!("rm -rf {}", dispatch::shell_quote(remote_dir)),
@@ -1680,7 +1955,12 @@ impl Engine {
         )
         .await?;
 
-        let c = j.called("inbox.write", json!({ "kind": "question", "why": "handoff" })).await;
+        let c = j
+            .called(
+                "inbox.write",
+                json!({ "kind": "question", "why": "handoff" }),
+            )
+            .await;
         let added = inbox::add(
             "question",
             repo_name,
@@ -1898,7 +2178,9 @@ fn render_receipt(r: &receipts::EvaluatorReceipt) -> String {
     let mut out = format!(
         "outcome={} exit={} duration={}ms required={}\n",
         r.outcome.label(),
-        r.exit_code.map(|c| c.to_string()).unwrap_or_else(|| "-".into()),
+        r.exit_code
+            .map(|c| c.to_string())
+            .unwrap_or_else(|| "-".into()),
         r.duration_ms,
         r.required
     );
@@ -1921,7 +2203,10 @@ fn render_receipt(r: &receipts::EvaluatorReceipt) -> String {
 
 /// `name=outcome` for each receipt, for a journal `tool.completed` payload.
 fn receipt_outcomes(receipts: &[receipts::EvaluatorReceipt]) -> Vec<String> {
-    receipts.iter().map(|r| format!("{}={}", r.name, r.outcome.label())).collect()
+    receipts
+        .iter()
+        .map(|r| format!("{}={}", r.name, r.outcome.label()))
+        .collect()
 }
 
 /// Add the night-level journal session's counters to the night-health file
@@ -1934,7 +2219,10 @@ fn record_night_journal(stats: &JournalStats) {
         .and_then(|t| serde_json::from_str::<digest::NightHealth>(&t).ok())
     {
         health.journal.push(stats.clone());
-        if let Err(e) = std::fs::write(&path, serde_json::to_string_pretty(&health).unwrap_or_default()) {
+        if let Err(e) = std::fs::write(
+            &path,
+            serde_json::to_string_pretty(&health).unwrap_or_default(),
+        ) {
             warn!(error = %e, "night health journal write failed (fail-open)");
         }
     }
@@ -2017,7 +2305,10 @@ fn vetoed_finding(base: &str, decision: &gate::GateDecision) -> String {
         core = rest.trim_start();
     }
     if verdict::ledger_cell_ok(core) {
-        let prefixed = format!("VETOED: {}", verdict::clip_words(core, 80 - "VETOED: ".len()));
+        let prefixed = format!(
+            "VETOED: {}",
+            verdict::clip_words(core, 80 - "VETOED: ".len())
+        );
         if verdict::ledger_cell_ok(&prefixed) {
             return prefixed;
         }
@@ -2034,9 +2325,15 @@ fn gate_result_line(decision: &gate::GateDecision) -> String {
         return line;
     }
     let bare = if decision.vetoes.is_empty() {
-        format!("gate verdict {} (model claimed {})", decision.verdict, decision.model_verdict)
+        format!(
+            "gate verdict {} (model claimed {})",
+            decision.verdict, decision.model_verdict
+        )
     } else {
-        format!("{} vetoed → {} by the required-check gate", decision.model_verdict, decision.verdict)
+        format!(
+            "{} vetoed → {} by the required-check gate",
+            decision.model_verdict, decision.verdict
+        )
     };
     verdict::clip_words(&bare, 80)
 }
@@ -2057,7 +2354,11 @@ fn pr_title(deep: &str, cell: &str, full: &str) -> String {
     } else {
         full.lines().next().unwrap_or("")
     };
-    format!("dream({}): {}", deep, verdict::clip_words(source, PR_TITLE_FINDING_MAX))
+    format!(
+        "dream({}): {}",
+        deep,
+        verdict::clip_words(source, PR_TITLE_FINDING_MAX)
+    )
 }
 
 /// Last `max` bytes of a string, on a char boundary.
@@ -2157,10 +2458,16 @@ mod tests {
         let f = vetoed_finding(base, &d);
         assert!(verdict::ledger_cell_ok(&f), "{f}");
         assert!(!f.to_ascii_lowercase().contains("given"), "{f}");
-        assert_eq!(f, "ACCEPT vetoed → REJECT: darwin-smoke: exit 1 on candidate tree");
+        assert_eq!(
+            f,
+            "ACCEPT vetoed → REJECT: darwin-smoke: exit 1 on candidate tree"
+        );
         // A pointer fallback is not a result either.
         let f = vetoed_finding("INCONCLUSIVE — see report", &d);
-        assert_eq!(f, "ACCEPT vetoed → REJECT: darwin-smoke: exit 1 on candidate tree");
+        assert_eq!(
+            f,
+            "ACCEPT vetoed → REJECT: darwin-smoke: exit 1 on candidate tree"
+        );
     }
 
     #[test]
@@ -2179,7 +2486,8 @@ mod tests {
             "VETOED: cap lifted"
         );
         // Long but compliant: clipped on a word boundary, still under the cap.
-        let long = "cap lifted to eight candidates per generation and the smoke run finished in time";
+        let long =
+            "cap lifted to eight candidates per generation and the smoke run finished in time";
         let f = vetoed_finding(long, &d);
         assert!(f.starts_with("VETOED: cap lifted"), "{f}");
         assert!(f.ends_with('…'), "{f}");
@@ -2204,17 +2512,25 @@ mod tests {
     /// to 80 chars, so they lost both ends ("andidatesPerGeneration … out").
     #[test]
     fn pr_title_takes_the_head_of_the_full_finding_on_a_word_boundary() {
-        let full = "Given the darwin evaluator caps candidatesPerGeneration at four, when the cap is \
+        let full =
+            "Given the darwin evaluator caps candidatesPerGeneration at four, when the cap is \
                     lifted to eight, then the smoke run completes without timing out";
         let cell: String = full.chars().take(80).collect();
         let title = pr_title("evaluator", &cell, full);
         let tail_part = title.strip_prefix("dream(evaluator): ").expect(&title);
         assert!(tail_part.chars().count() <= 60, "{title}");
         assert!(tail_part.ends_with('…'), "{title}");
-        assert_eq!(tail_part, "Given the darwin evaluator caps candidatesPerGeneration at…");
+        assert_eq!(
+            tail_part,
+            "Given the darwin evaluator caps candidatesPerGeneration at…"
+        );
         let head = tail_part.trim_end_matches('…');
         assert!(full.starts_with(head), "{title}");
-        assert_eq!(full.as_bytes()[head.len()], b' ', "cut on a word boundary: {title}");
+        assert_eq!(
+            full.as_bytes()[head.len()],
+            b' ',
+            "cut on a word boundary: {title}"
+        );
     }
 
     /// A contract-satisfying result in the cell is the better title; a short
@@ -2223,7 +2539,11 @@ mod tests {
     fn pr_title_prefers_a_result_cell_and_keeps_short_findings_whole() {
         let full = "Given a long hypothesis that the cell replaced with tonight's result line";
         assert_eq!(
-            pr_title("cache", "warm cache halves p50 latency (412ms → 198ms)", full),
+            pr_title(
+                "cache",
+                "warm cache halves p50 latency (412ms → 198ms)",
+                full
+            ),
             "dream(cache): warm cache halves p50 latency (412ms → 198ms)"
         );
         // Multi-line full findings title from their first line only.

@@ -125,7 +125,10 @@ impl ExperimentManifest {
 
     /// Applicable evaluators whose result can veto acceptance.
     pub fn required(&self) -> Vec<&EvaluatorIdentity> {
-        self.applicable().into_iter().filter(|e| e.required).collect()
+        self.applicable()
+            .into_iter()
+            .filter(|e| e.required)
+            .collect()
     }
 
     /// Canonical digest of the manifest *content*, used to detect divergence
@@ -163,7 +166,13 @@ pub fn digest(bytes: &[u8]) -> String {
 /// baseline revision and the config digest, so a genuinely different
 /// experiment — new HEAD, edited evaluators — gets a different id and cannot
 /// inherit the previous attempt's evidence.
-pub fn run_id(repo: &str, date: &str, deep: &str, baseline_revision: &str, config_digest: &str) -> String {
+pub fn run_id(
+    repo: &str,
+    date: &str,
+    deep: &str,
+    baseline_revision: &str,
+    config_digest: &str,
+) -> String {
     let material = format!(
         "dream-run-v1\u{0}{repo}\u{0}{date}\u{0}{deep}\u{0}{baseline_revision}\u{0}{config_digest}"
     );
@@ -228,10 +237,7 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let tmp = path.with_extension(format!(
-        "tmp{}",
-        std::process::id()
-    ));
+    let tmp = path.with_extension(format!("tmp{}", std::process::id()));
     std::fs::write(&tmp, bytes)?;
     std::fs::rename(&tmp, path)
 }
@@ -327,7 +333,10 @@ pub struct CandidateRecord {
 }
 
 pub fn write_candidate(dir: &Path, record: &CandidateRecord) -> Result<(), ManifestError> {
-    write_atomic(&dir.join("candidate.json"), &serde_json::to_vec_pretty(record)?)?;
+    write_atomic(
+        &dir.join("candidate.json"),
+        &serde_json::to_vec_pretty(record)?,
+    )?;
     Ok(())
 }
 
@@ -391,11 +400,23 @@ mod tests {
     fn run_id_is_deterministic_and_input_sensitive() {
         let a = run_id("agentbox", "2026-09-05", "engine", "abc123", "cfg1");
         let b = run_id("agentbox", "2026-09-05", "engine", "abc123", "cfg1");
-        assert_eq!(a, b, "same inputs must recompute the same id (restart-safe)");
+        assert_eq!(
+            a, b,
+            "same inputs must recompute the same id (restart-safe)"
+        );
         assert_eq!(a.len(), 16);
-        assert_ne!(a, run_id("agentbox", "2026-09-05", "engine", "abc124", "cfg1"));
-        assert_ne!(a, run_id("agentbox", "2026-09-05", "engine", "abc123", "cfg2"));
-        assert_ne!(a, run_id("agentbox", "2026-09-06", "engine", "abc123", "cfg1"));
+        assert_ne!(
+            a,
+            run_id("agentbox", "2026-09-05", "engine", "abc124", "cfg1")
+        );
+        assert_ne!(
+            a,
+            run_id("agentbox", "2026-09-05", "engine", "abc123", "cfg2")
+        );
+        assert_ne!(
+            a,
+            run_id("agentbox", "2026-09-06", "engine", "abc123", "cfg1")
+        );
         assert_ne!(a, run_id("other", "2026-09-05", "engine", "abc123", "cfg1"));
     }
 
@@ -419,7 +440,11 @@ mod tests {
             timeout_secs: 60,
         });
         let required: Vec<&str> = m.required().iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(required, vec!["tests"], "lint is advisory, other-deep is a different slot");
+        assert_eq!(
+            required,
+            vec!["tests"],
+            "lint is advisory, other-deep is a different slot"
+        );
     }
 
     #[test]
@@ -427,7 +452,11 @@ mod tests {
         let a = manifest_for("abc123");
         let b = manifest_for("abc123");
         let names: Vec<&str> = a.evaluators.iter().map(|e| e.name.as_str()).collect();
-        assert_eq!(names, vec!["lint", "tests"], "HashMap order must not leak into the document");
+        assert_eq!(
+            names,
+            vec!["lint", "tests"],
+            "HashMap order must not leak into the document"
+        );
         assert_eq!(a.evaluators, b.evaluators);
     }
 
@@ -465,7 +494,9 @@ mod tests {
             other => panic!("expected divergence, got {other:?}"),
         }
         assert!(
-            dir.path().join(format!("manifest-{}.json", first.run_id)).exists(),
+            dir.path()
+                .join(format!("manifest-{}.json", first.run_id))
+                .exists(),
             "the superseded manifest must survive as evidence"
         );
         assert_eq!(load(dir.path()).unwrap().baseline_revision, "def456");

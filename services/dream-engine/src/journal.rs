@@ -54,7 +54,9 @@ impl JournalConfig {
             let port = std::env::var("MANAGEMENT_API_PORT").unwrap_or_else(|_| "9090".into());
             format!("http://127.0.0.1:{port}")
         });
-        let api_key = std::env::var("MANAGEMENT_API_KEY").ok().filter(|k| !k.is_empty());
+        let api_key = std::env::var("MANAGEMENT_API_KEY")
+            .ok()
+            .filter(|k| !k.is_empty());
         Some(Self { base_url, api_key })
     }
 }
@@ -147,12 +149,14 @@ impl Journal {
 
     /// Record the start of the session (`turn.started`).
     pub async fn turn_started(&self, payload: Value) {
-        self.post("turn.started", None, "turn-started", None, payload).await;
+        self.post("turn.started", None, "turn-started", None, payload)
+            .await;
     }
 
     /// Record the end of the session (`turn.completed`).
     pub async fn turn_completed(&self, payload: Value) {
-        self.post("turn.completed", None, "turn-completed", None, payload).await;
+        self.post("turn.completed", None, "turn-completed", None, payload)
+            .await;
     }
 
     /// Record that a side effect is about to happen. `tool` is a stable,
@@ -162,10 +166,21 @@ impl Journal {
         let step = self.step.fetch_add(1, Ordering::SeqCst) + 1;
         let payload = json!({ "tool": tool, "detail": detail });
         let event_id = self
-            .post("tool.called", Some(step), &format!("step-{step}-called"), None, payload)
+            .post(
+                "tool.called",
+                Some(step),
+                &format!("step-{step}-called"),
+                None,
+                payload,
+            )
             .await;
         self.open_calls.fetch_add(1, Ordering::SeqCst);
-        Call { step, tool: tool.to_string(), event_id, started: Instant::now() }
+        Call {
+            step,
+            tool: tool.to_string(),
+            event_id,
+            started: Instant::now(),
+        }
     }
 
     /// Record the outcome of a side effect opened by [`Journal::called`].
@@ -289,10 +304,20 @@ pub fn session_for(night_id: &str, unix_secs: i64) -> String {
 fn session_slug(raw: &str) -> String {
     let s: String = raw
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') { c } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
+                c
+            } else {
+                '-'
+            }
+        })
         .take(160)
         .collect();
-    if s.is_empty() { "session".into() } else { s }
+    if s.is_empty() {
+        "session".into()
+    } else {
+        s
+    }
 }
 
 #[cfg(test)]
@@ -311,7 +336,9 @@ mod tests {
         let sink = seen.clone();
         tokio::spawn(async move {
             loop {
-                let Ok((mut sock, _)) = listener.accept().await else { return };
+                let Ok((mut sock, _)) = listener.accept().await else {
+                    return;
+                };
                 let sink = sink.clone();
                 tokio::spawn(async move {
                     let mut buf = Vec::new();
@@ -329,7 +356,8 @@ mod tests {
                                 .lines()
                                 .find_map(|l| {
                                     let (k, v) = l.split_once(':')?;
-                                    k.eq_ignore_ascii_case("content-length").then(|| v.trim().parse::<usize>().ok())?
+                                    k.eq_ignore_ascii_case("content-length")
+                                        .then(|| v.trim().parse::<usize>().ok())?
                                 })
                                 .unwrap_or(0);
                             if buf.len() >= idx + 4 + len {
@@ -343,7 +371,10 @@ mod tests {
                         g.push(v);
                         g.len()
                     };
-                    let resp_body = format!("{{\"event_id\":\"urn:agentbox:meta:exec-{n}\",\"seq\":{}}}", n - 1);
+                    let resp_body = format!(
+                        "{{\"event_id\":\"urn:agentbox:meta:exec-{n}\",\"seq\":{}}}",
+                        n - 1
+                    );
                     let resp = format!(
                         "HTTP/1.1 {status} X\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{}",
                         resp_body.len(),
@@ -357,7 +388,10 @@ mod tests {
     }
 
     fn cfg(url: &str) -> JournalConfig {
-        JournalConfig { base_url: url.into(), api_key: Some("k".into()) }
+        JournalConfig {
+            base_url: url.into(),
+            api_key: Some("k".into()),
+        }
     }
 
     #[tokio::test]
@@ -365,14 +399,26 @@ mod tests {
         let (url, seen) = stub_api(201).await;
         let j = Journal::new(cfg(&url), "2026-09-30-VisionFlow-1");
         j.turn_started(json!({ "repo": "VisionFlow" })).await;
-        let c = j.called("annexe.ssh", json!({ "op": "retention-sweep" })).await;
+        let c = j
+            .called("annexe.ssh", json!({ "op": "retention-sweep" }))
+            .await;
         j.completed(c, true, json!({})).await;
         j.turn_completed(json!({ "verdict": "ACCEPT" })).await;
 
         let got = seen.lock().unwrap().clone();
         let types: Vec<&str> = got.iter().map(|v| v["type"].as_str().unwrap()).collect();
-        assert_eq!(types, ["turn.started", "tool.called", "tool.completed", "turn.completed"]);
-        assert!(got.iter().all(|v| v["session"] == "2026-09-30-VisionFlow-1" && v["harness"] == HARNESS));
+        assert_eq!(
+            types,
+            [
+                "turn.started",
+                "tool.called",
+                "tool.completed",
+                "turn.completed"
+            ]
+        );
+        assert!(got
+            .iter()
+            .all(|v| v["session"] == "2026-09-30-VisionFlow-1" && v["harness"] == HARNESS));
         assert_eq!(got[1]["step"], got[2]["step"]);
         assert_eq!(got[2]["causation"], "urn:agentbox:meta:exec-2");
         assert_eq!(got[2]["payload"]["tool"], "annexe.ssh");
@@ -399,7 +445,10 @@ mod tests {
         assert_eq!(s.failed, BREAKER_THRESHOLD);
         assert_eq!(s.skipped, 20 - BREAKER_THRESHOLD);
         assert_eq!(s.unpaired, 0);
-        assert!(t0.elapsed() < Duration::from_secs(10), "a down API must not stall the night");
+        assert!(
+            t0.elapsed() < Duration::from_secs(10),
+            "a down API must not stall the night"
+        );
     }
 
     #[tokio::test]
@@ -431,7 +480,10 @@ mod tests {
 
     #[test]
     fn session_slugs_fit_the_api_pattern() {
-        assert_eq!(session_for("2026-09-30-VisionFlow", 1759200000), "2026-09-30-VisionFlow-1759200000");
+        assert_eq!(
+            session_for("2026-09-30-VisionFlow", 1759200000),
+            "2026-09-30-VisionFlow-1759200000"
+        );
         assert_eq!(session_slug("night/2026:09 30"), "night-2026-09-30");
         assert_eq!(session_slug(""), "session");
         assert_eq!(session_slug(&"x".repeat(400)).len(), 160);

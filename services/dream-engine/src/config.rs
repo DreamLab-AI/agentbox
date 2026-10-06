@@ -568,7 +568,10 @@ mod tests {
             rt.loom_url = "${DREAM_TEST_ABSENT}".to_owned();
             with_var("DREAM_TEST_ABSENT", None, || rt.resolve_placeholders());
             assert_eq!(rt.loom_url, default_loom_url());
-            assert!(!rt.loom_url.contains("${"), "a placeholder survived into the config");
+            assert!(
+                !rt.loom_url.contains("${"),
+                "a placeholder survived into the config"
+            );
         }
     }
 
@@ -578,12 +581,18 @@ mod tests {
     fn annexe_include_parses_and_defaults() {
         let absent: DreamConfig =
             serde_json::from_str(r#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}]}"#).unwrap();
-        assert!(absent.annexe_include.is_empty(), "absent → empty (byte-identical when off)");
+        assert!(
+            absent.annexe_include.is_empty(),
+            "absent → empty (byte-identical when off)"
+        );
         let present: DreamConfig = serde_json::from_str(
             r#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}],"annexeInclude":["nostr-rust-forum","solid-pod-rs"]}"#,
         )
         .unwrap();
-        assert_eq!(present.annexe_include, vec!["nostr-rust-forum".to_string(), "solid-pod-rs".to_string()]);
+        assert_eq!(
+            present.annexe_include,
+            vec!["nostr-rust-forum".to_string(), "solid-pod-rs".to_string()]
+        );
     }
 
     #[test]

@@ -159,10 +159,7 @@ pub fn resolve_in(
     decision_event_id: &str,
 ) -> std::io::Result<bool> {
     let mut items = load_from(path);
-    let Some(item) = items
-        .iter_mut()
-        .find(|i| i.id == id && i.status == "open")
-    else {
+    let Some(item) = items.iter_mut().find(|i| i.id == id && i.status == "open") else {
         return Ok(false);
     };
     item.status = status.to_string();

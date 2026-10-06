@@ -45,7 +45,11 @@ pub fn compile(cfg: &DreamConfig, slot: &Slot, day_int: u32, bonus_dives: &[Stri
                 format!(
                     "- **{}** ({}): `{}`",
                     name,
-                    if spec.required { "REQUIRED — a bad result vetoes acceptance" } else { "advisory" },
+                    if spec.required {
+                        "REQUIRED — a bad result vetoes acceptance"
+                    } else {
+                        "advisory"
+                    },
                     spec.cmd
                 )
             })
@@ -240,7 +244,10 @@ mod tests {
             annexe_include: vec![],
             evaluator_entrypoints: {
                 let mut m = HashMap::new();
-                m.insert("bench".into(), crate::config::EvaluatorSpec::command("cargo test"));
+                m.insert(
+                    "bench".into(),
+                    crate::config::EvaluatorSpec::command("cargo test"),
+                );
                 m
             },
             competitors: vec!["Sakana AI Scientist".into()],
@@ -315,7 +322,10 @@ mod tests {
             "check its current GitHub state",
             "Run every evaluator entrypoint",
         ] {
-            assert!(!prompt.contains(banned), "prompt still asks the model to: {banned}");
+            assert!(
+                !prompt.contains(banned),
+                "prompt still asks the model to: {banned}"
+            );
         }
         // Prior-night fates and reviewer columns are engine-filled now.
         assert!(prompt.contains(

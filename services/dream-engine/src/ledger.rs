@@ -175,9 +175,13 @@ fn fate_token(token: &str) -> bool {
 fn iso_date(date: &str) -> bool {
     let b = date.as_bytes();
     b.len() == 10
-        && b.iter()
-            .enumerate()
-            .all(|(i, c)| if i == 4 || i == 7 { *c == b'-' } else { c.is_ascii_digit() })
+        && b.iter().enumerate().all(|(i, c)| {
+            if i == 4 || i == 7 {
+                *c == b'-'
+            } else {
+                c.is_ascii_digit()
+            }
+        })
 }
 
 /// The row-contract rules `row` breaks, named as dream-machine's
@@ -232,22 +236,36 @@ pub fn row_violations(row: &LedgerRow) -> Vec<&'static str> {
 /// witness cell); they exist so no row of any shape is written non-compliant.
 pub fn enforce_contract(row: &mut LedgerRow, fallback: &str) -> Vec<&'static str> {
     if row.finding.contains('|') {
-        row.finding = row.finding.replace('|', " ").split_whitespace().collect::<Vec<_>>().join(" ");
+        row.finding = row
+            .finding
+            .replace('|', " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
     }
     let broken = row_violations(row);
     if broken.is_empty() {
         return broken;
     }
     if !LEDGER_VERDICTS.contains(&row.verdict.trim()) {
-        row.verdict = crate::verdict::from_label(&row.verdict).as_str().to_string();
+        row.verdict = crate::verdict::from_label(&row.verdict)
+            .as_str()
+            .to_string();
     }
     if !crate::verdict::finding_violations(&row.finding).is_empty() {
-        let clean: String = fallback.replace('|', " ").split_whitespace().collect::<Vec<_>>().join(" ");
+        let clean: String = fallback
+            .replace('|', " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
         let clipped = crate::verdict::clip_words(&clean, crate::verdict::FINDING_MAX_UTF16);
         row.finding = if crate::verdict::ledger_cell_ok(&clipped) {
             clipped
         } else {
-            format!("{} night; finding withheld for breaking the ledger row contract", row.verdict.trim())
+            format!(
+                "{} night; finding withheld for breaking the ledger row contract",
+                row.verdict.trim()
+            )
         };
     }
     if row.verdict.trim() == "ACCEPT" {
@@ -370,7 +388,13 @@ pub enum LedgerCommit {
 /// commits the file's current content without touching anything else the
 /// operator has staged. Local commit only: pushing stays with the operator.
 pub fn commit_ledger(repo: &Path, ledger_path: &Path, message: &str) -> LedgerCommit {
-    let run = |args: &[&str]| std::process::Command::new("git").arg("-C").arg(repo).args(args).output();
+    let run = |args: &[&str]| {
+        std::process::Command::new("git")
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .output()
+    };
     let text = |o: &std::process::Output| String::from_utf8_lossy(&o.stdout).trim().to_string();
 
     let head = match run(&["symbolic-ref", "--quiet", "--short", "HEAD"]) {
@@ -378,18 +402,32 @@ pub fn commit_ledger(repo: &Path, ledger_path: &Path, message: &str) -> LedgerCo
         Ok(_) => return LedgerCommit::NotDefaultBranch("(detached)".into()),
         Err(e) => return LedgerCommit::Failed(e.to_string()),
     };
-    let default = run(&["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| text(&o).trim_start_matches("origin/").to_string())
-        .unwrap_or_else(|| {
-            let has = |b: &str| {
-                run(&["show-ref", "--verify", "--quiet", &format!("refs/heads/{b}")])
-                    .map(|o| o.status.success())
-                    .unwrap_or(false)
-            };
-            if !has("main") && has("master") { "master".into() } else { "main".into() }
-        });
+    let default = run(&[
+        "symbolic-ref",
+        "--quiet",
+        "--short",
+        "refs/remotes/origin/HEAD",
+    ])
+    .ok()
+    .filter(|o| o.status.success())
+    .map(|o| text(&o).trim_start_matches("origin/").to_string())
+    .unwrap_or_else(|| {
+        let has = |b: &str| {
+            run(&[
+                "show-ref",
+                "--verify",
+                "--quiet",
+                &format!("refs/heads/{b}"),
+            ])
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+        };
+        if !has("main") && has("master") {
+            "master".into()
+        } else {
+            "main".into()
+        }
+    });
     if head != default {
         return LedgerCommit::NotDefaultBranch(head);
     }
@@ -405,17 +443,23 @@ pub fn commit_ledger(repo: &Path, ledger_path: &Path, message: &str) -> LedgerCo
     }
     // A freshly bootstrapped ledger is untracked, and `commit --only` refuses a
     // pathspec git does not know; add that one path first.
-    let tracked = run(&["ls-files", "--error-unmatch", "--", &path]).map(|o| o.status.success()).unwrap_or(false);
+    let tracked = run(&["ls-files", "--error-unmatch", "--", &path])
+        .map(|o| o.status.success())
+        .unwrap_or(false);
     if !tracked {
         match run(&["add", "--", &path]) {
             Ok(o) if o.status.success() => {}
-            Ok(o) => return LedgerCommit::Failed(String::from_utf8_lossy(&o.stderr).trim().to_string()),
+            Ok(o) => {
+                return LedgerCommit::Failed(String::from_utf8_lossy(&o.stderr).trim().to_string())
+            }
             Err(e) => return LedgerCommit::Failed(e.to_string()),
         }
     }
     match run(&["commit", "--quiet", "--only", "-m", message, "--", &path]) {
         Ok(o) if o.status.success() => {
-            let id = run(&["rev-parse", "--short", "HEAD"]).map(|o| text(&o)).unwrap_or_default();
+            let id = run(&["rev-parse", "--short", "HEAD"])
+                .map(|o| text(&o))
+                .unwrap_or_default();
             LedgerCommit::Committed(id)
         }
         Ok(o) => LedgerCommit::Failed(String::from_utf8_lossy(&o.stderr).trim().to_string()),
@@ -472,18 +516,31 @@ mod tests {
             f(&mut r);
             row_violations(&r)
         };
-        assert!(with(&|r| r.finding = "INCONCLUSIVE — see report".into()).contains(&"finding-pointer"));
-        assert!(with(&|r| r.finding = "Given the Darwin evaluator at commit `7c30573a`".into())
-            .contains(&"finding-hypothesis-leak"));
+        assert!(
+            with(&|r| r.finding = "INCONCLUSIVE — see report".into()).contains(&"finding-pointer")
+        );
+        assert!(
+            with(&|r| r.finding = "Given the Darwin evaluator at commit `7c30573a`".into())
+                .contains(&"finding-hypothesis-leak")
+        );
         assert!(with(&|r| r.finding = "x".repeat(81)).contains(&"finding-too-long"));
         assert!(with(&|r| r.finding = String::new()).contains(&"finding-empty"));
         assert!(with(&|r| r.pr = "NONE".into()).contains(&"accept-without-pr"));
         assert!(with(&|r| r.pr = String::new()).contains(&"accept-without-pr"));
         assert!(with(&|r| r.witness = String::new()).contains(&"accept-without-witness"));
         assert!(with(&|r| r.prior_fates = "merged #7 by human".into()).contains(&"fates-grammar"));
-        assert!(with(&|r| r.prior_fates = "#7:MERGED #8:OPEN #9:STALE #10:CLOSED".into()).is_empty());
+        assert!(
+            with(&|r| r.prior_fates = "#7:MERGED #8:OPEN #9:STALE #10:CLOSED".into()).is_empty()
+        );
         assert!(with(&|r| r.verdict = "MAYBE".into()).contains(&"verdict-vocab"));
-        for v in ["ACCEPT", "REJECT", "INCONCLUSIVE", "BLOCKED-ENV", "HANDOFF", "OPERATOR"] {
+        for v in [
+            "ACCEPT",
+            "REJECT",
+            "INCONCLUSIVE",
+            "BLOCKED-ENV",
+            "HANDOFF",
+            "OPERATOR",
+        ] {
             assert!(with(&|r| r.verdict = v.into()).is_empty(), "{v}");
         }
         // Only ACCEPT is held to the PR and witness rules.
@@ -505,7 +562,8 @@ mod tests {
     fn enforce_contract_replaces_a_failing_finding_with_the_fallback() {
         let mut r = compliant_row();
         r.verdict = "REJECT".into();
-        r.finding = "Given the annexe lacks the siblings, when the build runs, then it fails".into();
+        r.finding =
+            "Given the annexe lacks the siblings, when the build runs, then it fails".into();
         let broken = enforce_contract(&mut r, "ACCEPT vetoed → REJECT: darwin-smoke: exit 1");
         assert_eq!(broken, vec!["finding-hypothesis-leak"]);
         assert_eq!(r.finding, "ACCEPT vetoed → REJECT: darwin-smoke: exit 1");
@@ -533,13 +591,27 @@ mod tests {
         r.witness = String::new();
         r.prior_fates = "merged #7 by human".into();
         let broken = enforce_contract(&mut r, "unused");
-        assert_eq!(broken, vec!["accept-without-pr", "accept-without-witness", "fates-grammar"]);
+        assert_eq!(
+            broken,
+            vec![
+                "accept-without-pr",
+                "accept-without-witness",
+                "fates-grammar"
+            ]
+        );
         assert!(row_violations(&r).is_empty());
-        assert_eq!(r.finding, compliant_row().finding, "a compliant finding is kept");
+        assert_eq!(
+            r.finding,
+            compliant_row().finding,
+            "a compliant finding is kept"
+        );
         let mut r = compliant_row();
         r.verdict = "MAYBE".into();
         enforce_contract(&mut r, "unused");
-        assert_eq!(r.verdict, "INCONCLUSIVE", "an unknown verdict never reads as acceptance");
+        assert_eq!(
+            r.verdict, "INCONCLUSIVE",
+            "an unknown verdict never reads as acceptance"
+        );
         assert!(row_violations(&r).is_empty());
     }
 
@@ -722,13 +794,18 @@ mod tests {
     #[test]
     fn review_from_merge_never_fabricates_a_duration() {
         // Unmerged: nothing at all.
-        assert_eq!(review_from_merge(None, None, None), (String::new(), String::new()));
+        assert_eq!(
+            review_from_merge(None, None, None),
+            (String::new(), String::new())
+        );
         // Known reviewer, unknown timing: the reviewer stands, the duration does not.
-        let (reviewer, minutes) = review_from_merge(Some("jjohare"), None, Some("2026-09-14T10:00:00Z"));
+        let (reviewer, minutes) =
+            review_from_merge(Some("jjohare"), None, Some("2026-09-14T10:00:00Z"));
         assert_eq!(reviewer, "jjohare");
         assert_eq!(minutes, "");
         // Unparseable timestamp.
-        let (_, minutes) = review_from_merge(Some("x"), Some("nonsense"), Some("2026-09-14T10:00:00Z"));
+        let (_, minutes) =
+            review_from_merge(Some("x"), Some("nonsense"), Some("2026-09-14T10:00:00Z"));
         assert_eq!(minutes, "");
         // A merge before its PR opened is refused, never negated.
         let (_, minutes) = review_from_merge(
@@ -791,7 +868,11 @@ mod tests {
             .args(args)
             .output()
             .unwrap();
-        assert!(o.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&o.stderr));
+        assert!(
+            o.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&o.stderr)
+        );
         String::from_utf8_lossy(&o.stdout).trim().to_string()
     }
 
@@ -824,11 +905,17 @@ mod tests {
         assert_eq!(files, "docs/dream-cycle/LEDGER.md");
         assert_eq!(git(repo, &["diff", "--cached", "--name-only"]), "wip.txt");
 
-        assert_eq!(commit_ledger(repo, &ledger, "again"), LedgerCommit::NothingToCommit);
+        assert_eq!(
+            commit_ledger(repo, &ledger, "again"),
+            LedgerCommit::NothingToCommit
+        );
 
         // Second night: the ledger is now tracked.
         append_row(&ledger, &sample_row()).unwrap();
-        assert!(matches!(commit_ledger(repo, &ledger, "night 2"), LedgerCommit::Committed(_)));
+        assert!(matches!(
+            commit_ledger(repo, &ledger, "night 2"),
+            LedgerCommit::Committed(_)
+        ));
         assert_eq!(git(repo, &["diff", "--cached", "--name-only"]), "wip.txt");
     }
 

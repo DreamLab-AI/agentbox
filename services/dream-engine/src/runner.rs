@@ -76,7 +76,10 @@ pub struct SshRunner {
 
 impl EvaluatorRunner for SshRunner {
     fn run(&self, work_dir: &str, command: &str, timeout_secs: u64) -> ExecOutcome {
-        crate::dispatch::ssh_capture(&self.host, &timeout_wrapped(work_dir, command, timeout_secs))
+        crate::dispatch::ssh_capture(
+            &self.host,
+            &timeout_wrapped(work_dir, command, timeout_secs),
+        )
     }
 
     fn describe(&self) -> String {
@@ -202,7 +205,10 @@ mod tests {
     #[test]
     fn timeout_wrapper_quotes_the_command_and_the_directory() {
         let w = timeout_wrapped("/tmp/it's here", "cargo test --all", 900);
-        assert!(w.starts_with("cd '/tmp/it'\\''s here' && timeout"), "got {w}");
+        assert!(
+            w.starts_with("cd '/tmp/it'\\''s here' && timeout"),
+            "got {w}"
+        );
         assert!(
             w.contains("--kill-after=30s 900s bash -o pipefail -c 'cargo test --all'"),
             "got {w}"
@@ -231,7 +237,11 @@ mod tests {
     fn local_runner_captures_streams_and_exit_code() {
         let dir = tempfile::tempdir().unwrap();
         let r = LocalRunner;
-        let o = r.run(dir.path().to_str().unwrap(), "echo out; echo err >&2; exit 3", 30);
+        let o = r.run(
+            dir.path().to_str().unwrap(),
+            "echo out; echo err >&2; exit 3",
+            30,
+        );
         assert_eq!(o.exit_code, Some(3));
         assert_eq!(o.stdout.trim(), "out");
         assert_eq!(o.stderr.trim(), "err");
@@ -258,6 +268,9 @@ mod tests {
         let r = ScriptedRunner::new().passing("cargo test", "ok");
         assert_eq!(r.run("/x", "cargo test", 60).exit_code, Some(0));
         let unknown = r.run("/x", "cargo clippy", 60);
-        assert!(unknown.transport_error.is_some(), "an unscripted command must not pass");
+        assert!(
+            unknown.transport_error.is_some(),
+            "an unscripted command must not pass"
+        );
     }
 }

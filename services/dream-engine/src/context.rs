@@ -16,8 +16,8 @@
 //! Sidecar layout (control-plane side, never shipped to a provider):
 //! `<artefact_dir>/<night_id>/receipts/{build,eval-<name>}.txt` + `index.json`.
 
-use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
 use crate::llm::{self, LlmConfig};
@@ -303,7 +303,11 @@ pub fn materialise(
                 pack.push_str(&format!(
                     "### `{}` ({}, {}B full{})\n```\n{}\n```\n\n",
                     o.id,
-                    if action == GcAction::Restore { "restored" } else { "masked" },
+                    if action == GcAction::Restore {
+                        "restored"
+                    } else {
+                        "masked"
+                    },
                     o.chars,
                     if o.tonight { ", tonight" } else { "" },
                     body
@@ -312,7 +316,10 @@ pub fn materialise(
         }
     }
     if pruned > 0 {
-        pack.push_str(&format!("\n({} obsolete receipt(s) pruned by the context governor.)\n", pruned));
+        pack.push_str(&format!(
+            "\n({} obsolete receipt(s) pruned by the context governor.)\n",
+            pruned
+        ));
     }
     pack
 }
@@ -357,15 +364,28 @@ pub async fn govern(
         },
     };
     let raw = parse_plan(&reply).or_else(|| {
-        warn!(reply_chars = reply.len(), "Self-GC plan unparseable — falling open");
+        warn!(
+            reply_chars = reply.len(),
+            "Self-GC plan unparseable — falling open"
+        );
         None
     })?;
     let plan = validate(raw, objects);
-    let restored = plan.iter().filter(|p| p.action == GcAction::Restore).count();
+    let restored = plan
+        .iter()
+        .filter(|p| p.action == GcAction::Restore)
+        .count();
     let masked = plan.iter().filter(|p| p.action == GcAction::Mask).count();
     let folded = plan.iter().filter(|p| p.action == GcAction::Fold).count();
     let pruned = plan.iter().filter(|p| p.action == GcAction::Prune).count();
-    info!(restored, masked, folded, pruned, objects = objects.len(), "Self-GC plan committed");
+    info!(
+        restored,
+        masked,
+        folded,
+        pruned,
+        objects = objects.len(),
+        "Self-GC plan committed"
+    );
     Some(materialise(objects, &plan, budget(), redact))
 }
 
@@ -380,7 +400,13 @@ fn head_line(s: &str) -> String {
 
 fn sanitise(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -432,7 +458,8 @@ mod tests {
 
     #[test]
     fn parse_plan_drops_unknown_actions() {
-        let reply = r#"{"actions":[{"target":"x","action":"vaporise"},{"target":"y","action":"mask"}]}"#;
+        let reply =
+            r#"{"actions":[{"target":"x","action":"vaporise"},{"target":"y","action":"mask"}]}"#;
         let plan = parse_plan(reply).unwrap();
         assert_eq!(plan.len(), 1);
         assert_eq!(plan[0].target, "y");
@@ -442,8 +469,16 @@ mod tests {
     fn validate_protects_tonight_receipts() {
         let objects = vec![obj("receipt:t:build", true), obj("receipt:p:build", false)];
         let raw = vec![
-            PlanEntry { target: "receipt:t:build".into(), action: GcAction::Prune, reason: String::new() },
-            PlanEntry { target: "receipt:p:build".into(), action: GcAction::Prune, reason: String::new() },
+            PlanEntry {
+                target: "receipt:t:build".into(),
+                action: GcAction::Prune,
+                reason: String::new(),
+            },
+            PlanEntry {
+                target: "receipt:p:build".into(),
+                action: GcAction::Prune,
+                reason: String::new(),
+            },
         ];
         let plan = validate(raw, &objects);
         assert_eq!(plan[0].action, GcAction::Mask); // tonight upgraded
@@ -462,7 +497,11 @@ mod tests {
     #[test]
     fn validate_drops_unknown_targets() {
         let objects = vec![obj("receipt:t:build", true)];
-        let raw = vec![PlanEntry { target: "receipt:ghost:eval".into(), action: GcAction::Restore, reason: String::new() }];
+        let raw = vec![PlanEntry {
+            target: "receipt:ghost:eval".into(),
+            action: GcAction::Restore,
+            reason: String::new(),
+        }];
         let plan = validate(raw, &objects);
         assert_eq!(plan.len(), 1);
         assert_eq!(plan[0].target, "receipt:t:build");
@@ -483,7 +522,11 @@ mod tests {
         let mut o = obj("receipt:p:build", false);
         o.path = PathBuf::from("/x/receipts/build.txt");
         o.chars = 5000;
-        let plan = vec![PlanEntry { target: o.id.clone(), action: GcAction::Fold, reason: String::new() }];
+        let plan = vec![PlanEntry {
+            target: o.id.clone(),
+            action: GcAction::Fold,
+            reason: String::new(),
+        }];
         let pack = materialise(&[o], &plan, 30_000, |s| s.to_string());
         assert!(pack.contains("folded (5000B in sidecar `build.txt`)"));
     }
@@ -502,8 +545,16 @@ mod tests {
         let mut prior = obj("receipt:p:build", false);
         prior.path = p2;
         let plan = vec![
-            PlanEntry { target: "receipt:t:build".into(), action: GcAction::Restore, reason: String::new() },
-            PlanEntry { target: "receipt:p:build".into(), action: GcAction::Restore, reason: String::new() },
+            PlanEntry {
+                target: "receipt:t:build".into(),
+                action: GcAction::Restore,
+                reason: String::new(),
+            },
+            PlanEntry {
+                target: "receipt:p:build".into(),
+                action: GcAction::Restore,
+                reason: String::new(),
+            },
         ];
         // Budget exhausted by the first object: prior degrades to fold,
         // tonight would not have (mandatory retention beats budget).

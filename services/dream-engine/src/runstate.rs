@@ -95,7 +95,10 @@ pub enum Resume {
 impl Resume {
     pub fn state(&self) -> &RunState {
         match self {
-            Resume::Fresh(s) | Resume::Resumed(s) | Resume::AlreadyComplete(s) | Resume::Abandoned(s) => s,
+            Resume::Fresh(s)
+            | Resume::Resumed(s)
+            | Resume::AlreadyComplete(s)
+            | Resume::Abandoned(s) => s,
         }
     }
 
@@ -215,7 +218,15 @@ mod tests {
     const RUN: &str = "0123456789abcdef";
 
     fn begin_default(dir: &Path) -> Resume {
-        begin(dir, RUN, "2026-09-05-agentbox", "agentbox", "2026-09-05", DEFAULT_MAX_ATTEMPTS).unwrap()
+        begin(
+            dir,
+            RUN,
+            "2026-09-05-agentbox",
+            "agentbox",
+            "2026-09-05",
+            DEFAULT_MAX_ATTEMPTS,
+        )
+        .unwrap()
     }
 
     #[test]
@@ -235,31 +246,44 @@ mod tests {
     #[test]
     fn an_interrupted_run_resumes_from_its_last_phase() {
         let d = tempfile::tempdir().unwrap();
-        let Resume::Fresh(mut s) = begin_default(d.path()) else { panic!() };
+        let Resume::Fresh(mut s) = begin_default(d.path()) else {
+            panic!()
+        };
         advance(d.path(), &mut s, Phase::ManifestFrozen).unwrap();
         advance(d.path(), &mut s, Phase::ModelCalled).unwrap();
         fail(d.path(), &mut s, "process killed mid-persist").unwrap();
         drop(s); // the process dies here
 
         let r = begin_default(d.path());
-        let Resume::Resumed(s2) = r.clone() else { panic!("expected a resume, got {r:?}") };
+        let Resume::Resumed(s2) = r.clone() else {
+            panic!("expected a resume, got {r:?}")
+        };
         assert_eq!(s2.resumed_from, Some(Phase::ModelCalled));
         assert_eq!(s2.attempts, 2);
         assert!(r.should_run());
-        assert_eq!(s2.last_error, None, "the new attempt clears the stale error");
+        assert_eq!(
+            s2.last_error, None,
+            "the new attempt clears the stale error"
+        );
     }
 
     #[test]
     fn a_completed_run_is_never_silently_repeated() {
         let d = tempfile::tempdir().unwrap();
-        let Resume::Fresh(mut s) = begin_default(d.path()) else { panic!() };
+        let Resume::Fresh(mut s) = begin_default(d.path()) else {
+            panic!()
+        };
         complete(d.path(), &mut s, "REJECT").unwrap();
 
         let r = begin_default(d.path());
         assert!(matches!(r, Resume::AlreadyComplete(_)), "got {r:?}");
         assert!(!r.should_run());
         assert_eq!(r.state().verdict.as_deref(), Some("REJECT"));
-        assert_eq!(r.state().attempts, 1, "a skipped repeat does not burn an attempt");
+        assert_eq!(
+            r.state().attempts,
+            1,
+            "a skipped repeat does not burn an attempt"
+        );
     }
 
     #[test]
@@ -278,11 +302,20 @@ mod tests {
     #[test]
     fn a_different_run_id_starts_a_fresh_journal() {
         let d = tempfile::tempdir().unwrap();
-        let Resume::Fresh(mut s) = begin_default(d.path()) else { panic!() };
+        let Resume::Fresh(mut s) = begin_default(d.path()) else {
+            panic!()
+        };
         complete(d.path(), &mut s, "ACCEPT").unwrap();
         // New baseline ⇒ new run id ⇒ a genuinely new experiment.
-        let r = begin(d.path(), "fedcba9876543210", "2026-09-05-agentbox", "agentbox", "2026-09-05", 2)
-            .unwrap();
+        let r = begin(
+            d.path(),
+            "fedcba9876543210",
+            "2026-09-05-agentbox",
+            "agentbox",
+            "2026-09-05",
+            2,
+        )
+        .unwrap();
         assert!(matches!(r, Resume::Fresh(_)), "got {r:?}");
         assert_eq!(r.state().attempts, 1);
     }
@@ -290,7 +323,9 @@ mod tests {
     #[test]
     fn advance_never_moves_backwards() {
         let d = tempfile::tempdir().unwrap();
-        let Resume::Fresh(mut s) = begin_default(d.path()) else { panic!() };
+        let Resume::Fresh(mut s) = begin_default(d.path()) else {
+            panic!()
+        };
         advance(d.path(), &mut s, Phase::Gated).unwrap();
         advance(d.path(), &mut s, Phase::ManifestFrozen).unwrap();
         assert_eq!(load(d.path()).unwrap().phase, Phase::Gated);

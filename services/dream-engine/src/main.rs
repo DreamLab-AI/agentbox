@@ -6,9 +6,9 @@ use tracing_subscriber::EnvFilter;
 
 use dream_engine::config::RuntimeConfig;
 use dream_engine::engine::{fallback_llm_config, llm_config, ruvector_config, Engine};
-use dream_engine::{digest, governance, inbox};
 use dream_engine::roster;
 use dream_engine::runner::{EvaluatorRunner, SshRunner};
+use dream_engine::{digest, governance, inbox};
 
 /// Dream Engine — nightly evidence-gated repository evolution (the connected node annexe).
 ///

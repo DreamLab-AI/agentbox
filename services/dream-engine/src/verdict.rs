@@ -287,9 +287,7 @@ fn normalise_token(after: &str) -> Option<String> {
     if cleaned.is_empty() {
         return None;
     }
-    let ok = cleaned
-        .chars()
-        .all(|c| c.is_ascii_uppercase() || c == '-');
+    let ok = cleaned.chars().all(|c| c.is_ascii_uppercase() || c == '-');
     if ok {
         Some(cleaned.to_string())
     } else {
@@ -399,7 +397,10 @@ pub fn finding_violations(cell: &str) -> Vec<&'static str> {
         out.push("finding-too-long");
     }
     // /\bsee\s+(report|gist)\b/i  ||  /^(see|gist)\b/i
-    if contains_see_pointer(&lower) || starts_with_word(&lower, "see") || starts_with_word(&lower, "gist") {
+    if contains_see_pointer(&lower)
+        || starts_with_word(&lower, "see")
+        || starts_with_word(&lower, "gist")
+    {
         out.push("finding-pointer");
     }
     // /^given\b/i
@@ -437,7 +438,9 @@ fn contains_see_pointer(lower: &str) -> bool {
         if after_ws.len() == rest.len() {
             return false; // `\s+` needs at least one whitespace char
         }
-        ["report", "gist"].iter().any(|w| starts_with_word(after_ws, w))
+        ["report", "gist"]
+            .iter()
+            .any(|w| starts_with_word(after_ws, w))
     })
 }
 
@@ -771,7 +774,12 @@ VERDICT: ACCEPT
         );
         // Full variant is still bounded.
         let runaway = format!("Given {}\nVERDICT: ACCEPT\n", "x ".repeat(2000));
-        assert!(sanitise_finding_full(&runaway, Verdict::Accept).chars().count() <= 1000);
+        assert!(
+            sanitise_finding_full(&runaway, Verdict::Accept)
+                .chars()
+                .count()
+                <= 1000
+        );
     }
 
     #[test]
@@ -794,13 +802,22 @@ VERDICT: ACCEPT
     }
     #[test]
     fn strict_accepts_a_single_clean_declaration() {
-        assert_eq!(parse_verdict_strict("blah\nVERDICT: ACCEPT\n").unwrap(), Verdict::Accept);
-        assert_eq!(parse_verdict_strict("VERDICT: REJECT.").unwrap(), Verdict::Reject);
+        assert_eq!(
+            parse_verdict_strict("blah\nVERDICT: ACCEPT\n").unwrap(),
+            Verdict::Accept
+        );
+        assert_eq!(
+            parse_verdict_strict("VERDICT: REJECT.").unwrap(),
+            Verdict::Reject
+        );
         assert_eq!(
             parse_verdict_strict("> **VERDICT:** BLOCKED-ENV").unwrap(),
             Verdict::BlockedEnv
         );
-        assert_eq!(parse_verdict_strict("VERDICT: `HANDOFF`").unwrap(), Verdict::Handoff);
+        assert_eq!(
+            parse_verdict_strict("VERDICT: `HANDOFF`").unwrap(),
+            Verdict::Handoff
+        );
     }
 
     #[test]
@@ -809,7 +826,10 @@ VERDICT: ACCEPT
         // must refuse, because acceptance may not rest on prose archaeology.
         let report = "We think this should ACCEPT given the numbers.";
         assert_eq!(parse_verdict(report), Verdict::Accept);
-        assert_eq!(parse_verdict_strict(report), Err(VerdictParseError::Missing));
+        assert_eq!(
+            parse_verdict_strict(report),
+            Err(VerdictParseError::Missing)
+        );
     }
 
     #[test]
@@ -918,15 +938,33 @@ VERDICT: ACCEPT
     /// boundaries and its UTF-16 length.
     #[test]
     fn finding_violations_mirror_the_typescript_contract() {
-        assert!(finding_violations("row-contract validator added; prior rows show format drift").is_empty());
+        assert!(
+            finding_violations("row-contract validator added; prior rows show format drift")
+                .is_empty()
+        );
         assert_eq!(finding_violations(""), vec!["finding-empty"]);
         assert_eq!(finding_violations("   "), vec!["finding-empty"]);
-        assert_eq!(finding_violations(&"x".repeat(81)), vec!["finding-too-long"]);
+        assert_eq!(
+            finding_violations(&"x".repeat(81)),
+            vec!["finding-too-long"]
+        );
         assert!(finding_violations(&"x".repeat(80)).is_empty());
-        assert_eq!(finding_violations("INCONCLUSIVE — see report"), vec!["finding-pointer"]);
-        assert_eq!(finding_violations("details: See   Gist."), vec!["finding-pointer"]);
-        assert_eq!(finding_violations("see the annexe log"), vec!["finding-pointer"]);
-        assert_eq!(finding_violations("Gist published"), vec!["finding-pointer"]);
+        assert_eq!(
+            finding_violations("INCONCLUSIVE — see report"),
+            vec!["finding-pointer"]
+        );
+        assert_eq!(
+            finding_violations("details: See   Gist."),
+            vec!["finding-pointer"]
+        );
+        assert_eq!(
+            finding_violations("see the annexe log"),
+            vec!["finding-pointer"]
+        );
+        assert_eq!(
+            finding_violations("Gist published"),
+            vec!["finding-pointer"]
+        );
         assert_eq!(
             finding_violations("Given the Darwin evaluator at commit `7c30573a`"),
             vec!["finding-hypothesis-leak"]
@@ -936,7 +974,10 @@ VERDICT: ACCEPT
             finding_violations("VETOED: Given the cap is lifted"),
             vec!["finding-hypothesis-leak"]
         );
-        assert_eq!(finding_violations("VETOED: VETOED: see report"), vec!["finding-pointer"]);
+        assert_eq!(
+            finding_violations("VETOED: VETOED: see report"),
+            vec!["finding-pointer"]
+        );
         assert!(finding_violations("VETOED: cap lifted to 8").is_empty());
         // Word boundaries: none of these is a pointer or a hypothesis.
         assert!(finding_violations("givens are cached per run").is_empty());
@@ -945,7 +986,10 @@ VERDICT: ACCEPT
         assert!(finding_violations("foresee reporting gap closed").is_empty());
         assert!(finding_violations("see-through cache keys removed").contains(&"finding-pointer"));
         // JS String.length counts UTF-16 code units: 41 emoji are 82 units.
-        assert_eq!(finding_violations(&"😀".repeat(41)), vec!["finding-too-long"]);
+        assert_eq!(
+            finding_violations(&"😀".repeat(41)),
+            vec!["finding-too-long"]
+        );
         assert!(finding_violations(&"€".repeat(80)).is_empty());
     }
 

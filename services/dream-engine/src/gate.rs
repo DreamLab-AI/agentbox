@@ -54,13 +54,25 @@ pub struct Veto {
 
 impl Veto {
     fn harness(subject: &str, reason: impl Into<String>) -> Self {
-        Self { class: VetoClass::Harness, subject: subject.into(), reason: reason.into() }
+        Self {
+            class: VetoClass::Harness,
+            subject: subject.into(),
+            reason: reason.into(),
+        }
     }
     fn evidence(subject: &str, reason: impl Into<String>) -> Self {
-        Self { class: VetoClass::Evidence, subject: subject.into(), reason: reason.into() }
+        Self {
+            class: VetoClass::Evidence,
+            subject: subject.into(),
+            reason: reason.into(),
+        }
     }
     fn unproven(subject: &str, reason: impl Into<String>) -> Self {
-        Self { class: VetoClass::Unproven, subject: subject.into(), reason: reason.into() }
+        Self {
+            class: VetoClass::Unproven,
+            subject: subject.into(),
+            reason: reason.into(),
+        }
     }
 }
 
@@ -106,9 +118,10 @@ fn veto_for(name: &str, outcome: &EvaluatorOutcome) -> Option<Veto> {
             "required evaluator exited 0 with no output on either stream — \
              surface-independent, so it proves nothing (ADR-065)",
         )),
-        EvaluatorOutcome::Blocked { detail } => {
-            Some(Veto::harness(name, format!("required evaluator was blocked: {detail}")))
-        }
+        EvaluatorOutcome::Blocked { detail } => Some(Veto::harness(
+            name,
+            format!("required evaluator was blocked: {detail}"),
+        )),
         EvaluatorOutcome::TimedOut { after_secs } => Some(Veto::harness(
             name,
             format!("required evaluator exceeded its {after_secs}s budget and was killed"),
@@ -141,7 +154,12 @@ pub fn complete_receipts(
         .collect();
     for id in required {
         if !out.iter().any(|r| r.name == id.name) {
-            out.push(EvaluatorReceipt::missing(&id.name, &id.command, phase, true));
+            out.push(EvaluatorReceipt::missing(
+                &id.name,
+                &id.command,
+                phase,
+                true,
+            ));
         }
     }
     out.sort_by(|a, b| a.name.cmp(&b.name));
@@ -212,7 +230,10 @@ pub fn decide(
     //    veto so much as an absence of a claim to accept.
     let claimed_accept = matches!(strict, Ok(Verdict::Accept));
     if let Err(e) = strict {
-        vetoes.push(Veto::unproven("verdict", format!("strict verdict parse failed: {e}")));
+        vetoes.push(Veto::unproven(
+            "verdict",
+            format!("strict verdict parse failed: {e}"),
+        ));
     }
 
     // 2. A claim of ACCEPT must come with a candidate that was applied and
@@ -371,7 +392,9 @@ mod tests {
     }
 
     fn applied() -> CandidateState {
-        CandidateState::Applied { tree_hash: "c".repeat(40) }
+        CandidateState::Applied {
+            tree_hash: "c".repeat(40),
+        }
     }
 
     #[test]
@@ -386,7 +409,10 @@ mod tests {
         assert!(d.accepted, "{}", d.summary);
         assert_eq!(d.verdict, "ACCEPT");
         assert!(d.vetoes.is_empty());
-        assert_eq!(d.required_outcomes, vec![("tests".to_string(), "PASSED".to_string())]);
+        assert_eq!(
+            d.required_outcomes,
+            vec![("tests".to_string(), "PASSED".to_string())]
+        );
     }
 
     /// The headline case from the ADR closeout: a deliberately broken candidate
@@ -398,11 +424,22 @@ mod tests {
             &m,
             &Ok(Verdict::Accept),
             &applied(),
-            &[receipt("tests", Phase::Candidate, 101, "error[E0308]: mismatched types")],
+            &[receipt(
+                "tests",
+                Phase::Candidate,
+                101,
+                "error[E0308]: mismatched types",
+            )],
         );
         assert!(!d.accepted);
-        assert_eq!(d.verdict, "REJECT", "a failing required evaluator is evidence, not a harness fault");
-        assert_eq!(d.model_verdict, "ACCEPT", "the model's own claim is still recorded");
+        assert_eq!(
+            d.verdict, "REJECT",
+            "a failing required evaluator is evidence, not a harness fault"
+        );
+        assert_eq!(
+            d.model_verdict, "ACCEPT",
+            "the model's own claim is still recorded"
+        );
         assert_eq!(d.vetoes.len(), 1);
         assert_eq!(d.vetoes[0].class, VetoClass::Evidence);
     }
@@ -415,11 +452,20 @@ mod tests {
             &m,
             &Ok(Verdict::Accept),
             &applied(),
-            &[receipt("recall", Phase::Candidate, 0, "band check\nFAIL: true 91/120\n")],
+            &[receipt(
+                "recall",
+                Phase::Candidate,
+                0,
+                "band check\nFAIL: true 91/120\n",
+            )],
         );
         assert!(!d.accepted);
         assert_eq!(d.verdict, "REJECT");
-        assert!(d.vetoes[0].reason.contains("declared failure"), "{:?}", d.vetoes);
+        assert!(
+            d.vetoes[0].reason.contains("declared failure"),
+            "{:?}",
+            d.vetoes
+        );
     }
 
     #[test]
@@ -441,7 +487,12 @@ mod tests {
     #[test]
     fn a_silent_required_evaluator_vetoes() {
         let m = manifest(vec![ident("darwin", true)]);
-        let d = decide(&m, &Ok(Verdict::Accept), &applied(), &[receipt("darwin", Phase::Candidate, 0, "")]);
+        let d = decide(
+            &m,
+            &Ok(Verdict::Accept),
+            &applied(),
+            &[receipt("darwin", Phase::Candidate, 0, "")],
+        );
         assert!(!d.accepted);
         assert_eq!(d.verdict, "BLOCKED-ENV");
         assert!(d.vetoes[0].reason.contains("no output"), "{:?}", d.vetoes);
@@ -461,7 +512,9 @@ mod tests {
     fn a_blocked_required_evaluator_vetoes() {
         let m = manifest(vec![ident("tests", true)]);
         let mut r = receipt("tests", Phase::Candidate, 0, "x");
-        r.outcome = EvaluatorOutcome::Blocked { detail: "ssh: no route to host".into() };
+        r.outcome = EvaluatorOutcome::Blocked {
+            detail: "ssh: no route to host".into(),
+        };
         let d = decide(&m, &Ok(Verdict::Accept), &applied(), &[r]);
         assert!(!d.accepted);
         assert_eq!(d.verdict, "BLOCKED-ENV");
@@ -492,7 +545,11 @@ mod tests {
         let d = decide(&m, &Ok(Verdict::Accept), &CandidateState::NoPatch, &[]);
         assert!(!d.accepted);
         assert_eq!(d.verdict, "INCONCLUSIVE", "{}", d.summary);
-        assert!(d.vetoes.iter().any(|v| v.subject == "candidate"), "{:?}", d.vetoes);
+        assert!(
+            d.vetoes.iter().any(|v| v.subject == "candidate"),
+            "{:?}",
+            d.vetoes
+        );
         assert!(
             d.vetoes.iter().all(|v| v.class != VetoClass::Harness),
             "absent candidate receipts must not read as a broken harness: {:?}",
@@ -506,7 +563,9 @@ mod tests {
         let d = decide(
             &m,
             &Ok(Verdict::Accept),
-            &CandidateState::DidNotApply { detail: "hunk #2 failed".into() },
+            &CandidateState::DidNotApply {
+                detail: "hunk #2 failed".into(),
+            },
             &[receipt("tests", Phase::Candidate, 0, "ok")],
         );
         assert!(!d.accepted);
@@ -522,7 +581,12 @@ mod tests {
             VerdictParseError::Noisy("ACCEPT because".into()),
             VerdictParseError::Unknown("MAYBE".into()),
         ] {
-            let d = decide(&m, &Err(err.clone()), &applied(), &[receipt("tests", Phase::Candidate, 0, "ok")]);
+            let d = decide(
+                &m,
+                &Err(err.clone()),
+                &applied(),
+                &[receipt("tests", Phase::Candidate, 0, "ok")],
+            );
             assert!(!d.accepted, "{err:?} must not accept");
             assert_eq!(d.verdict, "INCONCLUSIVE", "{err:?}");
         }
@@ -534,18 +598,26 @@ mod tests {
         let d = decide(&m, &Ok(Verdict::Reject), &CandidateState::NotAttempted, &[]);
         assert!(!d.accepted);
         assert_eq!(d.verdict, "REJECT");
-        assert!(d.vetoes.is_empty(), "nothing to veto when nothing was claimed");
+        assert!(
+            d.vetoes.is_empty(),
+            "nothing to veto when nothing was claimed"
+        );
     }
 
     #[test]
     fn environment_vetoes_ignore_a_legitimately_failing_baseline() {
         let m = manifest(vec![ident("tests", true)]);
         // A baseline failure is the finding, not a fault.
-        let v = environment_vetoes(&m, &[receipt("tests", Phase::Baseline, 1, "3 tests failed")]);
+        let v = environment_vetoes(
+            &m,
+            &[receipt("tests", Phase::Baseline, 1, "3 tests failed")],
+        );
         assert!(v.is_empty(), "{v:?}");
         // A baseline evaluator that could not run is a fault.
         let mut blocked = receipt("tests", Phase::Baseline, 0, "");
-        blocked.outcome = EvaluatorOutcome::Blocked { detail: "no such file".into() };
+        blocked.outcome = EvaluatorOutcome::Blocked {
+            detail: "no such file".into(),
+        };
         assert_eq!(environment_vetoes(&m, &[blocked]).len(), 1);
         // As is one that never ran at all.
         assert_eq!(environment_vetoes(&m, &[]).len(), 1);

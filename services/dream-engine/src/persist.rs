@@ -66,7 +66,13 @@ pub fn extract_patch(report: &str) -> Option<String> {
 pub fn branch_name(deep: &str, date: &str) -> String {
     let slug: String = deep
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c.to_ascii_lowercase() } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
         .collect();
     let slug = slug.trim_matches('-');
     let slug = if slug.is_empty() { "cycle" } else { slug };
@@ -142,12 +148,25 @@ pub fn build_branch_worktree_at(
 ) -> Result<std::path::PathBuf, PersistError> {
     let wt = std::env::temp_dir().join(format!("dream-wt-{}", branch.replace('/', "_")));
     let _ = std::fs::remove_dir_all(&wt); // stale worktree dir, if any
-    // Isolated checkout on a fresh branch — the operator's working tree
-    // (uncommitted ledger/report edits) is never touched.
-    git(repo, &["worktree", "add", "-b", branch, &wt.display().to_string(), base])?;
+                                          // Isolated checkout on a fresh branch — the operator's working tree
+                                          // (uncommitted ledger/report edits) is never touched.
+    git(
+        repo,
+        &[
+            "worktree",
+            "add",
+            "-b",
+            branch,
+            &wt.display().to_string(),
+            base,
+        ],
+    )?;
 
     let cleanup = |repo: &Path, wt: &Path| {
-        let _ = git(repo, &["worktree", "remove", "--force", &wt.display().to_string()]);
+        let _ = git(
+            repo,
+            &["worktree", "remove", "--force", &wt.display().to_string()],
+        );
         let _ = git(repo, &["branch", "-D", branch]);
     };
 
@@ -198,7 +217,10 @@ pub fn delete_branch(repo: &Path, branch: &str) {
 
 /// Remove the worktree created by `build_branch_worktree` (keeps the branch).
 pub fn remove_worktree(repo: &Path, wt: &Path) {
-    let _ = git(repo, &["worktree", "remove", "--force", &wt.display().to_string()]);
+    let _ = git(
+        repo,
+        &["worktree", "remove", "--force", &wt.display().to_string()],
+    );
 }
 
 /// Full control-plane persist: build the branch in a worktree, push it, open a
@@ -241,7 +263,10 @@ pub fn push_and_open_pr(
     let mut pr_url = None;
     if push_ok {
         let out = Command::new("gh")
-            .args(["pr", "create", "--repo", repo_slug, "--head", branch, "--draft", "--title", title, "--body", body])
+            .args([
+                "pr", "create", "--repo", repo_slug, "--head", branch, "--draft", "--title", title,
+                "--body", body,
+            ])
             .output();
         if let Ok(o) = out {
             if o.status.success() {
@@ -249,7 +274,11 @@ pub fn push_and_open_pr(
             }
         }
     }
-    PrOutcome { branch: branch.to_string(), pr_url, pushed: push_ok }
+    PrOutcome {
+        branch: branch.to_string(),
+        pr_url,
+        pushed: push_ok,
+    }
 }
 
 #[cfg(test)]
@@ -286,8 +315,14 @@ mod tests {
 
     #[test]
     fn branch_name_slugifies_and_dates() {
-        assert_eq!(branch_name("sovereign-mesh", "2026-08-27"), "dream/sovereign-mesh-2026-08-27");
-        assert_eq!(branch_name("Ledger Signals!", "2026-08-27"), "dream/ledger-signals-2026-08-27");
+        assert_eq!(
+            branch_name("sovereign-mesh", "2026-08-27"),
+            "dream/sovereign-mesh-2026-08-27"
+        );
+        assert_eq!(
+            branch_name("Ledger Signals!", "2026-08-27"),
+            "dream/ledger-signals-2026-08-27"
+        );
         assert_eq!(branch_name("", "2026-08-27"), "dream/cycle-2026-08-27");
     }
 
@@ -298,7 +333,14 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("dream-persist-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        let run = |a: &[&str]| Command::new("git").arg("-C").arg(&dir).args(a).output().unwrap();
+        let run = |a: &[&str]| {
+            Command::new("git")
+                .arg("-C")
+                .arg(&dir)
+                .args(a)
+                .output()
+                .unwrap()
+        };
         run(&["init", "-q"]);
         run(&["config", "user.email", "t@t"]);
         run(&["config", "user.name", "t"]);
@@ -307,14 +349,24 @@ mod tests {
         run(&["commit", "-qm", "init"]);
         std::fs::write(dir.join("dirty.txt"), "operator wip\n").unwrap(); // uncommitted
 
-        let patch = "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1,2 @@\n one\n+two\n";
-        let wt = build_branch_worktree(&dir, "dream/x-2026-08-27", patch, "dream: add two").unwrap();
+        let patch =
+            "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1,2 @@\n one\n+two\n";
+        let wt =
+            build_branch_worktree(&dir, "dream/x-2026-08-27", patch, "dream: add two").unwrap();
 
         // The branch commit contains the patched file...
-        let show = Command::new("git").arg("-C").arg(&wt).args(["show", "HEAD:f.txt"]).output().unwrap();
+        let show = Command::new("git")
+            .arg("-C")
+            .arg(&wt)
+            .args(["show", "HEAD:f.txt"])
+            .output()
+            .unwrap();
         assert_eq!(String::from_utf8_lossy(&show.stdout), "one\ntwo\n");
         // ...and the operator's uncommitted file in the MAIN tree is untouched.
-        assert_eq!(std::fs::read_to_string(dir.join("dirty.txt")).unwrap(), "operator wip\n");
+        assert_eq!(
+            std::fs::read_to_string(dir.join("dirty.txt")).unwrap(),
+            "operator wip\n"
+        );
 
         remove_worktree(&dir, &wt);
         let _ = std::fs::remove_dir_all(&dir);
@@ -332,7 +384,10 @@ mod tests {
             ]
         );
         let with_blobs = "diff --git a/f b/f\nindex 1234abc..5678def 100644\n--- a/f\n+++ b/f\n";
-        assert_eq!(apply_attempts(with_blobs).last().unwrap(), &vec!["apply", "--3way"]);
+        assert_eq!(
+            apply_attempts(with_blobs).last().unwrap(),
+            &vec!["apply", "--3way"]
+        );
         let bogus_index = "index xyz..abc\n";
         assert_eq!(apply_attempts(bogus_index).len(), 3);
     }
@@ -342,7 +397,14 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("dream-persist-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        let run = |a: &[&str]| Command::new("git").arg("-C").arg(&dir).args(a).output().unwrap();
+        let run = |a: &[&str]| {
+            Command::new("git")
+                .arg("-C")
+                .arg(&dir)
+                .args(a)
+                .output()
+                .unwrap()
+        };
         run(&["init", "-q"]);
         run(&["config", "user.email", "t@t"]);
         run(&["config", "user.name", "t"]);
@@ -357,9 +419,16 @@ mod tests {
         // The header claims +1,5 but the body adds one line: plain `git apply`
         // rejects it as corrupt; `--recount` fixes the counts and lands it.
         let dir = scratch("recount", "one\n");
-        let patch = "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1,5 @@\n one\n+two\n";
-        let wt = build_branch_worktree(&dir, "dream/recount-2026-09-25", patch, "dream: recount").unwrap();
-        let show = Command::new("git").arg("-C").arg(&wt).args(["show", "HEAD:f.txt"]).output().unwrap();
+        let patch =
+            "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1,5 @@\n one\n+two\n";
+        let wt = build_branch_worktree(&dir, "dream/recount-2026-09-25", patch, "dream: recount")
+            .unwrap();
+        let show = Command::new("git")
+            .arg("-C")
+            .arg(&wt)
+            .args(["show", "HEAD:f.txt"])
+            .output()
+            .unwrap();
         assert_eq!(String::from_utf8_lossy(&show.stdout), "one\ntwo\n");
         remove_worktree(&dir, &wt);
         let _ = std::fs::remove_dir_all(&dir);
@@ -368,11 +437,15 @@ mod tests {
     #[test]
     fn unappliable_patch_reports_last_strategy_detail() {
         let dir = scratch("noapply", "one\n");
-        let patch = "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1 @@\n-absent\n+x\n";
+        let patch =
+            "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1 @@\n-absent\n+x\n";
         let err = build_branch_worktree(&dir, "dream/noapply-2026-09-25", patch, "m").unwrap_err();
         match err {
             PersistError::PatchDidNotApply(detail) => {
-                assert!(detail.starts_with("apply --recount --ignore-whitespace"), "{detail}");
+                assert!(
+                    detail.starts_with("apply --recount --ignore-whitespace"),
+                    "{detail}"
+                );
             }
             other => panic!("unexpected {other:?}"),
         }
@@ -391,17 +464,33 @@ mod tests {
     fn worktree_can_be_pinned_to_an_older_base() {
         let dir = scratch("base", "one\n");
         let base = String::from_utf8(
-            Command::new("git").arg("-C").arg(&dir).args(["rev-parse", "HEAD"]).output().unwrap().stdout,
+            Command::new("git")
+                .arg("-C")
+                .arg(&dir)
+                .args(["rev-parse", "HEAD"])
+                .output()
+                .unwrap()
+                .stdout,
         )
         .unwrap()
         .trim()
         .to_string();
         // HEAD moves on after the night's commit was dispatched.
         std::fs::write(dir.join("f.txt"), "moved\n").unwrap();
-        Command::new("git").arg("-C").arg(&dir).args(["commit", "-qam", "later"]).output().unwrap();
-        let patch = "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1,2 @@\n one\n+two\n";
-        let wt = build_branch_worktree_at(&dir, "dream/base-2026-09-25", patch, "m", &base).unwrap();
-        assert_eq!(std::fs::read_to_string(wt.join("f.txt")).unwrap(), "one\ntwo\n");
+        Command::new("git")
+            .arg("-C")
+            .arg(&dir)
+            .args(["commit", "-qam", "later"])
+            .output()
+            .unwrap();
+        let patch =
+            "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1 +1,2 @@\n one\n+two\n";
+        let wt =
+            build_branch_worktree_at(&dir, "dream/base-2026-09-25", patch, "m", &base).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(wt.join("f.txt")).unwrap(),
+            "one\ntwo\n"
+        );
         remove_worktree(&dir, &wt);
         let _ = std::fs::remove_dir_all(&dir);
     }

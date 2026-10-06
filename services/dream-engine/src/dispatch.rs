@@ -292,7 +292,10 @@ mod tests {
 
     #[test]
     fn parse_avail_kb_reads_the_marker_line_only() {
-        assert_eq!(parse_avail_kb("motd noise\nAVAIL-KB=236978176\n"), Some(236_978_176));
+        assert_eq!(
+            parse_avail_kb("motd noise\nAVAIL-KB=236978176\n"),
+            Some(236_978_176)
+        );
         assert_eq!(parse_avail_kb("AVAIL-KB=\n"), None);
         assert_eq!(parse_avail_kb("no marker"), None);
     }

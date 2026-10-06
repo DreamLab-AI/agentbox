@@ -120,7 +120,12 @@ mod tests {
         let repo = d.path().join("repo");
         std::fs::create_dir_all(&repo).unwrap();
         let run = |a: &[&str]| {
-            Command::new("git").arg("-C").arg(&repo).args(a).output().unwrap()
+            Command::new("git")
+                .arg("-C")
+                .arg(&repo)
+                .args(a)
+                .output()
+                .unwrap()
         };
         run(&["init", "-q", "-b", "main"]);
         run(&["config", "user.email", "dream@test"]);
@@ -176,7 +181,14 @@ mod tests {
         let (_d, repo) = scratch_repo();
         // A patch that changes something the evaluator does not object to.
         let patch = "diff --git a/README.md b/README.md\nnew file mode 100644\n--- /dev/null\n+++ b/README.md\n@@ -0,0 +1 @@\n+notes\n";
-        let c = prepare(&repo, "dream/good-2026-09-05", patch, "dream: add notes", "HEAD").unwrap();
+        let c = prepare(
+            &repo,
+            "dream/good-2026-09-05",
+            patch,
+            "dream: add notes",
+            "HEAD",
+        )
+        .unwrap();
         assert_eq!(c.tree_hash.len(), 40);
         assert_eq!(c.patch_digest, digest(patch.as_bytes()));
 
@@ -188,7 +200,9 @@ mod tests {
         let d = gate::decide(
             &m,
             &Ok(Verdict::Accept),
-            &CandidateState::Applied { tree_hash: c.tree_hash.clone() },
+            &CandidateState::Applied {
+                tree_hash: c.tree_hash.clone(),
+            },
             &receipts,
         );
         assert!(d.accepted, "{}", d.summary);
@@ -202,7 +216,14 @@ mod tests {
         let (_d, repo) = scratch_repo();
         // Break the surface the required evaluator checks.
         let patch = "diff --git a/value.txt b/value.txt\n--- a/value.txt\n+++ b/value.txt\n@@ -1 +1 @@\n-42\n+7\n";
-        let c = prepare(&repo, "dream/broken-2026-09-05", patch, "dream: break it", "HEAD").unwrap();
+        let c = prepare(
+            &repo,
+            "dream/broken-2026-09-05",
+            patch,
+            "dream: break it",
+            "HEAD",
+        )
+        .unwrap();
 
         let m = manifest("value");
         let receipts = evaluate(&LocalRunner, c.worktree.to_str().unwrap(), &m.required());
@@ -215,7 +236,9 @@ mod tests {
         let d = gate::decide(
             &m,
             &report_says,
-            &CandidateState::Applied { tree_hash: c.tree_hash.clone() },
+            &CandidateState::Applied {
+                tree_hash: c.tree_hash.clone(),
+            },
             &receipts,
         );
         assert!(!d.accepted, "a broken candidate must never be accepted");
@@ -225,7 +248,12 @@ mod tests {
 
         discard(&repo, &c);
         // The vetoed branch left no promotable artefact.
-        let branches = Command::new("git").arg("-C").arg(&repo).args(["branch", "--list"]).output().unwrap();
+        let branches = Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args(["branch", "--list"])
+            .output()
+            .unwrap();
         assert!(
             !String::from_utf8_lossy(&branches.stdout).contains("dream/broken"),
             "a vetoed candidate must not leave a branch behind"
@@ -245,8 +273,18 @@ mod tests {
     fn a_patch_that_does_not_apply_is_reported_not_swallowed() {
         let (_d, repo) = scratch_repo();
         let patch = "diff --git a/value.txt b/value.txt\n--- a/value.txt\n+++ b/value.txt\n@@ -1 +1 @@\n-this line is not in the file\n+7\n";
-        let err = prepare(&repo, "dream/bad-patch-2026-09-05", patch, "dream: nope", "HEAD").unwrap_err();
-        assert!(matches!(err, PersistError::PatchDidNotApply(_)), "got {err:?}");
+        let err = prepare(
+            &repo,
+            "dream/bad-patch-2026-09-05",
+            patch,
+            "dream: nope",
+            "HEAD",
+        )
+        .unwrap_err();
+        assert!(
+            matches!(err, PersistError::PatchDidNotApply(_)),
+            "got {err:?}"
+        );
     }
 
     #[test]
@@ -255,9 +293,18 @@ mod tests {
         std::fs::write(repo.join("wip.txt"), "operator wip\n").unwrap();
         let patch = "diff --git a/value.txt b/value.txt\n--- a/value.txt\n+++ b/value.txt\n@@ -1 +1 @@\n-42\n+43\n";
         let c = prepare(&repo, "dream/iso-2026-09-05", patch, "dream: bump", "HEAD").unwrap();
-        assert_eq!(std::fs::read_to_string(repo.join("wip.txt")).unwrap(), "operator wip\n");
-        assert_eq!(std::fs::read_to_string(repo.join("value.txt")).unwrap(), "42\n");
-        assert_eq!(std::fs::read_to_string(c.worktree.join("value.txt")).unwrap(), "43\n");
+        assert_eq!(
+            std::fs::read_to_string(repo.join("wip.txt")).unwrap(),
+            "operator wip\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(repo.join("value.txt")).unwrap(),
+            "42\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(c.worktree.join("value.txt")).unwrap(),
+            "43\n"
+        );
         discard(&repo, &c);
     }
 }

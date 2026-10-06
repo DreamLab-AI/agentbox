@@ -40,9 +40,14 @@ pub enum PrState {
 pub enum SweepAction {
     Keep,
     /// Delete the local branch and, when present, the remote one.
-    Delete { reason: String },
+    Delete {
+        reason: String,
+    },
     /// Close the open PR (deleting its branch) with an explanatory comment.
-    ClosePr { number: u64, reason: String },
+    ClosePr {
+        number: u64,
+        reason: String,
+    },
 }
 
 /// Pure decision for one branch. `age_days` is the tip commit's age.
@@ -52,13 +57,19 @@ pub fn decide(pr: PrState, age_days: i64, checked_out: bool) -> SweepAction {
     }
     let stale = age_days > MAX_AGE_DAYS;
     match pr {
-        PrState::Merged => SweepAction::Delete { reason: "pr-merged".into() },
-        PrState::Closed => SweepAction::Delete { reason: "pr-closed".into() },
+        PrState::Merged => SweepAction::Delete {
+            reason: "pr-merged".into(),
+        },
+        PrState::Closed => SweepAction::Delete {
+            reason: "pr-closed".into(),
+        },
         PrState::Open(number) if stale => SweepAction::ClosePr {
             number,
             reason: format!("open-over-{MAX_AGE_DAYS}-days"),
         },
-        PrState::None if stale => SweepAction::Delete { reason: format!("no-pr-over-{MAX_AGE_DAYS}-days") },
+        PrState::None if stale => SweepAction::Delete {
+            reason: format!("no-pr-over-{MAX_AGE_DAYS}-days"),
+        },
         _ => SweepAction::Keep,
     }
 }
@@ -79,7 +90,9 @@ pub fn parse_refs(out: &str) -> Vec<Found> {
     let mut found: Vec<Found> = Vec::new();
     for line in out.lines() {
         let mut parts = line.split_whitespace();
-        let (Some(refname), Some(ts)) = (parts.next(), parts.next()) else { continue };
+        let (Some(refname), Some(ts)) = (parts.next(), parts.next()) else {
+            continue;
+        };
         let Ok(ts) = ts.parse::<i64>() else { continue };
         let (name, local) = if let Some(n) = refname.strip_prefix("refs/heads/") {
             (n, true)
@@ -97,7 +110,12 @@ pub fn parse_refs(out: &str) -> Vec<Found> {
                 f.remote |= !local;
                 f.tip_unix = f.tip_unix.max(ts);
             }
-            None => found.push(Found { name: name.to_string(), tip_unix: ts, local, remote: !local }),
+            None => found.push(Found {
+                name: name.to_string(),
+                tip_unix: ts,
+                local,
+                remote: !local,
+            }),
         }
     }
     found.sort_by(|a, b| a.name.cmp(&b.name));
@@ -106,8 +124,12 @@ pub fn parse_refs(out: &str) -> Vec<Found> {
 
 /// Parse `gh pr list --json number,state` output (most recent PR first).
 pub fn parse_pr_state(json: &str) -> PrState {
-    let Ok(v) = serde_json::from_str::<serde_json::Value>(json) else { return PrState::None };
-    let Some(first) = v.as_array().and_then(|a| a.first()) else { return PrState::None };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(json) else {
+        return PrState::None;
+    };
+    let Some(first) = v.as_array().and_then(|a| a.first()) else {
+        return PrState::None;
+    };
     match first.get("state").and_then(|s| s.as_str()) {
         Some("OPEN") => PrState::Open(first.get("number").and_then(|n| n.as_u64()).unwrap_or(0)),
         Some("MERGED") => PrState::Merged,
@@ -136,7 +158,12 @@ pub fn plan(repo_name: &str, repo_path: &Path, repo_slug: &str, now_unix: i64) -
     let _ = git(repo_path, &["fetch", "--quiet", "--prune", "origin"]);
     let Some(refs) = git(
         repo_path,
-        &["for-each-ref", "--format=%(refname) %(committerdate:unix)", "refs/heads/dream", "refs/remotes/origin/dream"],
+        &[
+            "for-each-ref",
+            "--format=%(refname) %(committerdate:unix)",
+            "refs/heads/dream",
+            "refs/remotes/origin/dream",
+        ],
     ) else {
         return Vec::new();
     };
@@ -150,7 +177,18 @@ pub fn plan(repo_name: &str, repo_path: &Path, repo_slug: &str, now_unix: i64) -
                 PrState::None
             } else {
                 Command::new("gh")
-                    .args(["pr", "list", "--repo", repo_slug, "--head", &f.name, "--state", "all", "--json", "number,state"])
+                    .args([
+                        "pr",
+                        "list",
+                        "--repo",
+                        repo_slug,
+                        "--head",
+                        &f.name,
+                        "--state",
+                        "all",
+                        "--json",
+                        "number,state",
+                    ])
                     .output()
                     .ok()
                     .filter(|o| o.status.success())
@@ -188,9 +226,18 @@ impl Planned {
         let (action, reason) = match &self.action {
             SweepAction::Keep => ("keep".to_string(), String::new()),
             SweepAction::Delete { reason } => ("delete".to_string(), reason.clone()),
-            SweepAction::ClosePr { number, reason } => (format!("close-pr #{number}"), reason.clone()),
+            SweepAction::ClosePr { number, reason } => {
+                (format!("close-pr #{number}"), reason.clone())
+            }
         };
-        SweepRecord { repo: self.repo.clone(), branch: self.branch.clone(), age_days: self.age_days, action, reason, ok }
+        SweepRecord {
+            repo: self.repo.clone(),
+            branch: self.branch.clone(),
+            age_days: self.age_days,
+            action,
+            reason,
+            ok,
+        }
     }
 }
 
@@ -204,7 +251,11 @@ pub fn apply(repo_path: &Path, repo_slug: &str, p: &Planned) -> bool {
                 ok &= git(repo_path, &["branch", "-D", &p.branch]).is_some();
             }
             if p.remote {
-                ok &= git(repo_path, &["push", "--quiet", "origin", "--delete", &p.branch]).is_some();
+                ok &= git(
+                    repo_path,
+                    &["push", "--quiet", "origin", "--delete", &p.branch],
+                )
+                .is_some();
             }
             ok
         }
@@ -215,7 +266,16 @@ pub fn apply(repo_path: &Path, repo_slug: &str, p: &Planned) -> bool {
                  artefacts; reopen and re-push the branch to revive it."
             );
             let closed = Command::new("gh")
-                .args(["pr", "close", &number.to_string(), "--repo", repo_slug, "--delete-branch", "--comment", &comment])
+                .args([
+                    "pr",
+                    "close",
+                    &number.to_string(),
+                    "--repo",
+                    repo_slug,
+                    "--delete-branch",
+                    "--comment",
+                    &comment,
+                ])
                 .output()
                 .map(|o| o.status.success())
                 .unwrap_or(false);
@@ -230,8 +290,15 @@ pub fn apply(repo_path: &Path, repo_slug: &str, p: &Planned) -> bool {
 }
 
 fn git(dir: &Path, args: &[&str]) -> Option<String> {
-    let out = Command::new("git").arg("-C").arg(dir).args(args).output().ok()?;
-    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+    let out = Command::new("git")
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
 #[cfg(test)]
@@ -240,8 +307,18 @@ mod tests {
 
     #[test]
     fn landed_branches_go_whatever_their_age() {
-        assert_eq!(decide(PrState::Merged, 0, false), SweepAction::Delete { reason: "pr-merged".into() });
-        assert_eq!(decide(PrState::Closed, 1, false), SweepAction::Delete { reason: "pr-closed".into() });
+        assert_eq!(
+            decide(PrState::Merged, 0, false),
+            SweepAction::Delete {
+                reason: "pr-merged".into()
+            }
+        );
+        assert_eq!(
+            decide(PrState::Closed, 1, false),
+            SweepAction::Delete {
+                reason: "pr-closed".into()
+            }
+        );
     }
 
     #[test]
@@ -249,14 +326,22 @@ mod tests {
         assert_eq!(decide(PrState::Open(4), 7, false), SweepAction::Keep);
         assert_eq!(
             decide(PrState::Open(4), 8, false),
-            SweepAction::ClosePr { number: 4, reason: "open-over-7-days".into() }
+            SweepAction::ClosePr {
+                number: 4,
+                reason: "open-over-7-days".into()
+            }
         );
     }
 
     #[test]
     fn prless_branches_get_a_week() {
         assert_eq!(decide(PrState::None, 3, false), SweepAction::Keep);
-        assert_eq!(decide(PrState::None, 30, false), SweepAction::Delete { reason: "no-pr-over-7-days".into() });
+        assert_eq!(
+            decide(PrState::None, 30, false),
+            SweepAction::Delete {
+                reason: "no-pr-over-7-days".into()
+            }
+        );
     }
 
     #[test]
@@ -273,15 +358,40 @@ mod tests {
                    garbage\n";
         let f = parse_refs(out);
         assert_eq!(f.len(), 2);
-        assert_eq!(f[0], Found { name: "dream/old-2026-09-01".into(), tip_unix: 50, local: false, remote: true });
-        assert_eq!(f[1], Found { name: "dream/seo-2026-09-30".into(), tip_unix: 120, local: true, remote: true });
+        assert_eq!(
+            f[0],
+            Found {
+                name: "dream/old-2026-09-01".into(),
+                tip_unix: 50,
+                local: false,
+                remote: true
+            }
+        );
+        assert_eq!(
+            f[1],
+            Found {
+                name: "dream/seo-2026-09-30".into(),
+                tip_unix: 120,
+                local: true,
+                remote: true
+            }
+        );
     }
 
     #[test]
     fn pr_state_parses_gh_json() {
-        assert_eq!(parse_pr_state(r#"[{"number":4,"state":"OPEN"}]"#), PrState::Open(4));
-        assert_eq!(parse_pr_state(r#"[{"number":3,"state":"MERGED"}]"#), PrState::Merged);
-        assert_eq!(parse_pr_state(r#"[{"number":11,"state":"CLOSED"}]"#), PrState::Closed);
+        assert_eq!(
+            parse_pr_state(r#"[{"number":4,"state":"OPEN"}]"#),
+            PrState::Open(4)
+        );
+        assert_eq!(
+            parse_pr_state(r#"[{"number":3,"state":"MERGED"}]"#),
+            PrState::Merged
+        );
+        assert_eq!(
+            parse_pr_state(r#"[{"number":11,"state":"CLOSED"}]"#),
+            PrState::Closed
+        );
         assert_eq!(parse_pr_state("[]"), PrState::None);
         assert_eq!(parse_pr_state("not json"), PrState::None);
     }
@@ -291,16 +401,46 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let repo = dir.path();
         let g = |args: &[&str]| {
-            let o = Command::new("git").arg("-C").arg(repo).args(args).output().unwrap();
-            assert!(o.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&o.stderr));
+            let o = Command::new("git")
+                .arg("-C")
+                .arg(repo)
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(
+                o.status.success(),
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&o.stderr)
+            );
         };
         g(&["init", "-q", "-b", "main"]);
-        g(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"]);
+        g(&[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "-q",
+            "--allow-empty",
+            "-m",
+            "init",
+        ]);
         // An old dream branch (tip dated 30 days back) and a fresh one.
         let old = "2026-08-31T00:00:00Z";
         let o = Command::new("git")
-            .arg("-C").arg(repo)
-            .args(["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "old"])
+            .arg("-C")
+            .arg(repo)
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                "old",
+            ])
             .env("GIT_COMMITTER_DATE", old)
             .env("GIT_AUTHOR_DATE", old)
             .output()
@@ -310,15 +450,25 @@ mod tests {
         g(&["reset", "-q", "--hard", "HEAD~1"]);
         g(&["branch", "dream/fresh-2026-09-30"]);
 
-        let now = chrono::DateTime::parse_from_rfc3339("2026-09-30T12:00:00Z").unwrap().timestamp();
+        let now = chrono::DateTime::parse_from_rfc3339("2026-09-30T12:00:00Z")
+            .unwrap()
+            .timestamp();
         // No repo slug → no gh call → PrState::None for both.
         let planned = plan("scratch", repo, "", now);
         let by_name = |n: &str| planned.iter().find(|p| p.branch == n).unwrap().clone();
-        assert_eq!(by_name("dream/old-2026-08-31").action, SweepAction::Delete { reason: "no-pr-over-7-days".into() });
+        assert_eq!(
+            by_name("dream/old-2026-08-31").action,
+            SweepAction::Delete {
+                reason: "no-pr-over-7-days".into()
+            }
+        );
         assert_eq!(by_name("dream/fresh-2026-09-30").action, SweepAction::Keep);
 
         assert!(apply(repo, "", &by_name("dream/old-2026-08-31")));
         let left = plan("scratch", repo, "", now);
-        assert_eq!(left.iter().map(|p| p.branch.as_str()).collect::<Vec<_>>(), ["dream/fresh-2026-09-30"]);
+        assert_eq!(
+            left.iter().map(|p| p.branch.as_str()).collect::<Vec<_>>(),
+            ["dream/fresh-2026-09-30"]
+        );
     }
 }

@@ -224,8 +224,8 @@ pub fn classify(exec: &ExecOutcome, timeout_secs: u64) -> EvaluatorOutcome {
             if exec.stdout.trim().is_empty() && exec.stderr.trim().is_empty() {
                 return EvaluatorOutcome::Silent;
             }
-            if let Some(marker) = explicit_fail_marker(&exec.stdout)
-                .or_else(|| explicit_fail_marker(&exec.stderr))
+            if let Some(marker) =
+                explicit_fail_marker(&exec.stdout).or_else(|| explicit_fail_marker(&exec.stderr))
             {
                 return EvaluatorOutcome::ExplicitFail { marker };
             }
@@ -260,7 +260,11 @@ fn slug(name: &str) -> String {
 /// Each evaluator gets `<name>.stdout`, `<name>.stderr` (raw, untruncated) and
 /// `<name>.json` (metadata + typed outcome, streams elided). A phase index
 /// lists them. Every write is atomic, so an interrupted run leaves whole files.
-pub fn persist(dir: &Path, phase: Phase, receipts: &[EvaluatorReceipt]) -> std::io::Result<PathBuf> {
+pub fn persist(
+    dir: &Path,
+    phase: Phase,
+    receipts: &[EvaluatorReceipt],
+) -> std::io::Result<PathBuf> {
     let out = dir.join("receipts").join(phase.as_str());
     std::fs::create_dir_all(&out)?;
     let mut index = Vec::new();
@@ -339,7 +343,10 @@ mod tests {
 
     #[test]
     fn zero_exit_with_output_passes() {
-        assert_eq!(classify(&exec(Some(0), "12 tests ok\n", ""), 60), EvaluatorOutcome::Passed);
+        assert_eq!(
+            classify(&exec(Some(0), "12 tests ok\n", ""), 60),
+            EvaluatorOutcome::Passed
+        );
     }
 
     #[test]
@@ -352,17 +359,32 @@ mod tests {
 
     #[test]
     fn zero_exit_with_no_output_is_silent() {
-        assert_eq!(classify(&exec(Some(0), "   \n", "  "), 60), EvaluatorOutcome::Silent);
+        assert_eq!(
+            classify(&exec(Some(0), "   \n", "  "), 60),
+            EvaluatorOutcome::Silent
+        );
     }
 
     #[test]
     fn explicit_fail_text_beats_a_zero_exit() {
         // The exact shape the ADR closeout calls out: failure text coexisting
         // with a success signal.
-        let o = classify(&exec(Some(0), "running checks\nFAIL: recall band 91/120\n", ""), 60);
-        assert!(matches!(o, EvaluatorOutcome::ExplicitFail { .. }), "got {o:?}");
-        let o = classify(&exec(Some(0), "test result: FAILED. 3 passed; 2 failed", ""), 60);
-        assert!(matches!(o, EvaluatorOutcome::ExplicitFail { .. }), "got {o:?}");
+        let o = classify(
+            &exec(Some(0), "running checks\nFAIL: recall band 91/120\n", ""),
+            60,
+        );
+        assert!(
+            matches!(o, EvaluatorOutcome::ExplicitFail { .. }),
+            "got {o:?}"
+        );
+        let o = classify(
+            &exec(Some(0), "test result: FAILED. 3 passed; 2 failed", ""),
+            60,
+        );
+        assert!(
+            matches!(o, EvaluatorOutcome::ExplicitFail { .. }),
+            "got {o:?}"
+        );
     }
 
     #[test]
@@ -370,7 +392,11 @@ mod tests {
         // Regression guard: a substring search for "failed" would veto every
         // green night, because cargo prints "0 failed" on success.
         let o = classify(
-            &exec(Some(0), "test result: ok. 42 passed; 0 failed; 0 ignored", ""),
+            &exec(
+                Some(0),
+                "test result: ok. 42 passed; 0 failed; 0 ignored",
+                "",
+            ),
             60,
         );
         assert_eq!(o, EvaluatorOutcome::Passed);
@@ -380,7 +406,10 @@ mod tests {
     fn timeout_is_typed_from_flag_or_exit_code() {
         let mut e = exec(Some(0), "partial", "");
         e.timed_out = true;
-        assert_eq!(classify(&e, 900), EvaluatorOutcome::TimedOut { after_secs: 900 });
+        assert_eq!(
+            classify(&e, 900),
+            EvaluatorOutcome::TimedOut { after_secs: 900 }
+        );
         assert_eq!(
             classify(&exec(Some(124), "", ""), 900),
             EvaluatorOutcome::TimedOut { after_secs: 900 }
@@ -390,7 +419,8 @@ mod tests {
     #[test]
     fn transport_error_is_blocked_not_failed() {
         let mut e = exec(None, "", "");
-        e.transport_error = Some("ssh: connect to host the connected node port 22: No route".into());
+        e.transport_error =
+            Some("ssh: connect to host the connected node port 22: No route".into());
         let o = classify(&e, 60);
         assert!(matches!(o, EvaluatorOutcome::Blocked { .. }), "got {o:?}");
         assert!(o.is_harness_fault());
@@ -402,7 +432,9 @@ mod tests {
         assert!(EvaluatorOutcome::Passed.is_pass());
         for o in [
             EvaluatorOutcome::Failed { exit_code: 1 },
-            EvaluatorOutcome::ExplicitFail { marker: "FAIL".into() },
+            EvaluatorOutcome::ExplicitFail {
+                marker: "FAIL".into(),
+            },
             EvaluatorOutcome::Blocked { detail: "x".into() },
             EvaluatorOutcome::TimedOut { after_secs: 1 },
             EvaluatorOutcome::Silent,
@@ -426,11 +458,19 @@ mod tests {
         persist(dir.path(), Phase::Candidate, std::slice::from_ref(&r)).unwrap();
 
         // Raw streams are on disk verbatim, not summarised into the JSON.
-        let raw = dir.path().join("receipts/candidate/dream-engine-tests.stdout");
-        assert_eq!(std::fs::read_to_string(&raw).unwrap(), "line one\nline two\n");
+        let raw = dir
+            .path()
+            .join("receipts/candidate/dream-engine-tests.stdout");
+        assert_eq!(
+            std::fs::read_to_string(&raw).unwrap(),
+            "line one\nline two\n"
+        );
         let meta: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(dir.path().join("receipts/candidate/dream-engine-tests.json"))
-                .unwrap(),
+            &std::fs::read_to_string(
+                dir.path()
+                    .join("receipts/candidate/dream-engine-tests.json"),
+            )
+            .unwrap(),
         )
         .unwrap();
         assert_eq!(meta["outcome"]["kind"], "failed");

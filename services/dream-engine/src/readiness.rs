@@ -26,21 +26,35 @@ pub enum Unusable {
     /// The config declares no evaluators at all.
     NoEvaluators,
     /// Evaluators exist, but none of them covers tonight's deep.
-    NoEvaluatorForDeep { deep: String },
+    NoEvaluatorForDeep {
+        deep: String,
+    },
     /// Evaluators cover the deep, but none of them is required — nothing could
     /// ever veto, so acceptance would be unfalsifiable.
-    NoRequiredEvaluatorForDeep { deep: String },
-    EmptyCommand { name: String },
+    NoRequiredEvaluatorForDeep {
+        deep: String,
+    },
+    EmptyCommand {
+        name: String,
+    },
     /// The command invokes a script that is not in the checked-out tree, so it
     /// cannot run on the annexe clone (which is `git archive HEAD`).
-    MissingScript { name: String, path: String },
+    MissingScript {
+        name: String,
+        path: String,
+    },
     /// The command cannot produce surface-dependent output — an `echo`, a
     /// `true`, a bare `:`. Green every night, informative never.
-    NonProbativeCommand { name: String, command: String },
+    NonProbativeCommand {
+        name: String,
+        command: String,
+    },
     /// A darwin entrypoint without `--sandbox mock|agent` (ADR-065). Config
     /// validation already rejects this at load; re-checked here so the
     /// admission report is complete on its own terms.
-    DarwinSandboxMissing { name: String },
+    DarwinSandboxMissing {
+        name: String,
+    },
 }
 
 impl Unusable {
@@ -195,12 +209,16 @@ pub fn assess(cfg: &DreamConfig, repo: &str, deep: &str, repo_root: &Path) -> Re
 
         let cmd = spec.cmd.trim();
         if cmd.is_empty() {
-            problems.push(Unusable::EmptyCommand { name: (*name).clone() });
+            problems.push(Unusable::EmptyCommand {
+                name: (*name).clone(),
+            });
             continue;
         }
         let is_darwin = cmd.contains("@metaharness/darwin") || cmd.contains("metaharness-darwin");
         if is_darwin && !cmd.contains("--sandbox mock") && !cmd.contains("--sandbox agent") {
-            problems.push(Unusable::DarwinSandboxMissing { name: (*name).clone() });
+            problems.push(Unusable::DarwinSandboxMissing {
+                name: (*name).clone(),
+            });
         }
         if is_non_probative(cmd) {
             problems.push(Unusable::NonProbativeCommand {
@@ -289,7 +307,12 @@ mod tests {
         );
         // `true` and a bare `:` are the same fault.
         for inert in ["true", ":", "echo a && true", "echo a; echo b"] {
-            let r = assess(&cfg(json!({ "f": inert })), "agentbox", "dream-engine", d.path());
+            let r = assess(
+                &cfg(json!({ "f": inert })),
+                "agentbox",
+                "dream-engine",
+                d.path(),
+            );
             assert!(!r.admitted(), "{inert:?} should be refused");
         }
     }
@@ -329,7 +352,9 @@ mod tests {
         assert!(!r.admitted());
         assert_eq!(
             r.problems,
-            vec![Unusable::NoEvaluatorForDeep { deep: "dream-engine".into() }]
+            vec![Unusable::NoEvaluatorForDeep {
+                deep: "dream-engine".into()
+            }]
         );
         // ...but the deep it does cover is admitted.
         assert!(assess(&c, "agentbox", "hooks-pipeline", d.path()).admitted());
@@ -343,7 +368,9 @@ mod tests {
         assert!(!r.admitted());
         assert_eq!(
             r.problems,
-            vec![Unusable::NoRequiredEvaluatorForDeep { deep: "dream-engine".into() }]
+            vec![Unusable::NoRequiredEvaluatorForDeep {
+                deep: "dream-engine".into()
+            }]
         );
     }
 
@@ -373,7 +400,9 @@ mod tests {
         let r = assess(&c, "agentbox", "dream-engine", d.path());
         assert!(!r.admitted());
         assert!(
-            r.problems.contains(&Unusable::DarwinSandboxMissing { name: "darwin".into() }),
+            r.problems.contains(&Unusable::DarwinSandboxMissing {
+                name: "darwin".into()
+            }),
             "{:?}",
             r.problems
         );
