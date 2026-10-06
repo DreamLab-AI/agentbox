@@ -3,42 +3,59 @@
 /**
  * WHAT THIS IS
  *   The scheduled, cost-controlled review of diagrams-as-code corpora. Four subcommands run
- *   against every repo listed in [diagram_review].repos that has a docs/diagrams corpus:
+ *   against every corpus repo (a directory with docs/diagrams/<area>/NN-*.md topic files):
  *
  *     triage         GLM reads each topic whose sources changed and says whether it is now wrong;
  *                    writes docs/review/<date>-triage.md, the list of topics to re-author.
- *     review-glm     the critical and premortem lenses with GLM as reviewer; skipped when the
- *                    pack is byte-identical to the last GLM review.
- *     audit-gemini   the external Gemini review, only past a four-part gate (interval, changed
- *                    topics or a high-severity GLM finding, and the monthly budget).
- *     status         what the ledger says, including month-to-date Gemini spend.
+ *     review-glm     the critical and premortem lenses with GLM as reviewer, one pack per shard;
+ *                    a shard whose pack is byte-identical to its last GLM review is skipped.
+ *     audit-gemini   the external Gemini review, one shard at a time, only for shards that pass a
+ *                    four-part gate (interval, changed topics or a high-severity GLM finding, and
+ *                    the monthly budget); the most-changed shards go first, within budget.
+ *     status         the resolved repo list, what the ledger says, month-to-date Gemini spend.
  *
  *     node review-cadence.cjs <subcommand> [--manifest <agentbox.toml>] [--repo <dir>]...
- *          [--dry-run] [--now <ISO time>]
+ *          [--workspace <dir>] [--dry-run] [--now <ISO time>]
  *
  *   Zero dependencies, Node >= 18.
+ *
+ * WHICH REPOS
+ *   [diagram_review].repos empty (the default) means auto-discover: scan $WORKSPACE (default
+ *   /home/devuser/workspace) to depth 3 for directories holding docs/diagrams/<area>/NN-*.md,
+ *   skipping .tmp, node_modules, target and dot-directories, de-duplicated by realpath. The
+ *   manifest is public and the corpora are in private repositories, so no path belongs in it. An
+ *   optional gitignored config/diagram-review.local (one path per line, `#` comments, a leading
+ *   `!` excludes a path) adds to the list.
  *
  * WHY IT IS THIS WAY
  *   Gemini with high thinking on a whole corpus is the expensive step, so it is the rare one.
  *   GLM is cheap and runs often, and its job is to decide when the expensive step is worth it.
- *   Every run, including every refusal, appends one line to docs/diagrams/review-ledger.jsonl,
- *   so spend, intervals and "what did we already review" are all read from one append-only
- *   file and never from memory. Decisions are pure functions (decideGemini, triageCandidates,
- *   monthToDateUsd) so the policy is tested without a network. A failed model call never
- *   blocks the cadence: triage treats an unanswered topic as "yes, re-author" (unsure means
- *   yes), and a failed Gemini call is recorded at its estimated cost, because a timed-out
- *   generateContent may already have been billed.
+ *   An estate corpus cites files in many repositories, so change is detected per source
+ *   repository: every cited path is resolved by realpath (a workspace symlink and the real path
+ *   are one file), attributed to the innermost git toplevel that owns it (a nested submodule is
+ *   its own repo, not a gitlink bump in its parent), and compared with that repository's own
+ *   history. The ledger keeps a map of last-seen commits per repository, never one sha. Packs are
+ *   built per area (large areas split by a token budget) because a whole estate does not fit a
+ *   model, and the pack-hash skip, the change thresholds and the budget all apply per shard.
+ *   Every run, refusals included, appends one line to docs/diagrams/review-ledger.jsonl, so
+ *   spend, intervals and "what did we already review" are read from one append-only file. A
+ *   failed model call never blocks the cadence: triage treats an unanswered topic as "yes,
+ *   re-author", and a failed Gemini call is recorded at its estimated cost, because a timed-out
+ *   generateContent may already have been billed. A cited path whose repository is missing, or
+ *   whose link dangles, is a logged skip, not a crash.
  *   Nothing here edits a topic or commits anything. Findings are unverified hypotheses for
  *   build-with-quality. The keys are read from the environment and never printed or stored.
  *
  * WHAT IT MEANS FOR THE CLIENT
  *   The diagrams stay honest without anyone remembering to ask. A cheap model watches every
- *   code change that touches a documented topic, a weekly outside review catches what the
- *   authors cannot see, and the expensive outside audit runs only when there is a reason and
- *   money left under a cap the operator set.
+ *   code change that touches a documented topic, in whichever repository it lands. A weekly
+ *   outside review catches what the authors cannot see, and the expensive outside audit runs
+ *   only on the areas that changed, when there is a reason and money left under a cap the
+ *   operator set.
  */
 
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
@@ -59,18 +76,24 @@ const LEDGER_REL = path.join('docs', 'diagrams', 'review-ledger.jsonl');
 const CORPUS_REL = path.join('docs', 'diagrams');
 const REVIEW_REL = path.join('docs', 'review');
 const GLM_DEFAULT_MODEL = 'glm-5.3';
-// GLM has a smaller window than Gemini; a corpus past this is reviewed one area at a time.
-const GLM_PACK_TOKEN_BUDGET = 150000;
+// GLM has a smaller window than Gemini, so one shard is at most this many tokens. The same
+// shards feed the Gemini audit, so "the last GLM review of this shard" is well defined.
+const DEFAULT_SHARD_TOKENS = 150000;
 const GLM_MAX_OUTPUT_TOKENS = 32000;
 const GLM_TRIAGE_MAX_OUTPUT_TOKENS = 1500;
 const MAX_DIFF_BYTES = 40000;
 const MAX_TOPIC_BYTES = 60000;
 const MAX_TRIAGE_TOPICS = 60;
+const DEFAULT_WORKSPACE = '/home/devuser/workspace';
+const DISCOVERY_DEPTH = 3;
+const DISCOVERY_SKIP = new Set(['.tmp', 'node_modules', 'target']);
+const LOCAL_FILE = path.join(__dirname, '..', '..', '..', 'config', 'diagram-review.local');
 const DEFAULTS = {
   enabled: false, repos: [], glm_triage_cron: '17 5 * * 1-6', glm_review_cron: '47 5 * * 0',
   gemini_min_interval_days: 7, gemini_min_changed_topics: 3, gemini_monthly_usd: 10, weekly_window: true,
 };
 const DAY_MS = 86400000;
+const TOKENS_PER_BYTE = 1 / 3.3;
 
 // ── Manifest ────────────────────────────────────────────────────────────────────────────────
 
@@ -150,6 +173,79 @@ function loadConfig(manifestPath) {
   return cfg;
 }
 
+// ── Repo discovery ──────────────────────────────────────────────────────────────────────────
+
+const real = (p) => { try { return fs.realpathSync(p); } catch { return null; } };
+const isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
+
+/** True when `dir` holds docs/diagrams/<area>/NN-*.md: a topic file one area below the corpus root. */
+function hasCorpus(dir) {
+  const corpus = path.join(dir, CORPUS_REL);
+  let areas;
+  try { areas = fs.readdirSync(corpus, { withFileTypes: true }); } catch { return false; }
+  for (const a of areas) {
+    if (a.name.startsWith('.') || !(a.isDirectory() || (a.isSymbolicLink() && isDir(path.join(corpus, a.name))))) continue;
+    let files;
+    try { files = fs.readdirSync(path.join(corpus, a.name)); } catch { continue; }
+    if (files.some((f) => /^\d+-.+\.md$/.test(f))) return true;
+  }
+  return false;
+}
+
+/** Corpus repos under `workspace` to `maxDepth` levels, by realpath. A symlinked directory is
+ *  followed once: the link and its target are one repository. */
+function discoverRepos(workspace, { maxDepth = DISCOVERY_DEPTH } = {}) {
+  const found = new Set();
+  const seen = new Set();
+  (function walk(dir, depth) {
+    const rp = real(dir);
+    if (!rp || seen.has(rp)) return;
+    seen.add(rp);
+    if (hasCorpus(rp)) found.add(rp);
+    if (depth >= maxDepth) return;
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries.sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      if (e.name.startsWith('.') || DISCOVERY_SKIP.has(e.name)) continue;
+      const full = path.join(dir, e.name);
+      if (e.isDirectory() || (e.isSymbolicLink() && isDir(full))) walk(full, depth + 1);
+    }
+  })(workspace, 0);
+  return [...found].sort();
+}
+
+/** Lines of the gitignored local file: `{ add: [...], exclude: [...] }`. */
+function readLocalFile(file) {
+  const add = [], exclude = [];
+  let text = '';
+  try { text = fs.readFileSync(file, 'utf8'); } catch { return { add, exclude }; }
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/#.*$/, '').trim();
+    if (!line) continue;
+    if (line.startsWith('!')) exclude.push(path.resolve(line.slice(1).trim())); else add.push(path.resolve(line));
+  }
+  return { add, exclude };
+}
+
+/** The repos to review: the manifest list when it has entries, otherwise the discovered set;
+ *  then the local file's additions and exclusions. Existing directories only, one entry per
+ *  realpath. */
+function resolveRepos(cfg, { workspace = process.env.WORKSPACE || DEFAULT_WORKSPACE, localFile = LOCAL_FILE } = {}) {
+  const fromManifest = cfg.repos.length > 0;
+  const base = fromManifest ? cfg.repos.map((r) => path.resolve(r)) : discoverRepos(workspace);
+  const local = readLocalFile(localFile);
+  const excluded = new Set(local.exclude.map((p) => real(p) ?? p));
+  const out = new Map();
+  for (const p of [...base, ...local.add]) {
+    const rp = real(p);
+    if (rp && isDir(rp) && !excluded.has(rp)) out.set(rp, true);
+  }
+  return {
+    repos: [...out.keys()].sort(), source: fromManifest ? 'manifest' : `discovered under ${workspace}`,
+    added: local.add.length, excluded: local.exclude.length,
+  };
+}
+
 // ── Ledger ──────────────────────────────────────────────────────────────────────────────────
 
 function ledgerPath(repo) { return path.join(repo, LEDGER_REL); }
@@ -168,8 +264,8 @@ function readLedger(repo) {
 /** Append one run to the ledger. Append-only: the file is never rewritten. */
 function appendLedger(repo, entry) {
   const full = {
-    ts: new Date().toISOString(), kind: null, reviewer: null, commit: null, pack_sha256: null,
-    tokens: null, est_usd: 0, findings: null, high_severity: 0, changed_topics: null, skipped: null,
+    ts: new Date().toISOString(), kind: null, reviewer: null, shard: null, commit: null, commits: null,
+    pack_sha256: null, tokens: null, est_usd: 0, findings: null, high_severity: 0, changed_topics: null, skipped: null,
     ...entry,
   };
   fs.mkdirSync(path.dirname(ledgerPath(repo)), { recursive: true });
@@ -177,8 +273,9 @@ function appendLedger(repo, entry) {
   return full;
 }
 
-const isRun = (e, kind, reviewer) => e.kind === kind && e.reviewer === reviewer && !e.skipped && !e.error;
-const lastOf = (ledger, kind, reviewer) => [...ledger].reverse().find((e) => isRun(e, kind, reviewer)) ?? null;
+const isRun = (e, kind, reviewer, shard) => e.kind === kind && e.reviewer === reviewer && !e.skipped && !e.error
+  && (shard === undefined || (e.shard ?? null) === shard);
+const lastOf = (ledger, kind, reviewer, shard) => [...ledger].reverse().find((e) => isRun(e, kind, reviewer, shard)) ?? null;
 
 /** Gemini spend recorded in the UTC month of `now`, across the given ledgers. Failed calls count
  *  at their estimate, because a timed-out generation may have been billed. */
@@ -193,27 +290,76 @@ function monthToDateUsd(ledgers, now) {
   return Math.round(total * 1e6) / 1e6;
 }
 
-// ── Git and topics ──────────────────────────────────────────────────────────────────────────
+// ── Git, source resolution and change detection ─────────────────────────────────────────────
 
-function git(repo, args, { maxBuffer = 256 * 1024 * 1024 } = {}) {
-  return execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer });
+function git(dir, args, { maxBuffer = 256 * 1024 * 1024 } = {}) {
+  return execFileSync('git', ['-C', dir, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer });
 }
 
-function headCommit(repo) {
-  try { return git(repo, ['rev-parse', 'HEAD']).trim(); } catch { return null; }
+function headCommit(dir) {
+  try { return git(dir, ['rev-parse', 'HEAD']).trim(); } catch { return null; }
 }
 
-function commitExists(repo, sha) {
+function commitExists(dir, sha) {
   if (!sha) return false;
-  try { git(repo, ['cat-file', '-e', `${sha}^{commit}`]); return true; } catch { return false; }
+  try { git(dir, ['cat-file', '-e', `${sha}^{commit}`]); return true; } catch { return false; }
 }
 
-function changedFiles(repo, since) {
-  return new Set(git(repo, ['diff', '--name-only', since, 'HEAD']).split('\n').map((s) => s.trim()).filter(Boolean));
+/** Repo-relative files changed between `since` and HEAD in the repository at `top`. */
+function changedFiles(top, since) {
+  return new Set(git(top, ['diff', '--name-only', '-z', since, 'HEAD']).split('\0').filter(Boolean));
 }
 
-/** Frontmatter `sources:` as repo-relative paths. Reads the inline `[a, b]` and the block `- a`
- *  forms. A `../` source belongs to another repository and is not attributed here. */
+const posix = (p) => p.split(path.sep).join('/');
+
+/**
+ * Resolves cited paths to `{ top, rel }`: the realpath of the file, owned by the innermost git
+ * toplevel of its directory. Two spellings of one file (a workspace symlink and the real path)
+ * come out identical, and a file in a nested submodule is attributed to the submodule, not to
+ * the outer repository where it shows only as a gitlink. Toplevels are cached per directory,
+ * because an estate corpus cites thousands of files in a few hundred directories.
+ *
+ * A path that cannot be attributed returns `{ skip: reason }`: a dangling link, or a path whose
+ * repository is not there. A cited file that has been deleted is still attributed, through its
+ * nearest existing directory, so its removal registers as a change.
+ */
+function createResolver() {
+  const tops = new Map();
+  const toplevel = (dir) => {
+    if (tops.has(dir)) return tops.get(dir);
+    let top = null;
+    try { top = real(git(dir, ['rev-parse', '--show-toplevel']).trim()); } catch { /* not in a repository */ }
+    tops.set(dir, top);
+    return top;
+  };
+  const lexists = (p) => { try { fs.lstatSync(p); return true; } catch { return false; } };
+  const resolve = (from, src) => {
+    const abs = path.resolve(from, src);
+    let file = real(abs);
+    if (!file) {
+      // Walk up to the nearest existing ancestor; a link that exists but leads nowhere dangles.
+      let cur = abs;
+      const tail = [];
+      while (!fs.existsSync(cur)) {
+        if (lexists(cur)) return { skip: 'dangling link', src };
+        const parent = path.dirname(cur);
+        if (parent === cur) return { skip: 'unresolvable path', src };
+        tail.unshift(path.basename(cur));
+        cur = parent;
+      }
+      file = path.join(real(cur), ...tail);
+    }
+    let dir = path.dirname(file);
+    while (!isDir(dir)) { const parent = path.dirname(dir); if (parent === dir) break; dir = parent; }
+    const top = toplevel(dir);
+    if (!top) return { skip: 'no git repository (sibling repo missing?)', src };
+    return { top, rel: posix(path.relative(top, file)) };
+  };
+  return { resolve, toplevel };
+}
+
+/** Frontmatter `sources:` as the paths written, in order. Reads the inline `[a, b]` and the
+ *  block `- a` forms. */
 function parseSources(text) {
   const m = text.match(/^---\n([\s\S]*?)\n---/);
   if (!m) return [];
@@ -227,38 +373,69 @@ function parseSources(text) {
     items = [];
     for (let i = at + 1; i < fm.length && /^\s+-\s+/.test(fm[i]); i++) items.push(parseScalar(stripComment(fm[i].replace(/^\s+-\s+/, ''))));
   }
-  return items.filter((s) => typeof s === 'string' && s && !s.startsWith('../'));
+  return items.filter((s) => typeof s === 'string' && s);
 }
 
-/** Every topic with its sources: [{ rel, sources }]. */
-function loadTopics(repo) {
+/** Every topic with its attributed sources: `[{ rel, area, srcs: [{top, rel}], skips: [...] }]`.
+ *  Sources resolve from the corpus repo root, so `../sibling/x` is the sibling repository's x. */
+function loadTopics(repo, resolver = createResolver()) {
   const corpus = path.join(repo, CORPUS_REL);
   let cfg = {};
   try { cfg = JSON.parse(fs.readFileSync(path.join(corpus, 'diagrams.config.json'), 'utf8')); } catch { /* optional */ }
-  return ER.listTopics(corpus, { skipDirs: cfg.skipDirs }).map((rel) => ({
-    rel, sources: parseSources(fs.readFileSync(path.join(corpus, rel), 'utf8')),
-  }));
+  return ER.listTopics(corpus, { skipDirs: cfg.skipDirs }).map((rel) => {
+    const srcs = new Map();
+    const skips = [];
+    for (const s of parseSources(fs.readFileSync(path.join(corpus, rel), 'utf8'))) {
+      const r = resolver.resolve(repo, s);
+      if (r.skip) skips.push(r); else srcs.set(`${r.top}\0${r.rel}`, r);
+    }
+    return { rel, area: rel.split('/')[0], srcs: [...srcs.values()], skips };
+  });
 }
 
-/** Topics with at least one source in `changed`, a Set of repo-relative paths: the union over
- *  the window, computed per file. */
+/** Topics with at least one source in the changed set of its own repository. `changed` maps a
+ *  toplevel to the Set of files changed there; a repository with no entry has no known baseline
+ *  and contributes nothing. */
 function triageCandidates(topics, changed) {
   return topics
-    .map((t) => ({ ...t, changedSources: t.sources.filter((s) => changed.has(s)) }))
+    .map((t) => ({ ...t, changedSources: t.srcs.filter((s) => changed.get(s.top)?.has(s.rel)) }))
     .filter((t) => t.changedSources.length > 0);
 }
 
-/** `sealmap stale --since <commit>` when the binary exists. Returns a Set of topic paths it
- *  named, or null when it is absent, fails or names nothing we recognise, so the caller falls
- *  back to the per-file git computation. */
-function sealmapStale(repo, since, topics) {
+/** For every repository in `tops`, the files changed since `since[top]`. A repository with no
+ *  recorded commit, or one whose commit is gone, is a baseline: it is returned in `baseline`
+ *  and nothing is flagged on its account this run. */
+function changedByRepo(tops, since) {
+  const changed = new Map();
+  const baseline = [];
+  for (const top of tops) {
+    const c = since?.[top];
+    if (c && commitExists(top, c)) changed.set(top, changedFiles(top, c)); else baseline.push(top);
+  }
+  return { changed, baseline };
+}
+
+/** The current HEAD of each repository in `tops`, as the ledger's `commits` map. */
+function headsOf(tops) {
+  const out = {};
+  for (const t of tops) { const h = headCommit(t); if (h) out[t] = h; }
+  return out;
+}
+
+const reposOf = (topics) => [...new Set(topics.flatMap((t) => t.srcs.map((s) => s.top)))].sort();
+
+/** `sealmap stale --since` narrows a corpus that cites only its own repository. Returns a Set
+ *  of topic paths, or null when it is absent, fails, names nothing we recognise, or the corpus
+ *  spans repositories (one --since cannot stand for several). */
+function sealmapStale(repo, since, topics, repoTop) {
+  if (reposOf(topics).some((t) => t !== repoTop)) return null;
   let out;
   try {
     out = execFileSync('sealmap', ['stale', '--since', since], {
       cwd: path.join(repo, CORPUS_REL), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 120000,
     });
   } catch { return null; }
-  const known = new Map(topics.map((t) => [t.rel, t.rel]));
+  const known = new Set(topics.map((t) => t.rel));
   const id = (x) => (typeof x === 'string' ? x : x && (x.topic ?? x.path ?? x.file ?? x.id));
   let names = [];
   try {
@@ -276,14 +453,45 @@ function sealmapStale(repo, since, topics) {
 
 function sha256(s) { return crypto.createHash('sha256').update(s).digest('hex'); }
 
-/** The pack exactly as external-review.cjs builds it, so the hash is comparable across both. */
-function corpusPack(repo) {
+// ── Shards ──────────────────────────────────────────────────────────────────────────────────
+
+function shardBudget(env = process.env) {
+  const n = Number(env.DIAGRAM_REVIEW_SHARD_TOKENS);
+  return Number.isInteger(n) && n > 0 ? n : DEFAULT_SHARD_TOKENS;
+}
+
+/**
+ * Packs per area. An area larger than `budgetTokens` is split into consecutive chunks (`area`,
+ * `area#2`, ...) in path order; a topic larger than the budget gets a chunk of its own. The
+ * pack is exactly what external-review.cjs builds, so hashes are comparable with its manifest.
+ * @returns {{name: string, area: string, files: string[], pack: string, sha: string, tokens: number}[]}
+ */
+function buildShards(repo, budgetTokens = shardBudget()) {
   const corpus = path.join(repo, CORPUS_REL);
   let cfg = {};
   try { cfg = JSON.parse(fs.readFileSync(path.join(corpus, 'diagrams.config.json'), 'utf8')); } catch { /* optional */ }
-  const files = ER.listTopics(corpus, { skipDirs: cfg.skipDirs });
-  const pack = ER.buildPack(corpus, files);
-  return { files, pack, sha: sha256(pack) };
+  const byArea = new Map();
+  for (const f of ER.listTopics(corpus, { skipDirs: cfg.skipDirs })) {
+    const area = f.split('/')[0];
+    if (!byArea.has(area)) byArea.set(area, []);
+    byArea.get(area).push(f);
+  }
+  const shards = [];
+  for (const [area, files] of [...byArea].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    const chunks = [];
+    let cur = [], tokens = 0;
+    for (const f of files) {
+      const t = fs.statSync(path.join(corpus, f)).size * TOKENS_PER_BYTE;
+      if (cur.length && tokens + t > budgetTokens) { chunks.push(cur); cur = []; tokens = 0; }
+      cur.push(f); tokens += t;
+    }
+    if (cur.length) chunks.push(cur);
+    chunks.forEach((fs_, i) => {
+      const pack = ER.buildPack(corpus, fs_);
+      shards.push({ name: i === 0 ? area : `${area}#${i + 1}`, area, files: fs_, pack, sha: sha256(pack), tokens: Math.round(pack.length * TOKENS_PER_BYTE) });
+    });
+  }
+  return shards;
 }
 
 // ── Decisions ───────────────────────────────────────────────────────────────────────────────
@@ -296,9 +504,10 @@ function isHighSeverity(f) {
 }
 
 /**
- * The Gemini gate. Every condition must hold; the first that fails is the logged reason.
- *   - at least `gemini_min_interval_days` since the last audit
- *   - at least `gemini_min_changed_topics` topics changed since the last audit, OR the last GLM
+ * The Gemini gate, applied to one shard. Every condition must hold; the first that fails is the
+ * logged reason.
+ *   - at least `gemini_min_interval_days` since the shard's last audit
+ *   - at least `gemini_min_changed_topics` topics changed since it, OR the shard's last GLM
  *     review recorded a high-severity finding
  *   - month-to-date spend plus this run's estimate within `gemini_monthly_usd`
  * @returns {{run: boolean, reason: string}}
@@ -339,10 +548,18 @@ function actualGeminiUsd(lenses) {
   return Math.round(usd * 1e6) / 1e6;
 }
 
-/** True when the latest GLM review pack equals `sha` (nothing to re-review). */
-function packUnchanged(ledger, sha) {
-  const last = lastOf(ledger, 'review', 'glm');
+/** True when the shard's latest GLM review pack equals `sha` (nothing to re-review). */
+function packUnchanged(ledger, shard, sha) {
+  const last = lastOf(ledger, 'review', 'glm', shard);
   return Boolean(last && last.pack_sha256 === sha);
+}
+
+/** Topics of a shard changed since the shard's last audit: all of them when it has never been
+ *  audited, and none on account of a repository with no recorded baseline. */
+function shardChangedTopics(shardTopics, lastAudit) {
+  if (!lastAudit) return shardTopics.length;
+  const { changed } = changedByRepo(reposOf(shardTopics), lastAudit.commits ?? {});
+  return triageCandidates(shardTopics, changed).length;
 }
 
 // ── GLM transport ───────────────────────────────────────────────────────────────────────────
@@ -399,12 +616,20 @@ function clip(s, max) {
   return Buffer.byteLength(s) <= max ? s : `${Buffer.from(s).subarray(0, max).toString('utf8')}\n[... truncated at ${max} bytes]`;
 }
 
+/** The topic text and the combined diff of its changed sources, each repository diffed from its
+ *  own recorded commit. */
 function triagePrompt(repo, topic, since) {
   const text = clip(fs.readFileSync(path.join(repo, CORPUS_REL, topic.rel), 'utf8'), MAX_TOPIC_BYTES);
+  const byTop = new Map();
+  for (const s of topic.changedSources) { if (!byTop.has(s.top)) byTop.set(s.top, []); byTop.get(s.top).push(s.rel); }
   let diff = '';
-  try { diff = git(repo, ['diff', '--unified=2', since, 'HEAD', '--', ...topic.changedSources]); } catch { diff = '(diff unavailable)'; }
-  return `Topic file ${topic.rel}:\n\n${text}\n\n=== Changes to the sources it cites since ${since.slice(0, 12)} ===\n`
-    + `Changed files: ${topic.changedSources.join(', ')}\n\n${clip(diff, MAX_DIFF_BYTES)}\n\nIs this topic now wrong?`;
+  for (const [top, files] of byTop) {
+    let d;
+    try { d = git(top, ['diff', '--unified=2', since[top], 'HEAD', '--', ...files]); } catch { d = '(diff unavailable)'; }
+    diff += `--- repository ${path.basename(top)} since ${since[top].slice(0, 12)}\n${d}\n`;
+  }
+  const names = topic.changedSources.map((s) => `${path.basename(s.top)}/${s.rel}`).join(', ');
+  return `Topic file ${topic.rel}:\n\n${text}\n\n=== Changes to the sources it cites ===\nChanged files: ${names}\n\n${clip(diff, MAX_DIFF_BYTES)}\n\nIs this topic now wrong?`;
 }
 
 // ── Output files ────────────────────────────────────────────────────────────────────────────
@@ -419,6 +644,13 @@ function uniquePath(dir, stem, ext) {
 const utcDate = (now) => new Date(now).toISOString().slice(0, 10);
 const rel = (repo, p) => path.relative(repo, p).split(path.sep).join('/');
 
+function skipSummary(topics) {
+  const skips = topics.flatMap((t) => t.skips);
+  const reasons = {};
+  for (const s of skips) reasons[s.skip] = (reasons[s.skip] ?? 0) + 1;
+  return { count: skips.length, reasons, examples: skips.slice(0, 5).map((s) => s.src) };
+}
+
 // ── Subcommands ─────────────────────────────────────────────────────────────────────────────
 
 const REVIEW_EXTRA = '\n\nAdd one more line to every finding, after Confidence: "- Severity: high, medium or low", '
@@ -426,31 +658,39 @@ const REVIEW_EXTRA = '\n\nAdd one more line to every finding, after Confidence: 
 
 async function triage(repo, ctx) {
   const { now, cfg, dryRun } = ctx;
-  const head = headCommit(repo);
-  if (!head) return { skipped: 'not a git repository' };
+  const resolver = createResolver();
+  const repoTop = resolver.toplevel(repo);
+  if (!repoTop) return { skipped: 'not a git repository' };
+  const topics = loadTopics(repo, resolver);
+  const tops = [...new Set([repoTop, ...reposOf(topics)])].sort();
+  const heads = headsOf(tops);
+  const skips = skipSummary(topics);
   const ledger = readLedger(repo);
-  const last = [...ledger].reverse().find((e) => e.kind === 'triage' && e.commit && !e.error);
-  if (!last || !commitExists(repo, last.commit)) {
-    if (!dryRun) appendLedger(repo, { ts: new Date(now).toISOString(), kind: 'triage', reviewer: 'glm', commit: head, skipped: last ? `baseline: recorded commit ${last.commit.slice(0, 12)} is not in this repository` : 'baseline: first triage run records the commit and spends nothing' });
-    return { skipped: 'baseline recorded' };
+  const last = [...ledger].reverse().find((e) => e.kind === 'triage' && (e.commits || e.commit) && !e.error);
+  const since = last ? (last.commits ?? { [repoTop]: last.commit }) : {};
+  const { changed, baseline } = changedByRepo(tops, since);
+  const stamp = new Date(now).toISOString();
+  if (changed.size === 0) {
+    if (!dryRun) appendLedger(repo, { ts: stamp, kind: 'triage', reviewer: 'glm', commit: heads[repoTop] ?? null, commits: heads, skipped: last ? 'baseline: no recorded commit is in its repository' : 'baseline: first triage run records every repository commit and spends nothing', unresolved: skips });
+    return { skipped: 'baseline recorded', repos: tops.length };
   }
-  const topics = loadTopics(repo);
   let candidates;
-  const stale = sealmapStale(repo, last.commit, topics);
-  if (stale) candidates = triageCandidates(topics, changedFiles(repo, last.commit)).filter((t) => stale.has(t.rel));
-  else candidates = triageCandidates(topics, changedFiles(repo, last.commit));
+  const stale = last && changed.has(repoTop) && sealmapStale(repo, since[repoTop], topics, repoTop);
+  candidates = triageCandidates(topics, changed);
+  if (stale) candidates = candidates.filter((t) => stale.has(t.rel));
+  candidates.sort((a, b) => b.changedSources.length - a.changedSources.length || (a.rel < b.rel ? -1 : 1));
   if (candidates.length === 0) {
-    if (!dryRun) appendLedger(repo, { ts: new Date(now).toISOString(), kind: 'triage', reviewer: 'glm', commit: head, changed_topics: 0, skipped: 'no topic sources changed' });
+    if (!dryRun) appendLedger(repo, { ts: stamp, kind: 'triage', reviewer: 'glm', commit: heads[repoTop] ?? null, commits: heads, changed_topics: 0, skipped: 'no topic sources changed', unresolved: skips });
     return { skipped: 'no topic sources changed' };
   }
-  if (dryRun) return { candidates: candidates.map((t) => t.rel) };
+  if (dryRun) return { candidates: candidates.map((t) => t.rel), baseline: baseline.map((b) => path.basename(b)) };
 
   const results = [];
   let inTok = 0, outTok = 0;
   for (const [i, t] of candidates.entries()) {
     if (i >= MAX_TRIAGE_TOPICS) { results.push({ topic: t.rel, yes: true, reason: 'not checked: per-run cap reached, so it is listed' }); continue; }
     try {
-      const r = await glm({ model: cfg.glm_model, system: TRIAGE_SYSTEM, user: triagePrompt(repo, t, last.commit), maxTokens: GLM_TRIAGE_MAX_OUTPUT_TOKENS, env: ctx.env, post: ctx.post });
+      const r = await glm({ model: cfg.glm_model, system: TRIAGE_SYSTEM, user: triagePrompt(repo, t, since), maxTokens: GLM_TRIAGE_MAX_OUTPUT_TOKENS, env: ctx.env, post: ctx.post });
       inTok += r.input_tokens; outTok += r.output_tokens;
       results.push({ topic: t.rel, yes: parseVerdict(r.text), reason: (r.text.match(/REASON:\s*(.+)/i) || [])[1]?.trim() ?? '' });
     } catch (err) {
@@ -461,153 +701,195 @@ async function triage(repo, ctx) {
   const out = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-triage`, '.md');
   const md = [
     `# Triage ${utcDate(now)}: ${flagged.length} of ${results.length} topics to re-author`, '',
-    `Window: ${last.commit.slice(0, 12)}..${head.slice(0, 12)}. Reviewer: GLM (${cfg.glm_model}) via ${stale ? 'sealmap stale' : 'per-file git changes'}. `
+    `Reviewer: GLM (${cfg.glm_model}). Change is detected per source repository (${[...changed.keys()].map((t) => path.basename(t)).join(', ')}) from the commits the last triage recorded`
+    + `${baseline.length ? `; new this run, baselined only: ${baseline.map((t) => path.basename(t)).join(', ')}` : ''}. `
+    + `${skips.count ? `${skips.count} cited paths could not be attributed (${Object.entries(skips.reasons).map(([k, v]) => `${v} ${k}`).join(', ')}). ` : ''}`
     + 'Topics are never edited here; re-author each with diagrams-as-code and re-stamp.', '',
     '## Re-author', '', ...(flagged.length ? flagged.map((r) => `- \`${r.topic}\`: ${r.reason || 'no reason given'}`) : ['(none)']), '',
     '## Still accurate', '', ...(results.filter((r) => !r.yes).map((r) => `- \`${r.topic}\`: ${r.reason}`)), '',
   ].join('\n');
   fs.writeFileSync(out, md);
   appendLedger(repo, {
-    ts: new Date(now).toISOString(), kind: 'triage', reviewer: 'glm', commit: head, tokens: { input: inTok, output: outTok },
+    ts: stamp, kind: 'triage', reviewer: 'glm', commit: heads[repoTop] ?? null, commits: heads, tokens: { input: inTok, output: outTok },
     est_usd: (inTok * GLM_USD_PER_M.input + outTok * GLM_USD_PER_M.output) / 1e6, findings: rel(repo, out),
-    changed_topics: results.length, flagged: flagged.length,
+    changed_topics: results.length, flagged: flagged.length, unresolved: skips,
   });
   return { findings: rel(repo, out), flagged: flagged.length, checked: results.length };
-}
-
-/** Pack shards for GLM: the whole corpus when it fits, otherwise one pack per top-level area. */
-function glmShards(repo) {
-  const { files, pack, sha } = corpusPack(repo);
-  if (pack.length / 3.3 <= GLM_PACK_TOKEN_BUDGET) return { sha, shards: [{ name: 'all', pack }] };
-  const areas = [...new Set(files.map((f) => f.split('/')[0]))];
-  const corpus = path.join(repo, CORPUS_REL);
-  return { sha, shards: areas.map((a) => ({ name: a, pack: ER.buildPack(corpus, files.filter((f) => f.split('/')[0] === a)) })) };
 }
 
 async function reviewGlm(repo, ctx) {
   const { now, cfg, dryRun } = ctx;
   const ledger = readLedger(repo);
   const head = headCommit(repo);
-  const { sha, shards } = glmShards(repo);
-  if (packUnchanged(ledger, sha)) {
-    if (!dryRun) appendLedger(repo, { ts: new Date(now).toISOString(), kind: 'review', reviewer: 'glm', commit: head, pack_sha256: sha, skipped: 'pack unchanged since the last GLM review' });
-    return { skipped: 'pack unchanged' };
+  const stamp = new Date(now).toISOString();
+  const shards = buildShards(repo, ctx.shardTokens ?? shardBudget(ctx.env));
+  const todo = [], skipped = [];
+  for (const s of shards) (packUnchanged(ledger, s.name, s.sha) ? skipped : todo).push(s);
+  if (!dryRun) {
+    for (const s of skipped) appendLedger(repo, { ts: stamp, kind: 'review', reviewer: 'glm', shard: s.name, commit: head, pack_sha256: s.sha, skipped: 'pack unchanged since the last GLM review of this shard' });
   }
-  if (dryRun) return { shards: shards.map((s) => s.name), pack_sha256: sha };
+  if (dryRun) return { would_review: todo.map((s) => s.name), unchanged: skipped.map((s) => s.name) };
+  if (todo.length === 0) return { skipped: 'pack unchanged', shards: shards.length };
 
   const lenses = ['critical', 'premortem'].map((name) => ({ name, text: ER.loadLens(name, 15) + REVIEW_EXTRA }));
-  const findings = [];
-  const docs = [];
+  const findings = [], docs = [], failures = [];
   let inTok = 0, outTok = 0;
-  try {
-    for (const shard of shards) {
+  const done = [];
+  for (const shard of todo) {
+    let sIn = 0, sOut = 0;
+    const sFindings = [], sDocs = [];
+    try {
       for (const lens of lenses) {
-        const r = await glm({
-          model: cfg.glm_model, user: `${shard.pack}\n\n${lens.text}`, maxTokens: GLM_MAX_OUTPUT_TOKENS,
-          thinkingBudget: 8000, env: ctx.env, post: ctx.post,
-        });
-        inTok += r.input_tokens; outTok += r.output_tokens;
-        const label = shards.length > 1 ? `${lens.name} / ${shard.name}` : lens.name;
-        docs.push(`## ${label}\n\n${r.text.trim()}\n`);
-        for (const f of ER.parseFindings(r.text, lens.name)) findings.push({ ...f, id: shards.length > 1 ? `${shard.name}:${f.id}` : f.id, high: isHighSeverity(f) });
+        const r = await glm({ model: cfg.glm_model, user: `${shard.pack}\n\n${lens.text}`, maxTokens: GLM_MAX_OUTPUT_TOKENS, thinkingBudget: 8000, env: ctx.env, post: ctx.post });
+        sIn += r.input_tokens; sOut += r.output_tokens;
+        sDocs.push(`## ${shard.name} / ${lens.name}\n\n${r.text.trim()}\n`);
+        for (const f of ER.parseFindings(r.text, lens.name)) sFindings.push({ ...f, id: `${shard.name}:${f.id}`, shard: shard.name, high: isHighSeverity(f) });
       }
+    } catch (err) {
+      failures.push(`${shard.name}: ${err.message.slice(0, 160)}`);
+      appendLedger(repo, { ts: stamp, kind: 'review', reviewer: 'glm', shard: shard.name, commit: head, pack_sha256: shard.sha, tokens: { input: sIn, output: sOut }, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}` });
+      continue;
     }
-  } catch (err) {
-    appendLedger(repo, { ts: new Date(now).toISOString(), kind: 'review', reviewer: 'glm', commit: head, pack_sha256: sha, tokens: { input: inTok, output: outTok }, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}` });
-    throw err;
+    inTok += sIn; outTok += sOut;
+    findings.push(...sFindings); docs.push(...sDocs);
+    done.push({ shard, sIn, sOut, high: sFindings.filter((f) => f.high).length });
   }
-  const base = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-glm`, '.md');
-  const high = findings.filter((f) => f.high).length;
-  fs.writeFileSync(base, [`# GLM review ${utcDate(now)} (${cfg.glm_model}): ${findings.length} findings, ${high} high severity`, '',
-    `Revision ${head ? head.slice(0, 12) : 'unknown'}, pack ${sha.slice(0, 12)}. Unverified hypotheses: reproduce each with a failing test or check (build-with-quality) before acting.`, '', ...docs].join('\n'));
-  fs.writeFileSync(base.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
-  appendLedger(repo, {
-    ts: new Date(now).toISOString(), kind: 'review', reviewer: 'glm', commit: head, pack_sha256: sha, tokens: { input: inTok, output: outTok },
-    est_usd: (inTok * GLM_USD_PER_M.input + outTok * GLM_USD_PER_M.output) / 1e6, findings: rel(repo, base), high_severity: high,
-  });
-  return { findings: rel(repo, base), count: findings.length, high };
-}
-
-/** Topics changed since `commit` (all topics when there is no earlier audit). */
-function changedTopicCount(repo, commit) {
-  const topics = loadTopics(repo);
-  if (!commit || !commitExists(repo, commit)) return topics.length;
-  return triageCandidates(topics, changedFiles(repo, commit)).length;
+  let out = null;
+  if (done.length) {
+    out = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-glm`, '.md');
+    const high = findings.filter((f) => f.high).length;
+    fs.writeFileSync(out, [`# GLM review ${utcDate(now)} (${cfg.glm_model}): ${findings.length} findings, ${high} high severity, ${done.length} shard(s)`, '',
+      `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${done.map((d) => d.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (build-with-quality) before acting.`, '', ...docs].join('\n'));
+    fs.writeFileSync(out.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
+    for (const d of done) {
+      appendLedger(repo, {
+        ts: stamp, kind: 'review', reviewer: 'glm', shard: d.shard.name, commit: head, pack_sha256: d.shard.sha, tokens: { input: d.sIn, output: d.sOut },
+        est_usd: (d.sIn * GLM_USD_PER_M.input + d.sOut * GLM_USD_PER_M.output) / 1e6, findings: rel(repo, out), high_severity: d.high,
+      });
+    }
+  }
+  if (failures.length) throw new Error(`${failures.length} shard(s) failed: ${failures.join('; ')}`);
+  return { findings: rel(repo, out), count: findings.length, high: findings.filter((f) => f.high).length, shards: done.length, unchanged: skipped.length };
 }
 
 async function auditGemini(repo, ctx) {
-  const { now, cfg, dryRun, mtd } = ctx;
+  const { now, cfg, dryRun } = ctx;
   const ledger = readLedger(repo);
   const head = headCommit(repo);
-  const { sha, pack } = corpusPack(repo);
-  const lastAudit = lastOf(ledger, 'audit', 'gemini');
-  const lastGlm = lastOf(ledger, 'review', 'glm');
-  const changed = changedTopicCount(repo, lastAudit?.commit);
-  let packTokens = Math.round(pack.length / 3.3);
-  let estimated = false;
+  const stamp = new Date(now).toISOString();
+  const resolver = createResolver();
+  const topics = loadTopics(repo, resolver);
+  const shards = buildShards(repo, ctx.shardTokens ?? shardBudget(ctx.env));
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
-
-  const skip = (reason, extra = {}) => {
-    if (!dryRun) appendLedger(repo, { ts: new Date(now).toISOString(), kind: 'audit', reviewer: 'gemini', commit: head, pack_sha256: sha, changed_topics: changed, skipped: reason, ...extra });
-    return { skipped: reason };
+  const log = (shard, reason, extra = {}) => {
+    if (!dryRun) appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'gemini', shard: shard?.name ?? null, commit: head, pack_sha256: shard?.sha ?? null, skipped: reason, ...extra });
   };
-  // The cheap checks first, so a refused run never needs a key or a network call.
-  const first = decideGemini({ cfg, lastAudit, changedTopics: changed, glmHighSeverity: lastGlm?.high_severity ?? 0, mtdUsd: mtd, estUsd: 0, now });
-  if (!first.run) return skip(first.reason);
-  if (!key && !dryRun) return skip('no GEMINI_API_KEY in the environment');
-  if (key && !dryRun) {
-    try {
-      const { totalTokens } = await ER.gemini('countTokens', ctx.model, key, { contents: [{ role: 'user', parts: [{ text: pack }, { text: ER.loadLens('critical', 15) }] }] });
-      packTokens = totalTokens;
-    } catch (err) { return skip(`countTokens failed: ${err.message.slice(0, 160)}`); }
-  } else estimated = true;
-  const estUsd = estimateGeminiUsd(packTokens);
-  const decision = decideGemini({ cfg, lastAudit, changedTopics: changed, glmHighSeverity: lastGlm?.high_severity ?? 0, mtdUsd: mtd, estUsd, now });
-  if (!decision.run) return skip(decision.reason, { tokens: { input: packTokens }, est_usd: 0 });
-  if (dryRun) return { would_run: true, reason: decision.reason, est_usd: estUsd, tokens_estimated: estimated };
+  if (!key && !dryRun) { log(null, 'no GEMINI_API_KEY in the environment'); return { skipped: 'no GEMINI_API_KEY in the environment' }; }
 
-  const outDir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'diagram-audit-'));
-  try {
-    await ctx.runExternal(path.join(repo, CORPUS_REL), outDir);
-  } catch (err) {
-    // A failed generateContent may already have been billed: count the estimate.
-    appendLedger(repo, { ts: new Date(now).toISOString(), kind: 'audit', reviewer: 'gemini', commit: head, pack_sha256: sha, tokens: { input: packTokens }, est_usd: estUsd, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}` });
-    throw err;
+  // The cheap checks first, per shard, so a refused shard never needs a network call.
+  let mtd = ctx.mtd;
+  const eligible = [], refused = [];
+  for (const shard of shards) {
+    const inShard = new Set(shard.files);
+    const shardTopics = topics.filter((t) => inShard.has(t.rel));
+    const lastAudit = lastOf(ledger, 'audit', 'gemini', shard.name);
+    const lastGlm = lastOf(ledger, 'review', 'glm', shard.name);
+    // A high-severity GLM finding escalates once: it counts only if it is newer than the last audit.
+    const high = lastGlm && (!lastAudit || new Date(lastGlm.ts) > new Date(lastAudit.ts)) ? lastGlm.high_severity ?? 0 : 0;
+    const changed = shardChangedTopics(shardTopics, lastAudit);
+    const first = decideGemini({ cfg, lastAudit, changedTopics: changed, glmHighSeverity: high, mtdUsd: mtd, estUsd: 0, now });
+    if (first.run) eligible.push({ shard, shardTopics, lastAudit, high, changed });
+    else refused.push({ shard, reason: first.reason, changed });
   }
-  const manifest = JSON.parse(fs.readFileSync(path.join(outDir, 'manifest.json'), 'utf8'));
-  const findings = JSON.parse(fs.readFileSync(path.join(outDir, 'findings.json'), 'utf8'));
-  const base = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-gemini`, '.md');
-  const docs = (manifest.lenses ?? []).map((l) => `## ${l.name}\n\n${fs.readFileSync(path.join(outDir, `${l.name}.md`), 'utf8').trim()}\n`);
-  fs.writeFileSync(base, [`# Gemini audit ${utcDate(now)} (${manifest.model}): ${findings.length} findings`, '',
-    `Revision ${head ? head.slice(0, 12) : 'unknown'}, pack ${sha.slice(0, 12)}. Unverified hypotheses: reproduce each with a failing test or check (build-with-quality) before acting.`, '', ...docs].join('\n'));
-  fs.writeFileSync(base.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
-  const usd = actualGeminiUsd(manifest.lenses);
-  const sum = (k) => (manifest.lenses ?? []).reduce((a, l) => a + (l[k] ?? 0), 0);
-  appendLedger(repo, {
-    ts: new Date(now).toISOString(), kind: 'audit', reviewer: 'gemini', commit: head, pack_sha256: sha,
-    tokens: { input: sum('prompt_tokens'), cached: sum('cached_tokens'), output: sum('thinking_tokens') + sum('output_tokens') },
-    est_usd: usd, findings: rel(repo, base), changed_topics: changed,
-  });
-  return { findings: rel(repo, base), count: findings.length, usd };
+  for (const r of refused) log(r.shard, r.reason, { changed_topics: r.changed });
+  // Most-changed shards first, so a tight budget is spent where the corpus has drifted most.
+  eligible.sort((a, b) => b.changed - a.changed || (a.shard.name < b.shard.name ? -1 : 1));
+  if (dryRun) {
+    return { would_consider: eligible.map((e) => ({ shard: e.shard.name, changed: e.changed, high: e.high, est_usd: estimateGeminiUsd(e.shard.tokens) })), refused: refused.map((r) => ({ shard: r.shard.name, reason: r.reason })) };
+  }
+
+  const ran = [], findings = [], docs = [];
+  const errors = [];
+  for (const e of eligible) {
+    const { shard } = e;
+    let packTokens;
+    try {
+      ({ totalTokens: packTokens } = await ER.gemini('countTokens', ctx.model, key, { contents: [{ role: 'user', parts: [{ text: shard.pack }, { text: ER.loadLens('critical', 15) }] }] }));
+    } catch (err) { log(shard, `countTokens failed: ${err.message.slice(0, 160)}`, { changed_topics: e.changed }); continue; }
+    const estUsd = estimateGeminiUsd(packTokens);
+    const decision = decideGemini({ cfg, lastAudit: e.lastAudit, changedTopics: e.changed, glmHighSeverity: e.high, mtdUsd: mtd, estUsd, now });
+    if (!decision.run) { log(shard, decision.reason, { tokens: { input: packTokens }, changed_topics: e.changed }); continue; }
+
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'diagram-audit-'));
+    try {
+      await ctx.runExternal(path.join(repo, CORPUS_REL), outDir, shard.files);
+    } catch (err) {
+      // A failed generateContent may already have been billed: count the estimate.
+      appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'gemini', shard: shard.name, commit: head, pack_sha256: shard.sha, tokens: { input: packTokens }, est_usd: estUsd, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}` });
+      mtd += estUsd;
+      errors.push(`${shard.name}: ${err.message.slice(0, 160)}`);
+      continue;
+    }
+    const manifest = JSON.parse(fs.readFileSync(path.join(outDir, 'manifest.json'), 'utf8'));
+    const sFindings = JSON.parse(fs.readFileSync(path.join(outDir, 'findings.json'), 'utf8')).map((f) => ({ ...f, id: `${shard.name}:${f.id}`, shard: shard.name }));
+    findings.push(...sFindings);
+    for (const l of manifest.lenses ?? []) docs.push(`## ${shard.name} / ${l.name}\n\n${fs.readFileSync(path.join(outDir, `${l.name}.md`), 'utf8').trim()}\n`);
+    const usd = actualGeminiUsd(manifest.lenses);
+    mtd = Math.round((mtd + usd) * 1e6) / 1e6;
+    const sum = (k) => (manifest.lenses ?? []).reduce((a, l) => a + (l[k] ?? 0), 0);
+    ran.push({ shard, usd, changed: e.changed, model: manifest.model,
+      tokens: { input: sum('prompt_tokens'), cached: sum('cached_tokens'), output: sum('thinking_tokens') + sum('output_tokens') },
+      commits: headsOf(reposOf(e.shardTopics)) });
+  }
+  let out = null;
+  if (ran.length) {
+    out = uniquePath(path.join(repo, REVIEW_REL), `${utcDate(now)}-gemini`, '.md');
+    fs.writeFileSync(out, [`# Gemini audit ${utcDate(now)} (${ran[0].model}): ${findings.length} findings, ${ran.length} shard(s)`, '',
+      `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${ran.map((r) => r.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (build-with-quality) before acting.`, '', ...docs].join('\n'));
+    fs.writeFileSync(out.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
+    for (const r of ran) {
+      appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'gemini', shard: r.shard.name, commit: head, commits: r.commits, pack_sha256: r.shard.sha, tokens: r.tokens, est_usd: r.usd, findings: rel(repo, out), changed_topics: r.changed });
+    }
+  }
+  if (errors.length) throw new Error(`${errors.length} shard(s) failed: ${errors.join('; ')}`);
+  return ran.length
+    ? { findings: rel(repo, out), count: findings.length, usd: ran.reduce((a, r) => a + r.usd, 0), shards: ran.map((r) => r.shard.name), refused: refused.length }
+    : { skipped: 'no shard passed the gate', refused: refused.length };
 }
 
-function runExternalChild(corpus, outDir) {
+function runExternalChild(corpus, outDir, files) {
+  const list = path.join(outDir, 'files.txt');
+  fs.writeFileSync(list, `${files.join('\n')}\n`);
   try {
-    execFileSync(process.execPath, [path.join(__dirname, 'external-review.cjs'), corpus, '--out', outDir], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    execFileSync(process.execPath, [path.join(__dirname, 'external-review.cjs'), corpus, '--out', outDir, '--files-from', list], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   } catch (err) { throw new Error(String(err.stderr || err.message).trim().split('\n').pop() || 'external-review failed'); }
 }
 
-function statusOf(repos, now) {
-  const ledgers = repos.map((r) => ({ repo: r, ledger: readLedger(r) }));
+/** The resolved repo list, per-repo ledger summaries, overlaps and month-to-date spend. */
+function statusOf(repos, now, info = {}) {
   const lines = [];
+  lines.push(`Repos (${info.source ?? 'given'}${info.added ? `, +${info.added} from the local file` : ''}${info.excluded ? `, ${info.excluded} excluded` : ''}): ${repos.length}`);
+  for (const r of repos) lines.push(`  ${r}`);
+  const ledgers = repos.map((r) => ({ repo: r, ledger: readLedger(r) }));
+  const resolver = createResolver();
   for (const { repo, ledger } of ledgers) {
     lines.push(`${repo}: ${ledger.length} ledger lines`);
     for (const [kind, reviewer] of [['triage', 'glm'], ['review', 'glm'], ['audit', 'gemini']]) {
       const ran = lastOf(ledger, kind, reviewer);
       const last = [...ledger].reverse().find((e) => e.kind === kind && e.reviewer === reviewer);
       const skipNote = last && last.skipped && last !== ran ? `; latest skip: ${last.skipped}` : '';
-      lines.push(`  ${kind}/${reviewer}: ${ran ? `last run ${ran.ts}${ran.findings ? ` -> ${ran.findings}` : ''}${ran.high_severity ? ` (${ran.high_severity} high severity)` : ''}` : 'never run'}${skipNote}`);
+      lines.push(`  ${kind}/${reviewer}: ${ran ? `last run ${ran.ts}${ran.shard ? ` (${ran.shard})` : ''}${ran.findings ? ` -> ${ran.findings}` : ''}${ran.high_severity ? ` (${ran.high_severity} high severity)` : ''}` : 'never run'}${skipNote}`);
     }
+    try {
+      const topics = loadTopics(repo, resolver);
+      const cited = reposOf(topics).filter((t) => t !== resolver.toplevel(repo));
+      if (cited.length) {
+        const own = new Set(repos.map((r) => real(r)));
+        lines.push(`  cites ${cited.length} other repo(s): ${cited.map((c) => path.basename(c) + (own.has(c) ? ' (has its own corpus, reviewed separately; overlapping areas are different topics)' : '')).join(', ')}`);
+      }
+      const sk = skipSummary(topics);
+      if (sk.count) lines.push(`  ${sk.count} cited path(s) not attributable: ${Object.entries(sk.reasons).map(([k, v]) => `${v} ${k}`).join(', ')}`);
+    } catch { /* status never fails on a bad corpus */ }
   }
   const mtd = monthToDateUsd(ledgers.map((l) => l.ledger), now);
   lines.push(`Gemini spend ${new Date(now).toISOString().slice(0, 7)}: $${mtd.toFixed(2)}`);
@@ -617,19 +899,20 @@ function statusOf(repos, now) {
 // ── CLI ─────────────────────────────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
-  const opts = { cmd: argv[0], repos: [], dryRun: false, manifest: process.env.AGENTBOX_CONFIG || '/etc/agentbox.toml', now: null };
+  const opts = { cmd: argv[0], repos: [], dryRun: false, manifest: process.env.AGENTBOX_CONFIG || '/etc/agentbox.toml', now: null, workspace: process.env.WORKSPACE || DEFAULT_WORKSPACE };
   for (let i = 1; i < argv.length; i++) {
     const a = argv[i];
     const next = () => { if (i + 1 >= argv.length) throw new Error(`${a} needs a value`); return argv[++i]; };
     if (a === '--manifest') opts.manifest = next();
     else if (a === '--repo') opts.repos.push(path.resolve(next()));
+    else if (a === '--workspace') opts.workspace = next();
     else if (a === '--dry-run') opts.dryRun = true;
     else if (a === '--now') opts.now = next();
     else if (a === '--window') { /* accepted: the crontab passes it; the gate is the interval */ }
     else throw new Error(`unknown option ${a}`);
   }
   if (!['triage', 'review-glm', 'audit-gemini', 'status'].includes(opts.cmd)) {
-    throw new Error('usage: review-cadence.cjs <triage|review-glm|audit-gemini|status> [--manifest f] [--repo dir]... [--dry-run] [--now ISO]');
+    throw new Error('usage: review-cadence.cjs <triage|review-glm|audit-gemini|status> [--manifest f] [--repo dir]... [--workspace dir] [--dry-run] [--now ISO]');
   }
   if (opts.now && Number.isNaN(Date.parse(opts.now))) throw new Error('--now is an ISO time');
   return opts;
@@ -639,14 +922,17 @@ async function main(argv, deps = {}) {
   const opts = parseArgs(argv);
   const cfg = loadConfig(opts.manifest);
   const now = opts.now ? new Date(opts.now) : new Date();
-  const repos = (opts.repos.length ? opts.repos : cfg.repos).filter((r) => {
-    if (fs.existsSync(path.join(r, CORPUS_REL))) return true;
+  const info = opts.repos.length
+    ? { repos: opts.repos, source: 'given on the command line' }
+    : resolveRepos(cfg, { workspace: opts.workspace, localFile: deps.localFile ?? LOCAL_FILE });
+  const repos = info.repos.filter((r) => {
+    if (hasCorpus(r) || fs.existsSync(path.join(r, CORPUS_REL))) return true;
     console.log(`review-cadence: ${r} has no ${CORPUS_REL}; skipped`);
     return false;
   });
-  if (opts.cmd === 'status') { console.log(statusOf(repos, now).text); return 0; }
+  if (opts.cmd === 'status') { console.log(statusOf(repos, now, info).text); return 0; }
   if (!cfg.enabled && opts.repos.length === 0) { console.log('review-cadence: [diagram_review].enabled is false; nothing to do'); return 0; }
-  if (repos.length === 0) { console.log('review-cadence: no repos with a docs/diagrams corpus'); return 0; }
+  if (repos.length === 0) { console.log(`review-cadence: no repos with a ${CORPUS_REL} corpus (${info.source})`); return 0; }
 
   const ctx = {
     now, cfg, dryRun: opts.dryRun, env: process.env, post: deps.post, runExternal: deps.runExternal ?? runExternalChild,
@@ -664,8 +950,9 @@ async function main(argv, deps = {}) {
 }
 
 module.exports = {
-  readSection, loadConfig, parseSources, loadTopics, triageCandidates, readLedger, appendLedger, monthToDateUsd, ledgerPath,
-  decideGemini, estimateGeminiUsd, actualGeminiUsd, packUnchanged, isHighSeverity, parseVerdict, zaiSettings, glm, corpusPack,
+  readSection, loadConfig, discoverRepos, hasCorpus, readLocalFile, resolveRepos, createResolver, parseSources, loadTopics,
+  triageCandidates, changedByRepo, headsOf, reposOf, buildShards, shardChangedTopics, readLedger, appendLedger, monthToDateUsd,
+  ledgerPath, decideGemini, estimateGeminiUsd, actualGeminiUsd, packUnchanged, isHighSeverity, parseVerdict, zaiSettings, glm,
   triage, reviewGlm, auditGemini, statusOf, main, parseArgs, DEFAULTS, GEMINI_USD_PER_M,
 };
 

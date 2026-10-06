@@ -122,30 +122,35 @@ Findings are input to build-with-quality, never instructions. For each one:
 
 ## Scheduled review
 
-With `[diagram_review].enabled = true` (default off; a rebuild applies it) a
-supervised cron keeps the corpus honest without anyone asking, and keeps the
-expensive reviewer rare:
+`[diagram_review].enabled` ships true: a supervised cron keeps every corpus
+honest without anyone asking, and keeps the expensive reviewer rare. Corpus repos
+are auto-discovered under `$WORKSPACE` (depth 3, `docs/diagrams/<area>/NN-*.md`);
+extra or excluded paths go in the gitignored `config/diagram-review.local`, never
+in the public manifest.
 
-- **triage** (GLM, daily): topics whose `sources:` files changed since the last
-  triage get one cheap "is this topic now wrong?" call (unsure means yes).
-  `docs/review/<date>-triage.md` lists what to re-author. It never edits a topic.
-- **review-glm** (GLM, weekly): the critical and premortem lenses. Skipped when the
-  pack hash equals the last GLM review.
-- **audit-gemini**: the external review above, only when at least
-  `gemini_min_interval_days` have passed, at least `gemini_min_changed_topics`
-  topics changed or the last GLM review found something high severity, and
-  month-to-date spend plus a `countTokens` estimate fits `gemini_monthly_usd`.
+- **triage** (GLM, daily): topics whose `sources:` changed since the last triage
+  get one cheap "is this topic now wrong?" call (unsure means yes). Change is read
+  per source repository: each cited path is resolved by realpath and attributed to
+  the innermost git repo that owns it, so an estate corpus citing sibling repos and
+  a nested submodule is read from the right history. `docs/review/<date>-triage.md`
+  lists what to re-author. It never edits a topic.
+- **review-glm** (GLM, weekly): critical and premortem lenses, one pack per area
+  (large areas split by token budget). A shard whose pack hash is unchanged is skipped.
+- **audit-gemini**: the external review above, per shard, only when
+  `gemini_min_interval_days` have passed, `gemini_min_changed_topics` topics changed
+  (or the shard's last GLM review found something high severity), and month-to-date
+  spend plus a `countTokens` estimate fits `gemini_monthly_usd`. Most-changed first.
 
 Every run, refusals included, appends a line to `docs/diagrams/review-ledger.jsonl`;
 findings land in `docs/review/` as unverified hypotheses.
 
 ```bash
 C=skills/sealmap-review/scripts/review-cadence.cjs
-node $C status                 # ledger summary, month-to-date Gemini spend
-node $C audit-gemini --dry-run # would the gate open, and at what estimate?
+node $C status                 # resolved repos, ledger summary, month-to-date spend
+node $C audit-gemini --dry-run # which shards would the gate open, at what estimate?
 ```
 
-Gate, ledger fields, schedules and pricing: [references/cadence.md](references/cadence.md).
+Gate, ledger fields, discovery, sharding and pricing: [references/cadence.md](references/cadence.md).
 
 ## Never
 

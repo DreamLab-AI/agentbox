@@ -8,6 +8,7 @@
  *   Zero dependencies, Node >= 18.
  *
  *     node external-review.cjs <corpus> [--lens critical,premortem] [--only <substr>]
+ *          [--files-from <file listing topic paths, one per line>]
  *          [--register include|strip] [--count 15] [--out <dir>] [--dry-run]
  *
  * WHY IT IS THIS WAY
@@ -128,6 +129,7 @@ function parseArgs(argv) {
     const next = () => { if (i + 1 >= argv.length) throw new Error(`${a} needs a value`); return argv[++i]; };
     if (a === '--lens') opts.lens = next().split(',').map((s) => s.trim()).filter(Boolean);
     else if (a === '--only') opts.only = next();
+    else if (a === '--files-from') opts.filesFrom = next();
     else if (a === '--register') opts.register = next();
     else if (a === '--count') opts.count = Number(next());
     else if (a === '--out') opts.out = next();
@@ -220,6 +222,10 @@ async function main(argv) {
   const cfgPath = path.join(opts.corpus, 'diagrams.config.json');
   const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {};
   const files = listTopics(opts.corpus, { only: opts.only, skipDirs: cfg.skipDirs });
+  if (opts.filesFrom) { // one shard of a sharded corpus: exactly the topics listed, one per line
+    const want = new Set(fs.readFileSync(opts.filesFrom, 'utf8').split('\n').map((l) => l.trim()).filter(Boolean));
+    files.splice(0, files.length, ...files.filter((f) => want.has(f)));
+  }
   if (files.length === 0) throw new Error(`no topic files under ${opts.corpus}${opts.only ? ` matching '${opts.only}'` : ''}`);
   const lenses = opts.lens.map((name) => ({ name, text: loadLens(name, opts.count) }));
   const pack = buildPack(opts.corpus, files, opts);

@@ -3312,10 +3312,10 @@
     "diagram_review": {
       "type": "object",
       "additionalProperties": false,
-      "description": "ADR-2131: scheduled, cost-controlled review of diagrams-as-code corpora ([program:diagram-review-cron], supercronic over skills/sealmap-review/crontab). Default off. REBUILD-class for enabled: flake.nix bakes the supervisor block.",
+      "description": "ADR-2131: scheduled, cost-controlled review of diagrams-as-code corpora ([program:diagram-review-cron], supercronic over skills/sealmap-review/crontab). Shipped on; the flake default for a manifest without the section is off. REBUILD-class for enabled: flake.nix bakes the supervisor block.",
       "properties": {
         "enabled": { "type": "boolean", "description": "true \u21d2 flake.nix emits [program:diagram-review-cron]. false \u21d2 no supervisor block at all." },
-        "repos": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Absolute paths of repositories with a docs/diagrams corpus." },
+        "repos": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Absolute paths of corpus repositories. Empty (default) = auto-discover under $WORKSPACE to depth 3 (docs/diagrams/<area>/NN-*.md). The manifest is public: private paths go in the gitignored config/diagram-review.local." },
         "glm_triage_cron": { "type": "string", "pattern": "^\\S+( \\S+){4}$", "description": "Five-field cron expression for the daily GLM triage." },
         "glm_review_cron": { "type": "string", "pattern": "^\\S+( \\S+){4}$", "description": "Five-field cron expression for the GLM review (and, with weekly_window, the Gemini audit gate)." },
         "gemini_min_interval_days": { "type": "number", "minimum": 0, "description": "Minimum days between Gemini audits." },

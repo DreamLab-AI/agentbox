@@ -244,8 +244,10 @@
         # hookShimEnabled / teammateGcEnabled above.
         podcastIngestEnabled = (skillsCfg.podcast_ingest or {}).enabled or true;
         # ADR-2131 [diagram_review]: scheduled, cost-controlled diagram review.
-        # Default OFF (the opposite of podcastIngestEnabled): the program spends
-        # on two metered APIs, so a manifest with no section must emit nothing.
+        # The flake default is OFF (the opposite of podcastIngestEnabled): the
+        # program spends on two metered APIs, so a manifest with no section must
+        # emit nothing. The shipped agentbox.toml sets enabled = true (owner
+        # decision 2026-10-06), so the program is baked for this deployment.
         # REBUILD-class: the block below is baked supervisor text.
         diagramReviewEnabled = (agentboxConfig.diagram_review or {}).enabled or false;
         # [sidechain]: the sidestr chain this deployment produces (PRD-024 P1).
@@ -2884,7 +2886,8 @@ stderr_logfile_maxbytes=5MB
 ''}
 
 ${lib.optionalString diagramReviewEnabled ''
-; ADR-2131: gated on [diagram_review].enabled (default false). Off => no
+; ADR-2131: gated on [diagram_review].enabled (flake default false, shipped
+; manifest true). Off => no
 ; supervisor block at all, so `supervisorctl status` lists no
 ; diagram-review-cron. run-cron.sh renders skills/sealmap-review/crontab from
 ; the manifest into /run/agentbox (tmpfs) and execs supercronic on it, so a

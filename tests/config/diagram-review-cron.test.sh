@@ -5,7 +5,8 @@
 # source that decides it, plus the manifest default and the real wrapper:
 #   1. flake.nix: the enable flag defaults to false and reads [diagram_review].enabled
 #   2. flake.nix: the program text sits only inside lib.optionalString diagramReviewEnabled
-#   3. agentbox.toml and the default manifest ship enabled = false
+#   3. agentbox.toml and the default manifest ship enabled = true with no repo path; fixtures
+#      with false and with no section read as off
 #   4. the schema accepts [diagram_review] and is closed to unknown keys
 #   5. the system-manifest catalogue lists it with apply_class 'rebuild' and the same gate
 #   6. run-cron.sh renders the manifest schedules, adds the audit after triage only when
@@ -45,11 +46,29 @@ closer="$(awk '/^\[program:diagram-review-cron\]/{f=1;next} f&&/^'"''"'}$/{print
 if [ "$closer" = closed ]; then ok "the guard closes before any other guarded block opens"
 else bad "the guard closes before any other guarded block opens" "got: $closer"; fi
 
-# 3: manifests.
+# 3: manifests. The shipped manifests turn the program on (owner decision 2026-10-06); "absent
+# when disabled" is shown on fixtures, not on the live file, so flipping the live key never
+# breaks this test. A manifest that says false, and one with no section at all, both read as
+# off, and the flake default for a missing section is false (check 1).
 for f in agentbox.toml setup/agentbox.default.toml; do
   v="$(awk '/^\[diagram_review\]/{s=1;next} /^\[/{s=0} s&&/^enabled[[:space:]]*=/{print $3}' "$REPO/$f")"
-  if [ "$v" = false ]; then ok "$f ships enabled = false"; else bad "$f ships enabled = false" "got: $v"; fi
+  if [ "$v" = true ]; then ok "$f ships enabled = true"; else bad "$f ships enabled = true" "got: $v"; fi
+  r="$(awk '/^\[diagram_review\]/{s=1;next} /^\[/{s=0} s&&/^repos[[:space:]]*=/{print $3}' "$REPO/$f")"
+  if [ "$r" = "[]" ]; then ok "$f names no repo (auto-discover)"; else bad "$f names no repo (auto-discover)" "got: $r"; fi
 done
+if awk '/^\[diagram_review\]/{s=1;next} /^\[/{s=0} s' "$REPO/agentbox.toml" | grep -v '^[[:space:]]*#' | grep -Eq '/home/|/mnt/|/workspace/'; then
+  bad "agentbox.toml carries no path in [diagram_review]"; else ok "agentbox.toml carries no path in [diagram_review]"; fi
+
+if command -v agentbox-manifest >/dev/null 2>&1; then
+  printf '[diagram_review]\nenabled = false\n' >"$ROOT/off.toml"
+  printf '[core]\norchestration = "x"\n' >"$ROOT/none.toml"
+  printf '[diagram_review]\nenabled = true\n' >"$ROOT/on.toml"
+  for pair in off:0 none:0 on:1; do
+    n="${pair%%:*}"; want="${pair##*:}"
+    got="$(agentbox-manifest toml-bool --manifest "$ROOT/$n.toml" --path diagram_review.enabled)"
+    if [ "$got" = "$want" ]; then ok "fixture '$n' reads as enabled=$want, so the block is $([ "$want" = 0 ] && echo absent || echo emitted)"; else bad "fixture '$n' reads as enabled=$want" "got $got"; fi
+  done
+fi
 
 # 4: schema.
 schema_out="$(cd "$REPO" && node -e '

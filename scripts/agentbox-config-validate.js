@@ -617,13 +617,12 @@ if (observability.metrics_port !== undefined) {
   }
 }
 
-// ─── W076 + E079: scheduled diagram review (ADR-2131) ────────────────────────
+// ─── E079: scheduled diagram review (ADR-2131) ───────────────────────────────
 //
-// W076 — [diagram_review].enabled=true with no repos: the cron is supervised but has
-//        nothing to review.
 // E079 — a repo is not an absolute path, or a cron expression is not five fields. The
 //        wrapper would fall back to the default schedule, so a typo would silently run
-//        on a schedule nobody chose.
+//        on a schedule nobody chose. An empty repos list is valid: it means auto-discover
+//        under $WORKSPACE, so enabled with no repos is not a warning.
 {
   const dr = manifest.diagram_review || {};
   const repos = Array.isArray(dr.repos) ? dr.repos : [];
@@ -631,19 +630,13 @@ if (observability.metrics_port !== undefined) {
   if (badRepos.length) {
     errors.push({
       code: 'E079',
-      message: `E079: [diagram_review].repos must be absolute paths; offending: ${badRepos.map((r) => JSON.stringify(String(r).slice(0, 40))).join(', ')}`,
+      message: `E079: [diagram_review].repos must be absolute paths (or empty to auto-discover); offending: ${badRepos.map((r) => JSON.stringify(String(r).slice(0, 40))).join(', ')}`,
     });
   }
   for (const key of ['glm_triage_cron', 'glm_review_cron']) {
     if (dr[key] !== undefined && !(typeof dr[key] === 'string' && /^[0-9A-Za-z*/,?-]+( [0-9A-Za-z*/,?-]+){4}$/.test(dr[key]))) {
       errors.push({ code: 'E079', message: `E079: [diagram_review].${key} must be a five-field cron expression (got ${JSON.stringify(dr[key])})` });
     }
-  }
-  if (dr.enabled === true && repos.length === 0) {
-    warnings.push({
-      code: 'W076',
-      message: '[diagram_review].enabled is true but repos is empty — [program:diagram-review-cron] will have nothing to review',
-    });
   }
 }
 

@@ -5,7 +5,7 @@ version: 0.5.4
 status: draft-for-ratification
 verified_commit: 
 changelog:
-  - "0.5.4 (2026-10-06): ADR-2131. New gated supervised program diagram-review-cron (supercronic over skills/sealmap-review/crontab, default off, rebuild-class under [diagram_review].enabled). It holds no secret file and takes no ADR-2122 role. The Invariants compliance surface is unchanged."
+  - "0.5.4 (2026-10-06): ADR-2131. New gated supervised program diagram-review-cron (supercronic over skills/sealmap-review/crontab, shipped on, rebuild-class under [diagram_review].enabled). It holds no secret file and takes no ADR-2122 role. The Invariants compliance surface is unchanged."
   - "0.5.3 (2026-10-03): custody X-1 step 1 (ADR-2122, staged). Under [security].role_isolation (boot-class, default off), role programs run under ab-* uids from /etc/supervisord.roles.conf, secrets sit in the root-owned /run/secrets/<role>/, and devuser's Docker CLI is GET-only. New programs serve-identity and docker-read-proxy (EXITED while off). The sidecar gains podkey-loader. The sidestr producer runs the Nix bake of upstream-pins in both modes."
   - "0.5.2 (2026-10-01): CLI, JavaScript and Rust dependency refresh. Fastify 5 compatibility preserves NIP-98 host ports, redirects, WebSocket callbacks, CORS methods and metrics. Stale cargo binaries are quarantined with numbered recovery copies. No data-volume or memory-geometry migration."
   - "0.5.1 (2026-09-30): Supervised interim testnet producer, Pages mirror and standalone sidestr-agent faucet under rebuild-class sidechain gates; catalogue now 79 entries. Native node, bridge and proposed settlement invariants remain deferred."
@@ -83,7 +83,7 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 | `xvnc` / `x11vnc` / `wayvnc` / `xorg-nvidia` / `hyprland` / `i3wm` / `xwayland-session` | desktop stack (gated `desktop.enabled`) | `127.0.0.1:5901` |
 | `tailscaled` / `tailscale-up` | mesh networking (gated) | — |
 | `podcast-cron` / `forum-backup-cron` | scheduled jobs | — |
-| `diagram-review-cron` | GLM triage and review of diagram corpora, Gemini audit behind an interval, change and USD-cap gate (gated `[diagram_review]`, default off, rebuild-class; ADR-2131). Its crontab is rendered at boot into `/run/agentbox`; the program holds no secret file | — |
+| `diagram-review-cron` | GLM triage and review of diagram corpora, Gemini audit behind an interval, change and USD-cap gate (gated `[diagram_review]`, shipped on, rebuild-class; ADR-2131). Its crontab is rendered at boot into `/run/agentbox`; the program holds no secret file | — |
 | `sidestr-producer` / `sidestr-mirror` / `sidestr-faucet` | sidestr:dreamlab chain, Pages mirror, DREAM faucet (gated `[sidechain]`, rebuild-class). The producer runs the read-only Nix bake of `config/sidechain/upstream-pins` (`/opt/agentbox/sidestr/upstream`), never a workspace checkout unless `SIDESTR_ALLOW_UNPINNED=1` | `127.0.0.1:3450` |
 
 Readiness (`server.js:508`) requires `bootstrap.done`, `adapters:healthy`, and `paths:accessible`; `bootstrap-seal` is a one-shot at `priority=99` — if it times out `/ready` stays 503.

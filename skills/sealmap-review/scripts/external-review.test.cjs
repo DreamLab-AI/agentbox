@@ -121,6 +121,21 @@ test('dry run writes the pack and manifest and needs no key', () => {
   assert.doesNotMatch(fs.readFileSync(path.join(out, 'pack.txt'), 'utf8'), /Tension/);
 });
 
+test('--files-from packs exactly the listed topics: one shard of a sharded corpus', () => {
+  const dir = corpus();
+  const list = path.join(dir, 'shard.txt');
+  fs.writeFileSync(list, 'enclosure/02-compose.md\nnot/a-topic.md\n');
+  const out = path.join(dir, '.out');
+  const env = { ...process.env };
+  delete env.GEMINI_API_KEY; delete env.GOOGLE_GEMINI_API_KEY;
+  const r = spawnSync(process.execPath, [path.join(__dirname, 'external-review.cjs'), dir, '--files-from', list, '--out', out, '--dry-run'], { encoding: 'utf8', env });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8')).topics, 1);
+  const pack = fs.readFileSync(path.join(out, 'pack.txt'), 'utf8');
+  assert.match(pack, /=== FILE: enclosure\/02-compose\.md ===/);
+  assert.doesNotMatch(pack, /control-plane/);
+});
+
 test('a live run without a key fails with a clear message, after packing', () => {
   const dir = corpus();
   const env = { ...process.env };
