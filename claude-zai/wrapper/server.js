@@ -4,6 +4,7 @@ const { spawn } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { claudeChildEnv } = require('./child-env');
 
 const app = express();
 const PORT = 9600;
@@ -152,14 +153,16 @@ class ClaudeWorkerPool {
             }
             claudeArgs.push('--print');
             // GLM-5.2 is default model when using Z.AI, no --model flag needed
+            // Allowlisted env (child-env.js): the worker can run Bash, so it must
+            // not see the bearer secret, and inherited CLAUDE_EFFORT /
+            // MAX_THINKING_TOKENS must not steer GLM.
             const claudeProcess = spawn('claude', claudeArgs, {
-                env: {
-                    ...process.env,
-                    CLAUDE_CONFIG_DIR: CLAUDE_CONFIG_DIR,
-                    ANTHROPIC_API_KEY: ZAI_API_KEY || process.env.ZAI_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY,
-                    ANTHROPIC_BASE_URL: ZAI_BASE_URL,
-                    ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN
-                }
+                env: claudeChildEnv(process.env, {
+                    configDir: CLAUDE_CONFIG_DIR,
+                    apiKey: ZAI_API_KEY || process.env.ZAI_ANTHROPIC_API_KEY,
+                    baseUrl: ZAI_BASE_URL,
+                    effort: process.env.ZAI_EFFORT,
+                })
             });
 
             let stdout = '';

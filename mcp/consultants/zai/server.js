@@ -5,15 +5,20 @@
  * Consultant: zai (Z.AI / GLM via Anthropic-API-compatible claude-zai).
  *
  * claude-zai is the Z.AI variant of the Claude CLI: same wire, different
- * endpoint + key. We invoke it under the zai-user isolation so the Z.AI
- * credential never leaks into devuser's Claude session.
+ * endpoint + key. In the image AGENTBOX_ZAI_BIN resolves to the `zai` CLI
+ * (config/zai-wrapper.sh), which starts claude from `env -i`.
  *
- * Auth: ZAI_ANTHROPIC_API_KEY (passed through as ANTHROPIC_API_KEY for
- * the wrapper) and ZAI_URL (passed through as ANTHROPIC_BASE_URL).
+ * The child environment is built by shared/zai-env.js from named inputs only
+ * and spawn-cli inherits nothing else, so the coordinator's CLAUDE_EFFORT,
+ * CLAUDE_CONFIG_DIR and direct-Anthropic key never reach GLM.
+ *
+ * Auth: ZAI_ANTHROPIC_API_KEY (or ZAI_API_KEY), sent as the bearer token;
+ * ZAI_URL becomes ANTHROPIC_BASE_URL.
  */
 
 const { BaseConsultant } = require('../shared/consultant-base');
 const { spawnCli } = require('../shared/spawn-cli');
+const { zaiChildEnv } = require('../shared/zai-env');
 
 const ZAI_BIN  = process.env.AGENTBOX_ZAI_BIN  || 'claude-zai';
 const ZAI_HOME = process.env.AGENTBOX_ZAI_HOME || '/home/zai-user';
@@ -41,14 +46,9 @@ async function callConsult({ question, context_excerpt }) {
   const result = await spawnCli({
     cmd: ZAI_BIN,
     args: ['-p', prompt],
-    env: {
-      HOME:                   ZAI_HOME,
-      ANTHROPIC_BASE_URL:     process.env.ZAI_URL                || 'https://api.z.ai/api/paas/v4',
-      ANTHROPIC_API_KEY:      process.env.ZAI_ANTHROPIC_API_KEY  || process.env.ZAI_API_KEY || '',
-      ZAI_API_KEY:            process.env.ZAI_API_KEY            || '',
-      AGENTBOX_AGENT_ID:      'consultant-zai',
-      ...(MAX_THINKING_TOKENS > 0 ? { MAX_THINKING_TOKENS: String(MAX_THINKING_TOKENS) } : {}),
-    },
+    env: zaiChildEnv(process.env, {
+      home: ZAI_HOME, agentId: 'consultant-zai', maxThinkingTokens: MAX_THINKING_TOKENS,
+    }),
     timeout_ms: 180_000,
   });
   if (result.code !== 0) {
@@ -78,7 +78,7 @@ async function healthCheck() {
   const v = await spawnCli({
     cmd: ZAI_BIN,
     args: ['--version'],
-    env: { HOME: ZAI_HOME },
+    env: zaiChildEnv(process.env, { home: ZAI_HOME }),
     timeout_ms: 5_000,
   });
   if (v.code !== 0) {

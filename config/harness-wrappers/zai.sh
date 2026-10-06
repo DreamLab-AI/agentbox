@@ -127,6 +127,23 @@ if ! provider_url_validate "$BASE_URL" "$EXPECT_HOST" "$PROVIDER_URL_ALLOWED_POR
     "mis-bill the direct-Anthropic key — aborting."
 fi
 
+# --- drop the caller's Claude Code steering --------------------------------
+# Claude Code reads its own configuration from CLAUDE_* / ANTHROPIC_* and
+# MAX_THINKING_TOKENS. Inherited from the pane, CLAUDE_EFFORT=medium silently
+# lowered GLM's effort and an ANTHROPIC_MODEL or ANTHROPIC_API_KEY pointed the
+# session somewhere it was not configured to go. This is an interactive agent
+# session, so the estate variables its MCP servers and hooks dial
+# (RUVECTOR_PG_CONNINFO, NOSTR_*, CLAUDE_FLOW_*, …) stay; only Claude Code's own
+# namespace is cleared, and the profile sets what it needs below. ZAI_EFFORT is
+# the explicit effort lever. Test: tests/security/zai-launch-env.test.cjs.
+while IFS= read -r _var; do
+  case "$_var" in
+    CLAUDE_FLOW_*) ;;
+    CLAUDE_*|CLAUDECODE|ANTHROPIC_*|MAX_THINKING_TOKENS) unset "$_var" ;;
+  esac
+done < <(compgen -e)
+[ -n "${ZAI_EFFORT:-}" ] && export CLAUDE_EFFORT="$ZAI_EFFORT"
+
 # --- pin the isolated profile + redirect, then hand off to claude ----------
 export HOME="$PROFILE"
 export CLAUDE_CONFIG_DIR="$CLAUDE_DIR"

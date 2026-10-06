@@ -76,6 +76,18 @@ to Claude Code's `MAX_THINKING_TOKENS` (`low` = 4096, `medium` = 10000,
 GLM's own `reasoning_effort` parameter. Leave the field unset to fall back to
 the endpoint default.
 
+Every path that starts Claude Code against Z.AI builds the child environment
+from named inputs only: the `zai` CLI (`config/zai-wrapper.sh`, `env -i`), the
+consultant and the ontology monitor (`mcp/consultants/shared/zai-env.js`), the
+AoE `zai` session wrapper and the `claude-zai` sidecar. The caller's
+`CLAUDE_EFFORT`, `CLAUDE_CONFIG_DIR`, `MAX_THINKING_TOKENS`, `ANTHROPIC_*` and
+`CLAUDE_CODE_*` therefore never steer GLM, and the direct-Anthropic key never
+reaches the Z.AI endpoint. To set the effort for a single `zai` call, use
+`ZAI_EFFORT` (mapped to `CLAUDE_EFFORT`) or `ZAI_MAX_THINKING_TOKENS`. The
+AoE session wrapper keeps the estate variables its MCP servers and hooks need,
+and clears only Claude Code's own namespace. Test:
+`node --test tests/security/zai-launch-env.test.cjs`.
+
 `glm-5.3` is Z.AI's current flagship coding model and the one used everywhere
 Z.AI appears in agentbox (`consultants.zai.model`,
 `project_tracking.primer_model`, `sovereign_mesh.mobile_bridge` summary

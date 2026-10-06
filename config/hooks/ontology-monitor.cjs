@@ -153,6 +153,7 @@ function matchConcepts(work) {
 // ── the Z.AI worker: one review call, returns structured proposals ─────────────
 async function zaiReview(work, concepts) {
   const { spawnCli } = require('../../mcp/consultants/shared/spawn-cli');
+  const { zaiChildEnv } = require('../../mcp/consultants/shared/zai-env');
   const ZAI_BIN = process.env.AGENTBOX_ZAI_BIN || 'claude-zai';
   const prompt = [
     'You are an ontology-maintenance reviewer. Below is a digest of recent engineering work,',
@@ -175,12 +176,8 @@ async function zaiReview(work, concepts) {
 
   const res = await spawnCli({
     cmd: ZAI_BIN, args: ['-p', prompt],
-    env: {
-      HOME: process.env.AGENTBOX_ZAI_HOME || '/home/zai-user',
-      ANTHROPIC_BASE_URL: process.env.ZAI_URL || 'https://api.z.ai/api/paas/v4',
-      ANTHROPIC_API_KEY: process.env.ZAI_ANTHROPIC_API_KEY || process.env.ZAI_API_KEY || '',
-      ZAI_API_KEY: process.env.ZAI_API_KEY || '',
-    },
+    // Named inputs only: the session's CLAUDE_EFFORT / CLAUDE_CONFIG_DIR stay out.
+    env: zaiChildEnv(process.env, { home: process.env.AGENTBOX_ZAI_HOME || '/home/zai-user', agentId: 'ontology-monitor' }),
     timeout_ms: Math.max(20000, timeLeft() - 20000),
   });
   const m = res.stdout && res.stdout.match(/\{[\s\S]*\}/);
