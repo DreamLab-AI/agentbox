@@ -51,4 +51,17 @@ Gemini is priced from constants dated 2026-10-06 (input $0.75/M, cached $0.075/M
 
 ## Verification
 
+### Host adversarial review, 2026-10-06
+
+The host review found that cached-input assumptions and unbounded model output did not
+enforce the advertised budget. Audits now reserve both lenses at uncached rates with an
+enforced 30,000-token output ceiling per lens, before generation. A settlement replaces
+the matching reservation; interrupted or unreadable results retain the reservation.
+The CLI serializes multi-repo audit decisions with a kernel flock and refuses model
+overrides whose pricing is not represented. The runner is baked under `/opt/agentbox/skills`
+and the supervisor sets UTC explicitly. Pricing was checked against Google's live page;
+the introductory rates need review before 2027. Regression tests cover reservation
+settlement and interruption during output processing. Provider credentials remain in the
+existing ADR-2122 DEVUSER_CLASS exception; no sovereign key is introduced.
+
 `implementation_status: complete` and `activation_status: staged`. At `cc5f5dcc0`: `node --test` in `skills/sealmap-review/scripts` (37 cadence cases (discovery with symlinks, depth and skipped directories; the gate; per-shard pack-hash skip and sharding; multi-repo change detection with symlinked spellings, a nested submodule, a missing sibling and a dangling link; subcommands with faked model calls) beside 15 external-review cases), `bash tests/config/diagram-review-cron.test.sh` (21), `semantic-rules.test.js` for `E079`/`W076`, `skills/lint-skills.sh`, the role-isolation suites and `cargo test` in `services/agentbox-manifest`. Known red, not caused here: `declared-vs-running` now also lists diagram-review as declared on but not running, because the committed runtime snapshot predates the program; it clears when the snapshot is recaptured after the rebuild. Not run: `nix flake check` (no Nix in the authoring container), so the supervisor block is checked by text, not evaluation; and no live GLM or Gemini call, so the Messages-API request shape and the Gemini price constants are unverified against the real services. The image is unverified until the host `./agentbox.sh rebuild`.

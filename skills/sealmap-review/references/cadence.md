@@ -174,29 +174,41 @@ Shards that pass 1 and 2 are tried **most-changed first**; each one's `countToke
 estimate is checked against what is left of the cap, so a tight budget is spent where the
 corpus has drifted most and a shard that does not fit is logged as a budget refusal.
 
-The estimate comes from a free `countTokens` call: the shard's pack once at the input
-rate, once more per extra lens at the cached rate, plus an assumed 30,000 output and
-thinking tokens per lens. The run itself is `external-review.cjs --files-from`, given
+The reservation comes from free `countTokens` calls for both lenses: the larger count
+at the uncached input rate for each lens, plus an enforced maximum of 30,000 output and
+thinking tokens per lens. Cache hits lower the settlement, never the reservation.
+The run itself is `external-review.cjs --files-from`, given
 exactly the shard's topics; the ledger records the cost from the usage it reports. One
 `docs/review/<date>-gemini.md` and `.json` cover the run.
 
 Prices (USD per million tokens), constants at the top of `review-cadence.cjs`,
-Gemini 3.8 Flash as given on 2026-10-06 and not re-checked against the live
-pricing page: input 0.75, cached input 0.075, output including thinking 3.75.
+Gemini 3.8 Flash, checked against [Google's pricing](https://ai.google.dev/gemini-api/docs/pricing)
+on 2026-10-06: input 0.75, cached input 0.075, output including thinking 3.75.
+These introductory rates end after 2026-12-31; review them before that date.
+The scheduled runner refuses another model until its pricing is reviewed.
 GLM runs under the Z.AI plan and counts as 0, so it never uses the Gemini cap.
 
 A failed `generateContent` is booked at its estimate and counts toward the month,
 because a timed-out call may already have been billed. It does not reset the
 interval. External review never retries a billable call, and neither does this.
+The reservation is appended before generation, so interruption or corrupt output
+cannot erase potentially billed spend. A matching settlement replaces that reservation
+in the monthly total. CLI audits hold a kernel `flock` across all repos; a concurrent
+audit skips, and termination releases the lock automatically.
+
+The supervisor and crontab use the baked `/opt/agentbox/skills/sealmap-review` tree,
+with `TZ=UTC` explicit. `DIAGRAM_REVIEW_LOCAL_FILE` can override the private repo-list
+path; the baked default reads `config/diagram-review.local` in the mounted Agentbox checkout.
 
 ## Ledger
 
 `docs/diagrams/review-ledger.jsonl` in each repo, append-only, one JSON line per
-run (per shard for reviews and audits). Fields: `ts`, `kind` (`triage`, `review`, `audit`),
+run (per shard for reviews and audits). Fields: `ts`, `kind` (`triage`, `review`, `audit`, `audit-reservation`),
 `reviewer` (`glm`, `gemini`), `shard`, `commit`, `commits` (repository to commit),
 `unresolved` (skipped source paths), `pack_sha256`, `tokens`, `est_usd`, `findings` (path),
 `high_severity`, `changed_topics`, `skipped` (the reason, or null), plus `error`
-on a failed call. A torn line is skipped on read. `node $C status` summarises it.
+on a failed call. Audit settlements have `reservation_at` matching the reservation's
+timestamp, shard and pack hash. A torn line is skipped on read. `node $C status` summarises it.
 Commit the ledger with the corpus, or ignore it, as the repo prefers: the runner
 only appends.
 

@@ -44,6 +44,8 @@ const TOKEN_BUDGET = 1_000_000;
 // before the first byte. Built-in fetch (undici) gives up after 300 s of silence, which
 // surfaced as a bare "fetch failed"; node:https has no such limit, so this is the only one.
 const DEFAULT_TIMEOUT_MS = 1_800_000;
+// Includes thinking tokens; the scheduled runner reserves this maximum for each lens.
+const MAX_OUTPUT_TOKENS = 30000;
 
 // The authors' own problem markers. Invariants are kept: they state what the code
 // guarantees, not what is wrong with it.
@@ -267,7 +269,7 @@ async function main(argv) {
     const started = Date.now();
     const res = await gemini('generateContent', model, key, {
       contents: contentsFor(lens.text),
-      generationConfig: { thinkingConfig: { thinkingLevel: process.env.DIAGRAM_REVIEW_THINKING || 'high' }, temperature: 0 },
+      generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, thinkingConfig: { thinkingLevel: process.env.DIAGRAM_REVIEW_THINKING || 'high' }, temperature: 0 },
     }, { timeoutMs });
     const text = res.candidates?.[0]?.content?.parts?.filter((p) => p.text && !p.thought).map((p) => p.text).join('') ?? '';
     if (!text) throw new Error(`lens ${lens.name}: empty reply (finishReason ${res.candidates?.[0]?.finishReason ?? 'none'})`);
@@ -289,7 +291,7 @@ async function main(argv) {
 }
 
 module.exports = {
-  listTopics, stripRegister, buildPack, loadLens, parseFindings, parseArgs, gemini, postJson, timeoutFromEnv, DEFAULT_TIMEOUT_MS,
+  listTopics, stripRegister, buildPack, loadLens, parseFindings, parseArgs, gemini, postJson, timeoutFromEnv, DEFAULT_TIMEOUT_MS, MAX_OUTPUT_TOKENS,
 };
 
 if (require.main === module) {

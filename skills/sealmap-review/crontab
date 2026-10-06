@@ -10,10 +10,10 @@
 #
 # Daily GLM triage: which topics did the day's code changes make wrong? Cheap, and it never
 # edits a topic. With weekly_window = false the Gemini gate is also considered after it.
-@GLM_TRIAGE_CRON@ node /home/devuser/workspace/project/agentbox/skills/sealmap-review/scripts/review-cadence.cjs triage 2>&1@TRIAGE_AUDIT@
+@GLM_TRIAGE_CRON@ node /opt/agentbox/skills/sealmap-review/scripts/review-cadence.cjs triage 2>&1@TRIAGE_AUDIT@
 
 # Nightly GLM review (critical and premortem lenses; unchanged shards are skipped by pack
 # hash, so a quiet night is free), then the Gemini gate. The gate decides;
 # a refusal is a ledger line, not an error. `;` not `&&`: a failed GLM review must not stop
 # the gate from reading a high-severity finding GLM recorded earlier.
-@GLM_REVIEW_CRON@ node /home/devuser/workspace/project/agentbox/skills/sealmap-review/scripts/review-cadence.cjs review-glm 2>&1 ; node /home/devuser/workspace/project/agentbox/skills/sealmap-review/scripts/review-cadence.cjs audit-gemini 2>&1
+@GLM_REVIEW_CRON@ node /opt/agentbox/skills/sealmap-review/scripts/review-cadence.cjs review-glm 2>&1 ; node /opt/agentbox/skills/sealmap-review/scripts/review-cadence.cjs audit-gemini 2>&1

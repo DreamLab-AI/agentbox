@@ -4,6 +4,17 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Fixed (2026-10-06 — host deployment review)
+
+- Resolved the sealmap 0.2.1 source hash and verified its vendored Cargo.lock against the tag.
+- Diagram-review cron runs the baked skill tree with explicit UTC scheduling. Gemini audits
+  reserve uncached input and capped output before generation, retain reservations on interruption,
+  serialize budget decisions with flock, and reject unpriced model overrides.
+- Landed the completed EXP-B8 withdrawal so the next boot does not re-enable its stopped hooks.
+- Updated Codex to 0.160.1, Claude Code to 2.1.291 and rust-overlay to its October 6 revision.
+  The root nixpkgs pin is held at the last passing build after the newer pin's AnyIO TLS tests failed;
+  npm CLI versions remain at the newest releases eligible under the repository's freshness/hold policy.
+
 ### Changed (2026-10-03 — ruflo memory governed on the sidecar, ADR-2123)
 
 - The image's `ruflo` / `claude-flow` bins are governed wrappers. `ruflo memory …` runs

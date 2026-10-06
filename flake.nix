@@ -2900,9 +2900,9 @@ ${lib.optionalString diagramReviewEnabled ''
 ; no ADR-2122 role. node, git and agentbox-manifest are pinned into PATH.
 ; REBUILD-class.
 [program:diagram-review-cron]
-command=${bgNice}${pkgs.bash}/bin/bash /home/devuser/workspace/project/agentbox/skills/sealmap-review/run-cron.sh ${supercronicPkg}/bin/supercronic
+command=${bgNice}${pkgs.bash}/bin/bash /opt/agentbox/skills/sealmap-review/run-cron.sh ${supercronicPkg}/bin/supercronic
 user=devuser
-environment=HOME="/home/devuser",PATH="${agentboxManifestPkg}/bin:${lib.makeBinPath [ pkgs.coreutils pkgs.gnugrep pkgs.findutils pkgs.git pkgs.nodejs_22 ]}:/usr/local/bin:/bin:/usr/bin"
+environment=HOME="/home/devuser",TZ="UTC",PATH="${agentboxManifestPkg}/bin:${lib.makeBinPath [ pkgs.coreutils pkgs.gnugrep pkgs.findutils pkgs.git pkgs.nodejs_22 pkgs.util-linux ]}:/usr/local/bin:/bin:/usr/bin"
 autostart=true
 autorestart=true
 startsecs=0

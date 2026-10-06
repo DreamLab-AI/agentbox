@@ -70,7 +70,7 @@ const GEMINI_USD_PER_M = { input: 0.75, cached: 0.075, output: 3.75 };
 const GLM_USD_PER_M = { input: 0, output: 0 };
 // A lens reply plus its thinking. Used only for the pre-flight estimate; the ledger records
 // the usage the API reports.
-const GEMINI_ASSUMED_OUTPUT_TOKENS_PER_LENS = 30000;
+const GEMINI_ASSUMED_OUTPUT_TOKENS_PER_LENS = ER.MAX_OUTPUT_TOKENS;
 const GEMINI_LENSES = 2;
 
 const LEDGER_REL = path.join('docs', 'diagrams', 'review-ledger.jsonl');
@@ -88,7 +88,9 @@ const MAX_TRIAGE_TOPICS = 60;
 const DEFAULT_WORKSPACE = '/home/devuser/workspace';
 const DISCOVERY_DEPTH = 3;
 const DISCOVERY_SKIP = new Set(['.tmp', 'node_modules', 'target']);
-const LOCAL_FILE = path.join(__dirname, '..', '..', '..', 'config', 'diagram-review.local');
+const LOCAL_FILE = process.env.DIAGRAM_REVIEW_LOCAL_FILE || ( __dirname.startsWith('/opt/agentbox/')
+  ? path.join(process.env.WORKSPACE || DEFAULT_WORKSPACE, 'project', 'agentbox', 'config', 'diagram-review.local')
+  : path.join(__dirname, '..', '..', '..', 'config', 'diagram-review.local'));
 const DEFAULTS = {
   enabled: false, repos: [], glm_triage_cron: '17 5 * * *', glm_review_cron: '47 2 * * *',
   gemini_min_interval_days: 7, gemini_min_changed_topics: 3, gemini_monthly_usd: 10, weekly_window: true,
@@ -292,7 +294,11 @@ function monthToDateUsd(ledgers, now) {
   const month = new Date(now).toISOString().slice(0, 7);
   let total = 0;
   for (const ledger of ledgers) {
+    // A reservation survives termination, lost replies and output-processing errors.
+    // A settlement replaces it, rather than counting the same call twice.
+    const settled = new Set(ledger.filter((e) => e.reservation_at).map((e) => `${e.reservation_at}:${e.shard}:${e.pack_sha256}`));
     for (const e of ledger) {
+      if (e.kind === 'audit-reservation' && settled.has(`${e.ts}:${e.shard}:${e.pack_sha256}`)) continue;
       if (e.reviewer === 'gemini' && typeof e.est_usd === 'number' && String(e.ts).slice(0, 7) === month) total += e.est_usd;
     }
   }
@@ -511,18 +517,23 @@ function decideGemini({ cfg, lastAudit, changedTopics, glmHighSeverity, mtdUsd, 
   return { run: true, reason: `gate open: ${cause}, $${(mtdUsd + estUsd).toFixed(2)} of $${cfg.gemini_monthly_usd} after this run` };
 }
 
-/** Pre-flight Gemini cost from a countTokens figure: the pack once at the input rate, once more
- *  per further lens at the cached rate, plus the assumed reply for each lens. */
+/** Reserve uncached input for every lens and the enforced maximum output, including thinking.
+ * Cache hits are an optimisation, never a prerequisite for staying within the cap. */
 function estimateGeminiUsd(packTokens, lenses = GEMINI_LENSES) {
   const m = 1e6;
-  return (packTokens * GEMINI_USD_PER_M.input + (lenses - 1) * packTokens * GEMINI_USD_PER_M.cached
+  return (lenses * packTokens * GEMINI_USD_PER_M.input
     + lenses * GEMINI_ASSUMED_OUTPUT_TOKENS_PER_LENS * GEMINI_USD_PER_M.output) / m;
 }
 
 /** What Gemini actually billed, from external-review's per-lens usage. */
 function actualGeminiUsd(lenses) {
+  if (!Array.isArray(lenses) || lenses.length !== GEMINI_LENSES) throw new Error('incomplete Gemini usage; reservation retained');
   let usd = 0;
   for (const l of lenses ?? []) {
+    if (![l.prompt_tokens, l.output_tokens, l.thinking_tokens ?? 0, l.cached_tokens ?? 0].every((n) => Number.isSafeInteger(n) && n >= 0)
+      || !(l.prompt_tokens > 0) || (l.cached_tokens ?? 0) > l.prompt_tokens) {
+      throw new Error('invalid Gemini usage; reservation retained');
+    }
     const cached = l.cached_tokens ?? 0;
     usd += (((l.prompt_tokens ?? 0) - cached) * GEMINI_USD_PER_M.input + cached * GEMINI_USD_PER_M.cached
       + ((l.thinking_tokens ?? 0) + (l.output_tokens ?? 0)) * GEMINI_USD_PER_M.output) / 1e6;
@@ -799,19 +810,26 @@ async function auditGemini(repo, ctx) {
     const { shard } = e;
     let packTokens;
     try {
-      ({ totalTokens: packTokens } = await ER.gemini('countTokens', ctx.model, key, { contents: [{ role: 'user', parts: [{ text: shard.pack }, { text: ER.loadLens('critical', 15) }] }] }));
+      packTokens = 0;
+      for (const lens of ['critical', 'premortem']) {
+        const counted = await ER.gemini('countTokens', ctx.model, key, { contents: [{ role: 'user', parts: [{ text: shard.pack }, { text: ER.loadLens(lens, 15) }] }] });
+        if (!Number.isSafeInteger(counted.totalTokens) || counted.totalTokens <= 0) throw new Error('invalid token count');
+        packTokens = Math.max(packTokens, counted.totalTokens);
+      }
     } catch (err) { log(shard, `countTokens failed: ${err.message.slice(0, 160)}`, { changed_topics: e.changed }); continue; }
     const estUsd = estimateGeminiUsd(packTokens);
     const decision = decideGemini({ cfg, lastAudit: e.lastAudit, changedTopics: e.changed, glmHighSeverity: e.high, mtdUsd: mtd, estUsd, now });
     if (!decision.run) { log(shard, decision.reason, { tokens: { input: packTokens }, changed_topics: e.changed }); continue; }
 
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'diagram-audit-'));
+    appendLedger(repo, { ts: stamp, kind: 'audit-reservation', reviewer: 'gemini', shard: shard.name,
+      pack_sha256: shard.sha, est_usd: estUsd, skipped: 'reserved before generation; charged until settled' });
+    mtd += estUsd;
     try {
       await ctx.runExternal(path.join(repo, CORPUS_REL), outDir, shard.files);
     } catch (err) {
       // A failed generateContent may already have been billed: count the estimate.
-      appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'gemini', shard: shard.name, commit: head, pack_sha256: shard.sha, tokens: { input: packTokens }, est_usd: estUsd, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}` });
-      mtd += estUsd;
+      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: shard.name, commit: head, pack_sha256: shard.sha, tokens: { input: packTokens }, est_usd: estUsd, error: err.message.slice(0, 300), skipped: `error: ${err.message.slice(0, 160)}` });
       errors.push(`${shard.name}: ${err.message.slice(0, 160)}`);
       continue;
     }
@@ -820,7 +838,7 @@ async function auditGemini(repo, ctx) {
     findings.push(...sFindings);
     for (const l of manifest.lenses ?? []) docs.push(`## ${shard.name} / ${l.name}\n\n${fs.readFileSync(path.join(outDir, `${l.name}.md`), 'utf8').trim()}\n`);
     const usd = actualGeminiUsd(manifest.lenses);
-    mtd = Math.round((mtd + usd) * 1e6) / 1e6;
+    mtd = Math.round((mtd - estUsd + usd) * 1e6) / 1e6;
     const sum = (k) => (manifest.lenses ?? []).reduce((a, l) => a + (l[k] ?? 0), 0);
     ran.push({ shard, usd, changed: e.changed, model: manifest.model,
       tokens: { input: sum('prompt_tokens'), cached: sum('cached_tokens'), output: sum('thinking_tokens') + sum('output_tokens') },
@@ -833,7 +851,7 @@ async function auditGemini(repo, ctx) {
       `Revision ${head ? head.slice(0, 12) : 'unknown'}. Shards: ${ran.map((r) => r.shard.name).join(', ')}. Unverified hypotheses: reproduce each with a failing test or check (build-with-quality) before acting.`, '', ...docs].join('\n'));
     fs.writeFileSync(out.replace(/\.md$/, '.json'), `${JSON.stringify(findings, null, 2)}\n`);
     for (const r of ran) {
-      appendLedger(repo, { ts: stamp, kind: 'audit', reviewer: 'gemini', shard: r.shard.name, commit: head, commits: r.commits, pack_sha256: r.shard.sha, tokens: r.tokens, est_usd: r.usd, findings: rel(repo, out), changed_topics: r.changed });
+      appendLedger(repo, { ts: stamp, reservation_at: stamp, kind: 'audit', reviewer: 'gemini', shard: r.shard.name, commit: head, commits: r.commits, pack_sha256: r.shard.sha, tokens: r.tokens, est_usd: r.usd, findings: rel(repo, out), changed_topics: r.changed });
     }
   }
   if (errors.length) throw new Error(`${errors.length} shard(s) failed: ${errors.join('; ')}`);
@@ -942,6 +960,9 @@ async function main(argv, deps = {}) {
     model: process.env.DIAGRAM_REVIEW_MODEL || 'gemini-3.8-flash',
   };
   const fn = { triage, 'review-glm': reviewGlm, 'audit-gemini': auditGemini, merge: mergeReviews }[opts.cmd];
+  if (opts.cmd === 'audit-gemini' && ctx.model !== 'gemini-3.8-flash') {
+    throw new Error('scheduled Gemini pricing is pinned to gemini-3.8-flash; review pricing before changing the model');
+  }
   let failed = 0;
   for (const repo of repos) {
     // Spend is capped across every repo, so each audit sees what the earlier ones just booked.
@@ -960,6 +981,18 @@ module.exports = {
 };
 
 if (require.main === module) {
+  // Serialize the whole multi-repo budget transaction. The kernel releases this lock
+  // even after SIGKILL; no stale PID files or paid jobs racing on the same ledger.
+  if (process.argv[2] === 'audit-gemini' && !process.env.DIAGRAM_REVIEW_BUDGET_LOCKED) {
+    const { spawnSync } = require('node:child_process');
+    const child = spawnSync('flock', ['-n', '-E', '75', path.join(os.tmpdir(), 'agentbox-diagram-review-budget.lock'),
+      process.execPath, __filename, ...process.argv.slice(2)], {
+      stdio: 'inherit', env: { ...process.env, DIAGRAM_REVIEW_BUDGET_LOCKED: '1' },
+    });
+    if (child.error) console.error(`review-cadence: cannot acquire budget lock: ${child.error.message}`);
+    if (child.status === 75) console.error('review-cadence: another Gemini audit holds the budget lock; skipped');
+    process.exit(child.status === 75 ? 0 : child.status ?? 1);
+  }
   main(process.argv.slice(2)).then((code) => process.exit(code), (err) => {
     console.error(`review-cadence: ${err.message}`);
     process.exit(/needs a value|unknown option|usage:|is an ISO/.test(err.message) ? 2 : 1);

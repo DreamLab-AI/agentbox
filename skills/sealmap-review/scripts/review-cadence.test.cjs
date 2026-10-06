@@ -211,9 +211,9 @@ test('gate refuses when month-to-date plus the estimate would pass the monthly c
   assert.equal(gate({ glmHighSeverity: 3, mtdUsd: 10, estUsd: 0.01 }).run, false, 'escalation never overrides the budget');
 });
 
-test('cost estimate prices the pack once, the cache for later lenses, and the replies', () => {
+test('cost reservation covers uncached input for both lenses and the enforced output maximum', () => {
   const usd = C.estimateGeminiUsd(200000, 2);
-  const expected = (200000 * 0.75 + 200000 * 0.075 + 2 * 30000 * 3.75) / 1e6;
+  const expected = (2 * 200000 * 0.75 + 2 * ER.MAX_OUTPUT_TOKENS * 3.75) / 1e6;
   assert.ok(Math.abs(usd - expected) < 1e-9);
   const actual = C.actualGeminiUsd([{ prompt_tokens: 200000, cached_tokens: 0, thinking_tokens: 10000, output_tokens: 5000 },
     { prompt_tokens: 200000, cached_tokens: 190000, thinking_tokens: 8000, output_tokens: 4000 }]);
@@ -533,7 +533,7 @@ test('audit-gemini: picks the changed shards most-changed first and stops at the
   assert.equal(booked.shard, 'wide');
   assert.ok(Math.abs(booked.est_usd - ACTUAL_ONE_SHARD) < 1e-6);
   assert.ok(booked.commits[e.beta], 'the per-repository commit map is recorded');
-  const refused = rows.filter((r) => r.skipped);
+  const refused = rows.filter((r) => r.kind === 'audit' && r.skipped);
   assert.deepEqual(refused.map((r) => r.shard).sort(), ['core', 'edge']);
   assert.ok(refused.every((r) => /^budget/.test(r.skipped)));
   assert.ok(Math.abs(C.monthToDateUsd([rows], NOW) - booked.est_usd) < 1e-9);
@@ -581,6 +581,39 @@ test('audit-gemini: a failed generation is booked at its estimate, because it ma
   assert.equal(rows.length, 2, 'each shard that was tried');
   assert.ok(rows.every((r) => r.est_usd > 0 && /^error/.test(r.skipped)));
   assert.ok(C.monthToDateUsd([C.readLedger(e.est)], NOW) > 0.5);
+});
+
+test('budget counts interrupted reservations and replaces only their matching settlement', () => {
+  const reservation = { ts: NOW.toISOString(), kind: 'audit-reservation', reviewer: 'gemini', shard: 'core', pack_sha256: 'abc', est_usd: 0.5 };
+  assert.equal(C.monthToDateUsd([[reservation]], NOW), 0.5);
+  const settlement = { ...reservation, kind: 'audit', reservation_at: reservation.ts, est_usd: 0.2 };
+  assert.equal(C.monthToDateUsd([[reservation, settlement]], NOW), 0.2);
+  assert.equal(C.monthToDateUsd([[reservation, { ...settlement, shard: 'other' }]], NOW), 0.7);
+});
+
+test('missing usage never settles potentially billed generation as free', () => {
+  assert.throws(() => C.actualGeminiUsd([]), /incomplete Gemini usage/);
+  assert.throws(() => C.actualGeminiUsd([{}, {}]), /invalid Gemini usage/);
+});
+
+test('concurrent CLI audits skip while the budget lock is held', () => {
+  const dir = tmp();
+  const script = path.join(__dirname, 'review-cadence.cjs');
+  const out = execFileSync('flock', [path.join(dir, 'agentbox-diagram-review-budget.lock'),
+    process.execPath, script, 'audit-gemini', '--dry-run'], {
+    env: { ...process.env, TMPDIR: dir, DIAGRAM_REVIEW_BUDGET_LOCKED: '' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  assert.equal(out, '', 'the lock loser never starts discovery or model calls');
+});
+
+test('audit reserves spend before invoking a model and retains it if result parsing fails', async () => {
+  const e = estate();
+  const cfg = { ...CFG, gemini_min_changed_topics: 1 };
+  await assert.rejects(withGemini(() => C.auditGemini(e.est, ctxFor({ cfg, runExternal: async () => {
+    assert.ok(C.monthToDateUsd([C.readLedger(e.est)], NOW) > 0, 'reservation exists before the paid call');
+    // A killed child or broken output leaves no manifest, even if generation was billed.
+  } }))), /ENOENT/);
+  assert.ok(C.monthToDateUsd([C.readLedger(e.est)], NOW) > 0);
 });
 
 test('status prints the resolved repos, ledger lines, overlap with sibling corpora and month-to-date spend', () => {
