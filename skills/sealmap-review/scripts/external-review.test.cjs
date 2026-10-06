@@ -129,3 +129,106 @@ test('a live run without a key fails with a clear message, after packing', () =>
   assert.equal(r.status, 1);
   assert.match(r.stderr, /set GEMINI_API_KEY/);
 });
+
+test('bold and plain field labels both parse, whichever side of the colon the bold sits', () => {
+  const review = [
+    '### F-01 — Bold after the colon',
+    '- **Topics**: CP-01.2',
+    '- **Evidence**: boot.rs:44 accepts any slot',
+    '- **Failure**: an unknown slot boots silently',
+    '- **Confidence**: high',
+    '- **Marked by authors**: no',
+    '',
+    '### F-02 — Bold including the colon',
+    '* **Evidence:** compose.yaml:12 shares pod-net',
+    '* **Failure:** sibling reachable',
+    '* __Confidence__: low',
+    '',
+    '### R-1 — Italic and plain mixed',
+    '- *Chain of events*: queue, restart, gap',
+    '- Topics: EN-02',
+  ].join('\n');
+  const [a, b, c] = R.parseFindings(review, 'critical');
+  assert.equal(a.topics, 'CP-01.2');
+  assert.equal(a.evidence, 'boot.rs:44 accepts any slot');
+  assert.equal(a.failure, 'an unknown slot boots silently');
+  assert.equal(a.confidence, 'high');
+  assert.equal(a.marked_by_authors, 'no');
+  assert.equal(b.evidence, 'compose.yaml:12 shares pod-net');
+  assert.equal(b.failure, 'sibling reachable');
+  assert.equal(b.confidence, 'low');
+  assert.equal(c.failure, 'queue, restart, gap');
+  assert.equal(c.topics, 'EN-02');
+});
+
+// ── transport: node:https with an overall deadline, never fetch/undici ──────────
+const http = require('node:http');
+
+function slowServer(handler) {
+  return new Promise((resolve) => {
+    const hits = [];
+    const srv = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (d) => { body += d; });
+      req.on('end', () => { hits.push({ url: req.url, headers: req.headers, body }); handler(req, res, hits.length); });
+    });
+    srv.listen(0, '127.0.0.1', () => resolve({ srv, hits, api: `http://127.0.0.1:${srv.address().port}/v1beta/models` }));
+  });
+}
+const reply = (res, status, obj) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
+
+test('the default per-call deadline is at least 1,800 s and the script never uses fetch', () => {
+  assert.ok(R.DEFAULT_TIMEOUT_MS >= 1_800_000, `default ${R.DEFAULT_TIMEOUT_MS} ms`);
+  const src = fs.readFileSync(path.join(__dirname, 'external-review.cjs'), 'utf8');
+  assert.doesNotMatch(src, /\bfetch\(/, 'fetch (undici) aborts a silent response at 300 s');
+});
+
+test('a slow reply inside the deadline succeeds, with the key in a header and one request', async () => {
+  const { srv, hits, api } = await slowServer((req, res) => setTimeout(() => reply(res, 200, { totalTokens: 42 }), 1200));
+  try {
+    const out = await R.gemini('countTokens', 'm', 'KEY', { contents: [] }, { api, timeoutMs: 10_000 });
+    assert.equal(out.totalTokens, 42);
+    assert.equal(hits.length, 1);
+    assert.equal(hits[0].url, '/v1beta/models/m:countTokens');
+    assert.equal(hits[0].headers['x-goog-api-key'], 'KEY');
+    assert.deepEqual(JSON.parse(hits[0].body), { contents: [] });
+  } finally { srv.close(); }
+});
+
+test('a reply slower than the deadline fails with a timeout and is not retried', async () => {
+  const { srv, hits, api } = await slowServer((req, res) => setTimeout(() => { if (!res.destroyed) reply(res, 200, {}); }, 3000));
+  try {
+    const t0 = Date.now();
+    await assert.rejects(R.gemini('generateContent', 'm', 'KEY', {}, { api, timeoutMs: 400, retryDelayMs: 1 }), /timed out after 0\.4 s/);
+    assert.ok(Date.now() - t0 < 2500, 'the deadline, not the server, ended the call');
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(hits.length, 1, 'a timed-out generateContent may already be billed, so it is never resent');
+  } finally { srv.closeAllConnections(); srv.close(); }
+});
+
+test('generateContent is not retried on 5xx (it may have been billed); 429 is retried', async () => {
+  const s5 = await slowServer((req, res) => reply(res, 503, { error: { message: 'overloaded' } }));
+  try {
+    await assert.rejects(R.gemini('generateContent', 'm', 'K', {}, { api: s5.api, retryDelayMs: 1 }), /generateContent 503/);
+    assert.equal(s5.hits.length, 1);
+  } finally { s5.srv.close(); }
+  const s429 = await slowServer((req, res, n) => (n === 1 ? reply(res, 429, {}) : reply(res, 200, { ok: true })));
+  try {
+    assert.deepEqual(await R.gemini('generateContent', 'm', 'K', {}, { api: s429.api, retryDelayMs: 1 }), { ok: true });
+    assert.equal(s429.hits.length, 2);
+  } finally { s429.srv.close(); }
+});
+
+test('countTokens is free, so a 5xx there is retried', async () => {
+  const { srv, hits, api } = await slowServer((req, res, n) => (n < 3 ? reply(res, 500, {}) : reply(res, 200, { totalTokens: 7 })));
+  try {
+    assert.equal((await R.gemini('countTokens', 'm', 'K', {}, { api, retryDelayMs: 1 })).totalTokens, 7);
+    assert.equal(hits.length, 3);
+  } finally { srv.close(); }
+});
+
+test('DIAGRAM_REVIEW_TIMEOUT_MS overrides the default deadline', () => {
+  assert.equal(R.timeoutFromEnv({ DIAGRAM_REVIEW_TIMEOUT_MS: '2400000' }), 2_400_000);
+  assert.equal(R.timeoutFromEnv({}), R.DEFAULT_TIMEOUT_MS);
+  assert.throws(() => R.timeoutFromEnv({ DIAGRAM_REVIEW_TIMEOUT_MS: 'soon' }), /positive integer/);
+});

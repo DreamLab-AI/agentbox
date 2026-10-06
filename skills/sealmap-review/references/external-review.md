@@ -16,9 +16,22 @@
 | `GEMINI_API_KEY` (or `GOOGLE_GEMINI_API_KEY`) | none | AI Studio key, read from the environment only. In agentbox it reaches the container from `.env` via `docker-compose.yml`. |
 | `DIAGRAM_REVIEW_MODEL` | `gemini-3.8-flash` | model id on `generativelanguage.googleapis.com/v1beta` |
 | `DIAGRAM_REVIEW_THINKING` | `high` | `thinkingConfig.thinkingLevel` |
-| `DIAGRAM_REVIEW_TIMEOUT_MS` | 600000 | per-call timeout |
+| `DIAGRAM_REVIEW_TIMEOUT_MS` | 1800000 | overall deadline for each API call, in ms |
 
-Calls that return 429 or 5xx are retried twice, with a back-off. Exit codes:
+Calls go over `node:https` with one wall-clock deadline and no idle or
+headers timeout. Built-in `fetch` (undici) gives up after 300 s without
+response headers. With high thinking, a pack of 138k to 220k tokens is silent
+for longer than that, so those calls failed with a bare `fetch failed`. A
+timeout error names the call and how long it ran.
+
+Retries never risk paying twice. A 429 is retried twice with a back-off,
+because the request was refused before any work. `countTokens` is free, so it
+is also retried on 5xx. On `generateContent`, a 5xx, a timeout or a dropped
+connection can follow a billed generation, so the run stops at once and you
+rerun it yourself.
+
+The findings parser reads both plain labels (`- Evidence: …`) and bold labels
+(`- **Evidence**: …`, `* **Evidence:** …`, `- __Evidence__: …`). Exit codes:
 - 0: success
 - 1: failure (API, budget or empty reply)
 - 2: usage error

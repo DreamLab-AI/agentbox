@@ -28,6 +28,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const http = require('node:http');
+const https = require('node:https');
 const { execFileSync } = require('node:child_process');
 
 // Mirrors diagrams-as-code's diagram-index-gen.cjs so the review reads exactly the files that gate checks.
@@ -37,6 +39,10 @@ const LENS_DIR = path.join(__dirname, '..', 'assets', 'lenses');
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 // Gemini 3.8 Flash accepts 1,048,576 input tokens; leave room for the lens and the reply.
 const TOKEN_BUDGET = 1_000_000;
+// One call on a 140k-220k token pack with high thinking can run well past five minutes
+// before the first byte. Built-in fetch (undici) gives up after 300 s of silence, which
+// surfaced as a bare "fetch failed"; node:https has no such limit, so this is the only one.
+const DEFAULT_TIMEOUT_MS = 1_800_000;
 
 // The authors' own problem markers. Invariants are kept: they state what the code
 // guarantees, not what is wrong with it.
@@ -94,7 +100,10 @@ function parseFindings(markdown, lens) {
   heads.forEach((m, i) => {
     const end = i + 1 < heads.length ? heads[i + 1].index : markdown.length;
     const body = markdown.slice(m.index + m[0].length, end).split(/^#{1,2} /m)[0];
-    const field = (name) => (body.match(new RegExp(`^- ${name}:\\s*(.+)$`, 'mi')) || [])[1]?.trim() ?? null;
+    // `- Evidence: x`, `- **Evidence**: x`, `* **Evidence:** x`, `- __Evidence__: x`, `- *Evidence*: x`.
+    const field = (name) => (body.match(new RegExp(
+      `^[ \\t]*[-*+][ \\t]+(?:[*_]{1,2})?${name}(?:[*_]{1,2})?[ \\t]*:[ \\t]*(?:[*_]{1,2}(?=[ \\t]))?[ \\t]*(.+)$`, 'mi',
+    )) || [])[1]?.trim() ?? null;
     findings.push({
       id: `${lens}:${m[1]}`,
       kind: m[1].startsWith('R') ? 'root-cause' : 'finding',
@@ -132,21 +141,71 @@ function parseArgs(argv) {
   return opts;
 }
 
-async function gemini(method, model, key, body) {
-  for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${API}/${model}:${method}`, {
+function timeoutFromEnv(env = process.env) {
+  const raw = env.DIAGRAM_REVIEW_TIMEOUT_MS;
+  if (raw === undefined || raw === '') return DEFAULT_TIMEOUT_MS;
+  const ms = Number(raw);
+  if (!Number.isInteger(ms) || ms < 1) throw new Error(`DIAGRAM_REVIEW_TIMEOUT_MS is a positive integer (got '${raw}')`);
+  return ms;
+}
+
+/** One POST over node:http(s) with a single overall deadline. Resolves { status, json }.
+ *  No socket idle timeout and no headers timeout: a thinking model sends nothing until it
+ *  has finished, so the only limit that means anything is the total wall clock. */
+function postJson(url, headers, body, timeoutMs) {
+  const u = new URL(url);
+  const lib = u.protocol === 'http:' ? http : https;
+  const payload = Buffer.from(JSON.stringify(body));
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const finish = (fn, v) => { if (!done) { done = true; clearTimeout(timer); fn(v); } };
+    const req = lib.request(u, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(Number(process.env.DIAGRAM_REVIEW_TIMEOUT_MS || 600_000)),
+      headers: { ...headers, 'content-type': 'application/json', 'content-length': payload.length },
+    }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('error', (e) => finish(reject, e));
+      res.on('end', () => {
+        let json = {};
+        try { json = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { /* non-JSON error page */ }
+        finish(resolve, { status: res.statusCode, json });
+      });
     });
-    const json = await res.json().catch(() => ({}));
-    if (res.ok) return json;
-    if ((res.status === 429 || res.status >= 500) && attempt < 2) {
-      await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)));
+    const timer = setTimeout(() => {
+      const err = new Error(`timed out after ${timeoutMs / 1000} s`);
+      err.code = 'DEADLINE';
+      finish(reject, err);
+      req.destroy(err);
+    }, timeoutMs);
+    req.on('error', (e) => finish(reject, e));
+    req.end(payload);
+  });
+}
+
+/** A Gemini REST call. Only a retry that cannot double-bill is made: 429 (rejected before
+ *  any work), and 5xx on countTokens (free). A 5xx, a timeout or a dropped connection on
+ *  generateContent may follow a billed generation, so it fails at once for a human to rerun. */
+async function gemini(method, model, key, body, opts = {}) {
+  const api = opts.api ?? API;
+  const timeoutMs = opts.timeoutMs ?? timeoutFromEnv();
+  const retryDelayMs = opts.retryDelayMs ?? 5000;
+  for (let attempt = 0; ; attempt++) {
+    const started = Date.now();
+    let res;
+    try {
+      res = await postJson(`${api}/${model}:${method}`, { 'x-goog-api-key': key }, body, timeoutMs);
+    } catch (err) {
+      const secs = Math.round((Date.now() - started) / 1000);
+      throw new Error(`${method}: ${err.message} (after ${secs} s; not retried${method === 'generateContent' ? ', it may already be billed' : ''})`);
+    }
+    if (res.status >= 200 && res.status < 300) return res.json;
+    const retryable = res.status === 429 || (method === 'countTokens' && res.status >= 500);
+    if (retryable && attempt < 2) {
+      await new Promise((r) => setTimeout(r, retryDelayMs * (attempt + 1)));
       continue;
     }
-    throw new Error(`${method} ${res.status}: ${JSON.stringify(json.error ?? json).slice(0, 400)}`);
+    throw new Error(`${method} ${res.status}: ${JSON.stringify(res.json.error ?? res.json).slice(0, 400)}`);
   }
 }
 
@@ -182,10 +241,12 @@ async function main(argv) {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
   if (!key) throw new Error('set GEMINI_API_KEY (or GOOGLE_GEMINI_API_KEY) in the environment');
   const model = process.env.DIAGRAM_REVIEW_MODEL || 'gemini-3.8-flash';
+  const timeoutMs = timeoutFromEnv();
   manifest.model = model;
+  manifest.timeout_ms = timeoutMs;
 
   const contentsFor = (lensText) => [{ role: 'user', parts: [{ text: pack }, { text: lensText }] }];
-  const { totalTokens } = await gemini('countTokens', model, key, { contents: contentsFor(lenses[0].text) });
+  const { totalTokens } = await gemini('countTokens', model, key, { contents: contentsFor(lenses[0].text) }, { timeoutMs });
   manifest.pack_tokens = totalTokens;
   if (totalTokens > TOKEN_BUDGET) {
     const areas = [...new Set(files.map((f) => f.split('/')[0]))].join(', ');
@@ -200,7 +261,7 @@ async function main(argv) {
     const res = await gemini('generateContent', model, key, {
       contents: contentsFor(lens.text),
       generationConfig: { thinkingConfig: { thinkingLevel: process.env.DIAGRAM_REVIEW_THINKING || 'high' }, temperature: 0 },
-    });
+    }, { timeoutMs });
     const text = res.candidates?.[0]?.content?.parts?.filter((p) => p.text && !p.thought).map((p) => p.text).join('') ?? '';
     if (!text) throw new Error(`lens ${lens.name}: empty reply (finishReason ${res.candidates?.[0]?.finishReason ?? 'none'})`);
     fs.writeFileSync(path.join(out, `${lens.name}.md`), text.endsWith('\n') ? text : `${text}\n`);
@@ -220,7 +281,9 @@ async function main(argv) {
   return 0;
 }
 
-module.exports = { listTopics, stripRegister, buildPack, loadLens, parseFindings, parseArgs };
+module.exports = {
+  listTopics, stripRegister, buildPack, loadLens, parseFindings, parseArgs, gemini, timeoutFromEnv, DEFAULT_TIMEOUT_MS,
+};
 
 if (require.main === module) {
   main(process.argv.slice(2)).then((code) => process.exit(code), (err) => {
