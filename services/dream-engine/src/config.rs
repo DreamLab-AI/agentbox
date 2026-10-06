@@ -432,7 +432,7 @@ pub fn bonus_dives(cfg: &DreamConfig, day_int: u32) -> Vec<String> {
         .iter()
         .filter_map(|(modulus_str, dive)| {
             let modulus: u32 = modulus_str.parse().ok()?;
-            if modulus > 0 && day_int % modulus == 0 {
+            if modulus > 0 && day_int.is_multiple_of(modulus) {
                 Some(dive.clone())
             } else {
                 None
