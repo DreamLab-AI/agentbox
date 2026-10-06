@@ -4,6 +4,20 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Fixed (2026-10-06 — dream-engine ledger rows)
+
+- The finding cell comes from the ledger row the report proposes for tonight, read through
+  backticks; a row quoted from an earlier night no longer supplies tonight's result (the cause of
+  the hand-repaired dream-machine and factrail rows of 6 October).
+- Every ledger row is checked against dream-machine's row contract before it is appended and
+  committed (`ledger::row_violations`, one Rust mirror of `rowContract.ts`). A failing row is
+  repaired with a line stating what happened and a warning, never appended as is, and never fails
+  the night.
+- A vetoed ACCEPT no longer writes `VETOED: Given …` or a doubled `VETOED:` prefix; a hypothesis or
+  pointer is replaced by the gate's result line.
+- Draft-PR titles take the head of the finding on a word boundary (≤60 chars, ellipsis when cut)
+  instead of the last 60 bytes of an already-truncated cell.
+
 ### Fixed (2026-10-06 — host deployment review)
 
 - Resolved the sealmap 0.2.1 source hash and verified its vendored Cargo.lock against the tag.

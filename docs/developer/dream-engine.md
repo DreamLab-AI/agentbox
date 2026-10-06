@@ -72,6 +72,8 @@ One cycle (`run_cycle`) is a fixed sequence:
 8. **Witness** — bind the report to the repo's current commit.
 9. **Persist report** locally under the artefact dir.
 10. **Ledger row** — append to the repo's `ledgerPath`.
+
+**Ledger row contract.** Later nights read the ledger as memory, so a false or malformed row misleads them. Every row the engine appends is checked first against dream-machine's row contract (`packages/ledger/src/rowContract.ts`), mirrored in Rust by `verdict::finding_violations` and `ledger::row_violations`: the finding is a ≤80-char result (UTF-16 length), never a pointer ("see report") or the frozen hypothesis ("Given …", also behind a `VETOED:` prefix); the verdict is in the ledger vocabulary; an ACCEPT row tracks a PR and a witness; prior-night fates are `#N:FATE` tokens. A failing row is repaired, with a warning, and never fails the night: its finding becomes a line stating what happened (the gate summary, or the BLOCKED-ENV / HANDOFF line). The finding cell itself prefers the row the report proposes for **tonight** (bare or in backticks); rows quoted from earlier nights are ignored. A vetoed ACCEPT keeps a compliant finding behind one `VETOED:` prefix, or records the gate's result instead. Draft-PR titles take the head of the finding, clipped on a word boundary to 60 chars.
 11. **RuVector store** — significant findings only; fail-open (a memory failure never fails the night).
 
 `--dry-run` stops after step 3 (compile + select only; no dispatch, no LLM).
