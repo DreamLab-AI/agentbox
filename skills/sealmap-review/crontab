@@ -1,0 +1,18 @@
+# Diagram review cadence (ADR-2131) — TEMPLATE, rendered at boot.
+#
+# skills/sealmap-review/run-cron.sh reads [diagram_review] from the manifest, fills the
+# @…@ placeholders below, writes the result under /run/agentbox (tmpfs, so nothing here ever
+# outlives a boot or names a store path) and hands it to supercronic. Edit the schedules in
+# agentbox.toml, not here.
+#
+# The PATH is the supervisor's ([program:diagram-review-cron] environment= in flake.nix); the
+# API keys are inherited from the container environment. There is deliberately no PATH= line.
+#
+# Daily GLM triage: which topics did the day's code changes make wrong? Cheap, and it never
+# edits a topic. With weekly_window = false the Gemini gate is also considered after it.
+@GLM_TRIAGE_CRON@ node /home/devuser/workspace/project/agentbox/skills/sealmap-review/scripts/review-cadence.cjs triage 2>&1@TRIAGE_AUDIT@
+
+# Weekly GLM review (critical and premortem lenses), then the Gemini gate. The gate decides;
+# a refusal is a ledger line, not an error. `;` not `&&`: a failed GLM review must not stop
+# the gate from reading a high-severity finding GLM recorded earlier.
+@GLM_REVIEW_CRON@ node /home/devuser/workspace/project/agentbox/skills/sealmap-review/scripts/review-cadence.cjs review-glm 2>&1 ; node /home/devuser/workspace/project/agentbox/skills/sealmap-review/scripts/review-cadence.cjs audit-gemini 2>&1

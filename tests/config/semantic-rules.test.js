@@ -963,6 +963,40 @@ describe('E055-E057+W058: multi-tenant did:nostr pods', () => {
   });
 });
 
+// ─── E079 / W076: [diagram_review] (ADR-2131) ────────────────────────────────
+describe('scheduled diagram review (E079 / W076)', () => {
+  test('silent when off, and when on with absolute repos and valid crons', () => {
+    for (const dr of [{ enabled: false }, { enabled: true, repos: ['/srv/repo'], glm_triage_cron: '17 5 * * 1-6', glm_review_cron: '47 5 * * 0' }]) {
+      const m = baseValid();
+      m.diagram_review = dr;
+      const r = runValidator(m);
+      expect(stderrContains(r, 'E079')).toBe(false);
+      expect(stderrContains(r, 'W076')).toBe(false);
+      expect(stderrContains(r, 'E016')).toBe(false);
+    }
+  });
+
+  test('E079 fires on a relative repo and on a malformed cron', () => {
+    for (const dr of [{ repos: ['relative/repo'] }, { glm_triage_cron: 'daily' }, { glm_review_cron: '1 2 3 4' }]) {
+      const m = baseValid();
+      m.diagram_review = dr;
+      expect(stderrContains(runValidator(m), 'E079')).toBe(true);
+    }
+  });
+
+  test('W076 fires when enabled with no repos', () => {
+    const m = baseValid();
+    m.diagram_review = { enabled: true, repos: [] };
+    expect(stderrContains(runValidator(m), 'W076')).toBe(true);
+  });
+
+  test('an unknown key in the section is a schema violation', () => {
+    const m = baseValid();
+    m.diagram_review = { enabled: false, surprise: 1 };
+    expect(stderrContains(runValidator(m), 'E016')).toBe(true);
+  });
+});
+
 // ─── E078 / W075: [sovereign_mesh.forum_governance] (ADR-2109) ───────────────
 describe('forum governance roster (E078 / W075)', () => {
   const ADMIN = '1'.repeat(64);

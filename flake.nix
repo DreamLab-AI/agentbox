@@ -243,6 +243,11 @@
         # required migration step). Same defaulting shape as mcpHubEnabled /
         # hookShimEnabled / teammateGcEnabled above.
         podcastIngestEnabled = (skillsCfg.podcast_ingest or {}).enabled or true;
+        # ADR-2131 [diagram_review]: scheduled, cost-controlled diagram review.
+        # Default OFF (the opposite of podcastIngestEnabled): the program spends
+        # on two metered APIs, so a manifest with no section must emit nothing.
+        # REBUILD-class: the block below is baked supervisor text.
+        diagramReviewEnabled = (agentboxConfig.diagram_review or {}).enabled or false;
         # [sidechain]: the sidestr chain this deployment produces (PRD-024 P1).
         # Default off — only the operator of a sealed chain has its signer key.
         # enabled ⇒ [program:sidestr-producer]; mirror / faucet add
@@ -2874,6 +2879,30 @@ startsecs=0
 priority=250
 stdout_logfile=/var/log/podcast-cron.log
 stderr_logfile=/var/log/podcast-cron.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+
+${lib.optionalString diagramReviewEnabled ''
+; ADR-2131: gated on [diagram_review].enabled (default false). Off => no
+; supervisor block at all, so `supervisorctl status` lists no
+; diagram-review-cron. run-cron.sh renders skills/sealmap-review/crontab from
+; the manifest into /run/agentbox (tmpfs) and execs supercronic on it, so a
+; schedule edit needs a restart and no store path reaches a persistent file.
+; The program holds no secret of its own: it inherits ZAI_ANTHROPIC_API_KEY and
+; GEMINI_API_KEY from the container environment like podcast-cron, so it needs
+; no ADR-2122 role. node, git and agentbox-manifest are pinned into PATH.
+; REBUILD-class.
+[program:diagram-review-cron]
+command=${bgNice}${pkgs.bash}/bin/bash /home/devuser/workspace/project/agentbox/skills/sealmap-review/run-cron.sh ${supercronicPkg}/bin/supercronic
+user=devuser
+environment=HOME="/home/devuser",PATH="${agentboxManifestPkg}/bin:${lib.makeBinPath [ pkgs.coreutils pkgs.gnugrep pkgs.findutils pkgs.git pkgs.nodejs_22 ]}:/usr/local/bin:/bin:/usr/bin"
+autostart=true
+autorestart=true
+startsecs=0
+priority=250
+stdout_logfile=/var/log/diagram-review-cron.log
+stderr_logfile=/var/log/diagram-review-cron.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}

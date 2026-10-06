@@ -112,6 +112,7 @@ function parseFindings(markdown, lens) {
       evidence: field('Evidence'),
       failure: field('Failure') ?? field('Chain of events'),
       confidence: field('Confidence'),
+      severity: field('Severity'),
       marked_by_authors: field('Marked by authors'),
       status: 'unverified',
     });
@@ -282,7 +283,7 @@ async function main(argv) {
 }
 
 module.exports = {
-  listTopics, stripRegister, buildPack, loadLens, parseFindings, parseArgs, gemini, timeoutFromEnv, DEFAULT_TIMEOUT_MS,
+  listTopics, stripRegister, buildPack, loadLens, parseFindings, parseArgs, gemini, postJson, timeoutFromEnv, DEFAULT_TIMEOUT_MS,
 };
 
 if (require.main === module) {

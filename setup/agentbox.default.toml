@@ -763,6 +763,34 @@ transcripts = "/home/devuser/workspace/vault-transcripts"
 # leaves the closure when this gate is false.
 enabled = true
 
+[diagram_review]
+# ADR-2131: scheduled, cost-controlled review of diagrams-as-code corpora.
+# [program:diagram-review-cron] (supercronic over skills/sealmap-review/crontab,
+# rendered at boot by skills/sealmap-review/run-cron.sh) runs GLM triage and a
+# GLM review on the two schedules below, and an external Gemini audit only when
+# its gate opens (interval, changed topics or a high-severity GLM finding, and
+# the monthly budget). Default OFF: nothing is supervised and nothing is spent.
+# REBUILD-class for `enabled` (flake.nix bakes the supervisor block); the other
+# keys are read at boot by the cron wrapper and on every run by the runner.
+# Findings land in <repo>/docs/review/ and the ledger in
+# <repo>/docs/diagrams/review-ledger.jsonl; nothing edits a topic or commits.
+# Needs ZAI_ANTHROPIC_API_KEY (or ZAI_API_KEY) and GEMINI_API_KEY in the
+# environment, never in this file.
+enabled = false
+# Absolute paths of repositories with a docs/diagrams corpus. Name your own.
+repos = []
+# supercronic cron expressions (UTC). Triage is the cheap daily GLM pass;
+# the review tick runs the GLM review and then considers the Gemini audit.
+glm_triage_cron = "17 5 * * 1-6"
+glm_review_cron = "47 5 * * 0"
+# Gemini audit gate: every condition must hold.
+gemini_min_interval_days = 7
+gemini_min_changed_topics = 3
+gemini_monthly_usd = 10
+# true: Gemini is considered only on the weekly review tick. false: after
+# each triage run as well (the interval and budget still apply).
+weekly_window = true
+
 [skills.harness]
 # Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates
 # to understand guide-sensor pairings for their active topology. Four tools:

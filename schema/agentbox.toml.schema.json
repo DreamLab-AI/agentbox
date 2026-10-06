@@ -3309,6 +3309,21 @@
         }
       }
     },
+    "diagram_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ADR-2131: scheduled, cost-controlled review of diagrams-as-code corpora ([program:diagram-review-cron], supercronic over skills/sealmap-review/crontab). Default off. REBUILD-class for enabled: flake.nix bakes the supervisor block.",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "true \u21d2 flake.nix emits [program:diagram-review-cron]. false \u21d2 no supervisor block at all." },
+        "repos": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Absolute paths of repositories with a docs/diagrams corpus." },
+        "glm_triage_cron": { "type": "string", "pattern": "^\\S+( \\S+){4}$", "description": "Five-field cron expression for the daily GLM triage." },
+        "glm_review_cron": { "type": "string", "pattern": "^\\S+( \\S+){4}$", "description": "Five-field cron expression for the GLM review (and, with weekly_window, the Gemini audit gate)." },
+        "gemini_min_interval_days": { "type": "number", "minimum": 0, "description": "Minimum days between Gemini audits." },
+        "gemini_min_changed_topics": { "type": "integer", "minimum": 0, "description": "Topics changed since the last audit that open the gate, unless the last GLM review recorded a high-severity finding." },
+        "gemini_monthly_usd": { "type": "number", "minimum": 0, "description": "Cap on estimated Gemini spend per UTC month, across all repos." },
+        "weekly_window": { "type": "boolean", "description": "true \u21d2 the Gemini gate is considered only on the weekly review tick; false \u21d2 after each triage run too." }
+      }
+    },
     "sidechain": {
       "type": "object",
       "additionalProperties": false,
