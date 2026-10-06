@@ -432,33 +432,6 @@ function headsOf(tops) {
 
 const reposOf = (topics) => [...new Set(topics.flatMap((t) => t.srcs.map((s) => s.top)))].sort();
 
-/** `sealmap stale --since` narrows a corpus that cites only its own repository. Returns a Set
- *  of topic paths, or null when it is absent, fails, names nothing we recognise, or the corpus
- *  spans repositories (one --since cannot stand for several). */
-function sealmapStale(repo, since, topics, repoTop) {
-  if (reposOf(topics).some((t) => t !== repoTop)) return null;
-  let out;
-  try {
-    out = execFileSync('sealmap', ['stale', '--since', since], {
-      cwd: path.join(repo, CORPUS_REL), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 120000,
-    });
-  } catch { return null; }
-  const known = new Set(topics.map((t) => t.rel));
-  const id = (x) => (typeof x === 'string' ? x : x && (x.topic ?? x.path ?? x.file ?? x.id));
-  let names = [];
-  try {
-    const j = JSON.parse(out);
-    names = (Array.isArray(j) ? j : j.stale ?? j.topics ?? []).map(id);
-  } catch { names = out.split('\n').map((l) => l.trim().split(/\s+/)[0]); }
-  const hit = new Set();
-  for (const n of names) {
-    if (typeof n !== 'string') continue;
-    const clean = n.replace(/^\.?\//, '').replace(/^docs\/diagrams\//, '');
-    if (known.has(clean)) hit.add(clean);
-  }
-  return hit.size > 0 ? hit : null;
-}
-
 function sha256(s) { return crypto.createHash('sha256').update(s).digest('hex'); }
 
 // ── Shards ──────────────────────────────────────────────────────────────────────────────────
@@ -683,9 +656,9 @@ async function triage(repo, ctx) {
     return { skipped: 'baseline recorded', repos: tops.length };
   }
   let candidates;
-  const stale = last && changed.has(repoTop) && sealmapStale(repo, since[repoTop], topics, repoTop);
+  // Per-file flagging is the single path: every narrower rule measured (symbol, region, call-flow,
+  // line-overlap) lost real changes; only per-file keeps recall 1.0 (references/evidence.md).
   candidates = triageCandidates(topics, changed);
-  if (stale) candidates = candidates.filter((t) => stale.has(t.rel));
   candidates.sort((a, b) => b.changedSources.length - a.changedSources.length || (a.rel < b.rel ? -1 : 1));
   if (candidates.length === 0) {
     if (!dryRun) appendLedger(repo, { ts: stamp, kind: 'triage', reviewer: 'glm', commit: heads[repoTop] ?? null, commits: heads, changed_topics: 0, skipped: 'no topic sources changed', unresolved: skips });

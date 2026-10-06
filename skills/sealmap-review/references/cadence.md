@@ -113,9 +113,9 @@ model. Exit 1 when any repo failed; a refusal is not a failure.
    (reason `baseline`).
 2. A topic is a candidate when any file in its `sources:` appears in its own
    repository's `git diff --name-only <commit> HEAD`: a per-file test, unioned over the
-   whole window (see "Many repositories"). When a `sealmap` binary is on PATH and the
-   corpus cites only its own repository, `sealmap stale --since <commit>` narrows the
-   set; if it is absent, fails or names no known topic, the git set is used.
+   whole window (see "Many repositories"). This is the only narrowing: every
+   deterministic narrower (symbol, region, call-flow, line-overlap) lost real changes
+   in measurement, so none is applied (see [evidence.md](evidence.md)).
 3. Each candidate gets one GLM call: the topic text plus the combined `git diff` of
    its changed sources (each repository diffed from its own commit), each bounded
    (60 kB topic, 40 kB diff). Candidates are asked most-changed-first. The answer is
