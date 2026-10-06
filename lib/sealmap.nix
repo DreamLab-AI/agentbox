@@ -26,8 +26,7 @@ pkgs.rustPlatform.buildRustPackage {
     owner = "DreamLab-AI";
     repo  = "sealmap";
     rev   = "v${version}"; # commit a7ce8cd254191b029503517b03abe81a8ab295b8
-    # HASH: set by the host build — pin DreamLab-AI/sealmap v0.2.1 (a7ce8cd254191b029503517b03abe81a8ab295b8); replace fakeHash with the value the build reports.
-    hash  = lib.fakeHash;
+    hash  = "sha256-2Z4LJf/YyqQEnRaua63pu/VtpynMJyt3R8kCTTjZqGI=";
   };
 
   # Byte-identical to Cargo.lock at the tag; needs no hash.

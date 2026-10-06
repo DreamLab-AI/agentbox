@@ -21,24 +21,18 @@
 { lib, pkgs }:
 
 let
-  # 2.1.288 (built 2026-10-02T17:00:28Z; bumped 2026-10-03 from 2.1.285).
+  # 2.1.289 (built 2026-10-03T19:38:35Z; bumped 2026-10-05).
   # Driver: the ruflo 3.51.x mods (ruflo-console) need Claude Code 2.1.287+.
   # Retains the function-hook surface introduced in 2.1.276
   # (`session.compact`, `command.register`, `$.http.fetch`) that the
   # factrail compaction plugin needs (ADR-2093).
   #
-  # NOTE (bump review, 2026-10-03): 2.1.288 is the `latest` channel pointer;
-  # `stable` still points at 2.1.285, and 2.1.288 is ~1 day past its build
-  # timestamp, short of the renovate.json 3-day cool-off. Taken deliberately
-  # for the ruflo-console floor above. Both per-arch hashes below are the
-  # sha256 of the downloaded bytes and were checked byte-for-byte against
-  # Anthropic's published checksums
-  # (https://downloads.claude.ai/claude-code-releases/2.1.288/manifest.json):
-  #   linux-x64   0298068b686e7fdbaf9402a7a587bb7f49c0b0e084de09f69145a0719207640c
-  #   linux-arm64 359ab6a058fcde9741dff54979a212fd134cdf8e8cfc2f8de02bc350b9e2b9d5
-  # Regenerate /plugin-types after this bump: the factrail plugin's generated
-  # types need re-checking against 2.1.288's hook surface.
-  claudeCodeVersion = "2.1.288";
+  # This is Anthropic's latest channel release. Both per-arch hashes are
+  # verified against its published manifest:
+  # https://downloads.claude.ai/claude-code-releases/2.1.291/manifest.json
+  #   linux-x64   078fad28d0297c9a25d306b635b2d8816c6839347520f29eb54ffea5d56142fb
+  #   linux-arm64 c18473a04cc4f077435d5d9081f09ebea46e699eb2825cea64741c4bccb87647
+  claudeCodeVersion = "2.1.291";
 
   # Map agentbox's system string to the upstream download platform slug.
   platforms = {
@@ -59,10 +53,10 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = "sha256-ApgGi2huf9uvlAKnpYe7f0nAsOCE3gn2kUWgcZIHZAw=";
+      sha256 = "sha256-B4+tKNApfJol0wa2NbLYgWxoOTR1IPKetU/+pdVhQvs=";
     };
     "aarch64-linux" = {
-      sha256 = "sha256-NZq2oFj83pdB3/VJeaIS/RNM346M/C+N4CvDULniudU=";
+      sha256 = "sha256-wYRzoEzE8HdDXV2QgfCevqRuaZ6yglzqZHQcS8y4dkc=";
     };
   };
 
