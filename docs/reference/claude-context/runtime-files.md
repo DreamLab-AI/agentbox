@@ -8,6 +8,10 @@
 
 ## Agents & commands — manifest-governed (ADR-2092)
 
+Host deployment helpers: `scripts/runtime-delivery.{sh,cjs}` implement locked
+`prepare`/`activate`; `lib/image-layers.nix` excludes earlier dependency closures.
+Preparation leaves running agents untouched. See [incremental builds](../../developer/incremental-builds.md).
+
 The image bakes `/opt/agentbox/agents` (12 subagents) and registers them from
 `agents/registered-agents.txt`; `scripts/reconcile-agents.sh` projects that set into
 `~/.claude/agents` at boot, retires vendor dumps to a recoverable sidecar outside every

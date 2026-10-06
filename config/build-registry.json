@@ -1,0 +1,6 @@
+{
+  "image": "registry:3.1.2@sha256:ddf754342cfc8acc51a56d5d0ab6af06826461864460636d8bd5c546dab2a7b8",
+  "container": "agentbox-build-registry",
+  "volume": "agentbox-build-registry-data",
+  "address": "127.0.0.1:15000"
+}

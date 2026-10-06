@@ -4,6 +4,10 @@ Agentbox is one of six repositories in the DreamLab open-source ecosystem — fi
 
 ## Six-repository landscape
 
+Host image preparation and activation are separate (ADR-2132). The loopback-only
+build registry is a delivery cache, not an estate service, identity participant
+or sixth adapter. [Operator contract](incremental-builds.md).
+
 Host and container Claude configuration are separate (ADR-2118): only credentials converge through the supervised sync. Public instruction layers live in `config/instructions/`; deployment-specific facts belong in its gitignored `local/` layer. The connected-node migration remains a separate operator action.
 
 | Repository | Role | Relationship to agentbox |

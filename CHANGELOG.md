@@ -18,6 +18,16 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 - Draft-PR titles take the head of the finding on a word boundary (≤60 chars, ellipsis when cut)
   instead of the last 60 bytes of an already-truncated cell.
 
+### Changed (2026-10-06 — incremental delivery, ADR-2132)
+
+- Non-overlapping image layers separate platform dependencies, toolchains, CLIs,
+  services and application/configuration files without removing capabilities.
+- Host `prepare` builds/imports a candidate without interrupting Agentbox;
+  `activate` verifies drift and replaces only Agentbox using merged Compose.
+- Digest-pinned loopback registry enables incremental delivery; candidate smoke
+  tests have no network, credentials or production mounts. No automatic GC or
+  pruning; successful build roots retain latest, previous and active candidates.
+
 ### Fixed (2026-10-06 — host deployment review)
 
 - Resolved the sealmap 0.2.1 source hash and verified its vendored Cargo.lock against the tag.

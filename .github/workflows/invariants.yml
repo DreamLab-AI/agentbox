@@ -25,6 +25,9 @@ on:
       - 'tests/config/declared-vs-running.test.js'
       - 'tests/config/fixtures/runtime-state.json'
       - 'tests/config/ruflo-console.test.mjs'
+      - 'tests/config/runtime-delivery.test.cjs'
+      - 'config/build-registry.json'
+      - 'agentbox.sh'
       - 'config/claude-plugins/**'
       - 'flake.lock'
       # Custody X-1 W0/W2 runtime contracts (RC-X1-01..06) and what they read
@@ -62,6 +65,9 @@ jobs:
 
       - name: Make check scripts executable
         run: chmod +x scripts/ci/*.sh
+
+      - name: Non-disruptive preparation and scoped activation (ADR-2132)
+        run: node --test tests/config/runtime-delivery.test.cjs
 
       - name: check-seccomp (high-value syscall denials intact)
         run: sh scripts/ci/check-seccomp.sh

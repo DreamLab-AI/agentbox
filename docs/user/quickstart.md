@@ -1,5 +1,11 @@
 # Quick Start
 
+Existing installation with work in progress? `./agentbox.sh prepare` builds and
+imports a candidate without interruption. `./agentbox.sh activate` is the
+separate, disruptive replacement step. Neither updates sidecars or prunes data.
+See [incremental builds](../developer/incremental-builds.md); first-time stack
+provisioning still uses the `up` workflow below.
+
 New to headless agent runtimes? Start with the [glossary](glossary.md) first.
 
 This guide reflects the current Agentbox runtime.

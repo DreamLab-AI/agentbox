@@ -43,7 +43,9 @@ Local lifecycle commands:
   ${GREEN}up${NC}               Start the Docker stack [--build: nix build + docker load first] [--registry: use AGENTBOX_IMAGE_REF from env]
   ${GREEN}down${NC}             Stop the Docker stack [--volumes: also remove volumes (confirms)]
   ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
-  ${GREEN}rebuild${NC}          Full dev-loop cycle: down + build + up --build
+  ${GREEN}prepare${NC}          Build + deliver a candidate; NEVER stop/restart the running container
+  ${GREEN}activate${NC}         Activate the prepared candidate (Agentbox only; no sidecars/cleanup)
+  ${GREEN}rebuild${NC}          Prepare, then activate Agentbox [--prepare-only leaves it running]
   ${GREEN}update${NC}           Update flake inputs + CLI versions + resolve hashes [--check|--cli-only|--flake-only]
   ${GREEN}ruvector${NC}         Manage the ruvector-postgres memory sidecar [status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin|recall]
   ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
@@ -83,7 +85,9 @@ Examples:
   $0 down                   # Stop stack
   $0 down --volumes         # Stop stack and remove volumes (destructive, confirms)
   $0 build --variant full   # Build the full image without loading it
-  $0 rebuild                # down + build + up (dev-loop iteration)
+  $0 prepare                # build + incremental delivery; current container untouched
+  $0 activate               # explicitly replace Agentbox with the prepared candidate
+  $0 rebuild                # prepare + activate (no stack down, no automatic GC)
   $0 update                 # full update: flake inputs + Codex/npm CLI versions + resolve hashes
   $0 update --check         # report available updates without patching
   $0 ruvector check         # compare running sidecar + pinned image against Docker Hub
@@ -1066,30 +1070,7 @@ cmd_ruvnet_brain() {
 }
 
 cmd_rebuild() {
-    if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-        echo "Usage: $0 rebuild [--no-cleanup]"
-        echo "Equivalent to: down + build --variant runtime + up --build + cleanup"
-        echo "Cleanup also reaps runaway/stale Rust target caches (AGENTBOX_REAP_CARGO=0 to skip;"
-        echo "tune via AGENTBOX_CARGO_REAP_MAX_GB / _STALE_DAYS / _DRYRUN)."
-        return 0
-    fi
-
-    local skip_cleanup=0
-    [[ "${1:-}" == "--no-cleanup" ]] && skip_cleanup=1
-
-    echo -e "${CYAN}=== Rebuild: stopping stack ===${NC}"
-    cmd_down
-
-    echo -e "${CYAN}=== Rebuild: building runtime image ===${NC}"
-    cmd_build --variant runtime
-
-    echo -e "${CYAN}=== Rebuild: starting stack ===${NC}"
-    cmd_up --build
-
-    if [[ "$skip_cleanup" -eq 0 ]]; then
-        echo -e "${CYAN}=== Rebuild: cleaning up old images + Nix store ===${NC}"
-        bash "${SCRIPT_DIR}/scripts/post-deploy-cleanup.sh" || true
-    fi
+    bash "${SCRIPT_DIR}/scripts/runtime-delivery.sh" rebuild "$@"
 }
 
 cmd_logs() {
@@ -2049,7 +2030,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|prepare|activate|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight)
             CMD="$1"
             shift
             break
@@ -2590,6 +2571,8 @@ case "${CMD:-}" in
     up)            cmd_up "$@" ;;
     down)          cmd_down "$@" ;;
     build)         cmd_build "$@" ;;
+    prepare)       bash "${SCRIPT_DIR}/scripts/runtime-delivery.sh" prepare "$@" ;;
+    activate)      bash "${SCRIPT_DIR}/scripts/runtime-delivery.sh" activate "$@" ;;
     rebuild)       cmd_rebuild "$@" ;;
     update)        cmd_update "$@" ;;
     ruvector)      cmd_ruvector "$@" ;;

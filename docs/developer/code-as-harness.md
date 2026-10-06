@@ -4,6 +4,10 @@
 
 ## TL;DR for Operators
 
+Use [prepare-only image delivery](incremental-builds.md) while kernels or agents
+are working. `prepare` never attaches code-harness data to its offline smoke
+container; only the later explicit `activate` interrupts the Agentbox runtime.
+
 Four independent research lines — Program of Thoughts (+12 pp on maths benchmarks), Chain of Code (+12 pp on BIG-Bench Hard), CodeAct (+20% success rate on tool-use benchmarks), and ORPS tree-search (+26.9% correctness) — converge on the same missing primitive: a Python kernel that persists variable state across tool calls within a session. Code-as-harness adds that kernel as an MCP server, wires a post-task lesson-distillation pipeline (ExpeL) that accumulates cross-run rules in RuVector, and ships a verified executable skill library (Voyager) for reuse across sessions. Every record emitted carries the agent's `did:nostr` identity and a PROV-O Activity receipt, making the domain's audit trail queryable. All six surfaces are opt-in manifest gates; in the current deployment all six are on.
 
 ## Quick Start

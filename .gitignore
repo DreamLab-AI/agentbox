@@ -174,3 +174,6 @@ skills/podcast-knowledge-ingest/promotions/
 
 # ADR-2118: operator/estate instruction layer — private, never pushed.
 config/instructions/local/
+
+# Host-only candidate receipts, Nix GC roots and delivery logs (ADR-2132).
+/.agentbox-build/

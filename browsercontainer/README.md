@@ -2,6 +2,9 @@
 
 Hardware-accelerated Chrome instance for browser automation, testing, and AI agent interaction via chrome-devtools-mcp.
 
+Agentbox's host `prepare`/`activate` workflow never rebuilds or restarts this
+sidecar; its lifecycle remains explicit. See [incremental builds](../docs/developer/incremental-builds.md).
+
 ## Architecture
 
 Agentbox's browser-use instructions are owned by `config/instructions/workspace.claude.md` and its private local layer (ADR-2118), projected at boot. Edit the source layers, not the generated workspace `CLAUDE.md`. This does not change browsercontainer's own mounts or lifecycle.

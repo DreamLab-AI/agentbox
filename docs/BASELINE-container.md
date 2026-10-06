@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.4
+version: 0.5.5
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.5 (2026-10-06): ADR-2132. Non-overlapping image layers, non-disruptive prepare and separate Agentbox-only activation; no automatic cleanup. Host registry cache is loopback-only and outside the runtime adapter spine."
   - "0.5.4 (2026-10-06): ADR-2131. New gated supervised program diagram-review-cron (supercronic over skills/sealmap-review/crontab, shipped on, rebuild-class under [diagram_review].enabled). It holds no secret file and takes no ADR-2122 role. The Invariants compliance surface is unchanged."
   - "0.5.3 (2026-10-03): custody X-1 step 1 (ADR-2122, staged). Under [security].role_isolation (boot-class, default off), role programs run under ab-* uids from /etc/supervisord.roles.conf, secrets sit in the root-owned /run/secrets/<role>/, and devuser's Docker CLI is GET-only. New programs serve-identity and docker-read-proxy (EXITED while off). The sidecar gains podkey-loader. The sidestr producer runs the Nix bake of upstream-pins in both modes."
   - "0.5.2 (2026-10-01): CLI, JavaScript and Rust dependency refresh. Fastify 5 compatibility preserves NIP-98 host ports, redirects, WebSocket callbacks, CORS methods and metrics. Stale cargo binaries are quarantined with numbered recovery copies. No data-volume or memory-geometry migration."
@@ -214,6 +215,7 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 
 ## Invariants (must not silently change)
 
+- Image preparation never stops/recreates the running runtime or sidecars, attaches runtime data to a candidate smoke container, or runs garbage collection. Activation is a separate operation using merged Compose and a verified candidate receipt; the host build registry is loopback-only (ADR-2132).
 - Five adapter slots, three implementation classes, one contract per slot — no client-only or standalone-only durable-state feature (ADR-005, CLAUDE.md).
 - Every adapter dispatch wrapped observability → privacy redaction, in that order (`index.js:131`, `observability/metrics.js:125`). JSON-LD encoding is a per-surface gated stage invoked by the owning route, and its ordering is enforced by the privacy marker via `assertPrivacyFilterApplied` — not by wrap position (ADR-2036).
 - Orchestrator connect failure is FATAL — on rejection, timeout and quarantine alike; other slots are quarantined and then swapped to the `off` impl, or left `unavailable` if that replacement cannot be built (`adapters/lifecycle.js:73`, `:274`, `:276-281`, `:292-299`) (ADR-2035).
