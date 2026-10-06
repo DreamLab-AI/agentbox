@@ -1746,7 +1746,10 @@
         # ---------------------------------------------------------------------------
         diagramIrPkg = import ./lib/diagram-ir.nix { inherit lib; pkgs = rustPkgs; };
         proseSanitiserPkg = import ./lib/prose-sanitiser.nix { inherit lib; pkgs = rustPkgs; };
-        skillToolPackages = [ diagramIrPkg proseSanitiserPkg ];
+        # sealmap — code lens (`sealmap dense|generate`) and the corpus format
+        # the sealmap-review skill reviews; see lib/sealmap.nix.
+        sealmapPkg = import ./lib/sealmap.nix { inherit lib; pkgs = rustPkgs; };
+        skillToolPackages = [ diagramIrPkg proseSanitiserPkg sealmapPkg ];
         # sidestr-agent — the sidechain faucet's engine ([sidechain].faucet).
         # Baked because a workspace cargo build stops executing after every image
         # rebuild (its glibc store path is collected); see lib/sidestr-agent.nix.
