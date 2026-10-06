@@ -69,6 +69,41 @@ but that symbol spans :41-96`). That check is TypeScript-shaped — `function na
 `const name =`, class methods — so treat its silence on other languages as
 absence of evidence.
 
+## Model-assisted estate refresh
+
+When many repositories moved, collect candidate topics by comparing each
+topic's `sources:` with the diff from **that topic's declared commit** to the
+current commit of the repository that owns each source. A changed file is a
+candidate for semantic review even when every old citation still resolves.
+GLM or another tool-using model can do the bulk of the re-authoring. First
+pilot one topic; then assign disjoint files to separate workers. Have each
+worker read committed source bytes with `git show <sha>:<path>`, revise changed
+claims, re-derive line anchors from symbols, and run strict citation and render
+checks with `--only <topic>` before moving on. Keep uncommitted source changes
+out of a topic stamped to committed HEAD.
+
+The reviewer checks the model's diff against the same committed bytes. In an
+estate refresh, a model proposed a commit id missing one character, cited the
+wrong line inside a valid file, and described an uncommitted vocabulary
+addition while stamping the topic to HEAD. A passing citation checker alone
+would not have caught all three. Check exact `git rev-parse HEAD` values, read
+the content at changed anchors, and inspect the meaning of each changed edge
+and narrative claim. Run the full corpus gate and regenerate indexes only
+after the workers finish; `--only` avoids concurrent writes to shared reports.
+
+### Check the generator that the corpus actually ships
+
+Older copies differ from this skill's generator. Before relying on a flag or
+coverage claim, inspect the repo-local script or its help. One estate copy
+accepted `--worktree-citations` but ignored the frontmatter `worktree:` field,
+checked citations inside Mermaid blocks while leaving prose citations
+unchecked, and did not support `--report`. For such a copy, validate prose
+anchors against `git show` separately, and do not say a dirty-tree claim is
+revision-verified. A `--worktree-citations` run can overwrite
+`VERIFICATION.md` with zero revision-verified citations; run the pinned check
+again before committing the report. Treat a stamped topic as current only
+after its prose and diagrams have both been read at that stamp.
+
 ## Warning classes, and what each means
 
 `--cite-check` warns; it does not fail. Each class means something different:

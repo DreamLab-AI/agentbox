@@ -158,6 +158,15 @@ A topic is a claim about one commit, and the stamp is what makes it checkable.
 Declared revisions, re-stamping, strict mode, what each warning class means:
 [references/verification.md](references/verification.md).
 
+For a large refresh with a model authoring the topics, pilot one changed topic
+first, then give each worker disjoint topic files. The author may write the
+bulk of the corpus, but the reviewer must check exact commit ids, the source
+meaning at cited lines, prose citations, and any claim drawn from a dirty
+working tree before accepting its stamps. Existing corpora may carry older
+copies of the generator with fewer checks than this skill describes; inspect
+the repository's actual script before trusting a green result. The concrete
+batch procedure and version-skew traps are in [references/verification.md](references/verification.md).
+
 ## The render rule
 
 `--render` parses every block through `mmdc` and **fails any render wider than
