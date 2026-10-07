@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_120 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_120 record(s). Regenerate with_ `node scripts/adr-index-gen.js /home/devuser/workspace/.agentbox/exp-b8/worktree/docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|

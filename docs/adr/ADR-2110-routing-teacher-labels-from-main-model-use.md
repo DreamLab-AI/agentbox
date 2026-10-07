@@ -207,3 +207,9 @@ Re-verified by `git diff c7b5d5f55..275e12356 -- <verified_paths>`. No re-implem
 - **Verdict:** WITHDRAW. Judge 433/513 (84.4%) against the BM25 copy ceiling 500/513 (97.5%); discordant b = 4, c = 71; exact McNemar p = 6.81e-17.
 - **Stop:** the sample of 510 was reached; written by `scripts/experiments/exp-b8-label-log.cjs` under the pre-registered protocol `docs/experiments/EXP-B8-label-log.md` (owner decision 2026-10-02 R5b). Report: `docs/experiments/EXP-B8-report.md`.
 - **Action:** `label_log = false`; decision_status `rejected`, activation_status `inactive`. ADR-2110 is withdrawn (rejected): the judge did not beat its copy ceiling on live turns, so the routing premise of the façade programme is falsified at this effect size.
+
+## Disposition — 2026-10-04 (EXP-B8 verdict)
+
+- **Verdict:** WITHDRAW. Judge 433/513 (84.4%) against the BM25 copy ceiling 500/513 (97.5%); discordant b = 4, c = 71; exact McNemar p = 6.81e-17.
+- **Stop:** the sample of 510 was reached; written by `scripts/experiments/exp-b8-label-log.cjs` under the pre-registered protocol `docs/experiments/EXP-B8-label-log.md` (owner decision 2026-10-02 R5b). Report: `docs/experiments/EXP-B8-report.md`.
+- **Action:** `label_log = false`; decision_status `rejected`, activation_status `inactive`. ADR-2110 is withdrawn (rejected): the judge did not beat its copy ceiling on live turns, so the routing premise of the façade programme is falsified at this effect size.
