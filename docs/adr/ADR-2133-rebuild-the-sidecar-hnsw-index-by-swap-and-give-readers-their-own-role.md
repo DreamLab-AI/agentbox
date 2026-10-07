@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 4f09c96b2f6869a472d27d22cb23c45df4bbfd80
+verified_commit: 9db3bcc4996ea1caf0a06c1660075568a52b5807
 verified_paths: [scripts/ruvector-sidecar-update.sh, tests/config/ruvector-sidecar-ops.test.sh]
 owner: jjohare
 review_trigger: a ruvector extension or image bump; a new read-only consumer or readable table; any pg_hba change
