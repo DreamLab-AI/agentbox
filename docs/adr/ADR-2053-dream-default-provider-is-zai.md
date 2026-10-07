@@ -83,3 +83,7 @@ Verification ran on the **uncommitted working tree** above
 - `grep -n 'secrets-never-in-report' dream.config.json` → present in `extraDisciplines`.
 - Governing-doc claim located with
   `grep -n 'Loom/Qwen' docs/GOVERNANCE-capabilities.md` before the edit; no match after.
+
+## Review — 2026-10-07: Loom default proposed and declined
+
+An external synthesis (VisionClaw `docs/TODO-unified.md`, "External synthesis, 2026-10-07") graded the Z.AI default a privacy-boundary breach and proposed `llm_provider = "loom"`. It did not cite this record. Owner decision 2026-10-07: the decision stands. The default is still `"zai"` (`agentbox.toml:2311`, `services/dream-engine/src/config.rs:386-387`), and the egress is the named, reviewable trade this record already makes. The follow-on above (enforce `secrets-never-in-report` mechanically before egress) remains untaken and is the control worth building if the posture is revisited.
