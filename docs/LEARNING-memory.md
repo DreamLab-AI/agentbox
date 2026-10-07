@@ -1,10 +1,11 @@
 ---
 title: "Agentbox Memory & Learning — Ground Truth"
 doc_id: AB-LEARNING
-version: 0.1.3
+version: 0.1.4
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.1.4 (2026-10-07): ADR-2133 — `ruvector reindex` (serial rebuild beside the live index, one-transaction swap, recall before/after); `ruvector reader-role` (ruvector_reader, SELECT on memory_entries only) and `ruvector hba-harden` (non-loopback pg_hba trust → scram); invariants 8 and 13"
   - "0.1.3 (2026-09-07): ADR-2082 — the governed server forwards swarm/agent/task/coordination tools to one filtered ruflo child per session; memory_* is denied on the proxy side, so the access invariant is unchanged (invariant 9)"
   - "0.1.2 (2026-09-06): Remediation — 2026-09-05 section: ADR-2057/2061/2062/2063/2064/2065/2066/2068/2069/2070/2072 and proposed 2071/2073–2078, the ADR-2018 recall diagnosis, landed in 796d85fcf — re-verified at "
   - "0.1.1: correct duration invariant — zero/null durations are recorded, not skipped (no bug-skip branch exists)"
@@ -20,6 +21,7 @@ sources:
   - agentbox/scripts/ruvector-pattern-distill.mjs
   - agentbox/scripts/ruvector-sona-feeder.mjs
   - agentbox/scripts/ruvector-recall-harness.mjs
+  - agentbox/scripts/ruvector-sidecar-update.sh
   - agentbox/docs/reference/claude-context/ruvector-memory-state.md
 date: 2026-08-31
 ---
@@ -73,7 +75,23 @@ content address (`ruvector-pattern-distill.mjs` header §4.1).
 ingest/deletion recall must be recovered by a **non-concurrent** rebuild (`m=16`,
 `ef_construction=128`, ~5 min). `CREATE INDEX CONCURRENTLY` on the RuVector HNSW
 access method is forbidden — verified double-insertion (every tuple indexed twice)
-(`docs/reference/claude-context/ruvector-memory-state.md:8`).
+(`docs/reference/claude-context/ruvector-memory-state.md:8`). The rebuild is
+`./agentbox.sh ruvector reindex --yes` (ADR-2133): it records a recall run, builds
+`idx_memory_embedding_hnsw_rebuild` serially beside the live index (searches keep the
+old index; writes wait), swaps it in with one `DROP INDEX` + `ALTER INDEX … RENAME`
+transaction, checks the planner and a duplicate-free top-20, then reruns the recall
+harness and fails below the floor. Before and after land under `state.json .reindex`.
+
+**Access roles.** Agentbox clients connect as the owner `ruvector`. Read-only
+consumers (VisionClaw's read endpoints) use `ruvector_reader` from
+`./agentbox.sh ruvector reader-role --yes`: `default_transaction_read_only=on`,
+CONNECT, USAGE on `public`, SELECT on `memory_entries` only, and a role-scoped
+`scram-sha-256` pg_hba line ahead of every host line. It is a one-time operator op,
+re-run after a restore onto a fresh volume; it is not applied at boot, because
+`memory_entries` only exists once the MCP server has connected. The sidecar's
+pg_hba carried `trust` for both docker subnets (any role, no password);
+`ruvector hba-harden` replaces those with scram after proving every known client's
+password verifies (ADR-2133).
 
 ### The learning loop, as it is
 
@@ -281,7 +299,7 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
    requires a passing median-of-3 harness run against the frozen fixture.
 7. **384-dim embedding model** (`bge-small-en-v1.5`) is the active column; a
    dimension migration mints a fresh SONA scope, never reusing `agentbox_memory`.
-8. **Non-concurrent AND serial HNSW rebuild only** after bulk churn — `max_parallel_maintenance_workers = 0` (pinned at database level 2026-09-05); the extension's parallel build leaves rows unreachable (ADR-2018 diagnosis 2026-09-05).
+8. **Non-concurrent AND serial HNSW rebuild only** after bulk churn — `max_parallel_maintenance_workers = 0` (pinned at database level 2026-09-05); the extension's parallel build leaves rows unreachable (ADR-2018 diagnosis 2026-09-05) The only sanctioned path is `ruvector reindex` (ADR-2133), which builds under a temporary name and swaps; never `CREATE INDEX CONCURRENTLY`, never `REINDEX … CONCURRENTLY`.
 9. **No memory tool through the orchestration proxy (ADR-2082).** The ruflo child
    behind `claude-flow` receives only the categories named in
    `orchestration_tools`, and `DENIED_PREFIXES` in `orchestration-proxy.js` drops
@@ -307,6 +325,11 @@ scheduler `scripts/ontology-condense-scheduler.mjs` follows the same house patte
    snippets with `truncated`/`chars`, default limit 5; `"*"` excludes
    `RUVECTOR_PROTECTED_NAMESPACES` unless named. Whole values come from `full:true` or
    `memory_retrieve`. No lossy compressor may drop or reorder ranked rows.
+13. **Read-only consumers never hold the owner role (ADR-2133).** A consumer that only
+   reads uses `ruvector_reader`, whose privileges are SELECT on `memory_entries` and
+   nothing else; `reader-role --verify` must show every write path refused both in the
+   read-only default and after a `READ WRITE` opt-in. A new readable table is a new
+   ADR, not a widened grant.
 
 ## Change process
 
