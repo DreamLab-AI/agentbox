@@ -91,7 +91,10 @@ re-run after a restore onto a fresh volume; it is not applied at boot, because
 `memory_entries` only exists once the MCP server has connected. The sidecar's
 pg_hba carried `trust` for both docker subnets (any role, no password);
 `ruvector hba-harden` replaces those with scram after proving every known client's
-password verifies (ADR-2133).
+password verifies (ADR-2133). The trust lines were a hand edit on the data volume (the
+image entrypoint writes pg_hba only on first initdb), so a fix survives container
+recreates; `status`/`check`, `update` and `rollback` warn loudly whenever a
+non-loopback trust rule is present.
 
 ### The learning loop, as it is
 

@@ -383,6 +383,9 @@ state_write() { # state_write key=value ... (strings; merges into state.json)
 
 state_get() { jq -r ".${1} // empty" "$STATE_FILE" 2>/dev/null; }
 
+# pg_hba rules that trust a non-loopback address (line|type|db|user|address|method).
+hba_trust_rules_sql="SELECT line_number || '|' || type || '|' || database::text || '|' || user_name::text || '|' || coalesce(address, '') || '|' || auth_method FROM pg_hba_file_rules WHERE type LIKE 'host%' AND auth_method = 'trust' AND coalesce(address, '') NOT IN ('127.0.0.1', '::1') ORDER BY line_number;"
+
 # ── smoke suite ──────────────────────────────────────────────────────────────
 # Asserts the container is a healthy RuVector backend: extension at its
 # image's default version, expected row count, HNSW index actually used by
@@ -492,6 +495,33 @@ cmd_status() {
     echo "  postgres      : $(pg "$CONTAINER" "SHOW server_version;" 2>/dev/null || echo '?')"
     echo "  memory_entries: $(pg "$CONTAINER" "SELECT count(*) FROM memory_entries;" 2>/dev/null || echo '?') rows"
     echo "  data volume   : $(toml_volume)"
+    hba_trust_audit
+}
+
+# hba_trust_audit — loud warning for any pg_hba `trust` rule that covers a
+# non-loopback address (ADR-2133). Such a rule admits every client on that
+# network as any role, the superuser included, without a password. pg_hba
+# lives on the data volume, so a hand edit survives container recreates, and
+# `rollback` restores whatever the snapshot carried. Informational: returns 0.
+hba_trust_audit() {
+    local rules
+    if ! rules=$(pg "$CONTAINER" "$hba_trust_rules_sql" 2>/dev/null); then
+        warn "pg_hba audit: could not read pg_hba_file_rules"
+        return 0
+    fi
+    if [[ -z "$rules" ]]; then
+        echo "  pg_hba        : no trust rule outside loopback"
+        return 0
+    fi
+    echo -e "${RED}  ════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${RED}  !! pg_hba TRUST on a non-loopback address: any client there logs in${NC}"
+    echo -e "${RED}  !! as ANY role (superuser ${PG_USER} included) WITHOUT a password.${NC}"
+    while IFS= read -r r; do
+        echo -e "${RED}  !!   line ${r%%|*}: ${r#*|}${NC}"
+    done <<<"$rules"
+    echo -e "${RED}  !! Fix: ./agentbox.sh ruvector hba-harden (dry-run first; ADR-2133)${NC}"
+    echo -e "${RED}  ════════════════════════════════════════════════════════════════${NC}"
+    return 0
 }
 
 cmd_check() {
@@ -749,6 +779,7 @@ cmd_update() {
     echo "                       docker volume rm ${snap_vol})"
     echo "  logical dump       : ${dump_file}"
     echo "  commit the pin     : git add agentbox.toml docker-compose.yml"
+    hba_trust_audit
 }
 
 cmd_rollback() {
@@ -793,6 +824,8 @@ cmd_rollback() {
     smoke "$CONTAINER" "${baseline_rows:--}" || die "rollback smoke suite failed — inspect manually"
     state_write "phase=rolled-back"
     echo -e "${GREEN}Rolled back to ${prev}.${NC}"
+    # The restored datadir carries the snapshot's pg_hba.conf (ADR-2133).
+    hba_trust_audit
 }
 
 # ── data-hygiene subcommands (PRD-018 Phase 2 / ADR-036 D5) ──────────────────
@@ -1601,7 +1634,6 @@ cmd_reader_role() {
 #     .mcp.json conninfo) verifies against the owner's stored SCRAM verifier;
 #     after the reload it proves the owner still logs in over the network path
 #     and a wrong password does not, and restores the backup otherwise.
-hba_trust_rules_sql="SELECT line_number || '|' || type || '|' || database::text || '|' || user_name::text || '|' || coalesce(address, '') || '|' || auth_method FROM pg_hba_file_rules WHERE type LIKE 'host%' AND auth_method = 'trust' AND coalesce(address, '') NOT IN ('127.0.0.1', '::1') ORDER BY line_number;"
 
 # scram_verifies <password> <verifier> — RFC 5802/7677 StoredKey check with
 # node:crypto's PBKDF2/HMAC/SHA-256 (no hand-rolled primitive). Both values

@@ -17,6 +17,9 @@
 #               the owner-password SCRAM check accepts and rejects on the
 #               RFC 7677 §3 SCRAM-SHA-256 test vector, and a non-verifying
 #               password refuses before pg_hba is touched.
+#   status      warns loudly on any non-loopback trust rule (so a hand edit or
+#               a rollback to an older snapshot cannot bring it back silently),
+#               and stays quiet and exit-0 when there is none.
 # shellcheck disable=SC2015
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -60,7 +63,9 @@ case "$sql" in
   *"count(DISTINCT id)"*)           echo SET; echo "${STUB_PROBE:-20:20}" ;;
   *"FROM pg_roles WHERE rolname"*)  echo "${STUB_ROLE_PRESENT:-}" ;;
   *"SHOW hba_file"*)                echo "/var/lib/postgresql/data/pg_hba.conf" ;;
-  *"pg_hba_file_rules"*)            printf '%s\n' "${STUB_HBA_RULES:-128|host|{all}|{all}|172.18.0.0|trust}" ;;
+  *"pg_hba_file_rules"*)            r="${STUB_HBA_RULES-__default__}"
+                                    [ "$r" = __default__ ] && r='128|host|{all}|{all}|172.18.0.0|trust'
+                                    [ -n "$r" ] && printf '%s\n' "$r" ;;
   *"FROM pg_authid"*)               echo "${STUB_VERIFIER:-}" ;;
   *"has_table_privilege"*)          echo "${STUB_PRIV:-}" ;;
   *) : ;;
@@ -216,5 +221,15 @@ _has "$T/h-vec-bad.out" "does NOT verify" && [ "$(rc h-vec-bad)" != 0 ] && _has 
 STUB_VERIFIER="md5abc" STUB_OWNER_PW="pencil" run h-md5 hba-harden --yes
 [ "$(rc h-md5)" != 0 ] && _has "$T/h-md5.out" "no SCRAM verifier" \
   && _ok "a non-SCRAM owner verifier refuses" || _bad "non-SCRAM refusal" "$(tail -3 "$T/h-md5.out")"
+
+# ═════ status / check: the trust audit ═════
+run s-trust status
+[ "$(rc s-trust)" = 0 ] && _has "$T/s-trust.out" "pg_hba TRUST on a non-loopback address" && _has "$T/s-trust.out" "line 128: host|{all}|{all}|172.18.0.0|trust" \
+  && _ok "status warns loudly and names each non-loopback trust rule (exit 0)" || _bad "status trust banner" "$(tail -6 "$T/s-trust.out")"
+STUB_HBA_RULES="" run s-clean status
+[ "$(rc s-clean)" = 0 ] && _has "$T/s-clean.out" "no trust rule outside loopback" && ! _has "$T/s-clean.out" "!!" \
+  && _ok "status is quiet when only loopback trusts remain" || _bad "status clean" "$(tail -3 "$T/s-clean.out")"
+grep -q "hba_trust_audit" <(sed -n '/^cmd_check() {/,/^}/p' "$SCRIPT") || grep -q "^    cmd_status$" <(sed -n '/^cmd_check() {/,/^}/p' "$SCRIPT") \
+  && _ok "check runs the trust audit (via status)" || _bad "check runs the audit"
 
 _done
