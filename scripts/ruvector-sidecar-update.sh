@@ -73,6 +73,25 @@
 #                       ruvector-sidecar/recall-runs/. --build-fixture
 #                       (one-shot) re-samples the corpus + writes the fixture.
 #
+# Index + access ops (ADR-2133). Dry-run by default; --yes applies.
+#   reindex [--dry-run|--yes]
+#                       Serial, non-concurrent rebuild of idx_memory_embedding_hnsw
+#                       (m=16, ef_construction=128, max_parallel_maintenance_workers=0)
+#                       under a temporary name beside the live index, swapped in
+#                       one DROP+RENAME transaction. Recall harness before and
+#                       after, recorded under state.json .reindex; fails loudly
+#                       below the enforced floor (self ≥175/200, true ≥102/120).
+#   reader-role [--dry-run|--yes|--verify]   (flag: reader_role)
+#                       Create/update ruvector_reader (password from
+#                       RUVECTOR_READER_PASSWORD, never printed): read-only by
+#                       default, SELECT on memory_entries only, a role-scoped
+#                       scram pg_hba line; then log in as it and prove reads
+#                       work and every write path is refused. --verify re-checks.
+#   hba-harden [--dry-run|--yes]             (flag: hba_scram)
+#                       Rewrite non-loopback pg_hba `trust` lines to scram-sha-256
+#                       after proving every known client password verifies;
+#                       restores the backup if the owner cannot log in after.
+#
 # The image pin lives in agentbox.toml [integrations.ruvector_external].image
 # (source of truth — flake.nix composeText reads it) and is mirrored in the
 # checked-in docker-compose.yml. Both are updated together here.
@@ -85,7 +104,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-TOML="${REPO_DIR}/agentbox.toml"
+TOML="${RUVECTOR_SIDECAR_TOML:-${REPO_DIR}/agentbox.toml}"
 COMPOSE_FILE="${REPO_DIR}/docker-compose.yml"
 OVERRIDE_FILE="${REPO_DIR}/docker-compose.override.yml"
 
@@ -94,9 +113,9 @@ CONTAINER="ruvector-postgres"
 CANDIDATE="ruvector-postgres-candidate"
 HUB_REPO="ruvnet/ruvector-postgres"
 PG_USER="ruvector"
-PG_DB="ruvector"
+PG_DB="${RUVECTOR_SIDECAR_DB:-ruvector}"
 
-STATE_DIR="${REPO_DIR}/backups/ruvector-sidecar"
+STATE_DIR="${RUVECTOR_SIDECAR_STATE_DIR:-${REPO_DIR}/backups/ruvector-sidecar}"
 STATE_FILE="${STATE_DIR}/state.json"
 
 if [ -t 1 ]; then
@@ -1143,12 +1162,55 @@ cmd_build_metadata_gin() {
 #    evidence lands under backups/ruvector-sidecar/recall-runs/. No gate — a
 #    pure read is always safe to run. Env resolved from .mcp.json exactly like
 #    aggregate-effectiveness (RUVECTOR_PG_CONNINFO, XINFERENCE_ENDPOINT, …).
+RECALL_HARNESS="${RUVECTOR_RECALL_HARNESS:-${REPO_DIR}/scripts/ruvector-recall-harness.mjs}"
+
+# run_recall_harness <args…> — the harness under the governed MCP env. Its
+# stdout is the harness's own (machine JSON with --json); exit 0 PASS, 2 FAIL.
+run_recall_harness() {
+    command -v node >/dev/null || die "node required for recall"
+    [[ -f "$RECALL_HARNESS" ]] || die "recall harness not found: ${RECALL_HARNESS}"
+    local -a envp=()
+    mapfile -t envp < <(mcp_env_pairs || true)
+    env "${envp[@]}" node "$RECALL_HARNESS" "$@"
+}
+
+# The ENFORCED floor (ADR-040 D2 band; workspace RuVector rules). A reindex
+# must land at or above it, whatever the harness band in the fixture says.
+RECALL_FLOOR_SELF=175
+RECALL_FLOOR_TRUE=102
+
+# recall_capture — one median-of-3 run, parsed into RECALL_SELF, RECALL_TRUE,
+# RECALL_VERDICT (PASS|FAIL) and RECALL_ARTIFACT. Returns 0 when the harness
+# produced a verdict (PASS or FAIL), 1 when it errored (fixture drift, DB down)
+# and there is no measurement to record.
+recall_capture() {
+    local out rc
+    out=$(mktemp)
+    set +e
+    run_recall_harness --json > "$out"
+    rc=$?
+    set -e
+    if [[ $rc -ne 0 && $rc -ne 2 ]] || ! jq -e '.medians.self_recall' "$out" >/dev/null 2>&1; then
+        rm -f "$out"
+        return 1
+    fi
+    RECALL_SELF=$(jq -r '.medians.self_recall' "$out")
+    RECALL_TRUE=$(jq -r '.medians.true_recall' "$out")
+    RECALL_VERDICT=$(jq -r 'if .verdict.pass then "PASS" else "FAIL" end' "$out")
+    RECALL_ARTIFACT=$(jq -r '.artifact // empty' "$out")
+    rm -f "$out"
+    return 0
+}
+
+# recall_meets_floor — the last capture is a PASS and at/above the floor.
+recall_meets_floor() {
+    [[ "$RECALL_VERDICT" == "PASS" ]] \
+        && (( RECALL_SELF >= RECALL_FLOOR_SELF )) \
+        && (( RECALL_TRUE >= RECALL_FLOOR_TRUE ))
+}
+
 cmd_recall() {
     require_prod_running
-    command -v node >/dev/null || die "node required for recall"
-
-    local harness="${REPO_DIR}/scripts/ruvector-recall-harness.mjs"
-    [[ -f "$harness" ]] || die "recall harness not found: ${harness}"
 
     # Resolve the governed MCP env (.mcp.json pattern). Empty output is fine —
     # the harness falls back to the documented defaults.
@@ -1164,7 +1226,518 @@ cmd_recall() {
 
     # Pass all remaining args through (--runs, --k, --fixture, --json,
     # --build-fixture, --force, --help). The harness sets its own exit code.
-    env "${envp[@]}" node "$harness" "$@"
+    run_recall_harness "$@"
+}
+
+# 8. reindex — recover HNSW recall after write churn (ADR-2133). The index law
+#    (docs/LEARNING-memory.md invariant 8): non-concurrent AND serial, m=16,
+#    ef_construction=128. CONCURRENTLY double-inserts every tuple with this AM;
+#    the AM's parallel build leaves rows unreachable. The rebuild lands under a
+#    temporary name beside the live index (CREATE INDEX takes SHARE: reads and
+#    ANN searches keep using the old index, writes wait) and is swapped in with
+#    one short DROP+RENAME transaction. Verified on a scratch database against
+#    ruvector 0.3.0: a renamed HNSW index serves rows inserted after the swap,
+#    with no duplicate ids. Recall is measured before and after; the post-run
+#    must clear the enforced floor or the command fails loudly.
+HNSW_INDEX="idx_memory_embedding_hnsw"
+HNSW_REBUILD="${HNSW_INDEX}_rebuild"
+HNSW_OPCLASS="ruvector_cosine_ops"
+HNSW_M=16
+HNSW_EFC=128
+
+hnsw_create_sql() { # hnsw_create_sql <index-name> — the index-law definition
+    printf "CREATE INDEX %s ON memory_entries USING hnsw (embedding %s) WITH (m='%s', ef_construction='%s');" \
+        "$1" "$HNSW_OPCLASS" "$HNSW_M" "$HNSW_EFC"
+}
+
+hnsw_swap_sql() {
+    printf "BEGIN; SET LOCAL lock_timeout = '60s'; DROP INDEX %s; ALTER INDEX %s RENAME TO %s; COMMIT;" \
+        "$HNSW_INDEX" "$HNSW_REBUILD" "$HNSW_INDEX"
+}
+
+hnsw_index_def() { # current definition of <index> from pg_indexes (empty if absent)
+    pg "$CONTAINER" "SELECT indexdef FROM pg_indexes WHERE schemaname='public'
+                     AND tablename='memory_entries' AND indexname='$1';"
+}
+
+# The ANN probe used after the swap: the planner must pick the HNSW index and
+# a top-20 must carry 20 distinct ids (the double-insertion signature is the
+# same id twice in one top-k).
+hnsw_ann_probe_sql() {
+    printf "SET enable_seqscan = off; SELECT count(*) || ':' || count(DISTINCT id) FROM (SELECT id FROM memory_entries ORDER BY embedding <=> (SELECT embedding FROM memory_entries WHERE embedding IS NOT NULL ORDER BY id LIMIT 1) LIMIT 20) q;"
+}
+
+cmd_reindex() {
+    local apply=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes)     apply=1; shift ;;
+            --dry-run) apply=0; shift ;;
+            -h|--help) echo "Usage: $0 reindex [--dry-run|--yes]  (serial, non-concurrent HNSW rebuild + swap, recall-gated)"; return 0 ;;
+            *) die "unknown reindex option: $1" ;;
+        esac
+    done
+    require_prod_running
+
+    local def
+    def=$(hnsw_index_def "$HNSW_INDEX")
+    [[ -n "$def" ]] || die "${HNSW_INDEX} is absent — nothing to rebuild. Create it with:
+       SET max_parallel_maintenance_workers = 0; $(hnsw_create_sql "$HNSW_INDEX")"
+
+    info "reindex — serial, non-concurrent rebuild of ${HNSW_INDEX} (ADR-2133)"
+    echo "  current   : ${def}"
+    if [[ "$def" != *"USING hnsw (embedding ${HNSW_OPCLASS})"* ]]; then
+        die "operator class check failed: expected 'USING hnsw (embedding ${HNSW_OPCLASS})'.
+       Rebuilding with a different opclass changes retrieval geometry; that is a
+       migration under the recall gate, not a reindex. Refusing."
+    fi
+    ok "operator class ${HNSW_OPCLASS} (cosine; matches the <=> search path)"
+    local cur_m cur_efc
+    cur_m=$(grep -oE "m='?[0-9]+" <<<"$def" | grep -oE '[0-9]+' | head -1 || true)
+    cur_efc=$(grep -oE "ef_construction='?[0-9]+" <<<"$def" | grep -oE '[0-9]+' | head -1 || true)
+    if [[ "$cur_m" == "$HNSW_M" && "$cur_efc" == "$HNSW_EFC" ]]; then
+        ok "build parameters m=${cur_m} ef_construction=${cur_efc} (index law)"
+    else
+        warn "current parameters m=${cur_m:-default} ef_construction=${cur_efc:-default}; the rebuild uses the index law m=${HNSW_M} ef_construction=${HNSW_EFC}"
+    fi
+
+    local rows size leftover server_pmw
+    rows=$(pg "$CONTAINER" "SELECT count(*) || ' rows, ' || count(embedding) || ' embedded' FROM memory_entries;")
+    size=$(pg "$CONTAINER" "SELECT pg_size_pretty(pg_relation_size('public.${HNSW_INDEX}'::regclass));")
+    leftover=$(pg "$CONTAINER" "SELECT CASE WHEN indisvalid THEN 'valid' ELSE 'INVALID' END FROM pg_index WHERE indexrelid = to_regclass('public.${HNSW_REBUILD}');")
+    server_pmw=$(pg "$CONTAINER" "SHOW max_parallel_maintenance_workers;")
+    echo "  corpus    : ${rows}"
+    echo "  size      : ${size} (current index)"
+    echo "  server    : max_parallel_maintenance_workers=${server_pmw} (the build forces 0 in-session regardless)"
+    [[ -n "$leftover" ]] && warn "a ${leftover} ${HNSW_REBUILD} from an interrupted run exists; it is dropped first"
+    echo "  plan:"
+    echo "    1. recall harness (median-of-3) — recorded as the before figure"
+    echo "    2. SET max_parallel_maintenance_workers = 0; $(hnsw_create_sql "$HNSW_REBUILD")"
+    echo "    3. $(hnsw_swap_sql)"
+    echo "    4. verify: definition, planner uses ${HNSW_INDEX}, top-20 ids distinct; ANALYZE"
+    echo "    5. recall harness — must PASS at ≥${RECALL_FLOOR_SELF}/200 self, ≥${RECALL_FLOOR_TRUE}/120 true"
+    echo "  impact    : writes to memory_entries wait for the build (~5–8 min); ANN"
+    echo "              searches keep using the old index until the swap. Never CONCURRENTLY."
+
+    if [[ "$apply" -ne 1 ]]; then
+        echo -e "${YELLOW}[dry-run] nothing changed. Re-run with --yes to rebuild.${NC}"
+        return 0
+    fi
+
+    state_write "reindex.phase=pre-recall" "reindex.started_at=$(date -u +%FT%TZ)" \
+                "reindex.index_def_before=${def}" "reindex.index_size_before=${size}"
+
+    info "1/5 recall harness (before)"
+    recall_capture || die "the recall harness errored before the rebuild (fixture drift or DB/embedder down).
+       A reindex without a recorded baseline is refused — fix the harness first
+       (\`$0 recall\` shows the error)."
+    state_write "reindex.pre_self=${RECALL_SELF}" "reindex.pre_true=${RECALL_TRUE}" \
+                "reindex.pre_verdict=${RECALL_VERDICT}" "reindex.pre_artifact=${RECALL_ARTIFACT}"
+    echo "  before    : self ${RECALL_SELF}/200, true ${RECALL_TRUE}/120 — ${RECALL_VERDICT}"
+
+    info "2/5 building ${HNSW_REBUILD} (serial, non-concurrent)"
+    [[ -n "$leftover" ]] && pg "$CONTAINER" "DROP INDEX IF EXISTS public.${HNSW_REBUILD};" >/dev/null
+    state_write "reindex.phase=building"
+    local t0 t1 secs
+    t0=$(date +%s)
+    if ! pg "$CONTAINER" "SET max_parallel_maintenance_workers = 0; $(hnsw_create_sql "$HNSW_REBUILD")" >/dev/null; then
+        pg "$CONTAINER" "DROP INDEX IF EXISTS public.${HNSW_REBUILD};" >/dev/null 2>&1 || true
+        state_write "reindex.phase=build-failed"
+        die "build of ${HNSW_REBUILD} failed; ${HNSW_INDEX} is untouched."
+    fi
+    t1=$(date +%s); secs=$((t1 - t0))
+    state_write "reindex.build_seconds=${secs}"
+    ok "built in ${secs}s"
+    [[ "$(pg "$CONTAINER" "SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass('public.${HNSW_REBUILD}');")" == "t" ]] \
+        || die "${HNSW_REBUILD} is not valid after the build; ${HNSW_INDEX} is untouched."
+
+    info "3/5 swap"
+    local attempt swapped=0
+    for attempt in 1 2 3; do
+        if pg "$CONTAINER" "$(hnsw_swap_sql)" >/dev/null; then swapped=1; break; fi
+        warn "swap attempt ${attempt} could not take the lock within 60s; retrying"
+    done
+    if [[ "$swapped" -ne 1 ]]; then
+        state_write "reindex.phase=swap-failed"
+        die "swap failed three times. ${HNSW_INDEX} (old) still serves searches and
+       ${HNSW_REBUILD} is built and valid. Swap by hand when the table is quiet:
+       docker exec ${CONTAINER} psql -U ${PG_USER} -d ${PG_DB} -c \"$(hnsw_swap_sql)\""
+    fi
+    state_write "reindex.phase=swapped"
+    ok "${HNSW_REBUILD} → ${HNSW_INDEX}"
+
+    info "4/5 verify"
+    local newdef probe
+    newdef=$(hnsw_index_def "$HNSW_INDEX")
+    [[ "$newdef" == *"USING hnsw (embedding ${HNSW_OPCLASS}) WITH (m='${HNSW_M}', ef_construction='${HNSW_EFC}')"* ]] \
+        || die "post-swap definition is not the index law: ${newdef}"
+    ok "definition: ${newdef}"
+    pg "$CONTAINER" "SET enable_seqscan = off; EXPLAIN SELECT id FROM memory_entries ORDER BY embedding <=> (SELECT embedding FROM memory_entries WHERE embedding IS NOT NULL LIMIT 1) LIMIT 10;" \
+        | grep -q "$HNSW_INDEX" || die "the planner does not use ${HNSW_INDEX} after the swap"
+    ok "planner uses ${HNSW_INDEX}"
+    probe=$(pg "$CONTAINER" "$(hnsw_ann_probe_sql)" | tail -1)
+    [[ "$probe" == "20:20" ]] || die "top-20 ANN probe returned '${probe}' (count:distinct) — duplicate ids mean double insertion"
+    ok "top-20 ANN probe: 20 distinct ids"
+    pg "$CONTAINER" "ANALYZE memory_entries;" >/dev/null 2>&1 || true
+    local size_after
+    size_after=$(pg "$CONTAINER" "SELECT pg_size_pretty(pg_relation_size('public.${HNSW_INDEX}'::regclass));")
+    state_write "reindex.index_def_after=${newdef}" "reindex.index_size_after=${size_after}"
+    echo "  size      : ${size} → ${size_after}"
+
+    info "5/5 recall harness (after)"
+    recall_capture || { state_write "reindex.phase=post-recall-error";
+        die "the recall harness errored after the swap — recall is UNMEASURED. Run \`$0 recall\` now."; }
+    state_write "reindex.post_self=${RECALL_SELF}" "reindex.post_true=${RECALL_TRUE}" \
+                "reindex.post_verdict=${RECALL_VERDICT}" "reindex.post_artifact=${RECALL_ARTIFACT}" \
+                "reindex.finished_at=$(date -u +%FT%TZ)"
+    echo "  after     : self ${RECALL_SELF}/200, true ${RECALL_TRUE}/120 — ${RECALL_VERDICT}"
+    if ! recall_meets_floor; then
+        state_write "reindex.phase=post-recall-fail"
+        echo -e "${RED}════════════════════════════════════════════════════════════════${NC}" >&2
+        die "RECALL BELOW THE ENFORCED FLOOR after the rebuild: self ${RECALL_SELF}/200
+       (floor ${RECALL_FLOOR_SELF}), true ${RECALL_TRUE}/120 (floor ${RECALL_FLOOR_TRUE}), verdict ${RECALL_VERDICT}.
+       The index is the index-law rebuild; the cause is elsewhere (fixture, embedder,
+       corpus). Artifact: ${RECALL_ARTIFACT}"
+    fi
+    state_write "reindex.phase=done"
+    echo -e "${GREEN}reindex complete: ${secs}s build, recall clears the floor.${NC}"
+}
+
+# 9. reader-role — least-privilege login for read-only consumers (ADR-2133).
+#    ruvector_reader: LOGIN, password from RUVECTOR_READER_PASSWORD, no
+#    attributes, no memberships, default_transaction_read_only=on, CONNECT on the
+#    database, USAGE on public, SELECT on memory_entries and nothing else. The
+#    <=> operator's function is granted EXECUTE explicitly (PUBLIC already has
+#    it; the explicit grant survives a future REVOKE FROM PUBLIC). TEMPORARY on
+#    the database and CREATE on public are revoked from PUBLIC: the owner is a
+#    superuser, so only non-owner roles — i.e. this one — lose them.
+#    read-only-by-default is a guard rail the role can SET away; the privilege
+#    set is the boundary, and the verify step proves both layers.
+#    pg_hba: a role-scoped `host all <role> all scram-sha-256` line is kept
+#    ahead of every host line, so the password is enforced even where broader
+#    trust lines exist (see hba-harden). One-time operator op, idempotent;
+#    re-run after restoring the sidecar onto a fresh volume (roles are not in
+#    a pg_dump of the database).
+READER_ROLE="${RUVECTOR_READER_ROLE:-ruvector_reader}"
+READER_HBA_TAG="# agentbox:reader-role (ADR-2133)"
+
+valid_ident() { [[ "$1" =~ ^[a-z_][a-z0-9_]{0,62}$ ]]; }
+
+reader_role_sql() { # the whole apply script (psql, fed on stdin); no secret inside
+    local r="$READER_ROLE" d="$PG_DB"
+    cat <<SQL
+\\set ON_ERROR_STOP on
+\\getenv reader_pw RUVECTOR_READER_PASSWORD
+SET log_statement = 'none';
+BEGIN;
+SELECT format('CREATE ROLE %I LOGIN', '${r}') WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${r}') \\gexec
+ALTER ROLE ${r} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'reader_pw';
+SELECT format('REVOKE %I FROM %I', g.rolname, '${r}') FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid WHERE m.member = (SELECT oid FROM pg_roles WHERE rolname = '${r}') \\gexec
+ALTER ROLE ${r} SET default_transaction_read_only = on;
+REVOKE ALL ON DATABASE ${d} FROM ${r};
+GRANT CONNECT ON DATABASE ${d} TO ${r};
+REVOKE TEMPORARY ON DATABASE ${d} FROM PUBLIC;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM ${r};
+GRANT USAGE ON SCHEMA public TO ${r};
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM ${r};
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM ${r};
+GRANT SELECT ON TABLE public.memory_entries TO ${r};
+SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', o.oprcode::regprocedure, '${r}') FROM pg_operator o WHERE o.oprname = '<=>' AND o.oprleft = 'ruvector'::regtype AND o.oprright = 'ruvector'::regtype \\gexec
+COMMIT;
+SQL
+}
+
+hba_file() { pg "$CONTAINER" "SHOW hba_file;"; }
+
+hba_backup() { # hba_backup <hba-path> — echoes the backup path
+    local b="$1.agentbox-$(date -u +%Y%m%dT%H%M%SZ)"
+    docker exec -u postgres "$CONTAINER" cp -p "$1" "$b" >/dev/null && echo "$b"
+}
+
+hba_reload_checked() { # hba_reload_checked <hba-path> <backup> — reload; restore on parse error
+    pg "$CONTAINER" "SELECT pg_reload_conf();" >/dev/null
+    local errs
+    errs=$(pg "$CONTAINER" "SELECT count(*) FROM pg_hba_file_rules WHERE error IS NOT NULL;")
+    if [[ "$errs" != "0" ]]; then
+        docker exec -u postgres "$CONTAINER" cp -p "$2" "$1"
+        pg "$CONTAINER" "SELECT pg_reload_conf();" >/dev/null
+        die "pg_hba.conf did not parse after the edit (${errs} error row(s)); restored ${2} and reloaded."
+    fi
+}
+
+# Keep the role-scoped scram line as the first `host` line (idempotent).
+reader_hba_ensure() {
+    local hba first want backup
+    hba=$(hba_file)
+    want="host    all    ${READER_ROLE}    all    scram-sha-256    ${READER_HBA_TAG}"
+    first=$(docker exec "$CONTAINER" awk '$1=="host"{print; exit}' "$hba")
+    if [[ "$first" == "$want" ]]; then
+        ok "pg_hba: ${READER_ROLE} scram line already precedes every host line"
+        return 0
+    fi
+    backup=$(hba_backup "$hba") || die "could not back up ${hba}"
+    in_container_awk "$hba" '
+        index($0, tag) { next }
+        !done && $1 == "host" { print want; done = 1 }
+        { print }
+        END { if (!done) print want }' -v "want=${want}" -v "tag=${READER_HBA_TAG}" \
+        || die "pg_hba edit failed (backup ${backup})"
+    hba_reload_checked "$hba" "$backup"
+    ok "pg_hba: ${READER_ROLE} scram line inserted ahead of every host line (backup ${backup##*/})"
+}
+
+# reader_psql <password-env-value> <sql> — psql as the reader over TCP, so
+# pg_hba applies; the password goes by name-only `docker exec -e`.
+reader_psql() {
+    PGPASSWORD="$1" docker exec -e PGPASSWORD "$CONTAINER" \
+        psql -h 127.0.0.1 -U "$READER_ROLE" -d "$PG_DB" -v ON_ERROR_STOP=1 -tAc "$2" 2>&1
+}
+
+reader_role_verify() {
+    local pw="$RUVECTOR_READER_PASSWORD" out failures=0 other stmt
+    _rv_expect_ok() { # <label> <sql> <expected-last-line-or-glob>
+        out=$(reader_psql "$pw" "$2") && [[ "$(tail -1 <<<"$out")" == $3 ]] \
+            && ok "$1" || { fail "$1 (got: $(tail -1 <<<"$out"))"; failures=$((failures+1)); }
+    }
+    _rv_expect_denied() { # <label> <sql> — must error with a privilege/read-only refusal
+        if out=$(reader_psql "$pw" "$2"); then
+            fail "$1 SUCCEEDED (rolled back)"; failures=$((failures+1))
+        elif grep -qE 'permission denied|read-only transaction' <<<"$out"; then
+            ok "$1 refused ($(grep -oE 'permission denied[^"]*|read-only transaction' <<<"$out" | head -1))"
+        else
+            fail "$1 failed for another reason: $(tail -1 <<<"$out")"; failures=$((failures+1))
+        fi
+    }
+
+    out=$(reader_psql "wrong-${RANDOM}${RANDOM}" "SELECT 1;") \
+        && { fail "a WRONG password logged in — pg_hba does not enforce the reader's password"; failures=$((failures+1)); } \
+        || { grep -q 'password authentication failed' <<<"$out" && ok "wrong password rejected over TCP" \
+             || { fail "wrong-password probe failed oddly: $(tail -1 <<<"$out")"; failures=$((failures+1)); }; }
+    _rv_expect_ok "login + default_transaction_read_only" "SHOW default_transaction_read_only;" "on"
+    _rv_expect_ok "top-k ANN search (HNSW)" \
+        "SET enable_seqscan = off; SELECT count(*) FROM (SELECT id FROM memory_entries ORDER BY embedding <=> (SELECT embedding FROM memory_entries WHERE embedding IS NOT NULL LIMIT 1) LIMIT 10) q;" "10"
+    _rv_expect_ok "top-k exact search (seq scan)" \
+        "SET enable_indexscan = off; SET enable_bitmapscan = off; SELECT count(*) FROM (SELECT id FROM memory_entries ORDER BY embedding <=> (SELECT embedding FROM memory_entries WHERE embedding IS NOT NULL LIMIT 1) LIMIT 10) q;" "10"
+    # Each write is tried twice: inside the read-only default, and after the
+    # role opts back into READ WRITE (the privilege layer). Always rolled back.
+    for stmt in \
+        "INSERT INTO memory_entries (id, namespace, key, value) VALUES ('reader-probe', 'reader-probe', 'probe', '{}'::jsonb)" \
+        "UPDATE memory_entries SET key = key WHERE id = 'reader-probe'" \
+        "DELETE FROM memory_entries WHERE id = 'reader-probe'" \
+        "CREATE TABLE public.reader_probe (x int)" \
+        "CREATE TEMP TABLE reader_probe (x int)"; do
+        _rv_expect_denied "${stmt%% *} (read-only default)" "BEGIN; ${stmt}; ROLLBACK;"
+        _rv_expect_denied "${stmt%% *} (READ WRITE opt-in)" "BEGIN READ WRITE; ${stmt}; ROLLBACK;"
+    done
+    other=$(pg "$CONTAINER" "SELECT quote_ident(tablename) FROM pg_tables WHERE schemaname='public' AND tablename <> 'memory_entries' ORDER BY tablename LIMIT 1;")
+    [[ -n "$other" ]] && _rv_expect_denied "SELECT on public.${other}" "SELECT 1 FROM public.${other} LIMIT 1;"
+    return "$failures"
+}
+
+cmd_reader_role() {
+    local apply=0 verify_only=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes)     apply=1; shift ;;
+            --dry-run) apply=0; shift ;;
+            --verify)  verify_only=1; shift ;;
+            -h|--help) echo "Usage: $0 reader-role [--dry-run|--yes|--verify]  (flag: reader_role; needs RUVECTOR_READER_PASSWORD)"; return 0 ;;
+            *) die "unknown reader-role option: $1" ;;
+        esac
+    done
+    valid_ident "$READER_ROLE" || die "invalid role name: ${READER_ROLE}"
+    valid_ident "$PG_DB" || die "invalid database name: ${PG_DB}"
+    require_prod_running
+
+    if [[ "$verify_only" -eq 1 ]]; then
+        [[ -n "${RUVECTOR_READER_PASSWORD:-}" ]] || die "RUVECTOR_READER_PASSWORD is unset — needed to log in as ${READER_ROLE}."
+        info "reader-role --verify — logging in as ${READER_ROLE}"
+        reader_role_verify || die "reader-role verification FAILED"
+        echo -e "${GREEN}${READER_ROLE} verified: reads work, every write path is refused.${NC}"
+        return 0
+    fi
+
+    local present priv hba_first
+    present=$(pg "$CONTAINER" "SELECT 1 FROM pg_roles WHERE rolname = '${READER_ROLE}';")
+    info "reader-role — least-privilege read-only login (ADR-2133)"
+    echo "  gate      : [integrations.ruvector_external] reader_role"
+    echo "  role      : ${READER_ROLE} ($([[ -n "$present" ]] && echo present || echo absent))"
+    if [[ -n "${RUVECTOR_READER_PASSWORD:-}" ]]; then
+        echo "  RUVECTOR_READER_PASSWORD : set (never printed)"
+    else
+        echo "  RUVECTOR_READER_PASSWORD : unset (required for --yes)"
+    fi
+    if [[ -n "$present" ]]; then
+        priv=$(pg "$CONTAINER" "SELECT 'select=' || has_table_privilege('${READER_ROLE}', 'public.memory_entries', 'SELECT') || ' insert=' || has_table_privilege('${READER_ROLE}', 'public.memory_entries', 'INSERT');")
+        echo "  current   : ${priv}"
+    fi
+    hba_first=$(pg "$CONTAINER" "SELECT line_number || ': ' || user_name::text || ' ' || coalesce(address, '') || ' ' || auth_method FROM pg_hba_file_rules WHERE type = 'host' ORDER BY line_number LIMIT 1;" | tail -1)
+    echo "  pg_hba    : first host rule ${hba_first:-?}; --yes keeps a ${READER_ROLE} scram line ahead of it"
+    echo "  SQL (stdin; the password is read from the environment by psql, never printed):"
+    reader_role_sql | sed 's/^/    /'
+
+    if ! ruvector_apply_gate "$apply" "reader_role" "reader-role"; then
+        echo -e "${YELLOW}[dry-run] nothing changed. Re-run with --yes (RUVECTOR_READER_PASSWORD set, reader_role=true).${NC}"
+        return 0
+    fi
+    [[ -n "${RUVECTOR_READER_PASSWORD:-}" ]] || die "RUVECTOR_READER_PASSWORD is unset — refusing to create a role without a password."
+
+    info "applying role + grants"
+    reader_role_sql | docker exec -i -e RUVECTOR_READER_PASSWORD "$CONTAINER" \
+        psql -U "$PG_USER" -d "$PG_DB" -q -f - >/dev/null || die "role SQL failed (transaction rolled back)"
+    ok "${READER_ROLE} created/updated"
+    reader_hba_ensure
+    info "verifying as ${READER_ROLE}"
+    reader_role_verify || die "reader-role verification FAILED — inspect the lines above"
+    echo -e "${GREEN}reader-role complete: ${READER_ROLE} reads memory_entries and nothing writes.${NC}"
+}
+
+# 10. hba-harden — replace non-loopback `trust` host lines with scram-sha-256
+#     (ADR-2133). A trust line for a docker subnet lets every client on that
+#     network log in as any role, the superuser included, without a password,
+#     so no role password is enforced from there. Refuses unless every password
+#     a known client sends (the container's POSTGRES_PASSWORD and the governed
+#     .mcp.json conninfo) verifies against the owner's stored SCRAM verifier;
+#     after the reload it proves the owner still logs in over the network path
+#     and a wrong password does not, and restores the backup otherwise.
+hba_trust_rules_sql="SELECT line_number || '|' || type || '|' || database::text || '|' || user_name::text || '|' || coalesce(address, '') || '|' || auth_method FROM pg_hba_file_rules WHERE type LIKE 'host%' AND auth_method = 'trust' AND coalesce(address, '') NOT IN ('127.0.0.1', '::1') ORDER BY line_number;"
+
+# scram_verifies <password> <verifier> — RFC 5802/7677 StoredKey check with
+# node:crypto's PBKDF2/HMAC/SHA-256 (no hand-rolled primitive). Both values
+# travel through the environment, never argv.
+scram_verifies() {
+    SCRAM_PW="$1" SCRAM_VERIFIER="$2" node -e '
+        const c = require("node:crypto");
+        const m = /^SCRAM-SHA-256\$(\d+):([^$]+)\$([^:]+):(.+)$/.exec(process.env.SCRAM_VERIFIER || "");
+        if (!m) process.exit(3);
+        const salted = c.pbkdf2Sync(Buffer.from(process.env.SCRAM_PW, "utf8"), Buffer.from(m[2], "base64"), Number(m[1]), 32, "sha256");
+        const clientKey = c.createHmac("sha256", salted).update("Client Key").digest();
+        const stored = c.createHash("sha256").update(clientKey).digest();
+        process.exit(c.timingSafeEqual(stored, Buffer.from(m[3], "base64")) ? 0 : 1);'
+}
+
+# Every password a known owner-role client sends, labelled (values never printed).
+owner_client_passwords() {
+    local pw conn
+    pw=$(docker inspect "$CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+            | awk -F= '$1=="POSTGRES_PASSWORD"{sub(/^[^=]*=/,""); print; exit}')
+    [[ -n "$pw" ]] && printf 'container POSTGRES_PASSWORD\t%s\n' "$pw"
+    conn=$(mcp_env_pairs 2>/dev/null | awk -F= '$1=="RUVECTOR_PG_CONNINFO"{sub(/^[^=]*=/,""); print; exit}' || true)
+    pw=$(grep -oE 'password=[^ ]+' <<<"$conn" | head -1 | cut -d= -f2- || true)
+    [[ -n "$pw" ]] && printf '.mcp.json RUVECTOR_PG_CONNINFO\t%s\n' "$pw"
+    return 0
+}
+
+owner_passwords_verify() { # 0 iff at least one client password and all verify
+    local verifier label pw n=0 bad=0
+    verifier=$(pg "$CONTAINER" "SELECT rolpassword FROM pg_authid WHERE rolname = '${PG_USER}';" 2>/dev/null || true)
+    if [[ "$verifier" != SCRAM-SHA-256* ]]; then
+        warn "owner ${PG_USER} has no SCRAM verifier (${verifier:+non-SCRAM}${verifier:-none}) — cannot prove clients survive scram"
+        return 1
+    fi
+    while IFS=$'\t' read -r label pw; do
+        [[ -z "$label" ]] && continue
+        n=$((n+1))
+        if scram_verifies "$pw" "$verifier"; then ok "${label} verifies against ${PG_USER}'s SCRAM verifier"
+        else fail "${label} does NOT verify — that client would be locked out"; bad=$((bad+1)); fi
+    done < <(owner_client_passwords)
+    [[ "$n" -gt 0 && "$bad" -eq 0 ]]
+}
+
+# hba_rewrite_trust <hba-path> — in place: non-loopback trust host lines become
+# scram-sha-256; exact duplicate rule lines (whitespace-normalised) are dropped.
+HBA_TRUST_AWK='
+    /^[[:space:]]*#/ || NF == 0 { print; next }
+    {
+        rule = $0; sub(/[[:space:]]*#.*$/, "", rule); n = split(rule, f, /[[:space:]]+/)
+        if ((f[1] == "host" || f[1] == "hostssl" || f[1] == "hostnossl") && f[n] == "trust" \
+            && f[4] != "127.0.0.1/32" && f[4] != "::1/128" && f[4] != "127.0.0.1" && f[4] != "::1") {
+            f[n] = "scram-sha-256"; rule = f[1]; for (i = 2; i <= n; i++) rule = rule " " f[i]
+            $0 = rule
+        }
+        key = rule; gsub(/[[:space:]]+/, " ", key); sub(/^ /, "", key)
+        if (seen[key]++) next
+        print
+    }'
+
+# in_container_awk <hba-path> <awk-program> [awk -v args…] — rewrite the file
+# in place as postgres (truncate-and-write keeps ownership and mode; an empty
+# result is never written).
+in_container_awk() {
+    local hba="$1" prog="$2"; shift 2
+    docker exec -u postgres "$CONTAINER" sh -c '
+        hba="$1"; prog="$2"; shift 2
+        out=$(awk "$@" "$prog" "$hba") && [ -n "$out" ] && printf "%s\n" "$out" > "$hba"
+    ' _ "$hba" "$prog" "$@"
+}
+
+# hba_rewrite_trust <hba-path> — in place: non-loopback trust host lines become
+# scram-sha-256 (a trailing comment is dropped with the rewrite); exact
+# duplicate rules (whitespace-normalised, comments ignored) are dropped.
+hba_rewrite_trust() { in_container_awk "$1" "$HBA_TRUST_AWK"; }
+
+cmd_hba_harden() {
+    local apply=0
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yes)     apply=1; shift ;;
+            --dry-run) apply=0; shift ;;
+            -h|--help) echo "Usage: $0 hba-harden [--dry-run|--yes]  (flag: hba_scram)"; return 0 ;;
+            *) die "unknown hba-harden option: $1" ;;
+        esac
+    done
+    require_prod_running
+
+    local rules hba
+    hba=$(hba_file)
+    rules=$(pg "$CONTAINER" "$hba_trust_rules_sql")
+    info "hba-harden — non-loopback trust → scram-sha-256 (ADR-2133)"
+    echo "  gate      : [integrations.ruvector_external] hba_scram"
+    echo "  hba_file  : ${hba}"
+    if [[ -z "$rules" ]]; then
+        echo -e "${GREEN}  no non-loopback trust lines — nothing to do.${NC}"
+        return 0
+    fi
+    echo "  trust lines that admit any role without a password (line|type|db|user|address|method):"
+    sed 's/^/    /' <<<"$rules"
+    echo "  plan      : rewrite each to scram-sha-256, drop exact duplicate lines, reload;"
+    echo "              prove the owner logs in over the network with its password and a"
+    echo "              wrong one is refused; restore the backup on any failure."
+    echo "  clients   : every owner-role client must send the right password afterwards"
+    echo "              (VisionClaw on visionclaw_network included — not checkable from here)."
+    local verified=0
+    owner_passwords_verify && verified=1 || true
+
+    if ! ruvector_apply_gate "$apply" "hba_scram" "hba-harden"; then
+        echo -e "${YELLOW}[dry-run] nothing changed. Re-run with --yes (and hba_scram=true) to apply.${NC}"
+        return 0
+    fi
+    [[ "$verified" -eq 1 ]] || die "a known client password does not verify against ${PG_USER}'s SCRAM verifier; refusing to remove trust."
+
+    local backup ip owner_pw out
+    backup=$(hba_backup "$hba") || die "could not back up ${hba}"
+    hba_rewrite_trust "$hba" || die "pg_hba edit failed (backup ${backup})"
+    hba_reload_checked "$hba" "$backup"
+    ok "rewritten + reloaded (backup ${backup##*/})"
+
+    # Network-path proof: connect to the container's own non-loopback address.
+    ip=$(docker inspect "$CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' | awk '{print $1}')
+    owner_pw=$(owner_client_passwords | head -1 | cut -f2)
+    local restore=0
+    if ! PGPASSWORD="$owner_pw" docker exec -e PGPASSWORD "$CONTAINER" psql -h "$ip" -U "$PG_USER" -d "$PG_DB" -tAc "SELECT 1;" >/dev/null 2>&1; then
+        fail "owner login over ${ip} with its password failed"; restore=1
+    elif out=$(PGPASSWORD="wrong-${RANDOM}${RANDOM}" docker exec -e PGPASSWORD "$CONTAINER" psql -h "$ip" -U "$PG_USER" -d "$PG_DB" -tAc "SELECT 1;" 2>&1); then
+        fail "a wrong password still logs in over ${ip} — a trust path remains"; restore=1
+    else
+        ok "owner logs in over ${ip} with its password; a wrong password is refused"
+    fi
+    if [[ "$restore" -eq 1 ]]; then
+        docker exec -u postgres "$CONTAINER" cp -p "$backup" "$hba"
+        pg "$CONTAINER" "SELECT pg_reload_conf();" >/dev/null
+        die "hba-harden verification failed; restored ${backup##*/} and reloaded."
+    fi
+    echo -e "${GREEN}hba-harden complete: no non-loopback trust lines remain.${NC}"
 }
 
 # ── dispatch ─────────────────────────────────────────────────────────────────
@@ -1182,8 +1755,11 @@ case "${1:-status}" in
     aggregate-effectiveness) shift || true; cmd_aggregate_effectiveness "$@" ;;
     build-metadata-gin)   shift || true; cmd_build_metadata_gin "$@" ;;
     recall)   shift || true; cmd_recall "$@" ;;
+    reindex)  shift || true; cmd_reindex "$@" ;;
+    reader-role) shift || true; cmd_reader_role "$@" ;;
+    hba-harden)  shift || true; cmd_hba_harden "$@" ;;
     -h|--help|help)
-        sed -n '2,81p' "$0" | sed 's/^# \{0,1\}//'
+        sed -n '2,100p' "$0" | sed 's/^# \{0,1\}//'
         ;;
-    *) die "unknown subcommand: $1 (status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin|recall)" ;;
+    *) die "unknown subcommand: $1 (status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin|recall|reindex|reader-role|hba-harden)" ;;
 esac

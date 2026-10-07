@@ -47,7 +47,7 @@ Local lifecycle commands:
   ${GREEN}activate${NC}         Activate the prepared candidate (Agentbox only; no sidecars/cleanup)
   ${GREEN}rebuild${NC}          Prepare, then activate Agentbox [--prepare-only leaves it running]
   ${GREEN}update${NC}           Update flake inputs + CLI versions + resolve hashes [--check|--cli-only|--flake-only]
-  ${GREEN}ruvector${NC}         Manage the ruvector-postgres memory sidecar [status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin|recall]
+  ${GREEN}ruvector${NC}         Manage the ruvector-postgres memory sidecar [status|check|test|update|rollback|migrate-trajectories|repair-namespaces|backfill-embeddings|archive-legacy|aggregate-effectiveness|build-metadata-gin|recall|reindex|reader-role|hba-harden]
   ${GREEN}logs${NC}             Follow logs [service: supervisorctl tail, else compose logs]
   ${GREEN}shell${NC}            Open shell in container [profile: zellij layout in that profile]
   ${GREEN}health${NC}           Show service health [--json: raw JSON output]
@@ -100,6 +100,9 @@ Examples:
   $0 ruvector aggregate-effectiveness    # dry-run Wilson+recency effectiveness aggregates (--yes + [memory_learning] enabled)
   $0 ruvector build-metadata-gin         # dry-run GIN on metadata jsonb_path_ops for tag @> (--yes + metadata_gin flag)
   $0 ruvector recall                     # recall-regression harness (ADR-040 D2/W-B, read-only; self-recall@10 / true-recall@10)
+  $0 ruvector reindex                    # dry-run serial HNSW rebuild + swap, recall-gated before/after (--yes applies; ADR-2133)
+  $0 ruvector reader-role                # dry-run least-privilege ruvector_reader (--yes + reader_role flag + RUVECTOR_READER_PASSWORD)
+  $0 ruvector hba-harden                 # dry-run pg_hba non-loopback trust -> scram (--yes + hba_scram flag)
   $0 ruvnet-brain ingest    # reconcile RuvNet KB corpus in the sidecar against latest release (--force to re-embed all)
   $0 ruvnet-brain status    # corpus chunk count + ingest manifest (namespace ruvnet-kb)
   $0 ruvnet-brain logs      # follow the boot-time ingest log

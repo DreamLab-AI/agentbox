@@ -437,6 +437,11 @@ metadata_gin       = true    # require/build the GIN on metadata jsonb for tag r
 health_tool        = true    # expose memory_health read-only diagnostics
 episodic_ttl_sweep = true    # honour TTL, sweep expired episodic entries (implements delete)
 memory_orient      = true    # memory_orient OODA cold-start bundle (semantic + effectiveness aggregates + episodic)
+# ADR-2133: sidecar access hardening, applied by one-time gated ops in
+# scripts/ruvector-sidecar-update.sh (never at boot: memory_entries is created by
+# the MCP server after initdb, and the reader password stays out of the sidecar env).
+reader_role        = true    # `ruvector reader-role --yes`: ruvector_reader, SELECT on memory_entries only (needs RUVECTOR_READER_PASSWORD)
+hba_scram          = false   # `ruvector hba-harden --yes`: non-loopback pg_hba trust lines -> scram-sha-256 (every client must send the right password)
 # ── ADR-2082: orchestration proxy — the swarm capability behind mcp__claude-flow__* ──
 # The governed server implements memory_* only; swarm_init / agent_spawn / task_* /
 # coordination_* had been honest "unimplemented" stubs since the 2026-06-11 audit.
