@@ -20,7 +20,7 @@
 
 { lib, pkgs }:
 
-let
+  # 2.1.291 (built 2026-10-06T02:41:25Z; bumped 2026-10-06 in 9415186f3).
   # 2.1.289 (built 2026-10-03T19:38:35Z; bumped 2026-10-05).
   # Driver: the ruflo 3.51.x mods (ruflo-console) need Claude Code 2.1.287+.
   # Retains the function-hook surface introduced in 2.1.276
