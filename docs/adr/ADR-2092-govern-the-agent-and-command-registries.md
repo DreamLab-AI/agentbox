@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -271,3 +271,18 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Since `34f5e4254`, only `flake.nix` has changed among the governed paths. `agents/registered-agents.txt` (still 12 agents), `config/registered-commands.txt`, both reconcile scripts, `project-skill-roots.mjs`, `config/entrypoint-unified.sh` and `tests/config/agent-reconcile.test.sh` have no diff.
+
+What each `flake.nix` commit changes:
+- `68a77b1bf`, `1afd80dd1`, `dfbcd69d9`, `57bbd3fad` and `afc8a0ed6` move `vaultSrc` forward to VisionClaw `3213e314f`.
+- `afc8a0ed6` also projects `[sovereign_mesh.forum_governance]` into the management-api environment as `AGENTBOX_FORUM_GOVERNANCE_RELAY` and `AGENTBOX_FORUM_GOVERNANCE_SIGNERS`.
+- `cc5f5dcc0`, `2bc789d33` and `feb608318` add the `[diagram_review]`-gated `[program:diagram-review-cron]` (ADR-2131).
+- `a98aba880` adds `sealmapPkg` to `skillToolPackages`.
+- `6e4e4a0f8` widens the two faucet programs' `PATH`.
+- `7dadf61d7` replaces the four hand-written image layers with `lib/image-layers.nix` cadence groups and drops the per-image `maxLayers` overrides (ADR-2132).
+- `c25eee9b9` is a merge that brings no net change against the anchor.
+
+None of these registers an agent or a command, or changes how `/opt/agentbox/agents` is baked or reconciled. The decision holds.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -152,7 +152,7 @@ named residual, which keeps `implementation_status: partial`.
 - **Suitability:** fits, needs revision
 - **Priority:** P1 — this cycle (settle the proposed-ADR census, TODO "Proposed decision records")
 - **Why:** The only blocker the record names, "colloquy-nostr 0.2.0 and colloquy-store 0.2.0 are not published", is resolved. Both are on crates.io at 0.2.1, and the forum client pins `colloquy-nostr = "0.2"` from the registry (`nostr-rust-forum/crates/nostr-bbs-forum-client/Cargo.toml:36`). Still open is fixture backing for both allocations under ADR-2061. The settlement half (38420–38425) only reserves numbers for records that are still proposed and parked.
-- **Next:** Amend "Not done, and why" to record the 0.2.1 publication, then accept the band rule and the colloquy move. The ADR-2061 fixture rows remain a named residual. **Accepted — owner decision 2026-10-02, Q8** (re-verified at `a238a3764`: crates.io `max_version` 0.2.1 for both crates; the forum `Cargo.lock` resolves `colloquy-nostr 0.2.1` from the registry). Revisions made in place: Verification's "Not done, and why" now records the publication, and the Consequences residual names the ADR-2061 fixture as following ADR-2061 rather than gating this record. `implementation_status: partial` (fixture rows); `activation_status: staged`: the manifest relay admits `38410`-`38415` (`agentbox.toml:174`), but no colloquy store or event exists in this container yet, and the settlement half is only reserved.
+- **Next:** Amend "Not done, and why" to record the 0.2.1 publication, then accept the band rule and the colloquy move. The ADR-2061 fixture rows remain a named residual. **Accepted — owner decision 2026-10-02, Q8** (re-verified at `a238a3764`: crates.io `max_version` 0.2.1 for both crates; the forum `Cargo.lock` resolves `colloquy-nostr 0.2.1` from the registry). Revisions made in place: Verification's "Not done, and why" now records the publication, and the Consequences residual names the ADR-2061 fixture as following ADR-2061 rather than gating this record. `implementation_status: partial` (fixture rows); `activation_status: staged`: the manifest relay admits `38410`-`38415` (`agentbox.toml:173`), but no colloquy store or event exists in this container yet, and the settlement half is only reserved.
 
 ## Re-verification — 2026-10-02 (`66425f9bd07206fe6e8f7215625ece1aa7e31eb8`)
 
@@ -228,3 +228,17 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `agentbox.toml`: `34f322740` adds `[sidechain].faucet_units = 1000`/`faucet_sats = 2000`; `29bff6d94`, `5241b28e7` and `aeca58df6` switch `[sidechain.dreamlab-txbt4]` on (`enabled = true`, `interval = 60`, `peg_script`); `bde96a334`/`f2dfc5bfa` add `[poker_citizen.dreamlab-txbt4]` (the BLAKES7 seat on `:3451`, `asset_id`); `18a85577c` adds `[poker_coach]`; `a2ffa05eb` moves `[toolchains].ruflo_console` beside `ruflo` and sets it `true`. `crates/colloquy/colloquy-nostr/src/kinds.rs`, `docs/PROTOCOL-registry.md` and `colloquy_publish.rs` did not move. Nothing this record decides (ADR-2105 — The agentbox 38xxx bands below 38400 are all reserved, so colloquy and settlement move to 38400-38499) changed: no kind number or band appears in the diff. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Since `1fc26c786`, only `agentbox.toml` has changed among the governed paths. `crates/colloquy/colloquy-nostr/src/kinds.rs`, `docs/PROTOCOL-registry.md` and `services/nostr-pod-bridge/src/colloquy_publish.rs` have no diff.
+
+What each `agentbox.toml` commit changes:
+- `afc8a0ed6` adds `[sovereign_mesh.forum_governance]`. It subscribes to kind 31403, which sits in the already-allowlisted 31400-31405 range and is not a 38xxx allocation.
+- `4f09c96b2` adds `reader_role` and `hba_scram` (ADR-2133).
+- `cc5f5dcc0`, `2bc789d33` and `09a024b12` add `[diagram_review]`.
+- `a449138f2` enables `[integrations.comfyui_external]`.
+- `b1e42f148` sets `label_log = false`.
+- `e4e4f5fb6` raises `zai_max_tokens` to 131072.
+
+No kind number, band or `allowed_kinds` member moved. The Disposition section cites the relay allowlist at `agentbox.toml:174`. That line held `allowed_kinds` at `a238a3764`, but the list sat at `:173` by `1fc26c786` and is still at `:173` at `cca7ea3b1`, unchanged, admitting `38410`-`38415`. Corrected the citation. The decision holds.

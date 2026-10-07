@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -314,3 +314,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `agentbox.toml`: `34f322740` adds `[sidechain].faucet_units = 1000`/`faucet_sats = 2000`; `29bff6d94`, `5241b28e7` and `aeca58df6` switch `[sidechain.dreamlab-txbt4]` on (`enabled = true`, `interval = 60`, `peg_script`); `bde96a334`/`f2dfc5bfa` add `[poker_citizen.dreamlab-txbt4]` (the BLAKES7 seat on `:3451`, `asset_id`); `18a85577c` adds `[poker_coach]`; `a2ffa05eb` moves `[toolchains].ruflo_console` beside `ruflo` and sets it `true`. `mcp/servers/lib/ontology-retrieval.js` did not move; `loom_url`, `loom_model` and `loom_max_tokens` are unchanged. One new consumer appears: `[poker_coach].llm_url = "http://192.168.2.132:8084/v1"` holds the `:8084` door, with `[poker_coach].model` naming what the endpoint expects (`18a85577c`) — the façade contract this record requires, not a second door. Nothing this record decides (ADR-2023 — The Loom is a façade — consumers hold the :8084 door and the model is a swappable URL behind it) changed. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+`mcp/servers/lib/ontology-retrieval.js` is unchanged since `1fc26c786`, so the `LOOM_FACADE_URL` seed and expand path and the ordinary VisionClaw selection when it is unset (`:105`, `:483-486`) stand. In `agentbox.toml`, `e4e4f5fb6` raises `[dream_machine].zai_max_tokens` to 131072. That is the dream engine's direct Z.AI provider, not a Loom consumer and not a raw model port. `a449138f2` changes only `[integrations.comfyui_external].enabled`, and the remaining hunks (forum governance, RuVector flags, `[diagram_review]`, `label_log`) are unrelated. The façade entries have moved but their values are unchanged: `loom_url = "${LOOM_BASE_URL}"` at `agentbox.toml:2298`, `loom_model = ""` (façade discovery) at `:2301`, `loom_max_tokens = 32768` at `:2305`, and the condense `endpoint = "${LOOM_BASE_URL}"` with its façade comment at `:887`. No consumer gains a raw model address. The ADR-051 distillation server is still not discrete, so `implementation_status: partial` stands. The decision holds.

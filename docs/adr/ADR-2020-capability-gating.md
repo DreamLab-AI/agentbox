@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -251,3 +251,11 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `agentbox.toml`: `34f322740` adds `[sidechain].faucet_units = 1000`/`faucet_sats = 2000`; `29bff6d94`, `5241b28e7` and `aeca58df6` switch `[sidechain.dreamlab-txbt4]` on (`enabled = true`, `interval = 60`, `peg_script`); `bde96a334`/`f2dfc5bfa` add `[poker_citizen.dreamlab-txbt4]` (the BLAKES7 seat on `:3451`, `asset_id`); `18a85577c` adds `[poker_coach]`; `a2ffa05eb` moves `[toolchains].ruflo_console` beside `ruflo` and sets it `true`. `skills/tree-search-coder/SKILL.md` and `tree-search-cap.rs` did not move. Each new table is a manifest gate in this record's shape: `[poker_citizen.<name>]` and `[poker_coach]` are schema-declared, catalogued rebuild-class, and bake nothing when off; the `[sidechain.dreamlab-txbt4]` and `ruflo_console` flips are gate *states* changing in the shipped manifest, not the rule. The previous note's "the gate defaults off" for `ruflo_console` describes the manifest at `451823ca8`; since `a2ffa05eb` it ships on, and `tests/config/ruflo-console.test.mjs` asserts byte-identity when off and the three ids when on (15/15 at HEAD). Nothing this record decides (ADR-2020 — Optional capabilities are manifest-gated and byte-identical-when-off; execution-gated tools are spend-capped and never auto-routed) changed. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+`skills/tree-search-coder/SKILL.md` and `services/agentbox-ops/src/bin/tree-search-cap.rs` are unchanged since `1fc26c786`. "NEVER auto-routed" is still at `SKILL.md:9` and `EXIT_REFUSED = 3` at `tree-search-cap.rs:32`. In `agentbox.toml`, `[skills.tree_search_coder]` is at `:850`, its comment at `:853` and `max_candidates = 5`, `per_branch_timeout_s = 60` and `spend_cap_usd = 0.50` at `:855-857`, all with values unchanged. The other gates have also moved: `[skills.code_interpreter]` `:614`, `[skills.codeact]` `:630`, `[skills.aci_shell]` `:808`, `[dream_machine]` `:2294`.
+
+The one new capability gate is `[diagram_review]` (`cc5f5dcc0`, `2bc789d33`, `09a024b12`; ADR-2131). It follows the pattern: `diagramReviewEnabled` at `flake.nix:252` defaults off and gates `[program:diagram-review-cron]` at `flake.nix:2891-2902`, with a `rebuild`-class catalogue entry at `management-api/lib/system-manifest.js:278`. Its spend sits behind a `gemini_monthly_usd` cap. Its `sealmap` binary is baked without a gate in `skillToolPackages` (`flake.nix:1752`), beside diagram-ir and prose-sanitiser. That is consistent with this record's own `partial` status: the off state is not proven footprint-free.
+
+`[sovereign_mesh.forum_governance]` is off when empty and carries no package. `comfyui_external` is switched on, and `label_log` and `zai_max_tokens` change values; none of these alters the gating rule. The decision holds.

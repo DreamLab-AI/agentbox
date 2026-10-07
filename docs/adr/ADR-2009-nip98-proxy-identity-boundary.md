@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -278,3 +278,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `flake.nix` (`dc91e092a`)
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `09e6271e9..1fc26c786`: `flake.nix`: `34f322740` projects `[sidechain].faucet_units`/`faucet_sats` into `[program:sidestr-faucet]`'s environment; `aeca58df6` passes `SIDESTR_PEG_SCRIPT` to the per-chain producer; `bde96a334` adds the `pokerCitizenSeats` map and bakes `[program:poker-citizen-<name>]` per `[poker_citizen.<name>]` (the package gate now counts a seat); `18a85577c` bakes `[program:poker-coach]` under `[poker_coach]`; `b83e0e5d7` adds `findutils` to both producer PATHs; `012bf98f5` adds `rufloGovernedPkg` — `ruflo`/`claude-flow` wrappers that exec `mcp/servers/ruflo-memory-cli.cjs` for `memory` and otherwise run `rufloPkg` with `RUFLO_DAEMON_AUTOSTART=0`, `CLAUDE_FLOW_DISABLE_BRIDGE=1` and `CLAUDE_FLOW_MEMORY_PATH` under `~/.cache` as overridable defaults, `claude-flow-mcp` symlinked through unchanged — and swaps it for `rufloPkg` in the gated package list (ADR-2123). Nothing this record decides (ADR-2009 — The nip98-proxy is the fail-closed AoE identity boundary) changed: `config/nip98-proxy/proxy.mjs` and `docs/INGRESS-identity.md` did not move and no change in `flake.nix` touches the proxy's package, program or environment. The decision holds. Re-verified by `git diff 09e6271e9..1fc26c786 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+`config/nip98-proxy/proxy.mjs` and `docs/INGRESS-identity.md` are unchanged between `1fc26c786` and HEAD, so the header strip and re-injection, the fail-closed verifier and the boot-fatal config validation cited in this record are untouched. In `flake.nix`, the net change is the `vaultSrc` repin to `3213e314f`, the forum-governance env projection into `[program:management-api]` (`afc8a0ed6`), the gated `[program:diagram-review-cron]` (`cc5f5dcc0`, `2bc789d33`, `feb608318`), `sealmapPkg` (`a98aba880`), the faucet PATH additions (`6e4e4a0f8`) and the image-layer regrouping (`7dadf61d7`). None of these is an identity ingress or a listener. At HEAD the AoE and proxy blocks have only shifted down. The "only IDENTITY ingress" comment is at `flake.nix:2788`. `[program:aoe-serve]` is at `:2794`, with `aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1` at `:2795`. `[program:nip98-proxy]` is at `:2816`. The forum-governance consumer (ADR-2109) is an outbound relay subscription, not a request door, so it adds no second AoE identity ingress. The decision holds.

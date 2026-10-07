@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ddfb6d05608da573f071029476f8e2ebbee37bf1
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [services/dream-engine/src/source.rs, services/dream-engine/src/compile.rs, services/dream-engine/src/persist.rs, services/dream-engine/src/candidate.rs, services/dream-engine/src/engine.rs]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches
@@ -69,3 +69,7 @@ Tripped by `engine.rs` gaining a connected-node health gate (`dispatch::annexe_h
 ## Re-verification — 2026-10-02 (`ddfb6d05608da573f071029476f8e2ebbee37bf1`)
 
 Tripped by two dream-engine commits. `68270e953` (NIP-09 withdrawal of resolved governance cases) adds a `withdrawn` count to the `forum.governance` ingest and publish `tool.completed` payloads in `engine.rs` (four changed lines, no control flow), and `383a471cc` changes one prompt string in `compile.rs` ("(ADR-2024)" → "(agentbox ADR-2024)"). The `compile.rs` line is the evaluator-veto sentence in the prompt, which now names the repository its ADR belongs to. The prompt still instructs against the dispatched commit's source, and `source.rs`, `persist.rs` and `candidate.rs` have no diff since `3c5213360`. `cargo test compile::` 10 passed; full crate 248 passed. Still true.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Five dream-engine commits trip this record. None of them touches `source.rs`, which has no diff since `ddfb6d056`. `9400bf6c1` changes one call site in `engine.rs` (`:1185-1193`): the ledger-row picker in `verdict.rs` now strips backticks and accepts only a row dated tonight. `17d366cb1` passes a contextual fallback finding to `append_and_commit_ledger` so that every row is checked against the row contract before it is written. `8dad83c83` adds `vetoed_finding`, which keeps a "Given …" hypothesis out of a vetoed row. `337a110c3` adds `pr_title`, which titles draft PRs from the head of the finding. All four govern how the engine records the model's proposed ledger row and names the PR. That fits the Decision's "proposes a ledger row whose finding cell the engine takes" and leaves the source section, repair pass, apply order and candidate construction untouched. `2d92ad3c1` runs `cargo fmt` over `candidate.rs`, `compile.rs`, `persist.rs` and `engine.rs`. Compared with all whitespace stripped, `candidate.rs` and `compile.rs` are identical. `persist.rs` and `engine.rs` differ only in trailing commas, block braces and one reordered `use` line. The prompt text and the `git apply` strategy order are therefore unchanged. The decision holds.

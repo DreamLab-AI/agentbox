@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3b54129631067277f6363309b01cce485faa027a
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -348,6 +348,10 @@ Tripped by `services/nostr-pod-bridge/Cargo.toml` gaining `hmac = "0.12"` as a n
 
 Tripped by the custody integration (`custody/integration`: W0, W1, W5, W3, W7a, W8, W2, W9 and
 the integration resolutions, ADR-2122). Since `d3ff8e9a8` the governed paths changed as follows. `services/nostr-pod-bridge/Cargo.toml` gains `url`, `base64` and `zeroize` for the identity port (`a44ea413f`, W3) and `hmac` as a normal dependency for the G-5 mirror-child known-answer test (`86fc90e3c`). All four are permissively licensed and already in the lock graph; none is a new cryptographic primitive.
-Every service crate's licence stays MIT OR Apache-2.0, and the new dependencies are permissive. The decision holds. Re-verified by `git log d3ff8e9a8..3b5412963 -- <verified_paths>`
+Every service crate keeps its declared licence (three `AGPL-3.0-only`: `nostr-pod-bridge`, `dream-engine`, `secret-backup`; six `MIT OR Apache-2.0`), and the new dependencies are permissive. The decision holds. Re-verified by `git log d3ff8e9a8..3b5412963 -- <verified_paths>`
 and the integration gates. Nix was not evaluated in this container; the image is unverified
 until the owner's rebuild.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Two commits since `3b5412963` touch the governed paths, and both only move the exact `nostr-bbs-core` pin in `services/dream-engine/Cargo.toml`. `4cb61d46e` moves it from `=1.0.0-beta.11` to `=1.0.0-beta.14`, and `afc8a0ed6` moves it to `=1.0.0-beta.15` (lock at `1.0.0-beta.15`). `dream-engine` already declares `AGPL-3.0-only` because it links that crate (operator decision of 2026-09-25), so a version bump of the same dependency is not a licence change. `services/LICENSING-NOTICE.md`, `docs/developer/licensing.md` and `scripts/ci/check-crate-licensing.sh` are unchanged. At HEAD, `git ls-files 'services/*/Cargo.toml'` lists nine manifests. `grep -h '^license' services/*/Cargo.toml | sort | uniq -c` gives 3 `AGPL-3.0-only` and 6 `MIT OR Apache-2.0`. `sh scripts/ci/check-crate-licensing.sh` prints `OK … 9 services/ package directories carry the texts they declare` and exits 0. The decision holds. One sentence in the 2026-10-03 custody-integration note was already wrong when it was written: it says every service crate is MIT OR Apache-2.0, but `nostr-pod-bridge`, `dream-engine` and `secret-backup` were AGPL-3.0-only at `3b5412963`. That sentence is corrected below.

@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -244,3 +244,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `451823ca8..1fc26c786` (nothing in the governed paths moved before `09e6271e9`): `agentbox.toml`: `34f322740` adds `[sidechain].faucet_units = 1000`/`faucet_sats = 2000`; `29bff6d94`, `5241b28e7` and `aeca58df6` switch `[sidechain.dreamlab-txbt4]` on (`enabled = true`, `interval = 60`, `peg_script`); `bde96a334`/`f2dfc5bfa` add `[poker_citizen.dreamlab-txbt4]` (the BLAKES7 seat on `:3451`, `asset_id`); `18a85577c` adds `[poker_coach]`; `a2ffa05eb` moves `[toolchains].ruflo_console` beside `ruflo` and sets it `true`. `mcp/servers/lib/aggregate-effectiveness.js` and `scripts/ruvector-sona-feeder.mjs` did not move. Nothing this record decides (ADR-2019 — Model-lifecycle freeze — 384-dim bge is the active column, SONA and attention-rerank stay off) changed: no embedding, SONA or rerank key changes. Outside the governed paths, `012bf98f5` routes `ruflo memory` to the ruvector-postgres sidecar and its 384-dim Xinference embedder instead of ruflo's own MiniLM store (ADR-2123), which is consistent with this freeze. The decision holds. Re-verified by `git diff 451823ca8..1fc26c786 -- <verified_paths>`.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+`mcp/servers/lib/aggregate-effectiveness.js` and `scripts/ruvector-sona-feeder.mjs` are unchanged since `1fc26c786`. In `agentbox.toml`, `afc8a0ed6` adds `[sovereign_mesh.forum_governance]` and `4f09c96b2` adds `reader_role = true` and `hba_scram = false` to the RuVector block (ADR-2133). Those flags cover sidecar access hardening applied by gated one-time ops, not embedding geometry. The rest of the manifest churn (`[diagram_review]`, `comfyui_external`, `label_log`, `zai_max_tokens`) is unrelated. `4f09c96b2`'s reindex-by-swap rebuilds the HNSW index on the same 384-dim column with the same opclass and `m=16`, `ef_construction=128`. It gates on recall runs before and after the swap, so no dimension or model change is introduced. The gates have only moved, by the 26 lines inserted above them: `attention_rerank = false` at `agentbox.toml:494`, `sona_learn_enabled = false` at `:495` and `sona_apply_enabled = false` at `:496`, each with its measured or blocked rationale intact. `embeddings_model = "bge-small-en-v1.5"` is at `:764`. The decision holds.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 47e1879341631185fb1ce4370303e0010afda779
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -133,3 +133,7 @@ decision stand.
 ## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
 
 **Governed change:** `skills/lint-skills.mjs` only (`b25903ec8`, ADR-2111). A new `DESC_WARN = 600` soft budget warns, never fails, on a frontmatter `description` longer than 600 chars, because a registered description is paid for in every session's prefix; the hard `DESC_MAX = 1024` fail is unchanged. This is a lint-side budget, distinct from Decision point 4's `DESC_MAX = 640` in the generated routing table (`gen-routing-table.mjs`, unchanged). No `status:` value, badge, gate or route-eval behaviour changed. `bash skills/lint-skills.sh` → OK, 127 skills, 30 warnings, all 30 of them the new `> 600 soft budget` DESCLEN. Claim STILL TRUE.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Since `47e187934`, only `skills/SKILL-DIRECTORY.md` has changed among the governed paths. `c4ea4efca` adds an inventory row for the new `sealmap-review` skill. Its `MCP` column reads `No`, and the skill's frontmatter has no `mcp_server`, `depends_on_mcps` or `status:`, so the lint's MCP and unavailability-marker gates agree with it. `897e8e013` moves the skill count from 127 to 128 in the header, the Artefact 1 title, the `skill-router` row and Q0 of the decision tree. `skills/lint-skills.mjs`, `skills/gen-routing-table.mjs` and `skills/system-one/scripts/route-eval.mjs` have no diff. No `status:` vocabulary, badge rendering, lint rule, `DESC_MAX` or route-eval behaviour changed. The 127-skill figures in Verification are dated measurements, not current-state claims. The decision holds.

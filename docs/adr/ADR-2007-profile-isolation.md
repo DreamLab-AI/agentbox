@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 6ea592ee0fc62125b75d6c789b4e3160c526f4ef
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [config/harness-wrappers/zai.sh, config/harness-wrappers/openrouter.sh, config/harness-wrappers/_provider-url.sh, tests/security/provider-url-validation.test.sh]
 owner: jjohare
 review_trigger: A proposal to reintroduce Linux pseudo-user isolation as the primary model, or a harness wrapper omitting the redirect assertion
@@ -110,3 +110,7 @@ CP-01/04/08. Owner remains jjohare with runtime maintainers. Actual wrapper prob
 ## Re-verification — 2026-09-26 at 6ea592ee0 (ADR-2111/2116 landing)
 
 **Governed change:** `config/harness-wrappers/openrouter.sh` only (`b25903ec8`, ADR-2111 D5); `zai.sh`, `_provider-url.sh` and the test did not move. The wrapper now reads `model` from the profile's `settings.local.json` and exports it as `ANTHROPIC_MODEL` and every tier alias (`ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL`, `CLAUDE_CODE_SUBAGENT_MODEL`), caller value winning, and pins `CLAUDE_CODE_PROMPT_CACHE_TTL=1h` unless set; the banner adds `model=`. Cause, measured 2026-09-25: Claude Code does not read `settings.local.json` from `CLAUDE_CONFIG_DIR` (it is a project-level file), so the pin sat unread and the profile billed Opus through OpenRouter. **Precision on this record's wording:** "each harness reads its own `settings.local.json`" is true of the *wrapper*, which parses it and exports the redirect, token and now the model; it is not Claude Code that reads the file. The isolation invariant is untouched: `HOME`/`CLAUDE_CONFIG_DIR` still pin to `$WORKSPACE/profiles/<slug>` (`openrouter.sh:129-130`), the `_die` hard-fails on a missing profile, settings, redirect or token and the parsed scheme/host/port check (`:92-120`) are unchanged, and no pseudo-user path returns. `bash tests/security/provider-url-validation.test.sh` → 52 passed, 0 failed. Claim STILL TRUE.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+One commit touches the governed paths between `6ea592ee0` and HEAD. `07f8f5366` adds a block at `config/harness-wrappers/zai.sh:130-145`. It unsets Claude Code's own namespace inherited from the caller (`CLAUDE_*` except `CLAUDE_FLOW_*`, `CLAUDECODE`, `ANTHROPIC_*`, `MAX_THINKING_TOKENS`) and maps `ZAI_EFFORT` onto `CLAUDE_EFFORT`. The block runs after the redirect gate and before the profile pin. This tightens isolation, because a caller's `CLAUDE_CONFIG_DIR`, `ANTHROPIC_API_KEY` or `CLAUDE_EFFORT` can no longer leak into the Z.AI session. The isolation mechanism itself is unchanged and has only moved down the file: `_die` at `zai.sh:37`, the redirect and token read from the profile's `settings.local.json` at `:103-104`, the `provider_url_validate` gate at `:120`, `HOME`/`CLAUDE_CONFIG_DIR` pinned to the profile at `:148-149`, and the validated `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` re-exported, with `ANTHROPIC_API_KEY` emptied, at `:150-152`. `openrouter.sh`, `_provider-url.sh` and `tests/security/provider-url-validation.test.sh` are unchanged. `bash tests/security/provider-url-validation.test.sh` gives 52 passed, 0 failed, and `node --test tests/security/zai-launch-env.test.cjs` gives 9 passed, 0 failed. No pseudo-user path returns. The decision holds.

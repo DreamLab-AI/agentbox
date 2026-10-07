@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
+verified_commit: d39db513159bf386a97f5aedc2c86ea49d0e168f
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation)
@@ -55,7 +55,7 @@ egress. The operator's decision: proceed, with email always fenced out and a swi
 
 ## Decision
 
-1. **Claude Code is pinned at 2.1.285** (`lib/claude-code-binary.nix`), retaining
+1. **Claude Code is pinned at 2.1.291** (`lib/claude-code-binary.nix:35`), retaining
    the function-hook surface (`session.compact`, `command.register`, `$.http.fetch`).
 2. **The plugin is ours, the library is theirs.** `config/claude-plugins/jev-compaction`
    vendors upstream `src/` at `e3f262a` under `lib/` (MIT, licence kept); `hooks/` is the
@@ -349,3 +349,13 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Since `34f5e4254`, only `lib/claude-code-binary.nix` has changed among the governed paths. `lib/factrail.nix` and `config/entrypoint-unified.sh` have no diff. `9415186f3` moves Claude Code from 2.1.288 to 2.1.291 (`lib/claude-code-binary.nix:35`). Both per-arch SRI hashes change to match Anthropic's 2.1.291 manifest checksums, and the old bump-review note is dropped.
+
+At `cca7ea3b1` the header comment at `:24` still says "2.1.289". That comment is wrong. `d39db5131` corrects it and changes nothing else, so the stamp moves to that commit.
+
+The baked factrail plugin (`/nix/store/…-factrail-0.1.0/share/factrail/plugin`) passes `claude plugin validate --strict` under the 2.1.291 binary. It reports the same hook surface as under 2.1.288 (session.start, tool.call, skill.prompt, command.run, session.compact, turn.start, turn.complete), and its calls include `$.session.compact` and `$.command.register`.
+
+The substance of point 1 holds: Claude Code is pinned at a version with the function-hook surface. The point's version literal has said 2.1.285 since the 2.1.288 bump and is now three releases stale. Corrected to 2.1.291, with the line cited. The decision holds.

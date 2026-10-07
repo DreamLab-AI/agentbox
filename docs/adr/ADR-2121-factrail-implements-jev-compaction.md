@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
+verified_commit: d39db513159bf386a97f5aedc2c86ea49d0e168f
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -215,3 +215,12 @@ The schema and entrypoint diffs are otherwise limited to the new gate. Factrail'
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Since `34f5e4254`, `lib/claude-code-binary.nix` and `schema/agentbox.toml.schema.json` changed among the governed paths. Every other governed path has no diff:
+- `lib/factrail.nix` is still at rev `57ac25b59d4b5975bbed1f066eb6ec294b38116a`, and its lockfile is unchanged.
+- `config/entrypoint-unified.sh`, `marketplace.json` and the store-migrate script are unchanged.
+- The ruflo-console files and the three factrail and ruflo tests are unchanged.
+
+`9415186f3` moves Claude Code from 2.1.288 to 2.1.291 with new per-arch hashes. That falls under this record's review trigger (a Claude Code function-hook API change), so it was checked. `claude plugin validate --strict` on the baked factrail plugin under the 2.1.291 binary passes. It reports the same hook surface recorded at 2.1.288: session.start, tool.call, skill.prompt, command.run, session.compact, turn.start and turn.complete, with calls including `$.session.compact` and `$.command.register`. One stale code comment came with the bump: the header in `lib/claude-code-binary.nix` still read "2.1.289" above `claudeCodeVersion = "2.1.291"`. `d39db5131` corrects it to 2.1.291, built 2026-10-06T02:41:25Z per the release manifest, and changes nothing else; the stamp moves to that commit. The schema gains only `sovereign_mesh.forum_governance` (`afc8a0ed6`, ADR-2109) and the top-level `diagram_review` object (`cc5f5dcc0`, `2bc789d33`, `09a024b12`, ADR-2131). No `[features.jev_compaction]` property changed. The decision holds.

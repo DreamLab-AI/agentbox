@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 275e12356319a9630846656580d497d53de3d38c
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -81,3 +81,7 @@ Tripped by `68270e953`, which extends this decision without changing it. Once an
 
 Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `services/dream-engine/src/relay.rs` `load_signing_key` gains the ROLE-secret contract: `<VAR>_FILE` first; the env var and then the repo `.env` only with the flag off; under the flag a bare variable is a logged leak and `.env` is not read. Signing and verification are unchanged (dream-engine 253/253). **Consequence under the flag with W1:** the devuser engine cannot read the `ab-identity` key file, so panel and digest posts stop (fail-open: "the forum is unreachable tonight") until `forum_event` on the identity port (W3b). The decision holds.
 Re-verified by `git diff ddfb6d056..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+The same five dream-engine commits trip this record. `governance.rs`, `digest.rs`, `relay.rs` and `config/hooks/dream-inbox-surface.cjs` have no diff since `275e12356`. In `inbox.rs`, `2d92ad3c1` (cargo fmt) only reflows the `let … else` in `resolve_in` onto one line (`:162`). In `engine.rs`, `9400bf6c1`, `8dad83c83`, `17d366cb1` and `337a110c3` change ledger-row selection, contract repair, the VETOED prefix and draft-PR titles. `17d366cb1` also passes a fixed finding into the BLOCKED-ENV and HANDOFF ledger appends (`:1568-1576`, `:1676-1684`). The `inbox::add` alert and question writes that follow those appends are unchanged. No hunk touches panel or case publishing, decision ingest, signature checks, withdrawal or digest composition. The decision holds.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -351,3 +351,7 @@ Tripped by the W10 gap fixes on `custody/integration`. `.github/workflows/invari
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `09e6271e9..1fc26c786`: `flake.nix`: `34f322740` projects `[sidechain].faucet_units`/`faucet_sats` into `[program:sidestr-faucet]`'s environment; `aeca58df6` passes `SIDESTR_PEG_SCRIPT` to the per-chain producer; `bde96a334` adds the `pokerCitizenSeats` map and bakes `[program:poker-citizen-<name>]` per `[poker_citizen.<name>]` (the package gate now counts a seat); `18a85577c` bakes `[program:poker-coach]` under `[poker_coach]`; `b83e0e5d7` adds `findutils` to both producer PATHs; `012bf98f5` adds `rufloGovernedPkg` — `ruflo`/`claude-flow` wrappers that exec `mcp/servers/ruflo-memory-cli.cjs` for `memory` and otherwise run `rufloPkg` with `RUFLO_DAEMON_AUTOSTART=0`, `CLAUDE_FLOW_DISABLE_BRIDGE=1` and `CLAUDE_FLOW_MEMORY_PATH` under `~/.cache` as overridable defaults, `claude-flow-mcp` symlinked through unchanged — and swaps it for `rufloPkg` in the gated package list (ADR-2123). `docker-compose.yml`, `scripts/ci/check-ports-loopback.sh` and the invariants workflow did not move. Nothing this record decides (ADR-2013 — Every compose publish binds 127.0.0.1 unless on the sanctioned-exposure list, CI-enforced across all overlays) changed: the `flake.nix` changes add supervisor programs and a package wrapper, not compose publishes. The decision holds. Re-verified by `git diff 09e6271e9..1fc26c786 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+`6d3d21b05` (ADR-2132) touches `.github/workflows/invariants.yml`. It adds `tests/config/runtime-delivery.test.cjs`, `config/build-registry.json` and `agentbox.sh` to the push paths, plus one step that runs the runtime-delivery tests. The `check-ports-loopback` step is unchanged and has moved to `.github/workflows/invariants.yml:78-79`, with the `check-listeners` unit tests at `:81-82`. `docker-compose*.yml`, `scripts/ci/check-ports-loopback.sh` and `.mjs` are unchanged. `flake.nix` adds no publish. `agentboxPorts` at `flake.nix:3350` still binds every entry to `127.0.0.1:` except the interaction-plane proxy port, and the new `[program:diagram-review-cron]` (`flake.nix:2902`) has no listener. Running `sh scripts/ci/check-ports-loopback.sh` exits 0 with `14 compose file(s), 11 ports block(s)`. The only non-loopback listeners it reports are the already sanctioned ADR-2040 entries: jupyter-lab, wayvnc and code-server. The decision holds.

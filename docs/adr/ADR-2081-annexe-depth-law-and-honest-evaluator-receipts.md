@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: ddfb6d05608da573f071029476f8e2ebbee37bf1
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/gate.rs, services/dream-engine/src/verdict.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
@@ -73,3 +73,7 @@ Tripped by `engine.rs` gaining a connected-node health gate (`dispatch::annexe_h
 ## Re-verification — 2026-10-02 (`ddfb6d05608da573f071029476f8e2ebbee37bf1`)
 
 Tripped by two dream-engine commits. `68270e953` (NIP-09 withdrawal of resolved governance cases) adds a `withdrawn` count to the `forum.governance` ingest and publish `tool.completed` payloads in `engine.rs` (four changed lines, no control flow), and `383a471cc` changes one prompt string in `compile.rs` ("(ADR-2024)" → "(agentbox ADR-2024)"). No decision here is touched: the `engine.rs` change adds no line mentioning `annexe_subpath` or `sanitise_finding`, and `runner.rs`, `gate.rs` and `verdict.rs` have no diff since `3c5213360`. `cargo test` 248 passed. Still true.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+`runner.rs` and `gate.rs` change only in `2d92ad3c1` (`cargo fmt`; `runner.rs` is token-identical). Both runners still use `bash -o pipefail -c` (`runner.rs:65`, `:102`; test `local_runner_does_not_let_a_tail_pipe_mask_a_failure` at `:221`). The no-patch ACCEPT is still `Veto::unproven` → `INCONCLUSIVE` (`gate.rs:70`, `:244`; test at `:543`, previously `:62` and `:490`). `annexe_subpath` is untouched and moves from `engine.rs:1843` to `:2151` because of the inserted code. Its test is at `:2386`. `9400bf6c1` tightens the ledger-cell rule: `sanitise_finding(report, verdict, night_date)` (`verdict.rs:347`) takes only the Step-19 row dated tonight, with backticks and blockquotes stripped, so a quoted earlier row is no longer taken. The contract checks are now one function, `finding_violations` (`:386`), which counts the 80-character limit in UTF-16 code units as `rowContract.ts` does. The preference order is still own row, then a `Finding:` line, then the hypothesis, and `sanitise_finding_full` (`:507`) still carries the whole hypothesis. `17d366cb1` adds an append-time backstop that repairs any finding that breaks the contract, and `8dad83c83` keeps a hypothesis from passing as a finding behind a `VETOED:` prefix. Both refine the decision without contradicting it. `cargo test --offline --lib` reports 269 passed. The decision holds.

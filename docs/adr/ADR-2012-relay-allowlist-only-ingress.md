@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -350,3 +350,15 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `09e6271e9..1fc26c786`: `agentbox.toml`: `34f322740` adds `[sidechain].faucet_units = 1000`/`faucet_sats = 2000`; `29bff6d94`, `5241b28e7` and `aeca58df6` switch `[sidechain.dreamlab-txbt4]` on (`enabled = true`, `interval = 60`, `peg_script`); `bde96a334`/`f2dfc5bfa` add `[poker_citizen.dreamlab-txbt4]` (the BLAKES7 seat on `:3451`, `asset_id`); `18a85577c` adds `[poker_coach]`; `a2ffa05eb` moves `[toolchains].ruflo_console` beside `ruflo` and sets it `true`. `flake.nix`: `34f322740` projects `[sidechain].faucet_units`/`faucet_sats` into `[program:sidestr-faucet]`'s environment; `aeca58df6` passes `SIDESTR_PEG_SCRIPT` to the per-chain producer; `bde96a334` adds the `pokerCitizenSeats` map and bakes `[program:poker-citizen-<name>]` per `[poker_citizen.<name>]` (the package gate now counts a seat); `18a85577c` bakes `[program:poker-coach]` under `[poker_coach]`; `b83e0e5d7` adds `findutils` to both producer PATHs; `012bf98f5` adds `rufloGovernedPkg` — `ruflo`/`claude-flow` wrappers that exec `mcp/servers/ruflo-memory-cli.cjs` for `memory` and otherwise run `rufloPkg` with `RUFLO_DAEMON_AUTOSTART=0`, `CLAUDE_FLOW_DISABLE_BRIDGE=1` and `CLAUDE_FLOW_MEMORY_PATH` under `~/.cache` as overridable defaults, `claude-flow-mcp` symlinked through unchanged — and swaps it for `rufloPkg` in the gated package list (ADR-2123). Nothing this record decides (ADR-2012 — Relay ingress is allowlist-only with no fallback and no auto-add) changed: the only relay URLs added (`[poker_citizen.dreamlab-txbt4].relay`, `[poker_coach].relay`) are the forum relay already named at `forum_relay_url` (`agentbox.toml:189`); no allowlist entry, fallback or auto-add appears. The decision holds. Re-verified by `git diff 09e6271e9..1fc26c786 -- <verified_paths>`. Nix was not evaluated here; the image is unverified until the host rebuild.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Since `1fc26c786`, `agentbox.toml` gains several unrelated changes:
+- `[sovereign_mesh.forum_governance]` (`afc8a0ed6`, ADR-2109)
+- the `reader_role`/`hba_scram` flags (`4f09c96b2`, ADR-2133)
+- `[integrations.comfyui_external].enabled = true` (`a449138f2`)
+- `[diagram_review]` (`cc5f5dcc0`, `2bc789d33`, `09a024b12`)
+- `label_log = false` (`b1e42f148`)
+- `zai_max_tokens = 131072` (`e4e4f5fb6`)
+
+The relay keys are untouched at their previous lines: `ingress_policy = "allowlist"` at `agentbox.toml:150`, `allowed_pubkeys` at `:156` and `agent_event_auth = "nip98"` at `:186`. In `flake.nix` the allowlist bake has only moved: `relayAllowedPubkeysCsv` is at `:1793`, the explicit deny-all `pubkey_whitelist = [ ]` branch at `:1804-1805`, and `AGENTBOX_ALLOWED_PUBKEYS` at `:2608`. The forum-governance table adds one outbound NIP-42 subscription from `mcp/nostr-bridge/relay-consumer.js` to the external forum relay for kind 31403 from a static roster. It writes nothing to the embedded relay and does not widen who may publish to it. An empty roster refuses every ontology decision, which is fail closed. No auto-add or fallback is introduced. The ADR-040 D3 key split is still pending, so `implementation_status: partial` stands. The decision holds.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, docker-compose.hp.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -172,3 +172,15 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: one line in the runtime-env heredoc (`config/entrypoint-unified.sh`): `CLAUDE_FLOW_MEMORY_PATH` now resolves per user to `$HOME/.cache/ruflo/memory` (escaped) rather than a literal `/home/devuser` path. It stays outside the Claude home and outside every projected tier. Nothing this record decides changed.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Since `34f5e4254`, only `agentbox.sh` and `flake.nix` changed among the governed paths. `config/instructions`, `instructions.rs`, `cred_sync.rs`, `config/entrypoint-unified.sh`, the three Compose files and both tests have no diff. In `agentbox.sh`, `6d3d21b05` (ADR-2132) adds the `prepare` and `activate` verbs and makes `rebuild` delegate to `scripts/runtime-delivery.sh`. Activation still loads `docker-compose.override.yml` (`runtime-delivery.cjs:63-66`), which carries the `agentbox-claude-home` volume and the `/var/lib/agentbox/host-claude` bind. Fast activation also refuses any change to persistent mounts (`runtime-delivery.cjs:243`), so the Claude home and the read-only instruction bind cannot shift silently. `4f09c96b2` only adds the `ruvector reindex|reader-role|hba-harden` help lines. The `flake.nix` changes are all unrelated to this record:
+- `vaultSrc` moves to VisionClaw `3213e314f` (`68a77b1bf`, `1afd80dd1`, `dfbcd69d9`, `57bbd3fad`, `afc8a0ed6`). Its consumer, `lib/vault.nix`, is now at `flake.nix:925`, not `:781`.
+- `afc8a0ed6` adds the ADR-2109 `forumGov*` environment to management-api (`:347`).
+- `a98aba880` adds the sealmap CLI (`:1751`).
+- `cc5f5dcc0`, `2bc789d33` and `feb608318` add the gated `[program:diagram-review-cron]` (`:2902`).
+- `6e4e4a0f8` adds faucet PATH entries.
+- `7dadf61d7` dedups image layers through `lib/image-layers.nix` (`:4378`).
+
+The instruction projection, the Claude home volume and credential sync are untouched. The decision holds.

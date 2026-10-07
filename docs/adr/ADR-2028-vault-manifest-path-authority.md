@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -241,3 +241,9 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Since `34f5e4254`, `config/entrypoint-unified.sh`, both ontology MCP libraries, the condense scheduler and refresh script, and four of the five skills are unchanged, so `_ab_vault_resolve` and every consumer guard stand. `agentbox.toml`, `setup/agentbox.default.toml` and `schema/agentbox.toml.schema.json` gain `[sovereign_mesh.forum_governance]` (`afc8a0ed6`), the RuVector `reader_role`/`hba_scram` flags (`4f09c96b2`) and `[diagram_review]` (`cc5f5dcc0`, `2bc789d33`, `09a024b12`). `agentbox.toml` also changes `comfyui_external`, `label_log` and `zai_max_tokens`. No `[vault]` key, value or schema property moves. `a449138f2` changes `skills/ontology-augment/SKILL.md` only for the ADR-2129 grounding envelope and adds no corpus path.
+
+The one new corpus writer is the forum-governance path in `afc8a0ed6`. It resolves its repo only from `VAULT_REPO`, else from `VAULT_ROOT`, and refuses to run when neither is set (`management-api/lib/ontology-apply.js:107-145`), so `[vault]` remains its sole authority. `[diagram_review]` scans `$WORKSPACE` for `docs/diagrams/`, not the authored corpus. `sh scripts/ci/check-no-logseq-paths.sh` passes. The decision holds.

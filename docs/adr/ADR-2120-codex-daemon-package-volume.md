@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 34f5e425403bde5b1c4f13375406d33fcbb22b22
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -151,3 +151,7 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Since `34f5e4254`, only `agentbox.sh` and `flake.nix` changed among the governed paths. `docker-compose.yml` (`:147`, `:199-200`), the entrypoint chown (`config/entrypoint-unified.sh:542`), `scripts/refresh-compose.sh` and both tests have no diff. `flake.nix` still declares `codex-packages:/home/devuser/.codex/packages` (`:3695`) and lists it among the baseline volume names (`:3725`). `6d3d21b05` (ADR-2132) replaces `cmd_rebuild`'s down + build + `up --build` with `scripts/runtime-delivery.sh rebuild`. That runs `prepare`, which calls `scripts/refresh-compose.sh` before `nix build` (`runtime-delivery.cjs:159`), then `activate`. `up --build` (`agentbox.sh:757`) and `build` (`:929`) still refresh too, so "including `up --build` and the rebuild flow" remains true. The stale-mount gap stays closed by a stricter mechanism: fast activation now refuses a candidate whose persistent mounts would differ (`runtime-delivery.cjs:243`) rather than recreating the stack. The other `flake.nix` hunks are vaultSrc bumps, ADR-2109 forum-governance env, sealmap, the diagram-review cron, faucet PATH entries and the layer dedup (`7dadf61d7`), none of which touches the volume. The decision holds.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: ddfb6d05608da573f071029476f8e2ebbee37bf1
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/sweep.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/ledger.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
@@ -203,3 +203,7 @@ therefore treats a missing pair as a failure, never as "nothing happened".
 **Retired.** The 6 October marker was renamed `*.consumed`, and the crontab block in `skills/podcast-knowledge-ingest/crontab` is removed in this change. `scripts/activation/adr-2071-api-down-night.sh` and its tests stay, for reuse after a future image change. The verified paths are unchanged since `ddfb6d056`.
 
 Phase 2 (policing) stays out of scope, as the Decision says. It needs an approver wired into the action pipeline, which is this record's review trigger.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+`management-api/routes/exec-record.js` and `tests/integration/exec-record.test.js` are unchanged since `ddfb6d056`. `journal.rs` and `sweep.rs` change only in `2d92ad3c1`, a `cargo fmt` pass: the word-level diff is line breaks, braces and trailing commas only. Pairing, causation, the three-strike breaker, the fail-open posture and the seven-day sweep are therefore unchanged. `17d366cb1` adds `ledger::row_violations` and `ledger::enforce_contract`, and `append_and_commit_ledger` in `engine.rs` now repairs a row that breaks the row contract before it is appended. The `ledger.append` `tool.called` payload gains a `repaired` field, the pair is still posted around the append, and the default-branch `git commit --only` stays fail-open. This adds to the journalled ledger step without changing it. `9400bf6c1`, `8dad83c83` and `337a110c3` change how findings, VETOED prefixes and PR titles are chosen in `engine.rs`/`verdict.rs`, and they add no and remove no journal calls. `cargo test --offline --lib` in `services/dream-engine` reports 269 passed, 0 failed. The decision holds.

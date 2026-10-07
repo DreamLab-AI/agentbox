@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 60f8b8458e9b1f92c14604b9f054d3b5299e32e6
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, management-api/routes/llm-marketplace.js, mcp/servers/governance-bridge.js, services/dream-engine/src/ledger.rs, scripts/activation/adr-2087-check.sh]
 owner: jjohare
 review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape
@@ -169,3 +169,7 @@ The owner rebuilt agentbox on 2026-10-02 (management-api started 14:57:17). `scr
 ## Re-verification — 2026-10-02 (`60f8b8458e9b1f92c14604b9f054d3b5299e32e6`)
 
 Tripped by `scripts/activation/adr-2087-check.sh`, changed only in check C3 (ADR-2071 clause (c)) and its header (`usage` now prints the whole header). C3 now also requires the state file of the new one-shot `scripts/activation/adr-2071-api-down-night.sh` (owner decision 2026-10-02, Q9) to show a clean stop before the window and a restart after it. Before this change, a night of failed journal posts passed C3 whatever the reason the posts failed. Checks A and B, which are this record's evidence, are untouched, and so are its decision and status axes. Exercised against a scratch workspace with `--no-live-probe`: a clean state passes C3, and an `interrupted` or absent state fails it.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Two commits since `60f8b8458` touch one governed path, `services/dream-engine/src/ledger.rs`, and the other eleven paths have no diff. `17d366cb1` adds the ledger row contract: `CONTRACT_ENFORCE_FROM`, `LEDGER_VERDICTS`, `row_violations` and `enforce_contract`. `append_row` now repairs a non-compliant row before it appends it. The repair can rewrite only the finding, verdict, PR, witness and prior-fates cells. It never writes `reviewer` or `review_minutes`. `2d92ad3c1` is a `cargo fmt` pass over `commit_ledger` and the `review_from_merge` tests. Decision point 5 still stands: the `Reviewer` and `Review-minutes` fields (`ledger.rs:73-76`) and `review_from_merge` (`ledger.rs:122`) are unchanged, and both columns stay empty unless a merge event fills them. `cargo test --offline ledger::` passes 18 tests at `cca7ea3b1`. The decision holds.

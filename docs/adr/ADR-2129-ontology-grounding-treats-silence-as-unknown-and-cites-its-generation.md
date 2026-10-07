@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: a449138f2d44362710c6376b1678f9e0e5ac63f2
+verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
 verified_paths: [skills/ontology-augment/scripts/ontology-augment.sh, skills/ontology-augment/SKILL.md, skills/ontology-augment/references/REFERENCE.md, skills/ontology-augment/references/EXAMPLES.md, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing
@@ -26,7 +26,7 @@ Agents ground through `ontology-augment`: the `vault` CLI plus Loom `/loom/sparq
 1. **Three empties, three labels.** Skill output distinguishes `degraded` (Loom unreachable, already shipped), `silent` (healthy query, no asserted or inferred fact) and, once VisionClaw ADR-2125 makes it reachable, `contradicted` (entailed false). An agent may act on `contradicted`; it must not treat `silent` as negative evidence.
 2. **SPARQL negation is flagged.** `FILTER NOT EXISTS` / `MINUS` over the corpus answers "not asserted at this generation", and the skill's examples and output say so.
 3. **Every grounded answer cites its generation, automatically.** Skill output always carries the generation: the Loom headers for Loom calls, the local `.generation.json` id for `vault` calls, and the `owl:versionIRI` once host ADR-2128 lands. Quoting is not left to the agent's judgement.
-4. **Writes are unchanged.** Grounding stays read-pervasive and write-governed (`SKILL.md:132-141`); a `silent` result is a reason to propose, never to assert.
+4. **Writes are unchanged.** Grounding stays read-pervasive and write-governed (`SKILL.md:157-165`); a `silent` result is a reason to propose, never to assert.
 
 ## Consequences
 
@@ -46,3 +46,7 @@ Implemented 2026-10-05 (PRD-029 wave; `verified_commit` set on commit). Every `o
 - Smoke against the real corpus (Loom pointed at a closed port): `search "knowledge graph"` gives answered, generation `visionGraph@ae913f93…` from `site-data/.generation.json`. `search zzqqxxnothing` gives silent. `ask "knowledge graph"` gives answered with 5 seeds and 12 expanded.
 
 - Review fixes (2026-10-05): `contradicted` was unreachable. A new `check` subcommand POSTs `{subject, class}` or `{subject, property, object}` to VisionClaw `/api/ontology-agent/check` (base from `VISIONCLAW_API_URL`, else `[skills.ontology].visionclaw_api_url`). It maps entailed→answered, entailed_false→contradicted, not_asserted→silent, and unreachable, non-200 or no verdict→degraded, failing open. The `emit` count also changed: MCP `tools/call` content items are counted (text parsed as JSON, so `"[]"` is 0; `isError` is degraded), and a `vault tree` node counts its `children` (vault omits an empty list). A shape it cannot count is now `silent` with `shape: "unrecognised"`, never `answered`. Only a positive count is answered. `ontology-augment-grounding.test.sh`: RED 45 passed / 21 failed before the fix, GREEN 66 passed / 0 failed after it. `skills/lint-skills.sh` is clean.
+
+## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
+
+Two commits since `a449138f2` touch the governed paths, both on the `check` door. `18f39abe5` makes `vc_post` unwrap VisionClaw's `ok_json!` envelope (`{success, data, error, timestamp}`) once, so the verdict is read from `.data.check` (`skills/ontology-augment/scripts/ontology-augment.sh:333-336`). Before that, every live `check` reply fell through to `degraded`/`visionclaw_no_verdict`. `2f0cee94c` keeps a 400 (unknown or ambiguous class term) as `degraded`, `reason: visionclaw_http_400`, exit 0, and now carries the server's `message` (`:338-343`). `references/REFERENCE.md:229-246` documents the envelope and adds the 400 row. The verdict mapping is unchanged: entailed→answered, entailed_false→contradicted, not_asserted→silent. The envelope and generation citation are unchanged too. `SKILL.md` and `EXAMPLES.md` are untouched. `bash tests/skills/ontology-augment-grounding.test.sh` gives `69 passed, 0 failed` (66 plus an unwrapped-body case and two 400 cases). Decision 4's citation of the write-governance section had already moved to `SKILL.md:157-165` when `a449138f2` rewrote the skill. The decision holds.
