@@ -1,7 +1,7 @@
 {
   "$comment": "Custody X-1 step 1, W2 (bypass 3). Every env var NAME the boot path and the role-secret consumers read, in exactly one class. Names only, never values. Checked by scripts/ci/env-secret-inventory.js --check; read by tests/security/env-secret-inventory.node-test.js. The entrypoint's _AB_ROLE_ENV_VARS list must equal the ROLE set (NAME:role).",
   "schema": "agentbox/custody-env-classes/v1",
-  "updated": "2026-10-03",
+  "updated": "2026-10-07",
   "flag": "[security].role_isolation (boot-class, default false)",
   "sources": [
     "config/entrypoint-unified.sh",
@@ -188,6 +188,10 @@
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "solid-pod-rs admin PSK used by management-api admin-users (devuser)."
       },
+      "SSH_AUTH_SOCK": {
+        "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
+        "reason": "Path to the ssh-agent socket. Not a secret value, but it grants use of every key the agent holds; management-api ontology-apply forwards it to git so a governed corpus commit can push over SSH."
+      },
       "SSO_API_KEY": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "Provider credential (System-One façade). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
@@ -277,6 +281,7 @@
         "AGENTBOX_EVENT_ARCHIVE",
         "AGENTBOX_EVENT_ARCHIVE_DIR",
         "AGENTBOX_FEDERATION_MODE",
+        "AGENTBOX_FORUM_GOVERNANCE_SIGNERS",
         "AGENTBOX_GATEWAY_IDENTITY",
         "AGENTBOX_GATEWAY_KEY_TAG",
         "AGENTBOX_GATEWAY_REARM_MS",
@@ -381,6 +386,8 @@
         "CHOWN",
         "CLAUDE_BIN",
         "CLAUDE_CONFIG_DIR",
+        "CLAUDE_FLOW_DISABLE_BRIDGE",
+        "CLAUDE_FLOW_MEMORY_PATH",
         "CLAUDE_FLOW_PLUGIN_DIR",
         "CODEX_CFG",
         "CODEX_HOME",
@@ -597,8 +604,6 @@
         "RES",
         "RUFLO_DAEMON_AI_WORKERS",
         "RUFLO_DAEMON_AUTOSTART",
-        "CLAUDE_FLOW_DISABLE_BRIDGE",
-        "CLAUDE_FLOW_MEMORY_PATH",
         "RUNTIME_ENV_DURABLE",
         "RUNTIME_ENV_FILE",
         "RUSTUP_HOME",
