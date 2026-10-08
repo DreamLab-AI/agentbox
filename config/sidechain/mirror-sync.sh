@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Mirror for one estate chain (SPEC 11): [program:sidestr-mirror] for sidestr:dreamlab (gate
 # [sidechain].mirror) and [program:sidestr-mirror-<name>] for each [sidechain.<name>] table. Copies
-# the producer's chain.json, blocks.dat and blocks.json into a GitHub Pages checkout and pushes
-# when they changed. GitHub Pages serves them with open CORS and Range support, which is all a
-# mirror is, and it is where the forum wallet reads the chain. The loopback mirror on :9097 behind
+# the producer's chain.json, blocks.dat and blocks.json into a Git checkout and pushes
+# when they changed. GitHub's raw file endpoint serves them with open CORS and Range support,
+# without starting a Pages build for every block. The loopback mirror on :9097 behind
 # the nip98 proxy (ADR-2098 D3) is still unbuilt.
 #
 # chain-event.json (SPEC 0.0.5 section 3, ADR-2098 amended 2026-10-02): the chain document as a
@@ -15,7 +15,7 @@
 # swapped in. The checks here are structural (kind, id shape, alias against chain.json); the
 # signature is checked by every client that reads it.
 #
-#   mirror-sync.sh <pages checkout> [interval seconds, default 120]
+#   mirror-sync.sh <git checkout> [interval seconds, default 120]
 #
 # Environment: SIDESTR_CHAIN (default dreamlab) names the chain; SIDESTR_STATE, SIDESTR_DOC and
 # SIDESTR_PORT / SIDESTR_PRODUCER_URL override what it implies. One checkout per chain: this loop

@@ -1636,8 +1636,8 @@ index_submit  = "off"
 # `./agentbox.sh rebuild`.
 [sidechain]
 enabled         = true    # [program:sidestr-producer], run-producer.sh
-announce_mirror = "https://dreamlab-ai.github.io/sidestr-dreamlab"   # kind-33333 tip names this mirror
-mirror          = true    # [program:sidestr-mirror]: push block files to the Pages checkout
+announce_mirror = "https://raw.githubusercontent.com/DreamLab-AI/sidestr-dreamlab/main"   # kind-33333 tip names the Git mirror; no Pages build per block
+mirror          = true    # [program:sidestr-mirror]: push block files to the Git checkout
 mirror_checkout = "/home/devuser/workspace/sidestr/mirror"
 faucet          = true    # [program:sidestr-faucet]: DREAM for member wallets (forum ADR-2015)
 faucet_key_file = "/home/devuser/workspace/sidestr/agents/treasury.key"
@@ -1662,8 +1662,8 @@ parent_rpc             = "http://192.168.2.27:48342/"   # Knots 29.4.2 txbt4 on 
 parent_credential_file = "/var/lib/agentbox/secrets/knots-txbt4.rpc"
 parent_from            = 152225  # txbt4 tip at the seal; never below the fork, 150308
 peg_script             = "51205e05b5bae0b9eff8dfd893444817558f67a6acfc8d47b0b65022d5c7c6665f2f"  # SPEC 6 Level 2: the challenge; deposits pay it, no parent wallet (txbt4 RPC is read-only)
-announce_mirror        = "https://dreamlab-ai.github.io/sidestr-dreamlab-txbt4"
-mirror                 = true    # its own Pages repo, DreamLab-AI/sidestr-dreamlab-txbt4
+announce_mirror        = "https://raw.githubusercontent.com/DreamLab-AI/sidestr-dreamlab-txbt4/main"
+mirror                 = true    # its own Git repo; Pages builds are disabled
 mirror_checkout        = "/home/devuser/workspace/sidestr/mirror-dreamlab-txbt4"
 faucet                 = true    # plain sats; no asset on this chain
 faucet_key_file        = "/home/devuser/workspace/sidestr/agents/treasury-dreamlab-txbt4.key"

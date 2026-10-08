@@ -115,7 +115,7 @@ for four days with nothing to bring it back.
 | program | gate | runs | does |
 |---|---|---|---|
 | `sidestr-producer` | `enabled` | `run-producer.sh --announce-mirror <announce_mirror>` | the upstream JS engine baked at the pins (`lib/sidestr-upstream.nix`, `/opt/agentbox/sidestr/upstream`): port `:3450` on loopback, a block every 600 s (10 s with transactions), the five default public relays, peg-ins scanned on the estate's testnet4 node from the funding height and paid from wallet `sidestr-peg` |
-| `sidestr-mirror` | `mirror` | `mirror-sync.sh <mirror_checkout> 120` | copies `chain.json`, `blocks.dat` and `blocks.json` into a GitHub Pages checkout and pushes on change |
+| `sidestr-mirror` | `mirror` | `mirror-sync.sh <mirror_checkout> 120` | copies `chain.json`, `blocks.dat` and `blocks.json` into a Git checkout and pushes on change; the raw file endpoint serves them without a Pages build |
 | `sidestr-faucet` | `faucet` | `run-faucet.sh` | `sidestr-agent faucet` (baked, `lib/sidestr-agent.nix`): 100 DREAM and 1,000 sats per script per 24 h, 20 grants an hour, paid from `faucet_key_file` |
 
 `mirror` and `faucet` apply only with `enabled`. Logs are `/var/log/sidestr-*.log`.
@@ -123,8 +123,9 @@ for four days with nothing to bring it back.
 `--announce-mirror` publishes the kind-33333 tip after every block; the relays are the
 registry (SPEC 11): any client asking for kind 33333 tagged `t=sidestr` lists every chain
 that has announced, and `play-grounds.github.io/sidestr` is one such client. Without it the
-producer makes blocks that no wallet can find. GitHub Pages serves the mirror with open
-CORS and Range requests, which is all a mirror is.
+producer makes blocks that no wallet can find. GitHub's raw file endpoint serves the
+mirror with open CORS and Range requests. The DreamLab website at `/chain` reads signed
+tips from Nostr and links to these snapshots; it does not publish a new site build per block.
 
 The producer runs the image's bake of the commits in `upstream-pins` (`lib/sidestr-upstream.nix`):
 sidestr/spec, bitcoin-desktop/schema and bitcoin-blake/blaketestnode in one read-only
