@@ -883,6 +883,14 @@
               "type": "string",
               "description": "Named Docker volume holding the production dataset."
             },
+            "reader_role": {
+              "type": "boolean",
+              "description": "ADR-2133: permit the explicit reader-role operation to provision a SELECT-only memory_entries role."
+            },
+            "hba_scram": {
+              "type": "boolean",
+              "description": "ADR-2133: permit the explicit hba-harden operation to replace non-loopback trust with SCRAM authentication."
+            },
             "hybrid_search": {
               "type": "boolean",
               "description": "PRD-018/ADR-036 D6: enable memory_hybrid_search (DIY fusion: ruvector_hybrid_score + PG FTS). Default false \u21d2 pure-vector search only. Injected as RUVECTOR_HYBRID_SEARCH."

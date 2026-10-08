@@ -1106,8 +1106,11 @@ cmd_shell() {
     fi
 
     if [[ -z "$profile" ]]; then
-        docker exec -it --user 1000 agentbox bash -c \
-            'bash /opt/agentbox/config/tmux-autostart.sh 2>/dev/null; exec tmux attach -t agentbox 2>/dev/null || exec fish'
+        # Preserve colour capabilities and UTF-8 across Docker's env boundary.
+        docker exec -it --user 1000 \
+            -e TERM="${TERM:-xterm-256color}" -e COLORTERM="${COLORTERM:-}" \
+            -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 agentbox bash -c \
+            'bash /opt/agentbox/config/tmux-autostart.sh 2>/dev/null; exec tmux -u attach -t agentbox 2>/dev/null || exec fish'
         return
     fi
 

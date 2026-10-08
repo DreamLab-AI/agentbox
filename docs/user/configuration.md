@@ -289,6 +289,13 @@ cuda          = true     # CUDA toolchain (requires [gpu].backend = "local-cuda"
 
 Validator rule **E019**: `cuda = true` requires `gpu.backend = "local-cuda"`.
 
+`ruflo_console = true` bakes the `/ruflo` cockpit into Claude Code. In the
+normal tmux tabs, use `./agentbox.sh shell` to preserve the local terminal's
+`TERM` and `COLORTERM` across Docker and attach in UTF-8 mode. Reattach and open a new tab after changing
+those capabilities. The console draws animated Unicode/Braille cells with
+24-bit colour; it does not require an image protocol. Its memory pane uses
+Agentbox's governed sidecar wrapper (ADR-2123), not an upstream local store.
+
 ## `[consultants]` and `[consultants.<name>]`
 
 Five named-consultant MCP servers that expose external LLMs as explicit

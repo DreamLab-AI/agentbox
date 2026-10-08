@@ -21,7 +21,7 @@
 { lib, pkgs }:
 
 let
-  # 2.1.291 (built 2026-10-06T02:41:25Z; bumped 2026-10-06 in 9415186f3).
+  # 2.1.294 (bumped 2026-10-08; checksums from the published manifest).
   # 2.1.289 (built 2026-10-03T19:38:35Z; bumped 2026-10-05).
   # Driver: the ruflo 3.51.x mods (ruflo-console) need Claude Code 2.1.287+.
   # Retains the function-hook surface introduced in 2.1.276
@@ -30,10 +30,10 @@ let
   #
   # This is Anthropic's latest channel release. Both per-arch hashes are
   # verified against its published manifest:
-  # https://downloads.claude.ai/claude-code-releases/2.1.291/manifest.json
-  #   linux-x64   078fad28d0297c9a25d306b635b2d8816c6839347520f29eb54ffea5d56142fb
-  #   linux-arm64 c18473a04cc4f077435d5d9081f09ebea46e699eb2825cea64741c4bccb87647
-  claudeCodeVersion = "2.1.291";
+  # https://downloads.claude.ai/claude-code-releases/2.1.294/manifest.json
+  #   linux-x64   27122ca7b624f537546fbef35b80c66370d974ff258f3d9b10ac50bb8771f262
+  #   linux-arm64 e5d2df19f30a6d63bf11188121f7edb2775249b57352a69269509a4b1496e763
+  claudeCodeVersion = "2.1.294";
 
   # Map agentbox's system string to the upstream download platform slug.
   platforms = {
@@ -54,10 +54,10 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = "sha256-B4+tKNApfJol0wa2NbLYgWxoOTR1IPKetU/+pdVhQvs=";
+      sha256 = "sha256-JxIsp7Yk9TdUb77zW4DGY3DZdP8ljz2bEKxQu4dx8mI=";
     };
     "aarch64-linux" = {
-      sha256 = "sha256-wYRzoEzE8HdDXV2QgfCevqRuaZ6yglzqZHQcS8y4dkc=";
+      sha256 = "sha256-5dLfGfMKbWO/ERiBIfftsndSSbVzUqaSaVCaSxSW52M=";
     };
   };
 

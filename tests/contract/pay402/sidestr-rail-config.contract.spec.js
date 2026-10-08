@@ -70,7 +70,7 @@ describe('railConfig :: the shipped agentbox.toml through management-api\'s own 
       const { loadManifest } = require('../../../management-api/adapters/manifest-loader');
       expect(railConfig(loadManifest(), {})).toMatchObject({
         enabled: true, chain_id: 'sidestr:dreamlab-txbt4', producer_url: 'http://127.0.0.1:3451',
-        mirror_url: 'https://dreamlab-ai.github.io/sidestr-dreamlab-txbt4',
+        mirror_url: 'https://raw.githubusercontent.com/DreamLab-AI/sidestr-dreamlab-txbt4/main',
       });
     } finally {
       if (saved === undefined) delete process.env.AGENTBOX_MANIFEST_PATH; else process.env.AGENTBOX_MANIFEST_PATH = saved;
