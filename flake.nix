@@ -1774,7 +1774,7 @@
         # jev-checkpoints — Jev as the timing judge for the ADR-2134 advisor
         # ([features.jev_checkpoints], ADR-2135). Authored in this repo under
         # config/claude-plugins/jev-checkpoints and baked by the config copy below,
-        # which drops the tree when the gate is off and strips its *.test.ts.
+        # which drops the tree when the gate is off and strips its tests/ directory.
         jevCheckpointsOn = ((agentboxConfig.features or {}).jev_checkpoints or {}).enabled or false;
         # [toolchains].ruflo_console: bake ruflo-console + ruflo-mods + ruflo-swarm
         # from the pinned rufloConsole input into the `agentbox` marketplace.
@@ -2051,8 +2051,8 @@ default_days = ${toString (relayCfg.retention_days or 30)}
             filter = path: type:
               builtins.baseNameOf path != "instructions"
               && (jevCheckpointsOn || !(lib.hasSuffix "/config/claude-plugins/jev-checkpoints" (toString path)))
-              && !(lib.hasInfix "/config/claude-plugins/jev-checkpoints/" (toString path)
-                   && lib.hasSuffix ".test.ts" (toString path));
+              && !(lib.hasInfix "/config/claude-plugins/jev-checkpoints/tests" (toString path)
+                   && (lib.hasSuffix "/tests" (toString path) || lib.hasInfix "/tests/" (toString path)));
           }} $out/opt/agentbox/config
           cp -r ${./https-bridge} $out/opt/agentbox/https-bridge
           cp -r ${./docs} $out/opt/agentbox/docs

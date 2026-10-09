@@ -25,6 +25,8 @@ const KEYS = {
   spawn_mode: 'spawnMode', spawn_min_confidence: 'spawnMinConfidence', shadow_log: 'shadowLog',
   usd_per_mtok_in: 'usdPerMTokIn',
 }
+/** Projected from elsewhere: the fence from [features.jev_compaction], backendLocal from the resolved façade. */
+const EXTRA = ['backendLocal', 'taintTools', 'taintSkills']
 const DEFAULTS = {
   enabled: true, api: '', model: 'jev-latest', timeout_ms: 4000, done_check: true, done_threshold: 0.9,
   repeat_check: true, repeat_count: 2, plan_check: true, plan_threshold: 0.8, min_chars: 24,
@@ -56,6 +58,7 @@ test('schema declares exactly the manifest keys, closed, with ranges and the spa
     assert.equal(s.properties[k].minimum, 0); assert.equal(s.properties[k].maximum, 1)
   }
   assert.equal(s.properties.repeat_count.minimum, 2)
+  assert.equal(s.properties.timeout_ms.maximum, 8000, 'hook budget is 10 s')
   assert.deepEqual(s.properties.spawn_mode.enum, ['off', 'shadow', 'enforce'])
 })
 
@@ -98,15 +101,19 @@ test('flake gates the plugin tree on the manifest flag and strips its tests', ()
   const flake = read('flake.nix')
   assert.match(flake, /jevCheckpointsOn = \(\(agentboxConfig\.features or \{\}\)\.jev_checkpoints or \{\}\)\.enabled or false;/)
   assert.match(flake, /jevCheckpointsOn \|\| !\(lib\.hasSuffix "\/config\/claude-plugins\/jev-checkpoints"/)
-  assert.match(flake, /lib\.hasSuffix "\.test\.ts"/)
+  assert.match(flake, /claude-plugins\/jev-checkpoints\/tests"/)
+  assert.match(flake, /lib\.hasSuffix "\/tests"/)
+  assert.ok(!/\.test\.ts"/.test(flake), 'the whole tests/ directory is stripped, not just *.test.ts')
 })
 
 const entry = read('config/entrypoint-unified.sh')
 const jkBlock = entry.slice(entry.indexOf('# ── ADR-2135: Jev checkpoints'), entry.indexOf('# ── [toolchains].ruflo_console: ruflo-console'))
 
 test('entrypoint projects exactly the contract userConfig keys', () => {
-  const projected = [...jkBlock.matchAll(/"([a-zA-Z]+)=\$(?:\(|_JK_API)/g)].map((m) => m[1]).sort()
-  assert.deepEqual(projected, Object.values(KEYS).sort())
+  const projected = [...jkBlock.matchAll(/"([a-zA-Z]+)=\$(?:\(|_JK_)/g)].map((m) => m[1]).sort()
+  assert.deepEqual(projected, [...Object.values(KEYS), ...EXTRA].sort())
+  assert.match(jkBlock, /"taintTools=\$\(_ab_toml_val features\.jev_compaction taint_tools\)"/)
+  assert.match(jkBlock, /"taintSkills=\$\(_ab_toml_val features\.jev_compaction taint_skills\)"/)
   assert.ok(!jkBlock.includes('/nix/store'), 'no store path in the block')
   assert.ok(!/--config apiKey|TYPESAFE_API_KEY=/.test(jkBlock), 'the key is never projected')
 })
@@ -131,6 +138,20 @@ printf '%s' "$_JK_ARGS"`
   assert.equal(r.stdout, ' --config doneThreshold=0.9 --config api=http://systemone:8097/v1/systemone')
 })
 
+test('backendLocal is explicit: true only for the façade with no manifest api, never from a URL', () => {
+  const m = jkBlock.match(/^ {2}_JK_API="[\s\S]*?^ {2}fi$/m)
+  assert.ok(m, 'resolution snippet found')
+  const run = (api, sso) => spawnSync('bash', ['-c', `_ab_toml_val() { case "$2" in api) printf '%s' "\$JK_T_API";; model) printf jev-latest;; esac; }
+_SSO_PLUGIN_CONFIG="\$JK_T_SSO"
+${m[0]}
+printf '%s|%s|%s' "$_JK_API" "$_JK_MODEL" "$_JK_LOCAL"`], { encoding: 'utf8', env: { ...process.env, JK_T_API: api, JK_T_SSO: sso } }).stdout
+  const sso = 'baseUrl=http://systemone:8097/v1/systemone\nmodel=laya\nbackendLocal=true'
+  assert.equal(run('', sso), 'http://systemone:8097/v1/systemone|laya|true')
+  assert.equal(run('http://10.0.0.5:8097/v1', sso), 'http://10.0.0.5:8097/v1|jev-latest|false', 'explicit api beside the façade stays non-local')
+  assert.equal(run('http://127.0.0.1:8097/v1', ''), 'http://127.0.0.1:8097/v1|jev-latest|false', 'a loopback URL alone never makes it local')
+  assert.equal(run('', ''), '|jev-latest|false')
+})
+
 test('the bash syntax of the entrypoint holds', () => {
   assert.equal(spawnSync('bash', ['-n', path.join(root, 'config/entrypoint-unified.sh')]).status, 0)
 })
@@ -140,6 +161,6 @@ test('once the plugin source lands, it declares every projected userConfig key a
   if (!fs.existsSync(pj)) return t.skip('plugin source not merged into this tree yet')
   const m = JSON.parse(fs.readFileSync(pj, 'utf8'))
   assert.equal(m.name, 'jev-checkpoints'); assert.equal(m.version, '0.1.0')
-  for (const k of Object.values(KEYS)) assert.ok(k in (m.userConfig || {}), `userConfig.${k}`)
+  for (const k of [...Object.values(KEYS), ...EXTRA]) assert.ok(k in (m.userConfig || {}), `userConfig.${k}`)
   assert.ok(!('apiKey' in (m.userConfig || {})), 'the key is environment-only')
 })

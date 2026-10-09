@@ -3077,8 +3077,8 @@
             "timeout_ms": {
               "type": "integer",
               "minimum": 500,
-              "maximum": 60000,
-              "description": "Deadline per Jev request in milliseconds; past it the checkpoint is skipped (fail-open)."
+              "maximum": 8000,
+              "description": "Deadline per Jev request in milliseconds (the hook budget is 10 s, hence the cap); past it the checkpoint is skipped (fail-open)."
             },
             "done_check": {
               "type": "boolean",

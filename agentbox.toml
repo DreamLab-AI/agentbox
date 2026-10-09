@@ -772,13 +772,17 @@ record_decisions = true          # log each judged request and its answers to ~/
 #           jev-checkpoints@agentbox with these values as userConfig; false
 #           uninstalls (the shared switch and marketplace stay while factrail or
 #           ruflo-console is on). REBUILD-class for the plugin itself (flake.nix).
+# taint   → the email fence (taintTools/taintSkills) is NOT set here: it is projected from
+#           [features.jev_compaction].taint_tools/taint_skills, one definition for both plugins.
+#           backendLocal is true only when [features.sovereign_system_one] is on and `api` is "";
+#           an explicit `api` never makes the backend local (ADR-2094 §5).
 # api/model → "" = TypeSafe https://api.typesafe.ai/v1/systemone; the key is the
 #           environment's TYPESAFE_API_KEY, never a userConfig value.
 # Needs Claude Code >= 2.1.294 (function hooks). Complements ADR-2134 model roles.
 enabled = true
 api = ""                         # "" = the TypeSafe default; set to repoint at a local System One façade (ADR-2094)
 model = "jev-latest"
-timeout_ms = 4000                # per-request deadline; past it the checkpoint is skipped
+timeout_ms = 4000                # per-request deadline, 500-8000 (hook budget is 10 s); past it the checkpoint is skipped
 done_check = true                # checkpoint 3 of ADR-2134: done claimed without a verifying run
 done_threshold = 0.9             # Jev Score at or above which the done advisory is injected (0-1)
 repeat_check = true              # checkpoint 2: same failure fingerprint recurring (local, no egress)

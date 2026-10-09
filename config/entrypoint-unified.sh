@@ -2485,7 +2485,7 @@ if [ -n "$_SSO_EXPORTS" ]; then
   eval "$_SSO_EXPORTS"
   _SSO_API="${AGENTBOX_SKILL_ROUTE_API:-}"
   _SSO_MODEL="${AGENTBOX_SKILL_ROUTE_MODEL:-}"
-  echo "  [system-one] local façade projected: $_SSO_API (model $_SSO_MODEL) — TYPESAFE_API_KEY is off the path"
+  echo "  [system-one] local façade projected: $_SSO_API (model $_SSO_MODEL) — TYPESAFE_API_KEY is off the path for every consumer that follows the façade"
 fi
 
 # ── ADR-2091: live skill router — register/de-register the UserPromptSubmit hook ──
@@ -2862,12 +2862,26 @@ if [ "$_JK_ON" = "1" ] && [ -d "$_JK_PLUGIN" ] && command -v claude >/dev/null 2
       *) echo "  [jev-checkpoints] plugin declares no userConfig key '$key' — not projecting it" ;;
     esac
   }
-  # ADR-2094: with the sovereign façade on and no explicit manifest api, the
-  # plugin follows the same endpoint the skill router uses (loopback/LAN = local).
+  # ADR-2094 §5: backendLocal is an explicit boolean and is NEVER inferred from
+  # an api URL. It is true only when the sovereign façade is on AND the plugin is
+  # actually pointed at it (no explicit manifest api); a manifest api without the
+  # façade, or beside it, leaves it false so the email fence stays on. The façade
+  # endpoint and model come from the same resolved config factrail uses.
   _JK_API="$(_ab_toml_val features.jev_checkpoints api)"
-  [ -n "$_JK_API" ] || _JK_API="$_SSO_API"
+  _JK_MODEL="$(_ab_toml_val features.jev_checkpoints model)"
+  _JK_LOCAL=false
+  if [ -n "$_SSO_PLUGIN_CONFIG" ] && [ -z "$_JK_API" ]; then
+    _JK_API="$(printf '%s\n' "$_SSO_PLUGIN_CONFIG" | sed -n 's/^baseUrl=//p' | head -n1)"
+    _JK_SSO_MODEL="$(printf '%s\n' "$_SSO_PLUGIN_CONFIG" | sed -n 's/^model=//p' | head -n1)"
+    [ -z "$_JK_SSO_MODEL" ] || _JK_MODEL="$_JK_SSO_MODEL"
+    if printf '%s\n' "$_SSO_PLUGIN_CONFIG" | grep -qx 'backendLocal=true'; then _JK_LOCAL=true; fi
+  fi
+  # One fence definition for both Jev plugins: the taint lists are factrail's.
   for kv in "api=$_JK_API" \
-            "model=$(_ab_toml_val features.jev_checkpoints model)" \
+            "backendLocal=$_JK_LOCAL" \
+            "taintTools=$(_ab_toml_val features.jev_compaction taint_tools)" \
+            "taintSkills=$(_ab_toml_val features.jev_compaction taint_skills)" \
+            "model=$_JK_MODEL" \
             "timeoutMs=$(_ab_toml_val features.jev_checkpoints timeout_ms)" \
             "doneCheck=$(_ab_toml_val features.jev_checkpoints done_check)" \
             "doneThreshold=$(_ab_toml_val features.jev_checkpoints done_threshold)" \
