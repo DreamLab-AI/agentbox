@@ -2,6 +2,16 @@
 
 @AGENTS.md
 
+## Model roles and the advisor
+
+Sonnet leads on high effort, an Opus advisor is on call, and search fans out to the Haiku `Explore` agent (`[claude_code]` in `agentbox.toml`, ADR-2134). Consult the advisor at three points:
+
+- before locking a plan that spans several files, a schema or wire contract, auth or identity;
+- when the same test or compiler error fails twice, before a third attempt;
+- before declaring a task done or staging a commit, over the full diff.
+
+Skip it for routine reads, searches and single-file edits. When your own evidence contradicts the advice, say so instead of following it. The advisor is the same model family, not the independent audit: build-with-quality's evidence auditor stays cross-vendor. Pick each subagent's model per call (`model` on the Agent tool): Haiku for lookup, Sonnet for implementation, Opus only for design or review.
+
 ## Browser
 
 Use the `browser` skill (browsercontainer sidecar, MCP `browser-gpu`). Never install local Playwright / `agent-browser` / `@claude-flow/browser`.

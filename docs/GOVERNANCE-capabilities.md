@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.4
+version: 0.6.5
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.5 (2026-10-09): ADR-2135 (accepted, implemented, staged) — jev-checkpoints: Jev times the ADR-2134 Opus advisor with done, repeat, plan and shadow-only spawn checkpoints; egress widens ADR-2090 as ADR-2121 did with the same email fence. Recorded under Jev compaction; the Invariants compliance surface gains the spawn-shadow and fence rules."
   - "0.6.4 (2026-10-06): ADR-2131 (accepted, implemented, inactive) — scheduled diagram review: GLM triage and review on manifest schedules and a Gemini audit behind an interval, changed-topic or high-severity, and monthly USD gate, all recorded in an append-only per-repo ledger. The Gemini audit stays a transport outside [model_routing]. The Invariants compliance surface is unchanged."
   - "0.6.3 (2026-10-05): ADR-2130 (accepted, not implemented) — diagram skills name four [model_routing] activities (diagram-polish T1, diagram-narrative T2, diagram-synthesis T3, seal-review T3 cross-family) on two new hosts, loom and zai, and never name model ids. Deterministic sealmap steps are T0. Tiers are set by measured descent and recorded per corpus in docs/diagrams/.tiers.json. Seal review is always a different model family from the author. The external Gemini review is a transport outside [model_routing]. Recorded in a dated section; the Invariants compliance surface is unchanged until the sealmap skill lands."
   - "0.6.2 (2026-10-05): PROPOSED, not ratified. ADR-2129 (host PRD-029 / DDD-023): ontology-augment distinguishes a degraded empty (Loom unreachable) from a silent empty (healthy, not asserted) and, once reachable, a contradicted answer; a silent result is never negative evidence, and every grounded answer cites the ontology generation it read. Recorded under the Loom section; the Invariants compliance surface is unchanged."
@@ -165,7 +166,20 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   Egress widened from ADR-2090 by operator decision. Contract tests: factrail's own suite at
   the pinned `rev` (run in the Nix build), `tests/config/factrail-store-migrate.test.mjs`,
   `tests/config/factrail-projection.test.sh`.
-- **Typed-decision backend** (ADR-2094, PRD-023/DDD-021) — the two System One consumers
+- **Jev checkpoints for the advisor** (ADR-2135) — `[features.jev_checkpoints]` installs the
+  `jev-checkpoints` function-hook plugin (`config/claude-plugins/jev-checkpoints`, authored in
+  this repo; Claude Code ≥ 2.1.294) so Jev times the Opus advisor of ADR-2134: *done* (completion
+  claimed without a verifying run), *repeat* (same failure fingerprint again; local, no egress),
+  *plan* (multi-file plan or auth/schema/API/data contract) and *spawn* (model choice for a
+  subagent). Invariants: one advisory line of ≤ 300 characters per checkpoint per turn, never a
+  forced tool call or a block; **spawn routing is shadow-only** unless `spawn_mode = "enforce"`
+  (Jev-picked subagent models measured 69.7% dearer than one strong agent in
+  `suenot/codex-jev-router`); the same sticky **email fence and no-tool-result egress** as
+  factrail, with a loopback/LAN api counted local; fail-open; the key is `TYPESAFE_API_KEY` from
+  the environment, never a userConfig value. `/jev-checkpoints status|on|off` is the switch.
+  Egress widened from ADR-2090 as ADR-2121 did. Contract test:
+  `tests/config/jev-checkpoints.test.mjs`.
+ PRD-023/DDD-021) — the two System One consumers
   above (router, compaction) address a *protocol*, not a vendor. `[features.sovereign_system_one]`
   (off by default, rebuild class) projects both at a local capacity-adapting facade,
   `system-one-facade` on `:8097`, which speaks the same Jev wire format and answers from a
@@ -466,8 +480,10 @@ ADR-2071 is **proposed, not landed**, and divergences 1 and 6 stay open: routing
   the policy table, per-task-class scorecard and RuVector outcome writer; AoE receives
   `(task, backend)` and runs it, its source tree unpatched. Privacy tier gates before cost
   (nothing personal leaves its tier; `loom-raw` is never a fallback, ADR-2070); Claude Code
-  subagents cannot have their model swapped, so the router's choice at that seam is "Claude
-  subagent or AoE session". Precondition is a research spike (fleet inventory with dated
+  subagents take a model per call (Agent `model` > frontmatter > `CLAUDE_CODE_SUBAGENT_MODEL`
+  > main; ADR-2134 amends the earlier "cannot be swapped" premise), but only among Claude
+  tiers, so the router's cross-vendor choice at that seam is still "Claude subagent or AoE
+  session". Precondition is a research spike (fleet inventory with dated
   tariffs, six to ten task classes, one week routed-vs-default). Consolidates the four
   scattered model-choice mechanisms (`[model_routing.routes]`, `[consultants.<name>].model`,
   seed `model` keys, the regex prompt-routing hook). PRD-005 is the ORIGIN (`see`).

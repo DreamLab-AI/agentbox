@@ -1,0 +1,4 @@
+{
+  "description": "jev-checkpoints (ADR-2135): Jev as a timing judge for the Opus advisor. done (turn.complete → next prompt's context), repeat (tool.call, local only), plan (prompt.submit context), spawn (agent.spawn, shadow by default). Fail-open everywhere; /jev-checkpoints status|on|off.",
+  "modules": ["./register.ts"]
+}

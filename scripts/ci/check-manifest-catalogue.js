@@ -78,6 +78,10 @@ const BASELINE = [
       // saved locally and whether judged decisions are logged locally. Neither
       // installs anything; both are inert when the parent gate is off.
       'features.jev_compaction.save_full_outputs', 'features.jev_compaction.record_decisions',
+      // ADR-2135 per-checkpoint switches under the catalogued `features.jev_checkpoints`
+      // gate that installs the plugin; inert when the parent gate is off.
+      'features.jev_checkpoints.done_check', 'features.jev_checkpoints.repeat_check',
+      'features.jev_checkpoints.plan_check',
       'skills.code_interpreter.allow_pip_install',
       'integrations.ruvector_external.manage_sidecar', 'integrations.ruvector_external.hybrid_search',
       'integrations.ruvector_external.typed_metadata', 'integrations.ruvector_external.metadata_gin',

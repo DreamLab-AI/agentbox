@@ -664,6 +664,18 @@ permission_deny = [
   "Bash(ssh *172.18.0.1*)", "Bash(ssh *172.20.0.1*)",
   "Bash(ssh *192.168.2.132*)", "Bash(ssh *192.168.2.160*)", "Bash(ssh *machinelearn*)",
 ]
+# ADR-2134 — model roles, reconciled every boot by the same projector into the
+# root settings and every non-gateway profile (openrouter/zai pin their own
+# model and cannot reach the Anthropic-only advisor). Sonnet leads on high
+# effort; Opus is the advisor Claude consults at decision points (before a plan
+# locks, after a repeated failure, before declaring done). The advisor must rank
+# at or above the main model: an Opus main accepts only Fable or Opus. A key
+# removed here is retracted only if settings still hold the value it wrote;
+# advisor_model = "off" removes it. Search subagents run on Haiku through
+# agents/Explore.md, never a global CLAUDE_CODE_SUBAGENT_MODEL.
+model         = "sonnet"   # fable|best|opus|sonnet|haiku|opusplan (+ optional "[1m]") or a claude-* id
+effort        = "high"     # low | medium | high | xhigh
+advisor_model = "opus"     # fable | opus | sonnet | haiku | claude-* id | "off"
 
 [features.jev_compaction]
 # ADR-2093 (policy) and ADR-2121 (factrail) — Jev compaction with fact rails. At compaction
@@ -729,6 +741,59 @@ fallback = "rules"               # no key, tainted on a cloud judge, or judge fa
 compaction_timeout_ms = 15000    # judge deadline; past it the fallback runs
 save_full_outputs = true         # save each reduced result's full output (secrets masked) and point the note at it
 record_decisions = true          # log each judged request and its answers to ~/.local/share/factrail/decisions (never for a tainted session): the dream cycle's training and evaluation data
+
+[features.jev_checkpoints]
+# ADR-2135 — Jev as the TIMING judge for the Opus advisor (ADR-2134). A Claude Code
+# function-hook plugin (config/claude-plugins/jev-checkpoints) asks TypeSafe
+# System One when a consult is worth its cost and injects ONE short advisory
+# line (<= 300 chars, never a forced tool call). Four checkpoints, each
+# switchable: done (a turn claims completion with no verifying run: Jev Score),
+# repeat (the same failure fingerprint recurs: LOCAL only, never calls Jev),
+# plan (a prompt needs a multi-file plan or touches an auth/schema/API/data
+# contract: Jev Score) and spawn (Jev Choice over haiku|sonnet|opus|inherit for a
+# subagent; SHADOW-ONLY by default). Spawn stays shadow because the published
+# negative result (suenot/codex-jev-router) found Jev-picked subagent models 27%
+# cheaper than fixed strong-tier children but 69.7% dearer than one strong agent;
+# the shadow log feeds ADR-2110 teacher labels. Design draws on pi-warden's
+# done/retry guards. Slash command: /jev-checkpoints [status|on|off].
+#
+# EGRESS: widens ADR-2090 the way ADR-2121 did, with the same email carve-out.
+# Sent: user prompt text (plan), assistant final text (done) and a subagent
+# description/prompt head (spawn), each clamped head 9000 / tail 3000 chars,
+# plus a compact tool-call list (name, ok|error, first line of a Bash command).
+# NEVER tool-result contents. A session that has EVER made an
+# mcp__email-gateway__* / Gmail call or loaded email-search is sticky-tainted and
+# sent nothing to a cloud judge (the local repeat check still runs); a
+# loopback/LAN `api` (ADR-2094) counts as local. Fail-open: no key, a timeout, a
+# 429 or any error means no injection and no block.
+#
+# enabled → BOOT-class: the entrypoint sets CLAUDE_CODE_ENABLE_FUNCTION_HOOKS,
+#           registers the `agentbox` marketplace and installs
+#           jev-checkpoints@agentbox with these values as userConfig; false
+#           uninstalls (the shared switch and marketplace stay while factrail or
+#           ruflo-console is on). REBUILD-class for the plugin itself (flake.nix).
+# taint   → the email fence (taintTools/taintSkills) is NOT set here: it is projected from
+#           [features.jev_compaction].taint_tools/taint_skills, one definition for both plugins.
+#           backendLocal is true only when [features.sovereign_system_one] is on and `api` is "";
+#           an explicit `api` never makes the backend local (ADR-2094 §5).
+# api/model → "" = TypeSafe https://api.typesafe.ai/v1/systemone; the key is the
+#           environment's TYPESAFE_API_KEY, never a userConfig value.
+# Needs Claude Code >= 2.1.294 (function hooks). Complements ADR-2134 model roles.
+enabled = true
+api = ""                         # "" = the TypeSafe default; set to repoint at a local System One façade (ADR-2094)
+model = "jev-latest"
+timeout_ms = 4000                # per-request deadline, 500-8000 (hook budget is 10 s); past it the checkpoint is skipped
+done_check = true                # checkpoint 3 of ADR-2134: done claimed without a verifying run
+done_threshold = 0.9             # Jev Score at or above which the done advisory is injected (0-1)
+repeat_check = true              # checkpoint 2: same failure fingerprint recurring (local, no egress)
+repeat_count = 2                 # occurrences (>= 2) that trigger the advisory, once per fingerprint
+plan_check = true                # checkpoint 1: multi-file plan / auth, schema, API or data-contract change
+plan_threshold = 0.8             # Jev Score at or above which the plan advisory is injected (0-1)
+min_chars = 24                   # prompts shorter than this (and slash commands) are never judged
+spawn_mode = "shadow"            # "off" | "shadow" (record only) | "enforce" (rewrite an unset model above spawn_min_confidence)
+spawn_min_confidence = 0.8       # enforce only: minimum Jev confidence to rewrite a subagent's model (0-1)
+shadow_log = "/home/devuser/.claude/jev-checkpoints/shadow.jsonl"   # one JSON line per spawn decision (sha256-12 digest, no prompt text)
+usd_per_mtok_in = 0.042          # input price used for the /jev-checkpoints cost estimate
 
 [features.sovereign_system_one]
 # ADR-2094 — Sovereign System One: the local, capacity-adapting typed-decision
@@ -1426,18 +1491,18 @@ aqe_fallback_chain = "claude-code,codex"  # ordered AQE_LLM_FALLBACK_CHAIN — c
 # kit-originated gap-fills (agentic-kit ADR-0002), flagged as such.
 # Models are SOFT defaults (last verified 2026-09-08: codex → gpt-6-astra, the Codex bundled default since 2026-09-03) — tune per activity.
 [model_routing.routes]
-specification     = "claude:claude-sonnet-5"
+specification     = "claude:claude-sonnet-5-5"
 architecture      = "claude:claude-fable-5-1"
-design            = "claude:claude-opus-5"
+design            = "claude:claude-opus-5-5"
 implementation    = "codex:gpt-6-astra -> claude:claude-fable-5-1"
-testing           = "codex:gpt-6-astra -> claude:claude-opus-5"
-review            = "claude:claude-sonnet-5"
+testing           = "codex:gpt-6-astra -> claude:claude-opus-5-5"
+review            = "claude:claude-sonnet-5-5"
 security-scan     = "codex:gpt-6-astra"
 security-analysis = "claude:claude-fable-5-1"
 documentation     = "codex:gpt-6-astra"
 debugging         = "claude:claude-fable-5-1"
 packaging         = "codex:gpt-6-astra"          # kit-originated activity (no upstream template)
-release           = "claude:claude-sonnet-5" # kit-originated activity (no upstream template)
+release           = "claude:claude-sonnet-5-5" # kit-originated activity (no upstream template)
 
 # ── ADR-2080: metaharness cost-optimal router as a dedicated AoE session ─────
 # Phase 0 of ADR-2079. The baked ruflo closure carries @metaharness/router

@@ -1,0 +1,3 @@
+# Claude Code lays its declarations here on load or validate (early access; regenerated per release)
+.claude-plugin/types/
+.claude/

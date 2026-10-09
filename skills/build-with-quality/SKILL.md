@@ -3,7 +3,7 @@ name: build-with-quality
 description: "Implement features with tests and quality gates, debug hard bugs, and stress-test designs. Use when building a feature with TDD/EDD, chasing a stubborn multi-function bug (feedback-loop-first), interrogating a design before coding, or running a coverage/security/accessibility quality-gate pass. Supersedes agentic-qe, reasoningbank-*, and pair-programming."
 license: MIT
 metadata:
-  version: 1.3.0
+  version: 1.4.0
   author: Claude Flow
   tags: [meta-skill, development, qa, edd, tdd, bdd, adr, ddd, agents, quality-gates, evidence, sona, hnsw, coverage, security, accessibility, chaos-testing]
   mcp_server: false
@@ -30,7 +30,7 @@ system in place of several specialized skills.
 - **Quality gates & workflow:** [references/quality-gates-and-workflow.md](./references/quality-gates-and-workflow.md) — gate thresholds and the 5-phase flow.
 - **Review findings intake:** [references/quality-gates-and-workflow.md](./references/quality-gates-and-workflow.md#review-findings-intake) — `sealmap-review` findings (external Gemini lenses, inline fidelity) are hypotheses: reproduce with a failing test first, then fix, correct the corpus, or link the register.
 - **Security gate (deepsec):** [references/deepsec-security-gate.md](./references/deepsec-security-gate.md) — run `scripts/deepsec-gate.sh --diff origin/main`; policy from `[security.deepsec]`, receipts in `.deepsec-gate/reports/`. ADR-2033.
-- **Architecture:** [references/architecture.md](./references/architecture.md) — learning system, memory, model routing, consensus, MCP/CLI execution, config.
+- **Architecture:** [references/architecture.md](./references/architecture.md) — learning system, memory, model roles, consensus, MCP/CLI execution, config.
 - **BHIL traceability:** [references/bhil-traceability.md](./references/bhil-traceability.md) — PRD→SPEC→ADR→TASK artifact chain, AI-native ADR types, eval/guardrail specs.
 - **Migration:** [references/migration.md](./references/migration.md) — moving off agentic-qe / reasoningbank-* / pair-programming.
 - **Empirical tuning:** to optimize any part of this skill against a measurable reward rather than by intuition, use the `skill-tuning` skill (SkillOpt loop + held-out A/B).
@@ -62,38 +62,41 @@ Methodology: DDD + ADR + TDD (EDD design-time first)
 Quality: 85% coverage, security scan, WCAG AA
 ```
 
-**Option 2 — CLI.** There is no `claude-flow skill ...` subcommand; compose the
-same workflow from primitives:
-```bash
-claude-flow swarm init --topology hierarchical --v3-mode
-claude-flow agent spawn --type architect
-claude-flow agent spawn --type coder
-claude-flow agent spawn --type test-strategist
-claude-flow task create --type implementation --description "[TASK]"
-```
-
-**Option 3 — MCP tools (when available).**
+**Option 2 — Agent tool + advisor (Claude Code).** Delegate to registered
+subagents, choosing each one's model for the job; the lead consults the advisor
+at the checkpoints in [Model roles](#model-roles-adr-2134):
 ```javascript
-mcp__claude-flow__swarm_init { topology: "hierarchical", maxAgents: 15, strategy: "specialized" }
-mcp__claude-flow__agent_spawn { agentType: "architect" }
-mcp__claude-flow__agent_spawn { agentType: "coder" }
-mcp__claude-flow__agent_spawn { agentType: "test-strategist" }
-mcp__claude-flow__task_orchestrate { task: "[PROJECT]", strategy: "parallel" }
-```
-
-**Option 4 — Agent tool (Claude Code).** Delegate to registered subagents:
-```javascript
-Agent({ description: "Implement JWT auth", prompt: "Implement user authentication with JWT, following TDD", subagent_type: "rust-engineer" })
+Agent({ description: "Find auth call sites", prompt: "List every caller of verify_token, very thorough", subagent_type: "Explore" })   // Haiku
+Agent({ description: "Implement JWT auth", prompt: "Implement user authentication with JWT, following TDD", subagent_type: "rust-engineer", model: "sonnet" })
 Agent({ description: "Auth module tests", prompt: "Write tests for the auth module to the coverage gate", subagent_type: "test-engineer" })
 ```
-Claude Code only: Option 4 uses the Agent tool. On Codex: use Option 2
-(CLI) or Option 3 (MCP, if the ruflo MCP proxy is reachable from Codex).
+For a fan-out of many workers with a fixed shape (review N dimensions, verify
+each finding), use the Workflow tool when the user has opted into it.
 
+**Option 3 — ruflo coordination state (MCP or CLI).** `swarm_init`/`agent_spawn`
+record topology and agents for observers (`/ruflo-swarm:watch`) and shared
+state; they do not run Claude Code workers. On Codex, this is the coordination
+surface; there the workers are Codex itself.
+```bash
+claude-flow swarm init --topology hierarchical --v3-mode
+claude-flow agent spawn --type coder --name primary-developer
+```
 MCP is preferred when `mcp__claude-flow__*` tools are available; otherwise fall back
 to the `claude-flow` CLI (baked on PATH — never `npx claude-flow@alpha`, which
 resolves a stale cached version). See
 [references/architecture.md](./references/architecture.md) for the detection logic
 and the per-agent coordination hooks.
+
+## Model roles (ADR-2134)
+
+Claude Code's own seams decide which model runs, not ruflo:
+
+- **Lead session:** Sonnet on high effort (`[claude_code].model`/`effort`) writes diffs and runs the suites.
+- **Advisor:** Opus on call (`advisor_model`), a server-side tool Claude consults with the full transcript. Checkpoints: before a multi-file plan, schema or auth contract locks; when the same test or compiler error fails twice; before declaring done or committing, over the full diff.
+- **Subagents:** pick the model per call with `model` on the Agent tool, Haiku for lookup and docs retrieval, Sonnet for implementation, Opus for design or review. Search fan-out goes to the registered `Explore` agent, pinned to Haiku.
+- **Anti-fox is cross-vendor.** Haiku, Sonnet, Opus and the advisor are one model family; the evidence auditor runs on Codex (`codex exec -m gpt-6-astra`). A Claude auditor is a degraded same-family audit and must say so.
+
+ruflo's `agent_spawn` only records an agent with a model *label*; the label runs only through ruflo `agent_execute`, a direct API call outside Claude Code. Use ruflo swarm tools for shared coordination state, not as the worker pool.
 
 ## Methodology at a glance
 

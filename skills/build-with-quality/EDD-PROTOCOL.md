@@ -224,9 +224,11 @@ generate evidence that confirms it. Three required mitigations:
 | `evidence-producer` | execution agent (tool-use enabled) | auditor |
 | `evidence-auditor` | verification agent, **different model** | producer |
 
-The auditor MUST run on a different model family from the producer (e.g.
-producer = Sonnet, auditor = Opus or Haiku, or vice versa). Same-model
-audit is forbidden — it inherits the same blind spots.
+The auditor MUST run on a different model family from the producer: a Claude
+producer (Haiku, Sonnet, Opus or Fable) is audited by Codex (`codex exec -m
+gpt-6-astra`). Sonnet and Opus are one family; a same-family audit inherits
+the same blind spots, and the Claude Code advisor (ADR-2134) is a same-family
+second opinion, not the audit. A Claude auditor is a recorded degradation.
 
 ### 5.2 Execution Receipts
 

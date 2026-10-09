@@ -27,6 +27,10 @@ const IDS = PLUGINS.map(n => `${n}@agentbox`)
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'ruflo-console-'))
 const write = (file, text) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text) }
 
+// The upstream lines the routeTasks patch anchors on (ruflo v3.51.1).
+const MODS_OPTIONS_TS = 'export type ModOptions = {\n  readonly routeContext: boolean\n}\nexport function readOptions(o) {\n  return {\n    routeContext: bool(o.routeContext, true),\n  }\n}\n'
+const MODS_ROUTE_TS = "  on('prompt.submit', async ($, e, next) => {\n    if (!state.owned.has('route')) return next(e)\n  })\n"
+
 /** A miniature ruflo checkout: the three mods, an unrelated plugin, node_modules and repo files. */
 function fixtureRuflo(versions = PINNED_VERSIONS) {
   const src = tmp()
@@ -36,6 +40,10 @@ function fixtureRuflo(versions = PINNED_VERSIONS) {
     write(path.join(dir, '.claude-plugin/plugin.json'), JSON.stringify({ name, version: versions[name], userConfig }))
     write(path.join(dir, 'hooks/hooks.json'), JSON.stringify({ modules: ['./register.ts'] }))
     write(path.join(dir, 'hooks/register.ts'), 'export default () => {}\n')
+    if (name === 'ruflo-mods') {
+      write(path.join(dir, 'hooks/options.ts'), MODS_OPTIONS_TS)
+      write(path.join(dir, 'hooks/route/index.ts'), MODS_ROUTE_TS)
+    }
     write(path.join(dir, 'node_modules/left-pad/index.js'), 'module.exports = 1\n')
     write(path.join(dir, 'hooks/node_modules/x/index.js'), 'module.exports = 2\n')
   }
@@ -93,6 +101,28 @@ test('the bake defaults userConfig.cli to ruflo where a plugin declares it', () 
     if (name === 'ruflo-mods') assert.equal(manifest.userConfig.cli, undefined)
     else assert.equal(manifest.userConfig.cli.default, 'ruflo')
   }
+})
+
+test('the bake adds routeTasks to ruflo-mods, off by default, and gates the route hook on it', () => {
+  const { out, status, stderr } = runBake(fixtureRuflo())
+  assert.equal(status, 0, stderr)
+  const mods = path.join(out, 'ruflo-mods')
+  const manifest = JSON.parse(fs.readFileSync(path.join(mods, '.claude-plugin/plugin.json'), 'utf8'))
+  assert.equal(manifest.userConfig.routeTasks.default, false)
+  assert.equal(manifest.userConfig.modTrust.default, 'observe', 'upstream options kept')
+  const options = fs.readFileSync(path.join(mods, 'hooks/options.ts'), 'utf8')
+  assert.match(options, /readonly routeTasks: boolean/)
+  assert.match(options, /routeTasks: bool\(o\.routeTasks, false\),/)
+  const route = fs.readFileSync(path.join(mods, 'hooks/route/index.ts'), 'utf8')
+  assert.match(route, /if \(!options\.routeTasks \|\| !state\.owned\.has\('route'\)\) return next\(e\)/)
+})
+
+test('the bake fails when a ruflo bump moves the routeTasks anchor', () => {
+  const src = fixtureRuflo()
+  write(path.join(src, 'plugins/ruflo-mods/hooks/route/index.ts'), "  on('prompt.submit', () => {})\n")
+  const { status, stderr } = runBake(src)
+  assert.notEqual(status, 0)
+  assert.match(stderr, /anchor not found .*route\/index\.ts/)
 })
 
 test('the bake fails when a pinned version differs from marketplace.json', () => {
@@ -212,7 +242,7 @@ test('the entrypoint keeps the shared marketplace and function hooks while the c
   const entry = fs.readFileSync(path.join(root, 'config/entrypoint-unified.sh'), 'utf8')
   assert.match(entry, /_RC_ON="\$\(_ab_toml_bool toolchains ruflo_console\)"/)
   assert.match(entry, /on = process\.env\.JC_ON === '1' \|\| process\.env\.RC_ON === '1'/)
-  assert.match(entry, /if \[ "\$_RC_ON" != "1" \] && grep -q '"agentbox"' .*known_marketplaces\.json/)
+  assert.match(entry, /if \[ "\$_RC_ON" != "1" \] && \[ "\$_JK_ON" != "1" \] \\\n[\s\S]*?grep -q '"agentbox"' .*known_marketplaces\.json/)
   assert.match(entry, /node \/opt\/agentbox\/scripts\/ruflo-console-project\.mjs \\\n\s+--on "\$_RC_ON"/)
   // The RC_ON definition precedes its first use (set -u).
   assert.ok(entry.indexOf('_RC_ON="$(') < entry.indexOf('RC_ON="$_RC_ON"'))

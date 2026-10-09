@@ -3057,6 +3057,91 @@
             }
           }
         },
+        "jev_checkpoints": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2135 Jev checkpoints: Jev as the timing judge for the ADR-2134 Opus advisor. The jev-checkpoints function-hook plugin (config/claude-plugins/jev-checkpoints), BOOT-class for the projection and REBUILD-class for the plugin; needs Claude Code >= 2.1.294. Egress widens ADR-2090 as ADR-2121 did, with the email carve-out.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Bake the jev-checkpoints plugin into the image, then register the plugin, the agentbox marketplace and CLAUDE_CODE_ENABLE_FUNCTION_HOOKS in ~/.claude/settings.json; false uninstalls the plugin (the shared switch and marketplace stay while factrail or ruflo-console is on)."
+            },
+            "api": {
+              "type": "string",
+              "description": "System One endpoint; \"\" (default) = the TypeSafe default https://api.typesafe.ai/v1/systemone. A loopback/LAN host is treated as local (ADR-2094). The key is TYPESAFE_API_KEY from the environment, never a setting."
+            },
+            "model": {
+              "type": "string",
+              "description": "System One model id."
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "minimum": 500,
+              "maximum": 8000,
+              "description": "Deadline per Jev request in milliseconds (the hook budget is 10 s, hence the cap); past it the checkpoint is skipped (fail-open)."
+            },
+            "done_check": {
+              "type": "boolean",
+              "description": "Checkpoint: the turn claims completion without a verifying run (Jev Score)."
+            },
+            "done_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Jev Score at or above which the done advisory is injected."
+            },
+            "repeat_check": {
+              "type": "boolean",
+              "description": "Checkpoint: the same failure fingerprint recurs (local only, never calls Jev)."
+            },
+            "repeat_count": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 20,
+              "description": "Occurrences of one failure fingerprint that trigger the advisory (once per fingerprint)."
+            },
+            "plan_check": {
+              "type": "boolean",
+              "description": "Checkpoint: a prompt needs a multi-file plan or touches an auth/schema/API/data contract (Jev Score)."
+            },
+            "plan_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Jev Score at or above which the plan advisory is injected."
+            },
+            "min_chars": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Prompts shorter than this, and slash commands, are never judged."
+            },
+            "spawn_mode": {
+              "type": "string",
+              "enum": [
+                "off",
+                "shadow",
+                "enforce"
+              ],
+              "description": "Subagent model routing: off; shadow (default) records Jev's Choice and never alters the spawn; enforce rewrites an unset model above spawn_min_confidence, never above the main model."
+            },
+            "spawn_min_confidence": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Enforce only: minimum Jev confidence to rewrite a subagent's model."
+            },
+            "shadow_log": {
+              "type": "string",
+              "minLength": 1,
+              "description": "JSONL file receiving one line per spawn decision (sha256-12 prompt digest, no prompt text); feeds ADR-2110 teacher labels."
+            },
+            "usd_per_mtok_in": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Input price per million tokens used by the /jev-checkpoints cost estimate."
+            }
+          }
+        },
         "expel_lesson_extraction": {
           "type": "object",
           "additionalProperties": false,
@@ -4001,7 +4086,7 @@
     "claude_code": {
       "type": "object",
       "additionalProperties": false,
-      "description": "ADR-2116: Claude Code permission posture, projected into every settings file at boot.",
+      "description": "ADR-2116: Claude Code permission posture; ADR-2134: model roles. Projected into every settings file at boot (roles skip gateway profiles).",
       "properties": {
         "permission_mode": {
           "type": "string",
@@ -4021,6 +4106,21 @@
             "type": "string"
           },
           "description": "Permission deny rules enforced in every mode, bypass included."
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^((fable|best|opus|sonnet|haiku|opusplan)(\\[1m\\])?|claude-[A-Za-z0-9.-]+(\\[1m\\])?)$",
+          "description": "ADR-2134: settings `model` (main session model) for the root session and every non-gateway profile."
+        },
+        "effort": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "xhigh"],
+          "description": "ADR-2134: settings `effortLevel` (default effort; `max` is not accepted by the persisted setting)."
+        },
+        "advisor_model": {
+          "type": "string",
+          "pattern": "^(off|fable|opus|sonnet|haiku|claude-[A-Za-z0-9.-]+)$",
+          "description": "ADR-2134: settings `advisorModel` (server-side advisor tool, Anthropic API only); \"off\" removes it. Must rank at or above `model`."
         }
       }
     }

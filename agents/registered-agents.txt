@@ -51,3 +51,7 @@ nix-image-engineer
 
 # --- dispatch ---
 auto-consultant
+
+# --- built-in overrides (same name replaces the built-in; ADR-2134) ---
+# Explore: fan-out search on Haiku instead of the main session's model.
+Explore

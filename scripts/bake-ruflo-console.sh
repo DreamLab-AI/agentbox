@@ -19,7 +19,26 @@
 # - Every plugin's version must equal the version marketplace.json lists for it,
 #   so a bumped pin with a stale catalogue fails the build rather than
 #   registering under the wrong version.
+# - ruflo-mods gains a `routeTasks` userConfig option, default false (ADR-2134).
+#   Upstream's prompt.submit keyword router injects "Routing task: coder 60%"
+#   on every prompt, task notifications included, recommending ruflo agent types
+#   this estate does not register (ADR-2092); nothing consumes it. Skill choice
+#   is the System One router's job (ADR-2091) and model choice is Claude
+#   Code's (advisor, per-call subagent model). The patch matches literal
+#   anchors and fails the build when a bumped pin moves them.
 set -euo pipefail
+
+# patch_literal FILE OLD NEW — replace one literal occurrence or fail the bake.
+patch_literal() {
+  local file="$1" old="$2" new="$3" text
+  text="$(cat "$file"; printf x)"
+  text="${text%x}"
+  if [[ "$text" != *"$old"* ]]; then
+    echo "bake-ruflo-console: anchor not found in $file (ruflo pin moved?): $old" >&2
+    exit 1
+  fi
+  printf '%s' "${text/"$old"/"$new"}" > "$file"
+}
 
 src="${1:?usage: bake-ruflo-console.sh SRC OUT MARKETPLACE_JSON}"
 out="${2:?usage: bake-ruflo-console.sh SRC OUT MARKETPLACE_JSON}"
@@ -43,6 +62,22 @@ for name in "${plugins[@]}"; do
   baked="$out/$name/.claude-plugin/plugin.json"
   if jq -e '.userConfig.cli' "$baked" >/dev/null; then
     jq --arg d "$cli_default" '.userConfig.cli.default = $d' "$baked" > "$baked.tmp"
+    mv "$baked.tmp" "$baked"
+  fi
+
+  if [ "$name" = ruflo-mods ]; then
+    patch_literal "$out/$name/hooks/options.ts" \
+      "  readonly routeContext: boolean" \
+      $'  readonly routeTasks: boolean\n  readonly routeContext: boolean'
+    patch_literal "$out/$name/hooks/options.ts" \
+      "    routeContext: bool(o.routeContext, true)," \
+      $'    routeTasks: bool(o.routeTasks, false),\n    routeContext: bool(o.routeContext, true),'
+    patch_literal "$out/$name/hooks/route/index.ts" \
+      "    if (!state.owned.has('route')) return next(e)" \
+      "    if (!options.routeTasks || !state.owned.has('route')) return next(e)"
+    jq '.userConfig = ({routeTasks: {type: "boolean", title: "Keyword task routing",
+          description: "Inject the keyword router'"'"'s \"Routing task\" block into every prompt. Off in agentbox (ADR-2134): skills route through System One, models through Claude Code.",
+          required: false, default: false}} + (.userConfig // {}))' "$baked" > "$baked.tmp"
     mv "$baked.tmp" "$baked"
   fi
 

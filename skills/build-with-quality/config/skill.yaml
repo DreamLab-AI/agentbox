@@ -152,41 +152,21 @@ learning:
       - dqn
       - double-dqn
 
-# Model routing (TinyDancer)
-model_routing:
-  strategy: tinydancer
-  flash_attention: true
-  token_reduction_target: 0.75
-
-  tiers:
-    haiku:
-      complexity_range: [0, 20]
-      tasks:
-        - syntax-fix
-        - simple-test
-        - type-annotation
-        - comment-addition
-
-    sonnet:
-      complexity_range: [20, 70]
-      tasks:
-        - implementation
-        - test-generation
-        - bug-fix
-        - review
-        - coverage-analysis
-
-    opus:
-      complexity_range: [70, 100]
-      tasks:
-        - architecture
-        - security-scan
-        - chaos-test
-        - defect-prediction
-
-  escalation:
-    confidence_threshold: 0.6
-    multi_model_voting_threshold: 0.85
+# Model roles (ADR-2134) — set by Claude Code, not by a complexity router.
+model_roles:
+  lead: { model: sonnet, effort: high, source: "[claude_code].model/effort" }
+  advisor:
+    model: opus
+    source: "[claude_code].advisor_model"
+    checkpoints:
+      - before-plan-lock        # multi-file plan, schema or auth contract
+      - repeated-failure        # same test or compiler error fails twice
+      - before-done-or-commit   # full diff
+  subagents:
+    lookup: { model: haiku, agent: Explore }
+    implementation: { model: sonnet }
+    design-review: { model: opus }
+  auditor: { model: gpt-6-astra, vendor: codex }   # anti-fox: never a Claude tier
 
 # Quality gates
 quality_gates:
