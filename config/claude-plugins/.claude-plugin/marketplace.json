@@ -14,6 +14,13 @@
       "license": "MIT OR Apache-2.0"
     },
     {
+      "name": "jev-checkpoints",
+      "source": "./jev-checkpoints",
+      "description": "Jev as the timing judge for the Opus advisor (ADR-2135, function hooks): done-without-verification, repeated-failure and plan checkpoints inject one advisory line; subagent model routing is shadow-only by default. Email taint fence, fail-open. /jev-checkpoints [status|on|off]. Authored in this repo; behind [features.jev_checkpoints].",
+      "version": "0.1.0",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
       "name": "ruflo-console",
       "source": "./ruflo-console",
       "description": "ruflo's cockpit inside Claude Code and the one /ruflo command for every ruflo mod (function hooks): overview, swarms, claims, federation, plugins, learning, MetaHarness, memory and cost views, a confirm-gated command palette and a band above the prompt. Baked from ruvnet/ruflo v3.51.1 (09a1cb0) behind [toolchains].ruflo_console; cli defaults to the baked ruflo bin.",

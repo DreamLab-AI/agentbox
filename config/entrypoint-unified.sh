@@ -2690,17 +2690,19 @@ unset _INSTR_LAYERS
 # store (scripts/factrail-store-migrate.mjs), so a resumed email session stays
 # fenced.
 _JC_ON="$(_ab_toml_bool features.jev_compaction enabled)"
-# [toolchains].ruflo_console shares the `agentbox` marketplace and the
-# function-hook switch with factrail, so the factrail block below keeps both
-# while either gate is on (see the ruflo-console block after it).
+# [toolchains].ruflo_console and [features.jev_checkpoints] (ADR-2135) share the
+# `agentbox` marketplace and the function-hook switch with factrail, so the
+# factrail block below keeps both while ANY of the three gates is on (see the
+# jev-checkpoints and ruflo-console blocks after it).
 _RC_ON="$(_ab_toml_bool toolchains ruflo_console)"
+_JK_ON="$(_ab_toml_bool features.jev_checkpoints enabled)"
 _JC_MARKET="/opt/agentbox/config/claude-plugins"
 _JC_PLUGIN="$_JC_MARKET/factrail"
 _JC_BIN="/opt/agentbox/bin/factrail"
-if command -v claude >/dev/null 2>&1 && [ -f "$_CLAUDE_SETTINGS" ] || [ "$_JC_ON" = "1" ] || [ "$_RC_ON" = "1" ]; then
-  SETTINGS="$_CLAUDE_SETTINGS" JC_ON="$_JC_ON" RC_ON="$_RC_ON" node <<'JCENVJS' || true
+if command -v claude >/dev/null 2>&1 && [ -f "$_CLAUDE_SETTINGS" ] || [ "$_JC_ON" = "1" ] || [ "$_RC_ON" = "1" ] || [ "$_JK_ON" = "1" ]; then
+  SETTINGS="$_CLAUDE_SETTINGS" JC_ON="$_JC_ON" RC_ON="$_RC_ON" JK_ON="$_JK_ON" node <<'JCENVJS' || true
 const fs = require('fs');
-const f = process.env.SETTINGS, on = process.env.JC_ON === '1' || process.env.RC_ON === '1';
+const f = process.env.SETTINGS, on = process.env.JC_ON === '1' || process.env.RC_ON === '1' || process.env.JK_ON === '1';
 let s = {}, orig = ''; try { orig = fs.readFileSync(f, 'utf8'); s = JSON.parse(orig); } catch {}
 if (on) { s.env = s.env || {}; s.env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS = '1'; }
 else if (s.env) { delete s.env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS; if (!Object.keys(s.env).length) delete s.env; }
@@ -2810,9 +2812,108 @@ elif command -v claude >/dev/null 2>&1 && [ -d /home/devuser/.claude/plugins ]; 
     run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall factrail@agentbox >/dev/null 2>&1 \
       && echo "  [factrail] uninstalled plugin (gate off)"
   fi
-  if [ "$_RC_ON" != "1" ] && grep -q '"agentbox"' /home/devuser/.claude/plugins/known_marketplaces.json 2>/dev/null; then
+  # The marketplace also serves ruflo-console and jev-checkpoints: it goes only
+  # when neither gate is on and jev-checkpoints is not still installed (its own
+  # block below uninstalls it first, then drops the marketplace).
+  if [ "$_RC_ON" != "1" ] && [ "$_JK_ON" != "1" ] \
+     && ! grep -q '"jev-checkpoints@agentbox"' /home/devuser/.claude/plugins/installed_plugins.json 2>/dev/null \
+     && grep -q '"agentbox"' /home/devuser/.claude/plugins/known_marketplaces.json 2>/dev/null; then
     run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace remove agentbox >/dev/null 2>&1 \
       && echo "  [factrail] removed agentbox marketplace (gate off)"
+  fi
+fi
+
+# ── ADR-2135: Jev checkpoints — install/uninstall jev-checkpoints@agentbox ──
+# [features.jev_checkpoints].enabled = true ⇒ in the root session: the baked
+# directory marketplace `agentbox` registered (CLAUDE_CODE_ENABLE_FUNCTION_HOOKS
+# is set by the factrail block above while any sharing gate is on) and
+# jev-checkpoints@agentbox installed with the manifest's values as userConfig,
+# camelCased (done_threshold → doneThreshold). The plugin is baked from this repo
+# (flake.nix drops it from the image while the gate is off), so there is no
+# binary to track: the cache under ~/.claude/plugins/cache/agentbox/ outlives
+# rebuilds, so it is compared to the baked tree by content and reinstalled on any
+# difference, and the projected --config words are stamped so a changed manifest
+# value reinstalls too. Off ⇒ uninstall, drop the stamp, and drop the marketplace
+# only when factrail and ruflo-console are off as well: byte-identical-when-off
+# (ADR-2020). The key is NOT projected: the plugin reads TYPESAFE_API_KEY from
+# the environment, exactly as factrail does. Only stable /opt paths are used.
+# Fail-open throughout: nothing here may stop the boot.
+_JK_PLUGIN="$_JC_MARKET/jev-checkpoints"
+_JK_STAMP=/home/devuser/.claude/plugins/.jev-checkpoints-config.sha
+if [ "$_JK_ON" = "1" ] && [ -d "$_JK_PLUGIN" ] && command -v claude >/dev/null 2>&1; then
+  if [ -z "$_SSO_PLUGIN_CONFIG" ]; then
+    [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [jev-checkpoints] enabled but TYPESAFE_API_KEY is unset — the done and plan checkpoints stay silent; the local repeat check still runs"
+  fi
+  _JK_VER="$(node -e "process.stdout.write(require('$_JK_PLUGIN/.claude-plugin/plugin.json').version)" 2>/dev/null || echo 0.0.0)"
+  _JK_CACHE="/home/devuser/.claude/plugins/cache/agentbox/jev-checkpoints/$_JK_VER"
+  _jk_digest() { ( cd "$1" 2>/dev/null && find hooks .claude-plugin types -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum 2>/dev/null | sha256sum | cut -c1-16 ); true; }
+  _JK_BAKED="$(_jk_digest "$_JK_PLUGIN")"; _JK_HAVE="$(_jk_digest "$_JK_CACHE")"
+  run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace add "$_JC_MARKET" >/dev/null 2>&1 \
+    || echo "  [jev-checkpoints] marketplace add failed (continuing; a stale registration may remain)"
+  # Only keys the baked plugin declares are projected (an unknown --config key
+  # fails the whole install); an empty manifest value keeps the plugin default.
+  _JK_DECLARED="$(node -e "process.stdout.write(Object.keys(require('$_JK_PLUGIN/.claude-plugin/plugin.json').userConfig || {}).join(' '))" 2>/dev/null || true)"
+  _JK_ARGS=""
+  _jk_project() { # _jk_project KEY=VALUE
+    local key="${1%%=*}"
+    case "$1" in *=) return 0 ;; esac
+    case " $_JK_DECLARED " in
+      *" $key "*) _JK_ARGS="$_JK_ARGS --config $1" ;;
+      *) echo "  [jev-checkpoints] plugin declares no userConfig key '$key' — not projecting it" ;;
+    esac
+  }
+  # ADR-2094: with the sovereign façade on and no explicit manifest api, the
+  # plugin follows the same endpoint the skill router uses (loopback/LAN = local).
+  _JK_API="$(_ab_toml_val features.jev_checkpoints api)"
+  [ -n "$_JK_API" ] || _JK_API="$_SSO_API"
+  for kv in "api=$_JK_API" \
+            "model=$(_ab_toml_val features.jev_checkpoints model)" \
+            "timeoutMs=$(_ab_toml_val features.jev_checkpoints timeout_ms)" \
+            "doneCheck=$(_ab_toml_val features.jev_checkpoints done_check)" \
+            "doneThreshold=$(_ab_toml_val features.jev_checkpoints done_threshold)" \
+            "repeatCheck=$(_ab_toml_val features.jev_checkpoints repeat_check)" \
+            "repeatCount=$(_ab_toml_val features.jev_checkpoints repeat_count)" \
+            "planCheck=$(_ab_toml_val features.jev_checkpoints plan_check)" \
+            "planThreshold=$(_ab_toml_val features.jev_checkpoints plan_threshold)" \
+            "minChars=$(_ab_toml_val features.jev_checkpoints min_chars)" \
+            "spawnMode=$(_ab_toml_val features.jev_checkpoints spawn_mode)" \
+            "spawnMinConfidence=$(_ab_toml_val features.jev_checkpoints spawn_min_confidence)" \
+            "shadowLog=$(_ab_toml_val features.jev_checkpoints shadow_log)" \
+            "usdPerMTokIn=$(_ab_toml_val features.jev_checkpoints usd_per_mtok_in)"; do
+    _jk_project "$kv"
+  done
+  _JK_CFG_WANT="$(printf '%s' "$_JK_ARGS" | sha256sum | cut -c1-16)"
+  _JK_CFG_HAVE="$(cat "$_JK_STAMP" 2>/dev/null || true)"
+  if [ -d "$_JK_CACHE" ] && [ "$_JK_BAKED" = "$_JK_HAVE" ] && [ "$_JK_CFG_WANT" = "$_JK_CFG_HAVE" ]; then
+    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin enable jev-checkpoints@agentbox >/dev/null 2>&1 || true
+    echo "  [jev-checkpoints] plugin $_JK_VER already installed and current (code ${_JK_BAKED}, config ${_JK_CFG_WANT})"
+  else
+    [ -d "$_JK_CACHE" ] && run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall jev-checkpoints@agentbox >/dev/null 2>&1 || true
+    # _JK_ARGS is a deliberate word list of --config KEY=VALUE pairs (unquoted).
+    # shellcheck disable=SC2086
+    if run_as_devuser env HOME=/home/devuser timeout 120 claude plugin install jev-checkpoints@agentbox $_JK_ARGS >/dev/null 2>&1; then
+      echo "  [jev-checkpoints] installed plugin $_JK_VER (${_JK_BAKED}) with manifest userConfig (${_JK_CFG_WANT})"
+      printf '%s' "$_JK_CFG_WANT" > "$_JK_STAMP" 2>/dev/null && chown 1000:1000 "$_JK_STAMP" 2>/dev/null || true
+    else
+      echo "  [jev-checkpoints] plugin install FAILED — no timing checkpoints (check: claude plugin install jev-checkpoints@agentbox)"
+    fi
+  fi
+elif command -v claude >/dev/null 2>&1 && [ -d /home/devuser/.claude/plugins ]; then
+  if [ "$_JK_ON" = "1" ]; then
+    echo "  [jev-checkpoints] enabled but not baked ($_JK_PLUGIN missing) — rebuild the image; no timing checkpoints"
+  fi
+  # Gate on but not baked (an older image): leave whatever is installed alone.
+  if [ "$_JK_ON" != "1" ]; then
+    if grep -q '"jev-checkpoints@agentbox"' /home/devuser/.claude/plugins/installed_plugins.json 2>/dev/null; then
+      run_as_devuser env HOME=/home/devuser timeout 60 claude plugin uninstall jev-checkpoints@agentbox >/dev/null 2>&1 \
+        && echo "  [jev-checkpoints] uninstalled plugin (gate off)" || true
+    fi
+    rm -f "$_JK_STAMP" 2>/dev/null || true
+  fi
+  if [ "$_JC_ON" != "1" ] && [ "$_RC_ON" != "1" ] && [ "$_JK_ON" != "1" ] \
+     && grep -q '"agentbox"' /home/devuser/.claude/plugins/known_marketplaces.json 2>/dev/null; then
+    run_as_devuser env HOME=/home/devuser timeout 60 claude plugin marketplace remove agentbox >/dev/null 2>&1 \
+      && echo "  [jev-checkpoints] removed agentbox marketplace (no plugin gate on)" || true
   fi
 fi
 

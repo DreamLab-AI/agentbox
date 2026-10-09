@@ -41,7 +41,7 @@ check "a key is matched whole, not by prefix" "$_JC_ARGS" ""
 # Every key the entrypoint projects must be one factrail's plugin declares at
 # the pinned commit (lib/factrail.nix); the list below is that manifest's.
 declared="binary apiKey enabledByDefault backend baseUrl backendLocal model egress fallback taintTools taintSkills keepThreshold preserveRecentMessages maxStateTokens maxRequestTokens truncateHeadChars compactAtPercent compactAtTokens rearmTokens cacheWarm cacheWarmFloorTokens cacheTtlSeconds cacheTtlMarginSeconds compactionTimeoutMs saveFullOutputs recordDecisions"
-projected="$(awk '/^# ── ADR-2093\/ADR-2121: Jev compaction with fact rails/{f=1} /^# ── MCP registry projection/{f=0} f' "$entry" \
+projected="$(awk '/^# ── ADR-2093\/ADR-2121: Jev compaction with fact rails/{f=1} /^# ── ADR-2135: Jev checkpoints/{f=0} f' "$entry" \
   | grep -oE '"[a-zA-Z]+=\$\(' | tr -d '"=$(' | sort -u)"
 projected="$projected binary"
 # Guard against a vacuous pass: the section pattern must find the projection loop.

@@ -4,6 +4,16 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-10-09 — Jev checkpoints for the advisor, ADR-2135)
+
+- `[features.jev_checkpoints]` (enabled): the `jev-checkpoints` function-hook plugin uses Jev to
+  time the ADR-2134 Opus advisor — done-without-verification, repeated-failure (local), plan and
+  shadow-only subagent-spawn checkpoints, one advisory line each, fail-open, with the factrail
+  email fence. Rebuild-class plugin (gated bake in `flake.nix`), boot-class projection; schema,
+  catalogue entry, marketplace entry and `tests/config/jev-checkpoints.test.mjs`. The factrail and
+  ruflo-console blocks keep the shared `agentbox` marketplace and function-hook env while any of
+  the three gates is on. Egress widens ADR-2090 as ADR-2121 did.
+
 ### Changed (2026-10-09 — model roles and the advisor, ADR-2134)
 
 - `[claude_code]` gains `model`, `effort` and `advisor_model` (Sonnet / high / Opus), reconciled

@@ -73,6 +73,14 @@ other results keep head, fact lines and tail, and the full output is saved under
 `/factrail on|off|status` is the switch. Without a key or on judge failure, `fallback`
 (`rules` | `summary`) decides.
 
+Jev times the advisor (ADR-2135): `[features.jev_checkpoints]` installs the `jev-checkpoints`
+function-hook plugin (`config/claude-plugins/jev-checkpoints`, baked while the gate is on, tests
+stripped). Checkpoints: done-without-verification, repeated failure (local), plan, and subagent
+model spawn (shadow-only; log at `~/.claude/jev-checkpoints/shadow.jsonl`). Same email fence as
+factrail; key is `TYPESAFE_API_KEY` from the environment. `/jev-checkpoints status|on|off`. The
+entrypoint keeps `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` and the `agentbox` marketplace while any of
+factrail, ruflo-console or jev-checkpoints is on.
+
 Routing is live by default (ADR-2091): `[skills.routing].router = "jev"` registers
 `config/hooks/skill-route.cjs` on `UserPromptSubmit`, one System One Choice over every
 routable description per turn injected as advisory context. The candidates are what the
