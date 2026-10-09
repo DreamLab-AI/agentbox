@@ -1,0 +1,110 @@
+{
+  "name": "jev-checkpoints",
+  "version": "0.1.0",
+  "description": "Jev (TypeSafe System One) as a cheap timing judge for when the Opus advisor is worth consulting (ADR-2134/ADR-2135): done-claim, repeated-failure and plan checkpoints inject one advisory line; subagent model routing is shadow-only by default. Fail-open, email-fenced, never sends tool-result contents.",
+  "license": "MIT OR Apache-2.0",
+  "author": {
+    "name": "DreamLab AI",
+    "url": "https://github.com/DreamLab-AI/agentbox"
+  },
+  "repository": "https://github.com/DreamLab-AI/agentbox",
+  "keywords": [
+    "jev",
+    "systemone",
+    "advisor",
+    "function-hooks",
+    "checkpoints"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "api": {
+      "type": "string",
+      "title": "System One endpoint",
+      "description": "Full URL of the System One decision endpoint. Empty means TypeSafe's cloud (https://api.typesafe.ai/v1/systemone). A loopback or LAN host (an ADR-2094 sovereign façade) is treated as local: it may be asked from an email-tainted session and needs no key.",
+      "default": ""
+    },
+    "model": {
+      "type": "string",
+      "title": "Model",
+      "description": "Model id sent with every request.",
+      "default": "jev-latest"
+    },
+    "timeoutMs": {
+      "type": "number",
+      "title": "Request deadline (ms)",
+      "description": "Longest wait for one Jev answer; past it the checkpoint does nothing (fail-open). Clamped to 250–30000.",
+      "default": 4000
+    },
+    "doneCheck": {
+      "type": "boolean",
+      "title": "Done checkpoint",
+      "description": "After a turn whose final text claims completion, ask whether it did so without a verifying run; above the threshold, advise on the next prompt.",
+      "default": true
+    },
+    "doneThreshold": {
+      "type": "number",
+      "title": "Done threshold",
+      "description": "Score (0–1) at or above which the done checkpoint injects.",
+      "default": 0.9
+    },
+    "repeatCheck": {
+      "type": "boolean",
+      "title": "Repeat checkpoint",
+      "description": "Local only, never calls Jev: fingerprint failing Bash and test-runner results and advise once when the same failure recurs.",
+      "default": true
+    },
+    "repeatCount": {
+      "type": "number",
+      "title": "Repeat count",
+      "description": "Occurrences of one failure fingerprint in a session before the repeat checkpoint injects (an integer, at least 2).",
+      "default": 2
+    },
+    "planCheck": {
+      "type": "boolean",
+      "title": "Plan checkpoint",
+      "description": "On each prompt, ask whether it needs a multi-file plan or touches an auth, schema, API or data contract; above the threshold, advise consulting the advisor first.",
+      "default": true
+    },
+    "planThreshold": {
+      "type": "number",
+      "title": "Plan threshold",
+      "description": "Score (0–1) at or above which the plan checkpoint injects.",
+      "default": 0.8
+    },
+    "minChars": {
+      "type": "number",
+      "title": "Minimum prompt length",
+      "description": "Prompts shorter than this (and slash commands) are never sent to the plan checkpoint.",
+      "default": 24
+    },
+    "spawnMode": {
+      "type": "string",
+      "title": "Spawn checkpoint",
+      "description": "off: never asked. shadow: Jev picks a subagent tier and the pick is only logged. enforce: the pick replaces the model when the caller named none, confidence clears the bar, it is no larger than the main model and the agent's definition pins no model.",
+      "options": [
+        "off",
+        "shadow",
+        "enforce"
+      ],
+      "default": "shadow"
+    },
+    "spawnMinConfidence": {
+      "type": "number",
+      "title": "Spawn minimum confidence",
+      "description": "Jev confidence (0–1) the enforce mode needs before it rewrites a subagent's model.",
+      "default": 0.8
+    },
+    "shadowLog": {
+      "type": "string",
+      "title": "Spawn shadow log",
+      "description": "JSONL file each spawn decision is appended to (ADR-2110 teacher labels). Empty turns the log off. A leading ~/ is the home directory.",
+      "default": "/home/devuser/.claude/jev-checkpoints/shadow.jsonl"
+    },
+    "usdPerMTokIn": {
+      "type": "number",
+      "title": "Price (USD per million input tokens)",
+      "description": "What the endpoint bills per million input tokens; output is free. 0 for a self-hosted façade.",
+      "default": 0.042
+    }
+  }
+}
