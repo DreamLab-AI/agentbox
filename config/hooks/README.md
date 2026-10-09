@@ -76,7 +76,7 @@ nor MCP servers, and nothing in this directory registers them.
 | Plugin | Events | Gate |
 |---|---|---|
 | `factrail` | `session.compact`, `turn.complete`, `turn.start`, `tool.call`, `skill.prompt`, `session.start`, `command.run{factrail}` | `[features.jev_compaction].enabled` — baked from DreamLab-AI/factrail (`lib/factrail.nix`, ADR-2121); the entrypoint installs/uninstalls via `claude plugin` and sets/clears the env flag (byte-identical-when-off) |
-| `jev-checkpoints` | `turn.complete`, `prompt.submit`, `tool.result`, `agent.spawn`, `command.run{jev-checkpoints}` | `[features.jev_checkpoints].enabled` — authored in this repo (ADR-2135); the entrypoint installs/uninstalls via `claude plugin`, shares the env flag and `agentbox` marketplace with factrail and ruflo-console |
+| `jev-checkpoints` | `session.start`, `turn.start`, `turn.complete`, `prompt.submit`, `tool.call`, `skill.prompt`, `agent.spawn`, `command.run{jev-checkpoints}` | `[features.jev_checkpoints].enabled` — authored in this repo (ADR-2135); the entrypoint installs/uninstalls via `claude plugin`, shares the env flag and `agentbox` marketplace with factrail and ruflo-console |
 
 ## 5. Pruned from every settings file (vendor scaffolding)
 
