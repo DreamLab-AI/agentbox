@@ -1771,6 +1771,11 @@
         # ADR-2121). One pinned commit gives the binary and the
         # Claude Code shim that calls it; see lib/factrail.nix.
         jevCompactionOn = ((agentboxConfig.features or {}).jev_compaction or {}).enabled or false;
+        # jev-checkpoints — Jev as the timing judge for the ADR-2134 advisor
+        # ([features.jev_checkpoints], ADR-2135). Authored in this repo under
+        # config/claude-plugins/jev-checkpoints and baked by the config copy below,
+        # which drops the tree when the gate is off and strips its *.test.ts.
+        jevCheckpointsOn = ((agentboxConfig.features or {}).jev_checkpoints or {}).enabled or false;
         # [toolchains].ruflo_console: bake ruflo-console + ruflo-mods + ruflo-swarm
         # from the pinned rufloConsole input into the `agentbox` marketplace.
         rufloConsoleOn = toolchainCfg.ruflo_console or false;
@@ -2040,7 +2045,14 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # tier. Filter before copying into the store/image, not at boot.
           cp -r ${lib.cleanSourceWith {
             src = ./config;
-            filter = path: type: builtins.baseNameOf path != "instructions";
+            # ADR-2135: the jev-checkpoints plugin joins the `agentbox` marketplace
+            # only while its gate is on, and its tests never ship. Matching on the
+            # path suffix keeps this valid before and after the plugin source lands.
+            filter = path: type:
+              builtins.baseNameOf path != "instructions"
+              && (jevCheckpointsOn || !(lib.hasSuffix "/config/claude-plugins/jev-checkpoints" (toString path)))
+              && !(lib.hasInfix "/config/claude-plugins/jev-checkpoints/" (toString path)
+                   && lib.hasSuffix ".test.ts" (toString path));
           }} $out/opt/agentbox/config
           cp -r ${./https-bridge} $out/opt/agentbox/https-bridge
           cp -r ${./docs} $out/opt/agentbox/docs

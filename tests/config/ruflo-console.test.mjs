@@ -242,7 +242,7 @@ test('the entrypoint keeps the shared marketplace and function hooks while the c
   const entry = fs.readFileSync(path.join(root, 'config/entrypoint-unified.sh'), 'utf8')
   assert.match(entry, /_RC_ON="\$\(_ab_toml_bool toolchains ruflo_console\)"/)
   assert.match(entry, /on = process\.env\.JC_ON === '1' \|\| process\.env\.RC_ON === '1'/)
-  assert.match(entry, /if \[ "\$_RC_ON" != "1" \] && grep -q '"agentbox"' .*known_marketplaces\.json/)
+  assert.match(entry, /if \[ "\$_RC_ON" != "1" \] && \[ "\$_JK_ON" != "1" \] \\\n[\s\S]*?grep -q '"agentbox"' .*known_marketplaces\.json/)
   assert.match(entry, /node \/opt\/agentbox\/scripts\/ruflo-console-project\.mjs \\\n\s+--on "\$_RC_ON"/)
   // The RC_ON definition precedes its first use (set -u).
   assert.ok(entry.indexOf('_RC_ON="$(') < entry.indexOf('RC_ON="$_RC_ON"'))
