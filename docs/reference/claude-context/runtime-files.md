@@ -76,7 +76,7 @@ other results keep head, fact lines and tail, and the full output is saved under
 Jev times the advisor (ADR-2135): `[features.jev_checkpoints]` installs the `jev-checkpoints`
 function-hook plugin (`config/claude-plugins/jev-checkpoints`, baked while the gate is on, tests
 stripped). Checkpoints: done-without-verification, repeated failure (local), plan, and subagent
-model spawn (shadow-only; log at `~/.claude/jev-checkpoints/shadow.jsonl`). Same email fence as
+model spawn (shadow-only; log files `~/.claude/jev-checkpoints/shadow-<session>[.N].jsonl`, glob `shadow-*.jsonl`). Same email fence as
 factrail; key is `TYPESAFE_API_KEY` from the environment. `/jev-checkpoints status|on|off`. The
 entrypoint keeps `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` and the `agentbox` marketplace while any of
 factrail, ruflo-console or jev-checkpoints is on.

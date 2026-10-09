@@ -3068,7 +3068,7 @@
             },
             "api": {
               "type": "string",
-              "description": "System One endpoint; \"\" (default) = the TypeSafe default https://api.typesafe.ai/v1/systemone. A loopback/LAN host is treated as local (ADR-2094). The key is TYPESAFE_API_KEY from the environment, never a setting."
+              "description": "System One endpoint; \"\" (default) = the TypeSafe default https://api.typesafe.ai/v1/systemone. Locality is declared (backendLocal, from the sovereign System One config), never inferred from this URL. The key is TYPESAFE_API_KEY from the environment, never a setting, and is sent only to typesafe.ai."
             },
             "model": {
               "type": "string",
@@ -3076,7 +3076,7 @@
             },
             "timeout_ms": {
               "type": "integer",
-              "minimum": 500,
+              "minimum": 250,
               "maximum": 8000,
               "description": "Deadline per Jev request in milliseconds (the hook budget is 10 s, hence the cap); past it the checkpoint is skipped (fail-open)."
             },

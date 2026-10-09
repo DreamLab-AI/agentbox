@@ -764,7 +764,8 @@ record_decisions = true          # log each judged request and its answers to ~/
 # NEVER tool-result contents. A session that has EVER made an
 # mcp__email-gateway__* / Gmail call or loaded email-search is sticky-tainted and
 # sent nothing to a cloud judge (the local repeat check still runs); a
-# loopback/LAN `api` (ADR-2094) counts as local. Fail-open: no key, a timeout, a
+# backend is local only when declared (backendLocal, set from the sovereign System One
+# config, ADR-2094 §5), never inferred from the `api` URL. Fail-open: no key, a timeout, a
 # 429 or any error means no injection and no block.
 #
 # enabled → BOOT-class: the entrypoint sets CLAUDE_CODE_ENABLE_FUNCTION_HOOKS,
@@ -782,7 +783,7 @@ record_decisions = true          # log each judged request and its answers to ~/
 enabled = true
 api = ""                         # "" = the TypeSafe default; set to repoint at a local System One façade (ADR-2094)
 model = "jev-latest"
-timeout_ms = 4000                # per-request deadline, 500-8000 (hook budget is 10 s); past it the checkpoint is skipped
+timeout_ms = 4000                # per-request deadline, 250-8000 (hook budget is 10 s); past it the checkpoint is skipped
 done_check = true                # checkpoint 3 of ADR-2134: done claimed without a verifying run
 done_threshold = 0.9             # Jev Score at or above which the done advisory is injected (0-1)
 repeat_check = true              # checkpoint 2: same failure fingerprint recurring (local, no egress)
@@ -792,7 +793,7 @@ plan_threshold = 0.8             # Jev Score at or above which the plan advisory
 min_chars = 24                   # prompts shorter than this (and slash commands) are never judged
 spawn_mode = "shadow"            # "off" | "shadow" (record only) | "enforce" (rewrite an unset model above spawn_min_confidence)
 spawn_min_confidence = 0.8       # enforce only: minimum Jev confidence to rewrite a subagent's model (0-1)
-shadow_log = "/home/devuser/.claude/jev-checkpoints/shadow.jsonl"   # one JSON line per spawn decision (sha256-12 digest, no prompt text)
+shadow_log = "/home/devuser/.claude/jev-checkpoints/shadow.jsonl"   # BASE path: per-session files shadow-<session>[.N].jsonl beside it, one JSON line per spawn decision (sha256-12 digest, no prompt text)
 usd_per_mtok_in = 0.042          # input price used for the /jev-checkpoints cost estimate
 
 [features.sovereign_system_one]

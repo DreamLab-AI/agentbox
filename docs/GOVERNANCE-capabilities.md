@@ -175,7 +175,7 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   forced tool call or a block; **spawn routing is shadow-only** unless `spawn_mode = "enforce"`
   (Jev-picked subagent models measured 69.7% dearer than one strong agent in
   `suenot/codex-jev-router`); the same sticky **email fence and no-tool-result egress** as
-  factrail, with a loopback/LAN api counted local; fail-open; the key is `TYPESAFE_API_KEY` from
+  factrail, with locality declared (`backendLocal`, never inferred from the api URL); fail-open; the key is `TYPESAFE_API_KEY` from
   the environment, never a userConfig value. `/jev-checkpoints status|on|off` is the switch.
   Egress widened from ADR-2090 as ADR-2121 did. Contract test:
   `tests/config/jev-checkpoints.test.mjs`.
