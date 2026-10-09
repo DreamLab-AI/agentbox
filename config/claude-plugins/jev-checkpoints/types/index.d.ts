@@ -15,8 +15,11 @@ export type JevCheckpointsCheckpoint = 'done' | 'repeat' | 'plan' | 'spawn'
 export type JevCheckpointsPick = 'haiku' | 'sonnet' | 'opus' | 'inherit'
 
 /**
- * One line of the spawn shadow log (`shadowLog`, JSONL), one per decision,
- * shadow or enforced. It never holds prompt text: only `prompt_digest`.
+ * One line of the spawn shadow log, one per decision, shadow or enforced.
+ * Each session writes its own JSONL files beside `shadowLog`
+ * (`<stem>-<session>.jsonl`, then `.1.jsonl`, `.2.jsonl`, … as segments fill
+ * or prove unreadable); readers glob `<stem>-*.jsonl`. It never holds prompt
+ * text: only `prompt_digest`.
  */
 export type JevCheckpointsShadowRecord = {
   /** ISO-8601 time of the decision. */

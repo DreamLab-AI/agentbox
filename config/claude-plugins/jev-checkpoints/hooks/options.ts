@@ -7,6 +7,17 @@ export type SpawnMode = 'off' | 'shadow' | 'enforce'
 export type Options = {
   /** The endpoint actually dialled: `api`, or TypeSafe's cloud when empty. */
   readonly api: string
+  /**
+   * Declared, never inferred from `api` (ADR-2094 §5): true says the endpoint
+   * is on this network, so an email-tainted session may be judged by it and
+   * no key is sent to it. Only `true` (or the string `"true"` a projected
+   * `--config` may carry) declares it.
+   */
+  readonly backendLocal: boolean
+  /** Tool-name prefixes whose call taints the session; null means the built-in email list. */
+  readonly taintTools: readonly string[] | null
+  /** Skill names whose load taints the session; null means the built-in list (email-search). */
+  readonly taintSkills: readonly string[] | null
   readonly model: string
   readonly timeoutMs: number
   readonly doneCheck: boolean
@@ -27,6 +38,9 @@ export type Options = {
 export const DEFAULT_API = 'https://api.typesafe.ai/v1/systemone'
 export const DEFAULT_MODEL = 'jev-latest'
 export const DEFAULT_SHADOW_LOG = '/home/devuser/.claude/jev-checkpoints/shadow.jsonl'
+/** A hook's budget is 10 s; the judge's deadline leaves room for the rest of the hook. */
+export const MAX_TIMEOUT_MS = 8000
+
 /** ADR-2089's measured price of Jev input; output is free. */
 export const JEV_USD_PER_MTOK_IN = 0.042
 
@@ -49,6 +63,17 @@ const unit = (v: unknown, dflt: number): number => {
 
 const str = (v: unknown, dflt: string): string => (typeof v === 'string' ? v.trim() : dflt)
 
+/**
+ * A comma-separated list, as factrail's `taintTools`/`taintSkills` take it.
+ * Unset, blank or all-empty means the default (null): an empty value never
+ * switches the fence off.
+ */
+export function list(v: unknown): readonly string[] | null {
+  if (typeof v !== 'string') return null
+  const items = v.split(',').map(x => x.trim()).filter(Boolean)
+  return items.length ? items : null
+}
+
 export function readOptions(options: PluginOptions | undefined): Options {
   const o = options ?? {}
   const timeout = num(o.timeoutMs)
@@ -58,8 +83,11 @@ export function readOptions(options: PluginOptions | undefined): Options {
   const api = str(o.api, '')
   return {
     api: api === '' ? DEFAULT_API : api,
+    backendLocal: o.backendLocal === true || o.backendLocal === 'true',
+    taintTools: list(o.taintTools),
+    taintSkills: list(o.taintSkills),
     model: str(o.model, DEFAULT_MODEL) || DEFAULT_MODEL,
-    timeoutMs: timeout === undefined ? 4000 : Math.min(30_000, Math.max(250, Math.round(timeout))),
+    timeoutMs: timeout === undefined ? 4000 : Math.min(MAX_TIMEOUT_MS, Math.max(250, Math.round(timeout))),
     doneCheck: bool(o.doneCheck, true),
     doneThreshold: unit(o.doneThreshold, 0.9),
     repeatCheck: bool(o.repeatCheck, true),

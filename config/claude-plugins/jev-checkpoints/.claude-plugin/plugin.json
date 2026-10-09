@@ -20,8 +20,14 @@
     "api": {
       "type": "string",
       "title": "System One endpoint",
-      "description": "Full URL of the System One decision endpoint. Empty means TypeSafe's cloud (https://api.typesafe.ai/v1/systemone). A loopback or LAN host (an ADR-2094 sovereign façade) is treated as local: it may be asked from an email-tainted session and needs no key.",
+      "description": "Full URL of the System One decision endpoint. Empty means TypeSafe's cloud (https://api.typesafe.ai/v1/systemone). Locality is never inferred from this URL (ADR-2094 §5): declare a local backend with backendLocal. TYPESAFE_API_KEY is sent only to TypeSafe's https host.",
       "default": ""
+    },
+    "backendLocal": {
+      "type": "boolean",
+      "title": "Endpoint is on this network",
+      "description": "DECLARED, never inferred from api. True lets an email-tainted session be judged by the backend because nothing leaves the network, and the key is never sent to it; false (or anything but true) keeps tainted sessions off the judge.",
+      "default": false
     },
     "model": {
       "type": "string",
@@ -32,7 +38,7 @@
     "timeoutMs": {
       "type": "number",
       "title": "Request deadline (ms)",
-      "description": "Longest wait for one Jev answer; past it the checkpoint does nothing (fail-open). Clamped to 250–30000.",
+      "description": "Longest wait for one Jev answer; past it the checkpoint does nothing (fail-open). Clamped to 250–8000: a hook has a 10 s budget.",
       "default": 4000
     },
     "doneCheck": {
@@ -97,7 +103,7 @@
     "shadowLog": {
       "type": "string",
       "title": "Spawn shadow log",
-      "description": "JSONL file each spawn decision is appended to (ADR-2110 teacher labels). Empty turns the log off. A leading ~/ is the home directory.",
+      "description": "Base path of the spawn shadow log (ADR-2110 teacher labels); empty turns it off; a leading ~/ is the home directory. $.fs has no append, so each session writes its own JSON-lines files beside it: <dir>/<stem>-<session>.jsonl, then <stem>-<session>.1.jsonl, .2, … once a segment reaches 1 MB or cannot be read. Existing data is never truncated. One line per spawn decision (sha256-12 prompt digest, no prompt text).",
       "default": "/home/devuser/.claude/jev-checkpoints/shadow.jsonl"
     },
     "usdPerMTokIn": {
@@ -105,6 +111,16 @@
       "title": "Price (USD per million input tokens)",
       "description": "What the endpoint bills per million input tokens; output is free. 0 for a self-hosted façade.",
       "default": 0.042
+    },
+    "taintTools": {
+      "type": "string",
+      "title": "Taint tool prefixes",
+      "description": "Comma-separated tool-name prefixes. A session that has ever called one is tainted: it is never sent to a judge unless backendLocal is true. Unset means the built-in list (the private email gateway and Gmail)."
+    },
+    "taintSkills": {
+      "type": "string",
+      "title": "Taint skills",
+      "description": "Comma-separated skill names whose load taints the session, with the same effect as taintTools. Unset means the built-in list (email-search)."
     }
   }
 }

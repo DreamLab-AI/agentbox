@@ -141,12 +141,36 @@ export function agrees(pick: Pick, callerModel: string | undefined): boolean {
   return tierOf(callerModel) === pick
 }
 
-/** The shadow log with one line appended, keeping it under `maxBytes` by dropping its oldest half. */
-export function appendLine(existing: string, record: ShadowRecord, maxChars = 3_000_000): string {
-  let base = existing === '' || existing.endsWith('\n') ? existing : `${existing}\n`
-  if (base.length > maxChars) {
-    const cut = base.indexOf('\n', Math.floor(base.length / 2))
-    base = cut === -1 ? '' : base.slice(cut + 1)
-  }
+/**
+ * A segment's text with one line added. Nothing is ever dropped: a segment
+ * that would grow past its bound is closed and the line goes to the next
+ * (`shadowPath`), never trimmed into the old one.
+ */
+export function joinLine(existing: string, record: ShadowRecord): string {
+  const base = existing === '' || existing.endsWith('\n') ? existing : `${existing}\n`
   return `${base}${JSON.stringify(record)}\n`
+}
+
+/** A segment is closed once the next line would take it past this size. */
+export const SHADOW_SEGMENT_BYTES = 1_000_000
+
+/** Segments tried for one line before it is given up (logged, nothing overwritten). */
+export const SHADOW_MAX_SEGMENTS = 1000
+
+/**
+ * Where one session's shadow lines go. `$.fs` has no append, so each session
+ * writes its own file beside `shadowLog`, named from its stem:
+ * `/x/shadow.jsonl` → `/x/shadow-<session>.jsonl`, then
+ * `/x/shadow-<session>.1.jsonl`, `.2.jsonl`, … as segments fill or turn out
+ * unreadable. The ADR-2110 recorder reads `<stem>-*.jsonl`.
+ */
+export function shadowPath(base: string, session: string, segment: number): string {
+  const slash = base.lastIndexOf('/')
+  const dir = slash === -1 ? '' : base.slice(0, slash + 1)
+  const file = slash === -1 ? base : base.slice(slash + 1)
+  const dot = file.lastIndexOf('.')
+  const stem = dot > 0 ? file.slice(0, dot) : file
+  const ext = dot > 0 ? file.slice(dot) : '.jsonl'
+  const safe = session.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 128) || 'unknown'
+  return `${dir}${stem}-${safe}${segment > 0 ? `.${segment}` : ''}${ext}`
 }

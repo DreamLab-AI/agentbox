@@ -7,12 +7,16 @@ import type { World } from './fixtures/world'
 
 tier('user')
 
-/** The default `shadowLog`, as the manifest projects it. */
-const SHADOW = '/home/devuser/.claude/jev-checkpoints/shadow.jsonl'
+/** This session's file under the default `shadowLog` (`/…/shadow.jsonl` → `/…/shadow-<session>.jsonl`). */
+const SHADOW = `/home/devuser/.claude/jev-checkpoints/shadow-${SESSION}.jsonl`
+const SHADOW_1 = `/home/devuser/.claude/jev-checkpoints/shadow-${SESSION}.1.jsonl`
 const PLAN_PROMPT = 'add a tenant_id column to the users table and thread it through the REST API'
 
 /** The world, the key and a store; the prompt's context is captured beneath the plugin. */
-function setup(on: On, opts: { env?: Record<string, string>; files?: Record<string, string>; model?: string; store?: Record<string, unknown> } = {}) {
+function setup(
+  on: On,
+  opts: { env?: Record<string, string>; files?: Record<string, string>; model?: string; store?: Record<string, unknown> } = {},
+) {
   const w = world(on, { files: opts.files, model: opts.model })
   const clock = mock.clock(on, { now: 1_790_000_000_000 })
   mock.store(on, opts.store)
@@ -183,7 +187,7 @@ describe('email fence', () => {
     expect(w.requests).toHaveLength(0)
   })
 
-  test('a local endpoint may still judge a tainted session', { options: { api: 'http://192.168.2.132:8084/v1/systemone' } }, async ($, on) => {
+  test('a backend declared local may still judge a tainted session, and gets no key', { options: { api: 'http://192.168.2.132:8084/v1/systemone', backendLocal: true } }, async ($, on) => {
     const { w, contexts } = setup(on)
     tools(on, () => ({ ok: true, text: '' }))
     w.reply = [score('plan', 0.99)]
@@ -191,7 +195,62 @@ describe('email fence', () => {
     await $.tool.call({ tool: 'mcp__email-gateway__ask_email', question: 'x' } as never)
     await $.prompt.submit(prompt(PLAN_PROMPT))
     expect(w.requests).toHaveLength(1)
+    expect(w.requests[0]!.init?.headers?.['Authorization']).toBeUndefined()
     expect(contexts[0]).toEqual([LINES.plan])
+  })
+
+  test('a LAN URL is not local unless declared: a tainted session is never sent to it', { options: { api: 'http://192.168.2.132:8084/v1/systemone' } }, async ($, on) => {
+    const { w } = setup(on)
+    tools(on, () => ({ ok: true, text: '' }))
+    w.reply = [score('plan', 0.99)]
+    await $.session.start(START)
+    await $.prompt.submit(prompt(PLAN_PROMPT))
+    await $.tool.call({ tool: 'mcp__email-gateway__ask_email', question: 'x' } as never)
+    await $.prompt.submit(prompt(`${PLAN_PROMPT} — after mail`))
+    // The first (clean) request went, without the key; the tainted one did not.
+    expect(w.requests).toHaveLength(1)
+    expect(w.requests[0]!.init?.headers?.['Authorization']).toBeUndefined()
+    expect((await $.command.run(run('jev-checkpoints'))).text).toContain('(not declared local, no key sent)')
+  })
+
+  test('backendLocal never sends the key, even when the api is left at TypeSafe', { options: { backendLocal: true } }, async ($, on) => {
+    const { w } = setup(on)
+    w.reply = [score('plan', 0.99)]
+    await $.session.start(START)
+    await $.prompt.submit(prompt(PLAN_PROMPT))
+    expect(w.requests).toHaveLength(1)
+    expect(w.requests[0]!.init?.headers?.['Authorization']).toBeUndefined()
+  })
+
+  test('taintTools and taintSkills widen the fence as configured', { options: { taintTools: 'mcp__email-gateway__,mcp__vault__', taintSkills: 'ledger' } }, async ($, on) => {
+    const { w } = setup(on)
+    tools(on, () => ({ ok: true, text: '' }))
+    on('skill.prompt', ($, e) => ({ text: e.text }))
+    w.reply = [score('plan', 0.99)]
+    await $.session.start(START)
+    await $.tool.call({ tool: 'mcp__vault__read', path: 'x' } as never)
+    await $.prompt.submit(prompt(PLAN_PROMPT))
+    expect(w.requests).toHaveLength(0)
+    expect((await $.command.run(run('jev-checkpoints'))).text).toContain('email-tainted (tool:mcp__vault__read)')
+  })
+
+  test('a configured skill list taints by skill prompt', { options: { taintSkills: 'ledger' } }, async ($, on) => {
+    const { w } = setup(on)
+    on('skill.prompt', ($, e) => ({ text: e.text }))
+    w.reply = [score('plan', 0.99)]
+    await $.session.start(START)
+    await $.skill.prompt({ skill: 'ledger', text: 'open the books' })
+    await $.prompt.submit(prompt(PLAN_PROMPT))
+    expect(w.requests).toHaveLength(0)
+  })
+
+  test('an expired tainted session is never pruned: still fenced when resumed', async ($, on) => {
+    const old = { at: 1, tainted: 'tool:mcp__email-gateway__ask_email', stats: {}, fingerprints: { a: 1 } }
+    const { w } = setup(on, { store: { [`session:${SESSION}`]: old, [`switch:${SESSION}`]: true } })
+    w.reply = [score('plan', 0.99)]
+    await $.session.start(START)
+    await $.prompt.submit(prompt(PLAN_PROMPT))
+    expect(w.requests).toHaveLength(0)
   })
 })
 
@@ -263,6 +322,40 @@ describe('repeat checkpoint', () => {
     expect(results.map(r => ('context' in r ? r.context : undefined))).toEqual([undefined, undefined, undefined, undefined, [LINES.repeat(3)]])
   })
 
+  test('one line per fingerprint for the whole session, subagents included', async ($, on) => {
+    setup(on)
+    tools(on, () => ({ ok: false, text: failure(7, 7) }))
+    await $.session.start(START)
+    await $.prompt.submit(prompt('hi'))
+    const r1 = await $.tool.call({ tool: 'Bash', command: 'cargo test', agentId: 'a1' } as never)
+    const r2 = await $.tool.call({ tool: 'Bash', command: 'cargo test' })
+    const r3 = await $.tool.call({ tool: 'Bash', command: 'cargo test', agentId: 'a2' } as never)
+    await $.prompt.submit(prompt('again'))
+    const r4 = await $.tool.call({ tool: 'Bash', command: 'cargo test', agentId: 'a3' } as never)
+    const ctx = [r1, r2, r3, r4].map(r => ('context' in r ? r.context : undefined))
+    // The subagent's run and the main loop's count together; the line is never repeated, in any loop.
+    expect(ctx).toEqual([undefined, [LINES.repeat(2)], undefined, undefined])
+  })
+
+  test("a subagent's line obeys the one-per-prompt cap too", async ($, on) => {
+    setup(on)
+    const a = failure(1, 1)
+    const b = failure(1, 1).replace('nested', 'flat')
+    const outputs = [a, b, a, b, b]
+    let i = 0
+    tools(on, () => ({ ok: false, text: outputs[i++]! }))
+    await $.session.start(START)
+    await $.prompt.submit(prompt('hi'))
+    const out = []
+    for (let i = 0; i < 4; i++) out.push(await $.tool.call({ tool: 'Bash', command: 'cargo test', agentId: 'a1' } as never))
+    // Two fingerprints reach the count on calls 3 and 4; only the first may speak this prompt.
+    // The held-back one speaks on its next occurrence, under the next prompt.
+    expect(out.map(r => ('context' in r ? r.context : undefined))).toEqual([undefined, undefined, [LINES.repeat(2)], undefined])
+    await $.prompt.submit(prompt('next'))
+    const later = await $.tool.call({ tool: 'Bash', command: 'cargo test', agentId: 'a1' } as never)
+    expect('context' in later ? later.context : undefined).toEqual([LINES.repeat(3)])
+  })
+
   test('/jev-checkpoints off stops it for the session', async ($, on) => {
     setup(on)
     tools(on, () => ({ ok: false, text: failure(1, 1) }))
@@ -279,12 +372,13 @@ describe('spawn checkpoint', () => {
     ({ prompt: 'Find where the parser handles nested blocks. TOP-SECRET-PROMPT', description: 'find parser code', subagentType: 'Explore', ...extra }) as never
 
   test('shadow: asks, never alters the spawn, logs one record without the prompt', async ($, on) => {
-    const { w } = setup(on)
+    const { w, clock } = setup(on)
     const seen: (string | undefined)[] = []
     on('agent.spawn', ($, e) => (seen.push(e.model), { model: e.model ?? 'claude-sonnet-4-6', agentId: 'a1' }))
     w.reply = [choice('haiku', 0.97)]
     await $.session.start(START)
     const r = await $.agent.spawn(spawnArgs())
+    await clock.settle()
 
     expect(r).toMatchObject({ agentId: 'a1' })
     expect(seen).toEqual([undefined])
@@ -294,6 +388,55 @@ describe('spawn checkpoint', () => {
     expect(lines[0]).not.toContain('TOP-SECRET-PROMPT')
     expect(JSON.parse(lines[0]!)).toMatchObject({ session: SESSION, subagent_type: 'Explore', caller_model: 'inherit', jev_choice: 'haiku', confidence: 0.97, enforced: false })
     expect((await $.command.run(run('jev-checkpoints'))).text).toContain('spawn agreement with the caller: 0/1 (0%)')
+  })
+
+  test('shadow never waits on the judge: the spawn resolves while Jev hangs', async ($, on) => {
+    const { w, clock } = setup(on)
+    on('agent.spawn', ($, e) => ({ model: e.model ?? 'claude-sonnet-4-6', agentId: 'a1' }))
+    w.reply = ['hang']
+    await $.session.start(START)
+    const r = await $.agent.spawn(spawnArgs())
+    expect(r).toMatchObject({ agentId: 'a1' })
+    await clock.settle()
+    expect(w.requests).toHaveLength(1) // asked, detached
+    await clock.advance(4000)
+    expect(w.logs).toContain('jev-checkpoints: spawn skipped (timeout)')
+    expect(w.files.has(SHADOW)).toBe(false)
+  })
+
+  test('shadow lines append in the session file and never truncate it', async ($, on) => {
+    const prior = '{"old":1}\n{"old":2}\n'
+    const { w, clock } = setup(on, { files: { [SHADOW]: prior } })
+    on('agent.spawn', ($, e) => ({ model: e.model ?? 'x' }))
+    w.reply = [choice('haiku', 0.9)]
+    await $.session.start(START)
+    await $.agent.spawn(spawnArgs())
+    await $.agent.spawn(spawnArgs())
+    await clock.settle()
+    const text = w.files.get(SHADOW) ?? ''
+    expect(text.startsWith(prior)).toBe(true)
+    expect(text.split('\n').filter(Boolean)).toHaveLength(4)
+  })
+
+  test('a full or unreadable segment is left untouched; the line goes to the next', async ($, on) => {
+    const full = `${'{"x":"' + 'y'.repeat(999_990) + '"}'}\n`
+    const { w, clock } = setup(on, { files: { [SHADOW]: full } })
+    on('agent.spawn', ($, e) => ({ model: e.model ?? 'x' }))
+    w.reply = [choice('haiku', 0.9)]
+    await $.session.start(START)
+    await $.agent.spawn(spawnArgs())
+    await clock.settle()
+    expect(w.files.get(SHADOW)).toBe(full)
+    expect((w.files.get(SHADOW_1) ?? '').split('\n').filter(Boolean)).toHaveLength(1)
+
+    // Now the next segment cannot be read: it is never rewritten, the line moves on again.
+    w.files.set(`/home/devuser/.claude/jev-checkpoints/shadow-${SESSION}.2.jsonl`, 'precious\n')
+    w.unreadable.add(SHADOW_1)
+    await $.agent.spawn(spawnArgs())
+    await clock.settle()
+    expect((w.files.get(SHADOW_1) ?? '').split('\n').filter(Boolean)).toHaveLength(1)
+    expect(w.files.get(`/home/devuser/.claude/jev-checkpoints/shadow-${SESSION}.2.jsonl`)?.startsWith('precious\n')).toBe(true)
+    expect((w.files.get(`/home/devuser/.claude/jev-checkpoints/shadow-${SESSION}.2.jsonl`) ?? '').split('\n').filter(Boolean)).toHaveLength(2)
   })
 
   test('off: no request, no log', { options: { spawnMode: 'off' } }, async ($, on) => {
@@ -306,12 +449,13 @@ describe('spawn checkpoint', () => {
   })
 
   test('enforce: a confident downgrade on an unpinned agent is applied and logged as enforced', { options: { spawnMode: 'enforce' } }, async ($, on) => {
-    const { w } = setup(on, { files: { [`${ROOT}/.claude/agents/scout.md`]: '---\nname: scout\n---\nFind things.' } })
+    const { w, clock } = setup(on, { files: { [`${ROOT}/.claude/agents/scout.md`]: '---\nname: scout\n---\nFind things.' } })
     const seen: (string | undefined)[] = []
     on('agent.spawn', ($, e) => (seen.push(e.model), { model: e.model ?? 'claude-sonnet-4-6' }))
     w.reply = [choice('haiku', 0.9)]
     await $.session.start(START)
     await $.agent.spawn(spawnArgs({ subagentType: 'scout' }))
+    await clock.settle()
 
     expect(seen).toEqual(['haiku'])
     expect(JSON.parse((w.files.get(SHADOW) ?? '').trim())).toMatchObject({ jev_choice: 'haiku', enforced: true })
@@ -327,12 +471,13 @@ describe('spawn checkpoint', () => {
   ]
   for (const [why, extra, reply] of untouched) {
     test(`enforce leaves the spawn alone when ${why}`, { options: { spawnMode: 'enforce' } }, async ($, on) => {
-      const { w } = setup(on, { files: { [`${HOME}/.claude/agents/Explore.md`]: '---\nname: Explore\nmodel: haiku\n---\n' } })
+      const { w, clock } = setup(on, { files: { [`${HOME}/.claude/agents/Explore.md`]: '---\nname: Explore\nmodel: haiku\n---\n' } })
       const seen: (string | undefined)[] = []
       on('agent.spawn', ($, e) => (seen.push(e.model), { model: e.model ?? 'claude-sonnet-4-6' }))
       w.reply = [reply]
       await $.session.start(START)
       await $.agent.spawn(spawnArgs(extra))
+      await clock.settle()
 
       expect(seen).toEqual([extra['model'] as string | undefined])
       expect(JSON.parse((w.files.get(SHADOW) ?? '').trim())).toMatchObject({ enforced: false })
@@ -340,12 +485,13 @@ describe('spawn checkpoint', () => {
   }
 
   test('enforce fails open: a timeout or error spawns as asked', { options: { spawnMode: 'enforce' } }, async ($, on) => {
-    const { w } = setup(on)
+    const { w, clock } = setup(on)
     const seen: (string | undefined)[] = []
     on('agent.spawn', ($, e) => (seen.push(e.model), { model: e.model ?? 'claude-sonnet-4-6' }))
     w.reply = [{ status: 429, body: {} }]
     await $.session.start(START)
     await $.agent.spawn(spawnArgs({ subagentType: 'general-purpose' }))
+    await clock.settle()
     expect(seen).toEqual([undefined])
     expect(w.files.has(SHADOW)).toBe(false)
   })

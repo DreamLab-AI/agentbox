@@ -73,18 +73,74 @@ export function readRecord(v: unknown, now: number): SessionRecord {
   }
 }
 
-/** Keys of `session:`/`switch:` entries whose session record is older than the TTL. */
-export function expiredKeys(entries: readonly (readonly [string, unknown])[], now: number, ttl = SESSION_TTL_MS): string[] {
+/** Live records and the first loads under way, per session id. */
+export type SessionCache = {
+  readonly live: Map<string, SessionRecord>
+  readonly loading: Map<string, Promise<SessionRecord>>
+}
+
+/**
+ * The session's one live record. Concurrent first loads (parallel tool
+ * calls in one turn, a detached spawn judge) share one pending read and so
+ * one record object: a taint one hook sets is never replaced by another
+ * hook's fresh copy. `read` must not reject.
+ */
+export function loadShared(cache: SessionCache, id: string, read: () => Promise<SessionRecord>): Promise<SessionRecord> {
+  const live = cache.live.get(id)
+  if (live) return Promise.resolve(live)
+  const pending = cache.loading.get(id)
+  if (pending) return pending
+  const p = read().then(rec => {
+    cache.loading.delete(id)
+    const raced = cache.live.get(id)
+    if (raced) return raced
+    cache.live.set(id, rec)
+    return rec
+  })
+  cache.loading.set(id, p)
+  return p
+}
+
+/** What a session-start prune does: keys to delete, and tainted records to shrink in place. */
+export type Prune = { remove: string[]; shrink: [string, TaintOnly][] }
+
+/** What survives of an expired tainted session: the taint, for good. */
+export type TaintOnly = { at: number; tainted: string }
+
+const isTaintOnly = (v: Record<string, unknown>): boolean =>
+  Object.keys(v).every(k => k === 'at' || k === 'tainted')
+
+/**
+ * The prune of `session:`/`switch:` entries whose session record is older
+ * than the TTL. A tainted record is never deleted: an expired one shrinks to
+ * `{at, tainted}` (once; a taint-only record is left as it is), so a resumed
+ * session months later is still fenced.
+ */
+export function prunePlan(entries: readonly (readonly [string, unknown])[], now: number, ttl = SESSION_TTL_MS): Prune {
   const stale = new Set<string>()
+  const shrink: [string, TaintOnly][] = []
+  const kept = new Set<string>()
   for (const [key, v] of entries) {
     if (!key.startsWith('session:')) continue
-    const at = v && typeof v === 'object' ? (v as { at?: unknown }).at : undefined
-    if (typeof at !== 'number' || now - at > ttl) stale.add(key.slice('session:'.length))
+    const rec = v && typeof v === 'object' ? (v as Record<string, unknown>) : undefined
+    const at = rec?.['at']
+    if (typeof at === 'number' && now - at <= ttl) continue
+    const id = key.slice('session:'.length)
+    stale.add(id)
+    const tainted = rec?.['tainted']
+    if (typeof tainted === 'string' && tainted !== '') {
+      kept.add(key)
+      if (!isTaintOnly(rec!)) shrink.push([key, { at: typeof at === 'number' ? at : now, tainted }])
+    }
   }
-  return entries.map(([k]) => k).filter(k => {
-    const id = k.startsWith('session:') ? k.slice(8) : k.startsWith('switch:') ? k.slice(7) : null
-    return id !== null && stale.has(id)
-  })
+  const remove = entries
+    .map(([k]) => k)
+    .filter(k => {
+      if (kept.has(k)) return false
+      const id = k.startsWith('session:') ? k.slice(8) : k.startsWith('switch:') ? k.slice(7) : null
+      return id !== null && stale.has(id)
+    })
+  return { remove, shrink }
 }
 
 /**
@@ -121,6 +177,12 @@ export function markAdvised(rec: SessionRecord, fp: string): void {
   if (rec.advised.length > 500) rec.advised.splice(0, rec.advised.length - 500)
 }
 
+function endpointKind(a: { backendLocal: boolean; typeSafe: boolean; hasKey: boolean }): string {
+  if (a.backendLocal) return 'declared local, no key sent'
+  if (a.typeSafe) return `cloud, ${a.hasKey ? 'key set' : 'NO KEY'}`
+  return 'not declared local, no key sent'
+}
+
 const usd = (n: number) => `$${n.toFixed(n < 0.01 ? 5 : 4)}`
 
 /** The `/jev-checkpoints status` text. */
@@ -130,14 +192,19 @@ export function statusText(args: {
   enabledChecks: Record<Checkpoint, boolean>
   spawnMode: string
   api: string
-  local: boolean
+  /** `backendLocal` as declared. */
+  backendLocal: boolean
+  /** The endpoint is TypeSafe's host, the only one the key goes to. */
+  typeSafe: boolean
   hasKey: boolean
 }): string {
   const { rec } = args
   const head = [
     `jev-checkpoints: ${args.enabled ? 'on' : 'off'} for this session`,
-    `endpoint ${args.api} (${args.local ? 'local' : 'cloud'}${args.local ? '' : args.hasKey ? ', key set' : ', NO KEY'})`,
-    rec.tainted ? `email-tainted (${rec.tainted}): no cloud requests this session` : 'not email-tainted',
+    `endpoint ${args.api} (${endpointKind(args)})`,
+    rec.tainted
+      ? `email-tainted (${rec.tainted}): ${args.backendLocal ? 'judged by the declared-local backend only' : 'no requests this session'}`
+      : 'not email-tainted',
   ]
   const rows = CHECKPOINTS.map(c => {
     const s = rec.stats[c]
