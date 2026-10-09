@@ -7,6 +7,8 @@ import type { HttpInit, On } from 'claude-code'
  */
 export type World = {
   readonly files: Map<string, string>
+  /** Paths that exist but whose read is refused (a permissions fault, say). */
+  readonly unreadable: Set<string>
   readonly logs: string[]
   readonly commands: string[]
   /** Every request the plugin sent: the URL, the init and the parsed body. */
@@ -24,14 +26,20 @@ export const SESSION = 'sess-1'
 export const START = { surface: 'terminal', isInteractive: true, cwd: ROOT } as const
 
 export function world(on: On, opts: { files?: Record<string, string>; model?: string } = {}): World {
-  const w: World = { files: new Map(Object.entries(opts.files ?? {})), logs: [], commands: [], requests: [], reply: [] }
+  const w: World = { files: new Map(Object.entries(opts.files ?? {})), unreadable: new Set(), logs: [], commands: [], requests: [], reply: [] }
 
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.id', () => ({ value: SESSION }))
   on('session.model', () => ({ value: opts.model ?? 'claude-sonnet-4-6' }))
   on('session.root', () => ({ value: ROOT }))
   on('fs.exists', ($, e) => ({ value: w.files.has(e.path) }))
+  on('fs.stat', ($, e) => {
+    const text = w.files.get(e.path)
+    if (text === undefined) return { deny: `ENOENT: no such file or directory, '${e.path}'` }
+    return { value: { kind: 'file' as const, size: new TextEncoder().encode(text).length, mtimeMs: 0, isLink: false } }
+  })
   on('fs.read', ($, e) => {
+    if (w.unreadable.has(e.path)) return { deny: `EACCES: permission denied, '${e.path}'` }
     const text = w.files.get(e.path)
     if (text === undefined) return { deny: `ENOENT: no such file or directory, '${e.path}'` }
     return { value: text }

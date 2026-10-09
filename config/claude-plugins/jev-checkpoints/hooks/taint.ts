@@ -1,14 +1,24 @@
 /**
  * The email fence (ADR-2093, as factrail keeps it): a session that has called
  * the private email gateway or Gmail, or loaded the email-search skill, is
- * tainted for the rest of its life. A tainted session makes no cloud Jev
- * request; the local repeat checkpoint still runs.
+ * tainted for the rest of its life. A tainted session makes no Jev request
+ * unless the backend is declared local (`backendLocal`); the local repeat
+ * checkpoint still runs.
  */
 
-/** Tool-name prefixes that taint, matching factrail's defaults. */
+/** Tool-name prefixes that taint by default, matching factrail's defaults. */
 export const TAINT_TOOL_PREFIXES: readonly string[] = ['mcp__email-gateway__', 'mcp__claude_ai_Gmail__', 'mcp__gmail__']
-/** Skills whose load taints. */
+/** Skills whose load taints by default. */
 export const TAINT_SKILLS: readonly string[] = ['email-search']
+
+/**
+ * What taints: `taintTools`/`taintSkills` as configured, null meaning the
+ * defaults. A configured tool list replaces the defaults, including the
+ * catch-all Gmail pattern, as factrail's does.
+ */
+export type TaintRules = { readonly tools: readonly string[] | null; readonly skills: readonly string[] | null }
+
+export const DEFAULT_TAINT: TaintRules = { tools: null, skills: null }
 
 /** `input.skill ?? input.name` of a `Skill` call, else null (factrail's `skillOf`). */
 export function skillOf(tool: string, input: Record<string, unknown> | undefined): string | null {
@@ -18,17 +28,23 @@ export function skillOf(tool: string, input: Record<string, unknown> | undefined
 }
 
 /** A skill name, namespaced (`plugin:email-search`) or not, against the taint list. */
-export function isTaintSkill(skill: string | null | undefined): boolean {
+export function isTaintSkill(skill: string | null | undefined, rules: TaintRules = DEFAULT_TAINT): boolean {
   if (!skill) return false
   const bare = skill.includes(':') ? skill.slice(skill.lastIndexOf(':') + 1) : skill
-  return TAINT_SKILLS.includes(bare.trim().replace(/^\//, ''))
+  return (rules.skills ?? TAINT_SKILLS).includes(bare.trim().replace(/^\//, ''))
+}
+
+/** A tool name against the taint prefixes. */
+export function isTaintTool(tool: string, rules: TaintRules = DEFAULT_TAINT): boolean {
+  if (rules.tools) return rules.tools.some(p => tool.startsWith(p))
+  return TAINT_TOOL_PREFIXES.some(p => tool.startsWith(p)) || /^mcp__[^_]*gmail/i.test(tool)
 }
 
 /** What taints, from a tool call: the tool by prefix, or a Skill call loading a taint skill. */
-export function taintOf(tool: string, input: Record<string, unknown> | undefined): string | null {
-  if (TAINT_TOOL_PREFIXES.some(p => tool.startsWith(p)) || /^mcp__[^_]*gmail/i.test(tool)) return `tool:${tool}`
+export function taintOf(tool: string, input: Record<string, unknown> | undefined, rules: TaintRules = DEFAULT_TAINT): string | null {
+  if (isTaintTool(tool, rules)) return `tool:${tool}`
   const skill = skillOf(tool, input)
-  return isTaintSkill(skill) ? `skill:${skill}` : null
+  return isTaintSkill(skill, rules) ? `skill:${skill}` : null
 }
 
 /**

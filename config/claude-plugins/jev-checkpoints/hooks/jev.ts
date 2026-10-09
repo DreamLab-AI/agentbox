@@ -77,38 +77,37 @@ export function readChoice(answer: unknown, allowed: readonly string[]): { choic
 
 // ── egress ────────────────────────────────────────────────────────────────
 
-/** True for a loopback, link-local, private-range, `.local`/`.internal` or single-label (container network) host. */
-export function isLocalApi(api: string): boolean {
-  let host: string
+/**
+ * True when `api` is TypeSafe's own cloud: https on `typesafe.ai` or a
+ * subdomain of it. The only host `TYPESAFE_API_KEY` is ever sent to.
+ */
+export function isTypeSafeApi(api: string): boolean {
   try {
-    host = new URL(api).hostname.toLowerCase()
+    const u = new URL(api)
+    const host = u.hostname.toLowerCase()
+    return u.protocol === 'https:' && (host === 'typesafe.ai' || host.endsWith('.typesafe.ai'))
   } catch {
     return false
   }
-  if (host.startsWith('[') && host.endsWith(']')) host = host.slice(1, -1)
-  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) return true
-  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
-  if (v4) {
-    const [a, b] = [Number(v4[1]), Number(v4[2])]
-    return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254)
-  }
-  if (host.includes(':')) return host === '::1' || /^f[cd][0-9a-f]{2}:/.test(host) || /^fe[89ab][0-9a-f]:/.test(host)
-  return !host.includes('.')
 }
 
-export type Egress = { go: true; local: boolean } | { go: false; reason: 'switched-off' | 'tainted' | 'no-key' }
+export type Egress = { go: true; sendKey: boolean } | { go: false; reason: 'switched-off' | 'tainted' | 'no-key' }
 
 /**
- * Whether a cloud-or-local Jev request may be made. The per-session switch
- * first; then the email fence, which a local endpoint passes because nothing
- * leaves the network; then the key, which a local endpoint does not need.
+ * Whether a Jev request may be made, and with the key or without.
+ *
+ * Locality is declared (`backendLocal`), never guessed from the URL
+ * (ADR-2094 §5). In order: the per-session switch; the email fence, which
+ * only a declared-local backend passes; then the key, which is sent to
+ * TypeSafe's host alone. A declared-local backend never receives it, and
+ * neither does any other endpoint: a request there goes without one.
  */
-export function egress(args: { enabled: boolean; tainted: boolean; hasKey: boolean; api: string }): Egress {
+export function egress(args: { enabled: boolean; tainted: boolean; hasKey: boolean; api: string; backendLocal: boolean }): Egress {
   if (!args.enabled) return { go: false, reason: 'switched-off' }
-  const local = isLocalApi(args.api)
-  if (args.tainted && !local) return { go: false, reason: 'tainted' }
-  if (!args.hasKey && !local) return { go: false, reason: 'no-key' }
-  return { go: true, local }
+  if (args.tainted && args.backendLocal !== true) return { go: false, reason: 'tainted' }
+  const sendKey = args.backendLocal !== true && isTypeSafeApi(args.api)
+  if (sendKey && !args.hasKey) return { go: false, reason: 'no-key' }
+  return { go: true, sendKey }
 }
 
 // ── the call ──────────────────────────────────────────────────────────────

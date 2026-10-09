@@ -13,21 +13,23 @@
 //
 // Fail-open everywhere: any error, timeout, 429, malformed answer or missing
 // key means no injection, no block and one log line. A session that touched
-// email is never sent to a cloud judge. Tool-result contents never leave the
-// process.
+// email is judged only by a backend declared local (`backendLocal`, never
+// guessed from the URL). The key goes to TypeSafe's host alone. Tool-result
+// contents never leave the process.
 
 import type { EngineInterface, On, Register } from 'claude-code'
 
 import { fingerprint, watchesTool } from './fingerprint'
-import { askJev, egress, isLocalApi, readChoice, readScore, scoreQuestion } from './jev'
+import { askJev, egress, isTypeSafeApi, readChoice, readScore, scoreQuestion } from './jev'
 import type { JevOutcome, JevRequest } from './jev'
 import { readOptions } from './options'
 import type { Options } from './options'
-import { agrees, appendLine, enforceDecision, pinned, PICKS, shadowRecord, SPAWN_QUESTION, spawnState } from './spawn'
+import { agrees, enforceDecision, joinLine, pinned, PICKS, SHADOW_MAX_SEGMENTS, SHADOW_SEGMENT_BYTES, shadowPath, shadowRecord, SPAWN_QUESTION, spawnState } from './spawn'
 import type { Pick, ShadowRecord } from './spawn'
-import { countFailure, expiredKeys, markAdvised, mayInject, readRecord, sessionKey, statusText, switchKey } from './state'
-import type { Checkpoint, SessionRecord } from './state'
+import { countFailure, loadShared, markAdvised, mayInject, prunePlan, readRecord, sessionKey, statusText, switchKey } from './state'
+import type { Checkpoint, SessionCache, SessionRecord } from './state'
 import { factrailTainted, isTaintSkill, sha256_12, storeFileName, taintOf } from './taint'
+import type { TaintRules } from './taint'
 import { claimsCompletion, clamp, evidenceList, firstLine, line, LINES, planSkip, tail } from './text'
 import type { ToolEvidence } from './text'
 
@@ -61,12 +63,17 @@ type Engine = EngineInterface
 /** What the hooks share: the options and the module's live state. */
 type Ctx = {
   readonly opts: Options
-  readonly local: boolean
-  /** Live session records; `$.store` is written through on every change. */
-  readonly sessions: Map<string, SessionRecord>
+  readonly taint: TaintRules
+  /** Live session records and first loads under way; `$.store` is written through on every change. */
+  readonly cache: SessionCache
+  /** The shadow-log segment each session is writing (`shadowPath`). */
+  readonly segments: Map<string, number>
   /** This main-loop turn's tool calls, as done-checkpoint evidence. */
   turnCalls: ToolEvidence[]
-  /** Shadow-log writes, one at a time (there is no append on `$.fs`). */
+  /**
+   * Spawn records and their shadow-log writes, one at a time (there is no
+   * append on `$.fs`); never rejects.
+   */
   logChain: Promise<void>
 }
 
@@ -82,19 +89,26 @@ async function sessionId($: Engine): Promise<string> {
   }
 }
 
-async function load($: Engine, ctx: Ctx, id: string): Promise<SessionRecord> {
-  const live = ctx.sessions.get(id)
-  if (live) return live
-  const now = await $.clock.now()
+/** The stored record, or a fresh one; never rejects. */
+async function readStored($: Engine, id: string): Promise<SessionRecord> {
+  let now = 0
+  try {
+    now = await $.clock.now()
+  } catch {
+    /* a fresh record dated 0 is pruned at the next start, taint excepted */
+  }
   let stored: unknown
   try {
     stored = await $.store.get(sessionKey(id))
   } catch {
     stored = undefined
   }
-  const rec = readRecord(stored, now)
-  ctx.sessions.set(id, rec)
-  return rec
+  return readRecord(stored, now)
+}
+
+/** The session's one live record (`loadShared`): concurrent first loads share one read. */
+function load($: Engine, ctx: Ctx, id: string): Promise<SessionRecord> {
+  return loadShared(ctx.cache, id, () => readStored($, id))
 }
 
 async function save($: Engine, id: string, rec: SessionRecord): Promise<void> {
@@ -154,7 +168,13 @@ async function isTainted($: Engine, id: string, rec: SessionRecord): Promise<boo
 /** One Jev request for one checkpoint, behind the switch, the fence and the key. Null: nothing was asked. */
 async function ask($: Engine, ctx: Ctx, id: string, rec: SessionRecord, c: Checkpoint, body: JevRequest): Promise<JevOutcome | null> {
   const key = await $.env.get('TYPESAFE_API_KEY')
-  const gate = egress({ enabled: await isOn($, id), tainted: await isTainted($, id, rec), hasKey: !!key, api: ctx.opts.api })
+  const gate = egress({
+    enabled: await isOn($, id),
+    tainted: await isTainted($, id, rec),
+    hasKey: !!key,
+    api: ctx.opts.api,
+    backendLocal: ctx.opts.backendLocal,
+  })
   if (!gate.go) {
     if (gate.reason === 'no-key' && !rec.saidNoKey) {
       rec.saidNoKey = true
@@ -171,7 +191,7 @@ async function ask($: Engine, ctx: Ctx, id: string, rec: SessionRecord, c: Check
       after: (ms, fn) => $.clock.after(ms, fn),
       now: () => $.clock.now(),
     },
-    { api: ctx.opts.api, key: key || undefined, timeoutMs: ctx.opts.timeoutMs, usdPerMTokIn: ctx.opts.usdPerMTokIn },
+    { api: ctx.opts.api, key: gate.sendKey ? key || undefined : undefined, timeoutMs: ctx.opts.timeoutMs, usdPerMTokIn: ctx.opts.usdPerMTokIn },
     body,
   )
   if (out.ok) stats.usd += out.usd
@@ -213,28 +233,42 @@ async function agentDefinition($: Engine, type: string): Promise<string | undefi
   return undefined
 }
 
-async function appendShadow($: Engine, path: string, record: ShadowRecord): Promise<void> {
-  let target = path
-  if (target.startsWith('~/')) target = `${(await $.env.get('HOME')) ?? ''}${target.slice(1)}`
-  let existing = ''
-  try {
-    if (await $.fs.exists(target)) existing = await $.fs.read(target)
-  } catch {
-    existing = ''
+/**
+ * Adds one line to this session's shadow log. `$.fs` has no append, so each
+ * session owns its files (`shadowPath`) and only this process's chain writes
+ * them. A segment that is full, not a file, or unreadable is never
+ * rewritten: the line goes to the next segment, so existing data is never
+ * truncated.
+ */
+async function appendShadow($: Engine, ctx: Ctx, session: string, record: ShadowRecord): Promise<void> {
+  let base = ctx.opts.shadowLog
+  if (base.startsWith('~/')) base = `${(await $.env.get('HOME')) ?? ''}${base.slice(1)}`
+  const bytes = new TextEncoder().encode(`${JSON.stringify(record)}\n`).length
+  let n = ctx.segments.get(session) ?? 0
+  for (let tries = 0; tries < SHADOW_MAX_SEGMENTS; tries++, n++) {
+    const path = shadowPath(base, session, n)
+    let existing = ''
+    try {
+      if (await $.fs.exists(path)) {
+        const st = await $.fs.stat(path)
+        if (st.kind !== 'file' || st.size + bytes > SHADOW_SEGMENT_BYTES) continue
+        existing = await $.fs.read(path)
+      }
+    } catch {
+      continue // unreadable: left as it is; the next segment takes the line
+    }
+    await $.fs.write(path, joinLine(existing, record))
+    ctx.segments.set(session, n)
+    return
   }
-  await $.fs.write(target, appendLine(existing, record))
+  throw new Error(`no writable shadow-log segment after ${SHADOW_MAX_SEGMENTS}`)
 }
 
-/** One shadow-log line, written after any write already under way. */
-async function writeShadow($: Engine, ctx: Ctx, record: ShadowRecord): Promise<void> {
-  if (!ctx.opts.shadowLog) return
-  const path = ctx.opts.shadowLog
-  const done = ctx.logChain.then(
-    () => appendShadow($, path, record),
-    () => appendShadow($, path, record),
-  )
-  ctx.logChain = done.catch(() => undefined)
-  await done
+/** Runs one task after those already queued; the returned promise is the task's own. */
+function enqueue(ctx: Ctx, task: () => Promise<void>): Promise<void> {
+  const run = ctx.logChain.then(task)
+  ctx.logChain = run.catch(() => undefined)
+  return run
 }
 
 async function commandText($: Engine, ctx: Ctx, args: string): Promise<string> {
@@ -254,7 +288,8 @@ async function commandText($: Engine, ctx: Ctx, args: string): Promise<string> {
     enabledChecks: { done: opts.doneCheck, repeat: opts.repeatCheck, plan: opts.planCheck, spawn: opts.spawnMode !== 'off' },
     spawnMode: opts.spawnMode,
     api: opts.api,
-    local: ctx.local,
+    backendLocal: opts.backendLocal,
+    typeSafe: isTypeSafeApi(opts.api),
     hasKey: !!(await $.env.get('TYPESAFE_API_KEY')),
   })
 }
@@ -282,16 +317,16 @@ async function afterTool<R extends { context?: readonly string[] }>(
   if (!(await isOn($, id))) return result
   const fp = fingerprint(tool, text)
   if (!fp) return result
-  const key = `${agentId ?? 'main'}|${fp}`
+  // One fingerprint, one line, for the whole session: the main loop and every
+  // subagent count the same failure together, and share the one-per-prompt cap.
   const rec = await load($, ctx, id)
-  const n = countFailure(rec, key, opts.repeatCount)
-  // The one-per-prompt cap is the main loop's; a subagent's loop has no prompts of its own.
-  if (n === null || (!agentId && !mayInject(rec, 'repeat'))) {
+  const n = countFailure(rec, fp, opts.repeatCount)
+  if (n === null || !mayInject(rec, 'repeat')) {
     await save($, id, rec)
     return result
   }
-  markAdvised(rec, key)
-  if (!agentId) rec.lastInjected.repeat = rec.prompt
+  markAdvised(rec, fp)
+  rec.lastInjected.repeat = rec.prompt
   rec.stats.repeat.injections += 1
   await save($, id, rec)
   return { ...result, context: [...(result.context ?? []), line(LINES.repeat(n))] }
@@ -396,9 +431,11 @@ async function recordSpawn($: Engine, ctx: Ctx, id: string, rec: SessionRecord, 
     rec.stats.spawn.injections += 1
   }
   await save($, id, rec)
-  await writeShadow(
+  if (!ctx.opts.shadowLog) return
+  await appendShadow(
     $,
     ctx,
+    id,
     shadowRecord({
       now: await $.clock.now(),
       session: id,
@@ -414,9 +451,31 @@ async function recordSpawn($: Engine, ctx: Ctx, id: string, rec: SessionRecord, 
   )
 }
 
+/**
+ * Shadow mode's judge, run after the spawn has already gone ahead: ask, then
+ * record on the chain. Never rejects; a failure is one log line.
+ */
+async function shadowSpawn($: Engine, ctx: Ctx, e: SpawnFacts, body: JevRequest): Promise<void> {
+  try {
+    const id = await sessionId($)
+    const rec = await load($, ctx, id)
+    const out = await ask($, ctx, id, rec, 'spawn', body)
+    await enqueue(ctx, () => recordSpawn($, ctx, id, rec, e, out, false))
+  } catch (error) {
+    log($, `spawn record skipped (${message(error)})`)
+  }
+}
+
 export const register: Register = (on: On, options) => {
   const opts = readOptions(options)
-  const ctx: Ctx = { opts, local: isLocalApi(opts.api), sessions: new Map(), turnCalls: [], logChain: Promise.resolve() }
+  const ctx: Ctx = {
+    opts,
+    taint: { tools: opts.taintTools, skills: opts.taintSkills },
+    cache: { live: new Map(), loading: new Map() },
+    segments: new Map(),
+    turnCalls: [],
+    logChain: Promise.resolve(),
+  }
 
   // ── session.start: the command and housekeeping ─────────────────────────
   on('session.start', async ($, event, next) => {
@@ -434,7 +493,10 @@ export const register: Register = (on: On, options) => {
       const keys = (await $.store.keys()).filter(k => /^(session|switch):/.test(k))
       const entries: [string, unknown][] = []
       for (const k of keys) entries.push([k, await $.store.get(k)])
-      for (const k of expiredKeys(entries, now)) await $.store.delete(k)
+      const plan = prunePlan(entries, now)
+      for (const k of plan.remove) await $.store.delete(k)
+      // A tainted session is never forgotten: it shrinks to its taint.
+      for (const [k, v] of plan.shrink) await $.store.set(k, v)
     } catch {
       /* pruning never blocks a session */
     }
@@ -453,7 +515,7 @@ export const register: Register = (on: On, options) => {
   // ── taint at the source ────────────────────────────────────────────────
   on('skill.prompt', async ($, event, next) => {
     try {
-      if (isTaintSkill(event.skill)) await taint($, ctx, await sessionId($), `skill:${event.skill}`)
+      if (isTaintSkill(event.skill, ctx.taint)) await taint($, ctx, await sessionId($), `skill:${event.skill}`)
     } catch {
       /* never blocks a skill */
     }
@@ -467,7 +529,7 @@ export const register: Register = (on: On, options) => {
     let id = 'unknown'
     try {
       id = await sessionId($)
-      await taint($, ctx, id, taintOf(tool, input))
+      await taint($, ctx, id, taintOf(tool, input, ctx.taint))
     } catch {
       /* the fence is also checked at every request */
     }
@@ -515,8 +577,6 @@ export const register: Register = (on: On, options) => {
   // ── agent.spawn: shadow by default, enforce under strict rules ─────────
   on('agent.spawn', async ($, event, next) => {
     if (opts.spawnMode === 'off' || event.fork) return next(event)
-    const id = await sessionId($)
-    const rec = await load($, ctx, id)
     const facts: SpawnFacts = {
       subagentType: event.subagentType,
       description: event.description,
@@ -530,23 +590,20 @@ export const register: Register = (on: On, options) => {
       model: opts.model,
       questions: { tier: SPAWN_QUESTION },
     }
-    let out: JevOutcome | null
-    let result: Awaited<ReturnType<typeof next>>
-    let enforced = false
-    if (opts.spawnMode === 'enforce') {
-      const verdict = await enforcePick($, ctx, id, rec, facts, body)
-      out = verdict.out
-      enforced = verdict.rewrite !== null
-      result = await next(verdict.rewrite ? { ...event, model: verdict.rewrite } : event)
-    } else {
-      // Shadow: the spawn starts at once; the judge is asked alongside it and changes nothing.
-      ;[result, out] = await Promise.all([next(event), ask($, ctx, id, rec, 'spawn', body)])
+    if (opts.spawnMode !== 'enforce') {
+      // Shadow: the spawn goes ahead untouched and unwaited; the judge is asked
+      // and recorded afterwards, detached, and changes nothing.
+      void shadowSpawn($, ctx, facts, body)
+      return next(event)
     }
-    try {
-      await recordSpawn($, ctx, id, rec, facts, out, enforced)
-    } catch (error) {
-      log($, `spawn record skipped (${message(error)})`)
-    }
+    // Enforce waits for the verdict, within the judge's deadline.
+    const id = await sessionId($)
+    const rec = await load($, ctx, id)
+    const verdict = await enforcePick($, ctx, id, rec, facts, body)
+    const result = await next(verdict.rewrite ? { ...event, model: verdict.rewrite } : event)
+    enqueue(ctx, () => recordSpawn($, ctx, id, rec, facts, verdict.out, verdict.rewrite !== null)).catch((error: unknown) =>
+      log($, `spawn record skipped (${message(error)})`),
+    )
     return result
   }).catch(($, e, next) => next(e)) // a failure never refuses a spawn
 }

@@ -1,11 +1,11 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
 import { errorLines, fingerprint, normaliseLine, watchesTool } from '../hooks/fingerprint'
-import { egress, isLocalApi, readChoice, readScore } from '../hooks/jev'
-import { DEFAULT_API, readOptions } from '../hooks/options'
-import { agrees, appendLine, enforceDecision, frontmatterModel, pinned, shadowRecord, spawnState, tierOf } from '../hooks/spawn'
+import { egress, isTypeSafeApi, readChoice, readScore } from '../hooks/jev'
+import { DEFAULT_API, list, MAX_TIMEOUT_MS, readOptions } from '../hooks/options'
+import { agrees, enforceDecision, joinLine, shadowPath, frontmatterModel, pinned, shadowRecord, spawnState, tierOf } from '../hooks/spawn'
 import type { EnforceInput } from '../hooks/spawn'
-import { countFailure, expiredKeys, freshRecord, markAdvised, mayInject, readRecord, SESSION_TTL_MS, statusText } from '../hooks/state'
+import { countFailure, freshRecord, loadShared, prunePlan, markAdvised, mayInject, readRecord, SESSION_TTL_MS, statusText } from '../hooks/state'
 import { factrailTainted, isTaintSkill, sha256_12, storeFileName, taintOf } from '../hooks/taint'
 import { claimsCompletion, clamp, evidenceList, line, LINES, MAX_LINE_CHARS, planSkip, tail } from '../hooks/text'
 
@@ -18,6 +18,9 @@ describe('options', () => {
   test('defaults match the contract', () => {
     expect(readOptions(undefined)).toEqual({
       api: DEFAULT_API,
+      backendLocal: false,
+      taintTools: null,
+      taintSkills: null,
       model: 'jev-latest',
       timeoutMs: 4000,
       doneCheck: true,
@@ -45,6 +48,30 @@ describe('options', () => {
     expect(o.minChars).toBe(30)
     expect(o.api).toBe(DEFAULT_API)
     expect(readOptions({ repeatCount: 3.7, spawnMode: 'enforce', shadowLog: '' })).toMatchObject({ repeatCount: 3, spawnMode: 'enforce', shadowLog: '' })
+  })
+
+  test('timeoutMs is held under the 10 s hook budget', () => {
+    expect(MAX_TIMEOUT_MS).toBe(8000)
+    expect(readOptions({ timeoutMs: 30_000 }).timeoutMs).toBe(8000)
+    expect(readOptions({ timeoutMs: '9000' }).timeoutMs).toBe(8000)
+    expect(readOptions({ timeoutMs: 6000 }).timeoutMs).toBe(6000)
+  })
+
+  test('backendLocal is declared only by true; anything else is false', () => {
+    expect(readOptions({ backendLocal: true }).backendLocal).toBe(true)
+    expect(readOptions({ backendLocal: 'true' }).backendLocal).toBe(true)
+    for (const v of [false, 'false', 1, 'yes', '', undefined, null]) expect(readOptions({ backendLocal: v as never }).backendLocal).toBe(false)
+    // A LAN URL never declares it.
+    expect(readOptions({ api: 'http://192.168.2.132:8084/v1/systemone' }).backendLocal).toBe(false)
+  })
+
+  test("taintTools/taintSkills take factrail's comma-separated form; blank keeps the defaults", () => {
+    expect(readOptions({ taintTools: 'mcp__email-gateway__, mcp__claude_ai_Gmail__,mcp__vault__' }).taintTools).toEqual(['mcp__email-gateway__', 'mcp__claude_ai_Gmail__', 'mcp__vault__'])
+    expect(readOptions({ taintSkills: 'email-search,ledger' }).taintSkills).toEqual(['email-search', 'ledger'])
+    expect(list('')).toBeNull()
+    expect(list(' , ,')).toBeNull()
+    expect(list(undefined)).toBeNull()
+    expect(list(['a'])).toBeNull()
   })
 })
 
@@ -152,19 +179,26 @@ describe('jev wire', () => {
     expect(readChoice({ choice: 'haiku' }, ['haiku'])).toEqual({ choice: 'haiku', confidence: null })
   })
 
-  test('loopback and LAN hosts are local; the cloud is not', () => {
-    for (const u of ['http://127.0.0.1:8090/v1/systemone', 'http://localhost/x', 'http://192.168.2.132:8084/v1', 'http://10.10.10.1/x', 'http://172.20.0.5/x', 'http://[::1]:80/x', 'http://system-one:8080/v1', 'http://box.local/x'])
-      expect(isLocalApi(u)).toBe(true)
-    for (const u of [DEFAULT_API, 'https://8.8.8.8/x', 'not a url', 'http://172.32.0.1/x'])
-      expect(isLocalApi(u)).toBe(false)
+  test("only TypeSafe's https host counts as TypeSafe; no URL is ever local by its look", () => {
+    for (const u of [DEFAULT_API, 'https://typesafe.ai/v1', 'https://eu.api.typesafe.ai/v1/systemone']) expect(isTypeSafeApi(u)).toBe(true)
+    for (const u of ['http://api.typesafe.ai/v1', 'https://api.typesafe.ai.evil.example/v1', 'https://nottypesafe.ai/v1', 'http://127.0.0.1:8090/v1', 'http://192.168.2.132:8084/v1', 'not a url'])
+      expect(isTypeSafeApi(u)).toBe(false)
   })
 
-  test('egress: the switch, then the fence (local passes), then the key (local needs none)', () => {
-    expect(egress({ enabled: false, tainted: false, hasKey: true, api: DEFAULT_API })).toEqual({ go: false, reason: 'switched-off' })
-    expect(egress({ enabled: true, tainted: true, hasKey: true, api: DEFAULT_API })).toEqual({ go: false, reason: 'tainted' })
-    expect(egress({ enabled: true, tainted: false, hasKey: false, api: DEFAULT_API })).toEqual({ go: false, reason: 'no-key' })
-    expect(egress({ enabled: true, tainted: false, hasKey: true, api: DEFAULT_API })).toEqual({ go: true, local: false })
-    expect(egress({ enabled: true, tainted: true, hasKey: false, api: 'http://127.0.0.1:8090/v1/systemone' })).toEqual({ go: true, local: true })
+  test('egress: the switch, then the fence (declared-local passes), then the key (TypeSafe only)', () => {
+    const lan = 'http://192.168.2.132:8084/v1/systemone'
+    const g = (o: Partial<Parameters<typeof egress>[0]>) => egress({ enabled: true, tainted: false, hasKey: true, api: DEFAULT_API, backendLocal: false, ...o })
+    expect(g({ enabled: false })).toEqual({ go: false, reason: 'switched-off' })
+    expect(g({ tainted: true })).toEqual({ go: false, reason: 'tainted' })
+    expect(g({ hasKey: false })).toEqual({ go: false, reason: 'no-key' })
+    expect(g({})).toEqual({ go: true, sendKey: true })
+    // A LAN URL is not local unless declared: the fence holds, and it gets no key.
+    expect(g({ api: lan, tainted: true })).toEqual({ go: false, reason: 'tainted' })
+    expect(g({ api: lan })).toEqual({ go: true, sendKey: false })
+    expect(g({ api: lan, hasKey: false })).toEqual({ go: true, sendKey: false })
+    // Declared local: tainted sessions may go, and never with the key — even to TypeSafe's URL.
+    expect(g({ api: lan, tainted: true, hasKey: false, backendLocal: true })).toEqual({ go: true, sendKey: false })
+    expect(g({ tainted: true, backendLocal: true })).toEqual({ go: true, sendKey: false })
   })
 })
 
@@ -218,14 +252,24 @@ describe('spawn', () => {
     expect(JSON.stringify(r)).not.toContain('private key')
   })
 
-  test('the shadow log appends a line and sheds its oldest half past the cap', () => {
+  test('a shadow line is added, never trimmed in', () => {
     const r = shadowRecord({ now: 0, session: 's', subagentType: 't', callerModel: 'haiku', pick: 'haiku', confidence: 1, enforced: false, ms: 1, usd: 0, promptDigest: 'sha256-12-000000000000' })
-    expect(appendLine('', r).split('\n').filter(Boolean)).toHaveLength(1)
-    expect(appendLine('{"a":1}', r).split('\n').filter(Boolean)).toHaveLength(2)
-    const big = Array.from({ length: 100 }, (_, i) => `{"i":${i}}`).join('\n') + '\n'
-    const out = appendLine(big, r, 500)
-    expect(out.length).toBeLessThan(big.length)
+    expect(joinLine('', r).split('\n').filter(Boolean)).toHaveLength(1)
+    expect(joinLine('{"a":1}', r).split('\n').filter(Boolean)).toHaveLength(2)
+    const big = Array.from({ length: 100_000 }, (_, i) => `{"i":${i}}`).join('\n') + '\n'
+    const out = joinLine(big, r)
+    expect(out.startsWith(big)).toBe(true)
     expect(out.endsWith(`${JSON.stringify(r)}\n`)).toBe(true)
+  })
+
+  test('each session writes its own segments beside shadowLog', () => {
+    const base = '/home/devuser/.claude/jev-checkpoints/shadow.jsonl'
+    expect(shadowPath(base, 'sess-1', 0)).toBe('/home/devuser/.claude/jev-checkpoints/shadow-sess-1.jsonl')
+    expect(shadowPath(base, 'sess-1', 2)).toBe('/home/devuser/.claude/jev-checkpoints/shadow-sess-1.2.jsonl')
+    expect(shadowPath(base, '../../etc/x y', 0)).toBe('/home/devuser/.claude/jev-checkpoints/shadow-.._.._etc_x_y.jsonl')
+    expect(shadowPath('/var/log/spawns', 's', 0)).toBe('/var/log/spawns-s.jsonl')
+    expect(shadowPath('spawns.log', 's', 1)).toBe('spawns-s.1.log')
+    expect(shadowPath(base, '', 0)).toBe('/home/devuser/.claude/jev-checkpoints/shadow-unknown.jsonl')
   })
 })
 
@@ -264,20 +308,69 @@ describe('state', () => {
       ['switch:new', true],
       ['session:bad', 'x'],
     ]
-    expect(expiredKeys(entries, now).sort()).toEqual(['session:bad', 'session:old', 'switch:old'])
+    expect(prunePlan(entries, now)).toEqual({ remove: ['session:old', 'switch:old', 'session:bad'], shrink: [] })
     expect(readRecord('garbage', 7)).toEqual(freshRecord(7))
     expect(readRecord({ tainted: 'tool:x', stats: { done: { requests: 2 } } }, 7)).toMatchObject({ tainted: 'tool:x', stats: { done: { requests: 2, injections: 0 } } })
+  })
+
+  test('concurrent first loads share one pending read and one record; a taint is never lost', async () => {
+    const cache = { live: new Map(), loading: new Map() }
+    let reads = 0
+    let release: (r: ReturnType<typeof freshRecord>) => void = () => {}
+    const read = () => (reads++, new Promise<ReturnType<typeof freshRecord>>(r => (release = r)))
+    const a = loadShared(cache, 's', read)
+    const b = loadShared(cache, 's', read)
+    expect(reads).toBe(1)
+    release(freshRecord(0))
+    const [ra, rb] = await Promise.all([a, b])
+    expect(ra).toBe(rb)
+    ra.tainted = 'tool:mcp__email-gateway__ask_email'
+    const rc = await loadShared(cache, 's', read)
+    expect(rc.tainted).toBe('tool:mcp__email-gateway__ask_email')
+    expect(reads).toBe(1)
+    expect(cache.loading.size).toBe(0)
+    // Another session reads for itself.
+    const d = loadShared(cache, 't', read)
+    release(freshRecord(1))
+    expect((await d).at).toBe(1)
+    expect(reads).toBe(2)
+  })
+
+  test('a tainted session is never pruned: it shrinks to its taint, once', () => {
+    const now = SESSION_TTL_MS * 2
+    const full = { ...freshRecord(1), tainted: 'tool:mcp__email-gateway__ask_email' }
+    const entries: [string, unknown][] = [
+      ['session:mail', full],
+      ['switch:mail', false],
+      ['session:shrunk', { at: 1, tainted: 'skill:email-search' }],
+      ['session:undated', { tainted: 'factrail', stats: {} }],
+    ]
+    const plan = prunePlan(entries, now)
+    expect(plan.remove).toEqual(['switch:mail'])
+    expect(plan.shrink).toEqual([
+      ['session:mail', { at: 1, tainted: 'tool:mcp__email-gateway__ask_email' }],
+      ['session:undated', { at: now, tainted: 'factrail' }],
+    ])
+    // The shrunk record still reads back tainted.
+    expect(readRecord({ at: 1, tainted: 'skill:email-search' }, now).tainted).toBe('skill:email-search')
   })
 
   test('status names every checkpoint and the agreement rate', () => {
     const rec = freshRecord(0)
     rec.stats.plan = { requests: 3, injections: 1, usd: 0.000126, lastError: 'timeout' }
     rec.spawn = { decisions: 4, agreements: 3, enforced: 0 }
-    const text = statusText({ enabled: true, rec, enabledChecks: { done: true, repeat: true, plan: true, spawn: true }, spawnMode: 'shadow', api: DEFAULT_API, local: false, hasKey: true })
+    const text = statusText({ enabled: true, rec, enabledChecks: { done: true, repeat: true, plan: true, spawn: true }, spawnMode: 'shadow', api: DEFAULT_API, backendLocal: false, typeSafe: true, hasKey: true })
     expect(text).toContain('jev-checkpoints: on for this session')
     expect(text).toMatch(/plan\s+on\s+3 requests, \$0\.00013, 1 injections, last error timeout/)
     expect(text).toContain('repeat on      local only')
     expect(text).toContain('spawn agreement with the caller: 3/4 (75%)')
+    expect(text).toContain(`endpoint ${DEFAULT_API} (cloud, key set)`)
+    const lan = statusText({ enabled: true, rec: { ...rec, tainted: 'tool:x' }, enabledChecks: { done: true, repeat: true, plan: true, spawn: true }, spawnMode: 'shadow', api: 'http://10.0.0.2/v1', backendLocal: false, typeSafe: false, hasKey: true })
+    expect(lan).toContain('(not declared local, no key sent)')
+    expect(lan).toContain('email-tainted (tool:x): no requests this session')
+    const local = statusText({ enabled: true, rec: { ...rec, tainted: 'tool:x' }, enabledChecks: { done: true, repeat: true, plan: true, spawn: true }, spawnMode: 'shadow', api: 'http://10.0.0.2/v1', backendLocal: true, typeSafe: false, hasKey: false })
+    expect(local).toContain('(declared local, no key sent)')
+    expect(local).toContain('judged by the declared-local backend only')
   })
 })
 
@@ -290,6 +383,19 @@ describe('taint', () => {
     expect(taintOf('Skill', { skill: 'browser' })).toBeNull()
     expect(taintOf('Bash', { command: 'echo email' })).toBeNull()
     expect(isTaintSkill('/email-search')).toBe(true)
+  })
+
+  test('configured lists replace the defaults, the Gmail catch-all included', () => {
+    const rules = { tools: ['mcp__email-gateway__', 'mcp__vault__'], skills: ['ledger'] }
+    expect(taintOf('mcp__vault__read', {}, rules)).toBe('tool:mcp__vault__read')
+    expect(taintOf('mcp__email-gateway__ask_email', {}, rules)).toBe('tool:mcp__email-gateway__ask_email')
+    expect(taintOf('mcp__mygmail__search', {}, rules)).toBeNull()
+    expect(taintOf('mcp__mygmail__search', {})).toBe('tool:mcp__mygmail__search')
+    expect(taintOf('Skill', { skill: 'email-search' }, rules)).toBeNull()
+    expect(taintOf('Skill', { skill: 'plugin:ledger' }, rules)).toBe('skill:plugin:ledger')
+    expect(isTaintSkill('ledger', { tools: null, skills: null })).toBe(false)
+    // Only one list set: the other keeps its default.
+    expect(taintOf('Skill', { skill: 'email-search' }, { tools: ['x__'], skills: null })).toBe('skill:email-search')
   })
 
   test("factrail's store file and record are read as factrail writes them", async () => {

@@ -41,8 +41,9 @@ reads as an error), with the noise a re-run changes replaced first: `file:line:c
 `line N`, hex addresses and ids, timestamps, durations and pids. A fix attempt that
 moves the panic from `parser.rs:118` to `parser.rs:131`, and the run time from 0.53 s
 to 1.07 s, still counts as the same failure. A different message or file does not.
-Each fingerprint is advised on once per session, counted per loop (a subagent's
-failures are its own).
+Each fingerprint is advised on once for the whole session: the main loop and every
+subagent count the same failure together, and one line per prompt is the cap for
+all of them. A fingerprint the cap held back speaks on its next occurrence.
 
 **plan.** Slash commands, prompts shorter than `minChars` (24), and prompts that
 are not the person's own (task notifications, prompts submitted by plugins) are
@@ -53,9 +54,10 @@ it, because a follow-up to a planned request is the same plan.
 the description and the prompt's clamped head and tail. Under `spawnMode`:
 
 - `off`: nothing is asked.
-- `shadow` (the default): the spawn starts at once and Jev is asked alongside it.
-  The pick changes nothing and is only logged.
-- `enforce`: the pick replaces the subagent's model only when **all** of these hold:
+- `shadow` (the default): the hook passes the spawn on at once and never waits on
+  the judge. Jev is asked afterwards, detached from the spawn, and the pick is
+  only logged.
+- `enforce`: the spawn waits for the verdict, within `timeoutMs`. The pick replaces the subagent's model only when **all** of these hold:
   the caller named no model; the spawn is not a fork or a workflow agent (neither
   takes a model); Jev's confidence is at least `spawnMinConfidence` (0.8); the pick is
   not `inherit`; the pick is **no larger than the main session's model** (it never
@@ -67,15 +69,20 @@ the description and the prompt's clamped head and tail. Under `spawnMode`:
   `<plugin>:<name>` agent, is left alone; the one exception is `general-purpose`,
   which follows its caller.
 
-Every spawn decision, shadow or enforced, appends one JSON line to `shadowLog` for
-the ADR-2110 teacher labels:
+Every spawn decision, shadow or enforced, adds one JSON line to the shadow log for
+the ADR-2110 teacher labels. `$.fs` has no append, so each session writes its own
+files beside `shadowLog`, named from its stem: `shadow.jsonl` gives
+`shadow-<session>.jsonl`, then `shadow-<session>.1.jsonl`, `.2`, … A segment is
+closed once it would pass 1 MB, and one that cannot be read or is not a file is
+left untouched. Either way the line goes to the next segment, so existing lines
+are never truncated or rewritten away. Readers glob `<stem>-*.jsonl`.
 
 ```json
 {"ts":"2026-10-09T14:02:11.120Z","session":"…","subagent_type":"Explore","caller_model":"inherit","jev_choice":"haiku","confidence":0.91,"enforced":false,"ms":412,"usd":0.000034,"prompt_digest":"sha256-12-3fa94c0e5b21"}
 ```
 
 No prompt text goes into the log; `prompt_digest` is a `sha256-12-<12hex>` digest
-of the prompt, for joining. Past 3 MB the log sheds its oldest half.
+of the prompt, for joining.
 
 ### Why spawn routing is shadow-only by default
 
@@ -110,15 +117,18 @@ line carries its own `usd`. Set `usdPerMTokIn` to 0 for a self-hosted façade.
   is).
 - **Email fence.** A session that has called any `mcp__email-gateway__*` or Gmail
   tool, or loaded the `email-search` skill (by the Skill tool or a skill prompt), is
-  tainted for the rest of its life, across reloads: it makes no cloud Jev request
-  again. The local repeat checkpoint keeps running. If factrail has recorded a
+  tainted for the rest of its life, across reloads: it makes no Jev request again
+  unless the backend is declared local. `taintTools` and `taintSkills` replace these
+  lists in factrail's comma-separated form; an empty value keeps the defaults. A
+  tainted session's record is never pruned: past 30 days it shrinks to its taint. The local repeat checkpoint keeps running. If factrail has recorded a
   taint for the same session (`taint:<session>` in its plugin store,
   `~/.claude/plugins/store/factrail_agentbox-<sha12>.json`), that taint is honoured
   too.
-- **Local endpoints.** When `api` names a loopback, private-range, link-local,
-  `.local`/`.internal` or single-label (container-network) host, for example the
-  ADR-2094 System One façade, the endpoint counts as local. Nothing leaves the
-  network, so a tainted session may still be judged and no key is needed.
+- **Local backends are declared, never guessed.** Locality is never inferred from
+  the URL (ADR-2094 §5): a LAN or loopback `api` is treated like any other host
+  until `backendLocal` is `true`. Only then may a tainted session be judged,
+  because nothing leaves the network. This is factrail's key, with the same name
+  and meaning.
 - **Fail-open.** A missing key, a timeout (`timeoutMs`, 4 000 ms), a 429 or other
   non-2xx status, unparsable JSON or an answer of the wrong shape means no line,
   no block and one `jev-checkpoints:` log line. A missing key is said once per
@@ -129,13 +139,15 @@ line carries its own `usd`. Set `usdPerMTokIn` to 0 for a self-hosted façade.
 
 The key is never a `userConfig` value. The plugin reads `TYPESAFE_API_KEY` from
 Claude Code's own process environment through `$.env.get('TYPESAFE_API_KEY')` at
-each request, and sends it as `Authorization: Bearer …`. It is the same variable
+each request, and sends it as `Authorization: Bearer …` **only to TypeSafe's https
+host** (`typesafe.ai` or a subdomain of it) when `backendLocal` is false. It is the same variable
 factrail's binary reads: factrail's shim never handles the key itself, and its
 `factrail` binary, run by `$.process.run`, inherits `TYPESAFE_API_KEY` (or
 `FACTRAIL_API_KEY`) from the Claude Code process. In agentbox that variable comes
 from the container environment (`.env`), as for the skill router (ADR-2091) and
-factrail (W072 warns at boot when it is unset). A local `api` needs no key; when the
-key is present it is sent there as well.
+factrail (W072 warns at boot when it is unset). A declared-local backend never
+receives the key, and neither does any other endpoint: a request there goes
+without one, so a key-less façade works and a mistyped `api` cannot leak it.
 
 ## Configuration (`userConfig`)
 
@@ -143,8 +155,9 @@ key is present it is sent there as well.
 |---|---|---|---|
 | — | `enabled` | `true` | install/uninstall gate (the entrypoint's, not the plugin's) |
 | `api` | `api` | `""` | System One endpoint; empty means `https://api.typesafe.ai/v1/systemone` |
+| `backendLocal` | `backend_local` | `false` | declares `api` on this network: tainted sessions may be judged, no key sent; only `true` counts |
 | `model` | `model` | `jev-latest` | model id sent with every request |
-| `timeoutMs` | `timeout_ms` | `4000` | per-request deadline, clamped to 250–30 000 |
+| `timeoutMs` | `timeout_ms` | `4000` | per-request deadline, clamped to 250–8 000 (a hook's budget is 10 s) |
 | `doneCheck` | `done_check` | `true` | the done checkpoint |
 | `doneThreshold` | `done_threshold` | `0.9` | score at or above which done injects |
 | `repeatCheck` | `repeat_check` | `true` | the repeat checkpoint |
@@ -154,8 +167,10 @@ key is present it is sent there as well.
 | `minChars` | `min_chars` | `24` | shorter prompts are never planned |
 | `spawnMode` | `spawn_mode` | `shadow` | `off`, `shadow` or `enforce` |
 | `spawnMinConfidence` | `spawn_min_confidence` | `0.8` | confidence enforce needs |
-| `shadowLog` | `shadow_log` | `/home/devuser/.claude/jev-checkpoints/shadow.jsonl` | spawn decision log; empty turns it off; `~/` is the home directory |
+| `shadowLog` | `shadow_log` | `/home/devuser/.claude/jev-checkpoints/shadow.jsonl` | base path of the spawn decision log: each session writes `<stem>-<session>[.N].jsonl` beside it; empty turns it off; `~/` is the home directory |
 | `usdPerMTokIn` | `usd_per_mtok_in` | `0.042` | input price for the cost counters |
+| `taintTools` | `taint_tools` | built-in email list | comma-separated tool-name prefixes that taint (factrail's form) |
+| `taintSkills` | `taint_skills` | `email-search` | comma-separated skill names whose load taints |
 
 A value that is missing or out of range falls back to its default: a threshold
 outside 0–1, an unknown `spawnMode` or a negative price.
@@ -168,7 +183,8 @@ pick's.
 ## `/jev-checkpoints [status|on|off]`
 
 - `status` (or no argument): whether the checkpoints are on for this session, the
-  endpoint (local or cloud, key set or not), the email taint and its cause, and for
+  endpoint (declared local, TypeSafe cloud with or without a key, or another host
+  that gets no key), the email taint and its cause, and for
   each checkpoint its requests, cost, injections and last error. It also shows the
   total cost and the spawn agreement rate.
 - `off` / `on`: a per-session switch kept in the plugin's `$.store`
@@ -177,7 +193,8 @@ pick's.
 
 Per-session state (`session:<id>`: taint, counters, fingerprints, the pending done
 line) lives in the plugin's `$.store`, so a hot reload or a resumed session keeps
-it. `session:`/`switch:` entries idle for 30 days are pruned at session start.
+it. `session:`/`switch:` entries idle for 30 days are pruned at session start,
+except that a tainted session keeps a `{at, tainted}` record for good.
 
 ## Layout
 
@@ -185,12 +202,12 @@ it. `session:`/`switch:` entries idle for 30 days are pruned at session start.
 |---|---|
 | `hooks/register.ts` | the hooks and every `$` call (the engine requires `$` to stay in the module file) |
 | `hooks/options.ts` | `userConfig` validation and defaults |
-| `hooks/jev.ts` | request shapes, score/choice readers, local-endpoint test, egress decision, the deadline-raced call |
+| `hooks/jev.ts` | request shapes, score/choice readers, the TypeSafe-host test, egress decision, the deadline-raced call |
 | `hooks/text.ts` | clamps, the completion pre-gate, tool-call evidence, the injected lines |
 | `hooks/fingerprint.ts` | failure normalisation and the FNV-1a fingerprint |
-| `hooks/taint.ts` | the email fence and factrail's store name |
-| `hooks/spawn.ts` | the tier question, enforce rule, definition pin, shadow record |
-| `hooks/state.ts` | the session record, injection rule, pruning, status text |
+| `hooks/taint.ts` | the email fence (default and configured lists) and factrail's store name |
+| `hooks/spawn.ts` | the tier question, enforce rule, definition pin, shadow record and segment paths |
+| `hooks/state.ts` | the session record, shared first load, injection rule, pruning, status text |
 | `types/index.d.ts` | the data contract: shadow-log line and store record |
 | `tests/logic.test.ts` | pure-module tests |
 | `tests/register.test.ts` | the hooks under the real engine, with the world (fs, env, store, clock, Jev endpoint) mocked beneath them |
