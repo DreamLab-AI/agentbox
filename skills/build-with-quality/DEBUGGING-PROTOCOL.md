@@ -129,6 +129,11 @@ Tag all debug output with a unique prefix: `[DEBUG-xxxx]`. Single-grep cleanup.
 For performance regressions: baseline measurement (timing harness, profiler
 snapshot, query plan) then bisect. Logs are the wrong tool.
 
+**Twice-failed rule.** When the same test or compiler error survives two fix
+attempts, stop and consult the advisor (ADR-2134) with the hypotheses ranked
+and the evidence so far, before a third attempt. The question is whether you
+are fixing the root cause or circling it.
+
 ## Phase 4: Fix + Regression Test
 
 1. Convert minimised repro into a permanent test (only when a correct seam

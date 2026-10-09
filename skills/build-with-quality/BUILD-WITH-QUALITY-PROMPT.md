@@ -299,10 +299,22 @@ Tasks:
 
 ---
 
-## MODEL ROUTING (TinyDancer)
+## MODEL ROLES (ADR-2134)
 
-| Model | Complexity Range | Use Cases |
-|-------|-----------------|-----------|
+| Role | Model | Where it is set |
+|------|-------|-----------------|
+| Lead session | Sonnet, high effort | `[claude_code].model` / `effort` |
+| Advisor | Opus, on call | `[claude_code].advisor_model`; Claude calls it |
+| Lookup / docs subagents | Haiku | `Explore` agent, or `model: "haiku"` on the Agent call |
+| Implementation subagents | Sonnet | agent frontmatter or `model` on the Agent call |
+| Design / review subagents | Opus | `model: "opus"` on the Agent call |
+| Evidence auditor | Codex (`gpt-6-astra`) | `/codex:adversarial-review` or `codex exec` |
+
+Advisor checkpoints: before a multi-file plan, schema or auth contract locks;
+when the same test or compiler error fails twice; before declaring done or
+committing, over the full diff.
+
+-------|-----------------|-----------|
 | **Haiku** | 0-20 | Syntax fixes, simple tests, type annotations |
 | **Sonnet** | 20-70 | Implementation, test generation, bug fixes, reviews |
 | **Opus** | 70-100 | Architecture, security scans, chaos tests, defect prediction |
@@ -472,9 +484,11 @@ At completion, ensure:
 
 ## CLAUDE FLOW SWARM ORCHESTRATION
 
-**CRITICAL: Claude Code MUST use Claude Flow to orchestrate the swarm.**
-
-Claude Flow can be used in two ways:
+**Workers are Claude Code subagents; Claude Flow holds coordination state.**
+Spawn workers with the Agent tool (model per call, see MODEL ROLES). ruflo
+`agent_spawn` only records an agent with a model label; nothing runs it unless
+ruflo `agent_execute` is called, which bypasses Claude Code. Register the swarm
+in Claude Flow for observers and shared state:
 1. **MCP Tools** (preferred) - If `mcp__claude-flow__*` tools are available
 2. **CLI Commands** (fallback) - If MCP is not configured, use `claude-flow` commands
 
@@ -502,7 +516,7 @@ mcp__claude-flow__agent_spawn { agentType: "tester", name: "unit-test-generator"
 mcp__claude-flow__agent_spawn { agentType: "tester", name: "e2e-test-generator" }
 mcp__claude-flow__agent_spawn { agentType: "tester", name: "tdd-stabilizer" }                              // NEW v1.2.0
 mcp__claude-flow__agent_spawn { agentType: "tester", name: "evidence-producer", model: "sonnet" }          // NEW v1.2.0 — PRODUCER
-mcp__claude-flow__agent_spawn { agentType: "analyst", name: "evidence-auditor", model: "opus" }            // NEW v1.2.0 — AUDITOR (different model family)
+mcp__claude-flow__agent_spawn { agentType: "analyst", name: "evidence-auditor" }                          // NEW v1.2.0 — AUDITOR: runs on Codex, not a Claude tier
 mcp__claude-flow__agent_spawn { agentType: "analyst", name: "coverage-analyzer" }
 mcp__claude-flow__agent_spawn { agentType: "security", name: "security-scanner" }
 mcp__claude-flow__agent_spawn { agentType: "researcher", name: "tech-researcher" }
@@ -510,9 +524,9 @@ mcp__claude-flow__agent_spawn { agentType: "coordinator", name: "quality-coordin
 ```
 
 **Anti-fox rule:** `evidence-producer` and `evidence-auditor` MUST be on
-different model families. The example above pairs Sonnet producer with
-Opus auditor; Sonnet+Haiku or Opus+Haiku also work. Same-family pairs
-inherit the same blind spots and break the audit.
+different model families. Haiku, Sonnet and Opus are all Claude: pair a
+Claude producer with a Codex auditor (`codex exec -m gpt-6-astra`).
+Same-family pairs inherit the same blind spots and break the audit.
 
 Then orchestrate and monitor:
 ```
@@ -545,7 +559,7 @@ claude-flow agent spawn --type tester --name unit-test-generator &
 claude-flow agent spawn --type tester --name e2e-test-generator &
 claude-flow agent spawn --type tester --name tdd-stabilizer &                              # NEW v1.2.0
 claude-flow agent spawn --type tester --name evidence-producer --model sonnet &            # NEW v1.2.0 — PRODUCER
-claude-flow agent spawn --type analyst --name evidence-auditor --model opus &              # NEW v1.2.0 — AUDITOR (different model family)
+claude-flow agent spawn --type analyst --name evidence-auditor &                           # NEW v1.2.0 — AUDITOR: runs on Codex
 claude-flow agent spawn --type analyst --name coverage-analyzer &
 claude-flow agent spawn --type security --name security-scanner &
 claude-flow agent spawn --type researcher --name tech-researcher &
@@ -655,7 +669,8 @@ Methodology: EDD + DDD + ADR + TDD
 Quality: 85% coverage, security scan, WCAG AA, evidence coverage
 
 Expectations: I will author 2-6 EXP-NNN before coder runs.
-Anti-fox: producer (sonnet) + auditor (opus) on different model families.
+Anti-fox: producer (Claude) + auditor (Codex gpt-6-astra) on different model families.
+Advisor: Opus on call at plan lock, repeated failure and completion.
 Stabilization: regression_critical EXPs MUST have stabilized_by tests.
 
 Execute and deliver tested code with proven evidence.

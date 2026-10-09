@@ -21,7 +21,9 @@
 { lib, pkgs }:
 
 let
-  # 2.1.294 (bumped 2026-10-08; checksums from the published manifest).
+  # 2.1.295 (bumped 2026-10-09; checksums from the published manifest).
+  # Advisor tool (ADR-2134) needs >= 2.1.293 for Haiku 5.5 pairings.
+  # 2.1.294 (bumped 2026-10-08).
   # 2.1.289 (built 2026-10-03T19:38:35Z; bumped 2026-10-05).
   # Driver: the ruflo 3.51.x mods (ruflo-console) need Claude Code 2.1.287+.
   # Retains the function-hook surface introduced in 2.1.276
@@ -30,10 +32,10 @@ let
   #
   # This is Anthropic's latest channel release. Both per-arch hashes are
   # verified against its published manifest:
-  # https://downloads.claude.ai/claude-code-releases/2.1.294/manifest.json
-  #   linux-x64   27122ca7b624f537546fbef35b80c66370d974ff258f3d9b10ac50bb8771f262
-  #   linux-arm64 e5d2df19f30a6d63bf11188121f7edb2775249b57352a69269509a4b1496e763
-  claudeCodeVersion = "2.1.294";
+  # https://downloads.claude.ai/claude-code-releases/2.1.295/manifest.json
+  #   linux-x64   4503bfe11a6c7fcc1e0b39b5e0d347c04248f750b03b0977b3ad6b531fe6f358
+  #   linux-arm64 cfb9dc1332fb6f92a683f835823e91b3179a803398ca7852cd2381a3cb1dea3b
+  claudeCodeVersion = "2.1.295";
 
   # Map agentbox's system string to the upstream download platform slug.
   platforms = {
@@ -54,10 +56,10 @@ let
   # lib.fakeHash triggers a build-time error with the exact prefetch command.
   assets = {
     "x86_64-linux" = {
-      sha256 = "sha256-JxIsp7Yk9TdUb77zW4DGY3DZdP8ljz2bEKxQu4dx8mI=";
+      sha256 = "sha256-RQO/4Rpsf8weCzm14NNHwEJI91CwOwl3s61rUx/m81g=";
     };
     "aarch64-linux" = {
-      sha256 = "sha256-5dLfGfMKbWO/ERiBIfftsndSSbVzUqaSaVCaSxSW52M=";
+      sha256 = "sha256-z7ncEzL7b5Kmg/g1gj6RsxeagDOYynhSzSOBo8sd6js=";
     };
   };
 

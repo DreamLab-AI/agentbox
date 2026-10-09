@@ -466,8 +466,10 @@ ADR-2071 is **proposed, not landed**, and divergences 1 and 6 stay open: routing
   the policy table, per-task-class scorecard and RuVector outcome writer; AoE receives
   `(task, backend)` and runs it, its source tree unpatched. Privacy tier gates before cost
   (nothing personal leaves its tier; `loom-raw` is never a fallback, ADR-2070); Claude Code
-  subagents cannot have their model swapped, so the router's choice at that seam is "Claude
-  subagent or AoE session". Precondition is a research spike (fleet inventory with dated
+  subagents take a model per call (Agent `model` > frontmatter > `CLAUDE_CODE_SUBAGENT_MODEL`
+  > main; ADR-2134 amends the earlier "cannot be swapped" premise), but only among Claude
+  tiers, so the router's cross-vendor choice at that seam is still "Claude subagent or AoE
+  session". Precondition is a research spike (fleet inventory with dated
   tariffs, six to ten task classes, one week routed-vs-default). Consolidates the four
   scattered model-choice mechanisms (`[model_routing.routes]`, `[consultants.<name>].model`,
   seed `model` keys, the regex prompt-routing hook). PRD-005 is the ORIGIN (`see`).

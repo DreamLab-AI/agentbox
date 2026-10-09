@@ -43,12 +43,14 @@ Recounted from [references/agents.md](./references/agents.md)'s Agent Domains ca
 - **Dream Cycles**: Background pattern consolidation
 - **Q-Learning**: Coverage optimization with 12-dimensional state space
 
-### Intelligent Model Routing (TinyDancer)
+### Model roles
 
-- **3-tier routing**: Haiku (0-20), Sonnet (20-70), Opus (70-100) complexity
-- **Flash Attention**: 2.49x-7.47x speedup
-- **75% token reduction** through intelligent routing
-- **Multi-model voting** for low-confidence decisions
+Upstream's TinyDancer 3-tier complexity routing labels ruflo agent records
+only; it never selects the model of a Claude Code turn. In agentbox the roles
+are set by Claude Code's own seams (ADR-2134): Sonnet lead on high effort, an
+Opus advisor consulted at decision points, Haiku for the `Explore` search agent,
+and a per-call `model` on the Agent tool for everything else. The evidence
+auditor is cross-vendor (Codex).
 
 ### Comprehensive Quality Gates
 

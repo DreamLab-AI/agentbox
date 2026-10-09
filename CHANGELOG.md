@@ -4,6 +4,16 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-10-09 — model roles and the advisor, ADR-2134)
+
+- `[claude_code]` gains `model`, `effort` and `advisor_model` (Sonnet / high / Opus), reconciled
+  every boot into root and non-gateway profile settings by `permissions-project`.
+- `agents/Explore.md` pins search fan-out to Haiku; advisor checkpoints added to the Claude tier.
+- build-with-quality 1.4.0: Agent tool + advisor first, ruflo as coordination state, cross-vendor
+  auditor stated plainly, TinyDancer tiers removed.
+- ruflo-mods prompt route off by default (`routeTasks`); auto-consultant drops an unreachable tool;
+  stale `[model_routing.routes]` ids; Claude Code 2.1.295.
+
 ### Fixed (2026-10-06 — dream-engine ledger rows)
 
 - The finding cell comes from the ledger row the report proposes for tonight, read through

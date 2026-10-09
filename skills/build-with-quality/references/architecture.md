@@ -26,12 +26,14 @@ See [agentdb-memory-patterns/KHIVE-LEARNINGS.md](../../agentdb-memory-patterns/K
 - **URI/URN Addressing**: Three-level scheme: `urn:agentdb:{namespace}:{kind}:{key}[@version]`. Every entry addressable by URN. Cross-references between tasks, entities, and memories use URNs, enabling graph traversal from any node.
 - **Hybrid Scoring**: Combine HNSW vector score with BM25 keyword match for retrieval. Catches exact-match queries that embedding models miss.
 
-## Intelligent Model Routing (TinyDancer)
+## Model roles
 
-- **3-tier routing**: Haiku (0-20), Sonnet (20-70), Opus (70-100) complexity
-- **Flash Attention**: 2.49x-7.47x speedup
-- **75% token reduction** through intelligent routing
-- **Multi-model voting** for low-confidence decisions
+Upstream's TinyDancer 3-tier complexity routing labels ruflo agent records
+only; it never selects the model of a Claude Code turn. In agentbox the roles
+are set by Claude Code's own seams (ADR-2134): Sonnet lead on high effort, an
+Opus advisor consulted at decision points, Haiku for the `Explore` search agent,
+and a per-call `model` on the Agent tool for everything else. The evidence
+auditor is cross-vendor (Codex).
 
 ## Performance Targets
 

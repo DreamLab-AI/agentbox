@@ -664,6 +664,18 @@ permission_deny = [
   "Bash(ssh *172.18.0.1*)", "Bash(ssh *172.20.0.1*)",
   "Bash(ssh *192.168.2.132*)", "Bash(ssh *192.168.2.160*)", "Bash(ssh *machinelearn*)",
 ]
+# ADR-2134 — model roles, reconciled every boot by the same projector into the
+# root settings and every non-gateway profile (openrouter/zai pin their own
+# model and cannot reach the Anthropic-only advisor). Sonnet leads on high
+# effort; Opus is the advisor Claude consults at decision points (before a plan
+# locks, after a repeated failure, before declaring done). The advisor must rank
+# at or above the main model: an Opus main accepts only Fable or Opus. A key
+# removed here is retracted only if settings still hold the value it wrote;
+# advisor_model = "off" removes it. Search subagents run on Haiku through
+# agents/Explore.md, never a global CLAUDE_CODE_SUBAGENT_MODEL.
+model         = "sonnet"   # fable|best|opus|sonnet|haiku|opusplan (+ optional "[1m]") or a claude-* id
+effort        = "high"     # low | medium | high | xhigh
+advisor_model = "opus"     # fable | opus | sonnet | haiku | claude-* id | "off"
 
 [features.jev_compaction]
 # ADR-2093 (policy) and ADR-2121 (factrail) — Jev compaction with fact rails. At compaction
@@ -1426,18 +1438,18 @@ aqe_fallback_chain = "claude-code,codex"  # ordered AQE_LLM_FALLBACK_CHAIN — c
 # kit-originated gap-fills (agentic-kit ADR-0002), flagged as such.
 # Models are SOFT defaults (last verified 2026-09-08: codex → gpt-6-astra, the Codex bundled default since 2026-09-03) — tune per activity.
 [model_routing.routes]
-specification     = "claude:claude-sonnet-5"
+specification     = "claude:claude-sonnet-5-5"
 architecture      = "claude:claude-fable-5-1"
-design            = "claude:claude-opus-5"
+design            = "claude:claude-opus-5-5"
 implementation    = "codex:gpt-6-astra -> claude:claude-fable-5-1"
-testing           = "codex:gpt-6-astra -> claude:claude-opus-5"
-review            = "claude:claude-sonnet-5"
+testing           = "codex:gpt-6-astra -> claude:claude-opus-5-5"
+review            = "claude:claude-sonnet-5-5"
 security-scan     = "codex:gpt-6-astra"
 security-analysis = "claude:claude-fable-5-1"
 documentation     = "codex:gpt-6-astra"
 debugging         = "claude:claude-fable-5-1"
 packaging         = "codex:gpt-6-astra"          # kit-originated activity (no upstream template)
-release           = "claude:claude-sonnet-5" # kit-originated activity (no upstream template)
+release           = "claude:claude-sonnet-5-5" # kit-originated activity (no upstream template)
 
 # ── ADR-2080: metaharness cost-optimal router as a dedicated AoE session ─────
 # Phase 0 of ADR-2079. The baked ruflo closure carries @metaharness/router

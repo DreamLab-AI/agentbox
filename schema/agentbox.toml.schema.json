@@ -4001,7 +4001,7 @@
     "claude_code": {
       "type": "object",
       "additionalProperties": false,
-      "description": "ADR-2116: Claude Code permission posture, projected into every settings file at boot.",
+      "description": "ADR-2116: Claude Code permission posture; ADR-2134: model roles. Projected into every settings file at boot (roles skip gateway profiles).",
       "properties": {
         "permission_mode": {
           "type": "string",
@@ -4021,6 +4021,21 @@
             "type": "string"
           },
           "description": "Permission deny rules enforced in every mode, bypass included."
+        },
+        "model": {
+          "type": "string",
+          "pattern": "^((fable|best|opus|sonnet|haiku|opusplan)(\\[1m\\])?|claude-[A-Za-z0-9.-]+(\\[1m\\])?)$",
+          "description": "ADR-2134: settings `model` (main session model) for the root session and every non-gateway profile."
+        },
+        "effort": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "xhigh"],
+          "description": "ADR-2134: settings `effortLevel` (default effort; `max` is not accepted by the persisted setting)."
+        },
+        "advisor_model": {
+          "type": "string",
+          "pattern": "^(off|fable|opus|sonnet|haiku|claude-[A-Za-z0-9.-]+)$",
+          "description": "ADR-2134: settings `advisorModel` (server-side advisor tool, Anthropic API only); \"off\" removes it. Must rank at or above `model`."
         }
       }
     }

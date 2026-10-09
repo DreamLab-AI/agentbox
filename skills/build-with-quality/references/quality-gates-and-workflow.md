@@ -41,6 +41,14 @@ dogfooding them found about a dozen real bugs the suite had missed. The `sealmap
 CLI is on PATH in the image. Treat what the view shows as a lead and still
 reproduce it with a failing test (see "Review findings intake").
 
+## Advisor checkpoints
+
+With `[claude_code].advisor_model` set (ADR-2134), the lead consults the
+advisor at three gates: at the end of Phase 1 before the plan locks, when one
+failure survives two fixes, and before the completion gate over the full diff.
+The advisor is a same-family second opinion; it never replaces the cross-vendor
+evidence auditor in Phase 2.5.
+
 ## Workflow Phases
 
 ```

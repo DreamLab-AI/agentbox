@@ -197,9 +197,10 @@ enum Command {
         #[arg(long)]
         once: bool,
     },
-    /// Project `[claude_code]` (permission mode + deny rules) into Claude Code
-    /// settings files (ADR-2116). Reconciled every boot; hand-added deny rules
-    /// are preserved. Fail-open.
+    /// Project `[claude_code]` (permission mode + deny rules, ADR-2116; model,
+    /// effort and advisor roles, ADR-2134) into Claude Code settings files.
+    /// Reconciled every boot; hand-added deny rules are preserved and gateway
+    /// profiles never receive roles. Fail-open.
     PermissionsProject {
         #[arg(long)]
         manifest: PathBuf,

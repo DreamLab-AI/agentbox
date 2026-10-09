@@ -20,7 +20,6 @@ tools:
   - mcp__consultant-deepseek__consult
   - mcp__consultant-deepseek__health
   - mcp__consultant-deepseek__cost_estimate
-  - mcp__claude-flow__hooks_model-route
 tags:
   - consultant
   - meta-router
@@ -57,13 +56,6 @@ heuristic needed.
 | Code block ≥ 50 lines, or "review this codebase", or context_excerpt > 50_000 tokens | `antigravity` | 1M-token context window |
 | Contains `unsafe`, `lifetime`, `borrow checker`, `Box<`, async Rust, or asks "is this code sound / correct / idiomatic" | `codex` | second opinion on code reasoning |
 | Default | `codex` | best general-purpose code consultant |
-
-### 3. Optional autopilot tie-break
-
-If `mcp__claude-flow__hooks_model-route` is available and the heuristic
-above returned the default, call it with `task = "<question summary>"` and
-let it pick. Treat the autopilot as a hint, not authoritative — log the
-disagreement when it differs from the heuristic.
 
 ## On invocation
 
