@@ -89,6 +89,16 @@ enum Command {
         #[arg(long)]
         name: String,
     },
+    /// Mirror one server from `.mcp.json` into the user-level `.claude.json` so
+    /// it loads from any cwd (RuVector memory must not depend on where Claude starts).
+    McpMirrorServer {
+        #[arg(long)]
+        from: PathBuf,
+        #[arg(long)]
+        to: PathBuf,
+        #[arg(long, default_value = "claude-flow")]
+        name: String,
+    },
     /// Reconcile the `agentic-qe` entry and its env block (ADR-041 routing).
     McpReconcileAqe {
         #[arg(long)]
@@ -353,6 +363,7 @@ fn run(cmd: Command) -> Result<(), String> {
             mcp_hub::project(&file, &state, &out, &hub_url, &bind, &names, !disable)
         }
         Command::McpSetServer { file, name } => mcp::set_server(&file, &name),
+        Command::McpMirrorServer { from, to, name } => mcp::mirror_server(&from, &to, &name),
         Command::McpReconcileAqe { file, provider } => {
             mcp::reconcile_aqe(&file, Some(provider.as_str()))
         }

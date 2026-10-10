@@ -3042,6 +3042,17 @@ if [ -f "$_MCP_JSON" ] && command -v agentbox-manifest >/dev/null 2>&1; then
   fi
 fi
 
+# ── RuVector memory is always on: mirror claude-flow to user scope ──
+# .mcp.json is only found by walking up from the cwd, so a session started
+# outside $WORKSPACE (e.g. in $HOME) had no memory tools. The user-level
+# ~/.claude/.claude.json loads from every cwd. Runs after the hub projection so
+# it copies the FINAL entry (gate env included); idempotent, fail-open.
+if [ -f "$_MCP_JSON" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  agentbox-manifest mcp-mirror-server --from "$_MCP_JSON" --to "/home/devuser/.claude/.claude.json" \
+    --name claude-flow 2>&1 | sed 's/^/  /' || true
+  chown 1000:1000 /home/devuser/.claude/.claude.json 2>/dev/null || true
+fi
+
 # ── Xinference embedding sidecar: wait for readiness + ensure model loaded ──
 # xinference does NOT persist launched models across its own restarts, so this
 # boot-time launch is the only thing that loads ${EMBEDDING_MODEL}. The

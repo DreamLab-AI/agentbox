@@ -128,6 +128,43 @@ pub fn reconcile_aqe(file: &Path, provider: Option<&str>) -> Result<(), String> 
     jsonio::write(file, &cfg, false).map_err(|e| format!("{}: {e}", file.display()))
 }
 
+/// Mirror one server from `from` (the workspace `.mcp.json`) into `to` (the
+/// user-level `~/.claude/.claude.json`), so it loads whatever directory Claude
+/// Code is started in.
+///
+/// `.mcp.json` is only discovered by walking up from the cwd, so a session
+/// started outside `$WORKSPACE` (for example in `$HOME`) never saw the
+/// `claude-flow` RuVector memory server. The user-level file is read from every
+/// cwd. Only `mcpServers[name]` is touched; every other key Claude Code keeps
+/// in that file survives, and the file is rewritten only when the entry
+/// actually differs (the log line follows suit). A missing source entry is a
+/// no-op, an unparseable destination is left alone rather than clobbered, and
+/// the destination is made owner-only because the entry carries the conninfo.
+pub fn mirror_server(from: &Path, to: &Path, name: &str) -> Result<(), String> {
+    let src = load_strict(from)?;
+    let Some(spec) = src.get("mcpServers").and_then(|s| s.get(name)) else {
+        return Ok(());
+    };
+    let mut dst = if to.exists() {
+        jsonio::read_opt(to).ok_or_else(|| format!("{}: unparseable, left untouched", to.display()))?
+    } else {
+        Value::Object(Map::new())
+    };
+    let servers = jsonio::mcp_servers_mut(&mut dst);
+    if servers.get(name) == Some(spec) {
+        return Ok(());
+    }
+    servers.insert(name.to_string(), spec.clone());
+    jsonio::write_atomic(to, &dst, false).map_err(|e| format!("{}: {e}", to.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(to, std::fs::Permissions::from_mode(0o600));
+    }
+    println!("  [mcp] Mirrored {name} into {} (loads from any cwd)", to.display());
+    Ok(())
+}
+
 /// Append `namespace` to the governed server's `RUVECTOR_PROTECTED_NAMESPACES`.
 ///
 /// Append-never-replace keeps the shipped default (`governance-precedents`) and
@@ -236,6 +273,49 @@ fn py_str(v: &Value) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    fn mirror_dir(tag: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!("mcp-mirror-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    #[test]
+    fn mirror_copies_entry_and_keeps_other_user_keys() {
+        let d = mirror_dir("copy");
+        let (from, to) = (d.join("a.json"), d.join("u.json"));
+        std::fs::write(&from, r#"{"mcpServers":{"claude-flow":{"command":"node"},"x":{}}}"#).unwrap();
+        std::fs::write(&to, r#"{"theme":"dark","mcpServers":{"other":{"command":"y"}}}"#).unwrap();
+        mirror_server(&from, &to, "claude-flow").unwrap();
+        let v: Value = serde_json::from_str(&std::fs::read_to_string(&to).unwrap()).unwrap();
+        assert_eq!(v["mcpServers"]["claude-flow"]["command"], "node");
+        assert_eq!(v["mcpServers"]["other"]["command"], "y");
+        assert!(v["mcpServers"].get("x").is_none(), "only the named server moves");
+        assert_eq!(v["theme"], "dark");
+    }
+
+    #[test]
+    fn mirror_creates_missing_destination_and_is_idempotent() {
+        let d = mirror_dir("create");
+        let (from, to) = (d.join("a.json"), d.join("u.json"));
+        std::fs::write(&from, r#"{"mcpServers":{"claude-flow":{"command":"node"}}}"#).unwrap();
+        mirror_server(&from, &to, "claude-flow").unwrap();
+        let first = std::fs::metadata(&to).unwrap().modified().unwrap();
+        mirror_server(&from, &to, "claude-flow").unwrap();
+        assert_eq!(first, std::fs::metadata(&to).unwrap().modified().unwrap(), "no rewrite when equal");
+    }
+
+    #[test]
+    fn mirror_leaves_unparseable_destination_and_absent_source_alone() {
+        let d = mirror_dir("bad");
+        let (from, to) = (d.join("a.json"), d.join("u.json"));
+        std::fs::write(&from, r#"{"mcpServers":{"claude-flow":{}}}"#).unwrap();
+        std::fs::write(&to, "{not json").unwrap();
+        assert!(mirror_server(&from, &to, "claude-flow").is_err());
+        assert_eq!(std::fs::read_to_string(&to).unwrap(), "{not json");
+        mirror_server(&from, &to, "absent").unwrap();
+    }
 
     #[test]
     fn foreign_fork_is_detected_by_args() {
