@@ -29,7 +29,7 @@ function fixture(t) {
   fs.writeFileSync(driver, `#!/usr/bin/env node
 const fs = require('node:fs'), path = require('node:path');
 const name = path.basename(process.argv[1]), args = process.argv.slice(2);
-fs.appendFileSync(process.env.TEST_CALL_LOG, JSON.stringify({name, args})+'\\n');
+fs.appendFileSync(process.env.TEST_CALL_LOG, JSON.stringify({name, args, grype_env: name === 'grype' ? Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith('GRYPE_'))) : undefined})+'\\n');
 const value = flag => args[args.indexOf(flag)+1];
 if (name === 'sbomnix') for (const flag of ['--cdx','--spdx','--csv']) fs.writeFileSync(value(flag), '{}');
 if (name === 'agentbox-vex') {
@@ -41,10 +41,11 @@ if (name === 'agentbox-vex') {
   }
 }
 if(name === 'skopeo') process.stdout.write('{}');
+if(name === 'syft') process.stdout.write('{"artifacts":[{"purl":"pkg:nix/openssh@10.3p1"}],"source":{"type":"image"}}');
 if(name === 'grype') { process.stdout.write('{"matches":[]}'); if(args.includes('--fail-on')) process.exit(Number(process.env.TEST_GATE_EXIT || 0)); }
 if(name === 'nix') process.stdout.write(JSON.stringify([{outputs:{out:process.env.TEST_TOOLS}},{outputs:{out:process.env.TEST_EVIDENCE}}]));
 `, { mode: 0o755 });
-  for (const name of ['agentbox-vex', 'sbomnix', 'grype', 'skopeo', 'nix']) fs.symlinkSync(driver, path.join(tools, 'bin', name));
+  for (const name of ['agentbox-vex', 'sbomnix', 'syft', 'grype', 'skopeo', 'nix']) fs.symlinkSync(driver, path.join(tools, 'bin', name));
   const jq = spawnSync('bash', ['-c', 'command -v jq'], { encoding: 'utf8' }).stdout.trim();
   fs.symlinkSync(jq, path.join(tools, 'bin', 'jq'));
   const run = (args, extra = {}) => spawnSync('bash', [script, ...args], {
@@ -70,11 +71,14 @@ test('scan verifies input, image bytes/config, binding and subject before applyi
   const r = f.run(['scan', '--tools', f.tools, '--report', f.report, '--image', image, '--output', f.output]);
   assert.equal(r.status, 0, r.stderr);
   const calls = f.calls();
-  assert.deepEqual(calls.map(c => c.name === 'agentbox-vex' ? c.args[0] : c.name), ['verify', 'skopeo', 'skopeo', 'check-image', 'bind', 'verify', 'grype', 'grype']);
+  assert.deepEqual(calls.map(c => c.name === 'agentbox-vex' ? c.args[0] : c.name), ['verify', 'skopeo', 'skopeo', 'check-image', 'bind', 'verify', 'syft', 'grype', 'grype']);
   const configRead = calls.find(c => c.name === 'skopeo' && c.args.includes('--config'));
   assert.ok(configRead.args.includes('--raw'), 'config must preserve its manifest-addressed blob bytes');
   const grype = calls.filter(c => c.name === 'grype');
-  assert.equal(grype[0].args[0], `sbom:${f.output}/evidence/sbom.nix.cyclonedx.json`);
+  assert.equal(grype[0].args[0], `sbom:${f.output}/sbom.nix.syft.json`);
+  const converted = JSON.parse(fs.readFileSync(path.join(f.output, 'sbom.nix.syft.json')));
+  assert.deepEqual(converted.source, {id: digest, name: 'agentbox', version: digest, type: 'directory', metadata: {path: 'agentbox'}});
+  assert.equal(converted.artifacts[0].purl, 'pkg:nix/openssh@10.3p1');
   assert.ok(!grype[0].args.includes('--vex'));
   assert.deepEqual(grype[1].args.slice(-2), ['--fail-on', 'high']);
   assert.ok(grype[1].args.includes('--vex'));
@@ -85,8 +89,19 @@ test('severity gate exit 2 preserves raw and filtered findings and binding evide
   const f = fixture(t);
   const r = f.run(['scan', '--tools', f.tools, '--report', f.report, '--image', image, '--output', f.output], { TEST_GATE_EXIT: '2' });
   assert.equal(r.status, 2, r.stderr);
-  for (const file of ['grype.raw.json', 'grype.filtered.json', 'image.manifest.json', 'image.config.json', 'evidence/vex.openvex.json']) assert.ok(fs.existsSync(path.join(f.output, file)), file);
+  for (const file of ['grype.raw.json', 'grype.filtered.json', 'grype.filtered.txt', 'image.manifest.json', 'image.config.json', 'evidence/vex.openvex.json']) assert.ok(fs.existsSync(path.join(f.output, file)), file);
   assert.equal(fs.readFileSync(path.join(f.output, 'grype.exit-code.txt'), 'utf8'), '2\n');
+});
+test('ambient scanner filters cannot hide raw findings or override VEX scope', t => {
+  const f = fixture(t);
+  const r = f.run(['scan', '--tools', f.tools, '--report', f.report, '--image', image, '--output', f.output], {
+    GRYPE_IGNORE_STATES: 'not-fixed', GRYPE_VEX_DOCUMENTS: 'unrelated.json', GRYPE_FAIL_ON_SEVERITY: 'none',
+    GRYPE_DB_CACHE_DIR: '/fixture/cache',
+  });
+  assert.equal(r.status, 0, r.stderr);
+  for (const call of f.calls().filter(c => c.name === 'grype')) {
+    assert.deepEqual(call.grype_env, {GRYPE_DB_CACHE_DIR: '/fixture/cache', GRYPE_CHECK_FOR_APP_UPDATE: 'false'});
+  }
 });
 test('unmatched registry image fails before binding or scanning', t => {
   const f = fixture(t);
@@ -129,5 +144,7 @@ test('workflow contracts keep VEX evidence attached to exact runs and architectu
   assert.match(scan, /--report security-build/);
   assert.match(release, /run-id: \$\{\{ steps.scan.outputs.run_id \}\}/);
   assert.match(release, /merge-multiple: false/);
+  assert.match(release, /\.image_ref == \$ref/);
+  assert.match(release, /\.subject == \$digest/);
   assert.doesNotMatch(release, /continue-on-error: true/);
 });

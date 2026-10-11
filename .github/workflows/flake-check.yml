@@ -69,6 +69,8 @@ jobs:
           # check (builtins.seq _w021Check ...) — a missing [security].audit_acknowledged
           # will throw at eval time and this step will fail loudly.
           nix eval --raw .#runtime.drvPath > /dev/null
+          nix eval --raw .#runtime.securityEvidence.drvPath > /dev/null
+          nix eval --raw .#security-tools.drvPath > /dev/null
           nix eval --raw .#compose.drvPath > /dev/null
           echo "OK: .#runtime and .#compose derivations resolve (E021 audit gate passed)"
 

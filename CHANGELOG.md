@@ -4,6 +4,17 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-10-11 — image-scoped VEX evidence, ADR-2137)
+
+- Image builds and candidate preparation retain Nix SBOMs, build evidence and
+  conservative OpenVEX statements for the actual shipped payload. The initial
+  OpenSSH assessment withdraws suppression when any reviewed predicate changes.
+- `agentbox.sh security report|scan` generates offline reports and verifies a
+  published image's digest, layers and configuration before applying VEX.
+- Multi-architecture build, scan and release workflows retain matching-run
+  evidence and raw/filtered Grype results alongside the independent Trivy checks.
+  The integration is staged for the next rebuild; no live image was rebuilt.
+
 ### Added (2026-10-09 — Jev checkpoints for the advisor, ADR-2135)
 
 - `[features.jev_checkpoints]` (enabled): the `jev-checkpoints` function-hook plugin uses Jev to

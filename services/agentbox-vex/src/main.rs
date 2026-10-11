@@ -274,7 +274,9 @@ fn assess(metadata: &Value, sbom: &Value, shipped: &BTreeSet<String>, opie: &[St
         });
     let package_present = metadata["openssh"]["output_path"]
         .as_str()
-        .is_some_and(|p| shipped.contains(p));
+        .is_some_and(|p| {
+            shipped.contains(p) && openssh.iter().any(|c| output_paths(c).contains(p))
+        });
     let matched = !openssh.is_empty()
         && openssh.iter().all(|c| {
             c["purl"] == expected
@@ -651,6 +653,13 @@ mod tests {
             assess(&metadata(), &b, &paths, &[])["status"],
             "under_investigation"
         );
+        // A matching manual-page output is insufficient when the executable
+        // output is missing from the inventory used by the scanner.
+        let mut m = metadata();
+        m["openssh"]["output_paths"] = json!([package_path(), "/nix/store/ssh-man"]);
+        let mut b = sbom();
+        b["components"][0]["properties"][0]["value"] = json!("/nix/store/ssh-man");
+        assert_eq!(assess(&m, &b, &paths, &[])["status"], "under_investigation");
     }
 
     #[test]

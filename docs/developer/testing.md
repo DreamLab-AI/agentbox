@@ -186,7 +186,7 @@ flowchart TB
 |---|---|---|
 | [`build-multi-arch.yml`](../../.github/workflows/build-multi-arch.yml) | manual | Nix build + GHCR publish on both arches; offline Nix SBOM/VEX evidence per image; size captured to Actions summary; runs the PRD-001 §8 size-ceiling guard |
 | [`image-scan.yml`](../../.github/workflows/image-scan.yml) | after `build-multi-arch.yml` succeeds, manual | Trivy HIGH/CRITICAL gate, full-severity informational run, Syft SBOMs and SARIF; matching-build Nix SBOM/VEX and raw/filtered Grype reports for each immutable architecture digest |
-| [`release.yml`](../../.github/workflows/release.yml) | after `build-multi-arch.yml` on `v*` tag | Extracts matching CHANGELOG section, attaches image-scan artefacts only for the matching source commit (SBOMs, VEX and scan evidence), publishes the GitHub Release; pre-release flag inferred from tag |
+| [`release.yml`](../../.github/workflows/release.yml) | manual; automatic tag release remains disabled | Extracts matching CHANGELOG section, attaches successful image-scan artefacts only for the matching source commit and image digests (SBOMs, VEX and scan evidence), publishes the GitHub Release; pre-release flag inferred from tag |
 | [`nix-flake-update.yml`](../../.github/workflows/nix-flake-update.yml) | Mondays 06:00 UTC, manual | `nix flake update` → PR if `flake.lock` changed |
 
 Failure in any PR-gate workflow blocks merge. `ci.yml` aggregates the gate into a single status for branch protection rules.

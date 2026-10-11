@@ -16,6 +16,7 @@ Exit 2 means the severity gate failed; reports are retained. Other errors fail h
 EOF
 }
 command=${1:-help}; shift || true
+case "$command" in help|--help|-h) usage; exit 0 ;; esac
 variant=runtime evidence= tools= output= subject= image= report= fail_on=high
 while (($#)); do
   case "$1" in
@@ -34,7 +35,11 @@ if [[ $command == scan ]]; then
   subject=${image##*@}
 fi
 if [[ -n $subject && ! $subject =~ ^sha256:[0-9a-f]{64}$ ]]; then echo 'Invalid subject digest' >&2; exit 1; fi
-output=${output:-"$repo/.agentbox-build/security/$variant-$command"}
+if [[ $command == report ]]; then
+  output=${output:-"$repo/.agentbox-build/security/$variant"}
+else
+  output=${output:-"$repo/.agentbox-build/security/$variant-scan"}
+fi
 mkdir -p -- "$output"
 output=$(cd -- "$output" && pwd)
 scratch=$(mktemp -d)
@@ -81,9 +86,25 @@ tool agentbox-vex bind --bundle "$report" --subject "$subject" --output "$output
 tool agentbox-vex verify --bundle "$output/evidence" --subject "$subject"
 printf '{}\n' > "$output/grype.config.yaml"
 printf '%s\n' "$image" > "$output/image-ref.txt"
+# CycloneDX container roots lose repository identifiers when Grype's Syft
+# decoder imports them. Convert the verified inventory, then give its source
+# the explicit generic alias used by our image-scoped OpenVEX product. No
+# packages are catalogued here; every component comes from the verified SBOM.
+tool syft convert "$output/evidence/sbom.nix.cyclonedx.json" -o syft-json > "$scratch/sbom.syft.json"
+tool jq --arg subject "$subject" '.source = {
+  id: $subject, name: "agentbox", version: $subject,
+  type: "directory", metadata: {path: "agentbox"}
+}' "$scratch/sbom.syft.json" > "$output/sbom.nix.syft.json"
 grype_scan() {
-  env -u GRYPE_IGNORE_UNFIXED -u GRYPE_ONLY_FIXED -u GRYPE_IGNORE_WONTFIX \
-    "$tools/bin/grype" "sbom:$output/evidence/sbom.nix.cyclonedx.json" \
+  # Keep database/cache settings; drop ambient filters, VEX, output and policy
+  # overrides so the raw scan really is raw and the gate is the explicit one.
+  local name
+  local clean_env=()
+  while IFS= read -r name; do
+    if [[ $name == GRYPE_* && $name != GRYPE_DB_* ]]; then clean_env+=(-u "$name"); fi
+  done < <(compgen -e)
+  env "${clean_env[@]}" GRYPE_CHECK_FOR_APP_UPDATE=false \
+    "$tools/bin/grype" "sbom:$output/sbom.nix.syft.json" \
     --config "$output/grype.config.yaml" --output json "$@"
 }
 grype_scan > "$output/grype.raw.json"
@@ -93,4 +114,10 @@ grype_scan --vex "$output/evidence/vex.openvex.json" "${gate[@]}" > "$output/gry
 status=$?
 set -e
 printf '%s\n' "$status" > "$output/grype.exit-code.txt"
+# Render the saved results without another database query or scan.
+if [[ $status == 0 || $status == 2 ]]; then
+  tool jq -r '(["NAME","INSTALLED","VULNERABILITY","SEVERITY"]),
+    (.matches[] | [.artifact.name,.artifact.version,.vulnerability.id,.vulnerability.severity]) | @tsv' \
+    "$output/grype.filtered.json" > "$output/grype.filtered.txt"
+fi
 exit "$status"

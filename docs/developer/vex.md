@@ -12,7 +12,7 @@ payload inventory. See [ADR-2137](../adr/ADR-2137-image-scoped-vex-evidence.md).
 
 ## Build and inspect offline evidence
 
-`prepare`, `rebuild` and the CI image build produce the offline report before
+`build`, `up --build`, `prepare`, `rebuild` and the CI image build produce the offline report before
 promoting an image candidate. This does not download a vulnerability database
 or run an online scan. The report remains outside the runtime image and adds no
 daemon, adapter slot, port or manifest capability.
@@ -61,6 +61,7 @@ Run the host scanner against the exact image you intend to review:
 ```sh
 ./agentbox.sh security scan \
   --image ghcr.io/dreamlab-ai/agentbox@sha256:DIGEST \
+  --report .agentbox-build/security/runtime \
   --variant runtime \
   --output .agentbox-build/security-review \
   --fail-on high
@@ -68,8 +69,15 @@ Run the host scanner against the exact image you intend to review:
 
 Use the immutable digest, not a moving tag. The Nix source, manifest, architecture
 and build evidence must correspond to that image. The scan helper uses the
-flake's `.#security-tools` environment, containing sbomnix, Grype and the
+flake's `.#security-tools` environment, containing sbomnix, Syft, Grype and the
 project-specific Rust emitter in `services/agentbox-vex`.
+Supply the report produced by that build with `--report`. Without it, the
+helper builds local evidence and rejects an image that differs from it.
+
+The helper converts the verified CycloneDX inventory to `sbom.nix.syft.json`
+and gives its source the image's explicit name and digest. This preserves the
+product identity needed by Grype's OpenVEX matcher; package PURLs come from the
+verified inventory. It does not catalogue new packages during conversion.
 
 `security scan` retains `grype.raw.json`, `grype.filtered.json` and a filtered
 text table alongside the report bundle. The default severity gate is `high`;
@@ -116,7 +124,7 @@ digest. It uses the source commit and build run that produced the image.
 Trivy's gate remains independent of Grype's VEX filtering.
 
 `release.yml` attaches security artefacts only from a successful scan for the
-release's matching source commit. A report from the latest unrelated workflow
+release's matching source commit and published architecture digests. A report from the latest unrelated workflow
 run is not evidence for the release. Retain the image digest and build/scan
 receipts with the artefacts when reviewing a published image.
 

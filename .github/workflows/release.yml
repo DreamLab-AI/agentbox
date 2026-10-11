@@ -60,6 +60,30 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.tag.outputs.tag }}
 
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve the release tag to immutable architecture digests
+        id: image
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          repository=ghcr.io/dreamlab-ai/agentbox
+          digest=$(docker buildx imagetools inspect "$repository:$RELEASE_TAG" --format '{{.Manifest.Digest}}')
+          [[ $digest =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
+          docker buildx imagetools inspect "$repository@$digest" --raw > release-image.manifest.json
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          for arch in amd64 arm64; do
+            child=$(jq -er --arg arch "$arch" '[.manifests[] | select(.platform.os == "linux" and .platform.architecture == $arch) | .digest] | if length == 1 then .[0] else error("ambiguous release architecture") end' release-image.manifest.json)
+            [[ $child =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
+            echo "$arch=$child" >> "$GITHUB_OUTPUT"
+          done
+
       - name: Extract release body from CHANGELOG.md
         id: body
         run: |
@@ -119,17 +143,24 @@ jobs:
       - name: Validate source scope and package architecture-specific reports
         env:
           SOURCE_SHA: ${{ steps.scan.outputs.sha }}
+          AMD64_DIGEST: ${{ steps.image.outputs.amd64 }}
+          ARM64_DIGEST: ${{ steps.image.outputs.arm64 }}
         run: |
           set -euo pipefail
           mkdir release-assets
           for arch in amd64 arm64; do
             name="image-scan-$SOURCE_SHA-$arch"
             dir="release-scans/$name"
-            jq -e --arg sha "$SOURCE_SHA" --arg arch "$arch" '.source_revision == $sha and .arch == $arch' "$dir/security-build/publication.json"
+            digest=$AMD64_DIGEST
+            if [ "$arch" = arm64 ]; then digest=$ARM64_DIGEST; fi
+            expected="ghcr.io/dreamlab-ai/agentbox@$digest"
+            jq -e --arg sha "$SOURCE_SHA" --arg arch "$arch" --arg ref "$expected" '.source_revision == $sha and .arch == $arch and .image_ref == $ref' "$dir/security-build/publication.json"
+            jq -e --arg digest "$digest" '.subject == $digest' "$dir/security-scan/evidence/bundle.json"
             test "$(cat "$dir/security-scan/grype.exit-code.txt")" = 0
             test "$(cat "$dir/security-scan/image-ref.txt")" = "$(jq -r .image_ref "$dir/security-build/publication.json")"
             tar -czf "release-assets/agentbox-security-$arch.tar.gz" -C "$dir" .
           done
+          cp release-image.manifest.json release-assets/agentbox-image.manifest.json
 
       - name: Prepare release notes footer
         id: footer
@@ -144,6 +175,8 @@ jobs:
           \`\`\`sh
           docker pull ghcr.io/dreamlab-ai/agentbox:${{ steps.tag.outputs.tag }}
           \`\`\`
+
+          Assessed manifest: \`${{ steps.image.outputs.digest }}\`.
 
           Multi-arch manifest with linux/amd64 and linux/arm64. Image scan
           report, Nix CycloneDX/SPDX SBOMs, OpenVEX and build evidence attached
