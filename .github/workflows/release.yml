@@ -193,7 +193,7 @@ jobs:
           curl -sf http://localhost:9090/ready | jq
           \`\`\`
 
-          Full spec: [ADR-007](docs/reference/adr/ADR-007-runtime-contract-and-container-hardening.md).
+          [Runtime contract](https://github.com/DreamLab-AI/agentbox/blob/${{ steps.scan.outputs.sha }}/docs/BASELINE-container.md) · [Image evidence guide](https://github.com/DreamLab-AI/agentbox/blob/${{ steps.scan.outputs.sha }}/docs/developer/vex.md).
           EOF
 
       - name: Compose final release notes
