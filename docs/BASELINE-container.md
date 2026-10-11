@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.5
+version: 0.5.6
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.6 (2026-10-11): ADR-2137. Host-side Nix SBOM/OpenVEX evidence follows actual shipped layer paths; preparation and image CI retain reports outside the runtime image, with immutable-digest online scans. No runtime service, adapter, port or manifest capability is added. Rollout staged for the next rebuild."
   - "0.5.5 (2026-10-06): ADR-2132. Non-overlapping image layers, non-disruptive prepare and separate Agentbox-only activation; no automatic cleanup. Host registry cache is loopback-only and outside the runtime adapter spine."
   - "0.5.4 (2026-10-06): ADR-2131. New gated supervised program diagram-review-cron (supercronic over skills/sealmap-review/crontab, shipped on, rebuild-class under [diagram_review].enabled). It holds no secret file and takes no ADR-2122 role. The Invariants compliance surface is unchanged."
   - "0.5.3 (2026-10-03): custody X-1 step 1 (ADR-2122, staged). Under [security].role_isolation (boot-class, default off), role programs run under ab-* uids from /etc/supervisord.roles.conf, secrets sit in the root-owned /run/secrets/<role>/, and devuser's Docker CLI is GET-only. New programs serve-identity and docker-read-proxy (EXITED while off). The sidecar gains podkey-loader. The sidestr producer runs the Nix bake of upstream-pins in both modes."
@@ -212,6 +213,18 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - **Sovereign settlement remains partial (PRD-024, ADR-2096/2098/2099/2102/2103).** `[sidechain].enabled` now gates the interim JS `sidestr-producer`; child gates `mirror` and `faucet` enable `sidestr-mirror` and `sidestr-faucet`. The faucet bakes the standalone AGPL `sidestr-agent` from a pinned upstream revision, never into a permissive crate (ADR-2112). This operates the existing sealed testnet chain in `config/sidechain/`. No `sidestr-node`, `sidestr-bridge` or `:9097` bind is implemented. The broader design and three candidate invariants in [Sovereign settlement (PROPOSED)](#sovereign-settlement--proposed-2026-09-21) remain outside the compliance surface pending ratification.
 - **`~/.claude` ownership (ADR-2118) — partially rolled out.** The gateway override mounts the container-owned `agentbox-claude-home` volume plus a credential-only host bind; the connected-node overlay (`docker-compose.hp.yml`) still binds the host's whole `~/.claude` until `migrate-claude-home` runs there, and the entrypoint therefore passes `--no-global` on that node. The credential bind remains writable (Q20 residual: a compromised in-container tool can still edit the host's `.claude`). `~/.config/claude` is still a host bind and the workspace still rides the legacy external MAD volume (Q43). Stack profiles (`$WORKSPACE/profiles/*/.claude`) receive neither the global tier nor credentials. Open.
 - Setup wizard exits after saving (`system-manifest.js:47`); operations moved to the AoE cockpit — legacy docs describing pseudo-user isolation (`gemini-user` etc.) are dead paths.
+
+## Image vulnerability evidence (ADR-2137)
+
+Each image variant exposes `securityEvidence`, enumerating the store paths
+shipped in its `nix2container` layers. Host preparation and CI use a pinned
+`security-tools` environment to generate CycloneDX/SPDX SBOMs and OpenVEX
+outside the image. Reports are scoped to the image subject and exact versioned
+subcomponent PURLs; a false or unknown rule condition withdraws the statement.
+Online scans retain raw and filtered Grype findings, and Trivy remains an
+independent gate. Host kernels, mounts and sidecars are outside this assessment.
+This build/report path adds no runtime daemon, adapter slot, port or feature
+gate. See [the VEX guide](developer/vex.md).
 
 ## Invariants (must not silently change)
 

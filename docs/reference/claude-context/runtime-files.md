@@ -12,6 +12,14 @@ Host deployment helpers: `scripts/runtime-delivery.{sh,cjs}` implement locked
 `prepare`/`activate`; `lib/image-layers.nix` excludes earlier dependency closures.
 Preparation leaves running agents untouched. See [incremental builds](../../developer/incremental-builds.md).
 
+Image security evidence: `.#<variant>.securityEvidence` enumerates shipped
+layer paths; `.#security-tools`, `scripts/security-scan.sh` and the private
+Rust `services/agentbox-vex` generate host-side SBOM/OpenVEX bundles. Preparation
+retains offline reports; `agentbox.sh security scan` binds online Grype reports
+to an immutable OCI digest. No runtime daemon or manifest gate is added.
+[VEX contract](../../developer/vex.md), ADR-2137.
+
+
 The image bakes `/opt/agentbox/agents` (12 subagents) and registers them from
 `agents/registered-agents.txt`; `scripts/reconcile-agents.sh` projects that set into
 `~/.claude/agents` at boot, retires vendor dumps to a recoverable sidecar outside every

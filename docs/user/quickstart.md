@@ -208,6 +208,15 @@ nix build .#runtime
 nix run .#runtime.copyToDockerDaemon
 ```
 
+For updates, `prepare` and `rebuild` also create Nix-derived SBOMs and OpenVEX
+reports alongside the candidate receipt. To generate these without importing
+an image, run `./agentbox.sh security report --variant runtime`. To scan a
+published image, use `./agentbox.sh security scan --image REPOSITORY@sha256:DIGEST`.
+The scanner retains raw and VEX-filtered Grype findings; remaining high/critical
+findings fail by default. Reports cover the image payload; host kernels, mounts
+and sidecars need separate assessment. See [the VEX guide](../developer/vex.md).
+
+
 Optional variants:
 
 ```bash

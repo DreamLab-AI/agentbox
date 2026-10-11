@@ -8,6 +8,13 @@ Host image preparation and activation are separate (ADR-2132). The loopback-only
 build registry is a delivery cache, not an estate service, identity participant
 or sixth adapter. [Operator contract](incremental-builds.md).
 
+The image's SBOM/OpenVEX evidence is also a host build artefact (ADR-2137),
+scoped to shipped image paths and immutable image identity. It does not assess
+other repositories, the host kernel or separately deployed sidecars. The
+project-specific emitter is private; no NixOS VEX module or general feed is
+imported. [Evidence and scan workflow](vex.md).
+
+
 Host and container Claude configuration are separate (ADR-2118): only credentials converge through the supervised sync. Public instruction layers live in `config/instructions/`; deployment-specific facts belong in its gitignored `local/` layer. The connected-node migration remains a separate operator action.
 
 | Repository | Role | Relationship to agentbox |

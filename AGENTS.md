@@ -58,6 +58,11 @@ Everything else (tab0-bridge, voice, harness-wrappers, AoE seeder, explainer-too
 
 ## Rules for changes
 
+Image vulnerability evidence (ADR-2137): inventory actual `image.layers.paths`,
+never the builder closure; bind VEX to the image and exact versioned SBOM PURLs.
+Unknown/false predicates withdraw statements. Host-only reports cover no host
+kernel, mounts or sidecars. See [the VEX guide](docs/developer/vex.md).
+
 - Optional features are gated in `agentbox.toml` — gate both the Nix package set and the supervisor block, and add a `system-manifest.js` entry with an honest apply class (`live`/`boot`/`rebuild`, ADR-039).
 - Every durable-state integration rides one of the five slots; `tests/contract/` must pass for all three implementation classes per slot. Never a client-only or standalone-only feature.
 - Adapter dispatch middleware, in order: observability (ADR-005) → privacy filter (ADR-008) → JSON-LD encoder (ADR-012). New cross-cutting concerns follow that shape, fail-open/closed explicit in an ADR.

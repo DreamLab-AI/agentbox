@@ -9,6 +9,7 @@ licence compatible with it.
 | Component | Licence | Linkage | Source pointer |
 |-----------|---------|---------|----------------|
 | agentbox (this repo) | AGPL-3.0 | — | `LICENSE` |
+| `agentbox-vex` | MIT OR Apache-2.0 | Private host-side CLI; not published | `services/agentbox-vex` |
 | `solid-pod-rs` (dreamlab-AI) | AGPL-3.0-only | Binary under supervisord — HTTP boundary only | [github.com/DreamLab-AI/solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) |
 | `linkedobjects/browser` | AGPL-3.0 | Static assets served by management-api | [github.com/linkedobjects/browser](https://github.com/linkedobjects/browser) |
 | `nostr-rs-relay` (Scsibug) | MIT | Binary from nixpkgs — HTTP boundary only | [github.com/scsibug/nostr-rs-relay](https://github.com/scsibug/nostr-rs-relay) |
@@ -93,8 +94,13 @@ for that component.
 sandbox guarantees that a build either produces the pinned hash or fails
 loudly — there is no silent substitution of dependency content.
 
-For SBOM purposes, `nix build .#runtime --print-out-paths` gives the
-deterministic closure of every derivation in the image.
+For image inventories, `.#<variant>.securityEvidence` enumerates the store
+paths shipped in `image.layers.paths`. A builder closure also contains inputs
+that never reach the image and must not be presented as the payload. The host
+`security report` command uses that evidence to produce CycloneDX and SPDX
+SBOMs plus image-scoped OpenVEX assessments. See [image SBOMs and VEX](vex.md).
+The project-specific `agentbox-vex` emitter is private and dual-licensed; the
+NixOS VEX module and its general feed are not imported or redistributed.
 
 ## Further reading
 

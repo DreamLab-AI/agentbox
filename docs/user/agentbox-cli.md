@@ -33,7 +33,10 @@ These commands operate on the local Docker stack.
 | `up` | Start the Docker stack. `--build`: Nix build + docker load first. `--registry`: use `AGENTBOX_IMAGE_REF` from env |
 | `down` | Stop the Docker stack. `--volumes`: also remove named volumes (confirms before deleting) |
 | `build` | Build the Nix image without starting it. `--variant runtime\|desktop\|full` (default: `runtime`) |
-| `rebuild` | Full dev-loop cycle: `down` + `build` + `up --build` + cleanup |
+| `prepare` | Build/import a candidate, generate SBOM/VEX evidence and smoke-test without restarting Agentbox |
+| `activate` | Validate the candidate receipt and replace only Agentbox, retaining a recovery image |
+| `rebuild` | Prepare then activate; `--prepare-only` omits activation; no automatic cleanup |
+| `security` | Generate an offline SBOM/VEX report or scan an immutable image with Grype (see below) |
 | `update` | Update flake inputs and npm CLI versions. `--check` (report only), `--flake-only`, `--npm-only` |
 | `logs` | Follow logs. No argument: compose logs. With service name: `supervisorctl tail -f <service>` |
 | `shell` | Open a shell in the running container. With profile name: opens fish in that profile directory |
@@ -43,6 +46,31 @@ These commands operate on the local Docker stack.
 | `ruvector` | Manage the ruvector-postgres memory sidecar lifecycle and data-hygiene ops (see below) |
 | `migrate-workspace` | One-shot rsync from the legacy `multi-agent-docker_workspace` volume into `agentbox-workspace`, then patches the override file |
 | `preflight` | Validate the local environment and manifest before `up`: compose merge, Nix flake eval (W021 audit gate), host bind targets, external volumes |
+
+## `security` — image evidence and vulnerability scans
+
+These commands run on the Nix-capable host. Reports stay outside the runtime
+image; no manifest flag or runtime service is needed.
+
+```sh
+./agentbox.sh security report --variant runtime --output .agentbox-build/security/runtime
+./agentbox.sh security scan --image REPOSITORY@sha256:DIGEST --variant runtime --fail-on high
+```
+
+| Option | Description |
+|---|---|
+| `--variant` | `runtime` (default), `full`, `desktop`, `cuda-runtime` or `gaussian-splatting` |
+| `--output DIR` | Report directory; default `.agentbox-build/security/<variant>` |
+| `--image REPOSITORY@sha256:DIGEST` | Required for `scan`; immutable image subject matching the source/build evidence |
+| `--fail-on SEVERITY` | Scan gate after VEX filtering; default `high`; `none` retains reports without a severity gate |
+
+`report` generates Nix-derived CycloneDX/SPDX SBOMs, OpenVEX, rule assessments
+and build evidence without a vulnerability database. `scan` also retains raw
+and filtered Grype results. `prepare` and `rebuild` generate the offline report
+automatically in the candidate generation's `security/` directory.
+
+See [image SBOMs and VEX](../developer/vex.md) for scope, rule maintenance and
+CI/release matching.
 
 ## `ruvector` — memory sidecar lifecycle
 
@@ -109,7 +137,7 @@ first. Recovery archives from that run are kept under
 ./agentbox.sh up --registry             # Use AGENTBOX_IMAGE_REF from env
 ./agentbox.sh down --volumes            # Stop and remove volumes (destructive)
 ./agentbox.sh build --variant full      # Build full image (no load)
-./agentbox.sh rebuild                   # Full dev-loop iteration
+./agentbox.sh rebuild                   # Prepare and activate Agentbox
 ./agentbox.sh preflight                 # Check env before starting
 ./agentbox.sh logs management-api       # Follow a single service
 ./agentbox.sh shell                     # tmux session in container

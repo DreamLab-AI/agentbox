@@ -4,6 +4,8 @@ Hardware-accelerated Chrome instance for browser automation, testing, and AI age
 
 Agentbox's host `prepare`/`activate` workflow never rebuilds or restarts this
 sidecar; its lifecycle remains explicit. See [incremental builds](../docs/developer/incremental-builds.md).
+Agentbox image SBOM/VEX reports also exclude this separately built sidecar;
+assess its own image digest separately. [Evidence scope](../docs/developer/vex.md).
 
 ## Architecture
 

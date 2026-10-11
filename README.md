@@ -14,7 +14,10 @@
 **One TOML manifest. One Nix flake. One runtime contract.**
 
 For updates during active work, use `./agentbox.sh prepare`: it builds and imports
-a candidate without restarting anything. Run `./agentbox.sh activate` only when
+a candidate without restarting anything. Preparation also emits Nix-derived
+SBOMs and image-scoped OpenVEX evidence outside the image. Review a published
+digest with `./agentbox.sh security scan --image REPOSITORY@sha256:DIGEST`; see
+[image vulnerability evidence](docs/developer/vex.md). Run `./agentbox.sh activate` only when
 ready to replace Agentbox. [Incremental build and recovery runbook](docs/developer/incremental-builds.md).
 
 **Maintainer**: [John O'Hare](https://github.com/jjohare) · **Upstream IP**: [Melvin Carvalho](https://github.com/melvincarvalho) ([JSS](https://github.com/JavaScriptSolidServer/JavaScriptSolidServer), [DID:Nostr](https://github.com/nicholasgasior/did-nostr)) · [MAINTAINERS.md](MAINTAINERS.md)

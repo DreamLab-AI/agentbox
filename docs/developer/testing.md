@@ -184,12 +184,20 @@ flowchart TB
 
 | Workflow | Trigger | Runs |
 |---|---|---|
-| [`build-multi-arch.yml`](../../.github/workflows/build-multi-arch.yml) | push to main, `v*` tag, manual | Nix build + GHCR publish on both arches; closure + compressed size captured to Actions summary; runs the PRD-001 §8 size-ceiling guard |
-| [`image-scan.yml`](../../.github/workflows/image-scan.yml) | after `build-multi-arch.yml` succeeds, manual | Trivy HIGH/CRITICAL gate, full-severity informational run, CycloneDX + SPDX SBOM uploads, SARIF posted to the Security tab |
-| [`release.yml`](../../.github/workflows/release.yml) | after `build-multi-arch.yml` on `v*` tag | Extracts matching CHANGELOG section, attaches image-scan artefacts (SBOMs), publishes the GitHub Release; pre-release flag inferred from tag |
+| [`build-multi-arch.yml`](../../.github/workflows/build-multi-arch.yml) | manual | Nix build + GHCR publish on both arches; offline Nix SBOM/VEX evidence per image; size captured to Actions summary; runs the PRD-001 §8 size-ceiling guard |
+| [`image-scan.yml`](../../.github/workflows/image-scan.yml) | after `build-multi-arch.yml` succeeds, manual | Trivy HIGH/CRITICAL gate, full-severity informational run, Syft SBOMs and SARIF; matching-build Nix SBOM/VEX and raw/filtered Grype reports for each immutable architecture digest |
+| [`release.yml`](../../.github/workflows/release.yml) | after `build-multi-arch.yml` on `v*` tag | Extracts matching CHANGELOG section, attaches image-scan artefacts only for the matching source commit (SBOMs, VEX and scan evidence), publishes the GitHub Release; pre-release flag inferred from tag |
 | [`nix-flake-update.yml`](../../.github/workflows/nix-flake-update.yml) | Mondays 06:00 UTC, manual | `nix flake update` → PR if `flake.lock` changed |
 
 Failure in any PR-gate workflow blocks merge. `ci.yml` aggregates the gate into a single status for branch protection rules.
+
+### Image vulnerability evidence
+
+VEX rules are checked with the `services/agentbox-vex` Rust fixtures on pushes
+and pull requests. Those checks must cover both a supported assessment and
+withdrawal when its evidence changes or is unknown. They do not establish that
+a real Nix image or the current vulnerability database is clean; build and scan
+the immutable image separately. [VEX verification procedure](vex.md).
 
 ### Cachix binary cache
 

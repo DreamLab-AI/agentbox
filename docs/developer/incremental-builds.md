@@ -17,6 +17,16 @@ production volumes or credentials. The running container's ID and start time
 must remain unchanged. Nix builds use two jobs and four cores per job to leave
 headroom for ongoing work. An exclusive host `flock` prevents overlapping runs.
 
+## Security report
+
+Preparation builds the variant's `securityEvidence` output and uses the pinned
+host `security-tools` environment to generate CycloneDX/SPDX SBOMs, OpenVEX,
+assessments and a bundle in the generation's `security/` directory. This offline
+step does not fetch a vulnerability database or claim a clean scan. Its subject
+is the image JSON hash until publication binds it to an immutable OCI digest.
+The report is outside the image and follows the actual shipped layer paths.
+See [image SBOMs and VEX](vex.md) for the separate online Grype scan.
+
 ## Layer contract
 
 `lib/image-layers.nix` constructs ordered layers, each excluding the store paths
