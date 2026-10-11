@@ -112,13 +112,15 @@ pub fn panel_definition() -> PanelDefinition {
                       (say why) or Amend (write your own instruction) on each case; the \
                       engine reads your decision at the start of the next night."
             .into(),
-        version: "1.0.0".into(),
+        version: "1.1.0".into(),
         schema: PanelSchema::ActionInbox,
         fields: vec![
             field("repo", FieldType::String, "Repository"),
             field("night", FieldType::String, "Night"),
             field("kind", FieldType::Enum, "Kind"),
             field("question", FieldType::String, "Question"),
+            field("outcome", FieldType::String, "What the night produced"),
+            field("pr", FieldType::String, "Pull request"),
             field("evidence", FieldType::String, "Evidence"),
         ],
         actions: vec![ActionDef {
@@ -194,22 +196,290 @@ fn evidence_for(item: &InboxItem) -> String {
     }
 }
 
-fn title_for(item: &InboxItem) -> String {
-    let prefix = if item.kind == "alert" {
-        "Alert"
-    } else {
-        "Decision"
+/// What the engine recorded about the night a case came from, so the forum
+/// can say in plain words what happened and link the pull request if there is
+/// one. Every field is optional: a case whose artefacts are gone still renders.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct CaseContext {
+    /// The area of the repository the night examined (the "deep").
+    pub deep: Option<String>,
+    /// The ledger's one-line finding for the night.
+    pub finding: Option<String>,
+    /// Final gate verdict: ACCEPT, REJECT, INCONCLUSIVE or BLOCKED-ENV.
+    pub verdict: Option<String>,
+    /// The verdict the model claimed before the gate checked it.
+    pub model_verdict: Option<String>,
+    /// First gate veto, when the gate overruled the model.
+    pub veto: Option<String>,
+    /// Draft pull request opened for the night, if any.
+    pub pr_url: Option<String>,
+}
+
+/// Where [`case_context`] reads a night's record from.
+#[derive(Debug, Clone)]
+pub struct CasePaths {
+    /// Workspace root holding the nominated repositories.
+    pub workspace: PathBuf,
+    /// Night artefact directory (`<night_id>/manifest.json`, `gate.json`).
+    pub artefact_dir: PathBuf,
+}
+
+/// Split a Markdown table row on unescaped pipes (`\|` stays in its cell).
+fn ledger_cells(line: &str) -> Vec<String> {
+    let t = line.trim();
+    let t = t.strip_prefix('|').unwrap_or(t);
+    let t = t.strip_suffix('|').unwrap_or(t);
+    t.replace("\\|", "\u{0}")
+        .split('|')
+        .map(|c| c.trim().replace('\u{0}', "|"))
+        .collect()
+}
+
+/// The ledger row for `date` (and `deep`, when known): `(finding, pr)`.
+/// Columns: Date | Deep | Finding | Issue | PR | …; the last matching row wins
+/// (a re-run night appends a newer row).
+fn ledger_row(ledger: &str, date: &str, deep: Option<&str>) -> Option<(String, String)> {
+    ledger
+        .lines()
+        .filter(|l| l.trim_start().starts_with('|'))
+        .map(ledger_cells)
+        .rev()
+        .find(|c| c.len() >= 5 && c[0] == date && deep.is_none_or(|d| c[1] == d))
+        .map(|c| (c[2].clone(), c[4].clone()))
+}
+
+/// Gather what the engine recorded about `item`'s night. Missing files leave
+/// fields empty; nothing here fails.
+pub fn case_context(paths: &CasePaths, item: &InboxItem) -> CaseContext {
+    let mut ctx = CaseContext::default();
+    if item.repo == "roster" || item.night_id.is_empty() {
+        return ctx;
+    }
+    let night = paths.artefact_dir.join(&item.night_id);
+    let read_json = |name: &str| -> Option<serde_json::Value> {
+        serde_json::from_slice(&std::fs::read(night.join(name)).ok()?).ok()
     };
+    if let Some(m) = read_json("manifest.json") {
+        ctx.deep = m["deep"].as_str().map(str::to_string);
+    }
+    if let Some(g) = read_json("gate.json") {
+        ctx.verdict = g["verdict"].as_str().map(str::to_string);
+        ctx.model_verdict = g["modelVerdict"].as_str().map(str::to_string);
+        ctx.veto = g["vetoes"]
+            .as_array()
+            .and_then(|v| v.first())
+            .and_then(|v| v["reason"].as_str())
+            .map(|r| r.split_whitespace().collect::<Vec<_>>().join(" "));
+    }
+    let ledger = paths
+        .workspace
+        .join(&item.repo)
+        .join("docs/dream-cycle/LEDGER.md");
+    if let Ok(text) = std::fs::read_to_string(ledger) {
+        if let Some((finding, pr)) = ledger_row(&text, &item.date, ctx.deep.as_deref()) {
+            if !finding.is_empty() && finding != "NONE" {
+                ctx.finding = Some(finding);
+            }
+            if pr.starts_with("https://") {
+                ctx.pr_url = Some(pr);
+            }
+        }
+    }
+    ctx
+}
+
+/// `#58` from `https://github.com/o/r/pull/58`.
+fn pr_number(url: &str) -> Option<&str> {
+    let n = url.trim_end_matches('/').rsplit('/').next()?;
+    n.chars().all(|c| c.is_ascii_digit()).then_some(n)
+}
+
+/// "Thu 9 Oct 2026" from "2026-10-09"; the input unchanged if it is not a date.
+fn long_date(date: &str) -> String {
+    chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
+        .map(|d| d.format("%a %-d %b %Y").to_string())
+        .unwrap_or_else(|_| date.to_string())
+}
+
+/// "9 Oct" from "2026-10-09".
+fn short_date(date: &str) -> String {
+    chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
+        .map(|d| d.format("%-d %b").to_string())
+        .unwrap_or_else(|_| date.to_string())
+}
+
+/// Plain-English reading of a gate veto.
+fn explain_veto(veto: &str) -> String {
+    let v = veto.to_lowercase();
+    let why = if v.contains("did not apply") || v.contains("corrupt patch") {
+        "its patch could not be applied to the code it was written against".to_string()
+    } else if v.contains("no ```dream-patch") || v.contains("no candidate patch") {
+        "it claimed a fix but supplied no patch to test".to_string()
+    } else if v.contains("did not pass") || v.contains("failed") {
+        "the required checks failed when re-run on the change".to_string()
+    } else {
+        veto.chars().take(160).collect()
+    };
+    why
+}
+
+/// One short line for the panel's "What the night produced" column.
+pub fn outcome_line(ctx: &CaseContext) -> String {
+    if let Some(url) = &ctx.pr_url {
+        return match pr_number(url) {
+            Some(n) => format!("Draft PR #{n} opened for review"),
+            None => "Draft PR opened for review".into(),
+        };
+    }
+    match ctx.verdict.as_deref() {
+        Some("ACCEPT") => "Accepted, but no PR was recorded".into(),
+        Some("REJECT") if ctx.model_verdict.as_deref() == Some("ACCEPT") => {
+            "No PR: the engine overruled the claimed fix".into()
+        }
+        Some("REJECT") => "No PR: the idea did not hold up".into(),
+        Some("BLOCKED-ENV") => "No PR: night lost to an environment fault".into(),
+        Some("INCONCLUSIVE") => "No PR: inconclusive".into(),
+        _ => String::new(),
+    }
+}
+
+/// The sentence(s) saying what the night produced, or empty when unknown.
+fn outcome_sentence(ctx: &CaseContext) -> String {
+    if let Some(url) = &ctx.pr_url {
+        let label = pr_number(url)
+            .map(|n| format!("draft pull request #{n}"))
+            .unwrap_or_else(|| "a draft pull request".into());
+        return format!(
+            "The engine re-ran the repository's required checks against the change, they \
+             passed, and it opened {label} for review:\n{url}\nNothing is merged until a \
+             person merges it."
+        );
+    }
+    let overruled =
+        ctx.model_verdict.as_deref() == Some("ACCEPT") && ctx.verdict.as_deref() != Some("ACCEPT");
+    match (ctx.verdict.as_deref(), overruled) {
+        (Some("ACCEPT"), _) => {
+            "The engine upheld the change, but no pull request was recorded for it.".into()
+        }
+        (Some(v), true) => {
+            let why = ctx
+                .veto
+                .as_deref()
+                .map(explain_veto)
+                .unwrap_or_else(|| "it did not survive the engine's checks".into());
+            let env = if v == "BLOCKED-ENV" {
+                " The fault is in the engine or its environment, not in the repository."
+            } else {
+                ""
+            };
+            format!(
+                "The model believed this change was an improvement, but the engine refused \
+                 it because {why}. No pull request was opened, so there is nothing \
+                 to merge from this night.{env}"
+            )
+        }
+        (Some("REJECT"), false) => {
+            "The night tested an idea and it did not hold up, so no pull request was opened.".into()
+        }
+        (Some("INCONCLUSIVE"), false) => {
+            "The night ended inconclusive (not enough evidence either way), so no pull \
+             request was opened."
+                .into()
+        }
+        (Some("BLOCKED-ENV"), false) => {
+            "The night was lost to a fault in the engine or its environment, not in the \
+             repository, so no pull request was opened."
+                .into()
+        }
+        _ => String::new(),
+    }
+}
+
+fn title_for(item: &InboxItem, ctx: &CaseContext) -> String {
     let text = clean_text(&item.text).replace('\n', " ");
-    let mut title = format!("{prefix} · {} · {}", item.repo, text);
+    let when = short_date(&item.date);
+    let mut title = if item.kind == "alert" {
+        format!("Alert · {} · {when} · {text}", item.repo)
+    } else {
+        match ctx.pr_url.as_deref().and_then(pr_number) {
+            Some(n) => format!("{} · {when} · PR #{n} · {text}", item.repo),
+            None => format!("{} · {when} · {text}", item.repo),
+        }
+    };
     if title.chars().count() > TITLE_MAX {
         title = title.chars().take(TITLE_MAX - 1).collect::<String>() + "…";
     }
     title
 }
 
-/// Unsigned 31402 for one inbox item.
-pub fn request_event(pubkey: &str, item: &InboxItem, created_at: u64) -> UnsignedEvent {
+/// The case body: what happened, what is asked, how to answer.
+fn reasoning_for(item: &InboxItem, ctx: &CaseContext) -> String {
+    let when = long_date(&item.date);
+    let text = clean_text(&item.text);
+    let area = ctx
+        .deep
+        .as_deref()
+        .map(|d| format!(" the \u{201c}{d}\u{201d} area of"))
+        .unwrap_or_default();
+    // The ledger marks a vetoed night's finding "VETOED: …"; the outcome
+    // sentence already says so, in words.
+    let finding = ctx
+        .finding
+        .as_deref()
+        .map(|f| match f.strip_prefix("VETOED:") {
+            Some(rest) => format!(" It proposed: \u{201c}{}\u{201d}.", rest.trim()),
+            None => format!(" Its finding: \u{201c}{f}\u{201d}."),
+        })
+        .unwrap_or_default();
+    let outcome = outcome_sentence(ctx);
+    let outcome = if outcome.is_empty() {
+        String::new()
+    } else {
+        format!(" {outcome}")
+    };
+    if item.kind == "alert" {
+        let happened = if outcome.is_empty() {
+            format!(" It reported: {text}")
+        } else {
+            format!("{finding}{outcome}")
+        };
+        let detail = if outcome.is_empty() {
+            String::new()
+        } else {
+            format!("\n\nEngine detail\n{text}")
+        };
+        format!(
+            "What happened\n\
+             On {when} the dream engine flagged a problem with its night on{area} {repo}.{happened}\n\n\
+             What you need to do\n\
+             Usually nothing beyond acknowledging it: Approve. Reject if you think the alert is \
+             wrong (say why); Amend to tell the engine to do something different. Alerts about \
+             lost nights point at the engine or its environment, not the repository's code.{detail}",
+            repo = item.repo
+        )
+    } else {
+        format!(
+            "What happened\n\
+             On {when} the dream engine examined{area} {repo}.{finding}{outcome}\n\n\
+             What you are being asked\n\
+             {text}\n\n\
+             How to answer\n\
+             Approve accepts the recommendation as written. Reject declines it (please say \
+             why). Amend replaces it with your own instruction. Your answer becomes guidance \
+             for this repository's next night; approving does not merge anything.",
+            repo = item.repo
+        )
+    }
+}
+
+/// Unsigned 31402 for one inbox item. `ctx` comes from [`case_context`];
+/// pass `CaseContext::default()` when the night's record is unavailable.
+pub fn request_event(
+    pubkey: &str,
+    item: &InboxItem,
+    ctx: &CaseContext,
+    created_at: u64,
+) -> UnsignedEvent {
     let is_alert = item.kind == "alert";
     let (tier, priority) = if is_alert {
         (RiskTier::Low, ActionPriority::Low)
@@ -217,30 +487,18 @@ pub fn request_event(pubkey: &str, item: &InboxItem, created_at: u64) -> Unsigne
         (RiskTier::Medium, ActionPriority::Medium)
     };
     let evidence = evidence_for(item);
-    let reasoning = if is_alert {
-        format!(
-            "The dream engine raised this alert on {} ({}). Approve to acknowledge it; \
-             Reject if you think it is wrong (say why); Amend to tell the engine what to do.",
-            item.date, item.repo
-        )
-    } else {
-        format!(
-            "The {} dream night on {} asked for a human decision. Approve to accept the \
-             recommendation as written; Reject to decline it (say why); Amend to give your \
-             own instruction. Your answer feeds the next night's carry-over.",
-            item.date, item.repo
-        )
-    };
     let request = ActionRequest {
         fields: json!({
             "repo": item.repo,
             "night": item.night_id,
             "kind": item.kind,
             "question": clean_text(&item.text),
+            "outcome": outcome_line(ctx),
+            "pr": ctx.pr_url.clone().unwrap_or_default(),
             "evidence": evidence,
         }),
-        reasoning: Some(reasoning),
-        context_url: first_url(&item.text),
+        reasoning: Some(reasoning_for(item, ctx)),
+        context_url: ctx.pr_url.clone().or_else(|| first_url(&item.text)),
         risk_tier: Some(tier),
         confidence: None,
         task_properties: None,
@@ -266,7 +524,7 @@ pub fn request_event(pubkey: &str, item: &InboxItem, created_at: u64) -> Unsigne
             vec!["category".into(), "workflow_review".into()],
             vec!["subject-kind".into(), "dream-night".into()],
             vec!["subject-id".into(), item.repo.clone()],
-            vec!["title".into(), title_for(item)],
+            vec!["title".into(), title_for(item, ctx)],
             vec!["t".into(), "dream-cycle".into()],
         ],
         content: serde_json::to_string(&request).unwrap_or_default(),
@@ -308,7 +566,7 @@ pub fn withdrawal_event(
     date: &str,
     created_at: u64,
 ) -> UnsignedEvent {
-    let request = request_event(pubkey, item, created_at);
+    let request = request_event(pubkey, item, &CaseContext::default(), created_at);
     let mut tags = vec![vec!["e".to_string(), item.published_event_id.clone()]];
     if with_coordinate && (30_000..40_000).contains(&request.kind) {
         if let Some(d) = request
@@ -667,7 +925,7 @@ pub struct Report {
 /// sweep, which also catches items resolved by hand), then publish every
 /// open, not-yet-published inbox item. `dry_run` prints the unsigned events
 /// and sends nothing.
-pub async fn publish(inbox_path: &Path, dry_run: bool) -> Report {
+pub async fn publish(inbox_path: &Path, paths: &CasePaths, dry_run: bool) -> Report {
     let mut report = Report::default();
     let all = inbox::load_from(inbox_path);
     let withdrawals = plan_withdrawals(&all);
@@ -686,8 +944,13 @@ pub async fn publish(inbox_path: &Path, dry_run: bool) -> Report {
         for item in items.iter().filter(|i| i.published_event_id.is_empty()) {
             println!(
                 "{}",
-                serde_json::to_string_pretty(&request_event(&pubkey, item, now))
-                    .unwrap_or_default()
+                serde_json::to_string_pretty(&request_event(
+                    &pubkey,
+                    item,
+                    &case_context(paths, item),
+                    now
+                ))
+                .unwrap_or_default()
             );
             report.skipped += 1;
         }
@@ -737,7 +1000,8 @@ pub async fn publish(inbox_path: &Path, dry_run: bool) -> Report {
     send_withdrawals(&mut session, &key, inbox_path, &withdrawals, &mut report).await;
 
     for item in items.iter().filter(|i| i.published_event_id.is_empty()) {
-        let ev = match relay::sign(request_event(&pubkey, item, now), &key) {
+        let ctx = case_context(paths, item);
+        let ev = match relay::sign(request_event(&pubkey, item, &ctx, now), &key) {
             Ok(ev) => ev,
             Err(e) => {
                 warn!(item = %item.id, error = %e, "governance: signing failed");
@@ -962,7 +1226,7 @@ mod tests {
             "question",
             "Review + merge the branch; see https://github.com/x/y/pull/3.",
         );
-        let ev = request_event(&pk, &it, 20);
+        let ev = request_event(&pk, &it, &CaseContext::default(), 20);
         assert_eq!(ev.kind, 31402);
         assert_eq!(tag(&ev.tags, "d"), Some("dream-15a655c8"));
         assert_eq!(
@@ -996,20 +1260,142 @@ mod tests {
     fn table_fences_are_stripped_and_roster_evidence_is_real() {
         let mut it = item("t1", "question", "| merge the branch |");
         let req: ActionRequest =
-            serde_json::from_str(&request_event("ab", &it, 1).content).unwrap();
+            serde_json::from_str(&request_event("ab", &it, &CaseContext::default(), 1).content)
+                .unwrap();
         assert_eq!(req.fields["question"], "merge the branch");
         it.repo = "roster".into();
         let req: ActionRequest =
-            serde_json::from_str(&request_event("ab", &it, 1).content).unwrap();
+            serde_json::from_str(&request_event("ab", &it, &CaseContext::default(), 1).content)
+                .unwrap();
         assert!(req.fields["evidence"]
             .as_str()
             .unwrap()
             .contains("dream-last-night.json"));
     }
 
+    /// A night directory and ledger as the engine writes them.
+    fn night_fixture(
+        gate: serde_json::Value,
+        ledger_rows: &[&str],
+    ) -> (tempfile::TempDir, CasePaths) {
+        let d = tempfile::tempdir().unwrap();
+        let paths = CasePaths {
+            workspace: d.path().join("ws"),
+            artefact_dir: d.path().join("art"),
+        };
+        let night = paths.artefact_dir.join("2026-10-09-site");
+        std::fs::create_dir_all(&night).unwrap();
+        std::fs::write(
+            night.join("manifest.json"),
+            json!({"deep": "build-content"}).to_string(),
+        )
+        .unwrap();
+        std::fs::write(night.join("gate.json"), gate.to_string()).unwrap();
+        let ledger = paths.workspace.join("site/docs/dream-cycle");
+        std::fs::create_dir_all(&ledger).unwrap();
+        let mut text = String::from("| Date | Deep | Finding | Issue | PR | Evaluated? | Verdict |\n|---|---|---|---|---|---|---|\n");
+        for r in ledger_rows {
+            text.push_str(r);
+            text.push('\n');
+        }
+        std::fs::write(ledger.join("LEDGER.md"), text).unwrap();
+        (d, paths)
+    }
+
+    fn night_item(kind: &str, text: &str) -> InboxItem {
+        let mut it = item("c1", kind, text);
+        it.repo = "site".into();
+        it.night_id = "2026-10-09-site".into();
+        it.date = "2026-10-09".into();
+        it
+    }
+
+    #[test]
+    fn a_case_with_a_pr_links_it_and_says_nothing_is_merged() {
+        let (_d, paths) = night_fixture(
+            json!({"verdict": "ACCEPT", "modelVerdict": "ACCEPT", "accepted": true, "vetoes": []}),
+            &[
+                "| 2026-10-08 | build-content | older | NONE | https://github.com/o/r/pull/57 | yes | ACCEPT |",
+                "| 2026-10-09 | build-content | generator parity a \\| b check | NONE | https://github.com/o/r/pull/58 | yes | ACCEPT |",
+            ],
+        );
+        let it = night_item("question", "Merge the parity check if the re-run upholds.");
+        let ctx = case_context(&paths, &it);
+        assert_eq!(ctx.deep.as_deref(), Some("build-content"));
+        assert_eq!(
+            ctx.pr_url.as_deref(),
+            Some("https://github.com/o/r/pull/58")
+        );
+        // An escaped pipe in the finding does not shift the PR column.
+        assert_eq!(ctx.finding.as_deref(), Some("generator parity a | b check"));
+        let ev = request_event("ab", &it, &ctx, 1);
+        let req: ActionRequest = serde_json::from_str(&ev.content).unwrap();
+        assert_eq!(
+            req.context_url.as_deref(),
+            Some("https://github.com/o/r/pull/58")
+        );
+        assert_eq!(req.fields["pr"], "https://github.com/o/r/pull/58");
+        assert_eq!(req.fields["outcome"], "Draft PR #58 opened for review");
+        let body = req.reasoning.unwrap();
+        assert!(body.contains("On Fri 9 Oct 2026 the dream engine examined the \u{201c}build-content\u{201d} area of site."), "{body}");
+        assert!(body.contains("draft pull request #58"), "{body}");
+        assert!(body.contains("approving does not merge anything"), "{body}");
+        assert!(tag(&ev.tags, "title")
+            .unwrap()
+            .starts_with("site · 9 Oct · PR #58 · Merge"));
+    }
+
+    #[test]
+    fn a_vetoed_night_says_there_is_nothing_to_merge() {
+        let (_d, paths) = night_fixture(
+            json!({"verdict": "BLOCKED-ENV", "modelVerdict": "ACCEPT", "accepted": false,
+                   "vetoes": [{"class": "harness", "reason": "candidate patch did not apply to the baseline tree: corrupt patch at :14"}]}),
+            &["| 2026-10-09 | build-content | VETOED: x | NONE | NONE | yes | BLOCKED-ENV |"],
+        );
+        let it = night_item("question", "Merge the branch if the re-run upholds.");
+        let ctx = case_context(&paths, &it);
+        assert_eq!(ctx.pr_url, None);
+        let req: ActionRequest =
+            serde_json::from_str(&request_event("ab", &it, &ctx, 1).content).unwrap();
+        let body = req.reasoning.unwrap();
+        assert!(
+            body.contains("could not be applied to the code it was written against"),
+            "{body}"
+        );
+        assert!(body.contains("nothing to merge from this night"), "{body}");
+        assert!(body.contains("not in the repository"), "{body}");
+        assert_eq!(
+            req.fields["outcome"],
+            "No PR: night lost to an environment fault"
+        );
+        assert_eq!(req.context_url, None);
+    }
+
+    #[test]
+    fn a_case_without_artefacts_still_renders() {
+        let paths = CasePaths {
+            workspace: "/nonexistent".into(),
+            artefact_dir: "/nonexistent".into(),
+        };
+        let it = night_item("alert", "night lost: harness broke");
+        let ctx = case_context(&paths, &it);
+        assert_eq!(ctx, CaseContext::default());
+        let req: ActionRequest =
+            serde_json::from_str(&request_event("ab", &it, &ctx, 1).content).unwrap();
+        let body = req.reasoning.unwrap();
+        assert!(body.starts_with("What happened\nOn Fri 9 Oct 2026 the dream engine flagged a problem with its night on site. It reported: night lost: harness broke"), "{body}");
+        assert!(body.contains("What you need to do"));
+        assert_eq!(req.fields["outcome"], "");
+    }
+
     #[test]
     fn alerts_are_low_tier_and_low_priority() {
-        let ev = request_event("ab", &item("a1", "alert", "harness broke"), 1);
+        let ev = request_event(
+            "ab",
+            &item("a1", "alert", "harness broke"),
+            &CaseContext::default(),
+            1,
+        );
         assert_eq!(tag(&ev.tags, "risk-tier"), Some("low"));
         assert_eq!(tag(&ev.tags, "priority"), Some("low"));
         assert!(item_id_of(tag(&ev.tags, "d").unwrap()) == Some("a1"));
@@ -1223,7 +1609,7 @@ mod tests {
             "resolved: answered 2026-10-02 — approve: looks right"
         );
         // The coordinate is exactly the published case's kind:pubkey:d.
-        let req = request_event(&pk, &it, 1);
+        let req = request_event(&pk, &it, &CaseContext::default(), 1);
         assert_eq!(
             tag(&ev.tags, "a").unwrap(),
             format!("{}:{pk}:{}", req.kind, tag(&req.tags, "d").unwrap())

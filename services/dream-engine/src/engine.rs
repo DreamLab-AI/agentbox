@@ -315,7 +315,11 @@ impl Engine {
             let c = nj
                 .called("forum.governance", json!({ "op": "publish" }))
                 .await;
-            let r = governance::publish(&inbox::inbox_path(), false).await;
+            let paths = governance::CasePaths {
+                workspace: self.workspace.clone(),
+                artefact_dir: self.artefact_dir.clone(),
+            };
+            let r = governance::publish(&inbox::inbox_path(), &paths, false).await;
             nj.completed(c, r.rejected == 0, json!({ "published": r.published, "withdrawn": r.withdrawn, "rejected": r.rejected }))
                 .await;
         }

@@ -103,12 +103,16 @@ enum GovernanceAction {
 
 /// Run a one-shot subcommand. These touch only the forum and the inbox file,
 /// so they run alongside the supervised loop without its singleton lock.
-async fn run_command(cmd: &Cmd, workspace: &std::path::Path) {
+async fn run_command(cmd: &Cmd, workspace: &std::path::Path, artefact_dir: &std::path::Path) {
     match cmd {
         Cmd::Governance { action } => {
             let report = match action {
                 GovernanceAction::Publish { dry_run } => {
-                    governance::publish(&inbox::inbox_path(), *dry_run).await
+                    let paths = governance::CasePaths {
+                        workspace: workspace.to_path_buf(),
+                        artefact_dir: artefact_dir.to_path_buf(),
+                    };
+                    governance::publish(&inbox::inbox_path(), &paths, *dry_run).await
                 }
                 GovernanceAction::Ingest { dry_run } => {
                     governance::ingest(&inbox::inbox_path(), *dry_run).await
@@ -170,7 +174,7 @@ async fn main() {
 
     let cli = Cli::parse();
     if let Some(cmd) = &cli.command {
-        run_command(cmd, &cli.workspace).await;
+        run_command(cmd, &cli.workspace, &cli.artefact_dir).await;
         return;
     }
     if !cli.once && !cli.loop_mode && !cli.dry_run {
