@@ -899,6 +899,19 @@ pub struct RepairRecord {
     /// model was given. Empty on records written before it existed.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub prompt_digest: String,
+    /// sha256 of the patch that failed to apply (apply-repair only). A record
+    /// is reused on restart only for this exact patch, so a re-run that wrote
+    /// a different patch never inherits an older repair.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub failed_patch_digest: String,
+}
+
+impl RepairRecord {
+    /// Whether this apply-repair record was made for `patch`.
+    pub fn repairs(&self, patch: &str) -> bool {
+        !self.failed_patch_digest.is_empty()
+            && self.failed_patch_digest == crate::manifest::digest(patch.as_bytes())
+    }
 }
 
 /// Run the repair pass (primary, then fallback provider).
@@ -977,9 +990,12 @@ pub fn apply_repair_prompt(
 pub async fn apply_repair(
     llm_cfg: &LlmConfig,
     fallback: Option<&LlmConfig>,
+    failed_patch: &str,
     prompt: String,
 ) -> RepairRecord {
-    run_repair(llm_cfg, fallback, prompt).await
+    let mut record = run_repair(llm_cfg, fallback, prompt).await;
+    record.failed_patch_digest = crate::manifest::digest(failed_patch.as_bytes());
+    record
 }
 
 async fn run_repair(
@@ -1014,6 +1030,7 @@ async fn run_repair(
         patch_bytes,
         model,
         prompt_digest,
+        failed_patch_digest: String::new(),
     }
 }
 
@@ -1433,10 +1450,20 @@ mod tests {
             patch_bytes: 16,
             model: "m".into(),
             prompt_digest: "abc".into(),
+            failed_patch_digest: crate::manifest::digest(b"old patch"),
         };
         let back: RepairRecord = serde_json::from_slice(&serde_json::to_vec(&r).unwrap()).unwrap();
         assert_eq!(back.outcome, r.outcome);
         assert_eq!(back.prompt_digest, "abc");
+        // Reused only for the patch it repaired: a same-day re-run with a new
+        // patch must not inherit it, nor may a record with no digest.
+        assert!(back.repairs("old patch"));
+        assert!(!back.repairs("new patch"));
+        let legacy = RepairRecord {
+            failed_patch_digest: String::new(),
+            ..back
+        };
+        assert!(!legacy.repairs("old patch"));
     }
 
     #[test]

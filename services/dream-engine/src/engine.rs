@@ -1283,7 +1283,8 @@ impl Engine {
                         let rec_path = night_dir.join("apply-repair.json");
                         let recorded = std::fs::read(&rec_path)
                             .ok()
-                            .and_then(|b| serde_json::from_slice::<source::RepairRecord>(&b).ok());
+                            .and_then(|b| serde_json::from_slice::<source::RepairRecord>(&b).ok())
+                            .filter(|r| r.repairs(&patch));
                         let record = match recorded {
                             Some(r) => r,
                             None => {
@@ -1313,6 +1314,7 @@ impl Engine {
                                 let r = source::apply_repair(
                                     &self.llm,
                                     self.llm_fallback.as_ref(),
+                                    &patch,
                                     prompt,
                                 )
                                 .await;
@@ -1347,6 +1349,16 @@ impl Engine {
                                     &commit_msg,
                                     &baseline_rev,
                                 )
+                                .map(|mut c| {
+                                    // Say plainly that a second model call
+                                    // rewrote the diff that is being tested.
+                                    c.applied_via = format!(
+                                        "apply-repair({}): {}",
+                                        &record.prompt_digest[..record.prompt_digest.len().min(12)],
+                                        c.applied_via
+                                    );
+                                    c
+                                })
                                 .map_err(|e| {
                                     persist::PersistError::PatchDidNotApply(format!(
                                         "{detail}; the one repair pass also failed: {e}"
@@ -1582,7 +1594,14 @@ impl Engine {
                     "Draft PR opened by the dream engine on a GATED ACCEPT night ({night_id}, \
                      run `{run_id}`).\n\nCandidate tree `{tree}` was applied in isolation and the \
                      required evaluators re-run against it: {outcomes}. Witness `{wit_short}`.\n\n\
-                     A human decides the merge — evaluation is not promotion.\n\n**Finding:** {finding_full}",
+                     A human decides the merge — evaluation is not promotion.\n\n**Finding:** {finding_full}{landing}",
+                    landing = if c.applied_via.starts_with("apply-repair") {
+                        format!("\n\n**Note:** the report's own diff did not apply; this diff is the model's corrected version from one apply-repair call (`{}`). Review it against the finding.", c.applied_via)
+                    } else if c.applied_via.starts_with("normalised") {
+                        format!("\n\n**Note:** the engine adjusted this diff's headers or context lines before applying it (`{}`); its added and removed lines are the model's own.", c.applied_via)
+                    } else {
+                        String::new()
+                    },
                     run_id = frozen.run_id,
                     tree = c.tree_hash,
                     outcomes = decision
