@@ -192,6 +192,22 @@ impl Engine {
             }
         }
 
+        // Two eligible directories for one remote repository collide (see
+        // config::shared_remotes): say so every night until one is parked.
+        for (slug, dirs) in crate::config::shared_remotes(&eligible) {
+            let text = format!(
+                "{} are separate checkouts of the same repository ({slug}) and are both being \
+                 dreamed. They use two of the nightly slots on the same code and push \
+                 same-named branches, so one night's pull request can be lost. Put all but one \
+                 on standby (`touch workspace/<dir>/.dream-standby`).",
+                dirs.join(" and ")
+            );
+            warn!(%slug, dirs = %dirs.join(","), "nominated checkouts share a remote");
+            if let Err(e) = inbox::add("alert", "roster", &format!("{}-night", date), date, &text) {
+                warn!(error = %e, "dream inbox write failed (fail-open)");
+            }
+        }
+
         // Fair, durable roster selection. Alphabetical order plus a hard cap
         // starves the tail of the roster forever (estate review, 2026-09-04);
         // ordering by least-recently-dreamed rotates the cap through every
@@ -1586,6 +1602,14 @@ impl Engine {
                 )
                 .await;
                 info!(branch = %out.branch, pushed = out.pushed, pr = ?out.pr_url, "verified candidate persisted as draft PR");
+                if out.pr_url.is_none() {
+                    warn!(branch = %out.branch, pushed = out.pushed, "verified candidate has no draft PR — raising an alert");
+                    let text =
+                        persist::lost_pr_alert(&repo_name, &cfg.repo, &out.branch, out.pushed);
+                    if let Err(e) = inbox::add("alert", &repo_name, &night_id, date, &text) {
+                        warn!(error = %e, "dream inbox write failed (fail-open)");
+                    }
+                }
                 pr_ref = out.pr_url.clone().unwrap_or_else(|| {
                     if out.pushed {
                         format!("branch:{}", out.branch)

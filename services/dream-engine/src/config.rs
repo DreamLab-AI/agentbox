@@ -402,6 +402,26 @@ fn default_prune_streak() -> usize {
     5
 }
 
+/// Nominated repos that point at the same remote repository (`repo` in their
+/// dream.config.json): `(slug, [dir names])` for every slug named by two or
+/// more. Two checkouts of one repository each take a nightly slot, dream the
+/// same code, and push same-named branches, so the second PR is lost
+/// (project2 and dreamlab-ai-website, 2026-10-11).
+pub fn shared_remotes(repos: &[(String, PathBuf)]) -> Vec<(String, Vec<String>)> {
+    let mut by_slug: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+    for (name, path) in repos {
+        if let Ok(cfg) = DreamConfig::load(&path.join("dream.config.json")) {
+            if !cfg.repo.is_empty() {
+                by_slug
+                    .entry(cfg.repo.clone())
+                    .or_default()
+                    .push(name.clone());
+            }
+        }
+    }
+    by_slug.into_iter().filter(|(_, v)| v.len() > 1).collect()
+}
+
 /// Discover nominated repos — directories under workspace containing dream.config.json.
 pub fn discover_repos(workspace: &Path) -> Vec<(String, PathBuf)> {
     let mut repos = Vec::new();
@@ -443,6 +463,36 @@ pub fn bonus_dives(cfg: &DreamConfig, day_int: u32) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn shared_remotes_flags_two_checkouts_of_one_repo() {
+        let d = tempfile::tempdir().unwrap();
+        let mk = |name: &str, slug: &str| {
+            let p = d.path().join(name);
+            std::fs::create_dir_all(&p).unwrap();
+            std::fs::write(
+                p.join("dream.config.json"),
+                format!(r#"{{"repo":"{slug}","slots":[{{"deep":"d","scan":[]}}]}}"#),
+            )
+            .unwrap();
+            (name.to_string(), p)
+        };
+        let repos = vec![
+            mk("site", "o/site"),
+            mk("project2", "o/site"),
+            mk("other", "o/other"),
+        ];
+        let shared = shared_remotes(&repos);
+        assert_eq!(
+            shared,
+            vec![(
+                "o/site".to_string(),
+                vec!["site".to_string(), "project2".to_string()]
+            )]
+        );
+        assert!(shared_remotes(&repos[1..]).is_empty());
+    }
+
     mod placeholders {
         use super::super::*;
         use std::sync::Mutex;

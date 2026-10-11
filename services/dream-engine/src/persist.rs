@@ -535,6 +535,28 @@ pub fn push_and_open_pr(
     }
 }
 
+/// Inbox alert text for a verified candidate whose draft PR never opened.
+/// `push_and_open_pr` is fail-open so the night still records its verdict;
+/// without this alert the verified commit sat on a local branch unseen
+/// (dreamlab-ai-website 2026-10-11, whose push collided with a same-named
+/// branch from a second checkout of the same repository).
+pub fn lost_pr_alert(repo_dir: &str, repo_slug: &str, branch: &str, pushed: bool) -> String {
+    let what = if pushed {
+        "pushed the branch but could not open the draft pull request".to_string()
+    } else {
+        format!(
+            "could not push the branch to {repo_slug} (a branch with the same name may \
+             already exist there, for example from a second checkout of the same repository)"
+        )
+    };
+    format!(
+        "A change on `{branch}` passed every required check, but the engine {what}. The \
+         verified commit is kept on the local branch in workspace/{repo_dir}. To keep it: \
+         `git -C workspace/{repo_dir} push origin {branch}` (or push it under a new name), then \
+         `gh pr create --repo {repo_slug} --draft --head {branch}`."
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -732,6 +754,16 @@ mod tests {
         let (out, notes) = normalise_patch(twice, base);
         assert!(notes.is_empty());
         assert_eq!(out, twice);
+    }
+
+    #[test]
+    fn lost_pr_alert_names_the_branch_and_the_recovery() {
+        let a = lost_pr_alert("site", "o/site", "dream/ci-2026-10-11", false);
+        assert!(a.contains("`dream/ci-2026-10-11`"));
+        assert!(a.contains("could not push the branch to o/site"));
+        assert!(a.contains("git -C workspace/site push origin dream/ci-2026-10-11"));
+        let b = lost_pr_alert("site", "o/site", "dream/ci-2026-10-11", true);
+        assert!(b.contains("could not open the draft pull request"));
     }
 
     #[test]
