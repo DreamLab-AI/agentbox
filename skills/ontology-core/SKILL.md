@@ -1,6 +1,6 @@
 ---
 name: ontology-core
-description: "Author Obsidian ontology pages with governed YAML frontmatter, immutable resource IRIs and vault CLI validation/builds. Use for schema planning, licensed seed conversion, new domains and grouped corpus upgrades; use ontology-enrich for existing-page enrichment and ontology-augment for live graph queries."
+description: "Author Obsidian ontology pages with governed YAML frontmatter, immutable resource IRIs and ontomark CLI validation/builds. Use for schema planning, licensed seed conversion, new domains and grouped corpus upgrades; use ontology-enrich for existing-page enrichment and ontology-augment for live graph queries."
 metadata:
   version: "3.0.0"
 ---
@@ -14,22 +14,24 @@ configured corpus paths through `agentbox.toml` `[vault]`; do not assume that
 the current directory is the corpus.
 
 ## Capability check
+<!-- lands with ontomark step 10 -->
 
-Run `vault --version`, `vault --help` and the relevant subcommand's `--help`.
+Run `ontomark --version`, `ontomark --help` and the relevant subcommand's `--help`.
 Installed binaries can lag checked-out source. Confirm creation and directory
 proposal support before relying on them. If unavailable, prepare reviewable
 Markdown in an isolated staging directory and report the required CLI update;
 do not write around the corpus mutation guard.
 
-The supported data/build interface is `vault`. `vault build --out <directory>`
+The supported data/build interface is `ontomark`; governed proposals use the `vault` adapter. `ontomark build --out <directory>`
 produces a generation including `data/ontology.ttl`, graph/index artefacts and
 metadata. Build into a fresh staging destination and inspect diagnostics; a
 successful build is not authorisation to publish it.
 
 ## Authoring and conversion
+<!-- lands with ontomark step 10 -->
 
-1. Search with `vault find`, then inspect neighbourhoods with `vault retrieve`
-   and `vault tree`. Reuse existing concepts and their identities. A renamed
+1. Search with `ontomark find`, then inspect neighbourhoods with `ontomark retrieve`
+   and `ontomark tree`. Reuse existing concepts and their identities. A renamed
    title, new domain or corrected spelling never remints an existing `resource`.
 2. For external seeds, record the source URL, release or retrieval date, exact
    licence and attribution requirements before copying content. Keep a source
@@ -47,7 +49,7 @@ successful build is not authorisation to publish it.
    inspect consumers for fixed domain lists. Record significant modelling and
    schema decisions in ADRs alongside the staging plan.
 5. Validate the staged corpus overlay, including links between new pages and
-   links into existing pages. Run `vault validate` and `vault conflicts` against
+   links into existing pages. Run `ontomark validate` and `ontomark conflicts` against
    the isolated repository containing the current vocabulary, configuration and
    complete proposed corpus. Compare diagnostics with the unchanged baseline;
    zero errors alone does not establish link integrity or reasoning correctness.
@@ -58,9 +60,9 @@ successful build is not authorisation to publish it.
    their prescribed governance decision; a page proposal does not itself update
    the vocabulary or deploy consumers.
 
-For a narrow authorised correction use `vault edit <id> --set key=value
+For a narrow authorised correction use `ontomark edit <id> --set key=value
 --expect docs=1 --dry-run`, review the result, then apply the guarded edit.
-Creation uses `vault create` only where the installed CLI exposes it. Preserve
+Creation uses `ontomark create` only where the installed CLI exposes it. Preserve
 unrelated page content and metadata, and validate the actual resulting files.
 
 ## Verification

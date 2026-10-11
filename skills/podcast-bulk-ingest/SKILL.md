@@ -35,10 +35,11 @@ in the ontology (e.g., biotech, materials science, geopolitics), the skill
 detects this and offers to bootstrap ontology pages using OntoCast.
 
 ### How it works
+<!-- lands with ontomark step 10 -->
 
 1. **Domain probe**: After downloading the first batch of transcripts, the
    skill samples 3–5 episodes and extracts key terms using the Loom. It then
-   runs `vault find --query <term> --type Class --json` for each term
+   runs `ontomark find --query <term> --type Class --json` for each term
    (ADR-2107; the `ontology_search` MCP tool is retired). If <30% of terms match
    existing pages, the domain is flagged as "new".
 

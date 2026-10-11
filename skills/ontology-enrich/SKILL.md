@@ -1,25 +1,27 @@
 ---
 name: ontology-enrich
-description: "Validate and enrich existing Obsidian ontology pages using the vault CLI. Use for frontmatter conformance, provenance, broken links, semantic conflicts and cross-domain bridges; use ontology-core for new schemas, seed conversion and domain scaffolding."
+description: "Validate and enrich existing Obsidian ontology pages using the ontomark CLI (proposals go through the `vault` governance adapter). Use for frontmatter conformance, provenance, broken links, semantic conflicts and cross-domain bridges; use ontology-core for new schemas, seed conversion and domain scaffolding."
 metadata:
   version: "3.0.0"
 ---
 
 # Ontology enrichment
+<!-- lands with ontomark step 10 -->
 
-Maintain the existing Obsidian corpus through `vault`. Read the repository's
+Maintain the existing Obsidian corpus through `ontomark` (read, validate, build) and the `vault` adapter (propose, apply). Read the repository's
 `AGENTS.md`, `vault.toml` and `ontology/vocabulary.yaml`; these govern paths,
 frontmatter keys, relation semantics, lifecycle and publication. Check installed
-`vault --help` and subcommand help rather than assuming source-code capabilities
+`ontomark --help` and subcommand help rather than assuming source-code capabilities
 are deployed.
 
 ## Workflow
+<!-- lands with ontomark step 10 -->
 
-1. Establish a baseline with `vault validate` and `vault conflicts`. Capture
+1. Establish a baseline with `ontomark validate` and `ontomark conflicts`. Capture
    findings by page and target, not just aggregate counts. Existing warnings
    remain outstanding defects; avoid introducing new ones in the batch.
-2. Find the existing concept with `vault find`; use `vault retrieve` and
-   `vault tree` to inspect related pages. Preserve immutable `resource` IRIs,
+2. Find the existing concept with `ontomark find`; use `ontomark retrieve` and
+   `ontomark tree` to inspect related pages. Preserve immutable `resource` IRIs,
    source attribution, publication settings and unrelated content.
 3. Research missing claims against attributable sources. Record source links
    in vocabulary-conforming `sources` entries and retain relevant licence and
@@ -29,11 +31,11 @@ are deployed.
 4. Stage complete proposed pages for grouped content or relationship changes.
    Use `vault propose --help` to confirm directory support and creation rules.
    Review `--dry-run` output before any authorised forum publication. For a
-   narrow correction, inspect `vault edit <id> --set key=value --expect docs=1
+   narrow correction, inspect `ontomark edit <id> --set key=value --expect docs=1
    --dry-run`, then apply the guarded edit within the authorised scope.
 5. Validate the complete proposed corpus in an isolated repository overlay;
    check links, semantic conflicts and baseline deltas. Build a fresh generation
-   with `vault build --out <directory>` when projection or reasoning changes
+   with `ontomark build --out <directory>` when projection or reasoning changes
    matter, and inspect the affected generated pages and graph edges.
 
 ## Link and modelling checks

@@ -4,10 +4,11 @@ Depth reference for `podcast-knowledge-ingest`. Load this when implementing or
 debugging the weekly ingest run itself, rather than just invoking it.
 
 ## Page format
+<!-- lands with ontomark step 10 -->
 
 Every page this skill writes is a vault page: V2 YAML frontmatter, then the
 body (`project/docs/VAULT-corpus-format.md` §V2/§V5, ADR-2028 D4). No writer
-emits `key:: value` property lines, and `vault validate` fails on any that
+emits `key:: value` property lines, and `ontomark validate` fails on any that
 survive.
 
 New working page (`new_page_content` in `services/podcast-ingest/src/ingest/newpage.rs`,
@@ -80,6 +81,7 @@ from an authored one, and how a later demotion knows what produced the claim.
 alongside these, not replacements for them.
 
 ### Promotion is `vault propose`. Full stop.
+<!-- lands with ontomark step 10 -->
 
 A working page reaches `knowledge/` **only** through
 `vault propose <iri> --level content|schema`, which runs Whelk and the conflict
@@ -91,7 +93,7 @@ what let unsigned machine output accumulate in the curated corpus indistinguisha
 from authored work. `sources: [{ id: origin, resource: "[[working/…]]" }]` on the
 knowledge page records the lineage, and the approval writes it — not you.
 
-`vault edit` exists but refuses without `--expect docs=N,blocks=M`. It is how an
+`ontomark edit` exists but refuses without `--expect docs=N,blocks=M`. It is how an
 approved decision is applied, not a way to apply one.
 
 ## Pipeline phases
@@ -128,10 +130,11 @@ For each assertion above threshold:
 - Attach URL and verification status
 
 ### Phase 4: Working-graph placement
+<!-- lands with ontomark step 10 -->
 
 For each verified assertion:
 
-- `vault find --query "<key terms>" --type Class --json` (ADR-2107; the
+- `ontomark find --query "<key terms>" --type Class --json` (ADR-2107; the
   `ontology_search` MCP tool is retired)
 - Score candidates by relevance to the claim and domain match. **Not by quality
   score.** The retired Python scored "lower quality = more room" and so aimed

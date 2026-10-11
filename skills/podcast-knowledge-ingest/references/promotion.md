@@ -90,10 +90,11 @@ back. Only measured quality-threshold failures become terminal
 a candidate.
 
 ## Ledger format (PRD Q16, V2)
+<!-- lands with ontomark step 10 -->
 
 Ledger pages are `working/pages/podcast-evidence/<episode-slug>.md`, typed
 `Episode`. **Episode identity is the filename stem** — a subdirectory entry, not
-the retired flat `podcast-evidence___<slug>.md` name, which `vault validate`
+the retired flat `podcast-evidence___<slug>.md` name, which `ontomark validate`
 rejects as an `a___b.md` namespace filename. The page-level `source` key is the
 podcast (always `"AI Daily Brief"`); the per-assertion `source` is the
 speaker/publisher attribution, e.g. `Host (AI Daily Brief)`.
@@ -289,6 +290,7 @@ A matching human-readable `<topic-slug>.md` is written alongside every JSON
 file (same directory) for quick review.
 
 ## The `vault propose` adapter contract
+<!-- lands with ontomark step 10 -->
 
 `ontology_propose_payload` on a survivor dossier is the splice, shaped so the
 adapter (`submit-proposals.mjs`) can render it as a unified diff and hand it to
@@ -315,7 +317,7 @@ The adapter is `submit-proposals.mjs`, and it does this:
 
 1. Reads every `proposals/*.json` with `status == "candidate_survivor"` and
    a non-null `ontology_propose_payload`.
-2. Resolves `target_page` to a class IRI with `vault find --type Class`,
+2. Resolves `target_page` to a class IRI with `ontomark find --type Class`,
    demanding an **exact slug match**. A fuzzy hit must never receive someone
    else's amendment, so an unresolved page is reported and skipped. It needs a
    class *create* proposal, which stays human-initiated.

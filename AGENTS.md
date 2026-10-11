@@ -39,7 +39,7 @@ Narrative, Jev compaction (ADR-2093) and live skill routing (ADR-2091): [runtime
 | Path | Purpose |
 |---|---|
 | [`flake.nix`](flake.nix) | image composition, generated supervisor text |
-| [`agentbox.toml`](agentbox.toml) | feature gates, toolchains; `[vault]` is the single corpus path authority (ADR-2028; writes via `vault propose`/`vault edit --expect`, ADR-2107) |
+| [`agentbox.toml`](agentbox.toml) | feature gates, toolchains; `[vault]` is the single corpus path authority (ADR-2028). The baked corpus tool is `ontomark`, pinned to a release tag (ADR-2136); guarded writes are `ontomark edit --expect`/`ontomark create`, and the `vault` governance adapter owns only `propose` and `apply` (ADR-2107) <!-- lands with ontomark step 10 --> |
 | [`config/instructions/`](config/instructions/) | source of the global and workspace instruction tiers, projected every boot (ADR-2118); tracked layer is public, `local/` is the gitignored estate layer — never edit the generated `~/.claude/CLAUDE.md` or `~/workspace/{AGENTS,CLAUDE}.md` |
 | [`config/entrypoint-unified.sh`](config/entrypoint-unified.sh) | boot reconciliation of `.mcp.json`, hooks, model routing |
 | [`services/agentbox-manifest`](services/agentbox-manifest) | Rust boot projector for every manifest read (python3 is not a boot dependency) |
@@ -53,6 +53,9 @@ Narrative, Jev compaction (ADR-2093) and live skill routing (ADR-2091): [runtime
 Everything else (tab0-bridge, voice, harness-wrappers, AoE seeder, explainer-tools): [runtime-files.md](docs/reference/claude-context/runtime-files.md).
 
 ## URI/URN scheme
+
+<!-- lands with ontomark step 10 -->
+Ontology identity is a separate scheme: class IRIs are `urn:ngm:class:<slug>` and are minted by `ontomark` (its identity rules, one owner), never by `management-api/lib/uris.js` or a template literal in agentbox code. The `urn:agentbox:` kinds below do not cover them.
 
 `urn:agentbox:<kind>:[<scope>:]<local>` (scope = 64-char hex pubkey), 20 kinds; identity `did:nostr:<hex-pubkey>`; content addressing `sha256-12-<12hex>`. **All durable identifiers are minted through `management-api/lib/uris.js`** — ad-hoc `format!()`/template-literal URNs are prohibited. Ref: ADR-013; host bridge: [subsystem-notes §URI](docs/reference/claude-context/subsystem-notes.md).
 

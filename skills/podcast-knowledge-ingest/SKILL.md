@@ -38,12 +38,13 @@ formats are byte-compatible with the prior Python implementation — see the
 crate's ledger round-trip tests.
 
 ## Architecture
+<!-- lands with ontomark step 10 -->
 
 ```
 YouTube ──yt-dlp──► Markdown ──Loom──► Assertions ──Perplexity──► Verified
                         │                                             │
                         ▼                                             ▼
-                  ingest-status:           `vault find` / `vault tree` ◄┘
+                  ingest-status:           `ontomark find` / `ontomark tree` ◄┘
                    downloaded                      │  (placement)
                         │                          ▼
                         └──────► ingest-status: processed:DATE:N
@@ -73,6 +74,7 @@ Draft Concept`, `status: draft`, and
 key is how a reader tells machine output from authored work.
 
 ### Evidence ledger pages (PRD Q16)
+<!-- lands with ontomark step 10 -->
 
 The per-episode evidence ledger — the audit trail for every machine-extracted
 assertion — is written to:
@@ -82,7 +84,7 @@ working/pages/podcast-evidence/<episode-slug>.md
 ```
 
 A **subdirectory**, never the retired flat `podcast-evidence___<slug>.md` name:
-`a___b.md` namespace filenames are a `vault validate` rejected construct. Never
+`a___b.md` namespace filenames are a `ontomark validate` rejected construct. Never
 `knowledge/pages` — nothing this skill writes reaches the curated corpus except
 through `vault propose`.
 

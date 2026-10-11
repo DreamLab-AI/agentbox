@@ -132,9 +132,10 @@ default `pages`), `format` (`obsidian` only; the `logseq-legacy` read-tolerance 
 and `tui` (`rune` | `none`, ADR-2029). It is schema-validated
 (`schema/agentbox.toml.schema.json`, `root` required).
 
+<!-- lands with ontomark step 10 -->
 The current corpus tools consume Obsidian-compatible Markdown with YAML
 frontmatter. The source tree no longer packages the retired `ontology-tools`
-parser/writer; corpus validation, links, proposals and builds use `vault`.
+parser/writer; corpus validation, links and builds use `ontomark`, and proposals use the `vault` governance adapter.
 Web-summary accepts `obsidian`, `plain`, and (for summaries) `markdown`, and
 rejects obsolete format aliases. ADR-2119 records the removal. Existing images
 retain their baked executables until rebuilt; source removal is not deployment.
@@ -453,6 +454,7 @@ Local image builds refresh and validate generated Compose before building, so
 `./agentbox.sh rebuild` applies changes to mounts as well as image contents.
 
 
-## Proposed shared ontology workspace extension — 2026-10-11
+## Shared ontology workspace extension — 2026-10-11
 
-[Shared workspace proposal](adr/ADR-2136-pin-the-shared-ontology-toolchain.md) is proposed, unimplemented and inactive. Build the immutable corpus tool from an independent pinned workspace, with package verification and runtime activation recorded separately. Existing accepted invariants and running behaviour are unchanged. OCR and document ingestion are outside this scope.
+<!-- lands with ontomark step 10 -->
+[ADR-2136](adr/ADR-2136-pin-the-shared-ontology-toolchain.md) is implemented and not yet activated. The image builds the corpus tool from the released `ontomark` workspace (`ontomarkSrc` pinned to a release tag, `lib/ontomark.nix`, `doCheck = true`) instead of the VisionClaw host workspace, and bakes the thin `vault` governance adapter beside it for `propose` and `apply`. Phase 5d(ii) of the entrypoint probes both. Package build and runtime activation are recorded separately. OCR and document ingestion are outside this scope.

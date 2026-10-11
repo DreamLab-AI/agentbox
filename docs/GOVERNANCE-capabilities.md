@@ -464,7 +464,7 @@ ADR-2071 is **proposed, not landed**, and divergences 1 and 6 stay open: routing
   tools on the fail-open `ontology-bridge`; adds the `job` URN kind with a per-kind RFC 8785 JCS
   canonical form. Nothing of D2/D3 exists today, and the contrast it is drawn against no longer
   does either: ADR-2107/ADR-2108 retired `ontology-bridge` outright, so if ADR-2074 is ever taken
-  up it needs restating against the `vault` CLI rather than against a server that is gone. ADR-2023's "Remaining" is the ORIGIN of this
+  up it needs restating against the `ontomark` CLI <!-- lands with ontomark step 10 --> rather than against a server that is gone. ADR-2023's "Remaining" is the ORIGIN of this
   gap and is referenced (`see`), not superseded.
 - **ADR-2075** (proposed) — the Loom exposes a generation descriptor and the client reports the
   **attested** generation; a configured value that disagrees fails labelled rather than being
@@ -625,6 +625,8 @@ two rules (activities rather than ids, and cross-family seal review) move into *
 when that lands with a test that refuses a same-family seal review.
 
 
-## Proposed shared ontology workspace extension — 2026-10-11
+## Shared ontology workspace extension — 2026-10-11
 
-[Shared workspace proposal](adr/ADR-2136-pin-the-shared-ontology-toolchain.md) is proposed, unimplemented and inactive. Align the immutable corpus CLI and optional existing-vault automation with a released shared ontology toolchain; preserve proposal guards and manifest path authority. Existing accepted invariants and running behaviour are unchanged. OCR and document ingestion are outside this scope.
+<!-- lands with ontomark step 10 -->
+
+[ADR-2136](adr/ADR-2136-pin-the-shared-ontology-toolchain.md) is implemented and not yet activated. The immutable corpus toolchain is the released `ontomark` CLI, pinned to a release tag in `flake.nix` (`ontomarkSrc`) and built by `lib/ontomark.nix` with `doCheck` on. `ontomark` owns the read, validate, build and guarded-write verbs (`find`, `retrieve`, `tree`, `validate`, `gate`, `conflicts`, `build`, `repair`, `edit`, `create`). The `vault` binary survives only as the thin AGPL governance adapter (`propose`, `apply`, `panel publish`) that posts to the forum (decision D4); `/opt/agentbox/bin/vault` points at it for the transition window. Proposal guards (`--expect` blast radius, human signature) and the `[vault]` path authority are unchanged. Activation is an operator rebuild; a built package is not a running one. OCR and document ingestion are outside this scope.
