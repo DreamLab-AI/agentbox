@@ -1,7 +1,7 @@
 # KHIVE Operational Learnings for AgentDB Memory Patterns
 
 **Date:** 2026-05-12
-**Source:** Direct operational comparison — KHIVE v2 vs RuVector/AgentDB during DreamLab ecosystem mega-sprint
+**Source:** Direct operational comparison — KHIVE v2 vs RuVector/AgentDB during dreamlab ecosystem mega-sprint
 **Status:** Actionable — concrete gaps identified with proposed enhancements
 
 ---

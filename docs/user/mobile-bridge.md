@@ -11,7 +11,7 @@ channel that needs **no bespoke mobile app** and never exposes your agent's
 private key to the phone.
 
 > **Status.** This guide describes Phase 1 (direct connection to the agentbox
-> embedded relay). Phase 2 (federation via the DreamLab Cloudflare relay) is a
+> embedded relay). Phase 2 (federation via the dreamlab Cloudflare relay) is a
 > configuration change, summarised under [Phasing](#phasing--phase-1-vs-phase-2).
 
 ## Why this exists
@@ -320,7 +320,7 @@ Notes:
 
 | | Phase 1 (now) | Phase 2 (later) |
 |---|---|---|
-| Transport | Phone → agentbox embedded relay, direct | Phone → DreamLab Cloudflare relay → agentbox |
+| Transport | Phone → agentbox embedded relay, direct | Phone → dreamlab Cloudflare relay → agentbox |
 | Exposure | Private overlay (Tailscale / WireGuard / CF Tunnel) | Public CF Worker, whitelist-gated |
 | Durable chat | Not stored in agentbox; the durable record is the summary + pod | CF Durable Object retains kind-1059 (a config flag) |
 | Forum interop | None | None at this time (kept additive) |

@@ -71,7 +71,7 @@ Use the interactive launcher unless you specifically want to edit files by hand:
 
 The launcher opens a browser-based setup wizard (PRD-012 / ADR-024) that renders
 every `agentbox.toml` section with schema-validated form controls — dropdowns,
-toggles, text inputs — using the DreamLab glassmorphism design system. No
+toggles, text inputs — using the dreamlab glassmorphism design system. No
 pre-installed dependencies required beyond Python 3 (for the local HTTP server).
 
 ![Setup Wizard](../images/setup-wizard-overview.png)

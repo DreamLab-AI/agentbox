@@ -17,7 +17,7 @@
 just the unspent outputs keyed by a pubkey on one of them, and that every other ledger in the
 estate is about to become a cached view of that.*
 
-This bounded context owns **settlement**: the existence and rules of the chains DreamLab
+This bounded context owns **settlement**: the existence and rules of the chains dreamlab
 signs, the movement of value into them (peg-in, bridge-in), within them (ordinary spends),
 and out of them (peg-out, child-chain close), and the receipts that prove any of it
 happened. The aggregate root of chain identity is the `ChainDocument`.
@@ -1034,7 +1034,7 @@ exactly the sort of capability that feels like it deserves its own slot.
 2. **One root chain, or one per federated instance?** ADR-2101 says one root, each instance
    holding a derived signer key. That makes every instance a co-custodian of every other's
    value, which is a strong statement about a federation that may include instances we do not
-   operate. The alternative, one chain per instance nested under a DreamLab root, pushes the
+   operate. The alternative, one chain per instance nested under a dreamlab root, pushes the
    inter-instance settlement problem into the peg, which is where it is at least modelled.
 3. **What is the threshold for I06, and is it per chain, per principal or per asset?** A
    single global sats figure is wrong for a wrapped USD asset. The natural answer is per asset

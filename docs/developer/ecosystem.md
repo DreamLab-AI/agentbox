@@ -1,6 +1,6 @@
 # Ecosystem integration
 
-Agentbox is one of six repositories in the DreamLab open-source ecosystem — five federated product substrates plus the VisionFlow umbrella canon. This document explains how agentbox participates in the mesh and how its boundaries interact with the other substrates.
+Agentbox is one of six repositories in the dreamlab open-source ecosystem — five federated product substrates plus the VisionFlow umbrella canon. This document explains how agentbox participates in the mesh and how its boundaries interact with the other substrates.
 
 ## Six-repository landscape
 

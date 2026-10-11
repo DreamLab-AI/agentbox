@@ -1,6 +1,6 @@
 # Cost Estimation: Worked Examples
 
-Concrete calculations using the DreamLab cost model. All examples use default parameters unless stated otherwise.
+Concrete calculations using the dreamlab cost model. All examples use default parameters unless stated otherwise.
 
 **Defaults**: base_cost = 10 sats, DREAM/sat rate = 10, hold buffer = 1.2
 

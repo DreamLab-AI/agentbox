@@ -345,7 +345,7 @@ The viewer slot stands on:
 - **[Solid Protocol 0.11](https://solidproject.org/TR/protocol)** — Sarven Capadisli, Tim Berners-Lee, Ruben Verborgh, Kjetil Kjernsmo, Justin Bingham, Dmitri Zagidulin.
 - **[IETF RFC 8141 (URN syntax)](https://www.rfc-editor.org/rfc/rfc8141)** — P. Saint-Andre, J. Klensin. The URN philosophy of stable names independent of location.
 
-The DreamLab-AI dependencies that make this surface implementable today:
+The dreamlab-AI dependencies that make this surface implementable today:
 
 - **[`solid-pod-rs`](https://github.com/DreamLab-AI/solid-pod-rs)** — Solid Protocol 0.11 server with `did:nostr` resolver, JSON-LD content negotiation, and atomic-rename storage. Powers S1, S4, S9 dereferencing.
 - **`nostr-rs-relay`** — vendored at `lib/nostr-rs-relay.nix`. Powers S2.

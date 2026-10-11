@@ -11,7 +11,7 @@ decides what must be true before each capability may carry value, and names the 
 ## 0. Scope, ground rules and terminology discipline
 
 **0.1 What is being secured.** Owner direction is unambiguous: "our own sidestr sidechains are the key
-and only instrument" (`BRIEF-fact-base.md:133-136`). That makes DreamLab the signer set, the peg holder
+and only instrument" (`BRIEF-fact-base.md:133-136`). That makes dreamlab the signer set, the peg holder
 and, at mainnet, the custodian. Every threat below is written from that posture, not from the posture of
 a participant in someone else's federation.
 
@@ -50,7 +50,7 @@ levels L0-L3 from ADR-124; where both appear the prefix is written out.
 
 ### 1.1 Root chain federation (k-of-n across our own instances)
 
-Design under threat: one DreamLab root chain at sidestr level 2, each federated instance holding one
+Design under threat: one dreamlab root chain at sidestr level 2, each federated instance holding one
 signer key (D2, `BRIEF-fact-base.md:151-153`). Level 2 means a `tr(NUMS_chain, multi_a(k, pk_1..pk_n))`
 descriptor where **the same key set secures both block production and the parent peg wallet**
 (`R1-sidestr-spec.md:353-358`). That single fact drives most of this table.
@@ -58,7 +58,7 @@ descriptor where **the same key set secures both block production and the parent
 | # | STRIDE | Threat | Mechanism required |
 |---|---|---|---|
 | F1 | Spoofing | A non-signer publishes kind 23510/23511 proposals and partials, or a signer's key is used from a second machine, and validators cannot tell | Validator binds accepted partials to the exact `chain.signers` pubkey set and to the leaf order the witness demands (`R1:344-348`: slots in **reverse leaf order**, exactly `k` filled, a `k+1`th fails `NUMEQUAL`). Our Rust validator MUST reproduce `federation.mjs`'s internal key `H + tagged_hash("sidestr/nums", chain_id)·G` byte-for-byte (`R1:339-343`, `R1:912-918`) and refuse any block whose challenge does not equal the one derived from our own copy of the chain document. Cross-implementation vector: reproduce `txbt4-fed`'s published challenge script exactly before the chain is used for anything. |
-| F2 | Tampering | A signer proposes a block whose coinbase claims a peg-in that never happened on the parent | At level 1 this is accepted blindly; at level 2 `parent.mjs`'s `scanPegins()` gives each signer an independent parent view and `round.mjs`'s `checkClaims` hook lets it refuse (`R1:288-294`). **Requirement: every DreamLab signer runs its own parent Bitcoin node.** A signer that validates claims against a shared node held by one instance reduces the federation to 1-of-n for claim truth regardless of k. |
+| F2 | Tampering | A signer proposes a block whose coinbase claims a peg-in that never happened on the parent | At level 1 this is accepted blindly; at level 2 `parent.mjs`'s `scanPegins()` gives each signer an independent parent view and `round.mjs`'s `checkClaims` hook lets it refuse (`R1:288-294`). **Requirement: every dreamlab signer runs its own parent Bitcoin node.** A signer that validates claims against a shared node held by one instance reduces the federation to 1-of-n for claim truth regardless of k. |
 | F3 | Repudiation | After a loss, no record of which signer signed which height | Partials are BIP-340 signatures over the BIP-325 virtual-transaction sighash and are published as kind 23511 referencing the proposal by `e` tag (`R1:222-228`). Requirement: the signer sidecar persists every partial it emits and every partial it accepts to the events adapter under the ADR-039 hash chain, the same chain `authority.deny` uses (`docs/GOVERNANCE-capabilities.md` Invariants, quoted `R2:596-601`). Signature sets are then replayable against the sealed block. |
 | F4 | Information disclosure | The signer set, the peg descriptor and each instance's liveness are public by construction | Accepted and unavoidable: the peg descriptor is a parent-chain taproot output and the tip announcements are public (`R1:216-221`). What must NOT leak is which pubkey belongs to which physical instance; do not put an instance hostname in the `alt` tag or the `comment` field of the chain document. |
 | F5 | Denial of service | Signers stall; below threshold the chain halts | Level 2 tolerates `n-k` missing signers per round with a lateness-relaxed round-robin (`R1:664-668`: "one down tolerated, two halts" measured on a 2-of-3 chain). Requirement: **n >= 5, k = 3** for the root chain, so two instances may be down or rebuilding. A 2-of-3 root chain makes any single rebuild a one-fault-from-halt condition, and this estate rebuilds its containers routinely (`agentbox/CLAUDE.md` "Runtime model gotchas"). |

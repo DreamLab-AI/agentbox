@@ -1,6 +1,6 @@
 ---
 name: ontology-augment
-description: "Ground agent reasoning in DreamLab's sovereign corpus (visionGraph: ~8.4k OKF-typed pages, Whelk-reasoned by the Ontology Loom) through the `vault` CLI and the Loom's HTTP surface. Use when you want to ground or augment thinking in the ontology, check what the corpus says about a concept, retrieve a budget-bounded subgraph, run read-only SPARQL over the reasoned closure, find class neighbours or shortest paths, validate OKF conformance, or propose a governed enrichment. Read-pervasive, write-governed; budget-bounded and fail-open so it never bloats the context window or blocks a turn. Bash only — there is no MCP server for the corpus."
+description: "Ground agent reasoning in dreamlab's sovereign corpus (visionGraph: ~8.4k OKF-typed pages, Whelk-reasoned by the Ontology Loom) through the `vault` CLI and the Loom's HTTP surface. Use when you want to ground or augment thinking in the ontology, check what the corpus says about a concept, retrieve a budget-bounded subgraph, run read-only SPARQL over the reasoned closure, find class neighbours or shortest paths, validate OKF conformance, or propose a governed enrichment. Read-pervasive, write-governed; budget-bounded and fail-open so it never bloats the context window or blocks a turn. Bash only — there is no MCP server for the corpus."
 ---
 
 # Ontology Augment

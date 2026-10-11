@@ -48,7 +48,7 @@ You have a machine, you want agentbox running on it, ideally with as little fuss
 | [Consuming the image](user/consuming-image.md) | GHCR registry tags, multi-arch manifest |
 | [Provisioning remote hosts](user/provisioning.md) | `agentbox.sh provision --target oci \| fly \| hetzner \| bare` |
 
-| Sovereign data stack — the DreamLab-AI ecosystem substrate | |
+| Sovereign data stack — the dreamlab-AI ecosystem substrate | |
 |---|---|
 | [**Sovereign stack — end to end**](user/sovereign-stack.md) | **Start here.** One-page walkthrough of identity → pod → relay → privacy-filter with verifiable commands |
 | [Solid pod (solid-pod-rs)](user/solid-pod.md) | First-party Rust Solid Protocol 0.11 server — durable storage, WAC 2.0, did:nostr, atomic-rename, quota, rate-limit |
@@ -94,7 +94,7 @@ You are adding a feature, implementing an adapter, or investigating a regression
 | [Native pod mesh](developer/native-pod-mesh.md) | In-container git-versioned `solid-pod-rs` tier — architecture + wiring ([PRD-007](archive/prd/PRD-007-multi-tenant-federation.md) / [ADR-010](archive/adr/ADR-010-rust-solid-pod-adoption.md)) |
 | [Sovereign mesh](developer/sovereign-mesh.md) | Nostr client + NIP-98 auth + relay pool internals |
 | [Linked-Data middleware](developer/linked-data.md) | Encoder + ContextResolver + LION linter + JCS — surface authoring guide |
-| [Ecosystem integration](developer/ecosystem.md) | Agentbox's role in the multi-substrate DreamLab federation mesh |
+| [Ecosystem integration](developer/ecosystem.md) | Agentbox's role in the multi-substrate dreamlab federation mesh |
 | [Skills upgrade path](developer/skills-upgrade.md) | Migrating from `path:./skills` to a standalone repo |
 
 | Subsystems & deep-dives | |

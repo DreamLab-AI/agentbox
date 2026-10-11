@@ -9,7 +9,7 @@ licence compatible with it.
 | Component | Licence | Linkage | Source pointer |
 |-----------|---------|---------|----------------|
 | agentbox (this repo) | AGPL-3.0 | — | `LICENSE` |
-| `solid-pod-rs` (DreamLab-AI) | AGPL-3.0-only | Binary under supervisord — HTTP boundary only | [github.com/DreamLab-AI/solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) |
+| `solid-pod-rs` (dreamlab-AI) | AGPL-3.0-only | Binary under supervisord — HTTP boundary only | [github.com/DreamLab-AI/solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) |
 | `linkedobjects/browser` | AGPL-3.0 | Static assets served by management-api | [github.com/linkedobjects/browser](https://github.com/linkedobjects/browser) |
 | `nostr-rs-relay` (Scsibug) | MIT | Binary from nixpkgs — HTTP boundary only | [github.com/scsibug/nostr-rs-relay](https://github.com/scsibug/nostr-rs-relay) |
 | `nagual-qe` (proffesor-for-testing) | MIT | Binary launched by supervisord | [github.com/proffesor-for-testing/nagual-qe](https://github.com/proffesor-for-testing/nagual-qe) |
@@ -38,7 +38,7 @@ crate on its own.
 ## The `sidestr-*` crates are AGPL-3.0-only, published, and live in sidestr-rs (ADR-2106, ADR-2112)
 
 The `sidestr-*` crates are no longer in this repository: they moved with their
-history to [DreamLab-AI/sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs)
+history to [dreamlab-AI/sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs)
 on 2026-09-23 (ADR-2112), and `crates/sidestr/README.md` is only a pointer. The
 licensing rule is unchanged. The crates are derivatives of Melvin Carvalho's `siding`
 (`github.com/sidestr/spec`, AGPL-3.0) and are therefore `AGPL-3.0-only`, with

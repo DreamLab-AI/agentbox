@@ -469,7 +469,7 @@ personal-finance/property-business (tax, R&D credits, renovation costs, revenue)
 billing/economics subsystem:
 - `README.md:44, 265, 268` — infrastructure purchase cost estimates, solar proposal costs, UK
   property tax (mansion tax, CGT, SDLT).
-- `dreamlab/README.md:70-71` — "dual revenue," "R&D credits" — business-plan prose for the DreamLab
+- `dreamlab/README.md:70-71` — "dual revenue," "R&D credits" — business-plan prose for the dreamlab
   training/holiday-let venture.
 - `dreamlab/business-plan/reports/executive_dashboard.md:15,25,33,73` — P&L figures.
 

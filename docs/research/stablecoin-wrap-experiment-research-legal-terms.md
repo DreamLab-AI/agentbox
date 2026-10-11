@@ -37,7 +37,7 @@ The review states that the FCA regime commences on 25 October 2027, that applica
   - has no backing assets, so it cannot be a *qualifying stablecoin*.
 - **Where the inference breaks.** The analysis changes the moment either of these happens:
   - **Real USDT or USDC is locked on a mainnet to back it, even £1.** The token then represents a claim on that asset, and the operator is holding assets on behalf of the token holders. That points towards custody or safeguarding and possibly issuance.
-  - **Anyone outside DreamLab can receive it and trade it for anything.**
+  - **Anyone outside dreamlab can receive it and trade it for anything.**
 
   **Keep the experiment strictly unbacked, or backed only by testnet USDC [412] and testnet USDT where either exists.**
 
@@ -116,7 +116,7 @@ Tether's page generates its section numbers automatically, so clauses are cited 
   - The CASP transitional period ended on 1 July 2026 [418].
 - **Custody and transfer (verified).** ESMA's 17 January 2025 statement set end-Q1 2025 for CASPs to stop trading and offering services in non-compliant EMTs. It also says "mere custody and transfer of these crypto-assets should remain possible" [417].
 - **Relevance to a UK operator shipping open-source tools (inferred).** Publishing code is not an offer to the public of an EMT. The EU risk falls on:
-  - DreamLab itself, if it runs a live bridge serving EU users;
+  - dreamlab itself, if it runs a live bridge serving EU users;
   - EU parties who deploy the tools as a CASP.
 - **Mainnet asymmetry.**
   - A real *wrapped USDC* offered to EU users would need Circle France's consent under Art. 48, or would amount to Circle's "wrapper", which is not USDC.
@@ -165,15 +165,15 @@ Nominative, descriptive use in prose, such as "a test of wrapping USD₮-like as
   - A bridge daemon that links modified sidestr and serves remote users must therefore offer source. This matches the review's AGPL finding [REVIEW:531–547].
 
 ## Questions for counsel
-1. Is a token that is unbacked, non-redeemable and testnet-anchored, and that DreamLab itself issues only to itself or to invited testers, a "cryptoasset" under FSMA s.417 or MLR reg. 14A? Does inviting external testers change the answer?
-2. At what point does backing with real mainnet USD₮ or USDC, even a nominal amount, make DreamLab:
+1. Is a token that is unbacked, non-redeemable and testnet-anchored, and that dreamlab itself issues only to itself or to invited testers, a "cryptoasset" under FSMA s.417 or MLR reg. 14A? Does inviting external testers change the answer?
+2. At what point does backing with real mainnet USD₮ or USDC, even a nominal amount, make dreamlab:
    - a custodian wallet provider under the MLRs now;
    - a person "safeguarding" or "issuing a qualifying stablecoin" from 25 October 2027?
-   Should DreamLab file in the 30 September 2026 to 28 February 2027 window as a precaution?
+   Should dreamlab file in the 30 September 2026 to 28 February 2027 window as a precaution?
 3. Would public README, blog or Nostr material describing the experiment be a financial promotion (s.21 / FPO para 26F)? What wording keeps it outside?
 4. Can "USDT", "USD₮", "Tether" or "USDC" appear in contract metadata, tickers or documentation, including nominatively? What is the UK trade-mark position for these word marks? Should written consent be sought from Tether or Circle?
 5. Tether's "Prohibited Assets" clause claims automatic assignment of marks, domains and handles "featuring" its IP. Is that enforceable under English law against a UK entity?
-6. If EU parties run DreamLab's open-source bridge, does DreamLab bear any MiCA exposure, for example through Art. 48 "seek admission to trading", or through Recital 22 if DreamLab operates any intermediary component?
+6. If EU parties run dreamlab's open-source bridge, does dreamlab bear any MiCA exposure, for example through Art. 48 "seek admission to trading", or through Recital 22 if dreamlab operates any intermediary component?
 7. Is the `base85` `MPL-2.0-no-copyleft-exception` declaration effective without per-file Exhibit B notices? Is process separation between rgb-lib and the AGPL sidestr crates a sufficient boundary?
 8. For AGPL §13: which "users interacting remotely" does a federation bridge have, and what is an adequate source offer for a containerised deployment?
 

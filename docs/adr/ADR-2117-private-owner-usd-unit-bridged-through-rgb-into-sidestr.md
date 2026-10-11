@@ -201,7 +201,7 @@ attempt failed again and it was left down, since this experiment does not need i
   box is shared with real funds).
 
 **Wiring status (2026-09-23, not live).** Built on sidestr-rs branch `liquid-bridge-wiring`,
-draft PR DreamLab-AI/sidestr-rs#1 at `2494151b`: crate `sidestr-bridge-liquid` (AGPL-3.0-only,
+draft PR dreamlab-AI/sidestr-rs#1 at `2494151b`: crate `sidestr-bridge-liquid` (AGPL-3.0-only,
 `publish = false`) with the `usd-reserve` binary, on LWK 0.19.0 (`lwk_wollet`, `lwk_signer`,
 `lwk_common`, each `MIT OR BSD-2-Clause` per `cargo metadata`; no MPL anywhere in the tree).
 

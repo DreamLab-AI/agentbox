@@ -33,7 +33,7 @@ dependencies:
   - rust
   - nodejs
   - zip
-author: DreamLab-AI (ported by agentbox)
+author: dreamlab-AI (ported by agentbox)
 ---
 
 # TerraCraft

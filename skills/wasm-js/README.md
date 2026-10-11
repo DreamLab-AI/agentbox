@@ -4,7 +4,7 @@ High-performance WebAssembly graphics with JavaScript interoperability for web a
 
 ## Overview
 
-This skill provides patterns and templates for creating performant WASM graphics modules that integrate seamlessly with JavaScript/TypeScript web applications. Derived from the DreamLab AI Voronoi hero project.
+This skill provides patterns and templates for creating performant WASM graphics modules that integrate seamlessly with JavaScript/TypeScript web applications. Derived from the dreamlab AI Voronoi hero project.
 
 ## When to Use This Skill
 

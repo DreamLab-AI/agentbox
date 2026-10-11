@@ -1,7 +1,7 @@
 # Agent Control Surface Protocol (ACSP) — Panel Schema Reference
 
 Agent-facing reference for constructing Nostr events of kinds **31400-31405**
-so that interactive control panels render on the DreamLab forum governance
+so that interactive control panels render on the dreamlab forum governance
 page (`/community/governance`). Read this top to bottom and you can emit a
 valid panel on the first try.
 

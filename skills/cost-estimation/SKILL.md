@@ -1,7 +1,7 @@
 ---
 name: cost-estimation
 description: >
-  Estimate GPU endpoint costs, agent job costs, and MRC20 token operations for the DreamLab AI
+  Estimate GPU endpoint costs, agent job costs, and MRC20 token operations for the dreamlab AI
   ecosystem. Use when pricing inference/image-gen/analytics endpoints, calculating agent job
   holds and settlements, converting between DREAM tokens and sats, or valuing infrastructure
   replacement cost. Integrates with pod-worker /pay/.estimate route and durable RuVector recall
@@ -10,7 +10,7 @@ description: >
 
 # Cost Estimation
 
-Pricing engine for DreamLab AI compute, agent jobs, and token economics.
+Pricing engine for dreamlab AI compute, agent jobs, and token economics.
 
 ## When To Use
 
@@ -23,7 +23,7 @@ Pricing engine for DreamLab AI compute, agent jobs, and token economics.
 **When NOT to use:**
 - Billing reconciliation or payment processing -- that is pod-worker's domain
 - Token smart-contract deployment -- use the MRC20 contract tools directly
-- General financial modelling unrelated to DreamLab compute
+- General financial modelling unrelated to dreamlab compute
 
 ## Quick Start
 

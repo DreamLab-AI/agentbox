@@ -1,6 +1,6 @@
 # Cost Model: COCOMO-Hybrid Valuation
 
-Full reference for DreamLab AI infrastructure valuation, pricing methodology, and research backing.
+Full reference for dreamlab AI infrastructure valuation, pricing methodology, and research backing.
 
 ## COCOMO II Baseline
 
@@ -50,7 +50,7 @@ The **$72M median** is the headline figure. The $62M-$82M range accounts for par
 
 ## Infrastructure-as-Capability Valuation
 
-Traditional SaaS valuations use ARR multiples (5x-15x). DreamLab's infrastructure is not a SaaS product -- it is a capability platform where the infrastructure itself is the moat. The correct comparable is **infrastructure-as-capability**, valued at:
+Traditional SaaS valuations use ARR multiples (5x-15x). dreamlab's infrastructure is not a SaaS product -- it is a capability platform where the infrastructure itself is the moat. The correct comparable is **infrastructure-as-capability**, valued at:
 
 ```
 Enterprise value = Usage revenue * capability_multiple
@@ -66,7 +66,7 @@ This range is informed by:
 
 ### Why Not SaaS Multiples?
 
-SaaS multiples price *recurring subscription revenue*. DreamLab prices *compute capability* -- the value of having the infrastructure exist, not just the revenue it generates today. A nuclear plant's value is not 10x its electricity sales; it is the replacement cost of the capability. Same logic applies here.
+SaaS multiples price *recurring subscription revenue*. dreamlab prices *compute capability* -- the value of having the infrastructure exist, not just the revenue it generates today. A nuclear plant's value is not 10x its electricity sales; it is the replacement cost of the capability. Same logic applies here.
 
 ## Inference Economics
 
@@ -113,11 +113,11 @@ Key findings relevant to our pricing:
 - Machine-to-machine payment protocol
 - $600M annualised volume (2025)
 - Validates micropayment viability at scale
-- DreamLab's Lightning integration is architecturally compatible with x402 settlement
+- dreamlab's Lightning integration is architecturally compatible with x402 settlement
 
 ## DID Market Context
 
-Decentralised Identity (DID) infrastructure underpins DreamLab's NIP-based auth:
+Decentralised Identity (DID) infrastructure underpins dreamlab's NIP-based auth:
 
 | Metric | Value |
 |--------|-------|

@@ -281,7 +281,7 @@ The URI grammar stands on:
 - **W3C DID Core 1.0** — Drummond Reed, Manu Sporny, Dave Longley, Christopher Allen, Ryan Grant, Markus Sabadello. The two-step name-vs-resolution model.
 - **IETF [RFC 8141 (URN syntax)](https://www.rfc-editor.org/rfc/rfc8141)** — P. Saint-Andre, J. Klensin (IETF, April 2017). The URN philosophy of stable names independent of location.
 - **W3C VC Data Model 2.0** — Manu Sporny, Dave Longley, Markus Sabadello, Orie Steele, Christopher Allen. Credential identifier conventions.
-- **`did:nostr` method draft** — DreamLab-AI / nostr-protocol contributors.
+- **`did:nostr` method draft** — dreamlab-AI / nostr-protocol contributors.
 - The agentbox FOD-everything pattern — `lib/npm-cli.nix`, `lib/solid-pod-rs.nix`, `lib/nagual-qe.nix`, `lib/linked-data-contexts.nix`. Content-addressing as a deployment discipline.
 
 In memoriam: **Gregg Kellogg** (d. 2025-09-06). Editor of JSON-LD 1.0 and 1.1; the JSON-LD layer every URI in this grammar plays inside.

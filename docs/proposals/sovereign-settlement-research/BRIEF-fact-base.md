@@ -130,7 +130,7 @@ R4-canon-assertions.md). Claims below are verified by the coordinator unless mar
 - UK English. No em-dashes in prose. Cite file:line. Mint decisions as proposed; the human ratifies.
 
 ## Owner direction 2026-09-21 (supersedes anything above that conflicts)
-- **"Our own sidestr sidechains are the key and only instrument."** DreamLab-operated sidestr chains
+- **"Our own sidestr sidechains are the key and only instrument."** dreamlab-operated sidestr chains
   (we are the signers / peg holders, level 2 federation across our own instances as the target) are
   THE value instrument of the platform. Lightning/NWC, x402, L402 and the pod WebLedger are not the
   instrument; they are at most on-ramps, bridges or legacy surfaces to be reconciled onto the chains.
@@ -148,7 +148,7 @@ R4-canon-assertions.md). Claims below are verified by the coordinator unless mar
 - D1 Parent/value: SHA-256d **testnet4 first**; mainnet and real USDT only behind the ADR-124 P21
   owner+legal build gate, which must be IMPLEMENTED (on-seal currency pin, cash-out disablement)
   before any mainnet chain document is signed.
-- D2 Topology: **one DreamLab root chain** (level 2, k-of-n; each federated instance holds a signer
+- D2 Topology: **one dreamlab root chain** (level 2, k-of-n; each federated instance holds a signer
   key) carrying users and bridged assets; agents/sessions/jobs open **ephemeral child chains** nested
   off it and settle back on close.
 - D3 Build: **Rust clean-room validator + wallet** as a publishable permissive crate (from the spec,

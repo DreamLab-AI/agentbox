@@ -4,7 +4,7 @@
 > `v0.5.0-alpha.9` (2026-09-06), the same revision the pod bridge builds against.
 > agentbox build: `./agentbox.sh update && nix build .#runtime`
 
-The native pod mesh extends the DreamLab platform with a sovereign, git-versioned Solid
+The native pod mesh extends the dreamlab platform with a sovereign, git-versioned Solid
 pod tier running inside the agentbox container. Forum users in eligible cohorts see a
 second "Native pod" card. Agent intelligence in the container collaborates with humans
 across a shared `did:nostr` identity space, with all state living in WAC-protected Solid

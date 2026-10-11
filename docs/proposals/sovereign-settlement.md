@@ -35,7 +35,7 @@ citations in this PRD were re-verified by the coordinator.
 **Our own sidestr sidechains are the key and only value instrument of the ecosystem.** A
 sidestr chain is a Bitcoin-family sidechain whose only network is Nostr: signed blocks, no
 subsidy, every coin a coin pegged on the parent, rules published as signed documents, and every
-reader (a browser tab included) validating the whole chain. DreamLab runs one root chain,
+reader (a browser tab included) validating the whole chain. dreamlab runs one root chain,
 `sidestr:dreamlab`, as a level-2 federation in which each federated instance holds one signer
 key; agents, sessions and jobs open ephemeral child chains nested off the root and settle back
 on close. External value enters only by peg-in (sats from the parent) or by bridge (RGB20
@@ -208,7 +208,7 @@ Numbered so ADRs, tests and the DDD invariants can cite them. "Must" is testable
   `MIT OR Apache-2.0` clean-room from prose), `publish = true` case by case, full rustdoc,
   `cargo doc --no-deps` clean. No permissive crate on a crates.io path links them.
   **Location (2026-09-23, ADR-2112):** these crates and `sidestr-round` live in
-  [DreamLab-AI/sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs), not in agentbox;
+  [dreamlab-AI/sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs), not in agentbox;
   agentbox hosts the chain instance (`config/sidechain/`) and consumes the crates from crates.io.
 - **S3a** The estate runs three kinds of chain: the value root, the `sidestr:gitmark`
   provenance chain (our own product; `[sidechain].gitmark.mode = consume | operate`), and

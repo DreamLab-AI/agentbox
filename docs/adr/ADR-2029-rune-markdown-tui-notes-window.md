@@ -144,7 +144,7 @@ CP-01/02/06/08. Owner remains jjohare with vault/runtime maintainers. The curren
 - **Governed paths changed** — `config/tmux-autostart.sh`,
   `tests/tui/notes-launcher.test.sh` (new).
 
-## Amendment 2026-09-25 — DreamLab fork; window 9 opens the working vault
+## Amendment 2026-09-25 — dreamlab fork; window 9 opens the working vault
 
 - **Source** — `lib/rune.nix` now builds `jjohare/rune` tag `v1.5.0-dreamlab.1`
   (`2698873b`), a fork cut from upstream `v1.5.0` adding Obsidian callouts,

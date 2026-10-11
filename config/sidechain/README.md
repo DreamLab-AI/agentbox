@@ -124,7 +124,7 @@ for four days with nothing to bring it back.
 registry (SPEC 11): any client asking for kind 33333 tagged `t=sidestr` lists every chain
 that has announced, and `play-grounds.github.io/sidestr` is one such client. Without it the
 producer makes blocks that no wallet can find. GitHub's raw file endpoint serves the
-mirror with open CORS and Range requests. The DreamLab website at `/chain` reads signed
+mirror with open CORS and Range requests. The dreamlab website at `/chain` reads signed
 tips from Nostr and links to these snapshots; it does not publish a new site build per block.
 
 The producer runs the image's bake of the commits in `upstream-pins` (`lib/sidestr-upstream.nix`):

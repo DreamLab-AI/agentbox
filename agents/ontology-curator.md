@@ -1,7 +1,7 @@
 ---
 name: ontology-curator
 description: >
-  Queries and extends the DreamLab sovereign corpus (visionGraph), and grounds
+  Queries and extends the dreamlab sovereign corpus (visionGraph), and grounds
   reasoning in it. Use for questions about what the corpus says, class/neighbour/
   path lookups, read-only SPARQL over the reasoned closure, OKF validation, or
   proposing a governed enrichment. Read is pervasive; writes are governed.

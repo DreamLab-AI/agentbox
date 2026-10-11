@@ -14,7 +14,7 @@
 just the unspent outputs keyed by a pubkey on one of them, and that every other ledger in the
 estate is about to become a cached view of that.*
 
-This bounded context owns **settlement**: the existence and rules of the chains DreamLab
+This bounded context owns **settlement**: the existence and rules of the chains dreamlab
 signs, the movement of value into them (peg-in, bridge-in), within them (ordinary spends),
 and out of them (peg-out, child-chain close), and the receipts that prove any of it
 happened. The aggregate root of chain identity is the `ChainDocument`. There is one
@@ -159,7 +159,7 @@ other, including everything that changes what a principal holds on a chain we si
 |---|---|
 | **Chain** | A Bitcoin-family sidechain whose only network is Nostr: signed blocks, no subsidy, every coin pegged, rules as signed documents. Ours are the instrument; nothing else in the estate is. |
 | **ChainDocument** | The signed document that *is* a chain's identity and rules: `id`, `parent`, `challenge`, `powLimit`, `addressPrefix`, `magic`, `pegConfirmations`, `refundBlocks`, `pegoutBlocks`, `pegoutMin`, `minFeeRate`, `genesisHash`, `signer` or `signers` plus `threshold`, `rules[]`, and our own additions (`trustLevel`, `currencyPin`, `cashOut`, `p21ReceiptUrn`, `closePolicy`). The aggregate root of chain identity. |
-| **Root chain** | The one long-lived DreamLab chain (level 2, k-of-n, one signer key per federated instance) that carries principals and bridged assets. Sole parent of every child chain. |
+| **Root chain** | The one long-lived dreamlab chain (level 2, k-of-n, one signer key per federated instance) that carries principals and bridged assets. Sole parent of every child chain. |
 | **Child chain** | An ephemeral chain nested off the root, opened for one agent, session or job, carrying a `Close`, and settled back to the root when it closes. The upstream `ephemeral` note is a design sketch with no code; we specify it. |
 | **Signer** | A key authorised by the chain document to seal blocks. Ordering authority only. Distinct, in our model, from the peg custodian and from any principal's spending key. |
 | **Federation** | The signer set of a chain plus its threshold. "We are our own federation" is a statement about who the custodian is, not a claim that there is none. |
@@ -727,7 +727,7 @@ substrate is exactly the sort of capability that feels like it deserves its own 
 2. **One root chain, or one per federated instance?** D2 says one root, each instance holding
    a signer key. That makes every instance a co-custodian of every other's value, which is a
    strong statement about a federation that may include instances we do not operate. The
-   alternative, one chain per instance nested under a DreamLab root, pushes the
+   alternative, one chain per instance nested under a dreamlab root, pushes the
    inter-instance settlement problem into the peg, which is where it is at least modelled.
 3. **What is the threshold for I06, and is it per chain, per principal or per asset?** A
    single global sats figure is wrong for a wrapped USD asset. The natural answer is per asset

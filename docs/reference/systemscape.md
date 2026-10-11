@@ -1,6 +1,6 @@
 # SystemScape: system telemetry and agent activity
 
-Agentbox packages [DreamLab-AI/systemscape](https://github.com/DreamLab-AI/systemscape),
+Agentbox packages [dreamlab-AI/systemscape](https://github.com/DreamLab-AI/systemscape),
 previously named `thermal3d`. The binary remains `systemscape`. It uses
 `gemini-engine 1.2.1`, the current published renderer version checked on 12 September
 2026; it is not a Ratatui graphics pipeline. The System window also runs `bottom`

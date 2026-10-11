@@ -372,7 +372,7 @@ cold validator able to replay genesis, because `open()` rebuilds genesis determi
 sidestr-rs — Rust port of Melvin Carvalho's sidestr sidechains, AGPL-3.0-only: the economic engine for did:nostr agents. A did:nostr key is a sidechain wallet.
 
 The crates were built in this repository under `crates/sidestr/` and on 2026-09-23 moved with
-their history to [DreamLab-AI/sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs), which now
+their history to [dreamlab-AI/sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs), which now
 carries their source, CI and releases (ADR-2112); `crates/sidestr/README.md` is a pointer.
 Agentbox hosts the **chain instance**, not the crates. The split by what is reusable is:
 

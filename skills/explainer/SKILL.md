@@ -148,7 +148,7 @@ takes precedence; do not carry that exception into future runs.
 
 ## The ringfence: our instrumentation never enters the target
 
-The skill is DreamLab tooling: forks, RuVector namespaces, ruvbrain grounding,
+The skill is dreamlab tooling: forks, RuVector namespaces, ruvbrain grounding,
 generated media pipelines. The **target** repo may be a deliberately
 conservative stack, and an explainer that leaks our tooling into it conflates
 the two in exactly the way its owner likely ringfenced against. So: nothing

@@ -13,7 +13,7 @@ owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
 repo: agentbox
 domain: INGRESS-identity
-lineage: legacy ADR-069 (unified operator auth / DreamLab adoption)
+lineage: legacy ADR-069 (unified operator auth / dreamlab adoption)
 ---
 
 # ADR-2010 — Bearer credential exchange is gated beneath the NIP-98 identity

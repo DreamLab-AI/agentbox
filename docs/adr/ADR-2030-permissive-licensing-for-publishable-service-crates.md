@@ -83,7 +83,7 @@ No registry lookup, archive creation or publication ran. The existing staleness 
 
 Scope note: prose-sanitiser is **not** among the eight `services/` manifests the
 2026-09-04 inventory counted. It was extracted to
-[DreamLab-AI/prose-sanitiser](https://github.com/DreamLab-AI/prose-sanitiser) and
+[dreamlab-AI/prose-sanitiser](https://github.com/DreamLab-AI/prose-sanitiser) and
 removed from `services/` by `38009c3`. This paragraph records only what now
 exists in that repository; the retained `services/` crates are covered
 separately.

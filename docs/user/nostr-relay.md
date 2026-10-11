@@ -177,7 +177,7 @@ Validator rules:
 
 Kinds 31400-31405 form the **Agent Control Surface Protocol** — a
 bidirectional governance layer between agentbox agents and the
-DreamLab forum. Agents publish panel definitions (31400) and action
+dreamlab forum. Agents publish panel definitions (31400) and action
 requests (31402) to the forum relay; humans respond with action
 responses (31403). The relay-consumer persists all governance events
 to `pods/<npub>/events/governance/` and routes inbound action responses

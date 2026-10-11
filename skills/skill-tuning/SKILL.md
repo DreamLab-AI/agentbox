@@ -4,7 +4,7 @@ description: "Empirically optimize any existing Claude skill against a measurabl
 license: MIT
 metadata:
   version: 1.0.0
-  author: DreamLab AI
+  author: dreamlab AI
   tags: [meta-skill, skill-optimization, skillopt, eval, ab-testing, reward, held-out, reflect, gradient, subscription-cli]
   mcp_server: false
 ---

@@ -518,7 +518,7 @@ CARF is a material omission. In-scope reporting providers must undertake the spe
 
 Cryptoasset exchange and custodian-wallet providers are included in relevant-firm sanctions reporting provisions. A proposed automatic payout/refund mechanism must be analysed against applicable restrictions; “the protocol did it” is not an operating policy. [OFSI general guidance](https://www.gov.uk/government/publications/financial-sanctions-general-guidance/uk-financial-sanctions-general-guidance)
 
-**Five hosts do not create five legally independent custodians.** If DreamLab controls the hosts, credentials and release process, the federation is still operationally concentrated. Determine who contracts with users, who owes redemption, who owns the reserves and who bears losses.
+**Five hosts do not create five legally independent custodians.** If dreamlab controls the hosts, credentials and release process, the federation is still operationally concentrated. Determine who contracts with users, who owes redemption, who owns the reserves and who bears losses.
 
 **A wrapped USDT claim is not automatically a direct claim against Tether.** The user may hold a claim against the bridge operator, which holds an RGB asset subject to a separate issuer and redemption arrangement. The pack needs the precise rights at each layer, including insolvency treatment, segregation, encumbrance, freezing and recovery.
 

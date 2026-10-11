@@ -247,7 +247,7 @@ is not yet wired**:
 > (Lightning-first) that was dropped on 2026-09-21.
 
 [PRD-024 Sovereign Settlement](../proposals/sovereign-settlement.md) makes **our own sidestr
-sidechains the sole value instrument of the ecosystem**: value is a UTXO on a chain DreamLab
+sidechains the sole value instrument of the ecosystem**: value is a UTXO on a chain dreamlab
 signs, and on-ramps and bridges feed the chain rather than competing with it (ADR-2096).
 
 The consequence for this loop is [ADR-2099](../adr/ADR-2099-the-chain-is-the-ledger-of-record.md),

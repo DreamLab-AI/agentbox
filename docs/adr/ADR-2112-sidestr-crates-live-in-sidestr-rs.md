@@ -1,6 +1,6 @@
 ---
 id: ADR-2112
-title: The sidestr crates live in DreamLab-AI/sidestr-rs; agentbox hosts the chain instance, not the crates
+title: The sidestr crates live in dreamlab-AI/sidestr-rs; agentbox hosts the chain instance, not the crates
 date: 2026-09-23
 decision_status: accepted
 implementation_status: complete
@@ -15,7 +15,7 @@ repo: agentbox
 domain: BASELINE-container
 ---
 
-# ADR-2112 — The sidestr crates live in DreamLab-AI/sidestr-rs; agentbox hosts the chain instance, not the crates
+# ADR-2112 — The sidestr crates live in dreamlab-AI/sidestr-rs; agentbox hosts the chain instance, not the crates
 
 ## Context
 

@@ -33,7 +33,7 @@ instrument and that external assets are bridged in (PRD-024 D0, D3).
 ## Decision
 
 1. **Our own sidestr sidechains are the only value instrument of the ecosystem.** Value is a
-   UTXO on a chain DreamLab signs. No other rail is planned; on-ramps and bridges feed the chain.
+   UTXO on a chain dreamlab signs. No other rail is planned; on-ramps and bridges feed the chain.
 2. **The consensus and wallet code is ours, clean-room, in Rust.** A new workspace
    `crates/sidestr/` on the colloquy precedent: `sidestr-header` (both header profiles and
    their PoW hashes, `no_std`-capable, RustCrypto `sha2`/`blake2`, no rust-bitcoin dependency;
@@ -121,7 +121,7 @@ document we seal may now name `evm`, with upstream's semantics (sidestr/spec `pr
 - withdrawals burn EVM value and must be paid in sats by the same chain's coinbase;
 - the coinbase commits the EVM state root, and every validator re-executes to check it.
 
-The instrument is still a UTXO on a chain DreamLab signs. PRD-015 C11 rejected a *native EVM
+The instrument is still a UTXO on a chain dreamlab signs. PRD-015 C11 rejected a *native EVM
 rail*: settling on Ethereum or an EVM network in place of our chains. It is not reopened, and it
 never covered an execution overlay on our own chain. Decision 1's review trigger ("any proposal
 to add a second value rail") is therefore not tripped.

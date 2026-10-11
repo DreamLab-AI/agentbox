@@ -37,7 +37,7 @@ the permissive assumption.
 The full licence text is in [LICENSE](LICENSE); it is the same AGPL-3.0 text as
 the repository root `LICENSE`.
 
-Copyright (c) 2024-2026 DreamLab AI / Dr John O'Hare
+Copyright (c) 2024-2026 dreamlab AI / Dr John O'Hare
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free

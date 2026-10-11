@@ -189,7 +189,7 @@ docker logs <container> 2>&1 | grep '\[5d/8\] vault'
     3. `build/generation.rs` stamps `visionGraph@<commit>`.
     4. `build/rvdb.rs` defaults to the LAN embedder `192.168.2.132:9997` and `bge-small-en-v1.5`, with `loom:ontology-corpus:` record ids.
     5. NGG1 graph tiers, `scaffold-index.json` and WebVOWL are the explorer's and Loom's formats.
-    6. `propose` and `nostr.rs` post DreamLab forum 31402 events.
+    6. `propose` and `nostr.rs` post dreamlab forum 31402 events.
     7. `repair bodies` is a Logseq→Obsidian migration tool.
     8. The crates.io name `vault` is taken.
 - **Plan (not started: needs the owner's go):**
