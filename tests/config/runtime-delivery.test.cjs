@@ -45,12 +45,23 @@ function fixture(t, failAt) {
   const copier = path.join(repo, 'copier');
   fs.mkdirSync(path.join(copier, 'bin'), { recursive: true });
   fs.writeFileSync(path.join(copier, 'bin/copy-to'), 'fixture');
+  const evidence = path.join(repo, 'security-evidence');
+  fs.mkdirSync(evidence);
+  fs.writeFileSync(path.join(evidence, 'metadata.json'), '{}');
+  const tools = path.join(repo, 'security-tools');
+  fs.mkdirSync(path.join(tools, 'bin'), { recursive: true });
+  fs.writeFileSync(path.join(tools, 'bin/agentbox-vex'), 'fixture');
   const calls = [];
   const state = { config: 'original', imageId: digest, imagePath, current: live, registry: null };
   const runner = (cmd, args, opts) => {
     calls.push({ cmd, args, opts });
     if (failAt?.(cmd, args)) throw new Error('injected failure');
-    if (cmd === 'nix') return args[0] === 'eval' ? state.imagePath : JSON.stringify([{ outputs: { out: imagePath } }, { outputs: { out: copier } }]);
+    if (cmd === 'nix') return args[0] === 'eval' ? state.imagePath : JSON.stringify([imagePath, copier, evidence, tools].map(out => ({ outputs: { out } })));
+    if (cmd === 'bash' && args[0] === 'scripts/security-scan.sh') {
+      const output = args[args.indexOf('--output') + 1];
+      fs.mkdirSync(output, { recursive: true });
+      fs.writeFileSync(path.join(output, 'bundle.json'), '{"schema_version":1}');
+    }
     if (cmd.endsWith('/bin/copy-to') && args.includes('--digestfile')) {
       fs.writeFileSync(args[args.indexOf('--digestfile') + 1], digest);
     }
@@ -92,6 +103,11 @@ for (const mode of ['daemon', 'registry', 'none']) {
     noDisruption(f.calls);
     assert.equal(f.calls.filter(c => c.cmd === 'nix').length, 1);
     assert.equal(r.preparedFrom, live.Id);
+    assert.ok(fs.existsSync(path.join(r.securityReport, 'bundle.json')));
+    assert.match(r.securityBundleChecksum, /^[a-f0-9]{64}$/);
+    const build = f.calls.find(c => c.cmd === 'nix');
+    assert.ok(build.args.includes('.#runtime.securityEvidence'));
+    assert.ok(build.args.includes('.#security-tools'));
     assert.equal(fs.existsSync(path.join(f.flow.state, 'candidate.json')), mode !== 'none');
     const smoke = f.calls.find(c => c.cmd === 'docker' && c.args[0] === 'run' && c.args.includes('--rm'));
     if (mode !== 'none') {
@@ -109,9 +125,10 @@ for (const mode of ['daemon', 'registry', 'none']) {
     }
   });
 }
-for (const failure of ['build', 'delivery', 'smoke']) {
+for (const failure of ['build', 'security-report', 'delivery', 'smoke']) {
   test(`${failure} failure preserves previous candidate and live container`, t => {
     const f = fixture(t, (cmd, args) => failure === 'build' ? cmd === 'nix'
+      : failure === 'security-report' ? cmd === 'bash' && args[0] === 'scripts/security-scan.sh'
       : failure === 'delivery' ? cmd.endsWith('/bin/copy-to') : cmd === 'docker' && args.includes('--rm'));
     const file = path.join(f.flow.state, 'candidate.json');
     const prior = JSON.stringify({ imagePath: '/absent', retained: true });

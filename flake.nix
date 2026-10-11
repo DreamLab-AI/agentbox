@@ -137,6 +137,15 @@
         inherit (pkgs) lib;
         n2c = nix2container.packages.${system}.nix2container;
 
+        # ADR-2137: host-only supply-chain tooling, never a runtime service.
+        vexPkg = import ./lib/agentbox-vex.nix { inherit lib; pkgs = rustPkgs; };
+        securityTools = pkgs.symlinkJoin {
+          name = "agentbox-security-tools";
+          paths = [ vexPkg pkgs.sbomnix pkgs.grype pkgs.skopeo pkgs.jq
+            pkgs.coreutils pkgs.bash ];
+        };
+        pristineOpenssh = (import nixpkgs { inherit system; }).openssh;
+
         agentboxConfig = builtins.fromTOML (builtins.readFile ./agentbox.toml);
         # ADR-2080: metaharness cost-optimal router console. The @claude-flow/cli
         # npm tarball ships no router artefacts (its `files` list excludes
@@ -4408,7 +4417,8 @@ ${ragflowNetworkDecl}
         };
 
         mkImage = { tag, extraPackages ? [], maxLayers ? 1 }:
-          n2c.buildImage {
+          let
+            image = n2c.buildImage {
             name = "agentbox";
             inherit tag maxLayers;
             layers = imageLayers extraPackages;
@@ -4434,6 +4444,30 @@ ${ragflowNetworkDecl}
                 "org.opencontainers.image.architecture" = system;
               };
             };
+            };
+          in image // {
+            # The exporter reads actual layer paths after the image is built.
+            # Its separate payload root keeps builder metadata out of the SBOM.
+            securityEvidence = import ./lib/vex-evidence.nix {
+              inherit pkgs image;
+              metadata = {
+                inherit system;
+                variant = lib.removeSuffix "-${system}" tag;
+                nixpkgs_revision = nixpkgs.rev or "unknown";
+                source_revision = self.rev or self.dirtyRev or "uncommitted";
+                manifest_sha256 = builtins.hashString "sha256" (builtins.readFile ./agentbox.toml);
+                lock_sha256 = builtins.hashString "sha256" (builtins.readFile ./flake.lock);
+                openssh = {
+                  version = pkgs.openssh.version;
+                  output_path = toString pkgs.openssh;
+                  output_paths = map (output: toString pkgs.openssh.${output}) pkgs.openssh.outputs;
+                  source_hash = pkgs.openssh.src.outputHash or "unknown";
+                  configure_flags = pkgs.openssh.configureFlags or [ ];
+                  patches = map (patch: baseNameOf (toString patch)) (pkgs.openssh.patches or [ ]);
+                  stock_build = pkgs.openssh.outPath == pristineOpenssh.outPath;
+                };
+              };
+            };
           };
       in
       {
@@ -4442,6 +4476,8 @@ ${ragflowNetworkDecl}
         # shell; operators use Docker Desktop to pull the published multi-arch
         # image (see docs/guides/platforms.md).
         packages = lib.optionalAttrs pkgs.stdenv.isLinux {
+          security-tools = securityTools;
+          agentbox-vex = vexPkg;
           systemscape = systemscapePkg; # fast standalone verification before an image rebuild
           runtime = mkImage { tag = "runtime-${system}"; };
           full = mkImage {

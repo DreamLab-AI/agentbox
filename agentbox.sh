@@ -43,6 +43,7 @@ Local lifecycle commands:
   ${GREEN}up${NC}               Start the Docker stack [--build: nix build + docker load first] [--registry: use AGENTBOX_IMAGE_REF from env]
   ${GREEN}down${NC}             Stop the Docker stack [--volumes: also remove volumes (confirms)]
   ${GREEN}build${NC}            Build the Nix image [--variant runtime|desktop|full]
+  ${GREEN}security${NC}         Generate image SBOM/VEX or scan a digest-pinned image [report|scan]
   ${GREEN}prepare${NC}          Build + deliver a candidate; NEVER stop/restart the running container
   ${GREEN}activate${NC}         Activate the prepared candidate (Agentbox only; no sidecars/cleanup)
   ${GREEN}rebuild${NC}          Prepare, then activate Agentbox [--prepare-only leaves it running]
@@ -757,6 +758,7 @@ cmd_up() {
         bash "${SCRIPT_DIR}/scripts/refresh-compose.sh" || return 1
         echo -e "${CYAN}Building Nix runtime image...${NC}"
         nix build .#runtime
+        bash "${SCRIPT_DIR}/scripts/security-scan.sh" report --variant runtime
         echo -e "${CYAN}Loading image into Docker...${NC}"
         # nix2container output is an OCI manifest JSON, not a tarball;
         # copyToDockerDaemon uses skopeo to load directly into the daemon.
@@ -929,6 +931,8 @@ cmd_build() {
     bash "${SCRIPT_DIR}/scripts/refresh-compose.sh" || return 1
     echo -e "${CYAN}Building Nix image variant: ${variant}...${NC}"
     nix build ".#${variant}"
+
+    bash "${SCRIPT_DIR}/scripts/security-scan.sh" report --variant "$variant"
 
     local result_path
     result_path=$(readlink -f result 2>/dev/null || echo "./result")
@@ -2581,6 +2585,7 @@ case "${CMD:-}" in
     activate)      bash "${SCRIPT_DIR}/scripts/runtime-delivery.sh" activate "$@" ;;
     rebuild)       cmd_rebuild "$@" ;;
     update)        cmd_update "$@" ;;
+    security)      bash "${SCRIPT_DIR}/scripts/security-scan.sh" "$@" ;;
     ruvector)      cmd_ruvector "$@" ;;
     ruvnet-brain)  cmd_ruvnet_brain "$@" ;;
     logs)              cmd_logs "$@" ;;

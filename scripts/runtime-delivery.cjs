@@ -158,11 +158,18 @@ class Delivery {
     const manifestChecksum = this.manifestChecksum();
     this.run('bash', ['scripts/refresh-compose.sh']);
     const outputs = JSON.parse(this.capture('nix', ['build', '.#runtime', '.#runtime.copyTo',
+      '.#runtime.securityEvidence', '.#security-tools',
       '--out-link', path.join(generation, 'result'), '--json', '--max-jobs', '2', '--cores', '4']));
     const paths = outputs.map(o => o.outputs.out);
     const imagePath = paths.find(p => p.endsWith('-image-agentbox.json'));
     const copier = paths.find(p => fs.existsSync(path.join(p, 'bin/copy-to')));
-    if (!imagePath || !copier) throw new Error('Nix did not return image and delivery helper');
+    const securityEvidence = paths.find(p => fs.existsSync(path.join(p, 'metadata.json')));
+    const securityTools = paths.find(p => fs.existsSync(path.join(p, 'bin/agentbox-vex')));
+    if (!imagePath || !copier || !securityEvidence || !securityTools) throw new Error('Nix did not return image, delivery helper and security evidence/tools');
+    const securityReport = path.join(generation, 'security');
+    this.run('bash', ['scripts/security-scan.sh', 'report', '--evidence', securityEvidence,
+      '--tools', securityTools, '--output', securityReport]);
+    const securityBundleChecksum = sha(fs.readFileSync(path.join(securityReport, 'bundle.json')));
     const image = readJSON(imagePath);
     const report = layerReport(image, previous && fs.existsSync(previous.imagePath) ? readJSON(previous.imagePath) : null);
     if (report.duplicatePaths.length) throw new Error(`Image repeats ${report.duplicatePaths.length} store paths`);
@@ -203,6 +210,7 @@ class Delivery {
     if (manifestChecksum !== this.manifestChecksum()) throw new Error('Manifest changed during preparation; prepare again');
     const receipt = { version: 1, createdAt: new Date().toISOString(), generation,
       imagePath, imageRef, imageId, delivery, manifestChecksum, sourceCommit, sourceDirty,
+      securityReport, securityBundleChecksum,
       preparedFrom: original?.Id || null, preparedStartedAt: original?.State.StartedAt || null, report,
       seconds: { build: (builtAt - started) / 1000,
         registrySetup: (registryReadyAt - builtAt) / 1000,
