@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_120 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_121 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -183,3 +183,4 @@ _120 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2131](ADR-2131-diagram-review-runs-on-a-ledgered-cadence-with-a-gated-gemini-audit.md) | Diagram review runs on a ledgered cadence with a gated, budget-capped Gemini audit | GOVERNANCE-capabilities | 2026-10-06 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2132](ADR-2132-incremental-image-delivery.md) | Separate non-disruptive image preparation from scoped runtime activation | BASELINE-container | 2026-10-06 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2133](ADR-2133-rebuild-the-sidecar-hnsw-index-by-swap-and-give-readers-their-own-role.md) | Rebuild the sidecar HNSW index by swap, and give read-only consumers their own role | LEARNING-memory | 2026-10-07 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2136](ADR-2136-pin-the-shared-ontology-toolchain.md) | Pin the shared ontology toolchain independently of the host application | — | 2026-10-11 | proposed | none | inactive | — | — | jjohare | agentbox |

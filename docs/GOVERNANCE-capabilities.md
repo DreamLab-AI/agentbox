@@ -623,3 +623,8 @@ review transport outside `[model_routing]` and is not a `seal-review` substitute
 and the `.tiers.json` reader ship together with the `sealmap` skill (DESIGN §10 step 5). The
 two rules (activities rather than ids, and cross-family seal review) move into *Invariants*
 when that lands with a test that refuses a same-family seal review.
+
+
+## Proposed shared ontology workspace extension — 2026-10-11
+
+[Shared workspace proposal](adr/ADR-2136-pin-the-shared-ontology-toolchain.md) is proposed, unimplemented and inactive. Align the immutable corpus CLI and optional existing-vault automation with a released shared ontology toolchain; preserve proposal guards and manifest path authority. Existing accepted invariants and running behaviour are unchanged. OCR and document ingestion are outside this scope.

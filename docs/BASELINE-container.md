@@ -451,3 +451,8 @@ Codex's copied daemon executables live on the disk-backed
 UID/GID 1000. The parent configuration tmpfs remains bounded and `noexec`.
 Local image builds refresh and validate generated Compose before building, so
 `./agentbox.sh rebuild` applies changes to mounts as well as image contents.
+
+
+## Proposed shared ontology workspace extension — 2026-10-11
+
+[Shared workspace proposal](adr/ADR-2136-pin-the-shared-ontology-toolchain.md) is proposed, unimplemented and inactive. Build the immutable corpus tool from an independent pinned workspace, with package verification and runtime activation recorded separately. Existing accepted invariants and running behaviour are unchanged. OCR and document ingestion are outside this scope.
