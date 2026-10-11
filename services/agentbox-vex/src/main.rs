@@ -45,6 +45,9 @@ enum Command {
         subject: Option<String>,
         #[arg(long)]
         output: PathBuf,
+        /// Pinned Syft binary for scoped SPDX and native scanner exports.
+        #[arg(long)]
+        syft: Option<PathBuf>,
     },
     /// Verify subject and all required artefact hashes before applying VEX.
     Verify {
@@ -65,6 +68,9 @@ enum Command {
         config: PathBuf,
         #[arg(long)]
         output: PathBuf,
+        /// Required when rebinding a report containing scoped SPDX exports.
+        #[arg(long)]
+        syft: Option<PathBuf>,
     },
     /// Prove that a published manifest/config represents the assessed image.
     CheckImage {
@@ -335,7 +341,11 @@ fn write_bundle(output: &Path, subject: &str) -> Result<()> {
         files.insert(*file, hash(&fs::read(output.join(file))?));
     }
     // Optional inventory exports are integrity-protected when supplied.
-    for file in ["sbom.nix.spdx.json", "sbom.nix.csv"] {
+    for file in [
+        "sbom.nix.spdx.json",
+        "sbom.nix.syft.json",
+        "sbomnix.raw.csv",
+    ] {
         if output.join(file).exists() {
             files.insert(file, hash(&fs::read(output.join(file))?));
         }
@@ -362,7 +372,10 @@ fn verify(bundle: &Path, subject: &str) -> Result<Value> {
     }
     for (name, digest) in files {
         if !BUNDLE_FILES.contains(&name.as_str())
-            && !matches!(name.as_str(), "sbom.nix.spdx.json" | "sbom.nix.csv")
+            && !matches!(
+                name.as_str(),
+                "sbom.nix.spdx.json" | "sbom.nix.syft.json" | "sbomnix.raw.csv"
+            )
         {
             return Err("Unexpected bundle file".into());
         }
@@ -373,6 +386,15 @@ fn verify(bundle: &Path, subject: &str) -> Result<Value> {
     let sbom = read_json(&bundle.join("sbom.nix.cyclonedx.json"))?;
     if sbom["metadata"]["component"]["version"] != subject {
         return Err("SBOM subject mismatch".into());
+    }
+    if files.contains_key("sbom.nix.syft.json") {
+        let native = read_json(&bundle.join("sbom.nix.syft.json"))?;
+        if native["source"]["name"] != "agentbox"
+            || native["source"]["version"] != subject
+            || native["source"]["type"] != "directory"
+        {
+            return Err("Scanner SBOM subject mismatch".into());
+        }
     }
     let evidence = read_json(&bundle.join("build-evidence.json"))?;
     if evidence["subject"] != subject {
@@ -560,6 +582,54 @@ fn check_image(
     Ok(())
 }
 
+fn convert_sbom(syft: &Path, input: &Path, format: &str) -> Result<Value> {
+    let result = std::process::Command::new(syft)
+        .arg("convert")
+        .arg(input)
+        .args(["-o", format])
+        .output()?;
+    if !result.status.success() {
+        return Err(format!("Syft {format} conversion failed: {}", result.status).into());
+    }
+    Ok(serde_json::from_slice(&result.stdout)?)
+}
+
+fn scope_native(mut native: Value, scoped: &Value, subject: &str) -> Result<Value> {
+    let components = scoped["components"].as_array().ok_or("Missing inventory")?;
+    let artifacts = native["artifacts"]
+        .as_array()
+        .ok_or("Syft omitted inventory")?;
+    let expected: BTreeSet<&str> = components
+        .iter()
+        .filter_map(|c| c["purl"].as_str())
+        .collect();
+    let actual: BTreeSet<&str> = artifacts
+        .iter()
+        .filter_map(|c| c["purl"].as_str())
+        .collect();
+    if components.len() != artifacts.len() || expected != actual {
+        return Err("Syft conversion changed the scoped package inventory".into());
+    }
+    // Container roots lose repository identifiers in the CycloneDX decoder.
+    // Explicit generic aliases survive the native decoder and match OpenVEX.
+    native["source"] = json!({"id":subject,"name":"agentbox","version":subject,
+        "type":"directory","metadata":{"path":"agentbox"}});
+    Ok(native)
+}
+
+fn export_sboms(output: &Path, subject: &str, syft: &Path) -> Result<()> {
+    let scoped = read_json(&output.join("sbom.nix.cyclonedx.json"))?;
+    let converted = convert_sbom(syft, &output.join("sbom.nix.cyclonedx.json"), "syft-json")?;
+    let native = scope_native(converted, &scoped, subject)?;
+    write_json(&output.join("sbom.nix.syft.json"), &native)?;
+    let spdx = convert_sbom(syft, &output.join("sbom.nix.syft.json"), "spdx-json")?;
+    if spdx["spdxVersion"] != "SPDX-2.3" {
+        return Err("Unsupported SPDX export".into());
+    }
+    write_json(&output.join("sbom.nix.spdx.json"), &spdx)?;
+    write_bundle(output, subject)
+}
+
 fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Report {
@@ -567,7 +637,21 @@ fn run(cli: Cli) -> Result<()> {
             sbom,
             subject,
             output,
-        } => report(&evidence, &sbom, subject.as_deref(), &output),
+            syft,
+        } => {
+            if syft.is_none()
+                && (output.join("sbom.nix.spdx.json").exists()
+                    || output.join("sbom.nix.syft.json").exists())
+            {
+                return Err("Refreshing exported SBOMs requires --syft".into());
+            }
+            report(&evidence, &sbom, subject.as_deref(), &output)?;
+            if let Some(syft) = syft {
+                let manifest = read_json(&output.join("bundle.json"))?;
+                export_sboms(&output, required_str(&manifest, "subject")?, &syft)?;
+            }
+            Ok(())
+        }
         Command::Verify { bundle, subject } => {
             verify(&bundle, &subject)?;
             Ok(())
@@ -578,9 +662,20 @@ fn run(cli: Cli) -> Result<()> {
             manifest,
             config,
             output,
+            syft,
         } => {
+            if syft.is_none()
+                && (bundle.join("sbom.nix.spdx.json").exists()
+                    || bundle.join("sbom.nix.syft.json").exists())
+            {
+                return Err("Rebinding SPDX exports requires --syft".into());
+            }
             check_image(&bundle, &manifest, &config, &subject)?;
-            bind(&bundle, &subject, &output)
+            bind(&bundle, &subject, &output)?;
+            if let Some(syft) = syft {
+                export_sboms(&output, &subject, &syft)?;
+            }
+            Ok(())
         }
         Command::CheckImage {
             bundle,
@@ -618,6 +713,24 @@ mod tests {
         "metadata":{},"components":[{"type":"library","bom-ref":"ssh","name":"openssh","version":REVIEWED_OPENSSH,
             "purl":format!("pkg:nix/openssh@{REVIEWED_OPENSSH}"),
             "properties":[{"name":"nix:output_path","value":package_path()}]}]})
+    }
+
+    #[test]
+    fn native_export_rejects_lost_or_changed_packages_and_uses_scoped_source() {
+        let scoped = sbom();
+        let purl = scoped["components"][0]["purl"].clone();
+        let native = json!({"artifacts":[{"purl":purl}],"source":{"type":"image"}});
+        let converted = scope_native(native.clone(), &scoped, &subject()).unwrap();
+        assert_eq!(converted["source"]["type"], "directory");
+        assert_eq!(converted["source"]["name"], "agentbox");
+        assert_eq!(converted["source"]["version"], subject());
+        assert_eq!(converted["artifacts"], native["artifacts"]);
+        let mut missing = native.clone();
+        missing["artifacts"] = json!([]);
+        assert!(scope_native(missing, &scoped, &subject()).is_err());
+        let mut changed = native;
+        changed["artifacts"][0]["purl"] = json!("pkg:nix/openssh@other");
+        assert!(scope_native(changed, &scoped, &subject()).is_err());
     }
 
     #[test]

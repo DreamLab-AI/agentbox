@@ -43,7 +43,9 @@ Each offline report contains:
 |---|---|
 | `build-evidence.json` | Shipped payload, build identity and rule predicates |
 | `sbom.nix.cyclonedx.json` | Nix-derived CycloneDX inventory |
-| `sbom.nix.spdx.json` | Nix-derived SPDX inventory |
+| `sbom.nix.spdx.json` | SPDX export of the same scoped inventory |
+| `sbom.nix.syft.json` | Native scanner inventory with the explicit image identity |
+| `sbomnix.raw.csv` | Raw sbomnix closure export for debugging; may include the synthetic root and unshipped grouped outputs |
 | `vex.openvex.json` | Applicable OpenVEX statements |
 | `assessment.json` | Rule decisions, including withdrawn or unknown conditions |
 | `bundle.json` | Links the report's evidence and image subject |
@@ -78,6 +80,9 @@ The helper converts the verified CycloneDX inventory to `sbom.nix.syft.json`
 and gives its source the image's explicit name and digest. This preserves the
 product identity needed by Grype's OpenVEX matcher; package PURLs come from the
 verified inventory. It does not catalogue new packages during conversion.
+SPDX is exported from that same inventory, and both exports are hashed into
+the evidence bundle. Grype receives `--add-cpes-if-none` because Nix packages
+need CPE matching and the offline report avoids network-based CPE enrichment.
 
 `security scan` retains `grype.raw.json`, `grype.filtered.json` and a filtered
 text table alongside the report bundle. The default severity gate is `high`;
@@ -150,6 +155,17 @@ cargo test --manifest-path services/agentbox-vex/Cargo.toml
 cargo fmt --manifest-path services/agentbox-vex/Cargo.toml --check
 cargo clippy --manifest-path services/agentbox-vex/Cargo.toml --all-targets -- -D warnings
 ```
+
+Check scanner interoperability with a synthetic vulnerable package inventory:
+
+```sh
+tools=$(nix build .#security-tools --no-link --print-out-paths)
+bash tests/security/vex-grype.integration.sh "$tools" .agentbox-build/vex-matcher-check
+```
+
+This opt-in check downloads the Grype database when needed and verifies
+product/subcomponent matching, withdrawal and preservation of unrelated
+findings. Its synthetic VEX statements are test data, not security assessments.
 
 Then build the evidence and report on each supported architecture and scan the
 resulting digest. Fixture checks establish rule behaviour; they cannot replace

@@ -6,6 +6,7 @@ on:
       - 'services/agentbox-vex/**'
       - 'scripts/security-scan.sh'
       - 'tests/security/security-scan.test.cjs'
+      - 'tests/security/vex-grype.integration.sh'
       - '.github/workflows/**'
       - 'flake.nix'
       - 'lib/vex-evidence.nix'
@@ -16,6 +17,7 @@ on:
       - 'services/agentbox-vex/**'
       - 'scripts/security-scan.sh'
       - 'tests/security/security-scan.test.cjs'
+      - 'tests/security/vex-grype.integration.sh'
       - '.github/workflows/**'
       - 'flake.nix'
       - 'lib/vex-evidence.nix'
@@ -43,5 +45,5 @@ jobs:
           cargo clippy --locked --all-targets -- -D warnings
       - name: Host scan and workflow contracts
         run: |
-          bash -n scripts/security-scan.sh
+          bash -n scripts/security-scan.sh tests/security/vex-grype.integration.sh
           node --test tests/security/security-scan.test.cjs

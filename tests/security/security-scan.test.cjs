@@ -36,7 +36,8 @@ if (name === 'agentbox-vex') {
   if (args[0] === process.env.TEST_FAIL_COMMAND) process.exit(1);
   if (args[0] === 'report' || args[0] === 'bind') {
     const out = value('--output'); fs.mkdirSync(out,{recursive:true});
-    for(const file of ['sbom.nix.cyclonedx.json','vex.openvex.json']) fs.writeFileSync(path.join(out,file),'{}');
+    for(const file of ['sbom.nix.cyclonedx.json','sbom.nix.spdx.json','vex.openvex.json']) fs.writeFileSync(path.join(out,file),'{}');
+    fs.writeFileSync(path.join(out,'sbom.nix.syft.json'), JSON.stringify({source:{id:${JSON.stringify(digest)},name:'agentbox',version:${JSON.stringify(digest)},type:'directory',metadata:{path:'agentbox'}},artifacts:[{purl:'pkg:nix/openssh@10.3p1'}]}));
     fs.writeFileSync(path.join(out,'bundle.json'),JSON.stringify({subject:${JSON.stringify(digest)}}));
   }
 }
@@ -64,22 +65,23 @@ test('report scans only the real shipped payload and retains all SBOM formats', 
   assert.ok(calls[0].args.includes('--exclude-meta'));
   assert.ok(calls[0].args.includes('--exclude-cpe-matching'));
   assert.deepEqual(calls[1].args.slice(-2), ['--subject', digest]);
-  for (const file of ['sbom.nix.spdx.json', 'sbom.nix.csv', 'sbom.nix.cyclonedx.json', 'vex.openvex.json', 'bundle.json']) assert.ok(fs.existsSync(path.join(f.output, file)), file);
+  for (const file of ['sbom.nix.spdx.json', 'sbomnix.raw.csv', 'sbom.nix.cyclonedx.json', 'vex.openvex.json', 'bundle.json']) assert.ok(fs.existsSync(path.join(f.output, file)), file);
 });
 test('scan verifies input, image bytes/config, binding and subject before applying VEX', t => {
   const f = fixture(t);
   const r = f.run(['scan', '--tools', f.tools, '--report', f.report, '--image', image, '--output', f.output]);
   assert.equal(r.status, 0, r.stderr);
   const calls = f.calls();
-  assert.deepEqual(calls.map(c => c.name === 'agentbox-vex' ? c.args[0] : c.name), ['verify', 'skopeo', 'skopeo', 'check-image', 'bind', 'verify', 'syft', 'grype', 'grype']);
+  assert.deepEqual(calls.map(c => c.name === 'agentbox-vex' ? c.args[0] : c.name), ['verify', 'skopeo', 'skopeo', 'check-image', 'bind', 'verify', 'grype', 'grype']);
   const configRead = calls.find(c => c.name === 'skopeo' && c.args.includes('--config'));
   assert.ok(configRead.args.includes('--raw'), 'config must preserve its manifest-addressed blob bytes');
   const grype = calls.filter(c => c.name === 'grype');
-  assert.equal(grype[0].args[0], `sbom:${f.output}/sbom.nix.syft.json`);
-  const converted = JSON.parse(fs.readFileSync(path.join(f.output, 'sbom.nix.syft.json')));
+  assert.equal(grype[0].args[0], `sbom:${f.output}/evidence/sbom.nix.syft.json`);
+  const converted = JSON.parse(fs.readFileSync(path.join(f.output, 'evidence/sbom.nix.syft.json')));
   assert.deepEqual(converted.source, {id: digest, name: 'agentbox', version: digest, type: 'directory', metadata: {path: 'agentbox'}});
   assert.equal(converted.artifacts[0].purl, 'pkg:nix/openssh@10.3p1');
   assert.ok(!grype[0].args.includes('--vex'));
+  assert.ok(grype.every(c => c.args.includes('--add-cpes-if-none')), 'Nix CPE matching must be enabled explicitly');
   assert.deepEqual(grype[1].args.slice(-2), ['--fail-on', 'high']);
   assert.ok(grype[1].args.includes('--vex'));
   assert.ok(!grype.some(c => c.args.includes('--only-fixed')));

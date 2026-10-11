@@ -158,8 +158,7 @@ jobs:
           "$SECURITY_TOOLS/bin/skopeo" inspect --raw "docker://${ARCH_TAG%:*}@$digest" > registry-manifest.json
           "$SECURITY_TOOLS/bin/skopeo" inspect --config --raw "docker://${ARCH_TAG%:*}@$digest" > registry-config.json
           "$SECURITY_TOOLS/bin/agentbox-vex" check-image --bundle security-build --manifest registry-manifest.json --config registry-config.json --subject "$digest"
-          "$SECURITY_TOOLS/bin/agentbox-vex" bind --bundle security-build --subject "$digest" --output security-published --manifest registry-manifest.json --config registry-config.json
-          cp security-build/sbom.nix.spdx.json security-build/sbom.nix.csv security-published/
+          "$SECURITY_TOOLS/bin/agentbox-vex" bind --bundle security-build --subject "$digest" --output security-published --manifest registry-manifest.json --config registry-config.json --syft "$SECURITY_TOOLS/bin/syft"
           printf '%s@%s\n' "${ARCH_TAG%:*}" "$digest" > security-published/image-ref.txt
           jq -n --arg sha "$SOURCE_SHA" --arg arch "$ARCH" --arg ref "${ARCH_TAG%:*}@$digest" --arg run "$GITHUB_RUN_ID" \
             '{source_revision:$sha,arch:$arch,image_ref:$ref,build_run_id:$run}' > security-published/publication.json

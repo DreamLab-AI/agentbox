@@ -54,13 +54,14 @@ image; no manifest flag or runtime service is needed.
 
 ```sh
 ./agentbox.sh security report --variant runtime --output .agentbox-build/security/runtime
-./agentbox.sh security scan --image REPOSITORY@sha256:DIGEST --variant runtime --fail-on high
+./agentbox.sh security scan --image REPOSITORY@sha256:DIGEST --report .agentbox-build/security/runtime --fail-on high
 ```
 
 | Option | Description |
 |---|---|
 | `--variant` | `runtime` (default), `full`, `desktop`, `cuda-runtime` or `gaussian-splatting` |
-| `--output DIR` | Report directory; default `.agentbox-build/security/<variant>` |
+| `--output DIR` | Default `.agentbox-build/security/<variant>` for reports, `<variant>-scan` for scans |
+| `--report DIR` | Reuse the matching build's report; otherwise `scan` builds local evidence |
 | `--image REPOSITORY@sha256:DIGEST` | Required for `scan`; immutable image subject matching the source/build evidence |
 | `--fail-on SEVERITY` | Scan gate after VEX filtering; default `high`; `none` retains reports without a severity gate |
 

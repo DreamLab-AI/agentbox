@@ -66,8 +66,8 @@ make_report() {
   mkdir -p -- "$destination"
   # This real output contains only the unique shipped paths, not build-tool closure.
   tool sbomnix "$(readlink -f -- "$evidence/payload")" --exclude-meta --exclude-cpe-matching \
-    --cdx "$scratch/sbom.nix.cyclonedx.json" --spdx "$destination/sbom.nix.spdx.json" --csv "$destination/sbom.nix.csv"
-  local args=(report --evidence "$evidence" --sbom "$scratch/sbom.nix.cyclonedx.json" --output "$destination")
+    --cdx "$scratch/sbom.nix.cyclonedx.json" --spdx "$scratch/sbomnix.raw.spdx.json" --csv "$destination/sbomnix.raw.csv"
+  local args=(report --evidence "$evidence" --sbom "$scratch/sbom.nix.cyclonedx.json" --output "$destination" --syft "$tools/bin/syft")
   [[ -z $subject || $command == scan ]] || args+=(--subject "$subject")
   tool agentbox-vex "${args[@]}"
 }
@@ -82,19 +82,10 @@ tool skopeo inspect --config --raw "docker://$image" > "$output/image.config.jso
 tool agentbox-vex check-image --bundle "$report" --manifest "$output/image.manifest.json" \
   --config "$output/image.config.json" --subject "$subject"
 tool agentbox-vex bind --bundle "$report" --subject "$subject" --output "$output/evidence" \
-  --manifest "$output/image.manifest.json" --config "$output/image.config.json"
+  --manifest "$output/image.manifest.json" --config "$output/image.config.json" --syft "$tools/bin/syft"
 tool agentbox-vex verify --bundle "$output/evidence" --subject "$subject"
 printf '{}\n' > "$output/grype.config.yaml"
 printf '%s\n' "$image" > "$output/image-ref.txt"
-# CycloneDX container roots lose repository identifiers when Grype's Syft
-# decoder imports them. Convert the verified inventory, then give its source
-# the explicit generic alias used by our image-scoped OpenVEX product. No
-# packages are catalogued here; every component comes from the verified SBOM.
-tool syft convert "$output/evidence/sbom.nix.cyclonedx.json" -o syft-json > "$scratch/sbom.syft.json"
-tool jq --arg subject "$subject" '.source = {
-  id: $subject, name: "agentbox", version: $subject,
-  type: "directory", metadata: {path: "agentbox"}
-}' "$scratch/sbom.syft.json" > "$output/sbom.nix.syft.json"
 grype_scan() {
   # Keep database/cache settings; drop ambient filters, VEX, output and policy
   # overrides so the raw scan really is raw and the gate is the explicit one.
@@ -104,8 +95,8 @@ grype_scan() {
     if [[ $name == GRYPE_* && $name != GRYPE_DB_* ]]; then clean_env+=(-u "$name"); fi
   done < <(compgen -e)
   env "${clean_env[@]}" GRYPE_CHECK_FOR_APP_UPDATE=false \
-    "$tools/bin/grype" "sbom:$output/sbom.nix.syft.json" \
-    --config "$output/grype.config.yaml" --output json "$@"
+    "$tools/bin/grype" "sbom:$output/evidence/sbom.nix.syft.json" \
+    --config "$output/grype.config.yaml" --add-cpes-if-none --output json "$@"
 }
 grype_scan > "$output/grype.raw.json"
 gate=(); [[ $fail_on == none ]] || gate=(--fail-on "$fail_on")
