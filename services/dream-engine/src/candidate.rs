@@ -31,6 +31,8 @@ pub struct PreparedCandidate {
     pub tree_hash: String,
     pub patch_digest: String,
     pub patch_bytes: usize,
+    /// How the patch landed (see [`persist::build_branch_worktree_via`]).
+    pub applied_via: String,
 }
 
 /// Build the candidate tree: a worktree at HEAD, on `branch`, with `patch`
@@ -45,7 +47,8 @@ pub fn prepare(
     commit_msg: &str,
     base: &str,
 ) -> Result<PreparedCandidate, PersistError> {
-    let worktree = persist::build_branch_worktree_at(repo, branch, patch, commit_msg, base)?;
+    let (worktree, applied_via) =
+        persist::build_branch_worktree_via(repo, branch, patch, commit_msg, base)?;
     let tree_hash = crate::manifest::git(&worktree, &["rev-parse", "HEAD^{tree}"])
         .map_err(|e| PersistError::Git("rev-parse HEAD^{tree}".into(), e.to_string()))?;
     Ok(PreparedCandidate {
@@ -54,6 +57,7 @@ pub fn prepare(
         tree_hash,
         patch_digest: digest(patch.as_bytes()),
         patch_bytes: patch.len(),
+        applied_via,
     })
 }
 

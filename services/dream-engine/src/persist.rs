@@ -47,19 +47,220 @@ pub fn deletes_binary(patch: &str) -> bool {
 
 /// Pull the candidate patch out of the first ```dream-patch fenced block.
 /// Returns None when absent or empty (a finding with no code change).
+///
+/// The block ends at the first line that is *only* a fence (trailing
+/// whitespace allowed). A bare "```" anywhere else is diff content: every diff
+/// line carries a one-character prefix, so a Rust doc-test fence (`/// ````)
+/// or a Markdown code fence edited by the patch appears as ` /// ```` or
+/// `+```` and never as a fence line. Ending at the first "```" substring cut
+/// such patches mid-hunk ("corrupt patch at :14", factrail 2026-10-08/10).
 pub fn extract_patch(report: &str) -> Option<String> {
     const TAG: &str = "```dream-patch";
     let start = report.find(TAG)? + TAG.len();
     let rest = &report[start..];
-    let end = rest.find("```")?;
-    // Drop the newline immediately after the opening fence, keep the diff body.
-    let body = rest[..end].strip_prefix('\r').unwrap_or(&rest[..end]);
-    let body = body.strip_prefix('\n').unwrap_or(body);
+    // Skip the remainder of the opening fence line.
+    let body_start = rest.find('\n').map(|i| i + 1)?;
+    let rest = &rest[body_start..];
+    let mut end = None;
+    let mut offset = 0;
+    for line in rest.split_inclusive('\n') {
+        if line.trim_end() == "```" {
+            end = Some(offset);
+            break;
+        }
+        offset += line.len();
+    }
+    let body = &rest[..end?];
     if body.trim().is_empty() {
         None
     } else {
         Some(body.to_string())
     }
+}
+
+/// Mechanical repairs for model-written diffs that `git apply` refuses even
+/// though every hunk's text is in the base tree. Each repair was found by
+/// replaying vetoed nights (2026-10-08..10) against their frozen commits:
+///
+/// * **Missing `diff --git` headers.** Without them `git apply --recount`
+///   reads the next file's `--- a/…` header as a deleted line of the previous
+///   hunk (project2 2026-10-09). A header is synthesised for every
+///   `---`/`+++` pair that lacks one.
+/// * **Trailing blank separator lines** at the end of a hunk are dropped:
+///   in `--recount` mode git counts them as context the file may not have.
+/// * **Asymmetric context.** A hunk with leading context but none trailing
+///   is anchored by git to end-of-file, so it fails anywhere mid-file
+///   (dream-machine 2026-10-09). When the hunk's old lines occur exactly once
+///   in the base file and not at its end, up to three following lines of the
+///   real file are appended as trailing context.
+///
+/// Only headers and context lines change: every `+`/`-` line is kept
+/// byte-for-byte, so the normalised diff makes exactly the model's change.
+/// A path that appears in more than one section is left alone (its second
+/// section would be anchored against a file the first already changed).
+/// `read` returns the base-revision text of a path. Returns the normalised
+/// patch and a note per repair made; no notes means nothing changed.
+pub fn normalise_patch(
+    patch: &str,
+    read: impl Fn(&str) -> Option<String>,
+) -> (String, Vec<String>) {
+    let lines: Vec<&str> = patch.lines().collect();
+    let mut notes: Vec<String> = Vec::new();
+    let header_path = |l: &str, prefix: &str| -> Option<String> {
+        let raw = l.strip_prefix(prefix)?;
+        // GNU diff appends a tab and a timestamp.
+        let raw = raw.split('\t').next().unwrap_or(raw).trim();
+        if raw == "/dev/null" {
+            return Some("/dev/null".into());
+        }
+        let raw = raw
+            .strip_prefix("a/")
+            .or_else(|| raw.strip_prefix("b/"))
+            .unwrap_or(raw);
+        Some(raw.to_string())
+    };
+    // Paths per section, to refuse normalising a path touched twice.
+    let mut seen: Vec<String> = Vec::new();
+    let mut repeated = false;
+    for (i, l) in lines.iter().enumerate() {
+        if l.starts_with("--- ") && lines.get(i + 1).is_some_and(|n| n.starts_with("+++ ")) {
+            let a = header_path(l, "--- ").unwrap_or_default();
+            let b = header_path(lines[i + 1], "+++ ").unwrap_or_default();
+            let name = if b == "/dev/null" { a } else { b };
+            if seen.contains(&name) {
+                repeated = true;
+            }
+            seen.push(name);
+        }
+    }
+    if repeated {
+        return (patch.to_string(), Vec::new());
+    }
+
+    let is_file_header = |i: usize| {
+        lines[i].starts_with("--- ") && lines.get(i + 1).is_some_and(|n| n.starts_with("+++ "))
+    };
+    let mut out: Vec<String> = Vec::new();
+    let mut current: Option<String> = None;
+    let mut base: Option<Vec<String>> = None;
+    let mut i = 0;
+    while i < lines.len() {
+        let l = lines[i];
+        if is_file_header(i) {
+            let a = header_path(l, "--- ").unwrap_or_default();
+            let b = header_path(lines[i + 1], "+++ ").unwrap_or_default();
+            let name = if b == "/dev/null" {
+                a.clone()
+            } else {
+                b.clone()
+            };
+            let has_git_header = out
+                .iter()
+                .rev()
+                .take(4)
+                .any(|p| p.starts_with("diff --git "));
+            if !has_git_header {
+                out.push(format!("diff --git a/{name} b/{name}"));
+                if a == "/dev/null" {
+                    out.push("new file mode 100644".into());
+                }
+                if b == "/dev/null" {
+                    out.push("deleted file mode 100644".into());
+                }
+                notes.push(format!("header synthesised for {name}"));
+            }
+            base = if a == "/dev/null" {
+                None
+            } else {
+                read(&name).map(|t| t.lines().map(str::to_string).collect())
+            };
+            current = Some(name);
+            out.push(l.to_string());
+            out.push(lines[i + 1].to_string());
+            i += 2;
+            continue;
+        }
+        if l.starts_with("@@") {
+            let mut body: Vec<String> = Vec::new();
+            let mut j = i + 1;
+            while j < lines.len()
+                && !lines[j].starts_with("@@")
+                && !lines[j].starts_with("diff --git ")
+                && !is_file_header(j)
+            {
+                body.push(lines[j].to_string());
+                j += 1;
+            }
+            let mut dropped = 0;
+            while body.last().is_some_and(|b| b.is_empty()) {
+                body.pop();
+                dropped += 1;
+            }
+            if dropped > 0 {
+                notes.push(format!(
+                    "{} trailing blank line(s) dropped from a hunk in {}",
+                    dropped,
+                    current.as_deref().unwrap_or("?")
+                ));
+            }
+            if let Some(file) = base.as_ref() {
+                if let Some(extra) = trailing_context(&body, file) {
+                    notes.push(format!(
+                        "{} line(s) of trailing context added to a hunk in {}",
+                        extra.len(),
+                        current.as_deref().unwrap_or("?")
+                    ));
+                    body.extend(extra.into_iter().map(|x| format!(" {x}")));
+                }
+            }
+            out.push(l.to_string());
+            out.extend(body);
+            i = j;
+            continue;
+        }
+        out.push(l.to_string());
+        i += 1;
+    }
+    let mut text = out.join("\n");
+    text.push('\n');
+    (text, notes)
+}
+
+/// The real lines to append to a hunk with leading context but no trailing
+/// context, or None when no padding is needed or it cannot be done safely.
+fn trailing_context(body: &[String], file: &[String]) -> Option<Vec<String>> {
+    if body.iter().any(|b| b.starts_with('\\')) {
+        return None; // "\ No newline at end of file": the hunk is at EOF.
+    }
+    let ctx = |b: &String| b.starts_with(' ') || b.is_empty();
+    let lead = body.iter().take_while(|b| ctx(b)).count();
+    let trail = body.iter().rev().take_while(|b| ctx(b)).count();
+    if lead == 0 || trail > 0 || lead == body.len() {
+        return None;
+    }
+    let old: Vec<&str> = body
+        .iter()
+        .filter(|b| ctx(b) || b.starts_with('-'))
+        .map(|b| if b.is_empty() { "" } else { &b[1..] })
+        .collect();
+    if old.is_empty() || old.len() > file.len() {
+        return None;
+    }
+    let hits: Vec<usize> = (0..=file.len() - old.len())
+        .filter(|&s| {
+            file[s..s + old.len()]
+                .iter()
+                .map(String::as_str)
+                .eq(old.iter().copied())
+        })
+        .collect();
+    let [start] = hits[..] else { return None };
+    let end = start + old.len();
+    if end >= file.len() {
+        return None; // genuinely at end of file: git's anchoring is right.
+    }
+    let want = lead.min(3);
+    Some(file[end..(end + want).min(file.len())].to_vec())
 }
 
 /// `dream/<slug(deep)>-<date>` — the namespaced branch for tonight's candidate.
@@ -146,6 +347,20 @@ pub fn build_branch_worktree_at(
     commit_msg: &str,
     base: &str,
 ) -> Result<std::path::PathBuf, PersistError> {
+    build_branch_worktree_via(repo, branch, patch, commit_msg, base).map(|(wt, _)| wt)
+}
+
+/// [`build_branch_worktree_at`], also returning how the patch landed: the
+/// `git apply` strategy that succeeded, prefixed `normalised(…): ` when it
+/// only landed after [`normalise_patch`]. Recorded in `candidate.json` so a
+/// reviewer can see when the engine adjusted a diff's headers or context.
+pub fn build_branch_worktree_via(
+    repo: &Path,
+    branch: &str,
+    patch: &str,
+    commit_msg: &str,
+    base: &str,
+) -> Result<(std::path::PathBuf, String), PersistError> {
     let wt = std::env::temp_dir().join(format!("dream-wt-{}", branch.replace('/', "_")));
     let _ = std::fs::remove_dir_all(&wt); // stale worktree dir, if any
                                           // Isolated checkout on a fresh branch — the operator's working tree
@@ -178,13 +393,13 @@ pub fn build_branch_worktree_at(
     // Apply against the worktree, strategy by strategy (see apply_attempts).
     let patch_arg = patch_file.display().to_string();
     let mut last_err = String::new();
-    let mut applied = false;
+    let mut applied_via: Option<String> = None;
     for attempt in apply_attempts(patch) {
         let mut args: Vec<&str> = attempt.clone();
         args.push(patch_arg.as_str());
         match git(&wt, &args) {
             Ok(_) => {
-                applied = true;
+                applied_via = Some(attempt.join(" "));
                 break;
             }
             Err(e) => {
@@ -195,7 +410,46 @@ pub fn build_branch_worktree_at(
             }
         }
     }
+    // Last resort: the mechanical repairs in normalise_patch, tried only when
+    // the diff as written failed every strategy and the repairs changed it.
+    if applied_via.is_none() {
+        let (normalised, notes) =
+            normalise_patch(patch, |p| crate::source::read_blob(repo, base, p));
+        if !notes.is_empty() && std::fs::write(&patch_file, &normalised).is_ok() {
+            let as_written = last_err.clone();
+            for attempt in [
+                vec!["apply", "--recount"],
+                vec!["apply", "--recount", "--ignore-whitespace"],
+            ] {
+                let mut args: Vec<&str> = attempt.clone();
+                args.push(patch_arg.as_str());
+                match git(&wt, &args) {
+                    Ok(_) => {
+                        applied_via = Some(format!(
+                            "normalised({}): {}",
+                            notes.join("; "),
+                            attempt.join(" ")
+                        ));
+                        break;
+                    }
+                    Err(e) => {
+                        // Keep the as-written failure first: it is the one that
+                        // describes the model's diff.
+                        last_err = format!(
+                            "{}; after normalising ({}): {}: {}",
+                            as_written.trim(),
+                            notes.join("; "),
+                            attempt.join(" "),
+                            e
+                        );
+                        let _ = git(&wt, &["reset", "--hard", "-q"]);
+                    }
+                }
+            }
+        }
+    }
     let _ = std::fs::remove_file(&patch_file);
+    let applied = applied_via.is_some();
     if !applied {
         cleanup(repo, &wt);
         return Err(PersistError::PatchDidNotApply(last_err.trim().to_string()));
@@ -205,7 +459,7 @@ pub fn build_branch_worktree_at(
         cleanup(repo, &wt);
         return Err(e);
     }
-    Ok(wt)
+    Ok((wt, applied_via.unwrap_or_default()))
 }
 
 /// Delete a local branch. Used when the required-check gate vetoes a candidate:
@@ -370,6 +624,114 @@ mod tests {
 
         remove_worktree(&dir, &wt);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_fence_inside_the_diff_does_not_end_the_block() {
+        // factrail 2026-10-08/10: the hunk edits a Rust doc test, so the diff
+        // carries ` /// ```` lines. Ending at the first "```" substring cut it
+        // at line 14 ("corrupt patch").
+        let diff = "--- a/lib.rs\n+++ b/lib.rs\n@@ -1,3 +1,4 @@\n /// ```\n /// x();\n+/// y();\n /// ```\n";
+        let report = format!("text\n```dream-patch\n{diff}```\nafter\n```\nother block\n```\n");
+        assert_eq!(extract_patch(&report).as_deref(), Some(diff));
+        // A closing fence with trailing whitespace or CRLF still closes.
+        let crlf = format!("```dream-patch\r\n{diff}```  \r\nrest");
+        assert_eq!(extract_patch(&crlf).as_deref(), Some(diff));
+        // No closing fence at all: no patch rather than a guess.
+        assert!(extract_patch("```dream-patch\n--- a/x\n+++ b/x\n").is_none());
+    }
+
+    #[test]
+    fn mid_file_hunk_without_trailing_context_lands_after_normalising() {
+        // dream-machine 2026-10-09: leading context, none trailing. git anchors
+        // such a hunk to end-of-file, so every plain strategy refuses it.
+        let dir = scratch("trail", "a\nb\nc\nd\ne\nf\ng\n");
+        let patch = "diff --git a/f.txt b/f.txt\n--- a/f.txt\n+++ b/f.txt\n@@ -1,3 +1,3 @@\n a\n b\n-c\n+C\n";
+        let (wt, via) =
+            build_branch_worktree_via(&dir, "dream/trail-2026-10-11", patch, "m", "HEAD").unwrap();
+        assert_eq!(
+            std::fs::read_to_string(wt.join("f.txt")).unwrap(),
+            "a\nb\nC\nd\ne\nf\ng\n"
+        );
+        assert!(via.starts_with("normalised("), "{via}");
+        assert!(via.contains("trailing context"), "{via}");
+        remove_worktree(&dir, &wt);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn headerless_two_file_patch_lands_after_normalising() {
+        // project2 2026-10-09: no `diff --git` lines. With --recount git read
+        // the second file's `--- a/…` header as a deletion in the first hunk.
+        let dir = scratch("headers", "one\ntwo\nthree\n");
+        std::fs::write(dir.join("g.txt"), "x\ny\nz\n").unwrap();
+        Command::new("git")
+            .arg("-C")
+            .arg(&dir)
+            .args(["commit", "-qam", "g"])
+            .output()
+            .unwrap();
+        Command::new("git")
+            .arg("-C")
+            .arg(&dir)
+            .args(["add", "g.txt"])
+            .output()
+            .unwrap();
+        Command::new("git")
+            .arg("-C")
+            .arg(&dir)
+            .args(["commit", "-qm", "g"])
+            .output()
+            .unwrap();
+        // Miscounted hunks (models rarely count right), so --recount is needed.
+        let patch = "--- a/f.txt\n+++ b/f.txt\n@@ -1,9 +1,9 @@\n one\n-two\n+TWO\n three\n\n--- a/g.txt\n+++ b/g.txt\n@@ -1,9 +1,9 @@\n x\n-y\n+Y\n z\n";
+        let (wt, via) =
+            build_branch_worktree_via(&dir, "dream/headers-2026-10-11", patch, "m", "HEAD")
+                .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(wt.join("f.txt")).unwrap(),
+            "one\nTWO\nthree\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(wt.join("g.txt")).unwrap(),
+            "x\nY\nz\n"
+        );
+        assert!(via.contains("header synthesised"), "{via}");
+        remove_worktree(&dir, &wt);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn normalising_never_changes_an_added_or_removed_line() {
+        let base = |_: &str| Some("a\nb\nc\nd\ne\n".to_string());
+        let patch = "--- a/f\n+++ b/f\n@@ -1,3 +1,3 @@\n a\n b\n-c\n+  C with  spaces\t\n\n";
+        let (out, notes) = normalise_patch(patch, base);
+        assert!(!notes.is_empty());
+        let changes = |t: &str| -> Vec<String> {
+            t.lines()
+                .filter(|l| {
+                    (l.starts_with('+') && !l.starts_with("+++"))
+                        || (l.starts_with('-') && !l.starts_with("---"))
+                })
+                .map(str::to_string)
+                .collect()
+        };
+        assert_eq!(changes(&out), changes(patch));
+        assert!(out.contains(" d\n"), "{out}");
+    }
+
+    #[test]
+    fn normalising_leaves_eof_hunks_and_repeated_paths_alone() {
+        let base = |_: &str| Some("a\nb\nc\n".to_string());
+        // Old block ends at EOF: git's end-anchoring is correct, no padding.
+        let at_eof = "diff --git a/f b/f\n--- a/f\n+++ b/f\n@@ -1,3 +1,3 @@\n a\n b\n-c\n+C\n";
+        assert!(normalise_patch(at_eof, base).1.is_empty());
+        // Same path in two sections: untouched.
+        let twice =
+            "--- a/f\n+++ b/f\n@@ -1 +1 @@\n-a\n+A\n--- a/f\n+++ b/f\n@@ -3 +3 @@\n-c\n+C\n";
+        let (out, notes) = normalise_patch(twice, base);
+        assert!(notes.is_empty());
+        assert_eq!(out, twice);
     }
 
     #[test]

@@ -861,7 +861,7 @@ pub fn repair_prompt(report: &str, source_section: Option<&str>) -> String {
 }
 
 /// What the repair pass produced.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "outcome", content = "detail", rename_all = "kebab-case")]
 pub enum RepairOutcome {
     /// A non-empty diff was recovered.
@@ -887,13 +887,18 @@ pub fn parse_repair(reply: &str) -> RepairOutcome {
     RepairOutcome::Absent
 }
 
-/// Receipt of the repair pass, persisted as `repair.json`.
-#[derive(Debug, Clone, Serialize)]
+/// Receipt of a repair pass, persisted as `repair.json` (missing patch) or
+/// `apply-repair.json` (patch that would not apply).
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepairRecord {
     pub ran: bool,
     pub outcome: RepairOutcome,
     pub patch_bytes: usize,
     pub model: String,
+    /// sha256 of the exact prompt sent, so the witness can show what the
+    /// model was given. Empty on records written before it existed.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub prompt_digest: String,
 }
 
 /// Run the repair pass (primary, then fallback provider).
@@ -903,7 +908,86 @@ pub async fn repair(
     report: &str,
     source_section: Option<&str>,
 ) -> RepairRecord {
-    let prompt = repair_prompt(report, source_section);
+    run_repair(llm_cfg, fallback, repair_prompt(report, source_section)).await
+}
+
+/// `path` and 1-based line of the first hunk git refused, from a
+/// `git apply` error ("error: patch failed: <path>:<line>").
+pub fn failing_hunk(apply_error: &str) -> Option<(String, usize)> {
+    let rest = apply_error.split("patch failed: ").nth(1)?;
+    let spec = rest.split_whitespace().next()?;
+    let (path, line) = spec.rsplit_once(':')?;
+    Some((path.to_string(), line.parse().ok()?))
+}
+
+/// The real base-revision text around the hunk git refused: `context` lines
+/// either side of `line`, verbatim, with a header naming the range. None when
+/// the file cannot be read at `rev`.
+pub fn failing_excerpt(
+    repo: &Path,
+    rev: &str,
+    path: &str,
+    line: usize,
+    context: usize,
+) -> Option<String> {
+    let text = read_blob(repo, rev, path)?;
+    let start = line.saturating_sub(context).max(1);
+    let range = LineRange {
+        start,
+        end: line + context,
+    };
+    let (body, total) = slice_lines(&text, range);
+    let end = (line + context).min(total);
+    Some(format!(
+        "`{path}` lines {start}-{end} of {total}, exactly as committed:\n\n````text\n{body}\n````"
+    ))
+}
+
+/// The apply-repair prompt: the patch the engine could not apply, git's own
+/// error, and the real text of the file where it failed. Deliberately carries
+/// no evaluator receipts — the repair may fix *where* a change lands, never
+/// learn what the gate will measure.
+pub fn apply_repair_prompt(
+    report: &str,
+    patch: &str,
+    apply_error: &str,
+    excerpt: Option<&str>,
+) -> String {
+    format!(
+        "The ```dream-patch block in your report below did not apply to the commit you were shown. \
+         `git apply` said:\n\n```text\n{}\n```\n\n\
+         Usual causes: a context or `-` line that is not in the file verbatim (wrong indentation, \
+         a line skipped or invented), or a hunk written from memory of code you were not shown.\n\n\
+         {}\n\n\
+         Reply with EXACTLY ONE of:\n\
+         1. the SAME change, corrected so it applies, as one git-apply-able unified diff (`diff --git` \
+         headers, `a/` and `b/` prefixes, every context and `-` line copied verbatim from the file) inside\n\
+         ```dream-patch\n<diff>\n```\n\
+         2. a single line `NO-PATCH: <reason>` if you cannot write it from the text available.\n\n\
+         Do not change what the patch does. No other text.\n\n---\n\n# The patch that failed\n\n\
+         ```diff\n{}\n```\n\n---\n\n# Your report\n\n{}",
+        apply_error.trim(),
+        excerpt.unwrap_or("(The engine could not read the file at the failing hunk.)"),
+        patch.trim_end(),
+        report
+    )
+}
+
+/// Run the apply-repair pass once (primary, then fallback provider).
+pub async fn apply_repair(
+    llm_cfg: &LlmConfig,
+    fallback: Option<&LlmConfig>,
+    prompt: String,
+) -> RepairRecord {
+    run_repair(llm_cfg, fallback, prompt).await
+}
+
+async fn run_repair(
+    llm_cfg: &LlmConfig,
+    fallback: Option<&LlmConfig>,
+    prompt: String,
+) -> RepairRecord {
+    let prompt_digest = crate::manifest::digest(prompt.as_bytes());
     let (outcome, model) = match llm::call(llm_cfg, &prompt).await {
         Ok(r) => (parse_repair(&r), llm_cfg.model.clone()),
         Err(e) => match fallback {
@@ -929,6 +1013,7 @@ pub async fn repair(
         outcome,
         patch_bytes,
         model,
+        prompt_digest,
     }
 }
 
@@ -1276,6 +1361,82 @@ mod tests {
         assert!(prompt.contains("```dream-patch"));
         assert!(prompt.contains("NO-PATCH:"));
         assert!(prompt.contains("## Source (from `r`)"));
+    }
+
+    #[test]
+    fn failing_hunk_is_read_from_git_apply_errors() {
+        let e =
+            "apply --recount: git apply failed: error: patch failed: scripts/gen.mjs:18\nerror: x";
+        assert_eq!(failing_hunk(e), Some(("scripts/gen.mjs".to_string(), 18)));
+        let e = "git apply failed: error: patch failed: packages/cli/src/tui.ts:49\nerror: packages/cli/src/tui.ts: patch does not apply";
+        assert_eq!(
+            failing_hunk(e),
+            Some(("packages/cli/src/tui.ts".to_string(), 49))
+        );
+        assert_eq!(
+            failing_hunk("error: corrupt patch at /tmp/x.patch:14"),
+            None
+        );
+    }
+
+    #[test]
+    fn apply_repair_prompt_carries_the_error_and_file_but_no_receipts() {
+        let prompt = apply_repair_prompt(
+            "# report\nVERDICT: ACCEPT",
+            "--- a/f\n+++ b/f\n@@ -1 +1 @@\n-x\n+y",
+            "error: patch failed: f:1",
+            Some("`f` lines 1-3 of 3, exactly as committed:\n\n````text\na\nb\nc\n````"),
+        );
+        assert!(prompt.contains("error: patch failed: f:1"));
+        assert!(prompt.contains("````text\na\nb\nc\n````"));
+        assert!(prompt.contains("+y"));
+        assert!(prompt.contains("```dream-patch"));
+        assert!(prompt.contains("NO-PATCH:"));
+        assert!(!prompt.to_lowercase().contains("receipt"));
+        assert!(!prompt.to_lowercase().contains("evaluator"));
+    }
+
+    #[test]
+    fn failing_excerpt_is_verbatim_and_clamped() {
+        let d = tempfile::tempdir().unwrap();
+        let repo = d.path();
+        let git = |a: &[&str]| {
+            Command::new("git")
+                .arg("-C")
+                .arg(repo)
+                .args(a)
+                .output()
+                .unwrap()
+        };
+        git(&["init", "-q", "-b", "main"]);
+        git(&["config", "user.email", "t@t"]);
+        git(&["config", "user.name", "t"]);
+        let body: String = (1..=10).map(|i| format!("    line {i}\n")).collect();
+        std::fs::write(repo.join("f.txt"), &body).unwrap();
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "c"]);
+        let ex = failing_excerpt(repo, "HEAD", "f.txt", 2, 3).unwrap();
+        assert!(ex.contains("lines 1-5 of 10"), "{ex}");
+        assert!(
+            ex.contains("    line 1\n    line 2"),
+            "indentation kept: {ex}"
+        );
+        assert!(!ex.contains("line 6"));
+        assert!(failing_excerpt(repo, "HEAD", "missing.txt", 1, 3).is_none());
+    }
+
+    #[test]
+    fn repair_record_round_trips_for_restart_reuse() {
+        let r = RepairRecord {
+            ran: true,
+            outcome: RepairOutcome::Patch("--- a/f\n+++ b/f\n".into()),
+            patch_bytes: 16,
+            model: "m".into(),
+            prompt_digest: "abc".into(),
+        };
+        let back: RepairRecord = serde_json::from_slice(&serde_json::to_vec(&r).unwrap()).unwrap();
+        assert_eq!(back.outcome, r.outcome);
+        assert_eq!(back.prompt_digest, "abc");
     }
 
     #[test]

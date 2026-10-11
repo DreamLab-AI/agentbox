@@ -329,6 +329,10 @@ pub struct CandidateRecord {
     pub branch: String,
     pub applied: bool,
     pub apply_error: Option<String>,
+    /// The `git apply` strategy that landed the patch; `normalised(…): …` when
+    /// the engine repaired headers or context first. Empty on old records.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub applied_via: String,
     pub created_at: String,
 }
 

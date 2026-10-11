@@ -1240,13 +1240,9 @@ impl Engine {
                             json!({ "op": "apply-candidate", "branch": branch }),
                         )
                         .await;
-                    let prepared_res = candidate::prepare(
-                        &repo_path,
-                        &branch,
-                        &patch,
-                        &format!("dream({}): candidate for {}", slot.deep, night_id),
-                        &baseline_rev,
-                    );
+                    let commit_msg = format!("dream({}): candidate for {}", slot.deep, night_id);
+                    let mut prepared_res =
+                        candidate::prepare(&repo_path, &branch, &patch, &commit_msg, &baseline_rev);
                     j.completed(
                         c,
                         prepared_res.is_ok(),
@@ -1256,6 +1252,116 @@ impl Engine {
                         }),
                     )
                     .await;
+                    // 8b. Apply-repair pass: a diff git refuses gets exactly one
+                    //     follow-up call carrying git's error and the real file
+                    //     text where it failed — never evaluator receipts — and
+                    //     the corrected diff is applied the same way. The reply
+                    //     is receipted in apply-repair.json, which a restarted
+                    //     night reuses instead of asking again.
+                    if let Err(persist::PersistError::PatchDidNotApply(detail)) = &prepared_res {
+                        let detail = detail.clone();
+                        let rec_path = night_dir.join("apply-repair.json");
+                        let recorded = std::fs::read(&rec_path)
+                            .ok()
+                            .and_then(|b| serde_json::from_slice::<source::RepairRecord>(&b).ok());
+                        let record = match recorded {
+                            Some(r) => r,
+                            None => {
+                                info!("candidate patch did not apply — running the one-shot apply-repair pass");
+                                let excerpt =
+                                    source::failing_hunk(&detail).and_then(|(path, line)| {
+                                        source::failing_excerpt(
+                                            &repo_path,
+                                            &baseline_rev,
+                                            &path,
+                                            line,
+                                            40,
+                                        )
+                                    });
+                                let prompt = source::apply_repair_prompt(
+                                    &report,
+                                    &patch,
+                                    &detail,
+                                    excerpt.as_deref(),
+                                );
+                                let c = j
+                                    .called(
+                                        "llm.call",
+                                        json!({ "purpose": "apply-repair", "model": self.llm.model }),
+                                    )
+                                    .await;
+                                let r = source::apply_repair(
+                                    &self.llm,
+                                    self.llm_fallback.as_ref(),
+                                    prompt,
+                                )
+                                .await;
+                                j.completed(
+                                    c,
+                                    matches!(r.outcome, source::RepairOutcome::Patch(_)),
+                                    json!({}),
+                                )
+                                .await;
+                                let _ = manifest::write_atomic(
+                                    &rec_path,
+                                    &serde_json::to_vec_pretty(&r).unwrap_or_default(),
+                                );
+                                r
+                            }
+                        };
+                        match &record.outcome {
+                            source::RepairOutcome::Patch(fixed)
+                                if !persist::deletes_binary(fixed) =>
+                            {
+                                persist::delete_branch(&repo_path, &branch);
+                                let c = j
+                                    .called(
+                                        "git.worktree",
+                                        json!({ "op": "apply-repaired-candidate", "branch": branch }),
+                                    )
+                                    .await;
+                                prepared_res = candidate::prepare(
+                                    &repo_path,
+                                    &branch,
+                                    fixed,
+                                    &commit_msg,
+                                    &baseline_rev,
+                                )
+                                .map_err(|e| {
+                                    persist::PersistError::PatchDidNotApply(format!(
+                                        "{detail}; the one repair pass also failed: {e}"
+                                    ))
+                                });
+                                j.completed(
+                                    c,
+                                    prepared_res.is_ok(),
+                                    json!({ "error": prepared_res.as_ref().err().map(|e| e.to_string()) }),
+                                )
+                                .await;
+                                info!(applied = prepared_res.is_ok(), "apply-repair candidate");
+                            }
+                            other => {
+                                let why = match other {
+                                    source::RepairOutcome::NoPatch(r) => {
+                                        format!("model declined: {r}")
+                                    }
+                                    source::RepairOutcome::LlmError(e) => {
+                                        format!("repair call failed: {e}")
+                                    }
+                                    source::RepairOutcome::Patch(_) => {
+                                        "repaired patch deletes a binary file".into()
+                                    }
+                                    source::RepairOutcome::Absent => {
+                                        "repair reply carried no diff".into()
+                                    }
+                                };
+                                info!(%why, "apply-repair produced no usable diff");
+                                prepared_res = Err(persist::PersistError::PatchDidNotApply(
+                                    format!("{detail}; repair pass: {why}"),
+                                ));
+                            }
+                        }
+                    }
                     match prepared_res {
                         Err(e) => {
                             warn!(error = %e, "candidate patch did not apply — acceptance cannot be verified");
@@ -1350,6 +1456,7 @@ impl Engine {
                                         }
                                         _ => None,
                                     },
+                                    applied_via: c.applied_via.clone(),
                                     created_at: chrono::Utc::now().to_rfc3339(),
                                 },
                             );
