@@ -1,18 +1,15 @@
 # release.yml
 #
-# Creates a GitHub Release when a v* tag is pushed. Extracts the matching
-# section from CHANGELOG.md as the release body, attaches the runtime-image
-# manifest digest, the SBOMs from the most recent image-scan run, and the
-# contract-test artefacts.
-#
-# This runs *after* build-multi-arch.yml has pushed the tag's multi-arch
-# manifest to GHCR — we depend on that job via workflow_run.
+# Creates a requested GitHub Release after a successful matching-commit scan.
+# Attach each architecture's build evidence, OpenVEX, SBOMs and scan results in
+# its own archive. Missing/expired matching artefacts block publication.
+# Automatic tag builds remain disabled; workflow_dispatch supports releases.
 
 name: Release
 
 on:
   workflow_run:
-    workflows: ["Build and publish multi-arch image"]
+    workflows: ["Image scan and SBOM"]
     types: [completed]
     branches-ignore: ['**']  # only tag pushes trigger build-multi-arch on v* refs
   workflow_dispatch:
@@ -24,6 +21,7 @@ on:
 permissions:
   contents: write
   packages: read
+  actions: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -41,15 +39,20 @@ jobs:
     steps:
       - name: Resolve tag
         id: tag
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REQUEST_TAG: ${{ inputs.tag }}
+          TRIGGER_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag="${{ inputs.tag }}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            tag=$REQUEST_TAG
           else
             # workflow_run head_branch for tag pushes is 'refs/tags/<tag>'
-            tag="${GITHUB_REF_NAME:-${{ github.event.workflow_run.head_branch }}}"
+            tag=$TRIGGER_BRANCH
             tag="${tag#refs/tags/}"
           fi
+          [[ $tag =~ ^v[0-9][a-zA-Z0-9._-]*$ ]] || { echo "Invalid release tag" >&2; exit 1; }
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -83,13 +86,50 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Download image-scan artefacts (if present)
-        continue-on-error: true
+      - name: Find successful scan containing both exact-commit architectures
+        id: scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/image-scan.yml/runs?status=success&per_page=100" > scan-runs.json
+          selected=
+          while read -r run; do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/artifacts?per_page=100" > scan-artifacts.json
+            if jq -e --arg amd "image-scan-$sha-amd64" --arg arm "image-scan-$sha-arm64" \
+              '[.artifacts[] | select(.expired == false) | .name] | index($amd) != null and index($arm) != null' scan-artifacts.json > /dev/null; then
+              selected=$run
+              break
+            fi
+          done < <(jq -r '.workflow_runs[] | select(.conclusion == "success") | .id' scan-runs.json)
+          test -n "$selected" || { echo "No successful scan with both architectures for $sha; run Image scan and SBOM for the matching build first." >&2; exit 1; }
+          echo "run_id=$selected" >> "$GITHUB_OUTPUT"
+
+      - name: Download exact-commit scan artefacts from matching run
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          pattern: image-scan-*
-          merge-multiple: true
-          path: release-assets/
+          pattern: image-scan-${{ steps.scan.outputs.sha }}-*
+          run-id: ${{ steps.scan.outputs.run_id }}
+          github-token: ${{ github.token }}
+          merge-multiple: false
+          path: release-scans/
+
+      - name: Validate source scope and package architecture-specific reports
+        env:
+          SOURCE_SHA: ${{ steps.scan.outputs.sha }}
+        run: |
+          set -euo pipefail
+          mkdir release-assets
+          for arch in amd64 arm64; do
+            name="image-scan-$SOURCE_SHA-$arch"
+            dir="release-scans/$name"
+            jq -e --arg sha "$SOURCE_SHA" --arg arch "$arch" '.source_revision == $sha and .arch == $arch' "$dir/security-build/publication.json"
+            test "$(cat "$dir/security-scan/grype.exit-code.txt")" = 0
+            test "$(cat "$dir/security-scan/image-ref.txt")" = "$(jq -r .image_ref "$dir/security-build/publication.json")"
+            tar -czf "release-assets/agentbox-security-$arch.tar.gz" -C "$dir" .
+          done
 
       - name: Prepare release notes footer
         id: footer
@@ -106,7 +146,8 @@ jobs:
           \`\`\`
 
           Multi-arch manifest with linux/amd64 and linux/arm64. Image scan
-          report, CycloneDX and SPDX SBOMs attached as release assets.
+          report, Nix CycloneDX/SPDX SBOMs, OpenVEX and build evidence attached
+          as separate architecture-specific release archives.
 
           ## Verify
 

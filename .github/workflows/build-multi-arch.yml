@@ -9,7 +9,7 @@
 #           :latest tag is also updated.
 #
 # Strategy: each arch builds on a native GitHub-hosted runner (no QEMU), using
-# Nix to produce a content-addressed OCI tarball via nix2container.
+# Nix to produce content-addressed OCI layers via nix2container.
 
 name: Build and publish multi-arch image
 
@@ -75,8 +75,18 @@ jobs:
           node scripts/agentbox-config-validate.js agentbox.toml
           echo "Preflight: agentbox.toml validates cleanly (E021 gate passed)"
 
-      - name: Build runtime image with Nix
-        run: nix build .#runtime --print-build-logs
+      - name: Build runtime image and pinned security evidence
+        run: |
+          set -euo pipefail
+          nix build .#runtime .#runtime.securityEvidence .#security-tools .#runtime.copyTo --no-link --json --print-build-logs > build-outputs.json
+          image=$(jq -r '.[].outputs.out' build-outputs.json | while read -r p; do test ! -f "$p" || echo "$p"; done)
+          ln -s "$image" result
+          evidence=$(jq -r '.[].outputs.out' build-outputs.json | while read -r p; do test ! -f "$p/metadata.json" || echo "$p"; done)
+          tools=$(jq -r '.[].outputs.out' build-outputs.json | while read -r p; do test ! -x "$p/bin/agentbox-vex" || echo "$p"; done)
+          copier=$(jq -r '.[].outputs.out' build-outputs.json | while read -r p; do test ! -x "$p/bin/copy-to" || echo "$p"; done)
+          echo "SECURITY_TOOLS=$tools" >> "$GITHUB_ENV"
+          echo "IMAGE_COPIER=$copier" >> "$GITHUB_ENV"
+          scripts/security-scan.sh report --evidence "$evidence" --tools "$tools" --output security-build
 
       - name: Record closure size
         id: closure
@@ -133,12 +143,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tag and push arch-suffixed image
+      - name: Publish exact Nix OCI image for this architecture
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          ARCH: ${{ matrix.arch }}
         run: |
-          ARCH_TAG="ghcr.io/dreamlab-ai/agentbox:${{ github.sha }}-${{ matrix.arch }}"
-          # nix2container tags the image as agentbox:runtime-<nix_system>
-          docker tag "agentbox:runtime-${{ matrix.nix_system }}" "${ARCH_TAG}"
-          docker push "${ARCH_TAG}"
+          set -euo pipefail
+          ARCH_TAG="ghcr.io/dreamlab-ai/agentbox:${SOURCE_SHA}-${ARCH}"
+          # The nix transport preserves the evidence's exact layer bytes. A
+          # Docker daemon round-trip can recompress layers or rewrite config.
+          "$IMAGE_COPIER/bin/copy-to" "docker://$ARCH_TAG" --authfile "$HOME/.docker/config.json" --digestfile registry-digest.txt
+          digest=$(cat registry-digest.txt)
+          [[ $digest =~ ^sha256:[0-9a-f]{64}$ ]] || exit 1
+          "$SECURITY_TOOLS/bin/skopeo" inspect --raw "docker://${ARCH_TAG%:*}@$digest" > registry-manifest.json
+          "$SECURITY_TOOLS/bin/skopeo" inspect --config --raw "docker://${ARCH_TAG%:*}@$digest" > registry-config.json
+          "$SECURITY_TOOLS/bin/agentbox-vex" check-image --bundle security-build --manifest registry-manifest.json --config registry-config.json --subject "$digest"
+          "$SECURITY_TOOLS/bin/agentbox-vex" bind --bundle security-build --subject "$digest" --output security-published --manifest registry-manifest.json --config registry-config.json
+          cp security-build/sbom.nix.spdx.json security-build/sbom.nix.csv security-published/
+          printf '%s@%s\n' "${ARCH_TAG%:*}" "$digest" > security-published/image-ref.txt
+          jq -n --arg sha "$SOURCE_SHA" --arg arch "$ARCH" --arg ref "${ARCH_TAG%:*}@$digest" --arg run "$GITHUB_RUN_ID" \
+            '{source_revision:$sha,arch:$arch,image_ref:$ref,build_run_id:$run}' > security-published/publication.json
+
+      - name: Upload digest-bound build SBOM and VEX
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: security-build-${{ github.sha }}-${{ matrix.arch }}
+          path: security-published/
+          retention-days: 90
 
   manifest:
     name: Assemble and push multi-arch manifest

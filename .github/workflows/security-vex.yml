@@ -1,0 +1,40 @@
+name: Security VEX contracts
+
+on:
+  pull_request:
+    paths:
+      - 'services/agentbox-vex/**'
+      - 'scripts/security-scan.sh'
+      - 'tests/security/security-scan.test.cjs'
+      - '.github/workflows/**'
+      - 'flake.nix'
+      - 'lib/security-evidence.nix'
+  push:
+    branches: [main]
+    paths:
+      - 'services/agentbox-vex/**'
+      - 'scripts/security-scan.sh'
+      - 'tests/security/security-scan.test.cjs'
+      - '.github/workflows/**'
+      - 'flake.nix'
+      - 'lib/security-evidence.nix'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Rust formatting, tests and lint
+        working-directory: services/agentbox-vex
+        run: |
+          cargo fmt --check
+          cargo test --locked
+          cargo clippy --locked --all-targets -- -D warnings
+      - name: Host scan and workflow contracts
+        run: |
+          bash -n scripts/security-scan.sh
+          node --test tests/security/security-scan.test.cjs

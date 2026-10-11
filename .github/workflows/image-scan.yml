@@ -1,9 +1,9 @@
 # image-scan.yml
 #
-# Trivy CVE scan + SBOM upload for every published multi-arch image. Runs
-# after build-multi-arch.yml succeeds (via workflow_run) so the :<sha>
-# manifest is guaranteed to exist. SBOMs are uploaded as SPDX and CycloneDX;
-# the SARIF output is posted to the GitHub Security tab.
+# Digest-bound Grype/VEX + Trivy + Syft for each published architecture.
+# Download Nix SBOM/VEX evidence from the exact triggering build run; never
+# rebuild the image or reuse the latest run's evidence. Trivy SARIF is posted
+# to GitHub Security and raw/filtered findings are retained as artefacts.
 #
 # Severity threshold: HIGH or CRITICAL fails the job. MEDIUM/LOW flow into
 # the Security tab but don't block merges.
@@ -17,12 +17,15 @@ on:
   workflow_dispatch:
     inputs:
       image_ref:
-        description: 'Fully-qualified image reference (default: ghcr.io/dreamlab-ai/agentbox:latest)'
-        required: false
-        default: 'ghcr.io/dreamlab-ai/agentbox:latest'
+        description: 'Image reference to verify against this build (tag or digest, never an unrelated latest image)'
+        required: true
+      build_run_id:
+        description: 'Successful Build and publish multi-arch image run containing matching evidence'
+        required: true
 
 permissions:
   contents: read
+  actions: read
   packages: read
   security-events: write
 
@@ -32,24 +35,75 @@ concurrency:
 
 jobs:
   scan:
-    name: Trivy + SBOM
+    name: Grype VEX + Trivy + SBOM (${{ matrix.arch }})
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
 
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-
-      - name: Resolve image reference
-        id: ref
+      - name: Resolve exact successful build run
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          TRIGGER_RUN: ${{ github.event.workflow_run.id }}
+          REQUEST_RUN: ${{ inputs.build_run_id }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ref="${{ inputs.image_ref }}"
-          else
-            ref="ghcr.io/dreamlab-ai/agentbox:${{ github.event.workflow_run.head_sha }}"
-          fi
+          run_id=$TRIGGER_RUN
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then run_id=$REQUEST_RUN; fi
+          [[ $run_id =~ ^[0-9]+$ ]] || { echo 'Invalid build run ID' >&2; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" > build-run.json
+          jq -e --arg repo "$GITHUB_REPOSITORY" '.status == "completed" and .conclusion == "success" and .path == ".github/workflows/build-multi-arch.yml" and .head_repository.full_name == $repo' build-run.json
+          sha=$(jq -r .head_sha build-run.json)
+          [[ $sha =~ ^[0-9a-f]{40}$ ]] || exit 1
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ steps.build.outputs.sha }}
+
+      - name: Download this architecture's exact build evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: security-build-${{ steps.build.outputs.sha }}-${{ matrix.arch }}
+          run-id: ${{ steps.build.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: security-build/
+
+      - name: Resolve digest-bound image reference
+        id: ref
+        env:
+          SOURCE_SHA: ${{ steps.build.outputs.sha }}
+          BUILD_RUN: ${{ steps.build.outputs.run_id }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          jq -e --arg sha "$SOURCE_SHA" --arg arch "$ARCH" --arg run "$BUILD_RUN" \
+            '.source_revision == $sha and .arch == $arch and .build_run_id == $run' security-build/publication.json
+          ref=$(jq -r .image_ref security-build/publication.json)
+          [[ $ref =~ ^ghcr.io/dreamlab-ai/agentbox@sha256:[0-9a-f]{64}$ ]] || exit 1
+          test "$ref" = "$(cat security-build/image-ref.txt)"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
-          echo "image ref: $ref"
+
+      - name: Install Nix for pinned scanner tools
+        uses: cachix/install-nix-action@ba0dd844c9180cbf77aa72a116d6fbc515d0e87b
+        with:
+          install_url: https://releases.nixos.org/nix/nix-2.35.2/install
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Build pinned scanner tools (no image rebuild)
+        run: |
+          set -euo pipefail
+          tools=$(nix build .#security-tools --no-link --print-out-paths --print-build-logs)
+          test -x "$tools/bin/agentbox-vex"
+          echo "SECURITY_TOOLS=$tools" >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
@@ -58,7 +112,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify requested manual image matches build evidence
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          REQUEST_IMAGE: ${{ inputs.image_ref }}
+          EVIDENCE_IMAGE: ${{ steps.ref.outputs.ref }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          [[ $REQUEST_IMAGE =~ ^ghcr.io/dreamlab-ai/agentbox[:@][a-zA-Z0-9:._-]+$ ]] || exit 1
+          "$SECURITY_TOOLS/bin/skopeo" inspect --raw "docker://$REQUEST_IMAGE" > requested-manifest.json
+          if jq -e '.manifests' requested-manifest.json > /dev/null; then
+            digest=$(jq -er --arg arch "$ARCH" '[.manifests[] | select(.platform.os == "linux" and .platform.architecture == $arch) | .digest] | if length == 1 then .[0] else error("ambiguous architecture") end' requested-manifest.json)
+          else
+            digest="sha256:$(sha256sum requested-manifest.json | cut -d' ' -f1)"
+          fi
+          test "$digest" = "${EVIDENCE_IMAGE##*@}"
+
+      - name: Grype raw and VEX-filtered severity gate
+        env:
+          IMAGE_REF: ${{ steps.ref.outputs.ref }}
+        run: scripts/security-scan.sh scan --image "$IMAGE_REF" --report security-build --tools "$SECURITY_TOOLS" --output security-scan --fail-on high
+
       - name: Run Trivy — HIGH/CRITICAL (failure gate)
+        if: ${{ always() && steps.ref.outputs.ref != '' }}
         uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
         with:
           image-ref: ${{ steps.ref.outputs.ref }}
@@ -70,14 +147,14 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload SARIF to GitHub Security
-        if: always()
+        if: ${{ always() && steps.ref.outputs.ref != '' }}
         uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d
         with:
           sarif_file: trivy-results.sarif
-          category: trivy-${{ steps.ref.outputs.ref }}
+          category: trivy-${{ matrix.arch }}
 
       - name: Run Trivy — ALL severities (informational)
-        if: always()
+        if: ${{ always() && steps.ref.outputs.ref != '' }}
         uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
         with:
           image-ref: ${{ steps.ref.outputs.ref }}
@@ -87,6 +164,7 @@ jobs:
           exit-code: '0'
 
       - name: Generate SBOM (CycloneDX)
+        if: ${{ always() && steps.ref.outputs.ref != '' }}
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
         with:
           image: ${{ steps.ref.outputs.ref }}
@@ -95,6 +173,7 @@ jobs:
           upload-release-assets: false
 
       - name: Generate SBOM (SPDX)
+        if: ${{ always() && steps.ref.outputs.ref != '' }}
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
         with:
           image: ${{ steps.ref.outputs.ref }}
@@ -103,11 +182,13 @@ jobs:
           upload-release-assets: false
 
       - name: Upload scan artefacts
-        if: always()
+        if: ${{ always() && steps.ref.outputs.ref != '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: image-scan-${{ github.event.workflow_run.head_sha || github.sha }}
+          name: image-scan-${{ steps.build.outputs.sha }}-${{ matrix.arch }}
           path: |
+            security-build/
+            security-scan/
             trivy-results.sarif
             trivy-full.txt
             sbom.cyclonedx.json
