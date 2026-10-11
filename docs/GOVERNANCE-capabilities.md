@@ -214,6 +214,17 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   ADR-2107/ADR-2108; the CI gate was
   `scripts/ci/check-no-logseq-paths.sh`.
 
+  **Producer ownership continuation (2026-10-11).** The independent
+  [Ontomark core](https://github.com/DreamLab-AI/ontomark) now publishes parser,
+  model, supported reasoner, compiler and NGG1 contracts. Its graph package and
+  the standalone Obsidian plugin are host-facing capabilities, not another
+  corpus authority. [ADR-2136](adr/ADR-2136-pin-the-shared-ontology-toolchain.md)
+  keeps the Agentbox Nix repin and post-activation executable/generation checks
+  as a proposed migration. [ADR-2108](adr/ADR-2108-ontology-bridge-retired-vault-baked-by-nix.md)
+  preserves the earlier pin receipts and supersedes only the old extraction
+  repository/name assumptions. Manifest path authority and governed writes are
+  unchanged; published core packages do not prove an Agentbox runtime repin.
+
 ### Dream-machine programme (legacy ADR-052, ADR-055–072) — mostly paper
 
 The dream-engine itself is **real and shipped**: a Rust crate at `services/dream-engine/`

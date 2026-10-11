@@ -201,3 +201,25 @@ docker logs <container> 2>&1 | grep '\[5d/8\] vault'
   6. agentbox switches `lib/vault.nix` from the `vaultSrc` flake input to the published crate. That retires the input, and with it the cross-repo commit pin this ADR documents.
 - **Done today, toward step 3:** `vault-core` is publishable in place. It has crates.io metadata, a README and licence, a pedantic-clippy cast fix in `domains.rs`, clean `cargo doc --no-deps` (`-D warnings`), and 453 tests green across both crates. `cargo publish --dry-run` passes with `publish` flipped temporarily, and `publish = false` stays as the go gate. `vault` cannot package until step 2 lands.
 - **Why here:** VisionClaw's `scripts/adr-ratchet.sh` admits a new proposed ADR only if a proposed one closes in the same push. Closing another record to make room is not this worker's decision, so the plan is recorded here as the brief directs. When the owner says go, it becomes a VisionClaw ADR that supersedes ADR-2113's "Crate home" clause (PRD Q11).
+
+## Extraction ownership supersession — 2026-10-11
+
+The historical `DreamLab-AI/okf-vault` plan in the 2026-10-02 disposition is
+replaced at the repository/package ownership level by
+[Ontomark](https://github.com/DreamLab-AI/ontomark) and
+[ADR-2136](ADR-2136-pin-the-shared-ontology-toolchain.md). The historical pin and
+build receipts above remain evidence for their own revisions; they are not
+rewritten as Ontomark activation receipts.
+
+The selected producer publishes `ontomark-parse`, `ontomark-model`,
+`ontomark-reason`, `ontomark-compile`, `ontomark-ngg1` and `whelk-el`, with an
+explicitly relicensed permissive core and preserved upstream notices. Governance
+posting and signing stay outside that core. Graph rendering belongs to Ontomark
+`packages/graph`; VOWL retains its compatibility and physics surface, and the
+standalone Obsidian repository owns its host integration.
+
+This section supersedes the proposed repository/name/licence assumptions of the
+old extraction plan only. It leaves the accepted CLI-door, manifest path
+authority, governed writes and immutable Nix packaging requirements intact.
+Agentbox repinning and runtime acceptance remain separately tracked in ADR-2136;
+publication alone does not retire the current source pin or read-only helpers.
