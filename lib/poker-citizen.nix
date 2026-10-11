@@ -24,13 +24,15 @@
 
 let
   version = "1.0.0-beta.15";
-  rev = "4530505cfa0ebf297a976e2463abb7e0bf2317dd";
+  # bdeb561 = the website's KIT_REF (72463fb) + the forum-client wallet default + the citizen /tip skip.
+  # Protocol VERSION is 1 on both sides and both are 1.0.0-beta.15, so the website pin stays put.
+  rev = "bdeb56155281ef990b0286fa00e475f9e92de19b";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "nostr-rust-forum";
     inherit rev;
-    hash  = "sha256-UqVG5kbXypEAxqHqCik5BHm3w4KpoB4saeAf6sIjoQ8=";
+    hash  = "sha256-P2fazyoJXqqt0Ej+nZwdp6RaI4gW8EcmBGUoGCXuTmY=";
   };
 
 in
