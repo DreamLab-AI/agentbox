@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_121 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_124 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -183,5 +183,7 @@ _121 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2131](ADR-2131-diagram-review-runs-on-a-ledgered-cadence-with-a-gated-gemini-audit.md) | Diagram review runs on a ledgered cadence with a gated, budget-capped Gemini audit | GOVERNANCE-capabilities | 2026-10-06 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2132](ADR-2132-incremental-image-delivery.md) | Separate non-disruptive image preparation from scoped runtime activation | BASELINE-container | 2026-10-06 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2133](ADR-2133-rebuild-the-sidecar-hnsw-index-by-swap-and-give-readers-their-own-role.md) | Rebuild the sidecar HNSW index by swap, and give read-only consumers their own role | LEARNING-memory | 2026-10-07 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2134](ADR-2134-model-roles-sonnet-lead-opus-advisor-haiku-explore.md) | Model roles — Sonnet leads, an Opus advisor is on call, search fans out to Haiku | — | 2026-10-09 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2135](ADR-2135-jev-checkpoints-time-the-advisor.md) | Use Jev to time the advisor — jev-checkpoints, with spawn routing shadow-only | GOVERNANCE-capabilities | 2026-10-09 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2136](ADR-2136-pin-the-shared-ontology-toolchain.md) | Pin the shared ontology toolchain independently of the host application | — | 2026-10-11 | proposed | none | inactive | — | — | jjohare | agentbox |
-| [ADR-2137](ADR-2137-image-scoped-vex-evidence.md) | Generate image-scoped SBOM and VEX from shipped Nix payloads | BASELINE-container | 2026-10-11 | proposed | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2137](ADR-2137-image-scoped-vex-evidence.md) | Generate image-scoped SBOM and VEX from shipped Nix payloads | BASELINE-container | 2026-10-11 | accepted | complete | staged | — | — | jjohare | agentbox |

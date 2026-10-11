@@ -2,13 +2,13 @@
 id: ADR-2137
 title: Generate image-scoped SBOM and VEX from shipped Nix payloads
 date: 2026-10-11
-decision_status: proposed
-implementation_status: partial
+decision_status: accepted
+implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: 8278f79d9a459f885e8ee6706fcfcc03f88f0e76
+verified_paths: [flake.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes
 repo: agentbox
@@ -46,6 +46,13 @@ immutable digest, and releases attach only matching-commit scan artefacts.
 Local preparation uses the image JSON hash until a scan binds the evidence to
 the published OCI digest.
 
+Convert the scoped CycloneDX inventory to native Syft and SPDX exports, checking
+that conversion preserves the package PURLs. Give the native scanner source
+the same generic image identity as OpenVEX, and explicitly enable Grype's CPE
+generation for Nix matching. Preserve the original sbomnix CSV as a labelled
+raw debugging export. Release publication verifies the tag's architecture
+digests against its attached scan evidence.
+
 ## Consequences and verification
 
 Statements assess the immutable image only; host kernels, mounts, sidecars and
@@ -53,5 +60,14 @@ imperative runtime changes require separate assessment. No general NixOS feed
 is imported. Rule changes need positive and withdrawal fixtures and a scanner
 check against a rebuilt image. The rollout is staged for the next rebuild;
 fixture checks do not certify a live image or a current vulnerability database.
+
+Local verification passed ten Rust fixtures, formatting and clippy, 32 host
+scan/lifecycle fixtures, Bash syntax and actionlint. Nix syntax was parsed;
+Nix evaluation and a full image build were not run in this container.
+The pinned Syft 1.44.0 and Grype 0.113.0 synthetic interoperability check
+produced 77 raw findings and suppressed precisely one matching fixture finding;
+changed image or package identity retained all 77. Scoped SPDX generation and
+rebinding were also exercised through the Rust CLI. These are test results,
+not an assessment of the live image.
 
 See the [operator and maintainer guide](../developer/vex.md).
