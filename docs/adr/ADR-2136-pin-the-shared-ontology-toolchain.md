@@ -81,7 +81,7 @@ Owner decisions, with evidence in [Ontomark ADR-OM-005](https://github.com/Dream
 | `vault --version` boot gate | **kept**, gating the new binary and the adapter |
 | review trigger "crates/vault pushed to a remote" | **fired** by the shared workspace existing; this record is the response |
 
-**New responsibility: AB-P6.** Agentbox produces the VisionClaw pod-resource pack from the released CLI (Ontomark's private `--vault all` machine bundle, which keeps `working/` for the GPU view) and serves it to VisionClaw, which reaches Agentbox directly. VisionClaw's own publish build job (DEPRECATION VC-60) is retired only when the pack is byte-equal for a dated window and VisionClaw ADR-2106 has been re-verified or amended.
+**New responsibility: AB-P6.** Agentbox produces the VisionClaw pod-resource pack from the released CLI (`ontomark build --scope machine`, Ontomark ADR-OM-005 decision 4: the private machine bundle that keeps `working/` for the GPU view; it is a scope flag on `build`, not a separate verb, and never writes `publish/`) and serves it to VisionClaw, which reaches Agentbox directly. VisionClaw's own publish build job (DEPRECATION VC-60) is retired only when the pack is byte-equal for a dated window and VisionClaw ADR-2106 has been re-verified or amended.
 
 **Licence (Decision 5 restated with facts).** `horned-owl` is LGPL-3.0 and an opt-in `whelk-el` feature, off by default and absent from the CLI tree; the package here must not enable it. `nostr-bbs-core` is AGPL-3.0-only (owner-held) and stays in the adapter, never in the permissive package. Dependencies flow permissive → AGPL, never the reverse.
 
