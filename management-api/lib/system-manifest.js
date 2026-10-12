@@ -77,6 +77,9 @@ const CATALOGUE = [
   { id: 'tab0-bridge', name: 'tab0-bridge (voice/nostr meta-controller)', layer: 'surface',
     gate: 'sovereign_mesh', service: 'tab0-bridge', apply_class: 'rebuild',
     summary: 'Voice/nostr meta-controller for tmux window 0 (:8971, ADR-044): OpenAI-compatible /v1/chat/completions LLM surface for the Unmute backend, /feed console WebSocket, and the tab0 injection seam onto the interaction plane (fail-open to tmux send-keys). Supervisor is the canonical owner ([program:tab0-bridge] runs deploy.sh reconcile then execs the bridge); the fleet SessionStart hook Job 3 is belt-and-braces reconciliation. Authenticated by the shared BRIDGE_TOKEN — minted into .env by `agentbox.sh up`, inherited via compose env_file, and read by `voice up` for KYUTAI_LLM_API_KEY + NIP98_PROXY_ALLOW_BEARER (security audit Findings 2 & 3).' },
+  { id: 'junkiejarvis', name: 'JunkieJarvis forum agent', layer: 'surface',
+    gate: 'sovereign_mesh.junkiejarvis', service: 'management-api', apply_class: 'boot',
+    summary: 'DreamLab forum agent (ADR-030) riding the management-api process: answers forum mentions and DMs over Nostr and, with clarify_before_acting, sends the nightly forum-suggestions tenant its clarifying DMs (ADR-2088). [sovereign_mesh].junkiejarvis is the only switch; no environment variable overrides it.' },
 
   // ── Modules — optional capabilities, manifest-gated ───────────────────────
   { id: 'ruflo', name: 'ruflo CLI (= claude-flow)', layer: 'module',
