@@ -259,6 +259,11 @@
         # decision 2026-10-06), so the program is baked for this deployment.
         # REBUILD-class: the block below is baked supervisor text.
         diagramReviewEnabled = (agentboxConfig.diagram_review or {}).enabled or false;
+        # [seo_watch] (website ADR-2010): nightly SEO / agent-searchability
+        # watch for dreamlab-ai.com. Same shape as diagramReviewEnabled: the
+        # program spends on a metered API and may open draft PRs, so a
+        # manifest with no section emits nothing. REBUILD-class.
+        seoWatchEnabled = (agentboxConfig.seo_watch or {}).enabled or false;
         # [sidechain]: the sidestr chain this deployment produces (PRD-024 P1).
         # Default off — only the operator of a sealed chain has its signer key.
         # enabled ⇒ [program:sidestr-producer]; mirror / faucet add
@@ -2938,6 +2943,32 @@ startsecs=0
 priority=250
 stdout_logfile=/var/log/diagram-review-cron.log
 stderr_logfile=/var/log/diagram-review-cron.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+
+${lib.optionalString seoWatchEnabled ''
+; Website ADR-2010: gated on [seo_watch].enabled (flake default false, shipped
+; manifest true). Like forum-backup-cron, the crontab and the job live in the
+; mounted website repo (scripts/seo-watch/), so schedule and behaviour change
+; without a rebuild; only this stanza is baked. The job runs ALONGSIDE the
+; dream engine at 05:40 UTC, outside the 01-05 dream window. It holds no secret
+; of its own: ZAI_ANTHROPIC_API_KEY, GITHUB_TOKEN and PERPLEXITY_API_KEY are
+; inherited from the container environment like diagram-review-cron. The
+; crontab line uses flock (util-linux) and timeout (coreutils) so a long night
+; skips the next slot instead of overlapping it; node/npm build the proposed
+; patch in a detached worktree, git and gh push the draft PR. -inotify makes
+; supercronic reload the crontab when the file changes. REBUILD-class.
+[program:seo-watch-cron]
+command=${bgNice}${supercronicPkg}/bin/supercronic -inotify -split-logs /home/devuser/workspace/dreamlab-ai-website/scripts/seo-watch/crontab
+user=devuser
+environment=HOME="/home/devuser",TZ="UTC",PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.bash pkgs.gnugrep pkgs.findutils pkgs.util-linux pkgs.git pkgs.gh pkgs.nodejs_22 ]}:/usr/local/bin:/bin:/usr/bin"
+autostart=true
+autorestart=true
+startsecs=0
+priority=250
+stdout_logfile=/var/log/seo-watch-cron.log
+stderr_logfile=/var/log/seo-watch-cron.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}

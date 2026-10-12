@@ -3417,6 +3417,14 @@
         "weekly_window": { "type": "boolean", "description": "true \u21d2 the Gemini gate is considered only on the review tick (nightly by default; the per-shard interval still holds Gemini to one audit a week); false \u21d2 after each triage run too." }
       }
     },
+    "seo_watch": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Website ADR-2010: nightly SEO and AI-agent-searchability watch for dreamlab-ai.com ([program:seo-watch-cron], supercronic over the website repo's scripts/seo-watch/crontab, 05:40 UTC, alongside the dream engine). Shipped on; the flake default for a manifest without the section is off. REBUILD-class: flake.nix bakes the supervisor block. Behaviour, schedule and the patch allowlist live in the website repo (scripts/seo-watch/config.json), not here.",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "true \u21d2 flake.nix emits [program:seo-watch-cron]. false \u21d2 no supervisor block at all." }
+      }
+    },
     "sidechain": {
       "type": "object",
       "additionalProperties": false,

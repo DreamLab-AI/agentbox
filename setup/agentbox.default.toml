@@ -807,6 +807,21 @@ gemini_monthly_usd = 10
 # each triage run as well (the interval and budget still apply).
 weekly_window = true
 
+[seo_watch]
+# Website ADR-2010: nightly SEO and AI-agent-searchability watch for
+# dreamlab-ai.com, running ALONGSIDE the dream engine (never inside it).
+# [program:seo-watch-cron] runs supercronic over
+# ~/workspace/dreamlab-ai-website/scripts/seo-watch/crontab (05:40 UTC), so
+# schedule, config and code are edited in the website repo with no rebuild.
+# Audits the live site as crawlers and AI agents fetch it, drives the
+# browsercontainer sidecar for hydration parity and Lighthouse, asks GLM (Z.AI)
+# for a report only when the finding set changed, and may open ONE draft PR at
+# a time that a human merges. Needs ZAI_ANTHROPIC_API_KEY (or ZAI_API_KEY) and
+# GITHUB_TOKEN in the environment; PERPLEXITY_API_KEY enables the weekly
+# presence probe. Never put a key in this file.
+# REBUILD-class: flake.nix bakes the supervisor block; default false there.
+enabled = true
+
 [skills.harness]
 # Harness Engineering MCP bridge (ADR-004). Agents inspect harness templates
 # to understand guide-sensor pairings for their active topology. Four tools:
