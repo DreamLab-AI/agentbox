@@ -1816,7 +1816,7 @@ index_submit  = "off"
 # `./agentbox.sh rebuild`.
 [sidechain]
 # Paused after the ENOSPC block-persistence failure; retain state and backups.
-# Re-enable after recovery and the upstream durability fix (sidestr/spec PR #32).
+# Re-enable after state recovery and deploying the merged fix (sidestr/spec PR #32).
 enabled         = false   # dominates producers, mirrors, faucets and poker citizens
 announce_mirror = "https://raw.githubusercontent.com/DreamLab-AI/sidestr-dreamlab/main"   # kind-33333 tip names the Git mirror; no Pages build per block
 mirror          = true    # [program:sidestr-mirror]: push block files to the Git checkout
