@@ -196,6 +196,10 @@
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "Provider credential (System-One façade). Agents and their tools are its users; devuser-class by design (design §1 role inventory)."
       },
+      "SUBQ_API_KEY": {
+        "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
+        "reason": "Provider credential (SubQ Snap, the second System One vendor behind system-one-proxy, ADR-2139). Read only by the proxy, which runs as devuser like its consumers; devuser-class by design (design §1 role inventory)."
+      },
       "TUNNEL_TOKEN": {
         "exception": "Q8 (queen 2026-10-03, pending owner): provider and devuser credentials stay in devuser's environment this step",
         "reason": "Cloudflare tunnel credential (cloudflared name)."

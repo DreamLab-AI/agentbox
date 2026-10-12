@@ -264,6 +264,12 @@
         # program spends on a metered API and may open draft PRs, so a
         # manifest with no section emits nothing. REBUILD-class.
         seoWatchEnabled = (agentboxConfig.seo_watch or {}).enabled or false;
+        # [system_one] (ADR-2139): the typed-decision vendor slot. The proxy
+        # holds vendor keys and is the endpoint every System One consumer is
+        # projected at, so a manifest with no section emits nothing and the
+        # consumers keep their cloud defaults (ADR-2020). REBUILD-class for the
+        # program; the consumer projection is BOOT-class (entrypoint).
+        systemOneProxyOn = (agentboxConfig.system_one or {}).enabled or false;
         # [sidechain]: the sidestr chain this deployment produces (PRD-024 P1).
         # Default off — only the operator of a sealed chain has its signer key.
         # enabled ⇒ [program:sidestr-producer]; mirror / faucet add
@@ -1809,6 +1815,8 @@
         '';
         factrailPkg = import ./lib/factrail.nix { inherit lib; pkgs = rustPkgs; };
         factrailPackages = lib.optionals jevCompactionOn [ factrailPkg ];
+        systemOneProxyPkg = import ./lib/system-one-proxy.nix { inherit lib; pkgs = rustPkgs; };
+        systemOneProxyPackages = lib.optionals systemOneProxyOn [ systemOneProxyPkg ];
 
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
@@ -1960,6 +1968,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ sidechainPackages
           ++ pokerCitizenPackages
           ++ factrailPackages
+          ++ systemOneProxyPackages
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
           ++ runePackages
@@ -2037,6 +2046,11 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # factrail: the entrypoint projects THIS path as the plugin's `binary`
           # option, which persists in ~/.claude; a store path there would dangle.
           ln -s ${factrailPkg}/bin/factrail $out/opt/agentbox/bin/factrail
+          ''}
+          ${lib.optionalString systemOneProxyOn ''
+          # system-one-proxy (ADR-2139): a stable path so `./agentbox.sh systemone`
+          # and the interim tmux launch run the SAME binary supervisor does.
+          ln -s ${systemOneProxyPkg}/bin/system-one-proxy $out/opt/agentbox/bin/system-one-proxy
           ''}
 
           ${lib.optionalString (toolchainCfg.codex or false) ''
@@ -2943,6 +2957,33 @@ startsecs=0
 priority=250
 stdout_logfile=/var/log/diagram-review-cron.log
 stderr_logfile=/var/log/diagram-review-cron.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+
+${lib.optionalString systemOneProxyOn ''
+; ADR-2139: gated on [system_one].enabled. The loopback typed-decision proxy
+; every System One consumer calls (skill router, factrail, jev-checkpoints).
+; Its ONLY configuration is /run/agentbox/system-one.json, written by the
+; entrypoint (agentbox-manifest system-one-project --format json) before the
+; consumers are projected and rewritten in place by `./agentbox.sh systemone
+; backend <name>`; the proxy re-reads it on change. Vendor keys are read from
+; the env var each backend names (TYPESAFE_API_KEY, SUBQ_API_KEY: devuser-class
+; provider credentials under custody Q8, inherited from PID 1 like the
+; consumers inherit them) and only ever sent to that key's hard-coded host.
+; Boot writes the projection first. A disabled stub exits 0 without restart;
+; only unexpected failures restart the daemon.
+[program:system-one-proxy]
+command=${systemOneProxyPkg}/bin/system-one-proxy
+user=devuser
+environment=HOME="/home/devuser",SYSTEM_ONE_PROJECTION="/run/agentbox/system-one.json"
+autostart=true
+autorestart=unexpected
+startsecs=0
+startretries=30
+priority=60
+stdout_logfile=/var/log/system-one-proxy.log
+stderr_logfile=/var/log/system-one-proxy.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}

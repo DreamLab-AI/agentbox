@@ -135,7 +135,10 @@ fi
 # Add a row when a boot step starts producing a file another program needs.
 _MANIFEST="${AGENTBOX_CONFIG:-/etc/agentbox.toml}"
 _PROJECTION_TIMEOUT="${BOOTSTRAP_PROJECTION_TIMEOUT:-300}"
-_PROJECTIONS="${AGENTBOX_BOOT_PROJECTIONS:-resources.mcp_hub.enabled:${_SENTINEL_DIR}/mcp-hub.json}"
+# ADR-2139: [system_one].enabled promises the proxy's projection file; without it
+# [program:system-one-proxy] exits 2 on every retry and every consumer is pointed
+# at a port nothing answers.
+_PROJECTIONS="${AGENTBOX_BOOT_PROJECTIONS:-resources.mcp_hub.enabled:${_SENTINEL_DIR}/mcp-hub.json system_one.enabled:${_SENTINEL_DIR}/system-one.json}"
 
 _gate_on() {
   # Absent manifest or projector ⇒ not a promise we can read; treat as off.

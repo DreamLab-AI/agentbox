@@ -182,6 +182,14 @@ describe('hook — off by default', () => {
     expect(logLines()[0].reason).toBe('no-key');
   });
 
+  test('ADR-2139: behind the proxy no key is needed and none is sent', async () => {
+    const env = baseEnv({ AGENTBOX_SYSTEM_ONE_PROXY: '1' }); delete env.TYPESAFE_API_KEY;
+    const out = await runHook(PROMPT, env);
+    expect(out).not.toBeNull();
+    expect(seen).toHaveLength(1);
+    expect(seen[0].headers.authorization).toBeUndefined();
+  });
+
   test('short turns and slash commands are never sent', async () => {
     expect(await runHook('thanks', baseEnv())).toBeNull();
     expect(await runHook('/route fix the login bug', baseEnv())).toBeNull();

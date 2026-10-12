@@ -2473,7 +2473,43 @@ _SSO_EXPORTS=""
 _SSO_API=""
 _SSO_MODEL=""
 _SSO_PLUGIN_CONFIG=""
-if command -v agentbox-manifest >/dev/null 2>&1; then
+# ADR-2139: the vendor slot. [system_one].enabled = true projects the loopback
+# PROXY as every consumer's endpoint instead, through the same three variables,
+# and writes the proxy's projection file first so [program:system-one-proxy]
+# (which starts after this stage) and the consumers read ONE selection. The
+# two projectors are exclusive (E081): when the slot is on, sso-project is not
+# consulted. Fail-open as before: an unusable slot projects nothing and the
+# consumers keep the cloud path.
+_SO_ON="$(_ab_toml_bool system_one enabled)"
+_SO_PROJECTION="${AGENTBOX_RUN_DIR:-/run/agentbox}/system-one.json"
+if [ "$_SO_ON" = "1" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _SO_JSON="$(agentbox-manifest system-one-project \
+    --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format json 2>/dev/null || true)"
+  if [ -n "$_SO_JSON" ]; then
+    mkdir -p "$(dirname "$_SO_PROJECTION")"
+    # Atomic: the proxy re-reads on mtime change and must never see a half file.
+    printf '%s\n' "$_SO_JSON" > "$_SO_PROJECTION.tmp" && mv -f "$_SO_PROJECTION.tmp" "$_SO_PROJECTION"
+    chown 1000:1000 "$_SO_PROJECTION" 2>/dev/null || true
+    chmod 0644 "$_SO_PROJECTION" 2>/dev/null || true
+    _SSO_EXPORTS="$(agentbox-manifest system-one-project \
+      --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format shell 2>/dev/null || true)"
+    _SSO_PLUGIN_CONFIG="$(agentbox-manifest system-one-project \
+      --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format plugin-config 2>/dev/null || true)"
+  else
+    # The seal promises this file whenever the gate is on (seal-bootstrap.sh), so
+    # an unusable slot must still produce it: a disabled stub, which the proxy
+    # answers with one line and exit 0, while the consumers fall back below.
+    mkdir -p "$(dirname "$_SO_PROJECTION")"
+    printf '{"version":1,"enabled":false,"reason":"[system_one] is enabled but unusable; see the boot log"}\n' > "$_SO_PROJECTION.tmp" \
+      && mv -f "$_SO_PROJECTION.tmp" "$_SO_PROJECTION"
+    chmod 0644 "$_SO_PROJECTION" 2>/dev/null || true
+    echo "  [system-one] [system_one].enabled but the slot is unusable (see stderr above) — disabled stub written, consumers fall back to sso-project"
+    _SSO_EXPORTS="$(agentbox-manifest sso-project \
+      --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format shell 2>/dev/null || true)"
+    _SSO_PLUGIN_CONFIG="$(agentbox-manifest sso-project \
+      --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format plugin-config 2>/dev/null || true)"
+  fi
+elif command -v agentbox-manifest >/dev/null 2>&1; then
   _SSO_EXPORTS="$(agentbox-manifest sso-project \
     --manifest "${AGENTBOX_CONFIG:-/etc/agentbox.toml}" --format shell 2>/dev/null || true)"
   _SSO_PLUGIN_CONFIG="$(agentbox-manifest sso-project \
@@ -2485,7 +2521,11 @@ if [ -n "$_SSO_EXPORTS" ]; then
   eval "$_SSO_EXPORTS"
   _SSO_API="${AGENTBOX_SKILL_ROUTE_API:-}"
   _SSO_MODEL="${AGENTBOX_SKILL_ROUTE_MODEL:-}"
-  echo "  [system-one] local façade projected: $_SSO_API (model $_SSO_MODEL) — TYPESAFE_API_KEY is off the path for every consumer that follows the façade"
+  if [ "${AGENTBOX_SYSTEM_ONE_PROXY:-0}" = "1" ]; then
+    echo "  [system-one] vendor slot projected: $_SSO_API → backend ${AGENTBOX_SYSTEM_ONE_BACKEND:-?} (model $_SSO_MODEL, local=${AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL:-0}); the proxy holds the vendor key (ADR-2139)"
+  else
+    echo "  [system-one] local façade projected: $_SSO_API (model $_SSO_MODEL) — TYPESAFE_API_KEY is off the path for every consumer that follows the façade"
+  fi
 fi
 
 # ── ADR-2091: live skill router — register/de-register the UserPromptSubmit hook ──
@@ -2528,9 +2568,12 @@ if [ "$_SR_ROUTER" = "jev" ] && [ "$_SR_HOOK" = "1" ] \
   else
     _SR_MODEL="${_SSO_MODEL:-$_SR_MODEL}"
   fi
+  # ADR-2139: behind the proxy the hook sends no key; the flag rides the inlined
+  # command like the endpoint does (hook env is the command's, not the shell's).
+  _SR_PROXY="${AGENTBOX_SYSTEM_ONE_PROXY:-}"
   mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
   SR_HOOK="$_SR_HOOK_FILE" SETTINGS="$_CLAUDE_SETTINGS" SR_MODEL="$_SR_MODEL" \
-  SR_API="$_SSO_API" \
+  SR_API="$_SSO_API" SR_PROXY="$_SR_PROXY" \
   SR_TIMEOUT="$_SR_TIMEOUT" SR_MIN_CHARS="$_SR_MIN_CHARS" \
   SR_CASCADE="$_SR_CASCADE" SR_CASCADE_CUTOFF="$_SR_CASCADE_CUTOFF" \
   SR_LABEL_LOG="$_SR_LABEL_LOG" node <<'SRJS' || true
@@ -2542,6 +2585,8 @@ const f = process.env.SETTINGS, hook = process.env.SR_HOOK;
 const api = String(process.env.SR_API || '');
 const pfx = `AGENTBOX_SKILL_ROUTER=jev AGENTBOX_SKILL_ROUTE_MODEL=${process.env.SR_MODEL} ` +
   (api ? `AGENTBOX_SKILL_ROUTE_API=${api} ` : '') +
+  // ADR-2139: keyless behind the proxy. Absent when off, so the command is unchanged.
+  (process.env.SR_PROXY === '1' ? 'AGENTBOX_SYSTEM_ONE_PROXY=1 ' : '') +
   `AGENTBOX_SKILL_ROUTE_TIMEOUT_MS=${process.env.SR_TIMEOUT} AGENTBOX_SKILL_ROUTE_MIN_CHARS=${process.env.SR_MIN_CHARS}` +
   // ADR-2095 addendum: absent when off, so the registered command is unchanged.
   (process.env.SR_CASCADE === '1'
@@ -2723,6 +2768,10 @@ fi
 if [ "$_JC_ON" = "1" ] && [ -d "$_JC_PLUGIN" ] && [ -x "$_JC_BIN" ] && command -v claude >/dev/null 2>&1; then
   if [ -z "$_SSO_PLUGIN_CONFIG" ]; then
     [ -n "${TYPESAFE_API_KEY:-}" ] || echo "  [factrail] enabled but TYPESAFE_API_KEY is unset — compaction runs on local fact rails without Jev (fallback=rules) or the built-in summary (fallback=summary) (W072)"
+  elif [ "${AGENTBOX_SYSTEM_ONE_PROXY:-0}" = "1" ] && [ "${AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL:-0}" != "1" ]; then
+    # ADR-2139: factrail still gates on a key being PRESENT for a non-local backend; the
+    # proxy drops it, so the vendor never sees it — but without it factrail idles.
+    [ -n "${TYPESAFE_API_KEY:-}${FACTRAIL_API_KEY:-}" ] || echo "  [factrail] behind the System One proxy but neither TYPESAFE_API_KEY nor FACTRAIL_API_KEY is set — factrail's own key gate keeps it on local rules (W076)"
   fi
   run_as_devuser env HOME=/home/devuser node /opt/agentbox/scripts/factrail-store-migrate.mjs || true
   _JC_VER="$(node -e "process.stdout.write(require('$_JC_PLUGIN/.claude-plugin/plugin.json').version)" 2>/dev/null || echo 0.0.0)"

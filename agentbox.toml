@@ -796,6 +796,82 @@ spawn_min_confidence = 0.8       # enforce only: minimum Jev confidence to rewri
 shadow_log = "/home/devuser/.claude/jev-checkpoints/shadow.jsonl"   # BASE path: per-session files shadow-<session>[.N].jsonl beside it, one JSON line per spawn decision (sha256-12 digest, no prompt text)
 usd_per_mtok_in = 0.042          # input price used for the /jev-checkpoints cost estimate
 
+[system_one]
+# ADR-2139 — the System One judge is a VENDOR SLOT, not a vendor. Every typed-
+# decision consumer (the live skill router ADR-2091, factrail compaction
+# ADR-2121, the advisor checkpoints ADR-2135) is pointed at ONE loopback proxy,
+# `system-one-proxy` ([program:system-one-proxy], crates/system-one/
+# system-one-proxy), which forwards `POST /v1/systemone` to the backend named
+# here. The proxy owns every vendor key (read from the env var each backend
+# names, never from this file), overwrites `model` with the backend's own, and
+# drops whatever Authorization a consumer sent, so a key only ever reaches the
+# host it is paired with.
+#
+# Switching `backend` is LIVE through `./agentbox.sh systemone backend <name>`:
+# it edits this file, re-renders /run/agentbox/system-one.json (the proxy
+# re-reads THAT file on its next request) and keeps `projected_local`, what the
+# consumers were told at boot (ADR-2094 §5). cloud→local and same-class
+# switches apply at once; local→cloud is refused by the projector and, if the
+# file is edited by hand, by the proxy (503 backend_locality_changed) until a
+# restart, so a tainted session never reaches a cloud vendor. Boot projects
+# from the BAKED manifest, so a switch survives a restart only after a rebuild.
+#
+# enabled = false ⇒ nothing is projected; [features.sovereign_system_one]
+#                   (the laya façade) and the cloud defaults apply as before.
+# enabled = true  ⇒ services/agentbox-manifest system-one-project emits the
+#                   proxy URL, the selected model and backendLocal for all
+#                   three consumers. Validator: E080 (backend not declared, or a
+#                   cloud backend with no key_env), E081 (local backend with an
+#                   off-LAN url), W076 (active vendor).
+enabled = true
+backend = "subq"                 # typesafe | subq | laya | kev | any [system_one.backends.<name>]
+bind = "127.0.0.1:8094"          # loopback only; consumers run in this container
+log = "/home/devuser/.local/share/system-one-proxy/requests.jsonl"  # one line per request: backend, status, ms, tokens — never content
+
+# Each backend: url (its /v1/systemone), model, key_env (name of the env var
+# holding its key; empty = keyless), local (DECLARED locality, never inferred
+# from the URL), timeout_ms, usd_per_mtok_in (for the consumers' cost lines).
+[system_one.backends.typesafe]
+url = "https://api.typesafe.ai/v1/systemone"
+model = "jev-latest"
+key_env = "TYPESAFE_API_KEY"
+local = false
+timeout_ms = 30000
+usd_per_mtok_in = 0.042
+
+[system_one.backends.subq]
+# Subquadratic SubQ Snap (public preview 2026-10-12): same wire, images (≤4),
+# 384K-token states. Measured at parity with Jev on the ADR-2089 routing
+# corpus (93.0% both) and on the recorded compaction judgements (ADR-2139).
+# Default retention is indefinite; request zero-data-retention per org.
+url = "https://api.subq.ai/v1/systemone"
+model = "subq-snap-preview"
+key_env = "SUBQ_API_KEY"
+local = false
+timeout_ms = 30000
+usd_per_mtok_in = 0.05
+
+[system_one.backends.laya]
+# The ADR-2094 façade sidecar (./agentbox.sh systemone up), engine per
+# [features.sovereign_system_one].engine. Keyless on the LAN.
+url = "http://systemone:8097/v1/systemone"
+model = "laya-typed-decisions"
+key_env = ""
+local = true
+timeout_ms = 20000
+usd_per_mtok_in = 0.0
+
+[system_one.backends.kev]
+# Kev-9B (jaredpalmer/kev, Apache-2.0, Qwen3.5-9B-Base adapter + pointer
+# head) served by `python -m kev.serve --port 8009` on a local GPU. Native
+# /v1/systemone, up to 255 options, 65K-token states; no façade needed.
+url = "http://127.0.0.1:8009/v1/systemone"
+model = "jaredpalmer/kev-9b"
+key_env = ""
+local = true
+timeout_ms = 20000
+usd_per_mtok_in = 0.0
+
 [features.sovereign_system_one]
 # ADR-2094 — Sovereign System One: the local, capacity-adapting typed-decision
 # façade. The two System One consumers (the live skill router, ADR-2091, and the

@@ -58,7 +58,7 @@ Local lifecycle commands:
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
   ${GREEN}voice${NC}            Manage/open the operator cockpit + web voice stack [open|up|down|logs|health|status|certs|rebuild|shell]
-  ${GREEN}systemone${NC}        ADR-2094 Sovereign System One sidecar (laya + façade) [up|down|logs|health|status|eval|models|rebuild|shell]
+  ${GREEN}systemone${NC}        ADR-2094 Sovereign System One sidecar + ADR-2139 vendor slot [up|down|logs|health|status|eval|models|rebuild|shell|backend|proxy]
   ${GREEN}model-router${NC}     ADR-2080 metaharness router console [fetch|check|status|route "<task>" [--dry-run]|console]
   ${GREEN}xr-runtime${NC}       Manage Monado OpenXR + Godot XR test runtime [up|down|logs|health|status|rebuild|shell|gpu|vnc]
   ${GREEN}android${NC}          [EXPERIMENTAL, gated] redroid Android/Play sidecar [up|down|logs|status|screencap|shell|id] — needs AGENTBOX_ENABLE_ANDROID=1
@@ -2254,6 +2254,28 @@ _systemone_facade_url() {
 cmd_systemone() {
     local subcmd="${1:-help}"
     shift 2>/dev/null || true
+    # The proxy and its projection live on Agentbox loopback. On the host,
+    # delegate through the actual project mount, including nested checkouts.
+    if [[ "$subcmd" == "backend" || "$subcmd" == "proxy" ]] && [[ ! -e /.dockerenv ]]; then
+        local runtime_script
+        runtime_script="$(docker inspect agentbox --format '{{json .Mounts}}' | python3 -c '
+import json, sys
+from pathlib import PurePosixPath
+source = PurePosixPath(sys.argv[1])
+matches = []
+for mount in json.load(sys.stdin):
+    try:
+        relative = source.relative_to(mount["Source"])
+    except ValueError:
+        continue
+    matches.append((len(mount["Source"]), str(PurePosixPath(mount["Destination"]) / relative / "agentbox.sh")))
+if not matches:
+    sys.exit("Agentbox does not mount this checkout; cannot run its System One command")
+print(max(matches)[1])
+' "$SCRIPT_DIR")" || return 1
+        docker exec -i -u devuser agentbox bash "$runtime_script" systemone "$subcmd" "$@"
+        return $?
+    fi
     local url; url="$(_systemone_facade_url)" || true
 
     case "$subcmd" in
@@ -2367,6 +2389,78 @@ cmd_systemone() {
             fi
             docker exec -i systemone system-one-eval "${args[@]}"
             ;;
+        # ── ADR-2139: the vendor slot (loopback proxy) ───────────────────────
+        backend)
+            # `systemone backend` prints the active selection; `systemone backend
+            # <name>` switches it: edits [system_one].backend, validates the
+            # manifest, re-projects /run/agentbox/system-one.json IN PLACE
+            # (atomic rename; the proxy re-reads it on the next request) and
+            # refuses a local→cloud switch while the consumers were projected
+            # local at boot (ADR-2094 §5) — that one needs a container restart.
+            local toml="${SCRIPT_DIR}/agentbox.toml" proj="/run/agentbox/system-one.json" want="${1:-}"
+            local mf; mf="$(command -v agentbox-manifest || echo /opt/agentbox/bin/agentbox-manifest)"
+            if [[ -z "$want" ]]; then
+                if [[ -r "$proj" ]]; then
+                    python3 - "$proj" <<'PYSTAT'
+import json, sys
+d = json.load(open(sys.argv[1])); b = d["backends"][d["active"]]
+print("active:", d["active"], " model:", b["model"], " local:", b["local"], " projected_local:", d.get("projected_local"), " since:", d.get("projected_at"))
+print("available:", ", ".join(d["backends"]))
+PYSTAT
+                else
+                    echo -e "${YELLOW}No projection at $proj — [system_one].enabled is off or the container has not booted with it. Manifest says: $(sed -n 's/^backend = "\(.*\)".*/\1/p' "$toml" | head -1)${NC}"
+                fi
+                curl -sf --max-time 3 "http://$(sed -n 's/^bind = "\(.*\)".*/\1/p' "$toml" | head -1)/v1/backend" 2>/dev/null | { command -v jq >/dev/null 2>&1 && jq . || cat; } || true
+                exit 0
+            fi
+            if ! grep -q "^\[system_one.backends.${want}\]" "$toml"; then
+                echo -e "${RED}No [system_one.backends.${want}] in agentbox.toml. Available: $(grep -o '^\[system_one.backends\.[a-z0-9_-]*\]' "$toml" | sed 's/.*\.//;s/\]//' | tr '\n' ' ')${NC}" >&2
+                exit 1
+            fi
+            # The live projection carries projected_local, the anchor of the ADR-2094
+            # §5 locality rule. Without a readable one a switch cannot be checked
+            # against what the consumers were told at boot, so it is refused
+            # rather than re-baselined (a missing file is NOT "cloud is fine").
+            if [[ ! -r "$proj" ]]; then
+                echo -e "${RED}No readable projection at $proj; refusing to switch blind. Restart the container (boot writes it) or edit agentbox.toml for the next rebuild.${NC}" >&2
+                exit 1
+            fi
+            if ! python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d.get("enabled") is True else 1)' "$proj" 2>/dev/null; then
+                echo -e "${RED}$proj is a disabled stub (the slot was unusable at boot); fix [system_one] and rebuild before switching.${NC}" >&2
+                exit 1
+            fi
+            # Dry-run the switch against the live projection BEFORE touching the manifest.
+            if ! "$mf" system-one-project --manifest "$toml" --format json --existing "$proj" --switch "$want" >/dev/null; then
+                exit 1
+            fi
+            local cur; cur="$(sed -n '/^\[system_one\]/,/^\[/{s/^backend = "\(.*\)".*/\1/p}' "$toml" | head -1)"
+            sed -i "/^\[system_one\]/,/^\[/{s/^backend = \"${cur}\"/backend = \"${want}\"/}" "$toml"
+            if ! node "${SCRIPT_DIR}/scripts/agentbox-config-validate.js" "$toml" >/dev/null 2>&1; then
+                sed -i "/^\[system_one\]/,/^\[/{s/^backend = \"${want}\"/backend = \"${cur}\"/}" "$toml"
+                echo -e "${RED}Manifest invalid with backend=${want}; reverted to ${cur}. Run: node scripts/agentbox-config-validate.js agentbox.toml${NC}" >&2
+                exit 1
+            fi
+            if [[ -w "$(dirname "$proj")" || -w "$proj" ]]; then
+                local tmp="${proj}.tmp.$$"
+                if "$mf" system-one-project --manifest "$toml" --format json --existing "$proj" --switch "$want" > "$tmp"; then
+                    mv -f "$tmp" "$proj"
+                    echo -e "${GREEN}System One backend: ${cur} → ${want}${NC} (live; the proxy follows on its next request)"
+                    echo -e "${YELLOW}Boot projects from the BAKED manifest (/etc/agentbox.toml → Nix store): a container restart reverts to the baked backend until the next ./agentbox.sh rebuild.${NC}"
+                    curl -sf --max-time 3 "http://$(sed -n 's/^bind = "\(.*\)".*/\1/p' "$toml" | head -1)/v1/backend" 2>/dev/null | { command -v jq >/dev/null 2>&1 && jq -c '{active,model,local,projected_local}' || cat; } || echo -e "${YELLOW}proxy not answering on the bind address — is [program:system-one-proxy] running?${NC}"
+                else
+                    rm -f "$tmp"; exit 1
+                fi
+            else
+                echo -e "${YELLOW}Manifest updated (backend = ${want}) but no writable projection at $proj: the running proxy is unchanged, and boot projects from the baked manifest, so this only takes effect after ./agentbox.sh rebuild.${NC}"
+            fi
+            ;;
+        proxy)
+            # Proxy observability: /v1/backend counters and the tail of the request log.
+            local bind; bind="$(sed -n 's/^bind = "\(.*\)".*/\1/p' "${SCRIPT_DIR}/agentbox.toml" | head -1)"
+            curl -sf --max-time 3 "http://${bind:-127.0.0.1:8094}/v1/backend" | { command -v jq >/dev/null 2>&1 && jq . || cat; } || { echo -e "${RED}proxy not answering at ${bind:-127.0.0.1:8094}${NC}"; exit 1; }
+            local log; log="$(sed -n 's/^log = "\(.*\)".*/\1/p' "${SCRIPT_DIR}/agentbox.toml" | head -1)"
+            [[ -r "$log" ]] && { echo; echo "last requests ($log):"; tail -n "${1:-10}" "$log"; }
+            ;;
         rebuild)
             docker compose "${SYSTEMONE_COMPOSE_ARGS[@]}" down
             docker compose "${SYSTEMONE_COMPOSE_ARGS[@]}" build --no-cache
@@ -2391,6 +2485,10 @@ Usage: $0 systemone <command>
             (the corpus and the skills tree are staged in from this checkout)
   ${GREEN}rebuild${NC}   down + build --no-cache + up
   ${GREEN}shell${NC}     Shell into the container
+  ${GREEN}backend${NC}   [name]  Show or switch the System One vendor slot (ADR-2139): typesafe | subq | laya | kev …
+            Live between backends of one locality class and from cloud to local; local→cloud
+            needs a container restart (the consumers' email fence is projected at boot).
+  ${GREEN}proxy${NC}     [n]     Proxy /v1/backend counters and the last n request-log lines
 
 Topology: consumer → systemone:8097 (Rust façade, Jev wire format) → 127.0.0.1:8098
 (Python laya engine, loopback only, never published). The façade shortlists options
