@@ -9,7 +9,7 @@
 > consultant-deepseek, consultant-perplexity, consultant-zai, consultant-antigravity) are
 > not skills; route to them directly via their `consult` tool when a second model opinion is wanted.
 
-Skills: 123 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
+Skills: 124 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md Artefact 1.
 
 ## How to route
 
@@ -103,6 +103,7 @@ Skills: 123 active, 5 deprecated redirects. Sections mirror SKILL-DIRECTORY.md A
 
 | Skill | Route when (from the skill's own description) |
 |---|---|
+| `anatomy` | Builds detailed isometric SVG figures that explain a technical idea as a working physical object, with solid parts, truthful readouts and optional interaction, WebGL or 3D. Use for mechanical technical illustrations, algorithm explainers, interactive instruments and crafted figures for docs, articles or web pages. Not for architecture topology (fossflow), Mermaid corpora (diagrams-as-code), general editorial diagrams (diagram-design), or explaining a whole repository (explainer). |
 | `art` | Complete visual content system for Claude Code. Use when generating blog headers, infographics, editorial art, diagrams, or comics. Default aesthetic: light backgrounds, teal/burnt orange accents, hand-drawn sketch style. |
 | `book-publishing` | Use when publishing a book, preparing an arXiv submission, formatting a manuscript for KDP, or turning a markdown manuscript into a print-ready PDF. End-to-end pipeline orchestrating parallel agent swarms for LaTeX (memoir) conversion, BibTeX citation extraction, diagram/chart generation, image upcycling, and visual verification. NOT for single-document LaTeX compilation (use latex-documents), general prose editing, or ebook-only EPUB flows. |
 | `diagram-design` | Create branded architecture, IT current-state, flowchart, sequence, state machine, ER/data model, timeline, swimlane, quadrant, radar/spider, loop/flywheel, nested, tree, org chart, layer stack, Venn, pyramid/funnel, treemap, bar, line, Gantt and scatter charts, high-level, process, medallion, data flow, DP integration, or DP security matrix diagrams as standalone HTML/SVG/PNG. Redraw .drawio/.drawio.png/.drawio.svg or Mermaid .mmd sources at a chosen size/detail; onboard brand tokens from a website; add semantic patterns, callouts, accessible motion, or sketchy/hand-drawn styling. |
