@@ -1,0 +1,22 @@
+diff --git a/siding/bin/siding.mjs b/siding/bin/siding.mjs
+index de5f88a..7047960 100755
+--- a/siding/bin/siding.mjs
++++ b/siding/bin/siding.mjs
+@@ -23,6 +23,9 @@
+ //   siding produce ... --announce-mirror https://a/siding[,https://b/siding]  publish the tip (NIP-333, kind 33333, d = chain id)
+ //       to the relays after every block, naming those mirrors; a client that knows only the chain id finds the chain
+ //   siding produce ... --parent-wallet <name>  the parent wallet holding the peg outputs: every burn is paid from it (SPEC 7)
++//   siding produce ... --peg-script <hex>     Level 2 without a federation: announce this parent output script as the peg (SPEC 6) and
++//                                             credit outputs paying it; a single-signer chain passes its challenge (5120<signer>) and
++//                                             needs no parent wallet to take deposits (peg-outs stay recorded, unpaid)
+ //   siding produce ... on a chain naming the evm rule: POST /evm is an Ethereum JSON-RPC (MetaMask, ethers, viem);
+ //       eth_sendRawTransaction is carried in a sidestr transaction the signer pays for
+ //   siding produce ... --checkpoint-every N [--checkpoint-wallet <name>]   every N blocks, write the tip into the parent as an OP_RETURN
+@@ -152,6 +155,7 @@ if (cmd === 'produce') {
+   // SPEC 6: the script a peg-in pays, announced with every tip. Level 2: the challenge (the k-of-n script). Level 1: one
+   // labelled address in the peg wallet, looked up once the parent is open (below), then the tip is re-announced with it.
+   let pegScript = fed ? chain.challenge.toLowerCase() : null;
++  if (!pegScript && args['peg-script']) { const h = String(args['peg-script']).toLowerCase(); if (!/^([0-9a-f]{2}){2,80}$/.test(h)) throw new Error('--peg-script is not an output script hex'); pegScript = h; log(`peg-ins pay the announced script ${h.slice(0, 12)}… (--peg-script)`); }
+   // SPEC 3: the chain's hash, announced with every tip (`e`) when the document has been published as an event (siding chain-event)
+   let chainHash = null; { const f = args['chain-event'] ?? join(dirname(chainFile), 'chain-event.json'); if (existsSync(f)) { const d = parseChainEvent(JSON.parse(await readFile(f, 'utf8')), { verify: engine.nostr.verifyNostrEvent }); if (d.alias !== chain.id) throw new Error(`${f} is the event of ${d.alias}, not ${chain.id}`); chainHash = d.hash; log(`chain hash ${chainHash} (${f})`); } else log(`no chain-event.json beside the document: tips carry no chain hash (siding chain-event makes one)`); }
+   let announceRetryAt = 0, announcing = false; // a failed announcement is retried a minute later; one in flight at a time

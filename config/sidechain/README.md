@@ -145,6 +145,25 @@ logs `SIDESTR-UNPINNED`, naming each directory that is off its pin or has uncomm
 loads `@ethereumjs/*` only for a chain whose document names the `evm` rule, and neither estate
 chain does; the runner refuses such a chain on this bake.
 
+### Persistence failures and recovery
+
+The spec pin `2fd6114` includes [upstream PR #32](https://github.com/sidestr/spec/pull/32).
+An append or index-write failure latches `SIDING_PERSISTENCE_FAILED`; the producer exits
+before advertising or extending an unsaved tip. This prevents further damage but does
+not repair a chain already affected by a storage failure.
+
+Recover with producers and mirrors stopped: retain the original block files, select the
+contiguous validated index prefix, truncate `blocks.dat` immediately after its last framed
+record, and replay it with the real engine. Test production and restart in an isolated
+copy before replacing the live files. Keep `chain-event.json`, signing keys and peg scan/payment
+records: claims are derived from replay, and payment records prevent duplicate parent payouts.
+Discarding a test-chain suffix also invalidates transactions that spent its outputs.
+
+The bake applies `patches/peg-script.patch`, the CLI-only change from previously deployed
+spec revision `83dd662`, to preserve single-signer peg announcements. Its provenance is
+recorded in `.pin-patches`; it does not change persistence or consensus. Remove the patch
+when the canonical upstream revision includes `--peg-script` support.
+
 ### Further chains: `[sidechain.<name>]`
 
 Each further sealed chain is a table of its own (`[sidechain.dreamlab-txbt4]` is the first; the
