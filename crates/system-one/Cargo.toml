@@ -16,6 +16,8 @@ members = [
     "system-one-facade",
     # The measurement rig: accuracy, latency, cost, backend parity. Internal.
     "system-one-eval",
+    # The vendor-slot proxy every consumer calls (ADR-2139). Internal binary.
+    "system-one-proxy",
 ]
 
 [workspace.package]
