@@ -92,20 +92,6 @@ fn registry_pid(pid: u64) -> Option<u32> {
     (pid > 0 && pid <= i32::MAX as u64).then_some(pid as u32)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::registry_pid;
-
-    #[test]
-    fn registry_pid_rejects_zero_negative_casts_and_truncation() {
-        assert_eq!(registry_pid(42), Some(42));
-        assert_eq!(registry_pid(i32::MAX as u64), Some(i32::MAX as u32));
-        for pid in [0, i32::MAX as u64 + 1, u32::MAX as u64 + 42, u64::MAX] {
-            assert_eq!(registry_pid(pid), None);
-        }
-    }
-}
-
 fn main() {
     let args = Args::parse();
     let home = std::env::var("HOME").unwrap_or_else(|_| "/home/devuser".into());
@@ -216,5 +202,19 @@ fn main() {
         );
     } else if rows.iter().any(|r| r["stale"].as_bool().unwrap_or(false)) && !args.kill {
         println!("\nStale daemons found — re-run with --kill to reap them.");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::registry_pid;
+
+    #[test]
+    fn registry_pid_rejects_zero_negative_casts_and_truncation() {
+        assert_eq!(registry_pid(42), Some(42));
+        assert_eq!(registry_pid(i32::MAX as u64), Some(i32::MAX as u32));
+        for pid in [0, i32::MAX as u64 + 1, u32::MAX as u64 + 42, u64::MAX] {
+            assert_eq!(registry_pid(pid), None);
+        }
     }
 }

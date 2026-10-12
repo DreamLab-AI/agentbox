@@ -203,12 +203,12 @@ T=$(mktemp -d); make_tree "$T"; mkdir -p "$T/fixture"
 cat > "$T/fixture/SKILL.md" <<'EOF'
 ---
 name: fixture
-description: points at a host that no longer exists.
+description: names an embedding model the estate no longer uses.
 ---
 
-Call the model at http://a retired address:8084/v1 for inference.
+Embed the corpus with MiniLM before indexing it.
 EOF
-check "banned stale host still fails" 1 "STALE" "$T"
+check "banned stale string still fails" 1 "STALE" "$T"
 rm -rf "$T"
 
 # --- 13. NAME: frontmatter name must equal the directory (audit 2026-09-09) ---

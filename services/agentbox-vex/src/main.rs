@@ -599,15 +599,22 @@ fn scope_native(mut native: Value, scoped: &Value, subject: &str) -> Result<Valu
     let artifacts = native["artifacts"]
         .as_array()
         .ok_or("Syft omitted inventory")?;
-    let expected: BTreeSet<&str> = components
+    // CycloneDX also inventories shipped configuration files. Syft's native
+    // artifacts are software packages: its decoder omits type=file entries.
+    // Keep those files in the authoritative CycloneDX/payload evidence, while
+    // requiring every software component to survive the scanner conversion.
+    let packages: Vec<&Value> = components.iter().filter(|c| c["type"] != "file").collect();
+    let expected: BTreeSet<&str> = packages
         .iter()
         .filter_map(|c| c["purl"].as_str())
+        .filter(|purl| !purl.is_empty())
         .collect();
     let actual: BTreeSet<&str> = artifacts
         .iter()
         .filter_map(|c| c["purl"].as_str())
+        .filter(|purl| !purl.is_empty())
         .collect();
-    if components.len() != artifacts.len() || expected != actual {
+    if packages.len() != artifacts.len() || expected != actual {
         return Err("Syft conversion changed the scoped package inventory".into());
     }
     // Container roots lose repository identifiers in the CycloneDX decoder.
@@ -731,6 +738,25 @@ mod tests {
         let mut changed = native;
         changed["artifacts"][0]["purl"] = json!("pkg:nix/openssh@other");
         assert!(scope_native(changed, &scoped, &subject()).is_err());
+    }
+
+    #[test]
+    fn native_export_distinguishes_config_files_from_unversioned_packages() {
+        let mut scoped = sbom();
+        scoped["components"].as_array_mut().unwrap().extend([
+            json!({"type":"file", "name":"fonts.conf", "version":"",
+                "purl":"pkg:nix/fonts.conf"}),
+            json!({"type":"library", "name":"source", "version":""}),
+        ]);
+        let native = json!({"artifacts":[
+            {"purl":scoped["components"][0]["purl"]},
+            {"name":"source", "version":"", "purl":""}
+        ]});
+        assert!(scope_native(native.clone(), &scoped, &subject()).is_ok());
+        // A package without a PURL is still counted: dropping it must fail.
+        let mut missing = native;
+        missing["artifacts"].as_array_mut().unwrap().pop();
+        assert!(scope_native(missing, &scoped, &subject()).is_err());
     }
 
     #[test]

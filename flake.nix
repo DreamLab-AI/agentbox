@@ -211,6 +211,9 @@
         teammateGcReap    = resHygieneCfg.reap or true;
         teammateIdleSecs  = toString (resHygieneCfg.idle_secs or 1800);
         teammateGcInterval= toString (resHygieneCfg.interval_secs or 60);
+        # ADR-2138 [resources.target_gc]: idle Cargo target sweeper. Default OFF (it
+        # deletes data), so a manifest with no section emits nothing. REBUILD-class.
+        targetGcEnabled   = (resourcesCfg.target_gc or {}).enabled or false;
         bgNiceLevel       = resServicesCfg.nice or 10;
         # Background supervised programs run at lower CFS weight. The cgroup
         # filesystem is read-only inside the container (nsdelegate, empty
@@ -3282,6 +3285,26 @@ startsecs=0
 priority=245
 stdout_logfile=/var/log/teammate-gc.log
 stderr_logfile=/var/log/teammate-gc.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+${lib.optionalString targetGcEnabled ''
+
+; ADR-2138: gated on [resources.target_gc].enabled (default false). Removes Cargo
+; target/ directories that carry the Cargo marker, hold no build lock (a failed
+; non-blocking flock on .cargo-lock) and are idle for max_age_days. Roots, the
+; exclude list, the age and the interval come from /etc/agentbox.toml (baked, so
+; REBUILD-class). Idle I/O class so a sweep never starves a build.
+[program:target-gc]
+command=${bgNice}${pkgs.util-linux}/bin/ionice -c3 ${agentboxOpsPkg}/bin/target-gc --delete --loop --manifest /etc/agentbox.toml
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=0
+priority=246
+stdout_logfile=/var/log/target-gc.log
+stderr_logfile=/var/log/target-gc.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}

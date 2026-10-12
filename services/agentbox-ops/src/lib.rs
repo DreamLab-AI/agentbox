@@ -12,6 +12,7 @@ pub mod process_identity;
 pub mod procs;
 pub mod pyjson;
 pub mod solar;
+pub mod target_gc;
 pub mod teammates;
 pub mod token_audit;
 pub mod voyager;

@@ -187,4 +187,5 @@ _124 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2135](ADR-2135-jev-checkpoints-time-the-advisor.md) | Use Jev to time the advisor — jev-checkpoints, with spawn routing shadow-only | GOVERNANCE-capabilities | 2026-10-09 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2136](ADR-2136-pin-the-shared-ontology-toolchain.md) | Pin the shared ontology toolchain independently of the host application | — | 2026-10-11 | proposed | none | inactive | — | — | jjohare | agentbox |
 | [ADR-2137](ADR-2137-image-scoped-vex-evidence.md) | Generate image-scoped SBOM and VEX from shipped Nix payloads | BASELINE-container | 2026-10-11 | accepted | complete | staged | — | — | jjohare | agentbox |
+| [ADR-2138](ADR-2138-idle-cargo-target-sweeper.md) | Sweep idle Cargo target directories under supervisord | BASELINE-container | 2026-10-12 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2139](ADR-2139-system-one-judge-as-a-vendor-slot.md) | Treat the System One judge as a switchable vendor slot | GOVERNANCE-capabilities | 2026-10-12 | accepted | partial | staged | — | — | jjohare | agentbox |

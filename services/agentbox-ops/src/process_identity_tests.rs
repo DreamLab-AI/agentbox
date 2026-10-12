@@ -23,26 +23,6 @@ impl OwnedChild {
         panic!("spawned process {pid} never exposed a non-empty argv");
     }
 
-    /// Spawns `sh -c <script>` with no stdio attached.
-    pub fn spawn(script: &str) -> Self {
-        let child = Command::new("sh")
-            .arg("-c")
-            .arg(script)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .expect("the test harness must be able to spawn sh");
-        let pid = child.id();
-        Self::wait_for_argv(pid);
-        // Shell-backed fixtures may immediately exec their final command.
-        std::thread::sleep(std::time::Duration::from_millis(120));
-        Self {
-            child: Some(child),
-            pid,
-        }
-    }
-
     /// Spawns a program directly when a test cares about its exact argv.
     pub fn spawn_program(program: &str, args: &[&str]) -> Self {
         let child = Command::new(program)
@@ -150,7 +130,7 @@ fn starttime_is_counted_from_the_last_paren_not_by_splitting_the_line() {
 #[test]
 fn argv_splits_on_nul_and_drops_the_terminator() {
     assert_eq!(
-        parse_argv(b"sleep\0300\0"),
+        parse_argv(b"sleep\x00300\x00"),
         vec!["sleep".to_string(), "300".to_string()]
     );
     // Interior empty arguments are legal and must survive.

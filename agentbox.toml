@@ -1513,6 +1513,22 @@ reap          = true                            # false = report only
 idle_secs     = 1800
 interval_secs = 60
 
+[resources.target_gc]                           # ADR-2138 — idle Cargo target sweeper
+# [program:target-gc] removes Cargo target/ directories that are verifiably Cargo's,
+# unlocked by any running build, and unchanged for max_age_days. Agent worktrees
+# each grow a target/ of 5-50 GB; one sweep recovered 525 GB on 2026-10-12.
+# REBUILD-class throughout: the manifest is baked into /etc/agentbox.toml, which the
+# program re-reads each pass, so a changed key lands with the next `./agentbox.sh
+# rebuild`. For a one-off sweep use flags: `target-gc --delete --max-age-days 3`
+# (read-only without --delete).
+enabled       = true
+roots         = ["/home/devuser/workspace"]     # absolute paths searched
+# Never touched. project/ is the host-bound checkout whose `launch.sh up dev`
+# reuses project/target; it stays out until the operator opts it in.
+exclude       = ["/home/devuser/workspace/project"]
+max_age_days  = 7
+interval_secs = 21600                           # one pass every 6 h
+
 [resources.services]
 nice = 10                                       # CFS weight for background supervised programs (0 = off)
 

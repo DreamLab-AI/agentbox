@@ -640,6 +640,35 @@ if (observability.metrics_port !== undefined) {
   }
 }
 
+// ─── E080 + W077: idle Cargo target sweeper (ADR-2138) ───────────────────────
+//
+// E080 — roots or exclude holds a non-absolute path. The sweeper drops it silently, so a
+//        relative root would mean the sweep quietly covers less than the operator wrote.
+// W077 — enabled=true with roots overlapping nothing it may touch: a root that is itself
+//        excluded, so every pass is a no-op.
+{
+  const tg = (manifest.resources || {}).target_gc || {};
+  for (const key of ['roots', 'exclude']) {
+    const list = Array.isArray(tg[key]) ? tg[key] : [];
+    const bad = list.filter((p) => typeof p !== 'string' || !p.startsWith('/'));
+    if (bad.length) {
+      errors.push({
+        code: 'E080',
+        message: `E080: [resources.target_gc].${key} must be absolute paths; offending: ${bad.map((p) => JSON.stringify(String(p).slice(0, 40))).join(', ')}`,
+      });
+    }
+  }
+  const roots = Array.isArray(tg.roots) ? tg.roots.filter((p) => typeof p === 'string') : [];
+  const excl = Array.isArray(tg.exclude) ? tg.exclude.filter((p) => typeof p === 'string') : [];
+  const under = (p, base) => p === base || p.startsWith(base.replace(/\/$/, '') + '/');
+  if (tg.enabled === true && roots.length > 0 && roots.every((r) => excl.some((x) => under(r, x)))) {
+    warnings.push({
+      code: 'W077',
+      message: '[resources.target_gc].enabled is true but every root is excluded — [program:target-gc] will never remove anything',
+    });
+  }
+}
+
 // ─── E078 + W075: forum governance → corpus (ADR-2109) ───────────────────────
 //
 // E078 — [sovereign_mesh.forum_governance].relay_url, when set, must be a
