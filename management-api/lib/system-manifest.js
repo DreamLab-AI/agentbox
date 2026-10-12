@@ -331,6 +331,9 @@ const CATALOGUE = [
   { id: 'teammate-gc', name: 'Idle teammate reaper', layer: 'module',
     gate: 'resources.session_hygiene.enabled', apply_class: 'rebuild',
     summary: 'ADR-2034: teammate-gc SIGTERMs agent-team teammates whose CPU counter has not advanced for idle_secs (pid-reuse guarded, ADR-2032); reap=false reports only.' },
+  { id: 'target-gc', name: 'Idle Cargo target sweeper', layer: 'module',
+    gate: 'resources.target_gc.enabled', service: 'target-gc', apply_class: 'rebuild',
+    summary: 'ADR-2138: [program:target-gc] removes Cargo target/ directories that carry the Cargo marker, hold no build lock and have been idle for max_age_days; roots, exclude and age come from the baked [resources.target_gc].' },
 ];
 
 /** Resolve a dotted gate path against the parsed manifest. */

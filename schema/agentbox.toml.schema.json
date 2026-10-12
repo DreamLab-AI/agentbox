@@ -4070,6 +4070,18 @@
             }
           }
         },
+        "target_gc": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2138: idle Cargo target directory sweeper ([program:target-gc]). REBUILD-class: the manifest is baked into /etc/agentbox.toml, so every key lands with the next rebuild.",
+          "properties": {
+            "enabled": { "type": "boolean", "description": "true => flake.nix emits [program:target-gc]. Absent or false => no supervisor block." },
+            "roots": { "type": "array", "items": { "type": "string", "pattern": "^/" }, "description": "Absolute paths searched for Cargo target directories." },
+            "exclude": { "type": "array", "items": { "type": "string", "pattern": "^/" }, "description": "Absolute paths never touched, with everything below them." },
+            "max_age_days": { "type": "integer", "minimum": 0, "description": "A target with anything modified more recently than this is kept." },
+            "interval_secs": { "type": "integer", "minimum": 60, "description": "Seconds between passes." }
+          }
+        },
         "services": {
           "type": "object",
           "additionalProperties": false,

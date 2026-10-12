@@ -6,7 +6,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
-description = "Operational CLI tools for agentbox: scheduler daemon, daemon reaper, teammate reaper, resident hook shim, token audit, ExpeL lesson distillation, Voyager verification gate, and assorted skill helpers. Replaces the Python originals retired by the 2026-09-02 legacy audit."
+description = "Operational CLI tools for agentbox: scheduler daemon, daemon reaper, teammate reaper, idle Cargo target sweeper, resident hook shim, token audit, ExpeL lesson distillation, Voyager verification gate, and assorted skill helpers. Replaces the Python originals retired by the 2026-09-02 legacy audit."
 repository = "https://github.com/DreamLab-AI/agentbox"
 readme = "README.md"
 
@@ -69,6 +69,10 @@ path = "src/bin/agentbox-hook.rs"
 [[bin]]
 name = "teammate-gc"
 path = "src/bin/teammate-gc.rs"
+
+[[bin]]
+name = "target-gc"
+path = "src/bin/target-gc.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }

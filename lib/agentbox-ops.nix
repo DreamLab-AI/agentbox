@@ -8,6 +8,7 @@
 #   hermes-scheduler       cron daemon for Claude Code agent tasks
 #   ruflo-daemon-gc        pid-reuse-guarded reaper for leaked ruflo daemons
 #   teammate-gc            idle agent-team teammate reaper (ADR-2034)
+#   target-gc              idle Cargo target/ directory sweeper (ADR-2138)
 #   agentbox-hook          resident hook shim: event / reconcile / drain (ADR-2034)
 #   token-audit            usage audit over local Claude Code transcripts
 #   expel-distil           ExpeL post-task lesson extractor (hook hot path)
