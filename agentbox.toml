@@ -1815,7 +1815,9 @@ index_submit  = "off"
 # REBUILD-class: flake.nix bakes the supervisor blocks; a change needs
 # `./agentbox.sh rebuild`.
 [sidechain]
-enabled         = true    # [program:sidestr-producer], run-producer.sh
+# Paused after the ENOSPC block-persistence failure; retain state and backups.
+# Re-enable after recovery and the upstream durability fix (sidestr/spec PR #32).
+enabled         = false   # dominates producers, mirrors, faucets and poker citizens
 announce_mirror = "https://raw.githubusercontent.com/DreamLab-AI/sidestr-dreamlab/main"   # kind-33333 tip names the Git mirror; no Pages build per block
 mirror          = true    # [program:sidestr-mirror]: push block files to the Git checkout
 mirror_checkout = "/home/devuser/workspace/sidestr/mirror"
