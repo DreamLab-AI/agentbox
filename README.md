@@ -182,6 +182,11 @@ The **interaction plane** — the way an operator creates, watches, attaches, an
 
 ---
 
+The optional `[system_one]` vendor slot sends skill routing, compaction, and advisor
+checkpoints through one loopback proxy. Inspect it with `./agentbox.sh systemone backend`
+and `./agentbox.sh systemone proxy`; see [ADR-2139](docs/adr/ADR-2139-system-one-judge-as-a-vendor-slot.md)
+for backend selection, credentials, and locality rules.
+
 ## Quickstart
 
 ### Interactive onboarding (recommended)

@@ -189,6 +189,20 @@ Set `enabled = true` to load the `ontology-core` and `ontology-enrich` skills in
 
 This gate is a **prepared placeholder** — the MCP server and associated tooling for ontology operations will be fleshed out in a future milestone. Enabling the flag now has no runtime effect beyond advertising the skills in the manifest; downstream agents that check the manifest before loading skills will respect it once the implementation lands.
 
+### System One backend selection
+
+`[system_one].enabled` bakes the typed-decision proxy; `[system_one].backend`
+selects a named `[system_one.backends.<name>]` entry. Supply the selected cloud
+provider's credential in `.env` (`SUBQ_API_KEY` or `TYPESAFE_API_KEY`). The vendor
+slot and `[features.sovereign_system_one]` are mutually exclusive.
+
+After deployment, `./agentbox.sh systemone backend` shows the active selection;
+append a backend name to switch live. Switching from consumers booted with a
+local backend to a cloud backend requires a rebuild/restart. A live switch also
+updates the source manifest; rebuild to persist that selection in the image.
+`./agentbox.sh systemone proxy` shows counters and bounded request metadata logs.
+See [ADR-2139](../adr/ADR-2139-system-one-judge-as-a-vendor-slot.md).
+
 ## 2. Build The Image
 
 Agentbox is built with Nix (a reproducible package manager). The `flake.nix` file composes packages, skills and toolchains into a Docker image based on your manifest — no Dockerfile, no layer drift between rebuilds. `nix build .#runtime` produces a [nix2container](https://github.com/nlewo/nix2container) OCI manifest at `./result`; the runtime exposes a `copyToDockerDaemon` helper that loads the image into the local Docker daemon via skopeo (no intermediate tarball, no layer copies).
