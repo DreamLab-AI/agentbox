@@ -520,6 +520,11 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
     const probs = a.probabilities && typeof a.probabilities === 'object' ? a.probabilities : {};
     const ranked = Object.entries(probs).sort((x, y) => y[1] - x[1]);
     const inTok = (j.usage && j.usage.input_tokens) || 0;
+    // The proxy knows the backend that served THIS request, including live
+    // switches. Cloud vendors cannot override the declared consumer rate.
+    const usdPerMTokIn = cfg.proxy
+      ? asRate(res.headers.get('x-system-one-usd-per-mtok-in'), cfg.usdPerMTokIn)
+      : cfg.usdPerMTokIn;
     return {
       outcome: 'routed', ...base, ms,
       model: j.model || cfg.model,
@@ -528,8 +533,8 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
       confidence: typeof a.confidence === 'number' ? a.confidence : null,
       ranked,
       usage: { input_tokens: inTok, output_tokens: (j.usage && j.usage.output_tokens) || 0 },
-      usdPerMTokIn: cfg.usdPerMTokIn,
-      usd: inTok * cfg.usdPerMTokIn / 1e6,
+      usdPerMTokIn,
+      usd: inTok * usdPerMTokIn / 1e6,
     };
   }
 }

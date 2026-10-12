@@ -189,6 +189,11 @@ async fn systemone(State(proxy): State<Shared>, body: Bytes) -> Response {
     if let Ok(v) = HeaderValue::from_str(&b.model) {
         response.headers_mut().insert("x-system-one-model", v);
     }
+    if let Ok(v) = HeaderValue::from_str(&b.usd_per_mtok_in.to_string()) {
+        response
+            .headers_mut()
+            .insert("x-system-one-usd-per-mtok-in", v);
+    }
     tracing::info!(backend = %name, model = %b.model, status = status.as_u16(), ms, input_tokens, questions, "request served");
     proxy.log_line(
         &p.log,

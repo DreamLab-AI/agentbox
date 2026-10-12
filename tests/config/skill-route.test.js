@@ -70,7 +70,7 @@ beforeAll((done) => {
       const b = behaviour;
       if (b.hang) return; // never answers — exercises the timeout
       if (b.status) { res.writeHead(b.status); res.end('{}'); return; }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.writeHead(200, { 'Content-Type': 'application/json', ...(b.headers || {}) });
       res.end(typeof b.reply === 'string' ? b.reply : JSON.stringify(b.reply));
     });
   });
@@ -188,6 +188,29 @@ describe('hook — off by default', () => {
     expect(out).not.toBeNull();
     expect(seen).toHaveLength(1);
     expect(seen[0].headers.authorization).toBeUndefined();
+  });
+
+  test('proxy request pricing follows a live change, including a free local backend', async () => {
+    const env = baseEnv({ AGENTBOX_SYSTEM_ONE_PROXY: '1' });
+    for (const rate of [0.05, 0]) {
+      behaviour.headers = { 'x-system-one-usd-per-mtok-in': String(rate) };
+      await runHook(PROMPT, env);
+      const record = logLines().at(-1);
+      expect(record.usd_per_mtok_in).toBe(rate);
+      expect(record.usd).toBe(1500 * rate / 1e6);
+    }
+  });
+
+  test('direct vendors cannot override the configured rate through a proxy header', async () => {
+    behaviour.headers = { 'x-system-one-usd-per-mtok-in': '0' };
+    await runHook(PROMPT, baseEnv());
+    expect(logLines()[0].usd_per_mtok_in).toBe(0.042);
+  });
+
+  test.each(['invalid', '-1'])('invalid proxy rate %s keeps the declared rate', async (rate) => {
+    behaviour.headers = { 'x-system-one-usd-per-mtok-in': rate };
+    await runHook(PROMPT, baseEnv({ AGENTBOX_SYSTEM_ONE_PROXY: '1' }));
+    expect(logLines()[0].usd_per_mtok_in).toBe(0.042);
   });
 
   test('short turns and slash commands are never sent', async () => {

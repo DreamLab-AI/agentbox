@@ -96,6 +96,7 @@ async fn forwards_with_model_overwritten_and_consumer_key_dropped() {
     assert_eq!(r.status(), 200);
     assert_eq!(r.headers()["x-system-one-backend"], "stub");
     assert_eq!(r.headers()["x-system-one-model"], "the-backend-model");
+    assert_eq!(r.headers()["x-system-one-usd-per-mtok-in"], "0");
     let body: Value = r.json().await.unwrap();
     assert_eq!(body["usage"]["input_tokens"], 123);
     let s = seen.lock().unwrap();

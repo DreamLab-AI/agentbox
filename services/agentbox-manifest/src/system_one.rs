@@ -352,6 +352,7 @@ pub fn render(
             format!("export AGENTBOX_SYSTEM_ONE_MODEL={}", shq(&b.model)),
             format!("export AGENTBOX_SKILL_ROUTE_API={}", shq(&endpoint)),
             format!("export AGENTBOX_SKILL_ROUTE_MODEL={}", shq(&b.model)),
+            format!("export AGENTBOX_SKILL_ROUTE_USD_PER_MTOK_IN={}", b.usd_per_mtok_in),
         ]
         .join("\n"),
         Format::PluginConfig => [
@@ -494,6 +495,7 @@ timeout_ms = 20000
         let out = out.unwrap();
         assert!(warns.is_empty(), "{warns:?}");
         assert!(out.contains("export AGENTBOX_SYSTEM_ONE_PROXY=1"));
+        assert!(out.contains("export AGENTBOX_SKILL_ROUTE_USD_PER_MTOK_IN=0"));
         assert!(out.contains("export AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=0"));
         assert!(out.contains("export AGENTBOX_SKILL_ROUTE_API='http://127.0.0.1:8094/v1/systemone'"));
         assert!(out.contains("export AGENTBOX_SKILL_ROUTE_MODEL='subq-snap-preview'"));
