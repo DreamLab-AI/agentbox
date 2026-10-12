@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit:
+verified_commit: 3baa60024cec7d13ea0160202009b032ed566400
 verified_paths: [services/agentbox-ops/src/target_gc.rs, services/agentbox-ops/src/bin/target-gc.rs, tests/config/target-gc.test.sh]
 owner: jjohare
 review_trigger: the first sweep that removes a directory a build still needed; a change to how Cargo locks its target directory; the operator deciding whether project/ joins the sweep

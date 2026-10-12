@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: bce90619924eed79941eda6837f64465440476b9
+verified_commit: 3baa60024cec7d13ea0160202009b032ed566400
 verified_paths: [services/agentbox-ops/src/procs.rs, services/agentbox-ops/src/bin/ruflo-daemon-gc.rs]
 owner: jjohare
 review_trigger: a new daemon launcher shape (new package path, wrapper script or runtime flags), any new binary that signals processes, or adoption of pidfd-based identity
