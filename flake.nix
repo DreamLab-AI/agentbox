@@ -936,7 +936,15 @@
           pkgs = rustPkgs;
           src = vaultSrc;
         };
-        vaultPackages = lib.optionals vaultCliActive [ vaultPkg ];
+        # ontomark — the released shared-ontology CLI (Ontomark ADR-OM-005; agentbox
+        # ADR-2136 first step). Baked BESIDE vault under the same gate: it owns
+        # validate/gate/conflicts/build (both scopes); vault keeps the governance
+        # verbs (find, retrieve, tree, edit, propose) until their typed-model port
+        # lands, then retires verb by verb (Ontomark DEPRECATION §13, AB-P6).
+        # Fetched as the release's static binary by digest, so this image runs the
+        # same bytes as visionGraph's publish pipeline and the Loom host.
+        ontomarkPkg = import ./lib/ontomark.nix { inherit lib; pkgs = rustPkgs; };
+        vaultPackages = lib.optionals vaultCliActive [ vaultPkg ontomarkPkg ];
 
         # Supercronic drives the podcast ingestion schedule.  Keep it in the
         # immutable Nix closure: ~/.local is intentionally a noexec tmpfs, so a

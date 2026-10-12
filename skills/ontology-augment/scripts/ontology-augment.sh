@@ -106,6 +106,30 @@ VAULT() {
   if [ -n "$VAULT_REPO" ]; then "$bin" --repo "$VAULT_REPO" "$@"; else "$bin" "$@"; fi
 }
 
+# ontomark — the released shared-ontology CLI (Ontomark ADR-OM-005; agentbox
+# ADR-2136 first step), baked beside vault by lib/ontomark.nix. It owns
+# validate/gate/conflicts/build; vault keeps find/retrieve/tree/edit/propose
+# until their typed-model port lands (Ontomark DEPRECATION §13, AB-P6).
+# ONTOMARK_BIN overrides the baked binary for a checkout under test. An image
+# built before ontomark was baked falls back to vault for the verbs both carry,
+# announced on stderr, so the skill keeps working across the rebuild.
+ontomark_bin() {
+  if [ -n "${ONTOMARK_BIN:-}" ] && [ -x "$ONTOMARK_BIN" ]; then printf '%s' "$ONTOMARK_BIN"; return 0; fi
+  if command -v ontomark >/dev/null 2>&1; then command -v ontomark; return 0; fi
+  [ -x /opt/agentbox/bin/ontomark ] && { printf '%s' /opt/agentbox/bin/ontomark; return 0; }
+  return 1
+}
+
+ONTOMARK() {
+  local bin
+  if bin="$(ontomark_bin)"; then
+    if [ -n "$VAULT_REPO" ]; then "$bin" --repo "$VAULT_REPO" "$@"; else "$bin" "$@"; fi
+  else
+    echo "ontology-augment: no \`ontomark\` baked yet (lib/ontomark.nix); falling back to vault for: $*" >&2
+    VAULT "$@"
+  fi
+}
+
 # The generation a `vault` answer belongs to (ADR-2129 decision 3), as JSON.
 # `vault` reads the working tree, so two facts are cited: the last local build's
 # `.generation.json` (id, digests, and owl:versionIRI once the build carries an
@@ -362,6 +386,20 @@ run_vault() {
   exit "$rc"
 }
 
+# run_ontomark <mode> <args…> — as run_vault, through ONTOMARK(). The envelope's
+# source names the binary that answered, so a fallback is visible in the result.
+run_ontomark() {
+  local mode="$1" out rc src=ontomark; shift
+  ontomark_bin >/dev/null 2>&1 || src=vault
+  set +e; out="$(ONTOMARK "$@")"; rc=$?; set -e
+  if [ -z "$out" ] || ! printf '%s' "$out" | jq . >/dev/null 2>&1; then
+    [ -n "$out" ] && printf '%s\n' "$out"
+    exit "$rc"
+  fi
+  emit "$src" "$mode" "$out" "$(vault_generation)"
+  exit "$rc"
+}
+
 cmd="${1:-}"; shift || true
 [ -n "$cmd" ] || die "no subcommand. See the header for usage."
 
@@ -483,8 +521,8 @@ case "$cmd" in
   # ── validate — former ontology_validate. OKF conformance + vocabulary +
   # link integrity, against the corpus, locally. No network at all.
   validate)
-    need_vault
-    run_vault report validate --json "$@"
+    # mode label "report", then the ontomark argv (ontomark has no `report` verb).
+    run_ontomark report validate --json "$@"
     ;;
 
   # ── propose — former ontology_propose. STILL GOVERNED: this builds a
