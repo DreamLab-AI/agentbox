@@ -73,3 +73,28 @@ them as such in any document produced from this skill:
   Calibration is a property of a population, never a guarantee about one answer.
 
 `evaluation.md` says how to turn each of these into a number for our traffic.
+
+## Other endpoints that speak the same wire — confirmed 2026-10-12
+
+The `POST /v1/systemone` request and answer shapes above are no longer TypeSafe's alone.
+Three other servers were exercised on this date with `system-one-client`'s request bytes
+unchanged; what differs is recorded here because it is exactly what a client gets wrong.
+
+| Endpoint | Docs | Model id | Confirmed on 2026-10-12 |
+|---|---|---|---|
+| `https://api.subq.ai/v1/systemone` (SubQ Snap, Subquadratic) | `https://docs.subq.ai/endpoints/decisions-api/` | `subq-snap-preview` | Same body and answer fields, same `usage`. Additive `images` array (objects `{mediaType, base64}`, raw base64 with no `data:` prefix, ≤ 4 images, ≤ 4 MiB each, 8 MiB total, 13 MiB body). Choice 2–255 options, Score 2–10 levels, `noul` with optional `criteria.true/false`. Accepted a 73,612-token state whole (vendor claims 384K). Key `SUBQ_API_KEY`, `402` without credits. Errors arrive as `detail.{error_type,message}`, not `error.{code,message}`. Price $0.05/MTok input, output free. Retention default **retain indefinitely**; zero-data-retention is per-organisation on request and leaves Decisions unaffected. |
+| `transformers serve` `/v1/systemone` (Hugging Face) | `https://huggingface.co/docs/transformers/main/en/serve-cli/serving` | any chat-template model | Follows TypeSafe's OpenAPI. Scores next-token labels `A`–`Z` / `Yes`/`No` under the chat template, thinking disabled. **1–26 options or levels per question**, ≤ 64 questions, `images` as `data:` URLs (≤ 4). `--decision-config` sets labels, per-type temperature and a full Jinja prompt; custom decision heads (Kev, Clef, laya) are *not* served by it. Not deployed anywhere in the estate: the HP model container is `llama-server` 0.3.0-dev, which returns 404 on this route. |
+| Kev `kev.serve` (`github.com/jaredpalmer/kev`) | README | `jaredpalmer/kev-{0.8b,4b,9b,27b}` | Native route, same shape. State ≤ 65,536 tokens (+ 8,192 per question), Choice 1–255 options, no question cap, one request at a time. Not on PyPI (`pip install kev` is unrelated): `uv sync --extra serve` then `python -m kev.serve --run jaredpalmer/kev-9b --port 8009`. Needs the Qwen3.5 base beside the adapter (~17 GB VRAM for 9B). |
+
+TypeSafe itself resolved `jev-latest` to `jev-1.13.0` on this date. The measured comparison
+between these backends on the estate's routing corpus is ADR-2139.
+
+### Kev-9B measured 2026-10-12
+
+`python -m kev.serve --run jaredpalmer/kev-9b --port 8009` on an RTX 6000 Ada (bf16, torch, ~30 GB
+resident with batching buffers; needs `LD_LIBRARY_PATH` to the Nix `gcc-lib` and `zlib` store paths
+in this container). Same 86-case parity as SubQ: **88.4%** vs Jev 91.9% that run (soft 98.8%),
+`none` recall 93.8% / precision 100%, **p50 7.6 s** per route (117 options as independent rows), 13.0k
+tokens. Routing budget is 4 s, so Kev is a compaction-class local backend here until the serving
+path is tuned (flash-linear-attention, fewer options via the façade shortlist). Receipt:
+`parity-jev-kev.json` in the session scratchpad.

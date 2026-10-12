@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.5
+version: 0.6.6
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.6 (2026-10-12): ADR-2139 (accepted, implemented, staged for rebuild) — the System One judge becomes a vendor slot: one loopback proxy ([system_one], system-one-proxy) fronts the router, factrail and the advisor checkpoints and forwards to the backend named in the manifest (typesafe, subq, laya, kev). SubQ Snap measured at parity with Jev and selected as the running backend. The proxy owns the vendor keys; a key goes only to its paired host. The Invariants compliance surface gains the locality-class rule: a cloud↔local change of backend is boot-class because backendLocal is projected at boot."
   - "0.6.5 (2026-10-09): ADR-2135 (accepted, implemented, staged) — jev-checkpoints: Jev times the ADR-2134 Opus advisor with done, repeat, plan and shadow-only spawn checkpoints; egress widens ADR-2090 as ADR-2121 did with the same email fence. Recorded under Jev compaction; the Invariants compliance surface gains the spawn-shadow and fence rules."
   - "0.6.4 (2026-10-06): ADR-2131 (accepted, implemented, inactive) — scheduled diagram review: GLM triage and review on manifest schedules and a Gemini audit behind an interval, changed-topic or high-severity, and monthly USD gate, all recorded in an append-only per-repo ledger. The Gemini audit stays a transport outside [model_routing]. The Invariants compliance surface is unchanged."
   - "0.6.3 (2026-10-05): ADR-2130 (accepted, not implemented) — diagram skills name four [model_routing] activities (diagram-polish T1, diagram-narrative T2, diagram-synthesis T3, seal-review T3 cross-family) on two new hosts, loom and zai, and never name model ids. Deterministic sealmap steps are T0. Tiers are set by measured descent and recorded per corpus in docs/diagrams/.tiers.json. Seal review is always a different model family from the author. The external Gemini review is a transport outside [model_routing]. Recorded in a dated section; the Invariants compliance surface is unchanged until the sealmap skill lands."
@@ -193,6 +194,26 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
   fail-open as before; the budget is read from the engine's `/v1/models`, never configured.
   Gate off ⇒ both consumers keep today's cloud configuration byte-for-byte. Not measured yet:
   `activation_status: inactive` until a run against the ADR-2089 baseline exists.
+- **System One vendor slot** (ADR-2139) — `[system_one]` puts ONE loopback proxy,
+  `system-one-proxy` (`crates/system-one/system-one-proxy`, `[program:system-one-proxy]`,
+  default `127.0.0.1:8094`), in front of all three typed-decision consumers (router,
+  factrail, jev-checkpoints) and forwards `POST /v1/systemone` to the backend named by
+  `backend` out of `[system_one.backends.*]`: `typesafe` (Jev), `subq` (SubQ Snap, measured
+  2026-10-12 at parity with Jev on the ADR-2089 corpus, 93.0% both, and on 466 recorded
+  compaction judgements; selected as the running backend), `laya` (the ADR-2094 façade) and
+  `kev` (a local Kev-9B server). Invariants: the proxy's ONLY configuration is
+  `/run/agentbox/system-one.json`, written by `agentbox-manifest system-one-project` at boot
+  and rewritten in place by `./agentbox.sh systemone backend <name>`; a vendor key is read
+  from the env var the backend names and sent only to that key's hard-coded host over https,
+  never to a backend declared local, with redirects off, and whatever Authorization a consumer
+  sent is dropped; `model` is overwritten with the backend's own; **a change of locality
+  class is boot-class** — `backendLocal` is projected at boot from the selected backend, so
+  a live local→cloud switch is refused by the projector and answered 503
+  `backend_locality_changed` by the proxy until the container restarts (cloud→local only
+  over-blocks and is allowed); the proxy and `[features.sovereign_system_one]` are mutually
+  exclusive projectors (E081); the consumers' own key gates stand (router keyless behind the
+  proxy; factrail still needs `TYPESAFE_API_KEY` or `FACTRAIL_API_KEY` present). Observability:
+  `GET /v1/backend` and the JSONL request log (never content). Validator: E080/E081/W076.
 
 - **Manifest gates** — `agentbox.toml` `[skills.*]` blocks are the boot gates; each skill
   declares its own `manifest_gate` (e.g. tree-search-coder → `[skills.tree_search_coder]
