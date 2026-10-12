@@ -38,7 +38,7 @@ The image no longer needs the host application's full source to build the corpus
 
 ## Verification
 
-No Agentbox Nix repin or runtime activation is claimed by this record. The independent producer now has released implementations, described below. Source inspected at `b9991c372f4172a3e7b24a5bca35bc22aab000da`: `flake.nix:42` pins `3213e314f82491f338660c79b77332da6610ed9c`; `lib/vault.nix:74` reads the producer lockfile and `:80` selects the crate. Required evidence: Nix package build with checks enabled, CLI JSON/exit-code compatibility, guarded edits and proposal rejection fixtures, declared feature-on/off tests, fixture generation compatibility and post-activation executable/generation identity. Reinspect live configuration before implementation; this document is not a runtime audit.
+No Agentbox Nix repin or runtime activation is claimed by this record. The independent producer now has released implementations, described below. Source inspected at `b9991c372f4172a3e7b24a5bca35bc22aab000da`: `flake.nix:42` pins `3213e314f82491f338660c79b77332da6610ed9c`; `lib/vault.nix:75` (cited as `:74` at inspection; the line moved) reads the producer lockfile and `:80` selects the crate. Required evidence: Nix package build with checks enabled, CLI JSON/exit-code compatibility, guarded edits and proposal rejection fixtures, declared feature-on/off tests, fixture generation compatibility and post-activation executable/generation identity. Reinspect live configuration before implementation; this document is not a runtime audit.
 
 ## Producer ownership continuation — 2026-10-11
 
@@ -67,3 +67,22 @@ prove the currently activated Agentbox executable has moved: Nix source/hash
 updates, local command compatibility, governed-write tests and post-activation
 identity remain this proposal's gates. The core's nightly nomination is separate
 from an Agentbox image repin and does not change those obligations.
+
+## Estate alignment and the ADR-2108 mapping — 2026-10-12
+
+Owner decisions, with evidence in [Ontomark ADR-OM-005](https://github.com/DreamLab-AI/ontomark/blob/ffe06e4/docs/adr/ADR-OM-005-estate-alignment-one-producer-explicit-projections.md). This record stays **proposed**.
+
+**Mapping to ADR-2108** (accepted, "the vault binary is baked by Nix"). This record overturns 2108's packaging decision and keeps its retirement decision; on acceptance it supersedes 2108, not before.
+
+| ADR-2108 section | ADR-2136 disposition |
+|---|---|
+| ontology-bridge retired; no MCP server fronts the corpus | **kept unchanged** |
+| `vault` built by Nix from the `vaultSrc` flake input (`flake.nix:40-43` pins a VisionClaw commit; `lib/vault.nix` builds `crates/vault`) | **replaced** by Decision 1: the released `ontomark` CLI by tag and sha256 (`ontomarkSrc` or a fetched release asset), plus a thin AGPL governance adapter for `propose`/`apply`/`panel publish` during the window (DEPRECATION AB-P1..P5, D4) |
+| `vault --version` boot gate | **kept**, gating the new binary and the adapter |
+| review trigger "crates/vault pushed to a remote" | **fired** by the shared workspace existing; this record is the response |
+
+**New responsibility: AB-P6.** Agentbox produces the VisionClaw pod-resource pack from the released CLI (Ontomark's private `--vault all` machine bundle, which keeps `working/` for the GPU view) and serves it to VisionClaw, which reaches Agentbox directly. VisionClaw's own publish build job (DEPRECATION VC-60) is retired only when the pack is byte-equal for a dated window and VisionClaw ADR-2106 has been re-verified or amended.
+
+**Licence (Decision 5 restated with facts).** `horned-owl` is LGPL-3.0 and an opt-in `whelk-el` feature, off by default and absent from the CLI tree; the package here must not enable it. `nostr-bbs-core` is AGPL-3.0-only (owner-held) and stays in the adapter, never in the permissive package. Dependencies flow permissive → AGPL, never the reverse.
+
+**Identity.** `visionGraph@<sha>` is the generation identity (Loom ADR-141); the bundle this image serves is a distribution of it, sha256-pinned. Re-minting identities is permitted at this stage with the migration artefacts ADR-2137 §4 requires.
