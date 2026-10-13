@@ -25,8 +25,10 @@ echo "private uncommitted work" > "$REPO/uncommitted.md"          # must never r
 # ── stubs ───────────────────────────────────────────────────────────────────────────────────────
 cat > "$BIN/ontomark" <<EOF
 #!/usr/bin/env bash
-# ontomark --repo R build --out O --with-rvdb --stats
-R="\$2"; O="\$5"
+# ontomark --repo R validate --vault all   |   ontomark --repo R build --out O --with-rvdb --stats
+R="\$2"
+if [ "\$3" = validate ]; then echo "validate repo=\$R" >> "$WORK/validate.log"; [ -n "\${FAKE_VALIDATE_FAIL:-}" ] && exit 1; exit 0; fi
+O="\$5"
 echo "repo=\$R has_uncommitted=\$([ -e "\$R/uncommitted.md" ] && echo yes || echo no) is_worktree=\$([ -f "\$R/.git" ] && echo yes || echo no)" >> "$WORK/ontomark.log"
 mkdir -p "\$O/data"; echo x > "\$O/data/ontology.ttl"
 printf '{"id":"visionGraph@%s"}' "\$(git -C "\$R" rev-parse HEAD)" > "\$O/data/.generation.json"
@@ -50,8 +52,13 @@ echo "ssh \$*" >> "$WORK/ssh.log"
 case "\$*" in
   *" true") exit 0 ;;
   *"tar -C"*) cat > "$WORK/upload.tar"; echo "upload \$(wc -c < "$WORK/upload.tar")" >> "$WORK/ssh.log"; exit 0 ;;
-  *"bash -s"*) cat > "$WORK/swap.sh"; [ -n "\${FAKE_SWAP_FAIL:-}" ] && exit 1; exit 0 ;;
-  *systemctl*) [ -n "\${FAKE_RELOAD_NOOP:-}" ] || cp "$WORK/next" "$WORK/served"; exit 0 ;;
+  *"bash -s"*) body="\$(cat)"
+      if printf '%s' "\$body" | grep -q reload_published_generation; then
+        printf '%s\\n' "\$body" > "$WORK/verify.sh"; [ -n "\${FAKE_HPVERIFY_FAIL:-}" ] && exit 4; exit 0
+      fi
+      printf '%s\\n' "\$body" > "$WORK/swap.sh"; [ -n "\${FAKE_SWAP_FAIL:-}" ] && exit 1; exit 0 ;;
+  *"cat .local/state/loom/reload.json"*) echo '{"state":"refused","why":"digest mismatch"}'; exit 0 ;;
+  *systemctl*) [ -n "\${FAKE_RELOAD_FAIL:-}" ] && exit 1; [ -n "\${FAKE_RELOAD_NOOP:-}" ] || cp "$WORK/next" "$WORK/served"; exit 0 ;;
 esac
 exit 0
 EOF
@@ -77,7 +84,7 @@ URL="http://127.0.0.1:$(cat "$WORK/port")"
 
 run() { env VAULT_REPO="$REPO" LOOM_HP_HOST="${HOST_OVERRIDE-stub@hp}" LOOM_URL="${URL_OVERRIDE-$URL}" LOOM_BIN_DIR="${BIN_OVERRIDE:-$LOOMBIN}" ONTOMARK_BIN="$BIN/ontomark" \
         PUBLISH_DIR="$PUB" STATE_DIR="$STATE" SSH_BIN="$BIN/ssh" RELOAD_WAIT=6 BUILD_TIMEOUT=30 SHIP_TIMEOUT=30 "$@"; }
-reset_logs() { : > "$WORK/ssh.log"; : > "$WORK/ontomark.log"; : > "$WORK/promote.log"; : > "$WORK/http.log"; rm -f "$WORK/upload.tar" "$WORK/swap.sh"; rm -rf "$PUB"; }
+reset_logs() { : > "$WORK/ssh.log"; : > "$WORK/ontomark.log"; : > "$WORK/promote.log"; : > "$WORK/http.log"; : > "$WORK/validate.log"; rm -f "$WORK/upload.tar" "$WORK/swap.sh" "$WORK/verify.sh"; rm -rf "$PUB"; }
 state() { jq -r .state "$STATE/hp-loom-reconcile.json" 2>/dev/null; }
 stale() { printf 'visionGraph@%s' "0000000000000000000000000000000000000000" > "$WORK/served"; }
 calls() { wc -l < "$1" | tr -d ' '; }
@@ -114,7 +121,7 @@ grep -q "repo=$REPO " "$WORK/ontomark.log" && bad "build ran against the live re
 [ -s "$WORK/upload.tar" ] && tar -tf "$WORK/upload.tar" | grep -q 'ontology-corpus.rvdb' && ok "uploaded the promoted bundle" || bad "upload" "$(ls -la "$WORK" | head -3)"
 grep -q 'promotion-in-flight' "$WORK/swap.sh" && grep -q 'data.rollback' "$WORK/swap.sh" && ok "swap script uses the in-flight marker and keeps data.rollback" || bad "swap script" "$(cat "$WORK/swap.sh" 2>&1)"
 grep -E '^[^#]*rsync[^#]*--delete' "$WORK/swap.sh" >/dev/null && bad "swap script must never use --delete (data/ holds ledger.jsonl)" || ok "swap script never uses --delete"
-jq -e '.steps == ["probe","tools","build","promote","verify","ship","swap","reload"]' "$STATE/hp-loom-reconcile.json" >/dev/null \
+jq -e '.steps == ["probe","tools","validate","build","promote","verify","ship","hp-verify","swap","reload"]' "$STATE/hp-loom-reconcile.json" >/dev/null \
   && ok "receipt records every step in order" || bad "steps" "$(jq -c .steps "$STATE/hp-loom-reconcile.json")"
 [ "$(git -C "$REPO" worktree list | wc -l | tr -d ' ')" = 1 ] && ok "snapshot worktree removed afterwards" || bad "worktree left behind" "$(git -C "$REPO" worktree list)"
 
@@ -148,6 +155,51 @@ reset_logs; stale
 FAKE_SWAP_FAIL=1 run bash "$S" --mode full 2>/dev/null
 [ "$(state)" = failed ] && jq -e '.detail | test("restored")' "$STATE/hp-loom-reconcile.json" >/dev/null && ok "swap failure: failed and says the previous generation was restored" || bad "swap failure" "$(cat "$STATE/hp-loom-reconcile.json")"
 grep -q 'trap restore ERR' "$WORK/swap.sh" && ok "the remote swap restores data.rollback on error" || bad "restore trap missing"
+
+
+# 12b. HP-side verify uses the HP's own binary, with no jq, and runs before the swap
+grep -q 'reload_published_generation' "$WORK/verify.sh" 2>/dev/null || { reset_logs; stale; run bash "$S" --mode full 2>/dev/null; }
+grep -q 'target/release/reload_published_generation' "$WORK/verify.sh" && ! grep -q 'jq' "$WORK/verify.sh" && ok "the HP verifies with its own binary and needs no jq" || bad "hp verify script" "$(cat "$WORK/verify.sh" 2>&1)"
+reset_logs; stale
+FAKE_HPVERIFY_FAIL=1 run bash "$S" --mode full 2>/dev/null
+[ "$(state)" = failed ] && jq -e '.detail | test("HP.s own verify refused")' "$STATE/hp-loom-reconcile.json" >/dev/null && [ ! -f "$WORK/swap.sh" ] \
+  && ok "HP verify refusal: failed, and the live data/ was never touched (no swap)" || bad "hp verify refusal" "state=$(state) swap=$([ -f "$WORK/swap.sh" ] && echo yes || echo no)"
+
+# 12c. a failing HP reload service surfaces the HP's own receipt instead of promising a retry
+reset_logs; stale
+FAKE_RELOAD_FAIL=1 run bash "$S" --mode full 2>/dev/null
+[ "$(state)" = failed ] && jq -e '.detail | test("digest mismatch")' "$STATE/hp-loom-reconcile.json" >/dev/null && ok "reload service failure: failed, quoting the HP's reload receipt" || bad "reload failure" "$(cat "$STATE/hp-loom-reconcile.json")"
+
+# 12d. the vault's own gate: errors at HEAD mean nothing is built or sent
+reset_logs; stale
+FAKE_VALIDATE_FAIL=1 run bash "$S" --mode full 2>/dev/null
+[ "$(state)" = refused ] && [ ! -s "$WORK/ontomark.log" ] && ! grep -q 'tar -C' "$WORK/ssh.log" && ok "validate errors: refused, nothing built, nothing sent" || bad "validate gate" "state=$(state)"
+grep -q 'validate repo=' "$WORK/validate.log" && ! grep -q "validate repo=$REPO\$" "$WORK/validate.log" && ok "validate ran on the snapshot worktree, not the live repo" || bad "validate target" "$(cat "$WORK/validate.log")"
+
+# 12e. only a settled commit is published
+reset_logs; stale; touch "$REPO/.git/MERGE_HEAD"
+run bash "$S" --mode full 2>/dev/null
+[ "$(state)" = deferred ] && [ ! -s "$WORK/validate.log" ] && ok "merge in progress: deferred, nothing built" || bad "mid-merge" "state=$(state)"
+rm -f "$REPO/.git/MERGE_HEAD"
+reset_logs; stale; git -C "$REPO" checkout -q --detach
+run bash "$S" --mode full 2>/dev/null
+[ "$(state)" = deferred ] && jq -e '.detail | test("detached")' "$STATE/hp-loom-reconcile.json" >/dev/null && ok "detached HEAD: deferred" || bad "detached" "state=$(state)"
+git -C "$REPO" checkout -q - 2>/dev/null || git -C "$REPO" checkout -q master 2>/dev/null || git -C "$REPO" checkout -q main 2>/dev/null
+
+# 12f. --force publishes even when the Loom already serves HEAD (scratch-directory exercise)
+reset_logs; printf 'visionGraph@%s' "$HEAD" > "$WORK/served"
+run bash "$S" --mode full --force 2>/dev/null
+[ -s "$WORK/ontomark.log" ] && [ -f "$WORK/swap.sh" ] && ok "--force: rebuilds and re-ships although the Loom is already current" || bad "--force" "state=$(state)"
+reset_logs; printf 'visionGraph@%s' "$HEAD" > "$WORK/served"
+run bash "$S" --mode check --force 2>/dev/null
+[ "$(state)" = current ] && [ ! -s "$WORK/ssh.log" ] && ok "--force never turns check mode into a publish" || bad "--force check" "state=$(state)"
+
+# 12g. ontomark is found on PATH when ONTOMARK_BIN is unset (the baked /opt path is tried first)
+reset_logs; stale
+env -u ONTOMARK_BIN VAULT_REPO="$REPO" LOOM_HP_HOST=stub@hp LOOM_URL="$URL" LOOM_BIN_DIR="$LOOMBIN" PUBLISH_DIR="$PUB" STATE_DIR="$STATE" \
+    SSH_BIN="$BIN/ssh" RELOAD_WAIT=6 PATH="$BIN:$PATH" bash "$S" --mode full 2>/dev/null
+[ "$(state)" = reloaded ] && [ -s "$WORK/ontomark.log" ] && ok "ONTOMARK_BIN unset: ontomark resolved from PATH" || bad "ontomark lookup" "state=$(state)"
+grep -q 'opt/agentbox/bin/ontomark' "$S" && ok "the baked /opt/agentbox/bin/ontomark is the preferred lookup" || bad "baked lookup missing"
 
 # 13. lock
 reset_logs; stale

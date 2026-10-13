@@ -82,7 +82,7 @@ exporting the object store would have exposed every committed `working/` page to
   asset (CLI 0.1.0). The reconcile does not enforce either pin; the promote and verify steps are the
   compatibility gate, and a bundle they refuse is never sent. Aligning the two pins is a separate
   change.
-- A `full` run builds for about two minutes on this host. It runs in the background, so it never
+- A `full` run validates and builds for about two and a half minutes on this host. It runs in the background, so it never
   delays a boot, but the Loom lags the vault by that long after a rebuild that follows a commit.
 - The reconcile needs `promote_vault_build` and `reload_published_generation` at `LOOM_BIN_DIR`
   (default `~/workspace/loom/target/release`) and a direct ssh path to `loom_host`. Without them it
@@ -99,16 +99,26 @@ exporting the object store would have exposed every committed `working/` page to
   the only recurring job was `loom-generation-reload.timer`; `loom-facade-a` was healthy before and
   after every removal.
 - A snapshot build of the committed HEAD from a detached worktree took 2 min 16 s, promoted 9,244
-  records in 6 s and verified as `visionGraph@45976a8c7…`, the id and class count the HP already serves
-  (so the build is reproducible).
-- `tests/config/hp-loom-reconcile.test.sh`: 30 passed, 0 failed, against a stubbed `ontomark`, Loom
-  binaries, `ssh` and Loom. It covers: idempotence, fail-open for every failure, the clean-worktree
-  guarantee, nothing uploaded on a promote refusal, the restore trap, the lock, and no hardcoded
-  estate address.
+  records in 6 s and verified as `visionGraph@45976a8c7…`: the id and class count the HP already
+  serves. The content digest differs from the one the HP serves (`a5bdcdbb…` against `5080a0b4…`),
+  which fits the baked `ontomark` 0.2.0 against the pinned `v0.1.0-rc.1` that built the HP's bundle.
+  Identity matches; the bytes do not, so the pin mismatch below is real, not cosmetic.
+- `tests/config/hp-loom-reconcile.test.sh`: 41 passed, 0 failed, against a stubbed `ontomark`, Loom
+  binaries, `ssh` and Loom. It covers idempotence, fail-open for every failure, the clean-worktree
+  guarantee, the `validate` gate, the settled-commit guard (a test caught a path bug in it), nothing
+  uploaded on a promote refusal, the HP-side verify before any swap, the restore trap, the lock, and no
+  hardcoded estate address.
+- A live `--mode full --force` run against a scratch copy of the HP's `data/`
+  (`LOOM_HP_DIR=scratch-reconcile-20261013`) exercised the real tar stream, the swap over the HP's
+  fish login shell, the HP's own `reload_published_generation verify` and `rsync`: all ten steps
+  recorded, the scratch `.generation.json` rewritten, `data.rollback` present, no `data.<sha>` or
+  in-flight marker left behind, and the live `loom-facade-a` `StartedAt`, reload receipt and
+  `data/` untouched. It proves transport, HP verify and swap; it does not prove a reload, because the
+  Loom already served HEAD.
 - `scripts/hp-loom-reconcile.sh --mode check` against the real Loom and vault: `current`, with the 13
   uncommitted files correctly ignored.
 - `tests/skills/ontology-augment-grounding.test.sh`: 86 passed, 1 failed. The failure (`validate:
   still enveloped with generation`) also fails on `main` and is not caused by this change.
-- Not verified: a full-mode run against the real HP (the HP is already current, so a real push needs
-  a new commit), the entrypoint phase in a booted image, and the Nix image. `verified_commit` is the base commit (da588dfc9) the change was made on, and `verified_paths` is empty
+- Not verified: a reload of a *new* generation on the real HP (it is already current, so that needs a
+  new commit), the entrypoint phase in a booted image, and the Nix image. `verified_commit` is the base commit (da588dfc9) the change was made on, and `verified_paths` is empty
   on purpose: both are to be set once the first rebuilt image has booted and written a receipt.
