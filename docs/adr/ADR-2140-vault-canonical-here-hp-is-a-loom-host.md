@@ -8,15 +8,7 @@ activation_status: live
 supersedes: []
 superseded_by: []
 verified_commit: acb59a3fce35f8f99ba77b9cc3248525e523b1fe
-verified_paths:
-  - scripts/hp-loom-reconcile.sh
-  - config/entrypoint-unified.sh
-  - agentbox.toml
-  - management-api/lib/system-manifest.js
-  - schema/agentbox.toml.schema.json
-  - tests/config/hp-loom-reconcile.test.sh
-  - skills/ontology-augment/scripts/ontology-augment.sh
-  - tests/skills/ontology-augment-grounding.test.sh
+verified_paths: [scripts/hp-loom-reconcile.sh, config/entrypoint-unified.sh, agentbox.toml, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, tests/config/hp-loom-reconcile.test.sh, skills/ontology-augment/scripts/ontology-augment.sh, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: the first new committed vault generation is shipped and reloaded on the real HP (then assess full implementation); any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
 repo: agentbox
