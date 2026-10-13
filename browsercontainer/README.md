@@ -178,7 +178,7 @@ mints K_browser (below).
 pick a green `ci.yml` run on podkey `main`, then edit `podkey.pin` with its `head_sha`,
 run id, the `podkey-extension` artefact id, the artefact's `digest` (that is the
 zip sha256), the manifest version and `expires_at`. Then `rebuild`. CI artefacts
-expire after 90 days. The current pin expires **2026-12-24**, after which only
+expire after 90 days. The current pin expires **2027-01-11**, after which only
 hosts with a cached zip can build until the pin moves.
 
 ### How Chrome loads it
