@@ -46,6 +46,7 @@ the files inside each crate's package payload.
 | `podcast-ingest` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
 | `secret-backup` | **AGPL-3.0-only** | `LICENSE` (AGPL-3.0 full text) | yes — states NOT dual-licensed |
 | `skill-tools` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes |
+| `agentbox-vex` | MIT OR Apache-2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | yes (`publish = false`: host tooling, not published) |
 
 Ten package manifests, seven permissive and three AGPL (2026-09-25:
 `dream-engine` moved to AGPL-3.0-only; `explainer-tools` had been added without

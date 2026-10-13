@@ -189,19 +189,26 @@ ontology-augment: Loom did not answer (000); falling back to `vault tree` (asser
 The fallback answer is real; it is just a different question: asserted wikilinks,
 not the inferred closure. `paths` has no such fallback and reports `degraded`.
 
-## `paths` — an honest refusal (live)
+## `paths` — an honest refusal (when the Loom does not answer)
+
+With the Loom's `/mcp` answering, `paths` returns the live result shown above. If the
+Loom is unreachable, answers a non-200, or returns a JSON-RPC error on HTTP 200,
+`paths` refuses rather than guess:
 
 ```bash
 $S paths knowledge-graph ontology
 ```
 
 ```
-ontology-augment: shortest paths need the reasoned graph (Loom /mcp, HTTP 404); no corpus equivalent
+ontology-augment: shortest paths need the reasoned graph (Loom /mcp: 000); no corpus equivalent
 ```
 ```jsonc
-{ "degraded": true, "reason": "paths_need_reasoned_graph", "loom_status": "404",
-  "hint": "run `neighbours` on each end, or wait for the ADR-140 /mcp plane" }
+{ "degraded": true, "reason": "paths_need_reasoned_graph", "loom_status": "000",
+  "hint": "the Loom /mcp did not answer; run `neighbours` on each end for the asserted neighbourhoods, then retry" }
 ```
+
+`loom_status` is the HTTP status, `000` for unreachable, or `rpc_error` for a JSON-RPC
+error carried on HTTP 200.
 
 There is deliberately no fallback. Walking asserted wikilinks from one end and
 calling the result "the shortest path" would be a different answer wearing this
