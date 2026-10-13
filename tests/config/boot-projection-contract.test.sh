@@ -52,7 +52,7 @@ run_seal() {
 echo "boot-projection contract (ADR-2104)"
 
 # ── 1. gate on, projection present ───────────────────────────────────────────
-R1="$T/run1"; mkdir -p "$R1"; echo '{}' > "$R1/mcp-hub.json"
+R1="$T/run1"; mkdir -p "$R1"; echo '{}' > "$R1/mcp-hub.json"; echo '{}' > "$R1/system-one.json"   # ADR-2139: the stub answers on for every gate
 run_seal 1 "$R1"
 [ "$rc" -eq 0 ] && ok "gate on + projection present: exit 0" \
   || bad "gate on + projection present: exit 0" "rc=$rc out=$out"

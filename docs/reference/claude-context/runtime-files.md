@@ -89,6 +89,17 @@ factrail; key is `TYPESAFE_API_KEY` from the environment. `/jev-checkpoints stat
 entrypoint keeps `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` and the `agentbox` marketplace while any of
 factrail, ruflo-console or jev-checkpoints is on.
 
+**System One vendor slot (ADR-2139).** `[system_one]` bakes `system-one-proxy`
+(`lib/system-one-proxy.nix` → `/opt/agentbox/bin/system-one-proxy`, `[program:system-one-proxy]`,
+loopback `bind`, default `127.0.0.1:8094`). Its only config is `/run/agentbox/system-one.json`,
+written by `agentbox-manifest system-one-project --format json` at boot (before the consumers
+are projected) and rewritten in place by `./agentbox.sh systemone backend <name>`; the proxy
+re-reads it on change. The same subcommand's `shell`/`plugin-config` formats feed
+`runtime-env.sh`, the router hook (`AGENTBOX_SKILL_ROUTE_API` + `AGENTBOX_SYSTEM_ONE_PROXY=1`,
+keyless) and both plugins' `baseUrl`/`model`/`backendLocal`. Keys: `TYPESAFE_API_KEY`,
+`SUBQ_API_KEY` from the container env (devuser-class), read by the proxy only. Request log at
+`[system_one].log`; `./agentbox.sh systemone proxy` for counters.
+
 Routing is live by default (ADR-2091): `[skills.routing].router = "jev"` registers
 `config/hooks/skill-route.cjs` on `UserPromptSubmit`, one System One Choice over every
 routable description per turn injected as advisory context. The candidates are what the

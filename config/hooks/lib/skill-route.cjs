@@ -396,6 +396,10 @@ function config(env = process.env, opts = {}) {
     claudeDir: env.AGENTBOX_SKILL_ROUTE_CLAUDE_DIR === '0' ? '' :
       (env.AGENTBOX_SKILL_ROUTE_CLAUDE_DIR || env.CLAUDE_CONFIG_DIR || path.join(env.HOME || os.homedir(), '.claude')),
     key: env.TYPESAFE_API_KEY || '',
+    // ADR-2139: behind the loopback proxy the vendor key lives in the proxy; the
+    // consumer sends none (the proxy drops any it receives). Projected with the
+    // endpoint by system-one-project, never inferred from the URL.
+    proxy: env.AGENTBOX_SYSTEM_ONE_PROXY === '1',
     // Declared alongside the endpoint by whoever selects one; undeclared means the
     // metered default, so a misconfiguration over-states cost rather than hiding it.
     usdPerMTokIn: asRate(env[USD_PER_MTOK_IN_ENV], JEV_USD_PER_MTOK_IN),
@@ -425,7 +429,7 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
   if (cfg.router !== 'jev') return skip('router-off', { router: cfg.router });
   // With the cascade off the judge is the only path, so no key means nothing to do. With it
   // on, a confident local pick needs no key at all; only an escalation does.
-  if (!cfg.key && !cfg.cascade) return skip('no-key');
+  if (!cfg.key && !cfg.cascade && !cfg.proxy) return skip('no-key');
   if (text.startsWith('/')) return skip('slash-command');
   if (text.length < cfg.minChars) return skip('short-prompt', { chars: text.length });
   let criteria = candidates || loadCandidates(cfg.skillsDir);
@@ -470,7 +474,7 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
       };
     }
     esc = { cascade: 'escalated', margin: local ? local.margin : 0 };
-    if (!cfg.key) return skip('no-key', { ...esc, ...scoped });
+    if (!cfg.key && !cfg.proxy) return skip('no-key', { ...esc, ...scoped });
   }
   if (typeof fetch !== 'function') return fail('no-fetch', { ...esc, ...scoped });
 
@@ -490,7 +494,9 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
     try {
       res = await fetch(cfg.api, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json' },
+        headers: cfg.proxy
+          ? { 'Content-Type': 'application/json' }
+          : { Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
         signal: ctl.signal,
       });
@@ -514,6 +520,11 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
     const probs = a.probabilities && typeof a.probabilities === 'object' ? a.probabilities : {};
     const ranked = Object.entries(probs).sort((x, y) => y[1] - x[1]);
     const inTok = (j.usage && j.usage.input_tokens) || 0;
+    // The proxy knows the backend that served THIS request, including live
+    // switches. Cloud vendors cannot override the declared consumer rate.
+    const usdPerMTokIn = cfg.proxy
+      ? asRate(res.headers.get('x-system-one-usd-per-mtok-in'), cfg.usdPerMTokIn)
+      : cfg.usdPerMTokIn;
     return {
       outcome: 'routed', ...base, ms,
       model: j.model || cfg.model,
@@ -522,8 +533,8 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
       confidence: typeof a.confidence === 'number' ? a.confidence : null,
       ranked,
       usage: { input_tokens: inTok, output_tokens: (j.usage && j.usage.output_tokens) || 0 },
-      usdPerMTokIn: cfg.usdPerMTokIn,
-      usd: inTok * cfg.usdPerMTokIn / 1e6,
+      usdPerMTokIn,
+      usd: inTok * usdPerMTokIn / 1e6,
     };
   }
 }

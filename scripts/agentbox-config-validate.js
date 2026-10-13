@@ -640,6 +640,35 @@ if (observability.metrics_port !== undefined) {
   }
 }
 
+// ─── E080 + W077: idle Cargo target sweeper (ADR-2138) ───────────────────────
+//
+// E080 — roots or exclude holds a non-absolute path. The sweeper drops it silently, so a
+//        relative root would mean the sweep quietly covers less than the operator wrote.
+// W077 — enabled=true with roots overlapping nothing it may touch: a root that is itself
+//        excluded, so every pass is a no-op.
+{
+  const tg = (manifest.resources || {}).target_gc || {};
+  for (const key of ['roots', 'exclude']) {
+    const list = Array.isArray(tg[key]) ? tg[key] : [];
+    const bad = list.filter((p) => typeof p !== 'string' || !p.startsWith('/'));
+    if (bad.length) {
+      errors.push({
+        code: 'E080',
+        message: `E080: [resources.target_gc].${key} must be absolute paths; offending: ${bad.map((p) => JSON.stringify(String(p).slice(0, 40))).join(', ')}`,
+      });
+    }
+  }
+  const roots = Array.isArray(tg.roots) ? tg.roots.filter((p) => typeof p === 'string') : [];
+  const excl = Array.isArray(tg.exclude) ? tg.exclude.filter((p) => typeof p === 'string') : [];
+  const under = (p, base) => p === base || p.startsWith(base.replace(/\/$/, '') + '/');
+  if (tg.enabled === true && roots.length > 0 && roots.every((r) => excl.some((x) => under(r, x)))) {
+    warnings.push({
+      code: 'W077',
+      message: '[resources.target_gc].enabled is true but every root is excluded — [program:target-gc] will never remove anything',
+    });
+  }
+}
+
 // ─── E078 + W075: forum governance → corpus (ADR-2109) ───────────────────────
 //
 // E078 — [sovereign_mesh.forum_governance].relay_url, when set, must be a
@@ -1359,7 +1388,9 @@ if (ldEnabled) {
   // ADR-2094: with the sovereign façade enabled the judge is LOCAL, so a
   // missing TYPESAFE_API_KEY is not a defect — warning about it would train
   // the operator to ignore W071 exactly when it still matters.
-  const ssoOn = Boolean(((manifest.features || {}).sovereign_system_one || {}).enabled);
+  // ADR-2139: likewise behind the proxy — the vendor key lives there (W076 names it).
+  const ssoOn = Boolean(((manifest.features || {}).sovereign_system_one || {}).enabled)
+    || Boolean((manifest.system_one || {}).enabled);
   if (rt.router === 'jev' && !ssoOn && !process.env.TYPESAFE_API_KEY) {
     warnings.push({
       code: 'W071',
@@ -1446,7 +1477,8 @@ if (ldEnabled) {
     }
     // Same reasoning as W071: the façade supplies the judge locally (ADR-2094).
     if (!process.env.TYPESAFE_API_KEY
-        && !((manifest.features || {}).sovereign_system_one || {}).enabled) {
+        && !((manifest.features || {}).sovereign_system_one || {}).enabled
+        && !(manifest.system_one || {}).enabled) {
       warnings.push({
         code: 'W072',
         message: `W072: [features.jev_compaction].enabled=true but TYPESAFE_API_KEY is not set in this environment — every compaction will run without Jev (${jc.fallback === 'summary' ? 'the built-in summary' : 'local fact rails'}) until the key is provided in .env (ADR-2093)`,
@@ -1519,6 +1551,57 @@ function isLocalEndpoint(endpoint) {
   }
   if (host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return true;
   return !host.includes('.'); // a Docker/compose service name
+}
+
+// ─── E080 / E081 / W076: System One vendor slot (ADR-2139) ───────────────────
+//
+// E080 — [system_one].enabled=true with a selection the proxy could not serve:
+//         `backend` not a key of [system_one.backends]; `bind` off loopback (every
+//         local process could otherwise spend the vendor keys); a backend declared
+//         local=true that carries a key_env or an off-LAN url; a backend declared
+//         local=false whose url is not https or whose key_env is empty. All
+//         backends are checked, not just the active one, because the projection
+//         file carries the whole map and a live switch may select any of them.
+// E081 — [system_one].enabled and [features.sovereign_system_one].enabled both
+//         true: two projectors would race for the same consumers. The façade is
+//         reached through the proxy as the `laya` backend instead.
+// W076 — the active vendor, its locality and which key it needs; W071/W072 stand
+//         down because the proxy, not the consumer, holds the vendor key — but
+//         the consumers' own key GATES still apply (skill-route and factrail idle
+//         without TYPESAFE_API_KEY or FACTRAIL_API_KEY in the environment, even
+//         though the key never reaches the vendor; the proxy drops it).
+{
+  const so = manifest.system_one || {};
+  if (so.enabled) {
+    const backends = so.backends && typeof so.backends === 'object' ? so.backends : {};
+    const names = Object.keys(backends);
+    const active = String(so.backend ?? '');
+    const bind = String(so.bind ?? '127.0.0.1:8094');
+    const bindHost = bind.replace(/^\[|\]:\d+$|:\d+$/g, '').toLowerCase();
+    if (!names.includes(active)) {
+      errors.push({ code: 'E080', message: `E080: [system_one].backend="${active}" is not one of [system_one.backends] (${names.join(', ') || 'none declared'}) — the proxy cannot start (ADR-2139)` });
+    }
+    if (!(bindHost === 'localhost' || bindHost === '::1' || bindHost.startsWith('127.'))) {
+      errors.push({ code: 'E080', message: `E080: [system_one].bind="${bind}" must be loopback — the proxy spends the vendor keys for whoever can reach it (ADR-2139)` });
+    }
+    for (const name of names) {
+      const b = backends[name] || {};
+      const url = String(b.url ?? '');
+      const keyEnv = String(b.key_env ?? '');
+      if (b.local === true) {
+        if (keyEnv) errors.push({ code: 'E080', message: `E080: [system_one.backends.${name}] is local=true but names key_env="${keyEnv}" — local backends are keyless; a key only ever goes to its paired cloud host (ADR-2139)` });
+        if (!isLocalEndpoint(url)) errors.push({ code: 'E080', message: `E080: [system_one.backends.${name}] is local=true but url "${url}" is not a LAN/loopback host (ADR-2094 §5)` });
+      } else {
+        if (!url.startsWith('https://')) errors.push({ code: 'E080', message: `E080: [system_one.backends.${name}] is a cloud backend but url "${url}" is not https — a key would travel in clear (ADR-2139)` });
+        if (!keyEnv) errors.push({ code: 'E080', message: `E080: [system_one.backends.${name}] is a cloud backend with no key_env — the proxy refuses to call a vendor keyless (ADR-2139)` });
+      }
+    }
+    if (((manifest.features || {}).sovereign_system_one || {}).enabled) {
+      errors.push({ code: 'E081', message: 'E081: [system_one].enabled and [features.sovereign_system_one].enabled are both true — one projector per consumer set; reach the façade through the proxy as the `laya` backend and set the façade gate false (ADR-2139)' });
+    }
+    const a = backends[active] || {};
+    warnings.push({ code: 'W076', message: `W076: [system_one] active backend "${active}" (${a.model ?? '?'}, ${a.local === true ? 'LOCAL — email-tainted sessions are judged here' : `cloud via ${a.key_env || '<no key>'}`}) behind the loopback proxy at ${bind}; switch with ./agentbox.sh systemone backend <name> (ADR-2139)` });
+  }
 }
 
 // ─── E050-E052 / W050-W052: ACI MCP + tree-search (ADR-020 / PRD-008) ───────

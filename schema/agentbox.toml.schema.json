@@ -2887,6 +2887,34 @@
         }
       }
     },
+    "system_one": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "ADR-2139: the System One judge as a VENDOR SLOT. One loopback proxy ([program:system-one-proxy], crates/system-one/system-one-proxy) fronts every typed-decision consumer and forwards to the backend named here; it owns the vendor keys. Same-class backend switches are LIVE (./agentbox.sh systemone backend <name>); a cloud<->local change is BOOT-class. enabled=false => nothing projected (ADR-2020).",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Project the proxy as every consumer's endpoint and bake [program:system-one-proxy] (REBUILD for the program, BOOT for the projection)." },
+        "backend": { "type": "string", "minLength": 1, "description": "Name of the active backend; must be a key of [system_one.backends]." },
+        "bind": { "type": "string", "pattern": "^(127\\.[0-9.]+|localhost|\\[::1\\]):[0-9]{2,5}$", "description": "Proxy listen address. Loopback only: every local process could otherwise spend the vendor keys." },
+        "log": { "type": "string", "description": "JSONL request log (backend, status, ms, tokens; never content). Empty disables." },
+        "backends": {
+          "type": "object",
+          "description": "Named backends. Shipped: typesafe, subq, laya (the ADR-2094 facade), kev (a local Kev server).",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["url", "model", "local"],
+            "properties": {
+              "url": { "type": "string", "format": "uri", "description": "The backend's POST /v1/systemone. https for a cloud backend; LAN/loopback for local = true." },
+              "model": { "type": "string", "description": "Model id the proxy writes into every forwarded request (consumers' own model names are overwritten)." },
+              "key_env": { "type": "string", "description": "NAME of the env var holding the backend's key (or <NAME>_FILE for a path). Empty = keyless. Must be empty for local = true; must be set for local = false. The proxy sends a key only to the host hard-coded for that name (typesafe.ai, subq.ai)." },
+              "local": { "type": "boolean", "description": "DECLARED locality (ADR-2094 \u00a75): true lets email-tainted sessions be judged here and is never inferred from the URL." },
+              "timeout_ms": { "type": "integer", "minimum": 500, "maximum": 120000, "description": "Upstream deadline for one request. Keep it under the consumers' own deadlines (router 4000 ms)." },
+              "usd_per_mtok_in": { "type": "number", "minimum": 0, "description": "Input price per million tokens, for the consumers' cost lines and /v1/backend's estimate." }
+            }
+          }
+        }
+      }
+    },
     "features": {
       "type": "object",
       "additionalProperties": false,
@@ -3415,6 +3443,14 @@
         "gemini_min_changed_topics": { "type": "integer", "minimum": 0, "description": "Topics changed since the last audit that open the gate, unless the last GLM review recorded a high-severity finding." },
         "gemini_monthly_usd": { "type": "number", "minimum": 0, "description": "Cap on estimated Gemini spend per UTC month, across all repos." },
         "weekly_window": { "type": "boolean", "description": "true \u21d2 the Gemini gate is considered only on the review tick (nightly by default; the per-shard interval still holds Gemini to one audit a week); false \u21d2 after each triage run too." }
+      }
+    },
+    "seo_watch": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Website ADR-2010: nightly SEO and AI-agent-searchability watch for dreamlab-ai.com ([program:seo-watch-cron], supercronic over the website repo's scripts/seo-watch/crontab, 05:40 UTC, alongside the dream engine). Shipped on; the flake default for a manifest without the section is off. REBUILD-class: flake.nix bakes the supervisor block. Behaviour, schedule and the patch allowlist live in the website repo (scripts/seo-watch/config.json), not here.",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "true \u21d2 flake.nix emits [program:seo-watch-cron]. false \u21d2 no supervisor block at all." }
       }
     },
     "sidechain": {
@@ -4068,6 +4104,18 @@
               "type": "integer",
               "minimum": 10
             }
+          }
+        },
+        "target_gc": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2138: idle Cargo target directory sweeper ([program:target-gc]). REBUILD-class: the manifest is baked into /etc/agentbox.toml, so every key lands with the next rebuild.",
+          "properties": {
+            "enabled": { "type": "boolean", "description": "true => flake.nix emits [program:target-gc]. Absent or false => no supervisor block." },
+            "roots": { "type": "array", "items": { "type": "string", "pattern": "^/" }, "description": "Absolute paths searched for Cargo target directories." },
+            "exclude": { "type": "array", "items": { "type": "string", "pattern": "^/" }, "description": "Absolute paths never touched, with everything below them." },
+            "max_age_days": { "type": "integer", "minimum": 0, "description": "A target with anything modified more recently than this is kept." },
+            "interval_secs": { "type": "integer", "minimum": 60, "description": "Seconds between passes." }
           }
         },
         "services": {

@@ -29,7 +29,7 @@ lifecycle  = ./agentbox.sh ruvector <status|check|test|update|rollback|recall>
 ## Agents, skills, commands — manifest-registered
 
 - **Agents** (ADR-2092): write `agents/<name>.md`, add the basename to `agents/registered-agents.txt`, rebuild; gate `bash tests/config/agent-reconcile.test.sh`. Commands: `config/registered-commands.txt`.
-- **Skills**: the image bakes `/opt/agentbox/skills` (128 skills); only `skills/registered-skills.txt` is always loaded (Codex: `codex-registered-skills.txt`). Depth goes in `references/`, never a monolith SKILL.md. A new skill needs a `section-map.json` entry and a `SKILL-DIRECTORY.md` row; `skills/lint-skills.sh` must pass before a rebuild.
+- **Skills**: the image bakes `/opt/agentbox/skills` (129 skills); only `skills/registered-skills.txt` is always loaded (Codex: `codex-registered-skills.txt`). Depth goes in `references/`, never a monolith SKILL.md. A new skill needs a `section-map.json` entry and a `SKILL-DIRECTORY.md` row; `skills/lint-skills.sh` must pass before a rebuild.
 - **Never write a `/nix/store/...` path into persistent config** (`.mcp.json`, `~/.claude` outlive the store). Pin `/opt/agentbox/bin/<tool>` and make registration self-healing (compare, don't `grep -q`).
 
 Narrative, Jev compaction (ADR-2093) and live skill routing (ADR-2091): [runtime-files.md](docs/reference/claude-context/runtime-files.md).
@@ -83,6 +83,7 @@ kernel, mounts or sidecars. See [the VEX guide](docs/developer/vex.md).
 - The browser sidecar runs `[program:podkey-loader]` (`browsercontainer/supervisord.conf`), which loads the pinned Podkey into Chrome once per Chrome process. K_browser lives in Podkey's vault on the `browsercontainer-profile` volume. The owner mints it over VNC and unlocks it after every sidecar restart with `./agentbox.sh browsercontainer podkey unlock`. An agent only ever sees the public key (`podkey pubkey`). See `browsercontainer/README.md`.
 - AoE sessions persist on the `aoe-profiles` volume; the seeder reaps only its own clean orphan worktrees (ADR-2063). Hub-routed MCP servers refusing connections → `supervisorctl status agentbox-mcp-hub` first (it parks FATAL after 120 s without `/run/agentbox/mcp-hub.json`, ADR-2104).
 - Pods requests are unsigned (`sign_requests = false`, ADR-2064) until ADR-2078 wires the identity key; flipping it without key material throws `SigningUnavailable`.
+- `[system_one]` owns the optional typed-decision vendor slot (ADR-2139); it is exclusive with `[features.sovereign_system_one]`. Inspect/switch via `./agentbox.sh systemone backend`; local-to-cloud transitions require rebuilding/restarting consumers. Request metadata logs are bounded.
 - Claude Fable 5.1 uses always-on adaptive thinking: keep API histories append-only, replay thinking blocks exactly, do not force tool choice.
 
 ## Subsystem references (load on demand)

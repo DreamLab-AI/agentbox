@@ -17,6 +17,7 @@
 #   blaketestnode/  bitcoin-blake/blaketestnode (block files, via BLAKETESTNODE)
 # Each directory carries .pin-commit, the commit it was fetched at; the runner
 # refuses to start when any differs from upstream-pins (a stale bake).
+# The spec also records .pin-patches for the CLI-only --peg-script compatibility patch.
 #
 # node_modules: none. siding imports only node: builtins on the producer path.
 # Its package.json names five @ethereumjs packages, but evm.mjs imports them
@@ -45,8 +46,8 @@ let
     spec = {
       owner = "sidestr";
       repo  = "spec";
-      rev   = "83dd662ef49bcf68a80f5cebc0b4de46b50cea63";
-      hash  = "sha256-+SeQWmys1X5qKIKx/87ccifwuNUJmX3HWJZoe+smnKo=";
+      rev   = "2fd6114aa08ea0ba385da69d1fb151c5b542256c";
+      hash  = "sha256-F3Yt22VvjH/XXSZPZZQiYB89rSXFwGD7D2e68jgk5aM=";
     };
     schema = {
       owner = "bitcoin-desktop";
@@ -81,6 +82,7 @@ let
 
 in
 pkgs.runCommand "sidestr-upstream-${builtins.substring 0 8 checked.spec.rev}" {
+  nativeBuildInputs = [ pkgs.patch ];
   passthru = { inherit srcs; pins = lib.mapAttrs (_: u: u.rev) checked; };
   meta = {
     description = "sidestr producer upstream (spec, schema, blaketestnode) at config/sidechain/upstream-pins";
@@ -93,4 +95,8 @@ pkgs.runCommand "sidestr-upstream-${builtins.substring 0 8 checked.spec.rev}" {
     chmod -R u+w $out/${dir}
     printf '%s\n' ${checked.${dir}.rev} > $out/${dir}/.pin-commit
   '') srcs)}
+  # Preserve the previously deployed SPEC 6 single-signer peg announcement until
+  # upstream merges 83dd662. This patch does not touch block persistence.
+  patch --fuzz=0 -d $out/spec -p1 < ${../config/sidechain/patches/peg-script.patch}
+  printf '%s\n' '83dd662ef49bcf68a80f5cebc0b4de46b50cea63 (--peg-script only)' > $out/spec/.pin-patches
 ''

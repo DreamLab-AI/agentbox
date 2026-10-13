@@ -211,6 +211,9 @@
         teammateGcReap    = resHygieneCfg.reap or true;
         teammateIdleSecs  = toString (resHygieneCfg.idle_secs or 1800);
         teammateGcInterval= toString (resHygieneCfg.interval_secs or 60);
+        # ADR-2138 [resources.target_gc]: idle Cargo target sweeper. Default OFF (it
+        # deletes data), so a manifest with no section emits nothing. REBUILD-class.
+        targetGcEnabled   = (resourcesCfg.target_gc or {}).enabled or false;
         bgNiceLevel       = resServicesCfg.nice or 10;
         # Background supervised programs run at lower CFS weight. The cgroup
         # filesystem is read-only inside the container (nsdelegate, empty
@@ -259,6 +262,17 @@
         # decision 2026-10-06), so the program is baked for this deployment.
         # REBUILD-class: the block below is baked supervisor text.
         diagramReviewEnabled = (agentboxConfig.diagram_review or {}).enabled or false;
+        # [seo_watch] (website ADR-2010): nightly SEO / agent-searchability
+        # watch for dreamlab-ai.com. Same shape as diagramReviewEnabled: the
+        # program spends on a metered API and may open draft PRs, so a
+        # manifest with no section emits nothing. REBUILD-class.
+        seoWatchEnabled = (agentboxConfig.seo_watch or {}).enabled or false;
+        # [system_one] (ADR-2139): the typed-decision vendor slot. The proxy
+        # holds vendor keys and is the endpoint every System One consumer is
+        # projected at, so a manifest with no section emits nothing and the
+        # consumers keep their cloud defaults (ADR-2020). REBUILD-class for the
+        # program; the consumer projection is BOOT-class (entrypoint).
+        systemOneProxyOn = (agentboxConfig.system_one or {}).enabled or false;
         # [sidechain]: the sidestr chain this deployment produces (PRD-024 P1).
         # Default off — only the operator of a sealed chain has its signer key.
         # enabled ⇒ [program:sidestr-producer]; mirror / faucet add
@@ -1804,6 +1818,8 @@
         '';
         factrailPkg = import ./lib/factrail.nix { inherit lib; pkgs = rustPkgs; };
         factrailPackages = lib.optionals jevCompactionOn [ factrailPkg ];
+        systemOneProxyPkg = import ./lib/system-one-proxy.nix { inherit lib; pkgs = rustPkgs; };
+        systemOneProxyPackages = lib.optionals systemOneProxyOn [ systemOneProxyPkg ];
 
         # Render a config.toml for nostr-rs-relay from manifest fields.
         # Consumed by the supervisor block at /etc/agentbox/nostr-relay.toml.
@@ -1955,6 +1971,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           ++ sidechainPackages
           ++ pokerCitizenPackages
           ++ factrailPackages
+          ++ systemOneProxyPackages
           ++ nagualQePackages
           # rune markdown TUI — gated on [vault].tui = "rune" (ADR-2029)
           ++ runePackages
@@ -2032,6 +2049,11 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # factrail: the entrypoint projects THIS path as the plugin's `binary`
           # option, which persists in ~/.claude; a store path there would dangle.
           ln -s ${factrailPkg}/bin/factrail $out/opt/agentbox/bin/factrail
+          ''}
+          ${lib.optionalString systemOneProxyOn ''
+          # system-one-proxy (ADR-2139): a stable path so `./agentbox.sh systemone`
+          # and the interim tmux launch run the SAME binary supervisor does.
+          ln -s ${systemOneProxyPkg}/bin/system-one-proxy $out/opt/agentbox/bin/system-one-proxy
           ''}
 
           ${lib.optionalString (toolchainCfg.codex or false) ''
@@ -2942,6 +2964,59 @@ stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}
 
+${lib.optionalString systemOneProxyOn ''
+; ADR-2139: gated on [system_one].enabled. The loopback typed-decision proxy
+; every System One consumer calls (skill router, factrail, jev-checkpoints).
+; Its ONLY configuration is /run/agentbox/system-one.json, written by the
+; entrypoint (agentbox-manifest system-one-project --format json) before the
+; consumers are projected and rewritten in place by `./agentbox.sh systemone
+; backend <name>`; the proxy re-reads it on change. Vendor keys are read from
+; the env var each backend names (TYPESAFE_API_KEY, SUBQ_API_KEY: devuser-class
+; provider credentials under custody Q8, inherited from PID 1 like the
+; consumers inherit them) and only ever sent to that key's hard-coded host.
+; Boot writes the projection first. A disabled stub exits 0 without restart;
+; only unexpected failures restart the daemon.
+[program:system-one-proxy]
+command=${systemOneProxyPkg}/bin/system-one-proxy
+user=devuser
+environment=HOME="/home/devuser",SYSTEM_ONE_PROJECTION="/run/agentbox/system-one.json"
+autostart=true
+autorestart=unexpected
+startsecs=0
+startretries=30
+priority=60
+stdout_logfile=/var/log/system-one-proxy.log
+stderr_logfile=/var/log/system-one-proxy.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+
+${lib.optionalString seoWatchEnabled ''
+; Website ADR-2010: gated on [seo_watch].enabled (flake default false, shipped
+; manifest true). Like forum-backup-cron, the crontab and the job live in the
+; mounted website repo (scripts/seo-watch/), so schedule and behaviour change
+; without a rebuild; only this stanza is baked. The job runs ALONGSIDE the
+; dream engine at 05:40 UTC, outside the 01-05 dream window. It holds no secret
+; of its own: ZAI_ANTHROPIC_API_KEY, GITHUB_TOKEN and PERPLEXITY_API_KEY are
+; inherited from the container environment like diagram-review-cron. The
+; crontab line uses flock (util-linux) and timeout (coreutils) so a long night
+; skips the next slot instead of overlapping it; node/npm build the proposed
+; patch in a detached worktree, git and gh push the draft PR. -inotify makes
+; supercronic reload the crontab when the file changes. REBUILD-class.
+[program:seo-watch-cron]
+command=${bgNice}${supercronicPkg}/bin/supercronic -inotify -split-logs /home/devuser/workspace/dreamlab-ai-website/scripts/seo-watch/crontab
+user=devuser
+environment=HOME="/home/devuser",TZ="UTC",PATH="${lib.makeBinPath [ pkgs.coreutils pkgs.bash pkgs.gnugrep pkgs.findutils pkgs.util-linux pkgs.git pkgs.gh pkgs.nodejs_22 ]}:/usr/local/bin:/bin:/usr/bin"
+autostart=true
+autorestart=true
+startsecs=0
+priority=250
+stdout_logfile=/var/log/seo-watch-cron.log
+stderr_logfile=/var/log/seo-watch-cron.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+
 ; Nightly Cloudflare forum backup → NAS (dreamlab-ai-website issue #48).
 ; The crontab and script live in the mounted website repo, so schedule and
 ; behaviour are editable without an image rebuild — only this stanza is baked.
@@ -3210,6 +3285,26 @@ startsecs=0
 priority=245
 stdout_logfile=/var/log/teammate-gc.log
 stderr_logfile=/var/log/teammate-gc.error.log
+stdout_logfile_maxbytes=5MB
+stderr_logfile_maxbytes=5MB
+''}
+${lib.optionalString targetGcEnabled ''
+
+; ADR-2138: gated on [resources.target_gc].enabled (default false). Removes Cargo
+; target/ directories that carry the Cargo marker, hold no build lock (a failed
+; non-blocking flock on .cargo-lock) and are idle for max_age_days. Roots, the
+; exclude list, the age and the interval come from /etc/agentbox.toml (baked, so
+; REBUILD-class). Idle I/O class so a sweep never starves a build.
+[program:target-gc]
+command=${bgNice}${pkgs.util-linux}/bin/ionice -c3 ${agentboxOpsPkg}/bin/target-gc --delete --loop --manifest /etc/agentbox.toml
+user=devuser
+environment=HOME="/home/devuser"
+autostart=true
+autorestart=true
+startsecs=0
+priority=246
+stdout_logfile=/var/log/target-gc.log
+stderr_logfile=/var/log/target-gc.error.log
 stdout_logfile_maxbytes=5MB
 stderr_logfile_maxbytes=5MB
 ''}

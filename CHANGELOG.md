@@ -4,6 +4,25 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-10-12 — System One vendor slot, ADR-2139)
+
+- `[system_one]` (enabled, backend `subq`): the System One judge becomes a vendor slot. One
+  loopback proxy, `system-one-proxy` (`crates/system-one/system-one-proxy`, baked by
+  `lib/system-one-proxy.nix` as `[program:system-one-proxy]`), fronts the skill router, factrail
+  and the advisor checkpoints and forwards to the backend named in the manifest: `typesafe`
+  (Jev), `subq` (SubQ Snap), `laya` (the ADR-2094 façade) or `kev` (a local Kev-9B server). The
+  proxy owns the vendor keys (sent only to each key's hard-coded host, never to a local backend),
+  overwrites `model`, drops consumer Authorization and logs one content-free line per request.
+  `agentbox-manifest system-one-project` writes `/run/agentbox/system-one.json` and projects the
+  proxy as every consumer's endpoint; `./agentbox.sh systemone backend <name>` switches live
+  within a locality class (local→cloud waits for a restart; ADR-2094 §5); `systemone proxy`
+  shows counters. Schema, default manifest, catalogue entry, validator E080/E081/W076, router
+  keyless behind the proxy (`AGENTBOX_SYSTEM_ONE_PROXY=1`), `SUBQ_API_KEY` in the custody
+  inventory (devuser-class, Q8). Measured 2026-10-12: SubQ Snap at parity with Jev 1.13.0 on the
+  86-case routing corpus (93.0% both) and on 466 recorded compaction judgements; receipts in
+  ADR-2139 and `skills/system-one/references/live-docs.md`. Staged for the next rebuild; the
+  proxy runs interim from the same binary path under tmux.
+
 ### Added (2026-10-11 — image-scoped VEX evidence, ADR-2137)
 
 - Image builds and candidate preparation retain Nix SBOMs, build evidence and

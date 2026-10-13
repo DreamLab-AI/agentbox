@@ -80,8 +80,11 @@ The helper converts the verified CycloneDX inventory to `sbom.nix.syft.json`
 and gives its source the image's explicit name and digest. This preserves the
 product identity needed by Grype's OpenVEX matcher; package PURLs come from the
 verified inventory. It does not catalogue new packages during conversion.
-SPDX is exported from that same inventory, and both exports are hashed into
-the evidence bundle. Grype receives `--add-cpes-if-none` because Nix packages
+Syft's package inventory excludes CycloneDX components typed as files (for
+example `fonts.conf`); those remain in the authoritative CycloneDX inventory
+and shipped-path evidence. Every software component, including packages without
+a PURL, must survive conversion. SPDX is exported from that package inventory,
+and both exports are hashed into the evidence bundle. Grype receives `--add-cpes-if-none` because Nix packages
 need CPE matching and the offline report avoids network-based CPE enrichment.
 
 `security scan` retains `grype.raw.json`, `grype.filtered.json` and a filtered

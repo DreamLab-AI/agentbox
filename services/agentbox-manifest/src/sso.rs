@@ -176,31 +176,81 @@ fn shq(value: &str) -> String {
     format!("'{}'", value.replace('\'', r"'\''"))
 }
 
-/// Loopback, RFC1918/CGNAT/link-local, `.local`/`.internal`, or a dotless
-/// hostname (a Docker service such as `systemone`). Everything else is off-LAN.
+/// The host of an `http(s)://` URL under a STRICT grammar, or `None`.
 ///
-/// Deliberately the same rule as `scripts/agentbox-config-validate.js`'s E075,
-/// so the boot projection and the config gate cannot disagree about what
-/// "local" means.
-pub fn is_local_endpoint(endpoint: &str) -> bool {
-    let rest = match endpoint.split_once("://") {
-        Some(("http", rest)) | Some(("https", rest)) => rest,
-        _ => return false,
-    };
-    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
-    let authority = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
-    let host = if let Some(end) = authority.find(']') {
-        // [::1]:8097
-        authority[1..end].to_string()
-    } else {
-        authority.split(':').next().unwrap_or("").to_string()
-    };
-    let host = host.to_ascii_lowercase();
-    if host.is_empty() {
-        return false;
+/// Only `scheme://host[:port][/…]` is accepted, where `host` is a DNS name
+/// (`[A-Za-z0-9.-]`), a dotted-decimal IPv4 literal with four plain decimal
+/// octets, or a bracketed IPv6 literal. Userinfo (`@`), backslashes, octal or
+/// hex octets, short IPv4 forms and dotless decimal IPs are REFUSED rather
+/// than interpreted, because WHATWG parsers (reqwest's `url`, browsers) read
+/// those differently from a naive split: `https://evil.com\@api.subq.ai/`
+/// connects to evil.com. Refusing the grammar keeps "the host we checked" and
+/// "the host that is dialled" the same string. IPv6 hosts are returned WITH
+/// their brackets so a hostname such as `fcbook.com` can never be mistaken
+/// for a ULA prefix.
+pub fn strict_host(url: &str) -> Option<(&str, String)> {
+    let (scheme, rest) = url.split_once("://")?;
+    if !matches!(scheme, "http" | "https") {
+        return None;
     }
-    if host == "localhost" || host == "::1" || host.starts_with("127.") {
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    if authority.is_empty() || authority.contains('@') || authority.contains('\\') {
+        return None;
+    }
+    let host = if let Some(inner) = authority.strip_prefix('[') {
+        let end = inner.find(']')?;
+        let (h, after) = (&inner[..end], &inner[end + 1..]);
+        if h.is_empty() || !h.chars().all(|c| c.is_ascii_hexdigit() || c == ':') || !valid_port(after) {
+            return None;
+        }
+        format!("[{h}]")
+    } else {
+        let (h, after) = match authority.find(':') {
+            Some(i) => (&authority[..i], &authority[i..]),
+            None => (authority, ""),
+        };
+        if h.is_empty() || !valid_port(after) || !h.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-') {
+            return None;
+        }
+        let labels: Vec<&str> = h.split('.').collect();
+        if labels.iter().any(|l| l.is_empty()) {
+            return None;
+        }
+        // Anything a WHATWG parser would read as a NUMBER is only accepted in
+        // the one unambiguous spelling: four decimal octets without leading zeros.
+        let numeric = labels.last().is_some_and(|l| l.chars().all(|c| c.is_ascii_digit()) || l.starts_with("0x") || l.starts_with("0X"));
+        if numeric
+            && !(labels.len() == 4
+                && labels.iter().all(|l| l.parse::<u8>().is_ok() && (l == &"0" || !l.starts_with('0'))))
+        {
+            return None;
+        }
+        h.to_string()
+    };
+    Some((scheme, host.to_ascii_lowercase()))
+}
+
+/// `""` or `:<decimal port>`.
+fn valid_port(after_host: &str) -> bool {
+    match after_host.strip_prefix(':') {
+        None => after_host.is_empty(),
+        Some(p) => !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()) && p.parse::<u16>().is_ok(),
+    }
+}
+
+/// Loopback, RFC1918/CGNAT/link-local, `.local`/`.internal`, or a dotless
+/// name (a Docker service such as `systemone`). Everything else, and every
+/// URL [`strict_host`] refuses, is off-LAN.
+pub fn is_local_endpoint(endpoint: &str) -> bool {
+    let Some((_, host)) = strict_host(endpoint) else { return false };
+    if host == "localhost" || host == "[::1]" || host.starts_with("127.") {
         return true;
+    }
+    if let Some(v6) = host.strip_prefix('[') {
+        let v6 = v6.trim_end_matches(']');
+        let first = v6.split(':').next().unwrap_or("");
+        // ULA fc00::/7 and link-local fe80::/10, by the first hextet only.
+        return first.len() == 4 && (first.starts_with("fc") || first.starts_with("fd") || first.starts_with("fe8") || first.starts_with("fe9") || first.starts_with("fea") || first.starts_with("feb"));
     }
     if host.ends_with(".local") || host.ends_with(".internal") {
         return true;
@@ -218,15 +268,48 @@ pub fn is_local_endpoint(endpoint: &str) -> bool {
             _ => false,
         };
     }
-    if host.starts_with("fc") || host.starts_with("fd") || host.starts_with("fe80:") {
-        return true;
-    }
+    // A dotless NAME; strict_host already refused dotless numbers.
     !host.contains('.')
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn strict_host_refuses_whatwg_ambiguities() {
+        // userinfo / backslash tricks: a naive split sees api.subq.ai, reqwest dials evil.com
+        assert_eq!(strict_host(r"https://evil.com\@api.subq.ai/v1"), None);
+        assert_eq!(strict_host("https://api.subq.ai@evil.com/v1"), None);
+        assert_eq!(strict_host(r"http://api.subq.ai\@10.0.0.1/"), None);
+        // numeric spellings WHATWG reads as IPv4
+        assert_eq!(strict_host("http://134744072/"), None);
+        assert_eq!(strict_host("http://0x08080808/"), None);
+        assert_eq!(strict_host("http://8.8.8/"), None);
+        assert_eq!(strict_host("http://010.0.0.1/"), None);
+        assert_eq!(strict_host("http://0x8.8.8.8/"), None);
+        // ordinary forms
+        assert_eq!(strict_host("https://api.subq.ai/v1/systemone"), Some(("https", "api.subq.ai".into())));
+        assert_eq!(strict_host("http://systemone:8097/v1"), Some(("http", "systemone".into())));
+        assert_eq!(strict_host("http://[::1]:8094/v1"), Some(("http", "[::1]".into())));
+        assert_eq!(strict_host("http://10.0.0.1:8080/"), Some(("http", "10.0.0.1".into())));
+        assert_eq!(strict_host("http://host:99999/"), None);
+        assert_eq!(strict_host("ftp://x/"), None);
+    }
+
+    #[test]
+    fn locality_is_not_fooled_by_names_or_numbers() {
+        assert!(!is_local_endpoint("https://fcbook.com/"));
+        assert!(!is_local_endpoint("https://fdic.gov/"));
+        assert!(is_local_endpoint("http://[fd00::1]:8097/"));
+        assert!(is_local_endpoint("http://[fe80::1]:8097/"));
+        assert!(!is_local_endpoint("http://[2001:db8::1]:8097/"));
+        assert!(!is_local_endpoint("http://134744072/"));
+        assert!(!is_local_endpoint(r"http://api.subq.ai\@10.0.0.1/"));
+        assert!(is_local_endpoint("http://systemone:8097/v1/systemone"));
+        assert!(is_local_endpoint("http://192.168.2.132:9997/v1"));
+        assert!(!is_local_endpoint("https://api.subq.ai/v1/systemone"));
+    }
 
     fn manifest(body: &str) -> Value {
         tomlval::parse(body).expect("valid toml")

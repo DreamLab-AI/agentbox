@@ -32,6 +32,7 @@ mod proxy;
 mod role_accounts;
 mod routing;
 mod sso;
+mod system_one;
 mod stacks;
 mod stacks_env;
 mod tomlval;
@@ -237,6 +238,22 @@ enum Command {
         /// `shell` (export lines), `plugin-config` (`key=value` pairs) or `json`.
         #[arg(long, default_value = "shell")]
         format: String,
+    },
+    /// ADR-2139: project `[system_one]` (the vendor slot) for the proxy and
+    /// its consumers. Disabled or unusable prints NOTHING and exits 0; a
+    /// refused `--switch` exits 1.
+    SystemOneProject {
+        #[arg(long)]
+        manifest: PathBuf,
+        /// `shell`, `plugin-config` or `json` (the proxy's projection file).
+        #[arg(long, default_value = "shell")]
+        format: String,
+        /// A previously written projection file whose boot locality is kept.
+        #[arg(long)]
+        existing: Option<PathBuf>,
+        /// Select this backend instead of the manifest's (live switch).
+        #[arg(long)]
+        switch: Option<String>,
     },
     /// Print `1` or `0` for a dotted manifest path. Always exits 0.
     TomlBool {
@@ -463,6 +480,16 @@ fn run(cmd: Command) -> Result<(), String> {
         Command::SsoProject { manifest, format } => {
             let format = format.parse::<sso::Format>()?;
             sso::run(&manifest, format);
+            Ok(())
+        }
+        Command::SystemOneProject { manifest, format, existing, switch } => {
+            let format = format.parse::<system_one::Format>()?;
+            // A refused switch is the one non-zero exit of this command.
+            if system_one::run(&manifest, format, existing.as_deref(), switch.as_deref())
+                != ExitCode::SUCCESS
+            {
+                std::process::exit(1);
+            }
             Ok(())
         }
         Command::TomlBool { manifest, path } => {

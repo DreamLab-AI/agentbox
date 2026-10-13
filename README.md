@@ -52,7 +52,7 @@ Agentbox is one component of **[VisionFlow](https://github.com/DreamLab-AI/Visio
 |:-----|:-----|
 | [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Ecosystem canon — ADRs, PRDs, compatibility matrix, vision report, marketing site |
 | [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Flagship engine — OWL 2 EL + Whelk reasoning, 82 CUDA kernels of GPU graph physics, one React Three Fiber renderer shared desktop↔headset; renders the embodied agent loop |
-| **Agentbox** (this repo) | **Sovereign agent runtime — Nix-built container, `did:nostr` identities, 127 skills, RuVector memory, Solid pod bridge, sovereign mesh** |
+| **Agentbox** (this repo) | **Sovereign agent runtime — Nix-built container, `did:nostr` identities, 129 skills, RuVector memory, Solid pod bridge, sovereign mesh** |
 | [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Rust Solid pod server — the personal-data-sovereignty layer under each human's and agent's own key |
 | [nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Nostr-native forum + relay — the one place a human decision gets cryptographically signed |
 | [dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | dreamlab AI company website — the commercial face, a thin consumer of the forum kit |
@@ -181,6 +181,11 @@ The **interaction plane** — the way an operator creates, watches, attaches, an
 - 🎯 **Learned cost-optimal routing for public dev work.** `[model_routing.neural]` runs the metaharness router (kernel-ridge over a measured corpus, inside the baked ruflo closure) as a dedicated Agent-of-Empires `router` session: each task is embedded offline, the cheapest OpenRouter model above the quality bar is picked and executed, and a labelled receipt is written. Public tier only. See [ADR-2080](docs/adr/ADR-2080-metaharness-router-console-under-aoe.md).
 
 ---
+
+The optional `[system_one]` vendor slot sends skill routing, compaction, and advisor
+checkpoints through one loopback proxy. Inspect it with `./agentbox.sh systemone backend`
+and `./agentbox.sh systemone proxy`; see [ADR-2139](docs/adr/ADR-2139-system-one-judge-as-a-vendor-slot.md)
+for backend selection, credentials, and locality rules.
 
 ## Quickstart
 

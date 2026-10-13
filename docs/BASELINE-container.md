@@ -51,7 +51,7 @@ Ground-truth description of how the agentbox container is composed and what runs
 
 ### Build: one Nix flake
 
-The image is composed entirely by `flake.nix` (4,581 lines). `agentbox.toml` is the *running* configuration, not a template — the flake evaluator reads it at build time to decide the package set and generates the supervisord text inline. Feature gates map to Nix conditionals (`lib.optionalString`), so flipping most gates changes the image and needs `./agentbox.sh rebuild`, not a restart. This is the apply-class distinction the manifest surface encodes (`system-manifest.js:27-31`): `live` (read at op time), `boot` (entrypoint reconciles each restart), `rebuild` (changes Nix composition).
+The image is composed entirely by `flake.nix` (4,684 lines). `agentbox.toml` is the *running* configuration, not a template — the flake evaluator reads it at build time to decide the package set and generates the supervisord text inline. Feature gates map to Nix conditionals (`lib.optionalString`), so flipping most gates changes the image and needs `./agentbox.sh rebuild`, not a restart. This is the apply-class distinction the manifest surface encodes (`system-manifest.js:27-31`): `live` (read at op time), `boot` (entrypoint reconciles each restart), `rebuild` (changes Nix composition).
 
 `ruvector` is always in the package set (`ruvectorPkg` in `flake.nix`), pinned as an exact-semver Nix npm closure (`ruvector-0.3.3`, `lib/npm-cli.nix`); everything else is gated. Node is `nodejs_22` throughout. (ADR-2039: the version was `0.2.25` when this paragraph was written; the `nix-prefetch-url` comment immediately above the pin still names the old tarball.)
 

@@ -1,6 +1,6 @@
 # Skill Directory -- Comprehensive Inventory and Decision Tree
 
-> **128 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
+> **129 active skills**. Categorised inventory (Artefact 1), decision tree (Artefact 2), composition patterns, MCP summary. Skills self-trigger from their frontmatter `description`; the always-loaded subsets are `registered-skills.txt` (Claude Code) and `codex-registered-skills.txt` (Codex); everything else is reached through `skill-router` (`/route`) and its generated `references/routing-table.md`. Facts here are gated: `scripts/skill-count-check.js` (count), `lint-skills.sh` (every skill named here, section map, routing table current).
 > Updated 2026-09-09 (estate re-audit for Fable 5.1 / GPT-6 Astra workloads; history in `CHANGELOG.md` and `docs/adr/`). Reference this file from CLAUDE.md for intelligent routing.
 
 ---
@@ -32,13 +32,13 @@
 
 ---
 
-## Artefact 1: Categorised Skill Inventory (128 Active Skills)
+## Artefact 1: Categorised Skill Inventory (129 Active Skills)
 
 ### Context, Discovery, and Session Management
 
 | Skill | MCP | Key Capability | When to Choose |
 |-------|-----|----------------|----------------|
-| `skill-router` | No | **Unified dispatcher** for 128 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
+| `skill-router` | No | **Unified dispatcher** for 129 skills. `/route [task]` classifies intent and routes to optimal skill. Single entry point | Don't know which skill to use — describe your task and get routed |
 | `lazy-fetch` | Yes | 25 MCP tools: context hydration, plan tracking, blueprints, PRD-to-sprints, security scanning, persistent memory | Starting a new session, managing context across tasks, tracking phased plans, running autonomous PRD execution |
 | `skill-builder` | No | Create new Claude Code skills with YAML frontmatter and progressive disclosure | Building new custom skills for the skills directory |
 | `skill-tuning` | No | Empirically optimize an existing skill against a measurable reward via the SkillOpt loop + noise-robust held-out A/B (single-optimizer vs mesh arms). Live harness in skillopt-lab | Tuning a skill by evidence — raising an agent's success rate on a bounded scoreable task, not eyeballing prose |
@@ -175,6 +175,7 @@ Testing is integrated into `build-with-quality` (TDD agents) and `sparc-methodol
 | `report-builder` | No | LaTeX reports, Python analytics, Wardley maps, TikZ+Mermaid diagrams, multi-LLM research | Research reports, white papers, sector analyses, policy briefs |
 | `latex-documents` | No | TeX Live toolchain, Beamer presentations, BibTeX, mathematical typesetting | Academic papers, presentations, publication-quality documents |
 | `book-publishing` | No | End-to-end book pipeline: markdown → arXiv/KDP/print-ready PDF using parallel agent swarms (LaTeX conversion, BibTeX extraction, TikZ diagrams, matplotlib charts, Wardley maps, Gemini image upcycling, visual verification) | Publishing a book or preparing a full manuscript for academic or commercial publication |
+| `anatomy` | No | Crafted isometric SVG machines with shared behaviour/readout models, geometry kit, seven examples, optional interaction, WebGL and 3D; topic references load on demand via Jev | Mechanical technical illustrations, algorithm explainers and interactive instruments for docs or web pages; not architecture topology, Mermaid corpora or whole-repository explanations |
 | `diagram-design` | No | Editorial-quality HTML/SVG diagrams: 28 visual types, branded design system, semantic patterns, draw.io/Mermaid import, light/dark/terminal/sketchy variants, accessible animation, self-contained output | Presentation diagrams, blog visuals, branded architecture diagrams, editorial charts, any diagram that will be shared or published |
 | `diagrams-as-code` | No | Citation-verified Mermaid corpus for a whole repository or estate: one topic file per subsystem with dual developer/business narratives, every diagram claim resolved to `path:line` at a declared `verified_commit`, Tension/Debt/Drift/Open/Invariant markers collected into a generated REGISTER.md, plus COVERAGE.md, an index block and a JSON report. Ships the zero-dependency gate `scripts/diagram-index-gen.cjs` (`--check`, `--cite-check`, `--strict-citations`, `--worktree-citations`, `--no-source-paths`, `--render` via mmdc at a 4500px legibility ceiling, `--report`) | Mapping, cataloguing or cartographing a whole codebase in diagrams; extending or re-verifying an existing `docs/diagrams` tree against HEAD; a state-of-play audit that must cite its evidence. NOT a single diagram (`mermaid-diagrams`), a published visual (`diagram-design`), or an audience-facing explainer built on a corpus (`explainer`) |
 | `sealmap-review` | No | Whole-project review from a diagrams-as-code corpus in two modes. External: diagrams only (never code), one shot to Gemini 3.8 Flash at high thinking under a critical due-diligence lens and a pre-mortem lens (`scripts/external-review.cjs`, zero-dependency, `GEMINI_API_KEY`; pack-first so later lenses hit the cache; `--only` per area past 1M tokens; `--register strip` for a blind run). Inline: a Claude subagent checks topics against the code they cite (fault classes: wrong callee, missing call, invented edge, stale claim, ADR contradiction). Both emit unverified `F-nn` findings for build-with-quality triage | "Review this project", an outside opinion, a pre-mortem, due diligence before running or taking over a large system, "do the diagrams still match the code". NOT a diff or PR (`code-review`), writing the corpus (`diagrams-as-code`), or a code security audit (`security-review`) |
@@ -302,7 +303,7 @@ Answer these questions in order. Stop at the first match.
 
 ```
 Q0: Unsure which skill handles your task?
-    --> /route [describe task]  (skill-router — intelligent dispatcher for all 128 skills)
+    --> /route [describe task]  (skill-router — intelligent dispatcher for all 129 skills)
 
 Q1: Is the task about an EXISTING skill that is deprecated?
     YES --> Use its replacement (see Deprecated table above)

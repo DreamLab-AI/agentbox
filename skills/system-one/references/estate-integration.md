@@ -7,6 +7,17 @@ description of running code.
 
 ## Live
 
+### The judge is a vendor slot (ADR-2139, 2026-10-12)
+
+Every consumer below calls `http://127.0.0.1:8094/v1/systemone` — `system-one-proxy`,
+configured by `[system_one]` in `agentbox.toml` — not a vendor. The proxy forwards to
+`[system_one].backend` (`typesafe` | `subq` | `laya` | `kev`), owns the vendor keys and
+overwrites `model`. Running backend: **subq** (SubQ Snap, parity with Jev measured
+2026-10-12). Switch: `./agentbox.sh systemone backend <name>` (live within a locality
+class; local→cloud needs a restart). Watch: `./agentbox.sh systemone proxy`. A consumer's
+own cost line uses the price projected at boot; the proxy's `/v1/backend` is the live figure.
+
+
 ### 0. Skill routing (ADR-2091, 2026-09-16)
 **Where** — `config/hooks/skill-route.cjs` on `UserPromptSubmit` and `/route`
 (`skills/skill-router/scripts/route.mjs`), both over `config/hooks/lib/skill-route.cjs`.
