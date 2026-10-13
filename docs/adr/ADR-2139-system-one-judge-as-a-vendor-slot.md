@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 05494ca247d9566873bf5708d8f935769a83ee1a
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [agentbox.toml, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -156,3 +156,11 @@ subq-snap-preview --b-usd-per-mtok-in 0.05`; the replay and image probes are the
 session scratchpad (`factrail-replay-subq.json`, `img.json`, `long.json`).
 
 Request metadata logs rotate at 10 MiB and retain three archives; daemon stdout and stderr use the bounded supervisor logs. Host operator commands delegate through the inspected project mount to container loopback.
+
+## Amendment — 2026-10-13 at `044f1d689` (`state_budget_tokens` is planned, not implemented)
+
+Decision 5 says the vendor slot "carries a `state_budget_tokens` so factrail can stop shrinking early". It does not. The string occurs nowhere in the code or manifest: not in `[system_one.backends.*]`, `agentbox-manifest system-one-project`, `system-one-proxy` or the validator, and factrail (a pinned external) is not told a per-backend state budget. The field is **planned and unimplemented**; `implementation_status: partial` already covers it. The measured fact stands (SubQ accepted a 73,612-token state in 1.5 s), and factrail's six shrink stages still run to their 25,000-token budget on every backend. Adding the field needs a `state_budget_tokens` key on each backend, a projection into the factrail userConfig, and a factrail release that reads it.
+
+The other claims checked hold. Not re-checked: the vendor measurement figures, retention and ZDR status, and the Syft/Grype interoperability numbers (`syft` and `grype` are not on this container's path). Two unrelated drifts were noticed and left alone: `E080` is used in the validator for both the ADR-2138 relative-path check and the System One checks, and the `agentbox.toml:823-825` comment gives `E081` the wrong meaning (the validator and the ADR are right).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

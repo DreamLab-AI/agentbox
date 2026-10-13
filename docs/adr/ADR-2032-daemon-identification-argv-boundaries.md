@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3baa60024cec7d13ea0160202009b032ed566400
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [services/agentbox-ops/src/procs.rs, services/agentbox-ops/src/bin/ruflo-daemon-gc.rs]
 owner: jjohare
 review_trigger: a new daemon launcher shape (new package path, wrapper script or runtime flags), any new binary that signals processes, or adoption of pidfd-based identity
@@ -129,3 +129,34 @@ no deployed daemon was signalled.
 `services/agentbox-ops/src/procs.rs`,
 `services/agentbox-ops/src/bin/hermes-scheduler.rs`,
 `services/agentbox-ops/src/lib.rs`.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- Daemon identity decided on argv elements: basename ruflo|claude-flow, or node/nodejs + script basename ruflo|claude-flow or cli.js under a ruflo|claude-flow|@claude-flow path component, followed by separate elements daemon, start
+- Workspace read as one argument in --workspace PATH or --workspace=PATH form
+- Registry PIDs outside 1..=i32::MAX discarded before discovery
+- Read-only default, explicit --kill; reaper default asserted read-only
+- Allowlist moved verbatim to process_identity.rs (is_ruflo_daemon_argv) and re-exported into procs.rs; shared with Hermes stop path
+- Hermes stop path: identity = recorded argv + /proc stat field 22 start time, captured at launch into the job record; unverifiable record refuses; distinct outcomes (exited / signalled-but-running / mismatch-refused / no-such-process); missing /proc is an explicit refusal
+- Test claims: 141 -> 182 passed (historical counts), reaper_default_is_read_only.rs exists and passes
+- Governed files named in the 2026-09-05 section all exist (process_identity.rs, process_identity_tests.rs, hermes/mod.rs, hermes/jobs.rs, hermes/stop_tests.rs, bin/hermes-scheduler.rs); receipt docs/estate-closeout/2026-09-05/adr-2032-process-identity.json exists
+
+Evidence:
+
+- git diff 3baa60024..de7fa461e -- services/agentbox-ops/src/procs.rs services/agentbox-ops/src/bin/ruflo-daemon-gc.rs → empty (and git diff --stat over all of services/agentbox-ops since the anchor shows only the target_gc/other additions, nothing touching the matcher)
+- services/agentbox-ops/src/process_identity.rs:327-353 is_ruflo_daemon_argv: match basename 'ruflo'|'claude-flow' => args[1..]; 'node'|'nodejs' => script basename ruflo|claude-flow or cli.js with ruflo|claude-flow|@claude-flow path component; final daemon_args.starts_with(&["daemon","start"]); anything else => false
+- services/agentbox-ops/src/procs.rs:13 re-exports it as is_daemon_argv; procs.rs:29-43 workspace_argv handles '--workspace PATH' and '--workspace=PATH'
+- services/agentbox-ops/src/bin/ruflo-daemon-gc.rs:91-93 registry_pid: pid > 0 && pid <= i32::MAX as u64; used at :71; --kill gate at :144, rustix kill_process TERM at :157
+- process_identity.rs:135-144 starttime = /proc/<pid>/stat field 22; :257-308 verify() compares argv and starttime ('the PID has been reused'); hermes/mod.rs:442-510 StopOutcome has NotRunning/Exited/Signalled/RefusedUnverifiable/RefusedMismatch/RefusedInaccessible; hermes/mod.rs:351-357 captures own identity at launch; hermes/jobs.rs:152 identity record location
+- cargo test --locked --offline --no-fail-fast -- --test-threads=1 in services/agentbox-ops (CARGO_TARGET_DIR in scratchpad) → lib 212 passed 0 failed; tests/reaper_default_is_read_only.rs 1 passed; ruflo-daemon-gc bin test 1 passed
+- process_identity_tests.rs:301-309 'the_ruflo_launcher_allowlist_is_unchanged_by_the_move' present
+
+Commands run: `git diff 3baa60024..de7fa461e -- <verified_paths> (empty); CARGO_TARGET_DIR=<scratch> cargo test --locked --offline --no-fail-fast -- --test-threads=1 (services/agentbox-ops)`
+
+Not checked, and notes: Line citations in the original Decision section (procs.rs:23 for the allowlist, procs.rs:60 for workspace parsing) are historical: the allowlist now lives at process_identity.rs:327 and workspace_argv at procs.rs:29; the ADR's own 2026-09-05 re-verification section already records the move, so the record is internally consistent. Test counts (141, 182) are dated snapshots; current lib count is 212. The default parallel `cargo test` run had one flaky failure in an unrelated module (target_gc held-lock test, see ADR-2138 notes); not relevant to this record. 'No live process-reaping test was used' disclaimers in the record remain accurate: I ran no live reap either. The anchor bce906199 cited in the 2026-10-01 note exists as a commit object. implementation_status: partial remains correct (estate-wide caller inventory not done); this verification does not change status axes.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

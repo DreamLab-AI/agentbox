@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 926f62660f46e6f65578216919170b50ea113964
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -184,3 +184,28 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- entrypoint projects consultants.antigravity.model into AGENTBOX_ANTIGRAVITY_MODEL via agentbox-manifest toml-string; env wins; fail-open
+- TUI writer preserves an existing manifest model unless flat state names one
+- default gemini-3.8-flash in skills/mcp.json
+- consultant test: argv carries model, tariff steps at UTC year boundary
+
+Evidence:
+
+- entrypoint diff hunks (ADR-2140 loom_sync vars, ADR-2139 system-one projection, factrail key warning, claude-flow user-scope mirror) do not touch the consultant block
+- config/entrypoint-unified.sh:3057-3061 at 218dc12c3: [ -z AGENTBOX_ANTIGRAVITY_MODEL ] && toml-string --path consultants.antigravity.model || true
+- services/agentbox-manifest/src/tui_write.rs:36-45 preserves existing model
+- skills/mcp.json:194,408 default gemini-3.8-flash
+- node --test mcp/consultants/antigravity/server.test.cjs -> 2 pass, 0 fail
+
+Commands run: `node --test mcp/consultants/antigravity/server.test.cjs`
+
+Not checked, and notes: The cited line :2223 was already stale at 926f626 (it was :2977). Not run: cargo test in services/agentbox-manifest (writes target/), Nix fixture eval and image boot (ADR itself says unconfirmed).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

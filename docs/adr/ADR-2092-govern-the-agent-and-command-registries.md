@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 926f62660f46e6f65578216919170b50ea113964
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [agents/registered-agents.txt, scripts/reconcile-agents.sh, scripts/reconcile-commands.sh, scripts/project-skill-roots.mjs, config/registered-commands.txt, config/entrypoint-unified.sh, flake.nix, tests/config/agent-reconcile.test.sh]
 owner: jjohare
 review_trigger: a new subagent worth always-loading, or evidence the router surfaces baked-but-unregistered skills too slowly
@@ -286,3 +286,11 @@ What each `flake.nix` commit changes:
 - `c25eee9b9` is a merge that brings no net change against the anchor.
 
 None of these registers an agent or a command, or changes how `/opt/agentbox/agents` is baked or reconciled. The decision holds.
+
+## Amendment — 2026-10-13 at `044f1d689` (the registered agent set is 13)
+
+The registered agent set is **13**, not 12: the twelve named in the record plus `Explore`, a built-in override (same name, Haiku model) added by ADR-2134 on 2026-10-09 so that fan-out search runs on Haiku rather than the lead model (`agents/registered-agents.txt`, commit `29e564615`). The mechanism claims (manifest-driven link, sidecar retirement, prune-only commands, overlay allowlist) are unchanged, and `tests/config/agent-reconcile.test.sh` passes 45/45. The "about 1,273 tokens per turn" figure for agents predates the extra description and should be read as approximate.
+
+The staleness gate could not see this. `registered-agents.txt` is in `verified_paths`, but it changed before the recorded `verified_commit`, so the file shows no diff since the anchor, and the 2026-10-07 note "still 12 agents" predates the change. An anchor can be wrong from the day it is written, so a count in a record is worth re-counting rather than trusting the previous note.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

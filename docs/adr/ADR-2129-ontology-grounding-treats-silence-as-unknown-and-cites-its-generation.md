@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [skills/ontology-augment/scripts/ontology-augment.sh, skills/ontology-augment/SKILL.md, skills/ontology-augment/references/REFERENCE.md, skills/ontology-augment/references/EXAMPLES.md, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing
@@ -50,3 +50,21 @@ Implemented 2026-10-05 (PRD-029 wave; `verified_commit` set on commit). Every `o
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 Two commits since `a449138f2` touch the governed paths, both on the `check` door. `18f39abe5` makes `vc_post` unwrap VisionClaw's `ok_json!` envelope (`{success, data, error, timestamp}`) once, so the verdict is read from `.data.check` (`skills/ontology-augment/scripts/ontology-augment.sh:333-336`). Before that, every live `check` reply fell through to `degraded`/`visionclaw_no_verdict`. `2f0cee94c` keeps a 400 (unknown or ambiguous class term) as `degraded`, `reason: visionclaw_http_400`, exit 0, and now carries the server's `message` (`:338-343`). `references/REFERENCE.md:229-246` documents the envelope and adds the 400 row. The verdict mapping is unchanged: entailed→answered, entailed_false→contradicted, not_asserted→silent. The envelope and generation citation are unchanged too. `SKILL.md` and `EXAMPLES.md` are untouched. `bash tests/skills/ontology-augment-grounding.test.sh` gives `69 passed, 0 failed` (66 plus an unwrapped-body case and two 400 cases). Decision 4's citation of the write-governance section had already moved to `SKILL.md:157-165` when `a449138f2` rewrote the skill. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689` (ontology-augment on the live Loom `/mcp`, ADR-2140 D6)
+
+The grounding contract holds unchanged: silence is `silent`, never negative; every grounded answer carries `generation`; the empties are `answered`, `silent`, `degraded` and `contradicted`, with `contradicted` only from `entailed_false`; negation is flagged; writes stay governed.
+
+What changed is how `neighbours` and `paths` are answered, which revises this record's 2026-10-05 verification lines "Neighbours falls back to vault, enveloped. Paths is degraded." Those described a Loom whose `/mcp` returned 404. They now describe only the fallback path.
+
+- **The live `/mcp` is the primary route.** loom ADR-140 P0 answers on `:8084`, so `neighbours` and `paths` are answered by `loom.neighbours` and `loom.paths` with `source: "loom"` and the Loom's generation. A `tools/call loom.browse` against `http://192.168.2.132:8084/mcp` on 2026-10-13 returned HTTP 200 with `x-loom-generation: visionGraph@45976a8c7…` and `x-loom-content-digest: 5080a0b4…`. `loom_post` reads those headers into `LOOM_GEN`, so decision 3 holds for `/mcp` calls as for REST.
+- **A fallback fires only when the Loom did not answer**: unreachable, a non-200 status, or a JSON-RPC protocol error carried on HTTP 200 (`mcp_failed`). `neighbours` then falls back to `vault tree` (asserted edges only, announced on stderr, `source: "vault"`, the local `.generation.json` cited). `paths` stays `degraded` with no corpus walk. A tool-level `isError` result is not a fallback: `emit` labels it `degraded` with the Loom as its source and nulls `generation.id`.
+- **Format change, as Consequences 3 anticipated.** `fallback.loom_status` and the `paths` degraded body's `loom_status` can now be the string `rpc_error` as well as an HTTP code, and the `paths` degraded `hint` text changed. Parsers move with it.
+- **New counted shapes in `emit`:** `found: false` counts 0, giving `silent`; `found: true` with a `path` counts `hops` (at least 1); an IRI-keyed class counts `1 + is_a + ancestors + relation targets`; `candidates` counts as an array. Only a positive count is `answered`. An unknown shape is still `silent` with `shape: "unrecognised"`.
+- **Titles resolve exactly.** `resolve_iri` matches a page title case-insensitively against `loom.browse` candidates and never slugifies it. With no exact match the input is sent verbatim, and an unknown class comes back `found: false`, which is `silent`. A Loom found down (`000`) while resolving sets `LOOM_DOWN`, so later calls are skipped instead of each waiting out the timeout.
+
+Citation correction: decision 4's write-governance section is now `SKILL.md:159-167` (`## Writes are still governed`), not `:157-165`.
+
+`bash tests/skills/ontology-augment-grounding.test.sh` gives 87 passed, 0 failed at `044f1d689`. Between `2f80fa493` and this commit it gave 86 passed, 1 failed (`validate: still enveloped with generation`) on any host with a real `ontomark` on `PATH`: since `2f80fa493` `validate` resolves `ontomark` through `command -v` ahead of the test's stub `vault`, and the real binary refuses the stub fixture. That was a test-isolation gap, not a contract break, and `044f1d689` closes it by putting a stub `ontomark` first on `PATH`. Against a real vault, `ontomark --repo <visionGraph> validate --json` emits JSON and is enveloped.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 926f62660f46e6f65578216919170b50ea113964
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [config/nip98-proxy/proxy.mjs, scripts/aoe-curl.sh, flake.nix]
 owner: jjohare
 review_trigger: next image rebuild (activation), or any new consumer of :9095, or per-process isolation becoming available
@@ -274,3 +274,30 @@ Tripped by the W10 gap fixes on `custody/integration`. `flake.nix` (`dc91e092a`)
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 `config/nip98-proxy/proxy.mjs` and `scripts/aoe-curl.sh` are byte-identical between `1fc26c786` and HEAD. The only governed path that moved is `flake.nix`, and none of its net hunks touches the AoE daemon, the proxy or the token path. `vaultSrc` moves to VisionClaw `3213e314f` through `68a77b1bf`, `1afd80dd1`, `dfbcd69d9`, `57bbd3fad` and `afc8a0ed6`, which are vault CLI pins. `afc8a0ed6` also adds the `forumGovCfg` bindings and projects `AGENTBOX_FORUM_GOVERNANCE_RELAY`/`_SIGNERS` into `[program:management-api]`'s environment (ADR-2109). `cc5f5dcc0`, `2bc789d33` and `feb608318` add the gated `[program:diagram-review-cron]` (ADR-2131), which is a supercronic job with no listener. `a98aba880` adds `sealmapPkg` to `skillToolPackages`. `6e4e4a0f8` widens the faucet programs' PATH with `nodejs_22` and `pokerCitizenPkg`. `7dadf61d7` replaces the four hand-written image layers with `lib/image-layers.nix` groups (ADR-2132). The merge `c25eee9b9` adds no further net hunk. At HEAD, `flake.nix:2795` still generates `aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port ${toString interactionPlanePort}`. `flake.nix:3348-3349` still states that `:9095` is NEVER published. `sh scripts/ci/check-ports-loopback.sh` passes and lists `[program:aoe-serve]` as loopback at `flake.nix:2795`. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- aoe serve runs --auth token --behind-proxy on 127.0.0.1:9095
+- nip98-proxy 503s AoE routes without a token (HTTP and WS)
+- token is exactly 64 hex, read-then-stat retry
+- scripts/aoe-curl.sh is positional-only and loopback-pinned
+
+Evidence:
+
+- flake.nix diff 926f626..218dc12c3 is insertions only (vexPkg/securityTools, target_gc, seo_watch, system_one flags, ontomarkPkg in vaultPackages, system-one-proxy/seo-watch-cron/target-gc programs, mkImage securityEvidence); no hunk touches aoe-serve, the nip98 proxy or port publishes.
+- flake.nix:2846 at 218dc12c3: aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1 --port ${interactionPlanePort}
+- config/nip98-proxy/proxy.mjs:311-332 readAoeToken ({64} regex, stat before/after retry); :1038-1044 503 'AoE token unavailable'; :1137 WS path reads token
+- scripts/aoe-curl.sh: usage METHOD PATH [JSON_BODY], AOE_BASE=http://127.0.0.1:9095, bad usage exit 2
+- proxy.mjs, selftest.mjs and aoe-curl.sh unchanged since 926f626 (empty git diff --stat)
+- node config/nip98-proxy/selftest.mjs (TMPDIR=scratchpad) -> OK, 0 failure(s), 0 skip(s)
+- check-ports-loopback.sh listener rule lists aoe-serve --host/--allowed-host as loopback
+
+Commands run: `node config/nip98-proxy/selftest.mjs; sh scripts/ci/check-ports-loopback.sh`
+
+Not checked, and notes: Not checked: tokenless denial against a live daemon (ADR already calls it a deployment check). Old flake.nix line cites have drifted; claims unaffected.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: e020264b54c6872ca98995c1adda18b8451a39af
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [management-api/lib/pay402.js, scripts/sidechain/demo-accounts.js, management-api/lib/sidestr-spend-key.js, management-api/lib/sidestr-rail.js, management-api/lib/sidestr-payee.js, management-api/middleware/consumer-payer.js, management-api/middleware/spend-policy.js, management-api/routes/chain-payments.js, tests/contract/pay402, scripts/activation/adr-2097-acceptance.js]
 owner: jjohare
 review_trigger: a chain added to pay402.js SIDESTR_CHAINS; the rail switched to sidestr:dreamlab-txbt4; sidestr-agent gaining a memo or transaction lookup (S2); any proposal to make x402 or l402 payable; any proposal to build NWC
@@ -166,3 +166,11 @@ with a bound spend key, and wrote `agents/demo-{a,b}-dreamlab-txbt4.json`:
 coins yet. The demo payment on `sidestr:dreamlab-txbt4` therefore waits on two things: its
 producer running, and a peg-in or treasury funding demo-a's spend address. The route suite runs
 on both chains with stubs. The live evidence above is on `sidestr:dreamlab`.
+
+## Amendment — 2026-10-13 at `044f1d689` (the demo producer is enabled)
+
+The Consequences line that says the demo chain's producer "ships disabled" is out of date. `[sidechain.dreamlab-txbt4]` has been `enabled = true` since 2026-10-03 (`agentbox.toml:1846`, loopback port 3451), so the producer runs. Payments on `sidestr:dreamlab-txbt4` now fail closed at the chain guard only while the producer is down or its chain document does not match; the demo payment still waits for a peg-in or treasury funding of `demo-a`'s spend address. The matching comment near `agentbox.toml:1879` is corrected in `044f1d689`.
+
+The rail, fixtures and guard are unchanged, and the one tripped test hunk is a harmless `mirror_url` update. Contract suites pass, including pay402 (655 tests passed, 34 todo). Not checked without a running stack: the live acceptance receipt, and whether `demo-a` is funded on `txbt4`. The Verification heading still reads "Proposed." although the acceptance section says accepted; that inconsistency predates this amendment and is left for the owner.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

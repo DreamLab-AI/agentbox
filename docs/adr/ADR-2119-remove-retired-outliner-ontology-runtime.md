@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 926f62660f46e6f65578216919170b50ea113964
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -143,3 +143,26 @@ Since `1fc26c786`, only `flake.nix` changed among the governed paths. `lib/ontol
 - The rest is sealmap (`a98aba880`), the diagram-review cron (`cc5f5dcc0`, `2bc789d33`, `feb608318`), faucet PATH entries (`6e4e4a0f8`) and the layer dedup (`7dadf61d7`).
 
 The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- services/ontology-tools removed with its Nix derivation and registration
+- web-summary rejects obsolete/unknown format names
+- vault CLI is the authoring route
+
+Evidence:
+
+- flake.nix diff 926f626..218dc12c3 is insertions only (vexPkg/securityTools, target_gc, seo_watch, system_one flags, ontomarkPkg in vaultPackages, system-one-proxy/seo-watch-cron/target-gc programs, mkImage securityEvidence); no hunk touches aoe-serve, the nip98 proxy or port publishes.
+- git ls-tree -r 218dc12c3 | grep ontology-tools -> none; git grep ontology-tools in flake.nix, lib, services, *.nix -> none
+- services/agentbox-mcp/src/web_summary/types.rs:175 test loops over ["logseq","unknown"] for rejection
+- flake hunk adds ontomarkPkg beside vaultPkg under the same vaultCliActive gate: consistent with vault-based authoring
+
+Commands run: `git ls-tree / git grep at 218dc12c3`
+
+Not checked, and notes: Not run: web-summary cargo tests (would write target/) and the live-image claim that /opt/agentbox/bin/ontology-tools is absent (needs a running container).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

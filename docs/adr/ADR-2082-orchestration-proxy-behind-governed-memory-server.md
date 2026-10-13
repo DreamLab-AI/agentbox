@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 926f62660f46e6f65578216919170b50ea113964
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
 review_trigger: next image rebuild (activation), a ruflo major bump that renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
@@ -166,3 +166,27 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: one line in the runtime-env heredoc (`config/entrypoint-unified.sh`): `CLAUDE_FLOW_MEMORY_PATH` is now escaped so it resolves in the sourcing shell to `$HOME/.cache/ruflo/memory` instead of a root-side `/home/devuser` literal (RC-X1-01). The `claude-flow-mcp` proxy child still receives the same default; memory still never crosses the proxy. Nothing this record decides changed.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- gate orchestration_proxy / orchestration_tools projected by the entrypoint into the claude-flow env block
+- DENIED_PREFIXES incl. memory_ enforced in orchestration-proxy.js
+- default categories swarm,agent,task,coordination when manifest is silent
+- fail-open for orchestration only
+
+Evidence:
+
+- entrypoint diff hunks do not touch the orchestration block; config/entrypoint-unified.sh:1458-1459 reads both keys, :1594 sets RUVECTOR_ORCHESTRATION_PROXY
+- mcp/servers/lib/orchestration-proxy.js:43 DENIED_PREFIXES exactly as in the ADR; :46 DEFAULT_CATEGORIES='swarm,agent,task,coordination'
+- node mcp/servers/lib/orchestration-proxy.test.js -> 11 passed (includes missing binary fails open)
+- new mcp-mirror-server block copies the final claude-flow entry to ~/.claude/.claude.json after hub projection; carries gate env, no contradiction
+
+Commands run: `node mcp/servers/lib/orchestration-proxy.test.js`
+
+Not checked, and notes: Shipped agentbox.toml sets orchestration_tools = "swarm,agent" (deployment override); the ADR's 'default' still describes the code default. Not run: live 59-tool check, memory-tools.test.js.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

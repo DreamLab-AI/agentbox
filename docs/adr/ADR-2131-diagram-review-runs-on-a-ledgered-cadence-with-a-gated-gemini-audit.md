@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [skills/sealmap-review/scripts/review-cadence.cjs, skills/sealmap-review/run-cron.sh, skills/sealmap-review/crontab, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: the first month of real Gemini spend (compare ledger cost with the estimate); a change to Gemini or Z.AI pricing; a GLM model change behind [consultants.zai]; a second corpus joining repos
@@ -69,3 +69,30 @@ existing ADR-2122 DEVUSER_CLASS exception; no sovereign key is introduced.
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 Three commits since `09a024b12` touch `review-cadence.cjs` and `crontab`; `run-cron.sh` and `schema/agentbox.toml.schema.json` are unchanged. `93282583f` deletes `sealmapStale` and the optional `sealmap stale --since` narrowing from `triage`, leaving per-file flagging as the single path, as the Decision's "with no narrower rule" already states. The `review_trigger` clause about that output format therefore has nothing left to trigger. `88bd2a666` adds a `merge` subcommand over `merge-findings.cjs`. It ranks findings that both families raised first and writes `docs/review/<date>-merged.{md,json}`, with no ledger, gate or budget effect. `feb608318` implements what the "Host adversarial review" section records. Each audit reserves both lenses at the uncached input rate plus `ER.MAX_OUTPUT_TOKENS` before generation, and books an `audit-reservation` line that a settlement replaces. `actualGeminiUsd` refuses incomplete or invalid usage. `countTokens` takes the larger of the two lens packs. `flock` serialises `audit-gemini`. Any model other than `gemini-3.8-flash` is refused. `LOCAL_FILE` resolves under `$WORKSPACE/project/agentbox` when the runner is baked, and the crontab calls `/opt/agentbox/skills/...`. The gate, interval, threshold, cap and booking of failed calls at the estimate all hold. `node --test` in `skills/sealmap-review/scripts` gives 66 (cadence 42, external-review 15, merge-findings 9), and `tests/config/diagram-review-cron.test.sh` gives 21. The decision holds. The obsolete `stale --since` review trigger is removed.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- [diagram_review] manifest section gates [program:diagram-review-cron]; shipped enabled=true, flake default off
+- gemini_min_interval_days 7, gemini_min_changed_topics 3, gemini_monthly_usd 10; triage 05:17 and review 02:47 UTC; weekly_window semantics
+- repos=[] means auto-discover
+- schema declares the keys and rejects unknown ones
+- cadence runner behaviour (37+ cadence cases, 21 cron-wrapper tests)
+
+Evidence:
+
+- schema/agentbox.toml.schema.json diff: 8 insertion hunks, none mentions diagram_review/gemini/weekly (grep empty); the diagram_review schema object at 218dc12c3 has additionalProperties:false and the eight keys with matching descriptions
+- agentbox.toml@218dc12c3 [diagram_review]: enabled=true, repos=[], glm_triage_cron "17 5 * * *", glm_review_cron "47 2 * * *", interval 7, changed 3, usd 10, weekly_window true
+- skills/sealmap-review: git diff --stat empty in range
+- cd skills/sealmap-review/scripts && node --test → 66 pass, 0 fail (cadence 42, external-review 15, merge-findings 9)
+- bash tests/config/diagram-review-cron.test.sh → 21 passed, 0 failed
+- flake.nix:2891-2902 area gated by diagramReviewEnabled (per 2026-10-07 re-verification; flake hunks in range are elsewhere)
+
+Commands run: `node --test (sealmap-review/scripts); bash tests/config/diagram-review-cron.test.sh`
+
+Not checked, and notes: The schema delta is entirely other sections (+173 lines) and does not touch diagram_review. Live GLM/Gemini calls and Nix evaluation not run (no keys / no Nix); ADR itself says those are unverified. Known-red in the ADR (declared-vs-running) is outside this check.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

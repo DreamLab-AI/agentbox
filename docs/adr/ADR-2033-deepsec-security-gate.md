@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -321,3 +321,34 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 `skills/build-with-quality/scripts`, `skills/build-with-quality/references/deepsec-security-gate.md` and `.github/workflows/deepsec.yml` are unchanged since `1fc26c786`. `flake.nix`, `agentbox.toml`, `setup/agentbox.default.toml` and the schema change only as described for ADR-2029: layer dedup (`7dadf61d7`), the sealmap bake (`a98aba880`), the diagram-review cron (`cc5f5dcc0`, `2bc789d33`, `feb608318`), forum governance (`afc8a0ed6`), the faucet PATH (`6e4e4a0f8`), `vaultSrc` moves, and the ComfyUI, `label_log`, `zai_max_tokens` and ruvector reader-role keys. No hunk names deepsec. `scripts/agentbox-config-validate.js` gains only E079 for `[diagram_review]` (`cc5f5dcc0`) and E078/W075 for `[sovereign_mesh.forum_governance]` (`afc8a0ed6`). `management-api/lib/system-manifest.js` gains only the `diagram-review` catalogue entry. Those insertions move line numbers without changing behaviour. The E070–E072/W070 block moves from `:1226` to `:1284-1337`. In `flake.nix`, `deepsecPkg` (pin `2.3.10`) moves from `:695` to `:709`, the `toolchainCfg.deepsec` gate from `:732` to `:746`, and `ENABLE_DEEPSEC` from `:4213` to `:4257`. In `agentbox.toml`, `deepsec = true` moves from `:1909` to `:1974` and `[security.deepsec]` from `:2180` to `:2245`. The catalogue entry stays at `system-manifest.js:91-93`, and `EX_CONFIG=78` stays at `deepsec-gate.sh:27`. `node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs` reports 10 passed, 0 failed. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- deepsecPkg baked via mkNpmCli, exact pin 2.3.10, gated by [toolchains].deepsec; ENABLE_DEEPSEC projected
+- catalogue entry `deepsec` gates toolchains.deepsec + security.deepsec.enabled, apply_class rebuild
+- [security.deepsec] policy block holds env-var names only; defaults model_auth=local, fail_on=HIGH, max_duration=45m
+- validator E070/E071/E072/W070 exist
+- sole entry point skills/build-with-quality/scripts/deepsec-gate.sh: exit 78 disabled, never `deepsec init`, receipt.json, gitignored workspace
+- CI workflow is label-gated on same-repo PRs with full-SHA action pins
+- 10 fake-CLI gate tests pass; manifest validator accepts agentbox.toml
+
+Evidence:
+
+- grep deepsec on the full diff of agentbox.toml, flake.nix, system-manifest.js, schema, validator over cca7ea3b1..218dc12c3 → no deepsec-touching hunk. The validator hunks are E080/W077 (Cargo target sweeper), W071/W072 comment re ADR-2139, E080/E081/W076 (System One); the catalogue hunks are the System One entries.
+- flake.nix:732-738 (218dc12c3): deepsecPkg = mkNpmCli { pkgName="deepsec"; version="2.3.10"; packageLock=./config/npm-locks/deepsec-2.3.10.package-lock.json; ... }; flake.nix:769 gates it on toolchainCfg.deepsec; flake.nix:4381 ENABLE_DEEPSEC.
+- agentbox.toml:2436-2448 [security.deepsec] enabled=true agent=claude model_auth=local thinking_level=high fail_on=HIGH max_duration=45m ai_api_key_env="" (names only).
+- scripts/agentbox-config-validate.js:1313-1366 E070-E072/W070 present; management-api/lib/system-manifest.js:94-96 deepsec entry, gates [toolchains.deepsec, security.deepsec.enabled], apply_class rebuild.
+- .github/workflows/deepsec.yml:15-16,31-32 label `deepsec` + same-repo condition; actions pinned to full SHAs; skills/build-with-quality/scripts/deepsec-gate.sh unchanged in range (header documents exits 0/1/70/78/124, line 190 writes .gitignore, receipt.json at line 235).
+- git diff of skills/build-with-quality (8 doc files, none mention deepsec/security gate).
+- node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs → 10 pass, 0 fail
+- node scripts/agentbox-config-validate.js agentbox.toml → 'agentbox manifest valid ... (6 advisory warnings)', no errors
+
+Commands run: `node --test skills/build-with-quality/scripts/deepsec-gate.test.mjs; node scripts/agentbox-config-validate.js agentbox.toml`
+
+Not checked, and notes: Cosmetic drift, not a record falsity: agentbox.toml:2165 comment still says deepsec@2.3.9 and the flake.nix comment above deepsecPkg still calls nodeModulesHash a placeholder although a resolved hash is set; the pin in code is 2.3.10. Implementation partial / activation staged status is unchanged: a real --diff receipt, a --full pass and the labelled-PR CI run remain unverifiable without a paid provider/running image.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

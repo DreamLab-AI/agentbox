@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [flake.nix, lib/rune.nix, config/tmux-autostart.sh, config/tmux.conf, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json]
 owner: jjohare
 review_trigger: a Rune release that changes its CLI (`-w`), its keyboard-protocol requirement, or its licence; or the AoE plane absorbing note editing
@@ -280,3 +280,30 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 `lib/rune.nix`, `config/tmux-autostart.sh` and `config/tmux.conf` are unchanged since `1fc26c786`. Seventeen commits touch the other governed paths, and none of them touches the Rune gate or window 9. In `flake.nix`, `7dadf61d7` replaces the four fixed `n2c.buildLayer` groups with `lib/image-layers.nix` cadence groups. `runePackages` still enters `allPackages` (`flake.nix:1938`), and that set feeds the `services` layer, so the package is still baked under the gate. `a98aba880` adds `sealmapPkg` to `skillToolPackages`. `cc5f5dcc0`, `2bc789d33` and `feb608318` add the `[program:diagram-review-cron]` block under `[diagram_review].enabled` (ADR-2131). `afc8a0ed6` adds the forum-governance relay and signer env to the management-api program (ADR-2109). `6e4e4a0f8` puts `pokerCitizenPkg` and `nodejs_22` on the faucet PATH. `68a77b1bf`, `1afd80dd1`, `dfbcd69d9` and `57bbd3fad` move `vaultSrc`. In `agentbox.toml`, `afc8a0ed6` adds `[sovereign_mesh.forum_governance]`, `4f09c96b2` adds `reader_role`/`hba_scram` to the ruvector block, and `cc5f5dcc0` adds `[diagram_review]`. Also in `agentbox.toml`: `a449138f2` turns ComfyUI on, `b1e42f148` sets `label_log = false`, and `e4e4f5fb6` raises `zai_max_tokens` to 131072. `setup/agentbox.default.toml` and the schema carry the matching additions only. The gate is unchanged at `flake.nix:899-903` (`vaultTui = vaultCfg.tui or "none"`, `runeActive = vaultTui == "rune"`), and `agentbox.toml:927` still sets `tui = "rune"`. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- lib/rune.nix builds rustPlatform package from the jjohare/rune fork tag v1.5.0-dreamlab.1, cargoBuildFlags -p rune-cli, doCheck=false (amendment 2026-09-25 supersedes Decision 1's v1.4.0)
+- flake.nix gates rune on [vault].tui == "rune" (runeActive), lazy import, runePackages in the package set
+- config/tmux.conf sets allow-passthrough on and extended-keys on
+- config/tmux-autostart.sh _notes_window: gated by AGENTBOX_VAULT_ENABLED and VAULT_TUI (execution off-switch), recovery HOME=$WORKSPACE/.rune-home, window 9 Notes, root = AGENTBOX_NOTES_ROOT else VAULT_WORKING_ROOT else VAULT_ROOT
+- agentbox.toml [vault].tui = "rune"
+
+Evidence:
+
+- git diff cca7ea3b1..218dc12c3 -- config/tmux.conf: single hunk adds `set -ga update-environment " COLORTERM LANG LC_ALL"` above the ADR-2029 D3 block; allow-passthrough/extended-keys untouched (still at tmux.conf:26-27 at 218dc12c3).
+- flake.nix diff: hunks are ontomark package, sidechain, System One, jev-checkpoints etc.; the rune gate is unchanged: flake.nix:924 `runeActive = vaultTui == "rune";` 925-926 runePkg/runePackages; flake.nix:1971 `++ runePackages`.
+- agentbox.toml/default.toml/schema diff has no tui/rune lines; agentbox.toml:1069 `tui = "rune"`.
+- git show 218dc12c3:lib/rune.nix: version 1.5.0-dreamlab.1, owner jjohare repo rune, rev 2698873b..., cargoBuildFlags [-p rune-cli], doCheck=false (lib/rune.nix unchanged in the range).
+- git show 218dc12c3:config/tmux-autostart.sh lines 30,102-139,190,222 match the described gates and launch line.
+- bash tests/tui/notes-launcher.test.sh → 17 passed, 0 failed (ADR recorded 11; suite has grown)
+
+Commands run: `bash tests/tui/notes-launcher.test.sh`
+
+Not checked, and notes: Title and Decision 2 still say the window opens at the vault root; the 2026-09-25 amendment in the same record already corrects this to [vault].working, and the code matches the amendment. Image bake and Rune journal concurrent-edit recovery remain untested (named residual in the ADR); needs a running container.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

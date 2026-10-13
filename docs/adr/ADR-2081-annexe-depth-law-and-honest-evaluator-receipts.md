@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/gate.rs, services/dream-engine/src/verdict.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
@@ -77,3 +77,29 @@ Tripped by two dream-engine commits. `68270e953` (NIP-09 withdrawal of resolved 
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 `runner.rs` and `gate.rs` change only in `2d92ad3c1` (`cargo fmt`; `runner.rs` is token-identical). Both runners still use `bash -o pipefail -c` (`runner.rs:65`, `:102`; test `local_runner_does_not_let_a_tail_pipe_mask_a_failure` at `:221`). The no-patch ACCEPT is still `Veto::unproven` → `INCONCLUSIVE` (`gate.rs:70`, `:244`; test at `:543`, previously `:62` and `:490`). `annexe_subpath` is untouched and moves from `engine.rs:1843` to `:2151` because of the inserted code. Its test is at `:2386`. `9400bf6c1` tightens the ledger-cell rule: `sanitise_finding(report, verdict, night_date)` (`verdict.rs:347`) takes only the Step-19 row dated tonight, with backticks and blockquotes stripped, so a quoted earlier row is no longer taken. The contract checks are now one function, `finding_violations` (`:386`), which counts the 80-character limit in UTF-16 code units as `rowContract.ts` does. The preference order is still own row, then a `Finding:` line, then the hypothesis, and `sanitise_finding_full` (`:507`) still carries the whole hypothesis. `17d366cb1` adds an append-time backstop that repairs any finding that breaks the contract, and `8dad83c83` keeps a hypothesis from passing as a finding behind a `VETOED:` prefix. Both refine the decision without contradicting it. `cargo test --offline --lib` reports 269 passed. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- annexe_subpath mirrors workspace depth with leaf fallback
+- both runners use bash -o pipefail -c
+- no-patch ACCEPT is Veto::unproven -> INCONCLUSIVE
+- sanitise_finding / sanitise_finding_full order of preference
+- the six named tests exist and pass
+
+Evidence:
+
+- 218dc12c3:services/dream-engine/src/engine.rs:2305 pub fn annexe_subpath(...) with leaf fallback; engine.rs diff has no hunk touching annexe_subpath or sanitise_finding
+- runner.rs:65 and :102 'bash -o pipefail -c'; runner.rs has no diff since cca7ea3b1
+- gate.rs:70 fn unproven, :244 CandidateState::NoPatch => Veto::unproven; gate.rs no diff
+- verdict.rs:347 sanitise_finding, :507 sanitise_finding_full; verdict.rs no diff
+- git grep for all six test fn names at 218dc12c3 -> 1 hit each; full suite 283 passed 0 failed
+
+Commands run: `git -C agentbox diff cca7ea3b1..218dc12c3 -- services/dream-engine/src/*.rs; CARGO_TARGET_DIR=<scratch> cargo test --locked --offline --lib (services/dream-engine) -> 283 passed, 0 failed`
+
+Not checked, and notes: Only engine.rs moved and none of its hunks is on the annexe, receipt or ledger-cell path. The new CandidateState handling around apply-repair feeds gate.rs unchanged (NoPatch/Refused still unproven). Activation (supervised loop on rebuilt image, live annexe) remains unverifiable by reading, as the record already says.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

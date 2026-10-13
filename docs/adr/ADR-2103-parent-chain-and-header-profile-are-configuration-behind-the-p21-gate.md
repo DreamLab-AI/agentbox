@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 1fc26c78639e3ab1dfd81c9b4284ea95bb5d731c
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [config/sidechain/dreamlab/chain.json, config/sidechain/dreamlab-txbt4/chain.json, config/sidechain/README.md, config/sidechain/run-producer.sh, config/sidechain/upstream-pins, lib/sidestr-upstream.nix, tests/config/sidechain-genesis.test.sh, tests/config/sidechain-producer-gates.test.sh, tests/config/sidechain-producer-baked.test.sh, management-api/lib/sidechain-health.js, scripts/activation/sidechain-demo-witness.sh, scripts/activation/sidechain-witness.cjs, scripts/activation/sidechain-witness-replay/src/main.rs]
 owner: jjohare
 review_trigger: sidestr/spec PR #4 and sidestr/explorer PR #2 merging or being declined; a new alias in the SPEC 3.2 parent table; any proposal to sign a chain document whose parent is a mainnet variant; a change to the Knots BLAKE2b fork's header format or activation; a BLAKE2b testnet4 node reachable from the container; upstream implementing assets between chains (assets-and-pools section 4)
@@ -629,3 +629,32 @@ Tripped by `f93586b9e`. `config/sidechain/run-producer.sh` changes only in where
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `f93586b9e..1fc26c786`: `config/sidechain/upstream-pins` bumps `spec` from `e8deb63` to `83dd662` (SPEC 0.0.5 plus `--peg-script`) and `config/sidechain/run-producer.sh` passes `--peg-script "$SIDESTR_PEG_SCRIPT"` when set, documented as SPEC 6 Level 2 for a single-signer chain with no parent wallet: the announced output script is the peg, deposits paying it are credited, peg-outs are recorded, not paid (`aeca58df6`). `lib/sidestr-upstream.nix` moves its `spec` rev and hash to the same commit (`b78e414fb`) — this record's rule that the producer refuses a bake disagreeing with `upstream-pins`, exercised. `tests/config/sidechain-producer-baked.test.sh` adds a case that both producer PATHs carry `findutils` for the bake guard (`b83e0e5d7`); `tests/config/sidechain-producer-gates.test.sh` adds the per-chain poker-seat cases (`bde96a334`). The chain documents, README, genesis test, health module and witness tooling did not move. What this record decides — parent and header profile are manifest configuration bound at genesis, mainnet variants behind the P21 gate — is not affected: `peg_script` is a further per-chain manifest key, the parent stays `txbt4`, the seal and D3 check are untouched, and `checkpoint_every` is still `0` (the "not anchored" item stays open). One dated statement moves: the "Liquidity: none" paragraph's "coins arrive only by peg-in" now has a mechanism, since `sidestr:dreamlab-txbt4` is switched on with a peg script (`agentbox.toml`, outside this record's paths). Gates 10/10 and baked 9/9 pass at HEAD. `activation_status` stays `inactive`: a manifest flip is not a running-image receipt. Re-verified by `git diff f93586b9e..1fc26c786 -- <verified_paths>`.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- Decision: parent/header_profile are manifest configuration bound at genesis in the containment block; manifest disagreement with sealed document is a boot failure; P21 gate for mainnet variants
+- sealed chain documents dreamlab and dreamlab-txbt4 unchanged; genesis derives the same under the pins
+- Producer runs baked, pinned upstream: lib/sidestr-upstream.nix bakes spec/schema/blaketestnode at config/sidechain/upstream-pins, Nix evaluation fails if they disagree; runner refuses stale .pin-commit bake
+- run-producer.sh passes --peg-script when SIDESTR_PEG_SCRIPT set (SPEC 6 Level 2)
+- D3 parent check, D3a BLAKE2b fork-hash check, 'no implied anchor' gates untouched
+- history statements about the Pages mirror
+
+Evidence:
+
+- Diff is exactly: README.md (mirror described as Git checkout + raw file endpoint; new 'Persistence failures and recovery' section; patch note), upstream-pins spec 83dd662→2fd6114 (sidestr/spec PR #32, halt on persistence failure), lib/sidestr-upstream.nix rev/hash for spec to 2fd6114, adds nativeBuildInputs patch, applies config/sidechain/patches/peg-script.patch (--fuzz=0) and writes .pin-patches
+- lib/sidestr-upstream.nix (218dc12c3) 'checked' still throws when pins.${dir} != u.rev; upstream-pins spec 2fd6114aa08ea0ba… equals rev in the nix file → consistent
+- config/sidechain/patches/peg-script.patch exists; run-producer.sh:160 still adds --peg-script "$SIDESTR_PEG_SCRIPT"; run-producer.sh:102-104 stale-bake check unchanged
+- bash tests/config/sidechain-genesis.test.sh → passed 7, failed 0
+- bash tests/config/sidechain-producer-gates.test.sh → passed 10, failed 0
+- bash tests/config/sidechain-producer-baked.test.sh → passed 9, failed 0
+- chain.json files not in diff (git log shows no change to config/sidechain/*/chain.json)
+
+Commands run: `bash tests/config/sidechain-genesis.test.sh; bash tests/config/sidechain-producer-gates.test.sh; bash tests/config/sidechain-producer-baked.test.sh`
+
+Not checked, and notes: decision_status is 'proposed', implementation partial, so most of the Decision (D1 projector check, D3 pin: record, D4 CI receipt) is unbuilt by the record's own account; I checked only what the record says exists. Not verifiable here: that the new spec pin 2fd6114 produced a block before being pinned (upstream-pins rule) and that the Nix patch applies cleanly at 2fd6114 (no nix in this container, no network fetch). The record's dated receipts name 'Pages' mirror and pin 83dd662; those are history, and the README now says the mirror is a plain Git checkout served from the raw endpoint, so any future edit to the 'Pages' wording is cosmetic.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [agentbox.toml, skills/tree-search-coder/SKILL.md, services/agentbox-ops/src/bin/tree-search-cap.rs]
 owner: jjohare
 review_trigger: any new optional skill/feature block added to agentbox.toml, or any change to the tree-search-coder spend/route posture
@@ -259,3 +259,29 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 The one new capability gate is `[diagram_review]` (`cc5f5dcc0`, `2bc789d33`, `09a024b12`; ADR-2131). It follows the pattern: `diagramReviewEnabled` at `flake.nix:252` defaults off and gates `[program:diagram-review-cron]` at `flake.nix:2891-2902`, with a `rebuild`-class catalogue entry at `management-api/lib/system-manifest.js:278`. Its spend sits behind a `gemini_monthly_usd` cap. Its `sealmap` binary is baked without a gate in `skillToolPackages` (`flake.nix:1752`), beside diagram-ir and prose-sanitiser. That is consistent with this record's own `partial` status: the off state is not proven footprint-free.
 
 `[sovereign_mesh.forum_governance]` is off when empty and carries no package. `comfyui_external` is switched on, and `label_log` and `zai_max_tokens` change values; none of these alters the gating rule. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- [skills.tree_search_coder] has max_candidates=5, per_branch_timeout_s=60, spend_cap_usd=0.50 and 'explicitly invoked, never auto-routed'
+- SKILL.md says NEVER auto-routed
+- tree-search-cap.rs enforces reserve/settle with EXIT_REFUSED=3
+- code_interpreter, codeact, aci_shell, dream_machine gate blocks exist
+- new optional gates follow the pattern: manifest key gates Nix package + supervisor block with a catalogued apply-class
+- byte-identical-when-off still unproven (ADR says partial)
+
+Evidence:
+
+- agentbox.toml@218dc12c3:992-999 tree_search_coder block with values and comment; :614,:630,:950,:2485 other gates
+- skills/tree-search-coder and services/agentbox-ops/src/bin/tree-search-cap.rs: no diff in range (git diff --stat shows only target_gc.rs and process_identity_tests.rs under services/agentbox-ops/src); SKILL.md:9 NEVER auto-routed; tree-search-cap.rs:32 EXIT_REFUSED=3
+- New gates in the diff: [system_one] -> flake.nix:275,1821-1822 systemOneProxyOn gates package, system-manifest.js:254 catalogue (boot/rebuild); [seo_watch] -> flake.nix:269,2994 optionalString, catalogue :293; [resources.target_gc] -> flake.nix:216,3291 optionalString (default false), catalogue :347; [features.jev_checkpoints] -> flake.nix:1809, catalogue :251; vault.loom_sync -> catalogue :320
+- node scripts/ci/check-manifest-catalogue.js exits 1 at 218dc12c3: 7 uncatalogued booleans: integrations.ruvector_external.reader_role, .hba_scram, diagram_review.weekly_window (all present at cca7ea3b1 too) and four system_one.backends.*.local (new; declared-locality flags, not capability gates)
+
+Commands run: `node scripts/ci/check-manifest-catalogue.js (exit 1, 7 keys); git diff greps`
+
+Not checked, and notes: All tree-search claims verified directly. New gates (system_one, seo_watch, target_gc, jev_checkpoints) do carry catalogue entries and flake gating. Caveat for the owner: the catalogue lint is red at HEAD (exit 1). 3 of the 7 keys pre-date the verified commit; the 4 new ones are `local` locality declarations that should be added to BASELINE in scripts/ci/check-manifest-catalogue.js. That is a lint gap, not a falsification of this ADR's decision. Note system_one, seo_watch, target_gc ship enabled=true, but the ADR's rule is about gating, not defaults. Cargo test / tree-search-cap.test.sh not run (writes target/).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

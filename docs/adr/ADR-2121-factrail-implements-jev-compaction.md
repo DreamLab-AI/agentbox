@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d39db513159bf386a97f5aedc2c86ea49d0e168f
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -224,3 +224,35 @@ Since `34f5e4254`, `lib/claude-code-binary.nix` and `schema/agentbox.toml.schema
 - The ruflo-console files and the three factrail and ruflo tests are unchanged.
 
 `9415186f3` moves Claude Code from 2.1.288 to 2.1.291 with new per-arch hashes. That falls under this record's review trigger (a Claude Code function-hook API change), so it was checked. `claude plugin validate --strict` on the baked factrail plugin under the 2.1.291 binary passes. It reports the same hook surface recorded at 2.1.288: session.start, tool.call, skill.prompt, command.run, session.compact, turn.start and turn.complete, with calls including `$.session.compact` and `$.command.register`. One stale code comment came with the bump: the header in `lib/claude-code-binary.nix` still read "2.1.289" above `claudeCodeVersion = "2.1.291"`. `d39db5131` corrects it to 2.1.291, built 2026-10-06T02:41:25Z per the release manifest, and changes nothing else; the stamp moves to that commit. The schema gains only `sovereign_mesh.forum_governance` (`afc8a0ed6`, ADR-2109) and the top-level `diagram_review` object (`cc5f5dcc0`, `2bc789d33`, `09a024b12`, ADR-2131). No `[features.jev_compaction]` property changed. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- factrail pinned at one 40-char rev in lib/factrail.nix with vendored lockfile lib/lockfiles/factrail-<rev8>.Cargo.lock
+- flake.nix gates factrail binary at /opt/agentbox/bin/factrail and shim in config/claude-plugins/factrail on [features.jev_compaction].enabled
+- schema is closed and rejects min_reduction_ratio; new keys egress/fallback/compaction_timeout_ms/save_full_outputs/record_decisions exist
+- entrypoint projects those userConfig keys, filtered against plugin-declared keys; empty value not projected
+- retired jev-compaction plugin removed whatever the gate
+- plugin 'binary' option is the stable /opt path
+- marketplace shared with ruflo mods; bake-ruflo-console checks versions against marketplace.json
+- named tests pass
+
+Evidence:
+
+- lib/factrail.nix:36 rev = 57ac25b59d4b…; hash line 42; lockfile lib/lockfiles/factrail-57ac25b5.Cargo.lock exists; lib/factrail.nix not in the diff
+- flake.nix:1819-1820,2049-2051,2115-2119 → factrailPkg gated by jevCompactionOn, /opt/agentbox/bin/factrail link, plugin copy
+- schema at 218dc12c3: features.jev_compaction additionalProperties=false, properties include egress, fallback, compaction_timeout_ms, save_full_outputs, record_decisions and NO min_reduction_ratio
+- entrypoint:2833 _jc_project "binary=$_JC_BIN" (/opt/agentbox/bin/factrail); 2846-2850 projection of the five new keys; 2790-2797 retired-plugin uninstall unconditional on gate
+- hunks: marketplace.json adds a jev-checkpoints entry only; schema adds vault.loom_sync/loom_url/loom_host, ruvector_external flags, system_one, features.jev_checkpoints; entrypoint adds ADR-2140/2139/2135 blocks; claude-code-binary.nix bump; bake-ruflo-console.sh adds routeTasks patch (ADR-2134) on ruflo-mods only; tests adjust boundary regexes for jev-checkpoints → none touches a claim
+- bash tests/config/factrail-projection.test.sh → 8 passed, 0 failed (awk boundary now ends at '# ── ADR-2135: Jev checkpoints', which exists)
+- node --test tests/config/factrail-store-migrate.test.mjs → 9/9; ruflo-console.test.mjs → 17 pass, 0 fail, 1 skipped; jev-config-stamp.test.sh PASS; boot-projection-contract.test.sh 13/13
+- node scripts/agentbox-config-validate.js agentbox.toml → valid, 6 advisory warnings (record said five; W076 added by ADR-2139)
+
+Commands run: `bash tests/config/factrail-projection.test.sh; bash tests/config/jev-config-stamp.test.sh; bash tests/config/boot-projection-contract.test.sh; node --test tests/config/factrail-store-migrate.test.mjs tests/config/ruflo-console.test.mjs; node scripts/agentbox-config-validate.js agentbox.toml; node scripts/ci/check-manifest-catalogue.js`
+
+Not checked, and notes: Two point-in-time statements in the Verification section have drifted but are not decision claims: (1) 'check-manifest-catalogue → pass' now FAILS (rc=1) on 7 uncatalogued booleans belonging to other ADRs (integrations.ruvector_external.reader_role/hba_scram [ADR-2133], system_one.backends.*.local [ADR-2139], diagram_review.weekly_window); jev_compaction/jev_checkpoints keys are not among them. (2) validator now reports six advisory warnings, not five. Worth flagging to the owners of 2133/2139 rather than amending this ADR. Image build/boot unverified (staged).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

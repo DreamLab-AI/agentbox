@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/sweep.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/ledger.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
@@ -207,3 +207,28 @@ Phase 2 (policing) stays out of scope, as the Decision says. It needs an approve
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 `management-api/routes/exec-record.js` and `tests/integration/exec-record.test.js` are unchanged since `ddfb6d056`. `journal.rs` and `sweep.rs` change only in `2d92ad3c1`, a `cargo fmt` pass: the word-level diff is line breaks, braces and trailing commas only. Pairing, causation, the three-strike breaker, the fail-open posture and the seven-day sweep are therefore unchanged. `17d366cb1` adds `ledger::row_violations` and `ledger::enforce_contract`, and `append_and_commit_ledger` in `engine.rs` now repairs a row that breaks the row contract before it is appended. The `ledger.append` `tool.called` payload gains a `repaired` field, the pair is still posted around the append, and the default-branch `git commit --only` stays fail-open. This adds to the journalled ledger step without changing it. `9400bf6c1`, `8dad83c83` and `337a110c3` change how findings, VETOED prefixes and PR titles are chosen in `engine.rs`/`verdict.rs`, and they add no and remove no journal calls. `cargo test --offline --lib` in `services/dream-engine` reports 269 passed, 0 failed. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- Phase 1 journal: engine posts a tool.called/tool.completed pair around each side effect, fail-open with breaker (journal.rs)
+- POST /v1/exec/record route and its integration test unchanged
+- DREAM_JOURNAL=0 / DREAM_LEDGER_COMMIT=0 / DREAM_SWEEP=0 opt-outs exist
+- engine commits its own ledger row locally; seven-day sweep
+- new side effects added since cca7ea3b1 are still journalled
+
+Evidence:
+
+- git diff cca7ea3b1..218dc12c3 --stat for journal.rs, sweep.rs, ledger.rs, exec-record.js, exec-record.test.js -> empty (no change)
+- engine.rs diff: new apply-repair llm.call and git.worktree 'apply-repaired-candidate' each wrapped in j.called(...)/j.completed(...); apply-repair is paired; shared_remotes and lost_pr_alert write inbox alerts only (inbox writes were already journalled elsewhere); forum.governance publish still nj.called/nj.completed (engine.rs diff hunk @@ -315)
+- 218dc12c3:services/dream-engine/src/engine.rs:159,1802 and journal.rs:50 -> DREAM_SWEEP, DREAM_LEDGER_COMMIT, DREAM_JOURNAL opt-outs present
+- cargo test --lib -> 283 passed 0 failed (includes journal:: and ledger:: tests)
+
+Commands run: `git -C agentbox diff cca7ea3b1..218dc12c3 -- services/dream-engine/src/*.rs; CARGO_TARGET_DIR=<scratch> cargo test --locked --offline --lib (services/dream-engine) -> 283 passed, 0 failed`
+
+Not checked, and notes: engine.rs hunks are additive (shared-remote alert, CasePaths arg to governance::publish, apply-repair pass, lost-PR alert). No journal call removed or unpaired. Optional: the 'ten side effects' count in Context is historical and the engine now has an eleventh (apply-repair LLM call), journalled. The clause (c)/acceptance evidence is runtime and not re-run.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
