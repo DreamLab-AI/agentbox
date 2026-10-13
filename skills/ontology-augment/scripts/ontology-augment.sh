@@ -185,7 +185,10 @@ emit() {
     # envelopes (.result); MCP tools/call content items, whose text items are
     # parsed as JSON when they are JSON (so "[]" is 0) and are otherwise
     # uncountable; a `vault tree` node (id + title; vault omits an empty
-    # children array); a VisionClaw ADR-2127 verdict.
+    # children array); a VisionClaw ADR-2127 verdict; and the live Loom /mcp
+    # tool results: loom.neighbours (an IRI-keyed class with is_a / ancestors /
+    # relations, or found:false), loom.paths (found + path + hops) and
+    # loom.browse (candidates).
     def count:
       def citem:
         if type != "object" then null
@@ -206,7 +209,12 @@ emit() {
             else null end
         elif (.check? | type) == "object" then (.check | count)
         elif (.verdict? | type) == "string" then (if .verdict == "entailed" then 1 else 0 end)
-        else [ (.rows, .results, .seeds, .neighbours, .neighbors, .paths, .items, .bindings)
+        elif .found? == false then 0
+        elif .found? == true and (.path? | type) == "array" then ((.hops // 1) | if . < 1 then 1 else . end)
+        elif (.iri? | type) == "string" then
+          1 + ((.is_a // []) | length) + ((.ancestors // []) | length)
+            + ([ (.relations // [])[] | (.targets // []) | length ] | add // 0)
+        else [ (.rows, .results, .seeds, .neighbours, .neighbors, .paths, .items, .bindings, .candidates)
                | select(type == "array") | length ] as $c
              | if ($c | length) > 0 then ($c | add)
                elif has("id") and has("title") then ((.children // []) | length)
@@ -307,18 +315,56 @@ loom_post() {
   return 0
 }
 
-# The Loom's /mcp is JSON-RPC 2.0. It is kept as the EXTERNAL-host door (PRD Q10)
-# and it is the only way to reach loom.neighbours / loom.paths, which have no
-# REST route of their own. Calling it over curl is not "using MCP inside the
-# estate": no MCP client, no server registration, no tool grant — just a JSON
-# body on a LAN URL, the same as any other HTTP call in this script.
-#
-# MEASURED 2026-09-22: the generation deployed on :8084 answers /mcp with 404.
-# The plane is ADR-140 work that has not shipped yet (WS-H). So every caller
-# here checks LOOM_STATUS and falls back to the corpus rather than pretending.
+# The Loom's /mcp is JSON-RPC 2.0 (loom agentbox ADR-140 P0, live on :8084; probed
+# 2026-10-13). It is the only way to reach loom.neighbours / loom.paths /
+# loom.browse, which have no REST route of their own. Calling it over curl is not
+# "using MCP inside the estate": no MCP client, no server registration, no tool
+# grant — just a JSON body on a LAN URL, the same as any other HTTP call here.
+# A tools/call answer arrives as {"result":{"content":[{"type":"text",...}],
+# "structuredContent":{"result":...}}}; emit() counts it. A protocol error comes
+# back as a top-level {"error":...} on HTTP 200, which mcp_failed() catches.
 loom_mcp() {
   local tool="$1" args="$2"
   loom_post /mcp "$(printf '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"%s","arguments":%s}}' "$tool" "$args")"
+}
+
+# True when the last loom_mcp produced no usable answer: not HTTP 200, or a
+# JSON-RPC protocol error riding on a 200. (A tool-level isError result is NOT a
+# failure here: emit() reports it as degraded, with the Loom as the source.)
+mcp_failed() {
+  [ "$LOOM_STATUS" != "200" ] && return 0
+  printf '%s' "$LOOM_BODY" | jq -e 'type == "object" and has("error")' >/dev/null 2>&1
+}
+
+# The label a fallback names for why the Loom did not answer.
+mcp_fail_label() { if [ "$LOOM_STATUS" = "200" ]; then printf 'rpc_error'; else printf '%s' "$LOOM_STATUS"; fi; }
+
+# resolve_iri <input> — loom.neighbours / loom.paths key on the Loom IRI (or its
+# slug), not the page title. A title is resolved by EXACT, case-insensitive title
+# match among loom.browse candidates and never slugified: homonyms and UK/US
+# spellings make a guessed slug point at the wrong page. No exact match passes
+# the input through verbatim, so a slug or IRI still works.
+#
+# It sets RESOLVED_IRI and, like loom_post, must NOT be called in a `$(...)`
+# substitution (the globals would die with the subshell). Input that is already an
+# IRI or slug-shaped needs no lookup, so it costs no call. If a lookup shows the
+# Loom is unreachable it sets LOOM_DOWN=1 and every later lookup and call is
+# skipped: fail-open must not multiply a 10 s timeout by the number of calls.
+RESOLVED_IRI=''
+LOOM_DOWN=0
+resolve_iri() {
+  local hit
+  RESOLVED_IRI="$1"
+  case "$1" in urn:*|*://*) return 0;; esac
+  case "$1" in *[!a-z0-9-]*) ;; *) return 0;; esac     # slug-shaped: nothing to resolve
+  [ "$LOOM_DOWN" = 1 ] && return 0
+  loom_mcp loom.browse "{\"query\":$(json_str "$1"),\"limit\":10}"
+  if [ "$LOOM_STATUS" = "000" ]; then LOOM_DOWN=1; return 0; fi
+  hit="$(printf '%s' "$LOOM_BODY" | jq -r --arg t "$1" '
+      (.result.structuredContent.result.candidates // [])[]?
+      | select(((.title // "") | ascii_downcase) == ($t | ascii_downcase)) | .iri' 2>/dev/null | head -1)"
+  [ -n "$hit" ] && RESOLVED_IRI="$hit"
+  return 0
 }
 
 json_str() { printf '%s' "$1" | jq -Rs .; }
@@ -472,29 +518,34 @@ case "$cmd" in
     ;;
 
   # ── neighbours / paths — former kg_neighbors / kg_pathfind. Reasoned-graph
-  # questions, so the Loom answers. `vault tree <id>` is the corpus-only
-  # alternative when the Loom is down and asserted edges are enough.
+  # questions, so the Loom's /mcp answers (live on :8084). A title is resolved to
+  # its Loom IRI by exact title match (resolve_iri); an IRI or slug passes
+  # through. `vault tree <id>` is the corpus-only alternative, used only when the
+  # Loom did not answer (unreachable, non-200 or a JSON-RPC protocol error).
   neighbours|neighbors)
     iri="${1:-}"; shift || true
-    [ -n "$iri" ] || die "neighbours needs an IRI or slug"
+    [ -n "$iri" ] || die "neighbours needs an IRI, slug or exact title"
     limit=25
     while [ $# -gt 0 ]; do case "$1" in --limit) limit="$2"; shift 2;; *) die "unknown flag: $1";; esac; done
-    loom_mcp loom.neighbours "{\"iri\":$(json_str "$iri"),\"limit\":$limit}"
-    if [ "$LOOM_STATUS" = "200" ]; then
+    LOOM_DOWN=0
+    resolve_iri "$iri"; iri="$RESOLVED_IRI"
+    [ "$LOOM_DOWN" = 1 ] || loom_mcp loom.neighbours "{\"iri\":$(json_str "$iri"),\"limit\":$limit}"
+    if ! mcp_failed; then
       emit loom query "$LOOM_BODY" "$LOOM_GEN"
     else
+      why="$(mcp_fail_label)"
       # The reasoned closure is unavailable, so answer from the corpus instead
       # and SAY which one answered. `vault tree` walks asserted frontmatter
       # wikilinks: real edges, but only the ones an author wrote — no inferred
       # ancestors, no backlinks the reasoner derived.
-      echo "ontology-augment: falling back to \`vault tree\` (asserted edges only, no inferred closure)" >&2
+      echo "ontology-augment: Loom did not answer (${why}); falling back to \`vault tree\` (asserted edges only, no inferred closure)" >&2
       need_vault
       set +e; out="$(VAULT tree "$iri" --depth 1 --json)"; rc=$?; set -e
       if [ -z "$out" ] || ! printf '%s' "$out" | jq . >/dev/null 2>&1; then
         [ -n "$out" ] && printf '%s\n' "$out"; exit "$rc"
       fi
       emit vault query "$out" "$(vault_generation)" "" \
-        "$(jq -nc --arg s "$LOOM_STATUS" '{fallback: {from: "loom.neighbours", loom_status: $s, scope: "asserted edges only, no inferred closure"}}')"
+        "$(jq -nc --arg s "$why" '{fallback: {from: "loom.neighbours", loom_status: $s, scope: "asserted edges only, no inferred closure"}}')"
       exit "$rc"
     fi
     ;;
@@ -504,8 +555,10 @@ case "$cmd" in
     [ -n "$from" ] && [ -n "$to" ] || die "paths needs <from> <to>"
     hops=4
     while [ $# -gt 0 ]; do case "$1" in --max-hops) hops="$2"; shift 2;; *) die "unknown flag: $1";; esac; done
-    loom_mcp loom.paths "{\"from\":$(json_str "$from"),\"to\":$(json_str "$to"),\"max_hops\":$hops}"
-    if [ "$LOOM_STATUS" = "200" ]; then
+    LOOM_DOWN=0
+    resolve_iri "$from"; from="$RESOLVED_IRI"; resolve_iri "$to"; to="$RESOLVED_IRI"
+    [ "$LOOM_DOWN" = 1 ] || loom_mcp loom.paths "{\"from\":$(json_str "$from"),\"to\":$(json_str "$to"),\"max_hops\":$hops}"
+    if ! mcp_failed; then
       emit loom query "$LOOM_BODY" "$LOOM_GEN"
     else
       # There is deliberately NO corpus fallback here. A shortest path is a
@@ -513,8 +566,9 @@ case "$cmd" in
       # end and calling the result "the path" would be a different answer
       # wearing this one's name. Say it is unavailable and hand back the two
       # neighbourhoods, which is genuinely what the corpus can support.
-      echo "ontology-augment: shortest paths need the reasoned graph (Loom /mcp, HTTP ${LOOM_STATUS}); no corpus equivalent" >&2
-      emit loom query "$(printf '{"degraded":true,"reason":"paths_need_reasoned_graph","loom_status":"%s","hint":"run `neighbours` on each end, or wait for the ADR-140 /mcp plane"}' "$LOOM_STATUS")" "$LOOM_GEN"
+      why="$(mcp_fail_label)"
+      echo "ontology-augment: shortest paths need the reasoned graph (Loom /mcp: ${why}); no corpus equivalent" >&2
+      emit loom query "$(printf '{"degraded":true,"reason":"paths_need_reasoned_graph","loom_status":"%s","hint":"the Loom /mcp did not answer; run `neighbours` on each end for the asserted neighbourhoods, then retry"}' "$why")" "$LOOM_GEN"
     fi
     ;;
 

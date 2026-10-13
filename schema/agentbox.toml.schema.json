@@ -280,6 +280,22 @@
           "type": "boolean",
           "default": true,
           "description": "ADR-2107/ADR-2108: bake the `vault` corpus CLI (VisionClaw crates/vault) into the image and put it on PATH at /opt/agentbox/bin/vault. This is the ONE door agents have onto the corpus \u2014 the `ontology-bridge` MCP server that used to front it is retired, so with this false an agent has no programmatic corpus access at all. Defaults to true whenever [vault].root is set; false is for an image that deliberately ships no corpus tooling, never a migration step. REBUILD-class \u2014 the package set is resolved at image composition (ADR-039). The boot half of the gate runs `vault --version` in Phase 5d and prints a rebuild notice on failure rather than killing the boot."
+        },
+        "loom_sync": {
+          "type": "string",
+          "enum": ["off", "check", "full"],
+          "default": "check",
+          "description": "ADR-2140: what every boot does about the HP Loom. The vault is canonical on this host and the HP serves a built generation, visionGraph@<committed sha>. off = nothing; check = compare the committed HEAD with the generation the Loom serves and record the result; full = if they differ, build HEAD from a clean detached worktree (uncommitted edits can never be served), promote and verify the bundle, push it to the HP under the in-flight marker and start the HP's own verifying reload. Runs scripts/hp-loom-reconcile.sh in the background, fail-open, so it never delays or stops a boot. BOOT-class: read at every start, no rebuild needed."
+        },
+        "loom_url": {
+          "type": "string",
+          "default": "",
+          "description": "ADR-2140: the Loom door (the stable model-swap facade), e.g. http://192.168.2.132:8084. Exported as LOOM_URL. Required for check and full."
+        },
+        "loom_host": {
+          "type": "string",
+          "default": "",
+          "description": "ADR-2140: ssh target for the HP Loom host, reached directly over the point-to-point rail. Exported as LOOM_HP_HOST. Required for full."
         }
       }
     },

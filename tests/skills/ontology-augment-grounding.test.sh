@@ -123,10 +123,43 @@ class H(BaseHTTPRequestHandler):
                 ok({"success": True, "check": dict(base, verdict="not_asserted")})
             return
         if self.path == "/mcp":
-            iri = req.get("params", {}).get("arguments", {}).get("iri", "")
+            params = req.get("params", {})
+            tool = params.get("name", "")
+            args = params.get("arguments", {})
+            iri = args.get("iri", "")
             def mcp(result):
                 self.send_json(200, {"jsonrpc": "2.0", "id": req.get("id", 1), "result": result})
-            if iri == "mcp-empty":
+            def live(obj):
+                # the shape the deployed :8084 /mcp returns (probed 2026-10-13):
+                # text content AND structuredContent.result, both carrying obj
+                mcp({"content": [{"type": "text", "text": json.dumps(obj, indent=2)}],
+                     "structuredContent": {"result": obj, "grounding": {"generation": GEN}}})
+            if tool == "loom.browse":
+                if args.get("query") == "Escrow Oracle":
+                    live({"query": "Escrow Oracle", "kind": "any", "candidates": [
+                        {"iri": "urn:ngm:class:escrow-oracle-extended", "title": "Escrow Oracle Extended", "score": 12.0},
+                        {"iri": "urn:ngm:class:escrow-oracle", "title": "Escrow Oracle", "score": 19.5}]})
+                else:
+                    live({"query": args.get("query"), "kind": "any", "candidates": []})
+            elif tool == "loom.paths":
+                frm, to = args.get("from", ""), args.get("to", "")
+                if frm == "rpc-err":
+                    self.send_json(200, {"jsonrpc": "2.0", "id": 1,
+                                         "error": {"code": -32602, "message": "missing or empty string argument: to"}})
+                elif to == "live-b":
+                    live({"from": frm, "to": to, "max_hops": 4, "found": True, "hops": 1, "path": [frm, to]})
+                else:
+                    live({"from": frm, "to": to, "max_hops": 4, "found": False, "hops": None, "path": None})
+            elif iri == "urn:ngm:class:escrow-oracle" or iri == "urn:ngm:class:live-hit":
+                live({"iri": iri, "title": "Live Hit", "is_a": ["urn:ngm:class:parent"],
+                      "ancestors": ["urn:ngm:class:grandparent"],
+                      "relations": [{"predicate": "requires", "targets": ["urn:ngm:class:a", "urn:ngm:class:b"]}]})
+            elif iri == "urn:ngm:class:live-missing":
+                live({"iri": iri, "found": False})
+            elif iri == "rpc-err":
+                self.send_json(200, {"jsonrpc": "2.0", "id": 1,
+                                     "error": {"code": -32603, "message": "index not loaded"}})
+            elif iri == "mcp-empty":
                 mcp({"content": [{"type": "text", "text": "[]"}]})
             elif iri == "mcp-nocontent":
                 mcp({"content": []})
@@ -328,8 +361,9 @@ check "neighbours fallback: vault answered, fallback named, generation cited" "$
   '.source == "vault" and .fallback.loom_status == "404" and .generation.id != null and .result.id == "Escrow Oracle"'
 
 # 17. paths
-out="$(run env LOOM_BASE_URL="$STUB" bash "$S" paths a b 2>/dev/null)"; rc=$?
-check "paths without /mcp: degraded, exit 0"  "$out" '.grounding == "degraded" and .result.reason == "paths_need_reasoned_graph"'
+out="$(run env LOOM_BASE_URL="http://127.0.0.1:1" bash "$S" paths a b 2>/dev/null)"; rc=$?
+check "paths with the Loom unreachable: degraded, never a corpus walk" "$out" '.grounding == "degraded" and .result.reason == "paths_need_reasoned_graph"'
+[ "$rc" -eq 0 ] && ok "paths unreachable: exit 0" || bad "paths unreachable: exit 0" "rc=$rc"
 
 # 18. health
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" health 2>/dev/null)"
@@ -358,6 +392,69 @@ check "MCP: uncountable prose → not answered, shape unrecognised" "$out" \
   '.grounding == "silent" and .shape == "unrecognised"'
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours mcp-error 2>/dev/null)"
 check "MCP: isError → degraded"                      "$out" '.grounding == "degraded" and .degraded == true'
+
+# 19b. the LIVE /mcp shape (structuredContent; probed on :8084 2026-10-13)
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours urn:ngm:class:live-hit 2>/dev/null)"
+check "live neighbours: found class with relations → answered, loom, no shape flag" "$out" \
+  '.grounding == "answered" and .source == "loom" and (has("shape") | not) and .generation.id == "visionGraph@stubgen0001"'
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours urn:ngm:class:live-missing 2>/dev/null)"
+check "live neighbours: found:false → silent (unknown, not negative), not unrecognised" "$out" \
+  '.grounding == "silent" and .source == "loom" and (has("shape") | not)'
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours "Escrow Oracle" 2>/dev/null)"
+check "title input is resolved by exact title through loom.browse, not slugified" "$out" \
+  '.grounding == "answered" and .result.result.structuredContent.result.iri == "urn:ngm:class:escrow-oracle"'
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours "Escrow Oracl" 2>/dev/null)"
+check "a title with no exact browse match is passed through verbatim (no guessing)" "$out" \
+  '.source == "vault" and .fallback.loom_status == "404"'
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours rpc-err 2>/dev/null)"; rc=$?
+[ "$rc" -eq 0 ] && ok "JSON-RPC error on HTTP 200: exit 0" || bad "JSON-RPC error on HTTP 200: exit 0" "rc=$rc"
+check "JSON-RPC error on HTTP 200 → vault tree fallback named rpc_error, never answered" "$out" \
+  '.source == "vault" and .fallback.loom_status == "rpc_error"'
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" paths live-a live-b 2>/dev/null)"
+check "live paths: found:true → answered, loom" "$out" \
+  '.grounding == "answered" and .source == "loom" and .result.result.structuredContent.result.hops == 1'
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" paths live-a live-none 2>/dev/null)"
+check "live paths: found:false → silent (no path asserted), not unrecognised" "$out" \
+  '.grounding == "silent" and .source == "loom" and (has("shape") | not)'
+out="$(run env LOOM_BASE_URL="$STUB" bash "$S" paths rpc-err live-b 2>/dev/null)"; rc=$?
+check "paths: JSON-RPC error → degraded, still no corpus walk, exit 0" "$out" \
+  '.grounding == "degraded" and .result.reason == "paths_need_reasoned_graph"'
+[ "$rc" -eq 0 ] && ok "paths JSON-RPC error: exit 0" || bad "paths JSON-RPC error: exit 0" "rc=$rc"
+
+# 19c. fail-open must not multiply the timeout: with the Loom unreachable the wrapper
+# makes ONE attempt per command (a title lookup that finds the Loom down ends the
+# attempts), and makes none at all to resolve something already IRI/slug-shaped.
+cat > "$WORK/drop.py" <<'PYDROP'
+import socket, sys
+srv = socket.socket(); srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+srv.bind(("127.0.0.1", 0)); srv.listen(16)
+open(sys.argv[1], "w").write(str(srv.getsockname()[1]))
+while True:
+    c, _ = srv.accept()
+    open(sys.argv[2], "a").write("hit\n")
+    c.close()
+PYDROP
+python3 "$WORK/drop.py" "$WORK/drop.port" "$WORK/drop.hits" & DROP_PID=$!
+for _ in $(seq 1 50); do [ -s "$WORK/drop.port" ] && break; sleep 0.1; done
+DROP="http://127.0.0.1:$(cat "$WORK/drop.port")"
+hits() { if [ -f "$WORK/drop.hits" ]; then wc -l < "$WORK/drop.hits" | tr -d ' '; else echo 0; fi; }
+
+: > "$WORK/drop.hits"
+out="$(run env LOOM_BASE_URL="$DROP" bash "$S" neighbours "Escrow Oracle" 2>/dev/null)"; rc=$?
+[ "$(hits)" = "1" ] && ok "Loom down, title input: one attempt, not one per call" || bad "Loom down, title input: one attempt" "attempts: $(hits)"
+check "Loom down, title input: still falls back to the corpus" "$out" '.source == "vault" and .fallback.loom_status == "000"'
+[ "$rc" -eq 0 ] && ok "Loom down, title input: exit 0" || bad "Loom down, title input: exit 0" "rc=$rc"
+
+: > "$WORK/drop.hits"
+run env LOOM_BASE_URL="$DROP" bash "$S" neighbours escrow-oracle >/dev/null 2>&1
+[ "$(hits)" = "1" ] && ok "Loom down, slug input: one attempt (no lookup call)" || bad "Loom down, slug input: one attempt" "attempts: $(hits)"
+
+: > "$WORK/drop.hits"
+out="$(run env LOOM_BASE_URL="$DROP" bash "$S" paths "Escrow Oracle" "Knowledge Graph" 2>/dev/null)"; rc=$?
+[ "$(hits)" = "1" ] && ok "Loom down, paths with two titles: one attempt" || bad "Loom down, paths with two titles: one attempt" "attempts: $(hits)"
+check "Loom down, paths: degraded, never a corpus walk" "$out" '.grounding == "degraded" and .result.reason == "paths_need_reasoned_graph" and .result.loom_status == "000"'
+[ "$rc" -eq 0 ] && ok "Loom down, paths: exit 0" || bad "Loom down, paths: exit 0" "rc=$rc"
+kill "$DROP_PID" 2>/dev/null
 
 # 21. unrecognised 200 body
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" sparql 'SELECT ?c WHERE { ?c ?p ?o } #WEIRD' 2>/dev/null)"

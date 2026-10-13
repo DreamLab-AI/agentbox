@@ -137,26 +137,57 @@ Read that carefully: **healthy and a month stale**. `ok: true` answers "can I
 reach the reasoner", not "is the reasoner current". If a claim depends on recent
 corpus work, check the generation date before quoting a SPARQL result, and say so.
 
-## `neighbours` — reasoned, else asserted (live degradation)
+## `neighbours` and `paths` — the reasoned graph (live, 2026-10-13)
 
 ```bash
-$S neighbours knowledge-graph --limit 3
+$S neighbours "Knowledge Graph"      # a title: resolved by exact match via loom.browse
+$S neighbours knowledge-graph        # a slug passes straight through
 ```
 
+```jsonc
+{ "grounding": "answered", "source": "loom",
+  "generation": { "id": "visionGraph@45976a8c7ca4305dd38bf66c7c6128732f6de4d7" },
+  "result": { "result": { "structuredContent": { "result": {
+      "iri": "urn:ngm:class:knowledge-graph", "title": "Knowledge Graph",
+      "is_a": ["urn:ngm:class:sc-content-and-assets"],
+      "relations": [ { "predicate": "has-part", … }, { "predicate": "requires", … },
+                     { "predicate": "enables", … }, { "predicate": "depends-on", … },
+                     { "predicate": "part-of", … } ] } } } } }
 ```
-ontology-augment: http://192.168.2.132:8084/mcp returned HTTP 404 — degrading (fail-open)
-ontology-augment: falling back to `vault tree` (asserted edges only, no inferred closure)
+
+```bash
+$S paths "Knowledge Graph" "Ontology"
+```
+
+```jsonc
+{ "grounding": "answered", "source": "loom",
+  "result": { "result": { "structuredContent": { "result": {
+      "found": true, "hops": 1,
+      "path": ["urn:ngm:class:knowledge-graph", "urn:ngm:class:ontology"] } } } } }
+```
+
+A class the corpus does not have is `silent`, never a "no":
+
+```bash
+$S neighbours no-such-class-zzz       # → { "grounding": "silent", "source": "loom", "result": …{ "found": false } }
+```
+
+**When the Loom does not answer** (unreachable, non-200, or a JSON-RPC error on
+HTTP 200) `neighbours` degrades to the corpus and says so on **stderr**, with the
+JSON still on stdout:
+
+```
+ontology-augment: Loom did not answer (000); falling back to `vault tree` (asserted edges only, no inferred closure)
 ```
 ```jsonc
-{ "id": "Knowledge Graph", "children": [ { "id": "Ontology", "children": [] } ] }
+{ "grounding": "answered", "source": "vault",
+  "fallback": { "from": "loom.neighbours", "loom_status": "000",
+                "scope": "asserted edges only, no inferred closure" },
+  "result": { "id": "Knowledge Graph", "children": [ { "id": "Ontology", "children": [] } ] } }
 ```
 
-Both lines are on **stderr** and the JSON on **stdout**, so a pipeline still
-works while a human still sees what happened. The fallback answer is real — it is
-just a different question: asserted wikilinks, not the inferred closure.
-
-When ADR-140's plane deploys, the same command returns `loom.neighbours` output
-and neither stderr line appears. No flag to flip.
+The fallback answer is real; it is just a different question: asserted wikilinks,
+not the inferred closure. `paths` has no such fallback and reports `degraded`.
 
 ## `paths` — an honest refusal (live)
 
