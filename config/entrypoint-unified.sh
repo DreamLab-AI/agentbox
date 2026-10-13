@@ -134,6 +134,10 @@ _ab_vault_resolve() {
   # consumers that need them (podcast-knowledge-ingest) fail loud on their own.
   VAULT_WORKING_ROOT="$(_ab_toml_val vault working)"
   VAULT_TRANSCRIPTS="$(_ab_toml_val vault transcripts)"
+  # ADR-2140: HP Loom reconcile (off | check | full), the Loom door and the HP ssh target.
+  HP_LOOM_SYNC="$(_ab_toml_val vault loom_sync)"; HP_LOOM_SYNC="${HP_LOOM_SYNC:-check}"
+  LOOM_URL="$(_ab_toml_val vault loom_url)"
+  LOOM_HP_HOST="$(_ab_toml_val vault loom_host)"
   if [ -n "$VAULT_WORKING_ROOT" ]; then VAULT_WORKING_PAGES="${VAULT_WORKING_ROOT%/}/pages"; else VAULT_WORKING_PAGES=""; fi
   # VAULT_REPO: the repository root the `vault` CLI is pinned to with --repo
   # (holds ontology/vocabulary.yaml, knowledge/, working/). Optional
@@ -153,7 +157,7 @@ _ab_vault_resolve() {
     VAULT_REPO=""
   fi
   AGENTBOX_VAULT_ENABLED=1
-  export VAULT_ROOT VAULT_REPO VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS AGENTBOX_VAULT_ENABLED
+  export VAULT_ROOT VAULT_REPO VAULT_PAGES VAULT_FORMAT VAULT_TUI VAULT_WORKING_ROOT VAULT_WORKING_PAGES VAULT_TRANSCRIPTS AGENTBOX_VAULT_ENABLED HP_LOOM_SYNC LOOM_URL LOOM_HP_HOST
   # Tier 1 has won: VAULT_PAGES is the manifest's, never the environment's — an
   # inherited ONTOLOGY_PAGES_DIR cannot move the vault. Tier 2 then applies:
   # with the vault ENABLED, an explicit ONTOLOGY_PAGES_DIR stays honoured (the
@@ -1167,6 +1171,33 @@ if [ "${AGENTBOX_VAULT_ENABLED:-0}" = "1" ]; then
   unset _VAULT_BIN _VAULT_VER
 else
   echo "[5d/8] vault gate skipped ([vault] disabled — no corpus to open)"
+fi
+
+# Phase 5d(iii) — reconcile the HP Loom with the vault (ADR-2140).
+#
+# The vault is canonical on this host. The HP serves a BUILT generation
+# (visionGraph@<committed sha>) and never reads the vault, so a rebuild must leave
+# the two agreeing. Everything slow happens in the background: this phase prints the
+# previous run's receipt and launches the reconcile, and never waits for it. It is
+# fail-open by construction (the script exits 0 for every problem it records) and
+# the `timeout` bounds a wedged ssh or build. [vault].loom_sync: off | check | full.
+if [ "${AGENTBOX_VAULT_ENABLED:-0}" = "1" ] && [ "${HP_LOOM_SYNC:-check}" != "off" ]; then
+  _HPL_STATE="/home/devuser/.local/state/agentbox"
+  _HPL_BIN="/opt/agentbox/scripts/hp-loom-reconcile.sh"
+  mkdir -p "$_HPL_STATE" 2>/dev/null && chown devuser:devuser /home/devuser/.local /home/devuser/.local/state "$_HPL_STATE" 2>/dev/null || true
+  if [ -r "$_HPL_STATE/hp-loom-reconcile.json" ] && command -v jq >/dev/null 2>&1; then
+    echo "[5d/8] HP Loom last reconcile: $(jq -r '"\(.state) at \(.ts) — \(.detail)"' "$_HPL_STATE/hp-loom-reconcile.json" 2>/dev/null)"
+  fi
+  if [ -x "$_HPL_BIN" ]; then
+    ( run_as_devuser env VAULT_REPO="$VAULT_REPO" LOOM_URL="$LOOM_URL" LOOM_HP_HOST="$LOOM_HP_HOST" \
+        timeout 1800 "$_HPL_BIN" --mode "$HP_LOOM_SYNC" >>"$_HPL_STATE/hp-loom-reconcile.log" 2>&1 & ) >/dev/null 2>&1
+    echo "[5d/8] HP Loom reconcile started in the background (mode: ${HP_LOOM_SYNC}); log: $_HPL_STATE/hp-loom-reconcile.log"
+  else
+    echo "[5d/8] HP Loom reconcile SKIPPED — $_HPL_BIN is missing (rebuild the image: ./agentbox.sh rebuild)"
+  fi
+  unset _HPL_STATE _HPL_BIN
+else
+  echo "[5d/8] HP Loom reconcile skipped ([vault].loom_sync is off or the vault is disabled)"
 fi
 
 # Phase 5e — tab0-bridge shared bearer (security audit Finding 2, belt-and-braces).

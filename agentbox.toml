@@ -1082,6 +1082,17 @@ working     = "/home/devuser/workspace/visionGraph/working"
 # extended by podcast-knowledge-ingest. OUTSIDE both vaults so Obsidian does
 # not index it. Exported as VAULT_TRANSCRIPTS.
 transcripts = "/home/devuser/workspace/visionGraph/transcripts"
+# ADR-2140: the vault is canonical on this host; the HP Loom serves a BUILT generation
+# (visionGraph@<committed sha>) and never reads the vault. Every boot runs
+# scripts/hp-loom-reconcile.sh in the background (fail-open, never on the critical path):
+#   off   do nothing
+#   check compare the committed HEAD with the generation the Loom serves; report only
+#   full  if they differ, build HEAD from a clean worktree, promote + verify, push to the HP
+#         and start its verifying reload (loom docs/published-generation-reload.md)
+# The last result is printed at boot and kept in ~/.local/state/agentbox/hp-loom-reconcile.json.
+loom_sync = "full"
+loom_url  = "http://192.168.2.132:8084"   # the Loom door (the stable model-swap facade)
+loom_host = "john@10.10.10.1"             # ssh target for the HP, direct over the rail
 
 [skills.podcast_ingest]
 # ADR-2057 gap 1: the manifest gate for the podcast ingestion SCHEDULE.
@@ -2012,7 +2023,6 @@ proxy_port  = 9096                  # nip98-proxy listen port — the sole IDENT
 # roster's operator key. Empty list = any validly-signed key (NOT recommended).
 [interaction_plane.proxy]
 allowed_pubkeys = [
-  "c32b71bc1d4ab9d25cd0bd2a457ede15e6538d0d6311fc3c0543f9e8ca1bc13c",  # agentbox-core on the connected node — peer node (added 2026-09-02, the connected node mesh bring-up)
   "6407eed80e2a8646e41a5ddba0ae6619425fc54af40e2b30482b9623c682425a",  # operator-jjohare (dreamlab roster)
   "b41654017f6850b13857d19d8ae0e3f88f1365600cab0321e8101c9e92682f7a",  # operator NIP-07 signer — 31403 decisions ([sovereign_mesh.operator]); not visionclaw-server (Q15, G-5)
   "11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c",  # agentbox sovereign / house key (browsercontainer Podkey vault copy to be replaced by K_browser; G-5)

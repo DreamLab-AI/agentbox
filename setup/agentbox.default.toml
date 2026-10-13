@@ -751,6 +751,11 @@ working     = "/home/devuser/workspace/vault-working"
 # extended by podcast-knowledge-ingest. OUTSIDE both vaults so Obsidian does
 # not index it. Exported as VAULT_TRANSCRIPTS.
 transcripts = "/home/devuser/workspace/vault-transcripts"
+# ADR-2140: reconcile the HP Loom with the vault at every boot. off | check | full.
+# loom_url / loom_host name the Loom door and the HP ssh target; both are needed for full.
+loom_sync = "check"
+loom_url  = ""
+loom_host = ""
 
 [skills.podcast_ingest]
 # ADR-2057 gap 1: the manifest gate for the podcast ingestion SCHEDULE.
