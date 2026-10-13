@@ -46,6 +46,7 @@ const { loadManifest, ManifestNotFound } = require('../adapters/manifest-loader'
 const { resolveAdapters } = require('../adapters/index');
 const { ExecutionJournal, JournalError } = require('./execution-journal');
 const { AgentActionPipeline, PolicyError } = require('./agent-action-pipeline');
+const { proxyVerifiedPubkey } = require('./agent-event-auth');
 const uris = require('./uris');
 
 // The one (capability, operation) pair this ADR wires. A future ADR that
@@ -224,9 +225,10 @@ function resolveAgentDid(request) {
   if (verifiedPubkey && /^[0-9a-f]{64}$/.test(verifiedPubkey)) {
     return `did:nostr:${verifiedPubkey}`;
   }
-  const headerPubkey = req.headers && (req.headers['x-agentbox-pubkey'] || req.headers['X-Agentbox-Pubkey']);
-  if (typeof headerPubkey === 'string' && /^[0-9a-f]{64}$/i.test(headerPubkey)) {
-    return `did:nostr:${headerPubkey.toLowerCase()}`;
+  // Honoured only from the proxy's loopback peer (agent-event-auth.peerIsProxy).
+  const headerPubkey = proxyVerifiedPubkey(req);
+  if (headerPubkey) {
+    return `did:nostr:${headerPubkey}`;
   }
   return process.env.AGENTBOX_AGENT_DID || null;
 }

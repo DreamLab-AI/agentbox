@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {
   SONA_SCOPE, SONA_EMBEDDING_DIM, CURSOR_KEY, CURSOR_NS, CURSOR_TAG,
   clampReward, computeFinalReward, assembleTrajectoryJson,
-  cursorAdvances, shouldReseed,
+  cursorAdvances, shouldReseed, engineAccumulating,
 } from '../scripts/ruvector-sona-feeder.mjs';
 
 test('constants match the A↔B contract (scope, dim, cursor identity)', () => {
@@ -95,4 +95,15 @@ test('shouldReseed: guarded restart self-heal (reconciled with V5, no hot-loop)'
   assert.equal(shouldReseed({ cursor, stats: warmEngine, alreadyReseeded: false }), false);
   // no stats signal → do not thrash
   assert.equal(shouldReseed({ cursor, stats: null, alreadyReseeded: false }), false);
+});
+
+test('engineAccumulating: a learned count is not proof the engine kept anything (S-7c)', () => {
+  // the 384-dim steady state: learn returns "learned", buffered and stored stay 0
+  assert.equal(engineAccumulating({ trajectories_buffered: 0, patterns_stored: 0 }), false);
+  assert.equal(engineAccumulating({ trajectories_buffered: 3, patterns_stored: 0 }), true);
+  assert.equal(engineAccumulating({ trajectories_buffered: 0, patterns_stored: 2 }), true);
+  // unreadable stats are unknown, never false
+  assert.equal(engineAccumulating(null), null);
+  // counters arrive as strings from pg
+  assert.equal(engineAccumulating({ trajectories_buffered: '4', patterns_stored: '0' }), true);
 });

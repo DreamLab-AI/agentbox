@@ -332,6 +332,18 @@ function cursorAdvances(a, b) {
   return String(a.trajId) > String(b.cursorId || '');
 }
 
+/**
+ * Whether the SONA engine is actually accumulating what we feed it. `fed`
+ * counts calls that returned `status:"learned"`, which the 256-dim SONA surface
+ * also returns for a 384-dim learn it then buffers nowhere (see the V5 note in
+ * the header), so a high `fed` with `accumulating:false` means the engine kept
+ * nothing. `null` when the stats could not be read.
+ */
+function engineAccumulating(stats) {
+  if (!stats) return null;
+  return (Number(stats.trajectories_buffered) || 0) + (Number(stats.patterns_stored) || 0) > 0;
+}
+
 // Self-heal decision (R-C3, reconciled with V5). Reseed iff the cursor is advanced
 // (prior feeds happened) AND the engine looks empty AND we have not already
 // reseeded in THIS process lifetime (the latch that prevents the V5 hot-loop —
@@ -553,9 +565,11 @@ async function tick({ reseededRef } = {}) {
       engine_stored: after ? (Number(after.patterns_stored) || 0) : null,
       engine_dropped: after ? (Number(after.trajectories_dropped) || 0) : null,
       embedding_dim_reported: after ? after.embedding_dim : null,
+      engine_accumulating: engineAccumulating(after),
     });
     return { status: 'applied', fed, failed, batch: res.rows.length, runUrn: urn,
-      cursorAfter: lastCursor ? lastCursor.endedTs : null, stats: after };
+      cursorAfter: lastCursor ? lastCursor.endedTs : null, stats: after,
+      engineAccumulating: engineAccumulating(after) };
   } catch (err) {
     emitEvent('SonaRunSkipped', { run_urn: urn, reason: 'error', error: err.message });
     log('WARN', `tick failed (fail-open, cursor unchanged): ${err.stack || err.message}`);
@@ -617,6 +631,11 @@ async function dryRun() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** Human-readable form of `engineAccumulating`'s tri-state. */
+function accLabel(v) {
+  return v === null || v === undefined ? 'unknown' : v ? 'yes' : 'no';
+}
+
 async function mainOnce() {
   if (!boolGate('RUVECTOR_SONA_LEARN_ENABLED')) {
     log('INFO', 'RUVECTOR_SONA_LEARN_ENABLED is off — exiting (no-op). ' +
@@ -625,7 +644,7 @@ async function mainOnce() {
   }
   const reseededRef = { value: false };
   const r = await tick({ reseededRef });
-  process.stdout.write(`sona-feeder --once: ${r.status}${r.status === 'applied' ? ` (${r.fed} fed, ${r.failed} failed)` : r.reason ? ` (${r.reason})` : ''}.\n`);
+  process.stdout.write(`sona-feeder --once: ${r.status}${r.status === 'applied' ? ` (${r.fed} accepted by learn, ${r.failed} failed, engine accumulating: ${accLabel(r.engineAccumulating)})` : r.reason ? ` (${r.reason})` : ''}.\n`);
   return 0;
 }
 
@@ -648,7 +667,7 @@ async function mainLoop() {
       return 0;
     }
     const r = await tick({ reseededRef });
-    log('INFO', `tick: ${r.status}${r.reason ? ` (${r.reason})` : ''}${r.status === 'applied' ? ` — ${r.fed} fed, ${r.failed} failed` : ''}.`);
+    log('INFO', `tick: ${r.status}${r.reason ? ` (${r.reason})` : ''}${r.status === 'applied' ? ` — ${r.fed} accepted by learn, ${r.failed} failed, engine accumulating: ${accLabel(r.engineAccumulating)}` : ''}.`);
     if (!running) break;
     const mins = Math.max(1, intGate('RUVECTOR_SONA_LEARN_INTERVAL_MINS', 30));
     const until = Date.now() + mins * 60_000;
@@ -690,5 +709,5 @@ if (isDirect) {
 export {
   SONA_SCOPE, SONA_EMBEDDING_DIM, CURSOR_KEY, CURSOR_NS, CURSOR_TAG,
   clampReward, computeFinalReward, assembleTrajectoryJson,
-  cursorAdvances, shouldReseed,
+  cursorAdvances, shouldReseed, engineAccumulating,
 };

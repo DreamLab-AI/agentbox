@@ -94,3 +94,46 @@ describe('reconcileSourceUrn', () => {
     expect(r.status).toBe(403);
   });
 });
+
+describe('proxy-injected identity (ADR-2042, TODO-unified S-3): honoured only from the proxy peer', () => {
+  const { peerIsProxy, proxyVerifiedPubkey } = require('../../management-api/lib/agent-event-auth');
+  const withPeer = (addr, headers = { 'x-agentbox-pubkey': AGENT }) => ({
+    headers,
+    url: '/v1/agent-events/emit',
+    raw: { socket: { remoteAddress: addr } },
+  });
+
+  it('accepts the header from a loopback peer (the proxy)', () => {
+    for (const addr of ['127.0.0.1', '::1', '::ffff:127.0.0.1']) {
+      const r = verifyAgentEventRequest(withPeer(addr), { policy: 'nip98' });
+      expect(r).toEqual({ ok: true, did: `did:nostr:${AGENT}`, pubkey: AGENT });
+    }
+  });
+
+  it('ignores a forged header from a docker-network peer and answers 401', () => {
+    const r = verifyAgentEventRequest(withPeer('172.18.0.9'), { policy: 'nip98' });
+    expect(r.ok).toBe(false);
+    expect(r.status).toBe(401);
+  });
+
+  it('fails closed when the request carries no socket information', () => {
+    expect(peerIsProxy({ headers: { 'x-agentbox-pubkey': AGENT } })).toBe(false);
+    expect(verifyAgentEventRequest(req({ 'x-agentbox-pubkey': AGENT }), { policy: 'nip98' }).ok).toBe(false);
+  });
+
+  it('AGENTBOX_PROXY_PEERS replaces the loopback default', () => {
+    const env = { AGENTBOX_PROXY_PEERS: '10.0.0.5, 10.0.0.6' };
+    expect(peerIsProxy(withPeer('10.0.0.5'), env)).toBe(true);
+    expect(peerIsProxy(withPeer('127.0.0.1'), env)).toBe(false);
+  });
+
+  it('still rejects a malformed value from a trusted peer', () => {
+    expect(proxyVerifiedPubkey(withPeer('127.0.0.1', { 'x-agentbox-pubkey': 'operator-break-glass' }))).toBeNull();
+  });
+
+  it('a Nostr header that fails verification is never rescued by the proxy header', () => {
+    const verify = () => ({ valid: false, pubkey: null, error: 'bad sig' });
+    const request = withPeer('127.0.0.1', { authorization: 'Nostr x', 'x-agentbox-pubkey': AGENT });
+    expect(verifyAgentEventRequest(request, { policy: 'nip98', verify }).ok).toBe(false);
+  });
+});
