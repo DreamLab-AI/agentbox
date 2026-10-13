@@ -4,13 +4,21 @@ title: Keep the vault canonical on this host, reconcile the HP Loom to it at eve
 date: 2026-10-13
 decision_status: accepted
 implementation_status: partial
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: da588dfc9de94753ea700774eacaea3ebffd1fa9
-verified_paths: []
+verified_commit: acb59a3fce35f8f99ba77b9cc3248525e523b1fe
+verified_paths:
+  - scripts/hp-loom-reconcile.sh
+  - config/entrypoint-unified.sh
+  - agentbox.toml
+  - management-api/lib/system-manifest.js
+  - schema/agentbox.toml.schema.json
+  - tests/config/hp-loom-reconcile.test.sh
+  - skills/ontology-augment/scripts/ontology-augment.sh
+  - tests/skills/ontology-augment-grounding.test.sh
 owner: jjohare
-review_trigger: the first rebuilt image has booted and written a reload receipt (then re-verify, fill verified_paths and set verified_commit); any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
+review_trigger: the first new committed vault generation is shipped and reloaded on the real HP (then assess full implementation); any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
 repo: agentbox
 ---
 
@@ -119,6 +127,16 @@ exporting the object store would have exposed every committed `working/` page to
   uncommitted files correctly ignored.
 - `tests/skills/ontology-augment-grounding.test.sh`: 86 passed, 1 failed. The failure (`validate:
   still enveloped with generation`) also fails on `main` and is not caused by this change.
-- Not verified: a reload of a *new* generation on the real HP (it is already current, so that needs a
-  new commit), the entrypoint phase in a booted image, and the Nix image. `verified_commit` is the base commit (da588dfc9) the change was made on, and `verified_paths` is empty
-  on purpose: both are to be set once the first rebuilt image has booted and written a receipt.
+- Deployment, 2026-10-13: the Nix image at `acb59a3fc` built, passed offline smoke and
+  booted successfully. At 11:45:39 UTC the baked entrypoint wrote a fresh `mode: full`,
+  `state: current` reconcile receipt for `visionGraph@45976a8c7ca4305dd38bf66c7c6128732f6de4d7`.
+  The 13 uncommitted vault files were left unchanged. The HP Loom container id and start time,
+  and its `.generation.json` checksum, matched the pre-deployment snapshot; its reload timer
+  remained active. All 32 Agentbox mounts and 16 sidecars were preserved.
+- The baked ontology skill answered a live `neighbours "Knowledge Graph"` request through
+  the HP's MCP door, citing that same generation. Reconcile tests passed 41/41 and grounding
+  tests passed 87/87. Activation is now live; implementation stays partial until a *new*
+  committed generation has exercised the production ship, swap and reload path.
+- Not verified: a reload of a *new* generation on the real HP. It is already current, so that
+  still requires a new vault commit; this deployment proves the boot reconciliation and
+  idempotent current-generation path, not that remaining transition.
