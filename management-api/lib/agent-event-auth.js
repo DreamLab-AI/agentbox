@@ -31,12 +31,12 @@
  *   Trust caveat (non-negotiable, see ADR-2042 Consequences): path 2 is
  *   sound only while (a) the proxy keeps stripping/re-injecting the header
  *   and (b) nothing but the proxy can reach management-api's port directly.
- *   (b) is NOT fully true today — `server.js` binds `0.0.0.0` in-container
- *   (R-003) and cross-container callers on the docker network need only the
- *   shared `MANAGEMENT_API_KEY` to pass the general auth gate before this
- *   module ever runs — so a holder of that key could also forge this
- *   header. That residual risk is documented, not silently assumed away;
- *   see the ADR for the accepted mitigation and follow-up.
+ *   (b) is enforced here by the TCP peer: `server.js` binds `0.0.0.0`
+ *   in-container (R-003), so cross-container callers holding the shared
+ *   `MANAGEMENT_API_KEY` can reach the port, but the header is honoured only
+ *   from a loopback peer (the proxy's upstream address, `peerIsProxy`). A
+ *   same-container process can still connect over loopback; that residual is
+ *   the same-UID boundary (TODO-unified X-1), not this module's.
  *
  * Gated by `AGENTBOX_AGENT_EVENT_AUTH` (set by flake.nix from
  * `[integrations.solid_pod_rs]`/`[sovereign_mesh]` manifest config; the same
@@ -80,6 +80,32 @@ function authHeaderOf(request) {
 }
 
 /**
+ * Whether the TCP peer of this request is the NIP-98 proxy. The proxy reaches
+ * management-api on loopback (`NIP98_PROXY_MGMT_UPSTREAM`, default
+ * `http://127.0.0.1:9090`), so its header is only believable from a loopback
+ * peer. management-api binds `0.0.0.0` (R-003) and any holder of
+ * `MANAGEMENT_API_KEY` on the docker network can open a connection of its own;
+ * its peer address is not loopback, so a forged `X-Agentbox-Pubkey` from there
+ * is ignored (TODO-unified S-3, ADR-2042). A request that carries no socket
+ * information is treated as untrusted: fail closed.
+ *
+ * `AGENTBOX_PROXY_PEERS` (comma-separated exact addresses) replaces the
+ * loopback default for a topology whose proxy connects from elsewhere.
+ * @param {object} request
+ * @param {object} [env]
+ * @returns {boolean}
+ */
+function peerIsProxy(request, env = process.env) {
+  const socket = (request && (request.raw && request.raw.socket)) || (request && request.socket);
+  const addr = socket && socket.remoteAddress;
+  if (typeof addr !== 'string' || !addr) return false;
+  const configured = String((env && env.AGENTBOX_PROXY_PEERS) || '')
+    .split(',').map((x) => x.trim()).filter(Boolean);
+  const allowed = configured.length ? configured : ['127.0.0.1', '::1', '::ffff:127.0.0.1'];
+  return allowed.includes(addr);
+}
+
+/**
  * Read the proxy-verified pubkey off `X-Agentbox-Pubkey`, if present and
  * well-formed. Returns null for anything that is not exactly 64 lowercase
  * hex chars — a malformed or forged-looking value is never partially
@@ -87,7 +113,8 @@ function authHeaderOf(request) {
  * @param {object} request
  * @returns {string|null}
  */
-function proxyVerifiedPubkey(request) {
+function proxyVerifiedPubkey(request, env = process.env) {
+  if (!peerIsProxy(request, env)) return null;
   const h = (request && request.headers) || {};
   const raw = h['x-agentbox-pubkey'] ?? h['X-Agentbox-Pubkey'];
   if (typeof raw !== 'string') return null;
@@ -154,7 +181,7 @@ function verifyAgentEventRequest(request, deps = {}) {
   // well-formed. This is the path for NIP-07 session / break-glass callers
   // proxied through :9096 (see module doc comment above for the trust
   // model and its documented caveat).
-  const proxyPubkey = proxyVerifiedPubkey(request);
+  const proxyPubkey = proxyVerifiedPubkey(request, env);
   if (proxyPubkey) {
     return { ok: true, did: `did:nostr:${proxyPubkey}`, pubkey: proxyPubkey };
   }
@@ -178,4 +205,4 @@ function reconcileSourceUrn(claimed, verifiedDid) {
   return { ok: true };
 }
 
-module.exports = { verifyAgentEventRequest, reconcileSourceUrn, resolvePolicy };
+module.exports = { verifyAgentEventRequest, reconcileSourceUrn, resolvePolicy, proxyVerifiedPubkey, peerIsProxy };

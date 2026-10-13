@@ -61,9 +61,25 @@ The derived `did:nostr:<pubkey>` is then reconciled against any caller-supplied 
   so neither is made here. `implementation_status: partial` stays until one lands, tracked as
   TODO-unified S-3.
 
+## Update 2026-10-12: the header is honoured only from the proxy's peer address
+
+`peerIsProxy` (`management-api/lib/agent-event-auth.js`) requires the request's TCP peer to be
+loopback (`127.0.0.1`, `::1`, `::ffff:127.0.0.1`), the address the NIP-98 proxy connects from
+(`NIP98_PROXY_MGMT_UPSTREAM`, default `http://127.0.0.1:9090`). A holder of `MANAGEMENT_API_KEY`
+on `visionclaw_network` connects from a docker-network address, so its `X-Agentbox-Pubkey` is
+ignored and path 2 answers 401. A request with no socket information is untrusted. The same rule
+now guards the second reader, `resolveAgentDid` in `lib/action-plane.js`. `AGENTBOX_PROXY_PEERS`
+(comma-separated exact addresses) replaces the loopback default for a topology whose proxy
+connects from elsewhere. `server.js` still binds `0.0.0.0`: loopback binding would cut off
+VisionClaw's legitimate non-header calls, so it was not chosen. Residual: a process inside the
+container can still connect over loopback, which is the same-UID boundary (TODO-unified X-1).
+Tests: `tests/sovereign/agent-event-auth.test.js`.
+
 ## Alternatives rejected
 
 - Trusting `X-Agentbox-Pubkey` unconditionally, including alongside a Nostr header: lets a
   bad signature be papered over.
+- Binding management-api to loopback: breaks cross-container callers that use the shared key
+  without a header.
 - Dropping path 2: breaks NIP-07 session and break-glass callers, which have no way to sign
   on the second hop.
