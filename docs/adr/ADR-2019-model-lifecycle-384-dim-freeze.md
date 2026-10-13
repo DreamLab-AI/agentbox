@@ -7,7 +7,7 @@ implementation_status: none
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [mcp/servers/lib/aggregate-effectiveness.js, scripts/ruvector-sona-feeder.mjs, agentbox.toml]
 owner: jjohare
 review_trigger: A SONA binary with configurable embedding_dim (384-capable) ships, or a dimension migration is planned
@@ -248,3 +248,27 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 `mcp/servers/lib/aggregate-effectiveness.js` and `scripts/ruvector-sona-feeder.mjs` are unchanged since `1fc26c786`. In `agentbox.toml`, `afc8a0ed6` adds `[sovereign_mesh.forum_governance]` and `4f09c96b2` adds `reader_role = true` and `hba_scram = false` to the RuVector block (ADR-2133). Those flags cover sidecar access hardening applied by gated one-time ops, not embedding geometry. The rest of the manifest churn (`[diagram_review]`, `comfyui_external`, `label_log`, `zai_max_tokens`) is unrelated. `4f09c96b2`'s reindex-by-swap rebuilds the HNSW index on the same 384-dim column with the same opclass and `m=16`, `ef_construction=128`. It gates on recall runs before and after the swap, so no dimension or model change is introduced. The gates have only moved, by the 26 lines inserted above them: `attention_rerank = false` at `agentbox.toml:494`, `sona_learn_enabled = false` at `:495` and `sona_apply_enabled = false` at `:496`, each with its measured or blocked rationale intact. `embeddings_model = "bge-small-en-v1.5"` is at `:764`. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- EMBEDDING_DIM = 384 enforced in aggregate-effectiveness.js
+- SONA_SCOPE='agentbox_memory', SONA_EMBEDDING_DIM=384 in the feeder
+- attention_rerank, sona_learn_enabled, sona_apply_enabled all false (sona_enabled false)
+- embedding_active_column="embedding", embedding_dual_write=false
+- embeddings model bge-small-en-v1.5
+
+Evidence:
+
+- mcp/servers/lib/aggregate-effectiveness.js@218dc12c3:48,118-119 (file unchanged since cca7ea3b1)
+- scripts/ruvector-sona-feeder.mjs@218dc12c3:128-129 SONA_SCOPE/SONA_EMBEDDING_DIM unchanged; feeder diff only adds engineAccumulating() reporting + log wording (no gate or dimension change)
+- agentbox.toml@218dc12c3:494-496 attention_rerank/sona_learn_enabled/sona_apply_enabled = false; :482 sona_enabled=false; :463-464 dual_write false/active column embedding; :906 embeddings_model bge-small-en-v1.5
+
+Commands run: `git diff cca7ea3b1..218dc12c3 -- scripts/ruvector-sona-feeder.mjs; git show 218dc12c3:agentbox.toml | grep`
+
+Not checked, and notes: The feeder change is observability only and in fact corroborates the ADR's finding (the 256-dim engine accepts 384-dim learns but buffers nothing). Live 256-dim engine behaviour not re-measured (needs the Postgres sidecar).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

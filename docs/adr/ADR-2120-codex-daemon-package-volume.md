@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -155,3 +155,30 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 Since `34f5e4254`, only `agentbox.sh` and `flake.nix` changed among the governed paths. `docker-compose.yml` (`:147`, `:199-200`), the entrypoint chown (`config/entrypoint-unified.sh:542`), `scripts/refresh-compose.sh` and both tests have no diff. `flake.nix` still declares `codex-packages:/home/devuser/.codex/packages` (`:3695`) and lists it among the baseline volume names (`:3725`). `6d3d21b05` (ADR-2132) replaces `cmd_rebuild`'s down + build + `up --build` with `scripts/runtime-delivery.sh rebuild`. That runs `prepare`, which calls `scripts/refresh-compose.sh` before `nix build` (`runtime-delivery.cjs:159`), then `activate`. `up --build` (`agentbox.sh:757`) and `build` (`:929`) still refresh too, so "including `up --build` and the rebuild flow" remains true. The stale-mount gap stays closed by a stricter mechanism: fast activation now refuses a candidate whose persistent mounts would differ (`runtime-delivery.cjs:243`) rather than recreating the stack. The other `flake.nix` hunks are vaultSrc bumps, ADR-2109 forum-governance env, sealmap, the diagram-review cron, faucet PATH entries and the layer dedup (`7dadf61d7`), none of which touches the volume. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- Named volume agentbox-codex-packages mounted at /home/devuser/.codex/packages
+- Parent /home/devuser/.codex stays a bounded (512M) noexec tmpfs
+- Entrypoint initialises the package volume root ownership to UID/GID 1000 at boot
+- scripts/refresh-compose.sh runs before local builds: up --build, build, and the rebuild flow
+- Compose validated before atomic replace; failure preserves existing file (tests)
+
+Evidence:
+
+- docker-compose.yml:120 '/home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000'; :147 'codex-packages:/home/devuser/.codex/packages'; :199-200 volume name agentbox-codex-packages
+- flake.nix:3704 tmpfs 512M entry; :3818-3819 codex-packages mount with the 'parent .codex tmpfs is noexec' comment
+- config/entrypoint-unified.sh:545-546 /home/devuser/.codex and /home/devuser/.codex/packages in the volume-root chown list (chown root only, not -R)
+- agentbox.sh:758 (up --build) and :931 (build) call scripts/refresh-compose.sh; scripts/runtime-delivery.cjs:159 calls it in prepare, and agentbox.sh:1079-1080 'rebuild' delegates to runtime-delivery.sh → covers the rebuild flow (unchanged from cca7ea3b1)
+- diff hunks: agentbox.sh adds security-scan report calls and help text, systemone help; entrypoint adds ADR-2140/2139/2135 blocks; flake.nix adds security tools/evidence etc → none touches the codex package mount, tmpfs, or refresh-compose
+- node --test tests/config/compose-persistence.test.cjs → 1/1; tests/config/refresh-compose.test.cjs → 3/3; docker-compose.yml, scripts/refresh-compose.sh and both tests have no diff since cca7ea3b1
+
+Commands run: `node --test tests/config/compose-persistence.test.cjs tests/config/refresh-compose.test.cjs; git show 218dc12c3:docker-compose.yml|grep codex; git grep refresh-compose 218dc12c3`
+
+Not checked, and notes: Live-state claims (image sha256:399888769570 live, 59 GiB mount, codex doctor accounting) need the running host and were not rechecked.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

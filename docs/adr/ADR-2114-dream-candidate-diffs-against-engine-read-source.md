@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [services/dream-engine/src/source.rs, services/dream-engine/src/compile.rs, services/dream-engine/src/persist.rs, services/dream-engine/src/candidate.rs, services/dream-engine/src/engine.rs]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches
@@ -73,3 +73,15 @@ Tripped by two dream-engine commits. `68270e953` (NIP-09 withdrawal of resolved 
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 Five dream-engine commits trip this record. None of them touches `source.rs`, which has no diff since `ddfb6d056`. `9400bf6c1` changes one call site in `engine.rs` (`:1185-1193`): the ledger-row picker in `verdict.rs` now strips backticks and accepts only a row dated tonight. `17d366cb1` passes a contextual fallback finding to `append_and_commit_ledger` so that every row is checked against the row contract before it is written. `8dad83c83` adds `vetoed_finding`, which keeps a "Given …" hypothesis out of a vetoed row. `337a110c3` adds `pr_title`, which titles draft PRs from the head of the finding. All four govern how the engine records the model's proposed ledger row and names the PR. That fits the Decision's "proposes a ledger row whose finding cell the engine takes" and leaves the source section, repair pass, apply order and candidate construction untouched. `2d92ad3c1` runs `cargo fmt` over `candidate.rs`, `compile.rs`, `persist.rs` and `engine.rs`. Compared with all whitespace stripped, `candidate.rs` and `compile.rs` are identical. `persist.rs` and `engine.rs` differ only in trailing commas, block braces and one reordered `use` line. The prompt text and the `git apply` strategy order are therefore unchanged. The decision holds.
+
+## Amendment — 2026-10-13 at `044f1d689` (the cost and retry statements)
+
+The core decision stands: the engine reads source from the dispatched commit, the planner gets a single completion, the ADR-2024 gate is unchanged, and every candidate is still re-evaluated. Three statements about cost and retries no longer hold:
+
+- "up to two extra completions" is now **up to three**: the planner, the repair pass (no diff), and **apply-repair**, a second one-shot completion that runs when a candidate diff exists but git refuses it. It carries git's error and the real file text around the failing hunk, never evaluator receipts, and is receipted in `<night>/apply-repair.json` (reused on restart only for the same failed patch digest).
+- "one bounded retry" is now **two bounded retries**.
+- The apply order is plain, `--recount`, `--recount --ignore-whitespace`, `--3way` (blob ids only), then a `normalise_patch` pass (synthesised `diff --git` headers, trailing blank lines dropped, trailing context padded; `+`/`-` lines untouched) retried with `--recount` and `--recount --ignore-whitespace`. The final error is the as-written failure plus the last normalised attempt, and the `dream-patch` block now ends at the first fence-only line.
+
+`cargo test --lib` in `services/dream-engine` gives 283 passed, 0 failed. The apply-repair pass rewrites the model's diff before it is tested, so a reader of a PR body should not assume the diff is byte-for-byte what the model wrote.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

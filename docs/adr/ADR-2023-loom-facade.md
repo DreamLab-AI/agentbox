@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [agentbox.toml, mcp/servers/lib/ontology-retrieval.js]
 owner: jjohare
 review_trigger: model swap behind the Loom, or ADR-051 deferred-distillation MCP tools becoming a discrete server
@@ -318,3 +318,28 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 `mcp/servers/lib/ontology-retrieval.js` is unchanged since `1fc26c786`, so the `LOOM_FACADE_URL` seed and expand path and the ordinary VisionClaw selection when it is unset (`:105`, `:483-486`) stand. In `agentbox.toml`, `e4e4f5fb6` raises `[dream_machine].zai_max_tokens` to 131072. That is the dream engine's direct Z.AI provider, not a Loom consumer and not a raw model port. `a449138f2` changes only `[integrations.comfyui_external].enabled`, and the remaining hunks (forum governance, RuVector flags, `[diagram_review]`, `label_log`) are unrelated. The façade entries have moved but their values are unchanged: `loom_url = "${LOOM_BASE_URL}"` at `agentbox.toml:2298`, `loom_model = ""` (façade discovery) at `:2301`, `loom_max_tokens = 32768` at `:2305`, and the condense `endpoint = "${LOOM_BASE_URL}"` with its façade comment at `:887`. No consumer gains a raw model address. The ADR-051 distillation server is still not discrete, so `implementation_status: partial` stands. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- Consumers call ${LOOM_BASE_URL} facade, never a raw model port
+- condense endpoint = ${LOOM_BASE_URL} with facade comment
+- ontology-retrieval.js uses LOOM_FACADE_URL for seed/expand with transparent VisionClaw fallback when unset
+- dream_machine loom_url/loom_max_tokens
+- model behind the Loom currently qwen3.8-27B (descriptive)
+
+Evidence:
+
+- agentbox.toml@218dc12c3:1029 endpoint="${LOOM_BASE_URL}" # Ontology Loom facade; :2489 loom_url="${LOOM_BASE_URL}"; :2496 loom_max_tokens=32768
+- mcp/servers/lib/ontology-retrieval.js: git diff --stat empty; :105,:126,:492 LOOM_FACADE_URL + loom_facade_url_unset_visionclaw_selected
+- Only new Loom-related hunk: [vault] loom_url="http://192.168.2.132:8084" (the :8084 door, the facade; no :8085/.48 anywhere in agentbox.toml per grep) plus loom_sync/loom_host for ADR-2140
+- qwen3.8-27B alias confirmed by workspace CLAUDE.md (loom-model container)
+
+Commands run: `grep -n 'loom_url|8085|192.168.2.48' on agentbox.toml@218dc12c3`
+
+Not checked, and notes: Pre-existing doc drift, not caused by this diff: the body still says loom_model = "qwen3.8-27B" (lines 75, 81, 200) but the manifest has loom_model = "" (facade discovery, line 2492; already so at cca7ea3b1); the 2026-10-07 re-verification already records this. Optional tidy-up only.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

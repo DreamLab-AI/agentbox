@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 6d54c0c22d011abba51ad1550945f3907050097f
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, flake.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/ci/check-manifest-catalogue.js, tests/config/jev-checkpoints.test.mjs, tests/config/factrail-projection.test.sh, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: the first soak report of injections per hundred turns and USD per session, a measured shadow-log agreement rate for spawn routing (ADR-2110 labels), a change to the advisor checkpoints in ADR-2134, or a Claude Code function-hook API change
@@ -41,3 +41,34 @@ ADR-2134 gives the Sonnet lead an Opus advisor but leaves *when* to consult it t
 ## Verification
 
 Gate `node --test tests/config/jev-checkpoints.test.mjs` (manifest defaults, schema closure and ranges, validator accept/reject, catalogue entry, marketplace entry, flake gating text, entrypoint projection keys and shared-keep logic, `_jk_project` behaviour, plugin `userConfig` coverage once the plugin source is present). Also `bash tests/config/factrail-projection.test.sh`, `node --test tests/config/ruflo-console.test.mjs`, `scripts/agentbox-config-validate.js agentbox.toml`. `nix flake check` and the entrypoint's `claude plugin` calls have not run: no Nix here, and builds are host-only. `verified_commit` is stamped by the coordinator after merge.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- plugin jev-checkpoints 0.1.0, MIT OR Apache-2.0, in config/claude-plugins/jev-checkpoints, listed in marketplace.json
+- flake.nix drops the tree when [features.jev_checkpoints].enabled is off and strips *.test.ts
+- entrypoint projects manifest values as camelCase userConfig; cache compared by content; off uninstalls; stamp of config
+- CLAUDE_CODE_ENABLE_FUNCTION_HOOKS and agentbox marketplace kept while any of factrail, ruflo-console, jev-checkpoints is on
+- backendLocal explicit, never inferred from api; explicit manifest api leaves it false; taintTools/taintSkills projected from [features.jev_compaction]
+- timeout_ms capped at 8000; key is env TYPESAFE_API_KEY, never userConfig; spawn_mode shadow default
+- fail-open; email-tainted session never sent to cloud judge
+- named gate tests pass
+
+Evidence:
+
+- node --test tests/config/jev-checkpoints.test.mjs → 12/12 pass, 0 fail (covers manifest defaults, schema closure, catalogue, marketplace, flake gating, entrypoint keys, shared-keep, _jk_project, backendLocal, bash syntax, plugin userConfig coverage)
+- bash tests/config/factrail-projection.test.sh → 8/8
+- flake.nix:1809 jevCheckpointsOn; :2092 drops the jev-checkpoints tree unless on
+- entrypoint (218dc12c3) _JK_ON in function-hook and marketplace keep conditions; _jk_project; backendLocal=false default, true only via plugin-config line 'backendLocal=true' with empty manifest api
+- config/claude-plugins/jev-checkpoints/hooks/jev.ts:105-110 egress(): tainted && backendLocal!==true → no go; key only sent to TypeSafe host; git log shows plugin dir unchanged since verified commit
+- services/agentbox-manifest/src/system_one.rs:361 'backendLocal={b.local}' (declared per backend), :11 'Locality is declared, never inferred'
+- diff hunks since 6d54c0c22 are ADR-2140 loom_sync, ADR-2139 system_one slot, ADR-2133 flags, mcp-mirror-server, ADR-2134 catalogue/notes — unrelated insertions
+
+Commands run: `node --test tests/config/jev-checkpoints.test.mjs; bash tests/config/factrail-projection.test.sh`
+
+Not checked, and notes: Verdict is holds because the email fence and declared-locality property still hold end to end and the record's own gate is green. Behind the System One proxy the plugin still needs TYPESAFE_API_KEY only when api is the TypeSafe host; with the loopback proxy it goes keyless (hook design), and the entrypoint prints no missing-key line for jev-checkpoints in that mode (not claimed by the ADR). Image/boot unverified (staged).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

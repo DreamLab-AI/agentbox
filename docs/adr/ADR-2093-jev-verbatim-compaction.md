@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: d39db513159bf386a97f5aedc2c86ea49d0e168f
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation)
@@ -359,3 +359,9 @@ At `cca7ea3b1` the header comment at `:24` still says "2.1.289". That comment is
 The baked factrail plugin (`/nix/store/…-factrail-0.1.0/share/factrail/plugin`) passes `claude plugin validate --strict` under the 2.1.291 binary. It reports the same hook surface as under 2.1.288 (session.start, tool.call, skill.prompt, command.run, session.compact, turn.start, turn.complete), and its calls include `$.session.compact` and `$.command.register`.
 
 The substance of point 1 holds: Claude Code is pinned at a version with the function-hook surface. The point's version literal has said 2.1.285 since the 2.1.288 bump and is now three releases stale. Corrected to 2.1.291, with the line cited. The decision holds.
+
+## Amendment — 2026-10-13 at `044f1d689` (the version literal)
+
+Point 1 pins Claude Code at 2.1.291 (`lib/claude-code-binary.nix:35`). At `218dc12c3` it is `claudeCodeVersion = "2.1.295"` at `lib/claude-code-binary.nix:38`. Read the version as advisory: it moves with every bump (this record has corrected the same literal at 2.1.285, 2.1.288 and 2.1.291). The invariant is a pin at or above 2.1.274 that keeps the function-hook surface (`session.compact`, `command.register`, `$.http.fetch`). The email fence, E074 and W072 are intact. The function-hook switch and the `agentbox` marketplace are kept while any of factrail, ruflo-console or jev-checkpoints is on. The image and boot remain unverified (activation staged).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

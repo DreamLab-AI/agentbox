@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -137,3 +137,27 @@ decision stand.
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 Since `47e187934`, only `skills/SKILL-DIRECTORY.md` has changed among the governed paths. `c4ea4efca` adds an inventory row for the new `sealmap-review` skill. Its `MCP` column reads `No`, and the skill's frontmatter has no `mcp_server`, `depends_on_mcps` or `status:`, so the lint's MCP and unavailability-marker gates agree with it. `897e8e013` moves the skill count from 127 to 128 in the header, the Artefact 1 title, the `skill-router` row and Q0 of the decision tree. `skills/lint-skills.mjs`, `skills/gen-routing-table.mjs` and `skills/system-one/scripts/route-eval.mjs` have no diff. No `status:` vocabulary, badge rendering, lint rule, `DESC_MAX` or route-eval behaviour changed. The 127-skill figures in Verification are dated measurements, not current-state claims. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- `status:` frontmatter vocabulary and lint gates (STATUS, DIRECTORY MCP column, unavailability marker vs no status) still pass
+- gen-routing-table.mjs DESC_MAX = 640 and routing table is current
+- SKILL-DIRECTORY rows do not carry an unavailability marker without frontmatter status
+- route-eval.mjs/lint/gen unchanged
+
+Evidence:
+
+- git diff cca7ea3b1..218dc12c3 -- skills/SKILL-DIRECTORY.md: count 128→129 (header, Artefact 1 title, skill-router row, decision tree), a new `anatomy` row (MCP column `No`), a GitHub org-name case change in the email-search row, prose in the prose-sanitiser row. No status badge or marker added.
+- git diff --stat for skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/system-one/scripts/route-eval.mjs, skills/lint-skills.sh → empty (no change).
+- bash skills/lint-skills.sh → 'OK — skills estate clean (129 skills ... 31 warnings)' (the DIRECTORY MCP-column and STATUS gates are part of that run)
+- node skills/gen-routing-table.mjs --check → 'routing-table.md is current'; skills/gen-routing-table.mjs:28 `const DESC_MAX = 640;`
+
+Commands run: `bash skills/lint-skills.sh; node skills/gen-routing-table.mjs --check`
+
+Not checked, and notes: The measured routing accuracy (92%/96%) and overlap numbers are dated measurements needing the cloud System One judge; not re-run and not claimed as current. Skill count 129 vs the ADR's historical 127/131 figures is expected; those are dated.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

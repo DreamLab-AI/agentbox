@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 926f62660f46e6f65578216919170b50ea113964
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -282,3 +282,28 @@ Tripped by the W10 gap fixes on `custody/integration`. `flake.nix` (`dc91e092a`)
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 `config/nip98-proxy/proxy.mjs` and `docs/INGRESS-identity.md` are unchanged between `1fc26c786` and HEAD, so the header strip and re-injection, the fail-closed verifier and the boot-fatal config validation cited in this record are untouched. In `flake.nix`, the net change is the `vaultSrc` repin to `3213e314f`, the forum-governance env projection into `[program:management-api]` (`afc8a0ed6`), the gated `[program:diagram-review-cron]` (`cc5f5dcc0`, `2bc789d33`, `feb608318`), `sealmapPkg` (`a98aba880`), the faucet PATH additions (`6e4e4a0f8`) and the image-layer regrouping (`7dadf61d7`). None of these is an identity ingress or a listener. At HEAD the AoE and proxy blocks have only shifted down. The "only IDENTITY ingress" comment is at `flake.nix:2788`. `[program:aoe-serve]` is at `:2794`, with `aoe serve --auth token --behind-proxy --allowed-host 127.0.0.1 --host 127.0.0.1` at `:2795`. `[program:nip98-proxy]` is at `:2816`. The forum-governance consumer (ADR-2109) is an outbound relay subscription, not a request door, so it adds no second AoE identity ingress. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- single NIP-98 door :9096 fronting aoe serve --behind-proxy on 127.0.0.1:9095
+- inbound X-Agentbox-Pubkey/-Auth-Mode stripped and re-injected on HTTP and WS
+- no verifier => nip98_verifier_unavailable
+- malformed route/allowlist config crashes at boot
+
+Evidence:
+
+- flake.nix diff 926f626..218dc12c3 is insertions only (vexPkg/securityTools, target_gc, seo_watch, system_one flags, ontomarkPkg in vaultPackages, system-one-proxy/seo-watch-cron/target-gc programs, mkImage securityEvidence); no hunk touches aoe-serve, the nip98 proxy or port publishes.
+- flake.nix:2839 'only IDENTITY ingress'; :2846 aoe serve line
+- proxy.mjs:994 strip / :1012 re-inject (HTTP); :1155 strips x-agentbox-pubkey and -auth-mode (WS); :712 nip98_verifier_unavailable; process.exit(1) at :290,:412,:434,:452
+- proxy.mjs unchanged since the verified commit
+- node config/nip98-proxy/selftest.mjs (TMPDIR=scratchpad) -> OK, 0 failure(s), 0 skip(s)
+
+Commands run: `node config/nip98-proxy/selftest.mjs`
+
+Not checked, and notes: Selftest covers spoofed headers, missing verifier and removed allowlist entries. Live door inventory remains unverified (already a stated gap).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

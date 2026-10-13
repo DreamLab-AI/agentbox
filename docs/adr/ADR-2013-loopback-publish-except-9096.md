@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 926f62660f46e6f65578216919170b50ea113964
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -355,3 +355,28 @@ Tripped by the W10 gap fixes on `custody/integration`. `.github/workflows/invari
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 `6d3d21b05` (ADR-2132) touches `.github/workflows/invariants.yml`. It adds `tests/config/runtime-delivery.test.cjs`, `config/build-registry.json` and `agentbox.sh` to the push paths, plus one step that runs the runtime-delivery tests. The `check-ports-loopback` step is unchanged and has moved to `.github/workflows/invariants.yml:78-79`, with the `check-listeners` unit tests at `:81-82`. `docker-compose*.yml`, `scripts/ci/check-ports-loopback.sh` and `.mjs` are unchanged. `flake.nix` adds no publish. `agentboxPorts` at `flake.nix:3350` still binds every entry to `127.0.0.1:` except the interaction-plane proxy port, and the new `[program:diagram-review-cron]` (`flake.nix:2902`) has no listener. Running `sh scripts/ci/check-ports-loopback.sh` exits 0 with `14 compose file(s), 11 ports block(s)`. The only non-loopback listeners it reports are the already sanctioned ADR-2040 entries: jupyter-lab, wayvnc and code-server. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- CI gate sweeps every docker-compose*.yml; publish must be 127.0.0.1 or on the SANCTIONED list
+- 9096:9096 LAN publish is the declared exception
+- gate wired in CI
+- listener rule reads supervisord lines in flake.nix
+
+Evidence:
+
+- flake.nix diff 926f626..218dc12c3 is insertions only (vexPkg/securityTools, target_gc, seo_watch, system_one flags, ontomarkPkg in vaultPackages, system-one-proxy/seo-watch-cron/target-gc programs, mkImage securityEvidence); no hunk touches aoe-serve, the nip98 proxy or port publishes.
+- sh scripts/ci/check-ports-loopback.sh -> exit 0: PASS 13 compose file(s), 11 ports block(s), all publishes loopback-only or explicitly sanctioned
+- node --test tests/security/check-listeners.test.mjs -> 15 pass, 0 fail
+- docker-compose.yml:47 "9096:9096"; flake.nix:385 proxy_port default 9096; :2866 'Published to the LAN as 9096:9096'
+- the new flake supervisor blocks (system-one-proxy, seo-watch-cron, target-gc) raise no listener failure
+
+Commands run: `sh scripts/ci/check-ports-loopback.sh; node --test tests/security/check-listeners.test.mjs`
+
+Not checked, and notes: I did not inspect system-one-proxy's internal bind (no --bind flag for the scanner to see). Body counts ('ten mappings', 10 compose files) are now stale but are dated snapshots. implementation_status partial stays accurate.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

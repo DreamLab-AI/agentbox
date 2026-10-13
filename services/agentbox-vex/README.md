@@ -12,4 +12,15 @@ cargo test --locked
 cargo clippy --locked --all-targets -- -D warnings
 ```
 
-Licensed under MIT OR Apache-2.0; see the adjacent licence texts.
+## Licence
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT licence ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 licence, shall be
+dual licensed as above, without any additional terms or conditions.

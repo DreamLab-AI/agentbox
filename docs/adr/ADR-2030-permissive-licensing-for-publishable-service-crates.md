@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -355,3 +355,11 @@ until the owner's rebuild.
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 Two commits since `3b5412963` touch the governed paths, and both only move the exact `nostr-bbs-core` pin in `services/dream-engine/Cargo.toml`. `4cb61d46e` moves it from `=1.0.0-beta.11` to `=1.0.0-beta.14`, and `afc8a0ed6` moves it to `=1.0.0-beta.15` (lock at `1.0.0-beta.15`). `dream-engine` already declares `AGPL-3.0-only` because it links that crate (operator decision of 2026-09-25), so a version bump of the same dependency is not a licence change. `services/LICENSING-NOTICE.md`, `docs/developer/licensing.md` and `scripts/ci/check-crate-licensing.sh` are unchanged. At HEAD, `git ls-files 'services/*/Cargo.toml'` lists nine manifests. `grep -h '^license' services/*/Cargo.toml | sort | uniq -c` gives 3 `AGPL-3.0-only` and 6 `MIT OR Apache-2.0`. `sh scripts/ci/check-crate-licensing.sh` prints `OK … 9 services/ package directories carry the texts they declare` and exits 0. The decision holds. One sentence in the 2026-10-03 custody-integration note was already wrong when it was written: it says every service crate is MIT OR Apache-2.0, but `nostr-pod-bridge`, `dream-engine` and `secret-backup` were AGPL-3.0-only at `3b5412963`. That sentence is corrected below.
+
+## Amendment — 2026-10-13 at `044f1d689` (the gate was red, now green)
+
+At `218dc12c3` `scripts/ci/check-crate-licensing.sh` exited non-zero: the new crate `services/agentbox-vex` (MIT OR Apache-2.0, `publish = false`) had its licence texts on disk but a README without the dual-grant statement, and no row in `services/LICENSING-NOTICE.md`. The record's enforcement gate was red even though the licence position held. `044f1d689` adds the dual-grant statement and contribution clause to the README and the notice row. `check-crate-licensing.sh` now reports `OK: 10 services/ package directories carry the texts they declare`, which matches the notice's "seven permissive and three AGPL".
+
+The reviewer did not audit `agentbox-vex`'s dependency licences (clap, serde, serde_json, sha2, hex, chrono, tempfile are all permissive crates); the gate checks declared licences and texts, not the dependency tree.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

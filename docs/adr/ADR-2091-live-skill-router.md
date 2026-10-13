@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 926f62660f46e6f65578216919170b50ea113964
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [config/hooks/lib/skill-route.cjs, config/hooks/skill-route.cjs, skills/skill-router/scripts/route.mjs, config/entrypoint-unified.sh, tests/config/skill-route.test.js]
 owner: jjohare
 review_trigger: the first project that needs a per-project routing bypass (ADR-2090), a Jev model change, or a measured runtime-path accuracy below 85% on the 40-item set
@@ -205,3 +205,13 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 ### Re-verification — 2026-10-03 (runtime-env path escape, 34f5e4254)
 
 `1fc26c786..34f5e4254`: `config/entrypoint-unified.sh` changes one line in the runtime-env heredoc — `CLAUDE_FLOW_MEMORY_PATH` is escaped so it resolves in the sourcing shell (`$HOME/.cache/ruflo/memory`) instead of as a root-side `/home/devuser` literal (RC-X1-01, `34f5e4254`). No path, gate, projection or program this record governs changed. Nothing this record decides changed.
+
+## Amendment — 2026-10-13 at `044f1d689` (the System One proxy path, ADR-2139)
+
+Points 4 and 6 describe a hook that holds its own vendor key and skips the turn when `TYPESAFE_API_KEY` is missing. With `[system_one].enabled = true` (the shipped value, backend `subq`) the hook runs behind the loopback system-one-proxy instead: `AGENTBOX_SYSTEM_ONE_PROXY=1` is inlined into the registered command, the hook sends no `Authorization` header, and a missing `TYPESAFE_API_KEY` no longer skips a turn. The proxy holds the vendor key. A missing key skips a turn only when the proxy flag is off. The fail-open clauses (timeout, 429/529, HTTP or parse error, short prompt, slash command, no pick) and the rule that the prompt is never logged are unchanged (`skill-route` jest: 56 passed). The logged USD rate may come from the proxy's `x-system-one-usd-per-mtok-in` header.
+
+The 2026-09-21 note that warning W071 fires on the committed manifest no longer reproduces: W071 stands down whenever `[system_one].enabled` is true, and the validator prints W076 naming the active vendor. Set `[system_one].enabled = false` with `[features.sovereign_system_one]` off to reproduce W071.
+
+The tripped paths named the right files; the falsifying parts were ADR-2139's `[system_one]` block in `agentbox.toml` and the validator, neither of which is in `verified_paths`. Earlier re-verifications treated the ADR-2094 façade as the only exception; the 2026-10-03 proxy path was never recorded here. Whether the proxy is actually projected at runtime is not checked by reading.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

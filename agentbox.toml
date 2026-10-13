@@ -1876,8 +1876,9 @@ enabled = false                          # C5 — enable with [payments.consumer
 # Keyed like config/sidechain/run-producer.sh: SIDESTR_CHAIN overrides chain_id,
 # and the producer is http://127.0.0.1:<port> (3450 for dreamlab, else
 # [sidechain.<name>].port, or SIDESTR_PORT) unless producer_url is set. The
-# demo chain (SC1) is dreamlab-txbt4; its producer ships disabled above, so
-# payments fail closed at the chain guard until it runs and the payer is funded.
+# demo chain (SC1) is dreamlab-txbt4; its producer is enabled above (live since
+# 2026-10-03), so payments fail closed at the chain guard only while the producer
+# is down or its chain document mismatches, and until the payer is funded.
 # Spend-policy runs on POST /v1/chain/pay only; above approval_threshold_sats a
 # payment parks until an allowlisted approver releases it. RESTART-class.
 # ── Poker house seat (forum ADR-2020) ─────────────────────────────────────────

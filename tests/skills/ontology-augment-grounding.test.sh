@@ -255,6 +255,17 @@ esac
 EOF
 chmod +x "$BIN/vault"
 
+# A stub `ontomark` first on PATH, so the suite never reaches the host's real binary (the wrapper
+# takes the first ontomark on PATH; without this, `validate` ran the real one against no vault).
+cat > "$BIN/ontomark" <<'EOF'
+#!/usr/bin/env bash
+case " $* " in
+  *" validate "*) echo '{"errors":1,"warnings":0}'; exit 1 ;;
+  *)              echo '{}' ;;
+esac
+EOF
+chmod +x "$BIN/ontomark"
+
 # Every run: a clean env with the stubs first on PATH. VAULT_REPO is unset on
 # purpose, so the repo must come from AGENTBOX_CONFIG's [vault].repo.
 run() {

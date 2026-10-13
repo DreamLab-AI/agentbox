@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -247,3 +247,33 @@ Tripped by `f93586b9e` (custody W2b and W4: the at-rest migrate/revert and the s
 Since `34f5e4254`, `config/entrypoint-unified.sh`, both ontology MCP libraries, the condense scheduler and refresh script, and four of the five skills are unchanged, so `_ab_vault_resolve` and every consumer guard stand. `agentbox.toml`, `setup/agentbox.default.toml` and `schema/agentbox.toml.schema.json` gain `[sovereign_mesh.forum_governance]` (`afc8a0ed6`), the RuVector `reader_role`/`hba_scram` flags (`4f09c96b2`) and `[diagram_review]` (`cc5f5dcc0`, `2bc789d33`, `09a024b12`). `agentbox.toml` also changes `comfyui_external`, `label_log` and `zai_max_tokens`. No `[vault]` key, value or schema property moves. `a449138f2` changes `skills/ontology-augment/SKILL.md` only for the ADR-2129 grounding envelope and adds no corpus path.
 
 The one new corpus writer is the forum-governance path in `afc8a0ed6`. It resolves its repo only from `VAULT_REPO`, else from `VAULT_ROOT`, and refuses to run when neither is set (`management-api/lib/ontology-apply.js:107-145`), so `[vault]` remains its sole authority. `[diagram_review]` scans `$WORKSPACE` for `docs/diagrams/`, not the authored corpus. `sh scripts/ci/check-no-logseq-paths.sh` passes. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- agentbox.toml [vault] carries root/pages/repo/format=obsidian/tui/cli/working/transcripts; schema declares them, format enum is obsidian only
+- _ab_vault_resolve exports VAULT_ROOT/REPO/PAGES/FORMAT/TUI/WORKING_ROOT/WORKING_PAGES/TRANSCRIPTS/AGENTBOX_VAULT_ENABLED from the manifest
+- three-tier precedence: manifest wins for VAULT_PAGES; legacy ONTOLOGY_PAGES_DIR cleared when vault disabled unless AGENTBOX_VAULT_LEGACY_PATHS=1
+- consumers (ontology-local.js, ontology-index-build.js, condense scheduler/refresh) refuse legacy path when vault disabled
+- no hard-coded Logseq corpus path outside docs/archive and docs/adr
+- entrypoint syntax is clean
+
+Evidence:
+
+- git diff cca7ea3b1..218dc12c3 -- config/entrypoint-unified.sh: the only _ab_vault_resolve hunk (around line 134-160) ADDS HP_LOOM_SYNC/LOOM_URL/LOOM_HP_HOST reads from new [vault] keys loom_sync/loom_url/loom_host (ADR-2140) and appends them to the export line; existing exports and the precedence block are untouched. Other hunks: Phase 5d(iii) HP Loom reconcile, System One proxy projection (ADR-2139), jev-checkpoints plugin block (ADR-2135), mcp-mirror-server for claude-flow. None touches a vault path consumer.
+- git diff of agentbox.toml/setup/agentbox.default.toml/schema: [vault] hunks are only the added loom_sync/loom_url/loom_host keys (additive; schema description line 310 of the diff). No existing [vault] key changed.
+- git show 218dc12c3:agentbox.toml [vault] block: root=.../visionGraph/knowledge, pages=pages, repo, format=obsidian, tui=rune, cli=true, working, transcripts. Schema vault.format enum = [obsidian].
+- skills/ontology-augment/SKILL.md diff: only the neighbours/paths /mcp wording (Loom ADR-140 live) and a description case change; no corpus path.
+- bash tests/config/vault-path-precedence.test.sh → 13 passed, 0 failed
+- node tests/config/vault-consumer-fallback.test.mjs → 13 passed, 0 failed
+- sh scripts/ci/check-no-logseq-paths.sh → PASS
+- bash -n config/entrypoint-unified.sh → ok; git status clean afterwards
+
+Commands run: `bash tests/config/vault-path-precedence.test.sh; node tests/config/vault-consumer-fallback.test.mjs; sh scripts/ci/check-no-logseq-paths.sh; bash -n config/entrypoint-unified.sh`
+
+Not checked, and notes: Not exercised: live booted-image runtime-env.sh export (needs a running container). Optional: the Decision 2 export list could mention the new HP_LOOM_SYNC/LOOM_URL/LOOM_HP_HOST exports from ADR-2140 for completeness; it is additive, not a falsification.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

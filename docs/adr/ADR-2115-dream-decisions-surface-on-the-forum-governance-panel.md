@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -85,3 +85,29 @@ Re-verified by `git diff ddfb6d056..275e12356 -- <verified_paths>`. No re-implem
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 The same five dream-engine commits trip this record. `governance.rs`, `digest.rs`, `relay.rs` and `config/hooks/dream-inbox-surface.cjs` have no diff since `275e12356`. In `inbox.rs`, `2d92ad3c1` (cargo fmt) only reflows the `let … else` in `resolve_in` onto one line (`:162`). In `engine.rs`, `9400bf6c1`, `8dad83c83`, `17d366cb1` and `337a110c3` change ledger-row selection, contract repair, the VETOED prefix and draft-PR titles. `17d366cb1` also passes a fixed finding into the BLOCKED-ENV and HANDOFF ledger appends (`:1568-1576`, `:1676-1684`). The `inbox::add` alert and question writes that follow those appends are unchanged. No hunk touches panel or case publishing, decision ingest, signature checks, withdrawal or digest composition. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- one kind-31400 panel d=dream-machine and one kind-31402 case per open inbox item with d=dream-<id>, a/panel tags, ACSP broker tags, core ActionRequest, questions medium / alerts low
+- decision ingest rules (signature verified, self-signed ignored, bound to current request, newest wins, mapping approve/reject/amend/delegate, acknowledge-alerts scope)
+- digest composed in Rust, reports every outcome
+- forum I/O fail-open, DREAM_GOVERNANCE=0 opt-out
+- session hook is pointer-only
+
+Evidence:
+
+- governance.rs diff: request_event still builds tier/priority Low for alert, Medium for question (hunk @@ -266); title tag still emitted (title_for now takes CaseContext); panel_definition only bumps version 1.0.0->1.1.0 and adds 'outcome' and 'pr' fields; additions are case_context/CasePaths/outcome_line/reasoning_for (richer case text and PR link)
+- no hunk in ingest, signature check, planner, acknowledge-alerts or withdrawal code (diff shows only publish() signature + request_event call sites + new tests)
+- withdrawal_event passes CaseContext::default() to request_event so withdrawal tag matching is unchanged
+- engine.rs: governance::publish(&inbox_path, &paths, false) still wrapped by nj.called('forum.governance')/completed; digest.rs, relay.rs, dream-inbox-surface.cjs not changed (empty in the diff command scope)
+- cargo test --lib -> 283 passed incl. governance::tests::planner_applies_newest_valid_admin_decision_bound_to_the_request and planner_rejects_self_review_forgery_and_stale_request_binding
+
+Commands run: `git -C agentbox diff cca7ea3b1..218dc12c3 -- services/dream-engine/src/*.rs; CARGO_TARGET_DIR=<scratch> cargo test --locked --offline --lib (services/dream-engine) -> 283 passed, 0 failed`
+
+Not checked, and notes: Case bodies/titles are richer and the title now starts with repo and date instead of 'Alert/Decision'; the ADR makes no claim about wording, only about tags and ActionRequest shape, which still agree (tests round-trip). Optional note: panel version is now 1.1.0. node tests/config/dream-inbox-surface.test.mjs not re-run (hook file unchanged). Live relay acceptance (JunkieJarvis registration) is runtime-only.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

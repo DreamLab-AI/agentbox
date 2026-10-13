@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md, services/nostr-pod-bridge/src/colloquy_publish.rs, agentbox.toml]
 owner: jjohare
 review_trigger: the next agentbox Nostr kind allocation, or any change to the band table in docs/PROTOCOL-registry.md
@@ -242,3 +242,26 @@ What each `agentbox.toml` commit changes:
 - `e4e4f5fb6` raises `zai_max_tokens` to 131072.
 
 No kind number, band or `allowed_kinds` member moved. The Disposition section cites the relay allowlist at `agentbox.toml:174`. That line held `allowed_kinds` at `a238a3764`, but the list sat at `:173` by `1fc26c786` and is still at `:173` at `cca7ea3b1`, unchanged, admitting `38410`-`38415`. Corrected the citation. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- Colloquy kinds are 38410-38415 in kinds.rs
+- settlement allocated 38420-38425 (proposed) in the registry
+- relay allowed_kinds contains 38410-38415
+- SIGNABLE_KINDS = 38410,38411,38412,38413,38415 (38414 refused)
+- registry band table marks 38400-38499 as agentbox's, everything below reserved
+
+Evidence:
+
+- agentbox.toml@218dc12c3:173 allowed_kinds includes 38410..38415 (no diff hunk touches it; the only 38xxx matches are unchanged); no 3810x/3811x leftovers in toml
+- crates/colloquy/colloquy-nostr/src/kinds.rs, docs/PROTOCOL-registry.md and services/nostr-pod-bridge/src/colloquy_publish.rs: git diff --stat empty/unchanged in range; kinds.rs:15-20,31-37; colloquy_publish.rs:62-68; PROTOCOL-registry.md:89-92,95-100
+
+Commands run: `git diff --stat cca7ea3b1..218dc12c3 -- crates/colloquy docs/PROTOCOL-registry.md services/nostr-pod-bridge/src/colloquy_publish.rs; greps at 218dc12c3`
+
+Not checked, and notes: The agentbox.toml diff has no hunk near [sovereign_mesh.relay]. Cargo tests not run (write target/).
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

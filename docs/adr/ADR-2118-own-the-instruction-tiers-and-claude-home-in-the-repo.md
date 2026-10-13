@@ -7,10 +7,10 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
-verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, docker-compose.hp.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
-review_trigger: the connected node runs migrate-claude-home; or Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
+review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
 repo: agentbox
 domain: BASELINE-container
 ---
@@ -184,3 +184,26 @@ Since `34f5e4254`, only `agentbox.sh` and `flake.nix` changed among the governed
 - `7dadf61d7` dedups image layers through `lib/image-layers.nix` (`:4378`).
 
 The instruction projection, the Claude home volume and credential sync are untouched. The decision holds.
+
+## Amendment — 2026-10-13 at `044f1d689` (the connected node is retired, ADR-2140)
+
+ADR-2140 (PR #26) deletes `docker-compose.hp.yml` and retires the HP agentbox. Its volumes, and the `agentbox-core` identity that lived in them, were destroyed on 2026-10-13. Three statements in this record name that node and no longer hold:
+
+- Consequences: "Follow-up: the connected node (`docker-compose.hp.yml`) migrates when its operator runs `migrate-claude-home` there." There is no connected node left to migrate; `docs/BASELINE-container.md` already records that the rollout "no longer has a second target".
+- `review_trigger`: "the connected node runs migrate-claude-home" can no longer fire and is removed.
+- Verification: "implementation remains `partial` because the connected node and the other explicitly deferred migrations are unchanged". The node is no longer a reason. `implementation_status` stays `partial` for the three deferrals that remain: `~/.config/claude` ownership, the Q43 workspace migration, and the global tier and credentials for stack profiles.
+
+If federation work resumes on a clean node under a new record (ADR-2140 D5), that node runs `./agentbox.sh migrate-claude-home` as part of its own bring-up. This record does not carry it.
+
+The decision is unchanged. None of the governed-path changes since the previous anchor touches the instruction projection, the Claude home volume or credential sync: `config/instructions/workspace.claude.md` gained the advisor section (tier content, ADR-2134); `flake.nix` keeps the `baseNameOf path != "instructions"` filter, so the layers are still never baked; the entrypoint's `instructions-project` call and its `--no-global` guard are unchanged; `[program:claude-cred-sync]` is unchanged; `docker-compose.override.yml` still mounts `agentbox-claude-home` and the credential-only host bind, and `docker-compose.yml` still mounts the layers read-only.
+
+| Gate | Result |
+|---|---|
+| `tests/config/instructions-layers.test.sh` | 9/9 |
+| `tests/config/boot-projection-contract.test.sh` | 13/13 |
+| `tests/config/claude-home-migration.test.sh` | PASS |
+| `tests/config/compose-persistence.test.cjs` | PASS (16 persistent volume identities, external Claude home, read-only instructions) |
+
+`verified_paths` drops `docker-compose.hp.yml` and names no replacement: the two Compose files that remain are already listed and `compose-persistence` covers them.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.

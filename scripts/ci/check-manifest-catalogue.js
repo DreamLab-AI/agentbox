@@ -56,9 +56,14 @@ const BASELINE = [
     reason: 'sub-option of a catalogued capability — /v1/system reports the parent gate',
     keys: [
       'model_routing.neural.trajectory',  // ADR-2080 knob under the model-routing-neural gate
+      // ADR-2139: a declared property of a backend (LAN/loopback or cloud), reported under the
+      // catalogued system_one gate; it selects no capability.
+      'system_one.backends.typesafe.local', 'system_one.backends.subq.local',
+      'system_one.backends.laya.local', 'system_one.backends.kev.local',
+      'diagram_review.weekly_window',     // ADR-2131 cadence knob under the catalogued diagram_review gate
       'sovereign_mesh.solid_pod', 'sovereign_mesh.nostr_bridge', 'sovereign_mesh.https_bridge',
       'sovereign_mesh.publish_agent_events', 'sovereign_mesh.voice_intent', 'sovereign_mesh.kg_elevation',
-      'sovereign_mesh.junkiejarvis', 'sovereign_mesh.junkiejarvis_clarify_before_acting', 'sovereign_mesh.per_user_agents', 'sovereign_mesh.mobile_bridge.enabled',
+      'sovereign_mesh.junkiejarvis_clarify_before_acting', 'sovereign_mesh.per_user_agents', 'sovereign_mesh.mobile_bridge.enabled',
       'sovereign_mesh.relay.enabled', 'sovereign_mesh.relay.expose', 'sovereign_mesh.relay.pod_bridge',
       'sovereign_mesh.relay.allow_nip04', 'sovereign_mesh.git.enabled', 'sovereign_mesh.git.auto_init',
       'sovereign_mesh.git.read_public', 'sovereign_mesh.multi_user.enabled',
@@ -142,6 +147,9 @@ const BASELINE = [
     keys: [
       'security.audit_acknowledged', 'mesh.honor_remote_moderation', 'networking.host_gateway',
       'resources.gpu_reservation', 'plugins.auto_update',
+      // ADR-2133: each permits one explicit operator operation (provision a SELECT-only role,
+      // harden pg_hba to SCRAM); neither starts anything on its own.
+      'integrations.ruvector_external.reader_role', 'integrations.ruvector_external.hba_scram',
     ],
   },
   {

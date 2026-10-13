@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -362,3 +362,29 @@ Since `1fc26c786`, `agentbox.toml` gains several unrelated changes:
 - `zai_max_tokens = 131072` (`e4e4f5fb6`)
 
 The relay keys are untouched at their previous lines: `ingress_policy = "allowlist"` at `agentbox.toml:150`, `allowed_pubkeys` at `:156` and `agent_event_auth = "nip98"` at `:186`. In `flake.nix` the allowlist bake has only moved: `relayAllowedPubkeysCsv` is at `:1793`, the explicit deny-all `pubkey_whitelist = [ ]` branch at `:1804-1805`, and `AGENTBOX_ALLOWED_PUBKEYS` at `:2608`. The forum-governance table adds one outbound NIP-42 subscription from `mcp/nostr-bridge/relay-consumer.js` to the external forum relay for kind 31403 from a static roster. It writes nothing to the embedded relay and does not widen who may publish to it. An empty roster refuses every ontology decision, which is fail closed. No auto-add or fallback is introduced. The ADR-040 D3 key split is still pending, so `implementation_status: partial` stands. The decision holds.
+
+## Re-verification — 2026-10-13 at `044f1d689`
+
+The decision holds. Every claim below was checked against the code, and the tripped hunks are unrelated to it.
+
+Claims checked:
+
+- ingress_policy = allowlist, no fallback/no auto-add, empty = deny-all
+- allowed_pubkeys is a static build-baked list; operator not auto-added
+- agent_event_auth = nip98
+- flake.nix bakes relayAllowedPubkeysCsv -> AGENTBOX_ALLOWED_PUBKEYS and emits explicit empty pubkey_whitelist = [ ] for empty list
+- admission.rs RejectReason::DenyAllEmptyAllowlist at relay boundary
+- publisher key-split (ADR-040 D3) still pending
+
+Evidence:
+
+- agentbox.toml@218dc12c3:150 ingress_policy="allowlist"; :152-155 NO fallback/NO auto-add comment; :156 allowed_pubkeys (6 entries); :186 agent_event_auth="nip98"
+- git diff cca7ea3b1..218dc12c3 -- agentbox.toml has no hunk in lines 140-190 (first hunk @667); the only allowed_pubkeys removal (c32b71bc…, ~line 2025) is in [interaction_plane.proxy], a different table, not the relay allowlist
+- flake.nix@218dc12c3:1830-1843 relayAllowedPubkeysCsv and empty-list pubkey_whitelist = [ ]; :1850 relayNip42Auth; :2659 AGENTBOX_ALLOWED_PUBKEYS env; flake hunks touching relay region (@1805,@1821,@1974,@2053,@2087) are package/jev/instructions-filter changes, none in relay config generator logic
+- services/nostr-pod-bridge/src/admission.rs@218dc12c3:93,108 DenyAllEmptyAllowlist present
+
+Commands run: `git diff cca7ea3b1..218dc12c3 -- agentbox.toml flake.nix; git show 218dc12c3:<path> greps`
+
+Not checked, and notes: The tripped diff is unrelated insertions (system_one, jev_checkpoints, seo_watch, target_gc, model roles, sidechain mirror URLs). The removed key in [interaction_plane.proxy] is a different allowlist from the relay one, so the ADR claim is unaffected. Rust tests and live relay behaviour not re-run (cargo writes target/); static check only, consistent with ADR's own 'partial' status.
+
+Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
