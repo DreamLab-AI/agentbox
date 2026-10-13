@@ -119,27 +119,29 @@ vault validate --vault all --json
 | `ontology_class_list` | `vault find --type Class --json` |
 | `ontology_graph_query` | `POST http://192.168.2.132:8084/loom/sparql` — the reasoned closure, not the disk |
 | `kg_node_search` | `vault find` (same door as `ontology_search`; the split was an artefact of two backends) |
-| `kg_neighbors` | Loom `/mcp` → `loom.neighbours`; falls back to `vault tree` |
-| `kg_pathfind` | Loom `/mcp` → `loom.paths`; **no corpus fallback** — see below |
+| `kg_neighbors` | Loom `/mcp` → `loom.neighbours`; `vault tree` only if the Loom did not answer |
+| `kg_pathfind` | Loom `/mcp` → `loom.paths`; **no corpus fallback**, by design — see below |
 | `ontology_validate` | `vault validate` — OKF v0.2 + `vocabulary.yaml` + link integrity |
 | `ontology_propose` | `vault propose <iri> --level content\|schema` |
 | `ontology_axiom_add` | **gone.** Axioms are not hand-added; they fall out of `vault build` from the frontmatter |
 | `ontology_health` | `GET http://192.168.2.132:8084/health` |
 
-### The `/mcp` caveat, measured
+### `neighbours` and `paths` ride the Loom's `/mcp`
 
-The Loom keeps `/mcp` as the **external-host** door (PRD Q10) — a JSON-RPC 2.0
-endpoint an outside MCP client can attach to. `loom.neighbours` and `loom.paths`
-have no REST route of their own, so calling them means POSTing JSON-RPC to it
-with curl. That is not "MCP inside the estate": no client, no server
-registration, no tool grant — just a JSON body on a LAN URL.
+`loom.neighbours` and `loom.paths` have no REST route of their own, so the
+wrapper POSTs JSON-RPC 2.0 to `http://192.168.2.132:8084/mcp` (loom ADR-140 P0,
+live; probed 2026-10-13). That is not "MCP inside the estate": no client, no
+server registration, no tool grant — just a JSON body on a LAN URL.
 
-**Until ADR-140 ships, the generation on `:8084` answers `/mcp` with 404.**
-The wrapper checks the status and
-degrades: `neighbours` falls back to `vault tree` (asserted edges only, announced
-on stderr), and `paths` refuses outright rather than passing a walk over asserted
-wikilinks off as a shortest path in the reasoned graph. Those are different
-answers and only one of them was asked for.
+- **Titles work, exactly.** A page title is resolved to its Loom IRI by an exact,
+  case-insensitive title match in `loom.browse`; it is never slugified. A slug or
+  `urn:ngm:class:<slug>` passes through. No exact match is sent verbatim.
+- **`found: false` is `silent`**, not a negative: the corpus does not say.
+- **If the Loom does not answer** (unreachable, non-200, or a JSON-RPC protocol
+  error), `neighbours` falls back to `vault tree` (asserted edges only, announced
+  on stderr, `fallback.loom_status` names why), and `paths` stays `degraded`
+  rather than passing a walk over asserted wikilinks off as a shortest path in
+  the reasoned graph. Those are different answers and only one was asked for.
 
 ## Budget and fail-open (ADR-112)
 

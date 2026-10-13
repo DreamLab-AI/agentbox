@@ -105,7 +105,7 @@ Returns the full serving identity: `generation.id`, `index_classes`,
 a months-old `generation.generated_at` is a real condition and a real problem —
 the Loom is healthy and the answer is stale. Report both.
 
-### `POST /mcp` — JSON-RPC 2.0, the external-host door
+### `POST /mcp` — JSON-RPC 2.0, the agentic plane (live)
 
 The exact bodies, since they are not guessable:
 
@@ -129,21 +129,32 @@ curl -sS --max-time 10 -H 'content-type: application/json' \
   http://192.168.2.132:8084/mcp
 ```
 
-`iri` takes a full `urn:ngm:class:<slug>` or a bare slug. `limit` and `max_hops`
-are clamped server-side.
+`iri` takes a full `urn:ngm:class:<slug>` or a bare slug, **not a page title**: the
+raw tool answers `found: false` for `"Knowledge Graph"` but resolves
+`knowledge-graph`. The wrapper closes that gap — it resolves a title through
+`loom.browse` by exact, case-insensitive title match (never by slugifying) before
+calling `loom.neighbours` / `loom.paths`. `limit` and `max_hops` are clamped
+server-side.
 
-The other tools on that plane — `loom.manifest`, `loom.browse`, `loom.resolve`,
-`loom.sparql` — are reachable the same way, but prefer `vault` for browse/resolve:
-it reads the working tree, and the Loom reads a promoted generation.
+The six tools on the plane are `loom.manifest`, `loom.browse`, `loom.resolve`,
+`loom.sparql`, `loom.neighbours` and `loom.paths`. Prefer `vault` for
+browse/resolve of the working tree: the Loom reads a promoted generation.
 
-**Measured 2026-09-22: `:8084` answers `/mcp` with `404`.** ADR-140 shipped the
-plane in the loom repo; the deployed generation predates it (WS-H owns the
-deploy). Until then:
+**Response shape (probed 2026-10-13).** A `tools/call` answer is
+`{"result":{"content":[{"type":"text","text":"<json>"}],"structuredContent":{"result":{…},"grounding":{…}}}}`;
+the same object appears as text and as `structuredContent.result`. The headers
+`x-loom-generation` and `x-loom-content-digest` ride on it, which is where the
+envelope's `generation` comes from. A protocol error is a top-level
+`{"error":{"code":-32602,…}}` **on HTTP 200**, so the wrapper checks for it
+separately from the status code.
 
-| Want | Today |
+| Tool result | Counted as |
 |---|---|
-| neighbours | `vault tree <id> --depth 1` — asserted edges only, no inferred ancestors or backlinks |
-| shortest path | **nothing honest.** Run `neighbours` from each end and say the path is unavailable |
+| `loom.neighbours`: `iri` + `is_a` / `ancestors` / `relations` | `answered` (1 + the number of related classes) |
+| `loom.neighbours`: `{"iri":…,"found":false}` | `silent` — the corpus does not say |
+| `loom.paths`: `found: true` + `path` + `hops` | `answered` |
+| `loom.paths`: `found: false` | `silent` — no path asserted within `max_hops` |
+| top-level `error`, non-200, unreachable | the Loom did not answer: `neighbours` → `vault tree`; `paths` → `degraded` |
 
 Using `/mcp` over curl is not a breach of "no MCP inside the estate" (ADR-2107).
 The rule bans MCP *servers registered in the estate* fronting the corpus — a
@@ -253,7 +264,7 @@ different fixes:
 | stderr | `reason` | Means | Fix |
 |---|---|---|---|
 | `Loom unreachable` | `loom_unreachable` | no route, DNS, or timeout | the network, usually the `.48`-is-dead trap |
-| `returned HTTP 404` | `loom_http_404` | route absent on this generation | deploy, not config |
+| `returned HTTP 404` | `loom_http_404` | route absent on this generation (an older Loom image) | deploy, not config |
 | `returned HTTP 400` | `loom_http_400` | your query | the query |
 
 All three exit **0** with `"grounding": "degraded"` and the reason under
