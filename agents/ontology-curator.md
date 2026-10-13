@@ -76,6 +76,15 @@ vault validate --vault all --strict         # exit 1 on warnings too
 Run this against the disk before you reason about a change. Exit code is the
 contract: 0 clean, 1 dirty.
 
+`vault conflicts` reports `SUBCLASS_CYCLE` for the corpus on disk. The graph a
+user is actually looking at is a different source: the host's graph server
+answers `GET $VISIONCLAW_API_URL/api/analytics/cycles` with the nodes on a directed cycle
+(`cyclicNodeIds`) and the multi-node loops (`components`). It reads the edges that
+assert `rdfs:subClassOf` by default; `?edgeType=all` takes every edge and `?edgeType=<type>` one
+type, but a mutual link or a symmetric `co_citation` edge is a two-node cycle,
+so do not read `all` as a defect list. Say which door answered: the disk and the
+live graph can disagree when the live graph carries inferred edges.
+
 ## Writing
 
 Writes are **governed**. `vault propose` submits; it does not commit.
