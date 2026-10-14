@@ -3,14 +3,14 @@ id: ADR-2140
 title: Keep the vault canonical on this host, reconcile the HP Loom to it at every boot, and retire the HP agentbox
 date: 2026-10-13
 decision_status: accepted
-implementation_status: partial
+implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: acb59a3fce35f8f99ba77b9cc3248525e523b1fe
+verified_commit: c8bd9b6471ceee55d2a89e8f65d3caf529352c77
 verified_paths: [scripts/hp-loom-reconcile.sh, config/entrypoint-unified.sh, agentbox.toml, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, tests/config/hp-loom-reconcile.test.sh, skills/ontology-augment/scripts/ontology-augment.sh, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
-review_trigger: the first new committed vault generation is shipped and reloaded on the real HP (then assess full implementation); any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
+review_trigger: a reconcile failure or change to the builder pin or published-generation schema; any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
 repo: agentbox
 ---
 
@@ -127,8 +127,17 @@ exporting the object store would have exposed every committed `working/` page to
   remained active. All 32 Agentbox mounts and 16 sidecars were preserved.
 - The baked ontology skill answered a live `neighbours "Knowledge Graph"` request through
   the HP's MCP door, citing that same generation. Reconcile tests passed 41/41 and grounding
-  tests passed 87/87. Activation is now live; implementation stays partial until a *new*
-  committed generation has exercised the production ship, swap and reload path.
-- Not verified: a reload of a *new* generation on the real HP. It is already current, so that
-  still requires a new vault commit; this deployment proves the boot reconciliation and
-  idempotent current-generation path, not that remaining transition.
+  tests passed 87/87. That deployment verified the idempotent current-generation path.
+- Deployment, 2026-10-14: the image at `c8bd9b647` booted and its full reconcile wrote
+  `state: reloaded` at 10:18:18 UTC for the new committed generation
+  `visionGraph@6502d264ca3569a53d69e21544a20e212bb7b100`. All ten steps completed:
+  probe, tools, validate, build, promote, verify, ship, HP verify, swap and reload.
+  The 14 uncommitted vault files present at the probe were excluded from the snapshot.
+  The HP's own receipt reports `served`, with content digest
+  `1fa40db986b9f4472f3dc2c23e14bdd91e7dba9045b3c2a018e26955d2351b54`.
+  Its recreated Loom container is healthy, `data.rollback` is retained and the promotion
+  marker is cleared. The live generation reports no drift, and the baked ontology skill
+  answers through MCP while citing the new generation. Agentbox readiness has no degradation;
+  all 32 mounts and 16 local sidecars remain preserved. This verifies the remaining production
+  transition and completes the Agentbox implementation of this decision. The separate Loom
+  follow-ups recorded under Consequences remain outside this repository.
