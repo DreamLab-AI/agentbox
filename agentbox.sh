@@ -2040,7 +2040,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|prepare|activate|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|prepare|activate|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight|security)
             CMD="$1"
             shift
             break
