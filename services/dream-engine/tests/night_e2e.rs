@@ -785,10 +785,9 @@ async fn a_night_restarted_after_a_crash_resumes_the_same_run_and_calls_the_mode
 /// computes a different run id, takes the "diverged" path and dreams again
 /// (second model call, second ledger row, second publish request). The same
 /// hole opens for a crash between the ledger commit and `runstate::complete`.
-/// Un-ignore when the run id (or the completion check) stops depending on the
-/// engine's own commit.
+/// A night is identified by its directory, not by the run id, so the engine's
+/// own commit cannot reopen it.
 #[tokio::test]
-#[ignore = "known gap: the engine's ledger commit changes the run id, so a finished night is re-run"]
 async fn a_finished_night_is_not_repeated_after_its_own_ledger_commit() {
     let rig = Rig::new(
         "e2e-once",
@@ -817,4 +816,48 @@ async fn a_finished_night_is_not_repeated_after_its_own_ledger_commit() {
         1,
         "no second publish"
     );
+}
+
+/// A crash after the persisted marker but before `complete` leaves the night
+/// `Persisted` with the ledger already committed (HEAD moved). The restart
+/// must not publish, call the model or add a row; it finalises the journal.
+#[tokio::test]
+async fn a_crash_between_persisted_and_complete_does_not_publish_twice() {
+    let rig = Rig::new(
+        "e2e-crash-window",
+        vec![accept_report(GOOD_PATCH), accept_report(GOOD_PATCH)],
+        0,
+    );
+    let first = rig.engine(Recording::passthrough());
+    assert_eq!(Rig::only_outcome(first.run_night(0, DATE).await), "ACCEPT");
+    let rows = rig.ledger_text().lines().count();
+
+    // Simulate the kill: roll the journal back to Persisted.
+    let mut st = rig.run_state();
+    st.phase = runstate::Phase::Persisted;
+    std::fs::write(
+        rig.night_dir().join("run-state.json"),
+        serde_json::to_vec_pretty(&st).unwrap(),
+    )
+    .unwrap();
+    let manifest_before = std::fs::read(rig.night_dir().join("manifest.json")).unwrap();
+
+    let again = rig.engine(Recording::passthrough());
+    let _ = again.run_night(0, DATE).await;
+
+    assert_eq!(rig.llm.calls(), 1, "no second model call");
+    assert_eq!(rig.ledger_text().lines().count(), rows, "no second row");
+    assert_eq!(
+        rig.forge.asked.lock().unwrap().len(),
+        1,
+        "no second publish"
+    );
+    assert_eq!(
+        std::fs::read(rig.night_dir().join("manifest.json")).unwrap(),
+        manifest_before,
+        "no new manifest frozen"
+    );
+    let done = rig.run_state();
+    assert_eq!(done.phase, runstate::Phase::Complete);
+    assert_eq!(done.verdict.as_deref(), Some("ACCEPT"));
 }

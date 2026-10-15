@@ -77,6 +77,15 @@ enum Cmd {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Reopen a finished night: archive its run-state and manifest as
+    /// `*-superseded-<timestamp>` (nothing is deleted) so the next start runs it
+    /// afresh. A finished night is otherwise never repeated.
+    ResetNight {
+        /// Repository name (the directory name, not the slug).
+        repo: String,
+        /// Night date, `YYYY-MM-DD`.
+        date: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -129,6 +138,19 @@ async fn run_command(cmd: &Cmd, workspace: &std::path::Path, artefact_dir: &std:
                 report.withdrawn,
                 report.skipped
             );
+        }
+        Cmd::ResetNight { repo, date } => {
+            let dir = artefact_dir.join(format!("{date}-{repo}"));
+            match dream_core::runstate::reset_night(&dir) {
+                Ok(()) => println!(
+                    "night {date}-{repo} reset; archived under {}",
+                    dir.display()
+                ),
+                Err(e) => {
+                    eprintln!("reset-night failed: {e}");
+                    std::process::exit(1);
+                }
+            }
         }
         Cmd::Digest { date, dry_run } => {
             let date = date.clone().unwrap_or_else(|| day_int_and_date().1);

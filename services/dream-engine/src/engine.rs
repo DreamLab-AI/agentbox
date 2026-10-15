@@ -589,6 +589,25 @@ impl Engine {
             });
         }
 
+        // 0b. A night is identified by its directory (repo, date, deep slot),
+        //     not by the run id: the engine's own ledger commit moves HEAD and
+        //     so the run id. A night already persisted or complete is over —
+        //     no model call, no new manifest, no commit, no forge request.
+        //     Only an operator `--reset-night` reopens it.
+        if let Some(prior) = runstate::finished_night(&night_dir, &repo_name, date, &night_id) {
+            info!(
+                run_id = %prior.run_id,
+                verdict = ?prior.verdict,
+                "night already complete — skipping"
+            );
+            return Ok(finished_result(
+                repo_name,
+                &prior,
+                night_dir.join("report.md"),
+                repo_path.join(&cfg.ledger_path),
+            ));
+        }
+
         // 1. Freeze the experiment manifest BEFORE anything else can move.
         //    Baseline revision + tree hash, evaluator identities and command
         //    digests, the model we intend to call, and the restart-safe run id.
@@ -787,21 +806,14 @@ impl Engine {
                 info!(
                     run_id = %prior.run_id,
                     verdict = ?prior.verdict,
-                    "run already complete — skipping rather than repeating it"
+                    "night already complete — skipping"
                 );
-                return Ok(CycleResult {
-                    repo: repo_name,
-                    verdict: prior
-                        .verdict
-                        .as_deref()
-                        .map(verdict::from_label)
-                        .unwrap_or(Verdict::Inconclusive),
-                    finding: "(already complete — restart-safe skip)".into(),
-                    witness_short: String::new(),
-                    report_path: night_dir.join("report.md"),
-                    ledger_path: repo_path.join(&cfg.ledger_path),
-                    stored_to_ruvector: false,
-                });
+                return Ok(finished_result(
+                    repo_name,
+                    &prior,
+                    night_dir.join("report.md"),
+                    repo_path.join(&cfg.ledger_path),
+                ));
             }
             Ok(runstate::Resume::Abandoned(prior)) => {
                 warn!(run_id = %prior.run_id, attempts = prior.attempts, "run out of attempts — abandoning");
@@ -1541,6 +1553,27 @@ impl Engine {
             j.completed(c, added.is_ok(), json!({})).await;
         }
 
+        // 11b'. Persistence begins HERE, before any externally visible effect
+        //      (forge request, ledger commit). A crash from now on can lose a
+        //      publish but can never repeat one: the next start sees a
+        //      Persisted night and skips it, whatever the moved HEAD says.
+        if let Err(e) = runstate::persist(&night_dir, &mut run, v.as_str()) {
+            warn!(error = %e, "run journal unwritable before persistence — refusing to publish unrecoverably");
+            return self
+                .persist_blocked_env(
+                    &cfg,
+                    &repo_name,
+                    &repo_path,
+                    &slot.deep,
+                    &night_id,
+                    date,
+                    "",
+                    &format!("run journal unwritable: {e}"),
+                    j,
+                )
+                .await;
+        }
+
         // 11c. Persist the candidate as a DRAFT PR (ADR-061) — only when the
         //      GATE accepted, never on the model's say-so. The branch already
         //      exists: it is the verified candidate tree. A vetoed candidate is
@@ -1666,7 +1699,6 @@ impl Engine {
             )
             .await?;
         info!(path = %ledger_path.display(), "ledger row appended");
-        let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::Persisted);
 
         // 13. RuVector store — fail-open: a memory failure never fails the night.
         let df = DreamFinding {
@@ -1838,6 +1870,28 @@ fn test_evidence(
             .map(|t| (id.name.clone(), t))
         })
         .collect()
+}
+
+/// The result reported for a night that had already finished.
+fn finished_result(
+    repo: String,
+    prior: &runstate::RunState,
+    report_path: PathBuf,
+    ledger_path: PathBuf,
+) -> CycleResult {
+    CycleResult {
+        repo,
+        verdict: prior
+            .verdict
+            .as_deref()
+            .map(verdict::from_label)
+            .unwrap_or(Verdict::Inconclusive),
+        finding: "(already complete — restart-safe skip)".into(),
+        witness_short: String::new(),
+        report_path,
+        ledger_path,
+        stored_to_ruvector: false,
+    }
 }
 
 #[cfg(test)]

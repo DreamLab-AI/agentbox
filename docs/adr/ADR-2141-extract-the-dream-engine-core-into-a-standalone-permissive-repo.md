@@ -36,6 +36,7 @@ repo: agentbox
 - `replay::capture` is used for every night that reaches the gate (`judge::judge`). `dream-core` now carries the self-referential flag and extra protected globs in `NightInputs::policy` (replay schema 2), so `replay verify` judges under the same protected set as the live night. Nights that end before the gate record nothing.
 - The adapter workarounds for the typed apply error and `MemoryRecord` fields are gone; the upstream types carry them.
 - Relay, digest and governance stay night-level drivers rather than `Notifier`s, as a deliberate boundary: they publish the night's state, and a per-notice forum post would be new behaviour. No `Notice` variant exists for them because nothing consumes one.
+- Restart safety (2026-10-15): a night is identified by its directory, not the run id, which hashes a HEAD the engine's own ledger commit moves. `dream-core` now treats a `Persisted`/`Complete` night as finished whatever the run id (upstream ADR-DE-007), the adapter skips it before freezing a manifest, `Persisted` is entered before the forge request and ledger commit (at-most-once publish), and `dream-engine reset-night <repo> <date>` archives the journal to reopen a night. Until the pin flips, the adapter builds against the path dependency carrying this fix.
 - Follow-on: flip the pins and refresh the lockfile, add the pin to `lib/dream-engine.nix`, then retire the `dream-engine` deep slot in `dream.config.json`.
 
 ## Verification

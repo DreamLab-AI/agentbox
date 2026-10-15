@@ -402,3 +402,7 @@ Then refresh `services/dream-engine/Cargo.lock`, and only then add the pin to
 `lib/dream-engine.nix` (it cannot build with path dependencies that point
 outside the repository; it is untouched here).
 
+## Restart-safety fix (2026-10-15)
+
+`run_id` includes the baseline HEAD, which the engine's own ledger commit moves, so a finished night (or one that crashed between the ledger commit and `complete`) was re-run on the next start. Fixed upstream in `dream-core::runstate` (night-level terminal rule, `persist`, `reset_night`; ADR-DE-007). Adapter: `engine.rs` checks `runstate::finished_night` before freezing a manifest and logs `night already complete — skipping`; `runstate::persist` runs before the forge request and ledger commit; `main.rs` gains `reset-night <repo> <date>`. The previously ignored `a_finished_night_is_not_repeated_after_its_own_ledger_commit` now runs, and `a_crash_between_persisted_and_complete_does_not_publish_twice` covers the crash window. Residual: a crash after `Persisted` but before the forge request loses that publish (never repeats it); the operator resets the night.
+
