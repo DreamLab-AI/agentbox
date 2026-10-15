@@ -4,6 +4,24 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Changed (2026-10-15 — Blender is sidecar-first; the in-container binary is no longer baked)
+
+- `[skills.spatial_and_3d] blender_local` (new, boolean, default `true` when absent; set `false` in
+  this manifest). `blender = true` still runs the `blender-mcp` proxy and ships the skill;
+  `blender_local = false` stops `pkgs.blender` being baked (`flake.nix` `spatialPackages`), and
+  `ENABLE_BLENDER_LOCAL` reports the result. Schema, `agentbox-manifest tui-read` / `tui-write` (and
+  their frozen goldens, each changed by exactly the one new line) and `tests/toolchains/blender-present.sh`
+  (skips when `blender_local` is false) are updated together. Revert: `blender_local = true`, rebuild.
+- `skills/blender/tools/blender-job.js` (new): headless Blender jobs inside the GPU sidecar
+  (`stage`, `submit`, `status`, `tail`, `wait`, `list`, `cancel`, `paths`) over the shared volume.
+  This container's `/home/devuser/gui-tools` is the sidecar's `/home/devuser/exchange` (one volume,
+  bidirectional, verified live). `tools/examples/gpu-smoke.py` rendered on three RTX 6000 Ada via
+  OptiX in 5 s. `blender-batch.sh` now exits 2 with a pointer when no local Blender exists.
+- `skills/blender/tools/blender-introspect.js` (new) and the documented operating rules; the Scenario
+  plugin evaluation lives in `skills/blender/references/scenario-plugin-evaluation.md`.
+- Docs: `docs/user/blender.md` and the skill describe the shared volume and that the repository is
+  not mounted in the sidecar (stage inputs first).
+
 ### Added (2026-10-12 — System One vendor slot, ADR-2139)
 
 - `[system_one]` (enabled, backend `subq`): the System One judge becomes a vendor slot. One
