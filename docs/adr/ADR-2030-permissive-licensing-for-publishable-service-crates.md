@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 58fce653822b4aa2c27c59c01f71a6d13a0e07b1
+verified_commit: 10ef2a180147eaf3a52114e42ebe4d81b8861d61
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -16,7 +16,11 @@ repo: agentbox
 
 # ADR-2030 — Publishable service crates are MIT OR Apache-2.0 inside the AGPL-3.0 repository
 
-## Re-verification — 2026-10-15
+## Re-verification — 2026-10-15 (ADR-2141)
+
+`docs/developer/licensing.md` and `services/LICENSING-NOTICE.md` gained the dream engine licence boundary. The gate and loop crates moved to a separate `MIT OR Apache-2.0` repository, and `services/dream-engine` stays here as the AGPL-3.0-only adapter that consumes them. This is consistent with the decision: no `services/` crate gained an AGPL dependency on a permissive crate, and the dependency runs one way, from the adapter to the permissive crates. `scripts/ci/check-crate-licensing.sh` passes (10 service directories carry the texts they declare). Existing status axes are unchanged.
+
+## Re-verification — 2026-10-15 (dependency refresh)
 
 The dream-engine dependency and lock refresh to nostr-bbs-core beta.16 and solid-pod-rs alpha.13 do not change its AGPL declaration. The pod bridge remains AGPL. The crate-licensing gate passes for all ten services; no AGPL dependency was added to a permissive crate.
 Source anchor: `df584b3fd`. Existing status axes and deferred work remain unchanged.
