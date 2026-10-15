@@ -5,7 +5,7 @@ version: 0.6.7
 status: draft-for-ratification
 verified_commit: 
 changelog:
-  - "0.6.7 (2026-10-15): ADR-2141 (accepted, partially implemented, staged) - the dream engine consumes the extracted permissive dream-core and dream-gate crates; services/dream-engine stays the AGPL adapter. A protected-path patch is now a REJECT before it is applied, config drift under a night is BLOCKED-ENV, the dry streak counts REJECT (it used to reset), and a repeating harness failure raises HarnessStuck."
+  - "0.6.7 (2026-10-15): ADR-2141 (accepted, partially implemented, staged) - the dream engine consumes the extracted permissive dream-core and dream-gate crates; services/dream-engine stays the AGPL adapter (pinned by path during development; flips to a git rev on push). A protected-path patch is now a REJECT before it is applied, config drift under a night is BLOCKED-ENV, the dry streak counts REJECT (it used to reset), and a repeating harness failure raises HarnessStuck."
   - "0.6.6 (2026-10-12): ADR-2139 (accepted, implemented, staged for rebuild) — the System One judge becomes a vendor slot: one loopback proxy ([system_one], system-one-proxy) fronts the router, factrail and the advisor checkpoints and forwards to the backend named in the manifest (typesafe, subq, laya, kev). SubQ Snap measured at parity with Jev and selected as the running backend. The proxy owns the vendor keys; a key goes only to its paired host. The Invariants compliance surface gains the locality-class rule: a cloud↔local change of backend is boot-class because backendLocal is projected at boot."
   - "0.6.5 (2026-10-09): ADR-2135 (accepted, implemented, staged) — jev-checkpoints: Jev times the ADR-2134 Opus advisor with done, repeat, plan and shadow-only spawn checkpoints; egress widens ADR-2090 as ADR-2121 did with the same email fence. Recorded under Jev compaction; the Invariants compliance surface gains the spawn-shadow and fence rules."
   - "0.6.4 (2026-10-06): ADR-2131 (accepted, implemented, inactive) — scheduled diagram review: GLM triage and review on manifest schedules and a Gemini audit behind an interval, changed-topic or high-severity, and monthly USD gate, all recorded in an append-only per-repo ledger. The Gemini audit stays a transport outside [model_routing]. The Invariants compliance surface is unchanged."
@@ -249,9 +249,10 @@ guarded the same way; a post-hook can still rewrite what an earlier guard approv
 
 ### Dream-machine programme (legacy ADR-052, ADR-055–072) — mostly paper
 
-The dream-engine itself is **real and shipped**: a Rust crate at `services/dream-engine/`
-with a built release binary (`services/dream-engine/target/release/dream-engine`,
-10.3 MB, 2026-08-30), driven by `dream.config.json`, gated `[dream_machine] enabled = true`,
+The dream-engine itself is **real and shipped**: a Rust adapter crate at `services/dream-engine/`
+(AGPL-3.0-only) over the permissive `dream-gate` and `dream-core` crates of the standalone
+`DreamLab-AI/dream-engine` repository (ADR-2141; pinned by path during development, flips to a
+git rev on push; not yet published), driven by `dream.config.json`, gated `[dream_machine] enabled = true`,
 process owner supervisord, dispatched to the connected node (`the connected node`). **The default reasoning
 provider is Z.AI, not the Loom** — `[dream_machine].llm_provider = "zai"` with
 `zai_model = "glm-5.3"`, and the generated `[program:dream-engine]` block defaults
@@ -387,7 +388,9 @@ above, enabled but explicitly-invoke-only.
   token does not isolate same-uid peers (documented residual limit).
 - **Dream cycles are evidence-gated and human-merge-gated** — a self-modifying hypothesis
   (a change to the dream-engine that dreams itself) must never bypass the human merge gate
-  (`dream.config.json` extraDisciplines / `self-referential`).
+  (`dream.config.json` extraDisciplines / `self-referential`). Since ADR-2141 this is also
+  enforced in code: when the target is the engine's own source the night's protected-path
+  policy adds `services/dream-engine`, and a patch touching a protected path is a REJECT.
 - **Darwin evaluators must produce surface-dependent output** — any `@metaharness/darwin`
   entrypoint runs `--sandbox mock`/`agent`, never the no-op `real` default.
 - **Governed shared-ontology promotion is required** — `direct_axiom_load = false`

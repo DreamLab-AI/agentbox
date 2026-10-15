@@ -15,7 +15,9 @@ Three exceptions, for two different reasons. A crate that links an AGPL-licensed
 library cannot grant permissive terms and declares `AGPL-3.0-only` in its own
 manifest (`nostr-pod-bridge`, which links `solid-pod-rs-nostr`; `dream-engine`,
 which links `nostr-bbs-core` for Nostr signing and the forum governance wire
-types — operator decision 2026-09-25, ADR-2115). A crate that is
+types — operator decision 2026-09-25, ADR-2115; since ADR-2141 it is only the
+adapter, and the gate and loop crates it consumes are a separate permissive
+repository, `DreamLab-AI/dream-engine`). A crate that is
 deliberately not offered for reuse declares `AGPL-3.0-only` with
 `publish = false` (`secret-backup`, which handles operator secret material and is
 scoped to this container rather than to crates.io — its dependency graph is

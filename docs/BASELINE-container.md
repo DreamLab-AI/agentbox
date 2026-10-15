@@ -77,7 +77,7 @@ Supervisord runs as PID 1 root; every long-running program drops to `user=devuse
 | `opf-router` | privacy-filter redaction sidecar (legacy ADR-008), gate `[privacy_filter]` | `127.0.0.1:9092` |
 | `ruvector-aggregate-sweep` / `ruvector-pattern-distill` | memory sweep + distil loops | — |
 | `ontology-condense-scheduler` | ontology condensation | — |
-| `dream-engine` | ADR-052 nightly repo evolution (boot-class gate) | — |
+| `dream-engine` | ADR-052 nightly repo evolution (boot-class gate); AGPL-3.0 adapter over the permissive dream-core and dream-gate crates (ADR-2141) | — |
 | `jupyter-lab` | notebook surface (gated) | `127.0.0.1:8888` |
 | `code-server` | web VS Code (gated) | `0.0.0.0:8080` |
 | `comfyui-builtin` | image workflows (gated) | `127.0.0.1:8188` |

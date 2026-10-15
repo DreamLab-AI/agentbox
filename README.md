@@ -136,7 +136,7 @@ already exist. The producer runs the image's read-only bake of the pinned upstre
 
 ---
 
-**Self-improvement.** The fleet dreams: a container-local orchestrator runs a nightly [dream cycle](https://github.com/DreamLab-AI/dream-engine) per repository — evidence-gated improvements proposed as draft PRs a human merges, witnessed and ledgered. It surfaces read-only on the operator cockpit ([ADR-055](docs/archive/adr/ADR-055-dream-cockpit-panel.md), `:8444` → `/dream.html`). Reproduce the run, audit the evidence, control the merge — *evaluation is not promotion*.
+**Self-improvement.** The fleet dreams: a container-local orchestrator runs a nightly [dream cycle](docs/developer/dream-engine.md) per repository (gate and loop core: [DreamLab-AI/dream-engine](https://github.com/DreamLab-AI/dream-engine), permissive; the estate adapter stays here) — evidence-gated improvements proposed as draft PRs a human merges, witnessed and ledgered. It surfaces read-only on the operator cockpit ([ADR-055](docs/archive/adr/ADR-055-dream-cockpit-panel.md), `:8444` → `/dream.html`). Reproduce the run, audit the evidence, control the merge — *evaluation is not promotion*.
 
 ## Architecture
 

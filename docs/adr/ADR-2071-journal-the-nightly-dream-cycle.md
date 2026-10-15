@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 58fce653822b4aa2c27c59c01f71a6d13a0e07b1
+verified_commit: 50611f4c8a37fa044c786671bb408e2964e53db9
 verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/records.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
@@ -234,3 +234,5 @@ Not checked, and notes: engine.rs hunks are additive (shared-remote alert, CaseP
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
 
 **Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: the journalled side effects (turn, annexe, llm, git, ledger, inbox, sweep, ruvector, notices) are still opened and closed around each effect in `engine.rs`, `candidate_flow.rs` and `records.rs`; the sweep and ledger mechanism now lives in `dream-core` (`sweep`, `ledger`). `cargo test` in `services/dream-engine` passes.
+
+Re-read at `50611f4c8a37` after the adapter gained `judge.rs`: `engine.rs` now judges every night that reaches the gate through `replay::capture` and journals a failed capture as a `replay.capture` effect; no journalled effect was removed or left unpaired.

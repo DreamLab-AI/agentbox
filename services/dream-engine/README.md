@@ -121,6 +121,8 @@ cannot grant permissive terms and does not attempt to. The operator chose this o
 copy the sibling crates' licensing boilerplate into this directory, and do not
 publish this crate under the permissive assumption.
 
+The gate and the loop mechanism this crate consumes (`dream-gate`, `dream-core`, and through them `pairwise-gate` and `failure-fingerprint`) are a different matter: they are MIT OR Apache-2.0 and live in the standalone [`DreamLab-AI/dream-engine`](https://github.com/DreamLab-AI/dream-engine) repository (ADR-2141). They are pinned by path during development and flip to a git rev on push; they are not yet published. The dependency runs one way, and `zone_crypto` is never published.
+
 The full licence text is in [LICENSE](LICENSE). See
 [ADR-2030](https://github.com/DreamLab-AI/agentbox/blob/main/docs/adr/ADR-2030-permissive-licensing-for-publishable-service-crates.md)
 and [services/LICENSING-NOTICE.md](https://github.com/DreamLab-AI/agentbox/blob/main/services/LICENSING-NOTICE.md).
