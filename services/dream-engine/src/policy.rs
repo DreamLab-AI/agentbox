@@ -10,6 +10,7 @@
 
 use std::path::Path;
 
+use dream_core::replay::{night_policy, PolicyExtras};
 use dream_gate::guard::{PolicyError, ProtectedPolicy};
 use dream_gate::manifest::ExperimentManifest;
 
@@ -38,26 +39,40 @@ pub fn is_self_referential(repo: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Build the night's policy from the frozen manifest and the exact config
-/// bytes it digested, adding the self-referential protections when the target
-/// is this engine's own source.
+/// What this engine adds to the frozen config's protected set for `repo`: the
+/// self-referential flag and, when the target carries this engine's own
+/// source, that source and its build recipe.
 ///
 /// `ProtectedPolicy::with_self_referential` protects the gate crates by their
 /// path in the standalone repository; in the agentbox checkout the engine
-/// lives at `services/dream-engine`, which is protected here as well.
+/// lives at `services/dream-engine`, which is protected here as well. The same
+/// value is stored with the night so a replay judges under the same set.
+pub fn extras_for(repo: &Path) -> PolicyExtras {
+    if is_self_referential(repo) {
+        PolicyExtras {
+            self_referential: true,
+            extra_globs: vec![OWN_SOURCE_DIR.into(), OWN_BUILD_RECIPE.into()],
+        }
+    } else {
+        PolicyExtras::default()
+    }
+}
+
+/// Build the night's policy from the frozen manifest and the exact config
+/// bytes it digested, plus [`extras_for`] the target repository. This goes
+/// through `dream_core::replay::night_policy`, the one builder replay also
+/// uses.
 pub fn for_night(
     manifest: &ExperimentManifest,
     config_bytes: &[u8],
     repo: &Path,
 ) -> Result<ProtectedPolicy, PolicyError> {
-    let policy = ProtectedPolicy::for_manifest(manifest, config_bytes, DEFAULT_LEDGER_PATH)?;
-    Ok(if is_self_referential(repo) {
-        policy
-            .with_self_referential(true)
-            .with_globs([OWN_SOURCE_DIR, OWN_BUILD_RECIPE])
-    } else {
-        policy
-    })
+    night_policy(
+        manifest,
+        config_bytes,
+        DEFAULT_LEDGER_PATH,
+        &extras_for(repo),
+    )
 }
 
 #[cfg(test)]

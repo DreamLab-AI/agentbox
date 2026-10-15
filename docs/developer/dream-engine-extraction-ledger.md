@@ -58,23 +58,36 @@ pinned by `prompt::tests::the_prompt_matches_the_pre_extraction_golden`.
 |---|---|---|
 | `Llm` | `llm::LlmAdapter` (Z.AI, Loom) | `max_tokens` honoured, `temperature` ignored (providers pin their own) |
 | `EvaluatorRunner` | `runner::SshRunner` | keeps the `timeout` + `bash -o pipefail` wrapper |
-| `MemorySink` | `ruvector::RuVectorSink` | direct SQL stays a documented exception: `bge-small-en-v1.5`, `check_dims` asserts 384 before any SQL. `MemoryRecord` has no `deep`/`date`/`witness`/`source`; `kind` carries the deep and `body` a JSON payload with the rest, so the stored row is unchanged |
+| `MemorySink` | `ruvector::RuVectorSink` | direct SQL stays a documented exception: `bge-small-en-v1.5`, `check_dims` asserts 384 before any SQL. `MemoryRecord` carries `deep`, `night_date`, `witness` and `source` as typed fields; the stored row is unchanged (golden test) |
 | `Notifier` | `notify::{InboxNotifier, JournalNotifier, Notifiers}` | `LostPr` and `HarnessStuck` become inbox alerts; every notice is journalled. Relay, digest and governance are **not** notifiers: they publish the whole night's state, not one `Notice`, and a per-notice forum post would be new behaviour |
 | `Forge` | `GhForge` from dream-core | unchanged |
 
-`replay::capture` is not adopted. `NightInputs` builds its policy from
-`ProtectedPolicy::for_manifest` alone, so it cannot carry the self-referential
-flag or the `services/dream-engine` protection that `policy::for_night` adds;
-judging with it would silently weaken the policy on exactly the nights it
-matters. The engine judges with `gate::decide` and a `GateContext` built from
-the same policy value the candidate guard used.
+`replay::capture` **is** adopted. `dream_core::replay::NightInputs` carries
+`PolicyExtras` (the self-referential flag and extra protected globs); `policy::for_night`
+builds the night's policy through `replay::night_policy` from the same
+`PolicyExtras` (`policy::extras_for`) that is stored with the night, so the
+live guard, the gate and a later `replay verify` use one protected set. The
+engine judges through `judge::judge` (capture, falling back to `replay::decide`
+on a storage error, never to a different judgement), once for every night that
+reaches the gate, and records under the night's artefact directory:
+`replay.json` (schema 2), `decision.json`, `candidate.patch` and the files
+`dream_core::replay` documents. The patch recorded is the one the final state
+came from (the corrected diff after an apply-repair). Nights that end before the
+gate (baseline unusable, policy unbuildable) record nothing, because there is no
+gate decision to replay. Replay schema 1 records are refused with an error saying
+a recapture is needed.
 
-### API mismatches (reported upstream, not forked back into the adapter)
+### API mismatches
 
-- `replay::NightInputs` cannot carry the self-referential flag or extra protected globs.
-- `candidate::Attempt` loses the typed `PersistError`; apply-repair recognises git's refusal by the `patch did not apply: ` prefix of `DidNotApply`.
-- `MemoryRecord` has no `deep`, `date`, `witness` or `source` (encoded in `kind` and a JSON `body`).
-- No `Notice` variant fits relay, digest or governance.
+Resolved upstream (dream-core, additively) and the adapter workarounds deleted:
+
+- `replay::NightInputs` could not carry the self-referential flag or extra globs → `PolicyExtras` + `replay::night_policy`, replay schema 2.
+- `candidate::Attempt` lost the typed `PersistError` → `Attempt::error: Option<AttemptError>`; the `patch did not apply: ` prefix is now only used to *format* the combined repair-failure text, never to decide anything.
+- `MemoryRecord` had no `deep`/`date`/`witness`/`source` → typed optional fields (`deep`, `night_date`, `witness`, `source`); the RuVector sink no longer smuggles them through `kind` and a JSON `body`. The stored row is pinned by a golden test (`ruvector::tests::the_stored_row_matches_what_the_old_engine_wrote`): the same `jsonb` value as the pre-extraction `store_finding`, whose row construction is textually unchanged. Postgres normalises `jsonb`, so this is "same value", not "same text".
+
+Still open, by design:
+
+- **No `Notice` variant for relay, digest or governance.** That is a deliberate boundary, not a gap: those publish the whole night's state, not one event, and stay night-level drivers in this crate. No `Notice::Verdict`-style variant was added because nothing duplicates `NightSummary::render` here.
 - `manifest::baseline_of` was not extracted (it shells out to git); it lives in `baseline.rs`.
 - `DreamConfig` leaves `ledgerPath`, `branchPrefix` and `adrConvention` empty; `config::apply_estate_defaults` fills them.
 
@@ -84,8 +97,12 @@ the same policy value the candidate guard used.
 through `dream_core::candidate::run`, which runs `guard::check` before any git
 command, build or evaluator; the apply-repair pass re-enters `run`, so a
 corrected diff is guarded again. The adapter contains no call to `prepare`,
-`build_branch_worktree` or `git apply`. `GateContext::new` is called once, in
-`engine.rs`, with the night's policy; `policy::for_night` refuses config bytes
+`build_branch_worktree` or `git apply`, and no direct `gate::decide` or
+`GateContext` (the test `judge::tests::the_adapter_has_one_way_to_judge_and_no_way_around_the_guard`
+fails the build if one appears). `GateContext` has public fields upstream, so a
+struct literal is possible in principle; the grep test is what keeps this
+crate to the one judging path, `judge::judge` → `replay::capture` → `gate::decide`
+with the night's policy; `policy::for_night` refuses config bytes
 the manifest did not freeze and the night is BLOCKED-ENV, never run with a
 weaker policy. The self-referential flag, and the `services/dream-engine`
 glob, are set when `services/dream-engine/Cargo.toml` names `dream-engine` or

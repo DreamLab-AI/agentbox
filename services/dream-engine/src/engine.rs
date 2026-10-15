@@ -12,12 +12,13 @@
 use dream_core::candidate;
 use dream_core::context;
 use dream_core::ledger::{self, LedgerRow};
+use dream_core::replay;
 use dream_core::roster;
 use dream_core::runstate;
 use dream_core::seams::{DraftPr, Forge, GhForge, Llm, LlmRequest, MemorySink, Notice, Notifier};
 use dream_core::source;
 use dream_core::{persist, readiness, streak};
-use dream_gate::gate::{self, CandidateState, GateContext};
+use dream_gate::gate::{self, CandidateState};
 use dream_gate::manifest::{self, ModelIdentity};
 use dream_gate::receipts::{self, Phase};
 use dream_gate::verdict::{self, Verdict};
@@ -31,13 +32,14 @@ use tracing::{info, warn};
 
 use crate::baseline;
 use crate::candidate_flow::{self, Annexe, Flow};
-use crate::config::{self, RuntimeConfig};
+use crate::config::{self, RuntimeConfig, DEFAULT_LEDGER_PATH};
 use crate::digest;
 use crate::dispatch;
 use crate::estate;
 use crate::governance;
 use crate::inbox;
 use crate::journal::{self, Journal, JournalStats};
+use crate::judge;
 use crate::llm::{LlmAdapter, LlmConfig};
 use crate::notify::{self, InboxNotifier, JournalNotifier, Notifiers};
 use crate::policy;
@@ -1277,7 +1279,11 @@ impl Engine {
             prepared: None,
             receipts: Vec::new(),
             build: None,
+            error: None,
         };
+        // The patch text the candidate state came from (the corrected diff
+        // after an apply-repair), recorded with the night for replay.
+        let mut judged_patch: Option<String> = None;
 
         // 8a. Repair pass (ADR-2114): an ACCEPT with no diff gets exactly one
         //     follow-up call asking for the diff alone. The report itself is
@@ -1344,7 +1350,9 @@ impl Engine {
                         llm: &llm,
                         fallback,
                     };
-                    attempt = candidate_flow::attempt(&flow, &patch, j).await;
+                    let (a, judged) = candidate_flow::attempt_judged(&flow, &patch, j).await;
+                    attempt = a;
+                    judged_patch = Some(judged);
                     match &attempt.state {
                         CandidateState::Applied { tree_hash, .. } => {
                             info!(tree = %tree_hash, branch = %branch, "candidate tree built in isolation")
@@ -1372,25 +1380,59 @@ impl Engine {
         //    this night's policy (the one the candidate guard used) and the
         //    digest of the config the candidate tree was evaluated with: a
         //    config that drifted under the night is BLOCKED-ENV.
-        let mut ctx = GateContext::new(&policy);
-        if let Some(d) = attempt
+        let candidate_config_digest = attempt
             .prepared
             .as_ref()
-            .and_then(candidate_flow::tree_config_digest)
-        {
-            ctx = ctx.with_config_digest(d);
-        }
+            .and_then(candidate_flow::tree_config_digest);
         let cand_work = format!("{}/candidate/{}", remote_dir, repo_subpath);
-        for (name, t) in test_evidence(
+        let tests: std::collections::BTreeMap<_, _> = test_evidence(
             &required,
             &baseline_receipts,
             &candidate_receipts,
             &work_dir,
             &cand_work,
-        ) {
-            ctx = ctx.with_tests(name, t);
-        }
-        let decision = gate::decide(&frozen, &strict, &attempt.state, &candidate_receipts, &ctx);
+        )
+        .into_iter()
+        .collect();
+        // Every night that reaches the gate is judged AND recorded by
+        // `replay::capture` (through `judge::judge`), with the policy
+        // additions it was judged under, so `replay verify` reproduces the
+        // verdict from the artefact directory.
+        let inputs = replay::NightInputs {
+            manifest: frozen.clone(),
+            report: report.clone(),
+            candidate: attempt.state.clone(),
+            extracted_patch: judged_patch,
+            baseline_receipts: baseline_receipts.clone(),
+            candidate_receipts: candidate_receipts.clone(),
+            config_bytes: config_bytes.clone(),
+            fallback_ledger_path: DEFAULT_LEDGER_PATH.into(),
+            candidate_config_digest,
+            tests,
+            options: Default::default(),
+            policy: policy::extras_for(&repo_path),
+        };
+        let decision = match judge::judge(&night_dir, &inputs) {
+            Ok(d) => d,
+            Err(e) => {
+                // Unreachable in practice: the same bytes built `policy` above.
+                warn!(repo = %repo_name, error = %e, "gate inputs could not be judged — BLOCKED-ENV");
+                let _ = runstate::fail(&night_dir, &mut run, &e.to_string());
+                return self
+                    .persist_blocked_env(
+                        &cfg,
+                        &repo_name,
+                        &repo_path,
+                        &slot.deep,
+                        &night_id,
+                        date,
+                        "",
+                        &format!("the gate could not judge the night: {e}"),
+                        j,
+                    )
+                    .await;
+            }
+        };
         let prepared = attempt.prepared.take();
         let v = decision.verdict_enum();
         if !decision.vetoes.is_empty() {

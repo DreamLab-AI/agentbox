@@ -33,8 +33,9 @@ repo: agentbox
 ## Consequences
 - The gate and the loop can be reviewed, versioned and reused without the estate, and a change to either is a change to a pinned revision here, not an edit to an in-tree copy.
 - `dream-gate` validates `dream.config.json` more strictly than the old loader. `ontomark/dream.config.json` (`"adrConvention": "ADR-OM-NNN"`) no longer loads and must be corrected.
-- `replay::capture` is not used: its inputs cannot carry the self-referential flag, so judging with it would weaken the policy on the nights that matter most. Reported upstream as a gap in `NightInputs`.
-- Relay, digest and governance stay night-level drivers rather than `Notifier`s: they publish the night's state, and a per-notice forum post would be new behaviour.
+- `replay::capture` is used for every night that reaches the gate (`judge::judge`). `dream-core` now carries the self-referential flag and extra protected globs in `NightInputs::policy` (replay schema 2), so `replay verify` judges under the same protected set as the live night. Nights that end before the gate record nothing.
+- The adapter workarounds for the typed apply error and `MemoryRecord` fields are gone; the upstream types carry them.
+- Relay, digest and governance stay night-level drivers rather than `Notifier`s, as a deliberate boundary: they publish the night's state, and a per-notice forum post would be new behaviour. No `Notice` variant exists for them because nothing consumes one.
 - Follow-on: flip the pins and refresh the lockfile, add the pin to `lib/dream-engine.nix`, then retire the `dream-engine` deep slot in `dream.config.json`.
 
 ## Verification

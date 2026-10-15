@@ -78,6 +78,51 @@ fn importance_for(verdict: &str) -> Option<f64> {
     }
 }
 
+/// `source_type` column value for every row this engine writes.
+const SOURCE_TYPE: &str = "dream-cycle";
+
+/// Everything a stored finding contributes to `memory_entries`, besides the
+/// embedding. Pure, so the stored shape is testable without a database.
+#[derive(Debug, Clone, PartialEq)]
+struct Row {
+    /// Primary key and `key` column.
+    key: String,
+    /// Text that is embedded.
+    embed_input: String,
+    /// The `value` jsonb.
+    value: serde_json::Value,
+    /// The `metadata` jsonb.
+    metadata: serde_json::Value,
+    /// The `source_type` column.
+    source_type: &'static str,
+}
+
+/// Build the row for `f`. The `value` and `metadata` shapes are the ones the
+/// engine wrote before the dream-core extraction.
+fn row_for(f: &DreamFinding, importance: f64) -> Row {
+    let verdict_upper = f.verdict.to_uppercase();
+    Row {
+        key: format!("dream-{}", f.night_id),
+        embed_input: format!("{}: {}", f.deep, f.finding),
+        value: serde_json::json!({
+            "repo": f.repo,
+            "date": f.date,
+            "deep": f.deep,
+            "finding": f.finding,
+            "verdict": f.verdict,
+            "witness": f.witness,
+            "source": f.source,
+        }),
+        metadata: serde_json::json!({
+            "importance": importance,
+            "tags": ["dream-cycle", f.deep, verdict_upper.to_lowercase()],
+            "memory_type": "semantic",
+            "source": f.source,
+        }),
+        source_type: SOURCE_TYPE,
+    }
+}
+
 /// Format an embedding vector as a ruvector literal: "[0.123,0.456,...]".
 fn format_vector(embedding: &[f32]) -> String {
     let mut out = String::with_capacity(embedding.len() * 8 + 2);
@@ -194,7 +239,7 @@ pub async fn store_finding(cfg: &RuVectorConfig, f: &DreamFinding) -> Result<boo
     };
 
     // 2. Embedding from xinference, validated to exactly 384 floats.
-    let embed_input = format!("{}: {}", f.deep, f.finding);
+    let embed_input = row_for(f, importance).embed_input;
     let embedding = fetch_embedding(cfg, &embed_input).await?;
     check_dims(&embedding)?;
     let embedding_literal = format_vector(&embedding);
@@ -211,25 +256,12 @@ pub async fn store_finding(cfg: &RuVectorConfig, f: &DreamFinding) -> Result<boo
     let project_id = ensure_project(&pool).await?;
 
     // 5. Build key / value / metadata.
-    let key = format!("dream-{}", f.night_id);
-    let verdict_upper = f.verdict.to_uppercase();
-
-    let value = serde_json::json!({
-        "repo": f.repo,
-        "date": f.date,
-        "deep": f.deep,
-        "finding": f.finding,
-        "verdict": f.verdict,
-        "witness": f.witness,
-        "source": f.source,
-    });
-
-    let metadata = serde_json::json!({
-        "importance": importance,
-        "tags": ["dream-cycle", f.deep, verdict_upper.to_lowercase()],
-        "memory_type": "semantic",
-        "source": f.source,
-    });
+    let Row {
+        key,
+        value,
+        metadata,
+        ..
+    } = row_for(f, importance);
 
     // 6. Upsert on id. Runtime queries only — no DATABASE_URL at build time.
     sqlx::query(
@@ -251,7 +283,7 @@ pub async fn store_finding(cfg: &RuVectorConfig, f: &DreamFinding) -> Result<boo
     .bind(&embedding_literal)
     .bind(&embedding_json)
     .bind(&metadata)
-    .bind("dream-cycle")
+    .bind(SOURCE_TYPE)
     .execute(&pool)
     .await?;
 
@@ -272,49 +304,40 @@ pub async fn store_finding(cfg: &RuVectorConfig, f: &DreamFinding) -> Result<boo
 
 use dream_core::seams::{BoxFut, MemoryRecord, MemorySink, SinkError};
 
-/// `MemoryRecord.kind` carries the deep slot (it is a host-chosen label), and
-/// `MemoryRecord.body` this JSON payload, so the row stored in RuVector keeps
-/// every field it had before the extraction (`witness`, `source`, `date`) even
-/// though the seam's record has no slot for them.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-struct Payload {
-    finding: String,
-    witness: String,
-    source: String,
-    date: String,
-}
-
-/// The seam record for a finding.
+/// The seam record for a finding: `body` is the finding text and the deep,
+/// date, witness and source ride in the record's typed fields.
 pub fn record_for(f: &DreamFinding) -> MemoryRecord {
     MemoryRecord {
         key: format!("dream-{}", f.night_id),
-        kind: f.deep.clone(),
+        kind: "finding".into(),
         repo: f.repo.clone(),
         night_id: f.night_id.clone(),
         verdict: f.verdict.clone(),
-        body: serde_json::to_string(&Payload {
-            finding: f.finding.clone(),
-            witness: f.witness.clone(),
-            source: f.source.clone(),
-            date: f.date.clone(),
-        })
-        .unwrap_or_default(),
+        body: f.finding.clone(),
+        deep: Some(f.deep.clone()),
+        night_date: Some(f.date.clone()),
+        witness: Some(f.witness.clone()),
+        source: Some(f.source.clone()),
     }
 }
 
-/// Invert [`record_for`].
+/// Invert [`record_for`]. A record without one of the typed fields is
+/// refused: the stored row would otherwise carry an empty string where a
+/// real value belongs.
 fn finding_from(rec: &MemoryRecord) -> Result<DreamFinding, SinkError> {
-    let p: Payload = serde_json::from_str(&rec.body)
-        .map_err(|e| SinkError(format!("unreadable dream payload: {e}")))?;
+    let need = |v: &Option<String>, name: &str| {
+        v.clone()
+            .ok_or_else(|| SinkError(format!("memory record has no {name}")))
+    };
     Ok(DreamFinding {
         night_id: rec.night_id.clone(),
         repo: rec.repo.clone(),
-        date: p.date,
-        deep: rec.kind.clone(),
-        finding: p.finding,
+        date: need(&rec.night_date, "night_date")?,
+        deep: need(&rec.deep, "deep")?,
+        finding: rec.body.clone(),
         verdict: rec.verdict.clone(),
-        witness: p.witness,
-        source: p.source,
+        witness: need(&rec.witness, "witness")?,
+        source: need(&rec.source, "source")?,
     })
 }
 
@@ -418,7 +441,7 @@ mod tests {
         let f = finding("ACCEPT");
         let rec = record_for(&f);
         assert_eq!(rec.key, "dream-2026-10-01-agentbox");
-        assert_eq!(rec.kind, "hooks");
+        assert_eq!(rec.kind, "finding");
         let back = finding_from(&rec).unwrap();
         assert_eq!(back.night_id, f.night_id);
         assert_eq!(back.repo, f.repo);
@@ -431,10 +454,66 @@ mod tests {
     }
 
     #[test]
-    fn a_corrupt_payload_is_a_sink_error_not_a_panic() {
-        let mut rec = record_for(&finding("REJECT"));
-        rec.body = "not json".into();
-        assert!(finding_from(&rec).is_err());
+    fn the_record_uses_typed_fields_not_a_json_body() {
+        let f = finding("ACCEPT");
+        let rec = record_for(&f);
+        assert_eq!(rec.body, f.finding, "body is the finding text itself");
+        assert_eq!(rec.deep.as_deref(), Some("hooks"));
+        assert_eq!(rec.night_date.as_deref(), Some("2026-10-01"));
+        assert_eq!(rec.witness.as_deref(), Some("abcd1234"));
+        assert_eq!(rec.source.as_deref(), Some("hp-annexe-glm-5.3"));
+    }
+
+    #[test]
+    fn a_record_missing_a_typed_field_is_a_sink_error_not_an_empty_string() {
+        for strip in [
+            |r: &mut MemoryRecord| r.deep = None,
+            |r: &mut MemoryRecord| r.night_date = None,
+            |r: &mut MemoryRecord| r.witness = None,
+            |r: &mut MemoryRecord| r.source = None,
+        ] {
+            let mut rec = record_for(&finding("REJECT"));
+            strip(&mut rec);
+            assert!(finding_from(&rec).is_err());
+        }
+    }
+
+    /// The row written to `memory_entries`, pinned against the shape the
+    /// pre-extraction engine wrote. The expected values are typed out from
+    /// that engine's `store_finding` (commit 071f4f307^), not produced by
+    /// this code. Postgres stores `jsonb`, which normalises key order and
+    /// whitespace, so the claim is "same jsonb value", not "same text".
+    #[test]
+    fn the_stored_row_matches_what_the_old_engine_wrote() {
+        let row = row_for(&finding("REJECT"), 0.7);
+        assert_eq!(row.key, "dream-2026-10-01-agentbox");
+        assert_eq!(row.embed_input, "hooks: a concrete result");
+        assert_eq!(row.source_type, "dream-cycle");
+        assert_eq!(
+            row.value,
+            serde_json::json!({
+                "repo": "agentbox",
+                "date": "2026-10-01",
+                "deep": "hooks",
+                "finding": "a concrete result",
+                "verdict": "REJECT",
+                "witness": "abcd1234",
+                "source": "hp-annexe-glm-5.3",
+            })
+        );
+        assert_eq!(
+            row.metadata,
+            serde_json::json!({
+                "importance": 0.7,
+                "tags": ["dream-cycle", "hooks", "reject"],
+                "memory_type": "semantic",
+                "source": "hp-annexe-glm-5.3",
+            })
+        );
+        // Through the seam and back, the row is the same.
+        let via_seam = row_for(&finding_from(&record_for(&finding("REJECT"))).unwrap(), 0.7);
+        assert_eq!(via_seam.value, row.value);
+        assert_eq!(via_seam.metadata, row.metadata);
     }
 
     #[test]

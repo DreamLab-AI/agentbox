@@ -39,6 +39,7 @@ pub mod estate;
 pub mod governance;
 pub mod inbox;
 pub mod journal;
+pub mod judge;
 pub mod llm;
 pub mod notify;
 pub mod policy;

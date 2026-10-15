@@ -11,7 +11,7 @@
 use std::cell::RefCell;
 use std::path::Path;
 
-use dream_core::candidate::{self, Attempt, AttemptInput, PreparedCandidate};
+use dream_core::candidate::{self, Attempt, AttemptError, AttemptInput, PreparedCandidate};
 use dream_core::runner::EvaluatorRunner;
 use dream_core::seams::Llm;
 use dream_core::source::{self, RepairOutcome, RepairRecord};
@@ -27,10 +27,10 @@ use crate::dispatch;
 use crate::journal::Journal;
 use crate::present::receipt_outcomes;
 
-/// Prefix of `CandidateState::DidNotApply` when git refused the diff itself
-/// (as opposed to the annexe failing to take the tree). `dream-core` carries
-/// the failure as text, so this is the one place the engine tells the two
-/// apart.
+/// Text `dream-core` puts in front of git's refusal in
+/// `CandidateState::DidNotApply`. Used only to *format* the combined detail
+/// of a failed repair pass; whether git refused the diff is decided by the
+/// typed [`AttemptError`], never by this text.
 const APPLY_FAILED: &str = "patch did not apply: ";
 
 /// Where the candidate tree is evaluated: the connected node annexe.
@@ -168,15 +168,19 @@ async fn run_once(flow: &Flow<'_>, patch: &str, op: &str, j: &Journal) -> Attemp
 /// `apply-repair.json`, which a restarted night reuses instead of asking
 /// again (only for the exact patch it repaired).
 pub async fn attempt(flow: &Flow<'_>, patch: &str, j: &Journal) -> Attempt {
+    attempt_judged(flow, patch, j).await.0
+}
+
+/// [`attempt`], also returning the patch text the final state came from: the
+/// extracted patch, or the corrected one when the repair pass ran. Replay
+/// records that text, so its guard cross-check sees the diff that was judged.
+pub async fn attempt_judged(flow: &Flow<'_>, patch: &str, j: &Journal) -> (Attempt, String) {
     let first = run_once(flow, patch, "apply-candidate", j).await;
-    let detail = match &first.state {
-        CandidateState::DidNotApply { detail } if first.prepared.is_none() => {
-            match detail.strip_prefix(APPLY_FAILED) {
-                Some(d) => d.to_string(),
-                None => return first,
-            }
+    let detail = match &first.error {
+        Some(AttemptError::PatchDidNotApply { stderr }) if first.prepared.is_none() => {
+            stderr.clone()
         }
-        _ => return first,
+        _ => return (first, patch.to_string()),
     };
 
     let rec_path = flow.night_dir.join("apply-repair.json");
@@ -210,9 +214,11 @@ pub async fn attempt(flow: &Flow<'_>, patch: &str, j: &Journal) -> Attempt {
         }
     };
 
-    match &record.outcome {
+    let mut judged = patch.to_string();
+    let result = match &record.outcome {
         RepairOutcome::Patch(fixed) if !dream_gate::patch::deletes_binary(fixed) => {
             let mut second = run_once(flow, fixed, "apply-repaired-candidate", j).await;
+            judged = fixed.clone();
             info!(
                 applied = matches!(second.state, CandidateState::Applied { .. }),
                 "apply-repair candidate"
@@ -230,6 +236,10 @@ pub async fn attempt(flow: &Flow<'_>, patch: &str, j: &Journal) -> Attempt {
                     }
                 }
                 CandidateState::DidNotApply { detail: again } if second.prepared.is_none() => {
+                    let again = match &second.error {
+                        Some(AttemptError::PatchDidNotApply { stderr }) => stderr.clone(),
+                        _ => again.clone(),
+                    };
                     second.state = CandidateState::DidNotApply {
                         detail: format!(
                             "{APPLY_FAILED}{detail}; the one repair pass also failed: {again}"
@@ -258,9 +268,11 @@ pub async fn attempt(flow: &Flow<'_>, patch: &str, j: &Journal) -> Attempt {
                 prepared: None,
                 receipts: Vec::new(),
                 build: None,
+                error: Some(AttemptError::PatchDidNotApply { stderr: detail }),
             }
         }
-    }
+    };
+    (result, judged)
 }
 
 /// The `candidate.json` record for an attempt that built a tree. `None` when
@@ -461,6 +473,54 @@ mod tests {
             };
             attempt(&flow, patch, &self.j).await
         }
+    }
+
+    /// The apply-repair gate matches the typed error, never a string prefix:
+    /// the same text under a different error kind is not repaired.
+    #[tokio::test]
+    async fn the_repair_pass_keys_on_the_typed_error() {
+        let rig = Rig::new("NO-PATCH: cannot");
+        let a = rig.attempt(&patch_to("value.txt", "nope", "x")).await;
+        assert!(matches!(
+            a.error,
+            Some(AttemptError::PatchDidNotApply { .. })
+        ));
+        assert_eq!(rig.llm.calls.load(Ordering::SeqCst), 1, "one repair call");
+        let source = include_str!("candidate_flow.rs");
+        let (prod, _) = source.split_once("#[cfg(test)]").unwrap();
+        assert!(
+            !prod.contains("strip_prefix(APPLY_FAILED)"),
+            "no string-prefix matching of the apply failure"
+        );
+    }
+
+    /// The patch recorded for replay is the one whose guard result produced
+    /// the state: after a repair, the corrected diff, not the original.
+    #[tokio::test]
+    async fn the_judged_patch_is_the_one_the_final_state_came_from() {
+        let fixed = patch_to(".github/workflows/ci.yml", "name: ci", "name: pwned");
+        let rig = Rig::new(&format!("```dream-patch\n{fixed}```\n"));
+        let required: Vec<&EvaluatorIdentity> = rig.required.iter().collect();
+        let flow = Flow {
+            repo: &rig.repo,
+            branch: "dream/test-2026-10-01",
+            commit_msg: "dream: test",
+            base: "HEAD",
+            policy: &rig.policy,
+            build: None,
+            required: &required,
+            runner: &rig.runner,
+            annexe: None,
+            night_dir: rig.night.path(),
+            report: "# report",
+            llm: &rig.llm,
+            fallback: None,
+        };
+        let orig = patch_to("value.txt", "nope", "x");
+        let (a, judged) = attempt_judged(&flow, &orig, &rig.j).await;
+        let _ = &a;
+        assert_ne!(judged, orig);
+        assert!(judged.contains(".github/workflows/ci.yml"), "{judged}");
     }
 
     /// The call-order invariant at the adapter: a protected patch reaches
