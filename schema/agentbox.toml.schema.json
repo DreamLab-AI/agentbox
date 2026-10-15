@@ -354,6 +354,10 @@
             "blender": {
               "type": "boolean"
             },
+            "blender_local": {
+              "type": "boolean",
+              "description": "Bake the in-container Blender binary (headless batch). Default true when absent. false = sidecar-only: the blender-mcp proxy and the blender skill stay on; scripted builds and renders run in the gui-tools-service sidecar. Ignored unless blender = true."
+            },
             "qgis": {
               "type": "boolean"
             },

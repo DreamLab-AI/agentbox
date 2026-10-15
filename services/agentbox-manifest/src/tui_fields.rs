@@ -240,6 +240,10 @@ pub fn providers_and_toolchains(s: &Value) -> Vec<String> {
             b(s, "skills.spatial_and_3d.blender")
         ),
         format!(
+            "blender_local      = {}",
+            b(s, "skills.spatial_and_3d.blender_local")
+        ),
+        format!(
             "qgis               = {}",
             b(s, "skills.spatial_and_3d.qgis")
         ),

@@ -60,6 +60,7 @@ const FIELDS: &[F] = &[
     F("skills.media.imagemagick", D::B(true), false),
     F("skills.media.comfyui_builtin", D::B(false), false),
     F("skills.spatial_and_3d.blender", D::B(false), false),
+    F("skills.spatial_and_3d.blender_local", D::B(true), false),
     F("skills.spatial_and_3d.qgis", D::B(false), false),
     F(
         "skills.spatial_and_3d.gaussian_splatting",

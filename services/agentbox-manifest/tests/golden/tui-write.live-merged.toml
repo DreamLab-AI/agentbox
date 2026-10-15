@@ -122,6 +122,7 @@ comfyui_builtin = false
 qgis = true
 blender = true
 gaussian_splatting = false
+blender_local = true
 
 [skills.data_science]
 pytorch = true

@@ -582,6 +582,11 @@ admin_key_env          = "SOLID_ADMIN_KEY"       # env var name; value from .env
 [skills.spatial_and_3d]
 qgis = true
 blender = true
+# Sidecar-first (2026-10-15): the gui-tools-service GPU sidecar is the default Blender.
+# false = do not bake the in-container Blender binary; the blender-mcp proxy and the
+# blender skill stay on. Scripted builds/renders run in the sidecar via
+# skills/blender/tools/blender-job.js. Set true to restore the local headless path.
+blender_local = false
 gaussian_splatting = false
 
 [skills.data_science]

@@ -30,6 +30,7 @@
   "skills.media.imagemagick": true,
   "skills.media.comfyui_builtin": false,
   "skills.spatial_and_3d.blender": false,
+  "skills.spatial_and_3d.blender_local": true,
   "skills.spatial_and_3d.qgis": false,
   "skills.spatial_and_3d.gaussian_splatting": false,
   "skills.data_science.pytorch": false,
