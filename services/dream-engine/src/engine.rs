@@ -283,6 +283,7 @@ impl Engine {
 
         let mut outcomes = Vec::new();
         let mut journal_stats: Vec<JournalStats> = Vec::new();
+        let mut skipped_locked = 0usize;
         for (name, path) in eligible {
             let (result, stats) = self
                 .cycle_repo_recorded(&name, &path, day_int, date, false)
@@ -293,6 +294,7 @@ impl Engine {
                 Err(EngineError::NightLocked(night)) => {
                     // Another engine owns this night; it records the outcome.
                     info!(repo = %name, %night, "skipped — night held by another engine");
+                    skipped_locked += 1;
                     continue;
                 }
                 Err(e) => {
@@ -312,6 +314,19 @@ impl Engine {
             summary = %outcomes.iter().map(|(n, v)| format!("{}={}", n, v)).collect::<Vec<_>>().join(", "),
             "night complete"
         );
+
+        // Every selected repo was held by another engine: that engine owns the
+        // night's outcomes, health summary and digest. Raising "zero eligible
+        // repos" or overwriting its summary from here would be a false alarm.
+        if outcomes.is_empty() && skipped_locked > 0 {
+            info!(
+                skipped = skipped_locked,
+                "every selected night is held by another engine — nothing to report"
+            );
+            nj.turn_completed(json!({ "skipped": "all nights held by another engine" }))
+                .await;
+            return Some(outcomes);
+        }
 
         // Night-health self-check: persist a machine-readable summary and
         // raise an operator alert on anomalies (hard failures, or a night

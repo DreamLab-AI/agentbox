@@ -934,6 +934,12 @@ async fn a_night_held_by_another_engine_is_skipped_not_run_twice() {
         outcomes.is_empty(),
         "a held night yields no outcome: {outcomes:?}"
     );
+    let inbox =
+        std::fs::read_to_string(std::env::var("DREAM_INBOX_PATH").unwrap()).unwrap_or_default();
+    assert!(
+        !inbox.contains("ZERO eligible"),
+        "a lock skip must not raise the empty-roster alarm: {inbox}"
+    );
     assert_eq!(rig.llm.calls(), 0);
     assert!(rig.dream_branches().is_empty());
     assert!(rig.forge.asked.lock().unwrap().is_empty());
