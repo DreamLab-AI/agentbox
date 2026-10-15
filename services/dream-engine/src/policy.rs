@@ -59,20 +59,16 @@ pub fn extras_for(repo: &Path) -> PolicyExtras {
 }
 
 /// Build the night's policy from the frozen manifest and the exact config
-/// bytes it digested, plus [`extras_for`] the target repository. This goes
-/// through `dream_core::replay::night_policy`, the one builder replay also
-/// uses.
+/// bytes it digested, plus `extras` ([`extras_for`] the target repository,
+/// computed once per night and also stored in `NightInputs::policy`, so the
+/// live policy and the recorded one are the same value). This goes through
+/// `dream_core::replay::night_policy`, the one builder replay also uses.
 pub fn for_night(
     manifest: &ExperimentManifest,
     config_bytes: &[u8],
-    repo: &Path,
+    extras: &PolicyExtras,
 ) -> Result<ProtectedPolicy, PolicyError> {
-    night_policy(
-        manifest,
-        config_bytes,
-        DEFAULT_LEDGER_PATH,
-        &extras_for(repo),
-    )
+    night_policy(manifest, config_bytes, DEFAULT_LEDGER_PATH, extras)
 }
 
 #[cfg(test)]
@@ -122,7 +118,7 @@ mod tests {
     #[test]
     fn the_default_ledger_and_the_evaluator_script_are_protected() {
         let repo = tempfile::tempdir().unwrap();
-        let p = for_night(&manifest(), CONFIG, repo.path()).unwrap();
+        let p = for_night(&manifest(), CONFIG, &extras_for(repo.path())).unwrap();
         assert!(protected(&p, DEFAULT_LEDGER_PATH));
         assert!(protected(&p, "scripts/check.sh"));
         assert!(protected(&p, ".github/workflows/ci.yml"));
@@ -136,7 +132,7 @@ mod tests {
         let repo = tempfile::tempdir().unwrap();
         let other = br#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}]}"#;
         assert_ne!(digest(other), manifest().config_digest);
-        assert!(for_night(&manifest(), other, repo.path()).is_err());
+        assert!(for_night(&manifest(), other, &extras_for(repo.path())).is_err());
     }
 
     /// The agentbox checkout carries the engine at services/dream-engine; a
@@ -152,7 +148,7 @@ mod tests {
         )
         .unwrap();
         assert!(is_self_referential(repo.path()));
-        let p = for_night(&manifest(), CONFIG, repo.path()).unwrap();
+        let p = for_night(&manifest(), CONFIG, &extras_for(repo.path())).unwrap();
         assert!(protected(&p, "services/dream-engine/src/engine.rs"));
         assert!(protected(&p, "services/dream-engine/src/policy.rs"));
         assert!(protected(&p, "services/dream-engine/Cargo.lock"));
@@ -170,7 +166,7 @@ mod tests {
         )
         .unwrap();
         assert!(is_self_referential(repo.path()));
-        let p = for_night(&manifest(), CONFIG, repo.path()).unwrap();
+        let p = for_night(&manifest(), CONFIG, &extras_for(repo.path())).unwrap();
         assert!(protected(&p, "crates/dream-gate/src/gate.rs"));
     }
 

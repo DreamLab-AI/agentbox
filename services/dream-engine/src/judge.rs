@@ -17,19 +17,35 @@ use dream_core::replay::{self, NightInputs, ReplayError};
 use dream_gate::gate::GateDecision;
 use tracing::warn;
 
+/// A night's decision and whether its inputs were recorded.
+#[derive(Debug)]
+pub struct Judged {
+    /// The gate's decision.
+    pub decision: GateDecision,
+    /// `Err` carries why recording failed; the decision is still valid.
+    pub recorded: Result<(), String>,
+}
+
 /// Judge `inputs` and record them under `night_dir`.
 ///
 /// Recording is fail-open: if the artefacts cannot be written the night is
 /// still judged by the very same function ([`replay::decide`]) and the failure
-/// is logged. A policy error is returned, because a night that cannot build
-/// its protected set must not be judged at all.
-pub fn judge(night_dir: &Path, inputs: &NightInputs) -> Result<GateDecision, ReplayError> {
+/// is returned in [`Judged::recorded`] for the caller to journal. A policy
+/// error is returned as `Err`, because a night that cannot build its
+/// protected set must not be judged at all.
+pub fn judge(night_dir: &Path, inputs: &NightInputs) -> Result<Judged, ReplayError> {
     match replay::capture(night_dir, inputs) {
-        Ok(d) => Ok(d),
+        Ok(decision) => Ok(Judged {
+            decision,
+            recorded: Ok(()),
+        }),
         Err(e @ ReplayError::Policy(_)) => Err(e),
         Err(e) => {
             warn!(error = %e, "replay capture failed (fail-open) — judging without recording");
-            replay::decide(inputs)
+            Ok(Judged {
+                decision: replay::decide(inputs)?,
+                recorded: Err(e.to_string()),
+            })
         }
     }
 }
@@ -124,7 +140,8 @@ mod tests {
     ) -> (tempfile::TempDir, GateDecision) {
         let (_keep, repo) = own_checkout();
         let m = manifest();
-        let pol = policy::for_night(&m, CONFIG, &repo).unwrap();
+        let extras = policy::extras_for(&repo);
+        let pol = policy::for_night(&m, CONFIG, &extras).unwrap();
         let required = m.required();
         let attempt = candidate::run(
             &AttemptInput {
@@ -152,10 +169,12 @@ mod tests {
             candidate_config_digest: None,
             tests: Default::default(),
             options: Default::default(),
-            policy: policy::extras_for(&repo),
+            policy: extras,
         };
         let dir = tempfile::tempdir().unwrap();
-        let d = judge(dir.path(), &inputs).unwrap();
+        let j = judge(dir.path(), &inputs).unwrap();
+        assert!(j.recorded.is_ok(), "{:?}", j.recorded);
+        let d = j.decision;
         if let Some(p) = &attempt.prepared {
             candidate::discard(&repo, p);
         }
@@ -221,7 +240,7 @@ mod tests {
         let r = ScriptedRunner::new().with(CHECK, exec(Some(0), None));
         let (_keep, repo) = own_checkout();
         let m = manifest();
-        let pol = policy::for_night(&m, CONFIG, &repo).unwrap();
+        let pol = policy::for_night(&m, CONFIG, &Default::default()).unwrap();
         let required = m.required();
         let attempt = candidate::run(
             &AttemptInput {
@@ -253,8 +272,12 @@ mod tests {
         };
         // A regular file where the directory should be: every write fails.
         let blocker = tempfile::NamedTempFile::new().unwrap();
-        let d = judge(blocker.path(), &inputs).unwrap();
-        assert_eq!(d.verdict, "ACCEPT");
+        let j = judge(blocker.path(), &inputs).unwrap();
+        assert_eq!(j.decision.verdict, "ACCEPT");
+        assert!(
+            j.recorded.is_err(),
+            "the failure must be visible to the caller"
+        );
         if let Some(p) = &attempt.prepared {
             candidate::discard(&repo, p);
         }

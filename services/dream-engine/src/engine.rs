@@ -631,7 +631,9 @@ impl Engine {
         // The night's single protected-path policy, from the bytes the
         // manifest just froze. A config the manifest does not vouch for is a
         // fault, never a reason to run with a weaker policy.
-        let policy = match policy::for_night(&frozen, &config_bytes, &repo_path) {
+        // Computed once: the same value builds the policy and is recorded for replay.
+        let extras = policy::extras_for(&repo_path);
+        let policy = match policy::for_night(&frozen, &config_bytes, &extras) {
             Ok(p) => p,
             Err(e) => {
                 warn!(repo = %repo_name, error = %e, "protected-path policy unavailable — BLOCKED-ENV");
@@ -1410,10 +1412,19 @@ impl Engine {
             candidate_config_digest,
             tests,
             options: Default::default(),
-            policy: policy::extras_for(&repo_path),
+            policy: extras.clone(),
         };
         let decision = match judge::judge(&night_dir, &inputs) {
-            Ok(d) => d,
+            Ok(judged) => {
+                if let Err(why) = &judged.recorded {
+                    // Visible, not just a log line: this night will not replay.
+                    let c = j
+                        .called("replay.capture", json!({ "night": night_id }))
+                        .await;
+                    j.completed(c, false, json!({ "error": why })).await;
+                }
+                judged.decision
+            }
             Err(e) => {
                 // Unreachable in practice: the same bytes built `policy` above.
                 warn!(repo = %repo_name, error = %e, "gate inputs could not be judged — BLOCKED-ENV");
