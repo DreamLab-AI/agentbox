@@ -271,6 +271,9 @@ async fn main() {
                 "done"
             );
         }
+        Err(dream_engine::engine::EngineError::NightLocked(night)) => {
+            info!(%night, "night held by another engine — nothing to do");
+        }
         Err(e) => {
             error!(error = %e, "cycle failed");
             std::process::exit(1);
@@ -301,6 +304,9 @@ async fn run_loop(engine: &Engine, target: Option<&str>) {
                         verdict = res.verdict.as_str(),
                         "nightly cycle complete"
                     ),
+                    Err(dream_engine::engine::EngineError::NightLocked(night)) => {
+                        info!(%night, "night held by another engine — skipped")
+                    }
                     Err(e) => error!(error = %e, "nightly cycle failed"),
                 },
                 None => {

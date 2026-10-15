@@ -18,6 +18,7 @@ use dream_core::runstate;
 use dream_core::seams::{DraftPr, Forge, Llm, LlmRequest, MemorySink, Notice, Notifier};
 use dream_core::source;
 use dream_core::{persist, readiness, streak};
+use dream_gate::config::DreamConfig;
 use dream_gate::gate::{self, CandidateState};
 use dream_gate::manifest::{self, ModelIdentity};
 use dream_gate::receipts::{self, Phase};
@@ -27,6 +28,7 @@ use serde_json::json;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
+use std::time::Duration;
 use thiserror::Error;
 use tracing::{info, warn};
 
@@ -72,6 +74,10 @@ pub enum EngineError {
     Ledger(#[from] ledger::LedgerError),
     #[error("prompt template: {0}")]
     Template(#[from] dream_core::compile::TemplateError),
+    /// Another engine holds this night's lock. Not a fault: the night is being
+    /// run elsewhere, so this process skips it.
+    #[error("night {0} is already being run by another engine")]
+    NightLocked(String),
 }
 
 #[derive(Debug)]
@@ -284,6 +290,11 @@ impl Engine {
             journal_stats.push(stats);
             let verdict_label = match result {
                 Ok(res) => res.verdict.as_str().to_string(),
+                Err(EngineError::NightLocked(night)) => {
+                    // Another engine owns this night; it records the outcome.
+                    info!(repo = %name, %night, "skipped — night held by another engine");
+                    continue;
+                }
                 Err(e) => {
                     warn!(repo = %name, error = %e, "cycle failed — continuing with next repo");
                     format!("FAILED: {}", e)
@@ -526,6 +537,23 @@ impl Engine {
         let night_id = format!("{}-{}", date, repo_name);
         let night_dir = self.artefact_dir.join(&night_id);
 
+        // Exclusive per-night lock, taken before the first journal read and
+        // held (RAII) until this function returns, so two engines can never
+        // both pass the "is it finished?" check and both publish. A dry run
+        // writes nothing, so it takes no lock.
+        let _night_lock = if dry_run {
+            None
+        } else {
+            match runstate::NightLock::acquire_within(&night_dir, Duration::from_millis(250)) {
+                Ok(l) => Some(l),
+                Err(runstate::LockError::Held { path }) => {
+                    info!(night = %night_id, lock = %path.display(), "night held by another engine — skipped");
+                    return Err(EngineError::NightLocked(night_id));
+                }
+                Err(runstate::LockError::Io { source, .. }) => return Err(source.into()),
+            }
+        };
+
         // 0. Evaluator-readiness admission (ADR-2024 closeout; ADR-072).
         //    A nomination whose evaluators cannot decide anything is refused
         //    HERE — before an annexe clone, a build or a single model token.
@@ -594,7 +622,15 @@ impl Engine {
         //     so the run id. A night already persisted or complete is over —
         //     no model call, no new manifest, no commit, no forge request.
         //     Only an operator `--reset-night` reopens it.
-        if let Some(prior) = runstate::finished_night(&night_dir, &repo_name, date, &night_id) {
+        let finished = match runstate::finished_night(&night_dir, &repo_name, date, &night_id) {
+            Ok(f) => f,
+            Err(e) => {
+                return Ok(journal_blocked(
+                    &repo_name, &repo_path, &cfg, &night_id, date, &e,
+                ))
+            }
+        };
+        if let Some(prior) = finished {
             info!(
                 run_id = %prior.run_id,
                 verdict = ?prior.verdict,
@@ -669,7 +705,25 @@ impl Engine {
         // manifest just froze. A config the manifest does not vouch for is a
         // fault, never a reason to run with a weaker policy.
         // Computed once: the same value builds the policy and is recorded for replay.
-        let extras = policy::extras_for(&repo_path);
+        let extras = match policy::resolved_extras(&frozen, &repo_path) {
+            Ok(x) => x,
+            Err(e) => {
+                warn!(repo = %repo_name, error = %e, "evaluator commands cannot be analysed — BLOCKED-ENV");
+                return self
+                    .persist_blocked_env(
+                        &cfg,
+                        &repo_name,
+                        &repo_path,
+                        &slot.deep,
+                        &night_id,
+                        date,
+                        "",
+                        &format!("protected-path policy could not be built: {e}"),
+                        j,
+                    )
+                    .await;
+            }
+        };
         let policy = match policy::for_night(&frozen, &config_bytes, &extras) {
             Ok(p) => p,
             Err(e) => {
@@ -856,20 +910,9 @@ impl Engine {
                 s
             }
             Err(e) => {
-                warn!(error = %e, "run journal unusable — refusing to run unrecoverably");
-                return self
-                    .persist_blocked_env(
-                        &cfg,
-                        &repo_name,
-                        &repo_path,
-                        &slot.deep,
-                        &night_id,
-                        date,
-                        "",
-                        &format!("run journal unwritable: {e}"),
-                        j,
-                    )
-                    .await;
+                return Ok(journal_blocked(
+                    &repo_name, &repo_path, &cfg, &night_id, date, &e,
+                ));
             }
         };
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::ManifestFrozen);
@@ -1873,6 +1916,44 @@ fn test_evidence(
 }
 
 /// The result reported for a night that had already finished.
+/// BLOCKED-ENV for a night whose run journal cannot be trusted (damaged,
+/// unreadable, unknown schema, or another night's).
+///
+/// Deliberately writes **no** report and **no** ledger row: the night may well
+/// have finished, and `persist_blocked_env` would overwrite its real
+/// `report.md`. The damaged file is left exactly as found, as evidence. The
+/// operator is told to look and to run `reset-night` if the night should be
+/// rerun; until then every start reports the same, and nothing is published.
+fn journal_blocked(
+    repo_name: &str,
+    repo_path: &Path,
+    cfg: &DreamConfig,
+    night_id: &str,
+    date: &str,
+    err: &runstate::JournalError,
+) -> CycleResult {
+    warn!(error = %err, night = %night_id, "run journal untrustworthy — night BLOCKED-ENV, nothing run");
+    let finding = format!(
+        "run journal untrustworthy ({err}); inspect it, then `dream-engine reset-night {repo_name} {date}` to rerun the night"
+    );
+    let _ = inbox::add(
+        "alert",
+        repo_name,
+        night_id,
+        date,
+        &format!("Dream night {night_id} is BLOCKED-ENV: {finding}. Nothing was run or published."),
+    );
+    CycleResult {
+        repo: repo_name.to_string(),
+        verdict: Verdict::BlockedEnv,
+        finding,
+        witness_short: String::new(),
+        report_path: PathBuf::new(),
+        ledger_path: repo_path.join(&cfg.ledger_path),
+        stored_to_ruvector: false,
+    }
+}
+
 fn finished_result(
     repo: String,
     prior: &runstate::RunState,

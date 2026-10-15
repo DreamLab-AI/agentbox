@@ -52,10 +52,51 @@ pub fn extras_for(repo: &Path) -> PolicyExtras {
         PolicyExtras {
             self_referential: true,
             extra_globs: vec![OWN_SOURCE_DIR.into(), OWN_BUILD_RECIPE.into()],
+            protected_paths: Vec::new(),
         }
     } else {
         PolicyExtras::default()
     }
+}
+
+/// The baseline tree's file list (`git ls-tree -r --name-only <rev>`), empty
+/// when git cannot answer. Lets a bare word in a frozen evaluator command
+/// (`make`'s `Makefile`, a script run as `check`) protect the file it names.
+fn baseline_files(repo: &Path, rev: &str) -> Vec<String> {
+    std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo)
+        .args(["ls-tree", "-r", "--name-only", "-z", rev])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| {
+            String::from_utf8_lossy(&o.stdout)
+                .split('\0')
+                .filter(|f| !f.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// [`extras_for`] plus what the frozen evaluator commands name in this
+/// repository: absolute paths under `repo` made repo-relative and bare words
+/// that name files in the baseline tree (`manifest.baseline_revision`). An
+/// evaluator command that cannot be read with certainty (unterminated quote,
+/// command substitution) is an error, so the night is `BLOCKED-ENV`. The
+/// result is recorded with the night, so replay protects the same set.
+pub fn resolved_extras(
+    manifest: &ExperimentManifest,
+    repo: &Path,
+) -> Result<PolicyExtras, PolicyError> {
+    let files = baseline_files(repo, &manifest.baseline_revision);
+    let root = repo
+        .canonicalize()
+        .unwrap_or_else(|_| repo.to_path_buf())
+        .display()
+        .to_string();
+    extras_for(repo).resolving(manifest, &root, &files)
 }
 
 /// Build the night's policy from the frozen manifest and the exact config
@@ -102,6 +143,52 @@ mod tests {
             },
             "0.1.0",
         )
+    }
+
+    #[test]
+    fn an_unanalysable_evaluator_command_blocks_the_night() {
+        let mut m = manifest();
+        m.evaluators[0].command = "bash 'scripts/check.sh".into();
+        let repo = tempfile::tempdir().unwrap();
+        let e = resolved_extras(&m, repo.path()).unwrap_err();
+        assert!(matches!(e, PolicyError::UnsupportedCommand { .. }), "{e:?}");
+    }
+
+    #[test]
+    fn evaluator_paths_are_resolved_against_the_repository_and_baseline_tree() {
+        let repo = tempfile::tempdir().unwrap();
+        let git = |a: &[&str]| {
+            let o = std::process::Command::new("git")
+                .arg("-C")
+                .arg(repo.path())
+                .args(a)
+                .output()
+                .unwrap();
+            assert!(o.status.success(), "{a:?}");
+            String::from_utf8(o.stdout).unwrap().trim().to_string()
+        };
+        git(&["init", "-q"]);
+        git(&["config", "user.email", "t@t"]);
+        git(&["config", "user.name", "t"]);
+        std::fs::create_dir_all(repo.path().join("scripts")).unwrap();
+        std::fs::write(repo.path().join("scripts/check suite.sh"), "x").unwrap();
+        std::fs::write(repo.path().join("verify"), "x").unwrap();
+        git(&["add", "-A"]);
+        git(&["commit", "-qm", "i"]);
+        let mut m = manifest();
+        m.baseline_revision = git(&["rev-parse", "HEAD"]);
+        let root = repo.path().canonicalize().unwrap();
+        m.evaluators[0].command = format!(
+            "bash \"{}/scripts/check suite.sh\" && ./verify",
+            root.display()
+        );
+        let ex = resolved_extras(&m, repo.path()).unwrap();
+        assert!(
+            ex.protected_paths
+                .contains(&"scripts/check suite.sh".to_string()),
+            "{ex:?}"
+        );
+        assert!(ex.protected_paths.contains(&"verify".to_string()), "{ex:?}");
     }
 
     fn patch_to(path: &str) -> String {

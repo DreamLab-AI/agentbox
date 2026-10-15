@@ -861,3 +861,89 @@ async fn a_crash_between_persisted_and_complete_does_not_publish_twice() {
     assert_eq!(done.phase, runstate::Phase::Complete);
     assert_eq!(done.verdict.as_deref(), Some("ACCEPT"));
 }
+
+/// Audit F5: a truncated journal on a night that already finished must not
+/// reopen it. The engine reports BLOCKED-ENV, runs and publishes nothing,
+/// leaves the damaged file and the real report exactly as they were, and
+/// `reset-night` is the way out.
+#[tokio::test]
+async fn a_damaged_journal_blocks_the_night_instead_of_reopening_it() {
+    let rig = Rig::new(
+        "e2e-damaged-journal",
+        vec![accept_report(GOOD_PATCH), accept_report(GOOD_PATCH)],
+        0,
+    );
+    let first = rig.engine(Recording::passthrough());
+    assert_eq!(Rig::only_outcome(first.run_night(0, DATE).await), "ACCEPT");
+    let rows = rig.ledger_text().lines().count();
+    let report = std::fs::read(rig.night_dir().join("report.md")).unwrap();
+
+    let journal = rig.night_dir().join("run-state.json");
+    let whole = std::fs::read(&journal).unwrap();
+    std::fs::write(&journal, &whole[..whole.len() / 2]).unwrap();
+    let damaged = std::fs::read(&journal).unwrap();
+
+    let again = rig.engine(Recording::passthrough());
+    let verdict = Rig::only_outcome(again.run_night(0, DATE).await);
+
+    assert_eq!(verdict, "BLOCKED-ENV");
+    assert_eq!(
+        rig.llm.calls(),
+        1,
+        "the damaged night never reaches the model"
+    );
+    assert_eq!(rig.ledger_text().lines().count(), rows, "no new ledger row");
+    assert_eq!(
+        rig.forge.asked.lock().unwrap().len(),
+        1,
+        "no second publish"
+    );
+    assert_eq!(
+        std::fs::read(&journal).unwrap(),
+        damaged,
+        "evidence untouched"
+    );
+    assert_eq!(
+        std::fs::read(rig.night_dir().join("report.md")).unwrap(),
+        report,
+        "the finished night's real report survives"
+    );
+
+    // The operator's way out: reset-night archives the damage; the next start is fresh.
+    runstate::reset_night(&rig.night_dir()).unwrap();
+    assert!(!journal.exists());
+    let rerun = rig.engine(Recording::passthrough());
+    assert_eq!(Rig::only_outcome(rerun.run_night(0, DATE).await), "ACCEPT");
+    assert_eq!(rig.llm.calls(), 2);
+}
+
+/// Audit F3: while another engine holds the night, this one skips it — no
+/// model call, no row, no branch, no error — and runs it once the lock frees.
+#[tokio::test]
+async fn a_night_held_by_another_engine_is_skipped_not_run_twice() {
+    let rig = Rig::new(
+        "e2e-held-lock",
+        vec![accept_report(GOOD_PATCH), accept_report(GOOD_PATCH)],
+        0,
+    );
+    let held = runstate::NightLock::acquire(&rig.night_dir()).unwrap();
+
+    let blocked = rig.engine(Recording::passthrough());
+    let outcomes = blocked.run_night(0, DATE).await.expect("not paused");
+    assert!(
+        outcomes.is_empty(),
+        "a held night yields no outcome: {outcomes:?}"
+    );
+    assert_eq!(rig.llm.calls(), 0);
+    assert!(rig.dream_branches().is_empty());
+    assert!(rig.forge.asked.lock().unwrap().is_empty());
+    assert!(
+        !rig.night_dir().join("run-state.json").exists(),
+        "nothing journalled"
+    );
+
+    drop(held);
+    let free = rig.engine(Recording::passthrough());
+    assert_eq!(Rig::only_outcome(free.run_night(0, DATE).await), "ACCEPT");
+    assert_eq!(rig.llm.calls(), 1);
+}
