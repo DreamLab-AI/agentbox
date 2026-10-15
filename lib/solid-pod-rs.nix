@@ -32,19 +32,11 @@
 
 let
 
-  # Pin: solid-pod-rs v0.5.0-alpha.12 (tag cut 2026-10-02T23:33Z from main
-  # d64131b; crates.io max on 2026-10-03; upstream CI green on that commit,
-  # including msrv 1.88). Bumped from alpha.9 (1d9da527) on the estate-wide
-  # upgrade. alpha.12 changes the TxInfo.vin, BuiltTx.txid and
-  # Mrc20AnchorResult.report struct literals. Those types live in the
-  # library's mrc20/bitcoin_tx modules (feature `mrc20`, via the server's
-  # `forge-anchoring`), which no agentbox feature set enables; this file
-  # builds only the server binary and constructs none of them. The server
-  # and library feature sets are identical to alpha.9, and the postPatch
-  # target line below is still present once.
-  #
-  # lib/nostr-pod-bridge.nix pins the same rev (its solidRev) and its
-  # Cargo.lock resolves alpha.12: bump the two files together.
+  # Pin: v0.5.0-alpha.13, the ER-22 security release (2026-10-14).
+  # It closes COPY/glob/path/MCP authorisation bypasses, protects server-managed
+  # state and hardens Git push and anchoring. Keep the relay substrate pin in
+  # lib/nostr-pod-bridge.nix and the checked-in lockfiles in step with this source.
+  # The existing /pods/{pod}/ Git provenance patch still applies exactly once.
   #
   # Refresh procedure when the rev bumps (no local nix needed):
   #   1. Set `version` and `rev` to the new tag and its commit.
@@ -56,12 +48,12 @@ let
   #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
   #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
   #      Nix build hermetic and byte-identical to the tag).
-  version = "0.5.0-alpha.12";
+  version = "0.5.0-alpha.13";
 
-  # Pinned to the v0.5.0-alpha.12 tag commit.
-  rev     = "d64131b32be2fc07ea120195686d2e1d3fbbe3c2";
+  # Pinned to the v0.5.0-alpha.13 tag commit.
+  rev     = "193f4962ffccdda28f84caefe2afd5437e0b7685";
 
-  srcHash = "sha256-nMqFCn/QKpl49nQ/voONbd4DRtW00wp8dnPieM4i4Aw=";
+  srcHash = "sha256-6UhxMfL+pXFT3b2ElzWzY9jLEOVz3iMUsCNXquIJHCM=";
 
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 
@@ -103,7 +95,7 @@ in
       pname   = "solid-pod-rs-server";
       inherit version src;
 
-      # Vendored lockfile (upstream omits Cargo.lock).
+      # Vendored lockfile, byte-identical to the upstream release.
       cargoLock.lockFile = cargoLockFile;
 
       # Copy the vendored lockfile into the source tree before configurePhase
@@ -155,11 +147,20 @@ in
         openssl
       ];
 
-      # Tests require a writable filesystem and network access for some
-      # fixture setup; skip during Nix sandbox build. The contract-test
-      # harness at tests/contract/pods.contract.spec.js covers the
-      # surface we care about at the agentbox level.
-      doCheck = false;
+      # ER-22 regressions use temporary/memory storage and in-process Actix
+      # requests, so they run hermetically against the exact shipped features.
+      nativeCheckInputs = [ pkgs.git ];
+      doCheck = true;
+      cargoTestFlags = [
+        "--test" "er22_acl_copy_glob"
+        "--test" "er22_path_clean"
+        "--test" "er22_ledger_guard"
+        "--test" "er22_mcp_dotfiles"
+        "--test" "container_index_acl"
+      ];
+      postCheck = ''
+        cargo test --release --offline --locked -p solid-pod-rs-git --test push_guard
+      '';
 
       # Preserve the AGPL-3.0-only LICENCE in the derivation output so the
       # container image's aggregation analysis has the upstream source-of-truth

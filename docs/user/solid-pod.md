@@ -32,6 +32,21 @@ Rust binary. Agentbox selects them at build time from the manifest and boots
 the server with its native JSON configuration; no legacy server environment
 surface is injected into the container.
 
+## Security release
+
+Agentbox pins `solid-pod-rs` **0.5.0-alpha.13** (ER-22) for the server and
+relay substrate. The dream-engine lockfile also resolves the patched library
+through `nostr-bbs-core` beta.16. This release closes COPY/glob/path and MCP
+permission bypasses, protects server-managed state, and hardens Git pushes
+and anchoring. The Nix build runs the upstream ER-22, container-index ACL
+and Git push-guard regressions before shipping the server.
+
+For an upgrade from alpha.12 or earlier, consult the [upstream release notes](https://github.com/DreamLab-AI/solid-pod-rs/blob/v0.5.0-alpha.13/CHANGELOG.md):
+public-read roots or enabled MCP may have exposed trail keys or payment state.
+Inspect existing payment intents before resuming transfers because older
+builds could record witness-inclusive transaction IDs. Preserve pod data and
+identity keys during the image replacement.
+
 ## What you get
 
 | Capability | solid-pod-rs (Sprint 9) |

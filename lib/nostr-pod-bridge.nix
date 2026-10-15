@@ -50,15 +50,17 @@ let
   forumHash = "sha256-9HooIa4vyu0Iw47VPr7RkMDyKrEazcElR2xPIe0njvE=";
 
   # solid-pod-rs → crates/solid-pod-rs-nostr (relay substrate) + crates/solid-pod-rs
-  # (the [patch.crates-io] target). Pinned to the v0.5.0-alpha.12 tag commit
-  # d64131b (2026-10-02), the same revision lib/solid-pod-rs.nix builds the
+  # (the [patch.crates-io] target). Pinned to the v0.5.0-alpha.13 security tag commit
+  # 193f496 (2026-10-14), the same revision lib/solid-pod-rs.nix builds the
   # standalone server from, so the bridge and the server compile one upstream
   # snapshot (register G-20 closed). services/nostr-pod-bridge/Cargo.lock
-  # resolves solid-pod-rs and solid-pod-rs-nostr 0.5.0-alpha.12 to match.
+  # resolves the local solid-pod-rs and solid-pod-rs-nostr at alpha.13.
+  # The older forum dependency retains its exact core-only registry library;
+  # it does not compile the affected server or Git service.
   # Bump both files together; the hash is the SRI of the tag tarball
   # (procedure above / lib/solid-pod-rs.nix).
-  solidRev  = "d64131b32be2fc07ea120195686d2e1d3fbbe3c2";
-  solidHash = "sha256-nMqFCn/QKpl49nQ/voONbd4DRtW00wp8dnPieM4i4Aw="; # v0.5.0-alpha.12
+  solidRev  = "193f4962ffccdda28f84caefe2afd5437e0b7685";
+  solidHash = "sha256-6UhxMfL+pXFT3b2ElzWzY9jLEOVz3iMUsCNXquIJHCM="; # v0.5.0-alpha.13
 
   forumSrc = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
