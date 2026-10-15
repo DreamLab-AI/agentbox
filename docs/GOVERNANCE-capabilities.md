@@ -1,10 +1,11 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.6
+version: 0.6.7
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.6.7 (2026-10-15): ADR-2141 (accepted, partially implemented, staged) - the dream engine consumes the extracted permissive dream-core and dream-gate crates; services/dream-engine stays the AGPL adapter. A protected-path patch is now a REJECT before it is applied, config drift under a night is BLOCKED-ENV, the dry streak counts REJECT (it used to reset), and a repeating harness failure raises HarnessStuck."
   - "0.6.6 (2026-10-12): ADR-2139 (accepted, implemented, staged for rebuild) — the System One judge becomes a vendor slot: one loopback proxy ([system_one], system-one-proxy) fronts the router, factrail and the advisor checkpoints and forwards to the backend named in the manifest (typesafe, subq, laya, kev). SubQ Snap measured at parity with Jev and selected as the running backend. The proxy owns the vendor keys; a key goes only to its paired host. The Invariants compliance surface gains the locality-class rule: a cloud↔local change of backend is boot-class because backendLocal is projected at boot."
   - "0.6.5 (2026-10-09): ADR-2135 (accepted, implemented, staged) — jev-checkpoints: Jev times the ADR-2134 Opus advisor with done, repeat, plan and shadow-only spawn checkpoints; egress widens ADR-2090 as ADR-2121 did with the same email fence. Recorded under Jev compaction; the Invariants compliance surface gains the spawn-shadow and fence rules."
   - "0.6.4 (2026-10-06): ADR-2131 (accepted, implemented, inactive) — scheduled diagram review: GLM triage and review on manifest schedules and a Gemini audit behind an interval, changed-topic or high-severity, and monthly USD gate, all recorded in an append-only per-repo ledger. The Gemini audit stays a transport outside [model_routing]. The Invariants compliance surface is unchanged."
@@ -30,7 +31,7 @@ sources:
   - agentbox/skills/tree-search-coder/SKILL.md
   - agentbox/skills/dream-machine/SKILL.md
   - agentbox/dream.config.json
-  - agentbox/services/dream-engine/ (ledger.rs — the 12-column row incl. Reviewer / Review-minutes)
+  - agentbox/services/dream-engine/ (records.rs; the 12-column row incl. Reviewer / Review-minutes is dream-core's ledger, ADR-2141)
   - agentbox/management-api/lib/{authority,task-properties,authority-journal,governance-receipt-publisher,governance-manual-continue,governance-application-receipts}.js
   - agentbox/mcp/servers/lib/ontology-retrieval.js
   - agentbox/mcp/mcp.json

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 5b2abd13ea0f34e2cd9941448337a9191aaedcc0   # the base the extraction was cut from; verified_paths is empty, so nothing is staleness-checked until the pin flips
+verified_commit: 58fce653822b4aa2c27c59c01f71a6d13a0e07b1
 verified_paths: []
 owner: jjohare
 review_trigger: the extracted repository is pushed and the two path dependencies in services/dream-engine/Cargo.toml flip to a git rev, or any new module is added under services/dream-engine/src that is not estate-specific
@@ -38,4 +38,4 @@ repo: agentbox
 - Follow-on: flip the pins and refresh the lockfile, add the pin to `lib/dream-engine.nix`, then retire the `dream-engine` deep slot in `dream.config.json`.
 
 ## Verification
-`cargo test`, `cargo clippy --all-targets -- -D warnings` and `cargo fmt --check` in `services/dream-engine` pass against the path dependencies; every deleted test is accounted for in `docs/developer/dream-engine-extraction-ledger.md`. `implementation_status` stays `partial` until the pin flips to a pushed rev and the Nix derivation builds against it; `verified_commit` is the base the work was cut from and `verified_paths` is empty, so the record asserts nothing checkable until then.
+`cargo test`, `cargo clippy --all-targets -- -D warnings` and `cargo fmt --check` in `services/dream-engine` pass against the path dependencies; every deleted test is accounted for in `docs/developer/dream-engine-extraction-ledger.md`. `implementation_status` stays `partial` until the pin flips to a pushed rev and the Nix derivation builds against it; `verified_commit` is the commit the gates were run at; `verified_paths` is empty, so the record asserts nothing checkable until then.
