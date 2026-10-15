@@ -166,8 +166,13 @@ print([p.identifier for p in bpy.types.Object.bl_rna.properties][:40])          
 print(bpy.app.version_string, list(bpy.data.objects.keys())[:10])                 # version, scene
 ```
 
-Enum item lists are dynamic (see the render-engine note above): confirm an enum value by
-assigning it, not only by listing. Do this once per unfamiliar API per session; it is
+The same queries are packaged as `node tools/blender-introspect.js op mesh.primitive_cube_add`,
+`... type Object visible`, `... enum scene.render.engine CYCLES`, `... version`, `... data`,
+`... path context.scene.render` (read-only; arguments are validated). Enum item lists are
+dynamic (see the render-engine note above): the `enum` command tests assignment and restores
+the original value, because a listing alone can be wrong. The interactive sidecar and the
+headless nix Blender can be different builds (5.2.0 LTS and 5.2.2 LTS measured 2026-10-15):
+run `version` on the one you are using. Do this once per unfamiliar API per session; it is
 the main defence against the 4.x-to-5.x drift this skill documents.
 
 ## Operating rules learned in use
@@ -187,6 +192,8 @@ the main defence against the 4.x-to-5.x drift this skill documents.
   what must not be shown) and record the result, including failures, beside the images.
 - **Captions describe the camera truthfully** (oblique vs orthographic, true north-up or
   not). Never draw an unresolved boundary as if it were settled.
+- **A timeout means the outcome is unknown.** A request that expired may never have run
+  (or may have run late). Re-read scene state before retrying anything that mutates.
 - **Large `.blend`/`.glb` files** need Git LFS routing verified before staging
   (`git check-attr filter <path>`; a staged pointer is ~130 bytes via `git cat-file -s`).
 
@@ -195,6 +202,7 @@ the main defence against the 4.x-to-5.x drift this skill documents.
 | File | Purpose |
 |---|---|
 | `tools/blender-batch.sh` | Headless GPU batch runner — prepends `/usr/lib` so nix Blender finds the injected CUDA driver; run a `bpy` script or `--render file.blend out.png` on the GPUs |
+| `tools/blender-introspect.js` | Read-only API introspection of the live Blender (`version`, `op`, `type`, `data`, `enum`, `path`); validated identifiers only; `enum` tests assignment and restores the value |
 | `tools/blender-health.js` | Health check — round-trips `get_scene_info`, diagnoses refused/silent-close/timeout/bad-json |
 | `tools/mcp-blender-client.js` | Stdio↔TCP bridge; maps `{tool, params}` → BlenderMCP `{type, params}` on port 9876 |
 | `tools/blender-mcp-proxy.js` | TCP proxy to the GPU sidecar (`localhost:9876 → gui-tools-service:9876`) |

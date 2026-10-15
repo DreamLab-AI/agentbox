@@ -33,15 +33,16 @@ plugin as an optional, ring-fenced concept lane.**
 
 1. **Introspect before scripting.** Its `blender_api_help` tool inspects the running
    Python API (operator signatures, types, `bpy.data` collections) before an agent
-   writes code. Do the same through `execute_code`; see "Introspect before you script"
-   in `SKILL.md`. Cheap, and it avoids the version-drift errors listed there.
+   writes code. Adopted as `tools/blender-introspect.js` (read-only, validated input,
+   enum assignment tested and restored); see "Introspect before you script" in `SKILL.md`.
 2. **Token-authenticated, loopback-only control surface**, with the dangerous tool
-   gated by an explicit preference. Our socket is raw TCP JSON with no token; treat the
-   sidecar network as the trust boundary and do not expose 9876 beyond it.
-3. **Main-thread queue with an explicit deadline.** A request that expires before its
-   handler starts is dropped and reported as not executed, so a late resume never runs
-   stale work. When batching long scripts through MCP, set timeouts and treat a
-   timeout as "did not run", then re-check scene state before retrying.
+   gated by an explicit preference. Our proxy already binds `127.0.0.1` only (checked
+   2026-10-15). The BlenderMCP socket itself has no token, so the sidecar network is the
+   trust boundary: do not expose 9876 beyond it, and do not publish the port.
+3. **Main-thread queue with an explicit deadline.** Its server drops a request that
+   expires before its handler starts and reports it as not executed. BlenderMCP gives no
+   such guarantee, so our client and introspection tool report a timeout as outcome
+   UNKNOWN: re-check scene state before retrying anything that mutates.
 4. **Greybox first (Blockout).** It builds a described layout as primitives before any
    detail, with a plan the user approves. That is our blockout-then-parts loop with an
    approval step; use it for site layouts.
