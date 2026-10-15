@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: df584b3fde9d393640680e92898fa631f40580bb
 verified_paths: [flake.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes
@@ -16,6 +16,12 @@ domain: BASELINE-container
 ---
 
 # ADR-2137 — Image-scoped vulnerability evidence
+
+## Re-verification — 2026-10-15
+
+The only changed hunk in the governed agentbox.sh adds `security` to the subcommand allowlist (ER-14); its existing scanner dispatch is unchanged. CLI regression checks pass, and all 23 runtime-delivery tests pass. Instruction projection, executable volumes, image evidence and vendor routing are unchanged.
+Source anchor: `df584b3fd`. Existing status axes and deferred work remain unchanged.
+
 
 ## Context
 

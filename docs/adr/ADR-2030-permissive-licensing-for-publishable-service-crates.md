@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: df584b3fde9d393640680e92898fa631f40580bb
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -15,6 +15,12 @@ repo: agentbox
 ---
 
 # ADR-2030 — Publishable service crates are MIT OR Apache-2.0 inside the AGPL-3.0 repository
+
+## Re-verification — 2026-10-15
+
+The dream-engine dependency and lock refresh to nostr-bbs-core beta.16 and solid-pod-rs alpha.13 do not change its AGPL declaration. The pod bridge remains AGPL. The crate-licensing gate passes for all ten services; no AGPL dependency was added to a permissive crate.
+Source anchor: `df584b3fd`. Existing status axes and deferred work remain unchanged.
+
 
 ## Re-verification — 2026-10-01 (dependency refresh)
 

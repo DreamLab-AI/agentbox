@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: df584b3fde9d393640680e92898fa631f40580bb
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -16,6 +16,12 @@ domain: BASELINE-container
 ---
 
 # ADR-2120 — Give Codex daemon packages executable persistent storage
+
+## Re-verification — 2026-10-15
+
+The only changed hunk in the governed agentbox.sh adds `security` to the subcommand allowlist (ER-14); its existing scanner dispatch is unchanged. CLI regression checks pass, and all 23 runtime-delivery tests pass. Instruction projection, executable volumes, image evidence and vendor routing are unchanged.
+Source anchor: `df584b3fd`. Existing status axes and deferred work remain unchanged.
+
 
 ## Re-verification — 2026-10-02 at caab741c6 (factrail landing, ADR-2121)
 

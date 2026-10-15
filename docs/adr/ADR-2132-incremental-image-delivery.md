@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: df584b3fde9d393640680e92898fa631f40580bb
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -16,6 +16,12 @@ domain: BASELINE-container
 ---
 
 # ADR-2132 — Incremental image delivery and explicit activation
+
+## Re-verification — 2026-10-15
+
+The only changed hunk in the governed agentbox.sh adds `security` to the subcommand allowlist (ER-14); its existing scanner dispatch is unchanged. CLI regression checks pass, and all 23 runtime-delivery tests pass. Instruction projection, executable volumes, image evidence and vendor routing are unchanged.
+Source anchor: `df584b3fd`. Existing status axes and deferred work remain unchanged.
+
 
 ## Context
 
