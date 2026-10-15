@@ -23,16 +23,19 @@
 { lib, pkgs }:
 
 let
-  version = "1.0.0-beta.15";
-  # bdeb561 = the website's KIT_REF (72463fb) + the forum-client wallet default + the citizen /tip skip.
-  # Protocol VERSION is 1 on both sides and both are 1.0.0-beta.15, so the website pin stays put.
-  rev = "bdeb56155281ef990b0286fa00e475f9e92de19b";
+  version = "1.0.0-beta.16";
+  # dd45447 = bdeb561 + the ER-22 security release repin (solid-pod-rs 0.5.0-alpha.13,
+  # nostr-bbs-core beta.16) + rustls 0.23.46 / quinn-proto 0.11.19 (RUSTSEC-2026-0346..0349,
+  # 0339/0341). Only the relay-worker crate and lockfile changed since bdeb561; the citizen's own
+  # crates are untouched. Protocol VERSION is still 1 on both sides, so the website KIT_REF
+  # (72463fb) stays put.
+  rev = "dd454474295510fac1d643f911b3817a3a292c0f";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "nostr-rust-forum";
     inherit rev;
-    hash  = "sha256-P2fazyoJXqqt0Ej+nZwdp6RaI4gW8EcmBGUoGCXuTmY=";
+    hash  = "sha256-hdg7s1GvY6imWl6XMGorxwj/I+yjgojuiFruhyIzk2k=";
   };
 
 in
