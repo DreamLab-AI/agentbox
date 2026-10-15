@@ -41,9 +41,13 @@ pub const DEFAULT_SECTION: &str = "zone4-chat-with-agents";
 /// Where the operator decides.
 pub const DEFAULT_GOVERNANCE_URL: &str = "https://dreamlab-ai.com/community/governance";
 
-/// Night-health record path.
+/// Night-health record path. `DREAM_HEALTH_PATH` overrides it (hermetic runs).
 pub fn health_path() -> PathBuf {
-    PathBuf::from("/home/devuser/workspace/.agentbox/dream-last-night.json")
+    std::env::var("DREAM_HEALTH_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            PathBuf::from("/home/devuser/workspace/.agentbox/dream-last-night.json")
+        })
 }
 
 /// One scheduled repo's outcome (`verdict` is ACCEPT / REJECT / INCONCLUSIVE /

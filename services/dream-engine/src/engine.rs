@@ -15,7 +15,7 @@ use dream_core::ledger::{self, LedgerRow};
 use dream_core::replay;
 use dream_core::roster;
 use dream_core::runstate;
-use dream_core::seams::{DraftPr, Forge, GhForge, Llm, LlmRequest, MemorySink, Notice, Notifier};
+use dream_core::seams::{DraftPr, Forge, Llm, LlmRequest, MemorySink, Notice, Notifier};
 use dream_core::source;
 use dream_core::{persist, readiness, streak};
 use dream_gate::gate::{self, CandidateState};
@@ -100,6 +100,13 @@ pub struct Engine {
     pub runner: Arc<dyn EvaluatorRunner>,
     /// Durable fair-scheduling state (least-recently-dreamed first).
     pub roster_path: PathBuf,
+    /// Where a verified candidate is published. Production wires
+    /// [`GhForge`]; tests substitute a recording forge so no PR is opened.
+    pub forge: Arc<dyn Forge>,
+    /// Replaces the configured HTTP model for the verdict, source-gather,
+    /// context-govern and repair calls. `None` (production) builds a
+    /// [`LlmAdapter`] from [`Engine::llm`] exactly as before.
+    pub llm_override: Option<Arc<dyn Llm>>,
 }
 
 impl Engine {
@@ -139,7 +146,8 @@ impl Engine {
     /// the loop retries the same date after `/dream on`).
     pub async fn run_night(&self, day_int: u32, date: &str) -> Option<Vec<(String, String)>> {
         // Global kill-switch: `/dream off` touches this file; no restart needed.
-        let pause_flag = Path::new("/home/devuser/workspace/.agentbox/dream-paused");
+        let pause_flag = estate::pause_flag_path();
+        let pause_flag = pause_flag.as_path();
         if pause_flag.exists() {
             info!(flag = %pause_flag.display(), "dreaming paused — night skipped (/dream on to resume)");
             return None;
@@ -314,9 +322,12 @@ impl Engine {
             journal: journal_stats,
             sweep: swept,
         };
-        let _ = std::fs::create_dir_all("/home/devuser/workspace/.agentbox");
+        let health_path = digest::health_path();
+        if let Some(dir) = health_path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
         if let Err(e) = std::fs::write(
-            "/home/devuser/workspace/.agentbox/dream-last-night.json",
+            &health_path,
             serde_json::to_string_pretty(&health).unwrap_or_default(),
         ) {
             warn!(error = %e, "night health summary write failed (fail-open)");
@@ -581,7 +592,14 @@ impl Engine {
         // 1. Freeze the experiment manifest BEFORE anything else can move.
         //    Baseline revision + tree hash, evaluator identities and command
         //    digests, the model we intend to call, and the restart-safe run id.
-        let llm = LlmAdapter::new(self.llm.clone());
+        let default_llm;
+        let llm: &dyn Llm = match &self.llm_override {
+            Some(l) => l.as_ref(),
+            None => {
+                default_llm = LlmAdapter::new(self.llm.clone());
+                &default_llm
+            }
+        };
         let fallback_llm = self.llm_fallback.clone().map(LlmAdapter::new);
         let fallback: Option<&dyn Llm> = fallback_llm.as_ref().map(|f| f as &dyn Llm);
         let notifier = Notifiers(vec![
@@ -1110,7 +1128,7 @@ impl Engine {
                         )
                         .await;
                     governed_pack = context::govern(
-                        &llm,
+                        llm,
                         fallback,
                         &objects,
                         &slot.deep,
@@ -1161,7 +1179,7 @@ impl Engine {
         let source_cfg = estate::source_config_from_env();
         let deny = estate::source_denylist();
         let gathered = source::gather(
-            &llm,
+            llm,
             fallback,
             &source::GatherInput {
                 repo: &repo_path,
@@ -1301,7 +1319,7 @@ impl Engine {
                     json!({ "purpose": "repair", "model": self.llm.model }),
                 )
                 .await;
-            let record = source::repair(&llm, fallback, &report, source_section.as_deref()).await;
+            let record = source::repair(llm, fallback, &report, source_section.as_deref()).await;
             j.completed(
                 c,
                 matches!(record.outcome, source::RepairOutcome::Patch(_)),
@@ -1349,7 +1367,7 @@ impl Engine {
                         }),
                         night_dir: &night_dir,
                         report: &report,
-                        llm: &llm,
+                        llm,
                         fallback,
                     };
                     let (a, judged) = candidate_flow::attempt_judged(&flow, &patch, j).await;
@@ -1555,7 +1573,7 @@ impl Engine {
                         .join(", "),
                 );
                 let jc = j.called("git.push", json!({ "branch": c.branch, "repo": cfg.repo, "then": "gh pr create --draft" })).await;
-                let out = GhForge.publish_draft(&DraftPr {
+                let out = self.forge.publish_draft(&DraftPr {
                     repo_dir: repo_path.clone(),
                     repo_slug: cfg.repo.clone(),
                     branch: c.branch.clone(),
@@ -1827,6 +1845,7 @@ mod tests {
     use super::*;
     use crate::llm::Provider;
     use dream_core::runner::ScriptedRunner;
+    use dream_core::seams::GhForge;
     use dream_gate::config::{EvaluatorSpec, TestFormat};
     use dream_gate::gate::VetoClass;
     use dream_gate::outcome::ExecOutcome;
@@ -1861,6 +1880,8 @@ mod tests {
             },
             runner: Arc::new(ScriptedRunner::new()),
             roster_path: dir.join("roster.json"),
+            forge: Arc::new(GhForge),
+            llm_override: None,
         }
     }
 

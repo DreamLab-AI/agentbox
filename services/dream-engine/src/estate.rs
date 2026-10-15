@@ -16,6 +16,14 @@ use crate::config::{self, RuntimeConfig};
 use crate::llm::{LlmConfig, Provider};
 use crate::ruvector::RuVectorConfig;
 
+/// The global `/dream off` kill-switch file. `DREAM_PAUSE_FLAG` overrides it
+/// (hermetic runs).
+pub fn pause_flag_path() -> PathBuf {
+    std::env::var("DREAM_PAUSE_FLAG")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/home/devuser/workspace/.agentbox/dream-paused"))
+}
+
 /// Default location of the durable roster (control-plane state, next to the
 /// dream inbox and the pause flag).
 pub fn default_roster_path() -> PathBuf {

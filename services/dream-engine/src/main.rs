@@ -211,6 +211,8 @@ async fn main() {
         ruvector: ruvector_config(&runtime),
         runner,
         roster_path: cli.roster_path.clone(),
+        forge: Arc::new(dream_core::seams::GhForge),
+        llm_override: None,
         runtime,
         workspace: cli.workspace.clone(),
         artefact_dir: cli.artefact_dir.clone(),
