@@ -1,34 +1,53 @@
+//! The composition root: one night, wired from `dream-core` and `dream-gate`
+//! parts and the estate's adapters.
+//!
+//! The mechanism (evaluator receipts, candidate worktrees, the ledger, source
+//! reading, the context governor, the streak, the pure gate) lives in the
+//! extracted crates; this module decides *when* each runs and plugs the
+//! estate seams in: [`LlmAdapter`] (Z.AI / Loom), [`SshRunner`] (the annexe),
+//! [`RuVectorSink`] (memory) and the inbox and journal notifiers. The
+//! protected-path policy is built once per night ([`policy::for_night`]) and
+//! handed both to the candidate guard and to the gate's context.
+
+use dream_core::candidate;
+use dream_core::context;
+use dream_core::ledger::{self, LedgerRow};
+use dream_core::roster;
+use dream_core::runstate;
+use dream_core::seams::{DraftPr, Forge, GhForge, Llm, LlmRequest, MemorySink, Notice, Notifier};
+use dream_core::source;
+use dream_core::{persist, readiness, streak};
+use dream_gate::gate::{self, CandidateState, GateContext};
+use dream_gate::manifest::{self, ModelIdentity};
+use dream_gate::receipts::{self, Phase};
+use dream_gate::verdict::{self, Verdict};
+use dream_gate::witness;
+use serde_json::json;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::{info, warn};
 
-use crate::candidate;
-use crate::compile;
-use crate::config::{self, DreamConfig, RuntimeConfig};
-use crate::context;
+use crate::baseline;
+use crate::candidate_flow::{self, Annexe, Flow};
+use crate::config::{self, RuntimeConfig};
 use crate::digest;
 use crate::dispatch;
-use crate::gate;
+use crate::estate;
 use crate::governance;
 use crate::inbox;
 use crate::journal::{self, Journal, JournalStats};
-use crate::ledger::{self, LedgerRow};
-use crate::llm::{self, LlmConfig, Provider};
-use crate::manifest;
-use crate::persist;
-use crate::readiness;
-use crate::receipts;
-use crate::roster;
+use crate::llm::{LlmAdapter, LlmConfig};
+use crate::notify::{InboxNotifier, JournalNotifier, Notifiers};
+use crate::policy;
+use crate::present::{
+    gate_result_line, pr_title, receipt_outcomes, render_receipt, tail, vetoed_finding,
+};
+use crate::prompt;
+use crate::records;
 use crate::runner::EvaluatorRunner;
-use crate::runstate;
-use crate::ruvector::{self, DreamFinding, RuVectorConfig};
-use crate::source;
-use crate::sweep;
-use crate::verdict::{self, Verdict};
-use crate::witness;
-use serde_json::json;
+use crate::ruvector::{self, DreamFinding, RuVectorConfig, RuVectorSink};
 
 /// Wall-clock budget for a repo's build step. Generous: a cold release build of
 /// a Rust workspace on the annexe is minutes, not seconds, and a build that
@@ -49,6 +68,8 @@ pub enum EngineError {
     Io(#[from] std::io::Error),
     #[error("ledger: {0}")]
     Ledger(#[from] ledger::LedgerError),
+    #[error("prompt template: {0}")]
+    Template(#[from] dream_core::compile::TemplateError),
 }
 
 #[derive(Debug)]
@@ -107,11 +128,11 @@ impl Engine {
     }
 
     /// One full night: every eligible nominated repo, serially, capped at
-    /// `max_repos_per_night`. A repo whose trailing ledger rows are all
-    /// INCONCLUSIVE (`prune_dry_streak` of them) is on standby and skipped —
-    /// a dry streak means a saturated repo or a broken harness, and either
-    /// way the slot is wasted until a decisive verdict (via a forced
-    /// `--target` run or a harness fix) resets the streak.
+    /// `max_repos_per_night`. A repo whose dry streak reaches `prune_dry_streak`
+    /// is on standby and skipped: REJECT and INCONCLUSIVE nights advance the
+    /// streak, an ACCEPT resets it, BLOCKED-ENV and HANDOFF neither
+    /// (`dream_core::streak`). A dry streak means a saturated repo, and the
+    /// slot is wasted until an ACCEPT (via a forced `--target` run) resets it.
     /// Returns `None` when dreaming is paused (the night is NOT consumed —
     /// the loop retries the same date after `/dream on`).
     pub async fn run_night(&self, day_int: u32, date: &str) -> Option<Vec<(String, String)>> {
@@ -180,7 +201,7 @@ impl Engine {
                         repo = %name,
                         streak = s,
                         limit = self.runtime.prune_dry_streak,
-                        "standby — INCONCLUSIVE dry streak; skipped (revive via --target or a harness fix)"
+                        "standby — dry streak (REJECT/INCONCLUSIVE nights); skipped (revive via --target)"
                     );
                     standby.push(digest::Standby {
                         repo: name.clone(),
@@ -345,7 +366,7 @@ impl Engine {
             nj.completed(c, !status.contains("failed"), json!({ "status": status }))
                 .await;
             info!(result = %status, "night digest");
-            record_digest_status(date, &status);
+            records::record_digest_status(date, &status);
         }
 
         // Forum-suggestions tenant: mine the community feature-suggestions
@@ -386,7 +407,7 @@ impl Engine {
 
         nj.turn_completed(json!({ "outcomes": outcomes.len() }))
             .await;
-        record_night_journal(&nj.stats());
+        records::record_night_journal(&nj.stats());
         Some(outcomes)
     }
 
@@ -403,15 +424,18 @@ impl Engine {
         Ok(repos)
     }
 
-    /// Trailing INCONCLUSIVE streak from the repo's own ledger (0 when the
-    /// ledger is missing/unreadable — never punish a repo for having no
-    /// history yet, or for a ledger path we cannot resolve).
+    /// The repo's dry streak from its own ledger (0 when the ledger is
+    /// missing/unreadable — never punish a repo for having no history yet, or
+    /// for a ledger path we cannot resolve). REJECT and INCONCLUSIVE advance
+    /// it, ACCEPT resets it, BLOCKED-ENV and HANDOFF neither (the old engine
+    /// counted only INCONCLUSIVE and reset on REJECT; changed by design in
+    /// the `dream-core` extraction, see the extraction ledger).
     fn repo_dry_streak(&self, repo_path: &Path) -> usize {
-        let Ok(cfg) = DreamConfig::load(&repo_path.join("dream.config.json")) else {
+        let Ok((cfg, _)) = config::load_dream_config(&repo_path.join("dream.config.json")) else {
             return 0;
         };
         match std::fs::read_to_string(repo_path.join(&cfg.ledger_path)) {
-            Ok(text) => dry_streak(&text),
+            Ok(text) => streak::dry_streak_text(&text),
             Err(_) => 0,
         }
     }
@@ -479,9 +503,10 @@ impl Engine {
         let repo_path = repo_path.to_path_buf();
 
         // Load config, pick slot, compile the prompt.
+        // One read: the parsed document, the manifest's digest and the
+        // protected-path policy are all built from these same bytes.
         let config_path = repo_path.join("dream.config.json");
-        let config_bytes = std::fs::read(&config_path).unwrap_or_default();
-        let cfg = DreamConfig::load(&config_path)?;
+        let (cfg, config_bytes) = config::load_dream_config(&config_path)?;
         let slot = config::tonight_slot(&cfg, day_int).clone();
         let bonuses = config::bonus_dives(&cfg, day_int);
 
@@ -524,7 +549,7 @@ impl Engine {
             "admission passed — evaluators are usable for tonight's deep"
         );
 
-        let mut prompt = compile::compile(&cfg, &slot, day_int, &bonuses);
+        let mut prompt = prompt::compile(&cfg, &slot, day_int, &bonuses)?;
         info!(chars = prompt.len(), deep = %slot.deep, "prompt compiled");
 
         // Carry-over: the previous night's own "Next steps" / "Biggest
@@ -554,7 +579,15 @@ impl Engine {
         // 1. Freeze the experiment manifest BEFORE anything else can move.
         //    Baseline revision + tree hash, evaluator identities and command
         //    digests, the model we intend to call, and the restart-safe run id.
-        let (baseline_rev, baseline_tree) = match manifest::baseline_of(&repo_path) {
+        let llm = LlmAdapter::new(self.llm.clone());
+        let fallback_llm = self.llm_fallback.clone().map(LlmAdapter::new);
+        let fallback: Option<&dyn Llm> = fallback_llm.as_ref().map(|f| f as &dyn Llm);
+        let notifier = Notifiers(vec![
+            Box::new(InboxNotifier::new(&repo_name, &night_id, date)),
+            Box::new(JournalNotifier::new(j)),
+        ]);
+
+        let (baseline_rev, baseline_tree) = match baseline::of(&repo_path) {
             Ok(b) => b,
             Err(e) => {
                 warn!(repo = %repo_name, error = %e, "cannot resolve baseline revision — BLOCKED-ENV");
@@ -584,16 +617,37 @@ impl Engine {
             &slot.scan,
             &baseline_rev,
             &baseline_tree,
-            manifest::ModelIdentity {
-                provider: format!("{:?}", self.llm.provider).to_lowercase(),
-                model: self.llm.model.clone(),
-                max_tokens: self.llm.max_tokens,
+            ModelIdentity {
                 fallback: self
                     .llm_fallback
                     .as_ref()
                     .map(|f| format!("{:?}:{}", f.provider, f.model).to_lowercase()),
+                ..llm.identity()
             },
+            env!("CARGO_PKG_VERSION"),
         );
+        // The night's single protected-path policy, from the bytes the
+        // manifest just froze. A config the manifest does not vouch for is a
+        // fault, never a reason to run with a weaker policy.
+        let policy = match policy::for_night(&frozen, &config_bytes, &repo_path) {
+            Ok(p) => p,
+            Err(e) => {
+                warn!(repo = %repo_name, error = %e, "protected-path policy unavailable — BLOCKED-ENV");
+                return self
+                    .persist_blocked_env(
+                        &cfg,
+                        &repo_name,
+                        &repo_path,
+                        &slot.deep,
+                        &night_id,
+                        date,
+                        "",
+                        &format!("protected-path policy could not be built: {e}"),
+                        j,
+                    )
+                    .await;
+            }
+        };
         std::fs::create_dir_all(&night_dir)?;
         match manifest::freeze(&night_dir, &frozen) {
             Ok(manifest::Freeze::Written) => {
@@ -797,19 +851,19 @@ impl Engine {
         info!(remote = %remote_dir, "dispatching to the connected node");
         // Mirror the repo's real depth under the workspace so sibling
         // path-deps resolve on the annexe (see `clone_repo_and_siblings`).
-        let repo_subpath = annexe_subpath(&repo_path, &self.workspace);
+        let repo_subpath = dispatch::annexe_subpath(&repo_path, &self.workspace);
         let c = j
             .called(
                 "annexe.clone",
-                json!({ "remote": remote_dir, "include": cfg.annexe_include }),
+                json!({ "remote": remote_dir, "include": cfg.sibling_repos }),
             )
             .await;
-        let cloned = clone_repo_and_siblings(
+        let cloned = dispatch::clone_repo_and_siblings(
             &self.runtime.hp_host,
             &repo_path,
             &remote_dir,
             &repo_subpath,
-            &cfg.annexe_include,
+            &cfg.sibling_repos,
             &self.workspace,
         );
         j.completed(
@@ -853,12 +907,12 @@ impl Engine {
                 &self.runtime.hp_host,
                 &format!("rm -rf {}", dispatch::shell_quote(&remote_dir)),
             );
-            let recloned = clone_repo_and_siblings(
+            let recloned = dispatch::clone_repo_and_siblings(
                 &self.runtime.hp_host,
                 &repo_path,
                 &remote_dir,
                 &repo_subpath,
-                &cfg.annexe_include,
+                &cfg.sibling_repos,
                 &self.workspace,
             );
             j.completed(
@@ -934,8 +988,7 @@ impl Engine {
                 "evaluators": applicable.iter().map(|e| e.name.clone()).collect::<Vec<_>>() }),
             )
             .await;
-        let baseline_receipts =
-            self.run_evaluators(&work_dir, &applicable, receipts::Phase::Baseline);
+        let baseline_receipts = self.run_evaluators(&work_dir, &applicable, Phase::Baseline);
         j.completed(
             c,
             true,
@@ -945,8 +998,7 @@ impl Engine {
         for r in &baseline_receipts {
             info!(receipt = %r.summary(), "baseline evaluator");
         }
-        if let Err(e) = receipts::persist(&night_dir, receipts::Phase::Baseline, &baseline_receipts)
-        {
+        if let Err(e) = receipts::persist(&night_dir, Phase::Baseline, &baseline_receipts) {
             warn!(error = %e, "baseline receipt persist failed (fail-open)");
         }
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::BaselineEvaluated);
@@ -964,6 +1016,16 @@ impl Engine {
                 .join("; ");
             warn!(detail = %detail, "required evaluators unusable at baseline — BLOCKED-ENV, no LLM call");
             let _ = runstate::fail(&night_dir, &mut run, &detail);
+            // The same harness failures recurring unchanged night after night
+            // is a stalled harness, not a repo problem: say so (HarnessStuck).
+            self.record_streak(
+                &repo_name,
+                &night_id,
+                Verdict::BlockedEnv.as_str(),
+                &env_vetoes,
+                &notifier,
+            )
+            .await;
             let res = self
                 .persist_blocked_env(
                     &cfg,
@@ -1031,7 +1093,7 @@ impl Engine {
             .and_then(|_| context::persist_receipts(&night_dir, &night_id, &build_out, &eval_outs))
         {
             Ok(mut objects) => {
-                if context::enabled() {
+                if estate::self_gc_enabled() {
                     objects.extend(context::load_prior_objects(
                         &self.artefact_dir,
                         &repo_name,
@@ -1044,12 +1106,13 @@ impl Engine {
                         )
                         .await;
                     governed_pack = context::govern(
-                        &self.llm,
-                        self.llm_fallback.as_ref(),
+                        &llm,
+                        fallback,
                         &objects,
                         &slot.deep,
                         &slot.scan.join(", "),
-                        redact,
+                        estate::self_gc_budget(),
+                        estate::redact,
                     )
                     .await;
                     j.completed(c, governed_pack.is_some(), json!({})).await;
@@ -1062,13 +1125,13 @@ impl Engine {
             None => {
                 prompt.push_str(&format!(
                     "## Build output (tail)\n```\n{}\n```\n\n",
-                    redact(tail(&build_out, 3000))
+                    estate::redact(tail(&build_out, 3000))
                 ));
                 for (name, out) in &eval_outs {
                     prompt.push_str(&format!(
                         "## Evaluator `{}` output (tail)\n```\n{}\n```\n\n",
                         name,
-                        redact(tail(out, 6000))
+                        estate::redact(tail(out, 6000))
                     ));
                 }
             }
@@ -1090,17 +1153,23 @@ impl Engine {
                 json!({ "purpose": "source-gather", "model": self.llm.model }),
             )
             .await;
+        let scans = slot.scan.join(", ");
+        let source_cfg = estate::source_config_from_env();
+        let deny = estate::source_denylist();
         let gathered = source::gather(
-            &self.llm,
-            self.llm_fallback.as_ref(),
-            &repo_path,
-            &baseline_rev,
-            &slot.deep,
-            &slot.scan.join(", "),
-            &required_cmds,
-            &prompt[evidence_start..],
-            &source::SourceConfig::from_env(),
-            &redact,
+            &llm,
+            fallback,
+            &source::GatherInput {
+                repo: &repo_path,
+                commit: &baseline_rev,
+                deep: &slot.deep,
+                scans: &scans,
+                commands: &required_cmds,
+                evidence: &prompt[evidence_start..],
+                cfg: &source_cfg,
+                deny: &deny,
+            },
+            &estate::redact,
         )
         .await;
         j.completed(c, gathered.is_some(), json!({})).await;
@@ -1127,7 +1196,9 @@ impl Engine {
                 "model": self.llm.model, "prompt_chars": prompt.len() }),
             )
             .await;
-        let primary = llm::call(&self.llm, &prompt).await;
+        let primary = llm
+            .complete(&LlmRequest::new(prompt.as_str(), llm.identity().max_tokens))
+            .await;
         j.completed(
             c,
             primary.is_ok(),
@@ -1136,8 +1207,8 @@ impl Engine {
         .await;
         let report = match primary {
             Ok(r) => r,
-            Err(primary_err) => match &self.llm_fallback {
-                Some(fb) => {
+            Err(primary_err) => match (&self.llm_fallback, fallback) {
+                (Some(fb), Some(fb_llm)) => {
                     warn!(
                         error = %primary_err,
                         fallback_provider = ?fb.provider,
@@ -1151,14 +1222,19 @@ impl Engine {
                             "provider": format!("{:?}", fb.provider), "model": fb.model }),
                         )
                         .await;
-                    let fallback = llm::call(fb, &prompt).await;
+                    let second = fb_llm
+                        .complete(&LlmRequest::new(
+                            prompt.as_str(),
+                            fb_llm.identity().max_tokens,
+                        ))
+                        .await;
                     j.completed(
                         c,
-                        fallback.is_ok(),
-                        json!({ "error": fallback.as_ref().err().map(|e| e.to_string()) }),
+                        second.is_ok(),
+                        json!({ "error": second.as_ref().err().map(|e| e.to_string()) }),
                     )
                     .await;
-                    match fallback {
+                    match second {
                         Ok(r) => {
                             model_used = fb.model.clone();
                             r
@@ -1172,7 +1248,7 @@ impl Engine {
                         }
                     }
                 }
-                None => {
+                _ => {
                     warn!(error = %primary_err, "LLM call failed — recording degraded night");
                     format!(
                         "# Degraded night\n\nLLM call failed: {}\n\nVERDICT: INCONCLUSIVE",
@@ -1191,19 +1267,24 @@ impl Engine {
 
         // 8. Candidate: apply the emitted patch in isolation, then RE-RUN the
         //    required evaluators against that tree. Nothing here trusts the
-        //    report's own claim about its patch.
+        //    report's own claim about its patch. `candidate_flow::attempt` goes
+        //    through `dream_core::candidate::run`, which runs the protected-path
+        //    guard before any git command, build or evaluator.
         let required = frozen.required();
         let branch = persist::branch_name(&slot.deep, date);
-        let mut candidate_state = gate::CandidateState::NotAttempted;
-        let mut candidate_receipts: Vec<receipts::EvaluatorReceipt> = Vec::new();
-        let mut prepared: Option<candidate::PreparedCandidate> = None;
+        let mut attempt = dream_core::candidate::Attempt {
+            state: CandidateState::NotAttempted,
+            prepared: None,
+            receipts: Vec::new(),
+            build: None,
+        };
 
         // 8a. Repair pass (ADR-2114): an ACCEPT with no diff gets exactly one
         //     follow-up call asking for the diff alone. The report itself is
         //     not rewritten — its witness and VERDICT line stay as emitted;
         //     the outcome is receipted in repair.json.
         let claimed_accept = matches!(strict, Ok(Verdict::Accept));
-        let mut patch = persist::extract_patch(&report);
+        let mut patch = dream_gate::patch::extract_patch(&report);
         if source::needs_repair(claimed_accept, patch.is_some()) {
             info!("ACCEPT without a dream-patch block — running the one-shot repair pass");
             let c = j
@@ -1212,13 +1293,7 @@ impl Engine {
                     json!({ "purpose": "repair", "model": self.llm.model }),
                 )
                 .await;
-            let record = source::repair(
-                &self.llm,
-                self.llm_fallback.as_ref(),
-                &report,
-                source_section.as_deref(),
-            )
-            .await;
+            let record = source::repair(&llm, fallback, &report, source_section.as_deref()).await;
             j.completed(
                 c,
                 matches!(record.outcome, source::RepairOutcome::Patch(_)),
@@ -1241,275 +1316,82 @@ impl Engine {
                     info!(
                         "report claims ACCEPT but carries no candidate patch — nothing to verify"
                     );
-                    candidate_state = gate::CandidateState::NoPatch;
-                }
-                Some(patch) if persist::deletes_binary(&patch) => {
-                    warn!("candidate patch deletes a binary file — refused before applying");
-                    candidate_state = gate::CandidateState::Refused {
-                        detail: "the patch deletes a binary file".into(),
-                    };
+                    attempt.state = CandidateState::NoPatch;
                 }
                 Some(patch) => {
-                    // A stale branch from an interrupted attempt would block the
-                    // worktree; drop it first — the run id, not the branch,
-                    // is the identity.
-                    persist::delete_branch(&repo_path, &branch);
-                    let c = j
-                        .called(
-                            "git.worktree",
-                            json!({ "op": "apply-candidate", "branch": branch }),
-                        )
-                        .await;
                     let commit_msg = format!("dream({}): candidate for {}", slot.deep, night_id);
-                    let mut prepared_res =
-                        candidate::prepare(&repo_path, &branch, &patch, &commit_msg, &baseline_rev);
-                    j.completed(
-                        c,
-                        prepared_res.is_ok(),
-                        json!({
-                            "error": prepared_res.as_ref().err().map(|e| e.to_string()),
-                            "tree": prepared_res.as_ref().ok().map(|c| c.tree_hash.clone()),
+                    let flow = Flow {
+                        repo: &repo_path,
+                        branch: &branch,
+                        commit_msg: &commit_msg,
+                        base: &baseline_rev,
+                        policy: &policy,
+                        build: cfg
+                            .build_step
+                            .as_ref()
+                            .map(|b| (b.cmd.as_str(), DEFAULT_BUILD_TIMEOUT_SECS)),
+                        required: &required,
+                        runner: self.runner.as_ref(),
+                        annexe: Some(Annexe {
+                            host: &self.runtime.hp_host,
+                            remote_dir: &remote_dir,
+                            repo_subpath: &repo_subpath,
+                            siblings: &cfg.sibling_repos,
+                            workspace: &self.workspace,
                         }),
-                    )
-                    .await;
-                    // 8b. Apply-repair pass: a diff git refuses gets exactly one
-                    //     follow-up call carrying git's error and the real file
-                    //     text where it failed — never evaluator receipts — and
-                    //     the corrected diff is applied the same way. The reply
-                    //     is receipted in apply-repair.json, which a restarted
-                    //     night reuses instead of asking again.
-                    if let Err(persist::PersistError::PatchDidNotApply(detail)) = &prepared_res {
-                        let detail = detail.clone();
-                        let rec_path = night_dir.join("apply-repair.json");
-                        let recorded = std::fs::read(&rec_path)
-                            .ok()
-                            .and_then(|b| serde_json::from_slice::<source::RepairRecord>(&b).ok())
-                            .filter(|r| r.repairs(&patch));
-                        let record = match recorded {
-                            Some(r) => r,
-                            None => {
-                                info!("candidate patch did not apply — running the one-shot apply-repair pass");
-                                let excerpt =
-                                    source::failing_hunk(&detail).and_then(|(path, line)| {
-                                        source::failing_excerpt(
-                                            &repo_path,
-                                            &baseline_rev,
-                                            &path,
-                                            line,
-                                            40,
-                                        )
-                                    });
-                                let prompt = source::apply_repair_prompt(
-                                    &report,
-                                    &patch,
-                                    &detail,
-                                    excerpt.as_deref(),
-                                );
-                                let c = j
-                                    .called(
-                                        "llm.call",
-                                        json!({ "purpose": "apply-repair", "model": self.llm.model }),
-                                    )
-                                    .await;
-                                let r = source::apply_repair(
-                                    &self.llm,
-                                    self.llm_fallback.as_ref(),
-                                    &patch,
-                                    prompt,
-                                )
-                                .await;
-                                j.completed(
-                                    c,
-                                    matches!(r.outcome, source::RepairOutcome::Patch(_)),
-                                    json!({}),
-                                )
-                                .await;
-                                let _ = manifest::write_atomic(
-                                    &rec_path,
-                                    &serde_json::to_vec_pretty(&r).unwrap_or_default(),
-                                );
-                                r
-                            }
-                        };
-                        match &record.outcome {
-                            source::RepairOutcome::Patch(fixed)
-                                if !persist::deletes_binary(fixed) =>
-                            {
-                                persist::delete_branch(&repo_path, &branch);
-                                let c = j
-                                    .called(
-                                        "git.worktree",
-                                        json!({ "op": "apply-repaired-candidate", "branch": branch }),
-                                    )
-                                    .await;
-                                prepared_res = candidate::prepare(
-                                    &repo_path,
-                                    &branch,
-                                    fixed,
-                                    &commit_msg,
-                                    &baseline_rev,
-                                )
-                                .map(|mut c| {
-                                    // Say plainly that a second model call
-                                    // rewrote the diff that is being tested.
-                                    c.applied_via = format!(
-                                        "apply-repair({}): {}",
-                                        &record.prompt_digest[..record.prompt_digest.len().min(12)],
-                                        c.applied_via
-                                    );
-                                    c
-                                })
-                                .map_err(|e| {
-                                    persist::PersistError::PatchDidNotApply(format!(
-                                        "{detail}; the one repair pass also failed: {e}"
-                                    ))
-                                });
-                                j.completed(
-                                    c,
-                                    prepared_res.is_ok(),
-                                    json!({ "error": prepared_res.as_ref().err().map(|e| e.to_string()) }),
-                                )
-                                .await;
-                                info!(applied = prepared_res.is_ok(), "apply-repair candidate");
-                            }
-                            other => {
-                                let why = match other {
-                                    source::RepairOutcome::NoPatch(r) => {
-                                        format!("model declined: {r}")
-                                    }
-                                    source::RepairOutcome::LlmError(e) => {
-                                        format!("repair call failed: {e}")
-                                    }
-                                    source::RepairOutcome::Patch(_) => {
-                                        "repaired patch deletes a binary file".into()
-                                    }
-                                    source::RepairOutcome::Absent => {
-                                        "repair reply carried no diff".into()
-                                    }
-                                };
-                                info!(%why, "apply-repair produced no usable diff");
-                                prepared_res = Err(persist::PersistError::PatchDidNotApply(
-                                    format!("{detail}; repair pass: {why}"),
-                                ));
-                            }
+                        night_dir: &night_dir,
+                        report: &report,
+                        llm: &llm,
+                        fallback,
+                    };
+                    attempt = candidate_flow::attempt(&flow, &patch, j).await;
+                    match &attempt.state {
+                        CandidateState::Applied { tree_hash, .. } => {
+                            info!(tree = %tree_hash, branch = %branch, "candidate tree built in isolation")
                         }
-                    }
-                    match prepared_res {
-                        Err(e) => {
-                            warn!(error = %e, "candidate patch did not apply — acceptance cannot be verified");
-                            candidate_state = gate::CandidateState::DidNotApply {
-                                detail: e.to_string(),
-                            };
-                        }
-                        Ok(c) => {
-                            info!(tree = %c.tree_hash, branch = %c.branch, "candidate tree built in isolation");
-                            let cand_remote = format!("{}/candidate", remote_dir);
-                            // The worktree lives in a temp dir, so reuse the
-                            // subpath derived from the real checkout.
-                            let cand_work = format!("{}/{}", cand_remote, repo_subpath);
-                            let jc = j
-                                .called(
-                                    "annexe.clone",
-                                    json!({ "remote": cand_remote, "op": "candidate" }),
-                                )
-                                .await;
-                            let shipped = clone_repo_and_siblings(
-                                &self.runtime.hp_host,
-                                &c.worktree,
-                                &cand_remote,
-                                &repo_subpath,
-                                &cfg.annexe_include,
-                                &self.workspace,
-                            );
-                            j.completed(
-                                jc,
-                                shipped.is_ok(),
-                                json!({ "error": shipped.as_ref().err().map(|e| e.to_string()) }),
-                            )
-                            .await;
-                            match shipped {
-                                Ok(()) => {
-                                    if let Some(bs) = cfg.build_step.as_ref() {
-                                        let jc = j.called("annexe.exec", json!({ "op": "build", "phase": "candidate", "cmd": bs.cmd })).await;
-                                        let b = self.runner.run(
-                                            &cand_work,
-                                            &bs.cmd,
-                                            DEFAULT_BUILD_TIMEOUT_SECS,
-                                        );
-                                        j.completed(
-                                            jc,
-                                            b.exit_code == Some(0),
-                                            json!({ "exit": b.exit_code }),
-                                        )
-                                        .await;
-                                        info!(exit = ?b.exit_code, "candidate build");
-                                    }
-                                    let jc = j
-                                        .called("annexe.exec", json!({ "op": "evaluate", "phase": "candidate",
-                                            "evaluators": required.iter().map(|e| e.name.clone()).collect::<Vec<_>>() }))
-                                        .await;
-                                    candidate_receipts = candidate::evaluate(
-                                        self.runner.as_ref(),
-                                        &cand_work,
-                                        &required,
-                                    );
-                                    j.completed(jc, true, json!({ "outcomes": receipt_outcomes(&candidate_receipts) })).await;
-                                    for r in &candidate_receipts {
-                                        info!(receipt = %r.summary(), "candidate evaluator");
-                                    }
-                                    candidate_state = gate::CandidateState::Applied {
-                                        tree_hash: c.tree_hash.clone(),
-                                    };
-                                }
-                                Err(e) => {
-                                    warn!(error = %e, "candidate could not be shipped to the annexe");
-                                    candidate_state = gate::CandidateState::DidNotApply {
-                                        detail: format!("annexe provisioning failed: {e}"),
-                                    };
-                                }
-                            }
-                            let _ = manifest::write_candidate(
-                                &night_dir,
-                                &manifest::CandidateRecord {
-                                    schema: manifest::MANIFEST_SCHEMA,
-                                    run_id: frozen.run_id.clone(),
-                                    patch_digest: c.patch_digest.clone(),
-                                    patch_bytes: c.patch_bytes,
-                                    candidate_tree_hash: c.tree_hash.clone(),
-                                    branch: c.branch.clone(),
-                                    applied: matches!(
-                                        candidate_state,
-                                        gate::CandidateState::Applied { .. }
-                                    ),
-                                    apply_error: match &candidate_state {
-                                        gate::CandidateState::DidNotApply { detail }
-                                        | gate::CandidateState::Refused { detail } => {
-                                            Some(detail.clone())
-                                        }
-                                        _ => None,
-                                    },
-                                    applied_via: c.applied_via.clone(),
-                                    created_at: chrono::Utc::now().to_rfc3339(),
-                                },
-                            );
-                            prepared = Some(c);
+                        other => {
+                            warn!(state = ?other, "candidate not applied — acceptance cannot be verified")
                         }
                     }
                 }
             }
         }
+        if let Some(rec) = candidate_flow::candidate_record(&frozen.run_id, &attempt) {
+            let _ = manifest::write_candidate(&night_dir, &rec);
+        }
+        let candidate_receipts = std::mem::take(&mut attempt.receipts);
         if !candidate_receipts.is_empty() {
-            if let Err(e) =
-                receipts::persist(&night_dir, receipts::Phase::Candidate, &candidate_receipts)
-            {
+            if let Err(e) = receipts::persist(&night_dir, Phase::Candidate, &candidate_receipts) {
                 warn!(error = %e, "candidate receipt persist failed (fail-open)");
             }
         }
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::CandidateEvaluated);
 
         // 9. The deterministic gate. From here the verdict is a function of the
-        //    receipts, not of the report's prose.
-        let decision = gate::decide(&frozen, &strict, &candidate_state, &candidate_receipts);
+        //    receipts, not of the report's prose. The context always carries
+        //    this night's policy (the one the candidate guard used) and the
+        //    digest of the config the candidate tree was evaluated with: a
+        //    config that drifted under the night is BLOCKED-ENV.
+        let mut ctx = GateContext::new(&policy);
+        if let Some(d) = attempt
+            .prepared
+            .as_ref()
+            .and_then(candidate_flow::tree_config_digest)
+        {
+            ctx = ctx.with_config_digest(d);
+        }
+        let cand_work = format!("{}/candidate/{}", remote_dir, repo_subpath);
+        for (name, t) in test_evidence(
+            &required,
+            &baseline_receipts,
+            &candidate_receipts,
+            &work_dir,
+            &cand_work,
+        ) {
+            ctx = ctx.with_tests(name, t);
+        }
+        let decision = gate::decide(&frozen, &strict, &attempt.state, &candidate_receipts, &ctx);
+        let prepared = attempt.prepared.take();
         let v = decision.verdict_enum();
         if !decision.vetoes.is_empty() {
             warn!(summary = %decision.summary, "required-check gate vetoed the model verdict");
@@ -1520,6 +1402,14 @@ impl Engine {
             &serde_json::to_vec_pretty(&decision).unwrap_or_default(),
         );
         let _ = runstate::advance(&night_dir, &mut run, runstate::Phase::Gated);
+        self.record_streak(
+            &repo_name,
+            &night_id,
+            v.as_str(),
+            &decision.vetoes,
+            &notifier,
+        )
+        .await;
 
         // The finding shown in the ledger must not read as a win when the gate
         // refused one.
@@ -1612,8 +1502,13 @@ impl Engine {
                         .join(", "),
                 );
                 let jc = j.called("git.push", json!({ "branch": c.branch, "repo": cfg.repo, "then": "gh pr create --draft" })).await;
-                let out =
-                    persist::push_and_open_pr(&repo_path, &cfg.repo, &c.branch, &title, &body);
+                let out = GhForge.publish_draft(&DraftPr {
+                    repo_dir: repo_path.clone(),
+                    repo_slug: cfg.repo.clone(),
+                    branch: c.branch.clone(),
+                    title,
+                    body,
+                });
                 j.completed(
                     jc,
                     out.pushed && out.pr_url.is_some(),
@@ -1623,11 +1518,23 @@ impl Engine {
                 info!(branch = %out.branch, pushed = out.pushed, pr = ?out.pr_url, "verified candidate persisted as draft PR");
                 if out.pr_url.is_none() {
                     warn!(branch = %out.branch, pushed = out.pushed, "verified candidate has no draft PR — raising an alert");
-                    let text =
-                        persist::lost_pr_alert(&repo_name, &cfg.repo, &out.branch, out.pushed);
-                    if let Err(e) = inbox::add("alert", &repo_name, &night_id, date, &text) {
-                        warn!(error = %e, "dream inbox write failed (fail-open)");
-                    }
+                    notifier
+                        .notify(&Notice::LostPr {
+                            repo_dir: repo_name.clone(),
+                            repo_slug: cfg.repo.clone(),
+                            branch: out.branch.clone(),
+                            pushed: out.pushed,
+                        })
+                        .await;
+                } else {
+                    notifier
+                        .notify(&Notice::Accepted {
+                            repo: repo_name.clone(),
+                            night_id: night_id.clone(),
+                            branch: out.branch.clone(),
+                            pr_url: out.pr_url.clone(),
+                        })
+                        .await;
                 }
                 pr_ref = out.pr_url.clone().unwrap_or_else(|| {
                     if out.pushed {
@@ -1711,20 +1618,29 @@ impl Engine {
                 json!({ "namespace": self.ruvector.namespace, "key": df.night_id }),
             )
             .await;
-        let store = ruvector::store_finding(&self.ruvector, &df).await;
+        // Operational verdicts (BLOCKED-ENV/HANDOFF) clear no storage bar and
+        // are skipped inside the sink, exactly as before.
+        let store = RuVectorSink::new(self.ruvector.clone())
+            .record(&ruvector::record_for(&df))
+            .await;
+        let stored = store.is_ok() && ruvector::stores(&df.verdict);
         j.completed(
             c,
-            matches!(store, Ok(true)),
+            stored,
             json!({ "error": store.as_ref().err().map(|e| e.to_string()) }),
         )
         .await;
-        let stored = match store {
-            Ok(s) => s,
-            Err(e) => {
-                warn!(error = %e, "RuVector store failed (fail-open)");
-                false
-            }
-        };
+        if let Err(e) = &store {
+            warn!(error = %e, "RuVector store failed (fail-open)");
+        }
+        notifier
+            .notify(&Notice::NightSummary {
+                repo: repo_name.clone(),
+                night_id: night_id.clone(),
+                verdict: v.as_str().to_string(),
+                finding: row.finding.clone(),
+            })
+            .await;
 
         // 14. Clean this night's remote dir — everything worth keeping (report,
         //     verdict, receipts, ledger row, witness, memory) is already
@@ -1766,99 +1682,36 @@ impl Engine {
         })
     }
 
-    /// Check the night's ledger row against the row contract, append it, then
-    /// commit it on the default branch so the night is visible in git
-    /// (ADR-2071 Phase 1). Both are journalled. The append is fatal as before;
-    /// the commit is fail-open.
+    /// Record the night in the repo's failure manifest and raise
+    /// [`Notice::HarnessStuck`] when the same harness failures recurred
+    /// unchanged on consecutive BLOCKED-ENV nights. Fail-open.
     ///
-    /// A row that breaks the contract is repaired, never appended as is and
-    /// never fatal: a failing finding is replaced by `fallback`, a line stating
-    /// what happened tonight ([`ledger::enforce_contract`]), with a warning.
-    /// Later nights read these rows as memory, so a false row misleads them.
-    /// Returns the row as written.
-    async fn append_and_commit_ledger(
+    /// Called where the night's harness vetoes are known: the baseline
+    /// environment gate and the final gate. The pre-dispatch BLOCKED-ENV exits
+    /// (annexe unhealthy, run abandoned, journal unwritable) carry no
+    /// evaluator evidence and are deliberately **not** recorded: recording
+    /// them with no failures would mark yesterday's persisting failures
+    /// "fixed" on a night that never got far enough to observe them.
+    async fn record_streak(
         &self,
-        repo_path: &Path,
-        ledger_path: &Path,
-        mut row: LedgerRow,
-        fallback: &str,
+        repo: &str,
         night_id: &str,
-        j: &Journal,
-    ) -> Result<LedgerRow, EngineError> {
-        let broken = ledger::enforce_contract(&mut row, fallback);
-        if !broken.is_empty() {
-            warn!(rules = ?broken, finding = %row.finding, "ledger row broke the row contract; repaired before append");
-        }
-        let c = j
-            .called(
-                "ledger.append",
-                json!({ "verdict": row.verdict, "deep": row.deep, "repaired": broken }),
-            )
-            .await;
-        let appended = ledger::append_row(ledger_path, &row);
-        j.completed(c, appended.is_ok(), json!({})).await;
-        appended?;
-
-        if std::env::var("DREAM_LEDGER_COMMIT").as_deref() == Ok("0") {
-            return Ok(row);
-        }
-        let c = j
-            .called(
-                "git.commit",
-                json!({ "path": ledger_path.display().to_string() }),
-            )
-            .await;
-        let outcome = ledger::commit_ledger(
-            repo_path,
-            ledger_path,
-            &format!("dream-cycle: {} ledger row ({})", night_id, row.verdict),
-        );
-        let ok = matches!(
-            outcome,
-            ledger::LedgerCommit::Committed(_) | ledger::LedgerCommit::NothingToCommit
-        );
-        j.completed(c, ok, serde_json::to_value(&outcome).unwrap_or_default())
-            .await;
-        match &outcome {
-            ledger::LedgerCommit::Committed(id) => info!(commit = %id, "ledger row committed"),
-            ledger::LedgerCommit::Failed(e) => {
-                warn!(error = %e, "ledger commit failed (fail-open — row stays in the working tree)")
-            }
-            other => info!(outcome = ?other, "ledger row not committed"),
-        }
-        Ok(row)
-    }
-
-    /// Apply the seven-day rule to every nominated repo's `dream/*` branches,
-    /// journalling each deletion or PR closure. Fail-open per branch.
-    async fn sweep_branches(
-        &self,
-        repos: &[(String, PathBuf)],
-        nj: &Journal,
-    ) -> Vec<sweep::SweepRecord> {
-        let now = chrono::Utc::now().timestamp();
-        let mut records = Vec::new();
-        for (name, path) in repos {
-            let slug = DreamConfig::load(&path.join("dream.config.json"))
-                .map(|c| c.repo.clone())
-                .unwrap_or_default();
-            for p in sweep::plan(name, path, &slug, now) {
-                if p.action == sweep::SweepAction::Keep {
-                    continue;
+        verdict: &str,
+        vetoes: &[gate::Veto],
+        notifier: &dyn Notifier,
+    ) {
+        match streak::record_night(&self.artefact_dir, repo, verdict, vetoes) {
+            Ok(update) => {
+                if let Some(n) = streak::harness_stuck_notice(repo, night_id, &update) {
+                    warn!(
+                        repo,
+                        "the evaluation harness is stuck — same failures unchanged"
+                    );
+                    notifier.notify(&n).await;
                 }
-                let c = nj
-                    .called(
-                        "git.branch-sweep",
-                        serde_json::to_value(&p).unwrap_or_default(),
-                    )
-                    .await;
-                let ok = sweep::apply(path, &slug, &p);
-                nj.completed(c, ok, json!({})).await;
-                info!(repo = %name, branch = %p.branch, action = ?p.action, ok, "branch sweep");
-                records.push(p.record(ok));
             }
+            Err(e) => warn!(error = %e, "failure manifest write failed (fail-open)"),
         }
-        records
     }
 
     /// Run a set of evaluators in `work_dir` through the configured runner,
@@ -1884,873 +1737,220 @@ impl Engine {
         out.sort_by(|a, b| a.name.cmp(&b.name));
         out
     }
-
-    /// Previous night's carry-over for a repo: the "Next steps" and "Biggest
-    /// uncertainty" lines from its most recent report (excluding tonight),
-    /// plus any answered inbox questions for the repo. Empty string when
-    /// there is nothing to carry.
-    fn carry_over(&self, repo_name: &str, tonight: &str) -> String {
-        let mut out = String::new();
-        let suffix = format!("-{}", repo_name);
-        let mut nights: Vec<String> = std::fs::read_dir(&self.artefact_dir)
-            .map(|rd| {
-                rd.filter_map(|e| e.ok())
-                    .filter_map(|e| e.file_name().into_string().ok())
-                    .filter(|n| n.ends_with(&suffix) && !n.starts_with(tonight))
-                    .collect()
-            })
-            .unwrap_or_default();
-        nights.sort();
-        if let Some(last) = nights.last() {
-            let report = self.artefact_dir.join(last).join("report.md");
-            if let Ok(text) = std::fs::read_to_string(&report) {
-                for marker in ["Next steps", "Biggest uncertainty", "Main lesson"] {
-                    for line in text.lines() {
-                        let t = line.trim();
-                        if t.to_lowercase().contains(&marker.to_lowercase())
-                            && (t.starts_with('-') || t.starts_with('*') || t.starts_with("**"))
-                        {
-                            out.push_str(t);
-                            out.push('\n');
-                        }
-                    }
-                }
-                if !out.is_empty() {
-                    out.insert_str(0, &format!("From `{}/report.md`:\n", last));
-                }
-            }
-        }
-        // Answered operator questions are decisions — always carry them.
-        if let Ok(text) = std::fs::read_to_string(inbox::inbox_path()) {
-            if let Ok(items) = serde_json::from_str::<Vec<inbox::InboxItem>>(&text) {
-                for i in items.iter().filter(|i| {
-                    i.repo == repo_name && i.status == "answered" && !i.answer.is_empty()
-                }) {
-                    out.push_str(&format!(
-                        "Operator answered ({}): Q: {} → A: {}\n",
-                        i.date, i.text, i.answer
-                    ));
-                }
-            }
-        }
-        out
-    }
-
-    /// Persist a BLOCKED-ENV night: minimal report, ledger row, operator
-    /// alert, remote cleanup. No LLM call, no RuVector finding — a broken
-    /// harness is operational state, not knowledge.
-    #[allow(clippy::too_many_arguments)]
-    async fn persist_blocked_env(
-        &self,
-        cfg: &DreamConfig,
-        repo_name: &str,
-        repo_path: &Path,
-        deep: &str,
-        night_id: &str,
-        date: &str,
-        remote_dir: &str,
-        detail: &str,
-        j: &Journal,
-    ) -> Result<CycleResult, EngineError> {
-        let finding: String = format!("Environment fault, hypothesis untested: {}", detail)
-            .chars()
-            .take(160)
-            .collect();
-        let report = format!(
-            "# BLOCKED-ENV night — {night_id}\n\nThe night could not produce evidence: {detail}.\n\n\
-             No verdict was sought from the model; tonight is an environment fault, not evidence \
-             about the repo.\n\nVERDICT: BLOCKED-ENV\n"
-        );
-        let night_dir = self.artefact_dir.join(night_id);
-        std::fs::create_dir_all(&night_dir)?;
-        let report_path = night_dir.join("report.md");
-        std::fs::write(&report_path, &report)?;
-
-        let ledger_path = repo_path.join(&cfg.ledger_path);
-        let row = LedgerRow {
-            date: date.into(),
-            deep: deep.into(),
-            finding: finding.chars().take(80).collect(),
-            issue: "NONE".into(),
-            pr: "NONE".into(),
-            evaluated: "blocked".into(),
-            verdict: Verdict::BlockedEnv.as_str().into(),
-            effect: String::new(),
-            witness: "BLOCKED".into(),
-            prior_fates: String::new(),
-            reviewer: String::new(),
-            review_minutes: String::new(),
-        };
-        self.append_and_commit_ledger(
-            repo_path,
-            &ledger_path,
-            row,
-            "Environment fault, hypothesis untested",
-            night_id,
-            j,
-        )
-        .await?;
-
-        let c = j
-            .called(
-                "inbox.write",
-                json!({ "kind": "alert", "why": "blocked-env" }),
-            )
-            .await;
-        let added = inbox::add(
-            "alert",
-            repo_name,
-            night_id,
-            date,
-            &format!(
-                "Dream night for {} was BLOCKED-ENV: {}. Check the harness before the next window.",
-                repo_name, detail
-            ),
-        );
-        j.completed(c, added.is_ok(), json!({})).await;
-        if let Err(e) = added {
-            warn!(error = %e, "dream inbox write failed (fail-open)");
-        }
-
-        if !remote_dir.is_empty() {
-            let c = j
-                .called(
-                    "annexe.ssh",
-                    json!({ "op": "cleanup", "remote": remote_dir }),
-                )
-                .await;
-            let cleaned = dispatch::ssh(
-                &self.runtime.hp_host,
-                &format!("rm -rf {}", dispatch::shell_quote(remote_dir)),
-            );
-            j.completed(c, cleaned.is_ok(), json!({})).await;
-        }
-
-        Ok(CycleResult {
-            repo: repo_name.into(),
-            verdict: Verdict::BlockedEnv,
-            finding,
-            witness_short: "BLOCKED".into(),
-            report_path,
-            ledger_path,
-            stored_to_ruvector: false,
-        })
-    }
-
-    /// Persist a HANDOFF night: the nomination was refused at admission because
-    /// no usable evaluator covers tonight's deep.
-    ///
-    /// Nothing was scheduled — no annexe clone, no build, no model call — so
-    /// this is a request for human attention, not a claim about the repository.
-    /// It never counts toward the dry streak (the ledger's streak counter
-    /// ignores any verdict that is not ACCEPT/REJECT/INCONCLUSIVE), because a
-    /// misconfigured evaluator must not park a healthy repo.
-    #[allow(clippy::too_many_arguments)]
-    async fn persist_handoff(
-        &self,
-        cfg: &DreamConfig,
-        repo_name: &str,
-        repo_path: &Path,
-        deep: &str,
-        night_id: &str,
-        date: &str,
-        admission: &readiness::ReadinessReport,
-        j: &Journal,
-    ) -> Result<CycleResult, EngineError> {
-        let refusal = admission.refusal();
-        let finding: String = format!("HANDOFF — evaluator not ready: {}", refusal)
-            .chars()
-            .take(160)
-            .collect();
-        let report = format!(
-            "# HANDOFF night — {night_id}\n\nThe nomination was refused before scheduling: tonight's \
-             deep `{deep}` has no usable evaluator.\n\n## Problems\n{problems}\n\nNo annexe clone, \
-             build, evaluator or model call ran. Fix the `evaluatorEntrypoints` entry (or scope it \
-             to a deep it can actually decide) and the next window will schedule normally.\n\n\
-             VERDICT: HANDOFF\n",
-            problems = admission
-                .problems
-                .iter()
-                .map(|p| format!("- {}", p.describe()))
-                .collect::<Vec<_>>()
-                .join("\n"),
-        );
-        let night_dir = self.artefact_dir.join(night_id);
-        std::fs::create_dir_all(&night_dir)?;
-        let report_path = night_dir.join("report.md");
-        std::fs::write(&report_path, &report)?;
-        let _ = manifest::write_atomic(
-            &night_dir.join("admission.json"),
-            &serde_json::to_vec_pretty(admission).unwrap_or_default(),
-        );
-
-        let ledger_path = repo_path.join(&cfg.ledger_path);
-        let row = LedgerRow {
-            date: date.into(),
-            deep: deep.into(),
-            finding: finding.chars().take(80).collect(),
-            issue: "NONE".into(),
-            pr: "NONE".into(),
-            evaluated: "no".into(),
-            verdict: Verdict::Handoff.as_str().into(),
-            effect: String::new(),
-            witness: "NONE".into(),
-            prior_fates: String::new(),
-            reviewer: String::new(),
-            review_minutes: String::new(),
-        };
-        self.append_and_commit_ledger(
-            repo_path,
-            &ledger_path,
-            row,
-            "HANDOFF: no usable evaluator for tonight's deep",
-            night_id,
-            j,
-        )
-        .await?;
-
-        let c = j
-            .called(
-                "inbox.write",
-                json!({ "kind": "question", "why": "handoff" }),
-            )
-            .await;
-        let added = inbox::add(
-            "question",
-            repo_name,
-            night_id,
-            date,
-            &format!(
-                "Dream nomination for {} (deep `{}`) was refused at admission: {}. \
-                 Which evaluator should decide this deep?",
-                repo_name, deep, refusal
-            ),
-        );
-        j.completed(c, added.is_ok(), json!({})).await;
-        if let Err(e) = added {
-            warn!(error = %e, "dream inbox write failed (fail-open)");
-        }
-
-        Ok(CycleResult {
-            repo: repo_name.into(),
-            verdict: Verdict::Handoff,
-            finding,
-            witness_short: String::new(),
-            report_path,
-            ledger_path,
-            stored_to_ruvector: false,
-        })
-    }
 }
 
-/// Build the LLM config from runtime settings + environment.
-pub fn llm_config(rt: &RuntimeConfig) -> LlmConfig {
-    let provider = Provider::parse(
-        &std::env::var("DREAM_LLM_PROVIDER").unwrap_or_else(|_| rt.llm_provider.clone()),
-    );
-    match provider {
-        Provider::Zai => LlmConfig {
-            provider,
-            url: std::env::var("ZAI_URL").unwrap_or_else(|_| rt.zai_url.clone()),
-            model: std::env::var("ZAI_MODEL").unwrap_or_else(|_| rt.zai_model.clone()),
-            max_tokens: env_u32("ZAI_MAX_TOKENS", rt.zai_max_tokens),
-            api_key: std::env::var("ZAI_ANTHROPIC_API_KEY")
-                .ok()
-                .or_else(|| std::env::var("ZAI_API_KEY").ok()),
-        },
-        Provider::Loom => LlmConfig {
-            provider,
-            url: std::env::var("LOOM_URL")
-                .ok()
-                // An image built before the placeholder fix bakes the
-                // literal `${LOOM_BASE_URL}` into this variable.
-                .and_then(|v| config::resolve_env_placeholder(&v))
-                .unwrap_or_else(|| rt.loom_url.clone()),
-            model: std::env::var("LOOM_MODEL").unwrap_or_else(|_| rt.loom_model.clone()),
-            max_tokens: env_u32("LOOM_MAX_TOKENS", rt.loom_max_tokens),
-            api_key: None,
-        },
-    }
-}
-
-/// Parse a u32 env override, falling back to the toml value on absence or
-/// garbage (a mis-set override must not silently zero the token budget).
-fn env_u32(name: &str, default: u32) -> u32 {
-    std::env::var(name)
-        .ok()
-        .and_then(|v| v.trim().parse().ok())
-        .unwrap_or(default)
-}
-
-/// Build the fallback LLM config: the *other* provider, when usable.
-/// zai primary → Loom (always usable, LAN, no key). loom primary → Z.AI only
-/// when a key is present. `DREAM_LLM_FALLBACK=off` disables.
-pub fn fallback_llm_config(rt: &RuntimeConfig, primary: &LlmConfig) -> Option<LlmConfig> {
-    if std::env::var("DREAM_LLM_FALLBACK").is_ok_and(|v| v == "off") {
-        return None;
-    }
-    match primary.provider {
-        Provider::Zai => Some(LlmConfig {
-            provider: Provider::Loom,
-            url: std::env::var("LOOM_URL")
-                .ok()
-                // An image built before the placeholder fix bakes the
-                // literal `${LOOM_BASE_URL}` into this variable.
-                .and_then(|v| config::resolve_env_placeholder(&v))
-                .unwrap_or_else(|| rt.loom_url.clone()),
-            model: std::env::var("LOOM_MODEL").unwrap_or_else(|_| rt.loom_model.clone()),
-            max_tokens: env_u32("LOOM_MAX_TOKENS", rt.loom_max_tokens),
-            api_key: None,
-        }),
-        Provider::Loom => {
-            let key = std::env::var("ZAI_ANTHROPIC_API_KEY")
-                .ok()
-                .or_else(|| std::env::var("ZAI_API_KEY").ok())
-                .filter(|k| !k.is_empty())?;
-            Some(LlmConfig {
-                provider: Provider::Zai,
-                url: std::env::var("ZAI_URL").unwrap_or_else(|_| rt.zai_url.clone()),
-                model: std::env::var("ZAI_MODEL").unwrap_or_else(|_| rt.zai_model.clone()),
-                max_tokens: env_u32("ZAI_MAX_TOKENS", rt.zai_max_tokens),
-                api_key: Some(key),
-            })
-        }
-    }
-}
-
-/// Build the RuVector config from environment (conninfo or URL form).
-pub fn ruvector_config(rt: &RuntimeConfig) -> RuVectorConfig {
-    let pg_url = std::env::var("RUVECTOR_PG_URL").unwrap_or_else(|_| {
-        match std::env::var("RUVECTOR_PG_CONNINFO") {
-            Ok(ci) => conninfo_to_url(&ci),
-            Err(_) => "postgres://ruvector:ruvector@ruvector-postgres:5432/ruvector".into(),
-        }
-    });
-    RuVectorConfig {
-        pg_url,
-        xinference_url: std::env::var("XINFERENCE_URL")
-            .unwrap_or_else(|_| "http://embeddings:9997".into()),
-        namespace: rt.memory_namespace.clone(),
-    }
-}
-
-/// Convert libpq-style "host=h port=p dbname=d user=u password=w" into a URL.
-fn conninfo_to_url(conninfo: &str) -> String {
-    let mut host = "ruvector-postgres";
-    let mut port = "5432";
-    let mut db = "ruvector";
-    let mut user = "ruvector";
-    let mut pass = "ruvector";
-    for part in conninfo.split_whitespace() {
-        if let Some((k, v)) = part.split_once('=') {
-            match k {
-                "host" => host = v,
-                "port" => port = v,
-                "dbname" => db = v,
-                "user" => user = v,
-                "password" => pass = v,
-                _ => {}
-            }
-        }
-    }
-    format!("postgres://{}:{}@{}:{}/{}", user, pass, host, port, db)
-}
-
-/// ADR-060: clone the target repo to the annexe, plus any `annexe_include`
-/// sibling repos its build/evaluators need.
-///
-/// Layout law (2026-09-07, the vacuous sovereign-mesh gate): the annexe must
-/// mirror the repo's REAL depth under the workspace, not just its name. The
-/// target extracts under `remote_dir/<repo_subpath>` where `repo_subpath` is
-/// its canonical path relative to the workspace root (`project/agentbox`, not
-/// `agentbox`), and every sibling under `remote_dir/<its own subpath>`
-/// (`nostr-rust-forum`). A Cargo `path = "../../../../nostr-rust-forum/…"`
-/// therefore climbs to `remote_dir/` on the annexe exactly as it climbs to the
-/// workspace root locally. Before this, the target sat one level too shallow,
-/// cargo looked for the siblings one directory ABOVE the night dir, and the
-/// build failed on manifest resolution — a failure the `| tail` pipe then
-/// masked into `PASSED`. A missing or unreadable sibling is warned and skipped
-/// — the build then fails legibly rather than the night crashing.
-fn clone_repo_and_siblings(
-    hp_host: &str,
-    repo_path: &Path,
-    remote_dir: &str,
-    repo_subpath: &str,
-    annexe_include: &[String],
-    workspace_root: &Path,
-) -> Result<(), dispatch::DispatchError> {
-    dispatch::clone_to_hp(repo_path, hp_host, remote_dir, repo_subpath)?;
-    // Siblings resolve against the *workspace*, not against `repo_path`: when
-    // the candidate rerun ships a git worktree from a temp directory, its
-    // path-deps still come from the real workspace.
-    for inc in annexe_include {
-        let sibling = workspace_root.join(inc);
-        if !sibling.is_dir() {
-            warn!(sibling = %inc, "annexe_include: sibling not found locally — skipping (build may fail on its path-deps)");
-            continue;
-        }
-        let sub = annexe_subpath(&sibling, workspace_root);
-        info!(sibling = %sub, "annexe_include: shipping sibling to annexe");
-        dispatch::clone_to_hp(&sibling, hp_host, remote_dir, &sub)?;
-    }
-    Ok(())
-}
-
-/// The path a repo occupies under an annexe night dir: its canonical location
-/// relative to the canonical workspace root, so symlinks (`workspace/agentbox`
-/// → `workspace/project/agentbox`) resolve to the depth the path-deps were
-/// written against. Falls back to the final path component when the repo is
-/// not under the workspace (or either path cannot be canonicalised), which is
-/// the pre-2026-09-07 behaviour.
-pub fn annexe_subpath(repo_path: &Path, workspace_root: &Path) -> String {
-    let leaf = || {
-        repo_path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .map(str::to_owned)
-            .unwrap_or_else(|| repo_path.display().to_string())
-    };
-    let (Ok(repo), Ok(root)) = (repo_path.canonicalize(), workspace_root.canonicalize()) else {
-        return leaf();
-    };
-    match repo.strip_prefix(&root) {
-        Ok(rel) if !rel.as_os_str().is_empty() => rel
-            .components()
-            .filter_map(|c| c.as_os_str().to_str())
-            .collect::<Vec<_>>()
-            .join("/"),
-        _ => leaf(),
-    }
-}
-
-/// Render a typed receipt as the prompt-facing text block: the verdict-relevant
-/// facts first (outcome, exit code, duration), then the raw streams.
-///
-/// The model used to see stdout alone, which is precisely how a non-zero exit
-/// became invisible to it.
-fn render_receipt(r: &receipts::EvaluatorReceipt) -> String {
-    let mut out = format!(
-        "outcome={} exit={} duration={}ms required={}\n",
-        r.outcome.label(),
-        r.exit_code
-            .map(|c| c.to_string())
-            .unwrap_or_else(|| "-".into()),
-        r.duration_ms,
-        r.required
-    );
-    if !r.stdout.trim().is_empty() {
-        out.push_str("--- stdout ---\n");
-        out.push_str(&r.stdout);
-        if !r.stdout.ends_with('\n') {
-            out.push('\n');
-        }
-    }
-    if !r.stderr.trim().is_empty() {
-        out.push_str("--- stderr ---\n");
-        out.push_str(&r.stderr);
-        if !r.stderr.ends_with('\n') {
-            out.push('\n');
-        }
-    }
-    out
-}
-
-/// `name=outcome` for each receipt, for a journal `tool.completed` payload.
-fn receipt_outcomes(receipts: &[receipts::EvaluatorReceipt]) -> Vec<String> {
-    receipts
+/// Per-test evidence for the gate: for every required evaluator whose config
+/// declares a `testFormat`, read both trees' receipts into per-test outcomes
+/// (`dream_core::testfmt`). An evaluator without a format, or whose output
+/// cannot be read in that format, contributes nothing and is judged by its
+/// receipt alone, exactly as before per-test evidence existed.
+fn test_evidence(
+    required: &[&manifest::EvaluatorIdentity],
+    baseline: &[receipts::EvaluatorReceipt],
+    candidate: &[receipts::EvaluatorReceipt],
+    baseline_root: &str,
+    candidate_root: &str,
+) -> Vec<(String, dream_gate::pertest::TestOutcomes)> {
+    required
         .iter()
-        .map(|r| format!("{}={}", r.name, r.outcome.label()))
+        .filter_map(|id| {
+            let format = id.test_format?;
+            let b = baseline.iter().find(|r| r.name == id.name)?;
+            let c = candidate.iter().find(|r| r.name == id.name)?;
+            dream_core::testfmt::outcomes_from_receipts(
+                format,
+                b,
+                c,
+                Some(baseline_root),
+                Some(candidate_root),
+            )
+            .map(|t| (id.name.clone(), t))
+        })
         .collect()
-}
-
-/// Add the night-level journal session's counters to the night-health file
-/// (written earlier in the night, before the digest and forum work ran).
-/// Fail-open.
-fn record_night_journal(stats: &JournalStats) {
-    let path = digest::health_path();
-    if let Some(mut health) = std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|t| serde_json::from_str::<digest::NightHealth>(&t).ok())
-    {
-        health.journal.push(stats.clone());
-        if let Err(e) = std::fs::write(
-            &path,
-            serde_json::to_string_pretty(&health).unwrap_or_default(),
-        ) {
-            warn!(error = %e, "night health journal write failed (fail-open)");
-        }
-    }
-}
-
-/// Record tonight's digest outcome in the night-health file, and raise an
-/// operator alert when the digest was withheld for want of a zone key (an
-/// encrypted dreamlab zone with no key granted to JunkieJarvis). Fail-open.
-fn record_digest_status(date: &str, status: &str) {
-    let path = digest::health_path();
-    if let Some(mut health) = std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|t| serde_json::from_str::<digest::NightHealth>(&t).ok())
-    {
-        health.digest = Some(status.to_string());
-        if let Err(e) = std::fs::write(
-            &path,
-            serde_json::to_string_pretty(&health).unwrap_or_default(),
-        ) {
-            warn!(error = %e, "night health digest status write failed (fail-open)");
-        }
-    }
-    if status.starts_with(digest::SKIPPED_NO_ZONE_KEY) {
-        let text = format!(
-            "Tonight's forum digest was not posted: the dreamlab zone is end-to-end encrypted and JunkieJarvis holds no zone key. Grant it the key in the forum admin Encryption tab. ({status})"
-        );
-        if let Err(e) = inbox::add(
-            "alert",
-            "dream-machine",
-            &format!("{date}-digest-zone-key"),
-            date,
-            &text,
-        ) {
-            warn!(error = %e, "dream inbox write failed (fail-open)");
-        }
-    }
-}
-
-/// Count the trailing run of INCONCLUSIVE verdicts in a ledger. Any decisive
-/// row (ACCEPT or REJECT — a falsified hypothesis is still the system
-/// learning) resets the streak; header/divider/non-table lines are ignored.
-pub fn dry_streak(ledger_text: &str) -> usize {
-    let mut streak = 0usize;
-    for line in ledger_text.lines() {
-        let t = line.trim();
-        if !t.starts_with('|') {
-            continue;
-        }
-        let cells: Vec<&str> = t.split('|').map(str::trim).collect();
-        // | date | deep | finding | issue | pr | evaluated | verdict | ... |
-        // split yields a leading empty cell, so the verdict sits at index 7.
-        let Some(verdict) = cells.get(7) else {
-            continue;
-        };
-        match *verdict {
-            "INCONCLUSIVE" => streak += 1,
-            "ACCEPT" | "REJECT" => streak = 0,
-            _ => {} // header, divider, malformed — no effect
-        }
-    }
-    streak
-}
-
-/// Redact HP-side filesystem paths before receipts leave the LAN.
-fn redact(s: &str) -> String {
-    s.replace("/home/john", "~")
-}
-
-/// The ledger finding for a night whose claimed ACCEPT the gate vetoed.
-///
-/// A contract-satisfying `base` keeps its text behind a single `VETOED: `
-/// prefix (an existing prefix is not doubled), clipped on a word boundary to
-/// fit the cell. A `base` that breaks the contract — typically the "Given …"
-/// hypothesis or the "see report" fallback — is not dressed up with the prefix,
-/// which would slip a hypothesis past the `^given` rule; the gate's own result
-/// line is written instead.
-fn vetoed_finding(base: &str, decision: &gate::GateDecision) -> String {
-    let mut core = base.trim();
-    while let Some(rest) = core.strip_prefix("VETOED:") {
-        core = rest.trim_start();
-    }
-    if verdict::ledger_cell_ok(core) {
-        let prefixed = format!(
-            "VETOED: {}",
-            verdict::clip_words(core, 80 - "VETOED: ".len())
-        );
-        if verdict::ledger_cell_ok(&prefixed) {
-            return prefixed;
-        }
-    }
-    gate_result_line(decision)
-}
-
-/// A contract-satisfying finding that states what the gate decided: its
-/// summary clipped to the cell, or, when the summary itself breaks the
-/// contract, the bare model-versus-gate verdicts.
-fn gate_result_line(decision: &gate::GateDecision) -> String {
-    let line = verdict::clip_words(&decision.summary, 80);
-    if verdict::ledger_cell_ok(&line) {
-        return line;
-    }
-    let bare = if decision.vetoes.is_empty() {
-        format!(
-            "gate verdict {} (model claimed {})",
-            decision.verdict, decision.model_verdict
-        )
-    } else {
-        format!(
-            "{} vetoed → {} by the required-check gate",
-            decision.model_verdict, decision.verdict
-        )
-    };
-    verdict::clip_words(&bare, 80)
-}
-
-/// Longest finding text in a PR title, in chars, ellipsis included.
-const PR_TITLE_FINDING_MAX: usize = 60;
-
-/// The draft-PR title for a gated ACCEPT: `dream(<deep>): <finding head>`.
-///
-/// The head comes from `cell`, the ledger finding, when it is a
-/// contract-satisfying result (a whole statement of at most 80 chars);
-/// otherwise from the first line of `full`, the uncapped finding, since a
-/// failing cell is a capped hypothesis or a pointer. Either way it is the
-/// start of the text, clipped on a word boundary with an ellipsis.
-fn pr_title(deep: &str, cell: &str, full: &str) -> String {
-    let source = if verdict::ledger_cell_ok(cell) {
-        cell
-    } else {
-        full.lines().next().unwrap_or("")
-    };
-    format!(
-        "dream({}): {}",
-        deep,
-        verdict::clip_words(source, PR_TITLE_FINDING_MAX)
-    )
-}
-
-/// Last `max` bytes of a string, on a char boundary.
-fn tail(s: &str, max: usize) -> &str {
-    if s.len() <= max {
-        return s;
-    }
-    let mut start = s.len() - max;
-    while !s.is_char_boundary(start) {
-        start += 1;
-    }
-    &s[start..]
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::llm::Provider;
+    use dream_core::runner::ScriptedRunner;
+    use dream_gate::config::{EvaluatorSpec, TestFormat};
+    use dream_gate::gate::VetoClass;
+    use dream_gate::outcome::ExecOutcome;
+    use std::sync::Mutex;
 
-    /// The 2026-09-07 layout law: through the `workspace/agentbox` symlink the
-    /// annexe subpath must be the REAL relative depth (`project/agentbox`),
-    /// so `../../../../<sibling>` climbs to the night dir as it climbs to the
-    /// workspace root locally; top-level siblings keep their bare name; a repo
-    /// outside the workspace falls back to its leaf name.
-    #[test]
-    fn annexe_subpath_mirrors_real_depth_under_the_workspace() {
-        let ws = tempfile::tempdir().unwrap();
-        let real = ws.path().join("project").join("agentbox");
-        std::fs::create_dir_all(&real).unwrap();
-        std::fs::create_dir_all(ws.path().join("nostr-rust-forum")).unwrap();
-        let link = ws.path().join("agentbox");
-        std::os::unix::fs::symlink(&real, &link).unwrap();
-
-        assert_eq!(annexe_subpath(&link, ws.path()), "project/agentbox");
-        assert_eq!(annexe_subpath(&real, ws.path()), "project/agentbox");
-        assert_eq!(
-            annexe_subpath(&ws.path().join("nostr-rust-forum"), ws.path()),
-            "nostr-rust-forum"
-        );
-
-        let elsewhere = tempfile::tempdir().unwrap();
-        let wt = elsewhere.path().join("dream-worktree");
-        std::fs::create_dir_all(&wt).unwrap();
-        assert_eq!(annexe_subpath(&wt, ws.path()), "dream-worktree");
-        assert_eq!(
-            annexe_subpath(Path::new("/definitely/not/here/agentbox"), ws.path()),
-            "agentbox"
-        );
-    }
-
-    #[test]
-    fn conninfo_conversion() {
-        let url = conninfo_to_url("host=db port=5433 dbname=mydb user=me password=secret");
-        assert_eq!(url, "postgres://me:secret@db:5433/mydb");
-    }
-
-    #[test]
-    fn conninfo_defaults() {
-        let url = conninfo_to_url("");
-        assert_eq!(
-            url,
-            "postgres://ruvector:ruvector@ruvector-postgres:5432/ruvector"
-        );
-    }
-
-    #[test]
-    fn env_u32_falls_back_on_absence_and_garbage() {
-        assert_eq!(env_u32("DREAM_TEST_UNSET_VAR", 16384), 16384);
-        std::env::set_var("DREAM_TEST_GARBAGE_VAR", "not-a-number");
-        assert_eq!(env_u32("DREAM_TEST_GARBAGE_VAR", 16384), 16384);
-        std::env::set_var("DREAM_TEST_OK_VAR", " 32768 ");
-        assert_eq!(env_u32("DREAM_TEST_OK_VAR", 16384), 32768);
-        std::env::remove_var("DREAM_TEST_GARBAGE_VAR");
-        std::env::remove_var("DREAM_TEST_OK_VAR");
-    }
-
-    fn vetoed_decision(verdict: &str, reason: &str) -> gate::GateDecision {
-        gate::GateDecision {
-            accepted: false,
-            verdict: verdict.into(),
-            model_verdict: "ACCEPT".into(),
-            vetoes: vec![gate::Veto {
-                class: gate::VetoClass::Evidence,
-                subject: "darwin-smoke".into(),
-                reason: reason.into(),
-            }],
-            required_outcomes: vec![("darwin-smoke".into(), "failed".into())],
-            summary: format!("ACCEPT vetoed → {verdict}: darwin-smoke: {reason}"),
+    /// Collects every notice.
+    struct Recording(Mutex<Vec<Notice>>);
+    impl Notifier for Recording {
+        fn notify<'a>(&'a self, notice: &'a Notice) -> dream_core::seams::BoxFut<'a, ()> {
+            self.0.lock().unwrap().push(notice.clone());
+            Box::pin(async {})
         }
     }
 
-    /// A "Given …" fallback must not be laundered through the prefix:
-    /// `VETOED: Given …` passes `^given` but is still hypothesis text.
-    #[test]
-    fn vetoed_finding_replaces_a_hypothesis_with_the_gate_result() {
-        let d = vetoed_decision("REJECT", "exit 1 on candidate tree");
-        let base = "Given the Darwin evaluator at commit 7c30573a, when the cap is lifted, then…";
-        let f = vetoed_finding(base, &d);
-        assert!(verdict::ledger_cell_ok(&f), "{f}");
-        assert!(!f.to_ascii_lowercase().contains("given"), "{f}");
-        assert_eq!(
-            f,
-            "ACCEPT vetoed → REJECT: darwin-smoke: exit 1 on candidate tree"
-        );
-        // A pointer fallback is not a result either.
-        let f = vetoed_finding("INCONCLUSIVE — see report", &d);
-        assert_eq!(
-            f,
-            "ACCEPT vetoed → REJECT: darwin-smoke: exit 1 on candidate tree"
-        );
+    fn engine(dir: &Path) -> Engine {
+        Engine {
+            runtime: toml::Table::new().try_into().unwrap(),
+            workspace: dir.to_path_buf(),
+            artefact_dir: dir.join("artefacts"),
+            llm: LlmConfig {
+                provider: Provider::Loom,
+                url: "http://127.0.0.1:9".into(),
+                model: "m".into(),
+                max_tokens: 1024,
+                api_key: None,
+            },
+            llm_fallback: None,
+            ruvector: RuVectorConfig {
+                pg_url: String::new(),
+                xinference_url: String::new(),
+                namespace: "dream-cycle".into(),
+            },
+            runner: Arc::new(ScriptedRunner::new()),
+            roster_path: dir.join("roster.json"),
+        }
     }
 
-    #[test]
-    fn vetoed_finding_prefixes_a_compliant_result_once() {
-        let d = vetoed_decision("REJECT", "exit 1");
-        assert_eq!(
-            vetoed_finding("cap lifted to 8 candidates per generation", &d),
-            "VETOED: cap lifted to 8 candidates per generation"
-        );
-        assert_eq!(
-            vetoed_finding("VETOED: cap lifted to 8 candidates", &d),
-            "VETOED: cap lifted to 8 candidates"
-        );
-        assert_eq!(
-            vetoed_finding("VETOED: VETOED: cap lifted", &d),
-            "VETOED: cap lifted"
-        );
-        // Long but compliant: clipped on a word boundary, still under the cap.
-        let long =
-            "cap lifted to eight candidates per generation and the smoke run finished in time";
-        let f = vetoed_finding(long, &d);
-        assert!(f.starts_with("VETOED: cap lifted"), "{f}");
-        assert!(f.ends_with('…'), "{f}");
-        assert!(verdict::ledger_cell_ok(&f), "{f}");
+    fn harness_veto(subject: &str, reason: &str) -> gate::Veto {
+        gate::Veto {
+            class: VetoClass::Harness,
+            subject: subject.into(),
+            reason: reason.into(),
+        }
     }
 
-    /// The gate summary can be long or carry a pointer; the fallback still
-    /// states the gate's result and passes the contract.
-    #[test]
-    fn gate_result_line_is_always_compliant() {
-        let d = vetoed_decision("BLOCKED-ENV", &"evaluator timed out after 600s ".repeat(5));
-        let f = gate_result_line(&d);
-        assert!(verdict::ledger_cell_ok(&f), "{f}");
-        assert!(f.starts_with("ACCEPT vetoed → BLOCKED-ENV"), "{f}");
-        let d = vetoed_decision("REJECT", "see report for the trace");
-        let f = gate_result_line(&d);
-        assert!(verdict::ledger_cell_ok(&f), "{f}");
-        assert_eq!(f, "ACCEPT vetoed → REJECT by the required-check gate");
+    fn row(verdict: &str) -> LedgerRow {
+        LedgerRow {
+            date: "2026-10-01".into(),
+            deep: "d".into(),
+            finding: "a concrete result".into(),
+            issue: "NONE".into(),
+            pr: "NONE".into(),
+            evaluated: "yes".into(),
+            verdict: verdict.into(),
+            effect: String::new(),
+            witness: "abcd1234".into(),
+            prior_fates: String::new(),
+            reviewer: String::new(),
+            review_minutes: String::new(),
+        }
     }
 
-    /// 2026-10-06: titles were `tail(&finding, 60)` of a finding already cut
-    /// to 80 chars, so they lost both ends ("andidatesPerGeneration … out").
+    /// (c) The dry streak the roster reads: REJECT and INCONCLUSIVE advance
+    /// it, ACCEPT resets it, BLOCKED-ENV and HANDOFF neither.
     #[test]
-    fn pr_title_takes_the_head_of_the_full_finding_on_a_word_boundary() {
-        let full =
-            "Given the darwin evaluator caps candidatesPerGeneration at four, when the cap is \
-                    lifted to eight, then the smoke run completes without timing out";
-        let cell: String = full.chars().take(80).collect();
-        let title = pr_title("evaluator", &cell, full);
-        let tail_part = title.strip_prefix("dream(evaluator): ").expect(&title);
-        assert!(tail_part.chars().count() <= 60, "{title}");
-        assert!(tail_part.ends_with('…'), "{title}");
-        assert_eq!(
-            tail_part,
-            "Given the darwin evaluator caps candidatesPerGeneration at…"
-        );
-        let head = tail_part.trim_end_matches('…');
-        assert!(full.starts_with(head), "{title}");
-        assert_eq!(
-            full.as_bytes()[head.len()],
-            b' ',
-            "cut on a word boundary: {title}"
-        );
+    fn the_roster_reads_the_new_dry_streak_rule_from_the_repos_ledger() {
+        let d = tempfile::tempdir().unwrap();
+        let repo = d.path().join("r");
+        std::fs::create_dir_all(repo.join("docs/dream-cycle")).unwrap();
+        std::fs::write(
+            repo.join("dream.config.json"),
+            br#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}]}"#,
+        )
+        .unwrap();
+        let ledger = repo.join("docs/dream-cycle/LEDGER.md");
+        let e = engine(d.path());
+        assert_eq!(e.repo_dry_streak(&repo), 0, "no ledger, no punishment");
+        for (verdict, expect) in [
+            ("INCONCLUSIVE", 1),
+            ("REJECT", 2),
+            ("BLOCKED-ENV", 2),
+            ("HANDOFF", 2),
+            ("REJECT", 3),
+            ("ACCEPT", 0),
+            ("REJECT", 1),
+        ] {
+            ledger::append_row(&ledger, &row(verdict)).unwrap();
+            assert_eq!(e.repo_dry_streak(&repo), expect, "after {verdict}");
+        }
     }
 
-    /// A contract-satisfying result in the cell is the better title; a short
-    /// one is used whole.
-    #[test]
-    fn pr_title_prefers_a_result_cell_and_keeps_short_findings_whole() {
-        let full = "Given a long hypothesis that the cell replaced with tonight's result line";
-        assert_eq!(
-            pr_title(
-                "cache",
-                "warm cache halves p50 latency (412ms → 198ms)",
-                full
-            ),
-            "dream(cache): warm cache halves p50 latency (412ms → 198ms)"
-        );
-        // Multi-line full findings title from their first line only.
-        assert_eq!(
-            pr_title("x", "Given a b", "Given a b\n\nGate: ACCEPT upheld"),
-            "dream(x): Given a b"
-        );
+    /// (d) The same harness failures on two BLOCKED-ENV nights raise one
+    /// HarnessStuck notice; a different failure, or a decisive night, does not.
+    #[tokio::test]
+    async fn the_same_harness_failures_twice_raise_harness_stuck() {
+        let d = tempfile::tempdir().unwrap();
+        let e = engine(d.path());
+        std::fs::create_dir_all(&e.artefact_dir).unwrap();
+        let n = Recording(Mutex::new(vec![]));
+        let v = vec![harness_veto(
+            "tests",
+            "required evaluator timed out after 1800s",
+        )];
+        e.record_streak("r", "2026-10-01-r", "BLOCKED-ENV", &v, &n)
+            .await;
+        assert!(n.0.lock().unwrap().is_empty(), "one night is not a stall");
+        e.record_streak("r", "2026-10-02-r", "BLOCKED-ENV", &v, &n)
+            .await;
+        {
+            let got = n.0.lock().unwrap();
+            assert_eq!(got.len(), 1);
+            assert!(
+                matches!(&got[0], Notice::HarnessStuck { repo, night_id, .. }
+                    if repo == "r" && night_id == "2026-10-02-r"),
+                "{:?}",
+                got[0]
+            );
+        }
+        // Another repo sharing the artefact directory is unaffected.
+        e.record_streak("other", "2026-10-02-other", "BLOCKED-ENV", &v, &n)
+            .await;
+        assert_eq!(n.0.lock().unwrap().len(), 1);
     }
 
-    #[test]
-    fn tail_respects_char_boundaries() {
-        let s = "héllo wörld";
-        let t = tail(s, 4);
-        assert!(t.len() <= 5);
-        assert!(s.ends_with(t));
+    #[tokio::test]
+    async fn a_decisive_night_after_a_stall_is_not_a_stall() {
+        let d = tempfile::tempdir().unwrap();
+        let e = engine(d.path());
+        std::fs::create_dir_all(&e.artefact_dir).unwrap();
+        let n = Recording(Mutex::new(vec![]));
+        let v = vec![harness_veto("tests", "blocked: ssh down")];
+        e.record_streak("r", "n1", "BLOCKED-ENV", &v, &n).await;
+        e.record_streak("r", "n2", "REJECT", &[], &n).await;
+        e.record_streak("r", "n3", "BLOCKED-ENV", &v, &n).await;
+        assert!(n.0.lock().unwrap().is_empty());
     }
 
-    const LEDGER_HEADER: &str = "| Date | Deep | Finding | Issue | PR | Evaluated? | Verdict | Effect | Witness | Prior-night fates | Reviewer | Review-minutes |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n";
-
-    fn row(verdict: &str) -> String {
-        format!(
-            "| 2026-08-15 | deep | finding | NONE | NONE | yes | {} |  | abcd1234 |  |  |  |\n",
-            verdict
+    fn receipt(name: &str, phase: Phase, stdout: &str) -> receipts::EvaluatorReceipt {
+        receipts::EvaluatorReceipt::from_exec(
+            name,
+            "cargo test",
+            phase,
+            true,
+            60,
+            ExecOutcome {
+                exit_code: Some(0),
+                stdout: stdout.into(),
+                stderr: String::new(),
+                duration_ms: 1,
+                transport_error: None,
+                timed_out: false,
+                started_at: "2026-10-01T01:00:00Z".into(),
+            },
         )
     }
 
+    /// Per-test evidence is built only for evaluators that declare a format.
     #[test]
-    fn dry_streak_counts_trailing_inconclusive() {
-        let ledger = format!(
-            "{}{}{}{}",
-            LEDGER_HEADER,
-            row("ACCEPT"),
-            row("INCONCLUSIVE"),
-            row("INCONCLUSIVE")
-        );
-        assert_eq!(dry_streak(&ledger), 2);
-    }
-
-    #[test]
-    fn dry_streak_reset_by_decisive_verdict() {
-        let ledger = format!(
-            "{}{}{}{}",
-            LEDGER_HEADER,
-            row("INCONCLUSIVE"),
-            row("INCONCLUSIVE"),
-            row("REJECT")
-        );
-        assert_eq!(dry_streak(&ledger), 0);
-    }
-
-    #[test]
-    fn dry_streak_empty_and_header_only() {
-        assert_eq!(dry_streak(""), 0);
-        assert_eq!(dry_streak(LEDGER_HEADER), 0);
+    fn per_test_evidence_needs_a_declared_format() {
+        let mut with =
+            manifest::EvaluatorIdentity::from_spec("unit", &EvaluatorSpec::command("cargo test"));
+        with.test_format = Some(TestFormat::Libtest);
+        let without =
+            manifest::EvaluatorIdentity::from_spec("lint", &EvaluatorSpec::command("cargo clippy"));
+        let out = "running 2 tests\ntest t::a ... ok\ntest t::b ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out\n";
+        let base = vec![
+            receipt("unit", Phase::Baseline, out),
+            receipt("lint", Phase::Baseline, out),
+        ];
+        let cand = vec![
+            receipt("unit", Phase::Candidate, out),
+            receipt("lint", Phase::Candidate, out),
+        ];
+        let got = test_evidence(&[&with, &without], &base, &cand, "/b", "/c");
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].0, "unit");
+        assert!(test_evidence(&[&without], &base, &cand, "/b", "/c").is_empty());
+        assert!(test_evidence(&[&with], &base, &[], "/b", "/c").is_empty());
     }
 }

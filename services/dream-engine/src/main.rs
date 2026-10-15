@@ -5,8 +5,8 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use dream_engine::config::RuntimeConfig;
-use dream_engine::engine::{fallback_llm_config, llm_config, ruvector_config, Engine};
-use dream_engine::roster;
+use dream_engine::engine::Engine;
+use dream_engine::estate::{default_roster_path, fallback_llm_config, llm_config, ruvector_config};
 use dream_engine::runner::{EvaluatorRunner, SshRunner};
 use dream_engine::{digest, governance, inbox};
 
@@ -53,7 +53,7 @@ struct Cli {
 
     /// Durable fair-scheduling state: which repo dreamed when, so the nightly
     /// cap rotates through the whole roster instead of pinning its head.
-    #[arg(long, default_value_os_t = roster::default_path())]
+    #[arg(long, default_value_os_t = default_roster_path())]
     roster_path: PathBuf,
 
     /// One-shot operator commands (forum I/O only; no annexe, no LLM).

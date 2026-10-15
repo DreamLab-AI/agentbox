@@ -20,7 +20,16 @@ the outcome to the evidence ledger and to RuVector.
 ### Acceptance path
 
 A night is an experiment, and the engine is built so the model cannot grade its
-own homework. Seven modules carry that path:
+own homework. Seven modules carry that path. They are no longer in this crate
+(ADR-2141): the judgement is the permissive `dream-gate` crate and the loop
+mechanism the permissive `dream-core` crate, from the standalone dream-engine
+repository (path dependencies in `Cargo.toml` until it is pushed; one line each
+to flip to a shared git `rev`). This crate is the AGPL-3.0 adapter that wires
+them to the estate: `engine.rs` (composition), `estate.rs` (defaults and
+environment), `candidate_flow.rs` and `policy.rs` (guard-first candidate
+build), the Z.AI/Loom, SSH, RuVector and inbox/journal seams, and the forum
+drivers. The module names below are the ones in those crates; the
+per-test ledger of the move is `docs/developer/dream-engine-extraction-ledger.md`.
 
 - **`manifest`** — freezes the experiment *before* a token is spent: baseline
   revision and tree, the selected evaluators and the hash of their command

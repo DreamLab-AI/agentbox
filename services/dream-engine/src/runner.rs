@@ -1,54 +1,15 @@
-//! How an evaluator command is actually executed, and the seam that makes the
-//! acceptance path testable without an annexe.
+//! The production evaluator runner: SSH to the connected node annexe.
 //!
-//! Production runs evaluators over SSH on the connected node annexe ([`SshRunner`]).
-//! Tests — and any future local-mode dry run — use [`LocalRunner`] against a
-//! real directory, or [`ScriptedRunner`] to replay a fixed set of outcomes.
-//! Everything downstream (receipts, the required-check gate, the verdict)
-//! consumes [`ExecOutcome`] and never knows which one ran.
+//! The runner seam itself ([`EvaluatorRunner`], `LocalRunner`,
+//! `ScriptedRunner`, [`ExecOutcome`]) lives in `dream_core::runner`; this
+//! module is the estate-specific implementation of that seam. Everything
+//! downstream (receipts, the required-check gate, the verdict) consumes
+//! [`ExecOutcome`] and never knows which runner produced it.
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::process::Command;
-use std::time::Instant;
+pub use dream_core::runner::EvaluatorRunner;
+pub use dream_gate::outcome::ExecOutcome;
 
-use crate::dispatch::shell_quote;
-
-/// A raw execution: both streams, the exit status, how long it took, and
-/// whether the transport itself failed (which is not the same as the command
-/// failing).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ExecOutcome {
-    pub exit_code: Option<i32>,
-    pub stdout: String,
-    pub stderr: String,
-    pub duration_ms: u128,
-    /// Set when the command could not be delivered or started at all.
-    pub transport_error: Option<String>,
-    pub timed_out: bool,
-    pub started_at: String,
-}
-
-impl ExecOutcome {
-    pub fn blocked(detail: impl Into<String>) -> Self {
-        Self {
-            exit_code: None,
-            stdout: String::new(),
-            stderr: String::new(),
-            duration_ms: 0,
-            transport_error: Some(detail.into()),
-            timed_out: false,
-            started_at: chrono::Utc::now().to_rfc3339(),
-        }
-    }
-}
-
-/// Runs one evaluator command in a working directory under a wall-clock budget.
-pub trait EvaluatorRunner: Send + Sync {
-    fn run(&self, work_dir: &str, command: &str, timeout_secs: u64) -> ExecOutcome;
-    /// Short description for logs and receipts provenance.
-    fn describe(&self) -> String;
-}
+use dream_gate::outcome::shell_quote;
 
 /// Wrap `command` so the remote shell enforces the timeout and reports 124 on
 /// expiry. `--kill-after` guarantees a hung child is reaped rather than
@@ -71,6 +32,7 @@ fn timeout_wrapped(work_dir: &str, command: &str, timeout_secs: u64) -> String {
 
 /// The production runner: evaluators execute on the connected node annexe over SSH.
 pub struct SshRunner {
+    /// `user@host` the commands run on.
     pub host: String,
 }
 
@@ -84,117 +46,6 @@ impl EvaluatorRunner for SshRunner {
 
     fn describe(&self) -> String {
         format!("ssh:{}", self.host)
-    }
-}
-
-/// Runs the command locally with `bash -c` in `work_dir`. Used by the candidate
-/// rerun tests (a git worktree is a real tree; no annexe needed) and available
-/// for local-mode operation.
-pub struct LocalRunner;
-
-impl EvaluatorRunner for LocalRunner {
-    fn run(&self, work_dir: &str, command: &str, timeout_secs: u64) -> ExecOutcome {
-        let started_at = chrono::Utc::now().to_rfc3339();
-        let t0 = Instant::now();
-        // Same timeout semantics as the SSH path, so a receipt means the same
-        // thing whichever runner produced it.
-        let wrapped = format!(
-            "timeout --signal=TERM --kill-after=30s {}s bash -o pipefail -c {}",
-            timeout_secs,
-            shell_quote(command)
-        );
-        let out = Command::new("bash")
-            .arg("-c")
-            .arg(&wrapped)
-            .current_dir(PathBuf::from(work_dir))
-            .output();
-        match out {
-            Ok(o) => ExecOutcome {
-                exit_code: o.status.code(),
-                stdout: String::from_utf8_lossy(&o.stdout).into_owned(),
-                stderr: String::from_utf8_lossy(&o.stderr).into_owned(),
-                duration_ms: t0.elapsed().as_millis(),
-                transport_error: None,
-                timed_out: false,
-                started_at,
-            },
-            Err(e) => ExecOutcome::blocked(format!("spawning bash in {work_dir}: {e}")),
-        }
-    }
-
-    fn describe(&self) -> String {
-        "local".into()
-    }
-}
-
-/// A runner that replays pre-set outcomes, keyed by the exact command string.
-/// An unknown command is [`ExecOutcome::blocked`] — a test that forgets to
-/// script an evaluator sees a harness fault, never an accidental pass.
-pub struct ScriptedRunner {
-    outcomes: HashMap<String, ExecOutcome>,
-}
-
-impl ScriptedRunner {
-    pub fn new() -> Self {
-        Self {
-            outcomes: HashMap::new(),
-        }
-    }
-
-    pub fn with(mut self, command: &str, outcome: ExecOutcome) -> Self {
-        self.outcomes.insert(command.to_string(), outcome);
-        self
-    }
-
-    /// Convenience: a clean pass.
-    pub fn passing(self, command: &str, stdout: &str) -> Self {
-        self.with(
-            command,
-            ExecOutcome {
-                exit_code: Some(0),
-                stdout: stdout.into(),
-                stderr: String::new(),
-                duration_ms: 5,
-                transport_error: None,
-                timed_out: false,
-                started_at: "2026-09-05T01:00:00Z".into(),
-            },
-        )
-    }
-
-    /// Convenience: a non-zero exit.
-    pub fn failing(self, command: &str, code: i32, stderr: &str) -> Self {
-        self.with(
-            command,
-            ExecOutcome {
-                exit_code: Some(code),
-                stdout: String::new(),
-                stderr: stderr.into(),
-                duration_ms: 5,
-                transport_error: None,
-                timed_out: false,
-                started_at: "2026-09-05T01:00:00Z".into(),
-            },
-        )
-    }
-}
-
-impl Default for ScriptedRunner {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl EvaluatorRunner for ScriptedRunner {
-    fn run(&self, _work_dir: &str, command: &str, _timeout_secs: u64) -> ExecOutcome {
-        self.outcomes
-            .get(command)
-            .cloned()
-            .unwrap_or_else(|| ExecOutcome::blocked(format!("no scripted outcome for {command:?}")))
-    }
-
-    fn describe(&self) -> String {
-        "scripted".into()
     }
 }
 
@@ -215,62 +66,16 @@ mod tests {
         );
     }
 
-    /// The 2026-09-06 pipe-masked false positive: a failing producer piped
-    /// through `tail` must surface its own exit code, not tail's 0.
+    /// With no annexe host configured the runner reports a transport fault
+    /// (a harness veto at the gate), never a pass.
     #[test]
-    fn local_runner_does_not_let_a_tail_pipe_mask_a_failure() {
-        let dir = tempfile::tempdir().unwrap();
-        let out = LocalRunner.run(
-            dir.path().to_str().unwrap(),
-            "sh -c 'echo error: manifest missing; exit 101' 2>&1 | tail -3",
-            30,
-        );
-        assert_eq!(
-            out.exit_code,
-            Some(101),
-            "pipefail must propagate the producer's exit: {out:?}"
-        );
-        assert!(out.stdout.contains("manifest missing"));
-    }
-
-    #[test]
-    fn local_runner_captures_streams_and_exit_code() {
-        let dir = tempfile::tempdir().unwrap();
-        let r = LocalRunner;
-        let o = r.run(
-            dir.path().to_str().unwrap(),
-            "echo out; echo err >&2; exit 3",
-            30,
-        );
-        assert_eq!(o.exit_code, Some(3));
-        assert_eq!(o.stdout.trim(), "out");
-        assert_eq!(o.stderr.trim(), "err");
-        assert!(o.transport_error.is_none());
-    }
-
-    #[test]
-    fn local_runner_runs_in_the_given_directory() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("marker.txt"), "hi").unwrap();
-        let o = LocalRunner.run(dir.path().to_str().unwrap(), "cat marker.txt", 30);
-        assert_eq!(o.stdout, "hi");
-    }
-
-    #[test]
-    fn local_runner_enforces_the_timeout() {
-        let dir = tempfile::tempdir().unwrap();
-        let o = LocalRunner.run(dir.path().to_str().unwrap(), "sleep 5", 1);
-        assert_eq!(o.exit_code, Some(124), "GNU timeout signals expiry as 124");
-    }
-
-    #[test]
-    fn scripted_runner_blocks_on_unscripted_commands() {
-        let r = ScriptedRunner::new().passing("cargo test", "ok");
-        assert_eq!(r.run("/x", "cargo test", 60).exit_code, Some(0));
-        let unknown = r.run("/x", "cargo clippy", 60);
-        assert!(
-            unknown.transport_error.is_some(),
-            "an unscripted command must not pass"
-        );
+    fn an_unconfigured_host_is_a_transport_fault_not_a_pass() {
+        let r = SshRunner {
+            host: String::new(),
+        };
+        let o = r.run("/x", "true", 5);
+        assert!(o.exit_code.is_none());
+        assert!(o.transport_error.is_some());
+        assert_eq!(r.describe(), "ssh:");
     }
 }

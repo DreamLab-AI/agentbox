@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_128 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_129 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -191,3 +191,4 @@ _128 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2138](ADR-2138-idle-cargo-target-sweeper.md) | Sweep idle Cargo target directories under supervisord | BASELINE-container | 2026-10-12 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2139](ADR-2139-system-one-judge-as-a-vendor-slot.md) | Treat the System One judge as a vendor slot, measured per consumer, with SubQ Snap as the first alternative to Jev | — | 2026-10-12 | accepted | partial | staged | — | — | jjohare | agentbox |
 | [ADR-2140](ADR-2140-vault-canonical-here-hp-is-a-loom-host.md) | Keep the vault canonical on this host, reconcile the HP Loom to it at every boot, and retire the HP agentbox | — | 2026-10-13 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2141](ADR-2141-extract-the-dream-engine-core-into-a-standalone-permissive-repo.md) | Extract the dream engine core into a standalone permissive repo | — | 2026-10-15 | accepted | partial | staged | — | — | jjohare | agentbox |

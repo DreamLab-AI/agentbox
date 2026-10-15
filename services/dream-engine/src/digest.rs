@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{info, warn};
 
-use crate::config::{self, DreamConfig};
+use crate::config;
 use crate::governance;
 use crate::inbox;
 use crate::relay::{self, RelaySession, UnsignedEvent};
@@ -86,7 +86,7 @@ pub struct NightHealth {
     pub journal: Vec<crate::journal::JournalStats>,
     /// The seven-day `dream/*` branch sweep: every branch it acted on.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub sweep: Vec<crate::sweep::SweepRecord>,
+    pub sweep: Vec<dream_core::sweep::SweepRecord>,
 }
 
 /// Status prefix when the digest was withheld for want of a zone key.
@@ -101,7 +101,7 @@ pub struct LedgerLine {
     pub witness: String,
 }
 
-/// A repo's ledger rows for the date plus its trailing INCONCLUSIVE streak.
+/// A repo's ledger rows for the date plus its dry streak (`dream_core::streak`).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RepoLedger {
     pub rows: Vec<LedgerLine>,
@@ -361,7 +361,7 @@ fn compose_outcomes(
 fn collect_ledgers(workspace: &Path, date: &str) -> HashMap<String, RepoLedger> {
     let mut out = HashMap::new();
     for (name, path) in config::discover_repos(workspace) {
-        let Ok(cfg) = DreamConfig::load(&path.join("dream.config.json")) else {
+        let Ok((cfg, _)) = config::load_dream_config(&path.join("dream.config.json")) else {
             continue;
         };
         let Ok(text) = std::fs::read_to_string(path.join(&cfg.ledger_path)) else {
@@ -371,7 +371,7 @@ fn collect_ledgers(workspace: &Path, date: &str) -> HashMap<String, RepoLedger> 
             name,
             RepoLedger {
                 rows: ledger_rows_for(&text, date),
-                streak: crate::engine::dry_streak(&text),
+                streak: dream_core::streak::dry_streak_text(&text),
             },
         );
     }

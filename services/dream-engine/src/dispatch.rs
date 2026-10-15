@@ -1,11 +1,9 @@
 use std::path::Path;
 use std::process::Command;
 use thiserror::Error;
+use tracing::{info, warn};
 
-/// Single-quote a string for safe embedding in a shell command line.
-pub(crate) fn shell_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\'', r"'\''"))
-}
+pub(crate) use dream_gate::outcome::shell_quote;
 
 #[derive(Debug, Error)]
 pub enum DispatchError {
@@ -62,9 +60,9 @@ pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
 /// This variant keeps the exit code, both streams and the elapsed time, and
 /// reserves `transport_error` for the case where ssh itself could not run the
 /// command. Classification into a typed outcome happens in
-/// [`crate::receipts::classify`].
-pub fn ssh_capture(hp_host: &str, cmd: &str) -> crate::runner::ExecOutcome {
-    use crate::runner::ExecOutcome;
+/// `dream_gate::receipts::classify`.
+pub fn ssh_capture(hp_host: &str, cmd: &str) -> dream_gate::outcome::ExecOutcome {
+    use dream_gate::outcome::ExecOutcome;
     if hp_host.trim().is_empty() {
         return ExecOutcome::blocked(DispatchError::NoAnnexeHost.to_string());
     }
@@ -232,6 +230,73 @@ pub fn run_on_hp(
     Ok((build_output, eval_outputs))
 }
 
+/// ADR-060: clone the target repo to the annexe, plus any `sibling_repos`
+/// (`annexeInclude` in the config) its build/evaluators need.
+///
+/// Layout law (2026-09-07, the vacuous sovereign-mesh gate): the annexe must
+/// mirror the repo's REAL depth under the workspace, not just its name. The
+/// target extracts under `remote_dir/<repo_subpath>` where `repo_subpath` is
+/// its canonical path relative to the workspace root (`project/agentbox`, not
+/// `agentbox`), and every sibling under `remote_dir/<its own subpath>`
+/// (`nostr-rust-forum`). A Cargo `path = "../../../../nostr-rust-forum/…"`
+/// therefore climbs to `remote_dir/` on the annexe exactly as it climbs to the
+/// workspace root locally. Before this, the target sat one level too shallow,
+/// cargo looked for the siblings one directory ABOVE the night dir, and the
+/// build failed on manifest resolution — a failure the `| tail` pipe then
+/// masked into `PASSED`. A missing or unreadable sibling is warned and skipped
+/// — the build then fails legibly rather than the night crashing.
+pub fn clone_repo_and_siblings(
+    hp_host: &str,
+    repo_path: &Path,
+    remote_dir: &str,
+    repo_subpath: &str,
+    sibling_repos: &[String],
+    workspace_root: &Path,
+) -> Result<(), DispatchError> {
+    clone_to_hp(repo_path, hp_host, remote_dir, repo_subpath)?;
+    // Siblings resolve against the *workspace*, not against `repo_path`: when
+    // the candidate rerun ships a git worktree from a temp directory, its
+    // path-deps still come from the real workspace.
+    for inc in sibling_repos {
+        let sibling = workspace_root.join(inc);
+        if !sibling.is_dir() {
+            warn!(sibling = %inc, "sibling_repos: sibling not found locally — skipping (build may fail on its path-deps)");
+            continue;
+        }
+        let sub = annexe_subpath(&sibling, workspace_root);
+        info!(sibling = %sub, "sibling_repos: shipping sibling to annexe");
+        clone_to_hp(&sibling, hp_host, remote_dir, &sub)?;
+    }
+    Ok(())
+}
+
+/// The path a repo occupies under an annexe night dir: its canonical location
+/// relative to the canonical workspace root, so symlinks (`workspace/agentbox`
+/// → `workspace/project/agentbox`) resolve to the depth the path-deps were
+/// written against. Falls back to the final path component when the repo is
+/// not under the workspace (or either path cannot be canonicalised), which is
+/// the pre-2026-09-07 behaviour.
+pub fn annexe_subpath(repo_path: &Path, workspace_root: &Path) -> String {
+    let leaf = || {
+        repo_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(str::to_owned)
+            .unwrap_or_else(|| repo_path.display().to_string())
+    };
+    let (Ok(repo), Ok(root)) = (repo_path.canonicalize(), workspace_root.canonicalize()) else {
+        return leaf();
+    };
+    match repo.strip_prefix(&root) {
+        Ok(rel) if !rel.as_os_str().is_empty() => rel
+            .components()
+            .filter_map(|c| c.as_os_str().to_str())
+            .collect::<Vec<_>>()
+            .join("/"),
+        _ => leaf(),
+    }
+}
+
 /// Free space the annexe must have before a run is attempted. A Rust clone
 /// plus its `target/` tree runs to several GiB; below this the build fails
 /// mid-night and burns an attempt on a fault that was visible up front.
@@ -278,7 +343,39 @@ pub fn annexe_health(hp_host: &str, annexe_dir: &str, min_free_gib: u64) -> Resu
 
 #[cfg(test)]
 mod tests {
-    use super::{annexe_probe_cmd, parse_avail_kb, shell_quote};
+    use super::{annexe_probe_cmd, annexe_subpath, parse_avail_kb, shell_quote};
+    use std::path::Path;
+
+    /// The 2026-09-07 layout law: through the `workspace/agentbox` symlink the
+    /// annexe subpath must be the REAL relative depth (`project/agentbox`),
+    /// so `../../../../<sibling>` climbs to the night dir as it climbs to the
+    /// workspace root locally; top-level siblings keep their bare name; a repo
+    /// outside the workspace falls back to its leaf name.
+    #[test]
+    fn annexe_subpath_mirrors_real_depth_under_the_workspace() {
+        let ws = tempfile::tempdir().unwrap();
+        let real = ws.path().join("project").join("agentbox");
+        std::fs::create_dir_all(&real).unwrap();
+        std::fs::create_dir_all(ws.path().join("nostr-rust-forum")).unwrap();
+        let link = ws.path().join("agentbox");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+
+        assert_eq!(annexe_subpath(&link, ws.path()), "project/agentbox");
+        assert_eq!(annexe_subpath(&real, ws.path()), "project/agentbox");
+        assert_eq!(
+            annexe_subpath(&ws.path().join("nostr-rust-forum"), ws.path()),
+            "nostr-rust-forum"
+        );
+
+        let elsewhere = tempfile::tempdir().unwrap();
+        let wt = elsewhere.path().join("dream-worktree");
+        std::fs::create_dir_all(&wt).unwrap();
+        assert_eq!(annexe_subpath(&wt, ws.path()), "dream-worktree");
+        assert_eq!(
+            annexe_subpath(Path::new("/definitely/not/here/agentbox"), ws.path()),
+            "agentbox"
+        );
+    }
 
     #[test]
     fn annexe_probe_writes_before_it_measures() {

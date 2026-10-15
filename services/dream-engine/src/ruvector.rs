@@ -44,6 +44,26 @@ pub struct DreamFinding {
 const EMBEDDING_MODEL: &str = "bge-small-en-v1.5";
 const EMBEDDING_DIMS: usize = 384;
 
+/// Refuse any embedding that is not exactly [`EMBEDDING_DIMS`] floats. Called
+/// on the write path before a connection is opened, so a wrong-model or
+/// truncated vector can never reach the HNSW index.
+fn check_dims(embedding: &[f32]) -> Result<(), RuVectorError> {
+    if embedding.len() != EMBEDDING_DIMS {
+        return Err(RuVectorError::Validation(format!(
+            "expected {} embedding dims, got {}",
+            EMBEDDING_DIMS,
+            embedding.len()
+        )));
+    }
+    Ok(())
+}
+
+/// Whether a verdict clears the storage bar at all (everything except the
+/// operational `BLOCKED-ENV` / `HANDOFF`).
+pub fn stores(verdict: &str) -> bool {
+    importance_for(verdict).is_some()
+}
+
 /// Decisive verdicts get high importance; INCONCLUSIVE nights are stored too
 /// (at lower importance) — their operational lessons (evaluator traps, false
 /// positives) are exactly what day-time agents need recalled. Only
@@ -176,13 +196,7 @@ pub async fn store_finding(cfg: &RuVectorConfig, f: &DreamFinding) -> Result<boo
     // 2. Embedding from xinference, validated to exactly 384 floats.
     let embed_input = format!("{}: {}", f.deep, f.finding);
     let embedding = fetch_embedding(cfg, &embed_input).await?;
-    if embedding.len() != EMBEDDING_DIMS {
-        return Err(RuVectorError::Validation(format!(
-            "expected {} embedding dims, got {}",
-            EMBEDDING_DIMS,
-            embedding.len()
-        )));
-    }
+    check_dims(&embedding)?;
     let embedding_literal = format_vector(&embedding);
     let embedding_json = serde_json::json!(embedding);
 
@@ -254,6 +268,87 @@ pub async fn store_finding(cfg: &RuVectorConfig, f: &DreamFinding) -> Result<boo
     Ok(true)
 }
 
+// --- dream-core seam ---
+
+use dream_core::seams::{BoxFut, MemoryRecord, MemorySink, SinkError};
+
+/// `MemoryRecord.kind` carries the deep slot (it is a host-chosen label), and
+/// `MemoryRecord.body` this JSON payload, so the row stored in RuVector keeps
+/// every field it had before the extraction (`witness`, `source`, `date`) even
+/// though the seam's record has no slot for them.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+struct Payload {
+    finding: String,
+    witness: String,
+    source: String,
+    date: String,
+}
+
+/// The seam record for a finding.
+pub fn record_for(f: &DreamFinding) -> MemoryRecord {
+    MemoryRecord {
+        key: format!("dream-{}", f.night_id),
+        kind: f.deep.clone(),
+        repo: f.repo.clone(),
+        night_id: f.night_id.clone(),
+        verdict: f.verdict.clone(),
+        body: serde_json::to_string(&Payload {
+            finding: f.finding.clone(),
+            witness: f.witness.clone(),
+            source: f.source.clone(),
+            date: f.date.clone(),
+        })
+        .unwrap_or_default(),
+    }
+}
+
+/// Invert [`record_for`].
+fn finding_from(rec: &MemoryRecord) -> Result<DreamFinding, SinkError> {
+    let p: Payload = serde_json::from_str(&rec.body)
+        .map_err(|e| SinkError(format!("unreadable dream payload: {e}")))?;
+    Ok(DreamFinding {
+        night_id: rec.night_id.clone(),
+        repo: rec.repo.clone(),
+        date: p.date,
+        deep: rec.kind.clone(),
+        finding: p.finding,
+        verdict: rec.verdict.clone(),
+        witness: p.witness,
+        source: p.source,
+    })
+}
+
+/// RuVector as a `dream_core` memory.
+///
+/// **Documented exception to "memory goes through the MCP tools":** this
+/// engine writes `memory_entries` by direct SQL. It is a Rust daemon outside
+/// the MCP hook path and it embeds client-side, so the write mirrors what the
+/// MCP embedding pipeline does: `bge-small-en-v1.5` via Xinference, asserted to
+/// be exactly 384 dimensions on every write ([`check_dims`], before any SQL).
+#[derive(Debug, Clone)]
+pub struct RuVectorSink {
+    cfg: RuVectorConfig,
+}
+
+impl RuVectorSink {
+    /// A sink writing with `cfg`.
+    pub fn new(cfg: RuVectorConfig) -> Self {
+        Self { cfg }
+    }
+}
+
+impl MemorySink for RuVectorSink {
+    fn record<'a>(&'a self, rec: &'a MemoryRecord) -> BoxFut<'a, Result<(), SinkError>> {
+        Box::pin(async move {
+            let f = finding_from(rec)?;
+            store_finding(&self.cfg, &f)
+                .await
+                .map(|_| ())
+                .map_err(|e| SinkError(e.to_string()))
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -285,16 +380,66 @@ mod tests {
         assert!(!s.contains(' '));
     }
 
+    /// The write path refuses any vector that is not 384 floats, and the
+    /// model name is pinned: a silent model swap would otherwise corrupt the
+    /// shared HNSW index.
     #[test]
     fn embedding_length_validation() {
-        // A well-formed embedding has exactly 384 dimensions.
-        let good = vec![0.0_f32; EMBEDDING_DIMS];
-        assert_eq!(good.len(), EMBEDDING_DIMS);
+        assert_eq!(EMBEDDING_MODEL, "bge-small-en-v1.5");
+        assert_eq!(EMBEDDING_DIMS, 384);
+        assert!(check_dims(&vec![0.0_f32; 384]).is_ok());
+        for bad in [0usize, 128, 383, 385, 512, 1024] {
+            assert!(
+                matches!(
+                    check_dims(&vec![0.0_f32; bad]),
+                    Err(RuVectorError::Validation(_))
+                ),
+                "{bad} dims must be refused"
+            );
+        }
+    }
 
-        let short = vec![0.0_f32; 128];
-        assert_ne!(short.len(), EMBEDDING_DIMS);
+    fn finding(verdict: &str) -> DreamFinding {
+        DreamFinding {
+            night_id: "2026-10-01-agentbox".into(),
+            repo: "agentbox".into(),
+            date: "2026-10-01".into(),
+            deep: "hooks".into(),
+            finding: "a concrete result".into(),
+            verdict: verdict.into(),
+            witness: "abcd1234".into(),
+            source: "hp-annexe-glm-5.3".into(),
+        }
+    }
 
-        let long = vec![0.0_f32; 512];
-        assert_ne!(long.len(), EMBEDDING_DIMS);
+    /// Nothing the row stored before the extraction is lost crossing the seam.
+    #[test]
+    fn the_seam_record_round_trips_every_stored_field() {
+        let f = finding("ACCEPT");
+        let rec = record_for(&f);
+        assert_eq!(rec.key, "dream-2026-10-01-agentbox");
+        assert_eq!(rec.kind, "hooks");
+        let back = finding_from(&rec).unwrap();
+        assert_eq!(back.night_id, f.night_id);
+        assert_eq!(back.repo, f.repo);
+        assert_eq!(back.date, f.date);
+        assert_eq!(back.deep, f.deep);
+        assert_eq!(back.finding, f.finding);
+        assert_eq!(back.verdict, f.verdict);
+        assert_eq!(back.witness, f.witness);
+        assert_eq!(back.source, f.source);
+    }
+
+    #[test]
+    fn a_corrupt_payload_is_a_sink_error_not_a_panic() {
+        let mut rec = record_for(&finding("REJECT"));
+        rec.body = "not json".into();
+        assert!(finding_from(&rec).is_err());
+    }
+
+    #[test]
+    fn operational_verdicts_do_not_clear_the_storage_bar() {
+        assert!(stores("ACCEPT") && stores("REJECT") && stores("INCONCLUSIVE"));
+        assert!(!stores("BLOCKED-ENV") && !stores("HANDOFF"));
     }
 }
