@@ -39,7 +39,7 @@ use crate::governance;
 use crate::inbox;
 use crate::journal::{self, Journal, JournalStats};
 use crate::llm::{LlmAdapter, LlmConfig};
-use crate::notify::{InboxNotifier, JournalNotifier, Notifiers};
+use crate::notify::{self, InboxNotifier, JournalNotifier, Notifiers};
 use crate::policy;
 use crate::present::{
     gate_result_line, pr_title, receipt_outcomes, render_receipt, tail, vetoed_finding,
@@ -1519,12 +1519,12 @@ impl Engine {
                 if out.pr_url.is_none() {
                     warn!(branch = %out.branch, pushed = out.pushed, "verified candidate has no draft PR — raising an alert");
                     notifier
-                        .notify(&Notice::LostPr {
-                            repo_dir: repo_name.clone(),
-                            repo_slug: cfg.repo.clone(),
-                            branch: out.branch.clone(),
-                            pushed: out.pushed,
-                        })
+                        .notify(&notify::lost_pr(
+                            &repo_name,
+                            &cfg.repo,
+                            &out.branch,
+                            out.pushed,
+                        ))
                         .await;
                 } else {
                     notifier

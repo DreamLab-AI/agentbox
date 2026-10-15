@@ -69,6 +69,15 @@ judging with it would silently weaken the policy on exactly the nights it
 matters. The engine judges with `gate::decide` and a `GateContext` built from
 the same policy value the candidate guard used.
 
+### API mismatches (reported upstream, not forked back into the adapter)
+
+- `replay::NightInputs` cannot carry the self-referential flag or extra protected globs.
+- `candidate::Attempt` loses the typed `PersistError`; apply-repair recognises git's refusal by the `patch did not apply: ` prefix of `DidNotApply`.
+- `MemoryRecord` has no `deep`, `date`, `witness` or `source` (encoded in `kind` and a JSON `body`).
+- No `Notice` variant fits relay, digest or governance.
+- `manifest::baseline_of` was not extracted (it shells out to git); it lives in `baseline.rs`.
+- `DreamConfig` leaves `ledgerPath`, `branchPrefix` and `adrConvention` empty; `config::apply_estate_defaults` fills them.
+
 ### Call-order invariant
 
 `candidate_flow` is the only caller of candidate machinery and always goes
@@ -197,7 +206,7 @@ zone_crypto 9) belong to modules that did not move and are unchanged. The other
 | `persist::tests::extract_patch_none_when_absent_or_empty` | moved | `patch::tests::extract_patch_none_when_absent_or_empty` |
 | `persist::tests::extract_patch_pulls_the_fenced_diff` | moved | `patch::tests::extract_patch_pulls_the_fenced_diff` |
 | `persist::tests::headerless_two_file_patch_lands_after_normalising` | moved | `persist::tests::headerless_two_file_patch_lands_after_normalising` |
-| `persist::tests::lost_pr_alert_names_the_branch_and_the_recovery` | moved | dream-core `seams::tests::lost_pr_text_names_the_branch_and_the_recovery_commands`; adapter `notify::tests::only_lost_prs_and_stalled_harnesses_are_inbox_alerts` |
+| `persist::tests::lost_pr_alert_names_the_branch_and_the_recovery` | moved | adapter `notify::tests::the_lost_pr_alert_names_the_branch_and_the_recovery` (the old assertions verbatim, including the `workspace/<repo>` recovery path; the engine builds the notice with `notify::lost_pr`) and dream-core `seams::tests::lost_pr_text_names_the_branch_and_the_recovery_commands` |
 | `persist::tests::mid_file_hunk_without_trailing_context_lands_after_normalising` | moved | `persist::tests::mid_file_hunk_without_trailing_context_lands_after_normalising` |
 | `persist::tests::miscounted_hunk_lands_via_recount` | moved | `persist::tests::miscounted_hunk_lands_via_recount` |
 | `persist::tests::normalising_leaves_eof_hunks_and_repeated_paths_alone` | moved | `patch::tests::normalising_leaves_eof_hunks_and_repeated_paths_alone` |
@@ -345,6 +354,7 @@ zone_crypto 9) belong to modules that did not move and are unchanged. The other
 - `notify::tests::fan_out_is_infallible_with_a_disabled_journal`
 - `notify::tests::journal_tool_classes_are_stable`
 - `notify::tests::only_lost_prs_and_stalled_harnesses_are_inbox_alerts`
+- `notify::tests::the_lost_pr_alert_names_the_branch_and_the_recovery`
 - `policy::tests::a_checkout_of_the_gate_crates_is_self_referential_too`
 - `policy::tests::an_unrelated_services_dir_is_not_self_referential`
 - `policy::tests::config_bytes_the_manifest_did_not_freeze_are_refused`

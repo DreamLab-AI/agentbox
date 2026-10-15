@@ -18,6 +18,22 @@ use tracing::warn;
 use crate::inbox;
 use crate::journal::Journal;
 
+/// The notice for a verified candidate whose draft PR never opened.
+///
+/// `dream_core` renders a recovery command of the form
+/// `git -C <repo_dir> push origin <branch>`, run by an operator from the
+/// workspace's parent; the engine's nominated repos live under `workspace/`,
+/// so `repo_dir` is `workspace/<repo_name>` (the old `lost_pr_alert` wording),
+/// not the bare directory name.
+pub fn lost_pr(repo_name: &str, repo_slug: &str, branch: &str, pushed: bool) -> Notice {
+    Notice::LostPr {
+        repo_dir: format!("workspace/{repo_name}"),
+        repo_slug: repo_slug.to_string(),
+        branch: branch.to_string(),
+        pushed,
+    }
+}
+
 /// Writes the notices that need a human as dream-inbox alerts.
 ///
 /// Only [`Notice::LostPr`] and [`Notice::HarnessStuck`] are alerts; the
@@ -154,6 +170,18 @@ mod tests {
         ] {
             assert!(InboxNotifier::alert_text(&quiet).is_none());
         }
+    }
+
+    /// The old `lost_pr_alert` text, kept: the operator runs these commands
+    /// from the workspace's parent, so the checkout is `workspace/<repo>`.
+    #[test]
+    fn the_lost_pr_alert_names_the_branch_and_the_recovery() {
+        let a = lost_pr("site", "o/site", "dream/ci-2026-10-11", false).render();
+        assert!(a.contains("`dream/ci-2026-10-11`"));
+        assert!(a.contains("could not push the branch to o/site"));
+        assert!(a.contains("git -C workspace/site push origin dream/ci-2026-10-11"));
+        let b = lost_pr("site", "o/site", "dream/ci-2026-10-11", true).render();
+        assert!(b.contains("could not open the draft pull request"));
     }
 
     #[test]

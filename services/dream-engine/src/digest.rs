@@ -199,7 +199,7 @@ pub fn compose(
                         "on standby (a manual standby marker)".to_string()
                     } else {
                         format!(
-                            "parked after {} inconclusive nights in a row",
+                            "parked after {} dry nights in a row (rejected or inconclusive)",
                             number_word(s.streak)
                         )
                     };
@@ -207,7 +207,7 @@ pub fn compose(
                 }
             }
             body.push(String::new());
-            body.push("To restart, revive a repo with /dream revive <repo>, or fix what keeps it inconclusive and run /dream run.".into());
+            body.push("To restart, revive a repo with /dream revive <repo>, or fix what keeps its nights dry and run /dream run.".into());
             body.push(String::new());
         }
         Some(h) => compose_outcomes(&mut body, h, ledgers),
@@ -297,7 +297,7 @@ fn compose_outcomes(
             let streak = ledgers.get(&o.repo).map(|l| l.streak).unwrap_or(0);
             if streak >= 4 {
                 body.push(format!(
-                    "Heads-up: this repo has now had {} inconclusive nights in a row. At five it is parked automatically until a night produces a firm answer.",
+                    "Heads-up: this repo has now had {} dry nights in a row (rejected or inconclusive). At five it is parked automatically until a night produces an accepted change.",
                     number_word(streak)
                 ));
             }
@@ -542,7 +542,7 @@ mod tests {
         assert!(text.contains("site: the night's hypothesis was CONFIRMED"));
         assert!(text.contains("(Evidence fingerprint: abc123.)"));
         assert!(text.contains("One night ended without a firm conclusion"));
-        assert!(text.contains("four inconclusive nights in a row"));
+        assert!(text.contains("four dry nights in a row"));
         assert!(text.contains(&format!(
             "Three decisions are waiting for you on the governance panel: {URL}"
         )));
@@ -601,7 +601,8 @@ mod tests {
         let text = compose("2026-09-25", Some(&h), &HashMap::new(), 59, URL);
         assert!(text.contains("No repository was eligible to dream tonight, so nothing ran. Two repositories are nominated"));
         assert!(text.contains("- site: on standby (a manual standby marker)"));
-        assert!(text.contains("- forum: parked after five inconclusive nights in a row"));
+        assert!(text
+            .contains("- forum: parked after five dry nights in a row (rejected or inconclusive)"));
         assert!(text.contains("/dream revive <repo>"));
         assert!(text.contains("59 decisions are waiting"));
     }

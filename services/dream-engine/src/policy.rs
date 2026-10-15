@@ -18,6 +18,10 @@ use crate::config::DEFAULT_LEDGER_PATH;
 /// Where this engine's own source lives inside the agentbox repository.
 const OWN_SOURCE_DIR: &str = "services/dream-engine";
 
+/// The Nix derivation that decides which source and lockfile the judging
+/// binary is built from.
+const OWN_BUILD_RECIPE: &str = "lib/dream-engine.nix";
+
 /// True when `repo` carries this engine's own source: the agentbox checkout
 /// (`services/dream-engine`) or a checkout of the standalone gate crates
 /// (`crates/dream-gate`). A night on such a repo must not be able to edit the
@@ -50,7 +54,7 @@ pub fn for_night(
     Ok(if is_self_referential(repo) {
         policy
             .with_self_referential(true)
-            .with_globs([OWN_SOURCE_DIR])
+            .with_globs([OWN_SOURCE_DIR, OWN_BUILD_RECIPE])
     } else {
         policy
     })
@@ -136,6 +140,8 @@ mod tests {
         let p = for_night(&manifest(), CONFIG, repo.path()).unwrap();
         assert!(protected(&p, "services/dream-engine/src/engine.rs"));
         assert!(protected(&p, "services/dream-engine/src/policy.rs"));
+        assert!(protected(&p, "services/dream-engine/Cargo.lock"));
+        assert!(protected(&p, "lib/dream-engine.nix"));
         assert!(!protected(&p, "services/other/src/lib.rs"));
     }
 
