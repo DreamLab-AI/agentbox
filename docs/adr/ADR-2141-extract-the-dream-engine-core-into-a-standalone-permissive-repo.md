@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9fcd1eef98b2a3eb8469df0fb6bf62ec7a34cc76
+verified_commit: 8e1ef8e3410ffacb2a49bba5324d8a60917b7522
 verified_paths: [services/dream-engine/Cargo.toml, services/dream-engine/Cargo.lock, lib/dream-engine.nix, services/dream-engine/src/engine.rs, services/dream-engine/tests/night_e2e.rs]
 owner: jjohare
 review_trigger: the image rebuild activates the registry-pinned crates, a new release of dream-core or dream-gate is adopted, or any new module is added under services/dream-engine/src that is not estate-specific
