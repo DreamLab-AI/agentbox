@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: 33c8b3472a7a711b71f72973225ce7727ec69cf1
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -111,3 +111,9 @@ Commands run: `git -C agentbox diff cca7ea3b1..218dc12c3 -- services/dream-engin
 Not checked, and notes: Case bodies/titles are richer and the title now starts with repo and date instead of 'Alert/Decision'; the ADR makes no claim about wording, only about tags and ActionRequest shape, which still agree (tests round-trip). Optional note: panel version is now 1.1.0. node tests/config/dream-inbox-surface.test.mjs not re-run (hook file unchanged). Live relay acceptance (JunkieJarvis registration) is runtime-only.
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+**Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: governance, relay and inbox are unchanged; `digest.rs` reads the dry streak from `dream_core::streak` and words it as "dry nights (rejected or inconclusive)" (ADR-2141); `engine.rs` still publishes and ingests around each night. `cargo test` in `services/dream-engine` passes.
+
+Re-read at `50611f4c8a37`: the later `engine.rs` edits (replay capture through `judge::judge`) do not touch the governance publish and ingest path, the digest or the inbox.
+
+Re-read at `33c8b3472a7a` (2026-10-16): `digest.rs` only gained a `DREAM_HEALTH_PATH` override for the health-record path (default unchanged), and `engine.rs` gained the lock, finished-night skip and an early return when every selected night is held by another engine, so no digest or summary is overwritten from there. The governance publish and ingest path, the digest wording and the inbox are unchanged.

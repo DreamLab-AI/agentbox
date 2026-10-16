@@ -17,6 +17,7 @@ licence compatible with it.
 | `nostr-tools` npm | MIT | Library linked into `management-api` | npm |
 | `@noble/curves` npm | MIT | Library linked into `management-api` | npm |
 | `openai/privacy-filter` weights | Apache-2.0 | Model weights loaded by opf-router | Hugging Face |
+| `dream-engine` core crates (`DreamLab-AI/dream-engine`) | MIT OR Apache-2.0 | Cargo dependency of `services/dream-engine` (path pin during development, git rev after push) | [github.com/DreamLab-AI/dream-engine](https://github.com/DreamLab-AI/dream-engine) |
 | `codex` binary (OpenAI) | Apache-2.0 | Binary invoked as a subprocess | github.com/openai/codex |
 
 All permissive (MIT, Apache-2.0) components are compatible with AGPL-3.0.
@@ -29,12 +30,28 @@ the `LICENSE-MIT` and `LICENSE-APACHE` texts plus a `README.md` stating the dual
 grant (`services/LICENSING-NOTICE.md` has the per-directory table), so they can
 be published to crates.io and reused outside the AGPL service. The exceptions
 are crates that link an AGPL library: `nostr-pod-bridge` links
-`solid-pod-rs-nostr`, and `dream-engine` links `nostr-bbs-core` (operator
+`solid-pod-rs-nostr`, and the `dream-engine` adapter links `nostr-bbs-core` (operator
 decision 2026-09-25, ADR-2115). Each declares `AGPL-3.0-only`, ships the full
 AGPL text as `LICENSE`, and says in its README that it is **not** dual-licensed
 (`secret-backup` is AGPL by choice; see the notice). The
 aggregate hosted service remains AGPL-3.0; the permissive grant applies to each
 crate on its own.
+
+### The dream engine licence boundary (ADR-2141)
+
+The dream engine is split along the licence line. The gate and the loop
+mechanism (`pairwise-gate`, `failure-fingerprint`, `dream-gate`, `dream-core`
+and the `dream-cli`) live in
+[DreamLab-AI/dream-engine](https://github.com/DreamLab-AI/dream-engine), a
+standalone repository licensed `MIT OR Apache-2.0` and built clean-room with the
+estate scrubbed out. `services/dream-engine` stays here as the `AGPL-3.0-only`
+adapter: it links `nostr-bbs-core`, it holds the estate wiring (Z.AI and Loom,
+the annexe, RuVector, the forum), and its `zone_crypto` module is never
+published. The dependency runs one way: the adapter depends on the permissive
+crates, never the reverse. The permissive crates are published to crates.io at 0.1.0
+(`pairwise-gate`, `failure-fingerprint`, `dream-gate`, `dream-core`, `dream-cli`)
+and the adapter pins `dream-core` and `dream-gate` with `=0.1.0`. The earlier TypeScript fork was renamed `DreamLab-AI/dream-machine`
+and archived; the new repository takes the `dream-engine` name.
 
 ## The `sidestr-*` crates are AGPL-3.0-only, published, and live in sidestr-rs (ADR-2106, ADR-2112)
 

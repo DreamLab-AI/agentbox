@@ -14,7 +14,10 @@ section: Automation
 
 Thin router skill: the operational contract lives in [commands/dream.md](commands/dream.md),
 which defines `/dream status|pause|resume|standby|inbox` behaviour. Engine source:
-`services/dream-engine/`; developer reference: `docs/developer/dream-engine.md`.
+`services/dream-engine/` is the AGPL-3.0 estate adapter; the gate and loop mechanism are the
+permissive `dream-gate` and `dream-core` crates of `DreamLab-AI/dream-engine` (ADR-2141;
+consumed from crates.io, pinned `=0.1.0`). The earlier TypeScript fork
+is the archived `DreamLab-AI/dream-machine`. Developer reference: `docs/developer/dream-engine.md`.
 
 Quick orientation:
 

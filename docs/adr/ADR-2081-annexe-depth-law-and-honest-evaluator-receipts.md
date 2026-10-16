@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
-verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/gate.rs, services/dream-engine/src/verdict.rs]
+verified_commit: 33c8b3472a7a711b71f72973225ce7727ec69cf1
+verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/dispatch.rs, services/dream-engine/src/candidate_flow.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
 repo: agentbox
@@ -103,3 +103,9 @@ Commands run: `git -C agentbox diff cca7ea3b1..218dc12c3 -- services/dream-engin
 Not checked, and notes: Only engine.rs moved and none of its hunks is on the annexe, receipt or ledger-cell path. The new CandidateState handling around apply-repair feeds gate.rs unchanged (NoPatch/Refused still unproven). Activation (supervised loop on rebuilt image, live annexe) remains unverifiable by reading, as the record already says.
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+**Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: the depth law is `dispatch::annexe_subpath` (test moved with it), the `timeout` + `pipefail` wrapper is `runner::SshRunner`, and receipt classification and the gate are `dream-gate`'s `receipts` and `gate` (their tests moved with them; see the extraction ledger). `cargo test` in `services/dream-engine` passes.
+
+Re-read at `50611f4c8a37`: the later edits to `engine.rs` and `candidate_flow.rs` (typed apply error, replay capture) leave the depth law, the `SshRunner` wrapper and the receipt classification as described.
+
+Re-read at `33c8b3472a7a` (2026-10-16): the later `engine.rs` edits (per-night lock, finished-night skip, injectable forge, journal-damage BLOCKED-ENV, evaluator paths resolved against the baseline tree, `DREAM_ANNEXE_MIN_FREE_GIB` override) leave the depth law, the `SshRunner` wrapper and the receipt classification as described; the minimum free space is now read from the environment with the previous constant as the default.

@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{info, warn};
 
-use crate::config::{self, DreamConfig};
+use crate::config;
 use crate::governance;
 use crate::inbox;
 use crate::relay::{self, RelaySession, UnsignedEvent};
@@ -41,9 +41,13 @@ pub const DEFAULT_SECTION: &str = "zone4-chat-with-agents";
 /// Where the operator decides.
 pub const DEFAULT_GOVERNANCE_URL: &str = "https://dreamlab-ai.com/community/governance";
 
-/// Night-health record path.
+/// Night-health record path. `DREAM_HEALTH_PATH` overrides it (hermetic runs).
 pub fn health_path() -> PathBuf {
-    PathBuf::from("/home/devuser/workspace/.agentbox/dream-last-night.json")
+    std::env::var("DREAM_HEALTH_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            PathBuf::from("/home/devuser/workspace/.agentbox/dream-last-night.json")
+        })
 }
 
 /// One scheduled repo's outcome (`verdict` is ACCEPT / REJECT / INCONCLUSIVE /
@@ -86,7 +90,7 @@ pub struct NightHealth {
     pub journal: Vec<crate::journal::JournalStats>,
     /// The seven-day `dream/*` branch sweep: every branch it acted on.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub sweep: Vec<crate::sweep::SweepRecord>,
+    pub sweep: Vec<dream_core::sweep::SweepRecord>,
 }
 
 /// Status prefix when the digest was withheld for want of a zone key.
@@ -101,7 +105,7 @@ pub struct LedgerLine {
     pub witness: String,
 }
 
-/// A repo's ledger rows for the date plus its trailing INCONCLUSIVE streak.
+/// A repo's ledger rows for the date plus its dry streak (`dream_core::streak`).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RepoLedger {
     pub rows: Vec<LedgerLine>,
@@ -199,7 +203,7 @@ pub fn compose(
                         "on standby (a manual standby marker)".to_string()
                     } else {
                         format!(
-                            "parked after {} inconclusive nights in a row",
+                            "parked after {} dry nights in a row (rejected or inconclusive)",
                             number_word(s.streak)
                         )
                     };
@@ -207,7 +211,7 @@ pub fn compose(
                 }
             }
             body.push(String::new());
-            body.push("To restart, revive a repo with /dream revive <repo>, or fix what keeps it inconclusive and run /dream run.".into());
+            body.push("To restart, revive a repo with /dream revive <repo>, or fix what keeps its nights dry and run /dream run.".into());
             body.push(String::new());
         }
         Some(h) => compose_outcomes(&mut body, h, ledgers),
@@ -297,7 +301,7 @@ fn compose_outcomes(
             let streak = ledgers.get(&o.repo).map(|l| l.streak).unwrap_or(0);
             if streak >= 4 {
                 body.push(format!(
-                    "Heads-up: this repo has now had {} inconclusive nights in a row. At five it is parked automatically until a night produces a firm answer.",
+                    "Heads-up: this repo has now had {} dry nights in a row (rejected or inconclusive). At five it is parked automatically until a night produces an accepted change.",
                     number_word(streak)
                 ));
             }
@@ -361,7 +365,7 @@ fn compose_outcomes(
 fn collect_ledgers(workspace: &Path, date: &str) -> HashMap<String, RepoLedger> {
     let mut out = HashMap::new();
     for (name, path) in config::discover_repos(workspace) {
-        let Ok(cfg) = DreamConfig::load(&path.join("dream.config.json")) else {
+        let Ok((cfg, _)) = config::load_dream_config(&path.join("dream.config.json")) else {
             continue;
         };
         let Ok(text) = std::fs::read_to_string(path.join(&cfg.ledger_path)) else {
@@ -371,7 +375,7 @@ fn collect_ledgers(workspace: &Path, date: &str) -> HashMap<String, RepoLedger> 
             name,
             RepoLedger {
                 rows: ledger_rows_for(&text, date),
-                streak: crate::engine::dry_streak(&text),
+                streak: dream_core::streak::dry_streak_text(&text),
             },
         );
     }
@@ -542,7 +546,7 @@ mod tests {
         assert!(text.contains("site: the night's hypothesis was CONFIRMED"));
         assert!(text.contains("(Evidence fingerprint: abc123.)"));
         assert!(text.contains("One night ended without a firm conclusion"));
-        assert!(text.contains("four inconclusive nights in a row"));
+        assert!(text.contains("four dry nights in a row"));
         assert!(text.contains(&format!(
             "Three decisions are waiting for you on the governance panel: {URL}"
         )));
@@ -601,7 +605,8 @@ mod tests {
         let text = compose("2026-09-25", Some(&h), &HashMap::new(), 59, URL);
         assert!(text.contains("No repository was eligible to dream tonight, so nothing ran. Two repositories are nominated"));
         assert!(text.contains("- site: on standby (a manual standby marker)"));
-        assert!(text.contains("- forum: parked after five inconclusive nights in a row"));
+        assert!(text
+            .contains("- forum: parked after five dry nights in a row (rejected or inconclusive)"));
         assert!(text.contains("/dream revive <repo>"));
         assert!(text.contains("59 decisions are waiting"));
     }

@@ -20,7 +20,15 @@ the outcome to the evidence ledger and to RuVector.
 ### Acceptance path
 
 A night is an experiment, and the engine is built so the model cannot grade its
-own homework. Seven modules carry that path:
+own homework. Seven modules carry that path. They are no longer in this crate
+(ADR-2141): the judgement is the permissive `dream-gate` crate and the loop
+mechanism the permissive `dream-core` crate, from the standalone dream-engine
+repository (registry dependencies pinned `=0.1.0` in `Cargo.toml`). This crate is the AGPL-3.0 adapter that wires
+them to the estate: `engine.rs` (composition), `estate.rs` (defaults and
+environment), `candidate_flow.rs` and `policy.rs` (guard-first candidate
+build), the Z.AI/Loom, SSH, RuVector and inbox/journal seams, and the forum
+drivers. The module names below are the ones in those crates; the
+per-test ledger of the move is `docs/developer/dream-engine-extraction-ledger.md`.
 
 - **`manifest`** — freezes the experiment *before* a token is spent: baseline
   revision and tree, the selected evaluators and the hash of their command
@@ -111,6 +119,8 @@ cannot grant permissive terms and does not attempt to. The operator chose this o
 2026-09-25 over mirroring the forum's wire types in a permissive crate. Do not
 copy the sibling crates' licensing boilerplate into this directory, and do not
 publish this crate under the permissive assumption.
+
+The gate and the loop mechanism this crate consumes (`dream-gate`, `dream-core`, and through them `pairwise-gate` and `failure-fingerprint`) are a different matter: they are MIT OR Apache-2.0 and live in the standalone [`DreamLab-AI/dream-engine`](https://github.com/DreamLab-AI/dream-engine) repository (ADR-2141). They are published on crates.io at 0.1.0 ([`dream-core`](https://crates.io/crates/dream-core), [`dream-gate`](https://crates.io/crates/dream-gate)) and pinned `=0.1.0` here. The dependency runs one way, and `zone_crypto` is never published.
 
 The full licence text is in [LICENSE](LICENSE). See
 [ADR-2030](https://github.com/DreamLab-AI/agentbox/blob/main/docs/adr/ADR-2030-permissive-licensing-for-publishable-service-crates.md)

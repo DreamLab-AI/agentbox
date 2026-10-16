@@ -1,254 +1,51 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+//! Estate configuration for the dream engine.
+//!
+//! The repository document (`dream.config.json`) is parsed and validated by
+//! `dream_gate::config`; this module adds what only this estate decides: the
+//! defaults the gate deliberately leaves empty ([`load_dream_config`]), the
+//! `[dream_machine]` runtime settings with their `${NAME}` placeholder
+//! expansion, nominated-repo discovery and the nightly slot rotation.
+
+use serde::Deserialize;
 use std::path::{Path, PathBuf};
-use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum ConfigError {
-    #[error("reading config: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("parsing config: {0}")]
-    Parse(#[from] serde_json::Error),
-    #[error("validation: {0}")]
-    Validation(String),
-}
+use dream_gate::config::AdrConvention;
+pub use dream_gate::config::{ConfigError, DreamConfig, Slot};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Slot {
-    pub deep: String,
-    pub scan: Vec<String>,
-}
+/// Ledger path used when a repo's config names none. `dream-gate` has no
+/// default of its own and protects only a non-empty path, so the same value is
+/// passed to `ProtectedPolicy::for_manifest` as the fallback.
+pub const DEFAULT_LEDGER_PATH: &str = "docs/dream-cycle/LEDGER.md";
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BuildStep {
-    pub cmd: String,
-    #[serde(default)]
-    pub degrade_on_wasm_failure: bool,
-}
+/// Branch namespace used when a repo's config names none.
+pub const DEFAULT_BRANCH_PREFIX: &str = "dream/";
 
-/// Default wall-clock budget for a single evaluator run, in seconds.
-///
-/// Thirty minutes is comfortably above a cold `cargo test` on the annexe and
-/// well below the nightly window, so a hung evaluator is caught as a
-/// [`crate::receipts::EvaluatorOutcome::TimedOut`] veto rather than eating the night.
-pub const DEFAULT_EVALUATOR_TIMEOUT_SECS: u64 = 1800;
-
-/// One evaluator entrypoint: the command, whether it can veto acceptance, which
-/// deep slots it covers, and its wall-clock budget.
-///
-/// Deserialises from either the historical bare string
-/// (`"tests": "cargo test"`) or the explicit object form. The bare string is
-/// read fail-closed — `required: true`, all deeps — because an evaluator a repo
-/// bothered to declare is evidence the night is expected to honour.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EvaluatorSpec {
-    pub cmd: String,
-    pub required: bool,
-    pub deeps: Vec<String>,
-    pub timeout_secs: u64,
-}
-
-impl EvaluatorSpec {
-    /// The bare-string reading: required, every deep, default timeout.
-    pub fn command(cmd: &str) -> Self {
-        Self {
-            cmd: cmd.to_string(),
-            required: true,
-            deeps: Vec::new(),
-            timeout_secs: DEFAULT_EVALUATOR_TIMEOUT_SECS,
-        }
+/// Apply this estate's defaults to a parsed config: ledger path, branch
+/// prefix and a four-digit ADR convention. Nothing else is touched, so the
+/// config digest (taken over the raw bytes) is unaffected.
+pub fn apply_estate_defaults(cfg: &mut DreamConfig) {
+    if cfg.ledger_path.trim().is_empty() {
+        cfg.ledger_path = DEFAULT_LEDGER_PATH.into();
     }
-
-    /// An advisory evaluator: it runs and is recorded, but cannot veto.
-    pub fn advisory(cmd: &str) -> Self {
-        Self {
-            required: false,
-            ..Self::command(cmd)
-        }
+    if cfg.branch_prefix.trim().is_empty() {
+        cfg.branch_prefix = DEFAULT_BRANCH_PREFIX.into();
     }
-
-    /// True when this evaluator applies to `deep` (empty `deeps` ⇒ all deeps).
-    pub fn covers(&self, deep: &str) -> bool {
-        self.deeps.is_empty() || self.deeps.iter().any(|d| d == deep)
+    if cfg.adr_convention.is_unset() {
+        cfg.adr_convention = AdrConvention::FourDigit;
     }
 }
 
-impl<'de> Deserialize<'de> for EvaluatorSpec {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Detailed {
-            cmd: String,
-            #[serde(default = "default_true")]
-            required: bool,
-            #[serde(default)]
-            deeps: Vec<String>,
-            #[serde(default = "default_evaluator_timeout")]
-            timeout_secs: u64,
-        }
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum Raw {
-            Command(String),
-            Detailed(Detailed),
-        }
-        Ok(match Raw::deserialize(d)? {
-            Raw::Command(cmd) => EvaluatorSpec::command(&cmd),
-            Raw::Detailed(x) => EvaluatorSpec {
-                cmd: x.cmd,
-                required: x.required,
-                deeps: x.deeps,
-                timeout_secs: x.timeout_secs,
-            },
-        })
-    }
+/// Read, validate and default a repo's `dream.config.json`, returning the
+/// parsed document **and the exact bytes it was parsed from**. The bytes are
+/// what the experiment manifest digests and what the protected-path policy is
+/// built from, so one read feeds all three.
+pub fn load_dream_config(path: &Path) -> Result<(DreamConfig, Vec<u8>), ConfigError> {
+    let bytes = std::fs::read(path)?;
+    let mut cfg = DreamConfig::from_json(&bytes)?;
+    apply_estate_defaults(&mut cfg);
+    Ok((cfg, bytes))
 }
 
-fn default_evaluator_timeout() -> u64 {
-    DEFAULT_EVALUATOR_TIMEOUT_SECS
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DreamConfig {
-    pub repo: String,
-    #[serde(default = "default_cron")]
-    pub cron: String,
-    pub slots: Vec<Slot>,
-    #[serde(default)]
-    pub bonus_moduli: HashMap<String, String>,
-    #[serde(default)]
-    pub control_plane_probes: Vec<String>,
-    #[serde(default)]
-    pub build_step: Option<BuildStep>,
-    /// Sibling workspace repos (names relative to the workspace root) this repo's
-    /// build/evaluators need — e.g. a crate with a Cargo `path = "../<sibling>"`
-    /// dep on another repo. Each is archived from its own HEAD and extracted
-    /// alongside the target on the annexe, mirroring the workspace layout
-    /// (`remote_dir/<repo>` + `remote_dir/<sibling>`), so those path-deps resolve
-    /// (ADR-060). Empty ⇒ current behaviour, byte-for-byte.
-    #[serde(default)]
-    pub annexe_include: Vec<String>,
-    /// Evaluator entrypoints, keyed by evaluator name.
-    ///
-    /// Two value forms are accepted, and the plain string is still the
-    /// canonical short form:
-    ///
-    /// ```json
-    /// "evaluatorEntrypoints": {
-    ///   "tests":  "cargo test 2>&1 | tail -15",
-    ///   "hooks":  { "cmd": "bash scripts/hooks.sh", "required": false,
-    ///               "deeps": ["hooks-pipeline"], "timeoutSecs": 600 }
-    /// }
-    /// ```
-    ///
-    /// A bare string means `required: true`, every deep, default timeout —
-    /// the fail-closed reading demanded by ADR-2024's deterministic gate.
-    #[serde(default)]
-    pub evaluator_entrypoints: HashMap<String, EvaluatorSpec>,
-    #[serde(default)]
-    pub competitors: Vec<String>,
-    #[serde(default = "default_adr_convention")]
-    pub adr_convention: String,
-    #[serde(default)]
-    pub extra_disciplines: Vec<String>,
-    #[serde(default = "default_ledger_path")]
-    pub ledger_path: String,
-    #[serde(default = "default_branch_prefix")]
-    pub branch_prefix: String,
-    #[serde(default)]
-    pub labels: Vec<String>,
-    #[serde(default)]
-    pub auto_merge: bool,
-}
-
-fn default_cron() -> String {
-    "0 3 * * *".into()
-}
-fn default_adr_convention() -> String {
-    "4-digit".into()
-}
-fn default_ledger_path() -> String {
-    "docs/dream-cycle/LEDGER.md".into()
-}
-fn default_branch_prefix() -> String {
-    "dream/".into()
-}
-
-impl DreamConfig {
-    pub fn load(path: &Path) -> Result<Self, ConfigError> {
-        let text = std::fs::read_to_string(path)?;
-        let cfg: Self = serde_json::from_str(&text)?;
-        cfg.validate()?;
-        Ok(cfg)
-    }
-
-    fn validate(&self) -> Result<(), ConfigError> {
-        if self.repo.is_empty() {
-            return Err(ConfigError::Validation("repo must not be empty".into()));
-        }
-        if self.slots.is_empty() {
-            return Err(ConfigError::Validation("slots must not be empty".into()));
-        }
-        for (i, slot) in self.slots.iter().enumerate() {
-            if slot.deep.is_empty() {
-                return Err(ConfigError::Validation(format!(
-                    "slot[{}].deep must not be empty",
-                    i
-                )));
-            }
-        }
-        // ADR-065: darwin's default `--sandbox real` is surface-independent
-        // (nicheEntropy 0) — the night runs green while learning nothing.
-        // Reject rather than silently no-op; only mock|agent exercise the
-        // evolved surfaces.
-        let known_deeps: Vec<&str> = self.slots.iter().map(|s| s.deep.as_str()).collect();
-        for (name, spec) in &self.evaluator_entrypoints {
-            let cmd = &spec.cmd;
-            if cmd.trim().is_empty() {
-                return Err(ConfigError::Validation(format!(
-                    "evaluatorEntrypoints[{}]: command must not be empty",
-                    name
-                )));
-            }
-            let is_darwin =
-                cmd.contains("@metaharness/darwin") || cmd.contains("metaharness-darwin");
-            if is_darwin && !cmd.contains("--sandbox mock") && !cmd.contains("--sandbox agent") {
-                return Err(ConfigError::Validation(format!(
-                    "evaluatorEntrypoints[{}]: @metaharness/darwin entrypoints must pass \
-                     --sandbox mock or --sandbox agent (ADR-065; the default 'real' sandbox \
-                     is surface-independent and silently no-ops the night)",
-                    name
-                )));
-            }
-            // A `deeps` entry that names no declared slot silently disables the
-            // evaluator for every night — exactly the "declared but never runs"
-            // failure ADR-2024 is closing. Reject at load.
-            for d in &spec.deeps {
-                if !known_deeps.contains(&d.as_str()) {
-                    return Err(ConfigError::Validation(format!(
-                        "evaluatorEntrypoints[{}].deeps: {:?} is not a declared slot deep \
-                         (known: {})",
-                        name,
-                        d,
-                        known_deeps.join(", ")
-                    )));
-                }
-            }
-            if spec.timeout_secs == 0 {
-                return Err(ConfigError::Validation(format!(
-                    "evaluatorEntrypoints[{}].timeoutSecs must be greater than zero",
-                    name
-                )));
-            }
-        }
-        Ok(())
-    }
-}
-
-/// Runtime settings loaded from agentbox.toml [dream_machine].
 #[derive(Debug, Clone, Deserialize)]
 pub struct RuntimeConfig {
     #[serde(default = "default_true")]
@@ -460,7 +257,6 @@ pub fn bonus_dives(cfg: &DreamConfig, day_int: u32) -> Vec<String> {
         })
         .collect()
 }
-
 #[cfg(test)]
 mod tests {
 
@@ -627,56 +423,19 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn annexe_include_parses_and_defaults() {
-        let absent: DreamConfig =
-            serde_json::from_str(r#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}]}"#).unwrap();
-        assert!(
-            absent.annexe_include.is_empty(),
-            "absent → empty (byte-identical when off)"
-        );
-        let present: DreamConfig = serde_json::from_str(
-            r#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}],"annexeInclude":["nostr-rust-forum","solid-pod-rs"]}"#,
+    fn cfg_of(slots: &str, extra: &str) -> DreamConfig {
+        DreamConfig::from_json(
+            format!(r#"{{"repo":"test/repo","slots":{slots}{extra}}}"#).as_bytes(),
         )
-        .unwrap();
-        assert_eq!(
-            present.annexe_include,
-            vec!["nostr-rust-forum".to_string(), "solid-pod-rs".to_string()]
-        );
+        .unwrap()
     }
 
     #[test]
     fn slot_rotation() {
-        let cfg = DreamConfig {
-            repo: "test/repo".into(),
-            cron: default_cron(),
-            slots: vec![
-                Slot {
-                    deep: "a".into(),
-                    scan: vec![],
-                },
-                Slot {
-                    deep: "b".into(),
-                    scan: vec![],
-                },
-                Slot {
-                    deep: "c".into(),
-                    scan: vec![],
-                },
-            ],
-            bonus_moduli: HashMap::new(),
-            control_plane_probes: vec![],
-            build_step: None,
-            annexe_include: vec![],
-            evaluator_entrypoints: HashMap::new(),
-            competitors: vec![],
-            adr_convention: default_adr_convention(),
-            extra_disciplines: vec![],
-            ledger_path: default_ledger_path(),
-            branch_prefix: default_branch_prefix(),
-            labels: vec![],
-            auto_merge: false,
-        };
+        let cfg = cfg_of(
+            r#"[{"deep":"a","scan":[]},{"deep":"b","scan":[]},{"deep":"c","scan":[]}]"#,
+            "",
+        );
         assert_eq!(tonight_slot(&cfg, 20260815).deep, "a"); // 20260815 % 3 = 0
         assert_eq!(tonight_slot(&cfg, 20260816).deep, "b"); // 20260816 % 3 = 1
         assert_eq!(tonight_slot(&cfg, 20260817).deep, "c"); // 20260817 % 3 = 2
@@ -684,106 +443,59 @@ mod tests {
 
     #[test]
     fn bonus_moduli() {
-        let mut mods = HashMap::new();
-        mods.insert("25".into(), "ui-review".into());
-        mods.insert("75".into(), "self-hosting".into());
-        let cfg = DreamConfig {
-            repo: "test/repo".into(),
-            cron: default_cron(),
-            slots: vec![Slot {
-                deep: "a".into(),
-                scan: vec![],
-            }],
-            bonus_moduli: mods,
-            control_plane_probes: vec![],
-            build_step: None,
-            annexe_include: vec![],
-            evaluator_entrypoints: HashMap::new(),
-            competitors: vec![],
-            adr_convention: default_adr_convention(),
-            extra_disciplines: vec![],
-            ledger_path: default_ledger_path(),
-            branch_prefix: default_branch_prefix(),
-            labels: vec![],
-            auto_merge: false,
-        };
+        let cfg = cfg_of(
+            r#"[{"deep":"a","scan":[]}]"#,
+            r#","bonusModuli":{"25":"ui-review","75":"self-hosting"}"#,
+        );
         let day = 20260825; // % 25 = 0, % 75 = 25
         let bonuses = bonus_dives(&cfg, day);
         assert!(bonuses.contains(&"ui-review".to_string()));
         assert!(!bonuses.contains(&"self-hosting".to_string()));
     }
 
+    /// `dream-gate` leaves ledger path, branch prefix and ADR convention empty;
+    /// the estate fills them, and the ledger default is what the policy
+    /// fallback protects.
     #[test]
-    fn rejects_empty_slots() {
-        let cfg = DreamConfig {
-            repo: "test/repo".into(),
-            cron: default_cron(),
-            slots: vec![],
-            bonus_moduli: HashMap::new(),
-            control_plane_probes: vec![],
-            build_step: None,
-            annexe_include: vec![],
-            evaluator_entrypoints: HashMap::new(),
-            competitors: vec![],
-            adr_convention: default_adr_convention(),
-            extra_disciplines: vec![],
-            ledger_path: default_ledger_path(),
-            branch_prefix: default_branch_prefix(),
-            labels: vec![],
-            auto_merge: false,
-        };
-        assert!(cfg.validate().is_err());
+    fn estate_defaults_fill_what_the_gate_leaves_empty() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("dream.config.json");
+        std::fs::write(&p, br#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}]}"#).unwrap();
+        let (cfg, bytes) = load_dream_config(&p).unwrap();
+        assert_eq!(cfg.ledger_path, "docs/dream-cycle/LEDGER.md");
+        assert_eq!(cfg.branch_prefix, "dream/");
+        assert_eq!(cfg.adr_convention.pad(), 4);
+        assert_eq!(
+            bytes,
+            std::fs::read(&p).unwrap(),
+            "the bytes are the file's"
+        );
+
+        std::fs::write(
+            &p,
+            br#"{"repo":"o/r","slots":[{"deep":"d","scan":[]}],
+                "ledgerPath":"notes/L.md","branchPrefix":"night/","adrConvention":"3-digit"}"#,
+        )
+        .unwrap();
+        let (cfg, _) = load_dream_config(&p).unwrap();
+        assert_eq!(cfg.ledger_path, "notes/L.md");
+        assert_eq!(cfg.branch_prefix, "night/");
+        assert_eq!(cfg.adr_convention.pad(), 3);
     }
 
-    fn cfg_with_evaluator(cmd: &str) -> DreamConfig {
-        let mut evals = HashMap::new();
-        evals.insert("fitness".into(), EvaluatorSpec::command(cmd));
-        DreamConfig {
-            repo: "test/repo".into(),
-            cron: default_cron(),
-            slots: vec![Slot {
-                deep: "a".into(),
-                scan: vec![],
-            }],
-            bonus_moduli: HashMap::new(),
-            control_plane_probes: vec![],
-            build_step: None,
-            annexe_include: vec![],
-            evaluator_entrypoints: evals,
-            competitors: vec![],
-            adr_convention: default_adr_convention(),
-            extra_disciplines: vec![],
-            ledger_path: default_ledger_path(),
-            branch_prefix: default_branch_prefix(),
-            labels: vec![],
-            auto_merge: false,
-        }
-    }
-
+    /// A config the gate's stricter validation refuses is an error, not a
+    /// silently loosened night.
     #[test]
-    fn rejects_darwin_evaluator_without_sandbox_flag() {
-        // ADR-065: bare darwin invocation (implicit --sandbox real) is rejected.
-        let cfg = cfg_with_evaluator("npx -y @metaharness/darwin@~0.8.0 evolve .");
-        assert!(cfg.validate().is_err());
-        // Explicit real is equally rejected.
-        let cfg = cfg_with_evaluator("metaharness-darwin evolve . --sandbox real");
-        assert!(cfg.validate().is_err());
-    }
-
-    #[test]
-    fn accepts_darwin_evaluator_with_mock_or_agent_sandbox() {
-        let cfg = cfg_with_evaluator("metaharness-darwin evolve . --sandbox mock");
-        assert!(cfg.validate().is_ok());
-        let cfg = cfg_with_evaluator("node /opt/darwin/cli.js evolve . --sandbox agent");
-        // non-darwin command string without the marker is not gated…
-        assert!(cfg.validate().is_ok());
-        let cfg = cfg_with_evaluator("npx -y @metaharness/darwin@~0.8.0 evolve . --sandbox agent");
-        assert!(cfg.validate().is_ok());
-    }
-
-    #[test]
-    fn non_darwin_evaluators_unaffected() {
-        let cfg = cfg_with_evaluator("cargo test --workspace");
-        assert!(cfg.validate().is_ok());
+    fn a_config_the_gate_rejects_is_an_error() {
+        let d = tempfile::tempdir().unwrap();
+        let p = d.path().join("dream.config.json");
+        std::fs::write(
+            &p,
+            br#"{"repo":"not-a-slug","slots":[{"deep":"d","scan":[]}]}"#,
+        )
+        .unwrap();
+        assert!(load_dream_config(&p).is_err());
+        std::fs::write(&p, br#"{"repo":"o/r","slots":[]}"#).unwrap();
+        assert!(load_dream_config(&p).is_err());
     }
 }

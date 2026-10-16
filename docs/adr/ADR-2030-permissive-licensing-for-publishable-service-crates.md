@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: df584b3fde9d393640680e92898fa631f40580bb
+verified_commit: 33c8b3472a7a711b71f72973225ce7727ec69cf1
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -16,7 +16,11 @@ repo: agentbox
 
 # ADR-2030 — Publishable service crates are MIT OR Apache-2.0 inside the AGPL-3.0 repository
 
-## Re-verification — 2026-10-15
+## Re-verification — 2026-10-15 (ADR-2141)
+
+`docs/developer/licensing.md` and `services/LICENSING-NOTICE.md` gained the dream engine licence boundary. The gate and loop crates moved to a separate `MIT OR Apache-2.0` repository, and `services/dream-engine` stays here as the AGPL-3.0-only adapter that consumes them. This is consistent with the decision: no `services/` crate gained an AGPL dependency on a permissive crate, and the dependency runs one way, from the adapter to the permissive crates. `scripts/ci/check-crate-licensing.sh` passes (10 service directories carry the texts they declare). Existing status axes are unchanged.
+
+## Re-verification — 2026-10-15 (dependency refresh)
 
 The dream-engine dependency and lock refresh to nostr-bbs-core beta.16 and solid-pod-rs alpha.13 do not change its AGPL declaration. The pod bridge remains AGPL. The crate-licensing gate passes for all ten services; no AGPL dependency was added to a permissive crate.
 Source anchor: `df584b3fd`. Existing status axes and deferred work remain unchanged.
@@ -369,3 +373,7 @@ At `218dc12c3` `scripts/ci/check-crate-licensing.sh` exited non-zero: the new cr
 The reviewer did not audit `agentbox-vex`'s dependency licences (clap, serde, serde_json, sha2, hex, chrono, tempfile are all permissive crates); the gate checks declared licences and texts, not the dependency tree.
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+**Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: `bash scripts/ci/check-crate-licensing.sh` passes (10 service crates carry the texts they declare). `services/dream-engine` stays AGPL-3.0-only and gains two permissive path dependencies; depending on permissive crates does not change its licence, and no permissive crate depends on it.
+
+Re-read at `33c8b3472a7a` (2026-10-16): the only change to a governed path is `services/dream-engine/Cargo.toml`, which now pins the published `dream-core = "=0.1.0"` and `dream-gate = "=0.1.0"` from crates.io instead of path dependencies. The adapter stays AGPL-3.0-only and the permissive crates now exist on the registry (`pairwise-gate`, `failure-fingerprint`, `dream-gate`, `dream-core`, `dream-cli`, all MIT OR Apache-2.0); the one-way dependency rule is unchanged. `bash scripts/ci/check-crate-licensing.sh` is re-run at this commit.

@@ -125,14 +125,14 @@ Corpus coverage note: `dream-machine` **joined the corpus at v4.2.2-dev**
 (2026-08-21; it was absent through v4.0.36) — `search_ruvnet({repo:
 "dream-machine"})` now works, with the local checkout at
 `/home/devuser/workspace/dream-machine` as the fork-accurate source of truth
-(the corpus indexes upstream). For **dreaming/self-improvement-loop questions**
+(the corpus indexes upstream; the fork is the archived `DreamLab-AI/dream-machine`, which the Rust `DreamLab-AI/dream-engine` replaces, ADR-2141). For **dreaming/self-improvement-loop questions**
 the corpus anchors are instead: `agentic-qe`
 (`docs/aqe-dream-cycles-neural-learning.md`, `DREAM_SCHEDULER_DESIGN.md`,
 `docs/plans/nightly-learner-implementation-plan.md` — trigger design, insight
 gating, baseline/A-B discipline) and `ruvector`
 (`examples/ruvLLM/docs/SONA/05-MEMORY-DREAMS.md` — generate→evaluate→integrate
 dream pipeline). The deployed nightly loop itself is the agentbox
-`services/dream-engine` (ADR-052, `/dream` command, supervisord-owned since the
+`services/dream-engine` (the AGPL adapter over the permissive dream-core and dream-gate crates; ADR-052, `/dream` command, supervisord-owned since the
 2026-08 rebuild — never also start the old tmux-autostart copy; a duplicate
 loop races HP-annexe dispatch/cleanup and turns nights INCONCLUSIVE, observed
 2026-08-20/21). v4.0.36 added, among others: the full

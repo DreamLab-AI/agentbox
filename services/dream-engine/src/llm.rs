@@ -234,6 +234,113 @@ async fn call_loom(cfg: &LlmConfig, prompt: &str) -> Result<String, LlmError> {
     Ok(answer.content)
 }
 
+// --- dream-core seam ---
+
+use dream_core::seams::{BoxFut, Llm, LlmError as SeamError, LlmRequest};
+use dream_gate::manifest::ModelIdentity;
+
+/// An [`LlmConfig`] as a `dream_core` language model (Z.AI or the Loom).
+///
+/// The request's `max_tokens` is honoured (planner calls clamp it); its
+/// `temperature` is not: the Loom path pins its own sampling parameters and
+/// the Z.AI path takes the provider default, as before the extraction.
+#[derive(Debug, Clone)]
+pub struct LlmAdapter {
+    cfg: LlmConfig,
+}
+
+impl LlmAdapter {
+    /// Wrap `cfg`.
+    pub fn new(cfg: LlmConfig) -> Self {
+        Self { cfg }
+    }
+
+    /// The wrapped config.
+    pub fn config(&self) -> &LlmConfig {
+        &self.cfg
+    }
+}
+
+impl From<LlmError> for SeamError {
+    fn from(e: LlmError) -> Self {
+        match e {
+            LlmError::Request(e) => SeamError::Transport(e.to_string()),
+            LlmError::Api(m) => SeamError::Api(m),
+            LlmError::EmptyResponse => SeamError::Empty,
+            LlmError::MissingCredentials(m) => SeamError::MissingCredentials(m),
+            // The client already retried to its own ceiling; not transient.
+            LlmError::Loom(e) => SeamError::Api(format!("Loom: {e}")),
+        }
+    }
+}
+
+impl Llm for LlmAdapter {
+    fn complete<'a>(&'a self, req: &'a LlmRequest) -> BoxFut<'a, Result<String, SeamError>> {
+        Box::pin(async move {
+            let mut cfg = self.cfg.clone();
+            cfg.max_tokens = req.max_tokens;
+            call(&cfg, &req.prompt).await.map_err(SeamError::from)
+        })
+    }
+
+    fn identity(&self) -> ModelIdentity {
+        ModelIdentity {
+            provider: format!("{:?}", self.cfg.provider).to_lowercase(),
+            model: self.cfg.model.clone(),
+            max_tokens: self.cfg.max_tokens,
+            fallback: None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod adapter_tests {
+    use super::*;
+
+    fn cfg(provider: Provider) -> LlmConfig {
+        LlmConfig {
+            provider,
+            url: "http://127.0.0.1:9".into(),
+            model: "glm-test".into(),
+            max_tokens: 4096,
+            api_key: None,
+        }
+    }
+
+    #[test]
+    fn identity_is_the_frozen_manifest_shape() {
+        let id = LlmAdapter::new(cfg(Provider::Zai)).identity();
+        assert_eq!(id.provider, "zai");
+        assert_eq!(id.model, "glm-test");
+        assert_eq!(id.max_tokens, 4096);
+        assert!(id.fallback.is_none());
+        assert_eq!(
+            LlmAdapter::new(cfg(Provider::Loom)).identity().provider,
+            "loom"
+        );
+    }
+
+    #[test]
+    fn errors_map_onto_the_seam_vocabulary() {
+        assert_eq!(SeamError::from(LlmError::EmptyResponse), SeamError::Empty);
+        assert_eq!(
+            SeamError::from(LlmError::Api("HTTP 524: x".into())),
+            SeamError::Api("HTTP 524: x".into())
+        );
+        assert!(SeamError::from(LlmError::Api("HTTP 524: x".into())).is_transient());
+        assert!(!SeamError::from(LlmError::MissingCredentials("k".into())).is_transient());
+    }
+
+    /// No key is a credentials error through the seam, with no network call.
+    #[tokio::test]
+    async fn a_zai_adapter_without_a_key_reports_missing_credentials() {
+        let a = LlmAdapter::new(cfg(Provider::Zai));
+        let req = LlmRequest::new("hi", 256);
+        let r = a.complete(&req).await;
+        assert!(matches!(r, Err(SeamError::MissingCredentials(_))), "{r:?}");
+    }
+}
+
 #[cfg(test)]
 mod timeout_tests {
     #[test]
