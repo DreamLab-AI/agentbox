@@ -4,10 +4,10 @@ title: Blender runs sidecar-first; the in-container binary is optional
 date: 2026-10-16
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: efa293b8799bebac8f331592d6425790c7b011c5
+verified_commit: 9fcd1eef98b2a3eb8469df0fb6bf62ec7a34cc76
 verified_paths: [agentbox.toml, flake.nix, skills/blender/tools/blender-job.js, skills/blender/tools/blender-introspect.js, skills/blender/tools/blender-batch.sh, skills/blender/SKILL.md, skills/uk-solar-planner/SKILL.md, skills/game-dev/tools/engine-check.sh, tests/toolchains/blender-present.sh]
 owner: jjohare
 review_trigger: the image rebuild activates the change, the GPU sidecar (gui-tools-service) or its shared volume changes, a local-Blender consumer is added, or `blender_local` is flipped in the shipped manifest
@@ -29,9 +29,13 @@ repo: agentbox
 - Consumers of Blender (`uk-solar-planner`, `game-dev`) must not assume a local binary unless `blender_local` is true or absent.
 
 ## Consequences
-- The next image rebuild drops the in-container `blender` binary and its closure from this deployment. Until that rebuild the old binary is still present; `blender-present.sh` skips (exit 77) once the key is false.
+- The activated image drops the in-container `blender` binary and its closure from this deployment; `blender-present.sh` skips (exit 77) once the key is false.
 - There is no local fallback when the sidecar is down: jobs and interactive work fail with exit 2 until `./agentbox.sh gui-tools up`. This is the accepted trade for a smaller image and GPU renders on the sidecar.
 - ADR-2137: existing image VEX statements bound to Blender and its dependency PURLs must be withdrawn and regenerated from the next image's `image.layers.paths`.
-- ADR-2132: the next `prepare` drops the Blender layer; the prepare/activate flow itself is unchanged.
+- ADR-2132: the activated candidate drops the Blender layer; the prepare/activate flow itself is unchanged.
 - Scripts run in the sidecar see the repository only through staged files and use the `exchange` path spelling; the sidecar's Blender build can differ from the one that used to be baked, so run `blender-introspect.js version` before relying on an API.
-- Implementation is complete and tested (`skills/blender/tools/tests/`); activation stays staged until the image is rebuilt and the operator confirms a job runs on the new image. Revert: `blender_local = true` and rebuild.
+- Implementation is complete and tested (`skills/blender/tools/tests/`); activation was verified on 2026-10-16 with the rebuilt image and a completed sidecar render. Revert: `blender_local = true` and rebuild.
+
+## Activation evidence (2026-10-16)
+
+Image source `9fcd1eef98b2a3eb8469df0fb6bf62ec7a34cc76` is active. No local `blender` command is present; baked API introspection reports sidecar Blender 5.2.0 LTS. Job `deploy-20261016-smoke` exited 0 and produced `smoke.png` using OptiX on NVIDIA RTX 6000 Ada GPUs. All 32 persistent mounts and 16 sidecar container identities were preserved. Fresh SBOM/VEX evidence was generated from the candidate image layers.

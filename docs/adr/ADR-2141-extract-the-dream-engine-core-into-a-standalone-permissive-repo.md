@@ -4,11 +4,11 @@ title: Extract the dream engine core into a standalone permissive repo
 date: 2026-10-15
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 58fce653822b4aa2c27c59c01f71a6d13a0e07b1
-verified_paths: []
+verified_commit: 9fcd1eef98b2a3eb8469df0fb6bf62ec7a34cc76
+verified_paths: [services/dream-engine/Cargo.toml, services/dream-engine/Cargo.lock, lib/dream-engine.nix, services/dream-engine/src/engine.rs, services/dream-engine/tests/night_e2e.rs]
 owner: jjohare
 review_trigger: the image rebuild activates the registry-pinned crates, a new release of dream-core or dream-gate is adopted, or any new module is added under services/dream-engine/src that is not estate-specific
 repo: agentbox
@@ -37,7 +37,11 @@ repo: agentbox
 - The adapter workarounds for the typed apply error and `MemoryRecord` fields are gone; the upstream types carry them.
 - Relay, digest and governance stay night-level drivers rather than `Notifier`s, as a deliberate boundary: they publish the night's state, and a per-notice forum post would be new behaviour. No `Notice` variant exists for them because nothing consumes one.
 - Restart safety (2026-10-15): a night is identified by its directory, not the run id, which hashes a HEAD the engine's own ledger commit moves. `dream-core` now treats a `Persisted`/`Complete` night as finished whatever the run id (upstream ADR-DE-007), the adapter skips it before freezing a manifest, `Persisted` is entered before the forge request and ledger commit (at-most-once publish), and `dream-engine reset-night <repo> <date>` archives the journal to reopen a night. The published 0.1.0 releases carry this fix.
-- Follow-on: rebuild and activate the image (operator), then retire the `dream-engine` deep slot in `dream.config.json`.
+- Follow-on after the 2026-10-16 activation: retire the `dream-engine` deep slot in `dream.config.json`.
 
 ## Verification
-`cargo build --release --locked` and the 161 tests pass against the registry crates; every deleted test is accounted for in `docs/developer/dream-engine-extraction-ledger.md`. `implementation_status` is `complete` for the extraction and the pin only. `activation_status` stays `staged` until the operator rebuilds the image. Caveats that remain: the forge automerge calls are not yet exercised against real GitHub, and the adapter publishes through `Forge::publish_draft`, so `autoMerge` is inert there. `verified_paths` is empty, so the record asserts nothing checkable.
+`cargo build --release --locked` and the 163 tests pass against the registry crates; every deleted test is accounted for in `docs/developer/dream-engine-extraction-ledger.md`. `implementation_status` is `complete` for the extraction and the pin only. The operator rebuilt and activated the registry-pinned image on 2026-10-16. Caveats that remain: the forge automerge calls are not yet exercised against real GitHub, and the adapter publishes through `Forge::publish_draft`, so `autoMerge` is inert there. The tracked verification paths cover the registry pins, Nix packaging, engine and whole-night tests.
+
+## Activation evidence (2026-10-16)
+
+Image source `9fcd1eef98b2a3eb8469df0fb6bf62ec7a34cc76` is active with a clean source receipt. The Nix sandbox passed 152 unit tests and all 11 whole-night tests after resolving the generated test-shim Bash shebangs in `lib/dream-engine.nix`. The supervised daemon is RUNNING and readiness reports no degradation. This activates the extraction; the forge automerge caveat above remains.
