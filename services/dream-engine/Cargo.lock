@@ -576,9 +576,9 @@ checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "dream-core"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31dfffe54c2d4e3fcecef74fd52571504c3b7ed197a4249130ea62b19eb17682"
+checksum = "1f5fea9849830b010fb139c7e60ac3225bb707028c72301ae63a6d1c82378c94"
 dependencies = [
  "chrono",
  "dream-gate",
@@ -620,9 +620,9 @@ dependencies = [
 
 [[package]]
 name = "dream-gate"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71fed46b3c6b7cc2388dc60b4c2494b44f12f4a4223c2a880401bcd434b5f1fd"
+checksum = "d7c770ff009b95419aa1f17d003bf3ee9f05bc771420744f4f2e1dd0f38d5f0a"
 dependencies = [
  "chrono",
  "failure-fingerprint",
