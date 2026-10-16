@@ -48,9 +48,9 @@ estate scrubbed out. `services/dream-engine` stays here as the `AGPL-3.0-only`
 adapter: it links `nostr-bbs-core`, it holds the estate wiring (Z.AI and Loom,
 the annexe, RuVector, the forum), and its `zone_crypto` module is never
 published. The dependency runs one way: the adapter depends on the permissive
-crates, never the reverse. The permissive crates are pinned by path during
-development and flip to a git rev on push; they are not yet published to
-crates.io. The earlier TypeScript fork was renamed `DreamLab-AI/dream-machine`
+crates, never the reverse. The permissive crates are published to crates.io at 0.1.0
+(`pairwise-gate`, `failure-fingerprint`, `dream-gate`, `dream-core`, `dream-cli`)
+and the adapter pins `dream-core` and `dream-gate` with `=0.1.0`. The earlier TypeScript fork was renamed `DreamLab-AI/dream-machine`
 and archived; the new repository takes the `dream-engine` name.
 
 ## The `sidestr-*` crates are AGPL-3.0-only, published, and live in sidestr-rs (ADR-2106, ADR-2112)

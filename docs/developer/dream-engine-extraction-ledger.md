@@ -402,6 +402,8 @@ Then refresh `services/dream-engine/Cargo.lock`, and only then add the pin to
 `lib/dream-engine.nix` (it cannot build with path dependencies that point
 outside the repository; it is untouched here).
 
+**Resolved 2026-10-16.** The section above is the record as written on 2026-10-15. The crates were then published to crates.io at 0.1.0, `Cargo.toml` pins `dream-core = "=0.1.0"` and `dream-gate = "=0.1.0"` from the registry (no path or git source), and `Cargo.lock` carries registry checksums. No git `rev` was ever used, and `lib/dream-engine.nix` is unchanged because every dependency is a registry crate and needs no `outputHashes`. The image rebuild is pending.
+
 ## Restart-safety fix (2026-10-15)
 
 `run_id` includes the baseline HEAD, which the engine's own ledger commit moves, so a finished night (or one that crashed between the ledger commit and `complete`) was re-run on the next start. Fixed upstream in `dream-core::runstate` (night-level terminal rule, `persist`, `reset_night`; ADR-DE-007). Adapter: `engine.rs` checks `runstate::finished_night` before freezing a manifest and logs `night already complete — skipping`; `runstate::persist` runs before the forge request and ledger commit; `main.rs` gains `reset-night <repo> <date>`. The previously ignored `a_finished_night_is_not_repeated_after_its_own_ledger_commit` now runs, and `a_crash_between_persisted_and_complete_does_not_publish_twice` covers the crash window. Residual: a crash after `Persisted` but before the forge request loses that publish (never repeats it); the operator resets the night.
