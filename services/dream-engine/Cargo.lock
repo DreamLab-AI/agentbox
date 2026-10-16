@@ -577,6 +577,8 @@ checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 [[package]]
 name = "dream-core"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31dfffe54c2d4e3fcecef74fd52571504c3b7ed197a4249130ea62b19eb17682"
 dependencies = [
  "chrono",
  "dream-gate",
@@ -619,6 +621,8 @@ dependencies = [
 [[package]]
 name = "dream-gate"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71fed46b3c6b7cc2388dc60b4c2494b44f12f4a4223c2a880401bcd434b5f1fd"
 dependencies = [
  "chrono",
  "failure-fingerprint",
@@ -712,6 +716,8 @@ dependencies = [
 [[package]]
 name = "failure-fingerprint"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd0d672bbfed3d6a15ea4712fe3a1d52fd2732202473fa2b2910b2fc6f5a1656"
 dependencies = [
  "serde",
  "serde_json",
@@ -1529,6 +1535,8 @@ dependencies = [
 [[package]]
 name = "pairwise-gate"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5c71a23bdeca9fc09d0dd47bb7fcd7390aba50906137a27de9a59526b3112c6"
 dependencies = [
  "serde",
 ]

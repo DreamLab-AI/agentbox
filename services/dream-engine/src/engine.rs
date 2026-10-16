@@ -822,7 +822,7 @@ impl Engine {
         let health = dispatch::annexe_health(
             &self.runtime.hp_host,
             &self.runtime.hp_annexe_dir,
-            dispatch::ANNEXE_MIN_FREE_GIB,
+            min_free_gib_from(std::env::var("DREAM_ANNEXE_MIN_FREE_GIB").ok().as_deref()),
         );
         j.completed(
             c,
@@ -2176,5 +2176,43 @@ mod tests {
         assert_eq!(got[0].0, "unit");
         assert!(test_evidence(&[&without], &base, &cand, "/b", "/c").is_empty());
         assert!(test_evidence(&[&with], &base, &[], "/b", "/c").is_empty());
+    }
+}
+
+/// Minimum free space the annexe must report, in GiB. `DREAM_ANNEXE_MIN_FREE_GIB`
+/// overrides the default so hermetic test runs, which have no real annexe disk
+/// to protect, do not depend on the size of the build sandbox's filesystem. An
+/// unset, empty or unparseable value keeps the production default.
+fn min_free_gib_from(raw: Option<&str>) -> u64 {
+    raw.and_then(|v| v.trim().parse::<u64>().ok())
+        .unwrap_or(dispatch::ANNEXE_MIN_FREE_GIB)
+}
+
+#[cfg(test)]
+mod min_free_tests {
+    use super::*;
+
+    #[test]
+    fn unset_empty_and_garbage_keep_the_production_default() {
+        for raw in [
+            None,
+            Some(""),
+            Some("  "),
+            Some("ten"),
+            Some("-1"),
+            Some("1.5"),
+        ] {
+            assert_eq!(
+                min_free_gib_from(raw),
+                dispatch::ANNEXE_MIN_FREE_GIB,
+                "{raw:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_valid_override_wins_including_zero() {
+        assert_eq!(min_free_gib_from(Some("0")), 0);
+        assert_eq!(min_free_gib_from(Some(" 3 ")), 3);
     }
 }

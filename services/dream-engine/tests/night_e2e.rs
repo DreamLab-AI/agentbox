@@ -101,6 +101,7 @@ fn setup_env() {
         std::env::set_var("TMPDIR", &tmp);
         std::env::set_var("GIT_CONFIG_GLOBAL", "/dev/null");
         std::env::set_var("GIT_CONFIG_NOSYSTEM", "1");
+        std::env::set_var("DREAM_ANNEXE_MIN_FREE_GIB", "0");
         std::env::set_var("DREAM_INBOX_PATH", base.join("inbox.json"));
         std::env::set_var("DREAM_HEALTH_PATH", base.join("last-night.json"));
         std::env::set_var("DREAM_PAUSE_FLAG", base.join("no-such-pause-flag"));
