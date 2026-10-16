@@ -15,12 +15,13 @@
 #
 # Division with `vault` (lib/vault.nix)
 # -------------------------------------
-# `ontomark` carries validate, gate, conflicts, build, repair and migrate. The
-# governance verbs the ontology-augment skill still needs (find, retrieve, tree,
-# edit, propose) are the deliberate ADR-OM-001 subset that stays in VisionClaw's
-# `vault` until the typed-model port lands (Ontomark DEPRECATION §13, AB-P6).
-# So both are baked; the skill routes each verb to the binary that owns it, and
-# `vault` retires verb by verb, not in one cut.
+# From 0.3.0 `ontomark` carries validate, gate, conflicts, build, repair,
+# migrate AND the corpus verbs find, retrieve, tree, edit, create and apply,
+# ported from VisionClaw's `vault` byte-for-byte (Ontomark ADR-OM-007). `vault`
+# keeps only `propose` and its Nostr transport, so both stay baked and the
+# ontology-augment skill routes every read verb to `ontomark`, falling back to
+# `vault` only on an image built before this pin. 0.3.0 also reads the flat
+# visionGraph vaults (pages at the vault root); 0.2.x cannot.
 #
 # Repinning
 # ---------
@@ -28,8 +29,8 @@
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
 # binary itself is static-pie musl and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, version ? "0.2.0"
-, hash ? "sha256-b/PzkawNMvVl3LPDJ+1Zo6YqK+cHyOMBrq42XbMsgws=" }:
+{ lib, pkgs, version ? "0.3.0"
+, hash ? "sha256-zJqOW/QPn+SGhgOQrfky1lKPcLX4x/5SiD5pncnbpEw=" }:
 
 pkgs.stdenvNoCC.mkDerivation {
   pname = "ontomark";

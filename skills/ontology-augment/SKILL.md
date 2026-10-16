@@ -103,9 +103,9 @@ $S health                                      # is grounding available, how old
 Or drive `vault` directly — the wrapper has no privileges it does not:
 
 ```bash
-vault find --query "knowledge graph" --limit 5 --json
-vault retrieve "Knowledge Graph" --expand is-a=2,requires=1 --max-documents 12 --json
-vault tree "Knowledge Graph" --depth 2 --json
+ontomark find --query "knowledge graph" --limit 5 --json
+ontomark retrieve "Knowledge Graph" --expand is-a=2,requires=1 --max-documents 12 --json
+ontomark tree "Knowledge Graph" --depth 2 --json
 vault validate --vault all --json
 ```
 
@@ -113,13 +113,13 @@ vault validate --vault all --json
 
 | Retired MCP tool | Now |
 |---|---|
-| `ontology_ask` | `vault retrieve <id>… --expand … --max-documents N --json` (the wrapper's `ask` does seed-then-expand) |
-| `ontology_search` | `vault find --query <q> [--fuzzy] --json` |
-| `ontology_class_get` | `vault retrieve <id> --json` |
-| `ontology_class_list` | `vault find --type Class --json` |
+| `ontology_ask` | `ontomark retrieve <id>… --expand … --max-documents N --json` (the wrapper's `ask` does seed-then-expand) |
+| `ontology_search` | `ontomark find --query <q> [--fuzzy] --json` |
+| `ontology_class_get` | `ontomark retrieve <id> --json` |
+| `ontology_class_list` | `ontomark find --type Class --json` |
 | `ontology_graph_query` | `POST http://192.168.2.132:8084/loom/sparql` — the reasoned closure, not the disk |
-| `kg_node_search` | `vault find` (same door as `ontology_search`; the split was an artefact of two backends) |
-| `kg_neighbors` | Loom `/mcp` → `loom.neighbours`; `vault tree` only if the Loom did not answer |
+| `kg_node_search` | `ontomark find` (same door as `ontology_search`; the split was an artefact of two backends) |
+| `kg_neighbors` | Loom `/mcp` → `loom.neighbours`; `ontomark tree` only if the Loom did not answer |
 | `kg_pathfind` | Loom `/mcp` → `loom.paths`; **no corpus fallback**, by design — see below |
 | `ontology_validate` | `vault validate` — OKF v0.2 + `vocabulary.yaml` + link integrity |
 | `ontology_propose` | `vault propose <iri> --level content\|schema` |
@@ -138,7 +138,7 @@ server registration, no tool grant — just a JSON body on a LAN URL.
   `urn:ngm:class:<slug>` passes through. No exact match is sent verbatim.
 - **`found: false` is `silent`**, not a negative: the corpus does not say.
 - **If the Loom does not answer** (unreachable, non-200, or a JSON-RPC protocol
-  error), `neighbours` falls back to `vault tree` (asserted edges only, announced
+  error), `neighbours` falls back to `ontomark tree` (asserted edges only, announced
   on stderr, `fallback.loom_status` names why), and `paths` stays `degraded`
   rather than passing a walk over asserted wikilinks off as a shortest path in
   the reasoned graph. Those are different answers and only one was asked for.
