@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: efa293b8799bebac8f331592d6425790c7b011c5
+verified_commit: 7e3e4ebb2abcf9b105a9e392828f67a44e5fc342
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -168,3 +168,5 @@ Not checked, and notes: Not run: web-summary cargo tests (would write target/) a
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
 
 **Re-verified 2026-10-16 at `efa293b8799b`.** The only change to a governed path is the sidecar-first Blender work (ADR-2142): `agentbox.toml` gains `[skills.spatial_and_3d].blender_local = false`; `flake.nix` narrows one `lib.optionals` condition (`wrapGpuBin pkgs.blender` now needs `blender && blender_local`), adds one `ENABLE_BLENDER_LOCAL` env line and reworks a comment; `schema/agentbox.toml.schema.json` gains the `blender_local` boolean; `management-api/lib/system-manifest.js` gains a `blender-local` catalogue entry and a corrected `blender-mcp` summary. Nothing of the retired outliner ontology runtime is reintroduced. The decision holds. Re-verified by `git diff <previous verified_commit>..efa293b8799b -- <verified_paths>`; no re-implementation was needed.
+
+**Re-verified 2026-10-16 at `7e3e4ebb2abc`.** The only change to a governed path is `dream.config.json`: the `dream-engine` deep slot is removed (ADR-2141 follow-on) and the file is re-serialised with literal rather than escaped non-ASCII characters. The ontology dream evaluator this record governs is untouched, so the decision stands. Checked by `git diff <previous verified_commit>..HEAD -- <verified_paths>`.
