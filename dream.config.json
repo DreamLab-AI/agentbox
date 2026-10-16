@@ -3,13 +3,6 @@
   "cron": "0 3 * * *",
   "slots": [
     {
-      "deep": "dream-engine",
-      "scan": [
-        "verdict-parsing",
-        "provider-fallback"
-      ]
-    },
-    {
       "deep": "hooks-pipeline",
       "scan": [
         "hook-syntax",
@@ -71,11 +64,11 @@
   "competitors": [],
   "adrConvention": "3-digit",
   "extraDisciplines": [
-    "self-referential: agentbox contains the dream-engine that dreams it (services/dream-engine). A change to that crate changes the dreamer itself \u2014 apply extra review scrutiny, and never let a self-modifying hypothesis bypass the human-merge gate. Still evidence-gated, still witnessed.",
-    "nix-build-out-of-annexe: the full image build (flake.nix) needs nixpkgs and the host build shell (tmux tab 6) \u2014 the connected node annexe cannot run it. The evaluable surface here is the Rust crates + node hook syntax. Record image/Nix findings as 'HANDOFF (rebuild):' notes; never invent a nix-build evaluator that would silently no-op.",
-    "sibling-path-deps: services/nostr-pod-bridge path-deps the nostr-rust-forum and solid-pod-rs sibling repos (../../../../); since 2026-09-07 the engine ships them to the annexe at their real workspace depth (annexeInclude), so the sovereign-mesh-bridge evaluator is a REAL required gate. Changes to the sibling crates themselves still belong to those repos' own cycles \u2014 propose there, not here.",
+    "self-referential: agentbox contains the dream-engine that dreams it (services/dream-engine). A change to that crate changes the dreamer itself — apply extra review scrutiny, and never let a self-modifying hypothesis bypass the human-merge gate. Still evidence-gated, still witnessed.",
+    "nix-build-out-of-annexe: the full image build (flake.nix) needs nixpkgs and the host build shell (tmux tab 6) — the connected node annexe cannot run it. The evaluable surface here is the Rust crates + node hook syntax. Record image/Nix findings as 'HANDOFF (rebuild):' notes; never invent a nix-build evaluator that would silently no-op.",
+    "sibling-path-deps: services/nostr-pod-bridge path-deps the nostr-rust-forum and solid-pod-rs sibling repos (../../../../); since 2026-09-07 the engine ships them to the annexe at their real workspace depth (annexeInclude), so the sovereign-mesh-bridge evaluator is a REAL required gate. Changes to the sibling crates themselves still belong to those repos' own cycles — propose there, not here.",
     "secrets-never-in-report: agentbox holds keys and env; never quote .env, agentbox/.env, or any *_KEY/*_PRIVKEY value into a report, ledger, or gist.",
-    "cite-existing-adrs: cite only ADR ids that exist under docs/adr/ (4-digit ADR-2xxx ledger + the archived 3-digit corpus); propose a new decision by title and leave the id to the operator \u2014 nights have cited ADR-056/ADR-0057/ADR-2024 that do not exist.",
+    "cite-existing-adrs: cite only ADR ids that exist under docs/adr/ (4-digit ADR-2xxx ledger + the archived 3-digit corpus); propose a new decision by title and leave the id to the operator — nights have cited ADR-056/ADR-0057/ADR-2024 that do not exist.",
     "ontology-monitor-evaluators: the required ontology-governance-tests exercise management-api/tests/ontology-propose-vault.test.js and ontology-apply.test.js against the current vault CLI boundary. Corpus parsing, frontmatter validation, links and reasoning are owned and tested by the upstream vault crate, whose tests also run in lib/vault.nix. The advisory broker-gate-tests exercise management-api/tests/broker-bridge.test.js. Scan proposal-idempotency reads management-api/lib/ontology-propose.js; broker-gate reads management-api/routes/broker-bridge.js. Cite receipts from these, never infer from headers."
   ],
   "ledgerPath": "docs/dream-cycle/LEDGER.md",
