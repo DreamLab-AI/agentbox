@@ -46,6 +46,14 @@ pkgs.rustPlatform.buildRustPackage {
   # Standalone [workspace]; the checked-in lockfile pins the full closure.
   cargoLock.lockFile = ../services/dream-engine/Cargo.lock;
 
+  # The whole-night tests create executable SSH/SCP shims at runtime. Their
+  # literal shebangs cannot be rewritten by patchShebangs after creation, and
+  # /bin/bash does not exist in the build sandbox.
+  postPatch = ''
+    substituteInPlace tests/night_e2e.rs \
+      --replace-fail '#!/bin/bash' '#!${pkgs.bash}/bin/bash'
+  '';
+
   # No native deps: reqwest uses rustls-tls (default-features=false), so there
   # is no openssl link and no pkg-config probe.
 
@@ -54,7 +62,7 @@ pkgs.rustPlatform.buildRustPackage {
   # persist tests additionally shell out to `git` (worktree/branch isolation),
   # so git must be present in the check environment.
   doCheck = true;
-  nativeCheckInputs = [ pkgs.git ];
+  nativeCheckInputs = [ pkgs.git pkgs.bash pkgs.gnutar pkgs.gzip pkgs.gnugrep ];
 
   meta = with lib; {
     description = "Nightly evidence-gated repository evolution engine for agentbox (the connected node annexe, ADR-052) — compiles config into deterministic prompts, dispatches to the connected node, calls an LLM, parses verdicts, persists ledger + witness + RuVector";
