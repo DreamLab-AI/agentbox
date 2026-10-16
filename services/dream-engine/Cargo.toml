@@ -19,6 +19,12 @@ name = "dream_engine"
 path = "src/lib.rs"
 
 [dependencies]
+# The extracted permissive crates (DreamLab-AI/dream-engine workspace; ADR-2141),
+# pinned to exact crates.io versions like nostr-bbs-core. Both must stay on the
+# same release: a mismatch links two copies of dream-gate and its types would
+# not unify.
+dream-core = "=0.1.0"
+dream-gate = "=0.1.0"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

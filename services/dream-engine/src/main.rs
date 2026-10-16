@@ -5,8 +5,8 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use dream_engine::config::RuntimeConfig;
-use dream_engine::engine::{fallback_llm_config, llm_config, ruvector_config, Engine};
-use dream_engine::roster;
+use dream_engine::engine::Engine;
+use dream_engine::estate::{default_roster_path, fallback_llm_config, llm_config, ruvector_config};
 use dream_engine::runner::{EvaluatorRunner, SshRunner};
 use dream_engine::{digest, governance, inbox};
 
@@ -53,7 +53,7 @@ struct Cli {
 
     /// Durable fair-scheduling state: which repo dreamed when, so the nightly
     /// cap rotates through the whole roster instead of pinning its head.
-    #[arg(long, default_value_os_t = roster::default_path())]
+    #[arg(long, default_value_os_t = default_roster_path())]
     roster_path: PathBuf,
 
     /// One-shot operator commands (forum I/O only; no annexe, no LLM).
@@ -76,6 +76,15 @@ enum Cmd {
         /// Print the digest; post nothing.
         #[arg(long)]
         dry_run: bool,
+    },
+    /// Reopen a finished night: archive its run-state and manifest as
+    /// `*-superseded-<timestamp>` (nothing is deleted) so the next start runs it
+    /// afresh. A finished night is otherwise never repeated.
+    ResetNight {
+        /// Repository name (the directory name, not the slug).
+        repo: String,
+        /// Night date, `YYYY-MM-DD`.
+        date: String,
     },
 }
 
@@ -129,6 +138,19 @@ async fn run_command(cmd: &Cmd, workspace: &std::path::Path, artefact_dir: &std:
                 report.withdrawn,
                 report.skipped
             );
+        }
+        Cmd::ResetNight { repo, date } => {
+            let dir = artefact_dir.join(format!("{date}-{repo}"));
+            match dream_core::runstate::reset_night(&dir) {
+                Ok(()) => println!(
+                    "night {date}-{repo} reset; archived under {}",
+                    dir.display()
+                ),
+                Err(e) => {
+                    eprintln!("reset-night failed: {e}");
+                    std::process::exit(1);
+                }
+            }
         }
         Cmd::Digest { date, dry_run } => {
             let date = date.clone().unwrap_or_else(|| day_int_and_date().1);
@@ -211,6 +233,8 @@ async fn main() {
         ruvector: ruvector_config(&runtime),
         runner,
         roster_path: cli.roster_path.clone(),
+        forge: Arc::new(dream_core::seams::GhForge),
+        llm_override: None,
         runtime,
         workspace: cli.workspace.clone(),
         artefact_dir: cli.artefact_dir.clone(),
@@ -247,6 +271,9 @@ async fn main() {
                 "done"
             );
         }
+        Err(dream_engine::engine::EngineError::NightLocked(night)) => {
+            info!(%night, "night held by another engine — nothing to do");
+        }
         Err(e) => {
             error!(error = %e, "cycle failed");
             std::process::exit(1);
@@ -277,6 +304,9 @@ async fn run_loop(engine: &Engine, target: Option<&str>) {
                         verdict = res.verdict.as_str(),
                         "nightly cycle complete"
                     ),
+                    Err(dream_engine::engine::EngineError::NightLocked(night)) => {
+                        info!(%night, "night held by another engine — skipped")
+                    }
                     Err(e) => error!(error = %e, "nightly cycle failed"),
                 },
                 None => {

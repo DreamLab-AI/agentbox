@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: cca7ea3b151be3ea44907581d40271c714b07dd0
+verified_commit: 58fce653822b4aa2c27c59c01f71a6d13a0e07b1
 verified_paths: [services/dream-engine/src/llm.rs, services/podcast-ingest/src/ingest/loom.rs, services/podcast-ingest/src/promote/loom.rs, services/explainer-tools/src/bin/loom_draft.rs, services/agentbox-mcp/src/web_summary/llm.rs, lib/explainer-tools.nix]
 owner: jjohare
 review_trigger: the Loom façade changes its request or telemetry contract, or a fifth caller appears
@@ -87,3 +87,5 @@ Tripped by `services/agentbox-mcp/src/web_summary/llm.rs` via `e2fdb363f` — **
 ## Re-verification — 2026-10-07 at cca7ea3b151be3ea44907581d40271c714b07dd0
 
 One commit since `b680a7aee` touches the governed paths. `e4e4f5fb6` adds `zai_timeout()` to `services/dream-engine/src/llm.rs` and makes `call_zai` use it, so the timeout scales with the token budget (`max_tokens/50 + 120` s, never below 600 s). It also adds a unit test. `call_zai` is the direct Z.AI provider path, not a Loom façade caller. `call_loom` (`llm.rs:205`) still goes through `loom_client::{ChatRequest, LoomClient, LoomOptions, Message}` (`:1`). At HEAD, `grep -rln loom_client services/*/src/` returns the same six files as at the previous anchor. `loom-client = "0.1"` is declared in `agentbox-mcp`, `dream-engine`, `podcast-ingest` and `explainer-tools`. The only `chat/completions` strings under `services/*/src` are a mock-server route in the `web_summary/llm.rs` tests and the non-façade Gemini client in `promote/gemini.rs`. `lib/explainer-tools.nix` is unchanged. The decision holds.
+
+**Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: `llm.rs` still calls the façade through `loom-client` only (`call_loom` is unchanged); it additionally exposes `LlmAdapter`, the `dream_core::seams::Llm` implementation. `cargo test` in `services/dream-engine` passes.

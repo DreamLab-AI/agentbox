@@ -575,12 +575,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
+name = "dream-core"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31dfffe54c2d4e3fcecef74fd52571504c3b7ed197a4249130ea62b19eb17682"
+dependencies = [
+ "chrono",
+ "dream-gate",
+ "failure-fingerprint",
+ "quick-xml",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
 name = "dream-engine"
 version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
  "chrono",
  "clap",
+ "dream-core",
+ "dream-gate",
  "futures-util",
  "hex",
  "k256",
@@ -598,6 +616,22 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "dream-gate"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71fed46b3c6b7cc2388dc60b4c2494b44f12f4a4223c2a880401bcd434b5f1fd"
+dependencies = [
+ "chrono",
+ "failure-fingerprint",
+ "hex",
+ "pairwise-gate",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -677,6 +711,17 @@ checksum = "5a23add41df1562121a9393cb065eab5146a1242410f23a644851e90cfd669d2"
 dependencies = [
  "parking",
  "pin-project-lite",
+]
+
+[[package]]
+name = "failure-fingerprint"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd0d672bbfed3d6a15ea4712fe3a1d52fd2732202473fa2b2910b2fc6f5a1656"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
 ]
 
 [[package]]
@@ -1488,6 +1533,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pairwise-gate"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5c71a23bdeca9fc09d0dd47bb7fcd7390aba50906137a27de9a59526b3112c6"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1628,6 +1682,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "quick-xml"
+version = "0.41.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e660451e55124f798a69a5af3f49ccfbefbd41910eefd25caf2393e1f3473ec1"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]

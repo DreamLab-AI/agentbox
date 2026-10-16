@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
-verified_paths: [services/dream-engine/src/source.rs, services/dream-engine/src/compile.rs, services/dream-engine/src/persist.rs, services/dream-engine/src/candidate.rs, services/dream-engine/src/engine.rs]
+verified_commit: 33c8b3472a7a711b71f72973225ce7727ec69cf1
+verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/candidate_flow.rs, services/dream-engine/src/prompt.rs, services/dream-engine/src/prompt/nightly.tmpl]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches
 repo: agentbox
@@ -85,3 +85,9 @@ The core decision stands: the engine reads source from the dispatched commit, th
 `cargo test --lib` in `services/dream-engine` gives 283 passed, 0 failed. The apply-repair pass rewrites the model's diff before it is tested, so a reader of a PR body should not assume the diff is byte-for-byte what the model wrote.
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+**Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: tree-read, repair and apply-repair are `dream_core::source`, the candidate build is `dream_core::candidate::run`, driven by `candidate_flow.rs`; the prompt is pinned byte-for-byte by `prompt::tests::the_prompt_matches_the_pre_extraction_golden` (one permitted difference: dream-core's evaluator-section wording drops the "(agentbox ADR-2024)" tag). `cargo test` in `services/dream-engine` passes.
+
+Re-read at `50611f4c8a37`: `candidate_flow.rs` now keys the one apply-repair pass on the typed `AttemptError::PatchDidNotApply` instead of a message prefix, and returns the patch actually judged for replay. The single-completion contract, tree-read and repair semantics described here are unchanged.
+
+Re-read at `33c8b3472a7a` (2026-10-16): the later `engine.rs` edits (per-night lock, finished-night skip, injectable model and forge, resolved protected-path extras) do not change the single-completion contract, tree-read or repair semantics; the candidate flow and prompt are untouched since the last stamp.
