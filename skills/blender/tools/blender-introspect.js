@@ -10,13 +10,17 @@
  *   node blender-introspect.js op mesh.primitive_cube_add     operator arguments, defaults, enums
  *   node blender-introspect.js type Object [prefix]           RNA properties of a bpy.types class
  *   node blender-introspect.js data [objects|materials|...]   bpy.data collection names and counts
- *   node blender-introspect.js enum scene.render.engine       enum items AND whether each value assigns
+ *   node blender-introspect.js enum scene.render.engine       enum items AND whether each value assigns (briefly mutates, then restores)
  *   node blender-introspect.js path context.scene.render      dir() of any bpy.<path> (no calls)
  *
  * Env: BLENDER_HOST (default localhost), BLENDER_PORT (default 9876).
- * Safety: arguments are validated against a strict identifier pattern before they are
- * placed in Python source; the generated code only reads, except `enum`, which assigns
- * a value to test it and always restores the original in a finally block. Exit status
+ * Safety: the path/name arguments are validated against a strict identifier pattern before they
+ * are placed in Python source; the optional comma-separated extra values for `enum` are not
+ * pattern-checked but are JSON-encoded into a Python list literal. The generated code only
+ * reads, except `enum`, which assigns every candidate value to test it and restores the
+ * original in a finally block; that marks the file modified, may add undo steps and may fire
+ * update callbacks whose side effects on dependent properties the restore does not undo, so
+ * do not run `enum` on a scene with unsaved work you cannot afford to disturb. Exit status
  * 0 = answered, 1 = error, 2 = Blender not reachable, 3 = request outcome unknown
  * (timeout: re-check scene state before retrying anything that mutates).
  */
@@ -92,7 +96,9 @@ else:
       return `import bpy
 owner_path, prop = ${JSON.stringify(p)}.rsplit('.', 1)
 head, *rest = owner_path.split('.')
-obj = bpy.context.scene if head == 'scene' else getattr(bpy.data, head, None) or getattr(bpy.context, head)
+if head == 'scene': obj = bpy.context.scene
+elif hasattr(bpy.data, head): obj = getattr(bpy.data, head)
+else: obj = getattr(bpy.context, head)
 for seg in rest: obj = getattr(obj, seg)
 pr = obj.bl_rna.properties[prop]
 assert pr.type == 'ENUM', f"{prop} is {pr.type}, not ENUM"
@@ -124,16 +130,20 @@ print(len(names), "public names"); print(", ".join(names[:100]) + (" ..." if len
 function send(code) {
   return new Promise((resolve, reject) => {
     const sock = new net.Socket();
-    let buf = ''; let connected = false;
-    const t1 = setTimeout(() => { sock.destroy(); reject({ code: 2, msg: `cannot reach Blender at ${HOST}:${PORT} (timeout); run blender-health.js` }); }, CONNECT_MS);
-    let t2;
+    let buf = ''; let connected = false; let settled = false; let t2;
+    const finish = (fn, v) => { if (settled) return; settled = true; clearTimeout(t1); clearTimeout(t2); sock.destroy(); fn(v); };
+    const t1 = setTimeout(() => finish(reject, { code: 2, msg: `cannot reach Blender at ${HOST}:${PORT} (timeout); run blender-health.js` }), CONNECT_MS);
     sock.connect(PORT, HOST, () => {
       connected = true; clearTimeout(t1);
       sock.write(JSON.stringify({ type: 'execute_code', params: { code } }));
-      t2 = setTimeout(() => { sock.destroy(); reject({ code: 3, msg: 'no response in time: outcome UNKNOWN; check scene state (get_scene_info) before retrying anything that mutates' }); }, RESPONSE_MS);
+      t2 = setTimeout(() => finish(reject, { code: 3, msg: 'no response in time: outcome UNKNOWN; check scene state (get_scene_info) before retrying anything that mutates' }), RESPONSE_MS);
     });
-    sock.on('data', (d) => { buf += d; try { const j = JSON.parse(buf); clearTimeout(t2); sock.destroy(); resolve(j); } catch (_) { /* partial */ } });
-    sock.on('error', (e) => { clearTimeout(t1); clearTimeout(t2); reject({ code: connected ? 1 : 2, msg: `socket error: ${e.message}` }); });
+    sock.on('data', (d) => { buf += d; try { finish(resolve, JSON.parse(buf)); } catch (_) { /* partial */ } });
+    // The proxy accepts and then closes when the sidecar is down: nothing received = unreachable (2), half a reply = unknown (3).
+    sock.on('close', () => finish(reject, buf
+      ? { code: 3, msg: 'connection closed mid-reply: outcome UNKNOWN; check scene state before retrying anything that mutates' }
+      : { code: 2, msg: `Blender at ${HOST}:${PORT} accepted the connection and closed it without replying (sidecar down?); run blender-health.js` }));
+    sock.on('error', (e) => finish(reject, { code: connected ? (buf ? 3 : 1) : 2, msg: `socket error: ${e.message}` }));
   });
 }
 
