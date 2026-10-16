@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: df584b3fde9d393640680e92898fa631f40580bb
+verified_commit: efa293b8799bebac8f331592d6425790c7b011c5
 verified_paths: [flake.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes
@@ -111,3 +111,5 @@ Commands run: `git diff 3baa60024..de7fa461e -- <verified_paths>; cargo test --l
 Not checked, and notes: Not re-checked, and the record itself disclaims them: Nix evaluation/full image build, the pinned Syft 1.44.0 + Grype 0.113.0 synthetic interop run (77 raw findings, exactly one suppressed; syft/grype are not on this container's PATH and I did not fetch them), actionlint, vex-grype.integration.sh (needs those binaries). Those figures are therefore carried forward from the record unverified. The post-anchor main.rs change narrows 'checking conversion preserves the package PURLs' to software components (type=file config entries are no longer compared because Syft's decoder omits them); the claim as worded still holds and the record may optionally note it. The 'ten Rust fixtures' figure is now eleven. Recommend re-stamp at de7fa461e with those caveats.
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+**Re-verified 2026-10-16 at `efa293b8799b`.** The only change to a governed path is the sidecar-first Blender work (ADR-2142): `agentbox.toml` gains `[skills.spatial_and_3d].blender_local = false`; `flake.nix` narrows one `lib.optionals` condition (`wrapGpuBin pkgs.blender` now needs `blender && blender_local`), adds one `ENABLE_BLENDER_LOCAL` env line and reworks a comment; `schema/agentbox.toml.schema.json` gains the `blender_local` boolean; `management-api/lib/system-manifest.js` gains a `blender-local` catalogue entry and a corrected `blender-mcp` summary. The decision stands, but action follows from it: Blender and its dependency PURLs leave `image.layers.paths` at the next image, so existing VEX statements bound to them must be withdrawn and the evidence regenerated from that image; this note does not regenerate it. Re-verified by `git diff <previous verified_commit>..efa293b8799b -- <verified_paths>`; no re-implementation was needed.
