@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: df584b3fde9d393640680e92898fa631f40580bb
+verified_commit: efa293b8799bebac8f331592d6425790c7b011c5
 verified_paths: [agentbox.sh, scripts/runtime-delivery.*, scripts/refresh-compose.sh, config/build-registry.json, lib/image-layers.nix, flake.nix, tests/config/runtime-delivery*, .github/workflows/invariants.yml, docs/developer/incremental-builds.md]
 owner: jjohare
 review_trigger: layer grouping, delivery transport, candidate validation or cache retention changes
@@ -107,3 +107,5 @@ Commands run: `node --test tests/config/runtime-delivery.test.cjs`
 Not checked, and notes: Cosmetic drift only: re-verification section cites 22/22 tests and flake.nix:4378-4402 / runtime-delivery.cjs line spans that have shifted (tests 23/23; layers now flake.nix:4502-4518); and prepare's nix build is now '.#runtime .#runtime.copyTo .#runtime.securityEvidence .#security-tools' (still one nix call, still non-disruptive). No real host prepare/activate cycle can be run here (needs Docker/Nix/host).
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+**Re-verified 2026-10-16 at `efa293b8799b`.** The only change to a governed path is the sidecar-first Blender work (ADR-2142): `agentbox.toml` gains `[skills.spatial_and_3d].blender_local = false`; `flake.nix` narrows one `lib.optionals` condition (`wrapGpuBin pkgs.blender` now needs `blender && blender_local`), adds one `ENABLE_BLENDER_LOCAL` env line and reworks a comment; `schema/agentbox.toml.schema.json` gains the `blender_local` boolean; `management-api/lib/system-manifest.js` gains a `blender-local` catalogue entry and a corrected `blender-mcp` summary. Image layer composition only: the next `prepare` drops the Blender layer because `blender_local = false`. The prepare/activate flow, retained candidate and recovery images and the mount rules are unchanged. The decision holds. Re-verified by `git diff <previous verified_commit>..efa293b8799b -- <verified_paths>`; no re-implementation was needed.

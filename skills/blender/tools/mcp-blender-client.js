@@ -34,7 +34,7 @@ async function sendToBlender(command) {
 
             responseTimeout = setTimeout(() => {
                 cleanup();
-                reject(new Error('Response timeout from Blender'));
+                reject(new Error('Response timeout from Blender: outcome UNKNOWN (the request may or may not have run). Check scene state with get_scene_info before retrying anything that mutates.'));
             }, RESPONSE_TIMEOUT);
         });
 

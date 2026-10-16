@@ -24,7 +24,8 @@ if command -v blender &>/dev/null; then
     echo "  Use: Asset pipeline, 3D modelling, rendering"
 else
     echo "[NOT INSTALLED] Blender"
-    echo "  Install: sudo pacman -S blender"
+    echo "  Not baked here when [skills.spatial_and_3d].blender_local = false (sidecar-first, ADR-2142)."
+    echo "  Run headless jobs in the GPU sidecar: node /opt/agentbox/skills/blender/tools/blender-job.js submit <script.py>"
 fi
 echo ""
 

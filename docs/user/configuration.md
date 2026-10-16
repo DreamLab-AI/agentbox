@@ -250,6 +250,7 @@ comfyui_builtin = false    # Install ComfyUI inside the container
 
 [skills.spatial_and_3d]
 blender = true
+blender_local = true       # false = sidecar-first: do not bake the in-container Blender binary (ADR-2142)
 qgis = true
 gaussian_splatting = false    # Requires [gpu].backend = "local-cuda" (E006)
 

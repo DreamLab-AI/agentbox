@@ -13,16 +13,26 @@ runtime/plumbing.
 **When to skip this**: leave `blender = false` unless an agent workflow actually drives
 Blender — the package is large and does nothing passively.
 
+**This deployment (2026-10-15): sidecar-first (ADR-2142).** `blender = true` with `blender_local = false` keeps
+the `blender-mcp` proxy and the skill but does **not** bake the in-container Blender
+binary; all Blender runs in the `gui-tools-service` GPU sidecar (see "Two ways Blender is
+driven" and "Shared volume" below).
+
 ## Enabling Blender
 
 Set in `agentbox.toml`:
 ```toml
 [skills.spatial_and_3d]
 blender = true
+blender_local = false   # sidecar-first (this deployment); omit or true to also bake pkgs.blender
 ```
 
-This bakes `pkgs.blender` into the image and adds the supervised `blender-mcp` program
-(priority 231) plus `ENABLE_BLENDER=true`.
+`blender = true` adds the supervised `blender-mcp` program (priority 231), the skill and
+`ENABLE_BLENDER=true`. `blender_local` (schema: boolean, default true when absent) decides
+whether `pkgs.blender` is also baked into the image; `ENABLE_BLENDER_LOCAL` reports the
+result. With `blender_local = false` the toolchain test `tests/toolchains/blender-present.sh`
+skips, and `blender-batch.sh` exits 2 pointing at `blender-job.js`. Revert by setting
+`blender_local = true` and rebuilding.
 
 ## Version
 
@@ -37,10 +47,14 @@ are deprecated (removal expected in 6.0). The skill's SKILL.md carries the full 
 
 There are two distinct transports, and they have different requirements. Pick per task.
 
-### A. Batch `bpy` (headless) — works out of the box
+### A. Batch `bpy` (headless)
 
-For "run a script, maybe render a still" work — the majority of agent Blender tasks —
-run the shipped binary directly, no server needed:
+**Sidecar-first:** run it inside the sidecar with `skills/blender/tools/blender-job.js`
+(`submit` / `wait` / `tail`; files over the shared volume). Verified 2026-10-15: a Cycles GPU
+render on three RTX 6000 Ada (OptiX) completed in 5 s and the PNG appeared in this container.
+
+**Local binary (only when `blender_local` is true or absent):** run the shipped binary
+directly, no server needed:
 
 ```bash
 blender --background --factory-startup --python /path/to/script.py
@@ -67,6 +81,15 @@ because the limitation is in the Xvnc server's GLX, not the client GL library.
 
 Therefore BlenderMCP is served from an **external GPU-capable GUI sidecar**, and agentbox
 bridges to it. That is what the supervised `blender-mcp` program does.
+
+## Shared volume between this container and the sidecar
+
+This container's `/home/devuser/gui-tools` and the sidecar's `/home/devuser/exchange` are the
+**same volume** (verified bidirectionally 2026-10-15; one ext4 mount, hundreds of GB free).
+It is the only file path between the two; the workspace and repository are **not** mounted
+in the sidecar. `skills/blender/tools/blender-job.js` uses it for inputs, logs and renders
+(`jobs/<id>/`). Treat it as shared scratch, not storage of record: commit results you keep
+into the repository, and note that `.blend` files over the Git LFS threshold belong in LFS.
 
 ## The `blender-mcp` supervised program
 

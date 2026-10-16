@@ -207,6 +207,7 @@ comfyui_builtin  = false
 
 [skills.spatial_and_3d]
 blender            = false
+blender_local      = true
 qgis               = false
 gaussian_splatting = false
 

@@ -1474,7 +1474,10 @@
             (wrapGpuBin pkgs.qgis [ "qgis" ])
             pkgs.python312Packages.pyqt5
           ]
-          ++ lib.optionals (spatialCfg.blender or false) [
+          # blender_local (default true when absent) separates the in-container binary from
+          # the blender-mcp proxy/skill (still gated on `blender`): sidecar-only deployments
+          # set blender_local = false and drive Blender in gui-tools-service.
+          ++ lib.optionals ((spatialCfg.blender or false) && (spatialCfg.blender_local or true)) [
             # Blender Cycles CUDA/OptiX + GL viewport — the reference case: bare
             # nix Blender reports "CUEW initialization failed" and sees 0 GPUs;
             # wrapped it enumerates all CUDA devices (verified live 2026-08-31).
@@ -2295,7 +2298,9 @@ stderr_logfile=/var/log/qgis-mcp.error.log
         # Blender cannot obtain a context. Point the proxy at a live BlenderMCP host by
         # setting GUI_CONTAINER_HOST / GUI_BLENDER_PORT in the container environment
         # (inherited here). For pure batch bpy work (scripting + rendering) that needs no
-        # socket server, run `blender --background --python <script>` directly instead.
+        # socket server, submit a job to the sidecar with skills/blender/tools/blender-job.js
+        # (stage, submit, wait, tail); `blender --background --python <script>` works directly
+        # only where [skills.spatial_and_3d].blender_local is true or absent (ADR-2142).
         # Health: `node /opt/agentbox/skills/blender/tools/blender-health.js`.
         # See docs/user/blender.md and skills/blender/SKILL.md.
         blenderServiceBlock = ''
@@ -4288,6 +4293,7 @@ ${ragflowNetworkDecl}
           }"
           "ENABLE_QGIS=${boolEnv (spatialCfg.qgis or false)}"
           "ENABLE_BLENDER=${boolEnv (spatialCfg.blender or false)}"
+          "ENABLE_BLENDER_LOCAL=${boolEnv ((spatialCfg.blender or false) && (spatialCfg.blender_local or true))}"
           "ENABLE_PYTORCH=${boolEnv (dataScienceCfg.pytorch or false)}"
           "ENABLE_JUPYTER=${boolEnv (dataScienceCfg.jupyter or false)}"
           "ENABLE_LATEX=${boolEnv (docsCfg.latex or false)}"

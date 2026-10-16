@@ -4,6 +4,8 @@
 //!
 //! Every fixture under `tests/golden/` was produced by running the original
 //! Python against the live `agentbox.toml` while that Python still existed.
+//! Keys added after the Python was retired (e.g. `skills.spatial_and_3d.blender_local`)
+//! are hand-maintained in the goldens, one line each, and verified against Rust output.
 //! The assertions below re-run the same inputs through the Rust binary and
 //! compare **bytes**, not parsed values.
 //!
