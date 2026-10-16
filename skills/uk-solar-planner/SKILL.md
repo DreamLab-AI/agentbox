@@ -44,9 +44,14 @@ optimal tilt/azimuth) — stdlib, no deps.
 ## Stage 3 — 3D layout + shadow review (leverages the blender skill)
 
 ```bash
-# headless GPU-capable, or run in the gui-tools sidecar:
-blender --background --factory-startup --python tools/blender_solar_array.py -- \
-  '{"rows":8,"modules_per_row":24,"tilt_deg":30,"row_pitch":9.9,"sun_altitude_deg":15,"render":true}'
+# Sidecar-first: this deployment sets [skills.spatial_and_3d].blender_local = false, so there is
+# no `blender` binary in this container. Run the script in the GPU sidecar (submit copies it into the job):
+B=/opt/agentbox/skills/blender/tools/blender-job.js
+node $B submit tools/blender_solar_array.py --name solar-array -- \
+  '{"rows":8,"modules_per_row":24,"tilt_deg":30,"row_pitch":9.9,"sun_altitude_deg":15,"render":true,
+   "out_blend":"/home/devuser/exchange/jobs/solar-array/solar_array.blend","out_render":"/home/devuser/exchange/jobs/solar-array/solar_array.png"}'
+node $B wait solar-array && node $B tail solar-array   # outputs land under the share's jobs/solar-array/
+# Only where blender_local is true or absent can you run `blender --background --python ...` directly.
 ```
 Builds the racked array on a ground plane, reports GCR/footprint, and (with a sun at the
 winter-solstice noon altitude, `90 − lat − 23.44`) casts the **inter-row shadows** that set

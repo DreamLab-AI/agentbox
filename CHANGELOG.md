@@ -19,6 +19,7 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
   OptiX in 5 s. `blender-batch.sh` now exits 2 with a pointer when no local Blender exists.
 - `skills/blender/tools/blender-introspect.js` (new) and the documented operating rules; the Scenario
   plugin evaluation lives in `skills/blender/references/scenario-plugin-evaluation.md`.
+- Review fixes (ADR-2142): `blender_local` catalogued (`blender-local`, rebuild class) and the `blender-mcp` summary corrected; the job runner reports an unreachable sidecar as exit 2 before creating a job directory, refuses symlinks, verifies a pid start time before trusting or signalling a pid, and `wait` tolerates transient probe failures and returns the job exit code; `uk-solar-planner`, the flake comment and `game-dev/engine-check.sh` no longer assume a local binary. The next image rebuild drops the in-container Blender.
 - Docs: `docs/user/blender.md` and the skill describe the shared volume and that the repository is
   not mounted in the sidecar (stage inputs first).
 

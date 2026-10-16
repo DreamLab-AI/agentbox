@@ -2298,7 +2298,9 @@ stderr_logfile=/var/log/qgis-mcp.error.log
         # Blender cannot obtain a context. Point the proxy at a live BlenderMCP host by
         # setting GUI_CONTAINER_HOST / GUI_BLENDER_PORT in the container environment
         # (inherited here). For pure batch bpy work (scripting + rendering) that needs no
-        # socket server, run `blender --background --python <script>` directly instead.
+        # socket server, submit a job to the sidecar with skills/blender/tools/blender-job.js
+        # (stage, submit, wait, tail); `blender --background --python <script>` works directly
+        # only where [skills.spatial_and_3d].blender_local is true or absent (ADR-2142).
         # Health: `node /opt/agentbox/skills/blender/tools/blender-health.js`.
         # See docs/user/blender.md and skills/blender/SKILL.md.
         blenderServiceBlock = ''

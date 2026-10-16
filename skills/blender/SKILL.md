@@ -183,7 +183,7 @@ print(bpy.app.version_string, list(bpy.data.objects.keys())[:10])               
 
 The same queries are packaged as `node tools/blender-introspect.js op mesh.primitive_cube_add`,
 `... type Object visible`, `... enum scene.render.engine CYCLES`, `... version`, `... data`,
-`... path context.scene.render` (read-only; arguments are validated). Enum item lists are
+`... path context.scene.render` (read-only except `enum`, which briefly assigns each candidate value and restores the original, so it can mark the file modified; names are validated). Enum item lists are
 dynamic (see the render-engine note above): the `enum` command tests assignment and restores
 the original value, because a listing alone can be wrong. The interactive sidecar and the
 headless nix Blender can be different builds (5.2.0 LTS and 5.2.2 LTS measured 2026-10-15):

@@ -13,7 +13,7 @@ runtime/plumbing.
 **When to skip this**: leave `blender = false` unless an agent workflow actually drives
 Blender — the package is large and does nothing passively.
 
-**Default (2026-10-15): sidecar-first.** `blender = true` with `blender_local = false` keeps
+**This deployment (2026-10-15): sidecar-first (ADR-2142).** `blender = true` with `blender_local = false` keeps
 the `blender-mcp` proxy and the skill but does **not** bake the in-container Blender
 binary; all Blender runs in the `gui-tools-service` GPU sidecar (see "Two ways Blender is
 driven" and "Shared volume" below).
@@ -24,7 +24,7 @@ Set in `agentbox.toml`:
 ```toml
 [skills.spatial_and_3d]
 blender = true
-blender_local = false   # sidecar-first (default here); omit or true to also bake pkgs.blender
+blender_local = false   # sidecar-first (this deployment); omit or true to also bake pkgs.blender
 ```
 
 `blender = true` adds the supervised `blender-mcp` program (priority 231), the skill and
