@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 50611f4c8a37fa044c786671bb408e2964e53db9
+verified_commit: 33c8b3472a7a711b71f72973225ce7727ec69cf1
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -115,3 +115,5 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 **Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: governance, relay and inbox are unchanged; `digest.rs` reads the dry streak from `dream_core::streak` and words it as "dry nights (rejected or inconclusive)" (ADR-2141); `engine.rs` still publishes and ingests around each night. `cargo test` in `services/dream-engine` passes.
 
 Re-read at `50611f4c8a37`: the later `engine.rs` edits (replay capture through `judge::judge`) do not touch the governance publish and ingest path, the digest or the inbox.
+
+Re-read at `33c8b3472a7a` (2026-10-16): `digest.rs` only gained a `DREAM_HEALTH_PATH` override for the health-record path (default unchanged), and `engine.rs` gained the lock, finished-night skip and an early return when every selected night is held by another engine, so no digest or summary is overwritten from there. The governance publish and ingest path, the digest wording and the inbox are unchanged.
