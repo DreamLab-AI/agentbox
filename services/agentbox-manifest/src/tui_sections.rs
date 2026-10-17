@@ -146,7 +146,7 @@ pub fn render(s: &Value) -> String {
             String::new(),
             "[consultants.deepseek]".into(),
             format!("enabled = {}", b(s, "consultants.deepseek.enabled")),
-            "model      = \"deepseek-v4-flash\"".into(),
+            "model      = \"deepseek-flash\"".into(),
             "timeout_ms = 120000".into(),
             String::new(),
         ],

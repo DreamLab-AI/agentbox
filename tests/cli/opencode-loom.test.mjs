@@ -171,3 +171,34 @@ test('stale GEMMA_MODEL never constrains agent discovery after a server hot swap
   assert.ok(config.provider['loom-lan'].models['gemma-4-31B-it-qat']);
   assert.throws(() => seeder.selectLoomModel(listing, { ...env, LOOM_MODEL: 'unknown' }), /not advertised/);
 });
+
+test('DeepSeek refresh upgrades existing session selectors and normalises endpoint overrides', () => {
+  const existing = { provider: { 'deepseek-agent': { models: { 'deepseek-chat': { name: 'DeepSeek V4 Flash' } } } } };
+  for (const base of ['https://gateway.example/', 'https://gateway.example/v1/']) {
+    const config = seeder.openCodeConfig({ DEEPSEEK_BASE_URL: base }, '/agent-home', existing, selected);
+    const provider = config.provider['deepseek-agent'];
+    assert.equal(provider.options.baseURL, 'https://gateway.example/v1');
+    assert.equal(provider.options.apiKey, '{env:DEEPSEEK_API_KEY}');
+    assert.ok(provider.models['deepseek-flash']);
+    assert.equal(provider.models['deepseek-chat'].id, 'deepseek-flash');
+  }
+  assert.equal(existing.provider['deepseek-agent'].models['deepseek-chat'].id, undefined);
+});
+
+test('optional native OpenCode free model preserves settings and direct DeepSeek default', () => {
+  const existing = {
+    model: 'deepseek-agent/deepseek-flash',
+    provider: { opencode: { options: { timeout: 12345 }, models: { custom: { name: 'Custom' } } } },
+  };
+  const before = structuredClone(existing);
+  const config = seeder.openCodeConfig({}, '/agent-home', existing, selected);
+  const provider = config.provider.opencode;
+  assert.deepEqual(provider.options, existing.provider.opencode.options);
+  assert.deepEqual(provider.models.custom, { name: 'Custom' });
+  assert.deepEqual(provider.models['deepseek-v4.1-flash-free'].limit, { context: 200000, output: 32000 });
+  assert.equal(provider.npm, undefined);
+  assert.equal(config.model, existing.model);
+  assert.equal(config.provider['deepseek-agent'].options.apiKey, '{env:DEEPSEEK_API_KEY}');
+  assert.deepEqual(existing, before);
+  assert.deepEqual(seeder.openCodeConfig({}, '/agent-home', config, selected), config);
+});

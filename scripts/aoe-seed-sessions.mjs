@@ -96,7 +96,7 @@ const DEFAULT_SEEDS = [
   { slug: 'antigravity', tool: 'antigravity', model: 'gemini-3.8-flash', worktree: true },
   { slug: 'openrouter', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
   { slug: 'zai', tool: 'claude', worktree: false, env_allowlist: ['ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'] },
-  { slug: 'deepseek', tool: 'opencode', model: 'deepseek-agent/deepseek-chat', worktree: true },
+  { slug: 'deepseek', tool: 'opencode', model: 'deepseek-agent/deepseek-flash', worktree: true },
   { slug: 'loom', tool: 'opencode', model: 'loom-lan/qwen3.8-27B', worktree: true },
   { slug: 'loom-raw', tool: 'opencode', model: 'loom-agent/current', worktree: true },
 ];
@@ -254,10 +254,28 @@ export function openCodeConfig(env = process.env, home = os.homedir(), existing 
         options: { ...existing.provider?.['loom-raw']?.options, baseURL: loomBase, apiKey: 'not-needed', timeout: 900000, headerTimeout: 900000 },
         models: { ...existing.provider?.['loom-raw']?.models, 'qwen3.8-27B': agentModel },
       },
+      // Keep OpenCode's native provider so its free-tier client handling applies.
+      // This is an optional selection; direct DeepSeek remains the seed default.
+      opencode: {
+        ...existing.provider?.opencode,
+        models: {
+          ...existing.provider?.opencode?.models,
+          'deepseek-v4.1-flash-free': {
+            ...existing.provider?.opencode?.models?.['deepseek-v4.1-flash-free'],
+            name: 'DeepSeek V4.1 Flash Free',
+            limit: { context: 200000, output: 32000 },
+          },
+        },
+      },
       'deepseek-agent': {
         npm: '@ai-sdk/openai-compatible', name: 'DeepSeek Agent',
         options: { baseURL: deepseekBase, apiKey: '{env:DEEPSEEK_API_KEY}' },
-        models: { 'deepseek-chat': { name: 'DeepSeek V4 Flash' } },
+        models: {
+          'deepseek-flash': { name: 'DeepSeek V4.1 Flash' },
+          // Existing AoE sessions retain extraArgs at boot. Route their old
+          // selector to the current wire model without killing sessions.
+          'deepseek-chat': { id: 'deepseek-flash', name: 'DeepSeek V4.1 Flash' },
+        },
       },
     },
   };

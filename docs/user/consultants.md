@@ -36,7 +36,7 @@ the hood, which is what `claude-code-router` and similar projects do.
 | `antigravity` | Google Antigravity CLI (`agy`) subprocess | 1M-token context for long-document and codebase-wide analysis |
 | `zai`        | `claude-zai` (Z.AI / GLM-5.2, Anthropic-compatible) | Chinese-language reasoning; low-cost second opinions |
 | `perplexity` | Perplexity HTTPS API | live-web research with citations |
-| `deepseek`   | DeepSeek HTTPS API (`deepseek-v4-flash`, currently 0731) | thinking, math, and agentic coding |
+| `deepseek`   | DeepSeek HTTPS API (`deepseek-flash`, currently 1017) | thinking, math, and agentic coding |
 
 ## Enabling
 
@@ -257,3 +257,25 @@ the Prometheus counter `consultant_cost_usd_total{consultant}` at port
 - [ADR-005 — Pluggable adapter architecture](../archive/adr/ADR-005-pluggable-adapter-architecture.md) (consultants are tools, not durable-state adapters — different layer)
 - [`mcp/consultants/README.md`](../../mcp/consultants/README.md) — implementation notes
 - [`skills/skill-router/SKILL.md`](../../skills/skill-router/SKILL.md) — manual dispatch surface
+
+
+## Optional free DeepSeek in OpenCode
+
+At boot, Agentbox adds `opencode/deepseek-v4.1-flash-free` to OpenCode's native
+provider with a 200,000-token context and 32,000-token output limit. Select it
+with `/models` in OpenCode or run:
+
+```sh
+opencode run --model opencode/deepseek-v4.1-flash-free 'Review the current changes.'
+```
+
+This option uses OpenCode's free tier, not `DEEPSEEK_API_KEY`. The direct
+DeepSeek session and MCP consultant keep their configured models. No separate
+AoE session is created, and Agentbox does not automatically fall back to a paid
+model if the free option is unavailable.
+
+OpenCode offers this model [free for a limited time](https://opencode.ai/v2/docs/console/models/#free-models);
+its provider states zero retention and no training on submitted data. Availability
+and free-tier limits can change. Use the native OpenCode client for this option.
+The context and output budgets follow the
+[official model catalogue](https://github.com/anomalyco/models.dev/blob/dev/providers/opencode/models/deepseek-v4.1-flash-free.toml).

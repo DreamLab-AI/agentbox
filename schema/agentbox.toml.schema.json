@@ -1269,14 +1269,15 @@
             "model": {
               "type": "string",
               "enum": [
+                "deepseek-flash",
                 "deepseek-v4-flash",
                 "deepseek-v3",
                 "deepseek-r1",
                 "deepseek-chat",
                 "deepseek-coder"
               ],
-              "default": "deepseek-v4-flash",
-              "description": "Official DeepSeek API model identifier. deepseek-v4-flash currently serves the DeepSeek-V4-Flash-0731 revision."
+              "default": "deepseek-flash",
+              "description": "Official DeepSeek API model identifier. deepseek-flash currently serves the DeepSeek-V4.1-Flash-1017 revision."
             },
             "timeout_ms": {
               "type": "integer",

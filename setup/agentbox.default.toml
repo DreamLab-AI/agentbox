@@ -1090,7 +1090,7 @@ timeout_ms = 60000
 
 [consultants.deepseek]
 enabled = true
-model   = "deepseek-v4-flash" # currently serves DeepSeek-V4-Flash-0731
+model   = "deepseek-flash" # currently serves DeepSeek-V4.1-Flash-1017
 timeout_ms = 120000
 
 # ── Model routing (ADR-041) ────────────────────────────────────────────────────
@@ -1417,7 +1417,7 @@ eager_mandate = false
 [[interaction_plane.session_seeds]]
 slug          = "deepseek"            # AoE first-class OpenCode connector → DeepSeek Responses API
 tool          = "opencode"
-model         = "deepseek-agent/deepseek-chat"
+model         = "deepseek-agent/deepseek-flash"
 worktree      = true
 eager_mandate = false
 

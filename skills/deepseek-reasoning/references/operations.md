@@ -24,7 +24,7 @@ api.deepseek.com  (or $DEEPSEEK_BASE_URL)
   "command": "node",
   "args": ["/opt/agentbox/mcp/consultants/package/deepseek/server.js"],
   "type": "stdio",
-  "env": { "AGENTBOX_DEEPSEEK_MODEL": "${AGENTBOX_DEEPSEEK_MODEL:-deepseek-v4-flash}" },
+  "env": { "AGENTBOX_DEEPSEEK_MODEL": "${AGENTBOX_DEEPSEEK_MODEL:-deepseek-flash}" },
   "x-agentbox-gate": "env:AGENTBOX_CONSULTANTS_ENABLED",
   "x-agentbox-requires": [
     { "envset": "DEEPSEEK_API_KEY" },
@@ -45,7 +45,7 @@ Environment variables only, read directly by the server process:
 |----------|----------|---------|--------------|
 | `DEEPSEEK_API_KEY` | Yes | — | DeepSeek API key, inherited from session env |
 | `DEEPSEEK_BASE_URL` | No | `https://api.deepseek.com` | Override the API endpoint |
-| `AGENTBOX_DEEPSEEK_MODEL` | No | `deepseek-v4-flash` | Model id (`agentbox.toml` `[consultants.deepseek] model`) |
+| `AGENTBOX_DEEPSEEK_MODEL` | No | `deepseek-flash` | Model id (`agentbox.toml` `[consultants.deepseek] model`) |
 
 Configuration is environment variables only — there is no on-disk credential
 file and no supervisord program. Documentation describing either predates

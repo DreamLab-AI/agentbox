@@ -26,7 +26,7 @@ answer plus usage metadata.
   "ok": true,
   "consultant": "deepseek",
   "response": "<reasoning>\n...chain-of-thought...\n</reasoning>\n\n...answer...",
-  "model": "deepseek-v4-flash",
+  "model": "deepseek-flash",
   "tokens": { "prompt": 120, "completion": 340, "total": 460 },
   "cost_usd": 0.00081,
   "citations": [],
@@ -49,7 +49,7 @@ both without a second field to check.
 
 **Returns:**
 ```json
-{ "ok": true, "consultant": "deepseek", "model": "deepseek-v4-flash", "last_error": null, "last_check_at": "2026-09-09T12:00:00.000Z" }
+{ "ok": true, "consultant": "deepseek", "model": "deepseek-flash", "last_error": null, "last_check_at": "2026-09-09T12:00:00.000Z" }
 ```
 
 `ok: false` with `last_error: "DEEPSEEK_API_KEY is not set"` is the common failure —
@@ -74,7 +74,7 @@ page for the authoritative current rate).
 
 ## DeepSeek vs Claude reasoning
 
-| Aspect | DeepSeek V4 Flash | Claude Sonnet 5 |
+| Aspect | DeepSeek V4.1 Flash | Claude Sonnet 5 |
 |--------|--------------------|-------------------|
 | Multi-step logic | Excellent | Very Good |
 | Code generation | Good | Excellent |

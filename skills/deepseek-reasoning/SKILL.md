@@ -4,7 +4,7 @@ description: >
   Use when the user says "ask deepseek", "consult deepseek", "delegate reasoning
   to deepseek", or wants a second opinion / an explicit chain-of-thought reasoning
   trace on a hard problem — root-cause debugging, algorithm design, dependency-aware
-  task planning — from DeepSeek V4 Flash via the consultant-deepseek MCP tool
+  task planning — from DeepSeek V4.1 Flash via the consultant-deepseek MCP tool
   (consult / health / cost_estimate). NOT for straightforward code generation or
   editing (Claude does that directly), web research (use perplexity-research),
   GitHub PR review (github-code-review), OpenAI delegation (openai-codex /
@@ -28,7 +28,7 @@ DeepSeek acts as the reasoning planner; Claude executes.
 
 ## What it provides
 
-- **Explicit reasoning traces** — DeepSeek V4 Flash returns its chain-of-thought
+- **Explicit reasoning traces** — DeepSeek V4.1 Flash returns its chain-of-thought
   in `message.reasoning_content`, which the consultant folds into the response
   under a `<reasoning>...</reasoning>` preamble ahead of the answer.
 - **Root-cause analysis** — deep code/system debugging with a visible reasoning trail.
@@ -56,7 +56,7 @@ Full parameter and return schemas: [`references/tools.md`](references/tools.md).
 
 ## Configuration
 
-- Model: `AGENTBOX_DEEPSEEK_MODEL` env var, default `deepseek-v4-flash`
+- Model: `AGENTBOX_DEEPSEEK_MODEL` env var, default `deepseek-flash`
   (`agentbox.toml` `[consultants.deepseek] model`).
 - Auth: `DEEPSEEK_API_KEY` from session env (optional `DEEPSEEK_BASE_URL` override
   for a non-default endpoint). No credential file.
