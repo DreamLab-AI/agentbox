@@ -32,7 +32,7 @@
 #  19. MCP tools/call bodies        → content items counted: text "[]" silent,
 #                                      a JSON array with a row answered, prose
 #                                      unrecognised (silent, shape named), isError degraded
-#  20. vault tree fallback          → no children (key omitted or []) silent, children answered
+#  20. ontomark tree fallback       → no children (key omitted or []) silent, children answered
 #  21. an unrecognised 200 body     → never "answered"; silent with shape "unrecognised"
 #  22. check (VisionClaw POST /api/ontology-agent/check, ADR-2127):
 #        entailed → answered, entailed_false → contradicted, not_asserted → silent,
@@ -259,9 +259,18 @@ chmod +x "$BIN/vault"
 # takes the first ontomark on PATH; without this, `validate` ran the real one against no vault).
 cat > "$BIN/ontomark" <<'EOF'
 #!/usr/bin/env bash
-case " $* " in
-  *" validate "*) echo '{"errors":1,"warnings":0}'; exit 1 ;;
-  *)              echo '{}' ;;
+printf '%s\n' "$*" >> "$STUB_VAULT_LOG"
+args=" $* "
+case "$args" in
+  *" find "*"--query zzz-nothing"*) echo '[]' ;;
+  *" find "*"--query escrow"*)      echo '[{"id":"Escrow Oracle","title":"Escrow Oracle","type":"Class","score":1.0}]' ;;
+  *" find "*)                       echo '[]' ;;
+  *" retrieve "*)                   echo '{"seeds":[{"id":"Escrow Oracle"}],"expanded":[],"missing":[],"truncated":false}' ;;
+  *" tree hub "*)                   echo '{"id":"Hub","title":"Hub","children":[{"id":"A","title":"A"},{"id":"B","title":"B"}]}' ;;
+  *" tree leaf "*)                  echo '{"id":"Leaf","title":"Leaf"}' ;;
+  *" tree "*)                       echo '{"id":"Escrow Oracle","title":"Escrow Oracle","children":[]}' ;;
+  *" validate "*)                   echo '{"errors":1,"warnings":0}'; exit 1 ;;
+  *)                                echo '{}' ;;
 esac
 EOF
 chmod +x "$BIN/ontomark"
@@ -334,7 +343,7 @@ check "x-loom-version-iri: carried as version_iri" "$out" \
 : > "$WORK/vault.log"
 out="$(run env LOOM_BASE_URL="http://127.0.0.1:1" bash "$S" search zzz-nothing 2>"$WORK/err")"; rc=$?
 [ "$rc" -eq 0 ] && ok "vault search: exit 0" || bad "vault search: exit 0" "rc=$rc" "$(cat "$WORK/err")"
-check "vault search: silent"                  "$out" '.grounding == "silent" and .source == "vault"'
+check "ontomark search: silent"                  "$out" '.grounding == "silent" and .source == "ontomark"'
 check "vault search: generation id from .generation.json" "$out" \
   '.generation.id == "visionGraph@1111111111111111111111111111111111111111"'
 check "vault search: versionIRI from ontology_digest" "$out" \
@@ -368,8 +377,8 @@ check "ASK true: answered"                    "$out" '.grounding == "answered"'
 # 16. neighbours fallback
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours escrow-oracle 2>/dev/null)"; rc=$?
 [ "$rc" -eq 0 ] && ok "neighbours fallback: exit 0" || bad "neighbours fallback: exit 0" "rc=$rc"
-check "neighbours fallback: vault answered, fallback named, generation cited" "$out" \
-  '.source == "vault" and .fallback.loom_status == "404" and .generation.id != null and .result.id == "Escrow Oracle"'
+check "neighbours fallback: ontomark answered, fallback named, generation cited" "$out" \
+  '.source == "ontomark" and .fallback.loom_status == "404" and .generation.id != null and .result.id == "Escrow Oracle"'
 
 # 17. paths
 out="$(run env LOOM_BASE_URL="http://127.0.0.1:1" bash "$S" paths a b 2>/dev/null)"; rc=$?
@@ -387,9 +396,9 @@ check "health unreachable: degraded"          "$out" '.grounding == "degraded"'
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours escrow-oracle 2>/dev/null)"
 check "neighbours fallback: tree with children: []  → silent" "$out" '.grounding == "silent"'
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours leaf 2>/dev/null)"
-check "tree fallback: children key omitted (vault skips empty) → silent" "$out" '.grounding == "silent" and .source == "vault"'
+check "tree fallback: children key omitted (ontomark skips empty) → silent" "$out" '.grounding == "silent" and .source == "ontomark"'
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours hub 2>/dev/null)"
-check "tree fallback: two children → answered" "$out" '.grounding == "answered" and .source == "vault"'
+check "tree fallback: two children → answered" "$out" '.grounding == "answered" and .source == "ontomark"'
 
 # 19. MCP tools/call bodies
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours mcp-empty 2>/dev/null)"
@@ -416,11 +425,11 @@ check "title input is resolved by exact title through loom.browse, not slugified
   '.grounding == "answered" and .result.result.structuredContent.result.iri == "urn:ngm:class:escrow-oracle"'
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours "Escrow Oracl" 2>/dev/null)"
 check "a title with no exact browse match is passed through verbatim (no guessing)" "$out" \
-  '.source == "vault" and .fallback.loom_status == "404"'
+  '.source == "ontomark" and .fallback.loom_status == "404"'
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" neighbours rpc-err 2>/dev/null)"; rc=$?
 [ "$rc" -eq 0 ] && ok "JSON-RPC error on HTTP 200: exit 0" || bad "JSON-RPC error on HTTP 200: exit 0" "rc=$rc"
-check "JSON-RPC error on HTTP 200 → vault tree fallback named rpc_error, never answered" "$out" \
-  '.source == "vault" and .fallback.loom_status == "rpc_error"'
+check "JSON-RPC error on HTTP 200 → ontomark tree fallback named rpc_error, never answered" "$out" \
+  '.source == "ontomark" and .fallback.loom_status == "rpc_error"'
 out="$(run env LOOM_BASE_URL="$STUB" bash "$S" paths live-a live-b 2>/dev/null)"
 check "live paths: found:true → answered, loom" "$out" \
   '.grounding == "answered" and .source == "loom" and .result.result.structuredContent.result.hops == 1'
@@ -453,7 +462,7 @@ hits() { if [ -f "$WORK/drop.hits" ]; then wc -l < "$WORK/drop.hits" | tr -d ' '
 : > "$WORK/drop.hits"
 out="$(run env LOOM_BASE_URL="$DROP" bash "$S" neighbours "Escrow Oracle" 2>/dev/null)"; rc=$?
 [ "$(hits)" = "1" ] && ok "Loom down, title input: one attempt, not one per call" || bad "Loom down, title input: one attempt" "attempts: $(hits)"
-check "Loom down, title input: still falls back to the corpus" "$out" '.source == "vault" and .fallback.loom_status == "000"'
+check "Loom down, title input: still falls back to the corpus" "$out" '.source == "ontomark" and .fallback.loom_status == "000"'
 [ "$rc" -eq 0 ] && ok "Loom down, title input: exit 0" || bad "Loom down, title input: exit 0" "rc=$rc"
 
 : > "$WORK/drop.hits"

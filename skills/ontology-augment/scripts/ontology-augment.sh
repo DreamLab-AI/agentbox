@@ -25,7 +25,7 @@
 #
 #   { "grounding": "answered" | "silent" | "degraded" | "contradicted",
 #     "degraded":  bool,              # kept for older parsers
-#     "source":    "loom" | "vault" | "visionclaw",
+#     "source":    "loom" | "ontomark" | "vault" | "visionclaw",
 #     "generation": { "id", "content_digest", "version_iri", "from", … },
 #     "negation":  { … }              # only when the SPARQL used FILTER NOT EXISTS / MINUS
 #     "shape":     "unrecognised"     # only when a healthy body could not be counted
@@ -107,12 +107,16 @@ VAULT() {
 }
 
 # ontomark — the released shared-ontology CLI (Ontomark ADR-OM-005; agentbox
-# ADR-2136 first step), baked beside vault by lib/ontomark.nix. It owns
-# validate/gate/conflicts/build; vault keeps find/retrieve/tree/edit/propose
-# until their typed-model port lands (Ontomark DEPRECATION §13, AB-P6).
+# ADR-2136 first step), baked beside vault by lib/ontomark.nix. From ontomark
+# 0.3.0 it owns validate/gate/conflicts/build AND find/retrieve/tree/edit
+# (ported from vault, byte-identical; Ontomark ADR-OM-007). vault keeps only
+# propose and its Nostr transport.
 # ONTOMARK_BIN overrides the baked binary for a checkout under test. An image
 # built before ontomark was baked falls back to vault for the verbs both carry,
 # announced on stderr, so the skill keeps working across the rebuild.
+# need_corpus: a corpus reader is present (ontomark, or vault as the fallback).
+need_corpus() { ontomark_bin >/dev/null 2>&1 || need_vault; }
+corpus_src() { if ontomark_bin >/dev/null 2>&1; then printf ontomark; else printf vault; fi; }
 ontomark_bin() {
   if [ -n "${ONTOMARK_BIN:-}" ] && [ -x "$ONTOMARK_BIN" ]; then printf '%s' "$ONTOMARK_BIN"; return 0; fi
   if command -v ontomark >/dev/null 2>&1; then command -v ontomark; return 0; fi
@@ -455,7 +459,7 @@ case "$cmd" in
   # subgraph for a concept. Two steps, because the corpus and the reasoner are
   # two different authorities: find the seeds by name, then expand them.
   ask)
-    need_vault
+    need_corpus
     query="${1:-}"; shift || true
     [ -n "$query" ] || die "ask needs a query"
     while [ $# -gt 0 ]; do
@@ -465,44 +469,44 @@ case "$cmd" in
         *) die "unknown flag for ask: $1";;
       esac
     done
-    seeds="$(VAULT find --query "$query" --limit 5 --json)"
-    # `vault find --json` prints a bare array; an object with `results` is
+    seeds="$(ONTOMARK find --query "$query" --limit 5 --json)"
+    # `ontomark find --json` prints a bare array; an object with `results` is
     # accepted too, so either shape seeds the expansion.
     # Page ids contain spaces ("Knowledge Graph"), so they are collected into an
-    # array via NUL-delimited read. Do NOT pipe them to xargs: VAULT is a shell
-    # function (it picks between `vault` on PATH and the baked /opt path) and
-    # xargs execs a binary, so xargs would report "VAULT: No such file".
+    # array via NUL-delimited read. Do NOT pipe them to xargs: ONTOMARK is a shell
+    # function (it picks the binary and falls back to vault) and xargs execs a
+    # binary, so xargs would report "ONTOMARK: No such file".
     ids=()
     while IFS= read -r -d '' id; do ids+=("$id"); done < <(
       printf '%s' "$seeds" | jq -j '(if type == "array" then . else (.results // []) end)[] | .id + "\u0000"')
     if [ "${#ids[@]}" -eq 0 ]; then
-      emit vault query "$(jq -nc --arg q "$query" '{seeds: [], expanded: [], query: $q, reason: "no seed matched"}')" "$(vault_generation)"
+      emit "$(corpus_src)" query "$(jq -nc --arg q "$query" '{seeds: [], expanded: [], query: $q, reason: "no seed matched"}')" "$(vault_generation)"
       exit 0
     fi
-    run_vault query retrieve "${ids[@]}" \
+    run_ontomark query retrieve "${ids[@]}" \
       --expand "is-a=${ASK_DEPTH},requires=${ASK_DEPTH},enables=${ASK_DEPTH},part-of=${ASK_DEPTH}" \
       --max-documents "$ASK_DOCUMENTS" --json
     ;;
 
   # ── search — former ontology_search / kg_node_search.
   search)
-    need_vault
+    need_corpus
     query="${1:-}"; shift || true
     [ -n "$query" ] || die "search needs a query"
-    run_vault query find --query "$query" --json "$@"
+    run_ontomark query find --query "$query" --json "$@"
     ;;
 
   # ── get — former ontology_class_get.
   get)
-    need_vault
+    need_corpus
     id="${1:-}"; [ -n "$id" ] || die "get needs a page id"
-    run_vault query retrieve "$id" --json
+    run_ontomark query retrieve "$id" --json
     ;;
 
   # ── classes — former ontology_class_list.
   classes)
-    need_vault
-    run_vault query find --query '' --type Class --json "$@"
+    need_corpus
+    run_ontomark query find --query '' --type Class --json "$@"
     ;;
 
   # ── sparql — former ontology_graph_query. The corpus on disk has no reasoned
@@ -520,7 +524,7 @@ case "$cmd" in
   # ── neighbours / paths — former kg_neighbors / kg_pathfind. Reasoned-graph
   # questions, so the Loom's /mcp answers (live on :8084). A title is resolved to
   # its Loom IRI by exact title match (resolve_iri); an IRI or slug passes
-  # through. `vault tree <id>` is the corpus-only alternative, used only when the
+  # through. `ontomark tree <id>` is the corpus-only alternative, used only when the
   # Loom did not answer (unreachable, non-200 or a JSON-RPC protocol error).
   neighbours|neighbors)
     iri="${1:-}"; shift || true
@@ -535,16 +539,16 @@ case "$cmd" in
     else
       why="$(mcp_fail_label)"
       # The reasoned closure is unavailable, so answer from the corpus instead
-      # and SAY which one answered. `vault tree` walks asserted frontmatter
+      # and SAY which one answered. `ontomark tree` walks asserted frontmatter
       # wikilinks: real edges, but only the ones an author wrote — no inferred
       # ancestors, no backlinks the reasoner derived.
-      echo "ontology-augment: Loom did not answer (${why}); falling back to \`vault tree\` (asserted edges only, no inferred closure)" >&2
-      need_vault
-      set +e; out="$(VAULT tree "$iri" --depth 1 --json)"; rc=$?; set -e
+      echo "ontology-augment: Loom did not answer (${why}); falling back to \`ontomark tree\` (asserted edges only, no inferred closure)" >&2
+      need_corpus
+      set +e; out="$(ONTOMARK tree "$iri" --depth 1 --json)"; rc=$?; set -e
       if [ -z "$out" ] || ! printf '%s' "$out" | jq . >/dev/null 2>&1; then
         [ -n "$out" ] && printf '%s\n' "$out"; exit "$rc"
       fi
-      emit vault query "$out" "$(vault_generation)" "" \
+      emit "$(corpus_src)" query "$out" "$(vault_generation)" "" \
         "$(jq -nc --arg s "$why" '{fallback: {from: "loom.neighbours", loom_status: $s, scope: "asserted edges only, no inferred closure"}}')"
       exit "$rc"
     fi
