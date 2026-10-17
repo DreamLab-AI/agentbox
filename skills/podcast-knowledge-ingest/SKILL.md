@@ -6,7 +6,7 @@ description: >
   Weekly cron that downloads new episodes from configured YouTube podcasts,
   extracts evidence-backed assertions via the Ontology Loom (Qwen 3.8), verifies
   them with Perplexity, and lands them on `type: Episode` evidence ledger
-  pages under `working/pages/podcast-evidence/`. Also trigger on "promote podcast evidence", "ledger promotion", or "podcast
+  pages under `working/podcast-evidence/`. Also trigger on "promote podcast evidence", "ledger promotion", or "podcast
   candidate dossiers" — the podcast-promote binary stage that pre-filters
   accumulated ledger evidence into scored proposal dossiers. NOT for one-off
   historical backfill (use podcast-bulk-ingest), interactive on-demand transcript
@@ -78,12 +78,12 @@ The per-episode evidence ledger — the audit trail for every machine-extracted
 assertion — is written to:
 
 ```
-working/pages/podcast-evidence/<episode-slug>.md
+working/podcast-evidence/<episode-slug>.md
 ```
 
 A **subdirectory**, never the retired flat `podcast-evidence___<slug>.md` name:
 `a___b.md` namespace filenames are a `vault validate` rejected construct. Never
-`knowledge/pages` — nothing this skill writes reaches the curated corpus except
+`knowledge/` — nothing this skill writes reaches the curated corpus except
 through `vault propose`.
 
 Every field is a frontmatter key:
