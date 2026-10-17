@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: efa293b8799bebac8f331592d6425790c7b011c5
+verified_commit: a2c6d5520478b7e4b8ba96c3ebaffdcc64bb125c
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -279,3 +279,14 @@ Not checked, and notes: Not exercised: live booted-image runtime-env.sh export (
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
 
 **Re-verified 2026-10-16 at `efa293b8799b`.** The only change to a governed path is the sidecar-first Blender work (ADR-2142): `agentbox.toml` gains `[skills.spatial_and_3d].blender_local = false`; `flake.nix` narrows one `lib.optionals` condition (`wrapGpuBin pkgs.blender` now needs `blender && blender_local`), adds one `ENABLE_BLENDER_LOCAL` env line and reworks a comment; `schema/agentbox.toml.schema.json` gains the `blender_local` boolean; `management-api/lib/system-manifest.js` gains a `blender-local` catalogue entry and a corrected `blender-mcp` summary. `[vault]` is untouched; the schema change is the single `blender_local` property. The decision holds. Re-verified by `git diff <previous verified_commit>..efa293b8799b -- <verified_paths>`; no re-implementation was needed.
+
+## Amendment and re-verification — 2026-10-17 (the vaults are flat; `pages = "."`)
+
+visionGraph flattened on 2026-10-16 (Ontomark ADR-OM-007): authored pages sit at each vault root, and the Logseq-era `pages/` folder is gone. Decision 1's example `pages = "pages"` and decision 2's derivation `VAULT_PAGES = root/pages` therefore pointed every manifest-driven consumer here at a directory that no longer exists (the live container exported `VAULT_PAGES=…/knowledge/pages` and `VAULT_WORKING_PAGES=…/working/pages`, both absent). The authority itself is unchanged; its value moves.
+
+- `[vault].pages` keeps its meaning, the authored-pages directory relative to each vault root, and gains the value `"."`, now the schema default, meaning the root itself. An absent key means the same. A vault that still keeps a folder names it (`"pages"`), so the key stays general.
+- `config/entrypoint-unified.sh` derives `VAULT_PAGES = root` when `pages` is `"."`, `"./"` or absent, and applies the same relative value to the working root for `VAULT_WORKING_PAGES` instead of a hard-coded `/pages`. `ONTOLOGY_PAGES_DIR` follows `VAULT_PAGES` as before.
+- `agentbox.toml` and `setup/agentbox.default.toml` set `pages = "."`. `skills/ontology-augment/SKILL.md` and `skills/podcast-knowledge-ingest/SKILL.md` stop spelling `…/pages/…` paths. The ontology-augment SKILL.md change that first tripped this record (ADR-2129, ADR-2140: `vault find|retrieve|tree` renamed to `ontomark …`) does not touch path authority.
+- The consumers (`ontology-local.js`, `ontology-index-build.js`, the condense scheduler and refresh) read `VAULT_PAGES` only and need no change.
+
+Gates at `1a3ed1260`: `tests/config/vault-path-precedence.test.sh` 14 passed, 0 failed (one new case: `pages = "."` resolves to the root, and so does the derived legacy variable); `tests/config/vault-consumer-fallback.test.mjs` 13 passed, 0 failed; `scripts/agentbox-config-validate.js` clean; `tests/skills/ontology-augment-grounding.test.sh` 87 passed, 0 failed. The exported values take effect at the next container start; the image rebuild that bakes ontomark 0.4.0 is pending with the owner. The decision holds with the amended default.

@@ -49,7 +49,7 @@ printed `vault MISSING`, the image predates the key and needs a rebuild.
 
 ```
 VAULT_ROOT=/home/devuser/workspace/visionGraph/knowledge   # [vault].root, ADR-2028
-VAULT_PAGES=$VAULT_ROOT/pages
+VAULT_PAGES=$VAULT_ROOT            # pages sit at the vault root
 VAULT_WORKING_ROOT=/home/devuser/workspace/visionGraph/working
 LOOM_BASE_URL=http://192.168.2.132:8084                    # the façade, LAN
 ONTOLOGY_TIMEOUT_SECS=10                                   # per-Loom-call timeout

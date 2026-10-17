@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 426b432501527e70cd61a1e5af19bc917b40af4e
+verified_commit: e8d59c23c265b9a8e1f055884b1b9721299aa614
 verified_paths: [skills/ontology-augment/scripts/ontology-augment.sh, skills/ontology-augment/SKILL.md, skills/ontology-augment/references/REFERENCE.md, skills/ontology-augment/references/EXAMPLES.md, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing
@@ -76,3 +76,5 @@ The corpus verbs `find`, `retrieve` and `tree` now go through `ONTOMARK()` (onto
 Format change, as Consequences 3 anticipated: `source` gains the value `"ontomark"`, and corpus answers now report it (`"vault"` only through the fallback). The stderr fallback line names `ontomark tree`. Parsers that matched `source == "vault"` move with it. `SKILL.md` examples name `ontomark find|retrieve|tree`.
 
 `bash tests/skills/ontology-augment-grounding.test.sh` gives 87 passed, 0 failed at `426b43250`, with a stub `ontomark` answering the corpus verbs and the stub `vault` left for the fallback path. Re-verified by `git diff 044f1d689..426b43250 -- <governed paths>` and by reading each decision against the script. The decision holds.
+
+**Re-verified 2026-10-17 at `e8d59c23c`.** The only change on a governed path since the previous verification is the flat-vault pages default (agentbox `a2c6d5520`, ADR-2028 amendment; Ontomark ADR-OM-007): `[vault].pages = "."` in `agentbox.toml` and the default manifest, the schema default and description for that key, the entrypoint deriving `VAULT_PAGES`/`VAULT_WORKING_PAGES` from it, and the ontology skills' corpus-verb names (`ontomark find|retrieve|tree`). None of it touches this record's decision. Re-verified by `git diff 426b43250..e8d59c23c -- <verified_paths>`; no re-implementation was needed.

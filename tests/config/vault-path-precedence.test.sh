@@ -48,6 +48,7 @@ _ok "extracted _ab_vault_resolve() from config/entrypoint-unified.sh ($(wc -l <"
 # --- harness ---------------------------------------------------------------
 # Runs the extracted resolver in a fresh bash with a stub manifest reader.
 # $1 = manifest root ('' means "no [vault] in agentbox.toml"), rest = env pairs.
+# VPAGES (test-local, default 'pages') is the manifest's [vault].pages value.
 _run_resolver() { # _run_resolver <manifest-root> [ENV=VAL ...]
   local root="$1"; shift
   local stub
@@ -58,7 +59,7 @@ _run_resolver() { # _run_resolver <manifest-root> [ENV=VAL ...]
     stub="_ab_toml_val() {
       case \"\$1 \$2\" in
         'vault root')   printf '%s' '${root}' ;;
-        'vault pages')  printf '%s' 'pages' ;;
+        'vault pages')  printf '%s' '${VPAGES:-pages}' ;;
         'vault format') printf '%s' 'obsidian' ;;
         'vault tui')    printf '%s' 'rune' ;;
         *) : ;;
@@ -146,6 +147,14 @@ if [ "$(_field "$OUT" 2)" = "/fixture/relocated/visionGraph/knowledge" ] \
   _ok "vault relocated → root, pages and the derived legacy var all follow the manifest"
 else
   _bad "vault relocated" "$OUT"
+fi
+
+# --- flat vault: pages = "." (the schema default since the 2026-10-16 flatten) means the root itself
+OUT="$(VPAGES=. _run_resolver /fixture/flat/knowledge)"
+if [ "$(_field "$OUT" 3)" = "/fixture/flat/knowledge" ] && [ "$(_field "$OUT" 4)" = "/fixture/flat/knowledge" ]; then
+  _ok "pages=\".\" → VAULT_PAGES is the vault root, and so is the derived legacy var"
+else
+  _fail "pages=\".\" should resolve to the vault root" "$OUT"
 fi
 
 # case 7 — relocation with a stale env override still present: manifest still wins

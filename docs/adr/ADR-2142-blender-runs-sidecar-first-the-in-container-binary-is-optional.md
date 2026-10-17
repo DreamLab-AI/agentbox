@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9fcd1eef98b2a3eb8469df0fb6bf62ec7a34cc76
+verified_commit: e8d59c23c265b9a8e1f055884b1b9721299aa614
 verified_paths: [agentbox.toml, flake.nix, skills/blender/tools/blender-job.js, skills/blender/tools/blender-introspect.js, skills/blender/tools/blender-batch.sh, skills/blender/SKILL.md, skills/uk-solar-planner/SKILL.md, skills/game-dev/tools/engine-check.sh, tests/toolchains/blender-present.sh]
 owner: jjohare
 review_trigger: the image rebuild activates the change, the GPU sidecar (gui-tools-service) or its shared volume changes, a local-Blender consumer is added, or `blender_local` is flipped in the shipped manifest
@@ -39,3 +39,5 @@ repo: agentbox
 ## Activation evidence (2026-10-16)
 
 Image source `9fcd1eef98b2a3eb8469df0fb6bf62ec7a34cc76` is active. No local `blender` command is present; baked API introspection reports sidecar Blender 5.2.0 LTS. Job `deploy-20261016-smoke` exited 0 and produced `smoke.png` using OptiX on NVIDIA RTX 6000 Ada GPUs. All 32 persistent mounts and 16 sidecar container identities were preserved. Fresh SBOM/VEX evidence was generated from the candidate image layers.
+
+**Re-verified 2026-10-17 at `e8d59c23c`.** The only change on a governed path since the previous verification is the flat-vault pages default (agentbox `a2c6d5520`, ADR-2028 amendment; Ontomark ADR-OM-007): `[vault].pages = "."` in `agentbox.toml` and the default manifest, the schema default and description for that key, the entrypoint deriving `VAULT_PAGES`/`VAULT_WORKING_PAGES` from it, and the ontology skills' corpus-verb names (`ontomark find|retrieve|tree`). None of it touches this record's decision. Re-verified by `git diff 9fcd1eef9..e8d59c23c -- <verified_paths>`; no re-implementation was needed.

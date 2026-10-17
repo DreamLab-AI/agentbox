@@ -735,7 +735,7 @@ schedule_max_age_hours = 24                 # rebuild even without corpus change
 # Nix package set only when this is "rune".
 [vault]
 root   = "/home/devuser/workspace/vault"   # Obsidian vault root (bind-mounted)
-pages  = "pages"                            # authored pages, relative to root
+pages  = "."                                # authored pages, relative to root; "." = the root itself (an Obsidian vault)
 format = "obsidian"                         # obsidian (the only accepted value)
 # Vanilla ships no TUI: rune is a REBUILD-class Rust package (~80 MB) that the
 # operator opts into in their live agentbox.toml (ADR-2029). Keep the trailing
@@ -743,7 +743,7 @@ format = "obsidian"                         # obsidian (the only accepted value)
 # inline comments with /#[^"]*$/, so a quoted word in a trailing comment leaks
 # into the parsed value (management-api/adapters/manifest-loader.js:35).
 tui    = "none"                             # rune | none — see ADR-2029
-# Second vault root (the working graph): pages at <working>/pages. Exported as
+# Second vault root (the working graph): pages at <working>/<pages>. Exported as
 # VAULT_WORKING_ROOT / VAULT_WORKING_PAGES. A layout with more than one vault
 # root cannot be expressed by `root` alone (ADR-2028 amendment, 2026-09-02).
 working     = "/home/devuser/workspace/vault-working"

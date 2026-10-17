@@ -1065,7 +1065,7 @@ schedule_max_age_hours = 24                 # rebuild even without corpus change
 # Nix package set only when this is "rune".
 [vault]
 root   = "/home/devuser/workspace/visionGraph/knowledge"   # Obsidian vault root = the visionGraph corpus repo (knowledge/ vault); bind-mounted
-pages  = "pages"                            # authored pages, relative to root
+pages  = "."                                # authored pages sit at the vault root (flattened 2026-10-16; templates/, bases/, assets/ are not pages)
 # repo: the vault REPOSITORY root (ontology/vocabulary.yaml, knowledge/, working/)
 # that every `vault` call is pinned to with --repo; exported as VAULT_REPO.
 # Optional — derived as root's parent when root ends in knowledge/ or working/.

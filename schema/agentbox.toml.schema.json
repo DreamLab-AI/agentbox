@@ -239,9 +239,10 @@
         },
         "pages": {
           "type": "string",
-          "default": "pages",
-          "description": "Authored-pages directory, relative to root (VAULT-corpus-format V1 layout; the GitHub-sync base path stays \"pages\"). Exported as VAULT_PAGES = root/pages.",
+          "default": ".",
+          "description": "Authored-pages directory, relative to each vault root. \".\" (the default) means the root itself: an ordinary Obsidian vault, as visionGraph has been since 2026-10-16. Name a folder (\"pages\") only for a vault that still keeps one. Exported as VAULT_PAGES and applied to the working root as VAULT_WORKING_PAGES.",
           "examples": [
+            ".",
             "pages"
           ]
         },

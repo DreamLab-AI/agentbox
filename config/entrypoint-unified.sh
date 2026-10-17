@@ -123,13 +123,17 @@ _ab_vault_resolve() {
     fi
     return 0
   fi
-  VAULT_PAGES="$VAULT_ROOT/$(_ab_toml_val vault pages)"
-  # A [vault] with root but no pages key still means "root/pages" (schema default).
-  case "$VAULT_PAGES" in */) VAULT_PAGES="${VAULT_PAGES}pages" ;; esac
+  # [vault].pages is the authored-pages directory relative to each vault root.
+  # Since the visionGraph flatten (2026-10-16, Ontomark ADR-OM-007) pages sit at
+  # the vault root, so "." (the schema default) and an absent key both mean the
+  # root itself; a non-flat vault still names its folder ("pages").
+  _VAULT_PAGES_REL="$(_ab_toml_val vault pages)"
+  case "$_VAULT_PAGES_REL" in ""|.|./) _VAULT_PAGES_REL="" ;; esac
+  VAULT_PAGES="${VAULT_ROOT%/}${_VAULT_PAGES_REL:+/$_VAULT_PAGES_REL}"
   VAULT_FORMAT="$(_ab_toml_val vault format)"; VAULT_FORMAT="${VAULT_FORMAT:-obsidian}"
   VAULT_TUI="$(_ab_toml_val vault tui)";       VAULT_TUI="${VAULT_TUI:-none}"
   # ADR-2028 amendment (2026-09-02): sibling vault roots. `working` is the second
-  # vault (pages at <working>/pages); `transcripts` is the podcast transcript
+  # vault (pages at <working>/<pages>, i.e. its root when pages is "."); `transcripts` is the podcast transcript
   # store outside both vaults. Optional — absent keys export nothing, and the
   # consumers that need them (podcast-knowledge-ingest) fail loud on their own.
   VAULT_WORKING_ROOT="$(_ab_toml_val vault working)"
@@ -138,7 +142,7 @@ _ab_vault_resolve() {
   HP_LOOM_SYNC="$(_ab_toml_val vault loom_sync)"; HP_LOOM_SYNC="${HP_LOOM_SYNC:-check}"
   LOOM_URL="$(_ab_toml_val vault loom_url)"
   LOOM_HP_HOST="$(_ab_toml_val vault loom_host)"
-  if [ -n "$VAULT_WORKING_ROOT" ]; then VAULT_WORKING_PAGES="${VAULT_WORKING_ROOT%/}/pages"; else VAULT_WORKING_PAGES=""; fi
+  if [ -n "$VAULT_WORKING_ROOT" ]; then VAULT_WORKING_PAGES="${VAULT_WORKING_ROOT%/}${_VAULT_PAGES_REL:+/$_VAULT_PAGES_REL}"; else VAULT_WORKING_PAGES=""; fi
   # VAULT_REPO: the repository root the `vault` CLI is pinned to with --repo
   # (holds ontology/vocabulary.yaml, knowledge/, working/). Optional
   # [vault].repo wins; else derived from root — its parent when root is the
