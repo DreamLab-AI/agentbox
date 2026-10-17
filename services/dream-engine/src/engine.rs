@@ -52,6 +52,7 @@ use crate::prompt;
 use crate::records;
 use crate::runner::EvaluatorRunner;
 use crate::ruvector::{self, DreamFinding, RuVectorConfig, RuVectorSink};
+use crate::wanted;
 
 /// Wall-clock budget for a repo's build step. Generous: a cold release build of
 /// a Rust workspace on the annexe is minutes, not seconds, and a build that
@@ -1248,19 +1249,43 @@ impl Engine {
         let scans = slot.scan.join(", ");
         let source_cfg = estate::source_config_from_env();
         let deny = estate::source_denylist();
+        // Sources the previous night (or the operator) asked for are read
+        // first (ADR-DE-008); `wanted` keeps them until met or lapsed.
+        let mut requested = wanted::take_for(&repo_name, &slot.deep);
+        if !requested.is_empty() {
+            info!(
+                count = requested.len(),
+                "honouring the previous night's source requests"
+            );
+        }
+        // A slot whose `scan` entries are paths (files or directories) has
+        // already said what its nights read; offer them after the explicit
+        // requests, so the planner is never the only thing standing between
+        // a deep and its own scope. Topic-word scans are left to the prompt.
+        for scan in &slot.scan {
+            let Some(key) = wanted::path_tokens(scan).into_iter().next() else {
+                continue;
+            };
+            if let Some(r) = source::SourceRequest::parse(&key) {
+                if !requested.iter().any(|q| q.path == r.path) {
+                    requested.push(r);
+                }
+            }
+        }
         let gathered = source::gather(
             llm,
             fallback,
-            &source::GatherInput {
-                repo: &repo_path,
-                commit: &baseline_rev,
-                deep: &slot.deep,
-                scans: &scans,
-                commands: &required_cmds,
-                evidence: &prompt[evidence_start..],
-                cfg: &source_cfg,
-                deny: &deny,
-            },
+            &source::GatherInput::new(
+                &repo_path,
+                &baseline_rev,
+                &slot.deep,
+                &scans,
+                &required_cmds,
+                &prompt[evidence_start..],
+                &source_cfg,
+                &deny,
+            )
+            .with_requested(&requested),
             &estate::redact,
         )
         .await;
@@ -1271,6 +1296,7 @@ impl Engine {
                     &night_dir.join("source.json"),
                     &serde_json::to_vec_pretty(&record).unwrap_or_default(),
                 );
+                wanted::settle(&repo_name, &slot.deep, &night_id, &record);
                 prompt.push_str(&section);
                 Some(section)
             }
@@ -1584,7 +1610,23 @@ impl Engine {
         // 11b. Queue any "Human action recommended" items for the operator —
         //      the inbox hook surfaces them in the next Claude session,
         //      whatever its context. Fail-open.
+        //      Source supply is not a decision (ADR-DE-008): a "please
+        //      inline X" line becomes a request the next tree-read honours,
+        //      and the report's own "Sources wanted next night" list is
+        //      recorded the same way. Only a path asked for again after it
+        //      was read reaches the operator, as one alert.
+        let mut wanted_keys = wanted::extract_wanted(&report);
         for q in inbox::extract_questions(&report) {
+            if wanted::is_source_supply(&q) {
+                for k in wanted::path_tokens(&q) {
+                    if !wanted_keys.contains(&k) {
+                        wanted_keys.push(k);
+                    }
+                }
+                info!(question = %q, "source-supply ask routed to the tree-read, not the operator");
+                continue;
+            }
+            let q = inbox::plain_decision(&q);
             let c = j.called("inbox.write", json!({ "kind": "question" })).await;
             let added = inbox::add("question", &repo_name, &night_id, date, &q);
             j.completed(c, added.is_ok(), json!({})).await;
@@ -1592,6 +1634,26 @@ impl Engine {
                 Ok(id) => info!(id = %id, "operator question queued to dream inbox"),
                 Err(e) => warn!(error = %e, "dream inbox write failed (fail-open)"),
             }
+        }
+        match wanted::record(&repo_name, &slot.deep, &wanted_keys, &night_id, "report") {
+            Ok(looped) if !looped.is_empty() => {
+                let c = j
+                    .called(
+                        "inbox.write",
+                        json!({ "kind": "alert", "why": "source-loop" }),
+                    )
+                    .await;
+                let added = inbox::add(
+                    "alert",
+                    &repo_name,
+                    &night_id,
+                    date,
+                    &wanted::loop_alert(&repo_name, &slot.deep, &looped),
+                );
+                j.completed(c, added.is_ok(), json!({})).await;
+            }
+            Ok(_) => {}
+            Err(e) => warn!(error = %e, "source-request store write failed (fail-open)"),
         }
         // A vetoed ACCEPT is exactly the kind of thing a human should see.
         if !decision.vetoes.is_empty() {

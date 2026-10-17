@@ -38,7 +38,7 @@ Never claim to have run, built, tested, published, pushed or merged anything. Re
    Do NOT modify it afterwards.
 
 ### 3 — Candidate
-5. Write the smallest change that tests the hypothesis as a unified diff against the source shown. Copy context lines verbatim from it. Never write a hunk inside an elided region or against a file that is not shown (creating a new file is fine). If the source you need was not provided, name the file and line range and give INCONCLUSIVE with that as the blocker.
+5. Write the smallest change that tests the hypothesis as a unified diff against the source shown. Copy context lines verbatim from it. Never write a hunk inside an elided region or against a file that is not shown (creating a new file is fine). If the source you need was not provided, give INCONCLUSIVE with that file as the blocker and list it under **Sources wanted next night** in the final report; the engine reads those files for the next night. Never ask the operator for source.
 6. For each REQUIRED evaluator, predict what it will report on the candidate and why, citing receipt lines.
 7. Critic: assume the candidate is subtly wrong and find the flaw. Reward-hack check: a change that weakens a test, benchmark, threshold or gold answer is not a candidate.
 8. Evidence-grade every claim: **A** = a receipt shown in this prompt, **B** = a direct reading of source shown, **C** = inference. Label anything unverifiable.
@@ -58,6 +58,9 @@ Never claim to have run, built, tested, published, pushed or merged anything. Re
     `| {{date_iso}} | {{deep}} | <finding> | NONE | NONE | yes | <VERDICT> | <effect> |  |  |  |  |`
     The **finding** MUST be a concrete, self-contained ≤80-char statement of what tonight established — NEVER `INCONCLUSIVE — see report`, `see gist`, or any bare pointer. The ledger is the only cross-night memory; a row that points elsewhere is a lost night. For an INCONCLUSIVE night, name the blocker itself (e.g. `annexe cannot resolve sibling path-deps`, `perf deep has no evaluator`, `source for src/x.rs:200-400 not provided`) so the dry-streak and duplicate-direction signals can read it and stop retrying a dead end.
 13. If an ADR is warranted, propose it ({{adr_example}} convention) under **Human action recommended** — you cannot file it.
+14. **Human action recommended** is read by a person who did not watch tonight and may not know the engine's words. Every item is ONE line, in this exact shape:
+    `Decision: <what they decide, in plain words> · Why: <one clause> · If approved: <what the next night does differently> · If not: <what happens instead>`
+    No engine jargon (deep, annexe, re-supply, receipt, ledger row, "if ACCEPT is upheld"); say "this area of the repo", "the checks", "the record". "If approved" describes the next night's work, never a merge, promotion or release: approval never merges anything. Never ask for source files here (see 5). If nothing needs a person, write `- none`.
 
 ## Stop conditions
 - Every REQUIRED evaluator blocked or silent in the receipts → INCONCLUSIVE, naming the blocker.
@@ -78,4 +81,5 @@ End with a structured summary block containing at minimum:
 - Finding, hypothesis, verdict, predicted effect
 - Receipts and source files cited; files the candidate changes
 - Main lesson, biggest uncertainty, next steps
-- Human action recommended
+- Sources wanted next night: one list item per file the engine must read for the next night, `path` or `path:start-end`, then a dash and why; `- none` if none
+- Human action recommended (shape in 14)
