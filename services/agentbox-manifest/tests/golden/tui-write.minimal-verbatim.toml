@@ -61,7 +61,7 @@ timeout_ms = 60000
 
 [consultants.deepseek]
 enabled = false
-model      = "deepseek-v4-flash"
+model      = "deepseek-flash"
 timeout_ms = 120000
 
 [model_routing]
