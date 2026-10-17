@@ -2699,6 +2699,94 @@ if (kept.length !== s.hooks.Stop.length) {
 RLUNJS
 fi
 
+# ── ADR-2144: activity sink — register/de-register config/hooks/activity-sink.cjs ──
+# [integrations.activity_sink].enabled = true with a non-empty http(s) `url`
+# registers the hook on the selected `events` (post_tool_use → PostToolUse with a
+# file-tool matcher, user_prompt → UserPromptSubmit, stop → Stop). URL, token FILE
+# path / token ENV NAME and the event list are inlined into the command (hook env
+# is the command's, not this shell's); the token VALUE never is — settings.json is
+# a host mount. Reconciled every boot (strip, then push the canonical entry), so a
+# changed url/token path self-heals; off, or no usable url, strips any prior entry
+# (byte-identical-when-off). Idempotent, fail-open, never blocks boot.
+_AS_ON=0; _AS_URL=""; _AS_TOKEN_FILE=""; _AS_TOKEN_ENV=""; _AS_EVENTS=""
+if [ -f "${AGENTBOX_CONFIG:-}" ] && command -v agentbox-manifest >/dev/null 2>&1; then
+  _AS_ON="$(agentbox-manifest toml-bool --manifest "$AGENTBOX_CONFIG" --path integrations.activity_sink.enabled 2>/dev/null || echo 0)"
+  _AS_URL="$(agentbox-manifest toml-string --manifest "$AGENTBOX_CONFIG" --path integrations.activity_sink.url 2>/dev/null || true)"
+  _AS_TOKEN_FILE="$(agentbox-manifest toml-string --manifest "$AGENTBOX_CONFIG" --path integrations.activity_sink.token_file 2>/dev/null || true)"
+  _AS_TOKEN_ENV="$(agentbox-manifest toml-string --manifest "$AGENTBOX_CONFIG" --path integrations.activity_sink.token_env 2>/dev/null || true)"
+fi
+# toml-string prints nothing for an array; the awk reader yields `[a, b]` (single-line arrays).
+_AS_EVENTS="$(_ab_toml_val integrations.activity_sink events 2>/dev/null || true)"
+_AS_HOOK="/opt/agentbox/config/hooks/activity-sink.cjs"
+if [ -f "$_AS_HOOK" ] && command -v node >/dev/null 2>&1 \
+   && { [ -f "$_CLAUDE_SETTINGS" ] || [ "$_AS_ON" = "1" ]; }; then
+  mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
+  AS_HOOK="$_AS_HOOK" SETTINGS="$_CLAUDE_SETTINGS" AS_ON="$_AS_ON" AS_URL="$_AS_URL" \
+  AS_TOKEN_FILE="$_AS_TOKEN_FILE" AS_TOKEN_ENV="$_AS_TOKEN_ENV" AS_EVENTS="$_AS_EVENTS" \
+  node <<'ASJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, hook = process.env.AS_HOOK;
+const url = String(process.env.AS_URL || '').trim();
+const tokenFile = String(process.env.AS_TOKEN_FILE || '').trim();
+const tokenEnv = String(process.env.AS_TOKEN_ENV || '').trim();
+const ALL = ['post_tool_use', 'user_prompt', 'stop'];
+const rawEv = String(process.env.AS_EVENTS || '').trim();
+// Absent key → all three; `[]` → none; unknown names are dropped.
+const events = rawEv === '' ? ALL
+  : rawEv.replace(/[[\]"']/g, '').split(/[,\s]+/).filter((e) => ALL.includes(e));
+const urlOk = /^https?:\/\/[^\s'"]+$/.test(url);
+const envOk = tokenEnv === '' || /^[A-Za-z_][A-Za-z0-9_]*$/.test(tokenEnv);
+// The awk reader sees one line: a multi-line array arrives as a bare `[`.
+const evOk = !(rawEv.startsWith('[') && !rawEv.includes(']'));
+const on = process.env.AS_ON === '1' && urlOk && envOk && evOk && events.length > 0;
+if (process.env.AS_ON === '1' && !on) {
+  console.log(`  [activity-sink] enabled but not registered (${!urlOk ? 'url empty or not http(s)'
+    : !envOk ? 'token_env is not an env var name'
+    : !evOk ? 'events must be a single-line array' : 'no events selected'})`);
+}
+const q = (v) => `'${String(v).replace(/'/g, `'\\''`)}'`; // POSIX single-quote
+const SPEC = {
+  post_tool_use: ['PostToolUse', 'Read|Edit|Write|MultiEdit|NotebookEdit|Grep|Glob'],
+  user_prompt: ['UserPromptSubmit', null],
+  stop: ['Stop', null],
+};
+let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
+if (!on && !origText) process.exit(0);
+s.hooks = s.hooks || {};
+let removed = 0;
+for (const [evt] of Object.values(SPEC)) {
+  if (!Array.isArray(s.hooks[evt])) continue;
+  const before = s.hooks[evt].length;
+  s.hooks[evt] = s.hooks[evt].filter((g) => !(g.hooks || []).some((h) => String(h.command || '').includes('activity-sink.cjs')));
+  removed += before - s.hooks[evt].length;
+  // An event array only this hook populated goes away with it.
+  if (!on && before > 0 && s.hooks[evt].length === 0) delete s.hooks[evt];
+}
+// Off: touch the file only when an entry was actually retracted.
+if (!on && removed === 0) process.exit(0);
+if (on) {
+  let pfx = `ACTIVITY_SINK_URL=${q(url)} ACTIVITY_SINK_EVENTS=${events.join(',')}`;
+  if (tokenFile) pfx += ` ACTIVITY_SINK_TOKEN_FILE=${q(tokenFile)}`;
+  if (tokenEnv) pfx += ` ACTIVITY_SINK_TOKEN_ENV=${tokenEnv}`;
+  for (const e of events) {
+    const [evt, matcher] = SPEC[e];
+    s.hooks[evt] = s.hooks[evt] || [];
+    const grp = { hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 3 }] };
+    if (matcher) grp.matcher = matcher;
+    s.hooks[evt].push(grp);
+  }
+}
+const nextText = JSON.stringify(s, null, 2);
+if (nextText !== origText) {
+  fs.writeFileSync(f, nextText);
+  console.log(on ? `  [activity-sink] registered on ${events.join(',')}` : '  [activity-sink] de-registered (gate off)');
+} else if (on) {
+  console.log('  [activity-sink] already registered');
+}
+ASJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+fi
+
 # ── Governed hook registry: reconcile settings hooks (ADR-2092 model) ──
 # Runs AFTER every hook registration block above. config/registered-hooks.txt
 # names agentbox's own hooks (canonical events + timeout in SECONDS), the

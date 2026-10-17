@@ -1124,6 +1124,39 @@
               "description": "WebSocket URL of the external ComfyUI instance."
             }
           }
+        },
+        "activity_sink": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "ADR-2144: generic activity-sink hook (config/hooks/activity-sink.cjs). When enabled with an http(s) url, the boot projector registers it on the selected events in ~/.claude/settings.json and every Claude profile; it POSTs {actor, kind, event, tool, paths, text, ts_ms, session_id} with a bearer token. Boot-class; off retracts every registration.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Register the hook at boot. Default false."
+            },
+            "url": {
+              "type": "string",
+              "description": "Full http(s) endpoint the hook POSTs to. Empty leaves the hook unregistered."
+            },
+            "token_file": {
+              "type": "string",
+              "description": "Path to a file holding the bearer token, read by the hook on each event. Must be readable by devuser (the hook runs in the agent's process). Only the path is inlined into settings, never the token."
+            },
+            "token_env": {
+              "type": "string",
+              "pattern": "^([A-Za-z_][A-Za-z0-9_]*)?$",
+              "description": "Name of an environment variable in the session env holding the bearer token; used when token_file is empty or unreadable."
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["post_tool_use", "user_prompt", "stop"]
+              },
+              "uniqueItems": true,
+              "description": "Events to post. Absent means all three; [] registers nothing."
+            }
+          }
         }
       }
     },

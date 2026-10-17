@@ -41,6 +41,7 @@ on a volume.
 | `ruvnet-brain-ground.cjs` | `UserPromptSubmit` | 5 s | `[skills.ruvnet_brain].grounding_hook` |
 | `ontology-monitor.cjs` | `SessionEnd` | 10 s | `[ontology_monitor].enabled` — de-registers itself, and its `env` master switch, when the gate is off (ADR-2068, ADR-2020). The hook checks its gates, hands the payload to a **detached** child of itself and returns at once, so exit and `/clear` never wait on the 180 s GLM review; the child logs to `$AGENTBOX_STATE/ontology-monitor.log`. `AGENTBOX_ONTOLOGY_MONITOR_FOREGROUND=1` runs it inline |
 | `routing-label-recorder.cjs` | `Stop` | 15 s | `[skills.routing].label_log` (ADR-2110) — de-registers itself when off |
+| `activity-sink.cjs` | `PostToolUse` (matcher `Read\|Edit\|Write\|MultiEdit\|NotebookEdit\|Grep\|Glob`), `UserPromptSubmit`, `Stop` | 3 s | `[integrations.activity_sink].enabled` with an http(s) `url` (ADR-2144); `events` selects which are registered. POSTs `{actor, kind, event, tool, paths, text, ts_ms, session_id}` with a bearer token from `token_file`/`token_env` (the value is never inlined). Text is redacted (ADR-2026), then capped at 2 KiB; 1 s budget, exit 0, nothing on stdout. Off or no usable url de-registers it |
 | `skill-route.cjs` | `UserPromptSubmit` | 2 × `timeout_ms`, min 8 s | `[skills.routing].router = "jev"` and `.hook = true` (ADR-2091) — the manifest's model/timeout/min-chars are inlined into the command as `AGENTBOX_SKILL_ROUTE_*`; `router = "table"` or `hook = false` de-registers it. Puts the turn to System One as one Choice over every routable skill and injects the pick as advisory context; fails open (no injection) on timeout, 429/529, any error, a missing `TYPESAFE_API_KEY` or a `none` pick. Shares `lib/skill-route.cjs` with `/route` (`skills/skill-router/scripts/route.mjs`). Log: `~/.claude/skill-route.jsonl` (outcomes and cost, never the prompt; `AGENTBOX_SKILL_ROUTE_LOG=0` disables) |
 
 ## 2. Hooks registered in PER-PROFILE sessions — `workspace/profiles/<stack>/.claude/settings.json`
@@ -53,6 +54,7 @@ in the root `settings.json`.
 |---|---|---|
 | `claude-flow-hook-adapter.cjs` | `PreToolUse`, `PostToolUse`, `SessionStart`, `SessionEnd` (timeouts 5–15 s) | always, for Claude-hosted profiles. The per-turn `UserPromptSubmit` → `route` hook is gone: ~4.5 s of CLI boot a turn for a regex agent box the skill router (ADR-2091) supersedes |
 | `ontology-monitor.cjs` | `SessionEnd` (10 s, detached) | `[ontology_monitor].enabled` (also root, per §1) |
+| `activity-sink.cjs` | `PostToolUse` (file-tool matcher), `UserPromptSubmit`, `Stop` (3 s) | `[integrations.activity_sink]` (also root, per §1); the profile name is the actor label (`ACTIVITY_SINK_ACTOR`) |
 
 ## 3. NOT hooks — CLIs and helpers
 

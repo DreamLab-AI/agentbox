@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_131 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_132 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -194,3 +194,4 @@ _131 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2141](ADR-2141-extract-the-dream-engine-core-into-a-standalone-permissive-repo.md) | Extract the dream engine core into a standalone permissive repo | — | 2026-10-15 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2142](ADR-2142-blender-runs-sidecar-first-the-in-container-binary-is-optional.md) | Blender runs sidecar-first; the in-container binary is optional | — | 2026-10-16 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2143](ADR-2143-source-supply-is-plumbing-and-decisions-are-plain-english.md) | Source supply is plumbing, not a decision; every operator question is four plain-English fields | — | 2026-10-17 | accepted | complete | live | — | — | jjohare | agentbox |
+| [ADR-2144](ADR-2144-activity-sink-hook.md) | Agent activity leaves through one generic, manifest-gated, fail-open sink hook | GOVERNANCE-capabilities | 2026-10-17 | proposed | complete | inactive | — | — | jjohare | agentbox |
