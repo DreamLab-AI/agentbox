@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: a2c6d5520478b7e4b8ba96c3ebaffdcc64bb125c
+verified_commit: f33c4fc030d199ce957f7ba274d428bc6475c159
 verified_paths: [agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, config/entrypoint-unified.sh, mcp/servers/lib/ontology-local.js, mcp/servers/lib/ontology-index-build.js, scripts/ontology-condense-scheduler.mjs, scripts/ontology-condense-refresh.sh, skills/podcast-knowledge-ingest/SKILL.md, skills/ontology-core/SKILL.md, skills/ontology-enrich/SKILL.md, skills/ontology-augment/SKILL.md, skills/web-summary/SKILL.md]
 owner: jjohare
 review_trigger: any new skill, MCP server, or supervised program that reads or writes authored markdown
@@ -290,3 +290,5 @@ visionGraph flattened on 2026-10-16 (Ontomark ADR-OM-007): authored pages sit at
 - The consumers (`ontology-local.js`, `ontology-index-build.js`, the condense scheduler and refresh) read `VAULT_PAGES` only and need no change.
 
 Gates at `1a3ed1260`: `tests/config/vault-path-precedence.test.sh` 14 passed, 0 failed (one new case: `pages = "."` resolves to the root, and so does the derived legacy variable); `tests/config/vault-consumer-fallback.test.mjs` 13 passed, 0 failed; `scripts/agentbox-config-validate.js` clean; `tests/skills/ontology-augment-grounding.test.sh` 87 passed, 0 failed. The exported values take effect at the next container start; the image rebuild that bakes ontomark 0.4.0 is pending with the owner. The decision holds with the amended default.
+
+Re-verified 2026-10-17 against `f33c4fc030d199ce957f7ba274d428bc6475c159`: the governed-path delta from the flat-vault amendment is the DeepSeek model/default and MCP metadata refresh plus ownership reconciliation for the OpenCode state directory. The reviewed change preserves this record’s capability, identity, memory, vault and isolation invariants; status axes are unchanged.
