@@ -68,10 +68,24 @@ pub fn store_path() -> PathBuf {
 }
 
 pub fn load() -> Vec<Wanted> {
-    std::fs::read_to_string(store_path())
-        .ok()
-        .and_then(|t| serde_json::from_str(&t).ok())
-        .unwrap_or_default()
+    let path = store_path();
+    let Ok(text) = std::fs::read_to_string(&path) else {
+        return Vec::new();
+    };
+    match serde_json::from_str(&text) {
+        Ok(items) => items,
+        Err(e) => {
+            // Fail open, but not silently: the next save would otherwise
+            // overwrite every inlined marker. Keep the bad file as evidence.
+            let backup = path.with_extension(format!(
+                "corrupt-{}.json",
+                chrono::Utc::now().format("%Y%m%dT%H%M%S")
+            ));
+            let _ = std::fs::copy(&path, &backup);
+            tracing::warn!(error = %e, backup = %backup.display(), "source-request store unreadable — starting empty");
+            Vec::new()
+        }
+    }
 }
 
 fn save(items: &[Wanted]) -> std::io::Result<()> {
@@ -93,7 +107,7 @@ pub fn extract_wanted(report: &str) -> Vec<String> {
     let mut in_section = false;
     for line in report.lines() {
         let t = line.trim();
-        let lower = t.to_lowercase();
+        let lower = t.to_ascii_lowercase(); // byte offsets stay valid in `t`
         if lower.contains(HEADING) {
             in_section = true;
             // Inline form: "- Sources wanted next night: `a.rs`, `b.rs:1-9`".
@@ -139,33 +153,31 @@ fn push_unique(out: &mut Vec<String>, k: String) {
 /// counts when it has a `/` or a dot-extension and no spaces. `none`,
 /// `n/a` and URLs are not paths.
 pub fn path_tokens(text: &str) -> Vec<String> {
+    use dream_core::source::{request_key, SourceRequest};
     let mut out = Vec::new();
     for raw in text.split(|c: char| c.is_whitespace() || "\"'`()[]{}<>,;|".contains(c)) {
         let tok = raw.trim_end_matches(['.', ',', ':']);
         let tok = tok.strip_prefix("./").unwrap_or(tok);
-        if tok.len() < 3 || tok.contains("://") || tok.eq_ignore_ascii_case("n/a") {
+        if tok.len() < 3 || tok.contains("://") || tok.starts_with('-') {
             continue;
         }
-        let path_part = tok.split(':').next().unwrap_or(tok);
-        let looks_like_path = path_part.contains('/')
-            || path_part.rsplit_once('.').is_some_and(|(stem, ext)| {
-                !stem.is_empty()
-                    && !ext.is_empty()
-                    && ext.len() <= 5
-                    && ext.chars().all(|c| c.is_ascii_alphanumeric())
-            });
-        if !looks_like_path || path_part.starts_with('-') {
+        let Some(req) = SourceRequest::parse(tok) else {
             continue;
-        }
-        // Keep only a numeric line suffix; drop anything else after a colon.
-        let key = match tok.split_once(':') {
-            Some((p, suffix)) if dream_core::source::LineRange::parse(suffix).is_some() => {
-                let r = dream_core::source::LineRange::parse(suffix).unwrap();
-                format!("{p}:{}-{}", r.start, r.end)
-            }
-            Some((p, _)) => p.to_string(),
-            None => tok.to_string(),
         };
+        let path = req.path.as_str();
+        // A path has a slash, or a stem and a short alphabetic extension.
+        // `0.2.0`, `e.g`, `i.e` and `n/a` are words, not files.
+        let has_ext = path.rsplit_once('.').is_some_and(|(stem, ext)| {
+            stem.len() > 1
+                && stem.chars().any(|c| c.is_ascii_alphabetic())
+                && (2..=5).contains(&ext.len())
+                && ext.chars().all(|c| c.is_ascii_alphanumeric())
+                && ext.chars().any(|c| c.is_ascii_alphabetic())
+        });
+        if path.eq_ignore_ascii_case("n/a") || !(path.contains('/') || has_ext) {
+            continue;
+        }
+        let key = request_key(path, req.lines);
         if !out.contains(&key) {
             out.push(key);
         }
@@ -177,26 +189,41 @@ pub fn path_tokens(text: &str) -> Vec<String> {
 /// the verb is supply/inline/bundle/provide and it names a path. Such a
 /// question is not put to the human; its paths become requests.
 pub fn is_source_supply(question: &str) -> bool {
-    let lower = question.to_lowercase();
+    // A question in the four-field shape is a decision by construction,
+    // whatever words it uses ("run the supply-chain audit on Cargo.lock").
+    if crate::inbox::decision_fields(question).is_some() {
+        return false;
+    }
     if path_tokens(question).is_empty() {
         return false;
     }
-    // These verbs only ever mean "give the engine this file".
+    let words: Vec<String> = question
+        .split_whitespace()
+        .map(|w| {
+            w.trim_matches(|c: char| !c.is_ascii_alphanumeric())
+                .to_ascii_lowercase()
+        })
+        .collect();
+    let has = |w: &str| words.iter().any(|x| x == w);
+    // These verbs, as whole words, only ever mean "give the engine this file".
     let strong = [
         "supply",
         "re-supply",
         "resupply",
         "inline",
+        "inlined",
         "bundle",
-        "ship the source",
+        "bundled",
     ];
-    if strong.iter().any(|v| lower.contains(v)) {
+    if strong.iter().any(|v| has(v)) {
         return true;
     }
     // These need the object to be named as source.
     let weak = ["provide", "include", "request"];
-    let object = ["source", "file", "scan", "span"];
-    weak.iter().any(|v| lower.contains(v)) && object.iter().any(|o| lower.contains(o))
+    let object = [
+        "source", "sources", "file", "files", "scan", "scans", "span", "spans",
+    ];
+    weak.iter().any(|v| has(v)) && object.iter().any(|o| has(o))
 }
 
 /// Remember `keys` for (repo, deep). Returns the keys that were asked for
@@ -218,11 +245,13 @@ pub fn record(
             .iter_mut()
             .find(|w| w.repo == repo && w.deep == deep && &w.key == k)
         {
-            Some(w) if !w.inlined_in.is_empty() => looped.push(k.clone()),
-            Some(w) => {
-                // Asked again while still pending: give it a fresh run.
-                w.nights_seen = 0;
-            }
+            // Asked again after it was read, or after three nights in which
+            // it could not be read: either way the ask is not converging and
+            // a person must look. It is not re-armed.
+            Some(w) if !w.active() => looped.push(k.clone()),
+            // Asked again while still pending: keep counting, never reset,
+            // so a path refused every night still lapses on schedule.
+            Some(_) => {}
             None => items.push(Wanted {
                 repo: repo.into(),
                 deep: deep.into(),
@@ -273,12 +302,10 @@ pub fn settle(repo: &str, deep: &str, night_id: &str, record: &SourceRecord) {
         .iter_mut()
         .filter(|w| w.repo == repo && w.deep == deep)
     {
-        // A request for a whole file is met by inlining that file with or
-        // without a range; a ranged request is met only by its own key.
-        let path = w.key.split(':').next().unwrap_or(&w.key).to_string();
-        let met = record.requested_honoured.iter().any(|h| {
-            h == &w.key || (!w.key.contains(':') && h.split(':').next() == Some(path.as_str()))
-        });
+        let met = record
+            .requested_honoured
+            .iter()
+            .any(|h| key_satisfies(&w.key, h));
         if met && w.inlined_in.is_empty() {
             w.inlined_in = night_id.into();
             changed = true;
@@ -287,6 +314,28 @@ pub fn settle(repo: &str, deep: &str, night_id: &str, record: &SourceRecord) {
     if changed {
         let _ = save(&items);
     }
+}
+
+/// Whether an honoured entry (`path` or `path:a-b`, as `source.json`
+/// records it) meets a stored request key.
+///
+/// Any read of a path meets every request for that path, ranged or not:
+/// the tree-read keeps one request per path, so a second range for the
+/// same file could never be honoured while the first is pending, and a
+/// request that can never be met is exactly the loop this store exists to
+/// end. A directory key (`crates/x/` or `crates/x`) is met by any file
+/// under it.
+pub fn key_satisfies(key: &str, honoured: &str) -> bool {
+    if key == honoured {
+        return true;
+    }
+    let key_path = key.split(':').next().unwrap_or(key);
+    let h_path = honoured.split(':').next().unwrap_or(honoured);
+    if h_path == key_path {
+        return true;
+    }
+    let dir = key_path.trim_end_matches('/');
+    !dir.is_empty() && h_path.starts_with(&format!("{dir}/"))
 }
 
 /// Text of the one alert raised when a path is asked for again after it was
@@ -411,9 +460,75 @@ mod tests {
                 assert_eq!(take_for("r", "d").len(), 1);
             }
             assert!(take_for("r", "d").is_empty());
-            // Asked again while lapsed: it gets a fresh run.
-            record("r", "d", &["src/z.rs".to_string()], "n5", "report").unwrap();
-            assert_eq!(take_for("r", "d").len(), 1);
+            // Asked again while lapsed: that is a loop for a person, not a re-arm.
+            let looped = record("r", "d", &["src/z.rs".to_string()], "n5", "report").unwrap();
+            assert_eq!(looped, vec!["src/z.rs".to_string()]);
+            assert!(take_for("r", "d").is_empty());
         });
+    }
+
+    #[test]
+    fn a_re_ask_while_pending_keeps_counting() {
+        with_store(|| {
+            record("r", "d", &["src/p.rs".to_string()], "n1", "report").unwrap();
+            take_for("r", "d");
+            take_for("r", "d");
+            assert!(record("r", "d", &["src/p.rs".to_string()], "n3", "report")
+                .unwrap()
+                .is_empty());
+            assert_eq!(take_for("r", "d").len(), 1, "third and last offer");
+            assert!(take_for("r", "d").is_empty(), "not reset by the re-ask");
+        });
+    }
+
+    #[test]
+    fn directory_and_ranged_keys_settle_against_what_was_read() {
+        assert!(key_satisfies("crates/x/", "crates/x/src/lib.rs"));
+        assert!(key_satisfies("crates/x", "crates/x/Cargo.toml"));
+        assert!(!key_satisfies("crates/x/", "crates/xy/lib.rs"));
+        assert!(
+            key_satisfies("a.rs:10-80", "a.rs"),
+            "whole file covers the range"
+        );
+        assert!(
+            key_satisfies("a.rs", "a.rs:10-80"),
+            "any read of the path settles it"
+        );
+        assert!(
+            key_satisfies("a.rs:10-80", "a.rs:1-9"),
+            "one request per path, so yes"
+        );
+        assert!(!key_satisfies("a.rs", "b.rs"));
+    }
+
+    #[test]
+    fn a_corrupt_store_is_backed_up_not_overwritten() {
+        with_store(|| {
+            std::fs::write(store_path(), "{not json").unwrap();
+            assert!(load().is_empty());
+            let dir = store_path().parent().unwrap().to_path_buf();
+            let backups = std::fs::read_dir(&dir)
+                .unwrap()
+                .filter_map(|e| e.ok())
+                .filter(|e| e.file_name().to_string_lossy().contains("corrupt-"))
+                .count();
+            assert_eq!(backups, 1);
+        });
+    }
+
+    #[test]
+    fn four_field_questions_and_prose_with_versions_are_not_supply_asks() {
+        assert!(!is_source_supply(
+            "Decision: run the supply-chain audit on Cargo.lock · Why: x · If approved: y · If not: z"
+        ));
+        assert!(!is_source_supply(
+            "merge the pull request touching config/profile.toml"
+        ));
+        assert!(!is_source_supply("should we bundle dream-core 0.2.0"));
+        assert!(path_tokens("bump to 0.2.0, e.g. Cargo.lock i.e. the lock")
+            .contains(&"Cargo.lock".to_string()));
+        assert!(!path_tokens("bump to 0.2.0 e.g. now")
+            .iter()
+            .any(|t| t == "0.2.0" || t == "e.g"));
     }
 }

@@ -235,7 +235,10 @@ const LABELS: [(&str, usize); 4] = [
 ];
 
 pub fn decision_fields(text: &str) -> Option<DecisionFields> {
-    let lower = text.to_lowercase();
+    // ASCII lowering keeps every byte offset valid in `text`; Unicode
+    // lowering can change byte lengths (K, İ) and a slice at a drifted
+    // offset panics — and this runs on model output, inside a night.
+    let lower = text.to_ascii_lowercase();
     let mut marks: Vec<(usize, usize, usize)> = Vec::new(); // (start, end, field)
     for (label, field) in LABELS {
         let mut from = 0;
@@ -310,7 +313,7 @@ pub fn extract_questions(report: &str) -> Vec<String> {
     let mut in_section = false;
     for line in report.lines() {
         let t = line.trim();
-        let lower = t.to_lowercase();
+        let lower = t.to_ascii_lowercase(); // byte offsets stay valid in `t`
         if lower.contains("human action recommended") {
             // Inline form: "**Human action recommended:** do X" on one line —
             // the ask is complete, so following bullets are NOT part of it.
@@ -508,5 +511,19 @@ Other text.
         assert!(out.starts_with("Decision: accept the PR · Why: green"));
         let free = "if ACCEPT is upheld, review the draft PR";
         assert_eq!(plain_decision(free), free);
+    }
+
+    #[test]
+    fn decision_fields_survive_characters_that_grow_when_lowercased() {
+        // Kelvin sign and dotted capital I change byte length under
+        // to_lowercase(); the parser must not slice at a drifted offset.
+        let q = "Decision: cool to 5 \u{212a} · Why: İstanbul · If approved: y";
+        let f = decision_fields(q).unwrap();
+        assert_eq!(f.decision, "cool to 5 \u{212a}");
+        assert_eq!(f.why, "İstanbul");
+        let report =
+            "Human action recommended\n- \u{212a}eep the İ · Decision: x · If approved: y\n";
+        assert_eq!(extract_questions(report).len(), 1);
+        assert!(decision_fields("indecision: x if approved: y").is_none());
     }
 }
