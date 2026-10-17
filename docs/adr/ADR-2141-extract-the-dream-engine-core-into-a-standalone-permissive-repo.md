@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 8e1ef8e3410ffacb2a49bba5324d8a60917b7522
+verified_commit: 2a739c6d1328914f5d48f4cc9073249d764aca74
 verified_paths: [services/dream-engine/Cargo.toml, services/dream-engine/Cargo.lock, lib/dream-engine.nix, services/dream-engine/src/engine.rs, services/dream-engine/tests/night_e2e.rs]
 owner: jjohare
 review_trigger: the image rebuild activates the registry-pinned crates, a new release of dream-core or dream-gate is adopted, or any new module is added under services/dream-engine/src that is not estate-specific
@@ -28,7 +28,7 @@ repo: agentbox
 - The seams are implemented here: `Llm` (Z.AI, Loom), `EvaluatorRunner` (SSH to the annexe), `MemorySink` (RuVector by direct SQL, a documented exception that pins `bge-small-en-v1.5` and asserts 384 dimensions on every write), `Notifier` (inbox, journal). The agentbox prompt template stays here and is passed to `dream_core::compile`.
 - Call order: every candidate is built through `dream_core::candidate::run`, so `guard::check` runs before any git command, build or evaluator; the gate context is always built from the night's single policy (`policy::for_night`), with the self-referential protections set when the target is the engine's own source.
 - Behaviour changes, by design: a protected-path patch is a REJECT; config drift under the night is BLOCKED-ENV; the dry streak advances on REJECT and INCONCLUSIVE and resets only on ACCEPT (the old engine reset on REJECT); a harness failing identically on consecutive nights raises a `HarnessStuck` notice. Everything else is pinned by tests (`docs/developer/dream-engine-extraction-ledger.md`).
-- Pinning (resolved 2026-10-16, moved to 0.1.1 the same day): the crates are published on crates.io and `services/dream-engine/Cargo.toml` pins `dream-core = "=0.1.1"` and `dream-gate = "=0.1.1"` from the registry, with registry checksums in `Cargo.lock`. Both must move together, otherwise two copies of `dream-gate` link. `lib/dream-engine.nix` is unchanged: all dependencies are registry crates, so no `outputHashes` are needed.
+- Pinning (resolved 2026-10-16, moved to 0.1.1 the same day): the crates are published on crates.io and `services/dream-engine/Cargo.toml` pins `dream-core = "=0.2.0"` and `dream-gate = "=0.2.0"` from the registry, with registry checksums in `Cargo.lock`. Both must move together, otherwise two copies of `dream-gate` link. `lib/dream-engine.nix` is unchanged: all dependencies are registry crates, so no `outputHashes` are needed.
 
 ## Consequences
 - The gate and the loop can be reviewed, versioned and reused without the estate, and a change to either is a change to a pinned revision here, not an edit to an in-tree copy.
@@ -45,3 +45,7 @@ repo: agentbox
 ## Activation evidence (2026-10-16)
 
 Image source `9fcd1eef98b2a3eb8469df0fb6bf62ec7a34cc76` is active with a clean source receipt. The Nix sandbox passed 152 unit tests and all 11 whole-night tests after resolving the generated test-shim Bash shebangs in `lib/dream-engine.nix`. The supervised daemon is RUNNING and readiness reports no degradation. This activates the extraction; the forge automerge caveat above remains.
+
+## Re-verification — 2026-10-17 (0.2.0 adopted; one module added)
+
+Both review triggers fired. **Release:** the pin moved to `dream-core = "=0.2.0"` / `dream-gate = "=0.2.0"` (dream-engine PR #6, tag v0.2.0; ADR-DE-008 there), a breaking bump because `GatherInput` gained a field and became `non_exhaustive`; the engine now builds it through `GatherInput::new(...).with_requested(...)`. **Module:** `services/dream-engine/src/wanted.rs` (ADR-2143) is estate-specific by the division ADR-DE-008 draws: dream-core accepts typed `SourceRequest`s and reports what it honoured; parsing the report's **Sources wanted next night** heading, the inbox-question classifier, the store at `$WORKSPACE/.agentbox/dream-source-requests.json`, the three-night expiry and the loop alert are consumer policy and stay here. Nothing that moved out has been duplicated back; `night_e2e` passes against the registry crates (11/11). Verified at 2a739c6d1328914f5d48f4cc9073249d764aca74.
