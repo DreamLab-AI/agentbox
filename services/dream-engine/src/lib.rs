@@ -49,4 +49,5 @@ pub mod records;
 pub mod relay;
 pub mod runner;
 pub mod ruvector;
+pub mod wanted;
 pub mod zone_crypto;

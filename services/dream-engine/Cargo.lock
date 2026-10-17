@@ -576,9 +576,9 @@ checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "dream-core"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f5fea9849830b010fb139c7e60ac3225bb707028c72301ae63a6d1c82378c94"
+checksum = "b83c5194b288d7af21da089aa50628ea0983ab0d829cf1cb7b406e2c079be2a4"
 dependencies = [
  "chrono",
  "dream-gate",
@@ -620,9 +620,9 @@ dependencies = [
 
 [[package]]
 name = "dream-gate"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7c770ff009b95419aa1f17d003bf3ee9f05bc771420744f4f2e1dd0f38d5f0a"
+checksum = "2ac77ed2e6e5f0c6eb39acac56da145988da790f04b126d885c802edf4f2026c"
 dependencies = [
  "chrono",
  "failure-fingerprint",
@@ -630,7 +630,7 @@ dependencies = [
  "pairwise-gate",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "thiserror 2.0.21",
 ]
 

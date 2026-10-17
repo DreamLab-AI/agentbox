@@ -214,6 +214,94 @@ pub fn add(
     Ok(id)
 }
 
+/// The four labelled fields the prompt asks for in every operator item:
+/// `Decision:`, `Why:`, `If approved:`, `If not:`. Any separator between
+/// them (` · `, ` — `, `;`, a newline) is accepted; labels are matched
+/// case-insensitively. `None` when the text does not carry a `Decision:`
+/// and an `If approved:` field.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct DecisionFields {
+    pub decision: String,
+    pub why: String,
+    pub if_approved: String,
+    pub if_not: String,
+}
+
+const LABELS: [(&str, usize); 4] = [
+    ("decision:", 0),
+    ("why:", 1),
+    ("if approved:", 2),
+    ("if not:", 3),
+];
+
+pub fn decision_fields(text: &str) -> Option<DecisionFields> {
+    let lower = text.to_lowercase();
+    let mut marks: Vec<(usize, usize, usize)> = Vec::new(); // (start, end, field)
+    for (label, field) in LABELS {
+        let mut from = 0;
+        while let Some(i) = lower[from..].find(label) {
+            let at = from + i;
+            // A label starts a field only at the start of the text or after a
+            // non-word character, so "indecision:" does not count.
+            let ok_before = at == 0 || !lower.as_bytes()[at - 1].is_ascii_alphanumeric();
+            if ok_before {
+                marks.push((at, at + label.len(), field));
+            }
+            from = at + label.len();
+        }
+    }
+    if marks.is_empty() {
+        return None;
+    }
+    marks.sort();
+    let mut f = DecisionFields::default();
+    for (n, (_, end, field)) in marks.iter().enumerate() {
+        let stop = marks.get(n + 1).map(|m| m.0).unwrap_or(text.len());
+        let val = text[*end..stop]
+            .trim()
+            .trim_end_matches(['·', '—', '-', ';', '|', '*', ' '])
+            .trim_start_matches(['*', ' '])
+            .trim();
+        let slot = match field {
+            0 => &mut f.decision,
+            1 => &mut f.why,
+            2 => &mut f.if_approved,
+            _ => &mut f.if_not,
+        };
+        if slot.is_empty() {
+            *slot = val.to_string();
+        }
+    }
+    if f.decision.is_empty() || f.if_approved.is_empty() {
+        return None;
+    }
+    Some(f)
+}
+
+/// Approval never merges, promotes or ships anything (evaluation is not
+/// promotion). An `If approved:` field that says otherwise is rewritten so
+/// the panel never promises what the engine cannot do; a question without
+/// the four fields is returned unchanged.
+pub fn plain_decision(question: &str) -> String {
+    let Some(mut f) = decision_fields(question) else {
+        return question.to_string();
+    };
+    let lower = f.if_approved.to_lowercase();
+    let promises = ["merge", "promot", "ship", "deploy", "release", "publish"];
+    if promises.iter().any(|p| lower.contains(p)) {
+        f.if_approved = format!(
+            "the next night proceeds on this basis; merging stays a human act ({})",
+            f.if_approved
+        );
+    }
+    let mut out = format!("Decision: {} · Why: {}", f.decision, f.why);
+    out.push_str(&format!(" · If approved: {}", f.if_approved));
+    if !f.if_not.is_empty() {
+        out.push_str(&format!(" · If not: {}", f.if_not));
+    }
+    out
+}
+
 /// Extract "human action recommended" items from a report. Matches the bullet
 /// or numbered lines directly following a line containing the marker
 /// (case-insensitive), stopping at the first non-list line.
@@ -392,5 +480,33 @@ Other text.
     fn short_hash_is_stable() {
         assert_eq!(short_hash("a:b"), short_hash("a:b"));
         assert_ne!(short_hash("a:b"), short_hash("a:c"));
+    }
+
+    #[test]
+    fn decision_fields_parse_any_separator_and_case() {
+        let q = "Decision: add the exit-code test to run-all.sh — Why: it is absent from the suite runner; IF APPROVED: the next night wires it · If not: regressions in that gate go unseen";
+        let f = decision_fields(q).unwrap();
+        assert_eq!(f.decision, "add the exit-code test to run-all.sh");
+        assert_eq!(f.why, "it is absent from the suite runner");
+        assert_eq!(f.if_approved, "the next night wires it");
+        assert_eq!(f.if_not, "regressions in that gate go unseen");
+        assert!(decision_fields("if ACCEPT is upheld, review the draft PR").is_none());
+        assert!(
+            decision_fields("Decision: x — Why: y").is_none(),
+            "needs If approved"
+        );
+    }
+
+    #[test]
+    fn plain_decision_never_promises_a_merge() {
+        let q = "Decision: accept the PR · Why: green · If approved: merge the draft PR · If not: it lapses";
+        let out = plain_decision(q);
+        assert!(
+            out.contains("merging stays a human act (merge the draft PR)"),
+            "{out}"
+        );
+        assert!(out.starts_with("Decision: accept the PR · Why: green"));
+        let free = "if ACCEPT is upheld, review the draft PR";
+        assert_eq!(plain_decision(free), free);
     }
 }

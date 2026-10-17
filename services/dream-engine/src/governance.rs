@@ -397,6 +397,9 @@ fn outcome_sentence(ctx: &CaseContext) -> String {
 
 fn title_for(item: &InboxItem, ctx: &CaseContext) -> String {
     let text = clean_text(&item.text).replace('\n', " ");
+    let text = crate::inbox::decision_fields(&text)
+        .map(|f| f.decision)
+        .unwrap_or(text);
     let when = short_date(&item.date);
     let mut title = if item.kind == "alert" {
         format!("Alert · {} · {when} · {text}", item.repo)
@@ -458,11 +461,25 @@ fn reasoning_for(item: &InboxItem, ctx: &CaseContext) -> String {
             repo = item.repo
         )
     } else {
+        let asked = match crate::inbox::decision_fields(&text) {
+            Some(f) => {
+                let mut a = format!("Decision: {}", f.decision);
+                if !f.why.is_empty() {
+                    a.push_str(&format!("\nWhy: {}", f.why));
+                }
+                a.push_str(&format!("\nIf you approve: {}", f.if_approved));
+                if !f.if_not.is_empty() {
+                    a.push_str(&format!("\nIf you do not: {}", f.if_not));
+                }
+                a
+            }
+            None => text,
+        };
         format!(
             "What happened\n\
              On {when} the dream engine examined{area} {repo}.{finding}{outcome}\n\n\
              What you are being asked\n\
-             {text}\n\n\
+             {asked}\n\n\
              How to answer\n\
              Approve accepts the recommendation as written. Reject declines it (please say \
              why). Amend replaces it with your own instruction. Your answer becomes guidance \
@@ -1699,5 +1716,33 @@ mod tests {
         assert_eq!(report.withdrawn, 0);
         assert_eq!(report.rejected, 0);
         assert_eq!(std::fs::read(&path).unwrap(), before);
+    }
+
+    #[test]
+    fn a_four_field_question_renders_as_labelled_lines_and_titles_by_its_decision() {
+        let item = InboxItem {
+            id: "abcd1234".into(),
+            kind: "question".into(),
+            repo: "VisionFlow".into(),
+            night_id: "2026-10-17-VisionFlow".into(),
+            date: "2026-10-17".into(),
+            text: "Decision: add the exit-code test to the gate runner · Why: it is missing from run-all · If approved: the next night wires it in · If not: a broken gate goes unseen".into(),
+            status: "open".into(),
+            answer: String::new(),
+            last_surfaced: 0,
+            published_event_id: String::new(),
+            decision_event_id: String::new(),
+            withdrawn_event_id: String::new(),
+        };
+        let ev = request_event("ab".repeat(32).as_str(), &item, &CaseContext::default(), 1);
+        let title = ev.tags.iter().find(|t| t[0] == "title").unwrap()[1].clone();
+        assert!(
+            title.ends_with("add the exit-code test to the gate runner"),
+            "{title}"
+        );
+        let body: serde_json::Value = serde_json::from_str(&ev.content).unwrap();
+        let reasoning = body["reasoning"].as_str().unwrap();
+        assert!(reasoning.contains("Decision: add the exit-code test to the gate runner\nWhy: it is missing from run-all\nIf you approve: the next night wires it in\nIf you do not: a broken gate goes unseen"), "{reasoning}");
+        assert!(reasoning.contains("approving does not merge anything"));
     }
 }
