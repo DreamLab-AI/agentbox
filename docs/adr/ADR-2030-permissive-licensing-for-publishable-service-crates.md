@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 7e3e4ebb2abcf9b105a9e392828f67a44e5fc342
+verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -379,3 +379,7 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 Re-read at `33c8b3472a7a` (2026-10-16): the only change to a governed path is `services/dream-engine/Cargo.toml`, which now pins the published `dream-core = "=0.1.0"` and `dream-gate = "=0.1.0"` from crates.io instead of path dependencies. The adapter stays AGPL-3.0-only and the permissive crates now exist on the registry (`pairwise-gate`, `failure-fingerprint`, `dream-gate`, `dream-core`, `dream-cli`, all MIT OR Apache-2.0); the one-way dependency rule is unchanged. `bash scripts/ci/check-crate-licensing.sh` is re-run at this commit.
 
 **Re-verified 2026-10-16 at `7e3e4ebb2abc`.** The only change to a governed path is `services/dream-engine/Cargo.toml` moving the `dream-core`/`dream-gate` pins from `=0.1.0` to `=0.1.1`. Both releases are `MIT OR Apache-2.0` and the service's own declaration is unchanged, so the decision stands. Checked by `git diff <previous verified_commit>..HEAD -- <verified_paths>`.
+
+## Re-verification — 2026-10-17
+
+`services/dream-engine/Cargo.toml` moved to `dream-core = "=0.2.0"` and `dream-gate = "=0.2.0"` (both MIT OR Apache-2.0, published from DreamLab-AI/dream-engine). No copyleft dependency entered. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.

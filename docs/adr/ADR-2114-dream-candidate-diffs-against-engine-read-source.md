@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 33c8b3472a7a711b71f72973225ce7727ec69cf1
+verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/candidate_flow.rs, services/dream-engine/src/prompt.rs, services/dream-engine/src/prompt/nightly.tmpl]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches
@@ -91,3 +91,7 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 Re-read at `50611f4c8a37`: `candidate_flow.rs` now keys the one apply-repair pass on the typed `AttemptError::PatchDidNotApply` instead of a message prefix, and returns the patch actually judged for replay. The single-completion contract, tree-read and repair semantics described here are unchanged.
 
 Re-read at `33c8b3472a7a` (2026-10-16): the later `engine.rs` edits (per-night lock, finished-night skip, injectable model and forge, resolved protected-path extras) do not change the single-completion contract, tree-read or repair semantics; the candidate flow and prompt are untouched since the last stamp.
+
+## Re-verification — 2026-10-17
+
+ADR-2143 extends step 1: paths the previous night listed under **Sources wanted next night** (and a slot's path-shaped scans) are offered to the planner stage first, capped at half the files and half the bytes (dream-core 0.2.0, ADR-DE-008 there). They pass the same checks (relative, no `..`, tracked at the dispatched commit, outside the denylist), are read from the same commit, clipped within the same budgets, and receipted in `source.json` under `requested_honoured` / `requested_refused`. The stage stays fail-open. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.

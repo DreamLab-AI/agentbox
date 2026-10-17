@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 33c8b3472a7a711b71f72973225ce7727ec69cf1
+verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -117,3 +117,7 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 Re-read at `50611f4c8a37`: the later `engine.rs` edits (replay capture through `judge::judge`) do not touch the governance publish and ingest path, the digest or the inbox.
 
 Re-read at `33c8b3472a7a` (2026-10-16): `digest.rs` only gained a `DREAM_HEALTH_PATH` override for the health-record path (default unchanged), and `engine.rs` gained the lock, finished-night skip and an early return when every selected night is held by another engine, so no digest or summary is overwritten from there. The governance publish and ingest path, the digest wording and the inbox are unchanged.
+
+## Re-verification — 2026-10-17
+
+ADR-2143 changes only what a case says, not how it is published or answered: a question in the four-field shape (`Decision · Why · If approved · If not`) is rendered as labelled lines in `reasoning_for` and titled by its Decision; a source-supply ask never becomes a case. Event kinds, tags, the `ActionRequest` content and the decision ingest are unchanged. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.

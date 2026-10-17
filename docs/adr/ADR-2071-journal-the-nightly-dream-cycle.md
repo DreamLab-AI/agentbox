@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 33c8b3472a7a711b71f72973225ce7727ec69cf1
+verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
 verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/records.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
@@ -238,3 +238,7 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 Re-read at `50611f4c8a37` after the adapter gained `judge.rs`: `engine.rs` now judges every night that reaches the gate through `replay::capture` and journals a failed capture as a `replay.capture` effect; no journalled effect was removed or left unpaired.
 
 Re-read at `33c8b3472a7a` (2026-10-16): `engine.rs` gained a per-night lock (a skipped locked night returns before any effect opens), a `finished_night` skip, `runstate::persist` before the forge request, an injectable forge and model, and a journal-damage BLOCKED-ENV path. The git.push effect is still opened and closed around the forge call, no effect was removed or left unpaired, and a locked or finished night journals nothing because it does nothing. `journal.rs` and `records.rs` are unchanged.
+
+## Re-verification — 2026-10-17
+
+ADR-2143 adds one journalled step in `engine.rs`: the source-loop alert write is wrapped in `j.called` / `j.completed` like every other inbox write, fail-open. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.

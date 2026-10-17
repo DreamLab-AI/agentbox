@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 33c8b3472a7a711b71f72973225ce7727ec69cf1
+verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/dispatch.rs, services/dream-engine/src/candidate_flow.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
@@ -109,3 +109,7 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 Re-read at `50611f4c8a37`: the later edits to `engine.rs` and `candidate_flow.rs` (typed apply error, replay capture) leave the depth law, the `SshRunner` wrapper and the receipt classification as described.
 
 Re-read at `33c8b3472a7a` (2026-10-16): the later `engine.rs` edits (per-night lock, finished-night skip, injectable forge, journal-damage BLOCKED-ENV, evaluator paths resolved against the baseline tree, `DREAM_ANNEXE_MIN_FREE_GIB` override) leave the depth law, the `SshRunner` wrapper and the receipt classification as described; the minimum free space is now read from the environment with the previous constant as the default.
+
+## Re-verification — 2026-10-17
+
+The `engine.rs` edits for ADR-2143 touch the source stage and the question queue only; annexe depth, receipt grading and ledger cell provenance are unchanged. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.

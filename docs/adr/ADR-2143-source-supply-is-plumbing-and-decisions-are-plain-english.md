@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: bb9cdbacbc9dbc4ae64edd0fcdca061c1f5e67c4
+verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
 verified_paths: [services/dream-engine/src/wanted.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/governance.rs, services/dream-engine/src/prompt/nightly.tmpl, services/dream-engine/Cargo.toml]
 owner: jjohare
 review_trigger: a change to the nightly prompt's Human-action shape, to the wanted store's expiry, to dream-core's requested-source contract (ADR-DE-008), or a governance case that again asks the operator for a file
