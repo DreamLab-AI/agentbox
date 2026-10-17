@@ -20,8 +20,9 @@
 # ported from VisionClaw's `vault` byte-for-byte (Ontomark ADR-OM-007). `vault`
 # keeps only `propose` and its Nostr transport, so both stay baked and the
 # ontology-augment skill routes every read verb to `ontomark`, falling back to
-# `vault` only on an image built before this pin. 0.3.0 also reads the flat
-# visionGraph vaults (pages at the vault root); 0.2.x cannot.
+# `vault` only on an image built before this pin. 0.3.0 reads the flat
+# visionGraph vaults (pages at the vault root); 0.2.x cannot. 0.4.0 also runs
+# on any plain Obsidian vault (Ontomark ADR-OM-008) and is `cargo install ontomark`.
 #
 # Repinning
 # ---------
@@ -29,8 +30,8 @@
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
 # binary itself is static-pie musl and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, version ? "0.3.0"
-, hash ? "sha256-zJqOW/QPn+SGhgOQrfky1lKPcLX4x/5SiD5pncnbpEw=" }:
+{ lib, pkgs, version ? "0.4.0"
+, hash ? "sha256-byHkRoUyiDCJ1hKmnJI9ZpZHRGQrO3rOuqlICLpJwu4=" }:
 
 pkgs.stdenvNoCC.mkDerivation {
   pname = "ontomark";
