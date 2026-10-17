@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: 426b432501527e70cd61a1e5af19bc917b40af4e
 verified_paths: [skills/ontology-augment/scripts/ontology-augment.sh, skills/ontology-augment/SKILL.md, skills/ontology-augment/references/REFERENCE.md, skills/ontology-augment/references/EXAMPLES.md, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: VisionClaw ADR-2128 (versionIRI) or ADR-2127 (tri-valued answers) landing; an agent decision traced to an empty Loom or vault result; the ontology-augment skill's output format changing
@@ -68,3 +68,11 @@ Citation correction: decision 4's write-governance section is now `SKILL.md:159-
 `bash tests/skills/ontology-augment-grounding.test.sh` gives 87 passed, 0 failed at `044f1d689`. Between `2f80fa493` and this commit it gave 86 passed, 1 failed (`validate: still enveloped with generation`) on any host with a real `ontomark` on `PATH`: since `2f80fa493` `validate` resolves `ontomark` through `command -v` ahead of the test's stub `vault`, and the real binary refuses the stub fixture. That was a test-isolation gap, not a contract break, and `044f1d689` closes it by putting a stub `ontomark` first on `PATH`. Against a real vault, `ontomark --repo <visionGraph> validate --json` emits JSON and is enveloped.
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+## Re-verification — 2026-10-17 at `426b43250` (ontomark 0.4.0 repin, agentbox PR #31)
+
+The corpus verbs `find`, `retrieve` and `tree` now go through `ONTOMARK()` (ontomark 0.4.0, which carries them ported byte-for-byte from `vault`; Ontomark ADR-OM-007), with `vault` as the fallback only on an image built before the pin. The grounding contract is unchanged: silence is `silent`, never negative; every grounded answer carries `generation` (the local `.generation.json` for corpus calls, the Loom headers for Loom calls); the empties are `answered`, `silent`, `degraded` and `contradicted`; negation is flagged; writes stay governed. `neighbours` still falls back to a corpus `tree` only when the Loom did not answer.
+
+Format change, as Consequences 3 anticipated: `source` gains the value `"ontomark"`, and corpus answers now report it (`"vault"` only through the fallback). The stderr fallback line names `ontomark tree`. Parsers that matched `source == "vault"` move with it. `SKILL.md` examples name `ontomark find|retrieve|tree`.
+
+`bash tests/skills/ontology-augment-grounding.test.sh` gives 87 passed, 0 failed at `426b43250`, with a stub `ontomark` answering the corpus verbs and the stub `vault` left for the fallback path. Re-verified by `git diff 044f1d689..426b43250 -- <governed paths>` and by reading each decision against the script. The decision holds.
