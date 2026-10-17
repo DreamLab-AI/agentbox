@@ -4,10 +4,10 @@ title: Source supply is plumbing, not a decision; every operator question is fou
 date: 2026-10-17
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
+verified_commit: 96e835958dc3c8f90df7f4a06bd1dfd92b317943
 verified_paths: [services/dream-engine/src/wanted.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/governance.rs, services/dream-engine/src/prompt/nightly.tmpl, services/dream-engine/Cargo.toml]
 owner: jjohare
 review_trigger: a change to the nightly prompt's Human-action shape, to the wanted store's expiry, to dream-core's requested-source contract (ADR-DE-008), or a governance case that again asks the operator for a file
@@ -27,5 +27,9 @@ On 2026-10-17 the forum governance panel (ADR-2115) held 57 open cases. Nine of 
 ## Consequences
 - The panel shows decisions only. The operator sees a source request only as the loop alert in (1), which means the night is asking for the wrong window or something else blocks it.
 - A reviewer who did not watch the night can read what is asked, why, and what each answer does, without the engine's vocabulary.
-- Prompt golden fixture updated; 160 unit tests and the end-to-end night pass against 0.2.0.
+- Prompt golden fixture updated; 165 unit tests and all 11 end-to-end night tests pass against 0.2.0.
 - One-off migration on 2026-10-17: the nine open source-supply cases were turned into store entries and closed as superseded.
+
+## Activation evidence (2026-10-17)
+
+The image built from `96e835958` is active with a clean source receipt. Nix passed 165 unit tests and 11 whole-night tests against dream-core/dream-gate 0.2.0; the supervised dream-engine daemon is RUNNING and readiness has no degradation. This activates the new prompt, parser and source-request plumbing; no production nightly cycle was forced as part of deployment.
