@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 426b432501527e70cd61a1e5af19bc917b40af4e
+verified_commit: e8d59c23c265b9a8e1f055884b1b9721299aa614
 verified_paths: [scripts/hp-loom-reconcile.sh, config/entrypoint-unified.sh, agentbox.toml, management-api/lib/system-manifest.js, schema/agentbox.toml.schema.json, tests/config/hp-loom-reconcile.test.sh, skills/ontology-augment/scripts/ontology-augment.sh, tests/skills/ontology-augment-grounding.test.sh]
 owner: jjohare
 review_trigger: a reconcile failure or change to the builder pin or published-generation schema; any proposal to run an agentbox on the HP again; any proposal for the HP to read the vault directly; a second consumer of the built generation
@@ -149,3 +149,5 @@ exporting the object store would have exposed every committed `working/` page to
 `lib/ontomark.nix` pins ontomark 0.4.0 (static CLI, sha256 `6f21e446…`), replacing the 0.2.0 noted under Consequences. 0.3.0 and later read the flattened visionGraph vaults (pages at the vault root, Ontomark ADR-OM-007), which visionGraph `main` has carried since 2026-10-16, so a 0.2.0 image would find no pages: the repin is what keeps D1's canonical vault readable here. The ontology-augment skill routes `find`, `retrieve` and `tree` to `ontomark`; `vault` remains for `propose` alone. D6 holds: the live Loom `/mcp` is still the primary route for `neighbours` and `paths`, and the corpus `tree` fallback fires only when the Loom did not answer, now via `ontomark tree` with `source: "ontomark"`.
 
 `bash tests/skills/ontology-augment-grounding.test.sh`: 87 passed, 0 failed at `426b43250`. The decision holds; the image rebuild that bakes 0.4.0 is pending with the owner.
+
+**Re-verified 2026-10-17 at `e8d59c23c`.** The only change on a governed path since the previous verification is the flat-vault pages default (agentbox `a2c6d5520`, ADR-2028 amendment; Ontomark ADR-OM-007): `[vault].pages = "."` in `agentbox.toml` and the default manifest, the schema default and description for that key, the entrypoint deriving `VAULT_PAGES`/`VAULT_WORKING_PAGES` from it, and the ontology skills' corpus-verb names (`ontomark find|retrieve|tree`). None of it touches this record's decision. Re-verified by `git diff 426b43250..e8d59c23c -- <verified_paths>`; no re-implementation was needed.
