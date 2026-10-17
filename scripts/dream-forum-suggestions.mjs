@@ -158,6 +158,27 @@ function saveState(state) {
   writeFileSync(STATE_FILE, JSON.stringify(state, null, 2) + '\n');
 }
 
+// The committed ledger is the second record of what this tenant has already
+// done. The state file is the first, but it lives outside the repository and
+// was lost once (2026-10-12): with an empty `repliedEventIds` and an empty
+// `clarify.pending`, every post in the thread looked new again and the gate
+// re-DMed the same members about items triaged in August and September —
+// ADR-2088's "one DM per item, ever" held only as long as the state file did.
+// Every row the ledger has ever written is therefore treated as handled: an
+// event whose 12-hex prefix appears in a row is never re-triaged and never
+// re-asked, whatever the state file says. The one exception is an item that is
+// parked AND has a reply in hand (`clarified`): its row says
+// `awaiting-clarification`, and the reply is exactly what lets it proceed.
+function ledgerKnownIds() {
+  const known = new Set();
+  if (!existsSync(QUEUE_FILE)) return known;
+  for (const line of readFileSync(QUEUE_FILE, 'utf8').split('\n')) {
+    const m = /^\|\s*\d{4}-\d{2}-\d{2}\s*\|\s*([0-9a-f]{12})\s*\|\s*[0-9a-f]{8}\s*\|\s*(action|defer|reject|awaiting-clarification|stale)\s*\|/.exec(line);
+    if (m) known.add(m[1]);
+  }
+  return known;
+}
+
 function queueHandoff(post, verdict) {
   if (!existsSync(QUEUE_FILE)) {
     mkdirSync(dirname(QUEUE_FILE), { recursive: true });
@@ -348,10 +369,22 @@ async function main() {
     // 3. New user posts: not JJ, not already replied to, not the operator's own
     //    seed post (the root), capped per night.
     const replied = new Set(state.repliedEventIds || []);
+    const ledgerKnown = ledgerKnownIds();
+    // A post the ledger already records is handled unless it is parked with a
+    // reply in hand (see ledgerKnownIds). Checked before the state file so a
+    // reset state file cannot resurrect a decided or already-asked item.
+    const ledgerHandled = (e) => {
+      if (!ledgerKnown.has(e.id.slice(0, 12))) return false;
+      const parked = clarify.findPending(clarifyState, e.id);
+      return !(parked && parked.status === clarify.STATUS_CLARIFIED);
+    };
+    const ledgerSkipped = thread.filter((e) => e.id !== state.rootId && e.pubkey !== JJ_PUBKEY && !replied.has(e.id) && ledgerHandled(e)).length;
+    if (ledgerSkipped > 0) log('INFO', `${ledgerSkipped} post(s) already in the ledger but not in the state file — treated as handled, not re-asked`);
     const candidates = thread.filter((e) =>
       e.id !== state.rootId
       && e.pubkey !== JJ_PUBKEY
       && !replied.has(e.id)
+      && !ledgerHandled(e)
       // skip posts that are themselves JJ-thread replies to a triaged post
       && !(e.tags || []).some((t) => t[0] === 'p' && t[1] === JJ_PUBKEY)
       // Parked items are excluded BEFORE the nightly cap, not inside the loop:

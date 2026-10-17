@@ -4,6 +4,14 @@ Mined nightly from the community feature-suggestions thread. `action` rows are
 candidates for the next engineering night of the target repo; `defer` rows need
 the operator. Nothing here merges or ships without the human gate.
 
+> **Operator note, 2026-10-17.** Every `awaiting-clarification` row dated 2026-10-13 to
+> 2026-10-17 is an erroneous re-ask: the tenant's state file was reset on 2026-10-12, so the
+> posts triaged on 2026-08-28..09-16 (and the five first asked 09-23..10-05) looked new again
+> and the same two members were DMed about items already decided or shipped. The decisions in
+> the first block stand. Those 29 parked entries were marked `stale` by hand so a late reply
+> cannot revive them, and the tenant now treats any event already in this ledger as handled
+> (`ledgerKnownIds` in `scripts/dream-forum-suggestions.mjs`), state file or no state file.
+
 | Date | Event | Author | Decision | Target | Suggestion | Reason |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-08-28 | 076e71cb493f | a3af4977 | action | agentbox | Creating DM messages is under the fold!! Remove unnecessary padding | Pure UI spacing/layout fix to bring DM composition above the fold; low-risk, no sensitive surfaces touched. |
@@ -67,3 +75,10 @@ the operator. Nothing here merges or ships without the human gate.
 | 2026-10-15 | ae12bbc52d1d | a3af4977 | awaiting-clarification | — | Search seems completely broken - unclear if just on mobile... | DM 6b8007b35167: What are the exact steps to reproduce it, starting from a fresh page or session? What did you expect to happen, and what happened instead? |
 | 2026-10-15 | 0ed517915f9a | a3af4977 | awaiting-clarification | — | Can't @ other members in posts | DM a4a626406e48: Which exact page, screen or component do you mean — can you name or link it? Where does this happen — web, mobile, the CLI, or somewhere else? What did you expect to happen, and what happened instead? |
 | 2026-10-15 | 542094a5ded1 | a3af4977 | awaiting-clarification | — | Replies and unread notification is not working. - ingress particularly | DM e4e9a4daf0e2: What are the exact steps to reproduce it, starting from a fresh page or session? Where does this happen — web, mobile, the CLI, or somewhere else? What did you expect to happen, and what happened instead? |
+| 2026-10-17 | e2366ee25bbd | a3af4977 | awaiting-clarification | — | Jarvis should DM person raising issues to grill on unclear detail before taking action | DM 233650ff7b48: Which exact page, screen or component do you mean — can you name or link it? Where does this happen — web, mobile, the CLI, or somewhere else? What did you expect to happen, and what happened instead? |
+| 2026-10-17 | 4c892bfb4f55 | b4165401 | awaiting-clarification | — | I think it's done some | DM e3745b7df203: Which exact page, screen or component do you mean — can you name or link it? Where does this happen — web, mobile, the CLI, or somewhere else? What did you expect to happen, and what happened instead? |
+| 2026-10-17 | c2c6a5d78279 | a3af4977 | awaiting-clarification | — | Long press to see a list of who left what emoji response | DM 7733523aff1f: Which exact page, screen or component do you mean — can you name or link it? Where does this happen — web, mobile, the CLI, or somewhere else? What did you expect to happen, and what happened instead? |
+| 2026-10-17 | e79d02c281b9 | a3af4977 | awaiting-clarification | — | Search still inconclusive: steps to reproduction - I did a post called Glastonbury. Searched for it and couldn't find it. | DM e967321781bc: Where does this happen — web, mobile, the CLI, or somewhere else? What did you expect to happen, and what happened instead? |
+| 2026-10-17 | af6c9f73731a | a3af4977 | awaiting-clarification | — | tips are too close to active messaging / emojis.  Would be better on top - with edit / delete / reply | DM 821715e0b8e5: Which exact page, screen or component do you mean — can you name or link it? Where does this happen — web, mobile, the CLI, or somewhere else? What did you expect to happen, and what happened instead? |
+| 2026-10-17 | 3f67cc8ae1fd | b4165401 | awaiting-clarification | — | will move it to bottom right of posts | DM 9081f99ab01f: Which exact page, screen or component do you mean — can you name or link it? Where does this happen — web, mobile, the CLI, or somewhere else? What did you expect to happen, and what happened instead? |
+| 2026-10-17 | 230a3a95b6c4 | b4165401 | awaiting-clarification | — | Done, try it | DM d4d9befb3f36: Which exact page, screen or component do you mean — can you name or link it? Where does this happen — web, mobile, the CLI, or somewhere else? What did you expect to happen, and what happened instead? |

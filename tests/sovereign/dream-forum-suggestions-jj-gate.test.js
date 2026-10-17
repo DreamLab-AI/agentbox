@@ -156,6 +156,43 @@ describe('dream-forum-suggestions honours the JunkieJarvis gate for clarifying D
     expect(out.ledger).toMatch(/awaiting-clarification \|/);
   }, 60000);
 
+  test('a post already in the committed ledger is never re-asked when the state file is lost', () => {
+    // 2026-10-12: the state file was reset and the gate re-DMed every member about
+    // items triaged weeks earlier. The ledger row is the durable record.
+    const fx = fixture({ sovereign_mesh: { junkiejarvis: true, junkiejarvis_clarify_before_acting: true } });
+    const ledgerFile = path.join(fx.agentbox, 'docs/dream-cycle/FORUM-SUGGESTIONS.md');
+    write(ledgerFile, [
+      '# Forum feature-suggestion handoffs (dream-forum-suggestions tenant)',
+      '',
+      '| Date | Event | Author | Decision | Target | Suggestion | Reason |',
+      '| --- | --- | --- | --- | --- | --- | --- |',
+      `| 2026-09-15 | ${VAGUE_ID.slice(0, 12)} | ${AUTHOR.slice(0, 8)} | awaiting-clarification | — | it's broken, please fix | DM 0123456789ab: Where does this happen? |`,
+      '',
+    ].join('\n'));
+    const out = run(fx);
+    expect(out.dms).toEqual([]);
+    expect(out.publishes).toEqual([]);
+    expect(out.state.clarify.pending[VAGUE_ID]).toBeUndefined();
+    expect(out.stdout).toMatch(/1 post\(s\) already in the ledger/);
+    expect(out.stdout).toMatch(/0 new suggestion\(s\) to triage/);
+    // The ledger gained no second row for the same event.
+    expect(out.ledger.split(VAGUE_ID.slice(0, 12)).length - 1).toBe(1);
+  }, 60000);
+
+  test('a decided row (action/defer/reject) in the ledger also counts as handled', () => {
+    const fx = fixture({ sovereign_mesh: { junkiejarvis: true, junkiejarvis_clarify_before_acting: true } });
+    const ledgerFile = path.join(fx.agentbox, 'docs/dream-cycle/FORUM-SUGGESTIONS.md');
+    write(ledgerFile, [
+      '| Date | Event | Author | Decision | Target | Suggestion | Reason |',
+      '| --- | --- | --- | --- | --- | --- | --- |',
+      `| 2026-08-28 | ${VAGUE_ID.slice(0, 12)} | ${AUTHOR.slice(0, 8)} | reject | forum | it's broken, please fix | nothing concrete |`,
+      '',
+    ].join('\n'));
+    const out = run(fx);
+    expect(out.dms).toEqual([]);
+    expect(out.state.clarify.pending[VAGUE_ID]).toBeUndefined();
+  }, 60000);
+
   test('the manifest is the only switch: JUNKIEJARVIS_ENABLED in the env is ignored', () => {
     const offEnvOn = run(fixture({ sovereign_mesh: { junkiejarvis: false } }), { JUNKIEJARVIS_ENABLED: 'true' });
     expect(offEnvOn.dms).toEqual([]);

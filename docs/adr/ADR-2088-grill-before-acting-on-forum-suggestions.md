@@ -168,3 +168,11 @@ Re-verified by `git diff e434a7a59..275e12356 -- <verified_paths>`. No re-implem
 ### Re-verification — 2026-10-03 (ruflo memory governed, 1fc26c786)
 
 `275e12356..1fc26c786`: one governed change, `management-api/lib/junkiejarvis-agent.js` (`658085870`): the inner-rumor dedup becomes `rumor.id && this._dedup(rumor.id)`, so a rumor sealed without an `id` (the nostr-bbs kit before its rumor-id fix seals the bare unsigned template) is no longer counted as already seen; the wrap-id dedup still bounds replays. Before this, every such DM was dropped before the clarify gate saw it; now it reaches `_handleDm` and the grill-before-acting path like any other. The other seven governed paths did not move. The decision — grill the author before acting on an unclear item — is not altered; it now applies to kit-sent DMs that previously never arrived. The clarify, dm-send and jj-gate suites pass under Jest (3 suites, 70 tests) at HEAD. Re-verified by `git diff 275e12356..1fc26c786 -- <verified_paths>`.
+
+## Disposition — 2026-10-17 (ledger is the second record of "asked once")
+
+- **Observed:** the tenant's state file (`$WORKSPACE/.agentbox/dream-forum-suggestions.json`) was reset on 2026-10-12. With `repliedEventIds` and `clarify.pending` empty, nights 10-13..10-17 re-asked 29 already-triaged items, 8 per night, breaking "one DM per item, ever".
+- **Fix:** `scripts/dream-forum-suggestions.mjs` now reads `docs/dream-cycle/FORUM-SUGGESTIONS.md` (`ledgerKnownIds`) and treats every event with a row — any decision — as handled before the state file is consulted. The only exception is an item parked with a reply in hand (`clarified`), which proceeds as before. Regression: `tests/sovereign/dream-forum-suggestions-jj-gate.test.js` (6/6).
+- **State repair:** the 29 erroneous parked entries were set to `stale` by the operator so a late reply cannot revive them.
+- **Still open:** what reset the file. Nothing in the repository writes that path except the tenant; the 10-12 ab-p6 landing (#24) and 10-13 HP overlay retirement (#26) are the nearest changes. Status fields unchanged.
+
