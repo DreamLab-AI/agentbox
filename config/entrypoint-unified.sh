@@ -348,7 +348,7 @@ export GIT_CONFIG_GLOBAL="${GIT_CONFIG_GLOBAL:-/home/devuser/.config/git/config}
 # from PID 1. PATH stays store-only for root (sanitised above the stage
 # dispatch); the workspace cargo bin reaches devuser shells via Phase 8 only.
 _ab_vault_resolve
-# Custody X-1 step 1: [security].role_isolation (boot-class, default false). Read
+# Custody X-1 step 1: [security].role_isolation (rebuild-class since ER-9: the devuser sudo drop is baked; default false). Read
 # once here and exported, so supervisord and every program see the same value;
 # the manifest wins over anything inherited from the compose environment.
 AGENTBOX_ROLE_ISOLATION="$(_ab_toml_bool security role_isolation)"
