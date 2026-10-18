@@ -82,7 +82,7 @@ manifest paths are never duplicated. The same run emits the delivery plan
 `/etc/agentbox/role-secrets.tsv`. The build fails if a secret-bearing program has no role, if a
 role program is not `user=devuser` today, or if a source is not a literal path.
 
-`[security].role_isolation` (default `false`) is **boot-class**. Accounts, both configs, the plan
+`[security].role_isolation` (default `false`) was specified as **boot-class**; it is now catalogued **rebuild-class** (ER-9, see the sudo-route note below). Accounts, both configs, the plan
 and the mount ship in every image, and the entrypoint picks at its final `exec`. The image that
 first carries this change needs one rebuild.
 
@@ -599,3 +599,7 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 **Re-verified 2026-10-17 at `e8d59c23c`.** The only change on a governed path since the previous verification is the flat-vault pages default (agentbox `a2c6d5520`, ADR-2028 amendment; Ontomark ADR-OM-007): `[vault].pages = "."` in `agentbox.toml` and the default manifest, the schema default and description for that key, the entrypoint deriving `VAULT_PAGES`/`VAULT_WORKING_PAGES` from it, and the ontology skills' corpus-verb names (`ontomark find|retrieve|tree`). None of it touches this record's decision. Re-verified by `git diff efa293b87..e8d59c23c -- <verified_paths>`; no re-implementation was needed.
 
 Re-verified 2026-10-17 against `f33c4fc030d199ce957f7ba274d428bc6475c159`: the governed-path delta from the flat-vault amendment is the DeepSeek model/default and MCP metadata refresh plus ownership reconciliation for the OpenCode state directory. The reviewed change preserves this record’s capability, identity, memory, vault and isolation invariants; status axes are unchanged.
+
+### ER-9: the gate is rebuild-class
+
+`management-api/lib/system-manifest.js` classified `role-isolation` as `boot`, but `config/bake-devuser-privilege.sh` takes the build-time flag (`roleIsolationBaked` in `flake.nix`) and, at 0, leaves devuser in `wheel` with `NOPASSWD: ALL` on a read-only rootfs. A boot-time flip alone therefore ends in `degraded:devuser-sudo`, so the honest class is `rebuild`. The CATALOGUE entry, `docs/user/configuration.md` and `tests/config/role-isolation-class.test.cjs` now say so. The configs, scrub and delivery are still read at boot; the class records the strictest step.

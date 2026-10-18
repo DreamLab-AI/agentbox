@@ -814,7 +814,7 @@ Hardening baseline is applied unconditionally. Feature-specific privilege expans
 
 ```toml
 [security]
-role_isolation = false   # boot-class; keep off until the rehearsal passes
+role_isolation = false   # rebuild-class (devuser's sudo drop is baked); keep off until the rehearsal passes
 ```
 
 On, the boot does the following:
@@ -835,8 +835,10 @@ The roles, uids and secret mapping live in `config/role-accounts.json`. Off, the
 boot is today's. Problems are logged with `ROLE-ISOLATION-` markers and recorded
 in `/run/secrets/role-isolation.state`. None of them stops the boot.
 
-The first image that carries the flag needs `./agentbox.sh rebuild`. After that
-the flag applies on a restart. Several pieces are not on the branch yet (at-rest
+The flag is rebuild-class: devuser's sudo route is removed at build time from the
+build-time flag, so turning it on needs `./agentbox.sh rebuild` with the flag set. A
+restart alone applies the secrets, scrub and supervisor pick but leaves
+`degraded:devuser-sudo`. Several pieces are not on the branch yet (at-rest
 custody, the W3b consumer cutover, the producer state move), so with the flag on
 some programs fail closed. Follow
 [Turning on role_isolation](../developer/role-isolation-runbook.md), and keep the
