@@ -5,8 +5,8 @@
 # used to boot it, and two flake updates merged unrehearsed. This script does, on the host:
 #
 #   1. fetch the branch into a THROWAWAY git worktree (never the live checkout); refuse if absent
-#   2. build the image from that worktree with the repo's own entry point (`nix build .#runtime`,
-#      as `./agentbox.sh up --build` does) and load it under a distinct tag
+#   2. build the image from that worktree with the repo's own entry point (`nix build .#<variant>`,
+#      default runtime, as `./agentbox.sh up --build` does) and load it under a distinct tag
 #      agentbox:rehearsal-<sha12>. It deliberately does NOT use `.#runtime.copyToDockerDaemon`,
 #      which writes agentbox:runtime-<system>, the tag the live compose service runs
 #   3. boot it as a throwaway container (name agentbox-rehearsal-<sha12>) on its own --internal
@@ -34,11 +34,15 @@
 # but /etc/agentbox.toml (compose binds it), so the branch's agentbox.toml is bound read-only;
 # MANAGEMENT_API_KEY is mandatory (management-api exits without it); /home/devuser/workspace,
 # /var/lib/ruvector, /var/lib/solid, /var/lib/agentbox and /var/lib/nostr-relay are tmpfs so
-# /ready's path checks can pass without touching a live volume. No ruvector-postgres, GPU or
-# sidecar is started, so gates that need them are not_evaluable or fail honestly.
+# /ready's path checks can pass without touching a live volume; NOSTR_RELAYS is a dead loopback URL
+# (the manifest sets publish_agent_events, so /ready wants a declared relay; the network is internal
+# anyway); adapters.memory = external-pg needs a database, so the branch's own pinned
+# ruvector-postgres image runs as a second throwaway with a random password. No GPU or other sidecar
+# is started, so gates that need them are not_evaluable or fail honestly.
 #
 #   --branch NAME      default deps/nix-flake-update
 #   --remote NAME      default origin
+#   --variant NAME     image variant to rehearse: runtime (default, what `up --build` ships), desktop, full
 #   --boot-timeout S   default 600
 #   --keep             keep container, network and image for inspection
 #   --journal          POST per-gate entries to the LIVE management-api
@@ -63,6 +67,7 @@ CURL="${XR_CURL:-curl}"
 NIX="${XR_NIX:-nix}"
 POLL="${XR_POLL:-5}"
 BRANCH=deps/nix-flake-update
+VARIANT=runtime
 REMOTE=origin
 BOOT_TIMEOUT=600
 KEEP=0; JOURNAL=0; ALLOW_DIRTY=0
@@ -79,6 +84,7 @@ die() { echo "flake-update-rehearsal.host: $*" >&2; exit 3; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --branch) BRANCH="${2:?--branch needs a name}"; shift ;;
+    --variant) VARIANT="${2:?--variant needs a name}"; shift ;;
     --remote) REMOTE="${2:?--remote needs a name}"; shift ;;
     --boot-timeout) BOOT_TIMEOUT="${2:?--boot-timeout needs seconds}"; shift ;;
     --live-url) LIVE_URL="${2:?--live-url needs a URL}"; shift ;;
@@ -91,6 +97,7 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+case "$VARIANT" in runtime|desktop|full) ;; *) die "--variant must be runtime, desktop or full" ;; esac
 case "$BOOT_TIMEOUT" in ''|*[!0-9]*) die "--boot-timeout must be whole seconds" ;; esac
 
 in_container() {
@@ -114,24 +121,26 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/x4-rehearsal.XXXXXX")" || die "mktemp failed"
 WT="$WORK/worktree"
 ROWS="$WORK/rows.jsonl"; : >"$ROWS"
 STARTED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-SHA=unknown; SHA12=unknown; TAG=""; CNAME=""; NET=""; WT_ADDED=0; IMAGE_LOADED=0; NET_MADE=0; CTR_MADE=0
+SHA=unknown; SHA12=unknown; TAG=""; CNAME=""; PGNAME=""; PG_MADE=0; NET=""; WT_ADDED=0; IMAGE_LOADED=0; NET_MADE=0; CTR_MADE=0
 LIVE_TAG_BEFORE=""; LIVE_TAG_AFTER=""; NOTE=""
 API_KEY="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+PG_PASSWORD="$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 
 row() { # row <gate> <pass|fail|not_evaluable> <detail> [evidence-json]
   jq -nc --arg g "$1" --arg v "$2" --arg d "$3" --argjson e "${4:-null}" '{gate:$g,verdict:$v,detail:$d,evidence:($e // {})}' >>"$ROWS"
 }
 log() { echo "x4: $*"; }
-redact() { sed "s/$API_KEY/<rehearsal-key>/g"; }
+redact() { sed -e "s/$API_KEY/<rehearsal-key>/g" -e "s/$PG_PASSWORD/<rehearsal-pg>/g"; }
 
 teardown() {
   # The worktree always goes; container, network and image go unless --keep.
   if [ "$KEEP" = 0 ]; then
     [ "$CTR_MADE" = 1 ] && "$DOCKER" rm -fv "$CNAME" >/dev/null 2>&1
+    [ "$PG_MADE" = 1 ] && "$DOCKER" rm -fv "$PGNAME" >/dev/null 2>&1
     [ "$NET_MADE" = 1 ] && "$DOCKER" network rm "$NET" >/dev/null 2>&1
     [ "$IMAGE_LOADED" = 1 ] && "$DOCKER" rmi -f "$TAG" >/dev/null 2>&1
   elif [ "$CTR_MADE$IMAGE_LOADED" != 00 ]; then
-    log "--keep: container $CNAME, network $NET, image $TAG left in place; remove with: $DOCKER rm -fv $CNAME; $DOCKER network rm $NET; $DOCKER rmi -f $TAG"
+    log "--keep: container $CNAME (+ $PGNAME), network $NET, image $TAG left in place; remove with: $DOCKER rm -fv $CNAME $PGNAME; $DOCKER network rm $NET; $DOCKER rmi -f $TAG"
   fi
   if [ "$WT_ADDED" = 1 ]; then
     "$GIT" -C "$REPO" worktree remove --force "$WT" >/dev/null 2>&1
@@ -171,18 +180,18 @@ finish() { # finish <VERDICT> <code> [reason]
   session="x4-$(date -u -d "$finished" +%Y%m%dT%H%M%SZ)-$SHA12"
   ROWS_JSON="$(jq -sc '.' "$ROWS")"
   journal_post "$session"
-  LIVE_TAG_AFTER="$("$DOCKER" image inspect "agentbox:runtime-${SYSTEM_TAG:-x86_64-linux}" --format '{{.Id}}' 2>/dev/null || true)"
+  LIVE_TAG_AFTER="$("$DOCKER" image inspect "agentbox:${VARIANT}-${SYSTEM_TAG:-x86_64-linux}" --format '{{.Id}}' 2>/dev/null || true)"
   LIVE_UNTOUCHED=true
   [ -n "$LIVE_TAG_BEFORE" ] && [ "$LIVE_TAG_BEFORE" != "$LIVE_TAG_AFTER" ] && LIVE_UNTOUCHED=false
   receipt="$RECEIPT_DIR/x4-rehearsal-$(date -u -d "$finished" +%Y%m%dT%H%M%SZ).json"
   jq -n --arg verdict "$verdict" --argjson code "$code" --arg reason "$reason" --arg branch "$BRANCH" --arg sha "$SHA" \
-    --arg tag "$TAG" --arg cname "$CNAME" --arg s "$STARTED" --arg f "$finished" --argjson keep "$([ "$KEEP" = 1 ] && echo true || echo false)" \
+    --arg tag "$TAG" --arg variant "$VARIANT" --arg cname "$CNAME" --arg s "$STARTED" --arg f "$finished" --argjson keep "$([ "$KEEP" = 1 ] && echo true || echo false)" \
     --arg commit "$("$GIT" -C "$REPO" rev-parse HEAD 2>/dev/null || echo unknown)" --argjson rows "$ROWS_JSON" --argjson journal "$JOURNAL_JSON" \
     --argjson untouched "$LIVE_UNTOUCHED" --arg op "$(id -un 2>/dev/null || echo unknown)" --argjson timeout "$BOOT_TIMEOUT" '{
       schema: "agentbox/x4-rehearsal@1",
       verdict: $verdict, exit_code: $code,
       branch: $branch, branch_sha: $sha,
-      image_tag: $tag, container: $cname, kept: $keep,
+      variant: $variant, image_tag: $tag, container: $cname, kept: $keep,
       live_image_untouched: $untouched,
       rehearsal_commit: $commit, boot_timeout_s: $timeout,
       started_at: $s, finished_at: $f, operator: $op,
@@ -213,7 +222,7 @@ fi
 "$GIT" -C "$REPO" fetch --quiet "$REMOTE" "$BRANCH" >/dev/null 2>&1 || { row branch fail "git fetch $REMOTE $BRANCH failed"; finish COULD_NOT_RUN 3 "fetch failed"; }
 SHA="$("$GIT" -C "$REPO" rev-parse FETCH_HEAD 2>/dev/null)"
 case "$SHA" in [0-9a-f]*) ;; *) row branch fail "could not resolve the fetched commit"; finish COULD_NOT_RUN 3 "unresolved sha" ;; esac
-SHA12="${SHA:0:12}"; TAG="agentbox:rehearsal-$SHA12"; CNAME="agentbox-rehearsal-$SHA12"; NET="agentbox-rehearsal-$SHA12"
+SHA12="${SHA:0:12}"; TAG="agentbox:rehearsal-$SHA12"; CNAME="agentbox-rehearsal-$SHA12"; NET="agentbox-rehearsal-$SHA12"; PGNAME="agentbox-rehearsal-pg-$SHA12"
 if ! "$GIT" -C "$REPO" worktree add --detach "$WT" "$SHA" >/dev/null 2>&1; then
   row branch fail "could not create the throwaway worktree"; finish COULD_NOT_RUN 3 "worktree add failed"
 fi
@@ -222,32 +231,53 @@ row branch pass "fetched $BRANCH at $SHA12 into a throwaway worktree"
 
 # Guard evidence: the live image tag must be byte-identical before and after.
 SYSTEM_TAG="$("$DOCKER" version --format '{{.Server.Os}}/{{.Server.Arch}}' 2>/dev/null | sed 's|linux/amd64|x86_64-linux|;s|linux/arm64|aarch64-linux|')"
-LIVE_TAG_BEFORE="$("$DOCKER" image inspect "agentbox:runtime-${SYSTEM_TAG:-x86_64-linux}" --format '{{.Id}}' 2>/dev/null || true)"
+LIVE_TAG_BEFORE="$("$DOCKER" image inspect "agentbox:${VARIANT}-${SYSTEM_TAG:-x86_64-linux}" --format '{{.Id}}' 2>/dev/null || true)"
 
 # ── 2. build and load under the throwaway tag ──────────────────────────────────────────────
-log "building $TAG from the worktree (nix build .#runtime)"
-if ! "$NIX" build "$WT#runtime" --out-link "$WORK/result" >"$WORK/build.log" 2>&1; then
-  row build fail "nix build .#runtime failed" "$(jq -nc --arg t "$(tail -n 15 "$WORK/build.log" | redact)" '{log_tail:$t}')"
+log "building $TAG from the worktree (nix build .#$VARIANT)"
+if ! "$NIX" build "$WT#$VARIANT" --out-link "$WORK/result" >"$WORK/build.log" 2>&1; then
+  row build fail "nix build .#$VARIANT failed" "$(jq -nc --arg t "$(tail -n 15 "$WORK/build.log" | redact)" '{log_tail:$t}')"
   finish FAIL 1 "build failed"
 fi
-if ! "$NIX" run "$WT#runtime.copyTo" -- "docker-daemon:$TAG" >>"$WORK/build.log" 2>&1 \
+if ! "$NIX" run "$WT#$VARIANT.copyTo" -- "docker-daemon:$TAG" >>"$WORK/build.log" 2>&1 \
    || ! "$DOCKER" image inspect "$TAG" >/dev/null 2>&1; then
   row build fail "built, but loading as $TAG failed" "$(jq -nc --arg t "$(tail -n 15 "$WORK/build.log" | redact)" '{log_tail:$t}')"
   finish FAIL 1 "image load failed"
 fi
 IMAGE_LOADED=1
-row build pass "nix build .#runtime and load as $TAG succeeded"
+row build pass "nix build .#$VARIANT and load as $TAG succeeded"
 
 # ── 3. boot, isolated ──────────────────────────────────────────────────────────────────────
 [ -r "$WT/agentbox.toml" ] || { row boot fail "worktree has no agentbox.toml"; finish FAIL 1 "no manifest"; }
 "$DOCKER" network create --internal "$NET" >/dev/null 2>&1 && NET_MADE=1
+# /ready needs adapters.memory = external-pg healthy, so the branch's pinned ruvector-postgres runs as a
+# throwaway on the same internal network under the alias the entrypoint dials. Its password is random,
+# its data is tmpfs; nothing of the live database is reachable.
+PG_IMAGE="$(sed -n '/^  ruvector-postgres:/,/^  [a-z]/{s/^ *image: *//p}' "$WT/docker-compose.yml" 2>/dev/null | head -1)"
+[ -n "$PG_IMAGE" ] || { row boot fail "no ruvector-postgres image in the worktree's docker-compose.yml"; finish FAIL 1 "no sidecar image"; }
+if ! "$DOCKER" run -d --name "$PGNAME" --network "$NET" --network-alias ruvector-postgres \
+     -e POSTGRES_DB=ruvector -e POSTGRES_USER=ruvector -e "POSTGRES_PASSWORD=$PG_PASSWORD" \
+     --tmpfs /var/lib/postgresql/data:size=1g --memory 4g --pids-limit 512 "$PG_IMAGE" >"$WORK/pg.log" 2>&1; then
+  row boot fail "ruvector-postgres sidecar failed to start" "$(jq -nc --arg t "$(tail -n 10 "$WORK/pg.log" | redact)" '{log_tail:$t}')"
+  finish FAIL 1 "sidecar did not start"
+fi
+PG_MADE=1
+pg_deadline=$(( $(date +%s) + BOOT_TIMEOUT ))
+until "$DOCKER" exec "$PGNAME" pg_isready -U ruvector -d ruvector >/dev/null 2>&1; do
+  if [ "$(date +%s)" -ge "$pg_deadline" ]; then
+    row boot fail "ruvector-postgres sidecar not ready within ${BOOT_TIMEOUT}s" "$(jq -nc --arg t "$("$DOCKER" logs --tail 20 "$PGNAME" 2>&1 | redact)" '{log_tail:$t}')"
+    finish FAIL 1 "sidecar not ready"
+  fi
+  sleep "$POLL"
+done
+
 RUN=(run -d --name "$CNAME" --network "$NET" --hostname agentbox-rehearsal
   --read-only --cap-drop ALL
   --cap-add CHOWN --cap-add FOWNER --cap-add DAC_OVERRIDE --cap-add AUDIT_WRITE --cap-add KILL --cap-add SETUID --cap-add SETGID --cap-add NET_ADMIN
   --security-opt no-new-privileges:true --security-opt "seccomp=$WT/config/seccomp-agentbox.json"
   -v "$WT/agentbox.toml:/etc/agentbox.toml:ro"
   -e "MANAGEMENT_API_KEY=$API_KEY" -e MANAGEMENT_API_AUTH_MODE=hybrid -e AGENTBOX_AGENT_ID=agentbox-rehearsal
-  -e NOSTR_RELAYS= -e AGENTBOX_OTLP_ENDPOINT=
+  -e NOSTR_RELAYS=ws://127.0.0.1:9 -e "RUVECTOR_PG_PASSWORD=$PG_PASSWORD" -e AGENTBOX_OTLP_ENDPOINT=
   --tmpfs /tmp:mode=1777,size=2G --tmpfs /run:mode=755,size=256M,uid=1000,gid=1000
   --tmpfs /run/secrets:mode=711,size=8M,uid=0,gid=0,noexec,nosuid,nodev
   --tmpfs /var/run:mode=755,size=16M,uid=1000,gid=1000 --tmpfs /var/log:mode=755,size=128M,uid=1000,gid=1000

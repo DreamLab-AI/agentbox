@@ -16,7 +16,7 @@
 #   8  --journal, live box unreachable       -> still 0, journal.status unreachable (non-fatal)
 #   9  --journal, every POST refused (401)   -> still 0, status failed, breaker stops at 3
 #  10  --keep vs default teardown            -> container/network/image kept; worktree always gone
-#  11  isolation of the docker run argv      -> no -p, no workspace/secrets bind, throwaway tag/name,
+#  11  isolation of the docker run argv; pg sidecar; relays; --variant; sidecar never ready (see below)
 #                                               internal network; nix never sees copyToDockerDaemon
 #  12  /ready 503                            -> 1, ready gate fails
 #  13  refuses inside a container            -> 3
@@ -54,7 +54,7 @@ case "$1" in
   diff) exit 0 ;;
   worktree)
     case "$2" in
-      add) wt="${@: -2:1}"; mkdir -p "$wt/config"; echo '[security]' >"$wt/agentbox.toml"; : >"$wt/config/seccomp-agentbox.json"; echo "$wt" >"$S/worktree" ;;
+      add) wt="${@: -2:1}"; mkdir -p "$wt/config"; echo '[security]' >"$wt/agentbox.toml"; printf 'services:\n  ruvector-postgres:\n    image: ruvnet/ruvector-postgres:2.0.5@sha256:abc123\n    container_name: ruvector-postgres\n  agentbox:\n    image: x\n' >"$wt/docker-compose.yml"; : >"$wt/config/seccomp-agentbox.json"; echo "$wt" >"$S/worktree" ;;
       remove) rm -rf "${@: -1}"; touch "$S/worktree-removed" ;;
       prune) touch "$S/worktree-pruned" ;;
     esac ;;
@@ -94,6 +94,7 @@ case "$1" in
           *"/ready"*) [ -n "${FAKE_READY_CODE:-}" ] && { cp "$FAKE_READY_BODY" "$S/ready.json"; printf '%s' "$FAKE_READY_CODE"; } ;;
           *"/v1/system"*) cat "$FAKE_SYSTEM" ;;
         esac ;;
+      pg_isready) [ -z "${FAKE_PG_DOWN:-}" ] || exit 2 ;;
       cat) cat "$S/ready.json" 2>/dev/null ;;
       supervisorctl) cat "$FAKE_SUP"; exit 3 ;;
     esac ;;
@@ -214,12 +215,15 @@ expect "10 --keep still removes the worktree" "$([ -e "$STATE/worktree-removed" 
 
 # ── 11 isolation ───────────────────────────────────────────────────────────────────────────
 run c11 --
-RUNLINE="$(grep '^docker run ' "$STATE/docker.log")"
+RUNLINE="$(grep "^docker run -d --name agentbox-rehearsal-$SHA12 " "$STATE/docker.log")"
+PGLINE="$(grep "^docker run -d --name agentbox-rehearsal-pg-$SHA12 " "$STATE/docker.log")"
 expect "11 throwaway tag and name" "$(grep -q -e "agentbox:rehearsal-$SHA12\$" <<<"$RUNLINE" && grep -q -e "--name agentbox-rehearsal-$SHA12" <<<"$RUNLINE"; echo $?)" "$RUNLINE"
 expect "11 no published port" "$(! grep -qE -e ' (-p|--publish|-P|--publish-all) ' <<<"$RUNLINE"; echo $?)"
 expect "11 no live workspace, secrets, projects or docker-socket bind" "$(! grep -qE -e '-v [^ ]*:/(home|projects|var/lib|run/secrets|var/run)|docker\.sock' <<<"$RUNLINE"; echo $?)"
 expect "11 only the branch manifest is bound, read-only" "$([ "$(grep -o -e ' -v [^ ]*' <<<"$RUNLINE" | wc -l)" = 1 ] && grep -q -e ':/etc/agentbox.toml:ro' <<<"$RUNLINE"; echo $?)"
 expect "11 throwaway management-api key, not the live one" "$(grep -q -e 'MANAGEMENT_API_KEY=' <<<"$RUNLINE" && ! grep -q -e "$LIVE_KEY" <<<"$RUNLINE"; echo $?)"
+expect "11 pg sidecar: pinned digest, alias, tmpfs data, no -p, no -v, random password, same internal network" "$(grep -q 'ruvnet/ruvector-postgres:2.0.5@sha256:abc123$' <<<"$PGLINE" && grep -q -e '--network-alias ruvector-postgres' <<<"$PGLINE" && grep -q -e '--tmpfs /var/lib/postgresql/data' <<<"$PGLINE" && ! grep -qE -e ' (-p|-v|--publish) ' <<<"$PGLINE" && grep -q -e "--network agentbox-rehearsal-$SHA12" <<<"$PGLINE" && ! grep -q -e "$LIVE_KEY" <<<"$PGLINE" && grep -q -e 'RUVECTOR_PG_PASSWORD=' <<<"$RUNLINE"; echo $?)" "$PGLINE"
+expect "11 NOSTR_RELAYS is declared (publish_agent_events needs one) and dead-loopback" "$(grep -q -e 'NOSTR_RELAYS=ws://127.0.0.1:9' <<<"$RUNLINE"; echo $?)"
 expect "11 internal network, read-only rootfs, caps dropped, no-new-privileges" "$(grep -q 'network create --internal' "$STATE/docker.log" && grep -q -e '--read-only' <<<"$RUNLINE" && grep -q -e '--cap-drop ALL' <<<"$RUNLINE" && grep -q -e 'no-new-privileges:true' <<<"$RUNLINE"; echo $?)"
 expect "11 nix is never asked for copyToDockerDaemon or the live tag" "$(! grep -qE 'copyToDockerDaemon|runtime-x86_64-linux' "$STATE/nix.log" && grep -q "runtime.copyTo -- docker-daemon:agentbox:rehearsal-$SHA12" "$STATE/nix.log"; echo $?)" "$(cat "$STATE/nix.log")"
 expect "11 build runs against the worktree, not the live checkout" "$(grep -q "$(cat "$STATE/worktree")#runtime" "$STATE/nix.log"; echo $?)"
@@ -235,6 +239,14 @@ SH
 chmod +x "$BIN/docker-flip"; rm -f "$ROOT/flip"
 run c11c XR_DOCKER="$BIN/docker-flip" --
 expect "11 a changed live image id is recorded as live_image_untouched=false" "$([ "$(jqr .live_image_untouched)" = false ]; echo $?)"
+
+# ── 11d variant, sidecar not ready ─────────────────────────────────────────────────────────
+run c11d -- --variant full
+expect "11 --variant full builds .#full and guards the live full tag" "$([ "$CODE" = 0 ] && grep -q '#full ' "$STATE/nix.log" && grep -q '#full.copyTo -- docker-daemon:agentbox:rehearsal-' "$STATE/nix.log" && grep -q 'image inspect agentbox:full-x86_64-linux' "$STATE/docker.log" && [ "$(jqr .variant)" = full ]; echo $?)" "$(cat "$STATE/nix.log")"
+run c11e -- --variant bogus
+expect "11 unknown variant -> exit 3" "$([ "$CODE" = 3 ]; echo $?)"
+run c11f FAKE_PG_DOWN=1 --
+expect "11 sidecar never ready -> exit 1, sidecar removed, agentbox never started" "$([ "$CODE" = 1 ] && jqr '.gates[]|select(.gate=="boot").detail' | grep -q sidecar && grep -q "^docker rm -fv agentbox-rehearsal-pg-$SHA12" "$STATE/docker.log" && ! grep -q "^docker run -d --name agentbox-rehearsal-$SHA12 " "$STATE/docker.log"; echo $?)" "exit $CODE"
 
 # ── 12 /ready 503 ──────────────────────────────────────────────────────────────────────────
 run c12 FAKE_READY_CODE=503 FAKE_READY_BODY="$READY_BAD" --
