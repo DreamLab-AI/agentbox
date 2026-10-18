@@ -613,3 +613,12 @@ Re-verified 2026-10-17 against `f33c4fc030d199ce957f7ba274d428bc6475c159`: the g
 
 Option 1 is the one consistent with this record's purpose. Until the owner decides, W3b is blocked on this row and ER-9 (now closed: the gate is rebuild-class).
 
+### ER-6 decided: option 1, an agent-governance signer (2026-10-18)
+
+The owner chose option 1 above. The source half is in `services/nostr-pod-bridge/src/identity_port/acl.rs`:
+
+- **The exception is two kinds wide.** `AGENT_GOVERNANCE_KINDS` is 31400 (panel) and 31402 (case), the kinds dream-engine signs in production; its 31403 appears only in tests, where it stands in for a human. 31401, 31403 to 31405 and 38414 stay never-grantable for every key, the agent key included.
+- **It needs a marked key and one operation.** A key declared `"agent_governance": true` is the only kind that may be granted those two kinds, and only on `forum_event`. Such a key may not be granted any other operation, may not share a grant with an ordinary key, and may not be the `mirror_root`. An ordinary key is still refused both kinds on every operation.
+- **The ACL loader is the gate.** The port checks a signing request only against its grant's kind list, so the loader's refusal is what keeps the boundary; the tests enumerate every refusal.
+- **Nothing is live yet.** `config/custody/identity-port-acl.json` grants no agent key, because the key does not exist. The owner steps are: generate the key independently (never derived from `k_id`, ADR-2101 Decision 3) into the key directory, declare it in the ACL with a `forum_event` grant of 31400 and 31402 for dream-engine's uid, add its pubkey to the forum's governance allowlist, rebuild the image, and move dream-engine from its key file to the port (W3b).
+

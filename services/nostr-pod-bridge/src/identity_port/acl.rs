@@ -72,6 +72,17 @@ pub const NEVER_GRANTABLE_KINDS: &[u64] = &[
     27_235, 22_242, 31_400, 31_401, 31_402, 31_403, 31_404, 31_405, 38_414,
 ];
 
+/// The one exception to [`NEVER_GRANTABLE_KINDS`]: the governance kinds an
+/// agent authors rather than a human decides (agentbox ADR-2122, ER-6, owner
+/// decision 2026-10-18). dream-engine publishes the panel (31400) and its cases
+/// (31402); the human-decision kinds (31401, 31403-31405) and graduations
+/// (38414) stay refused for every key.
+///
+/// They are grantable only to `forum_event`, and only when every key the grant
+/// names is declared [`KeySpec::agent_governance`]. Such a key signs nothing
+/// else, so the forum can tell agent authorship from human by the key alone.
+pub const AGENT_GOVERNANCE_KINDS: &[u64] = &[31_400, 31_402];
+
 /// One grant: an operation a caller may run.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -118,6 +129,12 @@ pub struct KeySpec {
     /// Relay URLs a NIP-42 AUTH may name. `manifest:` references as above.
     #[serde(default)]
     pub relays: Vec<String>,
+    /// An agent-governance signer: the only kind of key that may be granted
+    /// [`AGENT_GOVERNANCE_KINDS`], and usable for `forum_event` alone. It must
+    /// be its own key, generated independently, never the `mirror_root` and
+    /// never derived from the sovereign key (ADR-2101 Decision 3).
+    #[serde(default)]
+    pub agent_governance: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -188,6 +205,9 @@ impl Acl {
             }
             if spec.mirror_root {
                 mirror_roots += 1;
+            }
+            if spec.agent_governance && spec.mirror_root {
+                bail!("key {name}: an agent_governance key cannot be the mirror_root");
             }
             let mut url_prefixes = Vec::new();
             for p in resolve_refs(&spec.nip98_url_prefixes, manifest, &mut unresolved) {
@@ -264,7 +284,26 @@ fn validate_grant(
     if !takes_kinds && !g.kinds.is_empty() {
         bail!("caller {uid}: {op} takes no kinds");
     }
-    if let Some(k) = g.kinds.iter().find(|k| NEVER_GRANTABLE_KINDS.contains(k)) {
+    for k in &g.keys {
+        if !keys.contains_key(k) {
+            bail!("caller {uid}: {op} names undeclared key {k:?}");
+        }
+    }
+    let marked = g
+        .keys
+        .iter()
+        .filter(|k| keys[k.as_str()].spec.agent_governance)
+        .count();
+    if marked > 0 && marked < g.keys.len() {
+        bail!("caller {uid}: {op} mixes agent_governance and other keys in one grant");
+    }
+    let agent_grant = marked > 0;
+    if agent_grant && op != OP_FORUM_EVENT {
+        bail!("caller {uid}: an agent_governance key may be granted forum_event only, not {op}");
+    }
+    if let Some(k) = g.kinds.iter().find(|k| {
+        NEVER_GRANTABLE_KINDS.contains(k) && !(agent_grant && AGENT_GOVERNANCE_KINDS.contains(k))
+    }) {
         bail!("caller {uid}: kind {k} may never be granted (see NEVER_GRANTABLE_KINDS)");
     }
     if g.secret && op != OP_MIRROR_KEY {
@@ -279,11 +318,6 @@ fn validate_grant(
         }
     } else if g.keys.is_empty() {
         bail!("caller {uid}: {op} grants no keys");
-    }
-    for k in &g.keys {
-        if !keys.contains_key(k) {
-            bail!("caller {uid}: {op} names undeclared key {k:?}");
-        }
     }
     Ok(())
 }
@@ -374,6 +408,76 @@ mod tests {
                 "kind {k} was grantable"
             );
         }
+    }
+
+    /// An ACL with one agent-governance key `agent` beside the ordinary `core`.
+    fn with_agent_key(ops: &str) -> String {
+        format!(
+            r#"{{"version":1,"keys":{{"core":{{"file":"core.key","mirror_root":true}},
+            "agent":{{"file":"agent.key","agent_governance":true}}}},
+            "callers":{{"7":{{"name":"x","ops":{ops}}}}}}}"#
+        )
+    }
+
+    #[test]
+    fn an_agent_governance_key_may_sign_panels_and_cases_on_forum_event() {
+        let ops = r#"{"forum_event":{"keys":["agent"],"kinds":[31400,31402,5]}}"#;
+        let acl = Acl::parse(&with_agent_key(ops), None).unwrap();
+        assert_eq!(
+            acl.grant(7, OP_FORUM_EVENT).unwrap().kinds,
+            vec![31_400, 31_402, 5]
+        );
+    }
+
+    #[test]
+    fn the_agent_exception_refuses_every_other_never_grantable_kind() {
+        for k in NEVER_GRANTABLE_KINDS
+            .iter()
+            .filter(|k| !AGENT_GOVERNANCE_KINDS.contains(k))
+        {
+            let ops = format!(r#"{{"forum_event":{{"keys":["agent"],"kinds":[31400,{k}]}}}}"#);
+            assert!(
+                Acl::parse(&with_agent_key(&ops), None).is_err(),
+                "kind {k} became grantable through the agent key"
+            );
+        }
+    }
+
+    #[test]
+    fn panel_and_case_kinds_stay_refused_without_the_agent_key() {
+        for k in AGENT_GOVERNANCE_KINDS {
+            for op in ["forum_event", "sign_event"] {
+                let ops = format!(r#"{{"{op}":{{"keys":["core"],"kinds":[{k}]}}}}"#);
+                assert!(
+                    Acl::parse(&with_agent_key(&ops), None).is_err(),
+                    "kind {k} grantable to an ordinary key on {op}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn an_agent_governance_key_is_usable_for_forum_event_alone_and_never_mixed() {
+        for ops in [
+            r#"{"sign_event":{"keys":["agent"],"kinds":[31400]}}"#,
+            r#"{"sign_event":{"keys":["agent"],"kinds":[1]}}"#,
+            r#"{"pubkey":{"keys":["agent"]}}"#,
+            r#"{"forum_event":{"keys":["agent","core"],"kinds":[31400]}}"#,
+            r#"{"forum_event":{"keys":["agent","core"],"kinds":[1]}}"#,
+        ] {
+            assert!(
+                Acl::parse(&with_agent_key(ops), None).is_err(),
+                "{ops} loaded"
+            );
+        }
+        let root = with_agent_key(r#"{"pubkey":{"keys":["core"]}}"#).replace(
+            r#""agent_governance":true"#,
+            r#""agent_governance":true,"mirror_root":true"#,
+        );
+        assert!(
+            Acl::parse(&root, None).is_err(),
+            "an agent key became the mirror_root"
+        );
     }
 
     #[test]
