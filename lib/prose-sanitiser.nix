@@ -53,7 +53,7 @@
 { lib, pkgs }:
 
 let
-  version = "0.1.3";
+  version = "0.1.4";
 
   # The workspace lives in its own repository (extracted from services/ with
   # full history on 2026-09-03) and is published to crates.io as six crates.
@@ -68,7 +68,7 @@ let
     owner = "DreamLab-AI";
     repo  = "prose-sanitiser";
     rev   = "v${version}";
-    hash  = "sha256-jr0EjopXzwgo4uzzHRXWJcwCV7pfLxGLkoseY5tqGe0=";
+    hash  = "sha256-VumNwjHTuCh6pbCYikS2fP/gRxzDsQqwFlvTJOtz9OM=";
   };
 
 in
