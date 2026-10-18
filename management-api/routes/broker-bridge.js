@@ -454,6 +454,11 @@ async function brokerBridgeRoutes(fastify, options) {
           note: { type: 'string' },
           case_id: { type: 'string' },
           timestamp: { type: 'string' },
+          // The forum's effective tier for the case (nostr-bbs-core
+          // effective_tier, forum ADR-2011). Forwarded to VisionClaw, whose
+          // rationale gate takes the stricter of it and the declared tier, so
+          // a caller can only tighten the gate with it (estate register ER-7).
+          effective_tier: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
         },
       },
       response: {
@@ -480,14 +485,17 @@ async function brokerBridgeRoutes(fastify, options) {
     },
   }, async (request, reply) => {
     const { id } = request.params;
-    const { decision, note, timestamp } = request.body;
+    const { decision, note, timestamp, effective_tier: effectiveTier } = request.body;
 
     const decidingPubkey = request.auth?.pubkey
       || request.headers['x-agent-pubkey']
       || AGENTBOX_PUBKEY;
     const operation = {
       kind: 'broker-enrichment-decision', case_id: id,
-      payload: { outcome: decision, broker_pubkey: decidingPubkey, reasoning: note || '' },
+      payload: {
+        outcome: decision, broker_pubkey: decidingPubkey, reasoning: note || '',
+        ...(effectiveTier ? { effective_tier: effectiveTier } : {}),
+      },
     };
 
     // ── REC-6 authority gate — block the irreversible write-back BEFORE it is

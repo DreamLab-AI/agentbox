@@ -198,6 +198,40 @@ test('broker_pubkey propagates the real deciding pubkey, never the literal "unkn
   }
 });
 
+test('ER-7: effective_tier is forwarded when given, omitted when not, and validated', async () => {
+  const ok = {
+    success: true, decision: 'approve', attributed: true,
+    writeback_triggered: true, writeback_committed: true,
+    activity_urn: 'urn:visionclaw:execution:sha256-12-000011112223',
+  };
+  for (const [payload, expected, status] of [
+    [{ decision: 'approve', effective_tier: 'high' }, 'high', 200],
+    [{ decision: 'approve' }, undefined, 200],
+    [{ decision: 'approve', effective_tier: 'severe' }, undefined, 400],
+  ]) {
+    const captured = {};
+    const app = await buildApp(ok, captured);
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/broker/bridge/cases/case-tier/decide',
+        headers: { 'content-type': 'application/json', 'x-agent-pubkey': PK },
+        payload,
+      });
+      assert.equal(res.statusCode, status, res.body);
+      if (status === 200) {
+        assert.equal(captured.body.effective_tier, expected);
+        assert.equal('effective_tier' in captured.body, expected !== undefined);
+      } else {
+        assert.equal(captured.body, undefined, 'an invalid tier must not be proxied');
+      }
+    } finally {
+      app.__restoreFetch();
+      await app.close();
+    }
+  }
+});
+
 test('non-writeback decision (reject) reports honest not-committed state', async () => {
   const captured = {};
   const app = await buildApp(
