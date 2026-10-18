@@ -86,3 +86,10 @@ Owner decisions, with evidence in [Ontomark ADR-OM-005](https://github.com/Dream
 **Licence (Decision 5 restated with facts).** `horned-owl` is LGPL-3.0 and an opt-in `whelk-el` feature, off by default and absent from the CLI tree; the package here must not enable it. `nostr-bbs-core` is AGPL-3.0-only (owner-held) and stays in the adapter, never in the permissive package. Dependencies flow permissive → AGPL, never the reverse.
 
 **Identity.** `visionGraph@<sha>` is the generation identity (Loom ADR-141); the bundle this image serves is a distribution of it, sha256-pinned. Re-minting identities is permitted at this stage with the migration artefacts ADR-2137 §4 requires.
+
+## The shipped `vault` could not read the migrated corpus — 2026-10-18
+
+- **Observed.** The `vault` CLI baked into the running image (`/nix/store/…-vault-0.1.0`) refuses the current visionGraph corpus: `vault --repo . validate` exits 1 with `./knowledge is not a vault: no pages/ directory`. The corpus moved to flat Obsidian vaults, and `vaultSrc` pinned VisionClaw `3213e314f`, which predates VisionClaw `4fe620296` ("Read the flat Obsidian vaults: pages at the vault root").
+- **Change.** `vaultSrc` moves to VisionClaw `4fe620296a8266e47f96b106aadd15a513082b97` (on `main` upstream) in `flake.nix` and `flake.lock`. The lock's `narHash` was computed outside Nix by serialising the GitHub source tree in NAR format; the same procedure reproduces the previous lock entry's hash exactly. The `whelk` git dependency is unchanged, so `lib/vault.nix`'s `outputHashes` stand.
+- **Evidence at the new pin.** `cargo test -p vault` passes: 384 tests, 0 failures, across 11 test targets. The binary built from it validates the corpus and agrees with ontomark 0.4.0 on every summary figure: 9546 pages, 9546 with ontology, 9244 public, 0 errors, 28875 warnings. That also answers estate register ER-12: the two frontmatter parsers do not disagree on the real corpus.
+- **Not yet true.** The image has not been rebuilt. The owner rebuilds from the host shell; until then the running `vault` remains the broken one.

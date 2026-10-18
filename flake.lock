@@ -263,17 +263,17 @@
     "vaultSrc": {
       "flake": false,
       "locked": {
-        "lastModified": 1791229092,
-        "narHash": "sha256-FP99FAX3SuH5KpaHInS5Xa+rrGBDNlgwtweBqTQ3rcA=",
+        "lastModified": 1792158217,
+        "narHash": "sha256-KHBP0cR6ihi1RdjiZhN45TBC37lvThJzvIS05GkQEu4=",
         "owner": "DreamLab-AI",
         "repo": "VisionClaw",
-        "rev": "3213e314f82491f338660c79b77332da6610ed9c",
+        "rev": "4fe620296a8266e47f96b106aadd15a513082b97",
         "type": "github"
       },
       "original": {
         "owner": "DreamLab-AI",
         "repo": "VisionClaw",
-        "rev": "3213e314f82491f338660c79b77332da6610ed9c",
+        "rev": "4fe620296a8266e47f96b106aadd15a513082b97",
         "type": "github"
       }
     }
