@@ -23,6 +23,9 @@
 # `vault` only on an image built before this pin. 0.3.0 reads the flat
 # visionGraph vaults (pages at the vault root); 0.2.x cannot. 0.4.0 also runs
 # on any plain Obsidian vault (Ontomark ADR-OM-008) and is `cargo install ontomark`.
+# 0.5.0 adds the estate's Supply Chains and Logistics domain (domain 8,
+# categories 53-67; visionGraph ADR-VG-008); older pins report its pages as
+# uncategorised.
 #
 # Repinning
 # ---------
@@ -30,8 +33,8 @@
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
 # binary itself is static-pie musl and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, version ? "0.4.0"
-, hash ? "sha256-byHkRoUyiDCJ1hKmnJI9ZpZHRGQrO3rOuqlICLpJwu4=" }:
+{ lib, pkgs, version ? "0.5.0"
+, hash ? "sha256-4PY/zqgd+ij2gmuyoXq8iBOkZkPCsUXbAtA/UQW1pBM=" }:
 
 pkgs.stdenvNoCC.mkDerivation {
   pname = "ontomark";
