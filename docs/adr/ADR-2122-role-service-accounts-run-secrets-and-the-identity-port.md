@@ -603,3 +603,13 @@ Re-verified 2026-10-17 against `f33c4fc030d199ce957f7ba274d428bc6475c159`: the g
 ### ER-9: the gate is rebuild-class
 
 `management-api/lib/system-manifest.js` classified `role-isolation` as `boot`, but `config/bake-devuser-privilege.sh` takes the build-time flag (`roleIsolationBaked` in `flake.nix`) and, at 0, leaves devuser in `wheel` with `NOPASSWD: ALL` on a read-only rootfs. A boot-time flip alone therefore ends in `degraded:devuser-sudo`, so the honest class is `rebuild`. The CATALOGUE entry, `docs/user/configuration.md` and `tests/config/role-isolation-class.test.cjs` now say so. The configs, scrub and delivery are still read at boot; the class records the strictest step.
+
+### ER-6: the identity port refuses the kinds dream-engine signs — decision pending (2026-10-18)
+
+`NEVER_GRANTABLE_KINDS` in `services/nostr-pod-bridge/src/identity_port/acl.rs:71-73` is `27235, 22242, 31400-31405, 38414`, and the loader refuses any grant that names one (`acl.rs:267`). `services/dream-engine/src/governance.rs:9-10` has dream-engine publishing 31400 (panel) and 31402 (case) as JunkieJarvis. The W3b cutover therefore cannot move dream-engine onto the port as designed. Two closures, one to be chosen by the owner:
+
+1. **Carve out agent-authored governance kinds under a distinct signer.** Add a non-human-decision key (say `junkiejarvis-agent`) whose ACL may be granted 31400 and 31402 only, with the human-decision kinds 31403-31405 and 38414 staying never-grantable for every key. The forum then distinguishes human from agent authorship by key, which is what the rationale gate (AC-VC-2, ER-7) needs anyway. Cost: a new key in the custody split, a forum allowlist entry, and the ACL schema gains a per-key exception list.
+2. **Keep dream-engine on its own key file.** Nothing changes in the port; dream-engine stays one of the five key-file readers listed under X-1 (`nostr-gateway`, `JunkieJarvis`, `dream-forum-suggestions.mjs`, `nostr-live-mirror.cjs`, `dream-engine`), and W3b's scope is restated to exclude it. Cost: the same-UID boundary stays open for that key.
+
+Option 1 is the one consistent with this record's purpose. Until the owner decides, W3b is blocked on this row and ER-9 (now closed: the gate is rebuild-class).
+
