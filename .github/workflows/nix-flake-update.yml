@@ -122,6 +122,7 @@ jobs:
           - [ ] `nix build .#runtime` succeeds on aarch64-linux
           - [ ] Contract-test harness green
           - [ ] No unexpected image-size jump (`docker images` diff)
+          - [ ] **Required before merge:** on the host shell, `scripts/activation/flake-update-rehearsal.host.sh --journal` exits 0 (PASS) or 2 (STAGED, read the receipt) and its `docs/estate-closeout/x4-rehearsal-<UTC>.json` receipt is attached (see `docs/developer/flake-update-rehearsal.md`)
           EOF
           )"
 
@@ -139,6 +140,8 @@ jobs:
             "" \
             "Branch: [\`$BRANCH\`](https://github.com/$GITHUB_REPOSITORY/tree/$BRANCH) (force-updated each week)" \
             "Compare: https://github.com/$GITHUB_REPOSITORY/compare/main...$BRANCH" \
+            "" \
+            "**Required before merge:** on the host shell, run \`scripts/activation/flake-update-rehearsal.host.sh --journal\`. Exit 0 (PASS) or 2 (STAGED, read the receipt) is a go; 1 or 3 is not. Attach the \`docs/estate-closeout/x4-rehearsal-<UTC>.json\` receipt. See \`docs/developer/flake-update-rehearsal.md\`." \
             "" \
             "No pull request could be opened automatically: this repository's Actions token is not permitted to create pull requests. Open the PR from the compare link, or set a \`NIX_FLAKE_UPDATE_TOKEN\` secret and the weekly run will do it." \
             "" \

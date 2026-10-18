@@ -242,3 +242,7 @@ Re-read at `33c8b3472a7a` (2026-10-16): `engine.rs` gained a per-night lock (a s
 ## Re-verification — 2026-10-17
 
 ADR-2143 adds one journalled step in `engine.rs`: the source-loop alert write is wrapped in `j.called` / `j.completed` like every other inbox write, fail-open. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.
+
+## Consumer — 2026-10-18: the X-4 flake-update rehearsal
+
+`scripts/activation/flake-update-rehearsal.host.sh` (X-4) boots the weekly `deps/nix-flake-update` image in a throwaway container and, with `--journal`, posts one `tool.completed` entry per gate (`harness: flake-rehearsal`, `key: <session>:<gate>`) to the live box's `POST /v1/exec/record`. It reaches the journal over HTTP for the same chain-safety reason the dream engine does, and treats an unreachable or refusing journal as non-fatal: the receipt records `journal.status`. The receipt is the primary record; the journal entries make a rehearsal visible in the audit chain. Test: `tests/config/flake-update-rehearsal.test.sh`; guide: `docs/developer/flake-update-rehearsal.md`.

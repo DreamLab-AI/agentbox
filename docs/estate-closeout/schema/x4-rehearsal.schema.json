@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DreamLab-AI/agentbox/docs/estate-closeout/schema/x4-rehearsal.schema.json",
+  "title": "X-4 flake-update rehearsal receipt",
+  "description": "Written by scripts/activation/flake-update-rehearsal.host.sh (run on the host). Records whether the weekly deps/nix-flake-update branch builds, boots in a throwaway container, and passes its manifest gates. Holds gate names, verdicts, short details and log tails only; the throwaway management-api key and the live key are never written.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "verdict", "exit_code", "branch", "branch_sha", "image_tag", "container", "kept", "live_image_untouched", "rehearsal_commit", "boot_timeout_s", "started_at", "finished_at", "operator", "gates", "summary", "journal"],
+  "properties": {
+    "schema": { "const": "agentbox/x4-rehearsal@1" },
+    "verdict": { "enum": ["PASS", "FAIL", "STAGED", "COULD_NOT_RUN"] },
+    "exit_code": { "enum": [0, 1, 2, 3] },
+    "reason": { "type": "string" },
+    "branch": { "type": "string", "minLength": 1 },
+    "branch_sha": { "type": "string", "description": "Fetched commit, or 'unknown' when the branch could not be resolved." },
+    "image_tag": { "type": "string", "description": "agentbox:rehearsal-<sha12>; empty before the branch resolved." },
+    "container": { "type": "string" },
+    "kept": { "type": "boolean" },
+    "live_image_untouched": { "type": "boolean", "description": "The live agentbox:runtime-<system> image id was identical before and after the run." },
+    "rehearsal_commit": { "type": "string" },
+    "boot_timeout_s": { "type": "integer", "minimum": 0 },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "operator": { "type": "string" },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gate", "verdict", "detail", "evidence"],
+        "properties": {
+          "gate": { "type": "string", "minLength": 1, "description": "branch | build | boot | ready | units | unit:<catalogue-id>" },
+          "verdict": { "enum": ["pass", "fail", "not_evaluable"] },
+          "detail": { "type": "string" },
+          "evidence": { "type": "object" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "fail", "not_evaluable", "failed_gates", "unevaluated_gates"],
+      "properties": {
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "not_evaluable": { "type": "integer", "minimum": 0 },
+        "failed_gates": { "type": "array", "items": { "type": "string" } },
+        "unevaluated_gates": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "journal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested", "status", "posted", "failed"],
+      "properties": {
+        "requested": { "type": "boolean" },
+        "status": { "enum": ["not_requested", "posted", "partial", "failed", "unreachable", "skipped"] },
+        "posted": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "live_url": { "type": "string" },
+        "session": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    }
+  }
+}
