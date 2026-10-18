@@ -29,7 +29,10 @@ const TTL_TYPES = Object.freeze(['episodic', 'semantic']);
  * SQL boolean that is TRUE when a row is STILL VISIBLE (not expired).
  * CASE guarantees the ordering of the malformed-value guard before the cast —
  * a bare `AND (metadata->>'expires_at')::timestamptz > now()` can be evaluated
- * against a non-timestamp string and abort the whole query.
+ * against a non-timestamp string and abort the whole query. The prefix check
+ * alone is not enough: '2026-99-99T00' passes it and still fails the cast, so
+ * `pg_input_is_valid` (PostgreSQL 16+) guards the cast itself. Without it one
+ * such row failed every read, and the sweep that should delete it threw too.
  *
  * @param {string} [col='metadata'] the metadata column expression
  * @returns {string} a SQL predicate fragment (no parameters)
@@ -38,6 +41,7 @@ function notExpiredPredicate(col = 'metadata') {
   return `(CASE
              WHEN (${col}->>'expires_at') IS NULL THEN true
              WHEN (${col}->>'expires_at') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T' THEN true
+             WHEN NOT pg_input_is_valid(${col}->>'expires_at', 'timestamptz') THEN true
              ELSE (${col}->>'expires_at')::timestamptz > now()
            END)`;
 }
@@ -54,6 +58,7 @@ function expiredPredicate(col = 'metadata') {
   return `(CASE
              WHEN (${col}->>'expires_at') IS NULL THEN false
              WHEN (${col}->>'expires_at') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T' THEN false
+             WHEN NOT pg_input_is_valid(${col}->>'expires_at', 'timestamptz') THEN false
              ELSE (${col}->>'expires_at')::timestamptz <= now()
            END)`;
 }
