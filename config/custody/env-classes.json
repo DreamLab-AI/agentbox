@@ -674,6 +674,7 @@
         "USER_PUBKEY",
         "VAR",
         "VARS",
+        "_VAULT_PAGES_REL",
         "VAULT_BIN",
         "VAULT_FORMAT",
         "VAULT_PAGES",

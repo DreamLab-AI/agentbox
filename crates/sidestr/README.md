@@ -6,13 +6,17 @@ The five `sidestr-*` crates that used to live here were split out, with their hi
 their own repository on 2026-09-23 ([ADR-2112](../../docs/adr/ADR-2112-sidestr-crates-live-in-sidestr-rs.md)):
 
 - Source, issues and CI: <https://github.com/DreamLab-AI/sidestr-rs>
-- Published crates: [`sidestr-header`](https://crates.io/crates/sidestr-header),
+- Published crates (eight of the workspace's eleven members; `sidestr-evm`, `sidestr-reserve`
+  and `sidestr-bridge-liquid` are `publish = false`): [`sidestr-header`](https://crates.io/crates/sidestr-header),
   [`sidestr-core`](https://crates.io/crates/sidestr-core),
   [`sidestr-nostr`](https://crates.io/crates/sidestr-nostr),
   [`sidestr-wallet`](https://crates.io/crates/sidestr-wallet),
-  [`sidestr-round`](https://crates.io/crates/sidestr-round)
+  [`sidestr-round`](https://crates.io/crates/sidestr-round),
+  [`sidestr-hitch`](https://crates.io/crates/sidestr-hitch),
+  [`sidestr-agent`](https://crates.io/crates/sidestr-agent),
+  [`webledgers-teller`](https://crates.io/crates/webledgers-teller)
 
-All five are `AGPL-3.0-only`, attributed ports of upstream `siding`
+All eight are `AGPL-3.0-only` (the teller `AGPL-3.0-or-later`), attributed ports of upstream `siding`
 (`github.com/sidestr/spec`), and are audited before every publish (ADR-2106). Anything that
 consumes them takes them from crates.io and is AGPL-3.0 in effect.
 
