@@ -25,6 +25,8 @@
 #   supervisorExtraEnv         – attrset of NAME = "value" injected into
 #                                supervisord [program:*] environment stanzas
 #                                that need GPU access (e.g. comfyui, blender)
+#   nvccWrapper                – derivation or null; the nvcc wrapper (-ccbin
+#                                gcc14, -I$CUDA_PATH/include), local-cuda only
 #   ollamaEnabled              – bool; false means the A1 generator must omit
 #                                the ollama service entirely from compose
 
@@ -59,6 +61,7 @@ let
       nixPackages               = noPackages;
       composeDeviceReservations = noReservations;
       supervisorExtraEnv        = noSupervisorEnv;
+      nvccWrapper               = null;
       ollamaEnabled             = false;
     };
 
@@ -83,6 +86,7 @@ let
       nixPackages               = noPackages;
       composeDeviceReservations = noReservations;
       supervisorExtraEnv        = noSupervisorEnv;
+      nvccWrapper               = null;
       ollamaEnabled             = true;
     };
 
@@ -110,6 +114,7 @@ let
         capabilities = [ "gpu" ];
       };
       supervisorExtraEnv = noSupervisorEnv;
+      nvccWrapper        = null;
       ollamaEnabled      = true;
     };
 
@@ -172,9 +177,9 @@ let
       # CUDA unavailable" setup; the validator still gates harder use.
       cudaToolkit = pkgs.cudaPackages.cudatoolkit;
 
-      # Host compiler for nvcc. CUDA 12.9 supports GCC up to 14 (NVIDIA CUDA
-      # 12.9 Linux installation guide, host-compiler matrix); the system gcc
-      # (15.x) is newer than nvcc accepts. Scoped to nvcc only: nothing else
+      # Host compiler for nvcc. The default gcc (15.x) is newer than CUDA 12.9
+      # accepts; gcc 14.4 is the compiler measured working with nvcc 12.9.86
+      # in this image (compiled a cuda_runtime.h kernel to PTX, 2026-10-19). Scoped to nvcc only: nothing else
       # in the image changes its default compiler.
       nvccHostGcc = pkgs.gcc14;
 
