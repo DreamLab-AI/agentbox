@@ -20,14 +20,21 @@ if [ -z "${VAULT_ROOT:-}" ] || [ -z "${VAULT_PAGES:-}" ] || [ -z "${VAULT_WORKIN
     exit 1
 fi
 
-# --pages-dir is the TARGET topic pages. Ledger pages moved to
-# ${VAULT_WORKING_PAGES}/podcast-evidence/ (PRD Q16) and podcast-promote needs a
-# separate --ledger-dir before it can read them again; see
-# references/promotion.md "Ledger format". Until that lands this stage finds no
-# ledgers and no-ops cleanly. No value below is ever written into a page body or
-# frontmatter -- these are process arguments only.
+# --pages-dir is the TARGET topic pages (the curated corpus, read-only here).
+# --ledger-dir is where the evidence ledgers are: one <episode-slug>.md each in
+# ${VAULT_WORKING_PAGES}/podcast-evidence/ (PRD Q16). Without it podcast-promote
+# scanned the topic pages for ledgers and found none, so promotion was a silent
+# no-op from the vault flatten until this flag landed. No value below is ever
+# written into a page body or frontmatter -- these are process arguments only.
+LEDGER_DIR="${VAULT_WORKING_PAGES}/podcast-evidence"
+if [ ! -d "$LEDGER_DIR" ]; then
+    echo "run-promote.sh: ledger directory ${LEDGER_DIR} does not exist -- has the ingest stage run? Aborting." >&2
+    exit 1
+fi
+
 exec "$BIN" \
     --pages-dir "${VAULT_PAGES}" \
+    --ledger-dir "${LEDGER_DIR}" \
     --proposals-dir "${SKILL_DIR}/promotions/proposals" \
     --working-graph-dir "${VAULT_WORKING_PAGES}" \
     --limit 15 "$@"

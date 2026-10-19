@@ -118,7 +118,13 @@ fn new_page_content(
 ) -> String {
     format!(
         "---\n\
-public: true\n\
+type: Draft Concept\n\
+title: {title}\n\
+public: false\n\
+status: draft\n\
+generated:\n\
+\x20 by: process:podcast-ingest/{version}\n\
+\x20 at: {date}\n\
 ---\n\
 \n\
 # {title}\n\
@@ -129,7 +135,7 @@ public: true\n\
   \"@type\": \"Page\",\n\
   \"vc:slug\": \"{slug}\",\n\
   \"title\": \"{title}\",\n\
-  \"vc:public\": true,\n\
+  \"vc:public\": false,\n\
   \"vc:outboundWikilinks\": {wikilinks_json},\n\
   \"vc:schemaVersion\": 2\n\
 }}\n\
@@ -160,14 +166,21 @@ public: true\n\
 - ### Overview\n\
 {evidence_block}\n\
 - ### Relationships\n\
-- ### Provenance\n"
+- ### Provenance\n",
+        version = env!("CARGO_PKG_VERSION")
     )
 }
 
 /// Port of `_propose_new_pages`.
+///
+/// A proposed page is a working-graph draft: it is written under `working_dir`
+/// as a non-public `Draft Concept`, never into the curated corpus. `pages_dir`
+/// is only consulted so a topic the curated corpus already has is not proposed
+/// again.
 pub async fn propose_new_pages(
     unmatched: &[Assertion],
-    ontology_dir: &Path,
+    pages_dir: Option<&Path>,
+    working_dir: &Path,
     settings: &Settings,
     state: &mut IngestState,
     today: &str,
@@ -250,9 +263,9 @@ pub async fn propose_new_pages(
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .unwrap_or_else(|| slugify_default(&title));
-        let page_path = ontology_dir.join(format!("{title}.md"));
+        let page_path = working_dir.join(format!("{title}.md"));
 
-        if page_path.exists() {
+        if page_path.exists() || pages_dir.is_some_and(|d| d.join(format!("{title}.md")).exists()) {
             println!("    EXISTS: {title}");
             continue;
         }
@@ -413,7 +426,12 @@ mod tests {
             "ep.md",
             "  - a claim",
         );
-        assert!(content.starts_with("---\npublic: true\n---\n\n# Foo Bar\n"));
+        assert!(content.starts_with(
+            "---\ntype: Draft Concept\ntitle: Foo Bar\npublic: false\nstatus: draft\n"
+        ));
+        assert!(content.contains("\n  at: 2026-01-01\n---\n\n# Foo Bar\n"));
+        assert!(!content.contains("public: true"));
+        assert!(content.contains("\"vc:public\": false"));
         assert!(content.contains("\"@id\": \"urn:visionflow:page:foo-bar\""));
         assert!(content
             .contains("- ### Overview\n  - a claim\n- ### Relationships\n- ### Provenance\n"));

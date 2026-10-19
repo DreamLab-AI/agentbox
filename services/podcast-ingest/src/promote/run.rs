@@ -1,15 +1,16 @@
 //! Main pipeline — port of `run(args)` and the `argparse` CLI definition
 //! (`main()`) from `promote.py`.
 
-use super::candidate::{find_candidates, target_page_name};
+use super::candidate::{find_candidates, find_candidates_from, target_page_name};
 use super::dossier::{
     clear_slug_outputs, load_processed_fingerprint_sets, write_dossier_json, write_dossier_md,
 };
 use super::judge::judge_before_after;
-use super::ledger_parse::Assertion;
+use super::ledger_parse::{load_ledger_dir_assertions, Assertion};
 use super::loom::{assemble_draft, check_loom_reachable, DraftResult};
 use super::working_page::write_working_page;
 use super::{completeness, DEFAULT_LOOM_MODEL, DEFAULT_LOOM_URL};
+use crate::ingest::ledger::LEDGER_SUBDIR;
 use clap::Parser;
 use std::path::{Path, PathBuf};
 
@@ -17,9 +18,17 @@ use std::path::{Path, PathBuf};
 #[derive(Parser, Debug)]
 #[command(name = "podcast-promote")]
 pub struct Args {
-    /// dir containing podcast-evidence___*.md ledger pages and target topic pages
+    /// dir containing the target topic pages (`<Topic>.md`) the ledger bullets link to
+    /// (the curated corpus, `$VAULT_PAGES`). Also holds the retired flat
+    /// `podcast-evidence___*.md` ledger pages when `--ledger-dir` is not in play.
     #[arg(long)]
     pub pages_dir: PathBuf,
+
+    /// dir holding the evidence ledgers, one `<episode-slug>.md` each. Defaults
+    /// to `<working-graph-dir>/podcast-evidence` when that directory exists,
+    /// otherwise the ledgers are looked for in `--pages-dir` (flat layout).
+    #[arg(long)]
+    pub ledger_dir: Option<PathBuf>,
 
     /// output dir for survivor dossiers
     #[arg(long)]
@@ -77,6 +86,18 @@ pub struct Args {
     pub max_dossier_assertions: usize,
 }
 
+/// Where the ledgers are read from: the explicit `--ledger-dir`, else the working
+/// vault's `<working-graph-dir>/podcast-evidence` when it exists, else `None`
+/// (the flat layout, ledgers beside the topic pages).
+pub fn resolve_ledger_dir(args: &Args) -> Option<PathBuf> {
+    args.ledger_dir.clone().or_else(|| {
+        args.working_graph_dir
+            .as_ref()
+            .map(|w| w.join(LEDGER_SUBDIR))
+            .filter(|d| d.is_dir())
+    })
+}
+
 fn conf_float(s: &str) -> f64 {
     s.parse::<f64>().unwrap_or(0.0)
 }
@@ -111,10 +132,30 @@ pub async fn run(args: &Args) -> i32 {
         return 2;
     }
 
-    let candidates = find_candidates(&pages_dir, args.min_assertions, args.min_episodes);
+    let ledger_dir = resolve_ledger_dir(args).map(|d| resolve_path(&d));
+    let (scanned, candidates) = match &ledger_dir {
+        Some(dir) => {
+            if !dir.exists() {
+                eprintln!("ledger-dir does not exist: {}", dir.display());
+                return 2;
+            }
+            (
+                dir.clone(),
+                find_candidates_from(
+                    load_ledger_dir_assertions(dir),
+                    args.min_assertions,
+                    args.min_episodes,
+                ),
+            )
+        }
+        None => (
+            pages_dir.clone(),
+            find_candidates(&pages_dir, args.min_assertions, args.min_episodes),
+        ),
+    };
     println!(
         "Scanned {} — {} candidate topic(s) found (>= {} assertions, >= {} episodes).",
-        pages_dir.display(),
+        scanned.display(),
         candidates.len(),
         args.min_assertions,
         args.min_episodes
@@ -430,4 +471,109 @@ pub async fn run(args: &Args) -> i32 {
 pub async fn run_main() -> i32 {
     let args = Args::parse();
     run(&args).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    fn args(extra: &[&str]) -> Args {
+        let mut argv = vec![
+            "podcast-promote",
+            "--proposals-dir",
+            "/tmp/unused-proposals",
+        ];
+        argv.extend_from_slice(extra);
+        Args::try_parse_from(argv).unwrap()
+    }
+
+    const LEDGER: &str = "---\ntype: Episode\npublic: false\n---\n\n- A claim. [[Topic A]]\n  **tier:** 1\n  **confidence:** 0.9\n  **claim-date:** 2026-01-01\n  <!-- assertion-fp: aaaaaaaaaaaaaaaa -->\n";
+
+    #[test]
+    fn ledger_dir_defaults_to_podcast_evidence_under_the_working_dir() {
+        let work = tempdir().unwrap();
+        std::fs::create_dir(work.path().join("podcast-evidence")).unwrap();
+        let a = args(&[
+            "--pages-dir",
+            "/v/knowledge",
+            "--working-graph-dir",
+            work.path().to_str().unwrap(),
+        ]);
+        assert_eq!(
+            resolve_ledger_dir(&a),
+            Some(work.path().join("podcast-evidence"))
+        );
+    }
+
+    #[test]
+    fn ledger_dir_is_none_when_the_working_dir_has_no_ledgers() {
+        let work = tempdir().unwrap();
+        let a = args(&[
+            "--pages-dir",
+            "/v/knowledge",
+            "--working-graph-dir",
+            work.path().to_str().unwrap(),
+        ]);
+        assert_eq!(resolve_ledger_dir(&a), None);
+    }
+
+    #[test]
+    fn explicit_ledger_dir_wins() {
+        let a = args(&[
+            "--pages-dir",
+            "/v/knowledge",
+            "--ledger-dir",
+            "/somewhere/else",
+            "--working-graph-dir",
+            "/v/working",
+        ]);
+        assert_eq!(
+            resolve_ledger_dir(&a),
+            Some(PathBuf::from("/somewhere/else"))
+        );
+    }
+
+    #[tokio::test]
+    async fn dry_run_reads_ledgers_from_the_ledger_dir_not_the_pages_dir() {
+        let pages = tempdir().unwrap();
+        let ledgers = tempdir().unwrap();
+        for ep in ["ep-one", "ep-two"] {
+            std::fs::write(ledgers.path().join(format!("{ep}.md")), LEDGER).unwrap();
+        }
+        let a = args(&[
+            "--pages-dir",
+            pages.path().to_str().unwrap(),
+            "--ledger-dir",
+            ledgers.path().to_str().unwrap(),
+            "--working-graph-dir",
+            pages.path().to_str().unwrap(),
+            "--min-assertions",
+            "2",
+            "--min-episodes",
+            "2",
+            "--dry-run",
+        ]);
+        // The pages dir is empty: only the ledger dir can supply candidates.
+        let loaded = load_ledger_dir_assertions(&resolve_ledger_dir(&a).unwrap());
+        let candidates = find_candidates_from(loaded, 2, 2);
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].topic, "Topic A");
+        assert_eq!(run(&a).await, 0);
+    }
+
+    #[tokio::test]
+    async fn a_missing_ledger_dir_is_an_error_not_a_silent_zero() {
+        let pages = tempdir().unwrap();
+        let a = args(&[
+            "--pages-dir",
+            pages.path().to_str().unwrap(),
+            "--ledger-dir",
+            "/nonexistent/ledgers-for-test",
+            "--working-graph-dir",
+            pages.path().to_str().unwrap(),
+            "--dry-run",
+        ]);
+        assert_eq!(run(&a).await, 2);
+    }
 }

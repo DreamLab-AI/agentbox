@@ -1,5 +1,8 @@
 podcasts:
-  - channel: "@TheAIDailyBrief"
+  # The channel's handle is @AIDailyBrief. The old "@TheAIDailyBrief" has no
+  # videos tab, which yt-dlp reports as an error; the listing used to swallow it
+  # and log "No new episodes" every Monday from 25 Aug to 19 Oct 2026.
+  - channel: "@AIDailyBrief"
     name: "AI Daily Brief"
     focus: "AI industry news, policy, models, companies"
     # ADR-2028: paths derive from the [vault] path authority. The podcast-ingest
@@ -7,12 +10,17 @@ podcasts:
     # so relocating [vault].root in agentbox.toml relocates this skill's output
     # with no edit here.
     output_dir: "${VAULT_TRANSCRIPTS}"
-    # The WORKING pages root. `ontology_dir` was the pre-ADR-2107 key, pointed at
-    # the CURATED pages, and is now refused loudly rather than honoured silently.
-    # Evidence ledgers land in <working_dir>/podcast-evidence/ as `type: Episode`
-    # pages with `public: false` — always (owner, 2026-09-22 14:00). Only a
-    # human publishes an Episode. Nothing here reaches knowledge/ except
-    # through `vault propose`.
+    # The curated topic pages, READ-ONLY here: used only to resolve an
+    # extracted topic to an existing page for the wikilinks on a ledger bullet.
+    pages_dir: "${VAULT_PAGES}"
+    # The WORKING pages root. Everything this pipeline writes lands under it:
+    # evidence ledgers in <working_dir>/podcast-evidence/ as `type: Episode`
+    # pages with `public: false` (always, owner 2026-09-22 14:00; only a human
+    # publishes an Episode), and proposed new pages as non-public `Draft Concept`
+    # pages. Nothing here reaches knowledge/ except through `vault propose`.
+    #
+    # `ontology_dir`, the pre-ADR-2107 key, is refused loudly by the ingest
+    # binary: it named one directory the pipeline both read and wrote.
     #
     # ${VAULT_*} is expanded to a PATH by the ingest binary. No value in this
     # file is ever interpolated into a page body or frontmatter.
@@ -20,7 +28,10 @@ podcasts:
 
 settings:
   loom_url: "${LOOM_BASE_URL}"
-  loom_fallback_urls: ["http://the connected node:8084/v1"]
+  # A second façade to try when the primary does not answer. Optional: when
+  # LOOM_FALLBACK_URL is unset the entry is dropped and there is no fallback.
+  # (An address belongs in the environment, not in a published file.)
+  loom_fallback_urls: ["${LOOM_FALLBACK_URL}"]
   loom_model: "qwen3.8-27b"
   max_assertions_per_episode: 15
   min_confidence: 0.4

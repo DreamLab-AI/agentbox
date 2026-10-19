@@ -143,14 +143,16 @@ podcasts:
     # ${VAULT_WORKING_PAGES} — the values agentbox.toml's [vault] section
     # resolves to — so relocating the vault relocates this output.
     output_dir: "${VAULT_TRANSCRIPTS}"
+    # Curated topic pages, READ-ONLY here: topics resolve to them for wikilinks.
+    pages_dir: "${VAULT_PAGES}"
     # The WORKING pages root. `ontology_dir` was the pre-ADR-2107 key, pointed at
     # curated pages, and is now REFUSED loudly rather than silently honoured.
     # Evidence ledgers land in <working_dir>/podcast-evidence/.
     working_dir: "${VAULT_WORKING_PAGES}"
 
 settings:
-  loom_url: "${LOOM_BASE_URL}"          # canonical LAN façade (via ml hp-nat DNAT)
-  loom_fallback_urls: ["http://the connected node:8084/v1"]  # direct 25G-rail path when the DNAT is down
+  loom_url: "${LOOM_BASE_URL}"          # canonical façade
+  loom_fallback_urls: ["${LOOM_FALLBACK_URL}"]  # optional second façade; dropped when the variable is unset
   loom_model: "qwen3.8-27b"
   max_assertions_per_episode: 15
   min_confidence: 0.4
@@ -160,7 +162,13 @@ settings:
 ```
 
 The Loom URL is resolved once per run by probing `/health` on each candidate in
-order; a fallback hit is logged. Both addresses serve the same façade on the connected node.
+order; a fallback hit is logged. `${VAR}` references in `loom_url` and
+`loom_fallback_urls` are expanded from the environment: an unset `loom_url`
+variable is an error, an unset fallback variable simply means no fallback.
+
+A failed channel listing is an error, not a quiet week. `yt-dlp` failing (a wrong
+handle, no network, the binary missing) makes `podcast-ingest` and
+`podcast-bulk-ingest` exit non-zero with the reason on standard error.
 
 ## Ingest-status lifecycle
 

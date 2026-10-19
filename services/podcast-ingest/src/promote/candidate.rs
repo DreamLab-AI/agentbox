@@ -71,13 +71,22 @@ pub fn target_page_name(topic: &str) -> String {
     format!("{}.md", re_path_sep().replace_all(topic, "_"))
 }
 
-/// Port of `find_candidates`.
+/// Port of `find_candidates` for the retired flat layout, where ledger pages
+/// sit in `pages_dir` beside the topic pages.
 pub fn find_candidates(
     pages_dir: &Path,
     min_assertions: usize,
     min_episodes: usize,
 ) -> Vec<Candidate> {
-    let assertions = load_all_assertions(pages_dir);
+    find_candidates_from(load_all_assertions(pages_dir), min_assertions, min_episodes)
+}
+
+/// Candidacy over assertions already loaded from wherever the ledgers live.
+pub fn find_candidates_from(
+    assertions: Vec<Assertion>,
+    min_assertions: usize,
+    min_episodes: usize,
+) -> Vec<Candidate> {
     let by_topic = group_by_topic(&assertions);
 
     let mut candidates: Vec<Candidate> = Vec::new();

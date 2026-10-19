@@ -110,11 +110,17 @@ mod tests {
         // Regression: the test that stood here asserted the opposite of its own
         // name, and had been red on main. /health lives at the façade root, so
         // a base of `…/v1` must probe `…/health`.
-        assert_eq!(LoomClient::new("http://loom:8080/v1").root(), "http://loom:8080");
+        assert_eq!(
+            LoomClient::new("http://loom:8080/v1").root(),
+            "http://loom:8080"
+        );
     }
 
     #[test]
     fn a_base_without_v1_is_unchanged() {
-        assert_eq!(LoomClient::new("http://example.com").root(), "http://example.com");
+        assert_eq!(
+            LoomClient::new("http://example.com").root(),
+            "http://example.com"
+        );
     }
 }

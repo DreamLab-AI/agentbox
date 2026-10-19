@@ -66,7 +66,7 @@ pub struct Args {
 }
 
 /// Port of `main()`'s body.
-pub async fn run(args: &Args) {
+pub async fn run(args: &Args) -> Result<(), crate::common::ytdlp::YtDlpError> {
     let out_dir = &args.output_dir;
     let _ = std::fs::create_dir_all(out_dir);
 
@@ -81,7 +81,7 @@ pub async fn run(args: &Args) {
         max_episodes: args.max_episodes,
         old_streak: args.old_streak,
     };
-    let _downloaded = run_download(&download_args, out_dir, &mut state).await;
+    let _downloaded = run_download(&download_args, out_dir, &mut state).await?;
     let _ = save_bulk_state(&state_path, &state);
 
     if args.enrich {
@@ -113,10 +113,18 @@ pub async fn run(args: &Args) {
         "\nBulk ingest complete. {total} total episodes in {}",
         out_dir.display()
     );
+    Ok(())
 }
 
-/// Entry point used by the `podcast-bulk-ingest` binary.
-pub async fn run_main() {
+/// Entry point used by the `podcast-bulk-ingest` binary. Returns the process
+/// exit code: non-zero when the channel listing failed.
+pub async fn run_main() -> i32 {
     let args = Args::parse();
-    run(&args).await;
+    match run(&args).await {
+        Ok(()) => 0,
+        Err(e) => {
+            eprintln!("ERROR episode listing failed: {e}");
+            1
+        }
+    }
 }

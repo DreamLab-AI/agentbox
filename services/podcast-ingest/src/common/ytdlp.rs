@@ -29,44 +29,126 @@ fn re_html_tag() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"<[^>]+>").unwrap())
 }
 
-/// Run `yt-dlp` with `args`, capturing stdout as text, bounded by `timeout`.
-/// Mirrors `subprocess.run(cmd, capture_output=True, text=True, timeout=N)`:
-/// a timeout or spawn failure yields empty output rather than propagating —
-/// callers already treat "nothing parsed" as the failure signal, matching
-/// the Python call sites (which never catch `TimeoutExpired` explicitly and
-/// would otherwise crash the whole run; the pragmatic port degrades to "no
-/// videos found this call" instead of aborting the process).
-async fn run_yt_dlp(args: &[&str], timeout: Duration) -> (String, bool) {
-    let child = Command::new("yt-dlp")
+/// Why a `yt-dlp` listing could not be trusted.
+///
+/// The listing call used to swallow all of these and return an empty list, which
+/// the callers reported as "No new episodes": a wrong channel handle then looked
+/// identical to a quiet week, and the weekly cron went silent for seven runs.
+#[derive(Debug, thiserror::Error)]
+pub enum YtDlpError {
+    /// The `yt-dlp` binary could not be started (not installed, not on `PATH`).
+    #[error("could not start {bin}: {reason}")]
+    Spawn {
+        /// The binary that was invoked.
+        bin: String,
+        /// The operating-system error text.
+        reason: String,
+    },
+    /// The call outlived its time limit.
+    #[error("{bin} timed out after {secs}s")]
+    Timeout {
+        /// The binary that was invoked.
+        bin: String,
+        /// The limit, in seconds.
+        secs: u64,
+    },
+    /// `yt-dlp` exited non-zero and produced no usable output.
+    #[error("{bin} exited with {code}: {stderr}")]
+    Exit {
+        /// The binary that was invoked.
+        bin: String,
+        /// The exit code, or `signal` when it was killed.
+        code: String,
+        /// The last lines of standard error.
+        stderr: String,
+    },
+}
+
+/// The `yt-dlp` executable to run. `PODCAST_INGEST_YT_DLP` overrides it so a
+/// test (or an operator pinning a build) can substitute one without touching
+/// `PATH`.
+fn yt_dlp_bin() -> String {
+    std::env::var("PODCAST_INGEST_YT_DLP")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| "yt-dlp".to_string())
+}
+
+/// What a finished `yt-dlp` process left behind.
+struct YtDlpRun {
+    stdout: String,
+    stderr: String,
+    success: bool,
+    code: String,
+}
+
+/// Run `bin` with `args`, bounded by `timeout`, reporting how it ended.
+async fn spawn_yt_dlp(bin: &str, args: &[&str], timeout: Duration) -> Result<YtDlpRun, YtDlpError> {
+    let child = Command::new(bin)
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn();
-
-    let child = match child {
-        Ok(c) => c,
-        Err(_) => return (String::new(), false),
-    };
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(|e| YtDlpError::Spawn {
+            bin: bin.to_string(),
+            reason: e.to_string(),
+        })?;
 
     match tokio::time::timeout(timeout, child.wait_with_output()).await {
-        Ok(Ok(output)) => (
-            String::from_utf8_lossy(&output.stdout).to_string(),
-            output.status.success(),
-        ),
-        _ => (String::new(), false),
+        Ok(Ok(output)) => Ok(YtDlpRun {
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            success: output.status.success(),
+            code: output
+                .status
+                .code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "signal".to_string()),
+        }),
+        Ok(Err(e)) => Err(YtDlpError::Spawn {
+            bin: bin.to_string(),
+            reason: e.to_string(),
+        }),
+        Err(_) => Err(YtDlpError::Timeout {
+            bin: bin.to_string(),
+            secs: timeout.as_secs(),
+        }),
     }
 }
 
-/// Python:
-/// ```python
-/// def get_video_ids(channel_url: str) -> list[tuple[str, str]]:
-///     cmd = [sys.executable, "-m", "yt_dlp", "--flat-playlist",
-///            "--print", "%(id)s\t%(title)s", channel_url]
-///     result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-///     ...
-/// ```
-pub async fn get_video_ids(channel_url: &str) -> Vec<(String, String)> {
-    let (stdout, _ok) = run_yt_dlp(
+/// Run `yt-dlp` with `args`, capturing stdout as text, bounded by `timeout`.
+///
+/// For the per-episode calls (metadata, subtitles) a timeout or spawn failure
+/// degrades to empty output and `false`: one bad episode must not stop the run,
+/// and the callers already treat "nothing parsed" as that episode's failure.
+/// The channel listing does NOT use this path; see [`get_video_ids`].
+async fn run_yt_dlp(args: &[&str], timeout: Duration) -> (String, bool) {
+    match spawn_yt_dlp(&yt_dlp_bin(), args, timeout).await {
+        Ok(run) => (run.stdout, run.success),
+        Err(_) => (String::new(), false),
+    }
+}
+
+/// The last few lines of `stderr`, for an error message.
+fn stderr_tail(stderr: &str) -> String {
+    let lines: Vec<&str> = stderr.lines().filter(|l| !l.trim().is_empty()).collect();
+    let from = lines.len().saturating_sub(3);
+    lines[from..].join(" | ")
+}
+
+/// List `(video id, title)` pairs for a channel or playlist URL using `bin`.
+///
+/// A failed listing is an error, never an empty list: a non-zero exit with
+/// nothing parsed, a timeout and a missing binary all return [`YtDlpError`].
+/// A non-zero exit that still yielded entries (one unavailable video in an
+/// otherwise good listing) keeps the entries and warns on standard error.
+pub async fn get_video_ids_with(
+    bin: &str,
+    channel_url: &str,
+) -> Result<Vec<(String, String)>, YtDlpError> {
+    let run = spawn_yt_dlp(
+        bin,
         &[
             "--flat-playlist",
             "--print",
@@ -75,15 +157,45 @@ pub async fn get_video_ids(channel_url: &str) -> Vec<(String, String)> {
         ],
         Duration::from_secs(300),
     )
-    .await;
+    .await?;
 
     let mut videos = Vec::new();
-    for line in stdout.trim().split('\n') {
+    for line in run.stdout.trim().split('\n') {
         if let Some((vid_id, title)) = line.split_once('\t') {
             videos.push((vid_id.to_string(), title.to_string()));
         }
     }
-    videos
+
+    if !run.success {
+        if videos.is_empty() {
+            return Err(YtDlpError::Exit {
+                bin: bin.to_string(),
+                code: run.code,
+                stderr: stderr_tail(&run.stderr),
+            });
+        }
+        eprintln!(
+            "warning: {bin} exited with {} but listed {} videos; continuing: {}",
+            run.code,
+            videos.len(),
+            stderr_tail(&run.stderr)
+        );
+    }
+    Ok(videos)
+}
+
+/// List `(video id, title)` pairs for a channel or playlist URL.
+///
+/// Python:
+/// ```python
+/// def get_video_ids(channel_url: str) -> list[tuple[str, str]]:
+///     cmd = [sys.executable, "-m", "yt_dlp", "--flat-playlist",
+///            "--print", "%(id)s\t%(title)s", channel_url]
+///     result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+///     ...
+/// ```
+pub async fn get_video_ids(channel_url: &str) -> Result<Vec<(String, String)>, YtDlpError> {
+    get_video_ids_with(&yt_dlp_bin(), channel_url).await
 }
 
 /// Fetch full episode metadata (`--dump-json`) for one video URL. Returns
@@ -192,5 +304,81 @@ mod tests {
     fn extract_transcript_returns_empty_when_no_subs() {
         let dir = tempdir().unwrap();
         assert_eq!(extract_transcript_text("missing", dir.path()), "");
+    }
+
+    /// Write an executable stand-in for `yt-dlp` and return its path.
+    #[cfg(unix)]
+    fn fake_yt_dlp(dir: &Path, body: &str) -> String {
+        use std::os::unix::fs::PermissionsExt;
+        let path = dir.join("fake-yt-dlp");
+        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path.to_string_lossy().to_string()
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn listing_failure_is_an_error_not_an_empty_list() {
+        let dir = tempdir().unwrap();
+        let bin = fake_yt_dlp(
+            dir.path(),
+            "echo 'ERROR: [youtube:tab] @Nope: This channel does not have a videos tab' >&2; exit 1",
+        );
+        let err = get_video_ids_with(&bin, "https://example.invalid/@Nope/videos")
+            .await
+            .expect_err("a failing yt-dlp must not look like an empty channel");
+        let text = err.to_string();
+        assert!(text.contains("exited with 1"), "{text}");
+        assert!(text.contains("does not have a videos tab"), "{text}");
+    }
+
+    #[tokio::test]
+    async fn missing_binary_is_an_error() {
+        let err = get_video_ids_with("/nonexistent/yt-dlp-for-test", "https://example.invalid/")
+            .await
+            .expect_err("a binary that cannot start must be reported");
+        assert!(matches!(err, YtDlpError::Spawn { .. }), "{err}");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn successful_listing_parses_ids_and_titles() {
+        let dir = tempdir().unwrap();
+        let bin = fake_yt_dlp(dir.path(), "printf 'aaa\\tFirst\\nbbb\\tSecond\\n'");
+        let videos = get_video_ids_with(&bin, "https://example.invalid/")
+            .await
+            .unwrap();
+        assert_eq!(
+            videos,
+            vec![
+                ("aaa".to_string(), "First".to_string()),
+                ("bbb".to_string(), "Second".to_string())
+            ]
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn partial_listing_with_nonzero_exit_keeps_the_entries() {
+        let dir = tempdir().unwrap();
+        let bin = fake_yt_dlp(
+            dir.path(),
+            "printf 'aaa\\tFirst\\n'; echo 'ERROR: one video unavailable' >&2; exit 1",
+        );
+        let videos = get_video_ids_with(&bin, "https://example.invalid/")
+            .await
+            .unwrap();
+        assert_eq!(videos.len(), 1);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn successful_empty_listing_is_ok_and_empty() {
+        let dir = tempdir().unwrap();
+        let bin = fake_yt_dlp(dir.path(), "exit 0");
+        let videos = get_video_ids_with(&bin, "https://example.invalid/")
+            .await
+            .unwrap();
+        assert!(videos.is_empty());
     }
 }

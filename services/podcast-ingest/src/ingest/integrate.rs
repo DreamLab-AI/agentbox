@@ -20,25 +20,30 @@ fn truncate_chars(s: &str, n: usize) -> String {
 /// Port of `phase_integrate`.
 pub async fn phase_integrate(
     verified: &IndexMap<String, Vec<Assertion>>,
-    ontology_dir: Option<&Path>,
+    pages_dir: Option<&Path>,
+    working_dir: Option<&Path>,
     settings: &Settings,
     state: &mut IngestState,
     dry_run: bool,
     episode_paths: &HashMap<String, PathBuf>,
 ) {
-    let ontology_dir = match ontology_dir {
+    let working_dir = match working_dir {
         Some(d) if d.exists() => d,
         _ => {
-            println!("  No ontology directory configured, skipping integration.");
+            println!("  No working directory configured (working_dir), skipping integration.");
             return;
         }
     };
+    let pages_dir = pages_dir.filter(|d| d.exists());
+    if pages_dir.is_none() {
+        println!("  No curated pages directory (pages_dir): topics will not resolve to pages.");
+    }
 
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     let mut total_integrated = 0usize;
     let mut all_unmatched: Vec<Assertion> = Vec::new();
     let page_index = if !dry_run {
-        Some(build_page_index(ontology_dir))
+        Some(pages_dir.map(build_page_index).unwrap_or_default())
     } else {
         None
     };
@@ -75,7 +80,8 @@ pub async fn phase_integrate(
         let (n_written, unmatched) = write_assertion_ledger(
             filename,
             &tagged,
-            ontology_dir,
+            working_dir,
+            pages_dir,
             &mut state.assertions,
             &today,
             page_index.as_ref(),
@@ -88,7 +94,7 @@ pub async fn phase_integrate(
                 .file_stem()
                 .map(|s| s.to_string_lossy().to_string())
                 .unwrap_or_default();
-            let ledger_name = ledger_page_path(ontology_dir, &episode_slug)
+            let ledger_name = ledger_page_path(working_dir, &episode_slug)
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_default();
@@ -110,7 +116,7 @@ pub async fn phase_integrate(
     // `dry_run` is true). Kept for line-for-line fidelity.
     let unmatched = all_unmatched;
     if !unmatched.is_empty() && !dry_run {
-        propose_new_pages(&unmatched, ontology_dir, settings, state, &today).await;
+        propose_new_pages(&unmatched, pages_dir, working_dir, settings, state, &today).await;
     } else if !unmatched.is_empty() && dry_run {
         println!(
             "\n  [DRY RUN] {} assertions had no placement — would propose new pages:",

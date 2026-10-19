@@ -46,14 +46,12 @@ carry `public: false`, keeping them outside the KG gate (Invariant 7,
 fail-closed), and `type: Note` — the pre-v2 `type: podcast-news` is not a
 `working_types` value.
 
-> **Open follow-up, out of Part B scope (owner: `services/podcast-ingest`).**
-> `podcast-promote --pages-dir` still assumes ledger pages and target topic
-> pages sit in ONE directory. They no longer do: ledgers are in
-> `$VAULT_WORKING_PAGES/podcast-evidence/`, topic pages in `$VAULT_PAGES`.
-> `podcast-promote` needs a separate `--ledger-dir`, and `run-promote.sh` a
-> matching argument, before the promotion stage reads the new layout. Its
-> ledger parser must also read the `assertions:` frontmatter list instead of
-> the retired indented `key::` sub-lines.
+> **Landed 2026-10-19.** `podcast-promote` reads ledgers from `--ledger-dir`
+> (`$VAULT_WORKING_PAGES/podcast-evidence/`) and target topic pages from
+> `--pages-dir` (`$VAULT_PAGES`); `run-promote.sh` passes both. The ingest writer
+> now creates ledgers in that subdirectory in the working vault's `Episode`
+> shape, resolving topics read-only against `pages_dir`; proposed new pages go to
+> the working root as non-public `Draft Concept` pages, never into `knowledge/`.
 
 ## Working-graph pages are OKF-typed (ADR-2107, PRD Q9)
 

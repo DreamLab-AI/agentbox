@@ -60,11 +60,15 @@ pub async fn download_episode(vid_id: &str, title: &str, out_dir: &Path) -> Opti
 }
 
 /// Port of `phase_download`.
+///
+/// A failed channel listing is an error. The Python original and the first
+/// port both treated it as an empty list and printed "No new episodes", so a
+/// wrong handle read as a quiet week for seven runs.
 pub async fn phase_download(
     podcast: &Podcast,
     state: &mut IngestState,
     max_episodes: usize,
-) -> Vec<PathBuf> {
+) -> Result<Vec<PathBuf>, ytdlp::YtDlpError> {
     let out_dir = Path::new(&podcast.output_dir);
     let _ = std::fs::create_dir_all(out_dir);
 
@@ -91,7 +95,7 @@ pub async fn phase_download(
     }
 
     println!("[{}] Fetching video list...", podcast.name);
-    let all_videos = ytdlp::get_video_ids(&channel_url).await;
+    let all_videos = ytdlp::get_video_ids(&channel_url).await?;
     let new_videos: Vec<(String, String)> = all_videos
         .into_iter()
         .filter(|(vid, _)| !known_ids.contains(vid))
@@ -99,7 +103,7 @@ pub async fn phase_download(
 
     if new_videos.is_empty() {
         println!("[{}] No new episodes.", podcast.name);
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
     println!(
@@ -140,5 +144,5 @@ pub async fn phase_download(
         podcast.name,
         downloaded.len()
     );
-    downloaded
+    Ok(downloaded)
 }

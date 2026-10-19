@@ -108,8 +108,13 @@ pub struct DownloadArgs<'a> {
     pub old_streak: usize,
 }
 
-/// Port of `run_download`. Returns the number of newly downloaded episodes.
-pub async fn run_download(args: &DownloadArgs<'_>, out_dir: &Path, state: &mut BulkState) -> usize {
+/// Port of `run_download`. Returns the number of newly downloaded episodes, or
+/// the reason the channel listing failed (never a silent zero).
+pub async fn run_download(
+    args: &DownloadArgs<'_>,
+    out_dir: &Path,
+    state: &mut BulkState,
+) -> Result<usize, crate::common::ytdlp::YtDlpError> {
     let mut channel_url = args.channel.to_string();
     if channel_url.starts_with('@') {
         channel_url = format!("https://www.youtube.com/{channel_url}/videos");
@@ -149,7 +154,7 @@ pub async fn run_download(args: &DownloadArgs<'_>, out_dir: &Path, state: &mut B
 
     println!("Already have {} episodes.", existing_ids.len());
     println!("Fetching video list...");
-    let all_videos = ytdlp::get_video_ids(&channel_url).await;
+    let all_videos = ytdlp::get_video_ids(&channel_url).await?;
     println!("Found {} total videos.\n", all_videos.len());
 
     let videos: Vec<(String, String)> = all_videos
@@ -228,5 +233,5 @@ pub async fn run_download(args: &DownloadArgs<'_>, out_dir: &Path, state: &mut B
         })
         .unwrap_or(0);
     println!("\nDownload done! {done} new episodes. Total: {total_files}");
-    done
+    Ok(done)
 }

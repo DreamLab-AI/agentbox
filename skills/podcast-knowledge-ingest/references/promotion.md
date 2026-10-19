@@ -42,7 +42,7 @@ graph.
 ## Usage
 
 ```bash
-podcast-promote --pages-dir <ledger+graph pages dir> --proposals-dir <output dir> [options]
+podcast-promote --pages-dir <curated topic pages> [--ledger-dir <ledger dir>] --proposals-dir <output dir> [options]
 
 # Candidacy scan only, no Loom/judge calls, no writes (point --pages-dir/--proposals-dir
 # at your own scratch dirs; the original test fixtures now live in
@@ -57,7 +57,8 @@ podcast-promote --pages-dir <scratch>/pages --proposals-dir <scratch>/proposals 
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--pages-dir` | required | dir containing the target topic pages (`<Topic>.md`) the ledger bullets wikilink to. Ledger pages are no longer beside them — see the follow-up under *Ledger format* |
+| `--pages-dir` | required | dir containing the target topic pages (`<Topic>.md`) the ledger bullets wikilink to (`$VAULT_PAGES`) |
+| `--ledger-dir` | `<working-graph-dir>/podcast-evidence` if it exists | dir holding the evidence ledgers, one `<episode-slug>.md` each. Without it (and without that directory) ledgers are looked for beside the topic pages, the retired flat layout |
 | `--proposals-dir` | required | output dir for survivor dossiers |
 | `--rejects-dir` | `<proposals-dir>/../rejects` | output dir for rejected dossiers |
 | `--min-assertions` | `5` | min assertions for a topic to become a candidate |
@@ -137,14 +138,16 @@ authoritative, typed and YAML-parseable; the bullets are the human surface.
 Bullets with no `topics` (unmatched-topic assertions, still ledgered for audit)
 are excluded from topic grouping — candidacy is topic-grouped by construction.
 
-> **Open follow-up, out of Part B scope (owner: `services/podcast-ingest`).**
-> `promote::ledger_parse` still regexes indented `key::` sub-lines out of a
-> flat `--pages-dir`. It needs (a) a `--ledger-dir` separate from `--pages-dir`,
-> since ledgers now live in `$VAULT_WORKING_PAGES/podcast-evidence/` while
-> target topic pages live in `$VAULT_PAGES`, and (b) to read the `assertions:`
-> frontmatter list. `run-promote.sh` needs the matching argument. Until both
-> land, the promotion stage sees zero ledger pages — a clean no-op, not a
-> corruption.
+> **Landed 2026-10-19 (`services/podcast-ingest`).** `podcast-promote` takes
+> `--ledger-dir` (default `<working-graph-dir>/podcast-evidence` when that
+> directory exists, so `$VAULT_WORKING_PAGES` alone is enough), while
+> `--pages-dir` stays the curated topic pages. The parser reads the frontmatter
+> `assertions:` list when a ledger has one, and otherwise the body bullets in
+> either spelling: `**key:** value` (the working vault's) or the retired
+> `key:: value`. The ledgers on disk today are bullet-only, so the bullets are
+> what runs in practice; the ingest writer emits the same bullet form. Without
+> `--ledger-dir` and without a `podcast-evidence/` directory the flat
+> `podcast-evidence___<slug>.md` layout beside the topic pages is still read.
 
 ## Candidacy rule
 

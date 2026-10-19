@@ -159,22 +159,36 @@ fn re_ledger_fp() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"<!-- assertion-fp:\s*([0-9a-f]+)\s*-->").unwrap())
 }
 
+/// Subdirectory of the working pages root that holds the evidence ledgers.
+pub const LEDGER_SUBDIR: &str = "podcast-evidence";
+
 /// Port of `_ledger_page_path`.
-pub fn ledger_page_path(ontology_dir: &Path, episode_slug: &str) -> PathBuf {
-    ontology_dir.join(format!("podcast-evidence___{episode_slug}.md"))
+///
+/// Ledgers are `<working_dir>/podcast-evidence/<episode-slug>.md`. Episode
+/// identity is the filename stem. The retired flat `podcast-evidence___<slug>.md`
+/// name is rejected by `vault validate` as an `a___b.md` namespace filename.
+pub fn ledger_page_path(working_dir: &Path, episode_slug: &str) -> PathBuf {
+    working_dir
+        .join(LEDGER_SUBDIR)
+        .join(format!("{episode_slug}.md"))
 }
 
-/// Port of `_build_ledger_header` — V2 YAML frontmatter
-/// (VAULT-corpus-format §V2/§V5). `public` is a real YAML boolean, emitted
-/// as the bare literal `true` (never run through `yaml_scalar`, which would
-/// re-quote it), per ADR-2028 D4.
-pub fn build_ledger_header(meta: &EpisodeMeta, today: &str) -> String {
+/// Port of `_build_ledger_header`, in the working vault's `Episode` shape
+/// (ADR-2107, VAULT-corpus-format §V2/§V5).
+///
+/// `public: false` is a real YAML boolean, emitted as the bare literal and
+/// never run through `yaml_scalar`, which would re-quote it. A ledger is
+/// working-graph evidence: only a human publishes an Episode, so this pipeline
+/// never writes `public: true`. `generated_at` is an RFC 3339 timestamp.
+pub fn build_ledger_header(meta: &EpisodeMeta, today: &str, generated_at: &str) -> String {
     let mut props: Vec<(String, String)> = vec![
-        ("public".to_string(), "true".to_string()),
+        ("type".to_string(), "Episode".to_string()),
         (
             "title".to_string(),
             yaml_scalar(&format!("AI Daily Brief — {}", meta.title)),
         ),
+        ("public".to_string(), "false".to_string()),
+        ("status".to_string(), "stable".to_string()),
         ("source".to_string(), yaml_scalar("AI Daily Brief")),
     ];
     if !meta.url.is_empty() {
@@ -187,6 +201,12 @@ pub fn build_ledger_header(meta: &EpisodeMeta, today: &str) -> String {
 
     let mut lines: Vec<String> = vec!["---".to_string()];
     lines.extend(props.iter().map(|(k, v)| format!("{k}: {v}")));
+    lines.push("generated:".to_string());
+    lines.push(format!(
+        "  by: process:podcast-ingest/{}",
+        env!("CARGO_PKG_VERSION")
+    ));
+    lines.push(format!("  at: {generated_at}"));
     lines.push("---".to_string());
     lines.push(String::new());
     lines.push(format!("# AI Daily Brief — {}", meta.title));
@@ -237,26 +257,26 @@ pub fn build_ledger_bullet(
     }
 
     let mut sub_lines: Vec<String> = vec![
-        format!("  tier:: {}", super::pyval::py_display(tier_raw)),
-        format!("  confidence:: {confidence}"),
-        format!("  source:: {source}"),
+        format!("  **tier:** {}", super::pyval::py_display(tier_raw)),
+        format!("  **confidence:** {confidence}"),
+        format!("  **source:** {source}"),
     ];
     if let Some(authority) = get_truthy_display(assertion, "source_authority") {
-        sub_lines.push(format!("  source-authority:: {authority}"));
+        sub_lines.push(format!("  **source-authority:** {authority}"));
     }
     if let Some(volatility) = get_truthy_display(assertion, "volatility") {
-        sub_lines.push(format!("  volatility:: {volatility}"));
+        sub_lines.push(format!("  **volatility:** {volatility}"));
     }
     let claim_date = if !episode_date.is_empty() {
         episode_date
     } else {
         today
     };
-    sub_lines.push(format!("  claim-date:: {claim_date}"));
+    sub_lines.push(format!("  **claim-date:** {claim_date}"));
 
     if let Some(evidence) = get_truthy_display(assertion, "evidence") {
         if evidence != claim {
-            sub_lines.push(format!("  evidence:: {evidence}"));
+            sub_lines.push(format!("  **evidence:** {evidence}"));
         }
     }
     sub_lines.push(format!(
@@ -267,13 +287,19 @@ pub fn build_ledger_bullet(
     (bullet, resolved_titles)
 }
 
+/// RFC 3339 UTC timestamp for the `generated` provenance block.
+fn generated_at() -> String {
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+}
+
 /// Port of `write_assertion_ledger`. `verified_assertions` carry an
 /// `_episode_path` string field (set by the caller in `phase_integrate`)
 /// used to locate episode metadata. Returns `(n_bullets_written, unmatched)`.
 pub fn write_assertion_ledger(
     episode_filename: &str,
     verified_assertions: &[Assertion],
-    ontology_dir: &Path,
+    working_dir: &Path,
+    pages_dir: Option<&Path>,
     state_assertions: &mut IndexMap<String, Value>,
     today: &str,
     page_index: Option<&PageIndex>,
@@ -295,7 +321,7 @@ pub fn write_assertion_ledger(
         },
     };
 
-    let ledger_path = ledger_page_path(ontology_dir, &episode_slug);
+    let ledger_path = ledger_page_path(working_dir, &episode_slug);
     let existing_content = std::fs::read_to_string(&ledger_path).unwrap_or_default();
     let existing_fps: HashSet<String> = re_ledger_fp()
         .captures_iter(&existing_content)
@@ -306,7 +332,7 @@ pub fn write_assertion_ledger(
     let page_index: &PageIndex = match page_index {
         Some(idx) => idx,
         None => {
-            owned_index = build_page_index(ontology_dir);
+            owned_index = pages_dir.map(build_page_index).unwrap_or_default();
             &owned_index
         }
     };
@@ -363,12 +389,15 @@ pub fn write_assertion_ledger(
     } else {
         format!(
             "{}{}",
-            build_ledger_header(&meta, today),
+            build_ledger_header(&meta, today, &generated_at()),
             new_bullets.join("\n")
         )
     };
 
     let final_content = format!("{}\n", content.trim_end_matches('\n'));
+    if let Some(parent) = ledger_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
     let _ = std::fs::write(&ledger_path, final_content);
     (new_bullets.len(), unmatched)
 }
@@ -414,10 +443,11 @@ mod tests {
         let (bullet, resolved) = build_ledger_bullet(&a, &idx, "2026-01-01", "");
         assert!(resolved.is_empty());
         assert!(bullet.starts_with("- A claim.\n"));
-        assert!(bullet.contains("  tier:: 1\n"));
-        assert!(bullet.contains("  confidence:: 0.9\n"));
-        assert!(bullet.contains("  source:: Host\n"));
-        assert!(bullet.contains("  claim-date:: 2026-01-01\n"));
+        assert!(bullet.contains("  **tier:** 1\n"));
+        assert!(bullet.contains("  **confidence:** 0.9\n"));
+        assert!(bullet.contains("  **source:** Host\n"));
+        assert!(bullet.contains("  **claim-date:** 2026-01-01\n"));
+        assert!(!bullet.contains("::"), "the v1 key:: sub-lines are retired");
         assert!(bullet.contains("<!-- assertion-fp: abc123 -->"));
     }
 
@@ -430,21 +460,37 @@ mod tests {
     }
 
     #[test]
-    fn header_public_is_bare_boolean_not_quoted() {
+    fn header_is_a_non_public_episode_with_provenance() {
         let meta = EpisodeMeta {
             title: "Episode Title".to_string(),
             url: "https://youtu.be/x".to_string(),
             episode_date: "2026-01-01".to_string(),
         };
-        let header = build_ledger_header(&meta, "2026-01-02");
-        assert!(header.starts_with("---\npublic: true\n"));
+        let header = build_ledger_header(&meta, "2026-01-02", "2026-01-02T03:04:05Z");
+        assert!(header.starts_with("---\ntype: Episode\n"));
+        // `public` is a bare boolean, and a ledger is never public.
+        assert!(header.contains("\npublic: false\n"));
+        assert!(!header.contains("public: true"));
+        assert!(header.contains("\nstatus: stable\n"));
         // No YAML-special characters in this title, so yaml_scalar leaves it
         // bare (unquoted) — only special/bool/number/date-shaped scalars,
         // or a title containing one of `:#[]{},"'`, get quoted.
         assert!(header.contains("title: AI Daily Brief — Episode Title\n"));
         assert!(header.contains("episode-url: \"https://youtu.be/x\"\n"));
         assert!(header.contains("episode-date: \"2026-01-01\"\n"));
+        assert!(header.contains("generated:\n  by: process:podcast-ingest/"));
+        assert!(header.contains("\n  at: 2026-01-02T03:04:05Z\n---\n"));
         assert!(header.ends_with("# AI Daily Brief — Episode Title\n\n"));
+    }
+
+    #[test]
+    fn ledger_path_is_a_podcast_evidence_subdirectory_entry() {
+        let path = ledger_page_path(Path::new("/v/working"), "an-episode");
+        assert_eq!(path, Path::new("/v/working/podcast-evidence/an-episode.md"));
+        assert!(
+            !path.to_string_lossy().contains("___"),
+            "the flat a___b.md name is rejected by vault validate"
+        );
     }
 
     #[test]
@@ -462,13 +508,14 @@ mod tests {
             "episode-one.md",
             std::slice::from_ref(&a1),
             dir.path(),
+            None,
             &mut state_assertions,
             "2026-01-01",
             None,
         );
         assert_eq!(n, 1);
         let content =
-            std::fs::read_to_string(dir.path().join("podcast-evidence___episode-one.md")).unwrap();
+            std::fs::read_to_string(dir.path().join("podcast-evidence/episode-one.md")).unwrap();
         assert!(content.ends_with('\n') && !content.ends_with("\n\n"));
 
         // Re-running with the same assertion (now fingerprinted, since the
@@ -481,6 +528,7 @@ mod tests {
             "episode-one.md",
             &[a1_fp],
             dir.path(),
+            None,
             &mut state_assertions,
             "2026-01-01",
             None,

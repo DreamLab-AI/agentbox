@@ -29,8 +29,19 @@
  * else's amendment), and the run is idempotent per assertion-fingerprint set via
  * promotions/.submitted.json.
  *
+ * Class lookup is `ontomark find` (the vault CLI no longer has `find`). A lookup
+ * that FAILS to run is reported as a failure and retried next week; only a
+ * lookup that ran and found no exact class is "unresolved". Conflating the two
+ * once reported a missing subcommand as "no exact class" for every topic.
+ *
+ * Both CLIs run against the repository named by VAULT_REPO (else the parent of
+ * VAULT_ROOT when that is a `knowledge/` or `working/` vault), not whatever
+ * directory this script happened to be started from.
+ *
  * Usage:  node submit-proposals.mjs [--dry-run]
  * Env:    VAULT_BIN (default: `vault` on PATH, else /opt/agentbox/bin/vault)
+ *         ONTOMARK_BIN (default: `ontomark` on PATH, else /opt/agentbox/bin/ontomark)
+ *         VAULT_REPO, VAULT_ROOT (the repository, see above)
  */
 
 import fs from 'node:fs';
@@ -38,31 +49,39 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const SKILL_DIR = path.dirname(new URL(import.meta.url).pathname);
 const PROPOSALS = path.join(SKILL_DIR, 'promotions', 'proposals');
 const STATE = path.join(SKILL_DIR, 'promotions', '.submitted.json');
 const DRY = process.argv.includes('--dry-run');
 
-// VAULT_BIN is the ONLY environment value this script reads, and it is an
-// executable path — never interpolated into a diff, a page body or
-// frontmatter. Page content comes exclusively from the dossier JSON.
-function resolveVault() {
-  if (process.env.VAULT_BIN) return process.env.VAULT_BIN;
+// VAULT_BIN, ONTOMARK_BIN and the repository path are the only environment
+// values this script reads, and each is an executable or directory path, never
+// interpolated into a diff, a page body or frontmatter. Page content comes
+// exclusively from the dossier JSON.
+function resolveBin(envName, name) {
+  if (process.env[envName]) return process.env[envName];
   try {
-    const hit = execFileSync('sh', ['-c', 'command -v vault'], { encoding: 'utf8' }).trim();
+    const hit = execFileSync('sh', ['-c', `command -v ${name}`], { encoding: 'utf8' }).trim();
     if (hit) return hit;
   } catch { /* not on PATH */ }
-  const baked = '/opt/agentbox/bin/vault';
+  const baked = `/opt/agentbox/bin/${name}`;
   return fs.existsSync(baked) ? baked : null;
 }
 
-const VAULT = resolveVault();
-if (!VAULT) {
-  console.error('submit-proposals: no `vault` binary. It is baked by Nix under [vault].cli');
-  console.error('                  (ADR-2108); rebuild the image, or set VAULT_BIN.');
-  process.exit(1);
+/** The repository the corpus CLIs operate on, or null when it cannot be named. */
+export function resolveRepo(env = process.env) {
+  if (env.VAULT_REPO) return env.VAULT_REPO;
+  if (env.VAULT_ROOT && ['knowledge', 'working'].includes(path.basename(env.VAULT_ROOT))) {
+    return path.dirname(env.VAULT_ROOT);
+  }
+  return null;
 }
+
+const VAULT = resolveBin('VAULT_BIN', 'vault');
+const ONTOMARK = resolveBin('ONTOMARK_BIN', 'ontomark');
+const REPO = resolveRepo();
 
 const state = fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, 'utf8')) : {};
 
@@ -72,32 +91,54 @@ function fpKey(dossier) {
     .digest('hex').slice(0, 16);
 }
 
-function vault(args) {
+/** Run a corpus CLI inside the repository; stdout parsed as JSON. */
+function cli(bin, args) {
   // Capture stdout; let stderr through so a degraded corpus stays visible.
-  const out = execFileSync(VAULT, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
+  const out = execFileSync(bin, ['--repo', REPO, ...args], {
+    encoding: 'utf8',
+    cwd: REPO,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
   return out.trim() ? JSON.parse(out) : {};
 }
 
-function slugFromPage(page) {
+function vault(args) {
+  return cli(VAULT, args);
+}
+
+export function slugFromPage(page) {
   return page.replace(/\.md$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 /**
- * Exact-slug resolution against the corpus. `vault find` returns page ids; the
- * class IRI is the namespaced slug of the page title. Demand an exact match on
- * the slug — a fuzzy hit must never receive someone else's amendment.
+ * The hits in an `ontomark find --json` reply. The reply is a bare array; an
+ * object with `results` is accepted too, for the older shape.
  */
-function resolveIri(targetPage) {
+export function findHits(reply) {
+  if (Array.isArray(reply)) return reply;
+  return Array.isArray(reply?.results) ? reply.results : [];
+}
+
+/**
+ * Exact-slug resolution against the corpus. The class IRI is the namespaced slug
+ * of the page title. Demand an exact match on the slug: a fuzzy hit must never
+ * receive someone else's amendment.
+ *
+ * Three outcomes, kept apart on purpose: `{ ok: true, iri, page }`,
+ * `{ ok: false, reason: 'no-match' }` when the lookup ran and found no exact
+ * class, and `{ ok: false, reason: 'error', detail }` when the lookup itself
+ * failed to run. Only the first two say anything about the corpus.
+ */
+export function resolveIri(targetPage, find = (q) => cli(ONTOMARK, ['find', '--query', q, '--type', 'Class', '--limit', '10', '--json'])) {
   const slug = slugFromPage(targetPage);
-  let res;
+  let reply;
   try {
-    res = vault(['find', '--query', targetPage.replace(/\.md$/, ''), '--type', 'Class', '--limit', '10', '--json']);
+    reply = find(targetPage.replace(/\.md$/, ''));
   } catch (e) {
-    console.error(`  find failed for '${targetPage}': ${String(e.message).slice(0, 160)}`);
-    return null;
+    return { ok: false, reason: 'error', detail: String(e.message).slice(0, 160) };
   }
-  const hit = (res.results || []).find((r) => slugFromPage(r.id) === slug);
-  return hit ? { iri: `urn:ngm:class:${slug}`, page: hit.id } : null;
+  const hit = findHits(reply).find((r) => slugFromPage(r.id) === slug);
+  return hit ? { ok: true, iri: `urn:ngm:class:${slug}`, page: hit.id } : { ok: false, reason: 'no-match' };
 }
 
 /**
@@ -140,7 +181,25 @@ function hypothesisFor(dossier, dossierFile) {
 }
 
 function main() {
-  const files = fs.readdirSync(PROPOSALS).filter((f) => f.endsWith('.json')).sort();
+  if (!VAULT) {
+    console.error('submit-proposals: no `vault` binary. It is baked by Nix under [vault].cli');
+    console.error('                  (ADR-2108); rebuild the image, or set VAULT_BIN.');
+    process.exit(1);
+  }
+  if (!ONTOMARK) {
+    console.error('submit-proposals: no `ontomark` binary, which class lookup needs. Rebuild the');
+    console.error('                  image, or set ONTOMARK_BIN.');
+    process.exit(1);
+  }
+  if (!REPO) {
+    console.error('submit-proposals: cannot tell which repository to use. Set VAULT_REPO, or');
+    console.error('                  VAULT_ROOT to its knowledge/ or working/ vault.');
+    process.exit(1);
+  }
+
+  const files = fs.existsSync(PROPOSALS)
+    ? fs.readdirSync(PROPOSALS).filter((f) => f.endsWith('.json')).sort()
+    : [];
   let proposed = 0, skipped = 0, unresolved = 0, blocked = 0, failed = 0;
 
   for (const f of files) {
@@ -151,7 +210,14 @@ function main() {
     if (state[d.topic_slug]?.fp === key) { skipped++; continue; }
 
     const target = resolveIri(d.target_page);
-    if (!target) {
+    if (!target.ok && target.reason === 'error') {
+      // The lookup did not run. Say nothing about the corpus and bank nothing:
+      // next week's run tries again.
+      console.error(`FAILED [${d.topic_slug}]: class lookup for '${d.target_page}' failed: ${target.detail}`);
+      failed++;
+      continue;
+    }
+    if (!target.ok) {
       console.log(`UNRESOLVED [${d.topic_slug}]: no exact class for '${d.target_page}' — skipping (never guess).`);
       console.log('            A page with no class needs a class *create* proposal, which stays human-initiated.');
       unresolved++;
@@ -201,4 +267,7 @@ function main() {
   }
 }
 
-main();
+// Run only when invoked as a script, so the helpers above can be imported by tests.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

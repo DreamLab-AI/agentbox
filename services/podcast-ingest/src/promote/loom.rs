@@ -73,7 +73,10 @@ pub async fn call_loom(
 
     let request = ChatRequest::new(
         model,
-        vec![Message::system(DOSSIER_SYSTEM_PROMPT), Message::user(prompt)],
+        vec![
+            Message::system(DOSSIER_SYSTEM_PROMPT),
+            Message::user(prompt),
+        ],
     )
     .temperature(0.2)
     .max_tokens(max_tokens)

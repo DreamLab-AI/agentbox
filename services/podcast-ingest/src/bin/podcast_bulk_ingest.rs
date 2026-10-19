@@ -3,6 +3,6 @@
 //! `argparse` definition exactly.
 
 #[tokio::main]
-async fn main() {
-    podcast_ingest_core::bulk::run_main().await;
+async fn main() -> std::process::ExitCode {
+    std::process::ExitCode::from(podcast_ingest_core::bulk::run_main().await as u8)
 }
