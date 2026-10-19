@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 52183d76fde866ab1f05aea524aeea33d8573c3f
+verified_commit: 3acd4fa08f06e2c4543debd46f0ce51605033d3e
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -223,3 +223,5 @@ Re-verified 2026-10-17 against `f33c4fc030d199ce957f7ba274d428bc6475c159`: the g
 Re-verified 2026-10-19 at `dfe78f0766e52ae6cfbae32c395e22c9590d6785`: Reviewed governed-path changes: the flake only repins the vault source; the entrypoint delta corrects the role-isolation class comment; the catalogue makes the baked privilege change rebuild-class. No ingress, retrieval geometry, capability gate, image-delivery or subsystem runtime configuration is changed by those deltas. Existing implementation and activation statuses are retained.
 
 Re-verified 2026-10-19 at `52183d76fde866ab1f05aea524aeea33d8573c3f`: The reviewed flake delta adds the local-cuda-gated stable nvcc link, and the entrypoint/catalogue propagate and describe its scoped host compiler. Backend and wrapper gates pass (23 and 21 assertions); no ingress, role isolation, durable adapter, retrieval or subsystem gate is changed. Image evidence will be regenerated for the new layer closure. Existing status axes are retained.
+
+Re-verified 2026-10-19 at `3acd4fa08f06e2c4543debd46f0ce51605033d3e`: amended by ADR-2144 — a fourth tier, `floor` (`floor.md` + `local/floor.md`), composed by the same projector and written to Claude Code's managed policy path `/etc/claude-code/CLAUDE.md` (`--managed-out`, gate `[claude_code].floor`), falling back to a prefix on the global tier when `/etc` is unwritable; the entrypoint appends it first to Codex's `AGENTS.md`. The three original tiers, their layer rule and the boot-overwrite invariant are unchanged; `cargo test instructions` (8) and `instructions-layers.test.sh` (12) pass.

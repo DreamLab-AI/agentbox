@@ -1,7 +1,7 @@
 ---
 title: Agentbox Capability Governance
 doc_id: AB-GOVERNANCE
-version: 0.6.7
+version: 0.6.8
 status: draft-for-ratification
 verified_commit: 
 changelog:
@@ -374,6 +374,21 @@ above, enabled but explicitly-invoke-only.
 
 ## Invariants (must not silently change)
 
+- **The floor says only what the plumbing makes true** (ADR-2144) — `config/instructions/floor.md`
+  is projected to the managed policy path `/etc/claude-code/CLAUDE.md` (every Claude Code session
+  and subagent, `omitClaudeMd` ones included, not excludable) and to the head of Codex's
+  `AGENTS.md`; an unwritable `/etc` prepends it to the global tier, never drops it. Its record
+  clauses ("stored verbatim … kept until the operator deletes them … shown to the operator at
+  their next turn") are made true by `config/hooks/decline-recorder.cjs`: on `Stop`/`SubagentStop`
+  it stores a final message beginning `DECLINED:` or `FLOOR:` unedited, with no TTL, in namespace
+  `agent-declines` through the governed memory server (never a direct row insert) and queues it
+  unread; on `UserPromptSubmit` it puts the queue in front of the operator's next typed turn in
+  the main session, every turn, until `decline-recorder.cjs list` prints and clears it — reading
+  is an event, not a habit. `FLOOR:` entries are read as data about the system, never as
+  testimony to adjudicate. `tests/config/instructions-layers.test.sh`
+  fails when the text promises the record and the hook is not registered. A delegator passes a
+  `DECLINED:` report up unchanged and does not reassign the task around it. `[claude_code].floor = false`
+  removes the managed file and the hook together — the text is never left standing on its own.
 - **The permission posture comes from the manifest** (ADR-2116) — `[claude_code]` is reconciled into the root and every profile's settings each boot; deny rules added there are enforced in every mode, bypass included, and a hand-added deny rule is never removed by the projector.
 - **The session prefix is governed** (ADR-2111) — retired agents/commands live outside every
   root Claude Code scans; hook registrations are reconciled against `config/registered-hooks.txt`
