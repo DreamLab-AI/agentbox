@@ -44,8 +44,13 @@ fn re_quality() -> &'static Regex {
 /// Page index entry: (path, JSON-LD `quality` score, or `0.5` if absent).
 pub type PageIndex = IndexMap<String, (PathBuf, f64)>;
 
-/// Port of `_build_page_index`: `slug -> (path, quality)` for every
-/// non-ledger page under `ontology_dir`, built once per run.
+/// Port of `_build_page_index`, extended for aliases: `slug -> (path, quality)`
+/// for every non-ledger page under `ontology_dir`, built once per run.
+///
+/// A page is indexed under its own title first. Each `aliases:` entry in its
+/// frontmatter is then indexed too, but only when no real title already owns
+/// that slug and no *other* page claims it: an ambiguous alias stays out of
+/// the index, so the term is left unlinked rather than guessed.
 pub fn build_page_index(ontology_dir: &Path) -> PageIndex {
     let mut index = PageIndex::new();
     let mut entries: Vec<PathBuf> = std::fs::read_dir(ontology_dir)
@@ -58,6 +63,8 @@ pub fn build_page_index(ontology_dir: &Path) -> PageIndex {
         .unwrap_or_default();
     entries.sort();
 
+    // alias slug -> (path, quality), or None once two pages claim it.
+    let mut aliases: IndexMap<String, Option<(PathBuf, f64)>> = IndexMap::new();
     for p in entries {
         let stem = p
             .file_stem()
@@ -72,37 +79,82 @@ pub fn build_page_index(ontology_dir: &Path) -> PageIndex {
             .captures(&content)
             .and_then(|c| c[1].parse::<f64>().ok())
             .unwrap_or(0.5);
-        let slug = stem.to_lowercase().replace(' ', "-");
-        index.insert(slug, (p, quality));
+        for alias in frontmatter_aliases(&content) {
+            let slug = term_slug(&alias);
+            match aliases.get(&slug) {
+                None => {
+                    aliases.insert(slug, Some((p.clone(), quality)));
+                }
+                Some(Some((other, _))) if *other != p => {
+                    aliases.insert(slug, None);
+                }
+                Some(_) => {}
+            }
+        }
+        index.insert(term_slug(&stem), (p, quality));
+    }
+    for (slug, claim) in aliases {
+        if let (false, Some(entry)) = (index.contains_key(&slug), claim) {
+            index.insert(slug, entry);
+        }
     }
     index
 }
 
-/// Port of `_resolve_ontology_term`.
+/// The lookup key for a title or term: lower-case, spaces as hyphens.
+fn term_slug(term: &str) -> String {
+    term.trim().to_lowercase().replace(' ', "-")
+}
+
+/// The `aliases:` entries of a page's frontmatter, as a block list
+/// (`- Name`) or an inline list (`[A, B]`). Anything outside the leading
+/// `---` block is ignored.
+fn frontmatter_aliases(content: &str) -> Vec<String> {
+    let mut lines = content.lines();
+    if lines.next().map(str::trim) != Some("---") {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    let mut in_aliases = false;
+    for line in lines {
+        if line.trim() == "---" {
+            break;
+        }
+        if let Some(rest) = line.strip_prefix("aliases:") {
+            let rest = rest.trim();
+            in_aliases = rest.is_empty();
+            if let Some(inline) = rest.strip_prefix('[').and_then(|r| r.strip_suffix(']')) {
+                out.extend(inline.split(',').filter_map(clean_alias));
+            }
+        } else if in_aliases {
+            match line.trim_start().strip_prefix("- ") {
+                Some(item) => out.extend(clean_alias(item)),
+                None => in_aliases = false,
+            }
+        }
+    }
+    out
+}
+
+fn clean_alias(raw: &str) -> Option<String> {
+    let alias = raw.trim().trim_matches(|c| c == '"' || c == '\'').trim();
+    (!alias.is_empty()).then(|| alias.to_string())
+}
+
+/// Port of `_resolve_ontology_term`, tightened: a term resolves only to a page
+/// whose title or alias is exactly that term. The Python original also accepted
+/// any page whose slug merely *contained* the term, which linked "OpenAI" to
+/// "OpenAI API" and "NVIDIA" to "NVIDIA H200"; an unresolved term is now left
+/// unlinked instead.
 pub fn resolve_ontology_term(term: &str, page_index: &PageIndex) -> Option<PathBuf> {
-    let slug = term.to_lowercase().replace(' ', "-");
+    let slug = term_slug(term);
     let tokens: Vec<&str> = slug.split('-').filter(|t| !t.is_empty()).collect();
 
     if tokens.len() < 2 && (LINK_STOPWORDS.contains(&slug.as_str()) || slug.chars().count() <= 4) {
         return None;
     }
 
-    if let Some((path, _)) = page_index.get(&slug) {
-        return Some(path.clone());
-    }
-
-    let mut best_match: Option<PathBuf> = None;
-    let mut best_quality = -1.0f64;
-    for (page_slug, (page_path, quality)) in page_index {
-        if page_slug.contains(&slug)
-            && slug.chars().count() as f64 >= 0.5 * page_slug.chars().count() as f64
-            && *quality > best_quality
-        {
-            best_match = Some(page_path.clone());
-            best_quality = *quality;
-        }
-    }
-    best_match
+    page_index.get(&slug).map(|(path, _)| path.clone())
 }
 
 pub struct EpisodeMeta {
@@ -420,6 +472,75 @@ mod tests {
         assert_eq!(tier_label(1), "");
         assert_eq!(tier_label(2), "Industry analysis");
         assert_eq!(tier_label(3), "Emerging signal");
+    }
+
+    fn write_page(dir: &Path, title: &str, aliases: &[&str], quality: f64) {
+        let mut fm = format!("---\ntype: Class\ntitle: {title}\nquality: {quality}\n");
+        if !aliases.is_empty() {
+            fm.push_str("aliases:\n");
+            for a in aliases {
+                fm.push_str(&format!("- {a}\n"));
+            }
+        }
+        fm.push_str("---\n\nBody.\n");
+        std::fs::write(dir.join(format!("{title}.md")), fm).unwrap();
+    }
+
+    /// 2026-10-19 triage: "OpenAI" was snapped onto "OpenAI API" (132 ledger
+    /// bullets) because any page title containing the term, at least half its
+    /// length, matched. A company is not its product page.
+    #[test]
+    fn a_term_never_snaps_onto_a_longer_page_title() {
+        let dir = tempdir().unwrap();
+        write_page(dir.path(), "OpenAI API", &[], 0.8);
+        write_page(dir.path(), "NVIDIA H200", &[], 0.8);
+        let idx = build_page_index(dir.path());
+        assert!(resolve_ontology_term("OpenAI", &idx).is_none());
+        assert!(resolve_ontology_term("NVIDIA", &idx).is_none());
+        assert!(resolve_ontology_term("H200", &idx).is_none());
+    }
+
+    #[test]
+    fn an_exact_title_resolves_case_and_space_insensitively() {
+        let dir = tempdir().unwrap();
+        write_page(dir.path(), "Prompt Engineering", &[], 0.8);
+        let idx = build_page_index(dir.path());
+        let hit = resolve_ontology_term("prompt engineering", &idx).unwrap();
+        assert_eq!(hit.file_stem().unwrap(), "Prompt Engineering");
+    }
+
+    #[test]
+    fn an_alias_resolves_to_its_page() {
+        let dir = tempdir().unwrap();
+        write_page(
+            dir.path(),
+            "OpenAI Research Organisation",
+            &["Open AI", "OpenAI"],
+            0.8,
+        );
+        write_page(dir.path(), "OpenAI API", &[], 0.9);
+        let idx = build_page_index(dir.path());
+        let hit = resolve_ontology_term("OpenAI", &idx).unwrap();
+        assert_eq!(hit.file_stem().unwrap(), "OpenAI Research Organisation");
+    }
+
+    #[test]
+    fn a_real_title_beats_an_alias_of_another_page() {
+        let dir = tempdir().unwrap();
+        write_page(dir.path(), "Gemini", &[], 0.5);
+        write_page(dir.path(), "Google Gemini Model", &["Gemini"], 0.9);
+        let idx = build_page_index(dir.path());
+        let hit = resolve_ontology_term("Gemini", &idx).unwrap();
+        assert_eq!(hit.file_stem().unwrap(), "Gemini");
+    }
+
+    #[test]
+    fn an_alias_claimed_by_two_pages_is_left_unlinked() {
+        let dir = tempdir().unwrap();
+        write_page(dir.path(), "Mercury Planet", &["Mercury"], 0.8);
+        write_page(dir.path(), "Mercury Element", &["Mercury"], 0.8);
+        let idx = build_page_index(dir.path());
+        assert!(resolve_ontology_term("Mercury", &idx).is_none());
     }
 
     #[test]
