@@ -6,7 +6,7 @@ use super::download::{run_download, DownloadArgs};
 use super::enrichment::run_apply_enrichment;
 use super::extraction::run_extraction;
 use super::mark::run_mark_files;
-use crate::common::state::{load_bulk_state, save_bulk_state};
+use crate::common::state::{load_ingest_state, save_ingest_state};
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -52,6 +52,10 @@ pub struct Args {
     #[arg(long, default_value_t = 15)]
     pub old_streak: usize,
 
+    /// Seconds to wait between episode downloads (0 disables the pause)
+    #[arg(long, default_value_t = 15)]
+    pub pause_secs: u64,
+
     /// Ontology pages directory for domain probe
     #[arg(long)]
     pub ontology_dir: Option<PathBuf>,
@@ -66,12 +70,17 @@ pub struct Args {
 }
 
 /// Port of `main()`'s body.
-pub async fn run(args: &Args) -> Result<(), crate::common::ytdlp::YtDlpError> {
+pub async fn run(args: &Args) -> anyhow::Result<()> {
     let out_dir = &args.output_dir;
     let _ = std::fs::create_dir_all(out_dir);
 
     let state_path = out_dir.join(".ingest-state.json");
-    let mut state = load_bulk_state(&state_path).unwrap_or_default();
+    // A state file that cannot be read stops the run: reading it as empty
+    // would re-download everything and then overwrite the history.
+    let mut ingest_state = match load_ingest_state(&state_path) {
+        Ok(state) => state,
+        Err(e) => anyhow::bail!("cannot read the ingest state: {e}"),
+    };
 
     let download_args = DownloadArgs {
         channel: &args.channel,
@@ -80,9 +89,18 @@ pub async fn run(args: &Args) -> Result<(), crate::common::ytdlp::YtDlpError> {
         date_end: args.date_end.as_deref(),
         max_episodes: args.max_episodes,
         old_streak: args.old_streak,
+        pause_secs: args.pause_secs,
     };
-    let _downloaded = run_download(&download_args, out_dir, &mut state).await?;
-    let _ = save_bulk_state(&state_path, &state);
+    let summary = run_download(&download_args, out_dir, &mut ingest_state.videos).await?;
+    if let Err(e) = save_ingest_state(&state_path, &ingest_state) {
+        anyhow::bail!("could not save {}: {e}", state_path.display());
+    }
+    if summary.rate_limited {
+        anyhow::bail!(
+            "rate-limited by YouTube after {} download(s); retry later",
+            summary.done
+        );
+    }
 
     if args.enrich {
         run_extraction(out_dir);
@@ -123,8 +141,98 @@ pub async fn run_main() -> i32 {
     match run(&args).await {
         Ok(()) => 0,
         Err(e) => {
-            eprintln!("ERROR episode listing failed: {e}");
+            eprintln!("ERROR bulk ingest failed: {e}");
             1
         }
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use crate::common::ytdlp::ENV_LOCK;
+    use std::os::unix::fs::PermissionsExt;
+
+    /// A fake `yt-dlp` that lists one video, answers metadata with a date of
+    /// today, and returns a subtitle file.
+    fn install_fake(dir: &std::path::Path) {
+        let today = chrono::Local::now().format("%Y%m%d").to_string();
+        let script = format!(
+            r#"#!/bin/sh
+case "$*" in
+  *--flat-playlist*) printf 'newvid\tA New Episode\n'; exit 0;;
+  *--dump-json*) echo '{{"upload_date":"{today}","duration_string":"5:00","description":"Notes."}}'; exit 0;;
+  *--write-auto-sub*)
+    out=""; prev=""
+    for a in "$@"; do [ "$prev" = "-o" ] && out="$a"; prev="$a"; done
+    printf '1\n00:00:00,000 --> 00:00:02,000\nTranscript text here\n' > "$out.en.srt"; exit 0;;
+esac
+exit 0
+"#
+        );
+        let path = dir.join("fake-yt-dlp");
+        std::fs::write(&path, script).unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::env::set_var("PODCAST_INGEST_YT_DLP", &path);
+    }
+
+    /// The bulk tool used to save a flat map and the ingest a nested one, each
+    /// discarding the other's data. Both go through one `IngestState` now.
+    #[tokio::test]
+    async fn bulk_adds_videos_and_keeps_assertions_and_created_pages() {
+        let _env = ENV_LOCK.lock().await;
+        let dir = tempfile::tempdir().unwrap();
+        install_fake(dir.path());
+        let out = dir.path().join("t");
+        std::fs::create_dir_all(&out).unwrap();
+        let state_path = out.join(".ingest-state.json");
+        std::fs::write(
+            &state_path,
+            r#"{"old1": {"status": "downloaded", "file": "o.md", "date": "d"},
+                "assertions": {"fp": {"claim": "c"}},
+                "created_pages": [{"page": "P", "slug": "p", "date": "d", "assertions": 1}]}"#,
+        )
+        .unwrap();
+        let args = Args::parse_from([
+            "podcast-bulk-ingest",
+            "@Test",
+            "--output-dir",
+            out.to_str().unwrap(),
+            "--pause-secs",
+            "0",
+        ]);
+        run(&args).await.unwrap();
+        let state = load_ingest_state(&state_path).unwrap();
+        assert!(state.videos.contains_key("old1"));
+        assert!(
+            state.videos.contains_key("newvid"),
+            "{:?}",
+            state.videos.keys()
+        );
+        assert_eq!(state.assertions.len(), 1);
+        assert_eq!(state.created_pages.len(), 1);
+        assert!(out.join(".ingest-state.json.pre-nested.bak").exists());
+        std::env::remove_var("PODCAST_INGEST_YT_DLP");
+    }
+
+    #[tokio::test]
+    async fn bulk_refuses_an_unreadable_state_and_leaves_it_alone() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("t");
+        std::fs::create_dir_all(&out).unwrap();
+        let state_path = out.join(".ingest-state.json");
+        std::fs::write(&state_path, "[]").unwrap();
+        let args = Args::parse_from([
+            "podcast-bulk-ingest",
+            "@Test",
+            "--output-dir",
+            out.to_str().unwrap(),
+        ]);
+        let err = run(&args).await.expect_err("must stop");
+        assert!(
+            err.to_string().contains("cannot read the ingest state"),
+            "{err}"
+        );
+        assert_eq!(std::fs::read_to_string(&state_path).unwrap(), "[]");
     }
 }

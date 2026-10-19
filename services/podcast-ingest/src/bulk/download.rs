@@ -1,18 +1,12 @@
 //! Phase 1: download — port of `download_single` and `run_download` from
 //! `bulk_ingest.py`.
 
+use crate::common::episode::{self, EpisodeFetch};
 use crate::common::state::{BulkState, VideoRecord};
-use crate::common::transcript_md::{build_episode_markdown, format_upload_date};
+use crate::common::transcript_md::format_upload_date;
 use crate::common::{slugify_default, ytdlp};
 use chrono::{Duration, Local};
-use regex::Regex;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
-
-fn re_watch_id() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"watch\?v=([A-Za-z0-9_-]+)").unwrap())
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DownloadOutcome {
@@ -21,9 +15,12 @@ pub enum DownloadOutcome {
     Fail,
     Newer,
     Old,
+    /// YouTube returned 429: nothing was written, the caller stops the run.
+    RateLimited,
 }
 
 /// Port of `download_single`. Returns `(outcome, path)`.
+#[allow(clippy::too_many_arguments)]
 pub async fn download_single(
     vid_id: &str,
     title: &str,
@@ -32,13 +29,12 @@ pub async fn download_single(
     cutoff_end: &str,
     idx: usize,
     total: usize,
+    in_state: bool,
 ) -> (DownloadOutcome, Option<PathBuf>) {
     let slug = slugify_default(title);
     let md_path = out_dir.join(format!("{slug}.md"));
-    if let Ok(meta) = std::fs::metadata(&md_path) {
-        if meta.len() > 500 {
-            return (DownloadOutcome::Skip, Some(md_path));
-        }
+    if episode::is_complete_episode(&md_path, in_state) {
+        return (DownloadOutcome::Skip, Some(md_path));
     }
 
     let url = format!("https://www.youtube.com/watch?v={vid_id}");
@@ -75,28 +71,29 @@ pub async fn download_single(
 
     println!("[{idx}/{total}] {title} ({formatted_date})");
 
-    let sub_dir = out_dir.join(".subs_tmp");
-    let _ = std::fs::create_dir_all(&sub_dir);
-    ytdlp::download_subtitles(vid_id, &url, &sub_dir).await;
-    let transcript_text = ytdlp::extract_transcript_text(vid_id, &sub_dir);
-
-    let md = build_episode_markdown(
-        vid_id,
+    let meta = episode::EpisodeMeta {
         title,
-        &formatted_date,
+        formatted_date: &formatted_date,
         duration,
         description,
-        &transcript_text,
-    );
-    if std::fs::write(&md_path, md).is_err() {
-        return (DownloadOutcome::Fail, None);
+    };
+    match episode::fetch_and_write(vid_id, &url, out_dir, &md_path, meta).await {
+        EpisodeFetch::Written {
+            path,
+            transcript_chars,
+        } => {
+            println!(
+                "  -> {} ({transcript_chars} chars)",
+                path.file_name().unwrap().to_string_lossy(),
+            );
+            (DownloadOutcome::Ok, Some(path))
+        }
+        EpisodeFetch::RateLimited => (DownloadOutcome::RateLimited, None),
+        EpisodeFetch::Failed(reason) => {
+            println!("  FAIL {title}: {reason}");
+            (DownloadOutcome::Fail, None)
+        }
     }
-    println!(
-        "  -> {} ({} chars)",
-        md_path.file_name().unwrap().to_string_lossy(),
-        transcript_text.chars().count()
-    );
-    (DownloadOutcome::Ok, Some(md_path))
 }
 
 pub struct DownloadArgs<'a> {
@@ -106,15 +103,27 @@ pub struct DownloadArgs<'a> {
     pub date_end: Option<&'a str>,
     pub max_episodes: Option<usize>,
     pub old_streak: usize,
+    /// Seconds to wait between episode downloads; 0 disables the pause.
+    pub pause_secs: u64,
 }
 
-/// Port of `run_download`. Returns the number of newly downloaded episodes, or
-/// the reason the channel listing failed (never a silent zero).
+/// What [`run_download`] did.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct DownloadSummary {
+    /// Newly downloaded episodes.
+    pub done: usize,
+    /// YouTube returned 429 and the run stopped early.
+    pub rate_limited: bool,
+}
+
+/// Port of `run_download`. Returns what was downloaded, or the reason the
+/// channel listing failed (never a silent zero). A rate-limited fetch stops the
+/// run after one marker line.
 pub async fn run_download(
     args: &DownloadArgs<'_>,
     out_dir: &Path,
     state: &mut BulkState,
-) -> Result<usize, crate::common::ytdlp::YtDlpError> {
+) -> Result<DownloadSummary, crate::common::ytdlp::YtDlpError> {
     let mut channel_url = args.channel.to_string();
     if channel_url.starts_with('@') {
         channel_url = format!("https://www.youtube.com/{channel_url}/videos");
@@ -137,20 +146,8 @@ pub async fn run_download(
     println!("Date window: {cutoff_start} to {cutoff_end}");
     println!("Output: {}\n", out_dir.display());
 
-    let mut existing_ids: std::collections::HashSet<String> = state.keys().cloned().collect();
-    if let Ok(entries) = std::fs::read_dir(out_dir) {
-        for entry in entries.filter_map(|e| e.ok()) {
-            let path = entry.path();
-            if path.extension().map(|e| e == "md").unwrap_or(false) {
-                if let Ok(text) = std::fs::read_to_string(&path) {
-                    let head: String = text.chars().take(500).collect();
-                    if let Some(caps) = re_watch_id().captures(&head) {
-                        existing_ids.insert(caps[1].to_string());
-                    }
-                }
-            }
-        }
-    }
+    let state_ids: std::collections::HashSet<String> = state.keys().cloned().collect();
+    let existing_ids = episode::known_video_ids(out_dir, &state_ids, 500);
 
     println!("Already have {} episodes.", existing_ids.len());
     println!("Fetching video list...");
@@ -162,6 +159,8 @@ pub async fn run_download(
         .filter(|(vid, _)| !existing_ids.contains(vid))
         .collect();
     let mut done = 0usize;
+    let mut rate_limited = false;
+    let mut fetched_any = false;
     let mut old_streak = 0usize;
     let max_eps = args.max_episodes.unwrap_or(videos.len());
 
@@ -169,6 +168,9 @@ pub async fn run_download(
         if done >= max_eps {
             println!("Reached max-episodes cap ({max_eps}).");
             break;
+        }
+        if fetched_any && args.pause_secs > 0 {
+            tokio::time::sleep(std::time::Duration::from_secs(args.pause_secs)).await;
         }
         let (result, md_path) = download_single(
             vid_id,
@@ -178,8 +180,10 @@ pub async fn run_download(
             &cutoff_end,
             i + 1,
             videos.len(),
+            state.contains_key(vid_id),
         )
         .await;
+        fetched_any = matches!(result, DownloadOutcome::Ok | DownloadOutcome::Fail);
         match result {
             DownloadOutcome::Ok => {
                 done += 1;
@@ -222,6 +226,11 @@ pub async fn run_download(
                 }
             }
             DownloadOutcome::Fail => {}
+            DownloadOutcome::RateLimited => {
+                println!("RATE-LIMITED: {done} downloaded before YouTube returned 429");
+                rate_limited = true;
+                break;
+            }
         }
     }
 
@@ -233,5 +242,5 @@ pub async fn run_download(
         })
         .unwrap_or(0);
     println!("\nDownload done! {done} new episodes. Total: {total_files}");
-    Ok(done)
+    Ok(DownloadSummary { done, rate_limited })
 }

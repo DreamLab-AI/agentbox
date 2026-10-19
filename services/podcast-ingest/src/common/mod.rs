@@ -2,6 +2,7 @@
 //! ported from code that was byte-identical, or near-identical, across
 //! `ingest.py`, `promote.py`, and `bulk_ingest.py`.
 
+pub mod episode;
 pub mod fingerprint;
 pub mod http;
 pub mod ingest_status;

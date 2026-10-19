@@ -62,6 +62,14 @@ pub struct Settings {
     pub max_episodes_per_run: usize,
     #[serde(default = "default_backlog_batch")]
     pub backlog_batch_size: usize,
+    /// Seconds to wait between episode downloads, so a long back catalogue is
+    /// fetched at a pace YouTube tolerates. 0 disables the pause.
+    #[serde(default = "default_download_pause_secs")]
+    pub download_pause_secs: u64,
+}
+
+fn default_download_pause_secs() -> u64 {
+    15
 }
 
 fn default_loom_url() -> String {
@@ -100,6 +108,7 @@ impl Default for Settings {
             quality_threshold: None,
             max_episodes_per_run: default_max_episodes(),
             backlog_batch_size: default_backlog_batch(),
+            download_pause_secs: default_download_pause_secs(),
         }
     }
 }

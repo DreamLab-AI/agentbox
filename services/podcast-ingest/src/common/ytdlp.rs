@@ -214,13 +214,50 @@ pub async fn fetch_metadata(url: &str) -> Option<serde_json::Value> {
     serde_json::from_str(&stdout).ok()
 }
 
-/// Best-effort auto-generated-subtitle download into `sub_dir/<vid_id>.*`.
-/// Failures are swallowed, matching the Python call sites which never check
-/// the subtitle-download subprocess's return code.
-pub async fn download_subtitles(vid_id: &str, url: &str, sub_dir: &Path) {
+/// How a subtitle request ended. Only [`Fetched`](SubtitleOutcome::Fetched)
+/// and [`NoCaptions`](SubtitleOutcome::NoCaptions) are final answers about the
+/// episode; the other two mean "ask again later" and must leave no trace.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SubtitleOutcome {
+    /// A subtitle file was written to the sub directory.
+    Fetched,
+    /// `yt-dlp` succeeded and the episode has no captions in the language.
+    NoCaptions,
+    /// YouTube answered 429. Retrying straight away makes it worse.
+    RateLimited,
+    /// Spawn failure, timeout, or any other non-zero exit.
+    Failed(String),
+}
+
+/// True when `yt-dlp`'s output reports a YouTube rate limit.
+fn mentions_rate_limit(text: &str) -> bool {
+    text.contains("HTTP Error 429") || text.contains("Too Many Requests")
+}
+
+fn subtitle_file_exists(vid_id: &str, sub_dir: &Path) -> bool {
+    [".en.srt", ".en.vtt"]
+        .iter()
+        .any(|ext| sub_dir.join(format!("{vid_id}{ext}")).exists())
+}
+
+/// Auto-generated-subtitle download into `sub_dir/<vid_id>.*`, classified.
+/// Python never checked this return code, so a throttled run produced stub
+/// episodes that looked finished.
+pub async fn download_subtitles(vid_id: &str, url: &str, sub_dir: &Path) -> SubtitleOutcome {
+    download_subtitles_with(&yt_dlp_bin(), vid_id, url, sub_dir).await
+}
+
+/// [`download_subtitles`] against an explicit `yt-dlp` binary.
+pub async fn download_subtitles_with(
+    bin: &str,
+    vid_id: &str,
+    url: &str,
+    sub_dir: &Path,
+) -> SubtitleOutcome {
     let out_template = sub_dir.join(vid_id);
     let out_template = out_template.to_string_lossy().to_string();
-    let _ = run_yt_dlp(
+    let run = spawn_yt_dlp(
+        bin,
         &[
             "--skip-download",
             "--write-auto-sub",
@@ -237,6 +274,25 @@ pub async fn download_subtitles(vid_id: &str, url: &str, sub_dir: &Path) {
         Duration::from_secs(120),
     )
     .await;
+    let run = match run {
+        Ok(run) => run,
+        Err(e) => return SubtitleOutcome::Failed(e.to_string()),
+    };
+    if mentions_rate_limit(&run.stderr) || mentions_rate_limit(&run.stdout) {
+        return SubtitleOutcome::RateLimited;
+    }
+    if !run.success {
+        return SubtitleOutcome::Failed(format!(
+            "{bin} exited with {}: {}",
+            run.code,
+            stderr_tail(&run.stderr)
+        ));
+    }
+    if subtitle_file_exists(vid_id, sub_dir) {
+        SubtitleOutcome::Fetched
+    } else {
+        SubtitleOutcome::NoCaptions
+    }
 }
 
 /// Parse whichever of `<vid_id>.en.srt` / `<vid_id>.en.vtt` exists in
@@ -274,6 +330,11 @@ pub fn extract_transcript_text(vid_id: &str, sub_dir: &Path) -> String {
     }
     String::new()
 }
+
+/// Serialises the tests that point `PODCAST_INGEST_YT_DLP` at a fake: the
+/// variable is process-global, so two such tests running at once would race.
+#[cfg(test)]
+pub(crate) static ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 #[cfg(test)]
 mod tests {
@@ -319,6 +380,7 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn listing_failure_is_an_error_not_an_empty_list() {
+        let _env = ENV_LOCK.lock().await;
         let dir = tempdir().unwrap();
         let bin = fake_yt_dlp(
             dir.path(),
@@ -343,6 +405,7 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn successful_listing_parses_ids_and_titles() {
+        let _env = ENV_LOCK.lock().await;
         let dir = tempdir().unwrap();
         let bin = fake_yt_dlp(dir.path(), "printf 'aaa\\tFirst\\nbbb\\tSecond\\n'");
         let videos = get_video_ids_with(&bin, "https://example.invalid/")
@@ -360,6 +423,7 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn partial_listing_with_nonzero_exit_keeps_the_entries() {
+        let _env = ENV_LOCK.lock().await;
         let dir = tempdir().unwrap();
         let bin = fake_yt_dlp(
             dir.path(),
@@ -374,11 +438,63 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn successful_empty_listing_is_ok_and_empty() {
+        let _env = ENV_LOCK.lock().await;
         let dir = tempdir().unwrap();
         let bin = fake_yt_dlp(dir.path(), "exit 0");
         let videos = get_video_ids_with(&bin, "https://example.invalid/")
             .await
             .unwrap();
         assert!(videos.is_empty());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn subtitle_outcomes_are_classified() {
+        let _env = ENV_LOCK.lock().await;
+        let dir = tempdir().unwrap();
+        let sub = dir.path().join("subs");
+        std::fs::create_dir_all(&sub).unwrap();
+        let url = "https://example.invalid/watch?v=abc";
+
+        let bin = fake_yt_dlp(
+            dir.path(),
+            "echo \"ERROR: Unable to download video subtitles for 'en': HTTP Error 429: Too Many Requests\" >&2; exit 1",
+        );
+        assert_eq!(
+            download_subtitles_with(&bin, "abc", url, &sub).await,
+            SubtitleOutcome::RateLimited
+        );
+
+        let bin = fake_yt_dlp(dir.path(), "echo 'ERROR: boom' >&2; exit 1");
+        let outcome = download_subtitles_with(&bin, "abc", url, &sub).await;
+        assert!(
+            matches!(&outcome, SubtitleOutcome::Failed(m) if m.contains("boom")),
+            "{outcome:?}"
+        );
+
+        let bin = fake_yt_dlp(
+            dir.path(),
+            "echo '[info] There are no subtitles for the requested languages'; exit 0",
+        );
+        assert_eq!(
+            download_subtitles_with(&bin, "abc", url, &sub).await,
+            SubtitleOutcome::NoCaptions
+        );
+
+        let bin = fake_yt_dlp(
+            dir.path(),
+            &format!(
+                "printf '1\\n00:00:00,000 --> 00:00:01,000\\nHi\\n' > '{}/abc.en.srt'; exit 0",
+                sub.display()
+            ),
+        );
+        assert_eq!(
+            download_subtitles_with(&bin, "abc", url, &sub).await,
+            SubtitleOutcome::Fetched
+        );
+
+        let outcome =
+            download_subtitles_with("/nonexistent/yt-dlp-for-test", "abc", url, &sub).await;
+        assert!(matches!(outcome, SubtitleOutcome::Failed(_)), "{outcome:?}");
     }
 }

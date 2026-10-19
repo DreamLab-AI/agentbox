@@ -14,7 +14,7 @@ pub mod pyval;
 pub mod verify;
 
 use crate::common::ingest_status::get_ingest_status;
-use crate::common::state::{load_ingest_state, save_ingest_state};
+use crate::common::state::{load_ingest_state, save_ingest_state, IngestState};
 use config::Config;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -25,6 +25,15 @@ pub fn iso_now() -> String {
     chrono::Local::now()
         .format("%Y-%m-%dT%H:%M:%S%.6f")
         .to_string()
+}
+
+/// Save the state; a failed save is reported as a failure of this run.
+fn save_checked(path: &Path, state: &IngestState, podcast: &str, failures: &mut Vec<String>) {
+    if let Err(e) = save_ingest_state(path, state) {
+        let message = format!("{podcast}: could not save the ingest state: {e}");
+        eprintln!("ERROR {message}");
+        failures.push(message);
+    }
 }
 
 /// Port of `run()`.
@@ -45,7 +54,17 @@ pub async fn run(
     for podcast in &config.podcasts {
         let out_dir = PathBuf::from(&podcast.output_dir);
         let state_path = out_dir.join(".ingest-state.json");
-        let mut state = load_ingest_state(&state_path).unwrap_or_default();
+        // An unreadable state stops this podcast: reading it as empty would
+        // treat every episode as new and then overwrite the recorded history.
+        let mut state = match load_ingest_state(&state_path) {
+            Ok(state) => state,
+            Err(e) => {
+                let message = format!("{}: cannot read the ingest state: {e}", podcast.name);
+                eprintln!("ERROR {message}");
+                failures.push(message);
+                continue;
+            }
+        };
 
         println!("\n{}", "=".repeat(60));
         println!("Processing: {}", podcast.name);
@@ -59,8 +78,32 @@ pub async fn run(
             }
             vec![target]
         } else {
-            match download::phase_download(podcast, &mut state, max_episodes).await {
-                Ok(files) => files,
+            match download::phase_download(
+                podcast,
+                &mut state,
+                max_episodes,
+                config.settings.download_pause_secs,
+            )
+            .await
+            {
+                Ok(batch) => {
+                    if batch.rate_limited {
+                        failures.push(format!(
+                            "{}: rate-limited by YouTube after {} download(s); retry later",
+                            podcast.name,
+                            batch.files.len()
+                        ));
+                    }
+                    if !batch.failed.is_empty() {
+                        failures.push(format!(
+                            "{}: {} episode(s) failed to download: {}",
+                            podcast.name,
+                            batch.failed.len(),
+                            batch.failed.join("; ")
+                        ));
+                    }
+                    batch.files
+                }
                 Err(e) => {
                     let message = format!("{}: episode listing failed: {e}", podcast.name);
                     eprintln!("ERROR {message}");
@@ -116,7 +159,7 @@ pub async fn run(
         all_files.extend(unprocessed.iter().cloned());
         if all_files.is_empty() {
             println!("No files to process.");
-            let _ = save_ingest_state(&state_path, &state);
+            save_checked(&state_path, &state, &podcast.name, &mut failures);
             continue;
         }
 
@@ -134,7 +177,7 @@ pub async fn run(
         if assertions_by_file.is_empty() {
             println!("No assertions extracted.");
             complete::phase_mark_complete(&all_files, &assertions_by_file);
-            let _ = save_ingest_state(&state_path, &state);
+            save_checked(&state_path, &state, &podcast.name, &mut failures);
             continue;
         }
 
@@ -183,7 +226,7 @@ pub async fn run(
         .await;
 
         complete::phase_mark_complete(&all_files, &verified);
-        let _ = save_ingest_state(&state_path, &state);
+        save_checked(&state_path, &state, &podcast.name, &mut failures);
 
         println!("\n[{}] Done.", podcast.name);
     }
@@ -213,19 +256,19 @@ pub async fn run_main(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::state::IngestState;
     use config::{Podcast, Settings};
 
     /// A fetch that fails must be reported as a failure, not as "No new
     /// episodes". The weekly cron ran seven times on a dead channel handle and
     /// logged a quiet week each time.
     ///
-    /// One test owns `PODCAST_INGEST_YT_DLP`, because the variable is process
-    /// global and a second test setting it would race this one.
+    /// Tests that set `PODCAST_INGEST_YT_DLP` hold `ytdlp::ENV_LOCK`, because
+    /// the variable is process global.
     #[cfg(unix)]
     #[tokio::test]
     async fn a_failed_listing_is_a_failure_not_a_quiet_week() {
         use std::os::unix::fs::PermissionsExt;
+        let _env = crate::common::ytdlp::ENV_LOCK.lock().await;
 
         let dir = tempfile::tempdir().unwrap();
         let fake = dir.path().join("fake-yt-dlp");
@@ -250,7 +293,7 @@ mod tests {
 
         // The phase itself returns the error...
         let mut state = IngestState::default();
-        let err = download::phase_download(&podcast, &mut state, 15)
+        let err = download::phase_download(&podcast, &mut state, 15, 0)
             .await
             .expect_err("a failed listing must not return an empty episode list");
         assert!(err.to_string().contains("videos tab"), "{err}");
@@ -266,5 +309,37 @@ mod tests {
         assert!(failures[0].contains("listing failed"), "{failures:?}");
 
         std::env::remove_var("PODCAST_INGEST_YT_DLP");
+    }
+
+    /// 2026-10-19: the loader read a legacy-shaped file as empty, the run saw
+    /// every episode as new and overwrote 242 recorded ones. A state file that
+    /// cannot be read now stops that podcast and is left exactly as it was.
+    #[tokio::test]
+    async fn an_unreadable_state_stops_the_podcast_and_is_left_untouched() {
+        let dir = tempfile::tempdir().unwrap();
+        let out_dir = dir.path().join("transcripts");
+        std::fs::create_dir_all(&out_dir).unwrap();
+        let state_path = out_dir.join(".ingest-state.json");
+        std::fs::write(&state_path, "{ not json").unwrap();
+        let podcast = Podcast {
+            channel: "@Never".to_string(),
+            name: "Guarded".to_string(),
+            focus: None,
+            output_dir: out_dir.to_string_lossy().to_string(),
+            ontology_dir: None,
+            pages_dir: None,
+            working_dir: None,
+        };
+        let config = Config {
+            podcasts: vec![podcast],
+            settings: Settings::default(),
+        };
+        let failures = run(&config, false, None, false).await;
+        assert_eq!(failures.len(), 1, "{failures:?}");
+        assert!(
+            failures[0].contains("cannot read the ingest state"),
+            "{failures:?}"
+        );
+        assert_eq!(std::fs::read_to_string(&state_path).unwrap(), "{ not json");
     }
 }
