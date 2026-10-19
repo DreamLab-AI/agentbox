@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4293e7ed91b84e70915891c1a140558fe54f2580
+verified_commit: dfe78f0766e52ae6cfbae32c395e22c9590d6785
 verified_paths: [crates/sidestr]
 owner: jjohare
 review_trigger: the first `cargo publish` of a `sidestr-*` crate; upstream sidestr relicensing or a dual grant from its author; any proposal to link a `sidestr-*` crate from a permissive crate
@@ -96,3 +96,5 @@ above are carried unchanged in `github.com/DreamLab-AI/sidestr-rs` (every `Cargo
 declares `license = "AGPL-3.0-only"`); `grep -rln sidestr services/*/Cargo.toml` is empty, so
 no agentbox crate, permissive or not, links one. `verified_paths` now watches the pointer
 directory. Decision holds.
+
+Re-verified 2026-10-19 at `dfe78f0766e52ae6cfbae32c395e22c9590d6785`: The governed sidestr README delta corrects the upstream crate count/list only; crate ownership, licensing and consumption boundaries are unchanged. Existing implementation and activation statuses are retained.

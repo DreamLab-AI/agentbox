@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 4293e7ed91b84e70915891c1a140558fe54f2580
+verified_commit: dfe78f0766e52ae6cfbae32c395e22c9590d6785
 verified_paths: [crates/sidestr, .github/workflows/sidestr-crates.yml]
 owner: jjohare
 review_trigger: any file other than the pointer README appearing under crates/sidestr/; an agentbox component taking a path or git dependency on a sidestr-* crate; the Rust sidestr-node or producer landing in agentbox
@@ -68,3 +68,5 @@ and the research pack's audit and verify receipts, which are transcripts of what
 the time and are left verbatim. `github.com/DreamLab-AI/sidestr-rs` is public, default branch
 `main`, holding the five crates at sidestr-core 0.2.2, -header 0.2.1, -nostr 0.2.2,
 -wallet 0.2.2, -round 0.1.1, all `AGPL-3.0-only`.
+
+Re-verified 2026-10-19 at `dfe78f0766e52ae6cfbae32c395e22c9590d6785`: The governed sidestr README delta corrects the upstream crate count/list only; crate ownership, licensing and consumption boundaries are unchanged. Existing implementation and activation statuses are retained.

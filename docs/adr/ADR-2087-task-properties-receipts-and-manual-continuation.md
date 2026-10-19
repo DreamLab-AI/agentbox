@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 58fce653822b4aa2c27c59c01f71a6d13a0e07b1
+verified_commit: dfe78f0766e52ae6cfbae32c395e22c9590d6785
 verified_paths: [management-api/lib/task-properties.js, management-api/lib/authority.js, management-api/lib/authority-journal.js, management-api/lib/governance-receipt-publisher.js, management-api/lib/governance-manual-continue.js, management-api/lib/governance-application-receipts.js, management-api/lib/dream-ledger.js, management-api/routes/broker-bridge.js, management-api/routes/llm-marketplace.js, mcp/servers/governance-bridge.js, services/dream-engine/src/records.rs, scripts/activation/adr-2087-check.sh]
 owner: jjohare
 review_trigger: nostr-bbs-core publishing TaskProperties (the schema this stamps against), agentbox authority_class gaining a third class, or the forum receipts endpoint changing shape
@@ -175,3 +175,5 @@ Tripped by `scripts/activation/adr-2087-check.sh`, changed only in check C3 (ADR
 Two commits since `60f8b8458` touch one governed path, `services/dream-engine/src/ledger.rs`, and the other eleven paths have no diff. `17d366cb1` adds the ledger row contract: `CONTRACT_ENFORCE_FROM`, `LEDGER_VERDICTS`, `row_violations` and `enforce_contract`. `append_row` now repairs a non-compliant row before it appends it. The repair can rewrite only the finding, verdict, PR, witness and prior-fates cells. It never writes `reviewer` or `review_minutes`. `2d92ad3c1` is a `cargo fmt` pass over `commit_ledger` and the `review_from_merge` tests. Decision point 5 still stands: the `Reviewer` and `Review-minutes` fields (`ledger.rs:73-76`) and `review_from_merge` (`ledger.rs:122`) are unchanged, and both columns stay empty unless a merge event fills them. `cargo test --offline ledger::` passes 18 tests at `cca7ea3b1`. The decision holds.
 
 **Re-verified 2026-10-15 (ADR-2141, `58fce653822b`).** Read against the code as it stands after the engine's mechanism moved into `dream-core`/`dream-gate`: the 12-column ledger row, with Reviewer and Review-minutes, is `dream_core::ledger::LedgerRow` (moved verbatim; its tests are listed in the extraction ledger) and the engine appends it from `records.rs` and `engine.rs`.
+
+Re-verified 2026-10-19 at `dfe78f0766e52ae6cfbae32c395e22c9590d6785`: The decide route forwards the optional effective_tier enum to the upstream rationale gate without changing receipt or authority dispatch; broker route regression tests pass. Existing implementation and activation statuses are retained.
