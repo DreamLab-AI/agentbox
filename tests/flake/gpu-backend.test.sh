@@ -364,9 +364,9 @@ assert_eq "${BACKEND} (cuda=true): runtimeClass is nvidia" \
   '"nvidia"' \
   "$(nix_eval "${CALL}.runtimeClass")"
 
-assert_contains "${BACKEND} (cuda=true): nixPackages is non-empty" \
-  "cudatoolkit" \
-  "$(nix_eval "map (p: p.pname or p.name or \"?\") ${CALL}.nixPackages")"
+assert_eq "${BACKEND} (cuda=true): nixPackages contains the pinned toolkit" \
+  "true" \
+  "$(nix_eval "builtins.elem pkgs.cudaPackages.cudatoolkit ${CALL}.nixPackages")"
 
 assert_contains "${BACKEND} (cuda=true): supervisorExtraEnv has CUDA_VISIBLE_DEVICES" \
   "CUDA_VISIBLE_DEVICES" \
@@ -383,9 +383,9 @@ assert_contains "${BACKEND} (cuda=true): composeDeviceReservations has compute c
 CALL_BASE="$(dispatch local-cuda false)"
 CALL_EXT="$(dispatch local-cuda true)"
 
-assert_contains "local-cuda (cuda=false): base CUDA packages are still present" \
-  "cudatoolkit" \
-  "$(nix_eval "map (p: p.pname or p.name or \"?\") ${CALL_BASE}.nixPackages")"
+assert_eq "local-cuda (cuda=false): the pinned toolkit is still present" \
+  "true" \
+  "$(nix_eval "builtins.elem pkgs.cudaPackages.cudatoolkit ${CALL_BASE}.nixPackages")"
 
 assert_eq "local-cuda: toolchains.cuda=true adds packages beyond the base set" \
   "true" \
