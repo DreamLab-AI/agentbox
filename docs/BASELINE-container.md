@@ -109,6 +109,8 @@ Nix binaries carry absolute nix-store RUNPATHs and never search `/usr/lib`, whic
 
 Applied only when `gpu.backend == "local-cuda"` (`flake.nix:170`); on `backend=none` packages pass through unwrapped. Wrapped targets (`flake.nix:976-996`): ffmpeg (`ffmpeg`/`ffprobe`/`ffplay`), qgis, blender, and all 3DGS/gaussian-splatting tools (`wrapGpuAll`, since colmap/lichtfeld bin names aren't pinned). Produces `-gpuwrapped` derivations, drop-in for the originals. Proven live 2026-08-31 on RTX A6000 + 2×RTX 6000 Ada (`gpu-wrap.nix:28-30`).
 
+**CUDA host compiler (`local-cuda`, rebuild-class):** the image puts an `nvcc` wrapper first on `PATH` (also `$CUDA_PATH/bin/nvcc`, stable `/opt/agentbox/bin/nvcc`) that adds `-ccbin <gcc14>/bin/gcc` and `-I$CUDA_PATH/include` before the real nvcc, because build scripts such as `visionclaw-gpu`'s `build.rs` spawn plain `nvcc` and CUDA 12.9 supports GCC <= 14 while the system gcc is newer; `NVCC_CCBIN`/`CUDAHOSTCXX` override it and gcc14 is not on `PATH` (`lib/gpu-backend.nix`, gate `tests/config/nvcc-wrapper.test.sh`).
+
 **Limitation:** the wrapper delivers CUDA compute; it is a *library-path* fix, not a Vulkan/GLX presentation fix. Interactive GL/Vulkan display goes through the FHS gui-tools sidecar under `vglrun`, not the wrapped Nix bins — the nixGL-class approach resolves the driver `.so` but does not give a Nix binary a working windowing/Vulkan-WSI surface.
 
 ### Sidecars (compose, own lifecycle)

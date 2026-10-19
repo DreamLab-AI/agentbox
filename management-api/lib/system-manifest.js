@@ -168,7 +168,7 @@ const CATALOGUE = [
     summary: 'ADR-052 nightly evidence-gated repo evolution. The dream-engine binary is always baked; it self-reads [dream_machine] from /etc/agentbox.toml at start, so the gate is boot-class (restart applies it).' },
   { id: 'cuda', name: 'CUDA toolchain', layer: 'module', heavy: true,
     gate: 'toolchains.cuda', apply_class: 'rebuild',
-    summary: 'CUDA userspace for GPU workloads.' },
+    summary: 'CUDA userspace for GPU workloads. Ships an nvcc wrapper (PATH and /opt/agentbox/bin/nvcc) that passes -ccbin gcc14 (CUDA 12.9 supports gcc <= 14) and -I$CUDA_PATH/include so build.rs-driven CUDA crates compile; NVCC_CCBIN/CUDAHOSTCXX/CUDA_PATH are set. Rebuild-class; the system compiler is unchanged.' },
   { id: 'browser-sidecar', name: 'Browser container (GPU Chrome)', layer: 'module', heavy: true,
     gate: 'skills.browser.agent_browser', service: 'browsercontainer', apply_class: 'live',
     summary: 'External compose sidecar (chrome-devtools-mcp at :8931/sse); managed at runtime via ./agentbox.sh browsercontainer.' },

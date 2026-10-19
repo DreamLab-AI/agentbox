@@ -3681,7 +3681,7 @@ fi
 # CUDA and LIBCLANG env vars are set by the flake (gpu-backend.nix) via
 # supervisorExtraEnv. The cuda-compat derivation provides lib64/ symlink.
 # Propagate to the runtime env file so interactive shells also pick them up.
-for var in CUDA_PATH CUDA_ROOT CUDA_LIBRARY_PATH LIBCLANG_PATH; do
+for var in CUDA_PATH CUDA_ROOT CUDA_LIBRARY_PATH LIBCLANG_PATH NVCC_CCBIN CUDAHOSTCXX; do
   # R-028: bash indirect expansion instead of `eval val=\$$var` (no eval, no
   # word-splitting/code-execution surface). $var is a fixed loop literal anyway.
   val="${!var:-}"

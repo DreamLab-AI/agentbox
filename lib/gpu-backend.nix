@@ -172,14 +172,45 @@ let
       # CUDA unavailable" setup; the validator still gates harder use.
       cudaToolkit = pkgs.cudaPackages.cudatoolkit;
 
+      # Host compiler for nvcc. CUDA 12.9 supports GCC up to 14 (NVIDIA CUDA
+      # 12.9 Linux installation guide, host-compiler matrix); the system gcc
+      # (15.x) is newer than nvcc accepts. Scoped to nvcc only: nothing else
+      # in the image changes its default compiler.
+      nvccHostGcc = pkgs.gcc14;
+
+      # `nvcc` wrapper. Build scripts (visionclaw-gpu build.rs) spawn plain
+      # `nvcc` with no -ccbin and no -I, so env vars alone cannot fix both
+      # failures: nix's split CUDA output keeps cuda_runtime.h out of nvcc's
+      # own search path, and the default gcc is too new. The wrapper adds
+      # -ccbin (unless the caller passed -ccbin/--compiler-bindir; NVCC_CCBIN
+      # overrides the default) and -I$CUDA_PATH/include, then execs the real
+      # nvcc by absolute path. It must not reference cudaCompat (which links
+      # to it), hence the toolkit include as the CUDA_PATH fallback.
+      nvccWrapper = pkgs.writeShellScriptBin "nvcc" ''
+        ccbin_given=0
+        for a in "$@"; do
+          case "$a" in
+            -ccbin|-ccbin=*|--compiler-bindir|--compiler-bindir=*) ccbin_given=1 ;;
+          esac
+        done
+        if [ "$ccbin_given" = 0 ]; then
+          set -- -ccbin "''${NVCC_CCBIN:-${nvccHostGcc}/bin/gcc}" "$@"
+        fi
+        exec ${cudaToolkit}/bin/nvcc -I"''${CUDA_PATH:-${cudaToolkit}}/include" "$@"
+      '';
+
       # Nix CUDA uses lib/ but Rust crates (find_cuda_helper) expect lib64/.
-      # Build a thin wrapper derivation with lib64 → lib symlink.
+      # Build a thin wrapper derivation with lib64 → lib symlink. bin/ is a
+      # real directory so $CUDA_PATH/bin/nvcc is the wrapper, not raw nvcc.
       cudaCompat = pkgs.runCommand "cuda-compat" {} ''
-        mkdir -p $out
+        mkdir -p $out/bin
         ln -s ${cudaToolkit}/include $out/include
         ln -s ${cudaToolkit}/lib     $out/lib
         ln -s ${cudaToolkit}/lib     $out/lib64
-        ln -s ${cudaToolkit}/bin     $out/bin
+        for f in ${cudaToolkit}/bin/*; do
+          [ "$(basename "$f")" = nvcc ] || ln -s "$f" "$out/bin/$(basename "$f")"
+        done
+        ln -s ${nvccWrapper}/bin/nvcc $out/bin/nvcc
         [ -d ${cudaToolkit}/nvvm ] && ln -s ${cudaToolkit}/nvvm $out/nvvm || true
       '';
 
@@ -187,6 +218,10 @@ let
       clangLib = pkgs.llvmPackages.libclang.lib;
 
       baseCudaPackages = lib.optionals cudaEligible (with pkgs; [
+        # First: PATH resolves `nvcc` to the wrapper, ahead of the raw binary.
+        # gcc14 is deliberately NOT listed: it stays off PATH (the wrapper
+        # reaches it by store path) so the default compiler is unchanged.
+        nvccWrapper
         cudaPackages.cudatoolkit
         cudaPackages.cuda_nvcc
         cudaPackages.libcublas
@@ -220,6 +255,8 @@ let
         OLLAMA_HOST                = "0.0.0.0:11434";
       };
       nixPackages = baseCudaPackages ++ extendedCudaPackages;
+      # Consumed by flake.nix for the stable /opt/agentbox/bin/nvcc link.
+      nvccWrapper = if cudaEligible then nvccWrapper else null;
       composeDeviceReservations = {
         driver       = "nvidia";
         count        = "all";
@@ -232,6 +269,10 @@ let
         CUDA_PATH                   = "${cudaCompat}";
         CUDA_ROOT                   = "${cudaCompat}";
         CUDA_LIBRARY_PATH           = "${cudaCompat}";
+        # nvcc host compiler: gcc 14, the highest CUDA 12.9 supports. Read by
+        # the nvcc wrapper (-ccbin) and by cmake-style CUDA consumers.
+        NVCC_CCBIN                  = "${nvccHostGcc}/bin/gcc";
+        CUDAHOSTCXX                 = "${nvccHostGcc}/bin/g++";
         LIBCLANG_PATH               = "${clangLib}/lib";
         # C-9 / GPU-1 / GPU-2: nix RUNPATHs exclude /usr/lib, where the
         # nvidia-container-toolkit injects libcuda/libnvcuvid/libGLX_nvidia.

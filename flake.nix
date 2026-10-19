@@ -2053,6 +2053,12 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           # option, which persists in ~/.claude; a store path there would dangle.
           ln -s ${factrailPkg}/bin/factrail $out/opt/agentbox/bin/factrail
           ''}
+          ${lib.optionalString (gpuActive && (gpuCfg.nvccWrapper or null) != null) ''
+          # nvcc wrapper (-ccbin gcc14 + -I$CUDA_PATH/include) at a stable path:
+          # build scripts that cache or record an nvcc location must not hold a
+          # /nix/store path. Gated with the local-cuda package set.
+          ln -s ${gpuCfg.nvccWrapper}/bin/nvcc $out/opt/agentbox/bin/nvcc
+          ''}
           ${lib.optionalString systemOneProxyOn ''
           # system-one-proxy (ADR-2139): a stable path so `./agentbox.sh systemone`
           # and the interim tmux launch run the SAME binary supervisor does.
