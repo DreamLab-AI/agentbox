@@ -1,5 +1,6 @@
+use std::io::Write;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output, Stdio};
 use thiserror::Error;
 use tracing::{info, warn};
 
@@ -21,25 +22,50 @@ pub enum DispatchError {
     NoAnnexeHost,
 }
 
-/// Run a command on the connected node via SSH.
+/// The fixed command ssh hands to the remote login shell.
 ///
-/// the connected node's login shell is fish — every remote command is wrapped in `bash -lc`
-/// so POSIX syntax (&&, redirects, cd) behaves as written.
-pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
-    if hp_host.trim().is_empty() {
-        return Err(DispatchError::NoAnnexeHost);
-    }
-    let wrapped = format!("bash -lc {}", shell_quote(cmd));
-    let output = Command::new("ssh")
+/// The connected node's login shell is fish, and fish reads a backslash before a
+/// quote or backslash as an escape *inside* single quotes, which POSIX does
+/// not. A script embedded in the ssh command line therefore breaks as soon as
+/// quoting nests (an evaluator holding `'` died with bash "unexpected EOF").
+/// So the script never travels on the command line: it goes over stdin, and
+/// this constant, which holds no backslash and no inner single quote, is the
+/// only text fish ever parses. bash then evaluates the script as one POSIX
+/// program.
+const REMOTE_BASH_FROM_STDIN: &str = r#"bash -lc 'eval "$(cat)"'"#;
+
+/// Run `script` under bash on the connected node, passing it on stdin.
+fn run_remote(hp_host: &str, script: &str) -> std::io::Result<Output> {
+    let mut child = Command::new("ssh")
         .args([
             "-o",
             "BatchMode=yes",
             "-o",
             "ConnectTimeout=10",
             hp_host,
-            &wrapped,
+            REMOTE_BASH_FROM_STDIN,
         ])
-        .output()?;
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    if let Some(mut stdin) = child.stdin.take() {
+        // A broken pipe means ssh failed before reading; its exit status and
+        // stderr below carry the real reason, so the write error adds nothing.
+        let _ = stdin.write_all(script.as_bytes());
+    }
+    child.wait_with_output()
+}
+
+/// Run a command on the connected node via SSH.
+///
+/// The script runs under bash (see [`REMOTE_BASH_FROM_STDIN`]) so POSIX syntax
+/// (&&, redirects, cd) behaves as written.
+pub fn ssh(hp_host: &str, cmd: &str) -> Result<String, DispatchError> {
+    if hp_host.trim().is_empty() {
+        return Err(DispatchError::NoAnnexeHost);
+    }
+    let output = run_remote(hp_host, cmd)?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -68,17 +94,7 @@ pub fn ssh_capture(hp_host: &str, cmd: &str) -> dream_gate::outcome::ExecOutcome
     }
     let started_at = chrono::Utc::now().to_rfc3339();
     let t0 = std::time::Instant::now();
-    let wrapped = format!("bash -lc {}", shell_quote(cmd));
-    let output = Command::new("ssh")
-        .args([
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "ConnectTimeout=10",
-            hp_host,
-            &wrapped,
-        ])
-        .output();
+    let output = run_remote(hp_host, cmd);
     match output {
         Ok(o) => {
             let stderr = String::from_utf8_lossy(&o.stderr).into_owned();
@@ -395,6 +411,57 @@ mod tests {
         );
         assert_eq!(parse_avail_kb("AVAIL-KB=\n"), None);
         assert_eq!(parse_avail_kb("no marker"), None);
+    }
+
+    /// Regression for the 2026-10-19 triage: an evaluator containing single
+    /// quotes failed on the connected node with bash "unexpected EOF" because its fish
+    /// login shell re-parses the ssh command line. Reproduce the remote side
+    /// locally: fish parses `REMOTE_BASH_FROM_STDIN`, bash gets the script on
+    /// stdin. Skipped where fish is not installed.
+    #[test]
+    fn evaluators_with_quotes_survive_a_fish_login_shell() {
+        use std::io::Write;
+        use std::process::{Command, Stdio};
+        if Command::new("fish").arg("--version").output().is_err() {
+            eprintln!("fish not installed; skipping");
+            return;
+        }
+        let scripts = [
+            "echo 'single'",
+            r#"echo "it's" && echo 'it'"'"'s'"#,
+            r"printf '%s\n' 'back\\slash' 'quote\'s'",
+            r"cd '/tmp/it'\''s here' 2>/dev/null; echo $((1+2))",
+            "echo 'a'; echo \"b\"\necho 'multi\nline'",
+        ];
+        for script in scripts {
+            let want = Command::new("bash").args(["-c", script]).output().unwrap();
+            let mut child = Command::new("fish")
+                .args(["-c", super::REMOTE_BASH_FROM_STDIN])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap();
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(script.as_bytes())
+                .unwrap();
+            let got = child.wait_with_output().unwrap();
+            assert_eq!(
+                String::from_utf8_lossy(&got.stdout),
+                String::from_utf8_lossy(&want.stdout),
+                "stdout differs for {script:?}: stderr={}",
+                String::from_utf8_lossy(&got.stderr)
+            );
+        }
+    }
+
+    #[test]
+    fn the_remote_command_has_nothing_for_fish_to_misparse() {
+        assert!(!super::REMOTE_BASH_FROM_STDIN.contains('\\'));
+        assert_eq!(super::REMOTE_BASH_FROM_STDIN.matches('\'').count(), 2);
     }
 
     #[test]
