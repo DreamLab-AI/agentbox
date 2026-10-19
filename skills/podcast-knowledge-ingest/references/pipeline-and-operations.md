@@ -96,10 +96,23 @@ approved decision is applied, not a way to apply one.
 
 ### Phase 1: Delta detection + download
 
-- Load `.ingest-state.json` from output directory
-- `yt-dlp --flat-playlist` to get current video list
-- Diff against state file — new IDs are this week's episodes
-- Download transcript + metadata for each new episode
+- Load `.ingest-state.json` from the output directory. There is one shape,
+  `{"videos": {}, "assertions": {}, "created_pages": []}`, shared with
+  `podcast-bulk-ingest`. A legacy flat or hybrid file loads losslessly and is
+  rewritten nested on the next save (the original is kept once as
+  `.ingest-state.json.pre-nested.bak`). A file that cannot be parsed stops the
+  run and is left untouched; only a missing file means an empty history.
+- `yt-dlp --flat-playlist` to get current video list; a failed listing is an error
+- Diff against the state and the episode files on disk. A file counts as
+  downloaded only if it holds a real transcript, or its id is in the state (an
+  episode that genuinely has no captions). A show-notes-only stub is not.
+- Download transcript + metadata for each new episode, `download_pause_secs`
+  apart (default 15). The subtitle fetch is classified: fetched, no captions,
+  rate-limited (HTTP 429), or failed. Only the first two write a file and a state
+  record; the others leave no trace so the episode is tried again.
+- On the first 429 the batch stops, prints `RATE-LIMITED: <n> downloaded before
+  YouTube returned 429`, the run exits non-zero, and what was already fetched
+  still goes through extraction. `run-catchup.sh` keys its backoff off that line.
 - Mark files `ingest-status: downloaded` (a frontmatter key, not a `key::` line)
 
 ### Phase 2: Assertion extraction (Loom)
@@ -176,3 +189,18 @@ Hard-won facts baked into the current code — do not regress them:
   Python-era lesson here ("no `/usr/bin/python3` in the agentbox image; resolve
   the interpreter by capability") no longer applies — `run-ingest.sh` and
   `run-promote.sh` now just `command -v` the statically-linked binary.
+
+## Lessons from 2026-10-19
+
+- YouTube returns HTTP 429 for the subtitle endpoint from this container's IP
+  after a burst of requests, while listing and metadata still work. The old
+  code ignored the subtitle exit status, wrote a stub and recorded the episode as
+  done, so a throttled run looked like a successful one with empty transcripts.
+  Never treat a subtitle failure as "no transcript"; only `NoCaptions` (exit 0,
+  no file) is that.
+- Two tools shared `.ingest-state.json` with different shapes, and a loader that
+  defaulted on error turned the mismatch into an empty history. A state that
+  cannot be read must stop the run.
+- The Loom serves only the local qwen model. Nothing in this pipeline calls GLM:
+  extraction is the Loom, the promote judges are Gemini. The Z.AI/GLM subscription
+  serves the dream machine and the session-digest workers.

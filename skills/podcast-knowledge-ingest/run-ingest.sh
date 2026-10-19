@@ -14,4 +14,23 @@ if [ -z "$BIN" ]; then
     exit 1
 fi
 
-exec "$BIN" --config "$CONFIG" "${@:2}"
+# One ingest at a time (the catch-up loop, run-catchup.sh, takes the same lock).
+# If the loop is draining the back catalogue, this weekly run has nothing to add
+# and must not queue behind it for days, so it stands down quietly. Exit 0: it
+# is not a failure.
+# shellcheck source=lib-lock.sh
+. "${SKILL_DIR}/lib-lock.sh"
+podcast_lock_acquire
+case $? in
+    0) ;;
+    75)
+        echo "run-ingest.sh: another podcast ingest holds ${PODCAST_INGEST_LOCK} (the catch-up loop?); standing down" >&2
+        exit 0
+        ;;
+    *) exit 1 ;;
+esac
+
+# Not exec: the shell keeps file descriptor 9, and with it the lock, until the
+# binary has finished.
+"$BIN" --config "$CONFIG" "${@:2}"
+exit $?

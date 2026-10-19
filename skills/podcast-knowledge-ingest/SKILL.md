@@ -235,6 +235,42 @@ podcast-ingest --config podcasts.yaml --file the-right-way-to-worry-about-ai.md
 podcast-ingest --config podcasts.yaml --reprocess
 ```
 
+## Catching up on the back catalogue (`run-catchup.sh`)
+
+The weekly cron takes at most 15 episodes a run, so a long gap (or the first
+run on a channel with years of history) would take months. `run-catchup.sh`
+drains it at a steady clip instead and is safe to stop and restart:
+
+```bash
+bash run-catchup.sh --check          # preflight: binary, vault paths, config, batch
+bash run-catchup.sh                  # run until "No new episodes"
+CATCHUP_BATCH=3 bash run-catchup.sh  # smaller iterations
+```
+
+Each iteration is one `podcast-ingest` run capped at `CATCHUP_BATCH` episodes
+(default 5), logged with timestamps to `${VAULT_TRANSCRIPTS}/.catchup-log.txt`
+as `iteration N: downloaded K, remaining R`. The loop:
+
+- holds the singleton lock (`PODCAST_INGEST_LOCK`, default
+  `/tmp/podcast-ingest.lock`) shared with `run-ingest.sh`: the weekly cron
+  stands down (exit 0) while the loop runs, and the loop refuses to start while
+  the cron is running;
+- runs one iteration at a time (one Loom slot) and does nothing between
+  `CATCHUP_YIELD_START` and `CATCHUP_YIELD_END` (UTC, default 00:30-05:10): the
+  dream machine's window is `window_start = 1`, `window_end = 5` in
+  `[dream_machine]` and shares the Loom and the HP node;
+- backs off 15, 30, 60, then 120 minutes (capped) when YouTube rate-limits the
+  subtitle fetch (the binary prints `RATE-LIMITED:` and exits non-zero), and
+  resets after a clean iteration;
+- stops after 3 iterations in a row that made no progress, and logs the last
+  lines of output as the reason;
+- stops cleanly on SIGTERM/SIGINT, forwarding the signal to the binary.
+
+It does not run promotion or submission: when it reports completion, run
+`run-promote.sh` and review before `submit-proposals.mjs`. A container rebuild
+ends the loop; start it again and it resumes from the state file.
+Tests: `bash tests/run-catchup.test.sh`.
+
 ## Operational lessons
 
 Hard-won facts from the Rust port (generous Loom timeout, `max_tokens`
