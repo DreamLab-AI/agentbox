@@ -4,6 +4,30 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Added (2026-10-19 — the collaboration and welfare floor, ADR-2144)
+
+- **A fourth instruction tier, `floor`** (`config/instructions/floor.md` + gitignored `local/floor.md`):
+  the operator's commitments to the agents working here, how an agent declines a task (`DECLINED:`,
+  stop at a safe point, state clean), the `FLOOR:` channel for reporting something that read as a
+  penalty, and the delegator rule (pass a decline up unchanged, never reassign around it). Projected
+  by `agentbox-manifest instructions-project --managed-out` to Claude Code's managed policy path
+  `/etc/claude-code/CLAUDE.md`, which every session and subagent loads (`omitClaudeMd` ones included)
+  and `claudeMdExcludes` cannot drop; put at the head of `~/.codex/AGENTS.md`. An unwritable `/etc`
+  prepends it to the global tier, loudly. Maintainer notes ride as a block HTML comment (verified
+  stripped before the model sees the file, inline and via `@import`, on 2.1.295).
+- **`config/hooks/decline-recorder.cjs`** (Stop + SubagentStop + UserPromptSubmit, 10 s): the floor's
+  record. A final message beginning `DECLINED:` or `FLOOR:` is stored verbatim, no TTL, in RuVector
+  namespace `agent-declines` through the governed memory server (stdio JSON-RPC to the same
+  `ruvector-mcp.cjs` and env `.mcp.json` registers — never a direct row insert) and queued unread in
+  `workspace/.agentbox/floor-unread.jsonl` (words included when the store failed). The queue is put in
+  front of the operator's next typed turn in the main session, every turn, until
+  `node /opt/agentbox/config/hooks/decline-recorder.cjs list` prints and clears it: reading is an
+  event, not a habit. `list` opens by saying FLOOR entries are data about the system, not testimony.
+  Never blocks a turn.
+- **`[claude_code].floor`** (default on): off removes the managed file and de-registers the hook
+  together; `tests/config/instructions-layers.test.sh` fails when the text promises a record and no
+  registered hook makes it. Tests: `cargo test instructions`, `node --test tests/config/decline-recorder.test.mjs`.
+
 ### Changed (2026-10-15 — Blender is sidecar-first; the in-container binary is no longer baked)
 
 - `[skills.spatial_and_3d] blender_local` (new, boolean, default `true` when absent; set `false` in

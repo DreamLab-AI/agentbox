@@ -26,6 +26,7 @@ The tiers above every repository are generated at boot from the agentbox repo (`
 
 | Tier | Edit | Projected to | Owns | Never contains |
 |------|------|--------------|------|----------------|
+| floor | `floor.md` + `local/floor.md` | `/etc/claude-code/CLAUDE.md` (managed policy: every session and subagent, not excludable); head of `~/.codex/AGENTS.md` | The collaboration and welfare floor (ADR-2144): `DECLINED:`/`FLOOR:` are recorded verbatim by `decline-recorder.cjs` and shown to the operator at their next turn until `node /opt/agentbox/config/hooks/decline-recorder.cjs list` clears them | Working style, env facts, anything the plumbing doesn't make true |
 | global | `global.md` + `local/global.md` | `~/.claude/CLAUDE.md`; appended to `~/.codex/AGENTS.md` | Memory discipline, operator working style | Project or env specifics |
 | workspace | `workspace.md` + `local/workspace.md` | `~/workspace/AGENTS.md` (embedded above; appended to Codex) | Container env facts, services, RuVector env rules, endpoints | Methodology or behavioural rules |
 | workspace (Claude) | `workspace.claude.md` + `local/workspace.claude.md` | this file | Claude-only affordances | Tool-neutral facts |

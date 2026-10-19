@@ -2049,6 +2049,67 @@ TRAJUNJS
   chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
 fi
 
+# ── ADR-2144: the floor's record — decline-recorder on Stop + SubagentStop ──
+# config/hooks/decline-recorder.cjs makes the floor tier's record clauses true:
+# a final message beginning DECLINED: or FLOOR: is stored verbatim, no TTL, in
+# RuVector namespace agent-declines through the governed memory server (the
+# hook speaks stdio JSON-RPC to the same ruvector-mcp.cjs and env that
+# .mcp.json registers, so the row is embedded and searchable) and queued as
+# unread; on UserPromptSubmit the same hook puts the unread queue in front of
+# the operator's next typed turn in the main session until `list` clears it,
+# so reading is an event. It never blocks a turn. Registered exactly when
+# [claude_code].floor is on (default on, same gate as the managed file),
+# de-registered otherwise so a container with the floor off is byte-identical.
+# Idempotent; mirrors the blocks above.
+# The gate is read here, once: the instructions block further down (managed
+# file) and the Codex AGENTS.md block reuse _FLOOR_ON and _MANAGED_CLAUDE_MD.
+_FLOOR_ON="$(_ab_toml_bool claude_code floor)"
+[ -n "$(_ab_toml_val claude_code floor)" ] || _FLOOR_ON=1   # absent key ⇒ on
+_MANAGED_CLAUDE_MD="/etc/claude-code/CLAUDE.md"
+_DECL_HOOK="/opt/agentbox/config/hooks/decline-recorder.cjs"
+if [ "$_FLOOR_ON" = "1" ] && [ -f "$_DECL_HOOK" ] && command -v node >/dev/null 2>&1; then
+  mkdir -p "$(dirname "$_CLAUDE_SETTINGS")" 2>/dev/null || true
+  DECL_HOOK="$_DECL_HOOK" SETTINGS="$_CLAUDE_SETTINGS" \
+  DECL_WS="${WORKSPACE:-/home/devuser/workspace}" \
+  node <<'DECLJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS, hook = process.env.DECL_HOOK;
+// WORKSPACE is inlined so the hook finds .mcp.json (and the memory server's
+// env) and the unread queue regardless of the ambient hook environment.
+const pfx = `WORKSPACE=${JSON.stringify(process.env.DECL_WS)}`;
+let s = {}, origText = ''; try { origText = fs.readFileSync(f, 'utf8'); s = JSON.parse(origText); } catch {}
+s.hooks = s.hooks || {};
+const EVENTS = ['Stop', 'SubagentStop', 'UserPromptSubmit'];
+for (const evt of EVENTS) {
+  if (!Array.isArray(s.hooks[evt])) continue;
+  s.hooks[evt] = s.hooks[evt].filter((g) => !(g.hooks || []).some((h) => String(h.command || '').includes('decline-recorder.cjs')));
+}
+for (const evt of EVENTS) {
+  s.hooks[evt] = s.hooks[evt] || [];
+  s.hooks[evt].push({ hooks: [{ type: 'command', command: `${pfx} node ${hook} ${evt} || true`, timeout: 10 }] });
+}
+const nextText = JSON.stringify(s, null, 2);
+if (nextText !== origText) { fs.writeFileSync(f, nextText); console.log('  [floor] registered decline-recorder hooks (Stop/SubagentStop/UserPromptSubmit)'); }
+else { console.log('  [floor] decline-recorder hooks already registered'); }
+DECLJS
+  chown 1000:1000 "$_CLAUDE_SETTINGS" 2>/dev/null || true
+elif [ -f "$_CLAUDE_SETTINGS" ] && command -v node >/dev/null 2>&1; then
+  SETTINGS="$_CLAUDE_SETTINGS" node <<'DECLUNJS' || true
+const fs = require('fs');
+const f = process.env.SETTINGS;
+let s; try { s = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { process.exit(0); }
+if (!s.hooks) process.exit(0);
+let changed = false;
+for (const evt of ['Stop', 'SubagentStop', 'UserPromptSubmit']) {
+  const arr = s.hooks[evt];
+  if (!Array.isArray(arr)) continue;
+  const kept = arr.filter((g) => !(g.hooks || []).some((h) => String(h.command || '').includes('decline-recorder.cjs')));
+  if (kept.length !== arr.length) { s.hooks[evt] = kept; changed = true; }
+}
+if (changed) { fs.writeFileSync(f, JSON.stringify(s, null, 2)); console.log('  [floor] de-registered decline-recorder hooks (gate off)'); }
+DECLUNJS
+fi
+
 # ── Dream-inbox surfacing hook (UserPromptSubmit) ──
 # The nightly dream-engine queues operator questions/alerts in
 # workspace/.agentbox/dream-inbox.json; this hook surfaces open items into any
@@ -2733,6 +2794,16 @@ fi
 # not survive. The workspace tier is embedded into the Claude notes at their
 # `@AGENTS.md` line (ADR-2111: an import above the project root is skipped as an
 # external include). Fail-open; a tier with no layers is left untouched.
+#
+# ADR-2144: the floor tier (floor.md + local/floor.md) goes to Claude Code's
+# managed policy path, /etc/claude-code/CLAUDE.md, under [claude_code].floor
+# (default on). The managed file is loaded by every session and subagent —
+# custom subagents with omitClaudeMd: true included — and claudeMdExcludes
+# cannot drop it, which is why it is the floor's home rather than the user
+# tier. An unwritable /etc makes the projector prepend the floor to the global
+# tier instead (loud, never silent). Gate off ⇒ --no-managed, and a managed
+# file this projector wrote is removed (byte-identical-when-off); a managed
+# file someone else put there is left alone.
 _INSTR_LAYERS="/etc/agentbox/instructions"
 if [ -d "$_INSTR_LAYERS" ] && command -v agentbox-manifest >/dev/null 2>&1 \
    && agentbox-manifest instructions-project --help >/dev/null 2>&1; then
@@ -2742,11 +2813,19 @@ if [ -d "$_INSTR_LAYERS" ] && command -v agentbox-manifest >/dev/null 2>&1 \
   # still binds the host's whole ~/.claude keeps the host's own CLAUDE.md.
   _INSTR_GLOBAL=()
   [ -d /var/lib/agentbox/host-claude ] || _INSTR_GLOBAL=(--no-global)
-  agentbox-manifest instructions-project --layers "$_INSTR_LAYERS" "${_INSTR_GLOBAL[@]}" \
+  _INSTR_MANAGED=(--managed-out "$_MANAGED_CLAUDE_MD")
+  [ "$_FLOOR_ON" = "1" ] || _INSTR_MANAGED=(--no-managed)
+  agentbox-manifest instructions-project --layers "$_INSTR_LAYERS" "${_INSTR_GLOBAL[@]}" "${_INSTR_MANAGED[@]}" \
     --global-out "${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/CLAUDE.md" \
     --workspace-out "$_WSR/AGENTS.md" --workspace-claude-out "$_WSR/CLAUDE.md" 2>&1 || true
   chown 1000:1000 "${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/CLAUDE.md" "$_WSR/AGENTS.md" "$_WSR/CLAUDE.md" 2>/dev/null || true
-  unset _WSR _INSTR_GLOBAL
+  # The managed file is policy: root-owned, world-readable, never writable by devuser.
+  [ -f "$_MANAGED_CLAUDE_MD" ] && chmod 0644 "$_MANAGED_CLAUDE_MD" 2>/dev/null || true
+  unset _WSR _INSTR_GLOBAL _INSTR_MANAGED
+fi
+if [ "$_FLOOR_ON" != "1" ] && [ -f "$_MANAGED_CLAUDE_MD" ] \
+   && head -1 "$_MANAGED_CLAUDE_MD" | grep -q 'GENERATED by `agentbox-manifest instructions-project`'; then
+  rm -f "$_MANAGED_CLAUDE_MD" && echo "  [instructions] floor off: removed $_MANAGED_CLAUDE_MD"
 fi
 unset _INSTR_LAYERS
 
@@ -3319,10 +3398,12 @@ AGENTSEOF
   # root down to its cwd, and ~/workspace is not a repo, so the global and
   # workspace tiers would otherwise never reach it. Append both as projected
   # above from config/instructions/ (the global tier is tool-neutral, so it goes
-  # whole). Fail-open; kept well under Codex's 32 KiB project-doc cap.
+  # whole). The floor (ADR-2144) goes first: Codex has no managed policy path,
+  # so the managed file projected for Claude Code is appended here instead.
+  # Fail-open; kept well under Codex's 32 KiB project-doc cap.
   _WS_AGENTS="${WORKSPACE:-/home/devuser/workspace}/AGENTS.md"
   _CLAUDE_GLOBAL="${CLAUDE_CONFIG_DIR:-/home/devuser/.claude}/CLAUDE.md"
-  for _tier in "$_CLAUDE_GLOBAL" "$_WS_AGENTS"; do
+  for _tier in "$_MANAGED_CLAUDE_MD" "$_CLAUDE_GLOBAL" "$_WS_AGENTS"; do
     if [ -f "$_tier" ] && [ "$(wc -c < "$_tier")" -lt 12000 ]; then
       { printf '\n'; cat "$_tier"; } >> "$_CODEX_AGENTS" 2>/dev/null || true
     fi

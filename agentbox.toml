@@ -681,6 +681,17 @@ permission_deny = [
 model         = "sonnet"   # fable|best|opus|sonnet|haiku|opusplan (+ optional "[1m]") or a claude-* id
 effort        = "high"     # low | medium | high | xhigh
 advisor_model = "opus"     # fable | opus | sonnet | haiku | claude-* id | "off"
+# ADR-2144 — the collaboration and welfare floor (config/instructions/floor.md +
+# local/floor.md). On: projected to the managed policy path
+# /etc/claude-code/CLAUDE.md, which every Claude Code session and subagent
+# loads (omitClaudeMd ones included) and nothing can exclude, put at the head of
+# Codex's AGENTS.md, and config/hooks/decline-recorder.cjs is registered on
+# Stop + SubagentStop to store a DECLINED:/FLOOR: message verbatim in RuVector
+# namespace agent-declines (no TTL). Off: no managed file, no hook —
+# byte-identical to a container that never had the floor. The text promises a
+# record; turning this off while leaving the layer in place breaks that
+# promise, so the layer test ties the two together.
+floor         = true
 
 [features.jev_compaction]
 # ADR-2093 (policy) and ADR-2121 (factrail) — Jev compaction with fact rails. At compaction

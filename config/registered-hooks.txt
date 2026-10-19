@@ -38,6 +38,7 @@ own   ontology-monitor.cjs             SessionEnd                               
 own   turn-sink.cjs                    UserPromptSubmit,Stop                          5
 own   colloquy-reflect-candidates.cjs  Stop,SubagentStop                              10
 own   trajectory-recorder.cjs          Stop,SubagentStop                              10
+own   decline-recorder.cjs             Stop,SubagentStop,UserPromptSubmit             10
 own   dream-inbox-surface.cjs          UserPromptSubmit                               5
 own   ruvnet-brain-ground.cjs          UserPromptSubmit                               5
 # skill-route's timeout tracks [skills.routing].timeout_ms (2x, min 8 s).

@@ -7,6 +7,7 @@ image. Edit here, never the generated files.
 
 | Layer file | Projected to | Holds |
 |---|---|---|
+| `floor.md` + `local/floor.md` | `/etc/claude-code/CLAUDE.md` (Claude Code's managed policy path — loaded by every session and subagent, `omitClaudeMd` ones included, and not excludable); head of `~/.codex/AGENTS.md`. Unwritable `/etc` ⇒ prepended to the global tier instead. Gate `[claude_code].floor` (ADR-2144) | the collaboration and welfare floor: what the operator commits to, how an agent declines, and the record that `config/hooks/decline-recorder.cjs` keeps of it |
 | `global.md` + `local/global.md` | `~/.claude/CLAUDE.md`; appended to `~/.codex/AGENTS.md` | memory discipline, operator working style |
 | `workspace.md` + `local/workspace.md` | `~/workspace/AGENTS.md`; appended to `~/.codex/AGENTS.md` | tool-neutral container facts, estate endpoints |
 | `workspace.claude.md` + `local/workspace.claude.md` | `~/workspace/CLAUDE.md`, with the workspace tier embedded at its `@AGENTS.md` line | Claude Code-only affordances |

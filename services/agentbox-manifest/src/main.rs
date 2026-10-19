@@ -188,6 +188,14 @@ enum Command {
         /// directory, so its CLAUDE.md belongs to the host).
         #[arg(long)]
         no_global: bool,
+        /// Claude Code's managed policy file, where the floor tier goes
+        /// (ADR-2144): loaded even by `omitClaudeMd` subagents. Unwritable ⇒
+        /// the floor is prepended to the global tier instead.
+        #[arg(long, default_value = "/etc/claude-code/CLAUDE.md")]
+        managed_out: PathBuf,
+        /// Project no floor (`[claude_code].floor = false`).
+        #[arg(long)]
+        no_managed: bool,
         #[arg(long, default_value = "/home/devuser/workspace/AGENTS.md")]
         workspace_out: PathBuf,
         #[arg(long, default_value = "/home/devuser/workspace/CLAUDE.md")]
@@ -447,12 +455,15 @@ fn run(cmd: Command) -> Result<(), String> {
             layers,
             global_out,
             no_global,
+            managed_out,
+            no_managed,
             workspace_out,
             workspace_claude_out,
             check,
         } => instructions::run(
             &layers,
             (!no_global).then_some(global_out.as_path()),
+            (!no_managed).then_some(managed_out.as_path()),
             &workspace_out,
             &workspace_claude_out,
             check,

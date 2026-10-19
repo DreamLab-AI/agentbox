@@ -24,7 +24,7 @@ bad() { fail=$((fail+1)); echo "  FAIL $1"; }
 # and host names, deployed relay/worker hosts, raw key material.
 LEAK='(^|[^0-9.])(10|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.[0-9]{1,3}\.[0-9]{1,3}|/mnt/|/home/machinelearn|jjohare|machinelearn|workers\.dev|wss://|nsec1[0-9a-z]{20,}|ssh [a-z]+@'
 
-for tier in global workspace workspace.claude; do
+for tier in floor global workspace workspace.claude; do
   f="$LAYERS/$tier.md"
   if [ -f "$f" ]; then ok "$tier.md present"; else bad "$tier.md missing"; continue; fi
   if hits=$(grep -nE "$LEAK" "$f"); then
@@ -39,6 +39,16 @@ if grep -qx '@AGENTS.md' "$LAYERS/workspace.claude.md" 2>/dev/null; then
   ok "workspace.claude.md keeps the @AGENTS.md embed point"
 else
   bad "workspace.claude.md lost its @AGENTS.md line (the workspace tier would be inserted after the title instead)"
+fi
+
+# ADR-2144: the floor's three record clauses are true only while the hook that
+# makes them true ships and is registered.
+if grep -q 'DECLINED:' "$LAYERS/floor.md" 2>/dev/null \
+   && [ -f "$REPO/config/hooks/decline-recorder.cjs" ] \
+   && grep -qE '^own\s+decline-recorder\.cjs\s+Stop,SubagentStop' "$REPO/config/registered-hooks.txt"; then
+  ok "floor.md's DECLINED: clause is backed by decline-recorder.cjs on Stop,SubagentStop"
+else
+  bad "floor.md promises a record that no registered hook makes (decline-recorder.cjs on Stop,SubagentStop)"
 fi
 
 probe="config/instructions/local/workspace.md"
