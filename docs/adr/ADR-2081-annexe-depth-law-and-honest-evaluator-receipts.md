@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
+verified_commit: 52183d76fde866ab1f05aea524aeea33d8573c3f
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/dispatch.rs, services/dream-engine/src/candidate_flow.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
@@ -113,3 +113,5 @@ Re-read at `33c8b3472a7a` (2026-10-16): the later `engine.rs` edits (per-night l
 ## Re-verification — 2026-10-17
 
 The `engine.rs` edits for ADR-2143 touch the source stage and the question queue only; annexe depth, receipt grading and ledger cell provenance are unchanged. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.
+
+Re-verified 2026-10-19 at `52183d76fde866ab1f05aea524aeea33d8573c3f`: Annexe scripts now travel over SSH stdin under a fixed Bash command, avoiding fish quoting reinterpretation. A read-only probe against the connected node preserved quotes, backslashes and literal shell variables; dispatch and receipt boundaries remain unchanged. Existing status axes are retained.
