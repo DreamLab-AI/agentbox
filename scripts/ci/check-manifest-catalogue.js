@@ -142,7 +142,7 @@ const BASELINE = [
       'integrations.solid_pod_rs.enable_quota',
       // ADR-2145: the forge compiles in as the `forge-full` cargo feature and its
       // policy knobs (chain, mainnet, open edit, private repos) are launcher env.
-      'integrations.solid_pod_rs.forge.enable', 'integrations.solid_pod_rs.forge.allow_mainnet',
+      'integrations.solid_pod_rs.forge.allow_mainnet',
       'integrations.solid_pod_rs.forge.open_edit', 'integrations.solid_pod_rs.forge.private_repos',
       'integrations.solid_pod_rs.forge.anchoring_ui',
     ],

@@ -988,6 +988,66 @@
             "storage_root": {
               "type": "string"
             },
+            "trust_proxy": {
+              "type": "boolean",
+              "default": true,
+              "description": "Trust reverse-proxy protocol headers and match authentication against the configured public origin (rebuild-class)."
+            },
+            "forge": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "ADR-2145: native pod forge and mirror; compiled and launched from the manifest (rebuild-class).",
+              "properties": {
+                "enable": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "chain": {
+                  "type": "string",
+                  "default": "txbt4"
+                },
+                "allow_mainnet": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "open_edit": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "private_repos": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "anchoring_ui": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "mirror_relays": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "mirror_follow": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "default": [],
+                  "description": "Explicit pubkey/repo or self/repo entries; no external repository is followed by default."
+                },
+                "announce_relays": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "default": []
+                }
+              }
+            },
             "base_url": {
               "type": "string"
             },
@@ -4158,6 +4218,11 @@
       "additionalProperties": false,
       "description": "ADR-2116: Claude Code permission posture; ADR-2134: model roles. Projected into every settings file at boot (roles skip gateway profiles).",
       "properties": {
+        "floor": {
+          "type": "boolean",
+          "default": true,
+          "description": "ADR-2144: project the managed collaboration floor and register decline recording/surfacing hooks at boot."
+        },
         "permission_mode": {
           "type": "string",
           "enum": [
