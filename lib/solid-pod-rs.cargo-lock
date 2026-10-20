@@ -2872,6 +2872,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "oxttl"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d385f1776d7cace455ef6b7c54407838eff902ca897303d06eb12a26f4cf8a0"
+dependencies = [
+ "memchr",
+ "oxilangtag",
+ "oxiri",
+ "oxrdf",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "p256"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3139,9 +3152,9 @@ dependencies = [
 
 [[package]]
 name = "quinn-proto"
-version = "0.11.17"
+version = "0.11.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04759210543be93709136e28212294a659ef5001836ff4eab4d663e4529bba83"
+checksum = "0e750cca55fe4f0439a15d0bb529da9651e79993e8e72c61a899a36d462befbe"
 dependencies = [
  "bytes",
  "getrandom 0.4.3",
@@ -3507,9 +3520,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.45"
+version = "0.23.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
+checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "once_cell",
  "ring",
@@ -3695,6 +3708,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_norway"
+version = "0.9.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e408f29489b5fd500fab51ff1484fc859bb655f32c671f307dcd733b72e8168c"
+dependencies = [
+ "indexmap 2.14.0",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml-norway",
+]
+
+[[package]]
 name = "serde_path_to_error"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3766,19 +3792,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
-]
-
-[[package]]
-name = "serde_yaml"
-version = "0.9.34+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
-dependencies = [
- "indexmap 2.14.0",
- "itoa",
- "ryu",
- "serde",
- "unsafe-libyaml",
 ]
 
 [[package]]
@@ -3894,7 +3907,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "actix-web",
  "async-trait",
@@ -3919,6 +3932,8 @@ dependencies = [
  "mime_guess",
  "notify",
  "openidconnect",
+ "oxrdf",
+ "oxttl",
  "p256",
  "parking_lot",
  "pkcs8",
@@ -3926,7 +3941,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "serde_yaml",
+ "serde_norway",
  "sha2",
  "solid-pod-rs",
  "solid-pod-rs-server",
@@ -3945,7 +3960,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-activitypub"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -3971,7 +3986,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-didkey"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -3992,14 +4007,17 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-forge"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
+ "bech32",
  "bytes",
+ "futures-util",
  "hex",
  "hmac",
  "k256",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
  "sha2",
@@ -4009,13 +4027,15 @@ dependencies = [
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-tungstenite",
  "tracing",
+ "url",
  "uuid",
 ]
 
 [[package]]
 name = "solid-pod-rs-git"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -4035,7 +4055,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-idp"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "argon2",
  "async-trait",
@@ -4068,7 +4088,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-nostr"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -4090,7 +4110,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-server"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "actix-http",
  "actix-web",
@@ -4112,6 +4132,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "solid-pod-rs",
+ "solid-pod-rs-activitypub",
  "solid-pod-rs-forge",
  "solid-pod-rs-git",
  "solid-pod-rs-idp",
@@ -4606,8 +4627,12 @@ checksum = "edc5f74e248dc973e0dbb7b74c7e0d6fcc301c694ff50049504004ef4d0cdcd9"
 dependencies = [
  "futures-util",
  "log",
+ "rustls",
+ "rustls-pki-types",
  "tokio",
+ "tokio-rustls",
  "tungstenite",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]
@@ -4805,6 +4830,8 @@ dependencies = [
  "httparse",
  "log",
  "rand 0.8.7",
+ "rustls",
+ "rustls-pki-types",
  "sha1 0.10.7",
  "thiserror 1.0.69",
  "utf-8",
@@ -4862,10 +4889,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
-name = "unsafe-libyaml"
-version = "0.2.11"
+name = "unsafe-libyaml-norway"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
+checksum = "b39abd59bf32521c7f2301b52d05a6a2c975b6003521cbd0c6dc1582f0a22104"
 
 [[package]]
 name = "unsigned-varint"

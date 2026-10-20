@@ -1544,6 +1544,10 @@
           ++ lib.optionals (solidPodRsCfg.enable_rate_limit or true) [ "rate-limit" ]
           ++ lib.optionals (solidPodRsCfg.enable_quota or true) [ "quota" ]
           ++ lib.optionals (solidPodRsCfg.enable_webhook_signing or true) [ "solid-pod-rs/webhook-signing" ]
+          # ADR-2145 (VisionFlow ADR-2019): the forge and the kind-30618 mirror are
+          # compiled in and started. They act on nothing until the forge block of
+          # [integrations.solid_pod_rs] names relays and follow entries.
+          ++ lib.optionals ((solidPodRsCfg.forge or {}).enable or true) [ "forge-full" ]
           ++ lib.optionals (solidPodRsCfg.enable_oidc or false)       [ "solid-pod-rs/oidc" ]
           ++ lib.optionals (solidPodRsCfg.enable_dpop_cache or false) [ "solid-pod-rs/dpop-replay-cache" ]
           ++ lib.optionals ((solidPodRsCfg.storage or "fs") == "s3") [ "solid-pod-rs/s3-backend" ]
@@ -1580,15 +1584,51 @@
             legacy_solid_01_enabled = false;
           };
         });
+        solidPodRsForge = solidPodRsCfg.forge or {};
         solidPodRsLauncher = pkgs.writeShellScript "start-solid-pod-rs" ''
           set -eu
           runtime_config="''${TMPDIR:-/tmp}/solid-pod-rs-config.json"
+          ${lib.optionalString ((solidPodRsForge.enable or true)) ''
+          # ── Forge (ADR-2145). Everything below is data from the manifest or
+          # the root .env; nothing external is followed by default. ─────────────
+          export FORGE_CHAIN=${lib.escapeShellArg (solidPodRsForge.chain or "txbt4")}
+          export FORGE_ALLOW_MAINNET=${if (solidPodRsForge.allow_mainnet or false) then "1" else "0"}
+          export FORGE_OPEN_EDIT=${if (solidPodRsForge.open_edit or false) then "1" else "0"}
+          export FORGE_PRIVATE_REPOS=${if (solidPodRsForge.private_repos or false) then "1" else "0"}
+          export FORGE_ANCHORING_UI=${if (solidPodRsForge.anchoring_ui or true) then "1" else "0"}
+          export FORGE_BASE_URL="$SOLID_POD_PUBLIC_URL"
+          # The sovereign identity (public half only) lets `self/<repo>` mean
+          # "this container's own agent". Absent identity: those entries drop.
+          self_pk=""
+          identity="''${AGENTBOX_IDENTITY_ROOT:-/var/lib/agentbox/identities}/''${AGENTBOX_AGENT_ID:-agentbox-core}.json"
+          if [ -r "$identity" ]; then
+            self_pk="$(${pkgs.jq}/bin/jq -r '.x_only_pubkey_hex // empty' "$identity" 2>/dev/null || true)"
+          fi
+          follow=""
+          for entry in ${lib.escapeShellArg (lib.concatStringsSep "," (solidPodRsForge.mirror_follow or []))} ''${AGENTBOX_FORGE_MIRROR_FOLLOW:-}; do
+            for e in $(printf '%s' "$entry" | tr ',' ' '); do
+              case "$e" in
+                self/*)
+                  if [ -n "$self_pk" ]; then
+                    follow="''${follow:+$follow,}$self_pk/''${e#self/}"
+                  fi
+                  ;;
+                *) follow="''${follow:+$follow,}$e" ;;
+              esac
+            done
+          done
+          export FORGE_MIRROR_FOLLOW="$follow"
+          export FORGE_MIRROR_RELAYS="${lib.concatStringsSep "," (solidPodRsForge.mirror_relays or [ "ws://127.0.0.1:7777" ])}''${AGENTBOX_FORGE_MIRROR_RELAYS:+,$AGENTBOX_FORGE_MIRROR_RELAYS}"
+          export FORGE_ANNOUNCE_RELAYS="${lib.concatStringsSep "," (solidPodRsForge.announce_relays or [])}''${AGENTBOX_FORGE_ANNOUNCE_RELAYS:+,$AGENTBOX_FORGE_ANNOUNCE_RELAYS}"
+          ''}
           ${pkgs.jq}/bin/jq \
             --arg base_url "$SOLID_POD_PUBLIC_URL" \
             '.server.base_url = $base_url' \
             ${solidPodRsNativeConfig} > "$runtime_config"
           exec ${solidPodRsPkg}/bin/solid-pod-rs-server \
             --config "$runtime_config" \
+            --public-base-url "$SOLID_POD_PUBLIC_URL" \
+            ${lib.optionalString (solidPodRsCfg.trust_proxy or true) "--trust-proxy"} \
             ${if (solidPodRsCfg.enable_mcp or false) then "--mcp" else "--no-mcp"}
         '';
         solidPodRsPackages = lib.optionals solidPodRsActive [ solidPodRsPkg ];

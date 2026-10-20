@@ -216,6 +216,16 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - **`~/.claude` ownership (ADR-2118) — partially rolled out.** The gateway override mounts the container-owned `agentbox-claude-home` volume plus a credential-only host bind; the connected-node overlay (`docker-compose.hp.yml`) that still bound the host's whole `~/.claude` was retired with the node (ADR-2140), so this rollout no longer has a second target. The credential bind remains writable (Q20 residual: a compromised in-container tool can still edit the host's `.claude`). `~/.config/claude` is still a host bind and the workspace still rides the legacy external MAD volume (Q43). Stack profiles (`$WORKSPACE/profiles/*/.claude`) receive neither the global tier nor credentials. Open.
 - Setup wizard exits after saving (`system-manifest.js:47`); operations moved to the AoE cockpit — legacy docs describing pseudo-user isolation (`gemini-user` etc.) are dead paths.
 
+## Native pod: forge and mirror (ADR-2145)
+
+The native pod (`solid-pod-rs-server`, pinned at `v0.5.0-alpha.17`) is built with
+`forge-full`: a git forge under `/forge`, a NIP-34 publisher, forge-held anchoring
+and a kind-30618 mirror, all started at boot and inert until the
+`[integrations.solid_pod_rs.forge]` block and the root `.env` name relays and
+follow entries. `open_edit` and `allow_mainnet` are false and stay opt-in. The pod
+runs behind the tunnel with `--trust-proxy` and `--public-base-url`. Staged until
+the image is rebuilt.
+
 ## Image vulnerability evidence (ADR-2137)
 
 Each image variant exposes `securityEvidence`, enumerating the store paths

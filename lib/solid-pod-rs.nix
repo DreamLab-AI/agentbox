@@ -15,6 +15,9 @@
 #   - nip98-schnorr   — BIP-340 Schnorr signature verification (matches our
 #                       existing NostrBridge.verifyNip98 contract)
 #   - security-primitives — SSRF guard + dotfile allowlist (hardened baseline)
+#   - forge-full      — the git forge, NIP-34 publisher, forge-held anchoring and
+#                       the kind-30618 mirror (default on, ADR-2145; inert until
+#                       the forge block of the manifest names relays and follows)
 #
 # Deferred (available as manifest-driven Cargo-feature toggles):
 #   - oidc             — Solid-OIDC 0.1 with DPoP
@@ -32,11 +35,11 @@
 
 let
 
-  # Pin: v0.5.0-alpha.13, the ER-22 security release (2026-10-14).
-  # It closes COPY/glob/path/MCP authorisation bypasses, protects server-managed
-  # state and hardens Git push and anchoring. Keep the relay substrate pin in
-  # lib/nostr-pod-bridge.nix and the checked-in lockfiles in step with this source.
-  # The existing /pods/{pod}/ Git provenance patch still applies exactly once.
+  # Pin: v0.5.0-alpha.17 (2026-10-20). JSS 0.0.221 and plugins/forge parity,
+  # the forge and kind-30618 mirror compiled in (ADR-2145), the ER-22 hardening
+  # carried forward. Keep the relay substrate pin in lib/nostr-pod-bridge.nix and
+  # the checked-in lockfiles in step with this source. The existing /pods/{pod}/
+  # Git provenance patch still applies exactly once.
   #
   # Refresh procedure when the rev bumps (no local nix needed):
   #   1. Set `version` and `rev` to the new tag and its commit.
@@ -48,12 +51,12 @@ let
   #   3. Lockfile: `git -C ../solid-pod-rs show <tag>:Cargo.lock > lib/solid-pod-rs.cargo-lock`
   #      (upstream ships its Cargo.lock since 0.5.0; the vendored copy keeps the
   #      Nix build hermetic and byte-identical to the tag).
-  version = "0.5.0-alpha.13";
+  version = "0.5.0-alpha.17";
 
   # Pinned to the v0.5.0-alpha.13 tag commit.
-  rev     = "193f4962ffccdda28f84caefe2afd5437e0b7685";
+  rev     = "55bfec1f6d8127f4437ebaea82ff73de4475fcf7";
 
-  srcHash = "sha256-6UhxMfL+pXFT3b2ElzWzY9jLEOVz3iMUsCNXquIJHCM=";
+  srcHash = "sha256-YJpjXjpQ5zZ7T8eICc2vWnq+BTd4oWkHHRKt5VK+eI4=";
 
   cargoLockFile = ./solid-pod-rs.cargo-lock;
 

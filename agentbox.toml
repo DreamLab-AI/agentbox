@@ -529,6 +529,11 @@ storage_root           = "/var/lib/solid"
 # nix build time; setting SOLID_POD_PUBLIC_URL in the root .env overrides it
 # at runtime before the native solid-pod-rs config is loaded.
 base_url               = "https://pods-native.dreamlab-ai.com"
+# Behind the Cloudflare Tunnel / nginx the pod sees http and an internal Host.
+# With this on it reads X-Forwarded-Proto / cf-visitor from the proxy and takes
+# its public origin from base_url (NIP-98 URL matching needs both). Turn it off
+# only when the pod is reached directly over TLS.
+trust_proxy            = true
 enable_oidc            = false
 enable_schnorr_verify  = true
 enable_dpop_cache      = false
@@ -578,6 +583,25 @@ enable_quota           = true     # per-pod storage quota via .quota.json sideca
 #            SOLID_ADMIN_KEY env var — never hardcode here.
 allowed_origins        = "https://dreamlab-ai.com"
 admin_key_env          = "SOLID_ADMIN_KEY"       # env var name; value from .env.solid-pods
+
+# Git forge, NIP-34 publisher, forge-held anchoring and the kind-30618 mirror
+# (ADR-2145). Compiled in and started; inert until relays and follow entries
+# are named. Nothing external is followed by default.
+[integrations.solid_pod_rs.forge]
+enable          = true
+chain           = "txbt4"          # anchoring chain; the forge never broadcasts or spends
+allow_mainnet   = false            # mainnet chains are refused unless this is true
+open_edit       = false            # JSS openEdit: ANY caller may edit ANY repo. Keep false.
+private_repos   = false            # every read becomes owner-only
+anchoring_ui    = true
+# Mirror: relays to read kind-30617/30618 from, and what to follow, as
+# "<64-hex pubkey>/<repo>" or "self/<repo>" (this container's sovereign key).
+mirror_relays   = ["ws://127.0.0.1:7777"]   # the embedded relay; add the estate relay in .env
+mirror_follow   = []
+announce_relays = []               # relays the forge publishes its own 30617/30618 to
+# Extra relays and follow entries belong in the root .env, not here (tracked
+# files are public): AGENTBOX_FORGE_MIRROR_RELAYS, AGENTBOX_FORGE_MIRROR_FOLLOW,
+# AGENTBOX_FORGE_ANNOUNCE_RELAYS (comma-separated).
 
 [skills.spatial_and_3d]
 qgis = true
