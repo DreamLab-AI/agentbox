@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 3b54129631067277f6363309b01cce485faa027a
+verified_commit: 653b8b6387470eaa3be6c20e6dbd2208e538a985
 verified_paths: [config/egress-policy.json, config/hooks/lib/egress-policy.cjs, config/hooks/nostr-live-mirror.cjs, tests/sovereign/egress-boundary.test.js]
 owner: jjohare
 review_trigger: any change to config/hooks/nostr-live-mirror.cjs or the mobile_bridge digest, or the recipient/relay configuration
@@ -198,3 +198,5 @@ the integration resolutions, ADR-2122). Since `275e12356` the governed paths cha
 The session mirror's egress boundary and its redaction paths are unchanged. The register only catalogues routes. The decision holds. Re-verified by `git log 275e12356..3b5412963 -- <verified_paths>`
 and the integration gates. Nix was not evaluated in this container; the image is unverified
 until the owner's rebuild.
+
+Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed the merged activity-sink registration in the root entrypoint and profile projector, its default-off manifest gate, schema and boot-class catalogue entry. The hook remains inactive; no sink URL, token or new prompt egress is configured. The independent managed floor remains on. Claude Code 2.1.304 and Codex 0.163.0 change pinned CLI resources, not the Jev/factrail hook protocol; their existing replay mechanisms are unchanged. Activity-sink and hook-registration tests pass (50), the Rust projector suite passes (196), manifest validation and all 95 catalogue gates pass, and the generated egress register is in sync. No changed ingress binding, mount, role isolation, retrieval geometry or adapter dispatch. Build and activation checks remain pending. Existing status axes are retained.

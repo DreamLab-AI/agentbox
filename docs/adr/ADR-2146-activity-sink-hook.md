@@ -7,8 +7,8 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit:
-verified_paths: []
+verified_commit: 653b8b6387470eaa3be6c20e6dbd2208e538a985
+verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
 repo: agentbox
@@ -73,4 +73,4 @@ At the worktree on 2026-10-17 (uncommitted on `feat/codescape-activity-sink`):
 - `node scripts/agentbox-config-validate.js agentbox.toml`: valid. An unknown event is rejected (E016).
 - `render-egress-register.js --check`: in sync.
 
-`verified_commit` is left empty until the change lands. The image itself is unverified until the host rebuild runs, so activation stays `inactive` (the gate defaults off).
+Merged and re-verified at `653b8b6387470eaa3be6c20e6dbd2208e538a985` on 2026-10-20: 50 activity-sink/registration tests and 196 Rust projector tests pass; the manifest and all 95 catalogue gates validate; the egress register is in sync. The colliding branch ADR number was changed to ADR-2146. The gate remains off and acceptance remains proposed. The image itself is unverified until the host rebuild runs, so activation stays `inactive` (the gate defaults off).

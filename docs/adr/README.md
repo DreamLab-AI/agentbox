@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_133 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_134 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -196,3 +196,4 @@ _133 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2143](ADR-2143-source-supply-is-plumbing-and-decisions-are-plain-english.md) | Source supply is plumbing, not a decision; every operator question is four plain-English fields | — | 2026-10-17 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2144](ADR-2144-the-floor-is-a-managed-tier-and-a-decline-is-recorded-verbatim.md) | The floor is a managed instruction tier, and a decline is recorded verbatim | — | 2026-10-19 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2145](ADR-2145-the-solid-pod-forge-and-mirror-are-compiled-in-and-inert-until-named.md) | The solid-pod forge and mirror are compiled into the native pod and inert until relays and follows are named | — | 2026-10-20 | accepted | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2146](ADR-2146-activity-sink-hook.md) | Agent activity leaves through one generic, manifest-gated, fail-open sink hook | GOVERNANCE-capabilities | 2026-10-17 | proposed | complete | inactive | — | — | jjohare | agentbox |

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 61f27d5b375f9838ef7b7334e3f984d0d4a9ea70
+verified_commit: 653b8b6387470eaa3be6c20e6dbd2208e538a985
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -40,3 +40,5 @@ repo: agentbox
 Status is partial and staged. At `2edd6a241` the pin, hash and lockfile were produced from the tag (the hash by a local NAR-hash implementation validated against the previous pin's known hash), the patch target was confirmed to occur once in the new source, every pinned test file exists at the tag, and the manifest parses. Nothing has been built or evaluated by Nix yet.
 
 Re-verified 2026-10-20 at `61f27d5b375f9838ef7b7334e3f984d0d4a9ea70`: reviewed the governed-path delta for the managed floor (ADR-2144) and alpha.17 forge/proxy launcher (ADR-2145). The schema and capability catalogue now register these settings, with boot-class floor projection and rebuild-class forge/proxy changes. Bridge path dependencies use the same alpha.17 source as the server; the independent core-only registry dependency retains its upstream pin. Claude Code 2.1.304 and Codex 0.163.0 retain the full upstream package resources. Manifest validation, all 94 catalogue gates, 37 targeted Node tests, 12 instruction-layer assertions and skill lint pass. No ingress publication, adapter dispatch, retrieval geometry, mount or role-isolation gate changes. Build and activation evidence is pending; existing status axes are retained.
+
+Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed the merged activity-sink registration in the root entrypoint and profile projector, its default-off manifest gate, schema and boot-class catalogue entry. The hook remains inactive; no sink URL, token or new prompt egress is configured. The independent managed floor remains on. Claude Code 2.1.304 and Codex 0.163.0 change pinned CLI resources, not the Jev/factrail hook protocol; their existing replay mechanisms are unchanged. Activity-sink and hook-registration tests pass (50), the Rust projector suite passes (196), manifest validation and all 95 catalogue gates pass, and the generated egress register is in sync. No changed ingress binding, mount, role isolation, retrieval geometry or adapter dispatch. Build and activation checks remain pending. Existing status axes are retained.

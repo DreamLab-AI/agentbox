@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3acd4fa08f06e2c4543debd46f0ce51605033d3e
+verified_commit: 653b8b6387470eaa3be6c20e6dbd2208e538a985
 verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh]
 owner: jjohare
 review_trigger: a Stop/SubagentStop hook that can halt a task (upgrade the exit clause to "halts the task"); a Claude Code release that changes managed CLAUDE.md, omitClaudeMd or last_assistant_message semantics; a second operator (the single-operator premise behind "the operator reads them")
@@ -100,3 +100,5 @@ inline and through `@import`.
 - Live activation needs the rebuilt image (new `agentbox-manifest` flag, baked hook, boot block):
   `activation_status: staged` until the next cut boots and `ls -l /etc/claude-code/CLAUDE.md`
   shows the floor header and `grep decline-recorder ~/.claude/settings.json` shows both events.
+
+Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed the merged activity-sink registration in the root entrypoint and profile projector, its default-off manifest gate, schema and boot-class catalogue entry. The hook remains inactive; no sink URL, token or new prompt egress is configured. The independent managed floor remains on. Claude Code 2.1.304 and Codex 0.163.0 change pinned CLI resources, not the Jev/factrail hook protocol; their existing replay mechanisms are unchanged. Activity-sink and hook-registration tests pass (50), the Rust projector suite passes (196), manifest validation and all 95 catalogue gates pass, and the generated egress register is in sync. No changed ingress binding, mount, role isolation, retrieval geometry or adapter dispatch. Build and activation checks remain pending. Existing status axes are retained.
