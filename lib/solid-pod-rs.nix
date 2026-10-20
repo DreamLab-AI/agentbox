@@ -53,7 +53,7 @@ let
   #      Nix build hermetic and byte-identical to the tag).
   version = "0.5.0-alpha.17";
 
-  # Pinned to the v0.5.0-alpha.13 tag commit.
+  # Pinned to the v0.5.0-alpha.17 tag commit.
   rev     = "55bfec1f6d8127f4437ebaea82ff73de4475fcf7";
 
   srcHash = "sha256-YJpjXjpQ5zZ7T8eICc2vWnq+BTd4oWkHHRKt5VK+eI4=";

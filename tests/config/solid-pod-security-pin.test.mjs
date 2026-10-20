@@ -15,11 +15,15 @@ const server = read('lib/solid-pod-rs.nix');
 const bridge = read('lib/nostr-pod-bridge.nix');
 const version = field(server, 'version');
 
-test('the server stays at or above the ER-22 security release', () => {
-  const m = /^(\d+)\.(\d+)\.(\d+)(?:-alpha\.(\d+))?$/.exec(version);
-  assert.ok(m, `review security floor for version ${version}`);
+function assertSecurityFloor(candidate) {
+  const m = /^(\d+)\.(\d+)\.(\d+)(?:-alpha\.(\d+))?$/.exec(candidate);
+  assert.ok(m, `review security floor for version ${candidate}`);
   const [, major, minor, patch, alpha] = m;
-  assert.ok(+major > 0 || +minor > 5 || (+minor === 5 && (+patch > 0 || alpha === undefined || +alpha >= 13)), version);
+  assert.ok(+major > 0 || +minor > 5 || (+minor === 5 && (+patch > 0 || alpha === undefined || +alpha >= 13)), candidate);
+}
+
+test('the server stays at or above the ER-22 security release', () => {
+  assertSecurityFloor(version);
 });
 
 test('the server and bridge fetch the same immutable upstream snapshot', () => {
@@ -44,5 +48,8 @@ test('dream-engine manifest and lockfile agree on the patched dependency chain',
   assert.equal(manifest.dependencies['nostr-bbs-core'], `=${core.version}`);
   const pods = packages.filter(p => p.name === 'solid-pod-rs');
   assert.equal(pods.length, 1);
-  assert.equal(pods[0].version, version);
+  // This is a registry library owned by nostr-bbs-core, not the server or
+  // relay path dependency. Its independently pinned release must be secure,
+  // but does not have to track new forge-only server releases in lockstep.
+  assertSecurityFloor(pods[0].version);
 });

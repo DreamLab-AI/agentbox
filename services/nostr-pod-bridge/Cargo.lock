@@ -1171,6 +1171,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "oxttl"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d385f1776d7cace455ef6b7c54407838eff902ca897303d06eb12a26f4cf8a0"
+dependencies = [
+ "memchr",
+ "oxilangtag",
+ "oxiri",
+ "oxrdf",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "password-hash"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1797,7 +1810,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -1808,6 +1821,8 @@ dependencies = [
  "hex",
  "k256",
  "mime_guess",
+ "oxrdf",
+ "oxttl",
  "reqwest",
  "serde",
  "serde_json",
@@ -1823,7 +1838,7 @@ dependencies = [
 
 [[package]]
 name = "solid-pod-rs-nostr"
-version = "0.5.0-alpha.13"
+version = "0.5.0-alpha.17"
 dependencies = [
  "async-trait",
  "futures-util",
@@ -1833,7 +1848,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "solid-pod-rs 0.5.0-alpha.13",
+ "solid-pod-rs 0.5.0-alpha.17",
  "thiserror 1.0.69",
  "tokio",
  "tokio-tungstenite 0.24.0",
