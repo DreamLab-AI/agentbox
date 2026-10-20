@@ -515,6 +515,23 @@ enabled = true  # 2026-10-05: comfyui sidecar healthy; codebase-video and comfyu
 url = "http://comfyui:8188"
 ws_url = "ws://comfyui:8188/ws"
 
+# ── Activity sink (ADR-2146) ────────────────────────────────────────────────────
+# Generic, fail-open Claude Code hook (config/hooks/activity-sink.cjs) that POSTs
+# one JSON record per agent event to an HTTP sink: which files a tool touched
+# (PostToolUse on Read/Edit/Write/MultiEdit/NotebookEdit/Grep/Glob), the redacted
+# prompt (UserPromptSubmit) and the redacted last answer (Stop), each text capped
+# at 2 KiB. 1 s request budget; never blocks a turn; nothing on stdout.
+# BOOT-class: registered in ~/.claude/settings.json and every Claude profile at
+# boot; off (or an empty/non-http url) retracts every registration.
+# Prompt and answer text leave the container on this route (egress register row
+# `activity-sink`); AGENTBOX_EGRESS=0 stops it at runtime.
+[integrations.activity_sink]
+enabled    = false
+url        = ""   # full endpoint, e.g. "http://codescape:4101/ingest/v1/activity"
+token_file = ""   # file holding the bearer token (devuser-readable; never inlined)
+token_env  = ""   # or: NAME of an env var in the session env holding the token
+events     = ["post_tool_use", "user_prompt", "stop"]   # single line; subset to narrow
+
 # ── solid-pod-rs (first-class; ADR-010) ─────────────────────────────────────────
 # First-party Rust Solid Protocol 0.11 server from github.com/DreamLab-AI.
 # Used by the pods adapter when adapters.pods = "local-solid-rs" (the default).

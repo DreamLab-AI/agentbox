@@ -103,7 +103,7 @@ describe('the registry governs what the entrypoint registers', () => {
   test('the reconciler runs after the last hook registration block', () => {
     const call = ENTRY.indexOf('agentbox-manifest hooks-reconcile');
     expect(call).toBeGreaterThan(0);
-    for (const marker of ['<<\'SRJS\'', '<<\'RLJS\'', '<<\'CQJS\'', '<<\'TRAJJS\'', '<<\'MIRRORJS\'']) {
+    for (const marker of ['<<\'SRJS\'', '<<\'RLJS\'', '<<\'ASJS\'', '<<\'CQJS\'', '<<\'TRAJJS\'', '<<\'MIRRORJS\'']) {
       expect(ENTRY.indexOf(marker)).toBeLessThan(call);
     }
   });

@@ -14,7 +14,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use crate::stacks_env::{as_string, Env, Gates};
+use crate::stacks_env::{as_string, ActivitySink, Env, Gates};
 use crate::{jsonio, tomlval};
 
 const STACKS_JSON: &str = include_str!("stacks.json");
@@ -77,6 +77,69 @@ fn learning_hooks(env: &Env, gates: &Gates) -> Value {
         "SessionStart": [{"hooks": [cmd("session-restore", 15)]}],
         "SessionEnd": session_end,
     })
+}
+
+/// POSIX single-quote a value for a hook command line.
+fn sh_quote(v: &str) -> String {
+    format!("'{}'", v.replace('\'', r"'\''"))
+}
+
+/// ADR-2146: register `activity-sink.cjs` on the selected events of one profile.
+///
+/// The profile's `settings.json` is rewritten whole every boot, so the entry is
+/// self-healing by construction and absent whenever the gate is off. The url,
+/// the token's FILE path / ENV NAME and the event list are inlined into the
+/// command (hook env is the command's); the token value never is. The profile
+/// name becomes the actor label. `post_tool_use` carries a file-tool matcher so
+/// node never starts for a Bash call.
+fn add_activity_sink_hooks(hooks: &mut Value, env: &Env, sink: &ActivitySink, profile: &str) {
+    let Some(map) = hooks.as_object_mut() else {
+        return;
+    };
+    let mut pfx = format!(
+        "ACTIVITY_SINK_URL={} ACTIVITY_SINK_EVENTS={} ACTIVITY_SINK_ACTOR={}",
+        sh_quote(&sink.url),
+        sink.events.join(","),
+        sh_quote(profile)
+    );
+    if !sink.token_file.is_empty() {
+        pfx.push_str(&format!(
+            " ACTIVITY_SINK_TOKEN_FILE={}",
+            sh_quote(&sink.token_file)
+        ));
+    }
+    if !sink.token_env.is_empty() {
+        pfx.push_str(&format!(" ACTIVITY_SINK_TOKEN_ENV={}", sink.token_env));
+    }
+    for ev in &sink.events {
+        let (event, matcher) = match ev.as_str() {
+            "post_tool_use" => (
+                "PostToolUse",
+                Some("Read|Edit|Write|MultiEdit|NotebookEdit|Grep|Glob"),
+            ),
+            "user_prompt" => ("UserPromptSubmit", None),
+            "stop" => ("Stop", None),
+            _ => continue,
+        };
+        let mut group = Map::new();
+        if let Some(m) = matcher {
+            group.insert("matcher".into(), Value::String(m.into()));
+        }
+        group.insert(
+            "hooks".into(),
+            serde_json::json!([{
+                "type": "command",
+                "command": format!("{pfx} node {} {event} || true", env.activity_sink_hook),
+                "timeout": 3,
+            }]),
+        );
+        let slot = map
+            .entry(event.to_string())
+            .or_insert_with(|| Value::Array(Vec::new()));
+        if let Some(arr) = slot.as_array_mut() {
+            arr.push(Value::Object(group));
+        }
+    }
 }
 
 fn write_text(path: &Path, content: &str) -> Result<(), String> {
@@ -215,6 +278,11 @@ fn build_profile(name: &str, config: &Value, env: &Env, gates: &Gates) -> Result
         );
     }
 
+    let mut hooks = learning_hooks(env, gates);
+    if let Some(sink) = &gates.activity_sink {
+        add_activity_sink_hooks(&mut hooks, env, sink, name);
+    }
+
     let settings = serde_json::json!({
         "stack": name,
         "skillsDirectory": env.skills_tree.to_string_lossy(),
@@ -226,7 +294,7 @@ fn build_profile(name: &str, config: &Value, env: &Env, gates: &Gates) -> Result
         "agentUrn": format!("urn:agentbox:agent:{name}"),
         "didTemplate": "did:nostr:{AGENTBOX_PUBKEY_HEX}",
         "env": Value::Object(settings_env),
-        "hooks": learning_hooks(env, gates),
+        "hooks": hooks,
     });
 
     symlink_replace(&claude_dir.join("skills"), &env.skills_tree)?;
@@ -292,6 +360,7 @@ mod tests {
             hook_adapter: "/opt/agentbox/config/hooks/claude-flow-hook-adapter.cjs".into(),
             nostr_summary_hook: "nostr-pod-bridge session-summary".into(),
             ontology_monitor_hook: "/opt/agentbox/config/hooks/ontology-monitor.cjs".into(),
+            activity_sink_hook: "/opt/agentbox/config/hooks/activity-sink.cjs".into(),
             hf_cache: "/home/devuser/.cache/huggingface".into(),
         }
     }
@@ -303,6 +372,7 @@ mod tests {
             zai_reasoning_effort: String::new(),
             ontology_monitor: false,
             ontology_monitor_mode: "dryrun".into(),
+            activity_sink: None,
         }
     }
 
@@ -350,6 +420,7 @@ mod tests {
             zai_reasoning_effort: String::new(),
             ontology_monitor: true,
             ontology_monitor_mode: "dryrun".into(),
+            activity_sink: None,
         };
         let h = learning_hooks(&test_env(&tmp), &gates);
         let se = h["SessionEnd"].as_array().unwrap();
@@ -376,6 +447,7 @@ mod tests {
             zai_reasoning_effort: String::new(),
             ontology_monitor: true,
             ontology_monitor_mode: "dryrun".into(),
+            activity_sink: None,
         };
         let h = learning_hooks(&test_env(&tmp), &gates);
         let all = crate::hooks::all_timeouts(&h);
@@ -443,6 +515,101 @@ mod tests {
         let keys: Vec<&String> = v.as_object().unwrap().keys().collect();
         assert_eq!(keys[0], "stack");
         assert_eq!(keys[keys.len() - 1], "hooks");
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn activity_sink_gate_is_off_unless_enabled_with_a_usable_url() {
+        let off = |toml: &str| ActivitySink::from_manifest(&tomlval::parse(toml).unwrap());
+        assert!(off("[core]\nx = 1\n").is_none());
+        assert!(
+            off("[integrations.activity_sink]\nenabled = false\nurl = \"http://s:1/a\"\n")
+                .is_none()
+        );
+        assert!(off("[integrations.activity_sink]\nenabled = true\nurl = \"\"\n").is_none());
+        assert!(
+            off("[integrations.activity_sink]\nenabled = true\nurl = \"ftp://s/a\"\n").is_none()
+        );
+        assert!(
+            off("[integrations.activity_sink]\nenabled = true\nurl = \"http://s/a b\"\n").is_none()
+        );
+        assert!(off(
+            "[integrations.activity_sink]\nenabled = true\nurl = \"http://s/a\"\nevents = []\n"
+        )
+        .is_none());
+        assert!(off("[integrations.activity_sink]\nenabled = true\nurl = \"http://s/a\"\ntoken_env = \"X;rm\"\n").is_none());
+        let on = off(
+            "[integrations.activity_sink]\nenabled = true\nurl = \"http://s:4101/ingest/v1/activity\"\n\
+             token_file = \"/run/tok\"\nevents = [\"stop\", \"bogus\", \"post_tool_use\"]\n",
+        )
+        .unwrap();
+        // Canonical order, unknown names dropped.
+        assert_eq!(on.events, vec!["post_tool_use", "stop"]);
+        assert_eq!(on.token_file, "/run/tok");
+        let all =
+            off("[integrations.activity_sink]\nenabled = true\nurl = \"https://s/a\"\n").unwrap();
+        assert_eq!(all.events, vec!["post_tool_use", "user_prompt", "stop"]);
+    }
+
+    #[test]
+    fn activity_sink_registers_per_profile_without_the_token_value() {
+        let tmp = tempdir();
+        let env = test_env(&tmp);
+        let mut gates = no_gates();
+        gates.activity_sink = Some(ActivitySink {
+            url: "http://sink:4101/ingest/v1/activity".into(),
+            token_file: "/run/secrets/it's/token".into(),
+            token_env: "SINK_TOKEN".into(),
+            events: vec!["post_tool_use".into(), "user_prompt".into(), "stop".into()],
+        });
+        let stacks: Value = serde_json::from_str(STACKS_JSON).unwrap();
+        build_profile("claude-core", &stacks["claude-core"], &env, &gates).unwrap();
+        let text = std::fs::read_to_string(
+            env.workspace
+                .join("profiles/claude-core/.claude/settings.json"),
+        )
+        .unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        let h = &v["hooks"];
+        // The learning hook on PostToolUse stays; the sink is appended with its matcher.
+        let post = h["PostToolUse"].as_array().unwrap();
+        let sink = post.last().unwrap();
+        assert_eq!(
+            sink["matcher"],
+            "Read|Edit|Write|MultiEdit|NotebookEdit|Grep|Glob"
+        );
+        let cmd = sink["hooks"][0]["command"].as_str().unwrap();
+        assert!(cmd.starts_with("ACTIVITY_SINK_URL='http://sink:4101/ingest/v1/activity' "));
+        assert!(cmd.contains("ACTIVITY_SINK_ACTOR='claude-core'"));
+        assert!(cmd.contains(r"ACTIVITY_SINK_TOKEN_FILE='/run/secrets/it'\''s/token'"));
+        assert!(cmd.contains("ACTIVITY_SINK_TOKEN_ENV=SINK_TOKEN"));
+        assert!(cmd.ends_with("activity-sink.cjs PostToolUse || true"));
+        assert_eq!(sink["hooks"][0]["timeout"], 3);
+        for evt in ["UserPromptSubmit", "Stop"] {
+            let c = h[evt][0]["hooks"][0]["command"].as_str().unwrap();
+            assert!(
+                c.ends_with(&format!("activity-sink.cjs {evt} || true")),
+                "{c}"
+            );
+        }
+        for (event, cmd, t) in crate::hooks::all_timeouts(h) {
+            assert!(
+                t >= 1.0 && t <= crate::hooks::MAX_TIMEOUT_S as f64,
+                "{event} `{cmd}` {t}"
+            );
+        }
+        std::fs::remove_dir_all(&tmp).ok();
+
+        // Off: no trace in the profile.
+        let tmp = tempdir();
+        let env = test_env(&tmp);
+        build_profile("claude-core", &stacks["claude-core"], &env, &no_gates()).unwrap();
+        let text = std::fs::read_to_string(
+            env.workspace
+                .join("profiles/claude-core/.claude/settings.json"),
+        )
+        .unwrap();
+        assert!(!text.contains("activity-sink"));
         std::fs::remove_dir_all(&tmp).ok();
     }
 

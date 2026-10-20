@@ -22,6 +22,8 @@ pub struct Env {
     /// Full SessionEnd digest command, run as-is (with `|| true` appended).
     pub nostr_summary_hook: String,
     pub ontology_monitor_hook: String,
+    /// The ADR-2146 activity-sink hook script.
+    pub activity_sink_hook: String,
     pub hf_cache: String,
 }
 
@@ -56,6 +58,10 @@ impl Env {
                 "AGENTBOX_ONTOLOGY_MONITOR_HOOK",
                 "/opt/agentbox/config/hooks/ontology-monitor.cjs",
             ),
+            activity_sink_hook: env_or(
+                "AGENTBOX_ACTIVITY_SINK_HOOK",
+                "/opt/agentbox/config/hooks/activity-sink.cjs",
+            ),
             hf_cache: env_or("AGENTBOX_HF_CACHE", "/home/devuser/.cache/huggingface"),
         }
     }
@@ -68,6 +74,72 @@ pub struct Gates {
     pub zai_reasoning_effort: String,
     pub ontology_monitor: bool,
     pub ontology_monitor_mode: String,
+    /// `[integrations.activity_sink]` when it is enabled AND usable (ADR-2146).
+    pub activity_sink: Option<ActivitySink>,
+}
+
+/// The resolved `[integrations.activity_sink]` table. Only the token's FILE path
+/// or ENV NAME is carried — never its value, which must not reach settings.json.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActivitySink {
+    pub url: String,
+    pub token_file: String,
+    pub token_env: String,
+    /// Selected wire event names, in canonical order.
+    pub events: Vec<String>,
+}
+
+/// Wire event names the hook understands, in canonical order.
+pub const ACTIVITY_SINK_EVENTS: [&str; 3] = ["post_tool_use", "user_prompt", "stop"];
+
+impl ActivitySink {
+    /// Resolve the table. `None` when it is off, the url is not a quotable
+    /// http(s) URL, `token_env` is not an env var name, or no event is selected —
+    /// the same conditions under which the root-session block de-registers.
+    pub fn from_manifest(cfg: &Value) -> Option<Self> {
+        if !tomlval::get_bool(cfg, "integrations.activity_sink.enabled", false) {
+            return None;
+        }
+        let s = |k: &str| {
+            as_string(tomlval::get(
+                cfg,
+                &format!("integrations.activity_sink.{k}"),
+            ))
+            .trim()
+            .to_string()
+        };
+        let url = s("url");
+        let url_ok = (url.starts_with("http://") || url.starts_with("https://"))
+            && !url
+                .chars()
+                .any(|c| c.is_whitespace() || c == '\'' || c == '"');
+        let token_env = s("token_env");
+        let env_ok = token_env.is_empty()
+            || (token_env
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_')
+                && !token_env.starts_with(|c: char| c.is_ascii_digit()));
+        let events: Vec<String> = match tomlval::get(cfg, "integrations.activity_sink.events") {
+            None | Some(Value::Null) => {
+                ACTIVITY_SINK_EVENTS.iter().map(|e| e.to_string()).collect()
+            }
+            Some(Value::Array(a)) => ACTIVITY_SINK_EVENTS
+                .iter()
+                .filter(|e| a.iter().any(|v| v.as_str() == Some(**e)))
+                .map(|e| e.to_string())
+                .collect(),
+            Some(_) => Vec::new(),
+        };
+        if !url_ok || !env_ok || events.is_empty() {
+            return None;
+        }
+        Some(Self {
+            url,
+            token_file: s("token_file"),
+            token_env,
+            events,
+        })
+    }
 }
 
 pub fn as_string(v: Option<&Value>) -> String {
@@ -104,6 +176,7 @@ impl Gates {
             } else {
                 "dryrun".into()
             },
+            activity_sink: ActivitySink::from_manifest(cfg),
         }
     }
 }

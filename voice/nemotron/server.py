@@ -42,6 +42,36 @@ def _resample(samples: np.ndarray) -> np.ndarray:
     )
 
 
+class MarkerAwareStreamer(TextIteratorStreamer):
+    """A text streamer that can release its held word at an utterance boundary.
+
+    ``TextStreamer.put`` releases text only up to the last space, because the
+    next subword may still extend the final word. The tail is released only by
+    ``end()``, which runs when generation stops, and that happens only when the
+    client disconnects. A Marker is the client's "utterance over" signal, so at a
+    Marker the held tail is final: ``flush()`` releases it without ending the
+    stream, and ``put_event()`` queues the Marker behind it on the SAME queue
+    the Word loop drains, so the Marker echo can never overtake the last word.
+
+    Both methods run on the generate thread (``FeatureStream.__next__`` is pulled
+    by ``model.generate``), which is also the only caller of ``put()``, so the
+    token cache needs no lock.
+    """
+
+    def flush(self) -> None:
+        if not self.token_cache:
+            return
+        text = self.tokenizer.decode(self.token_cache, **self.decode_kwargs)
+        printable = text[self.print_len :]
+        self.token_cache = []
+        self.print_len = 0
+        if printable:
+            self.on_finalized_text(printable)  # stream_end=False: no stop signal
+
+    def put_event(self, message: dict) -> None:
+        self.text_queue.put(message, timeout=self.timeout)
+
+
 class FeatureStream(Iterator):
     """Blocking audio queue consumed by Transformers' cache-aware generator."""
 
@@ -49,6 +79,8 @@ class FeatureStream(Iterator):
         self.chunks = chunks
         self.emit = emit
         self.first = True
+        # Attached once generation starts; before that no text can be held.
+        self.streamer: MarkerAwareStreamer | None = None
 
     def __iter__(self):
         return self
@@ -59,7 +91,11 @@ class FeatureStream(Iterator):
             if audio is None:
                 raise StopIteration
             if isinstance(audio, dict):
-                self.emit(audio)
+                if self.streamer is None:
+                    self.emit(audio)
+                else:
+                    self.streamer.flush()
+                    self.streamer.put_event(audio)
                 continue
             break
         inputs = processor(
@@ -85,9 +121,10 @@ def _run_recognizer(chunks: queue.Queue, emit, stop: threading.Event) -> None:
             first_inputs = next(stream)
         except StopIteration:
             return
-        streamer = TextIteratorStreamer(
+        streamer = MarkerAwareStreamer(
             processor.tokenizer, skip_prompt=True, skip_special_tokens=True
         )
+        stream.streamer = streamer
         # Transformers detects a generator specifically for cache-aware input;
         # a generic Iterator is treated as a tensor by its model-input path.
         def input_features_generator():
@@ -112,11 +149,13 @@ def _run_recognizer(chunks: queue.Queue, emit, stop: threading.Event) -> None:
             target=generate, daemon=True, name="nemotron-generate"
         )
         inference.start()
-        for text in streamer:
+        for item in streamer:
             if stop.is_set():
                 break
-            if text:
-                emit({"type": "Word", "text": text, "start_time": 0.0})
+            if isinstance(item, dict):
+                emit(item)  # a Marker, already ordered after its utterance's words
+            elif item:
+                emit({"type": "Word", "text": item, "start_time": 0.0})
         inference.join(timeout=10)
     except Exception as exc:
         emit({"type": "Error", "message": f"ASR inference failed: {exc}"})

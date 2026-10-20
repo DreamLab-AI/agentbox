@@ -282,6 +282,12 @@ const CATALOGUE = [
   { id: 'routing-teacher-labels', name: 'Routing teacher labels (PROPOSED)', layer: 'module',
     gate: 'skills.routing.label_log', apply_class: 'boot',
     summary: 'ADR-2110 (proposed): at Stop, config/hooks/routing-label-recorder.cjs writes one routing_labels row per real user turn — the prompt\'s LAN bge-small embedding (never its text), the skills the main model actually used, and the router\'s pick. Email-gateway turns are never embedded; an off-LAN embeddings URL is refused (E077). Off until the ADR is accepted: storing prompt embeddings changes the ADR-2090 retention contract. Boot registration is byte-identical when off.' },
+  // BOOT, not live: the hook reads only its inlined command env, never the
+  // manifest, so url/token path/events change only when the entrypoint (root
+  // settings.json) and provision-stacks (every profile) re-project at boot.
+  { id: 'activity-sink', name: 'Activity sink hook', layer: 'module',
+    gate: 'integrations.activity_sink', apply_class: 'boot',
+    summary: 'ADR-2146: config/hooks/activity-sink.cjs POSTs one JSON record per agent event to [integrations.activity_sink].url with a bearer token (token_file or token_env; the value is never inlined): file paths on PostToolUse (Read/Edit/Write/MultiEdit/NotebookEdit/Grep/Glob), the redacted prompt on UserPromptSubmit and the redacted last answer on Stop, text capped at 2 KiB. 1 s budget, fail-open, stdout-silent. Registered at boot in the root settings and every Claude profile; off or an unusable url retracts it. Egress register row activity-sink; AGENTBOX_EGRESS=0 stops it at runtime.' },
   { id: 'ontology', name: 'Ontology bridge', layer: 'module',
     gate: 'skills.ontology', apply_class: 'boot',
     summary: 'ontology_ask / governed writeback MCP bridge (PRD-020 binding).' },

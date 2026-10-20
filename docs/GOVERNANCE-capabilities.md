@@ -397,6 +397,7 @@ above, enabled but explicitly-invoke-only.
   `SessionStart`/`UserPromptSubmit` hook prints reaches stdout.
 - **Byte-identical-when-off** — a disabled `[skills.*]` / `[dream_machine]` gate leaves no
   runtime trace.
+- **Agent activity leaves only through the activity sink** (ADR-2146) — `config/hooks/activity-sink.cjs`, gated by `[integrations.activity_sink]`, registered at boot in the root and every Claude profile, retracted when off; fail-open (1 s, exit 0, no stdout), never sends without a bearer token or with unredacted text, and obeys `AGENTBOX_EGRESS`.
 - **Tree-search-coder is never auto-routed** and always carries a `spend_cap_usd`.
 - **AoE daemon access is token-gated (N-05 revised)** — every request to `:9095` must carry
   the daemon's shared-secret token (owner-only 0700 `serve.url`); the nip98-proxy (`:9096`)

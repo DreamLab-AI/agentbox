@@ -323,6 +323,22 @@
         "notes": "Selected turn text, redacted, then gift-wrapped (kind 1059) to the operator's derived child key."
       },
       {
+        "id": "activity-sink",
+        "route": "Activity sink hook on `PostToolUse` / `UserPromptSubmit` / `Stop` (`config/hooks/activity-sink.cjs`, ADR-2146)",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "LAN",
+        "destination": "The operator-configured `[integrations.activity_sink].url` (`agentbox.toml:530`); the first consumer is a code-visualisation service on the compose network. The url is not restricted to the LAN by code: it is the operator's declared destination.",
+        "gate": "`[integrations.activity_sink].enabled` (`agentbox.toml:529`), default `false`; boot registration retracts every entry when off. `AGENTBOX_EGRESS=0` / `AGENTBOX_EGRESS_REDACTION=0` stop it at runtime (`config/hooks/activity-sink.cjs:265-266`).",
+        "accepted_egress": "none. ADR-2146 is proposed, pending owner acceptance: it would accept file paths, the redacted prompt and the redacted last answer, each text capped at 2 KiB, to the operator-declared sink only.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Text is redacted with the ADR-2026 prose redactor before truncation (`config/hooks/activity-sink.cjs:121-126`); a redaction failure sends `text: null`. Paths are not redacted. Credential: a bearer token read from `token_file` or the env var named by `token_env`, devuser-class (Q8): the hook runs in the agent's process, so the root-owned `/run/secrets/<role>/` cannot hold it."
+      },
+      {
         "id": "nostr-gateway",
         "route": "Nostr control gateway, operator command DMs (`config/nostr-gateway/gateway.cjs`)",
         "leaves": [
