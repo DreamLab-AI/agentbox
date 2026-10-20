@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 3acd4fa08f06e2c4543debd46f0ce51605033d3e
+verified_commit: 61f27d5b375f9838ef7b7334e3f984d0d4a9ea70
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -225,3 +225,5 @@ Re-verified 2026-10-19 at `dfe78f0766e52ae6cfbae32c395e22c9590d6785`: Reviewed g
 Re-verified 2026-10-19 at `52183d76fde866ab1f05aea524aeea33d8573c3f`: The reviewed flake delta adds the local-cuda-gated stable nvcc link, and the entrypoint/catalogue propagate and describe its scoped host compiler. Backend and wrapper gates pass (23 and 21 assertions); no ingress, role isolation, durable adapter, retrieval or subsystem gate is changed. Image evidence will be regenerated for the new layer closure. Existing status axes are retained.
 
 Re-verified 2026-10-19 at `3acd4fa08f06e2c4543debd46f0ce51605033d3e`: amended by ADR-2144 — a fourth tier, `floor` (`floor.md` + `local/floor.md`), composed by the same projector and written to Claude Code's managed policy path `/etc/claude-code/CLAUDE.md` (`--managed-out`, gate `[claude_code].floor`), falling back to a prefix on the global tier when `/etc` is unwritable; the entrypoint appends it first to Codex's `AGENTS.md`. The three original tiers, their layer rule and the boot-overwrite invariant are unchanged; `cargo test instructions` (8) and `instructions-layers.test.sh` (12) pass.
+
+Re-verified 2026-10-20 at `61f27d5b375f9838ef7b7334e3f984d0d4a9ea70`: reviewed the governed-path delta for the managed floor (ADR-2144) and alpha.17 forge/proxy launcher (ADR-2145). The schema and capability catalogue now register these settings, with boot-class floor projection and rebuild-class forge/proxy changes. Bridge path dependencies use the same alpha.17 source as the server; the independent core-only registry dependency retains its upstream pin. Claude Code 2.1.304 and Codex 0.163.0 retain the full upstream package resources. Manifest validation, all 94 catalogue gates, 37 targeted Node tests, 12 instruction-layer assertions and skill lint pass. No ingress publication, adapter dispatch, retrieval geometry, mount or role-isolation gate changes. Build and activation evidence is pending; existing status axes are retained.

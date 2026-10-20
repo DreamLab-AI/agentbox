@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 52183d76fde866ab1f05aea524aeea33d8573c3f
+verified_commit: 61f27d5b375f9838ef7b7334e3f984d0d4a9ea70
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -174,3 +174,5 @@ Checked at `218dc12c3` by reading each claim against the code, not by the stalen
 Re-verified 2026-10-19 at `dfe78f0766e52ae6cfbae32c395e22c9590d6785`: Reviewed governed-path changes: the flake only repins the vault source; the entrypoint delta corrects the role-isolation class comment; the catalogue makes the baked privilege change rebuild-class. No ingress, retrieval geometry, capability gate, image-delivery or subsystem runtime configuration is changed by those deltas. Existing implementation and activation statuses are retained.
 
 Re-verified 2026-10-19 at `52183d76fde866ab1f05aea524aeea33d8573c3f`: The reviewed flake delta adds the local-cuda-gated stable nvcc link, and the entrypoint/catalogue propagate and describe its scoped host compiler. Backend and wrapper gates pass (23 and 21 assertions); no ingress, role isolation, durable adapter, retrieval or subsystem gate is changed. Image evidence will be regenerated for the new layer closure. Existing status axes are retained.
+
+Re-verified 2026-10-20 at `61f27d5b375f9838ef7b7334e3f984d0d4a9ea70`: reviewed the governed-path delta for the managed floor (ADR-2144) and alpha.17 forge/proxy launcher (ADR-2145). The schema and capability catalogue now register these settings, with boot-class floor projection and rebuild-class forge/proxy changes. Bridge path dependencies use the same alpha.17 source as the server; the independent core-only registry dependency retains its upstream pin. Claude Code 2.1.304 and Codex 0.163.0 retain the full upstream package resources. Manifest validation, all 94 catalogue gates, 37 targeted Node tests, 12 instruction-layer assertions and skill lint pass. No ingress publication, adapter dispatch, retrieval geometry, mount or role-isolation gate changes. Build and activation evidence is pending; existing status axes are retained.

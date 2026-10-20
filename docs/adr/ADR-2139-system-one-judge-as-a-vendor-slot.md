@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 3acd4fa08f06e2c4543debd46f0ce51605033d3e
+verified_commit: 61f27d5b375f9838ef7b7334e3f984d0d4a9ea70
 verified_paths: [agentbox.toml, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -182,3 +182,5 @@ Re-verified 2026-10-19 at `dfe78f0766e52ae6cfbae32c395e22c9590d6785`: Reviewed g
 Re-verified 2026-10-19 at `52183d76fde866ab1f05aea524aeea33d8573c3f`: The reviewed flake delta adds the local-cuda-gated stable nvcc link, and the entrypoint/catalogue propagate and describe its scoped host compiler. Backend and wrapper gates pass (23 and 21 assertions); no ingress, role isolation, durable adapter, retrieval or subsystem gate is changed. Image evidence will be regenerated for the new layer closure. Existing status axes are retained.
 
 Re-verified 2026-10-19 at `3acd4fa08f06e2c4543debd46f0ce51605033d3e`: the reviewed delta adds the collaboration and welfare floor (ADR-2144) — one new manifest key `[claude_code].floor`, a floor block and managed-path projection in the entrypoint's instructions and Codex-append sections, two `instructions-project` flags in `agentbox-manifest`, and `config/hooks/decline-recorder.cjs`. No ingress, role isolation, durable adapter, retrieval, skill-routing or compaction mechanism this record governs is changed; its gates pass unchanged. Existing status axes are retained.
+
+Re-verified 2026-10-20 at `61f27d5b375f9838ef7b7334e3f984d0d4a9ea70`: reviewed the governed-path delta for the managed floor (ADR-2144) and alpha.17 forge/proxy launcher (ADR-2145). The schema and capability catalogue now register these settings, with boot-class floor projection and rebuild-class forge/proxy changes. Bridge path dependencies use the same alpha.17 source as the server; the independent core-only registry dependency retains its upstream pin. Claude Code 2.1.304 and Codex 0.163.0 retain the full upstream package resources. Manifest validation, all 94 catalogue gates, 37 targeted Node tests, 12 instruction-layer assertions and skill lint pass. No ingress publication, adapter dispatch, retrieval geometry, mount or role-isolation gate changes. Build and activation evidence is pending; existing status axes are retained.

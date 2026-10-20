@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2edd6a241cd2f2b15229af82236ede9d17bea985
+verified_commit: 61f27d5b375f9838ef7b7334e3f984d0d4a9ea70
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -34,7 +34,9 @@ repo: agentbox
 - Behaviour change: NIP-98 verification now matches the URL against the configured public origin, not whatever `Host` the proxy forwards. A wrong `base_url` breaks pod authentication; it was already the value baked into the image.
 - The follow list is deliberately left documented and unpopulated (owner decision, 2026-10-20): `/forge` is served on the agentbox pod only, and nothing is mirrored until the owner adds entries. VisionClaw gets no `/forge` mount; the two are bound through the pod.
 - Not done here: the image is not rebuilt (host shell, `rebuild`), so `activation_status` stays staged. The Nix expression was written without a local `nix`, so its first evaluation happens at that rebuild; the shell it generates is reviewed but not executed.
-- `scripts/ci/check-manifest-catalogue.js` was already failing before this change on two unrelated keys; the new forge keys are baselined with a reason and add none.
+- The manifest schema now recognises the forge and proxy settings. The forge and proxy gates are catalogued as rebuild-class; individual forge policy booleans remain subordinate to the forge gate.
 
 ## Verification
 Status is partial and staged. At `2edd6a241` the pin, hash and lockfile were produced from the tag (the hash by a local NAR-hash implementation validated against the previous pin's known hash), the patch target was confirmed to occur once in the new source, every pinned test file exists at the tag, and the manifest parses. Nothing has been built or evaluated by Nix yet.
+
+Re-verified 2026-10-20 at `61f27d5b375f9838ef7b7334e3f984d0d4a9ea70`: reviewed the governed-path delta for the managed floor (ADR-2144) and alpha.17 forge/proxy launcher (ADR-2145). The schema and capability catalogue now register these settings, with boot-class floor projection and rebuild-class forge/proxy changes. Bridge path dependencies use the same alpha.17 source as the server; the independent core-only registry dependency retains its upstream pin. Claude Code 2.1.304 and Codex 0.163.0 retain the full upstream package resources. Manifest validation, all 94 catalogue gates, 37 targeted Node tests, 12 instruction-layer assertions and skill lint pass. No ingress publication, adapter dispatch, retrieval geometry, mount or role-isolation gate changes. Build and activation evidence is pending; existing status axes are retained.
