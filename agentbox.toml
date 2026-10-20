@@ -597,6 +597,11 @@ anchoring_ui    = true
 # Mirror: relays to read kind-30617/30618 from, and what to follow, as
 # "<64-hex pubkey>/<repo>" or "self/<repo>" (this container's sovereign key).
 mirror_relays   = ["ws://127.0.0.1:7777"]   # the embedded relay; add the estate relay in .env
+# Intentionally empty: nothing is mirrored until the owner names it. Entries are
+# "<64-hex x-only pubkey>/<repo name>", or "self/<repo name>" for a repo owned by
+# this container's own agent, e.g. mirror_follow = ["self/notes"] or
+# ["4a578b54...64 hex.../agent"]. Each entry also needs the owner's relay in
+# mirror_relays (or AGENTBOX_FORGE_MIRROR_RELAYS in .env) to be reachable.
 mirror_follow   = []
 announce_relays = []               # relays the forge publishes its own 30617/30618 to
 # Extra relays and follow entries belong in the root .env, not here (tracked

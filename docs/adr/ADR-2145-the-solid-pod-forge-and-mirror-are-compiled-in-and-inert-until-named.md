@@ -32,6 +32,7 @@ repo: agentbox
 ## Consequences
 - The image gains relay egress and a remote-influenced `git fetch` in its default build, doing nothing until a follow entry exists. The operator must add `self/<repo>` or pubkey entries to use the mirror.
 - Behaviour change: NIP-98 verification now matches the URL against the configured public origin, not whatever `Host` the proxy forwards. A wrong `base_url` breaks pod authentication; it was already the value baked into the image.
+- The follow list is deliberately left documented and unpopulated (owner decision, 2026-10-20): `/forge` is served on the agentbox pod only, and nothing is mirrored until the owner adds entries. VisionClaw gets no `/forge` mount; the two are bound through the pod.
 - Not done here: the image is not rebuilt (host shell, `rebuild`), so `activation_status` stays staged. The Nix expression was written without a local `nix`, so its first evaluation happens at that rebuild; the shell it generates is reviewed but not executed.
 - `scripts/ci/check-manifest-catalogue.js` was already failing before this change on two unrelated keys; the new forge keys are baselined with a reason and add none.
 
