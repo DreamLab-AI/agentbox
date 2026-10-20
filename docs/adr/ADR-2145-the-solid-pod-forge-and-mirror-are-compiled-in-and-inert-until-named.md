@@ -3,11 +3,11 @@ id: ADR-2145
 title: The solid-pod forge and mirror are compiled into the native pod and inert until relays and follows are named
 date: 2026-10-20
 decision_status: accepted
-implementation_status: partial
-activation_status: staged
+implementation_status: complete
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 653b8b6387470eaa3be6c20e6dbd2208e538a985
+verified_commit: dd6ff7e065a9a2851f7cfa9fa8c71305ce2a8782
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -33,12 +33,16 @@ repo: agentbox
 - The image gains relay egress and a remote-influenced `git fetch` in its default build, doing nothing until a follow entry exists. The operator must add `self/<repo>` or pubkey entries to use the mirror.
 - Behaviour change: NIP-98 verification now matches the URL against the configured public origin, not whatever `Host` the proxy forwards. A wrong `base_url` breaks pod authentication; it was already the value baked into the image.
 - The follow list is deliberately left documented and unpopulated (owner decision, 2026-10-20): `/forge` is served on the agentbox pod only, and nothing is mirrored until the owner adds entries. VisionClaw gets no `/forge` mount; the two are bound through the pod.
-- Not done here: the image is not rebuilt (host shell, `rebuild`), so `activation_status` stays staged. The Nix expression was written without a local `nix`, so its first evaluation happens at that rebuild; the shell it generates is reviewed but not executed.
+- Initial authoring left the image unbuilt and activation staged. The host build and deployment on 2026-10-20 below close that verification gap.
 - The manifest schema now recognises the forge and proxy settings. The forge and proxy gates are catalogued as rebuild-class; individual forge policy booleans remain subordinate to the forge gate.
 
 ## Verification
-Status is partial and staged. At `2edd6a241` the pin, hash and lockfile were produced from the tag (the hash by a local NAR-hash implementation validated against the previous pin's known hash), the patch target was confirmed to occur once in the new source, every pinned test file exists at the tag, and the manifest parses. Nothing has been built or evaluated by Nix yet.
+Initial verification (before the host build): at `2edd6a241` the pin, hash and lockfile were produced from the tag (the hash by a local NAR-hash implementation validated against the previous pin's known hash), the patch target was confirmed to occur once in the new source, every pinned test file exists at the tag, and the manifest parses. At that initial point nothing had been built or evaluated by Nix.
 
 Re-verified 2026-10-20 at `61f27d5b375f9838ef7b7334e3f984d0d4a9ea70`: reviewed the governed-path delta for the managed floor (ADR-2144) and alpha.17 forge/proxy launcher (ADR-2145). The schema and capability catalogue now register these settings, with boot-class floor projection and rebuild-class forge/proxy changes. Bridge path dependencies use the same alpha.17 source as the server; the independent core-only registry dependency retains its upstream pin. Claude Code 2.1.304 and Codex 0.163.0 retain the full upstream package resources. Manifest validation, all 94 catalogue gates, 37 targeted Node tests, 12 instruction-layer assertions and skill lint pass. No ingress publication, adapter dispatch, retrieval geometry, mount or role-isolation gate changes. Build and activation evidence is pending; existing status axes are retained.
 
 Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed the merged activity-sink registration in the root entrypoint and profile projector, its default-off manifest gate, schema and boot-class catalogue entry. The hook remains inactive; no sink URL, token or new prompt egress is configured. The independent managed floor remains on. Claude Code 2.1.304 and Codex 0.163.0 change pinned CLI resources, not the Jev/factrail hook protocol; their existing replay mechanisms are unchanged. Activity-sink and hook-registration tests pass (50), the Rust projector suite passes (196), manifest validation and all 95 catalogue gates pass, and the generated egress register is in sync. No changed ingress binding, mount, role isolation, retrieval geometry or adapter dispatch. Build and activation checks remain pending. Existing status axes are retained.
+
+Re-verified and deployed 2026-10-20 at `dd6ff7e065a9a2851f7cfa9fa8c71305ce2a8782`: the reviewed flake/Compose delta adds only a root-owned 1 MiB tmpfs at `/etc/claude-code` so boot can project the managed floor on the read-only rootfs. Live file is uid 0, mode 0644, agent-readable and agent-unwritable; the same floor is present in the 13,605-byte Codex instructions. Root and all eight Claude profiles each register the three decline events once. Native pod alpha.17 serves `/forge` (HTTP 200), with testnet policy and zero mirror follows/announce relays; activity sink remains off. Readiness has no degradation, 32 persistent mounts are unchanged, and the other 17 containers are unchanged (speech-to-text was separately rebuilt for its tested marker-ordering fix). The image SBOM/VEX evidence was regenerated for the shipped image; this does not claim an online vulnerability scan or cover the host and sidecars. Existing decision and status axes are retained unless the record explicitly states activation below.
+
+Activated 2026-10-20: the hermetic alpha.17 server build passes all 56 selected ACL/path/ledger/MCP/index/push-guard regressions with the shipped features, and the aligned bridge builds successfully. An isolated, network-disabled candidate boots the baked launcher and serves `/forge` with HTTP 200; the production route also returns 200. Live process policy is `txbt4`, mainnet/open-edit/private-repos off, anchoring UI on, with the configured HTTPS public origin. Mirror follow and announce relay counts are both zero. No owner or repository was added to the follow list and no VisionClaw forge mount was introduced.

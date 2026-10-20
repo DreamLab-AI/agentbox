@@ -4,11 +4,11 @@ title: The floor is a managed instruction tier, and a decline is recorded verbat
 date: 2026-10-19
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 653b8b6387470eaa3be6c20e6dbd2208e538a985
-verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh]
+verified_commit: dd6ff7e065a9a2851f7cfa9fa8c71305ce2a8782
+verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, flake.nix]
 owner: jjohare
 review_trigger: a Stop/SubagentStop hook that can halt a task (upgrade the exit clause to "halts the task"); a Claude Code release that changes managed CLAUDE.md, omitClaudeMd or last_assistant_message semantics; a second operator (the single-operator premise behind "the operator reads them")
 repo: agentbox
@@ -104,3 +104,5 @@ inline and through `@import`.
 Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed the merged activity-sink registration in the root entrypoint and profile projector, its default-off manifest gate, schema and boot-class catalogue entry. The hook remains inactive; no sink URL, token or new prompt egress is configured. The independent managed floor remains on. Claude Code 2.1.304 and Codex 0.163.0 change pinned CLI resources, not the Jev/factrail hook protocol; their existing replay mechanisms are unchanged. Activity-sink and hook-registration tests pass (50), the Rust projector suite passes (196), manifest validation and all 95 catalogue gates pass, and the generated egress register is in sync. No changed ingress binding, mount, role isolation, retrieval geometry or adapter dispatch. Build and activation checks remain pending. Existing status axes are retained.
 
 Integration review (2026-10-20): isolated Claude profiles replace `CLAUDE_CONFIG_DIR` and do not inherit root settings. The profile projector now registers the same three decline hooks under the same default-on floor gate, pins the shared workspace, and retracts them when off. A regression test provisions an isolated profile with the key absent, off, then on and checks the three events and 10-second limits. The byte contract fixture includes these new hooks.
+
+Activated 2026-10-20: managed policy projection requires the root-owned `/etc/claude-code` tmpfs on the read-only container root. The live file is 3,345 bytes, root-owned 0644, and devuser cannot write it. Codex receives it before the global/workspace projected tiers, after the runtime primer; its complete instruction file is 13,605 bytes. Root and eight isolated Claude profiles each have exactly one Stop, SubagentStop and UserPromptSubmit decline hook. The 197 projector tests (including absent/on/off profile reconciliation), 12 instruction-layer assertions and 10 decline-recorder tests pass. Synthetic declines were tested against a fake governed memory server, not inserted into production memory.
