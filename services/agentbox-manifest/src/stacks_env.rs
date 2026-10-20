@@ -69,6 +69,7 @@ impl Env {
 
 /// Gates read from the manifest that change what gets written into each profile.
 pub struct Gates {
+    pub floor: bool,
     pub mobile_bridge: bool,
     pub summary_model: String,
     pub zai_reasoning_effort: String,
@@ -155,6 +156,7 @@ impl Gates {
         let mobile_bridge = tomlval::get_bool(cfg, "sovereign_mesh.mobile_bridge.enabled", false);
         let ontology_monitor = tomlval::get_bool(cfg, "ontology_monitor.enabled", false);
         Self {
+            floor: tomlval::get_bool(cfg, "claude_code.floor", true),
             mobile_bridge,
             summary_model: if mobile_bridge {
                 as_string(tomlval::get(

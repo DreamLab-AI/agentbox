@@ -104,6 +104,39 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "WORKSPACE='/tmp/abm-golden-stacks-ws' node /opt/agentbox/config/hooks/decline-recorder.cjs Stop || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "WORKSPACE='/tmp/abm-golden-stacks-ws' node /opt/agentbox/config/hooks/decline-recorder.cjs SubagentStop || true",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "WORKSPACE='/tmp/abm-golden-stacks-ws' node /opt/agentbox/config/hooks/decline-recorder.cjs UserPromptSubmit || true",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

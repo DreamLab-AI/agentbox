@@ -279,6 +279,24 @@ fn build_profile(name: &str, config: &Value, env: &Env, gates: &Gates) -> Result
     }
 
     let mut hooks = learning_hooks(env, gates);
+    // Isolated profiles replace CLAUDE_CONFIG_DIR, so root settings are not
+    // inherited. Keep the managed floor's recording promise in every profile.
+    if gates.floor {
+        for event in ["Stop", "SubagentStop", "UserPromptSubmit"] {
+            hooks.as_object_mut().unwrap()
+                .entry(event.to_string())
+                .or_insert_with(|| Value::Array(Vec::new()))
+                .as_array_mut().unwrap()
+                .push(serde_json::json!({"hooks": [{
+                    "type": "command",
+                    "command": format!(
+                        "WORKSPACE={} node /opt/agentbox/config/hooks/decline-recorder.cjs {event} || true",
+                        sh_quote(&env.workspace.to_string_lossy())
+                    ),
+                    "timeout": 10
+                }]}));
+        }
+    }
     if let Some(sink) = &gates.activity_sink {
         add_activity_sink_hooks(&mut hooks, env, sink, name);
     }
@@ -367,6 +385,7 @@ mod tests {
 
     fn no_gates() -> Gates {
         Gates {
+            floor: false,
             mobile_bridge: false,
             summary_model: String::new(),
             zai_reasoning_effort: String::new(),
@@ -415,6 +434,7 @@ mod tests {
     fn mobile_bridge_and_monitor_append_session_end_hooks_in_order() {
         let tmp = std::env::temp_dir();
         let gates = Gates {
+            floor: false,
             mobile_bridge: true,
             summary_model: "glm-5.3".into(),
             zai_reasoning_effort: String::new(),
@@ -430,7 +450,10 @@ mod tests {
             .unwrap()
             .contains("nostr-pod-bridge session-summary"));
         // Detached so exit and /clear never wait on the digest.
-        assert!(se[1]["hooks"][0]["command"].as_str().unwrap().contains("setsid"));
+        assert!(se[1]["hooks"][0]["command"]
+            .as_str()
+            .unwrap()
+            .contains("setsid"));
         assert_eq!(se[1]["hooks"][0]["timeout"], 10);
         assert!(se[2]["hooks"][0]["command"]
             .as_str()
@@ -442,6 +465,7 @@ mod tests {
     fn every_profile_hook_timeout_is_seconds_and_route_is_gone() {
         let tmp = std::env::temp_dir();
         let gates = Gates {
+            floor: false,
             mobile_bridge: true,
             summary_model: "glm-5.3".into(),
             zai_reasoning_effort: String::new(),
@@ -549,6 +573,42 @@ mod tests {
         let all =
             off("[integrations.activity_sink]\nenabled = true\nurl = \"https://s/a\"\n").unwrap();
         assert_eq!(all.events, vec!["post_tool_use", "user_prompt", "stop"]);
+    }
+
+    #[test]
+    fn floor_recording_follows_the_gate_in_isolated_profiles() {
+        let tmp = tempdir();
+        let env = test_env(&tmp);
+        let stacks: Value = serde_json::from_str(STACKS_JSON).unwrap();
+        let settings = env
+            .workspace
+            .join("profiles/openrouter/.claude/settings.json");
+        for (manifest, enabled) in [
+            ("", true),
+            ("[claude_code]\nfloor = false\n", false),
+            ("[claude_code]\nfloor = true\n", true),
+        ] {
+            let gates = Gates::from_manifest(&tomlval::parse(manifest).unwrap());
+            build_profile("openrouter", &stacks["openrouter"], &env, &gates).unwrap();
+            let data: Value =
+                serde_json::from_str(&std::fs::read_to_string(&settings).unwrap()).unwrap();
+            for event in ["Stop", "SubagentStop", "UserPromptSubmit"] {
+                let matches: Vec<_> = crate::hooks::all_timeouts(&data["hooks"])
+                    .into_iter()
+                    .filter(|(e, cmd, _)| e == event && cmd.contains("decline-recorder.cjs"))
+                    .collect();
+                assert_eq!(matches.len(), usize::from(enabled), "{event}: {manifest}");
+                if enabled {
+                    assert!(matches[0].1.contains(&format!(
+                        "WORKSPACE={}",
+                        sh_quote(&env.workspace.to_string_lossy())
+                    )));
+                    assert!(matches[0].1.ends_with(&format!("{event} || true")));
+                    assert_eq!(matches[0].2, 10.0);
+                }
+            }
+        }
+        std::fs::remove_dir_all(&tmp).ok();
     }
 
     #[test]
