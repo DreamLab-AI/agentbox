@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 653b8b6387470eaa3be6c20e6dbd2208e538a985
+verified_commit: ca056f04622659d54d4d4546d033d80d7203aa9d
 verified_paths: [config/hooks/activity-sink.cjs, config/entrypoint-unified.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, tests/config/activity-sink.test.js, config/egress-policy.json]
 owner: jjohare
 review_trigger: a second consumer of the sink, a change to the wire body, a new event or tool class, moving the token under role isolation (ADR-2122), or any change to the ADR-2026 redactor
@@ -74,3 +74,5 @@ At the worktree on 2026-10-17 (uncommitted on `feat/codescape-activity-sink`):
 - `render-egress-register.js --check`: in sync.
 
 Merged and re-verified at `653b8b6387470eaa3be6c20e6dbd2208e538a985` on 2026-10-20: 50 activity-sink/registration tests and 196 Rust projector tests pass; the manifest and all 95 catalogue gates validate; the egress register is in sync. The colliding branch ADR number was changed to ADR-2146. The gate remains off and acceptance remains proposed. The image itself is unverified until the host rebuild runs, so activation stays `inactive` (the gate defaults off).
+
+Re-verified 2026-10-20 at `ca056f04622659d54d4d4546d033d80d7203aa9d`: isolated-profile provisioning now includes the default-on managed floor decline hooks on Stop, SubagentStop and UserPromptSubmit, using the shared workspace and 10-second fail-open commands. The new test checks default/on/off reconciliation; the byte-contract fixture is updated. All 197 projector tests pass. Activity-sink policy remains independently default-off. Activation evidence remains pending.
