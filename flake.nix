@@ -3700,6 +3700,9 @@ stderr_logfile_maxbytes=5MB
         # creates uid-1000-owned subdirs under them as needed.
         baselineTmpfsMounts = [
           "/tmp:mode=1777,size=${resTmpfsTmp}"
+          # ADR-2144: bootstrap projects managed instructions onto an otherwise
+          # read-only rootfs. Agents may read this tier, but cannot replace it.
+          "/etc/claude-code:mode=755,size=1M,uid=0,gid=0,noexec,nosuid,nodev"
           # /run, /var/log, /var/log/supervisor are uid-1000-owned so
           # devuser-running services (per `user=devuser` directives) can
           # write logs and runtime state without bootstrap chown
