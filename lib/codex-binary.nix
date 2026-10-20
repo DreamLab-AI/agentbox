@@ -1,7 +1,7 @@
 # lib/codex-binary.nix
 #
 # Nix derivation for OpenAI's Rust-native Codex CLI.
-# Release: https://github.com/openai/codex/releases/tag/rust-v0.161.0
+# Release: https://github.com/openai/codex/releases/tag/rust-v0.163.0
 #
 # Uses the official pre-built musl package archives rather than
 # buildRustPackage from source — faster, deterministic, and complete.  The
@@ -19,7 +19,7 @@
 { lib, pkgs }:
 
 let
-  codexVersion = "0.161.0";
+  codexVersion = "0.163.0";
   baseUrl = "https://github.com/openai/codex/releases/download/rust-v${codexVersion}";
 
   # Map agentbox's system string to OpenAI's canonical package archive.
@@ -28,11 +28,11 @@ let
   assets = {
     "x86_64-linux" = {
       name   = "codex-package-x86_64-unknown-linux-musl.tar.gz";
-      sha256 = "04d8ab9dbcb9df0edf3c67dca5072a374babfdf762a9bc4ae649ae140b8e2cf0";
+      sha256 = "582646c6bf0561eb0de540f7fc85b9121b0091a826bc6e96830b7f1722122182";
     };
     "aarch64-linux" = {
       name   = "codex-package-aarch64-unknown-linux-musl.tar.gz";
-      sha256 = "3c02e2ae34be0d06e62557e98fc5c0a783bec5a2fed406fe00e565803bf84ee8";
+      sha256 = "9d8ecf2d19d3e184877983902d6c85de48b3888dcb72c382a8a0c975845927fb";
     };
   };
 
@@ -83,14 +83,22 @@ in
         # Preserve the canonical upstream package layout. Codex locates the
         # code-mode host beside itself and the sandbox/shell helpers through
         # codex-package.json relative to that executable.
-        install -Dm755 bin/codex $out/bin/codex
-        install -Dm755 bin/codex-code-mode-host $out/bin/codex-code-mode-host
-        install -Dm755 codex-path/rg $out/codex-path/rg
-        install -Dm755 codex-resources/bwrap $out/codex-resources/bwrap
-        install -Dm755 codex-resources/zsh/bin/zsh $out/codex-resources/zsh/bin/zsh
+        # Preserve all package resources. 0.163.0 removed its patched zsh;
+        # the upstream manifest defines the helpers present in each release.
+        mkdir -p $out
+        cp -R bin codex-path codex-resources $out/
         install -Dm644 codex-package.json $out/codex-package.json
 
         runHook postInstall
+      '';
+
+      doInstallCheck = true;
+      installCheckPhase = ''
+        "$out/bin/codex" --version | grep -Fx "codex-cli ${codexVersion}"
+        test -x "$out/bin/codex-code-mode-host"
+        test -x "$out/codex-path/rg"
+        test -x "$out/codex-resources/bwrap"
+        test -s "$out/codex-package.json"
       '';
 
       meta = with lib; {

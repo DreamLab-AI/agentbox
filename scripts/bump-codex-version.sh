@@ -93,8 +93,7 @@ fetch_asset() {
     bin/codex-code-mode-host \
     codex-package.json \
     codex-path/rg \
-    codex-resources/bwrap \
-    codex-resources/zsh/bin/zsh; do
+    codex-resources/bwrap; do
     if ! grep -qx "$required" <<<"$listing"; then
       echo "error: ${asset} is missing ${required}" >&2
       exit 1
