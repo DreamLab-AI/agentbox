@@ -52,7 +52,7 @@ function getNostrTools() {
 }
 
 const KIND_ZONE_KEY_GRANT = 21453;
-/** NIP-171 epoch ticket (signed kind 1014), ADR-2028 decision 2. */
+/** NIP-171 epoch ticket (signed kind 1014), forum kit ADR-2028 decision 2. */
 const KIND_EPOCH_TICKET = 1014;
 const KIND_SEAL = 13;
 const KIND_GIFT_WRAP = 1059;
@@ -383,6 +383,10 @@ function loadInboxSk(env = process.env, fsImpl = fs, warn = () => {}) {
   if (typeof file !== 'string' || file.trim() === '') return null;
   try {
     const st = fsImpl.statSync(file);
+    if (!st.isFile()) {
+      warn('zone inbox key path is not a regular file — ignored');
+      return null;
+    }
     if ((st.mode & 0o077) !== 0) {
       warn('zone inbox key file is group/other accessible (needs 0600) — ignored');
       return null;
@@ -392,7 +396,12 @@ function loadInboxSk(env = process.env, fsImpl = fs, warn = () => {}) {
       warn('zone inbox key file is not 64 hex characters — ignored');
       return null;
     }
-    return Uint8Array.from(Buffer.from(hex, 'hex'));
+    const sk = Uint8Array.from(Buffer.from(hex, 'hex'));
+    try { getNostrTools().getPublicKey(sk); } catch {
+      warn('zone inbox key file is not a valid secret key — ignored');
+      return null;
+    }
+    return sk;
   } catch (err) {
     warn(`zone inbox key file unreadable (${err && err.code ? err.code : 'error'}) — ignored`);
     return null;

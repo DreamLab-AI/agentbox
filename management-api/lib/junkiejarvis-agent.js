@@ -764,10 +764,13 @@ class JunkieJarvisAgent {
     if (!this.bridge || typeof this.bridge.subscribe !== 'function') {
       throw new Error('JunkieJarvisAgent.start: a connected bridge with subscribe() is required');
     }
-    // (a) gift-wrapped DMs addressed to JunkieJarvis.
+    // (a) gift wraps for the identity and optional zone-key inbox.
+    const recipients = [this.pubkey];
+    const inboxSk = zoneKeys.loadInboxSk();
+    if (inboxSk) recipients.push(getNostrTools().getPublicKey(inboxSk));
     this._subIds.push(
       this.bridge.subscribe(
-        { kinds: [KIND_GIFT_WRAP], '#p': [this.pubkey] },
+        { kinds: [KIND_GIFT_WRAP], '#p': [...new Set(recipients)] },
         (event) => { this._onEvent(event).catch((err) => this._logErr('dm', err)); }
       )
     );
@@ -854,8 +857,7 @@ class JunkieJarvisAgent {
   async _handleDm(wrap) {
     let rumor;
     try {
-      const { nip59 } = getNostrTools();
-      rumor = nip59.unwrapEvent(wrap, this.signer.skBytes);
+      ({ rumor } = zoneKeys.unwrapAny(wrap, this.signer.skBytes));
     } catch (err) {
       this._logErr('dm-unwrap', err);
       return;

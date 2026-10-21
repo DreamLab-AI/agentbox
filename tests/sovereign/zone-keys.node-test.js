@@ -392,6 +392,7 @@ describe('zone-key grants', () => {
   test('inbox key (AGENTBOX_ZONE_INBOX_SK_FILE) opens wraps addressed to it; identity still works', () => {
     const INBOX_SK = hexKey(9);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zk-inbox-'));
+    tmpDirs.push(dir);
     const file = path.join(dir, 'inbox.sk');
     fs.writeFileSync(file, `${INBOX_SK}\n`, { mode: 0o600 });
     const env = { AGENTBOX_ZONE_INBOX_SK_FILE: file };
@@ -408,6 +409,7 @@ describe('zone-key grants', () => {
 
   test('inbox key file: unset, loose-mode, malformed and missing files are ignored with a reason', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zk-inbox-'));
+    tmpDirs.push(dir);
     const warnings = [];
     const warn = (m) => warnings.push(m);
     assert.equal(zk.loadInboxSk({}, fs, warn), null);
@@ -421,6 +423,9 @@ describe('zone-key grants', () => {
     assert.equal(zk.loadInboxSk({ AGENTBOX_ZONE_INBOX_SK_FILE: path.join(dir, 'missing') }, fs, warn), null);
     assert.equal(warnings.length, 3);
     assert.ok(warnings.every((w) => !w.includes(hexKey(9))));
+    fs.writeFileSync(bad, '00'.repeat(32), { mode: 0o600 });
+    assert.equal(zk.loadInboxSk({ AGENTBOX_ZONE_INBOX_SK_FILE: bad }, fs, warn), null);
+    assert.equal(zk.loadInboxSk({ AGENTBOX_ZONE_INBOX_SK_FILE: dir }, fs, warn), null);
   });
 
   test('a rumor claiming another author than the seal is refused', () => {
@@ -755,6 +760,31 @@ describe('JunkieJarvis in encrypted zones', () => {
     assert.equal(store.get('zone4', 3).pubkey, pk(epochSk));
     assert.equal(llmSeen.length, 0);
     assert.equal(bridge.published.length, 0);
+  });
+
+  test('the inbox subscription delivers grants through the DM router without model exposure', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zk-inbox-route-'));
+    tmpDirs.push(dir);
+    const file = path.join(dir, 'key');
+    const inboxSk = hexKey(9);
+    fs.writeFileSync(file, inboxSk, { mode: 0o600 });
+    const saved = process.env.AGENTBOX_ZONE_INBOX_SK_FILE;
+    process.env.AGENTBOX_ZONE_INBOX_SK_FILE = file;
+    const { agent, bridge, store, llmSeen } = agentWith();
+    const filters = [];
+    bridge.subscribe = (filter) => { filters.push(filter); return 'sub'; };
+    try {
+      agent.start();
+      assert.deepEqual(filters[0]['#p'], [jjSigner.pubkey, pk(inboxSk)]);
+      await agent._handleDm(grantWrap({ sealerSk: ADMIN_SK, recipientPk: pk(inboxSk), payload: grantPayload() }));
+      assert.equal(store.get('zone4', 1).pubkey, pk(GRANT_ZONE_SK));
+      assert.equal(llmSeen.length, 0);
+      assert.equal(bridge.published.length, 0);
+    } finally {
+      agent.stop();
+      if (saved === undefined) delete process.env.AGENTBOX_ZONE_INBOX_SK_FILE;
+      else process.env.AGENTBOX_ZONE_INBOX_SK_FILE = saved;
+    }
   });
 
   test('a grant whose sender cannot be verified is retried and then stored', async () => {

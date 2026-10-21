@@ -308,7 +308,16 @@ JunkieJarvis signer and the existing authenticated `NostrBridge`.
    `config/hooks/nostr-live-mirror.cjs`, `config/nostr-gateway/{gateway,nostr-send}.cjs`.
    Consolidating those is unresolved work, not something ADR-2088 did.
 10. **Encrypted forum zones (forum kit ADR-2016).** A gift wrap to an agent can carry a
-   zone-key grant (rumor kind 21453) — key material, never a message. Every DM unwrap
+   zone-key grant (rumor kind 21453) or signed NIP-171 epoch ticket (kind 1014) —
+   key material, never a message. Tickets require a valid signature matching the
+   seal author, one member tag matching the store owner, one usable u32 epoch,
+   a valid secret scalar, and exactly one configured group-to-zone binding.
+   `AGENTBOX_ZONE_GROUP_PUBKEY` supplies comma-separated `zone=group-pubkey`
+   bindings; group identity is separate from the relay admin list. A conflicting
+   key for an already held epoch is rejected. The optional 0600 regular file
+   `AGENTBOX_ZONE_INBOX_SK_FILE` supplies a separate delivery key: JunkieJarvis
+   subscribes to both recipient pubkeys and authenticates either unwrap before
+   routing. Invalid inbox files leave identity delivery available. Every DM unwrap
    site on the agent surfaces admits kind-14 rumors only (`unwrapDmRumor`,
    `JunkieJarvisAgent._handleDm`, `per-user-agent.js`; `config/nostr-gateway/gateway.cjs`
    drops kind 21453), so a grant cannot reach an LLM or be forwarded. JunkieJarvis stores
