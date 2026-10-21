@@ -24,21 +24,21 @@
       "name": "ruflo-console",
       "source": "./ruflo-console",
       "description": "ruflo's cockpit inside Claude Code and the one /ruflo command for every ruflo mod (function hooks): overview, swarms, claims, federation, plugins, learning, MetaHarness, memory and cost views, a confirm-gated command palette and a band above the prompt. Baked from ruvnet/ruflo v3.51.1 (09a1cb0) behind [toolchains].ruflo_console; cli defaults to the baked ruflo bin.",
-      "version": "0.1.0",
+      "version": "0.44.3",
       "license": "MIT"
     },
     {
       "name": "ruflo-mods",
       "source": "./ruflo-mods",
       "description": "ruflo as a Claude Code mod (function hooks): in-process prompt routing, edit learning signals, tighten-only tool checks, the cost-tracker budget ladder, a mod trust gate and the $.ruflo noun; answers /ruflo mods. Baked from ruvnet/ruflo v3.51.1 (09a1cb0) behind [toolchains].ruflo_console; cli defaults to the baked ruflo bin.",
-      "version": "0.1.0",
+      "version": "0.6.2",
       "license": "MIT"
     },
     {
       "name": "ruflo-swarm",
       "source": "./ruflo-swarm",
       "description": "Agent teams and swarm coordination with a live swarm pane (function hooks); answers /ruflo swarm pane|status|topology|claims|consensus. Baked from ruvnet/ruflo v3.51.1 (09a1cb0) behind [toolchains].ruflo_console; cli defaults to the baked ruflo bin.",
-      "version": "0.3.0",
+      "version": "0.3.7",
       "license": "MIT"
     }
   ]

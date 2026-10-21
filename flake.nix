@@ -56,13 +56,13 @@
 
     # ruflo's Claude Code mods (function hooks): ruflo-console (the /ruflo
     # cockpit), plus ruflo-mods and ruflo-swarm, which answer `/ruflo mods` and
-    # `/ruflo swarm …` on the same command. Pinned to the ruflo v3.51.1 tag,
+    # `/ruflo swarm …` on the same command. Pinned to the ruflo v3.57.0 tag,
     # files-only like `codexPlugin`; gated by [toolchains].ruflo_console. The
     # ruflo repository is ~100 MB, so only the three plugin directories are
     # baked (scripts/bake-ruflo-console.sh), never the tree. Bump with:
     #   nix flake lock --update-input rufloConsole
     rufloConsole = {
-      url = "github:ruvnet/ruflo/09a1cb0244a677f54c2b3d691a7009927add527d";
+      url = "github:ruvnet/ruflo/e4fb889e1bb1c308be10232e9b807c7f285545d4";
       flake = false;
     };
   };
@@ -487,10 +487,10 @@
         #    (hook-handler.cjs, which registered-hooks.txt prunes, is unchanged).
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.51.1";
-          packageLock = ./config/npm-locks/ruflo-3.51.1.package-lock.json;
-          sha256          = "sha256-vKkzPdeUUxh1cvtDUMuvdjIbJI3I44CQEr4JavXLpB4=";
-          nodeModulesHash = "sha256-NMX4U+qBrQ+1P87EBlBp+QeBGBPRoXShqpcgV31CXCw=";
+          version         = "3.57.0";
+          packageLock = ./config/npm-locks/ruflo-3.57.0.package-lock.json;
+          sha256          = "sha256-UQE9fJJa/dDngur5goQNlVY1Xeil0bSxIN2u4EJ3+WI=";
+          nodeModulesHash = "sha256-4m8PdtjqIbo/3/ZaUwuffsxjWxy+hxfksvVxPFL2Acc=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -518,7 +518,7 @@
         #        bookkeeping store under ~/.cache/ruflo/memory instead of
         #        <cwd>/.swarm. Each is an env default: an operator export wins.
         #    claude-flow-mcp is passed through unchanged (ADR-2082 proxy child).
-        rufloGovernedPkg = pkgs.runCommand "ruflo-governed-3.51.1" { } ''
+        rufloGovernedPkg = pkgs.runCommand "ruflo-governed-3.57.0" { } ''
           mkdir -p $out/bin
           for b in ruflo claude-flow; do
             cat > $out/bin/$b <<WRAP
@@ -565,10 +565,10 @@
         #    nix-prefetch-url https://registry.npmjs.org/%40metaharness/darwin/-/darwin-0.10.3.tgz
         metaharnessDarwinPkg = mkNpmCli {
           pkgName         = "@metaharness/darwin";
-          version         = "0.10.3";
-          packageLock = ./config/npm-locks/metaharness-darwin-0.10.3.package-lock.json;
-          sha256          = "sha256-BucSro386tjGp3GrIyeYBgVnZNd/U3dQuXkhfJ/Oi2Q=";
-          nodeModulesHash = "sha256-S9THIgBL26hmTt1nZ68UC4CIaklzB/cfRYbUq7qSqqg=";
+          version         = "0.12.0";
+          packageLock = ./config/npm-locks/metaharness-darwin-0.12.0.package-lock.json;
+          sha256          = "sha256-Gjd52xYa4M+NRpmwgT+HSiUBwgjVyO+ybFiU4G4vXOg=";
+          nodeModulesHash = "sha256-o1wNQvQHX92/CZFosuigzK7cjMZECjBQ6XSk1tilM9Q=";
           bin             = "metaharness-darwin";
         };
 
@@ -594,10 +594,10 @@
           # opt-in qe-browser engine) moved from a dependency to an optional
           # peer (^26.8.21), so the closure no longer carries vibium 0.1.8;
           # qe-browser stays "install with aqe init", as the skill says.
-          version         = "3.14.7";
-          packageLock = ./config/npm-locks/agentic-qe-3.14.7.package-lock.json;
-          sha256          = "sha256-dtTtXe+f2O6gidB7xIIDJ3scr5XxdzdCwKqFRdLVuMY=";
-          nodeModulesHash = "sha256-r/FZrkcdDt1o+Tyrga6QcuEHcLPlgpY1t2efFgMyfP4=";
+          version         = "3.15.9";
+          packageLock = ./config/npm-locks/agentic-qe-3.15.9.package-lock.json;
+          sha256          = "sha256-f/Uw/DEGbecdFv2eMCB77s41YZJ+GdlCGzFM7UkguUA=";
+          nodeModulesHash = "sha256-XdasUB9WYs4ZT4sZ4q6P6HVuMJNm8o6/D/T68jt4Z20=";
           bin             = "aqe";
         };
 
@@ -620,10 +620,10 @@
         #    Bump: update version + both digests together.
         codebaseMemoryBinary =
           let
-            version = "0.11.0";
+            version = "0.12.1";
             assets = {
-              "x86_64-linux"  = { arch = "amd64"; sha256 = "1f9e8293eb2bc5c05cfa27a7e8fc033da6d729ffad525ccfcdaa3fd606306683"; };
-              "aarch64-linux" = { arch = "arm64"; sha256 = "d62eeb224d5ee3eba3070938ec62cf1033f10b041ec1c4b2fb67f7aef390cc7b"; };
+              "x86_64-linux"  = { arch = "amd64"; sha256 = "8c3d0341064301e78ecc84cf7348d4e2c6562a0f57448243ea560aaa34de36c1"; };
+              "aarch64-linux" = { arch = "arm64"; sha256 = "ed0f1f548cd79b121c401c2e9f7841c189a001af26d3768368088c24f6a53533"; };
             };
             asset = assets.${system} or (throw ''
               codebase-memory-mcp: no portable release asset for system "${system}".
@@ -640,10 +640,10 @@
           '';
         codebaseMemoryPkg = mkNpmCli {
           pkgName         = "codebase-memory-mcp";
-          version         = "0.11.0";
-          packageLock = ./config/npm-locks/codebase-memory-mcp-0.11.0.package-lock.json;
-          sha256          = "sha256-O1AJNx9GqEjgQDROBK8p1jJb2x8knMVChq1l6feI+ww=";
-          nodeModulesHash = "sha256-u3L/Jne/cV2Tb2n9FzfExM8gHl2nUvD55xuQfHG6BL4=";
+          version         = "0.12.1";
+          packageLock = ./config/npm-locks/codebase-memory-mcp-0.12.1.package-lock.json;
+          sha256          = "sha256-dOv9VaQhLgLGqM/DWHwpG4CAu0EyMIclQ3AxJsmPtSQ=";
+          nodeModulesHash = "sha256-z4Cv5Trmr0ZOtYscHg6qaEDGHgBOhwrtlliAkeJA5ZE=";
           bin             = "codebase-memory-mcp";
           extraFiles      = { "bin/codebase-memory-mcp" = "${codebaseMemoryBinary}/bin/codebase-memory-mcp"; };
         };
@@ -704,10 +704,10 @@
           pkgName         = "wrangler";
           # 4.147.0 (2026-10-02T11:30Z): npm latest, taken 2026-10-03 inside
           # the 72-hour window on the owner's estate-wide upgrade.
-          version         = "4.147.0";
-          packageLock = ./config/npm-locks/wrangler-4.147.0.package-lock.json;
-          sha256          = "sha256-xC0hD6GfbkC2Oo3zsSd0ATbf/nUl7p7YK4qxg9LNg5U=";
-          nodeModulesHash = "sha256-VfJKdHz1BWwxofXSq70Un/gR4ooJo92GnzLzrHOPuD4=";
+          version         = "4.151.1";
+          packageLock = ./config/npm-locks/wrangler-4.151.1.package-lock.json;
+          sha256          = "sha256-O+BDfBfueZ9SbGsHJG2lnrtX0XMn+k4nXQlTiB8dvGU=";
+          nodeModulesHash = "sha256-VhJb8ZdZIj3uRfSBqDhsQmZI/2Mhps5GvYysYnzZmRg=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -969,10 +969,10 @@
           # 2026-08-14, safely past the 3-day floor; no SHA1/256SUMS file is
           # published for this artefact (true at 0.2.33 too), so the hash
           # below is this agent's own sha256 of the TLS-fetched binary.
-          version = "0.2.49";
+          version = "0.2.50";
           src = pkgs.fetchurl {
-            url = "https://github.com/aptible/supercronic/releases/download/v0.2.49/supercronic-linux-amd64";
-            hash = "sha256-pTriNmAscziro/uv9AvaYwDq47n+24Jh6wbP43JEMME=";
+            url = "https://github.com/aptible/supercronic/releases/download/v0.2.50/supercronic-linux-amd64";
+            hash = "sha256-0tfJf7/vx2PVu8u7P41h+d00EM5dBac3xBSZS4C4zdA=";
           };
           dontUnpack = true;
           installPhase = ''
@@ -1265,7 +1265,7 @@
         # Hashes need refresh on version bumps:
         #   nix-prefetch-github zoharbabin web-researcher-mcp --rev <tag>
         #   first build will print the correct vendorHash to substitute.
-        webResearcherMcpPkg = pkgs.buildGoModule rec {
+        webResearcherMcpPkg = (pkgs.buildGoModule.override { go = pkgs.go_1_27; }) rec {
           pname   = "web-researcher-mcp";
           # Bumped 1.43.0 -> 1.49.3 (2026-10-01 review; v1.49.3 published
           # 2026-09-01, safely past the 3-day floor — v1.49.4, published
@@ -1278,18 +1278,16 @@
           # retired tool name directly. Hashes refresh on bump:
           #   nix-prefetch-github zoharbabin web-researcher-mcp --rev v1.49.3
           #   then `nix build` once with lib.fakeHash for vendorHash.
-          # v1.49.4 HELD (2026-10-03 estate upgrade): its go.mod raises the
-          # directive to `go 1.27.1`, and the pinned nixpkgs (9ae611a4) tops
-          # out at go_1_26 (1.26.3); buildGoModule runs GOTOOLCHAIN=local, so
-          # the build would refuse. Move with the next nixpkgs bump.
-          version = "1.49.3";  # bump together with hashes below
+          # The 2026-10-21 nixpkgs refresh supplies Go 1.27.3, lifting
+          # the earlier hold without allowing mutable toolchain downloads.
+          version = "1.50.3";  # Go 1.27.2+ required; use the pinned Go 1.27 toolchain
           src = pkgs.fetchFromGitHub {
             owner = "zoharbabin";
             repo  = "web-researcher-mcp";
             rev   = "v${version}";
-            hash  = "sha256-+k2sEHfhmahCRXj60OGW8zYqb6iz0D8DQY2WSpBmSWA=";
+            hash  = "sha256-omYc5UMwWHXru1nzEJDQf9MF+1QQHHGObSvVqGrcAec=";
           };
-          vendorHash = "sha256-cEZyfabc5z1D8kFYMzC2ppL/U4N6BK4HdF6ori21BR4=";
+          vendorHash = "sha256-e6MNWzp94AtFE1gAIL5lg9U4Q1zo8C1Gl2vfERUeKyg=";
           subPackages = [ "cmd/web-researcher-mcp" ];
           # Strip the auto-Chromium download path — we never use tier 4.
           ldflags = [ "-s" "-w" ];
@@ -1419,8 +1417,8 @@
         # ComfyUI built-in: fetch upstream source and wrap with a Python env.
         # Included only when skills.media.comfyui_builtin = true.
         # Bump the rev + hash intentionally via a PR when upgrading.
-        comfyuiRev  = "v0.3.27";
-        comfyuiHash = "sha256-UGM2nrxveSEPuZAFY+Os0R1z/eWzlm8viG7sobis498=";
+        comfyuiRev  = "63be2f9b82ad0dac88a7ceaa28a9cf3154125a18"; # v0.42.1
+        comfyuiHash = "sha256-/thkdznvXdpT2rgsyZ1NoH5jG1ox+pAjJCrj4glurSI=";
         _comfyuiGuard =
           if mediaCfg.comfyui_builtin or false
              && comfyuiHash == "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -1853,7 +1851,7 @@
         # [toolchains].ruflo_console: bake ruflo-console + ruflo-mods + ruflo-swarm
         # from the pinned rufloConsole input into the `agentbox` marketplace.
         rufloConsoleOn = toolchainCfg.ruflo_console or false;
-        rufloConsolePlugins = pkgs.runCommand "ruflo-console-plugins-3.51.1" {
+        rufloConsolePlugins = pkgs.runCommand "ruflo-console-plugins-3.57.0" {
           nativeBuildInputs = [ pkgs.jq ];
         } ''
           bash ${./scripts/bake-ruflo-console.sh} ${rufloConsole} $out \
@@ -4636,6 +4634,7 @@ ${ragflowNetworkDecl}
         packages = lib.optionalAttrs pkgs.stdenv.isLinux {
           security-tools = securityTools;
           agentbox-vex = vexPkg;
+          web-researcher-mcp = webResearcherMcpPkg;
           systemscape = systemscapePkg; # fast standalone verification before an image rebuild
           runtime = mkImage { tag = "runtime-${system}"; };
           full = mkImage {

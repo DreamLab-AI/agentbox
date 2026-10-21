@@ -73,8 +73,8 @@ for name in "${plugins[@]}"; do
       "    routeContext: bool(o.routeContext, true)," \
       $'    routeTasks: bool(o.routeTasks, false),\n    routeContext: bool(o.routeContext, true),'
     patch_literal "$out/$name/hooks/route/index.ts" \
-      "    if (!state.owned.has('route')) return next(e)" \
-      "    if (!options.routeTasks || !state.owned.has('route')) return next(e)"
+      "    if (!state.owned.has('route')) return next(advisory ? { ...e, context } : e)" \
+      "    if (!options.routeTasks || !state.owned.has('route')) return next(advisory ? { ...e, context } : e)"
     jq '.userConfig = ({routeTasks: {type: "boolean", title: "Keyword task routing",
           description: "Inject the keyword router'"'"'s \"Routing task\" block into every prompt. Off in agentbox (ADR-2134): skills route through System One, models through Claude Code.",
           required: false, default: false}} + (.userConfig // {}))' "$baked" > "$baked.tmp"
