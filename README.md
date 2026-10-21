@@ -1,195 +1,22 @@
-# Agentbox
-
 <div align="center">
 
-<img src="docs/agentbox.png" alt="Agentbox" width="1920" />
+# Agentbox
 
-### A manifest-driven, reproducible runtime for sovereign software agents.
+### A manifest-driven working environment for software agents
 
-[![Build](https://img.shields.io/github/actions/workflow/status/DreamLab-AI/agentbox/build-multi-arch.yml?branch=main&style=flat-square&logo=github)](https://github.com/DreamLab-AI/agentbox/actions)
-[![License](https://img.shields.io/badge/License-AGPL%203.0-blue?style=flat-square)](LICENSE)
-[![Nix](https://img.shields.io/badge/Nix-flakes-5277C3?style=flat-square&logo=nixos)](flake.nix)
-[![Multi-arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-green?style=flat-square&logo=docker)](https://github.com/DreamLab-AI/agentbox/pkgs/container/agentbox)
+**Compose tools, sessions, identity and durable-state integrations in a Nix-built container.**
 
-**One TOML manifest. One Nix flake. One runtime contract.**
-
-For updates during active work, use `./agentbox.sh prepare`: it builds and imports
-a candidate without restarting anything. Preparation also emits Nix-derived
-SBOMs and image-scoped OpenVEX evidence outside the image. Review a published
-digest with `./agentbox.sh security scan --image REPOSITORY@sha256:DIGEST`; see
-[image vulnerability evidence](docs/developer/vex.md). Run `./agentbox.sh activate` only when
-ready to replace Agentbox. [Incremental build and recovery runbook](docs/developer/incremental-builds.md).
-
-**Maintainer**: [John O'Hare](https://github.com/jjohare) · **Upstream IP**: [Melvin Carvalho](https://github.com/melvincarvalho) ([JSS](https://github.com/JavaScriptSolidServer/JavaScriptSolidServer), [DID:Nostr](https://github.com/nicholasgasior/did-nostr)) · [MAINTAINERS.md](MAINTAINERS.md)
-
-[Quickstart](#quickstart) · [Why Agentbox](#why-agentbox) · [Capabilities](#included-capabilities) · [Sovereign data stack](#the-sovereign-data-stack) · [Status](#status--remaining-work) · [Docs](docs/README.md)
+[Start](#quickstart) · [Architecture](#how-it-fits-together) · [Capabilities](#capabilities) · [Status](#working-status) · [Docs](docs/README.md) · [Licence](LICENSE)
 
 </div>
 
----
+Agentbox packages agent CLIs, development tools and supervised services behind one configuration and build process. An operator chooses capabilities in `agentbox.toml`, inspects the resulting runtime contract, and runs interactive agent sessions with configured identity, memory and data services.
 
-> **An agent runtime you can't reproduce is an audit you can't run — Agentbox is a byte-for-byte reproducible Nix container driven by one TOML manifest.** Every agent is minted its own `did:nostr` key at spawn, every durable write passes a privacy filter into a cryptographic audit trail, and what agents may touch is bounded by explicit fail-closed gates. Reproduce the runtime, audit every action, control every capability.
-
----
-
-## What is Agentbox?
-
-Agentbox is the **room the agents occupy**: a hardened, byte-for-byte reproducible Linux container built to host, orchestrate, and trace autonomous AI agents. Three verbs describe what it exists to give an operator — **reproduce** the runtime from a single manifest, **audit** every durable action back to a cryptographic identity, and **control** what agents may touch through explicit, fail-closed gates.
-
-Instead of custom Dockerfiles, scattered API keys, and brittle dependency scripts, **everything in Agentbox is driven by one `agentbox.toml` manifest**. You declare the agents you want, the tools they need — from browser automation to 3D rendering — and the storage backends they use. Nix builds a reproducible image; the runtime mints each agent its own `did:nostr` key at spawn and routes every durable write (memory, pods, beads, events) through a local privacy-redaction filter and cryptographic audit trail.
-
-Why the identity spine matters: when an agent acts, an operator has to answer *which* agent did it, and prove it later. Agentbox roots every resource, action, and event in one `did:nostr` keypair, so the graph of what happened is the audit trail — not a log you have to trust.
-
-The second spine is semantic. An agent loop is unbounded by construction, so Agentbox bounds it twice: fail-closed gates on what an agent may *touch*, and a live ontology bridge to VisionClaw's OWL 2 EL graph so what an agent *asserts* is checked against formal semantics rather than prose. The industry now calls this arrangement **neurosymbolic** — thin agents on a shared semantic layer, instead of thick agents with hand-wired context.
-
----
-
-## Where Agentbox sits in the ecosystem
-
-Agentbox is one component of **[VisionFlow](https://github.com/DreamLab-AI/VisionFlow)** — a seven-repo effort built on a simple wager: hierarchy was an information-routing protocol bounded by human bandwidth, AI collapses the cost of that routing toward zero, and so the human role is not eliminated but **promoted from router to judgment broker**. Machines carry coordination; humans keep judgment at the intersections. Agentbox is the runtime layer of that mesh — it runs the agents; the siblings render, govern, store, and publish what they do.
-
-| Repo | Role |
-|:-----|:-----|
-| [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Ecosystem canon — ADRs, PRDs, compatibility matrix, vision report, marketing site |
-| [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Flagship engine — OWL 2 EL + Whelk reasoning, 82 CUDA kernels of GPU graph physics, one React Three Fiber renderer shared desktop↔headset; renders the embodied agent loop |
-| **Agentbox** (this repo) | **Sovereign agent runtime — Nix-built container, `did:nostr` identities, 129 skills, RuVector memory, Solid pod bridge, sovereign mesh** |
-| [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Rust Solid pod server — the personal-data-sovereignty layer under each human's and agent's own key |
-| [nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Nostr-native forum + relay — the one place a human decision gets cryptographically signed |
-| [dreamlab-ai-website](https://github.com/DreamLab-AI/dreamlab-ai-website) | dreamlab AI company website — the commercial face, a thin consumer of the forum kit |
-| [narrativegoldmine](https://github.com/DreamLab-AI/knowledgeGraph) | The published public knowledge graph at [narrativegoldmine.com](https://narrativegoldmine.com) — `main` now also carries the corpus as an open dataset (7,457 pages, [mostly AI-generated by design](https://github.com/DreamLab-AI/knowledgeGraph/blob/main/docs/methodology/corpus-generation.md)) and the pipeline that builds it |
-| [sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs) | Rust port of Melvin Carvalho's sidestr sidechains (`AGPL-3.0-only`, six crates on crates.io) — the economic engine for `did:nostr` agents; agentbox hosts the estate's chain instance in [`config/sidechain/`](config/sidechain/), not the crates (testnet only) |
-
-Each sibling in its own words:
-
-<details>
-<summary><b>VisionFlow</b> — <em>ecosystem canon: ADRs, PRDs, compatibility matrix</em></summary>
-<br/>
-
-> **Six honest systems can still assemble one collective lie — VisionFlow is the canon that stops that.** It holds the ADRs, PRDs, compatibility matrix and honest status ledger for a seven-repo human–AI mesh built on one wager: AI collapses the cost of routing information, so the human is promoted from router to judgment broker. This repo ships words, not runtime — and it is graded on their accuracy.
-
-</details>
-
-<details>
-<summary><b>VisionClaw</b> — <em>flagship engine: OWL 2 EL reasoning, GPU graph physics, XR renderer</em></summary>
-<br/>
-
-> **Agent swarms are invisible; VisionClaw makes them something you can stand inside and watch.** It reasons over a curated corpus with an OWL 2 EL engine (Whelk, 5,975 classes), settles the result as a 3D graph under GPU physics, and renders agents acting inside it — desktop and Quest 3 alike, every agent action drawn as a beam to the concept it touched. It observes and never signs: the engine you can watch is deliberately not the surface that can commit.
-
-</details>
-
-<details>
-<summary><b>solid-pod-rs</b> — <em>Rust Solid pod server: personal-data-sovereignty layer</em></summary>
-<br/>
-
-> **Your data's exit right should sit in the floor, not be granted at the door — solid-pod-rs gives every human and agent a self-owned RDF pod under their own key.** A Rust-native Solid Protocol server with WAC access control and `did:nostr` identity; every write is a git-mark commit and high-value writes anchor to Bitcoin. Standards-based sovereignty: leave at any time, and take everything with you.
-
-</details>
-
-<details>
-<summary><b>nostr-rust-forum</b> — <em>Nostr-native forum + relay: where a human decision gets signed</em></summary>
-<br/>
-
-> **Machine coordination is cheap; accountable decisions are not — this forum is the one place in the mesh where a decision gets signed.** Humans and agents are the same kind of participant: each holds a `did:nostr` keypair and publishes Schnorr-signed events to an immutable log, so every governance outcome carries a human signature by construction. The kit ships vanilla — one TOML file stands up a community, no forking.
-
-</details>
-
-<details>
-<summary><b>dreamlab-ai-website</b> — <em>dreamlab AI company website: the commercial face, a thin consumer of the forum kit</em></summary>
-<br/>
-
-> **The commercial face of the mesh, running on the mesh's own rails.** A React marketing site and a Rust/Leptos WASM community forum share one Cloudflare-edge origin, end-to-end encrypted where it matters. It is deliberately a thin consumer of the nostr-rust-forum kit — branding and zone config live here, the protocol lives upstream — living proof the kit stands up a real community without a fork.
-
-</details>
-
-<details>
-<summary><b>narrativegoldmine (knowledgeGraph)</b> — <em>the published public knowledge graph, open corpus + pipeline</em></summary>
-<br/>
-
-> **8,100+ ordinary markdown pages (an Obsidian vault since September 2026) that compile losslessly into a formal OWL 2 ontology — pure TBox, every page a class, zero individuals by design.** Corpus, pipeline, viewer and method ship as one open release (ODbL-1.0 data, AGPL-3.0 pipeline) published at narrativegoldmine.com; siblings reason over it (VisionClaw) and serve it as measured LLM grounding (Loom, ~0.94 grounded recall), and third-party extractors such as OntoCast stage RDF into it as governed, reviewable candidates. Rigorous curation is amortised once and reused per query — this repo is the once.
-
-</details>
-
-<details>
-<summary><b>Loom</b> — <em>ontology-grounded, model-swappable LLM façade</em></summary>
-<br/>
-
-> **Your LLM doesn't know your data — Loom makes any LLM answer from it, verifiably.** Point any OpenAI-compatible client at one URL and every answer is grounded in your curated, reasoner-checked private corpus: recall on in-domain questions rises from as low as 0.15 to ~0.94, faster than the bare model, with every claim traceable to a corpus generation. The model is just a URL behind the door — swap it for the next one and nothing else changes, because the knowledge lives in the corpus you govern, not the weights you rent.
-
-</details>
-
-<details>
-<summary><b>sidestr-rs</b> — <em>Rust sidechain engine: a did:nostr key is a sidechain wallet</em></summary>
-
-The optional `[sidechain]` gates supervise the interim testnet producer, public Pages mirror
-and standalone Rust faucet. Setup defaults are off; keys and persistent chain/grant state must
-already exist. The producer runs the image's read-only bake of the pinned upstream
-(`lib/sidestr-upstream.nix`), not a workspace checkout. See [sidechain operations](config/sidechain/README.md).
-<br/>
-
-> **sidestr-rs — Rust port of Melvin Carvalho's sidestr sidechains, AGPL-3.0-only: the economic engine for did:nostr agents. A did:nostr key is a sidechain wallet.** Five published crates (`sidestr-header`, `-core`, `-nostr`, `-wallet`, `-round`) are attributed ports of upstream `siding`, proven byte-for-byte against the JavaScript reference and audited before every publish. Agentbox runs the estate's own chain, `sidestr:dreamlab`, on Bitcoin testnet4 (interim producer: the upstream JS engine) and takes the crates from crates.io when its Rust node lands. Experimental, testnet only; no real funds anywhere.
-
-</details>
-
-**The Ontology Loom.** A first-class VisionFlow node that grounds an LLM's answers in the corpus: it holds the reasoned generation the knowledgeGraph pipeline publishes as canonical and serves it behind a stable, model-swappable façade — an OpenAI-compatible endpoint with the model a URL behind it, swappable without any consumer change. Agentbox is a **client** of that façade: the "one brain" ontology retrieval resolves through the Loom instead of re-deriving index state locally, and a set of **deferred-distillation MCP tools** let an agent submit a distillation job mid-turn, then await and fetch it out-of-band as a durable, lease-fenced, content-addressed beads work item. The harness-side integration is [ADR-051](docs/archive/adr/ADR-051-loom-client-and-deferred-distillation.md); the node itself — façade contract, corpus lifecycle, generation minting, grounding authority — is specified in the serving repo (VisionClaw [ADR-135](https://github.com/DreamLab-AI/VisionClaw/blob/main/docs/adr/ADR-135-ontology-loom-node.md) · [PRD-025](https://github.com/DreamLab-AI/VisionClaw/blob/main/docs/prd/PRD-025-ontology-loom-and-connector-platform.md)) and runs at [dreamlab-AI/loom](https://github.com/DreamLab-AI/loom). A node, not yet a platform — ADR-051's own review trigger is a second distillation provider landing.
-
-**Independent convergence.** In July 2026 Block (Jack Dorsey) launched [Buzz](https://github.com/block/buzz) — a self-hosted, Nostr-native team-chat + AI-agent + git platform in Rust. It arrives independently at the same substrate this ecosystem has built since 2022: Nostr events as source of truth, agents as first-class signed participants with their own keypairs, NIP-42/98 auth, kind-based extensibility. Agentbox mints exactly that per-agent keypair at spawn. What Buzz does not carry is our differentiation — OWL 2 EL / KG ontology grounding, Solid-pod personal-data sovereignty, immersive 3D embodiment, and closed memory/learning loops. Buzz is ahead of us in one place worth naming: its NIP-42 relay gate is wired end-to-end today, whereas cross-relay mesh federation is designed, not shipped, on both sides.
-
----
-
-**Self-improvement.** The fleet dreams: a container-local orchestrator runs a nightly [dream cycle](docs/developer/dream-engine.md) per repository (gate and loop core: [DreamLab-AI/dream-engine](https://github.com/DreamLab-AI/dream-engine), permissive; the estate adapter stays here) — evidence-gated improvements proposed as draft PRs a human merges, witnessed and ledgered. It surfaces read-only on the operator cockpit ([ADR-055](docs/archive/adr/ADR-055-dream-cockpit-panel.md), `:8444` → `/dream.html`). Reproduce the run, audit the evidence, control the merge — *evaluation is not promotion*.
-
-## Architecture
-
-One manifest composes the image; every durable action flows through the adapter dispatch pipeline, is stamped with the agent's identity, and lands on the sovereign substrate.
-
-```mermaid
-flowchart TB
-    MAN["agentbox.toml manifest"] --> NIX["Nix flake to reproducible OCI image"]
-    NIX --> RT["Runtime container (non-root, read-only rootfs)"]
-    RT --> AG["Agents, each with its own did:nostr key"]
-    AG --> MW["Adapter dispatch: privacy filter, URN mint, JSON-LD, OTLP"]
-    MW --> SLOTS
-    subgraph SLOTS["Five pluggable adapter slots"]
-        MEM["memory"]
-        POD["pods"]
-        EVT["events"]
-        BEAD["beads"]
-        ORC["orchestrator"]
-    end
-    SLOTS --> SUB
-    subgraph SUB["Sovereign substrate"]
-        SP["solid-pod-rs (git-marks, block-trails)"]
-        RV["RuVector memory (bge-small 384-dim)"]
-        NR["nostr-rs-relay :7777"]
-    end
-    SUB --> FED["Sovereign mesh: allowlisted relay, Tailscale, CF tunnel"]
-```
-
-Every durable-state integration goes through one of the five adapter slots — never a hardcoded backend. Each slot resolves to `local-*`, `external`, or `off`, so the same manifest runs entirely standalone on a laptop (SQLite + local JSONL) or federates into a cloud mesh (Postgres pgvector + HTTP event sinks) by flipping a TOML switch. Observability, the privacy filter ([ADR-008](docs/archive/adr/ADR-008-privacy-filter-routing.md)), and the JSON-LD encoder wrap every dispatch in that order.
-
-The **interaction plane** — the way an operator creates, watches, attaches, and reviews interactive agent sessions — is [Agent of Empires](https://github.com/DreamLab-AI/agentbox-of-empires) (AoE), adopted as an overlay under the `[interaction_plane]` gate ([PRD-021](docs/archive/prd/PRD-021-interaction-surface-consolidation.md), [ADR-042](docs/archive/adr/ADR-042-agent-of-empires-interaction-plane.md)). `aoe serve` runs on loopback `:9095` behind a NIP-98-verifying reverse proxy (`:9096`) that is its sole ingress; its TUI + web dashboard supersede the hand-rolled per-provider tmux harness tabs in place. Because AoE has a session manager but no identity, agentbox supplies it at the **session boundary**: every session mints its own `did:nostr`, a session URN, a beads epic, and a scoped per-project memory namespace ([ADR-043](docs/archive/adr/ADR-043-session-identity-binding.md)). The fork stays a clean mirror — zero patches to its crate.
-
----
-
-## Why Agentbox?
-
-- 🔒 **Privacy by default.** An embedded `openai/privacy-filter` sidecar sits in the adapter-dispatch path, redacting PII and secrets *before* durable writes hit memory or pods. Policy is **per slot** — `strict` (redact-then-write, fail-closed) for `memory` and `pods`, `soft` for `events`/`beads`, `off` for the `orchestrator` control plane. It is not a universal interceptor on every tool call; see [ADR-008](docs/archive/adr/ADR-008-privacy-filter-routing.md).
-- 🛡️ **Hardened and reproducible.** Built with Nix flakes. Runs as non-root (uid 1000) with a read-only root filesystem, `cap_drop: ALL`, `no-new-privileges:true`, and a **supplemental seccomp denylist** (47 high-risk syscall denials layered on Docker's default profile — not a replacement allowlist; the container runtime is the security boundary). Published ports bind host-loopback only ([ADR-027](docs/archive/adr/ADR-027-default-secure-posture.md)), with one deliberate exception: the NIP-98 sovereign ingress (`:9096`) is the identity-gated LAN door to the interaction plane and (via `/mgmt/`) the management-api ([ADR-045](docs/archive/adr/ADR-045-sovereign-ingress-npub-front-door.md)). One remaining runtime-fetch path — a small set of `npx -y` CLI aliases — is tracked for SRI pinning in [`lib/npm-cli.nix`](lib/npm-cli.nix).
-- 🔗 **Sovereign data and auditability.** Every generated file, memory, and action is stamped with a `did:nostr` identity and can be stored in an embedded Solid pod ([solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs)). The provenance substrate makes writes traceable by construction: each write lands as a **git-mark** (write-as-commit + provenance sidecar), and high-value or disputed records can become **block-trails** — tamper-evident, hash-chained trails with an optional Bitcoin (taproot) anchor. See [The Sovereign Data Stack](#the-sovereign-data-stack).
-- 🔌 **Pluggable adapters.** Five durable-state slots (beads, pods, memory, events, orchestrator), each `local` / `external` / `off`. Standalone or federated is one TOML switch, and the contract test harness must pass for all three implementation classes per slot.
-- 🔀 **Ambidextrous model routing.** One `[model_routing]` policy maps each kind of work to the frontier host that suits it — Claude for specification, architecture, design, review, security analysis, debugging; Codex for implementation, testing, security scanning, documentation — projected at every boot into agentic-qe's per-agent `agentOverrides` (subscription-tier providers, `$0` marginal; cross-vendor escalation). See [ADR-041](docs/archive/adr/ADR-041-model-routing-one-policy-many-projections.md).
-- 🎯 **Learned cost-optimal routing for public dev work.** `[model_routing.neural]` runs the metaharness router (kernel-ridge over a measured corpus, inside the baked ruflo closure) as a dedicated Agent-of-Empires `router` session: each task is embedded offline, the cheapest OpenRouter model above the quality bar is picked and executed, and a labelled receipt is written. Public tier only. See [ADR-2080](docs/adr/ADR-2080-metaharness-router-console-under-aoe.md).
-
----
-
-The optional `[system_one]` vendor slot sends skill routing, compaction, and advisor
-checkpoints through one loopback proxy. Inspect it with `./agentbox.sh systemone backend`
-and `./agentbox.sh systemone proxy`; see [ADR-2139](docs/adr/ADR-2139-system-one-judge-as-a-vendor-slot.md)
-for backend selection, credentials, and locality rules.
+Use it for a persistent coding workspace, an auditable agent lab, local media/spatial tooling, or a host for governed repository-maintenance workflows. Nix pins the build inputs; runtime credentials, mounted data, model services and deployment state remain separate. A reproducible composition is not a guarantee that every action or external service is reproducible.
 
 ## Quickstart
 
-### Interactive onboarding (recommended)
+From the machine that will host the container:
 
 ```sh
 git clone https://github.com/DreamLab-AI/agentbox.git
@@ -197,14 +24,9 @@ cd agentbox
 ./scripts/start-agentbox.sh
 ```
 
-The browser-based wizard renders every `agentbox.toml` section with schema-validated form controls (no dependency beyond Python 3 for the local HTTP server). Pass `--tui` for the legacy terminal wizard.
+The onboarding flow configures the manifest and deployment prerequisites. Read [installation](docs/user/installation.md), [providers](docs/user/providers.md) and [configuration](docs/user/configuration.md) before enabling services that need credentials, host devices or external endpoints.
 
-<div align="center">
-<img src="docs/images/setup-wizard-overview.png" alt="Setup Wizard" width="720" />
-<br><em>Browser-based configuration wizard with schema-driven form controls</em>
-</div>
-
-### Fast path (pre-built image)
+For the prebuilt-image path:
 
 ```sh
 export AGENTBOX_IMAGE_REF=ghcr.io/dreamlab-ai/agentbox:latest
@@ -214,162 +36,114 @@ docker pull "$AGENTBOX_IMAGE_REF"
 ./agentbox.sh shell
 ```
 
-### Build from source
+Use an explicit image digest when you need an identified deployment. `latest` is a moving tag, not a reproducibility receipt. Review the generated Compose configuration and host mount paths; a Docker command issued inside another container resolves bind paths on the Docker host.
+
+### Update a running workspace
 
 ```sh
-git clone https://github.com/DreamLab-AI/agentbox.git
-cd agentbox
 ./scripts/agentbox-config-validate.sh
-./agentbox.sh up --build
-./agentbox.sh health
+./agentbox.sh prepare
 ```
 
-Next steps: [Configuration](docs/user/configuration.md) · [Providers and API keys](docs/user/providers.md) · [Desktop mode and VNC](docs/user/running.md)
+`prepare` builds and delivers a candidate without replacing the running Agentbox. Inspect its evidence and use the [incremental-build and recovery runbook](docs/developer/incremental-builds.md) before activating it. `./agentbox.sh activate` replaces Agentbox; it is a deliberate operational step, not a documentation check.
 
-Instruction tiers now come from [`config/instructions/`](config/instructions/README.md), not hand-edited runtime files. Before starting with the container-owned Claude home, run `./agentbox.sh migrate-claude-home`, then `./agentbox.sh preflight` (ADR-2118).
+Image-scoped SBOM/VEX evidence is described in [the vulnerability guide](docs/developer/vex.md). Its scope is the identified image, not the host, mounted secrets, sidecars or every service reachable from an agent.
 
----
+## How it fits together
 
-## Included Capabilities
-
-Your `agentbox.toml` manifest toggles capabilities on or off. Disabled features add zero bloat to the final image.
-
-| Category | Highlights |
-| :--- | :--- |
-| **Agent toolchains** | `claude-code`, `ruflo`, `antigravity` (agy), `agentic-qe`, `openai-codex` |
-| **Interaction plane** | [Agent of Empires](https://github.com/DreamLab-AI/agentbox-of-empires) session manager (`[interaction_plane]`) — TUI + web dashboard on loopback `:9095` behind a sole-ingress NIP-98 proxy (`:9096`, LAN-published as the multi-upstream sovereign ingress, [ADR-045](docs/archive/adr/ADR-045-sovereign-ingress-npub-front-door.md)); declarative `session_seeds` replace the MAD tmux harness tabs, each session bound to its own `did:nostr` / URN / beads epic / scoped namespace ([PRD-021](docs/archive/prd/PRD-021-interaction-surface-consolidation.md), [ADR-042](docs/archive/adr/ADR-042-agent-of-empires-interaction-plane.md)/[043](docs/archive/adr/ADR-043-session-identity-binding.md)/[044](docs/archive/adr/ADR-044-voice-plane-aoe-repoint.md)) |
-| **Consultants** | Meta-router for named external consultations: DeepSeek, Perplexity, Z.AI (GLM), Antigravity |
-| **Browser and web** | External browsercontainer sidecar (chrome-devtools-mcp, Chrome Beta 149+, GPU-accelerated) |
-| **Media and design** | Local ComfyUI (or external URL), ImageMagick, FFmpeg |
-| **Spatial and 3D** | QGIS geospatial analysis, Blender modelling, 3D Gaussian Splatting |
-| **Data science and docs** | PyTorch, Jupyter Lab, LaTeX, Mermaid rendering |
-| **Code-as-Harness** | Persistent Python kernel MCP, ExpeL post-task lesson distillation, Voyager verified-skill library, SWE-agent ACI MCP, execution-gated tree-search ([PRD-008](docs/archive/prd/PRD-008-code-as-harness-integration.md)) |
-| **Knowledge grounding** | RuvNet Brain corpus (~90k source chunks, 21+ RuvNet ecosystem repos) in the shared ruvector-postgres sidecar under the write-protected `ruvnet-kb` namespace — `search_ruvnet` MCP + a UserPromptSubmit grounding hook prevent hallucination about ruflo/ruvector/agentdb tooling |
-| **Governance** | Agent Control Surface Protocol (kinds 31400–31405) — cross-repo human-in-the-loop integration with the dreamlab forum via the embedded relay; the producer (`management-api/lib/agent-control-surface.js`) mints and publishes the panel events. See [sovereign mesh](docs/developer/sovereign-mesh.md) |
-| **Consumer economy** | Governed outbound payment pipeline ([PRD-015](docs/archive/prd/PRD-015-consumer-broadcast-economy.md) Phase 1): 402-scheme classifier, fail-closed spend-policy middleware, receipt + activity URNs on every spend attempt, `/.well-known/x402.json` discovery. Lightning-first — NWC/L402 is the only planned real-money rail. [ADR-032](docs/archive/adr/ADR-032-402-scheme-grammar.md) |
-| **Embodied agent loop** | Bi-directional `/wss/agent-events` channel ([ADR-014](docs/archive/adr/ADR-014-bidirectional-graph-state-ingress.md)) — agents emit a canonical `agent_action` signal a host renders as a live actor (coloured beam + transient edge), and consume inbound user-interaction events. See [ADR-026](docs/archive/adr/ADR-026-cross-substrate-agent-loop-seams.md), [PRD-014](docs/archive/prd/PRD-014-embodied-agent-loop.md) |
-| **Operations** | OTLP tracing, Prometheus metrics (`:9091/metrics`), Tailscale VPN integration |
-
-Deep-dives: [Code-as-Harness](docs/developer/code-as-harness.md) · [Consumer economy loop](docs/developer/economy-loop.md) · [Project tracking](docs/archive/adr/ADR-035-project-tracking-telemetry-and-nostr-kind.md)
-
----
-
-## The Sovereign Data Stack
-
-The core differentiator of Agentbox is the **identity and tracing mesh**.
-
-Agentbox generates a BIP-340 secp256k1 keypair at bootstrap. The agent's public key becomes a `did:nostr:<hex-pubkey>` identity, and **every resource, action, and event is rooted in it**. From that single root, 19 kinds of `urn:agentbox:<kind>:[<scope>:]<local>` identifiers name every entity: pods, credentials, receipts, activities, events, memories, skills, decisions, governance docs, and more. Owner-scoped kinds embed the hex pubkey — `urn:agentbox:credential:<hex-pubkey>:<sha256-12-…>` means that credential was issued by that agent and no other. Content-addressed kinds are deterministic: the same payload always produces the same URN, so re-emitting never double-counts.
-
-| Surface | Where the DID appears |
-|:--------|:----------------------|
-| Login + relay auth | Nostr relay NIP-42 / NIP-98 HTTP signatures |
-| WAC principal | Solid pod `acl:agent` field |
-| DID Document | `GET /.well-known/did.json` |
-| Provenance author | git-mark commits + activity URNs |
-
-All URNs are minted through [`management-api/lib/uris.js`](management-api/lib/uris.js) — ad-hoc `format!()` or template-literal construction is prohibited. Because Agentbox uses canonical URIs and JSON-LD, the built-in [linked-object viewer](docs/user/linked-object-viewer.md) at `/lo/*` navigates the graph of an agent's memories, decisions, and credentials; `/v1/uri/<urn>` resolves any URN to its current HTTP representation (best-effort: 307/404/410).
-
-**Provenance substrate.** The `solid-pod-rs` provenance release upgrades the pod backend into a trust ledger: git-marks make provenance the default (not an afterthought), and block-trails scale traceability from free (git/hash-chain) to settlement-grade (Bitcoin taproot anchor) per record. The deeper wiring — receipts carrying `git_commit_sha` + block-height trailers and crossing those trailers across the host-graph boundary — is the next increment, tracked in [economy-loop.md](docs/developer/economy-loop.md#what-remains).
-
-Deeper reading: [Identity and tracing mesh](docs/developer/identity-mesh.md) · [ADR-013 — Canonical URI grammar](docs/archive/adr/ADR-013-canonical-uri-grammar.md) · [ADR-005 — Pluggable adapter architecture](docs/archive/adr/ADR-005-pluggable-adapter-architecture.md) · [PRD-006 — Linked-data interfaces](docs/archive/prd/PRD-006-linked-data-interfaces.md)
-
----
-
-## Semantic Integrity & Decision Intelligence
-
-Most agent frameworks record what an agent did in a log an administrator can rewrite. Agentbox's host graph makes every change to shared knowledge pass **three distinct gates** — integrity, reasoning, authorisation — then signs, attributes, and time-stamps what survives. Consistency is not integrity, and neither is permission; the write receipt reports all three verdicts separately (`conflict: pass · whelk: consistent · acsp: pending`).
-
-| Their frame (mutable agent logs) | Our stronger claim |
-|:-----------------------------|:-------------------|
-| Auditable via PROV-O lineage | **Cryptographically sovereign** — writes and decisions attribute to the authenticated `did:nostr`, never a request field; ownership is a multi-key chain, not an editable log |
-| Post-hoc policy validation | **Governed** — ACSP human-in-the-loop authorisation on every mutation, as a distinct gate |
-| Rule engines that validate OWL | **A reasoner that classifies it** — Whelk OWL 2 EL materialised subsumption runs on every proposal before governance sees it |
-| 2D dashboard visualisation | **Multi-user, immersive, multi-surface** — the reasoned graph rendered in XR over self-sovereign links |
-
-Shipped proof point: the pre-merge conflict gate's first run over the live corpus caught **2 subclass cycles and 57 relation contradictions** that structural validation had missed; live against the running store it enumerated 3 further cycles and 92 duplicate concepts as an advisory cleanup backlog while continuing to pass clean proposals. Decisions are first-class graph nodes (`urn:agentbox:decision:*`) with causal links, bounded derived traversal, and idempotent, replay-safe commits.
-
-Deeper reading: [PRD-022 — Semantic integrity, provenance and decision intelligence](docs/archive/prd/PRD-022-semantic-integrity-provenance-decisions.md) · [ADR-047 — Native capability boundary](docs/archive/adr/ADR-047-semantica-tenant-integration-boundary.md) · [ADR-048 — Decision records](docs/archive/adr/ADR-048-decision-records-as-graph-nodes.md) · [ADR-049 — Bi-temporal facts and runtime PROV-O](docs/archive/adr/ADR-049-bitemporal-facts-and-runtime-provenance.md) · [DDD-020 — Semantic integrity domain](docs/archive/ddd/DDD-020-semantic-integrity-provenance-domain.md)
-
----
-
-## Federation Transports
-
-Agentbox participates in three federation strata, each enabled independently via `agentbox.toml` and `.env`.
-
-- **Stratum 1 — Tailscale (private mesh).** Each container joins the tailnet with `--tun=userspace-networking` (no `/dev/net/tun`). Its MagicDNS hostname (from `[networking].hostname`) becomes the service-discovery address. Tailscale ACLs control access at this layer; `did:nostr` signatures are not evaluated here.
-- **Stratum 2 — Nostr relays.** The embedded `nostr-rs-relay` (`:7777`) is both local event store and mesh relay. Governance events (kinds 31400–31405) stay on private relays; public relays provide censorship-resistant fallback. Traffic is authenticated via NIP-98/NIP-42 `did:nostr` Schnorr signatures.
-- **Stratum 3 — Cloudflare tunnels (edge ↔ local).** A CF tunnel exposes the in-container solid-pod-rs to Workers services without opening public ports. Full runbook: [Native pod tunnel](docs/user/solid-pod-sidecar.md).
-
-```toml
-# agentbox.toml
-[networking]
-tailscale = true
-hostname  = "agentbox-london"
-
-[mesh]
-peer_relays = [
-    "ws://agentbox-paris.tailnet-name.ts.net:7777",  # Tailscale peer
-    "wss://relay.damus.io",                          # Public relay
-]
+```mermaid
+flowchart TB
+    MANIFEST["agentbox.toml"] --> BUILD["Nix composition and pinned tools"]
+    BUILD --> IMAGE["Container image"]
+    MANIFEST --> BOOT["Boot projection and reconciliation"]
+    IMAGE --> BOOT
+    BOOT --> SESSIONS["Interaction plane and agent sessions"]
+    BOOT --> SERVICES["Supervised services and capability gates"]
+    SESSIONS --> TOOLS["Registered tools and skills"]
+    TOOLS --> ADAPTERS["Durable-state adapters"]
+    ADAPTERS --> WRAPS["Observability and configured privacy policy"]
+    WRAPS --> STATE["Memory, pods, events and task state"]
+    SERVICES --> ID["Identity and authorisation boundaries"]
+    ID --> STATE
+    EXTERNAL["Configured model and tool sidecars"] -.-> TOOLS
 ```
 
-See [Tailscale guide](docs/user/tailscale.md) · [Mesh deployment](docs/user/mesh-deployment.md) · [Sovereign mesh](docs/developer/sovereign-mesh.md)
+The five durable-state adapter slots are **beads, pods, memory, events and orchestrator**. Each selects a configured implementation class or `off`. These slots are not universal interception of filesystem writes or arbitrary tool/network calls. Observability and privacy wrap adapter dispatch; linked-data encoding is a separately gated route-level stage. Read [the baseline](docs/BASELINE-container.md) and [adapter guide](docs/developer/adapters.md) for the current contract.
 
----
+The interaction plane uses Agent of Empires behind the configured identity ingress. Sessions can bind a `did:nostr` identity, URN, task epic and scoped memory namespace. Tool permissions and signing authority remain distinct from an identity label. See [ingress and identity](docs/INGRESS-identity.md).
 
-## Documentation
+## Capabilities
 
-**Operators** — [Quickstart](docs/user/quickstart.md) · [Installation](docs/user/installation.md) · [Configuration](docs/user/configuration.md) · [Running](docs/user/running.md) · [Providers](docs/user/providers.md) · [Backup and restore](docs/user/backup-restore.md) · [Troubleshooting](docs/user/troubleshooting.md)
+| Area | What the configuration selects | Boundary |
+|---|---|---|
+| Agent development | Agent CLIs, toolchains, registered skills and commands | Registrations and actual baked versions come from the selected build |
+| Browser/media/spatial tools | Browser, ComfyUI, Blender, QGIS and related tooling | Many execute in sidecars or on configured hosts; a skill entry does not prove a service is running |
+| Durable memory | MCP access to the RuVector/Postgres sidecar | The mandatory memory service has no in-process SQLite fallback |
+| Pods and identity | Native Solid pod service, bridges and configured signing paths | Feature gates, credential custody and receipts determine authority |
+| Knowledge work | Released Ontomark corpus tools plus `vault` governance/query surfaces and Loom integration | Retrieval does not authorise a mutation or validate every agent assertion |
+| Repository improvement | Product-specific host over the extracted Dream Engine crates | A gate verdict, published draft and human merge are distinct stages |
+| Telemetry | Configured tracing, logs and metrics | Coverage follows the instrumented dispatch paths |
 
-**Sovereign / linked data** — [Sovereign stack](docs/user/sovereign-stack.md) · [Solid pod](docs/user/solid-pod.md) · [Nostr relay](docs/user/nostr-relay.md) · [Privacy filter](docs/user/privacy-filter.md) · [Linked-data interfaces](docs/user/linked-data.md) · [Canonical URIs](docs/user/uris.md) · [Linked-object viewer](docs/user/linked-object-viewer.md) · [Consultants](docs/user/consultants.md)
+Skill and server counts change with registrations and build choices. Consult the manifest, generated runtime inventory and [registration instructions](AGENTS.md) rather than a copied catalogue count.
 
-**Developers** — [Architecture](docs/developer/architecture.md) · [Identity and tracing mesh](docs/developer/identity-mesh.md) · [Adapter pattern](docs/developer/adapters.md) · [Sovereign mesh](docs/developer/sovereign-mesh.md) · [Ecosystem integration](docs/developer/ecosystem.md) · [Testing](docs/developer/testing.md) · [Backlog / next steps](docs/developer/backlog.md)
+<details>
+<summary><strong>Privacy, hardening and role isolation</strong></summary>
 
-**Reference** — [ADR index](docs/archive/adr/) · [PRD index](docs/archive/prd/) · [DDD index](docs/archive/ddd/) · [System audit 2026-07-15](docs/archive/audit-2026-07-15.md) · [Docs hub](docs/README.md)
+Privacy redaction is configured per adapter slot. Strict, soft and disabled policies have different failure behaviour. It does not intercept every file, prompt or outbound tool call; inspect the relevant path before making a confidentiality claim.
 
----
+The container composition includes non-root operation, reduced capabilities, read-only-rootfs policy and supplemental syscall restrictions where configured. Host mounts, Docker access and external services alter the effective boundary. The container runtime, operator configuration and credential custody matter as much as a default manifest.
 
-## Status & remaining work
+`[security].role_isolation` is **false in the inspected manifest**. The role-account and identity-port work therefore must not be described as active merely because its implementation exists. Enabling it requires the documented rebuild/activation path. See [capability governance](docs/GOVERNANCE-capabilities.md) and [the identity baseline](docs/INGRESS-identity.md).
 
-Honest state as of **2026-07-22**. Maturity words follow the ADR-002 ladder (*scaffolded / integrated / released*); the cross-repo work register is VisionClaw's [`docs/TODO-unified.md`](https://github.com/DreamLab-AI/VisionClaw), and agentbox detail lives in [docs/developer/backlog.md](docs/developer/backlog.md).
+</details>
 
-| Capability | Maturity | Honest boundary |
-|:-----------|:---------|:----------------|
-| Reproducible Nix container | released | Byte-for-byte image build; non-root, read-only rootfs, seccomp denylist. |
-| Skills | released | **116** skills (validator schema fix landed 2026-07-22, C-6 — corrected from 115). |
-| `did:nostr` identity spine | integrated | One keypair as login + WAC principal + provenance author + DID subject + payment account. |
-| NIP-59 session mirror | released | Per-turn session mirror to the operator's phone via gift-wrapped self-DM. |
-| RuVector semantic memory | integrated | Shared ruvector-postgres sidecar, bge-small-en-v1.5 (384-dim, client-side embeddings). |
-| Learning loop | integrated | Capture→distil is **closed** (405 trajectories / 8,806 judged steps → 12 Wilson aggregates → 13 distilled patterns). The `feed_retrieval` / `feed_routing` consumers remain the open gates (`false`, awaiting the Wilson data floor, D-1). |
-| ACSP signed governance (kinds 31400–31405) | integrated | Producer live; the forum's admin key publishes the Decision. Serves one use case today (ontology concept elevation) — narrower than a universal HITL claim. Every published 31402 now carries the ADR-2011 task-property triple (`tp-verifiability` / `tp-reversibility` / `tp-stakes`), so escalation posture derives from operator-declared properties of the task rather than the requesting agent's self-tier (ADR-2087). |
-| Governance accountability loop (ADR-2087) | built, not activated | Gate denials are journalled as hash-chained `authority.deny` records readable at `/v1/agent-events`; application receipts (`consumer-received` → `applied` / `not-applied` / `applied-manually`) are mirrored to the forum receipts endpoint under NIP-98, so a human learns whether their approval took effect, and `governance_manual_continue` gives an outage a signed, digest-bound continuation path. **Receipts queue rather than post until `[sovereign_mesh.relay].forum_auth_api` is set and the endpoint is deployed** — the queue is durable and every attempt is journalled. |
-| Consumer economy (PRD-015) | integrated | Phase 1 shipped (in-mesh `agentbox-ledger` debit). Lightning settlement via NWC/L402 is Phase 3 — **not yet shipped**. |
-| Code-as-Harness (PRD-008) | integrated | Phase 1 + 2 enabled in the manifest, **except** `tree-search-coder` — armed but unauthored; author or disarm (C-4). |
-| Sovereign mesh | integrated (single-node) | Condense scheduler + relay allowlist live after the round-1 rebuild. The allowlist is baked but inert until the T-6 image rebuild exposes it fully; cross-relay / cross-org federation is **designed, not shipped**. |
+<details>
+<summary><strong>Identity, memory and provenance contracts</strong></summary>
 
-Landed on 2026-07-22 (Tick-1): MCP-registry projection (C-5), secrets `0600` hardening (C-7), env consolidation (C-8). The next-rebuild payload (T-6) is entrypoint/source enforcement plus full mesh-allowlist exposure. A nix GPU library-path fallback (C-9) is pending if in-container GPU is wanted.
+Canonical identifiers are minted through [`management-api/lib/uris.js`](management-api/lib/uris.js). Sharing a Nostr public key format does not make every service share the same access policy, and not every generated file is automatically attributed.
 
----
+Durable shared memory uses the MCP tools and the configured embedding pipeline. Raw database writes or bypass CLIs can produce rows that semantic retrieval cannot find. The [memory baseline](docs/LEARNING-memory.md) records the geometry, recall gates and lifecycle rules.
 
-## Contributing
+Pod provenance is feature- and outcome-dependent: storing bytes, committing a local mark and confirming an external anchor are different receipt stages. The pod server can report a successful resource write with incomplete provenance; consumers must read the receipt rather than infer it from HTTP success.
 
-1. Read [docs/developer/architecture.md](docs/developer/architecture.md).
-2. Validate the manifest before changing build or runtime behaviour.
-3. Prefer manifest-gated additions over ad hoc runtime mutation.
-4. Treat hardening, probe semantics, URI grammar, and linked-data surfaces as architectural changes — propose them via an ADR.
+Governance proposals, responses and application receipts also have distinct owners. The runtime can forward and journal them; it does not turn every action into a human-approved mutation. See [identity mesh](docs/developer/identity-mesh.md), [sovereign mesh](docs/developer/sovereign-mesh.md) and [the economy loop](docs/developer/economy-loop.md).
 
----
+</details>
 
-## License
+## Recent source changes
 
-Core project: [AGPL-3.0](LICENSE). Running Agentbox as a hosted service — including on behalf of other users — requires you to make the full source (including modifications) available to those users. Self-hosted and internal use carry no obligations beyond the standard copyleft terms. Optional components (`linkedobjects/browser`, `solid-pod-rs`) are also AGPL-3.0; other bundled components are MIT or Apache-2.0. See [Licensing details](docs/developer/licensing.md) for the full matrix.
+The October history since the previous README update includes these independently reviewable changes:
 
----
+- **Corpus tooling:** refreshed Ontomark pins and corpus verbs; the vault layout uses its manifest path authority. `vault` gained the newer derivation-certificate/consequence tooling through an identified VisionClaw source pin.
+- **Dream Engine:** the host consumes the extracted permissive crates and now carries requested-source supply and structured operator decisions. [ADR-2143](docs/adr/ADR-2143-source-supply-is-plumbing-and-decisions-are-plain-english.md) records the host contract.
+- **Pod forge:** alpha.17 server features include forge and mirror support. [ADR-2145](docs/adr/ADR-2145-the-solid-pod-forge-and-mirror-are-compiled-in-and-inert-until-named.md) records a 20 October deployment with `/forge` responding and **zero** mirror follows/announce relays. A running forge is not automatic mirroring or a VisionClaw forge route.
+- **Activity sink:** the hook merged under [ADR-2146](docs/adr/ADR-2146-activity-sink-hook.md), remains default-off and needs explicit endpoint/token configuration. It is no longer only an unmerged Codescape branch.
+- **Instruction projection:** [ADR-2144](docs/adr/ADR-2144-the-floor-is-a-managed-tier-and-a-decline-is-recorded-verbatim.md) records the managed instruction tier and decline recorder, including dated activation evidence.
+- **Identity and dependencies:** signed epoch-ticket/inbox-key handling and locked toolchain updates landed on 21 October. Source validation of those changes does not imply the current image contains them.
 
-<div align="center">
+## Working status
 
-**Part of [VisionFlow](https://github.com/DreamLab-AI/VisionFlow)** — agentbox runs the agents; [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) renders the embodied agent loop; [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) stores sovereignly; the [forum](https://github.com/DreamLab-AI/nostr-rust-forum) and [website](https://github.com/DreamLab-AI/dreamlab-ai-website) provide governance and operator surfaces.
+**Source reviewed 21 October 2026 at `cd72f3a1e`.** The manifest and current source are authoritative for selected features; an image digest, boot/readiness report and acceptance receipt establish what a deployment uses.
 
-[Documentation](docs/README.md) · [Issues](https://github.com/DreamLab-AI/agentbox/issues) · [Releases](https://github.com/DreamLab-AI/agentbox/releases) · [Container Registry](https://github.com/DreamLab-AI/agentbox/pkgs/container/agentbox)
+The dated forge/instruction deployment receipts above describe specific 20 October behaviour. This README refresh did not rebuild or activate an image, rerun the full runtime suite, verify current memory recall, or certify cross-organisation federation. Older July status tables and performance totals do not describe the present runtime.
 
-</div>
+## Where it sits in VisionFlow
+
+| Project | Relationship |
+|---|---|
+| [VisionFlow](https://github.com/DreamLab-AI/VisionFlow) | Cross-estate architecture and compatibility guide |
+| [VisionClaw](https://github.com/DreamLab-AI/VisionClaw) | Knowledge application and graph observations; a separately deployed consumer |
+| [solid-pod-rs](https://github.com/DreamLab-AI/solid-pod-rs) | Native pod and forge implementation, selected by Agentbox's build |
+| [nostr-rust-forum](https://github.com/DreamLab-AI/nostr-rust-forum) | Communication and governance contracts |
+| [Loom](https://github.com/DreamLab-AI/loom) | Configured grounding/model service |
+| [Ontomark](https://github.com/DreamLab-AI/ontomark) | Shared Markdown-ontology toolchain |
+| [dream-engine](https://github.com/DreamLab-AI/dream-engine) | Reusable gate/loop libraries; Agentbox owns its product-specific host |
+| [sidestr-rs](https://github.com/DreamLab-AI/sidestr-rs) | Economic protocol libraries; chain-instance configuration stays in [`config/sidechain/`](config/sidechain/) |
+
+## Documentation, contribution and licence
+
+[Docs hub](docs/README.md) · [Quickstart](docs/user/quickstart.md) · [Architecture](docs/developer/architecture.md) · [Testing](docs/developer/testing.md) · [Backup/recovery](docs/user/backup-restore.md) · [Decision ledger](docs/adr/README.md)
+
+Validate the manifest before changing build/runtime behaviour, classify apply behaviour correctly and use the relevant contract gates. Published ports, credential handling, identifier rules and adapter dispatch are architectural contracts.
+
+The core project uses [AGPL-3.0](LICENSE). Bundled tools and extracted libraries have their own terms; see [the licensing matrix](docs/developer/licensing.md) and third-party notices. Maintained by [John O'Hare](https://github.com/jjohare) / DreamLab AI, with upstream attribution in [MAINTAINERS.md](MAINTAINERS.md), including Melvin Carvalho's Solid/JSS work.
