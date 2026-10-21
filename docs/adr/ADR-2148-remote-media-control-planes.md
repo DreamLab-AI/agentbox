@@ -4,10 +4,10 @@ title: Typed remote media control planes alongside existing bridges
 date: 2026-10-21
 decision_status: accepted
 implementation_status: complete
-activation_status: staged
+activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 832ed1e2de93563d0442857fe542905d127eaa84
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -58,3 +58,20 @@ and research chapter 15 for evidence and remaining experiments.
 
 Rebuild Agentbox and the sidecars to persist these changes; a live hot update
 alone is not deployment evidence.
+
+## Deployment verification — 2026-10-21
+
+Rebuilt and activated Agentbox, ComfyUI and the GUI sidecar. ComfyUI's pinned
+core/LTXVideo/BFS revisions import successfully; its MCP adapter negotiates and
+reads the live queue, CUDA allocation works, and all campaign-required nodes are
+present. Model/input/output/user mounts match the previous container and the
+independent provisioning worker retains its container identity. Model download
+completion and workflow inference are separate from these deployment checks.
+
+Blender 5.2.2 LTS serves the raw bridge and the typed gateway. An MCP client
+discovers the running instance, loads the scene skill and reads session info;
+the restored scene retains nine objects, frame 49 and 25 fps. QGIS and D-Bus
+are healthy. Expose the pinned native gateway executable on PATH: an embedded
+fallback is not equivalent deployment evidence. Quartz and OpenDSS now resolve
+in separate environments, both passing dependency checks and import/engine
+smokes. The Arch base is pinned to the digest used for this deployment.
