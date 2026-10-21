@@ -1,6 +1,6 @@
-# FLUX 2 Quickstart (current pod setup)
+# FLUX 2 workflow reference (requires model provisioning)
 
-The container's live setup runs FLUX 2 with separate UNET/CLIP/VAE loaders and
+This example uses separate UNET/CLIP/VAE loaders and
 `SamplerCustomAdvanced`. Everything below assumes the `comfyui` Docker hostname
 (see the container-architecture section in `SKILL.md`).
 
@@ -17,7 +17,16 @@ for dev in d.get('devices', []):
 "
 ```
 
-## Step 2: Create and submit a FLUX 2 workflow
+## Step 2: Verify model choices, then create a workflow
+
+Fetch `/object_info/UNETLoader`, `/object_info/CLIPLoader` and
+`/object_info/VAELoader` first. The filenames below are example requirements,
+not an inventory. The 21 October sidecar has H3 and MOSS weights; it does not
+have the listed FLUX diffusion model or Mistral encoder. Use the durable
+`scripts/comfy_client.py` harness for new jobs rather than the manual shell
+submission below.
+
+### Example graph
 
 ```bash
 # Create workflow JSON
@@ -169,7 +178,7 @@ curl -s -X POST "http://comfyui:8188/free" \
   -d '{"unload_models": true, "free_memory": true}'
 ```
 
-## Available models (current setup)
+## Models required by this example
 
 | Component | Model File | Notes |
 |-----------|-----------|-------|

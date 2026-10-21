@@ -150,3 +150,7 @@ always-loaded home in the workspace-tier `CLAUDE.md`. The repo-specific rules
 - **AoE hub history:** the old unbounded `agentbox-mcp hub` wait read RUNNING for three days over a port that was never bound (ADR-2104); nine MCP servers are hub-routed (`[resources.mcp_hub].servers`).
 - **Agent prompts for Claude Fable 5.1:** request concise progress updates during long tool loops, permit batching independent tool calls, require completion without re-asking for already-authorised steps, and prefer targeted edits over whole-file rewrites.
 - **Subsystem pointers:** browser container — [browsercontainer/README.md](../../../browsercontainer/README.md); voice plane — [voice/README.md](../../../voice/README.md) and [config/tab0-bridge/README.md](../../../config/tab0-bridge/README.md) (Caddy :8444, tab0-bridge :8971, Unmute loop); security audit sprint — CHANGELOG.md `[Security Audit Sprint] - 2026-05-11` (7 fixes).
+
+Media control-plane update: Blender retains its socket/background-job path and
+adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
+dependencies. See [ADR-2148](../../adr/ADR-2148-remote-media-control-planes.md).

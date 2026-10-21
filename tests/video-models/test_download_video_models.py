@@ -79,5 +79,27 @@ class DownloadTests(unittest.TestCase):
             m.download(self.model, self.root)
         request.assert_not_called()
 
+    def test_campaign_deduplicates_shared_weights_and_rejects_collisions(self):
+        other = dict(self.model, sha256='b'*64)
+        with patch.dict(m.PROFILES, {'one': [self.model], 'two': [self.model], 'bad': [other]}):
+            self.assertEqual(m.selected_models(['one', 'two']), [self.model])
+            with self.assertRaisesRegex(ValueError, 'Conflicting'):
+                m.selected_models(['one', 'bad'])
+
+    def test_plan_never_calls_network_or_marks_size_match_verified(self):
+        self.target.write_bytes(self.body)
+        with patch.dict(m.PROFILES, {'fixture': [self.model]}), patch.object(m.urllib.request, 'urlopen') as request:
+            plan = m.provision_plan(['fixture'], self.root)
+        request.assert_not_called()
+        self.assertEqual(plan['files'][0]['state'], 'size_match_unverified')
+        self.assertEqual(plan['download_bytes_remaining_by_size'], 0)
+
+    def test_token_is_not_forwarded_in_redirect_headers(self):
+        with patch.dict(m.os.environ, {'HF_TOKEN': 'test-placeholder'}), patch.object(m.urllib.request, 'urlopen', return_value=Response(self.body)) as request:
+            m.download(self.model, self.root)
+        req = request.call_args.args[0]
+        self.assertNotIn('Authorization', req.headers)
+        self.assertEqual(req.unredirected_hdrs['Authorization'], 'Bearer test-placeholder')
+
 if __name__ == '__main__':
     unittest.main()

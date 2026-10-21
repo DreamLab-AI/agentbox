@@ -1,0 +1,9 @@
+**
+!comfyui-sidecar/
+!comfyui-sidecar/Dockerfile
+!skills/
+!skills/comfyui/
+!skills/comfyui/scripts/
+!skills/comfyui/scripts/download_video_models.py
+!skills/comfyui/models/
+!skills/comfyui/models/stopmotion-candidates.json

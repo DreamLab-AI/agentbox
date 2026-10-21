@@ -9,7 +9,7 @@
 # supervised proxy already exposes the socket on localhost:9876, and tools/
 # mcp-blender-client.js bridges it — but native tools are nicer when doing real work.)
 #
-# The registered server is `uvx blender-mcp`, which connects to localhost:9876 (the
+# The registered server is the baked MCP bridge, which connects to localhost:9876 (the
 # agentbox proxy → gui-tools-service sidecar). Idempotent: re-running is a no-op.
 #
 # Usage: register-mcp.sh [--remove]
@@ -33,17 +33,17 @@ cfg.mcpServers = cfg.mcpServers || {};
 if (remove) {
   if (cfg.mcpServers.blender) { delete cfg.mcpServers.blender; console.log('register-mcp: removed blender from', path); }
   else console.log('register-mcp: blender not present, nothing to remove');
-} else if (cfg.mcpServers.blender) {
+} else if (cfg.mcpServers.blender && cfg.mcpServers.blender.command !== 'uvx') {
   console.log('register-mcp: blender already registered in', path, '(no-op)');
 } else {
   cfg.mcpServers.blender = {
-    command: 'uvx',
-    args: ['blender-mcp'],
+    command: 'node',
+    args: ['/opt/agentbox/skills/blender/tools/mcp-blender-client.js'],
     // uvx blender-mcp connects to BLENDER_HOST:BLENDER_PORT — the agentbox proxy
     // (localhost:9876) bridges to the gui-tools-service sidecar.
     env: { BLENDER_HOST: 'localhost', BLENDER_PORT: '9876' },
   };
-  console.log('register-mcp: added blender (uvx blender-mcp -> localhost:9876) to', path);
+  console.log('register-mcp: registered Blender MCP (baked node bridge -> localhost:9876) to', path);
 }
 fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
 NODE

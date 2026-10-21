@@ -40,3 +40,21 @@ def _start():
 # start on the main thread once the event loop is up
 bpy.app.timers.register(_start, first_interval=2.0, persistent=True)
 print("BLENDERMCP_STARTUP_QUEUED")
+
+def _start_dcc():
+    if os.environ.get("DCC_MCP_ENABLED", "1") != "1":
+        print("DCC_MCP_DISABLED")
+        return None
+    try:
+        import sys
+        sys.path.insert(0, "/opt/gui-tools/dcc-python")
+        import dcc_mcp_blender
+        server = dcc_mcp_blender.start_server(
+            port=9880, gateway_remote_host="0.0.0.0", gateway_remote_port=9881)
+        print(f"DCC_MCP_SERVING instance={server.port} gateway=:9881/mcp")
+    except Exception as error:
+        # Keep the established raw socket operational if the candidate fails.
+        print("DCC_MCP_START_ERROR", type(error).__name__, error)
+    return None
+
+bpy.app.timers.register(_start_dcc, first_interval=3.0, persistent=True)

@@ -154,3 +154,7 @@ The core project uses [AGPL-3.0](LICENSE). Bundled tools and extracted libraries
 
 Codex sessions persist in `agentbox-codex-home`; existing tmpfs installations
 need a [one-time migration](docs/adr/ADR-2147-retain-codex-session-state.md) before replacement.
+
+Media control-plane update: Blender retains its socket/background-job path and
+adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
+dependencies. See [ADR-2148](docs/adr/ADR-2148-remote-media-control-planes.md).

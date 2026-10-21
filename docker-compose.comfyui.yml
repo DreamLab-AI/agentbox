@@ -4,12 +4,15 @@
 services:
   comfyui:
     build:
-      context: ./comfyui-sidecar
+      context: .
+      dockerfile: comfyui-sidecar/Dockerfile
     image: agentbox-comfyui:local
     container_name: comfyui
     restart: unless-stopped
     environment:
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      # Runtime model provisioning only; never a Docker build argument.
+      HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:
         reservations:
@@ -31,6 +34,23 @@ services:
       timeout: 10s
       start_period: 120s
       retries: 3
+  model-provision:
+    # One-shot CPU download worker; no GPU reservation and no inference.
+    # Independent of ComfyUI lifecycle so rebuilding the service retains transfers.
+    profiles: [provision]
+    image: agentbox-comfyui:local
+    container_name: agentbox-media-provision
+    restart: "no"
+    entrypoint: [python, /opt/agentbox-media/scripts/download_video_models.py]
+    command: [--campaign, "${COMFY_MODEL_CAMPAIGN:-core}", --models-dir, /opt/ComfyUI/models]
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - comfyui-models:/opt/ComfyUI/models
+    networks: [agentbox]
+    cpus: 2
+    mem_limit: 1g
 networks:
   agentbox:
     external: true

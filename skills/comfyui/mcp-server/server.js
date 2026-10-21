@@ -93,17 +93,21 @@ class ComfyUIClient extends EventEmitter {
             options.body = JSON.stringify(body);
         }
 
+        options.signal = AbortSignal.timeout(30000);
         const response = await fetch(url, options);
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return response.json();
+        const text = await response.text();
+        return text ? JSON.parse(text) : {};
     }
 
     async submitWorkflow(workflow) {
-        const response = await this.httpRequest('/prompt', 'POST', { prompt: workflow });
+        const prompt = workflow?.prompt || workflow;
+        if (!prompt || typeof prompt !== 'object' || Array.isArray(prompt)) throw new Error('Expected an API workflow graph');
+        const response = await this.httpRequest('/prompt', 'POST', { prompt });
         const jobId = response.prompt_id;
 
         if (jobId) {
@@ -118,52 +122,34 @@ class ComfyUIClient extends EventEmitter {
     }
 
     async getJobStatus(jobId) {
-        const tracked = this.jobTracking.get(jobId);
-        if (!tracked) {
-            return { found: false, jobId };
+        if (typeof jobId !== 'string' || !/^[A-Za-z0-9_-]+$/.test(jobId)) {
+            throw new Error('Invalid job ID');
         }
-
-        try {
-            const history = await this.httpRequest('/history/' + jobId);
-            if (history[jobId]) {
-                return {
-                    found: true,
-                    jobId,
-                    status: history[jobId].status?.status_str || 'completed',
-                    outputs: history[jobId].outputs,
-                    tracked: tracked.status
-                };
-            }
-
-            // Check queue
-            const queue = await this.httpRequest('/queue');
-            const inQueue = queue.queue_running?.some(item => item[1] === jobId) ||
-                           queue.queue_pending?.some(item => item[1] === jobId);
-
-            return {
-                found: true,
-                jobId,
-                status: inQueue ? 'queued' : tracked.status,
-                tracked: tracked.status
-            };
-        } catch (err) {
-            return {
-                found: true,
-                jobId,
-                status: 'error',
-                error: err.message
-            };
+        const history = await this.httpRequest('/history/' + encodeURIComponent(jobId));
+        if (history[jobId]) {
+            const item = history[jobId];
+            return { found: true, jobId, status: item.status?.status_str === 'error'
+                ? 'error' : item.status?.completed ? 'completed' : 'unknown',
+                outputs: item.outputs || {}, diagnostics: item.status?.messages || [] };
         }
+        const queue = await this.httpRequest('/queue');
+        const running = queue.queue_running?.some(item => item[1] === jobId);
+        const pending = queue.queue_pending?.some(item => item[1] === jobId);
+        return { found: running || pending || false, jobId,
+            status: running ? 'running' : pending ? 'queued' : 'unknown' };
     }
 
     async cancelJob(jobId) {
-        try {
-            await this.httpRequest('/interrupt', 'POST');
-            this.jobTracking.delete(jobId);
+        const queue = await this.httpRequest('/queue');
+        if (queue.queue_pending?.some(item => item[1] === jobId)) {
+            await this.httpRequest('/queue', 'POST', { delete: [jobId] });
             return { success: true, jobId };
-        } catch (err) {
-            return { success: false, jobId, error: err.message };
         }
+        if (queue.queue_running?.some(item => item[1] === jobId)) {
+            await this.httpRequest('/interrupt', 'POST', { prompt_id: jobId });
+            return { success: true, jobId };
+        }
+        return { success: false, jobId, error: 'Job is not queued or running' };
     }
 
     async listModels() {
@@ -176,167 +162,18 @@ class ComfyUIClient extends EventEmitter {
     }
 
     async listOutputs() {
-        try {
-            const view = await this.httpRequest('/view');
-            return { success: true, outputs: view };
-        } catch (err) {
-            return { success: false, error: err.message };
-        }
+        const history = await this.httpRequest('/history?max_items=50');
+        return { success: true, outputs: Object.entries(history).map(([jobId, item]) =>
+            ({ jobId, status: item.status, outputs: item.outputs || {} })) };
     }
 
-    async captureDisplay(displayNum = 1) {
-        const { execFileSync } = require('child_process');
-        const fs = require('fs');
-        const path = require('path');
 
-        try {
-            const display = Number.parseInt(displayNum, 10);
-            if (!Number.isInteger(display) || display < 0 || display > 99) {
-                return { success: false, error: `Invalid display number: ${displayNum}` };
-            }
-            const tmpFile = path.join('/tmp', `display_${display}_${Date.now()}.png`);
-            execFileSync('import', ['-window', 'root', tmpFile], {
-                env: { ...process.env, DISPLAY: `:${display}` }
-            });
-
-            const imageData = fs.readFileSync(tmpFile, 'base64');
-            fs.unlinkSync(tmpFile);
-
-            return {
-                success: true,
-                image: imageData,
-                format: 'png',
-                display: displayNum
-            };
-        } catch (err) {
-            return {
-                success: false,
-                error: err.message
-            };
-        }
-    }
-
-    buildText2ImgWorkflow(params) {
-        const {
-            prompt,
-            width = 1024,
-            height = 1024,
-            seed = Math.floor(Math.random() * 1000000),
-            steps = 20,
-            cfg_scale = 1.0,
-            sampler_name = 'euler',
-            scheduler = 'simple',
-            denoise = 1.0,
-            guidance = 3.5
-        } = params;
-
-        return {
-            "6": {
-                "inputs": { "text": prompt, "clip": ["30", 1] },
-                "class_type": "CLIPTextEncode"
-            },
-            "8": {
-                "inputs": {
-                    "samples": ["31", 0],
-                    "vae": ["30", 2]
-                },
-                "class_type": "VAEDecode"
-            },
-            "9": {
-                "inputs": {
-                    "filename_prefix": "ComfyUI",
-                    "images": ["8", 0]
-                },
-                "class_type": "SaveImage"
-            },
-            "27": {
-                "inputs": {
-                    "width": width,
-                    "height": height,
-                    "batch_size": 1
-                },
-                "class_type": "EmptySD3LatentImage"
-            },
-            "30": {
-                "inputs": {
-                    "ckpt_name": "flux1-schnell-fp8.safetensors"
-                },
-                "class_type": "CheckpointLoaderSimple"
-            },
-            "31": {
-                "inputs": {
-                    "seed": seed,
-                    "steps": steps,
-                    "cfg": cfg_scale,
-                    "sampler_name": sampler_name,
-                    "scheduler": scheduler,
-                    "denoise": denoise,
-                    "model": ["30", 0],
-                    "positive": ["6", 0],
-                    "negative": ["33", 0],
-                    "latent_image": ["27", 0]
-                },
-                "class_type": "KSampler"
-            },
-            "33": {
-                "inputs": {
-                    "text": "",
-                    "clip": ["30", 1]
-                },
-                "class_type": "CLIPTextEncode"
-            }
-        };
-    }
-
-    async generateImage(params) {
-        try {
-            const workflow = this.buildText2ImgWorkflow(params);
-            return await this.submitWorkflow(workflow);
-        } catch (err) {
-            return { success: false, error: err.message };
-        }
-    }
-
-    async chatToWorkflow(prompt, llmEndpoint = 'http://localhost:9600/chat') {
-        try {
-            const systemPrompt = `You are a ComfyUI workflow generator. Convert natural language requests into valid ComfyUI workflow JSON.
-Return ONLY valid JSON workflow structure with numbered nodes, inputs, and class_type fields.`;
-
-            const response = await fetch(llmEndpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: `${systemPrompt}\n\nUser request: ${prompt}`,
-                    timeout: 30000
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`LLM request failed: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            const workflow = JSON.parse(data.response || data.message || '{}');
-
-            return {
-                success: true,
-                workflow,
-                original_prompt: prompt
-            };
-        } catch (err) {
-            return {
-                success: false,
-                error: err.message,
-                original_prompt: prompt
-            };
-        }
-    }
 }
 
 class ComfyUIMCPServer {
     constructor() {
         this.client = new ComfyUIClient(
-            process.env.COMFYUI_URL || 'http://localhost:8188'
+            process.env.COMFYUI_URL || 'http://comfyui:8188'
         );
 
         // Listen for progress updates
@@ -355,6 +192,9 @@ class ComfyUIMCPServer {
 
     getToolSchemas() {
         return [
+            { name: 'node_info', description: 'Inspect live node schemas and available model choices before building a workflow.', inputSchema: { type: 'object', properties: { node_class: { type: 'string' } } } },
+            { name: 'workflow_queue', description: 'Read running and pending prompt IDs.', inputSchema: { type: 'object', properties: {} } },
+            { name: 'memory_free', description: 'Unload idle models and free GPU memory between stages; refuses while jobs are active.', inputSchema: { type: 'object', properties: {} } },
             {
                 name: 'workflow_submit',
                 description: 'Submit a ComfyUI workflow JSON for execution',
@@ -385,7 +225,7 @@ class ComfyUIMCPServer {
             },
             {
                 name: 'workflow_cancel',
-                description: 'Cancel a running job',
+                description: 'Cancel the specified queued or running job; never interrupt an unrelated job',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -413,115 +253,11 @@ class ComfyUIMCPServer {
                 }
             },
             {
-                name: 'image_generate',
-                description: 'Convenience text2img generation using FLUX model',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        prompt: {
-                            type: 'string',
-                            description: 'Text prompt for image generation'
-                        },
-                        width: {
-                            type: 'integer',
-                            description: 'Image width in pixels',
-                            default: 1024,
-                            minimum: 256,
-                            maximum: 2048
-                        },
-                        height: {
-                            type: 'integer',
-                            description: 'Image height in pixels',
-                            default: 1024,
-                            minimum: 256,
-                            maximum: 2048
-                        },
-                        steps: {
-                            type: 'integer',
-                            description: 'Number of sampling steps',
-                            default: 20,
-                            minimum: 1,
-                            maximum: 100
-                        },
-                        cfg_scale: {
-                            type: 'number',
-                            description: 'CFG scale',
-                            default: 1.0
-                        },
-                        seed: {
-                            type: 'integer',
-                            description: 'Seed for reproducibility (random if not set)'
-                        }
-                    },
-                    required: ['prompt']
-                }
-            },
-            {
-                name: 'video_generate',
-                description: 'Generate video using AnimateDiff or similar',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        prompt: {
-                            type: 'string',
-                            description: 'Text prompt for video generation'
-                        },
-                        frames: {
-                            type: 'integer',
-                            description: 'Number of frames',
-                            default: 16
-                        },
-                        width: {
-                            type: 'integer',
-                            default: 512
-                        },
-                        height: {
-                            type: 'integer',
-                            default: 512
-                        }
-                    },
-                    required: ['prompt']
-                }
-            },
-            {
-                name: 'display_capture',
-                description: 'Capture screenshot from X display (default :1)',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        display: {
-                            type: 'integer',
-                            description: 'Display number to capture',
-                            default: 1
-                        }
-                    }
-                }
-            },
-            {
                 name: 'output_list',
                 description: 'List generated outputs from ComfyUI',
                 inputSchema: {
                     type: 'object',
                     properties: {}
-                }
-            },
-            {
-                name: 'chat_workflow',
-                description: 'Convert natural language to ComfyUI workflow using LLM',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        prompt: {
-                            type: 'string',
-                            description: 'Natural language description of desired workflow'
-                        },
-                        llm_endpoint: {
-                            type: 'string',
-                            description: 'LLM endpoint URL',
-                            default: 'http://localhost:9600/chat'
-                        }
-                    },
-                    required: ['prompt']
                 }
             }
         ];
@@ -532,6 +268,20 @@ class ComfyUIMCPServer {
             let result;
 
             switch (toolName) {
+                case 'node_info':
+                    result = await this.client.httpRequest('/object_info' + (params.node_class ? '/' + encodeURIComponent(params.node_class) : ''));
+                    break;
+                case 'workflow_queue':
+                    result = await this.client.httpRequest('/queue');
+                    break;
+                case 'memory_free': {
+                    const queue = await this.client.httpRequest('/queue');
+                    if (queue.queue_running?.length || queue.queue_pending?.length) throw new Error('Queue must be idle before unloading models');
+                    await this.client.httpRequest('/free', 'POST', { unload_models: true, free_memory: true });
+                    result = { success: true, message: 'Unload requested; inspect system_stats to verify release' };
+                    break;
+                }
+
                 case 'workflow_submit':
                     result = await this.client.submitWorkflow(params.workflow);
                     break;
@@ -548,30 +298,8 @@ class ComfyUIMCPServer {
                     result = await this.client.listModels();
                     break;
 
-                case 'image_generate':
-                    result = await this.client.generateImage(params);
-                    break;
-
-                case 'video_generate':
-                    result = {
-                        success: false,
-                        error: 'Video generation not yet implemented - use workflow_submit with AnimateDiff workflow'
-                    };
-                    break;
-
-                case 'display_capture':
-                    result = await this.client.captureDisplay(params.display || 1);
-                    break;
-
                 case 'output_list':
                     result = await this.client.listOutputs();
-                    break;
-
-                case 'chat_workflow':
-                    result = await this.client.chatToWorkflow(
-                        params.prompt,
-                        params.llm_endpoint
-                    );
                     break;
 
                 default:
@@ -647,33 +375,6 @@ class ComfyUIMCPServer {
                 text += `\`\`\`json\n${JSON.stringify(result.models, null, 2)}\n\`\`\`\n`;
                 break;
 
-            case 'image_generate':
-                text = `# Image Generation Started\n\n`;
-                text += `**Job ID:** ${result.jobId}\n`;
-                text += `**Status:** Job queued for execution\n\n`;
-                text += `Use \`workflow_status\` to check completion.\n`;
-                break;
-
-            case 'display_capture':
-                text = `# Display Captured\n\n`;
-                text += `**Display:** :${result.display}\n`;
-                text += `**Format:** ${result.format}\n`;
-                text += `**Image Size:** ${result.image?.length || 0} bytes (base64)\n\n`;
-                text += `Image data available in result.\n`;
-                break;
-
-            case 'output_list':
-                text = `# ComfyUI Outputs\n\n`;
-                text += `\`\`\`json\n${JSON.stringify(result.outputs, null, 2)}\n\`\`\`\n`;
-                break;
-
-            case 'chat_workflow':
-                text = `# Workflow Generated from Prompt\n\n`;
-                text += `**Original Prompt:** ${result.original_prompt}\n\n`;
-                text += `**Generated Workflow:**\n\`\`\`json\n${JSON.stringify(result.workflow, null, 2)}\n\`\`\`\n\n`;
-                text += `Use \`workflow_submit\` to execute this workflow.\n`;
-                break;
-
             default:
                 text = JSON.stringify(result, null, 2);
         }
@@ -716,9 +417,11 @@ class ComfyUIMCPServer {
     }
 }
 
-// Start server
-const mcpServer = new ComfyUIMCPServer();
-mcpServer.start().catch((err) => {
-    console.error('[comfyui-mcp] Failed to start:', err);
-    process.exit(1);
-});
+module.exports = { ComfyUIClient, ComfyUIMCPServer };
+if (require.main === module) {
+    const mcpServer = new ComfyUIMCPServer();
+    mcpServer.start().catch((err) => {
+        console.error('[comfyui-mcp] Failed to start:', err);
+        process.exit(1);
+    });
+}

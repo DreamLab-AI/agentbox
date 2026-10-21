@@ -69,3 +69,8 @@ node scripts/agentbox-config-validate.js agentbox.toml
 
 The built-in path binds only to `127.0.0.1:8188`. If you run an external ComfyUI on the same
 host and expose port 8188, ensure it does not conflict before enabling the built-in path.
+
+For current remote execution, model discovery and staged GPU unloading, follow
+[control planes](../../skills/comfyui/references/control-planes.md) and the
+[Blender endpoint proof](../../skills/comfyui/references/stopmotion-proof.md).
+Static example filenames are provisioning requirements, not a live inventory.

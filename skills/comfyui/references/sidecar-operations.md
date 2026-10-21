@@ -63,3 +63,15 @@ does not provide a second CUDA target. `--cuda-device` accepts a device list;
 available. Check live free VRAM and map container device IDs to GPU UUIDs.
 Multi-GPU placement must be proven with a live render; exposing two cards alone
 does not establish that a model is distributed between them.
+
+## October 2026 stop-motion update
+
+The Dockerfile pins ComfyUI `faa7e494f3a0c9e45e1c3db8d20ee48fd5fe1b52`.
+The existing H3 baseline and `h3-clay` profile are the reproduced endpoint
+route. `ltx25-layout` pins the official INT8 model, Gemma4 encoder, VAEs,
+spatial upscaler and layout adapter; it requires accepted Hugging Face access
+via `HF_TOKEN` or `HF_TOKEN_PATH`. No token belongs in an image or repository.
+Download profiles inside the model volume using the existing provisioning
+commands; building an image does not download tens of gigabytes of weights.
+Unload idle models between phases using the existing `/free` path and verify
+memory release before the next heavy stage. See [control planes](control-planes.md).

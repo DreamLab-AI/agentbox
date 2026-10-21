@@ -242,3 +242,7 @@ sidecar, which defeats the vault.
 **Only if the volume is lost:** Podkey shows `state: none`. Restore from the age
 backup, then use **Import existing key** in the popup over VNC, paste the nsec, and
 set a passphrase. The public key, and so every verifier, is unchanged.
+
+Media control-plane update: Blender retains its socket/background-job path and
+adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
+dependencies. See [ADR-2148](../docs/adr/ADR-2148-remote-media-control-planes.md).

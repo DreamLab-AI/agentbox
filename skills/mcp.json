@@ -177,7 +177,7 @@
         "BLENDER_PORT": "9876"
       },
       "description": "3D modeling, scene creation, and rendering via Blender",
-      "protocol": "tcp-proxy",
+      "protocol": "mcp-jsonrpc",
       "version": "1.0.0",
       "x-agentbox-managed-by": "reference",
       "x-agentbox-gate": "env:ENABLE_BLENDER",

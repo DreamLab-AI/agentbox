@@ -9,6 +9,11 @@
 # backend routes that onto the GPU without needing a hardware X server (Xvfb is
 # software-GLX only), mirroring how the browser uses Vulkan/ANGLE to bypass X GLX.
 FROM archlinux:base
+ARG DCC_MCP_BLENDER_VERSION=0.2.23
+ARG DCC_MCP_CORE_VERSION=0.20.46
+ARG DCC_MCP_SERVER_VERSION=0.20.46
+ARG RHUBARB_VERSION=1.14.0
+ARG RHUBARB_SHA256=a9a9074862cff47b2d59b8bf399a678a3b0b74f9452ad6ad94cb292913dd8667
 
 ENV DISPLAY=:2 \
     LANG=C.UTF-8 \
@@ -25,6 +30,7 @@ RUN pacman -Syu --noconfirm && pacman -S --noconfirm --needed \
         qgis \
         python \
         python-pip \
+        python-cattrs \
         xorg-server-xvfb \
         xorg-xdpyinfo \
         x11vnc \
@@ -40,6 +46,7 @@ RUN pacman -Syu --noconfirm && pacman -S --noconfirm --needed \
         dbus \
         ttf-liberation \
         curl \
+        unzip \
         socat \
         iproute2 \
         base-devel \
@@ -102,7 +109,23 @@ RUN git clone --depth 1 https://github.com/ahmedelshazly27/opendss-mcp-server /o
 RUN mkdir -p /opt/gui-tools /tmp/xdg-runtime /home/devuser/.config \
     && chown -R devuser:devuser /opt/gui-tools /tmp/xdg-runtime /home/devuser
 
+# Typed Streamable HTTP/REST control plane, isolated from Arch's Python packages.
+RUN python -m pip install --no-cache-dir --target /opt/gui-tools/dcc-python \
+    "dcc-mcp-blender==${DCC_MCP_BLENDER_VERSION}" \
+    "dcc-mcp-core==${DCC_MCP_CORE_VERSION}" \
+    "dcc-mcp-server==${DCC_MCP_SERVER_VERSION}"
+
 # BlenderMCP addon (Siddharth Ahuja, MIT) + launchers + MCP bridges
+RUN curl --fail --location --retry 3 \
+      "https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v${RHUBARB_VERSION}/Rhubarb-Lip-Sync-${RHUBARB_VERSION}-Linux.zip" \
+      -o /tmp/rhubarb.zip \
+    && echo "${RHUBARB_SHA256}  /tmp/rhubarb.zip" | sha256sum -c - \
+    && unzip -q /tmp/rhubarb.zip -d /opt/gui-tools \
+    && mv "/opt/gui-tools/Rhubarb-Lip-Sync-${RHUBARB_VERSION}-Linux" /opt/gui-tools/rhubarb \
+    && chmod +x /opt/gui-tools/rhubarb/rhubarb \
+    && ln -s /opt/gui-tools/rhubarb/rhubarb /usr/local/bin/rhubarb \
+    && rm /tmp/rhubarb.zip
+
 COPY --chown=devuser:devuser blendermcp-addon.py /opt/gui-tools/blendermcp-addon.py
 COPY --chown=devuser:devuser launch-blender.py /opt/gui-tools/launch-blender.py
 COPY --chown=devuser:devuser launch-blender.sh /opt/gui-tools/launch-blender.sh

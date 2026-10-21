@@ -84,6 +84,49 @@ async function main() {
         let response;
         try {
             const request = JSON.parse(line);
+            if (request.jsonrpc === '2.0') {
+                // MCP stdio uses newline-delimited JSON-RPC. Retain the legacy
+                // {tool,params} path below for existing command-line callers.
+                if (request.method === 'notifications/initialized' || request.method === 'notifications/cancelled') continue;
+                let result;
+                if (request.method === 'initialize') {
+                    const versions = ['2024-11-05', '2025-03-26', '2025-06-18'];
+                    result = { protocolVersion: versions.includes(request.params?.protocolVersion)
+                        ? request.params.protocolVersion : '2025-06-18',
+                        capabilities: { tools: {} }, serverInfo: { name: 'agentbox-blender', version: '2.0.0' } };
+                } else if (request.method === 'ping') result = {};
+                else if (request.method === 'tools/list') {
+                    result = { tools: [
+                        { name: 'get_scene_info', description: 'Inspect the live Blender scene.', inputSchema: { type: 'object', properties: {} } },
+                        { name: 'execute_code', description: 'Run trusted bpy Python in live Blender. Long renders should use blender-job.js.', inputSchema: { type: 'object', properties: { code: { type: 'string' } }, required: ['code'] } },
+                        { name: 'get_viewport_screenshot', description: 'Capture the visible Blender viewport.', inputSchema: { type: 'object', properties: { max_size: { type: 'integer', minimum: 64, maximum: 4096 } } } },
+                        { name: 'set_frame', description: 'Evaluate animation at an exact timeline frame.', inputSchema: { type: 'object', properties: { frame: { type: 'integer', minimum: -1048574, maximum: 1048574 } }, required: ['frame'] } }
+                    ] };
+                } else if (request.method === 'tools/call') {
+                    const name = request.params?.name;
+                    const args = request.params?.arguments || {};
+                    try {
+                        let command;
+                        if (name === 'set_frame') {
+                            if (!Number.isInteger(args.frame) || Math.abs(args.frame) > 1048574) throw new Error('frame must be an integer in Blender range');
+                            command = { type: 'execute_code', params: { code: `import bpy\nbpy.context.scene.frame_set(${args.frame})\nprint(bpy.context.scene.frame_current)` } };
+                        } else if (['get_scene_info', 'execute_code', 'get_viewport_screenshot'].includes(name)) {
+                            if (name === 'execute_code' && typeof args.code !== 'string') throw new Error('code must be a string');
+                            command = { type: name, params: args };
+                        } else throw new Error(`Unknown tool: ${name}`);
+                        const reply = await sendToBlender(command);
+                        result = { content: [{ type: 'text', text: JSON.stringify(reply) }], isError: reply.status === 'error' };
+                    } catch (error) {
+                        result = { content: [{ type: 'text', text: error.message }], isError: true };
+                    }
+                } else {
+                    if (request.id === undefined) continue;
+                    process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Method not found' } }) + '\n');
+                    continue;
+                }
+                if (request.id !== undefined) process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) + '\n');
+                continue;
+            }
             // The Blender plugin expects a 'type' and 'params' structure.
             // The MCP request has 'tool' and 'params'. We map them.
             const blenderCommand = {

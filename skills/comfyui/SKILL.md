@@ -60,22 +60,30 @@ To build or repair the local GPU service, follow
 [`references/sidecar-operations.md`](references/sidecar-operations.md).
 
 For resumable video jobs, use `scripts/comfy_client.py`; read
+[`references/stopmotion-proof.md`](references/stopmotion-proof.md) for the Blender
+endpoint and clay-LoRA comparison, and
 [`references/agent-kit.md`](references/agent-kit.md) for graph validation and durable
 submission receipts. Local video model setup and workflows are documented in
 [`references/video-models.md`](references/video-models.md). For a complete explainer
 of the current repository, start with `codebase-video`.
 
-Generate a FLUX 2 image end-to-end with the bundled runnable script:
+For a new task, inspect live `/system_stats`, `/queue` and the relevant
+`/object_info/<node>` schemas. Installed weights are discovered from loader
+choices, never from a static table in this skill. The bundled FLUX example
+requires separate provisioning and is not the current installed default.
 
-```bash
-comfyui-generate \
-  "A stunning landscape at golden hour, cinematic lighting" output.png
-```
+Use native HTTP for uploads, durable submission/history and media retrieval;
+WebSocket events provide responsive progress but do not establish completion.
+The MCP adapter exposes schema discovery, queue/status, model listing and safe
+idle-model unloading. It accepts API graphs rather than guessing a model from
+an old convenience recipe. See [control planes](references/control-planes.md)
+for the official Comfy MCP alternative and its remote-filesystem limitations.
 
-It submits the current FLUX 2 workflow to `http://comfyui:8188`, polls to
-completion, and downloads the PNG. For the manual step-by-step (health check →
-submit → poll → download), the one-liner variant, VRAM freeing, and the live
-model/node tables, see [`references/flux2-quickstart.md`](references/flux2-quickstart.md).
+For model preparation, `scripts/download_video_models.py --campaign core --plan`
+reports shared components and storage without inference. The pinned manifest
+includes FIBO2, Klein, LTX2.5 layout/style and H3 control, with larger comparisons
+separate. Follow the [preparation guide](../../docs/developer/media-model-preparation.md)
+for rebuilds and independent CPU-only provisioning.
 
 ## Capabilities
 

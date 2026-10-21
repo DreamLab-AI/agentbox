@@ -148,3 +148,7 @@ need a persistent interactive session.
 
 Extend `spatialPackages` in `flake.nix` with additional `blenderPackages.*`, or pin them
 in the MCP server's Python environment.
+
+The GUI sidecar also offers a build-pinned DCC-MCP candidate at the internal
+`http://gui-tools-service:9881/mcp` endpoint. The established socket remains
+available; see [control planes](../../skills/blender/references/control-planes.md).

@@ -884,18 +884,15 @@
           npmDepsHash = "sha256-vWqVKSZAmlESQJPE36Q00JiEIBe6sNe9765WGOZYBlA=";
         };
 
-        # 6. skills/comfyui/mcp-server — gated by skills.media.comfyui_builtin.
-        # sharp has native gyp bindings; python3 + nodeGyp are required to rebuild
-        # it against the Nix libc.
+        # 6. ComfyUI MCP is needed for either builtin or external ComfyUI.
+        # The execution adapter uses only the MCP SDK and WebSocket client.
         comfyuiMcpPkg = npmServicesLib.makeNpmService {
           name             = "comfyui-mcp";
           src              = ./skills/comfyui/mcp-server;
           entry            = "server.js";
-          skipLoadCheck    = true;
-          extraBuildInputs = [ pkgs.python3 pkgs.node-gyp ];
-          extraEnv         = { npm_config_build_from_source = "true"; };
+          skipLoadCheck    = false;
           # Prefetched 2026-04-24. Refresh: nix run nixpkgs#prefetch-npm-deps -- skills/comfyui/mcp-server/package-lock.json
-          npmDepsHash = "sha256-FHXXtxMmOMPJTovGqKRYPishZ4UDKebm3xPRb2DY5sM=";
+          npmDepsHash = "sha256-OnfEJJUrFNA+yInqKDxVERfYQDhLbOs+qn/uPFrsdmg=";
         };
 
         # Conditional package lists for allPackages — mirrors the lib.optionals
@@ -910,7 +907,7 @@
           # lazy-fetch MCP: when ruflo or claude_flow enabled
           ++ lib.optionals ((toolchainCfg.ruflo or false) || (toolchainCfg.claude_flow or false)) [ lazyFetchMcpPkg ]
           # comfyui MCP: when skills.media.comfyui_builtin enabled
-          ++ lib.optionals (mediaCfg.comfyui_builtin or false) [ comfyuiMcpPkg ]
+          ++ lib.optionals ((mediaCfg.comfyui_builtin or false) || (((agentboxConfig.integrations or {}).comfyui_external or {}).enabled or false)) [ comfyuiMcpPkg ]
           # Consultants: ship the full bundle when the master gate is on.
           # Per-consultant runtime gating lives in [consultants.<name>].enabled.
           ++ lib.optionals ((agentboxConfig.consultants or {}).enabled or false) [ consultantsPkg ];
@@ -2255,7 +2252,7 @@ default_days = ${toString (relayCfg.retention_days or 30)}
           cp -rL ${lazyFetchMcpPkg}/package $out/opt/agentbox/skills/lazy-fetch/mcp-server
           ''}
           # playwright-mcp skills copy removed — no local browser in image
-          ${lib.optionalString (mediaCfg.comfyui_builtin or false) ''
+          ${lib.optionalString ((mediaCfg.comfyui_builtin or false) || (((agentboxConfig.integrations or {}).comfyui_external or {}).enabled or false)) ''
           rm -rf $out/opt/agentbox/skills/comfyui/mcp-server
           mkdir -p $out/opt/agentbox/skills/comfyui
           cp -rL ${comfyuiMcpPkg}/package $out/opt/agentbox/skills/comfyui/mcp-server

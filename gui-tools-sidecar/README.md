@@ -61,3 +61,12 @@ browser sidecar). GPU selection is `NVIDIA_VISIBLE_DEVICES` (default `all`).
   with GPU GL, ready for a concrete PyQGIS MCP adapter to be wired at the seam.
 - If VirtualGL is unavailable at runtime, the launchers fall back to software GL (degraded,
   CPU render) so the socket server still comes up rather than the program dying.
+
+## Typed Blender control plane
+
+The image now installs DCC-MCP Blender 0.2.23 with core/server 0.20.46, alongside
+the existing socket. Startup exposes its gateway internally at
+`http://gui-tools-service:9881/mcp` (Streamable HTTP and REST). No new host port
+is published. Set `DCC_MCP_ENABLED=0` to disable it. See the Blender skill's
+[control-plane reference](../skills/blender/references/control-planes.md).
+`python-cattrs` is installed for Blender 5.2's extension-manager imports.

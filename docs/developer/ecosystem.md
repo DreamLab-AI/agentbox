@@ -328,3 +328,7 @@ The adapter contract (ADR-005) guarantees that every feature works in both modes
 - [ADR-014 -- Bi-directional graph-state ingress](../archive/adr/ADR-014-bidirectional-graph-state-ingress.md)
 - [ADR-026 -- Cross-substrate agent-loop seams](../archive/adr/ADR-026-cross-substrate-agent-loop-seams.md)
 - [PRD-014 -- Embodied agent loop](../archive/prd/PRD-014-embodied-agent-loop.md)
+
+Media control-plane update: Blender retains its socket/background-job path and
+adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
+dependencies. See [ADR-2148](../adr/ADR-2148-remote-media-control-planes.md).

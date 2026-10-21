@@ -15,15 +15,18 @@ try:
     s.sendall(json.dumps({"type": "get_scene_info", "params": {}}).encode())
     buf = b""
     s.settimeout(8)
-    while len(buf) < 4:
+    while len(buf) < 4 * 1024 * 1024:
         chunk = s.recv(65536)
         if not chunk:
             break
         buf += chunk
         try:
-            json.loads(buf.decode()); print("blender ok"); sys.exit(0)
-        except Exception:
+            reply = json.loads(buf.decode())
+        except (json.JSONDecodeError, UnicodeDecodeError):
             continue
+        if reply.get("status") != "success":
+            raise RuntimeError("Blender returned an error")
+        print("blender ok"); sys.exit(0)
     print("blender no/invalid response"); sys.exit(1)
 except Exception as e:
     print("blender socket error:", e); sys.exit(1)
@@ -53,6 +56,18 @@ try:
     print("qgis unexpected:", resp); sys.exit(1)
 except Exception as e:
     print("qgis socket error:", e); sys.exit(1)
+PY
+
+# A healthy raw socket alone must not hide a failed enabled typed control plane.
+python3 - <<'PY' || exit 1
+import json, os, urllib.request
+if os.environ.get("DCC_MCP_ENABLED", "1") == "1":
+    with urllib.request.urlopen("http://127.0.0.1:9881/health", timeout=5) as response:
+        assert json.load(response).get("ok") is True, "DCC gateway not healthy"
+    with urllib.request.urlopen("http://127.0.0.1:9881/v1/instances", timeout=5) as response:
+        instances = json.load(response).get("instances", [])
+    assert any(item.get("dcc_type") == "blender" for item in instances), "No registered Blender instance"
+    print("dcc-mcp ok")
 PY
 
 echo "healthy"

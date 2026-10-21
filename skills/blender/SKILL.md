@@ -50,7 +50,7 @@ BlenderMCP has two halves that must both be running:
   `View3D > Sidebar (N) > BlenderMCP`, and click **Connect to MCP server**. It listens on
   `localhost:9876` by default. This is **per-session** — a fresh Blender starts with the socket
   closed even though the addon stays enabled.
-- **Agent side**: an MCP server launched with `uvx blender-mcp`, registered in your MCP client
+- **Agent side**: the baked MCP stdio bridge `node tools/mcp-blender-client.js`, registered in your MCP client
   (`.mcp.json` entry: `{"command": "uvx", "args": ["blender-mcp"]}`).
 
 **Verify the link before working** — run the health check, which distinguishes the failure
@@ -101,10 +101,15 @@ harmless `bl_pkg ... already registered` warning in headless jobs.
 **Native MCP tools are optional (on-demand).** The supervised proxy already exposes the
 socket on `localhost:9876`, so you can drive Blender through it directly (or via
 `tools/mcp-blender-client.js`) without any MCP registration. When you want the BlenderMCP
-tools to appear natively in the session, register them on demand with
-`tools/register-mcp.sh` (adds `uvx blender-mcp → localhost:9876` to the workspace
+tools to appear natively in the session, register the baked, dependency-free MCP bridge on demand with
+`tools/register-mcp.sh` (adds the baked Node MCP bridge → localhost:9876 to the workspace
 `.mcp.json`; idempotent; `--remove` to unregister). This keeps `.mcp.json` lean by default
 and only loads the heavy sidecar-backed server when 3D work actually needs it.
+
+For typed pipeline work, the sidecar also runs **DCC-MCP** on the internal
+`http://gui-tools-service:9881/mcp` endpoint. See
+[control planes](references/control-planes.md) for discovery, remote operation
+and tested limits. The established raw socket remains available.
 
 ## The real command surface
 

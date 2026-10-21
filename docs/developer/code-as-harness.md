@@ -242,3 +242,7 @@ These questions remain unresolved even with Phase 2 live; none blocked the rollo
 | ACI MCP server | `mcp/aci-shell/` |
 | ExpeL MCP | `mcp/expel/` |
 | Voyager MCP | `mcp/voyager/` |
+
+Media control-plane update: Blender retains its socket/background-job path and
+adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
+dependencies. See [ADR-2148](../adr/ADR-2148-remote-media-control-planes.md).

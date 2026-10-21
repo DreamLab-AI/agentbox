@@ -27,6 +27,7 @@ services:
       - BLENDER_MCP_PORT=9876
       - QGIS_MCP_BIND=0.0.0.0
       - QGIS_MCP_PORT=9877
+      - DCC_MCP_ENABLED=${DCC_MCP_ENABLED:-1}
     deploy:
       resources:
         limits:
@@ -49,6 +50,9 @@ services:
       - "0.0.0.0:9877:9877"
     networks:
       - visionclaw
+    expose:
+      # DCC gateway MCP + REST; container network only, no new host port.
+      - "9881"
     volumes:
       # Shared exchange volume: agentbox writes .blend / raster files here,
       # Blender and QGIS read them (and write render outputs back).
