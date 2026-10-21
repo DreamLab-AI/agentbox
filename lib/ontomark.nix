@@ -27,14 +27,16 @@
 # categories 53-67; visionGraph ADR-VG-008); older pins report its pages as
 # uncategorised.
 #
+# 0.6.0 adds opt-in derivation certificates; default corpus output is unchanged.
+#
 # Repinning
 # ---------
 # Change `version`, `sha256` (from the release's .sha256 asset) and nothing else.
 # The asset name keeps the `-linux-gnu` suffix the first release used; the
 # binary itself is static-pie musl and runs on glibc and Nix hosts alike.
 
-{ lib, pkgs, version ? "0.5.0"
-, hash ? "sha256-4PY/zqgd+ij2gmuyoXq8iBOkZkPCsUXbAtA/UQW1pBM=" }:
+{ lib, pkgs, version ? "0.6.0"
+, hash ? "sha256-TPH5RFrK4R5ZZT8wqEpMn/2z+sSm6rbT0grBqT4Jo1c=" }:
 
 pkgs.stdenvNoCC.mkDerivation {
   pname = "ontomark";

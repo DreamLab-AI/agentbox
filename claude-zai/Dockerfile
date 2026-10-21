@@ -19,7 +19,7 @@ RUN useradd -m -s /bin/bash claude && \
 # Rotate via a PR only; do not auto-update.
 # Exact version follows the Nix-baked Claude Code CLI. The 2.1.291 release
 # metadata is checked in lib/claude-code-binary.nix and upstream's manifest.
-RUN npm install -g @anthropic-ai/claude-code@2.1.291
+RUN npm install -g @anthropic-ai/claude-code@2.1.306
 
 # Create app directory
 WORKDIR /app

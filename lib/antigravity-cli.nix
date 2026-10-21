@@ -29,18 +29,18 @@
 { lib, pkgs }:
 
 let
-  agyVersion = "1.2.0";
-  buildId = "5210873191596032";
+  agyVersion = "1.4.4";
+  buildId = "4783783166214144";
   baseUrl = "https://storage.googleapis.com/antigravity-public/antigravity-cli/${agyVersion}-${buildId}";
 
   assets = {
     "x86_64-linux" = {
       url  = "${baseUrl}/linux-x64/cli_linux_x64.tar.gz";
-      hash = "sha512-0ZCyWgTtKgOwWHg4R2SUrlnQ0yTuY3MmPKvlhDUsJU+QUfNonHmsSt2IF/9us0sRaUrNdwAsVekb0dKLbf2uIg==";
+      hash = "sha512-fOFJ01A0TBBGx7WbZlm8xdZZ81G/OgfGwIWIfZNCfOuJ2Sd1LkzNCES1P/uR0z1qSfcoNc6ydsfP/dE8+4AjuA==";
     };
     "aarch64-linux" = {
       url  = "${baseUrl}/linux-arm/cli_linux_arm64.tar.gz";
-      hash = "sha512-WtcvuoyOkVxZxVBdyZEWBYNSuOun8UHX7SICVniLraMN+LWvZcDZMf8Qu8ZhwPX+g5McWAcf4wY6gJu+2n9Z+Q==";
+      hash = "sha512-e/xPfl4t2kzQxTbHLPlyXCkYoDgCitEfpPf15X23fp/31rm+ygXNhWGLd90+d95ktjYp0z5XefKRETkNxTx6rw==";
     };
   };
 

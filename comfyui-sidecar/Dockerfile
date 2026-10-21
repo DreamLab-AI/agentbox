@@ -1,7 +1,7 @@
 FROM nvidia/cuda:12.9.1-devel-ubuntu24.04
-# master c06bf5f (post-v0.41.0): native MOSS-Image support landed upstream in PR #17095 (2026-10-16), not yet in a release.
-# Move back to a release tag once one contains it. Weights: Comfy-Org/MOSS-Image in the models volume.
-ARG COMFYUI_REV=c06bf5f569d268b80076e5f44126f87cdf835869
+# v0.42.1 contains native MOSS-Image support (PR #17095).
+# Weights: Comfy-Org/MOSS-Image in the models volume.
+ARG COMFYUI_REV=63be2f9b82ad0dac88a7ceaa28a9cf3154125a18
 ENV DEBIAN_FRONTEND=noninteractive PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-dev python3-venv git ffmpeg ca-certificates libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/venv
