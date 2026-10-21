@@ -2501,9 +2501,9 @@ enabled = true
 agent = "claude"              # claude | codex | pi (pi only with model_auth = "custom")
 model_auth = "local"          # local: the logged-in claude/codex CLI, no key | direct | custom
 model = ""                    # empty = deepsec's default for the agent (claude-opus-4-8 / gpt-6-astra)
-thinking_level = "high"       # minimal | low | medium | high | xhigh (deepsec default xhigh; high bounds spend)
+thinking_level = "minimal"    # minimal | low | medium | high | xhigh. minimal by operator choice (2026-10-20): run deepsec ONCE per project just before push, not per-phase/per-diff. The ensemble (Opus seam review + cross-vendor crypto validation) carries the deep review; deepsec is the cheap final auth/crypto-boundary sweep.
 fail_on = "HIGH"              # CRITICAL | HIGH | MEDIUM | HIGH_BUG | BUG | LOW — findings at/above block the gate
-max_duration = "45m"          # GNU timeout syntax; deepsec checkpoints and resumes on re-run
+max_duration = "20m"          # GNU timeout syntax; deepsec checkpoints and resumes on re-run (minimal is fast, so 20m is ample)
 batch_size = 5                # files per AI batch
 concurrency = 2               # parallel batches
 ai_provider = ""              # direct: anthropic | openai; custom: free label (e.g. "loom")
