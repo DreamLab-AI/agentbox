@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 9173cdba6f0a84556bbd4c059db0a7e823aa7a2d
+verified_commit: 73bd631c0666e4f4cab2c6935ae6eaf72c71d631
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -386,3 +386,12 @@ and fixes wrapper arguments for host-only sbomnix. Its dependency suites
 pass (834 Typepy, 1682 SimpleSQLite), 23 delivery checks pass, and an actual
 shipped-path smoke scan emits CycloneDX, SPDX and CSV. Runtime and activation
 contracts remain unchanged.
+
+## Re-verification — 2026-10-21 at 73bd631c0
+
+Reviewed the committed change to the Codex home: the parent tmpfs becomes a
+named volume; its package volume and credential bind remain independent. No
+supervisor, ingress, toolchain, feature-gate, scanner or instruction-projector
+code changes. Compose persistence and runtime-delivery checks pass (24 tests),
+Compose refresh checks pass (3 tests), and role-supervisor checks pass (25 tests).
+This mount migration is explicitly outside fast activation (ADR-2147).

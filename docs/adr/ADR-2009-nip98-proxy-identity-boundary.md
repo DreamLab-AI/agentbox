@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 9173cdba6f0a84556bbd4c059db0a7e823aa7a2d
+verified_commit: 73bd631c0666e4f4cab2c6935ae6eaf72c71d631
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -333,3 +333,12 @@ and fixes wrapper arguments for host-only sbomnix. Its dependency suites
 pass (834 Typepy, 1682 SimpleSQLite), 23 delivery checks pass, and an actual
 shipped-path smoke scan emits CycloneDX, SPDX and CSV. Runtime and activation
 contracts remain unchanged.
+
+## Re-verification — 2026-10-21 at 73bd631c0
+
+Reviewed the committed change to the Codex home: the parent tmpfs becomes a
+named volume; its package volume and credential bind remain independent. No
+supervisor, ingress, toolchain, feature-gate, scanner or instruction-projector
+code changes. Compose persistence and runtime-delivery checks pass (24 tests),
+Compose refresh checks pass (3 tests), and role-supervisor checks pass (25 tests).
+This mount migration is explicitly outside fast activation (ADR-2147).
