@@ -3759,9 +3759,6 @@ stderr_logfile_maxbytes=5MB
           # (entrypoint) and readable by devuser (uid 1000). Content is
           # regenerated at each boot so tmpfs is sufficient.
           "/home/devuser/.claude-flow:mode=755,size=64M,uid=1000,gid=1000"
-          # Codex configuration/session state remains on bounded noexec tmpfs.
-          # Executable daemon packages get a separate disk-backed volume below.
-          "/home/devuser/.codex:mode=755,size=512M,uid=1000,gid=1000"
           # Antigravity CLI home. Model cache + session state; 256M is generous.
           "/home/devuser/.antigravity:mode=755,size=256M,uid=1000,gid=1000"
           # agy state dir. The Antigravity CLI hard-codes ~/.gemini (its
@@ -3874,8 +3871,9 @@ stderr_logfile_maxbytes=5MB
           # bounded XDG cache tmpfs and retain it across rolling rebuilds.
           "hf-cache:/home/devuser/.cache/huggingface"
           "opencode-store:/home/devuser/.local/share/opencode"
-          # ADR-2120: Codex auto-start copies its executable daemon package
-          # here. The parent .codex tmpfs is noexec and too small for updates.
+          # ADR-2147: retain transcripts, session indexes and SQLite state.
+          "codex-home:/home/devuser/.codex"
+          # ADR-2120: retain the existing executable package volume independently.
           "codex-packages:/home/devuser/.codex/packages"
         ];
         # NOTE: no ruvnet-brain-data volume. The corpus persists in
@@ -3906,7 +3904,7 @@ stderr_logfile_maxbytes=5MB
         # are auto-derived so every volume referenced in the agentbox service's
         # volumes list has a matching top-level declaration. Without this,
         # docker compose rejects the file with "undefined volume <name>".
-        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" "opencode-store" "codex-packages" ];
+        baselineTopLevelVolumeNames = [ "ruvector-data" "solid-data" "sovereign-identities" "agentbox-secrets" "code-harness-data" "agentbox-events" "consultations-data" "telemetry-data" "aoe-profiles" "hf-cache" "opencode-store" "codex-home" "codex-packages" ];
         exceptionVolumeNames = lib.unique (
           map (v: lib.head (lib.splitString ":" v)) exceptionWritableVolumes
         );

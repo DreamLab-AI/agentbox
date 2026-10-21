@@ -102,3 +102,8 @@ never infer incremental speed from the cold first import. Gates:
 ```sh
 node --test tests/config/runtime-delivery.test.cjs
 ```
+
+Codex session retention (ADR-2147): the complete `~/.codex` home now uses
+`agentbox-codex-home`. Existing tmpfs installations require the
+[one-time migration](../adr/ADR-2147-retain-codex-session-state.md) before
+container replacement; fast activation rejects this mount change.

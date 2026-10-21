@@ -620,3 +620,6 @@ docker exec agentbox ls -la /home/devuser/workspace
 ### Solid or RuVector paths do not exist
 
 Verify the volumes are mounted and the entrypoint bootstrap ran successfully.
+
+Codex sessions persist in `agentbox-codex-home`; existing tmpfs installations
+need a [one-time migration](../adr/ADR-2147-retain-codex-session-state.md) before replacement.

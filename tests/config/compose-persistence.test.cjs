@@ -18,6 +18,7 @@ const expected = {
   '/home/devuser/.cache/huggingface': 'agentbox-hf-cache',
   '/home/devuser/.local/share/code-server': 'agentbox-codeserver-config',
   '/home/devuser/.local/share/opencode': 'agentbox-opencode-store',
+  '/home/devuser/.codex': 'agentbox-codex-home',
   '/home/devuser/.codex/packages': 'agentbox-codex-packages',
   '/var/lib/nostr-relay': 'agentbox-nostr-relay-data',
   '/var/lib/tailscale': 'agentbox-tailscale-state',
@@ -33,3 +34,12 @@ const instructions = model.services.agentbox.volumes.find(v => v.target === '/et
 assert.equal(instructions?.read_only, true);
 assert.equal(model.services.agentbox.pids_limit, model.services.agentbox.deploy.resources.limits.pids);
 console.log(`PASS: ${Object.keys(expected).length} persistent volume identities, external Claude home, read-only instructions and PID parity`);
+
+// A nested credential bind must never become the only durable Codex state.
+for (const target of ['/home/devuser/.codex', '/home/devuser/.claude']) {
+  assert.ok(!(model.services.agentbox.tmpfs || []).some(entry =>
+    (typeof entry === 'string' ? entry.split(':')[0] : entry.target) === target),
+    `${target} must not be shadowed by tmpfs`);
+}
+const auth = model.services.agentbox.volumes.find(v => v.target === '/home/devuser/.codex/auth.json');
+assert.equal(auth?.type, 'bind');

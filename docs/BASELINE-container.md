@@ -473,7 +473,11 @@ name once, because it changes every gate path, catalogue row and projector citat
 
 Codex's copied daemon executables live on the disk-backed
 `agentbox-codex-packages` volume at `/home/devuser/.codex/packages`, owned by
-UID/GID 1000. The parent configuration tmpfs remains bounded and `noexec`.
+UID/GID 1000. The parent `/home/devuser/.codex` is the disk-backed
+`agentbox-codex-home` volume (ADR-2147), retaining transcripts, archived
+sessions, history, session indexes and SQLite state. The host `auth.json`
+bind remains separate. Claude uses `agentbox-claude-home` in the standard
+override; routed Claude profiles persist under the workspace volume.
 Local image builds refresh and validate generated Compose before building, so
 `./agentbox.sh rebuild` applies changes to mounts as well as image contents.
 

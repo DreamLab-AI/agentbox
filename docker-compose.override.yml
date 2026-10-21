@@ -89,7 +89,7 @@ services:
       - ${HOME}/.claude:/var/lib/agentbox/host-claude:rw
       - ${HOME}/.config/claude:/home/devuser/.config/claude:rw
       # Share only Codex's credential cache, not the complete host .codex tree.
-      # Container-specific MCP/trust settings remain in the container while
+      # Container-specific state persists in agentbox-codex-home while
       # ChatGPT/API login and token refresh are shared with the host. The host
       # file must exist before compose starts (agentbox.sh preflight checks it).
       - ${HOME}/.codex/auth.json:/home/devuser/.codex/auth.json:rw

@@ -151,3 +151,6 @@ The dated forge/instruction deployment receipts above describe specific 20 Octob
 Validate the manifest before changing build/runtime behaviour, classify apply behaviour correctly and use the relevant contract gates. Published ports, credential handling, identifier rules and adapter dispatch are architectural contracts.
 
 The core project uses [AGPL-3.0](LICENSE). Bundled tools and extracted libraries have their own terms; see [the licensing matrix](docs/developer/licensing.md) and third-party notices. Maintained by [John O'Hare](https://github.com/jjohare) / DreamLab AI, with upstream attribution in [MAINTAINERS.md](MAINTAINERS.md), including Melvin Carvalho's Solid/JSS work.
+
+Codex sessions persist in `agentbox-codex-home`; existing tmpfs installations
+need a [one-time migration](docs/adr/ADR-2147-retain-codex-session-state.md) before replacement.
