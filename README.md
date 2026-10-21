@@ -10,6 +10,10 @@
 
 </div>
 
+![Conceptual modular agent workshop with connected workspaces](docs/images/agentbox-workshop-2026-10.png)
+
+*Illustrative artwork, not a runtime capture. The architecture below describes the implemented contracts.*
+
 Agentbox packages agent CLIs, development tools and supervised services behind one configuration and build process. An operator chooses capabilities in `agentbox.toml`, inspects the resulting runtime contract, and runs interactive agent sessions with configured identity, memory and data services.
 
 Use it for a persistent coding workspace, an auditable agent lab, local media/spatial tooling, or a host for governed repository-maintenance workflows. Nix pins the build inputs; runtime credentials, mounted data, model services and deployment state remain separate. A reproducible composition is not a guarantee that every action or external service is reproducible.
