@@ -98,6 +98,13 @@
               });
               pythonPackagesExtensions = (prev.pythonPackagesExtensions or [ ]) ++ [
                 (pyFinal: pyPrev: {
+                  # reuse 6.2.0 declares a man output, but sphinx-hook reads
+                  # sphinxBuilders as a scalar. With structured attrs the
+                  # upstream list becomes a shell array and only html runs.
+                  # Keep both documentation builders and the full test suite.
+                  reuse = pyPrev.reuse.overridePythonAttrs (_: {
+                    sphinxBuilders = "html man";
+                  });
                   inline-snapshot = pyPrev.inline-snapshot.overridePythonAttrs
                     (_: { doCheck = false; });
                   # pandas-stubs 2.3.3: 23/2178 tests fail on pandas/numpy
