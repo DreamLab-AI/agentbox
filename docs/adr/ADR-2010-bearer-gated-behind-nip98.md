@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 275e12356319a9630846656580d497d53de3d38c
+verified_commit: 16139219351978674a549ea943f6005f8010f7b1
 verified_paths: [config/nip98-proxy/proxy.mjs, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A governance upstream stops re-verifying the operator signature, or a bearer is added to the default AoE route
@@ -141,3 +141,8 @@ Re-verified by `git diff f63760e19..a48ea407a -- <verified_paths>`; no re-implem
 
 Tripped by custody X-1 step 1, W2 (`custody/w2-env-scrub`: `0965a9c8c`, `042115499`, `275e12356`; bypass 3, ROLE secrets out of PID 1's environment). `config/nip98-proxy/proxy.mjs` reads the break-glass bearer through `management-api/lib/role-secret.js`. Flag off it is the same read; under the flag it comes from the ab-ingress file W1 delivers and a bare variable is ignored and logged `ROLE-ISOLATION-LEAK`. The per-route bearer gating behind a verified NIP-98 identity is untouched. Recorded fact: the bearer is still the same value as `BRIDGE_TOKEN`, which stays devuser-class (`config/custody/env-classes.json`), so it stays devuser-reachable until the Q4 split (ADR-2027). The decision holds.
 Re-verified by `git diff a48ea407a..275e12356 -- <verified_paths>`. No re-implementation was needed. The image is unverified until the owner's rebuild.
+
+
+## Re-verification — 2026-10-21
+
+The identity addition accepts signed epoch tickets against an explicit group binding and store owner, subscribes to the optional inbox recipient, and authenticates the seal before routing. Key material never reaches the model; all 47 zone-key tests pass. Proxy authentication and clarification matching are unchanged. Manifest validation, the 95 catalogue gates, 45 agent-reconciliation checks and 25 role-supervisor checks pass. This is source verification; image activation and live checks remain separate deployment evidence.

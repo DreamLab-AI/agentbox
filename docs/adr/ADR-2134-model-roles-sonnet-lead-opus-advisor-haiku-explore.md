@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 29e5646155efeb2f93a977de3f4c9adbea77c79d
+verified_commit: 16139219351978674a549ea943f6005f8010f7b1
 verified_paths: [services/agentbox-manifest/src/permissions.rs, agents/Explore.md, scripts/bake-ruflo-console.sh]
 owner: jjohare
 review_trigger: a Claude Code release that changes advisor pairing rules, or the ADR-2135 shadow log showing a subagent-model policy that beats this one
@@ -31,3 +31,8 @@ Advisor calls bill a full-transcript Opus read each; the saving relies on a Sonn
 
 ## Verification
 `cargo test --bin agentbox-manifest permissions` (7 pass); `node scripts/agentbox-config-validate.js agentbox.toml` accepts, a bad `advisor_model` is rejected; `bash tests/config/agent-reconcile.test.sh` 45/45; `node --test tests/config/ruflo-console.test.mjs` 17 pass; a bake over the real ruflo-mods tree changes exactly three lines; dry-run projection skipped openrouter and zai.
+
+
+## Re-verification — 2026-10-21
+
+Ruflo console/mods/swarm versions match the v3.57.0 source; the routeTasks-off patch retains the upstream advisory continuation. All 18 plugin bake/registration tests pass against the real pinned tree. Factrail and Jev entries are unchanged. Manifest validation, the 95 catalogue gates, 45 agent-reconciliation checks and 25 role-supervisor checks pass. This is source verification; image activation and live checks remain separate deployment evidence.

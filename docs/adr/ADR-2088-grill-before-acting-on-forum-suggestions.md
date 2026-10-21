@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: f1dcd1b77cda5331aa28d31637776c5316fc3c1f
+verified_commit: 16139219351978674a549ea943f6005f8010f7b1
 verified_paths: [management-api/lib/junkiejarvis-clarify.js, management-api/lib/junkiejarvis-agent.js, management-api/server.js, scripts/dream-forum-suggestions.mjs, scripts/run-junkiejarvis.cjs, tests/sovereign/junkiejarvis-clarify.test.js, tests/sovereign/junkiejarvis-dm-send.test.js, tests/sovereign/dream-forum-suggestions-jj-gate.test.js]
 owner: jjohare
 review_trigger: any change to the clarity signals, MIN_SPECIFICITY, the 7-day expiry, or the forum-suggestions ingest path
@@ -176,3 +176,8 @@ Re-verified by `git diff e434a7a59..275e12356 -- <verified_paths>`. No re-implem
 - **State repair:** the 29 erroneous parked entries were set to `stale` by the operator so a late reply cannot revive them.
 - **Still open:** what reset the file. Nothing in the repository writes that path except the tenant; the 10-12 ab-p6 landing (#24) and 10-13 HP overlay retirement (#26) are the nearest changes. Status fields unchanged.
 
+
+
+## Re-verification — 2026-10-21
+
+The identity addition accepts signed epoch tickets against an explicit group binding and store owner, subscribes to the optional inbox recipient, and authenticates the seal before routing. Key material never reaches the model; all 47 zone-key tests pass. Proxy authentication and clarification matching are unchanged. Manifest validation, the 95 catalogue gates, 45 agent-reconciliation checks and 25 role-supervisor checks pass. This is source verification; image activation and live checks remain separate deployment evidence.
