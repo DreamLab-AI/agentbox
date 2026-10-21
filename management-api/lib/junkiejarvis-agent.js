@@ -863,7 +863,11 @@ class JunkieJarvisAgent {
     if (!rumor || typeof rumor !== 'object') return;
     // A zone-key grant is key material, not a message: store it (no backlog
     // floor — a grant sent while the agent was down is still valid).
-    if (rumor.kind === zoneKeys.KIND_ZONE_KEY_GRANT) return this._handleGrant(wrap);
+    // A NIP-171 epoch ticket (kind 1014) carries an epoch private key in its
+    // content: it must reach the key store and never the model.
+    if (rumor.kind === zoneKeys.KIND_ZONE_KEY_GRANT || rumor.kind === zoneKeys.KIND_EPOCH_TICKET) {
+      return this._handleGrant(wrap);
+    }
     if (rumor.kind !== KIND_DM_RUMOR) return;
     const asker = rumor.pubkey;
     if (this._shouldIgnore(asker)) return;

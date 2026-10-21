@@ -389,6 +389,40 @@ describe('zone-key grants', () => {
     assert.deepEqual(res, { status: 'rejected', error: 'grant secret does not derive to its stated pubkey' });
   });
 
+  test('inbox key (AGENTBOX_ZONE_INBOX_SK_FILE) opens wraps addressed to it; identity still works', () => {
+    const INBOX_SK = hexKey(9);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zk-inbox-'));
+    const file = path.join(dir, 'inbox.sk');
+    fs.writeFileSync(file, `${INBOX_SK}\n`, { mode: 0o600 });
+    const env = { AGENTBOX_ZONE_INBOX_SK_FILE: file };
+    const inboxSk = zk.loadInboxSk(env);
+    assert.deepEqual(Buffer.from(inboxSk).toString('hex'), INBOX_SK);
+    const toInbox = grantWrap({ sealerSk: ADMIN_SK, recipientPk: pk(INBOX_SK), payload: grantPayload() });
+    const toIdentity = grantWrap({ sealerSk: ADMIN_SK, recipientPk: member, payload: grantPayload() });
+    assert.equal(zk.unwrapAny(toInbox, bytes(MEMBER_SK), { inboxSk }).sealer, pk(ADMIN_SK));
+    assert.equal(zk.unwrapAny(toIdentity, bytes(MEMBER_SK), { inboxSk }).sealer, pk(ADMIN_SK));
+    // Absent inbox key: unchanged behaviour, an inbox-addressed wrap is unreadable.
+    assert.throws(() => zk.unwrapAny(toInbox, bytes(MEMBER_SK), { inboxSk: null }));
+    assert.equal(zk.unwrapAny(toIdentity, bytes(MEMBER_SK), { inboxSk: null }).sealer, pk(ADMIN_SK));
+  });
+
+  test('inbox key file: unset, loose-mode, malformed and missing files are ignored with a reason', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zk-inbox-'));
+    const warnings = [];
+    const warn = (m) => warnings.push(m);
+    assert.equal(zk.loadInboxSk({}, fs, warn), null);
+    const loose = path.join(dir, 'loose');
+    fs.writeFileSync(loose, hexKey(9), { mode: 0o644 });
+    fs.chmodSync(loose, 0o644);
+    assert.equal(zk.loadInboxSk({ AGENTBOX_ZONE_INBOX_SK_FILE: loose }, fs, warn), null);
+    const bad = path.join(dir, 'bad');
+    fs.writeFileSync(bad, 'not-hex', { mode: 0o600 });
+    assert.equal(zk.loadInboxSk({ AGENTBOX_ZONE_INBOX_SK_FILE: bad }, fs, warn), null);
+    assert.equal(zk.loadInboxSk({ AGENTBOX_ZONE_INBOX_SK_FILE: path.join(dir, 'missing') }, fs, warn), null);
+    assert.equal(warnings.length, 3);
+    assert.ok(warnings.every((w) => !w.includes(hexKey(9))));
+  });
+
   test('a rumor claiming another author than the seal is refused', () => {
     const wrap = grantWrap({
       sealerSk: hexKey(8), recipientPk: member, payload: grantPayload(), rumorAuthor: pk(ADMIN_SK),
@@ -417,6 +451,119 @@ describe('zone-key grants', () => {
 });
 
 // ── JunkieJarvis agent ──────────────────────────────────────────────────────
+
+describe('NIP-171 epoch tickets (kind 1014)', () => {
+  const member = pk(MEMBER_SK);
+  const GROUP_SK = hexKey(6);
+  const group = pk(GROUP_SK);
+  const EPOCH_SK = hexKey(7);
+  const bindings = [{ zone: 'zone4', group }];
+
+  /** A kit-format ticket wrap: signed 1014 rumor, seal by `sealerSk`, wrap 1059. */
+  function ticketWrap({ signerSk = GROUP_SK, sealerSk = GROUP_SK, tags, content = EPOCH_SK, recipientPk = member } = {}) {
+    const ticket = finalizeEvent({
+      kind: zk.KIND_EPOCH_TICKET,
+      created_at: 1_790_000_000,
+      tags: tags || [['p', member], ['epoch', '2']],
+      content,
+    }, bytes(signerSk));
+    const seal = finalizeEvent({
+      kind: 13,
+      created_at: 1_790_000_000,
+      tags: [],
+      content: nip44.encrypt(JSON.stringify(ticket), nip44.getConversationKey(bytes(sealerSk), recipientPk)),
+    }, bytes(sealerSk));
+    const eph = generateSecretKey();
+    return finalizeEvent({
+      kind: 1059,
+      created_at: 1_790_000_000,
+      tags: [['p', recipientPk]],
+      content: nip44.encrypt(JSON.stringify(seal), nip44.getConversationKey(eph, recipientPk)),
+    }, eph);
+  }
+
+  async function accept(wrap, over = {}) {
+    const store = tmpStore(member);
+    let opened;
+    try { opened = zk.unwrapAny(wrap, bytes(MEMBER_SK), { inboxSk: null }); } catch (e) {
+      // Refused while opening (the rumor author is not the seal's author).
+      return { res: { status: 'rejected', error: e.message }, store };
+    }
+    const res = await zk.acceptGrant(opened, {
+      store, isAdmin: async () => { throw new Error('admin check must not run for a ticket'); }, bindings, ...over,
+    });
+    return { res, store };
+  }
+
+  test('a ticket from the bound group is accepted and keeps its signature', async () => {
+    const wrap = ticketWrap();
+    const opened = zk.unwrapAny(wrap, bytes(MEMBER_SK), { inboxSk: null });
+    assert.equal(opened.sealer, group);
+    assert.match(opened.rumor.sig, /^[0-9a-f]{128}$/);
+    const { res, store } = await accept(wrap);
+    assert.equal(res.status, 'granted');
+    assert.deepEqual(
+      { zone: res.key.zone, epoch: res.key.epoch, pubkey: res.key.pubkey, granted_by: res.key.granted_by },
+      { zone: 'zone4', epoch: 2, pubkey: pk(EPOCH_SK), granted_by: group },
+    );
+    assert.equal(store.get('zone4', 2).secret, EPOCH_SK);
+  });
+
+  test('validateGrant accepts a 1014 beside 21453 and AGENTBOX_ZONE_GROUP_PUBKEY supplies the binding', () => {
+    const opened = zk.unwrapAny(ticketWrap(), bytes(MEMBER_SK), { inboxSk: null });
+    const v = zk.validateGrant(opened.rumor, opened.sealer, false, 9, { member, bindings: zk.loadGroupBindings({ AGENTBOX_ZONE_GROUP_PUBKEY: `zone4=${group.toUpperCase()},nonsense,=x,z=bad` }) });
+    assert.equal(v.ok, true);
+    assert.equal(v.key.received_at, 9);
+    assert.deepEqual(zk.loadGroupBindings({}), []);
+    // The 21453 path is untouched.
+    const grant = zk.unwrapAny(grantWrap({ sealerSk: ADMIN_SK, recipientPk: member, payload: grantPayload() }), bytes(MEMBER_SK), { inboxSk: null });
+    assert.equal(zk.validateGrant(grant.rumor, grant.sealer, true, 1).ok, true);
+  });
+
+  test('every MUST violation and a wrong or missing binding is refused', async () => {
+    const p = ['p', member];
+    const cases = {
+      'two p tags': { tags: [p, p, ['epoch', '2']], match: /exactly one valid p/ },
+      'no epoch tag': { tags: [p], match: /exactly one valid epoch/ },
+      'two epoch tags': { tags: [p, ['epoch', '2'], ['epoch', '3']], match: /exactly one valid epoch/ },
+      'leading zero epoch': { tags: [p, ['epoch', '02']], match: /valid epoch/ },
+      'signed epoch': { tags: [p, ['epoch', '+2']], match: /valid epoch/ },
+      'epoch 0 is record-only': { tags: [p, ['epoch', '0']], match: /usable range/ },
+      'epoch above u32': { tags: [p, ['epoch', '4294967296']], match: /usable range/ },
+      'non-hex content': { content: 'zz', match: /lowercase hex/ },
+      'uppercase content': { content: 'AB'.repeat(32), match: /lowercase hex/ },
+      'zero scalar': { content: '00'.repeat(32), match: /valid secret key/ },
+      'scalar at the group order': { content: 'ff'.repeat(32), match: /valid secret key/ },
+      'ticket for someone else': { tags: [['p', pk(hexKey(9))], ['epoch', '2']], match: /another member/ },
+      'ticket signed by another key, seal by the group': { signerSk: hexKey(9), match: /does not match seal author/ },
+      'seal by an impostor': { sealerSk: hexKey(9), match: /does not match seal author/ },
+    };
+    for (const [name, { match, ...opts }] of Object.entries(cases)) {
+      const { res, store } = await accept(ticketWrap(opts));
+      assert.equal(res.status, 'rejected', name);
+      assert.match(res.error, match, name);
+      assert.equal(store.keys().length, 0, name);
+    }
+    // Wrong binding, ambiguous binding, and no binding at all.
+    for (const b of [[{ zone: 'zone4', group: pk(hexKey(9)) }], [], [{ zone: 'a', group }, { zone: 'b', group }]]) {
+      const { res } = await accept(ticketWrap(), { bindings: b });
+      assert.equal(res.status, 'rejected');
+      assert.match(res.error, /not bound to exactly one zone/);
+    }
+  });
+
+  test('re-delivery is idempotent and a different key for a held epoch is refused', async () => {
+    const store = tmpStore(member);
+    const open = (w) => zk.unwrapAny(w, bytes(MEMBER_SK), { inboxSk: null });
+    const isAdmin = async () => false;
+    assert.equal((await zk.acceptGrant(open(ticketWrap()), { store, isAdmin, bindings })).status, 'granted');
+    assert.equal((await zk.acceptGrant(open(ticketWrap()), { store, isAdmin, bindings })).status, 'known');
+    const other = await zk.acceptGrant(open(ticketWrap({ content: hexKey(8) })), { store, isAdmin, bindings });
+    assert.equal(other.status, 'rejected');
+    assert.match(other.error, /inconsistent/);
+    assert.equal(store.get('zone4', 2).secret, EPOCH_SK);
+  });
+});
 
 describe('JunkieJarvis in encrypted zones', () => {
   const jjSigner = signerFromHex(MEMBER_SK);
@@ -571,6 +718,41 @@ describe('JunkieJarvis in encrypted zones', () => {
     const wrap = grantWrap({ sealerSk: ADMIN_SK, recipientPk: jjSigner.pubkey, payload: grantPayload() });
     await agent._handleDm(wrap);
     assert.equal(store.get('zone4', 1).pubkey, pk(GRANT_ZONE_SK));
+    assert.equal(llmSeen.length, 0);
+    assert.equal(bridge.published.length, 0);
+  });
+
+  test('an epoch ticket arriving as a gift wrap is stored and never reaches the model', async () => {
+    const groupSk = hexKey(6);
+    const epochSk = hexKey(7);
+    const { agent, bridge, store, llmSeen } = agentWith({ keys: [] });
+    const ticket = finalizeEvent({
+      kind: zk.KIND_EPOCH_TICKET,
+      created_at: 1_790_000_000,
+      tags: [['p', jjSigner.pubkey], ['epoch', '3']],
+      content: epochSk,
+    }, bytes(groupSk));
+    const seal = finalizeEvent({
+      kind: 13,
+      created_at: 1_790_000_000,
+      tags: [],
+      content: nip44.encrypt(JSON.stringify(ticket), nip44.getConversationKey(bytes(groupSk), jjSigner.pubkey)),
+    }, bytes(groupSk));
+    const eph = generateSecretKey();
+    const wrap = finalizeEvent({
+      kind: 1059,
+      created_at: 1_790_000_000,
+      tags: [['p', jjSigner.pubkey]],
+      content: nip44.encrypt(JSON.stringify(seal), nip44.getConversationKey(eph, jjSigner.pubkey)),
+    }, eph);
+    const saved = process.env.AGENTBOX_ZONE_GROUP_PUBKEY;
+    process.env.AGENTBOX_ZONE_GROUP_PUBKEY = `zone4=${pk(groupSk)}`;
+    try {
+      await agent._handleDm(wrap);
+    } finally {
+      if (saved === undefined) delete process.env.AGENTBOX_ZONE_GROUP_PUBKEY; else process.env.AGENTBOX_ZONE_GROUP_PUBKEY = saved;
+    }
+    assert.equal(store.get('zone4', 3).pubkey, pk(epochSk));
     assert.equal(llmSeen.length, 0);
     assert.equal(bridge.published.length, 0);
   });

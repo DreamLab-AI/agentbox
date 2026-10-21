@@ -52,6 +52,8 @@ function getNostrTools() {
 }
 
 const KIND_ZONE_KEY_GRANT = 21453;
+/** NIP-171 epoch ticket (signed kind 1014), ADR-2028 decision 2. */
+const KIND_EPOCH_TICKET = 1014;
 const KIND_SEAL = 13;
 const KIND_GIFT_WRAP = 1059;
 const KIND_CHANNEL_CREATE = 40;
@@ -265,11 +267,80 @@ class ZoneKeyStore {
 // ─── Grants ─────────────────────────────────────────────────────────────────
 
 /**
+ * Parse the zone-to-group bindings from `AGENTBOX_ZONE_GROUP_PUBKEY`:
+ * comma-separated `<zone>=<64 lowercase hex group pubkey>`. A bare hex has no
+ * zone to name and is ignored. Returns `[{ zone, group }]`.
+ */
+function loadGroupBindings(env = process.env) {
+  const raw = env.AGENTBOX_ZONE_GROUP_PUBKEY;
+  if (typeof raw !== 'string') return [];
+  const out = [];
+  for (const part of raw.split(',')) {
+    const i = part.indexOf('=');
+    if (i < 1) continue;
+    const zone = part.slice(0, i).trim();
+    const group = part.slice(i + 1).trim().toLowerCase();
+    if (zone && isHex64(group)) out.push({ zone, group });
+  }
+  return out;
+}
+
+const LOWER_HEX64 = /^[0-9a-f]{64}$/;
+
+/**
+ * Validate a NIP-171 kind-1014 epoch ticket opened from a gift wrap (the kit's
+ * `parse_ticket` + `accept_ticket`). It is a signed event, so `unwrapAny`
+ * returns it with `id` and `sig`. Rules: id and signature verify; the author
+ * is the seal's author; exactly one `p` (the member, `opts.member`) and one
+ * `epoch` tag (plain decimal, at least 1); content is 64 lowercase hex and a
+ * valid scalar; the signer is bound to exactly one zone in `opts.bindings`
+ * (default: AGENTBOX_ZONE_GROUP_PUBKEY). No admin check: the group identity
+ * is not an admin. Returns { ok: true, key } or { ok: false, error }.
+ */
+function validateTicket(ev, sealer, now, { member, bindings = loadGroupBindings() } = {}) {
+  const bad = (error) => ({ ok: false, error });
+  if (!ev || ev.kind !== KIND_EPOCH_TICKET) return bad(`not an epoch ticket (kind ${ev && ev.kind})`);
+  let sigOk = false;
+  try { sigOk = getNostrTools().verifyEvent(ev); } catch { sigOk = false; }
+  if (!sigOk) return bad('ticket id or signature does not verify');
+  if (ev.pubkey !== sealer) return bad('ticket author does not match seal author');
+  const tags = Array.isArray(ev.tags) ? ev.tags : [];
+  const only = (name) => {
+    const m = tags.filter((t) => Array.isArray(t) && t[0] === name);
+    return m.length === 1 && m[0].length === 2 && typeof m[0][1] === 'string' ? m[0][1] : null;
+  };
+  const p = only('p');
+  const epochText = only('epoch');
+  if (p === null || !LOWER_HEX64.test(p)) return bad('ticket needs exactly one valid p tag');
+  if (epochText === null || !/^(0|[1-9][0-9]*)$/.test(epochText)) return bad('ticket needs exactly one valid epoch tag');
+  const epoch = Number(epochText);
+  if (!Number.isSafeInteger(epoch) || epoch > 0xffffffff || epoch < 1) return bad('ticket epoch is outside the usable range');
+  if (typeof ev.content !== 'string' || !LOWER_HEX64.test(ev.content)) return bad('ticket content is not 64 lowercase hex');
+  let derived;
+  try { derived = getNostrTools().getPublicKey(hexToBytes(ev.content)); } catch { return bad('ticket content is not a valid secret key'); }
+  if (member !== undefined && p !== member) return bad('ticket is addressed to another member');
+  const bound = bindings.filter((b) => b.group === ev.pubkey);
+  if (bound.length !== 1) return bad('ticket signer is not bound to exactly one zone');
+  return {
+    ok: true,
+    key: {
+      zone: bound[0].zone,
+      epoch,
+      secret: ev.content,
+      pubkey: derived.toLowerCase(),
+      granted_by: ev.pubkey,
+      received_at: now,
+    },
+  };
+}
+
+/**
  * Validate a decrypted grant rumor sealed by `sealer` (the kit's
  * `validate_grant`). `isAdmin` is the relay's check-whitelist answer, injected
  * so the rule is testable. Returns { ok: true, key } or { ok: false, error }.
  */
-function validateGrant(rumor, sealer, isAdmin, now) {
+function validateGrant(rumor, sealer, isAdmin, now, opts = {}) {
+  if (rumor && rumor.kind === KIND_EPOCH_TICKET) return validateTicket(rumor, sealer, now, opts);
   if (!rumor || rumor.kind !== KIND_ZONE_KEY_GRANT) {
     return { ok: false, error: `not a zone-key grant (rumor kind ${rumor && rumor.kind})` };
   }
@@ -301,12 +372,55 @@ function validateGrant(rumor, sealer, isAdmin, now) {
 }
 
 /**
+ * Read the optional zone-inbox secret (forum kit Phase 2): the 64-hex key in
+ * the 0600 file named by `AGENTBOX_ZONE_INBOX_SK_FILE`. Returns `null` when
+ * the variable is unset or the file is unusable (missing, group/other
+ * readable, not 64 hex) so a bad file can never break the identity path.
+ * Reports a reason through `warn` but never the key.
+ */
+function loadInboxSk(env = process.env, fsImpl = fs, warn = () => {}) {
+  const file = env.AGENTBOX_ZONE_INBOX_SK_FILE;
+  if (typeof file !== 'string' || file.trim() === '') return null;
+  try {
+    const st = fsImpl.statSync(file);
+    if ((st.mode & 0o077) !== 0) {
+      warn('zone inbox key file is group/other accessible (needs 0600) — ignored');
+      return null;
+    }
+    const hex = fsImpl.readFileSync(file, 'utf8').trim();
+    if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+      warn('zone inbox key file is not 64 hex characters — ignored');
+      return null;
+    }
+    return Uint8Array.from(Buffer.from(hex, 'hex'));
+  } catch (err) {
+    warn(`zone inbox key file unreadable (${err && err.code ? err.code : 'error'}) — ignored`);
+    return null;
+  }
+}
+
+/**
  * Open a kind-1059 addressed to `skBytes`, accepting any rumor kind (the
  * kit's `unwrap_any`). Unlike nostr-tools' `nip59.unwrapEvent`, this verifies
  * the seal's id + signature and that the rumor's author is the seal's author,
  * so the returned `sealer` is authenticated. Throws on any failure.
+ *
+ * When `inboxSk` is supplied (default: `loadInboxSk()`, i.e. the
+ * `AGENTBOX_ZONE_INBOX_SK_FILE` secret when configured) it is tried first and
+ * the identity key second; the identity error is thrown if neither opens it.
  */
-function unwrapAny(wrap, skBytes) {
+function unwrapAny(wrap, skBytes, { inboxSk = loadInboxSk() } = {}) {
+  if (inboxSk) {
+    try {
+      return unwrapWith(wrap, inboxSk);
+    } catch {
+      // Not addressed to the inbox key: fall through to the identity key.
+    }
+  }
+  return unwrapWith(wrap, skBytes);
+}
+
+function unwrapWith(wrap, skBytes) {
   const { nip44, verifyEvent } = getNostrTools();
   if (!wrap || wrap.kind !== KIND_GIFT_WRAP) throw new Error('not a gift wrap');
   const seal = JSON.parse(nip44.decrypt(wrap.content, nip44.getConversationKey(skBytes, wrap.pubkey)));
@@ -371,7 +485,18 @@ function makeAdminCheck({ fetchImpl = globalThis.fetch, baseUrl = relayHttpBase(
  * 'retry' means the sender's admin status could not be established right now;
  * the caller should try the same wrap again later.
  */
-async function acceptGrant({ sealer, rumor }, { store, isAdmin, now = Math.floor(Date.now() / 1000) }) {
+async function acceptGrant({ sealer, rumor }, { store, isAdmin, now = Math.floor(Date.now() / 1000), bindings }) {
+  if (rumor && rumor.kind === KIND_EPOCH_TICKET) {
+    // A ticket is checked against the bound group identity, not the admin list.
+    const v = validateTicket(rumor, sealer, now, { member: store.owner, ...(bindings ? { bindings } : {}) });
+    if (!v.ok) return { status: 'rejected', error: v.error };
+    const held = store.get(v.key.zone, v.key.epoch);
+    if (held && held.pubkey === v.key.pubkey) return { status: 'known', key: held };
+    // Two keys for one epoch: NIP-171 calls it inconsistent. Keep the held one.
+    if (held) return { status: 'rejected', error: 'epoch already held with a different key (inconsistent)' };
+    store.upsert(v.key);
+    return { status: 'granted', key: v.key };
+  }
   if (!rumor || rumor.kind !== KIND_ZONE_KEY_GRANT) return { status: 'not-grant' };
   let payload;
   try { payload = JSON.parse(rumor.content); } catch { payload = null; }
@@ -548,6 +673,7 @@ async function resolveChannelZone(channelId, { query, zones }) {
 
 module.exports = {
   KIND_ZONE_KEY_GRANT,
+  KIND_EPOCH_TICKET,
   KIND_SEAL,
   KIND_GIFT_WRAP,
   ZK_TAG,
@@ -570,7 +696,10 @@ module.exports = {
   saveKeyFile,
   ZoneKeyStore,
   validateGrant,
+  validateTicket,
+  loadGroupBindings,
   unwrapAny,
+  loadInboxSk,
   relayHttpBase,
   makeAdminCheck,
   AdminCheckUnavailable,
