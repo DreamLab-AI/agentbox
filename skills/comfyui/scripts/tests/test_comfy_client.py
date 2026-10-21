@@ -192,6 +192,30 @@ class HarnessTest(unittest.TestCase):
             with self.subTest(name=name), self.assertRaisesRegex(comfy.ComfyError, "available option"):
                 comfy.validate_graph(bad, nodes)
 
+    def test_expandable_image_inputs_match_fibo_schema(self):
+        nodes = {
+            "Image": {"input": {"required": {}}, "output": ["IMAGE", "LATENT"]},
+            "Edit": {"input": {"required": {
+                "images": ["COMFY_AUTOGROW_V3", {"min": 0, "names": ["image_1", "image_2"],
+                    "template": {"input": {"required": {"image": ["IMAGE", {}]}}}}]
+            }}, "output": [], "output_node": True},
+        }
+        graph = {"1": {"class_type": "Image", "inputs": {}},
+                 "2": {"class_type": "Edit", "inputs": {"images.image_1": ["1", 0]}}}
+        comfy.validate_graph(graph, nodes)
+        graph["2"]["inputs"] = {}
+        comfy.validate_graph(graph, nodes)  # min=0 generation needs no dummy group.
+        graph["2"]["inputs"] = {"images.image_1": ["1", 1]}
+        with self.assertRaisesRegex(comfy.ComfyError, "link type"):
+            comfy.validate_graph(graph, nodes)
+        graph["2"]["inputs"] = {"images.image_99": ["1", 0]}
+        with self.assertRaisesRegex(comfy.ComfyError, "expandable input name"):
+            comfy.validate_graph(graph, nodes)
+        graph["2"]["inputs"] = {}
+        nodes["Edit"]["input"]["required"]["images"][1]["min"] = 1
+        with self.assertRaisesRegex(comfy.ComfyError, "too few"):
+            comfy.validate_graph(graph, nodes)
+
 
 if __name__ == "__main__":
     unittest.main()

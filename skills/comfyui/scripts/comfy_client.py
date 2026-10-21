@@ -67,6 +67,22 @@ def validate_graph(graph, nodes):
         pending = list(fields.items())
         while pending:
             name, definition = pending.pop()
+            if definition[0] == "COMFY_AUTOGROW_V3":
+                metadata = definition[1]
+                children = [key for key in inputs if key.startswith(name + ".")]
+                if len(children) < metadata.get("min", 0):
+                    errors.append(f"{node_id}.{name}: too few expandable inputs")
+                template = metadata.get("template", {}).get("input", {})
+                child_fields = {**template.get("required", {}), **template.get("optional", {})}
+                for child in children:
+                    alias = child[len(name) + 1:]
+                    if metadata.get("names") and alias not in metadata["names"]:
+                        errors.append(f"{node_id}.{child}: unavailable expandable input name")
+                    # TemplateNames maps a single input definition to its aliases.
+                    # More complex templates remain server-validated.
+                    if len(child_fields) == 1:
+                        fields[child] = next(iter(child_fields.values()))
+                continue
             if definition[0] != "COMFY_DYNAMICCOMBO_V3" or name not in inputs:
                 continue
             value = inputs[name]
@@ -83,7 +99,7 @@ def validate_graph(graph, nodes):
                 fields[full_name] = child_definition
                 pending.append((full_name, child_definition))
         for name in definitions.get("required", {}):
-            if name not in inputs:
+            if name not in inputs and fields[name][0] != "COMFY_AUTOGROW_V3":
                 errors.append(f"{node_id}: missing required input {name}")
         dependencies[node_id] = []
         for name, value in inputs.items():
