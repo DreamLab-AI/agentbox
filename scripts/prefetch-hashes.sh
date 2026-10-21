@@ -544,7 +544,8 @@ while True:
         bn  = re.search(r'\bbin\s*=\s*"([^"]+)"', blk)
         if pkg and ver and sha:
             bname = bn.group(1) if bn else pkg.group(1).split('/')[-1]
-            print(f"{pkg.group(1)}\t{ver.group(1)}\t{sha.group(1)}\t{bname}")
+            strip = 'true' if re.search(r'stripDevDeps\s*=\s*true', blk) else 'false'
+            print(f"{pkg.group(1)}\t{ver.group(1)}\t{sha.group(1)}\t{bname}\t{strip}")
     i = start + 1
 PY
 }
@@ -566,7 +567,7 @@ prefetch_npm_cli_nodemods_fast() {
     return 0
   fi
 
-  while IFS=$'\t' read -r pkgName version sha256 bin; do
+  while IFS=$'\t' read -r pkgName version sha256 bin stripDevDeps; do
     [ -z "$pkgName" ] && continue
     echo "  resolving nodeModulesHash for ${pkgName}@${version} …"
     local got
@@ -576,6 +577,7 @@ prefetch_npm_cli_nodemods_fast() {
           --arg version "\"${version}\"" \
           --arg sha256  "\"${sha256}\"" \
           --arg bin     "\"${bin}\"" \
+          --arg stripDevDeps "${stripDevDeps}" \
           --no-link 2>&1 \
         | grep -oE 'got:[[:space:]]*sha256-[A-Za-z0-9+/=]+' | awk '{print $NF}' || true)
     if [ -z "$got" ]; then

@@ -133,7 +133,13 @@ const ENV = npmEnv();
 const npm = (args, opts = {}) => execFileSync('npm', args, { env: ENV, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts });
 
 function candidate(pkg, pinned) {
-  const meta = JSON.parse(npm(['view', pkg, 'time', 'versions', '--json']));
+  const response = JSON.parse(npm(['view', pkg, 'time', 'versions', '--json']));
+  // npm may wrap a single package's requested fields in a one-element array.
+  // Treating that array as an object silently reports every pin as current.
+  const meta = Array.isArray(response) && response.length === 1 ? response[0] : response;
+  if (!meta.time || !Array.isArray(meta.versions)) {
+    throw new Error(`${pkg}: unexpected npm release metadata shape`);
+  }
   const time = meta.time || {};
   const published = new Set(meta.versions || []);
   const hold = HOLDS[pkg];
@@ -159,7 +165,9 @@ function prepare(b, v) {
   const tgz = path.join(work, 'pkg.tgz');
   execFileSync('curl', ['-fsSL', tarUrl(b.pkgName, v), '-o', tgz]);
   const bytes = fs.readFileSync(tgz);
-  const integrity = JSON.parse(npm(['view', `${b.pkgName}@${v}`, 'dist.integrity', '--json']));
+  const integrityResponse = JSON.parse(npm(['view', `${b.pkgName}@${v}`, 'dist.integrity', '--json']));
+  const integrity = Array.isArray(integrityResponse) && integrityResponse.length === 1
+    ? integrityResponse[0] : integrityResponse;
   const sha512 = 'sha512-' + crypto.createHash('sha512').update(bytes).digest('base64');
   if (sha512 !== integrity) throw new Error(`${b.pkgName}@${v}: tarball sha512 ${sha512} != registry ${integrity}`);
   const sha256 = 'sha256-' + crypto.createHash('sha256').update(bytes).digest('base64');

@@ -20,7 +20,7 @@ let
   # defines the inputs.  We read flake.lock directly to extract the exact
   # nixpkgs rev so we get the same package set as the real build.
   lockFile    = builtins.fromJSON (builtins.readFile ../flake.lock);
-  nixpkgsNode = lockFile.nodes.nixpkgs.locked;
+  nixpkgsNode = lockFile.nodes.${lockFile.nodes.${lockFile.root}.inputs.nixpkgs}.locked;
   nixpkgsSrc  = fetchTarball {
     url    = "https://github.com/${nixpkgsNode.owner}/${nixpkgsNode.repo}/archive/${nixpkgsNode.rev}.tar.gz";
     sha256 = nixpkgsNode.narHash;
@@ -32,8 +32,11 @@ let
   };
   inherit (pkgs) lib;
   npmCliLib  = import ../lib/npm-cli.nix { inherit lib pkgs; };
+  lockPath = ../config/npm-locks + "/${builtins.replaceStrings [ "@" "/" ] [ "" "-" ] pkgName}-${version}.package-lock.json";
 in
   (npmCliLib.makeNpmCli {
     inherit pkgName version sha256 bin stripDevDeps;
+    packageLock = if builtins.pathExists lockPath then lockPath
+      else throw "Missing reviewed CLI lock: ${toString lockPath}";
     nodeModulesHash = lib.fakeHash;
   }).passthru.packageWithDeps
