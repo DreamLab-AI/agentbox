@@ -139,7 +139,9 @@ COPY --chown=devuser:devuser qgis_mcp_plugin /home/devuser/.local/share/QGIS/QGI
 COPY --chown=devuser:devuser forecast_quartz.py /opt/gui-tools/forecast_quartz.py
 COPY --chown=devuser:devuser healthcheck.sh /opt/gui-tools/healthcheck.sh
 COPY supervisord.conf /etc/supervisord.conf
-RUN chmod +x /opt/gui-tools/launch-blender.sh /opt/gui-tools/launch-qgis.sh /opt/gui-tools/healthcheck.sh
+RUN chmod +x /opt/gui-tools/launch-blender.sh /opt/gui-tools/launch-qgis.sh /opt/gui-tools/healthcheck.sh \
+    && ln -s /opt/gui-tools/dcc-python/bin/dcc-mcp-server /usr/local/bin/dcc-mcp-server \
+    && dcc-mcp-server --version
 
 # 5905: VNC  |  9876: BlenderMCP socket  |  9877: QGIS MCP socket
 EXPOSE 5905 9876 9877
