@@ -148,7 +148,8 @@
         vexPkg = import ./lib/agentbox-vex.nix { inherit lib; pkgs = rustPkgs; };
         securityTools = pkgs.symlinkJoin {
           name = "agentbox-security-tools";
-          paths = [ vexPkg pkgs.sbomnix pkgs.syft pkgs.grype pkgs.skopeo pkgs.jq
+          paths = [ vexPkg (import ./lib/sbomnix.nix { inherit pkgs; })
+            pkgs.syft pkgs.grype pkgs.skopeo pkgs.jq
             pkgs.coreutils pkgs.bash ];
         };
         pristineOpenssh = (import nixpkgs { inherit system; }).openssh;
