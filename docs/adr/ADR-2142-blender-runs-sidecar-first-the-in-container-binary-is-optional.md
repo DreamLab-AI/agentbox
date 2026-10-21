@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: f67874c7e5e824f70e2c9114db778415f03e4b55
 verified_paths: [agentbox.toml, flake.nix, skills/blender/tools/blender-job.js, skills/blender/tools/blender-introspect.js, skills/blender/tools/blender-batch.sh, skills/blender/SKILL.md, skills/uk-solar-planner/SKILL.md, skills/game-dev/tools/engine-check.sh, tests/toolchains/blender-present.sh]
 owner: jjohare
 review_trigger: the image rebuild activates the change, the GPU sidecar (gui-tools-service) or its shared volume changes, a local-Blender consumer is added, or `blender_local` is flipped in the shipped manifest
@@ -92,3 +92,10 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+## Bridge example verification — 2026-10-21
+
+At `f67874c7e`, the Blender skill's JSON example now names the same baked
+Node bridge as `register-mcp.sh`; the sidecar proxy, optional local binary
+gate and background-job implementation are unchanged. The MCP protocol and
+Blender tool tests pass (23 media Node tests); this is a documentation fix.
