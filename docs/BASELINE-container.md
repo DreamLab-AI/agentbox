@@ -55,6 +55,16 @@ The image is composed entirely by `flake.nix` (4,684 lines). `agentbox.toml` is 
 
 `ruvector` is always in the package set (`ruvectorPkg` in `flake.nix`), pinned as an exact-semver Nix npm closure (`ruvector-0.3.3`, `lib/npm-cli.nix`); everything else is gated. Node is `nodejs_22` throughout. (ADR-2039: the version was `0.2.25` when this paragraph was written; the `nix-prefetch-url` comment immediately above the pin still names the old tarball.)
 
+### Remote media control planes (ADR-2148)
+
+Blender's existing socket and background-job bridge share the GUI sidecar with
+its pinned DCC-MCP gateway at internal port 9881, gated by `DCC_MCP_ENABLED`.
+No new host port is published. The ComfyUI MCP adapter is baked for either
+builtin ComfyUI or an enabled external ComfyUI integration. Image builds carry
+pinned code and model manifests; model provisioning runs independently into the
+retained model volume with runtime credentials, resumable transfers and hash
+verification. See [media preparation](developer/media-model-preparation.md).
+
 ### Supervised services (real `[program:*]` blocks in flake.nix)
 
 Supervisord runs as PID 1 root; every long-running program drops to `user=devuser`, with one exception. Under `[security].role_isolation = true` (ADR-2122; boot-class, default off, staged until its rehearsal passes), the entrypoint execs `/etc/supervisord.roles.conf`. That config is derived from this one and differs only in `user=` and `environment=`. In it `nostr-relay` and `serve-identity` run as `ab-identity`, `nostr-gateway` as `ab-gateway`, `nip98-proxy` as `ab-ingress`, and each sidestr producer and faucet as its chain's role (`config/role-accounts.json`). Enumerated from the generated supervisor text:

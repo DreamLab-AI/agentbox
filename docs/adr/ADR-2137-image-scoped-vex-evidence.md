@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 73bd631c0666e4f4cab2c6935ae6eaf72c71d631
+verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes
@@ -146,3 +146,15 @@ supervisor, ingress, toolchain, feature-gate, scanner or instruction-projector
 code changes. Compose persistence and runtime-delivery checks pass (24 tests),
 Compose refresh checks pass (3 tests), and role-supervisor checks pass (25 tests).
 This mount migration is explicitly outside fast activation (ADR-2147).
+
+## Re-verification — 2026-10-21 at 395380f71
+
+Reviewed the committed remote-media change against this record. Nix changes
+only the ComfyUI MCP dependency closure and its existing builtin/external gates;
+`skills/mcp.json` changes only Blender's declared protocol. Blender's optional
+local binary, proxy and background-job safety boundaries remain intact. No
+identity, ingress, daemon role, instruction projection, persistent mount, scanner
+or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
+client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
+role-supervisor checks pass (25), skills lint and loopback-port checks pass.
+Sidecar image activation is tracked separately in the host deployment receipt.

@@ -51,7 +51,7 @@ BlenderMCP has two halves that must both be running:
   `localhost:9876` by default. This is **per-session** — a fresh Blender starts with the socket
   closed even though the addon stays enabled.
 - **Agent side**: the baked MCP stdio bridge `node tools/mcp-blender-client.js`, registered in your MCP client
-  (`.mcp.json` entry: `{"command": "uvx", "args": ["blender-mcp"]}`).
+  (`.mcp.json` entry: `{"command":"node","args":["/opt/agentbox/skills/blender/tools/mcp-blender-client.js"]}`).
 
 **Verify the link before working** — run the health check, which distinguishes the failure
 modes that actually happen:

@@ -1,3 +1,20 @@
+---
+id: ADR-2148
+title: Typed remote media control planes alongside existing bridges
+date: 2026-10-21
+decision_status: accepted
+implementation_status: complete
+activation_status: staged
+supersedes: []
+superseded_by: []
+verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
+owner: jjohare
+review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
+repo: agentbox
+domain: BASELINE-container
+---
+
 # ADR-2148: Typed remote media control planes alongside existing bridges
 
 Date: 2026-10-21

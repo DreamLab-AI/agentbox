@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 653b8b6387470eaa3be6c20e6dbd2208e538a985
+verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
 verified_paths: [config/entrypoint-unified.sh, services/agentbox-manifest/src/tui_write.rs, mcp/consultants/antigravity/server.js, skills/mcp.json]
 owner: jjohare
 review_trigger: any change to a consultant's default model, a Gemini model retirement, the 2027-01-01 Gemini tariff step, or a wizard that starts exposing the consultant model field
@@ -221,3 +221,15 @@ Re-verified 2026-10-19 at `52183d76fde866ab1f05aea524aeea33d8573c3f`: The review
 Re-verified 2026-10-19 at `3acd4fa08f06e2c4543debd46f0ce51605033d3e`: the reviewed delta adds the collaboration and welfare floor (ADR-2144) — one new manifest key `[claude_code].floor`, a floor block and managed-path projection in the entrypoint's instructions and Codex-append sections, two `instructions-project` flags in `agentbox-manifest`, and `config/hooks/decline-recorder.cjs`. No ingress, role isolation, durable adapter, retrieval, skill-routing or compaction mechanism this record governs is changed; its gates pass unchanged. Existing status axes are retained.
 
 Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed the merged activity-sink registration in the root entrypoint and profile projector, its default-off manifest gate, schema and boot-class catalogue entry. The hook remains inactive; no sink URL, token or new prompt egress is configured. The independent managed floor remains on. Claude Code 2.1.304 and Codex 0.163.0 change pinned CLI resources, not the Jev/factrail hook protocol; their existing replay mechanisms are unchanged. Activity-sink and hook-registration tests pass (50), the Rust projector suite passes (196), manifest validation and all 95 catalogue gates pass, and the generated egress register is in sync. No changed ingress binding, mount, role isolation, retrieval geometry or adapter dispatch. Build and activation checks remain pending. Existing status axes are retained.
+
+## Re-verification — 2026-10-21 at 395380f71
+
+Reviewed the committed remote-media change against this record. Nix changes
+only the ComfyUI MCP dependency closure and its existing builtin/external gates;
+`skills/mcp.json` changes only Blender's declared protocol. Blender's optional
+local binary, proxy and background-job safety boundaries remain intact. No
+identity, ingress, daemon role, instruction projection, persistent mount, scanner
+or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
+client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
+role-supervisor checks pass (25), skills lint and loopback-port checks pass.
+Sidecar image activation is tracked separately in the host deployment receipt.

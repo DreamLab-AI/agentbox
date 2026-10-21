@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 73bd631c0666e4f4cab2c6935ae6eaf72c71d631
+verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, flake.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/ci/check-manifest-catalogue.js, tests/config/jev-checkpoints.test.mjs, tests/config/factrail-projection.test.sh, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: the first soak report of injections per hundred turns and USD per session, a measured shadow-log agreement rate for spawn routing (ADR-2110 labels), a change to the advisor checkpoints in ADR-2134, or a Claude Code function-hook API change
@@ -115,3 +115,15 @@ supervisor, ingress, toolchain, feature-gate, scanner or instruction-projector
 code changes. Compose persistence and runtime-delivery checks pass (24 tests),
 Compose refresh checks pass (3 tests), and role-supervisor checks pass (25 tests).
 This mount migration is explicitly outside fast activation (ADR-2147).
+
+## Re-verification — 2026-10-21 at 395380f71
+
+Reviewed the committed remote-media change against this record. Nix changes
+only the ComfyUI MCP dependency closure and its existing builtin/external gates;
+`skills/mcp.json` changes only Blender's declared protocol. Blender's optional
+local binary, proxy and background-job safety boundaries remain intact. No
+identity, ingress, daemon role, instruction projection, persistent mount, scanner
+or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
+client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
+role-supervisor checks pass (25), skills lint and loopback-port checks pass.
+Sidecar image activation is tracked separately in the host deployment receipt.

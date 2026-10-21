@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 73bd631c0666e4f4cab2c6935ae6eaf72c71d631
+verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
 verified_paths: [flake.nix, docker-compose.yml, docker-compose.override.yml, scripts/migrate-codex-home.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: changes to Codex home mounts, session retention, or the migration procedure
@@ -53,3 +53,15 @@ Never use `down -v`. New installations need no migration.
 The configuration gate checks resolved named-volume identities, absence of
 home tmpfs mounts and the separate credential bind. Nix regeneration must run
 on the host; Nix was unavailable in the implementation container.
+
+## Re-verification — 2026-10-21 at 395380f71
+
+Reviewed the committed remote-media change against this record. Nix changes
+only the ComfyUI MCP dependency closure and its existing builtin/external gates;
+`skills/mcp.json` changes only Blender's declared protocol. Blender's optional
+local binary, proxy and background-job safety boundaries remain intact. No
+identity, ingress, daemon role, instruction projection, persistent mount, scanner
+or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
+client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
+role-supervisor checks pass (25), skills lint and loopback-port checks pass.
+Sidecar image activation is tracked separately in the host deployment receipt.

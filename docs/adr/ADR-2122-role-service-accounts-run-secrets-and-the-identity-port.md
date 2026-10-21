@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: inactive
 supersedes: []
 superseded_by: []
-verified_commit: 73bd631c0666e4f4cab2c6935ae6eaf72c71d631
+verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
 verified_paths: [config/role-accounts.json, services/agentbox-manifest/src/role_accounts.rs, services/agentbox-manifest/src/main.rs, lib/agentbox-manifest.nix, config/lib/role-custody.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, agentbox.toml, setup/agentbox.default.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, tests/config/role-isolation-supervisor.test.sh, tests/config/role-secrets-delivery.test.sh, tests/config/role-isolation-boot.test.sh, tests/config/fixtures/role-isolation/supervisord.conf, config/custody/env-classes.json, scripts/ci/env-secret-inventory.js, management-api/lib/role-secret.js, services/nostr-pod-bridge/src/role_secret.rs, services/nostr-pod-bridge/src/bootstrap.rs, tests/runtime-contract/RC-X1-06.sh, config/custody/identity-port-acl.json, services/nostr-pod-bridge/src/identity_port/mod.rs, services/nostr-pod-bridge/src/identity_port/server.rs, management-api/lib/pod-signer.js, scripts/activation/role-isolation-rehearsal.sh, scripts/activation/role-isolation-rehearsal.host.sh, tests/config/role-isolation-rehearsal.test.sh, tests/config/role-isolation-class.test.cjs, config/bake-devuser-privilege.sh, tests/runtime-contract/RC-X1-07.sh, tests/security/compose-role-env.test.mjs, docker-compose.override.yml, tests/config/role-custody-migrate.test.sh, config/sidechain/run-producer.sh, config/sidechain/run-faucet.sh, config/sidechain/mirror-sync.sh]
 owner: jjohare
 review_trigger: the role-isolation rehearsal (scripts/activation/role-isolation-rehearsal.sh) passing or failing on a rebuilt image; a new secret-bearing supervisor program; a new [sidechain.<name>] chain; a change to the host docker gid; the identity port's consumer cutover (W3b: JunkieJarvis, the mirror hook, the gateway, dream-engine); a change to config/custody/identity-port-acl.json
@@ -659,3 +659,15 @@ supervisor, ingress, toolchain, feature-gate, scanner or instruction-projector
 code changes. Compose persistence and runtime-delivery checks pass (24 tests),
 Compose refresh checks pass (3 tests), and role-supervisor checks pass (25 tests).
 This mount migration is explicitly outside fast activation (ADR-2147).
+
+## Re-verification — 2026-10-21 at 395380f71
+
+Reviewed the committed remote-media change against this record. Nix changes
+only the ComfyUI MCP dependency closure and its existing builtin/external gates;
+`skills/mcp.json` changes only Blender's declared protocol. Blender's optional
+local binary, proxy and background-job safety boundaries remain intact. No
+identity, ingress, daemon role, instruction projection, persistent mount, scanner
+or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
+client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
+role-supervisor checks pass (25), skills lint and loopback-port checks pass.
+Sidecar image activation is tracked separately in the host deployment receipt.
