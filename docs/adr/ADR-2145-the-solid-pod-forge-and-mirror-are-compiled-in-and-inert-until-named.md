@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c8c20341c66feec751fe6234167c220c70fe2ffb
+verified_commit: 9173cdba6f0a84556bbd4c059db0a7e823aa7a2d
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -56,3 +56,9 @@ Re-verified at `c8c20341c66feec751fe6234167c220c70fe2ffb`: the only governed cod
 Sphinx builder string correction. Both documentation outputs and all 872
 enabled package tests pass; 23 runtime-delivery checks pass. Runtime
 boundaries and activation status are unchanged.
+
+Re-verified at `9173cdba6f0a84556bbd4c059db0a7e823aa7a2d`: the governed delta isolates Typepy 1.3.5
+and fixes wrapper arguments for host-only sbomnix. Its dependency suites
+pass (834 Typepy, 1682 SimpleSQLite), 23 delivery checks pass, and an actual
+shipped-path smoke scan emits CycloneDX, SPDX and CSV. Runtime and activation
+contracts remain unchanged.

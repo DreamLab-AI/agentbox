@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c8c20341c66feec751fe6234167c220c70fe2ffb
+verified_commit: 9173cdba6f0a84556bbd4c059db0a7e823aa7a2d
 verified_paths: [config/instructions, services/agentbox-manifest/src/instructions.rs, services/agentbox-manifest/src/cred_sync.rs, config/entrypoint-unified.sh, agentbox.sh, flake.nix, docker-compose.yml, docker-compose.override.yml, tests/config/claude-home-migration.test.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: Claude Code starts reading AGENTS.md natively (drop the @AGENTS.md wrappers and the embed); or a Claude Code release changes where credentials live
@@ -241,3 +241,9 @@ Re-verified at `c8c20341c66feec751fe6234167c220c70fe2ffb`: the only governed cod
 Sphinx builder string correction. Both documentation outputs and all 872
 enabled package tests pass; 23 runtime-delivery checks pass. Runtime
 boundaries and activation status are unchanged.
+
+Re-verified at `9173cdba6f0a84556bbd4c059db0a7e823aa7a2d`: the governed delta isolates Typepy 1.3.5
+and fixes wrapper arguments for host-only sbomnix. Its dependency suites
+pass (834 Typepy, 1682 SimpleSQLite), 23 delivery checks pass, and an actual
+shipped-path smoke scan emits CycloneDX, SPDX and CSV. Runtime and activation
+contracts remain unchanged.

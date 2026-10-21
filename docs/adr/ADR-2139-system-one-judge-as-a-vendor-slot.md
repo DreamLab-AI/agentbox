@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: c8c20341c66feec751fe6234167c220c70fe2ffb
+verified_commit: 9173cdba6f0a84556bbd4c059db0a7e823aa7a2d
 verified_paths: [agentbox.toml, crates/system-one/system-one-proxy/src/server.rs, crates/system-one/system-one-proxy/src/key.rs, services/agentbox-manifest/src/system_one.rs, config/entrypoint-unified.sh, config/hooks/lib/skill-route.cjs, config/seal-bootstrap.sh, lib/system-one-proxy.nix, flake.nix, scripts/agentbox-config-validate.js, agentbox.sh]
 owner: jjohare
 review_trigger: SubQ Snap leaving public preview or changing its price, retention default or the Decisions request shape; a Kev, Clef or pplx-decider release that serves /v1/systemone on a 9B-class checkpoint; a system-one-eval run on the ADR-2089 corpus that moves any backend by more than 5 points; the first compaction replay whose keep-rate is above 5%
@@ -198,3 +198,9 @@ Re-verified at `c8c20341c66feec751fe6234167c220c70fe2ffb`: the only governed cod
 Sphinx builder string correction. Both documentation outputs and all 872
 enabled package tests pass; 23 runtime-delivery checks pass. Runtime
 boundaries and activation status are unchanged.
+
+Re-verified at `9173cdba6f0a84556bbd4c059db0a7e823aa7a2d`: the governed delta isolates Typepy 1.3.5
+and fixes wrapper arguments for host-only sbomnix. Its dependency suites
+pass (834 Typepy, 1682 SimpleSQLite), 23 delivery checks pass, and an actual
+shipped-path smoke scan emits CycloneDX, SPDX and CSV. Runtime and activation
+contracts remain unchanged.

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: c8c20341c66feec751fe6234167c220c70fe2ffb
+verified_commit: 9173cdba6f0a84556bbd4c059db0a7e823aa7a2d
 verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, flake.nix]
 owner: jjohare
 review_trigger: a Stop/SubagentStop hook that can halt a task (upgrade the exit clause to "halts the task"); a Claude Code release that changes managed CLAUDE.md, omitClaudeMd or last_assistant_message semantics; a second operator (the single-operator premise behind "the operator reads them")
@@ -116,3 +116,9 @@ Re-verified at `c8c20341c66feec751fe6234167c220c70fe2ffb`: the only governed cod
 Sphinx builder string correction. Both documentation outputs and all 872
 enabled package tests pass; 23 runtime-delivery checks pass. Runtime
 boundaries and activation status are unchanged.
+
+Re-verified at `9173cdba6f0a84556bbd4c059db0a7e823aa7a2d`: the governed delta isolates Typepy 1.3.5
+and fixes wrapper arguments for host-only sbomnix. Its dependency suites
+pass (834 Typepy, 1682 SimpleSQLite), 23 delivery checks pass, and an actual
+shipped-path smoke scan emits CycloneDX, SPDX and CSV. Runtime and activation
+contracts remain unchanged.
