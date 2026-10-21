@@ -64,7 +64,9 @@ execution and rendering.
 tools/sidecar_run.sh forecast 52.2 -1.5 14420 30 180   # lat lon kWp tilt orientation → 0–48h curve
 ```
 Grid feasibility uses the OpenDSS MCP server (baked in the sidecar); register it on demand for
-native tools, or script it via `tools/sidecar_run.sh python …`. `references/grid-and-planning.md`
+native tools, or script it via `tools/sidecar_run.sh grid-python …` (`/opt/opendss-venv/bin/python`).
+Forecasting keeps its separately resolved `/opt/solar-venv`; `python …` uses that environment.
+`references/grid-and-planning.md`
 covers UK DNO connection (G99, LV/11kV/33kV by capacity), what a first-pass OpenDSS model needs,
 planning (ALC "Best & Most Versatile" avoidance, NSIP/DCO >50 MW), and SEG export economics.
 
