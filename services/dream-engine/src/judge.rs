@@ -300,6 +300,8 @@ mod tests {
             "candidate::prepare(",
             "build_branch_worktree(",
             "git apply",
+            "rustfmt",
+            "cargo fmt",
         ];
         for entry in std::fs::read_dir(&src).unwrap() {
             let path = entry.unwrap().path();

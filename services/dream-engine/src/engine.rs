@@ -1709,12 +1709,27 @@ impl Engine {
                      run `{run_id}`).\n\nCandidate tree `{tree}` was applied in isolation and the \
                      required evaluators re-run against it: {outcomes}. Witness `{wit_short}`.\n\n\
                      A human decides the merge — evaluation is not promotion.\n\n**Finding:** {finding_full}{landing}",
-                    landing = if c.applied_via.starts_with("apply-repair") {
-                        format!("\n\n**Note:** the report's own diff did not apply; this diff is the model's corrected version from one apply-repair call (`{}`). Review it against the finding.", c.applied_via)
-                    } else if c.applied_via.starts_with("normalised") {
-                        format!("\n\n**Note:** the engine adjusted this diff's headers or context lines before applying it (`{}`); its added and removed lines are the model's own.", c.applied_via)
-                    } else {
-                        String::new()
+                    landing = {
+                        let mut note = if c.applied_via.starts_with("apply-repair") {
+                            format!("\n\n**Note:** the report's own diff did not apply; this diff is the model's corrected version from one apply-repair call (`{}`). Review it against the finding.", c.applied_via)
+                        } else if c.applied_via.starts_with("normalised") {
+                            format!("\n\n**Note:** the engine adjusted this diff's headers or context lines before applying it (`{}`); its added and removed lines are the model's own.", c.applied_via)
+                        } else {
+                            String::new()
+                        };
+                        // Independent of the apply note: a formatted candidate
+                        // is reviewed as the model's logic in the fixer's layout
+                        // (ADR-DE-009), whatever way its diff landed.
+                        if let Some(f) = &c.formatting {
+                            if let dream_core::candidate::FormattingOutcome::Applied { .. } = f.outcome {
+                                note.push_str(&format!(
+                                    "\n\n**Note:** the engine ran `{}` on the candidate's own files ({}) as a second commit; the logic is the model's, the layout the formatter's.",
+                                    f.fixer.name(),
+                                    f.files.join(", ")
+                                ));
+                            }
+                        }
+                        note
                     },
                     run_id = frozen.run_id,
                     tree = c.tree_hash,
