@@ -11,13 +11,15 @@ that, and 20 GiB must remain free throughout. Do not prune other services' cache
 Host shell (build, start, stop):
 
 ```bash
-nvidia-smi -L                                   # choose a UUID; confirm nothing else is using that GPU
-echo 'ISAAC_SIM_GPU_UUID=GPU-…' >> .env         # gitignored; never commit a UUID
-./agentbox.sh isaac-sim up                      # builds, starts; no other service is recreated
+./agentbox.sh isaac-sim gpu                     # pick the GPU (one per container); saved to the gitignored .env
+./agentbox.sh isaac-sim up                      # offers the same picker, default = last time; builds and starts
 ```
 
-`up`, `build`, `down`, `logs` and `status` all need `ISAAC_SIM_GPU_UUID` in `.env`, because Compose interpolates
-the whole file. The control plane has no published port and `isaac-sim` resolves only on `visionclaw_network`, so
+The picker lists each card with its memory and load, defaults to the saved choice, and times out to it after
+`ISAAC_SIM_PICK_TIMEOUT` seconds (15; 0 waits). With nothing saved it picks nothing and fails closed. Non-interactive
+runs (`ISAAC_SIM_NO_PROMPT=1`, no terminal) use the saved UUID or fail. It rewrites only its own `ISAAC_SIM_GPU_UUID`
+line in `.env`. One GPU per container is deliberate: more throughput later means more instances, one per card.
+`build`, `down`, `logs` and `status` read `ISAAC_SIM_GPU_UUID` from `.env`, because Compose interpolates the whole file. The control plane has no published port and `isaac-sim` resolves only on `visionclaw_network`, so
 the checks below run **inside the agentbox container** (or via `docker exec agentbox …` from the host):
 
 ```bash

@@ -2056,6 +2056,112 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# ── Isaac Sim GPU selection (ADR-2149) ─────────────────────────────────────────
+# One GPU per container: simulation and rendering run on a single card, and a single
+# assignment keeps "which job ran where" unambiguous. More throughput later means more
+# instances, one per card. The choice is remembered in the gitignored .env and is the
+# default next time. A tmux pane is a real pty, so the picker times out to the saved
+# default (ISAAC_SIM_PICK_TIMEOUT, default 15 s, 0 = wait) instead of hanging an agent.
+isaac_sim_saved_uuid() {
+    if [ -n "${ISAAC_SIM_GPU_UUID:-}" ]; then echo "$ISAAC_SIM_GPU_UUID"; return; fi
+    grep -s '^ISAAC_SIM_GPU_UUID=' "${ISAAC_SIM_ENV_FILE:-${SCRIPT_DIR}/.env}" | tail -1 | cut -d= -f2- | tr -d "\"' "
+}
+
+isaac_sim_save_uuid() {
+    # Touches exactly one key in the operator's existing .env: follows a symlink, keeps the
+    # mode, never reorders or drops other lines, and adds a newline first if the file lacks one.
+    local env_file tmp
+    env_file="$(readlink -f "${ISAAC_SIM_ENV_FILE:-${SCRIPT_DIR}/.env}")"
+    [ -e "$env_file" ] || : > "$env_file"
+    tmp="$(mktemp "${env_file}.XXXXXX")" || return 1
+    if grep -q '^ISAAC_SIM_GPU_UUID=' "$env_file"; then
+        sed "s|^ISAAC_SIM_GPU_UUID=.*|ISAAC_SIM_GPU_UUID=$1|" "$env_file" > "$tmp"
+    else
+        cat "$env_file" > "$tmp"
+        if [ -s "$tmp" ] && [ -n "$(tail -c1 "$tmp")" ]; then printf '\n' >> "$tmp"; fi
+        printf 'ISAAC_SIM_GPU_UUID=%s\n' "$1" >> "$tmp"
+    fi
+    chmod --reference="$env_file" "$tmp" && mv "$tmp" "$env_file" || { rm -f "$tmp"; return 1; }
+}
+
+isaac_sim_select_gpu() {
+    local saved rows=() row i cursor=0 default_idx=-1 timeout="${ISAAC_SIM_PICK_TIMEOUT:-15}"
+    saved="$(isaac_sim_saved_uuid)"
+    if ! command -v nvidia-smi >/dev/null 2>&1; then
+        [ -n "$saved" ] && { export ISAAC_SIM_GPU_UUID="$saved"; return 0; }
+        echo -e "${RED}nvidia-smi not found and ISAAC_SIM_GPU_UUID is not set.${NC}"; return 1
+    fi
+    mapfile -t rows < <(nvidia-smi --query-gpu=index,uuid,name,memory.used,memory.total,utilization.gpu \
+        --format=csv,noheader,nounits 2>/dev/null | sed 's/, */|/g')
+    if [ "${#rows[@]}" -eq 0 ]; then echo -e "${RED}No GPUs reported by nvidia-smi.${NC}"; return 1; fi
+    for i in "${!rows[@]}"; do
+        [ "$(cut -d'|' -f2 <<<"${rows[$i]}")" = "$saved" ] && { default_idx=$i; cursor=$i; }
+    done
+    if [ -n "$saved" ] && [ "$default_idx" -lt 0 ]; then
+        echo -e "${YELLOW}Saved GPU $saved is not present on this host.${NC}"
+    fi
+
+    local interactive=0
+    [ -t 0 ] && [ -t 1 ] && [ -r /dev/tty ] && [ "${ISAAC_SIM_NO_PROMPT:-0}" != "1" ] && interactive=1
+    if [ "$interactive" -eq 0 ]; then
+        if [ "$default_idx" -ge 0 ]; then export ISAAC_SIM_GPU_UUID="$saved"; return 0; fi
+        echo -e "${RED}No usable ISAAC_SIM_GPU_UUID and no terminal to ask on.${NC} There is no all-GPU default."
+        echo "  Run '$0 isaac-sim gpu' in a terminal, or add ISAAC_SIM_GPU_UUID=<uuid from nvidia-smi -L> to .env"
+        return 1
+    fi
+
+    local -a tflag=()
+    [[ "$timeout" =~ ^[0-9]+$ ]] || timeout=15
+    [ "$timeout" -gt 0 ] && tflag=(-t "$timeout")
+    echo -e "${CYAN}Isaac Sim GPU${NC}  (one per container; default = last time)"
+    if [ "${#tflag[@]}" -gt 0 ] && [ "$default_idx" -ge 0 ]; then
+        echo -e "  continuing with the saved GPU in ${timeout}s; press any key to choose"
+    elif [ "${#tflag[@]}" -gt 0 ]; then
+        echo -e "  no saved GPU: choose within ${timeout}s (nothing is picked for you)"
+    fi
+    echo "  up/down or j/k move, a digit jumps to that GPU, enter confirms"
+    local draw
+    draw() {
+        local n idx uuid name used total util mark
+        for n in "${!rows[@]}"; do
+            IFS='|' read -r idx uuid name used total util <<<"${rows[$n]}"
+            [ "$n" = "$cursor" ] && mark="(o)" || mark="( )"
+            printf '\r\033[K  %s %s %s  %s  %s/%s MiB used, %s%% busy%s\n' \
+                "$([ "$n" = "$cursor" ] && echo '>' || echo ' ')" "$mark" "$idx" "$name" "$used" "$total" "$util" \
+                "$([ "$n" = "$default_idx" ] && echo '  [last used]')"
+        done
+    }
+    draw
+    local key rest rc
+    while true; do
+        if IFS= read -rsn1 "${tflag[@]}" key < /dev/tty; then rc=0; else rc=$?; fi
+        if [ "$rc" -gt 128 ]; then
+            if [ "$default_idx" -lt 0 ]; then echo -e "${RED}No GPU chosen and none saved.${NC} There is no all-GPU default."; return 1; fi
+            echo "  no input: using the saved GPU"; cursor=$default_idx; break
+        elif [ "$rc" -ne 0 ]; then
+            [ "$default_idx" -ge 0 ] && cursor=$default_idx || return 1
+            break
+        fi
+        tflag=()
+        if [ "$key" = $'\e' ]; then
+            IFS= read -rsn2 -t 0.1 rest < /dev/tty || true
+            case "$rest" in '[A') key=k ;; '[B') key=j ;; *) key="" ;; esac
+        elif [ -z "$key" ]; then
+            break
+        fi
+        case "$key" in
+            k) cursor=$(( (cursor + ${#rows[@]} - 1) % ${#rows[@]} )) ;;
+            j) cursor=$(( (cursor + 1) % ${#rows[@]} )) ;;
+            [0-9]) for i in "${!rows[@]}"; do [ "$(cut -d'|' -f1 <<<"${rows[$i]}")" = "$key" ] && cursor=$i; done ;;
+        esac
+        printf '\033[%dA' "${#rows[@]}"
+        draw
+    done
+    export ISAAC_SIM_GPU_UUID="$(cut -d'|' -f2 <<<"${rows[$cursor]}")"
+    isaac_sim_save_uuid "$ISAAC_SIM_GPU_UUID"
+    echo -e "${GREEN}Isaac Sim GPU: ${ISAAC_SIM_GPU_UUID}${NC} (saved to .env)"
+}
+
 cmd_isaac_sim() {
     # ADR-2149. Headless Isaac Sim physics sidecar: no published ports, GPU pinned by UUID.
     local subcmd="${1:-help}"
@@ -2070,11 +2176,7 @@ cmd_isaac_sim() {
                 echo "  (host bind paths resolve on the host; see docs/developer/isaac-sim.md)"
                 exit 1
             fi
-            if [ -z "${ISAAC_SIM_GPU_UUID:-}" ] && ! grep -qs '^ISAAC_SIM_GPU_UUID=.' "${SCRIPT_DIR}/.env" 2>/dev/null; then
-                echo -e "${RED}ISAAC_SIM_GPU_UUID is not set.${NC} There is no all-GPU default."
-                echo "  Pick one from: nvidia-smi -L   then export it or add it to .env"
-                exit 1
-            fi
+            isaac_sim_select_gpu || exit 1
             local flags=(-d --no-deps)
             [ "$subcmd" = "build" ] || flags+=(--build)
             if [ "$subcmd" = "build" ]; then
@@ -2085,6 +2187,7 @@ cmd_isaac_sim() {
                 echo "  Next: $0 isaac-sim preflight   (health levels stay false until a smoke job succeeds)"
             fi
             ;;
+        gpu)     isaac_sim_select_gpu || exit 1 ;;
         down)    docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" stop isaac-sim && docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" rm -f isaac-sim ;;
         logs)    docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" logs -f --tail 100 isaac-sim ;;
         status)  docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" ps ;;
@@ -2122,6 +2225,7 @@ cmd_isaac_sim() {
             echo -e "${CYAN}isaac-sim — headless NVIDIA Isaac Sim physics sidecar (ADR-2149)${NC}"
             echo "  $0 isaac-sim up         Build + start on ISAAC_SIM_GPU_UUID (host shell only)"
             echo "  $0 isaac-sim build      Build the image only"
+            echo "  $0 isaac-sim gpu        Choose the GPU (one per container; remembered, default next time)"
             echo "  $0 isaac-sim down       Stop and remove the container (volumes kept)"
             echo "  $0 isaac-sim preflight  Versions, GPU, storage, executed capabilities, health levels"
             echo "  $0 isaac-sim smoke      Run the free-fall and pendulum fixtures"
