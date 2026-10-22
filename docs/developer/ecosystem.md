@@ -332,3 +332,8 @@ The adapter contract (ADR-005) guarantees that every feature works in both modes
 Media control-plane update: Blender retains its socket/background-job path and
 adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
 dependencies. See [ADR-2148](../adr/ADR-2148-remote-media-control-planes.md).
+
+The optional Isaac Sim sidecar adds headless physics and an internal typed job
+API, sharing motion results through the GUI exchange volume. It has its own
+pinned image, one GPU UUID and executed-fixture health evidence. See
+[Isaac operations](isaac-sim.md) and ADR-2149.

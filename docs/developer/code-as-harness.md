@@ -246,3 +246,9 @@ These questions remain unresolved even with Phase 2 live; none blocked the rollo
 Media control-plane update: Blender retains its socket/background-job path and
 adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
 dependencies. See [ADR-2148](../adr/ADR-2148-remote-media-control-planes.md).
+
+For physics jobs, the optional Isaac Sim sidecar exposes a network-only job API
+at `isaac-sim:9890`. The `isaac-sim` skill stages inputs, submits idempotently and
+waits on durable receipts; verified motion imports into Blender. See
+[Isaac operations](isaac-sim.md). No simulator capability is inferred from a
+healthy control-plane process.

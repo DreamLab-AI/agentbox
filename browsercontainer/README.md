@@ -246,3 +246,7 @@ set a passphrase. The public key, and so every verifier, is unchanged.
 Media control-plane update: Blender retains its socket/background-job path and
 adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
 dependencies. See [ADR-2148](../docs/adr/ADR-2148-remote-media-control-planes.md).
+
+The optional [Isaac physics sidecar](../docs/developer/isaac-sim.md) is also
+independent of this browser. Building or replacing it does not require a browser
+restart or a Podkey unlock.

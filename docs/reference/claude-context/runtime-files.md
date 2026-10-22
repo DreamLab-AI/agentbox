@@ -154,3 +154,9 @@ always-loaded home in the workspace-tier `CLAUDE.md`. The repo-specific rules
 Media control-plane update: Blender retains its socket/background-job path and
 adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
 dependencies. See [ADR-2148](../../adr/ADR-2148-remote-media-control-planes.md).
+
+`isaac-sim-sidecar/`, `docker-compose.isaac-sim.yml` and `skills/isaac-sim/`
+own optional headless physics, the internal `:9890` job API and Blender motion
+export. Host lifecycle: `./agentbox.sh isaac-sim`; a GPU UUID is required and
+only executed fixtures raise simulator health. See
+[Isaac operations](../../developer/isaac-sim.md).

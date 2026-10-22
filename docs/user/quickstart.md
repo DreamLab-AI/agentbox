@@ -627,3 +627,8 @@ need a [one-time migration](../adr/ADR-2147-retain-codex-session-state.md) befor
 Media control-plane update: Blender retains its socket/background-job path and
 adds an internal typed DCC-MCP gateway; external ComfyUI includes its MCP
 dependencies. See [ADR-2148](../adr/ADR-2148-remote-media-control-planes.md).
+
+For optional headless physics, choose a GPU with `./agentbox.sh isaac-sim gpu`,
+then build/start with `./agentbox.sh isaac-sim up`. The internal job API shares
+motion results with Blender. Container health does not prove physics execution;
+follow [Isaac operations](../developer/isaac-sim.md) for the fixture checks.
