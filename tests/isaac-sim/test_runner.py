@@ -109,6 +109,14 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(r.job_dir(body["id"]), "manifest.json")))
         self.assertIn("missing", r.describe(body["id"])["failure"])
 
+    def test_gpu_provenance_survives_nvidia_environment_rewrite(self):
+        r = load(self.root, ISAAC_SIM_GPU_UUID="GPU-selected", NVIDIA_VISIBLE_DEVICES="void")
+        self.assertEqual(r.capabilities()["assigned_gpu"], "GPU-selected")
+        s = self.script("gpu.py", "pass")
+        _, body = r.submit({"script": s})
+        wait_for(r, body["id"], {"succeeded"})
+        self.assertEqual(r.read_job(body["id"])["gpu"], "GPU-selected")
+
     def test_verbose_job_rotates_logs_and_retains_latest_output(self):
         r = load(self.root)
         r.MAX_LOG_BYTES = 65536

@@ -55,6 +55,7 @@ VERSIONS_FILE = os.environ.get("ISAAC_RUNNER_VERSIONS", "/etc/isaac-sim-versions
 JOB_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 MAX_LOG_LINES = 2000
 MAX_LOG_BYTES = 4 << 20  # current file plus one rotation: at most 8 MiB per job
+ASSIGNED_GPU = os.environ.get("ISAAC_SIM_GPU_UUID") or os.environ.get("NVIDIA_VISIBLE_DEVICES")
 TERMINAL = {"succeeded", "failed", "cancelled", "lost"}
 
 _lock = threading.RLock()
@@ -245,7 +246,7 @@ def submit(spec):
             "submitted_at": time.time(), "idempotency_key": key,
             "script": spec["script"], "script_sha256": script_hash,
             "inputs": inputs, "args": spec.get("args", []), "params": spec.get("params", {}),
-            "seed": spec.get("seed", 0), "gpu": spec.get("gpu") or os.environ.get("NVIDIA_VISIBLE_DEVICES"),
+            "seed": spec.get("seed", 0), "gpu": spec.get("gpu") or ASSIGNED_GPU,
             "required_outputs": spec.get("required_outputs", []),
             "solver": spec.get("solver", {}), "versions": versions,
             "result_dir": f"jobs/{jid}/result",
@@ -464,7 +465,7 @@ def capabilities():
     return {
         "versions": versions,
         "gpus": gpu_inventory(),
-        "assigned_gpu": os.environ.get("NVIDIA_VISIBLE_DEVICES"),
+        "assigned_gpu": ASSIGNED_GPU,
         "storage": {"root": ROOT, "free_gib": round(free_gib(ROOT), 1), "min_free_gib": MIN_FREE_GIB},
         "concurrency": {"max": MAX_CONCURRENT, "running": running_count()},
         "paths": {"root": ROOT, "client_hint": "agentbox mounts the same volume at /home/devuser/gui-tools/isaac; "

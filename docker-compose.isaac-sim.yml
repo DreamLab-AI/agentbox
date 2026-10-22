@@ -18,6 +18,7 @@ services:
     group_add: ["${ISAAC_SIM_VENDOR_GID:-1234}"]
     environment:
       NVIDIA_VISIBLE_DEVICES: ${ISAAC_SIM_GPU_UUID:?set ISAAC_SIM_GPU_UUID to a GPU UUID from nvidia-smi -L}
+      ISAAC_SIM_GPU_UUID: ${ISAAC_SIM_GPU_UUID:?set ISAAC_SIM_GPU_UUID}
       NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics
       ACCEPT_EULA: "Y"
       PRIVACY_CONSENT: ${ISAAC_SIM_PRIVACY_CONSENT:-N}
