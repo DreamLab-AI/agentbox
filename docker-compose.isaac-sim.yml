@@ -13,6 +13,9 @@ services:
     # Matches the owner of the gui-tools exchange volume (uid 1000) so results are writable and
     # readable by agentbox and Blender. Caches live under HOME on their own volume.
     user: "${ISAAC_SIM_UID:-1000}:${ISAAC_SIM_GID:-1000}"
+    # The pinned vendor runtime is uid/gid 1234 and /isaac-sim is mode 0750.
+    # Grant traversal/read access while retaining the exchange-volume owner.
+    group_add: ["${ISAAC_SIM_VENDOR_GID:-1234}"]
     environment:
       NVIDIA_VISIBLE_DEVICES: ${ISAAC_SIM_GPU_UUID:?set ISAAC_SIM_GPU_UUID to a GPU UUID from nvidia-smi -L}
       NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics

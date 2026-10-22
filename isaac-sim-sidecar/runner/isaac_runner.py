@@ -3,7 +3,7 @@
 
 A stdlib-only HTTP control plane that runs inside the isaac-sim sidecar. It
 stays dependency-free on purpose: it executes under the interpreter the NVIDIA
-image already ships, and the image carries no further toolchain.
+image already ships, independently of Isaac Lab's simulation dependencies.
 
 State model (mirrors skills/blender/tools/blender-job.js):
 

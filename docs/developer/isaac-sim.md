@@ -50,8 +50,12 @@ Recreating only this service leaves Agentbox, Blender, ComfyUI and every volume 
 The pins in `isaac-sim-sidecar/Dockerfile` came from a discovery pass and are unverified until you do these:
 
 1. `docker buildx imagetools inspect nvcr.io/nvidia/isaac-sim:6.2.0` — the linux/amd64 digest must equal the Dockerfile's `ISAAC_SIM_IMAGE`.
-2. `docker image inspect` the built image: record `Config.User`, `Env`, and the cache directories actually written. If the
-   image user is not uid 1000, set `ISAAC_SIM_UID/GID` or adjust ownership; do not run privileged.
+2. The pinned base uses uid/gid 1234 (`isaac-sim`) and mode 0750 on `/isaac-sim`.
+   Compose retains uid/gid 1000 for the exchange volume and adds supplementary
+   vendor group 1234 (`ISAAC_SIM_VENDOR_GID`). Both Python entry points have been
+   checked under that identity. Recheck the user, traversal permissions and cache
+   paths when changing the base; do not run privileged or recursively change the
+   vendor tree's ownership.
 3. Check the install page for 6.2.0: `ACCEPT_EULA` and `PRIVACY_CONSENT` names, and the Lab install steps.
 4. `git ls-remote https://github.com/isaac-sim/IsaacLab refs/tags/v3.0.0` must resolve to `ISAAC_LAB_COMMIT`.
 5. Both interpreter paths exist and run: `/isaac-sim/python.sh` (jobs) and `/isaac-sim/kit/python/bin/python3` (runner, healthcheck).
