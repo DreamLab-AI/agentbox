@@ -71,6 +71,10 @@ The pins in `isaac-sim-sidecar/Dockerfile` came from a discovery pass and are un
 
 ## Known limitations
 
+Each job keeps at most 4 MiB in `job.log` and one 4 MiB rotation in `job.log.1`.
+Small progress messages remain visible while jobs run. Result artefacts are
+retained independently; log rotation never removes inputs, results or receipts.
+
 Fixtures are unexecuted against the real image. Contact force/impulse and joint effort are reported as
 unavailable until the backend is shown to expose them. Concurrency is a per-sidecar cap, not a lock shared
 with ComfyUI or Blender; the operator is the arbiter of GPU assignment.

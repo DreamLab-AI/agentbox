@@ -54,6 +54,7 @@ FIXTURE_PROVES = {"fall_box.py": ("smoke:fall", {"simulator_initialised", "physi
 VERSIONS_FILE = os.environ.get("ISAAC_RUNNER_VERSIONS", "/etc/isaac-sim-versions.json")
 JOB_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 MAX_LOG_LINES = 2000
+MAX_LOG_BYTES = 4 << 20  # current file plus one rotation: at most 8 MiB per job
 TERMINAL = {"succeeded", "failed", "cancelled", "lost"}
 
 _lock = threading.RLock()
@@ -279,22 +280,56 @@ def launch(jid):
     log = os.open(os.path.join(d, "job.log"), os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o644)
     try:
         proc = subprocess.Popen([PYTHON, script, *job["args"]], cwd=d, env=env,
-                                stdout=log, stderr=subprocess.STDOUT,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 stdin=subprocess.DEVNULL, start_new_session=True)
     except OSError as exc:
+        os.close(log)
         atomic_write(os.path.join(d, "failure.txt"), f"launch failed: {exc}")
         atomic_write(os.path.join(d, "exit_code"), "127")
         return
-    finally:
-        os.close(log)
+    reader = threading.Thread(target=capture_log, args=(jid, proc.stdout, log), daemon=True)
+    reader.start()
     start = proc_starttime(proc.pid) or "0"
     atomic_write(os.path.join(d, "pid"), f"{proc.pid} {start}")
     _children[jid] = proc
-    threading.Thread(target=reap, args=(jid, proc), daemon=True).start()
+    threading.Thread(target=reap, args=(jid, proc, reader), daemon=True).start()
 
 
-def reap(jid, proc):
+def capture_log(jid, stream, fd):
+    """Drain child output without allowing a verbose simulator to fill the volume."""
+    path = os.path.join(job_dir(jid), "job.log")
+    output = os.fdopen(fd, "ab", buffering=0)
+    size = os.fstat(fd).st_size
+    try:
+        with stream:
+            while True:
+                chunk = stream.read1(min(65536, MAX_LOG_BYTES))
+                if not chunk:
+                    break
+                if size + len(chunk) > MAX_LOG_BYTES:
+                    output.close()
+                    os.replace(path, path + ".1")
+                    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+                    output = os.fdopen(fd, "ab", buffering=0)
+                    size = 0
+                # FileIO may perform a partial write, so retain the unwritten suffix.
+                remaining = memoryview(chunk)
+                while remaining:
+                    written = output.write(remaining)
+                    remaining = remaining[written:]
+                size += len(chunk)
+    except OSError:
+        # Closing the pipe makes a failed capture visible to a still-writing child.
+        stream.close()
+    finally:
+        output.close()
+
+
+def reap(jid, proc, reader):
     code = proc.wait()
+    # Normally EOF drains immediately. A background descendant retaining stdout
+    # must not prevent the foreground job from reaching a terminal state.
+    reader.join(timeout=2)
     d = job_dir(jid)
     _children.pop(jid, None)
     try:

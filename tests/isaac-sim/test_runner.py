@@ -109,6 +109,34 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(r.job_dir(body["id"]), "manifest.json")))
         self.assertIn("missing", r.describe(body["id"])["failure"])
 
+    def test_verbose_job_rotates_logs_and_retains_latest_output(self):
+        r = load(self.root)
+        r.MAX_LOG_BYTES = 65536
+        s = self.script("verbose.py", "import sys\nsys.stdout.write('x' * (5 * 65536) + '\\nFINAL-MARKER\\n')\n")
+        _, body = r.submit({"script": s})
+        wait_for(r, body["id"], {"succeeded"})
+        d = r.job_dir(body["id"])
+        for name in ("job.log", "job.log.1"):
+            self.assertLessEqual(os.path.getsize(os.path.join(d, name)), r.MAX_LOG_BYTES)
+        with open(os.path.join(d, "job.log"), "rb") as fh:
+            self.assertTrue(fh.read().endswith(b"FINAL-MARKER\n"))
+
+    def test_small_log_messages_are_visible_while_the_job_runs(self):
+        r = load(self.root)
+        s = self.script("progress.py", "import sys,time\nprint('READY', flush=True)\ntime.sleep(30)\n")
+        _, body = r.submit({"script": s})
+        try:
+            deadline = time.time() + 3
+            while time.time() < deadline:
+                text = r.safe_read(os.path.join(r.job_dir(body["id"]), "job.log")) or ""
+                if "READY" in text:
+                    break
+                time.sleep(0.05)
+            self.assertIn("READY", text)
+            self.assertEqual(r.job_state(body["id"])[0], "running")
+        finally:
+            r.cancel(body["id"])
+
     def test_idempotent_submit_returns_same_job(self):
         r = load(self.root)
         s = self.script("same.py", "pass")
