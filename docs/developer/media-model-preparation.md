@@ -102,3 +102,28 @@ The two completed H3 endpoint clips prove the short Blender-to-ComfyUI path.
 They do not establish production-resolution cadence, complete speech timing
 or any newly downloaded model's quality. Further generation is deferred until
 model preparation and the selected graph preflight are complete.
+
+## Optional LTX 2.5 regional prompting
+
+The ComfyUI image pins `yuvraj108c/ComfyUI-LTX-BBox-Animator` at
+`c4b0a9db7b523abcdb2245c648992415e1f9dd7a`. It supplies animated boxes and
+per-region text/mask conditioning. Its dependencies are already supplied by
+ComfyUI; no extra pip installation is needed. The `ltx25-bbox-adapter` profile
+adds only the 327,287,352-byte LoRA to the persistent models volume, reusing the
+existing LTX 2.5 base model, encoder and VAEs:
+
+```bash
+docker exec comfyui python /opt/agentbox-media/scripts/download_video_models.py --profile ltx25-bbox-adapter --plan
+docker exec comfyui python /opt/agentbox-media/scripts/download_video_models.py --profile ltx25-bbox-adapter
+docker exec comfyui python /opt/agentbox-media/scripts/download_video_models.py --profile ltx25-bbox-adapter --verify-only
+```
+
+This is an explicit optional profile, excluded from the default campaign. Rebuild
+the ComfyUI sidecar from the host to bake the nodes; rebuilding agentbox alone
+does not replace that image. Retain all media volumes. After recreation, check
+`LTXRegionalBBoxAnimator`, `LTXApplyRegionalConditioning`, `LTXRegionalPrompt`
+and `LTXRegionalPromptFromImage` in `/object_info`, and check the LoRA loader.
+Import success and a verified model file do not prove generation quality or
+compatibility with other attention patches. Evaluate the supplied standalone
+workflow before combining it with Layout-to-Render. Both upstream package and
+model card declare GPL-3.0; retain their licence material.

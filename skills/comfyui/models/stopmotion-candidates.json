@@ -547,6 +547,27 @@
         "TextEncodeQwenImageEditPlus"
       ],
       "notes": "Qwen2.5 VL is not interchangeable with existing H3 Qwen3VL or MOSS Qwen3.5 weights."
+    },
+    "ltx25-bbox-adapter": {
+      "tier": "optional",
+      "purpose": "Animated bounding boxes and per-object regional text; adapter-only, reuse installed LTX2.5 base stack",
+      "models": [
+        {
+          "repo": "yuvraj108c/LTX-2.5-22b-IC-LoRA-BBox-Control",
+          "revision": "6b5944c4277a49a00cdcefd2133ce9e625dcca3c",
+          "file": "ltx-2.5-22b-ic-lora-bbox-control-3000-rank-32.safetensors",
+          "directory": "loras",
+          "size": 327287352,
+          "sha256": "577a55f84ef512a852342ae35441a9e04a59ffd3bfc71274c09419f4d8a596a0"
+        }
+      ],
+      "required_nodes": [
+        "LTXRegionalBBoxAnimator",
+        "LTXApplyRegionalConditioning",
+        "LTXRegionalPrompt",
+        "LTXRegionalPromptFromImage"
+      ],
+      "notes": "Explicit opt-in profile. Requires existing LTX2.5 base/encoder/VAEs and ComfyUI-LTXVideo. Generation, overlap/occlusion and combination with layout LoRA require validation."
     }
   },
   "default_profiles": [
@@ -594,6 +615,13 @@
       "revision": "1ff7c1c9e13ec63211723725848bebb9f90ba58b",
       "required_by": [
         "ltx25-editanything"
+      ]
+    },
+    {
+      "repository": "https://github.com/yuvraj108c/ComfyUI-LTX-BBox-Animator",
+      "revision": "c4b0a9db7b523abcdb2245c648992415e1f9dd7a",
+      "required_by": [
+        "ltx25-bbox-adapter"
       ]
     }
   ]

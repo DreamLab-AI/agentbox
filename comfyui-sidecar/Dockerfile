@@ -4,6 +4,7 @@ FROM nvidia/cuda:12.9.1-devel-ubuntu24.04
 ARG COMFYUI_REV=faa7e494f3a0c9e45e1c3db8d20ee48fd5fe1b52
 ARG LTXVIDEO_REV=220e1d45aa0469f518e982102fca4dca92a61862
 ARG BFSNODES_REV=1ff7c1c9e13ec63211723725848bebb9f90ba58b
+ARG LTX_BBOX_REV=c4b0a9db7b523abcdb2245c648992415e1f9dd7a
 ENV DEBIAN_FRONTEND=noninteractive PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-dev python3-venv git ffmpeg ca-certificates libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/venv
@@ -27,6 +28,12 @@ RUN git init /opt/ComfyUI/custom_nodes/ComfyUI-BFSnodes \
 RUN --mount=type=cache,target=/root/.cache/pip pip install --timeout 180 --retries 10 \
     -r /opt/ComfyUI/custom_nodes/ComfyUI-BFSnodes/requirements.txt
 WORKDIR /opt/ComfyUI
+# Regional text/mask routing and animated bounding boxes; dependencies are
+# already supplied by ComfyUI (torch, numpy, aiohttp). Weights remain in volume.
+RUN git init /opt/ComfyUI/custom_nodes/ComfyUI-LTX-BBox-Animator \
+    && cd /opt/ComfyUI/custom_nodes/ComfyUI-LTX-BBox-Animator \
+    && git remote add origin https://github.com/yuvraj108c/ComfyUI-LTX-BBox-Animator.git \
+    && git fetch --depth 1 origin ${LTX_BBOX_REV} && git checkout --detach FETCH_HEAD
 COPY skills/comfyui/scripts/download_video_models.py /opt/agentbox-media/scripts/download_video_models.py
 COPY skills/comfyui/models/stopmotion-candidates.json /opt/agentbox-media/models/stopmotion-candidates.json
 EXPOSE 8188
