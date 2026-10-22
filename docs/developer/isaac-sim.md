@@ -85,6 +85,13 @@ Each job keeps at most 4 MiB in `job.log` and one 4 MiB rotation in `job.log.1`.
 Small progress messages remain visible while jobs run. Result artefacts are
 retained independently; log rotation never removes inputs, results or receipts.
 
+Isaac Sim's fast shutdown terminates the process from `SimulationApp.close()`.
+Pass `exit_code=...` there for a failed validation; a later `sys.exit()` is not
+reached. Smoke jobs that require `verification.json` also fail runner validation
+unless it contains `"pass": true`, even if the child exits zero. Local output
+draining/finalisation remains `running`; `lost` means the runner no longer owns
+the vanished process, as after a restart.
+
 Fixtures are unexecuted against the real image. Contact force/impulse and joint effort are reported as
 unavailable until the backend is shown to expose them. Concurrency is a per-sidecar cap, not a lock shared
 with ComfyUI or Blender; the operator is the arbiter of GPU assignment.

@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import time
 import unittest
 
@@ -116,6 +117,31 @@ class RunnerTest(unittest.TestCase):
         _, body = r.submit({"script": s})
         wait_for(r, body["id"], {"succeeded"})
         self.assertEqual(r.read_job(body["id"])["gpu"], "GPU-selected")
+
+    def test_local_finalisation_never_appears_lost(self):
+        r = load(self.root)
+        entered, release = threading.Event(), threading.Event()
+        original = r.finalise
+        def delayed(jid, code):
+            entered.set()
+            release.wait(5)
+            original(jid, code)
+        r.finalise = delayed
+        _, body = r.submit({"script": self.script("finalise.py", "pass")})
+        try:
+            self.assertTrue(entered.wait(3))
+            self.assertEqual(r.job_state(body["id"])[0], "running")
+        finally:
+            release.set()
+        wait_for(r, body["id"], {"succeeded"})
+
+    def test_smoke_with_failed_verification_cannot_succeed_on_exit_zero(self):
+        r = load(self.root)
+        s = self.script("false_pass.py", "import os\nopen(os.environ['ISAAC_JOB_DIR']+'/verification.json','w').write('{\"pass\":false}')\n")
+        _, body = r.submit({"script": s, "kind": "smoke:fall", "required_outputs": ["verification.json"]})
+        wait_for(r, body["id"], {"failed"})
+        self.assertFalse(os.path.exists(os.path.join(r.job_dir(body["id"]), "manifest.json")))
+        self.assertIn("verification", r.describe(body["id"])["failure"])
 
     def test_verbose_job_rotates_logs_and_retains_latest_output(self):
         r = load(self.root)

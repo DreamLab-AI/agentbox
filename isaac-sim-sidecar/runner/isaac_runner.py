@@ -156,6 +156,8 @@ def job_state(jid):
         return "lost", None
     if proc_starttime(int(pid)) == start:
         return "running", None
+    if jid in _children:
+        return "running", None  # this runner still owns output draining/finalisation
     return "lost", None
 
 
@@ -332,13 +334,14 @@ def reap(jid, proc, reader):
     # must not prevent the foreground job from reaching a terminal state.
     reader.join(timeout=2)
     d = job_dir(jid)
-    _children.pop(jid, None)
     try:
         if safe_read(os.path.join(d, "cancelled")) is None:
             finalise(jid, code)
-        schedule()
     except OSError:
         pass  # the job directory was removed underneath us; nothing left to record
+    finally:
+        _children.pop(jid, None)
+    schedule()
 
 
 def finalise(jid, code):
@@ -347,6 +350,15 @@ def finalise(jid, code):
     job = read_job(jid)
     result = os.path.join(d, "result")
     if code == 0:
+        if job["kind"].startswith("smoke:") and "verification.json" in job["required_outputs"]:
+            try:
+                verified = json.loads(safe_read(os.path.join(result, "verification.json")) or "{}")
+            except ValueError:
+                verified = {}
+            if not isinstance(verified, dict) or verified.get("pass") is not True:
+                atomic_write(os.path.join(d, "failure.txt"), "smoke verification did not pass")
+                atomic_write(os.path.join(d, "exit_code"), "1")
+                return
         artefacts, missing = [], []
         for rel in job["required_outputs"]:
             p = os.path.join(result, rel)
