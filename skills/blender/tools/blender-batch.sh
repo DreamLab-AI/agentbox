@@ -30,11 +30,11 @@ export LD_LIBRARY_PATH="/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 if [[ "${1:-}" == "--render" ]]; then
   blendfile="$2"; out="$3"
-  exec blender --background --factory-startup "$blendfile" \
+  exec blender --background --factory-startup --python-exit-code 1 "$blendfile" \
     --python-expr "import bpy; s=bpy.context.scene; p=bpy.context.preferences.addons['cycles'].preferences; p.compute_device_type='CUDA'; p.refresh_devices(); [setattr(d,'use',True) for d in p.devices if d.type=='CUDA']; s.render.engine='CYCLES'; s.cycles.device='GPU'; bpy.ops.render.render(write_still=True)" \
     -o "$out" -f 1
 fi
 
 # Otherwise treat the first arg as a bpy script to run headless.
 script="$1"; shift || true
-exec blender --background --factory-startup --python "$script" -- "$@"
+exec blender --background --factory-startup --python-exit-code 1 --python "$script" -- "$@"

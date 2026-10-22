@@ -1,0 +1,58 @@
+# Isaac Sim sidecar (ADR-2149). Opt-in; headless; no published ports.
+#   ISAAC_SIM_GPU_UUID=GPU-... ./agentbox.sh isaac-sim up
+# The compose file fails closed when no GPU UUID is given: there is deliberately no `all` default.
+services:
+  isaac-sim:
+    build:
+      context: .
+      dockerfile: isaac-sim-sidecar/Dockerfile
+    image: agentbox-isaac-sim:local
+    container_name: isaac-sim
+    hostname: isaac-sim
+    restart: unless-stopped
+    # Matches the owner of the gui-tools exchange volume (uid 1000) so results are writable and
+    # readable by agentbox and Blender. Caches live under HOME on their own volume.
+    user: "${ISAAC_SIM_UID:-1000}:${ISAAC_SIM_GID:-1000}"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: ${ISAAC_SIM_GPU_UUID:?set ISAAC_SIM_GPU_UUID to a GPU UUID from nvidia-smi -L}
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics
+      ACCEPT_EULA: "Y"
+      PRIVACY_CONSENT: ${ISAAC_SIM_PRIVACY_CONSENT:-N}
+      HOME: /isaac-cache/home
+      ISAAC_RUNNER_ROOT: /exchange/isaac
+      ISAAC_MAX_CONCURRENT: ${ISAAC_SIM_MAX_CONCURRENT:-1}
+      ISAAC_MIN_FREE_GIB: ${ISAAC_SIM_MIN_FREE_GIB:-20}
+    deploy:
+      resources:
+        limits: {cpus: '12', memory: 48G}
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['${ISAAC_SIM_GPU_UUID:?set ISAAC_SIM_GPU_UUID}']
+              capabilities: [gpu, compute, utility, graphics]
+    # No `ports:`. The control plane is reachable on the container network only.
+    expose: ["9890"]
+    networks: [visionclaw]
+    shm_size: 4gb
+    volumes:
+      # Results/inputs: the existing exchange volume, so agentbox and Blender see them without
+      # recreating either. The runner confines itself to <volume>/isaac.
+      - gui-tools-exchange:/exchange
+      # Disposable caches, separable from irreplaceable inputs and results.
+      - isaac-sim-cache:/isaac-cache
+    healthcheck:
+      test: ["CMD", "/opt/isaac-runner/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    security_opt: ["no-new-privileges:true"]
+networks:
+  visionclaw:
+    external: true
+    name: ${VISIONCLAW_NETWORK:-visionclaw_network}
+volumes:
+  gui-tools-exchange:
+    external: true
+    name: ${GUI_TOOLS_EXCHANGE_VOLUME:-agentbox_gui-tools-exchange}
+  isaac-sim-cache:

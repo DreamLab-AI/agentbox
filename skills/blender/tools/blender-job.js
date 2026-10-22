@@ -173,7 +173,9 @@ os.makedirs(d, exist_ok=True)
 binary = bpy.app.binary_path
 cmd = [binary, "-b", "--factory-startup"]
 if job.get("blend"): cmd = [binary, "-b", job["blend"]]
-cmd += ["--python", job["script"]]
+# Background Blender exits 0 after a Python exception unless told otherwise, which made a crashed
+# script look like "done exit 0". The flag must precede --python.
+cmd += ["--python-exit-code", "1", "--python", job["script"]]
 if job.get("args"): cmd += ["--"] + job["args"]
 env = dict(os.environ, BLENDER_JOB_DIR=d, BLENDER_SHARE=job["share"], BLENDER_JOB_CPU="1" if job.get("cpu") else "0")
 ec = os.path.join(d, "exit_code")

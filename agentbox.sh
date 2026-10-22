@@ -56,6 +56,7 @@ Local lifecycle commands:
   ${GREEN}migrate-claude-home${NC} Seed the container-owned agentbox-claude-home volume from the host ~/.claude (ADR-2118)
   ${GREEN}browsercontainer${NC} Manage GPU browser container [up|down|logs|health|status|rebuild|shell|gpu]
   ${GREEN}gui-tools${NC}        Manage GPU Blender + QGIS sidecar [up|down|logs|health|status|rebuild|shell|gpu]
+  ${GREEN}isaac-sim${NC}        Manage headless Isaac Sim physics sidecar [up|down|logs|health|status|preflight|smoke|rebuild]
   ${GREEN}openmed${NC}          Manage optional clinical-PHI redaction sidecar [up|down|logs|health|status|rebuild|shell]
   ${GREEN}voice${NC}            Manage/open the operator cockpit + web voice stack [open|up|down|logs|health|status|certs|rebuild|shell]
   ${GREEN}systemone${NC}        ADR-2094 Sovereign System One sidecar + ADR-2139 vendor slot [up|down|logs|health|status|eval|models|rebuild|shell|backend|proxy]
@@ -583,6 +584,8 @@ XR_RUNTIME_FILE="${SCRIPT_DIR}/docker-compose.xr-runtime.yml"
 XR_RUNTIME_COMPOSE_ARGS=(--project-name agentbox -f "$XR_RUNTIME_FILE")
 GUI_TOOLS_FILE="${SCRIPT_DIR}/docker-compose.gui-tools.yml"
 GUI_TOOLS_COMPOSE_ARGS=(--project-name agentbox -f "$GUI_TOOLS_FILE")
+ISAAC_SIM_FILE="${SCRIPT_DIR}/docker-compose.isaac-sim.yml"
+ISAAC_SIM_COMPOSE_ARGS=(--project-name agentbox -f "$ISAAC_SIM_FILE")
 OPENMED_FILE="${SCRIPT_DIR}/docker-compose.openmed.yml"
 OPENMED_COMPOSE_ARGS=(--project-name agentbox -f "$OPENMED_FILE")
 SYSTEMONE_FILE="${SCRIPT_DIR}/docker-compose.system-one.yml"
@@ -2040,7 +2043,7 @@ while [[ $# -gt 0 ]]; do
             usage
             exit 0
             ;;
-        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|prepare|activate|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight|security)
+        ssh|vnc|browser|code|api|all|status|ip|provision|setup|start-browser|backup|restore|up|down|build|prepare|activate|rebuild|update|ruvector|ruvnet-brain|logs|shell|health|browsercontainer|gui-tools|isaac-sim|openmed|voice|systemone|model-router|xr-runtime|android|concat|migrate-workspace|migrate-claude-home|preflight|security)
             CMD="$1"
             shift
             break
@@ -2052,6 +2055,80 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+cmd_isaac_sim() {
+    # ADR-2149. Headless Isaac Sim physics sidecar: no published ports, GPU pinned by UUID.
+    local subcmd="${1:-help}"
+    shift 2>/dev/null || true
+    local job="${SCRIPT_DIR}/skills/isaac-sim/tools/isaac-job.js"
+    case "$subcmd" in
+        up|rebuild|build)
+            # Host bind paths resolve on the host: building from inside the agent container would
+            # silently bake stale code. Override only for a deliberate in-container build.
+            if [ -f /.dockerenv ] && [ -z "${AGENTBOX_ALLOW_INNER_BUILD:-}" ]; then
+                echo -e "${RED}Run '$0 isaac-sim $subcmd' from the HOST shell, not inside the agent container.${NC}"
+                echo "  (host bind paths resolve on the host; see docs/developer/isaac-sim.md)"
+                exit 1
+            fi
+            if [ -z "${ISAAC_SIM_GPU_UUID:-}" ] && ! grep -qs '^ISAAC_SIM_GPU_UUID=.' "${SCRIPT_DIR}/.env" 2>/dev/null; then
+                echo -e "${RED}ISAAC_SIM_GPU_UUID is not set.${NC} There is no all-GPU default."
+                echo "  Pick one from: nvidia-smi -L   then export it or add it to .env"
+                exit 1
+            fi
+            local flags=(-d --no-deps)
+            [ "$subcmd" = "build" ] || flags+=(--build)
+            if [ "$subcmd" = "build" ]; then
+                docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" build isaac-sim
+            else
+                docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" up "${flags[@]}" isaac-sim
+                echo -e "${GREEN}isaac-sim started.${NC} Control plane: http://isaac-sim:9890 (container network only)"
+                echo "  Next: $0 isaac-sim preflight   (health levels stay false until a smoke job succeeds)"
+            fi
+            ;;
+        down)    docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" stop isaac-sim && docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" rm -f isaac-sim ;;
+        logs)    docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" logs -f --tail 100 isaac-sim ;;
+        status)  docker compose "${ISAAC_SIM_COMPOSE_ARGS[@]}" ps ;;
+        health)
+            if node "$job" preflight >/dev/null 2>&1; then
+                echo -e "${GREEN}isaac-sim control plane reachable${NC}"
+            else
+                echo -e "${RED}isaac-sim control plane unreachable${NC}"; exit 1
+            fi
+            ;;
+        preflight) node "$job" preflight ;;
+        smoke)
+            # Runs the baked physics fixtures and waits; success here is what lifts the health levels.
+            local kind script
+            local share="${ISAAC_LOCAL_SHARE:-/home/devuser/gui-tools/isaac}"
+            local first_id="" second_id=""
+            for kind in fall:fixtures/fixtures/fall_box.py articulation:fixtures/fixtures/pendulum.py fall_repeat:fixtures/fixtures/fall_box.py; do
+                script="${kind#*:}"; kind="${kind%%:*}"
+                local id rerun=()
+                [ "$kind" = "fall_repeat" ] && rerun=(--rerun)
+                id=$(node "$job" submit "$script" --kind "smoke:${kind%%_*}" --seed 1 "${rerun[@]}" \
+                      --require motion.json --require states.jsonl --require verification.json \
+                      | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).id))') || exit 1
+                echo "smoke:$kind -> $id"
+                node "$job" wait "$id" --timeout 900 >/dev/null && echo -e "  ${GREEN}succeeded${NC}" || { echo -e "  ${RED}not succeeded${NC} (node $job tail $id)"; exit 1; }
+                [ "$kind" = "fall" ] && first_id="$id"
+                [ "$kind" = "fall_repeat" ] && second_id="$id"
+            done
+            echo "repeatability: fall twice, same script, seed and configuration"
+            python3 -I "${SCRIPT_DIR}/skills/isaac-sim/tools/compare_runs.py" \
+                "$share/jobs/$first_id/result" "$share/jobs/$second_id/result" \
+                || { echo -e "${RED}repeatability outside tolerance${NC}"; exit 1; }
+            ;;
+        *)
+            echo -e "${CYAN}isaac-sim — headless NVIDIA Isaac Sim physics sidecar (ADR-2149)${NC}"
+            echo "  $0 isaac-sim up         Build + start on ISAAC_SIM_GPU_UUID (host shell only)"
+            echo "  $0 isaac-sim build      Build the image only"
+            echo "  $0 isaac-sim down       Stop and remove the container (volumes kept)"
+            echo "  $0 isaac-sim preflight  Versions, GPU, storage, executed capabilities, health levels"
+            echo "  $0 isaac-sim smoke      Run the free-fall and pendulum fixtures"
+            echo "  $0 isaac-sim health|status|logs"
+            ;;
+    esac
+}
 
 cmd_gui_tools() {
     local subcmd="${1:-help}"
@@ -2691,6 +2768,7 @@ case "${CMD:-}" in
     health)            cmd_health "$@" ;;
     browsercontainer)  cmd_browsercontainer "$@" ;;
     gui-tools)         cmd_gui_tools "$@" ;;
+    isaac-sim)         cmd_isaac_sim "$@" ;;
     openmed)           cmd_openmed "$@" ;;
     voice)             cmd_voice "$@" ;;
     systemone)         cmd_systemone "$@" ;;

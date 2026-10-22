@@ -129,6 +129,7 @@ Not supervised inside the box — external compose services on `visionclaw_netwo
 
 - **browsercontainer** — GPU Chrome, chrome-devtools-mcp at `:8931/sse` (`system-manifest.js:154`, apply-class `live`). `[program:podkey-loader]` loads the pinned Podkey extension over CDP once per Chrome process. Its vault, holding K_browser, persists on the `browsercontainer-profile` volume; the owner mints and unlocks it (`./agentbox.sh browsercontainer podkey status|pubkey|unlock`, `browsercontainer/README.md`).
 - **gui-tools-service** — FHS GPU sidecar for BlenderMCP `:9876` and QGIS `:9877` under `vglrun` (`:157`).
+- **isaac-sim** — opt-in headless Isaac Sim physics sidecar (ADR-2149): no published port, control API on `isaac-sim:9890` (container network), GPU pinned by `ISAAC_SIM_GPU_UUID`, results on the gui-tools exchange volume under `isaac/`, apply-class `live`. Health is four levels; only smoke jobs that succeeded raise the last three. Staged until its first pinned-image smoke run. See [Isaac Sim operations](developer/isaac-sim.md).
 - **voice-console** — ADR-044 Caddy origin `:8444`, Unmute voice loop + AoE board; external build context (`:160`).
 - **ruvector-postgres** — mandatory memory store sidecar (ADR-015); compose block generated in `flake.nix:2200`, `db ruvector`, health-gated. `ruvector-mcp.cjs` fails closed, no sql.js fallback.
 - **xr-runtime** — Godot 4 XR consumer, downstream of the box (referenced by role; not a supervised program here).
