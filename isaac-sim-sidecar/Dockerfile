@@ -15,10 +15,14 @@ ARG ISAAC_LAB_COMMIT=e3f7d9ff1f5d7f8280de3ece9000b7117f66bcf4
 
 USER root
 
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
 # Isaac Lab, pinned to an exact commit and verified after checkout. The build fails if the tag
 # has moved. Stage B controllers (ProtoMotions, MimicKit) are deliberately NOT installed here:
 # ProtoMotions pins a Lab revision built for Sim 6.0 (see ADR-2149).
-RUN git clone --filter=blob:none https://github.com/isaac-sim/IsaacLab.git /opt/IsaacLab \
+RUN git clone --filter=blob:none --depth 1 --branch "${ISAAC_LAB_TAG}" https://github.com/isaac-sim/IsaacLab.git /opt/IsaacLab \
  && git -C /opt/IsaacLab checkout --detach "${ISAAC_LAB_COMMIT}" \
  && test "$(git -C /opt/IsaacLab rev-parse HEAD)" = "${ISAAC_LAB_COMMIT}" \
  && ln -sfn /isaac-sim /opt/IsaacLab/_isaac_sim \
