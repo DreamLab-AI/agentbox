@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 044f1d689569572417a98f91afcf744fc2ca2385
+verified_commit: 0382cc4b5e34f75a62184bf350f865533010dc52
 verified_paths: [skills/lint-skills.mjs, skills/gen-routing-table.mjs, skills/SKILL-DIRECTORY.md, skills/system-one/scripts/route-eval.mjs]
 owner: jjohare
 review_trigger: the next time a skill is demoted, merged, or added to a cluster that already shows measured overlap
@@ -161,3 +161,5 @@ Commands run: `bash skills/lint-skills.sh; node skills/gen-routing-table.mjs --c
 Not checked, and notes: The measured routing accuracy (92%/96%) and overlap numbers are dated measurements needing the cloud System One judge; not re-run and not claimed as current. Skill count 129 vs the ADR's historical 127/131 figures is expected; those are dated.
 
 Checked at `218dc12c3` by reading each claim against the code, not by the staleness diff alone. Stamped at `044f1d689`, which adds only the gate fixes in `config/custody/env-classes.json`, the `check-manifest-catalogue` baseline, `services/agentbox-vex`'s README and licence notice, a stale `agentbox.toml` comment, a stale `paths` example in the ontology-augment docs, and the grounding test's stub.
+
+Re-verified 2026-10-22 at `0382cc4b5e34f75a62184bf350f865533010dc52`: reviewed the delta adding an independent, opt-in Isaac Sim lifecycle and live-class service catalogue entry, the 130th routed skill, pinned regional ComfyUI nodes/model metadata, and Blender background Python failure propagation. Existing ingress, role isolation, instruction projection, durable adapters, retrieval geometry, System One selection and image evidence boundaries are unchanged. Isaac runner/contract (15), GPU picker, launcher selection, Blender bridge (19), role supervisor (25), skill lint and catalogue checks pass. Isaac vendor-image and fixture verification remains staged until executed.

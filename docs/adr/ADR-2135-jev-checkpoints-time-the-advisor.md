@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 0382cc4b5e34f75a62184bf350f865533010dc52
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, flake.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/ci/check-manifest-catalogue.js, tests/config/jev-checkpoints.test.mjs, tests/config/factrail-projection.test.sh, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: the first soak report of injections per hundred turns and USD per session, a measured shadow-log agreement rate for spawn routing (ADR-2110 labels), a change to the advisor checkpoints in ADR-2134, or a Claude Code function-hook API change
@@ -127,3 +127,5 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+Re-verified 2026-10-22 at `0382cc4b5e34f75a62184bf350f865533010dc52`: reviewed the delta adding an independent, opt-in Isaac Sim lifecycle and live-class service catalogue entry, the 130th routed skill, pinned regional ComfyUI nodes/model metadata, and Blender background Python failure propagation. Existing ingress, role isolation, instruction projection, durable adapters, retrieval geometry, System One selection and image evidence boundaries are unchanged. Isaac runner/contract (15), GPU picker, launcher selection, Blender bridge (19), role supervisor (25), skill lint and catalogue checks pass. Isaac vendor-image and fixture verification remains staged until executed.

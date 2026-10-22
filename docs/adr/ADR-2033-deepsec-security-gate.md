@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 0382cc4b5e34f75a62184bf350f865533010dc52
 verified_paths: [flake.nix, agentbox.toml, schema/agentbox.toml.schema.json, scripts/agentbox-config-validate.js, management-api/lib/system-manifest.js, skills/build-with-quality/scripts, skills/build-with-quality/references/deepsec-security-gate.md, .github/workflows/deepsec.yml]
 owner: jjohare
 review_trigger: a deepsec major version, a change to its CLI exit-code contract or model-route schema, any new model route, or the first paid full-repo run
@@ -407,3 +407,5 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+Re-verified 2026-10-22 at `0382cc4b5e34f75a62184bf350f865533010dc52`: reviewed the delta adding an independent, opt-in Isaac Sim lifecycle and live-class service catalogue entry, the 130th routed skill, pinned regional ComfyUI nodes/model metadata, and Blender background Python failure propagation. Existing ingress, role isolation, instruction projection, durable adapters, retrieval geometry, System One selection and image evidence boundaries are unchanged. Isaac runner/contract (15), GPU picker, launcher selection, Blender bridge (19), role supervisor (25), skill lint and catalogue checks pass. Isaac vendor-image and fixture verification remains staged until executed.

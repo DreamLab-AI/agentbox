@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 832ed1e2de93563d0442857fe542905d127eaa84
+verified_commit: 0382cc4b5e34f75a62184bf350f865533010dc52
 verified_paths: [flake.nix, comfyui-sidecar/Dockerfile, docker-compose.comfyui.yml, docker-compose.gui-tools.yml, gui-tools-sidecar, skills/blender/tools, skills/comfyui/mcp-server, skills/comfyui/scripts, skills/comfyui/models/stopmotion-candidates.json]
 owner: jjohare
 review_trigger: media control-plane protocol, sidecar dependencies, workflow state handling or model provisioning changes
@@ -75,3 +75,5 @@ are healthy. Expose the pinned native gateway executable on PATH: an embedded
 fallback is not equivalent deployment evidence. Quartz and OpenDSS now resolve
 in separate environments, both passing dependency checks and import/engine
 smokes. The Arch base is pinned to the digest used for this deployment.
+
+Re-verified 2026-10-22 at `0382cc4b5e34f75a62184bf350f865533010dc52`: reviewed the delta adding an independent, opt-in Isaac Sim lifecycle and live-class service catalogue entry, the 130th routed skill, pinned regional ComfyUI nodes/model metadata, and Blender background Python failure propagation. Existing ingress, role isolation, instruction projection, durable adapters, retrieval geometry, System One selection and image evidence boundaries are unchanged. Isaac runner/contract (15), GPU picker, launcher selection, Blender bridge (19), role supervisor (25), skill lint and catalogue checks pass. Isaac vendor-image and fixture verification remains staged until executed.
