@@ -296,6 +296,7 @@ pub fn candidate_record(run_id: &str, attempt: &Attempt) -> Option<CandidateReco
         },
         applied_via: c.applied_via.clone(),
         created_at: chrono::Utc::now().to_rfc3339(),
+        formatting: c.formatting.clone(),
     })
 }
 
@@ -657,6 +658,7 @@ mod tests {
             patch_bytes: 0,
             applied_via: String::new(),
             applied_patch: String::new(),
+            formatting: None,
         };
         assert!(tree_config_digest(&p).is_none(), "no config, no check");
         std::fs::write(d.path().join("dream.config.json"), b"{}").unwrap();
