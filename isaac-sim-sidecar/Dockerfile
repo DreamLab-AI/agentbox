@@ -29,6 +29,12 @@ RUN git clone --filter=blob:none --depth 1 --branch "${ISAAC_LAB_TAG}" https://g
  && cd /opt/IsaacLab && ./isaaclab.sh --install none \
  && rm -rf /opt/IsaacLab/.git
 
+# Repair requirements omitted by the vendor/Lab installers without upgrading
+# their existing graph. Keep this gate after installation, not just import checks.
+RUN /isaac-sim/python.sh -m pip install --no-cache-dir \
+      joblib==1.6.0 PyJWT==2.15.1 usd-validation-nvidia==1.22.0 \
+ && /isaac-sim/python.sh -m pip check
+
 # An empty named volume mounted here inherits this ownership, so the non-root runtime user can write HOME.
 RUN mkdir -p /isaac-cache/home && chown -R 1000:1000 /isaac-cache
 
