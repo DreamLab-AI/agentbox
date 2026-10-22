@@ -61,6 +61,12 @@ The pins in `isaac-sim-sidecar/Dockerfile` came from a discovery pass and are un
 5. Both interpreter paths exist and run: `/isaac-sim/python.sh` (jobs) and `/isaac-sim/kit/python/bin/python3` (runner, healthcheck).
 6. `git` is present in the base image (the Lab clone needs it) and `./isaaclab.sh --install none` is a valid invocation for Lab 3.0.0; adjust the Dockerfile if not.
 7. Kit's writable directories: find every in-tree cache/log/data path under `/isaac-sim` and `HOME` that a uid-1000 process writes. Redirect each to `/isaac-cache`; do not run as root to avoid it.
+   The baked fixtures pass `extra_args=["--portable-root", os.environ["ISAAC_KIT_PORTABLE_ROOT"]]`
+   to `SimulationApp`, moving Kit's cache/data/log roots to `/isaac-cache/kit`.
+   Custom job scripts must use the same launch option; changing `HOME` alone does
+   not override Isaac Sim's default portable root inside its vendor directory.
+   Hub uses `/isaac-cache/hub`; the inherited detect-only mode is disabled so it
+   can start locally rather than search for a missing host Hub.
 8. Save the image digest, `/etc/isaac-sim-versions.json`, `nvidia-smi` output and the smoke `verification.json` files
    as the deployment evidence the ADR's *Verification* section then cites.
 

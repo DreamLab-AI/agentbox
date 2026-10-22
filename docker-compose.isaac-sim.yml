@@ -22,6 +22,11 @@ services:
       ACCEPT_EULA: "Y"
       PRIVACY_CONSENT: ${ISAAC_SIM_PRIVACY_CONSENT:-N}
       HOME: /isaac-cache/home
+      ISAAC_KIT_PORTABLE_ROOT: /isaac-cache/kit
+      # The vendor base defaults to detecting a host Hub, absent here.
+      HUB__ARGS__DETECT_ONLY: "false"
+      HUB__CACHE__PATH: /isaac-cache/hub
+      OMNICLIENT_HUB_CACHE_DIR: /isaac-cache/hub
       ISAAC_RUNNER_ROOT: /exchange/isaac
       ISAAC_MAX_CONCURRENT: ${ISAAC_SIM_MAX_CONCURRENT:-1}
       ISAAC_MIN_FREE_GIB: ${ISAAC_SIM_MIN_FREE_GIB:-20}

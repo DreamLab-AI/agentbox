@@ -10,7 +10,9 @@ import os
 
 def start(headless=True):
     from isaacsim import SimulationApp  # must precede every other omni/pxr import
-    return SimulationApp({"headless": headless, "renderer": "RayTracedLighting"})
+    portable = os.environ.get("ISAAC_KIT_PORTABLE_ROOT", os.path.join(os.environ.get("HOME", "/tmp"), "kit"))
+    return SimulationApp({"headless": headless, "renderer": "RayTracedLighting",
+                          "extra_args": ["--portable-root", portable]})
 
 
 def make_world(dt, substeps=1):
