@@ -41,7 +41,7 @@ for i in range(int(DURATION / DT) + 1):
     world.step(render=False)
 
 header = {"time": {"solver_dt": DT, "substeps": 1, "sample_dt": DT, "delivery_fps": None},
-          "bodies": [{"id": "anchor", "parent": None, "rest": {"p": [0, 0, 2.0], "q": [1, 0, 0, 0]}, "mass": 0.0,
+          "bodies": [{"id": "anchor", "parent": None, "rest": {"p": [0, 0, 2.0], "q": [1, 0, 0, 0]}, "mass": 1.0,
                       "mass_estimated": True, "collision": "none"},
                      {"id": "bob", "parent": "anchor", "rest": {"p": [0, 0, 2.0 - L], "q": [1, 0, 0, 0]}, "mass": 1.0,
                       "mass_estimated": True, "collision": "sphere r=0.05 m"}],
@@ -81,5 +81,5 @@ verification["pass"] = all(verification[k]["pass"] for k in ("initial_condition"
 with open(os.path.join(out, "verification.json"), "w") as fh:
     json.dump(verification, fh, indent=2)
 print(json.dumps(verification))
-app.close()
+app.close(exit_code=0 if verification["pass"] else 3)
 sys.exit(0 if verification["pass"] else 3)

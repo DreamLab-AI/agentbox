@@ -1,9 +1,8 @@
 """The only module that touches Isaac Sim APIs. Fixtures call this; a Sim API change is a one-file fix.
 
-STATUS: written against the isaacsim.core.api / isaacsim.core.prims surface documented for the
-5.x line and expected to carry into 6.2. It has NOT yet been executed against the pinned
-6.2.0 image. The first smoke run is the verification; if a symbol moved, this file fails loudly
-at import with the missing name, never with a silent fallback.
+These APIs have been exercised against the pinned 6.2.0 image. The baked fixtures'
+verification outputs remain the authority for physics acceptance; a missing symbol
+fails at import, never with a silent fallback.
 """
 import os
 
@@ -69,6 +68,9 @@ def build_pendulum(world, length, mass=1.0, limits=(-1.2, 1.2)):
     base.GetSizeAttr().Set(0.05)
     UsdGeom.Xformable(base).AddTranslateOp().Set(Gf.Vec3d(0, 0, pivot_z))
     UsdPhysics.RigidBodyAPI.Apply(base.GetPrim())
+    anchor_mass = UsdPhysics.MassAPI.Apply(base.GetPrim())
+    anchor_mass.CreateMassAttr(1.0)
+    anchor_mass.CreateDiagonalInertiaAttr(Gf.Vec3f(0.05 ** 2 / 6))
     bob = UsdGeom.Sphere.Define(stage, "/World/pendulum/bob")
     bob.GetRadiusAttr().Set(0.05)
     xf = UsdGeom.Xformable(bob)
@@ -90,8 +92,8 @@ def build_pendulum(world, length, mass=1.0, limits=(-1.2, 1.2)):
     return art, bob.GetPath().pathString
 
 
-def stop(app):
-    app.close()
+def stop(app, exit_code=0):
+    app.close(exit_code=exit_code)
 
 
 def env_seed():

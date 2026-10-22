@@ -26,16 +26,29 @@ world = sb.make_world(DT)
 sb.add_ground(world)
 box = sb.add_box(world, "/World/box", [0, 0, Z0], SIZE)
 world.reset()
+# Reset advances the solver during initialisation. Establish the release state
+# explicitly after those warm-up steps, before assigning sample time zero.
+import numpy as np
+box.set_world_pose(position=np.array([0, 0, Z0], dtype=float), orientation=np.array([1, 0, 0, 0], dtype=float))
+box.set_linear_velocity(np.zeros(3))
+box.set_angular_velocity(np.zeros(3))
 states, contacts, was_airborne = [], [], True
+previous_vz = None
 steps = int(2.0 / DT)
 for i in range(steps + 1):
     t = i * DT
     p, q, v, w = sb.pose_and_velocity(box)
     states.append({"step": i, "t": t, "bodies": {"box": {"p": p, "q": q, "v": v, "w": w}}, "joints": {}})
-    touching = p[2] - SIZE / 2 <= 1e-3
+    # Detect the first impact from the measured normal-velocity discontinuity
+    # near the floor. A position-only threshold misses bouncing contacts and
+    # incorrectly includes later bounces in the free-flight comparison.
+    touching = (previous_vz is not None and p[2] <= SIZE / 2 + 0.02
+                and abs(v[2] - previous_vz + 9.81 * DT) > 1e-3)
     if touching and was_airborne:
-        contacts.append({"step": i, "t": t, "a": "box", "b": "ground", "impulse": None, "force": None})
+        contacts.append({"step": i, "t": t, "a": "box", "b": "ground", "impulse": None, "force": None,
+                         "detection": "normal_velocity_change_near_floor"})
         was_airborne = False
+    previous_vz = v[2]
     world.step(render=False)
 
 header = {"time": {"solver_dt": DT, "substeps": 1, "sample_dt": DT, "delivery_fps": None},
@@ -55,6 +68,10 @@ max_err = errs[variant]
 continuous_err = max(abs(s["bodies"]["box"]["p"][2] - me.free_fall_z(Z0, s["t"])) for s in flight)
 final_z = states[-1]["bodies"]["box"]["p"][2]
 verification = {
+    "initial_condition": {"position_error_m": abs(states[0]["bodies"]["box"]["p"][2] - Z0),
+                          "speed_m_s": float(np.linalg.norm(states[0]["bodies"]["box"]["v"])),
+                          "pass": abs(states[0]["bodies"]["box"]["p"][2] - Z0) <= 1e-6
+                                  and float(np.linalg.norm(states[0]["bodies"]["box"]["v"])) <= 1e-5},
     "free_flight": {"samples": len(flight), "matched_integrator": variant, "max_abs_error_m": max_err,
                     "error_by_variant_m": errs, "continuous_curve_error_m_informational": continuous_err,
                     "tolerance_m": FREE_FLIGHT_TOL_M,
@@ -62,9 +79,9 @@ verification = {
     "contact": {"first_contact_t": first_contact_t, "final_height_m": final_z, "expected_rest_m": SIZE / 2,
                 "tolerance_m": SETTLE_TOL_M, "pass": first_contact_t is not None and abs(final_z - SIZE / 2) <= SETTLE_TOL_M},
 }
-verification["pass"] = verification["free_flight"]["pass"] and verification["contact"]["pass"]
+verification["pass"] = bool(verification["initial_condition"]["pass"] and verification["free_flight"]["pass"] and verification["contact"]["pass"])
 with open(os.path.join(out, "verification.json"), "w") as fh:
     json.dump(verification, fh, indent=2)
 print(json.dumps(verification))
-app.close()
+app.close(exit_code=0 if verification["pass"] else 3)
 sys.exit(0 if verification["pass"] else 3)
