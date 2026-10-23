@@ -59,7 +59,7 @@ if [[ -z $tools || ($need_evidence == true && -z $evidence) ]]; then
   done < <(jq -r '.[].outputs.out' "$scratch/build.json")
 fi
 [[ -n $tools && -x $tools/bin/agentbox-vex ]] || { echo 'Missing pinned security-tools output' >&2; exit 1; }
-tool() { "$tools/bin/$@"; }
+tool() { local name=$1; shift; "$tools/bin/$name" "$@"; }
 make_report() {
   local destination=$1
   [[ -f $evidence/metadata.json && -f $evidence/image.json && -d $evidence/payload ]] || { echo 'Incomplete build evidence' >&2; exit 1; }
