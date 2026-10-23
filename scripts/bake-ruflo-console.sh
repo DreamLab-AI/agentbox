@@ -12,7 +12,9 @@
 # - node_modules is never copied: the plugins are TypeScript function-hook
 #   modules that Claude Code loads directly and that import only `claude-code`
 #   types.
-# - userConfig.cli defaults to "ruflo" in ruflo-console and ruflo-swarm.
+# - userConfig.cli defaults to "ruflo" in ruflo-console and ruflo-swarm. The
+#   plugin source may lead the npm CLI briefly during a staged upstream release;
+#   the local immutable bin is still mandatory and mutable npx remains forbidden.
 #   Upstream's default, npx-offline, runs `npx --offline -y @claude-flow/cli@latest`,
 #   which fails ENOTCACHED in a container whose npm cache has never fetched the
 #   package. The image ships the cli as the Nix-baked `ruflo` bin on PATH instead.

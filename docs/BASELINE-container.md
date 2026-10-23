@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.6
+version: 0.5.7
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.7 (2026-10-23): CVE-009. Replace the affected nixpkgs nss-cacert output with the hash-pinned 20 October Mozilla extract and force Node onto that OpenSSL bundle; the post-build gate requires curl and Node to reject both eMudhra incident chains. Source-only change, staged for an owner-run rebuild."
   - "0.5.6 (2026-10-11): ADR-2137. Host-side Nix SBOM/OpenVEX evidence follows actual shipped layer paths; preparation and image CI retain reports outside the runtime image, with immutable-digest online scans. No runtime service, adapter, port or manifest capability is added. Rollout staged for the next rebuild."
   - "0.5.5 (2026-10-06): ADR-2132. Non-overlapping image layers, non-disruptive prepare and separate Agentbox-only activation; no automatic cleanup. Host registry cache is loopback-only and outside the runtime adapter spine."
   - "0.5.4 (2026-10-06): ADR-2131. New gated supervised program diagram-review-cron (supercronic over skills/sealmap-review/crontab, shipped on, rebuild-class under [diagram_review].enabled). It holds no secret file and takes no ADR-2122 role. The Invariants compliance surface is unchanged."
@@ -53,7 +54,7 @@ Ground-truth description of how the agentbox container is composed and what runs
 
 The image is composed entirely by `flake.nix` (4,684 lines). `agentbox.toml` is the *running* configuration, not a template — the flake evaluator reads it at build time to decide the package set and generates the supervisord text inline. Feature gates map to Nix conditionals (`lib.optionalString`), so flipping most gates changes the image and needs `./agentbox.sh rebuild`, not a restart. This is the apply-class distinction the manifest surface encodes (`system-manifest.js:27-31`): `live` (read at op time), `boot` (entrypoint reconciles each restart), `rebuild` (changes Nix composition).
 
-`ruvector` is always in the package set (`ruvectorPkg` in `flake.nix`), pinned as an exact-semver Nix npm closure (`ruvector-0.3.3`, `lib/npm-cli.nix`); everything else is gated. Node is `nodejs_22` throughout. (ADR-2039: the version was `0.2.25` when this paragraph was written; the `nix-prefetch-url` comment immediately above the pin still names the old tarball.)
+`ruvector` is always in the package set (`ruvectorPkg` in `flake.nix`), pinned as an exact-semver Nix npm closure (`ruvector-0.3.3`, `lib/npm-cli.nix`); everything else is gated. Node is `nodejs_22` throughout. While nixpkgs and Node still carry the affected eMudhra roots, the image replaces `pkgs.cacert` with the hash-pinned 20 October Mozilla extract and sets `NODE_OPTIONS=--use-openssl-ca`, making curl and Node share the corrected `SSL_CERT_FILE`. A candidate is not releasable until `scripts/emudhra-trust-gate.sh` rejects both incident chains through both clients. (ADR-2039: the version was `0.2.25` when this paragraph was written; the `nix-prefetch-url` comment immediately above the pin still names the old tarball.)
 
 ### Remote media control planes (ADR-2148)
 

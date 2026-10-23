@@ -4,6 +4,28 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Security (2026-10-23 — eMudhra trust withdrawal, CVE-009)
+
+- The Nix image overrides `nss-cacert 3.126`'s affected trust output with the
+  hash-pinned Mozilla CA extract dated 20 October 2026. The original package
+  structure and setup hook remain intact for Nix consumers.
+- Node 22.23.3 is forced to use the corrected OpenSSL bundle through
+  `NODE_OPTIONS=--use-openssl-ca`; setting `SSL_CERT_FILE` alone does not replace
+  Node's compiled-in roots.
+- `scripts/emudhra-trust-gate.sh` is the post-build closure gate: both published
+  non-CT incident chains must be rejected by both curl and Node. This source
+  change does not claim that the running container has been rebuilt.
+
+### Dependencies (2026-10-23)
+
+- Refreshed the eligible immutable pins without rebuilding: rust-overlay,
+  Codex 0.164.0, Claude Code 2.1.309 (main image and Z.ai sidecar), Agentic-QE
+  3.15.10 and Wrangler 4.151.3. Ruflo's plugin source moves to exact commit
+  `856de8f3` from the 3.60.0 release branch; the immutable CLI remains at 3.57.0
+  until matching 3.60 npm artefacts exist. Ruflo 3.59.0 was not taken because
+  its published package introduces a remote-tarball dependency rejected by
+  npm's supply-chain policy.
+
 ### Added (2026-10-19 — the collaboration and welfare floor, ADR-2144)
 
 - **A fourth instruction tier, `floor`** (`config/instructions/floor.md` + gitignored `local/floor.md`):

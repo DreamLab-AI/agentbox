@@ -56,13 +56,16 @@
 
     # ruflo's Claude Code mods (function hooks): ruflo-console (the /ruflo
     # cockpit), plus ruflo-mods and ruflo-swarm, which answer `/ruflo mods` and
-    # `/ruflo swarm …` on the same command. Pinned to the ruflo v3.57.0 tag,
-    # files-only like `codexPlugin`; gated by [toolchains].ruflo_console. The
-    # ruflo repository is ~100 MB, so only the three plugin directories are
+    # `/ruflo swarm …` on the same command. Pinned to the exact head inspected
+    # on the 3.60.0 release branch; files-only like `codexPlugin`; gated by
+    # [toolchains].ruflo_console. The matching npm runtime was not yet published
+    # on 23 Oct, so rufloPkg temporarily remains at 3.57.0. No npx fallback is
+    # allowed; align both pins when ruflo/@claude-flow/cli 3.60.0 is published.
+    # The ruflo repository is ~100 MB, so only the three plugin directories are
     # baked (scripts/bake-ruflo-console.sh), never the tree. Bump with:
     #   nix flake lock --update-input rufloConsole
     rufloConsole = {
-      url = "github:ruvnet/ruflo/e4fb889e1bb1c308be10232e9b807c7f285545d4";
+      url = "github:ruvnet/ruflo/856de8f36ae0c1c197e5170df0b52fdcdab8ad74";
       flake = false;
     };
   };
@@ -90,6 +93,24 @@
             #    the openai/jupyter python chain. Skip its test suite only.
             # Drop both overrides on the next nixpkgs bump that builds clean.
             (final: prev: {
+              # CVE-009 / eMudhra trust incident: nixos-unstable still ships
+              # nss-cacert 3.126, whose generated bundle trusts an affected
+              # non-CT chain.  Keep the package shape and setup hook, but
+              # replace both emitted bundles with curl's hash-pinned Mozilla
+              # extract from 2026-10-20 (118 roots; both incident probes fail).
+              # Remove this override only after the upstream pkgs.cacert and
+              # Node bundled roots pass scripts/emudhra-trust-gate.sh.
+              cacert = prev.cacert.overrideAttrs (old: {
+                version = "3.126-emudhra-2026-10-20";
+                postInstall = (old.postInstall or "") + ''
+                  install -m 0644 ${prev.fetchurl {
+                    url = "https://curl.se/ca/cacert-2026-10-20.pem";
+                    hash = "sha256-eW8Tib/qE8DtePZjt2W6r/VKUI5Ug3hr1uznPF4+PL4=";
+                  }} "$out/etc/ssl/certs/ca-bundle.crt"
+                  cp "$out/etc/ssl/certs/ca-bundle.crt" \
+                    "$out/etc/ssl/certs/ca-no-trust-rules-bundle.crt"
+                '';
+              });
               pdal = prev.pdal.overrideAttrs (old: {
                 env = (old.env or { }) // {
                   NIX_CFLAGS_COMPILE =
@@ -597,15 +618,15 @@
         #    nodeModulesHash resolved 2026-07-24 during the ADR-041 rebuild.
         agenticQePkg = mkNpmCli {
           pkgName         = "agentic-qe";
-          # 3.14.7 (2026-10-02T09:25Z): npm latest, taken 2026-10-03 inside
-          # the 72-hour window on the owner's estate-wide upgrade. vibium (the
+          # 3.15.10 (2026-10-19T08:49Z): newest release beyond the 72-hour
+          # cool-off on the 23 October estate-wide upgrade. vibium (the
           # opt-in qe-browser engine) moved from a dependency to an optional
           # peer (^26.8.21), so the closure no longer carries vibium 0.1.8;
           # qe-browser stays "install with aqe init", as the skill says.
-          version         = "3.15.9";
-          packageLock = ./config/npm-locks/agentic-qe-3.15.9.package-lock.json;
-          sha256          = "sha256-f/Uw/DEGbecdFv2eMCB77s41YZJ+GdlCGzFM7UkguUA=";
-          nodeModulesHash = "sha256-XdasUB9WYs4ZT4sZ4q6P6HVuMJNm8o6/D/T68jt4Z20=";
+          version         = "3.15.10";
+          packageLock = ./config/npm-locks/agentic-qe-3.15.10.package-lock.json;
+          sha256          = "sha256-R4YOKC7XfGiv25OL4u/vOoFqbWz7kuL8un7r3QVYgYg=";
+          nodeModulesHash = "sha256-JfQM4Vu4gLT0JF+Qd9C9abErZC9AsDUJRqlTfilKG5w=";
           bin             = "aqe";
         };
 
@@ -710,12 +731,12 @@
         # devDependencies (verified against the registry manifest).
         wranglerPkg = mkNpmCli {
           pkgName         = "wrangler";
-          # 4.147.0 (2026-10-02T11:30Z): npm latest, taken 2026-10-03 inside
-          # the 72-hour window on the owner's estate-wide upgrade.
-          version         = "4.151.1";
-          packageLock = ./config/npm-locks/wrangler-4.151.1.package-lock.json;
-          sha256          = "sha256-O+BDfBfueZ9SbGsHJG2lnrtX0XMn+k4nXQlTiB8dvGU=";
-          nodeModulesHash = "sha256-VhJb8ZdZIj3uRfSBqDhsQmZI/2Mhps5GvYysYnzZmRg=";
+          # 4.151.3 (2026-10-20T12:05Z): newest release beyond the 72-hour
+          # cool-off on the 23 October estate-wide upgrade.
+          version         = "4.151.3";
+          packageLock = ./config/npm-locks/wrangler-4.151.3.package-lock.json;
+          sha256          = "sha256-0j3PYgho4t7E9GdKWY9y7blv9vBFch7wmyMV2kbddlk=";
+          nodeModulesHash = "sha256-k4ATTp+r9ux0tiJ90TEBI1QlrXO7l01RhLCqj0NPR4w=";
           bin             = "wrangler";
           # wrangler's devDependencies reference private @cloudflare/*
           # packages not on the public npm registry — strip them so npm
@@ -1856,7 +1877,7 @@
         # [toolchains].ruflo_console: bake ruflo-console + ruflo-mods + ruflo-swarm
         # from the pinned rufloConsole input into the `agentbox` marketplace.
         rufloConsoleOn = toolchainCfg.ruflo_console or false;
-        rufloConsolePlugins = pkgs.runCommand "ruflo-console-plugins-3.57.0" {
+        rufloConsolePlugins = pkgs.runCommand "ruflo-console-plugins-3.60.0" {
           nativeBuildInputs = [ pkgs.jq ];
         } ''
           bash ${./scripts/bake-ruflo-console.sh} ${rufloConsole} $out \
@@ -4281,6 +4302,10 @@ ${ragflowNetworkDecl}
           "CFLAGS_wasm32_unknown_unknown=${wasmCrossCFLAGS}"
           "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
           "NIX_SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+          # Node 22.23.3's compiled-in Mozilla snapshot accepts the affected
+          # eMudhra chain independently of SSL_CERT_FILE. Force Node onto the
+          # same fixed OpenSSL bundle until an upstream Node release removes it.
+          "NODE_OPTIONS=--use-openssl-ca"
           "AGENTBOX_CONFIG=/etc/agentbox.toml"
           "AGENTBOX_VERSION=2.0.0"
           "AGENTBOX_ORCHESTRATION=${coreCfg.orchestration or "ruflo-v3"}"

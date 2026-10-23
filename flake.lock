@@ -201,17 +201,17 @@
     "rufloConsole": {
       "flake": false,
       "locked": {
-        "lastModified": 1792276428,
-        "narHash": "sha256-ucnLdftnrm094IX+fBG10YSP/L/r+vCBAeuKxOuHA1M=",
+        "lastModified": 1792774149,
+        "narHash": "sha256-g9c3HawN3WHPKO6JFc2Yx+L+WGzmCQQtHKbLyKCoOCI=",
         "owner": "ruvnet",
         "repo": "ruflo",
-        "rev": "e4fb889e1bb1c308be10232e9b807c7f285545d4",
+        "rev": "856de8f36ae0c1c197e5170df0b52fdcdab8ad74",
         "type": "github"
       },
       "original": {
         "owner": "ruvnet",
         "repo": "ruflo",
-        "rev": "e4fb889e1bb1c308be10232e9b807c7f285545d4",
+        "rev": "856de8f36ae0c1c197e5170df0b52fdcdab8ad74",
         "type": "github"
       }
     },
@@ -220,11 +220,11 @@
         "nixpkgs": "nixpkgs_4"
       },
       "locked": {
-        "lastModified": 1792567368,
-        "narHash": "sha256-mrM+zFDRO1pI85t2SEq5R739BIq7Nv5XkFtVZK9nkZM=",
+        "lastModified": 1792739799,
+        "narHash": "sha256-M2rr/yPbTHvgAzCyZ+zHJHflFM0XU7t42Sw2skA3TQM=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "83dd732f2428827f35d997deae108a2ced5125f4",
+        "rev": "b0829a2cc9f7b596583331d78a942c1e5170d8a0",
         "type": "github"
       },
       "original": {

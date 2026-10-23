@@ -118,6 +118,7 @@ Governance proposals, responses and application receipts also have distinct owne
 
 The October history since the previous README update includes these independently reviewable changes:
 
+- **Certificate trust:** the next image replaces the affected eMudhra trust in the Nix CA bundle and forces Node onto the same corrected bundle. The change is staged until the owner rebuilds and runs the two-client trust gate; the currently running container remains affected.
 - **Corpus tooling:** refreshed Ontomark pins and corpus verbs; the vault layout uses its manifest path authority. `vault` gained the newer derivation-certificate/consequence tooling through an identified VisionClaw source pin.
 - **Dream Engine:** the host consumes the extracted permissive crates and now carries requested-source supply and structured operator decisions. [ADR-2143](docs/adr/ADR-2143-source-supply-is-plumbing-and-decisions-are-plain-english.md) records the host contract.
 - **Pod forge:** alpha.17 server features include forge and mirror support. [ADR-2145](docs/adr/ADR-2145-the-solid-pod-forge-and-mirror-are-compiled-in-and-inert-until-named.md) records a 20 October deployment with `/forge` responding and **zero** mirror follows/announce relays. A running forge is not automatic mirroring or a VisionClaw forge route.

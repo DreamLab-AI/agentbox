@@ -1,6 +1,6 @@
 ---
 id: ADR-2082
-title: The governed claude-flow server forwards orchestration tools to a filtered ruflo child; memory never crosses
+title: The governed server projects one pinned Ruflo capability; memory never crosses
 date: 2026-09-07
 decision_status: accepted
 implementation_status: complete
@@ -10,12 +10,39 @@ superseded_by: []
 verified_commit: 653b8b6387470eaa3be6c20e6dbd2208e538a985
 verified_paths: [mcp/servers/lib/orchestration-proxy.js, mcp/servers/ruvector-mcp.cjs, mcp/servers/lib/ruvector-gates.js, config/entrypoint-unified.sh]
 owner: jjohare
-review_trigger: next image rebuild (activation), a ruflo major bump that renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
+review_trigger: next image rebuild (activation), a Ruflo release that changes plugin/runtime resolution or renames the swarm/agent/task/coordination tools, or any proposal to forward a memory_* tool
 repo: agentbox
 domain: LEARNING-memory
 ---
 
-# ADR-2082 — The governed claude-flow server forwards orchestration tools to a filtered ruflo child; memory never crosses
+# ADR-2082 — The governed server projects one pinned Ruflo capability; memory never crosses
+
+## Amendment — 2026-10-23 (one capability, host-specific projections)
+
+Ruflo is one upstream capability, not two products merely because Agentbox has
+both a Nix CLI closure and a plugin-source input. The exact release identity is
+projected differently for each host:
+
+- Claude Code consumes the selected plugin payload (console, mods and swarm).
+- Codex consumes only upstream plugins that actually ship a `.codex-plugin`
+  surface; 3.60 does not yet provide Codex manifests for core, console or mods.
+- The governed MCP server and plugin actions consume the same pinned CLI runtime.
+
+The runtime payload remains necessary. Ruflo 3.60's `ruflo-core` plugin does not
+contain the orchestration engine: `scripts/mcp-launch.cjs` resolves a local
+`@claude-flow/cli`, then falls back to mutable `npx @latest`. Agentbox must never
+take that fallback. Nor may installing `ruflo-core` register a second MCP server:
+the existing `claude-flow` registration remains the sole memory-governed entry
+and forwards only the allowlisted orchestration families.
+
+Accordingly, future updates must align the plugin source commit, the published
+`ruflo`/`@claude-flow/cli` version and the generated lock as one reviewed update.
+The separate Nix inputs are packaging mechanics, not independent capabilities.
+The 3.60 release branch was inspected at `856de8f3` on 23 October. Its plugin
+source and CI/security gates existed and that exact commit is now the staged
+plugin pin. Its npm runtime artefacts and immutable release tag did not yet
+exist, so the Nix CLI closure deliberately trails at 3.57.0. The divergence is
+temporary, explicit and must close before claiming a fully aligned 3.60 runtime.
 
 ## Re-verification — 2026-10-02 at caab741c6 (factrail landing, ADR-2121)
 

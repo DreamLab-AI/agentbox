@@ -16,6 +16,23 @@ repo: agentbox
 
 # ADR-2123 — Govern the ruflo memory CLI on the ruvector-postgres sidecar
 
+## Clarification — 2026-10-23 (plugin delivery does not remove the runtime)
+
+Ruflo's plugin and CLI are one capability with two host projections, not two
+competing products. This decision's wrapper remains required because the plugin
+launches a locally installed `@claude-flow/cli` (or, outside Agentbox, falls back
+to `npx @latest`) and its console invokes CLI commands. Baking only plugin files
+would therefore reintroduce mutable network resolution and would not provide the
+orchestration engine.
+
+The intended simplification is release alignment: one reviewed Ruflo release
+identity supplies both the plugin payload and the immutable runtime closure.
+Agentbox then adds only its policy adapters—the single MCP registration, memory
+verb interception and repo-safe defaults. The 3.60 release branch does not alter
+that boundary. Its exact plugin-source commit is staged now, while the governed
+npm CLI stays at 3.57.0 until matching 3.60 artefacts exist; no mutable fallback
+fills the gap.
+
 ## Context
 
 Durable memory in this image is the ruvector-postgres sidecar, embedded by Xinference (bge-small-en-v1.5, 384-dim, GPU) and served by `mcp/servers/ruvector-mcp.cjs` under the `claude-flow` MCP name (ADR-015, ADR-2014, ADR-2019). ruflo 3.51.1 (ADR-2020 gate `ruflo_console`, baked 2026-10-03) ships its own memory subsystem, and it is local-only: `memory init` writes sql.js SQLite under `.swarm/`, an AgentDB mirror, the native engine's `./ruvector.db` in the working directory and a MiniLM ONNX embedder whose cache path is the read-only Nix store. Its `--backend` flag is a label written into a metadata table; no value reaches Postgres, no setting selects an embedding endpoint, and its MCP server given the sidecar's full `RUVECTOR_PG_*`/`PG*` env still searched an empty local store (tested 2026-10-03). Every `ruflo` invocation, `--help` included, also autostarted a worker daemon into the working directory. The ruflo-console memory pane reaches memory only by shelling out to `ruflo memory stats --format json` and `ruflo memory list --format json --limit 500`, so with the stock binary it shows an empty local store, never the governed corpus. One `memory init` run on 2026-10-03 left three local stores in a repository, one of them not gitignored.
@@ -32,7 +49,7 @@ The `ruflo` and `claude-flow` bins the image puts on PATH are governed wrappers 
 
 - The console's memory pane, `cf-memory`, `aisp/init-aisp.sh` and any agent that types `ruflo memory store` all write to and read from the sidecar through the GPU embedder; there is one memory system. The cost is that ruflo's local-only memory verbs are gone from this image, and anything that needs them (a ruflo memory export, its distillation operators) must be done against the sidecar's own tooling instead.
 - Disabling the AgentDB bridge is a behaviour change for the real CLI's non-memory paths (hooks, the proxy's swarm child): they keep sql.js and lose the AgentDB vector mirror. Memory tools never cross the proxy (ADR-2082), so no governed consumer is affected; an operator can re-enable it with `CLAUDE_FLOW_DISABLE_BRIDGE=0` for one invocation.
-- The CLI is a second consumer of `lib/memory-tools.js`. A change to that library's contract must keep `tests/contract/ruflo-memory-cli.contract.spec.js` green alongside the server's suites.
+- The governed CLI adapter is another entry into `lib/memory-tools.js`, not a second Ruflo product or memory system. A change to that library's contract must keep `tests/contract/ruflo-memory-cli.contract.spec.js` green alongside the server's suites.
 - The review trigger above is the exit: when upstream ruflo can target Postgres and an external embedder natively, the wrapper's `memory` branch becomes configuration and this record is superseded.
 
 ## Upstream lineage — why there are two memory systems in ruvnet's estate

@@ -17,9 +17,9 @@ RUN useradd -m -s /bin/bash claude && \
 # SECURITY: @anthropic-ai/claude-code is pinned to a verified version.
 # If upstream ships a malicious release, this pin blocks auto-upgrade.
 # Rotate via a PR only; do not auto-update.
-# Exact version follows the Nix-baked Claude Code CLI. The 2.1.291 release
+# Exact version follows the Nix-baked Claude Code CLI. The 2.1.309 release
 # metadata is checked in lib/claude-code-binary.nix and upstream's manifest.
-RUN npm install -g @anthropic-ai/claude-code@2.1.306
+RUN npm install -g @anthropic-ai/claude-code@2.1.309
 
 # Create app directory
 WORKDIR /app
