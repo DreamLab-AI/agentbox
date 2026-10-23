@@ -28,7 +28,7 @@
 #  15. a role at a reserved id (965, the host docker group) -> 1; 16. --print-registry shape
 #  17. the socket dir under a devuser-writable parent (the /run/agentbox case) -> 1, (a) fails,
 #      the dir restored; in the PASS fixture devuser can neither rename it nor create beside it
-#  18. (d) against the shipped agentbox.toml [sidechain] tables -> passes, txbt4 not probed
+#  18. (d) against the shipped agentbox.toml [sidechain] tables -> dreamlab passes; txbt4 follows its flag
 #  19. manifest enables a chain the plan did not bake -> 1, (d); 20. baked but disabled -> 1, (d)
 #  21. no chain enabled and none baked -> (d) passes
 #  22. the at-rest tree ab_custody_migrate leaves (W2b), given root ownership -> 0 PASS, (a) clean;
@@ -422,17 +422,23 @@ else bad "--print-registry reads W1's table and plan" "$(head -c 600 <<<"$reg")"
 # of the repo's agentbox.toml, so it can drift from the image that baked the plan.
 d_rows() { field '[.checks[] | select(.check == "d")] | map("\(.target)=\(.status)") | join(" ")'; }
 
-# 18. The SHIPPED manifest's sidechain tables (agentbox.toml: dreamlab on, dreamlab-txbt4 off)
-#     with the fixture plan (which bakes exactly that): (d) passes, dreamlab on :3450, no txbt4 row.
+# 18. The SHIPPED manifest's sidechain tables with the fixture plan (which bakes only dreamlab).
+#     dreamlab produces on :3450 and passes either way. dreamlab-txbt4 follows the shipped flag:
+#     off -> not probed, (d) passes; on -> the plan did not bake it, so (d) fails on that chain
+#     alone (the same verdict as case 19). The expectation reads the flag, so turning the
+#     second chain on in agentbox.toml does not silently break this case.
 F="$(fresh 18)"
 awk '/^\[sidechain(\.[^]]*)?\]$/ {p=1; print; next} /^\[/ {p=0} p' "$REPO/agentbox.toml" >"$F/sidechain.toml"
 { awk '/^\[sidechain\]$/ {exit} {print}' "$F/etc/agentbox.toml"; cat "$F/sidechain.toml"; } >"$F/m.toml" && mv "$F/m.toml" "$F/etc/agentbox.toml"
 reg="$(RH_ROOT="$F" bash "$SCRIPT" --print-registry 2>&1)"; rehearse "$F"
-if [ "$rc" = 0 ] && [ "$(d_rows)" = "sidestr-producer=pass sidestr:dreamlab tip=pass" ] \
+tx_on=$(awk '/^\[sidechain\.dreamlab-txbt4\]$/ {p=1; next} /^\[/ {p=0} p && /^enabled[[:space:]]*=[[:space:]]*true/ {print "on"; exit}' "$F/sidechain.toml")
+if [ "$tx_on" = on ]; then want_rc=1; want_d="sidestr-producer=pass sidestr:dreamlab tip=pass sidestr:dreamlab-txbt4=fail"; want_tx=true
+else want_rc=0; want_d="sidestr-producer=pass sidestr:dreamlab tip=pass"; want_tx=false; fi
+if [ "$rc" = "$want_rc" ] && [ "$(d_rows)" = "$want_d" ] \
    && [ "$(field '.checks[] | select(.target == "sidestr:dreamlab tip") | .evidence.port')" = 3450 ] \
-   && jq -e '(.roles[] | select(.name == "ab-sidestr-dreamlab-txbt4") | .chain == "dreamlab-txbt4" and .port == 3451 and (.enabled | not) and (.baked | not))
+   && jq -e --argjson tx "$want_tx" '(.roles[] | select(.name == "ab-sidestr-dreamlab-txbt4") | .chain == "dreamlab-txbt4" and .port == 3451 and .enabled == $tx and (.baked | not))
              and (.roles[] | select(.name == "ab-sidestr-dreamlab") | .enabled and .baked)' <<<"$reg" >/dev/null; then
-  ok "(d) against the shipped [sidechain] tables: dreamlab produces on :3450 as 964; txbt4 (off, port 3451) is not probed"
+  ok "(d) against the shipped [sidechain] tables: dreamlab produces on :3450 as 964; txbt4 (port 3451) follows its shipped flag (enabled=$want_tx)"
 else bad "(d) against the shipped [sidechain] tables" "rc=$rc d=[$(d_rows)] failed=$(failed) reg=$(jq -c '[.roles[] | select(.chain) | {name,chain,port,enabled,baked}]' <<<"$reg" 2>&1 | head -c 400)"; fi
 
 # 19. The manifest enables dreamlab-txbt4 but the image's plan bakes nothing for it -> only (d).
