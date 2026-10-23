@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 0382cc4b5e34f75a62184bf350f865533010dc52
+verified_commit: d0fc06b22a5aa2c80495c20d832cae6fd473fbf4
 verified_paths: [flake.nix, lib/sbomnix.nix, lib/sbomnix-python.nix, lib/agentbox-vex.nix, lib/vex-evidence.nix, services/agentbox-vex, scripts/security-scan.sh, scripts/runtime-delivery.cjs, agentbox.sh, tests/security, tests/config/runtime-delivery.test.cjs, .github/workflows/build-multi-arch.yml, .github/workflows/image-scan.yml, .github/workflows/release.yml, .github/workflows/security-vex.yml, .github/workflows/flake-check.yml]
 owner: jjohare
 review_trigger: image inventory, VEX predicates, scanner matching or release artefact selection changes
@@ -160,3 +160,5 @@ role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
 
 Re-verified 2026-10-22 at `0382cc4b5e34f75a62184bf350f865533010dc52`: reviewed the delta adding an independent, opt-in Isaac Sim lifecycle and live-class service catalogue entry, the 130th routed skill, pinned regional ComfyUI nodes/model metadata, and Blender background Python failure propagation. Existing ingress, role isolation, instruction projection, durable adapters, retrieval geometry, System One selection and image evidence boundaries are unchanged. Isaac runner/contract (15), GPU picker, launcher selection, Blender bridge (19), role supervisor (25), skill lint and catalogue checks pass. Isaac vendor-image and fixture verification remains staged until executed.
+
+**Re-verified 2026-10-23.** `scripts/security-scan.sh:62` changed `tool()` from `"$tools/bin/$@"` to a separate name and argument list (ShellCheck SC2145). One line replaced in place, so every `scripts/security-scan.sh:NN` citation above still holds and behaviour is identical. ShellCheck and Security VEX contracts are green on GitHub.
