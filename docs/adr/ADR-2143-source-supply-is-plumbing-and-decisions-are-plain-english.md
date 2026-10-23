@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 96e835958dc3c8f90df7f4a06bd1dfd92b317943
+verified_commit: 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4
 verified_paths: [services/dream-engine/src/wanted.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/governance.rs, services/dream-engine/src/prompt/nightly.tmpl, services/dream-engine/Cargo.toml]
 owner: jjohare
 review_trigger: a change to the nightly prompt's Human-action shape, to the wanted store's expiry, to dream-core's requested-source contract (ADR-DE-008), or a governance case that again asks the operator for a file
@@ -33,3 +33,7 @@ On 2026-10-17 the forum governance panel (ADR-2115) held 57 open cases. Nine of 
 ## Activation evidence (2026-10-17)
 
 The image built from `96e835958` is active with a clean source receipt. Nix passed 165 unit tests and 11 whole-night tests against dream-core/dream-gate 0.2.0; the supervised dream-engine daemon is RUNNING and readiness has no degradation. This activates the new prompt, parser and source-request plumbing; no production nightly cycle was forced as part of deployment.
+
+## Re-verification — 2026-10-23
+
+Read `git diff 96e835958..96a9a925d -- services/dream-engine`. Decision point 3 names `=0.2.0` as the pin at the time; `Cargo.toml` now reads `=0.3.0` for both crates (ADR-2141 records the move). That sentence is left as a record of 2026-10-17, and the requested-source contract of point 1 (ADR-DE-008) is a 0.2.0 feature that 0.3.0 keeps: `wanted.rs`, `inbox.rs`, `governance.rs` and `nightly.tmpl` have no diff, and the prompt golden test passes. The only `engine.rs` change is the formatting note in the draft-PR body, which is outside the source-supply and four-field paths. `cargo test --locked --lib` 167 passed, `night_e2e` 11 passed. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.

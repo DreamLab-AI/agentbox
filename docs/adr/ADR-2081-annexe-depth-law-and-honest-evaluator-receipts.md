@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 52183d76fde866ab1f05aea524aeea33d8573c3f
+verified_commit: 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/runner.rs, services/dream-engine/src/dispatch.rs, services/dream-engine/src/candidate_flow.rs]
 owner: jjohare
 review_trigger: next dream-engine image rebuild (activation of the supervised loop), or any change to annexe layout or receipt classification
@@ -115,3 +115,7 @@ Re-read at `33c8b3472a7a` (2026-10-16): the later `engine.rs` edits (per-night l
 The `engine.rs` edits for ADR-2143 touch the source stage and the question queue only; annexe depth, receipt grading and ledger cell provenance are unchanged. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.
 
 Re-verified 2026-10-19 at `52183d76fde866ab1f05aea524aeea33d8573c3f`: Annexe scripts now travel over SSH stdin under a fixed Bash command, avoiding fish quoting reinterpretation. A read-only probe against the connected node preserved quotes, backslashes and literal shell variables; dispatch and receipt boundaries remain unchanged. Existing status axes are retained.
+
+## Re-verification — 2026-10-23
+
+Read `git diff 52183d76f..96a9a925d -- services/dream-engine`: `Cargo.toml`/`Cargo.lock` move `dream-core` and `dream-gate` to `=0.3.0`, `candidate_flow.rs` and `engine.rs` carry the new `formatting` field into the candidate record and the PR-body note, and `judge.rs` adds `rustfmt` / `cargo fmt` to the tokens the adapter must not contain. `runner.rs` and `dispatch.rs` have no diff since the stamp, so the `bash -o pipefail -c` wrapper and the depth law are untouched. Receipt grading and the no-patch `unproven` veto live in `dream-gate`; 0.3.0 was not read from source here, but the pinned-crate behaviour this record names is exercised by `night_e2e` (11 passed) and `cargo test --locked --lib` (167 passed). The formatting step concerns a candidate's own files, so a no-patch ACCEPT has nothing to format; that reading is inferred from the adapter's use of the field and was not confirmed in `dream-core` source. The decision holds; `activation_status` is unchanged. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.

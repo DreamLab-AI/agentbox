@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2a739c6d1328914f5d48f4cc9073249d764aca74
+verified_commit: 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4
 verified_paths: [services/dream-engine/Cargo.toml, services/dream-engine/Cargo.lock, lib/dream-engine.nix, services/dream-engine/src/engine.rs, services/dream-engine/tests/night_e2e.rs]
 owner: jjohare
 review_trigger: the image rebuild activates the registry-pinned crates, a new release of dream-core or dream-gate is adopted, or any new module is added under services/dream-engine/src that is not estate-specific
@@ -49,3 +49,7 @@ Image source `9fcd1eef98b2a3eb8469df0fb6bf62ec7a34cc76` is active with a clean s
 ## Re-verification — 2026-10-17 (0.2.0 adopted; one module added)
 
 Both review triggers fired. **Release:** the pin moved to `dream-core = "=0.2.0"` / `dream-gate = "=0.2.0"` (dream-engine PR #6, tag v0.2.0; ADR-DE-008 there), a breaking bump because `GatherInput` gained a field and became `non_exhaustive`; the engine now builds it through `GatherInput::new(...).with_requested(...)`. **Module:** `services/dream-engine/src/wanted.rs` (ADR-2143) is estate-specific by the division ADR-DE-008 draws: dream-core accepts typed `SourceRequest`s and reports what it honoured; parsing the report's **Sources wanted next night** heading, the inbox-question classifier, the store at `$WORKSPACE/.agentbox/dream-source-requests.json`, the three-night expiry and the loop alert are consumer policy and stay here. Nothing that moved out has been duplicated back; `night_e2e` passes against the registry crates (11/11). Verified at 2a739c6d1328914f5d48f4cc9073249d764aca74.
+
+## Re-verification — 2026-10-23 (0.3.0 adopted; the Pinning bullet is superseded in fact)
+
+The review trigger "a new release of dream-core or dream-gate is adopted" fired again. `services/dream-engine/Cargo.toml` now pins `dream-core = "=0.3.0"` and `dream-gate = "=0.3.0"` (registry checksums in `Cargo.lock`; two transitive `thiserror` edges move to 1.0.69). The **Pinning** bullet in the Decision names `=0.2.0` and is therefore out of date as a statement of the current pin; it is left as written because it records what was decided on 2026-10-16/17, and the live pin is read from `Cargo.toml`. The rule it states, that the two crates move together so only one copy of `dream-gate` links, still holds and the lock shows one version of each. 0.3.0 adds candidate formatting before the gate (ADR-DE-009 in the dream-engine repository): the adapter only carries the new `formatting` field through `candidate_flow.rs` and mentions it in the PR body in `engine.rs`, and `judge.rs` asserts the adapter contains no `rustfmt` / `cargo fmt`, so the mechanism stays upstream and nothing is duplicated back. `lib/dream-engine.nix` has no diff, so no `outputHashes` are needed. `dispatch.rs` (fish-safe stdin transport for annexe scripts) is estate wiring and belongs in the adapter by the division this record draws. Evidence: `cargo test --locked --lib` 167 passed and `cargo test --locked --test night_e2e` 11 passed against the registry crates. The extraction itself holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.

@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
+verified_commit: 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4
 verified_paths: [services/LICENSING-NOTICE.md, docs/developer/licensing.md, scripts/ci/check-crate-licensing.sh, services/*/Cargo.toml]
 owner: jjohare
 review_trigger: any new crate under services/, any services crate gaining an AGPL dependency, or first publication of a services crate to crates.io
@@ -383,3 +383,7 @@ Re-read at `33c8b3472a7a` (2026-10-16): the only change to a governed path is `s
 ## Re-verification — 2026-10-17
 
 `services/dream-engine/Cargo.toml` moved to `dream-core = "=0.2.0"` and `dream-gate = "=0.2.0"` (both MIT OR Apache-2.0, published from DreamLab-AI/dream-engine). No copyleft dependency entered. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.
+
+## Re-verification — 2026-10-23
+
+Read `git diff 2305d675e..96a9a925d -- services/dream-engine`. The only governed-path change is `services/dream-engine/Cargo.toml` moving `dream-core` and `dream-gate` from `=0.2.0` to `=0.3.0` (lock checksums updated; two transitive `thiserror` edges move from 2.x to 1.0.69). `dream-engine` still declares `AGPL-3.0-only` and no permissive crate depends on it. The 0.3.0 licences were not independently read from the registry (no network); the lock carries them as registry crates from the same publisher as 0.2.0, and the licence of the published crates is a claim of the dream-engine repository, not of this record. `bash scripts/ci/check-crate-licensing.sh` reports `OK … 10 services/ package directories carry the texts they declare`. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.

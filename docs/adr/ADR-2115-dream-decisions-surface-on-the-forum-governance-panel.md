@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
+verified_commit: 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4
 verified_paths: [services/dream-engine/src/governance.rs, services/dream-engine/src/digest.rs, services/dream-engine/src/relay.rs, services/dream-engine/src/inbox.rs, services/dream-engine/src/engine.rs, config/hooks/dream-inbox-surface.cjs]
 owner: jjohare
 review_trigger: JunkieJarvis registered in the relay agent_registry and the first night that publishes cases (activation_status → live), or any change to the forum's 31402/31403 wire format
@@ -121,3 +121,7 @@ Re-read at `33c8b3472a7a` (2026-10-16): `digest.rs` only gained a `DREAM_HEALTH_
 ## Re-verification — 2026-10-17
 
 ADR-2143 changes only what a case says, not how it is published or answered: a question in the four-field shape (`Decision · Why · If approved · If not`) is rendered as labelled lines in `reasoning_for` and titled by its Decision; a source-supply ask never becomes a case. Event kinds, tags, the `ActionRequest` content and the decision ingest are unchanged. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.
+
+## Re-verification — 2026-10-23
+
+Read `git diff 2305d675e..96a9a925d -- services/dream-engine`. The single `engine.rs` hunk (`:1709-1732`) only extends the draft-PR body with a formatting note; it does not touch `governance::publish` or `ingest`, the digest, the inbox or the relay path. `governance.rs`, `digest.rs`, `relay.rs` and `inbox.rs` have no diff. The pin move to `dream-core`/`dream-gate` `=0.3.0` does not change forum event kinds, tags or `ActionRequest` shape (those come from `nostr-bbs-core`, unchanged). `cargo test --locked --lib` 167 passed. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.

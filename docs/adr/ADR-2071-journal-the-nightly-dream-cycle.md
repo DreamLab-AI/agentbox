@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
+verified_commit: 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4
 verified_paths: [management-api/routes/exec-record.js, tests/integration/exec-record.test.js, services/dream-engine/src/journal.rs, services/dream-engine/src/engine.rs, services/dream-engine/src/records.rs]
 owner: jjohare
 review_trigger: an approver is wired into the action pipeline, a second process gains an events-adapter write path, or the nightly acquires a new external side effect
@@ -242,6 +242,10 @@ Re-read at `33c8b3472a7a` (2026-10-16): `engine.rs` gained a per-night lock (a s
 ## Re-verification — 2026-10-17
 
 ADR-2143 adds one journalled step in `engine.rs`: the source-loop alert write is wrapped in `j.called` / `j.completed` like every other inbox write, fail-open. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.
+
+## Re-verification — 2026-10-23
+
+Read `git diff 2305d675e..96a9a925d -- services/dream-engine`. The one `engine.rs` change (`:1709-1732`) extends the draft-PR body with a second `**Note:**` when the candidate was formatted (ADR-DE-009 in dream-engine). It is string composition inside an existing effect: no `j.called` / `j.completed` is added, removed or moved, and `journal.rs` and `records.rs` have no diff. The ssh transport change in `dispatch.rs` sits beneath the already-journalled annexe effects. `cargo test --locked --lib` in `services/dream-engine` passes 167. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.
 
 ## Consumer — 2026-10-18: the X-4 flake-update rehearsal
 

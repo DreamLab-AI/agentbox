@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 2305d675e4a532f8091079deb5efcd4fa474085e
+verified_commit: 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4
 verified_paths: [services/dream-engine/src/engine.rs, services/dream-engine/src/candidate_flow.rs, services/dream-engine/src/prompt.rs, services/dream-engine/src/prompt/nightly.tmpl]
 owner: jjohare
 review_trigger: the dream engine gaining a tool-using (agentic) model call, or a month of nights in which repair.json records more NO-PATCH/absent outcomes than recovered patches
@@ -95,3 +95,7 @@ Re-read at `33c8b3472a7a` (2026-10-16): the later `engine.rs` edits (per-night l
 ## Re-verification — 2026-10-17
 
 ADR-2143 extends step 1: paths the previous night listed under **Sources wanted next night** (and a slot's path-shaped scans) are offered to the planner stage first, capped at half the files and half the bytes (dream-core 0.2.0, ADR-DE-008 there). They pass the same checks (relative, no `..`, tracked at the dispatched commit, outside the denylist), are read from the same commit, clipped within the same budgets, and receipted in `source.json` under `requested_honoured` / `requested_refused`. The stage stays fail-open. Verified at 2305d675e4a532f8091079deb5efcd4fa474085e.
+
+## Re-verification — 2026-10-23
+
+Read `git diff 2305d675e..96a9a925d -- services/dream-engine`. `dream-core` moves to `=0.3.0`, which formats a candidate's own files (ADR-DE-009 there) before the gate; `candidate_flow.rs` now copies `c.formatting` into the candidate record and `engine.rs` adds a second PR-body note when formatting was applied ("the logic is the model's, the layout the formatter's"). The source section, planner, repair pass, apply order and apply-repair are untouched in this repository. One consequence for a reader of this record: the amendment of 2026-10-13 already warned that the PR diff may not be byte-for-byte the model's; it now may also be reformatted, and the PR body says so. The single-completion contract and the "no acceptance is easier to reach" claim hold as far as this repository shows: the adapter still passes every candidate to the gate, and formatting is stated upstream to run before it. The ordering inside `dream-core` 0.3.0 was not read from source here. `judge.rs` forbids `rustfmt` and `cargo fmt` in the adapter, so formatting stays in `dream-core`. `cargo test --locked --lib` 167 passed; `night_e2e` 11 passed. The decision holds. Verified at 96a9a925dec7b19b8b75ecb891cce7a0a24d09e4.
