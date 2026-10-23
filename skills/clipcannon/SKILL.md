@@ -1,16 +1,13 @@
 ---
 name: clipcannon
 description: >-
-  Works from EXISTING FOOTAGE you already have — clipping, cutting and assembling
-  source video. For assembling a montage from generated or mixed-source material
-  choose `open-montage`. Local-GPU video understanding and editing via MCP — analyse
-  footage, find the best moments, cut highlight reels, add captions, render platform-
-  ready clips (TikTok/Reels/ Shorts/YouTube), clone voices, lip-sync avatars, generate
-  music, and run a real-time voice agent. Use when the user says "edit this video",
-  "find the best moments", "create a highlight reel", "add captions", "clone voice",
-  "lip sync", "render for TikTok", or "talk to Jarvis". Not for plain format
-  conversion (ffmpeg-processing), image generation (comfyui), or meeting capture
-  (echoloop).
+  Works from EXISTING FOOTAGE you hold: clipping, cutting and assembling source video.
+  For a montage from generated or mixed-source material choose `open-montage`.
+  Local-GPU video editing via MCP: find best moments, cut highlight reels, add
+  captions, render platform clips, clone voices, lip-sync avatars, run a voice agent. Use for "edit this video", "highlight reel",
+  "add captions", "clone voice", "lip sync". Not for format
+  conversion (ffmpeg-processing), image generation (comfyui), meeting capture (echoloop)
+  or a continuity-held multi-tool film (video-production).
 version: 0.1.0
 author: ChrisRoyse
 repo: https://github.com/JLMA-Agentic-Ai/jlma-clipcannon

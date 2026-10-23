@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 16139219351978674a549ea943f6005f8010f7b1
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [lib/factrail.nix, lib/lockfiles/factrail-57ac25b5.Cargo.lock, lib/claude-code-binary.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/factrail-store-migrate.mjs, tests/config/factrail-store-migrate.test.mjs, tests/config/factrail-projection.test.sh, schema/agentbox.toml.schema.json, scripts/bake-ruflo-console.sh, scripts/ruflo-console-project.mjs, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: a factrail rev bump in lib/factrail.nix, the end of the post-rebuild residency soak, a Claude Code function-hook API change, or a decision to train a local judge on recorded Jev decisions
@@ -275,3 +275,5 @@ Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed t
 ## Re-verification — 2026-10-21
 
 Ruflo console/mods/swarm versions match the v3.57.0 source; the routeTasks-off patch retains the upstream advisory continuation. All 18 plugin bake/registration tests pass against the real pinned tree. Factrail and Jev entries are unchanged. Manifest validation, the 95 catalogue gates, 45 agent-reconciliation checks and 25 role-supervisor checks pass. This is source verification; image activation and live checks remain separate deployment evidence.
+
+Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: `git diff --stat 16139219..HEAD` over the governed paths shows changes only in `marketplace.json`, `lib/claude-code-binary.nix` (2.1.306 to 2.1.309), `scripts/bake-ruflo-console.sh` (a comment) and `tests/config/ruflo-console.test.mjs`; the factrail, entrypoint, schema, lockfile and store-migrate paths have no diff. In a detached worktree at HEAD, `node --test tests/config/ruflo-console.test.mjs` gives 17 pass, 0 fail, 1 skipped, and `HEAD:marketplace.json` still lists factrail 0.1.0 beside ruflo-console 0.45.0, ruflo-mods 0.6.2 and ruflo-swarm 0.3.7. **Correction to the 2026-10-21 note above:** its sentence "versions match the v3.57.0 source" is no longer true. The `rufloConsole` input is now pinned to the 3.60.0 release-branch commit `856de8f3` (`flake.nix:68`, `flake.lock`) while `rufloPkg` stays at 3.57.0 (`flake.nix:519`), a deliberate and documented split until 3.60 npm artefacts publish. This record never claims plugin and runtime share a version; the local immutable `ruflo` bin remains mandatory and npx forbidden. Revisit when both pins are aligned.

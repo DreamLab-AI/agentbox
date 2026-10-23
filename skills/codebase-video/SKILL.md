@@ -1,6 +1,6 @@
 ---
 name: codebase-video
-description: "Create a complete audience-targeted video explainer of the current codebase, combining verified screenshots, diagrams, animation, locally generated ComfyUI hero clips, narration and captions. Use for repository explainer videos, technical onboarding films and product walkthroughs; use the ComfyUI skill directly for a standalone generated clip."
+description: "Create a complete audience-targeted video explainer of the current codebase, combining verified screenshots, diagrams, animation, locally generated ComfyUI hero clips, narration and captions. Use for repository explainer videos, technical onboarding films and product walkthroughs; use the ComfyUI skill directly for a standalone generated clip; for a continuity-held multi-tool film use video-production."
 ---
 
 # Codebase Video

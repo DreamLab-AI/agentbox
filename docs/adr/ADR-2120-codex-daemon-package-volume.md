@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 0382cc4b5e34f75a62184bf350f865533010dc52
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [agentbox.sh, config/entrypoint-unified.sh, flake.nix, docker-compose.yml, scripts/refresh-compose.sh, tests/config/compose-persistence.test.cjs, tests/config/refresh-compose.test.cjs]
 owner: jjohare
 review_trigger: commit verification and rebuild; or change Codex daemon packaging
@@ -246,3 +246,5 @@ role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
 
 Re-verified 2026-10-22 at `0382cc4b5e34f75a62184bf350f865533010dc52`: reviewed the delta adding an independent, opt-in Isaac Sim lifecycle and live-class service catalogue entry, the 130th routed skill, pinned regional ComfyUI nodes/model metadata, and Blender background Python failure propagation. Existing ingress, role isolation, instruction projection, durable adapters, retrieval geometry, System One selection and image evidence boundaries are unchanged. Isaac runner/contract (15), GPU picker, launcher selection, Blender bridge (19), role supervisor (25), skill lint and catalogue checks pass. Isaac vendor-image and fixture verification remains staged until executed.
+
+Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: flake.nix delta does not touch Codex mounts. Re-read at HEAD: `codex-packages:/home/devuser/.codex/packages` (flake.nix:3895) with the parent `codex-home` volume (flake.nix:3893, ADR-2147) and no `.codex` tmpfs; `CODEX_HOME=/home/devuser/.codex` (flake.nix:4476). In a detached worktree at HEAD, `node --test tests/config/refresh-compose.test.cjs` passes 3/3 and `node tests/config/compose-persistence.test.cjs` passes.

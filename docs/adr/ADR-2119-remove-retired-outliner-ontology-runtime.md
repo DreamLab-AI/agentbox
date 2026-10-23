@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [flake.nix, lib/ontology-tools.nix, services/ontology-tools, services/agentbox-mcp/src/web_summary, skills/ontology-core, skills/ontology-enrich, dream.config.json]
 owner: jjohare
 review_trigger: commit and rebuild the image; or introduce a corpus writer or output format
@@ -215,3 +215,9 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+## Re-verification 2026-10-23 at `951ada931`
+
+Tripped by `flake.nix` alone (every other governed path is unchanged since `395380f71`: `git diff 395380f71..HEAD -- <other verified_paths>` is empty). The flake hunks are the eMudhra `cacert` override, the `agenticQePkg` (3.15.10) and `wranglerPkg` (4.151.3) pins, the `rufloConsole` pin move and its `rufloConsolePlugins` name, and `NODE_OPTIONS=--use-openssl-ca` in the container env list. Checked against committed `HEAD` in a detached worktree, not the working tree.
+
+Claims re-read at HEAD: `lib/ontology-tools.nix` and `services/ontology-tools` are still absent, `grep -c ontology-tools flake.nix` is 0 and `git grep -n ontology-tools -- "*.nix"` is empty; `services/agentbox-mcp/src/web_summary/types.rs:175` still tests that `logseq` and unknown formats are rejected; the web_summary, ontology skill and `dream.config.json` paths are unchanged since `395380f71`. None of the hunks reintroduces an outliner runtime. Commands: `ls lib/ontology-tools.nix services/ontology-tools` (both missing), the greps above. The decision holds. Not run: the 29 web-summary cargo tests (cargo writes target/).

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 16139219351978674a549ea943f6005f8010f7b1
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [lib/factrail.nix, config/entrypoint-unified.sh, lib/claude-code-binary.nix]
 owner: jjohare
 review_trigger: the first measured residency bill that exceeds the summary path's re-read savings, a Claude Code function-hook API change, a request to fence a class other than email, or a change to ADR-2121 (its implementation)
@@ -382,3 +382,5 @@ Re-verified 2026-10-20 at `653b8b6387470eaa3be6c20e6dbd2208e538a985`: reviewed t
 ## Re-verification — 2026-10-21
 
 Reviewed the changed package-registration paths against this decision; no additional runtime policy or durable-state path is introduced. Manifest validation, the 95 catalogue gates, 45 agent-reconciliation checks and 25 role-supervisor checks pass. This is source verification; image activation and live checks remain separate deployment evidence.
+
+Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: read against `git show HEAD:lib/claude-code-binary.nix`. Claude Code is pinned at `claudeCodeVersion = "2.1.309"` (`:38`), with per-arch hashes matching the 2.1.309 manifest comment and the header comment still naming the function-hook surface (`session.compact`, `command.register`, `$.http.fetch`) and the >= 2.1.293 advisor floor. Point 1's literal (2.1.291, `:35`) is stale again, as the 2026-10-13 amendment predicted; the invariant (a pin at or above 2.1.274 with the function-hook surface) holds. `lib/factrail.nix` and `config/entrypoint-unified.sh` have no diff since the previous stamp (`git diff --stat 16139219..HEAD -- <paths>`). Nothing here depends on ruflo versions. Source verification only; activation stays staged.

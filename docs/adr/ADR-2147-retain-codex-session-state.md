@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [flake.nix, docker-compose.yml, docker-compose.override.yml, scripts/migrate-codex-home.sh, tests/config/compose-persistence.test.cjs]
 owner: jjohare
 review_trigger: changes to Codex home mounts, session retention, or the migration procedure
@@ -65,3 +65,5 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: flake.nix delta does not touch Codex state. Re-read at HEAD: `codex-home:/home/devuser/.codex` (flake.nix:3893) and `codex-packages` (flake.nix:3895), no `.codex` tmpfs entry, `CODEX_HOME` (flake.nix:4476). `node tests/config/compose-persistence.test.cjs` passes (17 volume identities, no home tmpfs) in a detached worktree at HEAD. The migration script was read, not run.

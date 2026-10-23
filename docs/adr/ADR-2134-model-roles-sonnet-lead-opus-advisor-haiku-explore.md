@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 16139219351978674a549ea943f6005f8010f7b1
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [services/agentbox-manifest/src/permissions.rs, agents/Explore.md, scripts/bake-ruflo-console.sh]
 owner: jjohare
 review_trigger: a Claude Code release that changes advisor pairing rules, or the ADR-2135 shadow log showing a subagent-model policy that beats this one
@@ -36,3 +36,5 @@ Advisor calls bill a full-transcript Opus read each; the saving relies on a Sonn
 ## Re-verification — 2026-10-21
 
 Ruflo console/mods/swarm versions match the v3.57.0 source; the routeTasks-off patch retains the upstream advisory continuation. All 18 plugin bake/registration tests pass against the real pinned tree. Factrail and Jev entries are unchanged. Manifest validation, the 95 catalogue gates, 45 agent-reconciliation checks and 25 role-supervisor checks pass. This is source verification; image activation and live checks remain separate deployment evidence.
+
+Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: of the governed paths only `scripts/bake-ruflo-console.sh` moved since the previous stamp (3 added comment lines on the staged plugin/CLI split; `git diff 16139219..HEAD`); `permissions.rs` and `agents/Explore.md` have no diff. The bake script still carries the `routeTasks` option defaulting to false (`:73-80`). In a detached worktree at HEAD: `cargo test --bin agentbox-manifest permissions` 7 passed; `node --test tests/config/ruflo-console.test.mjs` 17 pass, 0 fail, 1 skipped; `bash tests/config/agent-reconcile.test.sh` 45 passed, 0 failed. `agentbox.toml` keeps `model = "sonnet"` and `advisor_model = "opus"`; the pin is Claude Code 2.1.309, above the 2.1.293 advisor floor. **Correction to the 2026-10-21 note above:** "versions match the v3.57.0 source" no longer holds; the plugin source is the 3.60.0 branch commit `856de8f3` (console 0.45.0) while the npm runtime stays 3.57.0. The decision does not depend on either number. I did not re-run `agentbox-config-validate.js` (the worktree lacked node modules), so the bad-`advisor_model` rejection is carried from the original verification.

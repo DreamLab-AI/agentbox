@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [config/instructions/floor.md, config/hooks/decline-recorder.cjs, services/agentbox-manifest/src/instructions.rs, config/registered-hooks.txt, tests/config/decline-recorder.test.mjs, tests/config/instructions-layers.test.sh, services/agentbox-manifest/src/stacks.rs, services/agentbox-manifest/src/stacks_env.rs, flake.nix]
 owner: jjohare
 review_trigger: a Stop/SubagentStop hook that can halt a task (upgrade the exit clause to "halts the task"); a Claude Code release that changes managed CLAUDE.md, omitClaudeMd or last_assistant_message semantics; a second operator (the single-operator premise behind "the operator reads them")
@@ -143,3 +143,9 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+## Re-verification 2026-10-23 at `951ada931`
+
+Tripped by `flake.nix` alone (every other governed path is unchanged since `395380f71`: `git diff 395380f71..HEAD -- <other verified_paths>` is empty). The flake hunks are the eMudhra `cacert` override, the `agenticQePkg` (3.15.10) and `wranglerPkg` (4.151.3) pins, the `rufloConsole` pin move and its `rufloConsolePlugins` name, and `NODE_OPTIONS=--use-openssl-ca` in the container env list. Checked against committed `HEAD` in a detached worktree, not the working tree.
+
+Claims re-read at HEAD: `flake.nix:3727-3729` mounts the root-owned 1 MiB `/etc/claude-code` tmpfs (uid 0, noexec) for the managed floor and `:3871` mounts `./config/instructions` read-only; `:2164` still filters the `instructions` directory out of the config copy; `config/registered-hooks.txt:41` still has `decline-recorder.cjs` as an `own` row on Stop,SubagentStop,UserPromptSubmit at 10 s. The floor, hook, projector, stacks and tests are unchanged since `395380f71`. `NODE_OPTIONS=--use-openssl-ca` changes which CA bundle Node trusts and does not alter hook execution. Commands: `grep -nE "etc/claude-code|config/instructions" flake.nix`, `node --test tests/config/decline-recorder.test.mjs` (10 pass, 0 fail), `bash tests/config/instructions-layers.test.sh` (12 passed, 0 failed). The decision holds. Not run: `cargo test instructions` (cargo writes target/).

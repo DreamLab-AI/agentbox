@@ -1,0 +1,52 @@
+{
+  "9002:5012": {
+    "class_type": "LTXAddVideoICLoRAGuideAdvanced",
+    "inputs": {"frame_idx": 0, "attention_strength": 0.6}
+  },
+  "9034:9039": {
+    "class_type": "LTXAddVideoICLoRAGuideAdvanced",
+    "inputs": {"frame_idx": 0, "attention_strength": 0.6}
+  },
+  "9002:9042": {
+    "class_type": "LTXAddVideoICLoRAGuide",
+    "inputs": {
+      "positive": ["9002:5012", 0],
+      "negative": ["9002:5012", 1],
+      "latent": ["9002:5012", 2],
+      "frame_idx": -1
+    }
+  },
+  "9034:9043": {
+    "class_type": "LTXAddVideoICLoRAGuide",
+    "inputs": {
+      "positive": ["9034:9039", 0],
+      "negative": ["9034:9039", 1],
+      "latent": ["9034:9039", 2],
+      "frame_idx": -1
+    }
+  },
+  "5516:4828": {
+    "class_type": "CFGGuider",
+    "inputs": {"positive": ["9002:9042", 0], "negative": ["9002:9042", 1]}
+  },
+  "5516:4829": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {"latent_image": ["9002:9042", 2]}
+  },
+  "5516:5000": {
+    "class_type": "LTXVCropGuides",
+    "inputs": {"positive": ["9002:9042", 0], "negative": ["9002:9042", 1]}
+  },
+  "9034:9030": {
+    "class_type": "CFGGuider",
+    "inputs": {"positive": ["9034:9043", 0], "negative": ["9034:9043", 1]}
+  },
+  "9034:9033": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {"latent_image": ["9034:9043", 2]}
+  },
+  "9034:9041": {
+    "class_type": "LTXVCropGuides",
+    "inputs": {"positive": ["9034:9043", 0], "negative": ["9034:9043", 1]}
+  }
+}

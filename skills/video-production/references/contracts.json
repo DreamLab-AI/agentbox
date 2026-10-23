@@ -1,0 +1,766 @@
+{
+  "schema": "video-skill-design/1",
+  "date": "2026-10-23",
+  "scope": "INFORMATIONAL design catalogue (not machine-enforced by any tool). Named checks describe acceptance work, not executed results. Runtime paths are relative to the skill's runtime/ directory. Tasks TASK-003, TASK-009 and TASK-010 are cut; TASK-002/004/006/008 extend neighbouring skills.",
+  "artifacts": [
+    {
+      "id": "FILE-SKILL",
+      "path": "SKILL.md",
+      "status": "live"
+    },
+    {
+      "id": "FILE-PRD",
+      "path": "references/prd.md",
+      "status": "live"
+    },
+    {
+      "id": "FILE-SPEC",
+      "path": "references/quality.md",
+      "status": "live"
+    },
+    {
+      "id": "FILE-DDD",
+      "path": "references/ddd.md",
+      "status": "live"
+    },
+    {
+      "id": "FILE-IMPLEMENTATION",
+      "path": "references/implementation.md",
+      "status": "live"
+    },
+    {
+      "id": "FILE-TECHNOLOGY",
+      "path": "references/technology-selection.md",
+      "status": "live"
+    },
+    {
+      "id": "FILE-RESEARCH",
+      "path": "references/research-through-line.md",
+      "status": "live"
+    },
+    {
+      "id": "FILE-CONTRACTS",
+      "path": "references/contracts.json",
+      "status": "informational"
+    },
+    {
+      "id": "FILE-ADR",
+      "path": "docs/adr/ADR-2150-video-production-skill.md",
+      "status": "live"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "title": "Source authority",
+      "expectations": [
+        "EXP-001"
+      ],
+      "tasks": [
+        "TASK-001"
+      ],
+      "gates": [
+        "GATE-001",
+        "GATE-010"
+      ]
+    },
+    {
+      "id": "REQ-002",
+      "title": "Shared world and action",
+      "expectations": [
+        "EXP-002"
+      ],
+      "tasks": [
+        "TASK-001",
+        "TASK-004"
+      ],
+      "gates": [
+        "GATE-001",
+        "GATE-004",
+        "GATE-005"
+      ]
+    },
+    {
+      "id": "REQ-003",
+      "title": "Identity",
+      "expectations": [
+        "EXP-003"
+      ],
+      "tasks": [
+        "TASK-004",
+        "TASK-005"
+      ],
+      "gates": [
+        "GATE-005"
+      ]
+    },
+    {
+      "id": "REQ-004",
+      "title": "Capability and compatibility",
+      "expectations": [
+        "EXP-004"
+      ],
+      "tasks": [
+        "TASK-002",
+        "TASK-010"
+      ],
+      "gates": [
+        "GATE-003"
+      ]
+    },
+    {
+      "id": "REQ-005",
+      "title": "Conditioning roles",
+      "expectations": [
+        "EXP-005"
+      ],
+      "tasks": [
+        "TASK-002",
+        "TASK-005"
+      ],
+      "gates": [
+        "GATE-001",
+        "GATE-005",
+        "GATE-007"
+      ]
+    },
+    {
+      "id": "REQ-006",
+      "title": "Optional physics",
+      "expectations": [
+        "EXP-006"
+      ],
+      "tasks": [
+        "TASK-006"
+      ],
+      "gates": [
+        "GATE-004"
+      ]
+    },
+    {
+      "id": "REQ-007",
+      "title": "Dialogue revision",
+      "expectations": [
+        "EXP-007"
+      ],
+      "tasks": [
+        "TASK-007"
+      ],
+      "gates": [
+        "GATE-002",
+        "GATE-006"
+      ]
+    },
+    {
+      "id": "REQ-008",
+      "title": "Rational timing",
+      "expectations": [
+        "EXP-008"
+      ],
+      "tasks": [
+        "TASK-001",
+        "TASK-004",
+        "TASK-006",
+        "TASK-007",
+        "TASK-008"
+      ],
+      "gates": [
+        "GATE-002"
+      ]
+    },
+    {
+      "id": "REQ-009",
+      "title": "Durable jobs",
+      "expectations": [
+        "EXP-009"
+      ],
+      "tasks": [
+        "TASK-003",
+        "TASK-007"
+      ],
+      "gates": [
+        "GATE-008"
+      ]
+    },
+    {
+      "id": "REQ-010",
+      "title": "Artifact provenance and cache",
+      "expectations": [
+        "EXP-010"
+      ],
+      "tasks": [
+        "TASK-001",
+        "TASK-003",
+        "TASK-005",
+        "TASK-007",
+        "TASK-008",
+        "TASK-012"
+      ],
+      "gates": [
+        "GATE-001",
+        "GATE-008"
+      ]
+    },
+    {
+      "id": "REQ-011",
+      "title": "Resources",
+      "expectations": [
+        "EXP-011"
+      ],
+      "tasks": [
+        "TASK-002",
+        "TASK-003",
+        "TASK-010"
+      ],
+      "gates": [
+        "GATE-008"
+      ]
+    },
+    {
+      "id": "REQ-012",
+      "title": "Deterministic finishing",
+      "expectations": [
+        "EXP-012"
+      ],
+      "tasks": [
+        "TASK-008"
+      ],
+      "gates": [
+        "GATE-006",
+        "GATE-007"
+      ]
+    },
+    {
+      "id": "REQ-013",
+      "title": "Whole-edit acceptance",
+      "expectations": [
+        "EXP-013"
+      ],
+      "tasks": [
+        "TASK-009"
+      ],
+      "gates": [
+        "GATE-004",
+        "GATE-005",
+        "GATE-006",
+        "GATE-007",
+        "GATE-009"
+      ]
+    },
+    {
+      "id": "REQ-014",
+      "title": "Experiments",
+      "expectations": [
+        "EXP-014"
+      ],
+      "tasks": [
+        "TASK-009",
+        "TASK-010"
+      ],
+      "gates": [
+        "GATE-003",
+        "GATE-005",
+        "GATE-009"
+      ]
+    },
+    {
+      "id": "REQ-015",
+      "title": "Portability and execution policy",
+      "expectations": [
+        "EXP-015"
+      ],
+      "tasks": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-004",
+        "TASK-011",
+        "TASK-012"
+      ],
+      "gates": [
+        "GATE-008",
+        "GATE-010"
+      ]
+    },
+    {
+      "id": "REQ-016",
+      "title": "Skill packaging",
+      "expectations": [
+        "EXP-016"
+      ],
+      "tasks": [
+        "TASK-011",
+        "TASK-012"
+      ],
+      "gates": [
+        "GATE-009",
+        "GATE-010"
+      ]
+    }
+  ],
+  "expectations": [
+    {
+      "id": "EXP-001",
+      "requirement": "REQ-001",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "conflicting_visible_source"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-002",
+      "requirement": "REQ-002",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "cross_camera_token_handoff"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-003",
+      "requirement": "REQ-003",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "identity_reveal_holdout"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-004",
+      "requirement": "REQ-004",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "incompatible_bundle_rejection"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-005",
+      "requirement": "REQ-005",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "wrong_mask_role_and_feather_guard"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-006",
+      "requirement": "REQ-006",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "slack_cord_replay"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-007",
+      "requirement": "REQ-007",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "fixed_and_longer_take_rebake"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-008",
+      "requirement": "REQ-008",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "fractional_duration_priority"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-009",
+      "requirement": "REQ-009",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "ambiguous_submit_and_cancel_race"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-010",
+      "requirement": "REQ-010",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "native_external_dependency_mutation"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-011",
+      "requirement": "REQ-011",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "resource_admission_concurrency"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-012",
+      "requirement": "REQ-012",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "exact_graphic_and_audio_lineage"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-013",
+      "requirement": "REQ-013",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "identity_failure_rejects_codec_pass"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-014",
+      "requirement": "REQ-014",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "hard_gate_precedes_candidate_rank"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-015",
+      "requirement": "REQ-015",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "archive_absent_local_only"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    },
+    {
+      "id": "EXP-016",
+      "requirement": "REQ-016",
+      "category": "partially-verifiable",
+      "regression_critical": true,
+      "verification": "planned",
+      "tests": [
+        "package_claims_match_evidence"
+      ],
+      "notes": "Deterministic counterexamples executable; perceptual or evidence-scope acceptance separately reviewed."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Contracts and invalidation",
+      "requires": [],
+      "status": "planned",
+      "implementation_paths": [
+        "runtime/src/domain.rs"
+      ],
+      "checks": [
+        "conflicting_visible_source",
+        "cross_camera_token_handoff",
+        "fractional_duration_priority",
+        "native_external_dependency_mutation",
+        "archive_absent_local_only"
+      ]
+    },
+    {
+      "id": "TASK-002",
+      "title": "Provider discovery and adapters",
+      "requires": [
+        "TASK-001"
+      ],
+      "status": "extend-neighbour",
+      "implementation_paths": [
+        "runtime/src/capabilities.rs"
+      ],
+      "checks": [
+        "incompatible_bundle_rejection",
+        "wrong_mask_role_and_feather_guard",
+        "resource_admission_concurrency",
+        "archive_absent_local_only"
+      ]
+    },
+    {
+      "id": "TASK-003",
+      "title": "Durable job controller",
+      "requires": [
+        "TASK-001",
+        "TASK-002"
+      ],
+      "status": "cut",
+      "implementation_paths": [
+        "runtime/src/jobs.rs"
+      ],
+      "checks": [
+        "ambiguous_submit_and_cancel_race",
+        "native_external_dependency_mutation",
+        "resource_admission_concurrency"
+      ]
+    },
+    {
+      "id": "TASK-004",
+      "title": "Blender world adapter",
+      "requires": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-003"
+      ],
+      "status": "extend-neighbour",
+      "implementation_paths": [
+        "runtime/src/adapters/blender.rs"
+      ],
+      "checks": [
+        "cross_camera_token_handoff",
+        "identity_reveal_holdout",
+        "fractional_duration_priority",
+        "archive_absent_local_only"
+      ]
+    },
+    {
+      "id": "TASK-005",
+      "title": "Anchors masks and identity",
+      "requires": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-003",
+        "TASK-004"
+      ],
+      "status": "planned",
+      "implementation_paths": [
+        "runtime/src/conditioning.rs"
+      ],
+      "checks": [
+        "identity_reveal_holdout",
+        "wrong_mask_role_and_feather_guard",
+        "native_external_dependency_mutation"
+      ]
+    },
+    {
+      "id": "TASK-006",
+      "title": "Optional physics",
+      "requires": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-004"
+      ],
+      "status": "extend-neighbour",
+      "implementation_paths": [
+        "runtime/src/adapters/physics.rs"
+      ],
+      "checks": [
+        "slack_cord_replay",
+        "fractional_duration_priority"
+      ]
+    },
+    {
+      "id": "TASK-007",
+      "title": "Audio and rebake",
+      "requires": [
+        "TASK-001",
+        "TASK-003",
+        "TASK-004",
+        "TASK-005"
+      ],
+      "status": "planned",
+      "implementation_paths": [
+        "runtime/src/dialogue.rs"
+      ],
+      "checks": [
+        "fixed_and_longer_take_rebake",
+        "fractional_duration_priority",
+        "ambiguous_submit_and_cancel_race",
+        "native_external_dependency_mutation"
+      ]
+    },
+    {
+      "id": "TASK-008",
+      "title": "Finishing",
+      "requires": [
+        "TASK-001",
+        "TASK-003",
+        "TASK-005",
+        "TASK-007"
+      ],
+      "status": "extend-neighbour",
+      "implementation_paths": [
+        "runtime/src/finishing.rs"
+      ],
+      "checks": [
+        "fractional_duration_priority",
+        "native_external_dependency_mutation",
+        "exact_graphic_and_audio_lineage"
+      ]
+    },
+    {
+      "id": "TASK-009",
+      "title": "Evaluation runner",
+      "requires": [
+        "TASK-001"
+      ],
+      "status": "cut",
+      "implementation_paths": [
+        "runtime/src/evaluation.rs"
+      ],
+      "checks": [
+        "identity_failure_rejects_codec_pass",
+        "hard_gate_precedes_candidate_rank"
+      ]
+    },
+    {
+      "id": "TASK-010",
+      "title": "Experiment selector",
+      "requires": [
+        "TASK-002",
+        "TASK-003",
+        "TASK-009"
+      ],
+      "status": "cut",
+      "implementation_paths": [
+        "runtime/src/experiments.rs"
+      ],
+      "checks": [
+        "incompatible_bundle_rejection",
+        "resource_admission_concurrency",
+        "hard_gate_precedes_candidate_rank"
+      ]
+    },
+    {
+      "id": "TASK-011",
+      "title": "Skill packaging",
+      "requires": [
+        "TASK-001",
+        "TASK-009",
+        "TASK-010"
+      ],
+      "status": "planned",
+      "implementation_paths": [],
+      "checks": [
+        "archive_absent_local_only",
+        "package_claims_match_evidence"
+      ]
+    },
+    {
+      "id": "TASK-012",
+      "title": "Migration and archive",
+      "requires": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-003",
+        "TASK-004",
+        "TASK-005",
+        "TASK-006",
+        "TASK-007",
+        "TASK-008",
+        "TASK-009",
+        "TASK-010",
+        "TASK-011"
+      ],
+      "status": "planned",
+      "implementation_paths": [],
+      "checks": [
+        "native_external_dependency_mutation",
+        "archive_absent_local_only",
+        "package_claims_match_evidence"
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "id": "GATE-001",
+      "kind": "Contracts and provenance",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    },
+    {
+      "id": "GATE-002",
+      "kind": "Timing",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    },
+    {
+      "id": "GATE-003",
+      "kind": "Compatibility",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    },
+    {
+      "id": "GATE-004",
+      "kind": "World and physics",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    },
+    {
+      "id": "GATE-005",
+      "kind": "Identity and perceptual quality",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    },
+    {
+      "id": "GATE-006",
+      "kind": "Dialogue",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    },
+    {
+      "id": "GATE-007",
+      "kind": "Finish",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    },
+    {
+      "id": "GATE-008",
+      "kind": "Operations",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    },
+    {
+      "id": "GATE-009",
+      "kind": "Tests and quality",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    },
+    {
+      "id": "GATE-010",
+      "kind": "Archive and portability",
+      "automated": true,
+      "notes": "Automated component plus scoped independent review; see quality.md."
+    }
+  ],
+  "adr": {
+    "id": "ADR-2150",
+    "status": "accepted-pending",
+    "path": "docs/adr/ADR-2150-video-production-skill.md",
+    "verified_commit": null,
+    "verified_paths": [],
+    "describes_implemented_runtime": false
+  }
+}

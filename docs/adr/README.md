@@ -59,7 +59,7 @@ detect changes to files it already lists — it is structurally blind to **addit
 is exactly how a new crate landed unlicensed under ADR-2030 while the record still read as
 verified and its `review_trigger` ("any new crate under `services/`") sat unactioned.
 
-_137 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
+_138 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 
 | ID | Title | Domain | Date | Decision | Impl | Activation | Supersedes | Superseded by | Owner | Repo |
 |----|-------|--------|------|----------|------|------------|------------|---------------|-------|------|
@@ -200,3 +200,4 @@ _137 record(s). Regenerate with_ `node scripts/adr-index-gen.js docs/adr`.
 | [ADR-2147](ADR-2147-retain-codex-session-state.md) | Retain Codex session state in a named volume | — | 2026-10-21 | accepted | complete | staged | — | — | jjohare | agentbox |
 | [ADR-2148](ADR-2148-remote-media-control-planes.md) | Typed remote media control planes alongside existing bridges | BASELINE-container | 2026-10-21 | accepted | complete | live | — | — | jjohare | agentbox |
 | [ADR-2149](ADR-2149-isaac-sim-sidecar.md) | Isaac Sim runs as an opt-in headless sidecar behind a typed job API | BASELINE-container | 2026-10-22 | proposed | partial | staged | — | — | jjohare | agentbox |
+| [ADR-2150](ADR-2150-video-production-skill.md) | Video productions are directed through existing media sidecars under one evidence discipline, with a Rust toolkit for the deterministic halves | GOVERNANCE-capabilities | 2026-10-23 | proposed | partial | staged | — | — | jjohare | agentbox |

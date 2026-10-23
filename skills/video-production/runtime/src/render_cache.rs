@@ -1,0 +1,331 @@
+//! Assemble a complete native render cache after a verified scoped scene edit.
+//!
+//! The scene tool that made the edit proves *what* changed; this consumer
+//! verifies the lineage and every selected PNG before copying. The expected
+//! scope is an input (`--allow START..END`, half-open, repeatable), not a
+//! constant: the revision may only change frames inside the allowed intervals.
+//! Frame count and frame rate come from the parent receipt.
+//!
+//! A revision report must carry `schema: "render-revision/2"` and:
+//! `source_unchanged`, `scope_unchanged` (both `true`), `source_world_sha256`,
+//! `world_sha256`, `frames` (count), `scoped_world_hashes` (one per frame) and
+//! `changed_frames` (indices that were re-rendered).
+use crate::{
+    clock::{FrameInterval, rate_from_receipt},
+    comfy::sha256_hex,
+    paths::{Root, take_root_option},
+};
+use serde_json::{Value, json};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+    ffi::OsString,
+    fs,
+    path::{Path, PathBuf},
+};
+
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+fn read(path: &Path) -> Result<Value> {
+    Ok(serde_json::from_slice(&fs::read(path)?)?)
+}
+
+fn sha(path: &Path) -> Result<String> {
+    Ok(sha256_hex(&fs::read(path)?))
+}
+
+fn frames(value: &Value) -> Result<BTreeMap<u64, String>> {
+    let mut result = BTreeMap::new();
+    for row in value["frames"].as_array().ok_or("missing frames")? {
+        let frame = row["frame"].as_u64().ok_or("missing frame index")?;
+        let hash = row["sha256"]
+            .as_str()
+            .ok_or("missing frame hash")?
+            .to_string();
+        if result.insert(frame, hash).is_some() {
+            return Err("invalid or duplicate frame".into());
+        }
+    }
+    Ok(result)
+}
+
+/// Parse `START..END` (half-open) into a [`FrameInterval`].
+///
+/// ```
+/// use video_production_runtime::render_cache::parse_allow;
+/// assert_eq!(parse_allow("10..20").unwrap().len(), 10);
+/// assert!(parse_allow("20..10").is_err());
+/// ```
+pub fn parse_allow(text: &str) -> Result<FrameInterval> {
+    let (start, end) = text.split_once("..").ok_or("--allow expects START..END")?;
+    Ok(FrameInterval::new(
+        start.trim().parse()?,
+        end.trim().parse()?,
+    )?)
+}
+
+/// Check the revision against both receipts and the allowed scope, returning
+/// the set of frames that must come from the patch render.
+pub fn validate_revision(
+    parent: &Value,
+    patch: &Value,
+    revision: &Value,
+    world_hash: &str,
+    allowed: &[FrameInterval],
+) -> Result<BTreeSet<u64>> {
+    if allowed.is_empty() {
+        return Err("an expected scope is required: pass --allow START..END".into());
+    }
+    let parent_frames = frames(parent)?;
+    let count = parent_frames.len() as u64;
+    if count == 0 || parent_frames.keys().copied().ne(0..count) {
+        return Err("parent frames must be a complete 0..N sequence".into());
+    }
+    if revision["schema"] != "render-revision/2"
+        || revision["source_unchanged"] != true
+        || revision["scope_unchanged"] != true
+        || revision["frames"] != count
+        || revision["scoped_world_hashes"].as_array().map(Vec::len) != Some(count as usize)
+    {
+        return Err("revision does not establish complete unchanged scoped world state".into());
+    }
+    if revision["source_world_sha256"] != parent["source_scene_sha256"]
+        || revision["world_sha256"] != world_hash
+        || patch["source_scene_sha256"] != world_hash
+    {
+        return Err("stale source world or revision lineage".into());
+    }
+    let parent_rate = rate_from_receipt(parent).ok_or("parent receipt has no frame rate")?;
+    let patch_rate = rate_from_receipt(patch).ok_or("patch receipt has no frame rate")?;
+    if parent_rate != patch_rate
+        || parent["resolution"] != patch["resolution"]
+        || parent["delivery_complete"] != true
+    {
+        return Err("render timing, canvas or parent coverage differs".into());
+    }
+    let changed: BTreeSet<u64> = revision["changed_frames"]
+        .as_array()
+        .ok_or("missing change interval")?
+        .iter()
+        .map(|value| value.as_u64().ok_or("bad change index"))
+        .collect::<std::result::Result<_, _>>()?;
+    if changed.is_empty()
+        || changed
+            .iter()
+            .any(|&f| !allowed.iter().any(|a| a.contains(f)))
+    {
+        return Err("revision exceeds the allowed scope".into());
+    }
+    if changed.iter().any(|&f| f >= count) {
+        return Err("changed frame outside the film".into());
+    }
+    let patch_frames = frames(patch)?;
+    if changed != patch_frames.keys().copied().collect() {
+        return Err("parent or changed-frame coverage differs".into());
+    }
+    Ok(changed)
+}
+
+/// Validate and assemble a new complete cache. Arguments are described in the
+/// module documentation.
+pub fn run(mut args: Vec<OsString>) -> Result<()> {
+    let root = Root::new(&take_root_option(&mut args)?)?;
+    let mut allowed = Vec::new();
+    while let Some(i) = args.iter().position(|a| a == "--allow") {
+        if i + 1 >= args.len() {
+            return Err("--allow needs START..END".into());
+        }
+        let text = args.remove(i + 1);
+        args.remove(i);
+        allowed.push(parse_allow(text.to_str().ok_or("--allow must be UTF-8")?)?);
+    }
+    if args.len() != 5 {
+        return Err("usage: render-cache [--root DIR] --allow START..END PARENT_DIR REVISION_JSON PATCH_DIR WORLD NEW_DIR".into());
+    }
+    let at = |i: usize| root.resolve(Path::new(&args[i]));
+    let (parent_dir, revision_path, patch_dir, world, output) =
+        (at(0)?, at(1)?, at(2)?, at(3)?, at(4)?);
+    if output.exists() {
+        return Err("output must be new".into());
+    }
+    let parent = read(&parent_dir.join("complete.json"))?;
+    let patch = read(&patch_dir.join("complete.json"))?;
+    let revision = read(&revision_path)?;
+    let world_hash = sha(&world)?;
+    let changed = validate_revision(&parent, &patch, &revision, &world_hash, &allowed)?;
+    let parent_frames = frames(&parent)?;
+    let patch_frames = frames(&patch)?;
+    let count = parent_frames.len() as u64;
+    let mut selected: Vec<(u64, PathBuf, String, &str)> = Vec::new();
+    for frame in 0..count {
+        let (directory, hashes, origin) = if changed.contains(&frame) {
+            (&patch_dir, &patch_frames, "rerendered scoped revision")
+        } else {
+            (&parent_dir, &parent_frames, "reused unchanged camera/world")
+        };
+        let file = directory.join(format!("frame-{frame:04}.png"));
+        let expected = hashes.get(&frame).ok_or("missing selected frame")?;
+        if sha(&file)? != *expected {
+            return Err(format!("stale PNG {}", file.display()).into());
+        }
+        selected.push((frame, file, expected.clone(), origin));
+    }
+    fs::create_dir(&output)?;
+    let mut records = Vec::new();
+    for (frame, source, hash, origin) in selected {
+        let name = format!("frame-{frame:04}.png");
+        fs::copy(source, output.join(&name))?;
+        if sha(&output.join(&name))? != hash {
+            return Err("copied PNG hash mismatch".into());
+        }
+        records.push(json!({"frame":frame,"path":name,"sha256":hash,"origin":origin}));
+    }
+    let receipt_of = |dir: &Path| -> Result<Value> {
+        let path = dir.join("complete.json");
+        Ok(json!({"path":root.rel(&path)?,"sha256":sha(&path)?}))
+    };
+    let mut report = json!({"source_scene":root.rel(&world)?,"source_scene_sha256":world_hash,"scene_sha256":world_hash,
+        "rate":rate_from_receipt(&parent),"resolution":parent["resolution"],"frames":records,"delivery_complete":true,
+        "scoped_revision":{"path":root.rel(&revision_path)?,"sha256":sha(&revision_path)?},
+        "parent_receipt":receipt_of(&parent_dir)?,"patch_receipt":receipt_of(&patch_dir)?,
+        "allowed_scope":allowed,
+        "reused_frames":count-changed.len() as u64,"rerendered_frames":changed.len(),"production_accepted":false,
+        "scope":"Verified PNG cache lineage after a scoped revision; native scene-state proof comes from the separately hashed scene verifier. No generated-video or physical acceptance."});
+    root.relativise(&mut report)?;
+    fs::write(
+        output.join("complete.json"),
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
+    println!(
+        "verified {count} frames: {} reused, {} rerendered",
+        count - changed.len() as u64,
+        changed.len()
+    );
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::paths::absolute_paths;
+
+    fn receipt(world: &str, hashes: &[(u64, String)]) -> Value {
+        json!({"source_scene_sha256":world,"fps":{"num":24000,"den":1001},"resolution":[16,9],
+            "delivery_complete":true,
+            "frames":hashes.iter().map(|(f,h)| json!({"frame":f,"sha256":h})).collect::<Vec<_>>()})
+    }
+
+    fn fixture() -> (Value, Value, Value, String) {
+        let parent_hashes: Vec<_> = (0..10u64).map(|f| (f, format!("p{f}"))).collect();
+        let patch_hashes: Vec<_> = (3..5u64).map(|f| (f, format!("n{f}"))).collect();
+        let revision = json!({"schema":"render-revision/2","source_unchanged":true,"scope_unchanged":true,
+            "source_world_sha256":"old","world_sha256":"new","frames":10,
+            "scoped_world_hashes":vec!["h";10],"changed_frames":[3,4]});
+        (
+            receipt("old", &parent_hashes),
+            receipt("new", &patch_hashes),
+            revision,
+            "new".into(),
+        )
+    }
+
+    #[test]
+    fn accepts_an_in_scope_revision_at_a_fractional_rate() {
+        let (parent, patch, revision, world) = fixture();
+        let allowed = [FrameInterval::new(3, 5).unwrap()];
+        let changed = validate_revision(&parent, &patch, &revision, &world, &allowed).unwrap();
+        assert_eq!(changed, BTreeSet::from([3, 4]));
+    }
+
+    #[test]
+    fn rejects_out_of_scope_missing_scope_stale_and_mismatched_inputs() {
+        let (parent, patch, revision, world) = fixture();
+        let ok = [FrameInterval::new(3, 5).unwrap()];
+        let narrow = [FrameInterval::new(3, 4).unwrap()];
+        let err =
+            |parent: &Value, patch: &Value, revision: &Value, world: &str, a: &[FrameInterval]| {
+                validate_revision(parent, patch, revision, world, a)
+                    .unwrap_err()
+                    .to_string()
+            };
+        assert!(err(&parent, &patch, &revision, &world, &narrow).contains("allowed scope"));
+        assert!(err(&parent, &patch, &revision, &world, &[]).contains("--allow"));
+        assert!(err(&parent, &patch, &revision, "other", &ok).contains("stale"));
+        let mut wrong_frames = revision.clone();
+        wrong_frames["frames"] = json!(11);
+        assert!(err(&parent, &patch, &wrong_frames, &world, &ok).contains("unchanged scoped"));
+        let mut wrong_schema = revision.clone();
+        wrong_schema["schema"] = json!("render-revision/1");
+        assert!(err(&parent, &patch, &wrong_schema, &world, &ok).contains("unchanged scoped"));
+        let mut other_rate = patch.clone();
+        other_rate["fps"] = json!(25);
+        assert!(err(&parent, &other_rate, &revision, &world, &ok).contains("timing"));
+        let mut other_patch = patch.clone();
+        other_patch["frames"] = json!([{"frame":3,"sha256":"n3"}]);
+        assert!(err(&parent, &other_patch, &revision, &world, &ok).contains("coverage"));
+    }
+
+    #[test]
+    fn assembled_cache_records_only_root_relative_paths() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("vpr-cache-{}-{nonce}", std::process::id()));
+        for sub in ["parent", "patch"] {
+            fs::create_dir_all(dir.join(sub)).unwrap();
+        }
+        let write = |sub: &str, frame: u64, text: &str| {
+            let path = dir.join(sub).join(format!("frame-{frame:04}.png"));
+            fs::write(&path, text).unwrap();
+            sha(&path).unwrap()
+        };
+        fs::write(dir.join("world.json"), "world").unwrap();
+        let world = sha(&dir.join("world.json")).unwrap();
+        let parent_hashes: Vec<_> = (0..6)
+            .map(|f| (f, write("parent", f, &format!("p{f}"))))
+            .collect();
+        let patch_hashes: Vec<_> = (2..4)
+            .map(|f| (f, write("patch", f, &format!("n{f}"))))
+            .collect();
+        let save = |name: &str, value: Value| {
+            fs::write(dir.join(name), serde_json::to_vec(&value).unwrap()).unwrap()
+        };
+        save("parent/complete.json", receipt("old", &parent_hashes));
+        save("patch/complete.json", receipt(&world, &patch_hashes));
+        save(
+            "revision.json",
+            json!({"schema":"render-revision/2","source_unchanged":true,"scope_unchanged":true,
+                "source_world_sha256":"old","world_sha256":world,"frames":6,
+                "scoped_world_hashes":vec!["h";6],"changed_frames":[2,3]}),
+        );
+        let args: Vec<OsString> = [
+            "--root",
+            dir.to_str().unwrap(),
+            "--allow",
+            "2..4",
+            "parent",
+            "revision.json",
+            "patch",
+            "world.json",
+            "out",
+        ]
+        .map(Into::into)
+        .into();
+        run(args).unwrap();
+        let cache: Value = read(&dir.join("out/complete.json")).unwrap();
+        assert!(absolute_paths(&cache).is_empty(), "{cache}");
+        assert_eq!(cache["source_scene"], "world.json");
+        assert_eq!(cache["reused_frames"], 4);
+        assert_eq!(cache["frames"][2]["origin"], "rerendered scoped revision");
+        assert_eq!(
+            fs::read_to_string(dir.join("out/frame-0002.png")).unwrap(),
+            "n2"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.join("out/frame-0005.png")).unwrap(),
+            "p5"
+        );
+        fs::remove_dir_all(dir).unwrap();
+    }
+}

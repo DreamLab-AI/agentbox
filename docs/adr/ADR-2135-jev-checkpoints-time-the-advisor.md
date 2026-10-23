@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: staged
 supersedes: []
 superseded_by: []
-verified_commit: 0382cc4b5e34f75a62184bf350f865533010dc52
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [agentbox.toml, schema/agentbox.toml.schema.json, management-api/lib/system-manifest.js, flake.nix, config/entrypoint-unified.sh, config/claude-plugins/.claude-plugin/marketplace.json, scripts/ci/check-manifest-catalogue.js, tests/config/jev-checkpoints.test.mjs, tests/config/factrail-projection.test.sh, tests/config/ruflo-console.test.mjs]
 owner: jjohare
 review_trigger: the first soak report of injections per hundred turns and USD per session, a measured shadow-log agreement rate for spawn routing (ADR-2110 labels), a change to the advisor checkpoints in ADR-2134, or a Claude Code function-hook API change
@@ -129,3 +129,5 @@ role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
 
 Re-verified 2026-10-22 at `0382cc4b5e34f75a62184bf350f865533010dc52`: reviewed the delta adding an independent, opt-in Isaac Sim lifecycle and live-class service catalogue entry, the 130th routed skill, pinned regional ComfyUI nodes/model metadata, and Blender background Python failure propagation. Existing ingress, role isolation, instruction projection, durable adapters, retrieval geometry, System One selection and image evidence boundaries are unchanged. Isaac runner/contract (15), GPU picker, launcher selection, Blender bridge (19), role supervisor (25), skill lint and catalogue checks pass. Isaac vendor-image and fixture verification remains staged until executed.
+
+Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: since `0382cc4b` only `marketplace.json`, `flake.nix` and `tests/config/ruflo-console.test.mjs` moved among the governed paths, all from the ruflo-console pin change; the diff touches no jev, factrail, checkpoint or advisor line (`git diff 0382cc4b..HEAD -- flake.nix | grep -iE 'jev|checkpoint|advisor'` is empty). `HEAD:marketplace.json` still lists `jev-checkpoints` 0.1.0 with the shadow-only wording. In a detached worktree at HEAD, `node --test tests/config/jev-checkpoints.test.mjs` gives 11 pass, 0 fail, 1 skipped and `node --test tests/config/ruflo-console.test.mjs` 17 pass, 0 fail, 1 skipped. **Correction to the 2026-10-21 note above:** "versions match the v3.57.0 source" is superseded: `rufloConsole` now pins the 3.60.0 branch commit `856de8f3` while `rufloPkg` stays 3.57.0. The shared-marketplace and function-hook keep conditions this record relies on are unaffected. Host rebuild, soak and image evidence remain unverified.

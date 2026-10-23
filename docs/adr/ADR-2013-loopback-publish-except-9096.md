@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [scripts/ci/check-ports-loopback.sh, .github/workflows/invariants.yml, flake.nix, docker-compose.yml]
 owner: jjohare
 review_trigger: Any new entry on the SANCTIONED list, or a new compose overlay file
@@ -427,3 +427,11 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+## Re-verification 2026-10-23 at `951ada931`
+
+Tripped by `flake.nix` alone (every other governed path is unchanged since `395380f71`: `git diff 395380f71..HEAD -- <other verified_paths>` is empty). The flake hunks are the eMudhra `cacert` override, the `agenticQePkg` (3.15.10) and `wranglerPkg` (4.151.3) pins, the `rufloConsole` pin move and its `rufloConsolePlugins` name, and `NODE_OPTIONS=--use-openssl-ca` in the container env list. Checked against committed `HEAD` in a detached worktree, not the working tree.
+
+Claims re-read at HEAD: `docker-compose.yml:47` `"9096:9096"` is the single LAN exception, declared in `flake.nix:2941` and defaulted by `interactionPlaneProxyPort` at `:414`; `:3548` states `:9095` is never published; the gate, the workflow and `docker-compose.yml` are unchanged since `395380f71`. No hunk adds a publish, a listener or a SANCTIONED entry. Commands: `sh scripts/ci/check-ports-loopback.sh` (PASS, 14 compose files, 11 ports blocks, all loopback-only or sanctioned; the listener audit reports only the existing sanctioned jupyter-lab, wayvnc and code-server binds), `node --test tests/security/check-listeners.test.mjs` (15 pass, 0 fail). The decision holds.
+
+Review trigger fired and was actioned: `docker-compose.isaac-sim.yml` is a new overlay since `395380f71` (ADR-2149, `git diff --name-status 395380f71..HEAD | grep -i compose`). It declares no `ports:` block (`git show HEAD:docker-compose.isaac-sim.yml | grep -n ports` finds only comments saying so), `scripts/ci/check-ports-loopback.mjs` is unchanged so the SANCTIONED list gained no entry, and the gate above sweeps it with the other compose files. The invariant holds for the new overlay.

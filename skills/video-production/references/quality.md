@@ -1,0 +1,177 @@
+# SPEC-VIDEO-001 — Quality gates and expectation-driven evidence
+
+Status: **proposed executable acceptance specification**, 23 October 2026. Companion to [PRD-VIDEO-001](prd.md), ADR-2150 (`docs/adr/ADR-2150-video-production-skill.md`), [DDD-VIDEO-001](ddd.md) and the [machine-readable design manifest](contracts.json). This task delivers a design and staged skill. Commands, fixtures and test cases marked proposed below are implementation requirements, not executed proof or assertions that a runtime exists.
+
+## Evidence discipline and EDD loop
+
+For every requirement: formulate its expectation and counterexamples; implement; execute and collect raw evidence; have a distinct agent audit it; challenge it with adversarial inputs; revise; stabilise deterministic behaviour as regression tests. Preserve qualitative review alongside those tests. An expectation is stale when its source, implementation, adapter bundle or relevant profile changes without requalification.
+
+The evidence producer and auditor must be different agents. Prefer different model families. Where unavailable, a distinct same-family agent is a permitted weaker fallback with `audit_mode: degraded_same_family` and a stated independence limitation. The present harness provides only same-family audit for this task; it must not claim cross-family verification. Producer self-review can find defects but cannot satisfy the independent audit. Cross-family review also cannot replace executed evidence or a perceptual film review.
+
+Use statuses `PROPOSED`, `NOT_RUN`, `BLOCKED`, `PASS`, `FAIL`, `NOT_APPLICABLE` for checks, with separate scoped artefact acceptance decisions. `NOT_APPLICABLE` requires an explicit optional-profile reason; unavailable hardware for a required capability is `BLOCKED`, not a pass. An accepted soft compromise records its authorisation, affected artefacts and consequences. It cannot silently waive a mandatory requirement.
+
+## Receipt and oracle contract
+
+Every check receipt must identify specification version, requirement/expectation/gate IDs, case/profile IDs, UTC start/end, exact command argv or structured request, working directory relative to project root, exit/status, source revision plus dirty-diff hash, tool/environment/bundle versions, input/output hashes, raw stdout/stderr or provider history, measured values with units, declared tolerances, verdict and reviewer. Sensitive values use credential references/redaction; retain the sanitised executable request and redaction declaration rather than publishing secrets.
+
+GPU/provider evidence additionally identifies request/graph hashes, owned provider job ID, submission/reconciliation attempts, cancellation capability and terminal observation, selected output node/type, downloaded media hashes and decoded facts. Perceptual evidence identifies the exact reviewed artefact, frame intervals, playback speed/audio mode, rubric scores, concrete findings, reviewer and review time. Screenshots cannot prove full-duration playback. A summary stating that a command passed without its raw output is insufficient.
+
+Oracles must be independent of the operation under test where practicable: compute rational maps from a reference implementation; mix PCM by independent sample indexing; inspect native saved scenes instead of trusting builder logs; decode delivered media rather than trusting encoder metadata; verify cache mutations against source hashes. Native masks can validate native ownership but cannot alone measure generated silhouette agreement.
+
+## Gate registry
+
+| Gate | Automated evidence | Subjective/independent evidence and refusal boundary |
+| --- | --- | --- |
+| GATE-001 Contracts and provenance | Schema, hashes, identity/lineage, source coverage, stale-input and missing-field rejection. | Source precedence and visible brief interpretation; unknown or contradictory required source blocks dependent acceptance. |
+| GATE-002 Timing | Rational maps, counts, decoded timestamps, retained endpoints, padding, exposure schedules, marker timing and sample placement. | Intended rhythm and continuity through cuts; correct clocks alone do not establish appealing performance. |
+| GATE-003 Compatibility | Live snapshots, exact bundle/graph validation, constraints, successful bounded load/generation smoke and output collection. | Representative suitability against the brief; installation or smoke success does not accept a shot. |
+| GATE-004 World and physics | Stable IDs, saved-scene state checks, contact/clearance bounds, solver/export/replay clocks and placement, explicit coverage. | Readable causal action and generated contact; sampled geometry does not certify untested surfaces or forces. |
+| GATE-005 Identity and perceptual quality | Counts/tracks/landmarks and calibrated diagnostics, with confidence and failure handling. | Source identity, anatomy/style, geography, motion, occlusion and temporal stability through full clips/cuts. Metrics cannot overrule an observed categorical defect. |
+| GATE-006 Dialogue | PCM/cue lineage, routing, scope/invalidation, independent mix, A/V offsets, alignment/guard/locality checks. | Intelligibility, casting, emphasis, visible closures/onsets and lip-sync at normal speed; correlation alone fails as proof. |
+| GATE-007 Finish | Graphic lineage, projection/masks, raster metadata, compositing, decoded stream/dimensions/audio/caption checks. | Typography, readability, receiver support, seams, sound and full-resolution finish. Lossy media cannot inherit exact-pixel claims. |
+| GATE-008 Operations | Recovery, state reconciliation, safe cancellation, concurrent ownership, verified retrieval/cache and resource admission. | Actionable failure/handover and truthful unknown states; no blind resubmission or unrelated-job interruption. |
+| GATE-009 Tests and quality | Contract/property/unit/integration/mutation tests, formatting/lint, relevant security/dependency checks and regression traceability. | Independent evidence audit; planned/skipped checks are visible. A test that repeats the implementation without a meaningful oracle is inadequate. |
+| GATE-010 Archive and portability | Package structure, links, synthetic-only dependencies, fresh-directory/native profile, environment mapping and installation evidence if claimed. | Clear staging/implementation/qualification status; no client archive required at runtime, no installed claim from staged files. |
+
+## Expectation register
+
+All expectations below are **PROPOSED**, parent `SPEC-VIDEO-001`, linked to `ADR-2150` and `DDD-VIDEO-001`. Each maps one-to-one to its same-numbered PRD requirement. Every deterministic counterexample is `regression_critical: true`; until stabilised it cannot support an implemented-feature claim. Perceptual components remain partially verifiable and require retained review evidence. No entry below is marked proven by this design document.
+
+| Expectation | Behaviour and falsifying cases | Required evidence and gates |
+| --- | --- | --- |
+| EXP-001 / REQ-001 | Required visible source beats/assets survive transcription and planning with recorded precedence. Duplicate OCR, hidden obsolete art or an unmapped required line must fail. | Synthetic source with conflicting embedded/visible content; expected source/beat map; reviewer verifies interpretation. GATE-001,010. |
+| EXP-002 / REQ-002 | One continuous token handoff remains the same world/action across a camera cut. Replacing a hand, moving a token attachment or changing actor scale without a declared transformation must fail. | Independent saved-world observations across all action frames, cut sheets and normal-speed review. GATE-001,004,005. |
+| EXP-003 / REQ-003 | Two distinct toy identities and a marked prop remain recognisable during a reveal/head turn. Swapped markings, duplicate actors, species mixing or identity breakup between clean anchors fail. | Source package, reviewed full clips and challenged diagnostic scores; development and holdout cases. GATE-005. |
+| EXP-004 / REQ-004 | A plan uses only a currently observed compatible workflow bundle. Missing node, changed tensor family, unsupported bucket or unverified adapter stack must reject/label experimental before submission. | Discovery snapshots, validator output, incompatible fixtures, qualified smoke receipts when backend exists. GATE-003. |
+| EXP-005 / REQ-005 | Each guide/mask has the right role, coordinates, clock and producer. Wrong camera, swapped alpha semantics, ambiguous box/ownership substitution or post-feather eye leakage must fail. | Schema negatives, hashed masks, independently checked pixel guards, neighbour review. GATE-001,005,007. |
+| EXP-006 / REQ-006 | Required slack-cord mechanics, exported time and native replay agree within declared fixture tolerances. Stretching a kinematic line, omitted required collider or rescaling a solved trajectory must not pass the causal-physics claim. | Solver logs/contact scope, independent length/clock calculations and all-sample replay; actual scene and generated review. Optional profile only may mark N/A. GATE-004. |
+| EXP-007 / REQ-007 | Fixed-clock take replacement changes only its native performance scope and canonical PCM union, while invalidating the whole dependent generated clip and reviewing neighbouring cuts. Changed unrelated PCM, pre-speech reuse or off-scope rest-mouth edits fail. | A/B stems/cues/scene hashes, independent mix comparison, invalidation report and full-edit review. GATE-002,006. |
+| EXP-008 / REQ-008 | Rational source/model/delivery mappings preserve declared duration and exposure intent at 24, 25 and 30000/1001 profiles. Next-shot padding, double retime, stale camera marker and whole-raster stepping of a moving camera fail. | Reference rational oracle, all-frame decode/map checks, visible counters and full-rate review. GATE-002. |
+| EXP-009 / REQ-009 | Accepted-but-disconnected submissions become unknown and reconcile safely; owned cancellation is confirmed or explicitly unsupported. Duplicate submission, cancellation of another owner's job or intermediate-output promotion after interruption fails. | Fake-provider event log and real-adapter qualification where claimed; crashes at each state transition. GATE-008. |
+| EXP-010 / REQ-010 | Cache reuse requires complete compatible content lineage and verified bytes. Changed material with fixed transforms, truncated download, reused filename/job ID, wrong output role and unresolved symlink fail reuse. | Deterministic cache mutation cases, hashes/decoded metadata and no-write observation for rejected reuse. GATE-001,008. |
+| EXP-011 / REQ-011 | Admission respects actual filesystem/device allocation and peak-resource budgets. Shared-volume double counting, late free-space loss and a second downloader cannot silently breach limits. | Fake-resource boundary tests, live read-only snapshot when available, no-submission witness on rejection. GATE-008. |
+| EXP-012 / REQ-012 | Controlled source artwork/audio reaches the final edit with declared transforms and fidelity. Invented missing print, wrong raster coordinates, glyph substitution and an upscale labelled native generation fail. | Source/print/mix lineage, lossless intermediate comparisons, decoded deliverable and readable final review. GATE-006,007. |
+| EXP-013 / REQ-013 | Acceptance names a complete hashed edit and all mandatory gate evidence. Clean endpoints, correct duration or PIP agreement cannot conceal visible contact/identity/lip-sync defects. | Full-speed audio playback record, detail/cut coverage, findings ledger and independent acceptance decision. GATE-004,005,006,007,009. |
+| EXP-014 / REQ-014 | Experimental claims remain limited to their controlled variables and observed samples. Cold/warm confounding, uncalibrated sharpness, cherry-picked endpoints and reuse of a failed recipe without a new hypothesis fail claim review. | Versioned hypothesis/control/holdout records, all trial receipts and reviewer assessment of causal claims. GATE-003,005,009. |
+| EXP-015 / REQ-015 | A fresh synthetic native project runs within a local profile; external calls require existing scoped authorisation. Archive reads, absolute producer paths, remote prompt encoding hidden as local or credential material in receipts fail. | Isolated project/native execution, denied-network/mock external tests and profile/receipt inspection. GATE-008,010. |
+| EXP-016 / REQ-016 | Package claims match implemented commands, tests, qualification and installation state. Missing links, unimplemented command claimed runnable, self-audit, same-family review called cross-family or proposed test called passed fail release. | Package checker, command/help inventory, test receipts, separate audit and installation receipt only when performed. GATE-009,010. |
+
+## Synthetic end-to-end suite
+
+All fixtures must be newly authored, non-branded and redistributable inside the implementation repository. They must not read production assets, ignored archives, mounted production outputs or private references. Text, source graphics, shapes and test audio have explicit licences/provenance. Use deterministic synthetic pulses for sample-clock tests; use a separate local recorded or synthesised utterance for perceptual speech tests, since pulses cannot prove lip-sync.
+
+**Development film:** two distinct simple puppet heads/bodies exchange a numbered token across a table; a camera cut occurs during the continuous handoff; one actor turns behind a partial occluder, speaks a short phrase, and exposes a thin moving card carrying a newly drawn checker and test text. The camera continues moving while bodies hold on a declared exposure schedule. There is a separate optional gripper/slack-cord/peg sequence for physical qualification. Native exact graphics and audio assemble into a complete short edit. Length is defined by the fixture frame map, not by a universal commercial duration.
+
+**Holdout:** reverse camera side, change actor markings and token shape, shift occlusion, move the utterance to another absolute start, use a different phrase/speaker and prime-length segments. Physics holdout changes peg spacing, lift speed and slack. Test rates 24/1, 25/1 and 30000/1001 with adapter-specific temporal buckets. Deliberately create an input whose last padded frame comes from the next shot.
+
+Run the journey in order:
+
+1. Validate sources/profile; plan beat-to-frame coverage; record capability/resource snapshots and a side-effect-free execution plan.
+2. Build the shared native world/action, editable cues and exact graphic layers; independently observe the saved world and render the complete native rehearsal. Inspect full timing and cuts before any generation.
+3. For optional physics, execute the declared solve and compare all export/replay samples; distinguish local proxy contacts from full-scene and generated contact.
+4. Qualify the selected generative bundle on a short representative interval; compare no-style and proposed style under matched settings if claiming adapter effects. Generate the full intended synthetic edit only after its required inputs pass.
+5. Apply one bounded repair with protected eyes/other actor; reject a deliberately bad track and incorrect mask. Verify lossless locality, then inspect temporal seams and performance.
+6. Finish exact artwork/audio and decode the entire deliverable. Retain a native/source comparison at synchronised delivery timestamps, without treating it as a conformance score.
+7. Replace one take at fixed clock. Verify native scope, PCM union, complete containing-clip invalidation, cache reuse and adjacent-cut review; assemble and review the full B edit.
+8. Inject a provider disconnect, restart the observer, reconcile and collect without blind duplicate work. Exercise supported/unsupported cancellation using only owned jobs.
+9. Run the distinct holdout and adversarial suite. The independent auditor checks raw evidence and challenges acceptance; retain explicit remaining limitations.
+
+The native path proves native workflow execution only. A fake provider proves orchestration only. A real generated profile needs real inference and perceptual review; physical qualification needs an actual solver. An unavailable required backend leaves those checks blocked while CPU/native evidence can still be produced.
+
+### Footage-only interview revision fixture (proposed)
+
+Add a separate local-only/no-download fixture using newly authored interview-style source clips, matching dry audio, unrelated B-roll and an exact synthetic logo. The production has no world/action/physics manifest and permits natural motion blur. Its nominal target is 18 seconds at declared `30000/1001`; first run the duration tests below and lock the selected permitted frame count. This fixture must run using media tools without Blender, a generative service or a model download.
+
+Case A replaces a six-second utterance with a nine-second take that fits after shortening available B-roll and moving a cut. Test both a supplied matching nine-second picture/audio pair and an audio-only take. In the latter, select B-roll/voice-over explicitly and reject reuse of old mouth movement as synchronous new speech. Keep source recordings unchanged; rebuild source in/out, placement, transition, subtitle/caption, mix and mux dependencies and inspect both changed cuts plus the full film. Compare independently decoded source samples at their newly declared mix positions. Do not apply fixed-clock outside-window equality to deliberately shifted timeline events. Unchanged source bytes and unaffected media operations remain reusable; no invented native mouth bake or solver pass is permitted.
+
+Case B provides a twenty-second take whose every word is required in the shorter delivery. Planning must return an actionable constraint conflict, with a proposed excerpt or duration alternative awaiting a recorded editorial decision. It must not truncate speech, accelerate it or pretend the full take fits. Both cases retain proposed edit/invalidation records, expected source/audio/caption maps, actual implementation commands/raw logs when eventually run, and separate technical/perceptual review receipts. These cases implement EXP-007/008/012/015 and GATE-001/002/006/007/010; they remain unexecuted design requirements here.
+
+### Fractional-rate duration cases (proposed)
+
+The reference oracle computes `actual_duration = retained_frames * rate_denominator / rate_numerator` with checked rational arithmetic. Record nominal duration, exact/nominal intent, chosen count, rounding and tie policy, tolerance, actual duration and any authorising decision separately. Test all of the following under EXP-008 and GATE-002:
+
+- Exact 18 seconds and exact `30000/1001` CFR with whole exposures rejects before rendering: the required frame count is `540000/1001`, not an integer.
+- Nominal 18 seconds, nearest-frame rounding and an explicitly supplied tolerance of `1/50` second selects 539 frames and reports `539539/30000` seconds. This 20 ms tolerance is a synthetic test input, not a default. Ceil with the same tolerance selects 540 frames and reports `540540/30000` seconds.
+- A tighter explicit tolerance of `1/1000` second rejects both alternatives. Neither may emit a receipt claiming exactly 18 seconds, fill a model bucket with extra retained frames or silently alter the rate.
+- Decimal-rate shorthand is resolved once into a recorded rational; switching from `30000/1001` to `2997/100` without a profile revision fails. Add an exact integral-duration control and a half-frame tie case to exercise the declared tie rule.
+- Independent decoding verifies actual retained PTS/exposure durations and A/V end policy; metadata or timecode labels cannot override mismatching observed presentation.
+
+### Native dependency and cancellation race cases (proposed)
+
+Under EXP-010, create a native scene that references an external texture, linked library, font and simulation cache. Freeze the native file bytes. Mutate each dependency independently while preserving its path, byte length and recorded modification time; the dependency closure/content digest must change and invalidate only genuinely dependent results. Repeat the mutation after validation but before the native application reads it. An immutable input snapshot must either render the bound original contents or reject/replan; a mixture of validated and changed inputs must never inherit a cache hit. Retain expected closure, before/after hashes, materialisation/read provenance and the actual observed output. Dynamic dependencies that cannot be enumerated or frozen must report the limitation and refuse an equivalence claim. Fake dependency tests qualify core invalidation only; a real native-adapter trial is required to claim actual external dependency discovery.
+
+Under EXP-009, use a deterministic fake-provider event barrier: observer sees owned job A as the sole running job; A completes; unrelated job B starts; then the client attempts cancellation based on the stale observation. The client must issue an identity-scoped, atomically conditional request that cannot target B, or report cancellation as unsupported and refuse any global interrupt. A second GET alone does not pass: repeat the transition immediately after that GET. Test provider ID reuse and an uncooperative independent submitter; a shared instance never receives a global interrupt. Observe that B remains running and that A is recorded completed rather than falsely cancelled. Real-provider ownership/cancellation support remains separately qualified; the mock test cannot establish a remote service's atomicity.
+
+## Threshold policy
+
+Exact contract invariants use exact checks: hashes; IDs; expected frame/sample counts; zero changed pixels outside zero-alpha in saved lossless composites; zero changed canonical PCM samples outside the declared replacement union; no disallowed dependency reads; and no second submission before unknown-state reconciliation. Where operations intentionally resample, mix or quantise, compare against a declared independent reference with explicit numeric error bounds rather than incorrectly requiring unchanged original samples.
+
+Proposed fixture tolerances must be chosen and frozen before running each comparison. Suggested starting values, **not established production defaults**, are: normalised landmark/alignment residual at most 0.5% of image width; A/V placement within one delivery-frame interval where frame-quantised; cable material-length relative error at most 1%; replay matrix/position tolerances derived from export precision and scene scale. Each needs a calibration/control and a reason tied to the fixture. Perceptual speech and contact may fail even when these values pass.
+
+Inherited evidence is narrower: in earlier private experiments a centre-detection error had a native-control floor of the same order as the measurement, a face-alignment pass met its pixel gate while speech onset remained late, and a coupled cable-length bound covered only a local assembly. These results neither establish the proposed tolerances nor transfer unchanged to other dimensions, materials, scenes or models.
+
+Perceptual rubric: identity, anatomy/count, geography, camera readability, contact/action, occlusion, material/texture stability, cadence, mouth performance, exact-art readability and sound. Record `pass`, `fail`, `uncertain` or `not_applicable` per dimension, frame witnesses and reasons. An uncertain mandatory dimension is not accepted. Do not average away a categorical extra limb, wrong identity, missing line or failed contact with good scores elsewhere.
+
+## Proposed command and receipt interface
+
+The following `video-production` CLI is a **proposed acceptance interface**, not an installed command or implemented runtime. Implementation may revise names through the contracts/ADR; update this specification and tests together. Until then, do not instruct an operator to run it as if available. JSON output paths below are required receipt locations for this proposed suite, relative to a fresh test project.
+
+```sh
+video-production fixture create --case continuity-dialogue-v1 --out ./fixture
+video-production validate --project ./fixture/project.json --out ./evidence/validate.json
+video-production discover --project ./fixture/project.json --out ./evidence/capabilities.json
+video-production plan --project ./fixture/project.json --out ./evidence/plan.json
+video-production run --project ./fixture/project.json --profile native --out ./evidence/native-run.json
+video-production verify --project ./fixture/project.json --run ./evidence/native-run.json --out ./evidence/native-checks.json
+video-production run --project ./fixture/project.json --profile qualified-physics --out ./evidence/physics-run.json
+video-production run --project ./fixture/project.json --profile qualified-generation --out ./evidence/generated-run.json
+video-production replace-take --project ./fixture/project.json --take ./fixture/take-b.json --out ./evidence/replacement-plan.json
+video-production run --project ./fixture/project.json --plan ./evidence/replacement-plan.json --out ./evidence/replacement-run.json
+video-production reconcile --project ./fixture/project.json --out ./evidence/reconciliation.json
+video-production cancel --project ./fixture/project.json --job-receipt ./fixture/owned-cancellable-job.json --out ./evidence/cancellation.json
+video-production review --project ./fixture/project.json --run ./evidence/replacement-run.json --rubric ./fixture/review-policy.json --out ./evidence/review.json
+video-production qualify --project ./fixture/project.json --cases ./fixture/adversarial-cases.json --out ./evidence/qualification.json
+```
+
+`fixture create` writes only synthetic project assets. `validate`, `discover`, `plan` and `replace-take` do not submit generation, download models or mutate the source project; the replacement result is an explicit candidate plan. `run` requires an already valid plan/profile and authorised execution boundary. `review` binds an actual reviewer decision and coverage record; it cannot invent a perceptual pass. Proposed exit codes: `0` completed command with its documented successful result, `2` invalid input, `3` failed verification, `4` required capability/resource blocked, `5` unresolved external job outcome. Optional not-run checks remain in receipts even if the command itself exits 0.
+
+The optional solver profile and owned cancellation fixture execute only when their capabilities are declared; a mock provider exercises unsupported cancellation separately. Required cancellation evidence includes the exact structured request, owned job identity, capability response and subsequent terminal/unknown state, including a provider that cannot cancel. Do not infer cancellation from a client process exit.
+
+For an implemented Rust engine, capture actual commands for `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --locked` and `cargo doc --no-deps` from its real manifest directory. These names describe the expected quality toolchain, not a claim that the new engine crate has been written. Native Python adapters need their actual formatter/linter and meaningful focused tests recorded. Package validation uses the available repository/estate linter with its exact discovered command in the receipt; do not invent an installed linter path.
+
+## Mutation and adversarial cases
+
+| Case | Mutation / adversarial input | Required result |
+| --- | --- | --- |
+| MUT-001 | Change authoritative source bytes without changing filename; include duplicate OCR and a hidden stale image. | Stale asset rejection and explicit source reconciliation; no silent source promotion. |
+| MUT-002 | Replace an actor limb at the cut or change a prop attachment ID. | Native continuity failure even if per-shot renders and contact endpoints look plausible. |
+| MUT-003 | Keep clean anchors but swap identity markings in an intermediate interval. | Full-clip perceptual gate fails; endpoint-only reviewer is rejected as incomplete coverage. |
+| MUT-004 | Adapter schema/model family changes after planning. | Revalidation blocks submission; old smoke acceptance does not transfer. |
+| MUT-005 | Mask is correct size but wrong camera/frame; invert alpha; feather after applying eye guard. | Provenance/semantics/guard failures; no repaired output promoted. |
+| MUT-006 | Kinematic cable follows hand exactly while stretching; omit a required collider. | Physics claim fails despite perfect endpoint tracking; collision coverage deficiency explicit. |
+| MUT-007 | Replace speech inside a clip but keep its pre-speech generated pixels cached; alter unrelated PCM by one sample. | Invalidation and exact PCM locality tests fail. |
+| MUT-008 | Add next-shot padding, relabel rate, apply retime twice or leave a stale camera marker. | Full decoded map/timing checks fail with frame witnesses. |
+| MUT-009 | Disconnect after provider acceptance; delay history; reuse provider ID for a different request. | Unknown/reconciliation handling, request binding and no blind resubmission. |
+| MUT-010 | Modify animated material with fixed transforms; corrupt last download byte; transfer dangling symlink; return input guide as output. | Cache/transfer/output-role failure before review or reuse. |
+| MUT-011 | Two storage paths share a volume; available bytes fall after planning; concurrent run requests same device. | Rechecked admission/ownership rejects excess work without deleting evidence. |
+| MUT-012 | Substitute a glyph, crop using preview coordinates or label 512p generation as native 1080p. | Artwork/resolution lineage fails; resampling is declared where legitimate. |
+| MUT-013 | All technical checks pass while a visible hand misses its prop or mouth onset is late. | Perceptual gate fails; no aggregate score promotes the film. |
+| MUT-014 | Compare cold/warm runtime, change endpoint and camera together, omit failed seeds. | Reject isolated causal/performance claim; preserve qualified workflow observation and full trial ledger. |
+| MUT-015 | Run with archive unavailable, changed root path and denied external network; hidden cloud encoder requests access. | Native fixture remains portable; unauthorised external submission blocked and reported. |
+| MUT-016 | Remove a linked reference, mark proposed tests PASS or have producer sign auditor field. | Package/evidence audit fails; no release claim. |
+| ADV-017 | Cancel concurrently with completion; provider cannot stop; another owner's job shares queue. | Monotonic truthful reconciliation, owned-job isolation and explicit unsupported/unknown cancellation. |
+| ADV-018 | Lost face detection, occluded eye, misleading high-confidence track or out-of-region target edge. | Fail or require review; never silently reuse previous tracking or accept an empty measurement region. |
+| ADV-019 | Different local absolute take placement, fractional-rate sample boundary and overlapping speakers. | Invariant local cue timing, explicit routing/mix and independent rational/sample checks. |
+| ADV-020 | Image-to-video response is longer, silent, corrupt, wrong dimensions or only a first-stage preview. | Decode/role/clock checks prevent final promotion; retain raw failure evidence. |
+| ADV-021 | Freeze native file bytes but change external texture/library/font/cache contents, including between validation and native read; preserve paths/size/mtime. | Dependency closure changes; immutable snapshot binds actual consumed bytes or execution rejects. No stale cache equivalence or mixed-input promotion. EXP-010, GATE-001/008. |
+| ADV-022 | Owned A completes and unrelated B starts after the ownership check but before global cancellation; repeat after a second queue read. | Scoped/atomic ownership precondition protects B, or cancellation is reported unsupported. Local locks and stale snapshots do not establish service exclusivity. EXP-009, GATE-008. |
+| ADV-023 | Request exact 18 seconds at `30000/1001` CFR; later provide explicit nominal rounding/tolerance variants. | Exact case rejects; permitted 539/540-frame variants report their actual rational durations; tighter tolerance fails. EXP-008, GATE-002. |
+| ADV-024 | Replace six-second interview with nine-second synchronous/audio-only variants, then a required twenty-second take in the shorter edit. | Fitting variants re-edit and preserve truthful picture/audio relationship; non-fitting variant returns a decision-required conflict without hidden truncation/stretching. EXP-007/008/015, GATE-002/006/010. |
+
+## Release and handover evidence
+
+Design acceptance checks completeness and consistency of PRD/spec/ADR/domain/contracts, realistic counterexamples, portable packaging and an independent design audit. It does not require or claim GPU rendering in this task. Record the same-family audit limitation visibly in the final handover.
+
+Executable-core acceptance later requires green deterministic regressions for every shipped critical expectation, meaningful mutation failures, package validation, exact command receipts and clean-project native rehearsal/rebake. Run security checks appropriate to parsers, paths, external requests and subprocess execution; record unavailable scanners as not run. Do not substitute a blanket coverage percentage for required cases.
+
+Adapter qualification adds live capability, real backend execution and holdout evidence. Production acceptance adds the actual complete film, final performance/audio/art review and no unresolved hard gates. Preserve failed recipes, receipts, assumptions, environment snapshots, accepted hashes, missing capabilities and reproducible next actions in the handover. An installed skill additionally needs an agentbox-source registration/install receipt and rollback record; staging alone does not provide them.

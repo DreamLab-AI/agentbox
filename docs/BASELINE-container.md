@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.7
+version: 0.5.8
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.8 (2026-10-23): ADR-2150 (proposed, partial, staged). Media-sidecar clients reconcile after an observation timeout, never resubmit blindly, and cancel only per job or report cancellation unsupported; no provider-global interrupt on a shared instance. Added under Proposed invariants until ADR-2150 is accepted, with one known divergence: Blender and ComfyUI cancellation are confirmed at request level, not at termination (the live ComfyUI build honours prompt-scoped interrupt)."
   - "0.5.7 (2026-10-23): CVE-009. Replace the affected nixpkgs nss-cacert output with the hash-pinned 20 October Mozilla extract and force Node onto that OpenSSL bundle; the post-build gate requires curl and Node to reject both eMudhra incident chains. Source-only change, staged for an owner-run rebuild."
   - "0.5.6 (2026-10-11): ADR-2137. Host-side Nix SBOM/OpenVEX evidence follows actual shipped layer paths; preparation and image CI retain reports outside the runtime image, with immutable-digest online scans. No runtime service, adapter, port or manifest capability is added. Rollout staged for the next rebuild."
   - "0.5.5 (2026-10-06): ADR-2132. Non-overlapping image layers, non-disruptive prepare and separate Agentbox-only activation; no automatic cleanup. Host registry cache is loopback-only and outside the runtime adapter spine."
@@ -227,6 +228,7 @@ agent-team teammates, ADR-2032 identity rules). Background programs run under
 - **Sovereign settlement remains partial (PRD-024, ADR-2096/2098/2099/2102/2103).** `[sidechain].enabled` now gates the interim JS `sidestr-producer`; child gates `mirror` and `faucet` enable `sidestr-mirror` and `sidestr-faucet`. The faucet bakes the standalone AGPL `sidestr-agent` from a pinned upstream revision, never into a permissive crate (ADR-2112). This operates the existing sealed testnet chain in `config/sidechain/`. No `sidestr-node`, `sidestr-bridge` or `:9097` bind is implemented. The broader design and three candidate invariants in [Sovereign settlement (PROPOSED)](#sovereign-settlement--proposed-2026-09-21) remain outside the compliance surface pending ratification.
 - **`~/.claude` ownership (ADR-2118) — partially rolled out.** The gateway override mounts the container-owned `agentbox-claude-home` volume plus a credential-only host bind; the connected-node overlay (`docker-compose.hp.yml`) that still bound the host's whole `~/.claude` was retired with the node (ADR-2140), so this rollout no longer has a second target. The credential bind remains writable (Q20 residual: a compromised in-container tool can still edit the host's `.claude`). `~/.config/claude` is still a host bind and the workspace still rides the legacy external MAD volume (Q43). Stack profiles (`$WORKSPACE/profiles/*/.claude`) receive neither the global tier nor credentials. Open.
 - Setup wizard exits after saving (`system-manifest.js:47`); operations moved to the AoE cockpit — legacy docs describing pseudo-user isolation (`gemini-user` etc.) are dead paths.
+- **Media-sidecar cancellation is not yet confirmed per job** (ADR-2150): `skills/blender/tools/blender-job.js` writes its `cancelled` marker once SIGTERM is signalled, before termination is confirmed, so Blender cancellation is request-level. `skills/comfyui/mcp-server/server.js` `cancelJob` posts `/interrupt` with `prompt_id`; the live ComfyUI (commit `faa7e494f3a0`) interrupts only when that prompt is running, but the adapter reports success on acceptance, not confirmation, and a build that ignored `prompt_id` would make the call global.
 
 ## Native pod: forge and mirror (ADR-2145)
 
@@ -448,6 +450,11 @@ that let a follower register it.
 On ratification these move into [Invariants](#invariants-must-not-silently-change) verbatim. Until
 then they are candidates, and no gate, test or review may cite them as binding.
 
+- **PROPOSED — media-sidecar clients never resubmit blindly and never interrupt a shared instance (ADR-2150).**
+  Media-sidecar clients reconcile after an observation timeout and never resubmit blindly;
+  cancellation is job-scoped or reported unsupported; no client issues a provider-global interrupt
+  on a shared instance. Known divergence until ratified: Blender and ComfyUI report cancellation at
+  request level, not at confirmed termination.
 - **PROPOSED — the chain is the ledger of record (ADR-2099).** A `did:nostr` balance is a fold over
   chain UTXOs, never a stored number; every existing sats ledger (solid-pod-rs `WebLedger`, the
   forum D1 adapter, the host's `FsPaymentStore`) is a derived, height-stamped view with a staleness

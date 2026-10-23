@@ -7,7 +7,7 @@ implementation_status: partial
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [agentbox.toml, flake.nix]
 owner: jjohare
 review_trigger: ingress_policy changes from allowlist, or the ADR-040 D3 governance-publisher key-split lands
@@ -443,3 +443,9 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+## Re-verification 2026-10-23 at `951ada931`
+
+Tripped by `flake.nix` alone (every other governed path is unchanged since `395380f71`: `git diff 395380f71..HEAD -- <other verified_paths>` is empty). The flake hunks are the eMudhra `cacert` override, the `agenticQePkg` (3.15.10) and `wranglerPkg` (4.151.3) pins, the `rufloConsole` pin move and its `rufloConsolePlugins` name, and `NODE_OPTIONS=--use-openssl-ca` in the container env list. Checked against committed `HEAD` in a detached worktree, not the working tree.
+
+Claims re-read at HEAD: `flake.nix:1898` `relayAllowedPubkeysCsv`, `:1909` explicit empty `pubkey_whitelist = [ ]`, `:1919` NIP-42 on for every policy but `open`, `:4522` `AGENTBOX_RELAY_POLICY` defaulting to `allowlist`; `agentbox.toml:150` `ingress_policy = "allowlist"`, `:156` `allowed_pubkeys`, `:186` `agent_event_auth = "nip98"` (agentbox.toml unchanged since `395380f71`); `services/nostr-pod-bridge/src/admission.rs:93` `DenyAllEmptyAllowlist`. No hunk is in the relay generator. The ADR-040 D3 key split is still pending, so `partial` stands. Commands: `grep -nE "relayAllowedPubkeysCsv|pubkey_whitelist|ingress_policy" flake.nix`, `grep -nE "ingress_policy|agent_event_auth" agentbox.toml`. The decision holds. Not run: the Rust admission tests (cargo writes target/); static check only, consistent with the record being `partial`.

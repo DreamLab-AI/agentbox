@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [lib/solid-pod-rs.nix, lib/solid-pod-rs.cargo-lock, flake.nix, agentbox.toml, scripts/ci/check-manifest-catalogue.js]
 owner: jjohare
 review_trigger: the first image rebuilt with this pin; any change to the forge block defaults (open_edit, allow_mainnet, mirror_follow); a solid-pod-rs release that changes the forge feature names; a second operator
@@ -83,3 +83,5 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+Re-verified 2026-10-23 at `951ada931e235ad45b61b2bef90b7e5c76f8d76c`: flake.nix delta does not touch solid-pod-rs. Re-read at HEAD: `solidPodRsLib` from `lib/solid-pod-rs.nix` (flake.nix:1558), `forge-full` feature gate (flake.nix:1574), forge launcher defaults `FORGE_ALLOW_MAINNET` and `FORGE_OPEN_EDIT` off (flake.nix:1619-1620), and the pin in `lib/solid-pod-rs.nix` is still v0.5.0-alpha.17 at rev 55bfec1f6d8f. `node scripts/ci/check-manifest-catalogue.js` passes. The first rebuilt image named in the review trigger was not run.

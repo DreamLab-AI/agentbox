@@ -1,0 +1,23 @@
+[package]
+name = "video-production-runtime"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Verification-first runtime tools for the video-production skill"
+default-run = "scene-exchange"
+
+[lib]
+name = "video_production_runtime"
+
+[[bin]]
+name = "scene-exchange"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+roxmltree = "0.21"
+
+# Keep this crate out of any enclosing workspace: the skill is self-contained.
+[workspace]

@@ -7,7 +7,7 @@ implementation_status: complete
 activation_status: live
 supersedes: []
 superseded_by: []
-verified_commit: 395380f711531c70fcee0d0c608d5e81d04c5d1f
+verified_commit: 951ada931e235ad45b61b2bef90b7e5c76f8d76c
 verified_paths: [config/nip98-proxy/proxy.mjs, flake.nix, docs/INGRESS-identity.md]
 owner: jjohare
 review_trigger: A second identity ingress is proposed, or aoe serve stops binding loopback
@@ -354,3 +354,9 @@ or vendor-routing behavior changes. Media checks pass: 23 Node tests, 12 graph
 client tests and 9 downloader tests. Runtime/Compose checks pass (27 tests),
 role-supervisor checks pass (25), skills lint and loopback-port checks pass.
 Sidecar image activation is tracked separately in the host deployment receipt.
+
+## Re-verification 2026-10-23 at `951ada931`
+
+Tripped by `flake.nix` alone (every other governed path is unchanged since `395380f71`: `git diff 395380f71..HEAD -- <other verified_paths>` is empty). The flake hunks are the eMudhra `cacert` override, the `agenticQePkg` (3.15.10) and `wranglerPkg` (4.151.3) pins, the `rufloConsole` pin move and its `rufloConsolePlugins` name, and `NODE_OPTIONS=--use-openssl-ca` in the container env list. Checked against committed `HEAD` in a detached worktree, not the working tree.
+
+Claims re-read at HEAD: `flake.nix:2914` ("only IDENTITY ingress") and `:2921` (`aoe serve ... --behind-proxy --host 127.0.0.1 --port 9095`), `[program:nip98-proxy]` at `:2942`, and the 9096 publish note at `:2941`; `config/nip98-proxy/proxy.mjs` and `docs/INGRESS-identity.md` are unchanged since `395380f71`, so the header strip and re-injection, `nip98_verifier_unavailable` and boot-fatal config citations are unaltered. No hunk touches the proxy program or its environment. Commands: `grep -nE "only IDENTITY ingress|aoe serve|program:nip98-proxy" flake.nix`, `NODE_PATH=management-api/node_modules node config/nip98-proxy/selftest.mjs` (OK, 0 failures, 0 skips; covers spoofed headers, absent verifier, removed allowlist entries). The decision holds. Not checked: live door inventory (already a stated gap).
