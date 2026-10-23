@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-18T15:25:41.502Z",
+  "captured_at": "2026-10-23T11:11:52.322Z",
   "supervisor": {
     "agentbox-hook-drain": "RUNNING",
     "agentbox-mcp-hub": "RUNNING",
@@ -49,6 +49,10 @@
     "xvnc": "RUNNING"
   },
   "containers": {
+    "isaac-sim": {
+      "state": "running",
+      "project": "agentbox"
+    },
     "gui-tools-service": {
       "state": "running",
       "project": "agentbox"
