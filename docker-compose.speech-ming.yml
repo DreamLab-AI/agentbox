@@ -1,0 +1,96 @@
+# Ming-3.0 speech candidate (experimental, additive). Evaluated against the shared
+# speech plane in docker-compose.speech.yml (nemotron-asr + pocket-tts); it does
+# NOT replace or modify those services. Promote only if it measures faster.
+#
+# Separate compose project so `agentbox.sh` speech lifecycle is unaffected.
+# Run ONE profile at a time: they share a single GPU.
+#
+#   docker compose -p agentbox-speech-ming -f docker-compose.speech-ming.yml build
+#   docker compose -p agentbox-speech-ming -f docker-compose.speech-ming.yml --profile tts-05b up -d
+#   (then: python3 -I bench_tts.py ming http://ming-tts:8000/v1/audio/speech inclusionAI/Ming-3.0-tts-0.5B wav 10)
+#
+# Build/launch from the host shell (tmux tab 6): bind and build paths resolve on the host.
+name: agentbox-speech-ming
+
+x-ming: &ming
+  build:
+    context: ./voice/ming
+  image: agentbox-ming-speech:local
+  restart: "no"
+  init: true
+  shm_size: 32gb
+  ipc: host
+  networks: [visionclaw]
+  volumes:
+    - ming-models:/models
+  # environment lives on each service: a YAML merge override replaces the whole map, and
+  # the ports gate rejects a key defined both here and on the service as a duplicate.
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            # PCI-order index 2: the idle RTX 6000 Ada. Override with MING_GPU.
+            device_ids: ["${MING_GPU:-2}"]
+            capabilities: [gpu]
+
+services:
+  ming-tts-05b:
+    <<: *ming
+    profiles: [tts-05b]
+    container_name: ming-tts
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      SGLANG_OMNI_STARTUP_TIMEOUT: "3600"
+      MING_MODEL: inclusionAI/Ming-3.0-tts-0.5B
+    ports: ["127.0.0.1:8911:8000"]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      start_period: 15m
+      retries: 90
+
+  ming-tts-tiny:
+    <<: *ming
+    profiles: [tts-tiny]
+    container_name: ming-tts
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      SGLANG_OMNI_STARTUP_TIMEOUT: "3600"
+      MING_MODEL: inclusionAI/Ming-3.0-tts-tiny
+    ports: ["127.0.0.1:8911:8000"]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      start_period: 30m
+      retries: 180
+
+  ming-asr:
+    <<: *ming
+    profiles: [asr]
+    container_name: ming-asr
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      SGLANG_OMNI_STARTUP_TIMEOUT: "3600"
+      MING_MODEL: inclusionAI/Ming-3.0-asr-tiny
+    ports: ["127.0.0.1:8912:8000"]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      start_period: 30m
+      retries: 180
+
+networks:
+  visionclaw:
+    external: true
+    name: visionclaw_network
+
+volumes:
+  ming-models:
+    name: agentbox-ming-models

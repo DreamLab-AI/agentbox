@@ -48,7 +48,9 @@ unified speech plane (on visionclaw_network)
 | `unmute-override.yml` | Runtime overrides for shared speech, LLM = tab0-bridge, `KYUTAI_LLM_API_KEY=${BRIDGE_TOKEN}`, and traefik off :80. |
 | `nemotron/` | Nemotron 3.5 cache-aware streaming ASR image and compatibility service. |
 | `pocket/` | Pinned CPU Pocket TTS image, service API, cancellation patch and contract tests. |
+| `ming/` | Experimental Ming-3.0 (SGLang-Omni) speech image, built on the published `hongccc/sglang-omni` image. |
 | `../docker-compose.speech.yml` | Unified Nemotron ASR + Pocket TTS plane, started with core AgentBox. |
+| `../docker-compose.speech-ming.yml` | Additive, profile-gated Ming-3.0 candidate (separate project, one GPU, one profile at a time). Not part of `agentbox.sh up`; promote over Nemotron/Pocket only if it measures faster. |
 | `../docker-compose.voice.yml` | The Caddy console sidecar service (browsercontainer pattern). |
 
 The Kyutai Unmute fork itself is **not vendored** (26 GB, its own `.git`, an
