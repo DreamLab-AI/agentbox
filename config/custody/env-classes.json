@@ -502,6 +502,7 @@
         "INSTALLED_JSON",
         "ISAAC_SIM_GID",
         "ISAAC_SIM_GPU_UUID",
+        "MING_GPU",
         "ISAAC_SIM_MAX_CONCURRENT",
         "ISAAC_SIM_MIN_FREE_GIB",
         "ISAAC_SIM_PRIVACY_CONSENT",
