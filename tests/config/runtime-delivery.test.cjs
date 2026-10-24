@@ -4,10 +4,21 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { Delivery, layerReport, main } = require('../../scripts/runtime-delivery.cjs');
+const { Delivery, layerReport, nixBuildBudget, main } = require('../../scripts/runtime-delivery.cjs');
 
 const digest = `sha256:${'a'.repeat(64)}`;
 const live = { Id: 'live-container', Image: digest, State: { StartedAt: 'unchanged' } };
+test('Nix build budget stays within 60% of available CPUs', () => {
+  assert.deepEqual(nixBuildBudget(72), { maxJobs: 10, cores: 4 });
+  assert.deepEqual(nixBuildBudget(12), { maxJobs: 1, cores: 4 });
+  assert.deepEqual(nixBuildBudget(8), { maxJobs: 1, cores: 4 });
+  assert.deepEqual(nixBuildBudget(2), { maxJobs: 1, cores: 1 });
+  assert.deepEqual(nixBuildBudget(1), { maxJobs: 1, cores: 1 });
+  for (let cpus = 2; cpus <= 128; cpus++) {
+    const { maxJobs, cores } = nixBuildBudget(cpus);
+    assert.ok(maxJobs * cores <= Math.floor(cpus * 0.6));
+  }
+});
 test('public CLI recognises prepare, activate and rebuild help without Docker operations', () => {
   for (const command of ['prepare', 'activate', 'rebuild']) {
     const r = spawnSync('bash', [path.join(__dirname, '../../agentbox.sh'), command, '--help'], { encoding: 'utf8' });
@@ -108,6 +119,9 @@ for (const mode of ['daemon', 'registry', 'none']) {
     const build = f.calls.find(c => c.cmd === 'nix');
     assert.ok(build.args.includes('.#runtime.securityEvidence'));
     assert.ok(build.args.includes('.#security-tools'));
+    const { maxJobs, cores } = nixBuildBudget();
+    assert.equal(build.args[build.args.indexOf('--max-jobs') + 1], String(maxJobs));
+    assert.equal(build.args[build.args.indexOf('--cores') + 1], String(cores));
     assert.equal(fs.existsSync(path.join(f.flow.state, 'candidate.json')), mode !== 'none');
     const smoke = f.calls.find(c => c.cmd === 'docker' && c.args[0] === 'run' && c.args.includes('--rm'));
     if (mode !== 'none') {

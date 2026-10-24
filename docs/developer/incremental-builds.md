@@ -14,8 +14,11 @@ existing sidecars are outside this workflow's mutation boundary.
 Preparation does not invoke `compose up`, `down`, `stop`, `restart`, credential
 sync, or the candidate entrypoint. The offline smoke container has no network,
 production volumes or credentials. The running container's ID and start time
-must remain unchanged. Nix builds use two jobs and four cores per job to leave
-headroom for ongoing work. An exclusive host `flock` prevents overlapping runs.
+must remain unchanged. Nix builds budget at most 60% of the CPUs available to
+the host process, with up to four cores per job. For 72 available CPUs this is
+10 jobs × 4 cores, leaving headroom for ongoing work. These Nix settings guide
+build parallelism; they are not a hard cgroup CPU or memory cap. An exclusive
+host `flock` prevents overlapping runs.
 
 ## Security report
 

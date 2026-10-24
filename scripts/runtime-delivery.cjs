@@ -5,9 +5,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const sha = data => crypto.createHash('sha256').update(data).digest('hex');
 const readJSON = file => JSON.parse(fs.readFileSync(file, 'utf8'));
+function nixBuildBudget(availableCpus = os.availableParallelism()) {
+  const budget = Math.max(1, Math.floor(availableCpus * 0.6));
+  const cores = Math.min(4, budget);
+  return { maxJobs: Math.max(1, Math.floor(budget / cores)), cores };
+}
 function atomicJSON(file, value) {
   const tmp = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
@@ -157,9 +163,10 @@ class Delivery {
     const sourceDirty = !!this.capture('git', ['status', '--porcelain', '--untracked-files=no']);
     const manifestChecksum = this.manifestChecksum();
     this.run('bash', ['scripts/refresh-compose.sh']);
+    const { maxJobs, cores } = nixBuildBudget();
     const outputs = JSON.parse(this.capture('nix', ['build', '.#runtime', '.#runtime.copyTo',
       '.#runtime.securityEvidence', '.#security-tools',
-      '--out-link', path.join(generation, 'result'), '--json', '--max-jobs', '2', '--cores', '4']));
+      '--out-link', path.join(generation, 'result'), '--json', '--max-jobs', String(maxJobs), '--cores', String(cores)]));
     const paths = outputs.map(o => o.outputs.out);
     const imagePath = paths.find(p => p.endsWith('-image-agentbox.json'));
     const copier = paths.find(p => fs.existsSync(path.join(p, 'bin/copy-to')));
@@ -290,7 +297,7 @@ function main(args, injectedFlow = null) {
     if (!prepareOnly) flow.activate();
   } else throw new Error(`Unknown runtime delivery command: ${command}`);
 }
-module.exports = { Delivery, layerReport, persistentMounts, sha, main };
+module.exports = { Delivery, layerReport, persistentMounts, nixBuildBudget, sha, main };
 if (require.main === module) {
   try { main(process.argv.slice(2)); }
   catch (error) { console.error(`ERROR: ${error.message}`); process.exitCode = 1; }
