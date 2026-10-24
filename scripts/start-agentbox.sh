@@ -1848,6 +1848,7 @@ action="$(wt_menu "Next Action" "Choose what to do with the updated configuratio
 case "${action}" in
   build|build-load)
     ensure_command_with_install nix "Nix with flakes" "nix" || { echo "Nix required for image build."; exit 1; }
+    export NIX_CONFIG="$(node "${SCRIPT_DIR}/nix-build-budget.cjs" --nix-config)"
     nix build .#runtime
     # nix2container output is an OCI manifest JSON (not a tarball); load via
     # the flake's copyToDockerDaemon helper which uses skopeo internally.

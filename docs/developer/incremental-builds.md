@@ -17,8 +17,11 @@ production volumes or credentials. The running container's ID and start time
 must remain unchanged. Nix builds budget at most 60% of the CPUs available to
 the host process, with up to four cores per job. For 72 available CPUs this is
 10 jobs × 4 cores, leaving headroom for ongoing work. These Nix settings guide
-build parallelism; they are not a hard cgroup CPU or memory cap. An exclusive
-host `flock` prevents overlapping runs.
+build parallelism; they are not a hard cgroup CPU or memory cap. The main
+`agentbox.sh` build routes, security-report builds and the setup wizard use the
+same budget. Direct `nix build` calls outside these entry points remain under
+the host's Nix configuration. An exclusive host `flock` prevents overlapping
+runs.
 
 ## Security report
 

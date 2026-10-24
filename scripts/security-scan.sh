@@ -49,6 +49,7 @@ trap 'rm -rf -- "$scratch"' EXIT
 need_evidence=false
 [[ $command == report || -z $report ]] && need_evidence=true
 if [[ -z $tools || ($need_evidence == true && -z $evidence) ]]; then
+  export NIX_CONFIG="$(node "$repo/scripts/nix-build-budget.cjs" --nix-config)"
   attrs=()
   [[ -n $tools ]] || attrs+=(".#security-tools")
   [[ $need_evidence != true || -n $evidence ]] || attrs+=(".#$variant.securityEvidence")

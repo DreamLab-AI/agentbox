@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { Delivery, layerReport, nixBuildBudget, main } = require('../../scripts/runtime-delivery.cjs');
+const { nixBuildConfig } = require('../../scripts/nix-build-budget.cjs');
 
 const digest = `sha256:${'a'.repeat(64)}`;
 const live = { Id: 'live-container', Image: digest, State: { StartedAt: 'unchanged' } };
@@ -18,6 +19,7 @@ test('Nix build budget stays within 60% of available CPUs', () => {
     const { maxJobs, cores } = nixBuildBudget(cpus);
     assert.ok(maxJobs * cores <= Math.floor(cpus * 0.6));
   }
+  assert.match(nixBuildConfig('sandbox = true'), /^sandbox = true\nmax-jobs = \d+\ncores = \d+$/);
 });
 test('public CLI recognises prepare, activate and rebuild help without Docker operations', () => {
   for (const command of ['prepare', 'activate', 'rebuild']) {
@@ -122,6 +124,7 @@ for (const mode of ['daemon', 'registry', 'none']) {
     const { maxJobs, cores } = nixBuildBudget();
     assert.equal(build.args[build.args.indexOf('--max-jobs') + 1], String(maxJobs));
     assert.equal(build.args[build.args.indexOf('--cores') + 1], String(cores));
+    assert.match(build.opts.env.NIX_CONFIG, new RegExp(`max-jobs = ${maxJobs}\\ncores = ${cores}$`));
     assert.equal(fs.existsSync(path.join(f.flow.state, 'candidate.json')), mode !== 'none');
     const smoke = f.calls.find(c => c.cmd === 'docker' && c.args[0] === 'run' && c.args.includes('--rm'));
     if (mode !== 'none') {

@@ -5,15 +5,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const os = require('node:os');
 const { spawnSync } = require('node:child_process');
+const { nixBuildBudget, nixBuildConfig } = require('./nix-build-budget.cjs');
 const sha = data => crypto.createHash('sha256').update(data).digest('hex');
 const readJSON = file => JSON.parse(fs.readFileSync(file, 'utf8'));
-function nixBuildBudget(availableCpus = os.availableParallelism()) {
-  const budget = Math.max(1, Math.floor(availableCpus * 0.6));
-  const cores = Math.min(4, budget);
-  return { maxJobs: Math.max(1, Math.floor(budget / cores)), cores };
-}
 function atomicJSON(file, value) {
   const tmp = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 });
@@ -59,7 +54,10 @@ class Delivery {
   constructor(repo, runner = run) {
     this.repo = repo;
     this.state = path.join(repo, '.agentbox-build');
-    this.run = (cmd, args, opts = {}) => runner(cmd, args, { cwd: repo, ...opts });
+    const buildEnv = { NIX_CONFIG: nixBuildConfig() };
+    this.run = (cmd, args, opts = {}) => runner(cmd, args, {
+      cwd: repo, ...opts, env: { ...buildEnv, ...opts.env },
+    });
     this.capture = (cmd, args, opts = {}) => this.run(cmd, args, { capture: true, ...opts });
   }
   inspect(kind, name) {

@@ -758,6 +758,7 @@ cmd_up() {
     fi
 
     if [[ "$do_build" -eq 1 ]]; then
+        export NIX_CONFIG="$(node "${SCRIPT_DIR}/scripts/nix-build-budget.cjs" --nix-config)"
         bash "${SCRIPT_DIR}/scripts/refresh-compose.sh" || return 1
         echo -e "${CYAN}Building Nix runtime image...${NC}"
         nix build .#runtime
@@ -931,6 +932,7 @@ cmd_build() {
         *) echo -e "${RED}Unknown variant: ${variant}. Use runtime, desktop, or full.${NC}"; exit 1 ;;
     esac
 
+    export NIX_CONFIG="$(node "${SCRIPT_DIR}/scripts/nix-build-budget.cjs" --nix-config)"
     bash "${SCRIPT_DIR}/scripts/refresh-compose.sh" || return 1
     echo -e "${CYAN}Building Nix image variant: ${variant}...${NC}"
     nix build ".#${variant}"
