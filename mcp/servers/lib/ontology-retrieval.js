@@ -15,6 +15,7 @@
 const budget = require('./ontology-budget');
 const { createTelemetrySink } = require('./ontology-telemetry');
 const { createHash } = require('node:crypto');
+const ontologyJev = require('./ontology-jev');
 
 const VC_PREFIXES = [
   'PREFIX vc: <https://narrativegoldmine.com/ns/v1#>',
@@ -75,7 +76,10 @@ function cacheKeyFieldValue(v) {
 function cacheKey(req) {
   const s = CACHE_KEY_FIELDS
     .map((f) => f + '=' + cacheKeyFieldValue(req[f]))
-    .join('|');
+    .join('|')
+    // Jev option (AB-24-S1-01/02): appended ONLY when a Jev evaluator is configured, so with the
+    // flags off every key is byte-identical to the pre-change key.
+    + (req.jev ? '|jev=' + req.jev : '');
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
@@ -160,7 +164,7 @@ function cacheEntrySatisfies(entry, cur) {
   if (!entry || !entry.result) return { ok: false, violations: ['no_entry'] };
   const st = entry.constraints || {};
   const res = entry.result;
-  for (const f of ['domain', 'provenance', 'backend', 'generation', 'min_maturity', 'model_tier', 'mode', 'depth', 'full']) {
+  for (const f of ['domain', 'provenance', 'backend', 'generation', 'min_maturity', 'model_tier', 'mode', 'depth', 'full', 'jev']) {
     if (Object.prototype.hasOwnProperty.call(st, f)
       && cacheKeyFieldValue(st[f]) !== cacheKeyFieldValue(cur[f])) {
       violations.push(f);
@@ -177,6 +181,17 @@ function cacheEntrySatisfies(entry, cur) {
 function normaliseCacheEntry(cached) {
   if (cached && typeof cached === 'object' && cached.result) return cached;
   return { result: cached, constraints: null };
+}
+
+/** The record of what the Jev option saw and did, attached to a result only when it succeeded. */
+function ontologyJev_annotation(r, { skipped }) {
+  return {
+    question_set_version: r.question_set_version,
+    model: r.model,
+    relevance: r.relevance || null,
+    rerank: r.rerank || null,
+    skipped,
+  };
 }
 
 /** Minimal in-process TTL LRU. Used by default; injectable for tests. */
@@ -276,6 +291,9 @@ function createOntologyRetrieval(deps = {}) {
   // every result so a caller can never mistake one backend's answer for
   // another's, and so a configured-but-unreachable façade is a NAMED outcome.
   const backend = normaliseBackend(deps.backend);
+  // Jev option (AB-24-S1-01/02): null unless explicitly configured, in which case every line
+  // below that mentions `jev` is skipped and the pre-change path runs unchanged.
+  const jev = deps.jev || null;
 
   async function ask(rawReq = {}) {
     const t0 = clock();
@@ -295,6 +313,9 @@ function createOntologyRetrieval(deps = {}) {
       // different answers to the same question — never one cache entry.
       generation: rawReq.generation != null ? String(rawReq.generation) : backend.generation,
     };
+    // An explicit per-request scaffold=false always wins (ADR-139): no Jev request is ever built for it.
+    const jevActive = !!jev && rawReq.scaffold !== false;
+    if (jevActive) req.jev = jev.version;
     const cfg = budget.tierConfig(req.model_tier);
     if (req.mode == null) req.mode = cfg.mode;
     if (req.depth == null) req.depth = cfg.depth;
@@ -339,6 +360,7 @@ function createOntologyRetrieval(deps = {}) {
     // Constraints the answer must satisfy, in the same vocabulary the key uses.
     const constraints = {};
     for (const f of CACHE_KEY_FIELDS) constraints[f] = req[f];
+    if (jevActive) constraints.jev = req.jev;
 
     const key = cacheKey(req);
     const cached = cache.get(key);
@@ -404,6 +426,25 @@ function createOntologyRetrieval(deps = {}) {
       return out;
     }
 
+    // ---- Jev option (annotate / propose; authority stays below) ----
+    // Evaluated over the candidates the gates above already admitted. A failed evaluation leaves
+    // `jevResult` null: the result is then byte-identical to the flag-off result and is NOT
+    // cached under the Jev key (a transport fault must not be pinned for the TTL).
+    let jevResult = null;
+    let cacheable = true;
+    if (jevActive) {
+      jevResult = await jev.evaluate(req.query, seeds).catch(() => ({ ok: false, reason: 'error' }));
+      if (!jevResult || !jevResult.ok) { jevResult = null; cacheable = false; }
+    }
+    if (jevResult && jevResult.skip) {
+      const out = empty({ jev: ontologyJev_annotation(jevResult, { skipped: true }) });
+      cache.set(key, { result: out, constraints });
+      return out;
+    }
+    if (jevResult && jevResult.rerank && jevResult.rerank.applied) {
+      seeds = jev.permute(seeds, jevResult.rerank.proposed_order);
+    }
+
     // ---- expand (fail-open, but NEVER silently) ----
     let expandTriples = [];
     if (req.mode === 'expand' && req.depth > 0) {
@@ -454,7 +495,8 @@ function createOntologyRetrieval(deps = {}) {
       latency_ms: clock() - t0,
     };
     if (degradedError) out.error = degradedError;
-    cache.set(key, { result: out, constraints });
+    if (jevResult) out.jev = ontologyJev_annotation(jevResult, { skipped: false });
+    if (cacheable) cache.set(key, { result: out, constraints });
     telemetry.record({
       event: 'ask', tier: req.model_tier, mode: req.mode,
       seeds: seeds.length, tokens: clamped.tokens, truncated: clamped.truncated,
@@ -742,6 +784,7 @@ function createDefaultRetrieval(opts = {}) {
       seedFn: loomSeedFn(loomFetch),
       expandFn: loomExpandFn(loomFetch),
       cache: opts.cache, clock: opts.clock, minMaturity: opts.minMaturity, telemetry, backend,
+      jev: opts.jev !== undefined ? opts.jev : ontologyJev.fromEnv({ env: opts.env }),
     });
   }
   const vcFetch = opts.vcFetch || makeVcFetch(opts);
@@ -761,6 +804,7 @@ function createDefaultRetrieval(opts = {}) {
     minMaturity: opts.minMaturity,
     telemetry,
     backend,
+    jev: opts.jev !== undefined ? opts.jev : ontologyJev.fromEnv({ env: opts.env }),
   });
 }
 
