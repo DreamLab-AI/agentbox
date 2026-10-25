@@ -638,6 +638,21 @@
         "accepted_egress": "ADR-2135 (accepted): the done checkpoint already sends the clamped final text and the compact tool-call list. The option adds one Noul question to that request and no further content.",
         "markers": [],
         "notes": "Same state as the done score (final text, tool name/ok/first command line; never tool output). Can only ADD the done advisory line when an uncovered claim reads at or above `claim_threshold`; never removes one and never alters an exit code or receipt. Proposed research candidate; no measured uplift."
+      },
+      {
+        "id": "manifest-plan-jev-option",
+        "route": "Jev option on the manifest planner, `./agentbox.sh config plan` (AB-05-S1-01)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "LAN",
+        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
+        "gate": "INACTIVE. `AGENTBOX_JEV_MANIFEST_PLAN=1`, unset by default, and an operator running the subcommand; no API route and no automatic caller.",
+        "accepted_egress": "None yet: a new route, deliberately local-only because a request can name private configuration. Needs an ADR before it can be activated.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Sent: the operator's request (at most 500 characters), the catalogue names and summaries of boolean gates, and the names of satisfied prerequisites; never agentbox.toml values or secrets. Propose-only: prints a validated one-line diff and never edits agentbox.toml; every failure exits 3 with nothing written. The model chooses a catalogue entry only; key and value come from the catalogue and the request wording, parsed in code. Proposed research candidate; no measured uplift."
       }
     ]
   }

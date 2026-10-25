@@ -2434,6 +2434,19 @@ _systemone_facade_url() {
     return 1
 }
 
+# config plan "<request>" — AB-05-S1-01: READ-ONLY, PROPOSE-ONLY. Prints a validated one-line diff of
+# agentbox.toml for a plain-language request; never edits it. Needs AGENTBOX_JEV_MANIFEST_PLAN=1 and a
+# declared-local System One endpoint; otherwise exits 3 ("no plan available") with nothing written.
+# config validate — the existing manifest validator on agentbox.toml.
+cmd_config() {
+    local sub="${1:-}"; shift || true
+    case "$sub" in
+        plan)     node "${SCRIPT_DIR}/scripts/config-plan.cjs" "$@" ;;
+        validate) node "${SCRIPT_DIR}/scripts/agentbox-config-validate.js" "${1:-${SCRIPT_DIR}/agentbox.toml}" ;;
+        *)        echo "Usage: $0 config plan \"<request>\" | validate [file]" >&2; return 2 ;;
+    esac
+}
+
 cmd_systemone() {
     local subcmd="${1:-help}"
     shift 2>/dev/null || true
@@ -2877,6 +2890,7 @@ case "${CMD:-}" in
     isaac-sim)         cmd_isaac_sim "$@" ;;
     openmed)           cmd_openmed "$@" ;;
     voice)             cmd_voice "$@" ;;
+    config)            cmd_config "$@" ;;
     systemone)         cmd_systemone "$@" ;;
     model-router)      cmd_model_router "$@" ;;
     xr-runtime)        cmd_xr_runtime "$@" ;;
