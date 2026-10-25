@@ -609,6 +609,22 @@
           "no-accepted-record"
         ],
         "notes": "Sent: the transcript, the parsed verb/subject/object and the list of allowed command families. May annotate the response or hold a doubted state-changing intent for clarification (422); thresholds default to never. It never chooses a verb, subject or target, and signing, mandate and dispatch are untouched. Proposed research candidate; no measured uplift."
+      },
+      {
+        "id": "approval-review-jev-option",
+        "route": "Jev option on the pending-approvals listing, `GET /v1/approvals` (AB-14-S1-01)",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "LAN",
+        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
+        "gate": "INACTIVE. `AGENTBOX_JEV_APPROVAL_REVIEW=1`, unset by default. The decide route (`POST /v1/approvals/:id/decide`) does not consult it.",
+        "accepted_egress": "None yet: a new route, deliberately local-only because an operation can carry commands, paths and identifiers. Needs an ADR before it can be activated.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Sent per listed request (at most 10): the title, authority class, requester rationale, exact operation and task properties. Adds an advisory `review_aid` (per-obligation addressed probability, review urgency) and nothing else; it never approves, signs, reorders, hides or alters authority. Proposed research candidate; no measured uplift."
       }
     ]
   }

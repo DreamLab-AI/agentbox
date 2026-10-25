@@ -29,6 +29,7 @@
  */
 
 const authz = require('../lib/authz');
+const approvalReview = require('../lib/approval-review-jev');
 
 async function approvalsRoutes(fastify, options) {
   const { logger } = options;
@@ -41,6 +42,9 @@ async function approvalsRoutes(fastify, options) {
     try { manifest = require('../adapters/manifest-loader').loadManifest(); }
     catch (_) { manifest = {}; }
   }
+
+  // Injectable for tests; the default is the Jev option, which returns its input unless switched on.
+  const annotateApprovals = options.annotateApprovals || approvalReview.annotate;
 
   /** The authority consumer, injected at registration or decorated on fastify. */
   function consumer() {
@@ -84,7 +88,10 @@ async function approvalsRoutes(fastify, options) {
     if (!c || typeof c.listPending !== 'function') {
       return reply.send({ approvals: [], count: 0, wired: false, note: 'authority consumer not wired (no relay/signer)' });
     }
-    const approvals = c.listPending();
+    // Jev option (AB-14-S1-01; off unless AGENTBOX_JEV_APPROVAL_REVIEW=1): an advisory `review_aid` per
+    // request. Returns the same array untouched on any miss; it never reorders or hides a request and
+    // the decide route below does not consult it.
+    const approvals = await annotateApprovals(c.listPending());
     reply.send({ approvals, count: approvals.length, wired: true });
   });
 
