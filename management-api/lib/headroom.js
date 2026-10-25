@@ -400,8 +400,16 @@ function ccrStats() {
   }
 }
 
+/**
+ * Jev option (AB-26-S1-01, off by default): rank authorised excerpts for the task, then compress
+ * each in that order. Lazy so the flag-off module graph is unchanged. See headroom-evidence.js.
+ */
+function compressSelected(task, excerpts, slot, opts) {
+  return require('./headroom-evidence').compressSelected(task, excerpts, slot, { compress, ...(opts || {}) });
+}
+
 module.exports = {
-  isAvailable, init, compress, retrieve, stats,
+  isAvailable, init, compress, retrieve, stats, compressSelected,
   detectContentType, smartCrush, compressLog, compressDiff,
   ccrRetrieve, ccrStats,
 };
