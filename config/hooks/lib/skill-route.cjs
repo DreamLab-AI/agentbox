@@ -29,6 +29,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const jevOption = require('./jev-option.cjs');
 
 const DEFAULT_API = 'https://api.typesafe.ai/v1/systemone';
 const DEFAULT_MODEL = 'jev-latest';
@@ -396,6 +397,8 @@ function config(env = process.env, opts = {}) {
     claudeDir: env.AGENTBOX_SKILL_ROUTE_CLAUDE_DIR === '0' ? '' :
       (env.AGENTBOX_SKILL_ROUTE_CLAUDE_DIR || env.CLAUDE_CONFIG_DIR || path.join(env.HOME || os.homedir(), '.claude')),
     key: env.TYPESAFE_API_KEY || '',
+    // The Jev option (AB-22-S1-01/-04): both refinements off unless their env flag is set.
+    jev: jevConfig(env),
     // ADR-2139: behind the loopback proxy the vendor key lives in the proxy; the
     // consumer sends none (the proxy drops any it receives). Projected with the
     // endpoint by system-one-project, never inferred from the URL.
@@ -419,6 +422,126 @@ function clampPrompt(prompt) {
 
 function skip(reason, extra = {}) { return { outcome: 'skipped', reason, ...extra }; }
 function fail(reason, extra = {}) { return { outcome: 'failed', reason, ...extra }; }
+
+
+/**
+ * The Jev option for routing (AB-22-S1-01 / AB-22-S1-04): two opt-in refinements that ride in
+ * the SAME request as the Choice, so the hook's single 4 s / 0-retry call is unchanged.
+ *   • `AGENTBOX_JEV_SKILL_VERIFY=1` (S1-01) — one Noul per first-stage (BM25) shortlist
+ *     candidate: does the turn satisfy that skill's stated prerequisites and none of its
+ *     when-NOT-to-use boundaries? A pick whose Noul is below `vetoBelow` becomes `none`
+ *     (inject nothing); candidates at or above `listAtLeast` are listed beside the pick.
+ *   • `AGENTBOX_JEV_SKILL_INTENT=1` (S1-04) — the Choice is asked over opaque capability ids
+ *     (`cap_01`…) instead of skill names, so the pick cannot ride on a name or path; names are
+ *     restored in code and validated against the candidate set. A facet Choice (`operation`)
+ *     and a Noul (`multi_intent`) are reported on the outcome and never gate.
+ * Both default off. Both defaults for the two thresholds ACCEPT NOTHING (`vetoBelow` 0 never
+ * vetoes, `listAtLeast` 2 never lists), so even a switched-on option leaves the pick and the
+ * injected line exactly as before until thresholds fitted on labelled data are set. A turn
+ * that names a skill explicitly bypasses both. Authority is unchanged: the Skill tool still
+ * loads only a validated name, and nothing here loads, writes or approves anything.
+ */
+const JEV_SKILL_QUESTION_SET = 'skill-route-jev/1';
+const JEV_FACETS = {
+  create: 'The request asks for something new to be built, written or generated.',
+  modify: 'The request asks for an existing artifact to be changed, fixed or refactored.',
+  investigate: 'The request asks for something to be found, diagnosed, reviewed or measured.',
+  explain: 'The request asks for an explanation, summary or answer, with no change to any artifact.',
+  operate: 'The request asks for a system to be run, deployed, configured or administered.',
+  none: 'The request is conversational, a clarification, or fits none of the other facets.',
+};
+
+function jevConfig(env = process.env) {
+  return {
+    verify: jevOption.enabled(env, 'AGENTBOX_JEV_SKILL_VERIFY'),
+    intent: jevOption.enabled(env, 'AGENTBOX_JEV_SKILL_INTENT'),
+    k: asInt(env.AGENTBOX_JEV_SKILL_K, 3),
+    vetoBelow: asRate(env.AGENTBOX_JEV_SKILL_VETO_BELOW, 0),
+    listAtLeast: asRate(env.AGENTBOX_JEV_SKILL_LIST_AT_LEAST, 2),
+  };
+}
+
+/** True when the turn names one of the candidate skills as an instruction ("use the X skill", "X skill"). */
+function explicitSkillRequest(text, names) {
+  const lower = text.toLowerCase();
+  return names.some((n) => {
+    const base = n.toLowerCase().replace(/^.*:/, '');
+    const esc = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b(?:use|invoke|run|load|apply)\\s+(?:the\\s+)?${esc}\\b|\\b${esc}\\s+skill\\b`).test(lower);
+  });
+}
+
+/** Top-k candidate names by the local BM25 ranker, ties to the lower candidate index. */
+function shortlist(text, criteria, k) {
+  const names = Object.keys(criteria);
+  const docs = names.map((n) => tokenise(`${n}: ${stripExclusion(criteria[n])}`));
+  const scores = bm25(tokenise(text), docs);
+  return names.map((n, i) => ({ n, s: scores[i], i })).sort((a, b) => b.s - a.s || a.i - b.i)
+    .slice(0, k).filter((x) => x.s > 0).map((x) => x.n);
+}
+
+/** The Jev option's plan for one turn, or null when neither refinement applies. */
+function jevPlan(text, criteria, jc) {
+  if (!jc || (!jc.verify && !jc.intent)) return null;
+  const names = Object.keys(criteria);
+  if (names.length < 2 || explicitSkillRequest(text, names)) return null;
+  const plan = { criteria, idToName: null, shortlist: [], extra: {}, questionSet: JEV_SKILL_QUESTION_SET };
+  if (jc.intent) {
+    plan.idToName = {};
+    plan.criteria = {};
+    names.forEach((n, i) => {
+      const id = `cap_${String(i + 1).padStart(2, '0')}`;
+      plan.idToName[id] = n;
+      plan.criteria[id] = criteria[n];
+    });
+    plan.extra.operation = jevOption.choiceQuestion(
+      'Which kind of work does `user_request` mainly ask for? Choose the single best facet.', JEV_FACETS);
+    plan.extra.multi_intent = jevOption.noulQuestion(
+      'Does `user_request` ask for two or more distinct kinds of work that would need different specialised guidance?');
+  }
+  if (jc.verify) {
+    plan.shortlist = shortlist(text, criteria, jc.k);
+    plan.shortlist.forEach((n, i) => {
+      plan.extra[`fit_${i}`] = jevOption.noulQuestion(
+        'Is `user_request` a case where this skill should be loaded: every prerequisite it states holds, and none of its ' +
+        `when-NOT-to-use boundaries applies? Skill description: ${criteria[n]}`);
+    });
+  }
+  return plan;
+}
+
+/**
+ * Fold the option's answers into a routed result. Returns the result with only additive
+ * fields, plus a veto (`choice` → none) when the picked skill's Noul is below `vetoBelow`.
+ * A missing or malformed answer annotates `jevReason` and leaves the pick untouched.
+ */
+function applyJev(result, answers, plan, jc) {
+  const out = { ...result, jev: { set: plan.questionSet } };
+  if (plan.extra.operation) {
+    const f = jevOption.readChoice(answers.operation, Object.keys(JEV_FACETS));
+    const m = jevOption.readNoul(answers.multi_intent);
+    if (f) out.jev.operation = f.choice;
+    if (m !== null) out.jev.multiIntent = Number(m.toFixed(4));
+    if (!f || m === null) out.jev.reason = 'malformed';
+  }
+  if (plan.shortlist.length) {
+    const fits = plan.shortlist.map((n, i) => [n, jevOption.readNoul(answers[`fit_${i}`])]);
+    if (fits.some(([, p]) => p === null)) out.jev.reason = 'malformed';
+    const verified = fits.filter(([, p]) => p !== null);
+    out.jev.fits = Object.fromEntries(verified.map(([n, p]) => [n, Number(p.toFixed(4))]));
+    const picked = verified.find(([n]) => n === result.choice);
+    if (!result.none && picked && picked[1] < jc.vetoBelow) {
+      out.jev.vetoed = result.choice;
+      out.choice = NONE;
+      out.none = true;
+    } else if (!result.none && !picked && !out.jev.reason) {
+      out.jev.reason = 'unverified';
+    }
+    const listed = verified.filter(([n, p]) => p >= jc.listAtLeast && n !== result.choice).map(([n]) => n);
+    if (listed.length && !out.none) out.verified = listed;
+  }
+  return out;
+}
 
 /**
  * Route one prompt. Resolves to an outcome object; never rejects.
@@ -479,11 +602,14 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
   if (typeof fetch !== 'function') return fail('no-fetch', { ...esc, ...scoped });
 
   const { text: state, truncated } = clampPrompt(text);
+  // Off by default: with neither flag set `plan` is null and the body below is byte-identical.
+  const plan = jevPlan(text, criteria, cfg.jev);
   const body = {
     state: { user_request: state },
     model: cfg.model,
-    questions: { skill: { type: 'choice', instructions: INSTRUCTIONS, criteria: { ...criteria, [NONE]: NONE_RUBRIC } } },
+    questions: { skill: { type: 'choice', instructions: INSTRUCTIONS, criteria: { ...(plan ? plan.criteria : criteria), [NONE]: NONE_RUBRIC } } },
   };
+  if (plan) Object.assign(body.questions, plan.extra);
   const base = { candidates: n, chars: text.length, truncated, ...esc, ...scoped };
 
   for (let attempt = 0; ; attempt++) {
@@ -518,24 +644,33 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
     const a = j && j.answers && j.answers.skill;
     if (!a || typeof a.choice !== 'string') return fail('bad-shape', { ...base, ms });
     const probs = a.probabilities && typeof a.probabilities === 'object' ? a.probabilities : {};
-    const ranked = Object.entries(probs).sort((x, y) => y[1] - x[1]);
+    let ranked = Object.entries(probs).sort((x, y) => y[1] - x[1]);
+    let picked = a.choice;
+    if (plan && plan.idToName) {
+      // Opaque ids back to names, in code. An id the request did not offer is a malformed answer.
+      const back = (id) => (id === NONE ? NONE : plan.idToName[id]);
+      picked = back(a.choice);
+      if (picked === undefined) return fail('bad-shape', { ...base, ms });
+      ranked = ranked.map(([k, v]) => [back(k), v]).filter(([k]) => k !== undefined);
+    }
     const inTok = (j.usage && j.usage.input_tokens) || 0;
     // The proxy knows the backend that served THIS request, including live
     // switches. Cloud vendors cannot override the declared consumer rate.
     const usdPerMTokIn = cfg.proxy
       ? asRate(res.headers.get('x-system-one-usd-per-mtok-in'), cfg.usdPerMTokIn)
       : cfg.usdPerMTokIn;
-    return {
+    const routed = {
       outcome: 'routed', ...base, ms,
       model: j.model || cfg.model,
-      choice: a.choice,
-      none: a.choice === NONE,
+      choice: picked,
+      none: picked === NONE,
       confidence: typeof a.confidence === 'number' ? a.confidence : null,
       ranked,
       usage: { input_tokens: inTok, output_tokens: (j.usage && j.usage.output_tokens) || 0 },
       usdPerMTokIn,
       usd: inTok * usdPerMTokIn / 1e6,
     };
+    return plan ? applyJev(routed, j.answers, plan, cfg.jev) : routed;
   }
 }
 
@@ -568,7 +703,9 @@ function formatContext(r, cfg) {
     .map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ');
   const top = scored || r.choice;
   if (!top) return '';
-  const line = `[route] ${top} — advisory; load a skill only if it fits this turn.`;
+  // Present only when the Jev option listed further verified fits (AB-22-S1-01): additive text.
+  const alsoFits = r.verified && r.verified.length ? ` Also verified: ${r.verified.join(' · ')}.` : '';
+  const line = `[route] ${top} — advisory; load a skill only if it fits this turn.${alsoFits}`;
   const shown = scored ? r.ranked.filter(([k, v]) => k !== NONE && v > 0).slice(0, 3).map(([k]) => k) : [r.choice];
   const paths = unregisteredPaths(shown, cfg);
   if (!paths.length) return line.slice(0, MAX_CONTEXT_CHARS);
@@ -598,7 +735,7 @@ function unregisteredPaths(names, cfg) {
 function appendLog(cfg, record) {
   if (!cfg.logPath) return;
   const { candidates, chars, truncated, ms, outcome, reason, choice, confidence, usage, usd, usdPerMTokIn,
-    model, consumer, cascade, margin, session, scope, scopeReason, extras, bm25Pick, bm25Score } = record;
+    model, consumer, cascade, margin, session, scope, scopeReason, extras, bm25Pick, bm25Score, jev } = record;
   const line = JSON.stringify({ ts: new Date().toISOString(), consumer, outcome, reason, model, choice, confidence,
     candidates, chars, truncated, ms, input_tokens: usage && usage.input_tokens,
     // `usd` is only meaningful against the price it was costed at; carry both so a log
@@ -613,7 +750,10 @@ function appendLog(cfg, record) {
     // Present only when the caller narrowed the candidates (the hook): which set was ranked.
     ...(scope ? { scope } : {}), ...(scopeReason ? { scope_reason: scopeReason } : {}),
     // Present only when synced account or plugin skills joined the candidates.
-    ...(extras ? { extras } : {}) });
+    ...(extras ? { extras } : {}),
+    // Present only with the Jev option on: question-set version, facet, fit scores, veto and
+    // reason. Names and numbers, never prompt text.
+    ...(jev ? { jev } : {}) });
   try {
     fs.mkdirSync(path.dirname(cfg.logPath), { recursive: true });
     fs.appendFileSync(cfg.logPath, line + '\n');
@@ -626,4 +766,5 @@ module.exports = {
   tokenise, stripExclusion, bm25, localRank, DEFAULT_CASCADE_CUTOFF,
   readRegisteredManifest, restrictToRegistered, REGISTERED_MANIFEST_CANDIDATES, MAX_CONTEXT_CHARS,
   loadLoadableExtras, SYNCED_NAMESPACE,
+  jevConfig, jevPlan, applyJev, explicitSkillRequest, shortlist, JEV_SKILL_QUESTION_SET, JEV_FACETS,
 };

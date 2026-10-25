@@ -550,6 +550,19 @@
           "no-accepted-record"
         ],
         "notes": "Search queries written by agents, often paraphrasing the task. Credential `PERPLEXITY_API_KEY`: devuser-class (Q8)."
+      },
+      {
+        "id": "skill-router-jev-option",
+        "route": "Jev option on the live skill router: shortlist verification and intent-first matching (AB-22-S1-01, AB-22-S1-04)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "vendor",
+        "destination": "The same System One endpoint as `skill-router` (the ADR-2139 loopback proxy, or `api.typesafe.ai`); no new destination",
+        "gate": "INACTIVE. `AGENTBOX_JEV_SKILL_VERIFY=1` and/or `AGENTBOX_JEV_SKILL_INTENT=1`, both unset by default, on top of the `skill-router` gate (`[skills.routing].router = \"jev\"`). With neither set the request body is byte-identical to `skill-router`.",
+        "accepted_egress": "ADR-2090 (accepted): routing prompt may leave, skill routing only. The option adds questions to the same request and sends no additional content class.",
+        "markers": [],
+        "notes": "Adds up to `AGENTBOX_JEV_SKILL_K` (default 3) Noul questions carrying the shortlisted skills' descriptions, and with the intent flag opaque capability ids plus a facet Choice. Thresholds default to accept nothing (`AGENTBOX_JEV_SKILL_VETO_BELOW=0`, `AGENTBOX_JEV_SKILL_LIST_AT_LEAST=2`). Fails open to the unchanged router outcome. Proposed research candidate; no measured uplift."
       }
     ]
   }
