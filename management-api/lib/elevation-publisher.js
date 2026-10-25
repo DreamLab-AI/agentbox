@@ -42,6 +42,7 @@
  */
 
 const acs = require('./agent-control-surface');
+const rubric = require('./governance-evidence-rubric');
 
 /** Resolve the relay list exactly as NostrBridge would, without constructing it. */
 function resolveRelays(env) {
@@ -210,7 +211,16 @@ function buildElevationPublisher(manifest, deps = {}) {
         { event: 'elevation-publish.ok', proposal_urn: proposal.proposal_urn, event_id: signed && signed.id },
         'governed ontology-elevation proposal published to Nostr'
       );
-      return { published: true, event_id: signed ? signed.id : null, kind: unsigned.kind };
+      const result = { published: true, event_id: signed ? signed.id : null, kind: unsigned.kind };
+      // Jev option (ES-05-S1-01, off by default): an advisory evidence-quality signal bound to the
+      // request digest, computed AFTER the card is built and signed, recorded in a sidecar and
+      // returned beside the result. It cannot alter, delay the signing of, or stand in for an approval.
+      const signal = await rubric.assess(unsigned, { env }).catch(() => null);
+      if (signal) {
+        rubric.recordSignal(signal, result.event_id, env);
+        result.evidence_signal = signal;
+      }
+      return result;
     } catch (err) {
       // Federation is additive — a publish failure must not break the response.
       logger.warn(

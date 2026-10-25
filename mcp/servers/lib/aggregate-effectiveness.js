@@ -41,6 +41,8 @@ const crypto = require('crypto');
 const http = require('http');
 const { params: gateParams, gates } = require('./ruvector-gates');
 const { createMemoryTools } = require('./memory-tools');
+// AB-21-S1-01 — opt-in semantic annotation of eligible patterns (AGENTBOX_JEV_TRAJECTORY_CLASSIFY, off by default).
+const trajectoryJev = require('./trajectory-pattern-jev');
 
 const AGG_NAMESPACE = 'memory-learning-aggregates';
 const WRITE_SOURCE_TYPE = 'agentbox';
@@ -423,7 +425,9 @@ async function run({ apply = false } = {}) {
   printTable(rows, minSamples, halfLife);
 
   const minTraj = minTrajectories();
-  const eligible = rows.filter((r) => promotionVerdict(r, { minSamples, minTrajectories: minTraj }).eligible);
+  const eligibleRaw = rows.filter((r) => promotionVerdict(r, { minSamples, minTrajectories: minTraj }).eligible);
+  // Jev option: annotation only. Same array back when the flag is off or Jev is unavailable.
+  const eligible = await trajectoryJev.annotateRows(eligibleRaw);
   const skipped = rows.length - eligible.length;
   let stored = 0;
   let embedFailed = 0;
@@ -466,6 +470,7 @@ async function run({ apply = false } = {}) {
         evidence_basis: 'clean-exit outcomes only; ambiguous (stderr-noisy) successes counted in the denominator',
         mean_quality: round(r.mean_quality, 4),
         last_seen: r.last_seen,
+        ...trajectoryJev.semanticFields(r),
         summary: `Action pattern "${r.pattern}": Wilson lower-bound success ${round(r.wilson, 4)} over ${r.n} observations from ${r.n_trajectories} distinct trajectories (independence ${r.independence}, uncorrected bound ${round(r.wilson_uncorrected, 4)}, mean quality ${round(r.mean_quality, 3)}), recency half-life ${halfLife}d.`,
       };
       if (urn) value.urn = urn;

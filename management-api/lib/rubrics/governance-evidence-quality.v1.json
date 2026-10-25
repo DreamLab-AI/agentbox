@@ -1,0 +1,56 @@
+{
+  "schema": "agentbox/governance-evidence-rubric@1",
+  "id": "governance-evidence-quality",
+  "version": "1",
+  "status": "proposed research candidate; no measured uplift (ES-05-S1-01)",
+  "authority": "none",
+  "description": "A fixed set of review obligations applied identically to the evidence shown on a governed action-request card, whichever surface displays it (agentbox host, forum, VisionClaw). The output is an advisory signal bound to the exact request digest. It is not an approval, a rejection, a signature, a dispatch or a mutation receipt, and it never changes what the approver signs.",
+  "request_digest": {
+    "algorithm": "sha256",
+    "over": "canonical JSON (object keys sorted, no insignificant whitespace, arrays in order) of {\"content\": <event content string>, \"kind\": <event kind>, \"tags\": <event tags>} for the UNSIGNED action request exactly as it is shown to the approver",
+    "encoding": "lowercase hex"
+  },
+  "state": {
+    "title": "the card title",
+    "subject": "subject kind and id the request is about",
+    "rationale": "the free-text reasoning shown on the card, or null",
+    "evidence": "the structured fields shown on the card",
+    "context_url": "the context link shown on the card, or null"
+  },
+  "questions": {
+    "rationale_explains_action": {
+      "type": "noul",
+      "instructions": "Does `rationale` explain why the specific action in `title` is needed for `subject`, rather than only restating the title? If `rationale` is null, answer no."
+    },
+    "evidence_supports_claim": {
+      "type": "noul",
+      "instructions": "Do the facts in `evidence` actually support the change that `title` and `rationale` describe, so that an approver could check the claim from what is shown? Answer no if the key facts are absent or only asserted."
+    },
+    "scope_matches_title": {
+      "type": "noul",
+      "instructions": "Does everything in `evidence` stay within what `title` says is being requested, with no additional or broader effect hidden in the fields?"
+    },
+    "review_completeness": {
+      "type": "score",
+      "instructions": "How complete is the information shown for an approver to decide without looking elsewhere? Judge `title`, `rationale`, `evidence` and `context_url` together.",
+      "criteria": [
+        "Missing: the approver could not tell what is being asked or why.",
+        "Thin: the action is clear but the reason or the evidence is largely absent.",
+        "Adequate: action, reason and evidence are present; a detail would need checking.",
+        "Complete: the approver can decide from the card alone."
+      ]
+    }
+  },
+  "signals": {
+    "rationale_explains_action": "probability of yes",
+    "evidence_supports_claim": "probability of yes",
+    "scope_matches_title": "probability of yes",
+    "review_completeness": "score normalised to [0,1] as score/(levels-1)"
+  },
+  "never": [
+    "write, sign or approve",
+    "change who may approve or what an approver signs",
+    "mark a request approved, dispatched or applied",
+    "be embedded in the signed event"
+  ]
+}

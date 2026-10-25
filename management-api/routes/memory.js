@@ -43,6 +43,23 @@ function _podsEncoder(fastify) {
   return enc._surfaceEnabled && enc._surfaceEnabled('pods') ? enc : null;
 }
 
+/**
+ * AB-26-S1-01 — order search results by usefulness to the query (headroom-evidence.js). Returns
+ * the input array itself unless the flag is on, Jev answered, and the ranking differs. Never throws.
+ */
+async function _rankMemoryResults(query, results) {
+  try {
+    const { selectEvidence } = require('../lib/headroom-evidence');
+    const excerpts = results.map((r, i) => ({
+      id: String((r && r.key) != null ? r.key : i),
+      text: typeof (r && r.value) === 'string' ? r.value : JSON.stringify((r && r.value) != null ? r.value : r),
+      ref: r,
+    }));
+    const sel = await selectEvidence(query, excerpts);
+    return sel.items === excerpts ? results : sel.items.map((e) => e.ref);
+  } catch { return results; }
+}
+
 const NPUB             = process.env.AGENTBOX_NPUB || '';
 const ADMIN_ACCESS_MODE = (process.env.MEMORY_ADMIN_ACCESS_MODE || 'scoped').toLowerCase();
 
@@ -251,7 +268,11 @@ module.exports = async function memoryRoutes(fastify) {
       const payload = { namespace: effectiveNs, ...result };
       if (fastify.headroom && result.results && result.results.length > 2) {
         const headroom = fastify.headroom;
-        const raw = JSON.stringify(result.results);
+        // Jev option (AB-26-S1-01, AGENTBOX_JEV_HEADROOM_EVIDENCE, off by default, local-only): rank
+        // the entries for the query BEFORE the lossy compressor sees them. Reorders only; the same
+        // entries, and the CCR originals, are kept. Flag off or Jev unavailable ⇒ the very same array.
+        const ranked = await _rankMemoryResults(query, result.results);
+        const raw = JSON.stringify(ranked);
         const cr = headroom.compress(raw, 'memory', { logger: fastify.log });
         if (cr.compressed) {
           payload.results = JSON.parse(cr.content);
@@ -297,5 +318,6 @@ module.exports = async function memoryRoutes(fastify) {
 // export stays the Fastify plugin; these named exports let the namespace
 // derivation be unit-tested without standing up the whole route.
 module.exports._effectiveNamespace = _effectiveNamespace;
+module.exports._rankMemoryResults = _rankMemoryResults;
 module.exports._projectSlug = _projectSlug;
 module.exports._resolveProject = _resolveProject;

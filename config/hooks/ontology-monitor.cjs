@@ -202,6 +202,14 @@ function stageLocally(proposals, sessionId) {
   }
   return f;
 }
+// Jev verdicts sit in their own file: advisory, unsigned, and never merged into a 31402.
+function stageVerdicts(verdicts, sessionId) {
+  const dir = stateDir();
+  try { fs.mkdirSync(dir, { recursive: true }); } catch { /* noop */ }
+  for (const v of verdicts) {
+    try { fs.appendFileSync(path.join(dir, 'ontology-proposals-jev.jsonl'), JSON.stringify({ session: sessionId || 'session', ...v }) + '\n'); } catch { /* noop */ }
+  }
+}
 async function publishProposals(proposals, sessionId) {
   const { NostrBridge, loadSigner } = require('../../mcp/servers/nostr-bridge');
   const acs = require('../../management-api/lib/agent-control-surface');
@@ -279,12 +287,25 @@ function detach(raw) {
     const seen = loadSeen();
     const fresh = raw.filter((p) => p.iri && !seen.has(fingerprint(p)));
     if (!fresh.length) { log(`all ${raw.length} proposal(s) already seen — nothing new`); process.exit(0); }
+    // Jev option (AB-25-S1-01, off by default): annotate each proposal and, only with an explicit
+    // threshold, hold unsupported ones back from the forum into the local review queue. The verdicts
+    // live beside the staged record and are never part of the signed 31402. Returns `fresh` itself
+    // when the flag is off or Jev is unavailable.
+    let jv = { proposals: fresh, held: [], verdicts: [] };
+    try {
+      jv = await require('./lib/ontology-proposal-jev.cjs')
+        .verify(fresh, { concepts, work, transcriptPath: payload.transcript_path });
+    } catch { /* fail-open: the unchanged proposals go on */ }
+    if (jv.verdicts.length) stageVerdicts(jv.verdicts, payload.session_id);
+    if (jv.held.length) { stageLocally(jv.held.map((p) => ({ ...p, held_by: 'jev' })), payload.session_id); log(`jev: held ${jv.held.length} unsupported proposal(s) in the local review queue`); }
+    const emit = jv.proposals;
+    if (!emit.length) { fresh.forEach((p) => seen.add(fingerprint(p))); saveSeen(seen); process.exit(0); }
     if (MODE === 'publish') {
-      const n = await publishProposals(fresh, payload.session_id);
+      const n = await publishProposals(emit, payload.session_id);
       log(`published ${n} ActionRequest(s) (31402) to the forum broker gate`);
     } else {
-      const f = stageLocally(fresh, payload.session_id);
-      log(`dryrun: staged ${fresh.length} proposal(s) → ${f}`);
+      const f = stageLocally(emit, payload.session_id);
+      log(`dryrun: staged ${emit.length} proposal(s) → ${f}`);
     }
     fresh.forEach((p) => seen.add(fingerprint(p)));
     saveSeen(seen);

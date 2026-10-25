@@ -112,6 +112,10 @@ const uris = require(resolveAppModule('management-api/lib/uris.js'));
 // a closure check that self-verifies its own family is flagged, never silent.
 const diversity = require('./model-diversity');
 
+// AB-15-S1-01 — opt-in, advisory-only Jev suggestion (consult_advice). Off by
+// default: the tool is not even listed unless AGENTBOX_JEV_CONSULT_ADVICE=1.
+const consultAdvice = require('./consult-advice');
+
 // `activity` is a scope-required kind: the URN scope must be a BIP-340
 // x-only pubkey hex. Consultants take theirs from the agent identity env;
 // when none is set we fall back to the all-zero dev pubkey, the same
@@ -200,6 +204,7 @@ class BaseConsultant {
         if (name === 'consult')       return this._envelope(await this._handleConsult(args));
         if (name === 'health')        return this._envelope(await this._handleHealth());
         if (name === 'cost_estimate') return this._envelope(await this._handleEstimate(args));
+        if (name === 'consult_advice' && consultAdvice.advisoryEnabled()) return this._envelope(await this._handleAdvice(args));
         throw new Error(`unknown tool: ${name}`);
       } catch (err) {
         return {
@@ -218,6 +223,13 @@ class BaseConsultant {
   }
 
   _toolList() {
+    const tools = this._baseToolList();
+    // Jev option (AB-15-S1-01): appended only when opted in, so the flag-off list is unchanged.
+    if (consultAdvice.advisoryEnabled()) tools.push(consultAdvice.TOOL_DEFINITION);
+    return tools;
+  }
+
+  _baseToolList() {
     return [
       {
         name: 'consult',
@@ -367,6 +379,27 @@ class BaseConsultant {
     _emitConsultEvent(this.name, envelope);
 
     return envelope;
+  }
+
+  /**
+   * Advisory only (AB-15-S1-01). Never performs, blocks or re-routes a consult; with Jev
+   * unavailable the answer is `advice: null` and the coordinator proceeds as it always did.
+   */
+  async _handleAdvice(args) {
+    const r = await consultAdvice.assess({
+      question: args.question,
+      context_excerpt: args.context_excerpt,
+      remainingUsd: args.remaining_budget_usd,
+      specialists: args.specialists,
+      deepReasoning: args.deep_reasoning,
+    });
+    return {
+      ok: true,
+      consultant: this.name,
+      advice: r.ok ? r.advice : null,
+      fallback_reason: r.ok ? null : r.reason,
+      question_set_version: consultAdvice.QUESTION_SET_VERSION,
+    };
   }
 
   async _handleHealth() {
