@@ -594,6 +594,21 @@
           "no-accepted-record"
         ],
         "notes": "Sent after the embedding search, namespace exclusions and TTL filter have run: the query and up to 20 candidate snippets of at most 400 characters (keys and namespaces are not sent). Reorders only; `score` stays the cosine and no row is added or dropped. Proposed research candidate; no measured uplift."
+      },
+      {
+        "id": "voice-intent-jev-option",
+        "route": "Jev option on operator voice intents, `POST /v1/voice-intent` (AB-12-S1-01)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "LAN",
+        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
+        "gate": "INACTIVE. `AGENTBOX_JEV_VOICE_INTENT=1`, unset by default. Runs only after speaker authentication, the mandate checks and target validation.",
+        "accepted_egress": "None yet: a new route, deliberately local-only because a transcript is the operator's private speech. Needs an ADR before it can be activated.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Sent: the transcript, the parsed verb/subject/object and the list of allowed command families. May annotate the response or hold a doubted state-changing intent for clarification (422); thresholds default to never. It never chooses a verb, subject or target, and signing, mandate and dispatch are untouched. Proposed research candidate; no measured uplift."
       }
     ]
   }

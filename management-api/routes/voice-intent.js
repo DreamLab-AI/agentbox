@@ -40,6 +40,7 @@
 const { agentEventPublisher, AgentActionType } = require('../utils/agent-event-publisher');
 const { verifyAgentEventRequest, reconcileSourceUrn } = require('../lib/agent-event-auth');
 const { transcriptToAction } = require('../lib/voice-intent');
+const voiceIntentJev = require('../lib/voice-intent-jev');
 const mandateLib = require('../lib/mandate');
 const acs = require('../lib/agent-control-surface');
 
@@ -78,6 +79,8 @@ module.exports = async function voiceIntentRoutes(fastify, options) {
   // silent success). Mirrors lib/authority's publishActionRequest injection.
   const dispatchActionRequest = options.dispatchActionRequest || null;
   const verifyMandateEvent = options.verifyMandateEvent || defaultVerifyMandateEvent;
+  // Injectable for tests; the default is the Jev option, which resolves null unless switched on.
+  const interpret = options.interpretIntent || voiceIntentJev.interpret;
 
   fastify.post('/v1/voice-intent', {
     schema: {
@@ -137,8 +140,11 @@ module.exports = async function voiceIntentRoutes(fastify, options) {
               },
             },
             notification: { type: 'object', additionalProperties: true },
+            // Present only when the Jev option ran and answered (AB-12-S1-01).
+            interpretation: { type: 'object', additionalProperties: true },
           },
         },
+        422: { type: 'object', additionalProperties: true },
         400: { type: 'object', properties: { success: { type: 'boolean' }, error: { type: 'string' }, message: { type: 'string' } } },
         403: { type: 'object', properties: { success: { type: 'boolean' }, error: { type: 'string' }, message: { type: 'string' } } },
         503: { type: 'object', properties: { success: { type: 'boolean' }, error: { type: 'string' }, message: { type: 'string' } } },
@@ -213,6 +219,19 @@ module.exports = async function voiceIntentRoutes(fastify, options) {
       return reply.code(400).send({ success: false, error: 'bad-transcript', message: err.message });
     }
     const { intent, emit } = built;
+
+    // ── Jev option (AB-12-S1-01; off unless AGENTBOX_JEV_VOICE_INTENT=1) ───────────
+    // Runs only here, after the speaker, mandate and target checks above. It annotates, and may
+    // ABSTAIN on a state-changing intent it doubts (held for clarification, never dispatched);
+    // it never picks a verb, a subject or a target. `null` on any miss: behaviour unchanged.
+    const interpretation = await interpret(intent);
+    if (interpretation && interpretation.clarify) {
+      return reply.code(422).send({
+        success: false, error: 'clarification-needed',
+        message: 'The transcript did not clearly ask for the parsed command; nothing was dispatched.',
+        interpretation,
+      });
+    }
 
     // ── Dispatch the signed 31402 toward the actor (COM-15 AC3) ──────────────────
     if (!dispatchActionRequest) {
@@ -306,6 +325,7 @@ module.exports = async function voiceIntentRoutes(fastify, options) {
         panel_id: panelId,
       },
       notification,
+      ...(interpretation ? { interpretation } : {}),
     });
   });
 };
