@@ -112,6 +112,18 @@ function failureModeFor(taxonomy, step) {
   return UNMAPPED;
 }
 
+// AB-03-S1-01 (Jev option, off unless AGENTBOX_JEV_FAILURE_TAXONOMY=1): a failure the taxonomy
+// left `unmapped` may be refined by a LOCAL judge. Exact mappings win and are never re-asked;
+// every miss (flag off, no local endpoint, error, timeout, malformed, low confidence) returns
+// the base tag unchanged. See lib/failure-jev.cjs. Never throws.
+async function failureTagFor(taxonomy, step) {
+  const base = failureModeFor(taxonomy, step);
+  if (base !== UNMAPPED || !taxonomy || !process.env.AGENTBOX_JEV_FAILURE_TAXONOMY) return { mode: base };
+  try {
+    return await require('./lib/failure-jev.cjs').refine(taxonomy, { stderr: step.failureHint, action: step.action }, base);
+  } catch { return { mode: base }; }
+}
+
 // ── REC-3 (CTC emitter WIRE): forward a step's captured token_count + chain
 // handoff_id into a REAL agent-events emit call, so the CTC fields reach the
 // agent-events envelope the publisher emits and CANARY-AB-CTC can fire. Best-effort
@@ -457,7 +469,12 @@ async function handleClose(payload) {
       };
       // REC-5 (AC2): a graded FAILURE carries a MAST failure_mode tag (or the
       // `unmapped` sentinel); a graded SUCCESS writes no mode.
-      if (!s.outcome.success) { resultObj.failure_mode = failureModeFor(taxonomy, s); s.failure_mode = resultObj.failure_mode; }
+      if (!s.outcome.success) {
+        const tag = await failureTagFor(taxonomy, s);
+        resultObj.failure_mode = tag.mode; s.failure_mode = tag.mode;
+        // Present only when the Jev option ran: question-set version and why a suggestion was or was not taken.
+        if (tag.jev) resultObj.failure_jev = tag.jev;
+      }
       // REC-3 (AC1): the token burden of the turn that issued this step, parsed
       // from the transcript usage block. Additive — absent when the turn carried
       // no usage (byte-compatible with the pre-REC-3 result shape).

@@ -563,6 +563,21 @@
         "accepted_egress": "ADR-2090 (accepted): routing prompt may leave, skill routing only. The option adds questions to the same request and sends no additional content class.",
         "markers": [],
         "notes": "Adds up to `AGENTBOX_JEV_SKILL_K` (default 3) Noul questions carrying the shortlisted skills' descriptions, and with the intent flag opaque capability ids plus a facet Choice. Thresholds default to accept nothing (`AGENTBOX_JEV_SKILL_VETO_BELOW=0`, `AGENTBOX_JEV_SKILL_LIST_AT_LEAST=2`). Fails open to the unchanged router outcome. Proposed research candidate; no measured uplift."
+      },
+      {
+        "id": "failure-taxonomy-jev-option",
+        "route": "Jev option on the MAST failure taxonomy, `trajectory-recorder` Stop hook (AB-03-S1-01)",
+        "leaves": [
+          "code"
+        ],
+        "destination_class": "LAN",
+        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
+        "gate": "INACTIVE. `AGENTBOX_JEV_FAILURE_TAXONOMY=1`, unset by default. Without a declared-local endpoint no request is built.",
+        "accepted_egress": "None yet: a new route, deliberately local-only because the payload is redacted tool error text (`failureHint`, at most 400 characters) that may carry private material. Needs an ADR before it can be activated against anything but a local judge.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Sent only for a failure the taxonomy left `unmapped`: the redacted error text, the action pattern and the 14 MAST mode definitions. At most 3 requests per Stop run. Acceptance thresholds default to unreachable, so an enabled option changes no tag until fitted. The raw failure and the outcome are never touched. Proposed research candidate; no measured uplift."
       }
     ]
   }
