@@ -197,7 +197,13 @@ pub struct Input {
     pub patch: Option<String>,
     /// Names of the required evaluators from the frozen manifest.
     pub evaluators: Vec<String>,
+    /// The repository's own `extraDisciplines` from `dream.config.json` (at most [`MAX_DISCIPLINES`]
+    /// are asked). Each becomes an independent "does the change violate this rule?" Noul.
+    pub disciplines: Vec<String>,
 }
+
+/// Cap on `extraDisciplines` asked per request.
+pub const MAX_DISCIPLINES: usize = 12;
 
 /// The two signals, both in `[0, 1]`.
 #[derive(Debug, Clone, PartialEq)]
@@ -206,6 +212,8 @@ pub struct Signals {
     pub usefulness: f64,
     /// Probability that the problem statement is supported by the evidence.
     pub problem_supported: f64,
+    /// Probability of violation per discipline asked, in the order of `Input::disciplines`.
+    pub violations: Vec<f64>,
     pub model: String,
 }
 
@@ -292,12 +300,14 @@ pub fn change_surface(patch: &str) -> Vec<String> {
 
 /// Build the request body. Pure; the wire-shape test checks it.
 pub fn build_request(input: &Input, model: &str) -> Value {
-    json!({
+    let disciplines: Vec<&String> = input.disciplines.iter().take(MAX_DISCIPLINES).collect();
+    let mut v = json!({
         "model": model,
         "state": {
             "hypothesis_report": clamp_chars(&input.report, REPORT_CHARS),
             "change_surface": input.patch.as_deref().map(change_surface).unwrap_or_default(),
             "evaluator_catalogue": input.evaluators,
+            "repo_disciplines": disciplines,
         },
         "questions": {
             "usefulness": {
@@ -314,11 +324,23 @@ pub fn build_request(input: &Input, model: &str) -> Value {
                     opens with, rather than merely asserting it?",
             },
         },
-    })
+    });
+    for (i, d) in disciplines.iter().enumerate() {
+        v["questions"][format!("violates_{i}")] = json!({
+            "type": "noul",
+            "instructions": format!(
+                "Does the change proposed in `hypothesis_report` violate the repository rule at index {i} of \
+                 `repo_disciplines` (\"{}\")? Answer yes only if the report or `change_surface` shows the violation.",
+                clamp_chars(d, 200)
+            ),
+        });
+    }
+    v
 }
 
-/// Parse a response body into signals, or `Malformed`.
-pub fn parse_response(body: &str) -> Result<Signals, Reason> {
+/// Parse a response body into signals, or `Malformed`. `n_disciplines` is how many violation
+/// questions were asked; every one must be answered.
+pub fn parse_response(body: &str, n_disciplines: usize) -> Result<Signals, Reason> {
     let v: Value = serde_json::from_str(body).map_err(|_| Reason::Malformed)?;
     let answers = v
         .get("answers")
@@ -343,9 +365,21 @@ pub fn parse_response(body: &str) -> Result<Signals, Reason> {
     if !supported.is_finite() || !(0.0..=1.0).contains(&supported) {
         return Err(Reason::Malformed);
     }
+    let mut violations = Vec::with_capacity(n_disciplines);
+    for i in 0..n_disciplines {
+        let p = answers
+            .get(&format!("violates_{i}"))
+            .filter(|a| a.get("type").and_then(Value::as_str) == Some("noul"))
+            .and_then(|a| a.get("noul"))
+            .and_then(Value::as_f64)
+            .filter(|p| p.is_finite() && (0.0..=1.0).contains(p))
+            .ok_or(Reason::Malformed)?;
+        violations.push(p);
+    }
     Ok(Signals {
         usefulness: usefulness_raw / top,
         problem_supported: supported,
+        violations,
         model: v
             .get("model")
             .and_then(Value::as_str)
@@ -373,10 +407,12 @@ pub async fn triage(cfg: &Config, transport: &dyn Transport, input: &Input) -> O
         Err(TransportError::Timeout) => Outcome::Fallback(Reason::Timeout),
         Err(TransportError::Network) => Outcome::Fallback(Reason::Network),
         Ok((status, _)) if !(200..300).contains(&status) => Outcome::Fallback(Reason::Http(status)),
-        Ok((_, text)) => match parse_response(&text) {
-            Ok(s) => Outcome::Annotated(s),
-            Err(r) => Outcome::Fallback(r),
-        },
+        Ok((_, text)) => {
+            match parse_response(&text, input.disciplines.len().min(MAX_DISCIPLINES)) {
+                Ok(s) => Outcome::Annotated(s),
+                Err(r) => Outcome::Fallback(r),
+            }
+        }
     }
 }
 
@@ -409,6 +445,15 @@ pub async fn consider(
             rec.insert("usefulness", json!(round3(s.usefulness)));
             rec.insert("problem_supported", json!(round3(s.problem_supported)));
             rec.insert("defer_below", json!(cfg.defer_below));
+            rec.insert(
+                "discipline_violations",
+                json!(input
+                    .disciplines
+                    .iter()
+                    .zip(&s.violations)
+                    .map(|(d, p)| json!({ "discipline": d, "p_violates": round3(*p) }))
+                    .collect::<Vec<_>>()),
+            );
             rec.insert("deferred", json!(defer));
             rec.insert(
                 "authority",
@@ -471,6 +516,7 @@ mod tests {
                 "--- a/src/retry.rs\n+++ b/src/retry.rs\n@@\n-x\n+y\n+++ b/src/retry.rs\n".into(),
             ),
             evaluators: vec!["cargo-test".into(), "clippy".into()],
+            disciplines: vec![],
         }
     }
 
@@ -692,6 +738,83 @@ mod tests {
                 .count(),
             REPORT_CHARS
         );
+    }
+
+    #[test]
+    fn repo_disciplines_become_violation_nouls() {
+        let i = Input {
+            disciplines: vec![
+                "no new dependencies".into(),
+                "ADRs for schema changes".into(),
+            ],
+            ..input()
+        };
+        let v = build_request(&i, "m");
+        assert_eq!(
+            v["state"]["repo_disciplines"],
+            json!(["no new dependencies", "ADRs for schema changes"])
+        );
+        assert_eq!(v["questions"]["violates_1"]["type"], "noul");
+        assert!(v["questions"]["violates_1"]["instructions"]
+            .as_str()
+            .unwrap()
+            .contains("index 1 of `repo_disciplines`"));
+        assert!(v["questions"].get("violates_2").is_none());
+        let many = Input {
+            disciplines: (0..30).map(|n| format!("d{n}")).collect(),
+            ..input()
+        };
+        assert_eq!(
+            build_request(&many, "m")["state"]["repo_disciplines"]
+                .as_array()
+                .unwrap()
+                .len(),
+            MAX_DISCIPLINES
+        );
+        // no disciplines ⇒ the request is exactly the pre-discipline shape plus an empty list, and no violates_*
+        assert!(build_request(&input(), "m")["questions"]
+            .get("violates_0")
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn violations_are_recorded_and_a_missing_one_is_malformed() {
+        let i = Input {
+            disciplines: vec!["no new dependencies".into()],
+            ..input()
+        };
+        let mut ok = serde_json::from_str::<Value>(&body(2.0, 0.9)).unwrap();
+        ok["answers"]["violates_0"] = json!({"type":"noul","noul":0.8});
+        let c = cfg_with(&[]);
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!consider(&c, &Mock::new(Ok((200, ok.to_string()))), dir.path(), &i).await);
+        let rec: Value =
+            serde_json::from_slice(&std::fs::read(dir.path().join(RECORD_FILE)).unwrap()).unwrap();
+        assert_eq!(
+            rec["discipline_violations"][0]["discipline"],
+            "no new dependencies"
+        );
+        assert_eq!(rec["discipline_violations"][0]["p_violates"], 0.8);
+        // a violation never defers by itself
+        let dir2 = tempfile::tempdir().unwrap();
+        let strict = cfg_with(&[("AGENTBOX_JEV_DREAM_TRIAGE_DEFER_BELOW", "0.4")]);
+        assert!(
+            !consider(
+                &strict,
+                &Mock::new(Ok((200, ok.to_string()))),
+                dir2.path(),
+                &i
+            )
+            .await
+        );
+        // the answer is absent ⇒ fallback, nothing written
+        let dir3 = tempfile::tempdir().unwrap();
+        assert_eq!(
+            triage(&c, &Mock::new(Ok((200, body(2.0, 0.9)))), &i).await,
+            Outcome::Fallback(Reason::Malformed)
+        );
+        assert!(!consider(&c, &Mock::new(Ok((200, body(2.0, 0.9)))), dir3.path(), &i).await);
+        assert_eq!(std::fs::read_dir(dir3.path()).unwrap().count(), 0);
     }
 
     #[test]
