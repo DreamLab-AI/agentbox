@@ -38,6 +38,7 @@ pub mod engine;
 pub mod estate;
 pub mod governance;
 pub mod inbox;
+pub mod jev_triage;
 pub mod journal;
 pub mod judge;
 pub mod llm;

@@ -1432,7 +1432,36 @@ impl Engine {
             }
         }
 
-        if claimed_accept {
+        // 8b. Jev option (AB-23-S1-01, off by default): annotate the hypothesis before the costly
+        //     candidate build. It can only DEFER the build, and only when an explicit threshold is
+        //     set; a deferred night keeps `CandidateState::NotAttempted`, so an ACCEPT claim is
+        //     vetoed as unproven by the gate. Every fallback returns `false` and writes nothing.
+        let jev_defer = if claimed_accept {
+            let jev_cfg = crate::jev_triage::Config::from_env();
+            if jev_cfg.enabled {
+                let input = crate::jev_triage::Input {
+                    report: report.clone(),
+                    patch: patch.clone(),
+                    evaluators: required.iter().map(|e| e.name.clone()).collect(),
+                };
+                crate::jev_triage::consider(
+                    &jev_cfg,
+                    &crate::jev_triage::ReqwestTransport,
+                    &night_dir,
+                    &input,
+                )
+                .await
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+        if jev_defer {
+            info!("jev triage deferred the candidate evaluation — the ACCEPT claim stays unproven");
+        }
+
+        if claimed_accept && !jev_defer {
             match patch {
                 None => {
                     info!(
