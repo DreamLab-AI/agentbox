@@ -19,6 +19,7 @@
  */
 
 const readline = require('readline');
+const memoryJevRerank = require('./lib/memory-jev-rerank');
 const { createMemoryTools, shapeSearchResponse, resolveSearchLimit, DEFAULT_SNIPPET_CHARS, DEFAULT_MIN_SCORE, DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT } = require('./lib/memory-tools');
 const { verifyEmbeddingIdentity } = require('./lib/embedding-identity');
 // Last computed effective-embedding-model verdict (ADR-2019); surfaced by
@@ -242,7 +243,11 @@ async function shapedSearch(query, namespace, sourceType, args = {}) {
   const limit = resolveSearchLimit(args.limit);
   const minScore = args.min_score === undefined || args.min_score === null ? undefined : Number(args.min_score);
   const snippetChars = args.snippet_chars === undefined ? undefined : Number(args.snippet_chars);
-  const res = await memSearch(query, namespace, limit, sourceType);
+  // AB-20-S1-01 (Jev option, off unless AGENTBOX_JEV_MEMORY_RERANK=1): a LOCAL judge reorders the
+  // already access-permitted shortlist; `score` stays the cosine and every miss returns `res` as is.
+  const jevPool = memoryJevRerank.poolFor(limit);
+  const raw = await memSearch(query, namespace, jevPool, sourceType);
+  const res = await memoryJevRerank.rerank(query, raw);
   return shapeSearchResponse(res, { full: args.full === true, minScore, snippetChars, limit });
 }
 

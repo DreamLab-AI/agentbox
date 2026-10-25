@@ -578,6 +578,22 @@
           "no-accepted-record"
         ],
         "notes": "Sent only for a failure the taxonomy left `unmapped`: the redacted error text, the action pattern and the 14 MAST mode definitions. At most 3 requests per Stop run. Acceptance thresholds default to unreachable, so an enabled option changes no tag until fitted. The raw failure and the outcome are never touched. Proposed research candidate; no measured uplift."
+      },
+      {
+        "id": "memory-rerank-jev-option",
+        "route": "Jev option on model-facing memory search: rerank of the access-permitted shortlist (AB-20-S1-01)",
+        "leaves": [
+          "prompt",
+          "code"
+        ],
+        "destination_class": "LAN",
+        "destination": "A declared-local System One endpoint only (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1` behind the ADR-2139 proxy, or the sovereign façade); the cloud and an undeclared proxy are refused in code",
+        "gate": "INACTIVE. `AGENTBOX_JEV_MEMORY_RERANK=1`, unset by default. Without a declared-local endpoint no request is built.",
+        "accepted_egress": "None yet: a new route, deliberately local-only because memory holds private namespaces. Needs an ADR before it can be activated.",
+        "markers": [
+          "no-accepted-record"
+        ],
+        "notes": "Sent after the embedding search, namespace exclusions and TTL filter have run: the query and up to 20 candidate snippets of at most 400 characters (keys and namespaces are not sent). Reorders only; `score` stays the cosine and no row is added or dropped. Proposed research candidate; no measured uplift."
       }
     ]
   }

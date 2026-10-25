@@ -163,7 +163,8 @@ function shapeSearchResponse(res, opts = {}) {
   // The unfiltered HNSW scan emits rows in graph order, not score order; sort
   // so the list reads best-first. An attention re-rank is a deliberate order
   // (score stays the cosine), so it is left alone.
-  if (!res._attention) rows.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+  // `_reranked` is the Jev option's deliberate order (memory-jev-rerank.js); `score` stays the cosine.
+  if (!res._attention && !res._reranked) rows.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
 
   let belowMin = 0;
   if (!res.degraded) {
@@ -840,6 +841,6 @@ function createMemoryTools({ backend, deps }) {
 
 module.exports = {
   createMemoryTools, createExternalPgBackend, createDelegatingBackend,
-  shapeSearchResponse, resolveSearchLimit, wildcardExcludedNamespaces,
+  shapeSearchResponse, resolveSearchLimit, wildcardExcludedNamespaces, snippetSource, cutSnippet,
   DEFAULT_SNIPPET_CHARS, DEFAULT_MIN_SCORE, DEFAULT_SEARCH_LIMIT, MAX_SEARCH_LIMIT,
 };
