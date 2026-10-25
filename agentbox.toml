@@ -848,6 +848,8 @@ model = "jev-latest"
 timeout_ms = 4000                # per-request deadline, 250-8000 (hook budget is 10 s); past it the checkpoint is skipped
 done_check = true                # checkpoint 3 of ADR-2134: done claimed without a verifying run
 done_threshold = 0.9             # Jev Score at or above which the done advisory is injected (0-1)
+claim_check = false              # AB-08-S1-01: also ask whether the specific claim is covered by a successful verifying call (same request); only ever adds the done line
+claim_threshold = 0.9            # probability at or above which an uncovered claim injects the done line (0-1); unfitted
 repeat_check = true              # checkpoint 2: same failure fingerprint recurring (local, no egress)
 repeat_count = 2                 # occurrences (>= 2) that trigger the advisory, once per fingerprint
 plan_check = true                # checkpoint 1: multi-file plan / auth, schema, API or data-contract change

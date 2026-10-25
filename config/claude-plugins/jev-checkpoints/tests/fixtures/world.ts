@@ -76,6 +76,19 @@ export const score = (name: string, value: number, inputTokens = 1000) => ({
   },
 })
 
+/** A Jev answer holding the done score and the claim-specific Noul together (AB-08-S1-01). */
+export const doneAndClaim = (doneValue: number, claimUnverified: number, inputTokens = 1000) => ({
+  status: 200,
+  body: {
+    model: 'jev-latest',
+    answers: {
+      done: { type: 'score', score: doneValue, legend: { '0': 'no', '1': 'yes' }, probabilities: { '0': 1 - doneValue, '1': doneValue } },
+      claim_unverified: { type: 'noul', noul: claimUnverified },
+    },
+    usage: { input_tokens: inputTokens, output_tokens: 1 },
+  },
+})
+
 /** A Jev answer to the spawn checkpoint's choice. */
 export const choice = (pick: string, confidence: number) => ({
   status: 200,

@@ -53,6 +53,18 @@
       "description": "Score (0–1) at or above which the done checkpoint injects.",
       "default": 0.9
     },
+    "claimCheck": {
+      "type": "boolean",
+      "title": "Claim-specific done check",
+      "description": "Also ask, in the same request, whether the specific deliverable the final text claims is covered by a successful verifying call this turn. Can only add the done line, never remove it. Off by default; proposed research candidate, no measured uplift.",
+      "default": false
+    },
+    "claimThreshold": {
+      "type": "number",
+      "title": "Claim threshold",
+      "description": "Probability (0–1) at or above which an uncovered claim injects the done line. Unfitted.",
+      "default": 0.9
+    },
     "repeatCheck": {
       "type": "boolean",
       "title": "Repeat checkpoint",

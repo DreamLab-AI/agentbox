@@ -160,6 +160,8 @@ without one, so a key-less façade works and a mistyped `api` cannot leak it.
 | `timeoutMs` | `timeout_ms` | `4000` | per-request deadline, clamped to 250–8 000 (a hook's budget is 10 s) |
 | `doneCheck` | `done_check` | `true` | the done checkpoint |
 | `doneThreshold` | `done_threshold` | `0.9` | score at or above which done injects |
+| `claimCheck` | `claim_check` | `false` | AB-08-S1-01: also ask, in the same request, whether the specific claim is covered by a successful verifying call; adds the done line, never removes it |
+| `claimThreshold` | `claim_threshold` | `0.9` | probability at or above which an uncovered claim injects the done line (unfitted) |
 | `repeatCheck` | `repeat_check` | `true` | the repeat checkpoint |
 | `repeatCount` | `repeat_count` | `2` | occurrences before repeat injects (integer ≥ 2) |
 | `planCheck` | `plan_check` | `true` | the plan checkpoint |

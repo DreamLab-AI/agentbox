@@ -20,7 +20,7 @@
 import type { EngineInterface, On, Register } from 'claude-code'
 
 import { fingerprint, watchesTool } from './fingerprint'
-import { askJev, egress, isTypeSafeApi, readChoice, readScore, scoreQuestion } from './jev'
+import { askJev, doneInjects, egress, isTypeSafeApi, noulQuestion, readChoice, readNoul, readScore, scoreQuestion } from './jev'
 import type { JevOutcome, JevRequest } from './jev'
 import { readOptions } from './options'
 import type { Options } from './options'
@@ -46,6 +46,19 @@ const DONE_QUESTIONS: JevRequest['questions'] = {
       'shell command’s first line).',
     'no — no completion is claimed, or a test, build, lint or type-check ran successfully this turn',
     'yes — completion is claimed without any successful verifying run this turn',
+  ),
+}
+
+/**
+ * AB-08-S1-01 (opt-in `claimCheck`, off by default): asked in the SAME request as the done score, over
+ * the same state, so it adds no call and no content class. It names the specific claim and asks
+ * whether any successful call listed this turn plausibly verifies it.
+ */
+const CLAIM_QUESTIONS: JevRequest['questions'] = {
+  claim_unverified: noulQuestion(
+    'Does `assistant_final_text` claim a specific deliverable (a fix, a feature, or passing checks) that no successful call in ' +
+      '`tool_calls_this_turn` plausibly verifies? A test, build, lint or type-check that ran successfully and exercises that ' +
+      'change verifies it; an unrelated command, an edit alone, or a failed run does not.',
   ),
 }
 
@@ -372,14 +385,22 @@ async function doneCheck($: Engine, ctx: Ctx, answer: string): Promise<void> {
   const out = await ask($, ctx, id, rec, 'done', {
     state: { assistant_final_text: tail(answer), tool_calls_this_turn: evidenceList(ctx.turnCalls) },
     model: ctx.opts.model,
-    questions: DONE_QUESTIONS,
+    questions: ctx.opts.claimCheck ? { ...DONE_QUESTIONS, ...CLAIM_QUESTIONS } : DONE_QUESTIONS,
   })
   if (!out?.ok) return
   const score = readScore(out.answers['done'])
   if (score === null) {
     rec.stats.done.lastError = 'bad-shape'
     log($, 'done skipped (bad-shape)')
-  } else if (score >= ctx.opts.doneThreshold) {
+  } else if (
+    doneInjects({
+      score,
+      threshold: ctx.opts.doneThreshold,
+      claimCheck: ctx.opts.claimCheck,
+      claimUnverified: ctx.opts.claimCheck ? readNoul(out.answers['claim_unverified']) : null,
+      claimThreshold: ctx.opts.claimThreshold,
+    })
+  ) {
     rec.pendingDone = true
   }
   await save($, id, rec)

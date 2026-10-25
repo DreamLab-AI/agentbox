@@ -2,7 +2,7 @@ import { describe, expect, mock, test, tier } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import { LINES } from '../hooks/text'
-import { choice, HOME, KEY, prompt, ROOT, run, score, SESSION, START, turn, world } from './fixtures/world'
+import { choice, doneAndClaim, HOME, KEY, prompt, ROOT, run, score, SESSION, START, turn, world } from './fixtures/world'
 import type { World } from './fixtures/world'
 
 tier('user')
@@ -290,6 +290,47 @@ describe('done checkpoint', () => {
 
     expect(w.requests).toHaveLength(1)
     expect(contexts).toEqual([undefined])
+  })
+})
+
+describe('claim check (AB-08-S1-01)', () => {
+  const claim = 'Fixed — the parser handles nested blocks now.'
+
+  test('off by default: the request carries only the done question and a low score adds nothing', async ($, on) => {
+    const { w, contexts } = setup(on)
+    w.reply = [doneAndClaim(0.3, 0.99)]
+    await $.session.start(START)
+    await $.turn.complete(turn(claim))
+    await $.prompt.submit(prompt('thanks'))
+
+    expect(Object.keys(w.requests[0]!.body['questions'] as object)).toEqual(['done'])
+    expect(contexts).toEqual([undefined])
+  })
+
+  test('on: the Noul rides the same request, and an uncovered claim under the done bar still puts the line up, once', { options: { claimCheck: true } }, async ($, on) => {
+    const { w, contexts } = setup(on)
+    w.reply = [doneAndClaim(0.3, 0.97)]
+    await $.session.start(START)
+    await $.turn.complete(turn(claim))
+    await $.prompt.submit(prompt('thanks'))
+    await $.prompt.submit(prompt('and now?'))
+
+    expect(w.requests).toHaveLength(1)
+    expect(Object.keys(w.requests[0]!.body['questions'] as object)).toEqual(['done', 'claim_unverified'])
+    expect(w.requests[0]!.body['questions']).toMatchObject({ claim_unverified: { type: 'noul' } })
+    expect(contexts).toEqual([[LINES.done], undefined])
+  })
+
+  test('on: a covered claim, or an answer without the Noul, leaves the original decision', { options: { claimCheck: true } }, async ($, on) => {
+    const { w, contexts } = setup(on)
+    w.reply = [doneAndClaim(0.3, 0.1), score('done', 0.3)]
+    await $.session.start(START)
+    await $.turn.complete(turn(claim))
+    await $.prompt.submit(prompt('thanks'))
+    await $.turn.complete(turn('All tests pass.'))
+    await $.prompt.submit(prompt('ok'))
+
+    expect(contexts).toEqual([undefined, undefined])
   })
 })
 

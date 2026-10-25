@@ -3233,6 +3233,16 @@
               "maximum": 1,
               "description": "Jev Score at or above which the done advisory is injected."
             },
+            "claim_check": {
+              "type": "boolean",
+              "description": "AB-08-S1-01: also ask, in the same done request, whether the specific deliverable the final text claims is covered by a successful verifying call this turn. Can only add the done advisory. Off by default."
+            },
+            "claim_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Probability at or above which an uncovered claim injects the done advisory. Unfitted."
+            },
             "repeat_check": {
               "type": "boolean",
               "description": "Checkpoint: the same failure fingerprint recurs (local only, never calls Jev)."

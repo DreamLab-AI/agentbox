@@ -14,7 +14,8 @@ import type { HttpInit, HttpResponse } from 'claude-code'
 
 export type ScoreQuestion = { type: 'score'; instructions: string; criteria: string[] }
 export type ChoiceQuestion = { type: 'choice'; instructions: string; criteria: Record<string, string> }
-export type Question = ScoreQuestion | ChoiceQuestion
+export type NoulQuestion = { type: 'noul'; instructions: string }
+export type Question = ScoreQuestion | ChoiceQuestion | NoulQuestion
 
 export type JevRequest = {
   state: Record<string, string>
@@ -25,6 +26,11 @@ export type JevRequest = {
 /** A score question with two bands, lowest first: its normalised score is P(the second). */
 export function scoreQuestion(instructions: string, no: string, yes: string): ScoreQuestion {
   return { type: 'score', instructions, criteria: [no, yes] }
+}
+
+/** A yes/no question: its answer is the probability of yes. The instructions carry the whole meaning. */
+export function noulQuestion(instructions: string): NoulQuestion {
+  return { type: 'noul', instructions }
 }
 
 /** What one request came to. Never thrown: every failure is an outcome. */
@@ -59,6 +65,32 @@ export function readScore(answer: unknown): number | null {
   }
   if (raw === null) return null
   return Math.min(1, Math.max(0, raw / (levels - 1)))
+}
+
+/** A noul answer as the probability of yes in [0, 1]; null for any other shape. */
+export function readNoul(answer: unknown): number | null {
+  if (!answer || typeof answer !== 'object') return null
+  const p = (answer as Record<string, unknown>)['noul']
+  return typeof p === 'number' && Number.isFinite(p) && p >= 0 && p <= 1 ? p : null
+}
+
+/**
+ * Whether the done checkpoint injects. Without the claim check this is exactly the original
+ * rule: a readable score at or above `threshold`. With it (AB-08-S1-01, off by default) a
+ * readable score still gates, and a turn the score left under the bar also injects when the
+ * claim-specific Noul reads at or above `claimThreshold`. A missing or malformed Noul changes
+ * nothing, and the claim check can only ever ADD the advisory line, never remove it.
+ */
+export function doneInjects(args: {
+  score: number | null
+  threshold: number
+  claimCheck: boolean
+  claimUnverified: number | null
+  claimThreshold: number
+}): boolean {
+  if (args.score === null) return false
+  if (args.score >= args.threshold) return true
+  return args.claimCheck && args.claimUnverified !== null && args.claimUnverified >= args.claimThreshold
 }
 
 /** A choice answer as `{choice, confidence}`, the choice one of `allowed`; null for any other shape. */

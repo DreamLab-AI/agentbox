@@ -22,6 +22,10 @@ export type Options = {
   readonly timeoutMs: number
   readonly doneCheck: boolean
   readonly doneThreshold: number
+  /** AB-08-S1-01: also ask whether the specific claim is covered by a successful verifying call. Off by default. */
+  readonly claimCheck: boolean
+  /** Probability at or above which an uncovered claim injects the done line. */
+  readonly claimThreshold: number
   readonly repeatCheck: boolean
   readonly repeatCount: number
   readonly planCheck: boolean
@@ -90,6 +94,8 @@ export function readOptions(options: PluginOptions | undefined): Options {
     timeoutMs: timeout === undefined ? 4000 : Math.min(MAX_TIMEOUT_MS, Math.max(250, Math.round(timeout))),
     doneCheck: bool(o.doneCheck, true),
     doneThreshold: unit(o.doneThreshold, 0.9),
+    claimCheck: bool(o.claimCheck, false),
+    claimThreshold: unit(o.claimThreshold, 0.9),
     repeatCheck: bool(o.repeatCheck, true),
     repeatCount: repeat === undefined ? 2 : Math.max(2, Math.floor(repeat)),
     planCheck: bool(o.planCheck, true),

@@ -625,6 +625,19 @@
           "no-accepted-record"
         ],
         "notes": "Sent per listed request (at most 10): the title, authority class, requester rationale, exact operation and task properties. Adds an advisory `review_aid` (per-obligation addressed probability, review urgency) and nothing else; it never approves, signs, reorders, hides or alters authority. Proposed research candidate; no measured uplift."
+      },
+      {
+        "id": "jev-checkpoints-claim-option",
+        "route": "Jev option on the done checkpoint: claim-specific evidence Noul (AB-08-S1-01)",
+        "leaves": [
+          "prompt"
+        ],
+        "destination_class": "vendor",
+        "destination": "The same System One endpoint as the existing done checkpoint (`[features.jev_checkpoints].api`, the ADR-2139 proxy, or `api.typesafe.ai`); no new destination",
+        "gate": "INACTIVE. `[features.jev_checkpoints].claim_check = false` (the default), on top of the checkpoint's own `enabled` and `done_check`. The existing email taint fence and key rules apply unchanged.",
+        "accepted_egress": "ADR-2135 (accepted): the done checkpoint already sends the clamped final text and the compact tool-call list. The option adds one Noul question to that request and no further content.",
+        "markers": [],
+        "notes": "Same state as the done score (final text, tool name/ok/first command line; never tool output). Can only ADD the done advisory line when an uncovered claim reads at or above `claim_threshold`; never removes one and never alters an exit code or receipt. Proposed research candidate; no measured uplift."
       }
     ]
   }

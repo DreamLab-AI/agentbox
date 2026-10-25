@@ -1,7 +1,7 @@
 import { describe, expect, test, tier } from 'claude-code/testing'
 
 import { errorLines, fingerprint, normaliseLine, watchesTool } from '../hooks/fingerprint'
-import { egress, isTypeSafeApi, readChoice, readScore } from '../hooks/jev'
+import { doneInjects, egress, isTypeSafeApi, noulQuestion, readChoice, readNoul, readScore } from '../hooks/jev'
 import { DEFAULT_API, list, MAX_TIMEOUT_MS, readOptions } from '../hooks/options'
 import { agrees, enforceDecision, joinLine, shadowPath, frontmatterModel, pinned, shadowRecord, spawnState, tierOf } from '../hooks/spawn'
 import type { EnforceInput } from '../hooks/spawn'
@@ -25,6 +25,8 @@ describe('options', () => {
       timeoutMs: 4000,
       doneCheck: true,
       doneThreshold: 0.9,
+      claimCheck: false,
+      claimThreshold: 0.9,
       repeatCheck: true,
       repeatCount: 2,
       planCheck: true,
@@ -403,5 +405,43 @@ describe('taint', () => {
     expect(factrailTainted(JSON.stringify({ 'taint:s1': { tainted: true, count: 1 } }), 's1')).toBe(true)
     expect(factrailTainted(JSON.stringify({ 'taint:s1': { tainted: false } }), 's1')).toBe(false)
     expect(factrailTainted('{ torn', 's1')).toBe(false)
+  })
+})
+
+describe('claim check (AB-08-S1-01)', () => {
+  const base = { score: 0.5, threshold: 0.9, claimCheck: false, claimUnverified: 0.99, claimThreshold: 0.9 }
+
+  test('off by default, and only a true claimCheck is honoured', () => {
+    expect(readOptions(undefined).claimCheck).toBe(false)
+    expect(readOptions({ claimCheck: 'true' }).claimCheck).toBe(true)
+    expect(readOptions({ claimCheck: 'yes' }).claimCheck).toBe(false)
+    expect(readOptions({ claimThreshold: 2 }).claimThreshold).toBe(0.9)
+  })
+
+  test('with the check off the decision is exactly the original: a readable score at or above the threshold', () => {
+    for (const score of [null, 0, 0.5, 0.89, 0.9, 0.96, 1]) {
+      for (const claimUnverified of [null, 0, 0.99]) {
+        expect(doneInjects({ ...base, score, claimUnverified })).toBe(score !== null && score >= 0.9)
+      }
+    }
+  })
+
+  test('with the check on it can only add: a high score still injects, an uncovered claim under the bar injects too', () => {
+    expect(doneInjects({ ...base, claimCheck: true, score: 0.95, claimUnverified: 0 })).toBe(true)
+    expect(doneInjects({ ...base, claimCheck: true, score: 0.5, claimUnverified: 0.95 })).toBe(true)
+    expect(doneInjects({ ...base, claimCheck: true, score: 0.5, claimUnverified: 0.5 })).toBe(false)
+  })
+
+  test('a missing or malformed claim answer, or an unreadable score, changes nothing', () => {
+    expect(doneInjects({ ...base, claimCheck: true, score: 0.5, claimUnverified: null })).toBe(false)
+    expect(doneInjects({ ...base, claimCheck: true, score: null, claimUnverified: 0.99 })).toBe(false)
+    expect(readNoul({ type: 'noul' })).toBeNull()
+    expect(readNoul({ noul: 1.5 })).toBeNull()
+    expect(readNoul('x')).toBeNull()
+    near(readNoul({ noul: 0.4 }), 0.4)
+  })
+
+  test('the Noul is a string-instruction question with no criteria', () => {
+    expect(noulQuestion('is it so?')).toEqual({ type: 'noul', instructions: 'is it so?' })
   })
 })

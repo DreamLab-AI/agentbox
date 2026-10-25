@@ -20,7 +20,7 @@ const require = createRequire(import.meta.url)
 /** Contract table: manifest key → userConfig key (ADR-2135). `enabled` is the gate, not a userConfig. */
 const KEYS = {
   api: 'api', model: 'model', timeout_ms: 'timeoutMs', done_check: 'doneCheck',
-  done_threshold: 'doneThreshold', repeat_check: 'repeatCheck', repeat_count: 'repeatCount',
+  done_threshold: 'doneThreshold', claim_check: 'claimCheck', claim_threshold: 'claimThreshold', repeat_check: 'repeatCheck', repeat_count: 'repeatCount',
   plan_check: 'planCheck', plan_threshold: 'planThreshold', min_chars: 'minChars',
   spawn_mode: 'spawnMode', spawn_min_confidence: 'spawnMinConfidence', shadow_log: 'shadowLog',
   usd_per_mtok_in: 'usdPerMTokIn',
@@ -29,7 +29,7 @@ const KEYS = {
 const EXTRA = ['backendLocal', 'taintTools', 'taintSkills']
 const DEFAULTS = {
   enabled: true, api: '', model: 'jev-latest', timeout_ms: 4000, done_check: true, done_threshold: 0.9,
-  repeat_check: true, repeat_count: 2, plan_check: true, plan_threshold: 0.8, min_chars: 24,
+  claim_check: false, claim_threshold: 0.9, repeat_check: true, repeat_count: 2, plan_check: true, plan_threshold: 0.8, min_chars: 24,
   spawn_mode: 'shadow', spawn_min_confidence: 0.8,
   shadow_log: '/home/devuser/.claude/jev-checkpoints/shadow.jsonl', usd_per_mtok_in: 0.042,
 }
