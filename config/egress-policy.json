@@ -562,7 +562,7 @@
         "gate": "INACTIVE. `AGENTBOX_JEV_SKILL_VERIFY=1` and/or `AGENTBOX_JEV_SKILL_INTENT=1`, both unset by default, on top of the `skill-router` gate (`[skills.routing].router = \"jev\"`). With neither set the request body is byte-identical to `skill-router`.",
         "accepted_egress": "ADR-2090 (accepted): routing prompt may leave, skill routing only. The option adds questions to the same request and sends no additional content class.",
         "markers": [],
-        "notes": "Adds up to `AGENTBOX_JEV_SKILL_K` (default 3) Noul questions carrying the shortlisted skills' descriptions, and with the intent flag opaque capability ids plus a facet Choice. Thresholds default to accept nothing (`AGENTBOX_JEV_SKILL_VETO_BELOW=0`, `AGENTBOX_JEV_SKILL_LIST_AT_LEAST=2`). Fails open to the unchanged router outcome. Proposed research candidate; no measured uplift."
+        "notes": "Adds up to `AGENTBOX_JEV_SKILL_K` (default 3) Noul questions carrying the shortlisted skills' descriptions and, with the intent flag, a second blind Choice over the same candidates keyed by opaque ids (the criteria are sent twice, about +16k input tokens a turn) plus a facet Choice and a multi-intent Noul. The real `skill` question is byte-identical. All thresholds default to accept nothing (`AGENTBOX_JEV_SKILL_VETO_BELOW=0`, `AGENTBOX_JEV_SKILL_LIST_AT_LEAST=2`, `AGENTBOX_JEV_SKILL_BLIND_ADOPT_AT=1.01`). Fails open to the unchanged router outcome. Proposed research candidate; no measured uplift."
       },
       {
         "id": "failure-taxonomy-jev-option",
@@ -577,7 +577,7 @@
         "markers": [
           "no-accepted-record"
         ],
-        "notes": "Sent only for a failure the taxonomy left `unmapped`: the redacted error text, the action pattern and the 14 MAST mode definitions. At most 3 requests per Stop run. Acceptance thresholds default to unreachable, so an enabled option changes no tag until fitted. The raw failure and the outcome are never touched. Proposed research candidate; no measured uplift."
+        "notes": "Sent only for a failure the taxonomy left `unmapped`: the redacted error text, the action pattern and the 14 MAST mode definitions. A pre-pass before the database opens: at most 3 requests under one overall 4 s deadline per Stop run. Acceptance thresholds default to unreachable, so an enabled option changes no tag until fitted. The raw failure and the outcome are never touched. Proposed research candidate; no measured uplift."
       },
       {
         "id": "memory-rerank-jev-option",
@@ -593,7 +593,7 @@
         "markers": [
           "no-accepted-record"
         ],
-        "notes": "Sent after the embedding search, namespace exclusions and TTL filter have run: the query and up to 20 candidate snippets of at most 400 characters (keys and namespaces are not sent). Reorders only; `score` stays the cosine and no row is added or dropped. Proposed research candidate; no measured uplift."
+        "notes": "Sent after the embedding search, namespace exclusions and TTL filter have run: the query and the candidate snippets (the rows the search already returned; overfetch to at most 20 only by explicit `AGENTBOX_JEV_MEMORY_POOL`) of at most 400 characters (keys and namespaces are not sent). Reorders only; `score` stays the cosine and no row is added or dropped. Proposed research candidate; no measured uplift."
       },
       {
         "id": "voice-intent-jev-option",

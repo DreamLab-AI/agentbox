@@ -29,8 +29,10 @@ test('flag off: the pool is the limit, nothing is requested and the very same ob
   assert.equal(calls, 0);
   assert.equal(rr.poolFor(5, { AGENTBOX_JEV_MEMORY_RERANK: '0' }), 5);
   assert.equal(rr.poolFor(5, {}), 5);
-  assert.equal(rr.poolFor(5, LOCAL), 10);
-  assert.equal(rr.poolFor(50, { ...LOCAL, AGENTBOX_JEV_MEMORY_POOL: '99' }), 50);
+  assert.equal(rr.poolFor(5, LOCAL), 5);                                   // default: the query is unchanged
+  assert.equal(rr.poolFor(5, { ...LOCAL, AGENTBOX_JEV_MEMORY_POOL: '12' }), 12); // explicit opt-in overfetch
+  assert.equal(rr.poolFor(5, { ...LOCAL, AGENTBOX_JEV_MEMORY_POOL: '99' }), 20); // capped
+  assert.equal(rr.poolFor(50, { ...LOCAL, AGENTBOX_JEV_MEMORY_POOL: '10' }), 50);
 });
 
 const bad = {

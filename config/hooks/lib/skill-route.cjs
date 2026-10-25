@@ -431,15 +431,19 @@ function fail(reason, extra = {}) { return { outcome: 'failed', reason, ...extra
  *     candidate: does the turn satisfy that skill's stated prerequisites and none of its
  *     when-NOT-to-use boundaries? A pick whose Noul is below `vetoBelow` becomes `none`
  *     (inject nothing); candidates at or above `listAtLeast` are listed beside the pick.
- *   • `AGENTBOX_JEV_SKILL_INTENT=1` (S1-04) — the Choice is asked over opaque capability ids
- *     (`cap_01`…) instead of skill names, so the pick cannot ride on a name or path; names are
- *     restored in code and validated against the candidate set. A facet Choice (`operation`)
- *     and a Noul (`multi_intent`) are reported on the outcome and never gate.
- * Both default off. Both defaults for the two thresholds ACCEPT NOTHING (`vetoBelow` 0 never
- * vetoes, `listAtLeast` 2 never lists), so even a switched-on option leaves the pick and the
- * injected line exactly as before until thresholds fitted on labelled data are set. A turn
- * that names a skill explicitly bypasses both. Authority is unchanged: the Skill tool still
- * loads only a validated name, and nothing here loads, writes or approves anything.
+ *   • `AGENTBOX_JEV_SKILL_INTENT=1` (S1-04) — a SECOND, blind Choice (`skill_blind`) over the same
+ *     candidates keyed by opaque capability ids (`cap_01`…), so its pick cannot ride on a name or a
+ *     path; names are restored in code and validated against the candidate set. The real `skill`
+ *     question is untouched. The blind pick is logged beside the real one and is adopted only when
+ *     it differs from the real pick AND its confidence reaches `blindAdoptAt`. A facet Choice
+ *     (`operation`) and a Noul (`multi_intent`) are reported on the outcome and never gate.
+ *     Cost: the criteria are sent twice (~+16k input tokens a turn); each question stays inside
+ *     the 32k per-question limit and the pair inside the 64k total.
+ * Both default off. Every default threshold ACCEPTS NOTHING (`vetoBelow` 0 never vetoes,
+ * `listAtLeast` 2 never lists, `blindAdoptAt` 1.01 never adopts), so even a switched-on option
+ * leaves the pick and the injected line exactly as before until thresholds fitted on labelled
+ * data are set. A turn that names a skill explicitly bypasses both. Authority is unchanged: the
+ * Skill tool still loads only a validated name, and nothing here loads, writes or approves anything.
  */
 const JEV_SKILL_QUESTION_SET = 'skill-route-jev/1';
 const JEV_FACETS = {
@@ -458,6 +462,7 @@ function jevConfig(env = process.env) {
     k: asInt(env.AGENTBOX_JEV_SKILL_K, 3),
     vetoBelow: asRate(env.AGENTBOX_JEV_SKILL_VETO_BELOW, 0),
     listAtLeast: asRate(env.AGENTBOX_JEV_SKILL_LIST_AT_LEAST, 2),
+    blindAdoptAt: asRate(env.AGENTBOX_JEV_SKILL_BLIND_ADOPT_AT, 1.01),
   };
 }
 
@@ -485,15 +490,16 @@ function jevPlan(text, criteria, jc) {
   if (!jc || (!jc.verify && !jc.intent)) return null;
   const names = Object.keys(criteria);
   if (names.length < 2 || explicitSkillRequest(text, names)) return null;
-  const plan = { criteria, idToName: null, shortlist: [], extra: {}, questionSet: JEV_SKILL_QUESTION_SET };
+  const plan = { idToName: null, shortlist: [], extra: {}, questionSet: JEV_SKILL_QUESTION_SET };
   if (jc.intent) {
     plan.idToName = {};
-    plan.criteria = {};
+    const blind = {};
     names.forEach((n, i) => {
       const id = `cap_${String(i + 1).padStart(2, '0')}`;
       plan.idToName[id] = n;
-      plan.criteria[id] = criteria[n];
+      blind[id] = criteria[n];
     });
+    plan.extra.skill_blind = jevOption.choiceQuestion(INSTRUCTIONS, { ...blind, [NONE]: NONE_RUBRIC });
     plan.extra.operation = jevOption.choiceQuestion(
       'Which kind of work does `user_request` mainly ask for? Choose the single best facet.', JEV_FACETS);
     plan.extra.multi_intent = jevOption.noulQuestion(
@@ -517,6 +523,21 @@ function jevPlan(text, criteria, jc) {
  */
 function applyJev(result, answers, plan, jc) {
   const out = { ...result, jev: { set: plan.questionSet } };
+  if (plan.extra.skill_blind) {
+    const ids = [...Object.keys(plan.idToName), NONE];
+    const b = jevOption.readChoice(answers.skill_blind, ids);
+    if (!b) out.jev.reason = 'malformed';
+    else {
+      const blindPick = b.choice === NONE ? NONE : plan.idToName[b.choice];
+      out.jev.blindPick = blindPick;
+      out.jev.blindConfidence = b.confidence === null ? null : Number(b.confidence.toFixed(4));
+      if (blindPick !== result.choice && b.confidence !== null && b.confidence >= jc.blindAdoptAt) {
+        out.jev.blindAdopted = true;
+        out.choice = blindPick;
+        out.none = blindPick === NONE;
+      }
+    }
+  }
   if (plan.extra.operation) {
     const f = jevOption.readChoice(answers.operation, Object.keys(JEV_FACETS));
     const m = jevOption.readNoul(answers.multi_intent);
@@ -529,15 +550,15 @@ function applyJev(result, answers, plan, jc) {
     if (fits.some(([, p]) => p === null)) out.jev.reason = 'malformed';
     const verified = fits.filter(([, p]) => p !== null);
     out.jev.fits = Object.fromEntries(verified.map(([n, p]) => [n, Number(p.toFixed(4))]));
-    const picked = verified.find(([n]) => n === result.choice);
-    if (!result.none && picked && picked[1] < jc.vetoBelow) {
-      out.jev.vetoed = result.choice;
+    const picked = verified.find(([n]) => n === out.choice);
+    if (!out.none && picked && picked[1] < jc.vetoBelow) {
+      out.jev.vetoed = out.choice;
       out.choice = NONE;
       out.none = true;
-    } else if (!result.none && !picked && !out.jev.reason) {
+    } else if (!out.none && !picked && !out.jev.reason) {
       out.jev.reason = 'unverified';
     }
-    const listed = verified.filter(([n, p]) => p >= jc.listAtLeast && n !== result.choice).map(([n]) => n);
+    const listed = verified.filter(([n, p]) => p >= jc.listAtLeast && n !== out.choice).map(([n]) => n);
     if (listed.length && !out.none) out.verified = listed;
   }
   return out;
@@ -607,7 +628,7 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
   const body = {
     state: { user_request: state },
     model: cfg.model,
-    questions: { skill: { type: 'choice', instructions: INSTRUCTIONS, criteria: { ...(plan ? plan.criteria : criteria), [NONE]: NONE_RUBRIC } } },
+    questions: { skill: { type: 'choice', instructions: INSTRUCTIONS, criteria: { ...criteria, [NONE]: NONE_RUBRIC } } },
   };
   if (plan) Object.assign(body.questions, plan.extra);
   const base = { candidates: n, chars: text.length, truncated, ...esc, ...scoped };
@@ -644,15 +665,7 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
     const a = j && j.answers && j.answers.skill;
     if (!a || typeof a.choice !== 'string') return fail('bad-shape', { ...base, ms });
     const probs = a.probabilities && typeof a.probabilities === 'object' ? a.probabilities : {};
-    let ranked = Object.entries(probs).sort((x, y) => y[1] - x[1]);
-    let picked = a.choice;
-    if (plan && plan.idToName) {
-      // Opaque ids back to names, in code. An id the request did not offer is a malformed answer.
-      const back = (id) => (id === NONE ? NONE : plan.idToName[id]);
-      picked = back(a.choice);
-      if (picked === undefined) return fail('bad-shape', { ...base, ms });
-      ranked = ranked.map(([k, v]) => [back(k), v]).filter(([k]) => k !== undefined);
-    }
+    const ranked = Object.entries(probs).sort((x, y) => y[1] - x[1]);
     const inTok = (j.usage && j.usage.input_tokens) || 0;
     // The proxy knows the backend that served THIS request, including live
     // switches. Cloud vendors cannot override the declared consumer rate.
@@ -662,8 +675,8 @@ async function route(prompt, cfg, { retries = 0, candidates, registeredOnly = fa
     const routed = {
       outcome: 'routed', ...base, ms,
       model: j.model || cfg.model,
-      choice: picked,
-      none: picked === NONE,
+      choice: a.choice,
+      none: a.choice === NONE,
       confidence: typeof a.confidence === 'number' ? a.confidence : null,
       ranked,
       usage: { input_tokens: inTok, output_tokens: (j.usage && j.usage.output_tokens) || 0 },

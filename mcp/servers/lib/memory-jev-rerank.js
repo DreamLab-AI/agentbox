@@ -31,7 +31,6 @@ const memoryTools = require('./memory-tools');
 const FLAG = 'AGENTBOX_JEV_MEMORY_RERANK';
 const QUESTION_SET = 'memory-rerank-jev/1';
 const SNIPPET_CHARS = 400;
-const DEFAULT_POOL = 10;
 const MAX_POOL = 20;
 const RELEVANCE_LEVELS = [
   'Unrelated: the memory is about something else.',
@@ -61,13 +60,16 @@ function enabled(env) {
 }
 
 /**
- * How many candidates to fetch: `limit` when the option is off (so the query is unchanged),
- * otherwise enough to give the judge a real shortlist, capped.
+ * How many candidates to fetch. ALWAYS `limit` unless the operator opts into overfetch with an
+ * explicit `AGENTBOX_JEV_MEMORY_POOL` (capped at 20): a larger pool changes the query itself, so
+ * the shaped output of a fallback (counts below the cosine floor, hints, the ANN top-k, the
+ * attention block) is no longer equal to the pre-change output. By default the judge reorders
+ * only the rows the search already returned, and a fallback is byte-identical.
  */
 function poolFor(limit, env = process.env) {
   if (!enabled(env)) return limit;
-  const pool = Math.floor(num(env.AGENTBOX_JEV_MEMORY_POOL, DEFAULT_POOL));
-  return Math.max(limit, Math.min(MAX_POOL, pool));
+  const pool = Math.floor(num(env.AGENTBOX_JEV_MEMORY_POOL, 0));
+  return pool > limit ? Math.min(MAX_POOL, pool) : limit;
 }
 
 /** The judge's request: state is the query and the candidates; one Score per candidate, one Noul overall. */

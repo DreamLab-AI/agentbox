@@ -112,16 +112,20 @@ function failureModeFor(taxonomy, step) {
   return UNMAPPED;
 }
 
-// AB-03-S1-01 (Jev option, off unless AGENTBOX_JEV_FAILURE_TAXONOMY=1): a failure the taxonomy
-// left `unmapped` may be refined by a LOCAL judge. Exact mappings win and are never re-asked;
-// every miss (flag off, no local endpoint, error, timeout, malformed, low confidence) returns
-// the base tag unchanged. See lib/failure-jev.cjs. Never throws.
-async function failureTagFor(taxonomy, step) {
-  const base = failureModeFor(taxonomy, step);
-  if (base !== UNMAPPED || !taxonomy || !process.env.AGENTBOX_JEV_FAILURE_TAXONOMY) return { mode: base };
+// AB-03-S1-01 (Jev option, off unless AGENTBOX_JEV_FAILURE_TAXONOMY=1): failures the taxonomy left
+// `unmapped` may be refined by a LOCAL judge. This is a PRE-PASS, run before the database
+// connection opens and under one overall deadline (<= 4 s), so the judge cannot stall the Stop
+// hook or the watermark. Exact mappings win and are never re-asked; every miss (flag off, no
+// local endpoint, error, timeout, malformed, low confidence) keeps the base tag and persists
+// nothing about the miss. See lib/failure-jev.cjs. Never throws.
+async function jevFailureTags(taxonomy, steps) {
+  if (!process.env.AGENTBOX_JEV_FAILURE_TAXONOMY || !taxonomy) return new Map();
   try {
-    return await require('./lib/failure-jev.cjs').refine(taxonomy, { stderr: step.failureHint, action: step.action }, base);
-  } catch { return { mode: base }; }
+    const items = steps.filter((st) => !st.outcome.success)
+      .map((st) => ({ id: st.toolUseId, ctx: { stderr: st.failureHint, action: st.action }, base: failureModeFor(taxonomy, st) }))
+      .filter((it) => it.base === UNMAPPED);
+    return items.length ? await require('./lib/failure-jev.cjs').refineMany(taxonomy, items) : new Map();
+  } catch { return new Map(); }
 }
 
 // ── REC-3 (CTC emitter WIRE): forward a step's captured token_count + chain
@@ -431,6 +435,7 @@ async function handleClose(payload) {
   // multi-agent DAG can be reconstructed (handoff counts + token burden per step).
   const chainId = util.handoffIdFrom(process.env, ident.urn || ident.id);
   const taxonomy = loadTaxonomy();
+  const jevTags = await jevFailureTags(taxonomy, steps);
   // REC-3 (CTC emitter WIRE): the emit bodies to forward onto the agent-events
   // envelope after DB persistence — one per step carrying a token_count / handoff_id.
   // Drain anything the previous invocation could not deliver BEFORE this run's
@@ -470,9 +475,9 @@ async function handleClose(payload) {
       // REC-5 (AC2): a graded FAILURE carries a MAST failure_mode tag (or the
       // `unmapped` sentinel); a graded SUCCESS writes no mode.
       if (!s.outcome.success) {
-        const tag = await failureTagFor(taxonomy, s);
+        const tag = jevTags.get(s.toolUseId) || { mode: failureModeFor(taxonomy, s) };
         resultObj.failure_mode = tag.mode; s.failure_mode = tag.mode;
-        // Present only when the Jev option ran: question-set version and why a suggestion was or was not taken.
+        // Present only when the Jev option's judge actually answered for this step.
         if (tag.jev) resultObj.failure_jev = tag.jev;
       }
       // REC-3 (AC1): the token burden of the turn that issued this step, parsed

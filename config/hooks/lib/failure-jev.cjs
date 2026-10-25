@@ -20,8 +20,12 @@
  *     support reach thresholds, both defaulting to 1.01 (unreachable) until fitted on labelled
  *     data. Anything else — flag off, no endpoint, transport error, timeout, malformed answer,
  *     a mode outside the offered set, low confidence — returns the base tag unchanged.
- *   • Bounded: at most `AGENTBOX_JEV_FAILURE_MAX_CALLS` (default 3) requests per process, so a
- *     Stop hook with many failures cannot spend its budget on the judge.
+ *   • Bounded: `refineMany` is a pre-pass for a Stop hook, run before any database connection,
+ *     with at most `AGENTBOX_JEV_FAILURE_MAX_CALLS` (default 3) requests and ONE overall deadline
+ *     (`AGENTBOX_JEV_FAILURE_DEADLINE_MS`, default 4000, hard-capped at 4000) shared by all of
+ *     them, so the judge can never spend the hook's 10 s budget or stall the watermark.
+ *   • A `jev` annotation is returned only when the judge actually ANSWERED; a fallback returns the
+ *     base tag alone, so nothing about a miss is persisted.
  */
 
 const jev = require('./jev-option.cjs');
@@ -67,6 +71,7 @@ function settings(env) {
     minSupport: num(env.AGENTBOX_JEV_FAILURE_MIN_SUPPORT, 1.01),
     maxCalls: Math.max(0, Math.floor(num(env.AGENTBOX_JEV_FAILURE_MAX_CALLS, 3))),
     timeoutMs: Math.max(250, Math.floor(num(env.AGENTBOX_JEV_FAILURE_TIMEOUT_MS, 3000))),
+    deadlineMs: Math.min(4000, Math.max(250, Math.floor(num(env.AGENTBOX_JEV_FAILURE_DEADLINE_MS, 4000)))),
   };
 }
 
@@ -92,25 +97,26 @@ function buildQuestions(taxonomy) {
  *
  * `ctx` is `{ stderr, action }` (already redacted by the caller); `base` is `classify(ctx)`.
  */
-async function refine(taxonomy, ctx, base, { env = process.env, fetchImpl, log } = {}) {
-  const keep = (reason) => ({ mode: base, jev: { set: QUESTION_SET, reason } });
+async function refine(taxonomy, ctx, base, { env = process.env, fetchImpl, log, timeoutMs } = {}) {
+  const keep = () => ({ mode: base });
   const s = settings(env);
-  if (!s.enabled) return { mode: base };
-  if (base !== UNMAPPED) return { mode: base };            // exact reason / heuristic mappings win
+  if (!s.enabled) return keep();
+  if (base !== UNMAPPED) return keep();                   // exact reason / heuristic mappings win
   const text = typeof ctx.stderr === 'string' ? ctx.stderr.trim() : '';
-  if (!text) return { mode: base };                       // nothing to judge
-  if (spent >= s.maxCalls) return keep('budget');
+  if (!text) return keep();                               // nothing to judge
+  if (spent >= s.maxCalls) return keep();
   const endpoint = jev.resolveEndpoint(env, { localOnly: true });
-  if (!endpoint.ok) { jev.logFallback('ab-03', endpoint.reason, log); return keep(endpoint.reason); }
+  if (!endpoint.ok) { jev.logFallback('ab-03', endpoint.reason, log); return keep(); }
   spent += 1;
   const out = await jev.ask(endpoint, { error_text: text, operation: String(ctx.action || '').slice(0, 200) },
-    buildQuestions(taxonomy), { fetchImpl, timeoutMs: s.timeoutMs, retries: 0 });
-  if (!out.ok) { jev.logFallback('ab-03', out.reason, log); return keep(out.reason); }
+    buildQuestions(taxonomy), { fetchImpl, timeoutMs: Math.max(1, Math.min(s.timeoutMs, timeoutMs || s.timeoutMs)), retries: 0 });
+  if (!out.ok) { jev.logFallback('ab-03', out.reason, log); return keep(); }
   const allowed = [...taxonomy.MODE_IDS, UNMAPPED];
   const pick = jev.readChoice(out.answers.mode, allowed);
   const support = jev.readNoul(out.answers.supported);
-  if (!pick || support === null) { jev.logFallback('ab-03', 'malformed', log); return keep('malformed'); }
-  if (pick.choice === UNMAPPED) return keep('unmapped');
+  if (!pick || support === null) { jev.logFallback('ab-03', 'malformed', log); return keep(); }
+  // From here the judge answered, so the annotation is real evidence and may be persisted.
+  if (pick.choice === UNMAPPED) return { mode: base, jev: { set: QUESTION_SET, judged: UNMAPPED } };
   if (pick.confidence === null || pick.confidence < s.minConfidence || support < s.minSupport) {
     jev.logFallback('ab-03', 'low-confidence', log);
     return { mode: base, jev: { set: QUESTION_SET, reason: 'low-confidence', suggested: pick.choice, confidence: pick.confidence, support } };
@@ -118,4 +124,24 @@ async function refine(taxonomy, ctx, base, { env = process.env, fetchImpl, log }
   return { mode: pick.choice, jev: { set: QUESTION_SET, confidence: pick.confidence, support } };
 }
 
-module.exports = { FLAG, QUESTION_SET, MODE_DEFINITIONS, UNMAPPED_RUBRIC, buildQuestions, refine, resetBudget };
+/**
+ * The Stop-hook pre-pass: refine every `{ id, ctx, base }` whose base tag is `unmapped`, in order,
+ * inside ONE overall deadline. Resolves a Map id → `{ mode, jev? }` holding only the entries that
+ * were asked; an id absent from the map keeps its base tag. Never rejects.
+ */
+async function refineMany(taxonomy, items, opts = {}) {
+  const env = opts.env || process.env;
+  const out = new Map();
+  const s = settings(env);
+  if (!s.enabled) return out;
+  resetBudget();
+  const stop = Date.now() + s.deadlineMs;
+  for (const it of items) {
+    const left = stop - Date.now();
+    if (left < 250) break;
+    try { out.set(it.id, await refine(taxonomy, it.ctx, it.base, { ...opts, env, timeoutMs: left })); } catch { /* keep the base tag */ }
+  }
+  return out;
+}
+
+module.exports = { FLAG, QUESTION_SET, MODE_DEFINITIONS, UNMAPPED_RUBRIC, buildQuestions, refine, refineMany, resetBudget };

@@ -38,19 +38,22 @@ async function withFetch(impl, fn) {
 const ok = (answers) => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ model: 'jev-1', answers, usage: { input_tokens: 100, output_tokens: 1 } }) })
 const choiceAnswer = (choice, others = {}) => ({ type: 'choice', choice, confidence: 0.8, probabilities: { [choice]: 0.8, ...others } })
 
-/** Reply by question name: the skill Choice plus any Noul/facet answers. */
-function reply(fits = {}, pick = 'pdf-forms', facets = {}) {
+/** Reply by question name: the skill Choice (always by name), any Noul/facet answers and, when asked, the blind Choice. */
+function reply(fits = {}, pick = 'pdf-forms', facets = {}, blind = pick, blindConf = 0.8) {
   return ({ body }) => {
-    const answers = { skill: choiceAnswer(body.questions.skill.criteria[pick] !== undefined ? pick : pickId(body, pick)) }
+    const answers = { skill: choiceAnswer(pick) }
     for (const k of Object.keys(body.questions)) {
       if (k.startsWith('fit_')) answers[k] = fits[k] === undefined ? { type: 'noul', noul: 0.9 } : fits[k]
+    }
+    if (body.questions.skill_blind) {
+      const id = blind === 'none' ? 'none' : Object.keys(body.questions.skill_blind.criteria).find((k) => body.questions.skill_blind.criteria[k] === CANDIDATES[blind])
+      answers.skill_blind = { ...choiceAnswer(id), confidence: blindConf }
     }
     if (body.questions.operation) answers.operation = facets.operation || { type: 'choice', choice: 'modify', confidence: 0.7, probabilities: { modify: 0.7 } }
     if (body.questions.multi_intent) answers.multi_intent = facets.multi_intent || { type: 'noul', noul: 0.1 }
     return ok(answers)
   }
 }
-const pickId = (body, name) => Object.keys(body.questions.skill.criteria).find((k) => k.startsWith('cap_') && body.questions.skill.criteria[k] === CANDIDATES[name]) || name
 
 const route = (cfg, opts = {}) => lib.route(PROMPT, cfg, { candidates: CANDIDATES, ...opts })
 
@@ -64,13 +67,17 @@ test('flag off: the request and the outcome are exactly the pre-change ones', as
   assert.equal(lib.formatContext(off.out), lib.formatContext(plain.out))
 })
 
-test('flag on, default thresholds (accept nothing): pick and injected line equal the flag-off result', async () => {
+test('flag on, default thresholds (accept nothing): the real `skill` question is byte-identical and a disagreeing blind pick changes nothing', async () => {
   const off = await withFetch(reply(), () => route(cfgOf()))
-  const on = await withFetch(reply({ fit_0: { type: 'noul', noul: 0.01 } }), () =>
+  const on = await withFetch(reply({ fit_0: { type: 'noul', noul: 0.01 } }, 'pdf-forms', {}, 'git-hygiene', 0.99), () =>
     route(cfgOf({ AGENTBOX_JEV_SKILL_VERIFY: '1', AGENTBOX_JEV_SKILL_INTENT: '1' })))
+  assert.deepEqual(on.seen[0].body.questions.skill, off.seen[0].body.questions.skill)
+  assert.deepEqual(on.seen[0].body.state, off.seen[0].body.state)
   assert.equal(on.out.choice, off.out.choice)
   assert.equal(on.out.none, off.out.none)
   assert.equal(on.out.verified, undefined)
+  assert.equal(on.out.jev.blindPick, 'git-hygiene')      // reported, not adopted
+  assert.equal(on.out.jev.blindAdopted, undefined)
   assert.equal(lib.formatContext(on.out), lib.formatContext(off.out))
 })
 
@@ -130,33 +137,56 @@ test('wire shape — verify: a Choice map plus one Noul per BM25 shortlist candi
   assert.equal(lib.JEV_SKILL_QUESTION_SET, 'skill-route-jev/1')
 })
 
-test('wire shape — intent: opaque capability ids, names absent from the criteria keys, facet Choice and multi-intent Noul', async () => {
+test('wire shape — intent: a separate blind Choice over opaque ids, the real question untouched, facet Choice and multi-intent Noul', async () => {
   const { seen, out } = await withFetch(reply(), () => route(cfgOf({ AGENTBOX_JEV_SKILL_INTENT: '1' })))
   const q = seen[0].body.questions
-  const keys = Object.keys(q.skill.criteria)
+  assert.deepEqual(Object.keys(q.skill.criteria).filter((k) => k !== 'none'), Object.keys(CANDIDATES))
+  const keys = Object.keys(q.skill_blind.criteria)
   assert.deepEqual(keys.filter((k) => k !== 'none'), ['cap_01', 'cap_02', 'cap_03', 'cap_04'])
+  assert.ok(keys.includes('none'))
   for (const name of Object.keys(CANDIDATES)) assert.ok(!keys.includes(name))
+  assert.equal(q.skill_blind.type, 'choice')
+  assert.ok(!Array.isArray(q.skill_blind.criteria))
   assert.equal(q.operation.type, 'choice')
   assert.deepEqual(Object.keys(q.operation.criteria), Object.keys(lib.JEV_FACETS))
   assert.equal(q.multi_intent.type, 'noul')
-  assert.equal(out.choice, 'pdf-forms')        // the id is mapped back to a validated name
+  assert.equal(out.choice, 'pdf-forms')
+  assert.equal(out.jev.blindPick, 'pdf-forms')
   assert.equal(out.jev.operation, 'modify')
   assert.equal(out.jev.multiIntent, 0.1)
 })
 
-test('intent: an id the request never offered is a failed outcome, not a guessed skill', async () => {
-  const { out } = await withFetch(() => ok({ skill: choiceAnswer('cap_99') }), () => route(cfgOf({ AGENTBOX_JEV_SKILL_INTENT: '1' })))
-  assert.equal(out.outcome, 'failed')
-  assert.equal(out.reason, 'bad-shape')
+test('intent: an id the request never offered, or a missing blind answer, leaves the real pick and annotates malformed', async () => {
+  const bogus = await withFetch(() => ok({ skill: choiceAnswer('pdf-forms'), skill_blind: choiceAnswer('cap_99'), operation: { type: 'choice', choice: 'modify' }, multi_intent: { type: 'noul', noul: 0.1 } }), () =>
+    route(cfgOf({ AGENTBOX_JEV_SKILL_INTENT: '1', AGENTBOX_JEV_SKILL_BLIND_ADOPT_AT: '0' })))
+  assert.equal(bogus.out.outcome, 'routed')
+  assert.equal(bogus.out.choice, 'pdf-forms')
+  assert.equal(bogus.out.jev.reason, 'malformed')
+  const missing = await withFetch(() => ok({ skill: choiceAnswer('docx') }), () => route(cfgOf({ AGENTBOX_JEV_SKILL_INTENT: '1', AGENTBOX_JEV_SKILL_BLIND_ADOPT_AT: '0' })))
+  assert.equal(missing.out.choice, 'docx')
+  assert.equal(missing.out.jev.reason, 'malformed')
 })
 
-test('intent: `none` and probabilities are restored to names', async () => {
-  const none = await withFetch(() => ok({ skill: choiceAnswer('none') }), () => route(cfgOf({ AGENTBOX_JEV_SKILL_INTENT: '1' })))
+test('accept path — the blind pick is adopted only when it differs and clears blindAdoptAt; its `none` is restored to none', async () => {
+  const cfg = cfgOf({ AGENTBOX_JEV_SKILL_INTENT: '1', AGENTBOX_JEV_SKILL_BLIND_ADOPT_AT: '0.7' })
+  const adopt = await withFetch(reply({}, 'pdf-forms', {}, 'docx', 0.9), () => route(cfg))
+  assert.equal(adopt.out.choice, 'docx')
+  assert.equal(adopt.out.jev.blindAdopted, true)
+  const weak = await withFetch(reply({}, 'pdf-forms', {}, 'docx', 0.5), () => route(cfg))
+  assert.equal(weak.out.choice, 'pdf-forms')
+  const agree = await withFetch(reply({}, 'pdf-forms', {}, 'pdf-forms', 0.99), () => route(cfg))
+  assert.equal(agree.out.jev.blindAdopted, undefined)
+  const none = await withFetch(reply({}, 'pdf-forms', {}, 'none', 0.95), () => route(cfg))
   assert.equal(none.out.none, true)
-  const ranked = await withFetch(
-    () => ok({ skill: choiceAnswer('cap_01', { cap_02: 0.15, none: 0.05 }) }),
-    () => route(cfgOf({ AGENTBOX_JEV_SKILL_INTENT: '1' })))
-  assert.deepEqual(ranked.out.ranked.map(([k]) => k), ['pdf-forms', 'docx', 'none'])
+  assert.equal(lib.formatContext(none.out), '')
+})
+
+test('accept path — an adopted pick is still verified: a low fit Noul vetoes it', async () => {
+  const cfg = cfgOf({ AGENTBOX_JEV_SKILL_INTENT: '1', AGENTBOX_JEV_SKILL_VERIFY: '1', AGENTBOX_JEV_SKILL_BLIND_ADOPT_AT: '0.5', AGENTBOX_JEV_SKILL_VETO_BELOW: '0.5' })
+  // shortlist order is pdf-forms (fit_0), docx (fit_1); the adopted docx fails its verification
+  const { out } = await withFetch(reply({ fit_0: { type: 'noul', noul: 0.9 }, fit_1: { type: 'noul', noul: 0.1 } }, 'pdf-forms', {}, 'docx', 0.9), () => route(cfg))
+  assert.equal(out.jev.vetoed, 'docx')
+  assert.equal(out.none, true)
 })
 
 test('accept path — a low fit Noul vetoes the pick to none once vetoBelow is set; nothing is injected', async () => {

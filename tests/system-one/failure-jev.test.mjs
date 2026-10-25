@@ -117,3 +117,56 @@ test('the per-process budget bounds the number of requests', async () => {
   assert.equal(calls, 2)
   assert.deepEqual(modes, ['FM-1.3', 'FM-1.3', 'unmapped', 'unmapped'])
 })
+
+test('a fallback persists nothing: no `jev` annotation unless the judge answered', async () => {
+  const env = { ...LOCAL, ...THRESHOLDS }
+  for (const [name, [e, f]] of Object.entries(MISSES)) {
+    if (['low confidence', 'unsupported evidence', 'judge says unmapped', 'default thresholds accept nothing'].includes(name)) continue
+    const r = await run(AMBIGUOUS, e, f)
+    assert.equal(r.jev, undefined, name)
+  }
+  const answered = await run(AMBIGUOUS, env, ok(answers('FM-1.3', 0.4, 0.99)))
+  assert.equal(answered.mode, 'unmapped')
+  assert.equal(answered.jev.reason, 'low-confidence')
+  assert.equal(answered.jev.suggested, 'FM-1.3')
+})
+
+test('the Stop-hook pre-pass asks only unmapped failures and returns only what it asked', async () => {
+  let calls = 0
+  const fetchImpl = async () => { calls++; return ok(answers('FM-1.3', 0.9, 0.9))() }
+  const items = [
+    { id: 'exact', ctx: { stderr: 'permission denied' }, base: base({ stderr: 'permission denied' }) },
+    { id: 'blank', ctx: { stderr: '' }, base: 'unmapped' },
+    { id: 'u1', ctx: AMBIGUOUS, base: 'unmapped' },
+  ]
+  const m = await fj.refineMany(taxonomy, items, { env: { ...LOCAL, ...THRESHOLDS }, fetchImpl, log: () => {} })
+  assert.equal(calls, 1)
+  assert.deepEqual([...m.keys()].sort(), ['blank', 'exact', 'u1'].filter((k) => m.has(k)))
+  assert.equal(m.get('u1').mode, 'FM-1.3')
+  assert.equal(m.get('exact').mode, 'FM-1.2')
+  assert.equal(m.get('blank').jev, undefined)
+})
+
+test('the pre-pass has ONE overall deadline of at most 4 s, shared by every call', async () => {
+  const env = { ...LOCAL, ...THRESHOLDS, AGENTBOX_JEV_FAILURE_DEADLINE_MS: '99999', AGENTBOX_JEV_FAILURE_MAX_CALLS: '9', AGENTBOX_JEV_FAILURE_TIMEOUT_MS: '99999' }
+  const budgets = []
+  const hang = (url, init) => new Promise((_, rej) => {
+    budgets.push(Date.now())
+    init.signal.addEventListener('abort', () => { const e = new Error('a'); e.name = 'AbortError'; rej(e) })
+  })
+  const items = Array.from({ length: 6 }, (_, i) => ({ id: `u${i}`, ctx: AMBIGUOUS, base: 'unmapped' }))
+  const t0 = Date.now()
+  // a 400 ms deadline stands in for the 4 s cap so the suite stays fast: the cap itself is asserted below
+  const m = await fj.refineMany(taxonomy, items, { env: { ...env, AGENTBOX_JEV_FAILURE_DEADLINE_MS: '400' }, fetchImpl: hang, log: () => {} })
+  assert.ok(Date.now() - t0 < 1200, 'every call together stayed inside the single deadline')
+  assert.ok(budgets.length < items.length, 'later failures were not asked once the deadline was spent')
+  for (const v of m.values()) assert.equal(v.mode, 'unmapped')
+  const src = require('fs').readFileSync(new URL('../../config/hooks/lib/failure-jev.cjs', import.meta.url), 'utf8')
+  assert.match(src, /Math\.min\(4000, /)
+})
+
+test('the recorder runs the pre-pass before the database connection and persists failure_jev only when answered', () => {
+  const src = require('fs').readFileSync(new URL('../../config/hooks/trajectory-recorder.cjs', import.meta.url), 'utf8')
+  assert.ok(src.indexOf('await jevFailureTags(taxonomy, steps)') < src.indexOf('await client.connect()'))
+  assert.match(src, /jevTags\.get\(s\.toolUseId\) \|\| \{ mode: failureModeFor\(taxonomy, s\) \}/)
+})
