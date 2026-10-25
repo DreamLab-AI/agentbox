@@ -135,7 +135,11 @@ impl Config {
         let local_only = truthy(get("AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY"));
         let declared_local = get("AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL").as_deref() == Some("1");
         let endpoint = if get("AGENTBOX_SYSTEM_ONE_PROXY").as_deref() == Some("1") {
-            match non_empty(get("AGENTBOX_SYSTEM_ONE_ENDPOINT")) {
+            // The entrypoint exports the proxy URL under both names (system_one.rs); the shared JS
+            // adapter reads either, so this must too or it would skip the proxy and its locality switch.
+            match non_empty(get("AGENTBOX_SYSTEM_ONE_ENDPOINT"))
+                .or_else(|| non_empty(get("AGENTBOX_SKILL_ROUTE_API")))
+            {
                 Some(url) if local_only && !declared_local => {
                     let _ = url;
                     Err(Reason::LocalOnly)
@@ -143,6 +147,7 @@ impl Config {
                 Some(url) => Ok(Endpoint {
                     url,
                     model: non_empty(get("AGENTBOX_SYSTEM_ONE_MODEL"))
+                        .or_else(|| non_empty(get("AGENTBOX_SKILL_ROUTE_MODEL")))
                         .unwrap_or_else(|| DEFAULT_MODEL.into()),
                     bearer: None,
                     local: declared_local,
@@ -154,7 +159,9 @@ impl Config {
         };
         let defer_below = non_empty(get("AGENTBOX_JEV_DREAM_TRIAGE_DEFER_BELOW"))
             .and_then(|s| s.parse::<f64>().ok())
-            .filter(|v| v.is_finite() && (0.0..=1.0).contains(v));
+            // A Noul near 0.5 means "uncertain". A threshold above 0.5 would defer on an uncertain
+            // answer, so it is refused (treated as unset) rather than honoured.
+            .filter(|v| v.is_finite() && (0.0..=0.5).contains(v));
         Config {
             enabled,
             endpoint,
@@ -557,6 +564,61 @@ mod tests {
     }
 
     #[test]
+    fn accepts_the_skill_route_names_the_entrypoint_also_exports() {
+        let c = Config::from_lookup(&env(&[
+            ("AGENTBOX_SYSTEM_ONE_PROXY", "1"),
+            (
+                "AGENTBOX_SKILL_ROUTE_API",
+                "http://127.0.0.1:8094/v1/systemone",
+            ),
+            ("AGENTBOX_SKILL_ROUTE_MODEL", "pm"),
+            ("AGENTBOX_JEV_DREAM_TRIAGE", "1"),
+            ("TYPESAFE_API_KEY", "must-not-be-used"),
+        ]));
+        let ep = c.endpoint.unwrap();
+        assert_eq!(
+            (ep.url.as_str(), ep.model.as_str(), ep.bearer),
+            ("http://127.0.0.1:8094/v1/systemone", "pm", None)
+        );
+        // and local-only still refuses an undeclared proxy under those names
+        let lo = Config::from_lookup(&env(&[
+            ("AGENTBOX_SYSTEM_ONE_PROXY", "1"),
+            (
+                "AGENTBOX_SKILL_ROUTE_API",
+                "http://127.0.0.1:8094/v1/systemone",
+            ),
+            ("AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY", "1"),
+        ]));
+        assert_eq!(lo.endpoint, Err(Reason::LocalOnly));
+    }
+
+    #[tokio::test]
+    async fn an_uncertain_answer_does_not_defer_even_with_the_highest_allowed_threshold() {
+        let c = cfg_with(&[("AGENTBOX_JEV_DREAM_TRIAGE_DEFER_BELOW", "0.5")]);
+        let dir = tempfile::tempdir().unwrap();
+        // 0.5 is "uncertain": not below the threshold, so the night proceeds
+        assert!(
+            !consider(
+                &c,
+                &Mock::new(Ok((200, body(0.0, 0.5)))),
+                dir.path(),
+                &input()
+            )
+            .await
+        );
+        // just under is a confident "no": defers
+        assert!(
+            consider(
+                &c,
+                &Mock::new(Ok((200, body(0.0, 0.2)))),
+                dir.path(),
+                &input()
+            )
+            .await
+        );
+    }
+
+    #[test]
     fn local_only_refuses_undeclared_endpoints() {
         assert_eq!(
             cfg_with(&[("AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY", "1")]).endpoint,
@@ -582,7 +644,7 @@ mod tests {
             cfg_with(&[("AGENTBOX_JEV_DREAM_TRIAGE_DEFER_BELOW", "0.3")]).defer_below,
             Some(0.3)
         );
-        for bad in ["x", "-1", "2", "NaN"] {
+        for bad in ["x", "-1", "2", "NaN", "0.51", "0.9"] {
             assert_eq!(
                 cfg_with(&[("AGENTBOX_JEV_DREAM_TRIAGE_DEFER_BELOW", bad)]).defer_below,
                 None,

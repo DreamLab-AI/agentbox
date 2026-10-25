@@ -22,16 +22,16 @@
  * request is built from named fields only and this module returns verdicts in a SEPARATE
  * list), it never signs, approves or applies, and it cannot add or edit a proposal. The
  * only action it can take is to HOLD a proposal back from the forum into the local review
- * queue, and only when `AGENTBOX_JEV_PROPOSAL_HOLD_BELOW` is set (unset ⇒ never hold) and
+ * queue, and only when `AGENTBOX_JEV_PROPOSAL_HOLD_BELOW` is set to a value in [0, 0.5] (unset ⇒ never hold) and
  * the `supported` probability is below it. A held proposal is staged locally, not discarded.
  *
  * FLAG. `AGENTBOX_JEV_ONTOLOGY_PROPOSALS=1`, off by default. Off ⇒ `verify` returns
  * `{ proposals: <the same array>, held: [], verdicts: [] }` without building a request.
  *
  * DATA CLASS. The transcript tail is session text. A session that touched the email gateway
- * (taint prefixes from `AGENTBOX_TAINT_TOOLS`, default the two in `[factrail].taint_tools`)
+ * (tool prefixes from `AGENTBOX_TAINT_TOOLS`, skills from `AGENTBOX_TAINT_SKILLS`; defaults as in `[features.jev_compaction]`)
  * makes this consumer local-only: a non-local endpoint is refused and the proposals pass
- * through unchanged.
+ * through unchanged. A skill load counts too (`[features.jev_compaction].taint_skills`).
  */
 
 const fs = require('fs');
@@ -49,18 +49,43 @@ const NOVELTY_LEVELS = Object.freeze([
   'Adds a fact, relation or qualification the definition lacks.',
   'Corrects a materially wrong or stale statement in the current definition.',
 ]);
-const DEFAULT_TAINT_PREFIXES = ['mcp__email-gateway__', 'mcp__claude_ai_Gmail__'];
+// The same fence as jev-checkpoints/hooks/taint.ts and `[features.jev_compaction].taint_tools|taint_skills` (agentbox.toml:782-783)
+// (agentbox.toml): a session that called the email gateway or Gmail, or loaded email-search.
+const DEFAULT_TAINT_PREFIXES = ['mcp__email-gateway__', 'mcp__claude_ai_Gmail__', 'mcp__gmail__'];
+const DEFAULT_TAINT_SKILLS = ['email-search'];
 
 function clamp(s, n) { const t = typeof s === 'string' ? s : ''; return t.length > n ? t.slice(0, n) : t; }
 
-/** True when the transcript at `file` called a tool whose name starts with a taint prefix. Never throws. */
+function csv(v) { return String(v || '').split(',').map((x) => x.trim()).filter(Boolean); }
+
+/** Is this tool call a taint source? Mirrors jev-checkpoints/hooks/taint.ts `taintOf`. */
+function taintedCall(tool, input, env = process.env) {
+  const prefixes = csv(env.AGENTBOX_TAINT_TOOLS);
+  const toolHit = prefixes.length
+    ? prefixes.some((p) => tool.startsWith(p))
+    : DEFAULT_TAINT_PREFIXES.some((p) => tool.startsWith(p)) || /^mcp__[^_]*gmail/i.test(tool);
+  if (toolHit) return true;
+  if (tool !== 'Skill' || !input || typeof input !== 'object') return false;
+  const raw = input.skill !== undefined && input.skill !== null ? input.skill : input.name;
+  if (typeof raw !== 'string') return false;
+  const bare = (raw.includes(':') ? raw.slice(raw.lastIndexOf(':') + 1) : raw).trim().replace(/^\//, '');
+  const skills = csv(env.AGENTBOX_TAINT_SKILLS);
+  return (skills.length ? skills : DEFAULT_TAINT_SKILLS).includes(bare);
+}
+
+/** True when the transcript at `file` called a taint tool or loaded a taint skill. Never throws. */
 function transcriptTainted(file, env = process.env) {
-  const prefixes = (env.AGENTBOX_TAINT_TOOLS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const list = prefixes.length ? prefixes : DEFAULT_TAINT_PREFIXES;
   try {
     if (!file || !fs.existsSync(file)) return false;
-    const text = fs.readFileSync(file, 'utf8');
-    return list.some((p) => text.includes(`"name":"${p}`));
+    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+      if (!line) continue;
+      let e;
+      try { e = JSON.parse(line); } catch { continue; }
+      const c = e && e.message && e.message.content;
+      if (!Array.isArray(c)) continue;
+      for (const b of c) if (b && b.type === 'tool_use' && typeof b.name === 'string' && taintedCall(b.name, b.input, env)) return true;
+    }
+    return false;
   } catch { return false; }
 }
 
@@ -145,8 +170,10 @@ async function verify(proposals, ctx = {}, opts = {}) {
     });
   }
 
+  // A Noul near 0.5 means "uncertain": a threshold above 0.5 would hold a proposal on an uncertain
+  // answer, so it is refused (treated as unset) rather than honoured.
   const holdBelow = Number.parseFloat(env.AGENTBOX_JEV_PROPOSAL_HOLD_BELOW);
-  if (!Number.isFinite(holdBelow)) return { proposals, held: [], verdicts };
+  if (!Number.isFinite(holdBelow) || holdBelow < 0 || holdBelow > 0.5) return { proposals, held: [], verdicts };
   // Below the configured support probability a proposal goes to the local review queue instead of the forum.
   const held = [];
   const kept = [];
@@ -161,5 +188,5 @@ async function verify(proposals, ctx = {}, opts = {}) {
 
 module.exports = {
   ITEM, FLAG, QUESTION_SET_VERSION, NOVELTY_LEVELS, MAX_PROPOSALS,
-  buildRequest, transcriptTainted, verify,
+  buildRequest, transcriptTainted, taintedCall, verify,
 };

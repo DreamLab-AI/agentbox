@@ -28,10 +28,14 @@
  * material), so this consumer refuses any endpoint that is not declared local
  * (`AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=1`); there is no cloud override.
  *
- * OVERLAP. factrail compaction (ADR-2121/2093; lib/factrail.nix, agentbox.toml `[factrail]`)
+ * OVERLAP. factrail compaction (ADR-2121/2093; lib/factrail.nix:3-6, agentbox.toml `[features.jev_compaction]` :742-785)
  * already uses a Jev judge to decide what a COMPACTION keeps, in the Claude Code session. It
  * does not see headroom's slots (memory/pods/beads/orchestrator payloads), which is the part
  * this adds.
+ *
+ * CALLER. `POST /v1/memory/search` (routes/memory.js `_rankMemoryResults`) ranks the result entries
+ * for the query just before `headroom.compress` crushes them, the one place in management-api where
+ * several excerpts meet the compressor. `headroom.compressSelected` is the same step for other callers.
  *
  * FLAG. `AGENTBOX_JEV_HEADROOM_EVIDENCE=1`, off by default. Off ⇒ `selectEvidence` returns
  * its input array untouched and `compressSelected` is exactly `compress()` per excerpt.

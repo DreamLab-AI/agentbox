@@ -108,3 +108,62 @@ test('excerpts beyond the window keep their order after the judged ones', async 
   assert.equal(r.items.length, many.length)
   assert.deepEqual(r.items.slice(he.WINDOW).map((e) => e.id), ['x12', 'x13', 'x14'])
 })
+
+// ── the production caller: POST /v1/memory/search (management-api/routes/memory.js) ───
+import { loadAtRev, loadCurrent } from './helpers-jev-p1b.mjs'
+
+const STUBS = { '../middleware/privacy-filter': { assertPrivacyFilterApplied() {}, _markPrivacyApplied() {} } }
+async function searchHandler(mod, { results, seen }) {
+  const handlers = {}
+  const fastify = new Proxy({
+    adapters: { memory: { _implName: 'external-pg', search: async () => ({ results }) } },
+    headroom: { compress: (raw) => { seen.push(raw); return { compressed: false, content: raw } } },
+    log: { info() {}, warn() {} },
+  }, {
+    get(t, k) {
+      if (k in t) return t[k]
+      if (['get', 'post', 'put', 'delete', 'patch'].includes(k)) return (p, _o, h) => { handlers[`${k} ${p}`] = h }
+      return () => {}
+    },
+  })
+  await mod(fastify)
+  return async () => {
+    let sent
+    await handlers['post /v1/memory/search']({ body: { query: TASK, namespace: 'n' }, auth: {}, headers: {}, query: {} }, { send: (p) => { sent = p; return p }, code: () => ({ send: (p) => p }) })
+    return sent
+  }
+}
+const RESULTS = [
+  { key: 'k0', value: '2026-10-25T10:00:00 INFO started' },
+  { key: 'k1', value: '2026-10-25T10:00:01 ERROR linker cannot find -lssl' },
+  { key: 'k2', value: 'README: how to install' },
+]
+
+test('memory search: flag off ⇒ the compressor sees exactly what it saw before and the reply is equal to HEAD', async () => {
+  const seenA = []; const seenB = []
+  const run = async (mod, seen) => (await searchHandler(mod, { results: RESULTS.map((r) => ({ ...r })), seen }))()
+  const a = await run(loadAtRev('management-api/routes/memory.js', 'main', STUBS), seenA)
+  const b = await run(loadCurrent('management-api/routes/memory.js', STUBS), seenB)
+  assert.deepStrictEqual(b, a)
+  assert.deepStrictEqual(seenB, seenA)
+})
+
+test('memory search: flag on + Jev down ⇒ identical to HEAD', async () => {
+  const { selectEvidence } = he
+  const down = { ...he, selectEvidence: (t, e) => selectEvidence(t, e, { env: ON, fetchImpl: mockFetch({ status: 500, body: {} }), sink }) }
+  const seenA = []; const seenB = []
+  const a = await (await searchHandler(loadAtRev('management-api/routes/memory.js', 'main', STUBS), { results: RESULTS.map((r) => ({ ...r })), seen: seenA }))()
+  const b = await (await searchHandler(loadCurrent('management-api/routes/memory.js', { ...STUBS, '../lib/headroom-evidence': down }), { results: RESULTS.map((r) => ({ ...r })), seen: seenB }))()
+  assert.deepStrictEqual(b, a)
+  assert.deepStrictEqual(seenB, seenA)
+})
+
+test('memory search: accept path ⇒ the compressor sees the same entries ranked for the query', async () => {
+  const { selectEvidence } = he
+  const on = { ...he, selectEvidence: (t, e) => selectEvidence(t, e, { env: ON, fetchImpl: ranked(), sink }) }
+  const seen = []
+  await (await searchHandler(loadCurrent('management-api/routes/memory.js', { ...STUBS, '../lib/headroom-evidence': on }), { results: RESULTS.map((r) => ({ ...r })), seen }))()
+  const order = JSON.parse(seen[0]).map((r) => r.key)
+  assert.deepEqual(order, ['k1', 'k2', 'k0'])
+  assert.deepEqual([...order].sort(), ['k0', 'k1', 'k2'])
+})

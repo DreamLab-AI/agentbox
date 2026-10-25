@@ -20,10 +20,13 @@
  * or `deep_reasoning` option is not even offered when code says there is no
  * budget for it, so the model cannot recommend what cannot be afforded.
  *
- * OVERLAP. jev-checkpoints (ADR-2135, config/claude-plugins/jev-checkpoints/
- * hooks) already times the *in-session* advisor with a Jev judge. It never sees
- * the consultant MCP servers (consultant-base.js `_handleConsult`, :258), which
- * is the genuinely missing part this module covers.
+ * OVERLAP. jev-checkpoints (ADR-2135) already times the *in-session* Opus advisor with a Jev
+ * judge: its request is built at config/claude-plugins/jev-checkpoints/hooks/jev.ts:155 and its
+ * output is a nudge to "consult the advisor" (hooks/text.ts:70-73), driven from register.ts on
+ * turn.complete / tool.call / prompt.submit / agent.spawn (hooks/hooks.json). Nothing in that
+ * plugin references the consultant MCP servers (grep `consult` in hooks/*.ts finds only that
+ * nudge text), so whether to call a CONSULTANT (consultant-base.js `_handleConsult`) is the
+ * genuinely missing part this module covers.
  *
  * FLAG. `AGENTBOX_JEV_CONSULT_ADVICE=1` — off by default. Flag off: the tool is
  * not listed, no request is built, nothing leaves the process.

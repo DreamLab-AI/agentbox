@@ -27,10 +27,10 @@
  * per-call deadline is 15 s with no retry, and at most
  * `AGENTBOX_JEV_TRAJECTORY_MAX_PATTERNS` (default 40) patterns are asked per sweep.
  *
- * DATA CLASS. The label is the redacted `action` value (I10: no raw args, no secrets) and
- * four numbers. A tainted (email) session's steps are not recorded at all by the recorder,
- * so nothing tainted reaches here; set `AGENTBOX_JEV_TRAJECTORY_LOCAL_ONLY=1` to require a
- * declared local endpoint regardless.
+ * DATA CLASS. The label is the redacted `action` value (I10: no raw args, no secrets) and four
+ * numbers. The recorder's own taint handling was not verified for this change, so the safe
+ * default is not assumed: set `AGENTBOX_JEV_TRAJECTORY_LOCAL_ONLY=1` to require a declared-local
+ * endpoint, and see the egress row `trajectory-pattern-jev-option` (marker `no-accepted-record`).
  */
 
 const fs = require('fs');

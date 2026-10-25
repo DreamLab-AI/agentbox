@@ -102,6 +102,29 @@ test('a transcript that used the email gateway makes the consumer local-only', a
   assert.equal(pj.transcriptTainted('/nonexistent'), false)
 })
 
+test('taint mirrors the factrail fence: skill loads, namespaced skills and the gmail pattern count; clean tool use does not', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'jev-tx2-'))
+  const write = (name, blocks) => { const f = path.join(dir, name); fs.writeFileSync(f, blocks.map((b) => JSON.stringify({ message: { content: [b] } })).join('\n') + '\n'); return f }
+  assert.equal(pj.transcriptTainted(write('a', [{ type: 'tool_use', name: 'Skill', input: { skill: 'email-search' } }])), true)
+  assert.equal(pj.transcriptTainted(write('b', [{ type: 'tool_use', name: 'Skill', input: { skill: 'plugin:email-search' } }])), true)
+  assert.equal(pj.transcriptTainted(write('c', [{ type: 'tool_use', name: 'Skill', input: { name: '/email-search' } }])), true)
+  assert.equal(pj.transcriptTainted(write('d', [{ type: 'tool_use', name: 'mcp__mygmail__search', input: {} }])), true)
+  assert.equal(pj.transcriptTainted(write('e', [{ type: 'tool_use', name: 'Skill', input: { skill: 'browser' } }, { type: 'tool_use', name: 'Bash', input: { command: 'ls' } }])), false)
+  assert.equal(pj.transcriptTainted(write('f', [{ type: 'text', text: 'mcp__email-gateway__ is mentioned in prose only' }])), false)
+  assert.equal(pj.transcriptTainted(write('g', [{ type: 'tool_use', name: 'Skill', input: { skill: 'email-search' } }]), { AGENTBOX_TAINT_SKILLS: 'other' }), false)
+})
+
+test('an uncertain answer (support = 0.5) is never held, and a threshold above 0.5 is refused', async () => {
+  const uncertain = () => mockFetch(ok({
+    p0_supported: noul(0.5), p0_contradicts: noul(0.5), p0_novelty: score(1.5, 4),
+    p1_supported: noul(0.5), p1_contradicts: noul(0.5), p1_novelty: score(1.5, 4),
+  }))
+  const atMax = await pj.verify(PROPOSALS, CTX, { env: { ...ON, AGENTBOX_JEV_PROPOSAL_HOLD_BELOW: '0.5' }, fetchImpl: uncertain(), sink })
+  assert.deepEqual(atMax.held, []); assert.equal(atMax.proposals, PROPOSALS)
+  const tooHigh = await pj.verify(PROPOSALS, CTX, { env: { ...ON, AGENTBOX_JEV_PROPOSAL_HOLD_BELOW: '0.9' }, fetchImpl: mockFetch(verdictsFor([0.45, 0.45])), sink })
+  assert.deepEqual(tooHigh.held, []); assert.equal(tooHigh.verdicts.length, 2)
+})
+
 test('the monitor builds the 31402 from named fields only: verdicts cannot reach the signed request', () => {
   const src = fs.readFileSync(path.join(ROOT, 'config/hooks/ontology-monitor.cjs'), 'utf8')
   const build = src.slice(src.indexOf('acs.buildActionRequest({'), src.indexOf('await acs.publishPanelEvent'))

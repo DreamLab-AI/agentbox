@@ -138,7 +138,9 @@
         "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
         "gate": "INACTIVE. `AGENTBOX_JEV_CONSULT_ADVICE=1`, unset by default; with it unset the tool is not listed and no request is built. `AGENTBOX_JEV_CONSULT_LOCAL_ONLY=1` requires a declared-local endpoint.",
         "accepted_egress": "No accepted record covers this content class for this route; it is inactive, so nothing leaves until the flag is set. Proposed research candidate; no measured uplift.",
-        "markers": [],
+        "markers": [
+          "no-accepted-record"
+        ],
         "notes": "The question and context excerpt the coordinator would otherwise send to a cloud consultant (each clamped to 6000 characters), the reachable-consultant names and the remaining budget. Advisory only; `consult` is unchanged. Fails open to `advice: null`. 4 s deadline, no retry."
       },
       {
@@ -151,7 +153,9 @@
         "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
         "gate": "INACTIVE. `AGENTBOX_JEV_TRAJECTORY_CLASSIFY=1`, unset by default; `AGENTBOX_JEV_TRAJECTORY_MAX_PATTERNS` caps requests per sweep (default 40). `AGENTBOX_JEV_TRAJECTORY_LOCAL_ONLY=1` requires a declared-local endpoint.",
         "accepted_egress": "ADR-2016/ADR-2017 govern the data (redacted `action` labels, I10). No accepted record for sending them to a vendor judge; inactive.",
-        "markers": [],
+        "markers": [
+          "no-accepted-record"
+        ],
         "notes": "Only the already-redacted low-cardinality `action` pattern and four aggregate numbers per eligible pattern. Annotation only: grouping, Wilson bounds, sample floors and the consumer gates are untouched. Fails open to the unannotated row."
       },
       {
@@ -165,7 +169,9 @@
         "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
         "gate": "INACTIVE. `AGENTBOX_JEV_DREAM_TRIAGE=1`, unset by default (`services/dream-engine/src/jev_triage.rs`). `AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY=1` requires a declared-local endpoint; `AGENTBOX_JEV_DREAM_TRIAGE_DEFER_BELOW` unset means never defer.",
         "accepted_egress": "No accepted record covers this content class for this route; it is inactive, so nothing leaves until the flag is set. Proposed research candidate; no measured uplift.",
-        "markers": [],
+        "markers": [
+          "no-accepted-record"
+        ],
         "notes": "The first 4000 characters of the night's report, the paths (not the content) the patch touches and the required-evaluator names. Annotation to `jev-triage.json`; the deterministic gate never sees it. Repository content may be private, so set the local-only toggle for private repositories."
       },
       {
@@ -178,7 +184,9 @@
         "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
         "gate": "INACTIVE. `AGENTBOX_JEV_ONTOLOGY_RELEVANCE=1` and/or `AGENTBOX_JEV_ONTOLOGY_RERANK=1`, unset by default; a per-request `scaffold: false` always wins. `AGENTBOX_JEV_ONTOLOGY_LOCAL_ONLY=1` requires a declared-local endpoint.",
         "accepted_egress": "No accepted record covers this content class for this route; it is inactive, so nothing leaves until the flag is set. Proposed research candidate; no measured uplift.",
-        "markers": [],
+        "markers": [
+          "no-accepted-record"
+        ],
         "notes": "The query and, per candidate (at most 8), label, domain and a summary clamped to 280 characters. A candidate marked `public: false` stops the evaluation. Shadow-only until `..._RERANK_APPLY_MIN_CONFIDENCE` / `..._PASSTHROUGH_MIN_CONFIDENCE` are set."
       },
       {
@@ -191,7 +199,9 @@
         "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
         "gate": "INACTIVE. `AGENTBOX_JEV_ONTOLOGY_PROPOSALS=1`, unset by default, on top of `AGENTBOX_ONTOLOGY_MONITOR=1`. A transcript that used a tool in `AGENTBOX_TAINT_TOOLS` (default the email gateway and Gmail prefixes) makes it local-only.",
         "accepted_egress": "The monitor already sends the same session tail to Z.AI (ADR-011). No accepted record for a second vendor; inactive.",
-        "markers": [],
+        "markers": [
+          "no-accepted-record"
+        ],
         "notes": "At most 5 fresh proposals, the 3000-character transcript tail and up to 30 changed-file names, plus cited class definitions. Verdicts go to a separate unsigned file and never into the signed 31402. `AGENTBOX_JEV_PROPOSAL_HOLD_BELOW` unset means nothing is held."
       },
       {
@@ -218,7 +228,9 @@
         "destination": "The same System One endpoint as the existing Jev routes: the ADR-2139 loopback proxy (`system-one-proxy`, which holds the vendor key and drops any Authorization), else `api.typesafe.ai` with `TYPESAFE_API_KEY`; no new destination.",
         "gate": "INACTIVE. `AGENTBOX_JEV_GOVERNANCE_RUBRIC=1`, unset by default. `AGENTBOX_JEV_GOVERNANCE_RUBRIC_LOCAL_ONLY=1` requires a declared-local endpoint.",
         "accepted_egress": "No accepted record covers this content class for this route; it is inactive, so nothing leaves until the flag is set. Proposed research candidate; no measured uplift.",
-        "markers": [],
+        "markers": [
+          "no-accepted-record"
+        ],
         "notes": "The title, subject, rationale, structured fields and context URL of the request card, as built, after it is signed for publication. The signal is written to a sidecar bound to the request digest and is never part of the event; approver signatures, dispatch and receipts are untouched."
       },
       {
