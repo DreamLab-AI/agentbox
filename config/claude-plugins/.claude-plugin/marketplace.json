@@ -23,21 +23,21 @@
     {
       "name": "ruflo-console",
       "source": "./ruflo-console",
-      "description": "ruflo's cockpit inside Claude Code and the one /ruflo command for every ruflo mod (function hooks): overview, swarms, claims, federation, plugins, learning, MetaHarness, memory and cost views, a confirm-gated command palette and a band above the prompt. Baked from the exact ruvnet/ruflo 3.60.0 release-branch commit 856de8f behind [toolchains].ruflo_console; cli defaults to the baked ruflo bin (temporarily 3.57.0 until the 3.60 npm artefacts publish).",
-      "version": "0.45.0",
+      "description": "ruflo's cockpit inside Claude Code, including the ruRE page. Baked from ruvnet/ruflo main commit 631c155 behind [toolchains].ruflo_console; cli defaults to the baked ruflo 3.63.1 bin.",
+      "version": "0.49.3",
       "license": "MIT"
     },
     {
       "name": "ruflo-mods",
       "source": "./ruflo-mods",
-      "description": "ruflo as a Claude Code mod (function hooks): in-process prompt routing, edit learning signals, tighten-only tool checks, the cost-tracker budget ladder, a mod trust gate and the $.ruflo noun; answers /ruflo mods. Baked from the exact ruvnet/ruflo 3.60.0 release-branch commit 856de8f behind [toolchains].ruflo_console; cli defaults to the baked ruflo bin (temporarily 3.57.0 until the 3.60 npm artefacts publish).",
-      "version": "0.6.2",
+      "description": "ruflo as a Claude Code mod (function hooks), including ruRE offer (off by default). Baked from ruvnet/ruflo main commit 631c155 behind [toolchains].ruflo_console; cli defaults to the baked ruflo 3.63.1 bin.",
+      "version": "0.7.1",
       "license": "MIT"
     },
     {
       "name": "ruflo-swarm",
       "source": "./ruflo-swarm",
-      "description": "Agent teams and swarm coordination with a live swarm pane (function hooks); answers /ruflo swarm pane|status|topology|claims|consensus. Baked from the exact ruvnet/ruflo 3.60.0 release-branch commit 856de8f behind [toolchains].ruflo_console; cli defaults to the baked ruflo bin (temporarily 3.57.0 until the 3.60 npm artefacts publish).",
+      "description": "Agent teams and swarm coordination with a live swarm pane (function hooks); answers /ruflo swarm pane|status|topology|claims|consensus. Baked from ruvnet/ruflo main commit 631c155 behind [toolchains].ruflo_console; cli defaults to the baked ruflo 3.63.1 bin.",
       "version": "0.3.7",
       "license": "MIT"
     }

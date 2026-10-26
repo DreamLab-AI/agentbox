@@ -56,16 +56,15 @@
 
     # ruflo's Claude Code mods (function hooks): ruflo-console (the /ruflo
     # cockpit), plus ruflo-mods and ruflo-swarm, which answer `/ruflo mods` and
-    # `/ruflo swarm …` on the same command. Pinned to the exact head inspected
-    # on the 3.60.0 release branch; files-only like `codexPlugin`; gated by
-    # [toolchains].ruflo_console. The matching npm runtime was not yet published
-    # on 23 Oct, so rufloPkg temporarily remains at 3.57.0. No npx fallback is
-    # allowed; align both pins when ruflo/@claude-flow/cli 3.60.0 is published.
+    # `/ruflo swarm …` on the same command. Pinned to the inspected main head
+    # that includes security and ruRE; files-only like `codexPlugin`; gated by
+    # [toolchains].ruflo_console. The matching npm runtime is 3.63.1. No npx
+    # fallback is allowed.
     # The ruflo repository is ~100 MB, so only the three plugin directories are
     # baked (scripts/bake-ruflo-console.sh), never the tree. Bump with:
     #   nix flake lock --update-input rufloConsole
     rufloConsole = {
-      url = "github:ruvnet/ruflo/856de8f36ae0c1c197e5170df0b52fdcdab8ad74";
+      url = "github:ruvnet/ruflo/631c1557b5f325163c4f9f029a397bb30a61c730";
       flake = false;
     };
   };
@@ -128,6 +127,15 @@
                   });
                   inline-snapshot = pyPrev.inline-snapshot.overridePythonAttrs
                     (_: { doCheck = false; });
+                  # databricks-sql-connector 4.2.4: all 558 unit tests pass,
+                  # but pytest cannot exit because feature-flag refresher
+                  # threads keep retrying the unreachable test host "foo".
+                  # The same background calls can also perturb a mocked
+                  # time.sleep assertion. Re-enable checks when upstream
+                  # tears down those workers in its test suite.
+                  databricks-sql-connector =
+                    pyPrev.databricks-sql-connector.overridePythonAttrs
+                      (_: { doCheck = false; });
                   # pandas-stubs 2.3.3: 23/2178 tests fail on pandas/numpy
                   # version skew (missing FutureWarnings, deprecated numpy
                   # timedelta 'generic' unit). Stubs are type annotations only;
@@ -528,10 +536,10 @@
         #    (hook-handler.cjs, which registered-hooks.txt prunes, is unchanged).
         rufloPkg = mkNpmCli {
           pkgName         = "ruflo";
-          version         = "3.57.0";
-          packageLock = ./config/npm-locks/ruflo-3.57.0.package-lock.json;
-          sha256          = "sha256-UQE9fJJa/dDngur5goQNlVY1Xeil0bSxIN2u4EJ3+WI=";
-          nodeModulesHash = "sha256-4m8PdtjqIbo/3/ZaUwuffsxjWxy+hxfksvVxPFL2Acc=";
+          version         = "3.63.1";
+          packageLock = ./config/npm-locks/ruflo-3.63.1.package-lock.json;
+          sha256          = "sha256-oYKDx7fAusyJh6V//lNXINmYbJw5SzG/mKXfsZxC878=";
+          nodeModulesHash = "sha256-RU/T1Qs3/pnEvZIEfGKmILfPytBOKe4B2M5d6vSIR9E=";
           bin             = "ruflo";
           extraBins = {
             "claude-flow"     = "node_modules/@claude-flow/cli/bin/cli.js";
@@ -559,7 +567,7 @@
         #        bookkeeping store under ~/.cache/ruflo/memory instead of
         #        <cwd>/.swarm. Each is an env default: an operator export wins.
         #    claude-flow-mcp is passed through unchanged (ADR-2082 proxy child).
-        rufloGovernedPkg = pkgs.runCommand "ruflo-governed-3.57.0" { } ''
+        rufloGovernedPkg = pkgs.runCommand "ruflo-governed-3.63.1" { } ''
           mkdir -p $out/bin
           for b in ruflo claude-flow; do
             cat > $out/bin/$b <<WRAP
@@ -1889,7 +1897,7 @@
         # [toolchains].ruflo_console: bake ruflo-console + ruflo-mods + ruflo-swarm
         # from the pinned rufloConsole input into the `agentbox` marketplace.
         rufloConsoleOn = toolchainCfg.ruflo_console or false;
-        rufloConsolePlugins = pkgs.runCommand "ruflo-console-plugins-3.60.0" {
+        rufloConsolePlugins = pkgs.runCommand "ruflo-console-plugins-3.63.1" {
           nativeBuildInputs = [ pkgs.jq ];
         } ''
           bash ${./scripts/bake-ruflo-console.sh} ${rufloConsole} $out \

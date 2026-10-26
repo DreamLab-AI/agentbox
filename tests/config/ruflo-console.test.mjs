@@ -19,15 +19,15 @@ const bake = path.join(root, 'scripts/bake-ruflo-console.sh')
 const project = path.join(root, 'scripts/ruflo-console-project.mjs')
 const marketJson = path.join(root, 'config/claude-plugins/.claude-plugin/marketplace.json')
 const market = JSON.parse(fs.readFileSync(marketJson, 'utf8'))
-const PIN = '856de8f36ae0c1c197e5170df0b52fdcdab8ad74'
-// The versions each plugin.json carries at the inspected 3.60.0 branch commit.
-const PINNED_VERSIONS = {"ruflo-console": "0.45.0", "ruflo-mods": "0.6.2", "ruflo-swarm": "0.3.7"}
+const PIN = '631c1557b5f325163c4f9f029a397bb30a61c730'
+// The versions each plugin.json carries at the inspected 3.63.1 main commit.
+const PINNED_VERSIONS = {"ruflo-console": "0.49.3", "ruflo-mods": "0.7.1", "ruflo-swarm": "0.3.7"}
 const IDS = PLUGINS.map(n => `${n}@agentbox`)
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'ruflo-console-'))
 const write = (file, text) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text) }
 
-// The upstream lines the routeTasks patch anchors on (ruflo 3.60.0 branch).
+// The upstream lines the routeTasks patch anchors on (ruflo 3.63.1 main).
 const MODS_OPTIONS_TS = 'export type ModOptions = {\n  readonly routeContext: boolean\n}\nexport function readOptions(o) {\n  return {\n    routeContext: bool(o.routeContext, true),\n  }\n}\n'
 const MODS_ROUTE_TS = "  on('prompt.submit', async ($, e, next) => {\n    if (!state.owned.has('route')) return next(advisory ? { ...e, context } : e)\n  })\n"
 
@@ -75,7 +75,7 @@ test('marketplace.json lists the three mods at the pinned versions, beside factr
   }
 })
 
-test('the flake input and lock pin the inspected 3.60.0 branch commit', () => {
+test('the flake input and lock pin the inspected 3.63.1 main commit', () => {
   const flake = fs.readFileSync(path.join(root, 'flake.nix'), 'utf8')
   assert.match(flake, new RegExp(`url = "github:ruvnet/ruflo/${PIN}";`))
   assert.match(flake, /codexPlugin, rufloConsole, vaultSrc \}:/)

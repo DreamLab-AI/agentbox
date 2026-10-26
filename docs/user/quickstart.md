@@ -122,6 +122,7 @@ Key sections:
 - `[sovereign_mesh]` — Nostr identity + NIP-98 auth
 - `[skills.*]` — 96-skill catalogue gates
 - `[toolchains]` — core CLIs (claude, ruflo, claude_flow, agentic_qe, antigravity_cli, etc.)
+- `[[plugins.packages]]` — selected Ruflo plugins; the running manifest enables `ruflo-rure` for static analysis. Its eight MCP tools are exposed through the existing governed `claude-flow` server by the `rure` selector in `[integrations.ruvector_external].orchestration_tools`; no second memory server is installed. Seven tools only read inputs; `rure_extract_asar` unpacks a capped archive into a new scratch directory.
 - `[gpu]` — `none` (default, no ollama sidecar) | `ollama-rocm` (ROCm/Vulkan via `/dev/kfd`+`/dev/dri`) | `ollama-cuda` (NVIDIA container runtime, sidecar only) | `local-cuda` (CUDA baked into image; required for `gaussian_splatting`)
 - `[desktop]` — TigerVNC Xvnc desktop (access via SSH tunnel to port 5901)
 - `[observability]` — metrics port, OTLP endpoint, log level

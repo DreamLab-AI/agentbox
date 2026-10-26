@@ -17,6 +17,21 @@ domain: LEARNING-memory
 
 # ADR-2082 — The governed server projects one pinned Ruflo capability; memory never crosses
 
+## Amendment — 2026-10-26 (main alignment and ruRE)
+
+The inspected main commit `631c1557b5f325163c4f9f029a397bb30a61c730`
+contains the security and ruRE plugin work; the published `ruflo` and
+`@claude-flow/cli` runtime is 3.63.1. Agentbox pins that commit and runtime
+together. The running manifest enables `ruflo-rure` alongside the existing
+security-audit plugin, and adds the `rure` category to the existing governed
+MCP child's allowlist. RuRE provides eight static-analysis tools for
+user-authorized local targets. Seven only read inputs; `rure_extract_asar`
+unpacks an archive into a newly created scratch directory after checking
+its declared size (512 MiB) and file count (50,000). No second MCP server is registered, and the
+proxy-side `memory_*`, `agentdb_*`, `embeddings_*` and `hooks_*` deny rules remain.
+This is source-verified and staged; an image build and live tool-list/call check
+are required before claiming activation.
+
 ## Amendment — 2026-10-23 (one capability, host-specific projections)
 
 Ruflo is one upstream capability, not two products merely because Agentbox has

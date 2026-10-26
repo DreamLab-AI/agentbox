@@ -47,6 +47,7 @@ const childCat = [
   { name: 'agent_spawn', description: 'ruflo agent_spawn', inputSchema: { type: 'object', properties: { agentType: {}, agentId: {} } } },
   { name: 'coordination_orchestrate', description: 'ruflo orchestrate', inputSchema: { type: 'object', properties: { task: {}, strategy: {} }, required: ['task'] } },
   { name: 'coordination_load_balance', description: 'ruflo lb', inputSchema: { type: 'object', properties: {} } },
+  { name: 'rure_analyze_binary', description: 'ruflo read-only static binary analysis', inputSchema: { type: 'object', properties: { path: { type: 'string' } } } },
   { name: 'memory_store', description: 'ruflo SQLITE memory — must never surface', inputSchema: { type: 'object', properties: {} } },
   { name: 'memory_search_unified', description: 'ruflo memory — must never surface', inputSchema: { type: 'object', properties: {} } },
   { name: 'hooks_route', description: 'ruflo hooks — denied', inputSchema: { type: 'object', properties: {} } },
@@ -58,14 +59,14 @@ const childCat = [
   await test('parseCategories: default, trims, drops blanks', () => {
     assert.deepStrictEqual(parseCategories(undefined), DEFAULT_CATEGORIES.split(','));
     assert.deepStrictEqual(parseCategories('  '), DEFAULT_CATEGORIES.split(','));
-    assert.deepStrictEqual(parseCategories(' swarm, agent ,,task '), ['swarm', 'agent', 'task']);
+    assert.deepStrictEqual(parseCategories(' swarm, agent ,,rure '), ['swarm', 'agent', 'rure']);
   });
 
   await test('isDeniedTool: every memory/agentdb/embeddings/hooks prefix is denied', () => {
     for (const n of ['memory_store', 'memory_search_unified', 'agentdb_route', 'embeddings_search', 'hooks_route', 'agentic_flow_x', 'ruvllm_status', 'agenticow_query']) {
       assert.strictEqual(isDeniedTool(n), true, n);
     }
-    for (const n of ['swarm_init', 'agent_spawn', 'task_create', 'coordination_sync', 'hive-mind_spawn']) {
+    for (const n of ['swarm_init', 'agent_spawn', 'task_create', 'coordination_sync', 'hive-mind_spawn', 'rure_analyze_binary']) {
       assert.strictEqual(isDeniedTool(n), false, n);
     }
   });
@@ -82,6 +83,7 @@ const childCat = [
     assert.strictEqual(byName.swarm_init.description, 'ruflo swarm_init');
     assert.ok('maxAgents' in byName.swarm_init.inputSchema.properties);
     assert.ok(forwarded.has('swarm_init') && forwarded.has('swarm_status') && forwarded.has('swarm_shutdown'));
+    assert.ok(forwarded.has('rure_analyze_binary') && byName.rure_analyze_binary, 'ruRE is forwarded without opening memory');
     // agent_spawn: v3 schema advertised, but still shimmed (alias to itself)
     assert.ok('agentType' in byName.agent_spawn.inputSchema.properties);
     assert.strictEqual(aliased.get('agent_spawn'), 'agent_spawn');
