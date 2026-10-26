@@ -4312,6 +4312,11 @@ ${ragflowNetworkDecl}
           "WORKSPACE=/home/devuser/workspace"
           "PATH=/usr/local/bin:/bin:/usr/bin:${pkgs.lib.makeBinPath allPackages}"
           "NODE_ENV=production"
+          # NODE_ENV=production makes npm omit devDependencies, so `npm ci` in a
+          # workspace checkout skipped jest and friends. include=dev wins over
+          # that implicit omit for workspace installs only; the services'
+          # node_modules are built in Nix and unaffected.
+          "NPM_CONFIG_INCLUDE=dev"
           "PYTHONDONTWRITEBYTECODE=1"
           "RUST_BACKTRACE=1"
           # wasm32 cross-compile fix for the `cc` crate (secp256k1-sys et al) —
