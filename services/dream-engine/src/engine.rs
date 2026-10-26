@@ -1443,7 +1443,7 @@ impl Engine {
                     report: report.clone(),
                     patch: patch.clone(),
                     evaluators: required.iter().map(|e| e.name.clone()).collect(),
-                    disciplines: cfg.extra_disciplines.clone(),
+                    disciplines: dream_core::screen::declared_disciplines(&cfg),
                 };
                 crate::jev_triage::consider(
                     &jev_cfg,

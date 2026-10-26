@@ -13,6 +13,16 @@
 //! * `problem_supported` — Noul: is the problem statement supported by the evidence in the
 //!   report?
 //!
+//! # Discipline screen (VF-04-S1-01)
+//!
+//! Whether the change violates a declared discipline is no longer asked here. The night's
+//! hypothesis goes to `dream_core::screen` (dream-core 0.4.0) as a [`ScreenRequest`] carrying
+//! `declared_disciplines(&cfg)` (built-ins plus `extraDisciplines`), through a `JsonScreen` whose
+//! transport is this module's HTTP client over the same endpoint resolution. The verdict is
+//! written as `discipline_violations`; a failure there records `discipline_screen_fallback` and
+//! leaves the rest of the record and the night unchanged. A night holds one hypothesis, so
+//! nothing is ordered or deferred by it (see [`screen_blocking`]).
+//!
 //! # Authority
 //!
 //! The signals are **annotation**: they are written to `<night>/jev-triage.json` and logged.
@@ -42,6 +52,10 @@
 //! or an out-of-range value all resolve to [`Outcome::Fallback`]. [`consider`] then returns
 //! `false` (do not defer) and writes nothing, so the night proceeds exactly as it did before.
 
+use dream_core::screen::{
+    EvaluatorBrief, FallbackReason, Hypothesis, HypothesisScreen, HypothesisVerdict, JsonScreen,
+    ScreenRequest, QUESTION_SET,
+};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -197,13 +211,11 @@ pub struct Input {
     pub patch: Option<String>,
     /// Names of the required evaluators from the frozen manifest.
     pub evaluators: Vec<String>,
-    /// The repository's own `extraDisciplines` from `dream.config.json` (at most [`MAX_DISCIPLINES`]
-    /// are asked). Each becomes an independent "does the change violate this rule?" Noul.
+    /// The disciplines the repository declares: `dream_core::screen::declared_disciplines(&cfg)`,
+    /// i.e. the built-ins followed by `extraDisciplines` from `dream.config.json`. They go to the
+    /// library screen, which asks one violation Noul over all of them.
     pub disciplines: Vec<String>,
 }
-
-/// Cap on `extraDisciplines` asked per request.
-pub const MAX_DISCIPLINES: usize = 12;
 
 /// The two signals, both in `[0, 1]`.
 #[derive(Debug, Clone, PartialEq)]
@@ -212,8 +224,6 @@ pub struct Signals {
     pub usefulness: f64,
     /// Probability that the problem statement is supported by the evidence.
     pub problem_supported: f64,
-    /// Probability of violation per discipline asked, in the order of `Input::disciplines`.
-    pub violations: Vec<f64>,
     pub model: String,
 }
 
@@ -238,23 +248,21 @@ pub enum TransportError {
     Network,
 }
 
+/// The future a [`Transport`] resolves: status code and body, or a failure.
+pub type PostFuture<'a> =
+    Pin<Box<dyn Future<Output = Result<(u16, String), TransportError>> + Send + 'a>>;
+
 /// Replaceable transport so tests never touch the network.
 pub trait Transport: Send + Sync {
     /// POST `req`, resolving the status code and body.
-    fn post<'a>(
-        &'a self,
-        req: &'a HttpRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<(u16, String), TransportError>> + Send + 'a>>;
+    fn post<'a>(&'a self, req: &'a HttpRequest) -> PostFuture<'a>;
 }
 
 /// The production transport: `reqwest` with a hard deadline and no retry.
 pub struct ReqwestTransport;
 
 impl Transport for ReqwestTransport {
-    fn post<'a>(
-        &'a self,
-        req: &'a HttpRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<(u16, String), TransportError>> + Send + 'a>> {
+    fn post<'a>(&'a self, req: &'a HttpRequest) -> PostFuture<'a> {
         Box::pin(async move {
             let client = reqwest::Client::builder()
                 .timeout(TIMEOUT)
@@ -300,14 +308,12 @@ pub fn change_surface(patch: &str) -> Vec<String> {
 
 /// Build the request body. Pure; the wire-shape test checks it.
 pub fn build_request(input: &Input, model: &str) -> Value {
-    let disciplines: Vec<&String> = input.disciplines.iter().take(MAX_DISCIPLINES).collect();
-    let mut v = json!({
+    json!({
         "model": model,
         "state": {
             "hypothesis_report": clamp_chars(&input.report, REPORT_CHARS),
             "change_surface": input.patch.as_deref().map(change_surface).unwrap_or_default(),
             "evaluator_catalogue": input.evaluators,
-            "repo_disciplines": disciplines,
         },
         "questions": {
             "usefulness": {
@@ -324,23 +330,11 @@ pub fn build_request(input: &Input, model: &str) -> Value {
                     opens with, rather than merely asserting it?",
             },
         },
-    });
-    for (i, d) in disciplines.iter().enumerate() {
-        v["questions"][format!("violates_{i}")] = json!({
-            "type": "noul",
-            "instructions": format!(
-                "Does the change proposed in `hypothesis_report` violate the repository rule at index {i} of \
-                 `repo_disciplines` (\"{}\")? Answer yes only if the report or `change_surface` shows the violation.",
-                clamp_chars(d, 200)
-            ),
-        });
-    }
-    v
+    })
 }
 
-/// Parse a response body into signals, or `Malformed`. `n_disciplines` is how many violation
-/// questions were asked; every one must be answered.
-pub fn parse_response(body: &str, n_disciplines: usize) -> Result<Signals, Reason> {
+/// Parse a response body into signals, or `Malformed`.
+pub fn parse_response(body: &str) -> Result<Signals, Reason> {
     let v: Value = serde_json::from_str(body).map_err(|_| Reason::Malformed)?;
     let answers = v
         .get("answers")
@@ -365,21 +359,9 @@ pub fn parse_response(body: &str, n_disciplines: usize) -> Result<Signals, Reaso
     if !supported.is_finite() || !(0.0..=1.0).contains(&supported) {
         return Err(Reason::Malformed);
     }
-    let mut violations = Vec::with_capacity(n_disciplines);
-    for i in 0..n_disciplines {
-        let p = answers
-            .get(&format!("violates_{i}"))
-            .filter(|a| a.get("type").and_then(Value::as_str) == Some("noul"))
-            .and_then(|a| a.get("noul"))
-            .and_then(Value::as_f64)
-            .filter(|p| p.is_finite() && (0.0..=1.0).contains(p))
-            .ok_or(Reason::Malformed)?;
-        violations.push(p);
-    }
     Ok(Signals {
         usefulness: usefulness_raw / top,
         problem_supported: supported,
-        violations,
         model: v
             .get("model")
             .and_then(Value::as_str)
@@ -407,13 +389,91 @@ pub async fn triage(cfg: &Config, transport: &dyn Transport, input: &Input) -> O
         Err(TransportError::Timeout) => Outcome::Fallback(Reason::Timeout),
         Err(TransportError::Network) => Outcome::Fallback(Reason::Network),
         Ok((status, _)) if !(200..300).contains(&status) => Outcome::Fallback(Reason::Http(status)),
-        Ok((_, text)) => {
-            match parse_response(&text, input.disciplines.len().min(MAX_DISCIPLINES)) {
-                Ok(s) => Outcome::Annotated(s),
-                Err(r) => Outcome::Fallback(r),
-            }
-        }
+        Ok((_, text)) => match parse_response(&text) {
+            Ok(s) => Outcome::Annotated(s),
+            Err(r) => Outcome::Fallback(r),
+        },
     }
+}
+
+/// The one hypothesis a night holds, in the library's vocabulary.
+fn tonight(input: &Input) -> Hypothesis {
+    let statement = input
+        .report
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("");
+    let surface = input
+        .patch
+        .as_deref()
+        .map(change_surface)
+        .unwrap_or_default();
+    Hypothesis::new(
+        "tonight",
+        statement,
+        clamp_chars(&input.report, REPORT_CHARS),
+        format!("touches: {}", surface.join(", ")),
+    )
+}
+
+/// The ask the library screen sees for this night (hypotheses, evaluator catalogue, declared
+/// disciplines). Pure, so a test can check that `extraDisciplines` arrive.
+pub fn screen_request(input: &Input) -> ScreenRequest {
+    let evaluators: Vec<EvaluatorBrief> = input
+        .evaluators
+        .iter()
+        .map(|n| EvaluatorBrief {
+            name: n.clone(),
+            description: String::new(),
+        })
+        .collect();
+    ScreenRequest::new(&[tonight(input)], &evaluators, &input.disciplines)
+}
+
+/// Run the library screen (`dream_core::screen::JsonScreen`) over the resolved endpoint with this
+/// module's own HTTP client. The library transport is synchronous, so the exchange runs on a
+/// scoped thread with a private current-thread runtime; that works under any caller runtime. Any
+/// failure is a [`FallbackReason`] and the caller proceeds unscreened.
+///
+/// `screen_candidates` is deliberately not used here: it returns the unscreened plan for fewer than
+/// two hypotheses without building a request, and a night holds exactly one. The screen is applied
+/// directly, as annotation.
+fn screen_blocking(
+    ep: &Endpoint,
+    transport: &dyn Transport,
+    request: &ScreenRequest,
+) -> Result<HypothesisVerdict, FallbackReason> {
+    let joined = std::thread::scope(|sc| {
+        sc.spawn(|| {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|_| FallbackReason::Transport)?;
+            let screen = JsonScreen::new(ep.model.clone(), |body: &Value| {
+                let req = HttpRequest {
+                    url: ep.url.clone(),
+                    bearer: ep.bearer.clone(),
+                    body: body.to_string(),
+                };
+                match rt.block_on(transport.post(&req)) {
+                    Err(TransportError::Timeout) => Err(FallbackReason::Timeout),
+                    Err(TransportError::Network) => Err(FallbackReason::Transport),
+                    Ok((status, _)) if !(200..300).contains(&status) => {
+                        Err(FallbackReason::Http(status))
+                    }
+                    Ok((_, text)) => {
+                        serde_json::from_str(&text).map_err(|_| FallbackReason::Malformed)
+                    }
+                }
+            });
+            screen.screen(request)
+        })
+        .join()
+    });
+    joined
+        .map_err(|_| FallbackReason::Transport)?
+        .and_then(|mut v| v.pop().ok_or(FallbackReason::Malformed))
 }
 
 /// Whether the candidate evaluation should be deferred for these signals.
@@ -438,6 +498,9 @@ pub async fn consider(
             false
         }
         Outcome::Annotated(s) => {
+            let Ok(ep) = &cfg.endpoint else {
+                return false;
+            };
             let defer = should_defer(cfg, &s);
             let mut rec: BTreeMap<&str, Value> = BTreeMap::new();
             rec.insert("question_set_version", json!(QUESTION_SET_VERSION));
@@ -445,15 +508,26 @@ pub async fn consider(
             rec.insert("usefulness", json!(round3(s.usefulness)));
             rec.insert("problem_supported", json!(round3(s.problem_supported)));
             rec.insert("defer_below", json!(cfg.defer_below));
-            rec.insert(
-                "discipline_violations",
-                json!(input
-                    .disciplines
-                    .iter()
-                    .zip(&s.violations)
-                    .map(|(d, p)| json!({ "discipline": d, "p_violates": round3(*p) }))
-                    .collect::<Vec<_>>()),
-            );
+            let request = screen_request(input);
+            match screen_blocking(ep, transport, &request) {
+                Ok(v) => {
+                    rec.insert(
+                        "discipline_violations",
+                        json!({
+                            "p_violates": round3(v.violates),
+                            "disciplines": input.disciplines,
+                            "fit": round3(v.fit),
+                            "addresses": round3(v.addresses),
+                            "screen_question_set": QUESTION_SET,
+                        }),
+                    );
+                }
+                Err(r) => {
+                    warn!(item = "VF-04-S1-01", reason = %r, "discipline screen fell back");
+                    rec.insert("discipline_violations", Value::Null);
+                    rec.insert("discipline_screen_fallback", json!(r.as_str()));
+                }
+            }
             rec.insert("deferred", json!(defer));
             rec.insert(
                 "authority",
@@ -537,11 +611,7 @@ mod tests {
         }
     }
     impl Transport for Mock {
-        fn post<'a>(
-            &'a self,
-            req: &'a HttpRequest,
-        ) -> Pin<Box<dyn Future<Output = Result<(u16, String), TransportError>> + Send + 'a>>
-        {
+        fn post<'a>(&'a self, req: &'a HttpRequest) -> PostFuture<'a> {
             self.seen
                 .lock()
                 .unwrap()
@@ -740,81 +810,161 @@ mod tests {
         );
     }
 
+    /// A fixture `dream.config.json` whose `extraDisciplines` must reach the screen.
+    const FIXTURE_CONFIG: &str = r#"{"repo":"test/repo","slots":[{"deep":"a","scan":[]}],
+        "extraDisciplines":["no new dependencies","ADRs for schema changes"]}"#;
+
+    fn fixture_input() -> Input {
+        let cfg = dream_gate::config::DreamConfig::from_json(FIXTURE_CONFIG.as_bytes()).unwrap();
+        Input {
+            disciplines: dream_core::screen::declared_disciplines(&cfg),
+            ..input()
+        }
+    }
+
     #[test]
-    fn repo_disciplines_become_violation_nouls() {
-        let i = Input {
-            disciplines: vec![
-                "no new dependencies".into(),
-                "ADRs for schema changes".into(),
-            ],
-            ..input()
-        };
-        let v = build_request(&i, "m");
-        assert_eq!(
-            v["state"]["repo_disciplines"],
-            json!(["no new dependencies", "ADRs for schema changes"])
-        );
-        assert_eq!(v["questions"]["violates_1"]["type"], "noul");
-        assert!(v["questions"]["violates_1"]["instructions"]
-            .as_str()
+    fn local_request_no_longer_asks_violation_nouls() {
+        let v = build_request(&fixture_input(), "m");
+        assert!(v["questions"]
+            .as_object()
             .unwrap()
-            .contains("index 1 of `repo_disciplines`"));
-        assert!(v["questions"].get("violates_2").is_none());
-        let many = Input {
-            disciplines: (0..30).map(|n| format!("d{n}")).collect(),
-            ..input()
-        };
+            .keys()
+            .all(|k| !k.starts_with("violates_")));
+        assert!(v["state"].get("repo_disciplines").is_none());
+    }
+
+    #[test]
+    fn fixture_extra_disciplines_reach_the_screen_request() {
+        let req = screen_request(&fixture_input()).to_system_one("m");
+        let ds = req["state"]["disciplines"].as_array().unwrap();
+        let ds: Vec<&str> = ds.iter().filter_map(Value::as_str).collect();
+        // built-ins first, then the repo's own, in order
         assert_eq!(
-            build_request(&many, "m")["state"]["repo_disciplines"]
-                .as_array()
-                .unwrap()
-                .len(),
-            MAX_DISCIPLINES
+            ds,
+            [
+                "evaluation-is-not-promotion",
+                "witness-every-quantitative-claim",
+                "no new dependencies",
+                "ADRs for schema changes"
+            ]
         );
-        // no disciplines ⇒ the request is exactly the pre-discipline shape plus an empty list, and no violates_*
-        assert!(build_request(&input(), "m")["questions"]
-            .get("violates_0")
-            .is_none());
+        assert_eq!(req["questions"]["violates_0"]["type"], "noul");
+        assert_eq!(
+            req["state"]["evaluators"][0]["name"], "cargo-test",
+            "evaluator catalogue is passed through"
+        );
+    }
+
+    /// Routes by question set: the screen request carries `fit_0`, the triage one `usefulness`.
+    struct Routed {
+        triage: String,
+        screen: Result<(u16, String), TransportError>,
+        screens: Mutex<usize>,
+    }
+    impl Transport for Routed {
+        fn post<'a>(&'a self, req: &'a HttpRequest) -> PostFuture<'a> {
+            let r = if req.body.contains("fit_0") {
+                *self.screens.lock().unwrap() += 1;
+                self.screen.clone()
+            } else {
+                Ok((200, self.triage.clone()))
+            };
+            Box::pin(async move { r })
+        }
+    }
+
+    fn screen_body(violates: f64) -> String {
+        json!({"answers": {
+            "fit_0": {"type":"score","score":2.0,"confidence":0.9},
+            "addresses_0": {"type":"noul","noul":0.7},
+            "violates_0": {"type":"noul","noul":violates},
+        }})
+        .to_string()
     }
 
     #[tokio::test]
-    async fn violations_are_recorded_and_a_missing_one_is_malformed() {
-        let i = Input {
-            disciplines: vec!["no new dependencies".into()],
-            ..input()
+    async fn library_verdict_is_recorded_and_a_violation_never_defers() {
+        let i = fixture_input();
+        let strict = cfg_with(&[("AGENTBOX_JEV_DREAM_TRIAGE_DEFER_BELOW", "0.4")]);
+        let t = Routed {
+            triage: body(2.0, 0.9),
+            screen: Ok((200, screen_body(0.8))),
+            screens: Mutex::new(0),
         };
-        let mut ok = serde_json::from_str::<Value>(&body(2.0, 0.9)).unwrap();
-        ok["answers"]["violates_0"] = json!({"type":"noul","noul":0.8});
-        let c = cfg_with(&[]);
         let dir = tempfile::tempdir().unwrap();
-        assert!(!consider(&c, &Mock::new(Ok((200, ok.to_string()))), dir.path(), &i).await);
+        assert!(!consider(&strict, &t, dir.path(), &i).await);
+        assert_eq!(*t.screens.lock().unwrap(), 1);
         let rec: Value =
             serde_json::from_slice(&std::fs::read(dir.path().join(RECORD_FILE)).unwrap()).unwrap();
+        assert_eq!(rec["discipline_violations"]["p_violates"], 0.8);
         assert_eq!(
-            rec["discipline_violations"][0]["discipline"],
+            rec["discipline_violations"]["disciplines"][2],
             "no new dependencies"
         );
-        assert_eq!(rec["discipline_violations"][0]["p_violates"], 0.8);
-        // a violation never defers by itself
-        let dir2 = tempfile::tempdir().unwrap();
-        let strict = cfg_with(&[("AGENTBOX_JEV_DREAM_TRIAGE_DEFER_BELOW", "0.4")]);
-        assert!(
-            !consider(
-                &strict,
-                &Mock::new(Ok((200, ok.to_string()))),
-                dir2.path(),
-                &i
-            )
-            .await
-        );
-        // the answer is absent ⇒ fallback, nothing written
-        let dir3 = tempfile::tempdir().unwrap();
-        assert_eq!(
-            triage(&c, &Mock::new(Ok((200, body(2.0, 0.9)))), &i).await,
-            Outcome::Fallback(Reason::Malformed)
-        );
-        assert!(!consider(&c, &Mock::new(Ok((200, body(2.0, 0.9)))), dir3.path(), &i).await);
-        assert_eq!(std::fs::read_dir(dir3.path()).unwrap().count(), 0);
+        assert_eq!(rec["usefulness"], 0.667);
+        assert_eq!(rec["deferred"], false);
+    }
+
+    #[tokio::test]
+    async fn a_failed_screen_keeps_the_record_and_marks_the_fallback() {
+        let i = fixture_input();
+        for screen in [
+            Err(TransportError::Timeout),
+            Ok((503, String::new())),
+            Ok((200, "not json".into())),
+            Ok((200, body(2.0, 0.9))), // answers present, screen questions missing
+        ] {
+            let t = Routed {
+                triage: body(2.0, 0.9),
+                screen,
+                screens: Mutex::new(0),
+            };
+            let dir = tempfile::tempdir().unwrap();
+            assert!(!consider(&cfg_with(&[]), &t, dir.path(), &i).await);
+            let rec: Value =
+                serde_json::from_slice(&std::fs::read(dir.path().join(RECORD_FILE)).unwrap())
+                    .unwrap();
+            assert_eq!(rec["discipline_violations"], Value::Null);
+            assert!(rec["discipline_screen_fallback"].is_string());
+            assert_eq!(rec["problem_supported"], 0.9);
+        }
+    }
+
+    #[tokio::test]
+    async fn screen_is_skipped_when_the_option_is_off_or_triage_fell_back() {
+        let i = fixture_input();
+        let off = Config::from_lookup(&env(&[]));
+        let t = Routed {
+            triage: body(2.0, 0.9),
+            screen: Ok((200, screen_body(0.1))),
+            screens: Mutex::new(0),
+        };
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!consider(&off, &t, dir.path(), &i).await);
+        let bad = Routed {
+            triage: "{}".into(),
+            screen: Ok((200, screen_body(0.1))),
+            screens: Mutex::new(0),
+        };
+        assert!(!consider(&cfg_with(&[]), &bad, dir.path(), &i).await);
+        assert_eq!(*t.screens.lock().unwrap() + *bad.screens.lock().unwrap(), 0);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn one_hypothesis_is_never_ordered_or_deferred_by_screen_candidates() {
+        // Why `screen_blocking` calls the screen directly: with one candidate the library
+        // returns the unscreened plan and builds no request.
+        use dream_core::screen::{plan_unscreened, screen_candidates, ScreenPolicy};
+        let h = [tonight(&fixture_input())];
+        let called = std::cell::Cell::new(false);
+        let s = JsonScreen::new("m", |_: &Value| {
+            called.set(true);
+            Err(FallbackReason::Transport)
+        });
+        let plan = screen_candidates(&s, &h, &[], &[], Some(1), &ScreenPolicy::default());
+        assert_eq!(plan, plan_unscreened(&h, Some(1)));
+        assert!(!called.get());
     }
 
     #[test]
@@ -838,7 +988,13 @@ mod tests {
 
     #[tokio::test]
     async fn every_fallback_returns_false_and_leaves_the_night_directory_untouched() {
-        let cases: Vec<(&str, Config, Result<(u16, String), TransportError>, Reason)> = vec![
+        type Case = (
+            &'static str,
+            Config,
+            Result<(u16, String), TransportError>,
+            Reason,
+        );
+        let cases: Vec<Case> = vec![
             ("key unset", Config::from_lookup(&env(&[("AGENTBOX_JEV_DREAM_TRIAGE", "1")])), Ok((200, body(3.0, 1.0))), Reason::NoEndpoint),
             ("local-only", cfg_with(&[("AGENTBOX_JEV_DREAM_TRIAGE_LOCAL_ONLY", "1")]), Ok((200, body(3.0, 1.0))), Reason::LocalOnly),
             ("timeout", cfg_with(&[]), Err(TransportError::Timeout), Reason::Timeout),
