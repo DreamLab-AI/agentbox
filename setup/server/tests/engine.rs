@@ -185,3 +185,29 @@ fn seed_default_is_valid_and_parses() {
     validate(seed).unwrap();
     parse_to_json(seed).unwrap();
 }
+
+#[test]
+fn e_edited_output_passes_the_manifest_validator() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let edited = apply_edits(
+        LIVE,
+        &[
+            edit(&["toolchains", "agentic_qe"], json!(true)),
+            edit(&["observability", "metrics_port"], json!(9191)),
+            edit(&["plugins", "packages", "3", "enabled"], json!(false)),
+        ],
+    )
+    .unwrap();
+    let dir = scratch("validator");
+    let f = dir.join("agentbox.toml");
+    fs::write(&f, edited).unwrap();
+    let out = Command::new("node")
+        .arg(root.join("scripts/agentbox-config-validate.js"))
+        .arg(&f)
+        .output();
+    match out {
+        Ok(o) if o.status.code() == Some(2) => eprintln!("npm deps missing; skipping validator run"),
+        Ok(o) => assert!(o.status.success(), "{}{}", String::from_utf8_lossy(&o.stdout), String::from_utf8_lossy(&o.stderr)),
+        Err(_) => eprintln!("node unavailable; skipping validator run"),
+    }
+}

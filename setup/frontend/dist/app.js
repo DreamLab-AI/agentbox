@@ -1,602 +1,476 @@
 // Agentbox pre-boot setup wizard
-// DreamLab AI — https://dreamlab.ai
+//
+// The browser never parses or writes TOML. The server parses agentbox.toml to
+// JSON for display and applies each change as a targeted edit with a
+// comment-preserving editor (POST /api/config/edit), so comments, ordering and
+// untouched values survive byte for byte. Section labels, groups and apply
+// classes come from schema/agentbox.toml.ui.json and agentbox.toml.apply.json;
+// field descriptions come from the JSON schema. Nothing is hard-coded here.
 (function () {
   'use strict';
 
-  let state = {
-    standalone: false,       // true = no Rust server, pure browser
-    fileHandle: null,        // File System Access API handle (if available)
-    config: null,
-    schema: null,
-    tomlContent: '',
+  const state = {
+    toml: '',          // current document text (server-edited)
+    parsed: {},        // server parse of `toml`
+    schema: {},
+    ui: { groups: [], sections: {} },
+    apply: { classes: {}, gates: {} },
+    seeded: false,
+    pending: new Map(),   // path-key -> { path, value } waiting to be sent
+    changes: new Map(),   // path-key -> { path, value } sent and not yet saved
     dirty: false,
-    sections: [],
-    activeSection: null,
+    active: null,
+    queue: Promise.resolve(),
   };
 
-  function $(sel, ctx) { return (ctx || document).querySelector(sel); }
-  function $$(sel, ctx) { return [...(ctx || document).querySelectorAll(sel)]; }
-
-  function debounce(fn, ms) {
-    let t;
-    return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-  }
+  const $ = (sel, ctx) => (ctx || document).querySelector(sel);
+  const $$ = (sel, ctx) => [...(ctx || document).querySelectorAll(sel)];
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const keyOf = (path) => JSON.stringify(path);
+  const dotted = (path) => path.filter((s) => typeof s === 'string').join('.');
 
   async function api(path, opts = {}) {
-    const url = `/api${path}`;
-    const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json', ...opts.headers },
+    const res = await fetch(`/api${path}`, {
+      headers: { 'Content-Type': 'application/json' },
       ...opts,
     });
     if (!res.ok) {
       const text = await res.text().catch(() => res.statusText);
-      throw new Error(`${res.status}: ${text}`);
+      throw new Error(text || `${res.status}`);
     }
-    if (res.status === 204 || res.headers.get('content-length') === '0') return null;
-    return res.json();
+    const ct = res.headers.get('content-type') || '';
+    return ct.includes('json') ? res.json() : null;
   }
 
-  function esc(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
-
-  // ─── TOML Parser (minimal, handles agentbox.toml shape) ──────
-
-  function parseTOML(text) {
-    const result = {};
-    let section = result;
-    for (const raw of text.split('\n')) {
-      const line = raw.trim();
-      if (!line || line.startsWith('#')) continue;
-      const hdr = line.match(/^\[([^\]]+)\]$/);
-      if (hdr) {
-        let obj = result;
-        for (const k of hdr[1].split('.')) {
-          if (!obj[k] || typeof obj[k] !== 'object') obj[k] = {};
-          obj = obj[k];
-        }
-        section = obj;
-        continue;
-      }
-      const kv = line.match(/^([a-zA-Z_][\w-]*)\s*=\s*(.+)$/);
-      if (kv) section[kv[1]] = parseVal(kv[2].trim());
+  function toast(msg, kind = 'info') {
+    let box = $('.toast-container');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'toast-container';
+      document.body.appendChild(box);
     }
-    return result;
+    const t = document.createElement('div');
+    t.className = `toast ${kind}`;
+    t.textContent = msg;
+    box.appendChild(t);
+    setTimeout(() => t.remove(), kind === 'error' ? 8000 : 3500);
   }
 
-  function parseVal(v) {
-    if (v === 'true') return true;
-    if (v === 'false') return false;
-    if (/^-?\d+$/.test(v)) return parseInt(v, 10);
-    if (/^-?\d+\.\d+$/.test(v)) return parseFloat(v);
-    if ((v[0] === '"' && v.at(-1) === '"') || (v[0] === "'" && v.at(-1) === "'"))
-      return v.slice(1, -1);
-    if (v[0] === '[' && v.at(-1) === ']')
-      return v.slice(1, -1).split(',').map(s => parseVal(s.trim())).filter(x => x !== '');
+  function setStatus(kind, label) {
+    const s = $('#status');
+    if (s) { s.className = `status-badge ${kind}`; s.textContent = label; }
+    const c = $('#connection');
+    if (c) {
+      c.classList.toggle('connected', kind === 'connected');
+      const l = $('.conn-label', c);
+      if (l) l.textContent = kind === 'connected' ? 'server' : 'offline';
+    }
+  }
+
+  function updateFooter() {
+    const n = state.changes.size + state.pending.size;
+    const el = $('#change-count');
+    if (el) el.textContent = n === 0 ? 'No unsaved changes' : `${n} unsaved change${n === 1 ? '' : 's'}`;
+    state.dirty = n > 0;
+  }
+
+  // ─── Schema helpers ──────────────────────────────────────────
+
+  function schemaAt(path) {
+    let n = state.schema;
+    for (const seg of path) {
+      if (typeof seg === 'number') { n = n?.items; continue; }
+      n = n?.properties?.[seg]
+        ?? (n?.additionalProperties && typeof n.additionalProperties === 'object' ? n.additionalProperties : undefined);
+      if (!n) return undefined;
+    }
+    return n;
+  }
+
+  function dataAt(path) {
+    let v = state.parsed;
+    for (const seg of path) { v = v?.[seg]; if (v === undefined) return undefined; }
     return v;
   }
 
-  function toTOML(obj, pfx = '') {
-    const lines = [], tables = [];
-    for (const [k, v] of Object.entries(obj)) {
-      if (v !== null && typeof v === 'object' && !Array.isArray(v)) tables.push([k, v]);
-      else lines.push(`${k} = ${toVal(v)}`);
-    }
-    for (const [k, v] of tables) {
-      const p = pfx ? `${pfx}.${k}` : k;
-      lines.push('', `[${p}]`, toTOML(v, p));
-    }
-    return lines.join('\n');
+  const isTable = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+  function applyFor(path) {
+    return state.apply.gates?.[dotted(path)];
   }
 
-  function toVal(v) {
-    if (typeof v === 'boolean') return v ? 'true' : 'false';
-    if (typeof v === 'number') return String(v);
-    if (Array.isArray(v)) return `[${v.map(toVal).join(', ')}]`;
-    return `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  function badge(path) {
+    const g = applyFor(path);
+    if (!g) return '';
+    const label = { live: 'Live', boot: 'On restart', rebuild: 'Needs rebuild' }[g.class] || g.class;
+    const tip = state.apply.classes?.[g.class] || '';
+    return `<span class="apply-badge apply-${esc(g.class)}" title="${esc(tip)}">${esc(label)}</span>`;
   }
 
-  // ─── Standalone Mode: File I/O ───────────────────────────────
-
-  function showStandalonePicker() {
-    $('#loading').style.display = 'none';
-    $('#standalone-picker').style.display = '';
-    setStatus('standalone');
-
-    // Show standalone UI controls
-    if ($('#btn-open')) $('#btn-open').style.display = '';
-
-    const dropZone = $('#drop-zone');
-    const fileInput = $('#file-input');
-
-    dropZone.addEventListener('click', () => fileInput.click());
-    dropZone.addEventListener('keydown', e => { if (e.key === 'Enter') fileInput.click(); });
-
-    dropZone.addEventListener('dragover', e => {
-      e.preventDefault();
-      dropZone.style.borderColor = 'var(--amber)';
-      dropZone.style.background = 'rgba(245, 158, 11, 0.05)';
-    });
-    dropZone.addEventListener('dragleave', () => {
-      dropZone.style.borderColor = 'var(--border)';
-      dropZone.style.background = '';
-    });
-    dropZone.addEventListener('drop', e => {
-      e.preventDefault();
-      dropZone.style.borderColor = 'var(--border)';
-      dropZone.style.background = '';
-      const file = e.dataTransfer.files[0];
-      if (file) loadFileFromDisk(file);
-    });
-
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files[0]) loadFileFromDisk(fileInput.files[0]);
-    });
+  function more(path) {
+    const g = applyFor(path);
+    if (!g?.summary) return '';
+    return `<details class="form-more"><summary>About ${esc(g.name)}</summary><p>${esc(g.summary)}</p></details>`;
   }
 
-  async function loadFileFromDisk(file) {
-    const text = await file.text();
-    state.tomlContent = text;
-    state.config = parseTOML(text);
+  // ─── Rendering ───────────────────────────────────────────────
 
-    // Try loading schema from relative path
-    await loadBundledSchema();
-
-    $('#standalone-picker').style.display = 'none';
-    $('#editor').style.display = '';
-    renderSections();
-    setStatus('connected');
-
-    // Update footer for standalone
-    if ($('#btn-save')) $('#btn-save').style.display = 'none';
-    if ($('#btn-cancel')) $('#btn-cancel').style.display = 'none';
-    if ($('#btn-download')) $('#btn-download').style.display = '';
-  }
-
-  async function loadBundledSchema() {
-    try {
-      const res = await fetch('agentbox.toml.schema.json');
-      if (res.ok) {
-        state.schema = await res.json();
-        return;
-      }
-    } catch {}
-    // Fallback: try relative to parent dirs (common layout)
-    for (const path of ['../schema/agentbox.toml.schema.json', '../../schema/agentbox.toml.schema.json']) {
-      try {
-        const res = await fetch(path);
-        if (res.ok) { state.schema = await res.json(); return; }
-      } catch {}
-    }
-    state.schema = null;
-  }
-
-  async function openFilePicker() {
-    if (window.showOpenFilePicker) {
-      try {
-        const [handle] = await window.showOpenFilePicker({
-          types: [{ description: 'TOML', accept: { 'text/plain': ['.toml'] } }],
-        });
-        state.fileHandle = handle;
-        const file = await handle.getFile();
-        await loadFileFromDisk(file);
-        return;
-      } catch (e) {
-        if (e.name === 'AbortError') return;
-      }
-    }
-    $('#file-input').click();
-  }
-
-  function downloadToml() {
-    const blob = new Blob([state.tomlContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'agentbox.toml';
-    a.click();
-    URL.revokeObjectURL(url);
-    state.dirty = false;
-  }
-
-  async function saveViaFileHandle() {
-    if (!state.fileHandle) { downloadToml(); return; }
-    try {
-      const writable = await state.fileHandle.createWritable();
-      await writable.write(state.tomlContent);
-      await writable.close();
-      state.dirty = false;
-      setStatus('connected');
-    } catch {
-      downloadToml();
-    }
-  }
-
-  // ─── Setup: Init & Render ────────────────────────────────────
-
-  async function initSetup() {
-    // Try connecting to Rust server first
-    try {
-      const res = await fetch('/api/config', {
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error(res.status);
-      const data = await res.json();
-      state.standalone = false;
-      state.tomlContent = data.toml_content;
-      state.schema = data.schema;
-      state.config = parseTOML(data.toml_content);
-      renderSections();
-      setStatus('connected');
-      $('#loading').style.display = 'none';
-      $('#editor').style.display = '';
-      return;
-    } catch {}
-
-    // No server — enter standalone mode
-    state.standalone = true;
-
-    // Check if agentbox.toml is co-located (served by any static server)
-    try {
-      const res = await fetch('agentbox.toml');
-      if (res.ok) {
-        const text = await res.text();
-        if (text.includes('[') && text.includes('=')) {
-          state.tomlContent = text;
-          state.config = parseTOML(text);
-          await loadBundledSchema();
-          renderSections();
-          setStatus('connected');
-          $('#loading').style.display = 'none';
-          $('#editor').style.display = '';
-
-          // In standalone with co-located file, show download button
-          if ($('#btn-save')) $('#btn-save').style.display = 'none';
-          if ($('#btn-cancel')) $('#btn-cancel').style.display = 'none';
-          if ($('#btn-download')) $('#btn-download').style.display = '';
-          return;
-        }
-      }
-    } catch {}
-
-    // No co-located file — show picker
-    showStandalonePicker();
-  }
-
-  const SECTION_META = {
-    core:             { icon: '⚙️',  label: 'Core',            desc: 'Orchestration engine and vector database.' },
-    mesh:             { icon: '🌐',  label: 'Mesh',            desc: 'Standalone or federated deployment mode (ADR-025).' },
-    federation:       { icon: '🛰️', label: 'Federation',      desc: 'Standalone or client federation with a host container mesh.' },
-    adapters:         { icon: '🔌',  label: 'Adapters',        desc: 'Five pluggable adapter slots (ADR-005).' },
-    integrations:     { icon: '🔗',  label: 'Integrations',    desc: 'RuVector PG sidecar with PRD-018 retrieval gates (hybrid search, typed metadata, orient, health, TTL sweep), solid-pod-rs, ComfyUI.' },
-    gpu:              { icon: '🎮',  label: 'GPU',             desc: 'GPU backend and acceleration.' },
-    toolchains:       { icon: '🔧',  label: 'Toolchains',      desc: 'Language runtimes and dev tools.' },
-    security:         { icon: '🛡️', label: 'Security',        desc: 'Sandbox policy, read-only rootfs.' },
-    sovereign_mesh:   { icon: '🔐',  label: 'Sovereign Mesh',  desc: 'Nostr relay, NIP-98 auth, and the pure-Nostr mobile agent bridge (Amethyst+Amber phone → embedded relay → pod). Replaces the retired Telegram/CTM mirror.' },
-    skills:           { icon: '🧠',  label: 'Skills',          desc: 'Pluggable skill modules.' },
-    features:         { icon: '🧪',  label: 'Features',        desc: 'Feature flags (ExpeL lesson extraction, etc.).' },
-    desktop:          { icon: '🖥️', label: 'Desktop',         desc: 'VNC desktop environment.' },
-    linked_data:      { icon: '🔗',  label: 'Linked Data',     desc: 'JSON-LD federation surfaces (PRD-006).' },
-    privacy_filter:   { icon: '🔒',  label: 'Privacy Filter',  desc: 'Local PII redaction sidecar (ADR-008).' },
-    compression:      { icon: '📦',  label: 'Compression',     desc: 'Context-aware compression middleware (PRD-016).' },
-    observability:    { icon: '📡',  label: 'Observability',   desc: 'Prometheus, OpenTelemetry.' },
-    payments:         { icon: '💰',  label: 'Payments',        desc: 'DREAM token economy and Web Ledger.' },
-    llm_marketplace:  { icon: '🏪',  label: 'Marketplace',     desc: 'LLM Resource Marketplace (kinds 38300-38305).' },
-    providers:        { icon: '🤖',  label: 'Providers',       desc: 'LLM provider configuration and API keys.' },
-    consultants:      { icon: '💬',  label: 'Consultants',     desc: 'LLM consultant MCPs — dual-path with direct tabs (PRD-013).' },
-    networking:       { icon: '🌍',  label: 'Networking',      desc: 'Tailscale mesh and host gateway.' },
-    plugins:          { icon: '🧩',  label: 'Plugins',         desc: 'Nix package plugins and extensions.' },
-    memory:           { icon: '💾',  label: 'Memory',          desc: 'RuVector memory backend and access control.' },
-    memory_learning:  { icon: '📈',  label: 'Memory Learning', desc: 'Trajectory-recording learning loop (PRD-018/ADR-036): record real (state, action, outcome, duration) tuples, aggregate effectiveness, feed retrieval/routing. Enable producers before consumers (W066).' },
-    memory_hygiene:   { icon: '🧹',  label: 'Memory Hygiene',  desc: 'Gates for the non-dry-run data-hygiene ops (namespace repair, embedding backfill, legacy archival). Fail-closed: ops stay dry-run until a flag is set. Run via ./agentbox.sh ruvector <op>.' },
-    project_tracking: { icon: '📋',  label: 'Project Tracking', desc: 'Sovereign project tracking (PRD-017/ADR-035): per-repo telemetry on /metrics, /v1/projects HTTP surface, kind-30841 nostr digests.' },
-  };
-
-  function renderSections() {
-    const schema = state.schema?.properties || {};
-    const container = $('#sections-container');
+  function render() {
+    renderLegend();
     const nav = $('#section-nav');
-    container.innerHTML = '';
+    const container = $('#sections-container');
     nav.innerHTML = '';
-    state.sections = [];
+    container.innerHTML = '';
 
-    // If no schema, render raw sections from parsed config
-    const keys = Object.keys(schema).length > 0
-      ? Object.entries(schema).filter(([, v]) => v.type === 'object').map(([k]) => k)
-      : Object.keys(state.config).filter(k => typeof state.config[k] === 'object');
+    const topKeys = new Set(Object.keys(state.schema.properties || {}));
+    for (const k of Object.keys(state.parsed)) topKeys.add(k);
 
-    for (const key of keys) {
-      const schemaDef = schema[key] || { properties: {} };
-      const meta = SECTION_META[key] || { icon: '📋', label: key, desc: '' };
-      const data = state.config[key] || {};
-      const id = `section-${key}`;
+    const byGroup = new Map(state.ui.groups.map((g) => [g.id, []]));
+    const other = [];
+    for (const k of topKeys) {
+      const meta = state.ui.sections[k];
+      if (meta && byGroup.has(meta.group)) byGroup.get(meta.group).push(k);
+      else other.push(k);
+    }
+    const groups = state.ui.groups.map((g) => ({ ...g, keys: byGroup.get(g.id) }));
+    if (other.length) groups.push({ id: 'other', label: 'Other', blurb: 'Sections without a label in the UI metadata.', keys: other });
 
+    for (const g of groups) {
+      if (!g.keys.length) continue;
       const li = document.createElement('li');
-      li.innerHTML = `<a href="#${id}" data-section="${key}">
-        <span class="nav-icon">${meta.icon}</span> ${esc(meta.label)}
-      </a>`;
+      li.className = 'nav-group';
+      li.innerHTML = `<div class="nav-group-label">${esc(g.label)}</div>`;
       nav.appendChild(li);
 
-      const sec = document.createElement('div');
-      sec.className = 'section-card slide-up';
-      sec.id = id;
+      const head = document.createElement('div');
+      head.className = 'group-header';
+      head.id = `group-${g.id}`;
+      head.innerHTML = `<h2>${esc(g.label)}</h2><p>${esc(g.blurb)}</p>`;
+      container.appendChild(head);
 
-      const props = schemaDef.properties || {};
-      const hasSchema = Object.keys(props).length > 0;
+      for (const key of g.keys) {
+        const meta = state.ui.sections[key] || { label: key };
+        const node = state.schema.properties?.[key] || {};
+        const data = state.parsed[key];
+        const nav_li = document.createElement('li');
+        nav_li.innerHTML = `<a href="#section-${esc(key)}" data-section="${esc(key)}">${esc(meta.label)}</a>`;
+        nav.appendChild(nav_li);
 
-      sec.innerHTML = `
-        <div class="section-header">
-          <div>
-            <h2>${meta.icon} ${esc(meta.label)}</h2>
-            <p class="section-desc">${esc(schemaDef.description || meta.desc)}</p>
+        const sec = document.createElement('section');
+        sec.className = 'section-card';
+        sec.id = `section-${key}`;
+        sec.dataset.section = key;
+        sec.innerHTML = `
+          <div class="section-header">
+            <div>
+              <h3>${esc(meta.label)} ${badge([key])} <code class="section-key">[${esc(key)}]</code></h3>
+              <p class="section-desc">${esc(node.description || '')}</p>
+              ${more([key])}
+            </div>
           </div>
-        </div>
-        <div class="section-body">
-          ${hasSchema ? renderFields(key, props, data) : renderRawFields(key, data)}
-        </div>`;
-      container.appendChild(sec);
-      state.sections.push(key);
+          <div class="section-body">${renderBody([key], node, data)}</div>`;
+        container.appendChild(sec);
+      }
     }
 
-    $$('#section-nav a').forEach(a => {
-      a.addEventListener('click', e => {
-        e.preventDefault();
-        document.getElementById(a.getAttribute('href').slice(1))
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        setActiveNav(a.dataset.section);
-      });
-    });
+    $$('#section-nav a').forEach((a) => a.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById(a.getAttribute('href').slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('#sidebar')?.classList.remove('open');
+    }));
 
-    const obs = new IntersectionObserver(entries => {
-      for (const e of entries) {
-        if (e.isIntersecting) setActiveNav(e.target.id.replace('section-', ''));
-      }
-    }, { threshold: 0.2, rootMargin: '-80px 0px -50% 0px' });
-    $$('.section-card').forEach(s => obs.observe(s));
-
-    container.addEventListener('change', handleChange);
-    container.addEventListener('input', debounce(handleChange, 300));
+    if (state.observer) state.observer.disconnect();
+    state.observer = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) setActiveNav(e.target.dataset.section);
+    }, { threshold: 0.1, rootMargin: '-80px 0px -60% 0px' });
+    $$('.section-card').forEach((s) => state.observer.observe(s));
+    applyFilter();
   }
 
-  function renderRawFields(sectionKey, data, prefix = '') {
-    let html = '';
-    for (const [key, value] of Object.entries(data)) {
-      const path = prefix ? `${prefix}.${key}` : key;
-
-      if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-        html += `<div class="subsection open">
-          <button class="subsection-toggle" type="button">
-            <span class="chevron">▸</span> ${esc(key.replace(/_/g, ' '))}
-          </button>
-          <div class="subsection-body">
-            ${renderRawFields(sectionKey, value, path)}
-          </div>
-        </div>`;
-        continue;
-      }
-
-      const fid = `f-${sectionKey}-${path.replace(/\./g, '-')}`;
-      const label = key.replace(/_/g, ' ');
-
-      if (typeof value === 'boolean') {
-        html += `<div class="form-group">
-          <label class="form-label" for="${fid}">${esc(label)}</label>
-          <div class="toggle-wrap">
-            <label class="toggle">
-              <input type="checkbox" id="${fid}" ${value ? 'checked' : ''} data-section="${sectionKey}" data-key="${path}">
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            </label>
-            <span class="toggle-state">${value ? 'Enabled' : 'Disabled'}</span>
-          </div>
-        </div>`;
-      } else if (typeof value === 'number') {
-        html += `<div class="form-group">
-          <label class="form-label" for="${fid}">${esc(label)}</label>
-          <input type="number" id="${fid}" value="${value}" data-section="${sectionKey}" data-key="${path}">
-        </div>`;
-      } else if (Array.isArray(value)) {
-        html += `<div class="form-group">
-          <label class="form-label" for="${fid}">${esc(label)}</label>
-          <input type="text" id="${fid}" value="${esc(value.join(', '))}" placeholder="comma-separated" data-section="${sectionKey}" data-key="${path}">
-        </div>`;
-      } else {
-        html += `<div class="form-group">
-          <label class="form-label" for="${fid}">${esc(label)}</label>
-          <input type="text" id="${fid}" value="${esc(String(value ?? ''))}" data-section="${sectionKey}" data-key="${path}">
-        </div>`;
-      }
-    }
-    return html;
+  function renderLegend() {
+    const el = $('#apply-legend');
+    if (!el) return;
+    const c = state.apply.classes || {};
+    el.innerHTML = ['live', 'boot', 'rebuild'].filter((k) => c[k]).map((k) => {
+      const label = { live: 'Live', boot: 'On restart', rebuild: 'Needs rebuild' }[k];
+      return `<div><span class="apply-badge apply-${k}">${label}</span> <span>${esc(c[k])}</span></div>`;
+    }).join('');
+    $('#seed-notice').style.display = state.seeded ? '' : 'none';
   }
 
-  function renderFields(sectionKey, props, data, prefix = '') {
-    let html = '';
-    for (const [key, prop] of Object.entries(props)) {
-      const path = prefix ? `${prefix}.${key}` : key;
-
-      if (prop.type === 'object' && prop.properties) {
-        const sub = (typeof data[key] === 'object' && data[key]) ? data[key] : {};
-        html += `<div class="subsection open">
-          <button class="subsection-toggle" type="button">
-            <span class="chevron">▸</span> ${esc(key.replace(/_/g, ' '))}
-          </button>
-          <div class="subsection-body">
-            ${renderFields(sectionKey, prop.properties, sub, path)}
-          </div>
-        </div>`;
-        continue;
-      }
-
-      const fid = `f-${sectionKey}-${path.replace(/\./g, '-')}`;
-      const label = key.replace(/_/g, ' ');
-      const hint = prop.description || '';
-
-      html += `<div class="form-group">
-        <label class="form-label" for="${fid}">${esc(label)}</label>
-        ${hint ? `<div class="form-hint">${esc(hint)}</div>` : ''}
-        ${renderInput(fid, sectionKey, path, prop, data[key])}
-      </div>`;
-    }
-    return html;
+  function renderBody(path, node, data) {
+    const props = node?.properties || {};
+    const keys = [...Object.keys(props)];
+    if (isTable(data)) for (const k of Object.keys(data)) if (!keys.includes(k)) keys.push(k);
+    if (!keys.length) return '<p class="form-hint">Nothing to configure here.</p>';
+    return keys.map((k) => renderField([...path, k], props[k], data?.[k])).join('');
   }
 
-  function renderInput(id, section, key, prop, value) {
-    const da = `data-section="${section}" data-key="${key}"`;
+  function titleOf(entry, i) {
+    if (isTable(entry)) for (const k of ['name', 'id', 'prefix', 'package', 'path']) if (typeof entry[k] === 'string') return entry[k];
+    return `#${i + 1}`;
+  }
 
-    if (prop.enum) {
-      return `<select id="${id}" ${da}>
-        ${prop.enum.map(v => `<option value="${esc(v)}" ${value === v ? 'selected' : ''}>${esc(v)}</option>`).join('')}
-      </select>`;
+  function renderField(path, node, value) {
+    const key = path[path.length - 1];
+    node = node || {};
+    const desc = node.description ? `<div class="form-hint">${esc(node.description)}</div>` : '';
+
+    // Array of tables, e.g. [[plugins.packages]]: one collapsible entry each.
+    if (Array.isArray(value) && value.length && value.every(isTable)) {
+      const itemNode = node.items || {};
+      return `<div class="subsection open">
+        <button class="subsection-toggle" type="button"><span class="chevron">▸</span> ${esc(key)} <span class="count">${value.length} entries</span> ${badge(path)}</button>
+        <div class="subsection-body">${desc}
+          ${value.map((entry, i) => `<div class="subsection entry">
+            <button class="subsection-toggle" type="button"><span class="chevron">▸</span> ${esc(titleOf(entry, i))}</button>
+            <div class="subsection-body">${renderBody([...path, i], itemNode, entry)}</div>
+          </div>`).join('')}
+        </div></div>`;
     }
 
-    if (prop.type === 'boolean') {
-      return `<div class="toggle-wrap">
-        <label class="toggle">
-          <input type="checkbox" id="${id}" ${value ? 'checked' : ''} ${da}>
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </label>
-        <span class="toggle-state">${value ? 'Enabled' : 'Disabled'}</span>
+    // Nested table.
+    if (isTable(value) || (value === undefined && node.type === 'object' && node.properties)) {
+      const sub = isTable(value) ? value : {};
+      const open = path.length <= 2 ? ' open' : '';
+      return `<div class="subsection${open}">
+        <button class="subsection-toggle" type="button"><span class="chevron">▸</span> ${esc(key)} ${badge(path)}</button>
+        <div class="subsection-body">${desc}${more(path)}${renderBody(path, node, sub)}</div>
       </div>`;
     }
 
-    if (prop.type === 'integer' || prop.type === 'number') {
-      const v = value ?? prop.default ?? '';
-      const min = prop.minimum != null ? `min="${prop.minimum}"` : '';
-      const max = prop.maximum != null ? `max="${prop.maximum}"` : '';
-      return `<input type="number" id="${id}" value="${v}" ${min} ${max} ${da}>`;
-    }
-
-    if (prop.type === 'array') {
-      const v = Array.isArray(value) ? value.join(', ') : (value || '');
-      return `<input type="text" id="${id}" value="${esc(String(v))}" placeholder="comma-separated" ${da}>`;
-    }
-
-    const v = value ?? prop.default ?? '';
-    const ph = prop.examples ? `placeholder="${esc(String(prop.examples[0]))}"` : '';
-    return `<input type="text" id="${id}" value="${esc(String(v))}" ${ph} ${da}>`;
+    const id = `f-${path.join('-').replace(/[^\w-]/g, '_')}`;
+    const da = `data-path='${esc(keyOf(path))}'`;
+    const effective = value !== undefined ? value : node.default;
+    const unset = value === undefined ? '<span class="unset" title="Not set in the file; the default applies until you change it">default</span>' : '';
+    const head = `<label class="form-label" for="${id}"><code>${esc(key)}</code> ${badge(path)} ${unset}</label>${desc}${more(path)}`;
+    return `<div class="form-group" data-search="${esc((dotted(path) + ' ' + (node.description || '')).toLowerCase())}">${head}${renderInput(id, da, node, effective, value)}</div>`;
   }
 
-  function handleChange(e) {
+  function renderInput(id, da, node, v, actual) {
+    const type = typeof actual === 'boolean' || node.type === 'boolean' ? 'boolean' : null;
+    if (node.enum) {
+      const opts = node.enum.map((o) => `<option value="${esc(o)}" ${v === o ? 'selected' : ''}>${esc(o)}</option>`).join('');
+      const blank = v === undefined ? '<option value="" selected disabled>(not set)</option>' : '';
+      return `<select id="${id}" ${da} data-kind="string">${blank}${opts}</select>`;
+    }
+    if (type === 'boolean') {
+      return `<div class="toggle-wrap"><label class="toggle">
+        <input type="checkbox" id="${id}" ${v ? 'checked' : ''} ${da} data-kind="boolean">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+        <span class="toggle-state">${v ? 'Enabled' : 'Disabled'}</span></div>`;
+    }
+    if (typeof actual === 'number' || node.type === 'integer' || node.type === 'number') {
+      const int = Number.isInteger(actual) || node.type === 'integer';
+      const lim = `${node.minimum != null ? ` min="${node.minimum}"` : ''}${node.maximum != null ? ` max="${node.maximum}"` : ''}`;
+      return `<input type="number" id="${id}" value="${v ?? ''}" step="${int ? 1 : 'any'}"${lim} ${da} data-kind="${int ? 'integer' : 'float'}">`;
+    }
+    if (Array.isArray(actual) || node.type === 'array') {
+      const items = Array.isArray(v) ? v : [];
+      const numeric = items.length ? items.every((x) => typeof x === 'number') : node.items?.type === 'integer' || node.items?.type === 'number';
+      const text = items.join(', ');
+      return `<input type="text" id="${id}" value="${esc(text)}" placeholder="comma-separated" ${da} data-kind="${numeric ? 'numlist' : 'list'}">`;
+    }
+    const ph = node.examples?.length ? ` placeholder="${esc(node.examples[0])}"` : '';
+    const s = v === undefined ? '' : String(v);
+    if (s.length > 90) return `<textarea id="${id}" rows="3" ${da} data-kind="string"${ph}>${esc(s)}</textarea>`;
+    return `<input type="text" id="${id}" value="${esc(s)}"${ph} ${da} data-kind="string">`;
+  }
+
+  // ─── Editing ─────────────────────────────────────────────────
+
+  function readValue(el) {
+    switch (el.dataset.kind) {
+      case 'boolean': return el.checked;
+      // The server coerces to the key's existing TOML type (integer or float).
+      case 'integer':
+      case 'float': return el.value === '' ? undefined : Number(el.value);
+      case 'list':
+        return el.value.split(',').map((s) => s.trim()).filter(Boolean);
+      case 'numlist':
+        return el.value.split(',').map((s) => s.trim()).filter(Boolean).map(Number);
+      default: return el.value;
+    }
+  }
+
+  function onChange(e) {
     const el = e.target;
-    if (!el.dataset?.section) return;
-
-    let value;
+    if (!el.dataset?.path) return;
+    const path = JSON.parse(el.dataset.path);
+    const value = readValue(el);
     if (el.type === 'checkbox') {
-      value = el.checked;
       const lbl = el.closest('.toggle-wrap')?.querySelector('.toggle-state');
       if (lbl) lbl.textContent = value ? 'Enabled' : 'Disabled';
-    } else if (el.type === 'number') {
-      value = el.value === '' ? undefined : Number(el.value);
-    } else {
-      value = el.value;
     }
-
-    if (!state.config[el.dataset.section]) state.config[el.dataset.section] = {};
-    const keys = el.dataset.key.split('.');
-    let obj = state.config[el.dataset.section];
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (!obj[keys[i]]) obj[keys[i]] = {};
-      obj = obj[keys[i]];
-    }
-    obj[keys.at(-1)] = value;
-
-    state.dirty = true;
-    state.tomlContent = toTOML(state.config);
+    // TOML has no null: a cleared number field means "leave as it is".
+    if (value === undefined || (typeof value === 'number' && Number.isNaN(value))) return;
+    state.pending.set(keyOf(path), { path, value });
+    updateFooter();
+    flushSoon();
   }
 
+  let flushTimer;
+  function flushSoon() {
+    clearTimeout(flushTimer);
+    flushTimer = setTimeout(() => { flush().catch(() => {}); }, 400);
+  }
+
+  /** Send pending edits to the server, one request at a time, last write wins. */
+  function flush() {
+    clearTimeout(flushTimer);
+    state.queue = state.queue.then(async () => {
+      if (!state.pending.size) return;
+      const batch = [...state.pending.values()];
+      state.pending.clear();
+      try {
+        const res = await api('/config/edit', { method: 'POST', body: JSON.stringify({ toml_content: state.toml, edits: batch }) });
+        state.toml = res.toml_content;
+        state.parsed = res.parsed;
+        for (const b of batch) state.changes.set(keyOf(b.path), b);
+        $$('.form-group.invalid').forEach((g) => g.classList.remove('invalid'));
+      } catch (err) {
+        for (const b of batch) {
+          const el = document.querySelector(`[data-path='${keyOf(b.path).replace(/'/g, '&#39;')}']`);
+          el?.closest('.form-group')?.classList.add('invalid');
+        }
+        toast(`Edit rejected: ${err.message}`, 'error');
+        throw err;
+      } finally {
+        updateFooter();
+      }
+    });
+    return state.queue;
+  }
+
+  // ─── Navigation and filter ───────────────────────────────────
+
   function setActiveNav(key) {
-    if (state.activeSection === key) return;
-    state.activeSection = key;
-    $$('#section-nav li').forEach(li => {
-      li.classList.toggle('active', li.querySelector('a')?.dataset.section === key);
+    if (state.active === key) return;
+    state.active = key;
+    $$('#section-nav li').forEach((li) => li.classList.toggle('active', li.querySelector('a')?.dataset.section === key));
+  }
+
+  function applyFilter() {
+    const q = ($('#filter')?.value || '').trim().toLowerCase();
+    $$('.form-group').forEach((g) => { g.style.display = !q || g.dataset.search.includes(q) ? '' : 'none'; });
+    $$('.section-card').forEach((s) => {
+      const any = !q || $$('.form-group', s).some((g) => g.style.display !== 'none') || s.dataset.section.includes(q);
+      s.style.display = any ? '' : 'none';
+      if (q) $$('.subsection', s).forEach((x) => x.classList.add('open'));
+    });
+    $$('.group-header').forEach((h) => {
+      let n = h.nextElementSibling, any = !q;
+      while (n && !n.classList.contains('group-header')) { if (n.style.display !== 'none') any = true; n = n.nextElementSibling; }
+      h.style.display = any ? '' : 'none';
     });
   }
 
-  // Subsection toggle delegation
-  document.addEventListener('click', e => {
+  document.addEventListener('click', (e) => {
     const btn = e.target.closest('.subsection-toggle');
-    if (!btn) return;
-    btn.closest('.subsection')?.classList.toggle('open');
+    if (btn) btn.closest('.subsection')?.classList.toggle('open');
   });
 
-  // ─── Footer Actions ──────────────────────────────────────────
+  // ─── Footer actions ──────────────────────────────────────────
 
-  async function saveAndExit() {
-    if (state.standalone) {
-      await saveViaFileHandle();
-      return;
-    }
-    const btn = $('#btn-save');
+  async function save(exit) {
+    const btn = exit ? $('#btn-save-exit') : $('#btn-save');
+    const label = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Saving…';
     try {
-      await api('/config', { method: 'POST', body: JSON.stringify({ toml_content: state.tomlContent }) });
-      setStatus('connected');
+      await flush();
+      await api('/config', { method: 'POST', body: JSON.stringify({ toml_content: state.toml }) });
+      state.changes.clear();
+      updateFooter();
+      setStatus('connected', 'saved');
       btn.textContent = '✓ Saved';
-      setTimeout(async () => {
-        try { await api('/shutdown', { method: 'POST' }); } catch {}
-        window.close();
-      }, 500);
-    } catch (e) {
-      setStatus('error');
-      btn.textContent = 'Save & Exit';
+      if (exit) {
+        setTimeout(async () => {
+          try { await api('/shutdown', { method: 'POST' }); } catch { /* server already gone */ }
+          window.close();
+        }, 400);
+      } else {
+        setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 1200);
+      }
+    } catch (err) {
+      setStatus('error', 'error');
+      btn.textContent = label;
       btn.disabled = false;
-      alert(`Save failed: ${e.message}`);
+      toast(`Save failed: ${err.message}`, 'error');
     }
   }
 
-  async function quitNoSave() {
+  async function quit() {
     if (state.dirty && !confirm('Unsaved changes will be lost. Quit anyway?')) return;
-    if (!state.standalone) {
-      try { await api('/shutdown', { method: 'POST' }); } catch {}
-    }
+    try { await api('/shutdown', { method: 'POST' }); } catch { /* ignore */ }
     window.close();
   }
 
-  function openRawEditor() {
-    $('#raw-toml').value = state.tomlContent;
+  async function openRaw() {
+    try { await flush(); } catch { /* shown already */ }
+    $('#raw-toml').value = state.toml;
     $('#raw-modal').showModal();
   }
 
-  function applyRaw() {
-    const txt = $('#raw-toml').value;
+  async function applyRaw() {
+    const text = $('#raw-toml').value;
     try {
-      state.config = parseTOML(txt);
-      state.tomlContent = txt;
-      state.dirty = true;
-      renderSections();
+      const res = await api('/config/edit', { method: 'POST', body: JSON.stringify({ toml_content: text, edits: [] }) });
+      if (text !== state.toml) state.changes.set('raw', { path: ['(raw editor)'], value: null });
+      state.toml = res.toml_content;
+      state.parsed = res.parsed;
+      updateFooter();
+      render();
       $('#raw-modal').close();
-    } catch (e) {
-      alert(`Invalid TOML: ${e.message}`);
+    } catch (err) {
+      toast(`Invalid TOML: ${err.message}`, 'error');
     }
   }
 
   // ─── Init ────────────────────────────────────────────────────
 
+  async function load() {
+    try {
+      const data = await api('/config');
+      state.toml = data.toml_content;
+      state.parsed = data.parsed;
+      state.schema = data.schema || {};
+      state.ui = data.ui || state.ui;
+      state.apply = data.apply || state.apply;
+      state.seeded = !!data.seeded;
+    } catch (err) {
+      $('#loading').style.display = 'none';
+      $('#no-server').style.display = '';
+      $('#no-server-reason').textContent = err.message;
+      setStatus('error', 'no server');
+      return;
+    }
+    render();
+    setStatus('connected', 'connected');
+    updateFooter();
+    $('#loading').style.display = 'none';
+    $('#editor').style.display = '';
+  }
+
   function init() {
-    $('#btn-save')?.addEventListener('click', saveAndExit);
-    $('#btn-cancel')?.addEventListener('click', quitNoSave);
-    $('#btn-raw')?.addEventListener('click', openRawEditor);
-    $('#btn-download')?.addEventListener('click', downloadToml);
-    $('#btn-open')?.addEventListener('click', openFilePicker);
+    $('#btn-save')?.addEventListener('click', () => save(false));
+    $('#btn-save-exit')?.addEventListener('click', () => save(true));
+    $('#btn-cancel')?.addEventListener('click', quit);
+    $('#btn-raw')?.addEventListener('click', openRaw);
     $('#raw-apply')?.addEventListener('click', applyRaw);
     $('#raw-cancel')?.addEventListener('click', () => $('#raw-modal').close());
-
-    $('#raw-modal')?.addEventListener('click', e => {
-      if (e.target === e.currentTarget) e.currentTarget.close();
-    });
-
-    document.addEventListener('keydown', e => {
+    $('#filter')?.addEventListener('input', applyFilter);
+    $('#menu-toggle')?.addEventListener('click', () => $('#sidebar').classList.toggle('open'));
+    $('#raw-modal')?.addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+    const container = $('#sections-container');
+    container.addEventListener('change', onChange);
+    document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && $('#raw-modal')?.open) $('#raw-modal').close();
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        state.standalone ? downloadToml() : saveAndExit();
-      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(false); }
     });
-
-    initSetup();
+    window.addEventListener('beforeunload', (e) => { if (state.dirty) { e.preventDefault(); e.returnValue = ''; } });
+    load();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

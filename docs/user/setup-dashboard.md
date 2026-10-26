@@ -1,77 +1,67 @@
 # Setup Wizard
 
-The setup wizard is a browser-based, pre-boot editor for `agentbox.toml`. It
-ships as a standalone HTML/CSS/JS frontend under `setup/frontend/dist/`.
-Running-system operations moved to the operator cockpit in PRD-021.
+The setup wizard is a browser-based, pre-boot editor for `agentbox.toml`. Running-system
+operations moved to the operator cockpit in PRD-021.
 
 ## How to access it
-
-Run the setup script from the project root:
 
 ```bash
 ./scripts/start-agentbox.sh
 ```
 
-The script copies `agentbox.toml` and the JSON Schema alongside the frontend, then
-serves them via `python3 -m http.server`. It prints the URL to stdout, for example:
+The script starts the compiled `agentbox-setup` server (build it once with
+`cargo build --release` in `setup/`; if it is missing the script falls back to the shell
+wizard). The server picks a random loopback port and prints the URL. To reach it from
+another container, set `AGENTBOX_SETUP_BIND=0.0.0.0:<port>`; `AGENTBOX_SETUP_NO_OPEN=1`
+stops it launching a browser.
 
-```
-AGENTBOX Setup: http://127.0.0.1:8765
-```
+There is no server-less browser mode. Editing needs the server, which parses
+`agentbox.toml` and changes only the values you edit.
 
-Open that URL in any browser. No Node, Python runtime, or other dependency is
-required beyond Python 3's built-in HTTP server.
+## How it edits
 
-If the optional `agentbox-setup` Rust binary is present, it serves the frontend
-on a random `127.0.0.1` port and writes the validated manifest server-side.
+The browser never parses or writes TOML. Each change you make is sent to the server as a
+`{path, value}` edit (`POST /api/config/edit`) and applied with a comment-preserving editor
+(`toml_edit`). Comments, ordering, whitespace and every untouched value survive byte for
+byte, and `[[plugins.packages]]` entries are addressed by index. Saving validates the text
+as TOML and writes it atomically (temp file in the same directory, fsync, rename).
+If no `agentbox.toml` exists, the wizard starts from `setup/agentbox.default.toml` and
+saving creates the file.
 
-## What it does
+## Where the text comes from
 
-The wizard edits `agentbox.toml` through a form-based UI generated from the
-manifest's JSON Schema. Every field shows the type, allowed values, and default.
-Changes are validated on every keystroke; saving writes the TOML back preserving
-comments and key ordering.
+| What | Source |
+|---|---|
+| Field descriptions | `description` in `schema/agentbox.toml.schema.json` |
+| Section labels and groups | `schema/agentbox.toml.ui.json` |
+| "Live / On restart / Needs rebuild" badges and "About" notes | `schema/agentbox.toml.apply.json`, generated from the CATALOGUE in `management-api/lib/system-manifest.js` by `node scripts/gen-setup-apply.cjs` |
 
-It deliberately has no post-boot operations mode. Once the container is running,
-use `./agentbox.sh voice open`; this prevents setup code from maintaining a
-second, drifting model of service health and governance.
+`tests/config/setup-ui-drift.test.mjs` fails when a section lacks a label, group or
+description, when a key lacks a description, when the seed contains a key the schema does
+not know, or when the apply file is stale.
 
 ## Sections
 
-The wizard renders one card per top-level `agentbox.toml` section:
+| Group | What it covers | Sections |
+|---|---|---|
+| Platform & build | What is installed in the image and which core services run. | Core, Adapters, Feature flags, Plugins, Toolchains, Skills, Desktop |
+| Models & routing | Which LLM providers, models and judges agents use. | Provider keys, Claude Code, Model routing, Consultants, System One judge |
+| Memory & knowledge | Agent memory, the learning loop, the knowledge vault and linked data. | Memory access, Memory learning, Memory hygiene, Integrations, Knowledge vault, Linked data, Ontology monitor, Compression |
+| Agents & scheduled jobs | Operator console, nightly jobs and project tracking. | Interaction plane (AoE), Voice console, Dream machine, Project tracking, Diagram review, SEO watch |
+| Identity, mesh & economy | Nostr identity, federation with other containers, payments and forum seats. | Sovereign mesh, Mesh, Federation (deprecated), Networking, Sidechain, LLM marketplace, Payments, Poker house seat, Poker coach |
+| Security & privacy | Sandbox policy and PII redaction. | Security, Privacy filter |
+| Hardware & observability | GPU, CPU and memory limits, metrics and logs. | GPU, Resource limits, Observability |
 
-| Section | Description |
-|---|---|
-| Core | Orchestration engine and vector database |
-| Mesh | Standalone or federated deployment mode (ADR-025) |
-| Federation | Standalone or client federation with a host container mesh |
-| Adapters | Five pluggable adapter slots (ADR-005) |
-| Integrations | RuVector PG sidecar with PRD-018 retrieval gates (hybrid search, typed metadata, orient, health, TTL sweep), solid-pod-rs, ComfyUI |
-| GPU | GPU backend and acceleration |
-| Toolchains | Language runtimes and dev tools |
-| Security | Sandbox policy, read-only rootfs |
-| Sovereign Mesh | Nostr relay, NIP-98 auth, pure-Nostr mobile agent bridge |
-| Skills | Pluggable skill modules |
-| Features | Feature flags (ExpeL lesson extraction, etc.) |
-| Desktop | VNC desktop environment |
-| Linked Data | JSON-LD federation surfaces (PRD-006) |
-| Privacy Filter | Local PII redaction sidecar (ADR-008) |
-| Compression | Context-aware compression middleware (PRD-016) |
-| Observability | Prometheus, OpenTelemetry |
-| Payments | DREAM token economy and Web Ledger |
-| Marketplace | LLM Resource Marketplace (kinds 38300-38305) |
-| Providers | LLM provider configuration and API keys |
-| Consultants | LLM consultant MCPs (PRD-013) |
-| Networking | Tailscale mesh and host gateway |
-| Plugins | Nix package plugins and extensions |
-| Memory | RuVector memory backend and access control |
-| Memory Learning | Trajectory-recording learning loop (PRD-018/ADR-036); enable producers before consumers (W066) |
-| Memory Hygiene | Gates for non-dry-run data-hygiene ops (namespace repair, embedding backfill, legacy archival); fail-closed |
-| Project Tracking | Sovereign project tracking (PRD-017/ADR-035): telemetry, `/v1/projects`, kind-30841 digests |
+## Tests
+
+```bash
+(cd setup && cargo test && cargo clippy --all-targets -- -D warnings)
+node --test tests/config/setup-ui-drift.test.mjs
+```
 
 ## See also
 
 - [configuration.md](configuration.md) — full `agentbox.toml` field reference
-- [ADR-024](../archive/adr/ADR-024-setup-dashboard.md) — dashboard architecture decisions
+- [ADR-024](../archive/adr/ADR-024-setup-dashboard.md) — original dashboard architecture (its standalone browser tiers are superseded by the server-only design above)
 - [PRD-012](../archive/prd/PRD-012-setup-dashboard.md) — setup wizard product spec
 - [web-interfaces.md](web-interfaces.md) — all running-system browser surfaces
