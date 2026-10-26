@@ -211,3 +211,16 @@ fn e_edited_output_passes_the_manifest_validator() {
         Err(_) => eprintln!("node unavailable; skipping validator run"),
     }
 }
+
+#[test]
+fn arrays_with_inner_comments_are_refused_not_flattened() {
+    let src = "[a]\nkeys = [\n  \"x\",  # first\n  \"y\",  # second\n]  # after\nplain = [\"p\", \"q\"]  # tail\n";
+    let e = apply_edits(src, &[edit(&["a", "keys"], json!(["z"]))]).unwrap_err();
+    assert!(e.to_string().contains("Edit Raw TOML"), "{e}");
+    // A comment-free array is still editable and keeps its trailing comment.
+    let out = apply_edits(src, &[edit(&["a", "plain"], json!(["p", "q", "r"]))]).unwrap();
+    assert!(out.contains("plain = [\"p\", \"q\", \"r\"]  # tail"), "{out}");
+    // The live file's annotated pubkey lists are protected.
+    let live_err = apply_edits(LIVE, &[edit(&["interaction_plane", "proxy", "allowed_pubkeys"], json!(["00"]))]);
+    assert!(live_err.is_err());
+}

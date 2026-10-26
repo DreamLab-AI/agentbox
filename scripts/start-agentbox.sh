@@ -439,10 +439,12 @@ if [[ "${1:-}" != "--tui" ]]; then
   # No standalone browser mode any more: editing needs the server, which parses
   # agentbox.toml and applies each change with a comment-preserving editor. A
   # static copy of the page cannot do that without corrupting the manifest.
-  # Fall through to the shell wizard below.
-  echo "  Browser wizard unavailable: no compiled agentbox-setup binary found."
-  echo "  Build it once with:  (cd setup && cargo build --release)"
-  echo "  Continuing with the shell wizard."
+  # The shell wizard rewrites agentbox.toml wholesale, so it is never a silent
+  # fallback: ask for the build, or for --tui explicitly.
+  echo "  Browser wizard unavailable: no compiled agentbox-setup binary found." >&2
+  echo "  Build it once with:  (cd setup && cargo build --release)" >&2
+  echo "  or run the shell wizard explicitly with:  $0 --tui" >&2
+  exit 1
 fi
 
 # ── context detection ──────────────────────────────────────────────────────────

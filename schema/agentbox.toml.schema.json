@@ -322,7 +322,7 @@
               "type": "boolean"
             },
             "agent_browser": {
-              "description": "The agent-browser CLI. Read at run time, so it can be flipped without a rebuild. Browser work normally goes through the browser sidecar instead.",
+              "description": "Marks the external browser sidecar (chrome-devtools-mcp) as in use. The sidecar runs in its own container and is managed at run time with ./agentbox.sh browsercontainer.",
               "type": "boolean"
             },
             "sidecar_mcp_url": {
@@ -348,7 +348,7 @@
               "type": "boolean"
             },
             "imagemagick": {
-              "description": "Bake ImageMagick into the image for image-editing skills.",
+              "description": "Bake ImageMagick and register its 2D image-processing MCP server (package plus supervisor block).",
               "type": "boolean"
             },
             "comfyui_builtin": {
@@ -388,7 +388,7 @@
               "type": "boolean"
             },
             "jupyter": {
-              "description": "Bake Jupyter into the image for notebook-based skills.",
+              "description": "Bake Jupyter for notebook skills. Notebooks are served at /jupyter/ in the operator cockpit through the identity proxy.",
               "type": "boolean"
             }
           }
@@ -843,7 +843,7 @@
           "type": "boolean"
         },
         "claude_code": {
-          "description": "Bake Claude Code into the image.",
+          "description": "Bake Claude Code into the image. The container keeps its own ~/.claude volume and syncs credentials with the host's ~/.claude when that is bound in.",
           "type": "boolean"
         },
         "ruflo": {
@@ -891,7 +891,7 @@
           "type": "boolean"
         },
         "code_server": {
-          "description": "Bake code-server (VS Code in the browser). Gives the container a writable volume for its settings.",
+          "description": "Bake code-server, a browser IDE served at /code/ in the operator cockpit through the identity proxy. Gets a writable volume for its settings.",
           "type": "boolean"
         },
         "cuda": {
@@ -1099,11 +1099,11 @@
               "type": "string"
             },
             "enable_oidc": {
-              "description": "Accept OpenID Connect logins to the pod in addition to Nostr signatures.",
+              "description": "Compile OpenID Connect support into the pod server. Off by default. Changes the image, so it needs a rebuild.",
               "type": "boolean"
             },
             "enable_schnorr_verify": {
-              "description": "Verify Schnorr (BIP-340) signatures on requests, as Nostr NIP-98 authentication requires.",
+              "description": "Compile in Schnorr (BIP-340) verification for NIP-98 request authentication. On by default. Changes the image, so it needs a rebuild.",
               "type": "boolean"
             },
             "enable_dpop_cache": {
@@ -1702,7 +1702,7 @@
           "description": "Per-adapter-slot redaction policy. Values: strict | soft | off (E025).",
           "properties": {
             "pods": {
-              "description": "What the filter does to text written to pods. strict blocks on any detection, soft redacts and continues, off skips the filter.",
+              "description": "What happens to pod writes if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1711,7 +1711,7 @@
               ]
             },
             "memory": {
-              "description": "What the filter does to text stored in memory. strict blocks on any detection, soft redacts and continues, off skips the filter.",
+              "description": "What happens to memory writes if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1720,7 +1720,7 @@
               ]
             },
             "events": {
-              "description": "What the filter does to event payloads. strict blocks, soft redacts and continues, off skips the filter.",
+              "description": "What happens to event payloads if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1729,7 +1729,7 @@
               ]
             },
             "beads": {
-              "description": "What the filter does to bead (work-item) payloads. strict blocks, soft redacts and continues, off skips the filter.",
+              "description": "What happens to bead (work-item) payloads if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1738,7 +1738,7 @@
               ]
             },
             "orchestrator": {
-              "description": "What the filter does to orchestrator coordination traffic. off is the normal setting.",
+              "description": "What happens to orchestrator coordination traffic if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter. off is the normal setting.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1747,7 +1747,7 @@
               ]
             },
             "inbound": {
-              "description": "What the filter does to inbound messages. strict blocks, soft redacts and continues, off skips the filter.",
+              "description": "What happens to inbound messages if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1756,7 +1756,7 @@
               ]
             },
             "outbound": {
-              "description": "What the filter does to outbound messages. strict blocks, soft redacts and continues, off skips the filter.",
+              "description": "What happens to outbound messages if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1841,7 +1841,7 @@
               "description": "Which privacy-filter slots route to the clinical redactor when active. Values: strict | soft | off.",
               "properties": {
                 "pods": {
-                  "description": "Policy for the clinical (OpenMed) redactor on pod writes: strict, soft or off.",
+                  "description": "What happens to pod writes if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.  Applies to the clinical (OpenMed) redactor.",
                   "type": "string",
                   "enum": [
                     "strict",
@@ -1850,7 +1850,7 @@
                   ]
                 },
                 "memory": {
-                  "description": "Policy for the clinical (OpenMed) redactor on memory writes: strict, soft or off.",
+                  "description": "What happens to memory writes if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.  Applies to the clinical (OpenMed) redactor.",
                   "type": "string",
                   "enum": [
                     "strict",
@@ -1859,7 +1859,7 @@
                   ]
                 },
                 "inbound": {
-                  "description": "Policy for the clinical (OpenMed) redactor on inbound messages: strict, soft or off.",
+                  "description": "What happens to inbound messages if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.  Applies to the clinical (OpenMed) redactor.",
                   "type": "string",
                   "enum": [
                     "strict",
@@ -1868,7 +1868,7 @@
                   ]
                 },
                 "outbound": {
-                  "description": "Policy for the clinical (OpenMed) redactor on outbound messages: strict, soft or off.",
+                  "description": "What happens to outbound messages if the privacy sidecar cannot be reached: strict rejects the write (fail-closed), soft lets it through and counts it (fail-open), off skips the filter.  Applies to the clinical (OpenMed) redactor.",
                   "type": "string",
                   "enum": [
                     "strict",
@@ -2007,17 +2007,17 @@
               "description": "Outbound replication to the forum_relay_url / NOSTR_RELAYS fan-out list. 'off' keeps the relay loopback-only (matches federation standalone)."
             },
             "max_event_bytes": {
-              "description": "Largest event the relay accepts, in bytes.",
+              "description": "Largest event, and largest WebSocket message, the relay accepts, in bytes.",
               "type": "integer",
               "minimum": 1024
             },
             "messages_per_sec": {
-              "description": "Per-client rate limit, in messages per second.",
+              "description": "Relay rate limit, in messages per second (the nostr-rs-relay messages_per_sec limit).",
               "type": "integer",
               "minimum": 1
             },
             "retention_days": {
-              "description": "How long the relay keeps events before deleting them. 0 keeps them for ever.",
+              "description": "Default retention, in days, for events that carry no NIP-40 expiration tag. Events with their own expiration use that instead.",
               "type": "integer",
               "minimum": 0
             },
@@ -4262,7 +4262,7 @@
           "minimum": 1
         },
         "cpus_reserve": {
-          "description": "Threads kept free for the host and sidecars.",
+          "description": "CPU threads guaranteed to the container (the compose reservation), as opposed to the cap in cpus.",
           "type": "number",
           "minimum": 0
         },

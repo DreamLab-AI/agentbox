@@ -52,6 +52,16 @@
       </div>
     </div>
 
+    <div id="load-error" class="setup-only" style="display:none">
+      <div class="section-card" style="max-width:640px;margin:var(--sp-12) auto;">
+        <div class="section-header"><div>
+          <h3>agentbox.toml could not be loaded</h3>
+          <p class="section-desc">The server is running, but the file is not valid TOML. Fix it in a text editor, then reload this page.</p>
+        </div></div>
+        <div class="section-body"><pre class="cmd" id="load-error-msg"></pre></div>
+      </div>
+    </div>
+
     <div id="editor" class="setup-only" style="display:none">
       <div id="seed-notice" class="notice" style="display:none">
         <strong>No <code>agentbox.toml</code> found.</strong> You are starting from the shipped defaults. Saving creates the file.

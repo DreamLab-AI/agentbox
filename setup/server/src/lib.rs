@@ -141,10 +141,22 @@ fn set_value(old: &mut Value, v: &Json) -> Result<(), EditError> {
     if value_to_json(old) == *v {
         return Ok(());
     }
+    if let Value::Array(arr) = old {
+        if array_has_comments(arr) {
+            return err("this list has comments inside it, which a form edit would delete; use Edit Raw TOML so they are kept");
+        }
+    }
     let mut nv = coerce(old, v)?;
     *nv.decor_mut() = old.decor().clone();
     *old = nv;
     Ok(())
+}
+
+/// True when a `#` comment sits inside the array brackets (between elements or
+/// after the last one). Replacing such an array would silently delete it.
+fn array_has_comments(arr: &Array) -> bool {
+    let has = |r: Option<&toml_edit::RawString>| r.and_then(|r| r.as_str()).is_some_and(|s| s.contains('#'));
+    has(arr.trailing().into()) || arr.iter().any(|v| has(v.decor().prefix()) || has(v.decor().suffix()))
 }
 
 fn coerce(old: &Value, v: &Json) -> Result<Value, EditError> {

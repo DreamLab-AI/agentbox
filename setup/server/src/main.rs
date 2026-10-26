@@ -272,6 +272,9 @@ async fn main() {
         .await
         .expect("failed to bind");
     let addr: SocketAddr = listener.local_addr().unwrap();
+    if !addr.ip().is_loopback() {
+        eprintln!("\x1b[1;31mWARNING: listening on {addr}, not loopback. This server is unauthenticated: anyone who can reach it can rewrite the config and use the management API key via /api/proxy. Use it on a trusted network only.\x1b[0m");
+    }
 
     let url = format!("http://{addr}");
     eprintln!("\x1b[1;33m┌─────────────────────────────────────────┐\x1b[0m");

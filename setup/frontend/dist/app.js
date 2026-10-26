@@ -37,7 +37,9 @@
     });
     if (!res.ok) {
       const text = await res.text().catch(() => res.statusText);
-      throw new Error(text || `${res.status}`);
+      const e = new Error(text || `${res.status}`);
+      e.http = res.status;
+      throw e;
     }
     const ct = res.headers.get('content-type') || '';
     return ct.includes('json') ? res.json() : null;
@@ -181,9 +183,17 @@
     }));
 
     if (state.observer) state.observer.disconnect();
+    // Track every card crossing the upper part of the viewport and highlight
+    // the one the reader is in; tall cards never reach a visible-ratio threshold.
+    const visible = new Set();
     state.observer = new IntersectionObserver((entries) => {
-      for (const e of entries) if (e.isIntersecting) setActiveNav(e.target.dataset.section);
-    }, { threshold: 0.1, rootMargin: '-80px 0px -60% 0px' });
+      for (const e of entries) (e.isIntersecting ? visible.add(e.target) : visible.delete(e.target));
+      // The last visible card whose top edge has reached the upper band.
+      const band = window.innerHeight * 0.4;
+      const cards = $$('.section-card').filter((c) => visible.has(c));
+      const cur = cards.filter((c) => c.getBoundingClientRect().top <= band).pop() || cards[0];
+      if (cur) setActiveNav(cur.dataset.section);
+    }, { threshold: 0, rootMargin: '-80px 0px -60% 0px' });
     $$('.section-card').forEach((s) => state.observer.observe(s));
     applyFilter();
   }
@@ -319,7 +329,8 @@
   /** Send pending edits to the server, one request at a time, last write wins. */
   function flush() {
     clearTimeout(flushTimer);
-    state.queue = state.queue.then(async () => {
+    // A failed batch must not poison the chain for later edits and the save.
+    const run = state.queue.catch(() => {}).then(async () => {
       if (!state.pending.size) return;
       const batch = [...state.pending.values()];
       state.pending.clear();
@@ -340,7 +351,8 @@
         updateFooter();
       }
     });
-    return state.queue;
+    state.queue = run;
+    return run;
   }
 
   // ─── Navigation and filter ───────────────────────────────────
@@ -379,7 +391,7 @@
     btn.disabled = true;
     btn.textContent = 'Saving…';
     try {
-      await flush();
+      await flush().catch(() => {}); // a rejected edit was already reported; save the rest
       await api('/config', { method: 'POST', body: JSON.stringify({ toml_content: state.toml }) });
       state.changes.clear();
       updateFooter();
@@ -441,9 +453,15 @@
       state.seeded = !!data.seeded;
     } catch (err) {
       $('#loading').style.display = 'none';
-      $('#no-server').style.display = '';
-      $('#no-server-reason').textContent = err.message;
-      setStatus('error', 'no server');
+      if (err.http) {
+        // The server answered but could not serve the file (e.g. invalid TOML).
+        $('#load-error-msg').textContent = err.message;
+        $('#load-error').style.display = '';
+      } else {
+        $('#no-server').style.display = '';
+        $('#no-server-reason').textContent = err.message;
+      }
+      setStatus('error', err.http ? 'error' : 'no server');
       return;
     }
     render();

@@ -10,9 +10,9 @@ operations moved to the operator cockpit in PRD-021.
 ```
 
 The script starts the compiled `agentbox-setup` server (build it once with
-`cargo build --release` in `setup/`; if it is missing the script falls back to the shell
-wizard). The server picks a random loopback port and prints the URL. To reach it from
-another container, set `AGENTBOX_SETUP_BIND=0.0.0.0:<port>`; `AGENTBOX_SETUP_NO_OPEN=1`
+`cargo build --release` in `setup/`; if it is missing the script stops and says so; `--tui` runs the older shell
+wizard, which rewrites the whole file). The server picks a random loopback port and prints the URL. To reach it from
+another container, set `AGENTBOX_SETUP_BIND=<address>:<port>`. **The server has no authentication and its `/api/proxy` forwards with the management key, so bind beyond loopback only on a trusted network** (it prints a warning). `AGENTBOX_SETUP_NO_OPEN=1`
 stops it launching a browser.
 
 There is no server-less browser mode. Editing needs the server, which parses
