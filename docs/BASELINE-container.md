@@ -1,10 +1,11 @@
 ---
 title: Agentbox Container Baseline
 doc_id: AB-BASELINE
-version: 0.5.8
+version: 0.5.9
 status: draft-for-ratification
 verified_commit: 
 changelog:
+  - "0.5.9 (2026-10-26): ADR-2082 amendment. Ruflo plugin source pins an inspected main commit with security and ruRE, aligned with the published 3.63.1 CLI closure. The running manifest enables ruflo-rure and advertises the rure MCP category through the existing governed proxy; protected memory and hook prefixes remain denied. Staged pending image build and activation."
   - "0.5.8 (2026-10-23): ADR-2150 (proposed, partial, staged). Media-sidecar clients reconcile after an observation timeout, never resubmit blindly, and cancel only per job or report cancellation unsupported; no provider-global interrupt on a shared instance. Added under Proposed invariants until ADR-2150 is accepted, with one known divergence: Blender and ComfyUI cancellation are confirmed at request level, not at termination (the live ComfyUI build honours prompt-scoped interrupt)."
   - "0.5.7 (2026-10-23): CVE-009. Replace the affected nixpkgs nss-cacert output with the hash-pinned 20 October Mozilla extract and force Node onto that OpenSSL bundle; the post-build gate requires curl and Node to reject both eMudhra incident chains. Source-only change, staged for an owner-run rebuild."
   - "0.5.6 (2026-10-11): ADR-2137. Host-side Nix SBOM/OpenVEX evidence follows actual shipped layer paths; preparation and image CI retain reports outside the runtime image, with immutable-digest online scans. No runtime service, adapter, port or manifest capability is added. Rollout staged for the next rebuild."
@@ -192,7 +193,7 @@ any re-introduced hard-coded corpus path outside `docs/archive/` and
 
 ### MCP projection (skills/mcp.json)
 
-`skills/mcp.json` (v2.0.0) is a 28-server registry (ADR-2039) and the *source of truth*; `scripts/project-mcp-servers.mjs` is the projector that upserts entries into `.mcp.json` at boot. Three ownership classes (`x-agentbox-managed-by`): **projector** (9 servers — gate-evaluated against boot env, `x-agentbox-requires` presence-checked, `${VAR}` expanded, reconciled not appended — a server whose gate/requires now fail is *removed*); **bespoke** (3 — claude-flow, browser-gpu, perplexity — hand-written entrypoint blocks, never touched; the claude-flow block is the governed ruvector-mcp server, which since ADR-2082 also forwards swarm/agent/task/coordination tools to one filtered `ruflo mcp start` child per session behind `[integrations.ruvector_external].orchestration_proxy`, memory_* never forwarded); **reference** (16 — skill-local or npx network-installer servers, documented but not auto-projected). This closes audit MCP-1/MCP-2 (the registry previously had no runtime consumer; codebase-memory was manifest-ON yet registered nowhere).
+`skills/mcp.json` (v2.0.0) is a 28-server registry (ADR-2039) and the *source of truth*; `scripts/project-mcp-servers.mjs` is the projector that upserts entries into `.mcp.json` at boot. Three ownership classes (`x-agentbox-managed-by`): **projector** (9 servers — gate-evaluated against boot env, `x-agentbox-requires` presence-checked, `${VAR}` expanded, reconciled not appended — a server whose gate/requires now fail is *removed*); **bespoke** (3 — claude-flow, browser-gpu, perplexity — hand-written entrypoint blocks, never touched; the claude-flow block is the governed ruvector-mcp server, which forwards only the configured `swarm,agent,rure` categories to one filtered `ruflo mcp start` child per session behind `[integrations.ruvector_external].orchestration_proxy`, memory_* never forwarded); **reference** (16 — skill-local or npx network-installer servers, documented but not auto-projected). This closes audit MCP-1/MCP-2 (the registry previously had no runtime consumer; codebase-memory was manifest-ON yet registered nowhere).
 
 ### Resource envelope and resident overhead paths (ADR-2034)
 

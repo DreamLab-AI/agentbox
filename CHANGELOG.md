@@ -4,6 +4,16 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Ruflo (2026-10-26 — main alignment, staged)
+
+- Pinned the inspected upstream main commit `631c155` containing security and
+  ruRE work, aligned the immutable `ruflo` / `@claude-flow/cli` runtime and npm
+  lock at 3.63.1, and refreshed the console/mods plugin versions.
+- Enabled the `ruflo-rure` plugin and its eight read-only MCP tools through the
+  existing governed server. The memory and hooks deny rules are unchanged. The
+  running container remains on its previous image until preparation and an
+  owner-requested activation complete.
+
 ### Security (2026-10-23 — eMudhra trust withdrawal, CVE-009)
 
 - The Nix image overrides `nss-cacert 3.126`'s affected trust output with the

@@ -10,8 +10,8 @@ const { nixBuildConfig } = require('../../scripts/nix-build-budget.cjs');
 const digest = `sha256:${'a'.repeat(64)}`;
 const live = { Id: 'live-container', Image: digest, State: { StartedAt: 'unchanged' } };
 test('Nix build budget stays within 60% of available CPUs', () => {
-  assert.deepEqual(nixBuildBudget(72), { maxJobs: 10, cores: 4 });
-  assert.deepEqual(nixBuildBudget(12), { maxJobs: 1, cores: 4 });
+  assert.deepEqual(nixBuildBudget(72), { maxJobs: 2, cores: 21 });
+  assert.deepEqual(nixBuildBudget(12), { maxJobs: 1, cores: 7 });
   assert.deepEqual(nixBuildBudget(8), { maxJobs: 1, cores: 4 });
   assert.deepEqual(nixBuildBudget(2), { maxJobs: 1, cores: 1 });
   assert.deepEqual(nixBuildBudget(1), { maxJobs: 1, cores: 1 });

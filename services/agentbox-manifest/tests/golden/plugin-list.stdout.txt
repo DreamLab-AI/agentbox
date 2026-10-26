@@ -15,6 +15,7 @@ ruflo-docs	ruflo-git
 ruflo-adr	ruflo-git
 ruflo-ddd	ruflo-git
 ruflo-security-audit	ruflo-git
+ruflo-rure	ruflo-git
 ruflo-aidefence	ruflo-git
 ruflo-observability	ruflo-git
 ruflo-browser	ruflo-git

@@ -453,7 +453,7 @@ hba_scram          = false   # `ruvector hba-harden --yes`: non-loopback pg_hba 
 # Apply class BOOT (env is projected into .mcp.json; a new Claude session picks
 # it up). Adding categories widens the per-session schema cost (~185 tok/tool).
 orchestration_proxy = true
-orchestration_tools = "swarm,agent"   # ruflo categories or exact tool names (#2726 syntax); task,coordination dropped 2026-09-25 (unused, ~185 tok/tool)
+orchestration_tools = "swarm,agent,rure"   # expose read-only ruRE tools from pinned ruflo; proxy still denies memory_* and other protected prefixes
 # ── PRD-020 / ADR-040 D10: v2 model-lifecycle & graph gates (all default-off, W-B-gated) ──
 # Retrieval-geometry keys extend this existing sidecar section. Every one defaults to
 # today's post-PRD-018 behaviour, so a manifest with all v2 keys at default is byte-
@@ -2245,7 +2245,7 @@ cuda = true
 #     ruflo-core, ruflo-intelligence, ruflo-swarm, ruflo-workflows,
 #     ruflo-autopilot, ruflo-loop-workers, ruflo-agentdb, ruflo-ruvector,
 #     ruflo-rag-memory, ruflo-knowledge-graph, ruflo-sparc, ruflo-testgen,
-#     ruflo-goals, ruflo-docs, ruflo-adr, ruflo-ddd, ruflo-security-audit,
+#     ruflo-goals, ruflo-docs, ruflo-adr, ruflo-ddd, ruflo-security-audit, ruflo-rure,
 #     ruflo-aidefence, ruflo-observability, ruflo-browser, ruflo-wasm,
 #     ruflo-federation, ruflo-migrations, ruflo-ruvllm, ruflo-plugin-creator,
 #     ruflo-jujutsu (disabled — beads adapter is off), ruflo-cost-tracker
@@ -2344,6 +2344,10 @@ enabled = true
 # --- Security and observability ---
 [[plugins.packages]]
 name = "ruflo-security-audit"
+enabled = true
+
+[[plugins.packages]]
+name = "ruflo-rure"
 enabled = true
 
 [[plugins.packages]]

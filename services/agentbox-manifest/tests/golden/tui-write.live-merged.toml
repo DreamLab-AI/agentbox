@@ -775,6 +775,10 @@ name = "ruflo-security-audit"
 enabled = true
 
 [[plugins.packages]]
+name = "ruflo-rure"
+enabled = true
+
+[[plugins.packages]]
 name = "ruflo-aidefence"
 enabled = true
 
