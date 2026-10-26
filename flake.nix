@@ -269,6 +269,18 @@
         dreamLoomEnv =
           let u = unplaceheld (dreamMachineCfg.loom_url or "");
           in lib.optionalString (u != "") ",LOOM_URL=\"${u}\"";
+        # AB-23-S1-01 Jev option: [dream_machine].jev_triage = true (default
+        # false) bakes the System One proxy env into the dream engine. Supervisord
+        # starts in Stage A, before the entrypoint projects [system_one] (Stage B),
+        # so the program cannot inherit it; the same endpoint, model and locality
+        # are derived here from the manifest. Needs [system_one].enabled, else
+        # nothing is emitted and the engine keeps today's behaviour.
+        dreamJevEnv =
+          let
+            so = agentboxConfig.system_one or {};
+            be = (so.backends or {}).${so.backend or "typesafe"} or {};
+          in lib.optionalString ((dreamMachineCfg.jev_triage or false) && systemOneProxyOn)
+            ",AGENTBOX_JEV_DREAM_TRIAGE=\"1\",AGENTBOX_SYSTEM_ONE_PROXY=\"1\",AGENTBOX_SKILL_ROUTE_API=\"http://${so.bind or "127.0.0.1:8094"}/v1/systemone\",AGENTBOX_SKILL_ROUTE_MODEL=\"${be.model or "jev-latest"}\",AGENTBOX_SYSTEM_ONE_BACKEND_LOCAL=\"${if be.local or false then "1" else "0"}\"";
         browserCfg = skillsCfg.browser or {};
         mediaCfg = skillsCfg.media or {};
         spatialCfg = skillsCfg.spatial_and_3d or {};
@@ -2893,7 +2905,7 @@ ${lib.optionalString dreamEngineEnabled ''
 command=${bgNice}${dreamEnginePkg}/bin/dream-engine --loop --agentbox-toml /etc/agentbox.toml
 directory=/home/devuser/workspace
 user=devuser
-environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}"${dreamLoomEnv},LOOM_MODEL="${dreamMachineCfg.loom_model or ""}"
+environment=HOME="/home/devuser",RUST_LOG="info",DREAM_LLM_PROVIDER="${dreamMachineCfg.llm_provider or "zai"}",ZAI_MODEL="${dreamMachineCfg.zai_model or "glm-5.3"}"${dreamLoomEnv},LOOM_MODEL="${dreamMachineCfg.loom_model or ""}"${dreamJevEnv}
 autostart=true
 autorestart=true
 priority=230

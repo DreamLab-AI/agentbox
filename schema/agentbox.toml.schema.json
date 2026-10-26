@@ -2805,6 +2805,10 @@
         },
         "persist_accepts": {
           "type": "boolean"
+        },
+        "jev_triage": {
+          "type": "boolean",
+          "description": "AB-23-S1-01 Jev option: bake the [system_one] proxy env into [program:dream-engine] so it screens each night's hypothesis. Off by default; needs [system_one].enabled. REBUILD-class."
         }
       }
     },

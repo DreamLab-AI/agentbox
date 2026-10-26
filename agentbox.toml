@@ -2588,6 +2588,10 @@ recall_band_self_min   = 175
 recall_band_true_min   = 102
 # Roster: every eligible nominated repo dreams each night (serial), capped.
 max_repos_per_night    = 5
+# AB-23-S1-01 Jev option (REBUILD-class): screen each night's hypothesis against
+# the repo's declared disciplines through the [system_one] proxy. Off by default;
+# needs [system_one].enabled. Off or unavailable = today's behaviour exactly.
+jev_triage             = false
 # Standby pruning: a repo whose last N ledger rows are ALL INCONCLUSIVE is
 # skipped in nightly mode (REJECT counts as learning and resets the streak;
 # revive via --target or a harness fix that yields a decisive verdict).
