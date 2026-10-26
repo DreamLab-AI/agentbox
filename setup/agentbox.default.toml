@@ -1795,3 +1795,93 @@ reason = "nostr-rs-relay SQLite journal and WAL require a writable durable path"
 [security.exceptions.consultants]
 writable_volumes = ["consultations-data:/var/lib/agentbox/consultations"]
 reason = "consultant tier writes JSONL audit log per call"
+
+# ── Claude Code posture and model roles (ADR-2116 / ADR-2134) ──────────────────
+# Fresh installs keep Claude Code's normal permission prompts. The estate's own
+# manifest uses bypassPermissions behind a deny-list; choose that deliberately.
+[claude_code]
+permission_mode = "default"   # auto | bypassPermissions | acceptEdits | default | plan | dontAsk
+model           = "sonnet"
+effort          = "high"
+advisor_model   = "opus"      # "off" removes the advisor
+floor           = true        # ADR-2144 collaboration floor (managed policy + decline recorder)
+
+# ── Resource envelope (ADR-2034) ───────────────────────────────────────────────
+# Conservative values for an ordinary workstation. Size these to your host before
+# the first up; the estate's own manifest runs a much larger envelope.
+[resources]
+envelope        = true
+cpus            = 8
+cpus_reserve    = 2
+cpu_shares      = 1024
+memory          = "32G"
+memory_reserve  = "8G"
+pids_limit      = 8192
+shm             = "8G"
+gpu_reservation = false       # set true on a host with an NVIDIA runtime
+
+[resources.tmpfs]
+run   = "256M"
+tmp   = "4G"
+npm   = "2G"
+cache = "2G"
+
+[resources.mcp_hub]
+enabled = true
+url     = "http://127.0.0.1:9720"
+
+[resources.hooks]
+shim                = true
+drain_interval_secs = 30
+
+[resources.session_hygiene]
+enabled       = true
+reap          = false         # report only until you trust the idle threshold
+idle_secs     = 1800
+interval_secs = 60
+
+[resources.services]
+nice = 10
+
+# ── Dream machine (ADR-052/053): OFF on a fresh install ────────────────────────
+# Needs a remote annexe host and a model endpoint; the ${VAR} placeholders are
+# filled from your own .env when you enable it.
+[dream_machine]
+enabled             = false
+hp_host             = "${CONNECTED_NODE_SSH}"
+hp_annexe_dir       = "${CONNECTED_NODE_HOME}/dream-annexe"
+loom_url            = "${LOOM_BASE_URL}"
+loom_model          = ""
+loom_max_tokens     = 32768
+llm_provider        = "zai"
+zai_model           = "glm-5.3"
+zai_max_tokens      = 131072
+window_start        = 1
+window_end          = 5
+memory_namespace    = "dream-cycle"
+recall_band_self_min = 175
+recall_band_true_min = 102
+max_repos_per_night = 5
+jev_triage          = false
+prune_dry_streak    = 5
+persist_accepts     = true
+
+# ── Forum poker seats (forum ADR-2020): OFF; operators of a forum only ─────────
+[poker_citizen]
+enabled   = false
+key_file  = "${POKER_CITIZEN_KEY_FILE}"
+relay     = "${NOSTR_RELAY_URL}"
+daily_cap = 20000
+
+[poker_coach]
+enabled    = false
+key_file   = "${POKER_COACH_KEY_FILE}"
+relay      = "${NOSTR_RELAY_URL}"
+llm_url    = "${LOOM_BASE_URL}"
+model      = ""
+max_tokens = 400
+reply_secs = 25
+
+# ── Federation (deprecated) ────────────────────────────────────────────────────
+# Intentionally absent: [federation] is superseded by [mesh] above and only
+# retained in the schema so old manifests still validate.
