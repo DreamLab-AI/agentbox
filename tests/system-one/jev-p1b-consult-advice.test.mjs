@@ -33,7 +33,10 @@ function consultant(mod) {
   const m = mod(stubbed)
   return new m.BaseConsultant({ name: 'x', callConsult: async () => ({ response: 'r' }), healthCheck: async () => ({ ok: true }), estimateCost: async () => ({}), logger: { error() {} } })
 }
-const head = (s) => loadAtRev('mcp/consultants/shared/consultant-base.js', 'main', { ...s, './memory-logger': s['./memory-logger'] })
+// Pinned to the parent of the commit that added consult_advice (d7b2889c3). 'main' moved past it, so a
+// moving ref stops being the "pre-change" baseline this test compares against.
+const PRE_CHANGE = 'd7b2889c3^'
+const head = (s) => loadAtRev('mcp/consultants/shared/consultant-base.js', PRE_CHANGE, { ...s, './memory-logger': s['./memory-logger'] })
 
 test('flag off: tool list equals the pre-change list and consult_advice is not exposed', () => {
   delete process.env.AGENTBOX_JEV_CONSULT_ADVICE
