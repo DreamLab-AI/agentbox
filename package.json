@@ -20,7 +20,8 @@
       "**/*.test.js"
     ],
     "testPathIgnorePatterns": [
-      "/node_modules/"
+      "/node_modules/",
+      "/tests/config/declared-vs-running\\.test\\.js$"
     ],
     "watchPathIgnorePatterns": [
       "/node_modules/",

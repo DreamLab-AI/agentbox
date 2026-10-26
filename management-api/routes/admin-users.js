@@ -1,7 +1,8 @@
 'use strict';
 
 /**
- * /admin/users/* — multi-tenant did:nostr pod administration.
+ * /admin/users/* — multi-tenant did:nostr pod administration
+ * (ADR-017 / PRD-007: docs/archive/prd/PRD-007-multi-tenant-federation.md).
  *
  * Mounted when [sovereign_mesh.multi_user].enabled = true.
  * Provisions Solid pods on the embedded solid-pod-rs-server via
