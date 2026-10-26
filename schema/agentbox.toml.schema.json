@@ -7,6 +7,7 @@
   "additionalProperties": false,
   "properties": {
     "core": {
+      "description": "The two engine choices every deployment makes: which orchestrator coordinates agents and which vector database backs memory. Change only if you are deliberately swapping the engine.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -100,6 +101,7 @@
       }
     },
     "gpu": {
+      "description": "Which GPU backend the container uses for CUDA workloads. Match this to the host hardware.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -116,6 +118,7 @@
       }
     },
     "desktop": {
+      "description": "The optional VNC desktop (X11 window manager) used by GUI tools such as QGIS and Blender. Browser automation does not use it; that runs in the separate browser sidecar.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -146,6 +149,7 @@
       }
     },
     "observability": {
+      "description": "Where the container exposes Prometheus metrics, where it ships OpenTelemetry traces, and how verbose its logs are.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -310,12 +314,15 @@
           "additionalProperties": false,
           "properties": {
             "playwright": {
+              "description": "Local Playwright browser. Superseded by the external browser sidecar; leave off.",
               "type": "boolean"
             },
             "qe_browser": {
+              "description": "QE browser tooling for the agentic-qe fleet. Leave off unless you use that fleet.",
               "type": "boolean"
             },
             "agent_browser": {
+              "description": "The agent-browser CLI. Read at run time, so it can be flipped without a rebuild. Browser work normally goes through the browser sidecar instead.",
               "type": "boolean"
             },
             "sidecar_mcp_url": {
@@ -337,9 +344,11 @@
           "additionalProperties": false,
           "properties": {
             "ffmpeg": {
+              "description": "Bake ffmpeg (GPU-wrapped) into the image for audio and video processing skills.",
               "type": "boolean"
             },
             "imagemagick": {
+              "description": "Bake ImageMagick into the image for image-editing skills.",
               "type": "boolean"
             },
             "comfyui_builtin": {
@@ -353,6 +362,7 @@
           "additionalProperties": false,
           "properties": {
             "blender": {
+              "description": "Register the Blender MCP proxy and its supervisor block so agents can drive a Blender instance.",
               "type": "boolean"
             },
             "blender_local": {
@@ -360,6 +370,7 @@
               "description": "Bake the in-container Blender binary (headless batch). Default true when absent. false = sidecar-only: the blender-mcp proxy and the blender skill stay on; scripted builds and renders run in the gui-tools-service sidecar. Ignored unless blender = true."
             },
             "qgis": {
+              "description": "Bake QGIS and register its MCP server (plugin protocol on port 9877) for geospatial work.",
               "type": "boolean"
             },
             "gaussian_splatting": {
@@ -373,9 +384,11 @@
           "additionalProperties": false,
           "properties": {
             "pytorch": {
+              "description": "Bake PyTorch into the image for the data-science skills. Large; leave off unless needed.",
               "type": "boolean"
             },
             "jupyter": {
+              "description": "Bake Jupyter into the image for notebook-based skills.",
               "type": "boolean"
             }
           }
@@ -385,12 +398,15 @@
           "additionalProperties": false,
           "properties": {
             "latex": {
+              "description": "Bake a TeX Live environment for LaTeX document skills. Large; leave off unless needed.",
               "type": "boolean"
             },
             "mermaid": {
+              "description": "Bake the Mermaid CLI so agents can render diagrams to images.",
               "type": "boolean"
             },
             "report_builder": {
+              "description": "Enable the report-builder skill for generating structured documents.",
               "type": "boolean"
             }
           }
@@ -664,6 +680,7 @@
           "description": "Private Email Search MCP gateway.",
           "properties": {
             "enabled": {
+              "description": "Private email search through the email-mcp-gateway container on the shared Docker network. The gateway holds the mail archive and index; reading and reasoning stay local. Needs that container to be running.",
               "type": "boolean"
             },
             "gateway_url": {
@@ -688,6 +705,7 @@
           "description": "RuvNet Brain source-grounded knowledge corpus ingested into the shared ruvector-postgres sidecar (namespace-scoped pgvector, Xinference bge-small-en-v1.5, ADR-015). Surfaces the search_ruvnet MCP tool and an optional UserPromptSubmit grounding hook.",
           "properties": {
             "enabled": {
+              "description": "RuvNet Brain: a source-grounded knowledge corpus of the RuvNet repositories, ingested into the shared ruvector-postgres sidecar and queried with client-side embeddings. Needs the sidecar and the corpus to be ingested.",
               "type": "boolean"
             },
             "namespace": {
@@ -816,22 +834,28 @@
       }
     },
     "toolchains": {
+      "description": "Which agent CLIs and language toolchains are baked into the image. Every flag here changes the Nix image, so flipping one needs a rebuild. Turn off what you do not use to keep the image smaller.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "claude": {
+          "description": "Bake the Claude CLI into the image.",
           "type": "boolean"
         },
         "claude_code": {
+          "description": "Bake Claude Code into the image.",
           "type": "boolean"
         },
         "ruflo": {
+          "description": "Bake the ruflo swarm orchestration CLI (ships the ruflo, claude-flow and claude-flow-mcp binaries). Turning this off removes the orchestrator.",
           "type": "boolean"
         },
         "claude_flow": {
+          "description": "Legacy alias for the ruflo gate: claude-flow is ruflo after an upstream rename. Either gate bakes the same single closure.",
           "type": "boolean"
         },
         "agentic_qe": {
+          "description": "Bake the agentic-qe fleet CLI and its MCP server. Off on this estate because build-with-quality supersedes it; turning it off drops the aqe CLI.",
           "type": "boolean"
         },
         "metaharness": {
@@ -839,6 +863,7 @@
           "description": "Bake the MetaHarness and Darwin runtime CLIs (ADR-064)."
         },
         "nagual_qe": {
+          "description": "Build the nagual-qe Rust test harness from source. Currently disabled upstream because of a compile error.",
           "type": "boolean"
         },
         "deepsec": {
@@ -846,27 +871,35 @@
           "description": "ADR-2033: bake the vercel-labs/deepsec CLI (npm, Apache-2.0) as the build-with-quality Security gate. Runtime policy lives in [security.deepsec]."
         },
         "codebase_memory": {
+          "description": "Bake the codebase-memory MCP, the code-graph index agents are told to use first. The boot registry registers it automatically when on.",
           "type": "boolean"
         },
         "rust": {
+          "description": "Bake cargo and rustc into the image. Needed for building Rust crates inside the container.",
           "type": "boolean"
         },
         "antigravity_cli": {
+          "description": "Bake the Antigravity (agy) CLI, the Gemini consultant harness. Required by the antigravity consultant.",
           "type": "boolean"
         },
         "codex": {
+          "description": "Bake the OpenAI Codex CLI and its MCP server. Required by the codex consultant.",
           "type": "boolean"
         },
         "opencode": {
+          "description": "Bake the OpenCode harness CLI into the image.",
           "type": "boolean"
         },
         "code_server": {
+          "description": "Bake code-server (VS Code in the browser). Gives the container a writable volume for its settings.",
           "type": "boolean"
         },
         "cuda": {
+          "description": "Bake the CUDA toolkit for GPU workloads. Needs a CUDA-capable host and the GPU backend set accordingly.",
           "type": "boolean"
         },
         "gemini_cli": {
+          "description": "Bake the Gemini CLI into the image.",
           "type": "boolean"
         },
         "ruflo_console": {
@@ -886,6 +919,7 @@
           "additionalProperties": false,
           "properties": {
             "enabled": {
+              "description": "Use the external RuVector Postgres sidecar instead of the embedded database. Read once at boot.",
               "type": "boolean"
             },
             "conninfo": {
@@ -970,14 +1004,17 @@
           "description": "First-party Rust Solid Protocol 0.11 server (ADR-010). Consumed by the pods adapter when adapters.pods=local-solid-rs.",
           "properties": {
             "port": {
+              "description": "TCP port the Solid pod server listens on.",
               "type": "integer",
               "minimum": 1,
               "maximum": 65535
             },
             "bind": {
+              "description": "Address the Solid pod server binds to. 0.0.0.0 listens on every interface; use 127.0.0.1 to keep it local.",
               "type": "string"
             },
             "storage": {
+              "description": "Where pod data lives: fs (files on disk), memory (lost on restart) or s3.",
               "type": "string",
               "enum": [
                 "fs",
@@ -986,6 +1023,7 @@
               ]
             },
             "storage_root": {
+              "description": "Directory the pod writes to when storage is fs. Backed by a writable volume.",
               "type": "string"
             },
             "trust_proxy": {
@@ -999,30 +1037,37 @@
               "description": "ADR-2145: native pod forge and mirror; compiled and launched from the manifest (rebuild-class).",
               "properties": {
                 "enable": {
+                  "description": "Run the git forge inside the pod, with repositories announced over Nostr.",
                   "type": "boolean",
                   "default": true
                 },
                 "chain": {
+                  "description": "Blockchain used for anchoring forge events. The forge only records anchors; it never broadcasts or spends.",
                   "type": "string",
                   "default": "txbt4"
                 },
                 "allow_mainnet": {
+                  "description": "Permit a mainnet chain. Mainnet chains are refused unless this is true.",
                   "type": "boolean",
                   "default": false
                 },
                 "open_edit": {
+                  "description": "Let any caller edit any repository (JSS openEdit). Keep false.",
                   "type": "boolean",
                   "default": false
                 },
                 "private_repos": {
+                  "description": "Make every read owner-only so repositories are not publicly readable.",
                   "type": "boolean",
                   "default": false
                 },
                 "anchoring_ui": {
+                  "description": "Show the anchoring controls in the forge web interface.",
                   "type": "boolean",
                   "default": true
                 },
                 "mirror_relays": {
+                  "description": "Relays to read repository events (kinds 30617/30618) from, and which repositories to follow, written as \"<64-hex pubkey>/<repo>\" or \"self/<repo>\". Defaults to the embedded relay; add your own relay in .env.",
                   "type": "array",
                   "items": {
                     "type": "string",
@@ -1039,6 +1084,7 @@
                   "description": "Explicit pubkey/repo or self/repo entries; no external repository is followed by default."
                 },
                 "announce_relays": {
+                  "description": "Relays the forge publishes its own repository announcements (kinds 30617/30618) to.",
                   "type": "array",
                   "items": {
                     "type": "string",
@@ -1049,12 +1095,15 @@
               }
             },
             "base_url": {
+              "description": "Public base URL of the pod, usually the tunnel hostname. Baked in as the default for SOLID_POD_PUBLIC_URL; setting that variable in .env overrides it at run time.",
               "type": "string"
             },
             "enable_oidc": {
+              "description": "Accept OpenID Connect logins to the pod in addition to Nostr signatures.",
               "type": "boolean"
             },
             "enable_schnorr_verify": {
+              "description": "Verify Schnorr (BIP-340) signatures on requests, as Nostr NIP-98 authentication requires.",
               "type": "boolean"
             },
             "enable_dpop_cache": {
@@ -1062,6 +1111,7 @@
               "description": "Requires enable_oidc=true (E033)."
             },
             "notifications": {
+              "description": "How the pod pushes change notifications: websocket, webhook or off.",
               "type": "string",
               "enum": [
                 "websocket",
@@ -1070,6 +1120,7 @@
               ]
             },
             "log_level": {
+              "description": "How verbose the pod server's logs are.",
               "type": "string",
               "enum": [
                 "trace",
@@ -1118,6 +1169,7 @@
           "additionalProperties": false,
           "properties": {
             "enabled": {
+              "description": "Use an orchestrator that runs outside this container instead of the built-in one. Requires adapters.orchestrator to be set to match.",
               "type": "boolean"
             },
             "protocol": {
@@ -1137,9 +1189,11 @@
           "description": "Required when adapters.events=external (E005).",
           "properties": {
             "enabled": {
+              "description": "Send events to an external sink. Requires adapters.events = \"external\" and at least one of url, relay_urls or mcp_endpoint.",
               "type": "boolean"
             },
             "url": {
+              "description": "HTTP endpoint that receives events when the external events adapter is in use.",
               "type": "string"
             },
             "relay_urls": {
@@ -1150,6 +1204,7 @@
               "description": "Nostr relay URL list."
             },
             "mcp_endpoint": {
+              "description": "MCP endpoint that receives events when the external events adapter is in use.",
               "type": "string"
             }
           }
@@ -1159,9 +1214,11 @@
           "additionalProperties": false,
           "properties": {
             "enabled": {
+              "description": "Join an existing Docker network so the container can reach services that run in other compose projects.",
               "type": "boolean"
             },
             "network": {
+              "description": "Name of the Docker network to join. It must already exist.",
               "type": "string"
             }
           }
@@ -1243,9 +1300,11 @@
           "description": "OpenAI Codex Rust CLI subprocess consultant. Requires providers.openai (E035) and toolchains.codex (E037).",
           "properties": {
             "enabled": {
+              "description": "Expose the OpenAI Codex consultant. Needs toolchains.codex and the matching provider enabled with its key set.",
               "type": "boolean"
             },
             "model": {
+              "description": "Model the Codex consultant asks.",
               "type": "string"
             },
             "home": {
@@ -1253,6 +1312,7 @@
               "description": "CODEX_HOME path under the user-isolated openai-user account."
             },
             "timeout_ms": {
+              "description": "Longest a Codex consultation may run, in milliseconds.",
               "type": "integer",
               "minimum": 1000,
               "maximum": 600000
@@ -1265,6 +1325,7 @@
           "description": "Google Antigravity CLI (agy) subprocess consultant. Requires providers.gemini (E035) and toolchains.antigravity_cli (E037).",
           "properties": {
             "enabled": {
+              "description": "Expose the Antigravity (Gemini harness) consultant. Needs providers.gemini and toolchains.antigravity_cli.",
               "type": "boolean"
             },
             "model": {
@@ -1286,6 +1347,7 @@
               "description": "Antigravity CLI home directory."
             },
             "timeout_ms": {
+              "description": "Longest an Antigravity consultation may run, in milliseconds.",
               "type": "integer",
               "minimum": 1000,
               "maximum": 600000
@@ -1298,6 +1360,7 @@
           "description": "Z.AI / GLM via Anthropic-compatible claude-zai subprocess. Requires providers.zai (E035).",
           "properties": {
             "enabled": {
+              "description": "Expose the Z.AI (GLM) consultant. Needs the zai provider enabled with its key set.",
               "type": "boolean"
             },
             "model": {
@@ -1328,6 +1391,7 @@
               "description": "HOME under the zai-user isolation."
             },
             "timeout_ms": {
+              "description": "Longest a Z.AI consultation may run, in milliseconds.",
               "type": "integer",
               "minimum": 1000,
               "maximum": 600000
@@ -1340,12 +1404,15 @@
           "description": "Perplexity HTTPS API consultant. Requires providers.perplexity (E035).",
           "properties": {
             "enabled": {
+              "description": "Expose the Perplexity consultant for web-grounded answers. Needs the perplexity provider enabled with its key set.",
               "type": "boolean"
             },
             "model": {
+              "description": "Perplexity model the consultant uses.",
               "type": "string"
             },
             "timeout_ms": {
+              "description": "Longest a Perplexity consultation may run, in milliseconds.",
               "type": "integer",
               "minimum": 1000,
               "maximum": 600000
@@ -1358,6 +1425,7 @@
           "description": "DeepSeek HTTPS API consultant. Requires providers.deepseek (E035).",
           "properties": {
             "enabled": {
+              "description": "Expose the DeepSeek consultant. Needs the deepseek provider enabled with its key set.",
               "type": "boolean"
             },
             "model": {
@@ -1374,6 +1442,7 @@
               "description": "Official DeepSeek API model identifier. deepseek-flash currently serves the DeepSeek-V4.1-Flash-1017 revision."
             },
             "timeout_ms": {
+              "description": "Longest a DeepSeek consultation may run, in milliseconds.",
               "type": "integer",
               "minimum": 1000,
               "maximum": 600000
@@ -1386,6 +1455,7 @@
           "description": "Google Gemini API consultant. Requires providers.gemini (E035) and toolchains.gemini_cli (E037).",
           "properties": {
             "enabled": {
+              "description": "Expose the Gemini consultant. Needs the gemini provider enabled with its key set.",
               "type": "boolean"
             },
             "model": {
@@ -1408,6 +1478,7 @@
               "description": "Gemini CLI home directory."
             },
             "timeout_ms": {
+              "description": "Longest a Gemini consultation may run, in milliseconds.",
               "type": "integer",
               "minimum": 1000,
               "maximum": 600000
@@ -1631,6 +1702,7 @@
           "description": "Per-adapter-slot redaction policy. Values: strict | soft | off (E025).",
           "properties": {
             "pods": {
+              "description": "What the filter does to text written to pods. strict blocks on any detection, soft redacts and continues, off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1639,6 +1711,7 @@
               ]
             },
             "memory": {
+              "description": "What the filter does to text stored in memory. strict blocks on any detection, soft redacts and continues, off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1647,6 +1720,7 @@
               ]
             },
             "events": {
+              "description": "What the filter does to event payloads. strict blocks, soft redacts and continues, off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1655,6 +1729,7 @@
               ]
             },
             "beads": {
+              "description": "What the filter does to bead (work-item) payloads. strict blocks, soft redacts and continues, off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1663,6 +1738,7 @@
               ]
             },
             "orchestrator": {
+              "description": "What the filter does to orchestrator coordination traffic. off is the normal setting.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1671,6 +1747,7 @@
               ]
             },
             "inbound": {
+              "description": "What the filter does to inbound messages. strict blocks, soft redacts and continues, off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1679,6 +1756,7 @@
               ]
             },
             "outbound": {
+              "description": "What the filter does to outbound messages. strict blocks, soft redacts and continues, off skips the filter.",
               "type": "string",
               "enum": [
                 "strict",
@@ -1763,6 +1841,7 @@
               "description": "Which privacy-filter slots route to the clinical redactor when active. Values: strict | soft | off.",
               "properties": {
                 "pods": {
+                  "description": "Policy for the clinical (OpenMed) redactor on pod writes: strict, soft or off.",
                   "type": "string",
                   "enum": [
                     "strict",
@@ -1771,6 +1850,7 @@
                   ]
                 },
                 "memory": {
+                  "description": "Policy for the clinical (OpenMed) redactor on memory writes: strict, soft or off.",
                   "type": "string",
                   "enum": [
                     "strict",
@@ -1779,6 +1859,7 @@
                   ]
                 },
                 "inbound": {
+                  "description": "Policy for the clinical (OpenMed) redactor on inbound messages: strict, soft or off.",
                   "type": "string",
                   "enum": [
                     "strict",
@@ -1787,6 +1868,7 @@
                   ]
                 },
                 "outbound": {
+                  "description": "Policy for the clinical (OpenMed) redactor on outbound messages: strict, soft or off.",
                   "type": "string",
                   "enum": [
                     "strict",
@@ -1806,18 +1888,23 @@
       "description": "Sovereign-mesh subsystem (boundary: ADR-030) \u2014 Nostr identity, NIP-98 auth, inter-agent messaging, and the mobile agent bridge, gated as one subsystem (default off; env var remains the runtime override per the R7 fix). The phone\u2194agent path is pure Nostr (an Android Amethyst+Amber client talks to the embedded relay below); the device holds its own key plus a NIP-26 delegation from [operator], so no private key ships to the phone. Inbound NIP-59 gift wraps (kind 1059) are unwrapped by services/nostr-pod-bridge and persisted to the pod inbox; the durable conversation record is a kind-30840 session-summary dual-written to the relay and the pod. The whole mesh makes exactly one external data hop \u2014 the mobile_bridge Z.AI summarisation (ADR-030 D3); the per-turn live mirror (ADR-029) has none. This replaced the retired Telegram/CTM mirror.",
       "properties": {
         "enabled": {
+          "description": "Master switch for the sovereign mesh: Nostr identity, NIP-98 auth, inter-agent messaging and the mobile bridge. Off means none of it starts.",
           "type": "boolean"
         },
         "solid_pod": {
+          "description": "Start the Solid pod that stores this agent's data under its Nostr identity.",
           "type": "boolean"
         },
         "nostr_bridge": {
+          "description": "Start the bridge that carries agent messages over Nostr.",
           "type": "boolean"
         },
         "https_bridge": {
+          "description": "Start the HTTPS bridge that lets web clients reach the mesh with NIP-98 signed requests.",
           "type": "boolean"
         },
         "publish_agent_events": {
+          "description": "Publish agent activity events to the relay so other mesh members can see them.",
           "type": "boolean"
         },
         "voice_intent": {
@@ -1864,6 +1951,7 @@
               "description": "Relay backend. nostr-rs-relay is the bundled plain relay; the Nix-built nostr-pod-bridge binary wraps it with NIP-59 unwrap + pod-inbox writes for the mobile path. rnostr was dropped from the enum because no flake supervisor branch wires it up."
             },
             "port": {
+              "description": "Port the embedded Nostr relay listens on.",
               "type": "integer",
               "minimum": 1,
               "maximum": 65535
@@ -1877,6 +1965,7 @@
               "description": "Publish the port in docker-compose."
             },
             "data_dir": {
+              "description": "Directory the relay keeps its database in. Backed by a durable volume.",
               "type": "string"
             },
             "ingress_policy": {
@@ -1918,14 +2007,17 @@
               "description": "Outbound replication to the forum_relay_url / NOSTR_RELAYS fan-out list. 'off' keeps the relay loopback-only (matches federation standalone)."
             },
             "max_event_bytes": {
+              "description": "Largest event the relay accepts, in bytes.",
               "type": "integer",
               "minimum": 1024
             },
             "messages_per_sec": {
+              "description": "Per-client rate limit, in messages per second.",
               "type": "integer",
               "minimum": 1
             },
             "retention_days": {
+              "description": "How long the relay keeps events before deleting them. 0 keeps them for ever.",
               "type": "integer",
               "minimum": 0
             },
@@ -1934,9 +2026,11 @@
               "description": "Legacy unencrypted DMs. Warned by E031."
             },
             "info_description": {
+              "description": "Free-text description the relay publishes in its NIP-11 information document.",
               "type": "string"
             },
             "info_contact": {
+              "description": "Contact address the relay publishes in its NIP-11 information document.",
               "type": "string"
             },
             "forum_relay_url": {
@@ -2112,6 +2206,7 @@
           "description": "ADR-2033: runtime policy for the deepsec AI vulnerability-review gate (skills/build-with-quality/scripts/deepsec-gate.sh). The binary is baked by [toolchains].deepsec. Credentials are NEVER stored here \u2014 only env-var NAMES.",
           "properties": {
             "enabled": {
+              "description": "Bake the deepsec vulnerability reviewer and let the quality gate drive it. Needs toolchains.deepsec.",
               "type": "boolean"
             },
             "agent": {
@@ -2137,6 +2232,7 @@
               "description": "Empty selects deepsec's default for the chosen agent."
             },
             "thinking_level": {
+              "description": "How hard deepsec reasons: minimal, low, medium, high or xhigh. Higher costs more and runs longer. minimal suits a single sweep just before pushing.",
               "type": "string",
               "enum": [
                 "minimal",
@@ -2211,6 +2307,7 @@
                   "description": "Named volume mount strings."
                 },
                 "reason": {
+                  "description": "Why the desktop needs these writable paths, for the audit trail.",
                   "type": "string"
                 }
               }
@@ -2235,6 +2332,7 @@
                   "description": "Named volume mount strings."
                 },
                 "reason": {
+                  "description": "Why the AMD ROCm backend needs device access, for the audit trail.",
                   "type": "string"
                 }
               }
@@ -2284,6 +2382,7 @@
                   "description": "Named volume mount strings for CUDA-specific writable paths."
                 },
                 "reason": {
+                  "description": "Why CUDA needs device access, for the audit trail.",
                   "type": "string"
                 }
               }
@@ -2308,6 +2407,7 @@
                   "description": "Named volume mount strings."
                 },
                 "reason": {
+                  "description": "Why Gaussian splatting needs these extra privileges, for the audit trail.",
                   "type": "string"
                 }
               }
@@ -2368,6 +2468,7 @@
                   "description": "Named volume mount strings for the SQLite database and WAL."
                 },
                 "reason": {
+                  "description": "Why the relay needs a writable data directory, for the audit trail.",
                   "type": "string"
                 }
               }
@@ -2385,6 +2486,7 @@
                   "description": "Named volume mount strings for the .meta/.acl sidecars and atomic-rename temp files."
                 },
                 "reason": {
+                  "description": "Why the pod needs writable storage, for the audit trail.",
                   "type": "string"
                 }
               }
@@ -2409,6 +2511,7 @@
                   "description": "Named volume mount strings for durable node state."
                 },
                 "reason": {
+                  "description": "Why Tailscale needs a state directory and extra capabilities, for the audit trail.",
                   "type": "string"
                 }
               }
@@ -2426,6 +2529,7 @@
                   "description": "Named volume mount strings for JSONL audit logs."
                 },
                 "reason": {
+                  "description": "Why the consultants need these privileges, for the audit trail.",
                   "type": "string"
                 }
               }
@@ -2737,26 +2841,33 @@
       "description": "Nightly evidence-gated dream-engine runtime configuration (ADR-052/053/061).",
       "properties": {
         "enabled": {
+          "description": "Run nightly dream cycles: evidence-gated evolution of nominated repositories on a remote annexe host. Read at boot.",
           "type": "boolean"
         },
         "hp_host": {
+          "description": "SSH target of the annexe host that runs the cycles, as user@host. Use a ${VAR} placeholder so the address stays out of the file.",
           "type": "string"
         },
         "hp_annexe_dir": {
+          "description": "Directory on the annexe host where cycle work happens.",
           "type": "string"
         },
         "loom_url": {
+          "description": "Base URL of the self-hosted Loom model fa\u00e7ade, used when llm_provider is loom.",
           "type": "string",
           "pattern": "^(https?://|\\$\\{[A-Za-z_][A-Za-z0-9_]*\\}$)"
         },
         "loom_model": {
+          "description": "Pin one of several models the Loom advertises. Empty uses the single advertised model and survives model swaps. LOOM_MODEL overrides at run time.",
           "type": "string"
         },
         "loom_max_tokens": {
+          "description": "Output token budget per Loom call. It must cover reasoning plus the answer, or the reply comes back empty. LOOM_MAX_TOKENS overrides it.",
           "type": "integer",
           "minimum": 1
         },
         "llm_provider": {
+          "description": "Which model service runs the cycles: zai (GLM through Z.AI, the default) or loom (self-hosted). DREAM_LLM_PROVIDER overrides it at run time. The Z.AI key is read from the environment, never stored here.",
           "type": "string",
           "enum": [
             "zai",
@@ -2764,46 +2875,57 @@
           ]
         },
         "zai_url": {
+          "description": "Endpoint of the Z.AI Anthropic-compatible API, used when llm_provider is zai.",
           "type": "string",
           "pattern": "^https?://"
         },
         "zai_model": {
+          "description": "Z.AI model used for cycles.",
           "type": "string"
         },
         "zai_max_tokens": {
+          "description": "Output token budget per Z.AI call. The strongest tier reasons at maximum effort by default and returns an empty answer if the cap is hit, so keep this at the model's full output limit.",
           "type": "integer",
           "minimum": 1
         },
         "window_start": {
+          "description": "Start of the nightly window, as a UTC hour (0 to 23). In loop mode cycles only run between window_start and window_end.",
           "type": "integer",
           "minimum": 0,
           "maximum": 23
         },
         "window_end": {
+          "description": "End of the nightly window, as a UTC hour (0 to 23).",
           "type": "integer",
           "minimum": 0,
           "maximum": 23
         },
         "memory_namespace": {
+          "description": "RuVector namespace where dream-cycle memories are stored.",
           "type": "string"
         },
         "recall_band_self_min": {
+          "description": "Recall gate: minimum self-recall score a candidate must reach (ADR-052). Leave at the frozen value unless you are recalibrating.",
           "type": "integer",
           "minimum": 0
         },
         "recall_band_true_min": {
+          "description": "Recall gate: minimum true-recall score a candidate must reach (ADR-052). Leave at the frozen value unless you are recalibrating.",
           "type": "integer",
           "minimum": 0
         },
         "max_repos_per_night": {
+          "description": "Most repositories dreamed in one night. Eligible repositories run in series up to this cap.",
           "type": "integer",
           "minimum": 1
         },
         "prune_dry_streak": {
+          "description": "A repository whose last this-many results were all inconclusive is skipped on later nights. A decisive result resets the count.",
           "type": "integer",
           "minimum": 1
         },
         "persist_accepts": {
+          "description": "When a candidate is accepted, push it as a dream/* branch with a draft pull request for human review. Off leaves it on a local branch only.",
           "type": "boolean"
         },
         "jev_triage": {
@@ -2864,6 +2986,7 @@
               "description": "Hex Nostr public keys permitted to authenticate. Empty means any valid signer."
             },
             "routes": {
+              "description": "Extra proxy routes beyond the default upstream, each with a prefix, a target URL and optionally bearer_env, the environment variable whose value replaces the browser's credential upstream. Edit in the raw TOML editor.",
               "type": "array",
               "items": {
                 "type": "object",
@@ -3379,14 +3502,17 @@
           "description": "Cost tier multipliers.",
           "properties": {
             "inference": {
+              "description": "Price multiplier for text-model calls, as a multiple of base_cost_sats.",
               "type": "integer",
               "minimum": 0
             },
             "image_gen": {
+              "description": "Price multiplier for image generation, as a multiple of base_cost_sats.",
               "type": "integer",
               "minimum": 0
             },
             "analytics": {
+              "description": "Price multiplier for embeddings and analytics, as a multiple of base_cost_sats.",
               "type": "integer",
               "minimum": 0
             }
@@ -3398,13 +3524,16 @@
           "description": "DREAM token configuration.",
           "properties": {
             "ticker": {
+              "description": "Ticker symbol of the internal token.",
               "type": "string"
             },
             "rate": {
+              "description": "Tokens issued per satoshi.",
               "type": "integer",
               "minimum": 1
             },
             "supply": {
+              "description": "Total token supply.",
               "type": "integer",
               "minimum": 0
             },
@@ -3806,9 +3935,11 @@
           "description": "Per-adapter-slot compression toggles.",
           "properties": {
             "memory": {
+              "description": "Compress memory search results.",
               "type": "boolean"
             },
             "pods": {
+              "description": "Compress pod writes.",
               "type": "boolean"
             },
             "events": {
@@ -3816,9 +3947,11 @@
               "description": "NEVER compress audit trail."
             },
             "beads": {
+              "description": "Compress bead payloads.",
               "type": "boolean"
             },
             "orchestrator": {
+              "description": "Compress orchestrator coordination traffic. Normally off.",
               "type": "boolean"
             }
           }
@@ -4124,10 +4257,12 @@
           "description": "Emit deploy limits/reservations, cpuset, cpu_shares, pids_limit and shm_size into the generated compose."
         },
         "cpus": {
+          "description": "CPU cap for the container, in threads. Leave headroom on the host for sidecars.",
           "type": "number",
           "minimum": 1
         },
         "cpus_reserve": {
+          "description": "Threads kept free for the host and sidecars.",
           "type": "number",
           "minimum": 0
         },
@@ -4137,27 +4272,33 @@
           "description": "Docker cpuset string; empty = no pinning."
         },
         "cpu_shares": {
+          "description": "Relative CPU weight when the host is contended. 1024 is the default weight.",
           "type": "integer",
           "minimum": 2,
           "maximum": 262144
         },
         "memory": {
+          "description": "Hard memory limit for the container, for example 256G.",
           "type": "string",
           "pattern": "^[0-9]+[KMGTkmgt]?[Bb]?$"
         },
         "memory_reserve": {
+          "description": "Memory guaranteed to the container, for example 96G.",
           "type": "string",
           "pattern": "^[0-9]+[KMGTkmgt]?[Bb]?$"
         },
         "pids_limit": {
+          "description": "Most processes the container may run. A guard against fork storms.",
           "type": "integer",
           "minimum": 64
         },
         "shm": {
+          "description": "Size of /dev/shm. Browsers and ML workloads need a large value.",
           "type": "string",
           "pattern": "^[0-9]+[KMGTkmgt]?[Bb]?$"
         },
         "gpu_reservation": {
+          "description": "Reserve the NVIDIA devices in the generated compose file.",
           "type": "boolean"
         },
         "tmpfs": {
@@ -4165,15 +4306,19 @@
           "additionalProperties": false,
           "properties": {
             "run": {
+              "description": "Size of the /run tmpfs, where hook spools, hub config and reaper state live.",
               "type": "string"
             },
             "tmp": {
+              "description": "Size of the /tmp tmpfs. Builds that use TMPDIR fail with ENOSPC if it is too small.",
               "type": "string"
             },
             "npm": {
+              "description": "Size of the npm cache tmpfs. npm installs fail with ENOSPC if it is too small.",
               "type": "string"
             },
             "cache": {
+              "description": "Size of the cache tmpfs.",
               "type": "string"
             }
           }
@@ -4183,6 +4328,7 @@
           "additionalProperties": false,
           "properties": {
             "enabled": {
+              "description": "Run stateless MCP servers once in a shared hub instead of one copy per session, saving memory.",
               "type": "boolean"
             },
             "bind": {
@@ -4190,6 +4336,7 @@
               "description": "Loopback host:port; the hub refuses any non-loopback bind."
             },
             "url": {
+              "description": "URL sessions use to reach the shared MCP hub. Loopback only.",
               "type": "string"
             },
             "servers": {
@@ -4207,9 +4354,11 @@
           "additionalProperties": false,
           "properties": {
             "shim": {
+              "description": "Route hook events through one resident process instead of booting the CLI for every tool call. Boot rewrites project settings to use it.",
               "type": "boolean"
             },
             "drain_interval_secs": {
+              "description": "How often the resident hook process flushes queued events, in seconds.",
               "type": "integer",
               "minimum": 5
             }
@@ -4220,16 +4369,20 @@
           "additionalProperties": false,
           "properties": {
             "enabled": {
+              "description": "Watch for idle teammate sessions.",
               "type": "boolean"
             },
             "reap": {
+              "description": "Terminate idle sessions. Off means report only.",
               "type": "boolean"
             },
             "idle_secs": {
+              "description": "How long a session may be idle before it counts as stale, in seconds.",
               "type": "integer",
               "minimum": 0
             },
             "interval_secs": {
+              "description": "How often the idle check runs, in seconds.",
               "type": "integer",
               "minimum": 10
             }
@@ -4252,6 +4405,7 @@
           "additionalProperties": false,
           "properties": {
             "nice": {
+              "description": "Priority offset for background supervised programs so interactive work wins. 0 turns it off.",
               "type": "integer",
               "minimum": 0,
               "maximum": 19
