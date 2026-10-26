@@ -9,8 +9,9 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 - Pinned the inspected upstream main commit `631c155` containing security and
   ruRE work, aligned the immutable `ruflo` / `@claude-flow/cli` runtime and npm
   lock at 3.63.1, and refreshed the console/mods plugin versions.
-- Enabled the `ruflo-rure` plugin and its eight read-only MCP tools through the
-  existing governed server. The memory and hooks deny rules are unchanged. The
+- Enabled the `ruflo-rure` plugin and its eight static-analysis MCP tools through
+  the existing governed server. Seven only read inputs; `rure_extract_asar`
+  writes a capped extraction to a new scratch directory. The memory and hooks deny rules are unchanged. The
   running container remains on its previous image until preparation and an
   owner-requested activation complete.
 
