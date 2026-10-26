@@ -5,7 +5,7 @@
 //!
 //! `engine.rs` step 7 parses the report's verdict; step 8 applies the emitted patch on an
 //! isolated worktree and re-runs every required evaluator against it (AB-23.5). That is the
-//! costly part of a night. This module sits between the two: one System One request carrying
+//! costly part of a night. This module sits between the two: System One request (a second, library-built discipline screen follows it: two calls per enabled night, each with the 15 s deadline) carrying
 //! the hypothesis, the change surface and the evaluator catalogue, two typed questions:
 //!
 //! * `usefulness` — Score, four levels: how likely the proposed improvement is to be a real,
