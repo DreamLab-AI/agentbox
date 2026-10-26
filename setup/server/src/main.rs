@@ -6,6 +6,7 @@ use axum::{
     routing::{any, get, post},
     Json, Router,
 };
+use agentbox_setup::{apply_edits, atomic_write, parse_to_json, validate, Edit};
 use rust_embed::Embed;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
@@ -19,6 +20,8 @@ struct FrontendAssets;
 struct AppState {
     config_path: PathBuf,
     schema_path: PathBuf,
+    ui_path: PathBuf,
+    apply_path: PathBuf,
     shutdown: Arc<Notify>,
     mgmt_api_url: String,
     mgmt_api_key: Option<String>,
@@ -28,7 +31,15 @@ struct AppState {
 #[derive(Serialize)]
 struct ConfigResponse {
     toml_content: String,
+    /// The text came from the shipped seed, not a live file.
+    seeded: bool,
+    /// `toml_content` parsed server-side (display only; never written back).
+    parsed: serde_json::Value,
     schema: serde_json::Value,
+    /// Section labels and groups (`schema/agentbox.toml.ui.json`).
+    ui: serde_json::Value,
+    /// Per-key apply class, generated from the system-manifest catalogue.
+    apply: serde_json::Value,
 }
 
 #[derive(Deserialize)]
@@ -36,44 +47,60 @@ struct SaveRequest {
     toml_content: String,
 }
 
-async fn get_config(State(state): State<AppState>) -> Result<Json<ConfigResponse>, StatusCode> {
+#[derive(Deserialize)]
+struct EditRequest {
+    toml_content: String,
+    edits: Vec<Edit>,
+}
+
+#[derive(Serialize)]
+struct EditResponse {
+    toml_content: String,
+    parsed: serde_json::Value,
+}
+
+async fn read_json(path: &std::path::Path, embedded: &str) -> serde_json::Value {
+    let text = tokio::fs::read_to_string(path)
+        .await
+        .unwrap_or_else(|_| embedded.to_string());
+    serde_json::from_str(&text).unwrap_or(serde_json::Value::Null)
+}
+
+async fn get_config(State(state): State<AppState>) -> Result<Json<ConfigResponse>, (StatusCode, String)> {
     // Serve the operator's live config if present; otherwise seed a FRESH install
     // from the shipped behaviour-preserving default (all learning/hygiene gates OFF),
     // not from the live agentbox.toml which may carry operator enablements.
-    let toml_content = tokio::fs::read_to_string(&state.config_path)
-        .await
-        .unwrap_or_else(|_| include_str!("../../agentbox.default.toml").to_string());
+    let (toml_content, seeded) = match tokio::fs::read_to_string(&state.config_path).await {
+        Ok(t) => (t, false),
+        Err(_) => (include_str!("../../agentbox.default.toml").to_string(), true),
+    };
+    let parsed = parse_to_json(&toml_content)
+        .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, format!("{} is not valid TOML: {e}", state.config_path.display())))?;
+    let schema = read_json(&state.schema_path, "{}").await;
+    let ui = read_json(&state.ui_path, include_str!("../../../schema/agentbox.toml.ui.json")).await;
+    let apply = read_json(&state.apply_path, include_str!("../../../schema/agentbox.toml.apply.json")).await;
+    Ok(Json(ConfigResponse { toml_content, seeded, parsed, schema, ui, apply }))
+}
 
-    let schema_str = tokio::fs::read_to_string(&state.schema_path)
-        .await
-        .unwrap_or_else(|_| "{}".to_string());
-
-    let schema: serde_json::Value =
-        serde_json::from_str(&schema_str).unwrap_or(serde_json::Value::Null);
-
-    Ok(Json(ConfigResponse {
-        toml_content,
-        schema,
-    }))
+/// Apply targeted edits to the supplied text; the file on disk is not touched.
+async fn edit_config(Json(req): Json<EditRequest>) -> Result<Json<EditResponse>, (StatusCode, String)> {
+    let toml_content = apply_edits(&req.toml_content, &req.edits)
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+    let parsed = parse_to_json(&toml_content).map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid TOML: {e}")))?;
+    Ok(Json(EditResponse { toml_content, parsed }))
 }
 
 async fn save_config(
     State(state): State<AppState>,
     Json(req): Json<SaveRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    req.toml_content
-        .parse::<toml_edit::DocumentMut>()
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid TOML: {e}")))?;
-
-    tokio::fs::write(&state.config_path, &req.toml_content)
+    validate(&req.toml_content).map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid TOML: {e}")))?;
+    let path = state.config_path.clone();
+    let content = req.toml_content;
+    tokio::task::spawn_blocking(move || atomic_write(&path, &content))
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Write failed: {e}"),
-            )
-        })?;
-
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Write task failed: {e}")))?
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Write failed: {e}")))?;
     Ok(StatusCode::OK)
 }
 
@@ -197,6 +224,15 @@ async fn main() {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("schema/agentbox.toml.schema.json"));
 
+    let sibling = |n: &str| {
+        schema_path
+            .parent()
+            .map(|p| p.join(n))
+            .unwrap_or_else(|| PathBuf::from(n))
+    };
+    let ui_path = sibling("agentbox.toml.ui.json");
+    let apply_path = sibling("agentbox.toml.apply.json");
+
     let mgmt_port = std::env::var("AGENTBOX_MGMT_PORT").unwrap_or_else(|_| "9090".to_string());
 
     let mgmt_api_url = format!("http://127.0.0.1:{mgmt_port}");
@@ -213,6 +249,8 @@ async fn main() {
     let state = AppState {
         config_path: config_path.clone(),
         schema_path,
+        ui_path,
+        apply_path,
         shutdown: shutdown.clone(),
         mgmt_api_url,
         mgmt_api_key,
@@ -221,12 +259,16 @@ async fn main() {
 
     let app = Router::new()
         .route("/api/config", get(get_config).post(save_config))
+        .route("/api/config/edit", post(edit_config))
         .route("/api/shutdown", post(shutdown_handler))
         .route("/api/proxy/{*path}", any(proxy_to_mgmt_api))
         .fallback(serve_frontend)
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+    // Loopback on a random port by default. AGENTBOX_SETUP_BIND (host:port) is an
+    // explicit opt-in, e.g. so a browser sidecar container can reach the wizard.
+    let bind = std::env::var("AGENTBOX_SETUP_BIND").unwrap_or_else(|_| "127.0.0.1:0".to_string());
+    let listener = tokio::net::TcpListener::bind(&bind)
         .await
         .expect("failed to bind");
     let addr: SocketAddr = listener.local_addr().unwrap();
@@ -243,7 +285,7 @@ async fn main() {
     eprintln!("\x1b[1;33m│\x1b[0m  Ctrl+C or Save & Exit to quit          \x1b[1;33m│\x1b[0m");
     eprintln!("\x1b[1;33m└─────────────────────────────────────────┘\x1b[0m");
 
-    if open::that(&url).is_err() {
+    if std::env::var_os("AGENTBOX_SETUP_NO_OPEN").is_none() && open::that(&url).is_err() {
         eprintln!("  could not open browser — navigate to {url} manually");
     }
 
