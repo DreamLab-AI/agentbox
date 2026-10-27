@@ -2,7 +2,7 @@
 id: ADR-2151
 title: Run voice at the client edge and drive native CLI panes over the ssh attach chain
 date: 2026-10-27
-decision_status: proposed
+decision_status: accepted
 implementation_status: none
 activation_status: inactive
 supersedes: []
@@ -12,7 +12,6 @@ verified_paths: []
 owner: jjohare
 review_trigger: first voicelink release that changes PROTOCOL_VERSION, or a change to the `agentbox.sh shell` attach path
 repo: agentbox
-domain: BASELINE-container
 ---
 
 # ADR-2151 — Run voice at the client edge and drive native CLI panes over the ssh attach chain

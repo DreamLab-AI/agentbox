@@ -54,6 +54,11 @@ check "stale notify self-heals" "$(grep -c -F "$NOTIFY" "$tmp/config.toml")" "1"
 runx 0 >/dev/null
 check "gate off removes our notify and marker" "$(grep -c 'voice' "$tmp/config.toml" || true)" "0"
 check "gate off keeps the rest of the file" "$(grep -c 'trust_level' "$tmp/config.toml")" "1"
+# marker stripped by a foreign re-serialiser: still recognised by value, still healed and removable
+printf 'notify = ["/nix/store/old/bin/voice-paned"]\n\n[projects."/w"]\n' > "$tmp/config.toml"; runx 1 >/dev/null
+check "marker-less stale notify is healed by value" "$(grep -c -F "$NOTIFY" "$tmp/config.toml")" "1"
+printf 'notify = ["/opt/agentbox/bin/voice-paned", "record", "--source", "codex"]\n\n[projects."/w"]\n' > "$tmp/config.toml"; runx 0 >/dev/null
+check "marker-less notify is removed when the gate is off" "$(grep -c 'voice' "$tmp/config.toml" || true)" "0"
 printf 'notify = ["my-notifier"]\n\n[projects."/w"]\n' > "$tmp/config.toml"; cp "$tmp/config.toml" "$tmp/before.toml"
 msg="$(runx 1)"
 check "a foreign notify is never replaced" "$(same_file "$tmp/before.toml" "$tmp/config.toml" && echo same || echo differ)" "same"

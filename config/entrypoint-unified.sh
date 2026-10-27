@@ -884,8 +884,9 @@ fi
 # baked recorder: Codex appends its JSON payload as the last argv word, and
 # `voice-paned record --source codex` spools it for the client-side daemon.
 # The path is the stable /opt/agentbox/bin symlink, never a /nix/store path.
-# Reconcile, not append: our line is identified by the `# agentbox:voicelink`
-# marker above it and rewritten when it differs from the canonical value. A
+# Reconcile, not append: our line is identified by its value (a single-line
+# notify naming voice-paned; the `# agentbox:voicelink` comment above it is
+# cosmetic) and rewritten when it differs from the canonical value. A
 # `notify` the operator set themselves (no marker) is NEVER replaced; it is
 # reported and voice events from Codex are simply not recorded. TOML top-level
 # keys must precede any [section] header, so the line is PREPENDED. Gate off
@@ -905,7 +906,9 @@ let orig; try { orig = fs.readFileSync(f, 'utf8'); } catch { process.exit(0); }
 const lines = orig.split('\n');
 let top = lines.findIndex((l) => /^\s*\[/.test(l));
 if (top < 0) top = lines.length;
-const ours = (i) => i > 0 && lines[i - 1].trim() === MARK;
+// Ours = a single-line notify naming voice-paned, recognised BY VALUE: the marker
+// comment is cosmetic and does not survive a tool that re-serialises the file.
+const ours = (i) => /^\s*notify\s*=\s*\[.*\]\s*(#.*)?$/.test(lines[i]) && lines[i].includes('voice-paned');
 let at = -1;
 for (let i = 0; i < top; i++) if (/^\s*notify\s*=/.test(lines[i])) { at = i; break; }
 let out = null;
@@ -917,7 +920,8 @@ if (on) {
     console.log('  [voicelink] codex config already sets its own notify - left as is; Codex events will not be recorded');
   }
 } else if (at >= 0 && ours(at)) {
-  out = lines.slice(); out.splice(at - 1, 2);
+  out = lines.slice();
+  if (at > 0 && lines[at - 1].trim() === MARK) out.splice(at - 1, 2); else out.splice(at, 1);
 }
 if (out) { fs.writeFileSync(f, out.join('\n')); console.log(on ? '  [voicelink] codex notify -> voice-paned record' : '  [voicelink] removed codex notify (gate off)'); }
 VLCODEXJS

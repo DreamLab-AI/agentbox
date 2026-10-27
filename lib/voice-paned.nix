@@ -37,7 +37,7 @@
 #      lib/lockfiles/agentbox-voicelink-<first 8 of rev>.Cargo.lock
 #      (byte-identical; the filename below derives from `rev`).
 #   4. Set `version` to the crate's version at that commit.
-#   5. Flip [voicelink].enabled = true in agentbox.toml, rebuild on the host.
+#   5. Rebuild on the host with [voicelink].enabled = true (agentbox.toml).
 #
 # Licence: Apache-2.0 OR MIT (the voicelink repository). The wire contract is
 # the published `voicelink-proto` crate; this derivation pins the binary only.
