@@ -63,6 +63,23 @@ Other platforms can use `prepare --delivery daemon`; this streams the whole
 image and does **not** provide incremental transfer. `--delivery none` builds
 and reports layers without importing or replacing an activatable candidate.
 
+Before an import, check the filesystem holding the **daemon's** data root,
+not just the filesystem containing `/nix/store` or the checkout:
+
+```sh
+docker info --format '{{.DockerRootDir}}'
+df -h "$(docker info --format '{{.DockerRootDir}}')"
+```
+
+For a remote daemon, check its filesystem on the daemon host. A cold
+`docker-daemon` transfer can need temporary staging as well as unpacked image
+space; the sum of layer sizes is not a peak-space guarantee. Leave headroom
+for concurrent builds and running services, and use `--delivery none` if
+there is insufficient space. This check is manual: preparation does not enforce
+a disk floor. Never make room by pruning data volumes or retained recovery
+images. If the owner has prohibited starting containers, note that both normal
+delivery modes also run an isolated candidate smoke container; `none` does not.
+
 The first registry delivery is a cold transfer and may take substantial time.
 Subsequent pushes/pulls reuse content-addressed blobs. The runtime tag is not
 overwritten: candidate tags derive from the Nix output, and registry candidates
