@@ -3,16 +3,17 @@
 ## Rendering Architecture
 
 Mermaid rendering routes through the **browsercontainer sidecar**, which has
-Chromium + puppeteer. The agentbox image carries `mmdc` in the Nix store but
-cannot render locally (no browser). Use the sidecar wrapper or the HTTP API.
+Chromium + Puppeteer. The agentbox image carries only an `mmdc` compatibility
+client in the Nix store. It has no local browser; a successful `mmdc --help`
+probe does not prove the sidecar can render.
 
-### Preferred: sidecar wrapper (drop-in mmdc replacement)
+### Preferred: `mmdc` sidecar client
 
 ```bash
-# Same interface as mmdc — delegates to browsercontainer over HTTP
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.png
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.svg -t dark
-/opt/agentbox/scripts/mmdc-sidecar.sh -i diagram.mmd -o diagram.pdf
+# Supported mmdc options delegate to browsercontainer over HTTP
+mmdc -i diagram.mmd -o diagram.png
+mmdc -i diagram.mmd -o diagram.svg -t dark
+mmdc -i diagram.mmd -o diagram.pdf
 ```
 
 The wrapper POSTs to `http://browsercontainer:8931/render-mermaid`, which
@@ -45,6 +46,10 @@ curl -s -X POST http://browsercontainer:8931/render-mermaid \
 /opt/agentbox/scripts/mmdc-sidecar.sh -i <input.mmd> -o <output.png|svg|pdf>
     -e <format>           # svg | png | pdf (inferred from -o extension if omitted)
     -t <theme>            # dark | default | forest | neutral
+    -w <pixels> -H <pixels> # viewport width and height
+    -b <colour>           # background, e.g. transparent
+    -c <file>             # Mermaid JSON config
+    -q                    # quiet
     --help                # Usage information
 ```
 

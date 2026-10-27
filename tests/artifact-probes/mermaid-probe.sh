@@ -1,5 +1,5 @@
 #!/bin/bash
-# Probe: @mermaid-js/mermaid-cli  (binary name: mmdc)
+# Probe: Agentbox's mmdc compatibility client (browsercontainer renderer)
 # Gate: skills.docs.mermaid / ENABLE_MERMAID
 
 set -euo pipefail
@@ -14,10 +14,10 @@ if ! command -v mmdc &>/dev/null; then
   exit 1
 fi
 
-if ! mmdc --version >/dev/null 2>&1 && ! mmdc --help >/dev/null 2>&1; then
-  echo "FAIL: mmdc --version and --help both exited non-zero"
+if ! mmdc --help >/dev/null 2>&1; then
+  echo "FAIL: mmdc sidecar client --help exited non-zero"
   exit 1
 fi
 
-echo "PASS: mmdc (@mermaid-js/mermaid-cli) present"
+echo "PASS: mmdc sidecar client present (rendering tested separately)"
 exit 0

@@ -701,43 +701,12 @@
         #       automation routes through the external browsercontainer sidecar
         #       (chrome-devtools-mcp at browsercontainer:8931/sse).
 
-        # 9. @mermaid-js/mermaid-cli — gated by skills.docs.mermaid.
-        #    Mermaid 11.16 declares Puppeteer as a peer dependency. Resolve it
-        #    for this package (rather than the helper's historical
-        #    --legacy-peer-deps mode) and point it at immutable Nix Chromium so
-        #    neither build nor runtime performs a browser download.
-        mermaidPuppeteerConfig = pkgs.writeText "agentbox-mermaid-puppeteer.json"
-          (builtins.toJSON {
-            # Docker drops the setuid bit from the immutable Nix Chromium
-            # sandbox helper. Keep this exception scoped to offline Mermaid
-            # document rendering; the browser sidecar remains unaffected.
-            args = [ "--no-sandbox" "--disable-setuid-sandbox" ];
-          });
-        #    12.0.0 HELD (2026-10-01; re-evaluated 2026-10-03, still held).
-        #    The 2026-10-01 audit finding (lodash-es via chevrotain) is gone:
-        #    a fresh 12.0.0 lock audits clean. Still blocking: (1) every
-        #    render changes. On the VisionFlow corpus gate
-        #    (`diagram-index-gen.cjs docs/diagrams --check --render --only
-        #    agentbox/36-`) both versions pass 7/7, but all 7 SVGs change
-        #    geometry (AB-36.3 2015→476.5 px wide; layout direction flips)
-        #    and grow ~7× (fonts embedded by default; --no-font-embed opts
-        #    out). (2) -w/-H/-f(--pdfFit) are removed for --size and
-        #    --pdf-paper-format; skills/mermaid-diagrams/scripts/render.sh
-        #    passes -w/-H. Moving needs a corpus re-render and review, a
-        #    render.sh port to --size, then hashes from a --before lock with
-        #    runtimeDependencies.puppeteer kept (12 still peers ^25).
-        mermaidCliPkg = mkNpmCli {
-          pkgName         = "@mermaid-js/mermaid-cli";
-          version         = "11.17.0";
-          sha256          = "sha256-I/LCciJi2YNHz5edptiLyGk+7yzYeYo4rDk6fwBpOKA=";
-          nodeModulesHash = "sha256-se3giy30x2q2+zftQE1BvsfPhuQed760A2LYcKpevII=";
-          bin             = "mmdc";
-          legacyPeerDeps  = false;
-          runtimeDependencies.puppeteer = "25.10.0";
-          packageLock = ./config/npm-locks/mermaid-js-mermaid-cli-11.17.0.package-lock.json;
-          extraEnv.PUPPETEER_EXECUTABLE_PATH = "${pkgs.chromium}/bin/chromium";
-          extraArgs = [ "--puppeteerConfigFile" mermaidPuppeteerConfig ];
-        };
+        # Mermaid renders in browsercontainer. Keep the mmdc command name for
+        # existing skills and validators, but ship only this sidecar client in
+        # Agentbox. No local Puppeteer or Chromium belongs in the image.
+        mermaidSidecarCliPkg = pkgs.writeShellScriptBin "mmdc" ''
+          exec /opt/agentbox/scripts/mmdc-sidecar.sh "$@"
+        '';
 
         # wrangler — Cloudflare Workers/D1/secrets CLI. Always included for
         # operator ops (`wrangler d1 execute --remote`, `wrangler secret put`,
@@ -816,7 +785,7 @@
           ++ lib.optionals (toolchainCfg.agentic_qe or false)      [ agenticQePkg ]
           ++ lib.optionals (toolchainCfg.codebase_memory or false)  [ codebaseMemoryPkg ]
           ++ lib.optionals (toolchainCfg.deepsec or false)          [ deepsecPkg ]
-          ++ lib.optionals (docsCfg.mermaid or false)              [ mermaidCliPkg ];
+          ++ lib.optionals (docsCfg.mermaid or false)              [ mermaidSidecarCliPkg ];
 
         # 3DGS stack — gated by gaussian_splatting + local-cuda (E006).
         gs3dLib = import ./lib/3dgs-stack.nix { inherit lib pkgs; };

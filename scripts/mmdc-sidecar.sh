@@ -1,5 +1,5 @@
 #!/bin/sh
-# mmdc-sidecar.sh — drop-in replacement for `mmdc` that delegates Mermaid
+# mmdc-sidecar.sh — compatibility client for `mmdc` that delegates Mermaid
 # rendering to the browsercontainer sidecar's /render-mermaid endpoint.
 #
 # Rendering moved out of the agentbox Nix image (no puppeteer/Chrome there)
@@ -22,9 +22,9 @@ PROG="$(basename "$0")"
 
 usage() {
     cat <<EOF
-Usage: $PROG -i <input.mmd> -o <output> [-e <format>] [-t <theme>]
+Usage: $PROG -i <input.mmd> -o <output> [render options]
 
-Drop-in replacement for mmdc that renders via the browsercontainer sidecar.
+Render via the browsercontainer sidecar; no browser runs in Agentbox.
 
 Options:
   -i <input>    Input Mermaid definition file (.mmd). Required.
@@ -34,7 +34,15 @@ Options:
                 else svg.
   -t <theme>    Mermaid theme: default | dark | forest | neutral.
                 Default: default.
+  -w <width>    Viewport width in pixels (1–6000). Default: 800.
+  -H <height>   Viewport height in pixels (1–6000). Default: 600.
+  -b <colour>   Background colour (including transparent). Default: white.
+  -c <file>     Mermaid JSON config file (not a Puppeteer config).
+  -q, --quiet   Suppress the success message.
+  -V, --version Print the compatibility client version.
   -h, --help    Show this help and exit.
+
+Unsupported mmdc options fail explicitly; Puppeteer is owned by the sidecar.
 
 Environment:
   MERMAID_SIDECAR_URL   Sidecar endpoint (default: $SIDECAR_URL)
@@ -63,6 +71,11 @@ INPUT=""
 OUTPUT=""
 FORMAT=""
 THEME="default"
+WIDTH="800"
+HEIGHT="600"
+BACKGROUND="white"
+CONFIG_FILE=""
+QUIET=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -70,24 +83,52 @@ while [ $# -gt 0 ]; do
             usage
             exit 0
             ;;
-        -i)
+        -V|--version)
+            printf 'mmdc-sidecar 1.0\n'
+            exit 0
+            ;;
+        -q|--quiet)
+            QUIET=1
+            shift
+            ;;
+        -i|--input)
             [ $# -ge 2 ] || die 1 "option -i requires an argument"
             INPUT="$2"
             shift 2
             ;;
-        -o)
+        -o|--output)
             [ $# -ge 2 ] || die 1 "option -o requires an argument"
             OUTPUT="$2"
             shift 2
             ;;
-        -e)
+        -e|--outputFormat)
             [ $# -ge 2 ] || die 1 "option -e requires an argument"
             FORMAT="$2"
             shift 2
             ;;
-        -t)
+        -t|--theme)
             [ $# -ge 2 ] || die 1 "option -t requires an argument"
             THEME="$2"
+            shift 2
+            ;;
+        -w|--width)
+            [ $# -ge 2 ] || die 1 "option -w requires an argument"
+            WIDTH="$2"
+            shift 2
+            ;;
+        -H|--height)
+            [ $# -ge 2 ] || die 1 "option -H requires an argument"
+            HEIGHT="$2"
+            shift 2
+            ;;
+        -b|--backgroundColor)
+            [ $# -ge 2 ] || die 1 "option -b requires an argument"
+            BACKGROUND="$2"
+            shift 2
+            ;;
+        -c|--configFile)
+            [ $# -ge 2 ] || die 1 "option -c requires an argument"
+            CONFIG_FILE="$2"
             shift 2
             ;;
         --)
@@ -121,13 +162,36 @@ if [ -z "$FORMAT" ]; then
     esac
 fi
 
+case "$FORMAT" in svg|png|pdf) ;; *) die 1 "unsupported output format: $FORMAT" ;; esac
+case "$THEME" in default|dark|forest|neutral) ;; *) die 1 "unsupported theme: $THEME" ;; esac
+for _dimension in "$WIDTH" "$HEIGHT"; do
+    case "$_dimension" in ''|*[!0-9]*) die 1 "viewport dimensions must be integers" ;; esac
+    [ "$_dimension" -ge 1 ] && [ "$_dimension" -le 6000 ] \
+        || die 1 "viewport dimensions must be between 1 and 6000"
+done
+[ "${#BACKGROUND}" -le 64 ] || die 1 "background colour is too long"
+
+CONFIG_JSON='null'
+if [ -n "$CONFIG_FILE" ]; then
+    [ -f "$CONFIG_FILE" ] && [ -r "$CONFIG_FILE" ] \
+        || die 3 "Mermaid config file not readable: $CONFIG_FILE"
+    CONFIG_JSON="$(jq -ec 'select(type == "object")' "$CONFIG_FILE")" \
+        || die 1 "Mermaid config must be a JSON object: $CONFIG_FILE"
+fi
+
 # Build the request body without shell-interpolating the diagram source:
 # jq --rawfile reads the file verbatim and emits correctly escaped JSON.
 REQ_BODY="$(jq -n \
     --rawfile definition "$INPUT" \
     --arg format "$FORMAT" \
     --arg theme "$THEME" \
-    '{definition: $definition, format: $format, theme: $theme}')" \
+    --arg width "$WIDTH" \
+    --arg height "$HEIGHT" \
+    --arg background "$BACKGROUND" \
+    --argjson config "$CONFIG_JSON" \
+    '{definition: $definition, format: $format, theme: $theme,
+      width: ($width | tonumber), height: ($height | tonumber),
+      background: $background, config: $config}')" \
     || die 4 "failed to build request body from $INPUT"
 
 RESP="$(curl -fsS \
@@ -175,4 +239,4 @@ OUT_DIR="$(dirname "$OUTPUT")"
 
 cp "$EXCHANGE_FILE" "$OUTPUT" || die 5 "failed to copy $EXCHANGE_FILE -> $OUTPUT"
 
-printf '%s: rendered %s -> %s (%s, theme=%s)\n' "$PROG" "$INPUT" "$OUTPUT" "$FORMAT" "$THEME"
+[ "$QUIET" -eq 1 ] || printf '%s: rendered %s -> %s (%s, theme=%s)\n' "$PROG" "$INPUT" "$OUTPUT" "$FORMAT" "$THEME"

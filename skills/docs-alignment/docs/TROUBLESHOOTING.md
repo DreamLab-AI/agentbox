@@ -23,7 +23,7 @@ pip install -r requirements.txt
 **Solution**:
 ```bash
 npm install -g @mermaid-js/mermaid-cli
-mmdc --version  # Verify installation
+mmdc --help  # Verifies client installation only; render a small diagram to test the sidecar
 ```
 
 ### Validation Errors

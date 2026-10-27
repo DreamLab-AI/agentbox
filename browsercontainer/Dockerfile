@@ -60,15 +60,16 @@ RUN sudo -u devuser yay -S --noconfirm --needed google-chrome-beta \
 RUN mkdir -p /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/browsercontainer /home/devuser/chrome-profile /home/devuser/exchange \
     && chown -R devuser:devuser /opt/browsercontainer /tmp/xdg-runtime /tmp/chromium-crashes /tmp/browsercontainer /home/devuser/chrome-profile /home/devuser/exchange
 
-# Install chrome-devtools-mcp and ws globally (runtime uses Chrome Beta from AUR)
-RUN npm install -g chrome-devtools-mcp@latest ws && rm -rf /root/.npm
+# Pin the connector; the runtime uses Chrome Beta from AUR.
+RUN npm install -g chrome-devtools-mcp@1.12.0 && rm -rf /root/.npm
 
 # Mermaid diagram rendering — mmdc uses puppeteer which needs Chrome.
 # PUPPETEER_SKIP_DOWNLOAD avoids a second Chrome download (system chromium is already installed).
-RUN PUPPETEER_SKIP_DOWNLOAD=true npm install -g @mermaid-js/mermaid-cli@11.16.0 && rm -rf /root/.npm
+RUN PUPPETEER_SKIP_DOWNLOAD=true npm install -g @mermaid-js/mermaid-cli@11.17.0 && rm -rf /root/.npm
 
 COPY --chown=devuser:devuser package.json /opt/browsercontainer/package.json
-RUN cd /opt/browsercontainer && npm install ws && chown -R devuser:devuser node_modules
+COPY --chown=devuser:devuser package-lock.json /opt/browsercontainer/package-lock.json
+RUN cd /opt/browsercontainer && npm ci --omit=dev && chown -R devuser:devuser node_modules
 COPY --chown=devuser:devuser server.js /opt/browsercontainer/server.js
 COPY --chown=devuser:devuser launch-chromium.sh /opt/browsercontainer/launch-chromium.sh
 COPY --chown=devuser:devuser cdp-diagnose.js /opt/browsercontainer/cdp-diagnose.js

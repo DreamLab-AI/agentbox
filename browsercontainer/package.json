@@ -2,5 +2,8 @@
   "private": true,
   "name": "browsercontainer",
   "description": "SSE bridge to chrome-devtools-mcp with hardware-accelerated Chrome",
-  "license": "AGPL-3.0-only"
+  "license": "AGPL-3.0-only",
+  "dependencies": {
+    "ws": "8.22.0"
+  }
 }

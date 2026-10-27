@@ -109,6 +109,6 @@ curl -s http://browsercontainer:9223/json/list | jq '.[].url'
 
 ## LaTeX and Diagram Workflows
 
-Rendering Mermaid `.mmd` files (works around the broken Nix `mmdc`) and
+Rendering Mermaid `.mmd` files through the sidecar-backed `mmdc` client and
 spot-checking compiled LaTeX/PDF pages via the sidecar are covered in
 [`references/latex-diagram-workflows.md`](references/latex-diagram-workflows.md).

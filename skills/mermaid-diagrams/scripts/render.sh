@@ -11,13 +11,10 @@ SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Select theme config
 case "$THEME" in
-  dark)   CONFIG="$SKILL_DIR/resources/templates/theme-dark.json" ;;
-  light)  CONFIG="$SKILL_DIR/resources/templates/theme-light.json" ;;
-  *)      CONFIG="" ;;
+  dark)   CONFIG="$SKILL_DIR/resources/templates/theme-dark.json"; MERMAID_THEME="dark" ;;
+  light)  CONFIG="$SKILL_DIR/resources/templates/theme-light.json"; MERMAID_THEME="default" ;;
+  *)      CONFIG=""; MERMAID_THEME="default" ;;
 esac
-
-# Puppeteer config for headless environments
-PUPPETEER_CONF="$SKILL_DIR/resources/templates/puppeteer.json"
 
 echo "=== Mermaid Batch Renderer ==="
 echo "Input:  $INPUT_DIR"
@@ -34,13 +31,12 @@ for f in "$INPUT_DIR"/*.mmd "$INPUT_DIR"/*.mermaid; do
 
   echo -n "  Rendering $BASENAME... "
 
-  ARGS=(-i "$f" -o "$OUTPUT_DIR/${BASENAME}.png" -w 2000 -H 1200)
-  [ -n "$CONFIG" ] && [ -f "$CONFIG" ] && ARGS+=(-C "$CONFIG")
+  ARGS=(-i "$f" -o "$OUTPUT_DIR/${BASENAME}.png" -w 2000 -H 1200 -t "$MERMAID_THEME")
+  [ -n "$CONFIG" ] && [ -f "$CONFIG" ] && ARGS+=(-c "$CONFIG")
   [ "$THEME" = "dark" ] && ARGS+=(-b '#0B2545')
-  [ -f "$PUPPETEER_CONF" ] && ARGS+=(-p "$PUPPETEER_CONF")
 
-  if mmdc "${ARGS[@]}" 2>/dev/null; then
-    SIZE=$(ls -la "$OUTPUT_DIR/${BASENAME}.png" | awk '{print $5}')
+  if mmdc "${ARGS[@]}"; then
+    SIZE=$(wc -c < "$OUTPUT_DIR/${BASENAME}.png")
     echo "OK (${SIZE} bytes)"
     COUNT=$((COUNT + 1))
   else
@@ -49,7 +45,9 @@ for f in "$INPUT_DIR"/*.mmd "$INPUT_DIR"/*.mermaid; do
   fi
 
   # Also render PDF for LaTeX
-  mmdc -i "$f" -o "$OUTPUT_DIR/${BASENAME}.pdf" -w 2000 ${CONFIG:+-C "$CONFIG"} 2>/dev/null || true
+  PDF_ARGS=(-i "$f" -o "$OUTPUT_DIR/${BASENAME}.pdf" -w 2000 -H 1200 -t "$MERMAID_THEME")
+  [ -n "$CONFIG" ] && [ -f "$CONFIG" ] && PDF_ARGS+=(-c "$CONFIG")
+  mmdc "${PDF_ARGS[@]}" >/dev/null || echo "  PDF render failed for $BASENAME" >&2
 done
 
 echo ""

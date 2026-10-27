@@ -4,6 +4,17 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### Mermaid build closure (2026-10-27 — staged)
+
+- Agentbox now bakes an `mmdc` compatibility client instead of a second
+  Mermaid/Puppeteer/Chromium closure. Rendering is delegated to browsercontainer's
+  existing headless system Chromium, separate from its persistent GPU Chrome.
+- The client and sidecar renderer pass width, height, background and Mermaid
+  JSON config through, with argument validation and bounded requests. The
+  batch renderer uses `-c` for JSON config rather than `-C` for CSS.
+- Browsercontainer pins Mermaid CLI 11.17.0 and Chrome DevTools MCP 1.12.0;
+  sidecar replacement and Agentbox activation remain separate operations.
+
 ### Ruflo (2026-10-26 — main alignment, staged)
 
 - Pinned the inspected upstream main commit `631c155` containing security and

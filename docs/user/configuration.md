@@ -267,6 +267,11 @@ report_builder = true
 enabled = true    # vault OWL2 DL ontology skills; visionclaw_api_url set via [skills.ontology]
 ```
 
+With `mermaid = true`, Agentbox installs an `mmdc` compatibility client. Rendering
+requires the separately managed `browsercontainer` sidecar and its shared
+`gui-tools-exchange` volume; no Chromium or Puppeteer is baked into Agentbox.
+See [browsercontainer operations](../../browsercontainer/README.md).
+
 ## `[toolchains]`
 
 Which agent CLIs are in the image.

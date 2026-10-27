@@ -142,38 +142,71 @@ class Session {
 // Mermaid rendering — mmdc (puppeteer + system chromium) → shared exchange dir
 // ---------------------------------------------------------------------------
 
-function renderMermaid({ definition, format, theme }) {
+function renderMermaid(options = {}) {
   return new Promise((resolve) => {
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      return resolve({ ok: false, error: 'render options must be an object' });
+    }
+    const { definition, format, theme, width = 800, height = 600,
+      background = 'white', config = null } = options;
     if (typeof definition !== 'string' || !definition.trim()) {
       return resolve({ ok: false, error: 'definition must be a non-empty string' });
     }
+    if (definition.length > 1_000_000) {
+      return resolve({ ok: false, error: 'definition exceeds 1 MB' });
+    }
     const fmt = MMDC_FORMATS.has(format) ? format : 'svg';
     const thm = MMDC_THEMES.has(theme) ? theme : 'default';
+    if (![width, height].every(n => Number.isSafeInteger(n) && n >= 1 && n <= 6000)) {
+      return resolve({ ok: false, error: 'width and height must be integers from 1 to 6000' });
+    }
+    if (typeof background !== 'string' || !background || background.length > 64 || /[\r\n\0]/.test(background)) {
+      return resolve({ ok: false, error: 'invalid background colour' });
+    }
+    if (config !== null && (typeof config !== 'object' || Array.isArray(config))) {
+      return resolve({ ok: false, error: 'config must be a JSON object' });
+    }
+    const configText = config === null ? null : JSON.stringify(config);
+    if (configText && configText.length > 65536) {
+      return resolve({ ok: false, error: 'config exceeds 64 KB' });
+    }
 
     const stamp = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const inputPath = path.join(os.tmpdir(), `mermaid-${stamp}.mmd`);
+    const configPath = path.join(os.tmpdir(), `mermaid-${stamp}.json`);
     const filename = `mermaid-${stamp}.${fmt}`;
     const outputPath = path.join(EXCHANGE_DIR, filename);
 
-    const cleanup = () => { try { fs.unlinkSync(inputPath); } catch {} };
+    const cleanup = () => {
+      for (const file of [inputPath, configPath]) {
+        try { fs.unlinkSync(file); } catch {}
+      }
+    };
 
     try {
       fs.mkdirSync(EXCHANGE_DIR, { recursive: true });
       fs.writeFileSync(inputPath, definition, 'utf8');
+      if (configText) fs.writeFileSync(configPath, configText, 'utf8');
     } catch (err) {
       cleanup();
       return resolve({ ok: false, error: `write failed: ${err.message}` });
     }
 
-    execFile('mmdc', [
+    const args = [
       '-i', inputPath,
       '-o', outputPath,
       '-e', fmt,
       '-t', thm,
+      '-w', String(width),
+      '-H', String(height),
+      '-b', background,
       '--puppeteerConfigFile', MMDC_PUPPETEER_CONFIG,
-    ], { timeout: 30000, env: process.env }, (err, _stdout, stderr) => {
+    ];
+    if (configText) args.push('-c', configPath);
+    execFile('mmdc', args, { timeout: 30000, env: process.env }, (err, _stdout, stderr) => {
       cleanup();
       if (err) {
+        try { fs.unlinkSync(outputPath); } catch {}
         log(`mermaid render failed: ${err.message} ${stderr || ''}`.trim());
         return resolve({ ok: false, error: (stderr && stderr.trim()) || err.message });
       }
@@ -237,8 +270,19 @@ async function main() {
 
     if (url.pathname === '/render-mermaid' && req.method === 'POST') {
       let body = '';
-      req.on('data', c => body += c);
+      let tooLarge = false;
+      req.on('data', c => {
+        if (tooLarge) return;
+        body += c;
+        if (body.length > 1_200_000) {
+          tooLarge = true;
+          body = '';
+          res.writeHead(413, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: 'render request exceeds 1.2 MB' }));
+        }
+      });
       req.on('end', async () => {
+        if (tooLarge) return;
         let parsed;
         try {
           parsed = JSON.parse(body || '{}');
@@ -320,7 +364,11 @@ async function main() {
   });
 }
 
-main().catch(err => {
-  log(`Fatal: ${err.message}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    log(`Fatal: ${err.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { renderMermaid };

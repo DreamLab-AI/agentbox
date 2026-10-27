@@ -7,6 +7,13 @@ sidecar; its lifecycle remains explicit. See [incremental builds](../docs/develo
 Agentbox image SBOM/VEX reports also exclude this separately built sidecar;
 assess its own image digest separately. [Evidence scope](../docs/developer/vex.md).
 
+Mermaid rendering is also hosted here: Agentbox's `mmdc` command posts to
+`/render-mermaid` and receives output through `gui-tools-exchange`. This uses
+the sidecar's **separate headless system Chromium**, not the persistent GPU
+Chrome Beta/CDP profile. Updating or building this sidecar does not require
+another Chromium in Agentbox. Keep `browsercontainer-profile` intact and do
+not restart the sidecar merely to prepare an Agentbox image (ADR-2152).
+
 ## Architecture
 
 Agentbox's browser-use instructions are owned by `config/instructions/workspace.claude.md` and its private local layer (ADR-2118), projected at boot. Edit the source layers, not the generated workspace `CLAUDE.md`. This does not change browsercontainer's own mounts or lifecycle.

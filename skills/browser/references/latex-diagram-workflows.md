@@ -4,10 +4,11 @@ On-demand cookbook for using the `browsercontainer` sidecar to render diagrams
 and spot-check LaTeX/PDF output. Canonical connection details live in the
 parent `SKILL.md`.
 
-## Mermaid Rendering Workaround
+## Mermaid Rendering
 
-**`mmdc` 11.14.0 in the Nix store has a broken puppeteer dependency.** Use the
-browser sidecar instead to render `.mmd` files:
+The Agentbox `mmdc` command delegates to browsercontainer; it does not need
+local Chromium. Prefer `mmdc -i map.mmd -o map.svg`. The browser automation
+recipe below is for interactive inspection, not routine diagram rendering:
 
 ```python
 mmd_content = pathlib.Path("map.mmd").read_text()
