@@ -181,6 +181,12 @@ const CATALOGUE = [
   { id: 'voice-console', name: 'Voice + AoE operator console', layer: 'module', heavy: true,
     gate: 'voice', service: 'voice-console', apply_class: 'live',
     summary: 'ADR-044: same-origin operator cockpit (Caddy :8444) unifying the web voice loop and AoE session board. The UI/backend sidecar uses ./agentbox.sh voice; shared Nemotron ASR + Pocket TTS follow the core AgentBox lifecycle through docker-compose.speech.yml.' },
+  { id: 'voicelink', name: 'Voicelink edge voice controller', layer: 'module',
+    gate: 'voicelink', apply_class: 'rebuild',
+    summary: 'ADR-2151: client-side voice (DreamLab-AI/agentbox-voicelink) reaches the container only over the operator\'s ssh login, running /opt/agentbox/bin/voice-paned --stdio per connection (no port, token or supervisor program). [voicelink].enabled bakes voice-paned from lib/voice-paned.nix; REBUILD-class. The ADR-044 cockpit and [voice] are unchanged.' },
+  { id: 'voicelink-hooks', name: 'Voicelink event-spool hooks', layer: 'module',
+    gate: 'voicelink.record_events', apply_class: 'boot',
+    summary: 'ADR-2151: with [voicelink].enabled and record_events, Claude Code Stop and Notification hooks (root session and every profile) and the Codex notify program call `voice-paned record`, appending to ~/.local/state/voicelink/events.jsonl. Registered at boot by the entrypoint and agentbox-manifest provision-stacks; fail-open, nothing on stdout. BOOT-class.' },
   { id: 'sovereign-mesh', name: 'Sovereign mesh (relay + pod bridge)', layer: 'module',
     // The supervisor program is [program:nostr-relay]; nostr-pod-bridge is its
     // binary. `service` names the runtime unit (CY-A2 declared-vs-running).

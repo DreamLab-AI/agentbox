@@ -46,6 +46,8 @@ own   skill-route.cjs                  UserPromptSubmit                         
 own   routing-label-recorder.cjs       Stop                                           15
 # ADR-2146: generic activity sink; the 1 s request budget fits well inside 3 s.
 own   activity-sink.cjs                PostToolUse,UserPromptSubmit,Stop              3
+# ADR-2151: voicelink event spool; `voice-paned record` is silent and exits 0 well inside 5 s.
+own   voice-paned                      Stop,Notification                              5
 
 # ── third-party ──
 # Agent of Empires writes its own status/session hooks, each tagged `# aoe-hooks`.

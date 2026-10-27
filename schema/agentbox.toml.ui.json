@@ -32,6 +32,7 @@
     "compression": { "label": "Compression", "group": "memory" },
     "interaction_plane": { "label": "Interaction plane (AoE)", "group": "agents" },
     "voice": { "label": "Voice console", "group": "agents" },
+    "voicelink": { "label": "Voicelink (edge voice)", "group": "agents" },
     "dream_machine": { "label": "Dream machine", "group": "agents" },
     "project_tracking": { "label": "Project tracking", "group": "agents" },
     "diagram_review": { "label": "Diagram review", "group": "agents" },
