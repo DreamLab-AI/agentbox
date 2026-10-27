@@ -4,6 +4,13 @@ All notable changes to agentbox are documented here. Format inspired by [Keep a 
 
 ## [Unreleased]
 
+### VoiceLink tmux locale (2026-10-27 — staged)
+
+- The pinned `voice-paned` build forces UTF-8 for its tmux control client:
+  under the `C` locale tmux otherwise replaces tab-separated reply fields with
+  underscores, preventing the controller from finding focus. Its Nix checks
+  exercise the `C` locale with a real terminal and the full end-to-end suite.
+
 ### Mermaid build closure (2026-10-27 — staged)
 
 - Agentbox now bakes an `mmdc` compatibility client instead of a second

@@ -56,6 +56,17 @@ pkgs.rustPlatform.buildRustPackage {
   # tree (no import-from-derivation). Byte-identical to Cargo.lock at `rev`.
   cargoLock.lockFile = ./lockfiles/agentbox-voicelink-${builtins.substring 0 8 rev}.Cargo.lock;
 
+  # tmux in a C locale sanitises tab separators in control-mode replies to
+  # underscores. Force UTF-8 for this control client so the structured pane
+  # queries remain parseable even when the container has no locale set.
+  postPatch = ''
+    substituteInPlace crates/tmux-control/src/client.rs \
+      --replace-fail 'cmd.args(socket.args())' 'cmd.args(socket.args()).arg("-u")'
+    # The harness also parses tab-separated replies from its own tmux CLI.
+    substituteInPlace crates/voice-paned/tests/common/mod.rs \
+      --replace-fail 'let mut c = StdCommand::new("tmux");' 'let mut c = StdCommand::new("tmux"); c.arg("-u");'
+  '';
+
   # voice-paned only: the client crate links cpal/alsa-sys and is not wanted.
   cargoBuildFlags = [ "-p" "voice-paned" ];
   cargoTestFlags  = [ "-p" "voice-paned" ];
@@ -66,9 +77,11 @@ pkgs.rustPlatform.buildRustPackage {
   # tmux this image ships.
   # The tests also call bash and util-linux `script` (a pty for the fake agent
   # panes); HOME is unwritable in the sandbox, so point it and tmux at TMPDIR.
+  # Provide terminfo for the real xterm-256color pseudo-terminal client.
   nativeCheckInputs = [ pkgs.tmux pkgs.bash pkgs.util-linux ];
   preCheck = ''
-    export HOME=$TMPDIR TMUX_TMPDIR=$TMPDIR
+    export HOME=$TMPDIR TMUX_TMPDIR=$TMPDIR LC_ALL=C
+    export TERMINFO=${pkgs.ncurses}/share/terminfo
   '';
   doCheck = true;
 
