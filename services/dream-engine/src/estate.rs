@@ -165,10 +165,22 @@ pub fn ruvector_config(rt: &RuntimeConfig) -> RuVectorConfig {
     });
     RuVectorConfig {
         pg_url,
-        xinference_url: std::env::var("XINFERENCE_URL")
-            .unwrap_or_else(|_| "http://embeddings:9997".into()),
+        xinference_url: xinference_url_from_env(),
         namespace: rt.memory_namespace.clone(),
     }
+}
+
+/// The embeddings endpoint: `XINFERENCE_URL` if set, else the estate-wide
+/// `XINFERENCE_ENDPOINT` (what the image exports to every service), else the
+/// `xinference` container on the shared network. The old `embeddings` default
+/// named no host, so every night's RuVector store failed open.
+fn xinference_url_from_env() -> String {
+    ["XINFERENCE_URL", "XINFERENCE_ENDPOINT"]
+        .iter()
+        .filter_map(|k| std::env::var(k).ok())
+        .map(|v| v.trim().to_string())
+        .find(|v| !v.is_empty())
+        .unwrap_or_else(|| "http://xinference:9997".into())
 }
 
 /// Convert libpq-style "host=h port=p dbname=d user=u password=w" into a URL.
@@ -229,6 +241,28 @@ mod tests {
             url,
             "postgres://ruvector:ruvector@ruvector-postgres:5432/ruvector"
         );
+    }
+
+    #[test]
+    fn xinference_url_prefers_the_override_then_the_estate_endpoint() {
+        let both = [
+            ("XINFERENCE_URL", Some("http://override:1")),
+            ("XINFERENCE_ENDPOINT", Some("http://estate:2")),
+        ];
+        with_env(&both, || {
+            assert_eq!(xinference_url_from_env(), "http://override:1")
+        });
+        let estate = [
+            ("XINFERENCE_URL", Some("  ")),
+            ("XINFERENCE_ENDPOINT", Some("http://estate:2")),
+        ];
+        with_env(&estate, || {
+            assert_eq!(xinference_url_from_env(), "http://estate:2")
+        });
+        let none = [("XINFERENCE_URL", None), ("XINFERENCE_ENDPOINT", None)];
+        with_env(&none, || {
+            assert_eq!(xinference_url_from_env(), "http://xinference:9997")
+        });
     }
 
     #[test]
