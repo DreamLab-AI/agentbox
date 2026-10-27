@@ -19,15 +19,6 @@
 # The workspace also holds a client crate that depends on cpal/alsa-sys; it is
 # never built here: every cargo invocation is `-p voice-paned`.
 #
-# ===========================================================================
-# PINNED BY THE RELEASE STEP. `rev` and `hash` below are PLACEHOLDERS and the
-# lockfile does not exist yet. While `rev` is the all-zero placeholder this
-# file throws a clear message on evaluation, so an image built with
-# [voicelink].enabled = true fails fast instead of at the fixed-output hash.
-# With enabled = false nothing references this file (flake.nix imports it
-# lazily), so the image builds as before.
-# ===========================================================================
-#
 # Bump procedure (also the first-pin procedure):
 #   1. Move `rev` to a pushed agentbox-voicelink commit.
 #   2. Refresh `hash`: nix-prefetch-url --unpack
@@ -47,26 +38,16 @@
 let
   version = "0.1.0";
 
-  # PLACEHOLDER pin, replaced by the release step (see the bump procedure).
-  rev = "0000000000000000000000000000000000000000";
-  unpinned = rev == "0000000000000000000000000000000000000000";
+  rev = "dd557e6762cfbc195cc9a0d3afefb732224b0c0f";
 
   src = pkgs.fetchFromGitHub {
     owner = "DreamLab-AI";
     repo  = "agentbox-voicelink";
     inherit rev;
-    # PLACEHOLDER: pinned by the release step; see the bump procedure.
-    hash  = lib.fakeHash;
+    hash  = "sha256-o1toK75HgOW+DU4te927UvSNZxMQO/b/BxW/lV/LOFY=";
   };
 
 in
-if unpinned then
-  throw ''
-    lib/voice-paned.nix is not pinned: [voicelink].enabled = true needs the
-    release step to set rev, hash and lib/lockfiles/agentbox-voicelink-<rev8>.Cargo.lock
-    (bump procedure in the header of lib/voice-paned.nix). Set enabled = false to build without it.
-  ''
-else
 pkgs.rustPlatform.buildRustPackage {
   pname = "voice-paned";
   inherit version src;
@@ -83,7 +64,12 @@ pkgs.rustPlatform.buildRustPackage {
   # grouped sessions), so tmux must be on PATH during checkPhase. The tests stay
   # on: they are the only proof the focus-following contract holds against the
   # tmux this image ships.
-  nativeCheckInputs = [ pkgs.tmux ];
+  # The tests also call bash and util-linux `script` (a pty for the fake agent
+  # panes); HOME is unwritable in the sandbox, so point it and tmux at TMPDIR.
+  nativeCheckInputs = [ pkgs.tmux pkgs.bash pkgs.util-linux ];
+  preCheck = ''
+    export HOME=$TMPDIR TMUX_TMPDIR=$TMPDIR
+  '';
   doCheck = true;
 
   meta = with lib; {

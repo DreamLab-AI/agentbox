@@ -34,4 +34,4 @@ The operator works remotely by ssh to the host and `agentbox.sh shell` (`docker 
 - Follow-on: the hook registrations at both sites (root and per-profile), the Codex `notify` projection, and the Nix bake.
 
 ## Verification
-None yet (`implementation_status: none`). Becomes `partial` when `voice-paned` is baked and the hook spool is registered, verified by the voicelink end-to-end link test against a live grouped session.
+Pinned to agentbox-voicelink `dd557e6` (`lib/voice-paned.nix`, hash computed from the GitHub archive and cross-checked against the existing `sidestr-rs` pin). `implementation_status` stays `none` until a host rebuild bakes it; it becomes `partial` when `voice-paned` is baked and the hook spool is registered, verified by the voicelink end-to-end link test against a live grouped session.

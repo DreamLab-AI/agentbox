@@ -69,8 +69,11 @@ check "gate off never removes a foreign notify" "$(grep -c 'my-notifier' "$tmp/c
 # ── Nix gating ──
 nix="$root/lib/voice-paned.nix"
 check "derivation builds only voice-paned" "$(grep -c '"-p" "voice-paned"' "$nix")" "2"
-check "derivation puts tmux on the check path" "$(grep -c 'nativeCheckInputs = \[ pkgs.tmux \]' "$nix")" "1"
-check "placeholder pin is explicit" "$(grep -c 'rev = "0000000000000000000000000000000000000000"' "$nix")" "1"
+check "derivation puts tmux, bash and script on the check path" "$(grep -c 'nativeCheckInputs = \[ pkgs.tmux pkgs.bash pkgs.util-linux \]' "$nix")" "1"
+rev=$(sed -n 's/^  rev = "\([0-9a-f]\{40\}\)";$/\1/p' "$nix")
+check "rev is pinned to a real commit" "$([[ -n $rev && $rev != 0000000000000000000000000000000000000000 ]] && echo 1 || echo 0)" "1"
+check "no fakeHash left in the derivation" "$(grep -c 'fakeHash' "$nix")" "0"
+check "pinned lockfile exists" "$([[ -f $root/lib/lockfiles/agentbox-voicelink-${rev:0:8}.Cargo.lock ]] && echo 1 || echo 0)" "1"
 check "package list is gated on [voicelink].enabled" "$(grep -c 'voicelinkPackages = lib.optionals voicelinkOn' "$root/flake.nix")" "1"
 check "bin symlink is gated on [voicelink].enabled" "$(grep -c 'lib.optionalString voicelinkOn' "$root/flake.nix")" "1"
 check "voicePanedPkg is referenced only through the gates" "$(grep -c 'voicePanedPkg' "$root/flake.nix")" "3"
