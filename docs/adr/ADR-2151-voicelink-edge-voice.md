@@ -2,7 +2,7 @@
 id: ADR-2151
 title: Run voice at the client edge and drive native CLI panes over the ssh attach chain
 date: 2026-10-27
-decision_status: accepted
+decision_status: proposed
 implementation_status: none
 activation_status: inactive
 supersedes: []
